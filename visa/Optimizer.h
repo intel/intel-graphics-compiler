@@ -123,6 +123,7 @@ class Optimizer {
                          INST_LIST_ITER iend);
   void removePseudoMov();
   void FoldAddrImmediate();
+  void fixSamplerCacheBitInHeader();
   bool foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_II);
   bool foldPseudoNot(G4_BB *bb, INST_LIST_ITER &iter);
   bool createSmov(G4_BB *bb, G4_INST *flagMove, G4_INST *nextInst);
@@ -367,6 +368,7 @@ public:
     PI_reassignBlockIDs,      // always
     PI_evalAddrExp,           // always
     PI_FoldAddrImmediate,
+    PI_fixSamplerCacheBitInHeader,
     PI_localSchedule,
     PI_HWWorkaround,        // always
     PI_fixEndIfWhileLabels, // always

@@ -939,4 +939,9 @@ bool needTGMDoubleFenceWA() const {
 bool useDynamicAddrForExDesc() const {
   return getOption(vISA_dynamicAddrForExDescInLscSend);
 }
+
+bool samplerCachingInLSCHeader() const {
+    return (getPlatform() >= TARGET_PLATFORM::Xe3 &&
+                    getOption(vISA_enableSamplerLSCCaching));
+}
 // end HW capabilities
