@@ -145,7 +145,7 @@ DECLARE_IGC_REGKEY(bool, DisableCodeSinkingInputVec,    false, "Setting this to 
 DECLARE_IGC_REGKEY(DWORD, CodeSinkingMinSize,           32,  "Don't sink if the number of instructions in the kernel is less", false)
 
 // Code Loop Sinking
-DECLARE_IGC_REGKEY(bool, DisableLoopSink,               false, "Disable sinking in all loops", false)
+DECLARE_IGC_REGKEY(bool, DisableLoopSink,               false, "Disable sinking in all loops", true)
 DECLARE_IGC_REGKEY(bool, ForceLoopSink,                 false, "Force sinking in all loops", false)
 DECLARE_IGC_REGKEY(bool, EnableLoadsLoopSink,           true, "Allow sinking of loads in the loop", false)
 DECLARE_IGC_REGKEY(bool, ForceLoadsLoopSink,            false, "Force sinking of loads in the loop from the beginning", false)
@@ -168,6 +168,7 @@ DECLARE_IGC_REGKEY(bool, LoopSinkDisableRollback,       false, "Disable loopsink
 DECLARE_IGC_REGKEY(bool, LoopSinkAvoidSplittingDPAS,    true,  "Sink before the whole DPAS sequence if the first use of the sinked instruction is not the first DPAS", false)
 DECLARE_IGC_REGKEY(bool, LoopSinkForce2dBlockReadsMaxSink, true,  "Sink as much as possible in presence of 2d block loads", false)
 DECLARE_IGC_REGKEY(bool, LoopSinkEnableLateRescheduling, false,  "Schedule more aggressively in the end if the needed regpressure is still not achieved", false)
+DECLARE_IGC_REGKEY(bool, LoopSinkSkipDPASMacro,          false,  "If a dpas macro sequence is present, skip load sinking", true)
 
 
 DECLARE_IGC_REGKEY(bool, EnableLoopHoistConstant,       false, "Enables pass to check for specific loop patterns where variables are constant across all but the last iteration, and hoist them out of the loop.", false)

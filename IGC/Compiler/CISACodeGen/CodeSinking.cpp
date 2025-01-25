@@ -2890,6 +2890,24 @@ namespace IGC {
             bool Aggressive
         )
     {
+        // A dpas macro sequence is a sequence of dpas without other
+        // instructions in the middle. If a macro sequence is used in
+        // this BB, skip sinking as code is likely manually-tuned code.
+        //
+        // The macro sequence normally has 8 dpas at least. Here, if there
+        // are 8 dpas in the BB, assume the BB has a macro sequence.
+        bool hasDPASMacro = false;
+        if (IGC_IS_FLAG_ENABLED(LoopSinkSkipDPASMacro)) {
+            int numDpas = 0;
+            for (auto &II : *BB) {
+                Instruction *I = &II;
+                if (isDPAS(I)) {
+                  ++numDpas;
+                }
+            }
+            hasDPASMacro = (numDpas >= 8);
+        }
+
         auto isPartOfUnsplittableGroup = [&](Instruction *Inst)
         {
             auto haveCommonParameter = [](Instruction *Inst, Instruction *PrevInst)
@@ -3020,6 +3038,10 @@ namespace IGC {
                     continue;
 
                 if (Def->getParent() != BB)
+                    continue;
+
+                // Skip load if there is DPAS macro
+                if (hasDPASMacro && isAllowedLoad(Def))
                     continue;
 
                 auto Cit = InstToCandidate.find(Def);
