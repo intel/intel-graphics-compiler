@@ -922,6 +922,7 @@ DEFINE_LOAD_AND_CHECKED(PackedB_RowMajor,    _SG16, char, int, 8, 64, VNNI_TX,  
 /* PackedB load i8 SG16 for sub group size 32*/
 DEFINE_LOAD(PackedB_ColumnMajor, _SG16, char, int, 8, 64, COL_MAJOR, , 4)
 DEFINE_LOAD(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR, , 4)
+DEFINE_LOAD(PackedB_RowMajor,    _SG16, char, int, 8, 64, VNNI_TX,   , 4)
 
 /* B load tf32 SG16 */
 DEFINE_LOAD_AND_CHECKED(PackedB_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 8)
@@ -1041,15 +1042,21 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 1)
         return; \
     }
 
-#define DEFINE_STORE_SCALAR_IMPL(element_type, contrib_type, M, K, order, WI_rows) \
-    contrib_type *ptr = (contrib_type *)mem; \
+#define DEFINE_STORE_SCALAR_IMPL(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, order, WI_rows) \
     int slid = get_sub_group_local_id(); \
     int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
-    stride = stride / pack_factor; \
+    int elem_num = (M * K) / sg_size; \
     int sg_cols = K / pack_factor; \
+    int skip_factor = sg_size / sg_cols; \
+    if (_##layout == _PackedA_ColumnMajor && elem_bitwidth == 8 && contrib_bitwidth == 16) { \
+        for (int i = 0; i < elem_num; i++) \
+            mem[(i % pack_factor) * stride + ((slid * pack_factor) % K) * stride + (i / pack_factor) * skip_factor + (slid * pack_factor) / K] = src[i]; \
+        return; \
+    } \
+    contrib_type *ptr = (contrib_type *)mem; \
+    stride = stride / pack_factor; \
     __private contrib_type *slice = (__private contrib_type *)src; \
     if(sg_size >= sg_cols) { \
-        int skip_factor = sg_size / sg_cols; \
         for (int i = 0; i < WI_rows; i++) { \
             if ( (i*skip_factor + slid/sg_cols) < M ) \
                 ptr[IND##order(slid, stride, skip_factor, i, sg_cols)] = slice[i]; \
@@ -1074,14 +1081,14 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 1)
         } else { \
             DEFINE_STORE_VECTORS_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, us, WI_rows, block_opt, AS_LOCAL) \
         } \
-        DEFINE_STORE_SCALAR_IMPL(element_type, contrib_type, M, K, _##order, WI_rows) \
+        DEFINE_STORE_SCALAR_IMPL(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
     }
 
 #define DEFINE_STORE_IMPL_AS_LOCAL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, block_opt) \
     INLINE void MANGLE_STORE_NAME(layout, sg, elem_bitwidth, shape, WI_rows, local) (char *mem, __private char *src, long stride, int cacheOpt) { \
         int sg_size = get_sub_group_size(); \
         DEFINE_STORE_VECTORS_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, us, WI_rows, block_opt, AS_LOCAL) \
-        DEFINE_STORE_SCALAR_IMPL(element_type, contrib_type, M, K, _##order, WI_rows) \
+        DEFINE_STORE_SCALAR_IMPL(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
     }
 
 #define DEFINE_STORE_IMPL_AS_GLOBAL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, block_opt) \
@@ -1089,7 +1096,7 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 1)
         int sg_size = get_sub_group_size(); \
         DEFINE_STORE_BLOCK2D_IMPL(sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
         DEFINE_STORE_VECTORS_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, us, WI_rows, block_opt, AS_GLOBAL) \
-        DEFINE_STORE_SCALAR_IMPL(element_type, contrib_type, M, K, _##order, WI_rows) \
+        DEFINE_STORE_SCALAR_IMPL(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
     }
 
 #define DEFINE_STORE_CHECKED_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, block_opt) \
@@ -1149,6 +1156,9 @@ DEFINE_STORE(PackedA_RowMajor, _SG16, char,  short, 6, 32, ROW_MAJOR, _us, 6, fa
 DEFINE_STORE(PackedA_RowMajor, _SG16, char,  short, 7, 32, ROW_MAJOR, _us, 7, false)
 DEFINE_STORE_AND_CHECKED(PackedA_RowMajor, _SG16, char,  short, 8, 32, ROW_MAJOR, _us, 8, false)
 
+/* PackedA store i8 SG16 Col Major*/
+DEFINE_STORE(PackedA_ColumnMajor, _SG16, char,  short, 8, 32, COL_MAJOR, _us, 8, true)
+
 /* PackedA store i8 SG16 for subgroup 32*/
 // DEFINE_STORE(PackedA_RowMajor, _SG16, char,  short, 1, 32, ROW_MAJOR, _us, 1, false) same as for subgroup 16
 DEFINE_STORE(PackedA_RowMajor, _SG16, char,  short, 2, 32, ROW_MAJOR, _us, 1, false)
@@ -1158,6 +1168,9 @@ DEFINE_STORE(PackedA_RowMajor, _SG16, char,  short, 5, 32, ROW_MAJOR, _us, 3, fa
 DEFINE_STORE(PackedA_RowMajor, _SG16, char,  short, 6, 32, ROW_MAJOR, _us, 3, false)
 DEFINE_STORE(PackedA_RowMajor, _SG16, char,  short, 7, 32, ROW_MAJOR, _us, 4, false)
 DEFINE_STORE(PackedA_RowMajor, _SG16, char,  short, 8, 32, ROW_MAJOR, _us, 4, false)
+
+/* PackedA store i8 SG16 Col Major for sg 32*/
+DEFINE_STORE(PackedA_ColumnMajor, _SG16, char,  short, 8, 32, COL_MAJOR, _us, 4, true)
 
 /* PackedA store i16 SG16 */
 DEFINE_STORE_AND_CHECKED(PackedA_RowMajor, _SG16, short, short, 1, 16, ROW_MAJOR, _us, 1, false)
@@ -1170,6 +1183,12 @@ DEFINE_STORE(PackedA_RowMajor, _SG16, short, short, 7, 16, ROW_MAJOR, _us, 7, fa
 DEFINE_STORE_AND_CHECKED(PackedA_RowMajor, _SG16, short, short, 8, 16, ROW_MAJOR, _us, 8, false)
 
 DEFINE_STORE_AND_CHECKED(PackedA_RowMajor, _SG16, short, short, 1, 32, ROW_MAJOR, _us, 2, true)
+
+/* PackedA store i16 SG16 Col Major*/
+DEFINE_STORE(PackedA_ColumnMajor, _SG16, short, short, 8, 16, COL_MAJOR, _us, 8, true)
+
+/* PackedA store i16 SG16 Col Major for sg size 32*/
+DEFINE_STORE(PackedA_ColumnMajor, _SG16, short, short, 8, 16, COL_MAJOR, _us, 4, true)
 
 /* PackedA store i16 SG16 for sub group size 32 */
 // DEFINE_STORE(PackedA_RowMajor, _SG16, short, short, 1, 16, ROW_MAJOR, _us, 1, false) same as for subgroup 16
@@ -1197,6 +1216,7 @@ DEFINE_STORE_AND_CHECKED(PackedB_PackedB,     _SG16, short, int, 8, 32, ROW_MAJO
 DEFINE_STORE(PackedB_RowMajor,    _SG16, short, int, 8, 32, VNNI_TX,   , 8, true)
 
 /* PackedB store i16 SG16 for subgroup 32*/
+DEFINE_STORE(PackedB_ColumnMajor, _SG16, short, int, 8, 32, COL_MAJOR, , 4, false)
 DEFINE_STORE(PackedB_PackedB,     _SG16, short, int, 8, 32, ROW_MAJOR, , 4, true)
 
 // TODO: investigate why intel_sub_group_block_write causes an assertion and enable blocked non-continuous optimization
@@ -1209,6 +1229,7 @@ DEFINE_STORE(PackedB_ColumnMajor, _SG16, char, int, 8, 64, COL_MAJOR, , 8, false
 DEFINE_STORE_AND_CHECKED(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR, , 8, false)
 
 /* PackedB store i8 SG16 for subgroup 32*/
+DEFINE_STORE(PackedB_ColumnMajor, _SG16, char, int, 8, 64, COL_MAJOR, , 4, false)
 DEFINE_STORE(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR, , 4, true)
 
 /* B store tf32 SG16 */
