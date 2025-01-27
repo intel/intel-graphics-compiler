@@ -1037,10 +1037,11 @@ lookupSamplerMessageInfoXe2(uint32_t samplerMessageType, SamplerSIMD simd) {
         SendOp::GATHER4_C, "gather4_c", 2, SamplerParam::REF, SamplerParam::U,
         SamplerParam::V, SamplerParam::R, SamplerParam::AI);
   case 0x11:
-    return SamplerMessageDescription(
-        SendOp::SAMPLE_D_C, "sample_d_c", 4, SamplerParam::REF, SamplerParam::U,
-        SamplerParam::DUDX, SamplerParam::DUDY, SamplerParam::V,
-        SamplerParam::DVDX, SamplerParam::DVDY, SamplerParam::R);
+      return SamplerMessageDescription(SendOp::SAMPLE_D_C_MLOD, "sample_d_c_mlod",
+          4, SamplerParam::REF, SamplerParam::U,
+          SamplerParam::DUDX, SamplerParam::DUDY,
+          SamplerParam::V, SamplerParam::DVDX,
+          SamplerParam::DVDY, SamplerParam::MLOD_R);
   case 0x12:
     return SamplerMessageDescription(
         SendOp::SAMPLE_MLOD, "sample_mlod", 1, SamplerParam::MLOD,
@@ -1051,11 +1052,10 @@ lookupSamplerMessageInfoXe2(uint32_t samplerMessageType, SamplerSIMD simd) {
                                      SamplerParam::U, SamplerParam::V,
                                      SamplerParam::R, SamplerParam::AI);
   case 0x14:
-    return SamplerMessageDescription(SendOp::SAMPLE_D_C_MLOD, "sample_d_c_mlod",
-                                     4, SamplerParam::REF, SamplerParam::U,
-                                     SamplerParam::DUDX, SamplerParam::DUDY,
-                                     SamplerParam::V, SamplerParam::DVDX,
-                                     SamplerParam::DVDY, SamplerParam::MLOD_R);
+      return SamplerMessageDescription(
+          SendOp::SAMPLE_D_C, "sample_d_c", 4, SamplerParam::REF, SamplerParam::U,
+          SamplerParam::DUDX, SamplerParam::DUDY, SamplerParam::V,
+          SamplerParam::DVDX, SamplerParam::DVDY, SamplerParam::R);
   case 0x15:
     return SamplerMessageDescription(
         SendOp::GATHER4_I_C, "gather4_i_c", 2, SamplerParam::REF,
