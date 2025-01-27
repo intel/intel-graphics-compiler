@@ -394,14 +394,42 @@ void IGCRegisterPressurePrinter::dumpRegPressure(llvm::Function &F,
 
     IGC::Debug::DumpLock();
     {
+        const int MaxFunctionLength = 100;
+
         std::stringstream ss;
-        ss << F.getName().str() << "_" << DumpFileName << "_RegEst";
+        std::string FunctionName = F.getName().str();
+
+        std::replace_if(FunctionName.begin(), FunctionName.end(), [](char c) {
+            return !std::isalnum(c) && c != '_';
+        }, '_');
+
+        if (FunctionName.length() > MaxFunctionLength) {
+            FunctionName = FunctionName.substr(0, MaxFunctionLength);
+        }
+
+        ss << FunctionName << "_" << DumpFileName << "_RegEst";
         auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
                         .Hash(CGCtx->hash)
                         .Type(CGCtx->type)
                         .Retry(CGCtx->m_retryManager.GetRetryId())
                         .Pass(ss.str().c_str())
                         .Extension("ll");
+
+        int Counter = 1;
+        std::string originalName = Name.str();
+        std::ifstream FileToCheck(Name.str());
+        while (FileToCheck.good()) {
+            FileToCheck.close();
+            Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
+                .Hash(CGCtx->hash)
+                .Type(CGCtx->type)
+                .Retry(CGCtx->m_retryManager.GetRetryId())
+                .Pass((ss.str() + "_" + std::to_string(Counter)).c_str())
+                .Extension("ll");
+            FileToCheck.open(Name.str());
+            Counter++;
+        }
+        FileToCheck.close();
 
         std::ofstream OutputFile(Name.str());
         OutputFile << "SIMD: " << SIMD << ", external pressure: " << ExternalPressure << "\n";
