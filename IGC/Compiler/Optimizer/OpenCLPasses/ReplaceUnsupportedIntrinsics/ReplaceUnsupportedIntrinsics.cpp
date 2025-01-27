@@ -109,6 +109,8 @@ namespace
         void replaceLRound(IntrinsicInst* I);
         void replaceLRint(IntrinsicInst* I);
         void replaceCountTheLeadingZeros(IntrinsicInst* I);
+        void replaceMinMax(IntrinsicInst* I);
+        void replaceI1MinMax(IntrinsicInst* I);
         void replaceI64MinMax(IntrinsicInst* I);
 
         static const std::map< Intrinsic::ID, MemFuncPtr_t > m_intrinsicToFunc;
@@ -139,10 +141,10 @@ const std::map< Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t > Repl
     { Intrinsic::lrint,      &ReplaceUnsupportedIntrinsics::replaceLRint },
     { Intrinsic::llrint,     &ReplaceUnsupportedIntrinsics::replaceLRint },
     { Intrinsic::ctlz,       &ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros },
-    { Intrinsic::smax,       &ReplaceUnsupportedIntrinsics::replaceI64MinMax },
-    { Intrinsic::smin,       &ReplaceUnsupportedIntrinsics::replaceI64MinMax },
-    { Intrinsic::umax,       &ReplaceUnsupportedIntrinsics::replaceI64MinMax },
-    { Intrinsic::umin,       &ReplaceUnsupportedIntrinsics::replaceI64MinMax }
+    { Intrinsic::smax,       &ReplaceUnsupportedIntrinsics::replaceMinMax },
+    { Intrinsic::smin,       &ReplaceUnsupportedIntrinsics::replaceMinMax },
+    { Intrinsic::umax,       &ReplaceUnsupportedIntrinsics::replaceMinMax },
+    { Intrinsic::umin,       &ReplaceUnsupportedIntrinsics::replaceMinMax }
 };
 
 ReplaceUnsupportedIntrinsics::ReplaceUnsupportedIntrinsics() : FunctionPass(ID)
@@ -1035,15 +1037,20 @@ void ReplaceUnsupportedIntrinsics::replaceLRint(IntrinsicInst* I) {
     I->eraseFromParent();
 }
 
+void ReplaceUnsupportedIntrinsics::replaceMinMax(IntrinsicInst* I)
+{
+    if(I->getType()->isIntegerTy(64))
+        replaceI64MinMax(I);
+
+    if(I->getType()->isIntegerTy(1))
+        replaceI1MinMax(I);
+}
 /*
     Replaces i64 calls to llvm.smax, llvm.smin, llvm.umax, llvm.umin to
     icmp + select instructionc that can be emulated.
 */
 void ReplaceUnsupportedIntrinsics::replaceI64MinMax(IntrinsicInst* I)
 {
-    if(!I->getType()->isIntegerTy(64))
-        return;
-
     const SmallDenseMap<Intrinsic::ID, CmpInst::Predicate, 4> CmpPredMap {
         {Intrinsic::smax, CmpInst::Predicate::ICMP_SGT},
         {Intrinsic::smin, CmpInst::Predicate::ICMP_SLT},
@@ -1057,6 +1064,20 @@ void ReplaceUnsupportedIntrinsics::replaceI64MinMax(IntrinsicInst* I)
     auto Cmp = cast<Instruction>(
         Builder.CreateICmp(CmpPredMap.lookup(I->getIntrinsicID()), LHS, RHS));
     I->replaceAllUsesWith(Builder.CreateSelect(Cmp, LHS, RHS));
+}
+
+void ReplaceUnsupportedIntrinsics::replaceI1MinMax(IntrinsicInst* I)
+{
+    IGCLLVM::IRBuilder<> Builder(I);
+
+    Value* LHS = I->getArgOperand(0), * RHS = I->getArgOperand(1);
+
+    auto IntrId = I->getIntrinsicID();
+
+    if (IntrId == Intrinsic::smax || IntrId == Intrinsic::umax)
+        I->replaceAllUsesWith(Builder.CreateOr(LHS, RHS));
+    else // Intrinsic::smin || Intrinsic::umin
+        I->replaceAllUsesWith(Builder.CreateAnd(LHS, RHS));
 }
 
 /*
