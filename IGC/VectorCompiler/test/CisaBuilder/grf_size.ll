@@ -27,12 +27,12 @@ define dllexport spir_kernel void @test_auto(i32 %arg) #0 {
   ret void
 }
 
-; CHECK-NOT: .kernel_attr NumGRF
+; CHECK: .kernel_attr NumGRF=128
 define dllexport spir_kernel void @test_default(i32 %arg) #0 {
   ret void
 }
 
-; CHECK-NOT: .kernel_attr NumGRF
+; CHECK: .kernel_attr NumGRF=128
 define dllexport spir_kernel void @test_invalid(i32 %arg) #0 {
   ret void
 }
