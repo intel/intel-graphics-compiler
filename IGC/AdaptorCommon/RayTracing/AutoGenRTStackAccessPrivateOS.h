@@ -488,7 +488,7 @@ static Type* _struct_IGC__RayDispatchGlobalData__RT__Xe(Module &M)
       [&] {
         auto *EltTy =
           IntegerType::get(M.getContext(), 32);
-        return ArrayType::get(EltTy, 7);
+        return ArrayType::get(EltTy, 9);
       }(),
       _struct_IGC__RayDispatchGlobalData__RayDispatchGlobalDataCommon(M),
     };

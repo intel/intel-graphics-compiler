@@ -234,7 +234,7 @@ struct RayDispatchGlobalData
             } rt_data_info;
             // In addition to the dword of padding to align `common`, we also
             // add 8 dwords so Xe and Xe3 both have the same RTGlobals size.
-            uint32_t paddingBits[1+6];          // padding
+            uint32_t paddingBits[1+8];          // padding
 
             // HW doesn't read anything below this point.
             RayDispatchGlobalDataCommon common;
@@ -286,7 +286,7 @@ struct RayDispatchGlobalData
             uint32_t pad_mbz : 31;
             uint64_t hitGroupBasePtr;           // base pointer of hit group shader record array (16-bytes alignment)
             uint64_t missShaderBasePtr;         // base pointer of miss shader record array (8-bytes alignment)
-            uint32_t _align_mbz[2];             // pad hardware section to 64 bytes
+            uint32_t _align_mbz[4];             // pad hardware section to 64 bytes
 
             // HW doesn't read anything below this point.
             RayDispatchGlobalDataCommon common;
@@ -303,7 +303,10 @@ constexpr uint32_t RTGlobalsAlign = 256;
 constexpr uint32_t RTStackAlign = 128;
 static_assert(RTStackAlign % RayDispatchGlobalData::StackChunkSize == 0, "no?");
 
-static_assert(sizeof(RayDispatchGlobalData) == 184, "unexpected size?");
+static_assert((sizeof(RayDispatchGlobalData::RT::Xe) - sizeof(RayDispatchGlobalData::RayDispatchGlobalDataCommon)) % 64 == 0, "Unexpected GlobalData alignment");
+static_assert((sizeof(RayDispatchGlobalData::RT::Xe3) - sizeof(RayDispatchGlobalData::RayDispatchGlobalDataCommon)) % 64 == 0, "Unexpected GlobalData alignment");
+
+static_assert(sizeof(RayDispatchGlobalData) == 192, "unexpected size?");
 static_assert(sizeof(RayDispatchGlobalData::RT::Xe) == sizeof(RayDispatchGlobalData), "unexpected size?");
 static_assert(sizeof(RayDispatchGlobalData::RT::Xe3) == sizeof(RayDispatchGlobalData), "unexpected size?");
 static_assert(offsetof(RayDispatchGlobalData::RT::Xe, common) == offsetof(RayDispatchGlobalData::RT::Xe3, common), "unexpected size?");
