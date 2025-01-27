@@ -3915,17 +3915,6 @@ void Optimizer::HWWorkaround() {
               LSC_FENCE_OP_NONE)
         bb->insertBefore(ii, inst->cloneInst());
 
-      // When destination is an address register the following apply:
-      // Destination must not span across the lower to upper 8 dword
-      // boundary of the register.
-      // Fix this restriction after RA instead of HWConformity just because
-      // RA(spill/fill, A0 save/restore) would generate such instructions.
-      if (inst->getExecSize() == g4::SIMD32 && inst->getDst() &&
-          inst->getDst()->isDirectA0()) {
-        HWConformity hwConf(builder, kernel);
-        hwConf.evenlySplitInst(ii, bb, /*checkOverlap*/ false);
-      }
-
       ii++;
     }
   }
@@ -3980,8 +3969,27 @@ void Optimizer::HWWorkaround() {
   if (builder.hasFPU0ReadSuppressionIssue()) {
     fixReadSuppressioninFPU0();
   }
+
+  if (builder.supportNativeSIMD32())
+    fixDirectAddrBoundOnDst();
 }
 
+// When destination is an address register the following apply:
+// Destination must not span across the lower to upper 8 dword
+// boundary of the register.
+// Fix this restriction after RA instead of HWConformity just because
+// RA(spill/fill, A0 save/restore) would generate such instructions.
+void Optimizer::fixDirectAddrBoundOnDst() {
+  HWConformity hwConf(builder, kernel);
+  for (auto bb : kernel.fg) {
+    for (auto it = bb->begin(), ie = bb->end(); it != ie; ++it) {
+      G4_INST *inst = *it;
+      if (inst->getExecSize() == g4::SIMD32 && inst->getDst() &&
+          inst->getDst()->isDirectA0())
+        hwConf.evenlySplitInst(it, bb, /*checkOverlap*/ false);
+    }
+  }
+}
 
 static bool retires(G4_Operand *Opnd, G4_INST *SI) {
   vASSERT(SI);

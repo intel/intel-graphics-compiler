@@ -266,6 +266,7 @@ private:
   void applyNamedBarrierWA(INST_LIST_ITER it, G4_BB *bb);
   void insertIEEEExceptionTrap();
   void expandIEEEExceptionTrap(INST_LIST_ITER it, G4_BB *bb);
+  void fixDirectAddrBoundOnDst();
 
   typedef std::vector<vISA::G4_INST *> InstListType;
   // create instruction sequence to calculate call offset from ip
