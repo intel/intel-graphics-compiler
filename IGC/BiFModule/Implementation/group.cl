@@ -3254,12 +3254,26 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_f16_i32, )(in
 }
 #endif // defined(cl_khr_fp16)
 
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffle, char,   int, char,   uint, i32, i8,  i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffle, short,  int, short,  uint, i32, i16, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffle, int,    int, int,    uint, i32, i32, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffle, long,   int, long,   uint, i32, i64, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffle, float,  int, float,  uint, i32, f32, i32)
+#if defined(cl_khr_fp64)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffle, double, int, double, uint, i32, f64, i32)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffle, half,   int, half,   uint, i32, f16, i32)
+#endif // defined(cl_khr_fp16)
+
 #define DEFN_SUB_GROUP_SHUFFLE_XOR(TYPE, TYPE_ABBR)                                                             \
 TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleXor, _i32_##TYPE_ABBR##_i32, )(int Execution, TYPE x, uint c)  \
 {                                                                                                               \
     c = get_sub_group_local_id() ^ c;                                                                           \
     return SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_##TYPE_ABBR##_i32, )(Execution, x, c);                    \
-}
+}                                                                                                               \
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffleXor, TYPE, int, TYPE, uint, i32, TYPE_ABBR, i32)
+
 
 DEFN_SUB_GROUP_SHUFFLE_XOR(char,   i8)
 DEFN_SUB_GROUP_SHUFFLE_XOR(short,  i16)
@@ -3377,6 +3391,19 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_f16_i32, 
 }
 #endif // defined(cl_khr_fp16)
 
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffleDown, char,   int, char,   uint, i32, i8,  i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffleDown, short,  int, short,  uint, i32, i16, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffleDown, int,    int, int,    uint, i32, i32, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffleDown, long,   int, long,   uint, i32, i64, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffleDown, float,  int, float,  uint, i32, f32, i32)
+#if defined(cl_khr_fp64)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffleDown, double, int, double, uint, i32, f64, i32)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffleDown, half,   int, half,   uint, i32, f16, i32)
+#endif // defined(cl_khr_fp16)
+
+
 // Shuffle up functions
 #define DEFN_NON_UNIFORM_SHUFFLE_UP(TYPE, TYPE_ABBR)                                                                        \
 TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleUp, _i32_##TYPE_ABBR##_i32, )(int Execution, TYPE x, uint c)    \
@@ -3390,7 +3417,8 @@ TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleUp, _i32_##TYPE_ABBR
         return intel_sub_group_shuffle_up((TYPE) 0, x, c);                                                                  \
     }                                                                                                                       \
     return 0;                                                                                                               \
-}
+}                                                                                                                           \
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffleUp, TYPE, int, TYPE, uint, i32, TYPE_ABBR, i32)
 
 DEFN_NON_UNIFORM_SHUFFLE_UP(char,   i8)
 DEFN_NON_UNIFORM_SHUFFLE_UP(short,  i16)
