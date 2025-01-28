@@ -56,4 +56,12 @@ define spir_func <64 x bfloat> @powi_bfloat_i8(<64 x i8> %src, <64 x bfloat> %sr
   ret <64 x bfloat> %res
 }
 
+declare <64 x float> @llvm.powi.v64f32.i32(<64 x float>, i32)
+; CHECK-LABEL: powi_float_i32
+define spir_func <64 x float> @powi_float_i32(<64 x float> %src) {
+; CHECK: {{.*}} = call afn <64 x float> @llvm.pow.v64f32(<64 x float> %src, <64 x float> <float -4.000000e+00,
+  %res = tail call afn <64 x float> @llvm.powi.v64f32.i32(<64 x float> %src, i32 -4)
+  ret <64 x float> %res
+}
+
 attributes #2 = { nofree nosync nounwind readnone speculatable willreturn }

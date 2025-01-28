@@ -2593,7 +2593,6 @@ bool genx::isSafeToMove_CheckAVLoadKill(const Instruction *const I,
     return !getAVLoadKillOrNull(I, To, true, false, DT);
   for (auto *LI : getSrcVLoads(I)) {
     const bool LIDomTo = !DT || DT->dominates(LI, To);
-    IGC_ASSERT(LIDomTo);
     if (!LIDomTo || getAVLoadKillOrNull(LI, To))
       return false;
   }

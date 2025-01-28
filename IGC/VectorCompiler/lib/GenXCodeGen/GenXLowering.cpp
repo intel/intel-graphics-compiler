@@ -4491,11 +4491,20 @@ bool GenXLowering::lowerFMulAdd(CallInst *CI) {
 bool GenXLowering::lowerPowI(CallInst *CI) {
   IGC_ASSERT(CI);
   IRBuilder<> IRB{CI};
-  auto *Decl = Intrinsic::getDeclaration(CI->getModule(), Intrinsic::pow,
-                                         {CI->getType()});
-  auto *Cast =
-      IRB.CreateCast(Instruction::SIToFP, CI->getOperand(1), CI->getType());
-  auto *Pow = IRB.CreateCall(Decl, {CI->getOperand(0), Cast}, CI->getName());
+  auto *CITy = CI->getType();
+  auto *Decl =
+      Intrinsic::getDeclaration(CI->getModule(), Intrinsic::pow, {CITy});
+  auto *Operand = CI->getOperand(1);
+  // For pow @llvm.powi.v*.i*(< x > , i32 ) cases
+  if (auto *CIVTy = dyn_cast<IGCLLVM::FixedVectorType>(CITy);
+      CIVTy && !Operand->getType()->isVectorTy()) {
+    auto *ElTy = CIVTy->getElementType();
+    Operand = IRB.CreateSIToFP(Operand, ElTy);
+    Operand = IRB.CreateVectorSplat(CIVTy->getNumElements(), Operand);
+  } else {
+    Operand = IRB.CreateCast(Instruction::SIToFP, Operand, CITy);
+  }
+  auto *Pow = IRB.CreateCall(Decl, {CI->getOperand(0), Operand}, CI->getName());
   Pow->setHasApproxFunc(true);
   CI->replaceAllUsesWith(Pow);
   ToErase.push_back(CI);
