@@ -831,6 +831,21 @@ void LSCFuncsResolution::verifyBlock2DAddressPayload() {
     }
 }
 
+static StringRef consume_number(StringRef name, const std::string& prefix, uint32_t* number) {
+    if (!number) {
+        IGC_ASSERT_MESSAGE(0, "Expected a valid pointer to number");
+        return name;
+    }
+
+    *number = 0;
+    size_t pos = 0;
+    if (name.consume_front(prefix) && name.size() > 0 && isdigit(name[0])) {
+        *number = std::stoi(name.str(), &pos);
+        return name.drop_front(pos);
+    }
+    return name;
+}
+
 Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& CI, llvm::StringRef funcName, bool isRead)
 {
     IGC::IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -890,31 +905,8 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
         // __builtin_IB_subgroup_block_read_flat_u16_m2k16v2
         // __builtin_IB_subgroup_block_read_flat_u16_m4k16v2
         // __builtin_IB_subgroup_block_read_flat_u16_m8k16v2
-        if (funcName.consume_front("_m32"))
-        {
-            tileHeight = 32;
-        }
-        else if (funcName.consume_front("_m16"))
-        {
-            tileHeight = 16;
-        }
-        else if (funcName.consume_front("_m8"))
-        {
-            tileHeight = 8;
-        }
-        else if (funcName.consume_front("_m4"))
-        {
-            tileHeight = 4;
-        }
-        else if (funcName.consume_front("_m2"))
-        {
-            tileHeight = 2;
-        }
-        else if (funcName.consume_front("_m1"))
-        {
-            tileHeight = 1;
-        }
-        else
+        funcName = consume_number(funcName, "_m", &tileHeight);
+        if (tileHeight < 1 || tileHeight > 32)
         {
             IGC_ASSERT_MESSAGE(0, "Unrecognized m element in __builtin_IB_subgroup_block_read/write.");
             return nullptr;
@@ -1000,26 +992,11 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
 
             tileWidth = 8;
             funcName.consume_front("_");
-            if (funcName.consume_front("k8"))
+            funcName = consume_number(funcName, "k", &tileWidth);
+            if (tileWidth < 1 || (tileWidth > 8
+            ))
             {
-                tileWidth = 8;
-            }
-            else if (funcName.consume_front("k4"))
-            {
-                tileWidth = 4;
-            }
-            else if (funcName.consume_front("k2"))
-            {
-                tileWidth = 2;
-            }
-            // equals is used to differentiate between k1 and k1[0-9], if needed
-            else if (funcName.equals_insensitive("k1"))
-            {
-                tileWidth = 1;
-            }
-            else
-            {
-                IGC_ASSERT_MESSAGE(0, "Transpose with 32 bit element size only supports width: 1, 2, 4, 8.");
+                IGC_ASSERT_MESSAGE(0, "Transpose with 32 bit element size only supports width: 1 - 8.");
                 return nullptr;
             }
         }
