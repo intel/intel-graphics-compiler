@@ -179,14 +179,30 @@ unsigned int getVectorSize(Value *I) {
 }
 
 
+// due to our emitter, currently we only process float fdiv's that we can
+// construct as INV (first operand is 1.0f);
+bool isFDivSafe(Instruction *I) {
+    if (!IGC_GET_FLAG_VALUE(VectorizerAllowFDIV)) return false;
+    auto* Binary = llvm::dyn_cast<BinaryOperator>(I);
+    auto OpCode = Binary->getOpcode();
+    if (!(OpCode == Instruction::FDiv && I->getType()->isFloatTy())) return false;
+
+    //auto* constFloat = llvm::dyn_cast<llvm::ConstantFP>(I->getOperand(0));
+    //if (!constFloat) return false;
+    //if (!constFloat->isExactlyValue(1.f)) return false;
+
+    return true;
+}
+
 bool isBinarySafe(Instruction *I) {
 
     bool Result = false;
     auto* Binary = llvm::dyn_cast<BinaryOperator>(I);
     if (Binary) {
         auto OpCode = Binary->getOpcode();
-        Result  |=  OpCode == Instruction::FMul;
-        Result  |=  OpCode == Instruction::FAdd;
+        Result |=  OpCode == Instruction::FMul;
+        Result |=  (OpCode == Instruction::FAdd && IGC_GET_FLAG_VALUE(VectorizerAllowFADD));
+        Result |= isFDivSafe(I);
     }
     return Result;
 }
@@ -208,6 +224,11 @@ bool IGCVectorizer::handlePHI(VecArr &Slice, Type *VectorType) {
 
     if (!checkPHI(ScalarPhi, Slice))
         return false;
+
+    if (ScalarToVector.count(ScalarPhi)) {
+        PRINT_LOG_NL(" PHI was vectorized before, no bother ");
+        return true;
+    }
 
     PHINode *Phi = PHINode::Create(VectorType, 2);
     Phi->setName("vectorized_phi");
@@ -294,6 +315,7 @@ bool IGCVectorizer::handleInsertElement(VecArr &Slice, Instruction* Final) {
         return false;
 
     PRINT_LOG_NL("InsertElement substituted with vectorized instruction");
+    PRINT_LOG_NL("");
     Value *Compare = ScalarToVector[First->getOperand(1)];
     *(Final->use_begin()) = Compare;
     return true;
@@ -301,6 +323,11 @@ bool IGCVectorizer::handleInsertElement(VecArr &Slice, Instruction* Final) {
 
 
 InsertElementInst* IGCVectorizer::createVector(VecArr& Slice, Instruction* InsertPoint) {
+
+    if (llvm::isa<PHINode>(InsertPoint)) {
+        InsertPoint = InsertPoint->getParent()->getFirstNonPHI();
+        PRINT_LOG_NL("insertPoint moved to FirstNonPHI");
+    }
 
     llvm::Type* elementType = Slice[0]->getType();
     llvm::VectorType* vectorType = llvm::FixedVectorType::get(elementType, Slice.size());
@@ -383,6 +410,11 @@ bool IGCVectorizer::handleBinaryInstruction(VecArr &Slice) {
 bool IGCVectorizer::handleCastInstruction(VecArr &Slice) {
 
     Instruction *First = Slice.front();
+
+    if (ScalarToVector.count(First)) {
+        PRINT_LOG_NL("Cast was vectorized before by other slice");
+        return true;
+    }
 
     unsigned int OperNum = 0;
     Value* Vectorized = checkOperandsToBeVectorized(First, OperNum, Slice);
@@ -526,7 +558,7 @@ void IGCVectorizer::buildTree(VecArr &V, VecOfSlices& Chain) {
             PRINT_DS("   check: ", LocalVector);
             if (IsSame) {
                 PRINT_LOG_NL("Pushed");
-                Chain.push_back({ OpNum, LocalVector, CurSlice});
+                Chain.push_back({OpNum, std::move(LocalVector), CurSlice});
                 BFSQ.push(&Chain.back());
             }
         }
@@ -719,6 +751,7 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
     M = F.getParent();
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     initializeLogFile(F);
+    PRINT_LOG_NL("vectorizer: fadd, fdiv, fptrunc");
 
     VecArr ToProcess;
     // we collect operands that seem promising for vectorization

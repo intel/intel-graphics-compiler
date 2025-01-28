@@ -101,6 +101,8 @@ public:
     void Select(const SSource sources[3], const DstModifier& modifier);
     void PredAdd(const SSource& pred, bool invert, const SSource sources[2], const DstModifier& modifier);
     void Mul(const SSource[2], const DstModifier& modifier);
+    void Div(const SSource[2], const DstModifier& modifier);
+    void Inv(const SSource[2], const DstModifier& modifier);
     void Add(const SSource[2], const DstModifier& modifier);
     void FPTrunc(const SSource[2], const DstModifier& modifier);
     void Powi(const SSource[2], const DstModifier& modifier);

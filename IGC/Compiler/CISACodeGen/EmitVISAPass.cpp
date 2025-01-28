@@ -4592,7 +4592,7 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     m_encoder->Push();
 }
 
-static unsigned int getVectorSize(Instruction *I) {
+static unsigned int getVectorSize(Value *I) {
     IGCLLVM::FixedVectorType *VecType =
         llvm::dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
     if (!VecType)
@@ -4663,7 +4663,9 @@ void EmitPass::Add(const SSource sources[2], const DstModifier& modifier)
             else
                 m_encoder->SetSrcSubVar(1, i);
 
-            m_encoder->SetDstSubVar(i);
+            if (src[0]->IsUniform() && src[1]->IsUniform()) m_encoder->SetDstSubReg(i);
+            else m_encoder->SetDstSubVar(i);
+
             m_encoder->Add(m_destination, src[0], src[1]);
             m_encoder->Push();
         }
@@ -4695,8 +4697,9 @@ void EmitPass::Mul(const SSource sources[2], const DstModifier& modifier)
             else m_encoder->SetSrcSubVar(0, i);
             if (src[1]->IsUniform()) { m_encoder->SetSrcSubReg(1, i); }
             else m_encoder->SetSrcSubVar(1, i);
+            if (src[0]->IsUniform() && src[1]->IsUniform()) m_encoder->SetDstSubReg(i);
+            else m_encoder->SetDstSubVar(i);
 
-            m_encoder->SetDstSubVar(i);
             m_encoder->Mul(m_destination, src[0], src[1]);
             m_encoder->Push();
         }
@@ -4715,8 +4718,97 @@ void EmitPass::Mul(const SSource sources[2], const DstModifier& modifier)
     }
 }
 
+
+bool isVectorOfOnes(llvm::Value* zero) {
+
+    const auto* constVec = llvm::dyn_cast<llvm::ConstantDataVector>(zero);
+    if (!constVec) return false;
+    if (!constVec->getType()->getElementType()->isFloatTy()) return false;
+
+    unsigned numElements = constVec->getNumElements();
+    for (unsigned i = 0; i < numElements; i++) {
+        const auto* constFloat = llvm::dyn_cast<llvm::ConstantFP>(constVec->getElementAsConstant(i));
+        if (!constFloat) return false;
+        if (!constFloat->isExactlyValue(1.f)) return false;
+    }
+
+    return true;
+}
+
+void EmitPass::Div(const SSource sources[2], const DstModifier& modifier)
+{
+    CVariable* src[2];
+    for (int i = 0; i < 2; ++i) src[i] = GetSrcVariable(sources[i]);
+
+    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy() && sources[1].value->getType()->isVectorTy()) {
+
+        unsigned int VectorSize = 0;
+        if (llvm::isa<Instruction>(sources[0].value))
+            VectorSize = getVectorSize(llvm::cast<Instruction>(sources[0].value));
+
+        for (unsigned int i = 0; i < VectorSize; ++i) {
+            SetSourceModifiers(0, sources[0]);
+            SetSourceModifiers(1, sources[1]);
+
+            if (src[0]->IsUniform()) { m_encoder->SetSrcSubReg(0, i); }
+            else m_encoder->SetSrcSubVar(0, i);
+            if (src[1]->IsUniform()) { m_encoder->SetSrcSubReg(1, i); }
+            else m_encoder->SetSrcSubVar(1, i);
+            if (src[0]->IsUniform() && src[1]->IsUniform()) m_encoder->SetDstSubReg(i);
+            else m_encoder->SetDstSubVar(i);
+
+            m_encoder->Div(m_destination, src[0], src[1]);
+            m_encoder->Push();
+        }
+    }
+    return;
+}
+
+
+void EmitPass::Inv(const SSource sources[2], const DstModifier& modifier) {
+
+    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
+            sources[0].value->getType()->isVectorTy() &&
+            sources[1].value->getType()->isVectorTy()) {
+
+        unsigned int VectorSize = 0;
+        if (llvm::isa<Value>(sources[0].value))
+            VectorSize = getVectorSize(llvm::cast<Value>(sources[0].value));
+
+        CVariable* src[1];
+        // sources[0] got used to check that it contains all 1
+        src[0] = GetSrcVariable(sources[1]);
+
+        for (unsigned int i = 0; i < VectorSize; ++i) {
+            SetSourceModifiers(0, sources[1]);
+
+            if (src[0]->IsUniform()) {
+                m_encoder->SetSrcSubReg(0, i);
+                m_encoder->SetDstSubReg(i);
+            }
+            else {
+                m_encoder->SetSrcSubVar(0, i);
+                m_encoder->SetDstSubVar(i);
+            }
+            m_encoder->Inv(m_destination, src[0]);
+            m_encoder->Push();
+        }
+    }
+    return;
+}
+
 void EmitPass::FDiv(const SSource sources[2], const DstModifier& modifier)
 {
+    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
+            sources[0].value->getType()->isVectorTy() &&
+            sources[1].value->getType()->isVectorTy()) {
+
+        if (isVectorOfOnes(sources[0].value)) Inv(sources, modifier);
+        else Div(sources,modifier);
+
+        return;
+    }
+
     if (isOne(sources[0].value))
     {
         Unary(EOPCODE_INV, &sources[1], modifier);
