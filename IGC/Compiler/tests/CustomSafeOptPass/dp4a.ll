@@ -37,7 +37,7 @@ define i32 @test_dp4a_ss_noacc(i32 %src1, i32 %src2) {
 ; CHECK:    [[TMP8:%.*]] = insertelement <4 x i8> [[TMP6]], i8 [[H]], i64 3
 ; CHECK:    [[TMP9:%.*]] = bitcast <4 x i8> [[TMP7]] to i32
 ; CHECK:    [[TMP10:%.*]] = bitcast <4 x i8> [[TMP8]] to i32
-; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 [[TMP9]], i32 [[TMP10]])
+; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 [[TMP9]], i32 [[TMP10]], i1 false)
 ; CHECK:    ret i32 [[TMP11]]
 ;
   %vec1 = bitcast i32 %src1 to <4 x i8>
@@ -90,7 +90,7 @@ define i32 @test_dp4a_ss_end(i32 %src1, i32 %src2, i32 %acc) {
 ; CHECK:    [[TMP8:%.*]] = insertelement <4 x i8> [[TMP6]], i8 [[H]], i64 3
 ; CHECK:    [[TMP9:%.*]] = bitcast <4 x i8> [[TMP7]] to i32
 ; CHECK:    [[TMP10:%.*]] = bitcast <4 x i8> [[TMP8]] to i32
-; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 [[TMP9]], i32 [[TMP10]])
+; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 [[TMP9]], i32 [[TMP10]], i1 false)
 ; CHECK:    [[TMP12:%.*]] = add i32 [[ACC:%.*]], [[TMP11]]
 ; CHECK:    ret i32 [[TMP12]]
 ;
@@ -145,7 +145,7 @@ define i32 @test_dp4a_ss_forw(i32 %src1, i32 %src2, i32 %acc) {
 ; CHECK:    [[TMP8:%.*]] = insertelement <4 x i8> [[TMP6]], i8 [[H]], i64 3
 ; CHECK:    [[TMP9:%.*]] = bitcast <4 x i8> [[TMP7]] to i32
 ; CHECK:    [[TMP10:%.*]] = bitcast <4 x i8> [[TMP8]] to i32
-; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 [[ACC:%.*]], i32 [[TMP9]], i32 [[TMP10]])
+; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 [[ACC:%.*]], i32 [[TMP9]], i32 [[TMP10]], i1 false)
 ; CHECK:    ret i32 [[TMP11]]
 ;
   %vec1 = bitcast i32 %src1 to <4 x i8>
@@ -199,7 +199,7 @@ define i32 @test_dp4a_us_noacc(i32 %src1, i32 %src2) {
 ; CHECK:    [[TMP8:%.*]] = insertelement <4 x i8> [[TMP6]], i8 [[H]], i64 3
 ; CHECK:    [[TMP9:%.*]] = bitcast <4 x i8> [[TMP7]] to i32
 ; CHECK:    [[TMP10:%.*]] = bitcast <4 x i8> [[TMP8]] to i32
-; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.us.i32(i32 0, i32 [[TMP9]], i32 [[TMP10]])
+; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.us.i32(i32 0, i32 [[TMP9]], i32 [[TMP10]], i1 false)
 ; CHECK:    ret i32 [[TMP11]]
 ;
   %vec1 = bitcast i32 %src1 to <4 x i8>
@@ -253,7 +253,7 @@ define i32 @test_dp4a_su_noacc(i32 %src1, i32 %src2) {
 ; CHECK:    [[TMP8:%.*]] = insertelement <4 x i8> [[TMP6]], i8 [[H]], i64 3
 ; CHECK:    [[TMP9:%.*]] = bitcast <4 x i8> [[TMP7]] to i32
 ; CHECK:    [[TMP10:%.*]] = bitcast <4 x i8> [[TMP8]] to i32
-; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.su.i32(i32 0, i32 [[TMP9]], i32 [[TMP10]])
+; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.su.i32(i32 0, i32 [[TMP9]], i32 [[TMP10]], i1 false)
 ; CHECK:    ret i32 [[TMP11]]
 ;
   %vec1 = bitcast i32 %src1 to <4 x i8>
@@ -306,7 +306,7 @@ define i32 @test_dp4a_uu_noacc(i32 %src1, i32 %src2) {
 ; CHECK:    [[TMP8:%.*]] = insertelement <4 x i8> [[TMP6]], i8 [[H]], i64 3
 ; CHECK:    [[TMP9:%.*]] = bitcast <4 x i8> [[TMP7]] to i32
 ; CHECK:    [[TMP10:%.*]] = bitcast <4 x i8> [[TMP8]] to i32
-; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.uu.i32(i32 0, i32 [[TMP9]], i32 [[TMP10]])
+; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.uu.i32(i32 0, i32 [[TMP9]], i32 [[TMP10]], i1 false)
 ; CHECK:    ret i32 [[TMP11]]
 ;
   %vec1 = bitcast i32 %src1 to <4 x i8>
