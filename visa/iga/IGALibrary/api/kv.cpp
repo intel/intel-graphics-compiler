@@ -89,7 +89,7 @@ public:
 
 kv_t *kv_create(iga_gen_t gen_platf, const void *bytes, size_t bytes_len,
                 iga_status_t *status, char *errbuf, size_t errbuf_cap,
-                SWSB_ENCODE_MODE swsbMode) {
+                uint32_t swsbMode) {
   if (errbuf && errbuf_cap > 0)
     *errbuf = 0;
 
@@ -107,7 +107,7 @@ kv_t *kv_create(iga_gen_t gen_platf, const void *bytes, size_t bytes_len,
   KernelViewImpl *kvImpl = nullptr;
   try {
     kvImpl =
-        new (std::nothrow) KernelViewImpl(*model, bytes, bytes_len, swsbMode);
+        new (std::nothrow) KernelViewImpl(*model, bytes, bytes_len, static_cast<iga::SWSB_ENCODE_MODE>(swsbMode));
     if (!kvImpl) {
       if (errbuf) {
         iga::copyOutString(errbuf, errbuf_cap, nullptr, "failed to allocate");
