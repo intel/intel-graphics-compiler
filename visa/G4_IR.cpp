@@ -2260,6 +2260,12 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
     return false;
   }
 
+  // The meaning of region for indirect will be different with different
+  // execution size
+  if (!sameExecSize && src->isIndirect()) {
+    return false;
+  }
+
   // Be conserversative, do not bother to do complicated region compositions.
   // There are three variables to compute the composition:
   // (1) the dst stride
