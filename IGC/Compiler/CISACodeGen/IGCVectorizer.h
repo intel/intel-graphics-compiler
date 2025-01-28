@@ -37,7 +37,7 @@ class IGCVectorizer : public llvm::FunctionPass {
         Slice* Parent;
     };
 
-    typedef llvm::SmallVector<Slice, 8> VecOfSlices;
+    typedef llvm::SmallVector<Slice, 32> VecOfSlices;
     typedef llvm::SmallVector<VecOfSlices, 3> Tree;
     typedef std::unordered_map<Instruction*, VecArr*> InstructionToSliceMap;
 
