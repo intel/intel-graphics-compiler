@@ -186,12 +186,6 @@ DEF_VISA_OPTION(vISA_SkipRedundantFillInRMW, ET_BOOL, "-normwopt", UNUSED, true)
 DEF_VISA_OPTION(vISA_ALTMode, ET_BOOL, "-nonALTMode", UNUSED, false)
 DEF_VISA_OPTION(vISA_CoalesceScalarMoves, ET_BOOL, "-enableCoalesceScalarMoves",
                 UNUSED, false)
-DEF_VISA_OPTION(vISA_enableSamplerLSCCaching, ET_BOOL_TRUE,
-                "-samplerLSCCaching",
-                "global flag [0|1] to control LSC caching for sampler", true)
-DEF_VISA_OPTION(vISA_samplerLSCCachingThreshold, ET_INT32,
-                "-samplerLSCCachingThreshold",
-                "spill size threshold to disable LSC caching for sampler", 0)
 DEF_VISA_OPTION(vISA_SinkBarrierWait, ET_BOOL_TRUE, "-sinkBarrierWait",
                 "Barrier signal and wait are usually scheduled back to back. "
                 "The option is used to sink barrier wait away from signal as "

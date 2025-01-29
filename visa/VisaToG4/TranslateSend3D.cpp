@@ -1763,37 +1763,17 @@ static G4_Operand *createSampleHeader(IR_Builder *builder, G4_Declare *header,
   unsigned int secondDword = createSampleHeader0Dot2(
       actualop, pixelNullMask, aoffimmiVal, srcChannel, builder);
 
-  bool addToList = false;
-  const uint32_t LSCBacking = 29;
-  if (builder->samplerCachingInLSCHeader()) {
-    // Bit 29: Enables LSC as second level cache for Sampler
-    secondDword |= (1 << 29);
-    addToList = true;
-  }
-
   G4_Imm *immOpndSecondDword = builder->createImm(secondDword, Type_UD);
   G4_DstRegRegion *payloadDstRgn =
       builder->createDst(header->getRegVar(), 0, 2, 1, Type_UD);
-  G4_INST *headerInst = nullptr;
   if (aoffimmi->isImm()) {
     // mov (1) payload(0,2) immOpndSecondDword
-    headerInst =
-        builder->createMov(g4::SIMD1, payloadDstRgn, immOpndSecondDword,
-                           InstOpt_WriteEnable, true);
-    if (addToList)
-    {
-      builder->kernel.samplerWithLSCBacking.push_back(
-          {headerInst, 0, LSCBacking});
-    }
+    builder->createMov(g4::SIMD1, payloadDstRgn, immOpndSecondDword,
+                       InstOpt_WriteEnable, true);
   } else {
     // or (1) payload(0,2) aoffimmi<0;1,0>:uw immOpndSeconDword
-    headerInst =
-        builder->createBinOp(G4_or, g4::SIMD1, payloadDstRgn, aoffimmi,
-                             immOpndSecondDword, InstOpt_WriteEnable, true);
-    if (addToList) {
-      builder->kernel.samplerWithLSCBacking.push_back(
-          {headerInst, 1, LSCBacking});
-    }
+    builder->createBinOp(G4_or, g4::SIMD1, payloadDstRgn, aoffimmi,
+                         immOpndSecondDword, InstOpt_WriteEnable, true);
   }
 
   if (sampler != nullptr) {
@@ -2500,7 +2480,7 @@ int IR_Builder::translateVISALoad3DInst(
     G4_SrcRegRegion **opndArray) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  bool useHeader = samplerCachingInLSCHeader();
+  bool useHeader = false;
 
   G4_ExecSize execSize = toExecSize(executionSize);
   G4_InstOpts instOpt = Get_Gen4_Emask(em, execSize);

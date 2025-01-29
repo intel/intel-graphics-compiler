@@ -897,16 +897,6 @@ public:
     I->setMaskOption(MO);
   }
   // end of WA related
-
-  // Struct to store inst, opndNum that sets special LSC cache backing bit.
-  // We reset the bit if LSC backing must be disabled. Note this applies only
-  // when LSC backing bit is programmed in message header on Xe3.
-  struct SampleWithLSCBacking {
-    G4_INST *inst = nullptr;
-    unsigned int opndNum = 0xffffffff;
-    unsigned int bitPos = 0xffffffff;
-  };
-  std::list<struct SampleWithLSCBacking> samplerWithLSCBacking;
 };     // G4_Kernel
 
 } // namespace vISA

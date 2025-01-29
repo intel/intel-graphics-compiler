@@ -683,8 +683,6 @@ void Optimizer::initOptimizations() {
   OPT_INITIALIZE_PASS(reassignBlockIDs, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(evalAddrExp, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(FoldAddrImmediate, vISA_FoldAddrImmed, TimerID::MISC_OPTS);
-  OPT_INITIALIZE_PASS(fixSamplerCacheBitInHeader, vISA_EnableAlways,
-                      TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(localSchedule, vISA_LocalScheduling, TimerID::SCHEDULING);
   OPT_INITIALIZE_PASS(HWWorkaround, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(fixEndIfWhileLabels, vISA_EnableAlways, TimerID::NUM_TIMERS);
@@ -967,9 +965,6 @@ int Optimizer::optimization() {
   if (RAFail) {
     return VISA_SPILL;
   }
-
-  runPass(PI_fixSamplerCacheBitInHeader);
-
 
   runPass(PI_removeLifetimeOps);
 
@@ -1327,47 +1322,6 @@ void Optimizer::removePseudoMov() {
   }
 }
 
-void Optimizer::fixSamplerCacheBitInHeader() {
-  // If LSC caching is globally disabled then builder won't set
-  // caching bit in sampler message header. So return without doing anything.
-  //
-  // If current object is kernel:
-  // * Return without doing anything if spill size <= threshold
-  //   ie, LSC caching bit is set in sampler message header.
-  // * If spill size > threshold, reset cache bit in sampler
-  //   message header.
-  //
-  // If current object is a stack call function:
-  // * Since we cannot tell scratch space size of entire call
-  //   graph, do nothing and return. For stack call, default
-  //   behavior is that LSC caching bit is set. One can still
-  //   disable LSC caching globally.
-  if (!builder.getOption(vISA_enableSamplerLSCCaching))
-    return;
-
-  if (fg.getIsStackCallFunc())
-    return;
-
-  const auto spillSizeThreshold =
-      builder.getuint32Option(vISA_samplerLSCCachingThreshold);
-
-  const auto &jitInfo = builder.getJitInfo();
-  if (jitInfo->stats.spillMemUsed <= spillSizeThreshold)
-    return;
-
-  for (auto &entry : kernel.samplerWithLSCBacking) {
-    auto *inst = entry.inst;
-    auto opndNum = entry.opndNum;
-    auto LSCBackingBit = entry.bitPos;
-    // We need to reset bit# LSCBackingBit, create new G4_Imm and assign it to
-    // inst.
-    int64_t imm64 = inst->getSrc(opndNum)->asImm()->getInt();
-    // Reset bit in imm64
-    imm64 ^= (1ll << LSCBackingBit);
-    auto *newImm = builder.createImm(imm64, Type_UD);
-    inst->setSrc(newImm, opndNum);
-  }
-}
 void Optimizer::FoldAddrImmediate() {
   AddrSubReg_Node *addrRegInfo =
       new AddrSubReg_Node[builder.getNumAddrRegisters()];
