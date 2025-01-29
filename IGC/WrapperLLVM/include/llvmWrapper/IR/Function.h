@@ -60,7 +60,7 @@ inline void splice(llvm::Function* pNewFunc, llvm::Function::iterator it, llvm::
 #if LLVM_VERSION_MAJOR < 16
     pNewFunc->getBasicBlockList().splice(it, pOldFunc->getBasicBlockList(), BB);
 #else
-    pNewFunc->splice(it, pOldFunc);
+    pNewFunc->splice(it, pOldFunc, BB->getIterator());
 #endif
 }
 
