@@ -186,7 +186,7 @@ MDNode* CreateNode(const std::vector<val> &vec, Module* module, StringRef name)
     for (auto it = vec.begin(); it != vec.end(); ++it)
     {
         nodes.push_back(CreateNode(*(it), module, name.str() + "Vec[" + std::to_string(i++) + "]"));
-        if (IGC_IS_FLAG_DISABLED(ShowFullVectorsInShaderDumps) && i > MAX_VECTOR_SIZE_TO_PRINT_IN_SHADER_DUMPS)
+        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) && IGC_IS_FLAG_DISABLED(ShowFullVectorsInShaderDumps) && i > MAX_VECTOR_SIZE_TO_PRINT_IN_SHADER_DUMPS)
         {
             std::string flagName = "ShowFullVectorsInShaderDumps";
             #ifndef _WIN32
