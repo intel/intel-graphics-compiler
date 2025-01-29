@@ -5,9 +5,9 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ;
-; RUN: igc_opt --opaque-pointers -enable-debugify --igc-programscope-constant-resolve -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -enable-debugify --igc-programscope-constant-resolve -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; ProgramScopeConstantResolution
 ; ------------------------------------------------
@@ -34,15 +34,15 @@
 define spir_kernel void @test_program(i32 addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i8 addrspace(2)* %constBase, i8 addrspace(1)* %globalBase, i8* %privateBase, i32 %bufferOffset) {
 ; CHECK-LABEL: @test_program(
 ; CHECK:  entry:
-; CHECK:    [[DST_ADDR:%.*]] = alloca ptr addrspace(1), align 8
+; CHECK:    [[DST_ADDR:%.*]] = alloca i32 addrspace(1)*, align 8
 ; CHECK:    [[AA:%.*]] = alloca i32, align 4
-; CHECK:    store ptr addrspace(1) [[DST:%.*]], ptr [[DST_ADDR]], align 8
-; CHECK:    [[TMP0:%.*]] = getelementptr inbounds [2 x i32], ptr addrspace(2) @a, i64 0, i64 1
-; CHECK:    [[TMP1:%.*]] = load i32, ptr addrspace(2) [[TMP0]], align 4
-; CHECK:    store i32 [[TMP1]], ptr [[AA]], align 4
-; CHECK:    [[TMP2:%.*]] = load ptr addrspace(2), ptr addrspace(1) @d, align 8
-; CHECK:    [[TMP3:%.*]] = load i32, ptr addrspace(2) [[TMP2]], align 4
-; CHECK:    store i32 [[TMP3]], ptr addrspace(1) @c, align 4
+; CHECK:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR]], align 8
+; CHECK:    [[TMP0:%.*]] = getelementptr inbounds [2 x i32], [2 x i32] addrspace(2)* @a, i64 0, i64 1
+; CHECK:    [[TMP1:%.*]] = load i32, i32 addrspace(2)* [[TMP0]], align 4
+; CHECK:    store i32 [[TMP1]], i32* [[AA]], align 4
+; CHECK:    [[TMP2:%.*]] = load i32 addrspace(2)*, i32 addrspace(2)* addrspace(1)* @d, align 8
+; CHECK:    [[TMP3:%.*]] = load i32, i32 addrspace(2)* [[TMP2]], align 4
+; CHECK:    store i32 [[TMP3]], i32 addrspace(1)* @c, align 4
 ; CHECK:    ret void
 ;
 entry:

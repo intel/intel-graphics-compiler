@@ -184,13 +184,20 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
                 Instruction* pEntryPoint = &(*userFunc->getEntryBlock().getFirstInsertionPt());
 
                 // Create a GEP to get to the right offset in the constant buffer
-                Type *BaseTy = IGCLLVM::getNonOpaquePtrEltTy((&*bufArg)->getType());
-                GetElementPtrInst* gep = GetElementPtrInst::Create(BaseTy, &*bufArg, pOffset, "off" + pGlobalVar->getName(), pEntryPoint);
-                // Cast it back to the correct type.
-                CastInst* pNewVal = CastInst::CreatePointerCast(gep, pGlobalVar->getType(), "cast" + pGlobalVar->getName(), pEntryPoint);
+                GetElementPtrInst *gep = GetElementPtrInst::Create(
+                    Type::getInt8Ty(C), &*bufArg, pOffset,
+                    "off" + pGlobalVar->getName(), pEntryPoint);
+
+                Value* replacement = gep;
+
+                // TODO: Remove when typed pointers are no longer supported.
+                if (!ptrType->isOpaque())
+                  replacement = CastInst::CreatePointerCast(
+                      gep, pGlobalVar->getType(),
+                      "cast" + pGlobalVar->getName(), pEntryPoint);
 
                 // Update the map with the fix new value
-                funcToVarSet[userFunc][pGlobalVar] = pNewVal;
+                funcToVarSet[userFunc][pGlobalVar] = replacement;
             }
 
             Value* bc = funcToVarSet[userFunc][pGlobalVar];

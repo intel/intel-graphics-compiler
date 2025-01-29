@@ -5,9 +5,9 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
+; REQUIRES: llvm-14-plus, regkeys
 ;
-; RUN: igc_opt -enable-debugify --igc-programscope-constant-resolve -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK
+; RUN: igc_opt --opaque-pointers -enable-debugify --igc-programscope-constant-resolve -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK
 ; ------------------------------------------------
 ; ProgramScopeConstantResolution
 ; ------------------------------------------------
@@ -29,21 +29,18 @@
 define spir_kernel void @test_program(i32 addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i8 addrspace(2)* %constBase, i8 addrspace(1)* %globalBase, i8* %privateBase, i32 %bufferOffset) {
 ; CHECK-LABEL: @test_program(
 ; CHECK:  entry:
-; CHECK:    [[OFFC:%.*]] = getelementptr i8, i8 addrspace(1)* %globalBase, i64 8
-; CHECK:    [[CASTC:%.*]] = bitcast i8 addrspace(1)* [[OFFC]] to i32 addrspace(1)*
-; CHECK:    [[OFFD:%.*]] = getelementptr i8, i8 addrspace(1)* %globalBase, i64 0
-; CHECK:    [[CASTD:%.*]] = bitcast i8 addrspace(1)* [[OFFD]] to i32 addrspace(2)* addrspace(1)*
-; CHECK:    [[OFFA:%.*]] = getelementptr i8, i8 addrspace(2)* %constBase, i64 0
-; CHECK:    [[CASTA:%.*]] = bitcast i8 addrspace(2)* [[OFFA]] to [2 x i32] addrspace(2)*
-; CHECK:    [[DST_ADDR:%.*]] = alloca i32 addrspace(1)*, align 8
+; CHECK:    [[OFFC:%.*]] = getelementptr i8, ptr addrspace(1) %globalBase, i64 8
+; CHECK:    [[OFFD:%.*]] = getelementptr i8, ptr addrspace(1) %globalBase, i64 0
+; CHECK:    [[OFFA:%.*]] = getelementptr i8, ptr addrspace(2) %constBase, i64 0
+; CHECK:    [[DST_ADDR:%.*]] = alloca ptr addrspace(1), align 8
 ; CHECK:    [[AA:%.*]] = alloca i32, align 4
-; CHECK:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR]], align 8
-; CHECK:    [[TMP0:%.*]] = getelementptr inbounds [2 x i32], [2 x i32] addrspace(2)* [[CASTA]], i64 0, i64 1
-; CHECK:    [[TMP1:%.*]] = load i32, i32 addrspace(2)* [[TMP0]], align 4
-; CHECK:    store i32 [[TMP1]], i32* [[AA]], align 4
-; CHECK:    [[TMP2:%.*]] = load i32 addrspace(2)*, i32 addrspace(2)* addrspace(1)* [[CASTD]], align 8
-; CHECK:    [[TMP3:%.*]] = load i32, i32 addrspace(2)* [[TMP2]], align 4
-; CHECK:    store i32 [[TMP3]], i32 addrspace(1)* [[CASTC]], align 4
+; CHECK:    store ptr addrspace(1) [[DST:%.*]], ptr [[DST_ADDR]], align 8
+; CHECK:    [[TMP0:%.*]] = getelementptr inbounds [2 x i32], ptr addrspace(2) [[OFFA]], i64 0, i64 1
+; CHECK:    [[TMP1:%.*]] = load i32, ptr addrspace(2) [[TMP0]], align 4
+; CHECK:    store i32 [[TMP1]], ptr [[AA]], align 4
+; CHECK:    [[TMP2:%.*]] = load ptr addrspace(2), ptr addrspace(1) [[OFFD]], align 8
+; CHECK:    [[TMP3:%.*]] = load i32, ptr addrspace(2) [[TMP2]], align 4
+; CHECK:    store i32 [[TMP3]], ptr addrspace(1) [[OFFC]], align 4
 ; CHECK:    ret void
 ;
 entry:
