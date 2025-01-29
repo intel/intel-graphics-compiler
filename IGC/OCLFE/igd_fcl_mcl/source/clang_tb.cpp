@@ -1564,6 +1564,9 @@ namespace TC
             optionsEx += " -U__IMAGE_SUPPORT__";
         }
 
+        // TODO: Workaround - remove after some time to be consistent with LLVM15+ behavior 
+        optionsEx += " -Wno-error=implicit-int";
+
         IOCLFEBinaryResult *pResultPtr = NULL;
         int res = 0;
         {
