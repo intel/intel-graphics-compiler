@@ -6437,7 +6437,6 @@ namespace {
         bool HasSrcFromEE(Instruction* I, uint selNum, Instruction*& loadInst);
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
-            AU.setPreservesCFG();
             AU.addRequired<CodeGenContextWrapper>();
         }
     private:
