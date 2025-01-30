@@ -73,22 +73,6 @@ namespace IGC
 
     const uint32_t PushAnalysis::MaxConstantBufferIndexSize = 256;
 
-    /// The maximum number of input attributes that will be pushed as part of the payload.
-    /// One attribute is 4 dwords, so e.g. 16 means we allocate max 64 GRFs for input payload.
-    const uint32_t PushAnalysis::MaxNumOfPushedInputs = 24;
-
-    /// The size occupied by the tessellation header in dwords
-    const uint32_t PushAnalysis::TessFactorsURBHeader = 8;
-
-    /// Maximum number of attributes pushed
-    const uint32_t PushAnalysis::m_pMaxNumOfVSPushedInputs = 24;
-
-    const uint32_t PushAnalysis::m_pMaxNumOfHSPushedInputs = 24;
-
-    const uint32_t PushAnalysis::m_pMaxNumOfDSPushedInputs = 24;
-
-    const uint32_t PushAnalysis::m_pMaxNumOfGSPushedInputs = 24;
-
     template < typename T > std::string to_string(const T& n)
     {
         std::ostringstream stm;
@@ -1022,7 +1006,11 @@ namespace IGC
                 [](inputPairType a, inputPairType b) { return a.second.index < b.second.index; });
             largestIndex = largestPair != inputs.end() ? largestPair->second.index : 0;
         }
-        const unsigned int maxPushedGRFs = 96;
+        unsigned int maxPushedGRFs = 96;
+        if (m_context->platform.isCoreChildOf(IGFX_XE3_CORE))
+        {
+            maxPushedGRFs *= 2;
+        }
         if (largestIndex >= maxPushedGRFs)
         {
             return;
@@ -1619,6 +1607,19 @@ namespace IGC
         m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         m_pullConstantHeuristics = &getAnalysis<PullConstantHeuristics>();
         m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+        if (m_context->platform.isCoreChildOf(IGFX_XE3_CORE))
+        {
+            MaxNumOfPushedInputs = 24 * 2;
+            m_pMaxNumOfVSPushedInputs = 24 * 2;
+            m_pMaxNumOfDSPushedInputs = 24 * 2;
+        }
+        else
+        {
+            MaxNumOfPushedInputs = 24;
+            m_pMaxNumOfVSPushedInputs = 24;
+            m_pMaxNumOfDSPushedInputs = 24;
+        }
 
         MapList<Function*, Function*> funcsMapping;
         bool retValue = false;

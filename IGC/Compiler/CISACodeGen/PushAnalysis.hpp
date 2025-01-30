@@ -31,13 +31,9 @@ namespace IGC
     {
         const llvm::DataLayout* m_DL;
         static const uint32_t MaxConstantBufferIndexSize;
-        static const uint32_t MaxNumOfPushedInputs;
-        static const uint32_t TessFactorsURBHeader;
-        static const uint32_t HSEightPatchMaxNumOfPushedControlPoints;
-        static const uint32_t m_pMaxNumOfVSPushedInputs;
-        static const uint32_t m_pMaxNumOfHSPushedInputs;
-        static const uint32_t m_pMaxNumOfDSPushedInputs;
-        static const uint32_t m_pMaxNumOfGSPushedInputs;
+        uint32_t MaxNumOfPushedInputs;
+        uint32_t m_pMaxNumOfVSPushedInputs;
+        uint32_t m_pMaxNumOfDSPushedInputs;
 
         bool m_funcTypeChanged;
         std::map <llvm::Function*, bool> m_isFuncTypeChanged;
