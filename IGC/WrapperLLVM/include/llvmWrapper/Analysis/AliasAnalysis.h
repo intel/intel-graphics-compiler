@@ -42,7 +42,6 @@ namespace IGCLLVM
                         #endif
     ) {
 #if LLVM_VERSION_MAJOR >= 16
-      IGC_ASSERT_MESSAGE(CtxI != nullptr, "CtxI is null");
       return llvm::AAResultBase::alias(LocA, LocB, AAQI, CtxI);
 #else
       return llvm::AAResultBase<T>::alias(LocA, LocB, AAQI);
