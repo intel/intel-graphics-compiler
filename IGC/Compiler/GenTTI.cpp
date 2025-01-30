@@ -153,7 +153,7 @@ namespace llvm {
 
     void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop* L,
         ScalarEvolution& SE,
-        TTI::UnrollingPreferences& UP, 
+        TTI::UnrollingPreferences& UP,
         OptimizationRemarkEmitter* ORE
         )
     {
@@ -608,90 +608,56 @@ namespace llvm {
         return BaseT::isProfitableToHoist(I);
     }
 
-#if LLVM_VERSION_MAJOR <= 10
-    unsigned GenIntrinsicsTTIImpl::getCallCost(const Function* F,
-        ArrayRef<const Value*> Arguments, const User* U)
-    {
-        // The extra cost of speculative execution for math intrinsics
-        if (auto *II = dyn_cast_or_null<IntrinsicInst>(U)) {
-            if (Intrinsic::ID IID = II->getIntrinsicID()) {
-                switch (IID) {
-                    case Intrinsic::cos:
-                    case Intrinsic::sin:
-                    case Intrinsic::sqrt:
-                        return TTI::TCC_Expensive;
-                    default:
-                        break;
-                }
-            }
-        }
-
-        IGC::CodeGenContext* CGC = this->ctx;
-        if (!CGC->enableFunctionCall() && !GenISAIntrinsic::isIntrinsic(F) &&
-            !F->isIntrinsic()) {
-            // If subroutine call is not enabled but we have function call. They
-            // are not inlined. e.g. due to two-phase inlining. Return function
-            // size instead of to avoid under-estimating the cost of function call.
-            //
-            // FIXME: We need to collect the cost following calling graph. However,
-            // as LLVM's ininer only support bottom-up inlining currently. That's
-            // not a big issue so far.
-            //
-            // FIXME: We also need to consider the case where sub-routine call is
-            // enabled.
-            unsigned FuncSize = countTotalInstructions(F, false);
-            return TargetTransformInfo::TCC_Basic * FuncSize;
-        }
-        return BaseT::getCallCost(F, Arguments, U);
-    }
-#else
-    // [LLVM-UPGRADE] moved from getCallCost to getUserCost
-    // https://github.com/llvm/llvm-project/commit/2641a19981e71c887bece92074e00d1af3e716c9#diff-dd4bd65dc55d754674d9a945a0d22911
-
-#if LLVM_VERSION_MAJOR <= 12
-    int GenIntrinsicsTTIImpl::getUserCost(const User* U, ArrayRef<const Value*> Operands, TTI::TargetCostKind CostKind)
-#else
     // TODO: Upon the complete removal of pre-LLVM 14 conditions, move to 'getInstructionCost' per LLVM 16 API
     llvm::InstructionCost GenIntrinsicsTTIImpl::getUserCost(const User* U, ArrayRef<const Value*> Operands, TTI::TargetCostKind CostKind)
-#endif
     {
-        // The extra cost of speculative execution for math intrinsics
-        if (auto *II = dyn_cast_or_null<IntrinsicInst>(U)) {
-            if (Intrinsic::ID IID = II->getIntrinsicID()) {
-                switch (IID) {
-                    case Intrinsic::cos:
-                    case Intrinsic::sin:
-                    case Intrinsic::sqrt:
-                        return TTI::TCC_Expensive;
-                    default:
-                        break;
-                }
-            }
-        }
+      return GenIntrinsicsTTIImpl::internalCalculateCost(U, Operands, CostKind);
+    }
 
-        const Function* F = dyn_cast<Function>(U);
-        if (F != nullptr)
-        {
-            IGC::CodeGenContext* CGC = this->ctx;
-            if (!CGC->enableFunctionCall() && !GenISAIntrinsic::isIntrinsic(F) &&
-                !F->isIntrinsic()) {
-                // If subroutine call is not enabled but we have function call. They
-                // are not inlined. e.g. due to two-phase inlining. Return function
-                // size instead of to avoid under-estimating the cost of function call.
-                //
-                // FIXME: We need to collect the cost following calling graph. However,
-                // as LLVM's ininer only support bottom-up inlining currently. That's
-                // not a big issue so far.
-                //
-                // FIXME: We also need to consider the case where sub-routine call is
-                // enabled.
-                unsigned FuncSize = countTotalInstructions(F, false);
-                return TargetTransformInfo::TCC_Basic * FuncSize;
-            }
-        }
-
-        return BaseT::getInstructionCost(U, Operands, CostKind);
+#if LLVM_VERSION_MAJOR >= 16
+    llvm::InstructionCost GenIntrinsicsTTIImpl::getInstructionCost(const User* U, ArrayRef<const Value*> Operands, TTI::TargetCostKind CostKind)
+    {
+      return GenIntrinsicsTTIImpl::internalCalculateCost(U, Operands, CostKind);
     }
 #endif
 
+    llvm::InstructionCost GenIntrinsicsTTIImpl::internalCalculateCost(const User* U, ArrayRef<const Value*> Operands, TTI::TargetCostKind CostKind)
+    {
+      // The extra cost of speculative execution for math intrinsics
+      if (auto* II = dyn_cast_or_null<IntrinsicInst>(U)) {
+        if (Intrinsic::ID IID = II->getIntrinsicID()) {
+          switch (IID) {
+          case Intrinsic::cos:
+          case Intrinsic::sin:
+          case Intrinsic::sqrt:
+            return TTI::TCC_Expensive;
+          default:
+            break;
+          }
+        }
+      }
+
+      const Function* F = dyn_cast<Function>(U);
+      if (F != nullptr)
+      {
+        IGC::CodeGenContext* CGC = this->ctx;
+        if (!CGC->enableFunctionCall() && !GenISAIntrinsic::isIntrinsic(F) &&
+          !F->isIntrinsic()) {
+          // If subroutine call is not enabled but we have function call. They
+          // are not inlined. e.g. due to two-phase inlining. Return function
+          // size instead of to avoid under-estimating the cost of function call.
+          //
+          // FIXME: We need to collect the cost following calling graph. However,
+          // as LLVM's ininer only support bottom-up inlining currently. That's
+          // not a big issue so far.
+          //
+          // FIXME: We also need to consider the case where sub-routine call is
+          // enabled.
+          unsigned FuncSize = countTotalInstructions(F, false);
+          return TargetTransformInfo::TCC_Basic * FuncSize;
+        }
+      }
+
+      return BaseT::getInstructionCost(U, Operands, CostKind);
+    }
 } // namespace llvm

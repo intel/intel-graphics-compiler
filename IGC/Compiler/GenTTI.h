@@ -56,6 +56,13 @@ namespace llvm
        llvm::InstructionCost getUserCost(const User* U, ArrayRef<const Value*> Operands,
            TTI::TargetCostKind CostKind);
 
+       llvm::InstructionCost getInstructionCost(const User* U, ArrayRef<const Value*> Operands,
+           TTI::TargetCostKind CostKind);
+
+    private:
+       llvm::InstructionCost internalCalculateCost(const User* U, ArrayRef<const Value*> Operands,
+           TTI::TargetCostKind CostKind);
+
     };
 
 }
