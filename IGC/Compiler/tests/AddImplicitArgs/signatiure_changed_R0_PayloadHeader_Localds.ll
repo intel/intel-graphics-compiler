@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2025 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -26,5 +26,5 @@ define i32 @foo(i32 %x) nounwind {
 !9 =  !{i32 8}
 !10 =  !{i32 9}
 
-; CHECK:         define i32 @foo(i32 %x, <8 x i32> %r0, <3 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ)
+; CHECK:         define i32 @foo(i32 %x, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ)
 ; CHECK-NOT:    define i32 @foo(i32 %x)

@@ -209,14 +209,12 @@ R0:
 
  PayloadHeader:
 
- Note: PayloadHeader used to be 8xi32, but unused bytes got removed and now it is 3xi32.
-
-------------------------------------
-| Global    | Global    | Global    |
-| offset    | offset    | offset    |
-| X         | Y         | Z         |
-| 32bit     | 32bit     | 32bit     |
- -----------------------------------
+-----------------------------------------------------------------------------------------------
+| Global    | Global    | Global    | Local     | Local     | Local     | Reserved  | Num       |
+| offset    | offset    | offset    | size      | size      | size      |           | HW        |
+| X         | Y         | Z         | X         | Y         | Z         |           | Threads   |
+| 32bit     | 32bit     | 32bit     | 32bit     | 32bit     | 32bit     |           | 32bit     |
+ -----------------------------------------------------------------------------------------------
  <low>                                                                                     <high>
 
 *************************************************************************************************/
@@ -511,7 +509,7 @@ Value* WIFuncResolution::getGlobalOffset(CallInst& CI)
     // call i32 @__builtin_IB_get_global_offset(i32 %dim)
 
     // Creates:
-    // %globalOffset = extractelement <3 x i32> %payloadHeader, i32 %dim
+    // %globalOffset = extractelement <8 x i32> %payloadHeader, i32 %dim
 
     auto F = CI.getFunction();
     Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::PAYLOAD_HEADER, m_pMdUtils);

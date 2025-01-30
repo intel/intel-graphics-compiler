@@ -907,11 +907,16 @@ namespace IGC
         switch (kernelArg->getArgType()) {
 
         case KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER:{
-            // PayloadHeader contains global work offset x,y,z
-            // global work offset size is int32x3
+            // PayloadHeader contains global work offset x,y,z and local size x,y,z
+            // global work offset, size is int32x3
+            uint cur_pos = payloadPosition;
             uint32_t size = iOpenCL::DATA_PARAMETER_DATA_SIZE * 3;
             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
-                zebin::PreDefinedAttrGetter::ArgType::global_id_offset, payloadPosition, size);
+                zebin::PreDefinedAttrGetter::ArgType::global_id_offset, cur_pos, size);
+            cur_pos += size;
+            // local size, size is int32x3, the same as above
+            zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::local_size, cur_pos, size);
             break;
         }
         case KernelArg::ArgType::IMPLICIT_PRIVATE_BASE:
@@ -1507,15 +1512,17 @@ namespace IGC
             break;
 
         case KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER:
-            // PayloadHeader contains global work offset x,y,z -->
-            // total of 3 annotations of each type
-            for (int i = 0; i < 3; ++i)
+            // PayloadHeader contains global work offset x,y,z and local size x,y,z -->
+            // total of 6 annotations, 3 of each type
+            for (int i = 0; i < 6; ++i)
             {
                 auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
 
                 DWORD sizeInBytes = iOpenCL::DATA_PARAMETER_DATA_SIZE;
 
-                constInput->ConstantType = iOpenCL::DATA_PARAMETER_GLOBAL_WORK_OFFSET;
+                constInput->ConstantType = (i < 3 ?
+                    iOpenCL::DATA_PARAMETER_GLOBAL_WORK_OFFSET :
+                    iOpenCL::DATA_PARAMETER_LOCAL_WORK_SIZE);
                 constInput->Offset = (i % 3) * sizeInBytes;
                 constInput->PayloadPosition = payloadPosition;
                 constInput->PayloadSizeInBytes = sizeInBytes;
@@ -2434,8 +2441,6 @@ namespace IGC
             bool IsUnusedArg =
                 (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET ||
                 arg.getArgType() == KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET ||
-                arg.getArgType() == KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER || // contains global_id_offset
-                arg.getArgType() == KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE ||
                 arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_SIZE) &&
                 arg.getArg()->use_empty();
 

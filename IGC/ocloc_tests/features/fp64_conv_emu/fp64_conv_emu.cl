@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 // CHECK-LABEL: @conversion_kernel(
 // CHECK-BASE: entry:
 // CHECK-BASE:  [[DPEmuFlag:%.*]] = alloca i32, align 4
-// CHECK-BASE:  [[TMP0:%.*]] = extractelement <3 x i32> %payloadHeader, i64 0
+// CHECK-BASE:  [[TMP0:%.*]] = extractelement <8 x i32> %payloadHeader, i64 0
 // CHECK-BASE:  [[TMP1:%.*]] = extractelement <3 x i32> %enqueuedLocalSize, i64 0
 // CHECK-BASE:  [[TMP2:%.*]] = extractelement <8 x i32> %r0, i64 1
 // CHECK-BASE:  [[MUL:%.*]] = mul i32 [[TMP1]], [[TMP2]]

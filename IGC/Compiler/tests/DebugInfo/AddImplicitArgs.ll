@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2025 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -21,7 +21,7 @@ entry:
   store float 1.000000e+00, ptr addrspace(1) %dst, align 4
   ret void
 
-; CHECK: define void @test(ptr addrspace(1) %dst, <8 x i32> %r0, <3 x i32> %payloadHeader)
+; CHECK: define void @test(ptr addrspace(1) %dst, <8 x i32> %r0, <8 x i32> %payloadHeader)
 ; CHECK: call void @llvm.dbg.value({{.*}})
 }
 
