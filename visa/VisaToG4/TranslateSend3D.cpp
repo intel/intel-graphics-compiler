@@ -195,6 +195,7 @@ int IR_Builder::translateVISASampleInfoInst(VISA_Exec_Size executionSize,
   bool preEmption = forceSamplerHeader();
   bool forceSplitSend = shouldForceSplitSend(surface);
   bool useHeader = true;
+  bool forceHeader = false;
   // SAMPLEINFO has 0 parameters so its only header
 
   unsigned int numRows = 1;
@@ -202,11 +203,12 @@ int IR_Builder::translateVISASampleInfoInst(VISA_Exec_Size executionSize,
   G4_Declare *msg = NULL;
   G4_SrcRegRegion *m0 = NULL;
 
-  if (!useFakeHeader || forceSplitSend || preEmption) {
+  if (!useFakeHeader || forceSplitSend || preEmption || forceHeader) {
     msg = getSamplerHeader(false /*isBindlessSampler*/,
                            false /*samperIndexGE16*/);
 
     unsigned int secondDword = chMask.getHWEncoding() << 12;
+
 
     G4_Imm *immOpndSecondDword = createImm(secondDword, Type_UD);
 
@@ -320,6 +322,7 @@ int IR_Builder::translateVISAResInfoInst(
   if (useHeader) {
     unsigned int secondDword = 0;
     secondDword |= (chMask.getHWEncoding() << 12);
+
 
     G4_Imm *immOpndSecondDword = createImm(secondDword, Type_UD);
 
@@ -1763,17 +1766,21 @@ static G4_Operand *createSampleHeader(IR_Builder *builder, G4_Declare *header,
   unsigned int secondDword = createSampleHeader0Dot2(
       actualop, pixelNullMask, aoffimmiVal, srcChannel, builder);
 
+
   G4_Imm *immOpndSecondDword = builder->createImm(secondDword, Type_UD);
   G4_DstRegRegion *payloadDstRgn =
       builder->createDst(header->getRegVar(), 0, 2, 1, Type_UD);
+  G4_INST *headerInst = nullptr;
   if (aoffimmi->isImm()) {
     // mov (1) payload(0,2) immOpndSecondDword
-    builder->createMov(g4::SIMD1, payloadDstRgn, immOpndSecondDword,
-                       InstOpt_WriteEnable, true);
+    headerInst =
+        builder->createMov(g4::SIMD1, payloadDstRgn, immOpndSecondDword,
+                           InstOpt_WriteEnable, true);
   } else {
     // or (1) payload(0,2) aoffimmi<0;1,0>:uw immOpndSeconDword
-    builder->createBinOp(G4_or, g4::SIMD1, payloadDstRgn, aoffimmi,
-                         immOpndSecondDword, InstOpt_WriteEnable, true);
+    headerInst =
+        builder->createBinOp(G4_or, g4::SIMD1, payloadDstRgn, aoffimmi,
+                             immOpndSecondDword, InstOpt_WriteEnable, true);
   }
 
   if (sampler != nullptr) {
@@ -2364,10 +2371,10 @@ int IR_Builder::translateVISASampler3DInst(
   bool nonZeroAoffImmi =
       !(aoffimmi->isImm() && aoffimmi->asImm()->getInt() == 0);
   bool simd16HFReturn = FP16Return && execSize == 16;
-  if (needSamplerHeader(this, pixelNullMask, nonZeroAoffImmi,
+  if (useHeader ||
+      needSamplerHeader(this, pixelNullMask, nonZeroAoffImmi,
                         needHeaderForChannels, isBindlessSampler(sampler),
-                        !pairedSurface->isNullReg(),
-                        simd16HFReturn) ||
+                        !pairedSurface->isNullReg(), simd16HFReturn) ||
       samplerHeaderPreemptionWA()) {
     useHeader = true;
     ++numRows;
@@ -2503,10 +2510,10 @@ int IR_Builder::translateVISALoad3DInst(
   bool nonZeroAoffImmi =
       !(aoffimmi->isImm() && aoffimmi->asImm()->getInt() == 0);
   bool simd16HFReturn = halfReturn && execSize == 16;
-  if (needSamplerHeader(this, pixelNullMask, nonZeroAoffImmi,
+  if (useHeader ||
+      needSamplerHeader(this, pixelNullMask, nonZeroAoffImmi,
                         needHeaderForChannels, false,
-                        !pairedSurface->isNullReg(),
-                        simd16HFReturn)) {
+                        !pairedSurface->isNullReg(), simd16HFReturn)) {
     useHeader = true;
     ++numRows;
   }
@@ -2612,7 +2619,8 @@ int IR_Builder::translateVISAGather3dInst(
       channelMask.getSingleChannel() != VISA_3D_GATHER4_CHANNEL_R;
   bool simd16HFReturn = FP16Return && execSize == 16;
 
-  if (needSamplerHeader(this, pixelNullMask, nonZeroAoffImmi,
+  if (useHeader ||
+      needSamplerHeader(this, pixelNullMask, nonZeroAoffImmi,
                         needHeaderForChannels, isBindlessSampler(sampler),
                         !pairedSurface->isNullReg(), simd16HFReturn) ||
       samplerHeaderPreemptionWA()) {

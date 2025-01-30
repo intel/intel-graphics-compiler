@@ -966,6 +966,8 @@ int Optimizer::optimization() {
     return VISA_SPILL;
   }
 
+
+
   runPass(PI_removeLifetimeOps);
 
   // HW workaround after RA
@@ -1321,7 +1323,6 @@ void Optimizer::removePseudoMov() {
     }
   }
 }
-
 void Optimizer::FoldAddrImmediate() {
   AddrSubReg_Node *addrRegInfo =
       new AddrSubReg_Node[builder.getNumAddrRegisters()];

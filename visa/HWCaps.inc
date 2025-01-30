@@ -939,4 +939,5 @@ bool needTGMDoubleFenceWA() const {
 bool useDynamicAddrForExDesc() const {
   return getOption(vISA_dynamicAddrForExDescInLscSend);
 }
+
 // end HW capabilities
