@@ -1418,6 +1418,7 @@ IR_Builder::constructSrcPayloadDualRenderTarget(vISA_RT_CONTROLS cntrls,
       ((!(s0B->isNullReg() && s1B->isNullReg()) ? 0x1 : 0) << 0x2) |
       (((!(s0A->isNullReg() && s1A->isNullReg()) || cntrls.s0aPresent) ? 0x1 : 0) << 0x3);
 
+
   return std::make_tuple(srcToUse, numRows, chMask);
 }
 
