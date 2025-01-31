@@ -14,6 +14,12 @@
 
 %struct = type { [4 x <8 x i1*>], [4 x <8 x i1>*]* }
 
+define spir_func void @entry() {
+  %a = alloca %struct, align 8
+  call void @prom_attr(%struct* byval(%struct) align 8 %a)
+  ret void
+}
+
 define spir_func void @prom_attr(%struct* byval(%struct) align 8 %0) {
   ret void
 }
