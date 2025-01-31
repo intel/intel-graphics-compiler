@@ -84,9 +84,7 @@ define void @CSMain(i32 %runtime_value_0, i32 %runtime_value_1, i32 %runtime_val
 ; layer 3
 ; CHECK: add (M1_NM, 8) reduceSrc_waveAllSrc0(0,0)<1> reduceSrc_waveAllSrc0(0,0)<4;2,1> reduceSrc_waveAllSrc0(0,2)<4;2,1>
 ; layer 4
-; CHECK: add (M1_NM, 4) reduceSrc_waveAllSrc0(0,0)<1> reduceSrc_waveAllSrc0(0,0)<2;1,1> reduceSrc_waveAllSrc0(0,1)<2;1,1>
-; copy to dest
-; CHECK: mov (M1_NM, 1) waveAllJoint(0,0)<1> reduceSrc_waveAllSrc0(0,0)<1;1,0>
+; CHECK: add (M1_NM, 4) waveAllJoint(0,0)<1> reduceSrc_waveAllSrc0(0,0)<2;1,1> reduceSrc_waveAllSrc0(0,1)<2;1,1>
   %waveAllJoint = call <4 x i32> @llvm.genx.GenISA.WaveAll.v4i32.i8.i32(<4 x i32> %waveAllSrc3, i8 0, i32 0)
   %res_a = extractelement <4 x i32> %waveAllJoint, i32 0
   %res_b = extractelement <4 x i32> %waveAllJoint, i32 1

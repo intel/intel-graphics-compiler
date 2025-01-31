@@ -14188,10 +14188,19 @@ void EmitPass::emitReductionTree( e_opcode op, VISA_Type type, CVariable* src, C
         for( unsigned int i = 0; i < numIterations; i++ )
         {
             // Get alias for src0, src1, and dst based on offsets and SIMD size
-            auto* layerSrc0 = m_currShader->GetNewAlias( src, type, i * 2 * layerMaxSimdLanes * m_encoder->GetCISADataTypeSize( type ), layerMaxSimdLanes );
-            auto* layerSrc1 = m_currShader->GetNewAlias( src, type, ( i * 2 * layerMaxSimdLanes + src1Offset ) * m_encoder->GetCISADataTypeSize( type ), layerMaxSimdLanes );
-            auto* layerDst = m_currShader->GetNewAlias( src, type, i * layerMaxSimdLanes * m_encoder->GetCISADataTypeSize( type ), layerMaxSimdLanes );
-
+            auto* layerSrc0 = m_currShader->GetNewAlias( src, type, i * 2 * layerMaxSimdLanes * m_encoder->GetCISADataTypeSize( type ), layerMaxSimdLanes, false );
+            auto* layerSrc1 = m_currShader->GetNewAlias( src, type, ( i * 2 * layerMaxSimdLanes + src1Offset ) * m_encoder->GetCISADataTypeSize( type ), layerMaxSimdLanes, false );
+            CVariable* layerDst;
+            if( (srcElementCount >> 1 <= dst->GetNumberElement()) && (i + 1 == numIterations ))
+            {
+                // Final layer, use destination of WaveAll vector intrinsic inst (passed in with correct offset)
+                layerDst = dst;
+            }
+            else
+            {
+                // Use src as workspace to store intermediate values
+                layerDst = m_currShader->GetNewAlias( src, type, i * layerMaxSimdLanes * m_encoder->GetCISADataTypeSize( type ), layerMaxSimdLanes, false );
+            }
             if( !int64EmulationNeeded )
             {
                 m_encoder->SetNoMask();
@@ -14220,13 +14229,6 @@ void EmitPass::emitReductionTree( e_opcode op, VISA_Type type, CVariable* src, C
         srcElementCount >>= 1;
         reductionElementCount >>= 1;
     }
-
-    // copy fully reduced elements from src to dst
-    auto* finalLayerDst = m_currShader->GetNewAlias( src, type, 0, dst->GetNumberElement() );
-    m_encoder->SetNoMask();
-    m_encoder->SetSimdSize( lanesToSIMDMode( dst->GetNumberElement() ) );
-    m_encoder->Copy( dst, finalLayerDst );
-    m_encoder->Push();
 }
 
 // Recursive function that emits one or more joint reduction trees based on the joint output width
@@ -14240,8 +14242,8 @@ void EmitPass::emitReductionTrees( e_opcode op, VISA_Type type, SIMDMode simdMod
         // Do full tree reduction
         unsigned int reductionElements = src->GetNumberElement() / dst->GetNumberElement();
         unsigned int groupReductionElementCount = reductionElements * simdLanes;
-        CVariable* srcAlias = m_currShader->GetNewAlias( src, type, startIdx * reductionElements * m_encoder->GetCISADataTypeSize( type ), groupReductionElementCount );
-        CVariable* dstAlias = m_currShader->GetNewAlias( dst, type, startIdx * m_encoder->GetCISADataTypeSize( type ), simdLanes);
+        CVariable* srcAlias = m_currShader->GetNewAlias( src, type, startIdx * reductionElements * m_encoder->GetCISADataTypeSize( type ), groupReductionElementCount, false );
+        CVariable* dstAlias = m_currShader->GetNewAlias( dst, type, startIdx * m_encoder->GetCISADataTypeSize( type ), simdLanes, false);
         emitReductionTree( op, type, srcAlias, dstAlias );
         // Start new recursive tree if any elements are left
         if ( numGroups > simdLanes )
@@ -22559,13 +22561,13 @@ void EmitPass::emitWaveAll(llvm::GenIntrinsicInst* inst)
             for( uint16_t i = 0; i < dst->GetNumberElement(); i++ )
             {
                 // Prepare reduceSrc
-                CVariable* srcAlias = m_currShader->GetNewAlias( src, type, i * numLanes( m_currShader->m_SIMDSize ) * m_encoder->GetCISADataTypeSize( type ), numLanes( m_currShader->m_SIMDSize ) );
-                CVariable* reduceSrcAlias = m_currShader->GetNewAlias( reduceSrc, type, i * numLanes( m_currShader->m_SIMDSize ) * m_encoder->GetCISADataTypeSize( type ), numLanes( m_currShader->m_SIMDSize ) );
+                CVariable* srcAlias = m_currShader->GetNewAlias( src, type, i * numLanes( m_currShader->m_SIMDSize ) * m_encoder->GetCISADataTypeSize( type ), numLanes( m_currShader->m_SIMDSize ), false);
+                CVariable* reduceSrcAlias = m_currShader->GetNewAlias( reduceSrc, type, i * numLanes( m_currShader->m_SIMDSize ) * m_encoder->GetCISADataTypeSize( type ), numLanes( m_currShader->m_SIMDSize ), false );
                 ScanReducePrepareSrc( type, identity, false, false, srcAlias, reduceSrcAlias );
 
                 // Prepare reduceSrcSecondHalf
-                CVariable* srcSecondHalfAlias = m_currShader->GetNewAlias( src, type, i * numLanes( m_currShader->m_SIMDSize ) * m_encoder->GetCISADataTypeSize( type ), numLanes( m_currShader->m_SIMDSize ) );
-                CVariable* reduceSrcSecondHalfAlias = m_currShader->GetNewAlias( reduceSrcSecondHalf, type, i * numLanes( m_currShader->m_SIMDSize ) * m_encoder->GetCISADataTypeSize( type ), numLanes( m_currShader->m_SIMDSize ) );
+                CVariable* srcSecondHalfAlias = m_currShader->GetNewAlias( src, type, i * numLanes( m_currShader->m_SIMDSize ) * m_encoder->GetCISADataTypeSize( type ), numLanes( m_currShader->m_SIMDSize ), false );
+                CVariable* reduceSrcSecondHalfAlias = m_currShader->GetNewAlias( reduceSrcSecondHalf, type, i * numLanes( m_currShader->m_SIMDSize ) * m_encoder->GetCISADataTypeSize( type ), numLanes( m_currShader->m_SIMDSize ), false);
                 ScanReducePrepareSrc( type, identity, false, true, srcSecondHalfAlias, reduceSrcSecondHalfAlias );
 
                 // Emit correct operations
