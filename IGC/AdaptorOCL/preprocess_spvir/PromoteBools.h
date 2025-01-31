@@ -77,8 +77,7 @@ namespace IGC
             });
         }
 
-        template<typename T>
-        void setPromotedAttributes(T* callOrFunc, const llvm::AttributeList& attributeList);
+        void setPromotedAttributes(llvm::Function* newFunction, llvm::AttributeList& attributeList);
 
         llvm::Value* getOrCreatePromotedValue(llvm::Value* value);
         llvm::Function* promoteFunction(llvm::Function* function);
