@@ -802,6 +802,7 @@ public:
 
     // generate loop header to process sample instruction with varying resource/sampler
     bool ResourceLoopHeader(
+        const CVariable* destination,
         ResourceDescriptor& resource,
         SamplerDescriptor& sampler,
         CVariable*& flag,
@@ -809,6 +810,7 @@ public:
         uint ResourceLoopMarker = 0,
         int* subInteration = nullptr);
     bool ResourceLoopHeader(
+        const CVariable* destination,
         ResourceDescriptor& resource,
         CVariable*& flag,
         uint& label,
@@ -870,7 +872,7 @@ public:
             }
 
             // label resource loop
-            ResourceLoopHeader(resource, sampler, flag, label, ResourceLoopMarker, &subInteration);
+            ResourceLoopHeader(currentDestination, resource, sampler, flag, label, ResourceLoopMarker, &subInteration);
         }
 
         // subInteration == 0 could mean no resource loop tag indicated
