@@ -357,9 +357,6 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
 #define MANGLE_PREFETCH_NAME(sg, elem_bitwidth, shape) \
   __builtin_spriv_OpJointMatrixPrefetchINTEL##sg##_##shape##_i##elem_bitwidth
 
-#define MANGLE_FILLCHECKED_NAME(elem_bitwidth, WI_rows) \
-  __builtin_spriv_OpJointMatrixFillCheckedINTEL_i##elem_bitwidth##_##WI_rows
-
 #define SUB_GROUP_LOAD(readop, M, WI_rows, src, dst, stride, contrib_type) \
     __private contrib_type *wi_contrib = (__private contrib_type *)dst; \
     int ratio = WI_rows / M; \
@@ -499,22 +496,7 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
 #define IMPLEMENT_BLOCK2D_LOAD_SG16_COL_MAJOR_Accumulator_ColumnMajor(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, ret_num, orig_M, orig_K, contrib_M, contrib_K) \
   IMPLEMENT_BLOCK2D_LOAD_SG16_COL_MAJOR(element_type, contrib_type, contrib_bitwidth, M, K, WI_rows, orig_M, orig_K)
 
-// ret_num is used only for this load implementation. It is the number of elements in the return vector from block2d call.
-// In other cases it is equal to WI_rows but in this case, because we use 32-bit data size to load data,
-// while "contrib type" is still 16-bit, we need to use different return type.
-#define IMPLEMENT_BLOCK2D_LOAD_SG16_COL_MAJOR_PackedA_ColumnMajor(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, ret_num, orig_M, orig_K, contrib_M, contrib_K) \
-  if (M*sizeof(element_type) <= MAX_ROW_BYTES_2D_BLOCK_LOAD) { /* For 2D loads (block2d width)*(data size) must be <= MAX_ROW_BYTES_2D_BLOCK_LOAD */ \
-    long offset = as_long(mem); \
-    long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
-    int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
-    int pitch = width; /* JointMatrices are expected to be contiguous in memory, without padding at the end of a row */ \
-    int height = K - 1; \
-    long x = (offset - baseoffset) / (sizeof(int)); /* in elements */ \
-    int2 coords = (int2)(x, 0); \
-\
-    OUT_VEC##ret_num(uint) DEFINE_BLOCK2D_TRANSPOSE_NAME(32, ret_num, K, contrib_M)(long, int, int, int, int2, int); \
-    OUT_VEC##ret_num(uint) res = DEFINE_BLOCK2D_TRANSPOSE_NAME(32, ret_num, K, contrib_M)(baseoffset, width, height, pitch, coords, cacheOpt); \
-\
+#define HELPER_PACKEDA_COL_MAJOR_SHUFFLE(contrib_type, elem_bitwidth, M, K, WI_rows) \
     int slid = get_sub_group_local_id(); \
     int pack_factor = 2; /* either sizeof(short)/sizeof(char) or sizeof(int)/sizeof(short) */ \
 \
@@ -536,7 +518,6 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
       return; \
     } \
     if (elem_bitwidth == 8) { \
-      int load_pack_factor = sizeof(int) / sizeof(char); \
       if (M == WI_rows) { \
         char16 *data = (char16*)&res; \
         char16 tdata; \
@@ -560,7 +541,25 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
       } \
       *(__private OUT_VEC##WI_rows(u##contrib_type) *)dst = *(__private OUT_VEC##WI_rows(u##contrib_type) *)&tdata; \
       return; \
-    } \
+    }
+
+// ret_num is used only for this load implementation. It is the number of elements in the return vector from block2d call.
+// In other cases it is equal to WI_rows but in this case, because we use 32-bit data size to load data,
+// while "contrib type" is still 16-bit, we need to use different return type.
+#define IMPLEMENT_BLOCK2D_LOAD_SG16_COL_MAJOR_PackedA_ColumnMajor(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, ret_num, orig_M, orig_K, contrib_M, contrib_K) \
+  if (M*sizeof(element_type) <= MAX_ROW_BYTES_2D_BLOCK_LOAD) { /* For 2D loads (block2d width)*(data size) must be <= MAX_ROW_BYTES_2D_BLOCK_LOAD */ \
+    long offset = as_long(mem); \
+    long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
+    int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
+    int pitch = width; /* JointMatrices are expected to be contiguous in memory, without padding at the end of a row */ \
+    int height = K - 1; \
+    long x = (offset - baseoffset) / (sizeof(int)); /* in elements */ \
+    int2 coords = (int2)(x, 0); \
+\
+    OUT_VEC##ret_num(uint) DEFINE_BLOCK2D_TRANSPOSE_NAME(32, ret_num, K, contrib_M)(long, int, int, int, int2, int); \
+    OUT_VEC##ret_num(uint) res = DEFINE_BLOCK2D_TRANSPOSE_NAME(32, ret_num, K, contrib_M)(baseoffset, width, height, pitch, coords, cacheOpt); \
+    int load_pack_factor = sizeof(int) / sizeof(element_type); \
+    HELPER_PACKEDA_COL_MAJOR_SHUFFLE(contrib_type, elem_bitwidth, M, K, WI_rows) \
   }
 
 #define IMPLEMENT_BLOCK2D_LOAD_SG16_VNNI_TX_PackedB_RowMajor(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M_VNNI, K_VNNI, WI_rows, ret_num, orig_M, orig_K, contrib_M, contrib_K) \
@@ -599,20 +598,32 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
 #define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_ROW_MAJOR_Accumulator_RowMajor(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, ret_num, orig_M, orig_K, contrib_M, contrib_K) \
   IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_ROW_MAJOR(element_type, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_K)
 
+#define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_COL_MAJOR_PackedA_ColumnMajor(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, ret_num, orig_M, orig_K, contrib_M, contrib_K) \
+  long offset = as_long(mem); \
+  int width_size = sizeof (element_type) * width - 1; /* in bytes */ \
+  int pitch = sizeof (element_type) * stride - 1; /* in bytes */ \
+  int height_size = height - 1; \
+  int load_pack_factor = sizeof (int) / sizeof (element_type); \
+  int2 coords = (int2)(x/load_pack_factor, y); \
+  /* 2D block read transpose builtin requires K value _after_ the transpose operation is done - which is equal to M before the transpose */ \
+  OUT_VEC##ret_num(uint) DEFINE_BLOCK2D_TRANSPOSE_NAME(32, ret_num, K, contrib_M)(long, int, int, int, int2, int); \
+  OUT_VEC##ret_num(uint) res = DEFINE_BLOCK2D_TRANSPOSE_NAME(32, ret_num, K, contrib_M)(offset, width_size, height_size, pitch, coords, cacheOpt); \
+  int sg_size = get_sub_group_size(); \
+  HELPER_PACKEDA_COL_MAJOR_SHUFFLE(contrib_type, elem_bitwidth, M, K, WI_rows)
+
 #define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_COL_MAJOR(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, orig_M, orig_K) \
   long offset = as_long(mem); \
   int width_size = sizeof (element_type) * width - 1; /* in bytes */ \
   int pitch = sizeof (element_type) * stride - 1; /* in bytes */ \
   int height_size = height - 1; \
-  int2 coords = (int2)(x, y); \
+  int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
+  int2 coords = (int2)(x/pack_factor, y); \
   /* 2D block read transpose builtin requires K value _after_ the transpose operation is done - which is equal to M before the transpose */ \
   OUT_VEC##WI_rows(u##contrib_type) DEFINE_BLOCK2D_TRANSPOSE_NAME(contrib_bitwidth, WI_rows, orig_K, M)(long, int, int, int, int2, int); \
   OUT_VEC##WI_rows(u##contrib_type) res = DEFINE_BLOCK2D_TRANSPOSE_NAME(contrib_bitwidth, WI_rows, orig_K, M)(offset, width_size, height_size, pitch, coords, cacheOpt); \
   *(__private OUT_VEC##WI_rows(u##contrib_type) *)dst = *(__private OUT_VEC##WI_rows(u##contrib_type) *)&res; \
   return;
 
-#define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_COL_MAJOR_PackedA_ColumnMajor(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, ret_num, orig_M, orig_K, contrib_M, contrib_K) \
-  IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_COL_MAJOR(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, orig_M, orig_K)
 #define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_COL_MAJOR_PackedB_ColumnMajor(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, ret_num, orig_M, orig_K, contrib_M, contrib_K) \
   IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_COL_MAJOR(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, orig_M, orig_K)
 #define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_COL_MAJOR_Accumulator_ColumnMajor(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, ret_num, orig_M, orig_K, contrib_M, contrib_K) \
@@ -663,16 +674,16 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
     DEFINE_BLOCK2D_RW_NAME(write, , contrib_bitwidth, WI_rows, M, contrib_K)(baseoffset, width, height, pitch, coords, val, cacheOpt); \
     return;
 
-#define IMPLEMENT_BLOCK2D_STORE_CHECKED_SG16(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, contrib_K) \
+#define IMPLEMENT_BLOCK2D_STORE_CHECKED_SG16(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_K) \
     long offset = as_long(mem); \
     int width_size = sizeof (element_type) * width - 1; /* in bytes */ \
     int pitch = sizeof (element_type) * stride - 1; /* in bytes */ \
     int height_size = height - 1; \
     int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
     int2 coords = (int2)(x / pack_factor, y); \
-    void DEFINE_BLOCK2D_RW_NAME(write, , contrib_bitwidth, M, M, contrib_K)(long, int, int, int, int2, OUT_VEC##M(u##contrib_type), int); \
-    OUT_VEC##M(u##contrib_type) val = *(OUT_VEC##M(u##contrib_type) *)src; \
-    DEFINE_BLOCK2D_RW_NAME(write, , contrib_bitwidth, M, M, contrib_K)(offset, width_size, height_size, pitch, coords, val, cacheOpt); \
+    void DEFINE_BLOCK2D_RW_NAME(write, , contrib_bitwidth, WI_rows, M, contrib_K)(long, int, int, int, int2, OUT_VEC##WI_rows(u##contrib_type), int); \
+    OUT_VEC##WI_rows(u##contrib_type) val = *(OUT_VEC##WI_rows(u##contrib_type) *)src; \
+    DEFINE_BLOCK2D_RW_NAME(write, , contrib_bitwidth, WI_rows, M, contrib_K)(offset, width_size, height_size, pitch, coords, val, cacheOpt); \
     return;
 
 // layout can be PackedA_RowMajor, PackedB_ColumnMajor, PackedB_PackedB, etc.
@@ -878,7 +889,7 @@ DEFINE_LOAD_AND_CHECKED(PackedA_RowMajor, _SG16, short, short, 1, 32, ROW_MAJOR,
 DEFINE_LOAD_AND_CHECKED(PackedA_ColumnMajor, _SG16, short, short, 8, 16, COL_MAJOR, , 8)
 
 /* PackedA load i16 SG16 for sub group size = 32*/
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, short, 8, 16, ROW_MAJOR, _us, 4)
+DEFINE_LOAD_AND_CHECKED(PackedA_RowMajor, _SG16, short, short, 8, 16, ROW_MAJOR, _us, 4)
 DEFINE_LOAD(PackedA_RowMajor, _SG16, short, short, 7, 16, ROW_MAJOR, _us, 4)
 DEFINE_LOAD(PackedA_RowMajor, _SG16, short, short, 6, 16, ROW_MAJOR, _us, 3)
 DEFINE_LOAD(PackedA_RowMajor, _SG16, short, short, 5, 16, ROW_MAJOR, _us, 3)
@@ -888,7 +899,7 @@ DEFINE_LOAD(PackedA_RowMajor, _SG16, short, short, 2, 16, ROW_MAJOR, _us, 1)
 // DEFINE_LOAD(PackedA_RowMajor, _SG16, short, short, 1, 16, ROW_MAJOR, _us, 1) same as for subgroup 16
 
 /* PackedA load i16 SG16 Col Major for sub group size = 32*/
-DEFINE_LOAD(PackedA_ColumnMajor, _SG16, short, short, 8, 16, COL_MAJOR, , 4)
+DEFINE_LOAD_AND_CHECKED(PackedA_ColumnMajor, _SG16, short, short, 8, 16, COL_MAJOR, , 4)
 
 /* PackedA load i8 SG16 */
 DEFINE_LOAD_AND_CHECKED(PackedA_RowMajor, _SG16, char, short, 8, 32, ROW_MAJOR, _us, 8)
@@ -904,7 +915,7 @@ DEFINE_LOAD_AND_CHECKED(PackedA_RowMajor, _SG16, char, short, 1, 32, ROW_MAJOR, 
 DEFINE_LOAD_AND_CHECKED(PackedA_ColumnMajor, _SG16, char, short, 8, 32, COL_MAJOR, , 8)
 
 /* PackedA load i8 SG16 for sub group size 32*/
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, short, 8, 32, ROW_MAJOR, _us, 4)
+DEFINE_LOAD_AND_CHECKED(PackedA_RowMajor, _SG16, char, short, 8, 32, ROW_MAJOR, _us, 4)
 DEFINE_LOAD(PackedA_RowMajor, _SG16, char, short, 7, 32, ROW_MAJOR, _us, 4)
 DEFINE_LOAD(PackedA_RowMajor, _SG16, char, short, 6, 32, ROW_MAJOR, _us, 3)
 DEFINE_LOAD(PackedA_RowMajor, _SG16, char, short, 5, 32, ROW_MAJOR, _us, 3)
@@ -914,7 +925,7 @@ DEFINE_LOAD(PackedA_RowMajor, _SG16, char, short, 2, 32, ROW_MAJOR, _us, 1)
 // DEFINE_LOAD(PackedA_RowMajor, _SG16, char, short, 1, 32, ROW_MAJOR, _us, 1)  same as for subgroup 16
 
 /* PackedA load i8 SG16 Col Major for sub group size 32*/
-DEFINE_LOAD(PackedA_ColumnMajor, _SG16, char,  short, 8, 32, COL_MAJOR, , 4)
+DEFINE_LOAD_AND_CHECKED(PackedA_ColumnMajor, _SG16, char,  short, 8, 32, COL_MAJOR, , 4)
 
 /* A load tf32 SG16 */
 DEFINE_LOAD_AND_CHECKED(PackedA_RowMajor, _SG16, int, int, 8, 8, ROW_MAJOR, , 4)
@@ -942,9 +953,9 @@ DEFINE_LOAD_AND_CHECKED(PackedB_PackedB,     _SG16, short, int, 16, 32, ROW_MAJO
 DEFINE_LOAD_AND_CHECKED(PackedB_RowMajor,    _SG16, short, int, 16, 32, VNNI_TX,   , 16)
 
 /* PackedB load i16 SG16 for sub group size = 32*/
-DEFINE_LOAD(PackedB_ColumnMajor, _SG16, short, int, 8, 32, COL_MAJOR, , 4)
-DEFINE_LOAD(PackedB_PackedB,     _SG16, short, int, 8, 32, ROW_MAJOR, , 4)
-DEFINE_LOAD(PackedB_RowMajor,    _SG16, short, int, 8, 32, VNNI_TX,   , 4)
+DEFINE_LOAD_AND_CHECKED(PackedB_ColumnMajor, _SG16, short, int, 8, 32, COL_MAJOR, , 4)
+DEFINE_LOAD_AND_CHECKED(PackedB_PackedB,     _SG16, short, int, 8, 32, ROW_MAJOR, , 4)
+DEFINE_LOAD_AND_CHECKED(PackedB_RowMajor,    _SG16, short, int, 8, 32, VNNI_TX,   , 4)
 
 /* PackedB load i8 SG16*/
 DEFINE_LOAD_AND_CHECKED(PackedB_ColumnMajor, _SG16, char, int, 8, 64, COL_MAJOR, , 8)
@@ -952,9 +963,9 @@ DEFINE_LOAD_AND_CHECKED(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR,
 DEFINE_LOAD_AND_CHECKED(PackedB_RowMajor,    _SG16, char, int, 8, 64, VNNI_TX,   , 8)
 
 /* PackedB load i8 SG16 for sub group size 32*/
-DEFINE_LOAD(PackedB_ColumnMajor, _SG16, char, int, 8, 64, COL_MAJOR, , 4)
-DEFINE_LOAD(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR, , 4)
-DEFINE_LOAD(PackedB_RowMajor,    _SG16, char, int, 8, 64, VNNI_TX,   , 4)
+DEFINE_LOAD_AND_CHECKED(PackedB_ColumnMajor, _SG16, char, int, 8, 64, COL_MAJOR, , 4)
+DEFINE_LOAD_AND_CHECKED(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR, , 4)
+DEFINE_LOAD_AND_CHECKED(PackedB_RowMajor,    _SG16, char, int, 8, 64, VNNI_TX,   , 4)
 
 /* B load tf32 SG16 */
 DEFINE_LOAD_AND_CHECKED(PackedB_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 8)
@@ -1048,7 +1059,7 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 1)
     }
 
 #define DEFINE_STORE_CHECKED_BLOCK2D_IMPL(sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, order, WI_rows) \
-    IMPLEMENT_BLOCK2D_STORE_CHECKED##sg(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, MATH_DIV(K, MATH_DIV(contrib_bitwidth, elem_bitwidth)))
+    IMPLEMENT_BLOCK2D_STORE_CHECKED##sg(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, MATH_DIV(K, MATH_DIV(contrib_bitwidth, elem_bitwidth)))
 
 // set block_opt to false to disable block non-continous optimization per one built-in as a workaround
 #define DEFINE_STORE_VECTORS_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, order, us, WI_rows, block_opt, address_space) \
@@ -1311,7 +1322,7 @@ DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 2, tr
 DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, int, 1, 16, COL_MAJOR, , 1, true)
 
 /* Acc i32 SG16 for subgroup 32*/
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 4, true)
+DEFINE_STORE_AND_CHECKED(Accumulator_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 4, true)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, int, 7, 16, ROW_MAJOR, , 4, true)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, int, 6, 16, ROW_MAJOR, , 3, true)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, int, 5, 16, ROW_MAJOR, , 3, true)
@@ -2288,31 +2299,48 @@ DEFINE_STORE_LARGE_1(Accumulator_RowMajor, 1, 64)
 
 DEFINE_STORE_CHECKED_LARGE_1(Accumulator_RowMajor, 1, 64)
 
-#define DEFINE_FILLCHECKED_IMPL(element_type, elem_bitwidth, WI_rows) \
-  INLINE void MANGLE_FILLCHECKED_NAME(elem_bitwidth, WI_rows) (__private char *dst, int y, int x, int height, int width, element_type value) { \
+// FillChecked implementation
+
+#define MANGLE_FILLCHECKED_NAME(elem_bitwidth, contrib_bitwidth, K, WI_rows) \
+  __builtin_spirv_OpJointMatrixFillCheckedINTEL_i##elem_bitwidth##_i##contrib_bitwidth##_k##K##_wi##WI_rows
+
+#define DEFINE_FILLCHECKED_IMPL(element_type, elem_bitwidth, contrib_bitwidth, K, WI_rows) \
+  INLINE void MANGLE_FILLCHECKED_NAME(elem_bitwidth, contrib_bitwidth, K, WI_rows) (__private char *dst, int y, int x, int height, int width, element_type value) { \
     int slid = get_sub_group_local_id(); \
+    int sg_size = get_sub_group_size(); \
+    int pack_factor = contrib_bitwidth / elem_bitwidth; \
+    int col_sg_ratio = (sg_size * pack_factor) / K; \
     __private element_type *wi_contrib = (__private element_type *) dst; \
     for (int i = 0; i < WI_rows; i++) { \
-        element_type fill_value = ((slid < width - x) && (i < height - y)) ? value : 0; \
+        element_type fill_value = slid % K < width - x && i * col_sg_ratio < height - y ? value : 0; \
         wi_contrib[i] = fill_value; \
     } \
 }
 
-#define DEFINE_FILLCHECKED__(element_type, elem_bitwidth, WI_rows) \
-  DEFINE_FILLCHECKED_IMPL(element_type, elem_bitwidth, WI_rows)
+#define DEFINE_FILLCHECKED__(element_type, elem_bitwidth, contrib_bitwidth, K, WI_rows) \
+  DEFINE_FILLCHECKED_IMPL(element_type, elem_bitwidth, contrib_bitwidth, K, WI_rows)
 
-#define DEFINE_FILLCHECKED(element_type, WI_rows) \
-  DEFINE_FILLCHECKED__(element_type, BITWIDTH(element_type), WI_rows)
+#define DEFINE_FILLCHECKED(element_type, contrib_type, K, WI_rows) \
+  DEFINE_FILLCHECKED__(element_type, BITWIDTH(element_type), BITWIDTH(contrib_type), K, WI_rows)
+
+#define DEFINE_FILLCHECKED_K(element_type, contrib_type, K) \
+  DEFINE_FILLCHECKED(element_type, contrib_type, K, 1) \
+  DEFINE_FILLCHECKED(element_type, contrib_type, K, 2) \
+  DEFINE_FILLCHECKED(element_type, contrib_type, K, 4) \
+  DEFINE_FILLCHECKED(element_type, contrib_type, K, 8) \
+  DEFINE_FILLCHECKED(element_type, contrib_type, K, 16) \
+  DEFINE_FILLCHECKED(element_type, contrib_type, K, 32) \
+  DEFINE_FILLCHECKED(element_type, contrib_type, K, 64) \
+  DEFINE_FILLCHECKED(element_type, contrib_type, K, 128)
+
+#define DEFINE_FILLCHECKED_CONTRIB(element_type, contrib_type) \
+  DEFINE_FILLCHECKED_K(element_type, contrib_type, 8) \
+  DEFINE_FILLCHECKED_K(element_type, contrib_type, 16) \
+  DEFINE_FILLCHECKED_K(element_type, contrib_type, 32) \
 
 #define DEFINE_FILLCHECKED_GROUP(element_type) \
-    DEFINE_FILLCHECKED(element_type, 1) \
-    DEFINE_FILLCHECKED(element_type, 2) \
-    DEFINE_FILLCHECKED(element_type, 4) \
-    DEFINE_FILLCHECKED(element_type, 8) \
-    DEFINE_FILLCHECKED(element_type, 16) \
-    DEFINE_FILLCHECKED(element_type, 32) \
-    DEFINE_FILLCHECKED(element_type, 64) \
-    DEFINE_FILLCHECKED(element_type, 128)
+  DEFINE_FILLCHECKED_CONTRIB(element_type, short) \
+  DEFINE_FILLCHECKED_CONTRIB(element_type, int) \
 
 DEFINE_FILLCHECKED_GROUP(char)
 DEFINE_FILLCHECKED_GROUP(short)

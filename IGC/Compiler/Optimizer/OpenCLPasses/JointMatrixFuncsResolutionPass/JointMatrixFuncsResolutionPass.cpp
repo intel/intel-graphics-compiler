@@ -856,25 +856,9 @@ void JointMatrixFuncsResolutionPass::Validate2DBlockLoadStore(GetMatrixFuncNameO
         }
     }
 
-    if (operation == LoadChecked) {
-        if (m_SIMDSize == 32 && !(operationLayout == LayoutRowMajor && desc->bitWidth == 32 && desc->columns == 16)) {
-            std::string msg = "Unsupported parameters for matrix " + operationName + " with SIMD size 32, layout: " + std::to_string(operationLayout) +
-                              ", element size: " + std::to_string(desc->bitWidth) + ", number of columns: " + std::to_string(desc->columns) + ".";
-            m_Ctx->EmitError(msg.c_str(), ctx);
-        }
-    }
     if (operation == StoreChecked) {
-        if (m_SIMDSize == 32) {
-            std::string msg = "Matrix " + operationName + " is not supported for SIMD size 32.";
-            m_Ctx->EmitError(msg.c_str(), ctx);
-        }
         if (operationLayout == LayoutColumnMajor) {
             std::string msg = "Matrix " + operationName + " is not supported for ColumnMajor layout.";
-            m_Ctx->EmitError(msg.c_str(), ctx);
-        }
-        if (getNumRowsPerWI(desc) < desc->rows) {
-            std::string msg = "Unsupported matrix size for " + operationName + ", element size: " + std::to_string(desc->bitWidth)
-             + ", number of rows: " + std::to_string(desc->rows) + ", number of columns: " + std::to_string(desc->columns) + ".";
             m_Ctx->EmitError(msg.c_str(), ctx);
         }
     }
@@ -1839,7 +1823,10 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveFillChecked(CallInst *CI)
      * have a single set of store builtins for floats and integer */
     Value *fillValueCast = builder.CreateBitCast(fillValue, Type::getIntNTy(builder.getContext(), desc.bitWidth));
 
-    std::string funcName = "__builtin_spriv_OpJointMatrixFillCheckedINTEL_i" + std::to_string(desc.bitWidth) + "_" + std::to_string(getNumRowsPerWI(&desc));
+    std::string funcName = "__builtin_spirv_OpJointMatrixFillCheckedINTEL_i" + std::to_string(desc.bitWidth) +
+                           "_i" + std::to_string(desc.contribBitWidth) +
+                           "_k" + std::to_string(desc.columns) +
+                           "_wi" + std::to_string(getNumRowsPerWI(&desc));
     FunctionType *funcType = FunctionType::get(retTy, { arrayTy, yVal->getType(), xVal->getType(),
             heightVal->getType(), widthVal->getType(), fillValueCast->getType() }, false);
     std::vector<Value *> Args = { dst, yVal, xVal, heightVal, widthVal, fillValueCast };

@@ -23,7 +23,7 @@ define spir_kernel void @test(i8 addrspace(1)* %ptr1, i8 addrspace(1)* %ptr2, fl
 ; CHECK:    [[TMP3:%.*]] = alloca <8 x i16>
 ; CHECK:    [[TMP4:%.*]] = alloca <8 x float>
 ; CHECK:    [[TMP5:%.*]] = bitcast <8 x float>* [[TMP4]] to i8*
-; CHECK:    call void @__builtin_spriv_OpJointMatrixFillCheckedINTEL_i32_8(i8* [[TMP5]], i32 3, i32 4, i32 5, i32 6, i32 1065353216)
+; CHECK:    call void @__builtin_spirv_OpJointMatrixFillCheckedINTEL_i32_i32_k16_wi8(i8* [[TMP5]], i32 3, i32 4, i32 5, i32 6, i32 1065353216)
 ; CHECK:    [[TMP6:%.*]] = load <8 x float>, <8 x float>* [[TMP4]]
 ; CHECK:    [[TMP7:%.*]] = bitcast <8 x i16>* [[TMP3]] to i8*
 ; CHECK:    call void @__builtin_spriv_OpJointMatrixLoadCheckedINTEL_PackedA_RowMajor_SG16_8x16_i16_8_v8i8_pi32_i32(i8* [[TMP7]], i8 addrspace(1)* %ptr1, i32 3, i32 4, i32 10, i32 11, i64 12, i32 0)
