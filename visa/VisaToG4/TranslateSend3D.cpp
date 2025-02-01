@@ -1266,9 +1266,11 @@ IR_Builder::constructSrcPayloadDualRenderTarget(vISA_RT_CONTROLS cntrls,
   auto payloadUD = createSendPayloadDcl(numElts, Type_UD);
   auto payloadUW = createSendPayloadDcl(numElts, Type_UW);
   auto payloadF = createSendPayloadDcl(numElts, Type_F);
+  auto payloadUB = createSendPayloadDcl(numElts, Type_UB);
 
   payloadUW->setAliasDeclare(payloadUD, 0);
   payloadF->setAliasDeclare(payloadUD, 0);
+  payloadUB->setAliasDeclare(payloadUD, 0);
 
   // Check whether coalescing is possible
   // coalesc payload by checking whether the source is already prepared in a
@@ -1398,7 +1400,7 @@ IR_Builder::constructSrcPayloadDualRenderTarget(vISA_RT_CONTROLS cntrls,
     }
 
     if (cntrls.isStencil) {
-      Copy_SrcRegRegion_To_Payload(payloadUW, regOff, S, execSize, instOpt);
+      Copy_SrcRegRegion_To_Payload(payloadUB, regOff, S, execSize, instOpt);
     }
 
     srcToUse = createSrcRegRegion(payloadUD, getRegionStride1());
