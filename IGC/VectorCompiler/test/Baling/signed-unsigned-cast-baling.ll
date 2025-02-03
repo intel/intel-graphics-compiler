@@ -1,13 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2023 Intel Corporation
+; Copyright (C) 2020-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt %use_old_pass_manager% -GenXFuncBaling -print-baling-info -disable-output \
-; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 declare <8 x float> @some.intrinsic()
 declare void @some.another.intrinsic(<8 x float>)
 

@@ -17,7 +17,6 @@
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;
 
-; Gen9 VISA check
 ; CHECK: movs (M1_NM, 1) %bss({{[0-9]}}) V{{[0-9].*}}(
 
 ; COM: ;;;;;;;;;; KERNEL ;;;;;;;;;;
@@ -32,7 +31,7 @@ define dllexport spir_kernel void @simple(i32 %surf, i32 %samp) #1 {
 declare !genx_intrinsic_id !6 void @llvm.genx.write.predef.surface.p0i32(i32*, i32) #2
 
 attributes #0 = { "VCPredefinedVariable" }
-attributes #1 = { "CMGenxMain" "VC.Stack.Amount"="0" "target-cpu"="Gen9" }
+attributes #1 = { "CMGenxMain" "VC.Stack.Amount"="0" "target-cpu"="XeLP" }
 attributes #2 = { nounwind writeonly }
 
 !genx.kernels = !{!0}

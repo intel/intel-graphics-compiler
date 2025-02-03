@@ -1,16 +1,16 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2024 Intel Corporation
+; Copyright (C) 2020-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABILegacy -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMABILegacy -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABILegacy -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMABILegacy -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
-; RUN: %opt_new_pm_typed -passes=CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_new_pm_opaque -passes=CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt_new_pm_typed -passes=CMABI -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_new_pm_opaque -passes=CMABI -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
@@ -18,19 +18,14 @@ target datalayout = "e-p:64:64-i64:64-n8:16:32"
 ; CHECK: @global.int
 ; CHECK-NOT: @global.int
 
-; Function Attrs: nounwind readnone
 declare <8 x i32> @llvm.genx.wrregioni.v8i32.i32.i16.i1(<8 x i32>, i32, i32, i32, i32, i16, i32, i1)
 
-; Function Attrs: nounwind readnone
 declare <4 x float> @llvm.genx.wrregionf.v4f32.f32.i16.i1(<4 x float>, float, i32, i32, i32, i16, i32, i1)
 
-; Function Attrs: nounwind readnone
-declare <10 x float> @llvm.genx.wrregionf.v10f32.v4f32.i16.i1(<10 x float>, <4 x float>, i32, i32, i32, i16, i32, i1) #2
+declare <10 x float> @llvm.genx.wrregionf.v10f32.v4f32.i16.i1(<10 x float>, <4 x float>, i32, i32, i32, i16, i32, i1)
 
-; Function Attrs: nounwind
 declare void @llvm.genx.oword.st.v8i32(i32, i32, <8 x i32>)
 
-; Function Attrs: noinline nounwind
 define internal spir_func i32 @foo(<8 x i32>* %foo.int.vec.ref.ptr, float %foo.value, <4 x float>* %foo.flt.vec.ref.ptr) {
 ; CHECK: define internal spir_func { i32, <8 x i32>, <4 x float>, i32 } @foo(<8 x i32> %[[FOO_INT_VEC_IN:[^ ]+]], float %foo.value, <4 x float> %[[FOO_FLT_VEC_IN:[^ ]+]], i32 %global.int.in) {
 ; CHECK: %global.int.local = alloca i32
@@ -89,7 +84,6 @@ define internal spir_func i32 @foo(<8 x i32>* %foo.int.vec.ref.ptr, float %foo.v
 ; CHECK: ret { i32, <8 x i32>, <4 x float>, i32 } %[[INSERT_GLOBAL_INT]]
 }
 
-; Function Attrs: noinline nounwind
 define dllexport void @kernel(float %kernel.value) {
 ; CHECK: %global.int.local = alloca i32, align 4
 ; CHECK-TYPED-PTRS: store i32 0, i32* %global.int.local
@@ -135,6 +129,3 @@ define dllexport void @kernel(float %kernel.value) {
   call void @llvm.genx.oword.st.v8i32(i32 0, i32 0, <8 x i32> %kernel.int.vec.ref.new)
   ret void
 }
-
-!genx.kernels = !{!0}
-!0 = !{void (float)* @kernel}

@@ -1,13 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2024 Intel Corporation
+; Copyright (C) 2023-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXFuncBaling -print-baling-info=true -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck --match-full-lines %s
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXFuncBaling -print-baling-info=true -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck --match-full-lines %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXFuncBaling -print-baling-info=true -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=XeHPG -S < %s | FileCheck --match-full-lines %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXFuncBaling -print-baling-info=true -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=XeHPG -S < %s | FileCheck --match-full-lines %s
 ; ------------------------------------------------
 ; GenXBaling
 ; ------------------------------------------------

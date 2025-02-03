@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2024 Intel Corporation
+; Copyright (C) 2023-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -17,7 +17,6 @@
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;
 
-; Gen9 VISA check
 ; CHECK-DAG: .decl [[V1:V[0-9]+]] v_type=G type=d num_elts=1 align=dword
 ; CHECK-DAG: .decl [[V2:V[0-9]+]] v_type=G type=ud num_elts=1 alias=<[[V1]], 0>
 ; CHECK-DAG: .implicit_LOCAL_ID [[V1]] offset=24 size=4

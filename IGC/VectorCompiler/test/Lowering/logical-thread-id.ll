@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -9,10 +9,10 @@
 ; COM: This test checks hwtid for some platforms.
 ; COM: Currently there are these ways to generate HWTID:
 ; COM:  - Predefined variable (CHECK-PREDEF): all before XeHP
-; COM:  - XeHP-like concatination (CHECK-XeHP): XeHP+ excluding XeHPC
-; COM:  - XeHPC-like concatination (CHECK-XeHPC): XeHPC
-; COM:  - Xe2-like concatination (CHECK-Xe2): Xe2
-; COM:  - Xe3-like concatination (CHECK-Xe3): Xe3
+; COM:  - XeHP-like concatenation (CHECK-XeHP): XeHP+ excluding XeHPC
+; COM:  - XeHPC-like concatenation (CHECK-XeHPC): XeHPC
+; COM:  - Xe2-like concatenation (CHECK-Xe2): Xe2
+; COM:  - Xe3-like concatenation (CHECK-Xe3): Xe3
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | \
 ; RUN: FileCheck %s --check-prefix=CHECK-PREDEF

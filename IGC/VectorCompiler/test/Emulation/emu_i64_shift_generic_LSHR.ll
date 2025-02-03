@@ -1,13 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt %use_old_pass_manager% -GenXEmulate -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -mattr=+emulate_i64 -S < %s | FileCheck %s
+; RUN: -mcpu=XeHPG -mattr=+emulate_i64 -S < %s | FileCheck %s
 
 ; COM: "CT" stands for "casted type"
 ; COM: "ET" valid type (the type by which we emulate an operation)

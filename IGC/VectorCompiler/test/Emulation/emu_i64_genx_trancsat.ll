@@ -1,15 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt %use_old_pass_manager% -GenXEmulate -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -mattr=+emulate_i64 -S < %s | FileCheck %s
+; RUN: -mcpu=XeHPG -mattr=+emulate_i64 -S < %s | FileCheck %s
 
-; COM: these tests just check that there is no compilation/asserts failures
+; COM: these tests just check that there is no compilation/assert failures
 
 declare <2 x i64>  @llvm.genx.uutrunc.sat.v2i64.v2i8(<2 x i8>)
 declare <2 x i64> @llvm.genx.uutrunc.sat.v2i64.v2i16(<2 x i16>)

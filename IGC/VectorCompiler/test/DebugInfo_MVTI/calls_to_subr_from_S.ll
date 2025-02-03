@@ -1,17 +1,17 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Gen9 \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPG \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -vc-enable-dbginfo-dumps \
 ; RUN: -vc-dump-module-to-visa-transform-info-path=%basename_t.structure \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
-; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Gen9 \
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPG \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -vc-enable-dbginfo-dumps \
 ; RUN: -vc-dump-module-to-visa-transform-info-path=%basename_t.structure \
@@ -57,11 +57,11 @@ define dllexport void @main_kernel(i32 %0, i32 %1, i32 %2, i64 %privBase) local_
 ; Function Attrs: nounwind readonly
 declare <8 x i64> @llvm.genx.oword.ld.v8i64(i32, i32, i32) #4
 
-attributes #0 = { noinline nounwind readnone "target-cpu"="Gen9" "VC.Builtin" }
-attributes #1 = { noinline nounwind "CMStackCall" "target-cpu"="Gen9" }
-attributes #2 = { nounwind "target-cpu"="Gen9" }
-attributes #3 = { noinline nounwind "CMGenxMain" "oclrt"="1" "target-cpu"="Gen9" }
-attributes #4 = { nounwind readonly "target-cpu"="Gen9" }
+attributes #0 = { noinline nounwind readnone "target-cpu"="XeHPG" "VC.Builtin" }
+attributes #1 = { noinline nounwind "CMStackCall" "target-cpu"="XeHPG" }
+attributes #2 = { nounwind "target-cpu"="XeHPG" }
+attributes #3 = { noinline nounwind "CMGenxMain" "oclrt"="1" "target-cpu"="XeHPG" }
+attributes #4 = { nounwind readonly "target-cpu"="XeHPG" }
 
 !opencl.enable.FP_CONTRACT = !{}
 !spirv.Source = !{!0}

@@ -1,17 +1,17 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Gen9 \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPG \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -vc-enable-dbginfo-dumps \
 ; RUN: -vc-dump-module-to-visa-transform-info-path=%basename_t.structure \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
-; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Gen9 \
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPG \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -vc-enable-dbginfo-dumps \
 ; RUN: -vc-dump-module-to-visa-transform-info-path=%basename_t.structure \
@@ -47,10 +47,10 @@ define dllexport spir_kernel void @test_kernel(i32 %0, i32 %1) local_unnamed_add
   ret void
 }
 
-attributes #0 = { nounwind readonly "target-cpu"="Gen9" }
-attributes #1 = { nounwind "target-cpu"="Gen9" }
-attributes #2 = { noinline nounwind readnone "target-cpu"="Gen9" "VC.Builtin" }
-attributes #3 = { noinline nounwind "CMGenxMain" "target-cpu"="Gen9" }
+attributes #0 = { nounwind readonly "target-cpu"="XeHPG" }
+attributes #1 = { nounwind "target-cpu"="XeHPG" }
+attributes #2 = { noinline nounwind readnone "target-cpu"="XeHPG" "VC.Builtin" }
+attributes #3 = { noinline nounwind "CMGenxMain" "target-cpu"="XeHPG" }
 attributes #4 = { nounwind readnone }
 
 !opencl.enable.FP_CONTRACT = !{}

@@ -1,23 +1,23 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt_legacy_typed %use_old_pass_manager% -CMImpParam \
-; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix=CHECK-TYPED-PTRS
 ; RUN: %opt_legacy_opaque %use_old_pass_manager% -CMImpParam \
-; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix=CHECK-OPAQUE-PTRS
 
 ; RUN: %opt_new_pm_typed -passes=CMImpParam \
-; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix=CHECK-TYPED-PTRS
 ; RUN: %opt_new_pm_opaque -passes=CMImpParam \
-; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix=CHECK-OPAQUE-PTRS
 
 ; Test case #1
@@ -32,7 +32,7 @@ define dllexport spir_kernel void @test_implicit_line() #0 !dbg !6 {
 
 declare <3 x i32> @llvm.genx.local.id.v3i32() #0
 
-attributes #0 = { "target-cpu"="Gen9" }
+attributes #0 = { "target-cpu"="XeHPG" }
 
 !genx.kernels = !{!0}
 !llvm.dbg.cu = !{!2}

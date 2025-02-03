@@ -1,20 +1,19 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2024 Intel Corporation
+; Copyright (C) 2020-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABILegacy -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMABILegacy -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABILegacy -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMABILegacy -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
-; RUN: %opt_new_pm_typed -passes=CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_new_pm_opaque -passes=CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt_new_pm_typed -passes=CMABI -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_new_pm_opaque -passes=CMABI -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
-; Function Attrs: noinline nounwind
 define internal spir_func void @bar(<8 x i32>* %vec.ref, i32 %val) {
 ; CHECK: define internal spir_func <8 x i32> @bar(<8 x i32> %[[BAR_VEC_IN:[^ ]+]], i32 %val) {
 ; CHECK: %[[BAR_VEC_ALLOCA:[^ ]+]] = alloca <8 x i32>
@@ -33,7 +32,6 @@ define internal spir_func void @bar(<8 x i32>* %vec.ref, i32 %val) {
 ; CHECK: ret <8 x i32> %[[BAR_VEC_RET]]
 }
 
-; Function Attrs: noinline nounwind
 define internal spir_func void @foo(<8 x i32>* %vector.ref, i32 %value) {
 ; CHECK: define internal spir_func <8 x i32> @foo(<8 x i32> %[[FOO_VEC_IN:[^ ]+]], i32 %value) {
 ; CHECK: %[[FOO_VEC_ALLOCA:[^ ]+]] = alloca <8 x i32>
@@ -51,7 +49,6 @@ define internal spir_func void @foo(<8 x i32>* %vector.ref, i32 %value) {
 ; CHECK: ret <8 x i32> %[[FOO_VEC_RET]]
 }
 
-; Function Attrs: noinline nounwind
 define dllexport void @kernel(i32 %val) {
   %vec.alloca = alloca <8 x i32>, align 32
 ; CHECK-TYPED-PTRS: %vec.alloca.val = load <8 x i32>, <8 x i32>* %vec.alloca
@@ -67,6 +64,3 @@ define dllexport void @kernel(i32 %val) {
 ; CHECK: %vec.use = extractelement <8 x i32> %vec.changed, i32 0
   ret void
 }
-
-!genx.kernels = !{!0}
-!0 = !{void (i32)* @kernel}

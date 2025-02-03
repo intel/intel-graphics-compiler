@@ -8,20 +8,20 @@
 
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXVerify -genx-verify-terminate=no \
 ; RUN: -genx-verify-all-fatal=1 -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -genx-verify-stage=post-ir-adaptors -S < %s 2>&1 | FileCheck \
+; RUN: -mcpu=XeHPG -genx-verify-stage=post-ir-adaptors -S < %s 2>&1 | FileCheck \
 ; RUN: --check-prefixes=CHECK %s
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXVerify -genx-verify-terminate=no \
 ; RUN: -genx-verify-all-fatal=1 -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -genx-verify-stage=post-ir-adaptors -S < %s 2>&1 | FileCheck \
+; RUN: -mcpu=XeHPG -genx-verify-stage=post-ir-adaptors -S < %s 2>&1 | FileCheck \
 ; RUN: --check-prefixes=CHECK %s
 
 ; RUN: %opt_new_pm_typed -passes=GenXVerify -genx-verify-terminate=no \
 ; RUN: -genx-verify-all-fatal=1 -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -genx-verify-stage=post-ir-adaptors -S < %s 2>&1 | FileCheck \
+; RUN: -mcpu=XeHPG -genx-verify-stage=post-ir-adaptors -S < %s 2>&1 | FileCheck \
 ; RUN: --check-prefixes=CHECK %s
 ; RUN: %opt_new_pm_opaque -passes=GenXVerify -genx-verify-terminate=no \
 ; RUN: -genx-verify-all-fatal=1 -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -genx-verify-stage=post-ir-adaptors -S < %s 2>&1 | FileCheck \
+; RUN: -mcpu=XeHPG -genx-verify-stage=post-ir-adaptors -S < %s 2>&1 | FileCheck \
 ; RUN: --check-prefixes=CHECK %s
 
 target datalayout = "e-p:64:64-p6:32:32-i64:64-n8:16:32:64"

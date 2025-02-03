@@ -17,7 +17,6 @@
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;
 
-; Gen9 VISA check
 ; CHECK: addr_add (M1, 1) [[A0:A[0-9]]](0)<1> &V{{[0-9]+}}[616] [[VBASE:V[0-9]+]](
 ; CHECK-NEXT: addr_add (M1, 1) [[A1:A[0-9]]](0)<1> &V{{[0-9]+}}[617] [[VBASE]](
 ; CHECK-NEXT: addr_add (M1, 1) [[A2:A[0-9]]](0)<1> [[A0]](0)<1> 0x264:uw

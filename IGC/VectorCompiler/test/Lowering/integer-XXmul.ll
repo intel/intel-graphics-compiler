@@ -1,16 +1,16 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 \
+; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPG \
 ; RUN:      -mtriple=spir64-unknown-unknown -mattr=+mul_ddq -S < %s | \
 ; RUN: FileCheck %s --check-prefix=CHECK_WITH_MUL_DDQ
 
-; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 \
+; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPG \
 ; RUN:      -mtriple=spir64-unknown-unknown -mattr=-mul_ddq -S < %s | \
 ; RUN: FileCheck %s --check-prefix=CHECK_NO_MUL_DDQ
 

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2024 Intel Corporation
+; Copyright (C) 2023-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -9,13 +9,12 @@
 ; COM: ;;;;;;;;;; RUNNERS ;;;;;;;;;;
 
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXCisaBuilderPass -GenXFinalizer \
-; RUN: -march=genx64 -mtriple=spir64-unknown-unknown -finalizer-opts="-dumpcommonisa -isaasmToConsole" -mcpu=Gen9 < %s | FileCheck %s
+; RUN: -march=genx64 -mtriple=spir64-unknown-unknown -finalizer-opts="-dumpcommonisa -isaasmToConsole" -mcpu=XeHPG < %s | FileCheck %s
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXCisaBuilderPass -GenXFinalizer \
-; RUN: -march=genx64 -mtriple=spir64-unknown-unknown -finalizer-opts="-dumpcommonisa -isaasmToConsole" -mcpu=Gen9 < %s | FileCheck %s
+; RUN: -march=genx64 -mtriple=spir64-unknown-unknown -finalizer-opts="-dumpcommonisa -isaasmToConsole" -mcpu=XeHPG < %s | FileCheck %s
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;
 
-; Gen9 VISA check
 ; CHECK: oword_ld (2) T{{[0-9]}} 0x0:ud [[TMP0:[A-z0-9]*]].0
 ; CHECK: mov (M1, 8) [[TMP1:[A-z0-9]*]](0,0)<1> (-)[[TMP0]](0,0)<1;1,0>
 ; CHECK: oword_st (2) T{{[0-9]}} 0x0:ud [[TMP1]].0
@@ -33,8 +32,8 @@ define dllexport spir_kernel void @the_test(i32 %0, i32 %1) local_unnamed_addr #
   ret void
 }
 
-attributes #0 = { "target-cpu"="Gen9" }
-attributes #1 = { noinline nounwind "CMGenxMain" "VC.Stack.Amount"="0" "target-cpu"="Gen9" }
+attributes #0 = { "target-cpu"="XeHPG" }
+attributes #1 = { noinline nounwind "CMGenxMain" "VC.Stack.Amount"="0" "target-cpu"="XeHPG" }
 attributes #2 = { nounwind }
 
 !spirv.Source = !{!0}

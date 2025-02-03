@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -9,11 +9,11 @@
 ; Check subroutine argument definition
 
 ; XFAIL: *
-; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Gen9 \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPG \
 ; RUN: -vc-enable-dbginfo-dumps \
 ; RUN: -vc-dbginfo-dumps-name-override=%basename_t \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
-; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Gen9 \
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPG \
 ; RUN: -vc-enable-dbginfo-dumps \
 ; RUN: -vc-dbginfo-dumps-name-override=%basename_t \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null

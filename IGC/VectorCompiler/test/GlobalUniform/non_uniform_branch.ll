@@ -1,14 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2024 Intel Corporation
+; Copyright (C) 2023-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXGlobalUniformAnalysis -print-global-uniform-info \
-; RUN: -march=genx64 -mcpu=Gen9 -disable-output -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: -march=genx64 -mcpu=XeHPG -disable-output -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXGlobalUniformAnalysis -print-global-uniform-info \
-; RUN: -march=genx64 -mcpu=Gen9 -disable-output -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: -march=genx64 -mcpu=XeHPG -disable-output -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 ; CHECK: Non-uniform basic blocks:
 ; CHECK-DAG: BB1

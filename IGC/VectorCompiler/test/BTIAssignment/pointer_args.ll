@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,15 +8,15 @@
 
 ; Check that bti is assigned to opaque pointer state arguments.
 
-; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS,RAW,RAW-TYPED-PTRS
-; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXBTIAssignment -instcombine -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS,CLEAN
-; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,RAW,RAW-OPAQUE-PTRS
-; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXBTIAssignment -instcombine -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,CLEAN
+; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXBTIAssignment -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS,RAW,RAW-TYPED-PTRS
+; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXBTIAssignment -instcombine -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS,CLEAN
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXBTIAssignment -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,RAW,RAW-OPAQUE-PTRS
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXBTIAssignment -instcombine -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,CLEAN
 
-; RUN: %opt_new_pm_typed -passes=GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS,RAW,RAW-TYPED-PTRS
-; RUN: %opt_new_pm_typed -passes=GenXBTIAssignment,instcombine -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS,CLEAN
-; RUN: %opt_new_pm_opaque -passes=GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,RAW,RAW-OPAQUE-PTRS
-; RUN: %opt_new_pm_opaque -passes=GenXBTIAssignment,instcombine -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,CLEAN
+; RUN: %opt_new_pm_typed -passes=GenXBTIAssignment -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS,RAW,RAW-TYPED-PTRS
+; RUN: %opt_new_pm_typed -passes=GenXBTIAssignment,instcombine -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS,CLEAN
+; RUN: %opt_new_pm_opaque -passes=GenXBTIAssignment -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,RAW,RAW-OPAQUE-PTRS
+; RUN: %opt_new_pm_opaque -passes=GenXBTIAssignment,instcombine -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,CLEAN
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"

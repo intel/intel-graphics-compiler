@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXAggregatePseudoLowering -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXAggregatePseudoLowering -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s
 
 %vec3_t = type { <16 x float>, <16 x float>, <16 x float> }
 %folded_st = type { <16 x float>, { <16 x float>, <16 x float> } }

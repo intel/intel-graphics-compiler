@@ -17,7 +17,6 @@
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;
 
-; Gen9 VISA check
 ; CHECK: mov (M1_NM, 1) %impl_arg_buf_ptr({{.*}})<{{[0-9]}}> V{{[0-9].*}}(
 ; CHECK: mov (M1_NM, 8) V{{[0-9].*}}({{.*}})<{{[0-9]}}> %local_id_buf_ptr(
 
@@ -38,9 +37,9 @@ declare !internal_intrinsic_id !5 void @llvm.vc.internal.write.variable.region.p
 declare void @llvm.genx.oword.st.v8i64(i32, i32, <8 x i64>) #3
 
 attributes #0 = { "VCPredefinedVariable" }
-attributes #1 = { "RequiresImplArgsBuffer" "target-cpu"="Gen9" }
-attributes #2 = { nounwind readonly "target-cpu"="Gen9" }
-attributes #3 = { nounwind writeonly "target-cpu"="Gen9" }
+attributes #1 = { "RequiresImplArgsBuffer" "target-cpu"="XeLP" }
+attributes #2 = { nounwind readonly "target-cpu"="XeLP" }
+attributes #3 = { nounwind writeonly "target-cpu"="XeLP" }
 attributes #4 = { nounwind }
 
 !genx.kernels = !{!0}

@@ -1,23 +1,19 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; ------------------------------------------------
-; VC_asmf09c314a1705dfcb_optimized.ll
-; ------------------------------------------------
-; ModuleID = 'Deserialized SPIRV Module'
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 target triple = "genx64-unknown-unknown"
 
-; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Gen9 \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPG \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -vc-enable-dbginfo-dumps -vc-dbginfo-dumps-name-override=%basename_t \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
-; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Gen9 \
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPG \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -vc-enable-dbginfo-dumps -vc-dbginfo-dumps-name-override=%basename_t \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null

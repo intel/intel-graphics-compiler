@@ -1,22 +1,22 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; Check that bti assignment starts from 1 if debuggable kernels needed.
+; Check that bti assignment starts from 1 if debuggable kernels are needed.
 
-; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
-; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
-; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXBTIAssignment  -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
-; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXBTIAssignment  -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
+; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
+; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXBTIAssignment  -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXBTIAssignment  -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
 
-; RUN: %opt_new_pm_typed -passes=GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
-; RUN: %opt_new_pm_opaque -passes=GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
-; RUN: %opt_new_pm_typed -passes=GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
-; RUN: %opt_new_pm_opaque -passes=GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
+; RUN: %opt_new_pm_typed -passes=GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
+; RUN: %opt_new_pm_opaque -passes=GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
+; RUN: %opt_new_pm_typed -passes=GenXBTIAssignment -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
+; RUN: %opt_new_pm_opaque -passes=GenXBTIAssignment -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
 
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
