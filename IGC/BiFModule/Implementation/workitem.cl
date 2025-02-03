@@ -40,9 +40,9 @@ uint __intel_WorkgroupSize()
 size_t __intel_EnqueuedWorkgroupSize()
 {
     size_t totalWorkGroupSize =
-        __builtin_IB_get_enqueued_local_size(0) *
-        __builtin_IB_get_enqueued_local_size(1) *
-        __builtin_IB_get_enqueued_local_size(2);
+        (size_t) __builtin_IB_get_enqueued_local_size(0) *
+        (size_t) __builtin_IB_get_enqueued_local_size(1) *
+        (size_t) __builtin_IB_get_enqueued_local_size(2);
 
     BuiltinAssumeGE0(totalWorkGroupSize);
     return totalWorkGroupSize;
@@ -105,8 +105,8 @@ size_t OVERLOADABLE __intel_GlobalInvocationId(uint dim)
         return 0;
 
     size_t v =
-        __builtin_IB_get_group_id(dim) * __builtin_IB_get_enqueued_local_size(dim) +
-        __intel_LocalInvocationId(dim) + __builtin_IB_get_global_offset(dim);
+        (size_t) __builtin_IB_get_group_id(dim) * (size_t) __builtin_IB_get_enqueued_local_size(dim) +
+        (size_t) __intel_LocalInvocationId(dim) + (size_t) __builtin_IB_get_global_offset(dim);
 
 #ifndef NO_ASSUME_SUPPORT
      BuiltinAssumeGE0(v);
@@ -259,18 +259,38 @@ size_t SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInGlobalLinearId, , )()
   switch (dim) {
     default:
     case 1:
-      result = __intel_GlobalInvocationId(0) - __builtin_IB_get_global_offset(0);
+    {
+      size_t gid0 = __intel_GlobalInvocationId(0);
+      size_t globalOffset0 = __builtin_IB_get_global_offset(0);
+      result = gid0 - globalOffset0;
       break;
+    }
     case 2:
-      result = (__intel_GlobalInvocationId(1) - __builtin_IB_get_global_offset(1))*
-                __builtin_IB_get_global_size(0) + (__intel_GlobalInvocationId(0) - __builtin_IB_get_global_offset(0));
+    {
+      size_t gid0 = __intel_GlobalInvocationId(0);
+      size_t gid1 = __intel_GlobalInvocationId(1);
+      size_t globalOffset0 = __builtin_IB_get_global_offset(0);
+      size_t globalOffset1 = __builtin_IB_get_global_offset(1);
+      size_t globalSize0 = __builtin_IB_get_global_size(0);
+      result = (gid1 - globalOffset1) * globalSize0 +
+               (gid0 - globalOffset0);
       break;
+    }
     case 3:
-      result = ((__intel_GlobalInvocationId(2) - __builtin_IB_get_global_offset(2)) *
-                __builtin_IB_get_global_size(1) * __builtin_IB_get_global_size(0)) +
-               ((__intel_GlobalInvocationId(1) - __builtin_IB_get_global_offset(1)) * __builtin_IB_get_global_size(0)) +
-               (__intel_GlobalInvocationId(0) - __builtin_IB_get_global_offset(0));
+    {
+      size_t gid0 = __intel_GlobalInvocationId(0);
+      size_t gid1 = __intel_GlobalInvocationId(1);
+      size_t gid2 = __intel_GlobalInvocationId(2);
+      size_t globalOffset0 = __builtin_IB_get_global_offset(0);
+      size_t globalOffset1 = __builtin_IB_get_global_offset(1);
+      size_t globalOffset2 = __builtin_IB_get_global_offset(2);
+      size_t globalSize0 = __builtin_IB_get_global_size(0);
+      size_t globalSize1 = __builtin_IB_get_global_size(1);
+      result = ((gid2 - globalOffset2) * globalSize1 * globalSize0) +
+               ((gid1 - globalOffset1) * globalSize0) +
+               (gid0 - globalOffset0);
       break;
+    }
   }
 
   BuiltinAssumeGE0(result);
