@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey=EnableGEPLSRUnknownConstantStep=1 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --regkey=EnableGEPLSRUnknownConstantStep=1 --regkey=EnableGEPLSRMulExpr=0 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
 
 ; Pointer is indexed with an uknown value. As long as the step is constant, we can optimize GEP.
 

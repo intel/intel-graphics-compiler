@@ -293,6 +293,7 @@ private:
     bool doInitialValidation(GetElementPtrInst *GEP);
 
     bool deconstructSCEV(const SCEV *S, const SCEV *&Start, const SCEV *&Step);
+    bool isValidStep(const SCEV* S);
 
     DominatorTree &DT;
     Loop &L;
@@ -966,7 +967,7 @@ void Analyzer::analyzeGEP(GetElementPtrInst *GEP)
     if (!deconstructSCEV(S, Start, Step))
         return;
 
-    if (Step->getSCEVType() != scConstant && IGC_IS_FLAG_DISABLED(EnableGEPLSRUnknownConstantStep) && IGC_IS_FLAG_DISABLED(EnableGEPLSRMulExpr))
+    if (!isValidStep(Step))
         return;
 
     if (S->getType() != Start->getType())
@@ -1190,6 +1191,20 @@ bool Analyzer::deconstructSCEV(const SCEV *S, const SCEV *&Start, const SCEV *&S
     }
 
     return false;
+}
+
+
+bool Analyzer::isValidStep(const SCEV* S)
+{
+    auto Ty = SCEVHelper::dropExt(S)->getSCEVType();
+
+    if (Ty == scConstant)
+        return true;
+
+    if (Ty == scMulExpr && IGC_IS_FLAG_ENABLED(EnableGEPLSRMulExpr))
+        return true;
+
+    return IGC_IS_FLAG_ENABLED(EnableGEPLSRUnknownConstantStep);
 }
 
 

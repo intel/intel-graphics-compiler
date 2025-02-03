@@ -7,7 +7,8 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey=EnableGEPLSRMulExpr=1 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --regkey=EnableGEPLSRUnknownConstantStep=0 --regkey=EnableGEPLSRMulExpr=1 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-MUL-ENABLED
+; RUN: igc_opt --regkey=EnableGEPLSRUnknownConstantStep=0 --regkey=EnableGEPLSRMulExpr=0 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-MUL-DISABLED
 
 ; Reduced index is expressed with SCEVMulExpr.
 
@@ -20,21 +21,36 @@ entry:
   br i1 %cmp1, label %for.body.lr.ph, label %for.end
 
 ; CHECK-LABEL: for.body.lr.ph:
-; CHECK:         [[MULL:%.*]] = mul i64 %multiplier, 44
-; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[MULL]]
-; CHECK:         [[STEP:%.*]] = shl i64 %multiplier, 1
-; CHECK:         br label %for.body
+;
+; CHECK-MUL-ENABLED:      [[MULL:%.*]] = mul i64 %multiplier, 44
+; CHECK-MUL-ENABLED:      [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[MULL]]
+; CHECK-MUL-ENABLED:      [[STEP:%.*]] = shl i64 %multiplier, 1
+;
+; CHECK-MUL-DISABLED-NOT: gep
+;
+; CHECK:                  br label %for.body
 for.body.lr.ph:                                   ; preds = %entry
   br label %for.body
 
 ; CHECK-LABEL: for.body:
-; CHECK:         [[GEP:%.*]] = phi i32 addrspace(1)* [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %for.body ]
-; CHECK:         %i.02 = phi i32 [ 39, %for.body.lr.ph ], [ %inc, %for.body ]
-; CHECK:         store i32 11, i32 addrspace(1)* [[GEP]], align 4
-; CHECK:         %inc = add nuw nsw i32 %i.02, 2
-; CHECK:         %cmp = icmp slt i32 %inc, %n
-; CHECK:         [[GEP_PHI2]] = getelementptr i32, i32 addrspace(1)* [[GEP]], i64 [[STEP]]
-; CHECK:         br i1 %cmp, label %for.body, label %for.cond.for.end_crit_edge
+;
+; CHECK-MUL-ENABLED:      [[GEP:%.*]] = phi i32 addrspace(1)* [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %for.body ]
+; CHECK-MUL-ENABLED:      %i.02 = phi i32 [ 39, %for.body.lr.ph ], [ %inc, %for.body ]
+; CHECK-MUL-ENABLED:      store i32 11, i32 addrspace(1)* [[GEP]], align 4
+; CHECK-MUL-ENABLED:      %inc = add nuw nsw i32 %i.02, 2
+; CHECK-MUL-ENABLED:      %cmp = icmp slt i32 %inc, %n
+; CHECK-MUL-ENABLED:      [[GEP_PHI2]] = getelementptr i32, i32 addrspace(1)* [[GEP]], i64 [[STEP]]
+; CHECK-MUL-ENABLED:      br i1 %cmp, label %for.body, label %for.cond.for.end_crit_edge
+;
+; CHECK-MUL-DISABLED:     %i.02 = phi i32 [ 39, %for.body.lr.ph ], [ %inc, %for.body ]
+; CHECK-MUL-DISABLED:     %add = add nsw i32 %i.02, 5
+; CHECK-MUL-DISABLED:     %zext = zext i32 %add to i64
+; CHECK-MUL-DISABLED:     %idxprom = mul i64 %zext, %multiplier
+; CHECK-MUL-DISABLED:     %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %p, i64 %idxprom
+; CHECK-MUL-DISABLED:     store i32 11, i32 addrspace(1)* %arrayidx, align 4
+; CHECK-MUL-DISABLED:     %inc = add nuw nsw i32 %i.02, 2
+; CHECK-MUL-DISABLED:     %cmp = icmp slt i32 %inc, %n
+; CHECK-MUL-DISABLED:     br i1 %cmp, label %for.body, label %for.cond.for.end_crit_edge
 for.body:                                         ; preds = %for.body.lr.ph, %for.body
   %i.02 = phi i32 [ 39, %for.body.lr.ph ], [ %inc, %for.body ]
   %add = add nsw i32 %i.02, 5
