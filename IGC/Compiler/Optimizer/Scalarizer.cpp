@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -979,57 +979,63 @@ void ScalarizeFunction::visitShuffleVectorInst(ShuffleVectorInst& SI)
     m_removedInsts.insert(&SI);
 }
 
-void ScalarizeFunction::visitCallInst(CallInst& CI)
+void ScalarizeFunction::ScalarizeIntrinsic(IntrinsicInst &II)
 {
-    V_PRINT(scalarizer, "\t\tCall instruction\n");
-    IGC_ASSERT_MESSAGE(&CI, "instruction type dynamic cast failed");
-
-    Function* CalledFunc = CI.getCalledFunction();
-    if (CalledFunc && CalledFunc->getName().startswith("llvm.fshl"))
-    {
-        V_PRINT(scalarizer, "\t\tScalarizing fshl intrinsic\n");
-
-        IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(CI.getType());
-        if (!instType) {
-            recoverNonScalarizableInst(&CI);
-            return;
-        }
-
-        SCMEntry* newEntry = getSCMEntry(&CI);
-
-        unsigned numElements = int_cast<unsigned>(instType->getNumElements());
-
-        SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH> operand0;
-        SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH> operand1;
-        SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH> operand2;
-        bool op0IsConst, op1IsConst, op2IsConst;
-
-        obtainScalarizedValues(operand0, &op0IsConst, CI.getOperand(0), CI);
-        obtainScalarizedValues(operand1, &op1IsConst, CI.getOperand(1), CI);
-        obtainScalarizedValues(operand2, &op2IsConst, CI.getOperand(2), CI);
-
-        SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH> newScalarizedInsts;
-        newScalarizedInsts.resize(numElements);
-        for (unsigned i = 0; i < numElements; i++)
-        {
-            Type* scalarType = operand0[i]->getType();
-            CallInst* scalarFshl = CallInst::Create(
-                Intrinsic::getDeclaration(CI.getModule(), Intrinsic::fshl, { scalarType }),
-                { operand0[i], operand1[i], operand2[i] },
-                CI.getName() + ".scalar",
-                &CI
-            );
-            scalarFshl->copyMetadata(CI);
-            newScalarizedInsts[i] = scalarFshl;
-        }
-
-        updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), &CI, true);
-
-        m_removedInsts.insert(&CI);
+    auto* InstType = dyn_cast<IGCLLVM::FixedVectorType>(II.getType());
+    if (!InstType) {
+        recoverNonScalarizableInst(&II);
+        return;
     }
-    else
+
+    SCMEntry* NewEntry = getSCMEntry(&II);
+
+    unsigned NumElements = int_cast<unsigned>(InstType->getNumElements());
+    unsigned NumOperands = II.arg_size();
+
+    SmallVector<SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>, MAX_INTRINSIC_OPERANDS> Operands(NumOperands);
+    SmallVector<bool, MAX_INTRINSIC_OPERANDS> IsOpConst(NumOperands);
+
+    for(unsigned i = 0; i < NumOperands; i++)
+        obtainScalarizedValues(Operands[i], &IsOpConst[i], II.getOperand(i), II);
+
+    SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH> NewScalarizedInsts(NumElements);
+    for (unsigned i = 0; i < NumElements; i++)
     {
-        recoverNonScalarizableInst(&CI);
+        Type* ScalarType = Operands[0][i]->getType();
+
+        SmallVector<Value*, MAX_INTRINSIC_OPERANDS> ScalarOperands(NumOperands);
+        for(unsigned j = 0; j < NumOperands; j++)
+            ScalarOperands[j] = Operands[j][i];
+
+        auto* ScalarIntr = CallInst::Create(
+            Intrinsic::getDeclaration(II.getModule(), II.getIntrinsicID(), { ScalarType }),
+            ScalarOperands,
+            II.getName() + ".scalar",
+            &II
+        );
+        ScalarIntr->copyMetadata(II);
+        NewScalarizedInsts[i] = ScalarIntr;
+    }
+
+    updateSCMEntryWithValues(NewEntry, &(NewScalarizedInsts[0]), &II, true);
+
+    m_removedInsts.insert(&II);
+}
+
+void ScalarizeFunction::visitIntrinsicInst(IntrinsicInst &II)
+{
+    switch (II.getIntrinsicID())
+    {
+    case Intrinsic::fshl:
+    case Intrinsic::smin:
+    case Intrinsic::smax:
+    case Intrinsic::umin:
+    case Intrinsic::umax:
+        ScalarizeIntrinsic(II);
+        break;
+    default:
+        recoverNonScalarizableInst(&II);
+        break;
     }
 }
 

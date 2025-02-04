@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -36,6 +36,9 @@ namespace IGC
 
     // Maximum width supported as input
 #define MAX_INPUT_VECTOR_WIDTH 16
+
+// Maximum numbers of arguments in intrinsic call
+#define MAX_INTRINSIC_OPERANDS 4
 
 // Define estimated amount of instructions in function
 #define ESTIMATED_INST_NUM 128
@@ -94,8 +97,8 @@ namespace IGC
         void visitExtractElementInst(llvm::ExtractElementInst& SI);
         void visitInsertElementInst(llvm::InsertElementInst& II);
         void visitShuffleVectorInst(llvm::ShuffleVectorInst& SI);
-        void visitCallInst(llvm::CallInst& CI);
         void visitGetElementPtrInst(llvm::GetElementPtrInst& GI);
+        void visitIntrinsicInst(llvm::IntrinsicInst &II);
         void visitInstruction(llvm::Instruction& I);
 
     private:
@@ -113,7 +116,8 @@ namespace IGC
         /// @param Inst instruction to work on
         void recoverNonScalarizableInst(llvm::Instruction* Inst);
 
-
+        /// @brief scalarize Intrinsic Instruction based on numer of operands
+        void ScalarizeIntrinsic(llvm::IntrinsicInst &II);
 
         /*! \name Scalarizarion Utility Functions
          *  \{ */
