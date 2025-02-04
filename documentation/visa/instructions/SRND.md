@@ -95,10 +95,10 @@ SPDX-License-Identifier: MIT
 #### Operand type maps
 - **Type map**
   -  **Dst types:** HF
-  -  **Src types:** F
+  -  **Src types:**
 - **Type map**
   -  **Dst types:** UB
-  -  **Src types:** HF
+  -  **Src types:**
 
 
 ## Text

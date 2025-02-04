@@ -229,6 +229,8 @@ Debug information header format is as follows:
       VarLiveIntervalsGenISA callerbefp;
       ub retAddrValid;
       VarLiveIntervalsGenISA retAddr;
+      uw CEOffsetFromFPOff;
+      uw CEStoreIP;
       uw numCalleeSaveEntries;
       PhyRegSaveInfoPerIP calleeSaveEntry[numCalleeSaveEntries];
       ud numCallerSaveEntries;
@@ -250,6 +252,11 @@ Debug information header format is as follows:
     frame.
 -   **retAddr:** Live-interval of variable holding return address of
     current frame. Valid only if retAddrValid is 1.
+-   **CEOffsetFromFPOff:** Offset from FP where CE ARF register value
+    is stored in current frame. If the value is not stored then this
+    field is 0xffff.
+-   **CEStoreIP:** IP from where CE register value is available on
+    stack. Valid only when CEOffsetFromFPOff is not 0xffff.
 -   **numCalleeSaveEntries:** Number of entries in callee save area
     table. Useful during virtual stack unwinding.
 -   **calleeSaveEntry:** Caller frame's variables allocated to callee

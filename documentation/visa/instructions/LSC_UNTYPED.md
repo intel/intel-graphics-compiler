@@ -329,18 +329,12 @@ and enables one to emulate block loads and stores.
 In this mode a single address is taken and loads successive vector components
 across a regster (or block of them).  Note, transpose only supports SIMD1.
 
-Kernel payload arguments can be read in a program using `AddrType` == `arg`.
-Here is spec defining implicit arguments that may be read using this
-`AddrType`:
-https://github.com/intel-innersource/drivers.gpu.abi/blob/master/internal/implicit-args.md
-
 Atomic operations (except for append counter atomic) are also gather/scatter
 operation.  They operate on the addresses in `Src0Addrs` and possibly with data
 in `Src1Data` and `Src2Data`, and can read back the result to `DstData`
 (or use `%null` to avoid the writeback).  For operations that do not use
 `Src1Data` or `Src2Data`, specify the null register `%null`.  Transpose is
 not permitted for atomic operations.
-
 
 The `lsc_load_strided` and `lsc_store_strided` operations take a single
 address and a stride and generate an arithmetic (linear) sequence to

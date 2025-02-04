@@ -70,13 +70,13 @@ Arithmetic Instructions
 
 - [DIV - division](instructions/DIV.md)
 
-- [DIVM - IEEE floating point divide {SKL,XEHP+}](instructions/DIVM.md)
+- [DIVM - IEEE floating point divide {XEHP+,SKL}](instructions/DIVM.md)
 
 - [DP4A - dot product 4 accumulate {TGLLP+}](instructions/DP4A.md)
 
 - [DPAS - Dot Product Accumulate Systolic {XEHP+}](instructions/DPAS.md)
 
-- [DPASW - Dot Product Accumulate Systolic Wide {XEHP,DG2}](instructions/DPASW.md)
+- [DPASW - Dot Product Accumulate Systolic Wide {DG2,XEHP}](instructions/DPASW.md)
 
 - [EXP - exponent](instructions/EXP.md)
 
@@ -84,7 +84,7 @@ Arithmetic Instructions
 
 - [INV - reciprocal](instructions/INV.md)
 
-- [INVM - Div macro {SKL,XEHP+}](instructions/INVM.md)
+- [INVM - Div macro {XEHP+,SKL}](instructions/INVM.md)
 
 - [LOG - logarithm](instructions/LOG.md)
 
@@ -116,7 +116,7 @@ Arithmetic Instructions
 
 - [RSQRT - inverse square root](instructions/RSQRT.md)
 
-- [RSQTM - Inverse square root macro {SKL,XEHP+}](instructions/RSQTM.md)
+- [RSQTM - Inverse square root macro {XEHP+,SKL}](instructions/RSQTM.md)
 
 - [SAD2 - two-wide sum of absolute {-ICLLP}](instructions/SAD2.md)
 
@@ -126,7 +126,7 @@ Arithmetic Instructions
 
 - [SQRT - square root](instructions/SQRT.md)
 
-- [SQRTM - ieee square root {SKL,XEHP+}](instructions/SQRTM.md)
+- [SQRTM - ieee square root {XEHP+,SKL}](instructions/SQRTM.md)
 
 - [SRND - Stochastic round {PVC_XT+}](instructions/SRND.md)
 
@@ -162,7 +162,7 @@ Control Flow Instructions
 
 - [SUBROUTINE - subroutine](instructions/SUBROUTINE.md)
 
-- [SWITCHJMP - switch jump table {-TGLLP,PVC+}](instructions/SWITCHJMP.md)
+- [SWITCHJMP - switch jump table {PVC+,-TGLLP}](instructions/SWITCHJMP.md)
 
 
 Data Movement Instructions
@@ -296,19 +296,19 @@ Surface-based Memory Access Instructions
 SVM - Shared Virtual Memory Access
 ----------------------------------
 
-- [SVM_SCATTER - SMV scatter](instructions/SVM_SCATTER.md)
-
 - [SVM_BLOCK_LD - SMV Block Load](instructions/SVM_BLOCK_LD.md)
 
-- [SVM_ATOMIC - SVM atomic operations](instructions/SVM_ATOMIC.md)
+- [SVM_GATHER - SMV gather](instructions/SVM_GATHER.md)
+
+- [SVM_BLOCK_ST - SMV Block Store](instructions/SVM_BLOCK_ST.md)
 
 - [SVM_GATHER4_SCALED - SVM gather4 with scaling pitch](instructions/SVM_GATHER4_SCALED.md)
 
 - [SVM_SCATTER4_SCALED - SVM scatter4 with scaling pitch](instructions/SVM_SCATTER4_SCALED.md)
 
-- [SVM_GATHER - SMV gather](instructions/SVM_GATHER.md)
+- [SVM_SCATTER - SMV scatter](instructions/SVM_SCATTER.md)
 
-- [SVM_BLOCK_ST - SMV Block Store](instructions/SVM_BLOCK_ST.md)
+- [SVM_ATOMIC - SVM atomic operations](instructions/SVM_ATOMIC.md)
 
 
 Synchronization Instructions
