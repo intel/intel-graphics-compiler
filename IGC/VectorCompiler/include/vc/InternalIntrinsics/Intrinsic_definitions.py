@@ -187,6 +187,21 @@ Imported_Intrinsics = {
                                   "attributes": "None",
                                   "memory_effects":
                                       { "access": "NoModRef" }, },
+## ``llvm.vc.internal.stochastic.round.to.bf8`` : bf8 stochastic rounding operation
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: input data, f16 scalar or vector (overloaded)
+## * arg1: random number, i8 scalar or vector of the same width as arg0
+##
+## * Return value: i8 scalar or vector of the same width as arg0
+##
+## This intrinsic represents half->bf8 stochastic rounding operations
+    "stochastic_round_to_bf8" : { "result": "anyint",
+                                  "arguments": ["anyfloat", "anyint"],
+                                  "attributes": "None",
+                                  "memory_effects":
+                                      { "access": "NoModRef" }, },
+
 
 ## ``llvm.vc.internal.atomic.`` : intrinsics to represent SPIR-V atomic instructions
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

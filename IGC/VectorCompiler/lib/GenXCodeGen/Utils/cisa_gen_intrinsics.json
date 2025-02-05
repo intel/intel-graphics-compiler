@@ -183,6 +183,15 @@
       "src0": [ "GENERAL", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", 2 ]
     },
+    "vc::InternalIntrinsic::stochastic_round_to_bf8": {
+      "opc": "ISA_SRND",
+      "exec_size": [ "EXECSIZE_NOMASK" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_INTALLOWED", 0 ],
+      "src0": [ "GENERAL", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "NOIMM", "DIRECTONLY", 2 ]
+    },
     "vc::InternalIntrinsic::lsc_atomic_bti": {
       "opc": "ISA_LSC_UNTYPED",
       "gen_opc": "ISA_LSC_ATOMIC",

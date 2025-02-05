@@ -141,6 +141,7 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
     NewI = translateMinMax(I);
     break;
   case GenXIntrinsic::genx_srnd:
+  case GenXIntrinsic::genx_biased_rounding_bf8:
     NewI = translateStochasticRounding(I);
     break;
   case GenXIntrinsic::genx_lsc_xatomic_bti:
@@ -326,8 +327,9 @@ Value *GenXTranslateIntrinsics::translateTFloat32Convert(CallInst &I) const {
 }
 
 Value *GenXTranslateIntrinsics::translateStochasticRounding(CallInst &I) const {
-  IGC_ASSERT_EXIT(GenXIntrinsic::getGenXIntrinsicID(&I) ==
-                  GenXIntrinsic::genx_srnd);
+  auto InputIID = GenXIntrinsic::getGenXIntrinsicID(&I);
+  IGC_ASSERT_EXIT(InputIID == GenXIntrinsic::genx_srnd ||
+                  InputIID == GenXIntrinsic::genx_biased_rounding_bf8);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
   IRBuilder<> Builder(&I);
   Module *M = I.getModule();
@@ -361,6 +363,18 @@ Value *GenXTranslateIntrinsics::translateStochasticRounding(CallInst &I) const {
   auto *RndTy = RndV->getType();
 
   auto IID = vc::InternalIntrinsic::stochastic_round_to_f16;
+  switch (InputIID) {
+  default:
+    IGC_ASSERT_UNREACHABLE();
+  case GenXIntrinsic::genx_srnd:
+    if (RetTy->isIntOrIntVectorTy() && RetElementSize == 8)
+      IID = vc::InternalIntrinsic::stochastic_round_to_bf8;
+    break;
+  case GenXIntrinsic::genx_biased_rounding_bf8:
+    IID = vc::InternalIntrinsic::stochastic_round_to_bf8;
+    break;
+  }
+
 
   Function *Func = vc::InternalIntrinsic::getInternalDeclaration(
       M, IID, {RetTy, SrcTy, RndTy});
