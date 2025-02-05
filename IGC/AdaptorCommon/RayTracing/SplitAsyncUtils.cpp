@@ -232,6 +232,7 @@ bool RematChecker::materializable(const Instruction& I) const
         switch (GII->getIntrinsicID())
         {
         case GenISAIntrinsic::GenISA_GlobalRootSignatureValue:
+        case GenISAIntrinsic::GenISA_GlobalBufferPointer:
         case GenISAIntrinsic::GenISA_DispatchRayIndex:
         case GenISAIntrinsic::GenISA_DispatchDimensions:
         case GenISAIntrinsic::GenISA_frc:
