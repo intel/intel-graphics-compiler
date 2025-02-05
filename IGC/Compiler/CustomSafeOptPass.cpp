@@ -2450,6 +2450,179 @@ void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst& I)
     dp4WithIdentityMatrix(I);
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// This pass removes dead local memory loads and stores. If we remove all such loads and stores, we also
+// remove all local memory fences together with barriers that follow.
+//
+IGC_INITIALIZE_PASS_BEGIN(TrivialLocalMemoryOpsElimination, "TrivialLocalMemoryOpsElimination", "TrivialLocalMemoryOpsElimination", false, false)
+IGC_INITIALIZE_PASS_END(TrivialLocalMemoryOpsElimination, "TrivialLocalMemoryOpsElimination", "TrivialLocalMemoryOpsElimination", false, false)
+
+char TrivialLocalMemoryOpsElimination::ID = 0;
+
+TrivialLocalMemoryOpsElimination::TrivialLocalMemoryOpsElimination() : FunctionPass(ID)
+{
+    initializeTrivialLocalMemoryOpsEliminationPass(*PassRegistry::getPassRegistry());
+}
+
+bool TrivialLocalMemoryOpsElimination::runOnFunction(Function& F)
+{
+    bool change = false;
+
+    IGCMD::MetaDataUtils* pMdUtil = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    if (!isEntryFunc(pMdUtil, &F))
+    {
+        // Skip if it is non-entry function.  For example, a subroutine
+        //   foo ( local int* p) { ...... store v, p; ......}
+        // in which no localMemoptimization will be performed.
+        return change;
+    }
+
+    visit(F);
+    if (!abortPass && (m_LocalLoadsToRemove.empty() ^ m_LocalStoresToRemove.empty()))
+    {
+        for (StoreInst* Inst : m_LocalStoresToRemove)
+        {
+            Inst->eraseFromParent();
+            change = true;
+        }
+
+        for (LoadInst* Inst : m_LocalLoadsToRemove)
+        {
+            if (Inst->use_empty())
+            {
+                Inst->eraseFromParent();
+                change = true;
+            }
+        }
+
+        for (CallInst* Inst : m_LocalFencesBariersToRemove)
+        {
+            Inst->eraseFromParent();
+            change = true;
+        }
+    }
+    m_LocalStoresToRemove.clear();
+    m_LocalLoadsToRemove.clear();
+    m_LocalFencesBariersToRemove.clear();
+
+    return change;
+}
+
+/*
+OCL instruction barrier(CLK_LOCAL_MEM_FENCE); is translate to two instructions
+call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true)
+call void @llvm.genx.GenISA.threadgroupbarrier()
+
+if we remove call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true)
+we must remove next instruction if it is call void @llvm.genx.GenISA.threadgroupbarrier()
+*/
+void TrivialLocalMemoryOpsElimination::findNextThreadGroupBarrierInst(Instruction& I)
+{
+    auto nextInst = I.getNextNonDebugInstruction();
+    if (isa<GenIntrinsicInst>(nextInst))
+    {
+        GenIntrinsicInst* II = cast<GenIntrinsicInst>(nextInst);
+        if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_threadgroupbarrier)
+        {
+            m_LocalFencesBariersToRemove.push_back(dyn_cast<CallInst>(nextInst));
+        }
+    }
+}
+
+void TrivialLocalMemoryOpsElimination::visitLoadInst(LoadInst& I)
+{
+    if (I.getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
+    {
+        m_LocalLoadsToRemove.push_back(&I);
+    }
+    else if (I.getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
+    {
+        abortPass = true;
+    }
+}
+
+void TrivialLocalMemoryOpsElimination::visitStoreInst(StoreInst& I)
+{
+    if (I.getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
+    {
+        if (auto *GV = dyn_cast<GlobalVariable>(I.getPointerOperand()->stripPointerCasts()))
+        {
+            // Device sanitizer instrumentation pass inserts a new local memory
+            // variable and inserts store to the variable in a kernel. The
+            // variable is loaded later in no-inline functions. For this case,
+            // do not eliminate the store.
+            if (GV->getName().startswith("__Asan"))
+            {
+                return;
+            }
+        }
+        m_LocalStoresToRemove.push_back(&I);
+    }
+    else if (I.getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
+    {
+        abortPass = true;
+    }
+}
+
+bool TrivialLocalMemoryOpsElimination::isLocalBarrier(CallInst& I)
+{
+    //check arguments in call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true) if match to
+    // (i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true) it is local barrier
+    std::vector<bool> argumentsOfMemoryBarrier;
+
+    for (auto arg = I.arg_begin(); arg != I.arg_end(); ++arg)
+    {
+        ConstantInt* ci = dyn_cast<ConstantInt>(arg);
+        if (ci) {
+            argumentsOfMemoryBarrier.push_back(ci->getValue().getBoolValue());
+        }
+        else {
+            // argument is not a constant, so we can't tell.
+            return false;
+        }
+    }
+
+    return argumentsOfMemoryBarrier == m_argumentsOfLocalMemoryBarrier;
+}
+
+// If any call instruction use pointer to local memory abort pass execution
+void TrivialLocalMemoryOpsElimination::anyCallInstUseLocalMemory(CallInst& I)
+{
+    Function* fn = I.getCalledFunction();
+
+    if (fn != NULL)
+    {
+        for (auto arg = fn->arg_begin(); arg != fn->arg_end(); ++arg)
+        {
+            if (arg->getType()->isPointerTy())
+            {
+                if (arg->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL || arg->getType()->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC) abortPass = true;
+            }
+        }
+    }
+}
+
+void TrivialLocalMemoryOpsElimination::visitCallInst(CallInst& I)
+{
+    // detect only: llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true)
+    // (note: the first and last arguments are true)
+    // and add them with immediately following barriers to m_LocalFencesBariersToRemove
+    anyCallInstUseLocalMemory(I);
+
+    if (isa<GenIntrinsicInst>(I))
+    {
+        GenIntrinsicInst* II = cast<GenIntrinsicInst>(&I);
+        if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_memoryfence)
+        {
+            if (isLocalBarrier(I))
+            {
+                m_LocalFencesBariersToRemove.push_back(&I);
+                findNextThreadGroupBarrierInst(I);
+            }
+        }
+    }
+ }
+
 ////////////////////////////////////////////////////////////////////////////////
 IGC_INITIALIZE_PASS_BEGIN(TrivialUnnecessaryTGMFenceElimination, "TrivialUnnecessaryTGMFenceElimination", "TrivialUnnecessaryTGMFenceElimination", false, false)
 IGC_INITIALIZE_PASS_END(TrivialUnnecessaryTGMFenceElimination, "TrivialUnnecessaryTGMFenceElimination", "TrivialUnnecessaryTGMFenceElimination", false, false)
