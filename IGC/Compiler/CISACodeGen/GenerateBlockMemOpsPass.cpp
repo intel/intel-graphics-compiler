@@ -726,23 +726,20 @@ Value *GenerateBlockMemOpsPass::checkGep(Instruction *PtrInstr) {
     if (!PtrInstr)
         return nullptr;
 
-    PHINode *Phi = dyn_cast<PHINode>(PtrInstr);
     GetElementPtrInst *Gep = nullptr;
-    if (Phi) {
+    if (PHINode *Phi = dyn_cast<PHINode>(PtrInstr)) {
         unsigned NumIncomingValues = Phi->getNumIncomingValues();
-        if (NumIncomingValues != 2)
+        if (NumIncomingValues != 2) {
             return nullptr;
+        }
 
         BasicBlock *BB = PtrInstr->getParent();
-        Loop *L = LI->getLoopFor(BB);
-        BasicBlock *Preheader = L->getLoopPreheader();
-
-        Value *IncomingVal1 = Phi->getIncomingValueForBlock(Preheader);
-
-        Gep = dyn_cast<GetElementPtrInst>(IncomingVal1);
-
-        if (!Gep)
-            return nullptr;
+        // If this is not a loop, we can't be sure of the flow. Better do nothing.
+        if (Loop *L = LI->getLoopFor(BB)) {
+            BasicBlock *Preheader = L->getLoopPreheader();
+            Value *IncomingVal1 = Phi->getIncomingValueForBlock(Preheader);
+            Gep = dyn_cast<GetElementPtrInst>(IncomingVal1);
+        }
     } else {
         Gep = dyn_cast<GetElementPtrInst>(PtrInstr);
     }
