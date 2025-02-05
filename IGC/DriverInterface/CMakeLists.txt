@@ -38,13 +38,11 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.cpp"
   )
 
-if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
-  list(APPEND IGC_BUILD__SRC__DriverInterface
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/PreprocessSPVIR.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/PromoteBools.cpp"
-    )
-endif()
+list(APPEND IGC_BUILD__SRC__DriverInterface
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/PreprocessSPVIR.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/PromoteBools.cpp"
+  )
 
   set(IGC_BUILD__SRC__RAYTRACING
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/MemRegionAnalysis.cpp"
@@ -65,23 +63,6 @@ endif()
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/OverrideTMaxPass.cpp"
     )
   list(APPEND IGC_BUILD__SRC__DriverInterface ${IGC_BUILD__SRC__RAYTRACING})
-
-if(IGC_BUILD__SPIRV_ENABLED)
-  list(APPEND IGC_BUILD__SRC__DriverInterface
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/libSPIRV/SPIRVBasicBlock.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/libSPIRV/SPIRVDebug.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/libSPIRV/SPIRVDecorate.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/libSPIRV/SPIRVEntry.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/libSPIRV/SPIRVFunction.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/libSPIRV/SPIRVInstruction.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/libSPIRV/SPIRVModule.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/libSPIRV/SPIRVStream.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/libSPIRV/SPIRVType.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/libSPIRV/SPIRVValue.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/SPIRVReader.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/SPIRVUtil.cpp"
-    )
-endif(IGC_BUILD__SPIRV_ENABLED)
 
 
 set(IGC_BUILD__HDR__DriverInterface

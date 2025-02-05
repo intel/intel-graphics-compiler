@@ -58,10 +58,7 @@ for platform in platforms:
   config.substitutions.append(('%VC_BIF_{}_TYPED_PTRS%'.format(platform), bif_file_typed_ptrs))
   config.substitutions.append(('%VC_BIF_{}_OPAQUE_PTRS%'.format(platform), bif_file_opaque_ptrs))
 
-if config.use_khronos_spirv_translator_in_sc == "1":
-  config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-KHR'))
-else:
-  config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-LEGACY'))
+config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-KHR'))
 
 tool_dirs = [
   config.cm_opt_bin_dir,

@@ -13,19 +13,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include <llvmWrapper/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
-#ifndef DX_ONLY_IGC
-#ifndef VK_ONLY_IGC
-#include <AdaptorOCL/SPIRV/SPIRVInternal.h>
-#endif //#ifndef VK_ONLY_IGC
-#endif //#ifndef DX_ONLY_IGC
 #include "MDFrameWork.h"
 #include "Probe/Assertion.h"
 
-#ifndef DX_ONLY_IGC
-#ifndef VK_ONLY_IGC
-using namespace igc_spv;
-#endif //#ifndef VK_ONLY_IGC
-#endif //#ifndef DX_ONLY_IGC
+static const unsigned SPIRAS_Local = 3;
+
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
@@ -214,7 +206,7 @@ void NamedBarriersResolution::HandleNamedBarrierInitHW(CallInst& NBarrierInitCal
     IGC_ASSERT_MESSAGE(m_CountNamedBarriers <= GetMaxNamedBarriers(), "NamedBarriersResolution : We crossed the max of amount of named barriers!");
     Module* module = NBarrierInitCall.getModule();
 
-    Value* threadGroupNBarrierID = (Value*)getInt32(module, m_CountNamedBarriers);
+    Value* threadGroupNBarrierID = (Value*)ConstantInt::get(Type::getInt32Ty(module->getContext()), m_CountNamedBarriers, true);
     Value* pointerToNBarrierStruct = FindAllocStructNBarrier((Value*)(&NBarrierInitCall), true);
 
     s_namedBarrierInfo structNb;
@@ -341,8 +333,15 @@ void NamedBarriersResolution::HandleNamedBarrierInitSW(CallInst& NBarrierInitCal
         Type::getInt32PtrTy(context, SPIRAS_Local)
     };
     Type* BaseTy = m_NamedBarrierArray->getValueType();
-    auto pointerNBarrier = GetElementPtrInst::Create(BaseTy, m_NamedBarrierArray, { getInt64(module, 0), getInt32(module, 0) }, "", &(NBarrierInitCall));
-    auto bitcastPointerNBarrier = BitCastInst::CreatePointerBitCastOrAddrSpaceCast(pointerNBarrier, m_NamedBarrierType->getPointerTo(SPIRAS_Local), "", &(NBarrierInitCall));
+    auto pointerNBarrier = GetElementPtrInst::Create(
+        BaseTy, m_NamedBarrierArray,
+        {ConstantInt::get(Type::getInt64Ty(module->getContext()), 0, true),
+         ConstantInt::get(Type::getInt32Ty(module->getContext()), 0, true)},
+        "", &(NBarrierInitCall));
+    auto bitcastPointerNBarrier =
+        BitCastInst::CreatePointerBitCastOrAddrSpaceCast(
+            pointerNBarrier, m_NamedBarrierType->getPointerTo(SPIRAS_Local), "",
+            &(NBarrierInitCall));
     SmallVector<Value*, 3> ArgsVal
     {
         NBarrierInitCall.getArgOperand(0),

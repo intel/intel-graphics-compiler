@@ -148,58 +148,6 @@ uint __intel_LocalInvocationIndex()
 
 ////////////////////////
 
-#if !defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
-
-size_t3 __builtin_spirv_BuiltInNumWorkgroups()
-{
-    size_t3 v = BuiltinVector(__builtin_IB_get_num_groups);
-    BuiltinVectorAssumeGE0(v);
-    return v;
-}
-
-size_t3 __builtin_spirv_BuiltInWorkgroupSize()
-{
-   size_t3 v = BuiltinVector(__builtin_IB_get_local_size);
-   BuiltinVectorAssumeGE0(v);
-   return v;
-}
-
-size_t3 __builtin_spirv_BuiltInWorkgroupId()
-{
-    return __intel_WorkgroupId();
-}
-
-size_t3 __builtin_spirv_BuiltInLocalInvocationId()
-{
-    return __intel_LocalInvocationId();
-}
-
-size_t3 __builtin_spirv_BuiltInGlobalInvocationId()
-{
-    return __intel_GlobalInvocationId();
-}
-
-size_t3 __builtin_spirv_BuiltInGlobalSize()
-{
-    size_t3 v = BuiltinVector(__builtin_IB_get_global_size);
-    BuiltinVectorAssumeGE0(v);
-    return v;
-}
-
-size_t3 __builtin_spirv_BuiltInEnqueuedWorkgroupSize()
-{
-    size_t3 v = BuiltinVector(__builtin_IB_get_enqueued_local_size);
-    BuiltinVectorAssumeGE0(v);
-    return v;
-}
-
-size_t3 __builtin_spirv_BuiltInGlobalOffset()
-{
-    return BuiltinVector(__builtin_IB_get_global_offset);
-}
-
-#else // defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
-
 size_t OVERLOADABLE __spirv_BuiltInNumWorkgroups(int dimindx)
 {
     size_t v = __builtin_IB_get_num_groups(dimindx);
@@ -249,8 +197,6 @@ size_t OVERLOADABLE __spirv_BuiltInGlobalOffset(int dimindx)
 {
     return __builtin_IB_get_global_offset(dimindx);
 }
-
-#endif
 
 size_t SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInGlobalLinearId, , )()
 {

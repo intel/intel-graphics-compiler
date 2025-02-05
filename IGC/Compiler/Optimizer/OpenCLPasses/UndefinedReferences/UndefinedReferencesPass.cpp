@@ -94,13 +94,8 @@ static bool ExistUndefinedReferencesInModule(Module& module, CodeGenContext *CGC
                 !funcName.startswith("__builtin_bf16") &&
                 !funcName.startswith("__igcbuiltin_") &&
                 !funcName.startswith("__translate_sampler_initializer") &&
-#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
                 !funcName.startswith("_Z20__spirv_SampledImage") &&
                 !funcName.startswith("_Z21__spirv_VmeImageINTEL") &&
-#else
-                !funcName.startswith("__builtin_spirv_OpSampledImage") &&
-                !funcName.startswith("__builtin_spirv_OpVmeImageINTEL") &&
-#endif
                 funcName != BufferBoundsCheckingPatcher::BUFFER_SIZE_PLACEHOLDER_FUNCTION_NAME &&
                 !F.hasFnAttribute("referenced-indirectly"))
             {

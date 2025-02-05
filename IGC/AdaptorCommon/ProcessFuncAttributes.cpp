@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/StackOverflowDetection/StackOverflowDetection.hpp"
-#include "SPIRV/SPIRVInternal.h"
 
 #include "common/LLVMWarningsPush.hpp"
 
@@ -47,6 +46,40 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 
 namespace {
+
+static const std::unordered_set<std::string> OCLExtOpBuiltinNames = {
+    "acos", "acosh", "acospi", "asin", "asinh", "asinpi",
+    "atan", "atan2", "atanh", "atanpi", "atan2pi", "cbrt",
+    "ceil", "copysign", "cos", "cosh", "cospi", "erfc",
+    "erf", "exp", "exp2", "exp10", "expm1", "fabs",
+    "fdim", "floor", "fma", "fmax", "fmin", "fmod",
+    "fract", "frexp", "hypot", "ilogb", "ldexp", "lgamma",
+    "lgamma_r", "log", "log2", "log10", "log1p", "logb",
+    "mad", "maxmag", "minmag", "modf", "nan", "nextafter",
+    "pow", "pown", "powr", "remainder", "remquo", "rint",
+    "rootn", "round", "rsqrt", "sin", "sincos", "sinh",
+    "sinpi", "sqrt", "tan", "tanh", "tanpi", "tgamma",
+    "trunc", "half_cos", "half_divide", "half_exp", "half_exp2",
+    "half_exp10", "half_log", "half_log2", "half_log10",
+    "half_powr", "half_recip", "half_rsqrt", "half_sin",
+    "half_sqrt", "half_tan", "native_cos", "native_divide",
+    "native_exp", "native_exp2", "native_exp10", "native_log",
+    "native_log2", "native_log10", "native_powr", "native_recip",
+    "native_rsqrt", "native_sin", "native_sqrt", "native_tan",
+    "fclamp", "degrees", "mix", "fmax_common", "fmin_common",
+    "radians", "step", "smoothstep", "sign", "cross", "distance",
+    "length", "normalize", "fast_distance", "fast_length", "fast_normalize",
+    "s_abs", "s_abs_diff", "s_add_sat", "u_add_sat", "s_hadd", "u_hadd",
+    "s_rhadd", "u_rhadd", "s_clamp", "u_clamp", "clz", "ctz",
+    "s_mad_hi", "s_mad_sat", "u_mad_sat", "s_max", "s_min", "u_max",
+    "u_min", "s_mul_hi", "rotate", "s_sub_sat", "u_sub_sat", "u_upsample",
+    "s_upsample", "popcount", "s_mad24", "u_mad24", "s_mul24", "u_mul24",
+    "vloadn", "vstoren", "vload_half", "vload_halfn", "vstore_half",
+    "vstore_half_r", "vstore_halfn", "vstore_halfn_r", "vloada_halfn",
+    "vstorea_halfn", "vstorea_halfn_r", "shuffle", "shuffle2", "printf",
+    "prefetch", "bitselect", "select", "u_abs", "u_abs_diff",
+    "u_mul_hi", "u_mad_hi"
+};
 
 class ProcessFuncAttributes : public ModulePass
 {
@@ -355,14 +388,8 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         return false;
     };
 
-    static std::set<StringRef> mathFunctionNames = {
-#define _OCL_EXT_OP(name, num) #name,
-#include "SPIRV/libSPIRV/OpenCL.stdfuncs.h"
-#undef _OCL_EXT_OP
-    };
-
     // If a builtin func is a FP64 one with the given prefix, return true.
-    auto IsBuiltinFP64WithPrefix = [](Function* F, StringRef Prefix) {
+    auto IsBuiltinFP64WithPrefix = [](Function* F, const std::string& Prefix) {
         if (F->getName().startswith(Prefix))
         {
             if (F->getReturnType()->isDoubleTy() ||
@@ -372,7 +399,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 functionName = functionName.drop_front(Prefix.size());
                 functionName = functionName.take_front(functionName.find('_'));
 
-                if (mathFunctionNames.find(functionName) != mathFunctionNames.end()) {
+                if (OCLExtOpBuiltinNames.find(functionName.str()) != OCLExtOpBuiltinNames.end()) {
                     return true;
                 }
             }
@@ -385,8 +412,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     // if we don't make any fast relaxed math optimizations.
     auto IsBuiltinFP64 = [&IsBuiltinFP64WithPrefix](Function* F)
     {
-        StringRef buildinPrefixOpenCL = igc_spv::kLLVMName::builtinExtInstPrefixOpenCL;
-        return IsBuiltinFP64WithPrefix(F, buildinPrefixOpenCL);
+        return IsBuiltinFP64WithPrefix(F, "__spirv_ocl_");
     };
 
     // Process through all functions and add the appropriate function attributes
@@ -565,8 +591,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         bool defaultStackCall = IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall);
 
         // Add always attribute if function is a builtin
-        if (F->hasFnAttribute("OclBuiltin") ||
-            F->getName().startswith(igc_spv::kLLVMName::builtinPrefix))
+        if (F->hasFnAttribute("OclBuiltin") || F->getName().startswith("__builtin_spirv_"))
         {
             // OptNone builtins are special versions of builtins assuring that all
             // theirs parameters are constant values.
@@ -579,7 +604,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 F->removeFnAttr(llvm::Attribute::NoInline);
             }
             else if (pCtx->m_hasDPEmu &&
-                IsBuiltinFP64WithPrefix(F, igc_spv::kLLVMName::builtinIMFPrefixSVML))
+                IsBuiltinFP64WithPrefix(F, "__ocl_svml_"))
             {
                 defaultStackCall = true;
                 mustAlwaysInline = false;

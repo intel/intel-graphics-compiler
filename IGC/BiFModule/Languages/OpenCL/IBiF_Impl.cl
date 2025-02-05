@@ -501,7 +501,6 @@ uint OVERLOADABLE intel_get_tile_id( void )
     return SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )();
 }
 
-#if defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
 // Temporary workaround on a test that uses __builtin_spirv_BuiltInSubDeviceIDINTEL
 // instead of intel_get_tile_id.
 __attribute__((always_inline))
@@ -509,4 +508,3 @@ uint __builtin_spirv_BuiltInSubDeviceIDINTEL( void )
 {
     return intel_get_tile_id();
 }
-#endif

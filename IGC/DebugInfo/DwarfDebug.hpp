@@ -56,11 +56,7 @@ const llvm::Instruction *getNextInst(const llvm::Instruction *start);
 // So if dwarf address space = 4, mark it as SLM.
 // In Khronos translator dwarf address space = 3 is SLM.
 // https://github.com/KhronosGroup/SPIRV-LLVM-Translator/blob/main/docs/SPIRVRepresentationInLLVM.rst#address-spaces
-#ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
 constexpr unsigned DwarfLocalAddressSpaceTag = 3u;
-#else
-constexpr unsigned DwarfLocalAddressSpaceTag = 4u;
-#endif
 
 static inline bool isSLMAddressSpaceTag(unsigned addrSpace) {
   return addrSpace == DwarfLocalAddressSpaceTag;

@@ -98,10 +98,7 @@ if config.is32b == "1":
 if config.debug_build:
   config.available_features.add('debug')
 
-if config.use_khronos_spirv_translator_in_sc == "1":
-  config.available_features.add('khronos-translator')
-  config.available_features.add('khronos-translator-' + config.llvm_version_major)
-  config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-KHR'))
-else:
-  config.available_features.add('legacy-translator')
-  config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-LEGACY'))
+config.available_features.add('khronos-translator')
+config.available_features.add('khronos-translator-' + config.llvm_version_major)
+config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-KHR'))
+

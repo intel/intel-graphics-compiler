@@ -29,7 +29,6 @@ config.spirv_as_enabled = "@IGC_BUILD__PROJ__spirv_as@"
 config.spirv_as_dir = "@IGC_SPIRV_AS_DIR@"
 config.llvm_spirv_enabled = "@IGC_BUILD__PROJ__llvm_spirv@"
 config.llvm_spirv_dir = "@IGC_LLVM_SPIRV_DIR@"
-config.use_khronos_spirv_translator_in_sc = "$<BOOL:@IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC@>"
 config.llvm_version_major = "@LLVM_VERSION_MAJOR@"
 config.is32b = "$<BOOL:$<EQUAL:@CMAKE_SIZEOF_VOID_P@,4>>"
 config.debug_build = $<CONFIG:Debug>

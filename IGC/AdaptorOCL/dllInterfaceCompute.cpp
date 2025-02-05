@@ -53,14 +53,7 @@ SPDX-License-Identifier: MIT
 #include <iStdLib/MemCopy.h>
 
 #if defined(IGC_SPIRV_ENABLED)
-#include "common/LLVMWarningsPush.hpp"
-#include "AdaptorOCL/SPIRV/SPIRVconsum.h"
-#include "common/LLVMWarningsPop.hpp"
-#include "AdaptorOCL/SPIRV/libSPIRV/SPIRVModule.h"
-#include "AdaptorOCL/SPIRV/libSPIRV/SPIRVValue.h"
-#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
 #include "LLVMSPIRVLib.h"
-#endif
 #endif
 
 #ifdef IGC_SPIRV_TOOLS_ENABLED
@@ -466,7 +459,6 @@ bool TranslateSPIRVToLLVM(
         InputArgs.pSpecConstantsValues,
         InputArgs.SpecConstantsSize);
 
-#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
     // Set SPIRV-LLVM-Translator translation options
     SPIRV::TranslatorOpts Opts;
     Opts.enableGenArgNameMD();
@@ -497,9 +489,6 @@ bool TranslateSPIRVToLLVM(
 
     // Actual translation from SPIR-V to LLVM
     success = llvm::readSpirv(Context, Opts, IS, LLVMModule, stringErrMsg);
-#else // IGC Legacy SPIRV Translator
-    success = igc_spv::ReadSPIRV(Context, IS, LLVMModule, stringErrMsg, &specIDToSpecValueMap);
-#endif
 
     // Handle OpenCL Compiler Options
     if (success)
@@ -1063,7 +1052,6 @@ bool ReadSpecConstantsFromSPIRV(
     std::istream& IS,
     std::vector<std::pair<uint32_t, uint32_t>>& OutSCInfo)
 {
-#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
     // Parse SPIRV Module and add all decorated specialization constants to OutSCInfo vector
     // as a pair of <spec-const-id, spec-const-size-in-bytes>. It's crucial for OCL Runtime to
     // properly validate clSetProgramSpecializationConstant API call.
@@ -1079,38 +1067,6 @@ bool ReadSpecConstantsFromSPIRV(
   }
 
   return result;
-#endif
-#else // IGC Legacy SPIRV Translator
-    using namespace igc_spv;
-
-    std::unique_ptr<SPIRVModule> BM(SPIRVModule::createSPIRVModule());
-    IS >> *BM;
-
-    auto SPV = BM->parseSpecConstants();
-
-    for (auto& SC : SPV)
-    {
-        SPIRVType* type = SC->getType();
-        uint32_t spec_size = type->isTypeBool() ? 1 : type->getBitWidth() / 8;
-
-        if (SC->hasDecorate(DecorationSpecId))
-        {
-            SPIRVWord spec_id = *SC->getDecorate(DecorationSpecId).begin();
-            Op OP = SC->getOpCode();
-            if (OP == OpSpecConstant ||
-                OP == OpSpecConstantFalse ||
-                OP == OpSpecConstantTrue)
-            {
-                OutSCInfo.push_back(std::make_pair(spec_id, spec_size));
-            }
-            else
-            {
-                IGC_ASSERT_MESSAGE(0, "Wrong instruction opcode, shouldn't be here!");
-                return false;
-            }
-        }
-    }
-    return true;
 #endif
 }
 #endif

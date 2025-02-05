@@ -24,55 +24,9 @@ set(IGC_BUILD__SRC__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.cpp"
   )
 
-if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
-  list(APPEND IGC_BUILD__SRC__AdaptorOCL
-      "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.cpp"
-    )
-endif()
-
-if(IGC_BUILD__SPIRV_ENABLED)
-  list(APPEND IGC_BUILD__SRC__AdaptorOCL
-      SPIRV/libSPIRV/OpenCL.std.h
-      SPIRV/libSPIRV/OpenCL.stdfuncs.h
-      SPIRV/libSPIRV/SPIRVBasicBlock.h
-      SPIRV/libSPIRV/SPIRVDebug.h
-      SPIRV/libSPIRV/SPIRVDecorate.h
-      SPIRV/libSPIRV/SPIRVEntry.h
-      SPIRV/libSPIRV/SPIRVEnum.h
-      SPIRV/libSPIRV/SPIRVError.h
-      SPIRV/libSPIRV/SPIRVErrorEnum.h
-      SPIRV/libSPIRV/SPIRVExtInst.h
-      SPIRV/libSPIRV/SPIRVFunction.h
-      SPIRV/libSPIRV/SPIRVInstruction.h
-      SPIRV/libSPIRV/SPIRVMemAliasingINTEL.h
-      SPIRV/libSPIRV/SPIRVModule.h
-      SPIRV/libSPIRV/SPIRVOpCode.h
-      SPIRV/libSPIRV/SPIRVOpCodeEnum.h
-      SPIRV/libSPIRV/SPIRVBuiltinEnum.h
-      SPIRV/libSPIRV/SPIRVStream.h
-      SPIRV/libSPIRV/SPIRVType.h
-      SPIRV/libSPIRV/SPIRVUtil.h
-      SPIRV/libSPIRV/SPIRVValue.h
-      SPIRV/libSPIRV/spirv.hpp
-      SPIRV/SPIRVconsum.h
-      SPIRV/SPIRVInternal.h
-      SPIRV/libSPIRV/SPIRVBasicBlock.cpp
-      SPIRV/libSPIRV/SPIRVDebug.cpp
-      SPIRV/libSPIRV/SPIRVDecorate.cpp
-      SPIRV/libSPIRV/SPIRVEntry.cpp
-      SPIRV/libSPIRV/SPIRVFunction.cpp
-      SPIRV/libSPIRV/SPIRVInstruction.cpp
-      SPIRV/libSPIRV/SPIRVModule.cpp
-      SPIRV/libSPIRV/SPIRVStream.cpp
-      SPIRV/libSPIRV/SPIRVType.cpp
-      SPIRV/libSPIRV/SPIRVValue.cpp
-      SPIRV/SPIRVReader.cpp
-      SPIRV/SPIRVUtil.cpp
-      SPIRV/libSPIRV/SPIRV.DebugInfo.h
-      SPIRV/libSPIRV/SPIRV.DebugInfofuncs.h
-      SPIRV/libSPIRV/SPIRVDebugInfoExt.h
-    )
-endif(IGC_BUILD__SPIRV_ENABLED)
+list(APPEND IGC_BUILD__SRC__AdaptorOCL
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.cpp"
+  )
 
   # NOTE: Exported functions must be added to final libraries/executables directly.
 
@@ -149,11 +103,10 @@ set(IGC_BUILD__HDR__AdaptorOCL
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API/usc_gen9.h"
   )
 
-if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
-  list(APPEND IGC_BUILD__HDR__AdaptorOCL
-      "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
-    )
-endif()
+list(APPEND IGC_BUILD__HDR__AdaptorOCL
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
+  )
+
 
 if(IGC_BUILD__SPIRV/ENABLED)
   list(APPEND IGC_BUILD__HDR__AdaptorOCL

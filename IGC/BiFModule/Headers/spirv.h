@@ -174,16 +174,6 @@ typedef char __bool16 __attribute__((ext_vector_type(16)));
 
 // Work-item functions
 
-#if !defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
-size_t3 __builtin_spirv_BuiltInNumWorkgroups(void);
-size_t3 __builtin_spirv_BuiltInWorkgroupSize(void);
-size_t3 __builtin_spirv_BuiltInWorkgroupId(void);
-size_t3 __builtin_spirv_BuiltInLocalInvocationId(void);
-size_t3 __builtin_spirv_BuiltInGlobalInvocationId(void);
-size_t3 __builtin_spirv_BuiltInGlobalSize(void);
-size_t3 __builtin_spirv_BuiltInEnqueuedWorkgroupSize(void);
-size_t3 __builtin_spirv_BuiltInGlobalOffset(void);
-#else // defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
 size_t __attribute__((overloadable)) __spirv_BuiltInNumWorkgroups(int dimindx);
 size_t __attribute__((overloadable)) __spirv_BuiltInWorkgroupSize(int dimindx);
 size_t __attribute__((overloadable)) __spirv_BuiltInWorkgroupId(int dimindx);
@@ -192,7 +182,6 @@ size_t __attribute__((overloadable)) __spirv_BuiltInGlobalInvocationId(int dimin
 size_t __attribute__((overloadable)) __spirv_BuiltInGlobalSize(int dimindx);
 size_t __attribute__((overloadable)) __spirv_BuiltInEnqueuedWorkgroupSize(int dimindx);
 size_t __attribute__((overloadable)) __spirv_BuiltInGlobalOffset(int dimindx);
-#endif
 
 size_t  SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )(void);
 size_t  SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInGlobalLinearId, , )(void);

@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 // ---------OpConvertHandleToImage/SampledImage/SamplerINTEL---------
 // Convert SYCL bindless image integer handle to spirv image/sampled image
-#if defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
 #define DEF_CONVERT_HANDLE_TO_IMAGE(DIM, INT_PARAMS, ACC_QUAL, ARRAY_DEPTH)                                                                           \
 global Img##DIM##d##ARRAY_DEPTH##_##ACC_QUAL* OVERLOADABLE __spirv_ConvertHandleToImageINTEL_RPU3AS133__spirv_Image__void_##INT_PARAMS(size_t handle) \
 {                                                                                                                                                     \
@@ -46,4 +45,3 @@ __spirv_Sampler OVERLOADABLE __spirv_ConvertHandleToSamplerINTEL(size_t handle)
 {
     return __builtin_astype(handle, __spirv_Sampler);
 }
-#endif // defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)

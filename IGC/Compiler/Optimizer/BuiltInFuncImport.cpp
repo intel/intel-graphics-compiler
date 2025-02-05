@@ -1172,17 +1172,10 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
             }
         }
 
-#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
         std::string sinBuiltinName = "_Z15__spirv_ocl_sinf";
         std::string cosBuiltinName = "_Z15__spirv_ocl_cosf";
         std::string sinPiBuiltinName = "_Z17__spirv_ocl_sinpif";
         std::string cosPiBuiltinName = "_Z17__spirv_ocl_cospif";
-#else // IGC Legacy SPIRV Translator
-        std::string sinBuiltinName = "__builtin_spirv_OpenCL_sin_f32";
-        std::string cosBuiltinName = "__builtin_spirv_OpenCL_cos_f32";
-        std::string sinPiBuiltinName = "__builtin_spirv_OpenCL_sinpi_f32";
-        std::string cosPiBuiltinName = "__builtin_spirv_OpenCL_cospi_f32";
-#endif
         auto violatesPromotionConds = [&](Instruction* inst) {
             IGC_ASSERT(inst->getOpcode() == Instruction::FMul || inst->getOpcode() == Instruction::Load);
             if (inst && inst->hasNUsesOrMore(2)) {

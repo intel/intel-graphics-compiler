@@ -25,7 +25,6 @@ config.llvm_plugin = "$<$<TARGET_EXISTS:VCBackendPlugin>:$<TARGET_FILE:VCBackend
 config.llvm_new_pm_plugin = "$<$<TARGET_EXISTS:NewPMPlugin>:$<TARGET_FILE:NewPMPlugin>>"
 config.vc_bif_binary_dir = "$<TARGET_PROPERTY:VCBiFPreparation,BINARY_DIR>"
 config.vc_platform_list = "@SUPPORTED_VC_PLATFORMS@"
-config.use_khronos_spirv_translator_in_sc = "$<BOOL:@IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC@>"
 config.llvm_version = "@LLVM_VERSION_MAJOR@"
 config.opaque_pointers_enabled = "@IGC_OPTION__API_ENABLE_OPAQUE_POINTERS@"
 config.opaque_pointers_default_arg_opt = "@IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT@"

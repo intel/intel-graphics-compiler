@@ -270,15 +270,6 @@ if (FCL_ENABLED)
   unset(_allowBifLink)
 endif()
 
-
-# Currently IGC uses legacy SPIRV-LLVM-Translator
-# that is located at gfx-driver/Source/IGC/AdaptorOCL/SPIRV
-# This translator will be replaced with vanilla Khronos translator.
-# The following cmake code perfoms search for the such translator.
-# But, until the transition is not completed, this code is under IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR condition
-# Remove this condition after transition period is over
-option(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC "[Experimental] Enable usage of Khronos SPIRV-LLVM-Translator in Scalar Compiler" ON)
-
 # TODO: Change this flag to opt-out or remove completely once
 # opaque pointers are fully supported within the IGC stack.
 option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "[Experimental] Enable opaque pointers across the IGC stack.\
@@ -1471,6 +1462,21 @@ if(LLVM_ON_WIN32)
       "${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/API"
     )
 endif()
+
+if (WIN32)
+  include_directories(
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-LLVM-Translator_${IGC_OPTION__LLVM_PREFERRED_VERSION}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-LLVM-Translator_${IGC_OPTION__LLVM_PREFERRED_VERSION}/lib/SPIRV"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-LLVM-Translator_${IGC_OPTION__LLVM_PREFERRED_VERSION}/lib/SPIRV/Mangler"
+    )
+endif (WIN32)
+if (NOT WIN32)
+  include_directories(
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-LLVM-Translator/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-LLVM-Translator/lib/SPIRV"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-LLVM-Translator/lib/SPIRV/Mangler"
+    )
+endif (NOT WIN32)
 
 # ==================================== ZE Binary Writer ================================================
 

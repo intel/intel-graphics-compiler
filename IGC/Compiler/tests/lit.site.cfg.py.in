@@ -19,7 +19,6 @@ config.host_arch = "@HOST_ARCH@"
 config.python_executable = "@PYTHON_EXECUTABLE@"
 config.test_run_dir = "@CMAKE_CURRENT_BINARY_DIR@"
 config.igc_opt_dir = "$<TARGET_FILE_DIR:igc_opt>"
-config.use_khronos_spirv_translator_in_sc = "$<BOOL:@IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC@>"
 config.regkeys_disabled = $<CONFIG:Release>
 config.opaque_pointers = os.getenv('IGC_LIT_OPAQUE_PTR_FIX', '0')
 

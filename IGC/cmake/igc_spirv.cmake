@@ -55,15 +55,8 @@ else()
   # Additionally, for in-tree build, do not set install interface
   # since it can be polluted with build directory artifact.
   set_target_properties(LLVMSPIRVLib PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES $<BUILD_INTERFACE:${_inc_dir}>
+    INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${_inc_dir};${_inc_dir}/../lib>"
     )
   unset(_inc_dir)
 endif()
 
-# Set additional compile definition for library. Use property instead of
-# target_compile_definitions to unify imported and simple library usage
-# because command will fail on imported library (this is cmake deficiency
-# that was fixed in later versions).
-if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
-    add_compile_definitions(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
-endif()

@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "ResolveConstExprCalls.h"
 #include "Compiler/IGCPassSupport.h"
-#include "SPIRV/SPIRVInternal.h"
 
 #include "common/LLVMWarningsPush.hpp"
 
@@ -20,7 +19,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Attributes.h>
+#include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
+
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;

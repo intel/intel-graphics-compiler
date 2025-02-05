@@ -266,17 +266,10 @@ void HandleSpirvDecorationMetadata::visitCallInst(CallInst& I)
     static const Regex pattern2DBlockWrite(
         "_Z[0-9]+(intel_sub_group_2d_block_write_[0-9]+b_[0-9]+r[0-9]+x[0-9]+c)");
     static const Regex patternOCL1DBlockPrefetch("_Z[0-9]+(intel_sub_group_block_prefetch_(uc|us|ui|ul)(2|4|8|16)?)");
-#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
     static const Regex patternPrefetch("_Z[0-9]+__spirv_ocl_prefetch");
     static const Regex pattern1DBlockRead("_Z[0-9]+__spirv_SubgroupBlockReadINTEL");
     static const Regex pattern1DBlockWrite("_Z[0-9]+__spirv_SubgroupBlockWriteINTEL");
     static const Regex pattern1DBlockPrefetch("_Z[0-9]+__spirv_SubgroupBlockPrefetchINTEL");
-#else // IGC Legacy SPIRV Translator
-    static const Regex patternPrefetch("__builtin_spirv_OpenCL_prefetch");
-    static const Regex pattern1DBlockRead("__builtin_spirv_OpSubgroupBlockReadINTEL");
-    static const Regex pattern1DBlockWrite("__builtin_spirv_OpSubgroupBlockWriteINTEL");
-    static const Regex pattern1DBlockPrefetch("__builtin_spirv_OpSubgroupBlockPrefetchINTEL");
-#endif
 
     SmallVector<StringRef, 4> Matches;
     StringRef funcName = F->getName();
