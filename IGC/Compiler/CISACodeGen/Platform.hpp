@@ -1213,6 +1213,18 @@ uint32_t getGRFSize() const
     return isCoreChildOf(IGFX_XE_HPC_CORE) ? 64 : 32;
 }
 
+uint32_t getMaxNumGRF(ShaderType type) const
+{
+    if (supportsVRT())
+    {
+        return 256;
+    }
+    else
+    {
+        return 128;
+    }
+}
+
 uint32_t getInlineDataSize() const
 {
     if (!supportInlineData()) return 0;
