@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -878,7 +878,8 @@ static const iga::OpSpec MODEL_GEN10_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION
   },
   {Op::INVALID, Platform::GEN10, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::WAIT /* Op::89 */, Platform::GEN10, 0x30,
+  {Op::INVALID, Platform::GEN10, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
+  {Op::WAIT /* Op::90 */, Platform::GEN10, 0x30,
     "wait",
     "Wait Notification",
     OpSpec::Format::SYNC_UNARY,
@@ -888,14 +889,14 @@ static const iga::OpSpec MODEL_GEN10_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::NONE
   },
-  {Op::WHILE /* Op::90 */, Platform::GEN10, 0x27,
+  {Op::WHILE /* Op::91 */, Platform::GEN10, 0x27,
     "while",
     "While",
     OpSpec::Format::JUMP_UNARY_IMM,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::XOR /* Op::91 */, Platform::GEN10, 0x07,
+  {Op::XOR /* Op::92 */, Platform::GEN10, 0x07,
     "xor",
     "Logic Xor",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,

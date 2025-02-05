@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -787,14 +787,15 @@ static const iga::OpSpec MODEL_XE_HPG_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::NONE
   },
   {Op::INVALID, Platform::XE_HPG, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::WHILE /* Op::90 */, Platform::XE_HPG, 0x27,
+  {Op::INVALID, Platform::XE_HPG, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
+  {Op::WHILE /* Op::91 */, Platform::XE_HPG, 0x27,
     "while",
     "While",
     OpSpec::Format::JUMP_UNARY_IMM,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::XOR /* Op::91 */, Platform::XE_HPG, 0x67,
+  {Op::XOR /* Op::92 */, Platform::XE_HPG, 0x67,
     "xor",
     "Logic Xor",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -97,11 +97,11 @@ enum class Op
   SRND         = FIRST_OP +  85,
   SUBB         = FIRST_OP +  86,
   SYNC         = FIRST_OP +  87,
-  WAIT         = FIRST_OP +  88,
-  WHILE        = FIRST_OP +  89,
-  XOR          = FIRST_OP +  90,
+  WAIT         = FIRST_OP +  89,
+  WHILE        = FIRST_OP +  90,
+  XOR          = FIRST_OP +  91,
 
-  LAST_OP   = FIRST_OP + 90,
+  LAST_OP   = FIRST_OP + 91,
   TOTAL_OPS = LAST_OP
 };
 } // iga::
