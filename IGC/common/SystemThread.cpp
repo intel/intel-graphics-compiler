@@ -1542,25 +1542,11 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     case IGFX_XE3_CORE:
         if (mode & SYSTEM_THREAD_MODE_DEBUG)
         {
-            switch (platform.getPlatformInfo().eProductFamily)
-            {
-            case IGFX_PTL:
-                 SIPIndex = XE3G_DEBUG_BINDLESS;
-                 break;
-            default:
-                IGC_ASSERT(false);
-            }
+            SIPIndex = XE3G_DEBUG_BINDLESS;
         }
         else if(mode & SYSTEM_THREAD_MODE_CSR)
         {
-            switch (platform.getPlatformInfo().eProductFamily)
-            {
-            case IGFX_PTL:
-                 SIPIndex = XE3_CSR_DEBUG_BINDLESS;
-                 break;
-            default:
-                IGC_ASSERT(false);
-            }
+            SIPIndex = XE3_CSR_DEBUG_BINDLESS;
         }
         break;
 
