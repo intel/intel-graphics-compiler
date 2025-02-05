@@ -42,14 +42,15 @@ static bool regSortCompareBeforeRA(regMapBRA map1, regMapBRA map2) {
 void changeToIndirectSend(G4_INST *inst, G4_Declare *s0Var, int totalRegs, IR_Builder &builder) {
   // Change the send instruction to sendi
   G4_InstSend *Send = inst->asSendInst();
-  G4_SendDescRaw *desc = Send->getMsgDescRaw();
-  desc->setExtMessageLength(0);
-  G4_Operand *msgDesc = inst->getSrc(2);
+    G4_SendDescRaw *desc = Send->getMsgDescRaw();
+    desc->setExtMessageLength(0);
+    G4_Operand *msgDesc = inst->getSrc(2);
 
-  uint32_t descImm = (uint32_t)msgDesc->asImm()->getImm();
-  descImm &= 0xE1FFFFFF; // clear bit 25:28
-  descImm |= totalRegs << 25;
-  G4_Imm *msgDescImm = builder.createImm(descImm, Type_UD);
+    uint32_t descImm = (uint32_t)msgDesc->asImm()->getImm();
+    descImm &= 0xE1FFFFFF; // clear bit 25:28
+    descImm |= totalRegs << 25;
+    G4_Imm *msgDescImm = builder.createImm(descImm, Type_UD);
+    inst->setSrc(msgDescImm, 2);
 
   // Replace source 0 with scalar register
   G4_SrcRegRegion *headerOpnd = builder.createSrcRegRegion(
@@ -59,7 +60,6 @@ void changeToIndirectSend(G4_INST *inst, G4_Declare *s0Var, int totalRegs, IR_Bu
 
   inst->setSrc(headerOpnd, 0);
   inst->setSrc(payloadToUse, 1);
-  inst->setSrc(msgDescImm, 2);
 }
 
 // Check if current instruction is the candidate of sendi.
@@ -440,17 +440,12 @@ bool SRSubPassBeforeRA::isSRCandidateBeforeRA(G4_INST *inst,
     return false;
   }
 
-  //Don't do for EOT instruction first
-  if (inst->isEOT()) {
-    return false;
-  }
-
   if (!inst->isSplitSend()) {
     return false;
   }
 
   G4_Operand *msgDesc = inst->getSrc(2);
-  if (!msgDesc->isImm()) {
+  if (!inst->asSendInst()->getMsgDesc() && !(msgDesc && msgDesc->isImm())) {
     return false;
   }
 
@@ -513,7 +508,8 @@ bool SRSubPassBeforeRA::isSRCandidateBeforeRA(G4_INST *inst,
 
       // Not GRF source
       if (!(src->getBase()->isRegVar() &&
-            src->getBase()->asRegVar()->getDeclare()->getRegFile() == G4_GRF)) {
+            (src->getBase()->asRegVar()->getDeclare()->getRegFile() == G4_GRF ||
+             src->getBase()->asRegVar()->getDeclare()->getRegFile() == G4_INPUT))) {
         return false;
       }
 
@@ -574,8 +570,10 @@ bool SRSubPassBeforeRA::isSRCandidateBeforeRA(G4_INST *inst,
       }
 
       // It's not global define
-      if (kernel.fg.globalOpndHT.isOpndGlobal(dstRgn)) {
-        return false;
+      if (!(builder.getIsKernel() && kernel.fg.getNumBB() == 1)) {
+        if (kernel.fg.globalOpndHT.isOpndGlobal(dstRgn)) {
+          return false;
+        }
       }
 
       return true;
