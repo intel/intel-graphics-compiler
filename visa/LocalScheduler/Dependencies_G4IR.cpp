@@ -206,7 +206,8 @@ DepType vISA::CheckBarrier(G4_INST *inst) {
                inst->getMsgDesc()->getSFID() == SFID::SPAWNER) {
       return MSG_BARRIER;
     }
-  } else if (inst->opcode() == G4_wait || inst->isYieldInst()) {
+  } else if (inst->opcode() == G4_wait ||
+      inst->isYieldInst()) {
     return MSG_BARRIER;
   } else if (inst->isFlowControl()) {
     // All control flow instructions are scheduling barriers

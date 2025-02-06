@@ -3170,7 +3170,8 @@ static void emitPredWrEn(std::ostream &output, G4_INST &inst) {
 
 static void emitExecSize(std::ostream &output, const G4_INST &inst) {
   auto execSize = static_cast<int>(inst.getExecSize());
-  if (inst.opcode() != G4_nop && inst.opcode() != G4_wait) {
+  if (inst.opcode() != G4_nop &&
+      inst.opcode() != G4_wait) {
     output << '(';
     if (execSize == UNDEFINED_EXEC_SIZE) {
       output << "??";
