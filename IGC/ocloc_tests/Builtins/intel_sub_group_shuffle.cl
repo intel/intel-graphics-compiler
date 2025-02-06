@@ -17,10 +17,10 @@ kernel void test_intel_sub_group_shuffle_immediate_index_simd32(global int* in, 
     size_t gid = get_global_id(0);
     int x = in[gid];
 
-// CHECK: mov (M5_NM, 1) simdShuffle(0,0)<1> {{V[0-9]+}}(1,15)<0;1,0>
+// CHECK: mov (M5_NM, 1) simdShuffle(0,0)<1> V0039(1,15)<0;1,0>
 
 // CHECK: mov (M1, 32) simdShuffleBroadcast(0,0)<1> simdShuffle(0,0)<0;1,0>
-// CHECK: lsc_store.ugm (M1, 32)  flat[{{V[0-9]+}}]:a64  simdShuffleBroadcast:d32
+// CHECK: lsc_store.ugm (M1, 32)  flat[V0041]:a64  simdShuffleBroadcast:d32
     out[gid] = intel_sub_group_shuffle(x, 31);
 }
 

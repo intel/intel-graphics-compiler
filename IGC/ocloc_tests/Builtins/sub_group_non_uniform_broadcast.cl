@@ -39,7 +39,7 @@ kernel void test_sub_group_non_uniform_broadcast_non_immediate_sub_group_local_i
 // CHECK: mov (M1, 16) simdShuffle(0,0)<1> r[A0(0),0]<1,0>:d
 // CHECK: addr_add (M5, 16) A0(0)<1> &{{V[0-9]+}} ShuffleTmp(0,16)<1;1,0>
 // CHECK: mov (M5, 16) simdShuffle(1,0)<1> r[A0(0),0]<1,0>:d
-// CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  simdShuffle:d32
+// CHECK: lsc_store.ugm (M1, 32)  flat[V0046]:a64  simdShuffle:d32
     bool isOddLane = get_sub_group_local_id() % 2 == 1;
     if (isOddLane)
     {
