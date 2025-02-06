@@ -3737,6 +3737,19 @@ namespace IGC
             }
         };
 
+        // dp4a with modifiers
+        struct Dp4aSatPattern : Pattern
+        {
+            GenIntrinsicInst* inst;
+            bool isAccSigned;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                DstModifier mod = modifier;
+                mod.sat = true;
+                pass->emitDP4A(inst, nullptr, mod, isAccSigned);
+            }
+        };
+
 
         bool match = false;
         llvm::Value* source = nullptr;
@@ -3781,6 +3794,26 @@ namespace IGC
                     satPattern->isSigned = !isUnsigned;
                     satPattern->src = GetSource(truncInst->getOperand(0), !isUnsigned, false, IsSourceOfSample(&I));
                     AddPattern(satPattern);
+                }
+                else if (llvm::GenIntrinsicInst * genIsaInst = llvm::dyn_cast<llvm::GenIntrinsicInst>(source);
+                    genIsaInst &&
+                    (genIsaInst->getIntrinsicID() == llvm::GenISAIntrinsic::ID::GenISA_dp4a_ss ||
+                    genIsaInst->getIntrinsicID() == llvm::GenISAIntrinsic::ID::GenISA_dp4a_su ||
+                    genIsaInst->getIntrinsicID() == llvm::GenISAIntrinsic::ID::GenISA_dp4a_uu ||
+                    genIsaInst->getIntrinsicID() == llvm::GenISAIntrinsic::ID::GenISA_dp4a_us))
+                {
+                    match = true;
+
+                    uint numSources = GetNbSources(*sourceInst);
+                    for (uint i = 0; i < numSources; i++)
+                    {
+                        MarkAsSource(sourceInst->getOperand(i), IsSourceOfSample(&I));
+                    }
+
+                    Dp4aSatPattern* dp4aSatPattern = new (m_allocator) Dp4aSatPattern();
+                    dp4aSatPattern->inst = genIsaInst;
+                    dp4aSatPattern->isAccSigned = !isUnsigned;
+                    AddPattern(dp4aSatPattern);
                 }
                 else
                 {

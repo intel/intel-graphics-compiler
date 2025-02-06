@@ -1464,10 +1464,9 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
     }
     Value* ValA = Builder.CreateBitCast(VectorA, Builder.getInt32Ty());
     Value* ValB = Builder.CreateBitCast(VectorB, Builder.getInt32Ty());
-    Value* ValSat = Builder.getInt1(false);
 
     Function* Dp4aFun = GenISAIntrinsic::getDeclaration(I.getModule(), IntrinsicID, Builder.getInt32Ty());
-    Value* Res = Builder.CreateCall(Dp4aFun, { AccVal, ValA, ValB, ValSat });
+    Value* Res = Builder.CreateCall(Dp4aFun, { AccVal, ValA, ValB });
     I.replaceAllUsesWith(Res);
 }
 
