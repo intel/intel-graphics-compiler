@@ -14,9 +14,11 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
+
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/DataLayout.h>
@@ -32,8 +34,6 @@ namespace {
     class GenericAddressDynamicResolution : public FunctionPass {
     public:
         static char ID;
-        Module* m_module = nullptr;
-        CodeGenContext* m_ctx = nullptr;
 
         GenericAddressDynamicResolution()
             : FunctionPass(ID)
@@ -41,25 +41,26 @@ namespace {
         }
         ~GenericAddressDynamicResolution() = default;
 
-        virtual StringRef getPassName() const override
+        StringRef getPassName() const override
         {
             return "GenericAddressDynamicResolution";
         }
 
-        virtual void getAnalysisUsage(AnalysisUsage& AU) const override
+        void getAnalysisUsage(AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<CastToGASAnalysis>();
         }
 
-        virtual bool runOnFunction(Function& F) override;
-
+        bool runOnFunction(Function& F) override;
+    private:
         bool visitLoadStoreInst(Instruction& I);
         bool visitIntrinsicCall(CallInst& I);
-        Module* getModule() { return m_module; }
 
-    private:
+        Module* m_module = nullptr;
+        CodeGenContext* m_ctx = nullptr;
+        llvm::SmallVector<Instruction*, 32> generatedLoadStores;
         bool m_needPrivateBranches = false;
         bool m_needLocalBranches = false;
 
@@ -96,43 +97,36 @@ bool GenericAddressDynamicResolution::runOnFunction(Function& F)
     m_needLocalBranches = !GI.isNoLocalToGenericOptionEnabled() && GI.canGenericPointToLocal(F);
 
     bool modified = false;
-    bool changed = false;
 
-    // iterate for all the intrinisics used by to_local, to_global, and to_private
-    do {
-        changed = false;
+    llvm::SmallVector<Instruction*, 32> callInstructions;
+    llvm::SmallVector<Instruction*, 32> loadStoreInstructions;
 
-        for (inst_iterator i = inst_begin(F); i != inst_end(F); ++i) {
-            Instruction& instruction = (*i);
+    for (auto& instruction: llvm::instructions(F)) {
 
-            if (CallInst * intrinsic = dyn_cast<CallInst>(&instruction)) {
-                changed = visitIntrinsicCall(*intrinsic);
-            }
-
-            if (changed) {
-                modified = true;
-                break;
-            }
+        if (isa<CallInst>(instruction)) {
+            callInstructions.push_back(&instruction);
+        } else if (isa<LoadInst>(instruction) || isa<StoreInst>(instruction)) {
+            loadStoreInstructions.push_back(&instruction);
         }
-    } while (changed);
+    }
+    // iterate for all the intrinisics used by to_local, to_global, and to_private
+    for (auto* callInst : callInstructions) {
+        modified |= visitIntrinsicCall(cast<CallInst>(*callInst));
+    }
 
     // iterate over all loads/stores with generic address space pointers
-    do {
-        changed = false;
+    for (auto* loadStoreInst : loadStoreInstructions) {
+        modified |= visitLoadStoreInst(*loadStoreInst);
+    }
 
-        for (inst_iterator i = inst_begin(F); i != inst_end(F); ++i) {
-            Instruction& instruction = (*i);
-
-            if (isa<LoadInst>(instruction) || isa<StoreInst>(instruction)) {
-                changed = visitLoadStoreInst(instruction);
-            }
-
-            if (changed) {
-                modified = true;
-                break;
-            }
+    // iterate over all newly generated load/stores
+    while (!generatedLoadStores.empty()) {
+        llvm::SmallVector<Instruction*, 32> newInstructions = generatedLoadStores;
+        generatedLoadStores.clear();
+        for (auto* loadStoreInst : newInstructions) {
+            modified |= visitLoadStoreInst(*loadStoreInst);
         }
-    } while (changed);
+    }
 
     if (m_numAdditionalControlFlows)
     {
@@ -155,8 +149,7 @@ bool GenericAddressDynamicResolution::runOnFunction(Function& F)
 
 Type* GenericAddressDynamicResolution::getPointerAsIntType(LLVMContext& ctx, const unsigned AS)
 {
-    Module* pModule = getModule();
-    DataLayout dataLayout = pModule->getDataLayout();
+    DataLayout dataLayout = m_module->getDataLayout();
     unsigned ptrBits(dataLayout.getPointerSizeInBits(AS));
     return IntegerType::get(ctx, ptrBits);
 }
@@ -168,11 +161,11 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
     Value* pointerOperand = nullptr;
     unsigned int pointerAddressSpace = ADDRESS_SPACE_NUM_ADDRESSES;
 
-    if (LoadInst * load = dyn_cast<LoadInst>(&I)) {
+    if (auto* load = dyn_cast<LoadInst>(&I)) {
         pointerOperand = load->getPointerOperand();
         pointerAddressSpace = load->getPointerAddressSpace();
     }
-    else if (StoreInst * store = dyn_cast<StoreInst>(&I)) {
+    else if (auto* store = dyn_cast<StoreInst>(&I)) {
         pointerOperand = store->getPointerOperand();
         pointerAddressSpace = store->getPointerAddressSpace();
     }
@@ -241,7 +234,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     // with the corresponding address space.
 
     IGCLLVM::IRBuilder<> builder(&I);
-    PointerType* pointerType = dyn_cast<PointerType>(pointerOperand->getType());
+    auto* pointerType = dyn_cast<PointerType>(pointerOperand->getType());
     IGC_ASSERT( pointerType != nullptr );
     ConstantInt* privateTag = builder.getInt64(1); // tag 001
     ConstantInt* localTag = builder.getInt64(2);   // tag 010
@@ -275,16 +268,21 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
         builder.SetInsertPoint(BB);
         PointerType* ptrType = IGCLLVM::getWithSamePointeeType(pointerType, addressSpace);
         Value* ptr = builder.CreateAddrSpaceCast(pointerOperand, ptrType);
+        Instruction* generatedLoadStore = nullptr;
 
-        if (LoadInst* LI = dyn_cast<LoadInst>(&I))
+        if (auto* LI = dyn_cast<LoadInst>(&I))
         {
             load = builder.CreateAlignedLoad(LI->getType(), ptr, getAlign(*LI), LI->isVolatile(), LoadName);
+            generatedLoadStore = cast<Instruction>(load);
         }
-        else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
+        else if (auto* SI = dyn_cast<StoreInst>(&I))
         {
-            builder.CreateAlignedStore(I.getOperand(0), ptr, getAlign(*SI), SI->isVolatile());
+            generatedLoadStore = builder.CreateAlignedStore(I.getOperand(0), ptr, getAlign(*SI), SI->isVolatile());
         }
-
+        if (generatedLoadStore != nullptr)
+        {
+            generatedLoadStores.push_back(generatedLoadStore);
+        }
         builder.CreateBr(convergeBlock);
         return BB;
     };
@@ -345,23 +343,28 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
 void GenericAddressDynamicResolution::resolveGASWithoutBranches(Instruction& I, Value* pointerOperand)
 {
     IGCLLVM::IRBuilder<> builder(&I);
-    PointerType* pointerType = dyn_cast<PointerType>(pointerOperand->getType());
+    auto* pointerType = dyn_cast<PointerType>(pointerOperand->getType());
     IGC_ASSERT( pointerType != nullptr );
 
     Value* nonLocalLoad = nullptr;
 
     PointerType* ptrType = IGCLLVM::getWithSamePointeeType(pointerType, ADDRESS_SPACE_GLOBAL);
     Value* globalPtr = builder.CreateAddrSpaceCast(pointerOperand, ptrType);
+    Instruction* generatedLoadStore = nullptr;
 
-    if (LoadInst* LI = dyn_cast<LoadInst>(&I))
+    if (auto* LI = dyn_cast<LoadInst>(&I))
     {
         nonLocalLoad = builder.CreateAlignedLoad(LI->getType(), globalPtr, getAlign(*LI), LI->isVolatile(), "globalOrPrivateLoad");
+        generatedLoadStore = cast<Instruction>(nonLocalLoad);
     }
-    else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
+    else if (auto* SI = dyn_cast<StoreInst>(&I))
     {
-        builder.CreateAlignedStore(I.getOperand(0), globalPtr, getAlign(*SI), SI->isVolatile());
+        generatedLoadStore = builder.CreateAlignedStore(I.getOperand(0), globalPtr, getAlign(*SI), SI->isVolatile());
     }
-
+    if (generatedLoadStore != nullptr)
+    {
+        generatedLoadStores.push_back(generatedLoadStore);
+    }
     if (nonLocalLoad != nullptr)
     {
         I.replaceAllUsesWith(nonLocalLoad);
@@ -386,12 +389,12 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
     {
         IGC_ASSERT(IGCLLVM::getNumArgOperands(&I) == 1);
         Value* arg = I.getArgOperand(0);
-        PointerType* dstType = dyn_cast<PointerType>(I.getType());
+        auto* dstType = dyn_cast<PointerType>(I.getType());
         IGC_ASSERT( dstType != nullptr );
         const unsigned targetAS = cast<PointerType>(I.getType())->getAddressSpace();
 
         IGCLLVM::IRBuilder<> builder(&I);
-        PointerType* pointerType = dyn_cast<PointerType>(arg->getType());
+        auto* pointerType = dyn_cast<PointerType>(arg->getType());
         IGC_ASSERT( pointerType != nullptr );
         ConstantInt* globalTag = builder.getInt64(0);  // tag 000/111
         ConstantInt* privateTag = builder.getInt64(1); // tag 001
@@ -411,7 +414,7 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
             // Force distinguishing private and global pointers if a kernel uses explicit casts.
             // For more details please refer to section "Generic Address Space Explicit Casts" in
             // documentation directory under igc/generic-pointers/generic-pointers.md
-            auto ClContext = static_cast<OpenCLProgramContext*>(m_ctx);
+            auto* ClContext = static_cast<OpenCLProgramContext*>(m_ctx);
             ClContext->setDistinguishBetweenPrivateAndGlobalPtr(true);
         }
 
