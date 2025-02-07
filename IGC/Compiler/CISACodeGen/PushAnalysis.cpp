@@ -1610,10 +1610,9 @@ namespace IGC
 
         if (m_context->platform.isCoreChildOf(IGFX_XE3_CORE))
         {
-            // VRT allows us to have 256GRFs, so we can double the number of pushed inputs
             MaxNumOfPushedInputs = 24 * 2;
-            m_pMaxNumOfVSPushedInputs = 30;
-            m_pMaxNumOfDSPushedInputs = 24 * 2; // 48 * vec4 == 192 GRF == 3/4 256 GRF
+            m_pMaxNumOfVSPushedInputs = 24 * 2;
+            m_pMaxNumOfDSPushedInputs = 24 * 2;
         }
         else
         {
