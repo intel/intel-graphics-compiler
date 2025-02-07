@@ -5967,8 +5967,11 @@ namespace IGC
     void CEncoder::DeclareInput(CVariable* var, uint offset, uint instance)
     {
         // Avoid declaring more inputs/outputs than available registers
-        if (offset + var->GetSize() >= vKernel->getNumRegTotal() * getGRFSize())
+        if (offset + var->GetSize() >= m_program->m_Platform->getMaxNumGRF(m_program->GetShaderType()) * getGRFSize())
+        {
+            IGC_ASSERT(0);
             return;
+        }
         V(vKernel->CreateVISAInputVar(
             var->visaGenVariable[instance],
             int_cast<unsigned short>(offset),
@@ -5978,8 +5981,11 @@ namespace IGC
     void CEncoder::DeclarePred(CVariable * var, uint offset)
     {
         // Avoid declaring more inputs/outputs than available registers
-        if (offset + var->GetSize() >= vKernel->getNumRegTotal() * getGRFSize())
+        if (offset + var->GetSize() >= m_program->m_Platform->getMaxNumGRF(m_program->GetShaderType()) * getGRFSize())
+        {
+            IGC_ASSERT(0);
             return;
+        }
         V(vKernel->CreateVISAPredVar(
             var->visaPredVariable,
             "",
