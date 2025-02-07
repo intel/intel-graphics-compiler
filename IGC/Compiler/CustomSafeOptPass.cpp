@@ -7423,7 +7423,7 @@ void InsertBranchOpt::atomicSplitOpt(Function& F, int mode)
             // if (src > (for UMax) or < (for Umin) x)
             //    use the original atomic umax/umin inst src
             readI = createReadFromAtomic( builder, inst, isTyped );
-            CmpInst::Predicate predicate = umaxMode ? ICmpInst::ICMP_UGT : ICmpInst::ICMP_ULT;
+            CmpInst::Predicate predicate = ( op == AtomicOp::EATOMIC_UMAX ) ? ICmpInst::ICMP_UGT : ICmpInst::ICMP_ULT;
             Instruction* condInst = dyn_cast<Instruction>( builder.CreateICmp( predicate, src, readI ) );
 
             splitBBAndName( condInst, inst, &ThenTerm, nullptr, MergeBlock );
