@@ -3985,7 +3985,7 @@ void CShader::PackAndCopyVariable(
     encoder.Push();
 }
 
-// Copies entire variable using simd16, UD type and NoMask
+// Copies entire variable using simd32 (Xe2) or simd16 (Xe), UD type and NoMask
 void CShader::CopyVariableRaw(
     CVariable* dst,
     CVariable* src)
@@ -3994,12 +3994,13 @@ void CShader::CopyVariableRaw(
     uint dataTypeSizeInBytes = CEncoder::GetCISADataTypeSize(dataType);
     uint offset = 0;
     uint bytesToCopy = src->GetSize() * src->GetNumberInstance();
+
     while (bytesToCopy > 0)
     {
         bool dstSeconfHalf = offset >= dst->GetSize();
         bool srcSeconfHalf = offset >= src->GetSize();
         encoder.SetSecondHalf(dstSeconfHalf || srcSeconfHalf);
-        SIMDMode simdMode = SIMDMode::SIMD16;
+        SIMDMode simdMode = getGRFSize() == 64 ? SIMDMode::SIMD32 : SIMDMode::SIMD16;
         uint movSize = numLanes(simdMode) * dataTypeSizeInBytes;
         while (movSize > bytesToCopy ||
             (!srcSeconfHalf && ((offset + movSize) > src->GetSize())) ||
