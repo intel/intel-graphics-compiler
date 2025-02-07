@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2024-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -60,6 +60,9 @@ private:
 
   unsigned Supported2DOffsetBits = 0;
   bool Changed = false;
+
+  unsigned OffsetAlignment = 0;
+
 };
 
 } // namespace
@@ -213,6 +216,9 @@ bool GenXLscAddrCalcFolding::foldLscAddrCalculation(CallInst &Inst) {
   auto Scale = cast<ConstantInt>(Inst.getOperand(ScaleIndex))->getValue();
   auto Offset = cast<ConstantInt>(Inst.getOperand(OffsetIndex))->getValue();
 
+  OffsetAlignment = vc::InternalIntrinsic::getMemoryRegisterElementSize(&Inst) /
+                    genx::ByteBits;
+
   while (auto *NewIndex = applyLscAddrFolding(Index, Scale, Offset)) {
     Index = NewIndex;
     Changed = true;
@@ -297,6 +303,10 @@ Value *GenXLscAddrCalcFolding::applyLscAddrFolding(Value *Offsets, APInt &Scale,
   }
 
   if (Overflow)
+    return nullptr;
+
+  if (auto NewOffsetVal = NewOffset.getSExtValue();
+      NewOffsetVal % OffsetAlignment != 0)
     return nullptr;
 
   Scale = std::move(NewScale);
