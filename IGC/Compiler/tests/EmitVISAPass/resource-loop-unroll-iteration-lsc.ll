@@ -17,80 +17,68 @@
 @ThreadGroupSize_Z = constant i32 1
 
 define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
-; CHECK:     _main_0:
-; CHECK-NEXT:    mov (M1, 16) svn(0,0)<1> threadIdInGroupX(0,0)<1;1,0>
-; CHECK-NEXT:    mov (M1, 16) nonuniform(0,0)<1> svn_0(0,0)<1;1,0>
-; CHECK-NEXT:    add (M1_NM, 1) offset(0,0)<1> src1(0,0)<0;1,0> 0x1:w
-; CHECK-NEXT:    mov (M1_NM, 1) offsetTrunc(0,0)<1> offset(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1, 16) offsetTruncBroadcast(0,0)<1> offsetTrunc(0,0)<0;1,0>
-; CHECK-NEXT:    setp (M1_NM, 16) P1 0x0:ud
-; CHECK-NEXT:    setp (M1_NM, 16) P2 0x0:ud
-; CHECK-NEXT:    setp (M1_NM, 16) P3 0x0:ud
-; CHECK-NEXT:    lifetime.start call_
-;
-; CHECK:     _test1_001__opt_resource_loop:
-; CHECK-NEXT:    setp (M1_NM, 16) P4 0x0:ud
-; CHECK-NEXT:    setp (M1_NM, 16) P5 0x0:ud
-; CHECK-NEXT:    cmp.eq (M1, 16) P5 V0032(0,0)<0;1,0> V0032(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1_NM, 1) V0033(0,0)<1> P5
-; CHECK-NEXT:    fbl (M1_NM, 1) V0034(0,0)<1> V0033(0,0)<0;1,0>
-; CHECK-NEXT:    shl (M1_NM, 1) V0034(0,0)<1> V0034(0,0)<0;1,0> 0x2:w
-; CHECK-NEXT:    addr_add (M1_NM, 1) A0(0)<1> &nonuniform V0035(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1_NM, 1) V0036(0,0)<1> r[A0(0),0]<0;1,0>:d
-; CHECK-NEXT:    cmp.eq (M1, 16) P6 V0036(0,0)<0;1,0> nonuniform(0,0)<1;1,0>
-; CHECK-NEXT:    (P6) lsc_load.ugm.ca.ca (M1, 16)  call_:d32x3  bss(V0036)[offsetTruncBroadcast]:a32
-; CHECK-NEXT:    or (M1_NM, 16) P4 P4 P6
-; CHECK-NEXT:    xor (M1_NM, 16) P5 P5 P6
-; CHECK-NEXT:    mov (M1_NM, 1) V0033(0,0)<1> P5
-; CHECK-NEXT:    fbl (M1_NM, 1) V0037(0,0)<1> V0033(0,0)<0;1,0>
-; CHECK-NEXT:    and (M1_NM, 1) V0037(0,0)<1> V0037(0,0)<0;1,0> 0xf:ud
-; CHECK-NEXT:    shl (M1_NM, 1) V0037(0,0)<1> V0037(0,0)<0;1,0> 0x2:w
-; CHECK-NEXT:    addr_add (M1_NM, 1) A1(0)<1> &nonuniform V0038(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1_NM, 1) V0039(0,0)<1> r[A1(0),0]<0;1,0>:d
-; CHECK-NEXT:    cmp.eq (M1, 16) P7 V0039(0,0)<0;1,0> nonuniform(0,0)<1;1,0>
-; CHECK-NEXT:    and (M1_NM, 16) P7 P7 P5
-; CHECK-NEXT:    (P7) lsc_load.ugm.ca.ca (M1, 16)  call_:d32x3  bss(V0039)[offsetTruncBroadcast]:a32
-; CHECK-NEXT:    or (M1_NM, 16) P4 P4 P7
-; CHECK-NEXT:    xor (M1_NM, 16) P5 P5 P7
-; CHECK-NEXT:    mov (M1_NM, 1) V0033(0,0)<1> P5
-; CHECK-NEXT:    fbl (M1_NM, 1) V0040(0,0)<1> V0033(0,0)<0;1,0>
-; CHECK-NEXT:    and (M1_NM, 1) V0040(0,0)<1> V0040(0,0)<0;1,0> 0xf:ud
-; CHECK-NEXT:    shl (M1_NM, 1) V0040(0,0)<1> V0040(0,0)<0;1,0> 0x2:w
-; CHECK-NEXT:    addr_add (M1_NM, 1) A2(0)<1> &nonuniform V0041(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1_NM, 1) V0042(0,0)<1> r[A2(0),0]<0;1,0>:d
-; CHECK-NEXT:    cmp.eq (M1, 16) P8 V0042(0,0)<0;1,0> nonuniform(0,0)<1;1,0>
-; CHECK-NEXT:    and (M1_NM, 16) P8 P8 P5
-; CHECK-NEXT:    (P8) lsc_load.ugm.ca.ca (M1, 16)  call_:d32x3  bss(V0042)[offsetTruncBroadcast]:a32
-; CHECK-NEXT:    or (M1_NM, 16) P4 P4 P8
-; CHECK-NEXT:    xor (M1_NM, 16) P5 P5 P8
-; CHECK-NEXT:    mov (M1_NM, 1) V0033(0,0)<1> P5
-; CHECK-NEXT:    fbl (M1_NM, 1) V0043(0,0)<1> V0033(0,0)<0;1,0>
-; CHECK-NEXT:    and (M1_NM, 1) V0043(0,0)<1> V0043(0,0)<0;1,0> 0xf:ud
-; CHECK-NEXT:    shl (M1_NM, 1) V0043(0,0)<1> V0043(0,0)<0;1,0> 0x2:w
-; CHECK-NEXT:    addr_add (M1_NM, 1) A3(0)<1> &nonuniform V0044(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1_NM, 1) V0045(0,0)<1> r[A3(0),0]<0;1,0>:d
-; CHECK-NEXT:    cmp.eq (M1, 16) P9 V0045(0,0)<0;1,0> nonuniform(0,0)<1;1,0>
-; CHECK-NEXT:    and (M1_NM, 16) P9 P9 P5
-; CHECK-NEXT:    (P9) lsc_load.ugm.ca.ca (M1, 16)  call_:d32x3  bss(V0045)[offsetTruncBroadcast]:a32
-; CHECK-NEXT:    or (M1_NM, 16) P4 P4 P9
-; CHECK-NEXT:    (!P4) goto (M1, 16) _test1_001__opt_resource_loop
-; CHECK-NEXT:    mul (M1_NM, 1) V0046(0,0)<1> val_0(0,0)<0;1,0> 0x40:uw
-; CHECK-NEXT:    addr_add (M1_NM, 1) A4(0)<1> &call_ V0046(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1, 16) out(0,0)<1> r[A4(0),0]<8;8,1>:d
-; CHECK-NEXT:    mov (M1_NM, 1) dst_0(0,0)<1> dst(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1, 16) dstBroadcast_0(0,0)<2> dst_1(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1, 16) dstBroadcast_0(0,1)<2> dst_1(0,1)<0;1,0>
-; CHECK-NEXT:    lsc_store.ugm.wb.wb (M1, 16)  flat[dstBroadcast]:a64  out:d32
-; CHECK-NEXT:    ret (M1, 1)
+entry:
+; CHECK:  _main_0:
 
   %svn = call i16 @llvm.genx.GenISA.DCL.SystemValue.i16(i32 17)
+; CHECK:      mov (M1, 16) svn(0,0)<1> threadIdInGroupX(0,0)<1;1,0>
 
   %nonuniform = zext i16 %svn to i32
+; CHECK:      mov (M1, 16) nonuniform(0,0)<1> svn_0(0,0)<1;1,0>
 
   %NonUniformResource = inttoptr i32 %nonuniform to <4 x float> addrspace(2621440)*
   %offset = add i32 %src1, 1
+; CHECK:      add (M1_NM, 1) offset(0,0)<1> src1(0,0)<0;1,0> 0x1:w
+; CHECK:      mov (M1_NM, 1) offsetTrunc(0,0)<1> offset(0,0)<0;1,0>
+; CHECK:      mov (M1, 16) offsetTruncBroadcast(0,0)<1> offsetTrunc(0,0)<0;1,0>
 
   %call = call <3 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v3i32.p2621440v4f32(<4 x float> addrspace(2621440)* %NonUniformResource, i32 %offset, i32 4, i1 false)
+; CHECK:  _test1_001__opt_resource_loop:
+; CHECK:     setp (M1_NM, 16) P4 0x0:ud
+; CHECK:     setp (M1_NM, 16) P5 0x0:ud
+; CHECK:     cmp.eq (M1, 16) P5 V0032(0,0)<0;1,0> V0032(0,0)<0;1,0>
+; CHECK:     mov (M1_NM, 1) V0033(0,0)<1> P5
+; CHECK:     fbl (M1_NM, 1) V0034(0,0)<1> V0033(0,0)<0;1,0>
+; CHECK:     shl (M1_NM, 1) V0034(0,0)<1> V0034(0,0)<0;1,0> 0x2:w
+; CHECK:     addr_add (M1_NM, 1) A0(0)<1> &nonuniform V0035(0,0)<0;1,0>
+; CHECK:     mov (M1_NM, 1) V0036(0,0)<1> r[A0(0),0]<0;1,0>:d
+; CHECK:     cmp.eq (M1, 16) P6 V0036(0,0)<0;1,0> nonuniform(0,0)<1;1,0>
+; CHECK:     (P6) lsc_load.ugm.ca.ca (M1, 16)  call_:d32x3  bss(V0036)[offsetTruncBroadcast]:a32
+; CHECK:     or (M1_NM, 16) P4 P4 P6
+; CHECK:     xor (M1_NM, 16) P5 P5 P6
+; CHECK:     mov (M1_NM, 1) V0033(0,0)<1> P5
+; CHECK:     fbl (M1_NM, 1) V0037(0,0)<1> V0033(0,0)<0;1,0>
+; CHECK:     and (M1_NM, 1) V0037(0,0)<1> V0037(0,0)<0;1,0> 0xf:ud
+; CHECK:     shl (M1_NM, 1) V0037(0,0)<1> V0037(0,0)<0;1,0> 0x2:w
+; CHECK:     addr_add (M1_NM, 1) A1(0)<1> &nonuniform V0038(0,0)<0;1,0>
+; CHECK:     mov (M1_NM, 1) V0039(0,0)<1> r[A1(0),0]<0;1,0>:d
+; CHECK:     cmp.eq (M1, 16) P7 V0039(0,0)<0;1,0> nonuniform(0,0)<1;1,0>
+; CHECK:     and (M1_NM, 16) P7 P7 P5
+; CHECK:     (P7) lsc_load.ugm.ca.ca (M1, 16)  call_:d32x3  bss(V0039)[offsetTruncBroadcast]:a32
+; CHECK:     or (M1_NM, 16) P4 P4 P7
+; CHECK:     xor (M1_NM, 16) P5 P5 P7
+; CHECK:     mov (M1_NM, 1) V0033(0,0)<1> P5
+; CHECK:     fbl (M1_NM, 1) V0040(0,0)<1> V0033(0,0)<0;1,0>
+; CHECK:     and (M1_NM, 1) V0040(0,0)<1> V0040(0,0)<0;1,0> 0xf:ud
+; CHECK:     shl (M1_NM, 1) V0040(0,0)<1> V0040(0,0)<0;1,0> 0x2:w
+; CHECK:     addr_add (M1_NM, 1) A2(0)<1> &nonuniform V0041(0,0)<0;1,0>
+; CHECK:     mov (M1_NM, 1) V0042(0,0)<1> r[A2(0),0]<0;1,0>:d
+; CHECK:     cmp.eq (M1, 16) P8 V0042(0,0)<0;1,0> nonuniform(0,0)<1;1,0>
+; CHECK:     and (M1_NM, 16) P8 P8 P5
+; CHECK:     (P8) lsc_load.ugm.ca.ca (M1, 16)  call_:d32x3  bss(V0042)[offsetTruncBroadcast]:a32
+; CHECK:     or (M1_NM, 16) P4 P4 P8
+; CHECK:     xor (M1_NM, 16) P5 P5 P8
+; CHECK:     mov (M1_NM, 1) V0033(0,0)<1> P5
+; CHECK:     fbl (M1_NM, 1) V0043(0,0)<1> V0033(0,0)<0;1,0>
+; CHECK:     and (M1_NM, 1) V0043(0,0)<1> V0043(0,0)<0;1,0> 0xf:ud
+; CHECK:     shl (M1_NM, 1) V0043(0,0)<1> V0043(0,0)<0;1,0> 0x2:w
+; CHECK:     addr_add (M1_NM, 1) A3(0)<1> &nonuniform V0044(0,0)<0;1,0>
+; CHECK:     mov (M1_NM, 1) V0045(0,0)<1> r[A3(0),0]<0;1,0>:d
+; CHECK:     cmp.eq (M1, 16) P9 V0045(0,0)<0;1,0> nonuniform(0,0)<1;1,0>
+; CHECK:     and (M1_NM, 16) P9 P9 P5
+; CHECK:     (P9) lsc_load.ugm.ca.ca (M1, 16)  call_:d32x3  bss(V0045)[offsetTruncBroadcast]:a32
+; CHECK:     or (M1_NM, 16) P4 P4 P9
+; CHECK:     (!P4) goto (M1, 16) _test1_001__opt_resource_loop
   %out = extractelement <3 x i32> %call, i32 %val
   store i32 %out, i32 addrspace(1)* %dst, align 1
   ret void

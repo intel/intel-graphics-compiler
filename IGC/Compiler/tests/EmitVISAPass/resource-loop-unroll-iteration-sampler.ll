@@ -19,60 +19,49 @@
 %__2D_DIM_Resource = type opaque
 
 define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
-; CHECK:     _main_0:
-; CHECK-NEXT:    mov (M1, 16) svn0(0,0)<1> threadIdInGroupX(0,0)<1;1,0>
-; CHECK-NEXT:    mov (M1, 16) sampler(0,0)<1> svn0_0(0,0)<1;1,0>
-; CHECK-NEXT:    add (M1_NM, 1) texture(0,0)<1> src(2,8)<0;1,0> 0x500:w
-; CHECK-NEXT:    mov (M1, 16) V0032(0,0)<1> 0x0:f
-; CHECK-NEXT:    setp (M1_NM, 16) P1 0x0:ud
-; CHECK-NEXT:    setp (M1_NM, 16) P2 0x0:ud
-; CHECK-NEXT:    setp (M1_NM, 16) P3 0x0:ud
-; CHECK-NEXT:    lifetime.start call_
-;
-; CHECK:     _test1_001__opt_resource_loop:
-; CHECK-NEXT:    setp (M1_NM, 16) P4 0x0:ud
-; CHECK-NEXT:    setp (M1_NM, 16) P5 0x0:ud
-; CHECK-NEXT:    cmp.eq (M1, 16) P5 V0033(0,0)<0;1,0> V0033(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1_NM, 1) V0034(0,0)<1> P5
-; CHECK-NEXT:    setp (M1_NM, 16) P7 0x0:ud
-; CHECK-NEXT:    cmp.eq (M1, 16) P7 V0035(0,0)<0;1,0> V0035(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1_NM, 1) V0036(0,0)<1> P7
-; CHECK-NEXT:    fbl (M1_NM, 1) V0037(0,0)<1> V0036(0,0)<0;1,0>
-; CHECK-NEXT:    shl (M1_NM, 1) V0037(0,0)<1> V0037(0,0)<0;1,0> 0x2:w
-; CHECK-NEXT:    addr_add (M1_NM, 1) A0(0)<1> &sampler_0 V0038(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1_NM, 1) V0039(0,0)<1> r[A0(0),0]<0;1,0>:ud
-; CHECK-NEXT:    cmp.eq (M1, 16) P6 V0039(0,0)<0;1,0> sampler_0(0,0)<1;1,0>
-; CHECK-NEXT:    movs (M1_NM, 1) S31(0) V0039(0,0)<0;1,0>
-; CHECK-NEXT:    movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK-NEXT:    (P6) sample_lz.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
-; CHECK-NEXT:    or (M1_NM, 16) P4 P4 P6
-; CHECK-NEXT:    xor (M1_NM, 16) P5 P5 P6
-; CHECK-NEXT:    mov (M1_NM, 1) V0034(0,0)<1> P5
-; CHECK-NEXT:    movs (M1_NM, 1) S31(0) V0039(0,0)<0;1,0>
-; CHECK-NEXT:    movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK-NEXT:    sample_lz.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
-; CHECK-NEXT:    movs (M1_NM, 1) S31(0) V0039(0,0)<0;1,0>
-; CHECK-NEXT:    movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK-NEXT:    sample_lz.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
-; CHECK-NEXT:    movs (M1_NM, 1) S31(0) V0039(0,0)<0;1,0>
-; CHECK-NEXT:    movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK-NEXT:    sample_lz.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
-; CHECK-NEXT:    (!P4) goto (M1, 16) _test1_001__opt_resource_loop
-; CHECK-NEXT:    mov (M1_NM, 1) dst_0(0,0)<1> dst(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1, 16) dstBroadcast_0(0,0)<2> dst_1(0,0)<0;1,0>
-; CHECK-NEXT:    mov (M1, 16) dstBroadcast_0(0,1)<2> dst_1(0,1)<0;1,0>
-; CHECK-NEXT:    lsc_store.ugm.wb.wb (M1, 16)  flat[dstBroadcast]:a64  call_:d32
-; CHECK-NEXT:    ret (M1, 1)
+entry:
+; CHECK:  _main_0:
 
   %svn0 = call i16 @llvm.genx.GenISA.DCL.SystemValue.i16(i32 17)
   %sampler = zext i16 %svn0 to i32
   %NonUniformSampler = inttoptr i32 %sampler to <4 x float> addrspace(2752518)*
+; CHECK:    mov (M1, 16) svn0(0,0)<1> threadIdInGroupX(0,0)<1;1,0>
+; CHECK:    mov (M1, 16) sampler(0,0)<1> svn0_0(0,0)<1;1,0>
 
   %svn1 = extractelement <64 x i32> %src, i32 40
   %texture = add i32 %svn1, 1280
   %NonUniformTexture = inttoptr i32 %texture to %__2D_DIM_Resource addrspace(2621450)*
+; CHECK:    add (M1_NM, 1) texture(0,0)<1> src(2,8)<0;1,0> 0x500:w
+; CHECK:    mov (M1, 16) V0032(0,0)<1> 0x0:f
 
   %call = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource addrspace(2621450)* undef, %__2D_DIM_Resource addrspace(2621450)* %NonUniformTexture, <4 x float> addrspace(2752518)* %NonUniformSampler, i32 0, i32 0, i32 0)
+; CHECK:    cmp.eq (M1, 16) P5 V0033(0,0)<0;1,0> V0033(0,0)<0;1,0>
+; CHECK:    mov (M1_NM, 1) V0034(0,0)<1> P5
+; CHECK:    setp (M1_NM, 16) P7 0x0:ud
+; CHECK:    cmp.eq (M1, 16) P7 V0035(0,0)<0;1,0> V0035(0,0)<0;1,0>
+; CHECK:    mov (M1_NM, 1) V0036(0,0)<1> P7
+; CHECK:    fbl (M1_NM, 1) V0037(0,0)<1> V0036(0,0)<0;1,0>
+; CHECK:    shl (M1_NM, 1) V0037(0,0)<1> V0037(0,0)<0;1,0> 0x2:w
+; CHECK:    addr_add (M1_NM, 1) A0(0)<1> &sampler_0 V0038(0,0)<0;1,0>
+; CHECK:    mov (M1_NM, 1) V0039(0,0)<1> r[A0(0),0]<0;1,0>:ud
+; CHECK:    cmp.eq (M1, 16) P6 V0039(0,0)<0;1,0> sampler_0(0,0)<1;1,0>
+; CHECK:    movs (M1_NM, 1) S31(0) V0039(0,0)<0;1,0>
+; CHECK:    movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
+; CHEKC:    (P6) sample_lz.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
+; CHECK:    or (M1_NM, 16) P4 P4 P6
+; CHECK:    xor (M1_NM, 16) P5 P5 P6
+; CHECK:    mov (M1_NM, 1) V0034(0,0)<1> P5
+; CHECK:    movs (M1_NM, 1) S31(0) V0039(0,0)<0;1,0>
+; CHECK:    movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
+; CHECK:    sample_lz.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
+; CHECK:    movs (M1_NM, 1) S31(0) V0039(0,0)<0;1,0>
+; CHECK:    movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
+; CHECK:    sample_lz.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
+; CHECK:    movs (M1_NM, 1) S31(0) V0039(0,0)<0;1,0>
+; CHECK:    movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
+; CHECK:    sample_lz.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
+; CHECK:    (!P4) goto (M1, 16) _test1_001__opt_resource_loop
+
   %out = extractelement <4 x float> %call, i32 0
   store float %out, float addrspace(1)* %dst, align 4
   ret void
