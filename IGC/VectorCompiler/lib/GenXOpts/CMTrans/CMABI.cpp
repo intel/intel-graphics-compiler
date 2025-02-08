@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -421,6 +421,43 @@ template <class NodeType> Function *getFunction(NodeType i) {
   return nullptr;
 }
 
+// Analyzes the uses of a ByVal argument to determine if it is written to.
+static inline bool isReadOnlyArg(Argument &Arg) {
+  SmallVector<Use *, 8> Uses;
+  for (auto &U : Arg.uses())
+    Uses.push_back(&U);
+
+  while (!Uses.empty()) {
+    auto *U = Uses.back();
+    Uses.pop_back();
+    if (auto *SI = dyn_cast<StoreInst>(U->getUser())) {
+      if (SI->getPointerOperand() == U->get())
+        return false;
+      continue; // sutable usage
+    }
+
+    if (auto *LI = dyn_cast<LoadInst>(U->getUser()))
+      continue; // sutable usage
+
+    if (auto *GEP = dyn_cast<GetElementPtrInst>(U->getUser())) {
+      if (GEP->getPointerOperand() == U->get())
+        for (auto &GU : GEP->uses())
+          Uses.push_back(&GU);
+
+      continue;
+    }
+
+    if (auto *Cast = dyn_cast<CastInst>(U->getUser())) {
+      for (auto &CU : Cast->uses())
+        Uses.push_back(&CU);
+      continue;
+    }
+
+    return false;
+  }
+  return true;
+}
+
 template <class CallGraphImpl>
 bool CMABIBase<CallGraphImpl>::runOnCallGraphImpl(CallGraphImpl &SCC) {
   bool Changed = false;
@@ -451,7 +488,6 @@ bool CMABIBase<CallGraphImpl>::runOnCallGraphImpl(CallGraphImpl &SCC) {
         if (auto *CGN = ProcessNode(&*I)) {
           LocalChange = true;
           auto *NewF = getFunction(CGN);
-          ;
           SCC.getOuterRefSCC().replaceNodeFunction(*I, *NewF);
         }
       }
@@ -466,7 +502,8 @@ bool CMABIBase<CallGraphImpl>::runOnCallGraphImpl(CallGraphImpl &SCC) {
       continue;
     for (auto &Arg : F->args()) {
       auto *ArgTy = Arg.getType();
-      if (!Arg.hasAttribute(Attribute::ByVal) || !ArgTy->isPointerTy())
+      if (!Arg.hasAttribute(Attribute::ByVal) || !ArgTy->isPointerTy() ||
+          isReadOnlyArg(Arg))
         continue;
       auto *M = F->getParent();
       auto *InsertBefore = F->getEntryBlock().getFirstNonPHI();

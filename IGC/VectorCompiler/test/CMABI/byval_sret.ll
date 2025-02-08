@@ -78,6 +78,7 @@ define internal spir_func void @store_float_internal_byval(%struct4* byval(%stru
   %s = load %struct4, %struct4* %s_ptr
   %f = extractvalue %struct4 %s, 0
   store float %f, float* %f_ptr
+  store %struct4 %s, %struct4* %s_ptr
   ret void
 ; SMALL-OFF-NEXT: %[[COPY_STR:[^ ]+]] = alloca %struct4, align 8
 ; SMALL-OFF-TYPED-PTRS-NEXT: %[[MEMCPY_DST:[^ ]+]] = bitcast %struct4* %[[COPY_STR]] to i8*
@@ -98,10 +99,10 @@ define internal spir_func void @store_float_internal_byval(%struct4* byval(%stru
 ; SMALL-ON-OPAQUE-PTRS-NEXT: %s = load %struct4, ptr %s_ptr
 ; COMMON-NEXT: %f = extractvalue %struct4 %s, 0
 ; COMMON-TYPED-PTRS-NEXT: store float %f, float* %f_ptr
-; COMMON-TYPED-PTRS-NEXT: %[[FLOAT_VAL:[^ ]+]] = load float, float* %f_ptr
+; COMMON-TYPED-PTRS: %[[FLOAT_VAL:[^ ]+]] = load float, float* %f_ptr
 ; COMMON-OPAQUE-PTRS-NEXT: store float %f, ptr %f_ptr
-; COMMON-OPAQUE-PTRS-NEXT: %[[FLOAT_VAL:[^ ]+]] = load float, ptr %f_ptr
-; COMMON-NEXT: ret float %[[FLOAT_VAL]]
+; COMMON-OPAQUE-PTRS: %[[FLOAT_VAL:[^ ]+]] = load float, ptr %f_ptr
+; COMMON: ret float %[[FLOAT_VAL]]
 }
 
 ; COM: not internal function with byval attribute:
@@ -113,6 +114,7 @@ define spir_func void @store_float(%struct4* byval(%struct4) %s_ptr, float* %f_p
   %s = load %struct4, %struct4* %s_ptr
   %f = extractvalue %struct4 %s, 0
   store float %f, float* %f_ptr
+  store %struct4 %s, %struct4* %s_ptr
   ret void
 ; COMMON-NEXT: %[[COPY_STR:[^ ]+]] = alloca %struct4, align 8
 ; COMMON-TYPED-PTRS-NEXT: %[[MEMCPY_DST:[^ ]+]] = bitcast %struct4* %[[COPY_STR]] to i8*
@@ -126,7 +128,7 @@ define spir_func void @store_float(%struct4* byval(%struct4) %s_ptr, float* %f_p
 ; COMMON-NEXT: %f = extractvalue %struct4 %s, 0
 ; COMMON-TYPED-PTRS-NEXT: store float %f, float* %f_ptr
 ; COMMON-OPAQUE-PTRS-NEXT: store float %f, ptr %f_ptr
-; COMMON-NEXT: ret void
+; COMMON: ret void
 }
 
 ; COM: internal function with array access on ptr:
@@ -224,6 +226,8 @@ define spir_func void @store_sum(%struct24* byval(%struct24) %s_ptr) #0 {
   %fv_ptr = load <2 x float>*, <2 x float>** %ptr3
   %sum = fadd <2 x float> %fv1, %fv2
   store <2 x float> %sum, <2 x float>* %fv_ptr
+  %tmp = load %struct24, %struct24* %s_ptr
+  store %struct24 %tmp, %struct24* %s_ptr
   ret void
 ; COMMON-NEXT: %[[COPY_STR:[^ ]+]] = alloca %struct24, align 8
 ; COMMON-TYPED-PTRS-NEXT: %[[MEMCPY_DST:[^ ]+]] = bitcast %struct24* %[[COPY_STR]] to i8*
@@ -247,7 +251,7 @@ define spir_func void @store_sum(%struct24* byval(%struct24) %s_ptr) #0 {
 ; COMMON-NEXT: %sum = fadd <2 x float> %fv1, %fv2
 ; COMMON-TYPED-PTRS-NEXT: store <2 x float> %sum, <2 x float>* %fv_ptr
 ; COMMON-OPAQUE-PTRS-NEXT: store <2 x float> %sum, ptr %fv_ptr
-; COMMON-NEXT: ret void
+; COMMON: ret void
 }
 
 ; COM: struct4s tests structure with structure inside.
