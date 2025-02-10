@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "VISAKernel.h"
 
 #include "G4_IR.hpp"
+#include "G4_Kernel.hpp"
 /* stdio.h portability code start */
 #ifdef _WIN32
 #else
@@ -4490,6 +4491,9 @@ void vISAVerifier::verifyKernelHeader() {
     }
   }
 
+  GRFMode GRFInfo(irBuilder->getPlatform(), options);
+  unsigned GRFNumber = GRFInfo.getMaxGRF();
+
   // [Begin, end) is an interval for each input. We check two things
   // - no overlap
   // - do not overflow i.e. end < 32 * (256 - 1)
@@ -4502,7 +4506,7 @@ void vISAVerifier::verifyKernelHeader() {
         continue;
       unsigned Begin = pi->offset;
       unsigned End = Begin + pi->size;
-      if (End >= (uint32_t)(irBuilder->getGRFSize() * (256 - 1))) {
+      if (End >= (uint32_t)(irBuilder->getGRFSize() * (GRFNumber - 1))) {
         REPORT_HEADER(options, false, "Input V%d is out of bound [%d, %d)",
                       pi->index, Begin, End);
       }
