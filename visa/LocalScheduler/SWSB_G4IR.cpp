@@ -4902,9 +4902,6 @@ void SWSB::insertPVCWA() {
 
     auto cleanLSCGRFs = [&](uint32_t &WATokens) {
       for (uint32_t i = 0; i < totalTokenNum; i++) {
-        if (LSCLastTwoGRFsOfToken[i].first != INVALID_GRF) {
-          WATokens |= 1 << i;
-        }
         LSCLastTwoGRFsOfToken[i].first = INVALID_GRF;
         LSCLastTwoGRFsOfToken[i].second = INVALID_GRF;
       }
@@ -4912,9 +4909,6 @@ void SWSB::insertPVCWA() {
 
     auto cleanNonLSCGRFs = [&](uint32_t &WATokens) {
       for (uint32_t i = 0; i < totalTokenNum; i++) {
-        if (nonLSClastTwoGRFsOfToken[i].first != INVALID_GRF) {
-          WATokens |= 1 << i;
-        }
         nonLSClastTwoGRFsOfToken[i].first = INVALID_GRF;
         nonLSClastTwoGRFsOfToken[i].second = INVALID_GRF;
       }
@@ -4999,6 +4993,7 @@ void SWSB::insertPVCWA() {
         if (LSCLastToken != UNKNOWN_TOKEN) {
           if (insertDummyMovs(bb, inst_it, LSCLastToken, LSCLastTwoGRFsOfToken,
                               nonLSClastTwoGRFsOfToken)) {
+            WAtokens |= 1 << LSCLastToken;
             cleanLSCGRFs(WAtokens);
           }
         }
@@ -5008,6 +5003,7 @@ void SWSB::insertPVCWA() {
           if (insertDummyMovs(bb, inst_it, nonLSCLastToken,
                               LSCLastTwoGRFsOfToken,
                               nonLSClastTwoGRFsOfToken)) {
+            WAtokens |= 1 << nonLSCLastToken;
             cleanNonLSCGRFs(WAtokens);
           }
         }

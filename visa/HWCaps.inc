@@ -853,15 +853,11 @@ bool noSrc0Src1OverlapSend() const {
 
 
 bool WARLocalization() const {
-  if (getOption(vISA_SWSBMakeLocalWAR) && (getPlatform() >= Xe2)) {
+  if (getOption(vISA_SWSBMakeLocalWAR)) {
     return true;
   }
 
   return false;
-}
-
-bool hasPVCSendWARWA() const {
-  return hasDFInst() && (getPlatform() == Xe_PVC || getPlatform() == Xe_PVCXT);
 }
 
 bool PVCSendWARWA() const {
