@@ -5340,7 +5340,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     Value* ptr = inst->getOperand(textureArgIdx);
     ResourceDescriptor resource = GetResourceVariable(ptr);
     uint ResourceLoopMarker = m_RLA->GetResourceLoopMarker(inst);
-    bool needLoop = ResourceLoopHeader(resource, flag, label, ResourceLoopMarker);
+    bool needLoop = ResourceLoopHeader(dst, resource, flag, label, ResourceLoopMarker);
     ResourceLoopSubIteration(resource, flag, label, ResourceLoopMarker);
 
     m_encoder->SetPredicate(flag);
@@ -8364,7 +8364,7 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
 
     uint label = 0;
     CVariable* flag = nullptr;
-    bool needLoop = ResourceLoopHeader(resource, flag, label);
+    bool needLoop = ResourceLoopHeader(tempDest, resource, flag, label);
     ResourceLoopSubIteration(resource, flag, label);
 
     if (opCode == llvm_readsurfacetypeandformat)
@@ -8487,7 +8487,7 @@ void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
     }
     uint label = 0;
     CVariable* flag = nullptr;
-    bool needLoop = ResourceLoopHeader(resource, flag, label);
+    bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
     ResourceLoopSubIteration(resource, flag, label);
     CVariable* payload = m_currShader->GetNewVariable(8, ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
 
@@ -8648,7 +8648,8 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     bool feedbackEnable = (m_destination->GetNumberElement() / numLanes(m_currShader->m_SIMDSize) == 5) ? true : false;
     uint label = 0;
     CVariable* flag = nullptr;
-    bool needLoop = ResourceLoopHeader(resource, sampler, flag, label);
+    CVariable* dest = dst ? dst : m_destination;
+    bool needLoop = ResourceLoopHeader(dest, resource, sampler, flag, label);
     ResourceLoopSubIteration(resource, sampler, flag, label);
     m_encoder->SetPredicate(flag);
     m_encoder->Gather4Inst(
@@ -8740,7 +8741,7 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
     bool feedbackEnable = writeMask.isSet(4);
     uint label = 0;
     CVariable* flag = nullptr;
-    bool needLoop = ResourceLoopHeader(resource, flag, label);
+    bool needLoop = ResourceLoopHeader(dst, resource, flag, label);
     ResourceLoopSubIteration(resource, flag, label);
     m_encoder->SetPredicate(flag);
     m_encoder->LoadMS(opCode, writeMask.getEM(), offset, resource, numSources, dst, payload, feedbackEnable);
@@ -11239,7 +11240,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
     {
         uint label = 0;
         CVariable* flag = nullptr;
-        bool needLoop = ResourceLoopHeader(resource, flag, label);
+        bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
         ResourceLoopSubIteration(resource, flag, label);
         uint sizeInBits = GetPrimitiveTypeSizeInRegisterInBits(inst->getType());
         IGC_ASSERT_MESSAGE((sizeInBits == 8) || (sizeInBits == 16) || (sizeInBits == 32) || (sizeInBits == 64) || (sizeInBits == 96) || (sizeInBits == 128),
@@ -12559,7 +12560,7 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
 
     uint label = 0;
     CVariable* flag = nullptr;
-    bool needLoop = ResourceLoopHeader(resource, flag, label);
+    bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
     ResourceLoopSubIteration(resource, flag, label);
     if (sizeInBits == 32)
     {
@@ -16110,7 +16111,8 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr,
             }
             uint label = 0;
             CVariable* flag = nullptr;
-            bool needLoop = ResourceLoopHeader(resource, flag, label);
+            CVariable* dest = pDst ? pDst : m_destination;
+            bool needLoop = ResourceLoopHeader(dest, resource, flag, label);
             ResourceLoopSubIteration(resource, flag, label);
             if (shouldGenerateLSC(pInst)) {
                 auto cacheOpts = LSC_DEFAULT_CACHING;
@@ -16320,7 +16322,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
 
         uint label = 0;
         CVariable* flag = nullptr;
-        bool needLoop = ResourceLoopHeader(resource, flag, label);
+        bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
         ResourceLoopSubIteration(resource, flag, label);
         for (uint i = 0; i < loopIter; ++i)
         {
@@ -16429,7 +16431,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
     {
         uint label = 0;
         CVariable* flag = nullptr;
-        bool needLoop = ResourceLoopHeader(resource, flag, label);
+        bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
         ResourceLoopSubIteration(resource, flag, label);
         CVariable* tempdst[4] = { nullptr, nullptr, nullptr, nullptr };
         SIMDMode instWidth = std::min(
@@ -16551,7 +16553,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
     {
         uint label = 0;
         CVariable* flag = nullptr;
-        bool needLoop = ResourceLoopHeader(resource, flag, label);
+        bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
         ResourceLoopSubIteration(resource, flag, label);
         uint parameterLength = 4;
 
@@ -17201,7 +17203,7 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
 
     uint label = 0;
     CVariable* flag = nullptr;
-    bool needLoop = ResourceLoopHeader(resource, flag, label);
+    bool needLoop = ResourceLoopHeader(dst, resource, flag, label);
     ResourceLoopSubIteration(resource, flag, label);
 
     uint messageDescriptor = encodeMessageDescriptorForAtomicUnaryOp(
@@ -20093,7 +20095,7 @@ void EmitPass::emitLSCTypedRead(llvm::Instruction* pInsn)
     {
         uint label = 0;
         CVariable* flag = nullptr;
-        bool needLoop = ResourceLoopHeader(resource, flag, label);
+        bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
         ResourceLoopSubIteration(resource, flag, label);
         CVariable* tempdst[4] = { nullptr, nullptr, nullptr, nullptr };
         auto instWidth = m_currShader->m_Platform->getMaxLSCTypedMessageSize();
@@ -20191,7 +20193,7 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction* pInsn)
 
     uint label = 0;
     CVariable* flag = nullptr;
-    bool needLoop = ResourceLoopHeader(resource, flag, label);
+    bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
     ResourceLoopSubIteration(resource, flag, label);
     uint parameterLength = 4;
 
@@ -20448,7 +20450,7 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst* inst)
 
         uint label = 0;
         CVariable* flag = nullptr;
-        bool needLoop = ResourceLoopHeader(resource, flag, label);
+        bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
         ResourceLoopSubIteration(resource, flag, label);
         CVariable* tempdst[4] = { nullptr, nullptr, nullptr, nullptr };
         auto instWidth = m_currShader->m_Platform->getMaxLSCTypedMessageSize();
@@ -21724,6 +21726,7 @@ SamplerDescriptor EmitPass::GetSamplerVariable(Value* sampleOp)
 }
 
 bool EmitPass::ResourceLoopHeader(
+    const CVariable* destination,
     ResourceDescriptor& resource,
     CVariable*& flag,
     uint& label,
@@ -21731,12 +21734,13 @@ bool EmitPass::ResourceLoopHeader(
     int* subInteration)
 {
     SamplerDescriptor sampler;
-    return ResourceLoopHeader(resource, sampler, flag, label, ResourceLoopMarker, subInteration);
+    return ResourceLoopHeader(destination, resource, sampler, flag, label, ResourceLoopMarker, subInteration);
 }
 
 // Insert loop header to handle non-uniform resource and sampler
 // This generates sub-optimal code for SIMD32, this can be revisited if we need better code generation
 bool EmitPass::ResourceLoopHeader(
+    const CVariable* destination,
     ResourceDescriptor& resource,
     SamplerDescriptor& sampler,
     CVariable*& flag,
@@ -21773,6 +21777,11 @@ bool EmitPass::ResourceLoopHeader(
         return true;
     }
     m_currShader->IncNumSampleBallotLoops();
+
+    if (destination)
+    {
+        m_encoder->Lifetime(LIFETIME_START, (CVariable*)destination);
+    }
 
     label = m_encoder->GetNewLabelID("_opt_resource_loop");
     m_encoder->AddDivergentResourceLoopLabel(label);
