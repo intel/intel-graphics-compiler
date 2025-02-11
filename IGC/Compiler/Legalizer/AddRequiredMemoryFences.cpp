@@ -163,10 +163,10 @@ bool AddRequiredMemoryFences::runOnFunction(Function& F)
         SmallPtrSet<BasicBlock*, 16> seen{ rootBB };
         SmallVector<BasicBlock*, 16> worklist{ rootBB };
         SmallVector<BasicBlock*, 8> unfenced;
-        bool hasUnfencedSlmStore = false;
-        bool hasSlmFence = false;
         while (!worklist.empty())
         {
+            bool hasUnfencedSlmStore = false;
+            bool hasSlmFence = false;
             BasicBlock* BB = worklist.back();
             worklist.pop_back();
             seen.insert(BB);
@@ -205,23 +205,32 @@ bool AddRequiredMemoryFences::runOnFunction(Function& F)
             {
                 auto it = blocks.begin();
                 BasicBlock* postDomBB = *it++;
-                for (; it != blocks.end(); ++it)
+                for (; it != blocks.end() && postDomBB != nullptr; ++it)
                 {
                     postDomBB = PDT->findNearestCommonDominator(postDomBB, *it);
                 }
                 return postDomBB;
             };
             BasicBlock* postDomBB = FindPostDominator(unfenced);
-            Loop* L = LI->getLoopFor(postDomBB);
-            if (L)
+            if (postDomBB != nullptr)
             {
-                while (!L->isOutermost())
+                Loop* L = LI->getLoopFor(postDomBB);
+                if (L)
                 {
-                    L = L->getParentLoop();
+                    while (!L->isOutermost())
+                    {
+                        L = L->getParentLoop();
+                    }
+                    SmallVector<BasicBlock*, 4> exitBlocks;
+                    L->getUniqueExitBlocks(exitBlocks);
+                    postDomBB = FindPostDominator(exitBlocks);
                 }
-                SmallVector<BasicBlock*, 4> exitBlocks;
-                L->getUniqueExitBlocks(exitBlocks);
-                postDomBB = FindPostDominator(exitBlocks);
+            }
+            if (postDomBB == nullptr)
+            {
+                // Common post-dominator may not exist if kernel has the unreachable
+                // instruction.
+                postDomBB = rootBB;
             }
             IGC_ASSERT(postDomBB);
             IGCIRBuilder<> IRB(postDomBB->getTerminator());
