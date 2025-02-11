@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2024 Intel Corporation
+Copyright (C) 2018-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -944,7 +944,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
     auto *ElemTy = Inst->getType();
     auto *VecDstTy = IGCLLVM::FixedVectorType::get(ElemTy, B->VWidth);
     // create an read-region
-    vc::CMRegion R(VecDstTy);
+    vc::CMRegion R(VecDstTy, DL);
     if (auto *CI = dyn_cast<ConstantInt>(Idx)) {
       R.Offset = CI->getSExtValue() * ElemTy->getPrimitiveSizeInBits() / 8;
       R.Indirect = nullptr;
@@ -977,7 +977,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
         cast<IGCLLVM::FixedVectorType>(OldVec->getType())->getNumElements();
     auto *ElemTy = Inst->getOperand(1)->getType();
     // create an write-region
-    vc::CMRegion R(Vec->getType());
+    vc::CMRegion R(Vec->getType(), DL);
     if (auto *CI = dyn_cast<ConstantInt>(Idx)) {
       // special case, this is really just like a bitcast
       if (CI->getZExtValue() == 0 && N == 1 && isa<UndefValue>(OldVec)) {
