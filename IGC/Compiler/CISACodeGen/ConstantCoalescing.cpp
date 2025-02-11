@@ -1693,14 +1693,19 @@ Instruction* ConstantCoalescing::CreateChunkLoad(
         Value* eac = irBuilder->getInt32(chunk->chunkStart * chunk->elementSize);
         if (chunk->baseIdxV)
         {
+            Value* baseIdxV = chunk->baseIdxV;
+            if (baseIdxV->getType()->getIntegerBitWidth() < 32)
+            {
+                baseIdxV = irBuilder->CreateZExt(baseIdxV, eac->getType());
+            }
             if (chunk->chunkStart)
             {
-                eac = irBuilder->CreateAdd(chunk->baseIdxV, eac);
+                eac = irBuilder->CreateAdd(baseIdxV, eac);
                 wiAns->incUpdateDepend(eac, wiAns->whichDepend(chunk->baseIdxV));
             }
             else
             {
-                eac = chunk->baseIdxV;
+                eac = baseIdxV;
             }
         }
         Type* vty =IGCLLVM::FixedVectorType::get(ldRaw->getType()->getScalarType(), chunk->chunkSize);
