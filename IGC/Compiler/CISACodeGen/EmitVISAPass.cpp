@@ -25150,7 +25150,10 @@ void EmitPass::emitRayQueryCheckRelease(
     // messages do not send any data is src1.
     // To handle this, a dummy source is created.
     CVariable* dummySource = m_currShader->GetNewVariable(
-        getGRFSize() / SIZE_DWORD, ISA_TYPE_UD, EALIGN_GRF, "dummySource");
+        getGRFSize() / SIZE_DWORD,
+        ISA_TYPE_UD,
+        EALIGN_GRF,
+        "dummySource");
 
     m_encoder->Lifetime(LIFETIME_START, dummySource);
 
