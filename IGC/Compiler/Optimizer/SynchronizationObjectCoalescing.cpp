@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -55,17 +55,16 @@ struct ExplanationEntry
 enum InstructionMask : uint32_t
 {
     None = 0x0,
-    AtomicOperation            = (1 << 0),
-    TypedReadOperation         = (1 << 1),
-    TypedWriteOperation        = (1 << 2),
-    OutputUrbReadOperation     = (1 << 3),
-    UrbWriteOperation          = (1 << 4),
-    BufferReadOperation        = (1 << 5),
-    BufferWriteOperation       = (1 << 6),
-    SharedMemoryReadOperation  = (1 << 7),
-    SharedMemoryWriteOperation = (1 << 8),
-    EndOfThreadOperation       = (1 << 9),
-
+    AtomicOperation               = (1 << 0),
+    TypedReadOperation            = (1 << 1),
+    TypedWriteOperation           = (1 << 2),
+    OutputUrbReadOperation        = (1 << 3),
+    UrbWriteOperation             = (1 << 4),
+    BufferReadOperation           = (1 << 5),
+    BufferWriteOperation          = (1 << 6),
+    SharedMemoryReadOperation     = (1 << 7),
+    SharedMemoryWriteOperation    = (1 << 8),
+    EndOfThreadOperation          = (1 << 9),
     LastMaskPlusOne,
 };
 
@@ -284,7 +283,8 @@ public:
         ReadSyncAtomic = 0x20,
         WriteSyncRead = 0x40,
         AtomicSyncAtomic = 0x80,
-        WriteSyncRet = 0x100
+        WriteSyncRet = 0x100,
+        ExtendedCacheControlSyncRet = 0x200
     };
 
 private:
@@ -401,19 +401,7 @@ private:
     ////////////////////////////////////////////////////////////////////////
     SynchronizationCaseMask GetSynchronizationMaskForAllResources(
         InstructionMask localForwardMemoryInstructionMask,
-        InstructionMask localBackwardMemoryInstructionMask) const;;
-
-    ////////////////////////////////////////////////////////////////////////
-    static bool IsSyncInstruction(const llvm::Instruction* pInst);
-
-    ////////////////////////////////////////////////////////////////////////
-    static bool IsMemoryInstruction(const llvm::Instruction* pInst);
-
-    ////////////////////////////////////////////////////////////////////////
-    static bool IsReadMemoryInstruction(const llvm::Instruction* pInst);
-
-    ////////////////////////////////////////////////////////////////////////
-    static bool IsWriteMemoryInstruction(const llvm::Instruction* pInst);
+        InstructionMask localBackwardMemoryInstructionMask) const;
 
     ////////////////////////////////////////////////////////////////////////
     static bool IsAtomicOperation(const llvm::Instruction* pInst);
@@ -983,7 +971,8 @@ InstructionMask SynchronizationObjectCoalescing::GetDefaultWriteMemoryInstructio
         {
         case LSC_UGM: // .ugm
         case LSC_UGML: // .ugml
-            result |= BufferWriteOperation;
+            result |=
+                BufferWriteOperation;
             if (!m_HasIndependentSharedMemoryFenceFunctionality)
             {
                 result |= SharedMemoryWriteOperation;
@@ -1088,7 +1077,10 @@ InstructionMask SynchronizationObjectCoalescing::GetDefaultMemoryInstructionMask
         {
         case LSC_UGM: // .ugm
         case LSC_UGML: // .ugml
-            result |= AtomicOperation | BufferWriteOperation | BufferReadOperation;
+            result |=
+                AtomicOperation |
+                BufferWriteOperation |
+                BufferReadOperation;
             if (!m_HasIndependentSharedMemoryFenceFunctionality)
             {
                 result |= SharedMemoryWriteOperation | SharedMemoryReadOperation;
@@ -1134,7 +1126,11 @@ InstructionMask SynchronizationObjectCoalescing::GetDefaultMemoryInstructionMask
         IGC_ASSERT(0);
     }
 
-    if (static_cast<uint32_t>(result & (SharedMemoryWriteOperation | BufferWriteOperation | TypedWriteOperation)) != 0)
+    constexpr InstructionMask maskToIncludeEOT =
+        SharedMemoryWriteOperation |
+        BufferWriteOperation |
+        TypedWriteOperation;
+    if (static_cast<uint32_t>(result & maskToIncludeEOT) != 0)
     {
 
         result = static_cast<InstructionMask>(
@@ -1911,8 +1907,8 @@ SynchronizationObjectCoalescing::SynchronizationCaseMask SynchronizationObjectCo
     }
 
     // write -> fence -> ret
-    bool requiresFlush = static_cast<uint32_t>(writeBit & (SharedMemoryWriteOperation | BufferWriteOperation | TypedWriteOperation)) != 0;
-    bool isWriteSyncRetCase = requiresFlush && ((localBackwardMemoryInstructionMask & writeBit) != 0 &&
+    bool requiresFlushWrites = static_cast<uint32_t>(writeBit & (SharedMemoryWriteOperation | BufferWriteOperation | TypedWriteOperation)) != 0;
+    bool isWriteSyncRetCase = requiresFlushWrites && ((localBackwardMemoryInstructionMask & writeBit) != 0 &&
         (localForwardMemoryInstructionMask & EndOfThreadOperation) != 0);
     if (isWriteSyncRetCase)
     {
@@ -2378,43 +2374,6 @@ void SynchronizationObjectCoalescing::InvalidateMembers()
     m_ExplanationEntries.clear();
 #endif // _DEBUG
     m_GlobalMemoryInstructionMask = InstructionMask::None;
-}
-
-////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescing::IsSyncInstruction(const llvm::Instruction* pInst)
-{
-    return IsThreadBarrierOperation(pInst) ||
-        IsTypedMemoryFenceOperation(pInst) ||
-        IsUrbFenceOperation(pInst) ||
-        IsLscFenceOperation(pInst) ||
-        IsUntypedMemoryFenceOperation(pInst);
-}
-
-////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescing::IsMemoryInstruction(const llvm::Instruction* pInst)
-{
-    return IsReadMemoryInstruction(pInst) ||
-        IsWriteMemoryInstruction(pInst);
-}
-
-////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescing::IsReadMemoryInstruction(const llvm::Instruction* pInst)
-{
-    return IsAtomicOperation(pInst) ||
-        IsBufferReadOperation(pInst) ||
-        IsSharedMemoryReadOperation(pInst) ||
-        IsTypedReadOperation(pInst) ||
-        IsOutputUrbReadOperation(pInst);
-}
-
-////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescing::IsWriteMemoryInstruction(const llvm::Instruction* pInst)
-{
-    return IsAtomicOperation(pInst) ||
-        IsBufferWriteOperation(pInst) ||
-        IsSharedMemoryWriteOperation(pInst) ||
-        IsTypedWriteOperation(pInst) ||
-        IsUrbWriteOperation(pInst);
 }
 
 ////////////////////////////////////////////////////////////////////////
