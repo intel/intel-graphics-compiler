@@ -332,6 +332,10 @@ void MergeAllocas::getAnalysisUsage(llvm::AnalysisUsage& AU) const
 
 bool MergeAllocas::runOnFunction(Function& F)
 {
+    if (F.hasOptNone()){
+        return false;
+    }
+
     auto ABLA = getAnalysis<AllocationBasedLivenessAnalysis>().getLivenessInfo();
 
     // we group the allocations by type, then sort them into buckets with nonoverlapping liveranges
