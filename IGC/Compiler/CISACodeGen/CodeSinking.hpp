@@ -198,10 +198,10 @@ namespace IGC {
             }
         };
 
-        typedef llvm::SmallVector<std::unique_ptr<Candidate>, 64> CandidateVec;
-        typedef llvm::SmallVector<Candidate*, 64> CandidatePtrVec;
-        typedef llvm::DenseSet<Candidate*> CandidatePtrSet;
-        typedef llvm::DenseMap<Instruction*, Candidate*> InstToCandidateMap;
+        using CandidateVec = llvm::SmallVector<std::unique_ptr<Candidate>, 64>;
+        using CandidatePtrVec = llvm::SmallVector<Candidate *, 64>;
+        using CandidatePtrSet = llvm::DenseSet<Candidate *>;
+        using InstToCandidateMap = llvm::MapVector<Instruction *, Candidate *>;
 
         /// sinking
         bool loopSink(llvm::Function& F);
