@@ -1759,7 +1759,8 @@ public:
   // emask is InstOption
   void Copy_SrcRegRegion_To_Payload(G4_Declare *payload, unsigned int &regOff,
                                     G4_SrcRegRegion *src, G4_ExecSize execSize,
-                                    uint32_t emask);
+                                    uint32_t emask,
+                                    G4_Predicate *pred = nullptr);
   unsigned int getByteOffsetSrcRegion(G4_SrcRegRegion *srcRegion);
 
   // only used in TranslateSend3D, maybe consider moving there if no

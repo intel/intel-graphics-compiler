@@ -2159,7 +2159,7 @@ int IR_Builder::splitSampleInst(
         createMov(execSize, dst, tmpSrcPnt, MovInstOpt, true);
       } else {
         Copy_SrcRegRegion_To_Payload(originalDstDcl, regOff, tmpSrcPnt,
-                                     execSize, MovInstOpt);
+                                     execSize, MovInstOpt, pred);
       }
     }
   }
@@ -2199,7 +2199,7 @@ int IR_Builder::splitSampleInst(
         createMov(execSize, dst, tmpSrcPnt, MovInstOpt, true);
       } else {
         Copy_SrcRegRegion_To_Payload(originalDstDcl, regOff, tmpSrcPnt,
-                                     execSize, MovInstOpt);
+                                     execSize, MovInstOpt, pred);
       }
     }
   }

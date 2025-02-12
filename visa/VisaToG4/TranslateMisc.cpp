@@ -391,13 +391,15 @@ void IR_Builder::Copy_SrcRegRegion_To_Payload(G4_Declare *payload,
                                               unsigned int &regOff,
                                               G4_SrcRegRegion *src,
                                               G4_ExecSize execSize,
-                                              uint32_t emask) {
+                                              uint32_t emask,
+                                              G4_Predicate* pred) {
   auto payloadDstRgn = createDst(payload->getRegVar(), (short)regOff, 0, 1,
                                  payload->getElemType());
 
   G4_SrcRegRegion *srcRgn = createSrcRegRegion(*src);
   srcRgn->setType(*this, payload->getElemType());
-  createMov(execSize, payloadDstRgn, srcRgn, emask, true);
+  createMov(duplicateOperand(pred), execSize, payloadDstRgn, srcRgn, emask,
+            true);
   if (TypeSize(payload->getElemType()) == 2) {
     // for half float each source occupies 1 GRF regardless of execution size
     regOff++;
