@@ -1053,9 +1053,10 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     const ExtensionKind &Extension,
     std::vector<BufChunk*>& chunk_vec)
 {
+    // Only natural alignment is supported
     const alignment_t alignment = GetAlignment(load);
 
-    if (alignment == 0)
+    if (!isPowerOf2_64(alignment))
     {
         return;
     }
@@ -1077,9 +1078,10 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     }
     const uint scalarSizeInBytes = (const uint)(loadEltTy->getPrimitiveSizeInBits() / 8);
 
-    IGC_ASSERT(isPowerOf2_64(alignment));
-    IGC_ASSERT(0 != scalarSizeInBytes);
-    IGC_ASSERT((offsetInBytes % scalarSizeInBytes) == 0);
+    if (0 == scalarSizeInBytes || (offsetInBytes % scalarSizeInBytes) != 0)
+    {
+        return;
+    }
 
     const uint eltid = offsetInBytes / scalarSizeInBytes;
 
