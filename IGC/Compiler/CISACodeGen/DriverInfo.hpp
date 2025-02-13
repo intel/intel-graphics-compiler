@@ -211,6 +211,9 @@ namespace IGC
             return 4000;
         }
 
+        /// Need HDC memory fence when raster order views are used
+        virtual bool NeedUavPixelSyncAddedInPSLowering() const { return true; }
+
         // ----------------------------------------------------------------------
         // Below are workaround for bugs in front end or IGC will be removed once
         // the bugs are fixed
