@@ -9941,16 +9941,11 @@ void EmitPass::EmitInitializePHI(llvm::PHINode* phi)
         m_encoder->Select(m_destination, initializedTempVar, m_currShader->ImmToVariable(0xFFFFFFFFULL, ISA_TYPE_UD), m_currShader->ImmToVariable(0, ISA_TYPE_UD));
         m_encoder->Push();
 
-        CVariable* initializedFlag = m_currShader->GetNewVariable(m_destination);
         VISA_Type type = GetTypeFromSize(m_destination->GetNumberElement() / BITS_PER_BYTE);
-        m_encoder->SetNoMask();
-        m_encoder->SetP(initializedFlag, m_currShader->ImmToVariable(0, type));
+        m_encoder->SetP(m_destination, m_currShader->ImmToVariable(0, type));
         m_encoder->Push();
 
-        m_encoder->Cmp(EPREDICATE_EQ, initializedFlag, initializedTempVar, m_currShader->ImmToVariable(0xFFFFFFFFULL, ISA_TYPE_UD));
-        m_encoder->Push();
-
-        m_encoder->Copy(m_destination, initializedFlag);
+        m_encoder->Cmp(EPREDICATE_EQ, m_destination, initializedTempVar, m_currShader->ImmToVariable(0xFFFFFFFFULL, ISA_TYPE_UD));
         m_encoder->Push();
     }
     else
