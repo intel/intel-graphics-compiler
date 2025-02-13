@@ -236,7 +236,7 @@ INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _f16_p1f16, )( half x,
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( SPIRV_OCL_BUILTIN(floor, _f16, )( x ), SPIRV_OCL_BUILTIN(nan, _i16, )( (short)0 ), (short)(SPIRV_BUILTIN(IsNan, _f16, )( x )) );
     half temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( (half)SPIRV_OCL_BUILTIN(fmin, _f16_f16, )( temp, (half)(0x1.fffffep-1f)), (half)SPIRV_OCL_BUILTIN(copysign, _f16_f16, )((half)0.0f, x), (short)SPIRV_BUILTIN(IsInf, _f16, )(x));
+    temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( (half)SPIRV_OCL_BUILTIN(fmin, _f16_f16, )( temp, (half)(0x1.ffcp-1h)), (half)SPIRV_OCL_BUILTIN(copysign, _f16_f16, )((half)0.0f, x), (short)SPIRV_BUILTIN(IsInf, _f16, )(x));
     return SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp, SPIRV_OCL_BUILTIN(nan, _i16, )((short)0), (short)(SPIRV_BUILTIN(IsNan, _f16, )(x)) );
 }
 
@@ -245,7 +245,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v2f16_p1v2f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( SPIRV_OCL_BUILTIN(floor, _v2f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v2i16, )( (short2)0 ), __convert_short2(SPIRV_BUILTIN(IsNan, _v2f16, )( x )) );
     half2 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( (half2)SPIRV_OCL_BUILTIN(fmin, _v2f16_v2f16, )( temp, (half2)(0x1.fffffep-1f)), (half2)SPIRV_OCL_BUILTIN(copysign, _v2f16_v2f16, )((half2)0.0f, x), __convert_short2(SPIRV_BUILTIN(IsInf, _v2f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( (half2)SPIRV_OCL_BUILTIN(fmin, _v2f16_v2f16, )( temp, (half2)(0x1.ffcp-1h)), (half2)SPIRV_OCL_BUILTIN(copysign, _v2f16_v2f16, )((half2)0.0f, x), __convert_short2(SPIRV_BUILTIN(IsInf, _v2f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v2i16, )((short2)0), __convert_short2(SPIRV_BUILTIN(IsNan, _v2f16, )(x)) );
 }
 
@@ -254,7 +254,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v3f16_p1v3f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( SPIRV_OCL_BUILTIN(floor, _v3f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v3i16, )( (short3)0 ), __convert_short3(SPIRV_BUILTIN(IsNan, _v3f16, )( x )) );
     half3 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( (half3)SPIRV_OCL_BUILTIN(fmin, _v3f16_v3f16, )( temp, (half3)(0x1.fffffep-1f)), (half3)SPIRV_OCL_BUILTIN(copysign, _v3f16_v3f16, )((half3)0.0f, x), __convert_short3(SPIRV_BUILTIN(IsInf, _v3f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( (half3)SPIRV_OCL_BUILTIN(fmin, _v3f16_v3f16, )( temp, (half3)(0x1.ffcp-1h)), (half3)SPIRV_OCL_BUILTIN(copysign, _v3f16_v3f16, )((half3)0.0f, x), __convert_short3(SPIRV_BUILTIN(IsInf, _v3f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v3i16, )((short3)0), __convert_short3(SPIRV_BUILTIN(IsNan, _v3f16, )(x)) );
 }
 
@@ -263,7 +263,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v4f16_p1v4f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( SPIRV_OCL_BUILTIN(floor, _v4f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v4i16, )( (short4)0 ), __convert_short4(SPIRV_BUILTIN(IsNan, _v4f16, )( x )) );
     half4 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( (half4)SPIRV_OCL_BUILTIN(fmin, _v4f16_v4f16, )( temp, (half4)(0x1.fffffep-1f)), (half4)SPIRV_OCL_BUILTIN(copysign, _v4f16_v4f16, )((half4)0.0f, x), __convert_short4(SPIRV_BUILTIN(IsInf, _v4f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( (half4)SPIRV_OCL_BUILTIN(fmin, _v4f16_v4f16, )( temp, (half4)(0x1.ffcp-1h)), (half4)SPIRV_OCL_BUILTIN(copysign, _v4f16_v4f16, )((half4)0.0f, x), __convert_short4(SPIRV_BUILTIN(IsInf, _v4f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v4i16, )((short4)0), __convert_short4(SPIRV_BUILTIN(IsNan, _v4f16, )(x)) );
 }
 
@@ -272,7 +272,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v8f16_p1v8f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( SPIRV_OCL_BUILTIN(floor, _v8f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v8i16, )( (short8)0 ), __convert_short8(SPIRV_BUILTIN(IsNan, _v8f16, )( x )) );
     half8 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( (half8)SPIRV_OCL_BUILTIN(fmin, _v8f16_v8f16, )( temp, (half8)(0x1.fffffep-1f)), (half8)SPIRV_OCL_BUILTIN(copysign, _v8f16_v8f16, )((half8)0.0f, x), __convert_short8(SPIRV_BUILTIN(IsInf, _v8f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( (half8)SPIRV_OCL_BUILTIN(fmin, _v8f16_v8f16, )( temp, (half8)(0x1.ffcp-1h)), (half8)SPIRV_OCL_BUILTIN(copysign, _v8f16_v8f16, )((half8)0.0f, x), __convert_short8(SPIRV_BUILTIN(IsInf, _v8f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v8i16, )((short8)0), __convert_short8(SPIRV_BUILTIN(IsNan, _v8f16, )(x)) );
 }
 
@@ -281,7 +281,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v16f16_p1v16f16, )( h
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( SPIRV_OCL_BUILTIN(floor, _v16f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v16i16, )( (short16)0 ), __convert_short16(SPIRV_BUILTIN(IsNan, _v16f16, )( x )) );
     half16 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( (half16)SPIRV_OCL_BUILTIN(fmin, _v16f16_v16f16, )( temp, (half16)(0x1.fffffep-1f)), (half16)SPIRV_OCL_BUILTIN(copysign, _v16f16_v16f16, )((half16)0.0f, x), __convert_short16(SPIRV_BUILTIN(IsInf, _v16f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( (half16)SPIRV_OCL_BUILTIN(fmin, _v16f16_v16f16, )( temp, (half16)(0x1.ffcp-1h)), (half16)SPIRV_OCL_BUILTIN(copysign, _v16f16_v16f16, )((half16)0.0f, x), __convert_short16(SPIRV_BUILTIN(IsInf, _v16f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v16i16, )((short16)0), __convert_short16(SPIRV_BUILTIN(IsNan, _v16f16, )(x)) );
 }
 
@@ -290,7 +290,7 @@ INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _f16_p0f16, )( half x,
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( SPIRV_OCL_BUILTIN(floor, _f16, )( x ), SPIRV_OCL_BUILTIN(nan, _i16, )( (short)0 ), (short)(SPIRV_BUILTIN(IsNan, _f16, )( x )) );
     half temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( (half)SPIRV_OCL_BUILTIN(fmin, _f16_f16, )( temp, (half)(0x1.fffffep-1f)), (half)SPIRV_OCL_BUILTIN(copysign, _f16_f16, )((half)0.0f, x), (short)SPIRV_BUILTIN(IsInf, _f16, )(x));
+    temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( (half)SPIRV_OCL_BUILTIN(fmin, _f16_f16, )( temp, (half)(0x1.ffcp-1h)), (half)SPIRV_OCL_BUILTIN(copysign, _f16_f16, )((half)0.0f, x), (short)SPIRV_BUILTIN(IsInf, _f16, )(x));
     return SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp, SPIRV_OCL_BUILTIN(nan, _i16, )((short)0), (short)(SPIRV_BUILTIN(IsNan, _f16, )(x)) );
 }
 
@@ -299,7 +299,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v2f16_p0v2f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( SPIRV_OCL_BUILTIN(floor, _v2f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v2i16, )( (short2)0 ), __convert_short2(SPIRV_BUILTIN(IsNan, _v2f16, )( x )) );
     half2 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( (half2)SPIRV_OCL_BUILTIN(fmin, _v2f16_v2f16, )( temp, (half2)(0x1.fffffep-1f)), (half2)SPIRV_OCL_BUILTIN(copysign, _v2f16_v2f16, )((half2)0.0f, x), __convert_short2(SPIRV_BUILTIN(IsInf, _v2f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( (half2)SPIRV_OCL_BUILTIN(fmin, _v2f16_v2f16, )( temp, (half2)(0x1.ffcp-1h)), (half2)SPIRV_OCL_BUILTIN(copysign, _v2f16_v2f16, )((half2)0.0f, x), __convert_short2(SPIRV_BUILTIN(IsInf, _v2f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v2i16, )((short2)0), __convert_short2(SPIRV_BUILTIN(IsNan, _v2f16, )(x)) );
 }
 
@@ -308,7 +308,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v3f16_p0v3f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( SPIRV_OCL_BUILTIN(floor, _v3f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v3i16, )( (short3)0 ), __convert_short3(SPIRV_BUILTIN(IsNan, _v3f16, )( x )) );
     half3 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( (half3)SPIRV_OCL_BUILTIN(fmin, _v3f16_v3f16, )( temp, (half3)(0x1.fffffep-1f)), (half3)SPIRV_OCL_BUILTIN(copysign, _v3f16_v3f16, )((half3)0.0f, x), __convert_short3(SPIRV_BUILTIN(IsInf, _v3f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( (half3)SPIRV_OCL_BUILTIN(fmin, _v3f16_v3f16, )( temp, (half3)(0x1.ffcp-1h)), (half3)SPIRV_OCL_BUILTIN(copysign, _v3f16_v3f16, )((half3)0.0f, x), __convert_short3(SPIRV_BUILTIN(IsInf, _v3f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v3i16, )((short3)0), __convert_short3(SPIRV_BUILTIN(IsNan, _v3f16, )(x)) );
 }
 
@@ -317,7 +317,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v4f16_p0v4f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( SPIRV_OCL_BUILTIN(floor, _v4f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v4i16, )( (short4)0 ), __convert_short4(SPIRV_BUILTIN(IsNan, _v4f16, )( x )) );
     half4 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( (half4)SPIRV_OCL_BUILTIN(fmin, _v4f16_v4f16, )( temp, (half4)(0x1.fffffep-1f)), (half4)SPIRV_OCL_BUILTIN(copysign, _v4f16_v4f16, )((half4)0.0f, x), __convert_short4(SPIRV_BUILTIN(IsInf, _v4f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( (half4)SPIRV_OCL_BUILTIN(fmin, _v4f16_v4f16, )( temp, (half4)(0x1.ffcp-1h)), (half4)SPIRV_OCL_BUILTIN(copysign, _v4f16_v4f16, )((half4)0.0f, x), __convert_short4(SPIRV_BUILTIN(IsInf, _v4f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v4i16, )((short4)0), __convert_short4(SPIRV_BUILTIN(IsNan, _v4f16, )(x)) );
 }
 
@@ -326,7 +326,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v8f16_p0v8f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( SPIRV_OCL_BUILTIN(floor, _v8f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v8i16, )( (short8)0 ), __convert_short8(SPIRV_BUILTIN(IsNan, _v8f16, )( x )) );
     half8 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( (half8)SPIRV_OCL_BUILTIN(fmin, _v8f16_v8f16, )( temp, (half8)(0x1.fffffep-1f)), (half8)SPIRV_OCL_BUILTIN(copysign, _v8f16_v8f16, )((half8)0.0f, x), __convert_short8(SPIRV_BUILTIN(IsInf, _v8f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( (half8)SPIRV_OCL_BUILTIN(fmin, _v8f16_v8f16, )( temp, (half8)(0x1.ffcp-1h)), (half8)SPIRV_OCL_BUILTIN(copysign, _v8f16_v8f16, )((half8)0.0f, x), __convert_short8(SPIRV_BUILTIN(IsInf, _v8f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v8i16, )((short8)0), __convert_short8(SPIRV_BUILTIN(IsNan, _v8f16, )(x)) );
 }
 
@@ -335,7 +335,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v16f16_p0v16f16, )( h
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( SPIRV_OCL_BUILTIN(floor, _v16f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v16i16, )( (short16)0 ), __convert_short16(SPIRV_BUILTIN(IsNan, _v16f16, )( x )) );
     half16 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( (half16)SPIRV_OCL_BUILTIN(fmin, _v16f16_v16f16, )( temp, (half16)(0x1.fffffep-1f)), (half16)SPIRV_OCL_BUILTIN(copysign, _v16f16_v16f16, )((half16)0.0f, x), __convert_short16(SPIRV_BUILTIN(IsInf, _v16f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( (half16)SPIRV_OCL_BUILTIN(fmin, _v16f16_v16f16, )( temp, (half16)(0x1.ffcp-1h)), (half16)SPIRV_OCL_BUILTIN(copysign, _v16f16_v16f16, )((half16)0.0f, x), __convert_short16(SPIRV_BUILTIN(IsInf, _v16f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v16i16, )((short16)0), __convert_short16(SPIRV_BUILTIN(IsNan, _v16f16, )(x)) );
 }
 
@@ -344,7 +344,7 @@ INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _f16_p3f16, )( half x,
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( SPIRV_OCL_BUILTIN(floor, _f16, )( x ), SPIRV_OCL_BUILTIN(nan, _i16, )( (short)0 ), (short)(SPIRV_BUILTIN(IsNan, _f16, )( x )) );
     half temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( (half)SPIRV_OCL_BUILTIN(fmin, _f16_f16, )( temp, (half)(0x1.fffffep-1f)), (half)SPIRV_OCL_BUILTIN(copysign, _f16_f16, )((half)0.0f, x), (short)SPIRV_BUILTIN(IsInf, _f16, )(x));
+    temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( (half)SPIRV_OCL_BUILTIN(fmin, _f16_f16, )( temp, (half)(0x1.ffcp-1h)), (half)SPIRV_OCL_BUILTIN(copysign, _f16_f16, )((half)0.0f, x), (short)SPIRV_BUILTIN(IsInf, _f16, )(x));
     return SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp, SPIRV_OCL_BUILTIN(nan, _i16, )((short)0), (short)(SPIRV_BUILTIN(IsNan, _f16, )(x)) );
 }
 
@@ -353,7 +353,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v2f16_p3v2f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( SPIRV_OCL_BUILTIN(floor, _v2f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v2i16, )( (short2)0 ), __convert_short2(SPIRV_BUILTIN(IsNan, _v2f16, )( x )) );
     half2 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( (half2)SPIRV_OCL_BUILTIN(fmin, _v2f16_v2f16, )( temp, (half2)(0x1.fffffep-1f)), (half2)SPIRV_OCL_BUILTIN(copysign, _v2f16_v2f16, )((half2)0.0f, x), __convert_short2(SPIRV_BUILTIN(IsInf, _v2f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( (half2)SPIRV_OCL_BUILTIN(fmin, _v2f16_v2f16, )( temp, (half2)(0x1.ffcp-1h)), (half2)SPIRV_OCL_BUILTIN(copysign, _v2f16_v2f16, )((half2)0.0f, x), __convert_short2(SPIRV_BUILTIN(IsInf, _v2f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v2i16, )((short2)0), __convert_short2(SPIRV_BUILTIN(IsNan, _v2f16, )(x)) );
 }
 
@@ -362,7 +362,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v3f16_p3v3f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( SPIRV_OCL_BUILTIN(floor, _v3f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v3i16, )( (short3)0 ), __convert_short3(SPIRV_BUILTIN(IsNan, _v3f16, )( x )) );
     half3 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( (half3)SPIRV_OCL_BUILTIN(fmin, _v3f16_v3f16, )( temp, (half3)(0x1.fffffep-1f)), (half3)SPIRV_OCL_BUILTIN(copysign, _v3f16_v3f16, )((half3)0.0f, x), __convert_short3(SPIRV_BUILTIN(IsInf, _v3f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( (half3)SPIRV_OCL_BUILTIN(fmin, _v3f16_v3f16, )( temp, (half3)(0x1.ffcp-1h)), (half3)SPIRV_OCL_BUILTIN(copysign, _v3f16_v3f16, )((half3)0.0f, x), __convert_short3(SPIRV_BUILTIN(IsInf, _v3f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v3i16, )((short3)0), __convert_short3(SPIRV_BUILTIN(IsNan, _v3f16, )(x)) );
 }
 
@@ -371,7 +371,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v4f16_p3v4f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( SPIRV_OCL_BUILTIN(floor, _v4f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v4i16, )( (short4)0 ), __convert_short4(SPIRV_BUILTIN(IsNan, _v4f16, )( x )) );
     half4 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( (half4)SPIRV_OCL_BUILTIN(fmin, _v4f16_v4f16, )( temp, (half4)(0x1.fffffep-1f)), (half4)SPIRV_OCL_BUILTIN(copysign, _v4f16_v4f16, )((half4)0.0f, x), __convert_short4(SPIRV_BUILTIN(IsInf, _v4f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( (half4)SPIRV_OCL_BUILTIN(fmin, _v4f16_v4f16, )( temp, (half4)(0x1.ffcp-1h)), (half4)SPIRV_OCL_BUILTIN(copysign, _v4f16_v4f16, )((half4)0.0f, x), __convert_short4(SPIRV_BUILTIN(IsInf, _v4f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v4i16, )((short4)0), __convert_short4(SPIRV_BUILTIN(IsNan, _v4f16, )(x)) );
 }
 
@@ -380,7 +380,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v8f16_p3v8f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( SPIRV_OCL_BUILTIN(floor, _v8f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v8i16, )( (short8)0 ), __convert_short8(SPIRV_BUILTIN(IsNan, _v8f16, )( x )) );
     half8 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( (half8)SPIRV_OCL_BUILTIN(fmin, _v8f16_v8f16, )( temp, (half8)(0x1.fffffep-1f)), (half8)SPIRV_OCL_BUILTIN(copysign, _v8f16_v8f16, )((half8)0.0f, x), __convert_short8(SPIRV_BUILTIN(IsInf, _v8f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( (half8)SPIRV_OCL_BUILTIN(fmin, _v8f16_v8f16, )( temp, (half8)(0x1.ffcp-1h)), (half8)SPIRV_OCL_BUILTIN(copysign, _v8f16_v8f16, )((half8)0.0f, x), __convert_short8(SPIRV_BUILTIN(IsInf, _v8f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v8i16, )((short8)0), __convert_short8(SPIRV_BUILTIN(IsNan, _v8f16, )(x)) );
 }
 
@@ -389,7 +389,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v16f16_p3v16f16, )( h
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( SPIRV_OCL_BUILTIN(floor, _v16f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v16i16, )( (short16)0 ), __convert_short16(SPIRV_BUILTIN(IsNan, _v16f16, )( x )) );
     half16 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( (half16)SPIRV_OCL_BUILTIN(fmin, _v16f16_v16f16, )( temp, (half16)(0x1.fffffep-1f)), (half16)SPIRV_OCL_BUILTIN(copysign, _v16f16_v16f16, )((half16)0.0f, x), __convert_short16(SPIRV_BUILTIN(IsInf, _v16f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( (half16)SPIRV_OCL_BUILTIN(fmin, _v16f16_v16f16, )( temp, (half16)(0x1.ffcp-1h)), (half16)SPIRV_OCL_BUILTIN(copysign, _v16f16_v16f16, )((half16)0.0f, x), __convert_short16(SPIRV_BUILTIN(IsInf, _v16f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v16i16, )((short16)0), __convert_short16(SPIRV_BUILTIN(IsNan, _v16f16, )(x)) );
 }
 #endif
@@ -401,7 +401,7 @@ INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _f16_p4f16, )( half x,
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( SPIRV_OCL_BUILTIN(floor, _f16, )( x ), SPIRV_OCL_BUILTIN(nan, _i16, )( (short)0 ), (short)(SPIRV_BUILTIN(IsNan, _f16, )( x )) );
     half temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( (half)SPIRV_OCL_BUILTIN(fmin, _f16_f16, )( temp, (half)(0x1.fffffep-1f)), (half)SPIRV_OCL_BUILTIN(copysign, _f16_f16, )((half)0.0f, x), (short)SPIRV_BUILTIN(IsInf, _f16, )(x));
+    temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( (half)SPIRV_OCL_BUILTIN(fmin, _f16_f16, )( temp, (half)(0x1.ffcp-1h)), (half)SPIRV_OCL_BUILTIN(copysign, _f16_f16, )((half)0.0f, x), (short)SPIRV_BUILTIN(IsInf, _f16, )(x));
     return SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp, SPIRV_OCL_BUILTIN(nan, _i16, )((short)0), (short)(SPIRV_BUILTIN(IsNan, _f16, )(x)) );
 }
 
@@ -410,7 +410,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v2f16_p4v2f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( SPIRV_OCL_BUILTIN(floor, _v2f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v2i16, )( (short2)0 ), __convert_short2(SPIRV_BUILTIN(IsNan, _v2f16, )( x )) );
     half2 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( (half2)SPIRV_OCL_BUILTIN(fmin, _v2f16_v2f16, )( temp, (half2)(0x1.fffffep-1f)), (half2)SPIRV_OCL_BUILTIN(copysign, _v2f16_v2f16, )((half2)0.0f, x), __convert_short2(SPIRV_BUILTIN(IsInf, _v2f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( (half2)SPIRV_OCL_BUILTIN(fmin, _v2f16_v2f16, )( temp, (half2)(0x1.ffcp-1h)), (half2)SPIRV_OCL_BUILTIN(copysign, _v2f16_v2f16, )((half2)0.0f, x), __convert_short2(SPIRV_BUILTIN(IsInf, _v2f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v2i16, )((short2)0), __convert_short2(SPIRV_BUILTIN(IsNan, _v2f16, )(x)) );
 }
 
@@ -419,7 +419,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v3f16_p4v3f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( SPIRV_OCL_BUILTIN(floor, _v3f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v3i16, )( (short3)0 ), __convert_short3(SPIRV_BUILTIN(IsNan, _v3f16, )( x )) );
     half3 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( (half3)SPIRV_OCL_BUILTIN(fmin, _v3f16_v3f16, )( temp, (half3)(0x1.fffffep-1f)), (half3)SPIRV_OCL_BUILTIN(copysign, _v3f16_v3f16, )((half3)0.0f, x), __convert_short3(SPIRV_BUILTIN(IsInf, _v3f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( (half3)SPIRV_OCL_BUILTIN(fmin, _v3f16_v3f16, )( temp, (half3)(0x1.ffcp-1h)), (half3)SPIRV_OCL_BUILTIN(copysign, _v3f16_v3f16, )((half3)0.0f, x), __convert_short3(SPIRV_BUILTIN(IsInf, _v3f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v3i16, )((short3)0), __convert_short3(SPIRV_BUILTIN(IsNan, _v3f16, )(x)) );
 }
 
@@ -428,7 +428,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v4f16_p4v4f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( SPIRV_OCL_BUILTIN(floor, _v4f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v4i16, )( (short4)0 ), __convert_short4(SPIRV_BUILTIN(IsNan, _v4f16, )( x )) );
     half4 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( (half4)SPIRV_OCL_BUILTIN(fmin, _v4f16_v4f16, )( temp, (half4)(0x1.fffffep-1f)), (half4)SPIRV_OCL_BUILTIN(copysign, _v4f16_v4f16, )((half4)0.0f, x), __convert_short4(SPIRV_BUILTIN(IsInf, _v4f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( (half4)SPIRV_OCL_BUILTIN(fmin, _v4f16_v4f16, )( temp, (half4)(0x1.ffcp-1h)), (half4)SPIRV_OCL_BUILTIN(copysign, _v4f16_v4f16, )((half4)0.0f, x), __convert_short4(SPIRV_BUILTIN(IsInf, _v4f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v4i16, )((short4)0), __convert_short4(SPIRV_BUILTIN(IsNan, _v4f16, )(x)) );
 }
 
@@ -437,7 +437,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v8f16_p4v8f16, )( half
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( SPIRV_OCL_BUILTIN(floor, _v8f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v8i16, )( (short8)0 ), __convert_short8(SPIRV_BUILTIN(IsNan, _v8f16, )( x )) );
     half8 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( (half8)SPIRV_OCL_BUILTIN(fmin, _v8f16_v8f16, )( temp, (half8)(0x1.fffffep-1f)), (half8)SPIRV_OCL_BUILTIN(copysign, _v8f16_v8f16, )((half8)0.0f, x), __convert_short8(SPIRV_BUILTIN(IsInf, _v8f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( (half8)SPIRV_OCL_BUILTIN(fmin, _v8f16_v8f16, )( temp, (half8)(0x1.ffcp-1h)), (half8)SPIRV_OCL_BUILTIN(copysign, _v8f16_v8f16, )((half8)0.0f, x), __convert_short8(SPIRV_BUILTIN(IsInf, _v8f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v8f16_v8f16_v8i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v8i16, )((short8)0), __convert_short8(SPIRV_BUILTIN(IsNan, _v8f16, )(x)) );
 }
 
@@ -446,7 +446,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fract, _v16f16_p4v16f16, )( h
 {
     *iptr = SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( SPIRV_OCL_BUILTIN(floor, _v16f16, )( x ), SPIRV_OCL_BUILTIN(nan, _v16i16, )( (short16)0 ), __convert_short16(SPIRV_BUILTIN(IsNan, _v16f16, )( x )) );
     half16 temp = x - *iptr;
-    temp = SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( (half16)SPIRV_OCL_BUILTIN(fmin, _v16f16_v16f16, )( temp, (half16)(0x1.fffffep-1f)), (half16)SPIRV_OCL_BUILTIN(copysign, _v16f16_v16f16, )((half16)0.0f, x), __convert_short16(SPIRV_BUILTIN(IsInf, _v16f16, )(x)));
+    temp = SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( (half16)SPIRV_OCL_BUILTIN(fmin, _v16f16_v16f16, )( temp, (half16)(0x1.ffcp-1h)), (half16)SPIRV_OCL_BUILTIN(copysign, _v16f16_v16f16, )((half16)0.0f, x), __convert_short16(SPIRV_BUILTIN(IsInf, _v16f16, )(x)));
     return SPIRV_OCL_BUILTIN(select, _v16f16_v16f16_v16i16, )( temp, SPIRV_OCL_BUILTIN(nan, _v16i16, )((short16)0), __convert_short16(SPIRV_BUILTIN(IsNan, _v16f16, )(x)) );
 }
 #endif //if defined(cl_khr_fp16) && (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
