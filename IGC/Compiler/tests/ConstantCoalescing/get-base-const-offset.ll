@@ -16,19 +16,16 @@
 ; which is part of DecomposePtrExp, used to calculate base from bitcast
 ; or a getelementptr instruction.
 
-; TODO: check, with opaque pointers on, pass doesn't optimize test_merge case
-
 define void @test_merge(ptr addrspace(2) %src) {
 ; CHECK-LABEL: define void @test_merge(
 ; CHECK-SAME: ptr addrspace(2) [[SRC:%.*]]) {
-; CHECK-NEXT:    [[TMP1:%.*]] = load i32, ptr addrspace(2) [[SRC]], align 4
-; CHECK-NEXT:    [[TMP2:%.*]] = ptrtoint ptr addrspace(2) [[SRC]] to i64
-; CHECK-NEXT:    [[TMP3:%.*]] = add i64 [[TMP2]], 4
-; CHECK-NEXT:    [[CHUNKPTR:%.*]] = inttoptr i64 [[TMP3]] to ptr addrspace(2)
-; CHECK-NEXT:    [[TMP4:%.*]] = load <1 x i32>, ptr addrspace(2) [[CHUNKPTR]], align 4
-; CHECK-NEXT:    [[TMP5:%.*]] = extractelement <1 x i32> [[TMP4]], i32 0
-; CHECK-NEXT:    call void @use.i32(i32 [[TMP1]])
-; CHECK-NEXT:    call void @use.i32(i32 [[TMP5]])
+; CHECK-NEXT:    [[TMP1:%.*]] = ptrtoint ptr addrspace(2) [[SRC]] to i64
+; CHECK-NEXT:    [[CHUNKPTR:%.*]] = inttoptr i64 [[TMP1]] to ptr addrspace(2)
+; CHECK-NEXT:    [[TMP2:%.*]] = load <2 x i32>, ptr addrspace(2) [[CHUNKPTR]], align 4
+; CHECK-NEXT:    [[TMP3:%.*]] = extractelement <2 x i32> [[TMP2]], i32 0
+; CHECK-NEXT:    [[TMP4:%.*]] = extractelement <2 x i32> [[TMP2]], i32 1
+; CHECK-NEXT:    call void @use.i32(i32 [[TMP3]])
+; CHECK-NEXT:    call void @use.i32(i32 [[TMP4]])
 ; CHECK-NEXT:    ret void
 ;
   %1 = getelementptr i32, ptr addrspace(2) %src, i32 1
@@ -42,13 +39,13 @@ define void @test_merge(ptr addrspace(2) %src) {
 define void @test_vectorize(ptr addrspace(2) %src) {
 ; CHECK-LABEL: define void @test_vectorize(
 ; CHECK-SAME: ptr addrspace(2) [[SRC:%.*]]) {
-; CHECK-NEXT:    [[TMP1:%.*]] = load i32, ptr addrspace(2) [[SRC]], align 4
+; CHECK-NEXT:    [[TMP1:%.*]] = getelementptr i32, ptr addrspace(2) [[SRC]], i32 2
 ; CHECK-NEXT:    [[TMP2:%.*]] = ptrtoint ptr addrspace(2) [[SRC]] to i64
-; CHECK-NEXT:    [[TMP3:%.*]] = add i64 [[TMP2]], 8
-; CHECK-NEXT:    [[CHUNKPTR:%.*]] = inttoptr i64 [[TMP3]] to ptr addrspace(2)
-; CHECK-NEXT:    [[TMP4:%.*]] = load <1 x i32>, ptr addrspace(2) [[CHUNKPTR]], align 4
-; CHECK-NEXT:    [[TMP5:%.*]] = extractelement <1 x i32> [[TMP4]], i32 0
-; CHECK-NEXT:    call void @use.i32(i32 [[TMP1]])
+; CHECK-NEXT:    [[CHUNKPTR:%.*]] = inttoptr i64 [[TMP2]] to ptr addrspace(2)
+; CHECK-NEXT:    [[TMP3:%.*]] = load <1 x i32>, ptr addrspace(2) [[CHUNKPTR]], align 4
+; CHECK-NEXT:    [[TMP4:%.*]] = extractelement <1 x i32> [[TMP3]], i32 0
+; CHECK-NEXT:    [[TMP5:%.*]] = load i32, ptr addrspace(2) [[TMP1]], align 4
+; CHECK-NEXT:    call void @use.i32(i32 [[TMP4]])
 ; CHECK-NEXT:    call void @use.i32(i32 [[TMP5]])
 ; CHECK-NEXT:    ret void
 ;
@@ -64,14 +61,13 @@ define void @test_nonconst_gep(ptr addrspace(2) %src, i32 %off) {
 ; CHECK-LABEL: define void @test_nonconst_gep(
 ; CHECK-SAME: ptr addrspace(2) [[SRC:%.*]], i32 [[OFF:%.*]]) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = getelementptr i32, ptr addrspace(2) [[SRC]], i32 [[OFF]]
-; CHECK-NEXT:    [[TMP2:%.*]] = load i32, ptr addrspace(2) [[TMP1]], align 4
-; CHECK-NEXT:    [[TMP3:%.*]] = ptrtoint ptr addrspace(2) [[TMP1]] to i64
-; CHECK-NEXT:    [[TMP4:%.*]] = add i64 [[TMP3]], 4
-; CHECK-NEXT:    [[CHUNKPTR:%.*]] = inttoptr i64 [[TMP4]] to ptr addrspace(2)
-; CHECK-NEXT:    [[TMP5:%.*]] = load <1 x i32>, ptr addrspace(2) [[CHUNKPTR]], align 4
-; CHECK-NEXT:    [[TMP6:%.*]] = extractelement <1 x i32> [[TMP5]], i32 0
-; CHECK-NEXT:    call void @use.i32(i32 [[TMP2]])
-; CHECK-NEXT:    call void @use.i32(i32 [[TMP6]])
+; CHECK-NEXT:    [[TMP2:%.*]] = ptrtoint ptr addrspace(2) [[TMP1]] to i64
+; CHECK-NEXT:    [[CHUNKPTR:%.*]] = inttoptr i64 [[TMP2]] to ptr addrspace(2)
+; CHECK-NEXT:    [[TMP3:%.*]] = load <2 x i32>, ptr addrspace(2) [[CHUNKPTR]], align 4
+; CHECK-NEXT:    [[TMP4:%.*]] = extractelement <2 x i32> [[TMP3]], i32 0
+; CHECK-NEXT:    [[TMP5:%.*]] = extractelement <2 x i32> [[TMP3]], i32 1
+; CHECK-NEXT:    call void @use.i32(i32 [[TMP4]])
+; CHECK-NEXT:    call void @use.i32(i32 [[TMP5]])
 ; CHECK-NEXT:    ret void
 ;
   %1 = getelementptr i32, ptr addrspace(2) %src, i32 %off
