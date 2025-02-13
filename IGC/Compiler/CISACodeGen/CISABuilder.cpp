@@ -4427,15 +4427,15 @@ namespace IGC
                 return true;
 
             // API check.
-            bool enableForRetey = m_program->m_DriverInfo->enableVISAPreRASchedulerForRetry() ||
+            bool enableForRetry = m_program->m_DriverInfo->enableVISAPreRASchedulerForRetry() ||
                 context->m_retryManager.AllowVISAPreRAScheduler();
             // PreRA scheduler runs always when VRT is enabled
-            enableForRetey |= m_program->m_Platform->supportsVRT() && m_program->m_DriverInfo->supportsVRT() &&
+            enableForRetry |= m_program->m_Platform->supportsVRT() && m_program->m_DriverInfo->supportsVRT() &&
                 (context->getModuleMetaData()->compOpt.EnableVRT || IGC_IS_FLAG_ENABLED(EnableVRT));
 
             if (IGC_IS_FLAG_ENABLED(EnableVISAPreSched) &&
                 m_program->m_DriverInfo->enableVISAPreRAScheduler() &&
-                enableForRetey)
+                enableForRetry)
                 return true;
 
             return false;
@@ -4817,10 +4817,6 @@ namespace IGC
         {
             SaveOption(vISA_TotalGRFNum, NumGRFSetting);
         }
-        else if (m_program->getNumGRFPerThread() > 0)
-        {
-            SaveOption(vISA_TotalGRFNum, m_program->getNumGRFPerThread());
-        }
 
         if (context->getModuleMetaData()->compOpt.WaEnableALTModeVisaWA)
         {
@@ -4898,14 +4894,18 @@ namespace IGC
                 }
             }
         } else { // Other shader types
-            if (IGC_GET_FLAG_VALUE(ForceHWThreadNumberPerEU) != 0) {
+            if (IGC_GET_FLAG_VALUE(ForceHWThreadNumberPerEU) != 0)
+            {
                 SaveOption(vISA_HWThreadNumberPerEU,
                            IGC_GET_FLAG_VALUE(ForceHWThreadNumberPerEU));
-            } else if (m_program->m_Platform->supportsAutoGRFSelection() &&
-                       context->m_DriverInfo.supportsAutoGRFSelection() &&
-                       IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection)
-                || m_program->m_Platform->supportsVRT() && m_program->m_DriverInfo->supportsVRT() && IGC_IS_FLAG_ENABLED(EnableVRT)
-                ) {
+            }
+            else if ((m_program->m_Platform->supportsAutoGRFSelection() &&
+                      context->m_DriverInfo.supportsAutoGRFSelection() &&
+                      IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection)) ||
+                     (m_program->m_Platform->supportsVRT() &&
+                      m_program->m_DriverInfo->supportsVRT() &&
+                      IGC_IS_FLAG_ENABLED(EnableVRT)))
+            {
                 // When user hasn't specified number of threads, we can rely on
                 // compiler heuristics
                 SaveOption(vISA_AutoGRFSelection, true);
