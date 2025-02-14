@@ -11,17 +11,17 @@ SPDX-License-Identifier: MIT
 diff --git a/llvm/lib/IR/DebugInfo.cpp b/llvm/lib/IR/DebugInfo.cpp
 --- a/llvm/lib/IR/DebugInfo.cpp
 +++ b/llvm/lib/IR/DebugInfo.cpp
-@@ -664,7 +664,12 @@ private:
- 
+@@ -683,7 +683,11 @@ private:
+
        return getReplacementMDNode(N);
      };
 -    Replacements[N] = doRemap(N);
-+    
 +    // Seperate recursive doRemap and operator [] into 2 lines to avoid
 +    // out-of-order evaluations since both of them can access the same memory
 +    // location in map Replacements.
 +    auto Value = doRemap(N);
 +    Replacements[N] = Value;
    }
- 
+
    /// Do the remapping traversal.
+
