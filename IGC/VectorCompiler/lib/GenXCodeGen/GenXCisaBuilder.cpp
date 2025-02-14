@@ -5809,6 +5809,12 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
       addArgument("-enablePreemption");
   }
 
+  // enable Send WAR WA for PVC
+  if ((ST.getTargetId() == GenXSubtarget::XeHPC) ||
+      (ST.getTargetId() == GenXSubtarget::XeHPCVG)) {
+    addArgument("-PVCSendWARWA");
+  }
+
   if (ST.hasHalfSIMDLSC())
     addArgument("-enableHalfLSC");
 
