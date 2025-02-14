@@ -919,6 +919,14 @@ namespace IGC
                 zebin::PreDefinedAttrGetter::ArgType::local_size, cur_pos, size);
             break;
         }
+        case KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER_SHORT: {
+            // PayloadHeader contains global work offset x,y,z
+            // global work offset size is int32x3
+            uint32_t size = iOpenCL::DATA_PARAMETER_DATA_SIZE * 3;
+            zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::global_id_offset, payloadPosition, size);
+            break;
+        }
         case KernelArg::ArgType::IMPLICIT_PRIVATE_BASE:
             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                 zebin::PreDefinedAttrGetter::ArgType::private_base_stateless,
@@ -1512,9 +1520,11 @@ namespace IGC
             break;
 
         case KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER:
+        case KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER_SHORT:
             // PayloadHeader contains global work offset x,y,z and local size x,y,z -->
             // total of 6 annotations, 3 of each type
-            for (int i = 0; i < 6; ++i)
+            // Short PayloadHeader reduces it to only global work offset
+            for (int i = 0; i < (type == KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER ? 6 : 3); ++i)
             {
                 auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
 
@@ -2443,6 +2453,15 @@ namespace IGC
                 arg.getArgType() == KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET ||
                 arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_SIZE) &&
                 arg.getArg()->use_empty();
+
+            if (IGC_IS_FLAG_ENABLED(RemoveUnusedIdImplicitArguments))
+            {
+                IsUnusedArg |=
+                    (arg.getArgType() == KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER || // contains global_id_offset
+                    arg.getArgType() == KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER_SHORT ||
+                    arg.getArgType() == KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE) &&
+                    arg.getArg()->use_empty();
+            }
 
             // Runtime Values should not be processed any further. No annotations shall be created for them.
             // Only added to KernelArgs to enforce correct allocation order.

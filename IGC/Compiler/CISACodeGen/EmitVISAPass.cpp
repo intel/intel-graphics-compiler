@@ -22818,6 +22818,7 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
 
         if (IAtype == ImplicitArg::ArgType::R0 ||
             IAtype == ImplicitArg::ArgType::PAYLOAD_HEADER ||
+            IAtype == ImplicitArg::ArgType::PAYLOAD_HEADER_SHORT ||
             IAtype == ImplicitArg::ArgType::WORK_DIM ||
             IAtype == ImplicitArg::ArgType::NUM_GROUPS ||
             IAtype == ImplicitArg::ArgType::GLOBAL_SIZE ||

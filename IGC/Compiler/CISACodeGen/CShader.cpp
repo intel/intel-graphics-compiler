@@ -2841,6 +2841,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(
                 // optimization, with some advanced analysis.
                 if (ArgType == ImplicitArg::ArgType::R0 ||
                     ArgType == ImplicitArg::ArgType::PAYLOAD_HEADER ||
+                    ArgType == ImplicitArg::ArgType::PAYLOAD_HEADER_SHORT ||
                     ArgType == ImplicitArg::ArgType::WORK_DIM ||
                     ArgType == ImplicitArg::ArgType::NUM_GROUPS ||
                     ArgType == ImplicitArg::ArgType::GLOBAL_SIZE ||

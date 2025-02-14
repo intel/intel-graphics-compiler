@@ -130,6 +130,8 @@ namespace IGC
             // BufferBoundsChecking
             BUFFER_SIZE,
 
+            PAYLOAD_HEADER_SHORT,
+
             NUM_IMPLICIT_ARGS
         };
 

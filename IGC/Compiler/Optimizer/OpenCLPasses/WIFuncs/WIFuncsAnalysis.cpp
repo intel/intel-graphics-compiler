@@ -97,6 +97,7 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
 
     const bool RequirePayloadHeader = m_ctx->m_DriverInfo.RequirePayloadHeader();
+    const auto PayloadHeaderType = IGC_IS_FLAG_ENABLED(ShortImplicitPayloadHeader) ? ImplicitArg::PAYLOAD_HEADER_SHORT : ImplicitArg::PAYLOAD_HEADER;
 
     // All OpenCL kernels receive R0 and Payload Header implicitly
     if (isEntryFunc(m_pMDUtils, &F))
@@ -104,7 +105,7 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
         implicitArgs.push_back(ImplicitArg::R0);
 
         if (RequirePayloadHeader)
-            implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
+            implicitArgs.push_back(PayloadHeaderType);
 
         if (!m_ctx->platform.isProductChildOf(IGFX_XE_HP_SDV) &&
             IGC_IS_FLAG_ENABLED(EnableGlobalStateBuffer))
@@ -141,12 +142,12 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
         }
         if (m_hasGlobalOffset && RequirePayloadHeader)
         {
-            implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
+            implicitArgs.push_back(PayloadHeaderType);
         }
     }
     if (m_hasGlobalOffset && !RequirePayloadHeader)
     {
-        implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
+        implicitArgs.push_back(PayloadHeaderType);
     }
     if (m_hasWorkDim)
     {

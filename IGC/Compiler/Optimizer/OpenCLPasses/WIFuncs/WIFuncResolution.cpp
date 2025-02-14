@@ -208,6 +208,7 @@ R0:
 
 
  PayloadHeader:
+ (Note: PayloadHeader uses 8xi32, but only 3xi32 are used. Unused bytes can be removed.)
 
 -----------------------------------------------------------------------------------------------
 | Global    | Global    | Global    | Local     | Local     | Local     | Reserved  | Num       |
@@ -511,8 +512,9 @@ Value* WIFuncResolution::getGlobalOffset(CallInst& CI)
     // Creates:
     // %globalOffset = extractelement <8 x i32> %payloadHeader, i32 %dim
 
+    auto Ty = IGC_IS_FLAG_ENABLED(ShortImplicitPayloadHeader) ? ImplicitArg::PAYLOAD_HEADER_SHORT : ImplicitArg::PAYLOAD_HEADER;
     auto F = CI.getFunction();
-    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::PAYLOAD_HEADER, m_pMdUtils);
+    Value* V = m_implicitArgs.getImplicitArgValue(*F, Ty, m_pMdUtils);
     IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
