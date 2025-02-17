@@ -459,7 +459,7 @@ define spir_kernel void @should_not_scalarize_8(i1 %switch, <16 x i16> %src1, <1
 ; CHECK-NEXT:    br label %[[EXIT]]
 ; CHECK:       [[EXIT]]:
 ; CHECK-NEXT:    [[SHOULD_NOT_SCALARIZE_ME:%.*]] = phi <16 x i16> [ [[SRC1]], %[[FIRST]] ], [ [[SRC2]], %[[SECOND]] ]
-; CHECK-NEXT:    call void @llvm.genx.GenISA.simdMediaBlockWrite.v16i16(i32 1, i32 1, i32 1, i32 1, <16 x i16> [[SHOULD_NOT_SCALARIZE_ME]])
+; CHECK-NEXT:    call void @llvm.genx.GenISA.simdMediaBlockWrite.i32.v16i16(i32 1, i32 1, i32 1, i32 1, <16 x i16> [[SHOULD_NOT_SCALARIZE_ME]])
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -470,7 +470,7 @@ second:
   br label %exit
 exit:
   %should_not_scalarize_me = phi <16 x i16> [ %src1, %first], [ %src2, %second]
-  call void @llvm.genx.GenISA.simdMediaBlockWrite.v16i16(i32 1, i32 1, i32 1, i32 1, <16 x i16> %should_not_scalarize_me)
+  call void @llvm.genx.GenISA.simdMediaBlockWrite.i32.v16i16(i32 1, i32 1, i32 1, i32 1, <16 x i16> %should_not_scalarize_me)
   ret void
 }
 
@@ -612,7 +612,7 @@ declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 
 declare i32 @llvm.genx.GenISA.dpas.v8i32(<8 x i32>, <8 x i32>, <8 x i32>, i32, i32, i32, i32, i1)
 declare void @llvm.genx.GenISA.simdBlockWrite.v2i32.p1v2i32(ptr addrspace(1), <2 x i32>)
 declare void @llvm.genx.GenISA.simdBlockWriteBindless.p2490368i8.v2f32.i32(ptr addrspace(2490368), <2 x float>, i32)
-declare void @llvm.genx.GenISA.simdMediaBlockWrite.v16i16(i32, i32, i32, i32, <16 x i16>)
+declare void @llvm.genx.GenISA.simdMediaBlockWrite.i32.v16i16(i32, i32, i32, i32, <16 x i16>)
 declare void @llvm.genx.GenISA.LSC2DBlockWrite.p0i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32, <8 x i32>)
 declare void @llvm.genx.GenISA.LSC2DBlockWriteAddrPayload.p0i32.v16i16(ptr, i32, i32, i32, i32, i32, i32, i1, i1, i32, <16 x i16>)
 declare spir_func <8 x i32> @do_math_v8i32_v8i32(<8 x i32>) #1

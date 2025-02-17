@@ -37,10 +37,10 @@ define spir_kernel void @test_bread(i32 addrspace(1)* %dst, %opencl.image2d_t.re
 ; CHECK:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
 ; CHECK:    [[XOFFSET:%.*]] = extractelement <2 x i32> [[TMP1]], i32 0
 ; CHECK:    [[YOFFSET:%.*]] = extractelement <2 x i32> [[TMP1]], i32 1
-; CHECK:    [[TMP2:%.*]] = call i32 @llvm.genx.GenISA.simdMediaBlockRead.i32(i32 0, i32 [[XOFFSET]], i32 [[YOFFSET]], i32 0)
+; CHECK:    [[TMP2:%.*]] = call i32 @llvm.genx.GenISA.simdMediaBlockRead.i32.i32(i32 0, i32 [[XOFFSET]], i32 [[YOFFSET]], i32 0)
 ; CHECK:    store i32 [[TMP2]], i32* [[B_READ]], align 4
 ;
-; CHECK:  declare i32 @llvm.genx.GenISA.simdMediaBlockRead.i32(i32, i32, i32, i32) [[ATTR:#.*]]
+; CHECK:  declare i32 @llvm.genx.GenISA.simdMediaBlockRead.i32.i32(i32, i32, i32, i32) [[ATTR:#.*]]
 ; CHECK:  attributes [[ATTR]] = { {{.*convergent.*}} }
 ;
 entry:

@@ -1120,7 +1120,7 @@ intrinsics:
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *i32
+                type_definition: *any_int
                 comment: "image id"
             - !<ArgumentDefinition>
                 name: Arg1
@@ -1190,7 +1190,7 @@ intrinsics:
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *i32
+                type_definition: *any_int
                 comment: "image id"
             - !<ArgumentDefinition>
                 name: Arg1
@@ -7773,7 +7773,7 @@ intrinsics:
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *i32
+                type_definition: *any_int
                 comment: ""
             - !<ArgumentDefinition>
                 name: Arg1
@@ -7802,7 +7802,7 @@ intrinsics:
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *i32
+                type_definition: *any_int
                 comment: ""
             - !<ArgumentDefinition>
                 name: Arg1

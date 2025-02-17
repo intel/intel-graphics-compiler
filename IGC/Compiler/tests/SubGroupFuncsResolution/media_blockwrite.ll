@@ -36,10 +36,10 @@ define spir_kernel void @test_bwrite(%opencl.image2d_t.write_only addrspace(1)* 
 ; CHECK:    [[TMP2:%.*]] = load i32, i32* [[SRC_ADDR]], align 4
 ; CHECK:    [[XOFFSET:%.*]] = extractelement <2 x i32> [[TMP1]], i32 0
 ; CHECK:    [[YOFFSET:%.*]] = extractelement <2 x i32> [[TMP1]], i32 1
-; CHECK:    call void @llvm.genx.GenISA.simdMediaBlockWrite.i32(i32 1, i32 [[XOFFSET]], i32 [[YOFFSET]], i32 1, i32 [[TMP2]])
+; CHECK:    call void @llvm.genx.GenISA.simdMediaBlockWrite.i32.i32(i32 1, i32 [[XOFFSET]], i32 [[YOFFSET]], i32 1, i32 [[TMP2]])
 ; CHECK:    ret void
 ;
-; CHECK:  declare void @llvm.genx.GenISA.simdMediaBlockWrite.i32(i32, i32, i32, i32, i32) [[ATTR:#.*]]
+; CHECK:  declare void @llvm.genx.GenISA.simdMediaBlockWrite.i32.i32(i32, i32, i32, i32, i32) [[ATTR:#.*]]
 ; CHECK:  attributes [[ATTR]] = { {{.*convergent.*}} }
 ;
 entry:

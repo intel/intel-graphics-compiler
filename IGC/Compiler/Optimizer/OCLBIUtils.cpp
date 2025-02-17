@@ -506,8 +506,15 @@ public:
                     return nullptr;
                 }
                 auto *binOp = cast<BinaryOperator>(samplerValue);
-                auto *argExt = new ZExtInst(arg, Type::getInt64Ty(*m_pCtx), "", binOp);
-                binOp->setOperand(0, argExt);
+                if (arg->getType() == Type::getInt64Ty(*m_pCtx))
+                {
+                    binOp->setOperand(0, arg);
+                }
+                else
+                {
+                    auto * argExt = new ZExtInst(arg, Type::getInt64Ty(*m_pCtx), "", binOp);
+                    binOp->setOperand(0, argExt);
+                }
 
                 unsigned addressSpace = IGC::EncodeAS4GFXResource(*samplerIndex, BufferType::BINDLESS_SAMPLER);
                 Type *ptrTy = PointerType::get(m_pFloatType, addressSpace);

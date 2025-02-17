@@ -16,9 +16,9 @@ define spir_kernel void @test_kernel_sub_group_block_write_image(%spirv.Image._v
 entry:
 ; CHECK: [[IMG:%.*]] = ptrtoint %spirv.Image._void_1_0_0_0_0_0_1 addrspace(1)* %image to i64
 ; CHECK-NEXT: [[IMG_TRUNC:%.*]] = trunc i64 [[IMG]] to i32
-; CHECK: call void @llvm.genx.GenISA.simdMediaBlockWrite.i16(i32 [[IMG_TRUNC]], i32 %xOffset, i32 %yOffset, i32 0, i16
+; CHECK: call void @llvm.genx.GenISA.simdMediaBlockWrite.i32.i16(i32 [[IMG_TRUNC]], i32 %xOffset, i32 %yOffset, i32 0, i16
 ;
-; CHECK:  declare void @llvm.genx.GenISA.simdMediaBlockWrite.i16(i32, i32, i32, i32, i16) [[ATTR:#.*]]
+; CHECK:  declare void @llvm.genx.GenISA.simdMediaBlockWrite.i32.i16(i32, i32, i32, i32, i16) [[ATTR:#.*]]
 ; CHECK:  attributes [[ATTR]] = { {{.*convergent.*}} }
 ;
   %0 = ptrtoint %spirv.Image._void_1_0_0_0_0_0_1 addrspace(1)* %image to i64
