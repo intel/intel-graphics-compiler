@@ -478,6 +478,7 @@ bool SRSubPassBeforeRA::isSRCandidateBeforeRA(G4_INST *inst,
     return false;
   }
 
+
   int movInstNum = 0;
   int32_t firstDefID = 0x7FFFFFFF; // the ID of the first instruction define the
   std::vector<std::pair<Gen4_Operand_Number, unsigned>> notRemoveableMap;
@@ -582,8 +583,9 @@ bool SRSubPassBeforeRA::isSRCandidateBeforeRA(G4_INST *inst,
     //if opndNum + offset is defined multiple times, cannobe be removed
     G4_Operand *dst = movInst->getDst();
     unsigned offset = dst->getLeftBound() / builder.getGRFSize();
-    Gen4_Operand_Number opndNum =
-        (*I).second; // The source opndNum of send instruction which was defined
+    // The source opndNum of send instruction which was defined
+    Gen4_Operand_Number opndNum = (*I).second;
+
     if (isRemoveAble(movInst)) {
       auto iter = std::find_if(
           dstSrcRegs.dstSrcMap.begin(), dstSrcRegs.dstSrcMap.end(),
@@ -591,8 +593,8 @@ bool SRSubPassBeforeRA::isSRCandidateBeforeRA(G4_INST *inst,
                               return regmap.opndNum == opndNum &&
                                      regmap.offset == offset;
                             });
-      if (iter !=
-          dstSrcRegs.dstSrcMap.end()) { // multiple define, cannot be removed
+      // if multiple defined, cannot be removed
+      if (iter != dstSrcRegs.dstSrcMap.end()) {
         notRemoveableMap.push_back(std::make_pair(opndNum, offset));
       } else {
         G4_Operand *src = movInst->getSrc(0);

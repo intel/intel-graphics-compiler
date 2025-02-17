@@ -828,11 +828,6 @@ void Optimizer::s0SubAfterRA() {
     return;
   }
 
-  // for 512 GRF mode, indirect-send is forbidden
-  if (builder.kernel.getNumRegTotal() == 512) {
-    return;
-  }
-
   kernel.fg.resetLocalDataFlowData();
   kernel.fg.localDataFlowAnalysis();
 
