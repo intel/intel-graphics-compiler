@@ -582,9 +582,8 @@ bool SRSubPassBeforeRA::isSRCandidateBeforeRA(G4_INST *inst,
     //if opndNum + offset is defined multiple times, cannobe be removed
     G4_Operand *dst = movInst->getDst();
     unsigned offset = dst->getLeftBound() / builder.getGRFSize();
-    // The source opndNum of send instruction which was defined
-    Gen4_Operand_Number opndNum = (*I).second;
-
+    Gen4_Operand_Number opndNum =
+        (*I).second; // The source opndNum of send instruction which was defined
     if (isRemoveAble(movInst)) {
       auto iter = std::find_if(
           dstSrcRegs.dstSrcMap.begin(), dstSrcRegs.dstSrcMap.end(),
@@ -592,8 +591,8 @@ bool SRSubPassBeforeRA::isSRCandidateBeforeRA(G4_INST *inst,
                               return regmap.opndNum == opndNum &&
                                      regmap.offset == offset;
                             });
-      // if multiple defined, cannot be removed
-      if (iter != dstSrcRegs.dstSrcMap.end()) {
+      if (iter !=
+          dstSrcRegs.dstSrcMap.end()) { // multiple define, cannot be removed
         notRemoveableMap.push_back(std::make_pair(opndNum, offset));
       } else {
         G4_Operand *src = movInst->getSrc(0);
