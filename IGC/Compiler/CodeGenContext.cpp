@@ -376,19 +376,24 @@ namespace IGC
             CreateResourceDimensionTypes(*this);
         }
         auto* basePtr = static_cast<llvm::LLVMContext*>(this);
-        // When opaque pointers are enabled through the environment setting, we
-        // expect the Context to convert any incoming typed pointers
-        // automatically. However, the build system has opaque pointers enabled
-        // in the FE/in the builtin bitcode, that setting gets force-enabled,
-        // as the context will only operate on opaque pointers anyway.
-        // TODO: For transition purposes, consider introducing an IGC internal
-        // option to tweak typed/opaque pointers with a precedence over the
-        // environment flag.
+        // By default, LLVM 16+ operates on opaque pointers and older LLVM versions on typed pointers. The flag
+        // EnableOpaquePointersBackend allows enabling opaque pointers on older LLVM versions and then any incoming
+        // pointer types are dropped. The flag ForceTypedPointers enables us to force typed pointers on LLVM 16+
+        // for maintenance purposes. It is not possible to ForceTypedPointers when any opaque pointers are present
+        // in an LLVM IR module, then opaque pointer mode is force enabled. EnableOpaquePointersBackend does not
+        // perform automatic conversion of builtin types which should be represented using TargetExtTy.
+        // TODO: For transition purposes, consider introducing an IGC internal option to tweak typed/opaque pointers
+        // with a precedence over the environment flag.
         if (IGC::canOverwriteLLVMCtxPtrMode(basePtr))
         {
-            IGCLLVM::setOpaquePointers(basePtr,
-                __IGC_OPAQUE_POINTERS_API_ENABLED ||
-                IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend));
+          bool enableOpaquePointers = __IGC_OPAQUE_POINTERS_API_ENABLED || IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend);
+
+          if (ForceTypedPointers.getValue())
+          {
+            enableOpaquePointers = false;
+          }
+
+          IGCLLVM::setOpaquePointers(basePtr, enableOpaquePointers);
         }
     }
 
