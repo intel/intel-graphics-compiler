@@ -365,6 +365,9 @@ namespace IGC
         return result != std::end(cache) ? result : nullptr;
     }
 
+    static cl::opt<bool>
+      ForceTypedPointers("typed-pointers", cl::desc("Use typed pointers (if both typed and opaque are used, then opaque will be used)"), cl::init(false));
+
     LLVMContextWrapper::LLVMContextWrapper(bool createResourceDimTypes)
         : m_UserAddrSpaceMD(this)
     {
