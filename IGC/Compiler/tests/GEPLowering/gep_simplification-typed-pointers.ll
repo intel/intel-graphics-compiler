@@ -10,7 +10,7 @@
 ;
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -platformpvc --igc-gep-lowering -regkey=EnableGEPSimplification=1,TestGEPSimplification=1 -S %s  | FileCheck %s
+; RUN: igc_opt --typed-pointers -platformpvc --igc-gep-lowering -regkey=EnableGEPSimplification=1,TestGEPSimplification=1 -S %s  | FileCheck %s
 ; ------------------------------------------------
 ; GEPLowering/GEP simplification : testing GEP strength reduction
 ; ------------------------------------------------

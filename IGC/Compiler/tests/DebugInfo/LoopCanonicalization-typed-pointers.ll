@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-loop-canonicalization -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-loop-canonicalization -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; LoopCanonicalization
 ; ------------------------------------------------

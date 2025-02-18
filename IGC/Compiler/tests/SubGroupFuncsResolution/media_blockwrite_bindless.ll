@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-sub-group-func-resolution %s -S -o - | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-sub-group-func-resolution %s -S -o - | FileCheck %s
 
 ; Check bindless image handle is passed to GenISA.simdMediaBlockWrite as argument.
 

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-replace-unsupported-intrinsics -verify -S %s -o %t
+; RUN: igc_opt --typed-pointers -igc-replace-unsupported-intrinsics -verify -S %s -o %t
 ; RUN: FileCheck %s < %t
 
 target triple = "igil_32_GEN9"

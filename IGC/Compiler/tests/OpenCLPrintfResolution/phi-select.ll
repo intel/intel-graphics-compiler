@@ -10,7 +10,7 @@
 ; NB: this only works with the default ZEBin format.
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt %s -S -o - -igc-opencl-printf-resolution | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -igc-opencl-printf-resolution | FileCheck %s
 
 @.str.1 = internal unnamed_addr addrspace(2) constant [9 x i8] c"string 1\00"
 @.str.2 = internal unnamed_addr addrspace(2) constant [9 x i8] c"string 2\00"

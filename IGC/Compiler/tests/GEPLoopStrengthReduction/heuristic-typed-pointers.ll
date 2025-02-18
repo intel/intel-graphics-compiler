@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
 ;
 ; Collection of tests for heuristic deciding if reduction to preheader should be applied.
 ; Heuristic scores expression: base_addr + offset; where offset is index * sizeof(type).

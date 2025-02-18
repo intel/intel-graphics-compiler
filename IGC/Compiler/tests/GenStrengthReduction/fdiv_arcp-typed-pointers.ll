@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -platformpvc -debugify -GenStrengthReduction -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -platformpvc -debugify -GenStrengthReduction -check-debugify -S < %s 2>&1 | FileCheck %s
 
 ; Debug-info related check
 ; CHECK-NOT: WARNING

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-legalization -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-legalization -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; Legalization: load and store patterns
 ; ------------------------------------------------

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -enable-debugify --igc-legalize-function-signatures -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK
+; RUN: igc_opt --typed-pointers -enable-debugify --igc-legalize-function-signatures -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK
 ; ------------------------------------------------
 ; LegalizeFunctionSignatures
 ; ------------------------------------------------

@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt -igc-resolve-inline-locals -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-resolve-inline-locals -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; InlineLocalsResolution
 ; ------------------------------------------------

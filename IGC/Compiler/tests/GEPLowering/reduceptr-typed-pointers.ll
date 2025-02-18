@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; ------------------------------------------------
-; RUN: igc_opt -debugify --igc-gep-lowering -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -debugify --igc-gep-lowering -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; GEPLowering
 ; ------------------------------------------------

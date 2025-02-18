@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -igc-generic-address-dynamic-resolution | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -igc-generic-address-dynamic-resolution | FileCheck %s
 
 ; This test verifies whether optimization which allows to avoid additional control flow
 ; generation is blocked when a kernel calls a function indirectly. In such case, we don't

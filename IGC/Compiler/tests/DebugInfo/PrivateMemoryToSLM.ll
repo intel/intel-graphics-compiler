@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-move-private-memory-to-slm -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-move-private-memory-to-slm -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; PrivateMemoryToSLM
 ; ------------------------------------------------

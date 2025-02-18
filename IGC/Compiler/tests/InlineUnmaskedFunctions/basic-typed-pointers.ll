@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -inline-unmasked -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -inline-unmasked -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; InlineUnmaskedFunctions
 ; ------------------------------------------------

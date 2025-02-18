@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-legalization -S -dce < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-legalization -S -dce < %s | FileCheck %s
 ; ------------------------------------------------
 ; Legalization: load
 ; ------------------------------------------------

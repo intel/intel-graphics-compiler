@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-image-func-analysis -S %s -o %t.ll
+; RUN: igc_opt --typed-pointers -igc-image-func-analysis -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 %spirv.Image._void_2_0_0_0_0_0_0 = type opaque

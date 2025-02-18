@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-agg-arg-analysis -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-agg-arg-analysis -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; AggregateArgumentsAnalysis
 ; ------------------------------------------------

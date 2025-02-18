@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -igc-resolve-atomics | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -igc-resolve-atomics | FileCheck %s
 
 ; This test verifies the correctness of local spinlock translation. Local spinlock is used by
 ; atomics implementation. Here is the copy of macros that are implemented in BiFModule

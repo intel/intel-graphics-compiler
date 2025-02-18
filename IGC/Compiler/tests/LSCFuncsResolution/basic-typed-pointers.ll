@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -enable-debugify --igc-lsc-funcs-translation -platformdg2 -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -enable-debugify --igc-lsc-funcs-translation -platformdg2 -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; LSCFuncsResolution
 ; ------------------------------------------------

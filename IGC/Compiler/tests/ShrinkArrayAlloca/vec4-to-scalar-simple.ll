@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S --shrink-array-alloca | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S --shrink-array-alloca | FileCheck %s
 ;
 
 define float @f0(i32 %index, <4 x float> %data) #1 {

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-image-sampler-resolution %s -S -o - | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-image-sampler-resolution %s -S -o - | FileCheck %s
 
 ; Check image and sampler are resolved from 64-bit SYCL bindless sampled image handle.
 ; Check SYCL bindless sampler offset is computed from bindless image offset: (BindlessImageOffset + 128) | 1

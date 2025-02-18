@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt %s -S -o - -static-gas-resolution | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -static-gas-resolution | FileCheck %s
 ;
 ; Checks that StaticGASResolution removes IB_to_private/IB_to_local builtin calls
 ; when there is no Private/Local to Generic AS casting

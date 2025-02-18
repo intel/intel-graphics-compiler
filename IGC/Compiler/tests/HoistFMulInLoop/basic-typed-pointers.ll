@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-hoist-fmul-in-loop-pass -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-hoist-fmul-in-loop-pass -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; HoistFMulInLoopPass
 ; ------------------------------------------------

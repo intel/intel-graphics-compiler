@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-promote-constant-structs -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-promote-constant-structs -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; PromoteConstantStructs
 ; ------------------------------------------------

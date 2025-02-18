@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt %s -S -o - -igc-joint-matrix-resolution --platformpvc 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -igc-joint-matrix-resolution --platformpvc 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; JointMatrixFuncsResolutionPass
 ; ------------------------------------------------

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify -annotate_uniform_allocas -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -debugify -annotate_uniform_allocas -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; AnnotateUniformAllocas
 ; ------------------------------------------------

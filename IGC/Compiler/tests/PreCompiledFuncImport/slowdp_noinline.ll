@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -regkey TestIGCPreCompiledFunctions=1 --platformdg2 --igc-precompiled-import --print-codegencontext -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -regkey TestIGCPreCompiledFunctions=1 --platformdg2 --igc-precompiled-import --print-codegencontext -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; PreCompiledFuncImport
 ; ------------------------------------------------

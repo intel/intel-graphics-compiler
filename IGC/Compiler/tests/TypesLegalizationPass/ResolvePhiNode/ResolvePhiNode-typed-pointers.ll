@@ -7,7 +7,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -types-legalization-pass | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -types-legalization-pass | FileCheck %s
 
 ; should replace phi instruction with alloca store and load instructions
 

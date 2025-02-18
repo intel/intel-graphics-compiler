@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-image-sampler-resolution %s -S -o - | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-image-sampler-resolution %s -S -o - | FileCheck %s
 
 ; Check offset of bindless sampler as kernel argument is computed as: ptrtoint(%sampler) | 1
 

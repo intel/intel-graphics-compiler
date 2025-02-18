@@ -1,4 +1,4 @@
-; RUN: igc_opt -igc-low-precision-opt -inputps -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-low-precision-opt -inputps -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; LowPrecisionOpt
 ; ------------------------------------------------

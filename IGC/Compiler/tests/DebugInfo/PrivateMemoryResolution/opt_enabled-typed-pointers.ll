@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-private-mem-resolution -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-private-mem-resolution -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------

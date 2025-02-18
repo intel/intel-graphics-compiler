@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-int-type-legalizer -S %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-int-type-legalizer -S %s | FileCheck %s
 
 define i64 @src(i32 %in) {
   %a = inttoptr i32 %in to i56 addrspace(3)*

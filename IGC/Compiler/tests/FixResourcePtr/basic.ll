@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-fix-resource-ptr -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-fix-resource-ptr -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; FixResourcePtr
 ; ------------------------------------------------

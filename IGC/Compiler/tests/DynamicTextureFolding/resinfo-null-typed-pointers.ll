@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; RUN: igc_opt -enable-debugify -regkey DisableDynamicResInfoFolding=0 -igc-dynamic-texture-folding -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -enable-debugify -regkey DisableDynamicResInfoFolding=0 -igc-dynamic-texture-folding -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; DynamicTextureFolding
 ; ------------------------------------------------

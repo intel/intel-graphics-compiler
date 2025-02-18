@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-kernel-function-cloning -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-kernel-function-cloning -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; KernelFunctionCloning
 ; ------------------------------------------------

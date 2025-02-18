@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -regkey EnableAtomicBranch=1 -igc-InsertBranchOpt -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -regkey EnableAtomicBranch=1 -igc-InsertBranchOpt -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; InsertBranchOpt: Atomic Split
 ; ------------------------------------------------

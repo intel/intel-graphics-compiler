@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -LSC-Cache-Optimization-pass -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -LSC-Cache-Optimization-pass -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; LSCCacheOptimizationPass
 ; ------------------------------------------------

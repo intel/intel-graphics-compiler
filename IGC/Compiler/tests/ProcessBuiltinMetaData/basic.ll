@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify --igc-process-builtin-metaData -check-debugify -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -debugify --igc-process-builtin-metaData -check-debugify -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; ProcessBuiltinMetaData
 ; ------------------------------------------------

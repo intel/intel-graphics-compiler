@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; Emu64Ops
 ; ------------------------------------------------

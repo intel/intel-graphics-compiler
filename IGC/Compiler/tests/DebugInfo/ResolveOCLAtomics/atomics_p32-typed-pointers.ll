@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-resolve-atomics -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-resolve-atomics -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ResolveOCLAtomics : atomics part with 32bit pointers
 ; ------------------------------------------------

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-gen-specific-pattern -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-gen-specific-pattern -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GenSpecificPattern: Load pattern transformation
 ; ------------------------------------------------

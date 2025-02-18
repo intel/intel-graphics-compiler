@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey=EnableGEPLSRUnknownConstantStep=0 --regkey=EnableGEPLSRMulExpr=1 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-MUL-ENABLED
-; RUN: igc_opt --regkey=EnableGEPLSRUnknownConstantStep=0 --regkey=EnableGEPLSRMulExpr=0 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-MUL-DISABLED
+; RUN: igc_opt --typed-pointers --regkey=EnableGEPLSRUnknownConstantStep=0 --regkey=EnableGEPLSRMulExpr=1 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-MUL-ENABLED
+; RUN: igc_opt --typed-pointers --regkey=EnableGEPLSRUnknownConstantStep=0 --regkey=EnableGEPLSRMulExpr=0 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-MUL-DISABLED
 
 ; Reduced index is expressed with SCEVMulExpr.
 

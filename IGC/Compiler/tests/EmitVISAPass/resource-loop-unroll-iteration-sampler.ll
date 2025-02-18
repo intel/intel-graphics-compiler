@@ -7,7 +7,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: llvm-14-plus, regkeys
-; RUN: igc_opt -platformbmg -igc-emit-visa -simd-mode 16 -inputrt -regkey ResourceLoopUnrollIteration=4,DumpVISAASMToConsole -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -platformbmg -igc-emit-visa -simd-mode 16 -inputrt -regkey ResourceLoopUnrollIteration=4,DumpVISAASMToConsole -S < %s | FileCheck %s
 ;
 ; Test checks how we emit ResourceLoop
 

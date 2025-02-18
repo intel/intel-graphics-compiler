@@ -8,7 +8,7 @@
 ;
 
 ; REQUIRES: regkeys
-; RUN: igc_opt --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=1 < %s 2>&1 | FileCheck %s
 
 ; This test verifies if the WIAnalysis correctly treats localID argument of sub_group_broadcast
 ; as non-uniform if it comes directly from a load instruction.

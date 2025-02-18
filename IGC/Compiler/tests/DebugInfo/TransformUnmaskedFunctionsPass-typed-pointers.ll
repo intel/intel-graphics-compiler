@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --transform-unmasked -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --transform-unmasked -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; TransformUnmaskedFunctionsPass
 ; ------------------------------------------------

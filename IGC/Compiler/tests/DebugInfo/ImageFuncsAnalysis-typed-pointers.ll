@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-image-func-analysis -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-image-func-analysis -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ImageFuncsAnalysis
 ; ------------------------------------------------

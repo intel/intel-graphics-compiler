@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -enable-debugify --igc-promoteint8type -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -enable-debugify --igc-promoteint8type -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; PromoteInt8Type : Instructions
 ; ------------------------------------------------

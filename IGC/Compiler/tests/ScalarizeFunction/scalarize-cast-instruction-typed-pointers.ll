@@ -7,7 +7,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-scalarize -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-scalarize -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ScalarizeFunction
 ; ------------------------------------------------

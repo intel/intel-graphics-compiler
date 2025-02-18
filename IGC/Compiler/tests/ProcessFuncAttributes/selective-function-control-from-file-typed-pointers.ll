@@ -8,9 +8,9 @@
 ;
 ; REQUIRES: llvm-14-plus, regkeys
 ; RUN: split-file %s %t
-; RUN: igc_opt --igc-process-func-attributes -S -regkey FunctionControl=3,SelectiveFunctionControl=1,PrintStackCallDebugInfo=1,SelectiveFunctionControlFile=%t/sfc1.ll < %t/test.ll | FileCheck %s --check-prefixes=CHECK-SFC1
-; RUN: igc_opt --igc-process-func-attributes -S -regkey FunctionControl=3,SelectiveFunctionControl=1,PrintStackCallDebugInfo=1,SelectiveFunctionControlFile=%t/sfc2.ll < %t/test.ll | FileCheck %s --check-prefixes=CHECK-SFC2
-; RUN: igc_opt --igc-process-func-attributes -S -regkey FunctionControl=3,SelectiveFunctionControl=1,PrintStackCallDebugInfo=1,SelectiveFunctionControlFile=%t/sfc3.ll < %t/test.ll | FileCheck %s --check-prefixes=CHECK-SFC3
+; RUN: igc_opt --typed-pointers --igc-process-func-attributes -S -regkey FunctionControl=3,SelectiveFunctionControl=1,PrintStackCallDebugInfo=1,SelectiveFunctionControlFile=%t/sfc1.ll < %t/test.ll | FileCheck %s --check-prefixes=CHECK-SFC1
+; RUN: igc_opt --typed-pointers --igc-process-func-attributes -S -regkey FunctionControl=3,SelectiveFunctionControl=1,PrintStackCallDebugInfo=1,SelectiveFunctionControlFile=%t/sfc2.ll < %t/test.ll | FileCheck %s --check-prefixes=CHECK-SFC2
+; RUN: igc_opt --typed-pointers --igc-process-func-attributes -S -regkey FunctionControl=3,SelectiveFunctionControl=1,PrintStackCallDebugInfo=1,SelectiveFunctionControlFile=%t/sfc3.ll < %t/test.ll | FileCheck %s --check-prefixes=CHECK-SFC3
 ; ------------------------------------------------
 
 ; Test checks function control setting from custom file

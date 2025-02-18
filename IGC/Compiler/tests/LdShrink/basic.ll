@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -enable-debugify -igc-ldshrink -dce -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -enable-debugify -igc-ldshrink -dce -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; LdShrink
 ; ------------------------------------------------

@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; run: igc_opt --platformdg2 --enable-debugify --igc-PartialEmuI64Ops -S < %s 2>&1 | FileCheck %s
-; RUN: igc_opt --platformdg2 --igc-PartialEmuI64Ops -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers --platformdg2 --igc-PartialEmuI64Ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; PartialEmuI64Ops : preprocess part
 ; ------------------------------------------------

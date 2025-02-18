@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-address-arith-sinking  -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-address-arith-sinking  -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; AddressArithmeticSinking
 ; ------------------------------------------------

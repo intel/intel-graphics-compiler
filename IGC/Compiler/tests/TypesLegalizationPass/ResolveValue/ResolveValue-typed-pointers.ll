@@ -7,7 +7,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -types-legalization-pass | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -types-legalization-pass | FileCheck %s
 
 define spir_kernel void @cover.ResolveValue.cast.to.InsertElementInst()
 ; CHECK-LABEL: define spir_kernel void @cover.ResolveValue.cast.to.InsertElementInst() {

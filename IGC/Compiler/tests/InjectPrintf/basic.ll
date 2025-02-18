@@ -7,9 +7,9 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -regkey InjectPrintfFlag=1 --inject-printf -S < %s | FileCheck %s --check-prefix=LOADS
-; RUN: igc_opt -regkey InjectPrintfFlag=2 --inject-printf -S < %s | FileCheck %s --check-prefix=STORES
-; RUN: igc_opt -regkey InjectPrintfFlag=3 --inject-printf -S < %s | FileCheck %s --check-prefix=LOADS_AND_STORES
+; RUN: igc_opt --typed-pointers -regkey InjectPrintfFlag=1 --inject-printf -S < %s | FileCheck %s --check-prefix=LOADS
+; RUN: igc_opt --typed-pointers -regkey InjectPrintfFlag=2 --inject-printf -S < %s | FileCheck %s --check-prefix=STORES
+; RUN: igc_opt --typed-pointers -regkey InjectPrintfFlag=3 --inject-printf -S < %s | FileCheck %s --check-prefix=LOADS_AND_STORES
 ;
 ; ------------------------------------------------
 ; InjectPrintf

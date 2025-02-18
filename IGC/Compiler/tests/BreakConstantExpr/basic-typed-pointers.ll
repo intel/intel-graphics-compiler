@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-break-const-expr -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-break-const-expr -S < %s | FileCheck %s
 ; run: igc_opt -debugify -igc-break-const-expr -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; BreakConstantExpr

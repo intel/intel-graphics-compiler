@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -types-legalization-pass | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -types-legalization-pass | FileCheck %s
 
 define spir_kernel void @f0([120004 x double] addrspace(1)* addrspace(1)* %arg) {
 entry:

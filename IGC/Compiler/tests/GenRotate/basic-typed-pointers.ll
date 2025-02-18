@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify --igc-genrotate -platformdg1 -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -debugify --igc-genrotate -platformdg1 -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; GenRotate
 ; ------------------------------------------------

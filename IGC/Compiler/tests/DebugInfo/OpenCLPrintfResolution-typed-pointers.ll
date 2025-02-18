@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt  -igc-opencl-printf-resolution -S  < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers  -igc-opencl-printf-resolution -S  < %s | FileCheck %s
 ; ------------------------------------------------
 ; OpenCLPrintfResolution
 ; ------------------------------------------------

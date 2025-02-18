@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -igc-constant-coalescing | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -igc-constant-coalescing | FileCheck %s
 
 ; The current version of ConstantCoalescing pass doesn't have an ability to optimize
 ; ldrawvector instructions that read global pointer from memory. This test has been

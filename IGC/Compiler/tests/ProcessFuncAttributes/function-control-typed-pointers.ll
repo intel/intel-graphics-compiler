@@ -7,11 +7,11 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus, regkeys
-; RUN: igc_opt --igc-process-func-attributes -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK-FC0
-; RUN: igc_opt --igc-process-func-attributes -S -regkey FunctionControl=1 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK-FC1
-; RUN: igc_opt --igc-process-func-attributes -S -regkey FunctionControl=2 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK-FC2
-; RUN: igc_opt --igc-process-func-attributes -S -regkey FunctionControl=3 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK-FC3
-; RUN: igc_opt --igc-process-func-attributes -S -regkey FunctionControl=4 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK-FC4
+; RUN: igc_opt --typed-pointers --igc-process-func-attributes -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK-FC0
+; RUN: igc_opt --typed-pointers --igc-process-func-attributes -S -regkey FunctionControl=1 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK-FC1
+; RUN: igc_opt --typed-pointers --igc-process-func-attributes -S -regkey FunctionControl=2 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK-FC2
+; RUN: igc_opt --typed-pointers --igc-process-func-attributes -S -regkey FunctionControl=3 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK-FC3
+; RUN: igc_opt --typed-pointers --igc-process-func-attributes -S -regkey FunctionControl=4 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK-FC4
 ; ------------------------------------------------
 
 ; Test check forced attribute update based on FunctionControl flag:

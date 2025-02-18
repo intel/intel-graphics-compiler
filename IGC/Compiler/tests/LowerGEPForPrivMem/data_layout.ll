@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-priv-mem-to-reg -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-priv-mem-to-reg -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; LowerGEPForPrivMem
 ; ------------------------------------------------

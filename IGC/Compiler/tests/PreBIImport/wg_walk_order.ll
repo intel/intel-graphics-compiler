@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -platformpvc -igc-Pre-BIImport-Analysis -igc-serialize-metadata -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -platformpvc -igc-Pre-BIImport-Analysis -igc-serialize-metadata -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ------------------------------------------------
 ; PreBIImportAnalysis

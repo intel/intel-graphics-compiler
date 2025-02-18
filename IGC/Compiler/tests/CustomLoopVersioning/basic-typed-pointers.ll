@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify -igc-custom-loop-opt -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -debugify -igc-custom-loop-opt -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; CustomLoopVersioning
 ; ------------------------------------------------

@@ -7,10 +7,10 @@
 ;============================ end_copyright_notice =============================
 ;
 ; Default test run w/o AddImplicitArgs is for sanity reasons(so module won't break)
-; RUN: igc_opt -igc-legalization -S -dce -disable-output < %s
+; RUN: igc_opt --typed-pointers -igc-legalization -S -dce -disable-output < %s
 ;
 ; AddImplicitArgs is expected to be present in pipeline
-; RUN: igc_opt -igc-add-implicit-args -igc-legalization -S -dce < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-add-implicit-args -igc-legalization -S -dce < %s | FileCheck %s
 ;
 ; ------------------------------------------------
 ; Legalization: addrspacecast

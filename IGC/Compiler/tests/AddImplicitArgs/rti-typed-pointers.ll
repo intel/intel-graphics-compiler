@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-add-implicit-args -S %s -o %t.ll
+; RUN: igc_opt --typed-pointers -igc-add-implicit-args -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 ; CHECK:     define spir_kernel void @test_rti(i8 addrspace(1)* %globalPointer, i8 addrspace(1)* %localPointer, i16 %stackID, <2 x i8 addrspace(1)*> %inlinedData)

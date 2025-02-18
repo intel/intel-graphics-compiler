@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-slmconstprop -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-slmconstprop -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; SLMConstProp
 ; ------------------------------------------------

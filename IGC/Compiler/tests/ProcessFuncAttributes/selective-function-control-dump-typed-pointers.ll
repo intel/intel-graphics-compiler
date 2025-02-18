@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus, regkeys
-; RUN: igc_opt --igc-process-func-attributes -regkey FunctionControl=3,SelectiveFunctionControl=2,SelectiveFunctionControlFile=%t -disable-output < %s
+; RUN: igc_opt --typed-pointers --igc-process-func-attributes -regkey FunctionControl=3,SelectiveFunctionControl=2,SelectiveFunctionControlFile=%t -disable-output < %s
 ; RUN: cat %t | FileCheck %s
 ; ------------------------------------------------
 

@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt -igc-wave-shuffle-index-sinking -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-wave-shuffle-index-sinking -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; WaveShuffleIndexSinking
 ;

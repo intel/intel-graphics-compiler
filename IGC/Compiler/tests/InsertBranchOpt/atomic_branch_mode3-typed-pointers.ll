@@ -8,7 +8,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -igc-InsertBranchOpt -regkey EnableAtomicBranch=3 -S %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-InsertBranchOpt -regkey EnableAtomicBranch=3 -S %s | FileCheck %s
 
 
 define i32 @atomicUmax(i32 %mem, i32 %val) {

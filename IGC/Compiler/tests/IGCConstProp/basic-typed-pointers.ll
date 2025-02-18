@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-const-prop -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-const-prop -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; IGCConstProp
 ; ------------------------------------------------

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-device-enqueue-func-analysis -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-device-enqueue-func-analysis -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; DeviceEnqueueFuncsAnalysis
 ; ------------------------------------------------

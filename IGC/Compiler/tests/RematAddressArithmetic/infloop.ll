@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -igc-remat-address-arithmetic | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -igc-remat-address-arithmetic | FileCheck %s
 
 ; This unit test only checks if pass is able to deal with infinite loops of uses in "phi" function
 ; Function pattern - infinite loop using %privateBase

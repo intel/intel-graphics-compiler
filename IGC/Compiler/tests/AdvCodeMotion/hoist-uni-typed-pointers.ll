@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify -adv-codemotion-cm=1 -igc-advcodemotion -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -debugify -adv-codemotion-cm=1 -igc-advcodemotion -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; AdvCodeMotion
 ; ------------------------------------------------

@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt --EstimateFunctionSize -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --EstimateFunctionSize -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; EstimateFunctionSize
 ; ------------------------------------------------

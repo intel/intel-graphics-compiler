@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-low-precision-opt -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-low-precision-opt -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; LowPrecisionOpt
 ; ------------------------------------------------

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-type-legalizer -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-type-legalizer -S < %s | FileCheck %s
 
 ; Test checks illegal integer promotion for stores and loads
 

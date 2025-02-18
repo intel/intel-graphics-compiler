@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; RUN: igc_opt -igc-programscope-constant-analysis -igc-serialize-metadata \
+; RUN: igc_opt --typed-pointers -igc-programscope-constant-analysis -igc-serialize-metadata \
 ; RUN:   -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ProgramScopeConstantAnalysis

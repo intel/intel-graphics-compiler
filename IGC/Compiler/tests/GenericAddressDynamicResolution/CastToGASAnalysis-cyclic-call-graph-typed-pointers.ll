@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -igc-generic-address-dynamic-resolution | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -igc-generic-address-dynamic-resolution | FileCheck %s
 
 ; This test verifies whether cyclic call graph is properly handled by CastToGASAnalysis.
 ; Here is a call graph for below test:

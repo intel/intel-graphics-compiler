@@ -8,7 +8,7 @@
 
 ; Check that bindless image and sampler are passed via kernel arguments.
 
-; RUN: igc_opt %s -S -o - -igc-conv-ocl-to-common | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -igc-conv-ocl-to-common | FileCheck %s
 
 %spirv.Image._void_1_0_0_0_0_0_0 = type opaque
 %spirv.Sampler = type opaque

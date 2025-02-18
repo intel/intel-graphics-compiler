@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -enable-debugify --igc-vectorprocess -S 2>&1 < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -enable-debugify --igc-vectorprocess -S 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------
 ; VectorProcess : load
 ; ------------------------------------------------

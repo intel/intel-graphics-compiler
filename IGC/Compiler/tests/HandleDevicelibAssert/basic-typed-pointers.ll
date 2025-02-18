@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -enable-debugify -igc-handle-devicelib-assert -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -enable-debugify -igc-handle-devicelib-assert -S < %s 2>&1 | FileCheck %s
 
 ; Debug-info related check
 ;

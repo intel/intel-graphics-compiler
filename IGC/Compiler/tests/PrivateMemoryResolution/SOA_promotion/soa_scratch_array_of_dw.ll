@@ -8,7 +8,7 @@
 
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt --platformtgllp --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=2,NewSOATransposeForOpenCL=0  -S %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --platformtgllp --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=2,NewSOATransposeForOpenCL=0  -S %s | FileCheck %s
 ;
 
 ; CHECK-LABEL: @test

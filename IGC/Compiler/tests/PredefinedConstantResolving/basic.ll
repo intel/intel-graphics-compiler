@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify --igc-predefined-constant-resolve -check-debugify 2>&1 -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -debugify --igc-predefined-constant-resolve -check-debugify 2>&1 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; PredefinedConstantResolving
 ; ------------------------------------------------

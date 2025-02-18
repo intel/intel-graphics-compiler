@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -enable-debugify -regkey EnableCodeAssumption=2 -igc-codeassumption -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -enable-debugify -regkey EnableCodeAssumption=2 -igc-codeassumption -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; CodeAssumption : addAssumption part
 ; ------------------------------------------------

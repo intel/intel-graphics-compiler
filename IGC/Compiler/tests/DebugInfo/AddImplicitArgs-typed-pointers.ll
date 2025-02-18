@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-add-implicit-args -S %s -o - | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-add-implicit-args -S %s -o - | FileCheck %s
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This LIT test checks that AddImplicitArgs pass handles variable debug info.

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt %s -S -o - -igc-resolve-ocl-raytracing-builtins -platformdg2 | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -igc-resolve-ocl-raytracing-builtins -platformdg2 | FileCheck %s
 
 ; CHECK: %struct.intel_ray_query_opaque_t = type { %struct.rtfence_t*, %struct.rtglobals_t addrspace(1)*, i8 addrspace(1)*, i32, i32 }
 %struct.intel_ray_query_opaque_t = type opaque

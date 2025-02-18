@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -ClampICBOOBAccess  -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -ClampICBOOBAccess  -S < %s 2>&1 | FileCheck %s
 
 ; Test checks that ICB index is clamped
 

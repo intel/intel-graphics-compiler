@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-buffer-bounds-checking -igc-add-implicit-args -igc-buffer-bounds-checking-patcher -S %s -o %t.ll
+; RUN: igc_opt --typed-pointers -igc-buffer-bounds-checking -igc-add-implicit-args -igc-buffer-bounds-checking-patcher -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 define spir_kernel void @kernel(i32 addrspace(1)* %input) nounwind {

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -ocl -inputocl -platformdg2 -igc-constant-coalescing | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -ocl -inputocl -platformdg2 -igc-constant-coalescing | FileCheck %s
 
 ; This test verifies bindless, scalar, uniform loads merging on OpenCL path.
 

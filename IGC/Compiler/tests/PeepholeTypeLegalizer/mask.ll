@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -debugify --igc-int-type-legalizer -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK
+; RUN: igc_opt --typed-pointers -debugify --igc-int-type-legalizer -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK
 
 ; Debug-info related check
 ; CHECK: CheckModuleDebugify: PASS

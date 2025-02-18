@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt %s -S -o - --inputcs --regkey OverrideCsWalkOrderEnable=1,OverrideCsWalkOrder=0,OverrideCsTileLayoutEnable=1,OverrideCsTileLayout=0 -igc-constant-coalescing | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - --inputcs --regkey OverrideCsWalkOrderEnable=1,OverrideCsWalkOrder=0,OverrideCsTileLayoutEnable=1,OverrideCsTileLayout=0 -igc-constant-coalescing | FileCheck %s
 
 ; This test verifies bindless, uniform (through regkeys) ldraw merging with address calculation passing a phinode
 

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -opt-atomics-pass | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -opt-atomics-pass | FileCheck %s
 
 declare i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)*, i32 addrspace(1)*, i32, i32)
 declare i32 @llvm.genx.GenISA.icmpxchgatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)*, i32 addrspace(1)*, i32, i32)

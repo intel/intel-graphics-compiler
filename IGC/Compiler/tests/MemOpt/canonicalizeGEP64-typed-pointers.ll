@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -igc-memopt -instcombine | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -igc-memopt -instcombine | FileCheck %s
 
 define void @f0(i32 %arg1, i32 %arg2, double addrspace(1)* %src, double addrspace(1)* %dst) {
 entry:

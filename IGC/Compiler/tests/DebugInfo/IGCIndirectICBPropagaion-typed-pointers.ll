@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -IGCIndirectICBPropagaion -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -IGCIndirectICBPropagaion -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; IGCIndirectICBPropagaion
 ; ------------------------------------------------

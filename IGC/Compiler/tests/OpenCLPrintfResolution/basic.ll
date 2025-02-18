@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt --platformglk -igc-opencl-printf-resolution -S  < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --platformglk -igc-opencl-printf-resolution -S  < %s | FileCheck %s
 ; ------------------------------------------------
 ; OpenCLPrintfResolution
 ; ------------------------------------------------

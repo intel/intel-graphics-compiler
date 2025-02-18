@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-generic-address-dynamic-resolution -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-generic-address-dynamic-resolution -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GenericAddressDynamicResolution
 ; ------------------------------------------------

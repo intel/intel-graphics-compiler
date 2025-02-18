@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-insert-dummy-kernel-for-symbol-table -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-insert-dummy-kernel-for-symbol-table -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; InsertDummyKernelForSymbolTable
 ; ------------------------------------------------

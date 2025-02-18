@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; RUN: igc_opt -igc-hoist-congruent-phi -inputcs --regkey CodeSinkingMinSize=10 -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-hoist-congruent-phi -inputcs --regkey CodeSinkingMinSize=10 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CodeSinking
 ; ------------------------------------------------

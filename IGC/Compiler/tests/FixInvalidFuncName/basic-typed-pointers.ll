@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify -fix-invalid-func-name -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -debugify -fix-invalid-func-name -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; FixInvalidFuncName
 ; ------------------------------------------------

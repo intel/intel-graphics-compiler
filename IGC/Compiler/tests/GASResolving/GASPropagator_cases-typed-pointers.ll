@@ -7,7 +7,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -debugify --igc-gas-resolve -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -debugify --igc-gas-resolve -S < %s | FileCheck %s
 
 ; We use "-debugify" in order to have some metadata in addrspacecast instruction.
 ; addrspacecast instructions in both directions should have a metadata.

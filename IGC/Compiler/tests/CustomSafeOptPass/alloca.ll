@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-custom-safe-opt -S %s -o %t.ll
+; RUN: igc_opt --typed-pointers -igc-custom-safe-opt -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 define spir_kernel void @testalloca1() {

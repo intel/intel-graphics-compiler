@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-fix-alignment -S %s -o %t.ll
+; RUN: igc_opt --typed-pointers -igc-fix-alignment -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 target triple = "igil_32_GEN9"

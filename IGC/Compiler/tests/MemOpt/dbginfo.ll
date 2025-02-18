@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -igc-memopt -instcombine | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -igc-memopt -instcombine | FileCheck %s
 
 ; This test is checking whether debug calls are correctly omitted in distance counting.
 ; We should not consider them as "real" instructions, since we want to keep debug and non-debug optimization process identical.

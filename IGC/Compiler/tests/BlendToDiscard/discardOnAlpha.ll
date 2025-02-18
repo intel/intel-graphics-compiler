@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --inputps --platformskl --BlendToDiscard -igc-serialize-metadata -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --inputps --platformskl --BlendToDiscard -igc-serialize-metadata -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; BlendToDiscard
 ; ------------------------------------------------

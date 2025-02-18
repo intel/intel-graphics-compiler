@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify --igc-process-func-attributes -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -debugify --igc-process-func-attributes -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ;
 ; Checks that alwaysinline attibute is set for FastRelaxMath and MemPool

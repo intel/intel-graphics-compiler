@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-custom-safe-opt -dce -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-custom-safe-opt -dce -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CustomSafeOptPass: load
 ; ------------------------------------------------

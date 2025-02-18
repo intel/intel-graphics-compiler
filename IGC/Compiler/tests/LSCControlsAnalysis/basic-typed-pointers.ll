@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -LSC-Controls-Analysis-pass  -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -LSC-Controls-Analysis-pass  -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; LSCControlsAnalysisPass
 ; ------------------------------------------------

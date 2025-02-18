@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -enable-debugify --igc-promote-stateless-to-bindless -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -enable-debugify --igc-promote-stateless-to-bindless -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; PromoteStatelessToBindless supports promotion of only two intrinsics: GenISA_simdBlockRead and
 ; GenISA_simdBlockWrite. This test verifies that the pass can correctly bail out and leave

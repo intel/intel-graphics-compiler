@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-extension-funcs-analysis -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-extension-funcs-analysis -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ExtensionFuncsAnalysis
 ; ------------------------------------------------

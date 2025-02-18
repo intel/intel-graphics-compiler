@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -igc-promote-constant-structs | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -igc-promote-constant-structs | FileCheck %s
 
 
 %struct.S = type { i64, i64, i64 }

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -generic-pointer-analysis -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -generic-pointer-analysis -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CastToGASAnalysis
 ; ------------------------------------------------

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -igc-stateless-to-stateful-resolution -platformpvc -igc-serialize-metadata | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution -platformpvc -igc-serialize-metadata | FileCheck %s
 
 ; This test verifies the scenario where there are four global buffer arguments and the 3rd one is
 ; not used in the kernel. All memory instructions operating on 0th, 1st and 4th arguments

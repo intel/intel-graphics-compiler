@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-spir-metadata-translation -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-spir-metadata-translation -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; SPIRMetaDataTranslation
 ; ------------------------------------------------

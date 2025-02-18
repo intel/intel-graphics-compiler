@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt %s -S -o - -platformdg1 -igc-priv-mem-to-reg 2>&1 | FileCheck -check-prefix=CHECK-DG1 %s
-; RUN: igc_opt %s -S -o - -platformdg2 -igc-priv-mem-to-reg 2>&1 | FileCheck -check-prefix=CHECK-DG2 %s
+; RUN: igc_opt --typed-pointers %s -S -o - -platformdg1 -igc-priv-mem-to-reg 2>&1 | FileCheck -check-prefix=CHECK-DG1 %s
+; RUN: igc_opt --typed-pointers %s -S -o - -platformdg2 -igc-priv-mem-to-reg 2>&1 | FileCheck -check-prefix=CHECK-DG2 %s
 ; ------------------------------------------------
 ; LowerGEPForPrivMem
 ; ------------------------------------------------

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-constant-coalescing -dce -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-constant-coalescing -dce -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ConstantCoalescing
 ; ------------------------------------------------

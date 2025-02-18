@@ -18,7 +18,7 @@
 ;       dst[currentOffset] = 0;
 ;     }
 ;
-; RUN: igc_opt -enable-debugify --igc-vectorprocess -platformmtl -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -enable-debugify --igc-vectorprocess -platformmtl -S < %s 2>&1 | FileCheck %s
 
 ; ------------------------------------------------
 ; VectorProcess

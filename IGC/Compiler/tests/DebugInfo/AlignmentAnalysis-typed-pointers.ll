@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-fix-alignment -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-fix-alignment -S < %s | FileCheck %s
 ; AlignmentAnalysis
 ; ------------------------------------------------
 ; This test checks that debug info is properly handled by AlignmentAnalysis pass
