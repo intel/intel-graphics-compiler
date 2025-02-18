@@ -176,13 +176,31 @@ bool isPrintfOnlyStringConstantImpl(const llvm::Value *v, std::set<const llvm::U
 // path lead to a printf call.
 bool OpenCLPrintfAnalysis::isPrintfOnlyStringConstant(const llvm::GlobalVariable *GV)
 {
-    const llvm::Constant *initializer = GV->getInitializer();
-    if (!initializer)
+    const llvm::Constant* Initializer = GV->getInitializer();
+    if (!Initializer)
+    {
         return false;
-    const llvm::ConstantDataSequential* cds = llvm::dyn_cast<llvm::ConstantDataSequential>(initializer);
-    if (!cds || !cds->isCString() || !cds->isString())
-        return false;
+    }
 
-    std::set<const llvm::User *> visited;
-    return isPrintfOnlyStringConstantImpl(GV, visited);
+    bool IsNullTerminatedString = false;
+    if (const auto* cds = llvm::dyn_cast<llvm::ConstantDataSequential>(Initializer))
+    {
+        if (cds->isString())
+        {
+            StringRef Str = cds->getAsString();
+            IsNullTerminatedString = Str.contains(0);
+        }
+    }
+
+    bool IsZeroInitCharArray = Initializer->isZeroValue() &&
+                               isa<ArrayType>(Initializer->getType()) &&
+                               Initializer->getType()->getArrayElementType()->isIntegerTy(8);
+
+    if (IsNullTerminatedString || IsZeroInitCharArray)
+    {
+        std::set<const llvm::User*> Visited;
+        return isPrintfOnlyStringConstantImpl(GV, Visited);
+    }
+
+    return false;
 }

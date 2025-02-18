@@ -129,9 +129,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 
         // When ZeBin is enabled, constant variables that are string literals
         // used only by printf will be stored in the second constant buffer.
-        ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(initializer);
         bool isZebinPrintfStringConst = Ctx->enableZEBinary() &&
-            cds && (cds->isCString() || cds->isString()) &&
             OpenCLPrintfAnalysis::isPrintfOnlyStringConstant(globalVar);
         // Here we follow SPV_EXT_relaxed_printf_string_address_space to relax
         // the address space requirement of printf strings and accept
@@ -155,7 +153,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             }
         }
 
-        if (initializer->isZeroValue())
+        if (initializer->isZeroValue() && !isZebinPrintfStringConst)
         {
             zeroInitializedGlobals.push_back(globalVar);
             continue;
