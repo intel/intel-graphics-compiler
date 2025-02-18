@@ -1643,10 +1643,12 @@ static const char* RaytracingTypesMDName = "igc.magic.raytracing.types";
 // and add create a getter function below to retrieve it.
 enum class RaytracingType
 {
-    RTStack2Stateless     = 0,
-    RTStack2Stateful      = 1,
-    RayDispatchGlobalData = 2,
-    SWHotZone             = 3,
+    AsyncRTStack2Stateless     = 0,
+    AsyncRTStack2Stateful      = 1,
+    RayDispatchGlobalData      = 2,
+    SWHotZone                  = 3,
+    SyncRTStack2Stateless      = 4,
+    SyncRTStack2Stateful       = 5,
     NUM_TYPES
 };
 
@@ -1756,8 +1758,18 @@ Type* RTBuilder::getRTStack2PtrTy(
             AddrSpace);
     };
 
-    auto RTType = (Mode == RTBuilder::STATELESS) ?
-        RaytracingType::RTStack2Stateless : RaytracingType::RTStack2Stateful;
+    auto RTType = RaytracingType::NUM_TYPES;
+
+    if (async)
+    {
+        RTType = (Mode == RTBuilder::STATELESS) ?
+            RaytracingType::AsyncRTStack2Stateless : RaytracingType::AsyncRTStack2Stateful;
+    }
+    else
+    {
+        RTType = (Mode == RTBuilder::STATELESS) ?
+            RaytracingType::SyncRTStack2Stateless : RaytracingType::SyncRTStack2Stateful;
+    }
 
     return lazyGetRTType(*Ctx.getModule(), RTType, addTy);
 }
