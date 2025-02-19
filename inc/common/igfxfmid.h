@@ -749,6 +749,16 @@ typedef enum __NATIVEGTTYPE
 #define DEV_ID_0B69                            0x0B69
 #define DEV_ID_0B6E                            0x0B6E
 
+// BMG
+#define DEV_ID_E202                             0xE202
+#define DEV_ID_E20B                             0xE20B
+#define DEV_ID_E20C                             0xE20C
+#define DEV_ID_E20D                             0xE20D
+#define DEV_ID_E210                             0xE210
+#define DEV_ID_E212                             0xE212
+#define DEV_ID_E215                             0xE215
+#define DEV_ID_E216                             0xE216
+
 // PTL
 #define DEV_ID_B080                             0xB080
 #define DEV_ID_B081                             0xB081
