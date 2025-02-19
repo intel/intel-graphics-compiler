@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Dominators.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -332,7 +333,7 @@ void MergeAllocas::getAnalysisUsage(llvm::AnalysisUsage& AU) const
 
 bool MergeAllocas::runOnFunction(Function& F)
 {
-    if (F.hasOptNone()){
+    if (skipFunction(F)){
         return false;
     }
 
@@ -341,7 +342,7 @@ bool MergeAllocas::runOnFunction(Function& F)
     // we group the allocations by type, then sort them into buckets with nonoverlapping liveranges
     // can this be generalized into allocas for types of the same size, not only types?
     using BucketT = SmallVector<std::pair<Instruction*, AllocationBasedLivenessAnalysis::LivenessData*>>;
-    DenseMap<std::tuple<llvm::Type*, uint64_t, uint32_t>, SmallVector<BucketT>> buckets;
+    DenseMap<std::tuple<llvm::Type*, uint32_t, uint32_t>, SmallVector<BucketT>> buckets;
 
     for (const auto& A : ABLA)
     {
@@ -353,9 +354,11 @@ bool MergeAllocas::runOnFunction(Function& F)
         if (!isa<ConstantInt>(AI->getArraySize()))
             continue;
 
+        auto* AllocatedType = AI->getAllocatedType();
+        uint32_t IsArray = AllocatedType->isArrayTy()? 1 : 0;
         auto& perTypeBuckets = buckets[std::make_tuple(
-            AI->getAllocatedType(),
-            cast<ConstantInt>(AI->getArraySize())->getZExtValue(),
+            (IsArray)? AllocatedType->getArrayElementType() : AllocatedType,
+            IsArray,
             AI->getAddressSpace()
         )];
 
@@ -379,7 +382,7 @@ bool MergeAllocas::runOnFunction(Function& F)
 
     bool changed = false;
 
-    for (const auto& [_, perTypeBuckets] : buckets)
+    for (const auto& [allocaType, perTypeBuckets] : buckets)
     {
         for (const auto& bucket : perTypeBuckets)
         {
@@ -388,21 +391,36 @@ bool MergeAllocas::runOnFunction(Function& F)
                 continue;
             }
 
+            bool IsArray = std::get<1>(allocaType);
             Instruction* firstAlloca = nullptr;
+            if (IsArray)
+            {
+                firstAlloca = std::max_element(bucket.begin(), bucket.end(), [](const auto& a, const auto& b) {
+                    return cast<AllocaInst>(a.first)->getAllocatedType()->getArrayNumElements() < cast<AllocaInst>(b.first)->getAllocatedType()->getArrayNumElements();
+                })->first;
+            }
+            else
+            {
+                firstAlloca = bucket[0].first;
+            }
+            firstAlloca->moveBefore(F.getEntryBlock().getFirstNonPHI());
+            firstAlloca->setName(VALUE_NAME("MergedAlloca"));
             for (const auto& [I, _] : bucket)
             {
-                if (!firstAlloca)
+                if (firstAlloca == I)
                 {
-                    firstAlloca = I;
-                    firstAlloca->moveBefore(F.getEntryBlock().getFirstNonPHI());
-                    firstAlloca->setName(VALUE_NAME("MergedAlloca"));
+                    continue;
                 }
-                else
+                auto* ReplacementValue = firstAlloca;
+                if (firstAlloca->getType() != I->getType())
                 {
-                    I->replaceAllUsesWith(firstAlloca);
-                    I->eraseFromParent();
-                }
-
+                    IRBuilder<> Builder(firstAlloca->getParent());
+                    Builder.SetInsertPoint(firstAlloca->getNextNode());
+                    auto *CastedValue = llvm::cast<Instruction>(Builder.CreateBitCast(firstAlloca, I->getType()));
+                    ReplacementValue = CastedValue;
+                };
+                I->replaceAllUsesWith(ReplacementValue);
+                I->eraseFromParent();
             }
 
             changed = true;
