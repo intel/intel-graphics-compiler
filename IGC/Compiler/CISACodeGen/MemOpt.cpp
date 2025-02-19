@@ -5234,23 +5234,50 @@ void getStructMemberOffsetAndType_2(const DataLayout* DL,
     return;
 }
 
+static void searchForDefinedMembers(const ConstantAggregate* S, const std::vector<unsigned>& currentIndices, SmallVectorImpl<std::vector<unsigned>>& fieldsTBC)
+{
+    for (unsigned i = 0; i < S->getNumOperands(); i++)
+    {
+        auto indices = currentIndices;
+        indices.push_back(i);
+        auto* E = S->getAggregateElement(i);
+        if (isa<UndefValue>(E))
+            continue;
+
+        if (auto* SE = dyn_cast<ConstantAggregate>(E))
+        {
+            searchForDefinedMembers(SE, indices, fieldsTBC);
+        }
+        else
+        {
+            fieldsTBC.push_back(indices);
+        }
+
+    }
+}
+
 void getAllDefinedMembers (const Value* IVI,
-    std::list<ArrayRef<unsigned>>& fieldsTBC)
+    SmallVectorImpl<std::vector<unsigned>>& fieldsTBC)
 {
     IGC_ASSERT(IVI != nullptr);
     const Value* V = IVI;
     while (isa<InsertValueInst>(V))
     {
         const InsertValueInst* I = cast<const InsertValueInst>(V);
-        fieldsTBC.push_front(I->getIndices());
+        fieldsTBC.push_back(I->getIndices().vec());
         V = I->getOperand(0);
     }
-    if (!isa<UndefValue>(V))
+
+    // at the end we may have a constant struct like this:
+    // % 28 = insertvalue % __StructSOALayout_ < { i32 194816, i32 undef, i32 undef, <1 x float> undef } > , i32 % 17, 1
+    // we should traverse it and find the indices pointing to the constant values
+    if (auto* S = dyn_cast<ConstantAggregate>(V))
     {
-        // Don't know for sure, assume all have been defined.
-        fieldsTBC.clear();
-        StructType* stTy = cast<StructType>(IVI->getType());
-        fieldsTBC.insert(fieldsTBC.end(), 0, stTy->getNumElements() - 1);
+        std::vector<unsigned> indices = {};
+        searchForDefinedMembers(S, indices, fieldsTBC);
     }
+
+    // reverse the vector to get the ascending order of indices
+    std::reverse(fieldsTBC.begin(), fieldsTBC.end());
 }
 }

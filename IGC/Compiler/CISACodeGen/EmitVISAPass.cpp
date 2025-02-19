@@ -2961,7 +2961,7 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
             //  %13 = insertvalue %9, i32 %scalar40, 2
             //  %14 = insertvalue %13, i32 %scalar41, 3
             //
-            std::list<ArrayRef<unsigned>> toBeCopied;
+            SmallVector<std::vector<unsigned>> toBeCopied;
             getAllDefinedMembers(src0, toBeCopied);
             for (const auto& II : toBeCopied)
             {
@@ -3128,7 +3128,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* IVI)
             // Most often, SrcV has just one defined value and calling
             // emitCopyToOrFromLayoutStruct() would copy all, thus special
             // handling here to avoid copy undefined values.
-            std::list<ArrayRef<unsigned>> toBeCopied;
+            SmallVector<std::vector<unsigned>> toBeCopied;
             getAllDefinedMembers(src0, toBeCopied);
             for (const auto& II : toBeCopied)
             {

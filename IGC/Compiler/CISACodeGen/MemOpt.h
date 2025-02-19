@@ -91,7 +91,7 @@ namespace IGC {
     //
     //  The value %9 will return {0, 1}, and %10 will return {0, 1, 2}.
     void getAllDefinedMembers(const Value* IVI,
-        std::list<ArrayRef<unsigned>>& fieldsTBC);
+        SmallVectorImpl<std::vector<unsigned>>& fieldsTBC);
 }
 
 #endif // _CISA_MEMOPT_H_
