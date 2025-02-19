@@ -3469,7 +3469,7 @@ namespace IGC
 
         if (ctx->platform.getMinDispatchMode() == SIMDMode::SIMD16)
         {
-            bool abortOnSpills = ctx->platform.isCoreXE2() && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32);
+            bool abortOnSpills = IGC_GET_FLAG_VALUE(AllowSIMD16DropForXE2) && ctx->platform.isCoreXE2() && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32);
             AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, abortOnSpills);
             AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, false);
 
