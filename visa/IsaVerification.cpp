@@ -1064,8 +1064,13 @@ void vISAVerifier::verifyInstructionMove(const CISA_INST *inst) {
     } else if (src0Type == ISA_TYPE_UD) {
       REPORT_INSTRUCTION(options, false,
                          "FCVT with UD(actually TF32) src0 is not supported");
-    }
-    else {
+    } else if (dstType == ISA_TYPE_B) {
+      REPORT_INSTRUCTION(options, src0Type == ISA_TYPE_HF,
+                         "FCVT with B(actually HF8) dst must have HF src");
+    } else if (src0Type == ISA_TYPE_B) {
+      REPORT_INSTRUCTION(options, dstType == ISA_TYPE_HF,
+                         "FCVT with B(actually HF8) src must have HF dst");
+    } else {
       REPORT_INSTRUCTION(options, false,
                          "FCVT must have either UB(actually BF8) dst or src");
     }
@@ -1073,7 +1078,7 @@ void vISAVerifier::verifyInstructionMove(const CISA_INST *inst) {
     // Check if NoMask is required
     switch (dstType) {
     case ISA_TYPE_UB:
-    {
+    case ISA_TYPE_B: {
       REPORT_INSTRUCTION(options, isNoMask(inst->getExecMask()),
                          "FCVT must use noMask for HF to FP8 conversion");
     }
@@ -4350,8 +4355,6 @@ void vISAVerifier::verifyInstructionLsc(const CISA_INST *inst) {
 void vISAVerifier::verifyInstructionSrnd(const CISA_INST *inst) {
   const vector_opnd &dst = getVectorOperand(inst, 0);
   VISA_Type dstType = getVectorOperandType(header, dst);
-  VISA_Modifier dstModifier = dst.getOperandModifier();
-  bool allowSat = false;
 
   REPORT_INSTRUCTION(options, isNoMask(inst->getExecMask()),
                      "srnd must use noMask");
@@ -4360,10 +4363,6 @@ void vISAVerifier::verifyInstructionSrnd(const CISA_INST *inst) {
   REPORT_INSTRUCTION(
       options, dst.getOperandClass() == OPERAND_GENERAL,
       "Destination of this CISA instruction should be general operand.");
-
-  REPORT_INSTRUCTION(
-      options, allowSat || dstModifier == MODIFIER_NONE,
-      "Destination modifier for this CISA instruction is not allowed.");
 
   // src
   const vector_opnd &src0 = getVectorOperand(inst, 1);
