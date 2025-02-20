@@ -9,7 +9,7 @@
 ; UNSUPPORTED: system-windows
 ;
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S %s | FileCheck %s
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------

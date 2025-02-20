@@ -1,6 +1,6 @@
 ; UNSUPPORTED: system-windows
 ; REQUIRES: regkeys
-; RUN: igc_opt --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=1 < %s 2>&1 | FileCheck %s
 
 define spir_func void @baz() nounwind {
 entry:
