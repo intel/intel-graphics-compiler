@@ -1041,20 +1041,9 @@ bool LVN::addValue(G4_INST *inst) {
 
   G4_Operand *dst = inst->getDst();
   if (!dst->getBase() || !dst->getBase()->isRegVar() ||
-      (dst->getBase()->asRegVar()->getDeclare()->getRegFile() != G4_GRF &&
-       dst->getBase()->asRegVar()->getDeclare()->getRegFile() != G4_FLAG) ||
+      dst->getBase()->asRegVar()->getDeclare()->getRegFile() != G4_GRF ||
       dst->getTopDcl()->getAddressed()) {
     return false;
-  }
-
-  // Only handle mov flag, imm
-  if (dst->getBase()->asRegVar()->getDeclare()->getRegFile() == G4_FLAG) {
-    if (inst->opcode() != G4_mov) {
-      return false;
-    }
-    if (!inst->getSrc(0)->isImm()) {
-      return false;
-    }
   }
 
   if (dst->getBase() && dst->getTopDcl()->isOutput()) {
