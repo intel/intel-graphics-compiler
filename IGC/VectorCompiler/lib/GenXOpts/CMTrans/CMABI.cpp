@@ -40,6 +40,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/TypeSize.h"
 #include "vc/Utils/General/DebugInfo.h"
 #include "vc/Utils/General/FunctionAttrs.h"
+#include "vc/Utils/General/IndexFlattener.h"
 #include "vc/Utils/General/InstRebuilder.h"
 #include "vc/Utils/General/STLExtras.h"
 #include "vc/Utils/General/Types.h"
@@ -458,6 +459,34 @@ static inline bool isReadOnlyArg(Argument &Arg) {
   return true;
 }
 
+// Mark SIMD-CF argument+ret functions
+static inline void CheckRMEM(Function *F) {
+  if (F->isDeclaration())
+    return;
+  for (Argument &Arg : F->args()) {
+    // Find SIMD_CF EM/RM in arguments
+    if (Arg.getType()->isVectorTy() &&
+        Arg.getType()->getScalarType()->isIntegerTy(1)) {
+      // Add a dummy attribute so that the conformance-pass can recognize a call
+      // with simd-sf
+      F->addFnAttr(vc::FunctionMD::VCSimdCFArg);
+      break;
+    }
+  }
+  auto *RetTy = F->getReturnType();
+  if (auto *ST = dyn_cast<StructType>(RetTy)) {
+    unsigned RetIdx = 0;
+    for (unsigned End = IndexFlattener::getNumElements(ST); RetIdx < End;
+         ++RetIdx) {
+      auto *Ty = IndexFlattener::getElementType(ST, RetIdx);
+      if (Ty->isVectorTy() && Ty->getScalarType()->isIntegerTy(1)) {
+        F->addFnAttr(vc::FunctionMD::VCSimdCFRet);
+        break;
+      }
+    }
+  }
+}
+
 template <class CallGraphImpl>
 bool CMABIBase<CallGraphImpl>::runOnCallGraphImpl(CallGraphImpl &SCC) {
   bool Changed = false;
@@ -500,6 +529,7 @@ bool CMABIBase<CallGraphImpl>::runOnCallGraphImpl(CallGraphImpl &SCC) {
     Function *F = getFunction(&*i);
     if (!F || F->empty())
       continue;
+    CheckRMEM(F);
     for (auto &Arg : F->args()) {
       auto *ArgTy = Arg.getType();
       if (!Arg.hasAttribute(Attribute::ByVal) || !ArgTy->isPointerTy() ||

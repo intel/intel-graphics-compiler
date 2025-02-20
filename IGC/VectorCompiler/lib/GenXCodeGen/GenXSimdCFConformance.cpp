@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2172,7 +2172,8 @@ bool GenXSimdCFConformance::checkEMVal(SimpleValue EMVal) {
         return false; // uses constant that is not all ones, invalid
       }
     } else if (!EMVals.count(ConnectedVal)) {
-      LLVM_DEBUG(dbgs() << "checkEMVal: ConnectedVal is not in EMVals\n");
+      LLVM_DEBUG(dbgs() << "checkEMVal: ConnectedVal is not in EMVals : ");
+      LLVM_DEBUG(dbgs() << "val == " << *ConnectedVal.getValue() << "\n");
       return false; // connected value is not in EMVals
     }
     LLVM_DEBUG(dbgs() << "checkEMVal: ConnectedVal checked "
@@ -2558,6 +2559,34 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V) {
   return true;
 }
 
+static inline void PrepareFunctionAttributes(Function *CalledFunc,
+                                             Type *ValTy) {
+  if (CalledFunc->hasFnAttribute(vc::FunctionMD::VCSimdCFArg)) {
+    for (auto *Arg = CalledFunc->arg_begin(); Arg != CalledFunc->arg_end();
+         ++Arg)
+      if (Arg->getType() == ValTy) {
+        CalledFunc->removeFnAttr(vc::FunctionMD::VCSimdCFArg);
+        LLVM_DEBUG(dbgs() << "Remove VCSimdCFArg attr from "
+                          << CalledFunc->getName() << "\n");
+        break;
+      }
+  }
+  if (CalledFunc->hasFnAttribute(vc::FunctionMD::VCSimdCFRet)) {
+    auto *RetTy = CalledFunc->getReturnType();
+    if (auto *ST = dyn_cast<StructType>(RetTy)) {
+      unsigned RetIdx = 0;
+      for (unsigned End = IndexFlattener::getNumElements(ST); RetIdx < End;
+           ++RetIdx) {
+        auto *Ty = IndexFlattener::getElementType(ST, RetIdx);
+        if (Ty->isVectorTy() && Ty->getScalarType()->isIntegerTy(1))
+          CalledFunc->removeFnAttr(vc::FunctionMD::VCSimdCFRet);
+      }
+    }
+    if (RetTy->isVectorTy() && RetTy->getScalarType()->isIntegerTy(1))
+      CalledFunc->removeFnAttr(vc::FunctionMD::VCSimdCFRet);
+  }
+}
+
 /***********************************************************************
  * getConnectedVals : for a SimpleValue, get other SimpleValues connected to
  *    it through phi nodes, insertvalue, extractvalue, goto/join, and maybe
@@ -2622,7 +2651,8 @@ bool GenXSimdCFConformance::getConnectedVals(
           break;
       }
     } else if (RetTy != ValTy && !RetTy->isVoidTy())
-      return false; // no predicate ret value found
+      return F->hasFnAttribute(
+          vc::FunctionMD::VCSimdCFRet); // no predicate ret value found
     if (!RetTy->isVoidTy())
       for (auto fi = F->begin(), fe = F->end(); fi != fe; ++fi)
         if (auto *Ret = dyn_cast<ReturnInst>(fi->getTerminator()))
@@ -2732,14 +2762,18 @@ bool GenXSimdCFConformance::getConnectedVals(
       // about that.
       auto ValTy =
           IndexFlattener::getElementType(Val.getType(), Val.getIndex());
-      for (unsigned Idx = 0, End = IGCLLVM::getNumArgOperands(CI);; ++Idx) {
-        if (Idx == End)
-          return false; // no corresponding call arg found
-        if (CI->getArgOperand(Idx)->getType() == ValTy) {
-          ConnectedVals->push_back(SimpleValue(CI->getArgOperand(Idx), 0));
-          break;
+
+      PrepareFunctionAttributes(CalledFunc, ValTy);
+
+      if (!CalledFunc->hasFnAttribute(vc::FunctionMD::VCSimdCFArg))
+        for (unsigned Idx = 0, End = IGCLLVM::getNumArgOperands(CI);; ++Idx) {
+          if (Idx == End)
+            return false; // no corresponding call arg found
+          if (CI->getArgOperand(Idx)->getType() == ValTy) {
+            ConnectedVals->push_back(SimpleValue(CI->getArgOperand(Idx), 0));
+            break;
+          }
         }
-      }
       break;
     }
     default:
@@ -2809,22 +2843,25 @@ bool GenXSimdCFConformance::getConnectedVals(
       auto ValTy =
           IndexFlattener::getElementType(Val.getType(), Val.getIndex());
       auto F = User->getFunction();
+
       bool Lower = false;
-      for (auto ai = F->arg_begin(), ae = F->arg_end();; ++ai) {
-        if (ai == ae) {
-          // no arg of the right type found
-          Lower = true;
-          UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
-          LLVM_DEBUG(dbgs() << "getConnectedVals: ai == ae push_back " << *User
-                            << " No=" << ui->getOperandNo() << "\n");
-          break;
+      PrepareFunctionAttributes(F, ValTy);
+      if (!F->hasFnAttribute(vc::FunctionMD::VCSimdCFArg))
+        for (auto ai = F->arg_begin(), ae = F->arg_end();; ++ai) {
+          if (ai == ae) {
+            // no arg of the right type found
+            Lower = true;
+            UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
+            LLVM_DEBUG(dbgs() << "getConnectedVals: ai == ae push_back "
+                              << *User << " No=" << ui->getOperandNo() << "\n");
+            break;
+          }
+          auto Arg = &*ai;
+          if (Arg->getType() == ValTy) {
+            ConnectedVals->push_back(SimpleValue(Arg, 0));
+            break;
+          }
         }
-        auto Arg = &*ai;
-        if (Arg->getType() == ValTy) {
-          ConnectedVals->push_back(SimpleValue(Arg, 0));
-          break;
-        }
-      }
       if (IncludeOptional && !Lower) {
         // With IncludeOptional, also add the values connected by being the
         // return value at each call site.
@@ -2946,41 +2983,50 @@ bool GenXSimdCFConformance::getConnectedVals(
         // Use in subroutine call. Add the corresponding function arg.
         Function *CalledFunc = CI->getCalledFunction();
         IGC_ASSERT(CalledFunc);
-        auto ai = CalledFunc->arg_begin();
-        for (unsigned Count = ui->getOperandNo(); Count; --Count, ++ai)
-          ;
-        Argument *Arg = &*ai;
-        ConnectedVals->push_back(SimpleValue(Arg, Val.getIndex()));
+
+        auto ValTy = IndexFlattener::getElementType(Val.getValue()->getType(),
+                                                    Val.getIndex());
+
+        PrepareFunctionAttributes(CalledFunc, ValTy);
+        // If Attribute setted - do not check
+        if (!CalledFunc->hasFnAttribute(vc::FunctionMD::VCSimdCFArg)) {
+
+          auto ai = CalledFunc->arg_begin();
+          for (unsigned Count = ui->getOperandNo(); Count; --Count, ++ai)
+            ;
+          Argument *Arg = &*ai;
+          ConnectedVals->push_back(SimpleValue(Arg, Val.getIndex()));
+        }
         // Connected to some return value from the call. There is a problem
         // here in that it might find another predicate return value that is
         // nothing to do with SIMD CF, and thus stop SIMD CF being optimized.
         // But passing a predicate in and out of a function is rare outside
         // of SIMD CF, so we do not worry about that.
-        unsigned RetIdx = 0;
-        auto ValTy = IndexFlattener::getElementType(Val.getValue()->getType(),
-                                                    Val.getIndex());
-        if (auto *ST = dyn_cast<StructType>(CI->getType())) {
-          LLVM_DEBUG(dbgs()
-                     << "getConnectedVals: StructType get" << *ST << "\n");
-          for (unsigned End = IndexFlattener::getNumElements(ST);; ++RetIdx) {
-            if (RetIdx == End) {
-              UsersToLower.push_back(SimpleValue(
-                  User, ui->getOperandNo())); // no predicate ret value found
-              LLVM_DEBUG(dbgs() << "getConnectedVals: push_back " << *CI
-                                << " No=" << ui->getOperandNo() << "\n");
+        if (!CalledFunc->hasFnAttribute(vc::FunctionMD::VCSimdCFRet)) {
+          unsigned RetIdx = 0;
+          if (auto *ST = dyn_cast<StructType>(CI->getType())) {
+            LLVM_DEBUG(dbgs()
+                       << "getConnectedVals: StructType get" << *ST << "\n");
+            for (unsigned End = IndexFlattener::getNumElements(ST);; ++RetIdx) {
+              if (RetIdx == End) {
+                UsersToLower.push_back(SimpleValue(
+                    User, ui->getOperandNo())); // no predicate ret value found
+                LLVM_DEBUG(dbgs() << "getConnectedVals: push_back " << *CI
+                                  << " No=" << ui->getOperandNo() << "\n");
+              }
+              if (IndexFlattener::getElementType(ST, RetIdx) == ValTy) {
+                ConnectedVals->push_back(SimpleValue(CI, RetIdx));
+                break;
+              }
             }
-            if (IndexFlattener::getElementType(ST, RetIdx) == ValTy) {
-              ConnectedVals->push_back(SimpleValue(CI, RetIdx));
-              break;
-            }
+          } else if (CI->getType() == ValTy)
+            ConnectedVals->push_back(SimpleValue(CI, 0));
+          else if (!CI->getType()->isVoidTy()) {
+            UsersToLower.push_back(SimpleValue(
+                User, ui->getOperandNo())); // no predicate ret value found
+            LLVM_DEBUG(dbgs() << "getConnectedVals: push_back " << *CI
+                              << " No=" << ui->getOperandNo() << "\n");
           }
-        } else if (CI->getType() == ValTy)
-          ConnectedVals->push_back(SimpleValue(CI, 0));
-        else if (!CI->getType()->isVoidTy()) {
-          UsersToLower.push_back(SimpleValue(
-              User, ui->getOperandNo())); // no predicate ret value found
-          LLVM_DEBUG(dbgs() << "getConnectedVals: push_back " << *CI
-                            << " No=" << ui->getOperandNo() << "\n");
         }
         break;
       }

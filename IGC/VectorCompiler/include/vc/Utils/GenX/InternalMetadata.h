@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -25,6 +25,9 @@ inline constexpr const char VCDisableMidThreadPreemption[] =
 // no attribute means that GenXStackUsage pass failed (recursion, etc)
 // attribute created by GenXStackUsage and used to create patch token
 inline constexpr const char VCStackAmount[] = "VC.Stack.Amount";
+
+inline constexpr const char VCSimdCFArg[] = "VC.SimdCFArg";
+inline constexpr const char VCSimdCFRet[] = "VC.SimdCFRet";
 } // namespace FunctionMD
 
 namespace InstMD {
