@@ -43,7 +43,14 @@ endif()
 ###
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  set(LINUX_PATH "prebuild-opencl-clang-linux/linux/${OS_NAME}/${OS_VERSION_NUMBER}")
+  set(LINUX_PATH_GENERIC "prebuild-opencl-clang-linux/linux/${OS_NAME}/${OS_VERSION_NUMBER}")
+  set(LINUX_PATH_VERSIONED "prebuild-opencl-clang-linux-${OS_VERSION_NUMBER}/linux/${OS_NAME}/${OS_VERSION_NUMBER}")
+
+  if (EXISTS ${IGC_BUILD__GFX_DEV_SRC_DIR}/../../${LINUX_PATH_VERSIONED})
+    set(LINUX_PATH "${LINUX_PATH_VERSIONED}")
+  else()
+    set(LINUX_PATH "${LINUX_PATH_GENERIC}")
+  endif()
 else()
   set(WINDOWS_PATH "prebuild-opencl-clang_${IGC_BUILD__CLANG_VERSION}/windows/Release/${cpuSuffix}")
 endif()
