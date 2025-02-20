@@ -1,16 +1,16 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -vc-builtins-bif-path=%VC_BUILTINS_BIF_XeLPG% \
+; RUN: %opt %use_old_pass_manager% -vc-builtins-bif-path=%VC_BIF_XeLPG% \
 ; RUN: -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=XeLPG -S < %s | FileCheck %s
 
-; RUN: %opt %use_old_pass_manager% -vc-builtins-bif-path=%VC_BUILTINS_BIF_Gen9% \
+; RUN: %opt %use_old_pass_manager% -vc-builtins-bif-path=%VC_BIF_Gen9% \
 ; RUN: -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK-NOEMU
 
