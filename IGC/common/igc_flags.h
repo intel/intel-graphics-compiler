@@ -509,6 +509,7 @@ DECLARE_IGC_REGKEY(bool, EnableVectorizer,              true, "Enable IGCVectori
 DECLARE_IGC_REGKEY(bool, VectorizerCheckScalarizer,              false, "Add scalariser after vectorizer to check performance", true)
 DECLARE_IGC_REGKEY(DWORD, VectorizerList, -1, "Vectorize only one seed instruction with the provided number", true)
 DECLARE_IGC_REGKEY(bool, EnableVectorEmitter, true, "Enable Vector Emission for a vectorizer", true)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowFPTRUNC, true, "Allow FPTRUNC instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFDIV, true, "Allow FDIV instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFADD, true, "Allow FADD instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, DisableOCLScalarizer,          false, "Disable ScalarizeFunction pass in OCL pipeline", true)
