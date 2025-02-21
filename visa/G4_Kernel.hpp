@@ -152,7 +152,8 @@ public:
     return iter != configs.end();
   }
 
-  unsigned setModeByRegPressure(unsigned maxRP, unsigned largestInputReg);
+  unsigned setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
+                                bool forceGRFModedUp = false);
   bool hasLargerGRFSameThreads() const;
 
   unsigned getNumGRF() const { return configs[currentMode].numGRF; }
@@ -187,6 +188,14 @@ public:
           return c.VRTEnable && c.numGRF <= upperBoundGRF;
         });
     return found->numGRF;
+  }
+
+  unsigned getMaxGRFMode() const {
+    auto found =
+        std::find_if(configs.rbegin(), configs.rend(), [this](const Config &c) {
+          return c.VRTEnable && c.numGRF <= upperBoundGRF;
+        });
+    return configs.size() - std::distance(configs.rbegin(), found) - 1;
   }
 
   // Get GRF number for initial kernel creation
@@ -255,6 +264,7 @@ private:
   unsigned currentMode;
   unsigned lowerBoundGRF;
   unsigned upperBoundGRF;
+  unsigned GRFModeUpValue;
   Options *options;
 };
 
@@ -712,7 +722,8 @@ public:
   const char *getName() const { return name; }
 
   bool updateKernelToLargerGRF();
-  void updateKernelByRegPressure(unsigned regPressure);
+  void updateKernelByRegPressure(unsigned regPressure,
+                                 bool forceGRFModeUp = false);
   bool updateKernelFromNumGRFAttr();
 
   void evalAddrExp();

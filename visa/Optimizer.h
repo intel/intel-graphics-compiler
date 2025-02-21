@@ -157,7 +157,10 @@ class Optimizer {
     unsigned KernelPressure = 0;
     preRA_Scheduler Sched(kernel);
     if (kernel.useAutoGRFSelection()) {
+      unsigned InitialGRFNumber = kernel.getNumRegTotal();
       Sched.runWithGRFSelection(KernelPressure);
+      if (InitialGRFNumber != kernel.getNumRegTotal())
+        Sched.run(KernelPressure);
     } else {
       Sched.run(KernelPressure);
     }

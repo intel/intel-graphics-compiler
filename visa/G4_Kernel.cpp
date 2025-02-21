@@ -635,7 +635,8 @@ bool G4_Kernel::updateKernelToLargerGRF() {
 //
 // Updates kernel's related structures based on register pressure
 //
-void G4_Kernel::updateKernelByRegPressure(unsigned regPressure) {
+void G4_Kernel::updateKernelByRegPressure(unsigned regPressure,
+                                          bool forceGRFModeUp) {
   unsigned largestInputReg = getLargestInputRegister();
   if (m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_MaxRegThreadDispatch)) {
     unsigned maxRegPayloadDispatch = m_kernelAttrs->getInt32KernelAttr(
@@ -643,7 +644,7 @@ void G4_Kernel::updateKernelByRegPressure(unsigned regPressure) {
     largestInputReg = std::max(largestInputReg, maxRegPayloadDispatch);
   }
 
-  unsigned newGRF = grfMode.setModeByRegPressure(regPressure, largestInputReg);
+  unsigned newGRF = grfMode.setModeByRegPressure(regPressure, largestInputReg, forceGRFModeUp);
 
   if (newGRF == numRegTotal)
     return;
@@ -2167,10 +2168,15 @@ GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
   unsigned maxGRF = op->getuInt32Option(vISA_MaxGRFNum);
   upperBoundGRF = maxGRF > 0 ? maxGRF : configs.back().numGRF;
   vISA_ASSERT(isValidNumGRFs(upperBoundGRF), "Invalid upper bound for GRF number");
+
+  // Select higher GRF
+  GRFModeUpValue = op->getuInt32Option(vISA_ForceGRFModeUp);
+  vISA_ASSERT(GRFModeUpValue >= 0 && GRFModeUpValue <= configs.size(),
+              "Invalid value for selecting a higher GRF mode");
 }
 
-unsigned GRFMode::setModeByRegPressure(unsigned maxRP,
-                                       unsigned largestInputReg) {
+unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
+                                       bool forceGRFModeUp) {
   unsigned size = configs.size(), i = 0;
   bool spillAllowed = 0;
   spillAllowed = options->getuInt32Option(vISA_SpillAllowed) > 256;
@@ -2184,6 +2190,13 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP,
           // those blocked for kernel input. This helps cases
           // where an 8 GRF variable shows up in entry BB.
           (largestInputReg + 8) <= configs[i].numGRF) {
+        if (forceGRFModeUp && GRFModeUpValue > 0) {
+          // Check if user is force a higher GRF mode
+          unsigned newGRFMode = currentMode + GRFModeUpValue;
+          unsigned maxGRFMode = getMaxGRFMode();
+          currentMode = newGRFMode < maxGRFMode ? newGRFMode : maxGRFMode;
+        }
+
         if (spillAllowed && currentMode > 0)
           return configs[--currentMode].numGRF;
         else

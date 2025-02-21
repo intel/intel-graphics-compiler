@@ -747,7 +747,7 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
     KernelPressure = rp.getMaxRP();
   }
 
-  kernel.updateKernelByRegPressure(KernelPressure);
+  kernel.updateKernelByRegPressure(KernelPressure, true);
 
   return Changed;
 }

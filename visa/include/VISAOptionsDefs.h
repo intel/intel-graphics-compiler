@@ -168,6 +168,11 @@ DEF_VISA_OPTION(
     "Spill size allowed without increasing GRF number in VRT."
     "0 means VRT will always bump up the GRF number to avoid spills",
     256)
+DEF_VISA_OPTION(vISA_ForceGRFModeUp, ET_INT32, "-forceGRFModeUp",
+                "USAGE: -forceGRFModeUp <k>.\n"
+                "Set the GRF mode k higher than the one selected by default"
+                "heuristics. 0 means no increase in GRF mode.",
+                0)
 DEF_VISA_OPTION(vISA_ScalarPipe, ET_INT32, "-scalarPipe",
                 "USAGE: -scalarPipe <num>\n", 0)
 DEF_VISA_OPTION(vISA_LVN, ET_BOOL, "-nolvn", UNUSED, true)
