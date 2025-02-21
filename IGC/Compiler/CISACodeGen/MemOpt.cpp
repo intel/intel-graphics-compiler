@@ -412,38 +412,7 @@ namespace {
         int64_t Offset;
         SmallVector<Term, 8> Terms;
 
-        // getConstantOffset - Return the constant offset between two memory
-        // locations.
-        bool getConstantOffset(const SymbolicPointer& Other, int64_t& Off) {
-            if (!BasePtr || !Other.BasePtr)
-                return true;
-
-            if (BasePtr != Other.BasePtr &&
-                (!isa<ConstantPointerNull>(BasePtr) ||
-                    !isa<ConstantPointerNull>(Other.BasePtr)))
-                return true;
-
-            if (Terms.size() != Other.Terms.size())
-                return true;
-
-            // Check each term has occurrence in Other. Since, they have the same
-            // number of terms, it's safe to say they are equal if all terms are
-            // found in Other.
-            // TODO: Replace this check with a non-quadratic one.
-            for (unsigned i = 0, e = Terms.size(); i != e; ++i) {
-                bool Found = false;
-                for (unsigned j = 0, f = Other.Terms.size(); !Found && j != f; ++j) {
-                    if (Terms[i] == Other.Terms[j])
-                        Found = true;
-                }
-                if (!Found)
-                    return true;
-            }
-
-            Off = Offset - Other.Offset;
-            return false;
-        }
-
+        bool getConstantOffset(SymbolicPointer& Other, int64_t& Off);
         static Value* getLinearExpression(Value* Val, APInt& Scale, APInt& Offset,
             ExtensionKind& Extension, unsigned Depth,
             const DataLayout* DL);
@@ -451,6 +420,11 @@ namespace {
             CodeGenContext* DL);
 
         static const unsigned MaxLookupSearchDepth = 6;
+
+    private:
+        void saveTerm(Value* Src, int64_t IndexScale, uint64_t Scale, int64_t IndexOffset,
+            ExtensionKind Extension, unsigned int ptrSize);
+        bool checkTerms(const Term* T, const Term* OtherT, int64_t& Off) const;
     };
 }
 
@@ -2091,6 +2065,183 @@ bool MemOpt::optimizeGEP64(Instruction* I) const {
     return Changed;
 }
 
+bool SymbolicPointer::getConstantOffset(SymbolicPointer& Other, int64_t& Off) {
+    Term* DiffTerm = nullptr;
+    Term* DiffOtherTerm = nullptr;
+
+    // Find how many differences there are between the two vectors of terms.
+    auto findDifferences = [&](SmallVector<Term, 8>& Terms1, SmallVector<Term, 8>& Terms2) -> int {
+        int DiffCount = 0;
+        for (unsigned i = 0, e = Terms1.size(); i != e; ++i) {
+            bool Found = false;
+            for (unsigned j = 0, f = Terms2.size(); !Found && j != f; ++j)
+                if (Terms1[i] == Terms2[j])
+                    Found = true;
+
+            if (!Found) {
+                DiffCount++;
+                if (DiffCount > 1)
+                    break;
+
+                DiffTerm = &Terms1[i];
+            }
+        }
+
+        // If there are no differences, no need to check further.
+        if (DiffCount == 0)
+            return DiffCount;
+
+        for (unsigned i = 0, e = Terms2.size(); i != e; ++i) {
+            bool Found = false;
+            for (unsigned j = 0, f = Terms1.size(); !Found && j != f; ++j)
+                if (Terms2[i] == Terms1[j])
+                    Found = true;
+
+            if (!Found) {
+                DiffOtherTerm = &Terms2[i];
+                break;
+            }
+        }
+
+        return DiffCount;
+    };
+
+    if (!BasePtr || !Other.BasePtr)
+        return true;
+
+    if (BasePtr != Other.BasePtr &&
+        (!isa<ConstantPointerNull>(BasePtr) ||
+            !isa<ConstantPointerNull>(Other.BasePtr)))
+        return true;
+
+    if (Terms.size() != Other.Terms.size())
+        return true;
+
+    int DiffCount = findDifferences(Terms, Other.Terms);
+
+    if (DiffCount == 0) {
+        Off = Offset - Other.Offset;
+        return false;
+    }
+
+    if (DiffCount > 1)
+        return true;
+
+    if (checkTerms(DiffTerm, DiffOtherTerm, Off))
+        return true;
+
+    return false;
+}
+
+// Try to match the pattern that can't be processed by the current decomposePointer algorithm.
+//   First chain:
+//   %145 = add nsw i32 %102, 1
+//   %146 = sub nsw i32 %145, %const_reg_dword18
+//
+//   Second chain:
+//   %176 = add nsw i32 %102, 2
+//   %177 = sub nsw i32 %176, %const_reg_dword18
+bool SymbolicPointer::checkTerms(const Term* T, const Term* OtherT, int64_t& Off) const {
+    bool IsPositive = true;
+    size_t OpNum = 0;
+
+    // Check that the instructions are add or sub with nsw flag.
+    auto checkInstructions = [&](const BinaryOperator* Inst0, const BinaryOperator* Inst1) -> bool {
+        if (!Inst0 || !Inst1)
+            return true;
+
+        if (Inst1->getOpcode() != Inst0->getOpcode())
+            return true;
+
+        if (Inst0->getOpcode() != Instruction::Add && Inst0->getOpcode() != Instruction::Sub)
+            return true;
+
+        if (!Inst0->hasNoSignedWrap() || !Inst1->hasNoSignedWrap())
+            return true;
+
+        if (Inst0->getOperand(0) != Inst1->getOperand(0) &&
+            Inst0->getOperand(1) != Inst1->getOperand(1))
+            return true;
+
+        if (Inst0->getOpcode() == Instruction::Sub) {
+            if (Inst0->getOperand(0) == Inst1->getOperand(0)) {
+                OpNum = 1;
+                IsPositive = !IsPositive;
+            } else {
+                OpNum = 0;
+            }
+        } else {
+            if (Inst0->getOperand(1) == Inst1->getOperand(1)) {
+                OpNum = 0;
+            } else {
+                OpNum = 1;
+            }
+        }
+
+        return false;
+    };
+
+    if (!T || !OtherT)
+        return true;
+
+    auto* Inst = dyn_cast<BinaryOperator>(T->Idx.getPointer());
+    auto* OtherInst = dyn_cast<BinaryOperator>(OtherT->Idx.getPointer());
+    if (checkInstructions(Inst, OtherInst))
+        return true;
+
+    auto InstOp0 = dyn_cast<BinaryOperator>(Inst->getOperand(OpNum));
+    auto OtherInstOp0 = dyn_cast<BinaryOperator>(OtherInst->getOperand(OpNum));
+    if (checkInstructions(InstOp0, OtherInstOp0))
+        return true;
+
+    auto ConstInt  = dyn_cast<ConstantInt>(InstOp0->getOperand(1));
+    auto OtherConstInt = dyn_cast<ConstantInt>(OtherInstOp0->getOperand(1));
+    if (!ConstInt || !OtherConstInt)
+        return true;
+
+    int64_t NewScale = T->Scale;
+    int64_t NewOtherScale = OtherT->Scale;
+    if (!IsPositive) {
+        NewScale = -NewScale;
+        NewOtherScale = -NewOtherScale;
+    }
+
+    Off = ConstInt->getSExtValue() * NewScale - OtherConstInt->getSExtValue() * NewOtherScale;
+    return false;
+}
+
+// Save Term in the vector of terms.
+ void SymbolicPointer::saveTerm(Value* Src, int64_t IndexScale, uint64_t Scale, int64_t IndexOffset, ExtensionKind Extension, unsigned int ptrSize) {;
+    this->Offset += IndexOffset * Scale;
+    Scale *= IndexScale;
+
+    SymbolicIndex Idx(Src, Extension);
+
+    // If we already had an occurrence of this index variable, merge this
+    // scale into it.  For example, we want to handle:
+    //   A[x][x] -> x*16 + x*4 -> x*20
+    // This also ensures that 'x' only appears in the index list once.
+    for (unsigned i = 0, e = this->Terms.size(); i != e; ++i) {
+        if (this->Terms[i].Idx == Idx) {
+            Scale += this->Terms[i].Scale;
+            this->Terms.erase(this->Terms.begin() + i);
+            break;
+        }
+    }
+
+    // Make sure that we have a scale that makes sense for this target's
+    // pointer size.
+    if (unsigned ShiftBits = 64 - ptrSize) {
+        Scale <<= ShiftBits;
+        Scale = (int64_t)Scale >> ShiftBits;
+    }
+
+    if (Scale) {
+        Term Entry = { Idx, int64_t(Scale) };
+        this->Terms.push_back(Entry);
+    }
+}
+
 Value*
 SymbolicPointer::getLinearExpression(Value* V, APInt& Scale, APInt& Offset,
     ExtensionKind& Extension, unsigned Depth,
@@ -2247,34 +2398,7 @@ SymbolicPointer::decomposePointer(const Value* Ptr, SymbolicPointer& SymPtr,
                 APInt IndexScale(Width, 0), IndexOffset(Width, 0);
                 Src = getLinearExpression(Src, IndexScale, IndexOffset, Extension,
                     0U, DL);
-                SymPtr.Offset += IndexOffset.getSExtValue() * Scale;
-                Scale *= IndexScale.getSExtValue();
-
-                SymbolicIndex Idx(Src, Extension);
-
-                // If we already had an occurrence of this index variable, merge this
-                // scale into it.  For example, we want to handle:
-                //   A[x][x] -> x*16 + x*4 -> x*20
-                // This also ensures that 'x' only appears in the index list once.
-                for (unsigned i = 0, e = SymPtr.Terms.size(); i != e; ++i) {
-                    if (SymPtr.Terms[i].Idx == Idx) {
-                        Scale += SymPtr.Terms[i].Scale;
-                        SymPtr.Terms.erase(SymPtr.Terms.begin() + i);
-                        break;
-                    }
-                }
-
-                // Make sure that we have a scale that makes sense for this target's
-                // pointer size.
-                if (unsigned ShiftBits = 64 - ptrSize) {
-                    Scale <<= ShiftBits;
-                    Scale = (int64_t)Scale >> ShiftBits;
-                }
-
-                if (Scale) {
-                    Term Entry = { Idx, int64_t(Scale) };
-                    SymPtr.Terms.push_back(Entry);
-                }
+                SymPtr.saveTerm(Src, IndexScale.getSExtValue(), Scale, IndexOffset.getSExtValue(), Extension, ptrSize);
 
                 Ptr = BasePtr;
             }
@@ -2357,34 +2481,7 @@ SymbolicPointer::decomposePointer(const Value* Ptr, SymbolicPointer& SymPtr,
 
                 // The GEP index scale ("Scale") scales C1*V+C2, yielding (C1*V+C2)*Scale.
                 // This gives us an aggregate computation of (C1*Scale)*V + C2*Scale.
-                SymPtr.Offset += IndexOffset.getSExtValue() * Scale;
-                Scale *= IndexScale.getSExtValue();
-
-                SymbolicIndex Idx(new_Ind, Extension);
-
-                // If we already had an occurrence of this index variable, merge this
-                // scale into it.  For example, we want to handle:
-                //   A[x][x] -> x*16 + x*4 -> x*20
-                // This also ensures that 'x' only appears in the index list once.
-                for (unsigned i = 0, e = SymPtr.Terms.size(); i != e; ++i) {
-                    if (SymPtr.Terms[i].Idx == Idx) {
-                        Scale += SymPtr.Terms[i].Scale;
-                        SymPtr.Terms.erase(SymPtr.Terms.begin() + i);
-                        break;
-                    }
-                }
-
-                // Make sure that we have a scale that makes sense for this target's
-                // pointer size.
-                if (unsigned ShiftBits = 64 - ptrSize) {
-                    Scale <<= ShiftBits;
-                    Scale = (int64_t)Scale >> ShiftBits;
-                }
-
-                if (Scale) {
-                    Term Entry = { Idx, int64_t(Scale) };
-                    SymPtr.Terms.push_back(Entry);
-                }
+                SymPtr.saveTerm(new_Ind, IndexScale.getSExtValue(), Scale, IndexOffset.getSExtValue(), Extension, ptrSize);
             }
         }
 
