@@ -77,6 +77,7 @@ void GenXBIFFlagCtrlResolution::FillFlagCtrl() {
   BIF_FLAG_CTRL_SET(ProfilingTimerResolution, 0.0f);
   BIF_FLAG_CTRL_SET(UseMathWithLUT, false);
   BIF_FLAG_CTRL_SET(UseHighAccuracyMath, false);
+  BIF_FLAG_CTRL_SET(UseAssumeInGetGlobalId, true);
   // FIXME: target specific, but subtarget cannot be reached in middle-end.
   BIF_FLAG_CTRL_SET(HasInt64SLMAtomicCAS, false);
   BIF_FLAG_CTRL_SET(JointMatrixLoadStoreOpt, 3);

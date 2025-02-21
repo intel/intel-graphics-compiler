@@ -35,6 +35,7 @@ BIF_FLAG_CONTROL(bool, ForceL1Prefetch)
 BIF_FLAG_CONTROL(bool, UseHighAccuracyMath)
 BIF_FLAG_CONTROL(bool, EnableSWSrgbWrites)
 BIF_FLAG_CONTROL(int, MaxHWThreadIDPerSubDevice)
+BIF_FLAG_CONTROL(bool, UseAssumeInGetGlobalId)
 BIF_FLAG_CONTROL(int, JointMatrixLoadStoreOpt)
 BIF_FLAG_CONTROL(bool, UseOOBChecks)
 #endif // __BIF_FLAG_CONTROL_H__
