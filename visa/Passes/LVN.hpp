@@ -136,6 +136,7 @@ private:
   bool sameGRFRef(G4_Declare *dcl1, G4_Declare *dcl2);
   void removeVirtualVarRedefs(G4_DstRegRegion *dst);
   void removePhysicalVarRedefs(G4_DstRegRegion *dst);
+  void removeFlagVarRedefs(G4_Declare *dcl);
   void removeRedefs(G4_INST *inst);
   void replaceAllUses(G4_INST *defInst, bool negate, UseList &uses,
                       G4_INST *lvnInst, bool keepRegion);

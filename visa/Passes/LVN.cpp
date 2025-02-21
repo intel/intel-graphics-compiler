@@ -150,6 +150,20 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList &uses,
   G4_DstRegRegion *lvnDst = lvnInst->getDst();
   G4_Declare *lvnDstTopDcl = lvnDst->getTopDcl();
 
+  if (def->getBase()->asRegVar()->getDeclare()->getRegFile() !=
+      lvnDst->getBase()->asRegVar()->getDeclare()->getRegFile()) {
+    return false;
+  }
+
+  // The sizes of the flag variables must match
+  if (def->getBase()->asRegVar()->getDeclare()->getRegFile() == G4_FLAG) {
+    G4_Declare *defTopDcl = def->getTopDcl();
+    if (defTopDcl->getNumElems() != lvnDstTopDcl->getNumElems() ||
+        defTopDcl->getElemType() != lvnDstTopDcl->getElemType()) {
+      return false;
+    }
+  }
+
 #ifdef DEBUG_LVN_ON
   std::cerr << "Inst with same value in LVN Table:"
             << "\n";
@@ -655,6 +669,32 @@ void LVN::removePhysicalVarRedefs(G4_DstRegRegion *dst) {
   }
 }
 
+void LVN::removeFlagVarRedefs(G4_Declare *topdcl) {
+  auto it = dclValueTable.find(topdcl);
+
+  for (auto &all : lvnTable) {
+    for (auto it = all.second.begin(); it != all.second.end();) {
+      auto item = (*it);
+      bool erase = false;
+
+      auto dstTopDcl = item->inst->getDst()->getTopDcl();
+      if (dstTopDcl->getRegVar()->isFlag()) {
+        if (dstTopDcl == topdcl) {
+          item->active = false;
+          erase = true;
+        }
+      }
+
+      if (erase) {
+        it = all.second.erase(it);
+        continue;
+      }
+
+      it++;
+    }
+  }
+}
+
 bool LVN::checkIfInPointsTo(const G4_RegVar *addr, const G4_RegVar *var) const {
   // Check whether var is present in points2 of addr
   auto ptrToAllPointsTo = p2a.getAllInPointsTo(addr);
@@ -718,8 +758,23 @@ void LVN::removeRedefs(G4_INST *inst) {
       removePhysicalVarRedefs(dstRegRegion);
     }
   }
-}
 
+  G4_CondMod *condMod = inst->getCondMod();
+  if (condMod && condMod->getBase() && condMod->getBase()->isRegVar()) {
+    G4_Declare *condDcl = condMod->getTopDcl();
+    if (condDcl && condDcl->getRegVar()->isFlag()) {
+      removeFlagVarRedefs(condDcl);
+    }
+  }
+
+  G4_Predicate *predicate = inst->getPredicate();
+  if (predicate && predicate->getBase() && predicate->getBase()->isRegVar()) {
+    G4_Declare *predDcl = predicate->getTopDcl();
+    if (predDcl && predDcl->getRegVar()->isFlag()) {
+      removeFlagVarRedefs(predDcl);
+    }
+  }
+}
 int64_t LVN::getNegativeRepresentation(int64_t imm, G4_Type type) {
   union {
     double ddata;
@@ -1041,9 +1096,21 @@ bool LVN::addValue(G4_INST *inst) {
 
   G4_Operand *dst = inst->getDst();
   if (!dst->getBase() || !dst->getBase()->isRegVar() ||
-      dst->getBase()->asRegVar()->getDeclare()->getRegFile() != G4_GRF ||
+      (dst->getBase()->asRegVar()->getDeclare()->getRegFile() != G4_GRF &&
+       !(builder.doFlagLVN() &&
+         dst->getBase()->asRegVar()->getDeclare()->getRegFile() == G4_FLAG)) ||
       dst->getTopDcl()->getAddressed()) {
     return false;
+  }
+
+  // Only handle mov flag, imm
+  if (dst->getBase()->asRegVar()->getDeclare()->getRegFile() == G4_FLAG) {
+    if (inst->opcode() != G4_mov) {
+      return false;
+    }
+    if (!inst->getSrc(0)->isImm()) {
+      return false;
+    }
   }
 
   if (dst->getBase() && dst->getTopDcl()->isOutput()) {
@@ -1597,7 +1664,8 @@ void LVN::doLVN() {
       oldValue = value;
 
       if (isGlobal || value.isValueEmpty()) {
-        if (isGlobal && !value.isValueEmpty()) {
+        if (isGlobal && !value.isValueEmpty() &&
+            inst->getDst()->getTopDcl()->getRegFile() != G4_FLAG) {
           // If variable is global, we want to add it to LVN table.
           addGlobalValueToTable = true;
         }
