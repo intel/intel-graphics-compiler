@@ -392,6 +392,8 @@ namespace IGC
         virtual bool supportsVRT() const { return true; }
 
         virtual bool supportsUniformPrivateMemorySpace() const { return false; }
+
+        virtual bool allowStatefulStackForSyncRaytracing() const { return false; }
 protected:
     bool autoGRFSelection = false;
     };

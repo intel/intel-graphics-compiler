@@ -103,7 +103,7 @@ static void setupRegionBTIs(CodeGenContext* pContext)
             rtInfo.SWStackSurfaceStateOffset = BaseOffset++;
         }
 
-        if (IGC_IS_FLAG_DISABLED(DisableStatefulRTSyncStackAccess4RTShader))
+        if (IGC_IS_FLAG_DISABLED(DisableStatefulRTSyncStackAccess4RTShader) && pContext->m_DriverInfo.allowStatefulStackForSyncRaytracing())
         {
             rtInfo.RTSyncStackAddrspace = getAddrspace();
             rtInfo.RTSyncStackSurfaceStateOffset = BaseOffset++;
