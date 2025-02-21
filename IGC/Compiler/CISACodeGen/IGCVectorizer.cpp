@@ -213,7 +213,7 @@ bool isSafeToVectorize(Instruction *I) {
         llvm::isa<PHINode>(I) ||
         llvm::isa<ExtractElementInst>(I) ||
         llvm::isa<InsertElementInst>(I) ||
-        llvm::isa<FPTruncInst>(I) ||
+        ( llvm::isa<FPTruncInst>(I) && IGC_GET_FLAG_VALUE(VectorizerAllowFPTRUNC) ) ||
         isBinarySafe(I);
 
     return Result;
@@ -230,7 +230,9 @@ bool IGCVectorizer::handlePHI(VecArr &Slice, Type *VectorType) {
         return true;
     }
 
-    PHINode *Phi = PHINode::Create(VectorType, 2);
+    llvm::VectorType* PhiVectorType = llvm::FixedVectorType::get(ScalarPhi->getType(), Slice.size());
+
+    PHINode *Phi = PHINode::Create(PhiVectorType, 2);
     Phi->setName("vectorized_phi");
 
     VecVal Operands;
