@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2021-2025 Intel Corporation
+# Copyright (C) 2021 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -69,10 +69,22 @@ list(TRANSFORM LLVM_INCLUDE_DIRS PREPEND "-I=" OUTPUT_VARIABLE LLVM_TABLEGEN_FLA
 # Add major version definition for llvm wrapper.
 add_compile_definitions(LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})
 
-set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT "-opaque-pointers=1")
-set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT "-opaque-pointers=0")
-set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG "-opaque-pointers")
-if(LLVM_VERSION_MAJOR GREATER 14)
+set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT "")
+set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT "")
+if(LLVM_VERSION_MAJOR EQUAL 14)
+  set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT "-opaque-pointers=1")
+elseif(LLVM_VERSION_MAJOR GREATER 14)
+  set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT "-opaque-pointers=0")
+endif()
+
+set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG "")
+set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG "")
+# NB: The option to do the below only got introduced post-LLVM 14
+# if(IGC_BUILD__CLANG_VERSION_MAJOR EQUAL 14)
+#   set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG "-opaque-pointers"
+# endif()
+# (see github.com/llvm/llvm-project/commit/d69e9f9d8)
+if(IGC_BUILD__CLANG_VERSION_MAJOR GREATER 14)
   set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG "-no-opaque-pointers")
 endif()
 

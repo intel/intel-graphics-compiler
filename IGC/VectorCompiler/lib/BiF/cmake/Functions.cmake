@@ -1,10 +1,12 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2021-2025 Intel Corporation
+# Copyright (C) 2021-2023 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
 #============================ end_copyright_notice =============================
+
+set(OPT_OPAQUE_ARG ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT})
 
 # Args:
 #   RES_LIST - generated list
@@ -29,9 +31,8 @@ endfunction()
 # Args:
 #   RES_FILE - variable name to put generated file path into.
 #   CMCL_SRC_PATH - multivalue. path to CMCL sources.
-#   MANGLED_BIF_NAME - name for all the generated files without extension.
+#   BIF_NAME - name for all the generated files without extension.
 #   PTR_BIT_SIZE - bit size of a pointer, 32 or 64 are allowed.
-#   OPAQUE_PTRS - use opaque pointers during the generation.
 #
 # Optional arguments:
 #   CLANG_INCLUDES - Argument representing extra include directories passed to
@@ -40,7 +41,7 @@ endfunction()
 #   DEPENDS - multivalue. Can be used to establish file-level dependency.
 #             Useful if we want to have a dependency from auto-generated files
 #             that are created by some other target(s).
-function(vc_build_bif RES_FILE CMCL_SRC_PATH MANGLED_BIF_NAME PTR_BIT_SIZE OPAQUE_PTRS)
+function(vc_build_bif TARGET RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
   cmake_parse_arguments(PARSE_ARGV 4
                         EXTRA
                         ""
@@ -50,22 +51,12 @@ function(vc_build_bif RES_FILE CMCL_SRC_PATH MANGLED_BIF_NAME PTR_BIT_SIZE OPAQU
   if((NOT (${PTR_BIT_SIZE} EQUAL 32)) AND (NOT (${PTR_BIT_SIZE} EQUAL 64)))
     message(FATAL_ERROR "vc_build_bif: wrong argument: PTR_BIT_SIZE = ${PTR_BIT_SIZE}: ptr size can only be 32 or 64")
   endif()
-  if (OPAQUE_PTRS)
-    set(OPT_OPAQUE_ARG ${IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT})
-    set(CLANG_OPAQUE_ARG ${IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG})
-    set(OPAQUE_SUFFIX "opaque")
-    set(TARGET_NAME "${MANGLED_BIF_NAME}OpaquePtrs-BC")
-  else()
-    set(OPT_OPAQUE_ARG ${IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT})
-    set(CLANG_OPAQUE_ARG ${IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG})
-    set(OPAQUE_SUFFIX "typed")
-    set(TARGET_NAME "${MANGLED_BIF_NAME}TypedPtrs-BC")
-  endif()
-  set(BIF_CLANG_BC_NAME_FINAL ${MANGLED_BIF_NAME}.${OPAQUE_SUFFIX}.clang.bc)
+  set(MANGLED_BIF_NAME ${BIF_NAME}${PTR_BIT_SIZE})
+  set(BIF_CLANG_BC_NAME_FINAL ${MANGLED_BIF_NAME}.clang.bc)
   set(BIF_CLANG_BC_PATH_FINAL ${CMAKE_CURRENT_BINARY_DIR}/${BIF_CLANG_BC_NAME_FINAL})
-  set(BIF_CMCL_BC_NAME ${MANGLED_BIF_NAME}.${OPAQUE_SUFFIX}.cmcl.bc)
+  set(BIF_CMCL_BC_NAME ${MANGLED_BIF_NAME}.cmcl.bc)
   set(BIF_CMCL_BC_PATH ${CMAKE_CURRENT_BINARY_DIR}/${BIF_CMCL_BC_NAME})
-  set(BIF_OPT_BC_NAME ${MANGLED_BIF_NAME}.${OPAQUE_SUFFIX}.opt.bc)
+  set(BIF_OPT_BC_NAME ${MANGLED_BIF_NAME}.opt.bc)
   set(BIF_OPT_BC_PATH ${CMAKE_CURRENT_BINARY_DIR}/${BIF_OPT_BC_NAME})
 
   if(EXTRA_DEPENDS)
@@ -89,17 +80,22 @@ function(vc_build_bif RES_FILE CMCL_SRC_PATH MANGLED_BIF_NAME PTR_BIT_SIZE OPAQU
     endif()
     file(RELATIVE_PATH SRC_NAME ${CMAKE_CURRENT_SOURCE_DIR} ${CMCL_SRC})
     if (LENGTH_CMCL_SRC_PATH GREATER 1)
-      set(BIF_CLANG_BC_NAME ${SRC_NAME}.${PTR_BIT_SIZE}.${OPAQUE_SUFFIX}.clang.bc)
+      set(BIF_CLANG_BC_NAME ${SRC_NAME}.${PTR_BIT_SIZE}.clang.bc)
     else()
       set(BIF_CLANG_BC_NAME ${BIF_CLANG_BC_NAME_FINAL})
     endif()
     set(BIF_CLANG_BC_PATH ${CMAKE_CURRENT_BINARY_DIR}/${BIF_CLANG_BC_NAME})
     get_filename_component(BIF_CLANG_BC_PATH_DIR ${BIF_CLANG_BC_PATH} DIRECTORY)
 
+    set(SPECIAL_CLANG_ARG "")
+    if (OPT_OPAQUE_ARG)
+      set(SPECIAL_CLANG_ARG -mllvm ${OPT_OPAQUE_ARG} )
+    endif()
+
     add_custom_command(OUTPUT "${BIF_CLANG_BC_PATH}"
       COMMAND ${CMAKE_COMMAND} -E make_directory ${BIF_CLANG_BC_PATH_DIR}
       COMMAND clang-tool -cc1 ${CMCL_INCLUDES} ${VC_INCLUDES}
-               ${EXTRA_CLANG_INCLUDES} ${CLANG_OPAQUE_ARG} ${EXTRA_CLANG_FLAGS}
+               ${EXTRA_CLANG_INCLUDES} ${SPECIAL_CLANG_ARG} ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG} ${EXTRA_CLANG_FLAGS}
                -x cl -cl-std=clc++ -triple=${SPIR_TARGET}
                -O2 -disable-llvm-passes -discard-value-names -emit-llvm-bc -o "${BIF_CLANG_BC_PATH}" ${CMCL_SRC}
       COMMENT "vc_build_bif: Compiling CMCL source ${CMCL_SRC} to BC ${BIF_CLANG_BC_NAME}"
@@ -107,6 +103,7 @@ function(vc_build_bif RES_FILE CMCL_SRC_PATH MANGLED_BIF_NAME PTR_BIT_SIZE OPAQU
       COMMAND_EXPAND_LISTS)
     list(APPEND BC_PATH_LIST ${BIF_CLANG_BC_PATH})
   endforeach()
+  
   set(OPT_BC_DEPENDS ${BC_PATH_LIST})
   if (LENGTH_CMCL_SRC_PATH GREATER 1)
     add_custom_command(OUTPUT ${BIF_CLANG_BC_PATH_FINAL}
@@ -116,6 +113,7 @@ function(vc_build_bif RES_FILE CMCL_SRC_PATH MANGLED_BIF_NAME PTR_BIT_SIZE OPAQU
       COMMAND_EXPAND_LISTS)
     set(OPT_BC_DEPENDS ${BIF_CLANG_BC_PATH_FINAL})
   endif()
+  
   add_custom_command(
     OUTPUT ${BIF_OPT_BC_PATH}
     COMMENT "vc_build_bif: Translating CMCL builtins:  ${BIF_CLANG_BC_NAME_FINAL} -> ${BIF_OPT_BC_NAME}"
@@ -123,7 +121,7 @@ function(vc_build_bif RES_FILE CMCL_SRC_PATH MANGLED_BIF_NAME PTR_BIT_SIZE OPAQU
     COMMAND ${LLVM_OPT_EXE} ${OPT_OPAQUE_ARG} --O2 -o ${BIF_OPT_BC_PATH} ${BIF_CMCL_BC_PATH}
     DEPENDS CMCLTranslatorTool ${LLVM_OPT_EXE} ${OPT_BC_DEPENDS})
 
-  add_custom_target(${TARGET_NAME}
+  add_custom_target(${TARGET}
     DEPENDS ${BIF_OPT_BC_PATH}
     SOURCES ${CMCL_SRC_PATH})
   set(${RES_FILE} ${BIF_OPT_BC_PATH} PARENT_SCOPE)
@@ -139,16 +137,9 @@ endfunction()
 #   RES_FILE - variable name to put generated file path into.
 #   BIF_OPT_BC_PATH  - path to the binary data that needs to be embedded.
 #   MANGLED_BIF_NAME - the desired name for the embeddable source file.
-#   OPAQUE_PTRS - use opaque pointers during the generation.
 # Path to resulting CPP source code is stored in the specified cmake variable.
-function(vc_generate_embeddable_source RES_FILE BIF_OPT_BC_PATH MANGLED_BIF_NAME OPAQUE_PTRS)
-  if (OPAQUE_PTRS)
-    set(BIF_CPP_NAME "${MANGLED_BIF_NAME}.opaque.cpp")
-    set(TARGET_NAME "${MANGLED_BIF_NAME}OpaquePtrs")
-  else()
-    set(BIF_CPP_NAME "${MANGLED_BIF_NAME}.typed.cpp")
-    set(TARGET_NAME "${MANGLED_BIF_NAME}TypedPtrs")
-  endif()
+function(vc_generate_embeddable_source TARGET RES_FILE BIF_OPT_BC_PATH MANGLED_BIF_NAME)
+  set(BIF_CPP_NAME ${MANGLED_BIF_NAME}.cpp)
   set(BIF_CPP_PATH ${CMAKE_CURRENT_BINARY_DIR}/${BIF_CPP_NAME})
   file(RELATIVE_PATH BIF_OPT_BC_NAME ${CMAKE_CURRENT_BINARY_DIR} ${BIF_OPT_BC_PATH})
   set(BIF_SYMBOL ${MANGLED_BIF_NAME}RawData)
@@ -159,7 +150,7 @@ function(vc_generate_embeddable_source RES_FILE BIF_OPT_BC_PATH MANGLED_BIF_NAME
     COMMAND ${PYTHON_EXECUTABLE} ${RESOURCE_EMBEDDER_SCRIPT} ${BIF_OPT_BC_PATH} ${BIF_CPP_PATH} ${BIF_SYMBOL} no_attr
     DEPENDS ${PYTHON_EXECUTABLE} ${RESOURCE_EMBEDDER_SCRIPT} ${BIF_OPT_BC_PATH})
 
-  add_custom_target(${TARGET_NAME}
+  add_custom_target(${TARGET}
     DEPENDS ${BIF_CPP_PATH})
   set(${RES_FILE} ${BIF_CPP_PATH} PARENT_SCOPE)
 endfunction()
@@ -181,34 +172,25 @@ endfunction()
 #   RES_FILE - variable name to put generated file path into.
 #   BIF_OPT_BC_PATH  - path to generic library (in a form of bitcode).
 #   MANGLED_BIF_NAME - the desired name for the generated source file.
-#   OPAQUE_PTRS - use opaque pointers during the generation.
 # Path to resulting CPP source code is stored in the specified cmake variable.
-function(vc_generate_optimized_bif RES_FILE BIF_OPT_BC_PATH MANGLED_BIF_NAME OPAQUE_PTRS)
-  if (OPAQUE_PTRS)
-    set(OPT_OPAQUE_ARG ${IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT})
-    set(OPAQUE_SUFFIX "opaque")
-    set(TARGET_NAME "${MANGLED_BIF_NAME}OpaquePtrs")
-  else()
-    set(OPT_OPAQUE_ARG ${IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT})
-    set(OPAQUE_SUFFIX "typed")
-    set(TARGET_NAME "${MANGLED_BIF_NAME}TypedPtrs")
-  endif()
-  set(BIF_CPP_NAME ${MANGLED_BIF_NAME}.${OPAQUE_SUFFIX}.cpp)
+function(vc_generate_optimized_bif TARGET RES_FILE BIF_OPT_BC_PATH MANGLED_BIF_NAME)
+  set(BIF_CPP_NAME ${MANGLED_BIF_NAME}.cpp)
   set(BIF_CPP_PATH ${CMAKE_CURRENT_BINARY_DIR}/${BIF_CPP_NAME})
   set(BIF_SYMBOL ${MANGLED_BIF_NAME}RawData)
-  set(BIF_CONF_NAME "${MANGLED_BIF_NAME}.${OPAQUE_SUFFIX}.conf")
+  set(BIF_CONF_NAME "${MANGLED_BIF_NAME}.conf")
   set(BIF_CONF_PATH  ${CMAKE_CURRENT_BINARY_DIR}/${BIF_CONF_NAME})
   set(PLTF_BC_PATH_LIST "")
 
+
   foreach(PLTF IN LISTS SUPPORTED_VC_PLATFORMS)
-    set(PLTF_BC_NAME "${MANGLED_BIF_NAME}_${PLTF}.${OPAQUE_SUFFIX}.vccg.bc")
+    set(PLTF_BC_NAME "${MANGLED_BIF_NAME}_${PLTF}.vccg.bc")
     set(PLTF_BC_PATH ${CMAKE_CURRENT_BINARY_DIR}/${PLTF_BC_NAME})
     add_custom_command(
       OUTPUT ${PLTF_BC_PATH}
       COMMENT "vc_generate_optimized_bif: compile optimized BiF for ${PLTF}"
       COMMAND ${VCB_EXE} ${OPT_OPAQUE_ARG} -o ${PLTF_BC_PATH} -cpu ${PLTF} ${BIF_OPT_BC_PATH}
       DEPENDS ${VCB_EXE} ${BIF_OPT_BC_PATH})
-    add_custom_target("${TARGET_NAME}-${PLTF}-BC"
+    add_custom_target("${TARGET}-${PLTF}-BC"
         DEPENDS ${PLTF_BC_PATH})
     list(APPEND PLTF_BC_PATH_LIST ${PLTF_BC_PATH})
   endforeach()
@@ -220,7 +202,7 @@ function(vc_generate_optimized_bif RES_FILE BIF_OPT_BC_PATH MANGLED_BIF_NAME OPA
       COMMENT "vc_generate_optimized_bif: create hashed version of optimized functions"
       COMMAND ${VCB_EXE} -BiFUnique -symb ${BIF_SYMBOL} -o ${BIF_CPP_PATH} ${BIF_CONF_PATH}
       DEPENDS ${VCB_EXE} ${BIF_CONF_PATH} ${PLTF_BC_PATH_LIST})
-  add_custom_target(${TARGET_NAME}
+  add_custom_target(${TARGET}
       DEPENDS ${BIF_CPP_PATH})
   set(${RES_FILE} ${BIF_CPP_PATH} PARENT_SCOPE)
 endfunction()
@@ -229,18 +211,19 @@ endfunction()
 # containing the resulting LLVM bitcode (as a C array).
 # See vc_build_bif and vc_generate_embeddable_source for more details.
 # Path to resulting CPP source code is stored in the specified cmake variable.
-function(vc_embed_bif RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE OPAQUE_PTRS)
-    cmake_parse_arguments(PARSE_ARGV 5
+function(vc_embed_bif RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
+
+    cmake_parse_arguments(PARSE_ARGV 4
                           EXTRA
                           ""
                           "CLANG_INCLUDES;CLANG_FLAGS"
                           "DEPENDS")
     set(MANGLED_BIF_NAME ${BIF_NAME}${PTR_BIT_SIZE})
-    vc_build_bif(RES_FILE_VC_EMBED "${CMCL_SRC_PATH}" "${MANGLED_BIF_NAME}" "${PTR_BIT_SIZE}" "${OPAQUE_PTRS}"
+    vc_build_bif("${BIF_NAME}${PTR_BIT_SIZE}-BC" RES_FILE_VC_EMBED "${CMCL_SRC_PATH}" "${BIF_NAME}" "${PTR_BIT_SIZE}"
         CLANG_INCLUDES "${EXTRA_CLANG_INCLUDES}"
         CLANG_FLAGS "${EXTRA_CLANG_FLAGS}"
         DEPENDS "${EXTRA_DEPENDS}")
-    vc_generate_embeddable_source(RES_FILE_EMBED_GEN "${RES_FILE_VC_EMBED}" "${MANGLED_BIF_NAME}" "${OPAQUE_PTRS}")
+    vc_generate_embeddable_source("${BIF_NAME}${PTR_BIT_SIZE}" RES_FILE_EMBED_GEN "${RES_FILE_VC_EMBED}" "${MANGLED_BIF_NAME}")
     set(${RES_FILE} ${RES_FILE_EMBED_GEN} PARENT_SCOPE)
 endfunction()
 
@@ -249,9 +232,10 @@ endfunction()
 # platform-optimized version of the emulation library during the runtime.
 # See vc_build_bif and vc_generate_optimized_bif for details
 # Path to resulting CPP source code is stored in the specified cmake variable.
-function(vc_embed_optimized_bif RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE OPAQUE_PTRS)
+function(vc_embed_optimized_bif RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
     set(MANGLED_BIF_NAME ${BIF_NAME}${PTR_BIT_SIZE})
-    vc_build_bif(RES_FILE_VC_EMBED "${CMCL_SRC_PATH}" "${BIF_NAME}" "${PTR_BIT_SIZE}" "${OPAQUE_PTRS}")
-    vc_generate_optimized_bif(RES_FILE_EMBED_GEN "${RES_FILE_VC_EMBED}" "${MANGLED_BIF_NAME}" "${OPAQUE_PTRS}")
+    vc_build_bif("${BIF_NAME}${PTR_BIT_SIZE}-BC" RES_FILE_VC_EMBED "${CMCL_SRC_PATH}" "${BIF_NAME}" "${PTR_BIT_SIZE}")
+    vc_generate_optimized_bif("${BIF_NAME}${PTR_BIT_SIZE}" RES_FILE_EMBED_GEN "${RES_FILE_VC_EMBED}"
+        "${MANGLED_BIF_NAME}")
     set(${RES_FILE} ${RES_FILE_EMBED_GEN} PARENT_SCOPE)
 endfunction()

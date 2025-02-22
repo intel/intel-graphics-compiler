@@ -1,23 +1,23 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXTranslateSPIRVBuiltins \
-; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_BIF_TYPED_PTRS% -march=genx64 -mcpu=Gen9 \
+; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mcpu=Gen9 \
 ; RUN: -S < %s | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
 ; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXTranslateSPIRVBuiltins \
-; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_BIF_OPAQUE_PTRS% -march=genx64 -mcpu=Gen9 \
+; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mcpu=Gen9 \
 ; RUN: -S < %s | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
 
 ; RUN: %opt_new_pm_typed -passes=GenXTranslateSPIRVBuiltins \
-; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_BIF_TYPED_PTRS% -march=genx64 -mcpu=Gen9 \
+; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mcpu=Gen9 \
 ; RUN: -S < %s | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
 ; RUN: %opt_new_pm_opaque -passes=GenXTranslateSPIRVBuiltins \
-; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_BIF_OPAQUE_PTRS% -march=genx64 -mcpu=Gen9 \
+; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mcpu=Gen9 \
 ; RUN: -S < %s | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"

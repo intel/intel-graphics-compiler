@@ -1,14 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024-2025 Intel Corporation
+; Copyright (C) 2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeLP -vc-builtins-bif-path=%VC_BIF_XeLP_TYPED_PTRS% \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeLP -vc-builtins-bif-path=%VC_BUILTINS_BIF_XeLP% \
 ; RUN: -vc-skip-ocl-runtime-info -finalizer-opts='-asmToConsole' -o /dev/null | FileCheck %s
-; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeLP -vc-builtins-bif-path=%VC_BIF_XeLP_OPAQUE_PTRS% \
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeLP -vc-builtins-bif-path=%VC_BUILTINS_BIF_XeLP% \
 ; RUN: -vc-skip-ocl-runtime-info -finalizer-opts='-asmToConsole' -o /dev/null | FileCheck %s
 
 ; CHECK-NOT: ERROR

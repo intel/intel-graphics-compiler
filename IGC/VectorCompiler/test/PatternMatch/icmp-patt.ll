@@ -1,13 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=XeLP -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=XeLP -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=XeLP -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 ; CHECK-LABEL: @test_icmp
 ; CHECK: (<16 x i32> [[VEC:%[A-Za-z0-9_.]+]], <16 x i1> [[FLAG1:%[A-Za-z0-9_.]+]], <16 x i1> [[FLAG2:%[A-Za-z0-9_.]+]], <16 x i1> [[FLAG3:%[A-Za-z0-9_.]+]], <2 x i32> [[INS:%[A-Za-z0-9_.]+]])
@@ -93,8 +92,7 @@ declare <16 x i32> @llvm.genx.wrregionf.v16i32.v1i32.i16.v16i1(<16 x i32>, <1 x 
 
 ; CHECK-LABEL: test_addrspacecast
 define i1 @test_addrspacecast(i64 %in) {
-; CHECK-TYPED-PTRS: %res = icmp ne [17 x i8] addrspace(1)* %b, null
-; CHECK-OPAQUE-PTRS: %res = icmp ne ptr addrspace(1) %b, null
+; CHECK: %res = icmp ne [17 x i8] addrspace(1)* %b,  null
   %b = inttoptr i64 %in to [17 x i8] addrspace(1)*
   %res = icmp ne [17 x i8] addrspace(1)* %b, addrspacecast ([17 x i8] addrspace(4)* null to [17 x i8] addrspace(1)*)
   ret i1 %res
