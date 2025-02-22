@@ -5556,7 +5556,8 @@ namespace IGC
         }
     }
 
-    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, bool hasAdditionalVisaAsmToLink, int numThreadsPerEU, uint lowerBoundGRF, VISAKernel* prevKernel)
+    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, bool hasAdditionalVisaAsmToLink, int numThreadsPerEU,
+        uint lowerBoundGRF, uint upperBoundGRF, VISAKernel* prevKernel)
     {
         m_aliasesMap.clear();
         m_encoderState.m_SubSpanDestination = false;
@@ -5624,6 +5625,11 @@ namespace IGC
         if (lowerBoundGRF > 0)
         {
             SaveOption(vISA_MinGRFNum, lowerBoundGRF);
+        }
+
+        if (upperBoundGRF > 0)
+        {
+            SaveOption(vISA_MaxGRFNum, upperBoundGRF);
         }
 
         // Pass all build options to builder

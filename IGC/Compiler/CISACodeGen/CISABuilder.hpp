@@ -115,7 +115,8 @@ namespace IGC
     class CEncoder
     {
     public:
-        void InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, bool hasAdditionalVisaAsmToLink, int numThreadsPerEU, uint lowerBoundGRF, VISAKernel* prevKernel);
+        void InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, bool hasAdditionalVisaAsmToLink, int numThreadsPerEU,
+            uint lowerBoundGRF, uint upperBoundGRF, VISAKernel* prevKernel);
         void InitBuildParams(llvm::SmallVector<std::unique_ptr< char, std::function<void(char*)>>, 10> & params);
         void InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall, bool enableVISA_IR);
         SEncoderState CopyEncoderState();
