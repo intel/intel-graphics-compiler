@@ -305,6 +305,7 @@ private:
   void insertDummyMovForHWRSWA();
   void insertHashMovs();
   void insertDummyCompactInst();
+  void swapSrc1Src2OfMadForCompaction();
   void removeLifetimeOps();
   void recomputeBound(std::unordered_set<G4_Declare *> &declares);
 
@@ -376,6 +377,7 @@ public:
     PI_HWDebug,
     PI_insertDummyMovForHWRSWA,
     PI_insertDummyCompactInst,
+    PI_swapSrc1Src2OfMadForCompaction,
     PI_mergeScalarInst,
     PI_lowerMadSequence,
     PI_LVN,

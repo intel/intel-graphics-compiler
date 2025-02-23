@@ -799,6 +799,8 @@ DEF_VISA_OPTION(vISA_InsertDummyMovForDPASRSWA, ET_BOOL,
                 "-insertDPASRSDummyMov", UNUSED, true)
 DEF_VISA_OPTION(vISA_InsertDummyCompactInst, ET_BOOL, "-insertDummyCompactInst",
                 UNUSED, false)
+DEF_VISA_OPTION(vISA_SwapSrc1Src2OfMadForCompaction, ET_BOOL, "-disableSwapSrc1Src2OfMadForCompaction",
+                UNUSED, true)
 DEF_VISA_OPTION(vISA_AsmFileNameOverridden, ET_BOOL, NULLSTR, UNUSED, false)
 DEF_VISA_OPTION(vISA_HashVal, ET_2xINT32, "-hashmovs",
                 "USAGE: -hashmovs hi32 lo32\n", 0)
