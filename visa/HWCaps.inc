@@ -936,10 +936,4 @@ bool useDynamicAddrForExDesc() const {
   return getOption(vISA_dynamicAddrForExDescInLscSend);
 }
 
-
-bool src1Src2SwapForCompaction()
-{
-  return false;
-}
-
 // end HW capabilities

@@ -53,35 +53,6 @@ void Optimizer::insertDummyCompactInst() {
   bb->push_back(movInst);
 }
 
-void Optimizer::swapSrc1Src2OfMadForCompaction() {
-  if (!builder.src1Src2SwapForCompaction())
-    return;
-
-  BB_LIST_ITER ib, bend(fg.end());
-  for (ib = fg.begin(); ib != bend; ++ib) {
-    G4_BB *bb = (*ib);
-    INST_LIST_ITER ii = bb->begin();
-
-    while (ii != bb->end()) {
-      G4_INST *inst = *ii;
-      if (inst->opcode() == G4_mad) {
-        G4_Operand *src1 = inst->getSrc(1);
-        G4_Operand *src2 = inst->getSrc(2);
-        if (src1 && src2 && src1->getType() == src2->getType()) {
-          if (src1->isSrcRegRegion() &&
-              src1->asSrcRegRegion()->getRegion()->isScalar() &&
-              src2->isSrcRegRegion() &&
-              src2->asSrcRegRegion()->getRegion()->isFlatRegion()) {
-            inst->setSrc(src2, 1);
-            inst->setSrc(src1, 2);
-          }
-        }
-      }
-      ii++;
-    }
-  }
-}
-
 // add (1|M0)   null<1>:uw   null<0;1,0>:uw       0x0:uw
 void Optimizer::insertDummyAdd(G4_BB *bb, INST_LIST_ITER inst_it, int imm) {
   // Dst

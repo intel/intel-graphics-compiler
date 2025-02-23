@@ -691,9 +691,6 @@ void Optimizer::initOptimizations() {
                   TimerID::NUM_TIMERS);
   OPT_INITIALIZE_PASS(insertDummyCompactInst, vISA_InsertDummyCompactInst,
                   TimerID::NUM_TIMERS);
-  OPT_INITIALIZE_PASS(swapSrc1Src2OfMadForCompaction,
-                      vISA_SwapSrc1Src2OfMadForCompaction,
-                      TimerID::NUM_TIMERS);
   OPT_INITIALIZE_PASS(mergeScalarInst, vISA_MergeScalar, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(lowerMadSequence, vISA_EnableMACOpt, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(LVN, vISA_LVN, TimerID::OPTIMIZER);
@@ -1058,8 +1055,6 @@ int Optimizer::optimization() {
 
   // Insert a dummy compact instruction if requested for SKL+
   runPass(PI_insertDummyCompactInst);
-
-  runPass(PI_swapSrc1Src2OfMadForCompaction);
 
   runPass(PI_mapOrphans);
 
