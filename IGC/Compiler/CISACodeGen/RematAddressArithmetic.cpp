@@ -527,7 +527,8 @@ void CloneAddressArithmetic::collectInstToProcess(RematSet& ToProcess, Function&
 
             bool IsLoad = llvm::isa<LoadInst>(I);
             bool IsStore = llvm::isa<StoreInst>(I);
-            if (!IsLoad && !IsStore) continue;
+            bool IsCall = llvm::isa<CallInst>(I);
+            if (!IsLoad && !IsStore && !IsCall) continue;
 
             llvm::Value* V =
                 IsLoad ? static_cast<LoadInst *>(&I)->getPointerOperand() :
@@ -535,6 +536,14 @@ void CloneAddressArithmetic::collectInstToProcess(RematSet& ToProcess, Function&
 
             if(isRematInstruction(V))
                 ToProcess.insert(static_cast<Instruction *>(V));
+
+            if (IsCall && IGC_IS_FLAG_ENABLED(RematCollectCallArgs)) {
+                for (auto &Arg : cast<CallInst>(I).args()) {
+                    if(isRematInstruction(Arg)) {
+                        ToProcess.insert(cast<Instruction>(&Arg));
+                    }
+                }
+            }
         }
     }
 }
