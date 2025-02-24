@@ -2578,8 +2578,12 @@ static inline void PrepareFunctionAttributes(Function *CalledFunc,
       for (unsigned End = IndexFlattener::getNumElements(ST); RetIdx < End;
            ++RetIdx) {
         auto *Ty = IndexFlattener::getElementType(ST, RetIdx);
-        if (Ty->isVectorTy() && Ty->getScalarType()->isIntegerTy(1))
+        if (Ty->isVectorTy() && Ty->getScalarType()->isIntegerTy(1)) {
           CalledFunc->removeFnAttr(vc::FunctionMD::VCSimdCFRet);
+          LLVM_DEBUG(dbgs() << "Remove VCSimdCFRet attr from "
+                            << CalledFunc->getName() << "\n");
+          break;
+        }
       }
     }
     if (RetTy->isVectorTy() && RetTy->getScalarType()->isIntegerTy(1))

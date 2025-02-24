@@ -125,8 +125,7 @@ private:
   Value *packetizeLLVMInstruction(Instruction *Inst);
   Value *packetizeInstruction(Instruction *Inst);
 
-  void replaceAllUsesNoTypeCheck(Value *Inst, Value *NewInst);
-  void removeDeadInstructions(Function &F);
+  void removeDeadInstructions();
   void fixupLLVMIntrinsics(Function &F);
 
   Function *vectorizeSIMTFunction(Function *F, unsigned Width);
@@ -349,7 +348,7 @@ Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
         Phi->setOperand(Idx, It->second);
     }
   }
-  removeDeadInstructions(*ClonedFunc);
+  removeDeadInstructions();
   return ClonedFunc;
 }
 
@@ -396,7 +395,7 @@ bool GenXPacketize::vectorizeSIMTEntry(Function &F) {
       }
     }
   }
-  removeDeadInstructions(F);
+  removeDeadInstructions();
   // a SIMT entry is always inlined after vectorization
   // This is required in order to handle structure argument,
   // for example, generated from lambda capture.
@@ -446,8 +445,7 @@ void GenXPacketize::findFunctionVectorizationOrder(Module *M) {
     }
     for (auto UI = F->use_begin(), UE = F->use_end(); UI != UE; ++UI) {
       if (auto *CI = dyn_cast<CallInst>(UI->getUser())) {
-        auto *Blk = CI->getParent();
-        auto *Caller = Blk->getParent();
+        auto *Caller = CI->getFunction();
         auto *CallerNode = &CallGraph[Caller];
         CallerNode->F = Caller;
         CGN->UnvisitedCallers.insert(CallerNode);
@@ -1657,26 +1655,9 @@ Value *GenXPacketize::packetizeInstruction(Instruction *Inst) {
 }
 
 //////////////////////////////////////////////////////////////////////////
-/// @brief Replace all uses but avoid any type checking as instructions
-///        maybe in a partial bad state.
-/// @param Inst - old instruction we're replacing.
-/// @param NewInst - new instruction
-void GenXPacketize::replaceAllUsesNoTypeCheck(Value *Inst, Value *NewInst) {
-  SmallVector<User *, 8> Users;
-  SmallVector<uint32_t, 8> OpNum;
-  for (auto &U : Inst->uses()) {
-    Users.push_back(U.getUser());
-    OpNum.push_back(U.getOperandNo());
-  }
-  for (uint32_t Idx = 0; Idx < Users.size(); ++Idx) {
-    Users[Idx]->setOperand(OpNum[Idx], NewInst);
-  }
-}
-
-//////////////////////////////////////////////////////////////////////////
 /// @brief Remove replaced instructions. DCE will not remove calls, etc.
 ///        So we have to remove these manually.
-void GenXPacketize::removeDeadInstructions(Function &F) {
+void GenXPacketize::removeDeadInstructions() {
   SmallVector<Instruction *, 8> Unused;
   for (const auto &RMI : ReplaceMap)
     if (RMI.first != RMI.second)
@@ -1791,8 +1772,20 @@ void GenXPacketize::lowerControlFlowAfter(std::vector<Function *> &SIMTFuncs) {
   // Derive an order to process functions such that a function is visited
   // after anything that calls it.
   int N = SIMTFuncs.size();
-  for (int Idx = N - 1; Idx >= 0; --Idx)
-    CFL.processFunction(SIMTFuncs[Idx]);
+  for (int Idx = N - 1; Idx >= 0; --Idx) {
+    auto *Fn = SIMTFuncs[Idx];
+    CFL.processFunction(Fn);
+    // Remove 'NoInline' attributes from calls - up to this point, they
+    // have only been removed from the definition of functions
+    for(auto ui = Fn->use_begin(), ue = Fn->use_end(); ui != ue; ++ui) {
+      if (auto *I = dyn_cast<CallInst>(ui->getUser())) {
+        if (I->hasFnAttr(Attribute::NoInline)) {
+          I->removeFnAttr(Attribute::NoInline);
+          I->addFnAttr(Attribute::AlwaysInline);
+        }
+      }
+    }
+  }
 }
 
 // foward declare the initializer
