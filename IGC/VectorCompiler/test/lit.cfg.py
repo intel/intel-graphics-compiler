@@ -41,13 +41,22 @@ llvm_config.with_environment('LD_LIBRARY_PATH', config.cm_opt_lib_dir, append_pa
 llvm_config.use_default_substitutions()
 
 config.substitutions.append(('%PATH%', config.environment['PATH']))
-config.substitutions.append(('%VC_PRITF_OCL_BIF%', config.vc_printf_ocl_bif))
-config.substitutions.append(('%VC_SPIRV_OCL_BIF%', config.vc_spirv_ocl_bif))
+config.substitutions.append(('%VC_PRINTF_OCL_BIF_TYPED_PTRS%', '{}/VCBiFPrintfOCL64.typed.opt.bc'.format(config.vc_bif_binary_dir)))
+config.substitutions.append(('%VC_PRINTF_OCL_BIF_OPAQUE_PTRS%', '{}/VCBiFPrintfOCL64.opaque.opt.bc'.format(config.vc_bif_binary_dir)))
+config.substitutions.append(('%VC_SPIRV_BIF_TYPED_PTRS%', '{}/VCSPIRVBuiltins64.typed.opt.bc'.format(config.vc_bif_binary_dir)))
+config.substitutions.append(('%VC_SPIRV_BIF_OPAQUE_PTRS%', '{}/VCSPIRVBuiltins64.opaque.opt.bc'.format(config.vc_bif_binary_dir)))
 
 platforms = config.vc_platform_list.split(";")
 for platform in platforms:
-  builtins_path = '{}_{}.vccg.bc'.format(config.vc_builtins_bif_prefix, platform)
-  config.substitutions.append(('%VC_BUILTINS_BIF_{}%'.format(platform), builtins_path))
+  bif_file_typed_ptrs = '{}/VCBuiltins64_{}.typed.vccg.bc'.format(config.vc_bif_binary_dir, platform)
+  bif_file_opaque_ptrs = '{}/VCBuiltins64_{}.opaque.vccg.bc'.format(config.vc_bif_binary_dir, platform)
+  if config.opaque_pointers_enabled == 1:
+    bif_file_default = bif_file_opaque_ptrs
+  else:
+    bif_file_default = bif_file_typed_ptrs
+  config.substitutions.append(('%VC_BIF_{}%'.format(platform), bif_file_default))
+  config.substitutions.append(('%VC_BIF_{}_TYPED_PTRS%'.format(platform), bif_file_typed_ptrs))
+  config.substitutions.append(('%VC_BIF_{}_OPAQUE_PTRS%'.format(platform), bif_file_opaque_ptrs))
 
 if config.use_khronos_spirv_translator_in_sc == "1":
   config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-KHR'))
@@ -63,11 +72,11 @@ tool_dirs = [
 vc_extra_args_legacy_pm = ['-load', config.llvm_plugin]
 vc_extra_args_new_pm = ['-load-pass-plugin', config.llvm_new_pm_plugin]
 
-extra_args_typed_legacy = vc_extra_args_legacy_pm+['-opaque-pointers=0']
-extra_args_opaque_legacy = vc_extra_args_legacy_pm+['-opaque-pointers=1']
+extra_args_typed_legacy = vc_extra_args_legacy_pm+[config.opaque_pointers_disable_opt]
+extra_args_opaque_legacy = vc_extra_args_legacy_pm+[config.opaque_pointers_enable_opt]
 extra_args_default = vc_extra_args_legacy_pm+[config.opaque_pointers_default_arg_opt]
-extra_args_typed_new_pm = vc_extra_args_new_pm+['-opaque-pointers=0']
-extra_args_opaque_new_pm = vc_extra_args_new_pm+['-opaque-pointers=1']
+extra_args_typed_new_pm = vc_extra_args_new_pm+[config.opaque_pointers_disable_opt]
+extra_args_opaque_new_pm = vc_extra_args_new_pm+[config.opaque_pointers_enable_opt]
 
 if int(config.llvm_version) >= 16:
   command_opt_legacy = 'true ||'
