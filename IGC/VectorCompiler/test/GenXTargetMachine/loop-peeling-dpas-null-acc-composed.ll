@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm_16_or_greater
 ; RUN: %opt_legacy_typed %use_old_pass_manager% -loop-unroll -vc-peel-loops-dpas-null-acc=true -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s
 ; RUN: %opt_legacy_opaque %use_old_pass_manager% -loop-unroll -vc-peel-loops-dpas-null-acc=true -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s
 
