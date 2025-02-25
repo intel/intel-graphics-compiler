@@ -58,8 +58,7 @@ void IGCMetaDataHelper::copyFunction(
     auto loc = FuncMD.find(OldFunc);
     if (loc != FuncMD.end())
     {
-        auto funcInfo = loc->second;
-        FuncMD[NewFunc] = funcInfo;
+        FuncMD[NewFunc] = loc->second;
     }
 }
 

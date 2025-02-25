@@ -184,6 +184,8 @@ unsigned int getVectorSize(Value *I) {
 bool isFDivSafe(Instruction *I) {
     if (!IGC_GET_FLAG_VALUE(VectorizerAllowFDIV)) return false;
     auto* Binary = llvm::dyn_cast<BinaryOperator>(I);
+    if (!Binary) return false;
+
     auto OpCode = Binary->getOpcode();
     if (!(OpCode == Instruction::FDiv && I->getType()->isFloatTy())) return false;
 

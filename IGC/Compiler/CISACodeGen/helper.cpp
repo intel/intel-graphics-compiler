@@ -3391,7 +3391,7 @@ std::vector<std::pair<unsigned int, std::string>> GetPrintfStrings(Module &M)
     {
         MDNode* argMDNode = printfMDNode->getOperand(i);
         ConstantInt* indexOpndVal =
-            mdconst::dyn_extract<ConstantInt>(argMDNode->getOperand(0));
+            mdconst::extract<ConstantInt>(argMDNode->getOperand(0));
         MDString* stringOpndVal =
             dyn_cast<MDString>(argMDNode->getOperand(1));
 
