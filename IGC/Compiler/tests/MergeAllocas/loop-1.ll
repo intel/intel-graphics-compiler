@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -43,14 +43,3 @@ commonret:
 }
 
 attributes #0 = { nounwind readnone }
-
-
-!llvm.ident = !{!0, !0, !0, !0}
-!dx.version = !{!1, !1, !1, !1}
-!dx.valver = !{!2, !2, !2, !2}
-!dx.shaderModel = !{!3, !3, !3, !3}
-
-!0 = !{!"clang version 3.7 (tags/RELEASE_370/final)"}
-!1 = !{i32 1, i32 5}
-!2 = !{i32 1, i32 6}
-!3 = !{!"lib", i32 6, i32 5}
