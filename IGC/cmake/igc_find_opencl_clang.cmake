@@ -22,7 +22,8 @@ if(NOT DEFINED COMMON_CLANG_LIBRARY_NAME)
   set(COMMON_CLANG_LIBRARY_NAME opencl-clang)
 endif()
 
-set(COMMON_CLANG_LIB_FULL_NAME "lib${COMMON_CLANG_LIBRARY_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+set(COMMON_CLANG_LIB_NAME_WITH_PREFIX "lib${COMMON_CLANG_LIBRARY_NAME}")
+set(COMMON_CLANG_LIB_FULL_NAME "${COMMON_CLANG_LIB_NAME_WITH_PREFIX}*${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
 find_library(CCLANG_FROM_SYSTEM ${COMMON_CLANG_LIBRARY_NAME})
 
@@ -43,16 +44,19 @@ endif()
 ###
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  set(LINUX_PATH_GENERIC "prebuild-opencl-clang-linux/linux/${OS_NAME}/${OS_VERSION_NUMBER}")
-  set(LINUX_PATH_VERSIONED "prebuild-opencl-clang-linux-${OS_VERSION_NUMBER}/linux/${OS_NAME}/${OS_VERSION_NUMBER}")
+  string(TOLOWER "${OS_NAME}" OS_NAME_LOWER_CASE)
+  set(LINUX_PATH_GENERIC "prebuild-opencl-clang-linux/linux/${OS_NAME_LOWER_CASE}/${OS_VERSION_NUMBER}")
+  set(LINUX_PATH_VERSIONED "prebuild-opencl-clang-linux-${OS_VERSION_NUMBER}/linux/${OS_NAME_LOWER_CASE}/${OS_VERSION_NUMBER}")
 
   if (EXISTS ${IGC_BUILD__GFX_DEV_SRC_DIR}/../../${LINUX_PATH_VERSIONED})
     set(LINUX_PATH "${LINUX_PATH_VERSIONED}")
   else()
     set(LINUX_PATH "${LINUX_PATH_GENERIC}")
   endif()
+  message("Prebuild OpenCL Clang Linux Path: ${LINUX_PATH}")
 else()
   set(WINDOWS_PATH "prebuild-opencl-clang_${IGC_BUILD__CLANG_VERSION}/windows/Release/${cpuSuffix}")
+  message("Prebuild OpenCL Clang Windows Path: ${WINDOWS_PATH}")
 endif()
 ### Check by order first available way to link with opencl-clang
 if(NOT CCLANG_FROM_SYSTEM)

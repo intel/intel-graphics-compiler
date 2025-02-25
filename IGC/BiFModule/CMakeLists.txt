@@ -30,23 +30,28 @@ if(UNIX)
     if(CCLANG_READELF_RESULT AND NOT CCLANG_READELF_RESULT EQUAL 0)
       message(FATAL_ERROR "[IGC\\BiFModule] : Error occurred while executing readelf:  ${CCLANG_READELF_RESULT}")
     endif()
-    string(REGEX MATCH "\\[${COMMON_CLANG_LIB_FULL_NAME}\\.([0-9](\\.[0-9]*)*[a-zA-Z0-9]*)\\]" CCLANG_SONAME_VERSION "${CCLANG_READELF_CALL}")
-    set(CCLANG_SONAME_VERSION "${CMAKE_MATCH_1}")
 
-    # Check if common clang library is newer than 5.0.0 version on which we have SPIR-V support
-    if("${CCLANG_SONAME_VERSION}" VERSION_GREATER "5.0.0")
-      set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_SONAME" "${COMMON_CLANG_LIB_FULL_NAME}.${CCLANG_SONAME_VERSION}")
-    else()
-      # Handle libopencl-clang2.so
-      string(REPLACE "-clang${CMAKE_SHARED_LIBRARY_SUFFIX}" "-clang2${CMAKE_SHARED_LIBRARY_SUFFIX}" TEST_COMMON_CLANG_LIB_FULL_NAME ${COMMON_CLANG_LIB_FULL_NAME})
-      string(REGEX MATCH "\\[${TEST_COMMON_CLANG_LIB_FULL_NAME}\\.([0-9](\\.[0-9]*)*[a-zA-Z0-9]*)\\]" CCLANG_SONAME_VERSION "${CCLANG_READELF_CALL}")
-      set(CCLANG_SONAME_VERSION "${CMAKE_MATCH_1}")
-      if(NOT CCLANG_SONAME_VERSION STREQUAL "")
-        set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_SONAME" "${TEST_COMMON_CLANG_LIB_FULL_NAME}.${CCLANG_SONAME_VERSION}")
-      else()
-        message(FATAL_ERROR "[IGC\\BiFModule] : Version ${CCLANG_SONAME_VERSION} of library ${COMMON_CLANG_LIB_FULL_NAME} is below version 5.0.0 (where it's starts support of SPIR-V), please upgrade this library at least to version 5.0.0")
-      endif()
-    endif()
+    # READ ELF CALL Output:
+    # Dynamic section at offset 0x6957838 contains 35 entries:
+    #   Tag        Type                         Name/Value
+    #  0x0000000000000001 (NEEDED)             Shared library: [libz.so.1]
+    #  0x0000000000000001 (NEEDED)             Shared library: [libzstd.so.1]
+    #  0x0000000000000001 (NEEDED)             Shared library: [libstdc++.so.6]
+    #  0x0000000000000001 (NEEDED)             Shared library: [libm.so.6]
+    #  0x0000000000000001 (NEEDED)             Shared library: [libgcc_s.so.1]
+    #  0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+    #  0x0000000000000001 (NEEDED)             Shared library: [ld-linux-x86-64.so.2]
+    #  0x000000000000000e (SONAME)             Library soname: [libopencl-clang.so.16]
+    #  0x0000000000000010 (SYMBOLIC)           0x0
+    #  0x000000000000001d (RUNPATH)            Library runpath: [$ORIGIN/../lib]
+    #  0x000000000000000c (INIT)               0x7ab000
+    #  0x000000000000000d (FINI)               0x53ed664
+
+    set(CLANG_LIB_REGEX "${COMMON_CLANG_LIB_NAME_WITH_PREFIX}([0-9]+|\\.|so)+")
+    string(REGEX MATCH  "${CLANG_LIB_REGEX}" IMPORTED_SONAME "${CCLANG_READELF_CALL}")
+    message("Extraced SONAME: ${IMPORTED_SONAME}")
+
+    set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_SONAME" "${IMPORTED_SONAME}")
   endif()
   if (NOT CCLANG_FROM_SYSTEM)
     install(FILES $<TARGET_SONAME_FILE:opencl-clang-lib> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
