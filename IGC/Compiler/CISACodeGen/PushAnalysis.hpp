@@ -32,8 +32,6 @@ namespace IGC
         const llvm::DataLayout* m_DL;
         static const uint32_t MaxConstantBufferIndexSize;
         uint32_t MaxNumOfPushedInputs;
-        uint32_t m_pMaxNumOfVSPushedInputs;
-        uint32_t m_pMaxNumOfDSPushedInputs;
 
         bool m_funcTypeChanged;
         std::map <llvm::Function*, bool> m_isFuncTypeChanged;

@@ -1608,20 +1608,6 @@ namespace IGC
         m_pullConstantHeuristics = &getAnalysis<PullConstantHeuristics>();
         m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-        if (m_context->platform.isCoreChildOf(IGFX_XE3_CORE))
-        {
-            // VRT allows us to have 256GRFs, so we can double the number of pushed inputs
-            MaxNumOfPushedInputs = 24 * 2;
-            m_pMaxNumOfVSPushedInputs = 30;
-            m_pMaxNumOfDSPushedInputs = 24 * 2; // 48 * vec4 == 192 GRF == 3/4 256 GRF
-        }
-        else
-        {
-            MaxNumOfPushedInputs = 24;
-            m_pMaxNumOfVSPushedInputs = 24;
-            m_pMaxNumOfDSPushedInputs = 24;
-        }
-
         MapList<Function*, Function*> funcsMapping;
         bool retValue = false;
 
