@@ -363,6 +363,7 @@ void KernelCost::init()
   // Set up info for all subroutines
   int numFuncs = (int)m_kernel->fg.sortedFuncTable.size();
   if (numFuncs > 0) {
+    m_metrics.resize(numFuncs);
     for (int i = 0; i < numFuncs; ++i) {
       FuncInfo *pFInfo = m_kernel->fg.sortedFuncTable[i];
       m_metrics[i].m_funcInfo = pFInfo;
@@ -444,7 +445,7 @@ void KernelCost::collectPerfMetrics()
   BB_LIST& BBs = m_kernel->fg.getBBList();
   const int numFuncs = (int)m_metrics.size();
   for (int i = 0; i < numFuncs; ++i) {
-    const bool isKernel = ((i+1) == numFuncs);
+    const bool isKernel = ((i + 1) == numFuncs);
     FuncCost &FC = m_metrics[i];
     FuncInfo *pFI = FC.m_funcInfo;
     G4_BB *StartBB = pFI->getInitBB();
@@ -460,8 +461,7 @@ void KernelCost::collectPerfMetrics()
 
         LoopCost &LC = m_loopCosts[L];
         FC.m_estimateCost.add(LC.m_estimateCost);
-      }
-      else if (!L) {
+      } else if (!L) {
         CostMetricsWrapper BCM;
         calculateBBMetrics(BCM, BB);
         FC.m_funcCost.C.add(BCM);
@@ -470,12 +470,12 @@ void KernelCost::collectPerfMetrics()
     FC.m_estimateCost.add(FC.m_funcCost.C);
 
     // Loop part of cost expr, set up in program order.
-    for (auto L: FC.m_allLoopsInProgramOrder) {
+    for (auto L : FC.m_allLoopsInProgramOrder) {
       if (L->getNumImmChildLoops() == 0)
         continue;
 
       LoopCost &LC = m_loopCosts[L];
-      CostExprInternal& lce = LC.m_loopBodyCost;
+      CostExprInternal &lce = LC.m_loopBodyCost;
 
       // make sure to iterate loops in program order
       std::list<Loop *> immLoops(L->begin(), L->end());
@@ -491,14 +491,14 @@ void KernelCost::collectPerfMetrics()
         lce.LoopCosts.push_back(&nestedLC);
       }
     }
+  }
 
-    if (m_kernel->getOption(vISA_dumpKCI) ||
+  if (m_kernel->getOption(vISA_dumpKCI) ||
       m_kernel->getOption(vISA_dumpDetailKCI))
-      print(std::cout);
+    print(std::cout);
 
-    if (m_kernel->getOption(vISA_dumpKCIForLit)) {
-      printForLit(std::cout);
-    }
+  if (m_kernel->getOption(vISA_dumpKCIForLit)) {
+    printForLit(std::cout);
   }
 }
 
@@ -536,40 +536,54 @@ void KernelCost::print(std::ostream &OS)
     }
   }
 
-  // Dump summary of cost metrics
-  const FuncCost &FC = m_metrics.back();
-  const CostMetricsWrapper &FC_ec = FC.m_estimateCost;
-  OS << "\nEstimated Kernel Cost Metrics for reference only: "
-     << m_kernel->getName() << "\n"
-     << "    Total Cycles = " << FC_ec.getCycles() << "\n"
-     << "    Total Bytes Loaded = " << FC_ec.getLoadBytes() << "\n"
-     << "    Total Bytes Stored = " << FC_ec.getStoreBytes() << "\n\n\n";
+  // Dump summary of cost metrics for each subroutine and kernel
+  const int numFuncs = (int)m_metrics.size();
+  for (int i = 0; i < numFuncs; ++i) {
+    const FuncCost &FC = m_metrics[i];
+    const CostMetricsWrapper &FC_ec = FC.m_estimateCost;
+    const char *name;
+    const char *nameKind = (((i + 1) == numFuncs) ? "kernel " : "subroutine ");
+    if ((i + 1) == numFuncs) {
+      name = m_kernel->getName();
+    } else {
+      // subroutine, get its entry label name
+      FuncInfo *pFI = FC.m_funcInfo;
+      G4_BB *StartBB = pFI->getInitBB();
+      name = StartBB->getLabel()->getLabelName();
+    }
+    OS << "\nEstimated Kernel Cost Metrics for reference only: "
+       << nameKind << name << "\n"
+       << "    Total Cycles = " << FC_ec.getCycles() << "\n"
+       << "    Total Bytes Loaded = " << FC_ec.getLoadBytes() << "\n"
+       << "    Total Bytes Stored = " << FC_ec.getStoreBytes() << "\n\n\n";
 
-  // Cost expression (output to be written to zeinfo)
-  const CostMetricsWrapper &FCM = FC.m_funcCost.C;
-  OS << "\nKernel Cost Metrics : " << m_kernel->getName() << "\n"
-     << "    Cycles (excluding loops) = " << FCM.getCycles() << "\n"
-     << "    Bytes Loaded (excluding loops) = " << FCM.getLoadBytes() << "\n"
-     << "    Bytes Stored (excluding loops) = " << FCM.getStoreBytes() << "\n\n";
+    // Cost expression (output to be written to zeinfo)
+    const CostMetricsWrapper &FCM = FC.m_funcCost.C;
+    OS << "\nKernel Cost Metrics : " << nameKind << name << "\n"
+       << "    Cycles (excluding loops) = " << FCM.getCycles() << "\n"
+       << "    Bytes Loaded (excluding loops) = " << FCM.getLoadBytes() << "\n"
+       << "    Bytes Stored (excluding loops) = " << FCM.getStoreBytes()
+       << "\n\n";
 
-  for (const Loop *aL : FC.m_allLoopsInProgramOrder) {
-    LoopCost &LC = m_loopCosts[aL];
-    CostExprInternal &lce = LC.m_loopBodyCost;
+    for (const Loop *aL : FC.m_allLoopsInProgramOrder) {
+      LoopCost &LC = m_loopCosts[aL];
+      CostExprInternal &lce = LC.m_loopBodyCost;
 
-    int level = aL->getNestingLevel();
-    std::string indent(4 * level, ' ');
+      int level = aL->getNestingLevel();
+      std::string indent(4 * level, ' ');
 
-    OS << indent << "L[" << LC.m_loopId << "] "
-       << "[Header:BB" << aL->getHeader()->getId()
-       << ", Tail:BB" << aL->backEdgeSrc()->getId()
-       << ", visaid: " << LC.m_backedge_visaId << "]\n";
-    CostMetricsWrapper &LCM = lce.C;
-    OS << indent << "  Loop body only, excluding nested loops\n"
-       << indent << "    Cycles = " << LCM.getCycles() << "\n"
-       << indent << "    Bytes Loaded = " << LCM.getLoadBytes() << "\n"
-       << indent << "    Bytes Stored = " << LCM.getStoreBytes() << "\n";
-    if (aL->getNumImmChildLoops() > 0)
-      OS << "\n";
+      OS << indent << "L[" << LC.m_loopId << "] "
+         << "[Header:BB" << aL->getHeader()->getId() << ", Tail:BB"
+         << aL->backEdgeSrc()->getId() << ", visaid: " << LC.m_backedge_visaId
+         << "]\n";
+      CostMetricsWrapper &LCM = lce.C;
+      OS << indent << "  Loop body only, excluding nested loops\n"
+         << indent << "    Cycles = " << LCM.getCycles() << "\n"
+         << indent << "    Bytes Loaded = " << LCM.getLoadBytes() << "\n"
+         << indent << "    Bytes Stored = " << LCM.getStoreBytes() << "\n";
+      if (aL->getNumImmChildLoops() > 0)
+        OS << "\n";
+    }
   }
 }
 
@@ -582,6 +596,8 @@ void KernelCost::printForLit(std::ostream &OS) {
        << ", level " << aL->getNestingLevel() << "\n";
     ++i;
   }
+
+  OS << "#subroutines = " << m_metrics.size() - 1 << "\n";
 }
 
 void KernelCost::dump() {
