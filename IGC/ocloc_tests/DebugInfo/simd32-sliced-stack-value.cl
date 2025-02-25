@@ -7,7 +7,7 @@
 //=========================== end_copyright_notice =============================
 
 // UNSUPPORTED: sys32
-// REQUIRES: temporarily-disabled, oneapi-readelf, dg2-supported
+// REQUIRES: oneapi-readelf, dg2-supported
 
 // RUN: ocloc compile -file %s -options "-g -igc_opts 'PrintToConsole=1 PrintAfter=EmitPass'" -device dg2 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM
 // RUN: ocloc compile -file %s -options "-g -igc_opts 'ElfDumpEnable=1 DumpUseShorterName=0 DebugDumpNamePrefix=%t_dg2_'" -device dg2
