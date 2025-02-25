@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 
 namespace llvm {
     class BasicBlock;
+    class DominatorTree;
     class Function;
     class Instruction;
     class LoopInfo;
@@ -68,7 +69,14 @@ namespace IGC
             llvm::DenseSet<llvm::BasicBlock*> bbIn;
             llvm::DenseSet<llvm::BasicBlock*> bbOut;
 
-            LivenessData(llvm::Instruction* allocationInstruction, const llvm::SetVector<llvm::Instruction*>& usersOfAllocation, const llvm::LoopInfo& LI, llvm::BasicBlock* userDominatorBlock = nullptr);
+            LivenessData(
+                llvm::Instruction* allocationInstruction,
+                const llvm::SetVector<llvm::Instruction*>& usersOfAllocation,
+                const llvm::LoopInfo& LI,
+                const llvm::DominatorTree& DT,
+                llvm::BasicBlock* userDominatorBlock = nullptr,
+                bool isLifetimeInfinite = false
+            );
 
             bool OverlapsWith(const LivenessData& LD) const;
         };

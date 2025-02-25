@@ -96,7 +96,7 @@ AllocationBasedLivenessAnalysis::LivenessData* AllocationBasedLivenessAnalysis::
     }
 
     // figure out the potential accesses to the memory via GEP and bitcasts
-    while (!worklist.empty() && !hasNoLifetimeEnd)
+    while (!worklist.empty())
     {
         auto* use = worklist.pop_back_val();
         auto* II = cast<Instruction>(use->getUser());
@@ -140,22 +140,44 @@ AllocationBasedLivenessAnalysis::LivenessData* AllocationBasedLivenessAnalysis::
         }
     }
 
-    // we add the return instructions to the list of users to express the infinite lifetime
-    if (hasNoLifetimeEnd)
-    {
-        for_each(instructions(*I->getFunction()),
-            [&](auto& II)
-            {
-                if (isa<ReturnInst>(&II))
-                    allUsers.insert(&II);
-            }
-        );
-    }
-
-    return new LivenessData(I, allUsers, *LI, commonDominator);
+    return new LivenessData(I, allUsers, *LI, *DT, commonDominator, hasNoLifetimeEnd);
 }
 
-AllocationBasedLivenessAnalysis::LivenessData::LivenessData(Instruction* allocationInstruction, const SetVector<Instruction*>& usersOfAllocation, const LoopInfo& LI, BasicBlock* userDominatorBlock)
+template<typename range>
+static inline void doWorkLoop(
+    SmallVector<BasicBlock*>& worklist,
+    DenseSet<BasicBlock*>& bbSet1,
+    DenseSet<BasicBlock*>& bbSet2,
+    std::function<range(BasicBlock*)> iterate,
+    std::function<bool(BasicBlock*)> continueCondition
+) {
+    // perform data flow analysis
+    while (!worklist.empty())
+    {
+        auto* currbb = worklist.pop_back_val();
+
+        if (continueCondition(currbb))
+            continue;
+
+        bool addToSet1 = false;
+
+        for (auto* pbb : iterate(currbb))
+        {
+            addToSet1 = true;
+
+            bool inserted = bbSet2.insert(pbb).second;
+
+            if (inserted)
+                worklist.push_back(pbb);
+        }
+
+        if (addToSet1)
+            bbSet1.insert(currbb);
+    }
+
+}
+
+AllocationBasedLivenessAnalysis::LivenessData::LivenessData(Instruction* allocationInstruction, const SetVector<Instruction*>& usersOfAllocation, const LoopInfo& LI, const DominatorTree& DT, BasicBlock* userDominatorBlock, bool isLifetimeInfinite)
 {
     if (!userDominatorBlock)
         userDominatorBlock = allocationInstruction->getParent();
@@ -172,38 +194,44 @@ AllocationBasedLivenessAnalysis::LivenessData::LivenessData(Instruction* allocat
     // Keep track of loop header of blocks that contain allocation instruction
     auto* allocationParent = allocationInstruction->getParent();
     llvm::SmallPtrSet<llvm::BasicBlock*, 4> containedLoopHeaders;
-    if (const auto* parentLoop = LI.getLoopFor(allocationParent);
-        parentLoop != nullptr) {
+    if (const auto* parentLoop = LI.getLoopFor(allocationParent))
+    {
         containedLoopHeaders.insert(parentLoop->getHeader());
-        while (parentLoop->getParentLoop() != nullptr) {
+        while (parentLoop->getParentLoop()) {
             parentLoop = parentLoop->getParentLoop();
             containedLoopHeaders.insert(parentLoop->getHeader());
         }
     }
+
     // perform data flow analysis
-    while (!worklist.empty())
+    doWorkLoop<llvm::pred_range>(
+        worklist,
+        bbIn,
+        bbOut,
+        [&](auto* currbb) { return llvm::predecessors(currbb); },
+        [&](auto* currbb) { return bbIn.contains(currbb) || currbb == userDominatorBlock || containedLoopHeaders.contains(currbb); }
+    );
+
+    // handle infinite lifetime
+    if (isLifetimeInfinite)
     {
-        auto* currbb = worklist.pop_back_val();
+        // traverse all the successors until there are no left.
+        auto bbInOnly = bbIn;
+        set_subtract(bbInOnly, bbOut);
 
-        if (bbIn.contains(currbb) || currbb == userDominatorBlock)
-            continue;
+        for (auto* bb : bbInOnly)
+            worklist.push_back(bb);
 
-        // If alloca is defined in the loop, we skip loop header
-        // so that we don't escape loop scope.
-        if (containedLoopHeaders.count(currbb) != 0)
-        {
-            continue;
-        }
+        // in case the only use is the one that causes lifetime escape
+        worklist.push_back(userDominatorBlock);
 
-        if (currbb != allocationParent)
-        {
-            bbIn.insert(currbb);
-        }
-        for (auto* pbb : llvm::predecessors(currbb))
-        {
-            bbOut.insert(pbb);
-            worklist.push_back(pbb);
-        }
+        doWorkLoop<llvm::succ_range>(
+            worklist,
+            bbOut,
+            bbIn,
+            [&](auto* currbb) { return llvm::successors(currbb); },
+            [&](auto* currbb) { return false; }
+        );
     }
 
     // if the lifetime escapes any loop, we should make sure all the loops blocks are included
@@ -216,12 +244,38 @@ AllocationBasedLivenessAnalysis::LivenessData::LivenessData(Instruction* allocat
         {
             llvm::for_each(
                 loop->blocks(),
-                [&](auto* block) {
-                    bbOut.insert(block);
-                    if (block != loop->getHeader())
-                        bbIn.insert(block);
-                }
+                [&](auto* block) { bbOut.insert(block); bbIn.insert(block); }
             );
+
+            if (loop->getLoopPreheader())
+            {
+                bbOut.insert(loop->getLoopPreheader());
+            }
+            else
+            {
+                // if the header has multiple predecessors, we need to find the common dominator of all of these
+                auto* commonDominator = loop->getHeader();
+                for (auto* bb : llvm::predecessors(loop->getHeader()))
+                {
+                    if (loop->contains(bb))
+                        continue;
+
+                    commonDominator = DT.findNearestCommonDominator(commonDominator, bb);
+                    worklist.push_back(bb);
+                }
+
+                // acknowledge lifetime flow out of the common dominator block
+                bbOut.insert(commonDominator);
+
+                // add all blocks inbetween
+                doWorkLoop<llvm::pred_range>(
+                    worklist,
+                    bbIn,
+                    bbOut,
+                    [&](auto* currbb) { return llvm::predecessors(currbb); },
+                    [&](auto* currbb) { return bbOut.contains(currbb) || currbb == commonDominator; }
+                );
+            }
         }
     }
 
@@ -265,7 +319,7 @@ AllocationBasedLivenessAnalysis::LivenessData::LivenessData(Instruction* allocat
         {
             for (auto& I : llvm::reverse(*bb))
             {
-                if (usersOfAllocation.contains(&I))
+                if (usersOfAllocation.contains(&I) || isLifetimeInfinite)
                 {
                     lifetimeEnds.push_back(&I);
                     break;
@@ -290,12 +344,34 @@ bool AllocationBasedLivenessAnalysis::LivenessData::OverlapsWith(const LivenessD
     // check lifetime boundaries
     for (auto& [LD1, LD2] : { std::make_pair(*this, LD), std::make_pair(LD, *this) })
     {
-        if (LD1.lifetimeEnds.size() == 1 && *LD1.lifetimeEnds.begin() == LD1.lifetimeStart)
-            continue;
-
         for (auto* I : LD1.lifetimeEnds)
         {
-            if (I->getParent() == LD2.lifetimeStart->getParent())
+            // what if LD1 is contained in a single block
+            if (I->getParent() == LD1.lifetimeStart->getParent())
+            {
+                auto* bb = I->getParent();
+                bool inflow = LD2.bbIn.contains(bb);
+                bool outflow = LD2.bbOut.contains(bb);
+                bool lifetimeStart = LD2.lifetimeStart->getParent() == bb && LD2.lifetimeStart->comesBefore(I);
+
+                auto* LD1_lifetimeStart = LD1.lifetimeStart; // we have to copy LD1.lifetimeStart to avoid clang complaining about LD1 being captured by the lambda
+                bool lifetimeEnd = any_of(LD2.lifetimeEnds, [&](auto* lifetimeEnd) {
+                    return lifetimeEnd->getParent() == bb && LD1_lifetimeStart->comesBefore(lifetimeEnd);
+                });
+
+                if (inflow && outflow)
+                    return true;
+
+                if (inflow && lifetimeEnd)
+                    return true;
+
+                if (outflow && lifetimeStart)
+                    return true;
+
+                if (lifetimeEnd && lifetimeStart)
+                    return true;
+            }
+            else if (I->getParent() == LD2.lifetimeStart->getParent())
             {
                 if (LD2.lifetimeStart->comesBefore(I))
                     return true;
