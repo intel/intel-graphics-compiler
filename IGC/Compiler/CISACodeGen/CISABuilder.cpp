@@ -8922,6 +8922,8 @@ namespace IGC
 
             return;
         }
+
+        unsigned surfaceIndex = 0x0;
         V(vKernel->AppendVISALscUntypedStore(
             subOp,
             lscSfid,
@@ -8932,7 +8934,7 @@ namespace IGC
             addr,
             dataShape,
             globalOffsetOpnd,
-            0,
+            surfaceIndex,
             addressOpnd,
             src1Opnd));
     }

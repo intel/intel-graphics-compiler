@@ -9281,6 +9281,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         emitLoadRawIndexed(
             cast<LdRawIntrinsic>(inst),
             cast<LdRawIntrinsic>(inst)->getOffsetValue(),
+            nullptr,
             nullptr);
         break;
     case GenISAIntrinsic::GenISA_storerawvector_indexed:
@@ -9288,6 +9289,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         emitStoreRawIndexed(
             cast<StoreRawIntrinsic>(inst),
             cast<StoreRawIntrinsic>(inst)->getOffsetValue(),
+            nullptr,
             nullptr);
         break;
     case GenISAIntrinsic::GenISA_GetBufferPtr:
@@ -11104,11 +11106,13 @@ void EmitPass::setRovCacheCtrl(GenIntrinsicInst* inst)
 }
 
 void EmitPass::emitLoadRawIndexed(
-    LdRawIntrinsic * inst, Value * varOffset, ConstantInt * immOffset)
+    LdRawIntrinsic* inst,
+    Value* varOffset,
+    ConstantInt* immScale,
+    ConstantInt* immOffset)
 {
     Value* bufPtrv = inst->getResourceValue();
 
-    ResourceDescriptor resource = GetResourceVariable(bufPtrv);
     LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
     m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
     if (shouldGenerateLSC(inst))
@@ -11124,13 +11128,14 @@ void EmitPass::emitLoadRawIndexed(
             bufPtrv,
             varOffset,
             immOffset,
-            nullptr,
+            immScale,
             cacheOpts,
             addrSpace
           );
         return;
     }
     IGC_ASSERT(immOffset == nullptr);
+    ResourceDescriptor resource = GetResourceVariable(bufPtrv);
     emitLoad3DInner(inst, resource, varOffset);
 }
 
@@ -12594,7 +12599,10 @@ void EmitPass::emitSymbolRelocation(Function& F)
 }
 
 void EmitPass::emitStoreRawIndexed(
-    StoreRawIntrinsic* inst, Value* varOffset, ConstantInt* immOffset)
+    StoreRawIntrinsic* inst,
+    Value* varOffset,
+    ConstantInt* immScale,
+    ConstantInt* immOffset)
 {
     Value* pBufPtr = inst->getResourceValue();
     Value* pValToStore = inst->getStoreValue();
@@ -12611,7 +12619,7 @@ void EmitPass::emitStoreRawIndexed(
             pBufPtr,
             varOffset,
             immOffset,
-            nullptr,
+            immScale,
             pValToStore,
             inst->getParent(),
             cacheOpts,
@@ -19656,7 +19664,7 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
     else if (auto CI = dyn_cast<LdRawIntrinsic>(inst))
         align = CI->getAlignment();
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
-    ResourceDescriptor resource = GetResourceVariable(Ptr);
+    ResourceDescriptor resource = GetResourceVariable(Ptr, true);
     bool useA32 = !IGC::isA64Ptr(ptrType, m_currShader->GetContext());
     LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
     IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
@@ -19991,7 +19999,7 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
 
     unsigned int width = numLanes(m_currShader->m_SIMDSize);
 
-    ResourceDescriptor resource = GetResourceVariable(Ptr);
+    ResourceDescriptor resource = GetResourceVariable(Ptr, true);
     CountStatelessIndirectAccess(Ptr, resource);
     if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE &&
         !dontForceDmask)
@@ -21658,7 +21666,7 @@ void EmitPass::emitGetBufferPtr(GenIntrinsicInst* inst)
     m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, bufType, 0, bti);
 }
 
-ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
+ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr, bool Check)
 {
     ResourceDescriptor resource;
     BufferType bufType = BUFFER_TYPE_UNKNOWN;
@@ -21686,15 +21694,14 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
         if (IsBindless(bufType) ||
             !directIndexing)
         {
-            if (isa<IntToPtrInst>(resourcePtr))
-            {
-                IntToPtrInst* i2p = dyn_cast<IntToPtrInst>(resourcePtr);
-                resource.m_resource = GetSymbol(i2p->getOperand(0));
-            }
-            else
-            {
-                resource.m_resource = GetSymbol(resourcePtr);
-            }
+            auto SetResource = [&](Value* resourcePtr) {
+                if (auto* i2p = dyn_cast<IntToPtrInst>(resourcePtr))
+                    resource.m_resource = GetSymbol(i2p->getOperand(0));
+                else
+                    resource.m_resource = GetSymbol(resourcePtr);
+            };
+
+            SetResource(resourcePtr);
 
             if (resource.m_resource->GetElemSize() < 4)
             {

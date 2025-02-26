@@ -205,8 +205,16 @@ public:
     void emitLoad3DInner(llvm::LdRawIntrinsic* inst, ResourceDescriptor& resource, llvm::Value* elemIdxV);
 
     // when resource is dynamically indexed, load/store must use special intrinsics
-    void emitLoadRawIndexed(llvm::LdRawIntrinsic* inst, llvm::Value* varOffset, llvm::ConstantInt* immOffset);
-    void emitStoreRawIndexed(llvm::StoreRawIntrinsic* inst, llvm::Value* varOffset, llvm::ConstantInt* immOffset);
+    void emitLoadRawIndexed(
+        llvm::LdRawIntrinsic* inst,
+        llvm::Value* varOffset,
+        llvm::ConstantInt* immScale,
+        llvm::ConstantInt* immOffset);
+    void emitStoreRawIndexed(
+        llvm::StoreRawIntrinsic* inst,
+        llvm::Value* varOffset,
+        llvm::ConstantInt* immScale,
+        llvm::ConstantInt* immOffset);
     void emitGetBufferPtr(llvm::GenIntrinsicInst* inst);
     // \todo, remove this function after we lower all GEP to IntToPtr before CodeGen.
     // Only remaining GEPs are for scratch in GFX path
@@ -789,7 +797,7 @@ public:
     CVariable* ReAlignUniformVariable(CVariable* pVar, e_alignment align);
     CVariable* BroadcastAndTruncPointer(CVariable* pVar);
     CVariable* IndexableResourceIndex(CVariable* indexVar, uint btiIndex);
-    ResourceDescriptor GetResourceVariable(llvm::Value* resourcePtr);
+    ResourceDescriptor GetResourceVariable(llvm::Value* resourcePtr, bool Check = false);
     SamplerDescriptor GetSamplerVariable(llvm::Value* samplerPtr);
     CVariable* ComputeSampleIntOffset(llvm::Instruction* sample, uint sourceIndex);
     void emitPlnInterpolation(CVariable* bary, CVariable* inputvar);

@@ -1319,6 +1319,13 @@ namespace IGC
             case GenISAIntrinsic::GenISA_atomiccounterinc:
             case GenISAIntrinsic::GenISA_atomiccounterpredec:
             case GenISAIntrinsic::GenISA_ldptr:
+                if (supportsLSCImmediateGlobalBaseOffset()) {
+                    match = MatchImmOffsetLSC(I);
+                    if (match)
+                        return;
+                }
+                match = MatchSingleInstruction(I);
+                break;
             case GenISAIntrinsic::GenISA_ldrawvector_indexed:
             case GenISAIntrinsic::GenISA_ldraw_indexed:
             case GenISAIntrinsic::GenISA_storerawvector_indexed:
@@ -2671,9 +2678,9 @@ namespace IGC
                 } else if (isa<StoreInst>(m_inst)) {
                     pass->emitStore(cast<StoreInst>(m_inst), m_varOff, m_immOff);
                 } else if (isa<LdRawIntrinsic>(m_inst)) {
-                    pass->emitLoadRawIndexed(cast<LdRawIntrinsic>(m_inst), m_varOff, m_immOff);
+                    pass->emitLoadRawIndexed(cast<LdRawIntrinsic>(m_inst), m_varOff, nullptr, m_immOff);
                 } else if (isa<StoreRawIntrinsic>(m_inst)) {
-                    pass->emitStoreRawIndexed(cast<StoreRawIntrinsic>(m_inst), m_varOff, m_immOff);
+                    pass->emitStoreRawIndexed(cast<StoreRawIntrinsic>(m_inst), m_varOff, nullptr, m_immOff);
                 } else {
                     IGC_ASSERT_MESSAGE(false, "unmatched imm off pattern");
                 }

@@ -521,6 +521,11 @@ bool hasSamplerFeedbackSurface() const
     return m_platformInfo.eProductFamily >= IGFX_BMG;
 }
 
+unsigned getSurfaceStateSize() const
+{
+    return 64;
+}
+
 // logical subslice id
 bool hasLogicalSSID() const
 {

@@ -3888,17 +3888,21 @@ void GenSpecificPattern::visitIntToPtr(llvm::IntToPtrInst& I)
 
 void GenSpecificPattern::visitTruncInst(llvm::TruncInst& I)
 {
+    auto& DL = I.getModule()->getDataLayout();
+    Value* Src = nullptr;
+    Value* LHS = nullptr;
+    Value* RHS = nullptr;
+
     /*
     from
     %22 = lshr i64 %a, 52
     %23 = trunc i64  %22 to i32
-    to
+    ==>
     %22 = extractelement <2 x i32> %a, 1
     %23 = lshr i32 %22, 20 //52-32
     */
 
     using namespace llvm::PatternMatch;
-    Value* LHS = nullptr;
     ConstantInt* CI = nullptr;
     if (match(&I, m_Trunc(m_LShr(m_Value(LHS), m_ConstantInt(CI)))) &&
         I.getType()->isIntegerTy(32) &&
@@ -3916,6 +3920,95 @@ void GenSpecificPattern::visitTruncInst(llvm::TruncInst& I)
         }
         I.replaceAllUsesWith(new_Val);
         I.eraseFromParent();
+        return;
+    }
+
+    /*
+    %i2p = inttoptr i32 %src to ptr addrspace(1)
+    %p2i = ptrtoint ptr addrspace(1) %i2p to i64
+    %res = trunc i64 %p2i to i32
+    ==>
+    %res = %src
+    */
+    if (match(&I, m_Trunc(m_PtrToInt(m_IntToPtr(m_Value(Src))))))
+    {
+        if (I.getType()->isVectorTy())
+            return;
+        // Ensure types match
+        if (Src->getType() != I.getType())
+            return;
+        auto* P2I = dyn_cast<PtrToIntInst>(I.getOperand(0));
+        if (!P2I)
+            return;
+        auto* I2P = dyn_cast<IntToPtrInst>(P2I->getOperand(0));
+        if (!I2P)
+            return;
+        if (DL.getPointerSizeInBits(I2P->getType()->getPointerAddressSpace()) <
+            I2P->getSrcTy()->getIntegerBitWidth())
+            return;
+        if (DL.getPointerSizeInBits(P2I->getSrcTy()->getPointerAddressSpace()) !=
+            P2I->getType()->getIntegerBitWidth())
+            return;
+        I.replaceAllUsesWith(Src);
+        I.eraseFromParent();
+        return;
+    }
+
+    /*
+    %i2p = inttoptr i32 %src to ptr addrspace(1)
+    %p2i = ptrtoint ptr addrspace(1) %i2p to i64
+    %add = add i64 %p2i, C
+    %res = trunc i64 %add to i32
+    ==>
+    %res = add i32 %src, C
+    */
+    if (match(&I, m_Trunc(m_Add(m_PtrToInt(m_IntToPtr(m_Value(Src))), m_Value(RHS)))))
+    {
+        if (I.getType()->isVectorTy())
+            return;
+        // Ensure types match
+        if (Src->getType() != I.getType())
+            return;
+        auto* Add = dyn_cast<Instruction>(I.getOperand(0));
+        if (!Add || Add->getOpcode() != Instruction::Add)
+            return;
+        auto* P2I = dyn_cast<PtrToIntInst>(Add->getOperand(0));
+        if (!P2I)
+            return;
+        auto* I2P = dyn_cast<IntToPtrInst>(P2I->getOperand(0));
+        if (!I2P)
+            return;
+        if (DL.getPointerSizeInBits(I2P->getType()->getPointerAddressSpace()) <
+            I2P->getSrcTy()->getIntegerBitWidth())
+            return;
+        if (DL.getPointerSizeInBits(P2I->getSrcTy()->getPointerAddressSpace()) !=
+            P2I->getType()->getIntegerBitWidth())
+            return;
+        IRBuilder<> IRB(&I);
+        RHS = IRB.CreateTrunc(RHS, I.getType());
+        auto* Res = IRB.CreateAdd(Src, RHS);
+        I.replaceAllUsesWith(Res);
+        I.eraseFromParent();
+        return;
+    }
+
+    /*
+    %s1 = sext i32 %a to i64
+    %s2 = sext i32 %b to i64
+    %add = add i64 %s1, %s2
+    %res = trunc i64 %add to i32
+    ==>
+    %res = add i32 %a, %b
+    */
+    if (match(&I, m_Trunc(m_Add(m_SExt(m_Value(LHS)), m_SExt(m_Value(RHS))))))
+    {
+        if (I.getType() != LHS->getType())
+            return;
+        IRBuilder<> IRB(&I);
+        auto* Res = IRB.CreateAdd(LHS, RHS);
+        I.replaceAllUsesWith(Res);
+        I.eraseFromParent();
+        return;
     }
 }
 
