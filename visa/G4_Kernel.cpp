@@ -2178,8 +2178,7 @@ GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
 unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
                                        bool forceGRFModeUp) {
   unsigned size = configs.size(), i = 0;
-  bool spillAllowed = 0;
-  spillAllowed = options->getuInt32Option(vISA_SpillAllowed) > 256;
+  bool spillAllowed = options->getuInt32Option(vISA_SpillAllowed) > 256;
   // find appropiate GRF based on reg pressure
   for (; i < size; i++) {
     if (configs[i].VRTEnable && configs[i].numGRF >= lowerBoundGRF &&

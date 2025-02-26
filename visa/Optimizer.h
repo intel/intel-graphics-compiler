@@ -159,8 +159,11 @@ class Optimizer {
     if (kernel.useAutoGRFSelection()) {
       unsigned InitialGRFNumber = kernel.getNumRegTotal();
       Sched.runWithGRFSelection(KernelPressure);
-      if (InitialGRFNumber != kernel.getNumRegTotal())
+      if (kernel.getuInt32Option(vISA_ForceGRFModeUp) > 0 &&
+          InitialGRFNumber != kernel.getNumRegTotal()) {
+        // Only re-schedule when ForceGRFModeUP is set
         Sched.run(KernelPressure);
+      }
     } else {
       Sched.run(KernelPressure);
     }
