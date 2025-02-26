@@ -3446,8 +3446,7 @@ void G4_INST::emit_options(std::ostream &output) const {
     if (tkType != NoACCSBSet) {
       tks << '$' << (int)id << tks1;
     }
-
-    if (tks1.size()) {
+    else if (tks1.size()) {
       tks << tks1;
     }
     emitOption(tks.str());
