@@ -37,7 +37,7 @@ namespace IGC
         enum ArgType {
             R0,
             START_ID = R0,
-            PAYLOAD_HEADER,
+            PAYLOAD_HEADER_SHORT,
 
             // WI information
             WORK_DIM,
@@ -130,7 +130,7 @@ namespace IGC
             // BufferBoundsChecking
             BUFFER_SIZE,
 
-            PAYLOAD_HEADER_SHORT,
+            PAYLOAD_HEADER,
 
             NUM_IMPLICIT_ARGS
         };
