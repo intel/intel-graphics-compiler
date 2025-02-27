@@ -4001,9 +4001,6 @@ void Optimizer::HWWorkaround() {
   if (builder.hasFPU0ReadSuppressionIssue()) {
     fixReadSuppressioninFPU0();
   }
-
-  if (builder.supportNativeSIMD32())
-    fixDirectAddrBoundOnDst();
 }
 
 // When destination is an address register the following apply:
@@ -4016,9 +4013,27 @@ void Optimizer::fixDirectAddrBoundOnDst() {
   for (auto bb : kernel.fg) {
     for (auto it = bb->begin(), ie = bb->end(); it != ie; ++it) {
       G4_INST *inst = *it;
-      if (inst->getExecSize() == g4::SIMD32 && inst->getDst() &&
-          inst->getDst()->isDirectA0())
-        hwConf.evenlySplitInst(it, bb, /*checkOverlap*/ false);
+      G4_DstRegRegion *dst = inst->getDst();
+      if (dst && !dst->isNullReg() &&
+          dst->getRegAccess() == Direct && dst->getTopDcl() &&
+          dst->getTopDcl()->getRegVar()->isAddress()) {
+        G4_Declare *dcl = dst->getTopDcl();
+        if (dcl->getTotalElems() > Eight_Word) {
+          if (dcl->getSubRegAlign() < Sixteen_Word)
+            dcl->setSubRegAlign(Sixteen_Word);
+        } else if (dcl->getTotalElems() > Four_Word) {
+          if (dcl->getSubRegAlign() < Eight_Word)
+            dcl->setSubRegAlign(Eight_Word);
+        } else if (dcl->getTotalElems() > Any) {
+          if (dcl->getSubRegAlign() < Four_Word)
+            dcl->setSubRegAlign(Four_Word);
+        }
+        if (((dst->getSubRegOff() + inst->getExecSize() - 1) / 16 !=
+                (dst->getSubRegOff() / 16)) ||
+            inst->getExecSize() == g4::SIMD32) {
+          hwConf.evenlySplitInst(it, bb, /*checkOverlap*/ false);
+        }
+      }
     }
   }
 }

@@ -1105,13 +1105,30 @@ void Optimizer::resetA0() {
     G4_BB *bb = *kernel.fg.begin();
     auto insertIt = std::find_if(
         bb->begin(), bb->end(), [](G4_INST *inst) { return !inst->isLabel(); });
-    bb->insertBefore(
-        insertIt,
-        builder.createMov(G4_ExecSize(builder.getNumAddrRegisters()),
-                          builder.createDst(builder.phyregpool.getAddrReg(), 0,
-                                            0, 1, Type_UW),
-                          builder.createImm(0, Type_UW), InstOpt_WriteEnable,
-                          false));
+    if (builder.supportNativeSIMD32()) {
+      bb->insertBefore(
+          insertIt,
+          builder.createMov(G4_ExecSize(16),
+                            builder.createDst(builder.phyregpool.getAddrReg(),
+                                              0, 0, 1, Type_UW),
+                            builder.createImm(0, Type_UW), InstOpt_WriteEnable,
+                            false));
+      bb->insertBefore(
+          insertIt,
+          builder.createMov(G4_ExecSize(16),
+                            builder.createDst(builder.phyregpool.getAddrReg(),
+                                              0, 16, 1, Type_UW),
+                            builder.createImm(0, Type_UW), InstOpt_WriteEnable,
+                            false));
+    } else {
+      bb->insertBefore(
+          insertIt,
+          builder.createMov(G4_ExecSize(builder.getNumAddrRegisters()),
+                            builder.createDst(builder.phyregpool.getAddrReg(),
+                                              0, 0, 1, Type_UW),
+                            builder.createImm(0, Type_UW), InstOpt_WriteEnable,
+                            false));
+    }
   }
 }
 

@@ -12557,28 +12557,57 @@ unsigned GraphColor::edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2) {
     unsigned lr1_nreg = lr1->getNumRegNeeded();
     unsigned lr2_nreg = lr2->getNumRegNeeded();
 
+    if (lr1_align < lr2_align) {
+      G4_SubReg_Align tmp_align = lr1_align;
+      unsigned tmp_nreg = lr1_nreg;
+      lr1_align = lr2_align;
+      lr2_align = tmp_align;
+      lr1_nreg = lr2_nreg;
+      lr2_nreg = tmp_nreg;
+    }
+
     if (lr1_align == Any) {
+      // Any vs
       return lr1_nreg + lr2_nreg - 1;
     } else if (lr1_align == Four_Word && lr2_align == Any) {
+      // 4 vs Any
       return lr1_nreg + lr2_nreg + 3 - (lr1_nreg + lr2_nreg) % 4;
     } else if (lr1_align == Four_Word && lr2_align == Four_Word) {
+      // 4 vs 4
       return lr1_nreg + lr2_nreg - 1 + (4 - lr1_nreg % 4) % 4 +
              (4 - lr2_nreg % 4) % 4;
-    } else if (lr1_align == Four_Word && lr2_align == Eight_Word) {
-      if (((8 - lr2_nreg % 8) % 8) >= 4)
-        return lr2_nreg + lr1_nreg - 1 + (8 - lr2_nreg % 8) % 8 - 4;
-      return lr1_nreg + lr2_nreg - 1 + (8 - lr2_nreg % 8) % 8 +
-             (4 - lr1_nreg % 4) % 4;
     } else if (lr1_align == Eight_Word && lr2_align == Any) {
+      // 8 vs Any
       return lr1_nreg + lr2_nreg + 7 - (lr1_nreg + lr2_nreg) % 8;
     } else if (lr1_align == Eight_Word && lr2_align == Four_Word) {
+      // 8 vs 4
       if (((8 - lr1_nreg % 8) % 8) >= 4)
         return lr1_nreg + lr2_nreg - 1 + (8 - lr1_nreg % 8) % 8 - 4;
       return lr1_nreg + lr2_nreg - 1 + (8 - lr1_nreg % 8) % 8 +
              (4 - lr2_nreg % 4) % 4;
     } else if (lr1_align == Eight_Word && lr2_align == Eight_Word) {
+      // 8 vs 8
       return lr1_nreg + lr2_nreg - 1 + (8 - lr1_nreg % 8) % 8 +
              (8 - lr2_nreg % 8) % 8;
+    } else if (lr1_align == Sixteen_Word && lr2_align == Any) {
+      // 16 vs Any
+      return lr1_nreg + lr2_nreg + 15 - (lr1_nreg + lr2_nreg) % 16;
+    } else if (lr1_align == Sixteen_Word && lr2_align == Four_Word) {
+      // 16 vs 4
+      if (((16 - lr1_nreg % 16) % 16) >= 4)
+        return lr1_nreg + lr2_nreg - 1 + (16 - lr1_nreg % 16) % 16 - 4;
+      return lr1_nreg + lr2_nreg - 1 + (16 - lr1_nreg % 16) % 16 +
+             (4 - lr2_nreg % 4) % 4;
+    } else if (lr1_align == Sixteen_Word && lr2_align == Eight_Word) {
+      // 16 vs 8
+      if (((16 - lr1_nreg % 16) % 16) >= 8)
+        return lr1_nreg + lr2_nreg - 1 + (16 - lr1_nreg % 16) % 16 - 8;
+      return lr1_nreg + lr2_nreg - 1 + (16 - lr1_nreg % 16) % 16 +
+             (8 - lr2_nreg % 8) % 8;
+    } else if (lr1_align == Sixteen_Word && lr2_align == Sixteen_Word) {
+      // 16 vs 16
+      return lr1_nreg + lr2_nreg - 1 + (16 - lr1_nreg % 16) % 16 +
+             (16 - lr2_nreg % 16) % 16;
     } else {
       vISA_ASSERT_UNREACHABLE(
           "Found unsupported subRegAlignment in address register allocation!");

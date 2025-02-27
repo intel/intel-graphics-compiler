@@ -5726,6 +5726,9 @@ void Optimizer::preRA_HWWorkaround() {
   cloneSampleInst();
 
   insertIEEEExceptionTrap();
+
+  if (builder.supportNativeSIMD32())
+    fixDirectAddrBoundOnDst();
 }
 
 //
