@@ -719,10 +719,6 @@ protected:
     CVariable* m_ImplArgBufPtr = nullptr;
     CVariable* m_LocalIdBufPtr = nullptr;
     CVariable* m_GlobalBufferArg = nullptr;
-
-    /// holds max number of inputs that can be pushed for this shader unit
-    static const uint32_t m_pMaxNumOfPushedInputs;
-
     SProgramOutput m_simdProgram;
 
     // for each vector BCI whose uses are all extractElt with imm offset,
