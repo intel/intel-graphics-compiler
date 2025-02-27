@@ -196,7 +196,6 @@ RayQueryReleaseIntrinsic* RTBuilder::CreateRayQueryReleaseIntrinsic(Value* predi
         predicate = getTrue();
 
     Value* rayQueryRelease = CreateCall(GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_RayQueryRelease), predicate);
-
     return cast<RayQueryReleaseIntrinsic>(rayQueryRelease);
 }
 

@@ -567,6 +567,7 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
         }
     }
 
+
     llvm::for_each(
         toErase,
         [&](auto* I) {
@@ -874,6 +875,7 @@ bool DynamicRayManagementPass::AddDynamicRayManagement(Function& F)
     // The third argument is a value returned by RayQueryCheck, it is used only
     // RayQueryCheck-Release pair identification.
     RayQueryReleaseIntrinsic* rayQueryRelease = builder.CreateRayQueryReleaseIntrinsic();
+
 
     // There is a possibility that the check is no longer post-dominated by the
     // release now (because release insertion logic changes the control flow).

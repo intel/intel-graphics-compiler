@@ -391,11 +391,12 @@ public:
 
     Value* getGlobalDSSID();
 
+    Value* getSyncRTStackSize();
+
 private:
     TraceRayIntrinsic* createTraceRay(Value* bvhLevel, Value* traceRayCtrl, bool isRayQuery, const Twine& PayloadName = "");
 
     Value* canonizePointer(Value* Ptr);
-    Value* getSyncRTStackSize();
     uint32_t getRTStack2Size() const;
     Value* getRTStackSize(uint32_t Align);
     SyncStackPointerVal* getSyncStackPointer(Value* syncStackOffset, RTBuilder::RTMemoryAccessMode Mode);
