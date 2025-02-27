@@ -85,6 +85,9 @@ if config.spirv_as_enabled:
   config.available_features.add('spirv-as')
   llvm_config.add_tool_substitutions([ToolSubst('spirv-as', unresolved='fatal')], tool_dirs)
 
+if int(config.llvm_version_major) >= 16:
+  config.available_features.add('llvm-16-plus')
+
 if config.llvm_spirv_enabled:
   config.available_features.add('llvm-spirv')
   llvm_config.add_tool_substitutions([ToolSubst('llvm-spirv', unresolved='fatal')], tool_dirs)

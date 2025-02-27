@@ -68,7 +68,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
+#include "llvm/Transforms/IPO/Annotation2Metadata.h"
+#include "llvm/Transforms/IPO/ForceFunctionAttrs.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
+#include "llvm/Transforms/IPO/InferFunctionAttrs.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
@@ -83,6 +86,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Scalar/LoopIdiomRecognize.h"
 #include "llvm/Transforms/Scalar/LoopRotation.h"
 #include "llvm/Transforms/Scalar/LoopUnrollPass.h"
+#include "llvm/Transforms/Scalar/LowerExpectIntrinsic.h"
 #include "llvm/Transforms/Scalar/Reassociate.h"
 #include "llvm/Transforms/Scalar/SROA.h"
 #include "llvm/Transforms/Scalar/SimplifyCFG.h"
@@ -1072,6 +1076,16 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
 
     // Lower aggr copies.
     PM.addPass(createModuleToFunctionPassAdaptor(GenXLowerAggrCopiesPass()));
+
+    // Standard set of passes called in llvm-14
+    PM.addPass(createModuleToFunctionPassAdaptor(LowerExpectIntrinsicPass()));
+    PM.addPass(createModuleToFunctionPassAdaptor(SimplifyCFGPass()));
+    PM.addPass(
+        createModuleToFunctionPassAdaptor(SROAPass(SROAOptions::ModifyCFG)));
+    PM.addPass(createModuleToFunctionPassAdaptor(EarlyCSEPass(true)));
+    PM.addPass(Annotation2MetadataPass());
+    PM.addPass(ForceFunctionAttrsPass());
+    PM.addPass(InferFunctionAttrsPass());
 
     // Packetize.
     PM.addPass(GenXLegalizeGVLoadUsesPass());
