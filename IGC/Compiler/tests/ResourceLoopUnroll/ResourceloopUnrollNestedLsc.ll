@@ -49,14 +49,12 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-LL-NEXT:    [[TMP14:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP13]])
 ; CHECK-LL-NEXT:    [[FIRSTACTIVERES:%.*]] = call <4 x float> addrspace(2621440)* @llvm.genx.GenISA.WaveShuffleIndex.p2621440v4f32(<4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], i32 [[TMP14]], i32 0)
 ; CHECK-LL-NEXT:    [[TMP15:%.*]] = icmp eq <4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], [[FIRSTACTIVERES]]
-; CHECK-LL-NEXT:    br i1 [[TMP15]], label [[LAST_SEND:%.*]], label [[LATCH:%.*]]
-; CHECK-LL:       last_send:
 ; CHECK-LL-NEXT:    [[TMP16:%.*]] = call <3 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v3i32.p2621440v4f32(<4 x float> addrspace(2621440)* [[FIRSTACTIVERES]], i32 [[OFFSET]], i32 4, i1 false)
-; CHECK-LL-NEXT:    br label [[UNROLL_MERGE]]
+; CHECK-LL-NEXT:    br i1 [[TMP15]], label [[UNROLL_MERGE]], label [[LATCH:%.*]]
 ; CHECK-LL:       latch:
 ; CHECK-LL-NEXT:    br label [[PARTIAL_CHECK5]]
 ; CHECK-LL:       unroll-merge:
-; CHECK-LL-NEXT:    [[TMP17:%.*]] = phi <3 x i32> [ [[TMP16]], [[LAST_SEND]] ], [ [[TMP12]], [[PARTIAL_CHECK1]] ], [ [[TMP8]], [[PARTIAL_CHECK3]] ], [ [[TMP4]], [[PARTIAL_CHECK5]] ], !MyUniqueExclusiveLoadMetadata !24
+; CHECK-LL-NEXT:    [[TMP17:%.*]] = phi <3 x i32> [ [[TMP16]], [[PARTIAL_CHECK]] ], [ [[TMP12]], [[PARTIAL_CHECK1]] ], [ [[TMP8]], [[PARTIAL_CHECK3]] ], [ [[TMP4]], [[PARTIAL_CHECK5]] ], !MyUniqueExclusiveLoadMetadata !24
 ; CHECK-LL-NEXT:    [[OUT:%.*]] = extractelement <3 x i32> [[TMP17]], i32 [[VAL:%.*]]
 ; CHECK-LL-NEXT:    store i32 [[OUT]], i32 addrspace(1)* [[DST:%.*]], align 1
 ; CHECK-LL-NEXT:    ret void
@@ -79,7 +77,7 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveRes6(0,0)<1> r[A0(0),0]<0;1,0>:ud
 ; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P2 nonuniform_0(0,0)<1;1,0> firstActiveRes6(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  (P2) lsc_load.ugm.ca.ca (M1, 16)  V0032:d32x3  bss(firstActiveRes6)[offset]:a32
-; CHECK-VISAASM-NEXT:  (P2) goto (M1, 16) _test1_007_unroll_merge
+; CHECK-VISAASM-NEXT:  (P2) goto (M1, 16) _test1_006_unroll_merge
 ;
 ; CHECK-VISAASM:  _test1_002_partial_check3:
 ; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P3 0x0:ud
@@ -92,7 +90,7 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveRes4(0,0)<1> r[A1(0),0]<0;1,0>:ud
 ; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P4 nonuniform_0(0,0)<1;1,0> firstActiveRes4(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  (P4) lsc_load.ugm.ca.ca (M1, 16)  V0032:d32x3  bss(firstActiveRes4)[offset]:a32
-; CHECK-VISAASM-NEXT:  (P4) goto (M1, 16) _test1_007_unroll_merge
+; CHECK-VISAASM-NEXT:  (P4) goto (M1, 16) _test1_006_unroll_merge
 ;
 ; CHECK-VISAASM:  _test1_003_partial_check1:
 ; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P5 0x0:ud
@@ -105,7 +103,7 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveRes2(0,0)<1> r[A2(0),0]<0;1,0>:ud
 ; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P6 nonuniform_0(0,0)<1;1,0> firstActiveRes2(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  (P6) lsc_load.ugm.ca.ca (M1, 16)  V0032:d32x3  bss(firstActiveRes2)[offset]:a32
-; CHECK-VISAASM-NEXT:  (P6) goto (M1, 16) _test1_007_unroll_merge
+; CHECK-VISAASM-NEXT:  (P6) goto (M1, 16) _test1_006_unroll_merge
 ;
 ; CHECK-VISAASM:  _test1_004_partial_check:
 ; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P7 0x0:ud
@@ -117,12 +115,10 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A3(0)<1> &nonuniform_0 ShuffleTmp_2(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveRes(0,0)<1> r[A3(0),0]<0;1,0>:ud
 ; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P8 nonuniform_0(0,0)<1;1,0> firstActiveRes(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  (P8) lsc_load.ugm.ca.ca (M1, 16)  V0032:d32x3  bss(firstActiveRes)[offset]:a32
 ; CHECK-VISAASM-NEXT:  (!P8) goto (M1, 16) _test1_001_partial_check5
 ;
-; CHECK-VISAASM:  _test1_005_last_send:
-; CHECK-VISAASM-NEXT:  (P8) lsc_load.ugm.ca.ca (M1, 16)  V0032:d32x3  bss(firstActiveRes)[offset]:a32
-;
-; CHECK-VISAASM:  _test1_007_unroll_merge:
+; CHECK-VISAASM:  _test1_006_unroll_merge:
 ; CHECK-VISAASM-NEXT:  mul (M1_NM, 1) V0061(0,0)<1> val_0(0,0)<0;1,0> 0x40:uw
 ; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A4(0)<1> &V0032 V0061(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) out(0,0)<1> r[A4(0),0]<8;8,1>:d

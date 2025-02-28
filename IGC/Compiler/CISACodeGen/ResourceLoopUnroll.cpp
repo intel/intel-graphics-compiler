@@ -138,7 +138,7 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst* CI)
     LLVM3DBuilder<> builder(context, platform);
 
     auto createResLoopIter = [&builder, this]
-    (Instruction* inst, BasicBlock* checkBB, BasicBlock* sendBB, BasicBlock* nextBB, BasicBlock* exitBB)
+    (Instruction* inst, BasicBlock* checkBB, BasicBlock* nextBB, BasicBlock* exitBB)
         {
             Value* resource = nullptr;
             Value* sampler = nullptr;
@@ -223,37 +223,15 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst* CI)
                 IGC_ASSERT(0);
             }
 
-            // Here we swap the last loop load and goto, such as
-            // From
-            // (P89) lsc_load.ugm.ca.ca(M1, 16)  V1395:d32x3  bss(firstActiveRes)[V1385] : a32 /// $1953
-            // (!P89) goto (M1, 16) ___realTimePathTracingRayGeneration__YAXXZ_093_partial_check1736 /// $1954
-            // To
-            // (!P89) goto (M1, 16) ___realTimePathTracingRayGeneration__YAXXZ_093_partial_check1736 /// $1954
-            // (P89) lsc_load.ugm.ca.ca(M1, 16)  V1395:d32x3  bss(firstActiveRes)[V1385] : a32 /// $1953
-            // However, as CreateCondBr is generating terminator, we put the last send into a BB.
-            // Without swapping, each iteration, the load is loading some channels.
-            if (sendBB)
-            {
-                builder.CreateCondBr(cond, sendBB, nextBB);
-                builder.SetInsertPoint(sendBB);
-            }
-
             llvm::Instruction* predSendInstr = inst->clone();
             SetResourceOperand(predSendInstr, resourceNew, pairTextureNew, textureNew, samplerNew);
             predSendInstr->setName("resLoopSubIterSend");
             builder.Insert(predSendInstr);
 
-            if (sendBB)
-            {
-                builder.CreateBr(exitBB);
-            }
-            else
-            {
-                builder.CreateCondBr(cond, exitBB, nextBB);
-            }
-
             // add the cmp/instruction combo to our predication map
             m_pCodeGenContext->getModuleMetaData()->predicationMap[predSendInstr] = cond;
+
+            builder.CreateCondBr(cond, exitBB, nextBB);
 
             return predSendInstr;
         };
@@ -275,12 +253,10 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst* CI)
     {
         // Basicblocks for loop
         BasicBlock* partialCheckBB = BasicBlock::Create(context, "partial_check", BB->getParent(), before);
-        // Since it's created from the end, the i == 0 is the last loop
-        BasicBlock* lastSendBB = (i == 0) ? BasicBlock::Create(context, "last_send", BB->getParent(), before) : nullptr;
 
-        send = createResLoopIter(CI, partialCheckBB, lastSendBB, before, mergeBB);
+        send = createResLoopIter(CI, partialCheckBB, before, mergeBB);
 
-        PN->addIncoming(send, lastSendBB ? lastSendBB : partialCheckBB);
+        PN->addIncoming(send, partialCheckBB);
         before = partialCheckBB;
     }
 

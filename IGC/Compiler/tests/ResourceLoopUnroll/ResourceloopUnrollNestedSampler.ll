@@ -53,14 +53,12 @@ define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 ; CHECK-LL-NEXT:    [[TMP14:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP13]])
 ; CHECK-LL-NEXT:    [[FIRSTACTIVESAMPLER:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP14]], i32 0)
 ; CHECK-LL-NEXT:    [[TMP15:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER]]
-; CHECK-LL-NEXT:    br i1 [[TMP15]], label [[LAST_SEND:%.*]], label [[LATCH:%.*]]
-; CHECK-LL:       last_send:
 ; CHECK-LL-NEXT:    [[TMP16:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER]], i32 0, i32 0, i32 0)
-; CHECK-LL-NEXT:    br label [[UNROLL_MERGE]]
+; CHECK-LL-NEXT:    br i1 [[TMP15]], label [[UNROLL_MERGE]], label [[LATCH:%.*]]
 ; CHECK-LL:       latch:
 ; CHECK-LL-NEXT:    br label [[PARTIAL_CHECK5]]
 ; CHECK-LL:       unroll-merge:
-; CHECK-LL-NEXT:    [[TMP17:%.*]] = phi <4 x float> [ [[TMP16]], [[LAST_SEND]] ], [ [[TMP12]], [[PARTIAL_CHECK1]] ], [ [[TMP8]], [[PARTIAL_CHECK3]] ], [ [[TMP4]], [[PARTIAL_CHECK5]] ], !MyUniqueExclusiveLoadMetadata !24
+; CHECK-LL-NEXT:    [[TMP17:%.*]] = phi <4 x float> [ [[TMP16]], [[PARTIAL_CHECK]] ], [ [[TMP12]], [[PARTIAL_CHECK1]] ], [ [[TMP8]], [[PARTIAL_CHECK3]] ], [ [[TMP4]], [[PARTIAL_CHECK5]] ], !MyUniqueExclusiveLoadMetadata !24
 ; CHECK-LL-NEXT:    [[OUT:%.*]] = extractelement <4 x float> [[TMP17]], i32 0
 ; CHECK-LL-NEXT:    store float [[OUT]], float addrspace(1)* [[DST:%.*]], align 4
 ; CHECK-LL-NEXT:    ret void
@@ -86,7 +84,7 @@ define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler6(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  (P2) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0032.0 %null.0 V0040.0
-; CHECK-VISAASM-NEXT:  (P2) goto (M1, 16) _test1_007_unroll_merge
+; CHECK-VISAASM-NEXT:  (P2) goto (M1, 16) _test1_006_unroll_merge
 ;
 ; CHECK-VISAASM:  _test1_002_partial_check3:
 ; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P3 0x0:ud
@@ -102,7 +100,7 @@ define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler4(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  (P4) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0032.0 %null.0 V0048.0
-; CHECK-VISAASM-NEXT:  (P4) goto (M1, 16) _test1_007_unroll_merge
+; CHECK-VISAASM-NEXT:  (P4) goto (M1, 16) _test1_006_unroll_merge
 ;
 ; CHECK-VISAASM:  _test1_003_partial_check1:
 ; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P5 0x0:ud
@@ -118,7 +116,7 @@ define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler2(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  (P6) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0032.0 %null.0 V0056.0
-; CHECK-VISAASM-NEXT:  (P6) goto (M1, 16) _test1_007_unroll_merge
+; CHECK-VISAASM-NEXT:  (P6) goto (M1, 16) _test1_006_unroll_merge
 ;
 ; CHECK-VISAASM:  _test1_004_partial_check:
 ; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P7 0x0:ud
@@ -130,15 +128,13 @@ define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A3(0)<1> &sampler_0 ShuffleTmp_2(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveSampler(0,0)<1> r[A3(0),0]<0;1,0>:ud
 ; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P8 sampler_0(0,0)<1;1,0> firstActiveSampler(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  (!P8) goto (M1, 16) _test1_001_partial_check5
-;
-; CHECK-VISAASM:  _test1_005_last_send:
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) V0064(0,0)<1> 0x0:f
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  (P8) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0032.0 %null.0 V0064.0
+; CHECK-VISAASM-NEXT:  (!P8) goto (M1, 16) _test1_001_partial_check5
 ;
-; CHECK-VISAASM:  _test1_007_unroll_merge:
+; CHECK-VISAASM:  _test1_006_unroll_merge:
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) out(0,0)<1> V0032(0,0)<1;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) dst_0(0,0)<1> dst(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) dstBroadcast_0(0,0)<2> dst_1(0,0)<0;1,0>
