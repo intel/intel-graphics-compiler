@@ -22,7 +22,7 @@ SPDX-License-Identifier: MIT
   BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME),
 
 #define BIF_FLAG_CTRL_SET(BIF_FLAG_NAME, BIF_FLAG_VALUE)                          \
-  ListDelegates.emplace(BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME), [&]() -> bool {      \
+  ListDelegates.emplace(BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME), [this]() -> bool {      \
     return replace(BIF_FLAG_VALUE,                                                \
                    pModule->getGlobalVariable(BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME))); \
   })

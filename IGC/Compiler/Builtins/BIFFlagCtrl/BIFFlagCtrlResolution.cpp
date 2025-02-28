@@ -97,12 +97,12 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   // This assume interferes with instcombine pass, so it is skipped unless really needed, that is:
   //   1) StatelessToStateful pass is enabled, AND
   //   2) Buffers don't use implicit bufferOffsetArg.
-  bool useAssumeInGetGlobalId = PtrCGC->m_DriverInfo.SupportsStatelessToStatefulBufferTransformation() &&
+  BIF_FLAG_CTRL_SET(UseAssumeInGetGlobalId,
+      PtrCGC->m_DriverInfo.SupportsStatelessToStatefulBufferTransformation() &&
       !PtrCGC->getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
       IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
       !((IGC_IS_FLAG_ENABLED(EnableSupportBufferOffset) || PtrCGC->getModuleMetaData()->compOpt.HasBufferOffsetArg)) &&
-      !PtrCGC->getModuleMetaData()->compOpt.OptDisable;
-  BIF_FLAG_CTRL_SET(UseAssumeInGetGlobalId, useAssumeInGetGlobalId);
+      !PtrCGC->getModuleMetaData()->compOpt.OptDisable);
 
   BIF_FLAG_CTRL_SET(EnableSWSrgbWrites,
                     IGC_GET_FLAG_VALUE(cl_khr_srgb_image_writes));
