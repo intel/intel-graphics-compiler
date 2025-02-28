@@ -1090,7 +1090,7 @@ class GraphColor {
   static unsigned edgeWeightWith4GRF(int lr1Align, int lr2Align,
                                      unsigned lr1_nreg, unsigned lr2_nreg) {
     if (lr1Align < 4 && lr2Align < 4)
-      return edgeWeightGRF(lr1Align % 2, lr2Align % 2, lr1_nreg, lr2_nreg);
+      return edgeWeightGRF(lr1Align == 2, lr2Align == 2, lr1_nreg, lr2_nreg);
 
     if (lr2Align == 4) {
       if (lr1Align < 2)
