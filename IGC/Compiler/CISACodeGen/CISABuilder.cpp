@@ -6889,9 +6889,14 @@ namespace IGC
                                         jitInfo->stats.spillMemUsed, pFGA,
                                         jitInfo->numBytesScratchGtpin);
 
-        pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer,
-                                    pOutput->m_gtpinBufferSize,
-                                    pOutput->m_scratchSpaceUsedBySpills);
+        unsigned int scratchUsage = 0;
+        if (pOutput->m_UseScratchSpacePrivateMemory &&
+            !pOutput->m_SeparatingSpillAndPrivateScratchMemorySpace)
+          scratchUsage = pOutput->m_scratchSpaceUsedByShader;
+
+        pMainKernel->GetGTPinBuffer(
+            pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize,
+            pOutput->m_scratchSpaceUsedBySpills + scratchUsage);
 
         createSymbolAndGlobalHostAccessTables(
             hasSymbolTable, *pMainKernel, pOutput->m_scratchSpaceUsedBySpills);
