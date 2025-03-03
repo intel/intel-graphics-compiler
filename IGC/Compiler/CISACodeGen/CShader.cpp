@@ -3991,7 +3991,8 @@ void CShader::CopyVariableRaw(
     CVariable* dst,
     CVariable* src)
 {
-    VISA_Type dataType = ISA_TYPE_UD;
+    // handle cases with uniform variables
+    VISA_Type dataType = dst->IsUniform() ? dst->GetType() : ISA_TYPE_UD;
     uint dataTypeSizeInBytes = CEncoder::GetCISADataTypeSize(dataType);
     uint offset = 0;
     uint bytesToCopy = src->GetSize() * src->GetNumberInstance();
@@ -4001,7 +4002,8 @@ void CShader::CopyVariableRaw(
         bool dstSeconfHalf = offset >= dst->GetSize();
         bool srcSeconfHalf = offset >= src->GetSize();
         encoder.SetSecondHalf(dstSeconfHalf || srcSeconfHalf);
-        SIMDMode simdMode = getGRFSize() == 64 ? SIMDMode::SIMD32 : SIMDMode::SIMD16;
+        SIMDMode simdMode = dst->IsUniform() ? SIMDMode::SIMD1 :
+            getGRFSize() == 64 ? SIMDMode::SIMD32 : SIMDMode::SIMD16;
         uint movSize = numLanes(simdMode) * dataTypeSizeInBytes;
         while (movSize > bytesToCopy ||
             (!srcSeconfHalf && ((offset + movSize) > src->GetSize())) ||
