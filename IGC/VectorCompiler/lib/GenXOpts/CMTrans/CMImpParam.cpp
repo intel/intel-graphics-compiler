@@ -1030,8 +1030,7 @@ template <bool IsEntry> void CallGraphTraverser::visitFunction(Function &F) {
     // Skipping inline asm.
     if (isa<CallInst>(CI) && cast<CallInst>(CI)->isInlineAsm())
       continue;
-    if (!isa<CallInst>(CI) || (GenXIntrinsic::getAnyIntrinsicID(CI) !=
-                               GenXIntrinsic::not_any_intrinsic))
+    if (!isa<CallInst>(CI) || vc::isAnyNonTrivialIntrinsic(CI))
       continue;
     // Returns nullptr in case of indirect call or inline asm which was already
     // considered.

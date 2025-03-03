@@ -252,8 +252,7 @@ ModulePass *createGenXTrampolineInsertionPass() {
 #else
 PreservedAnalyses
 GenXTrampolineInsertionPass::run(Module &M, AnalysisManager<llvm::Module> &AM) {
-  auto &Res = AM.getResult<GenXBackendConfigPass>(M);
-  GenXTrampolineInsertion GenXTramp(Res);
+  GenXTrampolineInsertion GenXTramp(BC);
   if (GenXTramp.runOnModule(M))
     return PreservedAnalyses::none();
   return PreservedAnalyses::all();

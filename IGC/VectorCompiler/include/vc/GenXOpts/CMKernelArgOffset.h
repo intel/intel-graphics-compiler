@@ -14,17 +14,17 @@ void initializeCMKernelArgOffsetPass(PassRegistry &);
 
 struct CMKernelArgOffsetPass
     : public llvm::PassInfoMixin<CMKernelArgOffsetPass> {
-private:
-  unsigned GrfByteSize;
-  bool UseBindlessImages;
 
-public:
   static char ID;
   explicit CMKernelArgOffsetPass(unsigned GrfByteSize = 32,
                                  bool UseBindlessImages = false)
       : GrfByteSize(GrfByteSize), UseBindlessImages(UseBindlessImages){};
 
   llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+
+private:
+  unsigned GrfByteSize;
+  bool UseBindlessImages;
 };
 
 #endif // GENX_OPTS_CM_KERNEL_ARG_OFFSET

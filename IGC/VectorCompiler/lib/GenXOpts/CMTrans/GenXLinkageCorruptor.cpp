@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 
 #include "Probe/Assertion.h"
@@ -60,8 +61,7 @@ ModulePass *createGenXLinkageCorruptorPass() {
 PreservedAnalyses
 GenXLinkageCorruptorPass::run(llvm::Module &M,
                               llvm::AnalysisManager<llvm::Module> &AM) {
-  auto &Res = AM.getResult<GenXBackendConfigPass>(M);
-  GenXLinkageCorruptor GenXLink(Res);
+  GenXLinkageCorruptor GenXLink(BC);
   if (GenXLink.runOnModule(M))
     return PreservedAnalyses::none();
   return PreservedAnalyses::all();
@@ -83,8 +83,7 @@ bool GenXLinkageCorruptor::runOnModule(Module &M) {
   for (auto &F : M.getFunctionList()) {
     if (F.isDeclaration() || F.hasDLLExportStorageClass())
       continue;
-    if (GenXIntrinsic::getAnyIntrinsicID(&F) !=
-        GenXIntrinsic::not_any_intrinsic)
+    if (vc::isAnyNonTrivialIntrinsic(&F))
       continue;
     // __cm_intrinsic_impl_* could be used for emulation mul/div etc
     if (F.getName().contains("__cm_intrinsic_impl_"))

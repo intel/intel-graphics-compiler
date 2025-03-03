@@ -1176,11 +1176,11 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
     }
 
     // AddIndirect
-    PM.addPass(GenXCloneIndirectFunctionsPass());
-    PM.addPass(GenXTrampolineInsertionPass());
+    PM.addPass(GenXCloneIndirectFunctionsPass(BC->getResult()));
+    PM.addPass(GenXTrampolineInsertionPass(BC->getResult()));
 
     // AddLinkageCorruptor
-    PM.addPass(GenXLinkageCorruptorPass());
+    PM.addPass(GenXLinkageCorruptorPass(BC->getResult()));
 
     // AddCMImpParam
     PM.addPass(CMImpParamPass(Subtarget.hasThreadPayloadInMemory()));
@@ -1189,7 +1189,7 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
     PM.addPass(CMABIPass());
 
     // BTI assignment.
-    PM.addPass(GenXBTIAssignmentPass());
+    PM.addPass(GenXBTIAssignmentPass(BC->getResult()));
 
     PM.addPass(CMKernelArgOffsetPass(Subtarget.getGRFByteSize(),
                                      BC->useBindlessImages()));

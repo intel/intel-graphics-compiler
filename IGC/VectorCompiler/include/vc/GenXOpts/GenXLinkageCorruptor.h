@@ -14,7 +14,14 @@ void initializeGenXLinkageCorruptorPass(PassRegistry &);
 
 struct GenXLinkageCorruptorPass
     : public llvm::PassInfoMixin<GenXLinkageCorruptorPass> {
+
+  explicit GenXLinkageCorruptorPass(GenXBackendConfigPass::Result &BC)
+      : BC(BC){};
+
   llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+
+private:
+  GenXBackendConfigPass::Result &BC;
 };
 
 #endif // GENX_OPTS_GENX_LINKAGE_CORRUPTOR

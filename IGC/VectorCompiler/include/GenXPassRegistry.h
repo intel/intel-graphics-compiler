@@ -19,18 +19,20 @@ MODULE_PASS("CMKernelArgOffset",
                                   BC->useBindlessImages()))
 MODULE_PASS("GenXPacketize", GenXPacketizePass())
 MODULE_PASS("GenXBIFFlagCtrlResolution", GenXBIFFlagCtrlResolutionPass())
-MODULE_PASS("GenXBTIAssignment", GenXBTIAssignmentPass())
+MODULE_PASS("GenXBTIAssignment", GenXBTIAssignmentPass(BC->getResult()))
 
 MODULE_PASS("GenXImportOCLBiF", GenXImportOCLBiFPass())
 MODULE_PASS("GenXLegalizeGVLoadUses", GenXLegalizeGVLoadUsesPass())
-MODULE_PASS("GenXLinkageCorruptor", GenXLinkageCorruptorPass())
+MODULE_PASS("GenXLinkageCorruptor", GenXLinkageCorruptorPass(BC->getResult()))
 MODULE_PASS("GenXPrintfLegalization", GenXPrintfLegalizationPass())
 MODULE_PASS("GenXPrintfPhiClonning", GenXPrintfPhiClonningPass())
 MODULE_PASS("GenXPrintfResolution", GenXPrintfResolutionPass(TM))
-MODULE_PASS("GenXTrampolineInsertion", GenXTrampolineInsertionPass())
+MODULE_PASS("GenXTrampolineInsertion",
+            GenXTrampolineInsertionPass(BC->getResult()))
 MODULE_PASS("GenXTranslateSPIRVBuiltins",
             GenXTranslateSPIRVBuiltinsPass(BC->getResult()))
-MODULE_PASS("GenXCloneIndirectFunctions", GenXCloneIndirectFunctionsPass())
+MODULE_PASS("GenXCloneIndirectFunctions",
+            GenXCloneIndirectFunctionsPass(BC->getResult()))
 MODULE_PASS("GenXVerify", GenXVerifyPass())
 
 #undef MODULE_PASS

@@ -227,8 +227,7 @@ ModulePass *createGenXCloneIndirectFunctionsPass() {
 PreservedAnalyses
 GenXCloneIndirectFunctionsPass::run(llvm::Module &M,
                                     llvm::AnalysisManager<llvm::Module> &AM) {
-  auto &Res = AM.getResult<GenXBackendConfigPass>(M);
-  GenXCloneIndirectFunctions GenXClone(Res);
+  GenXCloneIndirectFunctions GenXClone(BC);
   if (GenXClone.runOnModule(M))
     return PreservedAnalyses::none();
   return PreservedAnalyses::all();
