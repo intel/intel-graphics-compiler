@@ -302,9 +302,6 @@ namespace IGC
             return 4 * sizeof(MEGABYTE);
         }
 
-        // Limits simple push constants based on pushed inputs
-        virtual bool EnableSimplePushRestriction() const { return false; }
-
         // Determines whether the PAYLOAD_HEADER implicit arg must be present
         virtual bool RequirePayloadHeader() const { return true; }
 

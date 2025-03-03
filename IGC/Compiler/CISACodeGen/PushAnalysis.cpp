@@ -1000,17 +1000,13 @@ namespace IGC
         auto& inputs = m_context->getModuleMetaData()->pushInfo.inputs;
         typedef const std::map<unsigned int, SInputDesc>::value_type& inputPairType;
         unsigned int largestIndex = 0;
-        if (m_context->m_DriverInfo.EnableSimplePushRestriction())
-        {
-            auto largestPair = std::max_element(inputs.begin(), inputs.end(),
-                [](inputPairType a, inputPairType b) { return a.second.index < b.second.index; });
-            largestIndex = largestPair != inputs.end() ? largestPair->second.index : 0;
-        }
-        unsigned int maxPushedGRFs = 96;
-        if (m_context->platform.isCoreChildOf(IGFX_XE3_CORE))
-        {
-            maxPushedGRFs *= 2;
-        }
+        auto largestPair = std::max_element(inputs.begin(), inputs.end(),
+            [](inputPairType a, inputPairType b) { return a.second.index < b.second.index; });
+        largestIndex = largestPair != inputs.end() ? largestPair->second.index : 0;
+
+        uint32_t maxPushedGRFs = m_context->getNumGRFPerThread(false) ? (3 * m_context->getNumGRFPerThread(false)) / 4 :
+            m_context->platform.supportsVRT() ? ((3 * 256) / 4) : ((3 * 128) / 4);
+
         if (largestIndex >= maxPushedGRFs)
         {
             return;
