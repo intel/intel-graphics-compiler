@@ -200,6 +200,11 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList &uses,
       break;
     }
 
+    if (opndNum == Opnd_pred || opndNum == Opnd_condMod) {
+      canReplace = false;
+      break;
+    }
+
     if (!bb->isAllLaneActive()) {
       auto defCoversUseEmask =
           defInst->getMaskOffset() <= useInst->getMaskOffset() &&
@@ -1430,6 +1435,10 @@ void LVN::addUse(G4_DstRegRegion *dst, G4_INST *use, unsigned int srcIndex) {
     srcPos = Opnd_src1;
   } else if (srcIndex == 2) {
     srcPos = Opnd_src2;
+  } else if (srcIndex == 10) { // Must be not valid src index
+    srcPos = Opnd_condMod;
+  } else if (srcIndex == 11) {
+    srcPos = Opnd_pred;
   }
 
   UseInfo useInst = {use, srcPos};
@@ -1441,6 +1450,10 @@ void LVN::addUse(G4_DstRegRegion *dst, G4_INST *use, unsigned int srcIndex) {
     defUse.insert(std::make_pair(dst->getInst(), uses));
   } else {
     (*it).second.push_back(useInst);
+  }
+
+  if (srcIndex >= 10) {
+    return;
   }
 
   auto srcOpnd = use->getSrc(srcIndex);
@@ -1457,6 +1470,16 @@ void LVN::removeAddrTaken(G4_AddrExp *opnd) {
   G4_Declare *opndTopDcl = opnd->getRegVar()->getDeclare()->getRootDeclare();
 
   auto range_it = activeDefs.equal_range(opndTopDcl->getDeclId());
+  for (auto it = range_it.first; it != range_it.second;) {
+    auto prev_it = it;
+    (*prev_it).second.second->getInst()->removeAllUses();
+    it++;
+    activeDefs.erase(prev_it);
+  }
+}
+
+void LVN::removeFlag(G4_Declare *topDcl) {
+  auto range_it = activeDefs.equal_range(topDcl->getDeclId());
   for (auto it = range_it.first; it != range_it.second;) {
     auto prev_it = it;
     (*prev_it).second.second->getInst()->removeAllUses();
@@ -1609,6 +1632,48 @@ void LVN::populateDuTable(INST_LIST_ITER inst_it) {
           newActiveDef.first = curDstTopDcl;
           newActiveDef.second = dst;
           activeDefs.emplace(curDstTopDcl->getDeclId(), newActiveDef);
+        }
+      }
+    }
+    G4_CondMod *condMod = curInst->getCondMod();
+    if (condMod && condMod->getBase() && condMod->getBase()->isRegVar()) {
+      G4_Declare *condDcl = condMod->getTopDcl();
+      if (condDcl && condDcl->getRegVar()->isFlag()) {
+        auto range_it = activeDefs.equal_range(condDcl->getDeclId());
+        if (range_it.first != range_it.second) {
+          auto start_it = range_it.second;
+          start_it--;
+          for (auto it = start_it;;) {
+            G4_DstRegRegion *activeDst = (*it).second.second;
+            addUse(activeDst, curInst, 10);
+            if (it == range_it.first) {
+              // Last match reached
+              break;
+            }
+            it--;
+          }
+        }
+        removeFlag(condDcl);
+      }
+    }
+
+    G4_Predicate *predicate = curInst->getPredicate();
+    if (predicate && predicate->getBase() && predicate->getBase()->isRegVar()) {
+      G4_Declare *predDcl = predicate->getTopDcl();
+      if (predDcl && predDcl->getRegVar()->isFlag()) {
+        auto range_it = activeDefs.equal_range(predDcl->getDeclId());
+        if (range_it.first != range_it.second) {
+          auto start_it = range_it.second;
+          start_it--;
+          for (auto it = start_it;;) {
+            G4_DstRegRegion *activeDst = (*it).second.second;
+            addUse(activeDst, curInst, 11);
+            if (it == range_it.first) {
+              // Last match reached
+              break;
+            }
+            it--;
+          }
         }
       }
     }

@@ -120,6 +120,7 @@ private:
 
   void populateDuTable(INST_LIST_ITER inst_it);
   void removeAddrTaken(G4_AddrExp *opnd);
+  void removeFlag(G4_Declare *topDck);
   void addUse(G4_DstRegRegion *dst, G4_INST *use, unsigned int srcIndex);
   void addValueToTable(G4_INST *inst, Value &oldValue);
   LVNItemInfo *isValueInTable(Value &value, bool negate);
