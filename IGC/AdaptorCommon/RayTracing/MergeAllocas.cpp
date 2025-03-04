@@ -6,18 +6,23 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Compiler/IGCPassSupport.h"
 #include "MergeAllocas.h"
+#include "Compiler/IGCPassSupport.h"
+#include "common/igc_regkeys.hpp"
 #include "Probe/Assertion.h"
 #include "debug/DebugMacros.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/SetOperations.h>
+#include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/SmallSet.h>
+#include <llvm/ADT/SmallVector.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Dominators.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Instructions.h>
@@ -31,6 +36,134 @@ IGC_INITIALIZE_PASS_BEGIN(AllocationBasedLivenessAnalysis, "igc-allocation-based
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_END(AllocationBasedLivenessAnalysis, "igc-allocation-based-liveness-analysis", "Analyze the lifetimes of instruction allocated by a specific intrinsic", false, true)
+
+// Get size of bytes allocated for type including padding.
+static size_t GetByteSize(Type *T, const DataLayout *DL) {
+  if (T->isSized())
+    return static_cast<size_t>(DL->getTypeAllocSize(T));
+  return 0;
+}
+
+static AllocaInfo GetAllocaInfo(AllocaInst *alloca,
+                            AllocationBasedLivenessAnalysis::LivenessData *LD,
+                            const DataLayout *DL) {
+    size_t allocationSize = GetByteSize(alloca->getAllocatedType(), DL);
+    return {{},
+            alloca,
+            LD,
+            alloca->getAddressSpace(),
+            allocationSize,
+            allocationSize,
+            static_cast<size_t>(
+                DL->getPrefTypeAlign(alloca->getAllocatedType()).value()),
+            0};
+}
+
+static size_t GetStartingOffset(size_t startOffset, size_t alignment) {
+    size_t remainder = startOffset % alignment;
+    if (remainder == 0) {
+        return startOffset;
+    }
+    return startOffset + (alignment - remainder);
+}
+
+static bool AddNonOverlappingAlloca(AllocaInfo *MergableAlloca,
+                             AllocaInfo *NewAlloca) {
+    if (MergableAlloca->addressSpace != NewAlloca->addressSpace) {
+        return false;
+    }
+    if (MergableAlloca->allocationSize < NewAlloca->allocationSize) {
+        return false;
+    }
+    if (MergableAlloca->livenessData->OverlapsWith(*NewAlloca->livenessData)) {
+        return false;
+    }
+
+    // Check if we can merge alloca to one of existing non-overlapping allocas.
+    for (auto *NonOverlappingAlloca : MergableAlloca->nonOverlapingAllocas) {
+        bool added = AddNonOverlappingAlloca(NonOverlappingAlloca, NewAlloca);
+        if (added) {
+            return true;
+        }
+    }
+
+    // Check if we have still space in existing alloca to add new alloca
+    if (MergableAlloca->remainingSize >= NewAlloca->allocationSize) {
+        size_t currentOffset =
+            MergableAlloca->allocationSize - MergableAlloca->remainingSize;
+        size_t newStartingOffset =
+            GetStartingOffset(currentOffset, NewAlloca->alignment);
+        size_t sizeWithPadding =
+            NewAlloca->allocationSize + (newStartingOffset - currentOffset);
+        // When adding alignment in consideration we can't fit new alloca.
+        if (sizeWithPadding > MergableAlloca->remainingSize) {
+            return false;
+        }
+        size_t newAllocaOffset = newStartingOffset + MergableAlloca->offset;
+        if (newAllocaOffset != 0 && IGC_IS_FLAG_ENABLED(DisableMergingOfMultipleAllocasWithOffset)) {
+            return false;
+        }
+        NewAlloca->offset = newAllocaOffset;
+        MergableAlloca->nonOverlapingAllocas.push_back(NewAlloca);
+        MergableAlloca->remainingSize -= sizeWithPadding;
+        return true;
+    }
+
+    return false;
+}
+
+static void ReplaceAllocas(const AllocaInfo &MergableAlloca, Function &F) {
+    Instruction *topAlloca = MergableAlloca.alloca;
+    topAlloca->moveBefore(F.getEntryBlock().getFirstNonPHI());
+    topAlloca->setName(VALUE_NAME("MergedAlloca"));
+
+    IRBuilder<> Builder(topAlloca->getParent());
+    Instruction *topAllocaBitcast = nullptr;
+
+    SmallVector<AllocaInfo *> allocasToReplace;
+    allocasToReplace.insert(allocasToReplace.end(),
+                            MergableAlloca.nonOverlapingAllocas.begin(),
+                            MergableAlloca.nonOverlapingAllocas.end());
+
+    while (!allocasToReplace.empty()) {
+        auto *subAlloca = allocasToReplace.pop_back_val();
+
+        auto *subInst = subAlloca->alloca;
+        auto *ReplacementValue = topAlloca;
+
+        if (topAlloca->getType() != subInst->getType()) {
+            auto *InsertionPoint =
+                (topAllocaBitcast != nullptr) ? topAllocaBitcast : topAlloca;
+            Builder.SetInsertPoint(InsertionPoint->getNextNode());
+
+            Value *ValueToCast = nullptr;
+            // If we have offset from original alloca we need to create GEP
+            if (subAlloca->offset != 0) {
+                // We can re-use same bitcast
+                if (topAllocaBitcast == nullptr) {
+                    topAllocaBitcast = cast<Instruction>(
+                        Builder.CreateBitCast(topAlloca,  Builder.getInt8PtrTy()));
+                }
+                auto *Offset = Builder.getInt32(subAlloca->offset);
+                auto *GEP = Builder.CreateGEP(Builder.getInt8Ty(),
+                                            topAllocaBitcast, Offset);
+                ValueToCast = GEP;
+            } else {
+                // If no offset is needed we can directly cast to target type
+                ValueToCast = Builder.CreateBitCast(topAlloca, subInst->getType());
+            }
+            auto *CastedValue = llvm::cast<Instruction>(
+                Builder.CreateBitCast(ValueToCast, subInst->getType()));
+            ReplacementValue = CastedValue;
+        }
+        subInst->replaceAllUsesWith(ReplacementValue);
+        subInst->eraseFromParent();
+
+        allocasToReplace.insert(allocasToReplace.end(),
+                                subAlloca->nonOverlapingAllocas.begin(),
+                                subAlloca->nonOverlapingAllocas.end());
+    }
+}
 
 char AllocationBasedLivenessAnalysis::ID = 0;
 
@@ -342,20 +475,20 @@ bool AllocationBasedLivenessAnalysis::LivenessData::OverlapsWith(const LivenessD
         return true;
 
     // check lifetime boundaries
-    for (auto& [LD1, LD2] : { std::make_pair(*this, LD), std::make_pair(LD, *this) })
+    for (auto& [LD1, LD2] : { std::make_pair(this, &LD), std::make_pair(&LD, this) })
     {
-        for (auto* I : LD1.lifetimeEnds)
+        for (auto* I : LD1->lifetimeEnds)
         {
             // what if LD1 is contained in a single block
-            if (I->getParent() == LD1.lifetimeStart->getParent())
+            if (I->getParent() == LD1->lifetimeStart->getParent())
             {
                 auto* bb = I->getParent();
-                bool inflow = LD2.bbIn.contains(bb);
-                bool outflow = LD2.bbOut.contains(bb);
-                bool lifetimeStart = LD2.lifetimeStart->getParent() == bb && LD2.lifetimeStart->comesBefore(I);
+                bool inflow = LD2->bbIn.contains(bb);
+                bool outflow = LD2->bbOut.contains(bb);
+                bool lifetimeStart = LD2->lifetimeStart->getParent() == bb && LD2->lifetimeStart->comesBefore(I);
 
-                auto* LD1_lifetimeStart = LD1.lifetimeStart; // we have to copy LD1.lifetimeStart to avoid clang complaining about LD1 being captured by the lambda
-                bool lifetimeEnd = any_of(LD2.lifetimeEnds, [&](auto* lifetimeEnd) {
+                auto* LD1_lifetimeStart = LD1->lifetimeStart; // we have to copy LD1.lifetimeStart to avoid clang complaining about LD1 being captured by the lambda
+                bool lifetimeEnd = any_of(LD2->lifetimeEnds, [&](auto* lifetimeEnd) {
                     return lifetimeEnd->getParent() == bb && LD1_lifetimeStart->comesBefore(lifetimeEnd);
                 });
 
@@ -371,14 +504,13 @@ bool AllocationBasedLivenessAnalysis::LivenessData::OverlapsWith(const LivenessD
                 if (lifetimeEnd && lifetimeStart)
                     return true;
             }
-            else if (I->getParent() == LD2.lifetimeStart->getParent())
+            else if (I->getParent() == LD2->lifetimeStart->getParent())
             {
-                if (LD2.lifetimeStart->comesBefore(I))
+                if (LD2->lifetimeStart->comesBefore(I))
                     return true;
             }
         }
     }
-
     return false;
 }
 
@@ -407,100 +539,63 @@ void MergeAllocas::getAnalysisUsage(llvm::AnalysisUsage& AU) const
     AU.addRequired<AllocationBasedLivenessAnalysis>();
 }
 
-bool MergeAllocas::runOnFunction(Function& F)
-{
-    if (skipFunction(F)){
+bool MergeAllocas::runOnFunction(Function &F) {
+    if (skipFunction(F)) {
         return false;
     }
 
     auto ABLA = getAnalysis<AllocationBasedLivenessAnalysis>().getLivenessInfo();
+    const auto *DataLayout = &F.getParent()->getDataLayout();
 
-    // we group the allocations by type, then sort them into buckets with nonoverlapping liveranges
-    // can this be generalized into allocas for types of the same size, not only types?
-    using BucketT = SmallVector<std::pair<Instruction*, AllocationBasedLivenessAnalysis::LivenessData*>>;
-    DenseMap<std::tuple<llvm::Type*, uint32_t, uint32_t>, SmallVector<BucketT>> buckets;
+    // We group non-overlapping allocas for replacements.
+    SmallVector<AllocaInfo *> MergableAllocas;
 
-    for (const auto& A : ABLA)
-    {
-        const auto& [currI, currLD] = A;
-        // at this point we assume all I's are alloca instructions
-        // later AllocationBasedLivenessAnalysis will be generalized to any instruction that can allocate something (like allocaterayquery)
-        auto* AI = cast<AllocaInst>(currI);
+    // First we sort analysis results based on allocation size, from larger to
+    // smaller.
+    llvm::sort(ABLA, [&](const auto &a, const auto &b) {
+        return GetByteSize(cast<AllocaInst>(a.first)->getAllocatedType(),
+                        DataLayout) >
+            GetByteSize(cast<AllocaInst>(b.first)->getAllocatedType(),
+                        DataLayout);
+    });
 
-        if (!isa<ConstantInt>(AI->getArraySize()))
-            continue;
+    // Reserve space for all alloca infos so we can use pointers to them.
+    AllAllocasInfos.reserve(ABLA.size());
 
-        auto* AllocatedType = AI->getAllocatedType();
-        uint32_t IsArray = AllocatedType->isArrayTy()? 1 : 0;
-        auto& perTypeBuckets = buckets[std::make_tuple(
-            (IsArray)? AllocatedType->getArrayElementType() : AllocatedType,
-            IsArray,
-            AI->getAddressSpace()
-        )];
+    // We iterate over analysis results collecting non-overlapping allocas.
+    for (const auto &A : ABLA) {
+        const auto &[currI, currLD] = A;
+        AllAllocasInfos.push_back(
+            GetAllocaInfo(cast<AllocaInst>(currI), currLD, DataLayout));
+        AllocaInfo &AllocaInfo = AllAllocasInfos.back();
 
-        bool found = false;
-
-        for (auto& bucket : perTypeBuckets)
-        {
-            if (llvm::none_of(bucket, [&](std::pair<Instruction*, AllocationBasedLivenessAnalysis::LivenessData*> b) { return b.second->OverlapsWith(*A.second); }))
-            {
-                bucket.push_back(std::make_pair(currI, currLD));
-                found = true;
+        // We check if the current alloca overlaps with any of the previously added.
+        bool added = false;
+        for (auto *MergableAlloca : MergableAllocas) {
+            if (AllocaInfo.livenessData->OverlapsWith(*MergableAlloca->livenessData)) {
+                continue;
+            }
+            added = AddNonOverlappingAlloca(MergableAlloca, &AllocaInfo);
+            if (added) {
                 break;
             }
         }
-
-        if (!found)
-        {
-            perTypeBuckets.push_back({ std::make_pair(currI, currLD) });
+        // Alloca overlaps with all of the current ones so it will be added as new
+        // element.
+        if (!added && AllocaInfo.allocationSize != 0) {
+            MergableAllocas.push_back(&AllocaInfo);
         }
     }
 
     bool changed = false;
 
-    for (const auto& [allocaType, perTypeBuckets] : buckets)
-    {
-        for (const auto& bucket : perTypeBuckets)
-        {
-            if (bucket.size() == 1)
-            {
-                continue;
-            }
-
-            bool IsArray = std::get<1>(allocaType);
-            Instruction* firstAlloca = nullptr;
-            if (IsArray)
-            {
-                firstAlloca = std::max_element(bucket.begin(), bucket.end(), [](const auto& a, const auto& b) {
-                    return cast<AllocaInst>(a.first)->getAllocatedType()->getArrayNumElements() < cast<AllocaInst>(b.first)->getAllocatedType()->getArrayNumElements();
-                })->first;
-            }
-            else
-            {
-                firstAlloca = bucket[0].first;
-            }
-            firstAlloca->moveBefore(F.getEntryBlock().getFirstNonPHI());
-            firstAlloca->setName(VALUE_NAME("MergedAlloca"));
-            for (const auto& [I, _] : bucket)
-            {
-                if (firstAlloca == I)
-                {
-                    continue;
-                }
-                auto* ReplacementValue = firstAlloca;
-                if (firstAlloca->getType() != I->getType())
-                {
-                    IRBuilder<> Builder(firstAlloca->getParent());
-                    Builder.SetInsertPoint(firstAlloca->getNextNode());
-                    auto *CastedValue = llvm::cast<Instruction>(Builder.CreateBitCast(firstAlloca, I->getType()));
-                    ReplacementValue = CastedValue;
-                };
-                I->replaceAllUsesWith(ReplacementValue);
-                I->eraseFromParent();
-            }
-
-            changed = true;
+    // Replace alloca usages
+    for (auto *MergableAlloca : MergableAllocas) {
+        if (MergableAlloca->nonOverlapingAllocas.empty()) {
+            continue;
         }
+        changed = true;
+        ReplaceAllocas(*MergableAlloca, F);
     }
 
     return changed;

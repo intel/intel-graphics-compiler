@@ -10,29 +10,29 @@
 ; PrivateMemoryResolution
 ; ------------------------------------------------
 
-; Check that allocas are merged if array elements have different types.
+; Check that allocas with different simple types are correctly merged.
 
 define spir_kernel void @main(float addrspace(1)* %0, i64 %1, i64 %2, i32 %3, i32 %4) {
 ; CHECK-LABEL: main
-; CHECK-NEXT: alloca [256 x i64], align 4
-; CHECK-NEXT: bitcast [256 x i64]* {{.*}} to [128 x float]*
-; CHECK-NOT: alloca [128 x float], align 4
-  %6 = alloca [128 x float], align 4
-  %7 = alloca [256 x i64], align 4
+; CHECK-NEXT: alloca i64, align 4
+; CHECK-NEXT: bitcast i64* {{.*}} to float*
+; CHECK-NOT: alloca float, align 4
+  %6 = alloca float, align 4
+  %7 = alloca i64, align 4
   br label %8
 
 8:
   %9 = icmp ult i32 %3, %4
-  br i1 %9, label %10, label %12
+  br i1 %9, label %10, label %11
 
 10:
-  %11 = getelementptr inbounds [128 x float], [128 x float]* %6, i64 0, i64 %1
-  br label %14
+  store float 5.000000e-01, float* %6, align 4
+  br label %12
+
+11:
+  store i64 200, i64* %7, align 4
+  br label %12
 
 12:
-  %13 = getelementptr inbounds [256 x i64], [256 x i64]* %7, i64 0, i64 %2
-  br label %14
-
-14:
   ret void
 }
