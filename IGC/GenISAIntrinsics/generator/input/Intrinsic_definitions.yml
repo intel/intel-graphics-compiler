@@ -10251,6 +10251,46 @@ intrinsics:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
+        name: "GenISA_hftohf8"
+        comment: "half to hf8 conversion"
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_int
+            comment: "hf8 result (as char)"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *any_float
+                comment: "half source"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i32
+                comment: "Rounding mode(ERoundingMode)"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i1
+                comment: "saturation (true: sat; false: no)"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_hf8tohf"
+        comment: "hf8 to half conversion"
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_float
+            comment: "half result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *any_int
+                comment: "hf8 source (as char)"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
         name: "GenISA_ftotf32"
         comment: "float to tf32 conversion"
         return_definition: !<ReturnDefinition>

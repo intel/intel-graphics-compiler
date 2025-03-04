@@ -669,6 +669,9 @@ static inline GED_DATA_TYPE lowerDataType(Type opndType) {
   case Type::BF8:
     dataType = GED_DATA_TYPE_bf8;
     break;
+  case Type::HF8:
+    dataType = GED_DATA_TYPE_hf8;
+    break;
   case Type::TF32:
     dataType = GED_DATA_TYPE_tf32;
     break;
@@ -713,6 +716,9 @@ static inline GED_PRECISION lowerSubBytePrecision(Type t) {
     break;
   case Type::TF32:
     precision = GED_PRECISION_tf32;
+    break;
+  case Type::HF8:
+    precision = GED_PRECISION_hf8;
     break;
   default:
     break;

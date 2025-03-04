@@ -7360,6 +7360,8 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
     if (src2Precision == GenPrecision::FP16 ||
         src2Precision == GenPrecision::BF16 ||
         src2Precision == GenPrecision::TF32 ||
+        src2Precision == GenPrecision::BF8 ||
+        src2Precision == GenPrecision::HF8 ||
         src2Bits == 8 || (src1Bits <= 4 && src2Bits == 4)) {
       G4_SubReg_Align srAlign = getIRBuilder()->getGRFAlign();
       if (Count != 8)

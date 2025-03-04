@@ -294,6 +294,8 @@ static inline Type translate(GED_PRECISION p) {
     return Type::BF8;
   case GED_PRECISION_tf32:
     return Type::TF32;
+  case GED_PRECISION_hf8:
+    return Type::HF8;
   default:
     return Type::INVALID;
   }
@@ -486,6 +488,9 @@ static inline Type translate(GED_DATA_TYPE type) {
     break;
   case GED_DATA_TYPE_bf8:
     opndType = Type::BF8;
+    break;
+  case GED_DATA_TYPE_hf8:
+    opndType = Type::HF8;
     break;
   case GED_DATA_TYPE_tf32:
     opndType = Type::TF32;

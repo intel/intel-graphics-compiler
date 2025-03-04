@@ -578,6 +578,30 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
         args[0] = CI.getArgOperand(0);
         argslen = 1;
     }
+    else if (funcName.startswith("__builtin_IB_hftohf8_"))
+    {
+        int sz = (int)sizeof("__builtin_IB_hftohf8_");
+        if (!demangleFCvtSuffix(funcName, sz - 1, nullptr, &VecLen, &isSat))
+            return false;
+
+        iid = GenISAIntrinsic::GenISA_hftohf8;
+        args[0] = CI.getArgOperand(0);             // value to be converted
+        args[1] = ConstantInt::get(intTy, FP_RM);  // rounding mode
+        args[2] = ConstantInt::get(boolTy, isSat); // saturation
+        argslen = 3;
+    }
+    else if (funcName.startswith("__builtin_IB_hf8tohf_"))
+    {
+        int sz = (int)sizeof("__builtin_IB_hf8tohf_");
+        // It is a precise conversion, no RM needed!
+        // Note that sizeof() includes the ending '\0', so need to do -1!
+        if (!demangleFCvtSuffix(funcName, sz - 1, nullptr, &VecLen, nullptr))
+            return false;
+
+        iid = GenISAIntrinsic::GenISA_hf8tohf;
+        args[0] = CI.getArgOperand(0);
+        argslen = 1;
+    }
     else if (funcName.startswith("__builtin_IB_ftotf32_"))
     {
         if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_ftotf32_") - 1, nullptr, &VecLen, nullptr))
@@ -665,6 +689,11 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
         iid == GenISAIntrinsic::GenISA_bf8tohf)
     {
         cvt = "bf8_cvt";
+    }
+    else if (iid == GenISAIntrinsic::GenISA_hftohf8 ||
+             iid == GenISAIntrinsic::GenISA_hf8tohf)
+    {
+        cvt = "hf8_cvt";
     }
     else if (iid == GenISAIntrinsic::GenISA_ftotf32)
     {

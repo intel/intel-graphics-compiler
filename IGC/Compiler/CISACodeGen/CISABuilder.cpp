@@ -8257,6 +8257,7 @@ namespace IGC
         case PrecisionType::BF16: return GenPrecision::BF16;
         case PrecisionType::FP16: return GenPrecision::FP16;
         case PrecisionType::BF8: return GenPrecision::BF8;
+        case PrecisionType::HF8: return GenPrecision::HF8;
         case PrecisionType::TF32: return GenPrecision::TF32;
         }
 

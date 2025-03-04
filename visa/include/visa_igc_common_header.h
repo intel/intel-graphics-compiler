@@ -679,6 +679,7 @@ enum class GenPrecision : unsigned char {
   FP16 = 10, // half (1, 5, 10)
   BF8 = 11,  // bfloat8 (1, 5, 2)
   TF32 = 12, // TensorFloat (1, 8, 10), 19 bits
+  HF8 = 14, // HF8 (1, 4, 3)
   TOTAL_NUM
 };
 

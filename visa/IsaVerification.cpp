@@ -1087,6 +1087,8 @@ void vISAVerifier::verifyInstructionMove(const CISA_INST *inst) {
     }
 
     bool supportSat = false;
+    if (irBuilder->getPlatform() >= Xe3)
+        supportSat = true;
     VISA_Modifier dstModifier = dst.getOperandModifier();
     VISA_Modifier srcModifier = src0.getOperandModifier();
     REPORT_INSTRUCTION(

@@ -85,8 +85,10 @@ GenPrecision_Info_t GenPrecisionTable[] = {
     /*  8 */ {GenPrecision::S8, 8, "s8"},
     /*  9 */ {GenPrecision::BF16, 16, "bf"},
     /* 10 */ {GenPrecision::FP16, 16, "hf"},
-    /* 11 */ {GenPrecision::INVALID, 0, nullptr}, // unused
+    /* 11 */ {GenPrecision::BF8, 8, "bf8"},
     /* 12 */ {GenPrecision::TF32, 32, "tf32"},
+    /* 13 */ {GenPrecision::INVALID, 0, nullptr}, // unused
+    /* 14 */ {GenPrecision::HF8, 8, "hf8"},
 };
 static_assert((int)GenPrecision::INVALID == 0);
 static_assert((int)GenPrecision::U1 == 1);
@@ -99,8 +101,10 @@ static_assert((int)GenPrecision::U8 == 7);
 static_assert((int)GenPrecision::S8 == 8);
 static_assert((int)GenPrecision::BF16 == 9);
 static_assert((int)GenPrecision::FP16 == 10);
+static_assert((int)GenPrecision::BF8 == 11);
 static_assert((int)GenPrecision::TF32 == 12);
-static_assert((int)GenPrecision::TOTAL_NUM == 13);
+static_assert((int)GenPrecision::HF8 == 14);
+static_assert((int)GenPrecision::TOTAL_NUM == 15);
 
 const char *Common_ISA_Get_Modifier_Name(VISA_Modifier modifier) {
   switch (modifier) {

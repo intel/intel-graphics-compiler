@@ -405,7 +405,7 @@ int IR_Builder::translateVISADataMovementInst(
       return VISA_FAILURE;
     }
   } else if (opcode == ISA_FCVT) {
-    (void)createInst(nullptr, G4_fcvt, nullptr, g4::NOSAT, exsize, dstOpnd,
+    (void)createInst(nullptr, G4_fcvt, nullptr, saturate, exsize, dstOpnd,
                      src0Opnd, nullptr, inst_opt, true);
   } else {
     if (opcode == ISA_FMINMAX) {

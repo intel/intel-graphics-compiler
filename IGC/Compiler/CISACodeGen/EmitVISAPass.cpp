@@ -9262,6 +9262,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_2fto2bf:
     case GenISAIntrinsic::GenISA_hftobf8:
     case GenISAIntrinsic::GenISA_bf8tohf:
+    case GenISAIntrinsic::GenISA_hftohf8:
+    case GenISAIntrinsic::GenISA_hf8tohf:
     case GenISAIntrinsic::GenISA_ftotf32:
         emitfcvt(inst);
         break;
@@ -23193,6 +23195,7 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
     switch (id)
     {
     case GenISAIntrinsic::GenISA_hftobf8:
+    case GenISAIntrinsic::GenISA_hftohf8:
     {
         ConstantInt* CI = cast<ConstantInt>(GII->getOperand(2));
         isSat = CI->getValue().getBoolValue();
@@ -23216,6 +23219,8 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
         id == GenISAIntrinsic::GenISA_bftof ||
         id == GenISAIntrinsic::GenISA_hftobf8 ||
         id == GenISAIntrinsic::GenISA_bf8tohf ||
+        id == GenISAIntrinsic::GenISA_hftohf8 ||
+        id == GenISAIntrinsic::GenISA_hf8tohf ||
         id == GenISAIntrinsic::GenISA_ftotf32)
     {
         CVariable* tDst = nullptr, *tSrc = nullptr;
@@ -23252,6 +23257,15 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
                 tSrc = src;
             }
         }
+        // Use Type_B for HF8
+        else if (id == GenISAIntrinsic::GenISA_hf8tohf) {
+            tDst = dst;
+            tSrc = m_currShader->GetNewAlias(src, ISA_TYPE_B, 0, 0);
+        }
+        else if (id == GenISAIntrinsic::GenISA_hftohf8) {
+            tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_B, 0, 0);
+            tSrc = src;
+        }
         else {
             IGC_ASSERT_EXIT_MESSAGE(0, "Something wrong in cvt!");
         }
@@ -23280,6 +23294,8 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
                 }
                 if (id == GenISAIntrinsic::GenISA_hftobf8 ||
                     id == GenISAIntrinsic::GenISA_bf8tohf ||
+                    id == GenISAIntrinsic::GenISA_hftohf8 ||
+                    id == GenISAIntrinsic::GenISA_hf8tohf ||
                     id == GenISAIntrinsic::GenISA_ftotf32
                     )
                 {
@@ -23304,12 +23320,15 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
                 m_encoder->SetSrcSubReg(0, srcOff);
                 if (id == GenISAIntrinsic::GenISA_hftobf8 ||
                     id == GenISAIntrinsic::GenISA_bf8tohf ||
+                    id == GenISAIntrinsic::GenISA_hftohf8 ||
+                    id == GenISAIntrinsic::GenISA_hf8tohf ||
                     id == GenISAIntrinsic::GenISA_ftotf32
                    )
                 {
                     switch (id)
                     {
                     case GenISAIntrinsic::GenISA_hftobf8:
+                    case GenISAIntrinsic::GenISA_hftohf8:
                     {
                         // HW requires NoMask
                         m_encoder->SetNoMask();

@@ -34,6 +34,7 @@ namespace IGC
     {
         PRECISION_UNUSED, U8, U4, U2, S8, S4, S2,
         BF8,
+        HF8,
         TF32 = 10,
         BF16, FP16
     };
