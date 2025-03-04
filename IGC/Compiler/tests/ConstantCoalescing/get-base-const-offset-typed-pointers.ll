@@ -17,10 +17,10 @@
 ; or a getelementptr instruction.
 
 ; Merge
-define void @test_merge(float addrspace(2)* %src) {
+define void @test_merge(i32 addrspace(2)* %src) {
 ; CHECK-LABEL: define void @test_merge(
-; CHECK-SAME: float addrspace(2)* [[SRC:%.*]]) {
-; CHECK-NEXT:    [[TMP1:%.*]] = ptrtoint float addrspace(2)* [[SRC]] to i64
+; CHECK-SAME: i32 addrspace(2)* [[SRC:%.*]]) {
+; CHECK-NEXT:    [[TMP1:%.*]] = ptrtoint i32 addrspace(2)* [[SRC]] to i64
 ; CHECK-NEXT:    [[CHUNKPTR:%.*]] = inttoptr i64 [[TMP1]] to <2 x i32> addrspace(2)*
 ; CHECK-NEXT:    [[TMP2:%.*]] = load <2 x i32>, <2 x i32> addrspace(2)* [[CHUNKPTR]], align 4
 ; CHECK-NEXT:    [[TMP3:%.*]] = extractelement <2 x i32> [[TMP2]], i32 0
@@ -29,12 +29,11 @@ define void @test_merge(float addrspace(2)* %src) {
 ; CHECK-NEXT:    call void @use.i32(i32 [[TMP4]])
 ; CHECK-NEXT:    ret void
 ;
-  %1 = bitcast float addrspace(2)* %src to i32 addrspace(2)*
-  %2 = getelementptr i32, i32 addrspace(2)* %1, i32 1
+  %1 = getelementptr i32, i32 addrspace(2)* %src, i32 1
+  %2 = load i32, i32 addrspace(2)* %src
   %3 = load i32, i32 addrspace(2)* %1
-  %4 = load i32, i32 addrspace(2)* %2
+  call void @use.i32(i32 %2)
   call void @use.i32(i32 %3)
-  call void @use.i32(i32 %4)
   ret void
 }
 
@@ -66,14 +65,13 @@ define void @test_nonconst_gep(i32 addrspace(2)* %src, i32 %off) {
 ; CHECK-LABEL: define void @test_nonconst_gep(
 ; CHECK-SAME: i32 addrspace(2)* [[SRC:%.*]], i32 [[OFF:%.*]]) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = getelementptr i32, i32 addrspace(2)* [[SRC]], i32 [[OFF]]
-; CHECK-NEXT:    [[TMP2:%.*]] = load i32, i32 addrspace(2)* [[TMP1]], align 4
-; CHECK-NEXT:    [[TMP3:%.*]] = ptrtoint i32 addrspace(2)* [[TMP1]] to i64
-; CHECK-NEXT:    [[TMP4:%.*]] = add i64 [[TMP3]], 4
-; CHECK-NEXT:    [[CHUNKPTR:%.*]] = inttoptr i64 [[TMP4]] to <1 x i32> addrspace(2)*
-; CHECK-NEXT:    [[TMP5:%.*]] = load <1 x i32>, <1 x i32> addrspace(2)* [[CHUNKPTR]], align 4
-; CHECK-NEXT:    [[TMP6:%.*]] = extractelement <1 x i32> [[TMP5]], i32 0
-; CHECK-NEXT:    call void @use.i32(i32 [[TMP2]])
-; CHECK-NEXT:    call void @use.i32(i32 [[TMP6]])
+; CHECK-NEXT:    [[TMP2:%.*]] = ptrtoint i32 addrspace(2)* [[TMP1]] to i64
+; CHECK-NEXT:    [[CHUNKPTR:%.*]] = inttoptr i64 [[TMP2]] to <2 x i32> addrspace(2)*
+; CHECK-NEXT:    [[TMP3:%.*]] = load <2 x i32>, <2 x i32> addrspace(2)* [[CHUNKPTR]], align 4
+; CHECK-NEXT:    [[TMP4:%.*]] = extractelement <2 x i32> [[TMP3]], i32 0
+; CHECK-NEXT:    [[TMP5:%.*]] = extractelement <2 x i32> [[TMP3]], i32 1
+; CHECK-NEXT:    call void @use.i32(i32 [[TMP4]])
+; CHECK-NEXT:    call void @use.i32(i32 [[TMP5]])
 ; CHECK-NEXT:    ret void
 ;
   %1 = getelementptr i32, i32 addrspace(2)* %src, i32 %off
@@ -89,7 +87,7 @@ declare void @use.i32(i32)
 
 !igc.functions = !{!0, !4, !5}
 
-!0 = !{void (float addrspace(2)*)* @test_merge, !1}
+!0 = !{void (i32 addrspace(2)*)* @test_merge, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc"}
