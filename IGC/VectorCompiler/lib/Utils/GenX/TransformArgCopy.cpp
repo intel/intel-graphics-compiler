@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2024 Intel Corporation
+Copyright (C) 2022-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -360,7 +360,7 @@ vc::OrigArgInfo::OrigArgInfo(Type *TyIn, ArgKind KindIn, int NewIdxIn)
     : TransformedOrigType{TyIn}, Kind{KindIn}, NewIdx{NewIdxIn} {
   IGC_ASSERT_MESSAGE(TyIn, "Bad type provided");
   IGC_ASSERT_MESSAGE(NewIdxIn == OmittedIdx || NewIdxIn >= 0,
-                     "Undexpected new index");
+                     "Unexpected new index");
 }
 
 int vc::OrigArgInfo::getNewIdx() const {
@@ -573,10 +573,21 @@ getTransformedFuncCallArgs(CallInst &OrigCall,
     default: {
       IGC_ASSERT_MESSAGE(Kind == ArgKind::CopyIn || Kind == ArgKind::CopyInOut,
                          "unexpected arg kind");
-      LoadInst *Load =
-          new LoadInst(OrigArgData.getTransformedOrigType(), OrigArg.get(),
-                       OrigArg.get()->getName() + ".val",
-                       /* isVolatile */ false, &OrigCall);
+
+      IRBuilder<> Builder(&OrigCall);
+
+      auto *Arg = OrigArg.get();
+      Value *Load = nullptr;
+      if (auto *G = dyn_cast<GlobalVariable>(Arg);
+          G && G->hasAttribute("genx_volatile")) {
+        auto *Fn = GenXIntrinsic::getGenXDeclaration(
+            G->getParent(), GenXIntrinsic::genx_vload,
+            {OrigArgData.getTransformedOrigType(), G->getType()});
+        Load = Builder.CreateCall(Fn, G, Arg->getName() + ".val");
+      } else {
+        Load = Builder.CreateLoad(OrigArgData.getTransformedOrigType(), Arg,
+                                  Arg->getName() + ".val");
+      }
       NewCallOps.push_back(Load);
       break;
     }
@@ -645,15 +656,26 @@ static void handleRetValuePortion(int RetIdx, RetToArgLink ArgInfo,
     IGC_ASSERT_MESSAGE(
         Kind == GlobalArgKind::ByValueInOut,
         "only passed by value localized global should be copied-out");
-    Builder.CreateStore(
-        OutVal, NewFuncInfo.getGlobalArgsInfo().getGlobalForArgNo(NewIdx));
+    auto *G = NewFuncInfo.getGlobalArgsInfo().getGlobalForArgNo(NewIdx);
+    IGC_ASSERT_MESSAGE(!G->hasAttribute("genx_volatile"),
+                       "genx_volatile is not expected");
+    Builder.CreateStore(OutVal, G);
   } else {
     // Use orig index: working with orig call's argument
     int OrigArgIdx = ArgInfo.getOrigIdx();
     auto Kind = NewFuncInfo.getOrigArgInfo()[OrigArgIdx].getKind();
     IGC_ASSERT_MESSAGE(Kind == ArgKind::CopyInOut || Kind == ArgKind::CopyOut,
                        "only copy (in-)out args are expected");
-    Builder.CreateStore(OutVal, OrigCall.getArgOperand(OrigArgIdx));
+    auto *Arg = OrigCall.getArgOperand(OrigArgIdx);
+    if (auto *G = dyn_cast<GlobalVariable>(Arg);
+        G && G->hasAttribute("genx_volatile")) {
+      auto *Fn = GenXIntrinsic::getGenXDeclaration(
+          G->getParent(), GenXIntrinsic::genx_vstore,
+          {OutVal->getType(), G->getType()});
+      Builder.CreateCall(Fn, {OutVal, G});
+    } else {
+      Builder.CreateStore(OutVal, Arg);
+    }
   }
 }
 
@@ -782,7 +804,7 @@ static Value *passGlobalAsCallArg(GlobalArgInfo GAI, CallInst &OrigCall) {
   // No additional work when addrspaces match
   if (GVTy->getAddressSpace() == vc::AddrSpace::Private)
     return GAI.GV;
-  // Need to add a temprorary cast inst to match types.
+  // Need to add a temporary cast inst to match types.
   // When this switch to the caller, it'll remove this cast.
   return new AddrSpaceCastInst{
       GAI.GV, vc::changeAddrSpace(GVTy, vc::AddrSpace::Private),
@@ -961,9 +983,9 @@ std::vector<Value *> vc::FuncBodyTransfer::handleTransformedFuncArgs() {
         if (Replacement->getType() == OrigArg.getType())
           return Replacement;
         IGC_ASSERT_MESSAGE(isa<PointerType>(Replacement->getType()),
-                           "only pointers can posibly mismatch");
+                           "only pointers can possibly mismatch");
         IGC_ASSERT_MESSAGE(isa<PointerType>(OrigArg.getType()),
-                           "only pointers can posibly mismatch");
+                           "only pointers can possibly mismatch");
         IGC_ASSERT_MESSAGE(
             Replacement->getType()->getPointerAddressSpace() !=
                 OrigArg.getType()->getPointerAddressSpace(),
