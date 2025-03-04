@@ -3472,7 +3472,6 @@ namespace IGC
             bool abortOnSpills = IGC_GET_FLAG_VALUE(AllowSIMD16DropForXE2) && ctx->platform.isCoreXE2() && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32);
             AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, abortOnSpills);
             AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, false);
-
             ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
         }
         else
@@ -3795,6 +3794,11 @@ namespace IGC
         MetaDataUtils* pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
         uint32_t simd_size = getReqdSubGroupSize(F, pMdUtils);
+
+        // there is a requirement for specific compilation size, we can't abort on simd32
+        if (simd_size != 0)
+            EP.m_canAbortOnSpill = false;
+
         bool hasSubGroupForce = hasSubGroupIntrinsicPVC(F);
         uint32_t maxPressure = getMaxPressure(F, pMdUtils);
 
