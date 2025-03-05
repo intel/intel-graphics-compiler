@@ -173,22 +173,29 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst* CI)
                 Value* textureCond = nullptr;
                 Value* samplerCond = nullptr;
 
+                // No need to repeat 3 possible times to call readFirstLane(src).
+                // As readFirstLane(src) here will call:
+                // firstLaneID = getFirstLaneID(helperLaneMode), and
+                // create_waveshuffleIndex(src, firstLaneID, helperLaneMode);
+                // Here the helperLaneMode is actually nullptr (default).
+                llvm::Value* firstLaneID = builder.getFirstLaneID(nullptr);
+
                 // need care about pairTexture uniform???
                 if (!m_WIAnalysis->isUniform(pairTexture))
                 {
-                    pairTextureNew = builder.readFirstLane(pairTexture);
+                    pairTextureNew = builder.create_waveshuffleIndex(pairTexture, firstLaneID, nullptr);
                     pairTextureNew->setName("firstActivePairTex");
                 }
 
                 if (!m_WIAnalysis->isUniform(texture))
                 {
-                    textureNew = builder.readFirstLane(texture);
+                    textureNew = builder.create_waveshuffleIndex(texture, firstLaneID, nullptr);
                     textureNew->setName("firstActiveTex");
                 }
 
                 if (!m_WIAnalysis->isUniform(sampler))
                 {
-                    samplerNew = builder.readFirstLane(sampler);
+                    samplerNew = builder.create_waveshuffleIndex(sampler, firstLaneID, nullptr);
                     samplerNew->setName("firstActiveSampler");
                 }
 
