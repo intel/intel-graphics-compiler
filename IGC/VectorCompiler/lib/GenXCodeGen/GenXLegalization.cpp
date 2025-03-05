@@ -239,7 +239,7 @@ class GenXLegalization : public FunctionPass {
   // bale {
   //    W1.1 = rdr(V0, R.1)
   //    W2.1 = op(W1.1, ...)
-  //    V1.1 = wrr(V1.0, W2.1, R1)
+  //    V1.1 = wrr(V1.0, W2.1, R.1)
   // }
   // V1.0 and V0 are live at the same time. This makes copy-coalescing
   // fail and also increases rp by the size of V0.
@@ -255,7 +255,7 @@ class GenXLegalization : public FunctionPass {
   // bale {
   //    W1.1 = rdr(V1.0, R.1)
   //    W2.1 = op(W1.1, ...)
-  //    V1.1 = wrr(V1.0, W2.1, R1)
+  //    V1.1 = wrr(V1.0, W2.1, R.1)
   // }
   // If V0 is killed after this bale, then V1.0, V1.1 and V0
   // could be coalesced into a single variable. This is the pattern
@@ -1359,6 +1359,22 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
         Baling->setBaleInfo(User, BI);
         ThisWidth = DETERMINEWIDTH_UNBALE;
       }
+
+      if (R.is1D())
+        break;
+      // The rdregion is split when R.Width crosses the register boundary.
+      for (unsigned I = 0; I < ThisWidth / R.Width; I++) {
+        auto ChunkOffset = R.Offset + I * R.VStride * R.ElementBytes;
+        auto ChunkEndOffset =
+            ChunkOffset + (R.Width - 1) * R.Stride * R.ElementBytes;
+        if (ChunkOffset / ST->getGRFByteSize() !=
+            ChunkEndOffset / ST->getGRFByteSize()) {
+          ThisWidth = R.Width;
+          MustSplit = true;
+          break;
+        }
+      }
+
       break;
     }
     case BaleInfo::NOTP:
