@@ -309,18 +309,21 @@ uint32_t kv_get_send_descs(const kv_t *kv, int32_t pc, uint32_t *ex_desc,
   }
 
   uint32_t n = 0;
-  if (inst->getExtMsgDescriptor().isImm()) {
-    n++;
-    *ex_desc = inst->getExtMsgDescriptor().imm;
-  } else {
-    *ex_desc = KV_INVALID_SEND_DESC;
-  }
-  if (inst->getMsgDescriptor().isImm()) {
-    n++;
-    *desc = inst->getMsgDescriptor().imm;
-  } else {
-    *desc = KV_INVALID_SEND_DESC;
-  }
+      if (inst->getExtMsgDescriptor().isImm()) {
+          n++;
+          *ex_desc = inst->getExtMsgDescriptor().imm;
+      }
+      else {
+          *ex_desc = KV_INVALID_SEND_DESC;
+      }
+      if (inst->getMsgDescriptor().isImm()) {
+          n++;
+          *desc = inst->getMsgDescriptor().imm;
+      }
+      else {
+          *desc = KV_INVALID_SEND_DESC;
+      }
+
   return n;
 }
 
