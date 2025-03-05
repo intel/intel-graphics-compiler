@@ -307,6 +307,11 @@ IGA_API kv_status_t kv_get_sendg_ind_desc1(const kv_t *kv, int32_t pc,
  */
 #define KV_INVALID_SEND_DESC ((uint32_t)0xFFFFFFFFF)
 
+ /*
+  * A symbol to indicate an invalid sendg descriptor value.
+  */
+#define KV_INVALID_SEND_DESC64B ((uint64_t)0xFFFFFFFFFFFFFFFFL)
+
 /* TODO: review necessity of this macro.
  * A symbol to indicate an invalid message length value.
  */
