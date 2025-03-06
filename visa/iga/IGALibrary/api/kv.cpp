@@ -176,6 +176,28 @@ int32_t kv_get_inst_size(const kv_t *kv, int32_t pc) {
   return inst->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
 }
 
+kv_status_t kv_get_inst_msg_info(const kv_t *kv, int32_t pc, bool *isAtomic,
+                                 bool *isSlm, bool *isScratch) {
+    if (!kv) {
+        return KV_ERROR;
+    }
+
+    const Instruction* inst = ((KernelViewImpl*)kv)->getInstruction(pc);
+    if (!inst) {
+        return KV_INVALID_PC;
+    }
+    const DecodeResult di = tryDecode(*inst, nullptr);
+    if (!di) {
+        return KV_DECODE_ERROR;
+    }
+
+    *isSlm = di.info.hasAttr(iga::MessageInfo::Attr::SLM);
+    *isScratch = di.info.hasAttr(iga::MessageInfo::Attr::SCRATCH);
+    *isAtomic = di.info.isAtomic();
+
+    return KV_SUCCESS;
+}
+
 bool kv_has_inst_opt(const kv_t *kv, int32_t pc, uint32_t opt) {
   KernelViewImpl *kvImpl = (KernelViewImpl *)kv;
   const Instruction *inst = kvImpl->getInstruction(pc);

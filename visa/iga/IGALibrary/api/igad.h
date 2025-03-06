@@ -154,6 +154,12 @@ typedef void(CDECLATTRIBUTE *pIGAKVDelete)(kv_t *);
 
 #define IGA_KV_GET_INST_SIZE_STR "kv_get_inst_size"
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetInstSize)(const kv_t *kv, int32_t pc);
+#define IGA_KV_GET_INST_MSG_INFO_STR "kv_get_inst_msg_info"
+typedef int32_t(CDECLATTRIBUTE *pIGAKVGetInstMsgInfo)(const kv_t *kv,
+                                                      int32_t pc,
+                                                      bool *isAtomic,
+                                                      bool *isSlm,
+                                                      bool *isScratch);
 #define IGA_KV_GET_INST_TARGETS_STR "kv_get_inst_targets"
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetInstTargets)(const kv_t *kv,
                                                        int32_t pc,
@@ -379,6 +385,7 @@ typedef struct {
   pIGAKVCreate kv_create;
   pIGAKVDelete kv_delete;
   pIGAKVGetInstSize kv_get_inst_size;
+  pIGAKVGetInstMsgInfo kv_get_inst_msg_info;
   pIGAKVGetInstTargets kv_get_inst_targets;
   pIGAKVIsInstTarget kv_is_inst_target;
   pIGAKVGetDefaultLabelName kv_get_default_label_name;

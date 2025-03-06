@@ -113,6 +113,18 @@ IGA_API void kv_delete(struct kv_t *);
 IGA_API int32_t kv_get_inst_size(const struct kv_t *kv, int32_t pc);
 
 /*
+ * Returns some attributes of a message: if it is atomic, slm, scratch
+ * operation.
+ * Returns:
+ *   KV_SUCCESS on success; output is stored to isAtomic and isSlm
+ *   KV_ERROR if kv is invalid
+ *   KV_INVALID_PC if instruction cannot be found
+ *   KV_DECODE_ERROR if an instruction cannot be docoded
+ */
+IGA_API kv_status_t kv_get_inst_msg_info(const kv_t* kv, int32_t pc,
+    bool* isAtomic, bool* isSlm, bool* isScratch);
+
+/*
  * Returns true if the instruction has the opt
  */
 IGA_API bool kv_has_inst_opt(const struct kv_t *kv, int32_t pc, uint32_t opt);
