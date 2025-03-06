@@ -132,7 +132,7 @@ public:
     virtual OctEltUnit GetTotalURBReadLength() const {
         return OctEltUnit(0);
     }
-    unsigned GetMaxRegForThreadDispatch() const
+    virtual unsigned GetMaxRegForThreadDispatch() const
     {
         return m_simdProgram.m_startReg + 8 * GetTotalURBReadLength().Count();
     }
