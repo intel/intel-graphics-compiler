@@ -6052,24 +6052,6 @@ void EmitPass::emitSimdClusteredBroadcast(llvm::Instruction* inst)
 
 }
 
-void EmitPass::emitQuadBroadcast(llvm::Instruction* inst) {
-    CVariable* data = GetSymbol(inst->getOperand(0));
-    ConstantInt* laneOp = dyn_cast<ConstantInt>(inst->getOperand(1));
-    IGC_ASSERT(laneOp && laneOp->getZExtValue() < 4);
-
-    if (data->IsUniform()) {
-        m_encoder->Copy(m_destination, data);
-        m_encoder->Push();
-        return;
-    }
-
-    m_encoder->SetNoMask();
-    m_encoder->SetSrcRegion(0, 4, 4, 0);
-    m_encoder->SetSrcSubReg(0, laneOp->getZExtValue());
-    m_encoder->Copy(m_destination, data);
-    m_encoder->Push();
-}
-
 void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
 {
     CVariable* pCurrentData = GetSymbol(inst->getOperand(0));
@@ -9498,9 +9480,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_WaveShuffleIndex:
     case GenISAIntrinsic::GenISA_WaveBroadcast:
         emitSimdShuffle(inst);
-        break;
-    case GenISAIntrinsic::GenISA_QuadBroadcast:
-        emitQuadBroadcast(inst);
         break;
     case GenISAIntrinsic::GenISA_WaveClusteredBroadcast:
         emitSimdClusteredBroadcast(inst);

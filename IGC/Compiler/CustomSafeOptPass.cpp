@@ -289,7 +289,8 @@ void CustomSafeOptPass::visitAnd(BinaryOperator& I) {
 // also be written manually as
 //   uint32_t other_id = sg.get_local_id() ^ XOR_VALUE;
 //   r = select_from_group(sg, x, other_id);
-void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I) {
+void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
+{
     using namespace llvm::PatternMatch;
     /*
     Pattern match
@@ -298,148 +299,87 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I) {
     %xor = xor i16 %[optional1], 1
     ...[optional2] = %xor
     %simdShuffle = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %x, i32 %[optional2], i32 0)
-    Optional can be any combinations of:
+
+    Optional can be any combinations of :
       * %and = and i16 %856, 63
       * %zext = zext i16 %857 to i32
     We ignore any combinations of those, as they don't change the final calculated value,
     and different permutations were observed.
     */
 
-    auto getInstructionIgnoringAndZext = [](Value* V, unsigned Opcode) -> Instruction* {
-        while (auto* VI = dyn_cast<Instruction>(V)) {
-            if (VI->getOpcode() == Opcode) {
-                return VI;
-            }
-            else if (auto* ZI = dyn_cast<ZExtInst>(VI)) {
-                // Check if zext is from i16 to i32
-                if (ZI->getSrcTy()->isIntegerTy(16) && ZI->getDestTy()->isIntegerTy(32)) {
-                    V = ZI->getOperand(0); // Skip over zext
+    ConstantInt* enableHelperLanes = dyn_cast<ConstantInt>(I->getOperand(2));
+    if (!enableHelperLanes || enableHelperLanes->getZExtValue() != 0) {
+        return;
+    }
+
+    auto getInstructionIgnoringAndZext = []( Value* V, unsigned Opcode ) -> Instruction* {
+            while( auto* VI = dyn_cast<Instruction>( V ) ) {
+                if( VI->getOpcode() == Opcode ) {
+                    return VI;
                 }
-                else {
-                    return nullptr; // Not the zext we are looking for
+                else if( auto* ZI = dyn_cast<ZExtInst>( VI ) ) {
+                    // Check if zext is from i16 to i32
+                    if( ZI->getSrcTy()->isIntegerTy( 16 ) && ZI->getDestTy()->isIntegerTy( 32 ) ) {
+                        V = ZI->getOperand( 0 ); // Skip over zext
+                    } else {
+                        return nullptr; // Not the zext we are looking for
+                    }
+                }
+                else if( VI->getOpcode() == Instruction::And ) {
+                    ConstantInt* andValueConstant = dyn_cast<ConstantInt>( VI->getOperand( 1 ) );
+                    // We handle "redundant values", so those which bits enable all of
+                    // 32 lanes, so 31, 63 (spotted in nature), 127, 255 etc.
+                    if( andValueConstant && (( andValueConstant->getZExtValue() & 31 ) != 31 ) ) {
+                        return nullptr;
+                    }
+                    V = VI->getOperand( 0 ); // Skip over and
+                } else {
+                    return nullptr; // Not a zext, and, or the specified opcode
                 }
             }
-            else if (VI->getOpcode() == Instruction::And) {
-                ConstantInt* andValueConstant = dyn_cast<ConstantInt>(VI->getOperand(1));
-                // We handle "redundant values", so those which bits enable all of
-                // 32 lanes, so 31, 63 (spotted in nature), 127, 255 etc.
-                if (andValueConstant && ((andValueConstant->getZExtValue() & 31) != 31)) {
-                    return nullptr;
-                }
-                V = VI->getOperand(0); // Skip over and
-            }
-            else {
-                return nullptr; // Not a zext, and, or the specified opcode
-            }
-        }
-        return nullptr; //unreachable
+            return nullptr; //unreachable
         };
 
-    Value* indexOp = I->getOperand(1);
-
-    // Get helper lanes parameter
-    ConstantInt* enableHelperLanes = dyn_cast<ConstantInt>(I->getOperand(2));
-    if (!enableHelperLanes) {
-        return;
-    }
-
-    // Try QuadBroadcast pattern if helper lanes = 1
-    if (enableHelperLanes->getZExtValue() == 1) {
-        auto* zextInst = dyn_cast<ZExtInst>(indexOp);
-        if (zextInst && zextInst->getSrcTy()->isIntegerTy(16) &&
-            zextInst->getDestTy()->isIntegerTy(32)) {
-
-            auto* andInst = dyn_cast<Instruction>(zextInst->getOperand(0));
-            if (andInst && andInst->getOpcode() == Instruction::And) {
-                // Check for mask constant -4 (0xFFFC)
-                auto* mask = dyn_cast<ConstantInt>(andInst->getOperand(1));
-                if (mask && mask->getSExtValue() == -4) {
-                    uint32_t laneIdx = 0;
-                    Value* simdLaneOp = andInst->getOperand(0);
-
-                    // Check for or operation
-                    if (auto* orInst = dyn_cast<Instruction>(simdLaneOp)) {
-                        if (orInst->getOpcode() == Instruction::Or) {
-                            auto* constOffset = dyn_cast<ConstantInt>(orInst->getOperand(1));
-                            // Return if OR value is not a constant or is >= 4
-                            if (!constOffset || constOffset->getZExtValue() >= 4) {
-                                return;
-                            }
-                            laneIdx = constOffset->getZExtValue() & 0x3;
-                            simdLaneOp = orInst->getOperand(0);
-                        }
-                    }
-
-                    // Check for simdLaneId
-                    auto* simdLaneCall = dyn_cast<CallInst>(simdLaneOp);
-                    if (simdLaneCall) {
-                        Function* simdIdF = simdLaneCall->getCalledFunction();
-                        if (simdIdF &&
-                            GenISAIntrinsic::getIntrinsicID(simdIdF) == GenISAIntrinsic::GenISA_simdLaneId) {
-
-                            // Pattern matched - create QuadBroadcast
-                            IRBuilder<> builder(I);
-
-                            Function* quadBroadcastFunc = GenISAIntrinsic::getDeclaration(
-                                builder.GetInsertBlock()->getParent()->getParent(),
-                                GenISAIntrinsic::GenISA_QuadBroadcast,
-                                I->getType());
-
-                            Value* result = builder.CreateCall(quadBroadcastFunc,
-                                { I->getOperand(0), builder.getInt32(laneIdx) },
-                                "quadBroadcast");
-
-                            I->replaceAllUsesWith(result);
-                            I->eraseFromParent();
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Try ShuffleXor pattern if helper lanes = 0
-    if (enableHelperLanes->getZExtValue() != 0) {
-        return;
-    }
-
-    Instruction* xorInst = getInstructionIgnoringAndZext(indexOp, Instruction::Xor);
-    if (!xorInst)
+    Instruction* xorInst = getInstructionIgnoringAndZext( I->getOperand( 1 ), Instruction::Xor );
+    if( !xorInst )
         return;
 
-    auto xorOperand = xorInst->getOperand(0);
-    auto xorValueConstant = dyn_cast<ConstantInt>(xorInst->getOperand(1));
-    if (!xorValueConstant)
+    auto xorOperand = xorInst->getOperand( 0 );
+    auto xorValueConstant = dyn_cast<ConstantInt> ( xorInst->getOperand( 1 ) );
+    if( !xorValueConstant )
         return;
 
     uint64_t xorValue = xorValueConstant->getZExtValue();
-    if (xorValue >= 16) {
+    if( xorValue >= 16 )
+    {
         // currently not supported in the emitter
         return;
     }
 
-    auto simdLaneCandidate = getInstructionIgnoringAndZext(xorOperand, Instruction::Call);
+    auto simdLaneCandidate = getInstructionIgnoringAndZext( xorOperand, Instruction::Call );
+
     if (!simdLaneCandidate)
         return;
 
-    CallInst* CI = cast<CallInst>(simdLaneCandidate);
+    CallInst* CI = cast<CallInst>( simdLaneCandidate );
     Function* simdIdF = CI->getCalledFunction();
-    if (!simdIdF || GenISAIntrinsic::getIntrinsicID(simdIdF) != GenISAIntrinsic::GenISA_simdLaneId)
+    if( !simdIdF || GenISAIntrinsic::getIntrinsicID( simdIdF ) != GenISAIntrinsic::GenISA_simdLaneId)
         return;
 
-    // ShuffleXor pattern found
-    auto insertShuffleXor = [](IRBuilder<>& builder,
-        Value* value,
-        uint32_t xorValue) {
-            Function* simdShuffleXorFunc = GenISAIntrinsic::getDeclaration(
-                builder.GetInsertBlock()->getParent()->getParent(),
-                GenISAIntrinsic::GenISA_simdShuffleXor,
-                value->getType());
+    // since we didn't return earlier, pattern is found
 
-            return builder.CreateCall(simdShuffleXorFunc,
-                { value, builder.getInt32(xorValue) }, "simdShuffleXor");
-        };
+    auto insertShuffleXor = [](IRBuilder<>& builder,
+                                    Value* value,
+                                    uint32_t xorValue)
+    {
+        Function* simdShuffleXorFunc = GenISAIntrinsic::getDeclaration(
+            builder.GetInsertBlock()->getParent()->getParent(),
+            GenISAIntrinsic::GenISA_simdShuffleXor,
+            value->getType());
+
+        return builder.CreateCall(simdShuffleXorFunc,
+            { value, builder.getInt32(xorValue) }, "simdShuffleXor");
+    };
 
     Value* value = I->getOperand(0);
     IRBuilder<> builder(I);

@@ -2419,24 +2419,6 @@ intrinsics:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
-        name: "GenISA_QuadBroadcast"
-        comment: "Broadcasts value within a quad from specified lane"
-        return_definition: !<ReturnDefinition>
-            type_definition: *any_int
-            comment: "result"
-        arguments:
-            - !<ArgumentDefinition>
-                name: Arg0
-                type_definition: *ref_0_
-                comment: "value to broadcast"
-            - !<ArgumentDefinition>
-                name: Arg1
-                type_definition: *i32
-                comment: "source lane within quad (0-3)"
-        attributes:
-            - !AttributeID "Convergent"
-            - !AttributeID "NoUnwind"
-    - !<IntrinsicDefinition>
         name: "GenISA_WaveBroadcast"
         comment: "Broadcasts from specific lane to all lanes. Overlaps with WaveShuffleIndex,\
             \ but guarantees that lane is thread-uniform."
