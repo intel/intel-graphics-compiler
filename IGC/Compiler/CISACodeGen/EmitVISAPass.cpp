@@ -19674,12 +19674,6 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
     uint32_t eltBytes = GetScalarTypeSizeInRegister(eltTy);
     uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
 
-    int immScaleInt =
-        immScale ? static_cast<int>(immScale->getSExtValue()) : 1;
-
-    int immOffsetInt =
-        immOffset ? static_cast<int>(immOffset->getSExtValue()) : 0;
-
     CountStatelessIndirectAccess(Ptr, resource);
     // eOffset is in bytes
     // offset corresponds to Int2Ptr operand obtained during pattern matching
@@ -19695,6 +19689,11 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
     // Not possible to have uniform dest AND non-uniform src.
     IGC_ASSERT_MESSAGE(!(destUniform && !srcUniform),
                        "Unexpected ld: uniform dest and non-uniform src!");
+
+    const int immOffsetInt =
+        immOffset ? static_cast<int>(immOffset->getSExtValue()) : 0;
+    const int immScaleInt =
+        immScale ? static_cast<int>(immScale->getSExtValue()) : 1;
 
     // 1. handle cases eltBytes < 4
     if (eltBytes < 4)
