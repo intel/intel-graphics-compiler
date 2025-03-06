@@ -788,6 +788,10 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     m_currShader->SetDeSSAHelper(m_deSSA);
     m_currShader->SetEmitPassHelper(this);
 
+    if (m_pCtx->m_instrTypes.numBarrier > 0 && m_moduleMD->NBarrierCnt > 0) {
+        IGC_SET_FLAG_VALUE(ActiveThreadsOnlyBarrier, false);
+    }
+
     //Add CCtuple root variables.
     if (IGC_IS_FLAG_DISABLED(DisablePayloadCoalescing)) {
         m_currShader->SetCoalescingEngineHelper(m_CE);
