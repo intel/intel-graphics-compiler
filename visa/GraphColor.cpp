@@ -11370,7 +11370,7 @@ void GlobalRA::setupA0Dot2OnSpill(bool hasStackCall,
                                   unsigned int nextSpillOffset,
                                   int globalScratchOffset) {
   if (builder.hasScratchSurface() && !hasStackCall &&
-      (nextSpillOffset + globalScratchOffset) > SCRATCH_MSG_LIMIT) {
+      (nextSpillOffset + globalScratchOffset) >= SCRATCH_MSG_LIMIT) {
     // create temp variable to store old a0.2 - this is marked as live-in
     // and live-out. because the variable is emitted only post RA to
     // preserve old value of a0.2.
