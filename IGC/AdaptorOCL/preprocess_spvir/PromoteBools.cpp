@@ -464,6 +464,14 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     {
         newValue = promoteIntToPtr(inttoptr);
     }
+    else if (auto extractElement = dyn_cast<ExtractElementInst>(value))
+    {
+        newValue = promoteExtractElement(extractElement);
+    }
+    else if (auto insertElement = dyn_cast<InsertElementInst>(value))
+    {
+        newValue = promoteInsertElement(insertElement);
+    }
     else if (auto instruction = dyn_cast<Instruction>(value))
     {
         for (auto& operand : instruction->operands())
@@ -1190,4 +1198,39 @@ IntToPtrInst* PromoteBools::promoteIntToPtr(IntToPtrInst* inttoptr)
     );
     newIntToPtr->setDebugLoc(inttoptr->getDebugLoc());
     return newIntToPtr;
+}
+
+ExtractElementInst* PromoteBools::promoteExtractElement(ExtractElementInst* extractElement)
+{
+    if (!extractElement || (!wasPromotedAnyOf(extractElement->operands()) && !typeNeedsPromotion(extractElement->getType())))
+    {
+        return extractElement;
+    }
+
+    auto newExtractElem = ExtractElementInst::Create(
+        getOrCreatePromotedValue(extractElement->getVectorOperand()),
+        getOrCreatePromotedValue(extractElement->getIndexOperand()),
+        "",
+        extractElement
+    );
+    newExtractElem->setDebugLoc(extractElement->getDebugLoc());
+    return newExtractElem;
+}
+
+InsertElementInst* PromoteBools::promoteInsertElement(InsertElementInst* insertElement)
+{
+    if (!insertElement || (!wasPromotedAnyOf(insertElement->operands()) && !typeNeedsPromotion(insertElement->getType())))
+    {
+        return insertElement;
+    }
+
+    auto newInsertElem = InsertElementInst::Create(
+        getOrCreatePromotedValue(insertElement->getOperand(0)),
+        getOrCreatePromotedValue(insertElement->getOperand(1)),
+        getOrCreatePromotedValue(insertElement->getOperand(2)),
+        "",
+        insertElement
+    );
+    newInsertElem->setDebugLoc(insertElement->getDebugLoc());
+    return newInsertElem;
 }
