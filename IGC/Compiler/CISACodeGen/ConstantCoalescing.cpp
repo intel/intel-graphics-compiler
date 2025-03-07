@@ -1596,7 +1596,7 @@ bool ConstantCoalescing::DecomposePtrExp(
         int64_t Offset = 0;
         auto *Ptr = getPointerBaseWithConstantOffset(ptr_val, Offset, *dataLayout);
 
-        if ((m_ctx->type != ShaderType::OPENCL_SHADER && Ptr == ptr_val) || Offset < 0)
+        if (Ptr == ptr_val || Offset < 0)
             return false;
 
         buf_idxv = Ptr;
