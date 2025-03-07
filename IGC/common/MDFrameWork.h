@@ -300,6 +300,9 @@ enum class ShaderTypeMD
         // Shaders that satisfy `isPrimaryShaderIdentifier()` can also have
         // a collection of other names that they go by.
         std::vector<std::string> Aliases;
+
+        // for continuations used in ReorderThread, this field indicates the maximum value of the coherence hint
+        uint32_t NumCoherenceHintBits = 0;
     };
 
     struct ConstantAddress

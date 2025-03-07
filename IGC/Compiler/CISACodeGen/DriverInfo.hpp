@@ -392,6 +392,7 @@ namespace IGC
         virtual bool supportsVRT() const { return true; }
 
         virtual bool supportsUniformPrivateMemorySpace() const { return false; }
+        virtual uint32_t maxNumCoherenceHintBitsForReorderThread() const { return 0; }
 protected:
     bool autoGRFSelection = false;
     };

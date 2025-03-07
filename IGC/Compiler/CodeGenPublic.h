@@ -522,6 +522,7 @@ namespace IGC
         uint32_t ShaderStackSize = 0;
         CallableShaderTypeMD ShaderType = NumberOfCallableShaderTypes;
         bool isContinuation = false;
+        uint32_t NumCoherenceHintBits = 0;
         // if 'isContinuation' is true, this will contain the name of the
         // original shader.
         std::string ParentName;
