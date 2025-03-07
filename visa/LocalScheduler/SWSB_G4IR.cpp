@@ -85,6 +85,70 @@ static bool isSLMMsg(const G4_INST *inst) {
   return false;
 }
 
+
+static bool isRTQueryCheck(const G4_INST *send, const G4_INST *preInst) {
+  G4_Operand *preSrc0 = preInst->getSrc(0);
+  G4_Operand *preDst = preInst->getDst();
+  G4_Operand *sendSrc0 = send->getSrc(0);
+  G4_Operand *sendDst = send->getDst();
+  if (preInst->opcode() != G4_mov || !send->isSend()) {
+    return false;
+  }
+  if (preInst->getExecSize() != g4::SIMD1) {
+    return false;
+  }
+  if (!preSrc0 || preSrc0->isNullReg() || !preSrc0->isImm()) {
+    return false;
+  }
+
+  if (preSrc0->asImm()->getImm() != 3) {
+    return false;
+  }
+
+  if (!preDst || preDst->isNullReg() || preDst->getType() != Type_UD ||
+      !preDst->isDstRegRegion() ||
+      preDst->asDstRegRegion()->getSubRegOff() != 4) {
+    return false;
+  }
+
+  if (!sendSrc0 || sendSrc0->isNullReg() || !sendSrc0->isSrcRegRegion()) {
+    return false;
+  }
+
+  if (sendSrc0->getTopDcl() != preDst->getTopDcl()) {
+    return false;
+  }
+
+  if (sendDst && !sendDst->isNullReg()) {
+    return false;
+  }
+
+  const G4_SendDescRaw *msgDesc = send->getMsgDescRaw();
+  if (!msgDesc) {
+    return false;
+  }
+
+  if (!msgDesc->isRaw()) {
+    return false;
+  }
+
+  if (msgDesc->getSFID() != SFID::RTHW) {
+    return false;
+  }
+
+  unsigned descImm = msgDesc->getDesc();
+  if (descImm >> 14 & 0xF) { // [14:17] is 0
+    return false;
+  }
+
+  unsigned extDescValue = msgDesc->getExtendedDesc();
+  if (!(extDescValue & 0x8)) {
+    return false;
+  }
+
+  return true;
+}
+
 static bool isPrefetch(const G4_INST *inst) {
   if (!inst->isSend()) {
     return false;
@@ -4542,6 +4606,7 @@ void SWSB::insertTokenSync() {
   for (G4_BB *bb : fg) {
     BitSet dstTokens(totalTokenNum, false);
     BitSet srcTokens(totalTokenNum, false);
+    unsigned short rayQueryCheckToken = (unsigned short)-1;
 
     std::list<G4_INST *>::iterator inst_it(bb->begin()), iInstNext(bb->begin());
     while (iInstNext != bb->end()) {
@@ -4569,6 +4634,38 @@ void SWSB::insertTokenSync() {
 
       SBNode *node = *node_it;
       vASSERT(node->GetInstruction() == inst);
+
+      if (rayQueryCheckToken != (unsigned short)-1) {
+        if (tokenHonourInstruction(
+                inst) || // Don't across any token instruction
+            inst->isCFInst() ||
+            inst->isLabel()) {
+          G4_INST *syncInst = insertSyncInstruction(bb, inst_it);
+          syncInst->setToken(rayQueryCheckToken);
+          syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
+          rayQueryCheckToken = (unsigned short)-1;
+        }
+      }
+
+      {
+        G4_INST *preInst = nullptr;
+        if (inst_it != bb->begin()) {
+          std::list<G4_INST *>::iterator pInst = inst_it;
+          pInst--;
+          preInst = *pInst;
+        }
+
+        if (inst->isSend() && preInst && preInst->isMov() &&
+            isRTQueryCheck(inst, preInst)) {
+          rayQueryCheckToken = inst->getSBIDSetToken();
+          if (iInstNext == bb->end()) { // In case the fence instruction is the
+                                        // last instruction of BB
+            G4_INST *syncInst = insertSyncInstructionAfter(bb, inst_it);
+            syncInst->setToken(rayQueryCheckToken);
+            syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
+          }
+        }
+      }
 
       bool fusedSync = false;
       // HW W/A
