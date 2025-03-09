@@ -4547,7 +4547,7 @@ namespace IGC
 
         SetAbortOnSpillThreshold(canAbortOnSpill, AllowSpill);
 
-        if (context->type == ShaderType::COMPUTE_SHADER || (context->type == ShaderType::OPENCL_SHADER && IGC_GET_FLAG_VALUE(ActiveThreadsOnlyBarrier)))
+        if (context->type == ShaderType::COMPUTE_SHADER)
         {
             SaveOption(vISA_ActiveThreadsOnlyBarrier, true);
         }
