@@ -236,6 +236,20 @@ void IGC::overrideWalkOrderKeysInPass(
     {
         threadIDLayout = (ThreadIDLayout)IGC_IS_FLAG_ENABLED(OverrideCsTileLayout);
     }
+
+    const IGC::TriboolFlag overrideHWGenerateLID =
+        static_cast<TriboolFlag>(IGC_GET_FLAG_VALUE(OverrideHWGenerateLID));
+    switch (overrideHWGenerateLID)
+    {
+    case TriboolFlag::Enabled:
+        enableHWGenerateLID = true;
+        break;
+    case TriboolFlag::Disabled:
+        enableHWGenerateLID = false;
+        break;
+    default:
+        break;
+    }
 }
 
 bool IGC::enableHWGenerateLIDInPass(

@@ -920,6 +920,11 @@ DECLARE_IGC_REGKEY(bool, OverrideCsWalkOrderEnable,  false, "Enable overriding c
 DECLARE_IGC_REGKEY(int,  OverrideCsWalkOrder,        0,     "Override compute walker walk order", true)
 DECLARE_IGC_REGKEY(bool, OverrideCsTileLayoutEnable, false, "Enable overriding compute walker tile layout", true)
 DECLARE_IGC_REGKEY(bool, OverrideCsTileLayout,       0,     "Override compute walker tile layout. False is linear. True is TileY", true)
+DECLARE_IGC_REGKEY_ENUM(OverrideHWGenerateLID, -1, "Override HW Generate Local ID setting" \
+    "-1 - default behavior," \
+    " 0 - force disabled," \
+    " 1 - force enabled", \
+    TRIBOOL_OPTIONS, true)
 DECLARE_IGC_REGKEY(DWORD, MemCpyLoweringUnrollThreshold, 12, "Min number of mem instructions that require non-unrolled loop when lowering memcpy", false)
 DECLARE_IGC_REGKEY(DWORD, EnablePrivMemNewSOATranspose,            1, "0 : disable new algo; 1 and up : enable new algo. " \
                                                                       "1 : enable new algo just for array of struct; " \

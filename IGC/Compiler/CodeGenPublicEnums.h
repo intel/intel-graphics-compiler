@@ -327,12 +327,12 @@ namespace IGC
 
 
     enum class CS_WALK_ORDER : unsigned char {
-        WO_XYZ = 0,
-        WO_XZY = 1,
-        WO_YXZ = 2,
-        WO_ZXY = 3,
-        WO_YZX = 4,
-        WO_ZYX = 5
+        WO_XYZ = 0, //012
+        WO_XZY = 1, //021
+        WO_YXZ = 2, //102
+        WO_ZXY = 3, //201 - incorrect enum value, need to swap with next line
+        WO_YZX = 4, //120 - incorrect enum value, need to swap with the line above
+        WO_ZYX = 5  //210
     };
 
     enum EMIT_LOCAL_MASK {
