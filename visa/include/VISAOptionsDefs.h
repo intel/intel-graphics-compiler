@@ -168,6 +168,12 @@ DEF_VISA_OPTION(
     "Spill size allowed without increasing GRF number in VRT."
     "0 means VRT will always bump up the GRF number to avoid spills",
     256)
+DEF_VISA_OPTION(vISA_SpillAllowed256GRF, ET_INT32, "-spillAllowed256GRF",
+                "USAGE: -spillAllowed256GRF <spillSize>.\n"
+                "Override spill threshold for 256GRF config. If shader has "
+                "spills < <spillSize>, #GRF is not bumped up. "
+                "0 means no override",
+                0)
 DEF_VISA_OPTION(vISA_ForceGRFModeUp, ET_INT32, "-forceGRFModeUp",
                 "USAGE: -forceGRFModeUp <k>.\n"
                 "Set the GRF mode k higher than the one selected by default"

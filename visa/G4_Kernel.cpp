@@ -2216,3 +2216,12 @@ bool GRFMode::hasLargerGRFSameThreads() const {
 
   return configs[currentMode].numThreads == configs[largerGrfIdx].numThreads;
 }
+
+// Get spill threshold for current GRF mode
+unsigned GRFMode::getSpillThreshold() const {
+  if (configs[currentMode].numGRF == 256 &&
+      options->getuInt32Option(vISA_SpillAllowed256GRF) > 0)
+    return options->getuInt32Option(vISA_SpillAllowed256GRF);
+
+  return options->getuInt32Option(vISA_SpillAllowed);
+}

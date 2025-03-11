@@ -155,6 +155,7 @@ public:
   unsigned setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
                                 bool forceGRFModedUp = false);
   bool hasLargerGRFSameThreads() const;
+  unsigned getSpillThreshold() const;
 
   unsigned getNumGRF() const { return configs[currentMode].numGRF; }
   unsigned getDefaultGRF() const { return configs[defaultMode].numGRF; }
