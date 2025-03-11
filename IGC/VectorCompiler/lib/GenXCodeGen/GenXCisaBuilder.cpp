@@ -491,8 +491,14 @@ private:
 
   VISA_VectorOpnd *createDestination(Value *Dest, genx::Signedness Signed,
                                      unsigned Mod, const DstOpndDesc &DstDesc,
+                                     genx::Signedness *SignedRes,
+                                     unsigned *Offset, bool IsBF);
+
+  VISA_VectorOpnd *createDestination(Value *Dest, genx::Signedness Signed,
+                                     unsigned Mod, const DstOpndDesc &DstDesc,
                                      genx::Signedness *SignedRes = nullptr,
                                      unsigned *Offset = nullptr);
+
   VISA_VectorOpnd *createDestination(Value *Dest,
                                      genx::Signedness Signed,
                                      unsigned *Offset = nullptr);
@@ -1589,6 +1595,15 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
                                      Signedness *SignedRes, unsigned *Offset) {
   auto ID = vc::getAnyIntrinsicID(Dest);
   bool IsBF = ID == vc::InternalIntrinsic::cast_to_bf16;
+  return createDestination(Dest, Signed, Mod, DstDesc, SignedRes, Offset, IsBF);
+}
+
+VISA_VectorOpnd *
+GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
+                                     unsigned Mod, const DstOpndDesc &DstDesc,
+                                     Signedness *SignedRes, unsigned *Offset,
+                                     bool IsBF) {
+  auto ID = vc::getAnyIntrinsicID(Dest);
   bool IsRdtsc = ID == Intrinsic::readcyclecounter;
 
   LLVM_DEBUG(dbgs() << "createDest for value: "
@@ -2496,7 +2511,8 @@ void GenXKernelBuilder::buildLoneWrRegion(const DstOpndDesc &DstDesc) {
 
   // TODO: fix signedness of the source
   auto* Src = createSource(Input, DONTCARESIGNED, DstDesc.WrRegion->getModule()->getDataLayout(), false, 0);
-  auto *Dst = createDestination(Input, DONTCARESIGNED, 0, DstDesc);
+  auto *Dst = createDestination(Input, DONTCARESIGNED, 0, DstDesc, nullptr,
+                                nullptr, false);
   appendVISADataMovementInst(ISA_MOV, createPredFromWrRegion(DstDesc), false,
                              ExecMask, ExecSize, Dst, Src);
 }
