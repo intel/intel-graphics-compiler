@@ -52,13 +52,13 @@ using namespace llvm;
 
 int CatchAssert( int reportType, char *userMessage, int *retVal )
 {
-    IGC_ASSERT(0);
     if(IsDebuggerPresent())
     {
         *retVal = 1; // Break into the debugger or print a stack
     }
     else
     {
+        IGC_ASSERT(0);
         *retVal = 0;
     }
     return true; // we always want to abort, return false pops up a window
