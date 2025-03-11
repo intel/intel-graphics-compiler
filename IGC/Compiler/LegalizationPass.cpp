@@ -563,7 +563,7 @@ LegalizeGVNBitCastPattern(IRBuilder<>* Builder, const DataLayout* DL,
         // Assign null to BI if this is not ending with a bitcast.
         BI = dyn_cast<BitCastInst>(TI->user_back());
 
-        // This gurantees all uses of BI could be replaced by the source.
+        // This guarantees all uses of BI could be replaced by the source.
         if (BI && BI->getType() != EltTy)
             return false;
         else if (TI->getType()->getPrimitiveSizeInBits() !=
@@ -594,11 +594,11 @@ LegalizeGVNBitCastPattern(IRBuilder<>* Builder, const DataLayout* DL,
         if (!BI || !BI->getType()->isVectorTy())
             return false;
 
-        // All uses must be EEI.
+        // All uses must be EEI and must have the same element size as the original element type.
         for (auto U : BI->users())
         {
             auto EEI = dyn_cast<ExtractElementInst>(U);
-            if (!EEI)
+            if (!EEI || EEI->getType()->getPrimitiveSizeInBits() != EltTy->getPrimitiveSizeInBits())
                 return false;
             EEIs.push_back(EEI);
         }
