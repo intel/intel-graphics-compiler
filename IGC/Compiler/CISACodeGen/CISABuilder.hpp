@@ -812,7 +812,7 @@ namespace IGC
             const char* vCstr;
         };
         // List of vISA user options
-        std::vector<std::pair<vISAOptions, OptionValue>> m_visaUserOptions;
+        std::unordered_map<vISAOptions, OptionValue> m_visaUserOptions;
 
         // Typically IGC just use ones vKernel for every vISA::compile call,
         // in those cases, vKernel and vMainKernel should be the same.
