@@ -246,6 +246,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXLCECalculationPass(registry);
   initializeGenXFloatControlPass(registry);
   initializeGenXCountIndirectStatelessPass(registry);
+  initializeGenXUnfreezePass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -503,6 +504,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   GenXPassConfig *PassConfig = createGenXPassConfig(*this, PM);
   vc::addPass(PM, PassConfig);
   const GenXBackendConfig &BackendConfig = PassConfig->getBackendConfig();
+
+  vc::addPass(PM, createGenXUnfreezePass());
 
   vc::addPass(PM, createGenXInitBiFConstantsPass());
   vc::addPass(PM, createGenXFixInvalidFuncNamePass());

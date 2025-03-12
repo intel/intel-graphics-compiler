@@ -96,6 +96,7 @@ set(CODEGEN_SOURCES
   GenXTargetMachine.cpp
   GenXTidyControlFlow.cpp
   GenXUnbaling.cpp
+  GenXUnfreeze.cpp
   GenXUtil.cpp
   GenXVectorCombiner.cpp
   GenXVectorDecomposer.cpp

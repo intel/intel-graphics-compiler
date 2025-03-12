@@ -168,8 +168,6 @@ public:
 
   void visitUDiv(BinaryOperator &I);
 
-  void visitFreezeInst(FreezeInst &I);
-
   bool runOnFunction(Function &F) override;
 
   bool isFpMadEnabled() const {
@@ -3669,16 +3667,6 @@ void GenXPatternMatch::visitURem(BinaryOperator &I) {
     return decomposeURemNotPow2(I);
   IGC_ASSERT(CheckRes == DivRemOptimize::Pow2);
   return decomposeURemPow2(I);
-}
-
-// Clean up 'freeze' instances once dependent w/a's have been resolved.
-void GenXPatternMatch::visitFreezeInst(FreezeInst &I) {
-  if (I.use_empty())
-    return;
-
-  Value *Op = I.getOperand(0);
-  I.replaceAllUsesWith(Op);
-  Changed = true;
 }
 
 // Decompose predicate operand for large vector selects.

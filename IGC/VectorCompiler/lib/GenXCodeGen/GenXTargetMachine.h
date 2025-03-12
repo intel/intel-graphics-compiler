@@ -271,6 +271,7 @@ void initializeGenXDetectPointerArgPass(PassRegistry &);
 void initializeGenXLCECalculationPass(PassRegistry &);
 void initializeGenXFloatControlPass(PassRegistry &);
 void initializeGenXCountIndirectStatelessPass(PassRegistry &);
+void initializeGenXUnfreezePass(PassRegistry &);
 } // End llvm namespace
 
 #endif
