@@ -1402,10 +1402,18 @@ Instruction* LSCFuncsResolution::CreateLSCFenceEvictToMemory()
         return nullptr;
     }
 
+    LSC_SCOPE scope = LSC_SCOPE_GPU;
+
+    if (context->platform.isCoreChildOf(IGFX_XE3_CORE) ||
+        (context->platform.getPlatformInfo().eProductFamily == IGFX_LUNARLAKE))
+    {
+        scope = LSC_SCOPE_SYSREL;
+    }
+
     Value* args[3]
     {
         getConstantInt32(LSC_UGM), // immediate sfid
-        getConstantInt32(LSC_SCOPE_GPU),  // immediate scope of the fence
+        getConstantInt32(scope),  // immediate scope of the fence
         (context->platform.getPlatformInfo().eRenderCoreFamily == IGFX_XE_HPC_CORE) ?
             getConstantInt32(LSC_FENCE_OP_NONE) :
             getConstantInt32(LSC_FENCE_OP_EVICT)   // immediate flush type
