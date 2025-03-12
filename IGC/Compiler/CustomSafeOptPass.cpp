@@ -7207,7 +7207,7 @@ void InsertBranchOpt::atomicSplitOpt(Function& F, int mode)
                 ld_FunctionArgList[ 0 ] = inst->getOperand( 0 );
                 ld_FunctionArgList[ 1 ] = inst->getOperand( 1 );
                 ld_FunctionArgList[ 2 ] = inst->getOperand( 2 );
-                ld_FunctionArgList[ 3 ] = zero;
+                ld_FunctionArgList[ 3 ] = inst->getOperand( 3 );
                 ld_FunctionArgList[ 4 ] = zero;
                 NewInst = builder.CreateCall( pLdIntrinsic, ld_FunctionArgList );
             }

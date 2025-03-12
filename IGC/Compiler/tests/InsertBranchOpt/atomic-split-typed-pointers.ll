@@ -21,7 +21,7 @@ define void @test_atomic_split(i32* %src1) {
 ; CHECK:    [[TMP3:%.*]] = call i32 @llvm.genx.GenISA.intatomictyped.i32.p0i32(i32* [[SRC1]], i32 1, i32 2, i32 3, i32 [[TMP1]], i32 1)
 ; CHECK:    br label %[[ATOMIC_IF_END:.*]]
 ; CHECK:  [[ATOMIC_IF_FALSE]]:
-; CHECK:    [[TMP4:%.*]] = call <4 x float> @llvm.genx.GenISA.typedread.p0i32(i32* [[SRC1]], i32 1, i32 2, i32 0, i32 0)
+; CHECK:    [[TMP4:%.*]] = call <4 x float> @llvm.genx.GenISA.typedread.p0i32(i32* [[SRC1]], i32 1, i32 2, i32 3, i32 0)
 ; CHECK:    [[TMP5:%.*]] = extractelement <4 x float> [[TMP4]], i64 0
 ; CHECK:    [[TMP6:%.*]] = bitcast float [[TMP5]] to i32
 ; CHECK:    br label %[[ATOMIC_IF_END]]

@@ -50,7 +50,7 @@ define i32 @atomicIadd0Typed(i32 %mem, i32 %val) {
 ; CHECK-NEXT:    [[ATOMIC:%.*]] = call i32 @llvm.genx.GenISA.intatomictyped.i32.p131073v4f32(<4 x float> addrspace(131073)* null, i32 [[U]], i32 [[LOCALID_Z]], i32 [[ADDBEFORE]], i32 [[SOMEUNKNOWN]], i32 0)
 ; CHECK-NEXT:    br label [[ATOMIC_IF_END:%.*]]
 ; CHECK:       atomic.if.false:
-; CHECK-NEXT:    [[TMP3:%.*]] = call <4 x float> @llvm.genx.GenISA.typedread.p131073v4f32(<4 x float> addrspace(131073)* null, i32 [[U]], i32 [[LOCALID_Z]], i32 0, i32 0)
+; CHECK-NEXT:    [[TMP3:%.*]] = call <4 x float> @llvm.genx.GenISA.typedread.p131073v4f32(<4 x float> addrspace(131073)* null, i32 [[U]], i32 [[LOCALID_Z]], i32 [[ADDBEFORE]], i32 0)
 ; CHECK-NEXT:    [[TMP4:%.*]] = extractelement <4 x float> [[TMP3]], i64 0
 ; CHECK-NEXT:    [[TMP5:%.*]] = bitcast float [[TMP4]] to i32
 ; CHECK-NEXT:    br label [[ATOMIC_IF_END]]
