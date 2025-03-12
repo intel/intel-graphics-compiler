@@ -1897,5 +1897,13 @@ bool allowProceedBasedApproachForRayQueryDynamicRayManagementMechanism() const
     return IGC_IS_FLAG_DISABLED(DisableProceedBasedApproachForRayQueryDynamicRayManagementMechanism);
 }
 
+bool allowRemovingUnusedImplicitArguments() const
+{
+    if (IGC_IS_FLAG_SET(RemoveUnusedIdImplicitArguments))
+        return IGC_IS_FLAG_ENABLED(RemoveUnusedIdImplicitArguments);
+
+    return isCoreChildOf(IGFX_XE_HP_CORE) && !isCoreChildOf(IGFX_XE2_HPG_CORE);
+}
+
 };
 }//namespace IGC
