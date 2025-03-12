@@ -131,7 +131,7 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(lgamma_r, _f32_p0i32, )( float
     {
         float g = SPIRV_OCL_BUILTIN(tgamma, _f32, )(x);
         r = __intel_relaxed_isnan(g) ? INFINITY : SPIRV_OCL_BUILTIN(native_log, _f32, )(SPIRV_OCL_BUILTIN(fabs, _f32, )(g));
-        s = SPIRV_OCL_BUILTIN(sign, _f32, )(g);
+        s = (x == 0) ? 0 : SPIRV_OCL_BUILTIN(sign, _f32, )(g);
     }
     signp[0] = s;
     return r;
