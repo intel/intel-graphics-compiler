@@ -76,6 +76,7 @@ else() #By default use build from sources
  find_package(Python3 REQUIRED)
  add_subdirectory("${SPIRV-Tools_SOURCE_DIR}" "${SPIRV-Tools_OUTPUT_DIR}" EXCLUDE_FROM_ALL)
  set(IGC_BUILD__PROJ__SPIRV-Tools "SPIRV-Tools") # same name as in subdirectory
+ set(IGC_BUILD__PROJ__SPIRV-Tools-opt "SPIRV-Tools-opt")
 
 endif() #SPIRV_TOOLS_MODE
 
