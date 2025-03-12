@@ -522,7 +522,7 @@ bool ProcessElfInput(
     CLElfLib::RAIIElf X(pElfReader); // When going out of scope this object calls the Delete() function automatically
 
     // If input buffer is an ELF file, then process separately
-    const CLElfLib::SElf64Header* pHeader = pElfReader->GetElfHeader();
+    const CLElfLib::SElfHeader* pHeader = pElfReader->GetElfHeader();
     if (pHeader != NULL)
     {
         // Create an empty module to store the output
@@ -534,7 +534,7 @@ bool ProcessElfInput(
             // Dumping SPIRV files with temporary hashes
             for (unsigned i = 1; i < pHeader->NumSectionHeaderEntries; i++)
             {
-                const CLElfLib::SElf64SectionHeader* pSectionHeader = pElfReader->GetSectionHeader(i);
+                const CLElfLib::SElfSectionHeader* pSectionHeader = pElfReader->GetSectionHeader(i);
                 IGC_ASSERT(pSectionHeader != NULL);
                 if (pSectionHeader->Type != CLElfLib::SH_TYPE_SPIRV)
                 {
@@ -591,7 +591,7 @@ bool ProcessElfInput(
         // Iterate over all the input modules.
         for (unsigned i = 1; i < pHeader->NumSectionHeaderEntries; i++)
         {
-            const CLElfLib::SElf64SectionHeader* pSectionHeader = pElfReader->GetSectionHeader(i);
+            const CLElfLib::SElfSectionHeader* pSectionHeader = pElfReader->GetSectionHeader(i);
             IGC_ASSERT(pSectionHeader != NULL);
 
             char* pData = NULL;

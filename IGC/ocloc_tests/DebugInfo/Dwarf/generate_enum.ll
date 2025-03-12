@@ -8,6 +8,8 @@
 
 ; Test generates DWARF with traditional enum (without DW_AT_enum_class field)
 
+; UNSUPPORTED: sys32
+
 ; REQUIRES: regkeys, oneapi-readelf, llvm-14-plus
 
 ; RUN: llvm-as %s -o %t

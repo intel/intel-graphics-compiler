@@ -147,9 +147,18 @@ enum E_SH_FLAG
 };
 
 /******************************************************************************\
- ELF-64 Data Types
+ ELF Data Types
 \******************************************************************************/
 #if defined(_MSC_VER) // && (_MSC_VER < 1700)
+    //ELF-32 Data Types
+    typedef unsigned __int32   Elf32_Addr;
+    typedef unsigned __int32   Elf32_Off;
+    typedef unsigned __int16   Elf32_Short;
+    typedef unsigned __int32   Elf32_Word;
+    typedef          __int32   Elf32_Sword;
+    typedef unsigned __int32   Elf32_Xword;
+
+    //ELF-64 Data Types
     typedef unsigned __int64   Elf64_Addr;
     typedef unsigned __int64   Elf64_Off;
     typedef unsigned __int16   Elf64_Short; // Renaming Elf64_Half to Elf64_Short to avoid a conflict with Android
@@ -158,12 +167,19 @@ enum E_SH_FLAG
     typedef unsigned __int64   Elf64_Xword;
 #else
 #if !defined(_UAPI_LINUX_ELF_H)
+    typedef uint32_t   Elf32_Addr;
+    typedef uint32_t   Elf32_Off;
+    typedef uint32_t   Elf32_Word;
+    typedef int32_t    Elf32_Sword;
+    typedef uint32_t   Elf32_Xword;
+
     typedef uint64_t   Elf64_Addr;
     typedef uint64_t   Elf64_Off;
     typedef uint32_t   Elf64_Word;
     typedef int32_t    Elf64_Sword;
     typedef uint64_t   Elf64_Xword;
 #endif
+    typedef uint16_t   Elf32_Short;
     typedef uint16_t   Elf64_Short; // Renaming Elf64_Half to Elf64_Short to avoid a conflict with Android
 #endif
 
@@ -176,25 +192,71 @@ static const unsigned char ELF_MAG2 = 'L';       // ELFHeader.Identity[ELF_ID_MA
 static const unsigned char ELF_MAG3 = 'F';       // ELFHeader.Identity[ELF_ID_MAGIC3]
 static const unsigned  int ELF_ALIGN_BYTES = 16; // Alignment set to 16-bytes
 
+#if defined(_X86_)
+typedef struct SElf32Header SElfHeader;
+typedef struct SElf32SectionHeader SElfSectionHeader;
+#else
+typedef struct SElf64Header SElfHeader;
+typedef struct SElf64SectionHeader SElfSectionHeader;
+#endif
+
+/******************************************************************************\
+ ELF-32 Header
+\******************************************************************************/
+struct SElf32Header
+{
+    unsigned char  Identity[ID_IDX_NUM_BYTES];
+    Elf32_Short    Type;
+    Elf32_Short    Machine;
+    Elf32_Word     Version;
+    Elf32_Addr     EntryAddress;
+    Elf32_Off      ProgramHeadersOffset;
+    Elf32_Off      SectionHeadersOffset;
+    Elf32_Word     Flags;
+    Elf32_Short    ElfHeaderSize;
+    Elf32_Short    ProgramHeaderEntrySize;
+    Elf32_Short    NumProgramHeaderEntries;
+    Elf32_Short    SectionHeaderEntrySize;
+    Elf32_Short    NumSectionHeaderEntries;
+    Elf32_Short    SectionNameTableIndex;
+};
+
 /******************************************************************************\
  ELF-64 Header
 \******************************************************************************/
 struct SElf64Header
 {
-    unsigned char    Identity[ID_IDX_NUM_BYTES];
+    unsigned char  Identity[ID_IDX_NUM_BYTES];
     Elf64_Short    Type;
     Elf64_Short    Machine;
-    Elf64_Word       Version;
-    Elf64_Addr       EntryAddress;
-    Elf64_Off        ProgramHeadersOffset;
-    Elf64_Off        SectionHeadersOffset;
-    Elf64_Word       Flags;
+    Elf64_Word     Version;
+    Elf64_Addr     EntryAddress;
+    Elf64_Off      ProgramHeadersOffset;
+    Elf64_Off      SectionHeadersOffset;
+    Elf64_Word     Flags;
     Elf64_Short    ElfHeaderSize;
     Elf64_Short    ProgramHeaderEntrySize;
     Elf64_Short    NumProgramHeaderEntries;
     Elf64_Short    SectionHeaderEntrySize;
     Elf64_Short    NumSectionHeaderEntries;
     Elf64_Short    SectionNameTableIndex;
+};
+
+/******************************************************************************\
+ ELF-32 Section Header
+\******************************************************************************/
+struct SElf32SectionHeader
+{
+    Elf32_Word    Name;
+    Elf32_Word    Type;
+    Elf32_Xword   Flags;
+    Elf32_Addr    Address;
+    Elf32_Off     DataOffset;
+    Elf32_Xword   DataSize;
+    Elf32_Word    Link;
+    Elf32_Word    Info;
+    Elf32_Xword   Alignment;
+    Elf32_Xword   EntrySize;
 };
 
 /******************************************************************************\

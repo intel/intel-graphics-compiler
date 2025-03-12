@@ -669,7 +669,7 @@ void ZEBinaryBuilder::addKernelCostInfo(
 // If ELF is validated successfully then return a calculated size. Othwerwise, return 0.
 size_t ZEBinaryBuilder::calcElfSize(void* elfBin, size_t elfSize)
 {
-    SElf64Header* elf64Header = (SElf64Header*)elfBin;
+    SElfHeader* elfHeader = (SElfHeader*)elfBin;
     size_t elfBinSize = 0; // Correct (pure) size of ELF binary to be calculated
 
     if (elfSize == 0)
@@ -679,30 +679,30 @@ size_t ZEBinaryBuilder::calcElfSize(void* elfBin, size_t elfSize)
     }
 
     if ((elfSize < ID_IDX_NUM_BYTES) ||
-        (elf64Header->Identity[ID_IDX_MAGIC0] != ELF_MAG0) || (elf64Header->Identity[ID_IDX_MAGIC1] != ELF_MAG1) ||
-        (elf64Header->Identity[ID_IDX_MAGIC2] != ELF_MAG2) || (elf64Header->Identity[ID_IDX_MAGIC3] != ELF_MAG3) ||
-        (elf64Header->Identity[ID_IDX_CLASS] != EH_CLASS_64))
+        (elfHeader->Identity[ID_IDX_MAGIC0] != ELF_MAG0) || (elfHeader->Identity[ID_IDX_MAGIC1] != ELF_MAG1) ||
+        (elfHeader->Identity[ID_IDX_MAGIC2] != ELF_MAG2) || (elfHeader->Identity[ID_IDX_MAGIC3] != ELF_MAG3) ||
+        (elfHeader->Identity[ID_IDX_CLASS] != EH_CLASS_64) && (elfHeader->Identity[ID_IDX_CLASS] != EH_CLASS_32))
     {
         IGC_ASSERT_MESSAGE(false, "ELF file header incorrect - nothing to be transfered to zeBinary");
         return 0; // ELF binary incorrect
     }
 
     size_t idxSectionHdrOffset = 0; // Indexed section header offset
-    SElf64SectionHeader* sectionHeader = NULL;
+    SElfSectionHeader* sectionHeader = NULL;
 
     // Calculate correct (pure) size of ELF binary, because debugDataSize i.e. pOutput->m_debugDataVISASize
     // contains something else.
-    elfBinSize += elf64Header->ElfHeaderSize;
+    elfBinSize += elfHeader->ElfHeaderSize;
 
     // ELF binary scanning to calculate a size of elf binary w/o alignment and additional data overhead.
-    for (unsigned int i = 0; i < elf64Header->NumSectionHeaderEntries; i++)
+    for (unsigned int i = 0; i < elfHeader->NumSectionHeaderEntries; i++)
     {
-        idxSectionHdrOffset = (size_t)elf64Header->SectionHeadersOffset + (i * elf64Header->SectionHeaderEntrySize);
-        sectionHeader = (SElf64SectionHeader*)((char*)elf64Header + idxSectionHdrOffset);
+        idxSectionHdrOffset = (size_t)elfHeader->SectionHeadersOffset + (i * elfHeader->SectionHeaderEntrySize);
+        sectionHeader = (SElfSectionHeader*)((char*)elfHeader + idxSectionHdrOffset);
 
         // Tally up the sizes
         elfBinSize += (size_t)sectionHeader->DataSize;
-        elfBinSize += (size_t)elf64Header->SectionHeaderEntrySize;
+        elfBinSize += (size_t)elfHeader->SectionHeaderEntrySize;
     }
 
     return elfBinSize;
@@ -768,30 +768,31 @@ void ZEBinaryBuilder::addElfSections(void* elfBin, size_t elfSize)
         return; // ELF file incorrect
     }
 
-    SElf64Header* elf64Header = (SElf64Header*)elfBin;
-    size_t entrySize = elf64Header->SectionHeaderEntrySize;  // Get the section header entry size
+    SElfHeader* elfHeader = (SElfHeader*)elfBin;
+    size_t entrySize = elfHeader->SectionHeaderEntrySize;  // Get the section header entry size
 
     CElfReader* elfReader = CElfReader::Create((char*)elfBin, pureElfBinSize);
     RAIIElf ElfObj(elfReader);
 
-    if (!elfReader || !elfReader->IsValidElf64(elfBin, pureElfBinSize))
+    if (!elfReader || !elfReader->IsValidElf(elfBin, pureElfBinSize))
     {
         IGC_ASSERT_MESSAGE(false, "ELF file invalid - nothing to be transfered to zeBinary");
         return;
     }
 
     // Find .symtab and .strtab (or shstrtab) sections in ELF binary.
-    const SElf64SectionHeader* symtabSectionHeader = elfReader->GetSectionHeader(".symtab");
-    const SElf64SectionHeader* strtabSectionHeader = elfReader->GetSectionHeader(".strtab");
-    if (strtabSectionHeader->DataSize <= 1)
-    {
-        strtabSectionHeader = elfReader->GetSectionHeader(".shstrtab");
-    }
+    const SElfSectionHeader* symtabSectionHeader = elfReader->GetSectionHeader(".symtab");
+    const SElfSectionHeader* strtabSectionHeader = elfReader->GetSectionHeader(".strtab");
 
     if (!strtabSectionHeader || !symtabSectionHeader)
     {
         IGC_ASSERT_MESSAGE(false, "Some ELF file sections not found - nothing to be transfered to zeBinary");
         return;
+    }
+
+    if (strtabSectionHeader->DataSize <= 1)
+    {
+        strtabSectionHeader = elfReader->GetSectionHeader(".shstrtab");
     }
 
     ZEELFObjectBuilder::SectionID zeBinSectionID = 0;
@@ -809,7 +810,7 @@ void ZEBinaryBuilder::addElfSections(void* elfBin, size_t elfSize)
     // - 64-bit ELF supported only
     // - .rel sections not supported
 
-    for (unsigned int elfSectionIdx = 1; elfSectionIdx < elf64Header->NumSectionHeaderEntries; elfSectionIdx++)
+    for (unsigned int elfSectionIdx = 1; elfSectionIdx < elfHeader->NumSectionHeaderEntries; elfSectionIdx++)
     {
         if (elfReader->GetSectionData(elfSectionIdx, secData, secDataSize) != SUCCESS)
         {
@@ -820,7 +821,7 @@ void ZEBinaryBuilder::addElfSections(void* elfBin, size_t elfSize)
         if (secDataSize > 0) //pSectionHeader->DataSize > 0)
         {
             // Get section header to filter some section types.
-            const SElf64SectionHeader* sectionHeader = elfReader->GetSectionHeader(elfSectionIdx);
+            const SElfSectionHeader* sectionHeader = elfReader->GetSectionHeader(elfSectionIdx);
             if (sectionHeader != nullptr)
             {
                 if (sectionHeader->Type == ELF::SHT_REL)

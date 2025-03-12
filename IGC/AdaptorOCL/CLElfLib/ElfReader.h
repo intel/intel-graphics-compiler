@@ -37,16 +37,16 @@ public:
     static void ELF_CALL Delete(
         CElfReader* &pElfObject );
 
-    static bool ELF_CALL IsValidElf64(
+    static bool ELF_CALL IsValidElf(
         const void* pBinary,
         const size_t binarySize );
 
-    const SElf64Header* ELF_CALL GetElfHeader();
+    const SElfHeader* ELF_CALL GetElfHeader();
 
-    const SElf64SectionHeader* ELF_CALL GetSectionHeader(
+    const SElfSectionHeader* ELF_CALL GetSectionHeader(
         unsigned int sectionIndex );
 
-    const SElf64SectionHeader* ELF_CALL GetSectionHeader(
+    const SElfSectionHeader* ELF_CALL GetSectionHeader(
         const char* sectionName);
 
     const char* ELF_CALL GetSectionName(
@@ -69,7 +69,7 @@ protected:
 
     ELF_CALL ~CElfReader();
 
-    SElf64Header*  m_pElfHeader;    // pointer to the ELF header
+    SElfHeader*  m_pElfHeader;    // pointer to the ELF header
     const char*    m_pBinary;       // portable ELF binary
     char*          m_pNameTable;    // pointer to the string table
     size_t         m_nameTableSize; // size of string table in bytes
