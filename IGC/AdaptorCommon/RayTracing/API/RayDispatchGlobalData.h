@@ -219,18 +219,24 @@ struct RayDispatchGlobalData
             uint64_t callStackHandlerPtr;   // this is the KSP of the continuation handler that is invoked by BTD when the read KSP is 0
             union {
                 uint32_t stackSizePerRay;       // maximal stack size of a ray
-                uint32_t sizePerRay : 8;
-                uint32_t MBZ1       : 24;
+                struct {
+                    uint32_t sizePerRay : 8;
+                    uint32_t MBZ1       : 24;
+                };
             } stack_size_info;
             union {
                 uint32_t numDSSRTStacks;        // number of stacks per DSS
-                uint32_t numRTStacks : 12;
-                uint32_t MBZ2        : 20;
+                struct {
+                    uint32_t numRTStacks : 12;
+                    uint32_t MBZ2        : 20;
+                };
             } num_stacks_info;
             union {
                 uint32_t maxBVHLevels;          // the maximal number of supported instancing levels
-                uint32_t bvhLevels : 3;
-                uint32_t MBZ3      : 29;
+                struct {
+                    uint32_t bvhLevels : 3;
+                    uint32_t MBZ3      : 29;
+                };
             } rt_data_info;
             // In addition to the dword of padding to align `common`, we also
             // add 8 dwords so Xe and Xe3 both have the same RTGlobals size.
@@ -271,16 +277,20 @@ struct RayDispatchGlobalData
             } stack_size_info;
             union {
                 uint32_t numRTStacks;        // number of stacks per DSS
-                uint32_t numDSSRTStacks    : 16;   // number of asynch stacks per DSS
-                uint32_t _pad1_mbz : 16;
+                struct {
+                    uint32_t numDSSRTStacks : 16; // number of asynch stacks per DSS
+                    uint32_t _pad1_mbz : 16;
+                };
 
             } num_stacks_info;
             union {
                 uint32_t packedData;
-                uint32_t maxBVHLevels     : 3;  // the maximal number of supported instancing levels (0->8, 1->1, 2->2, ...)
-                uint32_t hitGroupStride   : 13; // stride of hit group shader records (16-bytes alignment)
-                uint32_t missShaderStride : 13; // stride of miss shader records (8-bytes alignment)
-                uint32_t _pad2_mbz        : 3;
+                struct {
+                    uint32_t maxBVHLevels     : 3;  // the maximal number of supported instancing levels (0->8, 1->1, 2->2, ...)
+                    uint32_t hitGroupStride   : 13; // stride of hit group shader records (16-bytes alignment)
+                    uint32_t missShaderStride : 13; // stride of miss shader records (8-bytes alignment)
+                    uint32_t _pad2_mbz        : 3;
+                };
             } rt_data_info;
             uint32_t flags   : 1;               // per context control flags
             uint32_t pad_mbz : 31;
