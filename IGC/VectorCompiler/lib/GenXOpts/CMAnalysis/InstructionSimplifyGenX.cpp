@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -183,13 +183,70 @@ static Value *simplifyMulDDQ(BinaryOperator &Mul) {
   return Result;
 }
 
+static inline bool isBitcastFits(BitCastInst *BC) {
+  return BC->getSrcTy()->isVectorTy() && BC->getDestTy()->isIntegerTy();
+}
+
+static inline bool isTrunkFits(TruncInst *TC) {
+  return TC->getSrcTy()->isVectorTy() &&
+         TC->getDestTy()->isVectorTy() &&
+         TC->getDestTy()->getScalarType()->isIntegerTy(1);
+}
+
+static inline bool simplifyBinOp(BinaryOperator *BinOp) {
+  bool Changed = false;
+
+  auto *Bitcast1 = dyn_cast<BitCastInst>(BinOp->getOperand(0));
+  auto *Bitcast2 = dyn_cast<BitCastInst>(BinOp->getOperand(1));
+  if (Bitcast1 && Bitcast2 && (Bitcast1->getSrcTy() == Bitcast2->getSrcTy())) {
+    if (isBitcastFits(Bitcast1) && isBitcastFits(Bitcast2)) {
+      for (auto *User : BinOp->users()) {
+        if (auto *BitcastBack = dyn_cast<BitCastInst>(User)) {
+          if (BitcastBack->getDestTy()->isVectorTy()) {
+            IRBuilder<> Builder(BinOp);
+            auto *NewOp =
+                Builder.CreateBinOp(BinOp->getOpcode(), Bitcast1->getOperand(0),
+                                    Bitcast2->getOperand(0));
+            BitcastBack->replaceAllUsesWith(NewOp);
+            Changed = true;
+            BinOp = cast<BinaryOperator>(NewOp);
+            break;
+          }
+        }
+      }
+    }
+  }
+  auto *Trunc1 = dyn_cast<TruncInst>(BinOp->getOperand(0));
+  auto *Trunc2 = dyn_cast<TruncInst>(BinOp->getOperand(1));
+  if (Trunc1 && Trunc2 && (Trunc1->getSrcTy() == Trunc2->getSrcTy())) {
+    if (isTrunkFits(Trunc1) && isTrunkFits(Trunc2)) {
+      for (auto *User : BinOp->users()) {
+        if (auto *ZextInst = dyn_cast<ZExtInst>(User)) {
+          if (auto *DestVecType = dyn_cast<VectorType>(ZextInst->getDestTy())) {
+            if (DestVecType->getElementType()->isIntegerTy()) {
+              IRBuilder<> Builder(BinOp);
+              auto *NewOp =
+                  Builder.CreateBinOp(BinOp->getOpcode(), Trunc1->getOperand(0),
+                                      Trunc2->getOperand(0));
+              ZextInst->replaceAllUsesWith(NewOp);
+              Changed = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  return Changed;
+}
+
 static Value *GenXSimplifyInstruction(llvm::Instruction *Inst) {
   IGC_ASSERT(Inst);
   if (!GenXEnablePeepholes)
     return nullptr;
-  if (Inst->getOpcode() == Instruction::Mul) {
+  if (Inst->getOpcode() == Instruction::Mul)
     return simplifyMulDDQ(*cast<BinaryOperator>(Inst));
-  }
+
   return nullptr;
 }
 
@@ -506,6 +563,8 @@ bool GenXSimplify::runOnFunction(Function &F) {
         Changed |= replaceWithNewValue(*Inst, *V);
         continue;
       }
+      if (auto *BO = dyn_cast<BinaryOperator>(Inst))
+        Changed |= simplifyBinOp(BO);
     }
   }
 
