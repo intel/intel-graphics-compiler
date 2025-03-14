@@ -10,12 +10,12 @@
 ; PrivateMemoryResolution
 ; ------------------------------------------------
 
-; Check that array allocas can be merged with regular allocas.
+; Check that array allocas are not merged with regular allocas.
 
 define spir_kernel void @main(float addrspace(1)* %0, i64 %1, i64 %2, i32 %3, i32 %4) {
 ; CHECK-LABEL: main
 ; CHECK-NEXT: alloca [128 x float], align 4
-; CHECK-NOT: alloca float, align 4
+; CHECK-NEXT: alloca float, align 4
   %6 = alloca [128 x float], align 4
   %7 = alloca float, align 4
   br label %8

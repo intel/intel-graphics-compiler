@@ -10,7 +10,7 @@
 ; PrivateMemoryResolution
 ; ------------------------------------------------
 
-; Check that different sized allocas are merged and that only largest one is kept.
+; Check that allocas are merged and that only largest array is kept.
 
 define spir_kernel void @main(float addrspace(1)* %0, i64 %1, i64 %2, i32 %3, i32 %4) {
 ; CHECK-LABEL: main

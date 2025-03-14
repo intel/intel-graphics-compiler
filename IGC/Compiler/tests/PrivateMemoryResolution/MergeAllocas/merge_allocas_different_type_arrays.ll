@@ -10,13 +10,12 @@
 ; PrivateMemoryResolution
 ; ------------------------------------------------
 
-; Check that allocas are merged if array elements have different types.
+; Check that allocas are not merged if array elements have different types.
 
 define spir_kernel void @main(float addrspace(1)* %0, i64 %1, i64 %2, i32 %3, i32 %4) {
 ; CHECK-LABEL: main
+; CHECK-NEXT: alloca [128 x float], align 4
 ; CHECK-NEXT: alloca [256 x i64], align 4
-; CHECK-NEXT: bitcast [256 x i64]* {{.*}} to [128 x float]*
-; CHECK-NOT: alloca [128 x float], align 4
   %6 = alloca [128 x float], align 4
   %7 = alloca [256 x i64], align 4
   br label %8
