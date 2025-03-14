@@ -279,6 +279,7 @@ DECLARE_IGC_REGKEY(bool, forceFullUrbWriteMask,         true,  "Set Full URB wri
 DECLARE_IGC_REGKEY(DWORD, RovOpt,                           3, "Bitmask for ROV optimizations. 0 for all off, 1 for force fence flush none, 2 for setting LSC_L1UC_L3C_WB, 3 for both opt on", false)
 //DECLARE_IGC_REGKEY(bool, EnablePlatformFenceOpt,        true,  "Force fence optimization", false)
 DECLARE_IGC_REGKEY(bool, EnableLSCFence, true, "Enable LSC Fence in ConvertDXIL for the device has LSC", false)
+DECLARE_IGC_REGKEY(bool, ForceLocalScopeEvictTGM, true, "Forces upgrading fence.tgm.local.none to evictions", false)
 DECLARE_IGC_REGKEY(bool, EnableSLMConstProp,            true,   "Enable SLM constant propagation (compute shader only).", false)
 DECLARE_IGC_REGKEY(bool, EnableStatelessToStateful,    true,  "Enable Stateless To Stateful transformation for global and constant address space in OpenCL kernels", false)
 DECLARE_IGC_REGKEY(bool, EnableStatefulToken,           true,  "Enable generating patch token to indicate a ptr argument is fully converted to stateful (temporary)", false)

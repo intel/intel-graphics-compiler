@@ -1506,7 +1506,7 @@ bool hasBarrierControlFlowOpt() const
 
 bool needsLocalScopeEvictTGM() const
 {
-    return true;
+    return IGC_IS_FLAG_ENABLED(ForceLocalScopeEvictTGM);
 }
 
 bool needWaSamplerNoMask() const
