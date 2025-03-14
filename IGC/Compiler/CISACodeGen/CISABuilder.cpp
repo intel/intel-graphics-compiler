@@ -3925,21 +3925,21 @@ namespace IGC
         OptionValue entry;
         entry.type = OpType::ET_BOOL;
         entry.vBool = val;
-        m_visaUserOptions.insert(std::make_pair(option, entry));
+        m_visaUserOptions.push_back(std::make_pair(option, entry));
     }
     void CEncoder::SaveOption(vISAOptions option, uint32_t val)
     {
         OptionValue entry;
         entry.type = OpType::ET_INT32;
         entry.vInt32 = val;
-        m_visaUserOptions.insert(std::make_pair(option, entry));
+        m_visaUserOptions.push_back(std::make_pair(option, entry));
     }
     void CEncoder::SaveOption(vISAOptions option, const char* val)
     {
         OptionValue entry;
         entry.type = OpType::ET_CSTR;
         entry.vCstr = val;
-        m_visaUserOptions.insert(std::make_pair(option, entry));
+        m_visaUserOptions.push_back(std::make_pair(option, entry));
     }
     void CEncoder::SetBuilderOptions(VISABuilder* pbuilder)
     {
@@ -4856,8 +4856,7 @@ namespace IGC
                     // "Auto" mode per kernel function (by user annotation) - use compiler heuristics to determin number of threads per EU
                     SaveOption(vISA_AutoGRFSelection, true);
                 }
-                else if (ClContext->getExpGRFSize() > 0)
-                {
+                else if (ClContext->getExpGRFSize() > 0) {
                     // Explicit GRF size set per module (by compiler option)
                     SaveOption(vISA_TotalGRFNum, ClContext->getExpGRFSize());
                 }
