@@ -51,7 +51,8 @@ namespace IGC
         int  GetBarrierNumber() const { return m_BarrierNumber; }
 
         bool GetHasSample() const { return m_HasSample; }
-        void SetHasSample() { m_HasSample = true; }
+        void SetHasSampleInst()  { m_HasSampleInst = true;  m_HasSample = true; }
+        void SetHasGather4Inst() { m_HasGather4Inst = true; m_HasSample = true; }
 
         bool GetHasDPAS() const { return m_HasDPAS; }
         void SetHasDPAS() { m_HasDPAS = true; }
@@ -115,6 +116,8 @@ namespace IGC
         }
     private:
         bool m_HasSample = false;
+        bool m_HasSampleInst = false;
+        bool m_HasGather4Inst = false;
         int m_BarrierNumber = 0;
         bool m_HasDPAS = false;
         // Shader has LSC store messages with non-default L1 cache control

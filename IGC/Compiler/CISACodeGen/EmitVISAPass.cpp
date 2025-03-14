@@ -8234,7 +8234,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
 {
     EOPCODE opCode = GetOpCode(inst);
 
-    m_currShader->m_State.SetHasSample();
+    m_currShader->m_State.SetHasSampleInst();
     ResourceDescriptor resource = GetSampleResourceHelper(inst);
     bool isEval = isUsedOnlyByEval(inst);
     ResourceDescriptor pairedResource = inst->hasPairedTextureArg() && llvm::isa<llvm::UndefValue>(inst->getPairedTextureValue()) == false ?
@@ -8664,6 +8664,7 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
 {
     EOPCODE opCode = GetOpCode(inst);
     uint numOperands = inst->getNumOperands();
+    m_currShader->m_State.SetHasGather4Inst();
 
     //Subtract the offsets, resource and sampler sources to get
     //the number of texture coordinates, src channel select and index to texture source
