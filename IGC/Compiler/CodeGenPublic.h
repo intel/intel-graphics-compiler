@@ -348,6 +348,7 @@ namespace IGC
         bool hasDynamicGenericLoadStore{};
         bool hasUnmaskedRegion{};
         bool hasSLM{};
+        bool hasPrivateGEPIntoVector{};
         unsigned int numCall{};
         unsigned int numBarrier{};
         unsigned int numLoadStore{};
