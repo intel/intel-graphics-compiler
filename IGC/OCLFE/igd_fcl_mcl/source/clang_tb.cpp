@@ -771,34 +771,49 @@ namespace TC
 
         const char * optValue = optSubstring + optName.size();
         const char * end = optValue + strlen(optValue);
+        std::string_view opt(optValue, end - optValue);
 
         // parse
-        const std::string invalidFormatMessage = "Invalid format of -cl-std option, expected -cl-std=CLMAJOR.MINOR";
-        auto isNumeric = [](char v) { return (v >= '0') && (v <= '9'); };
-        if (false == ((end - optValue >= 5) && (optValue[0] == 'C') && (optValue[1] == 'L') && isNumeric(optValue[2])
-            && (optValue[3] == '.') && isNumeric(optValue[4])
-            )
-            ) {
-            exceptString = invalidFormatMessage;
-            return 0;
-        }
-
         unsigned int retVersion = 0;
-        // subverions
-        if ((end - optValue >= 7) && (optValue[5] != ' ')) {
-            if ((optValue[5] == '.') || isNumeric(optValue[6])) {
-                retVersion += optValue[6] - '0';
+        if (opt.find("CLC++") == 0) {
+            if (opt == "CLC++" || opt == "CLC++1.0") {
+                retVersion = 200;
             }
-            else if (isNumeric(optValue[5])) {
-                retVersion += optValue[5] - '0';
+            else if (opt == "CLC++2021") {
+                retVersion = 300;
             }
             else {
+                const std::string invalidFormatMessage = "Invalid format of -cl-std option, expected -cl-std=CLC++, -cl-std=CLC++1.0, or -cl-std=CLC++2021";
+            }
+        }
+        else
+        {
+            const std::string invalidFormatMessage = "Invalid format of -cl-std option, expected -cl-std=CLMAJOR.MINOR";
+            auto isNumeric = [](char v) { return (v >= '0') && (v <= '9'); };
+            if (false == ((end - optValue >= 5) && (optValue[0] == 'C') && (optValue[1] == 'L') && isNumeric(optValue[2])
+                && (optValue[3] == '.') && isNumeric(optValue[4])
+                )
+                ) {
                 exceptString = invalidFormatMessage;
                 return 0;
             }
-        }
 
-        retVersion += 100 * (optValue[2] - '0') + 10 * (optValue[4] - '0');
+            // subverions
+            if ((end - optValue >= 7) && (optValue[5] != ' ')) {
+                if ((optValue[5] == '.') || isNumeric(optValue[6])) {
+                    retVersion += optValue[6] - '0';
+                }
+                else if (isNumeric(optValue[5])) {
+                    retVersion += optValue[5] - '0';
+                }
+                else {
+                    exceptString = invalidFormatMessage;
+                    return 0;
+                }
+            }
+
+            retVersion += 100 * (optValue[2] - '0') + 10 * (optValue[4] - '0');
+        }
 
         if (validate == false) {
             return retVersion;
@@ -1317,6 +1332,9 @@ namespace TC
                             (strcmp(pParam, "-cl-std=CL2.0") == 0) ||
                             (strcmp(pParam, "-cl-std=CL2.1") == 0) ||
                             (strcmp(pParam, "-cl-std=CL3.0") == 0) ||
+                            (strcmp(pParam, "-cl-std=CLC++") == 0) ||
+                            (strcmp(pParam, "-cl-std=CLC++1.0") == 0) ||
+                            (strcmp(pParam, "-cl-std=CLC++2021") == 0) ||
                             (strcmp(pParam, "-cl-uniform-work-group-size") == 0) || //it's work only for OCL version greater than 1.2
                             (strcmp(pParam, "-cl-kernel-arg-info") == 0) ||
                             (strncmp(pParam, "-x", 2) == 0) ||
