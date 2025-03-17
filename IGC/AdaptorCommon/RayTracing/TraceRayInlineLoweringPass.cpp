@@ -653,6 +653,7 @@ void TraceRayInlineLoweringPass::LowerRayInfo(Function& F)
         builder.SetInsertPoint(I);
 
         unsigned int infoKind = I->getInfoKind();
+        auto shaderTy = I->isCommitted() ? CallableShaderTypeMD::ClosestHit : CallableShaderTypeMD::AnyHit;
         auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, I->getQueryObjIndex());
 
         switch (infoKind)
@@ -684,25 +685,14 @@ void TraceRayInlineLoweringPass::LowerRayInfo(Function& F)
         }
         case RAY_T_CURRENT:
         {
-            Value* rayT = builder.getRayTCurrent(ShadowMemStackPointer, CallableShaderTypeMD::ClosestHit);
+            Value* rayT = builder.getRayTCurrent(ShadowMemStackPointer, shaderTy);
             I->replaceAllUsesWith(rayT);
             break;
         }
-        case CANDIDATE_TRIANGLE_T_CURRENT:
-        {
-            Value* rayT = builder.getRayTCurrent(ShadowMemStackPointer, CallableShaderTypeMD::AnyHit);
-            I->replaceAllUsesWith(rayT);
-            break;
-        }
-        case COMMITTED_TRIANGLE_FRONT_FACE:
-        case CANDIDATE_TRIANGLE_FRONT_FACE:
+        case TRIANGLE_FRONT_FACE:
         case CANDIDATE_PROCEDURAL_PRIM_NON_OPAQUE: // Procedural Primitive Opaque Info is stored in Front Face bit
         {
-            IGC::CallableShaderTypeMD ShaderTy =
-                infoKind == COMMITTED_TRIANGLE_FRONT_FACE ?
-                CallableShaderTypeMD::ClosestHit :
-                CallableShaderTypeMD::AnyHit;
-            Value* frontFaceBit = builder.getIsFrontFace(ShadowMemStackPointer, ShaderTy);
+            Value* frontFaceBit = builder.getIsFrontFace(ShadowMemStackPointer, shaderTy);
             if (infoKind == CANDIDATE_PROCEDURAL_PRIM_NON_OPAQUE)
             {
                 frontFaceBit = builder.CreateICmpEQ(
@@ -711,132 +701,73 @@ void TraceRayInlineLoweringPass::LowerRayInfo(Function& F)
             I->replaceAllUsesWith(frontFaceBit);
             break;
         }
-        case COMMITTED_GEOMETRY_INDEX:
-        case CANDIDATE_GEOMETRY_INDEX:
+        case GEOMETRY_INDEX:
         {
             bool specialPattern = false;
-            if (infoKind == COMMITTED_GEOMETRY_INDEX && IGC_GET_FLAG_VALUE(ForceRTShortCircuitingOR))
+            if (I->isCommitted() && IGC_GET_FLAG_VALUE(ForceRTShortCircuitingOR))
             {
                 specialPattern = forceShortCurcuitingOR_CommittedGeomIdx(builder, I);
             }
 
-            IGC::CallableShaderTypeMD ShaderTy =
-                infoKind == COMMITTED_GEOMETRY_INDEX ?
-                CallableShaderTypeMD::ClosestHit :
-                CallableShaderTypeMD::AnyHit;
-            Value* leafType = builder.getLeafType(ShadowMemStackPointer, ShaderTy == CallableShaderTypeMD::ClosestHit);
-            Value* geoIndex = builder.getGeometryIndex(ShadowMemStackPointer, I, leafType, ShaderTy, !specialPattern);
+            Value* leafType = builder.getLeafType(ShadowMemStackPointer, I->isCommitted());
+            Value* geoIndex = builder.getGeometryIndex(ShadowMemStackPointer, I, leafType, shaderTy, !specialPattern);
             IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(), "Invalid geometryIndex type!");
             I->replaceAllUsesWith(geoIndex);
             break;
         }
-        case COMMITTED_INSTANCE_INDEX:
-        case CANDIDATE_INSTANCE_INDEX:
-        case COMMITTED_INSTANCE_ID:
-        case CANDIDATE_INSTANCE_ID:
-        {
-            IGC::CallableShaderTypeMD ShaderTy =
-                (infoKind == COMMITTED_INSTANCE_INDEX || infoKind == COMMITTED_INSTANCE_ID) ?
-                CallableShaderTypeMD::ClosestHit :
-                CallableShaderTypeMD::AnyHit;
-            DISPATCH_SHADER_RAY_INFO_TYPE infoType =
-                (infoKind == COMMITTED_INSTANCE_ID || infoKind == CANDIDATE_INSTANCE_ID) ?
-                INSTANCE_ID :
-                INSTANCE_INDEX;
-            Value* inst = (infoType == INSTANCE_ID) ?
-                builder.getInstanceID(ShadowMemStackPointer, ShaderTy, I, true) :
-                builder.getInstanceIndex(ShadowMemStackPointer, ShaderTy, I, true);
-            I->replaceAllUsesWith(inst);
+        case INSTANCE_INDEX:
+            I->replaceAllUsesWith(builder.getInstanceIndex(ShadowMemStackPointer, shaderTy, I, true));
             break;
-        }
-        case COMMITTED_PRIMITIVE_INDEX:
-        case CANDIDATE_PRIMITIVE_INDEX:
+        case INSTANCE_ID:
+            I->replaceAllUsesWith(builder.getInstanceID(ShadowMemStackPointer, shaderTy, I, true));
+            break;
+        case PRIMITIVE_INDEX:
         {
-            IGC::CallableShaderTypeMD ShaderTy =
-                infoKind == COMMITTED_PRIMITIVE_INDEX ?
-                CallableShaderTypeMD::ClosestHit :
-                CallableShaderTypeMD::AnyHit;
-            Value* leafType = builder.getLeafType(ShadowMemStackPointer, ShaderTy == CallableShaderTypeMD::ClosestHit);
-            Value* primIndex = builder.getPrimitiveIndex(ShadowMemStackPointer, I, leafType, ShaderTy, true);
+            Value* leafType = builder.getLeafType(ShadowMemStackPointer, I->isCommitted());
+            Value* primIndex = builder.getPrimitiveIndex(ShadowMemStackPointer, I, leafType, shaderTy, true);
             IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(), "Invalid primIndex type!");
             I->replaceAllUsesWith(primIndex);
 
             break;
         }
-        case COMMITTED_BARYCENTRICS:
+        case BARYCENTRICS:
         {
             uint32_t idx = (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue();
-            Value* bary = builder.getHitBaryCentric(ShadowMemStackPointer, idx, true);
+            Value* bary = builder.getHitBaryCentric(ShadowMemStackPointer, idx, I->isCommitted());
             I->replaceAllUsesWith(bary);
             break;
         }
-        case CANDIDATE_BARYCENTRICS:
+        case OBJECT_TO_WORLD:
         {
-            uint32_t idx = (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue();
-            Value* bary = builder.getHitBaryCentric(ShadowMemStackPointer, idx, false);
-            I->replaceAllUsesWith(bary);
-            break;
-        }
-        case COMMITTED_OBJECT_TO_WORLD:
-        case CANDIDATE_OBJECT_TO_WORLD:
-        {
-            IGC::CallableShaderTypeMD ShaderTy =
-                infoKind == COMMITTED_OBJECT_TO_WORLD ?
-                CallableShaderTypeMD::ClosestHit :
-                CallableShaderTypeMD::AnyHit;
             uint32_t dim = (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue();
-            Value* matrixComp = builder.getObjToWorld(ShadowMemStackPointer, dim, ShaderTy, I, true);
+            Value* matrixComp = builder.getObjToWorld(ShadowMemStackPointer, dim, shaderTy, I, true);
             I->replaceAllUsesWith(matrixComp);
             break;
         }
-        case COMMITTED_WORLD_TO_OBJECT:
-        case CANDIDATE_WORLD_TO_OBJECT:
+        case WORLD_TO_OBJECT:
         {
-            IGC::CallableShaderTypeMD ShaderTy =
-                infoKind == COMMITTED_WORLD_TO_OBJECT ?
-                CallableShaderTypeMD::ClosestHit :
-                CallableShaderTypeMD::AnyHit;
             uint32_t dim = (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue();
-            Value* matrixComp = builder.getWorldToObj(ShadowMemStackPointer, dim, ShaderTy, I, true);
+            Value* matrixComp = builder.getWorldToObj(ShadowMemStackPointer, dim, shaderTy, I, true);
             I->replaceAllUsesWith(matrixComp);
             break;
-
-            break;
         }
-        case COMMITTED_OBJECT_RAY_ORG:
+        case OBJ_RAY_ORG:
         {
-            Value* rayInfo = builder.getObjRayOrig(ShadowMemStackPointer, (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue(), CallableShaderTypeMD::ClosestHit, I, true);
+            Value* rayInfo = builder.getObjRayOrig(ShadowMemStackPointer, (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue(), shaderTy, I, true);
             I->replaceAllUsesWith(rayInfo);
             break;
         }
-        case COMMITTED_OBJECT_RAY_DIR:
+        case OBJ_RAY_DIR:
         {
-            Value* rayInfo = builder.getObjRayDir(ShadowMemStackPointer, (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue(), CallableShaderTypeMD::ClosestHit, I, true);
+            Value* rayInfo = builder.getObjRayDir(ShadowMemStackPointer, (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue(), shaderTy, I, true);
             I->replaceAllUsesWith(rayInfo);
             break;
         }
-        case CANDIDATE_OBJECT_RAY_ORG:
+        case INST_CONTRIBUTION_TO_HITGROUP_INDEX:
         {
-            Value* valueAtDim = builder.getObjRayOrig(ShadowMemStackPointer, (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue(), CallableShaderTypeMD::AnyHit, I, true);
-            I->replaceAllUsesWith(valueAtDim);
-            break;
-        }
-        case CANDIDATE_OBJECT_RAY_DIR:
-        {
-            Value* valueAtDim = builder.getObjRayDir(ShadowMemStackPointer, (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue(), CallableShaderTypeMD::AnyHit, I, true);
-            I->replaceAllUsesWith(valueAtDim);
-            break;
-        }
-        case COMMITTED_INST_CONTRIBUTION_TO_HITGROUP_INDEX:
-        case CANDIDATE_INST_CONTRIBUTION_TO_HITGROUP_INDEX:
-        {
-            IGC::CallableShaderTypeMD ShaderTy =
-                infoKind == COMMITTED_INST_CONTRIBUTION_TO_HITGROUP_INDEX ?
-                CallableShaderTypeMD::ClosestHit :
-                CallableShaderTypeMD::AnyHit;
-            Value* info = builder.getInstanceContributionToHitGroupIndex(
-                ShadowMemStackPointer, ShaderTy);
-            I->replaceAllUsesWith(info);
+            I->replaceAllUsesWith(
+                builder.getInstanceContributionToHitGroupIndex(ShadowMemStackPointer, shaderTy)
+            );
             break;
         }
         default:

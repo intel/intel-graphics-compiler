@@ -11033,6 +11033,10 @@ intrinsics:
                 name: Arg1
                 type_definition: *i32
                 comment: ""
+            - !<ArgumentDefinition>
+                name: isProcedural
+                type_definition: *i1
+                comment: "If true, selected ray info queries will return data for a procedural primitive"
         attributes:
             - !AttributeID "NoUnwind"
         memory_effects:
@@ -11054,6 +11058,10 @@ intrinsics:
                 name: Arg1
                 type_definition: *i32
                 comment: ""
+            - !<ArgumentDefinition>
+                name: isProcedural
+                type_definition: *i1
+                comment: "Unused, added for parity with GenISA_RayInfo"
         attributes:
             - !AttributeID "NoUnwind"
         memory_effects:
@@ -11512,6 +11520,10 @@ intrinsics:
                 name: Arg2
                 type_definition: *i32
                 comment: "Dimension used for certain types"
+            - !<ArgumentDefinition>
+                name: isCommitted
+                type_definition: *i1
+                comment: "Is the ray info query for a committed hit?"
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>

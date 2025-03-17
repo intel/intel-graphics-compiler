@@ -1571,6 +1571,15 @@ public:
     uint32_t getDim() const {
         return (uint32_t)cast<ConstantInt>(getOperand(1))->getZExtValue();
     }
+
+    std::optional<bool> isProcedural() const {
+        if (auto* C = dyn_cast<ConstantInt>(getOperand(2)))
+            return C->getZExtValue() > 0;
+
+        IGC_ASSERT(isa<UndefValue>(getOperand(2)));
+
+        return std::nullopt;
+    }
 };
 
 class FillValueIntrinsic : public GenIntrinsicInst {
@@ -1917,6 +1926,10 @@ public:
     }
 
     Value* getDim() const {return getOperand(2);}
+
+    bool isCommitted() const {
+        return static_cast<bool>(cast<ConstantInt>(getOperand(3))->getZExtValue());
+    }
 };
 
 class RayQueryShadowMemoryToSyncStack : public RayQueryInstrisicBase {
