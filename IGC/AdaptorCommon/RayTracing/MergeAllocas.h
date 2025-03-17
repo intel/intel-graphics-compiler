@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/Instructions.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/ADT/SetVector.h>
@@ -18,26 +19,10 @@ namespace llvm {
     class Function;
     class Instruction;
     class LoopInfo;
-}
+} // namespace llvm
 
 namespace IGC
 {
-    class MergeAllocas : public llvm::FunctionPass
-    {
-    public:
-        MergeAllocas();
-
-        bool runOnFunction(llvm::Function& F) override;
-        llvm::StringRef getPassName() const override
-        {
-            return "MergeAllocas";
-        }
-
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
-
-        static char ID;
-    };
-
     // for now keep this here, in the future this should be generalized and widely available everywhere in IGC
     class AllocationBasedLivenessAnalysis : public llvm::FunctionPass
     {
@@ -57,7 +42,7 @@ namespace IGC
             return "AllocationBasedLivenessAnalysis";
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
         auto getLivenessInfo() { return m_LivenessInfo; }
 
         static char ID;
@@ -95,5 +80,35 @@ namespace IGC
                 delete LD;
             }
         }
+    };
+
+    struct AllocaInfo {
+        llvm::SmallVector<AllocaInfo*> nonOverlapingAllocas;
+        llvm::AllocaInst* alloca;
+        AllocationBasedLivenessAnalysis::LivenessData* livenessData;
+        unsigned int addressSpace;
+        std::size_t allocationSize;
+        std::size_t remainingSize;
+        std::size_t alignment;
+        // start offset of this alloca in top level alloca (if any)
+        std::size_t offset;
+    };
+
+    class MergeAllocas : public llvm::FunctionPass
+    {
+    public:
+        MergeAllocas();
+
+        bool runOnFunction(llvm::Function& F) override;
+        llvm::StringRef getPassName() const override
+        {
+            return "MergeAllocas";
+        }
+
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
+
+        static char ID;
+    private:
+        std::vector<AllocaInfo> AllAllocasInfos;
     };
 } // namespace IGC
