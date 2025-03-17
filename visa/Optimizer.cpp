@@ -834,7 +834,7 @@ void Optimizer::s0SubAfterRA() {
   kernel.fg.resetLocalDataFlowData();
   kernel.fg.localDataFlowAnalysis();
 
-  SRSubPassBeforeRA s0Sub(builder, kernel);
+  SRSubPassAfterRA s0Sub(builder, kernel);
   s0Sub.run();
 }
 
