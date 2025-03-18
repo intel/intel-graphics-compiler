@@ -58,6 +58,12 @@ void IGCMetaDataHelper::copyFunction(
     auto loc = FuncMD.find(OldFunc);
     if (loc != FuncMD.end())
     {
+        if (FuncMD.find(NewFunc) == FuncMD.end())
+        {
+            // Invalidate iterator ahead of time so it doesn't happen during assignment
+            FuncMD.reserve(FuncMD.size() + 1);
+            loc = FuncMD.find(OldFunc);
+        }
         FuncMD[NewFunc] = loc->second;
     }
 }
