@@ -158,7 +158,7 @@ declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 
 !121 = !{!"ForceLinearWalkOnLinearUAV", i1 false}
 !122 = !{!"DisableLscSamplerRouting", i1 false}
 !123 = !{!"UseBarrierControlFlowOptimization", i1 false}
-!124 = !{!"disableDynamicRQManagement", i1 false}
+!124 = !{!"EnableDynamicRQManagement", i1 false}
 !125 = !{!"Quad8InputThreshold", i32 0}
 !126 = !{!"FuncMD", !127, !128}
 !127 = !{!"FuncMDMap[0]", void (half addrspace(1)*, half addrspace(1)*, half addrspace(1)*, float, i8 addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, i8*, i32, i32, i32, i32, i32)* @blam}
