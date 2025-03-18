@@ -97,7 +97,7 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
 
     const bool RequirePayloadHeader = m_ctx->m_DriverInfo.RequirePayloadHeader();
-    const auto PayloadHeaderType = IGC_IS_FLAG_ENABLED(ShortImplicitPayloadHeader) ? ImplicitArg::PAYLOAD_HEADER_SHORT : ImplicitArg::PAYLOAD_HEADER;
+    const auto PayloadHeaderType = m_ctx->platform.allowShortImplicitPayloadHeader() ? ImplicitArg::PAYLOAD_HEADER_SHORT : ImplicitArg::PAYLOAD_HEADER;
 
     // All OpenCL kernels receive R0 and Payload Header implicitly
     if (isEntryFunc(m_pMDUtils, &F))
