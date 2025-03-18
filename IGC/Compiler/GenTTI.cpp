@@ -383,14 +383,15 @@ namespace llvm {
         if (L->getNumBlocks() != 1) {
             if (IGC_IS_FLAG_ENABLED(EnableAdvRuntimeUnroll) && IGCLLVM::isInnermost(L)) {
                 auto countNonPHI = [](BasicBlock* BB) {
-                    unsigned Total = BB->size();
+                    // Count the number of instructions in the basic block without dbg instructions
+                    unsigned InstCountInBB = BB->sizeWithoutDebug();
                     unsigned PHIs = 0;
                     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
                         if (!isa<PHINode>(&*BI))
                             break;
                         ++PHIs;
                     }
-                    return Total - PHIs;
+                    return InstCountInBB - PHIs;
                 };
                 auto hasLoad = [](BasicBlock* BB) {
                     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI)
