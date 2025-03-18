@@ -179,8 +179,7 @@ unsigned int getVectorSize(Value *I) {
 }
 
 
-// due to our emitter, currently we only process float fdiv's that we can
-// construct as INV (first operand is 1.0f);
+// due to our emitter, currently we only process float fdiv's
 bool isFDivSafe(Instruction *I) {
     if (!IGC_GET_FLAG_VALUE(VectorizerAllowFDIV)) return false;
     auto* Binary = llvm::dyn_cast<BinaryOperator>(I);
@@ -188,10 +187,6 @@ bool isFDivSafe(Instruction *I) {
 
     auto OpCode = Binary->getOpcode();
     if (!(OpCode == Instruction::FDiv && I->getType()->isFloatTy())) return false;
-
-    //auto* constFloat = llvm::dyn_cast<llvm::ConstantFP>(I->getOperand(0));
-    //if (!constFloat) return false;
-    //if (!constFloat->isExactlyValue(1.f)) return false;
 
     return true;
 }
@@ -209,13 +204,20 @@ bool isBinarySafe(Instruction *I) {
     return Result;
 }
 
+bool isPHISafe(Instruction *I) {
+    auto* PHI = llvm::dyn_cast<PHINode>(I);
+    if (PHI && PHI->getNumIncomingValues() == 2)
+        return true;
+    return false;
+}
+
 bool isSafeToVectorize(Instruction *I) {
     // this is a very limited approach for vectorizing but it's safe
     bool Result =
-        llvm::isa<PHINode>(I) ||
+        isPHISafe(I)  ||
         llvm::isa<ExtractElementInst>(I) ||
         llvm::isa<InsertElementInst>(I) ||
-        ( llvm::isa<FPTruncInst>(I) && IGC_GET_FLAG_VALUE(VectorizerAllowFPTRUNC) ) ||
+        (llvm::isa<FPTruncInst>(I) && IGC_GET_FLAG_VALUE(VectorizerAllowFPTRUNC)) ||
         isBinarySafe(I);
 
     return Result;
@@ -818,18 +820,19 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
             CreatedVectorInstructions.clear();
             if (!processChain(InSt)) {
                 writeLog();
+                // this is important to not mix up instructions that were created for the chain
+                // that was scraped later
+                ScalarToVector.clear();
                 std::reverse(CreatedVectorInstructions.begin(), CreatedVectorInstructions.end());
                 PRINT_DS("To Clean: ", CreatedVectorInstructions);
+                // we move to a new cycle-proof deletion algorithm
                 for (auto& el : CreatedVectorInstructions) {
                     PRINT_LOG("Cleaned: "); PRINT_INST_NL(el); writeLog();
+                    el->replaceAllUsesWith(UndefValue::get(el->getType()));
                     el->eraseFromParent();
                 }
-                ScalarToVector.clear();
             }
-            else {
-                for (auto& el : CreatedVectorInstructions) { PRINT_LOG("Created: "); PRINT_INST_NL(el); writeLog(); }
-            }
-            writeLog();
+            else { PRINT_DS("Created: ", CreatedVectorInstructions); writeLog(); }
         }
 
         PRINT_LOG("\n\n");
