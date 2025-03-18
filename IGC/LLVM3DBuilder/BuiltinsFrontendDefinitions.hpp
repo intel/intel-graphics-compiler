@@ -2165,7 +2165,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         float_ref->getType(),
-        minlod->getType(),
         int32_pairedTextureIdx->getType(),
         int32_textureIdx->getType(),
         int32_sampler->getType()
