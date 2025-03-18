@@ -23,7 +23,7 @@ define i32 @foo(<8 x i32> %r0, <8 x i32> %payloadHeader, i32 %workDim) nounwind 
 !3 = !{!"implicit_arg_desc", !4, !5, !6}
 !4 = !{i32 0}
 !5 = !{i32 1}
-!6 = !{i32 2}
+!6 = !{i32 3}
 
 ; CHECK:         ret i32 %workDim
 

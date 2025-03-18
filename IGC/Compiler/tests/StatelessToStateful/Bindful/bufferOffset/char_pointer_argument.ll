@@ -38,6 +38,6 @@ entry:
 !12 = !{!"extensionType", i32 -1}
 !13 = !{!"indexType", i32 0}
 !14 = !{!"implicit_arg_desc", !15}
-!15 = !{i32 14}
+!15 = !{i32 15}
 !16 = !{!"compOpt", !17}
 !17 = !{!"HasBufferOffsetArg", i1 true}

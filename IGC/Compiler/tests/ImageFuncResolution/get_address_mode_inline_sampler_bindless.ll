@@ -32,7 +32,7 @@ declare spir_func i32 @__builtin_IB_get_address_mode(i32)
 !0 = !{ptr @test, !1}
 !1 = !{!2}
 !2 = !{!"implicit_arg_desc", !3}
-!3 = !{i32 32, !4}
+!3 = !{i32 33, !4}
 !4 = !{!"explicit_arg_num", i32 19}
 !5 = !{!"ModuleMD", !6}
 !6 = !{!"FuncMD", !7, !8}

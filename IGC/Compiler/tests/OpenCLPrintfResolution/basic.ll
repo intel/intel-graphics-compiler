@@ -245,9 +245,9 @@ declare spir_func i32 @printf(i8 addrspace(2)*, ...)
 !3 = !{!"implicit_arg_desc", !4, !5, !6, !7, !8}
 !4 = !{i32 0}
 !5 = !{i32 1}
-!6 = !{i32 10}
-!7 = !{i32 12}
-!8 = !{i32 13}
+!6 = !{i32 11}
+!7 = !{i32 13}
+!8 = !{i32 14}
 !9 = !{!"ModuleMD", !10}
 !10 = !{!"FuncMD", !11, !12}
 !11 = distinct !{!"FuncMDMap[0]", void (i32, <8 x i32>, <8 x i32>, i8 addrspace(2)*, i8*, i8 addrspace(1)*)* @test_printf}

@@ -151,13 +151,13 @@ terminator:
 !6 = !{!"implicit_arg_desc", !7, !8, !9, !10, !11, !12, !13, !15}
 !7 = !{i32 0}
 !8 = !{i32 1}
-!9 = !{i32 5}
-!10 = !{i32 7}
-!11 = !{i32 8}
-!12 = !{i32 9}
-!13 = !{i32 14, !14}
+!9 = !{i32 6}
+!10 = !{i32 8}
+!11 = !{i32 9}
+!12 = !{i32 10}
+!13 = !{i32 15, !14}
 !14 = !{!"explicit_arg_num", i32 0}
-!15 = !{i32 14, !16}
+!15 = !{i32 15, !16}
 !16 = !{!"explicit_arg_num", i32 1}
 
 ; This metadata provides information about the size of the work group.

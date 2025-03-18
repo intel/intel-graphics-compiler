@@ -40,5 +40,5 @@ define i32 @bar(i32 %img) nounwind {
 !8 = !{i32 (i32)* @bar, !1}
 
 ;CHECK-NOT: !{!"implicit_arg_desc", ![[A1:[0-9]+]]}
-;CHECK-NOT: ![[A2:[0-9]+]] = !{i32 27, ![[A3:[0-9]+]]}
+;CHECK-NOT: ![[A2:[0-9]+]] = !{i32 28, ![[A3:[0-9]+]]}
 ;CHECK-NOT: ![[A4:[0-9]+]] = !{!"explicit_arg_num", i32 0}

@@ -21,7 +21,7 @@ entry:
 
 declare spir_func i32 @__builtin_IB_get_snap_wa_reqd(i32)
 
-; CHECK-NOT: = !{i32 32, !{{[0-9]+}}}
+; CHECK-NOT: = !{i32 33, !{{[0-9]+}}}
 ; CHECK-NOT: = !{!"explicit_arg_num", i32 16}
 
 !igc.functions = !{!0}

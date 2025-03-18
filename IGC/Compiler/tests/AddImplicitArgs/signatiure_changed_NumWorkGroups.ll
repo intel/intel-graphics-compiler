@@ -20,7 +20,7 @@ define i32 @foo(i32 %x) nounwind {
 !2 =  !{ !"function_type", i32 0}
 !3 =  !{ !"arg_desc"}
 !4 =  !{ !"implicit_arg_desc",  !6}
-!6 =  !{i32 3}
+!6 =  !{i32 4}
 
 ; CHECK:         define i32 @foo(i32 %x, <3 x i32> %numWorkGroups)
 ; CHECK-NOT:    define i32 @foo(i32 %x)

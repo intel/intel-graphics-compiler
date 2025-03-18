@@ -19,7 +19,7 @@ define i32 @foo(i32 %x) nounwind {
 !2 =  !{ !"function_type", i32 0}
 !3 =  !{ !"arg_desc"}
 !4 =  !{ !"implicit_arg_desc",  !6}
-!6 =  !{i32 4}
+!6 =  !{i32 5}
 
 ; CHECK:         define i32 @foo(i32 %x, <3 x i32> %globalSize)
 ; CHECK-NOT:    define i32 @foo(i32 %x)

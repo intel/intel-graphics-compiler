@@ -23,7 +23,7 @@ define i32 @foo(i32 %dim, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %gl
 !3 = !{!"implicit_arg_desc", !4, !5, !6}
 !4 = !{i32 0}
 !5 = !{i32 1}
-!6 = !{i32 4}
+!6 = !{i32 5}
 
 ; CHECK:         %globalSize1 = extractelement <3 x i32> %globalSize, i32 1
 

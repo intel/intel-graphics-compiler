@@ -81,8 +81,8 @@ attributes #0 = { convergent nounwind "less-precise-fpmad"="true" "null-pointer-
 !333 = !{!"implicit_arg_desc", !334, !335, !336, !337, !338, !339}
 !334 = !{i32 0}
 !335 = !{i32 1}
-!336 = !{i32 6}
-!337 = !{i32 7}
-!338 = !{i32 8}
-!339 = !{i32 9}
+!336 = !{i32 7}
+!337 = !{i32 8}
+!338 = !{i32 9}
+!339 = !{i32 10}
 !340 = !{void (<2 x i32> addrspace(1)*, <2 x i32> addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16)* @test_st1, !331}

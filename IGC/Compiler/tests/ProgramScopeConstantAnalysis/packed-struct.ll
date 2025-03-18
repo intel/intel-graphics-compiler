@@ -46,7 +46,7 @@ declare void @llvm.memcpy.p0i8.p2i8.i64(i8* noalias nocapture writeonly, i8 addr
 !4 = !{!"implicit_arg_desc", !5, !6, !7}
 !5 = !{i32 0}
 !6 = !{i32 1}
-!7 = !{i32 10}
+!7 = !{i32 11}
 ; CHECK: !{!"BufferVec[0]", i8 1}
 ; CHECK: !{!"BufferVec[1]", i8 2}
 ; CHECK: !{!"BufferVec[2]", i8 3}

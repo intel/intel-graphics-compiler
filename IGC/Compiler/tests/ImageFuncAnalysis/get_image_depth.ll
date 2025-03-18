@@ -27,7 +27,7 @@ define i32 @foo(%spirv.Image._void_2_1_0_0_0_0_0 addrspace(1)* %img) nounwind {
 !3 =  !{ !"implicit_arg_desc"}
 
 ;CHECK: !{!"implicit_arg_desc",  ![[A1:[0-9]+]]}
-;CHECK: ![[A1]] = !{i32 22,  ![[A2:[0-9]+]]}
+;CHECK: ![[A1]] = !{i32 23,  ![[A2:[0-9]+]]}
 ;CHECK: ![[A2]] = !{!"explicit_arg_num", i32 0}
 
 

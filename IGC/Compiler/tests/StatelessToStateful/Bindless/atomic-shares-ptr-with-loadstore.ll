@@ -62,9 +62,9 @@ declare i64 @llvm.genx.GenISA.intatomicrawA64.i64.p1i64.p1i64(i64 addrspace(1)*,
 !22 = !{!"inlineSamplersMD"}
 !23 = !{!"compOpt", !24}
 !24 = !{!"UseLegacyBindlessMode", i1 false}
-!25 = !{i32 14, !26}
+!25 = !{i32 15, !26}
 !26 = !{!"explicit_arg_num", i32 0}
-!27 = !{i32 14, !28}
+!27 = !{i32 15, !28}
 !28 = !{!"explicit_arg_num", i32 1}
-!29 = !{i32 58, !26}
-!30 = !{i32 58, !28}
+!29 = !{i32 59, !26}
+!30 = !{i32 59, !28}

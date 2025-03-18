@@ -32,5 +32,5 @@ define i32 @foo(%spirv.Sampler addrspace(2)* %sampler) nounwind {
 !3 = !{!"implicit_arg_desc"}
 
 ;CHECK: !{!"implicit_arg_desc", ![[A1:[0-9]+]]}
-;CHECK: ![[A1]] = !{i32 29, ![[A2:[0-9]+]]}
+;CHECK: ![[A1]] = !{i32 30, ![[A2:[0-9]+]]}
 ;CHECK: ![[A2]] = !{!"explicit_arg_num", i32 0}

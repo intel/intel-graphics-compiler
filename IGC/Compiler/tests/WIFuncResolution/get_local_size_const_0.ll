@@ -25,7 +25,7 @@ define i32 @foo(i32 %dim, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %lo
 !3 = !{!"implicit_arg_desc", !4, !5, !6}
 !4 = !{i32 0}
 !5 = !{i32 1}
-!6 = !{i32 5}
+!6 = !{i32 6}
 
 ; CHECK:         [[local_size:%[a-zA-Z0-9]+]] = extractelement <3 x i32> %localSize, i32 0
 

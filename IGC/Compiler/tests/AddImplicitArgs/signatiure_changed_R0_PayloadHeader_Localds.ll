@@ -22,9 +22,9 @@ define i32 @foo(i32 %x) nounwind {
 !4 =  !{ !"implicit_arg_desc",  !6,  !7,  !8,  !9,  !10}
 !6 =  !{i32 0}
 !7 =  !{i32 1}
-!8 =  !{i32 7}
-!9 =  !{i32 8}
-!10 =  !{i32 9}
+!8 =  !{i32 8}
+!9 =  !{i32 9}
+!10 =  !{i32 10}
 
 ; CHECK:         define i32 @foo(i32 %x, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ)
 ; CHECK-NOT:    define i32 @foo(i32 %x)

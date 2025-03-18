@@ -80,24 +80,24 @@ declare i32 @__builtin_IB_get_prefered_workgroup_multiple()
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc", !4}
-!4 = !{i32 41}
+!4 = !{i32 42}
 
 !5 = !{void (i8 addrspace(1)*)* @test_device_eventpool, !6}
 !6 = !{!2, !7}
 !7 = !{!"implicit_arg_desc", !8}
-!8 = !{i32 42}
+!8 = !{i32 43}
 
 !9 = !{void (i32)* @test_device_maxworkgroup, !10}
 !10 = !{!2, !11}
 !11 = !{!"implicit_arg_desc", !12}
-!12 = !{i32 43}
+!12 = !{i32 44}
 
 !13 = !{void (i32)* @test_device_parentevent, !14}
 !14 = !{!2, !15}
 !15 = !{!"implicit_arg_desc", !16}
-!16 = !{i32 44}
+!16 = !{i32 45}
 
 !17 = !{void (i32)* @test_device_wg_multiple, !18}
 !18 = !{!2, !19}
 !19 = !{!"implicit_arg_desc", !20}
-!20 = !{i32 45}
+!20 = !{i32 46}

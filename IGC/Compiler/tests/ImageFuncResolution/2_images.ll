@@ -30,9 +30,9 @@ define i32 @foo(i32 %img1, i32 %img2, i32 %imageWidth, i32 %imageWidth1) nounwin
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc", !4, !6}
-!4 = !{i32 21, !5}
+!4 = !{i32 22, !5}
 !5 = !{!"explicit_arg_num", i32 0}
-!6 = !{i32 21, !7}
+!6 = !{i32 22, !7}
 !7 = !{!"explicit_arg_num", i32 1}
 
 ; CHECK:         %res = add i32 %imageWidth, %imageWidth1

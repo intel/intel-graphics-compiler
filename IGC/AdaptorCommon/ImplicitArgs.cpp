@@ -25,6 +25,7 @@ static const std::vector<ImplicitArg> IMPLICIT_ARGS = {
     ImplicitArg(ImplicitArg::R0, "r0", ImplicitArg::INT, WIAnalysis::UNIFORM_THREAD, 8, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getR0),
 
     ImplicitArg(ImplicitArg::PAYLOAD_HEADER, "payloadHeader", ImplicitArg::INT, WIAnalysis::UNIFORM_WORKGROUP, 8, ImplicitArg::ALIGN_GRF, true, GenISAIntrinsic::GenISA_getPayloadHeader),
+    ImplicitArg(ImplicitArg::PAYLOAD_HEADER_SHORT, "payloadHeader", ImplicitArg::INT, WIAnalysis::UNIFORM_WORKGROUP, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getPayloadHeader),
     ImplicitArg(ImplicitArg::WORK_DIM, "workDim", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getWorkDim),
 
     ImplicitArg(ImplicitArg::NUM_GROUPS, "numWorkGroups", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getNumWorkGroups),
@@ -104,8 +105,6 @@ static const std::vector<ImplicitArg> IMPLICIT_ARGS = {
 
     // BufferBoundsChecking
     ImplicitArg(ImplicitArg::BUFFER_SIZE, "bufferSize", ImplicitArg::LONG, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_QWORD, true),
-
-    ImplicitArg(ImplicitArg::PAYLOAD_HEADER_SHORT, "payloadHeader", ImplicitArg::INT, WIAnalysis::UNIFORM_WORKGROUP, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getPayloadHeader),
 };
 
 ImplicitArg::ImplicitArg(

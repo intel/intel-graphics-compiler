@@ -45,8 +45,8 @@ entry:
 !4 = !{!5, !6}
 !5 = !{!"function_type", i32 0}
 !6 = !{!"implicit_arg_desc", !7, !8}
-!7 = !{i32 10}
-!8 = !{i32 11}
+!7 = !{i32 11}
+!8 = !{i32 12}
 !9 = !{void (i8 addrspace(2)*, i8 addrspace(1)*)* @__kmpc_barrier, !10}
 !10 = !{!11, !6}
 !11 = !{!"function_type", i32 2}

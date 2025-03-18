@@ -32,7 +32,7 @@ define i32 @foo(i32 %img) nounwind {
 !7 = !{!"UseLegacyBindlessMode", i1 false}
 
 ;CHECK-NOT: !{!"implicit_arg_desc", ![[A1:[0-9]+]]}
-;CHECK-NOT: ![[A2:[0-9]+]] = !{i32 20, ![[A3:[0-9]+]]}
+;CHECK-NOT: ![[A2:[0-9]+]] = !{i32 21, ![[A3:[0-9]+]]}
 ;CHECK-NOT: ![[A4:[0-9]+]] = !{!"explicit_arg_num", i32 0}
 
 

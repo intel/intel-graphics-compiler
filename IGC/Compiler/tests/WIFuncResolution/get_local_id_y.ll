@@ -25,9 +25,9 @@ define i32 @foo(i32 %dim, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX
 !3 = !{!"implicit_arg_desc", !4, !5, !6, !7, !8}
 !4 = !{i32 0}
 !5 = !{i32 1}
-!6 = !{i32 7}
-!7 = !{i32 8}
-!8 = !{i32 9}
+!6 = !{i32 8}
+!7 = !{i32 9}
+!8 = !{i32 10}
 
 ; CHECK:         ret i32 %localIdY
 

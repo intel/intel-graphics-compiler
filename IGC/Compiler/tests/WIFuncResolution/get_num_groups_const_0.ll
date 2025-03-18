@@ -25,7 +25,7 @@ define i32 @foo(i32 %dim, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %nu
 !3 = !{!"implicit_arg_desc", !4, !5, !6}
 !4 = !{i32 0}
 !5 = !{i32 1}
-!6 = !{i32 3}
+!6 = !{i32 4}
 
 ; CHECK:         %numGroups1 = extractelement <3 x i32> %numGroups, i32 0
 

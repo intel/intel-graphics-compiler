@@ -27,6 +27,6 @@ define i32 @foo(i32 %dim) nounwind {
 ;CHECK: !{!"implicit_arg_desc", ![[A1:[0-9]+]], ![[A2:[0-9]+]], ![[A4:[0-9]+]], ![[A5:[0-9]+]], ![[A6:[0-9]+]]}
 ;CHECK: ![[A1]] = !{i32 0}
 ;CHECK: ![[A2]] = !{i32 1}
-;CHECK: ![[A4]] = !{i32 7}
-;CHECK: ![[A5]] = !{i32 8}
-;CHECK: ![[A6]] = !{i32 9}
+;CHECK: ![[A4]] = !{i32 8}
+;CHECK: ![[A5]] = !{i32 9}
+;CHECK: ![[A6]] = !{i32 10}

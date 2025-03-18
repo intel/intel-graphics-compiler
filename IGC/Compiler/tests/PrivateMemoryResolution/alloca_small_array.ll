@@ -42,4 +42,4 @@ entry:
 !2 = !{!3, !4}
 !3 = !{!"function_type", i32 0}
 !4 = !{!"implicit_arg_desc", !5}
-!5 = !{i32 12}
+!5 = !{i32 13}
