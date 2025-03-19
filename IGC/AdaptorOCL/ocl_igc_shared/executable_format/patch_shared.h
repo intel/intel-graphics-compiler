@@ -205,12 +205,16 @@ struct SPatchExecutionEnvironment :
     uint32_t    IndirectStatelessCount;
     uint32_t    UseBindlessMode;
     uint32_t    HasStackCalls;
-    uint64_t    SIMDInfo;
     uint32_t    RequireDisableEUFusion;
+    uint32_t    simd8_SIMDInfo;
+    uint32_t    simd16_SIMDInfo;
+    uint32_t    simd32_SIMDInfo;
+    uint32_t    dual_simd8_SIMDInfo;
+    uint32_t    quad_simd8_dynamic_SIMDInfo;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert(sizeof(SPatchExecutionEnvironment) == (136 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
+static_assert( sizeof(SPatchExecutionEnvironment) == ( 148 + sizeof(SPatchItemHeader) ), "The size of SPatchExecutionEnvironment is not what is expected" );
 
 /*****************************************************************************\
 STRUCT: SPatchString

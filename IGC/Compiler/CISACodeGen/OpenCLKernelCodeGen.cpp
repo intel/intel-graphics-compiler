@@ -2844,7 +2844,13 @@ namespace IGC
         m_Context->SetSIMDInfo(SIMD_SELECTED, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
 
         m_kernelInfo.m_executionEnvironment.CompiledSIMDSize = numLanes(simdMode);
-        m_kernelInfo.m_executionEnvironment.SIMDInfo = m_Context->GetSIMDInfo();
+
+        // Copying simdinfo from CodeGenContext to ExecutionEnvironment
+        m_kernelInfo.m_executionEnvironment.simd8_SIMDInfo = m_Context->GetSimd8SIMDInfo();
+        m_kernelInfo.m_executionEnvironment.simd16_SIMDInfo = m_Context->GetSimd16SIMDInfo();
+        m_kernelInfo.m_executionEnvironment.simd32_SIMDInfo = m_Context->GetSimd32SIMDInfo();
+        m_kernelInfo.m_executionEnvironment.dual_simd8_SIMDInfo = m_Context->GetDualSimd8SIMDInfo();
+        m_kernelInfo.m_executionEnvironment.quad_simd8_dynamic_SIMDInfo = m_Context->GetQuadSimd8DynamicSIMDInfo();
 
         m_kernelInfo.m_executionEnvironment.PerThreadPrivateMemoryUsage =
             pOutput->m_UseScratchSpacePrivateMemory ?

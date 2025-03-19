@@ -324,7 +324,11 @@ struct ExecutionEnvironment
     DWORD  WorkgroupWalkOrder[3]                      = {};
     bool   HasGlobalAtomics                           = false;
     bool   UseBindlessMode                            = false;
-    uint64_t SIMDInfo                                 = 0;
+    uint32_t simd8_SIMDInfo                           = 0;
+    uint32_t simd16_SIMDInfo                          = 0;
+    uint32_t simd32_SIMDInfo                          = 0;
+    uint32_t dual_simd8_SIMDInfo                      = 0;
+    uint32_t quad_simd8_dynamic_SIMDInfo              = 0;
     bool  HasDPAS                                     = false;
     bool  HasRTCalls                                  = false;
     DWORD StatelessWritesCount                        = 0;

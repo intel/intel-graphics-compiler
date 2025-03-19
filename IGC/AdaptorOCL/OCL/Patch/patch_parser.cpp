@@ -937,8 +937,20 @@ void DebugPatchList(
                     "\tHasStackCalls = %d\n",
                     pPatchItem->HasStackCalls);
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                    "\tSIMDInfo = %lld\n",
-                    pPatchItem->SIMDInfo);
+                    "\tsimd8_SIMDInfo = %d\n",
+                    pPatchItem->simd8_SIMDInfo);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tsimd16_SIMDInfo = %d\n",
+                    pPatchItem->simd16_SIMDInfo);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tsimd32_SIMDInfo = %d\n",
+                    pPatchItem->simd32_SIMDInfo);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tdual_simd8_SIMDInfo = %d\n",
+                    pPatchItem->dual_simd8_SIMDInfo);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tquad_simd8_dynamic_SIMDInfo = %d\n",
+                    pPatchItem->quad_simd8_dynamic_SIMDInfo);
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tRequireDisableEUFusion = %s\n",
                     pPatchItem->RequireDisableEUFusion ? "true" : "false");
