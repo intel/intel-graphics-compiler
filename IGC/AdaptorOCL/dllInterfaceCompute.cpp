@@ -346,6 +346,21 @@ void GenerateCompilerOptionsMD(
     NamedMD->addOperand(llvm::MDNode::get(C, ValueVec));
 }
 
+// Ensure unnamed global variables are assigned names immediately after translating from SPIRV to LLVM.
+// This must occur before removing kernels that do not require recompilation.
+// Naming global variables after kernels removal can result in inconsistent naming compared to the first compilation,
+// potentially causing crashes in the ProgramScopeConstantAnalysis pass.
+void AssignNamesToUnnamedGlobalVariables(llvm::Module& M)
+{
+    for (auto& G : M.getGlobalList())
+    {
+        if (!G.hasName())
+        {
+            G.setName("gVar");
+        }
+    }
+}
+
 // Dump shader (binary or text), to output directory.
 // Create directory if it doesn't exist.
 // Works for all OSes.
@@ -493,6 +508,8 @@ bool TranslateSPIRVToLLVM(
     // Handle OpenCL Compiler Options
     if (success)
     {
+        AssignNamesToUnnamedGlobalVariables(*LLVMModule);
+
         GenerateCompilerOptionsMD(
             Context,
             *LLVMModule,

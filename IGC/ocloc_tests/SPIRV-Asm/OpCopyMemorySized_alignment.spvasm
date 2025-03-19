@@ -57,6 +57,6 @@
 ; CHECK-NOT:     call void @llvm.memcpy
 ; CHECK:         [[ALLOCA:%.*]] = alloca %struct.complex
 ; CHECK:         [[DST:%.*]] = bitcast %struct.complex* [[ALLOCA]] to i8*
-; CHECK:         [[SRC:%.*]] = getelementptr inbounds [16 x i8], [16 x i8] addrspace(2)* @0, i32 0, i32 0
+; CHECK:         [[SRC:%.*]] = getelementptr inbounds [16 x i8], [16 x i8] addrspace(2)* @{{.*}}, i32 0, i32 0
 ; CHECK:         call void @llvm.memcpy.p0i8.p2i8.i64(i8* align 8 [[DST]], i8 {{.*}}[[SRC]], i64 16, i1 false)
 ; CHECK:         ret void
