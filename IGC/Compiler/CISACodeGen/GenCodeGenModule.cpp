@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Argument.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/ADT/SetVector.h"
@@ -32,14 +31,12 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/Inliner.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "DebugInfo/VISADebugEmitter.hpp"
 #include <numeric>
 #include <utility>
-#include <iostream>
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -1458,11 +1455,11 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
             {
                 return llvm::InlineCost::getAlways("Caller size smaller than per func. threshold");
             }
-            else if (isTrivialCall(Callee) || FSA->onlyCalledOnce(Callee))
+            if (isTrivialCall(Callee) || FSA->onlyCalledOnce(Callee, Caller))
             {
                 return llvm::InlineCost::getAlways("Callee is called only once");
             }
-            else if (!FSA->shouldEnableSubroutine())
+            if (!FSA->shouldEnableSubroutine())
             {
                 // This function returns true if the estimated total inlining size exceeds some module threshold.
                 // If we don't exceed it, and there's no preference on inline vs noinline, we just inline.

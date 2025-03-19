@@ -28,7 +28,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 #include <deque>
-#include <iostream>
 #include <cfloat>
 #include <algorithm>
 #include <cmath>
@@ -1112,11 +1111,11 @@ std::size_t EstimateFunctionSize::getExpandedSize(const Function* F) const {
     return std::numeric_limits<std::size_t>::max();
 }
 
-bool EstimateFunctionSize::onlyCalledOnce(const Function* F) {
+bool EstimateFunctionSize::onlyCalledOnce(const Function* F, const Function* CallerF) {
     //IGC_ASSERT(IGC_IS_FLAG_DISABLED(ControlKernelTotalSize));
     auto I = ECG.find((Function*)F);
     if (I != ECG.end()) {
-        FunctionNode* Node = (FunctionNode*)I->second;
+        auto* Node = (FunctionNode*)I->second;
         IGC_ASSERT(F == Node->F);
         // one call-site and not a recursion
         if (Node->CallerList.size() == 1 &&
@@ -1124,14 +1123,12 @@ bool EstimateFunctionSize::onlyCalledOnce(const Function* F) {
             Node->CallerList.begin()->first != Node) {
             return true;
         }
-        // OpenCL specific, called once by each kernel
-        auto MdWrapper = getAnalysisIfAvailable<MetaDataUtilsWrapper>();
+        // OpenCL specific, called once by passed kernel
+        auto* MdWrapper = getAnalysisIfAvailable<MetaDataUtilsWrapper>();
         if (MdWrapper) {
-            auto pMdUtils = MdWrapper->getMetaDataUtils();
-            for (const auto &node : Node->CallerList) {
-                FunctionNode* Caller = node.first;
-                uint32_t cnt = node.second;
-                if (cnt > 1) {
+            auto* pMdUtils = MdWrapper->getMetaDataUtils();
+            for (const auto &[Caller, CallCount] : Node->CallerList) {
+                if (CallCount > 1 && Caller->F == CallerF) {
                     return false;
                 }
                 if (!isEntryFunc(pMdUtils, Caller->F)) {

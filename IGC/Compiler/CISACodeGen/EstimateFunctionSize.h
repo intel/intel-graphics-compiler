@@ -13,11 +13,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/ADT/StringRef.h>
-#include "llvm/ADT/DenseSet.h"
 #include "llvm/Support/ScaledNumber.h"
 #include "common/LLVMWarningsPop.hpp"
-#include <cstddef>
 #include "Probe/Assertion.h"
+#include <cstddef>
 #include <deque>
 #include <unordered_map>
 #include <unordered_set>
@@ -46,7 +45,7 @@ namespace IGC {
         ~EstimateFunctionSize();
         EstimateFunctionSize(const EstimateFunctionSize&) = delete;
         EstimateFunctionSize& operator=(const EstimateFunctionSize&) = delete;
-        virtual llvm::StringRef getPassName() const  override { return "Estimate Function Sizes"; }
+        llvm::StringRef getPassName() const  override { return "Estimate Function Sizes"; }
         void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
         bool runOnModule(llvm::Module& M) override;
 
@@ -56,7 +55,7 @@ namespace IGC {
         /// \brief Return the estimated function size after complete inlining.
         std::size_t getExpandedSize(const llvm::Function* F) const;
 
-        bool onlyCalledOnce(const llvm::Function* F);
+        bool onlyCalledOnce(const llvm::Function* F, const llvm::Function* CallerF);
 
         bool hasRecursion() const { return HasRecursion; }
 
