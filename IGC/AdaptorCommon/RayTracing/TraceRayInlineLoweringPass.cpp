@@ -219,6 +219,14 @@ TraceRayInlineLoweringPass::analyzeSingleRQProceed(const Function& F) const
         }
     }
 
+    // If STOC is enabled, it is possible to execute Proceed more than
+    // once, despite the application does not call it in the loop.
+    // In such case switch to multiple Proceeds mode.
+    if (m_CGCtx->isSWSubTriangleOpacityCullingEmulationEnabled())
+    {
+        Result = false;
+    }
+
     return { Result, cntProceeds };
 }
 
