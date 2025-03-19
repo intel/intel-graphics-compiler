@@ -453,47 +453,6 @@ static void processReadOpnds(G4_BB *BB, G4_INST *Inst, LocalLivenessInfo &LLI) {
   }
 }
 
-static void
-processReadOpndsForPseudoKill(G4_BB *BB, G4_INST *Inst,
-                              std::unordered_set<G4_Declare *> &pseudoKills) {
-  if (Inst->isPseudoKill()) {
-    return;
-  }
-  // (1) Indirect dst operand reads address.
-  G4_DstRegRegion *Dst = Inst->getDst();
-  if (Dst && Dst->isIndirect()) {
-    G4_Declare *dcl = Dst->getTopDcl();
-    if (pseudoKills.find(dcl) != pseudoKills.end()) {
-      dcl->setIsBBLocal(false);
-      pseudoKills.erase(dcl);
-    }
-  }
-
-  // (2) Direct and indirect source operands.
-  for (auto OpNum :
-       {Gen4_Operand_Number::Opnd_src0, Gen4_Operand_Number::Opnd_src1,
-        Gen4_Operand_Number::Opnd_src2, Gen4_Operand_Number::Opnd_src3,
-        Gen4_Operand_Number::Opnd_src4, Gen4_Operand_Number::Opnd_src5,
-        Gen4_Operand_Number::Opnd_src6, Gen4_Operand_Number::Opnd_src7,
-        Gen4_Operand_Number::Opnd_pred, Gen4_Operand_Number::Opnd_implAccSrc}) {
-    G4_Operand *opnd = Inst->getOperand(OpNum);
-    if (opnd == nullptr || opnd->isImm() || opnd->isNullReg() ||
-        opnd->isLabel())
-      continue;
-
-    G4_Declare *dcl = nullptr;
-    if (Inst->isPseudoAddrMovIntrinsic()) {
-      dcl =opnd->asAddrExp()->getRegVar()->getDeclare();
-    } else {
-      dcl = opnd->getTopDcl();
-    }
-    if (pseudoKills.find(dcl) != pseudoKills.end()) {
-      dcl->setIsBBLocal(false);
-      pseudoKills.erase(dcl);
-    }
-  }
-}
-
 // Process writes. If this is a partial definition, then record this partial
 // definition. When all partial definitions together define this live read node,
 // it is killed and du/ud links are added.
@@ -528,12 +487,6 @@ static void processWriteOpnds(G4_BB *BB, G4_INST *Inst,
 }
 
 void FlowGraph::localDataFlowAnalysis() {
-  // For pseudo kill varaible
-  // If there is use exposed in a BB, it's treated as global.
-  // Otherwise, it's treated as local even the same pseudo kill may appear in
-  // multiple BBs
-  std::unordered_set<G4_Declare *> pesudoKilledDcls;
-
   for (auto BB : BBs) {
     LocalLivenessInfo LLI(!BB->isAllLaneActive());
     for (auto I = BB->rbegin(), E = BB->rend(); I != E; ++I) {
@@ -551,24 +504,7 @@ void FlowGraph::localDataFlowAnalysis() {
         continue;
       }
       processWriteOpnds(BB, Inst, LLI);
-
-      if (Inst->isPseudoKill() && Inst->getDst() && !Inst->getDst()->isNullReg()) {
-        G4_Declare *dcl = Inst->getDst()->getTopDcl();
-        pesudoKilledDcls.insert(dcl);
-        // In case the use in anther BB is analyzed before define
-        if (!globalOpndHT.isOpndGlobal(Inst->getDst())) {
-          G4_Declare *dcl = Inst->getDst()->getTopDcl();
-          dcl->setIsBBLocal(true);
-        }
-      }
-
       processReadOpnds(BB, Inst, LLI);
-      if (pesudoKilledDcls
-              .size()) { // Process the operand using variable which
-                         // has psuedo kill. Since the scan is from back to
-                         // front, exposed use will make variable global
-        processReadOpndsForPseudoKill(BB, Inst, pesudoKilledDcls);
-      }
     }
 
     // All left over live nodes are global.

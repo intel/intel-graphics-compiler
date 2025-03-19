@@ -19,7 +19,7 @@ static bool regSortCompare(regMap map1, regMap map2) {
   return false;
 }
 
-static bool regSortCompareAfterRA(regMapBRA map1, regMapBRA map2) {
+static bool regSortCompareBeforeRA(regMapBRA map1, regMapBRA map2) {
   if (map1.opndNum < map2.opndNum) {
     return true;
   } else if (map1.opndNum > map2.opndNum) {
@@ -430,7 +430,7 @@ void SRSubPass::SRSub(G4_BB *bb) {
 
 // Check if current instruction is the candidate of sendi.
 // Recorded as candidate.
-bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
+bool SRSubPassBeforeRA::isSRCandidateBeforeRA(G4_INST *inst,
                                               regCandidatesBRA &dstSrcRegs) {
   if (!inst->isSend()) {
     return false;
@@ -482,7 +482,6 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
   int movInstNum = 0;
   int32_t firstDefID = 0x7FFFFFFF; // the ID of the first instruction define the
   std::vector<std::pair<Gen4_Operand_Number, unsigned>> notRemoveableMap;
-  std::vector<G4_INST *> immMovs;
   for (auto I = inst->def_begin(), E = inst->def_end(); I != E; ++I) {
     auto &&def = *I;
 
@@ -573,62 +572,12 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
 
       // It's not global define
       if (!(builder.getIsKernel() && kernel.fg.getNumBB() == 1)) {
-        if (kernel.fg.globalOpndHT.isOpndGlobal(dstRgn) && !dstRgn->getTopDcl()->getIsBBLocal()) {
+        if (kernel.fg.globalOpndHT.isOpndGlobal(dstRgn)) {
           return false;
         }
       }
 
       return true;
-    };
-
-    // mov (16)             r81.0<1>:f  0x8:f // $52:&54:
-    // mov (16|M16)         r89.0<1>:f  0x8:f // $53:&55:
-    // mov (16)             r82.0<1>:f  0x0:f // $54:&56:
-    // mov (16|M16)         r90.0<1>:f  0x0:f // $55:&57:
-    // mov (16)             r83.0<1>:f  0x0:f // $56:&58:
-    // mov (16|M16)         r91.0<1>:f  0x0:f // $57:&59:
-    // mov (16)             r84.0<1>:f  0x0:f // $58:&60:
-    // mov (16|M16)         r92.0<1>:f  0x0:f // $59:&61:
-    // mov (16)             r85.0<1>:f  0x0:f // $60:&62:
-    // mov (16|M16)         r93.0<1>:f  0x0:f // $61:&63:
-    // mov (16)             r86.0<1>:f  0x0:f // $62:&64:
-    // mov (16|M16)         r94.0<1>:f  0x0:f // $63:&65:
-    // mov (16)             r87.0<1>:f  0x0:f // $64:&66:
-    // mov (16|M16)         r95.0<1>:f  0x0:f // $65:&67:
-    // mov (16)             r88.0<1>:f  0x0:f // $66:&68:
-    // mov (16|M16)         r96.0<1>:f  0x0:f // $67:&69:
-    // ==>
-    // mov (16)             r81.0<1>:f  0x8:f // $52:&54:
-    // mov (16|M16)         r89.0<1>:f  0x8:f // $53:&55:
-    // mov (16)             r82.0<1>:f  0x0:f // $54:&56:
-    // mov (16|M16)         r90.0<1>:f  0x0:f // $55:&57:
-    //
-    // Reuse r81, r89, r82, r90 in the gather send
-    auto getRemoveableImm = [this](G4_INST *inst,
-                                   std::vector<G4_INST *> &immMovs) {
-      G4_Operand *src = inst->getSrc(0);
-      int64_t imm = src->asImm()->getImm();
-      for (size_t i = 0; i < immMovs.size(); i++) {
-        G4_INST *imov = immMovs[i];
-        G4_Operand *isrc = imov->getSrc(0);
-        int64_t iimm = isrc->asImm()->getImm();
-        if (imm == iimm &&
-            src->getType() == isrc->getType() && // Same value and same type
-            inst->getDst()->getType() ==
-                imov->getDst()->getType() && // Same dst type
-            inst->getDst()->asDstRegRegion()->getHorzStride() ==
-                imov->getDst()
-                    ->asDstRegRegion()
-                    ->getHorzStride() &&                  // Same region
-            inst->getExecSize() == imov->getExecSize() && // Same execution size
-            inst->getMaskOffset() ==
-                imov->getMaskOffset()) { // Same mask offset
-          return imov;
-        }
-      }
-      immMovs.push_back(inst);
-
-      return (G4_INST *)nullptr;
     };
 
     //if opndNum + offset is defined multiple times, cannobe be removed
@@ -655,22 +604,6 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
         movInstNum++;
       }
     } else {
-      if (movInst->getSrc(0) && movInst->getSrc(0)->isImm()) {
-        // Check if there is mov instruction with same imm value
-        G4_INST *lvnMov = getRemoveableImm(movInst, immMovs);
-
-        if (lvnMov) {
-          // The offset is the offset of original dst, which is used to identify
-          // the original register used in send.
-          // The opndNum is the opndNum of send.
-          regMapBRA regPair(movInst, opndNum, offset,
-                            lvnMov->getDst()); // the lvn mov dst can be reused
-          dstSrcRegs.dstSrcMap.push_back(regPair);
-          firstDefID = std::min(firstDefID, def.first->getLocalId());
-          movInstNum++;
-          continue;
-        }
-      }
       notRemoveableMap.push_back(std::make_pair(opndNum, offset));
     }
   }
@@ -706,14 +639,14 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
   dstSrcRegs.firstDefID = firstDefID;
   // Sort according to the register order in the original payload
   std::sort(dstSrcRegs.dstSrcMap.begin(), dstSrcRegs.dstSrcMap.end(),
-            regSortCompareAfterRA);
+            regSortCompareBeforeRA);
 
   return true;
 }
 
 // Replace the send instruction with the payload of
 // Insert the scalar register intialization mov instructions.
-bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
+bool SRSubPassBeforeRA::replaceWithSendiBeforeRA(G4_BB *bb,
                                                  INST_LIST_ITER instIter,
                                                  regCandidatesBRA &dstSrcRegs) {
   G4_INST *inst = *instIter;
@@ -851,7 +784,7 @@ bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
   return true;
 }
 
-void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
+void SRSubPassBeforeRA::SRSubBeforeRA(G4_BB *bb) {
   bb->resetLocalIds();
 
   class CmpFirstDef {
@@ -870,7 +803,7 @@ void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
     G4_INST *inst = *ii;
 
     regCandidatesBRA dstSrcRegs;
-    if (!isSRCandidateAfterRA(inst, dstSrcRegs)) {
+    if (!isSRCandidateBeforeRA(inst, dstSrcRegs)) {
       ii++;
       dstSrcRegs.dstSrcMap.clear();
       continue;
@@ -907,26 +840,12 @@ void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
     candidatesIt = candidates.find(inst);
     //Is candidate send
     if (candidatesIt != candidates.end()) {
+      bool overwrite = false;
       // Scan backward from the send instruction.
       INST_LIST_RITER scan_ri = ri;
       scan_ri++;
       G4_INST *rInst = *scan_ri;
-
       while (rInst->getLocalId() > candidates[inst].firstDefID) {
-        if (rInst->isDead()) {
-          // If the inst is marked as dead, it's dst will not kill other value
-          //  Such as in following case, if third instruction is removed, r64
-          //  value of first instruction is kept.
-          // mov (16)             r16.0<1>:ud  r64.0<1;1,0>:ud // $214:&226:
-          // mov (16)             r17.0<1>:ud  r66.0<1;1,0>:ud // $216:&228:
-          // mov (16)             r64.0<1>:ud  r68.0<1;1,0>:ud // $218:&230:
-          scan_ri++;
-          if (scan_ri == rend) {
-            break;
-          }
-          rInst = *scan_ri;
-          continue;
-        }
         G4_Operand *dst = rInst->getDst();
         if (dst && !dst->isNullReg()) {
           G4_VarBase *base = dst->getBase();
@@ -960,22 +879,16 @@ void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
               G4_Operand *dst = rInst->getDst();
               unsigned short dstRegLB = dst->getLinearizedStart();
               unsigned short dstRegRB = dst->getLinearizedEnd();
+              for (int i = 0; i < (int)candidates[inst].dstSrcMap.size(); i++) {
+                int srcRegLB =
+                    candidates[inst].dstSrcMap[i].opnd->getLinearizedStart();
+                int srcRegRB =
+                    candidates[inst].dstSrcMap[i].opnd->getLinearizedEnd();
 
-              // There is any none removeable offset, the offset define move
-              // cannot be removed.
-              std::vector<regMapBRA>::iterator dstSrcRegsIter;
-              for (dstSrcRegsIter = candidates[inst].dstSrcMap.begin();
-                   dstSrcRegsIter != candidates[inst].dstSrcMap.end();) {
-                std::vector<regMapBRA>::iterator nextIter = dstSrcRegsIter;
-                nextIter++;
-                int srcRegLB = (*dstSrcRegsIter).opnd->getLinearizedStart();
-                int srcRegRB = (*dstSrcRegsIter).opnd->getLinearizedEnd();
                 if (!(srcRegRB < dstRegLB || srcRegLB > dstRegRB)) {
                   // Register is reused.
-                  dstSrcRegsIter =
-                      candidates[inst].dstSrcMap.erase(dstSrcRegsIter);
-                } else {
-                  dstSrcRegsIter = nextIter;
+                  overwrite = true;
+                  break;
                 }
               }
             }
@@ -987,22 +900,20 @@ void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
         }
         rInst = *scan_ri;
       }
-
-      // Due to extra mov for s0, so don't use s0 if equal or less than 1 mov
-      // inst can be removed.
-      if (candidates[inst].dstSrcMap.size() <= 1 &&
-          builder.getuint32Option(vISA_EnableGatherWithImmPreRA) !=
-              INDIRECT_TYPE::ALWAYS_S0) {
+      if (overwrite) {
         candidates.erase(candidatesIt);
-      } else {
-        for (int j = 0; j < (int)candidatesIt->second.dstSrcMap.size(); j++) {
-          G4_INST *movInst = candidatesIt->second.dstSrcMap[j].inst;
-          movInst->markDead();
-        }
       }
     }
 
     ri++;
+  }
+
+  for (candidatesIt = candidates.begin(); candidatesIt != candidates.end();
+       candidatesIt++) {
+    for (int i = 0; i < (int)candidatesIt->second.dstSrcMap.size(); i++) {
+      G4_INST *movInst = candidatesIt->second.dstSrcMap[i].inst;
+      movInst->markDead();
+    }
   }
 
   // Replace the send instruction with sendi
@@ -1015,7 +926,7 @@ void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
 
     candidatesIt = candidates.find(inst);
     if (candidatesIt != candidates.end()) {
-      replaceWithSendiAfterRA(bb, curIter, candidates[inst]);
+      replaceWithSendiBeforeRA(bb, curIter, candidates[inst]);
     }
     if (inst->isDead()) {
       bb->erase(curIter);
