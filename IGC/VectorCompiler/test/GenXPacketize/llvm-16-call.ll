@@ -24,6 +24,11 @@ target triple = "genx64-unknown-unknown"
 
 define internal spir_func void @_Z11mandel_loopu2CMvr16_iS_S_ifff(<16 x i32>* %m, <16 x i32>* %ix, <16 x i32>* %iy, i32 %crunch, float %xOff, float %yOff, float %scale) #0 {
 entry:
+; COM: Various instruction to check that it doesn't crash
+  %0 = alloca i32, align 4
+  %1 = addrspacecast i32* %0 to i32 addrspace(4)*
+  %2 = load i32, i32 addrspace(4)* %1, align 4
+  %3 = tail call i32 @llvm.ctlz.i32(i32 %2, i1 false)
   ret void
 }
 
@@ -38,6 +43,8 @@ if.then:                                          ; No predecessors!
 if.end:                                           ; preds = %if.then, %entry
   ret void
 }
+
+declare i32 @llvm.ctlz.i32(i32, i1 immarg)
 
 attributes #0 = { "CMGenxSIMT"="16" }
 attributes #1 = { noinline nounwind }

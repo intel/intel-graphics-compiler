@@ -272,9 +272,9 @@ Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
   std::vector<Type *> ArgTypes;
   for (const Argument &Arg : F->args()) {
     auto *ArgTy = Arg.getType();
-    if (UniformArgs.count(&Arg))
+    if (UniformArgs.count(&Arg) || ArgTy->isOpaquePointerTy())
       ArgTypes.push_back(ArgTy);
-    else if (ArgTy->isPointerTy() && !ArgTy->isOpaquePointerTy()) {
+    else if (ArgTy->isPointerTy()) {
       // FIXME: check the pointer defined by an argument or an alloca
       // [N x float]* should packetize to [N x <8 x float>]*
       auto *VTy = PointerType::get(
@@ -776,9 +776,12 @@ Value *GenXPacketize::packetizeLLVMIntrinsic(Instruction *Inst) {
   auto ID = GenXIntrinsic::getAnyIntrinsicID(F);
   // packetize intrinsic operands
   std::vector<Type *> VectorArgTys;
+  std::vector<Value *> Args;
   std::vector<Value *> PacketizedArgs;
   for (auto &Op : CI->args()) {
-    auto *VV = getPacketizeValue(Op.get());
+    auto *Arg = Op.get();
+    Args.push_back(Arg);
+    auto *VV = getPacketizeValue(Arg);
     PacketizedArgs.push_back(VV);
     VectorArgTys.push_back(VV->getType());
   }
@@ -796,7 +799,14 @@ Value *GenXPacketize::packetizeLLVMIntrinsic(Instruction *Inst) {
     break;
   }
   auto *NewF = getVectorIntrinsic(B->M, ID, VectorArgTys);
-  auto *NewCI = CallInst::Create(NewF, PacketizedArgs, "", CI);
+  // Some arguments are not overloadable and mush stay scalar
+  std::vector<Value *> NewArgs;
+  auto *NewFTy = NewF->getFunctionType();
+  for (unsigned Idx = 0; Idx < NewFTy->getNumParams(); Idx++)
+    NewArgs.push_back(NewFTy->getParamType(Idx) == VectorArgTys[Idx]
+                          ? PacketizedArgs[Idx]
+                          : Args[Idx]);
+  auto *NewCI = CallInst::Create(NewF, NewArgs, "", CI);
   return NewCI;
 }
 
@@ -831,15 +841,14 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
     auto *PacketizedSrcTy = PacketizedSrc->getType();
     // packetize dst type
     Type *ReturnTy;
-    if (Inst->getType()->isPointerTy() &&
-        !Inst->getType()->isOpaquePointerTy()) {
+    if (Inst->getType()->isPointerTy()) {
       // two types of pointers, <N x Ty>* or <N x Ty*>
       if (PacketizedSrc->getType()->isVectorTy()) {
         // <N x Ty*>
         uint32_t numElems =
             cast<IGCLLVM::FixedVectorType>(PacketizedSrcTy)->getNumElements();
         ReturnTy = IGCLLVM::FixedVectorType::get(Inst->getType(), numElems);
-      } else {
+      } else if (!Inst->getType()->isOpaquePointerTy()) {
         // <N x Ty>*
         auto *DstScalarTy = IGCLLVM::getNonOpaquePtrEltTy(Inst->getType());
         if (VectorType::isValidElementType(DstScalarTy))
@@ -860,6 +869,8 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
           ReplacedInst = B->GEPA(TmpTy, TmpInst, VecIndices);
           break;
         }
+      } else {
+        ReturnTy = Inst->getType();
       }
     } else {
       ReturnTy = B->getVectorType(Inst->getType());
