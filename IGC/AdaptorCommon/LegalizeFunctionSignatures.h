@@ -45,5 +45,5 @@ public:
     }
 
 private:
-    std::map<llvm::Function*, llvm::Function*> oldToNewFuncMap;
+    llvm::MapVector<llvm::Function*, llvm::Function*> oldToNewFuncMap;
 };
