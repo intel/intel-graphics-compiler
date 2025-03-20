@@ -420,7 +420,6 @@ typedef enum {
   ISA_RESERVED_9A = 0x9A,
   ISA_INVM = 0x9B,
   ISA_RSQTM = 0x9C,
-  ISA_RESERVED_9D = 0x9D,
   ISA_NUM_OPCODE,
   ISA_OPCODE_ENUM_SIZE = 0xFF
 } ISA_Opcode;

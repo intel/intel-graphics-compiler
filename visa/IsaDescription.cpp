@@ -178,7 +178,6 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] = {
     {ISA_RESERVED_9A, ISA_Inst_Reserved, "reserved9a", 0, 0},
     {ISA_INVM,  ISA_Inst_Arith, "invm",  2, 2},
     {ISA_RSQTM, ISA_Inst_Arith, "rsqtm", 1, 2},
-    {ISA_RESERVED_9D, ISA_Inst_Reserved, "reserved9d", 0, 0}
 };
 
 VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
@@ -2818,16 +2817,6 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
 
     },
 
-    // 157 (0x9D)
-    {
-        ALL,
-        ISA_RESERVED_9D,
-        ISA_Inst_Reserved,
-        "reserved_9d",
-        0,
-        0,
-        {},
-    },
 };
 
 static const ISA_SubInst_Desc VASubOpcodeDesc[] = {
