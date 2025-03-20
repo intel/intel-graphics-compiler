@@ -389,6 +389,20 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         modMD->compOpt.MadEnable = true;
     }
 
+    // Ensure that the extensions listed in the 'igc.spirv.extensions' metadata are
+    // reflected within the ModuleMetaData->extensions
+    if (!spirMDUtils.empty_SPIRVExtensions())
+    {
+        auto extensions = spirMDUtils.getSPIRVExtensionsItem(0);
+        for (const auto& spirvExtension : *extensions)
+        {
+            if (spirvExtension == "SPV_INTEL_bindless_images")
+            {
+                modMD->extensions.spvINTELBindlessImages = true;
+            }
+        }
+    }
+
     spirMDUtils.deleteMetadata();
 
     pIgcMDUtils->save(M.getContext());

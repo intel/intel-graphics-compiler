@@ -458,6 +458,27 @@ bool CheckForImageUsage(const std::string & SPIRVBinary) {
     return it != textReport.Capabilities.end();
 }
 
+void GenerateSPIRVExtensionsMD(llvm::LLVMContext& C, llvm::Module& M, const std::string& SPIRVBinary)
+{
+    std::istringstream repIS(SPIRVBinary);
+    std::optional<SPIRV::SPIRVModuleReport> report = IGCLLVM::makeOptional(SPIRV::getSpirvReport(repIS));
+
+    if (!report.has_value())
+        return;
+
+    if (report->Extensions.empty())
+        return;
+
+    std::vector<llvm::Metadata*> ExtensionsVec;
+    for (const auto& E : report->Extensions)
+    {
+        ExtensionsVec.push_back(llvm::MDString::get(C, E));
+    }
+
+    llvm::NamedMDNode* SPIRVExtensionsMD = M.getOrInsertNamedMetadata("igc.spirv.extensions");
+    SPIRVExtensionsMD->addOperand(llvm::MDNode::get(C, ExtensionsVec));
+}
+
 // Translate SPIR-V binary to LLVM Module
 bool TranslateSPIRVToLLVM(
     const STB_TranslateInputArgs& InputArgs,
@@ -505,18 +526,21 @@ bool TranslateSPIRVToLLVM(
     // Actual translation from SPIR-V to LLVM
     success = llvm::readSpirv(Context, Opts, IS, LLVMModule, stringErrMsg);
 
-    // Handle OpenCL Compiler Options
     if (success)
     {
         AssignNamesToUnnamedGlobalVariables(*LLVMModule);
 
+        // Handle OpenCL Compiler Options
         GenerateCompilerOptionsMD(
             Context,
             *LLVMModule,
             llvm::StringRef(InputArgs.pOptions, InputArgs.OptionsSize));
 
-      if (IGC_IS_FLAG_ENABLED(ShaderDumpTranslationOnly))
-          LLVMModule->dump();
+        // Parse SPIRV extensions and encode them as 'igc.spirv.extensions' metadata
+        GenerateSPIRVExtensionsMD(Context, *LLVMModule, SPIRVBinary.str());
+
+        if (IGC_IS_FLAG_ENABLED(ShaderDumpTranslationOnly))
+            LLVMModule->dump();
     }
 
     return success;

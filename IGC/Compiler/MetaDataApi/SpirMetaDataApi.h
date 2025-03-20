@@ -44,6 +44,9 @@ namespace IGC::SPIRMD
     using InnerCompilerExternalOptionsMetaDataList = MetaDataList<std::string>;
     using InnerCompilerExternalOptionsMetaDataListHandle = MetaObjectHandle<InnerCompilerExternalOptionsMetaDataList>;
 
+    using SPIRVExtensionsMetaDataList = MetaDataList<std::string>;
+    using SPIRVExtensionsMetaDataListHandle = MetaObjectHandle<SPIRVExtensionsMetaDataList>;
+
     class VersionMetaData : public IMetaDataObject
     {
     public:
@@ -555,6 +558,7 @@ namespace IGC::SPIRMD
         using UsedKhrExtensionsList = NamedMDNodeList<InnerUsedKhrExtensionsMetaDataListHandle>;
         using SpirVersionsList = NamedMDNodeList<VersionMetaDataHandle>;
         using OpenCLVersionsList = NamedMDNodeList<VersionMetaDataHandle>;
+        using SPIRVExtensionsList = NamedMDNodeList<SPIRVExtensionsMetaDataListHandle>;
 
         // If using this constructor, setting the llvm module by the setModule
         // function is needed for correct operation.
@@ -569,6 +573,7 @@ namespace IGC::SPIRMD
             m_UsedKhrExtensions(pModule->getNamedMetadata("opencl.used.extensions")),
             m_SpirVersions(pModule->getNamedMetadata("opencl.spir.version")),
             m_OpenCLVersions(pModule->getNamedMetadata("opencl.ocl.version")),
+            m_SPIRVExtensions(pModule->getNamedMetadata("igc.spirv.extensions")),
             m_pModule(pModule)
         {}
 
@@ -581,6 +586,7 @@ namespace IGC::SPIRMD
             m_UsedKhrExtensions = pModule->getNamedMetadata("opencl.used.extensions");
             m_SpirVersions = pModule->getNamedMetadata("opencl.spir.version");
             m_OpenCLVersions = pModule->getNamedMetadata("opencl.ocl.version");
+            m_SPIRVExtensions = pModule->getNamedMetadata("igc.spirv.extensions");
             m_pModule = pModule;
         }
 
@@ -834,6 +840,37 @@ namespace IGC::SPIRMD
             return m_OpenCLVersions.getItem(index);
         }
 
+        // SPIRV Extensions
+        SPIRVExtensionsList::const_iterator begin_SPIRVExtensions() const
+        {
+            return m_SPIRVExtensions.begin();
+        }
+
+        SPIRVExtensionsList::const_iterator end_SPIRVExtensions() const
+        {
+            return m_SPIRVExtensions.end();
+        }
+
+        size_t size_SPIRVExtensions()  const
+        {
+            return m_SPIRVExtensions.size();
+        }
+
+        bool empty_SPIRVExtensions()  const
+        {
+            return m_SPIRVExtensions.empty();
+        }
+
+        bool isSPIRVExtensionsHasValue() const
+        {
+            return m_SPIRVExtensions.hasValue();
+        }
+
+        const SPIRVExtensionsList::item_type getSPIRVExtensionsItem(size_t index) const
+        {
+            return m_SPIRVExtensions.getItem(index);
+        }
+
         void deleteMetadata()
         {
             llvm::NamedMDNode* KernelsNode = m_pModule->getNamedMetadata("opencl.kernels");
@@ -897,5 +934,6 @@ namespace IGC::SPIRMD
         UsedKhrExtensionsList m_UsedKhrExtensions;
         SpirVersionsList m_SpirVersions;
         OpenCLVersionsList m_OpenCLVersions;
+        SPIRVExtensionsList m_SPIRVExtensions;
     };
 }

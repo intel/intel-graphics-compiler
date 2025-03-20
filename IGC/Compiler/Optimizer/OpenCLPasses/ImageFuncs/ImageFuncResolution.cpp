@@ -210,6 +210,27 @@ Value* ImageFuncResolution::getSamplerProperty(CallInst& CI)
 {
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
+    if (ArgTy == ImplicitArg::SAMPLER_SNAP_WA && modMD->extensions.spvINTELBindlessImages)
+    {
+        // The snap_wa workaround is disabled for bindless images from the SPV_INTEL_bindless_images extension.
+        // This is because the current implementation of the workaround requires the sampler to be known at compile-time,
+        // either as an inline sampler or a kernel argument. This allows the UMD to program the
+        // SAMPLER_SNAP_WA implicit argument, which indicates whether the workaround should be enabled.
+        //
+        // For bindless images from SPV_INTEL_bindless_images, image is represented as an i64 handle (bindlessOffset)
+        // provided by the user. The handle is a runtime value and cannot be tracked to a kernel argument at compile-time.
+        // Therefore, implementing snap_wa would require a completely new approach.
+        //
+        // The absence of reported sampling issues with images from SPV_INTEL_bindless_images suggests that snap_wa
+        // might not be necessary. However, further investigation is required.
+        //
+        // If snap_wa is found to be unnecessary, the workaround for OpenCL images can be removed.
+        // Conversely, if hardware constraints necessitate it, the workaround must be enabled for
+        // images from from SPV_INTEL_bindless_images extension.
+        return ConstantInt::get(CI.getType(), 0);
+    }
+
     if (Value* sampler = ValueTracker::track(&CI, 0, pMdUtils, modMD))
     {
         auto *arg = dyn_cast<Argument>(sampler);

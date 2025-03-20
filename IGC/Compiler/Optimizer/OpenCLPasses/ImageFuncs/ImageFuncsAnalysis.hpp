@@ -107,6 +107,18 @@ namespace IGC
         ///        If false, implicit image args for information like width, height, etc.
         ///        will be added to m_argMap
         bool m_useAdvancedBindlessMode{};
+
+        // @brief Handling of image/sampler properties query functions varies based on image type.
+        //
+        //        This distinction arises between standard OpenCL images and bindless images
+        //        from the SPV_INTEL_bindless_images extension.
+        //
+        //        For example: the __builtin_IB_get_snap_wa_reqd function is lowered to an
+        //        implicit argument, SAMPLER_SNAP_WA, for standard OpenCL images.
+        //        However, for bindless images from the SPV_INTEL_bindless_images extension,
+        //        the snap_wa is unsupported. Consequently, it is effectively disabled
+        //        by being lowered to a ConstantInt value of 0.
+        bool m_useSPVINTELBindlessImages{};
     };
 
 } // namespace IGC

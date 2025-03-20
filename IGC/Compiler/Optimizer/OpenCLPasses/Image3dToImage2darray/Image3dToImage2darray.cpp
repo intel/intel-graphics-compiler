@@ -152,6 +152,15 @@ bool Image3dToImage2darray::runOnFunction(Function& F)
     m_MetadataUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     m_modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
+    // This pass is not compatible with the SPV_INTEL_bindless_images extension.
+    // The incompatibility arises because this pass requires images to be trackable
+    // at compile time, a condition that bindless images from the SPV_INTEL_bindless_images
+    // extension do not satisfy.
+    if (m_modMD->extensions.spvINTELBindlessImages)
+    {
+        return false;
+    }
+
     if (m_MetadataUtils->findFunctionsInfoItem(&F) == m_MetadataUtils->end_FunctionsInfo())
     {
         return false;

@@ -709,8 +709,20 @@ enum class ShaderTypeMD
 
     struct SPIRVCapabilities
     {
-
         bool globalVariableDecorationsINTEL = false;
+    };
+
+    struct SPIRVExtensions
+    {
+        // IGC must distinguish between SPIRV compilations that utilize standard
+        // OpenCL images and those using Bindless images from the
+        // SPV_INTEL_bindless_images extension. Currently, OpenCL images require the
+        // valueTracker to be addressed using the bindless addressing model. This is
+        // because IGC needs to insert a bindlessOffset as an implicit argument for
+        // tracked images. Conversely, for bindless images originating from
+        // SPV_INTEL_bindless_images, the bindlessOffset is supplied by the user as a
+        // kernel argument, eliminating the need for IGC to perform tracking.
+        bool spvINTELBindlessImages = false;
     };
 
     //metadata for the entire module
@@ -783,6 +795,7 @@ enum class ShaderTypeMD
         std::set<std::string> m_OptsToDisable;
 
         SPIRVCapabilities capabilities;
+        SPIRVExtensions extensions;
 
         std::array<uint64_t, NUM_SHADER_RESOURCE_VIEW_SIZE> m_ShaderResourceViewMcsMask{};
         unsigned int computedDepthMode = 0; //Defaults to 0 meaning depth mode is off
