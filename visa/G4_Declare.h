@@ -94,10 +94,6 @@ class G4_Declare {
   uint16_t forceSpilled : 1;
   uint16_t exclusiveLoad : 1;
   uint16_t isCmpUseOnly : 1;
-  // indicate if the declare is local referenced only
-  // Especially for the variable with pseodu_kill,
-  // while will be removed in removeLifetimeOps pass.
-  uint16_t isBBLocal : 1;
 
   unsigned declId; // global decl id for this builder
 
@@ -337,9 +333,6 @@ public:
 
   void setIsCmpUseOnly(bool b) { isCmpUseOnly = b; }
   bool getIsCmpUseOnly() const { return isCmpUseOnly; }
-
-  void setIsBBLocal(bool b) { isBBLocal = b; }
-  bool getIsBBLocal() const { return isBBLocal; }
 
   unsigned getNumRegNeeded() const;
 
