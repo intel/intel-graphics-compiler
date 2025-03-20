@@ -1902,10 +1902,7 @@ bool allowShortImplicitPayloadHeader() const
     if (IGC_IS_FLAG_SET(ShortImplicitPayloadHeader))
         return IGC_IS_FLAG_ENABLED(ShortImplicitPayloadHeader);
 
-    if (m_platformInfo.eProductFamily == IGFX_PVC)
-        return false;
-
-    return isCoreChildOf(IGFX_XE_HP_CORE) && !isCoreChildOf(IGFX_XE3_CORE);
+    return false;
 }
 
 bool allowRemovingUnusedImplicitArguments() const
