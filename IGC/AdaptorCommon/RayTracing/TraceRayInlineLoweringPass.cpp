@@ -401,6 +401,7 @@ Value* TraceRayInlineLoweringPass::emitProceedMainBody(
         );
     }
 
+
     //TraceRay
     Value* retSyncRT = builder.createSyncTraceRay(
         builder.getBvhLevel(ShadowMemStackPointer, false),
