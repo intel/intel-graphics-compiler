@@ -1481,6 +1481,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_vectorUniform ||
         GII_id == GenISAIntrinsic::GenISA_getR0 ||
         GII_id == GenISAIntrinsic::GenISA_getPayloadHeader ||
+        GII_id == GenISAIntrinsic::GenISA_getGlobalOffset ||
         GII_id == GenISAIntrinsic::GenISA_getWorkDim ||
         GII_id == GenISAIntrinsic::GenISA_getNumWorkGroups ||
         GII_id == GenISAIntrinsic::GenISA_getLocalSize ||
@@ -1535,6 +1536,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             return WIAnalysis::UNIFORM_THREAD;
         case GenISAIntrinsic::GenISA_getR0:
         case GenISAIntrinsic::GenISA_getPayloadHeader:
+        case GenISAIntrinsic::GenISA_getGlobalOffset:
         case GenISAIntrinsic::GenISA_getWorkDim:
         case GenISAIntrinsic::GenISA_getNumWorkGroups:
         case GenISAIntrinsic::GenISA_getLocalSize:

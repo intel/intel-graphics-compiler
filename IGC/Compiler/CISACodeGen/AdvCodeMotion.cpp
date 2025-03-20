@@ -168,6 +168,8 @@ void WorkItemSetting::collect(Function* F) {
             GroupId = getXYZ(&*AI, 1, 6, 7);
         else if (Name == "payloadHeader")
             GlobalOffset = getXYZ(&*AI, 0, 1, 2);
+        else if (Name == "globalOffset")
+            GlobalOffset = getXYZ(&*AI, 0, 1, 2);
         else if (Name == "globalSize")
             GlobalSize = getXYZ(&*AI, 0, 1, 2);
         else if (Name == "globalSize1")

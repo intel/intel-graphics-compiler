@@ -253,8 +253,8 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
         return KernelArg::ArgType::IMPLICIT_R0;
     case ImplicitArg::PAYLOAD_HEADER:
         return KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER;
-    case ImplicitArg::PAYLOAD_HEADER_SHORT:
-        return KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER_SHORT;
+    case ImplicitArg::GLOBAL_OFFSET:
+        return KernelArg::ArgType::IMPLICIT_GLOBAL_OFFSET;
     case ImplicitArg::PRIVATE_BASE:
         return KernelArg::ArgType::IMPLICIT_PRIVATE_BASE;
     case ImplicitArg::CONSTANT_BASE:
@@ -809,7 +809,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
 
             KernelArg::ArgType::RUNTIME_VALUE,
             KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER,
-            KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER_SHORT,
+            KernelArg::ArgType::IMPLICIT_GLOBAL_OFFSET,
 
             KernelArg::ArgType::PTR_LOCAL,
             KernelArg::ArgType::PTR_GLOBAL,
@@ -936,7 +936,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
 
             KernelArg::ArgType::RUNTIME_VALUE,
             KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER,
-            KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER_SHORT,
+            KernelArg::ArgType::IMPLICIT_GLOBAL_OFFSET,
             KernelArg::ArgType::PTR_LOCAL,
             KernelArg::ArgType::PTR_GLOBAL,
             KernelArg::ArgType::PTR_CONSTANT,

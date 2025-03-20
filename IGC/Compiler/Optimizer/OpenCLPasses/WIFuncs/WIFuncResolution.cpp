@@ -513,7 +513,7 @@ Value* WIFuncResolution::getGlobalOffset(CallInst& CI)
     // %globalOffset = extractelement <8 x i32> %payloadHeader, i32 %dim
 
     auto Ty = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.allowShortImplicitPayloadHeader()
-        ? ImplicitArg::PAYLOAD_HEADER_SHORT : ImplicitArg::PAYLOAD_HEADER;
+        ? ImplicitArg::GLOBAL_OFFSET : ImplicitArg::PAYLOAD_HEADER;
     auto F = CI.getFunction();
     Value* V = m_implicitArgs.getImplicitArgValue(*F, Ty, m_pMdUtils);
     IGC_ASSERT(V != nullptr);
@@ -870,6 +870,7 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
             break;
         }
         case GenISAIntrinsic::GenISA_getPayloadHeader:
+        case GenISAIntrinsic::GenISA_getGlobalOffset:
         {
             // global_offset is loaded from PayloadHeader[0:2]
             // currently there are no other uses for payload header.

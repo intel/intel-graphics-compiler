@@ -9557,6 +9557,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_getR0:
     case GenISAIntrinsic::GenISA_getPayloadHeader:
+    case GenISAIntrinsic::GenISA_getGlobalOffset:
     case GenISAIntrinsic::GenISA_getWorkDim:
     case GenISAIntrinsic::GenISA_getNumWorkGroups:
     case GenISAIntrinsic::GenISA_getLocalSize:
@@ -22921,7 +22922,7 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
 
         if (IAtype == ImplicitArg::ArgType::R0 ||
             IAtype == ImplicitArg::ArgType::PAYLOAD_HEADER ||
-            IAtype == ImplicitArg::ArgType::PAYLOAD_HEADER_SHORT ||
+            IAtype == ImplicitArg::ArgType::GLOBAL_OFFSET ||
             IAtype == ImplicitArg::ArgType::WORK_DIM ||
             IAtype == ImplicitArg::ArgType::NUM_GROUPS ||
             IAtype == ImplicitArg::ArgType::GLOBAL_SIZE ||

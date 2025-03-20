@@ -44,7 +44,7 @@ namespace IGC
             R1,
 
             IMPLICIT_PAYLOAD_HEADER, // known as INPUT_HEADER in USC
-            IMPLICIT_PAYLOAD_HEADER_SHORT, // payload header reduced to 3xi32
+            IMPLICIT_GLOBAL_OFFSET, // previously packed in payload header
 
             PTR_LOCAL,
             PTR_GLOBAL,

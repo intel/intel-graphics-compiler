@@ -38,7 +38,7 @@ namespace IGC
             R0,
             START_ID = R0,
             PAYLOAD_HEADER,
-            PAYLOAD_HEADER_SHORT, // reduces PayloadHeader to 3xi32
+            GLOBAL_OFFSET, // previously packed in 8xi32 PayloadHeader
 
             // WI information
             WORK_DIM,

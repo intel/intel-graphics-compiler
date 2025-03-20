@@ -5636,6 +5636,15 @@ intrinsics:
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
+        name: "GenISA_getGlobalOffset"
+        comment: ""
+        return_definition: !<ReturnDefinition>
+            type_definition: *v_any_
+            comment: "result"
+        arguments: []
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
         name: "GenISA_getWorkDim"
         comment: ""
         return_definition: !<ReturnDefinition>
