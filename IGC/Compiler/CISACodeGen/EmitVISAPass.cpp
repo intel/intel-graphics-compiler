@@ -9688,6 +9688,12 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_bitcasttostruct:
         emitBitcasttostruct(inst);
       break;
+    case GenISAIntrinsic::GenISA_PredicatedLoad:
+        emitPredicatedLoad(inst);
+        break;
+    case GenISAIntrinsic::GenISA_PredicatedStore:
+        emitPredicatedStore(inst);
+        break;
     default:
         // we assume that some of gen-intrinsic should always be pattern-matched away,
         // therefore we do not handle them in visa-emission.
@@ -11446,6 +11452,28 @@ void EmitPass::emitLoad(
     emitVectorLoad(inst, offset, immOffset);
 }
 
+void EmitPass::emitPredicatedLoad(Instruction *inst) {
+    if (!shouldGenerateLSC()){
+        IGC_ASSERT_MESSAGE(false, "Predicated load is not implemented on non-LSC path!");
+        return;
+    }
+
+    Value* offset = inst->getOperand(0);
+    IGC_ASSERT(offset);
+    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, true);
+    LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
+
+    emitLSCVectorLoad(
+        inst,
+        offset,
+        offset,
+        nullptr,
+        nullptr,
+        cacheOpts,
+        addrSpace
+    );
+}
+
 
 void EmitPass::EmitNoModifier(llvm::Instruction* inst)
 {
@@ -12797,6 +12825,30 @@ void EmitPass::emitStore(
     IGC_ASSERT_MESSAGE(immScale ? immScale->getSExtValue() == 1 : true,
         "Immediate Scale not supported on non-LSC path!");
     emitVectorStore(inst, varOffset, immOffset);
+}
+
+void EmitPass::emitPredicatedStore(Instruction *inst) {
+    if (!shouldGenerateLSC()) {
+        IGC_ASSERT_MESSAGE(false, "Predicated store is not supported on non-LSC path!");
+        return;
+    }
+
+    LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
+    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false);
+
+    emitLSCVectorStore(
+        inst->getOperand(0),
+        inst->getOperand(0),
+        nullptr,
+        nullptr,
+        inst->getOperand(1),
+        inst->getParent(),
+        cacheOpts,
+        cast<ConstantInt>(inst->getOperand(2))->getZExtValue(), // alignment
+        inst->getMetadata("enable.vmask"),
+        addrSpace
+       ,inst->getOperand(3)
+    );
 }
 
 CVariable* EmitPass::GetSymbol(llvm::Value* v) const
@@ -19456,7 +19508,9 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
                                        int ImmScale, uint32_t NumElts,
                                        uint32_t EltBytes,
                                        LSC_DOC_ADDR_SPACE AddrSpace,
-                                       LSC_ADDR_SIZE AddrSize
+                                       LSC_ADDR_SIZE AddrSize,
+                                       CVariable *inputPredicate,
+                                       CVariable *mergeVal
   ) {
     // NumElts must be 1 !
     IGC_ASSERT(NumElts == 1 && (EltBytes == 1 || EltBytes == 2));
@@ -19503,13 +19557,36 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
         gatherDst = m_currShader->GetNewAlias(gatherDst, gatherDst->GetType(), 0, nbelts);
     }
 
+    CVariable *gatherDstAlias = m_currShader->GetNewAlias(gatherDst, Dest->GetType(), 0, 0);
+
+    // Copy merge value to gatherDst now, to avoid predicated copy to original destination later
+    if (mergeVal)
+    {
+        uint32_t hStride = doUniformLoad ? 0 : ((EltBytes == 1) ? 4 : 2);
+        m_encoder->SetDstRegion(hStride);
+        m_encoder->Copy(gatherDstAlias, mergeVal);
+        m_encoder->Push();
+    }
+
     SamplerDescriptor sampler;
     ResourceLoop(Resource, sampler, [&](CVariable* flag, CVariable*& destination,
         ResourceDescriptor resource, bool needloop) {
+        CVariable *finalPredicate = nullptr;
+        if (!doUniformLoad)
+            finalPredicate = IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) ? GetCombinedVMaskPred(flag) : flag;
+
+        if (inputPredicate && finalPredicate) {
+            IGC_ASSERT_MESSAGE(false, "Not expected scenario. Predicated load should not be used.");
+            m_encoder->And(finalPredicate, finalPredicate, inputPredicate);
+            m_encoder->Push();
+        } else if (inputPredicate) {
+            finalPredicate = inputPredicate;
+        }
+
         if (doUniformLoad)
             m_encoder->SetNoMask();
-        else
-            m_encoder->SetPredicate(IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) ? GetCombinedVMaskPred(flag) : flag);
+
+        m_encoder->SetPredicate(finalPredicate);
 
         emitLSCLoad(CacheOpts, gatherDst,
                     eOffset, EltBytes * 8, 1, 0, &Resource, AddrSize,
@@ -19518,12 +19595,13 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
         });
 
     // Copy from gatherDst to original destination
-    gatherDst = m_currShader->GetNewAlias(gatherDst, Dest->GetType(), 0, 0);
     uint32_t vStride = doUniformLoad ? 0 : ((EltBytes == 1) ? 4 : 2);
     m_encoder->SetSrcRegion(0, vStride, 1, 0);
-    m_encoder->Copy(Dest, gatherDst);
+    // set predicate for copy, only if did not initialize gatherDst with mergeVal
+    if(!mergeVal)
+        m_encoder->SetPredicate(inputPredicate);
+    m_encoder->Copy(Dest, gatherDstAlias);
     m_encoder->Push();
-    return;
 }
 
 // Handle uniform load (address and resource are uniform). This is a sub-function
@@ -19538,11 +19616,13 @@ void EmitPass::emitLSCVectorLoad_uniform(
     CVariable *Dest,
     CVariable *Offset, int ImmOffset, int ImmScale, uint32_t NumElts,
     uint32_t EltBytes, uint64_t Align, uint32_t Addrspace,
-    LSC_DOC_ADDR_SPACE UserAddrSpace, LSC_ADDR_SIZE AddrSize) {
+    LSC_DOC_ADDR_SPACE UserAddrSpace, LSC_ADDR_SIZE AddrSize,
+    CVariable *inputPredicate, CVariable *mergeVal) {
 
     IGC_ASSERT(Offset->IsUniform() && (EltBytes == 4 || EltBytes == 8));
     CVariable *eOffset = Offset;
     CVariable* ldDest = Dest;
+    CVariable* newMergeVal = mergeVal;
     uint32_t dSize = EltBytes;  // lsc's data size
     uint32_t vSize = NumElts;   // lsc's vector size
     if (dSize == 4 && (vSize > 64 || vSize == 6) && Align >= 8)
@@ -19550,12 +19630,16 @@ void EmitPass::emitLSCVectorLoad_uniform(
         dSize = 8;
         vSize = vSize / 2;
         ldDest = m_currShader->GetNewAlias(ldDest, ISA_TYPE_UQ, 0, 0);
+        if (mergeVal)
+            newMergeVal = m_currShader->GetNewAlias(mergeVal, ISA_TYPE_UQ, 0, 0);
     }
     else if (dSize == 8 && vSize < 64 && Align == 4)
     {
         dSize = 4;
         vSize = vSize * 2;
         ldDest = m_currShader->GetNewAlias(ldDest, ISA_TYPE_UD, 0, 0);
+        if (mergeVal)
+            newMergeVal = m_currShader->GetNewAlias(mergeVal, ISA_TYPE_UD, 0, 0);
     }
 
     bool destUniform = Dest->IsUniform();
@@ -19576,7 +19660,11 @@ void EmitPass::emitLSCVectorLoad_uniform(
                 vSize, tDest->GetType(), EALIGN_GRF, true, tDest->getName());
         }
 
+        if (mergeVal)
+            emitVectorCopy(tDest, newMergeVal, vSize);
+
         m_encoder->SetNoMask();
+        m_encoder->SetPredicate(inputPredicate);
         emitLSCLoad(CacheOpts, tDest,
                     eOffset, dSize * 8, vSize, 0, &Resource, AddrSize,
                     LSC_DATA_ORDER_TRANSPOSE, ImmOffset, ImmScale,
@@ -19585,7 +19673,7 @@ void EmitPass::emitLSCVectorLoad_uniform(
 
         if (needTemp)
         {
-            emitVectorCopy(ldDest, tDest, vSize);
+            emitVectorCopy(ldDest, tDest, vSize, 0, 0, false, mergeVal ? nullptr : inputPredicate);
         }
         return;
     }
@@ -19616,7 +19704,11 @@ void EmitPass::emitLSCVectorLoad_uniform(
         tDest = m_currShader->GetNewVariable(elts, tDest->GetType(), dataAlign, true, CName::NONE);
     }
 
+    if (mergeVal)
+        emitVectorCopy(tDest, newMergeVal, vSize);
+
     m_encoder->SetNoMask();
+    m_encoder->SetPredicate(inputPredicate);
     emitLSCLoad(CacheOpts, tDest,
                 nEOff, dSize * 8, 1, 0, &Resource,
                 AddrSize,
@@ -19626,7 +19718,7 @@ void EmitPass::emitLSCVectorLoad_uniform(
 
     if (needTemp)
     {
-        emitVectorCopy(ldDest, tDest, vSize);
+        emitVectorCopy(ldDest, tDest, vSize, 0, 0, false, mergeVal ? nullptr : inputPredicate);
     }
     return;
 }
@@ -19640,12 +19732,19 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
                                  LSC_DOC_ADDR_SPACE addrSpace
 ) {
 
+    bool predicatedLoad = false;
+    if (auto CI = dyn_cast<llvm::GenIntrinsicInst>(inst); CI && CI->getIntrinsicID() == GenISAIntrinsic::GenISA_PredicatedLoad)
+        predicatedLoad = true;
+
     Type *Ty = inst->getType();
     uint64_t align = 0;
     if (auto LI = dyn_cast<LoadInst>(inst))
         align = IGCLLVM::getAlignmentValue(LI);
     else if (auto CI = dyn_cast<LdRawIntrinsic>(inst))
         align = CI->getAlignment();
+    else if (predicatedLoad)
+        align = cast<ConstantInt>(inst->getOperand(1))->getZExtValue();
+
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
     ResourceDescriptor resource = GetResourceVariable(Ptr, true);
     bool useA32 = !IGC::isA64Ptr(ptrType, m_currShader->GetContext());
@@ -19663,6 +19762,35 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
     {
         eOffset = TruncatePointer(eOffset);
     }
+
+    // if the merge value is dead after predicated load and is not immidiate, and
+    // has other properties same as destination -> use it as destination
+    bool isDestReplacedWithMerge = false;
+    CVariable* mergeVar = nullptr;
+    if(predicatedLoad) {
+        // find instruction after predicated load in BB
+        auto instIt = std::find_if(inst->getParent()->begin(),
+                                inst->getParent()->end(),
+                                [inst](Instruction &I) { return &I == inst; });
+        IGC_ASSERT(instIt != inst->getParent()->end());
+        instIt++;
+        IGC_ASSERT(instIt != inst->getParent()->end());
+
+        Value *mergeVal = inst->getOperand(3);
+        LiveVars *pLV = m_deSSA->getLiveVars();
+        mergeVar = GetSymbol(mergeVal);
+        if (!isa<Constant>(mergeVal) && !pLV->isLiveAt(mergeVal, &*instIt) &&
+            !mergeVar->IsImmediate() &&
+            mergeVar->GetNumberElement() == m_destination->GetNumberElement() &&
+            mergeVar->GetType() == m_destination->GetType() &&
+            mergeVar->GetAlign() == m_destination->GetAlign() &&
+            mergeVar->IsUniform() == m_destination->IsUniform()) {
+            m_destination = mergeVar;
+            m_currShader->UpdateSymbolMap(inst, mergeVar);
+            isDestReplacedWithMerge = true;
+        }
+    }
+
     CVariable* destCVar = m_destination;
     bool destUniform = destCVar->IsUniform();
     bool srcUniform = eOffset->IsUniform();
@@ -19680,9 +19808,11 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
     if (eltBytes < 4)
     {
         IGC_ASSERT(elts == 1);
-      emitLSCVectorLoad_subDW(cacheOpts, useA32, resource, destCVar,
+        emitLSCVectorLoad_subDW(cacheOpts, useA32, resource, destCVar,
                               eOffset, immOffsetInt, immScaleInt, 1, eltBytes,
-                              addrSpace, addrSize);
+                              addrSpace, addrSize,
+                              predicatedLoad ? GetSymbol(inst->getOperand(2)) : nullptr,
+                              isDestReplacedWithMerge ? nullptr : mergeVar);
         return;
     }
 
@@ -19691,7 +19821,9 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
         emitLSCVectorLoad_uniform(
             cacheOpts, useA32, resource, destCVar,
             eOffset, immOffsetInt, immScaleInt, elts, eltBytes, align,
-            ptrType->getPointerAddressSpace(), addrSpace, addrSize);
+            ptrType->getPointerAddressSpace(), addrSpace, addrSize,
+            predicatedLoad ? GetSymbol(inst->getOperand(2)) : nullptr,
+            isDestReplacedWithMerge ? nullptr : mergeVar);
         return;
     }
 
@@ -19705,6 +19837,15 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
 
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     auto& predicationMap = modMD->predicationMap;
+
+    if (predicatedLoad && !isDestReplacedWithMerge) {
+        if (elts > 1) {
+            emitVectorCopy(destCVar, mergeVar, elts);
+        } else {
+            m_encoder->Copy(destCVar, mergeVar);
+            m_encoder->Push();
+        }
+    }
 
     SamplerDescriptor sampler;
     ResourceLoop(resource, sampler, [&](CVariable* flag, CVariable*& destination,
@@ -19762,14 +19903,23 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
                     dVisaTy, (uint16_t)eltOffBytes, (uint16_t)nbelts);
             }
 
+            CVariable* pred = nullptr;
             if (predicationMap.count(inst))
-            {
-                m_encoder->SetPredicate(m_currShader->GetSymbol(cast<Instruction>(predicationMap[inst])));
-            }
+                pred = m_currShader->GetSymbol(cast<Instruction>(predicationMap[inst]));
             else
-            {
-                m_encoder->SetPredicate(IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) ? GetCombinedVMaskPred(flag) : flag);
+                pred = IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) ? GetCombinedVMaskPred(flag) : flag;
+
+            if(predicatedLoad) {
+                CVariable* cond = GetSymbol(inst->getOperand(2));
+                if (pred) {
+                    IGC_ASSERT_MESSAGE(false, "Not expected scenario. Predicated load should not be used.");
+                    m_encoder->And(pred, pred, cond);
+                    m_encoder->Push();
+                } else
+                    pred = cond;
             }
+
+            m_encoder->SetPredicate(pred);
 
             VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
             IGC_ASSERT_MESSAGE(
@@ -19785,7 +19935,8 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
 
             if (needTemp)
             {
-                emitVectorCopy(destCVar, gatherDst, instElts, eltOff, 0);
+                emitVectorCopy(destCVar, gatherDst, instElts, eltOff, 0, false,
+                (predicatedLoad && isDestReplacedWithMerge) ? pred : nullptr);
             }
         }
     }, m_RLA->GetResourceLoopMarker(inst));
@@ -19799,7 +19950,8 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
                                         uint32_t NumElts, uint32_t EltBytes,
                                         alignment_t Alignment,
                                         LSC_DOC_ADDR_SPACE AddrSpace,
-                                        LSC_ADDR_SIZE AddrSize
+                                        LSC_ADDR_SIZE AddrSize,
+                                        Value *predicate
 ) {
     // NumElts must be 1!
     IGC_ASSERT_MESSAGE(NumElts == 1 && (EltBytes == 1 || EltBytes == 2),
@@ -19859,6 +20011,17 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
         {
             m_encoder->SetNoMask();
         }
+
+        if (predicate) {
+            // This predicate parameters will be not null only if PredicatedStore intrinsic is used
+            // PredicatedStore intrinsic is being used instead of LLVM store, where makes sense.
+            // setPredicateForDiscard used earlier is used only when compiler needs to create the
+            // resource loop, which is never expected for simple LLVM store or PredicatedStore.
+            // Hence, these predicates should never be used together.
+            IGC_ASSERT_MESSAGE(doUniformStore || flag == nullptr, "Unexpected scenario: resource loop with predicated store!");
+            m_encoder->SetPredicate(GetSymbol(predicate));
+        }
+
       // NumElts = 1
       emitLSCStore(CacheOpts,
                    stVar, eOffset, EltBytes * 8, 1, 0, &Resource, AddrSize,
@@ -19883,7 +20046,8 @@ void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32,
                                           int ImmScale, uint32_t NumElts,
                                           uint32_t EltBytes, alignment_t Align,
                                           LSC_DOC_ADDR_SPACE AddrSpace,
-                                          LSC_ADDR_SIZE AddrSize
+                                          LSC_ADDR_SIZE AddrSize,
+                                          Value *predicate
 ) {
     // If needed, can handle non-uniform StoreVar.
     IGC_ASSERT(StoreVar->IsUniform() && Offset->IsUniform() && (EltBytes == 4 || EltBytes == 8));
@@ -19932,6 +20096,8 @@ void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32,
         ResourceLoop(Resource, sampler, [&](CVariable* /*flag*/, CVariable*& /*destination*/,
             ResourceDescriptor /*resource*/, bool /*needLoop*/) {
             m_encoder->SetNoMask();
+            if (predicate)
+                m_encoder->SetPredicate(GetSymbol(predicate));
           emitLSCStore(CacheOpts,
                        new_stVar, new_eoff, dSize * 8, 1, 0, &Resource,
                        AddrSize, LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset,
@@ -19956,6 +20122,8 @@ void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32,
         ResourceDescriptor /*resource*/, bool /*needLoop*/) {
         m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
+        if (predicate)
+            m_encoder->SetPredicate(GetSymbol(predicate));
         emitLSCStore(CacheOpts,
                      stVar, eOffset, dSize * 8, vSize, 0, &Resource, AddrSize,
                      LSC_DATA_ORDER_TRANSPOSE, ImmOffset, ImmScale, AddrSpace);
@@ -19970,7 +20138,7 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
                                   BasicBlock *BB, LSC_CACHE_OPTS cacheOpts,
                                   alignment_t align, bool dontForceDmask,
                                   LSC_DOC_ADDR_SPACE addrSpace
-
+                                 ,Value *predicate
 ) {
 
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
@@ -20034,7 +20202,7 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
         IGC_ASSERT(elts == 1);
         emitLSCVectorStore_subDW(cacheOpts, useA32, resource,
                                  storedVar, eOffset, immOffsetVal, immScaleVal,
-                                 1, eltBytes, align, addrSpace, addrSize);
+                                 1, eltBytes, align, addrSpace, addrSize, predicate);
         return;
     }
 
@@ -20046,7 +20214,7 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
         emitLSCVectorStore_uniform(cacheOpts, useA32, resource,
                                    storedVar, eOffset, immOffsetVal,
                                    immScaleVal, elts, eltBytes, align,
-                                   addrSpace, addrSize);
+                                   addrSpace, addrSize, predicate);
         return;
     }
 
@@ -20111,6 +20279,16 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
                 messageType == VectorMessage::MESSAGE_A32_LSC_RW ||
                     messageType == VectorMessage::MESSAGE_A64_LSC_RW,
                 "Internal Error: unexpected message kind for load!");
+
+            if (predicate) {
+                // This predicate parameter will be not null only if PredicatedStore intrinsic is used
+                // PredicatedStore intrinsic is being used instead of LLVM store, where makes sense.
+                // setPredicateForDiscard used earlier is used only when compiler needs to create the
+                // resource loop, which is never expected for simple LLVM store or PredicatedStore.
+                // Hence, these predicates should never be used together.
+                IGC_ASSERT_MESSAGE(flag == nullptr, "Unexpected scenario: resource loop with predicated store!");
+                m_encoder->SetPredicate(GetSymbol(predicate));
+            }
 
             emitLSCStore(cacheOpts,
                          subStoredVar, rawAddrVar, blkBits, numBlks, 0,
@@ -20675,7 +20853,8 @@ void EmitPass::emitLscUniformAtomicCounter(llvm::GenIntrinsicInst* pInst)
 
 // DstSubRegOffset and SrcSubRegOffset are in unit of element size.
 void EmitPass::emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
-    uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset, bool allowLargerSIMDSize)
+    uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset, bool allowLargerSIMDSize,
+    CVariable* predicate)
 {
     IGC_ASSERT(Dst->IsUniform() && Src->IsUniform());
 
@@ -20697,6 +20876,7 @@ void EmitPass::emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nE
         m_encoder->SetSrcRegion(0, vStride, 1, 0);
         m_encoder->SetSrcSubReg(0, soff + i);
         m_encoder->SetDstSubReg(doff + i);
+        m_encoder->SetPredicate(predicate);
         m_encoder->Copy(Dst, Src);
         m_encoder->Push();
 
@@ -20778,7 +20958,8 @@ void EmitPass::emitPredicatedVectorSelect(CVariable* Dst, CVariable* Src0, CVari
 
 // DstSubRegOffset and SrcSubRegOffset are in unit of element size.
 void EmitPass::emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
-    uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset, bool allowLargerSIMDSize)
+    uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset, bool allowLargerSIMDSize,
+    CVariable* predicate)
 {
     bool srcUniform = Src->IsUniform();
     bool dstUniform = Dst->IsUniform();
@@ -20787,7 +20968,7 @@ void EmitPass::emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
     if (srcUniform && dstUniform) {
         emitUniformVectorCopy(
             Dst, Src, nElts, DstSubRegOffset, SrcSubRegOffset,
-            allowLargerSIMDSize);
+            allowLargerSIMDSize, predicate);
         return;
     }
 
@@ -20829,6 +21010,7 @@ void EmitPass::emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
                     m_encoder->SetSimdSize(mode);
                     m_encoder->SetSrcSubReg(0, SrcSubReg);
                     m_encoder->SetDstSubReg(DstSubReg);
+                    m_encoder->SetPredicate(predicate);
                     m_encoder->Copy(Dst, Src);
                     m_encoder->Push();
 
@@ -20853,6 +21035,7 @@ void EmitPass::emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
                     m_encoder->SetSimdSize(mode);
                     m_encoder->SetSrcSubReg(0, SrcSubReg);
                     m_encoder->SetDstSubReg(DstSubReg);
+                    m_encoder->SetPredicate(predicate);
                     m_encoder->Copy(Dst, Src);
                     m_encoder->Push();
 
@@ -20871,6 +21054,7 @@ void EmitPass::emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
 
         m_encoder->SetSrcSubReg(0, SrcSubReg);
         m_encoder->SetDstSubReg(DstSubReg);
+        m_encoder->SetPredicate(predicate);
         m_encoder->Copy(Dst, Src);
         m_encoder->Push();
     }

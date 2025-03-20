@@ -23,6 +23,7 @@ void initializeAtomicOptPassPass(llvm::PassRegistry&);
 void initializeAggregateArgumentsAnalysisPass(llvm::PassRegistry&);
 void initializeAlignmentAnalysisPass(llvm::PassRegistry&);
 void initializePreBIImportAnalysisPass(llvm::PassRegistry&);
+void initializePromoteToPredicatedMemoryAccessPass(llvm::PassRegistry&);
 void initializeBIImportPass(llvm::PassRegistry&);
 void initializeBlockCoalescingPass(llvm::PassRegistry&);
 void initializeBlockMemOpAddrScalarizationPassPass(llvm::PassRegistry&);
