@@ -8,6 +8,11 @@
 ; REQUIRES: regkeys, llvm-14-plus
 ;
 ; RUN: igc_opt -igc-SelectCSWalkOrder --inputcs -regkey EnableSelectCSWalkOrderPass -S < %s 2>&1 | FileCheck %s
+;
+; RUN: igc_opt -igc-SelectCSWalkOrder --inputcs -regkey EnableSelectCSWalkOrderPass,OverrideHWGenerateLID=1 -S < %s 2>&1 | FileCheck %s
+;
+; RUN: igc_opt -igc-SelectCSWalkOrder --inputcs -regkey EnableSelectCSWalkOrderPass,OverrideHWGenerateLID=0 -S < %s 2>&1 | FileCheck %s
+
 ; ------------------------------------------------
 ; SelectCSWalkOrder
 ; ------------------------------------------------
