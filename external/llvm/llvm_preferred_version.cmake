@@ -6,4 +6,5 @@
 #
 #============================ end_copyright_notice =============================
 
-    set(DEFAULT_IGC_LLVM_VERSION "14.0.5")
+set(DEFAULT_IGC_LLVM_VERSION "15.0.7")
+
