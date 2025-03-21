@@ -22,6 +22,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/SetVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include "AdaptorCommon/RayTracing/HitGroups.h" // ^MDFramework^: ../AdaptorCommon/RayTracing
+#include "AdaptorCommon/RayTracing/ConstantsEnums.h" // ^MDFramework^: ../AdaptorCommon/RayTracing
 #include "AdaptorCommon/RayTracing/API/MemoryStyleEnum.h" // ^MDFramework^: ../AdaptorCommon/RayTracing/API
 
 namespace llvm
@@ -815,6 +817,8 @@ enum class ShaderTypeMD
 
         llvm::MapVector<llvm::Value*, llvm::Value*> predicationMap;
         llvm::MapVector<llvm::Value*, llvm::Value*> lifeTimeStartMap;
+
+        std::vector<HitGroupInfo> HitGroups;
     };
 
     void serialize(const IGC::ModuleMetaData &moduleMD, llvm::Module* module);
