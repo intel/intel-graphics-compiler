@@ -1908,7 +1908,10 @@ bool allowShortImplicitPayloadHeader() const
     if (!supportsZEBin())
         return false;
 
-    return false;
+    if (m_platformInfo.eProductFamily == IGFX_PVC)
+        return false;
+
+    return isCoreChildOf(IGFX_XE_HP_CORE) && !isCoreChildOf(IGFX_XE3_CORE);
 }
 
 bool allowRemovingUnusedImplicitArguments() const
