@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -596,7 +596,7 @@ namespace IGC
         Type* argType = entry->getFunctionType()->getParamType(argIndex);
         if (argumentIter->hasByValAttr())
         {
-            argType = argType->getContainedType(0);
+            argType = argumentIter->getParamByValType();
         }
 
         result += utostr(m_DL->getTypeAllocSize(argType));
