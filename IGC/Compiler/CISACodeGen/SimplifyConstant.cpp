@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -190,6 +190,12 @@ void ConstantLoader::simplify() {
                 Value* Cmp = Builder.CreateTrunc(Index, Builder.getInt1Ty());
                 Val = Builder.CreateSelect(Cmp, V1, V0);
             }
+
+            Type* SrcTy = Val->getType();
+            Type* DstTy = LI->getType();
+            if (SrcTy != DstTy && SrcTy->getPrimitiveSizeInBits() == DstTy->getPrimitiveSizeInBits())
+              Val = Builder.CreateBitCast(Val, DstTy);
+
             LI->replaceAllUsesWith(Val);
             LI->eraseFromParent();
         }

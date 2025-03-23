@@ -6,8 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -enable-debugify -SimplifyConstant -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -enable-debugify -SimplifyConstant -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; SimplifyConstant
 ; ------------------------------------------------
@@ -26,7 +25,7 @@ define spir_kernel void @test_simpleconst(i32 %a, i32* %b) {
 ; CHECK:  entry:
 ; CHECK:    [[TMP0:%.*]] = trunc i32 [[A:%.*]] to i1
 ; CHECK:    [[TMP1:%.*]] = select i1 [[TMP0]], i32 42, i32 13
-; CHECK:    store i32 [[TMP1]], ptr [[B:%.*]], align 4
+; CHECK:    store i32 [[TMP1]], i32* [[B:%.*]], align 4
 ; CHECK:    ret void
 ;
 entry:
