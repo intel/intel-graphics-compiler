@@ -85,6 +85,10 @@ namespace IGC
     }
 
     uint32_t OpenCLProgramContext::getExpGRFSize() const {
+        if (IGC_GET_FLAG_VALUE(TotalGRFNum))
+        {
+            return IGC_GET_FLAG_VALUE(TotalGRFNum);
+        }
         if (m_InternalOptions.IntelExpGRFSize) {
             return m_InternalOptions.expGRFSize;
         }
