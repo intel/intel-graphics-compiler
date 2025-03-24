@@ -171,7 +171,6 @@ void CheckInstrTypes::print(llvm::raw_ostream& OS) const
     OS << "\nhasDynamicGenericLoadStore: " << g_InstrTypes.hasDynamicGenericLoadStore;
     OS << "\nhasUnmaskedRegion: " << g_InstrTypes.hasUnmaskedRegion;
     OS << "\nhasSLM: " << g_InstrTypes.hasSLM;
-    OS << "\nhasPrivateGEPIntoVector: " << g_InstrTypes.hasPrivateGEPIntoVector;
     OS << "\nnumCall: " << g_InstrTypes.numCall;
     OS << "\nnumBarrier: " << g_InstrTypes.numBarrier;
     OS << "\nnumLoadStore: " << g_InstrTypes.numLoadStore;
@@ -754,20 +753,6 @@ void CheckInstrTypes::visitGetElementPtrInst(llvm::GetElementPtrInst& I)
     if (I.getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
     {
         g_InstrTypes.hasGenericAddressSpacePointers = true;
-    }
-    else if (I.getPointerAddressSpace() == ADDRESS_SPACE::ADDRESS_SPACE_PRIVATE &&
-        g_InstrTypes.hasPrivateGEPIntoVector == false &&
-        I.getNumIndices() > 1)
-    {
-        llvm::SmallVector<llvm::Value*, 4> indices(I.indices());
-        indices.pop_back();
-        llvm::Type* lastIndexedType = llvm::GetElementPtrInst::getIndexedType(
-            I.getSourceElementType(),
-            indices);
-        if (lastIndexedType->isVectorTy())
-        {
-            g_InstrTypes.hasPrivateGEPIntoVector = true;
-        }
     }
 }
 
