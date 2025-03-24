@@ -6,11 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; Requires SPV_INTEL_2d_block_io was added to skip this test while SPIR-V extension implementation is not merged
-; to SPIR-V translator
-; TODO: Remove this line after SPIR-V extension implementation is merged to translator
-; REQUIRES: SPV_INTEL_2d_block_io
-
 ; REQUIRES: pvc-supported, llvm-spirv
 
 ; RUN: llvm-as %s -o %t.bc

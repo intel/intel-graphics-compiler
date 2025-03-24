@@ -6,9 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; Remove this requires directive when SPIRV translator is updated to support this extension
-; REQUIRES: SPV_INTEL_subgroup_matrix_multiply_accumulate
-
 ; REQUIRES: llvm-spirv, pvc-supported
 
 ; RUN: llvm-as %s -o %t.bc
