@@ -5157,6 +5157,7 @@ G4_Declare::G4_Declare(const IR_Builder &builder, const char *n,
   forceSpilled = false;
   exclusiveLoad = false;
   isCmpUseOnly = false;
+  isBBLocal = false;
   scopeID = 0;
 
   declId = (unsigned)dcllist.size();
