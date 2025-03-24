@@ -176,7 +176,7 @@ inline Value* RepackToOldType(
 // - only bitcast, PHI, load, store and extract element instructions are
 //   supported
 inline bool GetUsedVectorElements(
-    Value* parentVal,
+    Value* parentPtr,
     Value* val,
     SmallVector<bool, 4>& used)
 {
@@ -188,6 +188,7 @@ inline bool GetUsedVectorElements(
             // Unsupported alloca use type.
             return false;
         }
+        parentPtr = gepInst;
     }
     else if (ExtractElementInst* ee = dyn_cast<ExtractElementInst>(val))
     {
@@ -230,13 +231,17 @@ inline bool GetUsedVectorElements(
         {
             return false;
         }
+        if (srcTy->isPointerTy())
+        {
+            parentPtr = bc;
+        }
         // Supported bit cast type, check users for extract element
         // instructions.
     }
     else if (StoreInst* store = dyn_cast<StoreInst>(val))
     {
         // This function only needs to check read access.
-        if (store->getPointerOperand() == parentVal)
+        if (store->getPointerOperand() == parentPtr)
         {
             return true;
         }
@@ -247,6 +252,7 @@ inline bool GetUsedVectorElements(
     }
     else if (!(isa<AllocaInst>(val) ||
         isa<PHINode>(val) ||
+        isa<InsertElementInst>(val) ||
         isa<LoadInst>(val)))
     {
         return false;
@@ -255,7 +261,7 @@ inline bool GetUsedVectorElements(
     // Follow the def-use chain
     for (User* user : val->users())
     {
-        if (!GetUsedVectorElements(val, user, used))
+        if (!GetUsedVectorElements(parentPtr, user, used))
         {
             return false;
         }
