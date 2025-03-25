@@ -16,8 +16,8 @@ define spir_kernel void @image_read(%"struct.sycl::_V1::ext::oneapi::experimenta
 entry:
 ; CHECK:      [[BC:%[0-9]+]] = bitcast %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle"* %_arg_imgHandle1 to i64*
 ; CHECK-NEXT: [[LOAD:%[0-9]+]] = load i64, i64* [[BC]], align 8
-; CHECK:      %bindless_img = inttoptr i32 %2 to float addrspace(393468)*
-; CHECK-NEXT: call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196608f32.p393468f32(i32 %CoordX, i32 %CoordY, i32 0, i32 0, float addrspace(196608)* undef, float addrspace(393468)* %bindless_img, i32 0, i32 0, i32 0)
+; CHECK:      %bindless_img = inttoptr i64 [[LOAD]] to float addrspace(393216)*
+; CHECK-NEXT: call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196608f32.p393216f32(i32 %CoordX, i32 %CoordY, i32 0, i32 0, float addrspace(196608)* undef, float addrspace(393216)* %bindless_img, i32 0, i32 0, i32 0)
 
   %0 = bitcast %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle"* %_arg_imgHandle1 to i64*
   %1 = load i64, i64* %0, align 8

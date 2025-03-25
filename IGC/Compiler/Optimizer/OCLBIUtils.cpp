@@ -20,7 +20,6 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "IGC/common/StringMacros.hpp"
 #include <llvm/Support/Casting.h>
-#include "IGC/Compiler/CISACodeGen/messageEncoding.hpp"
 
 using namespace llvm;
 using namespace IGC;
@@ -294,26 +293,25 @@ BufferType CImagesBI::CImagesUtils::getImageType(ParamMap* pParamMap, CallInst* 
 
 void CImagesBI::createGetBufferPtr()
 {
-    if (m_pCodeGenContext->getModuleMetaData()->UseBindlessImage)
-    {
-        // If bindless image is preferred, don't create GetBufferPtr, instead just map the bindless pointer
-        Value* pImg = m_pCallInst->getOperand(0);
-        ConstantInt* bindlessIndex = ConstantInt::get(m_pIntType, BINDLESS_BTI);
-        uint32_t addrSpace = EncodeAS4GFXResource(*bindlessIndex, BINDLESS);
-        Type* ptrTy = llvm::PointerType::get(m_pFloatType, addrSpace);
-
-        Value* basePointer = isa<IntegerType>(pImg->getType()) ?
-            BitCastInst::CreateBitOrPointerCast(pImg, ptrTy, "bindless_img", m_pCallInst) :
-            BitCastInst::CreatePointerCast(pImg, ptrTy, "bindless_img", m_pCallInst);
-        m_args.push_back(basePointer);
-        return;
-    }
-
     Value* pImg = nullptr;
     ConstantInt* imageIndex = CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, 0, pImg);
     BufferType bufType = CImagesUtils::getImageType(m_pParamMap, m_pCallInst, 0);
     unsigned int addressSpace = IGC::EncodeAS4GFXResource(*imageIndex, bufType);
     Type* ptrTy = llvm::PointerType::get(m_pFloatType, addressSpace);
+
+    if (bufType == BufferType::BINDLESS)
+    {
+        // If bindless image is preferred, don't create GetBufferPtr, instead just map the bindless pointer
+        auto modMD = m_pCodeGenContext->getModuleMetaData();
+        if (modMD->UseBindlessImage)
+        {
+            Value* basePointer = isa<IntegerType>(pImg->getType()) ?
+                BitCastInst::CreateBitOrPointerCast(pImg, ptrTy, "bindless_img", m_pCallInst) :
+                BitCastInst::CreatePointerCast(pImg, ptrTy, "bindless_img", m_pCallInst);
+            m_args.push_back(basePointer);
+            return;
+        }
+    }
 
     Function* pFuncGetBufferPtr = getFunctionDeclaration(GenISAIntrinsic::GenISA_GetBufferPtr, ptrTy);
 
