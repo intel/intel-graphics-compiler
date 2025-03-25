@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include <chrono>
-#include <iostream>
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/ScaledNumber.h>

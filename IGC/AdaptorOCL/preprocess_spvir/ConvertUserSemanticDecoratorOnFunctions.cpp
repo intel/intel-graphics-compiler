@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/Mangler.h>
 #include "common/LLVMWarningsPop.hpp"
-#include <iostream>
 using namespace llvm;
 using namespace IGC;
 

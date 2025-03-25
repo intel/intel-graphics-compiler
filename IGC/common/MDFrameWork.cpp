@@ -20,7 +20,6 @@ SPDX-License-Identifier: MIT
 #include "StringMacros.hpp"
 #include "common/igc_regkeys.hpp"
 
-#include <iostream>
 #include <optional>
 
 using namespace llvm;

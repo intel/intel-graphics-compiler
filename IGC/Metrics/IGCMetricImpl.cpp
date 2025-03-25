@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include <algorithm>
 #include <string>
 #include <unordered_map>
-#include <iostream>
 #include <fstream>
 
 #include <iomanip>

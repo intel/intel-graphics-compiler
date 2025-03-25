@@ -21,7 +21,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 #include <regex>
-#include <iostream>
 #include <unordered_set>
 
 using namespace llvm;

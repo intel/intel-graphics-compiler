@@ -32,7 +32,6 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo/VISADebugEmitter.hpp"
 #include <map>
 #include <utility>
-#include <iostream>
 #include "Probe/Assertion.h"
 
 using namespace llvm;

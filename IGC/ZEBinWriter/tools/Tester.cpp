@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #include "ZEELFObjectBuilder.hpp"
 #include "ZEinfoYAML.hpp"
 
-#include <iostream>
 #include <fstream>
 
 using llvm::yaml::Output;

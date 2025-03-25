@@ -21,7 +21,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Mangler.h>
 #include <llvm/Support/Regex.h>
 #include "common/LLVMWarningsPop.hpp"
-#include <iostream>
 
 using namespace llvm;
 using namespace IGC;

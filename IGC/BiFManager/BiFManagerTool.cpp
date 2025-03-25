@@ -32,7 +32,6 @@ SPDX-License-Identifier: MIT
 
 #include <Probe/Assertion.h>
 #include "inc/common/secure_string.h"
-#include <iostream>
 
 using namespace std;
 using namespace llvm;

@@ -35,7 +35,6 @@ SPDX-License-Identifier: MIT
 
 #include <Probe/Assertion.h>
 #include "inc/common/secure_string.h"
-#include <iostream>
 
 #define BIF_COMPILER_TIME_START(TYPE) \
     if (startTimer)\

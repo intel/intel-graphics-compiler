@@ -24,7 +24,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #endif
 
-#include <iostream>
 #include <tuple>
 #include "Probe/Assertion.h"
 
