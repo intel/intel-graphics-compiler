@@ -1223,6 +1223,8 @@ static void LoadFromRegKeyOrEnvVarOrOptions(
                         }
                     }
                     memcpy_s(pRegKeyVariable[i].m_string, sizeof(valueFromOptions), valueFromOptions, sizeof(valueFromOptions));
+                    pRegKeyVariable[i].Set();
+                    checkAndSetIfKeyHasNoDefaultValue(&pRegKeyVariable[i]);
                 }
                 else if (found > 0 && options[found - 1] != ' ' && options[found - 1] != ',')
                 {
