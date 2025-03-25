@@ -19,8 +19,8 @@
 define spir_kernel void @kernel_1d_array(ptr addrspace(1) %img) {
 ; CHECK-LABEL: define spir_kernel void @kernel_1d_array(
 ; CHECK-NOT:   __builtin_IB_get_image1d_array_size
-; CHECK:       [[BINDLESS_IMG_1D:%.*]] = addrspacecast ptr addrspace(1) %img to ptr addrspace(393216)
-; CHECK-NEXT:  [[TMP_1D:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393216(ptr addrspace(393216) [[BINDLESS_IMG_1D]], i32 0)
+; CHECK:       [[BINDLESS_IMG_1D:%.*]] = inttoptr i32 %1 to ptr addrspace(393468)
+; CHECK-NEXT:  [[TMP_1D:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393468(ptr addrspace(393468) [[BINDLESS_IMG_1D]], i32 0)
 ; CHECK-NEXT:  extractelement <4 x i32> [[TMP_1D]], i32 1
   %data = ptrtoint ptr addrspace(1) %img to i64
   %1 = trunc i64 %data to i32
@@ -31,8 +31,8 @@ define spir_kernel void @kernel_1d_array(ptr addrspace(1) %img) {
 define spir_kernel void @kernel_2d_array(ptr addrspace(1) %img) {
 ; CHECK-LABEL: define spir_kernel void @kernel_2d_array(
 ; CHECK-NOT:   __builtin_IB_get_image1d_array_size
-; CHECK:       [[BINDLESS_IMG_1D:%.*]] = addrspacecast ptr addrspace(1) %img to ptr addrspace(393216)
-; CHECK-NEXT:  [[TMP_1D:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393216(ptr addrspace(393216) [[BINDLESS_IMG_1D]], i32 0)
+; CHECK:       [[BINDLESS_IMG_1D:%.*]] = inttoptr i32 %1 to ptr addrspace(393468)
+; CHECK-NEXT:  [[TMP_1D:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393468(ptr addrspace(393468) [[BINDLESS_IMG_1D]], i32 0)
 ; CHECK-NEXT:  extractelement <4 x i32> [[TMP_1D]], i32 2
   %data = ptrtoint ptr addrspace(1) %img to i64
   %1 = trunc i64 %data to i32
@@ -42,20 +42,19 @@ define spir_kernel void @kernel_2d_array(ptr addrspace(1) %img) {
 
 define spir_kernel void @kernel_3d(ptr addrspace(1) %img) {
 ; CHECK-LABEL: define spir_kernel void @kernel_3d(
-; CHECK-SAME: ptr addrspace(1) [[IMG:%.*]]) {
   %data = ptrtoint ptr addrspace(1) %img to i64
   %1 = trunc i64 %data to i32
 ; CHECK-NOT: __builtin_IB_get_image_width
 ; CHECK-NOT: __builtin_IB_get_image_height
 ; CHECK-NOT: __builtin_IB_get_image_height
-; CHECK:    [[BINDLESS_IMG:%.*]] = addrspacecast ptr addrspace(1) [[IMG]] to ptr addrspace(393216)
-; CHECK-NEXT:    [[TMP1:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393216(ptr addrspace(393216) [[BINDLESS_IMG]], i32 0)
+; CHECK:    [[BINDLESS_IMG:%.*]] = inttoptr i32 %1 to ptr addrspace(393468)
+; CHECK-NEXT:    [[TMP1:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393468(ptr addrspace(393468) [[BINDLESS_IMG]], i32 0)
 ; CHECK-NEXT:    extractelement <4 x i32> [[TMP1]], i32 0
-; CHECK-NEXT:    [[BINDLESS_IMG1:%.*]] = addrspacecast ptr addrspace(1) [[IMG]] to ptr addrspace(393216)
-; CHECK-NEXT:    [[TMP2:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393216(ptr addrspace(393216) [[BINDLESS_IMG1]], i32 0)
+; CHECK-NEXT:    [[BINDLESS_IMG1:%.*]] = inttoptr i32 %1 to ptr addrspace(393468)
+; CHECK-NEXT:    [[TMP2:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393468(ptr addrspace(393468) [[BINDLESS_IMG1]], i32 0)
 ; CHECK-NEXT:    extractelement <4 x i32> [[TMP2]], i32 1
-; CHECK-NEXT:    [[BINDLESS_IMG2:%.*]] = addrspacecast ptr addrspace(1) [[IMG]] to ptr addrspace(393216)
-; CHECK-NEXT:    [[TMP3:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393216(ptr addrspace(393216) [[BINDLESS_IMG2]], i32 0)
+; CHECK-NEXT:    [[BINDLESS_IMG2:%.*]] = inttoptr i32 %1 to ptr addrspace(393468)
+; CHECK-NEXT:    [[TMP3:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393468(ptr addrspace(393468) [[BINDLESS_IMG2]], i32 0)
 ; CHECK-NEXT:    extractelement <4 x i32> [[TMP3]], i32 2
   %call = call spir_func i32 @__builtin_IB_get_image_width(i32 %1)
   %call1 = call spir_func i32 @__builtin_IB_get_image_height(i32 %1)

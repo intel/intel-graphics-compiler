@@ -21,9 +21,10 @@ entry:
 ; CHECK: [[ZEXT:%[0-9]+]] = zext i32 %inlineSampler to i64
 ; CHECK: [[OR:%[0-9]+]] = or i64 [[ZEXT]], 1
 ; CHECK: [[TRUNC:%[0-9]+]] = trunc i64 [[OR]] to i32
-; CHECK: %bindless_img = addrspacecast %spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %srcImg to float addrspace(393218)*
+; CHECK: [[TRUNC_IMG:%[0-9]+]] = trunc i64 %1 to i32
+; CHECK: %bindless_img = inttoptr i32 [[TRUNC_IMG]] to float addrspace(393468)*
 ; CHECK: %bindless_sampler = inttoptr i32 [[TRUNC]] to float addrspace(655360)*
-; CHECK: = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196610f32.p393218f32.p655360f32(float 0.000000e+00, float %CoordX, float %CoordY, float 0.000000e+00, float 0.000000e+00, float addrspace(196610)* undef, float addrspace(393218)* %bindless_img, float addrspace(655360)* %bindless_sampler, i32 0, i32 0, i32 0)
+; CHECK: = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196610f32.p393468f32.p655360f32(float 0.000000e+00, float %CoordX, float %CoordY, float 0.000000e+00, float 0.000000e+00, float addrspace(196610)* undef, float addrspace(393468)* %bindless_img, float addrspace(655360)* %bindless_sampler, i32 0, i32 0, i32 0)
 
   %0 = inttoptr i64 16 to %spirv.Sampler addrspace(2)*
   %1 = ptrtoint %spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %srcImg to i64
