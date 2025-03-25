@@ -319,6 +319,7 @@ public:
         FunctionGroup* FG = (FGA && entry) ? FGA->getGroupForHead(entry) : nullptr;
         if (FG)
         {
+            m_HasSubroutine = FG->hasSubroutine();
             m_HasStackCall = FG->hasStackCall();
             m_HasIndirectCall = FG->hasIndirectCall();
             m_HasNestedCall = FG->hasNestedCall();
@@ -331,6 +332,7 @@ public:
     }
 
     GenXFunctionGroupAnalysis* GetFGA() { return m_FGA; }
+    bool HasSubroutines() const { return m_HasSubroutine; }
     bool HasStackCalls() const { return m_HasStackCall; }
     void SetHasStackCalls(bool hasStackCall) { m_HasStackCall = hasStackCall; }
     bool HasNestedCalls() const { return m_HasNestedCall; }
@@ -744,6 +746,7 @@ protected:
     DebugInfoData diData;
 
     // Program function attributes
+    bool m_HasSubroutine = false;
     bool m_HasStackCall = false;
     bool m_HasNestedCall = false;
     bool m_HasIndirectCall = false;

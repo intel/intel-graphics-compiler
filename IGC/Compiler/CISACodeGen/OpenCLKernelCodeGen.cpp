@@ -2450,20 +2450,7 @@ namespace IGC
             prevOffset = offset;
 
             // skip unused arguments
-            bool IsUnusedArg =
-                (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET ||
-                arg.getArgType() == KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET ||
-                arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_SIZE) &&
-                arg.getArg()->use_empty();
-
-            if (m_Context->platform.allowRemovingUnusedImplicitArguments())
-            {
-                IsUnusedArg |=
-                    (arg.getArgType() == KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER || // contains global_id_offset
-                    arg.getArgType() == KernelArg::ArgType::IMPLICIT_GLOBAL_OFFSET ||
-                    arg.getArgType() == KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE) &&
-                    arg.getArg()->use_empty();
-            }
+            bool IsUnusedArg = isUnusedArg(arg);
 
             // Runtime Values should not be processed any further. No annotations shall be created for them.
             // Only added to KernelArgs to enforce correct allocation order.
@@ -2690,6 +2677,28 @@ namespace IGC
 
         // Create annotations for printf string.
         CreatePrintfStringAnnotations();
+    }
+
+    bool COpenCLKernel::isUnusedArg(KernelArg& arg) const
+    {
+        bool canRemoveArg =
+            arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET ||
+            arg.getArgType() == KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET ||
+            arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_SIZE;
+
+        if (m_Context->platform.allowRemovingUnusedImplicitArguments())
+        {
+            // Assume subroutine calls can use implicit arguments.
+            if (!HasSubroutines())
+            {
+                canRemoveArg |=
+                    arg.getArgType() == KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER || // contains global_id_offset
+                    arg.getArgType() == KernelArg::ArgType::IMPLICIT_GLOBAL_OFFSET ||
+                    arg.getArgType() == KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE;
+            }
+        }
+
+        return canRemoveArg && arg.getArg()->use_empty();
     }
 
     bool COpenCLKernel::passNOSInlineData()
