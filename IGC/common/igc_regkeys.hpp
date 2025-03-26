@@ -224,12 +224,8 @@ bool ReadIGCRegistry(const char* pName, void* pValue, unsigned int size, bool re
 void SetCurrentDebugHash(const ShaderHash &hash);
 void SetCurrentEntryPoints(const std::vector<std::string> &entry_points);
 void ClearCurrentEntryPoints();
-void FreeEntryPointsTLSContainers();
 #undef LINUX_RELEASE_MODE
 #else
-static inline void FreeEntryPointsTLSContainers()
-{
-}
 static inline void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys)
 {
     IGC_UNUSED(KeyValuePairs);

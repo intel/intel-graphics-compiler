@@ -1044,23 +1044,8 @@ void appendToOptionsLogFile(std::string const &message)
     os.close();
 }
 
-static thread_local std::vector<std::string>* g_pCurrentEntryPointNames = nullptr;
-static std::list<void*> g_AllTlsVectorToCleanup;
-static std::mutex g_AllTlsVectorToCleanupMutex;
-
-// This class contains only a destructor; to be called on thread detach
-class RemoveTlsPointerFromCleanupVector
-{
-public:
-    virtual ~RemoveTlsPointerFromCleanupVector()
-    {
-        std::lock_guard<std::mutex> lock(g_AllTlsVectorToCleanupMutex);
-        g_AllTlsVectorToCleanup.remove_if([](void* it) { return ((*static_cast<std::vector<std::string>**>(it)) == g_pCurrentEntryPointNames); });
-    };
-};
-// Dummy object below will get destroyed on thread detach, thus calling ~RemoveTlsPointerFromCleanupVector()
-static thread_local RemoveTlsPointerFromCleanupVector dummyObjectForTlsCleanup;
 static thread_local ShaderHash g_CurrentShaderHash;
+static thread_local std::vector<std::string> g_CurrentEntryPointNames;
 void SetCurrentDebugHash(const ShaderHash& hash)
 {
     g_CurrentShaderHash = hash;
@@ -1069,45 +1054,12 @@ void SetCurrentDebugHash(const ShaderHash& hash)
 // ray tracing shader can have multiple access point
 void SetCurrentEntryPoints(const std::vector<std::string>& entry_points)
 {
-    if (g_pCurrentEntryPointNames == nullptr)
-    {
-        std::lock_guard<std::mutex> lock(g_AllTlsVectorToCleanupMutex);
-        g_pCurrentEntryPointNames = new std::vector<std::string>;
-
-        // Push the address, of the address. This will allow us to avoid dangling TLS pointers in some threads
-        g_AllTlsVectorToCleanup.push_back(&g_pCurrentEntryPointNames);
-    }
-
-    *g_pCurrentEntryPointNames = entry_points;
+    g_CurrentEntryPointNames = entry_points;
 }
 
 void ClearCurrentEntryPoints()
 {
-    if (g_pCurrentEntryPointNames)
-    {
-        g_pCurrentEntryPointNames->clear();
-    }
-}
-
-void FreeEntryPointsTLSContainers()
-{
-    std::lock_guard<std::mutex> lock(g_AllTlsVectorToCleanupMutex);
-
-    // This loop basically frees all "thread_local" g_pCurrentEntryPointNames pointers, regardless of thread_local
-    while(!g_AllTlsVectorToCleanup.empty())
-    {
-        void* ptrOfPtr = g_AllTlsVectorToCleanup.front();
-        g_AllTlsVectorToCleanup.pop_front();
-
-        std::vector<std::string>** containerPtrOfPtr = static_cast<std::vector<std::string>**>(ptrOfPtr);
-        std::vector<std::string>* containerPtr = *containerPtrOfPtr;
-        if (containerPtr)
-        {
-            containerPtr->clear();
-            delete containerPtr;
-            *containerPtrOfPtr = nullptr; // equivalent of doing "g_pCurrentEntryPointNames = nullptr;" but TLS-independent
-        }
-    }
+    g_CurrentEntryPointNames.clear();
 }
 
 bool CheckHashRange(SRegKeyVariableMetaData& varname)
@@ -1161,26 +1113,21 @@ bool CheckEntryPoint(SRegKeyVariableMetaData& varname)
         }
     }
 
-    if (!g_pCurrentEntryPointNames ||
-        g_pCurrentEntryPointNames->size() == 0)
+    if (g_CurrentEntryPointNames.size() == 0)
     {
         std::string msg = "Warning: entry point not set yet; IGC_GET_FLAG_VALUE(" + std::string(varname.GetName()) + ") returned default value";
         appendToOptionsLogFile(msg);
     }
-
-    if (g_pCurrentEntryPointNames != NULL)
+    //looping entry point recorded by regkey metadata
+    for (auto& it : varname.entry_points)
     {
-        //looping entry point recorded by regkey metadata
-        for (auto& it : varname.entry_points)
+        //looping each entry point of current shader
+        for (std::string& CurrEntryPoint : g_CurrentEntryPointNames)
         {
-            //looping each entry point of current shader
-            for (std::string& CurrEntryPoint : *g_pCurrentEntryPointNames)
+            if (CurrEntryPoint == it.entry_point_name)
             {
-                if (CurrEntryPoint == it.entry_point_name)
-                {
-                    varname.m_Value = it.m_Value;
-                    return true;
-                }
+                varname.m_Value = it.m_Value;
+                return true;
             }
         }
     }
