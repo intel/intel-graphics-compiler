@@ -101,7 +101,6 @@ typedef struct _SKU_FEATURE_TABLE
         unsigned int   FtrLLCMLCNotSupported : 1;
         unsigned int   FtrGfxClientSubmission : 1;
         unsigned int   FtrLCIA : 1;
-        unsigned int   FtrPinning : 1;
         unsigned int   FtrHalo : 1;
         unsigned int   FtrDt : 1;
         unsigned int   FtrResourceStreamer : 1;
