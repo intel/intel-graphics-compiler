@@ -2721,6 +2721,21 @@ bool SpillManagerGRF::checkUniqueDefAligned(G4_DstRegRegion *dst,
   return true;
 }
 
+bool SpillManagerGRF::isFirstLexicalDef(G4_DstRegRegion *dst) {
+  // Check whether dst is lexically first def
+  auto dcl = dst->getTopDcl();
+  auto *defs = refs.getDefs(dcl);
+
+  // Check whether any def has lower lexical id than dst
+  for (auto& def : *defs) {
+    auto *defInst = std::get<0>(def);
+    if (defInst->getLexicalId() < dst->getInst()->getLexicalId())
+      return false;
+  }
+
+  return true;
+}
+
 // This function checks whether each spill dst region requires a
 // read-modify-write operation when inserting spill code. Dominator/unique defs
 // don't require redundant read operation. Dst regions that do not need RMW are
@@ -2746,7 +2761,9 @@ void SpillManagerGRF::updateRMWNeeded() {
     //          inner loop nest,
     // Check3 : Flowgraph is reducible
     // Check4 : Dcl is not a split around loop temp
-    // RMW_Not_Needed = (Check0 || (Check1 && Check2 && Check3)) && Check4
+    // Check5 : bb is entryBB and spilledRegion is lexically first definition
+    // RMW_Not_Needed = Check5 || ((Check0 || (Check1 && Check2 && Check3)) &&
+    // Check4)
     bool RMW_Needed = true;
 
     // Reason for Check4:
@@ -2800,6 +2817,11 @@ void SpillManagerGRF::updateRMWNeeded() {
       }
     }
 
+    // Check5
+    if (RMW_Needed && bb == builder_->kernel.fg.getEntryBB()) {
+      RMW_Needed = !isFirstLexicalDef(spilledRegion);
+    }
+
     return RMW_Needed;
   };
 
@@ -2818,20 +2840,23 @@ void SpillManagerGRF::updateRMWNeeded() {
         continue;
 
       auto dst = inst->getDst();
-      if (dst) {
-        if (dst->getBase()->isRegVar()) {
-          auto dstRegVar = dst->getBase()->asRegVar();
-          if (dstRegVar && shouldSpillRegister(dstRegVar)) {
-            if (getRFType(dstRegVar) == G4_GRF) {
-              auto RMW_Needed = isRMWNeededForSpilledDst(bb, dst);
-              if (!RMW_Needed) {
-                // Any spilled dst region that doesnt need RMW
-                // is added to noRMWNeeded set. This set is later
-                // checked when inserting spill/fill code.
-                noRMWNeeded.insert(dst);
-              }
-            }
-          }
+      if (!dst)
+        continue;
+
+      if (!dst->getBase()->isRegVar())
+        continue;
+
+      auto dstRegVar = dst->getBase()->asRegVar();
+      if (dstRegVar && shouldSpillRegister(dstRegVar)) {
+        if (getRFType(dstRegVar) != G4_GRF)
+          continue;
+
+        auto RMW_Needed = isRMWNeededForSpilledDst(bb, dst);
+        if (!RMW_Needed) {
+          // Any spilled dst region that doesnt need RMW
+          // is added to noRMWNeeded set. This set is later
+          // checked when inserting spill/fill code.
+          noRMWNeeded.insert(dst);
         }
       }
     }
