@@ -658,6 +658,7 @@ private:
 
   bool checkUniqueDefAligned(G4_DstRegRegion *dst, G4_BB *defBB);
   bool checkDefUseDomRel(G4_DstRegRegion *dst, G4_BB *bb);
+  bool isFirstLexicalDef(G4_DstRegRegion *dst);
   void updateRMWNeeded();
 
   // Used for new fail safe RA mechanism.
