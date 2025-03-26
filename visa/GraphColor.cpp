@@ -7755,8 +7755,13 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
       assignColors(FIRST_FIT);
     }
   } else {
-    // assign registers for ARFs using a first-fit heuristic
-    assignColors(FIRST_FIT, false, false);
+    // assign registers for ARFs using a round-robin heuristic
+    // For address register, there is no fragment issue
+    if (builder.doRRForAddressRA()) {
+      assignColors(ROUND_ROBIN, false, false);
+    } else {
+      assignColors(FIRST_FIT, false, false);
+    }
   }
 
   return (requireSpillCode() == false);
