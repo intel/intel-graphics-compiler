@@ -236,6 +236,21 @@ struct SemanticChecker : LOCChecker {
     }
     checkSrcScalarReg(i, src);
     checkMathSource(i, srcIx);
+    checkTernarySource(i, srcIx);
+  }
+
+  void checkTernarySource(const Instruction& i, int srcIx) {
+    if (i.getSourceCount() != 3)
+      return;
+    auto& src = i.getSource(srcIx);
+    if (src.isImm() || src.getDirRegName() == RegName::GRF_R)
+      return;
+
+    // valid arf kind is acc and null
+    if (src.getDirRegName() == RegName::ARF_ACC ||
+        src.getDirRegName() == RegName::ARF_NULL)
+      return;
+    warning("Invalid ARF register file for ternary instructions");
   }
 
   // Math can only have grf source with mme
