@@ -263,6 +263,7 @@ bool Options::parseOptions(int argc, const char *argv[]) {
     m_vISAOptions.setBool(vISA_SplitGRFAlignedScalar, false);
     m_vISAOptions.setBool(vISA_SkipRedundantFillInRMW, false);
     m_vISAOptions.setBool(vISA_EnableDCE, false);
+    m_vISAOptions.setBool(vISA_storeCE, true);
     m_vISAOptions.setBool(vISA_Debug, true);
   }
   if (m_vISAOptions.isArgSetByUser(vISA_Stepping)) {
