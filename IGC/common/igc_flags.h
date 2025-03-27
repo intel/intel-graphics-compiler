@@ -65,7 +65,7 @@ DECLARE_IGC_REGKEY(DWORD,DisableHFMath,                 0,     "Disables HF math
 DECLARE_IGC_REGKEY(debugString, VISAOptions,            0,     "Options to vISA. Space-separated options.", true)
 DECLARE_IGC_REGKEY(DWORD,disableIGASyntax,              false, "Disables GEN isa text output using IGA and new syntax.", false)
 DECLARE_IGC_REGKEY(DWORD,disableCompaction,             false, "Disables compaction.", true)
-DECLARE_IGC_REGKEY(DWORD,TotalGRFNum,                   0,     "Total GRF setting for both IGC-LLVM and vISA", false)
+DECLARE_IGC_REGKEY(DWORD,TotalGRFNum,                   0,     "Total GRF setting for both IGC-LLVM and vISA", true)
 DECLARE_IGC_REGKEY(DWORD,TotalGRFNum4CS,                0,     "Total GRF setting for both IGC-LLVM and vISA, for ComputeShader-only experiment.", false)
 DECLARE_IGC_REGKEY(DWORD,ReservedRegisterNum,           0,     "Reserve register number for spill cost testing.", false)
 DECLARE_IGC_REGKEY(bool, ExpandPlane,                   false, "Enable pln to mad macro expansion.", false)
@@ -699,7 +699,7 @@ DECLARE_IGC_REGKEY(DWORD, SelectiveFunctionControl, 0,  "Selectively enables Fun
     "0 - Disable, 1 - Enable and read from SelectiveFunctionControlFile, 2 - Print all callable functions to file" \
     "See comments in ProcessFuncAttributes.cpp for how to use this flag.", true)
 DECLARE_IGC_REGKEY(debugString, SelectiveFunctionControlFile, 0, "Set file with path that'll be used by SelectiveFunctionControl", true)
-DECLARE_IGC_REGKEY(bool, EnableStackCallFuncCall,       false, "If enabled, the default function call mode will be set to stack call. Otherwise, subroutine call is used.", false)
+DECLARE_IGC_REGKEY(bool, EnableStackCallFuncCall,       false, "If enabled, the default function call mode will be set to stack call. Otherwise, subroutine call is used.", true)
 DECLARE_IGC_REGKEY(bool, EnableByValStructArgPromotion, true, "If enabled, byval/sret struct arguments are promoted to pass-by-value if possible.", true)
 DECLARE_IGC_REGKEY(bool, ForceInlineStackCallWithImplArg, false, "If enabled, stack calls that uses implicit args will be force inlined.", true)
 DECLARE_IGC_REGKEY(bool, EnableFunctionCloningControl,  true, "If enabled, limits function cloning by converting stackcalls to indirect calls based on the FunctionCloningThreshold value.", true)

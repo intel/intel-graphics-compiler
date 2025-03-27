@@ -2681,24 +2681,22 @@ namespace IGC
 
     bool COpenCLKernel::isUnusedArg(KernelArg& arg) const
     {
-        bool canRemoveArg =
-            arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET ||
+        if (!arg.getArg() || !arg.getArg()->use_empty())
+            return false;
+
+        // Implicit arguments related to buffers can be always removed if unused.
+        if (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET ||
             arg.getArgType() == KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET ||
-            arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_SIZE;
+            arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_SIZE)
+            return true;
 
-        if (m_Context->platform.allowRemovingUnusedImplicitArguments())
-        {
-            // Assume subroutine calls can use implicit arguments.
-            if (!HasSubroutines())
-            {
-                canRemoveArg |=
-                    arg.getArgType() == KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER || // contains global_id_offset
-                    arg.getArgType() == KernelArg::ArgType::IMPLICIT_GLOBAL_OFFSET ||
-                    arg.getArgType() == KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE;
-            }
-        }
+        // When removing unused implicit arguments, assume subroutine calls use implicit arguments.
+        if (!m_Context->platform.allowRemovingUnusedImplicitArguments() || HasSubroutines())
+            return false;
 
-        return canRemoveArg && arg.getArg()->use_empty();
+        return arg.getArgType() == KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER || // contains global_id_offset
+               arg.getArgType() == KernelArg::ArgType::IMPLICIT_GLOBAL_OFFSET ||
+               arg.getArgType() == KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE;
     }
 
     bool COpenCLKernel::passNOSInlineData()
