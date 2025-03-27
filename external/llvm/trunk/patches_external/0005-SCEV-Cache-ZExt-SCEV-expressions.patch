@@ -14,51 +14,87 @@ SPDX-License-Identifier: Apache-2.0 with LLVM-exception
 
 ============================= end_copyright_notice ===========================*/
 
-From d39249a7ba290d8b6b57a12cb9860682f34c1952 Mon Sep 17 00:00:00 2001
+From dfa7eaff486b1ec7778069cd22ffc440df208717 Mon Sep 17 00:00:00 2001
 From: Florian Hahn <flo@fhahn.com>
-Date: Mon, 10 Oct 2022 20:42:18 +0100
-Subject: [PATCH 2/5] [SCEV] Verify block disposition cache.
+Date: Wed, 28 Dec 2022 00:09:52 +0000
+Subject: [PATCH 5/5] [SCEV] Properly clean up duplicated FoldCacheUser ID
+ entries.
 
-This extends the existing SCEV verification to catch cache invalidation
-issues as in #57837.
+The current code did not properly handled duplicated FoldCacheUser ID
+entries when overwriting an existing entry in the FoldCache.
 
-The validation logic is similar to the recently added loop disposition
-cache validation in bb68b2402daa9.
+This triggered verification failures reported by @uabelho and #59721.
 
-Reviewed By: nikic
+The patch fixes that by removing stale IDs when overwriting an existing
+entry in the cache.
 
-Differential Revision: https://reviews.llvm.org/D134531
+Fixes #59721.
 ---
- llvm/lib/Analysis/ScalarEvolution.cpp | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ llvm/lib/Analysis/ScalarEvolution.cpp | 37 +++++++++++++++++++--------
+ 1 file changed, 27 insertions(+), 10 deletions(-)
 
 diff --git a/llvm/lib/Analysis/ScalarEvolution.cpp b/llvm/lib/Analysis/ScalarEvolution.cpp
-index 1d887d4b60c9..495cd73d8eef 100644
+index ba49e12f958c..cf76ab7efb65 100644
 --- a/llvm/lib/Analysis/ScalarEvolution.cpp
 +++ b/llvm/lib/Analysis/ScalarEvolution.cpp
-@@ -13467,6 +13467,22 @@ void ScalarEvolution::verify() const {
-       }
-     }
-   }
-+
-+  // Verify integrity of the block disposition cache.
-+  for (const auto &It : BlockDispositions) {
-+    const SCEV *S = It.first;
-+    auto &Values = It.second;
-+    for (auto &V : Values) {
-+      auto CachedDisposition = V.getInt();
-+      const BasicBlock *BB = V.getPointer();
-+      const auto RecomputedDisposition = SE2.getBlockDisposition(S, BB);
-+      if (CachedDisposition != RecomputedDisposition) {
-+        dbgs() << "Cached disposition of " << *S << " for block %"
-+               << BB->getName() << " is incorrect! \n";
-+        std::abort();
-+      }
-+    }
-+  }
+@@ -1590,6 +1590,29 @@ static APInt extractConstantWithoutWrapping(ScalarEvolution &SE,
+   return APInt(BitWidth, 0);
  }
  
- bool ScalarEvolution::invalidate(
++static void insertFoldCacheEntry(
++    const ScalarEvolution::FoldID &ID, const SCEV *S,
++    DenseMap<ScalarEvolution::FoldID, const SCEV *> &FoldCache,
++    DenseMap<const SCEV *, SmallVector<ScalarEvolution::FoldID, 2>>
++        &FoldCacheUser) {
++  auto I = FoldCache.insert({ID, S});
++  if (!I.second) {
++    // Remove FoldCacheUser entry for ID when replacing an existing FoldCache
++    // entry.
++    auto &UserIDs = FoldCacheUser[I.first->second];
++    assert(count(UserIDs, ID) == 1 && "unexpected duplicates in UserIDs");
++    for (unsigned I = 0; I != UserIDs.size(); ++I)
++      if (UserIDs[I] == ID) {
++        std::swap(UserIDs[I], UserIDs.back());
++        break;
++      }
++    UserIDs.pop_back();
++    I.first->second = S;
++  }
++  auto R = FoldCacheUser.insert({S, {}});
++  R.first->second.push_back(ID);
++}
++
+ const SCEV *
+ ScalarEvolution::getZeroExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth) {
+   assert(getTypeSizeInBits(Op->getType()) < getTypeSizeInBits(Ty) &&
+@@ -1608,11 +1631,8 @@ ScalarEvolution::getZeroExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth) {
+     return Iter->second;
+ 
+   const SCEV *S = getZeroExtendExprImpl(Op, Ty, Depth);
+-  if (!isa<SCEVZeroExtendExpr>(S)) {
+-    FoldCache.insert({ID, S});
+-    auto R = FoldCacheUser.insert({S, {}});
+-    R.first->second.push_back(ID);
+-  }
++  if (!isa<SCEVZeroExtendExpr>(S))
++    insertFoldCacheEntry(ID, S, FoldCache, FoldCacheUser);
+   return S;
+ }
+ 
+@@ -1934,11 +1954,8 @@ ScalarEvolution::getSignExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth) {
+     return Iter->second;
+ 
+   const SCEV *S = getSignExtendExprImpl(Op, Ty, Depth);
+-  if (!isa<SCEVSignExtendExpr>(S)) {
+-    FoldCache.insert({ID, S});
+-    auto R = FoldCacheUser.insert({S, {}});
+-    R.first->second.push_back(ID);
+-  }
++  if (!isa<SCEVSignExtendExpr>(S))
++    insertFoldCacheEntry(ID, S, FoldCache, FoldCacheUser);
+   return S;
+ }
+ 
 -- 
 2.34.1
 

@@ -1,4 +1,4 @@
-From 52fc8d7dc229c68b87f7dba8be84ade0f0eb430a Mon Sep 17 00:00:00 2001
+From 84d340ed615c3601a2f46178acce2040d9d114f9 Mon Sep 17 00:00:00 2001
 From: Victor Mustya <victor.mustya@intel.com>
 Date: Mon, 31 Oct 2022 13:27:02 -0700
 Subject: =?UTF-8?q?[Backport]=20When=20creating=20a=20stack=20space=20for?=
@@ -11,10 +11,10 @@ From: Chang-Sun Lin Jr <chang-sun.lin.jr@intel.com>
  1 file changed, 6 insertions(+)
 
 diff --git a/llvm/lib/Transforms/Utils/InlineFunction.cpp b/llvm/lib/Transforms/Utils/InlineFunction.cpp
-index 923bcc781e47..1d6dca24a4ad 100644
+index 878f9477a29d..fa828fd02430 100644
 --- a/llvm/lib/Transforms/Utils/InlineFunction.cpp
 +++ b/llvm/lib/Transforms/Utils/InlineFunction.cpp
-@@ -1429,6 +1429,12 @@ static Value *HandleByValArgument(Type *ByValType, Value *Arg,
+@@ -1466,6 +1466,12 @@ static Value *HandleByValArgument(Type *ByValType, Value *Arg,
                       Arg->getName(), &*Caller->begin()->begin());
    IFI.StaticAllocas.push_back(cast<AllocaInst>(NewAlloca));
  

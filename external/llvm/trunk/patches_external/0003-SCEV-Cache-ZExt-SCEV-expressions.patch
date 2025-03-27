@@ -14,7 +14,7 @@ SPDX-License-Identifier: Apache-2.0 with LLVM-exception
 
 ============================= end_copyright_notice ===========================*/
 
-From 65fb672dce4a7f2df0df7626ec3a18d6cbc73090 Mon Sep 17 00:00:00 2001
+From 926869982768eae1af7e9ae3fe7c63270296aec6 Mon Sep 17 00:00:00 2001
 From: Florian Hahn <flo@fhahn.com>
 Date: Fri, 9 Dec 2022 22:14:03 +0000
 Subject: [PATCH 3/5] [SCEV] Cache ZExt SCEV expressions.
@@ -55,10 +55,10 @@ Differential Revision: https://reviews.llvm.org/D137505
  2 files changed, 134 insertions(+)
 
 diff --git a/llvm/include/llvm/Analysis/ScalarEvolution.h b/llvm/include/llvm/Analysis/ScalarEvolution.h
-index b16aa7017719..f0c3ba40a8d6 100644
+index fd00c744840b..c8f9a871a5a7 100644
 --- a/llvm/include/llvm/Analysis/ScalarEvolution.h
 +++ b/llvm/include/llvm/Analysis/ScalarEvolution.h
-@@ -567,6 +567,8 @@ public:
+@@ -562,6 +562,8 @@ public:
    const SCEV *getPtrToIntExpr(const SCEV *Op, Type *Ty);
    const SCEV *getTruncateExpr(const SCEV *Op, Type *Ty, unsigned Depth = 0);
    const SCEV *getZeroExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth = 0);
@@ -67,7 +67,7 @@ index b16aa7017719..f0c3ba40a8d6 100644
    const SCEV *getSignExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth = 0);
    const SCEV *getCastExpr(SCEVTypes Kind, const SCEV *Op, Type *Ty);
    const SCEV *getAnyExtendExpr(const SCEV *Op, Type *Ty);
-@@ -1209,6 +1211,45 @@ public:
+@@ -1206,6 +1208,45 @@ public:
    /// to be infinite, it must also be undefined.
    bool loopIsFiniteByAssumption(const Loop *L);
  
@@ -113,7 +113,7 @@ index b16aa7017719..f0c3ba40a8d6 100644
  private:
    /// A CallbackVH to arrange for ScalarEvolution to be notified whenever a
    /// Value is deleted.
-@@ -1289,6 +1330,11 @@ private:
+@@ -1267,6 +1308,11 @@ private:
    /// This is a cache of the values we have analyzed so far.
    ValueExprMapType ValueExprMap;
  
@@ -125,7 +125,7 @@ index b16aa7017719..f0c3ba40a8d6 100644
    /// Mark predicate values currently being processed by isImpliedCond.
    SmallPtrSet<const Value *, 6> PendingLoopPredicates;
  
-@@ -2263,6 +2309,28 @@ private:
+@@ -2268,6 +2314,28 @@ private:
    const SCEV *BackedgeCount = nullptr;
  };
  
@@ -155,10 +155,10 @@ index b16aa7017719..f0c3ba40a8d6 100644
  
  #endif // LLVM_ANALYSIS_SCALAREVOLUTION_H
 diff --git a/llvm/lib/Analysis/ScalarEvolution.cpp b/llvm/lib/Analysis/ScalarEvolution.cpp
-index 495cd73d8eef..7c745ff07cac 100644
+index 3ea6f61c7021..847d72828570 100644
 --- a/llvm/lib/Analysis/ScalarEvolution.cpp
 +++ b/llvm/lib/Analysis/ScalarEvolution.cpp
-@@ -1587,6 +1587,30 @@ ScalarEvolution::getZeroExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth) {
+@@ -1599,6 +1599,30 @@ ScalarEvolution::getZeroExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth) {
    assert(!Op->getType()->isPointerTy() && "Can't extend pointer!");
    Ty = getEffectiveSCEVType(Ty);
  
@@ -189,7 +189,7 @@ index 495cd73d8eef..7c745ff07cac 100644
    // Fold if the operand is constant.
    if (const SCEVConstant *SC = dyn_cast<SCEVConstant>(Op))
      return getConstant(
-@@ -7840,6 +7864,8 @@ void ScalarEvolution::forgetAllLoops() {
+@@ -8259,6 +8283,8 @@ void ScalarEvolution::forgetAllLoops() {
    HasRecMap.clear();
    MinTrailingZerosCache.clear();
    PredicatedSCEVRewrites.clear();
@@ -198,7 +198,7 @@ index 495cd73d8eef..7c745ff07cac 100644
  }
  
  void ScalarEvolution::forgetLoop(const Loop *L) {
-@@ -13236,6 +13262,12 @@ void ScalarEvolution::forgetMemoizedResultsImpl(const SCEV *S) {
+@@ -13614,6 +13640,12 @@ void ScalarEvolution::forgetMemoizedResultsImpl(const SCEV *S) {
        forgetBackedgeTakenCounts(Pair.getPointer(), Pair.getInt());
      BECountUsers.erase(BEUsersIt);
    }
@@ -211,7 +211,7 @@ index 495cd73d8eef..7c745ff07cac 100644
  }
  
  void
-@@ -13483,6 +13515,40 @@ void ScalarEvolution::verify() const {
+@@ -13926,6 +13958,40 @@ void ScalarEvolution::verify() const {
        }
      }
    }

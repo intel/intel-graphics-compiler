@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-From 16e85fd401f5e433142c516b85c3f873eaee0f4f Mon Sep 17 00:00:00 2001
+From 58b5b7d4ed6204f61feeda68c7c1abe24bc143b1 Mon Sep 17 00:00:00 2001
 From: Victor Mustya <victor.mustya@intel.com>
 Date: Tue, 16 Jan 2024 14:13:05 -0800
 Subject: [InstCombine] Only fold bitcast(fptrunc) if destination type matches
@@ -31,10 +31,10 @@ Such transformation was semantically incorrect.
  2 files changed, 15 insertions(+), 2 deletions(-)
 
 diff --git a/llvm/lib/IR/Instructions.cpp b/llvm/lib/IR/Instructions.cpp
-index 7798af3b19b9..b397013a21da 100644
+index f5039eb5126c..551dd23ed607 100644
 --- a/llvm/lib/IR/Instructions.cpp
 +++ b/llvm/lib/IR/Instructions.cpp
-@@ -3018,8 +3018,8 @@ unsigned CastInst::isEliminableCastPair(
+@@ -3049,8 +3049,8 @@ unsigned CastInst::isEliminableCastPair(
        return 0;
      case 4:
        // No-op cast in second op implies firstOp as long as the DestTy
@@ -46,7 +46,7 @@ index 7798af3b19b9..b397013a21da 100644
        return 0;
      case 5:
 diff --git a/llvm/test/Transforms/InstCombine/fptrunc.ll b/llvm/test/Transforms/InstCombine/fptrunc.ll
-index c04c4b5c66c4..197148690808 100644
+index d3e153f12106..c78df0b83d9c 100644
 --- a/llvm/test/Transforms/InstCombine/fptrunc.ll
 +++ b/llvm/test/Transforms/InstCombine/fptrunc.ll
 @@ -190,3 +190,16 @@ define half @ItoFtoF_u25_f32_f16(i25 %i) {
