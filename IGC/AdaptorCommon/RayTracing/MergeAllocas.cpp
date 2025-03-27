@@ -142,7 +142,7 @@ static void ReplaceAllocas(const AllocaInfo &MergableAlloca, Function &F) {
                 // We can re-use same bitcast
                 if (topAllocaBitcast == nullptr) {
                     topAllocaBitcast = cast<Instruction>(
-                        Builder.CreateBitCast(topAlloca,  Builder.getInt8PtrTy()));
+                        Builder.CreateBitCast(topAlloca,  Builder.getInt8PtrTy(topAlloca->getType()->getPointerAddressSpace())));
                 }
                 auto *Offset = Builder.getInt32(subAlloca->offset);
                 auto *GEP = Builder.CreateGEP(Builder.getInt8Ty(),
