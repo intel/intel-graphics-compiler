@@ -42,7 +42,6 @@ MODULE_PASS("GenXVerify", GenXVerifyPass())
 #endif
 
 FUNCTION_PASS("GenXSimplify", GenXSimplifyPass())
-FUNCTION_PASS("GenXStatePointerFence", GenXStatePointerFencePass())
 FUNCTION_PASS("CMLowerVLoadVStore", CMLowerVLoadVStorePass())
 FUNCTION_PASS("GenXTypeLegalization", GenXTypeLegalizationPass())
 FUNCTION_PASS("GenXTranslateIntrinsics", GenXTranslateIntrinsicsPass())
