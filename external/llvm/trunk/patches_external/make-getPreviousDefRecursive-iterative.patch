@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 diff --git a/llvm/include/llvm/Analysis/MemorySSAUpdater.h b/llvm/include/llvm/Analysis/MemorySSAUpdater.h
 --- a/llvm/include/llvm/Analysis/MemorySSAUpdater.h
 +++ b/llvm/include/llvm/Analysis/MemorySSAUpdater.h
-@@ -249,10 +249,7 @@ private:
+@@ -251,10 +251,7 @@ private:
    MemoryAccess *getPreviousDef(MemoryAccess *);
    MemoryAccess *getPreviousDefInBlock(MemoryAccess *);
    MemoryAccess *
@@ -34,7 +34,7 @@ diff --git a/llvm/lib/Analysis/MemorySSAUpdater.cpp b/llvm/lib/Analysis/MemorySS
  
  #define DEBUG_TYPE "memoryssa"
  using namespace llvm;
-@@ -33,66 +34,43 @@ using namespace llvm;
+@@ -33,66 +34,42 @@ using namespace llvm;
  // that there are two or more definitions needing to be merged.
  // This still will leave non-minimal form in the case of irreducible control
  // flow, where phi nodes may be in cycles with themselves, but unnecessary.
@@ -62,7 +62,7 @@ diff --git a/llvm/lib/Analysis/MemorySSAUpdater.cpp b/llvm/lib/Analysis/MemorySS
 -  }
 +  // There're 5 cases, case 3 (easy) and case 5 (hard) has recursives.
 +  // We need special states to handle their recursive returns
-+  enum State { COMMON, CASE3, CASE5 };
++  enum State {COMMON, CASE3, CASE5};
  
 -  if (VisitedBlocks.count(BB)) {
 -    // We hit our node again, meaning we had a cycle, we must insert a phi
@@ -106,10 +106,9 @@ diff --git a/llvm/lib/Analysis/MemorySSAUpdater.cpp b/llvm/lib/Analysis/MemorySS
 -        PhiOps.push_back(MSSA->getLiveOnEntryDef());
 -    }
 -
-+  auto Case5AfterLoop = [&](SmallVector<TrackingVH<MemoryAccess>, 8> &PhiOps,
-+                            bool &UniqueIncomingAccess,
-+                            MemoryAccess *&SingleAccess,
-+                            BasicBlock *BB) -> MemoryAccess * {
++  auto Case5AfterLoop = [&](SmallVector<TrackingVH<MemoryAccess>, 8> & PhiOps,
++      bool & UniqueIncomingAccess, MemoryAccess *& SingleAccess,
++      BasicBlock * BB) -> MemoryAccess * {
      // Now try to simplify the ops to avoid placing a phi.
      // This may return null if we never created a phi yet, that's okay
      MemoryPhi *Phi = dyn_cast_or_null<MemoryPhi>(MSSA->getMemoryAccess(BB));
@@ -125,7 +124,7 @@ diff --git a/llvm/lib/Analysis/MemorySSAUpdater.cpp b/llvm/lib/Analysis/MemorySS
        if (Phi) {
          assert(Phi->operands().empty() && "Expected empty Phi");
          Phi->replaceAllUsesWith(SingleAccess);
-@@ -104,12 +82,13 @@ MemoryAccess *MemorySSAUpdater::getPreviousDefRecursive(
+@@ -104,12 +81,13 @@ MemoryAccess *MemorySSAUpdater::getPreviousDefRecursive(
          Phi = MSSA->createMemoryPhi(BB);
  
        // See if the existing phi operands match what we need.
@@ -142,7 +141,7 @@ diff --git a/llvm/lib/Analysis/MemorySSAUpdater.cpp b/llvm/lib/Analysis/MemorySS
            llvm::copy(PhiOps, Phi->op_begin());
            std::copy(pred_begin(BB), pred_end(BB), Phi->block_begin());
          }
-@@ -126,10 +105,169 @@ MemoryAccess *MemorySSAUpdater::getPreviousDefRecursive(
+@@ -126,8 +104,170 @@ MemoryAccess *MemorySSAUpdater::getPreviousDefRecursive(
      VisitedBlocks.erase(BB);
      CachedPreviousDef.insert({BB, Result});
      return Result;
@@ -219,8 +218,10 @@ diff --git a/llvm/lib/Analysis/MemorySSAUpdater.cpp b/llvm/lib/Analysis/MemorySS
 +            } else {
 +              SF.top().st = CASE5;
 +              SF.push({Pred, nullptr, COMMON});
-+              SF5.push({std::move(PhiOps), UniqueIncomingAccess, SingleAccess,
-+                        std::move(PredIt)});
++              SF5.push({
++                  std::move(PhiOps), UniqueIncomingAccess, SingleAccess,
++                        std::move(PredIt)
++              });
 +              halt = true;
 +              break;
 +            }
@@ -310,11 +311,9 @@ diff --git a/llvm/lib/Analysis/MemorySSAUpdater.cpp b/llvm/lib/Analysis/MemorySS
 +  assert(0 == SF5.size());
 +  return SF.top().rtn;
  }
--
+ 
  // This starts at the memory access, and goes backwards in the block to find the
- // previous definition. If a definition is not found the block of the access,
- // it continues globally, creating phi nodes to ensure we have a single
-@@ -138,7 +276,7 @@ MemoryAccess *MemorySSAUpdater::getPreviousDef(MemoryAccess *MA) {
+@@ -138,7 +278,7 @@ MemoryAccess *MemorySSAUpdater::getPreviousDef(MemoryAccess *MA) {
    if (auto *LocalResult = getPreviousDefInBlock(MA))
      return LocalResult;
    DenseMap<BasicBlock *, TrackingVH<MemoryAccess>> CachedPreviousDef;
@@ -323,7 +322,7 @@ diff --git a/llvm/lib/Analysis/MemorySSAUpdater.cpp b/llvm/lib/Analysis/MemorySS
  }
  
  // This starts at the memory access, and goes backwards in the block to the find
-@@ -168,19 +306,6 @@ MemoryAccess *MemorySSAUpdater::getPreviousDefInBlock(MemoryAccess *MA) {
+@@ -168,19 +308,6 @@ MemoryAccess *MemorySSAUpdater::getPreviousDefInBlock(MemoryAccess *MA) {
    return nullptr;
  }
  
@@ -343,7 +342,7 @@ diff --git a/llvm/lib/Analysis/MemorySSAUpdater.cpp b/llvm/lib/Analysis/MemorySS
  // Recurse over a set of phi uses to eliminate the trivial ones
  MemoryAccess *MemorySSAUpdater::recursePhi(MemoryAccess *Phi) {
    if (!Phi)
-@@ -396,7 +521,17 @@ void MemorySSAUpdater::insertDef(MemoryDef *MD, bool RenameUses) {
+@@ -396,7 +523,17 @@ void MemorySSAUpdater::insertDef(MemoryDef *MD, bool RenameUses) {
        auto *BBIDF = MPhi->getBlock();
        for (auto *Pred : predecessors(BBIDF)) {
          DenseMap<BasicBlock *, TrackingVH<MemoryAccess>> CachedPreviousDef;
@@ -353,7 +352,7 @@ diff --git a/llvm/lib/Analysis/MemorySSAUpdater.cpp b/llvm/lib/Analysis/MemorySS
 +        auto *Defs = MSSA->getWritableBlockDefs(Pred);
 +        if (Defs) {
 +          CachedPreviousDef.insert({Pred, &*Defs->rbegin()});
-+          prevDefFromEnd = &*Defs->rbegin();
++          prevDefFromEnd = & * Defs->rbegin();
 +        } else {
 +          prevDefFromEnd = getPreviousDefIterative(Pred, CachedPreviousDef);
 +        }

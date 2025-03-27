@@ -8,15 +8,16 @@ SPDX-License-Identifier: MIT
 
 #    Description                  : disabling instcombine-code-sinking by default
 diff --git a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
-index 3091905ca..1f24e7886 100644
+index 71c763de4..438ff9fb2 100644
 --- a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
 +++ b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
-@@ -138,7 +138,7 @@ static constexpr unsigned InstCombineDefaultInfiniteLoopThreshold = 1000;
+@@ -136,7 +136,7 @@ static constexpr unsigned InstCombineDefaultInfiniteLoopThreshold = 1000;
 
  static cl::opt<bool>
  EnableCodeSinking("instcombine-code-sinking", cl::desc("Enable code sinking"),
 -                                              cl::init(true));
 +                                              cl::init(false));
 
- static cl::opt<unsigned> LimitMaxIterations(
-     "instcombine-max-iterations",
+ static cl::opt<unsigned> MaxSinkNumUsers(
+     "instcombine-max-sink-users", cl::init(32),
+

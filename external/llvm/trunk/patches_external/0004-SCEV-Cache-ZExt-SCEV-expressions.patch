@@ -14,51 +14,73 @@ SPDX-License-Identifier: Apache-2.0 with LLVM-exception
 
 ============================= end_copyright_notice ===========================*/
 
-From e151e07932d68201fe228508fe776f7550150665 Mon Sep 17 00:00:00 2001
-From: Max Kazantsev <mkazantsev@azul.com>
-Date: Mon, 19 Sep 2022 17:37:17 +0700
-Subject: [PATCH 1/5] [SCEV] Verify contents of loop disposition cache
+From 85a1763970eeac7e3410ef3b12d6abb84b9324c4 Mon Sep 17 00:00:00 2001
+From: Florian Hahn <flo@fhahn.com>
+Date: Wed, 14 Dec 2022 11:59:19 +0000
+Subject: [PATCH 4/5] [SCEV] Cache folded SExt SCEV expressions.
 
-It seems that it is sometimes broken. Initial motivation for this was
-investigation of https://github.com/llvm/llvm-project/issues/56260, but
-it also seems that we have found an unrelated bug in LoopFusion that leaves
-broken caches.
+Use FoldID to cache SignExtendExprs that get folded to a different
+SCEV.
 
-Differential Revision: https://reviews.llvm.org/D134158
-Reviewed By: nikic
+Depends on D137505.
+
+Reviewed By: mkazantsev
+
+Differential Revision: https://reviews.llvm.org/D137849
 ---
- llvm/lib/Analysis/ScalarEvolution.cpp | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
+ llvm/include/llvm/Analysis/ScalarEvolution.h |  2 ++
+ llvm/lib/Analysis/ScalarEvolution.cpp        | 25 ++++++++++++++++++++
+ 2 files changed, 27 insertions(+)
 
+diff --git a/llvm/include/llvm/Analysis/ScalarEvolution.h b/llvm/include/llvm/Analysis/ScalarEvolution.h
+index c8f9a871a5a7..fbc393ebb271 100644
+--- a/llvm/include/llvm/Analysis/ScalarEvolution.h
++++ b/llvm/include/llvm/Analysis/ScalarEvolution.h
+@@ -565,6 +565,8 @@ public:
+   const SCEV *getZeroExtendExprImpl(const SCEV *Op, Type *Ty,
+                                     unsigned Depth = 0);
+   const SCEV *getSignExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth = 0);
++  const SCEV *getSignExtendExprImpl(const SCEV *Op, Type *Ty,
++                                    unsigned Depth = 0);
+   const SCEV *getCastExpr(SCEVTypes Kind, const SCEV *Op, Type *Ty);
+   const SCEV *getAnyExtendExpr(const SCEV *Op, Type *Ty);
+   const SCEV *getAddExpr(SmallVectorImpl<const SCEV *> &Ops,
 diff --git a/llvm/lib/Analysis/ScalarEvolution.cpp b/llvm/lib/Analysis/ScalarEvolution.cpp
-index 977fc0911355..1d887d4b60c9 100644
+index 847d72828570..ba49e12f958c 100644
 --- a/llvm/lib/Analysis/ScalarEvolution.cpp
 +++ b/llvm/lib/Analysis/ScalarEvolution.cpp
-@@ -13449,6 +13449,24 @@ void ScalarEvolution::verify() const {
-   };
-   VerifyBECountUsers(/* Predicated */ false);
-   VerifyBECountUsers(/* Predicated */ true);
-+
-+  // Verify intergity of loop disposition cache.
-+  for (const auto &It : LoopDispositions) {
-+    const SCEV *S = It.first;
-+    auto &Values = It.second;
-+    for (auto &V : Values) {
-+      auto CachedDisposition = V.getInt();
-+      const auto *Loop = V.getPointer();
-+      const auto RecomputedDisposition = SE2.getLoopDisposition(S, Loop);
-+      if (CachedDisposition != RecomputedDisposition) {
-+        dbgs() << "Cached disposition of " << *S << " for loop " << *Loop
-+               << " is incorrect: cached "
-+               << loopDispositionToStr(CachedDisposition) << ", actual "
-+               << loopDispositionToStr(RecomputedDisposition) << "\n";
-+        std::abort();
-+      }
-+    }
-+  }
- }
+@@ -1925,6 +1925,31 @@ ScalarEvolution::getSignExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth) {
+   assert(!Op->getType()->isPointerTy() && "Can't extend pointer!");
+   Ty = getEffectiveSCEVType(Ty);
  
- bool ScalarEvolution::invalidate(
++  FoldID ID;
++  ID.addInteger(scSignExtend);
++  ID.addPointer(Op);
++  ID.addPointer(Ty);
++  auto Iter = FoldCache.find(ID);
++  if (Iter != FoldCache.end())
++    return Iter->second;
++
++  const SCEV *S = getSignExtendExprImpl(Op, Ty, Depth);
++  if (!isa<SCEVSignExtendExpr>(S)) {
++    FoldCache.insert({ID, S});
++    auto R = FoldCacheUser.insert({S, {}});
++    R.first->second.push_back(ID);
++  }
++  return S;
++}
++
++const SCEV *ScalarEvolution::getSignExtendExprImpl(const SCEV *Op, Type *Ty,
++                                                   unsigned Depth) {
++  assert(getTypeSizeInBits(Op->getType()) < getTypeSizeInBits(Ty) &&
++         "This is not an extending conversion!");
++  assert(isSCEVable(Ty) && "This is not a conversion to a SCEVable type!");
++  assert(!Op->getType()->isPointerTy() && "Can't extend pointer!");
++  Ty = getEffectiveSCEVType(Ty);
++
+   // Fold if the operand is constant.
+   if (const SCEVConstant *SC = dyn_cast<SCEVConstant>(Op))
+     return getConstant(
 -- 
 2.34.1
 

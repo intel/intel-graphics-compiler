@@ -16,43 +16,31 @@ SPDX-License-Identifier: Apache-2.0 with LLVM-exception
 
 # TODO: Once upstreamed, update with LLORG revision & adjust per community review
 
-From a7317169c80681f9128c22f5f071e206b7617c28 Mon Sep 17 00:00:00 2001
+From 492a1c879f338c3f12ef4d2f619ca2c8f2467da8 Mon Sep 17 00:00:00 2001
 From: Artem Gindinson <artem.gindinson@intel.com>
-Date: Wed, 23 Aug 2023 15:49:30 +0200
+Date: Wed, 23 Aug 2023 15:41:51 +0200
 Subject: [PATCH] [InstCombine] Check for NaN before folding `select` for FP
  operators
 
 ---
- llvm/lib/Transforms/InstCombine/InstCombineSelect.cpp | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ llvm/lib/Transforms/InstCombine/InstCombineSelect.cpp | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/llvm/lib/Transforms/InstCombine/InstCombineSelect.cpp b/llvm/lib/Transforms/InstCombine/InstCombineSelect.cpp
-index 881b00f2a..9cdde7433 100644
+index ad96a5f47..88e8e7382 100644
 --- a/llvm/lib/Transforms/InstCombine/InstCombineSelect.cpp
 +++ b/llvm/lib/Transforms/InstCombine/InstCombineSelect.cpp
-@@ -455,6 +455,12 @@ Instruction *InstCombinerImpl::foldSelectIntoOp(SelectInst &SI, Value *TrueVal,
-         }
-
-         if (OpToFold) {
-+          FastMathFlags FMF;
-+          if (isa<FPMathOperator>(&SI)) {
-+            FMF = SI.getFastMathFlags();
-+            if (!FMF.noNaNs())
-+              return nullptr;
-+          }
-           Constant *C = ConstantExpr::getBinOpIdentity(TVI->getOpcode(),
-                                                        TVI->getType(), true);
-           Value *OOp = TVI->getOperand(2-OpToFold);
-@@ -487,6 +493,12 @@ Instruction *InstCombinerImpl::foldSelectIntoOp(SelectInst &SI, Value *TrueVal,
-         }
-
-         if (OpToFold) {
-+          FastMathFlags FMF;
-+          if (isa<FPMathOperator>(&SI)) {
-+            FMF = SI.getFastMathFlags();
-+            if (!FMF.noNaNs())
-+              return nullptr;
-+          }
-           Constant *C = ConstantExpr::getBinOpIdentity(FVI->getOpcode(),
-                                                        FVI->getType(), true);
-           Value *OOp = FVI->getOperand(2-OpToFold);
+@@ -456,8 +456,12 @@ Instruction *InstCombinerImpl::foldSelectIntoOp(SelectInst &SI, Value *TrueVal,
+             // TODO: We probably ought to revisit cases where the select and FP
+             // instructions have different flags and add tests to ensure the
+             // behaviour is correct.
+-            if (isa<FPMathOperator>(&SI))
++            if (isa<FPMathOperator>(&SI)) {
+               FMF = SI.getFastMathFlags();
++              // Avoid folding on NaN inputs
++              if (!FMF.noNaNs())
++                return nullptr;
++            }
+             Constant *C = ConstantExpr::getBinOpIdentity(
+                 TVI->getOpcode(), TVI->getType(), true, FMF.noSignedZeros());
+             Value *OOp = TVI->getOperand(2 - OpToFold);

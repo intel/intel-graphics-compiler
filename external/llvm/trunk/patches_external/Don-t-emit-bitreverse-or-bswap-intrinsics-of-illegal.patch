@@ -1,4 +1,4 @@
-From bb273d139a624bfe2db3d1cd2dd1397cabdfa0e4 Mon Sep 17 00:00:00 2001
+From 881bf715f06201a57a4f1a60155b556fedd556db Mon Sep 17 00:00:00 2001
 From: Victor Mustya <victor.mustya@intel.com>
 Date: Tue, 22 Aug 2023 11:10:30 -0700
 Subject: [PATCH] Don't emit bitreverse or bswap intrinsics of illegal bit
@@ -9,10 +9,10 @@ Subject: [PATCH] Don't emit bitreverse or bswap intrinsics of illegal bit
  1 file changed, 4 insertions(+)
 
 diff --git a/llvm/lib/Transforms/Utils/Local.cpp b/llvm/lib/Transforms/Utils/Local.cpp
-index 1c350a258..9ba4f128c 100644
+index 2f1d0c2f9..68f792bb0 100644
 --- a/llvm/lib/Transforms/Utils/Local.cpp
 +++ b/llvm/lib/Transforms/Utils/Local.cpp
-@@ -3178,6 +3178,10 @@ bool llvm::recognizeBSwapOrBitReverseIdiom(
+@@ -3196,6 +3196,10 @@ bool llvm::recognizeBSwapOrBitReverseIdiom(
    if (DemandedBW > ITy->getScalarSizeInBits())
      return false;
  
