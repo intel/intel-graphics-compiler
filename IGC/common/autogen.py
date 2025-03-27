@@ -17,16 +17,13 @@ class DeclHeader:
     line: str
     # declName is just the identifier name
     declName: str
-    # declName is just the identifier name
-    namespace: str
     # fields contains a list of all the names of the fields in the structure
     fields: List[str]
 
-    def __init__(self, line: str, namespace: str, declName: str, fields: List[str]):
-        self.line      = line
-        self.namespace = namespace
-        self.declName  = declName
-        self.fields    = fields
+    def __init__(self, line: str, declName: str, fields: List[str]):
+        self.line     = line
+        self.declName = declName
+        self.fields   = fields
 
 enumNames: List[DeclHeader] = []
 structureNames: List[DeclHeader] = []
@@ -76,45 +73,45 @@ def lines(s: str) -> Generator[str, None, None]:
         yield line
 
 def parseHeader(fileContents: str):
-    namespace = ""
+    insideIGCNameSpace = False
     pcount = 0
     file = lines(fileContents)
     for line in file:
         line = line.split("//")[0]
-        if "namespace" in line:
-            words = line.split()
+        if "namespace IGC" in line:
             while "{" not in line:
                 line = next(file, None)
                 if line is None:
                     sys.exit('missing opening brace!')
-            namespace = words[1] if len(words) > 1 else ""
+            insideIGCNameSpace = True
             pcount += 1
-        blockType = re.search("struct|enum", line)
-        if blockType:
-            words = line.split()
-            idx = 2 if blockType[0] == 'enum' and ('class' in words or 'struct' in words) else 1
-            foundDecl = DeclHeader(line, namespace, words[idx], [])
-            opcount = pcount
-            namesList = structureNames
-            extractFunc = extractStructField
-            if blockType[0] == 'enum':
-                namesList = enumNames
-                extractFunc = extractEnumVal
-            while True:
-                line = next(file, None)
-                if line is None:
-                    sys.exit(f"EOF reached with unclosed enum or struct, check formatting")
-                line = line.split("//")[0]
-                pcount += line.count("{") - line.count("}")
-                if pcount <= opcount:
-                    break
-                extractFunc(re.sub("{|}","", line), foundDecl)
-            assert pcount == opcount, f"Unexpected struct/enum ending, check formatting"
-            namesList.append(foundDecl)
-        elif "}" in line and "};" not in line:
-            insideIGCNameSpace = False
-            pcount -= 1
-    assert pcount == 0, f"EOF reached, with unclosed namespace, check formatting"
+        if insideIGCNameSpace:
+            blockType = re.search("struct|enum", line)
+            if blockType:
+                words = line.split()
+                idx = 2 if 'class' in words else 1
+                foundDecl = DeclHeader(line, words[idx], [])
+                opcount = pcount
+                namesList = structureNames
+                extractFunc = extractStructField
+                if blockType[0] == 'enum':
+                    namesList = enumNames
+                    extractFunc = extractEnumVal
+                while True:
+                    line = next(file, None)
+                    if line is None:
+                        sys.exit(f"EOF reached with unclosed enum or struct, check formatting")
+                    line = line.split("//")[0]
+                    pcount += line.count("{") - line.count("}")
+                    if pcount <= opcount:
+                        break
+                    extractFunc(re.sub("{|}","", line), foundDecl)
+                assert pcount == opcount, f"Unexpected struct/enum ending, check formatting"
+                namesList.append(foundDecl)
+            elif "}" in line and "};" not in line:
+                insideIGCNameSpace = False
+                pcount -= 1
+    assert pcount == 0, f"EOF reached, with unclosed IGC namespace, check formatting"
 
 def stripBlockComments(text: str) -> str:
     return re.sub(r'/\*(.|\s)*?\*/', '', text)
@@ -167,7 +164,7 @@ def printEnumCalls(enumDecl: DeclHeader, outputFile: TextIO):
     outputFile.write(f"    switch({enumDecl.declName}Var)\n")
     outputFile.write("    {\n")
     for item in enumDecl.fields:
-        outputFile.write(f"        case {enumDecl.namespace}::{enumDecl.declName}::{item}:\n")
+        outputFile.write(f"        case IGC::{enumDecl.declName}::{item}:\n")
         outputFile.write("            enumName = ")
         outputFile.write(f'"{item}"')
         outputFile.write(";\n")
@@ -196,41 +193,41 @@ def printEnumReadCalls(enumDecl: DeclHeader, outputFile: TextIO):
         outputFile.write(f'"{item}"')
         outputFile.write(") == 0)\n")
         outputFile.write("    {\n")
-        outputFile.write(f"        {enumDecl.declName}Var = {enumDecl.namespace}::{enumDecl.declName}::{item};\n")
+        outputFile.write(f"        {enumDecl.declName}Var = IGC::{enumDecl.declName}::{item};\n")
         outputFile.write("    }\n")
         first = False
 
     outputFile.write("    else\n")
     outputFile.write("    {\n")
-    outputFile.write(f"        {enumDecl.declName}Var = ({enumDecl.namespace}::{enumDecl.declName})(0);\n")
+    outputFile.write(f"        {enumDecl.declName}Var = (IGC::{enumDecl.declName})(0);\n")
     outputFile.write("    }\n")
 
 
-def emitCodeBlock(names: List[DeclHeader], fmtFn: Callable[[str, str], str], printFn: Callable[[DeclHeader, TextIO], None], outputFile: TextIO):
+def emitCodeBlock(names: List[DeclHeader], fmtFn: Callable[[str], str], printFn: Callable[[DeclHeader, TextIO], None], outputFile: TextIO):
     for item in names:
-        outputFile.write(fmtFn(item.namespace, item.declName))
+        outputFile.write(fmtFn(item.declName))
         outputFile.write("{\n")
         printFn(item, outputFile)
         outputFile.write("}\n\n")
 
 def emitEnumCreateNode(outputFile: TextIO):
-    def fmtFn(namespace:str, item: str):
-        return f"MDNode* CreateNode({namespace}::{item} {item}Var, Module* module, StringRef name)\n"
+    def fmtFn(item: str):
+        return f"MDNode* CreateNode(IGC::{item} {item}Var, Module* module, StringRef name)\n"
     emitCodeBlock(enumNames, fmtFn, printEnumCalls, outputFile)
 
 def emitStructCreateNode(outputFile: TextIO):
-    def fmtFn(namespace:str, item: str):
-        return f"MDNode* CreateNode(const {namespace}::{item}& {item}Var, Module* module, StringRef name)\n"
+    def fmtFn(item: str):
+        return f"MDNode* CreateNode(const IGC::{item}& {item}Var, Module* module, StringRef name)\n"
     emitCodeBlock(structureNames, fmtFn, printStructCalls, outputFile)
 
 def emitEnumReadNode(outputFile: TextIO):
-    def fmtFn(namespace:str, item: str):
-        return f"void readNode({namespace}::{item}& {item}Var, MDNode* node)\n"
+    def fmtFn(item: str):
+        return f"void readNode(IGC::{item}& {item}Var, MDNode* node)\n"
     emitCodeBlock(enumNames, fmtFn, printEnumReadCalls, outputFile)
 
 def emitStructReadNode(outputFile: TextIO):
-    def fmtFn(namespace:str, item: str):
-        return f"void readNode({namespace}::{item}& {item}Var, MDNode* node)\n"
+    def fmtFn(item: str):
+        return f"void readNode(IGC::{item}& {item}Var, MDNode* node)\n"
     emitCodeBlock(structureNames, fmtFn, printStructReadCalls, outputFile)
 
 def genCode(fileName: str):
