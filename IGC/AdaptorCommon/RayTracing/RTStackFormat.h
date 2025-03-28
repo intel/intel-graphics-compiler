@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "API/RayDispatchGlobalData.h"
+#include "ConstantsEnums.h"
 
 #include <stdint.h>
 #include <stddef.h>

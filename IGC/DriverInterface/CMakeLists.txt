@@ -112,6 +112,8 @@ set(IGC_BUILD__HDR__DriverInterface
   )
 
   set(IGC_BUILD__HDR__RAYTRACING
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/ConstantsEnums.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/HitGroups.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/MemRegionAnalysis.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingAddressSpaceAliasAnalysis.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingMemoryStyle.h"
