@@ -119,7 +119,7 @@ entry:
 define spir_kernel void @test_unsupported_cache_controls_config(i8 addrspace(1)* %input, <2 x i32> %coord) !intel_reqd_sub_group_size !24 {
 entry:
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !21
-; CHECK: lsc_load_block2d.ugm (M1, 1)  %null:d8.64x32nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null:d8.64x32nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z36__spirv_Subgroup2DBlockPrefetchINTELiiiiPU3AS1KviiiDv2_i(i32 1, i32 32, i32 32, i32 2, i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord)
   ret void
 }

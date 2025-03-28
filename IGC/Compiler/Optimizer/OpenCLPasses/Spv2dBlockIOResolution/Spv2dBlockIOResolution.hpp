@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include "AdaptorOCL/Utils/CacheControlsHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 
@@ -54,7 +55,7 @@ namespace IGC {
         void visit2DBlockSPVCallInst(llvm::CallInst& CI, Op op);
         bool isConstantInstruction(llvm::Value* val, llvm::StringRef valName);
         template<typename CCT>
-        int resolveCacheControlDecorations(llvm::Value *pointerValue);
+        CacheControlFromMDNodes resolveCacheControlDecorations(llvm::Value *pointerValue);
 
         llvm::DenseSet<llvm::Function*> m_BuiltinsToRemove;
         bool m_Changed = false;

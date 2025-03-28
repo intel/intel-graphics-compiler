@@ -51,7 +51,7 @@ bool Spv2dBlockIOResolution::runOnModule(Module &M) {
 }
 
 template<typename CCT>
-int Spv2dBlockIOResolution::resolveCacheControlDecorations(Value *pointerValue) {
+CacheControlFromMDNodes Spv2dBlockIOResolution::resolveCacheControlDecorations(Value *pointerValue) {
     static_assert(std::is_same_v<CCT, LoadCacheControl> || std::is_same_v<CCT, StoreCacheControl>);
     auto spirvDecorations = parseSPIRVDecorationsFromMD(pointerValue);
 
@@ -60,12 +60,18 @@ int Spv2dBlockIOResolution::resolveCacheControlDecorations(Value *pointerValue) 
             CacheControlFromMDNodes controls = resolveCacheControlFromMDNodes<CCT>(m_Ctx, MDNodes);
             if (controls.isInvalid) {
                 m_Ctx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
-                return 0;
+                controls.value = 0;
             }
-            return controls.value;
+            return controls;
         }
     }
-    return 0;
+
+    CacheControlFromMDNodes defaultControls;
+    defaultControls.value = 0;
+    defaultControls.isEmpty = true;
+    defaultControls.isInvalid = false;
+
+    return defaultControls;
 }
 
 void Spv2dBlockIOResolution::visitCallInst(CallInst& CI) {
@@ -131,7 +137,16 @@ void Spv2dBlockIOResolution::visit2DBlockSPVCallInst(CallInst& CI, Op op)
         args.append(CI.arg_begin() + 4, CI.arg_end());
         ptrVal = CI.getArgOperand(4);
     }
-    args.push_back(ConstantInt::get(Type::getInt32Ty(CI.getContext()), resolveCacheControlDecorations<CCT>(ptrVal)));
+
+    CacheControlFromMDNodes controls = resolveCacheControlDecorations<CCT>(ptrVal);
+
+    // Applying all cached configuration for prefetch with invalid or empty cache control
+    if (op == Prefetch && m_Ctx->platform.hasLSC() &&
+        (controls.isEmpty || controls.isInvalid ||
+         !m_Ctx->platform.isSupportedLSCCacheControlsEnum(static_cast<LSC_L1_L3_CC>(controls.value), true))) {
+        controls.value = LSC_L1C_WT_L3C_WB;
+    }
+    args.push_back(ConstantInt::get(Type::getInt32Ty(CI.getContext()), controls.value));
 
     SmallVector<Type*, 7> argTypes;
     for (const auto& arg : args)
