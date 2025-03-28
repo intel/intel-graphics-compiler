@@ -957,16 +957,32 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
         {
             numBlocksV = 1;
             tileHeight = subGrpSize;
+            if (funcName.consume_front("_m8"))
+            {
+                // For __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k1
+                //     __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k2
+                //     __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k4
+                // not tied to subGrpSize
+                tileHeight = 8;
+            }
 
             funcName.consume_front("_");
-            if (funcName.consume_front("k4"))
+            funcName = consume_number(funcName, "k", &tileWidth);
+            if (tileWidth == 4)
             {
             // __builtin_IB_subgroup_block_read_flat_transpose_u64_k4
-                tileWidth = 4;
+            // __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k4
+                ;
+            }
+            else if (tileHeight == 8 && (tileWidth == 1 || tileWidth == 2))
+            {
+                // For __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k1
+                //     __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k2
+                ;
             }
             else
             {
-                IGC_ASSERT_MESSAGE(0, "Transpose with 64 bit element size only supports width 4.");
+                IGC_ASSERT_MESSAGE(0, "Transpose with 64 bit element size only supports width 1, 2, 4 for height 8.");
                 return nullptr;
             }
         }

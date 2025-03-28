@@ -462,8 +462,17 @@ uint8 __builtin_IB_subgroup_block_read_cacheopts_transform_u16_k16(long baseoffs
 
 // equivalent to transpose_transform_u8_k32 and transpose_transform_u16_k16
 uint8 __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_k8(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint8 __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m16k8(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m16k1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint2 __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m16k2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint4 __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m16k4(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 uint16 __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m32k8(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 ulong4 __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_k4(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ulong __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ulong2 __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ulong4 __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k4(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+
 
 // 2d block read prefetch
 void  __builtin_IB_subgroup_block_read_prefetch_u8_m1k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
