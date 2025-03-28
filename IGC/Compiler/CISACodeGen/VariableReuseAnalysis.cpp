@@ -958,7 +958,7 @@ bool VariableReuseAnalysis::hasAnotherDCCAsAliasee(Value* V) const
 //   true :  if all elements are inserted with IEI of constant index
 //   false:  otherwise.
 bool VariableReuseAnalysis::getAllInsEltsIfAvailable(
-    InsertElementInst* FirstIEI, VecInsEltInfoTy& AllIEIs)
+    InsertElementInst* FirstIEI, VecInsEltInfoTy& AllIEIs, bool OnlySameBB)
 {
     int nelts = getNumElts(FirstIEI);
 
@@ -974,6 +974,9 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(
     while (I)
     {
         LastIEI = I;
+
+        if (OnlySameBB && LastIEI->getParent() != FirstIEI->getParent())
+            return false;
 
         // For insertElement, it should be in the same dessa CC
         // already, as dessa special-handles it. Make sure they
@@ -1169,8 +1172,9 @@ void VariableReuseAnalysis::InsertElementAliasing(Function* F)
     const auto control = (m_pCtx->getVectorCoalescingControl() & 0x3);
     // To avoid increasing GRF pressure, skip if F is too large or not an entry
     const int32_t NumBBThreshold = IGC_GET_FLAG_VALUE(VectorAliasBBThreshold);
+    bool OnlySameBB = getNumBBs(F) > NumBBThreshold;
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    if (control == 0 || !isEntryFunc(pMdUtils, F) || getNumBBs(F) > NumBBThreshold) {
+    if (control == 0 || !isEntryFunc(pMdUtils, F)) {
         return;
     }
     for (auto BI = F->begin(), BE = F->end(); BI != BE; ++BI)
@@ -1207,7 +1211,7 @@ void VariableReuseAnalysis::InsertElementAliasing(Function* F)
 
             // First, collect all insertElementInst and extractElementInst.
             VecInsEltInfoTy AllIEIs;
-            if (!getAllInsEltsIfAvailable(IEI, AllIEIs)) {
+            if (!getAllInsEltsIfAvailable(IEI, AllIEIs, OnlySameBB)) {
                 continue;
             }
 

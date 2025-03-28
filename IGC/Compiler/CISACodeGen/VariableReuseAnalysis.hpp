@@ -433,7 +433,8 @@ namespace IGC {
             llvm::Value*& V, int& V_ix);
         bool getAllInsEltsIfAvailable(
             llvm::InsertElementInst* FirstIEI,
-            VecInsEltInfoTy& AllIEIs);
+            VecInsEltInfoTy& AllIEIs,
+            bool OnlySameBB = false);
 
         bool processExtractFrom(VecInsEltInfoTy& AllIEIs);
         bool processInsertTo(llvm::BasicBlock* BB, VecInsEltInfoTy& AllIEIs);
