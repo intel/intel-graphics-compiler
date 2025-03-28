@@ -19576,6 +19576,7 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
             finalPredicate = IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) ? GetCombinedVMaskPred(flag) : flag;
 
         if (inputPredicate && finalPredicate) {
+            m_pCtx->EmitError("Predicated load is not expected.", nullptr);
             IGC_ASSERT_MESSAGE(false, "Not expected scenario. Predicated load should not be used.");
             m_encoder->And(finalPredicate, finalPredicate, inputPredicate);
             m_encoder->Push();
@@ -19763,7 +19764,7 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
         eOffset = TruncatePointer(eOffset);
     }
 
-    // if the merge value is dead after predicated load and is not immidiate, and
+    // if the merge value is dead after predicated load and is not immediate, and
     // has other properties same as destination -> use it as destination
     bool isDestReplacedWithMerge = false;
     CVariable* mergeVar = nullptr;
@@ -19912,6 +19913,7 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
             if(predicatedLoad) {
                 CVariable* cond = GetSymbol(inst->getOperand(2));
                 if (pred) {
+                    m_pCtx->EmitError("Predicated load is not expected.", inst);
                     IGC_ASSERT_MESSAGE(false, "Not expected scenario. Predicated load should not be used.");
                     m_encoder->And(pred, pred, cond);
                     m_encoder->Push();
@@ -20018,7 +20020,10 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
             // setPredicateForDiscard used earlier is used only when compiler needs to create the
             // resource loop, which is never expected for simple LLVM store or PredicatedStore.
             // Hence, these predicates should never be used together.
-            IGC_ASSERT_MESSAGE(doUniformStore || flag == nullptr, "Unexpected scenario: resource loop with predicated store!");
+            if(!doUniformStore && flag != nullptr) {
+                m_pCtx->EmitError("Predicated store is not expected.", nullptr);
+                IGC_ASSERT_MESSAGE(false, "Unexpected scenario: resource loop with predicated store!");
+            }
             m_encoder->SetPredicate(GetSymbol(predicate));
         }
 
@@ -20286,7 +20291,10 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
                 // setPredicateForDiscard used earlier is used only when compiler needs to create the
                 // resource loop, which is never expected for simple LLVM store or PredicatedStore.
                 // Hence, these predicates should never be used together.
-                IGC_ASSERT_MESSAGE(flag == nullptr, "Unexpected scenario: resource loop with predicated store!");
+                if (flag != nullptr) {
+                    m_pCtx->EmitError("Predicated store is not expected.", nullptr);
+                    IGC_ASSERT_MESSAGE(false, "Unexpected scenario: resource loop with predicated store!");
+                }
                 m_encoder->SetPredicate(GetSymbol(predicate));
             }
 

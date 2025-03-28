@@ -1297,6 +1297,15 @@ namespace IGC
         {
             return (mscratchSpaceUsedBySpills > m_spillAllowed);
         }
+
+        bool useStatelessToStateful()
+        {
+            return (m_instrTypes.hasLoadStore &&
+                    m_DriverInfo.SupportsStatelessToStatefulBufferTransformation() &&
+                    !getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
+                    IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
+                    !m_instrTypes.hasInlineAsmPointerAccess);
+        }
     };
 
     struct SComputeShaderSecondCompileInput

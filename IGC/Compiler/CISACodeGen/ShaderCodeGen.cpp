@@ -411,15 +411,6 @@ static void UpdateInstTypeHint(CodeGenContext& ctx)
 // forward declaration
 llvm::ModulePass* createPruneUnusedArgumentsPass();
 
-static bool useStatelessToStateful(CodeGenContext& ctx)
-{
-    return (ctx.m_instrTypes.hasLoadStore &&
-        ctx.m_DriverInfo.SupportsStatelessToStatefulBufferTransformation() &&
-        !ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
-        IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
-        !ctx.m_instrTypes.hasInlineAsmPointerAccess);
-}
-
 void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature* pSignature)
 {
     COMPILER_TIME_START(&ctx, TIME_CG_Add_Legalization_Passes);
@@ -802,7 +793,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         }
     }
 
-    if (!isOptDisabled && useStatelessToStateful(ctx))
+    if (!isOptDisabled && ctx.useStatelessToStateful())
     {
         mpm.add(new StatelessToStateful(TargetAddressing::BINDFUL));
     }
@@ -1510,7 +1501,7 @@ void OptimizeIR(CodeGenContext* const pContext)
                 bool runGEPLSR = IGC_IS_FLAG_ENABLED(EnableGEPLSR) &&
                     pContext->type == ShaderType::OPENCL_SHADER &&
                     pContext->platform.getPlatformInfo().eProductFamily == IGFX_PVC &&
-                    !useStatelessToStateful(*pContext) &&
+                    !pContext->useStatelessToStateful() &&
                     pContext->m_retryManager.IsFirstTry();
 
                 if (runGEPLSR && IGC_IS_FLAG_DISABLED(RunGEPLSRAfterLICM))

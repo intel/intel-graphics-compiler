@@ -47,8 +47,11 @@ namespace IGC {
 
 bool PromoteToPredicatedMemoryAccess::runOnFunction(Function &F) {
   CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  if (!pCtx->platform.hasLSC() || !pCtx->platform.LSCEnabled() ||
-      (pCtx->type == ShaderType::OPENCL_SHADER && static_cast<OpenCLProgramContext*>(pCtx)->m_InternalOptions.PromoteStatelessToBindless))
+  if (!pCtx->platform.hasLSC() ||
+      !pCtx->platform.LSCEnabled() ||
+      (pCtx->type == ShaderType::OPENCL_SHADER &&
+               static_cast<OpenCLProgramContext*>(pCtx)->m_InternalOptions.PromoteStatelessToBindless) ||
+      pCtx->useStatelessToStateful())
     return false;
 
   SmallVector<std::pair<BranchInst *, bool>, 8> WorkList;
