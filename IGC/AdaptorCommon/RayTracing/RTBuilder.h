@@ -500,6 +500,12 @@ public:
     void commitProceduralPrimitiveHit(SyncStackPointerVal* SMStackPtr, Value* THit);
 
     Value* getHitAddress(StackPointerVal* StackPtr, bool Committed);
+    template<typename StackPointerValT, typename RayInfoIntrinsicT>
+    Value* lowerRayInfo(
+        StackPointerValT* perLaneStackPtr,
+        RayInfoIntrinsicT* I,
+        bool isCommitted,
+        std::optional<bool> isProcedural);
 };
 
 } // namespace llvm
