@@ -2454,6 +2454,10 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const {
     return false;
   }
 
+  if (defInst->isDpas()) {
+    return false;
+  }
+
   bool copyMovInst = isCopyMov();
   bool cantHoistMAD =
       (defInst->opcode() == G4_pseudo_mad &&
