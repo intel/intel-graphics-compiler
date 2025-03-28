@@ -2454,7 +2454,7 @@ namespace IGC
                 arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_SIZE) &&
                 arg.getArg()->use_empty();
 
-            if (m_Context->platform.allowRemovingUnusedImplicitArguments())
+            if (IGC_IS_FLAG_ENABLED(RemoveUnusedIdImplicitArguments))
             {
                 IsUnusedArg |=
                     (arg.getArgType() == KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER || // contains global_id_offset
