@@ -1259,9 +1259,25 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // Only OCL is supposed to reach here.
     IGC_ASSERT_EXIT(ShaderType::OPENCL_SHADER == Ctx.type);
 
+    // Save the insert point to ensure appropriate sequence of instructions after getImplicitArgValue(),
+    // because getImplicitArgValue() can move instructions, and it means that the insert point will be moved too.
+    Instruction* pointInstr = &*entryBuilder.GetInsertPoint();
+    if (pointInstr->isDebugOrPseudoInst())
+        pointInstr = pointInstr->getNextNonDebugInstruction();
+    if (GenIntrinsicInst* inst = dyn_cast_or_null<GenIntrinsicInst>(pointInstr))
+    {
+        if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_getR0 ||
+            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_getPrivateBase)
+            pointInstr = inst->getNextNonDebugInstruction();
+    }
+
     // Find the implicit argument representing r0 and the private memory base.
     Value* r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, m_pMdUtils);
     Value* privateMemPtr = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::PRIVATE_BASE, m_pMdUtils);
+
+    // Restore insert point saved before getImplicitArgValue()
+    entryBuilder.SetInsertPoint(pointInstr);
+
     // Note: for debugging purposes privateMemPtr will be marked as Output to keep its liveness all time
 
     // Resolve the call
