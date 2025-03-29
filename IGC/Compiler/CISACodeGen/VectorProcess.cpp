@@ -1,12 +1,10 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-
-#include <memory>   // for std::unique_ptr
 
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -156,7 +154,6 @@ namespace
     private:
         bool reLayoutLoadStore(Instruction* Inst);
         bool optimizeBitCast(BitCastInst* BC);
-        Value* ProcessMergeValue(BasicBlock *BB, Value* V, Type* NewTy) const;
 
     private:
         const DataLayout* m_DL;
@@ -213,29 +210,18 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         Ptr = II->getOperand(0);
 
         if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
-            II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldraw_indexed ||
-            II->getIntrinsicID() == GenISAIntrinsic::GenISA_PredicatedLoad)
+            II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldraw_indexed)
         {
             Ty = II->getType();
         }
-        else if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed ||
-                 II->getIntrinsicID() == GenISAIntrinsic::GenISA_storeraw_indexed)
+        else
         {
+            IGC_ASSERT(II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed ||
+                       II->getIntrinsicID() == GenISAIntrinsic::GenISA_storeraw_indexed);
             IGC_ASSERT(2 < IGCLLVM::getNumArgOperands(II));
             IGC_ASSERT(nullptr != II->getArgOperand(2));
 
             Ty = II->getArgOperand(2)->getType();
-        }
-        else if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_PredicatedStore)
-        {
-            IGC_ASSERT(1 < IGCLLVM::getNumArgOperands(II));
-            IGC_ASSERT(nullptr != II->getArgOperand(1));
-
-            Ty = II->getArgOperand(1)->getType();
-        }
-        else
-        {
-            IGC_ASSERT_MESSAGE(0, "Internal Error: unknown intrinsic");
         }
     }
 
@@ -309,14 +295,6 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         {
             align = IGCLLVM::getAlignmentValue(SI);
         }
-        else if (II && II->getIntrinsicID() == GenISAIntrinsic::GenISA_PredicatedLoad)
-        {
-            align = cast<ConstantInt>(II->getArgOperand(1))->getZExtValue();
-        }
-        else if (II && II->getIntrinsicID() == GenISAIntrinsic::GenISA_PredicatedStore)
-        {
-            align = cast<ConstantInt>(II->getArgOperand(2))->getZExtValue();
-        }
         else
         {
             align = 1;
@@ -372,31 +350,13 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         newPtr = Builder.CreateBitCast(Ptr, newPtrTy, "vptrcast");
     }
 
-    if (LI || (II && II->getIntrinsicID() == GenISAIntrinsic::GenISA_PredicatedLoad))
+    if (LI)
     {
-        Instruction* oldLoad = LI ? cast<Instruction>(LI) : cast<Instruction>(II);
-        Instruction* load;
-        if (LI) {
-          load = Builder.CreateAlignedLoad(newVTy, newPtr,
+        LoadInst* load = Builder.CreateAlignedLoad(newVTy, newPtr,
             IGCLLVM::getCorrectAlign(IGCLLVM::getAlignmentValue(LI)),
             LI->isVolatile(),
             "vCastload");
-        } else {
-            Type* types[] =
-            {
-                newVTy,
-                newPtrTy,
-                newVTy
-            };
-
-            Function* F = GenISAIntrinsic::getDeclaration(
-                II->getParent()->getParent()->getParent(),
-                GenISAIntrinsic::GenISA_PredicatedLoad,
-                types);
-            load = Builder.CreateCall4(F, newPtr, II->getOperand(1), II->getOperand(2),
-                                       ProcessMergeValue(Inst->getParent(), II->getOperand(3), newVTy));
-        }
-        load->copyMetadata(*oldLoad);
+        load->copyMetadata(*LI);
 
         Value* V = load;
 
@@ -432,14 +392,13 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             // TODO: if Ty is Aggregate type then this bitCast conradicts to LLVM spec
             V = Builder.CreateBitCast(V, Ty);
         }
-        oldLoad->replaceAllUsesWith(V);
-        oldLoad->eraseFromParent();
+        LI->replaceAllUsesWith(V);
+        LI->eraseFromParent();
     }
     else
-        if (SI || (II && II->getIntrinsicID() == GenISAIntrinsic::GenISA_PredicatedStore))
+        if (SI)
         {
-            Instruction *oldStore = SI ? cast<Instruction>(SI) : cast<Instruction>(II);
-            Value* StoreVal = SI ? SI->getValueOperand() : II->getArgOperand(1);
+            Value* StoreVal = SI->getValueOperand();
             Value* V;
             if (eTy->isPointerTy())
             {
@@ -494,32 +453,17 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             {
                 V = Builder.CreateBitCast(StoreVal, newVTy);
             }
-
-            Instruction* store = nullptr;
-            if (SI && IGCLLVM::getAlignmentValue(SI) == 0)
+            StoreInst* store = nullptr;
+            if (IGCLLVM::getAlignmentValue(SI) == 0)
             {
                 store = Builder.CreateStore(V, newPtr, SI->isVolatile());
             }
-            else if (SI)
+            else
             {
                 store = Builder.CreateAlignedStore(V, newPtr, IGCLLVM::getAlign(*SI), SI->isVolatile());
             }
-            else
-            {
-                Type* types[] =
-                {
-                    newPtrTy,
-                    newVTy
-                };
-
-                Function* F = GenISAIntrinsic::getDeclaration(
-                    II->getParent()->getParent()->getParent(),
-                    GenISAIntrinsic::GenISA_PredicatedStore,
-                    types);
-                store = Builder.CreateCall4(F, newPtr, V, II->getOperand(2), II->getOperand(3));
-            }
-            store->copyMetadata(*oldStore);
-            oldStore->eraseFromParent();
+            store->copyMetadata(*SI);
+            SI->eraseFromParent();
         }
         else if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
                  II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldraw_indexed)
@@ -654,9 +598,7 @@ bool VectorProcess::runOnFunction(Function& F)
                 if (intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
                     intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_ldraw_indexed ||
                     intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed ||
-                    intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_storeraw_indexed ||
-                    intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_PredicatedLoad ||
-                    intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_PredicatedStore)
+                    intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_storeraw_indexed)
                 {
                     m_WorkList.push_back(inst);
                 }
@@ -723,29 +665,6 @@ bool VectorProcess::runOnFunction(Function& F)
     return changed;
 }
 
-Value* VectorProcess::ProcessMergeValue(BasicBlock *BB, Value* V, Type* NewTy) const
-{
-    // if V is a zero initializer, undef or poison value, we just need to create
-    // corresponding value of NewTy.
-    if (isa<ConstantAggregateZero>(V)) {
-        if(IGCLLVM::FixedVectorType *VTy = dyn_cast<IGCLLVM::FixedVectorType>(NewTy))
-            return ConstantAggregateZero::get(VTy);
-        else
-            return Constant::getNullValue(NewTy);
-    }
-
-    if (isa<UndefValue>(V))
-        return UndefValue::get(NewTy);
-
-    if (isa<PoisonValue>(V))
-        return PoisonValue::get(NewTy);
-
-    std::unique_ptr<IRBuilder<>> Builder = isa<Instruction>(V) ?
-                                            std::make_unique<IRBuilder<>>(cast<Instruction>(V)) :
-                                            std::make_unique<IRBuilder<>>(BB);
-
-    return Builder->CreateBitCast(V, NewTy);
-}
 
 //
 // getInfo maps vector to the right messages. It assume that a vector

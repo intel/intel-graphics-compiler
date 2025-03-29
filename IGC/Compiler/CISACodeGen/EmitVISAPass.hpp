@@ -197,13 +197,11 @@ public:
     void emitStore(llvm::StoreInst *inst, llvm::Value *varOffset,
                    llvm::ConstantInt *immOffset, ConstantInt *immScale = nullptr
     );
-    void emitPredicatedStore(llvm::Instruction *inst);
     void emitStore3DInner(llvm::Value* pllValToStore, llvm::Value* pllDstPtr, llvm::Value* pllElmIdx);
 
     void emitLoad(llvm::LoadInst *inst, llvm::Value *varOffset,
                   llvm::ConstantInt *immOffset, ConstantInt *immScale = nullptr
     ); // single load, no pattern
-    void emitPredicatedLoad(llvm::Instruction *inst);
     void emitLoad3DInner(llvm::LdRawIntrinsic* inst, ResourceDescriptor& resource, llvm::Value* elemIdxV);
 
     // when resource is dynamically indexed, load/store must use special intrinsics
@@ -515,14 +513,13 @@ public:
                             llvm::BasicBlock *BB, LSC_CACHE_OPTS cacheOpts,
                             alignment_t align, bool dontForceDMask,
                             LSC_DOC_ADDR_SPACE addrSpace
-                           ,llvm::Value *predicate = nullptr
       );
     void emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0,
-        bool allowLargerSIMDSize = false, CVariable* predicate = nullptr);
+        bool allowLargerSIMDSize = false);
     void emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0,
-        bool allowLargerSIMDSize = false, CVariable* predicate = nullptr);
+        bool allowLargerSIMDSize = false);
     void emitConstantVector(CVariable* Dst, uint64_t value = 0);
     void emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty);
 
@@ -1202,9 +1199,7 @@ private:
                                  int ImmScale, uint32_t NumElts,
                                  uint32_t EltBytes,
                                  LSC_DOC_ADDR_SPACE AddrSpace,
-                                 LSC_ADDR_SIZE AddrSize,
-                                 CVariable *inputPredicate = nullptr,
-                                 CVariable *mergeVal = nullptr
+                                 LSC_ADDR_SIZE AddrSize
     );
     void emitLSCVectorLoad_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32,
                                    ResourceDescriptor &Resource,
@@ -1214,9 +1209,7 @@ private:
                                    uint32_t EltBytes, uint64_t Align,
                                    uint32_t Addrspace,
                                    LSC_DOC_ADDR_SPACE UserAddrSpace,
-                                   LSC_ADDR_SIZE AddrSize,
-                                   CVariable *inputPredicate = nullptr,
-                                   CVariable *mergeVal = nullptr
+                                   LSC_ADDR_SIZE AddrSize
       );
     void emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
                                   ResourceDescriptor &Resource,
@@ -1224,8 +1217,7 @@ private:
                                   int ImmOffset, int ImmScale, uint32_t NumElts,
                                   uint32_t EltBytes, alignment_t Align,
                                   LSC_DOC_ADDR_SPACE AddrSpace,
-                                  LSC_ADDR_SIZE AddrSize,
-                                  llvm::Value *predicate = nullptr
+                                  LSC_ADDR_SIZE AddrSize
       );
     void emitLSCVectorStore_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32,
                                     ResourceDescriptor &Resource,
@@ -1234,8 +1226,7 @@ private:
                                     uint32_t NumElts, uint32_t EltBytes,
                                     alignment_t Align,
                                     LSC_DOC_ADDR_SPACE AddrSpace,
-                                    LSC_ADDR_SIZE AddrSize,
-                                    llvm::Value *predicate = nullptr
+                                    LSC_ADDR_SIZE AddrSize
       );
     LSC_FENCE_OP getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1,
                                      bool EvictL1) const;

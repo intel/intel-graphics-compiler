@@ -4201,24 +4201,15 @@ Tristate CShader::shouldGenerateLSCQuery(
         return Tristate::False;
     }
 
-    // Generate LSC for load/store instructions as Load/store emit can
+    // Geneate LSC for load/store instructions as Load/store emit can
     // handle full-payload uniform non-transpose LSC on PVC A0.
     if (vectorLdStInst == nullptr
         || isa<LoadInst>(vectorLdStInst)
         || isa<StoreInst>(vectorLdStInst))
         return Tristate::True;
-
+    // special checks for typed r/w
     if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(vectorLdStInst))
     {
-        // Generate LSC for predicated load/store instructions similar to
-        // simple load/store instructions.
-        if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_PredicatedLoad ||
-            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_PredicatedStore)
-        {
-            return Tristate::True;
-        }
-
-        // special checks for typed r/w
         if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedread ||
             inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite ||
             inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwriteMS ||

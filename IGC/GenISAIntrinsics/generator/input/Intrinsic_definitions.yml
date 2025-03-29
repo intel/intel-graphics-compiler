@@ -9836,34 +9836,6 @@ intrinsics:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
-        name: "GenISA_PredicatedLoad"
-        comment: "Predicated load instruction"
-        return_definition: !<ReturnDefinition>
-            type_definition: *any_int
-            comment: "value loaded"
-        arguments:
-            - !<ArgumentDefinition>
-                name: Arg0
-                type_definition: *p_any_
-                comment: "address of value to load"
-            - !<ArgumentDefinition>
-                name: Arg1
-                type_definition: *i64
-                comment: "alignment"
-            - !<ArgumentDefinition>
-                name: Arg2
-                type_definition: *i1
-                comment: "predication flag"
-            - !<ArgumentDefinition>
-                name: Arg3
-                type_definition: *any_int
-                comment: "value to use if predicate is false"
-        attributes:
-            - !AttributeID "NoUnwind"
-        memory_effects:
-            - !<MemoryRestriction>
-                memory_access: !MemoryAccessType Ref
-    - !<IntrinsicDefinition>
         name: "GenISA_LSCLoadWithSideEffects"
         comment: "LSC load meant to be used just for issuing load instruction (i.e.\
             \ making sure writes complete or to invalidate caches)"
@@ -10080,31 +10052,6 @@ intrinsics:
                 name: Arg5
                 type_definition: *i32
                 comment: "cache controls options (LSC_CACHE_OPTS)"
-        attributes:
-            - !AttributeID "NoUnwind"
-    - !<IntrinsicDefinition>
-        name: "GenISA_PredicatedStore"
-        comment: "Predicated store instruction"
-        return_definition: !<ReturnDefinition>
-            type_definition: *void
-            comment: "nothing is returned"
-        arguments:
-            - !<ArgumentDefinition>
-                name: Arg0
-                type_definition: *p_any_
-                comment: "address to store to"
-            - !<ArgumentDefinition>
-                name: Arg1
-                type_definition: *any_int
-                comment: "value to be stored"
-            - !<ArgumentDefinition>
-                name: Arg2
-                type_definition: *i64
-                comment: "alignment"
-            - !<ArgumentDefinition>
-                name: Arg3
-                type_definition: *i1
-                comment: "predicate"
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
