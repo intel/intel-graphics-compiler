@@ -59,6 +59,7 @@ VISA_Exec_Size Get_VISA_Exec_Size_From_Raw_Size(unsigned int size);
 VISA_Oword_Num Get_VISA_Oword_Num_From_Number(unsigned num);
 VISA_Modifier Get_Common_ISA_SrcMod_From_G4_Mod(G4_SrcModifier mod);
 G4_Type getUnsignedType(unsigned short numByte);
+G4_Type getSignedType(unsigned short numByte);
 
 inline uint32_t getVersionAsInt(uint32_t major, uint32_t minor) {
   return major * 100 + minor;

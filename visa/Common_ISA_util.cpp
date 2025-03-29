@@ -1655,3 +1655,19 @@ G4_Type getUnsignedType(unsigned short numByte) {
     return Type_UD;
   }
 }
+
+G4_Type getSignedType(unsigned short numByte) {
+  switch (numByte) {
+  case 1:
+    return Type_B;
+  case 2:
+    return Type_W;
+  case 4:
+    return Type_D;
+  case 8:
+    return Type_Q;
+  default:
+    vISA_ASSERT_UNREACHABLE("illegal type width");
+    return Type_D;
+  }
+}
