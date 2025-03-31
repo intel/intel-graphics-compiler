@@ -1,5 +1,4 @@
 ; REQUIRES: regkeys, spirv-as, dg2-supported
-; UNSUPPORTED: khronos-translator-9
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
                OpCapability Addresses

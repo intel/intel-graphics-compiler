@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm-spirv, regkeys, pvc-supported
-; UNSUPPORTED: legacy-translator, sys32
+; UNSUPPORTED: sys32
 
 ; RUN: llvm-as %s -o %t.bc
 ; COM: Replace SPV_INTEL_subgroups with SPV_INTEL_subgroup_buffer_prefetch once support for prefetches is implemented in the KHR Translator

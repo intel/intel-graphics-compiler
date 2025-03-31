@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys,pvc-supported,llvm-14-plus
+; REQUIRES: regkeys,pvc-supported
 
 ; Check that functions called once from kernel are inlined in it even if they are called multiple times from other kernels.
 

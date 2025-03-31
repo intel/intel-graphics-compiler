@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// REQUIRES: regkeys,pvc-supported,llvm-14-plus
+// REQUIRES: regkeys,pvc-supported
 
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'EnableIndVarSimplification=1,PrintToConsole=1,PrintAfter=EmitPass'" 2>&1 | FileCheck %s
 

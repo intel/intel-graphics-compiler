@@ -6,8 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-spirv,regkeys,pvc-supported,llvm-14-plus
-; UNSUPPORTED: legacy-translator
+; REQUIRES: llvm-spirv,regkeys,pvc-supported,spirv-promote
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_KHR_bfloat16 -o %t.spv

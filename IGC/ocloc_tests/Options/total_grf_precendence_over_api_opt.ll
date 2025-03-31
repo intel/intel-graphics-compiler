@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys,pvc-supported,llvm-14-plus
+; REQUIRES: regkeys,pvc-supported
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options " -ze-exp-register-file-size=64 -igc_opts 'TotalGRFNum=256,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK

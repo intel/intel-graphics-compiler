@@ -9,7 +9,6 @@
 ; Test if in both cases AlignmentAnalysis pass assigns correct allignment to pointer.
 
 ; REQUIRES: regkeys, spirv-as, pvc-supported
-; UNSUPPORTED: legacy-translator
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
 ; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'PrintToConsole=1 PrintAfter=AlignmentAnalysisPass'" 2>&1 | FileCheck %s
 

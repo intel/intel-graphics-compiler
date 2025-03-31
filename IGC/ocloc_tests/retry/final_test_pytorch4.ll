@@ -1,4 +1,4 @@
-; REQUIRES: regkeys,mtl-supported,llvm-14
+; REQUIRES: regkeys,mtl-supported, test-fix
 ; RUN: llvm-as %s -o %t.bc
 
 ; RUN: ocloc compile -llvm_input -file %t.bc -device mtl -options "-igc_opts 'VISAOptions=-asmToConsole'" &> %t_output.ll

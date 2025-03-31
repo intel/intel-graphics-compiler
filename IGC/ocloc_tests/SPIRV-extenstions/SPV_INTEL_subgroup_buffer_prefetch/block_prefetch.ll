@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm-spirv, regkeys, pvc-supported
-; UNSUPPORTED: legacy-translator, sys32
+; UNSUPPORTED: sys32
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc \

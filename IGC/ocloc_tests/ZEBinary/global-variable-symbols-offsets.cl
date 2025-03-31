@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 // UNSUPPORTED: sys32
-// REQUIRES: pvc-supported, oneapi-readelf, llvm-14-plus
+// REQUIRES: pvc-supported, oneapi-readelf
 // RUN: ocloc compile -file %s -options "-cl-std=CL3.0 -igc_opts 'ProgbinDumpFileName=%t.progbin'" -device pvc
 // RUN: oneapi-readelf -s %t.progbin | FileCheck %s
 

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys,pvc-supported,llvm-14-plus
+; REQUIRES: regkeys,pvc-supported
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options " -ze-opt-large-register-file -igc_opts 'DisableOCLScalarizer=1,EnableVectorizer=0,PrintToConsole=1,PrintAfter=EmitPass'" 2>&1 | FileCheck %s --check-prefixes=CHECK
