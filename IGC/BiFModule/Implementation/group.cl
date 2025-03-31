@@ -1982,12 +1982,12 @@ DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ulong8, v8i64, ulong, i64, __builtin_IB_si
 #define DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(TYPE, TYPE_ABBR, INTERNAL_FUNC)                                         \
 TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _##TYPE_ABBR##_img2d_ro_v2i32, _R##TYPE)(global Img2d_ro* image, int2 coord)  \
 {                                                                                                                    \
-    int id = (int)__builtin_astype(image, __global void*);                                                           \
+    long id = (long)__builtin_astype(image, __global void*);                                                           \
     return as_##TYPE(INTERNAL_FUNC(id, coord));                                                                      \
 }                                                                                                                    \
 TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _##TYPE_ABBR##_img2d_rw_v2i32, _R##TYPE)(global Img2d_rw* image, int2 coord)  \
 {                                                                                                                    \
-    int id = (int)__builtin_astype(image, __global void*);                                                           \
+    long id = (long)__builtin_astype(image, __global void*);                                                           \
     return as_##TYPE(INTERNAL_FUNC(id, coord));                                                                      \
 }
 
@@ -2026,14 +2026,14 @@ DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(long8, v8i64, __builtin_IB_simd_media_block
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockWriteINTEL, _img2d_wo_v2i32_##TYPE_ABBR, )(    \
     global Img2d_wo* image, int2 coord, TYPE data)                                 \
 {                                                                                  \
-    int id = (int)__builtin_astype(image, __global void*);                         \
-    INTERNAL_FUNC((int)image, coord, data);                                        \
+    long id = (long)__builtin_astype(image, __global void*);                         \
+    INTERNAL_FUNC((long)image, coord, data);                                        \
 }                                                                                  \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockWriteINTEL, _img2d_rw_v2i32_##TYPE_ABBR, )(    \
     global Img2d_rw* image, int2 coord, TYPE data)                                 \
 {                                                                                  \
-    int id = (int)__builtin_astype(image, __global void*);                         \
-    INTERNAL_FUNC((int)image, coord, data);                                        \
+    long id = (long)__builtin_astype(image, __global void*);                         \
+    INTERNAL_FUNC((long)image, coord, data);                                        \
 }
 
 #ifdef cl_intel_subgroups_char
@@ -2070,13 +2070,13 @@ DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ulong8, v8i64, __builtin_IB_simd_media_blo
 TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageMediaBlockReadINTEL, _##TYPE_ABBR##_img2d_ro_v2i32_i32_i32, _R##TYPE)(   \
     global Img2d_ro* image, int2 coord, int width, int height)                                                              \
 {                                                                                                                           \
-    int id = (int)__builtin_astype(image, global void*);                                                                    \
+    long id = (long)__builtin_astype(image, global void*);                                                                    \
     return as_##TYPE(__builtin_IB_media_block_read_u##TYPE(id, coord, width, height));                                      \
 }                                                                                                                           \
 TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageMediaBlockReadINTEL, _##TYPE_ABBR##_img2d_rw_v2i32_i32_i32, _R##TYPE)(   \
     global Img2d_rw* image, int2 coord, int width, int height)                                                              \
 {                                                                                                                           \
-    int id = (int)__builtin_astype(image, global void*);                                                                    \
+    long id = (long)__builtin_astype(image, global void*);                                                                    \
     return as_##TYPE(__builtin_IB_media_block_read_u##TYPE(id, coord, width, height));                                      \
 }
 
@@ -2106,13 +2106,13 @@ DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(int8, v8i32)
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageMediaBlockWriteINTEL, _img2d_wo_v2i32_i32_i32_##TYPE_ABBR, )(    \
     global Img2d_wo* image, int2 coord, int width, int height, TYPE data)                                           \
 {                                                                                                                   \
-    int id = (int)__builtin_astype(image, global void*);                                                            \
+    long id = (long)__builtin_astype(image, global void*);                                                            \
     __builtin_IB_media_block_write_u##TYPE(id, coord, width, height, as_u##TYPE(data));                             \
 }                                                                                                                   \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageMediaBlockWriteINTEL, _img2d_rw_v2i32_i32_i32_##TYPE_ABBR, )(    \
     global Img2d_rw* image, int2 coord, int width, int height, TYPE data)                                           \
 {                                                                                                                   \
-    int id = (int)__builtin_astype(image, global void*);                                                            \
+    long id = (long)__builtin_astype(image, global void*);                                                            \
     __builtin_IB_media_block_write_u##TYPE(id, coord, width, height, as_u##TYPE(data));                             \
 }
 
