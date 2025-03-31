@@ -1505,7 +1505,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_bitcastfromstruct ||
         GII_id == GenISAIntrinsic::GenISA_bitcasttostruct ||
         GII_id == GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload ||
-        GII_id == GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload)
+        GII_id == GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload ||
+        GII_id == GenISAIntrinsic::GenISA_PredicatedLoad ||
+        GII_id == GenISAIntrinsic::GenISA_PredicatedStore)
     {
         switch (GII_id)
         {
