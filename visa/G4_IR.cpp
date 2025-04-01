@@ -3122,7 +3122,7 @@ const G4_VarBase *G4_INST::getCondModBase() const {
 }
 
 bool G4_INST::isOptBarrier() const {
-  if (op == G4_join || op == G4_madm) {
+  if (op == G4_join) {
     return true;
   }
 

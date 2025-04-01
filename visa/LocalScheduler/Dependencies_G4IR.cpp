@@ -190,7 +190,7 @@ DepType vISA::getDepScratchSend(G4_INST *curInst, G4_INST *liveInst) {
 }
 
 DepType vISA::CheckBarrier(G4_INST *inst) {
-  if (inst->isOptBarrier() || inst->isAtomicInst()) {
+  if (inst->isOptBarrier() || inst->isAtomicInst() || inst->opcode() == G4_madm) {
     return OPT_BARRIER;
   }
   if (inst->isSend()) {
