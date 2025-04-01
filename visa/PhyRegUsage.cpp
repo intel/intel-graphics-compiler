@@ -975,6 +975,12 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
           FPR.availableGregs, forbidden, occupiedBundles,
           getAlignToUse(align, bankAlign), decl->getNumRows(), endGRFReg,
           AS.startGRFReg, i, forceCalleeSaveAlloc, varBasis->getEOTSrc());
+      if (!success && occupiedBundles) {
+        success = findContiguousGRF(
+            FPR.availableGregs, forbidden, 0,
+            getAlignToUse(align, bankAlign), decl->getNumRows(), endGRFReg,
+            AS.startGRFReg, i, forceCalleeSaveAlloc, varBasis->getEOTSrc());
+      }
       if (success) {
         varBasis->setPhyReg(regPool.getGreg(i), 0);
       }
