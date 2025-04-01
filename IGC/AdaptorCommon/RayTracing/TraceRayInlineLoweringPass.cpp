@@ -652,15 +652,55 @@ void TraceRayInlineLoweringPass::LowerRayInfo(Function& F)
     {
         builder.SetInsertPoint(I);
 
+        unsigned int infoKind = I->getInfoKind();
+        auto shaderTy = I->isCommitted() ? CallableShaderTypeMD::ClosestHit : CallableShaderTypeMD::AnyHit;
         auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, I->getQueryObjIndex());
 
-        switch (I->getInfoKind())
+        switch (infoKind)
         {
-        default:
-            I->replaceAllUsesWith(builder.lowerRayInfo(ShadowMemStackPointer, I, I->isCommitted(), std::nullopt));
-            I->eraseFromParent();
+        case RAY_FLAGS:
+        {
+            Value* rayFlags = builder.getRayFlags(ShadowMemStackPointer);
+            rayFlags = builder.CreateZExt(rayFlags, I->getType());
+            I->replaceAllUsesWith(rayFlags);
             break;
-            // leave this in for now, until we prove we don't need the hack anymore
+        }
+        case WORLD_RAY_ORG:
+        {
+            Value* rayOrg = builder.getWorldRayOrig(ShadowMemStackPointer, (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue());
+            I->replaceAllUsesWith(rayOrg);
+            break;
+        }
+        case WORLD_RAY_DIR:
+        {
+            Value* valueAtDim = builder.getWorldRayDir(ShadowMemStackPointer, (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue());
+            I->replaceAllUsesWith(valueAtDim);
+            break;
+        }
+        case RAY_T_MIN:
+        {
+            Value* TMin = builder.getRayTMin(ShadowMemStackPointer);
+            I->replaceAllUsesWith(TMin);
+            break;
+        }
+        case RAY_T_CURRENT:
+        {
+            Value* rayT = builder.getRayTCurrent(ShadowMemStackPointer, shaderTy);
+            I->replaceAllUsesWith(rayT);
+            break;
+        }
+        case TRIANGLE_FRONT_FACE:
+        case CANDIDATE_PROCEDURAL_PRIM_NON_OPAQUE: // Procedural Primitive Opaque Info is stored in Front Face bit
+        {
+            Value* frontFaceBit = builder.getIsFrontFace(ShadowMemStackPointer, shaderTy);
+            if (infoKind == CANDIDATE_PROCEDURAL_PRIM_NON_OPAQUE)
+            {
+                frontFaceBit = builder.CreateICmpEQ(
+                    frontFaceBit, builder.getInt1(0), VALUE_NAME("is_nonopaque"));
+            }
+            I->replaceAllUsesWith(frontFaceBit);
+            break;
+        }
         case GEOMETRY_INDEX:
         {
             bool specialPattern = false;
@@ -670,14 +710,75 @@ void TraceRayInlineLoweringPass::LowerRayInfo(Function& F)
             }
 
             Value* leafType = builder.getLeafType(ShadowMemStackPointer, I->isCommitted());
-            Value* geoIndex = builder.getGeometryIndex(ShadowMemStackPointer, I, leafType,
-                I->isCommitted() ? CallableShaderTypeMD::ClosestHit : CallableShaderTypeMD::AnyHit, !specialPattern);
+            Value* geoIndex = builder.getGeometryIndex(ShadowMemStackPointer, I, leafType, shaderTy, !specialPattern);
             IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(), "Invalid geometryIndex type!");
             I->replaceAllUsesWith(geoIndex);
-            I->eraseFromParent();
             break;
         }
+        case INSTANCE_INDEX:
+            I->replaceAllUsesWith(builder.getInstanceIndex(ShadowMemStackPointer, shaderTy, I, true));
+            break;
+        case INSTANCE_ID:
+            I->replaceAllUsesWith(builder.getInstanceID(ShadowMemStackPointer, shaderTy, I, true));
+            break;
+        case PRIMITIVE_INDEX:
+        {
+            Value* leafType = builder.getLeafType(ShadowMemStackPointer, I->isCommitted());
+            Value* primIndex = builder.getPrimitiveIndex(ShadowMemStackPointer, I, leafType, shaderTy, true);
+            IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(), "Invalid primIndex type!");
+            I->replaceAllUsesWith(primIndex);
+
+            break;
         }
+        case BARYCENTRICS:
+        {
+            uint32_t idx = (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue();
+            Value* bary = builder.getHitBaryCentric(ShadowMemStackPointer, idx, I->isCommitted());
+            I->replaceAllUsesWith(bary);
+            break;
+        }
+        case OBJECT_TO_WORLD:
+        {
+            uint32_t dim = (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue();
+            Value* matrixComp = builder.getObjToWorld(ShadowMemStackPointer, dim, shaderTy, I, true);
+            I->replaceAllUsesWith(matrixComp);
+            break;
+        }
+        case WORLD_TO_OBJECT:
+        {
+            uint32_t dim = (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue();
+            Value* matrixComp = builder.getWorldToObj(ShadowMemStackPointer, dim, shaderTy, I, true);
+            I->replaceAllUsesWith(matrixComp);
+            break;
+        }
+        case OBJ_RAY_ORG:
+        {
+            Value* rayInfo = builder.getObjRayOrig(ShadowMemStackPointer, (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue(), shaderTy, I, true);
+            I->replaceAllUsesWith(rayInfo);
+            break;
+        }
+        case OBJ_RAY_DIR:
+        {
+            Value* rayInfo = builder.getObjRayDir(ShadowMemStackPointer, (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue(), shaderTy, I, true);
+            I->replaceAllUsesWith(rayInfo);
+            break;
+        }
+        case INST_CONTRIBUTION_TO_HITGROUP_INDEX:
+        {
+            I->replaceAllUsesWith(
+                builder.getInstanceContributionToHitGroupIndex(ShadowMemStackPointer, shaderTy)
+            );
+            break;
+        }
+        default:
+            IGC_ASSERT_MESSAGE(0, "Unsupported RayQuery Info");
+            break;
+        }
+    }
+
+    for (auto I : info)
+    {
+        I->eraseFromParent();
     }
 }
 

@@ -1996,13 +1996,11 @@ public:
         return isa<RayQueryInstrisicBase>(V) && classof(cast<RayQueryInstrisicBase>(V));
     }
 
-    IGC::DISPATCH_SHADER_RAY_INFO_TYPE getInfoKind() const {
-        return static_cast<IGC::DISPATCH_SHADER_RAY_INFO_TYPE>(cast<ConstantInt>(getOperand(1))->getZExtValue());
+    uint32_t getInfoKind() const {
+        return (uint32_t)cast<ConstantInt>(getOperand(1))->getZExtValue();
     }
 
-    uint32_t getDim() const {
-        return static_cast<uint32_t>(cast<ConstantInt>(getOperand(2))->getZExtValue());
-    }
+    Value* getDim() const {return getOperand(2);}
 
     bool isCommitted() const {
         return static_cast<bool>(cast<ConstantInt>(getOperand(3))->getZExtValue());
