@@ -5,7 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt --typed-pointers --igc-merge-allocas --igc-private-mem-resolution -S %s --platformpvc | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt --typed-pointers --regkey DisableMergingOfMultipleAllocasWithOffset=0 --igc-merge-allocas --igc-private-mem-resolution -S %s --platformpvc | FileCheck %s
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------
