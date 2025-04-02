@@ -36,6 +36,7 @@ set(IGC_BUILD__SRC__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/BarrierControlFlowOptimization.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/WaveShuffleIndexSinking.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/WaveAllJointReduction.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IntDivRemIncrementReduction.cpp"
   )
 
 set(IGC_BUILD__SRC__Compiler_Optimizer
@@ -63,8 +64,9 @@ set(IGC_BUILD__HDR__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/ValueTracker.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/RuntimeValueVectorExtractPass.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/BarrierControlFlowOptimization.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/WaveShuffleIndexSinking.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/WaveShuffleIndexSinking.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/WaveAllJointReduction.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IntDivRemIncrementReduction.hpp"
   )
 
 set(IGC_BUILD__HDR__Optimizer

@@ -99,6 +99,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/MCSOptimization.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
+#include "Compiler/Optimizer/IntDivRemIncrementReduction.hpp"
 #include "Compiler/Optimizer/IntDivRemCombine.hpp"
 #include "Compiler/Optimizer/SynchronizationObjectCoalescing.hpp"
 #include "Compiler/Optimizer/BarrierControlFlowOptimization.hpp"
@@ -1868,6 +1869,8 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add( createWaveAllJointReduction() );
         }
 
+        mpm.add(llvm::createEarlyCSEPass());
+
         if (IGC_IS_FLAG_ENABLED(EnableIntDivRemCombine)) {
             // simplify rem if the quotient is availble
             //
@@ -1886,6 +1889,10 @@ void OptimizeIR(CodeGenContext* const pContext)
             // reduce division/remainder with a constant divisors/moduli to
             // more efficient sequences of multiplies, shifts, and adds
             mpm.add(createIntDivConstantReductionPass());
+        }
+
+        if (IGC_IS_FLAG_ENABLED(EnableIntDivRemIncrementReduction)) {
+          mpm.add(createIntDivRemIncrementReductionPass());
         }
         GFX_ONLY_PASS { mpm.add(createMergeMemFromBranchOptPass()); }
 

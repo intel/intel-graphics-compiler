@@ -1066,18 +1066,31 @@ void CustomSafeOptPass::visitBfi(llvm::CallInst* inst)
     ConstantInt* offsetV = dyn_cast<ConstantInt>(inst->getOperand(1));
     if (widthV && offsetV)
     {
+        ConstantInt* baseV = dyn_cast<ConstantInt>(inst->getOperand(3));
         // transformation is beneficial if src3 is constant or if the offset is zero
-        if (isa<ConstantInt>(inst->getOperand(3)) || offsetV->isZero())
+        if (baseV || offsetV->isZero())
         {
             unsigned int width = static_cast<unsigned int>(widthV->getZExtValue());
             unsigned int offset = static_cast<unsigned int>(offsetV->getZExtValue());
             unsigned int bitMask = ((1 << width) - 1) << offset;
             IRBuilder<> builder(inst);
             // dst = ((src2 << offset) & bitmask) | (src3 & ~bitmask)
-            Value* firstTerm = builder.CreateShl(inst->getOperand(2), offsetV);
+            Value* firstTerm = nullptr;
+            Value* dst = nullptr;
+            if( offset != 0 ) {
+              firstTerm = builder.CreateShl(inst->getOperand(2), offsetV);
+            } else {
+              firstTerm = inst->getOperand(2);
+            }
             firstTerm = builder.CreateAnd(firstTerm, builder.getInt32(bitMask));
-            Value* secondTerm = builder.CreateAnd(inst->getOperand(3), builder.getInt32(~bitMask));
-            Value* dst = builder.CreateOr(firstTerm, secondTerm);
+
+            if (baseV && baseV->isZero()) {
+              dst = firstTerm;
+            } else {
+              auto* secondTerm = builder.CreateAnd(inst->getOperand(3), builder.getInt32(~bitMask));
+              dst = builder.CreateOr(firstTerm, secondTerm);
+            }
+
             inst->replaceAllUsesWith(dst);
             inst->eraseFromParent();
         }
