@@ -50,9 +50,13 @@ namespace IGC
         void SetBarrierNumber(int BarrierNumber) { m_BarrierNumber = BarrierNumber; }
         int  GetBarrierNumber() const { return m_BarrierNumber; }
 
-        bool GetHasSample() const { return m_HasSample; }
-        void SetHasSampleInst()  { m_HasSampleInst = true;  m_HasSample = true; }
-        void SetHasGather4Inst() { m_HasGather4Inst = true; m_HasSample = true; }
+        bool GetHasSampleLoadGather4() const
+        {
+            return (m_HasSampleInst || m_HasGather4Inst || m_HasLoadInst);
+        }
+        void SetHasSampleInst()  { m_HasSampleInst  = true; }
+        void SetHasGather4Inst() { m_HasGather4Inst = true; }
+        void SetHasLoadInst()    { m_HasLoadInst    = true; }
 
         bool GetHasDPAS() const { return m_HasDPAS; }
         void SetHasDPAS() { m_HasDPAS = true; }
@@ -115,9 +119,9 @@ namespace IGC
                 (NumInst < IGC_GET_FLAG_VALUE(MidThreadPreemptionDisableThreshold)));
         }
     private:
-        bool m_HasSample = false;
         bool m_HasSampleInst = false;
         bool m_HasGather4Inst = false;
+        bool m_HasLoadInst = false;
         int m_BarrierNumber = 0;
         bool m_HasDPAS = false;
         // Shader has LSC store messages with non-default L1 cache control
