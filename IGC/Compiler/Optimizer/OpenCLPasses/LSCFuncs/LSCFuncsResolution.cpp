@@ -1005,6 +1005,10 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
             {
                 tileHeight = 16;
             }
+            else if (funcName.consume_front("_m8"))
+            {
+                tileHeight = 8;
+            }
 
             tileWidth = 8;
             funcName.consume_front("_");
@@ -1018,7 +1022,7 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
         }
         else
         {
-            IGC_ASSERT_MESSAGE(0, "Transpose only supports elemSize 32.");
+            IGC_ASSERT_MESSAGE(0, "Transpose only supports elemSize d32, d64.");
             return nullptr;
         }
     }
