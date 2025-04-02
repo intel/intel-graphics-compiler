@@ -408,40 +408,33 @@ void Legalization::visitCallInst(llvm::CallInst& I)
         newInst->takeName(&I);
         I.eraseFromParent();
     }
-    else if (!m_ctx->platform.supportSamplerFp16Input())
+    else if (!m_ctx->platform.supportSamplerFp16Input() &&
+            (llvm::isa<SampleIntrinsic>(&I) ||
+             llvm::isa<SamplerGatherIntrinsic>(&I)) &&
+            I.getOperand(0)->getType()->isHalfTy())
     {
-        // promote FP16 sample_xxx to FP32 sample_xxx
-        if (llvm::isa<SampleIntrinsic>(&I) ||
-            llvm::isa<SamplerGatherIntrinsic>(&I))
-        {
-            if (I.getOperand(0)->getType()->isHalfTy())
-            {
-                PromoteFp16ToFp32OnGenSampleCall(I);
-            }
-        }
+        PromoteFp16ToFp32OnGenSampleCall(I);
     }
-    else if (m_ctx->platform.hasNoFullI64Support())
+    else if (auto* GII = dyn_cast<GenIntrinsicInst>(&I))
     {
-        if (auto* GII = dyn_cast<GenIntrinsicInst>(&I))
+        if (m_ctx->platform.hasNoFullI64Support() &&
+            (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_imulH ||
+             GII->getIntrinsicID() == GenISAIntrinsic::GenISA_umulH) &&
+            GII->getArgOperand(0)->getType()->isIntegerTy(64))
         {
-            if ((GII->getIntrinsicID() == GenISAIntrinsic::GenISA_imulH ||
-                GII->getIntrinsicID() == GenISAIntrinsic::GenISA_umulH) &&
-                GII->getArgOperand(0)->getType()->isIntegerTy(64))
-            {
-                BasicBlock* const bb = GII->getParent();
-                IGC_ASSERT(nullptr != bb);
-                Function* const f = bb->getParent();
-                IGC_ASSERT(nullptr != f);
-                IGCLLVM::IRBuilder<> Builder(GII);
+            BasicBlock* const bb = GII->getParent();
+            IGC_ASSERT(nullptr != bb);
+            Function* const f = bb->getParent();
+            IGC_ASSERT(nullptr != f);
+            IGCLLVM::IRBuilder<> Builder(GII);
 
-                const bool isSigned = GII->getIntrinsicID() == GenISAIntrinsic::GenISA_imulH;
+            const bool isSigned = GII->getIntrinsicID() == GenISAIntrinsic::GenISA_imulH;
 
-                IGC_ASSERT(GII->getArgOperand(0)->getType() == GII->getArgOperand(1)->getType());
-                Value* newInst = CreateMulh(*f, Builder, isSigned, GII->getArgOperand(0), GII->getArgOperand(1));
-                IGC_ASSERT_MESSAGE(nullptr != newInst, "CreateMulh failed.");
-                GII->replaceAllUsesWith(newInst);
-                GII->eraseFromParent();
-            }
+            IGC_ASSERT(GII->getArgOperand(0)->getType() == GII->getArgOperand(1)->getType());
+            Value* newInst = CreateMulh(*f, Builder, isSigned, GII->getArgOperand(0), GII->getArgOperand(1));
+            IGC_ASSERT_MESSAGE(nullptr != newInst, "CreateMulh failed.");
+            GII->replaceAllUsesWith(newInst);
+            GII->eraseFromParent();
         }
     }
     m_ctx->m_instrTypes.numInsts++;
