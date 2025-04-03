@@ -387,7 +387,7 @@ bool IGCVectorizer::handleBinaryInstruction(VecArr &Slice) {
 
     auto BinaryOpcode = llvm::cast<BinaryOperator>(First)->getOpcode();
 
-    auto* CreatedInst = BinaryOperator::Create(BinaryOpcode, Operands[0], Operands[1]);
+    auto* CreatedInst = BinaryOperator::CreateWithCopiedFlags(BinaryOpcode, Operands[0], Operands[1], First);
     CreatedInst->setName("vectorized_binary");
 
     CreatedInst->setDebugLoc(First->getDebugLoc());
@@ -822,12 +822,12 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
                 writeLog();
                 // this is important to not mix up instructions that were created for the chain
                 // that was scraped later
-                ScalarToVector.clear();
                 std::reverse(CreatedVectorInstructions.begin(), CreatedVectorInstructions.end());
                 PRINT_DS("To Clean: ", CreatedVectorInstructions);
                 // we move to a new cycle-proof deletion algorithm
                 for (auto& el : CreatedVectorInstructions) {
                     PRINT_LOG("Cleaned: "); PRINT_INST_NL(el); writeLog();
+                    ScalarToVector.erase(el);
                     el->replaceAllUsesWith(UndefValue::get(el->getType()));
                     el->eraseFromParent();
                 }

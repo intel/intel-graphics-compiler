@@ -4798,6 +4798,40 @@ void EmitPass::Inv(const SSource sources[2], const DstModifier& modifier) {
     return;
 }
 
+
+void EmitPass::VectorMad(const SSource sources[3], const DstModifier& modifier) {
+
+    CVariable* src[3];
+    for (int i = 0; i < 3; ++i) src[i] = GetSrcVariable(sources[i]);
+
+    unsigned int VectorSize = 0;
+    if (llvm::isa<Instruction>(sources[0].value))
+        VectorSize = getVectorSize(llvm::cast<Instruction>(sources[0].value));
+
+    for (unsigned int i = 0; i < VectorSize; ++i) {
+
+        SetSourceModifiers(0, sources[0]);
+        SetSourceModifiers(1, sources[1]);
+        SetSourceModifiers(2, sources[2]);
+
+        if (src[0]->IsUniform()) m_encoder->SetSrcSubReg(0, i);
+        else m_encoder->SetSrcSubVar(0, i);
+        if (src[1]->IsUniform()) m_encoder->SetSrcSubReg(1, i);
+        else m_encoder->SetSrcSubVar(1, i);
+        if (src[2]->IsUniform()) m_encoder->SetSrcSubReg(2, i);
+        else m_encoder->SetSrcSubVar(2, i);
+
+        bool AllAreUniform = src[0]->IsUniform() &&
+            src[1]->IsUniform() && src[2]->IsUniform();
+
+        if (AllAreUniform) m_encoder->SetDstSubReg(i);
+        else m_encoder->SetDstSubVar(i);
+
+        m_encoder->Mad(m_destination, src[0], src[1], src[2]);
+        m_encoder->Push();
+    }
+}
+
 void EmitPass::FDiv(const SSource sources[2], const DstModifier& modifier)
 {
     if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&

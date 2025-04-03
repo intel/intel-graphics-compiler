@@ -3,7 +3,7 @@
 
 ; RUN: igc_opt -S  --igc-vectorizer -dce < %s 2>&1 | FileCheck %s
 
-; CHECK: %vectorized_binary = fdiv <8 x float>
+; CHECK: %vectorized_binary = fdiv fast <8 x float>
 
 ; ModuleID = 'reduced.ll'
 source_filename = "initial_test.ll"

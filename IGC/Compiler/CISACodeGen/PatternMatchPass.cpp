@@ -2370,14 +2370,25 @@ namespace IGC
             SSource sources[3];
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                pass->Mad(sources, modifier);
+                if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
+                        sources[0].value->getType()->isVectorTy() &&
+                        sources[1].value->getType()->isVectorTy() &&
+                        sources[2].value->getType()->isVectorTy())
+                    pass->VectorMad(sources, modifier);
+                else
+                    pass->Mad(sources, modifier);
             }
         };
 
         auto isFpMad = [](const Instruction& I)
         {
-            return I.getType()->isFloatingPointTy();
+            auto vecType = llvm::dyn_cast<FixedVectorType>(I.getType());
+            if (!vecType) return I.getType()->isFloatingPointTy();
+
+            bool isFPType = vecType->getElementType()->isFloatingPointTy();
+            return isFPType;
         };
+
 
         if (isFpMad(I) && (m_ctx->getModuleMetaData()->isPrecise || m_ctx->getModuleMetaData()->compOpt.disableMathRefactoring))
         {

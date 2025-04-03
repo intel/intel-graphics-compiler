@@ -95,6 +95,7 @@ public:
     void Sub(const SSource[2], const DstModifier& mofidier);
     void Xor(const SSource[2], const DstModifier& modifier);
     void FDiv(const SSource[2], const DstModifier& modifier);
+    void VectorMad(const SSource sources[3], const DstModifier& modifier);
     void Pow(const SSource sources[2], const DstModifier& modifier);
     void Avg(const SSource sources[2], const DstModifier& modifier);
     void Rsqrt(const SSource& source, const DstModifier& modifier);
