@@ -145,6 +145,7 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 | has_sample | bool | Optional | false | |
 | has_rtcalls | bool | Optional | false | |
 | generate_local_id | bool | Optional | false | Flag of HW local ID capable info in cross-thread-payload. |
+| has_lsc_stores_with_non_default_l1_cache_controls | bool | Optional | false | Flag of HasLscStoresWithNonDefaultL1CacheControls to determine if the resource barriers should flush UAV coherency. |
 <!--- ExecutionEnv -->
 
 ### Supported thread scheduling mode:

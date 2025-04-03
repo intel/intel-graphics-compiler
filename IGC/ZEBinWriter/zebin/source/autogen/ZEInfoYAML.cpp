@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2024 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -87,6 +87,7 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapOptional("has_sample", info.has_sample, false);
     io.mapOptional("has_rtcalls", info.has_rtcalls, false);
     io.mapOptional("generate_local_id", info.generate_local_id, false);
+    io.mapOptional("has_lsc_stores_with_non_default_l1_cache_controls", info.has_lsc_stores_with_non_default_l1_cache_controls, false);
 }
 void MappingTraits<zeInfoPayloadArgument>::mapping(IO& io, zeInfoPayloadArgument& info)
 {
