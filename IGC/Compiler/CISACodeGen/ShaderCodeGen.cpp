@@ -69,6 +69,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MSAAInsertDiscard.hpp"
 #include "Compiler/CISACodeGen/PromoteInt8Type.hpp"
 #include "Compiler/CISACodeGen/PrepareLoadsStoresPass.h"
+#include "Compiler/CISACodeGen/CallMergerPass.hpp"
 #include "Compiler/CISACodeGen/EvaluateFreeze.hpp"
 #include "Compiler/CISACodeGen/DpasScan.hpp"
 #include "Compiler/CISACodeGen/FPRoundingModeCoalescing.hpp"
@@ -1825,6 +1826,11 @@ void OptimizeIR(CodeGenContext* const pContext)
         if (pContext->m_enableSubroutine &&
             getFunctionControl(pContext) == FLAG_FCALL_DEFAULT)
         {
+            mpm.add(createEstimateFunctionSizePass(EstimateFunctionSize::AL_Kernel));
+            if (IGC_IS_FLAG_ENABLED(EnableLargeFunctionCallMerging))
+            {
+                mpm.add(new CallMerger());
+            }
             mpm.add(createEstimateFunctionSizePass(EstimateFunctionSize::AL_Kernel));
             mpm.add(createSubroutineInlinerPass());
         }

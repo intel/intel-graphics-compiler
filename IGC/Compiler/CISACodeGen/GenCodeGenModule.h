@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 #include "Compiler/MetaDataApi/MetaDataApi.h"
-#include "Compiler/CISACodeGen/helper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/ValueHandle.h"
 #include "llvm/Pass.h"

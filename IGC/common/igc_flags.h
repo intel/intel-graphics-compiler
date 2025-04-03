@@ -721,6 +721,7 @@ DECLARE_IGC_REGKEY(bool, EnableThreadCombiningWithNoSLM, false, "Enable thread c
 DECLARE_IGC_REGKEY(DWORD, PrintFunctionSizeAnalysis,     0, "Print analysis data of function sizes", true)
 DECLARE_IGC_REGKEY(DWORD, SubroutineThreshold,          110000, "Minimal kernel size to enable subroutines", false)
 DECLARE_IGC_REGKEY(DWORD, SubroutineInlinerThreshold,   3000, "Subroutine inliner threshold", false)
+DECLARE_IGC_REGKEY(bool, EnableLargeFunctionCallMerging,   true, "Merge mutually exclusive calls to large functions to enable inlining", false)
 DECLARE_IGC_REGKEY(bool, ControlKernelTotalSize,        true, "Control kernel total size", true)
 DECLARE_IGC_REGKEY(bool, StaticProfileGuidedTrimming,   false, "Enable static analysis in the kernel trimming", true)
 DECLARE_IGC_REGKEY(debugString, SelectiveTrimming,      0, "Choose a specific function to trim", true)
