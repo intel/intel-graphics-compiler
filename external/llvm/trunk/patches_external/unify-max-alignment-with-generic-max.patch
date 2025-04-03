@@ -18,7 +18,6 @@ This is backport of this fix: https://github.com/llvm/llvm-project/pull/99257
 
 "[IR] Unify max alignment for arguments with generic max align."
 
-
 From 47f034550a5fb9ef6adee6347cd3c00e70ca663d Mon Sep 17 00:00:00 2001
 From: Eli Friedman <efriedma@quicinc.com>
 Date: Tue, 16 Jul 2024 16:03:38 -0700
@@ -38,7 +37,7 @@ While I'm here, also add a verifier check for the ByValOrByRefSize.
  5 files changed, 42 insertions(+), 34 deletions(-)
 
 diff --git a/llvm/include/llvm/CodeGen/TargetCallingConv.h b/llvm/include/llvm/CodeGen/TargetCallingConv.h
-index 1333f2d98973..1ae1688c60b7 100644
+index 1333f2d98..1ae1688c6 100644
 --- a/llvm/include/llvm/CodeGen/TargetCallingConv.h
 +++ b/llvm/include/llvm/CodeGen/TargetCallingConv.h
 @@ -45,9 +45,9 @@ namespace ISD {
@@ -64,10 +63,10 @@ index 1333f2d98973..1ae1688c60b7 100644
  
      bool isZExt() const { return IsZExt; }
 diff --git a/llvm/lib/IR/Verifier.cpp b/llvm/lib/IR/Verifier.cpp
-index e3ea256af16d..02c40e59de05 100644
+index 2d62d31cf..5a82f1202 100644
 --- a/llvm/lib/IR/Verifier.cpp
 +++ b/llvm/lib/IR/Verifier.cpp
-@@ -278,13 +278,6 @@ namespace {
+@@ -279,13 +279,6 @@ namespace {
  
  class Verifier : public InstVisitor<Verifier>, VerifierSupport {
    friend class InstVisitor<Verifier>;
@@ -81,7 +80,7 @@ index e3ea256af16d..02c40e59de05 100644
    DominatorTree DT;
  
    /// When verifying a basic block, keep track of all of the
-@@ -1836,31 +1829,43 @@ void Verifier::verifyParameterAttrs(AttributeSet Attrs, Type *Ty,
+@@ -1870,31 +1863,43 @@ void Verifier::verifyParameterAttrs(AttributeSet Attrs, Type *Ty,
    }
  
    if (PointerType *PTy = dyn_cast<PointerType>(Ty)) {
@@ -131,14 +130,14 @@ index e3ea256af16d..02c40e59de05 100644
      }
      if (!PTy->isOpaque()) {
        if (!isa<PointerType>(PTy->getNonOpaquePointerElementType()))
-@@ -3179,12 +3184,15 @@ void Verifier::visitCallBase(CallBase &Call) {
-   Check(verifyAttributeCount(Attrs, Call.arg_size()),
-         "Attribute after last parameter!", Call);
+@@ -3237,12 +3242,15 @@ void Verifier::visitCallBase(CallBase &Call) {
+     Check(Callee->getValueType() == FTy,
+           "Intrinsic called with incompatible signature", Call);
  
-+// Disallow passing/returning values with alignment higher than we can
-+// represent.
-+// FIXME: Consider making DataLayout cap the alignment, so this isn't
-+// necessary.
++  // Disallow passing/returning values with alignment higher than we can
++  // represent.
++  // FIXME: Consider making DataLayout cap the alignment, so this isn't
++  // necessary.
    auto VerifyTypeAlign = [&](Type *Ty, const Twine &Message) {
      if (!Ty->isSized())
        return;
