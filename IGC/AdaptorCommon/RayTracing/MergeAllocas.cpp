@@ -244,6 +244,7 @@ AllocationBasedLivenessAnalysis::LivenessData* AllocationBasedLivenessAnalysis::
         case Instruction::PHI:
         case Instruction::GetElementPtr:
         case Instruction::BitCast:
+        case Instruction::Select:
             for (auto& use : II->uses())
                 worklist.push_back(&use);
 
