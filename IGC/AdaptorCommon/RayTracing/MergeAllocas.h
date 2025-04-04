@@ -85,7 +85,7 @@ namespace IGC
 
     struct AllocaInfo {
         llvm::SmallVector<AllocaInfo*> nonOverlapingAllocas;
-        llvm::AllocaInst* alloca;
+        llvm::AllocaInst* allocaI;
         AllocationBasedLivenessAnalysis::LivenessData* livenessData;
         unsigned int addressSpace;
         std::size_t allocationSize;

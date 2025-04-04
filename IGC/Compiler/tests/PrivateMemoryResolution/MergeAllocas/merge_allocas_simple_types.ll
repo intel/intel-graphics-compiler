@@ -15,7 +15,6 @@
 define spir_kernel void @main(float addrspace(1)* %0, i64 %1, i64 %2, i32 %3, i32 %4) {
 ; CHECK-LABEL: main
 ; CHECK-NEXT: alloca i64, align 4
-; CHECK-NEXT: bitcast i64* {{.*}} to float*
 ; CHECK-NOT: alloca float, align 4
   %6 = alloca float, align 4
   %7 = alloca i64, align 4
@@ -26,6 +25,9 @@ define spir_kernel void @main(float addrspace(1)* %0, i64 %1, i64 %2, i32 %3, i3
   br i1 %9, label %10, label %11
 
 10:
+; CHECK: bitcast i64* {{.*}} to i8*
+; CHECK-NEXT: getelementptr inbounds i8, i8* {{.*}}, i32 0
+; CHECK-NEXT: bitcast i8* {{.*}} to float*
   store float 5.000000e-01, float* %6, align 4
   br label %12
 

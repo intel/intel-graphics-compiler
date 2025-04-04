@@ -114,55 +114,35 @@ static bool AddNonOverlappingAlloca(AllocaInfo *MergableAlloca,
 }
 
 static void ReplaceAllocas(const AllocaInfo &MergableAlloca, Function &F) {
-    Instruction *topAlloca = MergableAlloca.alloca;
+    auto* topAlloca = MergableAlloca.allocaI;
     topAlloca->moveBefore(F.getEntryBlock().getFirstNonPHI());
     topAlloca->setName(VALUE_NAME("MergedAlloca"));
 
-    IRBuilder<> Builder(topAlloca->getParent());
-    Instruction *topAllocaBitcast = nullptr;
+    auto allocasToReplace = MergableAlloca.nonOverlapingAllocas;
 
-    SmallVector<AllocaInfo *> allocasToReplace;
-    allocasToReplace.insert(allocasToReplace.end(),
-                            MergableAlloca.nonOverlapingAllocas.begin(),
-                            MergableAlloca.nonOverlapingAllocas.end());
+    while (!allocasToReplace.empty())
+    {
+        auto* subAllocaInfo = allocasToReplace.pop_back_val();
+        auto* subAllocaI = subAllocaInfo->allocaI;
 
-    while (!allocasToReplace.empty()) {
-        auto *subAlloca = allocasToReplace.pop_back_val();
+        llvm::DenseMap<Use*, Value*> useMap;
 
-        auto *subInst = subAlloca->alloca;
-        auto *ReplacementValue = topAlloca;
-
-        if (topAlloca->getType() != subInst->getType()) {
-            auto *InsertionPoint =
-                (topAllocaBitcast != nullptr) ? topAllocaBitcast : topAlloca;
-            Builder.SetInsertPoint(InsertionPoint->getNextNode());
-
-            Value *ValueToCast = nullptr;
-            // If we have offset from original alloca we need to create GEP
-            if (subAlloca->offset != 0) {
-                // We can re-use same bitcast
-                if (topAllocaBitcast == nullptr) {
-                    topAllocaBitcast = cast<Instruction>(
-                        Builder.CreateBitCast(topAlloca,  Builder.getInt8PtrTy(topAlloca->getType()->getPointerAddressSpace())));
-                }
-                auto *Offset = Builder.getInt32(subAlloca->offset);
-                auto *GEP = Builder.CreateGEP(Builder.getInt8Ty(),
-                                            topAllocaBitcast, Offset);
-                ValueToCast = GEP;
-            } else {
-                // If no offset is needed we can directly cast to target type
-                ValueToCast = Builder.CreateBitCast(topAlloca, subInst->getType());
-            }
-            auto *CastedValue = llvm::cast<Instruction>(
-                Builder.CreateBitCast(ValueToCast, subInst->getType()));
-            ReplacementValue = CastedValue;
+        for (auto& U : subAllocaI->uses())
+        {
+            IRBuilder<> IRB(cast<Instruction>(U.getUser()));
+            auto* castedTopAlloca = IRB.CreateBitCast(topAlloca, IRB.getInt8PtrTy(topAlloca->getType()->getPointerAddressSpace()));
+            auto* GEP = IRB.CreateInBoundsGEP(IRB.getInt8Ty(), castedTopAlloca, IRB.getInt32(subAllocaInfo->offset));
+            auto* bitCast = IRB.CreateBitCast(GEP, subAllocaI->getType(), VALUE_NAME("derived_from_" + topAlloca->getName()));
+            useMap[&U] = bitCast;
         }
-        subInst->replaceAllUsesWith(ReplacementValue);
-        subInst->eraseFromParent();
 
-        allocasToReplace.insert(allocasToReplace.end(),
-                                subAlloca->nonOverlapingAllocas.begin(),
-                                subAlloca->nonOverlapingAllocas.end());
+        for_each(useMap, [&](auto& pair) {
+            pair.first->set(pair.second);
+        });
+
+        IGC_ASSERT(subAllocaI->use_empty());
+
+        subAllocaI->eraseFromParent();
     }
 }
 
