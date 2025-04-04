@@ -11,8 +11,8 @@ SPDX-License-Identifier: MIT
 // Verify that implicit kernel arguments are not removed for kernels with subroutines.
 // Arguments can be removed for stackcalls.
 
-// RUN: ocloc compile -file %s -device pvc -options "-cl-std=CL2.0 -igc_opts 'EnableStackCallFuncCall=0, RemoveUnusedIdImplicitArguments=1, ShortImplicitPayloadHeader=1, DumpZEInfoToConsole=1'" 2>&1 | FileCheck %s --check-prefix=CHECK-SUBROUTINE
-// RUN: ocloc compile -file %s -device pvc -options "-cl-std=CL2.0 -igc_opts 'EnableStackCallFuncCall=1, RemoveUnusedIdImplicitArguments=1, ShortImplicitPayloadHeader=1, DumpZEInfoToConsole=1'" 2>&1 | FileCheck %s --check-prefix=CHECK-STACKCALL
+// RUN: ocloc compile -file %s -device pvc -options "-cl-std=CL2.0 -igc_opts 'EnableStackCallFuncCall=0, ShortImplicitPayloadHeader=1, DumpZEInfoToConsole=1'" 2>&1 | FileCheck %s --check-prefix=CHECK-SUBROUTINE
+// RUN: ocloc compile -file %s -device pvc -options "-cl-std=CL2.0 -igc_opts 'EnableStackCallFuncCall=1, ShortImplicitPayloadHeader=1, DumpZEInfoToConsole=1'" 2>&1 | FileCheck %s --check-prefix=CHECK-STACKCALL
 
 // CHECK-SUBROUTINE:      name:            kernel_that_must_have_args
 // CHECK-SUBROUTINE:        payload_arguments:

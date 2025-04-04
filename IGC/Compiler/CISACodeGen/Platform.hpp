@@ -1919,6 +1919,9 @@ bool allowRemovingUnusedImplicitArguments() const
     if (IGC_IS_FLAG_SET(RemoveUnusedIdImplicitArguments))
         return IGC_IS_FLAG_ENABLED(RemoveUnusedIdImplicitArguments);
 
+    if (!supportsZEBin())
+        return false;
+
     return isCoreChildOf(IGFX_XE_HP_CORE);
 }
 
