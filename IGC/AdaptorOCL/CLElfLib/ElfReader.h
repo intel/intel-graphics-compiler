@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "CLElfTypes.h"
 
-#if defined(_WIN32) && (__KLOCWORK__ == 0)
+#if defined(_WIN32)
   #define ELF_CALL __stdcall
 #else
   #define ELF_CALL

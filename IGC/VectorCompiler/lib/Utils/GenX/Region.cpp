@@ -219,9 +219,8 @@ CMRegion::CMRegion(unsigned Bits, unsigned ElementBytes)
   IGC_ASSERT(Bits);
   Offset = llvm::countTrailingZeros(Bits);
 
-  // Coverity doesn't like the fact that countTrailingZeros may return 32
-  // and that we could do shift by 32 here.
-  // But. countTrailingZeros would return 32 in scenario where "Bits" variable is 0
+  // It might seem problematic that countTrailingZeros may return 32 and that we could do shift by 32 here.
+  // But countTrailingZeros would return 32 in scenario where "Bits" variable is 0
   // And IGC_ASSERT(Bits) covers this case... in debug mode, at least.
   if (Offset < std::numeric_limits<unsigned>::digits) {
     Bits >>= Offset;
