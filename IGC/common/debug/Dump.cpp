@@ -429,7 +429,7 @@ std::string DumpName::RelativePath() const
 
 bool DumpName::allow() const
 {
-    return doesRegexMatch(RelativePath(), IGC_GET_REGKEYSTRING(ShaderDumpFilter));
+    return doesRegexMatch(RelativePath(), IGC_GET_REGKEYSTRING(ShaderDumpRegexFilter));
 }
 
 namespace {

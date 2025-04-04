@@ -389,7 +389,7 @@ void DumpShaderFile(
         << ext;
     std::string fullFilePathStr = dstDir + fileName.str();
 
-    if (doesRegexMatch(fileName.str(), IGC_GET_REGKEYSTRING(ShaderDumpFilter)))
+    if (doesRegexMatch(fileName.str(), IGC_GET_REGKEYSTRING(ShaderDumpRegexFilter)))
     {
         FILE* pFile = NULL;
         fopen_s(&pFile, fullFilePathStr.c_str(), "wb");

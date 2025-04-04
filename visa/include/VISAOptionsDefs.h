@@ -606,8 +606,8 @@ DEF_VISA_OPTION(vISA_ISAASMToConsole, ET_BOOL, "-isaasmToConsole",
                 "emit isaasm to stdout instead of file and do early exit", false)
 DEF_VISA_OPTION(vISA_DumpIsaVarNames, ET_BOOL, "-dumpisavarnames", UNUSED, true)
 DEF_VISA_OPTION(vISA_UniqueLabels, ET_BOOL, "-uniqueLabel", UNUSED, false)
-DEF_VISA_OPTION(vISA_ShaderDumpFilter, ET_CSTR, "-shaderDumpFilter",
-                "USAGE: -shaderDumpFilter <regex>\n", NULL)
+DEF_VISA_OPTION(vISA_ShaderDumpRegexFilter, ET_CSTR, "-shaderDumpRegexFilter",
+                "USAGE: -shaderDumpRegexFilter <regex>\n", NULL)
 DEF_VISA_OPTION(vISA_DumpvISA, ET_BOOL, "-dumpvisa",
                 "-dumpvisa is deprecated and will be removed.", false)
 DEF_VISA_OPTION(vISA_StripComments, ET_BOOL, "-stripcomments", UNUSED, false)

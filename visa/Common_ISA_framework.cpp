@@ -124,7 +124,7 @@ int CisaInst::createCisaInstruction(ISA_Opcode opcode, unsigned char exec_size,
 }
 
 bool allowDump(const Options &options, const std::string &fullPath) {
-  const char *regex = options.getOptionCstr(vISA_ShaderDumpFilter);
+  const char *regex = options.getOptionCstr(vISA_ShaderDumpRegexFilter);
   if (!regex || *regex == '\0')
     return true;
 

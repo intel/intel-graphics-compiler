@@ -495,7 +495,7 @@ namespace IGC
         {
             static std::mutex m;
             std::lock_guard<std::mutex> lck(m);
-            if(g_shaderOutputFolder != "" && doesRegexMatch(g_shaderOutputFolder, IGC_GET_REGKEYSTRING(ShaderDumpFilter)))
+            if(g_shaderOutputFolder != "" && doesRegexMatch(g_shaderOutputFolder, IGC_GET_REGKEYSTRING(ShaderDumpRegexFilter)))
             {
                 return g_shaderOutputFolder.c_str();
             }
@@ -526,7 +526,7 @@ namespace IGC
                     sprintf_s(dumpPath, "%sunknownProcess_%d\\", dumpPath, _getpid());
                 }
 
-                if (needMkDir() && doesRegexMatch(dumpPath, IGC_GET_REGKEYSTRING(ShaderDumpFilter)))
+                if (needMkDir() && doesRegexMatch(dumpPath, IGC_GET_REGKEYSTRING(ShaderDumpRegexFilter)))
                 {
                     if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY)
                     {
@@ -558,7 +558,7 @@ namespace IGC
 #elif defined __linux__
             if (!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "" && !IGC_IS_FLAG_ENABLED(DumpToCustomDir))
             {
-                bool needMkdir = needMkDir() && doesRegexMatch(GetBaseIGCOutputFolder(), IGC_GET_REGKEYSTRING(ShaderDumpFilter));
+                bool needMkdir = needMkDir() && doesRegexMatch(GetBaseIGCOutputFolder(), IGC_GET_REGKEYSTRING(ShaderDumpRegexFilter));
 
                 char path[MAX_PATH] = { 0 };
                 bool pidEnabled = IGC_IS_FLAG_DISABLED(ShaderDumpPidDisable);

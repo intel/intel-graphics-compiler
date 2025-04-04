@@ -4768,9 +4768,9 @@ namespace IGC
             SaveOption(vISA_Compaction, false);
         }
 
-        if (auto *regex = IGC_GET_REGKEYSTRING(ShaderDumpFilter))
+        if (auto *regex = IGC_GET_REGKEYSTRING(ShaderDumpRegexFilter))
         {
-            SaveOption(vISA_ShaderDumpFilter, regex);
+            SaveOption(vISA_ShaderDumpRegexFilter, regex);
         }
 
         auto *forceSpillVaraibles = IGC_GET_REGKEYSTRING(ForceSpillVariables);
