@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2025 Intel Corporation
+Copyright (C) 2020 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -502,6 +502,10 @@ ulong4 __builtin_IB_subgroup_block_read_flat_transpose_u64_k4(long baseoffset, i
 //   With this, the selection of m/k/v for builtins is to aovid any padding and make sure each block
 //   is multiple of GRF size if there is more than one blocks.
 //
+// Note that the prototypes listed below are for reference and are not complete. The return types used
+// are for kernels with sub group size 16. (If used for a simd32 kernel, the size of the return type should
+// be halfed.)
+//
 
 #if defined(cl_intel_subgroup_extended_block_read_cacheopts) || defined(cl_intel_subgroup_2d_block_io)
 // 2d block read cacheopts
@@ -536,6 +540,21 @@ uint2 __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m8k4(long baseoff
 uint4 __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m8k8(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 
 
+
+//
+// emulated transpose: A matrix of d8
+//
+// u8, m=32 and k=2,4,8
+ushort2  __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k2(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort4  __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k4(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort8  __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k8(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+// emulated transpose: A matrix of d16
+//
+// u16, m=16 and k=2,4,8
+ushort2  __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k2(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort4  __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k4(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort8  __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k8(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 
 
 // 2d block read prefetch

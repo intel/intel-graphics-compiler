@@ -24700,38 +24700,132 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
         destination = BroadcastIfUniform(GetSymbol(inst->getOperand(storeDestinationOperandId)));
     }
 
-    m_encoder->LSC_2DBlockMessage(
-        isRead ? LSC_LOAD_BLOCK2D : LSC_STORE_BLOCK2D,
-        nullptr,
-        destination,
-        nullptr, //pImgBTI - not needed for read
-        pXOffset,
-        pYOffset,
-        blockWidth,  //elements based
-        blockHeight,
-        elemSizeInBits,
-        numBlocksV,
-        isTranspose,
-        isVnni,
-        pFlatImageBaseoffset,
-        pFlatImageWidth,
-        pFlatImageHeight,
-        pFlatImagePitch,
-        cacheOpts);
-    m_encoder->Push();
+    bool emu_read = (isRead && isTranspose &&
+        (elemSizeInBits == 8 || elemSizeInBits == 16));
+    if (!emu_read) {
+        m_encoder->LSC_2DBlockMessage(
+            isRead ? LSC_LOAD_BLOCK2D : LSC_STORE_BLOCK2D,
+            nullptr,
+            destination,
+            nullptr, //pImgBTI - not needed for read
+            pXOffset,
+            pYOffset,
+            blockWidth,  //elements based
+            blockHeight,
+            elemSizeInBits,
+            numBlocksV,
+            isTranspose,
+            isVnni,
+            pFlatImageBaseoffset,
+            pFlatImageWidth,
+            pFlatImageHeight,
+            pFlatImagePitch,
+            cacheOpts);
+        m_encoder->Push();
 
-    if (isRead &&
-        !isPrefetch &&
-        destination != m_destination)
-    {
-        // m1 v2 block read
-        m_encoder->Copy(m_destination, destination);
-        m_encoder->Push();
-        m_encoder->SetSrcSubVar(0, 1);
-        m_encoder->SetDstSubReg(m_destination->GetNumberElement() / 2);
-        m_encoder->Copy(m_destination, destination);
-        m_encoder->Push();
+
+        if (isRead &&
+            !isPrefetch &&
+            destination != m_destination)
+        {
+            // m1 v2 block read
+            m_encoder->Copy(m_destination, destination);
+            m_encoder->Push();
+            m_encoder->SetSrcSubVar(0, 1);
+            m_encoder->SetDstSubReg(m_destination->GetNumberElement() / 2);
+            m_encoder->Copy(m_destination, destination);
+            m_encoder->Push();
+        }
+        return;
     }
+
+    // emulation
+    bool emu_d8 = (elemSizeInBits == 8 && blockHeight == 32 &&
+        (blockWidth == 2 || blockWidth == 4 || blockWidth == 8));
+    bool emu_d16 = (elemSizeInBits == 16 && blockHeight == 16 &&
+        (blockWidth == 2 || blockWidth == 4 || blockWidth == 8));
+    if (emu_d8 || emu_d16) {
+        assert(m_currShader->m_Platform->getGRFSize() == 64 &&
+            "2d block d8/d16 transpose emulation is supported on PVC+ only");
+        assert(m_SimdMode >= SIMDMode::SIMD16);
+        //
+        // 1. Emulation of u8_m32k2.
+        //    Use 2dBlock transform load.d8.2x32 (widthxheight).
+        //    Input:
+        //       a(0,0)   a(0,1)
+        //       a(1,0)   a(1,1)
+        //       a(2,0)   a(2,1)
+        //       a(3,0)   a(3,1)
+        //       a(4,0)   a(4,1)
+        //       a(5,0)   a(5,1)
+        //       a(6,0)   a(6,1)
+        //       a(7,0)   a(7,1)
+        //       ......
+        //       a(31,0)  a(31,1)
+        //   after transform load, assume that the loaded value is in GRF r10:
+        //       DW0{a(0,0),a(1,0),a(2,0),a3,0)}  DW1{a(0,1),a(1,1),a(2,1),a(3,1)}
+        //       DW2{a(4,0),a(5,0),a(6,0),a7,0)}  DW3{a(4,1),a(5,1),a(6,1),a(7,1)}
+        //       ......
+        //       DW14{a(28,0),.........,a(31,0)}  DW15{a(28,1),..........,a(31,1)}
+        //
+        //   *** Using the following mov instructin ***
+        //       (W) mov (16)  r20.0<1>:ud    r10.0<1;8,2>:ud
+        //
+        //   The final data in GRF r20 (tranposed input):
+        //       DW0, DW2, DW4, ..., DW14, DW1, DW3, ......, DW15
+        //
+        //   ** Code example **
+        //           (r20,r21) = load.u8.4x32tn (transpose_u8_m32k4)
+        //     ==>
+        //           (r10,r11) = load.u8.2x2x32nt (transform 2 blocks, each is 32x2)
+        //           (W) mov (16|M0)   r20.0<1>:ud    r10.0<1;8,2>:ud
+        //           (W) mov (16|M0)   r21.0<1>:ud    r11.0<1;8,2>:ud
+        //
+        // 2. For m32k4/k32k8, divide larger blocks into multiple m32k2 and loaded
+        //    with a single tranform load. For each block, insert mov as shown in 1.
+        //
+        //    For example, u8_m32k8 is divided into 4 m32k2 and loaded with
+        //    transform load.d8.2x32x4 (numOfBlocks = 4). For each m32k2, insert
+        //    one mov instructions, thus there are 4 mov instructions.
+        //
+        CVariable* tmpDest = m_currShader->GetNewVariable(destination);
+        int numBlocks = blockWidth / 2;
+        m_encoder->LSC_2DBlockMessage(
+            LSC_LOAD_BLOCK2D,
+            nullptr,
+            tmpDest,
+            nullptr, //pImgBTI - not needed for read
+            pXOffset,
+            pYOffset,
+            2,
+            blockHeight,
+            elemSizeInBits,
+            numBlocks,
+            false,
+            true,
+            pFlatImageBaseoffset,
+            pFlatImageWidth,
+            pFlatImageHeight,
+            pFlatImagePitch,
+            cacheOpts);
+        m_encoder->Push();
+
+        CVariable* tmpDestDW = m_currShader->GetNewAlias(tmpDest, ISA_TYPE_UD, 0, 0);
+        CVariable* destDW = m_currShader->GetNewAlias(destination, ISA_TYPE_UD, 0, 0);
+        for (int i = 0; i < numBlocks; ++i) {
+            m_encoder->SetDstRegion(1);
+            m_encoder->SetDstSubReg(i * 16);
+            m_encoder->SetSrcRegion(0, 1, 8, 2);
+            m_encoder->SetSrcSubReg(0, i * 16);
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetNoMask();
+            m_encoder->Copy(destDW, tmpDestDW);
+            m_encoder->Push();
+        }
+        return;
+    }
+    m_pCtx->EmitError("IGC: unhandled 2d block read!", inst);
+    IGC_ASSERT_MESSAGE(0, "Unhandled 2d block read");
 }
 
 void EmitPass::emitLSC2DBlockAddrPayload(GenIntrinsicInst* GII)

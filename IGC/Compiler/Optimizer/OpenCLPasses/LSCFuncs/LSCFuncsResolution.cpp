@@ -1020,6 +1020,55 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
                 return nullptr;
             }
         }
+        else if (elemSize == 16 && m_pCtx->platform.getGRFSize() == 64)
+        {
+            // The following are emulated on PVC+
+            // (GRF size: 64 bytes, simd size >= simd16)
+            //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k2
+            //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k4
+            //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k8
+            numBlocksV = 1;
+            if (funcName.consume_front("_m16"))
+            {
+                tileHeight = 16;
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(0, "D16 transpose (emulated) supports height=16 only.");
+                return nullptr;
+            }
+
+            tileWidth = 0;
+            funcName = consume_number(funcName, "k", &tileWidth);
+            if (tileWidth != 2 && tileWidth != 4 && tileWidth != 8) {
+                IGC_ASSERT_MESSAGE(0, "D16 transpose (emulated) supports width 2, 4, 8 only.");
+                return nullptr;
+            }
+        }
+        else if (elemSize == 8 && m_pCtx->platform.getGRFSize() == 64) {
+            // The following are emulated on PVC+
+            // (GRF size: 64 bytes, simd size >= simd16)
+            //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k2
+            //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k4
+            //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k8
+            numBlocksV = 1;
+            if (funcName.consume_front("_m32"))
+            {
+                tileHeight = 32;
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(0, "D8 transpose (emulated) support height=32 only.");
+                return nullptr;
+            }
+
+            tileWidth = 0;
+            funcName = consume_number(funcName, "k", &tileWidth);
+            if (tileWidth != 2 && tileWidth != 4 && tileWidth != 8) {
+                IGC_ASSERT_MESSAGE(0, "D8 transpose (emulated) support width 2, 4, 8 only.");
+                return nullptr;
+            }
+        }
         else
         {
             IGC_ASSERT_MESSAGE(0, "Transpose only supports elemSize d32, d64.");
