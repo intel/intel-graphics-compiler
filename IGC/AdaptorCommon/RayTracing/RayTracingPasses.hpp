@@ -24,4 +24,5 @@ llvm::Pass* CreateDynamicRayManagementPass();
 llvm::Pass* CreateRTGlobalsPointerLoweringPass();
 llvm::Pass* createOverrideTMaxPass(unsigned OverrideValue);
 llvm::Pass* createMergeAllocas();
+llvm::Pass* createRaytracingMergeAllocas();
 }

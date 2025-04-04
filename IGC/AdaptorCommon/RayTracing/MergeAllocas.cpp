@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "MergeAllocas.h"
 #include "Compiler/IGCPassSupport.h"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/igc_regkeys.hpp"
 #include "Probe/Assertion.h"
 #include "debug/DebugMacros.hpp"
@@ -478,6 +479,7 @@ bool AllocationBasedLivenessAnalysis::LivenessData::OverlapsWith(const LivenessD
     // check lifetime boundaries
     for (auto& [LD1, LD2] : { std::make_pair(this, &LD), std::make_pair(&LD, this) })
     {
+        // TODO: replace the whole logic with ContainsInstruction checks
         for (auto* I : LD1->lifetimeEnds)
         {
             // what if LD1 is contained in a single block
@@ -513,6 +515,42 @@ bool AllocationBasedLivenessAnalysis::LivenessData::OverlapsWith(const LivenessD
         }
     }
     return false;
+}
+
+bool IGC::AllocationBasedLivenessAnalysis::LivenessData::ContainsInstruction(const llvm::Instruction& I) const
+{
+    auto* bb = I.getParent();
+
+    // if the LD is contained in a single block, bbIn and bbOut are going to be empty.
+    // TODO: maybe LivenessData deserves a flag to mark livenesses contained in a single block?
+    if (bbIn.empty() && bbOut.empty())
+    {
+        if (bb != lifetimeStart->getParent())
+            return false;
+
+        if (I.comesBefore(lifetimeStart))
+            return false;
+
+        if (lifetimeEnds[0]->comesBefore(&I))
+            return false;
+
+        return true;
+    }
+
+    if (!bbIn.contains(bb) && !bbOut.contains(bb))
+        return false;
+
+    if (bbIn.contains(bb) && bbOut.contains(bb))
+        return true;
+
+    if (lifetimeStart->getParent() == bb && !I.comesBefore(lifetimeStart))
+        return true;
+
+    bool overlapsWithEnd = any_of(lifetimeEnds, [&](auto* lifetimeEnd) {
+        return lifetimeEnd->getParent() == bb && !lifetimeEnd->comesBefore(&I);
+    });
+
+    return overlapsWithEnd;
 }
 
 // Register pass to igc-opt
@@ -567,6 +605,10 @@ bool MergeAllocas::runOnFunction(Function &F) {
     // We iterate over analysis results collecting non-overlapping allocas.
     for (const auto &A : ABLA) {
         const auto &[currI, currLD] = A;
+
+        if (skipInstruction(F, *currLD))
+            continue;
+
         AllAllocasInfos[currentIndex] =
             GetAllocaInfo(cast<AllocaInst>(currI), currLD, DataLayout);
         AllocaInfo &AllocaInfo = AllAllocasInfos[currentIndex];
@@ -602,4 +644,35 @@ bool MergeAllocas::runOnFunction(Function &F) {
     }
 
     return changed;
+}
+
+// Register pass to igc-opt
+IGC_INITIALIZE_PASS_BEGIN(RaytracingMergeAllocas, "igc-rtx-merge-allocas", "Try to reuse allocas with nonoverlapping lifetimes - raytracing version", false, false)
+IGC_INITIALIZE_PASS_DEPENDENCY(AllocationBasedLivenessAnalysis)
+IGC_INITIALIZE_PASS_END(RaytracingMergeAllocas, "igc-rtx-merge-allocas", "Try to reuse allocas with nonoverlapping lifetimes - raytracing version", false, false)
+
+char RaytracingMergeAllocas::ID = 0;
+
+RaytracingMergeAllocas::RaytracingMergeAllocas()
+{
+    initializeRaytracingMergeAllocasPass(*llvm::PassRegistry::getPassRegistry());
+}
+
+bool RaytracingMergeAllocas::skipInstruction(llvm::Function& F, AllocationBasedLivenessAnalysis::LivenessData& LD)
+{
+    for (auto& I : llvm::make_filter_range(instructions(F), [](auto& I) { return isa<ContinuationHLIntrinsic>(&I); }))
+    {
+        if (LD.ContainsInstruction(I))
+            return false;
+    }
+
+    return true;
+}
+
+namespace IGC
+{
+    Pass* createRaytracingMergeAllocas()
+    {
+        return new RaytracingMergeAllocas();
+    }
 }

@@ -64,6 +64,7 @@ namespace IGC
             );
 
             bool OverlapsWith(const LivenessData& LD) const;
+            bool ContainsInstruction(const llvm::Instruction& I) const;
         };
 
     private:
@@ -105,10 +106,26 @@ namespace IGC
             return "MergeAllocas";
         }
 
+        virtual bool skipInstruction(llvm::Function& F, AllocationBasedLivenessAnalysis::LivenessData& LD) { return false; };
+
         void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
 
         static char ID;
     private:
         std::vector<AllocaInfo> AllAllocasInfos;
+    };
+
+    class RaytracingMergeAllocas : public MergeAllocas
+    {
+    public:
+        RaytracingMergeAllocas();
+        llvm::StringRef getPassName() const override
+        {
+            return "RaytracingMergeAllocas";
+        }
+
+        bool skipInstruction(llvm::Function& F, AllocationBasedLivenessAnalysis::LivenessData& LD) override;
+
+        static char ID;
     };
 } // namespace IGC
