@@ -21,14 +21,14 @@
 
 ; CHECK: [[ST_V:%[A-z0-9]*]] = alloca
 ; CHECK: @llvm.dbg.declare(metadata {{.*}} [[ST_V]], metadata [[ST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ST_LOC:![0-9]*]]
-; CHECK: [[LOAD1_V:%[A-z0-9*]]] = load {{.*}}, !dbg [[LOAD1_LOC:![0-9]*]]
+; CHECK: [[LOAD1_V:%[A-z0-9]*]] = load {{.*}}, !dbg [[LOAD1_LOC:![0-9]*]]
 ; CHECK-DAG: [[EXTR1_V:%[A-z0-9]*]] = extractelement {{.*}} 0, !dbg [[EXTR1_LOC:![0-9]*]]
 ; CHECK-DAG: [[EXTR2_V:%[A-z0-9]*]] = extractelement {{.*}} 1, !dbg [[EXTR2_LOC:![0-9]*]]
-; CHECK-DAG: [[EXTR3_V:%[A-z0-9]*]] = extractelement {{.*}} 2, !dbg [[EXTR3_LOC:![0-9]*]]
+; CHECK-DAG: [[LOAD2_V:%[A-z0-9]*]] = load {{.*}}, !dbg [[LOAD2_LOC:![0-9]*]]
 ; CHECK-DAG: @llvm.dbg.value(metadata {{.*}}, metadata [[LOAD1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD1_LOC]]
 ; CHECK-DAG: @llvm.dbg.value(metadata {{.*}} [[EXTR1_V]], metadata [[EXTR1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR1_LOC]]
 ; CHECK-DAG: @llvm.dbg.value(metadata {{.*}} [[EXTR2_V]], metadata [[EXTR2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR2_LOC]]
-; CHECK-DAG: @llvm.dbg.value(metadata {{.*}} [[EXTR3_V]], metadata [[EXTR3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR3_LOC]]
+; CHECK-DAG: @llvm.dbg.value(metadata {{.*}}, metadata [[LOAD2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD2_LOC]]
 ; CHECK-DAG: [[CALL1_V:%[A-z0-9*]]] = call float {{.*}}, !dbg [[CALL1_LOC:![0-9]*]]
 ; CHECK-DAG: @llvm.dbg.value(metadata <4 x float> {{.*}}, metadata [[CALL0_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL0_LOC:![0-9]*]]
 ; CHECK-DAG: @llvm.dbg.value(metadata float [[CALL1_V]], metadata [[CALL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL1_LOC]]
@@ -75,8 +75,8 @@ define spir_kernel void @test_vecpre(<4 x float> addrspace(1)* %a) !dbg !6 {
 ; CHECK-DAG: [[EXTR1_LOC]] = !DILocation(line: 3, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[EXTR2_MD]] = !DILocalVariable(name: "4", scope: [[SCOPE]], file: [[FILE]], line: 4
 ; CHECK-DAG: [[EXTR2_LOC]] = !DILocation(line: 4, column: 1, scope: [[SCOPE]])
-; CHECK-DAG: [[EXTR3_MD]] = !DILocalVariable(name: "5", scope: [[SCOPE]], file: [[FILE]], line: 5
-; CHECK-DAG: [[EXTR3_LOC]] = !DILocation(line: 5, column: 1, scope: [[SCOPE]])
+; CHECK-DAG: [[LOAD2_MD]] = !DILocalVariable(name: "5", scope: [[SCOPE]], file: [[FILE]], line: 5
+; CHECK-DAG: [[LOAD2_LOC]] = !DILocation(line: 5, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[CALL0_MD]] = !DILocalVariable(name: "6", scope: [[SCOPE]], file: [[FILE]], line: 6
 ; CHECK-DAG: [[CALL0_LOC]] = !DILocation(line: 6, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[CALL1_MD]] = !DILocalVariable(name: "7", scope: [[SCOPE]], file: [[FILE]], line: 7
