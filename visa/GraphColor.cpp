@@ -1948,223 +1948,177 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
   bool isDstLocallyAssigned = false;
   unsigned dstId = 0;
   int dstPreg = 0, dstNumRows = 0;
-  bool dstMoreThan1GRF = false;
-  bool dstMoreThan2GRF = false;
+  bool dstOpndNumRows = false;
 
   G4_DstRegRegion *dst = inst->getDst();
-  if (!dst->getBase()->isRegVar() || dst->getTopDcl()->getRegFile() != G4_GRF) {
-    return;
-  }
+  if (dst->getBase()->isRegVar() &&
+      (dst->getTopDcl()->getRegFile() == G4_GRF)) {
+    G4_Declare *dstDcl = dst->getTopDcl();
+    int dstOffset = dst->getLeftBound() / kernel.numEltPerGRF<Type_UB>();
+    bool isDstEvenAlign = gra.isEvenAligned(dstDcl);
 
-  G4_Declare *dstDcl = dst->getTopDcl();
-  int dstOffset = dst->getLeftBound() / kernel.numEltPerGRF<Type_UB>();
-  bool isDstEvenAlign = gra.isEvenAligned(dstDcl);
-  bool isDstQuadAlign = gra.isQuadAligned(dstDcl);
+    if (dst->getBase()->isRegAllocPartaker()) {
+      isDstRegAllocPartaker = true;
+      dstId = ((G4_RegVar *)dst->getBase())->getId();
+      dstOpndNumRows = dst->getSubRegOff() * dst->getTypeSize() +
+                           dst->getLinearizedEnd() - dst->getLinearizedStart() +
+                           1 >
+                       kernel.numEltPerGRF<Type_UB>();
+    } else if (gra.useLocalRA) {
+      LocalLiveRange *localLR = NULL;
+      G4_Declare *topdcl = GetTopDclFromRegRegion(dst);
 
-  if (dst->getBase()->isRegAllocPartaker()) {
-    isDstRegAllocPartaker = true;
-    dstId = ((G4_RegVar *)dst->getBase())->getId();
-    unsigned dstGRFByteSizeWithOffset =
-        dst->getSubRegOff() * dst->getTypeSize() + dst->getLinearizedEnd() -
-        dst->getLinearizedStart() + 1;
-    dstMoreThan1GRF = dstGRFByteSizeWithOffset > kernel.numEltPerGRF<Type_UB>();
-    dstMoreThan2GRF =
-        dstGRFByteSizeWithOffset > (2 * kernel.numEltPerGRF<Type_UB>());
-  } else if (gra.useLocalRA) {
-    LocalLiveRange *localLR = NULL;
-    G4_Declare *topdcl = GetTopDclFromRegRegion(dst);
-
-    if (topdcl)
-      localLR = gra.getLocalLR(topdcl);
-    if (localLR && localLR->getAssigned()) {
-      int sreg;
-      G4_VarBase *preg = localLR->getPhyReg(sreg);
-
-      vISA_ASSERT(preg->isGreg(), "Register in dst was not GRF");
-
-      isDstLocallyAssigned = true;
-      dstPreg = preg->asGreg()->getRegNum();
-      dstNumRows = localLR->getTopDcl()->getNumRows();
-
-      unsigned dstGRFByteSizeWithOffset =
-          dst->getSubRegOff() * dst->getTypeSize() + dst->getLinearizedEnd() -
-          dst->getLinearizedStart() + 1;
-      dstMoreThan1GRF =
-          dstGRFByteSizeWithOffset > kernel.numEltPerGRF<Type_UB>();
-      dstMoreThan2GRF =
-          dstGRFByteSizeWithOffset > (2 * kernel.numEltPerGRF<Type_UB>());
-
-      isDstEvenAlign = (dstPreg % 2 == 0);
-      isDstQuadAlign = (dstPreg % 4 == 0);
-    }
-  }
-
-  if (!isDstRegAllocPartaker && !isDstLocallyAssigned) {
-    return;
-  }
-
-  for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
-    if (inst->isDpas() && j != 1)
-      continue;
-    G4_Operand *src = inst->getSrc(j);
-
-    if (src == NULL) {
-      continue;
-    }
-    if (!src->isSrcRegRegion()) {
-      continue;
-    }
-    if (!src->asSrcRegRegion()->getBase()->isRegVar()) {
-      continue;
-    }
-
-    G4_SrcRegRegion *srcRgn = src->asSrcRegRegion();
-    G4_Declare *srcDcl = src->getTopDcl();
-    if (srcRgn->getRegAccess() == Direct &&
-        (src->getTopDcl()->getRegFile() == G4_GRF ||
-         src->getTopDcl()->getRegFile() == G4_INPUT)) {
-      int srcOffset = src->getLeftBound() / kernel.numEltPerGRF<Type_UB>();
-      unsigned srcGRFByteSizeWithOffset =
-          srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
-          srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1;
-
-      bool srcMoreThan1GRF =
-          srcGRFByteSizeWithOffset > kernel.numEltPerGRF<Type_UB>();
-      bool srcMoreThan2GRF =
-          srcGRFByteSizeWithOffset > (2 * kernel.numEltPerGRF<Type_UB>());
-
-      int srcReg = 0;
-      bool isSrcEvenAlign = gra.isEvenAligned(srcDcl);
-      bool isSrcQuadAlign = gra.isQuadAligned(srcDcl);
-
-      if (!src->asSrcRegRegion()->getBase()->isRegAllocPartaker() &&
-          gra.useLocalRA) {
+      if (topdcl)
+        localLR = gra.getLocalLR(topdcl);
+      if (localLR && localLR->getAssigned()) {
         int sreg;
-        LocalLiveRange *localLR = NULL;
-        G4_Declare *topdcl = GetTopDclFromRegRegion(src);
+        G4_VarBase *preg = localLR->getPhyReg(sreg);
 
-        if (topdcl)
-          localLR = gra.getLocalLR(topdcl);
-        if (localLR && localLR->getAssigned()) {
-          G4_VarBase *preg = localLR->getPhyReg(sreg);
+        vISA_ASSERT(preg->isGreg(), "Register in dst was not GRF");
 
-          vISA_ASSERT(preg->isGreg(), "Register in src was not GRF");
-          srcReg = preg->asGreg()->getRegNum();
-          isSrcEvenAlign = (srcReg % 2 == 0);
-          isSrcQuadAlign = (srcReg % 4 == 0);
-        }
+        isDstLocallyAssigned = true;
+        dstPreg = preg->asGreg()->getRegNum();
+        dstNumRows = localLR->getTopDcl()->getNumRows();
+        dstOpndNumRows = dst->getSubRegOff() * dst->getTypeSize() +
+            dst->getLinearizedEnd() - dst->getLinearizedStart() + 1 >
+            kernel.numEltPerGRF<Type_UB>();
+        isDstEvenAlign = (dstPreg % 2 == 0);
       }
+    }
 
-      if (srcDcl->getRegFile() == G4_INPUT &&
-          srcDcl->getRegVar()->getPhyReg() != NULL &&
-          srcDcl->getRegVar()->getPhyReg()->isGreg()) {
-        srcReg = srcDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
-        isSrcEvenAlign = (srcReg % 2 == 0);
-        isSrcQuadAlign = (srcReg % 4 == 0);
-      }
-
-      // if 1 GRF or less, no need to avoid
-      // if > 1 GRF, even align is an exception
-      // if > 2 GRFs, quad align is an exception
-      bool canAvoidOverlap = false;
-
-      if (builder.supports4GRFAlign() && (dstMoreThan2GRF || srcMoreThan2GRF)) {
-        if (isDstQuadAlign && isSrcQuadAlign &&
-            srcOffset % 4 == dstOffset % 4 && dstMoreThan2GRF &&
-            srcMoreThan2GRF) {
-          canAvoidOverlap = true;
-        }
-      } else if (dstMoreThan1GRF || srcMoreThan1GRF) {
-        if (isDstEvenAlign && isSrcEvenAlign &&
-              srcOffset % 2 == dstOffset % 2 && dstMoreThan1GRF &&
-              srcMoreThan1GRF) {
-          canAvoidOverlap = true;
-        }
-      } else { // 1 GRF or less
-        canAvoidOverlap = true;
-      }
-
-      if (!canAvoidOverlap) {
-        if (src->asSrcRegRegion()->getBase()->isRegAllocPartaker()) {
-          unsigned srcId =
-              src->asSrcRegRegion()->getBase()->asRegVar()->getId();
-#ifdef DEBUG_VERBOSE_ON
-          printf("Src%d  ", j);
-          inst->dump();
-#endif
-          if (isDstRegAllocPartaker) {
-            if (!varSplitCheckBeforeIntf(dstId, srcId)) {
-              checkAndSetIntf(dstId, srcId);
-              buildInterferenceWithAllSubDcl(dstId, srcId);
-            }
-          } else {
-            for (int j = dstPreg, sum = dstPreg + dstNumRows; j < sum; j++) {
-              int k = getGRFDclForHRA(j)->getRegVar()->getId();
-              if (!varSplitCheckBeforeIntf(k, srcId)) {
-                checkAndSetIntf(k, srcId);
-                buildInterferenceWithAllSubDcl(k, srcId);
-              }
-            }
-          }
-        } else if (gra.useLocalRA && isDstRegAllocPartaker) {
-          LocalLiveRange *localLR = NULL;
-          G4_Declare *topdcl = GetTopDclFromRegRegion(src);
-
-          if (topdcl)
-            localLR = gra.getLocalLR(topdcl);
-
-          if (localLR && localLR->getAssigned()) {
-            int reg, sreg, numrows;
-            G4_VarBase *preg = localLR->getPhyReg(sreg);
-            numrows = localLR->getTopDcl()->getNumRows();
-
-            vISA_ASSERT(preg->isGreg(), "Register in src was not GRF");
-
-            reg = preg->asGreg()->getRegNum();
-#ifdef DEBUG_VERBOSE_ON
-            printf("Src%d  ", j);
-            inst->dump();
-#endif
-            for (int j = reg, sum = reg + numrows; j < sum; j++) {
-              int k = getGRFDclForHRA(j)->getRegVar()->getId();
-              if (!varSplitCheckBeforeIntf(dstId, k)) {
-                checkAndSetIntf(dstId, k);
-                buildInterferenceWithAllSubDcl(dstId, k);
-              }
-            }
-          }
-        }
-      }
-    } else if (srcRgn->getRegAccess() == IndirGRF) {
-      // make every var in points-to set live
-      const REGVAR_VECTOR &pointsToSet =
-          liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(srcRgn,
-                                                                        bb);
-      for (auto &pt : pointsToSet) {
-        if (!pt.var->isRegAllocPartaker()) {
+    if (isDstRegAllocPartaker || isDstLocallyAssigned) {
+      for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
+        if (inst->isDpas() && j != 1)
           continue;
-        }
-        unsigned srcId = pt.var->getId();
-        if (isDstRegAllocPartaker) {
-          if (!varSplitCheckBeforeIntf(dstId, srcId)) {
-            checkAndSetIntf(dstId, srcId);
-            buildInterferenceWithAllSubDcl(dstId, srcId);
-          }
-        } else {
-          for (int j = dstPreg, sum = dstPreg + dstNumRows; j < sum; j++) {
-            int k = getGRFDclForHRA(j)->getRegVar()->getId();
-            if (varSplitCheckBeforeIntf(k, srcId)) {
-              continue;
+        G4_Operand *src = inst->getSrc(j);
+        if (src != NULL && src->isSrcRegRegion() &&
+            src->asSrcRegRegion()->getBase()->isRegVar()) {
+          G4_SrcRegRegion *srcRgn = src->asSrcRegRegion();
+          G4_Declare *srcDcl = src->getTopDcl();
+          if (srcRgn->getRegAccess() == Direct &&
+              (src->getTopDcl()->getRegFile() == G4_GRF ||
+               src->getTopDcl()->getRegFile() == G4_INPUT)) {
+            int srcOffset =
+                src->getLeftBound() / kernel.numEltPerGRF<Type_UB>();
+            bool srcOpndNumRows =
+                srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
+                                      srcRgn->getLinearizedEnd() -
+                                      srcRgn->getLinearizedStart() + 1 >
+                kernel.numEltPerGRF<Type_UB>();
+
+            int srcReg = 0;
+            bool isSrcEvenAlign = gra.isEvenAligned(srcDcl);
+            if (!src->asSrcRegRegion()->getBase()->isRegAllocPartaker() &&
+                gra.useLocalRA) {
+              int sreg;
+              LocalLiveRange *localLR = NULL;
+              G4_Declare *topdcl = GetTopDclFromRegRegion(src);
+
+              if (topdcl)
+                localLR = gra.getLocalLR(topdcl);
+              if (localLR && localLR->getAssigned()) {
+                G4_VarBase *preg = localLR->getPhyReg(sreg);
+
+                vISA_ASSERT(preg->isGreg(), "Register in src was not GRF");
+                srcReg = preg->asGreg()->getRegNum();
+                isSrcEvenAlign = (srcReg % 2 == 0);
+              }
             }
-            checkAndSetIntf(k, srcId);
-            buildInterferenceWithAllSubDcl(k, srcId);
+
+            if (srcDcl->getRegFile() == G4_INPUT &&
+                srcDcl->getRegVar()->getPhyReg() != NULL &&
+                srcDcl->getRegVar()->getPhyReg()->isGreg()) {
+              srcReg = srcDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+              isSrcEvenAlign = (srcReg % 2 == 0);
+            }
+
+            if (dstOpndNumRows || srcOpndNumRows) {
+              if (!(isDstEvenAlign && isSrcEvenAlign &&
+                    srcOffset % 2 == dstOffset % 2 && dstOpndNumRows &&
+                    srcOpndNumRows)) {
+                if (src->asSrcRegRegion()->getBase()->isRegAllocPartaker()) {
+                  unsigned srcId =
+                      src->asSrcRegRegion()->getBase()->asRegVar()->getId();
+#ifdef DEBUG_VERBOSE_ON
+                  printf("Src%d  ", j);
+                  inst->dump();
+#endif
+                  if (isDstRegAllocPartaker) {
+                    if (!varSplitCheckBeforeIntf(dstId, srcId)) {
+                      checkAndSetIntf(dstId, srcId);
+                      buildInterferenceWithAllSubDcl(dstId, srcId);
+                    }
+                  } else {
+                    for (int j = dstPreg, sum = dstPreg + dstNumRows; j < sum;
+                         j++) {
+                      int k = getGRFDclForHRA(j)->getRegVar()->getId();
+                      if (!varSplitCheckBeforeIntf(k, srcId)) {
+                        checkAndSetIntf(k, srcId);
+                        buildInterferenceWithAllSubDcl(k, srcId);
+                      }
+                    }
+                  }
+                } else if (gra.useLocalRA &&
+                           isDstRegAllocPartaker) {
+                  LocalLiveRange *localLR = NULL;
+                  G4_Declare *topdcl = GetTopDclFromRegRegion(src);
+
+                  if (topdcl)
+                    localLR = gra.getLocalLR(topdcl);
+
+                  if (localLR && localLR->getAssigned()) {
+                    int reg, sreg, numrows;
+                    G4_VarBase *preg = localLR->getPhyReg(sreg);
+                    numrows = localLR->getTopDcl()->getNumRows();
+
+                    vISA_ASSERT(preg->isGreg(), "Register in src was not GRF");
+
+                    reg = preg->asGreg()->getRegNum();
+#ifdef DEBUG_VERBOSE_ON
+                    printf("Src%d  ", j);
+                    inst->dump();
+#endif
+                    for (int j = reg, sum = reg + numrows; j < sum; j++) {
+                      int k = getGRFDclForHRA(j)->getRegVar()->getId();
+                      if (!varSplitCheckBeforeIntf(dstId, k)) {
+                        checkAndSetIntf(dstId, k);
+                        buildInterferenceWithAllSubDcl(dstId, k);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } else if (srcRgn->getRegAccess() == IndirGRF) {
+            // make every var in points-to set live
+            const REGVAR_VECTOR &pointsToSet =
+                liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(
+                    srcRgn, bb);
+            for (auto &pt : pointsToSet) {
+              if (pt.var->isRegAllocPartaker()) {
+                unsigned srcId = pt.var->getId();
+                if (isDstRegAllocPartaker) {
+                  if (!varSplitCheckBeforeIntf(dstId, srcId)) {
+                    checkAndSetIntf(dstId, srcId);
+                    buildInterferenceWithAllSubDcl(dstId, srcId);
+                  }
+                } else {
+                  for (int j = dstPreg, sum = dstPreg + dstNumRows; j < sum;
+                       j++) {
+                    int k = getGRFDclForHRA(j)->getRegVar()->getId();
+                    if (!varSplitCheckBeforeIntf(k, srcId)) {
+                      checkAndSetIntf(k, srcId);
+                      buildInterferenceWithAllSubDcl(k, srcId);
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     }
   }
-
-  return;
 }
 
 uint32_t GlobalRA::getRefCount(int loopNestLevel) {
