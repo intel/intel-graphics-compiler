@@ -16,8 +16,7 @@
 ; Check alwaysinline attribute is added to following functions:
 ; 1. function that is returning an image type and its' users, e.g. _ZN4sycl3_V13ext6oneapi12experimental6detail31convert_handle_to_sampled_imageI14ocl_image3d_roNS3_17spirv_handle_typeEEEDaT0_
 
-; REQUIRES: llvm-16-plus
-; RUN: igc_opt --opaque-pointers -igc-process-func-attributes -S %s -o - | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-process-func-attributes -S %s -o - | FileCheck %s
 
 ; CHECK: define internal spir_func void @_ZZZ4mainENKUlRN4sycl3_V17handlerEE_clES2_ENKUlNS0_7nd_itemILi3EEEE_clES5_() [[MD0:#[0-9]+]]
 ; CHECK: define internal spir_func void @_ZN4sycl3_V13ext6oneapi12experimental10read_imageINS0_3vecIfLi4EEES6_S6_EET_RKNS3_20sampled_image_handleERKT1_({{.*}}) [[MD0]]
@@ -34,6 +33,9 @@ target triple = "spir64-unknown-unknown"
 %"class.sycl::_V1::vec" = type { <4 x float> }
 %"struct.sycl::_V1::ext::oneapi::experimental::sampled_image_handle" = type { %"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type" }
 %"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type" = type { i64, i64 }
+%spirv.SampledImage._void_2_0_0_0_0_0_0 = type opaque
+%spirv.Image._void_2_0_0_0_0_0_0 = type opaque
+%spirv.Sampler = type opaque
 
 ; Function Attrs: noinline nounwind optnone
 define internal spir_func void @_ZZZ4mainENKUlRN4sycl3_V17handlerEE_clES2_ENKUlNS0_7nd_itemILi3EEEE_clES5_() #0 {
@@ -45,54 +47,55 @@ entry:
 ; Function Attrs: noinline nounwind optnone
 define weak_odr spir_func void @_ZN4sycl3_V13ext6oneapi12experimental10read_imageINS0_3vecIfLi4EEES6_S6_EET_RKNS3_20sampled_image_handleERKT1_(%"class.sycl::_V1::vec" addrspace(4)* noalias align 16 %agg.result, %"struct.sycl::_V1::ext::oneapi::experimental::sampled_image_handle" addrspace(4)* align 8 dereferenceable(16) %imageHandle, %"class.sycl::_V1::vec" addrspace(4)* align 16 dereferenceable(16) %coords) #0 {
 entry:
-  %call = call spir_func target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) @_ZN4sycl3_V13ext6oneapi12experimental6detail31convert_handle_to_sampled_imageI14ocl_image3d_roNS3_17spirv_handle_typeEEEDaT0_(%"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type"* byval(%"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type") align 8 null) #0
-  call spir_func void @_ZL19__invoke__ImageReadIN4sycl3_V13vecIfLi4EEE32__spirv_SampledImage__image3d_roS3_ET_T0_T1_(%"class.sycl::_V1::vec" addrspace(4)* noalias align 16 %agg.result, target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) %call, %"class.sycl::_V1::vec"* byval(%"class.sycl::_V1::vec") align 16 null) #0
+  %call = call spir_func %spirv.SampledImage._void_2_0_0_0_0_0_0 addrspace(1)* @_ZN4sycl3_V13ext6oneapi12experimental6detail31convert_handle_to_sampled_imageI14ocl_image3d_roNS3_17spirv_handle_typeEEEDaT0_(%"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type"* byval(%"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type") align 8 null) #0
+  call spir_func void @_ZL19__invoke__ImageReadIN4sycl3_V13vecIfLi4EEE32__spirv_SampledImage__image3d_roS3_ET_T0_T1_(%"class.sycl::_V1::vec" addrspace(4)* noalias align 16 %agg.result, %spirv.SampledImage._void_2_0_0_0_0_0_0 addrspace(1)* %call, %"class.sycl::_V1::vec"* byval(%"class.sycl::_V1::vec") align 16 null) #0
   ret void
 }
 
 ; Function Attrs: noinline nounwind optnone
-define linkonce_odr spir_func target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) @_ZN4sycl3_V13ext6oneapi12experimental6detail31convert_handle_to_sampled_imageI14ocl_image3d_roNS3_17spirv_handle_typeEEEDaT0_(%"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type"* byval(%"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type") align 8 %raw_handle) #0 {
+define linkonce_odr spir_func %spirv.SampledImage._void_2_0_0_0_0_0_0 addrspace(1)* @_ZN4sycl3_V13ext6oneapi12experimental6detail31convert_handle_to_sampled_imageI14ocl_image3d_roNS3_17spirv_handle_typeEEEDaT0_(%"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type"* byval(%"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type") align 8 %raw_handle) #0 {
 entry:
-  %retval = alloca target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0), align 8
-  %retval.ascast = addrspacecast target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0)* %retval to target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) addrspace(4)*
+  %retval = alloca %spirv.SampledImage._void_2_0_0_0_0_0_0 addrspace(1)*, align 8
+  %retval.ascast = addrspacecast %spirv.SampledImage._void_2_0_0_0_0_0_0 addrspace(1)** %retval to %spirv.SampledImage._void_2_0_0_0_0_0_0 addrspace(1)* addrspace(4)*
   %raw_handle.ascast = addrspacecast %"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type"* %raw_handle to %"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type" addrspace(4)*
   %image = getelementptr inbounds %"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type", %"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type" addrspace(4)* %raw_handle.ascast, i32 0, i32 0
   %0 = load i64, i64 addrspace(4)* %image, align 8
-  %call = call spir_func target("spirv.Image", void, 2, 0, 0, 0, 0, 0, 0) @_Z76__spirv_ConvertHandleToImageINTEL_RPU3AS133__spirv_Image__void_2_0_0_0_0_0_0m(i64 %0)
+  %call = call spir_func %spirv.Image._void_2_0_0_0_0_0_0 addrspace(1)* @_Z76__spirv_ConvertHandleToImageINTEL_RPU3AS133__spirv_Image__void_2_0_0_0_0_0_0m(i64 %0)
   %sampler = getelementptr inbounds %"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type", %"struct.sycl::_V1::ext::oneapi::experimental::spirv_handle_type" addrspace(4)* %raw_handle.ascast, i32 0, i32 1
   %1 = load i64, i64 addrspace(4)* %sampler, align 8
-  %call1 = call spir_func target("spirv.Sampler") @_Z35__spirv_ConvertHandleToSamplerINTELm(i64 %1)
-  %call2 = call spir_func target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) @_Z20__spirv_SampledImagePU3AS133__spirv_Image__void_2_0_0_0_0_0_0PU3AS215__spirv_Sampler(target("spirv.Image", void, 2, 0, 0, 0, 0, 0, 0) %call, target("spirv.Sampler") %call1)
-  ret target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) %call2
+  %call1 = call spir_func %spirv.Sampler addrspace(2)* @_Z35__spirv_ConvertHandleToSamplerINTELm(i64 %1)
+  %call2 = call spir_func %spirv.SampledImage._void_2_0_0_0_0_0_0 addrspace(1)* @_Z20__spirv_SampledImagePU3AS133__spirv_Image__void_2_0_0_0_0_0_0PU3AS215__spirv_Sampler(%spirv.Image._void_2_0_0_0_0_0_0 addrspace(1)* %call, %spirv.Sampler addrspace(2)* %call1)
+  ret %spirv.SampledImage._void_2_0_0_0_0_0_0 addrspace(1)* %call2
 }
 
 ; Function Attrs: noinline nounwind optnone
-define hidden spir_func void @_ZL19__invoke__ImageReadIN4sycl3_V13vecIfLi4EEE32__spirv_SampledImage__image3d_roS3_ET_T0_T1_(%"class.sycl::_V1::vec" addrspace(4)* noalias align 16 %agg.result, target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) %Img, %"class.sycl::_V1::vec"* byval(%"class.sycl::_V1::vec") align 16 %Coords) #0 {
+define hidden spir_func void @_ZL19__invoke__ImageReadIN4sycl3_V13vecIfLi4EEE32__spirv_SampledImage__image3d_roS3_ET_T0_T1_(%"class.sycl::_V1::vec" addrspace(4)* noalias align 16 %agg.result, %spirv.SampledImage._void_2_0_0_0_0_0_0 addrspace(1)* %Img, %"class.sycl::_V1::vec"* byval(%"class.sycl::_V1::vec") align 16 %Coords) #0 {
 entry:
-  %call1 = call spir_func <4 x float> @_Z25__spirv_ImageRead_Rfloat4PU3AS140__spirv_SampledImage__void_2_0_0_0_0_0_0Dv4_f(target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) %Img, <4 x float> zeroinitializer)
+  %call1 = call spir_func <4 x float> @_Z25__spirv_ImageRead_Rfloat4PU3AS140__spirv_SampledImage__void_2_0_0_0_0_0_0Dv4_f(%spirv.SampledImage._void_2_0_0_0_0_0_0 addrspace(1)* %Img, <4 x float> zeroinitializer)
   ret void
 }
 
 ; Function Attrs: convergent
-define dso_local spir_func <4 x float> @_Z25__spirv_ImageRead_Rfloat4PU3AS140__spirv_SampledImage__void_2_0_0_0_0_0_0Dv4_f(target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) %Image, <4 x float> %Coordinate) #1 {
+define dso_local spir_func <4 x float> @_Z25__spirv_ImageRead_Rfloat4PU3AS140__spirv_SampledImage__void_2_0_0_0_0_0_0Dv4_f(%spirv.SampledImage._void_2_0_0_0_0_0_0 addrspace(1)* %Image, <4 x float> %Coordinate) #1 {
 entry:
-  %call.i.i = tail call spir_func i64 @__builtin_IB_get_image(target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) %Image)
-  %call1.i.i = tail call spir_func i64 @__builtin_IB_get_sampler(target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) %Image)
+  %0 = bitcast %spirv.SampledImage._void_2_0_0_0_0_0_0 addrspace(1)* %Image to i8 addrspace(1)*
+  %call.i.i = tail call spir_func i64 @__builtin_IB_get_image(i8 addrspace(1)* %0)
+  %call1.i.i = tail call spir_func i64 @__builtin_IB_get_sampler(i8 addrspace(1)* %0)
   %conv2.i.i = trunc i64 %call1.i.i to i32
   %call3.i.i = tail call spir_func i32 @__builtin_IB_get_snap_wa_reqd(i32 %conv2.i.i)
   %call19.i.i = tail call spir_func <4 x float> @__builtin_IB_OCL_3d_sample_l(i32 0, i32 %conv2.i.i, <4 x float> zeroinitializer, float 0.000000e+00)
   ret <4 x float> %call19.i.i
 }
 
-declare spir_func target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) @_Z20__spirv_SampledImagePU3AS133__spirv_Image__void_2_0_0_0_0_0_0PU3AS215__spirv_Sampler(target("spirv.Image", void, 2, 0, 0, 0, 0, 0, 0), target("spirv.Sampler"))
+declare spir_func %spirv.SampledImage._void_2_0_0_0_0_0_0 addrspace(1)* @_Z20__spirv_SampledImagePU3AS133__spirv_Image__void_2_0_0_0_0_0_0PU3AS215__spirv_Sampler(%spirv.Image._void_2_0_0_0_0_0_0 addrspace(1)*, %spirv.Sampler addrspace(2)*)
 
-declare spir_func target("spirv.Sampler") @_Z35__spirv_ConvertHandleToSamplerINTELm(i64)
+declare spir_func %spirv.Sampler addrspace(2)* @_Z35__spirv_ConvertHandleToSamplerINTELm(i64)
 
-declare spir_func target("spirv.Image", void, 2, 0, 0, 0, 0, 0, 0) @_Z76__spirv_ConvertHandleToImageINTEL_RPU3AS133__spirv_Image__void_2_0_0_0_0_0_0m(i64)
+declare spir_func %spirv.Image._void_2_0_0_0_0_0_0 addrspace(1)* @_Z76__spirv_ConvertHandleToImageINTEL_RPU3AS133__spirv_Image__void_2_0_0_0_0_0_0m(i64)
 
-declare spir_func i64 @__builtin_IB_get_image(target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0))
+declare spir_func i64 @__builtin_IB_get_image(i8 addrspace(1)*)
 
-declare spir_func i64 @__builtin_IB_get_sampler(target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0))
+declare spir_func i64 @__builtin_IB_get_sampler(i8 addrspace(1)*)
 
 declare spir_func i32 @__builtin_IB_get_snap_wa_reqd(i32)
 

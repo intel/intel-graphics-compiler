@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/StackOverflowDetection/StackOverflowDetection.hpp"
+#include "common/BuiltinTypes.h"
 
 #include "common/LLVMWarningsPush.hpp"
 
@@ -148,55 +149,46 @@ extern bool isSupportedAggregateArgument(Argument* arg);
 
 // Only pointer, struct and array types are considered. E.g. vector type
 // cannot contain opaque subtypes, function type may contain but ignored.
-static void getContainedStructType(Type *T, SmallPtrSetImpl<StructType *> &Tys)
+static void getBuiltinType(Type *T, SmallPtrSetImpl<Type *> &BuiltinTypes)
 {
     if (StructType *ST = dyn_cast<llvm::StructType>(T))
     {
         // Check if this has been checked, to avoid spinning on %T = { %T *}.
-        if (!Tys.count(ST))
+        if (!BuiltinTypes.count(ST))
         {
-            Tys.insert(ST);
+            BuiltinTypes.insert(ST);
             for (auto I = ST->element_begin(), E = ST->element_end(); I != E; ++I)
             {
-                getContainedStructType(*I, Tys);
+                getBuiltinType(*I, BuiltinTypes);
             }
         }
     }
-    else if (auto PT = dyn_cast<PointerType>(T))
+    else if (T->isPointerTy() && !T->isOpaquePointerTy())
     {
-        return getContainedStructType(IGCLLVM::getNonOpaquePtrEltTy(PT), Tys);
+        return getBuiltinType(IGCLLVM::getNonOpaquePtrEltTy(cast<PointerType>(T)), BuiltinTypes);
     }
+#if LLVM_VERSION_MAJOR >= 16
+    else if (isa<TargetExtType>(T))
+    {
+        BuiltinTypes.insert(T);
+    }
+#endif
     else if (auto AT = dyn_cast<ArrayType>(T))
     {
-        return getContainedStructType(AT->getElementType(), Tys);
+        return getBuiltinType(AT->getElementType(), BuiltinTypes);
     }
-}
-
-static bool isImageType(llvm::Type *Ty)
-{
-    if (auto *STy = dyn_cast<StructType>(Ty); STy && STy->isOpaque())
-    {
-        auto typeName = STy->getName();
-        llvm::SmallVector<llvm::StringRef, 3> buf;
-        typeName.split(buf, ".");
-        if (buf.size() < 2) return false;
-        bool isOpenCLImage = buf[0].equals("opencl") && buf[1].startswith("image") && buf[1].endswith("_t");
-        bool isSPIRVImage = buf[0].equals("spirv") && (buf[1].startswith("Image") || buf[1].startswith("SampledImage"));
-
-        if (isOpenCLImage || isSPIRVImage)
-            return true;
-    }
-    return false;
 }
 
 // Check the existence of an image type.
 static bool containsImageType(llvm::Type *T)
 {
-    // All (nested) struct types in T.
-    SmallPtrSet<StructType *, 8> StructTys;
-    getContainedStructType(T, StructTys);
+  // Get the builtin type of T. This can be either TargetExtTy (LLVM 16+) or
+  // "pointer to opaque struct" (can be nested) representing a builtin type.
+  SmallPtrSet<Type *, 8> BuiltinTypes;
+  getBuiltinType(T, BuiltinTypes);
 
-    return llvm::any_of(StructTys, [](StructType *STy) { return isImageType(STy); });
+  return llvm::any_of(BuiltinTypes,
+                      [](Type *Ty) { return isImageBuiltinType(Ty); });
 }
 
 static bool isOptNoneBuiltin(StringRef name)
@@ -316,13 +308,11 @@ static void addAlwaysInlineForImageBuiltinUserFunctions(Module &M)
         {
             continue;
         }
+
         // Check if return type is image.
-        if (auto *PTy = dyn_cast<PointerType>(F.getReturnType()))
+        if (isImageBuiltinType(F.getReturnType()))
         {
-            if (isImageType(IGCLLVM::getNonOpaquePtrEltTy(PTy)))
-            {
-                SampledImageFunctions.push_back(&F);
-            }
+            SampledImageFunctions.push_back(&F);
         }
     }
 
