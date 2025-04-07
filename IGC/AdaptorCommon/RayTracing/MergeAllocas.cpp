@@ -80,6 +80,21 @@ static bool AddNonOverlappingAlloca(AllocaInfo *MergableAlloca,
         return false;
     }
 
+    if (IGC_IS_FLAG_ENABLED(DisableMergingOfAllocasWithDifferentType))
+    {
+        auto* AllocatedType = MergableAlloca->alloca->getAllocatedType();
+        auto* AllocatedTypeNew = NewAlloca->alloca->getAllocatedType();
+        bool IsArray = AllocatedType->isArrayTy()? true : false;
+        bool IsArrayNew = AllocatedTypeNew->isArrayTy()? true : false;
+        bool AreBothArrays = IsArray && IsArrayNew;
+        if (AreBothArrays && AllocatedType->getArrayElementType() != AllocatedTypeNew->getArrayElementType()) {
+            return false;
+        }
+        if (!AreBothArrays && AllocatedType != AllocatedTypeNew) {
+            return false;
+        }
+    }
+
     // Check if we can merge alloca to one of existing non-overlapping allocas.
     for (auto *NonOverlappingAlloca : MergableAlloca->nonOverlapingAllocas) {
         bool added = AddNonOverlappingAlloca(NonOverlappingAlloca, NewAlloca);
