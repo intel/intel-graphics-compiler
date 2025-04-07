@@ -1127,14 +1127,17 @@ SpillManagerGRF::createTemporaryRangeDeclare(G4_DstRegRegion *spilledRegion,
   // non-zero
   byteSize += spilledRegion->getSubRegOff() * spilledRegion->getElemSize();
 
-  vASSERT(byteSize <= 2u * builder_->numEltPerGRF<Type_UB>());
+  vASSERT(byteSize <= 4u * builder_->numEltPerGRF<Type_UB>());
   vASSERT(byteSize % spilledRegion->getElemSize() == 0);
 
   G4_Type type = spilledRegion->getType();
   DeclareType regVarKind = DeclareType::Tmp;
 
   unsigned short width, height;
-  if (byteSize > builder_->numEltPerGRF<Type_UB>()) {
+  if (byteSize > (2 * builder_->numEltPerGRF<Type_UB>())) {
+    height = 4;
+    width = builder_->numEltPerGRF<Type_UB>() / spilledRegion->getElemSize();
+  } else if (byteSize > builder_->numEltPerGRF<Type_UB>()) {
     height = 2;
     width = builder_->numEltPerGRF<Type_UB>() / spilledRegion->getElemSize();
   } else {
