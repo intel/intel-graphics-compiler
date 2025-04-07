@@ -5365,7 +5365,6 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     IGC_ASSERT_MESSAGE(numOperands < 11, "Wrong number of operands");
 
     EOPCODE opCode = GetOpCode(inst);
-    m_currShader->m_State.SetHasLoadInst();
     //Subtract the offsets, resource sources to get
     //the number of texture coordinates and index to texture source
     uint numSources = numOperands - 6;
@@ -8821,7 +8820,6 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
 {
     uint numOperands = inst->getNumOperands();
     EOPCODE opCode = GetOpCode(inst);
-    m_currShader->m_State.SetHasLoadInst();
     //Subtract the offsets, and texture resource, lod to get
     //the number of texture coordinates and index to texture source
     uint numSources = numOperands - 5;

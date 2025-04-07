@@ -2873,7 +2873,7 @@ namespace IGC
 
         // TODO: need to change misleading HasBarriers to NumberofBarriers
         m_kernelInfo.m_executionEnvironment.HasBarriers = m_State.GetBarrierNumber();
-        m_kernelInfo.m_executionEnvironment.HasSample = m_State.GetHasSampleLoadGather4();
+        m_kernelInfo.m_executionEnvironment.HasSample = m_State.GetHasSample();
         m_kernelInfo.m_executionEnvironment.DisableMidThreadPreemption = GetDisableMidThreadPreemption();
         m_kernelInfo.m_executionEnvironment.SubgroupIndependentForwardProgressRequired =
             m_Context->getModuleMetaData()->compOpt.SubgroupIndependentForwardProgressRequired;
