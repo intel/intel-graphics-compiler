@@ -1556,9 +1556,10 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
         unsigned numElt;
         bool isSplat;
         uint64_t splatValue;
+        Type *type;
 
-        VTyInfo() : numElt(0), isSplat(false), splatValue(0) { }
-        explicit VTyInfo(Value * V) : numElt(0), isSplat(false), splatValue(0) {
+        VTyInfo() : numElt(0), isSplat(false), splatValue(0), type(nullptr) { }
+        explicit VTyInfo(Value * V) : numElt(0), isSplat(false), splatValue(0), type(V->getType()) {
             if (IGCLLVM::FixedVectorType * vTy = dyn_cast<IGCLLVM::FixedVectorType>(V->getType())) {
                 numElt = vTy->getNumElements();
                 if (isa<ConstantAggregateZero>(V)) {
@@ -1751,8 +1752,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                 emitVectorCopy(dst, src, vTyInfo.numElt);
             }
             else {
-                m_encoder->Copy(dst, src);
-                m_encoder->Push();
+                emitCopyAll(dst, src, vTyInfo.type);
             }
         }
     }
