@@ -143,6 +143,12 @@ static void ReplaceAllocas(const AllocaInfo &MergableAlloca, Function &F) {
         IGC_ASSERT(subAllocaI->use_empty());
 
         subAllocaI->eraseFromParent();
+
+        allocasToReplace.insert(
+            allocasToReplace.end(),
+            subAllocaInfo->nonOverlapingAllocas.begin(),
+            subAllocaInfo->nonOverlapingAllocas.end()
+        );
     }
 }
 
