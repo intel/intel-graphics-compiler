@@ -8820,6 +8820,7 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
 {
     uint numOperands = inst->getNumOperands();
     EOPCODE opCode = GetOpCode(inst);
+    m_currShader->m_State.SetHasLoadInst();
     //Subtract the offsets, and texture resource, lod to get
     //the number of texture coordinates and index to texture source
     uint numSources = numOperands - 5;
