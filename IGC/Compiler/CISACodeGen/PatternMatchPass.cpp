@@ -2385,7 +2385,8 @@ namespace IGC
             auto vecType = llvm::dyn_cast<FixedVectorType>(I.getType());
             if (!vecType) return I.getType()->isFloatingPointTy();
 
-            bool isFPType = vecType->getElementType()->isFloatingPointTy();
+            bool isFPType = vecType->getElementType()->isFloatingPointTy() &&
+                IGC_IS_FLAG_ENABLED(VectorizerAllowFMADMatching);
             return isFPType;
         };
 

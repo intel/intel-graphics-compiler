@@ -514,6 +514,7 @@ DECLARE_IGC_REGKEY(bool, EnableVectorEmitter, true, "Enable Vector Emission for 
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFPTRUNC, true, "Allow FPTRUNC instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFDIV, true, "Allow FDIV instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFADD, true, "Allow FADD instructions inside vectorizer", true)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowFMADMatching, true, "Allow FADD and FMUL instructions to be matched later in the pattern match pass", true)
 DECLARE_IGC_REGKEY(bool, DisableOCLScalarizer,          false, "Disable ScalarizeFunction pass in OCL pipeline", true)
 DECLARE_IGC_REGKEY(bool, DisablePHIScalarization,       false, "Disable scalarization of PHINode instructions", true)
 DECLARE_IGC_REGKEY(bool, EnableSelectiveScalarizer,     false,  "enable selective scalarizer on GPGPU path", true)
