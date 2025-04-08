@@ -860,7 +860,7 @@ DECLARE_IGC_REGKEY(bool, RematEnable, false, "Enable clone adress arithmetic pas
 DECLARE_IGC_REGKEY(bool, RematLog, false, "Dump Remat Log, usefull for analyzing spills as well", false)
 DECLARE_IGC_REGKEY(bool, RematSameBBScope, false, "Confine rematerialization only to variables within the same BB, we won't pull down values from predeccors", false)
 DECLARE_IGC_REGKEY(bool, RematRespectUniformity, false, "Cutoff computation chain on uniform values", false)
-DECLARE_IGC_REGKEY(bool, RematAllowExtractElement, false, "Allow Extract Element to computation chain", false)
+DECLARE_IGC_REGKEY(bool, RematAllowExtractElement, true, "Allow Extract Element to computation chain", false)
 DECLARE_IGC_REGKEY(bool, RematReassocBefore, false, "Enable short sequence of passes before clone address arithmetic pass to potentially decrese amount of operations that will be rematerialized", false)
 DECLARE_IGC_REGKEY(bool, RematInstCombineBefore, false, "Enable short sequence of passes before clone address arithmetic pass to potentially decrese amount of operations that will be rematerialized", false)
 DECLARE_IGC_REGKEY(bool, RematAddrSpaceCastToUse, true, "Allow rematerialization of inttoptr that are used inside AddrSpaceCastInst", false)
