@@ -24710,21 +24710,6 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
     bool isVnni = (uint)cast<ConstantInt>(inst->getOperand(11))->getZExtValue();
 
     CVariable* destination = m_destination;
-    if (numBlocksV == 2 && blockHeight == 1 &&
-        !isPrefetch &&
-        elemSizeInBits * blockWidth == 256 &&
-        m_currShader->m_Platform->getPlatformInfo().eProductFamily >= IGFX_PVC)
-    {
-        // m1 v2 block read has grf aligned V blocks,
-        // variable should be 2x larger
-        destination = m_currShader->GetNewVariable(
-            m_destination->GetNumberElement() * 2,
-            m_destination->GetType(),
-            m_destination->GetAlign(),
-            m_destination->IsUniform(),
-            m_destination->GetNumberInstance(),
-            CName::NONE);
-    }
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(12), isRead);
 
     if (isRead == false)
@@ -24755,20 +24740,6 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
             pFlatImagePitch,
             cacheOpts);
         m_encoder->Push();
-
-
-        if (isRead &&
-            !isPrefetch &&
-            destination != m_destination)
-        {
-            // m1 v2 block read
-            m_encoder->Copy(m_destination, destination);
-            m_encoder->Push();
-            m_encoder->SetSrcSubVar(0, 1);
-            m_encoder->SetDstSubReg(m_destination->GetNumberElement() / 2);
-            m_encoder->Copy(m_destination, destination);
-            m_encoder->Push();
-        }
         return;
     }
 

@@ -1721,6 +1721,73 @@ uint CShader::GetNbElementAndMask(llvm::Value* value, uint32_t& mask)
             // Number elements = {num GRFs} * {num DWords in GRF} = {num GRFs} * 8;
             return int_cast<unsigned int>(cast<ConstantInt>(numGRFs)->getZExtValue() * 8);
         }
+        case GenISAIntrinsic::GenISA_LSC2DBlockRead:
+        case GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload:
+        {
+            // 2D block read requires its block size to be multiple of GRF size.
+            uint32_t eltBits, blkWidth, blkHeight, numBlks;
+            bool isTranspose, isVnni;
+            if (IID == GenISAIntrinsic::GenISA_LSC2DBlockRead)
+            {
+                eltBits = (uint32_t)cast<ConstantInt>(inst->getOperand(6))->getZExtValue();
+                blkWidth = (uint32_t)cast<ConstantInt>(inst->getOperand(7))->getZExtValue();
+                blkHeight = (uint32_t)cast<ConstantInt>(inst->getOperand(8))->getZExtValue();
+                numBlks = (uint32_t)cast<ConstantInt>(inst->getOperand(9))->getZExtValue();
+                isTranspose = (uint)cast<ConstantInt>(inst->getOperand(10))->getZExtValue();
+                isVnni = (uint)cast<ConstantInt>(inst->getOperand(11))->getZExtValue();
+            }
+            else
+            {
+                IGC_ASSERT(IID == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload);
+                eltBits = (uint32_t)cast<ConstantInt>(inst->getOperand(3))->getZExtValue();
+                blkWidth = (uint32_t)cast<ConstantInt>(inst->getOperand(4))->getZExtValue();
+                blkHeight = (uint32_t)cast<ConstantInt>(inst->getOperand(5))->getZExtValue();
+                numBlks = (uint32_t)cast<ConstantInt>(inst->getOperand(6))->getZExtValue();
+                isTranspose = cast<ConstantInt>(inst->getOperand(7))->getZExtValue();
+                isVnni = cast<ConstantInt>(inst->getOperand(8))->getZExtValue();
+            }
+
+            // Width is padded to the next power-of-2 value
+            uint32_t blkWidthCeil = (uint32_t)PowerOf2Ceil(blkWidth);
+            if (blkWidthCeil != blkWidth)
+            {
+                m_ctx->EmitWarning("Block2D: block width not power of 2, zero padded.");
+            }
+            uint32_t blkHeightCeil = blkHeight;
+            if (isTranspose)
+            {
+                blkHeightCeil = (uint32_t)PowerOf2Ceil(blkHeight);
+                if (blkHeightCeil != blkHeight)
+                {
+                    m_ctx->EmitWarning("Block2D: transpose block height not power of 2, zero padded.");
+                }
+            }
+            if (isVnni)
+            {
+                IGC_ASSERT(eltBits == 16 || eltBits == 8);
+                uint32_t N = 32 / eltBits;
+                uint32_t origVal = blkHeightCeil;
+                blkHeightCeil = (uint32_t)divideCeil(blkHeightCeil, N) * N;
+                if (blkHeightCeil != origVal)
+                {
+                    m_ctx->EmitWarning("Block2D: transform block height not multiple "
+                        "of N (32/eltBits), zero padded.");
+                }
+            }
+            uint32_t blkBits = blkWidthCeil * blkHeightCeil * eltBits;
+            uint32_t numGRFsPerBlk = (uint32_t)divideCeil(blkBits, getGRFSize() * 8);
+            uint32_t blkBitsCeil = getGRFSize() * 8 * numGRFsPerBlk;
+            if (blkBitsCeil != blkBits)
+            {
+                m_ctx->EmitWarning("Block2D: block size not multiple of GRF size, zero padded.");
+            }
+            uint32_t numGRFs = numGRFsPerBlk * numBlks;
+            VISA_Type visaTy = GetType(inst->getType());
+            uint32_t eltTyBytes = CEncoder::GetCISADataTypeSize(visaTy);
+            uint32_t nbElement = (uint32_t)divideCeil(numGRFs * getGRFSize(), eltTyBytes);
+
+            return nbElement;
+        }
         default:
             break;
         }
