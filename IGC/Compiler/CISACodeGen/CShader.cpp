@@ -3127,6 +3127,14 @@ unsigned int CShader::EvaluateSIMDConstExpr(Value* C)
 CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool,
     e_alignment MinAlign)
 {
+    auto it = symbolMapping.find(value);
+
+    // mapping exists, return
+    if (it != symbolMapping.end())
+    {
+        return it->second;
+    }
+
     CVariable* var = nullptr;
 
     // Symbol mappings for struct types
@@ -3239,14 +3247,6 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool,
         {
             return ImmToVariable(EvaluateSIMDConstExpr(inst), ISA_TYPE_D);
         }
-    }
-
-    auto it = symbolMapping.find(value);
-
-    // mapping exists, return
-    if (it != symbolMapping.end())
-    {
-        return it->second;
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableDeSSA) &&
