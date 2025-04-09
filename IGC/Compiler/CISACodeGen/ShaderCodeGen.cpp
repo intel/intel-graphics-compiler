@@ -780,14 +780,13 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     }
 
     if (ctx.type == ShaderType::OPENCL_SHADER &&
-        static_cast<OpenCLProgramContext&>(ctx).m_InternalOptions.PromoteStatelessToBindless &&
-        !ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired)
+        static_cast<OpenCLProgramContext&>(ctx).m_InternalOptions.PromoteStatelessToBindless)
     {
         if (static_cast<OpenCLProgramContext&>(ctx).m_InternalOptions.UseBindlessLegacyMode)
         {
             mpm.add(new PromoteStatelessToBindless());
         }
-        else if (!isOptDisabled)
+        else if (!ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired && !isOptDisabled)
         {
             // Advanced bindless mode used by the regular OpenCL compilation path
             mpm.add(new StatelessToStateful(TargetAddressing::BINDLESS));
