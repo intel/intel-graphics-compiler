@@ -82,8 +82,8 @@ static bool AddNonOverlappingAlloca(AllocaInfo *MergableAlloca,
 
     if (IGC_IS_FLAG_ENABLED(DisableMergingOfAllocasWithDifferentType))
     {
-        auto* AllocatedType = MergableAlloca->alloca->getAllocatedType();
-        auto* AllocatedTypeNew = NewAlloca->alloca->getAllocatedType();
+        auto* AllocatedType = MergableAlloca->allocaI->getAllocatedType();
+        auto* AllocatedTypeNew = NewAlloca->allocaI->getAllocatedType();
         bool IsArray = AllocatedType->isArrayTy()? true : false;
         bool IsArrayNew = AllocatedTypeNew->isArrayTy()? true : false;
         bool AreBothArrays = IsArray && IsArrayNew;
