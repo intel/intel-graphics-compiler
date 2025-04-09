@@ -1732,5 +1732,7 @@ bool VariableReuseAnalysis::checkSubAlign(e_alignment& BaseAlign,
 bool VariableReuseAnalysis::skipScalarAliaser(BasicBlock* BB, Value* ScalarVal) const
 {
     Instruction* I = dyn_cast<Instruction>(ScalarVal);
-    return ((BB->size() > m_BBSizeThreshold) || !I || I->getParent() != BB);
+    // Don't count dbg instructions in BB
+    unsigned InstCountInBB = BB->sizeWithoutDebug();
+    return ((InstCountInBB > m_BBSizeThreshold) || !I || I->getParent() != BB);
 }
