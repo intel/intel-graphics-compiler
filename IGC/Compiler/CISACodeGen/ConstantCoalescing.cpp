@@ -1135,7 +1135,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     // - (byte aligned) loads of 1, 2 and 4 Bytes
     auto RoundChunkSize = [this, scalarSizeInBytes, load](const uint32_t chunkSize)
     {
-        bool supportsVec3Load = SupportsVec3Load(scalarSizeInBytes, *m_ctx, load);
+        bool supportsVec3Load = scalarSizeInBytes >= 4 && EmitPass::shouldGenerateLSCQuery(*m_ctx, load) == Tristate::True;
         uint32_t validChunkSize = (supportsVec3Load && chunkSize == 3) ?
             3 : iSTD::RoundPower2((DWORD)chunkSize);
         return validChunkSize;
@@ -2697,11 +2697,6 @@ void ConstantCoalescing::CopyMetadata(Instruction* dst, Instruction* src)
         IGC_ASSERT(nodeDst == nullptr);
         dst->setMetadata("lsc.cache.ctrl", nodeSrc);
     }
-}
-
-bool ConstantCoalescing::SupportsVec3Load(unsigned scalarSizeInBytes, IGC::CodeGenContext& ctx, Instruction* I)
-{
-    return scalarSizeInBytes >= 4 && EmitPass::shouldGenerateLSCQuery(ctx, I) == Tristate::True;
 }
 
 char IGC::ConstantCoalescing::ID = 0;

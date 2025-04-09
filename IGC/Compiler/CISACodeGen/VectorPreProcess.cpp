@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
-#include "Compiler/CISACodeGen/ConstantCoalescing.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
@@ -472,8 +471,7 @@ namespace
         // Return true if V is created by InsertElementInst with const index.
         bool isValueCreatedOnlyByIEI(Value* V, InsertElementInst** IEInsts);
         // Return true if V is only used by ExtractElement with const index.
-        template<size_t N>
-        bool isValueUsedOnlyByEEI(Value* V, std::array<ExtractElementInst*, N>& EEInsts);
+        bool isValueUsedOnlyByEEI(Value* V, ExtractElementInst** EEInsts);
 
         // Split load/store that cannot be re-layout or is too big.
         uint32_t getSplitByteSize(Instruction* I, WIAnalysisRunner& WI) const;
@@ -551,8 +549,7 @@ bool VectorPreProcess::isValueCreatedOnlyByIEI(Value* V, InsertElementInst** IEI
     return true;
 }
 
-template<size_t N>
-bool VectorPreProcess::isValueUsedOnlyByEEI(Value* V, std::array<ExtractElementInst*, N>& EEInsts)
+bool VectorPreProcess::isValueUsedOnlyByEEI(Value* V, ExtractElementInst** EEInsts)
 {
     for (Value::user_iterator UI = V->user_begin(), UE = V->user_end();
         UI != UE; ++UI)
@@ -1287,10 +1284,7 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
             II->getIntrinsicID() == GenISAIntrinsic::GenISA_storeraw_indexed);
     bool isPredLoad = isa<PredicatedLoadIntrinsic>(Inst);
 
-    // we need this check here since ConstantCoalescing pass expects no 3-element loads if we don't pass this check
-    bool supportsVec3Load = ConstantCoalescing::SupportsVec3Load(etyBytes, *m_CGCtx, Inst);
-
-    if (etyBytes == 1 || etyBytes == 2 || (etyBytes == 4 && !supportsVec3Load) ||
+    if (etyBytes == 1 || etyBytes == 2 ||
         (etyBytes == 8 && (isa<LdRawIntrinsic>(Inst) || isStoreRaw)))
     {
         IRBuilder<> Builder(Inst);
@@ -1341,19 +1335,27 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
             }
 
             // A little optimization here
-            std::array< ExtractElementInst*, 3> EEInsts{ nullptr };
-            auto EltInsts = { Elt0, Elt1, Elt2 };
-
+            ExtractElementInst* EEInsts[3];
+            for (int i = 0; i < 3; ++i)
+            {
+                EEInsts[i] = nullptr;
+            }
             if (isValueUsedOnlyByEEI(ALI->getInst(), EEInsts))
             {
-                for (auto&& [oldI, newI] : llvm::zip(EEInsts, EltInsts))
+                if (EEInsts[0] != nullptr)
                 {
-                    if (oldI != nullptr)
-                    {
-                        cast<Instruction>(newI)->setDebugLoc(oldI->getDebugLoc());
-                        oldI->replaceAllUsesWith(newI);
-                        oldI->eraseFromParent();
-                    }
+                    EEInsts[0]->replaceAllUsesWith(Elt0);
+                    EEInsts[0]->eraseFromParent();
+                }
+                if (EEInsts[1] != nullptr)
+                {
+                    EEInsts[1]->replaceAllUsesWith(Elt1);
+                    EEInsts[1]->eraseFromParent();
+                }
+                if (EEInsts[2] != nullptr)
+                {
+                    EEInsts[2]->replaceAllUsesWith(Elt2);
+                    EEInsts[2]->eraseFromParent();
                 }
             }
             else

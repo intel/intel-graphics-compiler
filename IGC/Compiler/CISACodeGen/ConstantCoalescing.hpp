@@ -78,8 +78,6 @@ namespace IGC
             return IGCOpts::ConstantCoalescingPass;
         }
 
-        static bool SupportsVec3Load(unsigned scalarSizeInBytes, IGC::CodeGenContext& ctx, Instruction* I);
-
     private:
         enum ExtensionKind {
             EK_NotExtended,
