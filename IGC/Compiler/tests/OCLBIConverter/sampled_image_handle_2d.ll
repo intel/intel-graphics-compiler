@@ -36,7 +36,7 @@ entry:
 ; CHECK: [[OR:%.*]] = or i64 %sampler_offset, 1
 ; CHECK: %bindless_img = inttoptr i32 %conv to ptr addrspace(393468)
 ; CHECK-NEXT: %bindless_sampler = inttoptr i64 [[OR]] to ptr addrspace(655360)
-; CHECK-NEXT: %call1 = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196608.p393468.p655360(float 0.000000e+00, float %CoordX, float %CoordY, float 0.000000e+00, float 0.000000e+00, ptr addrspace(196608) undef, ptr addrspace(393468) %bindless_img, ptr addrspace(655360) %bindless_sampler, i32 0, i32 0, i32 0)
+; CHECK-NEXT: %call1 = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196860.p393468.p655360(float 0.000000e+00, float %CoordX, float %CoordY, float 0.000000e+00, float 0.000000e+00, ptr addrspace(196860) undef, ptr addrspace(393468) %bindless_img, ptr addrspace(655360) %bindless_sampler, i32 0, i32 0, i32 0)
 
   %call = call spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i32 %conv, i32 %conv2, <2 x float> zeroinitializer, float 0.000000e+00)
   %astype3 = inttoptr i64 %__SYCLKernel.3.copyload to ptr addrspace(1)
@@ -50,7 +50,7 @@ entry:
 ; CHECK: [[OR2:%.*]] = or i64 %sampler_offset{{.*}}, 1
 ; CHECK: [[IMG2:%bindless_img[0-9]+]] = inttoptr i32 %conv3 to ptr addrspace(393468)
 ; CHECK-NEXT: [[SAMPLER2:%bindless_sampler[0-9]+]] = inttoptr i64 [[OR2]] to ptr addrspace(655360)
-; CHECK-NEXT: %call26 = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196608.p393468.p655360(float 0.000000e+00, float %CoordX2, float %CoordY3, float 0.000000e+00, float 0.000000e+00, ptr addrspace(196608) undef, ptr addrspace(393468) [[IMG2]], ptr addrspace(655360) [[SAMPLER2]], i32 0, i32 0, i32 0)
+; CHECK-NEXT: %call26 = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196860.p393468.p655360(float 0.000000e+00, float %CoordX2, float %CoordY3, float 0.000000e+00, float 0.000000e+00, ptr addrspace(196860) undef, ptr addrspace(393468) [[IMG2]], ptr addrspace(655360) [[SAMPLER2]], i32 0, i32 0, i32 0)
 
   %call2 = call spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i32 %conv3, i32 %conv4, <2 x float> zeroinitializer, float 0.000000e+00)
   ret void

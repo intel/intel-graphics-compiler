@@ -22,7 +22,7 @@ entry:
 
 ; CHECK: %bindless_img = inttoptr i32 %conv to float addrspace(393468)*
 ; CHECK-NEXT: %bindless_sampler = addrspacecast %spirv.Sampler addrspace(2)* %sampler to float addrspace(655360)*
-; CHECK-NEXT: call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196610f32.p393468f32.p655360f32(float 0.000000e+00, float %CoordX, float %CoordY, float 0.000000e+00, float 0.000000e+00, float addrspace(196610)* undef, float addrspace(393468)* %bindless_img, float addrspace(655360)* %bindless_sampler, i32 0, i32 0, i32 0)
+; CHECK-NEXT: call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196860f32.p393468f32.p655360f32(float 0.000000e+00, float %CoordX, float %CoordY, float 0.000000e+00, float 0.000000e+00, float addrspace(196860)* undef, float addrspace(393468)* %bindless_img, float addrspace(655360)* %bindless_sampler, i32 0, i32 0, i32 0)
 
   %call = call spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i32 %conv, i32 %conv2, <2 x float> zeroinitializer, float 0.000000e+00)
   ret void

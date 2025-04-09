@@ -217,6 +217,17 @@ void CImagesBI::prepareImageBTI()
 
 void CImagesBI::preparePairedResource()
 {
+    if (m_pCodeGenContext->getModuleMetaData()->UseBindlessImage)
+    {
+        ConstantInt* bindlessIndex = ConstantInt::get(m_pIntType, BINDLESS_BTI);
+
+        uint32_t addrSpace = EncodeAS4GFXResource(*bindlessIndex, RESOURCE);
+        Type* ptrTy = llvm::PointerType::get(m_pFloatType, addrSpace);
+        Value* pairedResource = UndefValue::get(ptrTy);
+        m_args.push_back(pairedResource);
+        return;
+    }
+
     Value* pImg = nullptr;
     ConstantInt* imageIndex = CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, 0, pImg);
     IGC_ASSERT(isa<Argument>(pImg) || isa<LoadInst>(pImg));
