@@ -749,6 +749,7 @@ void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
 
     auto name =
         IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
+        .ShaderName(m_pContext->shaderName)
         .Type(m_pContext->type)
         .Hash(m_pContext->hash)
         .Pass(passName, std::optional<uint32_t>(m_pContext->m_numPasses++))
@@ -828,6 +829,7 @@ void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
         using namespace IGC::Debug;
         auto name =
             DumpName(IGC::Debug::GetShaderOutputName())
+            .ShaderName(pContext->shaderName)
             .Hash(pContext->hash)
             .Type(pContext->type)
             .Pass(dumpName)
@@ -845,6 +847,7 @@ void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
     {
         auto name =
             DumpName(IGC::Debug::GetShaderOutputName())
+            .ShaderName(pContext->shaderName)
             .Hash(pContext->hash)
             .Type(pContext->type)
             .Pass(dumpName)

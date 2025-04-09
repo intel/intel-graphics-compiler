@@ -899,6 +899,11 @@ namespace IGC
         /// input: hash key
         ShaderHash    hash;
         ShaderType    type;
+        // This variable should probably only be set if there is one shader in
+        // the module. For example, raytracing and OpenCL modules can have an
+        // arbitrary number of shaders, so it's unclear what setting this would
+        // mean in that case.
+        std::string   shaderName = "";
         /// input: Platform features supported
         const CPlatform& platform;
         /// input: binding table layout used by the driver

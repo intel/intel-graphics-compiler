@@ -88,6 +88,10 @@ DumpName::DumpName()
 
 DumpName DumpName::ShaderName(std::string const& name) const
 {
+    if (name == "")
+    {
+        return *this;
+    }
     IGC_ASSERT_MESSAGE(name.find(' ') == std::string::npos, "Shader name must not contain spaces");
     DumpName copy(*this);
     copy.m_shaderName = name;
@@ -724,6 +728,7 @@ DumpName GetDumpNameObj(const IGC::CShader* pProgram, const char* ext)
 
     DumpName dumpName =
         IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
+        .ShaderName(context->shaderName)
         .Type(context->type)
         .Hash(context->hash)
         .StagedInfo(context);
