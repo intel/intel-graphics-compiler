@@ -150,7 +150,7 @@ bool GenerateBlockMemOpsPass::runOnFunction(Function &F) {
         BranchInst *PreConditionBranch = cast<BranchInst>(OldPreheader->getTerminator());
         if (!PreConditionBranch->isConditional())
             PreConditionBranch = cast<BranchInst>((*pred_begin(OldPreheader))->getTerminator());
-        ICmpInst *PreCondition = dyn_cast<ICmpInst>(PreConditionBranch->getCondition());
+        ICmpInst *PreCondition = cast<ICmpInst>(PreConditionBranch->getCondition());
 
         // Get offset for the initial value of the induction variable..
         SmallVector<Value*, 2> Offset;

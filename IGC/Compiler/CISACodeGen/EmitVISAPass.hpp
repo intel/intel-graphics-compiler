@@ -856,8 +856,8 @@ public:
         CVariable*& flag,
         uint ResourceLoopMarker);
     template<typename Func>
-    void ResourceLoop(ResourceDescriptor &resource, SamplerDescriptor& sampler,
-        Func Fn, uint ResourceLoopMarker = 0)
+    void ResourceLoop(ResourceDescriptor& resource, SamplerDescriptor& sampler,
+        const Func& Fn, uint ResourceLoopMarker = 0)
     {
         uint label = 0;
         CVariable* flag = nullptr;
