@@ -585,7 +585,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
 
     if (pContext->needsDivergentBarrierHandling())
     {
-        mpm.add(createDivergentBarrierPass(nullptr));
+        mpm.add(createDivergentBarrierPass());
         mpm.add(new BreakConstantExpr());
     }
 
