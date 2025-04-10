@@ -249,9 +249,20 @@ bool FPRoundingModeCoalescingImpl::tryMove(Instruction &ToMove, FPRoundingModeGr
     auto Cmp = [](Instruction *a, Instruction *b) { return IGCLLVM::comesBefore(a, b); };
     std::set<Instruction *, decltype(Cmp)> Users(Cmp);
 
-    std::function<void(Instruction *)> CheckUsers = [&](Instruction *ToCheck) {
+    SmallVector<Instruction*, 8> worklist;
+    SmallSet<Instruction*, 8> visited;
+    worklist.push_back(&ToMove);
+    while (!worklist.empty())
+    {
+        Instruction* ToCheck = worklist.back();
+        worklist.pop_back();
+        auto [_, inserted] = visited.insert(ToCheck);
+        if (!inserted)
+        {
+            continue;
+        }
         for (auto V = ToCheck->users().begin(); V != ToCheck->users().end(); ++V) {
-            if (auto *I = dyn_cast<Instruction>(*V)) {
+            if (auto* I = dyn_cast<Instruction>(*V)) {
                 if (I->getParent() != ToMove.getParent())
                     continue;
                 if (isa<PHINode>(I))
@@ -259,12 +270,11 @@ bool FPRoundingModeCoalescingImpl::tryMove(Instruction &ToMove, FPRoundingModeGr
                 // Special case - if group directly uses ToMove, then this use is already on correct position.
                 if (Group.comesBeforeTail(I) && (ToCheck != &ToMove || !Group.contains(I))) {
                     Users.insert(I);
-                    CheckUsers(I);
+                    worklist.push_back(I);
                 }
             }
         }
-    };
-    CheckUsers(&ToMove);
+    }
 
     // Now that all users are collected, count how many users would switch RM.
     int UsersSwitchingRM = 0;
