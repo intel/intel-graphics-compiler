@@ -162,6 +162,8 @@ inline bool isInternalSamplerIntrinsic(const llvm::Function *F) {
   return isInternalSamplerIntrinsic(getInternalIntrinsicID(F));
 }
 
+bool isUntypedBlockLoad2dIntrinsic(ID IID);
+
 bool isMemoryBlockIntrinsic(const llvm::Instruction *I);
 
 unsigned getMemoryVectorSizePerLane(const llvm::Instruction *I);

@@ -90,6 +90,8 @@ private:
                                 Value *Data, unsigned VectorSize,
                                 unsigned Index, unsigned Width) const;
 
+  Value *extendUntypedBlockLoad2d(CallInst &CI) const;
+
   const GenXSubtarget *ST = nullptr;
 };
 
@@ -137,38 +139,48 @@ void GenXLoadStoreLegalization::visitCallInst(CallInst &CI) {
     return;
   LLVM_DEBUG(dbgs() << "Trying: " << CI << "\n");
 
-  const auto ExecSize = vc::InternalIntrinsic::getMemorySimdWidth(&CI);
-  const uint64_t VectorSize =
-      vc::InternalIntrinsic::getMemoryVectorSizePerLane(&CI);
+  Value *Ret = nullptr;
 
-  const auto MaxWidth = getMaxLegalSimdWidth(CI);
-  const auto MinWidth = getMinLegalSimdWidth(CI);
+  if (vc::InternalIntrinsic::isUntypedBlockLoad2dIntrinsic(IID)) {
+    // extending register update to GRF size
+    Ret = extendUntypedBlockLoad2d(CI);
+    if (!Ret) {
+      LLVM_DEBUG(dbgs() << "The instruction is already legal: " << CI << "\n");
+      return;
+    }
+  } else {
+    const auto ExecSize = vc::InternalIntrinsic::getMemorySimdWidth(&CI);
 
-  // No legalization needed: scalar/block operation or legal simd width
-  if (vc::InternalIntrinsic::isMemoryBlockIntrinsic(&CI) ||
-      (isPowerOf2_32(ExecSize) && ExecSize >= MinWidth &&
-       ExecSize <= MaxWidth)) {
-    LLVM_DEBUG(dbgs() << "The instruction is already legal: " << CI << "\n");
-    return;
-  }
+    const auto MaxWidth = getMaxLegalSimdWidth(CI);
+    const auto MinWidth = getMinLegalSimdWidth(CI);
 
-  // Legalization is impossible, emit an error
-  if (MaxWidth == 0 || MinWidth == 0) {
-    vc::diagnose(CI.getContext(), "GenXLoadStoreLegalization",
-                 "Cannot legalize illegal memory intrinsic", &CI);
-    return;
-  }
+    // No legalization needed: scalar/block operation or legal simd width
+    if (vc::InternalIntrinsic::isMemoryBlockIntrinsic(&CI) ||
+        (isPowerOf2_32(ExecSize) && ExecSize >= MinWidth &&
+         ExecSize <= MaxWidth)) {
+      LLVM_DEBUG(dbgs() << "The instruction is already legal: " << CI << "\n");
+      return;
+    }
 
-  auto *RetTy = CI.getType();
-  Value *Ret = RetTy->isVoidTy() ? nullptr : UndefValue::get(RetTy);
+    // Legalization is impossible, emit an error
+    if (MaxWidth == 0 || MinWidth == 0) {
+      vc::diagnose(CI.getContext(), "GenXLoadStoreLegalization",
+                   "Cannot legalize illegal memory intrinsic", &CI);
+      return;
+    }
 
-  unsigned Index = 0;
-  Ret = splitMemoryOperation(Ret, CI, MaxWidth, Index);
+    auto *RetTy = CI.getType();
 
-  unsigned RestSize = ExecSize - Index;
-  if (RestSize != 0) {
-    auto ExtWidth = std::max<unsigned>(PowerOf2Ceil(RestSize), MinWidth);
-    Ret = extendMemoryOperation(Ret, CI, ExtWidth, Index);
+    Ret = RetTy->isVoidTy() ? nullptr : UndefValue::get(RetTy);
+
+    unsigned Index = 0;
+    Ret = splitMemoryOperation(Ret, CI, MaxWidth, Index);
+
+    unsigned RestSize = ExecSize - Index;
+    if (RestSize != 0) {
+      auto ExtWidth = std::max<unsigned>(PowerOf2Ceil(RestSize), MinWidth);
+      Ret = extendMemoryOperation(Ret, CI, ExtWidth, Index);
+    }
   }
 
   if (Ret) {
@@ -323,7 +335,8 @@ GenXLoadStoreLegalization::getMemoryIntrinsic(CallInst &CI,
     OverloadedTypes.push_back(VTy);
   }
 
-  const auto CacheControlIndex = vc::InternalIntrinsic::getMemoryCacheControlOperandIndex(&CI);
+  const auto CacheControlIndex =
+      vc::InternalIntrinsic::getMemoryCacheControlOperandIndex(&CI);
   for (unsigned I = 0; I < CI.getNumOperands(); I++) {
     if (!vc::InternalIntrinsic::isOverloadedArg(IID, I))
       continue;
@@ -460,4 +473,57 @@ Value *GenXLoadStoreLegalization::createInsertToSOAValue(
   }
 
   return Insert;
+}
+
+Value *GenXLoadStoreLegalization::extendUntypedBlockLoad2d(CallInst &CI) const {
+  const auto IID = vc::InternalIntrinsic::getInternalIntrinsicID(&CI);
+  auto &DL = CI.getModule()->getDataLayout();
+  auto *RetTy = CI.getType();
+  auto *ResVTy = dyn_cast<IGCLLVM::FixedVectorType>(RetTy);
+  IGC_ASSERT_EXIT(ResVTy);
+  auto NumElements = ResVTy->getNumElements();
+  auto *ETy = ResVTy->getElementType();
+  auto ElemSizeBytes = DL.getTypeSizeInBits(ETy) / genx::ByteBits;
+  unsigned WidthBytes = NumElements * ElemSizeBytes;
+
+  if (WidthBytes % ST->getGRFByteSize()) {
+    SmallVector<Type *, 2> OverloadedTypes;
+    auto NewNumElements = ST->getGRFByteSize() / ElemSizeBytes;
+    auto *VTy = IGCLLVM::FixedVectorType::get(ETy, NewNumElements);
+    OverloadedTypes.push_back(VTy);
+    const auto CacheControlIndex =
+        vc::InternalIntrinsic::getMemoryCacheControlOperandIndex(&CI);
+    OverloadedTypes.push_back(CI.getOperand(CacheControlIndex)->getType());
+    auto *Func = vc::InternalIntrinsic::getInternalDeclaration(
+        CI.getModule(), IID, OverloadedTypes);
+
+    SmallVector<Value *, 15> Args(CI.args());
+
+    auto PassThruIndex = CI.arg_size() - 1;
+    auto *PassThru = CI.getOperand(PassThruIndex);
+
+    Region R(UndefValue::get(VTy));
+    R.Offset = 0;
+    R.VStride = 1;
+    R.Width = 1;
+    R.Stride = 0;
+    R.NumElements = NumElements;
+
+    if (isa<UndefValue>(PassThru)) {
+      Args[PassThruIndex] = UndefValue::get(VTy);
+    } else {
+      Args[PassThruIndex] = R.createWrRegion(UndefValue::get(VTy), PassThru,
+                                             "ins", &CI, CI.getDebugLoc());
+    }
+
+    IRBuilder<> Builder(&CI);
+
+    auto *NewCI = Builder.CreateCall(Func, Args);
+
+    LLVM_DEBUG(dbgs() << "Created block 2d load : " << *NewCI << "\n");
+
+    return R.createRdRegion(NewCI, "ext", &CI, CI.getDebugLoc());
+  }
+
+  return nullptr;
 }

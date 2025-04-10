@@ -806,6 +806,21 @@ bool InternalIntrinsic::isInternalSamplerIntrinsic(ID IID) {
   return false;
 }
 
+bool InternalIntrinsic::isUntypedBlockLoad2dIntrinsic(ID IID) {
+  switch (IID) {
+  default:
+    break;
+  case vc::InternalIntrinsic::lsc_load_block_2d_ugm:
+  case vc::InternalIntrinsic::lsc_load_block_2d_ugm_transposed:
+  case vc::InternalIntrinsic::lsc_load_block_2d_ugm_vnni:
+  case vc::InternalIntrinsic::lsc_load_2d_ugm_desc:
+  case vc::InternalIntrinsic::lsc_load_2d_ugm_desc_transpose:
+  case vc::InternalIntrinsic::lsc_load_2d_ugm_desc_vnni:
+    return true;
+  }
+  return false;
+}
+
 bool InternalIntrinsic::isMemoryBlockIntrinsic(const llvm::Instruction *I) {
   if (!isInternalMemoryIntrinsic(I))
     return false;
