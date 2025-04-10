@@ -842,6 +842,7 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
         else if (const VAArgInst* VAI = dyn_cast<VAArgInst>(inst))                  dep = calculate_dep(VAI);
 #if LLVM_VERSION_MAJOR >= 10
         else if (inst->getOpcode() == Instruction::FNeg)                            dep = calculate_dep_simple(inst);
+        else if (inst->getOpcode() == Instruction::Freeze)                          dep = calculate_dep_simple(inst);
 #endif
 
         if (m_func->hasFnAttribute("KMPLOCK"))
