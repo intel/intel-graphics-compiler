@@ -1787,6 +1787,7 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_dp4a_us"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_us, false);
 
     m_CommandMap["__builtin_IB_software_exception"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_software_exception, false);
+    m_CommandMap["__builtin_IB_enable_ieee_exception_trap"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_enable_ieee_exception_trap, false);
     m_CommandMap["__builtin_IB_get_stack_pointer"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_getStackPointer, false);
     m_CommandMap["__builtin_IB_get_stack_size_per_thread"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_getStackSizePerThread, false);
 

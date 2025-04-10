@@ -9356,6 +9356,19 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         m_encoder->Push();
         break;
     }
+    case GenISAIntrinsic::GenISA_enable_ieee_exception_trap:
+    {
+        // Set IEEE Exception Trap bit.
+        CVariable *Mask = m_currShader->ImmToVariable(
+            1 << 9,
+            ISA_TYPE_UD);
+
+        m_encoder->SetSrcSubReg(0, 0);
+        m_encoder->SetDstSubReg(0);
+        m_encoder->Or(m_currShader->GetCR0(), m_currShader->GetCR0(), Mask);
+        m_encoder->Push();
+        break;
+    }
     case GenISAIntrinsic::GenISA_thread_exit:
     {
         m_currShader->EOTGateway();
