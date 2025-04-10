@@ -217,6 +217,10 @@ bool isCoreXE2() const {
     return ( m_platformInfo.eRenderCoreFamily == IGFX_XE2_HPG_CORE );
 }
 
+bool isCoreXE3() const {
+    return ( m_platformInfo.eRenderCoreFamily == IGFX_XE3_CORE );
+}
+
 // This function checks if core is child of another core
 bool isCoreChildOf(GFXCORE_FAMILY core) const
 {
