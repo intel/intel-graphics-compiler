@@ -71,6 +71,8 @@ namespace {
 
         typedef DenseMap<Value*, ValuePair> ValueMapTy;
         ValueMapTy ValueMap;
+        typedef DenseMap<ValuePair, Value*> ReverseValueMapTy;
+        ReverseValueMapTy ReverseValueMap;
 
         // Special bitcasts of 64-bit arguments, which need special handling as we
         // cannot replace argument type.
@@ -129,6 +131,9 @@ namespace {
                 Align = DL->getABITypeAlign(LD->getType()).value();
             return Align;
         }
+
+        // Get or create merged ValuePair
+        Value* getOrCreate64Value(ValuePair VP);
 
         void copyKnownMetadata(Instruction* NewI, Instruction* OldI) const
         {
@@ -545,6 +550,23 @@ ValuePair Emu64Ops::getExpandedValues(Value* V) {
 void Emu64Ops::setExpandedValues(Value* V, Value* Lo, Value* Hi) {
     ValuePair Pair = std::make_pair(Lo, Hi);
     ValueMap.insert(std::make_pair(V, Pair));
+}
+
+Value* Emu64Ops::getOrCreate64Value(ValuePair VP)
+{
+    auto [RVMI, New] = ReverseValueMap.insert(std::make_pair(VP, nullptr));
+    if (!New)
+    {
+        return RVMI->second;
+    }
+
+    Type* V2I32Ty = getV2Int32Ty();
+    Value* NewVal = UndefValue::get(V2I32Ty);
+    NewVal = IRB->CreateInsertElement(NewVal, VP.first, IRB->getInt32(0));
+    NewVal = IRB->CreateInsertElement(NewVal, VP.second, IRB->getInt32(1));
+    NewVal = IRB->CreateBitCast(NewVal, IRB->getInt64Ty());
+    RVMI->second = NewVal;
+    return RVMI->second;
 }
 
 bool Emu64Ops::expandArguments(Function& F) {
@@ -1861,12 +1883,8 @@ bool InstExpander::visitCall(CallInst& Call) {
     {
         IGC_ASSERT(nullptr != Emu);
         IGC_ASSERT(Emu->isInt64(val));
-        auto [InputLo, InputHi] = Emu->getExpandedValues(val);
-        Type* V2I32Ty = Emu->getV2Int32Ty();
-        Value* NewVal = UndefValue::get(V2I32Ty);
-        NewVal = IRB->CreateInsertElement(NewVal, InputLo, IRB->getInt32(0));
-        NewVal = IRB->CreateInsertElement(NewVal, InputHi, IRB->getInt32(1));
-        NewVal = IRB->CreateBitCast(NewVal, IRB->getInt64Ty());
+        ValuePair VP = Emu->getExpandedValues(val);
+        Value* NewVal = Emu->getOrCreate64Value(VP);
         return NewVal;
     };
     auto Spliti64To2xi32 = [this](Value* retVal)

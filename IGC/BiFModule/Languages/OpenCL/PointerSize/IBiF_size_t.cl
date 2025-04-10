@@ -1511,78 +1511,78 @@ INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global double16 *dst
 //*****************************************************************************/
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_only image1d_array_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image1d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_only image2d_array_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_only image2d_array_depth_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_only image2d_array_msaa_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_only image2d_array_msaa_depth_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
 INLINE size_t OVERLOADABLE get_image_array_size(write_only image1d_array_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image1d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(write_only image2d_array_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(write_only image2d_array_depth_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(write_only image2d_array_msaa_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(write_only image2d_array_msaa_depth_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_write image1d_array_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image1d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_write image2d_array_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_write image2d_array_depth_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_write image2d_array_msaa_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_write image2d_array_msaa_depth_t image) {
-    int id = (int)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_astype(image, __global void*);
     return __builtin_IB_get_image2d_array_size(id);
 }
 #endif // SUPPORT_ACCESS_QUAL_OVERLOAD

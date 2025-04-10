@@ -4927,7 +4927,7 @@ INLINE void OVERLOADABLE intel_work_group_va_boolcentroid(
     image2d_t srcImg,
     sampler_t accelerator )
 {
-    int i_image = (int)__builtin_astype( srcImg, __global void* );
+    long i_image = (long)__builtin_astype( srcImg, __global void* );
     __builtin_IB_va_boolcentroid(
         registers,
         coordsNorm,
@@ -4943,7 +4943,7 @@ INLINE void OVERLOADABLE intel_work_group_va_boolsum(
     image2d_t srcImg,
     sampler_t accelerator )
 {
-    int i_image = (int)__builtin_astype( srcImg, __global void* );
+    long i_image = (long)__builtin_astype( srcImg, __global void* );
     __builtin_IB_va_boolsum(
         registers,
         coordsNorm,
@@ -4959,7 +4959,7 @@ INLINE void OVERLOADABLE intel_work_group_va_centroid(
     image2d_t srcImg,
     sampler_t accelerator )
 {
-    int i_image = (int)__builtin_astype( srcImg, __global void* );
+    long i_image = (long)__builtin_astype( srcImg, __global void* );
     __builtin_IB_va_centroid(
         registers,
         coordsNorm,
@@ -4977,7 +4977,7 @@ INLINE void OVERLOADABLE intel_work_group_va_convolve_16x4(
     __builtin_IB_va_convolve_16x4_SLM(
         registers,
         coordsNorm,
-        (int)__builtin_astype( srcImg, __global void* ),
+        (long)__builtin_astype( srcImg, __global void* ),
         __builtin_IB_convert_sampler_to_int(accelerator) );
 }
 
@@ -4987,7 +4987,7 @@ INLINE void OVERLOADABLE intel_work_group_va_dilate_64x4(
     image2d_t srcImg,
     sampler_t accelerator )
 {
-    int i_image = (int)__builtin_astype( srcImg, __global void* );
+    long i_image = (long)__builtin_astype( srcImg, __global void* );
     __builtin_IB_va_dilate_64x4(
         registers,
         coordsNorm,
@@ -5001,7 +5001,7 @@ INLINE void OVERLOADABLE intel_work_group_va_erode_64x4(
     image2d_t srcImg,
     sampler_t accelerator )
 {
-    int i_image = (int)__builtin_astype( srcImg, __global void* );
+    long i_image = (long)__builtin_astype( srcImg, __global void* );
     __builtin_IB_va_erode_64x4(
         registers,
         coordsNorm,
@@ -5015,7 +5015,7 @@ INLINE void OVERLOADABLE intel_work_group_va_minmax(
     image2d_t srcImg,
     sampler_t accelerator )
 {
-    int i_image = (int)__builtin_astype( srcImg, __global void* );
+    long i_image = (long)__builtin_astype( srcImg, __global void* );
     __builtin_IB_va_minmax(
         registers,
         coordsNorm,
@@ -5029,7 +5029,7 @@ INLINE void OVERLOADABLE intel_work_group_va_minmaxfilter_16x4(
     image2d_t srcImg,
     sampler_t accelerator )
 {
-    int i_image = (int)__builtin_astype( srcImg, __global void* );
+    long i_image = (long)__builtin_astype( srcImg, __global void* );
     __builtin_IB_va_minmaxfilter_16x4_SLM(
         registers,
         coordsNorm,
