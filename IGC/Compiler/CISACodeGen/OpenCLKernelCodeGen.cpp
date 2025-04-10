@@ -3745,7 +3745,7 @@ namespace IGC
         SIMDStatus simdStatus = SIMDStatus::SIMD_FUNC_FAIL;
         if (m_Context->platform.getMinDispatchMode() == SIMDMode::SIMD16)
         {
-            simdStatus = checkSIMDCompileCondsPVC(simdMode, EP, F, hasSyncRTCalls);
+            simdStatus = checkSIMDCompileCondsForMin16(simdMode, EP, F, hasSyncRTCalls);
         }
         else
         {
@@ -3783,7 +3783,7 @@ namespace IGC
         return simdStatus == SIMDStatus::SIMD_PASS;
     }
 
-    SIMDStatus COpenCLKernel::checkSIMDCompileCondsPVC(SIMDMode simdMode, EmitPass& EP, llvm::Function& F, bool hasSyncRTCalls)
+    SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitPass& EP, llvm::Function& F, bool hasSyncRTCalls)
     {
         if (simdMode == SIMDMode::SIMD8)
         {
@@ -3809,10 +3809,23 @@ namespace IGC
 
         MetaDataUtils* pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
-        uint32_t simd_size = getReqdSubGroupSize(F, pMdUtils);
+        uint32_t requiredSimdSize = getReqdSubGroupSize(F, pMdUtils);
+
+        switch (requiredSimdSize)
+        {
+            case 0:
+            case 16:
+            case 32: break;
+            default:
+                pCtx->EmitError((std::string("Required SIMD mode ") +
+                    std::to_string(requiredSimdSize) +
+                    std::string(" is not supported on this platform")).c_str(),
+                    &F);
+                return SIMDStatus::SIMD_FUNC_FAIL;
+        }
 
         // there is a requirement for specific compilation size, we can't abort on simd32
-        if (simd_size != 0)
+        if (requiredSimdSize != 0)
             EP.m_canAbortOnSpill = false;
 
         bool hasSubGroupForce = hasSubGroupIntrinsicPVC(F);
@@ -3824,7 +3837,7 @@ namespace IGC
         bool hasSubroutine = FG && !FG->isSingleIgnoringStackOverflowDetection() && !hasStackCall && !isIndirectGroup;
         bool forceLowestSIMDForStackCalls = IGC_IS_FLAG_ENABLED(ForceLowestSIMDForStackCalls) && (hasStackCall || isIndirectGroup);
 
-        if (simd_size == 0)
+        if (requiredSimdSize == 0)
         {
             if (maxPressure >= IGC_GET_FLAG_VALUE(ForceSIMDRPELimit) &&
                 simdMode != SIMDMode::SIMD16)
@@ -3849,7 +3862,7 @@ namespace IGC
 
         bool optDisable = this->GetContext()->getModuleMetaData()->compOpt.OptDisable;
 
-        if (optDisable && simd_size == 0) // if simd size not requested in MD
+        if (optDisable && requiredSimdSize == 0) // if simd size not requested in MD
         {
             if (simdMode == SIMDMode::SIMD32)
             {
@@ -3868,30 +3881,12 @@ namespace IGC
             return SIMDStatus::SIMD_PASS;
         }
 
-        if (simd_size)
+        if (requiredSimdSize)
         {
-            if (simd_size != numLanes(simdMode))
+            if (requiredSimdSize != numLanes(simdMode))
             {
-                if (simd_size == 8 && simdMode == SIMDMode::SIMD32)
-                {
-                    // allow for now to avoid NEO build failures
-                    // ToDo: remove once NEO removes all SIMD8 kernel ULTs from driver build
-                    return SIMDStatus::SIMD_PASS;
-                }
                 pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                 return SIMDStatus::SIMD_FUNC_FAIL;
-            }
-            switch (simd_size)
-            {
-            case 8:
-                //IGC_ASSERT_MESSAGE(0, "Unsupported required sub group size for PVC");
-                break;
-            case 16:
-            case 32:
-                break;
-            default:
-                IGC_ASSERT_MESSAGE(0, "Unsupported required sub group size");
-                break;
             }
         }
         else

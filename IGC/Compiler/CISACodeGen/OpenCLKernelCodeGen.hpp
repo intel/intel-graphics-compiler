@@ -135,7 +135,7 @@ namespace IGC
         bool        CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F) override;
 
         SIMDStatus  checkSIMDCompileConds(SIMDMode simdMode, EmitPass& EP, llvm::Function& F, bool hasSyncRTCalls);
-        SIMDStatus  checkSIMDCompileCondsPVC(SIMDMode simdMode, EmitPass& EP, llvm::Function& F, bool hasSyncRTCalls);
+        SIMDStatus  checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitPass& EP, llvm::Function& F, bool hasSyncRTCalls);
 
         bool IsRegularGRFRequested() override;
         bool IsLargeGRFRequested() override;
