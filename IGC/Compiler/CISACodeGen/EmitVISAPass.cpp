@@ -24731,6 +24731,25 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
         destination = BroadcastIfUniform(GetSymbol(inst->getOperand(storeDestinationOperandId)));
     }
 
+    // Special handling of the following:
+    //    intel_sub_group_2d_block_read_8b_1r32x2c
+    //    intel_sub_group_2d_block_read_16b_1r16x2c
+    //    intel_sub_group_2d_block_read_32b_1r8x2c
+    // They are defined to return 64 bytes, but the HW block read returns 128 bytes (two GRFs,
+    // as a block size must be multiple of GRF, unused part is zero-padded). Additional mov
+    // instructions are needed to pack the lower halves of each GRF as the final return value.
+    //
+    // Here, using equivalent single-block read to avoid those mov instructions by
+    // just doubling their width.
+    if (isRead && !isPrefetch && !isTranspose && !isVnni &&
+        numBlocksV == 2 && blockHeight == 1 &&
+        (elemSizeInBits * blockWidth) == 256 &&
+        m_currShader->m_Platform->getGRFSize() == 64)
+    {
+        blockWidth = (2 * blockWidth);
+        numBlocksV = 1;
+    }
+
     bool emu_read = (isRead && isTranspose &&
         (elemSizeInBits == 8 || elemSizeInBits == 16));
     if (!emu_read) {
@@ -24753,25 +24772,6 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
             pFlatImagePitch,
             cacheOpts);
         m_encoder->Push();
-
-        if (numBlocksV == 2 && blockHeight == 1 &&
-            isRead && !isPrefetch &&
-            (elemSizeInBits * blockWidth) == 256 &&
-            m_currShader->m_Platform->getPlatformInfo().eProductFamily >= IGFX_PVC)
-        {
-            // For 2d_block_io_read_16b_1r16x2c, its block size is half of GRF and
-            // payload size is 2 GRFs (one for each block). Need to move the first
-            // half of 2nd GRF to the second half of 1st GRF.
-            IGC_ASSERT(destination->GetSize() == 2 * getGRFSize());
-            CVariable* destDW = m_currShader->GetNewAlias(destination, ISA_TYPE_UD, 0, 0);
-
-            m_encoder->SetNoMask();
-            m_encoder->SetSimdSize(SIMDMode::SIMD8);
-            m_encoder->SetSrcSubVar(0, 1);
-            m_encoder->SetDstSubReg(8);
-            m_encoder->Copy(destDW, destDW);
-            m_encoder->Push();
-        }
         return;
     }
 

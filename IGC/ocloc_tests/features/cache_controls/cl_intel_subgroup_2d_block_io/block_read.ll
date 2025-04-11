@@ -25,7 +25,7 @@ entry:
   %dst = getelementptr inbounds [2 x i16], [2 x i16]* %alloca, i64 0, i64 0
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !0
 
-; CHECK: lsc_load_block2d.ugm.uc.uc (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.uc.uc (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z40intel_sub_group_2d_block_read_8b_1r32x2cPU3AS1viiiDv2_iPt(i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i16* %dst)
 
   %value = load i16, i16* %dst, align 2
@@ -47,7 +47,7 @@ entry:
   %dst = getelementptr inbounds [2 x i16], [2 x i16]* %alloca, i64 0, i64 0
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !3
 
-; CHECK: lsc_load_block2d.ugm.uc.ca (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.uc.ca (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z40intel_sub_group_2d_block_read_8b_1r32x2cPU3AS1viiiDv2_iPt(i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i16* %dst)
 
   %value = load i16, i16* %dst, align 2
@@ -69,7 +69,7 @@ entry:
   %dst = getelementptr inbounds [2 x i16], [2 x i16]* %alloca, i64 0, i64 0
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !6
 
-; CHECK: lsc_load_block2d.ugm.ca.uc (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.ca.uc (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z40intel_sub_group_2d_block_read_8b_1r32x2cPU3AS1viiiDv2_iPt(i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i16* %dst)
 
   %value = load i16, i16* %dst, align 2
@@ -91,7 +91,7 @@ entry:
   %dst = getelementptr inbounds [2 x i16], [2 x i16]* %alloca, i64 0, i64 0
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !9
 
-; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z40intel_sub_group_2d_block_read_8b_1r32x2cPU3AS1viiiDv2_iPt(i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i16* %dst)
 
   %value = load i16, i16* %dst, align 2
@@ -113,7 +113,7 @@ entry:
   %dst = getelementptr inbounds [2 x i16], [2 x i16]* %alloca, i64 0, i64 0
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !12
 
-; CHECK: lsc_load_block2d.ugm.st.uc (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.st.uc (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z40intel_sub_group_2d_block_read_8b_1r32x2cPU3AS1viiiDv2_iPt(i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i16* %dst)
 
   %value = load i16, i16* %dst, align 2
@@ -135,7 +135,7 @@ entry:
   %dst = getelementptr inbounds [2 x i16], [2 x i16]* %alloca, i64 0, i64 0
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !15
 
-; CHECK: lsc_load_block2d.ugm.st.ca (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.st.ca (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z40intel_sub_group_2d_block_read_8b_1r32x2cPU3AS1viiiDv2_iPt(i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i16* %dst)
 
   %value = load i16, i16* %dst, align 2
@@ -157,7 +157,7 @@ entry:
   %dst = getelementptr inbounds [2 x i16], [2 x i16]* %alloca, i64 0, i64 0
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !18
 
-; CHECK: lsc_load_block2d.ugm.ri.ca (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.ri.ca (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z40intel_sub_group_2d_block_read_8b_1r32x2cPU3AS1viiiDv2_iPt(i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i16* %dst)
 
   %value = load i16, i16* %dst, align 2
@@ -179,7 +179,7 @@ entry:
   %dst = getelementptr inbounds [2 x i16], [2 x i16]* %alloca, i64 0, i64 0
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !21
 
-; CHECK: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z40intel_sub_group_2d_block_read_8b_1r32x2cPU3AS1viiiDv2_iPt(i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i16* %dst)
 
   %value = load i16, i16* %dst, align 2

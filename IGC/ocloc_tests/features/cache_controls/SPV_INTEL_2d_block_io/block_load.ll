@@ -21,7 +21,7 @@ define spir_kernel void @test_uncached_uncached(i8 addrspace(1)* %input, <2 x i3
 entry:
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !0
 
-; CHECK: lsc_load_block2d.ugm.uc.uc (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.uc.uc (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z32__spirv_Subgroup2DBlockLoadINTELiiiiPU3AS1KviiiDv2_iPv(i32 1, i32 32, i32 1, i32 2, i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i8* %output)
 
   ret void
@@ -37,7 +37,7 @@ define spir_kernel void @test_uncached_cached(i8 addrspace(1)* %input, <2 x i32>
 entry:
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !3
 
-; CHECK: lsc_load_block2d.ugm.uc.ca (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.uc.ca (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z32__spirv_Subgroup2DBlockLoadINTELiiiiPU3AS1KviiiDv2_iPv(i32 1, i32 32, i32 1, i32 2, i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i8* %output)
 
   ret void
@@ -53,7 +53,7 @@ define spir_kernel void @test_cached_uncached(i8 addrspace(1)* %input, <2 x i32>
 entry:
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !6
 
-; CHECK: lsc_load_block2d.ugm.ca.uc (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.ca.uc (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z32__spirv_Subgroup2DBlockLoadINTELiiiiPU3AS1KviiiDv2_iPv(i32 1, i32 32, i32 1, i32 2, i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i8* %output)
 
   ret void
@@ -69,7 +69,7 @@ define spir_kernel void @test_cached_cached(i8 addrspace(1)* %input, <2 x i32> %
 entry:
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !9
 
-; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z32__spirv_Subgroup2DBlockLoadINTELiiiiPU3AS1KviiiDv2_iPv(i32 1, i32 32, i32 1, i32 2, i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i8* %output)
 
   ret void
@@ -85,7 +85,7 @@ define spir_kernel void @test_streaming_uncached(i8 addrspace(1)* %input, <2 x i
 entry:
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !12
 
-; CHECK: lsc_load_block2d.ugm.st.uc (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.st.uc (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z32__spirv_Subgroup2DBlockLoadINTELiiiiPU3AS1KviiiDv2_iPv(i32 1, i32 32, i32 1, i32 2, i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i8* %output)
 
   ret void
@@ -101,7 +101,7 @@ define spir_kernel void @test_streaming_cached(i8 addrspace(1)* %input, <2 x i32
 entry:
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !15
 
-; CHECK: lsc_load_block2d.ugm.st.ca (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.st.ca (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z32__spirv_Subgroup2DBlockLoadINTELiiiiPU3AS1KviiiDv2_iPv(i32 1, i32 32, i32 1, i32 2, i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i8* %output)
 
   ret void
@@ -117,7 +117,7 @@ define spir_kernel void @test_iar_cached(i8 addrspace(1)* %input, <2 x i32> %coo
 entry:
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !18
 
-; CHECK: lsc_load_block2d.ugm.ri.ca (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm.ri.ca (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z32__spirv_Subgroup2DBlockLoadINTELiiiiPU3AS1KviiiDv2_iPv(i32 1, i32 32, i32 1, i32 2, i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i8* %output)
 
   ret void
@@ -133,7 +133,7 @@ define spir_kernel void @test_unsupported_cache_controls_config(i8 addrspace(1)*
 entry:
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i32 0, !spirv.Decorations !21
 
-; CHECK: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d8.2x32x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
+; CHECK: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d8.64x1nn  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]
   call spir_func void @_Z32__spirv_Subgroup2DBlockLoadINTELiiiiPU3AS1KviiiDv2_iPv(i32 1, i32 32, i32 1, i32 2, i8 addrspace(1)* %decorated_ptr, i32 512, i32 46, i32 512, <2 x i32> %coord, i8* %output)
 
   ret void
