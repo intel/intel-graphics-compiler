@@ -40,6 +40,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/LdShrink.h"
 #include "Compiler/CISACodeGen/MemOpt.h"
 #include "Compiler/CISACodeGen/MemOpt2.h"
+#include "Compiler/CISACodeGen/MergeUniformStores.hpp"
 #include "Compiler/CISACodeGen/PreRARematFlag.h"
 #include "Compiler/CISACodeGen/PromoteConstantStructs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AlignmentAnalysis/AlignmentAnalysis.hpp"
@@ -1933,6 +1934,12 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(llvm::createAggressiveDCEPass());
             if (IGC_IS_FLAG_ENABLED(VectorizerCheckScalarizer))
                 mpm.add(createScalarizerPass(SelectiveScalarizer::Auto));
+        }
+
+        if (pContext->type == ShaderType::COMPUTE_SHADER &&
+            IGC_IS_FLAG_ENABLED(EnableUniformSimd1Stores))
+        {
+            mpm.add(new MergeUniformStores());
         }
 
         mpm.run(*pContext->getModule());
