@@ -607,5 +607,9 @@ void Options::parseOptions(const char* opts)
     if (apiOptions.hasArg(OPT_static_profile_guided_trimming_common)) {
         StaticProfileGuidedTrimming = true;
     }
+
+    if (apiOptions.hasArg(OPT_enable_ieee_float_exception_trap_common)) {
+        EnableIEEEFloatExceptionTrap = true;
+    }
 }
 } // namespace IGC

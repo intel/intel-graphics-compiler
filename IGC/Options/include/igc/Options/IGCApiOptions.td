@@ -52,6 +52,10 @@ defm greater_than_4GB_buffer_required : CommonFlag<"greater-than-4GB-buffer-requ
 // -cl-poison-unsupported-fp64-kernels -ze-poison-unsupported-fp64-kernels
 defm poison_unsupported_fp64_kernels : CommonFlag<"poison-unsupported-fp64-kernels">;
 
+// -cl-intel-enable-ieee-float-exception-trap
+// This flags enables the IEEE exception trap bit in Control Register in the prolog of the kernel.
+defm enable_ieee_float_exception_trap : CommonFlag<"enable-ieee-float-exception-trap">;
+
 // -cl-fp64-gen-emu  -ze-fp64-gen-emu
 defm fp64_gen_emu : CommonFlag<"fp64-gen-emu">;
 

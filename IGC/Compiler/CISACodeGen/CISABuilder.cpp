@@ -2941,7 +2941,13 @@ namespace IGC
         }
         imm_data |= RM_bits;
 
-        if (IGC_IS_FLAG_ENABLED(deadLoopForFloatException))
+        bool EnableIEEEFloatExceptionTrap = IGC_IS_FLAG_ENABLED(deadLoopForFloatException) || IGC_IS_FLAG_ENABLED(EnableIEEEFloatExceptionTrap);
+        if (pCtx->type == ShaderType::OPENCL_SHADER &&
+            static_cast<OpenCLProgramContext*>(pCtx)->m_Options.EnableIEEEFloatExceptionTrap)
+        {
+            EnableIEEEFloatExceptionTrap = true;
+        }
+        if (EnableIEEEFloatExceptionTrap)
         {
             imm_data |= 0x200; //Cr0 , bit 9 to enable float exception trap
         }

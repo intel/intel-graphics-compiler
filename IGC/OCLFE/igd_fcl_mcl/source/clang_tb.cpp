@@ -1375,6 +1375,8 @@ namespace TC
                             (strcmp(pParam, "-cl-fp64-gen-conv-emu") == 0) || //used by fp64 conversion emulation
                             (strcmp(pParam, "-ze-fp64-gen-conv-emu") == 0) || //used by fp64 conversion emulation
                             (strcmp(pParam, "-Xfinalizer") == 0) || // used to pass options to visa finalizer
+                            (strcmp(pParam, "-cl-intel-enable-ieee-float-exception-trap") == 0) || // used to enable IEEE float exception trap
+                            (strcmp(pParam, "-ze-intel-enable-ieee-float-exception-trap") == 0) || // used to enable IEEE float exception trap
                             (strcmp(pParam, "-cl-intel-static-profile-guided-trimming") == 0) || //used to enable profile-guided trimming
                             (strcmp(pParam, "-ze-opt-static-profile-guided-trimming") == 0); //used to enable profile-guided trimming
 

@@ -193,6 +193,8 @@ public:
     bool EnableFP64GenConvEmu = false;
     // This option enables static profile-guided trimming
     bool StaticProfileGuidedTrimming = false;
+    // This option enables IEEE float exception trap bit in Control Register
+    bool EnableIEEEFloatExceptionTrap = false;
 
 private:
     void parseOptions(const char* opts);
