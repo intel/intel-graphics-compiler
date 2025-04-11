@@ -1044,8 +1044,9 @@ void appendToOptionsLogFile(std::string const &message)
     os.close();
 }
 
-static thread_local ShaderHash g_CurrentShaderHash;
 static thread_local std::vector<std::string> g_CurrentEntryPointNames;
+
+static thread_local ShaderHash g_CurrentShaderHash;
 void SetCurrentDebugHash(const ShaderHash& hash)
 {
     g_CurrentShaderHash = hash;
@@ -1061,6 +1062,7 @@ void ClearCurrentEntryPoints()
 {
     g_CurrentEntryPointNames.clear();
 }
+
 
 bool CheckHashRange(SRegKeyVariableMetaData& varname)
 {
@@ -1118,16 +1120,19 @@ bool CheckEntryPoint(SRegKeyVariableMetaData& varname)
         std::string msg = "Warning: entry point not set yet; IGC_GET_FLAG_VALUE(" + std::string(varname.GetName()) + ") returned default value";
         appendToOptionsLogFile(msg);
     }
-    //looping entry point recorded by regkey metadata
-    for (auto& it : varname.entry_points)
+
     {
-        //looping each entry point of current shader
-        for (std::string& CurrEntryPoint : g_CurrentEntryPointNames)
+        //looping entry point recorded by regkey metadata
+        for (auto& it : varname.entry_points)
         {
-            if (CurrEntryPoint == it.entry_point_name)
+            //looping each entry point of current shader
+            for (std::string& CurrEntryPoint : g_CurrentEntryPointNames)
             {
-                varname.m_Value = it.m_Value;
-                return true;
+                if (CurrEntryPoint == it.entry_point_name)
+                {
+                    varname.m_Value = it.m_Value;
+                    return true;
+                }
             }
         }
     }
