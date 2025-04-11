@@ -2090,3 +2090,100 @@ Value* RTBuilder::getHitAddress(StackPointerVal* StackPtr, bool Committed)
     IGC_ASSERT(0);
     return {};
 }
+
+template<typename StackPointerValT, typename RayInfoIntrinsicT>
+Value* RTBuilder::lowerRayInfo(StackPointerValT* perLaneStackPtr, RayInfoIntrinsicT* I, CallableShaderTypeMD shaderType, std::optional<bool> isProcedural)
+{
+    bool checkInstanceLeafPtr = std::is_same<RayInfoIntrinsicT, RayQueryInfoIntrinsic>::value;
+
+    Value* info = nullptr;
+    uint32_t dim = I->getDim();
+    auto infoKind = I->getInfoKind();
+
+    switch (infoKind)
+    {
+    case WORLD_RAY_ORG:
+        info = getWorldRayOrig(perLaneStackPtr, dim);
+        break;
+    case WORLD_RAY_DIR:
+        info = getWorldRayDir(perLaneStackPtr, dim);
+        break;
+    case OBJ_RAY_ORG:
+        info = getObjRayOrig(perLaneStackPtr, dim, shaderType, I, checkInstanceLeafPtr);
+        break;
+    case OBJ_RAY_DIR:
+        info = getObjRayDir(perLaneStackPtr, dim, shaderType, I, checkInstanceLeafPtr);
+        break;
+    case RAY_T_MIN:
+        info = getRayTMin(perLaneStackPtr);
+        break;
+    case RAY_T_CURRENT:
+        info = getRayTCurrent(perLaneStackPtr, shaderType);
+        break;
+    case INSTANCE_ID:
+        info = getInstanceID(perLaneStackPtr, shaderType, I, checkInstanceLeafPtr);
+        break;
+    case INSTANCE_INDEX:
+        info = getInstanceIndex(perLaneStackPtr, shaderType, I, checkInstanceLeafPtr);
+        break;
+    case PRIMITIVE_INDEX:
+    {
+        auto* nodeType = isProcedural.has_value() ?
+            getInt32(*isProcedural ? NODE_TYPE_PROCEDURAL : NODE_TYPE_QUAD) :
+            getLeafType(perLaneStackPtr, shaderType == CallableShaderTypeMD::ClosestHit);
+        info = getPrimitiveIndex(perLaneStackPtr, I, nodeType, shaderType, checkInstanceLeafPtr);
+        break;
+    }
+    case RAY_FLAGS:
+        info = CreateZExt(
+            getRayFlags(perLaneStackPtr),
+            I->getType());
+        break;
+    case OBJECT_TO_WORLD:
+        info = getObjToWorld(perLaneStackPtr, dim, shaderType, I, checkInstanceLeafPtr);
+        break;
+    case WORLD_TO_OBJECT:
+        info = getWorldToObj(perLaneStackPtr, dim, shaderType, I, checkInstanceLeafPtr);
+        break;
+    case GEOMETRY_INDEX:
+    {
+        auto* nodeType = isProcedural.has_value() ?
+            getInt32(*isProcedural ? NODE_TYPE_PROCEDURAL : NODE_TYPE_QUAD) :
+            getLeafType(perLaneStackPtr, shaderType == CallableShaderTypeMD::ClosestHit);
+        info = getGeometryIndex(perLaneStackPtr, I, nodeType, shaderType, checkInstanceLeafPtr);
+        break;
+    }
+    case INST_CONTRIBUTION_TO_HITGROUP_INDEX:
+        info = getInstanceContributionToHitGroupIndex(perLaneStackPtr, shaderType);
+        break;
+    case RAY_MASK:
+        info = getRayMask(perLaneStackPtr);
+        break;
+    case TRIANGLE_FRONT_FACE:
+    case CANDIDATE_PROCEDURAL_PRIM_NON_OPAQUE: // Procedural Primitive Opaque Info is stored in Front Face bit
+    {
+        info = getIsFrontFace(perLaneStackPtr, shaderType);
+
+        if (infoKind == CANDIDATE_PROCEDURAL_PRIM_NON_OPAQUE)
+            info = CreateICmpEQ(info, getInt1(0), VALUE_NAME("is_nonopaque"));
+
+        break;
+    }
+    case BARYCENTRICS:
+    {
+        info = getHitBaryCentric(perLaneStackPtr, I->getDim(), shaderType);
+        break;
+    }
+    default:
+        IGC_ASSERT_MESSAGE(0, "Unsupported Ray Info");
+        break;
+    }
+
+    return info;
+}
+template Value* RTBuilder::lowerRayInfo<RTBuilder::SyncStackPointerVal, RayQueryInfoIntrinsic>(
+    RTBuilder::SyncStackPointerVal*,
+    RayQueryInfoIntrinsic*,
+    CallableShaderTypeMD,
+    std::optional<bool>
+);
