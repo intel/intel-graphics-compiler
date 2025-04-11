@@ -24753,6 +24753,25 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
             pFlatImagePitch,
             cacheOpts);
         m_encoder->Push();
+
+        if (numBlocksV == 2 && blockHeight == 1 &&
+            isRead && !isPrefetch &&
+            (elemSizeInBits * blockWidth) == 256 &&
+            m_currShader->m_Platform->getPlatformInfo().eProductFamily >= IGFX_PVC)
+        {
+            // For 2d_block_io_read_16b_1r16x2c, its block size is half of GRF and
+            // payload size is 2 GRFs (one for each block). Need to move the first
+            // half of 2nd GRF to the second half of 1st GRF.
+            IGC_ASSERT(destination->GetSize() == 2 * getGRFSize());
+            CVariable* destDW = m_currShader->GetNewAlias(destination, ISA_TYPE_UD, 0, 0);
+
+            m_encoder->SetNoMask();
+            m_encoder->SetSimdSize(SIMDMode::SIMD8);
+            m_encoder->SetSrcSubVar(0, 1);
+            m_encoder->SetDstSubReg(8);
+            m_encoder->Copy(destDW, destDW);
+            m_encoder->Push();
+        }
         return;
     }
 
