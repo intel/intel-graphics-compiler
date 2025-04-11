@@ -1242,12 +1242,16 @@ static void LoadFromRegKeyOrEnvVarOrOptions(
     }
     if (IGC_IS_FLAG_ENABLED(PrintDebugSettings))
     {
-        std::cout << "*** Settings with non-default values ***" << std::endl;
-        for(DWORD i = 0; i < NUM_REGKEY_ENTRIES; i++)
+        // Using std::cout caused crashes in SYCL environment so we use fprintf instead as a work around.
+        std::ostringstream debugOutputStream;
+
+        for (DWORD i = 0; i < NUM_REGKEY_ENTRIES; i++)
         {
             if (pRegKeyVariable[i].m_isSetToNonDefaultValue)
-                std::cout << pRegKeyVariable[i].GetName() << " " << pRegKeyVariable[i].m_Value << std::endl;
+                debugOutputStream << pRegKeyVariable[i].GetName() << " " << pRegKeyVariable[i].m_Value << '\n';
         }
+
+        fprintf(stdout, "%s", debugOutputStream.str().c_str());
     }
 }
 

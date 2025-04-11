@@ -410,6 +410,9 @@ static void parseShaderPassDisableFlag(PassDisableConfig& pdc)
 {
     unsigned int passToSkip = IGC_GET_FLAG_VALUE(ShaderPassDisable);
 
+    // Using std::cerr caused crashes in SYCL environment so we use fprintf instead as a work around.
+    std::ostringstream debugOutputStream;
+
     // When disabling a single pass (eg. IGC_ShaderPassDisable=94) the number
     // will be parsed as ASCII char by IGC_GET_REGKEYSTRING.
     // In this case IGC_GET_FLAG_VALUE will return the char value.
@@ -417,15 +420,17 @@ static void parseShaderPassDisableFlag(PassDisableConfig& pdc)
     // We compare to 0xFFFF to naively check for number/string.
     if (passToSkip < 0xFFFF)
     {
-        std::cerr << "Your input to ShaderPassDisable: " << passToSkip << std::endl;
-        std::cerr << "You want to skip pass ID " << passToSkip << std::endl;
+        debugOutputStream << "Your input to ShaderPassDisable: " << passToSkip << '\n';
+        debugOutputStream << "You want to skip pass ID " << passToSkip << '\n';
+
         pdc.skipCommands.push_back(SkipCommand(passToSkip));
     }
     // Treat it as a string otherwise
     else
     {
         std::string passesToSkip = std::string(IGC_GET_REGKEYSTRING(ShaderPassDisable));
-        std::cerr << "Your input to ShaderPassDisable: " << passesToSkip << std::endl;
+
+        debugOutputStream << "Your input to ShaderPassDisable: " << passesToSkip << '\n';
 
         std::string Token;
         std::istringstream passesToSkipAsStringStream(passesToSkip);
@@ -447,6 +452,8 @@ static void parseShaderPassDisableFlag(PassDisableConfig& pdc)
                 continue;
         }
     }
+
+    fprintf(stderr, "%s", debugOutputStream.str().c_str());
 }
 
 PassDisableConfig::PassDisableConfig()
@@ -491,9 +498,13 @@ const SkipCommand* findApplicableSkipCommand(const PassDisableConfig& pdc, const
 
 void displaySkippedPass(const PassDisableConfig& pdc, const std::string& currentPassName, const SkipCommand* skippedByCommand)
 {
+    // Using std::cerr caused crashes in SYCL environment so we use fprintf instead as a work around.
+    std::ostringstream debugOutputStream;
+
     static bool displayHeader = true;
     std::string skippedByString = "Invalid skip pass case";
     TokenSkipCase skippedBy = WrongFormat;
+
     if (skippedByCommand)
         skippedBy = skippedByCommand->skippedBy;
 
@@ -512,28 +523,32 @@ void displaySkippedPass(const PassDisableConfig& pdc, const std::string& current
 
     if (displayHeader)
     {
-        std::cerr << std::left << std::endl
+        debugOutputStream << std::left << '\n'
             << setw(15) << "Pass number"
             << setw(50) << "Pass name"
             << setw(20) << "Pass occurrence"
             << setw(75) << "skippedBy"
-            << std::endl;
+            << '\n';
         displayHeader = false;
     }
+
     auto singlePass = pdc.passesOccuranceCount.find(currentPassName);
+
     if (singlePass != pdc.passesOccuranceCount.end())
     {
-        std::cerr << std::left
+        debugOutputStream << std::left
             << setw(15) << pdc.passCount
             << setw(50) << currentPassName
             << setw(20) << singlePass->second
             << setw(75) << skippedByString
-            << std::endl;
+            << '\n';
     }
     else
     {
-        std::cerr << std::left << "You are trying to skip a pass that is not available" << std::endl;
+        debugOutputStream << std::left << "You are trying to skip a pass that is not available" << '\n';
     }
+
+    fprintf(stderr, "%s", debugOutputStream.str().c_str());
 }
 
 /*
@@ -558,8 +573,12 @@ Pass number Pass name                                         Pass occurrence
 230         DebugInfoPass                                     1
 Build succeeded.
 */
+
 void displayAllPasses(const Pass* P)
 {
+    // Using std::cerr caused crashes in SYCL environment so we use fprintf instead as a work around.
+    std::ostringstream debugOutputStream;
+
     static unsigned int countPass = 0;
     const std::string currentPassName = P->getPassName().str();
     static std::unordered_map<std::string, int> passesOccuranceCountToDisplay;
@@ -568,21 +587,25 @@ void displayAllPasses(const Pass* P)
     if (!result.second) {
         result.first->second += 1;
     }
+
     if (!countPass)
     {
-        std::cerr << std::left << std::endl
+        debugOutputStream << std::left << '\n'
             << setw(12) << "Pass number"
             << setw(50) << "Pass name"
             << setw(20) << "Pass occurrence"
-            << std::endl;
+            << '\n';
     }
-    std::cerr << std::left
+
+    debugOutputStream << std::left
         << setw(12) << countPass
         << setw(50) << currentPassName
         << setw(20) << passesOccuranceCountToDisplay[currentPassName]
-        << std::endl;
+        << '\n';
 
     countPass++;
+
+    fprintf(stderr, "%s", debugOutputStream.str().c_str());
 }
 
 void IGCPassManager::add(Pass *P)
