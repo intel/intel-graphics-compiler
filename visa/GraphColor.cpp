@@ -11732,6 +11732,16 @@ int GlobalRA::coloringRegAlloc() {
     bool isColoringGood =
         coloring.regAlloc(doBankConflictReduction, highInternalConflict, &rpe);
     if (!isColoringGood) {
+      // When there are spills and -abortonspill is set, vISA will bump up the
+      // number of GRFs first and try to compile without spills under one of
+      // the following conditions:
+      //  - Variable with inf spill cost, or
+      //  - #GRFs selected and next larger one has same number of threads, or
+      //  - Spill ratio is above threshold
+      // If none of the conditions is met, vISA will abort and return VISA_SPILL.
+      if (VRTIncreasedGRF(coloring))
+        continue;
+
       bool rerunGRA1 = false, rerunGRA2 = false, rerunGRA3 = false,
            isEarlyExit = false, abort = false, success = false;
       std::tie(rerunGRA1, rematDone) = remat(fastCompile, rematDone, liveAnalysis, coloring, rpe);
@@ -11746,17 +11756,6 @@ int GlobalRA::coloringRegAlloc() {
       rerunGRA3 = globalSplit(splitPass, coloring);
 
       if (rerunGRAIter(rerunGRA1 || rerunGRA2 || rerunGRA3))
-        continue;
-
-      // When there are spills and -abortonspill is set, vISA will bump up the
-      // number of GRFs first and try to compile without spills under one of
-      // the following conditions:
-      //  - Variable with inf spill cost, or
-      //  - #GRFs selected and next larger one has same number of threads, or
-      //  - Spill ratio is above threshold
-      // If none of the conditions is met, vISA will abort and return
-      // VISA_SPILL.
-      if (VRTIncreasedGRF(coloring))
         continue;
 
       splitOnSpill(fastCompile, coloring, liveAnalysis);
