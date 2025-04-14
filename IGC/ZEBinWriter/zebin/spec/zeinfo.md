@@ -1,6 +1,6 @@
 <!---======================= begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -112,7 +112,7 @@ execution_env:
 
 ### Supported attributes in execution environment:
 This section defines the execution_env attribute.
-If an attribute is **Required**, it must be present in exection_env. If it's **Optional** and it's not present, the **Default** value is used.
+If an attribute is **Required**, it must be present in execution_env. If it's **Optional** and it's not present, the **Default** value is used.
 
 | Attribute | Type | Required/Optional | Default | Description |
 | ------ | ------ |  ------ | ------ | ------ |
