@@ -212,6 +212,22 @@ Value* DivergentBarrierPass::allocateSLM(IRBuilder<> &IRB)
             ADDRESS_SPACE_LOCAL);
         return GV;
     }
+    else if (m_CGCtx->type == ShaderType::COMPUTE_SHADER)
+    {
+        IGC_ASSERT(Ctx);
+        auto& TGSMSize = *reinterpret_cast<unsigned*>(Ctx);
+        // Ideally, we would lower SLM later in the compiler so we don't have to
+        // update this value after the fact.
+        TGSMSize = iSTD::Align(TGSMSize, 4);
+        uint32_t Offset = TGSMSize;
+        TGSMSize += 4;
+
+        auto* ThreadDoneCntPtr = IRB.CreateIntToPtr(
+            IRB.getInt32(Offset),
+            PointerType::get(IRB.getInt32Ty(), ADDRESS_SPACE_LOCAL));
+
+        return ThreadDoneCntPtr;
+    }
     else
     {
         IGC_ASSERT_MESSAGE(0, "unhandled shader type!");
@@ -738,9 +754,9 @@ IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(DivergentBarrierPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-ModulePass* createDivergentBarrierPass()
+ModulePass* createDivergentBarrierPass(void* Ctx)
 {
-    return new DivergentBarrierPass();
+    return new DivergentBarrierPass(Ctx);
 }
 
 } // namespace IGC
