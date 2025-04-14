@@ -6705,6 +6705,15 @@ intrinsics:
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
+        name: "GenISA_disable_ieee_exception_trap"
+        comment: "Disable IEEE Exception Trap bit in Control Register"
+        return_definition: !<ReturnDefinition>
+            type_definition: *void
+            comment: ""
+        arguments: []
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
         name: "GenISA_thread_exit"
         comment: "Terminate execution of a thread"
         return_definition: !<ReturnDefinition>

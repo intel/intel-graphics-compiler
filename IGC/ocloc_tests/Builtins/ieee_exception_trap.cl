@@ -23,6 +23,14 @@ kernel void test_builtin_enable() {
     __builtin_IB_enable_ieee_exception_trap();
 }
 
+// CHECK-ASM-LABEL: .kernel test_builtin_disable
+// CHECK-ASM: (W) or (1|M0) cr0.0<1>:ud   cr0.0<0;1,0>:ud  0x4C0:uw
+// CHECK-ASM: (W) and (1|M0) cr0.0<1>:ud   cr0.0<0;1,0>:ud  0xFFFFFDFF:ud
+void __builtin_IB_disable_ieee_exception_trap();
+kernel void test_builtin_disable() {
+    __builtin_IB_disable_ieee_exception_trap();
+}
+
 // CHECK-ASM-LABEL: .kernel test_no_debug_flag
 // CHECK-ASM: (W) or (1|M0) cr0.0<1>:ud   cr0.0<0;1,0>:ud  0x4C0:uw
 kernel void test_no_debug_flag(global int* out) {
