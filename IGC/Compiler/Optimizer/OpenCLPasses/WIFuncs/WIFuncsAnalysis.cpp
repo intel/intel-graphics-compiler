@@ -98,7 +98,7 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
 
     const bool RequirePayloadHeader = m_ctx->m_DriverInfo.RequirePayloadHeader();
     // 8xi32 payload header packs 3xi32 global offset. If possible, use global offset directly.
-    const auto PayloadHeaderType = m_ctx->platform.allowShortImplicitPayloadHeader() ? ImplicitArg::GLOBAL_OFFSET : ImplicitArg::PAYLOAD_HEADER;
+    const auto PayloadHeaderType = AllowShortImplicitPayloadHeader(m_ctx) ? ImplicitArg::GLOBAL_OFFSET : ImplicitArg::PAYLOAD_HEADER;
 
     // All OpenCL kernels receive R0 and Payload Header implicitly
     if (isEntryFunc(m_pMDUtils, &F))

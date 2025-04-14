@@ -695,4 +695,7 @@ namespace IGC
 
     bool SeparateSpillAndScratch(const CodeGenContext* ctx);
     bool UsedWithoutImmInMemInst( llvm::Value* v );
+
+    bool AllowShortImplicitPayloadHeader(const CodeGenContext* ctx);
+    bool AllowRemovingUnusedImplicitArguments(const CodeGenContext* ctx);
 } // namespace IGC

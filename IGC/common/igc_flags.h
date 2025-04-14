@@ -949,9 +949,18 @@ DECLARE_IGC_REGKEY_ENUM(SupportUniformPrivateMemorySpace, -1, \
     " 0 - force disabled" \
     " 1 - force enabled", \
     TRIBOOL_OPTIONS, true)
-DECLARE_IGC_REGKEY(bool, ShortImplicitPayloadHeader, true, "Replaces implicit kernel argument 8xi32 payloadHeader with 3xi32 globalOffset", true)
-DECLARE_IGC_REGKEY(bool, RemoveUnusedIdImplicitArguments, true, "Remove implicit arguments: global_id_offset (payloadHeader) and/or enqueued_local_size if unused. " \
-    "Useful if kernel doesn't use global id.", true)
+DECLARE_IGC_REGKEY_ENUM(ShortImplicitPayloadHeader, -1, \
+    "Controls the behavior of implicit kernel argument 'payloadHeader'." \
+    "-1 - platform default" \
+    " 0 - force old 8xi32 payloadHeader" \
+    " 1 - force 3xi32 payloadHeader (global_id_offset only)", \
+    TRIBOOL_OPTIONS, true)
+DECLARE_IGC_REGKEY_ENUM(RemoveUnusedIdImplicitArguments, -1, \
+    "Remove implicit arguments: global_id_offset (payloadHeader) and/or enqueued_local_size if unused. Useful if kernel doesn't use global id." \
+    "-1 - platform default" \
+    " 0 - force disabled" \
+    " 1 - force enabled", \
+    TRIBOOL_OPTIONS, true)
 
 DECLARE_IGC_GROUP("Generating precompiled headers")
 DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true, "Apply WaConservativeRasterization for the platforms enabled", false)

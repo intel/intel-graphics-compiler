@@ -1901,33 +1901,5 @@ bool allowProceedBasedApproachForRayQueryDynamicRayManagementMechanism() const
     return IGC_IS_FLAG_DISABLED(DisableProceedBasedApproachForRayQueryDynamicRayManagementMechanism);
 }
 
-// Payload header is 8xi32 kernel argument packing 3xi32 global offset.
-// This function controls if payload header can be replaced with direct
-// use of global offset.
-bool allowShortImplicitPayloadHeader() const
-{
-    if (IGC_IS_FLAG_SET(ShortImplicitPayloadHeader))
-        return IGC_IS_FLAG_ENABLED(ShortImplicitPayloadHeader);
-
-    if (!supportsZEBin())
-        return false;
-
-    if (m_platformInfo.eProductFamily == IGFX_PVC)
-        return false;
-
-    return isCoreChildOf(IGFX_XE_HP_CORE);
-}
-
-bool allowRemovingUnusedImplicitArguments() const
-{
-    if (IGC_IS_FLAG_SET(RemoveUnusedIdImplicitArguments))
-        return IGC_IS_FLAG_ENABLED(RemoveUnusedIdImplicitArguments);
-
-    if (!supportsZEBin())
-        return false;
-
-    return isCoreChildOf(IGFX_XE_HP_CORE);
-}
-
 };
 }//namespace IGC

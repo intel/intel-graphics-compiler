@@ -512,8 +512,9 @@ Value* WIFuncResolution::getGlobalOffset(CallInst& CI)
     // Creates:
     // %globalOffset = extractelement <8 x i32> %payloadHeader, i32 %dim
 
-    auto Ty = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.allowShortImplicitPayloadHeader()
+    auto Ty = AllowShortImplicitPayloadHeader(getAnalysis<CodeGenContextWrapper>().getCodeGenContext())
         ? ImplicitArg::GLOBAL_OFFSET : ImplicitArg::PAYLOAD_HEADER;
+
     auto F = CI.getFunction();
     Value* V = m_implicitArgs.getImplicitArgValue(*F, Ty, m_pMdUtils);
     IGC_ASSERT(V != nullptr);

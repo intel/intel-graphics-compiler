@@ -2691,7 +2691,7 @@ namespace IGC
             return true;
 
         // When removing unused implicit arguments, assume subroutine calls use implicit arguments.
-        if (!m_Context->platform.allowRemovingUnusedImplicitArguments() || HasSubroutines())
+        if (!AllowRemovingUnusedImplicitArguments(m_Context) || HasSubroutines())
             return false;
 
         return arg.getArgType() == KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER || // contains global_id_offset
