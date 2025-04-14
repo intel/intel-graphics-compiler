@@ -378,7 +378,7 @@ INLINE int4 OVERLOADABLE read_imagei(read_only image1d_array_t image_array, samp
 
 INLINE uint4 OVERLOADABLE read_imageui(read_only image1d_array_t image_array, sampler_t sampler, int2 coords) {
     long id = (long)__builtin_astype(image_array, __global void*);
-    long IDimage_array = (long)__builtin_astype(image_array, __global void*);
+    int IDimage_array = (int)__builtin_astype(image_array, __global void*);
     int dt = __builtin_IB_get_image1d_array_size(IDimage_array);
     float layer = clamp(rint((float)coords.y), 0.0f, (float)(--dt));
     if ((__builtin_IB_get_address_mode(__builtin_IB_convert_sampler_to_int(sampler)) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
@@ -394,7 +394,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image1d_array_t image_array, sa
 
 INLINE uint4 OVERLOADABLE read_imageui(read_only image1d_array_t image_array, sampler_t sampler, float2 coords) {
     long id = (long)__builtin_astype(image_array, __global void*);
-    long IDimage_array = (long)__builtin_astype(image_array, __global void*);
+    int IDimage_array = (int)__builtin_astype(image_array, __global void*);
     int dt = __builtin_IB_get_image1d_array_size(IDimage_array);
     float layer = clamp(rint(coords.y), 0.0f, (float)(--dt));
     if ((__builtin_IB_get_address_mode(__builtin_IB_convert_sampler_to_int(sampler)) & 0x07) == CLK_ADDRESS_CLAMP)
@@ -580,7 +580,7 @@ INLINE int4 OVERLOADABLE read_imagei(read_only image2d_array_t image_array, samp
 
 INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_array_t image_array, sampler_t sampler, int4 coords) {
     long id = (long)__builtin_astype(image_array, __global void*);
-    long IDimage_array = (long)__builtin_astype(image_array, __global void*);
+    int IDimage_array = (int)__builtin_astype(image_array, __global void*);
     int dt = __builtin_IB_get_image2d_array_size(IDimage_array);
     float layer = clamp(rint((float)coords.z), 0.0f, (float)(--dt));
     if ((__builtin_IB_get_address_mode(__builtin_IB_convert_sampler_to_int(sampler)) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
@@ -596,7 +596,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_array_t image_array, sa
 
 INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_array_t image_array, sampler_t sampler, float4 coords) {
     long id = (long)__builtin_astype(image_array, __global void*);
-    long IDimage_array = (long)__builtin_astype(image_array, __global void*);
+    int IDimage_array = (int)__builtin_astype(image_array, __global void*);
     int dt = __builtin_IB_get_image2d_array_size(IDimage_array);
     float layer = clamp(rint(coords.z), 0.0f, (float)(--dt));
     if ((__builtin_IB_get_address_mode(__builtin_IB_convert_sampler_to_int(sampler)) & 0x07) == CLK_ADDRESS_CLAMP)
@@ -867,7 +867,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_write image1d_array_t image, int2 co
 #endif
 
 #ifdef __IGC_BUILD__
-INLINE float4 OVERLOADABLE static __read_imagef_2d(long id, int2 coord) {
+INLINE float4 OVERLOADABLE static __read_imagef_2d(int id, int2 coord) {
     float4 res = __builtin_IB_OCL_2d_ld(id, coord, 0);
     return __flush_denormals(res);
 }
@@ -906,7 +906,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_write image2d_t image, int2 coord) {
 #endif
 
 #ifdef __IGC_BUILD__
-INLINE float4 OVERLOADABLE static __read_imagef_3d(long id, int4 coord) {
+INLINE float4 OVERLOADABLE static __read_imagef_3d(int id, int4 coord) {
     float4 res = __builtin_IB_OCL_3d_ld(id, coord.xyz, 0);
     return __flush_denormals(res);
 }

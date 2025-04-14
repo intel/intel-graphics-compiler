@@ -2280,26 +2280,26 @@ DEF_IMAGE_QUERY_BUILTINS_BASE(2d_msaa_depth,       ro)
 DEF_IMAGE_QUERY_BUILTINS_BASE(2d_array_msaa_depth, ro)
 
 // Query image size helper functions
-uint __intel_query_image_size_Ruint(long id)
+uint __intel_query_image_size_Ruint(int id)
 {
     return __builtin_IB_get_image_width(id);
 }
 
-uint2 __intel_query_arrayed_image_size_Ruint2(long id)
+uint2 __intel_query_arrayed_image_size_Ruint2(int id)
 {
     uint width = __builtin_IB_get_image_width(id);
     uint elements = __builtin_IB_get_image1d_array_size(id);
     return (uint2)(width, elements);
 }
 
-uint2 __intel_query_image_size_Ruint2(long id)
+uint2 __intel_query_image_size_Ruint2(int id)
 {
     uint width = __builtin_IB_get_image_width(id);
     uint height = __builtin_IB_get_image_height(id);
     return (uint2)(width, height);
 }
 
-uint3 __intel_query_arrayed_image_size_Ruint3(long id)
+uint3 __intel_query_arrayed_image_size_Ruint3(int id)
 {
     uint width = __builtin_IB_get_image_width(id);
     uint height = __builtin_IB_get_image_height(id);
@@ -2307,7 +2307,7 @@ uint3 __intel_query_arrayed_image_size_Ruint3(long id)
     return (uint3)(width, height, elements);
 }
 
-uint3 __intel_query_image_size_Ruint3(long id)
+uint3 __intel_query_image_size_Ruint3(int id)
 {
     uint width = __builtin_IB_get_image_width(id);
     uint height = __builtin_IB_get_image_height(id);
