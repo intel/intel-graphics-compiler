@@ -24357,6 +24357,7 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst* inst)
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     CVariable* offset = GetSymbol(Ptr);
+    offset = ReAlignUniformVariable(offset, EALIGN_GRF);
     bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
     LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
     offset = useA32 ? TruncatePointer(offset) : offset;
