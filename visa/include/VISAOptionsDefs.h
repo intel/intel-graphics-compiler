@@ -455,6 +455,10 @@ DEF_VISA_OPTION(vISA_ScheduleStartBBID, ET_INT32, "-sched-start",
                 "USAGE: -sched-start <BB ID>\n", 0)
 DEF_VISA_OPTION(vISA_ScheduleEndBBID, ET_INT32, "-sched-end",
                 "USAGE: -sched-end <BB ID>\n", 0)
+DEF_VISA_OPTION(vISA_SpillCleanupStartBBID, ET_INT32, "-spill-cleanup-start",
+                "USAGE: -spill-cleanup-start <BB ID>\n", 0)
+DEF_VISA_OPTION(vISA_SpillCleanupEndBBID, ET_INT32, "-spill-cleanup-end",
+                "USAGE: -spill-cleanup-end <BB ID>\n", 0xffffffff)
 DEF_VISA_OPTION(vISA_preRA_MinRegThreshold, ET_INT32, "-minreg-rp",
                 "USAGE: -minreg-rp <threshold>\n", 0)
 DEF_VISA_OPTION(vISA_DumpSchedule, ET_BOOL, "-dumpSchedule", UNUSED, false)

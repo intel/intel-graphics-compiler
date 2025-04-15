@@ -963,8 +963,9 @@ static unsigned short getSpillRowSizeForSendDst(G4_INST *inst) {
     }
   } else {
     vASSERT(dst->getLinearizedStart() % builder.numEltPerGRF<Type_UB>() == 0);
-    nRows = (dst->getLinearizedEnd() - dst->getLinearizedStart() + 1) /
-            builder.numEltPerGRF<Type_UB>();
+    unsigned int rangeSize = (dst->getLinearizedEnd() - dst->getLinearizedStart() + 1);
+    unsigned int grfSize = builder.numEltPerGRF<Type_UB>();
+    nRows = (rangeSize / grfSize) + ((rangeSize % grfSize) == 0 ? 0 : 1);
   }
   return nRows;
 }

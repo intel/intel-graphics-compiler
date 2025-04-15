@@ -49,6 +49,15 @@ private:
   unsigned int spillFillCleanupWindowSize = 0;
   unsigned int totalInputSize = 0;
 
+  // Debug flags
+  unsigned int spillCleanupStartBBId = 0;
+  unsigned int spillCleanupEndBBId = 0xffffffff;
+
+  bool isSpillCleanupEnabled(const G4_BB *bb) const {
+    auto bbId = bb->getId();
+    return (bbId >= spillCleanupStartBBId && bbId <= spillCleanupEndBBId);
+  }
+
   // <Old fill declare*, std::pair<Coalesced Decl*, Row Off>>
   // This data structure is used to replaced old spill/fill operands
   // with coalesced operands with correct offset.
@@ -124,6 +133,11 @@ public:
     totalInputSize = totalInputSize / k.numEltPerGRF<Type_UB>();
 
     isCm = (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM);
+
+    spillCleanupStartBBId =
+        kernel.getOptions()->getuInt32Option(vISA_SpillCleanupStartBBID);
+    spillCleanupEndBBId =
+        kernel.getOptions()->getuInt32Option(vISA_SpillCleanupEndBBID);
   }
 
   void run();

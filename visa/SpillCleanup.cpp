@@ -850,6 +850,8 @@ void CoalesceSpillFills::fills() {
   // Iterate over all BBs, find fills that are closeby and coalesce
   // a bunch of them. Insert movs as required.
   for (auto bb : kernel.fg) {
+    if (!isSpillCleanupEnabled(bb))
+      continue;
     if (!gra.hasSpillCodeInBB(bb))
       continue;
     curBB = bb;
@@ -1026,6 +1028,8 @@ void CoalesceSpillFills::spills() {
   // Iterate over all BBs, find fills that are closeby and coalesce
   // a bunch of them. Insert movs as required.
   for (auto bb : kernel.fg) {
+    if (!isSpillCleanupEnabled(bb))
+      continue;
     if (!gra.hasSpillCodeInBB(bb))
       continue;
     curBB = bb;
@@ -1498,6 +1502,8 @@ void CoalesceSpillFills::removeRedundantSplitMovs() {
     if (numRefs == 0 && !dcl->getAddressed()) {
       for (const auto &m : allMovs) {
         auto bb = m.first;
+        if (!isSpillCleanupEnabled(bb))
+          continue;
         auto iter = m.second;
         bb->erase(iter);
       }
@@ -1522,6 +1528,8 @@ void CoalesceSpillFills::spillFillCleanup() {
   std::map<unsigned int, G4_INST *> writesPerOffset;
   std::set<G4_Declare *> defs;
   for (auto bb : kernel.fg) {
+    if (!isSpillCleanupEnabled(bb))
+      continue;
     if (!gra.hasSpillCodeInBB(bb))
       continue;
     curBB = bb;
@@ -1939,6 +1947,8 @@ void CoalesceSpillFills::removeRedundantWrites() {
 
   for (const auto &removeSp : spillToRemove) {
     G4_BB *bb = removeSp.second.second;
+    if (!isSpillCleanupEnabled(bb))
+      continue;
     auto *inst = *removeSp.second.first;
     if ((inst->isSpillIntrinsic() &&
          !isGRFAssigned(inst->asSpillIntrinsic()->getPayload())) ||
