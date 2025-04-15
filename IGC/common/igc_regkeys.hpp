@@ -219,6 +219,7 @@ struct DEVICE_INFO
 void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys);
 void DumpIGCRegistryKeyDefinitions();
 void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned long pciBus, unsigned long pciDevice, unsigned long pciFunction);
+void InitializeRegKeys();
 void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError = nullptr);
 bool ReadIGCRegistry(const char* pName, void* pValue, unsigned int size, bool readFromEnv = true);
 void SetCurrentDebugHash(const ShaderHash &hash);
@@ -239,6 +240,7 @@ static inline void SetCurrentEntryPoints(const std::vector<std::string>& entry_p
 {
     IGC_UNUSED(entry_points);
 }
+static inline void InitializeRegKeys() {};
 static inline void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError=nullptr)
 {
     IGC_UNUSED(options);

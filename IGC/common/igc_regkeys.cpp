@@ -1254,6 +1254,52 @@ static void LoadFromRegKeyOrEnvVarOrOptions(
 /*****************************************************************************\
 
 Function:
+    InitializeRegKeys
+
+Description:
+    Initialize global-scoped registry variables
+
+Input:
+    None
+
+Output:
+    None
+
+\*****************************************************************************/
+void InitializeRegKeys()
+{
+    static std::mutex loadFlags;
+    static volatile bool flagsSet = false;
+    std::lock_guard<std::mutex> lock(loadFlags);
+
+    if (!flagsSet)
+    {
+        flagsSet = true;
+        setImpliedIGCKeys();
+
+#if !defined(_DEBUG)
+        if (IGC_IS_FLAG_ENABLED(EnableDebugging))
+#endif
+        {
+            //DumpIGCRegistryKeyDefinitions();
+            LoadDebugFlagsFromFile();
+            LoadDebugFlagsFromString(IGC_GET_REGKEYSTRING(SelectiveHashOptions));
+        }
+        if (IGC_IS_FLAG_ENABLED(LLVMCommandLine))
+        {
+            std::vector<char*> args;
+            args.push_back((char*)("IGC"));
+            ParseCStringVector(args, IGC_GET_REGKEYSTRING(LLVMCommandLine));
+            llvm::cl::ParseCommandLineOptions(args.size(), &args[0]);
+        }
+
+        setImpliedIGCKeys();
+    }
+}
+
+/*****************************************************************************\
+
+Function:
     LoadRegistryKeys
 
 Description:
@@ -1277,23 +1323,7 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
     {
         flagsSet = true;
         LoadFromRegKeyOrEnvVarOrOptions(options, RegFlagNameError);
-#if !defined(_DEBUG)
-        if (IGC_IS_FLAG_ENABLED(EnableDebugging))
-#endif
-        {
-            //DumpIGCRegistryKeyDefinitions();
-            LoadDebugFlagsFromFile();
-            LoadDebugFlagsFromString(IGC_GET_REGKEYSTRING(SelectiveHashOptions));
-        }
-        if(IGC_IS_FLAG_ENABLED(LLVMCommandLine))
-        {
-            std::vector<char*> args;
-            args.push_back((char *)("IGC"));
-            ParseCStringVector(args, IGC_GET_REGKEYSTRING(LLVMCommandLine));
-            llvm::cl::ParseCommandLineOptions(args.size(), &args[0]);
-        }
-
-        setImpliedIGCKeys();
+        InitializeRegKeys();
     }
 }
 
