@@ -7326,14 +7326,22 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
         }
 
         if (distanceHonourInstruction(liveInst)) {
-          if (dep == RAW &&
-              (curBucket < globalRegisterNum)) { // Only need track GRF
+          if (dep == RAW) {
+            if (curBucket < globalRegisterNum) { // Only need track GRF
                                                  // RAW dependence
-            LB->killOperand(bn_it);
-            setDistance(curFootprint, node, liveNode, false);
-            liveNode->setInstKilled(true); // Instrtuction level kill
-            instKill = true;
-            continue;
+              LB->killOperand(bn_it);
+              setDistance(curFootprint, node, liveNode, false);
+              liveNode->setInstKilled(true); // Instrtuction level kill
+              instKill = true;
+              continue;
+            } else if (builder.supports4GRFAlign()) {
+              // RAW will kill the propagation of dependence
+              // FIXME: can be applied to  other platforms
+              LB->killOperand(bn_it);
+              liveNode->setInstKilled(true); // Instrtuction level kill
+              instKill = true;
+              continue;
+            }
           }
 
           if (dep == WAW) {
