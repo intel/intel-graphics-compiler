@@ -114,8 +114,12 @@ void IGCVectorizer::initializeLogFile(Function &F) {
     if (!IGC_IS_FLAG_ENABLED(VectorizerLog))
         return;
 
+    string FName = F.getName().str();
+
+    if (FName.size() > 128) FName.resize(128);
+
     std::stringstream ss;
-    ss << F.getName().str() << "_"
+    ss << FName << "_"
        << "Vectorizer";
     auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
                     .Hash(CGCtx->hash)
@@ -223,7 +227,7 @@ bool isSafeToVectorize(Instruction *I) {
     return Result;
 }
 
-bool IGCVectorizer::handlePHI(VecArr &Slice, Type *VectorType) {
+bool IGCVectorizer::handlePHI(VecArr &Slice) {
     PHINode *ScalarPhi = static_cast<PHINode *>(Slice[0]);
 
     if (!checkPHI(ScalarPhi, Slice))
@@ -313,11 +317,6 @@ bool IGCVectorizer::handlePHI(VecArr &Slice, Type *VectorType) {
 bool IGCVectorizer::handleInsertElement(VecArr &Slice, Instruction* Final) {
     Instruction *First = Slice.front();
     if (!checkInsertElement(First, Slice))
-        return false;
-
-    // we can handle case with more than 1 value
-    // but it wasn't tested
-    if (!Final->hasOneUse())
         return false;
 
     PRINT_LOG_NL("InsertElement substituted with vectorized instruction");
@@ -473,7 +472,7 @@ bool IGCVectorizer::processChain(InsertStruct &InSt) {
 
         Instruction *First = Slice[0];
         if (llvm::isa<PHINode>(First)) {
-            if (!handlePHI(Slice, InSt.Final->getType())) return false;
+            if (!handlePHI(Slice)) return false;
         } else if (llvm::isa<CastInst>(First)) {
             if (!handleCastInstruction(Slice)) return false;
         } else if (llvm::isa<BinaryOperator>(First)) {
@@ -489,10 +488,8 @@ bool IGCVectorizer::processChain(InsertStruct &InSt) {
     return true;
 }
 
-void IGCVectorizer::clusterInsertElement(
-    InsertElementInst* HeadInsertEl, InsertStruct &InSt) {
-    InSt.Final = HeadInsertEl;
-    Instruction *Head = HeadInsertEl;
+void IGCVectorizer::clusterInsertElement(InsertStruct &InSt) {
+    Instruction *Head = InSt.Final;
 
     while (true) {
         InSt.Vec.push_back(Head);
@@ -803,9 +800,20 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
 
         // we process collected insert elements into a specific data structure
         // for convenience
-        for (auto el : VecOfInsert) {
-            InsertStruct InSt;
-            clusterInsertElement(static_cast<InsertElementInst*>(el), InSt);
+        InsertStruct InSt;
+        InSt.SlChain.reserve(128);
+        for (auto elFinal : VecOfInsert) {
+
+            InSt.SlChain.clear();
+            InSt.Vec.clear();
+
+            if (!elFinal->hasOneUse()) {
+                PRINT_LOG_NL("Final insert has more than one use -> rejected");
+                continue;
+            }
+            InSt.Final = elFinal;
+            clusterInsertElement(InSt);
+
             if (InSt.Vec.size() != getVectorSize(InSt.Final)) {
                 PRINT_LOG_NL("partial insert -> rejected");
                 continue;
