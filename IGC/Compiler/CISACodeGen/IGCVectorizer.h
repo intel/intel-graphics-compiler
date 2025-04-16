@@ -47,7 +47,6 @@ class IGCVectorizer : public llvm::FunctionPass {
         // contains insert elements
         VecArr Vec;
         // contains slices of vector tree
-        VectorSliceChain Chain;
         VecOfSlices SlChain;
     };
 
@@ -72,18 +71,16 @@ class IGCVectorizer : public llvm::FunctionPass {
     void writeLog();
 
     void findInsertElementsInDataFlow(llvm::Instruction* I, VecArr& Chain);
-    void collectScalarPath(VecArr& V, VectorSliceChain& Chain);
-    void canonicalizeSlices(VectorSliceChain& Chain);
     bool checkSlice(VecArr& Slice, InsertStruct& InSt);
     bool processChain(InsertStruct& InSt);
-    void clusterInsertElement(InsertElementInst* VecOfInsert, InsertStruct& InSt);
+    void clusterInsertElement(InsertStruct& InSt);
     void collectInstructionToProcess(VecArr& ToProcess, Function& F);
     void buildTree(VecArr &V, VecOfSlices& Chain);
     void printSlice(Slice* S);
 
 
     bool checkPHI(Instruction* Compare, VecArr& Slice);
-    bool handlePHI(VecArr& Slice, Type* VectorType);
+    bool handlePHI(VecArr& Slice);
     bool checkInsertElement(Instruction* First, VecArr& Slice);
     bool handleInsertElement(VecArr& Slice, Instruction* Final);
     bool checkExtractElement(Instruction* Compare, VecArr& Slice);
