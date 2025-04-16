@@ -603,6 +603,7 @@ public:
   void bucketKill(int bucket, SBNode *node, Gen4_Operand_Number opnd);
   void killSingleOperand(BN_iterator &bn_it);
   void killOperand(BN_iterator &bn_it);
+  void killBucket(BN_iterator &bn_it);
   void dumpLives() const;
 };
 

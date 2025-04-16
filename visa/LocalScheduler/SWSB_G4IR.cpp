@@ -1078,6 +1078,34 @@ void LiveGRFBuckets::killOperand(BN_iterator &bn_it) {
   }
 }
 
+//Only used for some ARF regsiters
+void LiveGRFBuckets::killBucket(BN_iterator &bn_it) {
+  SBBUCKET_VECTOR &vec = nodeBucketsArray[bn_it.bucket];
+  SBBUCKET_VECTOR_ITER &node_it = bn_it.node_it;
+  SBBucketNode *bucketNode = *node_it; // Get the node before it is destroyed
+  Gen4_Operand_Number opndNum = bucketNode->opndNum;
+
+  while (vec.size()) {
+    vec.pop_back();
+  }
+  node_it = vec.end();
+
+  SBFootprint *footprint =
+           bucketNode->node->getFirstFootprint(opndNum);
+  vASSERT(footprint->inst != nullptr);
+  const IR_Builder &irb = footprint->inst->getBuilder();
+  unsigned int startBucket = footprint->LeftB / irb.numEltPerGRF<Type_UB>();
+  unsigned int endBucket = footprint->RightB / irb.numEltPerGRF<Type_UB>();
+  for (unsigned int i = startBucket;
+       (i < endBucket + 1) && (i < nodeBucketsArray.size()); i++) {
+    if (i == bn_it.bucket) {
+      continue;
+    }
+    nodeBucketsArray[i].clear();
+  }
+}
+
+
 void LiveGRFBuckets::dumpLives() const {
   for (int curBucket = 0; curBucket < numOfBuckets; curBucket++) {
     if (!nodeBucketsArray[curBucket].empty()) {
@@ -7337,9 +7365,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
             } else if (builder.supports4GRFAlign()) {
               // RAW will kill the propagation of dependence
               // FIXME: can be applied to  other platforms
-              LB->killOperand(bn_it);
-              liveNode->setInstKilled(true); // Instrtuction level kill
-              instKill = true;
+              LB->killBucket(bn_it);
               continue;
             }
           }
