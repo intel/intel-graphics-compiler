@@ -791,7 +791,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     m_currShader->SetEmitPassHelper(this);
 
     //Add CCtuple root variables.
-    if (IGC_IS_FLAG_DISABLED(DisablePayloadCoalescing)) {
+    if (IGC_IS_FLAG_DISABLED(DisablePayloadCoalescing) && m_moduleMD->compOpt.WaDisablePayloadCoalescing == false) {
         m_currShader->SetCoalescingEngineHelper(m_CE);
     }
 

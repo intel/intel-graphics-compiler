@@ -119,7 +119,7 @@ namespace IGC
         m_CodeGenContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         m_Platform = m_CodeGenContext->platform;
         m_PayloadMapping = PayloadMapping(m_CodeGenContext);
-        if (IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing)) {
+        if (IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing) || m_ModuleMetadata->compOpt.WaDisablePayloadCoalescing) {
             return false;
         }
         if (!isEntryFunc(pMdUtils, &MF)) {

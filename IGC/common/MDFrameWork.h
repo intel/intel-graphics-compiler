@@ -471,6 +471,7 @@ enum class ShaderTypeMD
         bool DisableLscSamplerRouting                   = false;
         bool UseBarrierControlFlowOptimization          = false;
         bool EnableDynamicRQManagement                  = false;
+        bool WaDisablePayloadCoalescing                 = false;
         unsigned Quad8InputThreshold                    = 0;
         bool UseResourceLoopUnrollNested                = false;
     };
