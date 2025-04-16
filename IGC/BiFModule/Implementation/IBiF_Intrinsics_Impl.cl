@@ -470,8 +470,7 @@ double FDIV_IEEE_DOUBLE( double a,
 
 INLINE
 float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fabs, _f32, )(float x ){
-    float neg = -x;
-    return (x >= 0) ?  x : neg;
+    return as_float(as_uint(x) & 0x7FFFFFFF);
 }
 
 INLINE
@@ -570,8 +569,9 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ceil, _f16, )(half x ){
 INLINE
 half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fabs, _f16, )(half x ){
     //return __builtin_IB_fabsh(x);
-    return (x >= 0) ?  x : -x;
-
+    ushort mask = 0x7FFF;
+    ushort temp = as_ushort(x) & mask;
+    return as_half(temp);
 }
 
 INLINE
@@ -702,8 +702,9 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ceil, _f64, )(double x ){
 
 INLINE
 double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fabs, _f64, )(double x ){
-    double neg = -x;
-    return (x >= 0) ?  x : neg;
+    uint2 temp = as_uint2(x);
+    temp.s1 = temp.s1 & 0x7FFFFFFF;
+    return as_double(temp);
 }
 
 INLINE
