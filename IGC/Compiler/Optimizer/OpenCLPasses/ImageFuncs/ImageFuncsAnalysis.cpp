@@ -209,15 +209,6 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
                 return;
             }
         }
-        else if (m_useAdvancedBindlessMode)
-        {
-            IGC_ASSERT_MESSAGE(isa<ConstantInt>(callArg), "Expect inline sampler");
-            auto *inlineSampler = cast<ConstantInt>(callArg);
-            // Inline sampler doesn't associate with an explicit argument.
-            // To avoid adding a new metadata entry, inline sampler value is stored as explicit argument number.
-            m_argMap[ImplicitArg::INLINE_SAMPLER].insert(int_cast<int>(inlineSampler->getZExtValue()));
-            return;
-        }
     }
 
     // Only these args should be hit by the indirect case

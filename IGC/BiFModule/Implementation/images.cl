@@ -22,8 +22,14 @@ SPDX-License-Identifier: MIT
 
 #include "../Headers/spirv.h"
 
+__spirv_Sampler __bindless_sampler_initializer(uint sampler);
+
 __spirv_Sampler __translate_sampler_initializer(uint sampler)
 {
+    if(BIF_FLAG_CTRL_GET(UseBindlessImage))
+    {
+        return __bindless_sampler_initializer(sampler);
+    }
     return __builtin_astype((ulong)sampler, __spirv_Sampler);
 }
 

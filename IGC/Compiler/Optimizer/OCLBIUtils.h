@@ -231,6 +231,10 @@ namespace IGC
         /// @brief  push the sampler value into the function argument list
         void prepareSamplerValue(void);
 
+        /// @brief  create annotations for inline sampler based on the value used for initialization
+        /// @brief  this method doesn't fill out the 'index' field of InlineSamplersMD.
+        static void CreateInlineSamplerAnnotations(llvm::Module* M, InlineSamplersMD& inlineSamplerMD, int samplerValue);
+
         /// @brief  create a call to the GetBufferPtr intrinsic pseudo-instruction
         /// @brief  push the image index into the function argument list
         void createGetBufferPtr(void);

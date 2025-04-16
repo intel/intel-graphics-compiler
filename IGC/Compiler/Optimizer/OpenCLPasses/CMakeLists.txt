@@ -40,10 +40,12 @@ add_subdirectory(NamedBarriers)
 add_subdirectory(NontemporalLoadsAndStoresInAssert)
 add_subdirectory(OpenCLPrintf)
 add_subdirectory(PoisonFP64KernelsPass)
+add_subdirectory(PrepareInlineSamplerForBindless)
 add_subdirectory(PrivateMemory)
 add_subdirectory(ProgramScopeConstants)
 add_subdirectory(RayTracing)
 add_subdirectory(ReplaceUnsupportedIntrinsics)
+add_subdirectory(ResolveInlineSamplerForBindless)
 add_subdirectory(ResourceAllocator)
 add_subdirectory(RewriteLocalSize)
 add_subdirectory(ScalarArgAsPointer)
@@ -93,10 +95,12 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_NontemporalLoadsAndStoresInAssert}
     ${IGC_BUILD__SRC__OpenCLPasses_OpenCLPrintf}
     ${IGC_BUILD__SRC__OpenCLPasses_PoisonFP64KernelsPass}
+    ${IGC_BUILD__SRC__OpenCLPasses_PrepareInlineSamplerForBindless}
     ${IGC_BUILD__SRC__OpenCLPasses_PrivateMemory}
     ${IGC_BUILD__SRC__OpenCLPasses_ProgramScopeConstants}
     ${IGC_BUILD__SRC__OpenCLPasses_Raytracing}
     ${IGC_BUILD__SRC__OpenCLPasses_ReplaceUnsupportedIntrinsics}
+    ${IGC_BUILD__SRC__OpenCLPasses_ResolveInlineSamplerForBindless}
     ${IGC_BUILD__SRC__OpenCLPasses_ResourceAllocator}
     ${IGC_BUILD__SRC__OpenCLPasses_RewriteLocalSize}
     ${IGC_BUILD__SRC__OpenCLPasses_ScalarArgAsPointer}
@@ -151,10 +155,12 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_NamedBarriers}
     ${IGC_BUILD__HDR__OpenCLPasses_NontemporalLoadsAndStoresInAssert}
     ${IGC_BUILD__HDR__OpenCLPasses_OpenCLPrintf}
+    ${IGC_BUILD__HDR__OpenCLPasses_PrepareInlineSamplerForBindless}
     ${IGC_BUILD__HDR__OpenCLPasses_PrivateMemory}
     ${IGC_BUILD__HDR__OpenCLPasses_ProgramScopeConstants}
     ${IGC_BUILD__HDR__OpenCLPasses_Raytracing}
     ${IGC_BUILD__HDR__OpenCLPasses_ReplaceUnsupportedIntrinsics}
+    ${IGC_BUILD__HDR__OpenCLPasses_ResolveInlineSamplerForBindless}
     ${IGC_BUILD__HDR__OpenCLPasses_ResourceAllocator}
     ${IGC_BUILD__HDR__OpenCLPasses_RewriteLocalSize}
     ${IGC_BUILD__HDR__OpenCLPasses_ScalarArgAsPointer}
@@ -211,10 +217,12 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_NontemporalLoadsAndStoresInAssert
     Compiler__OpenCLPasses_OpenCLPrintf
     Compiler__OpenCLPasses_PoisonFP64KernelsPass
+    Compiler__OpenCLPasses_PrepareInlineSamplerForBindless
     Compiler__OpenCLPasses_PrivateMemory
     Compiler__OpenCLPasses_ProgramScopeConstants
     Compiler__OpenCLPasses_Raytracing
     Compiler__OpenCLPasses_ReplaceUnsupportedIntrinsics
+    Compiler__OpenCLPasses_ResolveInlineSamplerForBindless
     Compiler__OpenCLPasses_RewriteLocalSize
     Compiler__OpenCLPasses_ScalarArgAsPointer
     Compiler__OpenCLPasses_SetFastMathFlags
