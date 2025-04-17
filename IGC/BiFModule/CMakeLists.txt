@@ -338,7 +338,7 @@ function(igc_bif_build_bc)
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
         COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${bif-llvm-link_exe}" -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_BC} ${_bcFiles}
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${bif-llvm-link_exe}" ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT} -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_BC} ${_bcFiles}
         DEPENDS ${_bcFiles} ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Linking intermediate .bc into output .bc."
       )

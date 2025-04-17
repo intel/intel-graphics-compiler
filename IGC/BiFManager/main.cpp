@@ -49,6 +49,21 @@ static cl::opt<std::string>
 int main(int argc, char* argv[])
 {
     LLVMContext Context;
+#if LLVM_VERSION_MAJOR >= 16
+    bool enableOpaquePointers = __IGC_OPAQUE_POINTERS_API_ENABLED;
+
+    if (enableOpaquePointers)
+    {
+      printf("[BiFManager] - Enabling Opaque Pointers\n");
+    }
+    else
+    {
+      printf("[BiFManager] - Disabling Opaque Pointers\n");
+    }
+
+    Context.setOpaquePointers(enableOpaquePointers);
+#endif
+
     cl::ParseCommandLineOptions(argc, argv);
 
     auto LoadModule = [&](std::string* PathToModule)
