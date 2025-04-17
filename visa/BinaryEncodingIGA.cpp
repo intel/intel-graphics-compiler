@@ -1616,6 +1616,10 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(G4_INST *sendInst,
   const G4_SendDescRaw *descG4 = (G4_SendDescRaw *)sendInst->getMsgDesc();
   vISA_ASSERT(descG4 != nullptr, "expected raw descriptor");
   if (sendInst->getBuilder().getOption(vISA_ShaderDataBaseStats)) {
+    auto JitInfo = kernel.fg.builder->getJitInfo();
+    JitInfo->sendInfo.src0Vec.push_back(descG4->getSrc0LenRegs());
+    JitInfo->sendInfo.src1Vec.push_back(descG4->getSrc1LenRegs());
+    JitInfo->sendInfo.destVec.push_back(descG4->getDstLenRegs());
     printSendDataToFile(descG4->getSrc0LenRegs(),
                         descG4->getSrc1LenRegs(),
                         descG4->getDstLenRegs(),
@@ -1677,6 +1681,10 @@ SendDesc BinaryEncodingIGA::encodeExDescRegA0(G4_INST *sendInst,
   const G4_SendDescRaw *descG4 = sendInst->getMsgDescRaw();
   vISA_ASSERT(descG4 != nullptr, "expected raw descriptor");
   if (sendInst->getBuilder().getOption(vISA_ShaderDataBaseStats)) {
+    auto JitInfo = kernel.fg.builder->getJitInfo();
+    JitInfo->sendInfo.src0Vec.push_back(descG4->getSrc0LenRegs());
+    JitInfo->sendInfo.src1Vec.push_back(descG4->getSrc1LenRegs());
+    JitInfo->sendInfo.destVec.push_back(descG4->getDstLenRegs());
     printSendDataToFile(descG4->getSrc0LenRegs(),
                         descG4->getSrc1LenRegs(),
                         descG4->getDstLenRegs(),

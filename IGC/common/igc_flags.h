@@ -449,6 +449,7 @@ DECLARE_IGC_REGKEY(bool, DumpTimeStatsPerPass,          false, "Collect Timing o
 DECLARE_IGC_REGKEY(bool, DumpHasNonKernelArgLdSt,       false, "Print if hasNonKernelArg load/store to stderr", true)
 DECLARE_IGC_REGKEY(bool, PrintPsoDdiHash,               true,  "Print psoDDIHash in TimeStats_Shaders.csv file", true)
 DECLARE_IGC_REGKEY(bool, ShaderDataBaseStats,           false, "Enable gathering sends' sizes for shader statistics", false)
+DECLARE_IGC_REGKEY(bool, ShaderSendInfoRework,           false, "Temporary Regkey for reworking sendinfo", false)
 DECLARE_IGC_REGKEY(bool, DumpLoopSink,                  false,  "Dump debug info in LoopSink", false)
 DECLARE_IGC_REGKEY(DWORD, LoopSinkDumpLevel,            1,  "1, 2 or 3: Dump loop sink with the needed verbosity", false)
 DECLARE_IGC_REGKEY(debugString, ShaderDataBaseStatsFilePath, 0, "Path to a file with dumped shader stats additional data e.g. data available during compilation only", false)

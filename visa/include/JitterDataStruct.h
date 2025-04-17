@@ -158,6 +158,16 @@ struct PERF_STATS_VERBOSE {
   uint32_t minRegRestCount;
 };
 
+struct PERF_SENDINFO {
+  // SendInfo information in separate vectors
+  // 1st element = src0 Length
+  std::vector<uint32_t> src0Vec;
+  // 2nd element = src1 Length
+  std::vector<uint32_t> src1Vec;
+  // 3rd element = dst Lenth
+  std::vector<uint32_t> destVec;
+};
+
 struct FINALIZER_INFO {
   // ----- Required by IGC/VC/Runtime ----- //
   // isSpill is deprecated. Retain the field for backward compatibility.
@@ -206,6 +216,7 @@ struct FINALIZER_INFO {
   // ----- vISA Stats ----- //
   PERF_STATS stats;
   PERF_STATS_VERBOSE statsVerbose;
+  PERF_SENDINFO sendInfo;
 };
 
 llvm::json::Value toJSON(const PERF_STATS &p);

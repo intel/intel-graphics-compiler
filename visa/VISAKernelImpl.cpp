@@ -656,7 +656,31 @@ void VISAKernelImpl::dumpPerfStatsInJson(const std::string &filename) {
     }
   }
 
-  llvm::json::Value output_jv = llvm::json::Array({std::move(pv)});
+  llvm::json::Value output_jv = nullptr;
+  if (m_options->getOption(vISA_DumpSendInfoStats)) {
+    llvm::json::Array Src0Array;
+    for (const auto &val : m_jitInfo->sendInfo.src0Vec) {
+      Src0Array.push_back(val);
+    }
+    llvm::json::Array Src1Array;
+    for (const auto &val : m_jitInfo->sendInfo.src1Vec) {
+      Src1Array.push_back(val);
+    }
+    llvm::json::Array DestArray;
+    for (const auto &val : m_jitInfo->sendInfo.destVec) {
+      DestArray.push_back(val);
+    }
+
+    llvm::json::Value sendArray =
+        llvm::json::Object({{"src0", std::move(Src0Array)},
+                            {"src1", std::move(Src1Array)},
+                            {"dest", std::move(DestArray)}});
+
+    output_jv = llvm::json::Array({std::move(pv), std::move(sendArray)});
+  }
+  else {
+    output_jv = llvm::json::Array({std::move(pv)});
+  }
   statsOutput << llvm::formatv("{0:2}", output_jv).str() << "\n";
 }
 

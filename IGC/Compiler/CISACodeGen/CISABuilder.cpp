@@ -4295,6 +4295,11 @@ namespace IGC
             }
         }
 
+        if (IGC_IS_FLAG_ENABLED(ShaderSendInfoRework))
+        {
+          SaveOption(vISA_DumpSendInfoStats, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(EnableSamplerSplit))
         {
             SaveOption(vISA_enableCloneSampleInst, true);
