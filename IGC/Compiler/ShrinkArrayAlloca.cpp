@@ -98,7 +98,7 @@ inline Type* GetNewType(Type* scalarType, uint32_t numElements)
 ////////////////////////////////////////////////////////////////////////////////
 // @brief Extracts used elements of the vector and repacks into a new vector.
 inline Value* RepackToNewType(
-    IGCLLVM::IRBuilder<>& builder,
+    IRBuilder<>& builder,
     Value* data,
     const SmallVector<bool, 4>& used,
     const SmallVector<uint32_t, 4>& mapping)
@@ -131,7 +131,7 @@ inline Value* RepackToNewType(
 // @brief Extracts elements of the input vector and repacks into a bigger vector
 // whose type matches the unoptimized vector type used in the alloca.
 inline Value* RepackToOldType(
-    IGCLLVM::IRBuilder<>& builder,
+    IRBuilder<>& builder,
     Value* data,
     const SmallVector<bool, 4>& used,
     const SmallVector<uint32_t, 4>& mapping)
@@ -293,7 +293,7 @@ inline void ReplaceUseWith(
     Type* newInstElTy = nullptr;
     if (GetElementPtrInst* gepInst = dyn_cast<GetElementPtrInst>(user))
     {
-        IGCLLVM::IRBuilder<> builder(gepInst);
+        IRBuilder<> builder(gepInst);
         IGC_ASSERT(isa<AllocaInst>(oldOp));
         IGC_ASSERT(isa<AllocaInst>(newOp));
         IGC_ASSERT(gepInst->getNumIndices() == 2);
@@ -306,7 +306,7 @@ inline void ReplaceUseWith(
     }
     else if (LoadInst* load = dyn_cast<LoadInst>(user))
     {
-        IGCLLVM::IRBuilder<> builder(load);
+        IRBuilder<> builder(load);
         LoadInst* newLoad = builder.CreateLoad(newOpTy, newOp, load->getName());
         newLoad->setAlignment(
             IGCLLVM::getCorrectAlign(newLoad->getType()->getPrimitiveSizeInBits() / 8));
@@ -318,7 +318,7 @@ inline void ReplaceUseWith(
         Type* bcType = bc->getType();
         if (!bcType->isPointerTy() || !IGCLLVM::isOpaquePointerTy(bcType))
         {
-            IGCLLVM::IRBuilder<> builder(bc);
+            IRBuilder<> builder(bc);
             if (bcType->isPointerTy())
             {
                 bcType = IGCLLVM::getNonOpaquePtrEltTy(bcType);     // Legacy code: getNonOpaquePtrEltTy
@@ -335,7 +335,7 @@ inline void ReplaceUseWith(
     }
     else if (ExtractElementInst* ee = dyn_cast<ExtractElementInst>(user))
     {
-        IGCLLVM::IRBuilder<> builder(ee);
+        IRBuilder<> builder(ee);
         Value* indexVal = ee->getIndexOperand();
         IGC_ASSERT(isa<ConstantInt>(indexVal));
         uint32_t index = int_cast<uint32_t>(
@@ -356,7 +356,7 @@ inline void ReplaceUseWith(
         oldOp == cast<StoreInst>(user)->getPointerOperand())
     {
         StoreInst* st = cast<StoreInst>(user);
-        IGCLLVM::IRBuilder<> builder(st);
+        IRBuilder<> builder(st);
         Value* data = st->getValueOperand();
         Value* newData = RepackToNewType(builder, data, used, mapping);
         StoreInst* newStore = builder.CreateStore(newData, newOp, st->isVolatile());
@@ -367,7 +367,7 @@ inline void ReplaceUseWith(
     }
     else if (Instruction* inst = dyn_cast<Instruction>(user))
     {
-        IGCLLVM::IRBuilder<> builder(inst);
+        IRBuilder<> builder(inst);
         if (isa<PHINode>(user))
         {
             builder.SetInsertPoint(
@@ -468,7 +468,7 @@ bool ShrinkArrayAllocaPass::Resolve()
             newArrayElementType,
             allocaInst->getAllocatedType()->getArrayNumElements());
 
-        IGCLLVM::IRBuilder<> builder(allocaInst);
+        IRBuilder<> builder(allocaInst);
         AllocaInst* newAlloca = builder.CreateAlloca(newType);
         newAlloca->setAlignment(
             IGCLLVM::getCorrectAlign(newArrayElementType->getPrimitiveSizeInBits() / 8));

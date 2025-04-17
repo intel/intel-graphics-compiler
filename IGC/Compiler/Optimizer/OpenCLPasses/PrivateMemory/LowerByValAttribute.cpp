@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/Support/Alignment.h>
 #include <llvmWrapper/IR/Instructions.h>
 #include <llvmWrapper/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -72,10 +73,10 @@ void LowerByValAttribute::visitCallInst(CallInst& CI)
         if (CI.paramHasAttr(i, llvm::Attribute::ByVal) && !CI.paramHasAttr(i, llvm::Attribute::ReadOnly))
         {
             Type* ElTy = CI.getParamByValType(i);
-            IGCLLVM::IRBuilder<> builder(&CI);
+            IRBuilder<> builder(&CI);
             Value* AI = builder.CreateAlloca(ElTy);
-            builder.CreateMemCpy(
-                AI, OpI, DL.getTypeAllocSize(ElTy), DL.getABITypeAlign(ElTy).value());
+            auto Align = MaybeAlign(DL.getABITypeAlign(ElTy).value());
+            builder.CreateMemCpy(AI, Align, OpI, Align, DL.getTypeAllocSize(ElTy));
             auto AC = builder.CreateAddrSpaceCast(AI, OpITy);
             CI.replaceUsesOfWith(OpI, AC);
             m_changed = true;

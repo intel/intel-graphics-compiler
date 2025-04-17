@@ -31,7 +31,7 @@ namespace IGC {
         using namespace llvm;
 
         class PeepholeTypeLegalizer : public FunctionPass, public InstVisitor<PeepholeTypeLegalizer> {
-            IGCLLVM::IRBuilder<>* m_builder;
+            IRBuilder<>* m_builder;
             Module* TheModule;
             Function* TheFunction;
 

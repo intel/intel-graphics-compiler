@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include <llvm/Support/Alignment.h>
 #include <llvmWrapper/IR/Instructions.h>
 #include "llvmWrapper/IR/Function.h"
 #include <llvm/IR/Module.h>
@@ -216,7 +217,7 @@ inline StructType* PromotedStructValueType(const Module& M, const Argument* arg)
 }
 
 // BE does not handle struct load/store, so instead store each element of the struct value to the GEP of the struct pointer
-inline void StoreToStruct(IGCLLVM::IRBuilder<>& builder, Value* strVal, Value* strPtr)
+inline void StoreToStruct(IRBuilder<>& builder, Value* strVal, Value* strPtr)
 {
     IGC_ASSERT(strPtr->getType()->isPointerTy());
     IGC_ASSERT(strVal->getType()->isStructTy());
@@ -232,7 +233,7 @@ inline void StoreToStruct(IGCLLVM::IRBuilder<>& builder, Value* strVal, Value* s
 }
 
 // BE does not handle struct load/store, so instead load each element from the GEP struct pointer and insert it into the struct value
-inline Value* LoadFromStruct(IGCLLVM::IRBuilder<>& builder, Value* strPtr, Type* ty)
+inline Value* LoadFromStruct(IRBuilder<>& builder, Value* strPtr, Type* ty)
 {
     IGC_ASSERT(strPtr->getType()->isPointerTy());
     IGC_ASSERT(ty->isStructTy());
@@ -394,7 +395,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
 
             // Fix the usages of arguments that have changed
             BasicBlock* EntryBB = BasicBlock::Create(M.getContext(), "", pNewFunc);
-            IGCLLVM::IRBuilder<> builder(EntryBB);
+            IRBuilder<> builder(EntryBB);
             for (; OldArgIt != pFunc->arg_end(); ++OldArgIt)
             {
                 if (OldArgIt == pFunc->arg_begin() && retTypeOption == ReturnOpt::RETURN_STRUCT)
@@ -463,12 +464,13 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                 const auto ptrSize = DL.getPointerSize();
                 for (auto RetInst : Returns)
                 {
-                    IGCLLVM::IRBuilder<> builder(RetInst);
+                    IRBuilder<> builder(RetInst);
                     Type* retTy = RetInst->getReturnValue()->getType();
                     Value* returnedValPtr = builder.CreateAlloca(retTy);
                     builder.CreateStore(RetInst->getReturnValue(), returnedValPtr);
                     auto size = DL.getTypeAllocSize(retTy);
-                    builder.CreateMemCpy(&*pNewFunc->arg_begin(), returnedValPtr, size, ptrSize);
+                    auto Align = MaybeAlign(ptrSize);
+                    builder.CreateMemCpy(&*pNewFunc->arg_begin(), Align, returnedValPtr, Align, size);
                     builder.CreateRetVoid();
                     RetInst->eraseFromParent();
                 }
@@ -478,7 +480,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                 // For "sret" returns, we load from the temp alloca created earlier and return the loaded value instead
                 for (auto RetInst : Returns)
                 {
-                    IGCLLVM::IRBuilder<> builder(RetInst);
+                    IRBuilder<> builder(RetInst);
                     Value* retVal = LoadFromStruct(builder, tempAllocaForSRetPointer, tempAllocaForSRetPointerTy);
                     builder.CreateRet(retVal);
                     RetInst->eraseFromParent();
@@ -489,7 +491,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                 // Extend illegal int returns to legal type
                 for (auto RetInst : Returns)
                 {
-                    IGCLLVM::IRBuilder<> builder(RetInst);
+                    IRBuilder<> builder(RetInst);
                     Value* retVal = RetInst->getReturnValue();
                     Type* retTy = retVal->getType();
                     retVal = builder.CreateZExt(retVal, LegalizedIntVectorType(M, retTy));
@@ -528,7 +530,7 @@ void LegalizeFunctionSignatures::FixFunctionUsers(Module& M)
             else if (Instruction* inst = dyn_cast<Instruction>(ui))
             {
                 // Any other uses can be replaced with a pointer cast
-                IGCLLVM::IRBuilder<> builder(inst);
+                IRBuilder<> builder(inst);
                 Value* pCast = builder.CreatePointerCast(pNewFunc, pFunc->getType());
                 inst->replaceUsesOfWith(pFunc, pCast);
             }
@@ -584,7 +586,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
     else if (!isLegalSignatureType(M, callInst->getType(), isStackCall))
     {
         // Create an alloca for the return type
-        IGCLLVM::IRBuilder<> builder(callInst);
+        IRBuilder<> builder(callInst);
         returnPtr = builder.CreateAlloca(callInst->getType());
         callArgs.push_back(returnPtr);
         // Add "noalias" and "sret" to return value operand at callsite
@@ -606,7 +608,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         if (!isLegalIntVectorType(M, arg->getType()))
         {
             // extend the illegal int to a legal type
-            IGCLLVM::IRBuilder<> builder(callInst);
+            IRBuilder<> builder(callInst);
             Value* extend = builder.CreateZExt(callInst->getOperand(opNum), LegalizedIntVectorType(M, arg->getType()));
             callArgs.push_back(extend);
             ArgAttrVec.push_back(AttributeSet());
@@ -616,7 +618,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
             isPromotableStructType(M, callInst->getParamByValType(opNum), isStackCall))
         {
             // Map the new operand to the loaded value of the struct pointer
-            IGCLLVM::IRBuilder<> builder(callInst);
+            IRBuilder<> builder(callInst);
             Value* newOp = LoadFromStruct(builder, callInst->getOperand(opNum), callInst->getParamByValType(opNum));
             callArgs.push_back(newOp);
             ArgAttrVec.push_back(AttributeSet());
@@ -625,7 +627,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         else if (!isLegalSignatureType(M, arg->getType(), isStackCall))
         {
             // Create and store operand as an alloca, then pass as argument
-            IGCLLVM::IRBuilder<> builder(callInst);
+            IRBuilder<> builder(callInst);
             Value* allocaV = builder.CreateAlloca(arg->getType());
             builder.CreateStore(callInst->getOperand(opNum), allocaV);
             callArgs.push_back(allocaV);
@@ -644,7 +646,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
 
     if (retTypeOption != ReturnOpt::RETURN_DEFAULT || fixArgType)
     {
-        IGCLLVM::IRBuilder<> builder(callInst);
+        IRBuilder<> builder(callInst);
         Value* newCalledValue = nullptr;
         FunctionType* newFnTy = nullptr;
         if (!calledFunc)

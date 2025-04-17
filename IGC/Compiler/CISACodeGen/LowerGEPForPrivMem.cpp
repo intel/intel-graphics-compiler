@@ -131,7 +131,7 @@ llvm::AllocaInst* LowerGEPForPrivMem::createVectorForAlloca(
     llvm::Type* pBaseType)
 {
     IGC_ASSERT(pAlloca != nullptr);
-    IGCLLVM::IRBuilder<> IRB(pAlloca);
+    IRBuilder<> IRB(pAlloca);
     AllocaInst* pAllocaValue = nullptr;
     if (IsVariableSizeAlloca(*pAlloca)) {
         pAllocaValue = IRB.CreateAlloca(pBaseType, pAlloca->getArraySize());
@@ -1004,7 +1004,7 @@ void TransposeHelper::handleGEPInstNew(
 static Value* loadEltsFromVecAlloca(
     unsigned N, AllocaInst* pVecAlloca,
     Value* pScalarizedIdx,
-    IGCLLVM::IRBuilder<>& IRB,
+    IRBuilder<>& IRB,
     Type* scalarType)
 {
     Value* pLoadVecAlloca = IRB.CreateLoad(pVecAlloca->getAllocatedType(), pVecAlloca);
@@ -1043,7 +1043,7 @@ void TransposeHelperPromote::handleLoadInst(
 {
     IGC_ASSERT(nullptr != pLoad);
     IGC_ASSERT(pLoad->isSimple());
-    IGCLLVM::IRBuilder<> IRB(pLoad);
+    IRBuilder<> IRB(pLoad);
     IGC_ASSERT(nullptr != pLoad->getType());
     unsigned N = pLoad->getType()->isVectorTy()
         ? (unsigned)cast<IGCLLVM::FixedVectorType>(pLoad->getType())->getNumElements()
@@ -1061,7 +1061,7 @@ void TransposeHelperPromote::handleStoreInst(
     IGC_ASSERT(nullptr != pStore);
     IGC_ASSERT(pStore->isSimple());
 
-    IGCLLVM::IRBuilder<> IRB(pStore);
+    IRBuilder<> IRB(pStore);
     llvm::Value* pStoreVal = pStore->getValueOperand();
     llvm::Value* pLoadVecAlloca = IRB.CreateLoad(pVecAlloca->getAllocatedType(), pVecAlloca);
     llvm::Value* pIns = pLoadVecAlloca;

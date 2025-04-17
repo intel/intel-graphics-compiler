@@ -1505,7 +1505,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorDivRsq(BinaryOperator& I)
         {
             if (ConstantFP * fp0 = dyn_cast<ConstantFP>(I.getOperand(0)))
             {
-                llvm::IRBuilder<> builder(I.getContext());
+                IRBuilder<> builder(I.getContext());
                 llvm::CallInst* sqrt_call = llvm::IntrinsicInst::Create(
                     llvm::Intrinsic::getDeclaration(m_ctx->getModule(), Intrinsic::sqrt, builder.getFloatTy()), genIntr->getOperand(0), "", &I);
 

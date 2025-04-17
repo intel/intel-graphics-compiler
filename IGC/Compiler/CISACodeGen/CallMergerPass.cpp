@@ -76,7 +76,7 @@ void mergeCalls(Function* F, CallInst *call1, CallInst *call2) {
   auto* successorBB = parentBB1->getSingleSuccessor();
 
   auto* newBB = llvm::BasicBlock::Create(F->getContext(), "mergedCallsBB", F, successorBB);
-  llvm::IRBuilder<> Builder(newBB);
+  IRBuilder<> Builder(newBB);
 
   IGC_ASSERT(call1->arg_size() == call2->arg_size());
 

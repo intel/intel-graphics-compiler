@@ -45,7 +45,7 @@ namespace IGC
         void visitCallInst(llvm::CallInst& CI);
 
     private:
-        IGCLLVM::IRBuilder<>* m_Builder = nullptr;
+        llvm::IRBuilder<>* m_Builder = nullptr;
         llvm::ValueMap<llvm::Function*, llvm::Function*> m_OldFuncToNewFuncMap;
         bool m_changed = false;
 

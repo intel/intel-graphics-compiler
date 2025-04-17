@@ -74,7 +74,7 @@ void ExtensionFuncsResolution::visitCallInst(CallInst& CI)
     else if (funcName.startswith(ExtensionFuncsAnalysis::VME_HELPER_GET_HANDLE)) {
         // Load from the opaque vme pointer and return the a vector with values.
         IGC_ASSERT(IGCLLVM::getNumArgOperands(&CI) == 1);
-        IGCLLVM::IRBuilder<> builder(&CI);
+        IRBuilder<> builder(&CI);
         Type* retType = CI.getType();
         IGC_ASSERT(retType->isVectorTy() || retType->isIntegerTy());
         PointerType* ptrType = PointerType::get(retType, 0);
@@ -87,7 +87,7 @@ void ExtensionFuncsResolution::visitCallInst(CallInst& CI)
     else if (funcName.startswith(ExtensionFuncsAnalysis::VME_HELPER_GET_AS)) {
         // Store the VME values and return an opaque vme pointer.
         IGC_ASSERT(IGCLLVM::getNumArgOperands(&CI) == 1);
-        IGCLLVM::IRBuilder<> builder(&*CI.getParent()->getParent()->begin()->getFirstInsertionPt());
+        IRBuilder<> builder(&*CI.getParent()->getParent()->begin()->getFirstInsertionPt());
         Type* retType = CI.getType();
         Value* arg = CI.getArgOperand(0);
         IGC_ASSERT(arg->getType()->isVectorTy() || arg->getType()->isIntegerTy());

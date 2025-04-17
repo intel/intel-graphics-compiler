@@ -43,7 +43,7 @@ FixResourcePtr::FixResourcePtr() : FunctionPass(ID)
 
 bool FixResourcePtr::runOnFunction(llvm::Function& F)
 {
-    llvm::IRBuilder<> __builder(F.getContext());
+    IRBuilder<> __builder(F.getContext());
     builder = &__builder;
     DL = &F.getParent()->getDataLayout();
     m_changed = false;

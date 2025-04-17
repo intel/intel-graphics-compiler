@@ -150,7 +150,7 @@ bool StackOverflowDetectionPass::runOnModule(Module &M) {
     if (isEntryFunction || isLibraryCompilation) {
       if (F.isDeclaration())
         continue;
-      IGCLLVM::IRBuilder<> builder(&*F.begin()->begin());
+      IRBuilder<> builder(&*F.begin()->begin());
 
       if (isEntryFunction) {
         auto StackOverflowInitFunc = M.getOrInsertFunction(

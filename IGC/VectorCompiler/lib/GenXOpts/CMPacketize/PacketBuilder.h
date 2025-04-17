@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Module.h"
 #include "llvmWrapper/Support/Alignment.h"
 
+#include <llvm/IR/DerivedTypes.h>
 #include <optional>
 #include <deque>
 #include <unordered_map>
@@ -44,7 +45,7 @@ public:
   LLVMContext &getContext() { return M->getContext(); }
 
   IGCLLVM::Module *M;
-  IGCLLVM::IRBuilder<> *IRB;
+  IRBuilder<> *IRB;
 
   uint32_t VWidth;   // vector width target simd
 
@@ -132,7 +133,7 @@ public:
 
   Value *VBROADCAST(Value *Src, const llvm::Twine &Name = "");
 
-  CallInst *CALL(Value *Callee, const std::initializer_list<Value *> &ArgsList,
+  CallInst *CALL(llvm::FunctionCallee *Callee, const std::initializer_list<Value *> &ArgsList,
                  const llvm::Twine &Name = "");
 
   //////////////////////////////////////////////////////////////////////////
@@ -143,7 +144,7 @@ public:
   uint32_t getTypeSize(Type *Ty);
 
   Value *BITCAST(Value *V, Type *DestTy, const Twine &Name = "");
-  CallInst *CALLA(Value *Callee, ArrayRef<Value *> Args = ArrayRef<Value*>(),
+  CallInst *CALLA(llvm::FunctionCallee *Callee, ArrayRef<Value *> Args = ArrayRef<Value*>(),
                   const Twine &Name = "", MDNode *FPMathTag = nullptr);
   Value *CAST(Instruction::CastOps Op, Value *V, Type *DestTy,
               const Twine &Name = "");

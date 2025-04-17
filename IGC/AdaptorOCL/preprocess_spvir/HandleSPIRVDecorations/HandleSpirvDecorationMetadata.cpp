@@ -383,7 +383,7 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForPrefetch(llvm::Cal
     args.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), IGCLLVM::getNonOpaquePtrEltTy(PTy)->getPrimitiveSizeInBits() / 8));
 
     // OpenCL prefetch overloads num_elements to either i32 or i64. Convert to i32.
-    IGCLLVM::IRBuilder<> builder(&I);
+    IRBuilder<> builder(&I);
     args.push_back(builder.CreateZExtOrTrunc(I.getArgOperand(1), Type::getInt32Ty(I.getContext())));
 
     auto config = supportedLoadConfigs.find(static_cast<LSC_L1_L3_CC>(cacheControl.value));

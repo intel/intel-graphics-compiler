@@ -989,7 +989,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         // 26GRFs then doing a stackcall will overwrite the payload registers.
         const int visaStackCallArgRegStart = 26;
         const int64_t maxGRFOffset = visaStackCallArgRegStart * m_currShader->getGRFSize();
-        llvm::IRBuilder<> builder(&*F.getEntryBlock().getFirstInsertionPt());
+        IRBuilder<> builder(&*F.getEntryBlock().getFirstInsertionPt());
         for (auto& arg : F.args())
         {
             // Skip unused arguments

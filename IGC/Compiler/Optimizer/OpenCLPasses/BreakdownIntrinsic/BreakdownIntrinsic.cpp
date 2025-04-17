@@ -45,7 +45,7 @@ void BreakdownIntrinsicPass::visitIntrinsicInst(llvm::IntrinsicInst& I)
 {
     //const MetaDataUtils &mdUtils = *(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
     ModuleMetaData& modMD = *(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
-    llvm::IRBuilder<> builder(&I);
+    IRBuilder<> builder(&I);
     bool md_added = false;
 
     auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();

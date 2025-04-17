@@ -534,7 +534,7 @@ bool CatchAllLineNumber::runOnFunction(llvm::Function& F)
         !F.hasFnAttribute("visaStackCall"))
         return false;
 
-    llvm::IRBuilder<> Builder(F.getParent()->getContext());
+    IRBuilder<> Builder(F.getParent()->getContext());
     DIBuilder di(*F.getParent());
     Function* lineNumPlaceholder = GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::ID::GenISA_CatchAllDebugLine);
     auto intCall = Builder.CreateCall(lineNumPlaceholder);

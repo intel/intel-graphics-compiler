@@ -1728,7 +1728,7 @@ namespace IGC
             llvm::Instruction* result = inst;
             if (inst->getType() != outputType)
             {
-                llvm::IRBuilder<> builder(inst);
+                IRBuilder<> builder(inst);
                 llvm::Function* systemValueFunc = llvm::GenISAIntrinsic::getDeclaration(pModule, GenISAIntrinsic::GenISA_DCL_SystemValue, outputType);
                 llvm::Instruction* sgv = builder.CreateCall(systemValueFunc, inst->getOperand(0));
                 // a default system value intrinsic function returns a float value. The returned value is bit casted to an appropriate integer or floating point value
@@ -2123,7 +2123,7 @@ namespace IGC
         return vecValue;
     }
 
-    llvm::Value* ConvertToFloat(llvm::IRBuilder<>& builder, llvm::Value* val)
+    llvm::Value* ConvertToFloat(IRBuilder<>& builder, llvm::Value* val)
     {
         llvm::Value* ret = val;
         llvm::Type* type = val->getType();
@@ -2147,7 +2147,7 @@ namespace IGC
         return ret;
     }
 
-    void ConvertToFloat(llvm::IRBuilder<>& builder, llvm::SmallVectorImpl<llvm::Value*>& instList)
+    void ConvertToFloat(IRBuilder<>& builder, llvm::SmallVectorImpl<llvm::Value*>& instList)
     {
         for (size_t i=0; i<instList.size(); i++)
         {
@@ -2169,7 +2169,7 @@ namespace IGC
         }
     }
 
-    void ScalarizeAggregateMembers(llvm::IRBuilder<>& builder, llvm::Value* val, llvm::SmallVectorImpl<llvm::Value*> & instList)
+    void ScalarizeAggregateMembers(IRBuilder<>& builder, llvm::Value* val, llvm::SmallVectorImpl<llvm::Value*> & instList)
     {
         llvm::Type* type = val->getType();
         unsigned num = 0;

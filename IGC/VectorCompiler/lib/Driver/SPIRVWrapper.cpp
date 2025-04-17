@@ -66,7 +66,7 @@ void PrepareModuleStructs(Module &M) {
       for (auto &U : F.uses()) {
         auto *Call = cast<CallInst>(U.getUser());
         // Replace current instructions operands and uses
-        llvm::IRBuilder<> IRB(Call);
+        IRBuilder<> IRB(Call);
         ToRemoveGotoJoin.push_back(Call);
         // 1. Get operands from call
         // 2. Generate new `calls` with operands
@@ -78,7 +78,7 @@ void PrepareModuleStructs(Module &M) {
         // 3. Generate `extracts` for each exist extract
         for (auto &UC : Call->uses()) {
           auto *Extract = cast<ExtractValueInst>(UC.getUser());
-          llvm::IRBuilder<> Builder(Extract);
+          IRBuilder<> Builder(Extract);
           SmallVector<unsigned, 8> Idxs(Extract->indices());
           auto *NewExtract =
               Builder.CreateExtractValue(NewCall, Idxs, Extract->getName());

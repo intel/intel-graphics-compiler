@@ -289,7 +289,7 @@ unsigned ModuleAllocaAnalysis::isUniform(llvm::AllocaInst* AI) const
 }
 
 llvm::Value* ModuleAllocaAnalysis::getPerThreadOffset(
-    IGCLLVM::IRBuilder<>& IRB,
+    IRBuilder<>& IRB,
     llvm::AllocaInst* AI,
     llvm::Value* simdSize,
     llvm::Value* threadId,
@@ -326,7 +326,7 @@ llvm::Value* ModuleAllocaAnalysis::getPerThreadOffset(
 }
 
 llvm::Value* ModuleAllocaAnalysis::getOffset(
-    IGCLLVM::IRBuilder<>& IRB,
+    IRBuilder<>& IRB,
     llvm::AllocaInst* AI,
     llvm::Value* simdSize,
     llvm::Value* simdLaneId,

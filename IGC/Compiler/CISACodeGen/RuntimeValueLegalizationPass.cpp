@@ -308,7 +308,7 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module& module)
             // Check if RuntimeValue needs adjustment
             if ((resolvedOffset != regionOffset) || (resolvedSize != regionSize))
             {
-                llvm::IRBuilder<> builder(callToResolve);
+                IRBuilder<> builder(callToResolve);
 
                 llvm::Type* resolvedBaseType = fixedVectorTy ? fixedVectorTy->getElementType() : callToResolve->getType();
                 IGC_ASSERT(regionSize > 1);

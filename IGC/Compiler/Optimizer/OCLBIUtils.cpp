@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include "Probe/Assertion.h"
 #include "IGC/common/StringMacros.hpp"
+#include <llvm/Support/Alignment.h>
 #include <llvm/Support/Casting.h>
 #include "IGC/Compiler/CISACodeGen/messageEncoding.hpp"
 
@@ -1215,7 +1216,7 @@ public:
 
     void createIntrinsic()
     {
-        IGCLLVM::IRBuilder<> IRB(m_pCallInst);
+        IRBuilder<> IRB(m_pCallInst);
 
         Value* pSrc = m_pCallInst->getArgOperand(0);
         Value* truncInst = IRB.CreateTrunc(pSrc, IRB.getInt1Ty());
@@ -1378,7 +1379,7 @@ public:
         Value* pNumBytes = m_pCallInst->getArgOperand(2);
         uint64_t Align = cast<ConstantInt>(m_pCallInst->getArgOperand(3))->getZExtValue();
 
-        IGCLLVM::IRBuilder<> IRB(m_pCallInst);
+        IRBuilder<> IRB(m_pCallInst);
 
         Value* pDsti8 = IRB.CreateBitCast(
             pDst, IRB.getInt8PtrTy(cast<PointerType>(pDst->getType())->getAddressSpace()));
@@ -1386,7 +1387,9 @@ public:
         Value* pSrci8 = IRB.CreateBitCast(
             pSrc, IRB.getInt8PtrTy(cast<PointerType>(pSrc->getType())->getAddressSpace()));
 
-        CallInst* pCall = IRB.CreateMemCpy(pDsti8, pSrci8, pNumBytes, int_cast<unsigned int>(Align));
+        auto AlignTo = MaybeAlign(Align);
+        CallInst *pCall = IRB.CreateMemCpy(pDsti8, AlignTo, pSrci8, AlignTo, pNumBytes,
+                                           int_cast<unsigned int>(Align));
         pCall->setDebugLoc(m_DL);
         m_pCallInst->replaceAllUsesWith(pCall);
     }

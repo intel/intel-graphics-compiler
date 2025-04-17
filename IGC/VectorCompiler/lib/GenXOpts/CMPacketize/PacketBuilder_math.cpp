@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "PacketBuilder.h"
+#include <llvm/IR/DerivedTypes.h>
 
 // need to disable this to use INFINITY and NAN values
 #pragma warning(disable : 4756 4056)
@@ -115,15 +116,15 @@ Value *PacketBuilder::ASHR(Value *LHS, uint64_t RHS, const Twine &Name,
 Value *PacketBuilder::EXP2(Value *A, const llvm::Twine &Name) {
   SmallVector<Type *, 1> Args;
   Args.push_back(A->getType());
-  auto *Decl = Intrinsic::getDeclaration(M, Intrinsic::exp2, Args);
-  return CALL(Decl, std::initializer_list<Value *>{A}, Name);
+  auto Decl = llvm::FunctionCallee(Intrinsic::getDeclaration(M, Intrinsic::exp2, Args));
+  return CALL(&Decl, std::initializer_list<Value *>{A}, Name);
 }
 
 Value *PacketBuilder::FABS(Value *A, const llvm::Twine &Name) {
   SmallVector<Type *, 1> Args;
   Args.push_back(A->getType());
-  auto *Decl = Intrinsic::getDeclaration(M, Intrinsic::fabs, Args);
-  return CALL(Decl, std::initializer_list<Value *>{A}, Name);
+  auto Decl = llvm::FunctionCallee(Intrinsic::getDeclaration(M, Intrinsic::fabs, Args));
+  return CALL(&Decl, std::initializer_list<Value *>{A}, Name);
 }
 
 Value *PacketBuilder::FADD(Value *LHS, Value *RHS, const Twine &Name,
@@ -203,22 +204,22 @@ Value *PacketBuilder::TRUNC(Value *V, Type *DestTy, const Twine &Name) {
 Value *PacketBuilder::VMINPS(Value *A, Value *B, const llvm::Twine &Name) {
   SmallVector<Type *, 1> Args;
   Args.push_back(A->getType());
-  auto *Decl = Intrinsic::getDeclaration(M, Intrinsic::minnum, Args);
-  return CALL(Decl, std::initializer_list<Value *>{A, B}, Name);
+  auto Decl = llvm::FunctionCallee(Intrinsic::getDeclaration(M, Intrinsic::minnum, Args));
+  return CALL(&Decl, std::initializer_list<Value *>{A, B}, Name);
 }
 
 Value *PacketBuilder::VMAXPS(Value *A, Value *B, const llvm::Twine &Name) {
   SmallVector<Type *, 1> Args;
   Args.push_back(A->getType());
-  auto *Decl = Intrinsic::getDeclaration(M, Intrinsic::maxnum, Args);
-  return CALL(Decl, std::initializer_list<Value *>{A, B}, Name);
+  auto Decl = llvm::FunctionCallee(Intrinsic::getDeclaration(M, Intrinsic::maxnum, Args));
+  return CALL(&Decl, std::initializer_list<Value *>{A, B}, Name);
 }
 
 Value *PacketBuilder::VSQRTPS(Value *A, const llvm::Twine &Name) {
   SmallVector<Type *, 1> Args;
   Args.push_back(A->getType());
-  auto *Decl = Intrinsic::getDeclaration(M, Intrinsic::sqrt, Args);
-  return CALL(Decl, std::initializer_list<Value *>{A}, Name);
+  auto Decl = llvm::FunctionCallee(Intrinsic::getDeclaration(M, Intrinsic::sqrt, Args));
+  return CALL(&Decl, std::initializer_list<Value *>{A}, Name);
 }
 
 Value *PacketBuilder::UI_TO_FP(Value *V, Type *DestTy, const Twine &Name) {

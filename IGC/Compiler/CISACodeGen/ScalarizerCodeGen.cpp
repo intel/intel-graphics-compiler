@@ -34,7 +34,7 @@ ScalarizerCodeGen::ScalarizerCodeGen() : FunctionPass(ID)
 
 bool ScalarizerCodeGen::runOnFunction(Function& F)
 {
-    llvm::IRBuilder<> builder(F.getContext());
+    IRBuilder<> builder(F.getContext());
     m_builder = &builder;
 
     visit(F);

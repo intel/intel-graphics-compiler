@@ -774,7 +774,7 @@ Value* ImplicitArgs::getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType
             }
 
             // Does not exist, create the intrinsic at function entry
-            llvm::IRBuilder<> Builder(&*F.getEntryBlock().begin());
+            IRBuilder<> Builder(&*F.getEntryBlock().begin());
             Type* argTy = iArg.getLLVMType(F.getParent()->getContext());
             Function* intrinsicDecl = GenISAIntrinsic::getDeclaration(F.getParent(), genID, argTy);
             CallInst* inst = Builder.CreateCall(intrinsicDecl);
