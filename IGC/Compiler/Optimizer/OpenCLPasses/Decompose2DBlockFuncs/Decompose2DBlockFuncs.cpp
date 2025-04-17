@@ -533,6 +533,26 @@ void Decompose2DBlockFuncs::visitCallInst(CallInst& CI) {
   // Grab the args of GII, add to IV
   InputValues IV(*GII);
 
+  auto isEmulated = [&IV](GenIntrinsicInst* GII) {
+    bool isRead =
+        GII->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockRead;
+    ConstantInt *TransposeVal = dyn_cast<ConstantInt>(IV.Transpose);
+    bool isTranspose = (TransposeVal && !TransposeVal->isZero());
+    ConstantInt *EltVal = dyn_cast<ConstantInt>(IV.ElemSize);
+    uint32_t EltBits = EltVal ? (uint32_t)EltVal->getZExtValue() : 0;
+    if (isRead && isTranspose && (EltBits == 8 || EltBits == 16)) {
+      return true;
+    }
+    return false;
+  };
+
+  if (isEmulated(GII)) {
+    // Due to separation of payload and read, skip emulated block read for now.
+    LLVM_DEBUG(
+        dbgs() << "Emulated d8/d16 transpose 2D block read, not decomposed.\n");
+    return;
+  }
+
   // All reads, writes or prefetches have a payload, so we can build one. If
   // the payload would be loop dependent, we should give up at this point. In
   // this case, we return a nullptr.
