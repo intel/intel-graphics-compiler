@@ -24745,25 +24745,6 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
         destination = BroadcastIfUniform(GetSymbol(inst->getOperand(storeDestinationOperandId)));
     }
 
-    // Special handling of the following:
-    //    intel_sub_group_2d_block_read_8b_1r32x2c
-    //    intel_sub_group_2d_block_read_16b_1r16x2c
-    //    intel_sub_group_2d_block_read_32b_1r8x2c
-    // They are defined to return 64 bytes, but the HW block read returns 128 bytes (two GRFs,
-    // as a block size must be multiple of GRF, unused part is zero-padded). Additional mov
-    // instructions are needed to pack the lower halves of each GRF as the final return value.
-    //
-    // Here, using equivalent single-block read to avoid those mov instructions by
-    // just doubling their width.
-    if (isRead && !isPrefetch && !isTranspose && !isVnni &&
-        numBlocksV == 2 && blockHeight == 1 &&
-        (elemSizeInBits * blockWidth) == 256 &&
-        m_currShader->m_Platform->getGRFSize() == 64)
-    {
-        blockWidth = (2 * blockWidth);
-        numBlocksV = 1;
-    }
-
     bool emu_read = (isRead && isTranspose &&
         (elemSizeInBits == 8 || elemSizeInBits == 16));
     if (!emu_read) {
