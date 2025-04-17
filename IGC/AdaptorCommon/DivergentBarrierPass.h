@@ -78,5 +78,5 @@ namespace IGC
     };
 
     void initializeDivergentBarrierPassPass(llvm::PassRegistry&);
-    llvm::ModulePass* createDivergentBarrierPass();
+    llvm::ModulePass* createDivergentBarrierPass(void* Ctx);
 }//namespace IGC
