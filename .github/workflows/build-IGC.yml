@@ -215,4 +215,4 @@ jobs:
         with:
           name: IGC_Ubuntu${{ matrix.ubuntu_version }}_llvm${{ matrix.llvm_ver }}_${{ matrix.compiler }}-${{ steps.igc-current-short-Hash.outputs.sha_short }}
           path: ./Artifacts/DEB-FILES/*.deb
-          retention-days: 7
+          retention-days: 30
