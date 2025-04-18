@@ -1061,6 +1061,8 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PM.add(createGenXSimplifyPass());
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_Peephole, AddGenXPeephole);
+  PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+                         AddGenXPeephole);
 }
 
 #else // LLVM_VERSION_MAJOR < 16
