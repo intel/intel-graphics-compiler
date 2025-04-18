@@ -544,17 +544,17 @@ uint4 __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m8k8(long baseoff
 //
 // emulated transpose: A matrix of d8
 //
-// u8, m=32 and k=2,4,8
-ushort2  __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k2(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+// u8, m=32 and k=4,8,16
 ushort4  __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k4(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 ushort8  __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k8(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort16  __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k16(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 
 // emulated transpose: A matrix of d16
 //
-// u16, m=16 and k=2,4,8
-ushort2  __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k2(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+// u16, m=16 and k=4,8,16
 ushort4  __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k4(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 ushort8  __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k8(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort16  __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k16(long base, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 
 
 // 2d block read prefetch

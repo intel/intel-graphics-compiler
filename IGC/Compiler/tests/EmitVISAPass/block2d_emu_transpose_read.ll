@@ -28,9 +28,11 @@ entry:
   %tmp = add i64  %ibase, %lid
 ;
 ; case 1 u8_m32k4 transpose
-; CHECK:  lsc_load_block2d.ugm (M1, 1)  {{.*}}:d8.2x2x32nt  flat[base,widthm1,heightm1,pitchm1,x,y]
-; CHECK:  mov (M1_NM, 16) [[T0:.*]](0,0)<1> [[T1:.*]](0,0)<1;8,2>
-; CHECK:  mov (M1_NM, 16) [[T0]](1,0)<1>    [[T1]](1,0)<1;8,2>
+; CHECK:  lsc_load_block2d.ugm (M1, 1)  {{.*}}:d8.4x32nt  flat[base,widthm1,heightm1,pitchm1,x,y]
+; CHECK:  mov (M1_NM, 8) [[T0:.*]](0,0)<1> [[T1:.*]](0,0)<4;1,0>
+; CHECK:  mov (M1_NM, 8) [[T0]](0,8)<1>    [[T1]](0,1)<4;1,0>
+; CHECK:  mov (M1_NM, 8) [[T0]](1,0)<1>    [[T1]](0,2)<4;1,0>
+; CHECK:  mov (M1_NM, 8) [[T0]](1,8)<1>    [[T1]](0,3)<4;1,0>
 ;
   %res0 = call <4 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v4i16(i64 %base, i32 %widthm1, i32 %heightm1, i32 %pitchm1, i32 %x, i32 %y, i32 8, i32 4, i32 32, i32 1, i1 true, i1 false, i32 0)
   %tmp0 = add i64 %tmp, 16
@@ -40,11 +42,15 @@ entry:
 
 ;
 ; case 2 u16_m16k8 transpose
-; CHECK:  lsc_load_block2d.ugm (M1, 1)  {{.*}}:d16.4x2x16nt  flat[base,widthm1,heightm1,pitchm1,x,y]
-; CHECK:  mov (M1_NM, 16) [[T3:.*]](0,0)<1> [[T1:.*]](0,0)<1;8,2>
-; CHECK:  mov (M1_NM, 16) [[T3]](1,0)<1>    [[T1]](1,0)<1;8,2>
-; CHECK:  mov (M1_NM, 16) [[T3]](2,0)<1>    [[T1]](2,0)<1;8,2>
-; CHECK:  mov (M1_NM, 16) [[T3]](3,0)<1>    [[T1]](3,0)<1;8,2>
+; CHECK:  lsc_load_block2d.ugm (M1, 1)  {{.*}}:d16.2x4x16nt  flat[base,widthm1,heightm1,pitchm1,x,y]
+; CHECK:  mov (M1_NM, 8) [[T3:.*]](0,0)<1> [[T1:.*]](0,0)<4;1,0>
+; CHECK:  mov (M1_NM, 8) [[T3:.*]](0,8)<1> [[T1:.*]](0,1)<4;1,0>
+; CHECK:  mov (M1_NM, 8) [[T3]](1,0)<1>    [[T1]](0,2)<4;1,0>
+; CHECK:  mov (M1_NM, 8) [[T3]](1,8)<1>    [[T1]](0,3)<4;1,0>
+; CHECK:  mov (M1_NM, 8) [[T3]](2,0)<1>    [[T1]](2,0)<4;1,0>
+; CHECK:  mov (M1_NM, 8) [[T3]](2,8)<1>    [[T1]](2,1)<4;1,0>
+; CHECK:  mov (M1_NM, 8) [[T3]](3,0)<1>    [[T1]](2,2)<4;1,0>
+; CHECK:  mov (M1_NM, 8) [[T3]](3,8)<1>    [[T1]](2,3)<4;1,0>
 ;
   %res1 = call <8 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v8i16(i64 %base, i32 %widthm1, i32 %heightm1, i32 %pitchm1, i32 %x, i32 %y, i32 16, i32 8, i32 16, i32 1, i1 true, i1 false, i32 0)
   %tmp1 = add i64 %tmp, 128

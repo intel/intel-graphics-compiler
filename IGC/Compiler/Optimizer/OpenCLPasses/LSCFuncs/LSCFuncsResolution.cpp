@@ -1047,9 +1047,9 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
         {
             // The following are emulated on PVC+
             // (GRF size: 64 bytes, simd size >= simd16)
-            //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k2
             //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k4
             //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k8
+            //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k16
             numBlocksV = 1;
             if (funcName.consume_front("_m16"))
             {
@@ -1063,17 +1063,17 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
 
             tileWidth = 0;
             funcName = consume_number(funcName, "k", &tileWidth);
-            if (tileWidth != 2 && tileWidth != 4 && tileWidth != 8) {
-                IGC_ASSERT_MESSAGE(0, "D16 transpose (emulated) supports width 2, 4, 8 only.");
+            if (tileWidth != 4 && tileWidth != 8 && tileWidth != 16) {
+                IGC_ASSERT_MESSAGE(0, "D16 transpose (emulated) supports width 4, 8, 16 only.");
                 return nullptr;
             }
         }
         else if (elemSize == 8 && m_pCtx->platform.getGRFSize() == 64) {
             // The following are emulated on PVC+
             // (GRF size: 64 bytes, simd size >= simd16)
-            //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k2
             //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k4
             //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k8
+            //   __builtin_IB_subgroup_block_read_cacheopts_transpose_u8_m32k16
             numBlocksV = 1;
             if (funcName.consume_front("_m32"))
             {
@@ -1087,8 +1087,8 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
 
             tileWidth = 0;
             funcName = consume_number(funcName, "k", &tileWidth);
-            if (tileWidth != 2 && tileWidth != 4 && tileWidth != 8) {
-                IGC_ASSERT_MESSAGE(0, "D8 transpose (emulated) support width 2, 4, 8 only.");
+            if (tileWidth != 4 && tileWidth != 8 && tileWidth != 16) {
+                IGC_ASSERT_MESSAGE(0, "D8 transpose (emulated) support width 4, 8, 16 only.");
                 return nullptr;
             }
         }
@@ -1184,6 +1184,11 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
     if (isTranspose && isVnniTransform)
     {
         IGC_ASSERT_MESSAGE(0, "Cannot use both hw transpose and hw vnni at the same time for subgroup_block_read.");
+        return nullptr;
+    }
+
+    if (((tileWidth * elemSize) % 32) != 0) {
+        IGC_ASSERT_MESSAGE(0, "Block width * element size (bytes) must be a multiple of 4 bytes.");
         return nullptr;
     }
 
