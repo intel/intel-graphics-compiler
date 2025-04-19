@@ -27,8 +27,7 @@ namespace IGC
     //     %17 = call <4 x float> @llvm.genx.GenISA.PredicatedLoad.v4f32.p1v4f32.v4f32(<4 x float> addrspace(1)* %bitc0, i64 16, i1 %pred, <4 x float> %mergeValue)
     // if found in specific pattern and then performs if-conversion.
     //
-    // The pass looks for conditional branches that can be if-converted. The
-    // condition must be an integer compare instruction. The only "hammock" form
+    // The pass looks for conditional branches that can be if-converted. The only "hammock" form
     // of the control flow is supported, i.e. the true block has a single
     // predecessor and the false block has two predecessors. The true block must
     // have a single successor that is the false block.

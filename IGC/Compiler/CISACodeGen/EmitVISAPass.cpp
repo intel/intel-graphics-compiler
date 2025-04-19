@@ -19700,8 +19700,12 @@ void EmitPass::emitLSCVectorLoad_uniform(
         dSize = 4;
         vSize = vSize * 2;
         ldDest = m_currShader->GetNewAlias(ldDest, ISA_TYPE_UD, 0, 0);
-        if (mergeVal)
-            newMergeVal = m_currShader->GetNewAlias(mergeVal, ISA_TYPE_UD, 0, 0);
+        if (mergeVal) {
+            if (mergeVal->IsImmediate())
+                newMergeVal = m_currShader->ImmToVariable(mergeVal->GetImmediateValue(), ISA_TYPE_UD);
+            else
+                newMergeVal = m_currShader->GetNewAlias(mergeVal, ISA_TYPE_UD, 0, 0);
+        }
     }
 
     bool destUniform = Dest->IsUniform();

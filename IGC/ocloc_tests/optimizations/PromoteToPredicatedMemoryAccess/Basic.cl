@@ -42,6 +42,7 @@ SPDX-License-Identifier: MIT
 // CHECK-ASM: [[LABEL]]:
 // CHECK-ASM: ([[F2]])  store.ugm.d32x4.a64 (32|M0)  [{{[a-z0-9:]+}}]    r{{[0-9]+}}:8
 
+// Constant merge value
 __attribute__((intel_reqd_sub_group_size(32)))
 __kernel void add_kernel(__global const float4* in0, __global const float4* in1, __global float4* out, const int predicate) {
   int gid = get_global_id(0);

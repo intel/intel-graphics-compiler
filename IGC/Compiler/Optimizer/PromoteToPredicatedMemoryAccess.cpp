@@ -47,12 +47,20 @@ namespace IGC {
 
 bool PromoteToPredicatedMemoryAccess::runOnFunction(Function &F) {
   CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+  bool isStatlessToBindlessEnabled = (pCtx->type == ShaderType::OPENCL_SHADER &&
+                                      static_cast<OpenCLProgramContext*>(pCtx)->m_InternalOptions.PromoteStatelessToBindless);
   if (!pCtx->platform.hasLSC() ||
       !pCtx->platform.LSCEnabled() ||
-      (pCtx->type == ShaderType::OPENCL_SHADER &&
-               static_cast<OpenCLProgramContext*>(pCtx)->m_InternalOptions.PromoteStatelessToBindless) ||
-      pCtx->useStatelessToStateful())
+      isStatlessToBindlessEnabled ||
+      pCtx->useStatelessToStateful()) {
+    LLVM_DEBUG(dbgs() << "Skip promotion to predicated memory operations because one of conditions is false:\n"
+                      << " - Platform has LSC: " << pCtx->platform.hasLSC() << "\n"
+                      << " - LSC is enabled: " << pCtx->platform.LSCEnabled() << "\n"
+                      << " - PromoteStatelessToBindless is disabled: " << !isStatlessToBindlessEnabled << "\n"
+                      << " - useStatelessToStateful is disabled: " << !pCtx->useStatelessToStateful() << "\n");
     return false;
+  }
 
   SmallVector<std::pair<BranchInst *, bool>, 8> WorkList;
 
@@ -103,10 +111,6 @@ void PromoteToPredicatedMemoryAccess::fixPhiNode(PHINode &Phi, BasicBlock &Prede
 bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlock &BranchBB,
                                                 BasicBlock &ConvBB, BasicBlock &SuccBB,
                                                 bool Inverse) {
-  // Reject the candidate if the condition is not an integer compare instruction.
-  if (!isa<ICmpInst>(Cond))
-    return false;
-
   if (!ConvBB.hasNPredecessors(1))
     return false;
 

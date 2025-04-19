@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'EnablePromoteToPredicatedMemoryAccess=1 VISAOptions=-asmToConsole'" 2>&1 | FileCheck %s --check-prefixes=CHECK-ASM
 
+// CHECK-ASM: kernel test_i8_0
 // CHECK-ASM:             cmp (32|M0)   (lt)[[F1:f[0-9\.]+]]
 // CHECK-ASM:   ([[F1]]) goto (32|M0)
 // CHECK-ASM: {{[_a-z0-9A-Z]+}}:
@@ -62,9 +63,10 @@ __kernel void test_i8_0(__global const char4* in0, __global const char* in1, __g
   }
 }
 
+// CHECK-ASM: kernel test_i8_splat_vector
 // CHECK-ASM-DAG: (W)     mov (2|M0)               r{{[0-9]+}}.0<2>:b     5:w
-// CHECK-ASM-DAG:         cmp (32|M0)   (lt)[[F1:f[0-9\.]+]]   null<1>:d     r{{[0-9:\.]+}}<1;1,0>:d
-// CHECK-ASM: ([[F1]])  load.ugm.d16u32.a64 (32|M0)  r{{[0-9]+}}:2      [r{{[0-9:]+}}]
+// CHECK-ASM-DAG:         cmp (32|M0)   (lt)[[F4:f[0-9\.]+]]   null<1>:d     r{{[0-9:\.]+}}<1;1,0>:d
+// CHECK-ASM: ([[F4]])  load.ugm.d16u32.a64 (32|M0)  r{{[0-9]+}}:2      [r{{[0-9:]+}}]
 
 // Kernel with constant splat merge vector
 __kernel void test_i8_splat_vector(__global const char2* in, __global char2* out, const int predicate) {
@@ -75,15 +77,34 @@ __kernel void test_i8_splat_vector(__global const char2* in, __global char2* out
     out[gid] = val;
 }
 
-// CHECK-ASM-DAG:         cmp (32|M0)   (lt)[[F2:f[0-9\.]+]]   null<1>:d     r{{[0-9:\.]+}}<1;1,0>:d
+// CHECK-ASM: kernel test_i8_const_vector
+// CHECK-ASM-DAG:         cmp (32|M0)   (lt)[[F5:f[0-9\.]+]]   null<1>:d     r{{[0-9:\.]+}}<1;1,0>:d
 // CHECK-ASM-DAG: (W)     mov (1|M0)               r{{[0-9]+}}.0<1>:hf    0x302:hf
-// CHECK-ASM: ([[F2]])  load.ugm.d16u32.a64 (32|M0)  r{{[0-9]+}}:2      [r{{[0-9:]+}}]
+// CHECK-ASM: ([[F5]])  load.ugm.d16u32.a64 (32|M0)  r{{[0-9]+}}:2      [r{{[0-9:]+}}]
 
 // Kernel with constant non-0 merge vector
 __kernel void test_i8_const_vector(__global const char2* in, __global char2* out, const int predicate) {
     int gid = get_global_id(0);
     char2 val = (char2){2, 3};
     if (gid < predicate)
+        val = in[gid];
+    out[gid] = val;
+}
+
+// CHECK-ASM: kernel test_dead_merge_value
+// CHECK-ASM:        cmp (32|M0)   (le)[[F6:f[0-9\.]+]]   null<1>:d
+// CHECK-ASM:([[F6]])  load.ugm.d8u32.a64 (32|M0)  [[L3:r[0-9]+]]:2
+// CHECK-ASM:        add (32|M0)              [[D1:r[0-9]+]].0<1>:w
+// CHECK-ASM:        mov (32|M0)              [[D2:r[0-9]+]].0<1>:b    [[D1]].0<2;1,0>:b
+// CHECK-ASM:([[F6]])  mov (32|M0)              [[D2]].0<1>:b    [[L3]].0<4;1,0>:b
+// CHECK-ASM:        mov (32|M0)              [[L4:r[0-9]+]].0<1>:ud   [[D2]].0<1;1,0>:ub
+// CHECK-ASM:        store.ugm.d8u32.a64 (32|M0)  [r{{[0-9:]+}}]    [[L4]]:2
+
+// test verifies predicated load with non-constant dead merge value
+__kernel void test_dead_merge_value(__global const char* in, __global char* out, const int predicate) {
+    int gid = get_global_id(0);
+    char val = gid - 10;
+    if (gid <= predicate)
         val = in[gid];
     out[gid] = val;
 }

@@ -489,7 +489,7 @@ namespace
             SmallVector<std::pair<Type*, uint32_t>, 8>& SplitInfo);
         // If predicated loads are split, we also need to split merge values
         void createSplitMergeValues(
-            BasicBlock* BB,
+            Instruction* Inst,
             Value* OrigMergeVal,
             const SmallVector<std::pair<Type*, uint32_t>, 8>& SplitInfo,
             ValVector& NewMergeVals) const;
@@ -695,7 +695,7 @@ void VectorPreProcess::createSplitVectorTypes(
     }
 }
 
-void VectorPreProcess::createSplitMergeValues(BasicBlock* BB,
+void VectorPreProcess::createSplitMergeValues(Instruction* Inst,
                                               Value* OrigMergeVal,
                                               const SmallVector<std::pair<Type*, uint32_t>, 8>& SplitInfo,
                                               ValVector& NewMergeVals) const
@@ -731,10 +731,7 @@ void VectorPreProcess::createSplitMergeValues(BasicBlock* BB,
         return;
     }
 
-    // Init IRBuilder with Basic block, if OrigMergeVal is not an instruction.
-    std::unique_ptr<IRBuilder<>> Builder = isa<Instruction>(OrigMergeVal) ?
-                                           std::make_unique<IRBuilder<>>(cast<Instruction>(OrigMergeVal)) :
-                                           std::make_unique<IRBuilder<>>(BB);
+    IRBuilder<> Builder(Inst);
 
     // Case when we split vector merge value into subvectors. Element type is the same.
     // Just one big vector is being split into subvectors.
@@ -756,14 +753,14 @@ void VectorPreProcess::createSplitMergeValues(BasicBlock* BB,
                 {
                     for (uint32_t j = 0, e = int_cast<uint32_t>(VTy->getNumElements()); j < e; ++j)
                     {
-                        Value *Elt = (idx < OrigVTyNEl) ? Builder->CreateExtractElement(OrigMergeVal, Builder->getInt32(idx++)) :
+                        Value *Elt = (idx < OrigVTyNEl) ? Builder.CreateExtractElement(OrigMergeVal, Builder.getInt32(idx++)) :
                                                           Constant::getNullValue(VTy->getElementType());
-                        NewMergeVal = Builder->CreateInsertElement(NewMergeVal, Elt, Builder->getInt32(j));
+                        NewMergeVal = Builder.CreateInsertElement(NewMergeVal, Elt, Builder.getInt32(j));
                     }
                 }
                 else
                 {
-                    NewMergeVal = Builder->CreateExtractValue(OrigMergeVal, idx++);
+                    NewMergeVal = Builder.CreateExtractElement(OrigMergeVal, Builder.getInt32(idx++));
                 }
                 NewMergeVals.push_back(NewMergeVal);
             }
@@ -775,7 +772,7 @@ void VectorPreProcess::createSplitMergeValues(BasicBlock* BB,
     // Case when we change scalar value into vector with smaller element type.
     IGC_ASSERT_MESSAGE(SplitInfo.size() == 1, "Unexpected split info!");
     IGC_ASSERT_MESSAGE(SplitInfo[0].second == 1, "Unexpected split info!");
-    Value *NewMergeVal = Builder->CreateBitCast(OrigMergeVal, SplitInfo[0].first);
+    Value *NewMergeVal = Builder.CreateBitCast(OrigMergeVal, SplitInfo[0].first);
     NewMergeVals.push_back(NewMergeVal);
 }
 
@@ -1116,7 +1113,7 @@ bool VectorPreProcess::splitLoad(
 
     ValVector splitMergeValues;
     if (isPredLd)
-        createSplitMergeValues(LI->getParent(), cast<PredicatedLoadIntrinsic>(LI)->getMergeValue(), splitInfo, splitMergeValues);
+        createSplitMergeValues(LI, cast<PredicatedLoadIntrinsic>(LI)->getMergeValue(), splitInfo, splitMergeValues);
 
     Value* Addr = ALI.getPointerOperand();
     auto Align = ALI.getAlignment();
@@ -1306,7 +1303,7 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
 
                 ValVector splitMergeValues;
                 if (isPredLoad)
-                    createSplitMergeValues(Inst->getParent(), cast<PredicatedLoadIntrinsic>(Inst)->getMergeValue(),
+                    createSplitMergeValues(Inst, cast<PredicatedLoadIntrinsic>(Inst)->getMergeValue(),
                                            { {newVTy, 1} }, splitMergeValues);
 
                 Value* V = ALI->Create(newVTy, isPredLoad ? splitMergeValues[0] : nullptr);
@@ -1323,7 +1320,7 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
 
                 ValVector splitMergeValues;
                 if (isPredLoad)
-                    createSplitMergeValues(Inst->getParent(), cast<PredicatedLoadIntrinsic>(Inst)->getMergeValue(),
+                    createSplitMergeValues(Inst, cast<PredicatedLoadIntrinsic>(Inst)->getMergeValue(),
                                            { {newVTy, 1}, {eTy, 1} }, splitMergeValues);
 
                 Value* V2 = ALI->Create(newVTy, isPredLoad ? splitMergeValues[0] : nullptr);
@@ -1778,7 +1775,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
             bool isPredLoad = isa<PredicatedLoadIntrinsic>(Inst);
             ValVector splitMergeValues;
             if (isPredLoad)
-                createSplitMergeValues(Inst->getParent(), cast<PredicatedLoadIntrinsic>(Inst)->getMergeValue(),
+                createSplitMergeValues(Inst, cast<PredicatedLoadIntrinsic>(Inst)->getMergeValue(),
                                        { {NewVecTy, 1} }, splitMergeValues);
 
             NewLI = ALI.Create(NewVecTy, isPredLoad ? splitMergeValues[0] : nullptr);
@@ -1997,7 +1994,7 @@ bool VectorPreProcess::processScalarLoadStore(Function& F)
             bool isPredLd = isa<PredicatedLoadIntrinsic>(inst);
             ValVector splitMergeValues;
             if (isPredLd)
-                createSplitMergeValues(inst->getParent(), cast<PredicatedLoadIntrinsic>(inst)->getMergeValue(),
+                createSplitMergeValues(inst, cast<PredicatedLoadIntrinsic>(inst)->getMergeValue(),
                                        { {newVecTy, 1} }, splitMergeValues);
             Value *MergeVal = isPredLd ? splitMergeValues[0] : nullptr;
 
