@@ -544,8 +544,8 @@ static void DumpIGCRegistryKeyDefinitions(
 
 void DumpIGCRegistryKeyDefinitions()
 {
-    constexpr char* registryKeyPath = "HKLM\\" IGC_REGISTRY_KEY;
-    constexpr char* xmlPath =
+    constexpr const char* registryKeyPath = "HKLM\\" IGC_REGISTRY_KEY;
+    constexpr const char* xmlPath =
         "C:\\Intel\\IGfx\\GfxRegistryManager\\Keys\\IGC.xml";
 
     DumpIGCRegistryKeyDefinitions(registryKeyPath, xmlPath);
