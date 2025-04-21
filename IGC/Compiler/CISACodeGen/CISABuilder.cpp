@@ -3969,13 +3969,14 @@ namespace IGC
         }
     }
 
-    void CEncoder::InitBuildParams(llvm::SmallVector<std::unique_ptr< char, std::function<void(char*)>>, 10>& params)
+    void CEncoder::InitBuildParams(llvm::SmallVector<std::unique_ptr<const char, std::function<void(const char*)>>, 10>& params)
     {
         CodeGenContext* context = m_program->GetContext();
         bool isOptDisabled = context->getModuleMetaData()->compOpt.OptDisable;
-        using param_uptr = std::unique_ptr<char, std::function<void(char*)>>;
-        auto literal_deleter = [](char* val) {};
-        auto dup_deleter = [](char* val) {free(val); };
+        using param_uptr = std::unique_ptr<const char, std::function<void(const char*)>>;
+        auto literal_deleter = [](const char* val) {};
+        auto dup_deleter = [](const char* val) { free(const_cast<char*>(val)); };
+
         // create vbuilder->Compile() params
         if (IGC_IS_FLAG_ENABLED(EnableVISADotAll))
         {
@@ -4047,7 +4048,7 @@ namespace IGC
             (context->m_DriverInfo.EnableShaderDebugHashCodeInKernel() ||
              IGC_IS_FLAG_ENABLED(ShaderDebugHashCodeInKernel)))
         {
-            auto addHash = [&](char* OptName, QWORD Hash)
+            auto addHash = [&](const char* OptName, QWORD Hash)
             {
                 params.push_back(param_uptr(OptName, literal_deleter));
                 std::string Low = std::to_string((DWORD)Hash);
@@ -5589,7 +5590,7 @@ namespace IGC
         SetVISAWaTable(m_program->m_Platform->getWATable());
 
         llvm::SmallVector<const char*, 10> params;
-        llvm::SmallVector<std::unique_ptr< char, std::function<void(char*)>>, 10> params2;
+        llvm::SmallVector<std::unique_ptr<const char, std::function<void(const char*)>>, 10> params2;
         if (!m_hasInlineAsm)
         {
             // Asm text writer mode doesnt need dump params
@@ -6423,7 +6424,7 @@ namespace IGC
         const std::string kernelName)
     {
         llvm::SmallVector<const char *, 10> params;
-        llvm::SmallVector<std::unique_ptr<char, std::function<void(char *)>>, 10>
+        llvm::SmallVector<std::unique_ptr<const char, std::function<void(const char *)>>, 10>
             params2;
         InitBuildParams(params2);
         for (const auto &ptr : params2) {
