@@ -89,7 +89,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
         char *    decoded;
         size_t    len;
     } strlit;
-    char *                 string;
+    const char *           string;
 
     VISA_Type              type;
     ISA_Opcode             opcode;
@@ -149,7 +149,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
     } regAccess;
 
     struct {
-        char *             aliasname;
+        const char *       aliasname;
         int                offset;
     } alias;
 
@@ -251,7 +251,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
         int                    surfaceIndex;
     } lsc_addr_model;
     struct sampler_base_struct {
-        char                  *base;
+        const char            *base;
         unsigned int          offset;
     } sampler_base;
 

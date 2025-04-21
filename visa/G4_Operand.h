@@ -562,7 +562,7 @@ public:
   G4_SrcRegRegion& operator=(const G4_SrcRegRegion&) = delete;
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
-  bool operator==(const G4_SrcRegRegion &other) {
+  bool operator==(const G4_SrcRegRegion &other) const {
     if (base != other.base || regOff != other.regOff ||
         subRegOff != other.subRegOff ||
         desc->vertStride != other.desc->vertStride ||

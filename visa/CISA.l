@@ -197,8 +197,9 @@ void resetGlobalVariables() {
 ".input"            {TRACE("** INPUT"); return DIRECTIVE_INPUT;}
 "."implicit[a-zA-Z0-9_\-$@?]* {
         TRACE("**  DIRECTIVE_IMPLICIT");
-        CISAlval.string = strdup(yytext);
-        CISAlval.string[yyleng] = '\0';
+        char* yytext_dup = strdup(yytext);
+        yytext_dup[yyleng] = '\0';
+        CISAlval.string = yytext_dup;
         return DIRECTIVE_IMPLICIT;
     }
 ".function"         {TRACE("** FUNCTION"); return DIRECTIVE_FUNC;}
@@ -877,8 +878,9 @@ lifetime"."end {
 
 ^[a-zA-Z_$@?][a-zA-Z0-9_\-$@?]*: {
         TRACE("**  LABEL");
-        CISAlval.string = strdup(yytext);
-        CISAlval.string[yyleng - 1] = '\0';
+        char* yytext_dup = strdup(yytext);
+        yytext_dup[yyleng - 1] = '\0';
+        CISAlval.string = yytext_dup;
         return LABEL;
     }
 
