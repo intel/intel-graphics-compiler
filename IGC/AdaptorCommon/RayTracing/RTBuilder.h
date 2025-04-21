@@ -55,7 +55,7 @@ private:
     uint32_t MaxDualSubSlicesSupported = 0;
 
     //TODO: this is hardcoded string, we might want to put all "printf" of different adaptors to one place eventually
-    static constexpr char *PrintfFuncName = "printf";
+    static constexpr const char *PrintfFuncName = "printf";
 
 
     // Field for explicit GlobalBufferPtr - used on OpenCL path.
