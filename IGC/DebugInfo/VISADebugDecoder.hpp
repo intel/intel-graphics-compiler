@@ -46,7 +46,7 @@ public:
       uint16_t regNum;
       uint16_t subRegNum; // for GRF, in byte offset
 
-      bool operator==(const Register &rhs) {
+      bool operator==(const Register &rhs) const {
         return (regNum == rhs.regNum && subRegNum == rhs.subRegNum);
       }
 
@@ -59,7 +59,7 @@ public:
                                   // off BE_FP (0) or absolute (1)
       int32_t memoryOffset : 31;  // memory offset
 
-      bool operator==(const Memory &rhs) {
+      bool operator==(const Memory &rhs) const {
         return (isBaseOffBEFP == rhs.isBaseOffBEFP &&
                 memoryOffset == rhs.memoryOffset);
       }
