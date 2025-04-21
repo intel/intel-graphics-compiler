@@ -24,7 +24,7 @@ namespace IGC
     {
     public:
         static char ID;
-        static constexpr char* BUFFER_SIZE_PLACEHOLDER_FUNCTION_NAME = "__bufferboundschecking.bufferSizePlaceholder";
+        static constexpr const char* BUFFER_SIZE_PLACEHOLDER_FUNCTION_NAME = "__bufferboundschecking.bufferSizePlaceholder";
 
         BufferBoundsCheckingPatcher();
         ~BufferBoundsCheckingPatcher() = default;

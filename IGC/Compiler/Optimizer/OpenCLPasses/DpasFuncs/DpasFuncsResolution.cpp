@@ -684,7 +684,7 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
         args[0]->getType()
     };
     Function* cvtFunc = GenISAIntrinsic::getDeclaration(func->getParent(), iid, ITys);
-    char* cvt = "bf_cvt";
+    const char* cvt = "bf_cvt";
     if (iid == GenISAIntrinsic::GenISA_hftobf8 ||
         iid == GenISAIntrinsic::GenISA_bf8tohf)
     {
