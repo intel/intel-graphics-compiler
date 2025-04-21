@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <stdlib.h>
 
 #if defined _WIN32
+#   include <BaseTsd.h>
 #   include <intrin.h>
 #endif
 
