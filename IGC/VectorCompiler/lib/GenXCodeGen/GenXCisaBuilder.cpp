@@ -3982,7 +3982,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
     unsigned SurfIdx = 0;
     CISA_CALL(Kernel->AppendVISALscUntypedLoad(Opcode, LscSfid, Pred, ExecSize,
-                                               ExecMask, CacheOpts, AddressDesc,
+                                               ExecMask, CacheOpts, false, AddressDesc,
                                                DataDesc, Base, SurfIdx, Dest,
                                                Addr));
   };

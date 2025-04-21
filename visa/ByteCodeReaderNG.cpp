@@ -2299,7 +2299,7 @@ static void readInstructionLscUntyped(LSC_OP subOpcode, unsigned &bytePos,
         dataInfo, surface, ssIdx, dst, src0, src0Pitch, src1);
   } else {
     container.kernelBuilder->AppendVISALscUntypedInst(
-        subOpcode, lscSfid, pred, execSize, execMask, caching, addrInfo,
+        subOpcode, lscSfid, pred, execSize, execMask, caching, false, addrInfo,
         dataInfo, surface, ssIdx, dst, src0, src1, src2);
   }
 }

@@ -395,8 +395,8 @@ public:
   VISA_BUILDER_API virtual int
   AppendVISALscUntypedLoad(LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
                            VISA_Exec_Size execSize, VISA_EMask_Ctrl emask,
-                           LSC_CACHE_OPTS cacheOpts, LSC_ADDR addr,
-                           LSC_DATA_SHAPE data,
+                           LSC_CACHE_OPTS cacheOpts, bool ov,
+                           LSC_ADDR addr, LSC_DATA_SHAPE data,
                            VISA_VectorOpnd *surface, unsigned surfaceIndex,
                            VISA_RawOpnd *dstData, VISA_RawOpnd *src0Addr) = 0;
   /// append an *untyped* LSC store operation
@@ -428,7 +428,7 @@ public:
   VISA_BUILDER_API virtual int
   AppendVISALscUntypedInst(LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
                            VISA_Exec_Size execSize, VISA_EMask_Ctrl emask,
-                           LSC_CACHE_OPTS cacheOpts, LSC_ADDR addr,
+                           LSC_CACHE_OPTS cacheOpts, bool ov, LSC_ADDR addr,
                            LSC_DATA_SHAPE data,
                            VISA_VectorOpnd *surface, unsigned surfaceIndex,
                            VISA_RawOpnd *dst, VISA_RawOpnd *src0,

@@ -214,6 +214,13 @@ namespace vISA {
 // It is the caller's responsiblity to free such resources.
 void *allocCodeBlock(size_t sz);
 
+inline bool hasOV(LSC_SFID sfid, LSC_OP op) {
+  if ((sfid == LSC_UGM || sfid == LSC_URB) &&
+      (op == LSC_LOAD || op == LSC_LOAD_QUAD || op == LSC_LOAD_STATUS))
+    return true;
+  return false;
+}
+
 }
 
 #endif /* COMMON_ISA_UTIL_INCLUDED */

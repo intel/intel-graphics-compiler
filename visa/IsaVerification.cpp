@@ -4170,6 +4170,10 @@ struct LscInstVerifier {
   void verifyUntypedBasic() {
     verifyCachingOpts();
 
+    // skip ov
+    if (hasOV(sfid, opInfo.op))
+      getNext<unsigned>();
+
        //
     auto addrType = getNextEnumU8<LSC_ADDR_TYPE>();
     uint16_t immediateScale = getNext<uint16_t>();

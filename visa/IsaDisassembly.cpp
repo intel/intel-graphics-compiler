@@ -2958,6 +2958,12 @@ private:
     //////////////////
     // caching
     formatCachingOpts();
+    // ov
+    if (hasOV(sfid, opInfo.op)) {
+      unsigned ov = getNext<unsigned>();
+      if (ov)
+        ss << ".ov";
+    }
 
     // execution size and offset
     ss << " " << printExecutionSize(inst->opcode, inst->execsize, subOp);
