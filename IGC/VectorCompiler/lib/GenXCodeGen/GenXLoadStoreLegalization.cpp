@@ -493,7 +493,7 @@ Value *GenXLoadStoreLegalization::extendUntypedBlockLoad2d(CallInst &CI) const {
     OverloadedTypes.push_back(VTy);
     const auto CacheControlIndex =
         vc::InternalIntrinsic::getMemoryCacheControlOperandIndex(&CI);
-    IGC_ASSERT(CacheControlIndex >= 0);
+    IGC_ASSERT_EXIT(CacheControlIndex >= 0);
     OverloadedTypes.push_back(CI.getOperand(CacheControlIndex)->getType());
     auto *Func = vc::InternalIntrinsic::getInternalDeclaration(
         CI.getModule(), IID, OverloadedTypes);
