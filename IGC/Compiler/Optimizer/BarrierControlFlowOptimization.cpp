@@ -382,7 +382,6 @@ bool BarrierControlFlowOptimization::ProcessFunction()
 ////////////////////////////////////////////////////////////////////////
 void BarrierControlFlowOptimization::getAnalysisUsage(llvm::AnalysisUsage& AU) const
 {
-    AU.setPreservesCFG();
     AU.addRequired<CodeGenContextWrapper>();
 }
 

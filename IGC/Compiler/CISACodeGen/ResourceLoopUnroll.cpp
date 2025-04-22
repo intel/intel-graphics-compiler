@@ -349,7 +349,6 @@ bool ResourceLoopUnroll::ProcessFunction(llvm::Function& F)
 ////////////////////////////////////////////////////////////////////////
 void ResourceLoopUnroll::getAnalysisUsage(llvm::AnalysisUsage& AU) const
 {
-    //AU.setPreservesCFG(); //we modify cfg
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<WIAnalysis>();
 }
