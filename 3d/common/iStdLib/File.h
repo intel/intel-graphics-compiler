@@ -675,15 +675,14 @@ Inline Function:
 Description:
     Creates a directory to hold the given file
 \*****************************************************************************/
-inline int ParentDirectoryCreate(const char * filePath)
-{
-#if defined _WIN32 || _WIN64
-#else
+#if !defined(_WIN32) && !defined(_WIN64)
 #include <limits.h>
 #ifndef MAX_PATH
 #define MAX_PATH PATH_MAX
 #endif
 #endif
+inline int ParentDirectoryCreate(const char * filePath)
+{
     char pathBuf[MAX_PATH];
     char parentBuf[MAX_PATH];
 
