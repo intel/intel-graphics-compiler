@@ -1042,6 +1042,7 @@ namespace IGC
         std::map<std::string, uint64_t> inlineProgramScopeGlobalOffsets;
         std::vector<std::string> entry_names;
         uint m_spillAllowed = 0;
+        uint m_spillAllowedFor256GRF = 0;
     private:
         //For storing error message
         std::stringstream oclErrorMessage;
@@ -1298,9 +1299,12 @@ namespace IGC
             return false;
         }
 
-        bool hasSpills(uint mscratchSpaceUsedBySpills)
+        bool hasSpills(uint mscratchSpaceUsedBySpills, uint numGRF)
         {
-            return (mscratchSpaceUsedBySpills > m_spillAllowed);
+            if (numGRF == 256 && m_spillAllowedFor256GRF)
+                return (mscratchSpaceUsedBySpills > m_spillAllowedFor256GRF);
+            else
+                return (mscratchSpaceUsedBySpills > m_spillAllowed);
         }
 
         bool useStatelessToStateful()

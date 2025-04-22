@@ -225,7 +225,7 @@ namespace IGC
                 auto& annotatnions = funcMD.UserAnnotations;
                 auto output = shader->ProgramOutput();
 
-                if (hasSpills(output->m_scratchSpaceUsedBySpills) &&
+                if (hasSpills(output->m_scratchSpaceUsedBySpills, output->m_numGRFTotal) &&
                     std::find(annotatnions.begin(), annotatnions.end(), "igc-do-not-spill") != annotatnions.end())
                 {
                     std::string msg =
@@ -3284,7 +3284,7 @@ namespace IGC
             return RetryType::NO_Retry_Pick_Prv;
         }
         else if (
-            !ctx->hasSpills(pOutput->m_scratchSpaceUsedBySpills) ||
+            !ctx->hasSpills(pOutput->m_scratchSpaceUsedBySpills, pOutput->m_numGRFTotal) ||
             ctx->getModuleMetaData()->compOpt.OptDisable ||
             ctx->m_retryManager.IsLastTry() ||
             (!ctx->m_retryManager.kernelSkip.empty() &&

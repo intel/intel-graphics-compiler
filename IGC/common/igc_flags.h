@@ -30,6 +30,7 @@ DECLARE_IGC_REGKEY(DWORD, VISAScheduleEndBBID, 0,  "The ID of BB which will be l
 DECLARE_IGC_REGKEY(DWORD, VISAPostScheduleStartBBID, 0,  "The ID of BB which will be first scheduled", false)
 DECLARE_IGC_REGKEY(DWORD, VISAPostScheduleEndBBID, 0,  "The ID of BB which will be last scheduled", false)
 DECLARE_IGC_REGKEY(DWORD, VISASpillAllowed,             0,     "Spill size allowed without increasing GRF number in VRT", false)
+DECLARE_IGC_REGKEY(DWORD, VISASpillAllowed256GRF,       0,     "Spill size allowed specifically for 256 GRF case", false)
 DECLARE_IGC_REGKEY(DWORD, ForceAllowSmallSpill,         0,     "Allow small spills regardless of SIMD, API, or platform. The spill amount is set below", false)
 DECLARE_IGC_REGKEY(DWORD, SIMD8_SpillThreshold,         2,     "Percentage of instructions allowed for spilling on SIMD8", false)
 DECLARE_IGC_REGKEY(DWORD, SIMD16_SpillThreshold,        1,     "Percentage of instructions allowed for spilling on SIMD16", false)

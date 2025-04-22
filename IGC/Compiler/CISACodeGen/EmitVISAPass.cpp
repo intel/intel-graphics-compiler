@@ -723,7 +723,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         CShader * simd16Program = Iter->second->GetShader(SIMDMode::SIMD16);
         if (simd16Program &&
             simd16Program->ProgramOutput()->m_programBin != 0 &&
-            !m_pCtx->hasSpills(simd16Program->ProgramOutput()->m_scratchSpaceUsedBySpills))
+            !m_pCtx->hasSpills(
+                simd16Program->ProgramOutput()->m_scratchSpaceUsedBySpills,
+                simd16Program->ProgramOutput()->m_numGRFTotal))
             return false;
     }
     if (IGC_IS_FLAG_ENABLED(EnableKernelCostInfo)) {
@@ -825,7 +827,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             m_encoder->GetSimdSize() == prevShader->GetEncoder().GetSimdSize() &&
             prevShader->GetEncoder().IsCodePatchCandidate() &&
             prevShader->ProgramOutput()->m_programBin &&
-            !m_pCtx->hasSpills(prevShader->ProgramOutput()->m_scratchSpaceUsedBySpills))
+            !m_pCtx->hasSpills(
+                prevShader->ProgramOutput()->m_scratchSpaceUsedBySpills,
+                prevShader->ProgramOutput()->m_numGRFTotal))
         {
             prevKernel = prevShader->GetEncoder().GetVISAKernel();
             m_encoder->SetPayloadEnd(prevShader->GetEncoder().GetPayloadEnd());
@@ -1339,7 +1343,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
         if (m_encoder->IsCodePatchCandidate())
         {
-            if (m_pCtx->hasSpills(m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills))
+            if (m_pCtx->hasSpills(
+                m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills,
+                m_currShader->ProgramOutput()->m_numGRFTotal))
             {
                 if (IGC_GET_FLAG_VALUE(CodePatchExperiments))
                 {
@@ -1449,7 +1455,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         if (!m_encoder->IsCodePatchCandidate() ||
             m_encoder->HasPrevKernel() ||
             !m_currShader->ProgramOutput()->m_programBin ||
-            m_pCtx->hasSpills(m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills))
+            m_pCtx->hasSpills(
+                m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills,
+                m_currShader->ProgramOutput()->m_numGRFTotal))
         {
             m_pCtx->m_prevShader = nullptr;
             // Postpone destroying VISA builder to

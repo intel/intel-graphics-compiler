@@ -4565,6 +4565,11 @@ namespace IGC
                 context->m_spillAllowed = Val;
                 SaveOption(vISA_SpillAllowed, Val);
             }
+            if (uint Val = IGC_GET_FLAG_VALUE(VISASpillAllowed256GRF))
+            {
+                context->m_spillAllowedFor256GRF = Val;
+                SaveOption(vISA_SpillAllowed256GRF, Val);
+            }
         }
         bool r0Reserved = false;
         if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER
