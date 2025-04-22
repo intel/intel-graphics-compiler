@@ -3729,8 +3729,21 @@ namespace IGC
         // 1. Compile only that SIMD mode and nothing else
         // 2. Compile that SIMD mode even if it is not profitable, i.e. even if compileThisSIMD() returns false for it.
         //    So, don't bother checking profitability for it
-        if (m_Context->getModuleMetaData()->csInfo.forcedSIMDSize != 0)
+
+        unsigned char forcedSIMDSize = m_Context->getModuleMetaData()->csInfo.forcedSIMDSize;
+
+        if (forcedSIMDSize != 0)
         {
+            // Check if forced SIMD width is smaller than required by used platform. Emit error when true.
+            if (m_Context->platform.getMinDispatchMode() == SIMDMode::SIMD16 && forcedSIMDSize < 16)
+            {
+                m_Context->EmitError((std::string("SIMD size of ") +
+                    std::to_string(forcedSIMDSize) +
+                    std::string(" has been forced when SIMD size of at least 16") +
+                    std::string(" is required on this platform")).c_str(),
+                    &F);
+                return false;
+            }
             // Entered here means driver has requested a specific SIMD mode, which was forced in the regkey ForceOCLSIMDWidth.
             // We return the condition can we compile the given forcedSIMDSize with this simdMode?
             return (
@@ -3743,6 +3756,7 @@ namespace IGC
         }
 
         SIMDStatus simdStatus = SIMDStatus::SIMD_FUNC_FAIL;
+
         if (m_Context->platform.getMinDispatchMode() == SIMDMode::SIMD16)
         {
             simdStatus = checkSIMDCompileCondsForMin16(simdMode, EP, F, hasSyncRTCalls);
@@ -3810,19 +3824,6 @@ namespace IGC
         MetaDataUtils* pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
         uint32_t requiredSimdSize = getReqdSubGroupSize(F, pMdUtils);
-
-        switch (requiredSimdSize)
-        {
-            case 0:
-            case 16:
-            case 32: break;
-            default:
-                pCtx->EmitError((std::string("Required SIMD mode ") +
-                    std::to_string(requiredSimdSize) +
-                    std::string(" is not supported on this platform")).c_str(),
-                    &F);
-                return SIMDStatus::SIMD_FUNC_FAIL;
-        }
 
         // there is a requirement for specific compilation size, we can't abort on simd32
         if (requiredSimdSize != 0)
