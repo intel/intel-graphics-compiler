@@ -583,7 +583,7 @@ namespace IGC
         VISA_VectorOpnd* GetUniformSource(CVariable* var);
         VISA_StateOpndHandle* GetBTIOperand(uint bindingTableIndex);
         VISA_StateOpndHandle* GetSamplerOperand(CVariable* sampleIdx);
-        VISA_StateOpndHandle* GetSamplerOperand(const SamplerDescriptor& sampler, bool& isIdxLT16);
+        VISA_StateOpndHandle* GetSamplerOperand(const SamplerDescriptor& sampler);
         void GetRowAndColOffset(CVariable* var, unsigned int subVar, unsigned int subreg, unsigned char& rowOff, unsigned char& colOff);
 
         VISA_GenVar* GetVISAVariable(CVariable* var);
@@ -630,6 +630,7 @@ namespace IGC
         VISA_Exec_Size  GetAluExecSize(CVariable* dst) const;
         VISA_EMask_Ctrl GetAluEMask(CVariable* dst);
         bool IsSat();
+        bool isSamplerIdxLT16(const SamplerDescriptor& sampler);
 
         // Variable splitting facilities (if crosses 2 GRF boundary).
         bool NeedSplitting(CVariable* var, const SModifier& mod,

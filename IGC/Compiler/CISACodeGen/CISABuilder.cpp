@@ -2444,48 +2444,39 @@ namespace IGC
         }
     }
 
+    bool CEncoder::isSamplerIdxLT16(const SamplerDescriptor& sampler)
+    {
+        if (sampler.m_samplerType == ESAMPLER_NORMAL) {
+            if (sampler.m_sampler->IsImmediate()) {
+                uint immediate = int_cast<uint>(sampler.m_sampler->GetImmediateValue());
+                if (immediate < 16)
+                    return true;
+                else
+                    return false;
+            }
+            else {
+                // for dynamic index, avoid generate additional code for APIs only supporting 16 samplers
+                if (m_program->GetContext()->m_DriverInfo.SupportMoreThan16Samplers())
+                    return false;
+                else
+                    return true;
+            }
+        }
+        else
+            return true;
+    }
+
     VISA_StateOpndHandle* CEncoder::GetSamplerOperand(
-        const SamplerDescriptor& sampler,
-        bool& isIdxLT16)
+        const SamplerDescriptor& sampler)
     {
         //Sampler index
         VISA_VectorOpnd* dstOpnd = nullptr;
         VISA_SamplerVar* samplerVar = nullptr;
 
         if (sampler.m_samplerType == ESAMPLER_NORMAL)
-        {
             samplerVar = samplervar;
-
-            if (sampler.m_sampler->IsImmediate())
-            {
-                uint immediate = int_cast<uint>(sampler.m_sampler->GetImmediateValue());
-                if (immediate < 16)
-                {
-                    isIdxLT16 = true;
-                }
-                else
-                {
-                    isIdxLT16 = false;
-                }
-            }
-            else
-            {
-                // for dynamic index, avoid generate additional code for APIs only supporting 16 samplers
-                if (m_program->GetContext()->m_DriverInfo.SupportMoreThan16Samplers())
-                {
-                    isIdxLT16 = false;
-                }
-                else
-                {
-                    isIdxLT16 = true;
-                }
-            }
-        }
         else
-        {
             V(vKernel->GetBindlessSampler(samplerVar));
-            isIdxLT16 = true;
-        }
 
         V(vKernel->CreateVISAStateOperand(dstOpnd, samplerVar, 0, true));
 
@@ -2512,9 +2503,8 @@ namespace IGC
     VISA_StateOpndHandle* CEncoder::GetSamplerOperand(CVariable* samplerIndex)
     {
         SamplerDescriptor sampler;
-        bool isIdxLT16;
         sampler.m_sampler = samplerIndex;
-        return GetSamplerOperand(sampler, isIdxLT16);
+        return GetSamplerOperand(sampler);
     }
 
     void CEncoder::Sample(
@@ -2542,9 +2532,6 @@ namespace IGC
 
         int numMsgSpecificOpnds = numSources;
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-        bool isIdxLT16;
-        VISA_StateOpndHandle* samplerOpnd = GetSamplerOperand(sampler, isIdxLT16);
-        VISA_StateOpndHandle* btiOpnd = GetVISASurfaceOpnd(resource);
         VISA_RawOpnd* pairedResourceBSSOOpnd = GetPairedResourceOperand(pairedResource);
         VISA_RawOpnd* dstVar = GetRawDestination(dst);
         VISA_RawOpnd* opndArray[11];
@@ -2557,7 +2544,7 @@ namespace IGC
         // Use bit 15 of aoffimmi to tell VISA the sample index could be greater
         // than 15.  In this case, we need to use msg header, and setup M0.3
         // to point to next 16 sampler state.
-        if (!isIdxLT16)
+        if (!isSamplerIdxLT16(sampler))
         {
             uint16_t aoffimmiVal = (uint16_t)offset->GetImmediateValue() | BIT(15);
             V(vKernel->CreateVISAImmediate(aoffimmi, &aoffimmiVal, ISA_TYPE_UW));
@@ -2565,6 +2552,9 @@ namespace IGC
 
         {
         int status = -1; //VISA_FAILURE;
+        {
+            VISA_StateOpndHandle* samplerOpnd = GetSamplerOperand(sampler);
+            VISA_StateOpndHandle* btiOpnd = GetVISASurfaceOpnd(resource);
             status = vKernel->AppendVISA3dSampler(
                 ConvertSubOpcode(subOpcode, zeroLOD),
                 feedbackEnable, // pixel null mask
@@ -2581,6 +2571,7 @@ namespace IGC
                 dstVar,
                 numSources,
                 opndArray);
+        }
 
             V(status);
         }
@@ -2606,7 +2597,6 @@ namespace IGC
         }
 
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-        VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(resource);
         VISA_RawOpnd* pairedResourceBSSOOpnd = GetPairedResourceOperand(pairedResource);
         VISA_RawOpnd* dstVar = GetRawDestination(dst);
 
@@ -2621,6 +2611,8 @@ namespace IGC
         {
 
         int status = -1; // VISA_FAILURE
+        {
+            VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(resource);
             status = vKernel->AppendVISA3dLoad(
                 ConvertSubOpcode(subOpcode, zeroLOD),
                 feedbackEnable, // pixel null mask
@@ -2634,6 +2626,7 @@ namespace IGC
                 dstVar,
                 numSources,
                 opndArray);
+        }
 
             V(status);
         }
@@ -2727,8 +2720,9 @@ namespace IGC
         }
 
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-        bool isIdxLT16;
-        VISA_StateOpndHandle* samplerOpnd = GetSamplerOperand(sampler, isIdxLT16);
+        VISA_StateOpndHandle* samplerOpnd =
+            GetSamplerOperand(sampler);
+
         VISA_StateOpndHandle* surfOpnd =
             GetVISASurfaceOpnd(resource);
         uint32_t samplerImmIndex = 0;
@@ -2742,7 +2736,7 @@ namespace IGC
         }
 
         VISA_VectorOpnd* aoffimmi = GetSourceOperandNoModifier(offset);
-        if (!isIdxLT16)
+        if (!isSamplerIdxLT16(sampler))
         {
             uint16_t aoffimmiVal = (uint16_t)offset->GetImmediateValue() | BIT(15);
             V(vKernel->CreateVISAImmediate(aoffimmi, &aoffimmiVal, ISA_TYPE_UW));
