@@ -701,6 +701,7 @@ DECLARE_IGC_REGKEY(bool, DiableWaSamplerNoMask,         false, "Disable WA Diabl
 DECLARE_IGC_REGKEY(bool, DisableDualBlendSource,        false, "Force the compiler to never use dual blend source messages", false)
 DECLARE_IGC_REGKEY(bool, ForceDisableSrc0Alpha,         false, "Force the compiler to skip sending src0 alpha. Only works if we are sure alpha to coverage and alpha test is off", false)
 DECLARE_IGC_REGKEY(bool, EnableLTO,                     true,  "Enable link time optimization", false)
+DECLARE_IGC_REGKEY(bool, DisableLTOinMesh,              false, "Disable link time optimization in Mesh Shaders only", false)
 DECLARE_IGC_REGKEY(bool, EnableLTODebug,                false, "Enable debug information for LTO", true)
 DECLARE_IGC_REGKEY(DWORD, FunctionControl,              0,     "Control function inlining/subroutine/stackcall. See value defs in igc_flags.hpp.", true)
 DECLARE_IGC_REGKEY(DWORD, SelectiveFunctionControl, 0,  "Selectively enables FunctionControl for a list of line-separated function names in " \
