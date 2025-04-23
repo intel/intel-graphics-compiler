@@ -4449,16 +4449,27 @@ namespace IGC
         if (enableScheduler())
         {
             SaveOption(vISA_preRA_Schedule, true);
-            if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedCtrl))
+            bool hasDpas = m_program->m_State.GetHasDPAS();
+            uint32_t ctrlDpas = IGC_GET_FLAG_VALUE(VISAPreSchedCtrlDpas);
+            if (hasDpas && ctrlDpas != 0)
+            {
+                SaveOption(vISA_preRA_ScheduleCtrl, ctrlDpas);
+            }
+            else if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedCtrl))
             {
                 SaveOption(vISA_preRA_ScheduleCtrl, Val);
             }
             else
             {
                 uint32_t V = m_program->m_DriverInfo->getVISAPreRASchedulerCtrl();
-                if (context->type == ShaderType::TASK_SHADER || m_program->m_State.GetHasDPAS())
+                ctrlDpas = m_program->m_DriverInfo->getVISAPreRASchedulerCtrlDpas();
+                if (context->type == ShaderType::TASK_SHADER)
                 {
                     V = 4; // register pressure only
+                }
+                else if (hasDpas && ctrlDpas != 0)
+                {
+                    V = ctrlDpas;
                 }
                 else  // platform-dependent setting for latency-scheduling
                 {

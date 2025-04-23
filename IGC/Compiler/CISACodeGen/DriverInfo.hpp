@@ -168,6 +168,9 @@ namespace IGC
         /// Configure vISA pre-RA scheduler. Not tested on all APIs
         virtual unsigned getVISAPreRASchedulerCtrl() const { return 4; }
 
+        /// VISA pre-RA scheduler configuration for kernels with dpas.
+        virtual unsigned getVISAPreRASchedulerCtrlDpas() const { return 4; }
+
         /// Make sure optimization are consistent to avoid Z-fighting issue
         virtual bool PreventZFighting() const { return false; }
 
