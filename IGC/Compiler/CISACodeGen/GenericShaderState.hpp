@@ -102,6 +102,8 @@ namespace IGC
         void SetHasEval() { m_HasEval = true; }
         void CreateGatherMap();
         void CreateConstantBufferOutput(SKernelProgram* pKernelProgram);
+        static void setScratchUsage(CodeGenContext &Ctx, SProgramOutput& Prog);
+        void setScratchUsage(SProgramOutput& Prog);
         uint32_t GetShaderThreadUsageRate();
 
         const llvm::Function& Entry;

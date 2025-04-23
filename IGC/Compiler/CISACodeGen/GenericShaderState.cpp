@@ -124,6 +124,24 @@ namespace IGC
         }
     }
 
+    void GenericShaderState::setScratchUsage(CodeGenContext& Ctx, SProgramOutput& Prog)
+    {
+        bool SepSpillPvtSS = SeparateSpillAndScratch(&Ctx);
+        bool SeparateScratchWA =
+            IGC_IS_FLAG_ENABLED(EnableSeparateScratchWA) &&
+            !Ctx.getModuleMetaData()->disableSeparateScratchWA;
+        Prog.init(!Ctx.platform.hasScratchSurface(),
+            Ctx.platform.maxPerThreadScratchSpace(
+            ),
+            Ctx.getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory,
+            SepSpillPvtSS, SeparateScratchWA);
+    }
+
+    void GenericShaderState::setScratchUsage(SProgramOutput& Prog)
+    {
+        setScratchUsage(Ctx, Prog);
+    }
+
     uint32_t GenericShaderState::GetShaderThreadUsageRate()
     {
         uint32_t grfNum = GetContext().getNumGRFPerThread();

@@ -37,16 +37,7 @@ CShader::CShader(Function *pFunc, CShaderProgram *pProgram, GenericShaderState &
     , encoder()
 {
     m_ctx = m_parent->GetContext();
-
-    bool SepSpillPvtSS = SeparateSpillAndScratch(m_ctx);
-    bool SeparateScratchWA =
-        IGC_IS_FLAG_ENABLED(EnableSeparateScratchWA) &&
-        !m_ctx->getModuleMetaData()->disableSeparateScratchWA;
-    m_simdProgram.init(!m_ctx->platform.hasScratchSurface(),
-        m_ctx->platform.maxPerThreadScratchSpace(
-        ),
-        GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory,
-        SepSpillPvtSS, SeparateScratchWA);
+    GenericShaderState::setScratchUsage(*m_ctx, m_simdProgram);
 }
 
 bool CShader::IsRecompilationRequestForced()
