@@ -1,10 +1,14 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
+#include "common/LLVMWarningsPush.hpp"
+#include "llvm/ADT/APFloat.h"
+#include "common/LLVMWarningsPop.hpp"
 
 #include "common/IGCConstantFolder.h"
 #include <cfenv>
@@ -145,11 +149,8 @@ llvm::Constant* IGCConstantFolder::CreateFPTrunc(llvm::Constant* C0, llvm::Type*
         return IGCLLVM::ConstantFolderBase::CreateFPCast(C0, dstType);
     }
     llvm::APFloat APF = llvm::cast<llvm::ConstantFP>(C0)->getValueAPF();
-    const llvm::fltSemantics& outputSemantics = dstType->isHalfTy() ? llvm::APFloatBase::IEEEhalf() :
-        dstType->isFloatTy() ? llvm::APFloatBase::IEEEsingle() :
-        llvm::APFloatBase::IEEEdouble();
     bool losesInfo = false;
-    llvm::APFloat::opStatus status = APF.convert(outputSemantics, roundingMode, &losesInfo);
+    llvm::APFloat::opStatus status = APF.convert(dstType->getFltSemantics(), roundingMode, &losesInfo);
     if (llvm::APFloat::opInvalidOp != status)
     {
         return llvm::ConstantFP::get(C0->getContext(), APF);
@@ -158,6 +159,235 @@ llvm::Constant* IGCConstantFolder::CreateFPTrunc(llvm::Constant* C0, llvm::Type*
     {
         return nullptr;
     }
+}
+
+// Helper structure to describe a floating point type
+// See llvm.org/doxygen/APFloat_8cpp_source.html
+struct FloatSemantics
+{
+    /* The largest E such that 2^E is representable; this matches the
+       definition of IEEE 754.  */
+    int32_t maxExponent;
+
+    /* The smallest E such that 2^E is a normalized number; this
+       matches the definition of IEEE 754.  */
+    int32_t minExponent;
+
+    /* Number of bits in the significand.  This includes the integer
+       bit.  */
+    unsigned int precision;
+
+    /* Number of bits actually used in the semantics. */
+    unsigned int sizeInBits;
+
+    /* Has no Inf, only NaN */
+    bool hasNoInf = false;
+};
+// IEEE binary16 format
+static constexpr FloatSemantics semHF  = { 15, -14, 11, 16 };
+// Note: LLVM 16+ supports E5M2 and E4M3 types in APFloat
+// E5M2 format
+static constexpr FloatSemantics semBF8 = { 15, -14,  3,  8 };
+// E4M3 format, has no Inf
+static constexpr FloatSemantics semHF8 = { 8,   -6,  4,  8, true };
+
+inline uint32_t Round(
+    uint32_t man,
+    uint32_t manShift,
+    bool isNegative,
+    uint32_t roundingMode)
+{
+    uint32_t lostBitsMask = BITMASK(manShift);
+    uint32_t lostBits = man & lostBitsMask;
+    uint32_t lostBitsHalfMinusOne = BITMASK(manShift - 1);
+    uint32_t tieToEvenBias = (man & BIT(manShift)) >> manShift;
+
+    switch (roundingMode)
+    {
+    case ROUND_TO_NEAREST_EVEN:
+        man += lostBitsHalfMinusOne + tieToEvenBias;
+        man >>= manShift;
+        break;
+    case ROUND_TO_NEGATIVE:
+        man >>= manShift;
+        if (lostBits != 0 && isNegative)
+        {
+            man += 1;
+        }
+        break;
+    case ROUND_TO_POSITIVE:
+        man >>= manShift;
+        if (lostBits != 0 && !isNegative)
+        {
+            man += 1;
+        }
+        break;
+    case ROUND_TO_ZERO:
+        man >>= manShift;
+        break;
+    default:
+        man >>= manShift;
+        IGC_ASSERT_MESSAGE(0, "Unsupported rounding mode");
+        break;
+    }
+    return man;
+}
+
+inline uint32_t ConvertFloat(
+    uint32_t intVal,
+    const FloatSemantics& srcSem,
+    const FloatSemantics& dstSem,
+    uint32_t roundingMode = ROUND_TO_NEAREST_EVEN,
+    bool saturate = false)
+{
+    uint32_t srcNumManBits = srcSem.precision - 1;
+    uint32_t srcNumExpBits = srcSem.sizeInBits - srcNumManBits - 1;
+    uint32_t dstNumManBits = dstSem.precision - 1;
+    uint32_t dstNumExpBits = dstSem.sizeInBits - dstNumManBits - 1;
+
+    uint32_t expBits = (intVal >> srcNumManBits) & BITMASK(srcNumExpBits);
+    uint32_t manBits = intVal & BITMASK(srcNumManBits);
+    bool isNegative = (intVal & BIT(srcSem.sizeInBits - 1)) != 0;
+    bool isPositive = !isNegative;
+    bool isDenorm = expBits == 0 && manBits > 0;
+    bool isZero = expBits == 0 && manBits == 0;
+
+    int32_t srcExpBias = 1 - srcSem.minExponent;
+    int32_t dstExpBias = 1 - dstSem.minExponent;
+    // Calculate the exponent and mantissa
+    int32_t exp = isDenorm ? srcSem.minExponent : (int_cast<int32_t>(expBits) - srcExpBias);
+    // Add the implicit leading 1 for normal numbers.
+    int32_t man = (isZero || isDenorm) ? manBits : (manBits | BIT(srcNumManBits));
+
+    // Calculate special values for the destination format.
+    uint32_t signVal = isNegative ? BIT(dstSem.sizeInBits - 1) : 0;
+    uint32_t nanVal = signVal | BITMASK(dstSem.sizeInBits - 1);
+    uint32_t infVal = signVal | (BITMASK(dstNumExpBits) << dstNumManBits);
+    uint32_t maxVal = signVal | (BITMASK(dstSem.sizeInBits - 1) & ~BIT(dstNumManBits));
+    if (dstSem.hasNoInf)
+    {
+        infVal = nanVal;
+        // E4M3 max normal = S.1111.110
+        maxVal = signVal | (BITMASK(dstSem.sizeInBits - 1) & ~1);
+    }
+
+    // Normalize the mantissa
+    while ((man & BIT(srcNumManBits)) == 0)
+    {
+        man <<= 1;
+        exp--;
+    }
+    if (exp < dstSem.minExponent)
+    {
+        if (dstSem.minExponent - exp - 1 > int_cast<int32_t>(dstNumManBits))
+        {
+            // Underflow
+            return signVal;
+        }
+        // Denorm
+        int32_t dstManLsb = srcNumManBits - dstNumManBits + dstSem.minExponent - exp;
+        if (dstManLsb > 0)
+        {
+            man = Round(man, dstManLsb, isNegative, roundingMode);
+        }
+        else
+        {
+            man <<= -dstManLsb;
+        }
+        return signVal | man;
+    }
+    // Remove the implicit leading 1.
+    man &= ~BIT(srcNumManBits);
+    if (dstNumManBits < srcNumManBits)
+    {
+        int32_t dstManLsb = srcNumManBits - dstNumManBits;
+        man = Round(man, dstManLsb, isNegative, roundingMode);
+        // Mantissa overflow
+        if ((man & BIT(dstNumManBits)) != 0)
+        {
+            man = 0;
+            exp++;
+        }
+    }
+    else
+    {
+        man <<= (dstNumManBits - srcNumManBits);
+    }
+    // Overflow
+    if (exp > dstSem.maxExponent)
+    {
+        if (roundingMode == ROUND_TO_NEGATIVE && isPositive)
+        {
+            return maxVal;
+        }
+        else if (roundingMode == ROUND_TO_POSITIVE && isNegative)
+        {
+            return maxVal;
+        }
+        else if (saturate)
+        {
+            return maxVal;
+        }
+        return infVal;
+    }
+    expBits = (exp + dstExpBias) << dstNumManBits;
+    if (saturate && dstSem.hasNoInf && (expBits | man) > maxVal)
+    {
+        return maxVal;
+    }
+    return signVal | expBits | man;
+}
+
+llvm::Constant* IGCConstantFolder::CreateHFToBF8Trunc(llvm::Constant* C0, llvm::Type* dstType, uint32_t roundingMode, bool saturate) const
+{
+    IGC_ASSERT(dstType->isIntegerTy());
+    if (llvm::isa<llvm::UndefValue>(C0))
+    {
+        return llvm::UndefValue::get(dstType);
+    }
+    llvm::APFloat APF = llvm::cast<llvm::ConstantFP>(C0)->getValueAPF();
+    uint32_t intVal = int_cast<uint32_t>(APF.bitcastToAPInt().getZExtValue());
+    intVal = ConvertFloat(intVal, semHF, semBF8, roundingMode, saturate);
+    return llvm::ConstantInt::get(dstType, intVal);
+}
+
+llvm::Constant* IGCConstantFolder::CreateHFToHF8Trunc(llvm::Constant* C0, llvm::Type* dstType, uint32_t roundingMode, bool saturate) const
+{
+    IGC_ASSERT(dstType->isIntegerTy());
+    if (llvm::isa<llvm::UndefValue>(C0))
+    {
+        return llvm::UndefValue::get(dstType);
+    }
+    llvm::APFloat APF = llvm::cast<llvm::ConstantFP>(C0)->getValueAPF();
+    uint32_t intVal = int_cast<uint32_t>(APF.bitcastToAPInt().getZExtValue());
+    intVal = ConvertFloat(intVal, semHF, semHF8, roundingMode, saturate);
+    return llvm::ConstantInt::get(dstType, intVal);
+}
+
+llvm::Constant* IGCConstantFolder::CreateBF8ToHF(llvm::Constant* C0) const
+{
+    llvm::Type* halfTy = llvm::Type::getHalfTy(C0->getContext());
+    if (llvm::isa<llvm::UndefValue>(C0))
+    {
+        return llvm::UndefValue::get(halfTy);
+    }
+    uint32_t intVal = int_cast<uint32_t>(llvm::cast<llvm::ConstantInt>(C0)->getZExtValue());
+    intVal = ConvertFloat(intVal, semBF8, semHF);
+    llvm::APFloat halfVal(halfTy->getFltSemantics(), llvm::APInt(16, intVal));
+    return llvm::ConstantFP::get(halfTy, halfVal);
+}
+
+llvm::Constant* IGCConstantFolder::CreateHF8ToHF(llvm::Constant* C0) const
+{
+    llvm::Type* halfTy = llvm::Type::getHalfTy(C0->getContext());
+    if (llvm::isa<llvm::UndefValue>(C0))
+    {
+        return llvm::UndefValue::get(halfTy);
+    }
+    uint32_t intVal = int_cast<uint32_t>(llvm::cast<llvm::ConstantInt>(C0)->getZExtValue());
+    intVal = ConvertFloat(intVal, semHF8, semHF);
+    llvm::APFloat halfVal(halfTy->getFltSemantics(), llvm::APInt(16, intVal));
+    return llvm::ConstantFP::get(halfTy, halfVal);
 }
 
 llvm::Constant* IGCConstantFolder::CreateUbfe(llvm::Constant* C0, llvm::Constant* C1, llvm::Constant* C2) const
