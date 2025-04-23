@@ -146,6 +146,7 @@ If an attribute is **Required**, it must be present in execution_env. If it's **
 | has_rtcalls | bool | Optional | false | |
 | generate_local_id | bool | Optional | false | Flag of HW local ID capable info in cross-thread-payload. |
 | has_lsc_stores_with_non_default_l1_cache_controls | bool | Optional | false | Flag of HasLscStoresWithNonDefaultL1CacheControls to determine if the resource barriers should flush UAV coherency. |
+| implicit_arg_buffer_used_by_code | bool | Optional | true | When set to false, implicit arg buffer is not used by the program. So runtime may decide to not program the buffer. However, if debugger connects, the runtime would have to program implicit arg buffer. This flag may be false only when has_stack_calls is also false. It is an error to set this flag to false when has_stack_calls is true. |
 <!--- ExecutionEnv -->
 
 ### Supported thread scheduling mode:

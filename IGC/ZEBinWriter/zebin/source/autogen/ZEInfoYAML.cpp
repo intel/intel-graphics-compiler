@@ -88,6 +88,7 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapOptional("has_rtcalls", info.has_rtcalls, false);
     io.mapOptional("generate_local_id", info.generate_local_id, false);
     io.mapOptional("has_lsc_stores_with_non_default_l1_cache_controls", info.has_lsc_stores_with_non_default_l1_cache_controls, false);
+    io.mapOptional("implicit_arg_buffer_used_by_code", info.implicit_arg_buffer_used_by_code, true);
 }
 void MappingTraits<zeInfoPayloadArgument>::mapping(IO& io, zeInfoPayloadArgument& info)
 {
