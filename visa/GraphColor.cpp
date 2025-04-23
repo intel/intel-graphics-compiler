@@ -846,10 +846,12 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST *inst) {
   G4_Declare *dcls[3];
   G4_Declare *opndDcls[3];
   BankConflict assignedBank = BANK_CONFLICT_NONE; // Flip for next
+  bool  fixedBank[3];
 
   for (int i = 0; i < 3; i += 1) {
     dcls[i] = nullptr;
     opndDcls[i] = nullptr;
+    fixedBank[i] = false;
 
     G4_Operand *src = inst->getSrc(i);
     if (!src || !src->isSrcRegRegion() || src->isAreg()) {
@@ -862,6 +864,15 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST *inst) {
     offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) /
                 gra.kernel.numEltPerGRF<Type_UB>();
     srcBC[i] = gra.getBankConflict(dcls[i]);
+
+    if (dcls[i] && dcls[i]->getRegVar() &&
+        dcls[i]->getRegVar()->isPhyRegAssigned()) {
+      int regNum = dcls[i]->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+      srcBC[i] = regNum % 2 ? BANK_CONFLICT_SECOND_HALF_ODD
+                            : BANK_CONFLICT_FIRST_HALF_EVEN;
+      gra.setBankConflict(dcls[i], srcBC[i]);
+      fixedBank[i] = true;
+    }
 
     if (srcBC[i] != BANK_CONFLICT_NONE) {
       if (isOddOffset(offset[i])) {
@@ -916,7 +927,7 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST *inst) {
       }
 
       srcBC[i] = gra.getBankConflict(dcls[i]);
-      if (srcBC[i] != BANK_CONFLICT_NONE) {
+      if (!fixedBank[i] && srcBC[i] != BANK_CONFLICT_NONE) {
         if (isOddOffset(offset[i])) {
           if (srcBC[i] == BANK_CONFLICT_FIRST_HALF_EVEN) {
             srcBC[i] = BANK_CONFLICT_SECOND_HALF_ODD;
@@ -943,7 +954,7 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST *inst) {
                          : BANK_CONFLICT_FIRST_HALF_EVEN;
         }
         gra.setBankConflict(dcls[i], srcBC[i]);
-      } else {
+      } else if (!fixedBank[i]) {
         srcBC[i] = (assignedBank == BANK_CONFLICT_FIRST_HALF_EVEN)
                        ? BANK_CONFLICT_SECOND_HALF_ODD
                        : BANK_CONFLICT_FIRST_HALF_EVEN;
