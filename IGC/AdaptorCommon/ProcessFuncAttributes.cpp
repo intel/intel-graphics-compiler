@@ -710,6 +710,11 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 SetNoInline(F);
             }
 
+            if (F->hasFnAttribute("hasVLA"))
+            {
+                SetNoInline(F);
+            }
+
             if (!F->hasFnAttribute(llvm::Attribute::NoInline) &&
                 IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute))
             {
