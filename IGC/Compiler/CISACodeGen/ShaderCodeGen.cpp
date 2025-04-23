@@ -1870,8 +1870,6 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add( createWaveAllJointReduction() );
         }
 
-        mpm.add(llvm::createEarlyCSEPass());
-
         if (IGC_IS_FLAG_ENABLED(EnableIntDivRemCombine)) {
             // simplify rem if the quotient is availble
             //

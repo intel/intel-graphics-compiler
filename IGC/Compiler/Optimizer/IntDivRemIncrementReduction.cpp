@@ -91,28 +91,28 @@ struct DivRemPair {
 // %f = udiv i32 %c, %e
 // %g = urem i32 %c, %e
 //
-// TODO: Optimizations where the nested udiv/urem operate on the previous remainder instead of the quotient may also be possible
+// TODO: Optimizations where the nested udiv/urem operate on the previous remainder instead of the previous quotient may also be possible
 // ex.
 // %c = udiv i32 %a, %b
 // %d = urem i32 %a, %b
 // %f = udiv i32 %d, %e
-// %g = urem i32 %d, %
+// %g = urem i32 %d, %e
 //
-// Real world ex. (x,y,z) dimensions, laid out in 1-D array.
-// IMPLEMENTED
+// Real world examples: (x,y,z) dimensions, laid out in 1-D array.
+// IMPLEMENTED - nested div/rem operate on quotient
 // z.quo = in // (x.dim * y.dim)
 // z = in % (x.dim * y.dim)
 // x = z.quo // x.dim
 // y = z.quo % x.dim
 // VS
-// NOT IMPLEMENTED YET
+// NOT IMPLEMENTED YET - nested div/rem operate on remainder
 // x = in // (y.dim * z.dim)
 // x.rem = in % (y.dim * z.dim)
 // y = x.rem // z.dim
 // z = x.rem % z.dim
 struct DivRemGroup {
-  Value* Base = nullptr;// Base, equal to %a if this DivRemGroup is considered the base, or %x if %a = add i32 %x, 1 if this DivRemGroup is not the base
-  ConstantInt* Offset = nullptr; // Offset equal to nullptr if this DivRemGroup is considered the base, or  1 if %a = add i32 %x, 1 if this DivRemGroup is not the base
+  Value* Base = nullptr;// Base, equal to %a if this DivRemGroup is considered the base, or %x if %a = add i32 %x, C if this DivRemGroup is not the base
+  ConstantInt* Offset = nullptr; // Offset equal to nullptr if this DivRemGroup is considered the base, or  C if %a = add i32 %x, C if this DivRemGroup is not the base
   SmallVector<std::unique_ptr<DivRemPair>> DivRems;
 
   DivRemGroup(Value* base, ConstantInt* offset, SmallVector<std::unique_ptr<DivRemPair>> divRems) : Base(base), Offset(offset), DivRems(std::move(divRems)) {}
@@ -170,7 +170,7 @@ void DivRemPair::simplify(const DivRemGroup* chainPrevDivRemGroup, const DivRemG
   // %prevDividend = ...
   // %sameDivisor = ...
   // %sameDivisor2 = ...
-  // %prevQuo = [udiv|simplified form] i32 %prevDividend, %sameDivisor <  chainPrevDivRemGroup, idx-1
+  // %prevQuo = [udiv|simplified form] i32 %prevDividend, %sameDivisor < chainPrevDivRemGroup, idx-1
   // %prevRem = [urem|simplified form] i32 %prevDividend, %sameDivisor < chainPrevDivRemGroup, idx-1
   // %prevNestedQuo = [udiv|simplified form] i32 %prevQuo, %sameDivisor2 < chainPrevDivRemGroup, idx
   // %prevNestedRem = [urem|simplified form] i32 %prevQuo, %sameDivisor2 < chainPrevDivRemGroup, idx
@@ -322,7 +322,6 @@ void DivRemGroup::simplify(const DivRemGroup* chainPrevDivRemGroup) const {
   if (!TrueOffset->isOne() && IGC_IS_FLAG_DISABLED(DivRemIncrementCondBranchSimplify)) {
     // Flag to guard conditional branch creation for optimization disabled, do not optimize this DivRemGroup
     // The subsequent DivRemGroup (if it exists and the true offset is 1 from this group) will use the non-optimized udiv/urem results of the current udiv/urem group in its optimizations
-
     return;
   }
 
@@ -367,7 +366,7 @@ void DivRemChain::sort() {
 // Call simplify on each DivRemGroup in a DivRemChain
 void DivRemChain::simplify() const {
   auto* prevChainDivRemGroup = Chain.front().get();
-  // Start from index 1, since the first udiv/urem is kept as baseline full calculation
+  // Start from index 1, since the 0-index udiv/urem is kept as baseline full calculation
   for (unsigned i = 1; i < Chain.size(); i++) {
     Chain[i]->simplify(prevChainDivRemGroup);
     prevChainDivRemGroup = Chain[i].get();
@@ -428,7 +427,7 @@ bool IntDivRemIncrementReductionImpl::run(Function& F) {
   DenseMap<Value*, DenseMap<Value*, std::unique_ptr<DivRemChain>>> DividendToDivisorToDivRemChainMap;
 
   // Use worklist to gather initial udiv/urem instructions
-  // Do not want to keep iterating over any udiv/urem instructions moved around by this optimization in this loop
+  // Do not want to keep iterating over any udiv/urem instructions moved around by this optimization, which would happen if InstVisitor was used
   SmallVector<Instruction*> InstWorklist;
   for (inst_iterator it = inst_begin(&F), eit = inst_end(&F); it != eit; it++) {
     // TODO: Handle sdiv and srem, but it may not be easy to reason the simplified form compared to udiv/urem
@@ -465,7 +464,7 @@ bool IntDivRemIncrementReductionImpl::run(Function& F) {
       }
 
       LLVM_DEBUG(dbgs() << "Adding DivRemPair:\n" << *divIt << "\n" << *remIt << "\n");
-      group.push_back(std::make_unique<DivRemPair>(divIt, remIt));
+      group.push_back(std::move(std::make_unique<DivRemPair>(divIt, remIt)));
       Visited.insert(divIt);
 
       // find next candidate
@@ -500,7 +499,7 @@ bool IntDivRemIncrementReductionImpl::run(Function& F) {
         !DividendToDivisorToDivRemChainMap.count(baseDividend) || // No previous chain started from baseDividend
         !DividendToDivisorToDivRemChainMap[baseDividend].count(group.front()->getDivisor())) { // No previous chain started from baseDividend with same divisor
       // Note: If statement does not factor in tree structures in udiv/urem groups
-      //       DivRems in DivRemGroups grouped to a DivRemChain may not be maximally optimizable if tree structures exist
+      //       DivRems in DivRemGroups grouped to a DivRemChain may not be currently maximally optimizable if tree structures exist
       //       Fix by implementing tree structure or iterative algorithm
       //       ex.
       //          %a = udiv i32 %w, %x < DivRemGroup 1, mapDividend: %w, mapDivisor: %x
