@@ -469,7 +469,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
         Function* userFunc = I.first;
         for (auto* G : I.second)
         {
-            Instruction * pInsertBefore = &(*userFunc->begin()->getFirstInsertionPt());
+            Instruction * pInsertBefore = &(*userFunc->begin()->getFirstNonPHIOrDbg());
             TODO("Should inline local buffer points to origin offset 'globalVar' or to fixed offset 'pMovedPtr'?");
             Utils::UpdateGlobalVarDebugInfo(G, G, pInsertBefore, true);
         }

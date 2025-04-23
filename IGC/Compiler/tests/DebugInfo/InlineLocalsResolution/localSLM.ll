@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -10,62 +10,45 @@
 ; ------------------------------------------------
 ; InlineLocalsResolution
 ; ------------------------------------------------
-; This test checks that InlineLocalsResolution pass follows
-; 'How to Update Debug Info' llvm guideline.
+; This test checks that InlineLocalsResolution pass sets
+; dbg.declare in correct sequence for locals created from global variable
 ;
-; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
-
-
 
 ; CHECK: void @test_inline{{.*}}!dbg [[SCOPE:![0-9]*]]
 ; Value debug info made from global variable dbg
-; CHECK: void @llvm.dbg.value(metadata i32 addrspace(3)* undef, metadata [[BCASTA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FIRST_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 addrspace(3)* undef, metadata [[BCASTB_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BCASTB_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 addrspace(3)* undef, metadata [[GEPB_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GEPB_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.declare(metadata i32 addrspace(3)* addrspace(3)* @c, metadata [[C_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FIRST_LOC]]
+; CHECK: void @llvm.dbg.declare(metadata i8 addrspace(4)* addrspace(3)* @a, metadata [[FIRST_C_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FIRST_LOC:![0-9]*]]
+; CHECK: void @llvm.dbg.declare(metadata i32 addrspace(3)* addrspace(3)* @c, metadata [[SECOND_C_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FIRST_LOC]]
 ; CHECK: [[BCASTC_V:%[A-z0-9]*]] = {{.*}}, !dbg [[BCASTC_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 addrspace(3)* [[BCASTC_V]], metadata [[BCASTC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BCASTC_LOC]]
-; CHECK: [[PTOI_V:%[A-z0-9]*]] = {{.*}}, !dbg [[PTOI_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[PTOI_V]], metadata [[PTOI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PTOI_LOC]]
-; CHECK: store{{.*}}, !dbg [[STORE_LOC:![0-9]*]]
-; CHECK: ret{{.*}}, !dbg [[RET_LOC:![0-9]*]]
 
-@a = internal addrspace(3) global i32 addrspace(3)* null, align 8, !dbg !0
-@b = internal addrspace(3) global i32 addrspace(3)* null, align 8, !dbg !6
+%"type" = type { [2 x i64] }
+%"class.1" = type { i64, %"type", %"type", %"type", %"type", %"type" }
+%"class.2" = type { %"type", %"type", %"type", %"type" }
+
+@a = addrspace(3) global i8 addrspace(4)* undef, section "localSLM", align 8, !dbg !0
+@b = addrspace(3) global %"class.1" undef, section "localSLM", align 8, !dbg !6
 @c = internal addrspace(3) global i32 addrspace(3)* null, align 8, !dbg !10
 
 define spir_kernel void @test_inline(i32* %dst) !dbg !21 {
-  %1 = bitcast i32 addrspace(3)* addrspace(3)* @a to i32 addrspace(3)*, !dbg !31
-  call void @llvm.dbg.value(metadata i32 addrspace(3)* %1, metadata !24, metadata !DIExpression()), !dbg !31
-  store i32 13, i32 addrspace(3)* %1, !dbg !32
-  %2 = bitcast i32 addrspace(3)* addrspace(3)* @b to i32 addrspace(3)*, !dbg !33
-  call void @llvm.dbg.value(metadata i32 addrspace(3)* %2, metadata !26, metadata !DIExpression()), !dbg !33
-  %3 = getelementptr inbounds i32, i32 addrspace(3)* %2, i64 0, !dbg !34
-  call void @llvm.dbg.value(metadata i32 addrspace(3)* %3, metadata !27, metadata !DIExpression()), !dbg !34
-  %4 = bitcast i32 addrspace(3)* addrspace(3)* @c to i32 addrspace(3)*, !dbg !35
-  call void @llvm.dbg.value(metadata i32 addrspace(3)* %4, metadata !28, metadata !DIExpression()), !dbg !35
-  %5 = ptrtoint i32 addrspace(3)* %4 to i32, !dbg !36
-  call void @llvm.dbg.value(metadata i32 %5, metadata !29, metadata !DIExpression()), !dbg !36
-  store i32 %5, i32* %dst, !dbg !37
+  %1 = bitcast i8 addrspace(4)* addrspace(3)* @a to %"class.2" addrspace(4)* addrspace(3)*, !dbg !31
+  %addr = addrspacecast%"class.2" addrspace(4)* addrspace(3)* %1 to %"class.2" addrspace(4)*
+  call void @llvm.dbg.value(metadata %"class.2" addrspace(4)* addrspace(3)* %1, metadata !24, metadata !DIExpression()), !dbg !31
+  store %"class.2" addrspace(4)* %addr, %class.2 addrspace(4)* addrspace(3)* %1, !dbg !32
+  %2 = bitcast %class.1 addrspace(3)* @b to %"class.2" addrspace(4)* addrspace(3)*, !dbg !33
+  call void @llvm.dbg.value(metadata %class.2 addrspace(4)* addrspace(3)* %2, metadata !26, metadata !DIExpression()), !dbg !33
+  %3 = bitcast i32 addrspace(3)* addrspace(3)* @c to i32 addrspace(3)*, !dbg !35
+  call void @llvm.dbg.value(metadata i32 addrspace(3)* %3, metadata !28, metadata !DIExpression()), !dbg !35
+  %4 = ptrtoint i32 addrspace(3)* %3 to i32, !dbg !36
+  call void @llvm.dbg.value(metadata i32 %4, metadata !29, metadata !DIExpression()), !dbg !36
+  store i32 %4, i32* %dst, !dbg !37
   ret void, !dbg !38
 }
 
-; CHECK-DAG: [[FILE:![0-9]*]] = !DIFile(filename: "filter_O2.ll", directory: "/")
+; CHECK-DAG: [[FILE:![0-9]*]] = !DIFile(filename: "localSLM.ll", directory: "/")
 ; CHECK-DAG: [[SCOPE]] = distinct !DISubprogram(name: "test_inline", linkageName: "test_inline", scope: null, file: [[FILE]], line: 1
-; CHECK-DAG: [[C_MD]] = !DILocalVariable(name: "c", scope: [[SCOPE]], file: [[FILE]], line: 3
+; CHECK-DAG: [[FIRST_C_MD]] = !DILocalVariable(name: "a", scope: [[SCOPE]], file: [[FILE]], line: 1
 ; CHECK-DAG: [[FIRST_LOC]] = !DILocation(line: 1, column: 1, scope: [[SCOPE]])
-; CHECK-DAG: [[BCASTA_MD]] = !DILocalVariable(name: "1", scope: [[SCOPE]], file: [[FILE]], line: 1
-; CHECK-DAG: [[BCASTB_MD]] = !DILocalVariable(name: "2", scope: [[SCOPE]], file: [[FILE]], line: 3
-; CHECK-DAG: [[BCASTB_LOC]] = !DILocation(line: 3, column: 1, scope: [[SCOPE]])
-; CHECK-DAG: [[GEPB_MD]] = !DILocalVariable(name: "3", scope: [[SCOPE]], file: [[FILE]], line: 4
-; CHECK-DAG: [[GEPB_LOC]] = !DILocation(line: 4, column: 1, scope: [[SCOPE]])
-; CHECK-DAG: [[BCASTC_MD]] = !DILocalVariable(name: "4", scope: [[SCOPE]], file: [[FILE]], line: 5
-; CHECK-DAG: [[BCASTC_LOC]] = !DILocation(line: 5, column: 1, scope: [[SCOPE]])
-; CHECK-DAG: [[PTOI_MD]] = !DILocalVariable(name: "5", scope: [[SCOPE]], file: [[FILE]], line: 6
-; CHECK-DAG: [[PTOI_LOC]] = !DILocation(line: 6, column: 1, scope: [[SCOPE]])
-; CHECK-DAG: [[STORE_LOC]] = !DILocation(line: 7, column: 1, scope: [[SCOPE]])
-; CHECK-DAG: [[RET_LOC]] = !DILocation(line: 8, column: 1, scope: [[SCOPE]])
+; CHECK-DAG: [[SECOND_C_MD]] = !DILocalVariable(name: "c", scope: [[SCOPE]], file: [[FILE]], line: 3
 
 
 ; Function Attrs: nounwind readnone speculatable
@@ -82,7 +65,7 @@ attributes #0 = { nounwind readnone speculatable }
 !0 = !DIGlobalVariableExpression(var: !1, expr: !DIExpression())
 !1 = distinct !DIGlobalVariable(name: "a", scope: !2, file: !3, line: 1, type: !8, isLocal: true, isDefinition: true)
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "debugify", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug, enums: !4, globals: !5)
-!3 = !DIFile(filename: "filter_O2.ll", directory: "/")
+!3 = !DIFile(filename: "localSLM.ll", directory: "/")
 !4 = !{}
 !5 = !{!0, !6, !10}
 !6 = !DIGlobalVariableExpression(var: !7, expr: !DIExpression())
