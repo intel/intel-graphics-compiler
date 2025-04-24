@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-merge-uniform-stores -S < %s | FileCheck %s
-; run: igc_opt -debugify -igc-merge-uniform-stores -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-merge-uniform-stores -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -debugify -igc-merge-uniform-stores -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; MergeUniformStores
 ; ------------------------------------------------
@@ -41,17 +41,17 @@ define void @main(<8 x i32> %r0) {
 ; CHECK:  %WaveBallot = call i32 @llvm.genx.GenISA.WaveBallot.i1.i32(i1 true, i32 0)
 ; CHECK:  %FirstBitHi = call i32 @llvm.genx.GenISA.firstbitHi(i32 %WaveBallot)
 ; CHECK:  %WaveShufIdx = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32.i32.i32(i32 %5, i32 %FirstBitHi, i32 0)
-; CHECK:  store i32 %WaveShufIdx, i32 addrspace(3)* inttoptr (i32 8 to i32 addrspace(3)*), align 8
+; CHECK:  store i32 %WaveShufIdx, ptr addrspace(3) inttoptr (i32 8 to ptr addrspace(3)), align 8
   store i32 %5, i32 addrspace(3)* inttoptr (i32 8 to i32 addrspace(3)*), align 8
   %6 = load i32, i32 addrspace(3)* inttoptr (i32 4 to i32 addrspace(3)*), align 4
   %7 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* nonnull inttoptr (i32 8 to i32 addrspace(3)*), i32 addrspace(3)* nonnull inttoptr (i32 8 to i32 addrspace(3)*), i32 %6, i32 0)
 ; CHECK:  %WaveShufIdx1 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32.i32.i32(i32 %7, i32 %FirstBitHi, i32 0)
-; CHECK:  store i32 %WaveShufIdx1, i32 addrspace(3)* inttoptr (i32 12 to i32 addrspace(3)*), align 4
+; CHECK:  store i32 %WaveShufIdx1, ptr addrspace(3) inttoptr (i32 12 to ptr addrspace(3)), align 4
   store i32 %7, i32 addrspace(3)* inttoptr (i32 12 to i32 addrspace(3)*), align 4
   %8 = load i32, i32 addrspace(3)* inttoptr (i32 8 to i32 addrspace(3)*), align 8
   %9 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* nonnull inttoptr (i32 12 to i32 addrspace(3)*), i32 addrspace(3)* nonnull inttoptr (i32 12 to i32 addrspace(3)*), i32 %8, i32 0)
 ; CHECK:  %WaveShufIdx2 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32.i32.i32(i32 %9, i32 %FirstBitHi, i32 0)
-; CHECK:  store i32 %WaveShufIdx2, i32 addrspace(3)* inttoptr (i32 16 to i32 addrspace(3)*), align 16
+; CHECK:  store i32 %WaveShufIdx2, ptr addrspace(3) inttoptr (i32 16 to ptr addrspace(3)), align 16
   store i32 %9, i32 addrspace(3)* inttoptr (i32 16 to i32 addrspace(3)*), align 16
   %10 = shl i32 %GroupID_Y, 4
   %LocalID_Y = call i32 @llvm.genx.GenISA.DCL.SystemValue.i32(i32 18)
