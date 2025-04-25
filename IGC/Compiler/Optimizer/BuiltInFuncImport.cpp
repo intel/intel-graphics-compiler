@@ -845,6 +845,35 @@ void BIImport::GetCalledFunctions(const Function* pFunc, TFunctionsVec& calledFu
     }
 }
 
+// Returns true when any pointer operand/return type in the call does not match
+// the address space of the same position in the callee prototype.
+static bool needsPointerASFix(const CallInst *inst, const Function *callee)
+{
+    const FunctionType *callFTy  = inst->getFunctionType();
+    const FunctionType *fProtoTy = callee->getFunctionType();
+
+    if (callFTy->getReturnType()->isPointerTy() &&
+        fProtoTy->getReturnType()->isPointerTy() &&
+        callFTy->getReturnType()->getPointerAddressSpace() !=
+        fProtoTy->getReturnType()->getPointerAddressSpace())
+        return true;
+
+    if (callFTy->getNumParams() != fProtoTy->getNumParams())
+        return false;
+
+    for (unsigned i = 0, e = callFTy->getNumParams(); i != e; ++i)
+    {
+        Type *callTy  = callFTy->getParamType(i);
+        Type *protoTy = fProtoTy->getParamType(i);
+
+        if (callTy->isPointerTy() && protoTy->isPointerTy() &&
+            callTy->getPointerAddressSpace() !=
+            protoTy->getPointerAddressSpace())
+            return true;
+    }
+    return false;
+}
+
 void BIImport::removeFunctionBitcasts(Module& M)
 {
     std::vector<Instruction*> list_delete;
@@ -857,123 +886,136 @@ void BIImport::removeFunctionBitcasts(Module& M)
             for (auto I = BB.begin(), E = BB.end(); I != E; I++)
             {
                 CallInst* pInstCall = dyn_cast<CallInst>(I);
-                if (!pInstCall || pInstCall->getCalledFunction()) continue;
-                if (auto constExpr = dyn_cast<llvm::ConstantExpr>(IGCLLVM::getCalledValue(pInstCall)))
+                if (!pInstCall || pInstCall->getCalledFunction())
+                    continue;
+
+                Function *funcToBeChanged = nullptr;
+
+                // The call instruction might either use bitcast const expression or the function directly.
+                Value *calledVal = IGCLLVM::getCalledValue(pInstCall);
+                ConstantExpr *constExpr = dyn_cast<ConstantExpr>(calledVal);
+                if (constExpr)
                 {
-                    if (auto funcTobeChanged = dyn_cast<llvm::Function>(constExpr->stripPointerCasts()))
-                    {
-                        if (funcTobeChanged->isDeclaration()) continue;
-                        // Map between values (functions) in source of bitcast
-                        // to their counterpart values in destination
-                        llvm::ValueToValueMapTy  operandMap;
-                        Function* pDstFunc = nullptr;
-                        auto BCFMI = bitcastFunctionMap.find(funcTobeChanged);
-                        bool notExists = BCFMI == bitcastFunctionMap.end();
-                        if (!notExists)
+                    funcToBeChanged = dyn_cast<Function>(constExpr->stripPointerCasts());
+                }
+                else if (Function *directFunc = dyn_cast<Function>(calledVal))
+                {
+                    if (needsPointerASFix(pInstCall, directFunc))
+                        funcToBeChanged = directFunc;
+                }
+
+                if (!funcToBeChanged || funcToBeChanged->isDeclaration())
+                    continue;
+
+                // Map between values (functions) in source of bitcast
+                // to their counterpart values in destination
+                llvm::ValueToValueMapTy  operandMap;
+                Function* pDstFunc = nullptr;
+                auto BCFMI = bitcastFunctionMap.find(funcToBeChanged);
+                bool notExists = BCFMI == bitcastFunctionMap.end();
+                if (!notExists)
+                {
+                    auto funcVec = bitcastFunctionMap[funcToBeChanged];
+                    notExists = true;
+                    for (Function* F : funcVec) {
+                        if (pInstCall->getFunctionType() == F->getFunctionType())
                         {
-                            auto funcVec = bitcastFunctionMap[funcTobeChanged];
-                            notExists = true;
-                            for (Function* F : funcVec) {
-                                if (pInstCall->getFunctionType() == F->getFunctionType())
-                                {
-                                    notExists = false;
-                                    pDstFunc = F;
-                                    break;
-                                }
-                            }
+                            notExists = false;
+                            pDstFunc = F;
+                            break;
                         }
-
-                        if (notExists)
-                        {
-                            pDstFunc = Function::Create(pInstCall->getFunctionType(), funcTobeChanged->getLinkage(), funcTobeChanged->getName(), &M);
-                            if (pDstFunc->arg_size() != funcTobeChanged->arg_size()) continue;
-                            // Go through and convert function arguments over, remembering the mapping.
-                            Function::arg_iterator itSrcFunc = funcTobeChanged->arg_begin();
-                            Function::arg_iterator eSrcFunc = funcTobeChanged->arg_end();
-                            llvm::Function::arg_iterator itDest = pDstFunc->arg_begin();
-
-                            // Fix incorrect address space or incorrect pointer type caused by CloneFunctionInto later
-                            // 1. AddressSpaceCast example: CloneFunctionInto causes incorrect LLVM IR, like below
-                            //     %arrayidx.le.i = getelementptr inbounds i8, i8 addrspace(1)* %8, i64 %conv.le.i
-                            //     %9 = load i8, i8 addrspace(4)* %arrayidx.le.i, align 1, !tbaa !309
-                            // Address space should match for %arrayidx.le.i, so we insert necessary
-                            // address space casts, which should be eliminated later by other passes
-                            // 2. incorrect type example:
-                            //     %0 = load i16, %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(4)* %x, align 2
-                            // Load value type should match pointer type for %x, so we insert necessary bitcast:
-                            //     %x.bcast = bitcast %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(4)* %x to i16 addrspace(4)*
-                            //     %0 = load i16, i16 addrspace(4)* %x.bcast, align 2
-                            SmallVector<Instruction *, 5> castInsts;
-
-                            for (; itSrcFunc != eSrcFunc; ++itSrcFunc, ++itDest)
-                            {
-                                itDest->setName(itSrcFunc->getName());
-
-                                Type *srcType = (*itSrcFunc).getType();
-                                Value *destVal = &(*itDest);
-                                Type *destType = destVal->getType();
-                                if (srcType->isPointerTy() && destType->isPointerTy())
-                                {
-                                    if (srcType->getPointerAddressSpace() != destType->getPointerAddressSpace())
-                                    {
-                                        AddrSpaceCastInst *newASC = new AddrSpaceCastInst(destVal, srcType, destVal->getName() + ".ascast");
-                                        castInsts.push_back(newASC);
-                                        destVal = newASC;
-                                    }
-                                    PointerType* pSrcType = cast<PointerType>(srcType);
-                                    if (!pSrcType->isOpaqueOrPointeeTypeMatches(destType))
-                                    {
-                                        BitCastInst *newBT = new BitCastInst(destVal, srcType, destVal->getName() + ".bcast");
-                                        castInsts.push_back(newBT);
-                                        destVal = newBT;
-                                    }
-                                }
-
-                                operandMap[&(*itSrcFunc)] = destVal;
-                            }
-
-                            // Clone the body of the function into the dest function.
-                            SmallVector<ReturnInst*, 8> Returns; // Ignore returns.
-                            IGCLLVM::CloneFunctionInto(
-                                pDstFunc,
-                                funcTobeChanged,
-                                operandMap,
-                                IGCLLVM::CloneFunctionChangeType::LocalChangesOnly,
-                                Returns,
-                                "");
-
-                            // Need to copy the attributes over too.
-                            AttributeList FuncAttrs = funcTobeChanged->getAttributes();
-                            pDstFunc->setAttributes(FuncAttrs);
-
-                            // get first instruction in function and insert addressspacecast before it
-                            Instruction *firstInst = &(*pDstFunc->begin()->getFirstInsertionPt());
-                            for (Instruction *valToInsert : castInsts)
-                                valToInsert->insertBefore(firstInst);
-
-                            pDstFunc->setCallingConv(funcTobeChanged->getCallingConv());
-                            bitcastFunctionMap[funcTobeChanged].push_back(pDstFunc);
-                        }
-
-                        std::vector<Value*> Args;
-                        for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(pInstCall); I != E; ++I) {
-                            Args.push_back(pInstCall->getArgOperand(I));
-                        }
-                        auto newCI = CallInst::Create(pDstFunc, Args, "", pInstCall);
-                        newCI->takeName(pInstCall);
-                        newCI->setCallingConv(pInstCall->getCallingConv());
-                        newCI->setAttributes(pInstCall->getAttributes());
-                        newCI->setDebugLoc(pInstCall->getDebugLoc());
-                        pInstCall->replaceAllUsesWith(newCI);
-                        pInstCall->dropAllReferences();
-                        if (constExpr->use_empty())
-                            constExpr->dropAllReferences();
-                        if (funcTobeChanged->use_empty())
-                            funcTobeChanged->eraseFromParent();
-
-                        list_delete.push_back(pInstCall);
                     }
                 }
+
+                if (notExists)
+                {
+                    pDstFunc = Function::Create(pInstCall->getFunctionType(), funcToBeChanged->getLinkage(), funcToBeChanged->getName(), &M);
+                    if (pDstFunc->arg_size() != funcToBeChanged->arg_size()) continue;
+                    // Go through and convert function arguments over, remembering the mapping.
+                    Function::arg_iterator itSrcFunc = funcToBeChanged->arg_begin();
+                    Function::arg_iterator eSrcFunc = funcToBeChanged->arg_end();
+                    llvm::Function::arg_iterator itDest = pDstFunc->arg_begin();
+
+                    // Fix incorrect address space or incorrect pointer type caused by CloneFunctionInto later
+                    // 1. AddressSpaceCast example: CloneFunctionInto causes incorrect LLVM IR, like below
+                    //     %arrayidx.le.i = getelementptr inbounds i8, i8 addrspace(1)* %8, i64 %conv.le.i
+                    //     %9 = load i8, i8 addrspace(4)* %arrayidx.le.i, align 1, !tbaa !309
+                    // Address space should match for %arrayidx.le.i, so we insert necessary
+                    // address space casts, which should be eliminated later by other passes
+                    // 2. incorrect type example:
+                    //     %0 = load i16, %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(4)* %x, align 2
+                    // Load value type should match pointer type for %x, so we insert necessary bitcast:
+                    //     %x.bcast = bitcast %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(4)* %x to i16 addrspace(4)*
+                    //     %0 = load i16, i16 addrspace(4)* %x.bcast, align 2
+                    SmallVector<Instruction *, 5> castInsts;
+
+                    for (; itSrcFunc != eSrcFunc; ++itSrcFunc, ++itDest)
+                    {
+                        itDest->setName(itSrcFunc->getName());
+
+                        Type *srcType = (*itSrcFunc).getType();
+                        Value *destVal = &(*itDest);
+                        Type *destType = destVal->getType();
+                        if (srcType->isPointerTy() && destType->isPointerTy())
+                        {
+                            if (srcType->getPointerAddressSpace() != destType->getPointerAddressSpace())
+                            {
+                                AddrSpaceCastInst *newASC = new AddrSpaceCastInst(destVal, srcType, destVal->getName() + ".ascast");
+                                castInsts.push_back(newASC);
+                                destVal = newASC;
+                            }
+                            PointerType* pSrcType = cast<PointerType>(srcType);
+                            if (!pSrcType->isOpaqueOrPointeeTypeMatches(destType))
+                            {
+                                BitCastInst *newBT = new BitCastInst(destVal, srcType, destVal->getName() + ".bcast");
+                                castInsts.push_back(newBT);
+                                destVal = newBT;
+                            }
+                        }
+
+                        operandMap[&(*itSrcFunc)] = destVal;
+                    }
+
+                    // Clone the body of the function into the dest function.
+                    SmallVector<ReturnInst*, 8> Returns; // Ignore returns.
+                    IGCLLVM::CloneFunctionInto(
+                        pDstFunc,
+                        funcToBeChanged,
+                        operandMap,
+                        IGCLLVM::CloneFunctionChangeType::LocalChangesOnly,
+                        Returns,
+                        "");
+
+                    // Need to copy the attributes over too.
+                    AttributeList FuncAttrs = funcToBeChanged->getAttributes();
+                    pDstFunc->setAttributes(FuncAttrs);
+
+                    // get first instruction in function and insert addressspacecast before it
+                    Instruction *firstInst = &(*pDstFunc->begin()->getFirstInsertionPt());
+                    for (Instruction *valToInsert : castInsts)
+                        valToInsert->insertBefore(firstInst);
+
+                    pDstFunc->setCallingConv(funcToBeChanged->getCallingConv());
+                    bitcastFunctionMap[funcToBeChanged].push_back(pDstFunc);
+                }
+
+                std::vector<Value*> Args;
+                for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(pInstCall); I != E; ++I) {
+                    Args.push_back(pInstCall->getArgOperand(I));
+                }
+                auto newCI = CallInst::Create(pDstFunc, Args, "", pInstCall);
+                newCI->takeName(pInstCall);
+                newCI->setCallingConv(pInstCall->getCallingConv());
+                newCI->setAttributes(pInstCall->getAttributes());
+                newCI->setDebugLoc(pInstCall->getDebugLoc());
+                pInstCall->replaceAllUsesWith(newCI);
+                pInstCall->dropAllReferences();
+                if (constExpr && constExpr->use_empty())
+                    constExpr->dropAllReferences();
+                if (funcToBeChanged->use_empty())
+                    funcToBeChanged->eraseFromParent();
+
+                list_delete.push_back(pInstCall);
             }
         }
     }
