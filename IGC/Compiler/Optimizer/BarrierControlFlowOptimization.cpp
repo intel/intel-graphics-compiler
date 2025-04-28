@@ -153,54 +153,25 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow()
     // Optimize barrier control flow
     for (auto& B : m_OrderedFenceBarrierInstructionsBlock)
     {
-        llvm::Instruction* inst = B[0];
-
         m_ThreadGroupBarriers.clear();
         m_LscMemoryFences.clear();
 
-        if (IsLscFenceOperation(inst))
+        if (IsLscFenceOperation(B[0]))
         {
-            LSC_SFID lscMem = GetLscMem(inst);
+            Instruction* nextInst = nullptr;
 
-            // is there an order of fence or no matter? (ugm/slm followed by tgm)
-            IGC_ASSERT(lscMem == LSC_UGM || lscMem == LSC_SLM || lscMem == LSC_TGM);
-
-            // inst is pointing to a fence
-            m_LscMemoryFences.push_back(inst);
-
-            // move to next inst
-            Instruction* nextInst = dyn_cast<Instruction>(inst)->getNextNode();
-
-            // if next is null, means it's the end of this block
-            if (nextInst == nullptr)
+            for (auto* I : B)
             {
-                continue;
-            }
-
-            // is the second lsc fence followed? if not, could be threadbarrier.
-            if (IsLscFenceOperation(nextInst))
-            {
-                LSC_SFID lscMem = GetLscMem(nextInst);
-
-                IGC_ASSERT(lscMem == LSC_UGM || lscMem == LSC_SLM || lscMem == LSC_TGM);
-
-                // nextInst is pointing to another fence
-                m_LscMemoryFences.push_back(nextInst);
-
-                // nextInst could be the thread barrier
-                nextInst = dyn_cast<Instruction>(nextInst)->getNextNode();
-
-                // if next is null, means it's the end of this block
-                if (nextInst == nullptr)
+                nextInst = I;
+                if (IsLscFenceOperation(I))
                 {
-                    continue;
+                    // nextInst is pointing to another fence
+                    m_LscMemoryFences.push_back(I);
                 }
-            }
-
-            if (IsThreadBarrierOperation(nextInst))
-            {
-                // nextInst is the thread barrier
-                m_ThreadGroupBarriers.push_back(nextInst);
+                else if (IsThreadBarrierOperation(I))
+                {
+                    m_ThreadGroupBarriers.push_back(I);
+                }
             }
 
             // thread barrier could be not used, but lsc fence must exist
@@ -210,12 +181,6 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow()
                 IGCIRBuilder<> IRB(nextInst);
 
                 llvm::Module* module = nextInst->getParent()->getParent()->getParent();
-
-                // if getNextNode is null, means it's the end of this block
-                if (nextInst->getNextNode() == nullptr)
-                {
-                    continue;
-                }
 
                 // all barrier instructions from the blocks are exected on the same thread
                 // get the owning thread ID once
@@ -297,8 +262,13 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow()
 
                 // 3. One thread designated to do a fence, scope=GPU, flush=evict
                 // if (thread0) - pick the owning thread
-                llvm::Instruction* br = SplitBlockAndInsertIfThen(onThread, nextInst->getNextNode(), false);
-                IRB.SetInsertPoint(&(*br->getParent()->begin()));
+                llvm::Instruction* br = nullptr;
+
+                if (nextInst->getNextNode())
+                {
+                    br = SplitBlockAndInsertIfThen(onThread, nextInst->getNextNode(), false);
+                    IRB.SetInsertPoint(&(*br->getParent()->begin()));
+                }
 
                 // create new lsc fence based on the fence mem
                 for (auto* I : m_LscMemoryFences)
@@ -322,7 +292,10 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow()
                 }
 
                 // ends the if-then block
-                IRB.SetInsertPoint(&(*br->getSuccessor(0)->begin()));
+                if (br)
+                {
+                    IRB.SetInsertPoint(&(*br->getSuccessor(0)->begin()));
+                }
 
                 if (m_ThreadGroupBarriers.size() > 0)
                 {

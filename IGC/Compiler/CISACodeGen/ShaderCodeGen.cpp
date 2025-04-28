@@ -1460,6 +1460,7 @@ void OptimizeIR(CodeGenContext* const pContext)
                                FastestS1Options(pContext) == FCEXP_NO_EXPRIMENT ||
                                pContext->getModuleMetaData()->compOpt.DisableFastestGopt));
 
+
         // EnableBarrierControlFlowOptimizationPass: enable BCF optimization
         // UseBarrierControlFlowOptimization: UMD AIL option to use BCF optimization
         // supportBarrierControlFlowOptimization: API control (D3D12, Vulkan, OCL)
@@ -1472,7 +1473,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         {
             mpm.add(createBarrierControlFlowOptimization());
         }
-
 
         if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT)
         {

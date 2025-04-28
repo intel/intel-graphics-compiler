@@ -47,5 +47,33 @@ define void @test_slm_tgm_thread_group() {
   ret void
 }
 
+; Checks barrier control flow optimization scenario
+; before optimization( fence(ugm, scope local and op none)/fence((tgm, scope local and op none)/group sync(threadgroupbarrier), fence(ugm, scope gpu and op evict)/fence((tgm, scope gpu and op evict) )
+; after optimization ( group sync(threadgroupbarrier)/fence(ugm, scope gpu and op evict)/fence((tgm, scope gpu and op evict), group sync(threadgroupbarrier)/fence(ugm, scope gpu and op evict)/fence((tgm, scope gpu and op evict), )
+define void @test_slm_tgm_bar_into_slm_tgm() {
+; CHECK-LABEL: @test_slm_tgm_bar_into_slm_tgm(
+; CHECK:  call void @llvm.genx.GenISA.threadgroupbarrier()
+; CHECK-DAG: br
+; CHECK: call void @llvm.genx.GenISA.LSCFence(i32 0, i32 3, i32 1)
+; CHECK: call void @llvm.genx.GenISA.LSCFence(i32 2, i32 3, i32 1)
+; CHECK-DAG: br
+; CHECK: call void @llvm.genx.GenISA.threadgroupbarrier()
+; CHECK-DAG: br
+; CHECK: call void @llvm.genx.GenISA.LSCFence(i32 0, i32 3, i32 1)
+; CHECK: call void @llvm.genx.GenISA.LSCFence(i32 2, i32 3, i32 1)
+; CHECK-DAG: br
+; CHECK: ret void
+  call void @llvm.genx.GenISA.LSCFence(i32 0, i32 1, i32 0)
+  call void @llvm.genx.GenISA.LSCFence(i32 2, i32 1, i32 0)
+  call void @llvm.genx.GenISA.threadgroupbarrier()
+  br label %test2
+test2:
+  call void @llvm.genx.GenISA.LSCFence(i32 0, i32 3, i32 1)
+  call void @llvm.genx.GenISA.LSCFence(i32 2, i32 3, i32 1)
+  br label %finish
+finish:
+  ret void
+}
+
 declare void @llvm.genx.GenISA.LSCFence(i32, i32, i32)
 declare void @llvm.genx.GenISA.threadgroupbarrier()
