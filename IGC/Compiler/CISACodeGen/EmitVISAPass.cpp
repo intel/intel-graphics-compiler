@@ -9235,6 +9235,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
     case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
     case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
+    case GenISAIntrinsic::GenISA_intatomicrawsinglelane:
         emitAtomicRaw(inst, inst->getOperand(1));
         break;
     case GenISAIntrinsic::GenISA_intatomictyped:
@@ -16234,14 +16235,16 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr,
     }
 
     Function* F = pInst->getParent()->getParent();
-    if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInst))
+    if ((F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInst)) ||
+        IID == GenISAIntrinsic::GenISA_intatomicrawsinglelane)
     {
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
     }
     pDstAddr = BroadcastIfUniform(pDstAddr);
 
-    if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInst))
+    if ((F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInst)) ||
+        IID == GenISAIntrinsic::GenISA_intatomicrawsinglelane)
     {
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
@@ -16251,7 +16254,8 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr,
         pSrc0 = UnpackOrBroadcastIfUniform(pSrc0);
     }
 
-    if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInst))
+    if ((F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInst)) ||
+        IID == GenISAIntrinsic::GenISA_intatomicrawsinglelane)
     {
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
