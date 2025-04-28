@@ -865,7 +865,7 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST *inst) {
                 gra.kernel.numEltPerGRF<Type_UB>();
     srcBC[i] = gra.getBankConflict(dcls[i]);
 
-    if (dcls[i] && dcls[i]->getRegVar() &&
+    if (dcls[i]->getRegVar() &&
         dcls[i]->getRegVar()->isPhyRegAssigned()) {
       int regNum = dcls[i]->getRegVar()->getPhyReg()->asGreg()->getRegNum();
       srcBC[i] = regNum % 2 ? BANK_CONFLICT_SECOND_HALF_ODD
