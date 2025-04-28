@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1784,4 +1784,31 @@ bool CBuiltinsResolver::resolveBI(CallInst* Inst)
     m_CommandMap[calleeName]->verifyCommand();
 
     return !m_CommandMap[calleeName]->hasError();
+}
+
+llvm::CallInst* IGC::CallMemoryFenceWorkgroup(llvm::Instruction* pInsertBefore)
+{
+    IGCLLVM::IRBuilder<> builder(pInsertBefore);
+    llvm::Module* pM = pInsertBefore->getModule();
+
+    Value* trueValue = builder.getInt1(true);
+    Value* falseValue = builder.getInt1(false);
+    Value* groupScopeValue = builder.getInt32(LSC_SCOPE_GROUP);
+
+    // Add memory fence for workgroup
+    return  GenIntrinsicInst::Create(
+        GenISAIntrinsic::getDeclaration(pM, GenISAIntrinsic::GenISA_memoryfence),
+        {
+            trueValue,  // bool commitEnable
+            falseValue, // bool flushRW
+            falseValue, // bool flushConstant
+            falseValue, // bool flushTexture
+            falseValue, // bool flushIcache
+            falseValue,   // bool isGlobal
+            falseValue, // bool invalidateL1
+            falseValue, // bool evictL1
+            groupScopeValue // int memory scope
+        },
+        "",
+        pInsertBefore);
 }

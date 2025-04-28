@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -57,6 +57,10 @@ namespace IGC
         ///         Checks for OpenCL WI functions and resolves them into appropriate sequence of code
         /// @param  CI The call instruction.
         void visitCallInst(llvm::CallInst& CI);
+
+        /// @brief  Call getlocalID function in module
+        /// @param  pInsertBefore - insert getlocalID after the given instruction.
+        static llvm::CallInst* CallGetLocalID(llvm::Instruction* pInsertBefore);
 
     private:
 

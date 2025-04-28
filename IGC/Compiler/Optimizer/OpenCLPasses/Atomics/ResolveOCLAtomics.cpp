@@ -1,12 +1,13 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/Optimizer/OpenCLPasses/Atomics/ResolveOCLAtomics.hpp"
+#include "Optimizer/OCLBIUtils.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
@@ -397,3 +398,58 @@ void ResolveOCLAtomics::initilizeLocalLock()
     }
 }
 
+llvm::Instruction* ResolveOCLAtomics::CallAtomicSingleLane(AtomicOp AtomicType, llvm::Value* ptr, llvm::Value* data, llvm::Instruction* pInsertBefore)
+{
+    IGCLLVM::IRBuilder<> builder(pInsertBefore);
+    llvm::Module* pM = pInsertBefore->getModule();
+
+    CallMemoryFenceWorkgroup(pInsertBefore);
+
+    Value* dst = ptr;
+
+    const bool noSources = data == nullptr;
+    // For atomics w/o sources (atomic_inc and atomic_dec), src0 should be absent.
+    // However, we cannot pass nullptr as argument, so we set src0 = "0" and it
+    // will be ignored in EmitPass::emitAtomicRaw.
+    Value* src0 = noSources ?
+        ConstantInt::get(builder.getInt32Ty(), 0) :
+        data;
+
+    bool createDstCast = true;
+    if (CastInst* castInst = dyn_cast<CastInst>(dst))
+    {
+        Type* srcType = castInst->getSrcTy();
+        // If dst is a "int32 -> ptr" conversion, we can use its src instead
+        // of creating reverse conversion.
+        if (srcType->isIntegerTy(32))
+        {
+            dst = castInst->getOperand(0);
+            createDstCast = false;
+        }
+    }
+    if (createDstCast)
+    {
+        Instruction* pCast = CastInst::CreatePointerCast(dst, builder.getInt32Ty(), "PtrDstToInt", pInsertBefore);
+        dst = pCast;
+    }
+
+
+    llvm::Value* src1 = ConstantInt::get(builder.getInt32Ty(), AtomicType);
+
+    SmallVector<Type*, 4> intrinArgTypes
+    {
+        builder.getInt32Ty(),
+        ptr->getType(),
+        dst->getType()
+    };
+
+    GenIntrinsicInst::Create(
+        GenISAIntrinsic::getDeclaration(pM, GenISAIntrinsic::GenISA_intatomicrawsinglelane, intrinArgTypes),
+        { ptr, dst, src0, src1 },
+        "",
+        pInsertBefore);
+
+    llvm::Instruction* postFence = CallMemoryFenceWorkgroup(pInsertBefore);
+
+    return postFence;
+}

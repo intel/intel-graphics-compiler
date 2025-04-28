@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -963,3 +963,13 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
     }
 }
 
+llvm::CallInst* WIFuncResolution::CallGetLocalID(llvm::Instruction* pInsertBefore)
+{
+    IGCLLVM::IRBuilder<> builder(pInsertBefore);
+    llvm::Module* pM = pInsertBefore->getModule();
+    llvm::FunctionType* pFuncTypeGetLocalID = llvm::FunctionType::get(builder.getInt32Ty(), { }, false);
+
+    auto pFuncGetLocalID = pM->getOrInsertFunction(WIFuncsAnalysis::GET_LOCAL_THREAD_ID, pFuncTypeGetLocalID);
+
+    return llvm::CallInst::Create(pFuncGetLocalID, { }, "", pInsertBefore);
+}

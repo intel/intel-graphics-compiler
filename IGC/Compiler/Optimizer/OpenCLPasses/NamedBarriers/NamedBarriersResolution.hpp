@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -65,8 +65,8 @@ namespace IGC
             Consumer = 2
         };
 
-        void CallSignal(llvm::Value* barrierID, llvm::Value* ProducerCnt, llvm::Value* ConsumerCnt, NamedBarrierType Type, llvm::Instruction* pInsertBefore);
-        void CallWait(llvm::Value* barrierID, llvm::Instruction* pInsertBefore);
+        static void CallSignal(llvm::Value* barrierID, llvm::Value* ProducerCnt, llvm::Value* ConsumerCnt, NamedBarrierType Type, llvm::Instruction* pInsertBefore);
+        static void CallWait(llvm::Value* barrierID, llvm::Instruction* pInsertBefore);
     private:
         GFXCORE_FAMILY m_GFX_CORE;
         llvm::Type* m_NamedBarrierType;

@@ -1,6 +1,6 @@
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2024 Intel Corporation
+# Copyright (C) 2024-2025 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -6032,6 +6032,34 @@ intrinsics:
         return_definition: !<ReturnDefinition>
             type_definition: *any_int
             comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *p_any_
+                comment: "Dst Buffer"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i32
+                comment: "dst address"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *ref_0_
+                comment: "src0"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *i32
+                comment: "Instruction type (add, or, xor etc)"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
+    - !<IntrinsicDefinition>
+        name: "GenISA_intatomicrawsinglelane"
+        comment: ""
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_int
+            comment: "It's the same like GenISA_intatomicraw but executs only one line in subgroup with NoMask"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0

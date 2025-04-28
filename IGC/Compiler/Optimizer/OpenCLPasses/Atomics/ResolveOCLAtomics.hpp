@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -59,6 +59,8 @@ namespace IGC
 
     // Call instructions visitor.
     void visitCallInst(llvm::CallInst& callInst);
+
+    static llvm::Instruction* CallAtomicSingleLane(AtomicOp AtomicType, llvm::Value* ptr, llvm::Value* data, llvm::Instruction* pInsertBefore);
 
     protected:
         CodeGenContext* m_CGCtx = nullptr;
