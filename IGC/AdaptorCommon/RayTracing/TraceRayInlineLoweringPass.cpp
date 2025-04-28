@@ -180,7 +180,7 @@ void TraceRayInlineLoweringPass::LowerAllocateRayQuery(
     //on the other hand, we DO need to make sure these RQOs won't overlap in which case we cannot shrink SharedMem like the current way
     //later, we might improve this w/ a more general way.
     //this way might cover quite some RQOs cases, though
-    bool bShrinkSMStack = (AllocateRayQueries.size() > numLanes(m_CGCtx->platform.getMaxRayQuerySIMDSize())
+    bool bShrinkSMStack = (AllocateRayQueries.size() > numLanes(m_CGCtx->platform.getMaxRayQuerySIMDSize(m_CGCtx->type))
         && numProceeds == 1);
 
     std::tie(m_ShMemRTStacks, m_ShMemRTCtrls) =

@@ -894,7 +894,7 @@ bool WaPredicatedStackIDRelease() const
 
 // This returns the current maximum size that we recommend for performance.
 // SIMD32 is still allowed and we may relax this in the future.
-SIMDMode getMaxRayQuerySIMDSize() const
+SIMDMode getMaxRayQuerySIMDSize(ShaderType shaderType) const
 {
     if (isCoreChildOf(IGFX_XE_HPG_CORE))
     {
@@ -907,11 +907,11 @@ SIMDMode getMaxRayQuerySIMDSize() const
     }
 }
 
-SIMDMode getPreferredRayQuerySIMDSize() const
+SIMDMode getPreferredRayQuerySIMDSize(ShaderType shaderType) const
 {
     SIMDMode ret = isCoreChildOf(IGFX_XE_HPC_CORE) ? SIMDMode::SIMD16 : SIMDMode::SIMD8;
 
-    IGC_ASSERT_MESSAGE(ret <= getMaxRayQuerySIMDSize(), "Preferred SIMD size for RayQuery must not be greater than MaxRayQuerySIMDSize!");
+    IGC_ASSERT_MESSAGE(ret <= getMaxRayQuerySIMDSize(shaderType), "Preferred SIMD size for RayQuery must not be greater than MaxRayQuerySIMDSize!");
 
     return ret;
 }

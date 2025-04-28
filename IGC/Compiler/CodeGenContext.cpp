@@ -994,7 +994,7 @@ namespace IGC
             IGC_ASSERT_MESSAGE(0, "Incorrect shader type");
         }
 
-        IGC_ASSERT_MESSAGE(!hasSyncRTCalls() || (simdMode <= platform.getPreferredRayQuerySIMDSize()),
+        IGC_ASSERT_MESSAGE(!hasSyncRTCalls() || (simdMode <= platform.getPreferredRayQuerySIMDSize(type)),
             "Unsupported SIMD mode for RayQuery");
 
         return simdMode;

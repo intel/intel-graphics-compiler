@@ -4131,7 +4131,7 @@ bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
 
     if (ret && m_ctx->hasSyncRTCalls(entry))
     {
-        ret = (m_Platform->getMaxRayQuerySIMDSize() >= simdMode);
+        ret = (m_Platform->getMaxRayQuerySIMDSize(m_ctx->type) >= simdMode);
     }
 
     return ret;
