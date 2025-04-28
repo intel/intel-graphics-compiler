@@ -39,7 +39,7 @@ const char* NamedBarriersResolution::NAMED_BARRIERS_BARRIER_ARG3 = "_Z24work_gro
 
 const int NamedBarriersResolution::GetMaxNamedBarriers()
 {
-    if (NamedBarrierHWSupport())
+    if (NamedBarrierHWSupport(m_GFX_CORE))
     {
         // User can define only 32 named barriers,
         // The TG barrier is an alias for named barrier 0
@@ -118,7 +118,7 @@ bool NamedBarriersResolution::runOnModule(Module& M)
         }
     }
 
-    if (NamedBarrierHWSupport())
+    if (NamedBarrierHWSupport(m_GFX_CORE))
     {
         // Remove not needed wrapper for Init NBarrier built-in
         for (const auto& [barrierStruct, barrierData] : m_MapInitToID)
@@ -235,8 +235,6 @@ void NamedBarriersResolution::HandleNamedBarrierSyncHW(CallInst& NBarrierSyncCal
     Value* falseValue = IRB.getInt1(false);
     Value* gpuScopeValue = IRB.getInt32(LSC_SCOPE_GPU);
     Value* groupScopeValue = IRB.getInt32(LSC_SCOPE_GROUP);
-    // Producer and Consumer
-    Value* barrierType = IRB.getInt16(0);
 
     ConstantInt* memFenceType = cast<ConstantInt>(NBarrierSyncCall.getArgOperand(1));
     // LOCAL = 1
@@ -262,17 +260,8 @@ void NamedBarriersResolution::HandleNamedBarrierSyncHW(CallInst& NBarrierSyncCal
         "",
         &(NBarrierSyncCall));
 
-    GenIntrinsicInst::Create(
-        GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_threadgroupnamedbarriers_signal),
-        { nbStruct.threadGroupNBarrierID, barrierType, nbStruct.threadGroupNBarrierCount,  nbStruct.threadGroupNBarrierCount },
-        "",
-        &(NBarrierSyncCall));
-
-    GenIntrinsicInst::Create(
-        GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_threadgroupnamedbarriers_wait),
-        { nbStruct.threadGroupNBarrierID },
-        "",
-        &(NBarrierSyncCall));
+    CallSignal(nbStruct.threadGroupNBarrierID, nbStruct.threadGroupNBarrierCount, nbStruct.threadGroupNBarrierCount, NamedBarrierType::ProducerConsumer, &NBarrierSyncCall);
+    CallWait(nbStruct.threadGroupNBarrierID, &NBarrierSyncCall);
 
     NBarrierSyncCall.eraseFromParent();
 }
@@ -410,23 +399,55 @@ void NamedBarriersResolution::visitCallInst(CallInst& CI)
 
     if (isNamedBarrierInit(funcName))
     {
-        NamedBarrierHWSupport()
+        NamedBarrierHWSupport(m_GFX_CORE)
             ? HandleNamedBarrierInitHW(CI)
             : HandleNamedBarrierInitSW(CI);
     }
     else if (isNamedBarrierSync(funcName))
     {
-        NamedBarrierHWSupport()
+        NamedBarrierHWSupport(m_GFX_CORE)
             ? HandleNamedBarrierSyncHW(CI)
             : HandleNamedBarrierSyncSW(CI);
     }
 }
 
 
-bool NamedBarriersResolution::NamedBarrierHWSupport()
+bool NamedBarriersResolution::NamedBarrierHWSupport(GFXCORE_FAMILY GFX_CORE)
 {
-    bool hwSupport = m_GFX_CORE == IGFX_XE_HPC_CORE;
-    hwSupport |= m_GFX_CORE == IGFX_XE2_HPG_CORE;
-    hwSupport |= m_GFX_CORE == IGFX_XE3_CORE;
+    bool hwSupport = GFX_CORE == IGFX_XE_HPC_CORE;
+    hwSupport |= GFX_CORE == IGFX_XE2_HPG_CORE;
+    hwSupport |= GFX_CORE == IGFX_XE3_CORE;
     return hwSupport;
+}
+
+void NamedBarriersResolution::CallSignal(llvm::Value* barrierID, llvm::Value* ProducerCnt, llvm::Value* ConsumerCnt, NamedBarrierType Type, llvm::Instruction* pInsertBefore)
+{
+    IGCLLVM::IRBuilder<> builder(pInsertBefore);
+    llvm::Module* pM = pInsertBefore->getModule();
+
+    llvm::Value* namedBarrierType = builder.getInt16((int)Type);
+
+    llvm::Value* getIDInt8 = llvm::BitCastInst::CreateIntegerCast(barrierID, builder.getInt8Ty(), false, "", pInsertBefore);
+    llvm::Value* getProducerCntInt8 = llvm::BitCastInst::CreateIntegerCast(ProducerCnt, builder.getInt8Ty(), false, "", pInsertBefore);
+    llvm::Value* getConsumerCntInt8 = llvm::BitCastInst::CreateIntegerCast(ConsumerCnt, builder.getInt8Ty(), false, "", pInsertBefore);
+
+    GenIntrinsicInst::Create(
+        GenISAIntrinsic::getDeclaration(pM, GenISAIntrinsic::GenISA_threadgroupnamedbarriers_signal),
+        { getIDInt8, namedBarrierType, getProducerCntInt8, getConsumerCntInt8 },
+        "",
+        pInsertBefore);
+}
+
+void NamedBarriersResolution::CallWait(llvm::Value* barrierID, llvm::Instruction* pInsertBefore)
+{
+    IGCLLVM::IRBuilder<> builder(pInsertBefore);
+    llvm::Module* pM = pInsertBefore->getModule();
+
+    llvm::Value* getIDInt8 = llvm::BitCastInst::CreateIntegerCast(barrierID, builder.getInt8Ty(), false, "", pInsertBefore);
+
+    GenIntrinsicInst::Create(
+        GenISAIntrinsic::getDeclaration(pM, GenISAIntrinsic::GenISA_threadgroupnamedbarriers_wait),
+        { getIDInt8 },
+        "",
+        pInsertBefore);
 }

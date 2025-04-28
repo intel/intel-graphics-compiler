@@ -56,6 +56,17 @@ namespace IGC
         const int GetMaxNamedBarriers();
 
         static int AlignNBCnt2BarrierNumber(uint NBCnt);
+        static bool NamedBarrierHWSupport(GFXCORE_FAMILY GFX_CORE);
+
+        enum NamedBarrierType
+        {
+            ProducerConsumer = 0,
+            Producer = 1,
+            Consumer = 2
+        };
+
+        void CallSignal(llvm::Value* barrierID, llvm::Value* ProducerCnt, llvm::Value* ConsumerCnt, NamedBarrierType Type, llvm::Instruction* pInsertBefore);
+        void CallWait(llvm::Value* barrierID, llvm::Instruction* pInsertBefore);
     private:
         GFXCORE_FAMILY m_GFX_CORE;
         llvm::Type* m_NamedBarrierType;
@@ -87,8 +98,6 @@ namespace IGC
 
         void HandleNamedBarrierInitHW(llvm::CallInst& NBarrierInitCall);
         void HandleNamedBarrierSyncHW(llvm::CallInst& NBarrierSyncCall);
-
-        bool NamedBarrierHWSupport();
     };
 
 } // namespace IGC

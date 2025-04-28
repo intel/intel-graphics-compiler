@@ -10257,7 +10257,7 @@ intrinsics:
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *i32
+                type_definition: *i8
                 comment: "thread group named barrier ID"
             - !<ArgumentDefinition>
                 name: Arg1
@@ -10265,11 +10265,11 @@ intrinsics:
                 comment: "barrier type (ProducerConsumer = 0, Producer = 1, Consumer = 2)"
             - !<ArgumentDefinition>
                 name: Arg2
-                type_definition: *i32
+                type_definition: *i8
                 comment: "Producer count"
             - !<ArgumentDefinition>
                 name: Arg3
-                type_definition: *i32
+                type_definition: *i8
                 comment: "Consumer count"
         attributes:
             - !AttributeID "Convergent"
@@ -10283,7 +10283,7 @@ intrinsics:
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *i32
+                type_definition: *i8
                 comment: "thread group named barrier ID"
         attributes:
             - !AttributeID "Convergent"
