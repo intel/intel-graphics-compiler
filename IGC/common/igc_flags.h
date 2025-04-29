@@ -694,6 +694,11 @@ DECLARE_IGC_REGKEY(bool, DisablePrefetchToL1Cache, false, "Disable prefetch to L
 DECLARE_IGC_REGKEY(bool, ForceXYZworkGroupWalkOrder, true, "Force X/Y/Z WorkGroup walk order", true)
 
 DECLARE_IGC_GROUP("Performance experiments")
+DECLARE_IGC_REGKEY(DWORD, ManageableBarriersMode, 0, "Set the ManageableBarriers mode in which should work" \
+    "0 - Mix Mode of simple and dynamic ManageableBarriers"
+    "1 - Dynamic Mode Only, it will use SLM to store data related with barrier and use them in gateway nbarrier instructions."
+    "2 - Simple Mode Only, it will use constant value in gateway nbarrier instructions (without SLM)."
+    , true)
 DECLARE_IGC_REGKEY(bool, ForceNonCoherentStatelessBTI,  false, "Enable gneeration of non cache coherent stateless messages", false)
 DECLARE_IGC_REGKEY(bool, ForceSendsSupportOnSKLA0,      false, "Allow sends on SKL A0, may be unsafe", false)
 DECLARE_IGC_REGKEY(bool, DisableWaSendSEnableIndirectMsgDesc, false, "Disable a C0 WA WaSendSEnableIndirectMsgDesc, may be unsafe", false)

@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2017-2024 Intel Corporation
+# Copyright (C) 2025 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -37,6 +37,7 @@ add_subdirectory(Decompose2DBlockFuncs)
 add_subdirectory(LocalBuffers)
 add_subdirectory(MinimumValidAddressChecking)
 add_subdirectory(NamedBarriers)
+add_subdirectory(ManageableBarriers)
 add_subdirectory(NontemporalLoadsAndStoresInAssert)
 add_subdirectory(OpenCLPrintf)
 add_subdirectory(PoisonFP64KernelsPass)
@@ -90,6 +91,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_LocalBuffers}
     ${IGC_BUILD__SRC__OpenCLPasses_MinimumValidAddressChecking}
     ${IGC_BUILD__SRC__OpenCLPasses_NamedBarriers}
+    ${IGC_BUILD__SRC__OpenCLPasses_ManageableBarriers}
     ${IGC_BUILD__SRC__OpenCLPasses_NontemporalLoadsAndStoresInAssert}
     ${IGC_BUILD__SRC__OpenCLPasses_OpenCLPrintf}
     ${IGC_BUILD__SRC__OpenCLPasses_PoisonFP64KernelsPass}
@@ -149,6 +151,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_LocalBuffers}
     ${IGC_BUILD__HDR__OpenCLPasses_MinimumValidAddressChecking}
     ${IGC_BUILD__HDR__OpenCLPasses_NamedBarriers}
+    ${IGC_BUILD__HDR__OpenCLPasses_ManageableBarriers}
     ${IGC_BUILD__HDR__OpenCLPasses_NontemporalLoadsAndStoresInAssert}
     ${IGC_BUILD__HDR__OpenCLPasses_OpenCLPrintf}
     ${IGC_BUILD__HDR__OpenCLPasses_PrivateMemory}
@@ -208,6 +211,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_LocalBuffers
     Compiler__OpenCLPasses_MinimumValidAddressChecking
     Compiler__OpenCLPasses_NamedBarriers
+    Compiler__OpenCLPasses_ManageableBarriers
     Compiler__OpenCLPasses_NontemporalLoadsAndStoresInAssert
     Compiler__OpenCLPasses_OpenCLPrintf
     Compiler__OpenCLPasses_PoisonFP64KernelsPass
