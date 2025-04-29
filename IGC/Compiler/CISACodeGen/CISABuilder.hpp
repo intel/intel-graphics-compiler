@@ -742,7 +742,6 @@ namespace IGC
         void SetBuilderOptions(VISABuilder* pbuilder);
 
         unsigned int GetSpillThreshold(SIMDMode simdmode);
-
     private:
         // helper functions for compile flow
         /// shaderOverrideVISAFirstPass - pre-process shader overide dir for visa shader override.

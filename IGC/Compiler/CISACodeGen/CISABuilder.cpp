@@ -8778,6 +8778,7 @@ namespace IGC
             }
 
             // 1st D32-V4 or D64-V2
+            bool ov = false;
             V(vKernel->AppendVISALscUntypedLoad(
                 subOp,
                 lscSfid,
@@ -8785,7 +8786,7 @@ namespace IGC
                 visaExecSize(mode),
                 GetAluEMask(offset),
                 cacheOpts,
-                false,
+                ov,
                 addr,
                 dataShape,
                 globalOffsetOpnd,
@@ -8801,7 +8802,7 @@ namespace IGC
                 visaExecSize(mode),
                 GetAluEMask(offset),
                 cacheOpts,
-                false,
+                ov,
                 addr2,
                 dataShape2,
                 globalOffsetOpnd2,
@@ -8813,6 +8814,7 @@ namespace IGC
         }
 
         unsigned surfaceIndex = 0x0;
+        bool ov = false;
         V(vKernel->AppendVISALscUntypedLoad(
             subOp,
             lscSfid,
@@ -8820,7 +8822,7 @@ namespace IGC
             visaExecSize(mode),
             GetAluEMask(offset),
             cacheOpts,
-            false,
+            ov,
             addr,
             dataShape,
             globalOffsetOpnd,
@@ -9009,6 +9011,7 @@ namespace IGC
         auto execSize = visaExecSize(m_encoderState.m_simdSize);
         auto execOff = ConvertMaskToVisaType(m_encoderState.m_mask, false);
 
+        bool ov = false;
         V(vKernel->AppendVISALscUntypedLoad(
             LSC_LOAD_STRIDED,
             lscSfid,
