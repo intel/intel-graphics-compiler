@@ -17,24 +17,27 @@ target triple = "spir64-unknown-unknown"
 %spirv.Image._void_1_0_0_0_0_0_0 = type opaque
 %spirv.Sampler = type opaque
 
-define spir_kernel void @test(ptr addrspace(1) %srcImg, i64 %inlineSampler) {
+define spir_kernel void @test(ptr addrspace(1) %srcImg, i32 %inlineSampler) {
 entry:
-; CHECK: [[INTTOPTR:%[0-9]+]] = inttoptr i64 %inlineSampler to ptr addrspace(2)
-; CHECK: [[PTRTOINT:%[0-9]+]] = ptrtoint ptr addrspace(2) [[INTTOPTR]] to i64
-; CHECK: [[OR:%[0-9]+]] = or i64 [[PTRTOINT]], 1
-; CHECK: %bindless_img = inttoptr i64 {{.*}} to ptr addrspace(393468)
-; CHECK: %bindless_sampler = inttoptr i64 [[OR]] to ptr addrspace(655612)
-; CHECK: = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196860.p393468.p655612(float 0.000000e+00, float %CoordX, float %CoordY, float 0.000000e+00, float 0.000000e+00, ptr addrspace(196860) undef, ptr addrspace(393468) %bindless_img, ptr addrspace(655612) %bindless_sampler, i32 0, i32 0, i32 0)
+; CHECK: [[ZEXT:%[0-9]+]] = zext i32 %inlineSampler to i64
+; CHECK: [[OR:%[0-9]+]] = or i64 [[ZEXT]], 1
+; CHECK: [[TRUNC:%[0-9]+]] = trunc i64 [[OR]] to i32
+; CHECK: [[TRUNC_IMG:%[0-9]+]] = trunc i64 %1 to i32
+; CHECK: %bindless_img = inttoptr i32 [[TRUNC_IMG]] to ptr addrspace(393468)
+; CHECK: %bindless_sampler = inttoptr i32 [[TRUNC]] to ptr addrspace(655360)
+; CHECK: = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196860.p393468.p655360(float 0.000000e+00, float %CoordX, float %CoordY, float 0.000000e+00, float 0.000000e+00, ptr addrspace(196860) undef, ptr addrspace(393468) %bindless_img, ptr addrspace(655360) %bindless_sampler, i32 0, i32 0, i32 0)
 
-  %0 = inttoptr i64 %inlineSampler to ptr addrspace(2)
+  %0 = inttoptr i64 16 to ptr addrspace(2)
   %1 = ptrtoint ptr addrspace(1) %srcImg to i64
   %2 = ptrtoint ptr addrspace(2) %0 to i64
   %3 = or i64 %2, 1
-  %4 = call spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i64 %1, i64 %3, <2 x float> zeroinitializer, float 0.000000e+00)
+  %4 = trunc i64 %3 to i32
+  %5 = trunc i64 %1 to i32
+  %6 = call spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i32 %5, i32 %4, <2 x float> zeroinitializer, float 0.000000e+00)
   ret void
 }
 
-declare spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i64, i64, <2 x float>, float)
+declare spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i32, i32, <2 x float>, float)
 
 !igc.functions = !{!0}
 !IGCMetadata = !{!5}
