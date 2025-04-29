@@ -675,9 +675,9 @@ void TraceRayInlineLoweringPass::LowerRayInfo(Function& F)
                 specialPattern = forceShortCurcuitingOR_CommittedGeomIdx(builder, I);
             }
 
-            Value* leafType = builder.getLeafType(ShadowMemStackPointer, I->isCommitted());
+            Value* leafType = builder.getLeafType(ShadowMemStackPointer, builder.getInt1(I->isCommitted()));
             Value* geoIndex = builder.getGeometryIndex(ShadowMemStackPointer, I, leafType,
-                I->isCommitted() ? CallableShaderTypeMD::ClosestHit : CallableShaderTypeMD::AnyHit, !specialPattern);
+                builder.getInt32(I->isCommitted() ? CallableShaderTypeMD::ClosestHit : CallableShaderTypeMD::AnyHit), !specialPattern);
             IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(), "Invalid geometryIndex type!");
             I->replaceAllUsesWith(geoIndex);
             I->eraseFromParent();
