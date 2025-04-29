@@ -367,7 +367,7 @@ namespace IGC
         static bool isHoistable( BinaryOperator* inst );
         static bool isHoistableOverAnchor( BinaryOperator* instToHoist, BinaryOperator* anchorInst );
         Function& F;
-        DenseMap<Value*, SmallVector<ShuffleGroup, 4>> ShuffleGroupMap;
+        DenseMap<std::pair<BasicBlock*, Value*>, SmallVector<ShuffleGroup, 4>> ShuffleGroupMap;
         DenseSet<WaveShuffleIndexIntrinsic*> Visited;
     };
 
@@ -451,7 +451,7 @@ bool WaveShuffleIndexSinkingImpl::splitWaveShuffleIndexes()
 bool WaveShuffleIndexSinkingImpl::mergeWaveShuffleIndexes()
 {
     // Map from Source to (Map from Lane to list of duplicate instructions)
-    DenseMap<Value*, DenseMap<ConstantInt*, SmallVector<WaveShuffleIndexIntrinsic*>>> mergeMap;
+    DenseMap<std::pair<BasicBlock*, Value*>, DenseMap<ConstantInt*, SmallVector<WaveShuffleIndexIntrinsic*>>> mergeMap;
     for( auto& BB : F )
     {
         for( auto& I : BB )
@@ -460,7 +460,7 @@ bool WaveShuffleIndexSinkingImpl::mergeWaveShuffleIndexes()
             {
                 if( auto* constantChannel = dyn_cast<ConstantInt>( waveShuffleInst->getChannel() ) )
                 {
-                    mergeMap[ waveShuffleInst->getSrc() ][ constantChannel ].push_back( waveShuffleInst );
+                    mergeMap[ {&BB, waveShuffleInst->getSrc()} ][ constantChannel ].push_back( waveShuffleInst );
                 }
             }
         }
@@ -505,11 +505,13 @@ void WaveShuffleIndexSinkingImpl::gatherShuffleGroups()
                     // Save compute and do not re-process/ create a new ShuffleGroup
                     continue;
                 }
-                if( ShuffleGroupMap.count( waveShuffleInst->getSrc() ) )
+
+                std::pair<BasicBlock*, Value*> bbShuffleGroup = { &BB, waveShuffleInst->getSrc() };
+                if ( ShuffleGroupMap.count( bbShuffleGroup ) )
                 {
                     // Found existing group(s) with the same source, try to match with one of the groups
                     bool match = false;
-                    for( auto& shuffleGroup : ShuffleGroupMap[ waveShuffleInst->getSrc() ] )
+                    for (auto& shuffleGroup : ShuffleGroupMap[ bbShuffleGroup ] )
                     {
                         if( shuffleGroup.match( waveShuffleInst ) )
                         {
@@ -521,13 +523,13 @@ void WaveShuffleIndexSinkingImpl::gatherShuffleGroups()
                     // create new ShuffleGroup since no suitable match was found
                     if( !match )
                     {
-                        ShuffleGroupMap[ waveShuffleInst->getSrc() ].emplace_back( waveShuffleInst );
+                        ShuffleGroupMap[ {&BB, waveShuffleInst->getSrc()} ].emplace_back( waveShuffleInst );
                     }
                 }
                 else
                 {
                     // create new ShuffleGroup for broadcast operations
-                    ShuffleGroupMap[ waveShuffleInst->getSrc() ].emplace_back( waveShuffleInst );
+                    ShuffleGroupMap[ {&BB, waveShuffleInst->getSrc()} ].emplace_back( waveShuffleInst );
                 }
             }
         }
