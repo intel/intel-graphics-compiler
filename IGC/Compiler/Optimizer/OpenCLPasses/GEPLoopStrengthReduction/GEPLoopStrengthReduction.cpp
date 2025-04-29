@@ -193,7 +193,7 @@ public:
 
     bool addToGroup(ScalarEvolution &SE, GetElementPtrInst *GEP, const SCEV *S, const SCEV *Step);
 
-    void transform(IRBuilder<> &IRB, SCEVExpander &E);
+    void transform(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E);
 
     bool isValid();
 
@@ -221,10 +221,10 @@ private:
 
     void swapBase(ReductionCandidate &C);
 
-    void reduceToPreheader(IRBuilder<> &IRB, SCEVExpander &E);
-    void reduceIndexOnly(IRBuilder<> &IRB, SCEVExpander &E);
+    void reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E);
+    void reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E);
 
-    Value *getStepValue(IRBuilder<> &IRB, SCEVExpander &E, BasicBlock *BB);
+    Value *getStepValue(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E, BasicBlock *BB);
 
     // Base GEP to reduce
     ReductionCandidate Base;
@@ -356,7 +356,7 @@ private:
 class Reducer
 {
 public:
-    Reducer(IRBuilder<> &IRB, RegisterPressureTracker &RPT, SCEVExpander &E, bool AllowLICM)
+    Reducer(IGCLLVM::IRBuilder<> &IRB, RegisterPressureTracker &RPT, SCEVExpander &E, bool AllowLICM)
         : IRB(IRB), RPT(RPT), E(E), AllowLICM(AllowLICM) {}
 
     bool reduce(SmallVectorImpl<ReductionCandidateGroup> &Candidates);
@@ -365,7 +365,7 @@ private:
 
     void cleanup(ReductionCandidateGroup &C);
 
-    IRBuilder<> &IRB;
+    IGCLLVM::IRBuilder<> &IRB;
     RegisterPressureTracker &RPT;
     SCEVExpander &E;
 
@@ -643,7 +643,7 @@ bool ReductionCandidateGroup::isValid()
 }
 
 
-void ReductionCandidateGroup::transform(IRBuilder<> &IRB, SCEVExpander &E)
+void ReductionCandidateGroup::transform(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E)
 {
     switch (RT)
     {
@@ -660,7 +660,7 @@ void ReductionCandidateGroup::transform(IRBuilder<> &IRB, SCEVExpander &E)
 //   1) Calculate start value in loop's preheader
 //   2) Add this new pointer as loop's induction variable with constant step
 //   3) Replace GEP instructions to use this pointer + constant offset
-void ReductionCandidateGroup::reduceToPreheader(IRBuilder<> &IRB, SCEVExpander &E)
+void ReductionCandidateGroup::reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E)
 {
     // Updates group's base to candidate with smallest SCEV expression.
     swapBase(getCheapestCandidate());
@@ -715,7 +715,7 @@ void ReductionCandidateGroup::reduceToPreheader(IRBuilder<> &IRB, SCEVExpander &
 
 // Keeps base GEP untouched and transforms other GEPs in the group to use
 // base GEP + constant offset.
-void ReductionCandidateGroup::reduceIndexOnly(IRBuilder<> &IRB, SCEVExpander &E)
+void ReductionCandidateGroup::reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E)
 {
     for (auto &Other : Others)
     {
@@ -733,7 +733,7 @@ void ReductionCandidateGroup::reduceIndexOnly(IRBuilder<> &IRB, SCEVExpander &E)
 }
 
 
-Value *ReductionCandidateGroup::getStepValue(IRBuilder<> &IRB, SCEVExpander &E, BasicBlock *BB)
+Value *ReductionCandidateGroup::getStepValue(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E, BasicBlock *BB)
 {
     if (auto *S = dyn_cast<SCEVConstant>(Step))
         return IRB.getInt64(dyn_cast<SCEVConstant>(Step)->getValue()->getSExtValue());
@@ -1697,7 +1697,7 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F)
 
     Scorer(DL, MMD, RPE, *WI).score(Candidates);
 
-    IRBuilder<> IRB(F.getContext());
+    IGCLLVM::IRBuilder<> IRB(F.getContext());
 
     bool changed = Reducer(IRB, RPT, E, AllowLICM).reduce(Candidates);
     if (changed)

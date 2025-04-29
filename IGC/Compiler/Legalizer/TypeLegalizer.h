@@ -53,7 +53,7 @@ namespace IGC {
             SoftenFloat
         };
 
-        typedef IRBuilder<TargetFolder> BuilderType;
+        typedef IGCLLVM::IRBuilder<TargetFolder> BuilderType;
 
         typedef TinyPtrVector<Type*> TypeSeq;
         typedef TinyPtrVector<Value*> ValueSeq;

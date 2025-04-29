@@ -4412,7 +4412,7 @@ bool GenXLowering::lowerByteSwap(CallInst *CI) {
   }
   unsigned FullBitWidth = ElementBits * InputNumElements;
 
-  IRBuilder<> Builder(CI);
+  llvm::IRBuilder<> Builder(CI);
 
   auto *IntSliceV = CI->getArgOperand(0);
 

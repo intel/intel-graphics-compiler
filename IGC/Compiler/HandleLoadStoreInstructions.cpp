@@ -46,7 +46,7 @@ bool HandleLoadStoreInstructions::runOnFunction(llvm::Function& F)
 
 void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst& I)
 {
-    IRBuilder<> builder(&I);
+    IGCLLVM::IRBuilder<> builder(&I);
     llvm::Value* ptrv = llvm::cast<llvm::LoadInst>(I).getPointerOperand();
 
     if (I.getType()->isDoubleTy() ||
@@ -123,7 +123,7 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst& I)
 
 void HandleLoadStoreInstructions::visitStoreInst(llvm::StoreInst& I)
 {
-    IRBuilder<> builder(&I);
+    IGCLLVM::IRBuilder<> builder(&I);
     llvm::Value* ptrv = llvm::cast<llvm::StoreInst>(I).getPointerOperand();
     if (I.getValueOperand()->getType()->isDoubleTy() ||
         (I.getValueOperand()->getType()->isVectorTy() &&

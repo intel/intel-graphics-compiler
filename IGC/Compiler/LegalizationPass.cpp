@@ -22,7 +22,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvmWrapper/IR/InstrTypes.h"
-#include <llvm/IR/DerivedTypes.h>
 #include <llvmWrapper/IR/BasicBlock.h>
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
@@ -82,7 +81,7 @@ bool Legalization::runOnFunction(Function& F)
         // Do not preserve nan but honor nan checks.
         m_preserveNanCheck = true;
     }
-    IRBuilder<> builder(F.getContext());
+    llvm::IRBuilder<> builder(F.getContext());
     m_builder = &builder;
     // Emit pass doesn't support constant expressions, therefore we do not expect to run into them in this pass
     for (auto I = inst_begin(F), E = inst_end(F); I != E; ++I)
@@ -427,7 +426,7 @@ void Legalization::visitCallInst(llvm::CallInst& I)
             IGC_ASSERT(nullptr != bb);
             Function* const f = bb->getParent();
             IGC_ASSERT(nullptr != f);
-            IRBuilder<> Builder(GII);
+            IGCLLVM::IRBuilder<> Builder(GII);
 
             const bool isSigned = GII->getIntrinsicID() == GenISAIntrinsic::GenISA_imulH;
 
@@ -1913,7 +1912,7 @@ void Legalization::visitAlloca(AllocaInst& I)
 void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
 {
     m_ctx->m_instrTypes.numInsts++;
-    IRBuilder<> Builder(&I);
+    IGCLLVM::IRBuilder<> Builder(&I);
 
     auto intrinsicID = I.getIntrinsicID();
 
@@ -2169,7 +2168,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
             // On platform lacking of FP16 rounding, promote them to FP32 and
             // demote back.
             Value* Val = Builder.CreateFPExt(I.getOperand(0), Builder.getFloatTy());
-            auto Callee = FunctionCallee(Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(), intrinsicID, Builder.getFloatTy()));
+            Value* Callee = Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(), intrinsicID, Builder.getFloatTy());
             Val = Builder.CreateCall(Callee, ArrayRef<Value*>(Val));
             Val = Builder.CreateFPTrunc(Val, I.getType());
             I.replaceAllUsesWith(Val);

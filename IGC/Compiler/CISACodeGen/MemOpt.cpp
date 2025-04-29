@@ -130,11 +130,11 @@ namespace {
             llvm::DenseMap<Instruction*, unsigned> &depthTracking);
 
         void removeVectorBlockRead(Instruction* BlockReadToOptimize, Instruction* BlockReadToRemove,
-            Value* SgId, IRBuilder<>& Builder, unsigned& sg_size);
+            Value* SgId, llvm::IRBuilder<>& Builder, unsigned& sg_size);
         void removeScalarBlockRead(Instruction* BlockReadToOptimize, Instruction* BlockReadToRemove,
-            Value* SgId, IRBuilder<>& Builder);
+            Value* SgId, llvm::IRBuilder<>& Builder);
         Value* getShuffle(Value* ShflId, Instruction* BlockReadToOptimize,
-            Value* SgId, IRBuilder<>& Builder, unsigned& ToOptSize);
+            Value* SgId, llvm::IRBuilder<>& Builder, unsigned& ToOptSize);
 
         unsigned getNumElements(Type* Ty) const {
             return Ty->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() : 1;
@@ -718,7 +718,7 @@ bool MemOpt::removeRedBlockRead(GenIntrinsicInst* LeadingBlockRead,
 //Removes redundant blockread if both blockreads are scalar.
 void MemOpt::removeScalarBlockRead(Instruction* BlockReadToOptimize,
     Instruction* BlockReadToRemove, Value* SgId,
-    IRBuilder<>& Builder)
+    llvm::IRBuilder<>& Builder)
 {
     Type* BlockReadToOptType = BlockReadToOptimize->getType();
     unsigned ToOptSize = (unsigned)(BlockReadToOptType->getPrimitiveSizeInBits());
@@ -739,7 +739,7 @@ void MemOpt::removeScalarBlockRead(Instruction* BlockReadToOptimize,
 //Removes redundant blockreads if one of the pair is a vector blockread.
 void MemOpt::removeVectorBlockRead(Instruction* BlockReadToOptimize,
     Instruction* BlockReadToRemove, Value* SgId,
-    IRBuilder<>& Builder, unsigned& sg_size)
+    llvm::IRBuilder<>& Builder, unsigned& sg_size)
 {
     Type* BlockReadToOptType = BlockReadToOptimize->getType();
     Type* BlockReadToRemoveType = BlockReadToRemove->getType();
@@ -904,7 +904,7 @@ void MemOpt::removeVectorBlockRead(Instruction* BlockReadToOptimize,
 //or it returns value which is concatenation of two shuffle instructions.
 Value* MemOpt::getShuffle(Value* ShflId,
     Instruction* BlockReadToOptimize,
-    Value* SgId, IRBuilder<>&Builder,
+    Value* SgId, llvm::IRBuilder<>&Builder,
     unsigned& ToOptSize)
 {
     Value* shuffle = nullptr;
@@ -1297,7 +1297,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     if (s < 2)
         return false;
 
-    IRBuilder<> Builder(LeadingLoad);
+    IGCLLVM::IRBuilder<> Builder(LeadingLoad);
 
     // Start to merge loads.
     IGC_ASSERT_MESSAGE(1 < NumElts, "It's expected to merge into at least 2-element vector!");
@@ -1645,7 +1645,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
 
     // Tailing store is always the last one in the program order.
     StoreInst* TailingStore = std::get<0>(StoresToMerge.back());
-    IRBuilder<> Builder(TailingStore);
+    IGCLLVM::IRBuilder<> Builder(TailingStore);
 
     // Start to merge stores.
     NumElts = 0;

@@ -187,7 +187,7 @@ void LowerInvokeSIMD::fixUniformParamsAndSIMDSize(
 }
 
 bool LowerInvokeSIMD::runOnModule(Module &M) {
-  IRBuilder<> builder(M.getContext());
+  IGCLLVM::IRBuilder<> builder(M.getContext());
   m_Builder = &builder;
   m_changed = false;
   m_OldFuncToNewFuncMap.clear();

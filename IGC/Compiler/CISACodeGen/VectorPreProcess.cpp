@@ -179,7 +179,7 @@ namespace
         }
         Instruction* Create(Type* returnType, Value* ptr, alignment_t alignment, bool isVolatile, Value* mergeValue = nullptr)
         {
-            IRBuilder<> builder(m_inst);
+            IGCLLVM::IRBuilder<> builder(m_inst);
             if (isa<LoadInst>(m_inst))
             {
                 Type* newPtrType = PointerType::get(returnType, ptr->getType()->getPointerAddressSpace());
@@ -222,7 +222,7 @@ namespace
         // Emulates a GEP on a pointer of the scalar type of returnType.
         Value* CreateConstScalarGEP(Type* returnType, Value* ptr, uint32_t offset)
         {
-            IRBuilder<> builder(m_inst);
+            IGCLLVM::IRBuilder<> builder(m_inst);
             if (isa<LoadInst>(m_inst) || isa<PredicatedLoadIntrinsic>(m_inst))
             {
                 Type* ePtrType = PointerType::get(returnType->getScalarType(), ptr->getType()->getPointerAddressSpace());
@@ -375,7 +375,7 @@ namespace
         // Emulates a GEP on a pointer of the scalar type of storedType.
         Value* CreateConstScalarGEP(Type* storedType, Value* ptr, uint32_t offset)
         {
-            IRBuilder<> builder(m_inst);
+            IGCLLVM::IRBuilder<> builder(m_inst);
             if (isa<StoreInst>(m_inst) || isa<PredicatedStoreIntrinsic>(m_inst))
             {
                 Type* ePtrType = PointerType::get(storedType->getScalarType(), ptr->getType()->getPointerAddressSpace());

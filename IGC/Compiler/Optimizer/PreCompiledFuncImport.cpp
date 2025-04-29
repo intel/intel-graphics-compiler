@@ -554,7 +554,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                 IGCLLVM::FixedVectorType* instVecType = dyn_cast<IGCLLVM::FixedVectorType>(instType);
                 if (instType->isDoubleTy() || (instVecType && instVecType->getElementType()->isDoubleTy()))
                 {
-                    IRBuilder<> builder(Inst);
+                    IGCLLVM::IRBuilder<> builder(Inst);
                     Value* fsub = nullptr;
 
                     if (!Inst->getType()->isVectorTy())
@@ -733,7 +733,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
 
     std::vector<std::pair<CallInst*,CallInst*>> replaceInsts;
     auto createIntrinsicCall = [&](CallInst* CI, GenISAIntrinsic::ID GISAIntr) {
-        IRBuilder<> builder(CI);
+        IGCLLVM::IRBuilder<> builder(CI);
         std::vector<Value*> args;
         std::vector<Type*> types;
 
@@ -1245,7 +1245,7 @@ void PreCompiledFuncImport::visitBinaryOperator(BinaryOperator& I)
 // %rem1 = srem i32 %c, %d
 BinaryOperator* PreCompiledFuncImport::upcastTo32Bit(BinaryOperator* I)
 {
-    IRBuilder<> IRB(I);
+    IGCLLVM::IRBuilder<> IRB(I);
 
     //original 8/16 bit src0 and src1
     Value* src0 = I->getOperand(0);
@@ -1343,7 +1343,7 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator& inst, Int32Emulat
     Value* args[3];
     args[0] = inst.getOperand(0);
     args[1] = inst.getOperand(1);
-    IRBuilder<> builder(
+    IGCLLVM::IRBuilder<> builder(
         &*inst.getFunction()->getEntryBlock().getFirstInsertionPt());
     AllocaInst* pRem = builder.CreateAlloca(intTy, nullptr, "Remainder");
     builder.SetInsertPoint(&inst);

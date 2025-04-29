@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
-#include <llvm/IR/DerivedTypes.h>
 
 namespace pktz {
 Constant *PacketBuilder::C(int Val) {
@@ -57,7 +56,7 @@ Value *PacketBuilder::VBROADCAST(Value *Src, const llvm::Twine &Name) {
   return VECTOR_SPLAT(VWidth, Src, Name);
 }
 
-CallInst *PacketBuilder::CALL(FunctionCallee *Callee,
+CallInst *PacketBuilder::CALL(Value *Callee,
                               const std::initializer_list<Value *> &ArgsList,
                               const llvm::Twine &Name) {
   std::vector<Value *> Args;
@@ -99,9 +98,9 @@ Value *PacketBuilder::BITCAST(Value *V, Type *DestTy, const Twine &Name) {
   return IRB->CreateBitCast(V, DestTy, Name);
 }
 
-CallInst *PacketBuilder::CALLA(FunctionCallee *Callee, ArrayRef<Value *> Args,
+CallInst *PacketBuilder::CALLA(Value *Callee, ArrayRef<Value *> Args,
                                const Twine &Name, MDNode *FPMathTag) {
-  return IRB->CreateCall(*Callee, Args, Name, FPMathTag);
+  return IRB->CreateCall(Callee, Args, Name, FPMathTag);
 }
 
 Value *PacketBuilder::CAST(Instruction::CastOps Op, Value *V, Type *DestTy,

@@ -310,7 +310,7 @@ void GenUpdateCB::InsertInstTree(Instruction* inst, Instruction* pos)
 
 Instruction* GenUpdateCB::CreateModule(Module* M)
 {
-    IRBuilder<> cb_builder(M->getContext());
+    llvm::IRBuilder<> cb_builder(M->getContext());
     m_ConstantBufferReplaceShaderPatterns = new Module("CB", M->getContext());
     m_ConstantBufferReplaceShaderPatterns->setDataLayout(M->getDataLayout());
     Function* entry = Function::Create(FunctionType::get(cb_builder.getVoidTy(), false),
@@ -436,7 +436,7 @@ bool GenUpdateCB::runOnFunction(Function& F)
     if (foundCases)
     {
         Instruction* ret = nullptr;
-        IRBuilder<> orig_builder(F.getContext());
+        llvm::IRBuilder<> orig_builder(F.getContext());
 
         for (auto iter = m_CbUpdateMap.begin(); iter != m_CbUpdateMap.end(); iter++)
         {
@@ -481,7 +481,7 @@ bool GenUpdateCB::runOnFunction(Function& F)
                 {
                     ret = CreateModule(F.getParent());
                 }
-                IRBuilder<> cb_builder(m_ConstantBufferReplaceShaderPatterns->getContext());
+                llvm::IRBuilder<> cb_builder(m_ConstantBufferReplaceShaderPatterns->getContext());
 
                 cb_builder.SetInsertPoint(ret);
                 // add inst and its sources to the CB mini shader

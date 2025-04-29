@@ -50,7 +50,7 @@ void WIFuncResolution::storeImplicitBufferPtrs(llvm::Function& F)
     {
         if (m_implicitArgs.isImplicitArgExist(ImplicitArg::ArgType::IMPLICIT_ARG_BUFFER_PTR))
         {
-            IRBuilder<> Builder(&(*F.getEntryBlock().getFirstInsertionPt()));
+            IGCLLVM::IRBuilder<> Builder(&(*F.getEntryBlock().getFirstInsertionPt()));
 
             auto BufferPtr = m_implicitArgs.getImplicitArgValue(F, ImplicitArg::ArgType::IMPLICIT_ARG_BUFFER_PTR, m_pMdUtils);
 
@@ -323,7 +323,7 @@ llvm::Value* LowerImplicitArgIntrinsics::BuildLoadInst(llvm::CallInst& CI, unsig
     unsigned int AlignedOffset = (Offset / ElemByteSize) * ElemByteSize;
     unsigned int LoadByteSize = (Offset == AlignedOffset) ? Size : Size * 2;
 
-    IRBuilder<> Builder(&CI);
+    IGCLLVM::IRBuilder<> Builder(&CI);
     unsigned int AddrSpace = ADDRESS_SPACE_GLOBAL;
     if (m_ctx->platform.isProductChildOf(IGFX_XE_HP_SDV))
     {
@@ -694,7 +694,7 @@ llvm::Value* LowerImplicitArgIntrinsics::getIntrinsicCall(llvm::Function* F, llv
 
     // if intrinsic call doesn't exist - create it
     auto getFunctionDeclaration = GenISAIntrinsic::getDeclaration(F->getParent(), IntrinsicID, DataType);
-    IRBuilder<> Builder(&*F->getEntryBlock().begin());
+    llvm::IRBuilder<> Builder(&*F->getEntryBlock().begin());
     auto callValue = Builder.CreateCall(getFunctionDeclaration);
     usedIntrinsicsMap.insert(std::pair(IntrinsicID, callValue));
     return callValue;
@@ -753,7 +753,7 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
     if (LoadFromImplicitArgBuffer)
     {
         Value* V = nullptr;
-        IRBuilder<> Builder(&CI);
+        IGCLLVM::IRBuilder<> Builder(&CI);
 
         switch (ID)
         {

@@ -40,7 +40,7 @@ BfloatFuncsResolution::BfloatFuncsResolution(void) : FunctionPass(ID)
 
 bool BfloatFuncsResolution::runOnFunction(Function& F)
 {
-    IRBuilder<> builder(F.getContext());
+    llvm::IRBuilder<> builder(F.getContext());
     m_builder = &builder;
     m_changed = false;
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();

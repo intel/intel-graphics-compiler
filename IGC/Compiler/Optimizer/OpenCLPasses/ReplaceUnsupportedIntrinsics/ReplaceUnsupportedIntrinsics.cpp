@@ -97,8 +97,8 @@ namespace
             LLVMContext& C, uint32_t NumI8, uint32_t Align,
             uint32_t& NumI32, Type** Vecs, uint32_t& L, uint32_t BaseTypeSize);
         // support function for replaceCountTheLeadingZeros
-        Value* evaluateCtlzUpto32bit(IRBuilder<>* Builder, Value* inVal, Type* singleElementType, Value* canBePoison);
-        Value* evaluateCtlz64bit(IRBuilder<>* Builder, Value* inVal, Type* singleElementType, Value* canBePoison);
+        Value* evaluateCtlzUpto32bit(IGCLLVM::IRBuilder<>* Builder, Value* inVal, Type* singleElementType, Value* canBePoison);
+        Value* evaluateCtlz64bit(IGCLLVM::IRBuilder<>* Builder, Value* inVal, Type* singleElementType, Value* canBePoison);
 
         /// replace member function
         void replaceMemcpy(IntrinsicInst* I);
@@ -190,7 +190,7 @@ Instruction* ReplaceUnsupportedIntrinsics::insertReverseLoop(
     {
         // Remove the unconditional 'br' instruction which will be replaced by a conditional 'br'
         Pre->getTerminator()->eraseFromParent();
-        IRBuilder<> B(Pre);
+        IGCLLVM::IRBuilder<> B(Pre);
         B.SetCurrentDebugLocation(DL);
         // Init the IV
         auto* Init = B.CreateSub(Length, One);
@@ -202,7 +202,7 @@ Instruction* ReplaceUnsupportedIntrinsics::insertReverseLoop(
     Instruction* IV;
     {
         // Loop body's Basic Block
-        IRBuilder<> B(Body);
+        IGCLLVM::IRBuilder<> B(Body);
         B.SetCurrentDebugLocation(DL);
         IV = B.CreateLoad(cast<llvm::AllocaInst>(pIV)->getAllocatedType(), pIV, "IV");
         // User of function will add more instructions at this point ...
@@ -235,7 +235,7 @@ Instruction* ReplaceUnsupportedIntrinsics::insertLoop(Instruction* Loc, Value* L
     {
         // Remove the unconditional 'br' instruction which will be replaced by a conditional 'br'
         Pre->getTerminator()->eraseFromParent();
-        IRBuilder<> B(Pre);
+        IGCLLVM::IRBuilder<> B(Pre);
         B.SetCurrentDebugLocation(DL);
         ConstantInt* Zero = ConstantInt::get(LengthType, 0);
         // Init the IV
@@ -247,7 +247,7 @@ Instruction* ReplaceUnsupportedIntrinsics::insertLoop(Instruction* Loc, Value* L
     Instruction* IV;
     {
         // Loop body's Basic Block
-        IRBuilder<> B(Body);
+        IGCLLVM::IRBuilder<> B(Body);
         B.SetCurrentDebugLocation(DL);
         IV = B.CreateLoad(cast<llvm::AllocaInst>(pIV)->getAllocatedType(), pIV, "IV");
         // User of function will add more instructions at this point ...
@@ -272,7 +272,7 @@ Value* ReplaceUnsupportedIntrinsics::replicateScalar(
     IGC_ASSERT_MESSAGE(nBits <= 64, "Type mismatch in replicateScalar!");
     uint32_t ratio = nBits / sBits;
 
-    IRBuilder<> Builder(InsertBefore);
+    IGCLLVM::IRBuilder<> Builder(InsertBefore);
     Value* NewVal;
     if (ratio > 1)
     {
@@ -494,7 +494,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
     Type* TySrcPtrI8 = Type::getInt8PtrTy(C, SrcAS);
     Type* TyDstPtrI8 = Type::getInt8PtrTy(C, DstAS);
 
-    IRBuilder<> Builder(MC);
+    IGCLLVM::IRBuilder<> Builder(MC);
 
     // BaseSize == 32 if we want to handle algorithm in general way
     // or different value if want to keep size of base type to further optimizations
@@ -553,7 +553,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
                 Value* NewLPCount = ConstantInt::get(LPCount->getType(), NewCount);
                 Instruction* IV = insertLoop(MC, NewLPCount, "memcpy");
                 {
-                    IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
+                    IGCLLVM::IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
                     Value* tSrc = B.CreateGEP(VecTys[0], vSrc, IV);
                     Value* tDst = B.CreateGEP(VecTys[0], vDst, IV);
                     LoadInst* L = B.CreateAlignedLoad(VecTys[0], tSrc, getAlign(SrcAlign), IsVolatile);
@@ -595,7 +595,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
         // Fall back to i8 copy
         Instruction* IV = insertLoop(MC, LPCount, "memcpy");
         {
-            IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
+            IGCLLVM::IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
             Value* tSrc = B.CreateGEP(Builder.getInt8Ty(), Src, IV);
             Value* tDst = B.CreateGEP(Builder.getInt8Ty(), Dst, IV);
             LoadInst* L = B.CreateAlignedLoad(Builder.getInt8Ty(), tSrc, getAlign(SrcAlign), IsVolatile);
@@ -640,7 +640,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst* I)
 
     auto* F = MM->getParent()->getParent();
 
-    IRBuilder<> B(MM);
+    IGCLLVM::IRBuilder<> B(MM);
 
     auto* i8Src = B.CreateBitCast(SkipBitCast(Src), TySrcPtrI8, "memcpy_src");
     auto* i8Dst = B.CreateBitCast(SkipBitCast(Dst), TyDstPtrI8, "memcpy_dst");
@@ -749,7 +749,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst* I)
                 auto* NewLPCount = ConstantInt::get(LPCount->getType(), NewCount);
                 Instruction* IV = insertReverseLoop(BBTrue, Post, NewLPCount, "memmmove");
                 {
-                    IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
+                    IGCLLVM::IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
                     Value* tSrc = B.CreateGEP(VecTys[0], vSrc, IV);
                     Value* tDst = B.CreateGEP(VecTys[0], vDst, IV);
                     LoadInst* L = B.CreateAlignedLoad(VecTys[0], tSrc, getAlign(newAlign), IsVolatile);
@@ -773,7 +773,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst* I)
             // Fall back to i8 copy
             Instruction* IV = insertReverseLoop(BBTrue, Post, LPCount, "memmove");
             {
-                IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
+                IGCLLVM::IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
                 Value* tSrc = B.CreateGEP(B.getInt8Ty(), i8Src, IV);
                 Value* tDst = B.CreateGEP(B.getInt8Ty(), i8Dst, IV);
                 LoadInst* L = B.CreateAlignedLoad(B.getInt8Ty(), tSrc, getAlign(1), IsVolatile);
@@ -806,7 +806,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
     LLVMContext& C = MS->getContext();
     Type* TyPtrI8 = Type::getInt8PtrTy(C, AS);
 
-    IRBuilder<> Builder(MS);
+    IGCLLVM::IRBuilder<> Builder(MS);
 
     // BaseSize == 32 if we want to handle algorithm in general way
     // or different value if want to keep size of base type to further optimizations
@@ -862,7 +862,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
                 Value* NewLPCount = ConstantInt::get(LPCount->getType(), NewCount);
                 Instruction* IV = insertLoop(MS, NewLPCount, "memset");
                 {
-                    IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
+                    IGCLLVM::IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
                     Value* tDst = B.CreateGEP(VecTys[0], vDst, IV);
                     (void)B.CreateAlignedStore(vSrc, tDst, getAlign(Align), IsVolatile);
                 }
@@ -899,7 +899,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
         // Fall back to i8 copy
         Instruction* IV = insertLoop(MS, LPCount, "memset");
         {
-            IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
+            IGCLLVM::IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
             Value* tDst = B.CreateGEP(Builder.getInt8Ty(), Dst, IV);
             (void)B.CreateAlignedStore(Src, tDst, getAlign(Align), IsVolatile);
         }
@@ -927,7 +927,7 @@ void ReplaceUnsupportedIntrinsics::replaceExpect(IntrinsicInst* MS)
 void ReplaceUnsupportedIntrinsics::replaceFunnelShift(IntrinsicInst* I) {
     IGC_ASSERT(I->getIntrinsicID() == Intrinsic::fshl ||
         I->getIntrinsicID() == Intrinsic::fshr);
-    IRBuilder<> Builder(I);
+    IGCLLVM::IRBuilder<> Builder(I);
     unsigned sizeInBits = I->getArgOperand(0)->getType()->getScalarSizeInBits();
 
     // Don't replace rotate
@@ -985,7 +985,7 @@ void ReplaceUnsupportedIntrinsics::replaceLRound(IntrinsicInst* I) {
     IGC_ASSERT(!(srcType->isVectorTy() || dstType->isVectorTy()));
     IGC_ASSERT(srcType->isFloatTy() || srcType->isDoubleTy());
     IGC_ASSERT(dstType->isIntegerTy());
-    IRBuilder<> Builder(I);
+    IGCLLVM::IRBuilder<> Builder(I);
     Value* zero = ConstantFP::get(srcType, 0.0f);
     Value* cmp = Builder.CreateFCmpOGE(inVal, zero);
     Value* val05 = nullptr;
@@ -1029,7 +1029,7 @@ void ReplaceUnsupportedIntrinsics::replaceLRint(IntrinsicInst* I) {
     IGC_ASSERT(!(srcType->isVectorTy() || dstType->isVectorTy()));
     IGC_ASSERT(srcType->isFloatTy() || srcType->isDoubleTy());
     IGC_ASSERT(dstType->isIntegerTy());
-    IRBuilder<> Builder(I);
+    IGCLLVM::IRBuilder<> Builder(I);
     StringRef inValName = inVal->getName();
     const char *suffix = IntrID == Intrinsic::lrint ? ".lrint" : ".llrint";
     Value* FPToInt = Builder.CreateFPToSI(inVal, dstType, inValName + suffix);
@@ -1058,7 +1058,7 @@ void ReplaceUnsupportedIntrinsics::replaceI64MinMax(IntrinsicInst* I)
         {Intrinsic::umin, CmpInst::Predicate::ICMP_ULT}
     };
 
-    IRBuilder<> Builder(I);
+    IGCLLVM::IRBuilder<> Builder(I);
 
     Value* LHS = I->getArgOperand(0), * RHS = I->getArgOperand(1);
     auto Cmp = cast<Instruction>(
@@ -1068,7 +1068,7 @@ void ReplaceUnsupportedIntrinsics::replaceI64MinMax(IntrinsicInst* I)
 
 void ReplaceUnsupportedIntrinsics::replaceI1MinMax(IntrinsicInst* I)
 {
-    IRBuilder<> Builder(I);
+    IGCLLVM::IRBuilder<> Builder(I);
 
     Value* LHS = I->getArgOperand(0), * RHS = I->getArgOperand(1);
 
@@ -1131,7 +1131,7 @@ void ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros(IntrinsicInst* I)
     bool bitSizeLowerThan32 = singleElementSizeInBits < 32;
     bool bitSizeEqual64 = singleElementSizeInBits == 64;
 
-    IRBuilder<> Builder(I);
+    IGCLLVM::IRBuilder<> Builder(I);
 
     Value* inputVal = I->getArgOperand(0);
     Value* canBePoison = I->getArgOperand(1);
@@ -1158,7 +1158,7 @@ void ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros(IntrinsicInst* I)
     I->replaceAllUsesWith(outputVal);
 }
 
-Value* ReplaceUnsupportedIntrinsics::evaluateCtlzUpto32bit(IRBuilder<>* Builder, Value* inVal, Type* singleElementType, Value* canBePoison) {
+Value* ReplaceUnsupportedIntrinsics::evaluateCtlzUpto32bit(IGCLLVM::IRBuilder<>* Builder, Value* inVal, Type* singleElementType, Value* canBePoison) {
     int sizeInBits = singleElementType->getScalarSizeInBits();
     Value* retVal = Builder->CreateZExt(inVal, Builder->getInt32Ty());
     retVal = Builder->CreateIntrinsic(Intrinsic::ctlz, { Builder->getInt32Ty() }, { retVal, canBePoison });
@@ -1168,7 +1168,7 @@ Value* ReplaceUnsupportedIntrinsics::evaluateCtlzUpto32bit(IRBuilder<>* Builder,
     return retVal;
 }
 
-Value* ReplaceUnsupportedIntrinsics::evaluateCtlz64bit(IRBuilder<>* Builder, Value* inVal, Type* singleElementType, Value* canBePoison) {
+Value* ReplaceUnsupportedIntrinsics::evaluateCtlz64bit(IGCLLVM::IRBuilder<>* Builder, Value* inVal, Type* singleElementType, Value* canBePoison) {
     Value* lowBits = Builder->CreateTrunc(inVal, Builder->getInt32Ty());
     lowBits = Builder->CreateIntrinsic(Intrinsic::ctlz, { Builder->getInt32Ty() }, { lowBits, canBePoison });
 

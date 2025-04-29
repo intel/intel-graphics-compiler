@@ -111,7 +111,7 @@ Value &vc::ImplicitArgs::Buffer::getPointer<vc::ThreadPayloadKind::OnRegister>(
   return *Ptr;
 }
 
-Value &vc::ImplicitArgs::Buffer::getPointer(IRBuilder<> &IRB,
+Value &vc::ImplicitArgs::Buffer::getPointer(llvm::IRBuilder<> &IRB,
                                             ThreadPayloadKind Kind) {
   if (Kind == vc::ThreadPayloadKind::InMemory)
     return vc::ImplicitArgs::Buffer::getPointer<
@@ -195,7 +195,7 @@ Value &vc::ImplicitArgs::LocalID::getPointer<vc::ThreadPayloadKind::OnRegister>(
 }
 
 Value &vc::ImplicitArgs::LocalID::getPointer(Value &BufferPtr,
-                                             IRBuilder<> &IRB,
+                                             llvm::IRBuilder<> &IRB,
                                              ThreadPayloadKind Kind,
                                              const Twine &Name) {
   if (Kind == vc::ThreadPayloadKind::InMemory)

@@ -283,7 +283,7 @@ namespace IGC
                     slmVar->setSection("localSLM");
 
                     // TODO: optimize on x-y-z values
-                    llvm::IRBuilder<> builder(pAI);
+                    IGCLLVM::IRBuilder<> builder(pAI);
 
                     builder.SetCurrentDebugLocation(emptyDebugLoc);
 

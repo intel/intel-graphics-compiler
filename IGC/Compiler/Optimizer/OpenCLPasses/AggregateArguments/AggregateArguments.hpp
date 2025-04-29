@@ -76,7 +76,7 @@ namespace IGC
         virtual bool runOnFunction(llvm::Function& F) override;
 
     private:
-        void storeArgument(const llvm::Argument*, llvm::AllocaInst* base, llvm::IRBuilder<>& irBuilder);
+        void storeArgument(const llvm::Argument*, llvm::AllocaInst* base, IGCLLVM::IRBuilder<>& irBuilder);
 
         void getImplicitArg(unsigned int explicitArgNo, unsigned int& startArgNo, unsigned int& endArgNo);
 

@@ -235,7 +235,7 @@ bool ResolveAggregateArguments::runOnFunction(Function& F)
     m_pFunction = &F;
 
     bool changed = false;
-    IRBuilder<> irBuilder(&F.getEntryBlock(), F.getEntryBlock().begin());
+    IGCLLVM::IRBuilder<> irBuilder(&F.getEntryBlock(), F.getEntryBlock().begin());
 
     Function::arg_iterator argument = F.arg_begin();
     for (; argument != F.arg_end(); ++argument)
@@ -265,7 +265,7 @@ bool ResolveAggregateArguments::runOnFunction(Function& F)
     return changed;
 }
 
-void ResolveAggregateArguments::storeArgument(const Argument* arg, AllocaInst* base, IRBuilder<>& irBuilder)
+void ResolveAggregateArguments::storeArgument(const Argument* arg, AllocaInst* base, IGCLLVM::IRBuilder<>& irBuilder)
 {
     unsigned int startArgNo, endArgNo;
     getImplicitArg(arg->getArgNo(), startArgNo, endArgNo);

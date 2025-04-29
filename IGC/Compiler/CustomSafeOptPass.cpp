@@ -696,7 +696,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
     if (newSize >= pType->getArrayNumElements() || newSize == 0)
         return;
     // found a case to optimize
-    IRBuilder<> IRB(&I);
+    IGCLLVM::IRBuilder<> IRB(&I);
     llvm::ArrayType* allocaArraySize = llvm::ArrayType::get(pType->getArrayElementType(), newSize);
     llvm::AllocaInst* newAlloca = IRB.CreateAlloca(allocaArraySize, nullptr);
     llvm::Value* gepArg1 = nullptr;
@@ -919,7 +919,7 @@ void CustomSafeOptPass::visitSelectInst(SelectInst& I)
     // select i1 %x, %y, 0 -> and i1 %x, %y
 
     using namespace llvm::PatternMatch;
-    IRBuilder<> Builder(&I);
+    llvm::IRBuilder<> Builder(&I);
 
     if (I.getType()->isIntegerTy(1) && match(&I, m_Select(m_Value(), m_SpecificInt(1), m_Value())))
     {
@@ -2017,7 +2017,7 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::SamplerLoadIntrinsic* inst)
     }
 
     // do the transformation
-    IRBuilder<> builder(inst);
+    llvm::IRBuilder<> builder(inst);
     Module* M = inst->getParent()->getParent()->getParent();
 
     Function* pLdIntrinsic = llvm::GenISAIntrinsic::getDeclaration(
@@ -2079,7 +2079,7 @@ void IGC::CustomSafeOptPass::visitLdRawVec(llvm::CallInst* inst)
         {
             if (auto constIndex = dyn_cast<ConstantInt>(EE->getIndexOperand()))
             {
-                IRBuilder<> builder(inst);
+                llvm::IRBuilder<> builder(inst);
 
                 llvm::SmallVector<llvm::Type*, 2> ovldtypes{
                     EE->getType(), //float type
@@ -2123,7 +2123,7 @@ void IGC::CustomSafeOptPass::visitLdRawVec(llvm::CallInst* inst)
                 SV->getShuffleMask().size() == 1 &&
                 SV->getShuffleMask().front() == 0)
             {
-                IRBuilder<> builder(inst);
+                llvm::IRBuilder<> builder(inst);
 
                 llvm::SmallVector<llvm::Type*, 2> ovldtypes{
                     SV->getType(),
@@ -2628,7 +2628,7 @@ void GenSpecificPattern::visitMul(llvm::BinaryOperator& I)
 
     const bool HasNUW = I.hasNoUnsignedWrap();
     const bool HasNSW = I.hasNoSignedWrap();
-    IRBuilder<> builder(&I);
+    IGCLLVM::IRBuilder<> builder(&I);
     // 2^n case
     if (ConstOp->isPowerOf2())
     {
@@ -2655,7 +2655,7 @@ void GenSpecificPattern::visitMul(llvm::BinaryOperator& I)
     Value* Shl = builder.CreateShl(
         ValOp, (uint64_t)ConstOpAbs.exactLogBase2(), "",
         /*bool NUW=*/HasNUW, /*bool NSW=*/HasNSW);
-    Value* Neg = builder.CreateNeg(Shl, "", false, HasNSW);
+    Value* Neg = builder.CreateNegNoNUW(Shl, "", /*bool NSW=*/HasNSW);
     I.replaceAllUsesWith(Neg);
     I.eraseFromParent();
 
@@ -2801,7 +2801,7 @@ void CustomSafeOptPass::matchReverse(BinaryOperator& I)
 
     if (isBfrevMatchFound)
     {
-        IRBuilder<> builder(&I);
+        llvm::IRBuilder<> builder(&I);
         Function* bfrevFunc = GenISAIntrinsic::getDeclaration(
             I.getParent()->getParent()->getParent(), GenISAIntrinsic::GenISA_bfrev, builder.getInt32Ty());
         if (bitWidth == 16)
@@ -2853,7 +2853,7 @@ void GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Va
         return;
     }
 
-    IRBuilder<> builder(&I);
+    llvm::IRBuilder<> builder(&I);
     auto vec2 = IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
     Value* vec = UndefValue::get(vec2);
     Value* elemLow = nullptr;
@@ -2926,7 +2926,7 @@ void GenSpecificPattern::visitAdd(BinaryOperator& I) {
         %24 = add i32 %22, 19
     */
 
-    IRBuilder<> builder(&I);
+    llvm::IRBuilder<> builder(&I);
     for (int ImmSrcId1 = 0; ImmSrcId1 < 2; ImmSrcId1++)
     {
         ConstantInt* IConstant = dyn_cast<ConstantInt>(I.getOperand(ImmSrcId1));
@@ -3006,7 +3006,7 @@ void GenSpecificPattern::visitAnd(BinaryOperator& I)
         return nullptr;
     };
 
-    IRBuilder<> builder(&I);
+    llvm::IRBuilder<> builder(&I);
     using namespace llvm::PatternMatch;
     Value* src_of_FNeg = nullptr;
     Instruction* inst = nullptr;
@@ -3125,7 +3125,7 @@ void GenSpecificPattern::visitAShr(BinaryOperator& I)
         Which will end up as regioning instead of 2 isntr.
     */
 
-    IRBuilder<> builder(&I);
+    llvm::IRBuilder<> builder(&I);
     using namespace llvm::PatternMatch;
 
     Instruction* AShrSrc = nullptr;
@@ -3184,7 +3184,7 @@ void GenSpecificPattern::visitShl(BinaryOperator& I)
 
 void GenSpecificPattern::visitOr(BinaryOperator& I)
 {
-    IRBuilder<> builder(&I);
+    llvm::IRBuilder<> builder(&I);
     using namespace llvm::PatternMatch;
 
     /*
@@ -3282,7 +3282,7 @@ void GenSpecificPattern::visitCmpInst(CmpInst& I)
         (const_int2 << 32) == 0 &&
         Val1->getType()->isIntegerTy(64))
     {
-        IRBuilder<> builder(&I);
+        llvm::IRBuilder<> builder(&I);
         VectorType* vec2 = IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
         Value* BC = builder.CreateBitCast(Val1, vec2);
         Value* EE = builder.CreateExtractElement(BC, builder.getInt32(1));
@@ -3343,7 +3343,7 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
 
     IGC_ASSERT(I.getOpcode() == Instruction::Select);
 
-    IRBuilder<> builder(&I);
+    llvm::IRBuilder<> builder(&I);
     bool skipOpt = false;
 
     ConstantInt* C1 = dyn_cast<ConstantInt>(I.getOperand(1));
@@ -3398,7 +3398,7 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
 
                 if (!skipOpt)
                 {
-                    IRBuilder<> builder(&I);
+                    llvm::IRBuilder<> builder(&I);
                     Value* newValueSext = builder.CreateSExtOrBitCast(I.getOperand(0), I.getType());
                     Value* newValueAnd = builder.CreateAnd(I.getOperand(1), newValueSext);
                     I.replaceAllUsesWith(newValueAnd);
@@ -3863,7 +3863,7 @@ void GenSpecificPattern::visitTruncInst(llvm::TruncInst& I)
         CI->getZExtValue() >= 32)
     {
         auto new_shift_size = (unsigned)CI->getZExtValue() - 32;
-        IRBuilder<> builder(&I);
+        llvm::IRBuilder<> builder(&I);
         VectorType* vec2 = IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
         Value* new_Val = builder.CreateBitCast(LHS, vec2);
         new_Val = builder.CreateExtractElement(new_Val, builder.getInt32(1));

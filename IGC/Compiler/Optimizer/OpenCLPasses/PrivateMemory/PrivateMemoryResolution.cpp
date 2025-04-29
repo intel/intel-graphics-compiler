@@ -123,15 +123,15 @@ namespace {
         uint32_t m_offsetMask;
 
         // Return chunk number that byteOffset belongs to
-        Value* getChunkNum(IRBuilder<>& IRB, Value* OffsetInBytes);
+        Value* getChunkNum(IGCLLVM::IRBuilder<>& IRB, Value* OffsetInBytes);
         // Return the offset within chunk that byteOffset points to
-        Value* getChunkOff(IRBuilder<>& IRB, Value* OFfsetInBytes);
+        Value* getChunkOff(IGCLLVM::IRBuilder<>& IRB, Value* OFfsetInBytes);
     };
 
     // helper
     //   B: int / ptr;  O: unsigned int
     //   Possible cases: ptr64 + i32/i64; ptr32 + i32; i64 + i32/i64; i32 + i32.
-    Value* addOffset(IRBuilder<>& IRB, const DataLayout& pDL,
+    Value* addOffset(IGCLLVM::IRBuilder<>& IRB, const DataLayout& pDL,
         Value* B, Value* O)
     {
         Type* bTy = B->getType();
@@ -159,7 +159,7 @@ namespace {
     };
 
     // Given B, either int or ptr, convert it to ptr to T
-    Value* convertToPtr(IRBuilder<>& IRB, const DataLayout& pDL, Value* B, Type* ptrTy)
+    Value* convertToPtr(IGCLLVM::IRBuilder<>& IRB, const DataLayout& pDL, Value* B, Type* ptrTy)
     {
         IGC_ASSERT(ptrTy->isPointerTy());
         Value* R;
@@ -633,7 +633,7 @@ public:
     {
         IGC_ASSERT(nullptr != pLoad);
         IGC_ASSERT(pLoad->isSimple());
-        IRBuilder<> IRB(pLoad);
+        IGCLLVM::IRBuilder<> IRB(pLoad);
         if (isa<Instruction>(pLoad->getPointerOperand()))
         {
             IRB.SetInsertPoint(cast<Instruction>(pLoad->getPointerOperand()));
@@ -671,7 +671,7 @@ public:
     {
         IGC_ASSERT(nullptr != pStore);
         IGC_ASSERT(pStore->isSimple());
-        IRBuilder<> IRB(pStore);
+        IGCLLVM::IRBuilder<> IRB(pStore);
         if (isa<Instruction>(pStore->getPointerOperand()))
         {
             IRB.SetInsertPoint(cast<Instruction>(pStore->getPointerOperand()));
@@ -713,13 +713,13 @@ public:
     }
 };
 
-Value* TransposePrivMem::getChunkNum(IRBuilder<>& IRB, Value* OffsetInBytes)
+Value* TransposePrivMem::getChunkNum(IGCLLVM::IRBuilder<>& IRB, Value* OffsetInBytes)
 {
     Value* chunkNo = IRB.CreateLShr(OffsetInBytes, m_shtAmt);
     return chunkNo;
 }
 
-Value* TransposePrivMem::getChunkOff(IRBuilder<>& IRB, Value* OffsetInBytes)
+Value* TransposePrivMem::getChunkOff(IGCLLVM::IRBuilder<>& IRB, Value* OffsetInBytes)
 {
     Value* chunkOffset = IRB.CreateAnd(OffsetInBytes, m_offsetMask);
     return chunkOffset;
@@ -729,7 +729,7 @@ void TransposePrivMem::handleLoadInst(LoadInst* pLoad, Value* pScalarizedIdx)
 {
     IGC_ASSERT(nullptr != pLoad);
     IGC_ASSERT(pLoad->isSimple());
-    IRBuilder<> IRB(pLoad);
+    IGCLLVM::IRBuilder<> IRB(pLoad);
     uint32_t bytes = (uint32_t)m_DL.getTypeStoreSize(pLoad->getType());
     IGC_ASSERT(bytes <= m_chunkBytes);
     IGC_ASSERT(isPowerOf2_32(bytes));
@@ -767,7 +767,7 @@ void TransposePrivMem::handleStoreInst(StoreInst* pStore, Value* pScalarizedIdx)
 {
     IGC_ASSERT(nullptr != pStore);
     IGC_ASSERT(pStore->isSimple());
-    IRBuilder<> IRB(pStore);
+    IGCLLVM::IRBuilder<> IRB(pStore);
     Type* valTy = pStore->getValueOperand()->getType();
     uint32_t bytes = (uint32_t)m_DL.getTypeStoreSize(valTy);
     IGC_ASSERT(bytes <= m_chunkBytes);
@@ -979,7 +979,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // Creates intrinsics that will be lowered in the CodeGen and will handle the simd size
     Function* simdSizeFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_simdSize);
 
-    IRBuilder<> entryBuilder(&*m_currFunction->getEntryBlock().getFirstInsertionPt());
+    IGCLLVM::IRBuilder<> entryBuilder(&*m_currFunction->getEntryBlock().getFirstInsertionPt());
     ImplicitArgs implicitArgs(*m_currFunction, m_pMdUtils);
 
     // Construct an empty DebugLoc.
@@ -1004,7 +1004,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
 
     // Return thread offset. As it is per-thread, the calculation should be done in entry BB.
     auto createThreadOffset = [simdSize, typeInt32, typeInt64, safe32bitOffset](
-        IRBuilder<>& IRB, Value* ThreadID, uint32_t TotalPrivMemPerWI)
+        IGCLLVM::IRBuilder<>& IRB, Value* ThreadID, uint32_t TotalPrivMemPerWI)
         {
             // Total PM per thread is no larger than 4GB
             ConstantInt* totalPM = ConstantInt::get(typeInt32, TotalPrivMemPerWI);
@@ -1022,7 +1022,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         for (auto pAI : allocaInsts)
         {
             bool isUniform = pAI->getMetadata("uniform") != nullptr;
-            IRBuilder<> builder(pAI);
+            IGCLLVM::IRBuilder<> builder(pAI);
             builder.SetCurrentDebugLocation(entryDebugLoc);
 
             // buffer of this private var
@@ -1152,7 +1152,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         for (auto pAI : allocaInsts)
         {
             bool isUniform = pAI->getMetadata("uniform") != nullptr;
-            IRBuilder<> builder(pAI);
+            IGCLLVM::IRBuilder<> builder(pAI);
             // Post upgrade to LLVM 3.5.1, it was found that inliner propagates debug info of callee
             // in to the alloca. Further, those allocas are somehow hoisted to the top of program.
             // When those allocas are lowered to below sequence, they result in prologue instructions
@@ -1334,7 +1334,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         // %privateBufferGEP            = getelementptr i8* %threadBase, i64 %totalOffset
         // %privateBuffer               = bitcast i8* %privateBufferGEP to <buffer type>
 
-        IRBuilder<> builder(pAI);
+        IGCLLVM::IRBuilder<> builder(pAI);
         builder.SetCurrentDebugLocation(entryDebugLoc);
         bool isUniform = pAI->getMetadata("uniform") != nullptr;
         // Get buffer information from the analysis

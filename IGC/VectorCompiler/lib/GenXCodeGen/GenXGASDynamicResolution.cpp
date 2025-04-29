@@ -80,20 +80,20 @@ private:
   Value *lowerGenericCastToPtr(IntrinsicInst &Intrinsic) const;
 
   // Check if generic points to local/private.
-  Value *isLocal(IRBuilder<> &IRB, Value *PtrOp, Module *M) const;
-  Value *isPrivate(IRBuilder<> &IRB, Value *PtrOp, Module *M) const;
+  Value *isLocal(IGCLLVM::IRBuilder<> &IRB, Value *PtrOp, Module *M) const;
+  Value *isPrivate(IGCLLVM::IRBuilder<> &IRB, Value *PtrOp, Module *M) const;
 };
 
 } // end namespace
 
-static Value *createASCast(IRBuilder<> &IRB, Value *PtrOp,
+static Value *createASCast(IGCLLVM::IRBuilder<> &IRB, Value *PtrOp,
                            unsigned NewAS) {
   auto PtrOrPtrVTy = PtrOp->getType();
   auto NewPtrOrPtrVTy = vc::changeAddrSpace(PtrOrPtrVTy, NewAS);
   return IRB.CreateAddrSpaceCast(PtrOp, NewPtrOrPtrVTy);
 }
 
-static Value *getPtrAsVectorOfI32(IRBuilder<> &IRB, Value *PtrOp) {
+static Value *getPtrAsVectorOfI32(IGCLLVM::IRBuilder<> &IRB, Value *PtrOp) {
   auto PtrOpTy = PtrOp->getType();
   Type *Ptr2IntTy = nullptr;
   Type *BitCastTy = nullptr;
@@ -110,7 +110,7 @@ static Value *getPtrAsVectorOfI32(IRBuilder<> &IRB, Value *PtrOp) {
   return IRB.CreateBitCast(Ptr2Int, BitCastTy);
 }
 
-static Value *readHigh32BitsOfPtr(IRBuilder<> &IRB, Value *PtrOp,
+static Value *readHigh32BitsOfPtr(IGCLLVM::IRBuilder<> &IRB, Value *PtrOp,
                                   Module *M) {
   auto PtrOpTy = PtrOp->getType();
   auto PtrAsIntVec = getPtrAsVectorOfI32(IRB, PtrOp);
@@ -136,7 +136,7 @@ static Value *readHigh32BitsOfPtr(IRBuilder<> &IRB, Value *PtrOp,
   return IRB.CreateCall(RdRgnFunc, Args);
 }
 
-static Value *writeHigh32BitsOfPtr(IRBuilder<> &IRB, Value *PtrOp,
+static Value *writeHigh32BitsOfPtr(IGCLLVM::IRBuilder<> &IRB, Value *PtrOp,
                                    Value *Val, Module *M) {
   auto PtrOpTy = PtrOp->getType();
   auto PtrAsIntVec = getPtrAsVectorOfI32(IRB, PtrOp);
@@ -170,7 +170,7 @@ static Value *writeHigh32BitsOfPtr(IRBuilder<> &IRB, Value *PtrOp,
 }
 
 static void createScatterWithNewAS(IntrinsicInst &OldScatter,
-                                   IRBuilder<> &IRB, unsigned NewAS,
+                                   IGCLLVM::IRBuilder<> &IRB, unsigned NewAS,
                                    Value *UpdateMask = nullptr) {
   auto Val = OldScatter.getArgOperand(0);
   auto PtrOp = OldScatter.getArgOperand(1);
@@ -188,7 +188,7 @@ static void createScatterWithNewAS(IntrinsicInst &OldScatter,
 }
 
 static IntrinsicInst *createGatherWithNewAS(IntrinsicInst &OldGather,
-                                            IRBuilder<> &IRB,
+                                            IGCLLVM::IRBuilder<> &IRB,
                                             unsigned NewAS, const Twine &Name,
                                             Value *UpdateMask = nullptr,
                                             Value *NewPassthru = nullptr) {
@@ -261,7 +261,7 @@ void GenXGASDynamicResolution::visitLoadInst(LoadInst &LdI) const {
     return;
 
   if (!CanLocalBeGeneric) {
-    IRBuilder<> Builder{&LdI};
+    IGCLLVM::IRBuilder<> Builder{&LdI};
     auto GlobalPtrOp = createASCast(Builder, PtrOp, vc::AddrSpace::Global);
     auto NewInst = Builder.CreateAlignedLoad(LdI.getType(), GlobalPtrOp, IGCLLVM::getAlign(LdI),
                                       LdI.isVolatile(), "globalOrPrivateLoad");
@@ -278,7 +278,7 @@ void GenXGASDynamicResolution::visitStoreInst(StoreInst &StI) const {
     return;
 
   if (!CanLocalBeGeneric) {
-    IRBuilder<> Builder{&StI};
+    IGCLLVM::IRBuilder<> Builder{&StI};
     auto GlobalPtrOp = createASCast(Builder, PtrOp, vc::AddrSpace::Global);
     Builder.CreateAlignedStore(StI.getValueOperand(), GlobalPtrOp,
                                IGCLLVM::getAlign(StI), StI.isVolatile());
@@ -319,7 +319,7 @@ void GenXGASDynamicResolution::visitIntrinsicInst(IntrinsicInst &I) const {
     if(AS != vc::AddrSpace::Generic)
       break;
 
-    IRBuilder<> Builder{&I};
+    IGCLLVM::IRBuilder<> Builder{&I};
     Value *NewInst = nullptr;
     if (!CanLocalBeGeneric) {
       if (IntrinsicID == Intrinsic::masked_gather)
@@ -362,7 +362,7 @@ void GenXGASDynamicResolution::visitAddrSpaceCastInst(
       CI.getDestAddressSpace() != vc::AddrSpace::Generic)
     return;
 
-  IRBuilder<> Builder{CI.getNextNode()};
+  IGCLLVM::IRBuilder<> Builder{CI.getNextNode()};
   auto PtrOpTy = CI.getType();
   Constant *ShiftedTag = Builder.getInt32(LocalTag << 29);
   if (PtrOpTy->isVectorTy()) {
@@ -388,7 +388,7 @@ void GenXGASDynamicResolution::visitAddrSpaceCastInst(
 // the pointer.
 void GenXGASDynamicResolution::resolveOnLoadStore(Instruction &I,
                                                   Value *PtrOp) const {
-  IRBuilder<> Builder{&I};
+  IGCLLVM::IRBuilder<> Builder{&I};
   auto CurrentBlock = I.getParent();
   auto ConvergeBlock = CurrentBlock->splitBasicBlock(&I);
   Value *LocalLoad = nullptr;
@@ -424,7 +424,7 @@ void GenXGASDynamicResolution::resolveOnLoadStore(Instruction &I,
 
   // Update load uses.
   if (isa<LoadInst>(&I)) {
-    IRBuilder<> PhiBuilder(&(*ConvergeBlock->begin()));
+    IGCLLVM::IRBuilder<> PhiBuilder(&(*ConvergeBlock->begin()));
     PHINode *PHI = PhiBuilder.CreatePHI(I.getType(), 2, I.getName());
     PHI->addIncoming(LocalLoad, LocalBlock);
     PHI->addIncoming(GlobalLoad, GlobalBlock);
@@ -435,7 +435,7 @@ void GenXGASDynamicResolution::resolveOnLoadStore(Instruction &I,
 }
 
 Value *GenXGASDynamicResolution::lowerGenericCastToPtr(IntrinsicInst &I) const {
-  IRBuilder<> Builder{&I};
+  IGCLLVM::IRBuilder<> Builder{&I};
   auto M = I.getModule();
   auto TargetTy = I.getType();
   auto TargetAS = vc::getAddrSpace(TargetTy);
@@ -473,7 +473,7 @@ Value *GenXGASDynamicResolution::lowerGenericCastToPtr(IntrinsicInst &I) const {
 
 // Check whether a ptr/ptrs from ptrvec contain a local tag in the high bits.
 // Returning value is true/false for a ptr, mask for a ptrvec.
-Value *GenXGASDynamicResolution::isLocal(IRBuilder<> &IRB,
+Value *GenXGASDynamicResolution::isLocal(IGCLLVM::IRBuilder<> &IRB,
                                          Value *PtrOp, Module *M) const {
   Constant *ShiftedTag = IRB.getInt32(LocalTag << 29);
   auto PtrOpTy = PtrOp->getType();
@@ -487,7 +487,7 @@ Value *GenXGASDynamicResolution::isLocal(IRBuilder<> &IRB,
 
 // Check whether a ptr/ptrs from ptrvec contain a private tag in the high bits.
 // Returning value is true/false for a ptr, mask for a ptrvec.
-Value *GenXGASDynamicResolution::isPrivate(IRBuilder<> &IRB,
+Value *GenXGASDynamicResolution::isPrivate(IGCLLVM::IRBuilder<> &IRB,
                                            Value *PtrOp, Module *M) const {
   Constant *TagMask = IRB.getInt32(7 << 29);
   Constant *ShiftedTag = IRB.getInt32(PrivateTag << 29);

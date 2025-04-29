@@ -233,7 +233,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     // First, the generic pointer's tag is obtained to then perform the load/store
     // with the corresponding address space.
 
-    IRBuilder<> builder(&I);
+    IGCLLVM::IRBuilder<> builder(&I);
     auto* pointerType = dyn_cast<PointerType>(pointerOperand->getType());
     IGC_ASSERT( pointerType != nullptr );
     ConstantInt* privateTag = builder.getInt64(1); // tag 001
@@ -322,7 +322,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
 
         if (isa<LoadInst>(&I))
         {
-            IRBuilder<> phiBuilder(&(*convergeBlock->begin()));
+            IGCLLVM::IRBuilder<> phiBuilder(&(*convergeBlock->begin()));
             PHINode* phi = phiBuilder.CreatePHI(I.getType(), numCases + 1, I.getName());
             if (privateLoad)
             {
@@ -342,7 +342,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
 
 void GenericAddressDynamicResolution::resolveGASWithoutBranches(Instruction& I, Value* pointerOperand)
 {
-    IRBuilder<> builder(&I);
+    IGCLLVM::IRBuilder<> builder(&I);
     auto* pointerType = dyn_cast<PointerType>(pointerOperand->getType());
     IGC_ASSERT( pointerType != nullptr );
 
@@ -393,7 +393,7 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
         IGC_ASSERT( dstType != nullptr );
         const unsigned targetAS = cast<PointerType>(I.getType())->getAddressSpace();
 
-        IRBuilder<> builder(&I);
+        IGCLLVM::IRBuilder<> builder(&I);
         auto* pointerType = dyn_cast<PointerType>(arg->getType());
         IGC_ASSERT( pointerType != nullptr );
         ConstantInt* globalTag = builder.getInt64(0);  // tag 000/111

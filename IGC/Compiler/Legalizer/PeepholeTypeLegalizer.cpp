@@ -73,7 +73,7 @@ bool PeepholeTypeLegalizer::runOnFunction(Function& F) {
     CastInst_TruncWithIntermediateIllegalsEliminated = false;
     Bitcast_BitcastWithIntermediateIllegalsEliminated = false;
 
-    IRBuilder<> builder(F.getContext());
+    IGCLLVM::IRBuilder<> builder(F.getContext());
     m_builder = &builder;
 
     Changed = false;

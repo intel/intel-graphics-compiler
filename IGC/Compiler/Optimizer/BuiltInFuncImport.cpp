@@ -12,8 +12,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/DerivedTypes.h>
-#include <llvm/Support/Casting.h>
 #include <llvmWrapper/IR/IRBuilder.h>
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/Function.h>
@@ -703,7 +701,7 @@ bool BIImport::runOnModule(Module& M)
             {
                 if (CallInst* CI = dyn_cast<CallInst>(&*user))
                 {
-                    IRBuilder<> builder(CI);
+                    IGCLLVM::IRBuilder<> builder(CI);
                     Value* argBuffer = CI->getArgOperand(1);
                     // Function type is always void (i8*)
                     FunctionType* funcTy = FunctionType::get(builder.getVoidTy(), { argBuffer->getType() }, false);
@@ -748,7 +746,7 @@ bool BIImport::runOnModule(Module& M)
                     pNewFuncDecl->addFnAttr("variant-function-decl");
                     calledF->addFnAttr("variant-function-def");
                     calledF->addFnAttr("CompileSIMD" + std::to_string(vecLen));
-                    IRBuilder<> builder(CI);
+                    IGCLLVM::IRBuilder<> builder(CI);
                     Value* bitcast = builder.CreateBitCast(pNewFuncDecl, CI->getType());
                     CI->replaceAllUsesWith(bitcast);
                     InstToRemove.push_back(CI);
@@ -797,7 +795,7 @@ bool BIImport::runOnModule(Module& M)
                         IGC_ASSERT_MESSAGE(tableIndex < VariantsTable.size(), "Subgroup size not found in function variants!");
                     }
 
-                    IRBuilder<> builder(CI);
+                    IGCLLVM::IRBuilder<> builder(CI);
                     IGC_ASSERT(CI->paramHasAttr(0, llvm::Attribute::ByVal));
                     // Load function address from the table index
                     Value* FP = builder.CreateGEP(CI->getParamByValType(0), FPTablePtr, builder.getInt32(tableIndex));
@@ -807,8 +805,7 @@ bool BIImport::runOnModule(Module& M)
                     SmallVector<Value*, 8> Args;
                     for (unsigned i = 1; i < IGCLLVM::getNumArgOperands(CI); i++)
                         Args.push_back(CI->getArgOperand(i));
-                    auto Callee = llvm::FunctionCallee(llvm::cast<llvm::Function>(FP));
-                    CallInst* CallFP = builder.CreateCall(Callee, Args);
+                    CallInst* CallFP = builder.CreateCall(FP, Args);
                     CallFP->setCallingConv(llvm::CallingConv::SPIR_FUNC);
 
                     CI->replaceAllUsesWith(CallFP);

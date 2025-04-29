@@ -215,7 +215,7 @@ Value *GenXTypeLegalization::visitSwitchInst(SwitchInst &I) {
   auto *OldV = I.getCondition();
   auto *NewV = getLegalizedValue(OldV);
 
-  IRBuilder<> Builder{&I};
+  IGCLLVM::IRBuilder<> Builder{&I};
   uint64_t Mask =
       (1ULL << OldV->getType()->getScalarType()->getIntegerBitWidth()) - 1;
   auto *NewCond = Builder.CreateAnd(NewV, Mask);
@@ -227,7 +227,7 @@ Value *GenXTypeLegalization::visitSelectInst(SelectInst &I) {
   auto *Src1 = getLegalizedValue(I.getOperand(1));
   auto *Src2 = getLegalizedValue(I.getOperand(2));
 
-  IRBuilder<> Builder{&I};
+  IGCLLVM::IRBuilder<> Builder{&I};
   return Builder.CreateSelect(I.getOperand(0), Src1, Src2,
                               getLegalizedName(I.getName()));
 }
@@ -236,7 +236,7 @@ Value *GenXTypeLegalization::visitBinaryOperator(BinaryOperator &I) {
   auto *Src0 = getLegalizedValue(I.getOperand(0));
   auto *Src1 = getLegalizedValue(I.getOperand(1));
 
-  IRBuilder<> Builder{&I};
+  IGCLLVM::IRBuilder<> Builder{&I};
   return Builder.CreateBinOp(I.getOpcode(), Src0, Src1,
                              getLegalizedName(I.getName()));
 }
@@ -258,7 +258,7 @@ Value *GenXTypeLegalization::visitCastInst(CastInst &I) {
   auto SrcBitWidth =
       cast<IntegerType>(Val->getType()->getScalarType())->getBitWidth();
 
-  IRBuilder<> Builder{&I};
+  IGCLLVM::IRBuilder<> Builder{&I};
   switch (I.getOpcode()) {
   default:
     vc::fatal(I.getContext(), "GenXTypeLegalization", "Unhandled cast opcode.",

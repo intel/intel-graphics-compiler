@@ -40,8 +40,8 @@ public:
   void ResolveStoreInst( llvm::StoreInst *st, llvm::Type *ty,llvm::SmallVector<unsigned, 8> &index );
   bool CheckNullArray(llvm::Instruction* storeInst);
   llvm::Value* ResolveValue( llvm::Instruction *st,llvm::Value* arg,llvm::SmallVector<unsigned,8> &index );
-  llvm::Value* CreateGEP(llvm::IRBuilder<>& builder, llvm::Type* Ty, llvm::Value* ptr, llvm::SmallVector<unsigned, 8>& indices);
-  llvm::Value* CreateGEP(llvm::IRBuilder<>& builder, llvm::Value* ptr, llvm::SmallVector<unsigned, 8>& indices);
+  llvm::Value* CreateGEP(IGCLLVM::IRBuilder<>& builder, llvm::Type* Ty, llvm::Value* ptr, llvm::SmallVector<unsigned, 8>& indices);
+  llvm::Value* CreateGEP(IGCLLVM::IRBuilder<>& builder, llvm::Value* ptr, llvm::SmallVector<unsigned, 8>& indices);
   llvm::AllocaInst* CreateAlloca( llvm::Instruction *phi );
 
   static char ID;

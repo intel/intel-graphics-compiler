@@ -21,7 +21,7 @@ PacketBuilder::PacketBuilder(Module *MIn, uint32_t Width) {
   M = static_cast<IGCLLVM::Module *>(MIn);
   // Built in types: scalar
   LLVMContext &Ctx = getContext();
-  IRB = new IRBuilder<>(Ctx);
+  IRB = new IGCLLVM::IRBuilder<>(Ctx);
   FP32Ty = Type::getFloatTy(Ctx);
   Int1Ty = Type::getInt1Ty(Ctx);
   Int8Ty = Type::getInt8Ty(Ctx);

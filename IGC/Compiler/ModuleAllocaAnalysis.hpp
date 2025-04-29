@@ -66,14 +66,14 @@ namespace IGC
         unsigned isUniform(llvm::AllocaInst* AI) const;
 
         llvm::Value* getPerThreadOffset(
-            llvm::IRBuilder<>& IRB,
+            IGCLLVM::IRBuilder<>& IRB,
             llvm::AllocaInst* AI,
             llvm::Value* simdSize,
             llvm::Value* threadId,
             bool return64bitOffset = false) const;
 
         llvm::Value* getOffset(
-            llvm::IRBuilder<>& IRB,
+            IGCLLVM::IRBuilder<>& IRB,
             llvm::AllocaInst* AI,
             llvm::Value* simdSize,
             llvm::Value* simdLaneId,
