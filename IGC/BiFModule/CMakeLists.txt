@@ -13,6 +13,7 @@
 
 # =============================================== Tools ================================================
 include(BiFModuleCache)
+add_subdirectory(Languages/OpenCL/PreRelease/Matrix)
 
 # In new Clang versions VME types are built-in. Keep this flag until all OS's update Clang version to 8
 if(NOT DEFINED VME_TYPES_DEFINED)
@@ -528,9 +529,9 @@ igc_bif_build_bc(
       TRIPLE               spir64
       SOURCES              ${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PreRelease/IBIF_PreRelease_Impl.cl
       FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
-      INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
+      INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/Languages/OpenCL/PreRelease/Matrix
       DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} "cl_intel_device_side_avc_vme_enable" "cl_intel_device_side_avc_motion_estimation" ${FLAG}
-      DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
+      DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS} IBiF_matrix_generator
       OPTIONS CL           ${CL_OPTIONS} -cl-std=CL2.0
      )
  endif()
