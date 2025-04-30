@@ -1635,7 +1635,7 @@ void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
   }
 }
 
-void SWSB::handleFuncCall() {
+void SWSB::handleSubRoutineCall() {
   for (G4_BB_SB *bb : BBVector) {
     if (bb->last_node == INVALID_ID) {
       continue;
@@ -1643,10 +1643,8 @@ void SWSB::handleFuncCall() {
 
     SBNode *node = SBNodes[bb->last_node];
 
-    if ((node->GetInstruction()->isCall() ||
-         node->GetInstruction()->isFCall()) ||
-        (node->GetInstruction()->isReturn() ||
-         node->GetInstruction()->isFReturn())) {
+    if (node->GetInstruction()->isCall() ||
+        node->GetInstruction()->isReturn()) {
 
       // Add dependencies for all after write dependencies live before call
       for (unsigned globalID : bb->send_live_out.dst) {
@@ -1849,7 +1847,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
     addGlobalDependence(globalSendNum, &globalSendOpndList, SBNodes, p, true);
   }
 
-  handleFuncCall();
+  handleSubRoutineCall();
 
   for (G4_BB_SB *bb : BBVector) {
     bb->send_live_in_scalar = bb->send_live_in;
@@ -2185,7 +2183,7 @@ void SWSB::SWSBGenerator() {
   if (!SBSendNodes.empty()) {
     SWSBGlobalTokenGenerator(p, LB, globalSendsLB, GRFAlignedGlobalSendsLB);
   } else {
-    handleFuncCall();
+    handleSubRoutineCall();
     insertTokenSync();
   }
 
@@ -4694,7 +4692,12 @@ void SWSB::insertTokenSync() {
           }
         }
       }
-
+      if (inst->isFCall() || inst->isFReturn()) {
+        G4_INST *synInst = insertSyncAllRDInstruction(bb, 0, inst_it);
+        synInst->setLexicalId(newInstID);
+        synInst = insertSyncAllWRInstruction(bb, 0, inst_it);
+        synInst->setLexicalId(newInstID);
+      }
       bool fusedSync = false;
       // HW W/A
       // For fused URB sends, or typed write, in HW, the dependence info of the
