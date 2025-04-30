@@ -3076,7 +3076,9 @@ bool Augmentation::updateDstMaskForGatherRaw(G4_INST *inst,
             vISA_ASSERT(curEMBit <= 32, "Illegal mask channel");
           }
         }
-        curEMBit = (unsigned char)inst->getMaskOffset();
+        if (curEMBit != NOMASK_BYTE) {
+          curEMBit = (unsigned char)inst->getMaskOffset();
+        }
       }
       return true;
     } break;
@@ -3108,7 +3110,9 @@ bool Augmentation::updateDstMaskForGatherRaw(G4_INST *inst,
             vISA_ASSERT(curEMBit <= 32, "Illegal mask channel");
           }
         }
-        curEMBit = (unsigned char)inst->getMaskOffset();
+        if (curEMBit != NOMASK_BYTE) {
+          curEMBit = (unsigned char)inst->getMaskOffset();
+        }
       }
       return true;
     }
@@ -3142,7 +3146,6 @@ bool Augmentation::updateDstMaskForGatherRaw(G4_INST *inst,
         mask[i] = NOMASK_BYTE;
       return true;
     }
-    unsigned char curEMBit = (unsigned char)inst->getMaskOffset();
     elemSize = msgDesc->is16BitReturn() ? 2 : 4;
     unsigned warpNum =
         respLength * kernel.numEltPerGRF<Type_UB>() / (execSize * elemSize);
@@ -3159,7 +3162,9 @@ bool Augmentation::updateDstMaskForGatherRaw(G4_INST *inst,
           vISA_ASSERT(curEMBit <= 32, "Illegal mask channel");
         }
       }
-      curEMBit = (unsigned char)inst->getMaskOffset();
+      if (curEMBit != NOMASK_BYTE) {
+        curEMBit = (unsigned char)inst->getMaskOffset();
+      }
     }
     return true;
   }
