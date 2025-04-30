@@ -4435,8 +4435,7 @@ namespace IGC
             bool enableForRetry = m_program->m_DriverInfo->enableVISAPreRASchedulerForRetry() ||
                 context->m_retryManager.AllowVISAPreRAScheduler();
             // PreRA scheduler runs always when VRT is enabled
-            enableForRetry |= m_program->m_Platform->supportsVRT() && m_program->m_DriverInfo->supportsVRT() &&
-                (context->getModuleMetaData()->compOpt.EnableVRT || IGC_IS_FLAG_ENABLED(EnableVRT));
+            enableForRetry |= context->supportsVRT();
 
             if (IGC_IS_FLAG_ENABLED(EnableVISAPreSched) &&
                 m_program->m_DriverInfo->enableVISAPreRAScheduler() &&
@@ -4923,9 +4922,7 @@ namespace IGC
             else if ((m_program->m_Platform->supportsAutoGRFSelection() &&
                       context->m_DriverInfo.supportsAutoGRFSelection() &&
                       IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection)) ||
-                     (m_program->m_Platform->supportsVRT() &&
-                      m_program->m_DriverInfo->supportsVRT() &&
-                      IGC_IS_FLAG_ENABLED(EnableVRT)))
+                      context->supportsVRT())
             {
                 // When user hasn't specified number of threads, we can rely on
                 // compiler heuristics
