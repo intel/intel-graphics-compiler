@@ -615,11 +615,30 @@ GenXLegacyToLscTranslator::translateQuadGatherScatter(CallInst &CI) const {
       cast<ConstantInt>(CI.getArgOperand(ChannelMaskIndex))->getZExtValue();
   auto NumChannels = countPopulation(ChannelMask);
 
-  auto *DataVTy = IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(),
-                                                SimdWidth * NumChannels);
-  Value *Data = UndefValue::get(DataVTy);
-  if (SourceIndex >= 0)
-    Data = Builder.CreateBitCast(CI.getArgOperand(SourceIndex), DataVTy);
+  Type *DataVTy = nullptr;
+  Value *Data = nullptr;
+  unsigned OrigWidth = 0;
+  unsigned NewWidth = SimdWidth * NumChannels;
+
+  if (SourceIndex >= 0) {
+    Data = CI.getArgOperand(SourceIndex);
+    auto *OrigDataVTy = cast<IGCLLVM::FixedVectorType>(Data->getType());
+    Type *ETy = OrigDataVTy->getElementType();
+    DataVTy = IGCLLVM::FixedVectorType::get(ETy, NewWidth);
+    OrigWidth = OrigDataVTy->getNumElements();
+    if (OrigWidth > NewWidth) {
+      Region RdR(Data);
+      RdR.Width = RdR.NumElements = NewWidth;
+      RdR.Offset = 0;
+      Data = RdR.createRdRegion(Data, "", &CI, CI.getDebugLoc());
+    }
+  } else {
+    auto *RetVTy = cast<IGCLLVM::FixedVectorType>(CI.getType());
+    Type *ETy = RetVTy->getElementType();
+    DataVTy = IGCLLVM::FixedVectorType::get(ETy, NewWidth);
+    Data = UndefValue::get(DataVTy);
+    OrigWidth = RetVTy->getNumElements();
+  }
 
   auto *CacheOpts = ConstantDataVector::getSplat(
       ST->getNumCacheLevels(), Builder.getInt8(LSC_CACHING_DEFAULT));
@@ -651,10 +670,16 @@ GenXLegacyToLscTranslator::translateQuadGatherScatter(CallInst &CI) const {
   auto *I = Builder.CreateCall(Func, Args);
   LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *I);
 
-  if (I->getType()->isVoidTy())
-    return I;
+  if (IsLoad && OrigWidth > NewWidth) {
+    Region WrR(&CI);
+    WrR.Width = WrR.NumElements = NewWidth;
+    WrR.Offset = 0;
+    WrR.Mask = nullptr;
+    return WrR.createWrRegion(UndefValue::get(CI.getType()), I, "", &CI,
+                              CI.getDebugLoc());
+  }
 
-  return Builder.CreateBitCast(I, CI.getType());
+  return I;
 }
 
 Value *GenXLegacyToLscTranslator::translateAtomic(CallInst &CI) const {
