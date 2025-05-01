@@ -1541,10 +1541,20 @@ bool supportsProgrammableOffsets() const
     return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
-bool isDynamicRayQueryDynamicRayManagementMechanismEnabled() const
+bool supportsRayQueryThrottling() const
 {
-    return (isCoreChildOf(IGFX_XE2_HPG_CORE) &&
-        IGC_IS_FLAG_DISABLED(DisableRayQueryDynamicRayManagementMechanism));
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
+}
+
+bool enableRayQueryThrottling(bool enableByDefault) const
+{
+    if (!supportsRayQueryThrottling())
+        return false;
+
+    if (IGC_IS_FLAG_SET(OverrideRayQueryThrottling))
+        return IGC_GET_FLAG_VALUE(OverrideRayQueryThrottling);
+
+    return enableByDefault;
 }
 
 bool isSWSubTriangleOpacityCullingEmulationEnabled() const
