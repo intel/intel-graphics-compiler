@@ -888,7 +888,7 @@ Value* RTBuilder::getPrimitiveIndex(
     Value* ShaderTy,
     bool checkInstanceLeafPtr)
 {
-    if (checkInstanceLeafPtr)
+    if (checkInstanceLeafPtr && IGC_IS_FLAG_ENABLED(ForceRTCheckInstanceLeafPtr))
     {
         auto [ValidBB, PN] =
             validateInstanceLeafPtr(perLaneStackPtr, I, CreateICmpEQ(ShaderTy, getInt32(CallableShaderTypeMD::ClosestHit)));
@@ -902,30 +902,6 @@ Value* RTBuilder::getPrimitiveIndex(
     {
         return getPrimitiveIndex(perLaneStackPtr, leafType, ShaderTy);
     }
-}
-
-static Value* skipIfShaderIsNotHit(RTBuilder& IRB, Value* ShaderTy, std::function<Value* ()> Fn)
-{
-    auto* isHit = IRB.CreateOr({
-        IRB.CreateICmpEQ(ShaderTy, IRB.getInt32(CallableShaderTypeMD::ClosestHit)),
-        IRB.CreateICmpEQ(ShaderTy, IRB.getInt32(CallableShaderTypeMD::AnyHit)),
-        IRB.CreateICmpEQ(ShaderTy, IRB.getInt32(CallableShaderTypeMD::Intersection)),
-    });
-
-    auto [isHitBB, joinBB] = IRB.createTriangleFlow(isHit, &*IRB.GetInsertPoint(), VALUE_NAME("skipIfShaderIsNotHit_isHitBB"), VALUE_NAME("skipIfShaderIsNotHit_joinBB"));
-
-    IRB.SetInsertPoint(isHitBB);
-    auto* retV = Fn();
-
-    IRB.SetInsertPoint(isHitBB->getSinglePredecessor());
-    auto* defaultV = IRB.CreateZExtOrBitCast(IRB.getInt1(0), retV->getType());
-
-    IRB.SetInsertPoint(joinBB);
-    auto* phiV = IRB.CreatePHI(retV->getType(), 2);
-    phiV->addIncoming(retV, isHitBB);
-    phiV->addIncoming(defaultV, isHitBB->getSinglePredecessor());
-
-    return phiV;
 }
 
 Value* RTBuilder::getPrimitiveIndex(
@@ -955,7 +931,7 @@ Value* RTBuilder::getGeometryIndex(
     Value* ShaderTy,
     bool checkInstanceLeafPtr)
 {
-    if (checkInstanceLeafPtr)
+    if (checkInstanceLeafPtr && IGC_IS_FLAG_ENABLED(ForceRTCheckInstanceLeafPtr))
     {
         auto [ValidBB, PN] =
             validateInstanceLeafPtr(perLaneStackPtr, I, CreateICmpEQ(ShaderTy, getInt32(CallableShaderTypeMD::ClosestHit)));
