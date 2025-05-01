@@ -156,11 +156,14 @@ bool TraceRayInlineLoweringPass::runOnFunction(Function& F)
 void TraceRayInlineLoweringPass::LowerAllocateRayQuery(
     Function& F, unsigned numProceeds)
 {
-    vector<AllocateRayQueryIntrinsic*> AllocateRayQueries;
+    SmallVector<ConvertRayQueryHandleToRTStackPointerIntrinsic*> convertRayQueryToRTStackPointers;
+    SmallVector<AllocateRayQueryIntrinsic*> AllocateRayQueries;
     for (auto& I : instructions(F))
     {
         if (auto* ARQ = dyn_cast<AllocateRayQueryIntrinsic>(&I))
             AllocateRayQueries.push_back(ARQ);
+        else if (auto* II = dyn_cast<ConvertRayQueryHandleToRTStackPointerIntrinsic>(&I))
+            convertRayQueryToRTStackPointers.push_back(II);
     }
 
     if (AllocateRayQueries.empty())
@@ -181,7 +184,7 @@ void TraceRayInlineLoweringPass::LowerAllocateRayQuery(
     //later, we might improve this w/ a more general way.
     //this way might cover quite some RQOs cases, though
     bool bShrinkSMStack = (AllocateRayQueries.size() > numLanes(m_CGCtx->platform.getMaxRayQuerySIMDSize(m_CGCtx->type))
-        && numProceeds == 1);
+        && numProceeds == 1 && convertRayQueryToRTStackPointers.empty());
 
     std::tie(m_ShMemRTStacks, m_ShMemRTCtrls) =
         builder.createAllocaRayQueryObjects(AllocateRayQueries.size(), bShrinkSMStack, VALUE_NAME("&ShadowMemory.RayQueryObjects"));
@@ -199,6 +202,12 @@ void TraceRayInlineLoweringPass::LowerAllocateRayQuery(
     for (auto* ARQ : AllocateRayQueries)
     {
         ARQ->eraseFromParent();
+    }
+
+    for (auto* I : convertRayQueryToRTStackPointers)
+    {
+        auto* rtstack = getShMemRayQueryRTStack(builder, I->getRayQueryAllocationHandle());
+        I->replaceAllUsesWith(rtstack);
     }
 }
 
