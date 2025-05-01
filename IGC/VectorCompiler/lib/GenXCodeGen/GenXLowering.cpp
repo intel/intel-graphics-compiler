@@ -417,11 +417,9 @@ static CallInst *getLoadWrregion(CallInst *Inst) {
     return nullptr;
 
   auto *WrR = dyn_cast<CallInst>(Inst->user_back());
-  if (!WrR || !GenXIntrinsic::isWrRegion(WrR))
+  if (!WrR)
     return nullptr;
-  if (WrR->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum) != Inst)
-    return nullptr;
-  return WrR;
+  return GenXIntrinsic::isWrRegion(WrR) ? WrR : nullptr;
 }
 
 // Find single select user of load instruction.
