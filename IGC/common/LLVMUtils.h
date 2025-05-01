@@ -53,7 +53,7 @@ class InlineHelper
 {
 private:
     // create a map of (type, array size, address space to alloca instructions)
-    using AllocaMap = llvm::DenseMap<
+    using AllocaMap = llvm::MapVector<
         std::tuple<llvm::Type*, uint64_t, uint32_t>,
         llvm::SmallVector<llvm::AllocaInst*>
     >;
