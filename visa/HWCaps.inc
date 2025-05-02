@@ -950,4 +950,7 @@ bool src1Src2SwapForCompaction()
   return false;
 }
 
+bool reserver510() {
+  return false;
+}
 // end HW capabilities
