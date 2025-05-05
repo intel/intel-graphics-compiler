@@ -130,7 +130,7 @@ public:
     return !HasToken && isUse();
   }
 
-  bool operator==(RegAccess &Other) const {
+  bool operator==(const RegAccess &Other) const {
     return Offset == Other.Offset && RegNo == Other.RegNo &&
            DefUseToken == Other.DefUseToken;
   }
