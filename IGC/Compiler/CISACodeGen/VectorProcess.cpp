@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include <memory>   // for std::unique_ptr
 
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -20,7 +19,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
-#include <llvm/Support/MathExtras.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 

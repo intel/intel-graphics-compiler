@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "GASResolving.h"
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/InitializePasses.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Argument.h"
 

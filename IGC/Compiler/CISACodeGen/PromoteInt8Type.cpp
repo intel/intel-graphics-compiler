@@ -26,7 +26,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Debug.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
-#include <algorithm>
 #include <list>
 #include "llvm/IR/Constants.h"
 #include "llvmWrapper/IR/DerivedTypes.h"

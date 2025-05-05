@@ -7,13 +7,8 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/Support/ScaledNumber.h>
 #include "llvm/IR/DataLayout.h"
 #include "llvm/ADT/StringExtras.h"
-#include "llvm/Option/ArgList.h"
-#include "llvm/Support/StringSaver.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvmWrapper/Option/OptTable.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -21,14 +16,10 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
 #include "Compiler/CISACodeGen/CSWalkOrder.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/ResourceAllocator/ResourceAllocator.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantAnalysis.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/LocalBuffers/InlineLocalsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "AdaptorOCL/OCL/KernelAnnotations.hpp"
-#include "common/allocator.h"
 #include "common/igc_regkeys.hpp"
 #include "common/Stats.hpp"
 #include "common/SystemThread.h"
@@ -38,7 +29,6 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include <fstream>
 #include "ZEBinWriter/zebin/source/ZEELFObjectBuilder.hpp"
-#include "igc/Options/Options.h"
 
 /***********************************************************************************
 This file contains the code specific to opencl kernels

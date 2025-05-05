@@ -8,11 +8,9 @@ SPDX-License-Identifier: MIT
 
 #include "GenerateFrequencyData.hpp"
 #include "Compiler/IGCPassSupport.h"
-#include "llvmWrapper/IR/BasicBlock.h"
 #include "common/igc_regkeys.hpp"
 #include "Probe/Assertion.h"
 
-#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -24,7 +22,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/BranchProbabilityInfo.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/SyntheticCountsUtils.h>
-#include <llvm/ADT/None.h>
 #include <llvm/ADT/Optional.h>
 
 #include <llvm/Support/ScaledNumber.h>

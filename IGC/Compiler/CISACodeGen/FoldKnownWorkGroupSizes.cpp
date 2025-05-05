@@ -10,13 +10,11 @@ SPDX-License-Identifier: MIT
 #include "FoldKnownWorkGroupSizes.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
-#include "Compiler/MetaDataApi/MetaDataApi.h"
 
 #include "LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
 #include <llvm/IR/InstVisitor.h>
 #include "LLVMWarningsPop.hpp"
-#include "common/igc_regkeys.hpp"
 
 using namespace llvm;
 using namespace IGC;

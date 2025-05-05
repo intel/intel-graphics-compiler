@@ -15,18 +15,12 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 
 #include <algorithm>
-#include <limits>
-#include <sstream>
-#include <string>
 
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/Optimizer/OCLBIUtils.h"
-#include "IGC/common/StringMacros.hpp"
-#include "IGC/common/Types.hpp"
 #include "Probe/Assertion.h"
-#include "visa_igc_common_header.h"
 
 using namespace llvm;
 using namespace IGC;

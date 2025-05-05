@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/DeviceEnqueueFuncs/DeviceEnqueue.hpp"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/IGCPassSupport.h"
-#include <set>
 #include "Probe/Assertion.h"
 
 using namespace llvm;

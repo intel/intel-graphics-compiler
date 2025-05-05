@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Config/llvm-config.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvm/Support/CommandLine.h"

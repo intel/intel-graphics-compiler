@@ -17,14 +17,10 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "Compiler/CISACodeGen/VariableReuseAnalysis.hpp"
 #include "Compiler/CISACodeGen/helper.h"
-#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
-#include "Compiler/MetaDataApi/MetaDataApi.h"
-#include "common/secure_mem.h"
 #include "Probe/Assertion.h"
 
-#include <iomanip>
 
 using namespace llvm;
 using namespace IGC;

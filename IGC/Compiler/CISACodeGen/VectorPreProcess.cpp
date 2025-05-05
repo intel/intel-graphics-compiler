@@ -29,7 +29,6 @@ SPDX-License-Identifier: MIT
 #include <utility>    // std::pair, std::make_pair
 #include <sstream>    // std::string, std::stringstream
 #include <fstream>    // std::ofstream
-#include <memory>     // std::unique_ptr
 
 using namespace llvm;
 using namespace IGC;

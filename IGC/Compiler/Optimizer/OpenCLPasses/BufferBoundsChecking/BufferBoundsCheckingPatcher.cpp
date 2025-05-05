@@ -10,14 +10,9 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Function.h"
-#include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/Function.h>
-#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/IR/Mangler.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Regex.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>

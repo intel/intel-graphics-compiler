@@ -22,7 +22,6 @@ See LICENSE.TXT for details.
 #include <set>
 #include "common/debug/Debug.hpp"
 #include "common/debug/Dump.hpp"
-#include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/InstIterator.h>

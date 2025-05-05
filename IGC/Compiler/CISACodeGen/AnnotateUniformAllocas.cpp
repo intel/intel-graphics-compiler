@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "AnnotateUniformAllocas.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/IGCPassSupport.h"
-#include "IGCIRBuilder.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/Transforms/Utils/Local.h>

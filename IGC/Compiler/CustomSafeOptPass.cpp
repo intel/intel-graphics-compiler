@@ -66,12 +66,12 @@ cmp+sel to avoid expensive VxH mov.
 #include <llvmWrapper/IR/DIBuilder.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvmWrapper/IR/IRBuilder.h>
-#include <llvmWrapper/IR/PatternMatch.h>
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 #include <llvm/ADT/Statistic.h>
 #include <llvm/ADT/SetVector.h>
 #include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/Analysis/InstructionSimplify.h>
+#include <llvm/BinaryFormat/Dwarf.h>
 #include <llvm/IR/Constants.h>
 #include "llvm/IR/DebugInfo.h"
 #include <llvm/IR/Function.h>
@@ -84,7 +84,6 @@ cmp+sel to avoid expensive VxH mov.
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
-#include <set>
 #include "common/secure_mem.h"
 #include "Probe/Assertion.h"
 

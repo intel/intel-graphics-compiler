@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "IGC/common/StringMacros.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DpasFuncs/DpasFuncsResolution.hpp"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/IGCPassSupport.h"

@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "AccuracyDecoratedCallsBiFResolution.hpp"
 
 #include "llvmWrapper/IR/Type.h"
-#include "llvmWrapper/IR/InstrTypes.h"
 #include "llvm/IR/Attributes.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"

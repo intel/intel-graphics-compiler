@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "CodeGenPublicEnums.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
@@ -15,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "MatchCommonKernelPatterns.hpp"
-#include "IGCIRBuilder.h"
 
 using namespace llvm;
 using namespace IGC;

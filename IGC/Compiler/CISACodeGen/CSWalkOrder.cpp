@@ -7,15 +7,10 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/PatternMatch.h>
 #include <llvm/Pass.h>
-#include <llvm/Support/Debug.h>
-#include <llvm/Support/raw_ostream.h>
 #include <optional>
 #include "common/LLVMWarningsPop.hpp"
-#include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/CSWalkOrder.hpp"
 #include "Probe/Assertion.h"
 

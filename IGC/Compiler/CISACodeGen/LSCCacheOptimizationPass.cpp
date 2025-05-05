@@ -40,12 +40,10 @@ SPDX-License-Identifier: MIT
 
 #include "AdaptorCommon/RayTracing/MemRegionAnalysis.h"  // for getRegionOffset(), RTMemRegion
 #include "getCacheOpts.h"                                // for getCacheOptsStoreInst()
-#include "GenISAIntrinsics/GenIntrinsicInst.h"           // for llvm::GenIntrinsicInst
 #include "AdaptorCommon/RayTracing/RTStackFormat.h"      // for RTStackFormat::LSC_WRITE_GRANULARITY
 #include "IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"                   // for suppressing LLVM warnings
-#include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/LLVMContext.h>                         // for llvm::LLVMContext
 #include <llvm/IR/IRBuilder.h>                           // for llvm::IRBuilder
 #include <llvm/IR/Function.h>                            // for llvm::Function
@@ -54,20 +52,17 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Type.h>                                // for llvm::Type
 #include <llvm/IR/DerivedTypes.h>                        // for llvm::VectorType
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include <llvm/IR/Constant.h>                            // for llvm::Constant
 #include <llvm/IR/Constants.h>                           // for llvm::ConstantInt, llvm::ConstantFP, llvm::ConstantVector, llvm::ConstantDataVector, llvm::UndefValue
 #include <llvm/IR/Instruction.h>                         // for llvm::Instruction
 #include <llvm/IR/Instructions.h>                        // for llvm::StoreInst, llvm::CallInst
 #include <optional>
 #include <llvm/ADT/APInt.h>                              // for llvm::APInt, llvm::ArrayRef
-#include <llvm/Support/raw_ostream.h>                    // for llvm::raw_ostream, llvm::raw_string_ostream, llvm::outs(), llvm::errs()
 #include "common/LLVMWarningsPop.hpp"                    // for suppressing LLVM warnings
 
 #include <climits>    // for CHAR_BIT
 #include <cstdint>    // for std::uint64_t
 #include <string>     // for std::string
 #include <vector>     // for std::vector
-#include <algorithm>  // for std::find
 
 using namespace IGC;
 

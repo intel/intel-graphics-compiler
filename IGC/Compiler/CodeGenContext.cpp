@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/LLVMContext.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Probe/Assertion.h"
 #include <llvm/IR/LLVMRemarkStreamer.h>

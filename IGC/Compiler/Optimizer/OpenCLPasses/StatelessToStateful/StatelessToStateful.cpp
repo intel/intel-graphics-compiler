@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include "common/secure_string.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>

@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
-#include "Compiler/DebugInfo/Utils.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
@@ -18,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include "Probe/Assertion.h"
-#include "IGC/common/StringMacros.hpp"
 #include <llvm/Support/Casting.h>
 #include "IGC/Compiler/CISACodeGen/messageEncoding.hpp"
 

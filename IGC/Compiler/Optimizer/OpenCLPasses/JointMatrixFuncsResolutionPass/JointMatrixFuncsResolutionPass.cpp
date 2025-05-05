@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "JointMatrixFuncsResolutionPass.h"
 
-#include "IGC/common/StringMacros.hpp"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
@@ -20,7 +19,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/ADT/Sequence.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/PostOrderIterator.h>
 #include "llvm/IR/DebugInfo.h"
@@ -32,7 +30,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Value.h"
 #include <llvmWrapper/Analysis/ValueTracking.h>
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Module.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "common/LLVMWarningsPop.hpp"
 

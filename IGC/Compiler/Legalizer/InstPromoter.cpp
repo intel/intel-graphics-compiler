@@ -11,8 +11,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Debug.h"
-#include "llvm/Support/MathExtras.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/Transforms/Utils/Local.h"

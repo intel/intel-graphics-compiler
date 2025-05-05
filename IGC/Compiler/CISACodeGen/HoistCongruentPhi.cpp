@@ -25,7 +25,6 @@ See LICENSE.TXT for details.
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvmWrapper/IR/Function.h"
-#include "llvmWrapper/IR/Value.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 

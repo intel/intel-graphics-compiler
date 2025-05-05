@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CodeGenPublic.h"
-#include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
@@ -19,7 +18,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/CodeMetrics.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "common/LLVMWarningsPop.hpp"
 

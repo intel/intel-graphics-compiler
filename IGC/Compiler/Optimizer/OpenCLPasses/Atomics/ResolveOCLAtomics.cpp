@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Constants.h>
-#include <llvm/ADT/StringExtras.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Probe/Assertion.h"

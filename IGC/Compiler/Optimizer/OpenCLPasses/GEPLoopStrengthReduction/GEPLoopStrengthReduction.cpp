@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include "llvm/Support/Debug.h"
 #include <llvm/Transforms/Utils/Local.h>
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
@@ -26,7 +25,6 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "common/igc_regkeys.hpp"
-#include "common/IGCIRBuilder.h"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CodeGenPublic.h"
 

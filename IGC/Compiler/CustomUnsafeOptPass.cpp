@@ -42,7 +42,6 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 #include "common/LLVMUtils.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "GenISAIntrinsics/GenIntrinsics.h"
 #include <llvm/ADT/Statistic.h>
 #include <llvm/BinaryFormat/Dwarf.h>
 #include <llvm/IR/Constants.h>
@@ -59,7 +58,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
-#include <set>
 #include "Probe/Assertion.h"
 
 using namespace llvm;

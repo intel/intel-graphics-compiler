@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "llvm/Config/llvm-config.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Function.h"

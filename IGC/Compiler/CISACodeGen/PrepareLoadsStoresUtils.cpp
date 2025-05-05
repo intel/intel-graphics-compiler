@@ -24,17 +24,12 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
-#include "Compiler/IGCPassSupport.h"
-#include "Compiler/CodeGenPublicEnums.h"
-#include "Compiler/CodeGenPublic.h"
-#include "AdaptorCommon/RayTracing/RTBuilder.h"
 #include "PrepareLoadsStoresUtils.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/NoFolder.h>
 #include "common/LLVMWarningsPop.hpp"
 

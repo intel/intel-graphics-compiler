@@ -38,7 +38,6 @@ See LICENSE.TXT for details.
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/ADT/DepthFirstIterator.h>
-#include <llvm/ADT/STLExtras.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <algorithm>
 #include "Probe/Assertion.h"

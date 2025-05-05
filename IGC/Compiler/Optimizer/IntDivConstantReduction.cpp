@@ -6,14 +6,11 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Config/llvm-config.h"
 #include "common/igc_regkeys.hpp"
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/Operator.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
@@ -23,7 +20,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include <cmath>
 #include <limits>
-#include <type_traits>
 #include "Probe/Assertion.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "llvmWrapper/ADT/APInt.h"

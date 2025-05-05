@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/LiveVars.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/debug/Debug.hpp"
@@ -17,14 +16,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/SparseBitVector.h"
 #include <llvm/IR/CFG.h>
 #include <llvm/ADT/DenseMap.h>
-#include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/DataLayout.h>
-#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/InstIterator.h>
-#include <llvm/Support/MathExtras.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"

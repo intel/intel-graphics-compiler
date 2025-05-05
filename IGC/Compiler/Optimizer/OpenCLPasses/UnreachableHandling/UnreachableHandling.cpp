@@ -9,17 +9,13 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/UnreachableHandling/UnreachableHandling.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
-#include "common/igc_regkeys.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/Instructions.h"
 #include <llvmWrapper/IR/BasicBlock.h>
-#include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 
-#include <map>
 
 using namespace llvm;
 using namespace IGC;

@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Constants.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/Casting.h>
-#include <llvm/ADT/StringSwitch.h>
 #include <llvm/ADT/MapVector.h>
 #include "common/LLVMWarningsPop.hpp"
 

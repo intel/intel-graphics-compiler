@@ -27,7 +27,6 @@ SPDX-License-Identifier: MIT
 #include "LLVM3DBuilder/MetadataBuilder.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/debug/Debug.hpp"
-#include <list>
 #include "Probe/Assertion.h"
 
 /***********************************************************************************

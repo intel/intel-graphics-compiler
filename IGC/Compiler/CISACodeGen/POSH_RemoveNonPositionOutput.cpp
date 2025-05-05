@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CISACodeGen/helper.h"
 
-#include <llvm/IR/PassManager.h>
 
 using namespace IGC;
 using namespace llvm;

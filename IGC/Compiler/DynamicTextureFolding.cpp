@@ -9,9 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/InitializePasses.h"
 #include "Compiler/CodeGenPublic.h"
-#include "common/secure_mem.h"
 #include "DynamicTextureFolding.h"
-#include "Probe/Assertion.h"
 using namespace llvm;
 using namespace IGC;
 

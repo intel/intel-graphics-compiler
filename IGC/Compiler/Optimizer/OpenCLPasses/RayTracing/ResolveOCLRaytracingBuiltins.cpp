@@ -6,10 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "IGC/common/StringMacros.hpp"
 #include <map>
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "ResolveOCLRaytracingBuiltins.hpp"
 #include "Compiler/IGCPassSupport.h"

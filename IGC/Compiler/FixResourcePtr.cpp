@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/debug/Debug.hpp"
-#include "common/debug/Dump.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/FixResourcePtr.hpp"
 #include "Compiler/CodeGenPublic.h"

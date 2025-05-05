@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/IGCPassSupport.h"
-#include "common/IGCIRBuilder.h"
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include "UniformAssumptions.hpp"
 #include "Probe/Assertion.h"

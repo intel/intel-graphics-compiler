@@ -9,10 +9,8 @@ SPDX-License-Identifier: MIT
 #include "ReduceOptPass.hpp"
 #include "IGCIRBuilder.h"
 #include <llvm/IR/Function.h>
-#include <llvmWrapper/IR/PatternMatch.h>
 
 #include "Compiler/IGCPassSupport.h"
-#include "Compiler/CISACodeGen/helper.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"

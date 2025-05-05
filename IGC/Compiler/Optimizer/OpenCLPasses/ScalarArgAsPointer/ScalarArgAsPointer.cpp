@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ScalarArgAsPointer/ScalarArgAsPointer.hpp"
-#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"

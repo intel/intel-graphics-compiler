@@ -19,12 +19,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/Dominators.h>
-#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Pass.h>
-#include <llvm/Support/raw_ostream.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Probe/Assertion.h"
 #include <functional>   // for std::function
 

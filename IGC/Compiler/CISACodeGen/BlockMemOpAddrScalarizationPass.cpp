@@ -7,12 +7,9 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "BlockMemOpAddrScalarizationPass.hpp"
-#include "CodeGenPublicEnums.h"
-#include "IGCIRBuilder.h"
 #include <llvm/IR/Function.h>
 
 #include "Compiler/IGCPassSupport.h"
-#include "Compiler/CISACodeGen/helper.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"

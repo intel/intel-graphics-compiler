@@ -10,9 +10,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/debug/Debug.hpp"
-#include "common/debug/Dump.hpp"
-#include "common/MemStats.h"
-#include "common/LLVMUtils.h"
 #include <vector>
 #include <set>
 #include "Probe/Assertion.h"

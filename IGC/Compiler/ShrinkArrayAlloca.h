@@ -13,6 +13,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "common/LLVMWarningsPop.hpp"
 
+namespace llvm
+{
+    class AllocaInst;
+} // namespace llvm
+
 namespace IGC
 {
 ////////////////////////////////////////////////////////////////////////////////

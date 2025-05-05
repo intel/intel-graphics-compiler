@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>

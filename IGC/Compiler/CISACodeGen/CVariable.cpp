@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "llvm/Support/Format.h"
 
-#include <sstream>
 
 using namespace IGC;
 

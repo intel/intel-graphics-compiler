@@ -7,14 +7,12 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #define DEBUG_TYPE "pre-ra-remat-flag"
-#include "common/LLVMUtils.h"
 #include "Compiler/CISACodeGen/PreRARematFlag.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Config/llvm-config.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/IRBuilder.h"
@@ -22,7 +20,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Scalar.h"
 #include "llvmWrapper/ADT/Optional.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Probe/Assertion.h"
 #include <optional>
 

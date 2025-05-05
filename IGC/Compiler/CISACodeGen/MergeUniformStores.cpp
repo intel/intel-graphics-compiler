@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/helper.h"
 #include "common/debug/Debug.hpp"
 #include <llvm/IR/Function.h>
-#include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 
 using namespace llvm;
 using namespace IGC;

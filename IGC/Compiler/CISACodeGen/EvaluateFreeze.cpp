@@ -7,9 +7,8 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "EvaluateFreeze.hpp"
-#include "Compiler/CodeGenContextWrapper.hpp"
-#include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Probe/Assertion.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/IRBuilder.h>

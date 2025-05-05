@@ -9,8 +9,6 @@ SPDX-License-Identifier: MIT
 #define DEBUG_TYPE "type-demote"
 #include "Compiler/CISACodeGen/TypeDemote.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/CodeGenContextWrapper.hpp"
-#include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/PostOrderIterator.h>
@@ -18,7 +16,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;

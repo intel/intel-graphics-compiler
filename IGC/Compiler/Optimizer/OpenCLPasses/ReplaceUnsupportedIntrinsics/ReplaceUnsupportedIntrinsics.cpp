@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Config/llvm-config.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/IRBuilder.h"

@@ -10,8 +10,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Option/ArgList.h"
 #include "llvm/Support/StringSaver.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvmWrapper/Option/OptTable.h"
-#include "llvmWrapper/Support/Alignment.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/CISACodeGen/OpenCLOptions.hpp"

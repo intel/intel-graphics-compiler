@@ -25,7 +25,6 @@ See LICENSE.TXT for details.
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/ADT/PostOrderIterator.h"
-#include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/Value.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>

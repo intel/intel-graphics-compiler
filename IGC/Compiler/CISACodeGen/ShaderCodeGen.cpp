@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/IGCVectorizer.h"
 #include "Compiler/CISACodeGen/AdvMemOpt.h"
 #include "Compiler/CISACodeGen/Emu64OpsPass.h"
-#include "Compiler/CISACodeGen/PullConstantHeuristics.hpp"
 #include "Compiler/CISACodeGen/PushAnalysis.hpp"
 #include "Compiler/CISACodeGen/ScalarizerCodeGen.hpp"
 #include "Compiler/CISACodeGen/HoistCongruentPhi.hpp"
@@ -31,7 +30,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/EstimateFunctionSize.h"
 #include "Compiler/CISACodeGen/GenerateBlockMemOpsPass.hpp"
 #include "Compiler/CISACodeGen/GenerateFrequencyData.hpp"
-#include "Compiler/CISACodeGen/PassTimer.hpp"
 #include "Compiler/CISACodeGen/FixAddrSpaceCast.h"
 #include "Compiler/CISACodeGen/FixupExtractValuePair.h"
 #include "Compiler/CISACodeGen/GenIRLowering.h"
@@ -43,13 +41,10 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/MergeUniformStores.hpp"
 #include "Compiler/CISACodeGen/PreRARematFlag.h"
 #include "Compiler/CISACodeGen/PromoteConstantStructs.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/AlignmentAnalysis/AlignmentAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Decompose2DBlockFuncs/Decompose2DBlockFuncs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GASResolving.h"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/LowerByValAttribute.hpp"
-#include "Compiler/CISACodeGen/ResolvePredefinedConstant.h"
 #include "Compiler/CISACodeGen/Simd32Profitability.hpp"
-#include "Compiler/CISACodeGen/SimplifyConstant.h"
 #include "Compiler/CISACodeGen/TimeStatsCounter.h"
 #include "Compiler/CISACodeGen/TypeDemote.h"
 #include "Compiler/CISACodeGen/UniformAssumptions.hpp"
@@ -78,7 +73,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Legalizer/AddRequiredMemoryFences.h"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryToSLM.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantResolution.hpp"
@@ -87,13 +81,11 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/ReplaceUnsupportedIntrinsics/ReplaceUnsupportedIntrinsics.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AddressSpaceAliasAnalysis/AddressSpaceAliasAnalysis.h"
-#include "Compiler/Optimizer/OpenCLPasses/UndefinedReferences/UndefinedReferencesPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/StatelessToStateful/StatelessToStateful.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DisableLoopUnrollOnRetry/DisableLoopUnrollOnRetry.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass/TransformUnmaskedFunctionsPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/UnreachableHandling/UnreachableHandling.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncResolution.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/ScalarArgAsPointer/ScalarArgAsPointer.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GEPLoopStrengthReduction/GEPLoopStrengthReduction.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/StackOverflowDetection/StackOverflowDetection.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/SubGroupReductionPattern/SubGroupReductionPattern.hpp"
@@ -125,7 +117,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/WorkaroundAnalysisPass.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
-#include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/DynamicTextureFolding.h"
 #include "Compiler/SampleMultiversioning.hpp"
@@ -133,18 +124,13 @@ SPDX-License-Identifier: MIT
 #include "Compiler/GenRotate.hpp"
 #include "Compiler/Optimizer/Scalarizer.h"
 #include "Compiler/RemoveCodeAssumptions.hpp"
-#include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/debug/Dump.hpp"
-#include "common/MemStats.h"
-#include <iStdLib/utility.h>
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
-#include "llvm/ADT/PostOrderIterator.h"
 #include <llvm/IR/DebugInfo.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Verifier.h>
-#include <llvm/Analysis/CFGPrinter.h>
 #include <llvm/Analysis/Passes.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -152,25 +138,15 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/IPO/AlwaysInliner.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Scalar/GVN.h>
-#include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
-#include <llvm/Linker/Linker.h>
 #include <llvm/Analysis/ScopedNoAliasAA.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
-#include <llvm/ADT/StringExtras.h>
-#include <llvm/IRReader/IRReader.h>
-#include <llvm/Support/MathExtras.h>
-#include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/ErrorHandling.h>
-#include <llvm/Support/SourceMgr.h>
 #include <llvm/Transforms/IPO/FunctionAttrs.h>
 #include <llvm/Transforms/Utils.h>
-#include <llvm/Transforms/Scalar/InstSimplifyPass.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
-#include <llvm/Transforms/InstCombine/InstCombine.h>
 #include "common/LLVMWarningsPop.hpp"
-#include <sstream>
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"
@@ -178,7 +154,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/GenRotate.hpp"
 #include "Compiler/SampleCmpToDiscard.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
-#include "DebugInfo.hpp"
 #include "AdaptorCommon/RayTracing/RayTracingPasses.hpp"
 #include "AdaptorCommon/RayTracing/RayTracingAddressSpaceAliasAnalysis.h"
 #include "Compiler/SamplerPerfOptPass.hpp"
@@ -744,7 +719,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
             mpm.add(createPrepareLoadsStoresPass());
         }
 
-        // run AdvMemOpt and MemOPt back-to-back so that we only
+        // run AdvMemOpt and MemOPt back-to-back so that we only
         // need to run WIAnalysis once
         if (IGC_IS_FLAG_ENABLED(EnableAdvMemOpt))
             mpm.add(createAdvMemOptPass());

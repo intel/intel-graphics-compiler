@@ -8,10 +8,8 @@ SPDX-License-Identifier: MIT
 
 #include "SampleMultiversioning.hpp"
 #include "Compiler/CodeGenPublic.h"
-#include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/InitializePasses.h"
-#include "common/secure_mem.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;

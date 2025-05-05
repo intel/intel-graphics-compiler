@@ -14,12 +14,9 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/IR/ConstantFold.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvmWrapper/Transforms/Utils/LoopUtils.h>
-#include <llvm/IR/InstIterator.h>
-#include <llvm/IR/Operator.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Probe/Assertion.h"
 

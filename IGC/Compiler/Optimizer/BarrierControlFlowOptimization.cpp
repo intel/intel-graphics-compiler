@@ -19,9 +19,6 @@ SPDX-License-Identifier: MIT
 #include "BarrierControlFlowOptimization.hpp"
 #include "visa_igc_common_header.h"
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include <memory>
-#include <utility>
-#include <map>
 
 using namespace llvm;
 namespace IGC

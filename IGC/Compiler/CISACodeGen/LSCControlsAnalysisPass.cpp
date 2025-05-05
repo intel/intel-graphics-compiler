@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
-#include "common/StringMacros.hpp"
 #include "LSCControlsAnalysisPass.h"
 #include "IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"

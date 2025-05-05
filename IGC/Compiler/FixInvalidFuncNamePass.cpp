@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/FixInvalidFuncNamePass.hpp"
 #include "IGCPassSupport.h"
-#include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"

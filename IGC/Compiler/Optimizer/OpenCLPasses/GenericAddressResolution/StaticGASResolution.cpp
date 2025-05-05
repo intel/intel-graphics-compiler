@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "StaticGASResolution.h"
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/InitializePasses.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 
 FunctionPass* IGC::createStaticGASResolution() { return new StaticGASResolution(); }

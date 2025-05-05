@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 // vim:ts=2:sw=2:et:
 #include "common/LLVMUtils.h"
 #include "Compiler/CISACodeGen/GenIRLowering.h"
-#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
@@ -18,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/Support/MathExtras.h>
 #include <llvm/IR/PatternMatch.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #if LLVM_VERSION_MAJOR < 11

@@ -23,7 +23,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DebugInfo.h"
-#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Dominators.h"
 #include <llvmWrapper/ADT/Optional.h>
 #include "common/LLVMWarningsPop.hpp"

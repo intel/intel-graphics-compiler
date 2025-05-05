@@ -10,8 +10,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvmWrapper/IR/CallSite.h>
-#include <llvm/Support/Debug.h>
-#include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"

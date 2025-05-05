@@ -8,12 +8,9 @@ SPDX-License-Identifier: MIT
 
 #include "AtomicOptPass.hpp"
 #include "CodeGenPublicEnums.h"
-#include "IGCIRBuilder.h"
 #include <llvm/IR/Function.h>
-#include <llvmWrapper/IR/PatternMatch.h>
 
 #include "Compiler/IGCPassSupport.h"
-#include "Compiler/CISACodeGen/helper.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
 #include "common/LLVMWarningsPush.hpp"

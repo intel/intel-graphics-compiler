@@ -6,13 +6,10 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "common/LLVMUtils.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/SinkCommonOffsetFromGEP.h"
-#include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
-#include "Probe/Assertion.h"
 #include "llvm/IR/DerivedTypes.h"
 #include <vector>
 #include <algorithm>

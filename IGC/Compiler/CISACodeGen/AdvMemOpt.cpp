@@ -10,15 +10,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/CFG.h>
-#include <llvm/IR/PatternMatch.h>
 #include <llvm/Pass.h>
-#include <llvm/Support/Debug.h>
-#include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include <llvm/ADT/Optional.h>
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/MemOpt2.h"
 #include "Compiler/IGCPassSupport.h"

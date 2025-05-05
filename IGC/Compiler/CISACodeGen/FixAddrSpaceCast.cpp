@@ -9,15 +9,11 @@ SPDX-License-Identifier: MIT
 #define DEBUG_TYPE "addrspacecast-fixer"
 #include "Compiler/CISACodeGen/FixAddrSpaceCast.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/CodeGenContextWrapper.hpp"
-#include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/IRBuilder.h>
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "GenISAIntrinsics/GenIntrinsics.h"
 
 using namespace llvm;
 using namespace IGC;

@@ -8,20 +8,16 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
-#include "llvm/Support/ScaledNumber.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/IR/Module.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
-#include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Support/GenericDomTree.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Linker/Linker.h"
-#include "llvm/Support/SourceMgr.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -40,7 +36,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMUtils.h"
 #include "AdaptorOCL/OCL/BuiltinResource.h"
-#include "AdaptorOCL/OCL/LoadBuffer.h"
 
 #include <vector>
 #include <utility>

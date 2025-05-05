@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
-#include "CISACodeGen/Platform.hpp"
 #include "Probe/Assertion.h"
 
 using namespace llvm;

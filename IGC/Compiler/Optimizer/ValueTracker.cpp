@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
-#include "IGC/common/StringMacros.hpp"
 
 using namespace llvm;
 using namespace IGC;

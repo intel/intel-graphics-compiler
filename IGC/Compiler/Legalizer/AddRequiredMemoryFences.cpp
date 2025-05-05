@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 #include "AddRequiredMemoryFences.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Dominators.h"

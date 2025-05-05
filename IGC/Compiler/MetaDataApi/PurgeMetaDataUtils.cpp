@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
-#include "common/LLVMUtils.h"
 
 
 using namespace llvm;

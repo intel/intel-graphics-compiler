@@ -6,14 +6,11 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "IGC/common/StringMacros.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
-#include "llvm/ADT/TinyPtrVector.h"
-#include "llvm/IR/Argument.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"

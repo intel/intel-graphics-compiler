@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/ResourceLoopAnalysis.h"
 #include "Compiler/CodeGenPublic.h"
-#include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 

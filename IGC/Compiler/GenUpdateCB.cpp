@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include <llvm/Support/ScaledNumber.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include "llvm/IR/DebugInfo.h"
 #include <llvm/IRReader/IRReader.h>

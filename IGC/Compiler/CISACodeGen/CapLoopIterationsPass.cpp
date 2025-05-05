@@ -12,8 +12,6 @@ SPDX-License-Identifier: MIT
 // so no infinite loops occur.
 //===----------------------------------------------------------------------===//
 
-#include <vector>
-#include <set>
 
 #include "CapLoopIterationsPass.h"
 #include "IGCIRBuilder.h"

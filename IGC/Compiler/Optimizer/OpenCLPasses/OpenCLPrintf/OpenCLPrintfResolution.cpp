@@ -13,12 +13,10 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "ShaderTypesEnum.h"
 #include "Probe/Assertion.h"

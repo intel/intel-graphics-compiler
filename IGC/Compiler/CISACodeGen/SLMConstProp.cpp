@@ -22,8 +22,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
-#include <llvm/IR/InstIterator.h>
-#include <llvm/Support/Debug.h>
 #include <llvm/Support/MathExtras.h>
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"

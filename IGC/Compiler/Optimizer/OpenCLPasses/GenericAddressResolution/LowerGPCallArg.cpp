@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "LLVM3DBuilder/MetadataBuilder.h"
-#include "Compiler/InitializePasses.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/PostOrderIterator.h"

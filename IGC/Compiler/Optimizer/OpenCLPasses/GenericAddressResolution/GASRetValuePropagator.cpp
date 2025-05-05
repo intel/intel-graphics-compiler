@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "GASRetValuePropagator.h"
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/InitializePasses.h"
 #include "LLVM3DBuilder/MetadataBuilder.h"
 
 #include "common/LLVMWarningsPush.hpp"

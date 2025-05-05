@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "SynchronizationObjectCoalescing.hpp"
 #include "visa_igc_common_header.h"
-#include <memory>
 #include <utility>
 #include <map>
 

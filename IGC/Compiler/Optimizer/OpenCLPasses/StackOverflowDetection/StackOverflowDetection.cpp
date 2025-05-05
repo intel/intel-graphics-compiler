@@ -13,10 +13,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/IR/Constants.h>
 #include "common/LLVMWarningsPop.hpp"
 using namespace llvm;
 using namespace IGC;

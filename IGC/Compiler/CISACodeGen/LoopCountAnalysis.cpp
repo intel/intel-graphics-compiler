@@ -10,18 +10,18 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
-#include "Compiler/CISACodeGen/helper.h"
+#include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/Analysis/IVDescriptors.h>
 #include <llvm/Analysis/LoopInfo.h>
-#include <llvmWrapper/Transforms/Utils/LoopUtils.h>
 #include <llvm/Analysis/ScalarEvolutionAliasAnalysis.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstrTypes.h>
-#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 
 #include <algorithm>
+#include <optional>
 
 using namespace llvm;
 using namespace IGC;

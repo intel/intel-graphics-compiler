@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "CShaderProgram.hpp"
 #include "ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
-#include "Compiler/CISACodeGen/VectorProcess.hpp"
 
 using namespace llvm;
 using namespace IGC;

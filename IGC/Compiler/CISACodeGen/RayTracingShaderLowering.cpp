@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 /// if we can elided the use of fences in some situations.
 ///
 //===----------------------------------------------------------------------===//
-#include "IGC/common/StringMacros.hpp"
 #include "RayTracingShaderLowering.hpp"
 #include "AdaptorCommon/RayTracing/RTBuilder.h"
 #include "IGCPassSupport.h"

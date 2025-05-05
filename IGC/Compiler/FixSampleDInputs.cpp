@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/BasicBlock.h>
 #include "common/LLVMWarningsPop.hpp"
 
-#include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"

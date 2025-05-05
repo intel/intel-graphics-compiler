@@ -7,17 +7,11 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/Support/ScaledNumber.h>
 #include <optional>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ComputeShaderBase.hpp"
 #include "Compiler/CISACodeGen/CSWalkOrder.hpp"
-#include "Compiler/CISACodeGen/messageEncoding.hpp"
-#include "common/allocator.h"
-#include "common/secure_mem.h"
 #include <iStdLib/utility.h>
-#include <algorithm>
-#include "Probe/Assertion.h"
 
 using namespace llvm;
 

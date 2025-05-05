@@ -12,18 +12,13 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "IGC/Compiler/CodeGenPublic.h"
-#include "common/IGCIRBuilder.h"
 #include "Probe/Assertion.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "ResourceLoopUnroll.hpp"
-#include "visa_igc_common_header.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include <memory>
-#include <utility>
-#include <map>
 
 using namespace llvm;
 namespace IGC

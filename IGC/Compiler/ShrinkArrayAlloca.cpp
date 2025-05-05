@@ -8,13 +8,13 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvm/IR/InstIterator.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
 
-#include "common/IGCIRBuilder.h"
 #include "common/Types.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
+
 #include "ShrinkArrayAlloca.h"
 
 #define PASS_FLAG "shrink-array-alloca"

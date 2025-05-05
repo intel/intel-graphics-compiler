@@ -10,13 +10,11 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
-#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvmWrapper/IR/IRBuilder.h>
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/Function.h>
 #include <llvmWrapper/IR/Instructions.h>
-#include <llvmWrapper/IR/CallSite.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/InstIterator.h>
@@ -29,7 +27,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include "common/LLVMWarningsPop.hpp"
-#include <unordered_set>
 #include <unordered_map>
 #include "Probe/Assertion.h"
 #include <BiFManager/BiFManagerHandler.hpp>

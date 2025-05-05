@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include "common/debug/Debug.hpp"
 
 #include "Compiler/IGCPassSupport.h"
-#include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
 #include "llvmWrapper/IR/Function.h"

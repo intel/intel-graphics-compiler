@@ -10,14 +10,9 @@ SPDX-License-Identifier: MIT
 #include "BufferBoundsCheckingPatcher.hpp"
 
 #include "Compiler/IGCPassSupport.h"
-#include "Compiler/MetaDataApi/MetaDataApi.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/Type.h"
-#include "llvmWrapper/IR/Function.h"
-#include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/Function.h>
-#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Mangler.h>
 #include <llvm/IR/Module.h>

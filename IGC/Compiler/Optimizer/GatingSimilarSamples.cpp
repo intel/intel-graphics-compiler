@@ -9,16 +9,12 @@ SPDX-License-Identifier: MIT
 #include "GatingSimilarSamples.hpp"
 #include "common/IGCIRBuilder.h"
 #include "common/igc_regkeys.hpp"
-#include "GenISAIntrinsics/GenIntrinsics.h"
 #include "IGC/LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InstrTypes.h>
-#include <llvm/IR/Constant.h>
 #include <llvm/IR/Dominators.h>
-#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include <llvm/ADT/ilist.h>
 #include <llvmWrapper/IR/InstrTypes.h>
 #include <llvmWrapper/IR/BasicBlock.h>
 #include "common/LLVMWarningsPop.hpp"

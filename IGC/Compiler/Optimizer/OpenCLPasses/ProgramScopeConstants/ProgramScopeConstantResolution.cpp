@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <vector>
-#include <map>
 #include "Probe/Assertion.h"
 #include "BiFModule/Headers/bif_control_common.h"
 

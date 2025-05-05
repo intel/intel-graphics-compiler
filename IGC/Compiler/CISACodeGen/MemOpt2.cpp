@@ -10,12 +10,9 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
-#include <llvm/Support/Debug.h>
-#include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "GenISAIntrinsics/GenIntrinsics.h"
 
 #include "Compiler/CISACodeGen/MemOpt2.h"
 

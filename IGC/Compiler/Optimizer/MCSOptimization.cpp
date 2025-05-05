@@ -10,13 +10,11 @@ SPDX-License-Identifier: MIT
 #include "IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CodeGenPublic.h"
-#include "Compiler/WorkaroundAnalysisPass.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include <set>
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
 #include <llvm/IR/InstVisitor.h>
-#include <llvm/IR/IRBuilder.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Support/Casting.h>
 #include "common/LLVMWarningsPop.hpp"

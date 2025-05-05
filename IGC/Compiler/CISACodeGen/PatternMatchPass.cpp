@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CISACodeGen/DeSSA.hpp"
-#include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InlineAsm.h>

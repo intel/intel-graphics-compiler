@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "common/allocator.h"
 #include "common/Types.hpp"
 #include "common/Stats.hpp"
-#include "common/MemStats.h"
 #include "common/debug/Dump.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/secure_mem.h"

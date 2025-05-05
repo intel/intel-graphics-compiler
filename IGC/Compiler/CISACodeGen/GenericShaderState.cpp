@@ -8,12 +8,8 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
-#include <llvm/IR/Module.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/GenericShaderState.hpp"
-#include <iStdLib/utility.h>
-#include "AdaptorCommon/API/igc.h"
-#include "Probe/Assertion.h"
 
 using namespace llvm;
 

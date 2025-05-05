@@ -9,14 +9,10 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/BreakdownIntrinsic/BreakdownIntrinsic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
-#include "Compiler/MetaDataApi/MetaDataApi.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "GenISAIntrinsics/GenIntrinsics.h"
-#include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 
 using namespace llvm;
 using namespace IGC;

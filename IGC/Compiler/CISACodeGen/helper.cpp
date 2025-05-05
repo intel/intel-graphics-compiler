@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
-#include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -27,7 +26,6 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "common/secure_mem.h"
-#include <stack>
 #include "Probe/Assertion.h"
 #include "helper.h"
 

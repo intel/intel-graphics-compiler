@@ -19,7 +19,6 @@ SPDX-License-Identifier: MIT
 #include "common/IGCIRBuilder.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublicEnums.h"
-#include "common/igc_regkeys.hpp"
 #include "Probe/Assertion.h"
 
 using namespace llvm;

@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/IGCPassSupport.h"
-#include "common/IGCIRBuilder.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"

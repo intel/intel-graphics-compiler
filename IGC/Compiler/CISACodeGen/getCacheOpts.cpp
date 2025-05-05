@@ -21,7 +21,6 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/RayTracing/MemRegionAnalysis.h"  // for getRTRegion(), RTMemRegion
 
 #include "common/LLVMWarningsPush.hpp"                   // for suppressing LLVM warnings
-#include "llvm/IR/Instruction.h"                         // for llvm::Instruction
 #include "llvm/IR/Instructions.h"                        // for llvm::StoreInst, llvm::LoadInst
 #include "common/LLVMWarningsPop.hpp"                    // for suppressing LLVM warnings
 

@@ -9,11 +9,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/DataLayout.h>
-#include <llvm/IR/IRBuilder.h>
 #include <llvmWrapper/Support/Alignment.h>
-#include <llvm/Support/Debug.h>
 #include <llvm/Support/MathExtras.h>
-#include <llvm/Support/raw_ostream.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"

@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Dominators.h"
 #include "llvm/Analysis/LoopInfo.h"
-#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "common/LLVMWarningsPop.hpp"

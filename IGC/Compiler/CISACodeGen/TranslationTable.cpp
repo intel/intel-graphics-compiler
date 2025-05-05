@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/CISACodeGen/TranslationTable.hpp"
 #include "Compiler/IGCPassSupport.h"
 

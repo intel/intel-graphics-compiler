@@ -9,11 +9,8 @@ SPDX-License-Identifier: MIT
 #include <GenISAIntrinsics/GenIntrinsicInst.h>
 #include "WaveAllJointReduction.hpp"
 #include "Compiler/IGCPassSupport.h"
-#include "Compiler/InitializePasses.h"
-#include <igc_regkeys.hpp>
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstVisitor.h>
-#include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
