@@ -481,6 +481,15 @@ static Value *generatePredicateForLoadWrregion(
   Constant *NewMask = ConstantVector::get(NewMaskVals);
 
   Value *Undef = UndefValue::get(Pred->getType());
+
+  if (auto *C = dyn_cast<Constant>(Pred); C && !C->getSplatValue()) {
+    // not splat constant
+    Function *Decl = GenXIntrinsic::getGenXDeclaration(
+        InsertBefore->getModule(), GenXIntrinsic::genx_constantpred,
+        {Pred->getType()});
+    Pred = CallInst::Create(Decl, {Pred}, Name, InsertBefore);
+  }
+
   auto *Res = new ShuffleVectorInst(Pred, Undef, NewMask, Name, InsertBefore);
   Res->setDebugLoc(DL);
   return Res;
