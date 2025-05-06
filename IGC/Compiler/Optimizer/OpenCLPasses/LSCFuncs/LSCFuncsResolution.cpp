@@ -967,7 +967,7 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
         //   u8_m1k32v2  --> u8_m1k64v1
         //   u16_m1k16v2 --> u16_m1k32v1
         //   u32_m1k8v2  --> u32_m1k16v1
-        if (m_pCtx->platform.getGRFSize() == 64 && isRead && !isPrefetch &&
+        if (m_pCtx->platform.getGRFSize() == 64 && isRead &&
             numBlocksV == 2 && tileHeight == 1 && (elemSize * tileWidth) == 256)
         {
             numBlocksV = 1;
