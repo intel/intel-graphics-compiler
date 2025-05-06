@@ -4601,12 +4601,12 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     m_encoder->Push();
 }
 
-static unsigned getVectorSize(Value *I) {
+static unsigned int getVectorSize(Value *I) {
     IGCLLVM::FixedVectorType *VecType =
         llvm::dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
     if (!VecType)
-        IGC_ASSERT_EXIT_MESSAGE(0, "IGC Vectorizer always creates FixedVectors, we do not expect other vector types");
-    unsigned NumElements = VecType->getNumElements();
+        return 0;
+    unsigned int NumElements = VecType->getNumElements();
     return NumElements;
 }
 
@@ -4614,23 +4614,24 @@ void EmitPass::FPTrunc(const SSource sources[2], const DstModifier& modifier) {
 
     CVariable* src[2];
     src[0] = GetSrcVariable(sources[0]);
-    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
-            sources[0].value->getType()->isVectorTy()) {
+    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy()) {
 
-        unsigned VectorSize = getVectorSize(sources[0].value);
+        unsigned int VectorSize = 0;
+        if (llvm::isa<Instruction>(sources[0].value))
+            VectorSize = getVectorSize(llvm::cast<Instruction>(sources[0].value));
 
         // float is 4 bytes --> divide by 4
-        unsigned NumberOfFloatsThatFitInRegister = m_currShader->getGRFSize()/4;
-        for (unsigned i = 0; i < VectorSize; ++i) {
+        unsigned int NumberOfFloatsThatFitInRegister = m_currShader->getGRFSize()/4;
+        for (unsigned int i = 0; i < VectorSize; ++i) {
 
             // this is FPTrunc we move from 32bits to 16 this gives us factor of 2
-            unsigned row = i / 2;
+            unsigned int row = i / 2;
             // now we can fit twice as many half floats into the same register:
             // .decl vector331 v_type=G type=f num_elts=128 align=wordx32
             // .decl vectorized_cast v_type=G type=hf num_elts=128 align=wordx32
             // mov (M1, 16) vectorized_cast(0,0 <-- this is odd col)<1> vector331(0,0)<1;1,0>
             // mov (M1, 16) vectorized_cast(0,16 <-- this is even col)<1> vector331(1,0)<1;1,0>
-            unsigned col = (i%2) * NumberOfFloatsThatFitInRegister;
+            unsigned int col = (i%2) * NumberOfFloatsThatFitInRegister;
             SetSourceModifiers(0, sources[0]);
             if (src[0]->IsUniform()) { m_encoder->SetSrcSubReg(0, i); }
             else m_encoder->SetSrcSubVar(0, i);
@@ -4652,13 +4653,13 @@ void EmitPass::Add(const SSource sources[2], const DstModifier& modifier)
         src[i] = GetSrcVariable(sources[i]);
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
-            sources[0].value->getType()->isVectorTy() &&
-            sources[1].value->getType()->isVectorTy()) {
+    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy() && sources[1].value->getType()->isVectorTy()) {
 
-        unsigned VectorSize = getVectorSize(sources[0].value);
+        unsigned int VectorSize = 0;
+        if (llvm::isa<Instruction>(sources[0].value))
+            VectorSize = getVectorSize(llvm::cast<Instruction>(sources[0].value));
 
-        for (unsigned i = 0; i < VectorSize; ++i) {
+        for (unsigned int i = 0; i < VectorSize; ++i) {
             SetSourceModifiers(0, sources[0]);
             SetSourceModifiers(1, sources[1]);
 
@@ -4691,13 +4692,13 @@ void EmitPass::Mul(const SSource sources[2], const DstModifier& modifier)
         src[i] = GetSrcVariable(sources[i]);
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
-            sources[0].value->getType()->isVectorTy() &&
-            sources[1].value->getType()->isVectorTy()) {
+    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy() && sources[1].value->getType()->isVectorTy()) {
 
-        unsigned VectorSize = getVectorSize(sources[0].value);
+        unsigned int VectorSize = 0;
+        if (llvm::isa<Instruction>(sources[0].value))
+            VectorSize = getVectorSize(llvm::cast<Instruction>(sources[0].value));
 
-        for (unsigned i = 0; i < VectorSize; ++i) {
+        for (unsigned int i = 0; i < VectorSize; ++i) {
             SetSourceModifiers(0, sources[0]);
             SetSourceModifiers(1, sources[1]);
 
@@ -4748,13 +4749,13 @@ void EmitPass::Div(const SSource sources[2], const DstModifier& modifier)
     CVariable* src[2];
     for (int i = 0; i < 2; ++i) src[i] = GetSrcVariable(sources[i]);
 
-    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
-            sources[0].value->getType()->isVectorTy() &&
-            sources[1].value->getType()->isVectorTy()) {
+    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy() && sources[1].value->getType()->isVectorTy()) {
 
-        unsigned VectorSize = getVectorSize(sources[0].value);
+        unsigned int VectorSize = 0;
+        if (llvm::isa<Instruction>(sources[0].value))
+            VectorSize = getVectorSize(llvm::cast<Instruction>(sources[0].value));
 
-        for (unsigned i = 0; i < VectorSize; ++i) {
+        for (unsigned int i = 0; i < VectorSize; ++i) {
             SetSourceModifiers(0, sources[0]);
             SetSourceModifiers(1, sources[1]);
 
@@ -4779,13 +4780,15 @@ void EmitPass::Inv(const SSource sources[2], const DstModifier& modifier) {
             sources[0].value->getType()->isVectorTy() &&
             sources[1].value->getType()->isVectorTy()) {
 
-        unsigned VectorSize = getVectorSize(sources[0].value);
+        unsigned int VectorSize = 0;
+        if (llvm::isa<Value>(sources[0].value))
+            VectorSize = getVectorSize(llvm::cast<Value>(sources[0].value));
 
         CVariable* src[1];
         // sources[0] got used to check that it contains all 1
         src[0] = GetSrcVariable(sources[1]);
 
-        for (unsigned i = 0; i < VectorSize; ++i) {
+        for (unsigned int i = 0; i < VectorSize; ++i) {
             SetSourceModifiers(0, sources[1]);
 
             if (src[0]->IsUniform()) {
@@ -4809,9 +4812,11 @@ void EmitPass::VectorMad(const SSource sources[3], const DstModifier& modifier) 
     CVariable* src[3];
     for (int i = 0; i < 3; ++i) src[i] = GetSrcVariable(sources[i]);
 
-    unsigned VectorSize = getVectorSize(sources[0].value);
+    unsigned int VectorSize = 0;
+    if (llvm::isa<Instruction>(sources[0].value))
+        VectorSize = getVectorSize(llvm::cast<Instruction>(sources[0].value));
 
-    for (unsigned i = 0; i < VectorSize; ++i) {
+    for (unsigned int i = 0; i < VectorSize; ++i) {
 
         SetSourceModifiers(0, sources[0]);
         SetSourceModifiers(1, sources[1]);

@@ -352,7 +352,6 @@ $ export IGC_ShaderDumpEnable=1
 | `TestIGCPreCompiledFunctions` | Enable testing for precompiled kernels. [TEST ONLY] | - |
 | `ld2dmsInstsClubbingThreshold` | Do not club more than these ld2dms insts into the new BB during MCSOpt | - |
 | `manualEnableRSWA` | Enable read suppression WA for the send and indirect access | - |
-| `DisableWarnings` | Disable all warnings generated from IGC compiler | - |
 ## Shader dumping
 | Flag  | Description | Release builds |
 |:---- | :---- | :----: |

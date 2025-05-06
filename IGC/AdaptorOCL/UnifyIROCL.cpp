@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -106,7 +106,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/DpasFuncs/DpasFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LSCFuncs/LSCFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/ManageableBarriers/ManageableBarriersResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/JointMatrixFuncsResolutionPass/JointMatrixFuncsResolutionPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/RayTracing/ResolveOCLRaytracingBuiltins.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AccuracyDecoratedCallsBiFResolution/AccuracyDecoratedCallsBiFResolution.hpp"
@@ -472,11 +471,6 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
 
         mpm.add(createProcessBuiltinMetaDataPass());
         mpm.add(new PurgeMetaDataUtils());
-    }
-
-    if (ManageableBarriersResolution::HasHWSupport(pContext->platform.getPlatformInfo().eRenderCoreFamily))
-    {
-        mpm.add(new ManageableBarriersResolution());
     }
 
     // OpenCL WI + image function resolution

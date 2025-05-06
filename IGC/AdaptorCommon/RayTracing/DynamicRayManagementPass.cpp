@@ -441,7 +441,7 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
         {
             IP = &I;
 
-            if (isa<TraceRaySyncProceedHLIntrinsic>(&I))
+            if (isa<TraceRaySyncProceedHLIntrinsic>(&I) || isa<TraceRayInlineHLIntrinsic>(&I))
                 break;
         }
 

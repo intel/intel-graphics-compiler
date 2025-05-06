@@ -904,7 +904,6 @@ uint32_t StackCallABI::getFPSPGRF() const {
   } else if (version == StackCallABIVersion::VER_2) {
     return (kernel->getNumRegTotal() - 1) - FPSPGRF;
   } else {
-
     return (kernel->getNumRegTotal() - 1) - FPSPGRF;
   }
 }

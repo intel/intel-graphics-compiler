@@ -39,11 +39,11 @@ enum Enum {
 
 namespace Name {
 
-constexpr const char *ScopeAllDevices = "all_devices";
-constexpr const char *ScopeDevice = "device";
-constexpr const char *ScopeWorkgroup = "workgroup";
-constexpr const char *ScopeSubgroup = "subgroup";
-constexpr const char *ScopeWorkitem = "workitem";
+constexpr char *ScopeAllDevices = "all_devices";
+constexpr char *ScopeDevice = "device";
+constexpr char *ScopeWorkgroup = "workgroup";
+constexpr char *ScopeSubgroup = "subgroup";
+constexpr char *ScopeWorkitem = "workitem";
 
 } // namespace Name
 
