@@ -136,7 +136,7 @@ bool CustomUnsafeOptPass::runOnFunction(Function& F)
     {
         m_disableReorderingOpt = true;
     }
-    if (m_ctx->type == ShaderType::COMPUTE_SHADER && m_ctx->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
+    if (m_ctx->type == ShaderType::COMPUTE_SHADER && m_ctx->getModuleMetaData()->compOpt.FloatDenormMode64 == FLOAT_DENORM_RETAIN)
     {
         m_disableReorderingOpt = true;
     }

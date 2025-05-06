@@ -4259,10 +4259,10 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
             // Please, be aware of the fact that clients can understand the term canonical FP value in other way.
             if (C0)
             {
-                CodeGenContext* pCodeGenContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-                bool flushVal = pCodeGenContext->m_floatDenormMode16 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isHalfTy();
-                flushVal = flushVal || (pCodeGenContext->m_floatDenormMode32 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isFloatTy());
-                flushVal = flushVal || (pCodeGenContext->m_floatDenormMode64 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isDoubleTy());
+                CompOptions& compOpt = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData()->compOpt;
+                bool flushVal = compOpt.FloatDenormMode16 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isHalfTy();
+                flushVal = flushVal || (compOpt.FloatDenormMode32 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isFloatTy());
+                flushVal = flushVal || (compOpt.FloatDenormMode64 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isDoubleTy());
                 C = constantFolder.CreateCanonicalize(C0, flushVal);
             }
         }

@@ -1420,15 +1420,16 @@ bool TranslateBuildSPMD(
 
     // Set default denorm.
     // Note that those values have been set to FLOAT_DENORM_FLUSH_TO_ZERO
+    CompOptions* compOpt = &oclContext.getModuleMetaData()->compOpt;
     if (IGFX_GEN8_CORE <= oclContext.platform.GetPlatformFamily())
     {
-        oclContext.m_floatDenormMode16 = FLOAT_DENORM_RETAIN;
-        oclContext.m_floatDenormMode32 = FLOAT_DENORM_RETAIN;
-        oclContext.m_floatDenormMode64 = FLOAT_DENORM_RETAIN;
+        compOpt->FloatDenormMode16 = FLOAT_DENORM_RETAIN;
+        compOpt->FloatDenormMode32 = FLOAT_DENORM_RETAIN;
+        compOpt->FloatDenormMode64 = FLOAT_DENORM_RETAIN;
     }
     if (oclContext.platform.hasBFTFDenormMode())
     {
-        oclContext.m_floatDenormModeBFTF = FLOAT_DENORM_RETAIN;
+        compOpt->FloatDenormModeBFTF = FLOAT_DENORM_RETAIN;
     }
 
     unsigned PtrSzInBits = pKernelModule->getDataLayout().getPointerSizeInBits();
@@ -1504,12 +1505,12 @@ bool TranslateBuildSPMD(
                 ModuleMetaData* modMD = oclContext.getModuleMetaData();
                 if (modMD->compOpt.DenormsAreZero)
                 {
-                    oclContext.m_floatDenormMode16 = FLOAT_DENORM_FLUSH_TO_ZERO;
-                    oclContext.m_floatDenormMode32 = FLOAT_DENORM_FLUSH_TO_ZERO;
+                    modMD->compOpt.FloatDenormMode16 = FLOAT_DENORM_FLUSH_TO_ZERO;
+                    modMD->compOpt.FloatDenormMode32 = FLOAT_DENORM_FLUSH_TO_ZERO;
                 }
                 if (modMD->compOpt.BFTFDenormsAreZero)
                 {
-                    oclContext.m_floatDenormModeBFTF = FLOAT_DENORM_FLUSH_TO_ZERO;
+                    modMD->compOpt.FloatDenormModeBFTF = FLOAT_DENORM_FLUSH_TO_ZERO;
                 }
                 if (IGC_GET_FLAG_VALUE(ForceFastestSIMD))
                 {
@@ -1564,6 +1565,20 @@ bool TranslateBuildSPMD(
 
                 // Remove annotations for kernels that do not require recompilation
                 RebuildGlobalAnnotations(oclContext, pKernelModule);
+
+                // Set default denorm since metadata was cleared.
+                // Note that those values have been set to FLOAT_DENORM_FLUSH_TO_ZERO
+                compOpt = &oclContext.getModuleMetaData()->compOpt;
+                if (IGFX_GEN8_CORE <= oclContext.platform.GetPlatformFamily())
+                {
+                    compOpt->FloatDenormMode16 = FLOAT_DENORM_RETAIN;
+                    compOpt->FloatDenormMode32 = FLOAT_DENORM_RETAIN;
+                    compOpt->FloatDenormMode64 = FLOAT_DENORM_RETAIN;
+                }
+                if (oclContext.platform.hasBFTFDenormMode())
+                {
+                    compOpt->FloatDenormModeBFTF = FLOAT_DENORM_RETAIN;
+                }
 
                 for (auto it = pKernelModule->getFunctionList().begin(), ie = pKernelModule->getFunctionList().end(); it != ie;)
                 {

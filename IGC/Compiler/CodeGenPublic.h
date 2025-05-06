@@ -916,11 +916,6 @@ namespace IGC
         /// output: list of buffer IDs which are promoted to direct AS
         // Map of promoted buffer ids with their respective buffer offsets if needed. Buffer offset will be -1 if no need of buffer offset
         std::map<unsigned, int> m_buffersPromotedToDirectAS;
-        // float 16, float32 and float64 denorm mode
-        Float_DenormMode    m_floatDenormMode16 = FLOAT_DENORM_FLUSH_TO_ZERO;
-        Float_DenormMode    m_floatDenormMode32 = FLOAT_DENORM_FLUSH_TO_ZERO;
-        Float_DenormMode    m_floatDenormMode64 = FLOAT_DENORM_FLUSH_TO_ZERO;
-        Float_DenormMode    m_floatDenormModeBFTF = FLOAT_DENORM_FLUSH_TO_ZERO;
 
         PushConstantMode m_pushConstantMode = PushConstantMode::DEFAULT;
 

@@ -2909,13 +2909,13 @@ namespace IGC
         uint imm_data = 0;
 
         CodeGenContext* pCtx = m_program->GetContext();
-        if (pCtx->m_floatDenormMode16 == FLOAT_DENORM_RETAIN)
+        if (pCtx->getModuleMetaData()->compOpt.FloatDenormMode16 == FLOAT_DENORM_RETAIN)
             imm_data |= 0x400;
-        if (pCtx->m_floatDenormMode32 == FLOAT_DENORM_RETAIN)
+        if (pCtx->getModuleMetaData()->compOpt.FloatDenormMode32 == FLOAT_DENORM_RETAIN)
             imm_data |= 0x80;
-        if (pCtx->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
+        if (pCtx->getModuleMetaData()->compOpt.FloatDenormMode64 == FLOAT_DENORM_RETAIN)
             imm_data |= 0x40;
-        if (pCtx->m_floatDenormModeBFTF == FLOAT_DENORM_RETAIN)
+        if (pCtx->getModuleMetaData()->compOpt.FloatDenormModeBFTF == FLOAT_DENORM_RETAIN)
             imm_data |= (0x1 << 30);
 
         uint RM_bits = 0;
@@ -4352,10 +4352,10 @@ namespace IGC
 
         CodeGenContext* pCtx = m_program->GetContext();
         bool needsDenormRetainForMathInstructions =
-             (pCtx->m_floatDenormMode16 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
-             (pCtx->m_floatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
-             (pCtx->m_floatDenormMode64 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
-             (m_program->m_Platform->hasBFTFDenormMode() && pCtx->m_floatDenormModeBFTF == FLOAT_DENORM_FLUSH_TO_ZERO);
+             (context->getModuleMetaData()->compOpt.FloatDenormMode16 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
+             (context->getModuleMetaData()->compOpt.FloatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
+             (context->getModuleMetaData()->compOpt.FloatDenormMode64 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
+             (m_program->m_Platform->hasBFTFDenormMode() && context->getModuleMetaData()->compOpt.FloatDenormModeBFTF == FLOAT_DENORM_FLUSH_TO_ZERO);
 
         if (m_program->m_Platform->hasCorrectlyRoundedMacros() && needsDenormRetainForMathInstructions)
         {

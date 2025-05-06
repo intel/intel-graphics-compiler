@@ -114,6 +114,16 @@ enum class ShaderTypeMD
         unsigned int MipCount = 0;
     };
 
+// The real declaration is in CodeGenPublicEnums.h.
+// This declaration exists to fool the autogeneration script into generating the relevant parsing code.
+#if 0
+    enum Float_DenormMode
+    {
+        FLOAT_DENORM_FLUSH_TO_ZERO = 0,
+        FLOAT_DENORM_RETAIN,
+    };
+#endif
+
     struct ArgDependencyInfoMD
     {
         int argDependency = 0;
@@ -381,6 +391,11 @@ enum class ShaderTypeMD
         bool MadEnable                                  = false;
         bool NoSignedZeros                              = false;
         bool NoNaNs                                     = false;
+        // float 16, float32 and float64 denorm mode
+        Float_DenormMode FloatDenormMode16              = FLOAT_DENORM_FLUSH_TO_ZERO;
+        Float_DenormMode FloatDenormMode32              = FLOAT_DENORM_FLUSH_TO_ZERO;
+        Float_DenormMode FloatDenormMode64              = FLOAT_DENORM_FLUSH_TO_ZERO;
+        Float_DenormMode FloatDenormModeBFTF            = FLOAT_DENORM_FLUSH_TO_ZERO;
 
         // default rounding modes
         unsigned FloatRoundingMode                      = IGC::ROUND_TO_NEAREST_EVEN;

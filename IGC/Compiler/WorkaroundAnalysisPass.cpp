@@ -588,9 +588,9 @@ void WAFMinFMax::visitCallInst(CallInst& I)
                         EnableFMaxFMinPlusZero);
                 bool hasNaNs = !modMD->compOpt.FiniteMathOnly;
                 if (hasNaNs && minmaxModeSetByDenormBit &&
-                    ((Ty->isFloatTy() && (m_ctx->m_floatDenormMode32 == FLOAT_DENORM_RETAIN)) ||
-                    (Ty->isDoubleTy() && (m_ctx->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)) ||
-                        (Ty->isHalfTy() && (m_ctx->m_floatDenormMode16 == FLOAT_DENORM_RETAIN))))
+                    ((Ty->isFloatTy() && (modMD->compOpt.FloatDenormMode32 == FLOAT_DENORM_RETAIN)) ||
+                    (Ty->isDoubleTy() && (modMD->compOpt.FloatDenormMode64 == FLOAT_DENORM_RETAIN)) ||
+                        (Ty->isHalfTy() && (modMD->compOpt.FloatDenormMode16 == FLOAT_DENORM_RETAIN))))
                 {
                     m_builder->SetInsertPoint(&I);
 

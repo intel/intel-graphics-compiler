@@ -42,7 +42,7 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   BIF_FLAG_CTRL_SET(RenderFamily, PtrCGC->platform.getPlatformInfo().eRenderCoreFamily);
   BIF_FLAG_CTRL_SET(
       FlushDenormals,
-      ((PtrCGC->m_floatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
+      ((PtrCGC->getModuleMetaData()->compOpt.FloatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
        PtrCGC->getModuleMetaData()->compOpt.DenormsAreZero));
   BIF_FLAG_CTRL_SET(FastRelaxedMath,
                     PtrCGC->getModuleMetaData()->compOpt.RelaxedBuiltins);

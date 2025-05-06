@@ -221,9 +221,9 @@ namespace IGC
     bool CodeGenPatternMatch::FlushesDenormsOnOutput(Instruction& I)
     {
         bool flushesDenorms = false;
-        if ((m_ctx->m_floatDenormMode16 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isHalfTy()) ||
-            (m_ctx->m_floatDenormMode32 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isFloatTy()) ||
-            (m_ctx->m_floatDenormMode64 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isDoubleTy()))
+        if ((m_ctx->getModuleMetaData()->compOpt.FloatDenormMode16 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isHalfTy()) ||
+            (m_ctx->getModuleMetaData()->compOpt.FloatDenormMode32 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isFloatTy()) ||
+            (m_ctx->getModuleMetaData()->compOpt.FloatDenormMode64 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isDoubleTy()))
         {
             switch (GetOpCode(&I))
             {
@@ -294,9 +294,9 @@ namespace IGC
     bool CodeGenPatternMatch::FlushesDenormsOnInput(Instruction& I)
     {
         bool flushesDenorms = false;
-        if ((m_ctx->m_floatDenormMode16 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isHalfTy()) ||
-            (m_ctx->m_floatDenormMode32 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isFloatTy()) ||
-            (m_ctx->m_floatDenormMode64 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isDoubleTy()))
+        if ((m_ctx->getModuleMetaData()->compOpt.FloatDenormMode16 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isHalfTy()) ||
+            (m_ctx->getModuleMetaData()->compOpt.FloatDenormMode32 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isFloatTy()) ||
+            (m_ctx->getModuleMetaData()->compOpt.FloatDenormMode64 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isDoubleTy()))
         {
             switch (GetOpCode(&I))
             {
@@ -3593,8 +3593,8 @@ namespace IGC
         IGC_ASSERT(isa<Instruction>(I.getOperand(0)) || isa<Argument>(I.getOperand(0)));
         // Current implementation assumes that mix mode is disabled if
         // half float or 32-bit float denorms must be flushed.
-        if (m_ctx->m_floatDenormMode16 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO ||
-            m_ctx->m_floatDenormMode32 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO)
+        if (m_ctx->getModuleMetaData()->compOpt.FloatDenormMode16 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO ||
+            m_ctx->getModuleMetaData()->compOpt.FloatDenormMode32 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO)
         {
             IGC_ASSERT(!m_Platform.supportMixMode() || m_ctx->getModuleMetaData()->disableMixMode);
         }

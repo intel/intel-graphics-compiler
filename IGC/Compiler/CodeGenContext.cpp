@@ -440,10 +440,6 @@ namespace IGC
         PRINT_CTX_MEMBER(m_enableSampleMultiversioning);
         PRINT_CTX_MEMBER(m_enableSimdVariantCompilation);
         PRINT_CTX_MEMBER(m_enableSubroutine);
-        PRINT_CTX_MEMBER(m_floatDenormMode16);
-        PRINT_CTX_MEMBER(m_floatDenormMode32);
-        PRINT_CTX_MEMBER(m_floatDenormMode64);
-        PRINT_CTX_MEMBER(m_floatDenormModeBFTF);
         PRINT_CTX_MEMBER(m_ForceEarlyZMathCheck);
         PRINT_CTX_MEMBER(m_hasDPDivSqrtEmu);
         PRINT_CTX_MEMBER(m_hasDPEmu);

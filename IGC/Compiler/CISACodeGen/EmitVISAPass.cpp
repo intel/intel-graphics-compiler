@@ -21690,10 +21690,10 @@ void IGC::EmitPass::emitCanonicalize(llvm::Instruction* inst, const DstModifier&
     // A normalized fp value isn't changed.
     // The operation is done only if particular flags are set.
     // If the instruction should be emitted anyway, flushing a subnormal to zero has to implemented in other way.
-    CodeGenContext* pCodeGenContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    bool flushVal = pCodeGenContext->m_floatDenormMode16 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isHalfTy();
-    flushVal = flushVal || (pCodeGenContext->m_floatDenormMode32 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isFloatTy());
-    flushVal = flushVal || (pCodeGenContext->m_floatDenormMode64 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isDoubleTy());
+    CompOptions& compOpt = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData()->compOpt;
+    bool flushVal = compOpt.FloatDenormMode16 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isHalfTy();
+    flushVal = flushVal || (compOpt.FloatDenormMode32 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isFloatTy());
+    flushVal = flushVal || (compOpt.FloatDenormMode64 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isDoubleTy());
     if (flushVal || modifier.sat)
     {
         CVariable* inputVal = GetSymbol(inst->getOperand(0));
