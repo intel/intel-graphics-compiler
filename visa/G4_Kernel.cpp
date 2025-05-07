@@ -2118,8 +2118,7 @@ unsigned G4_Kernel::getSRFInWords() {
 
 // GRF modes supported by HW
 // There must be at least one Config that is VRTEnable for each platform
-GRFMode::GRFMode(const TARGET_PLATFORM plat, Options *op)
-    : platform(plat), options(op) {
+GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
   switch (platform) {
   case Xe_XeHPSDV:
   case Xe_DG2:
@@ -2180,7 +2179,7 @@ GRFMode::GRFMode(const TARGET_PLATFORM plat, Options *op)
 unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
                                        bool forceGRFModeUp) {
   unsigned size = configs.size(), i = 0;
-  bool spillAllowed = getSpillThreshold() > 0;
+  bool spillAllowed = options->getuInt32Option(vISA_SpillAllowed) > 256;
   // find appropiate GRF based on reg pressure
   for (; i < size; i++) {
     if (configs[i].VRTEnable && configs[i].numGRF >= lowerBoundGRF &&
@@ -2198,21 +2197,10 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
           currentMode = newGRFMode < maxGRFMode ? newGRFMode : maxGRFMode;
         }
 
-        if (spillAllowed && currentMode > 0) {
-          unsigned lowerGRFNum = configs[currentMode - 1].numGRF;
-          // Select a lower GRF number in PreRA in case the register
-          // pressure computed is a bit higher (e.g. 10%) than the lower GRF
-          // config. If spills are detected, RA will still bump up the GRF
-          // number to avoid them.
-          // For example, if reg pressure is 167, we select 160GRF since
-          // we have spill threshold enabled and the diff between 167 and 160
-          // is less than 10%.
-          if (lowerGRFNum * 1.1 >= maxRP &&
-              lowerGRFNum >= (largestInputReg + 8) &&
-              lowerGRFNum >= lowerBoundGRF)
-            return configs[--currentMode].numGRF;
-        }
-        return configs[currentMode].numGRF;
+        if (spillAllowed && currentMode > 0)
+          return configs[--currentMode].numGRF;
+        else
+          return configs[currentMode].numGRF;
       }
     }
   }
@@ -2232,8 +2220,6 @@ bool GRFMode::hasLargerGRFSameThreads() const {
 
 // Get spill threshold for current GRF mode
 unsigned GRFMode::getSpillThreshold() const {
-  if (platform < Xe3)
-    return 0;
   if (configs[currentMode].numGRF == 256 &&
       options->getuInt32Option(vISA_SpillAllowed256GRF) > 0)
     return options->getuInt32Option(vISA_SpillAllowed256GRF);

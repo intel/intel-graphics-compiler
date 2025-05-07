@@ -11299,20 +11299,15 @@ GlobalRA::abortOnSpill(unsigned int GRFSpillFillCount,
 
   // vISA_AbortOnSpillThreshold is defined as [0..200]
   // where 0 means abort on any spill and 200 means never abort
-  auto underSpillThreshold = [this](int numSpill, int asmCount,
-                                    GraphColor &coloring) {
+  auto underSpillThreshold = [this](int numSpill, int asmCount) {
     int threshold = std::min(
         builder.getOptions()->getuInt32Option(vISA_AbortOnSpillThreshold),
         200u);
-    unsigned spillSize = computeSpillSize(coloring.getSpilledLiveRanges());
-
-    return (numSpill * 200) < (threshold * asmCount) ||
-           spillSize < kernel.grfMode.getSpillThreshold();
+    return (numSpill * 200) < (threshold * asmCount);
   };
 
   unsigned int instNum = instCount();
-  bool isUnderThreshold =
-      underSpillThreshold(GRFSpillFillCount, instNum, coloring);
+  bool isUnderThreshold = underSpillThreshold(GRFSpillFillCount, instNum);
   isUnderThreshold = builder.getFreqInfoManager().underFreqSpillThreshold(
       coloring.getSpilledLiveRanges(), instNum, GRFSpillFillCount,
       isUnderThreshold);
