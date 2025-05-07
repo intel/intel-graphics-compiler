@@ -9,9 +9,6 @@
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPC \
 ; RUN: -mtriple=spir64-unknown-unknown  -S < %s | FileCheck %s
 
-; COM: is to enable later
-; XFAIL: *
-
 declare <128 x i32> @llvm.genx.gather4.masked.scaled2.v128i32.v32i32.v32i1(i32, i16, i32, i32, <32 x i32>, <32 x i1>)
 declare <128 x i32> @llvm.genx.wrregioni.v128i32.v4i32.i16.v4i1(<128 x i32>, <4 x i32>, i32, i32, i32, i16, i32, <4 x i1>)
 
