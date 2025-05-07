@@ -422,7 +422,7 @@ bool InstCombiner::tryInstPropagate(INST_LIST_ITER iitr, INST_LIST_ITER eitr) {
         return false;
       }
 
-      applyUses.emplace_back([=]() {
+      applyUses.emplace_back([this, copyOperand, varSrcIx, useSendInst, sdr, immOffset, varDeclNeedsGrfAlignment, varOffset]() {
         copyOperand(varSrcIx, useSendInst, Opnd_src0);
         sdr->setLscImmOff(immOffset);
         // this is really nuts:

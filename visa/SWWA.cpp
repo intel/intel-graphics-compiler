@@ -3550,7 +3550,7 @@ void Optimizer::clearARFDependencies() {
   }
 }
 void Optimizer::mulMacRSWA() {
-  auto hasGRFOverlap = [=](G4_Operand *A, G4_Operand *B) {
+  auto hasGRFOverlap = [this](G4_Operand *A, G4_Operand *B) {
     if (A->isNullReg() || !A->isGreg())
       return false;
     if (B->isNullReg() || !B->isGreg())

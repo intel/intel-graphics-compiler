@@ -193,7 +193,7 @@ bool LiveNode::addDefinition(G4_INST *DefInst, Gen4_Operand_Number DefOpNum,
   }
 
   // Determine to count this definition's footprint or not.
-  auto CombineBitV = [=, &LLI]() {
+  auto CombineBitV = [this, DefInst, DefOpNum, &LLI]() {
     // If definition is predicated and it is not sel, then
     // this definition cannot count, unless use is predicated
     // by the same predicate value.
@@ -216,7 +216,7 @@ bool LiveNode::addDefinition(G4_INST *DefInst, Gen4_Operand_Number DefOpNum,
 
         // Find this live node..
         auto NI = std::find_if(
-            Iter->second.begin(), Iter->second.end(), [=](const LiveNode &LN) {
+            Iter->second.begin(), Iter->second.end(), [this](const LiveNode &LN) {
               return LN.Inst == this->Inst && LN.OpNum == Opnd_pred;
             });
 

@@ -791,7 +791,7 @@ int IR_Builder::translateVISARTWrite3DInst(
           createDst(msg->getRegVar(), 1, 14, 1, Type_UW);
 
       // setPixelMaskRgn when WA ce0 is needed
-      auto setPixelMaskRgn = [=](G4_InstOption Option) -> void {
+      auto setPixelMaskRgn = [this, dstPixelMaskRgn](G4_InstOption Option) -> void {
         G4_Declare *flagDecl = createTempFlag(2, "WAce0");
         G4_RegVar *flagVar = flagDecl->getRegVar();
         G4_DstRegRegion *flag =

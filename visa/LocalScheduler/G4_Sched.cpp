@@ -1131,7 +1131,7 @@ void SethiUllmanQueue::formWorkingSet(preNode *seed,
 //
 bool BB_Scheduler::scheduleBlockForPressure(unsigned &MaxPressure,
                                             unsigned Threshold) {
-  auto tryRPReduction = [=]() {
+  auto tryRPReduction = [this, MaxPressure, Threshold]() {
     if (!config.UseMinReg)
       return false;
     if (MaxPressure < Threshold)
@@ -1667,7 +1667,7 @@ private:
 bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
                                            bool ReassignID,
                                            unsigned UpperBoundGRF) {
-  auto tryLatencyHiding = [=](unsigned nr) {
+  auto tryLatencyHiding = [this, UpperBoundGRF, MaxPressure](unsigned nr) {
     if (!config.UseLatency)
       return false;
 

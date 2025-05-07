@@ -2707,7 +2707,7 @@ void Optimizer::localCopyPropagation() {
 
           // Compute the composed region if exists.
           auto getComposedRegion =
-              [=](unsigned dStride, unsigned ex1, const RegionDesc *rd1,
+              [this](unsigned dStride, unsigned ex1, const RegionDesc *rd1,
                   unsigned ex2, const RegionDesc *rd2) -> const RegionDesc * {
             // Easy cases.
             if (rd1->isScalar())

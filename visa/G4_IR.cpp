@@ -4004,7 +4004,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(const IR_Builder &builder, int pos,
     //
     // Given a linearized index, compute its byte offset relative to the
     // first element (index 0).
-    auto computeOffset = [=](unsigned index) -> unsigned {
+    auto computeOffset = [this](unsigned index) -> unsigned {
       unsigned typeSize = TypeSize(type);
       unsigned offset = (index % desc->width) * desc->horzStride * typeSize;
       offset += (index / desc->width) * desc->vertStride * typeSize;
@@ -6970,7 +6970,7 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder &builder,
   }
 
   // Find a width that does not cross GRF from <8;8,1>, <4;4,1>, to <2;2,1>
-  auto getWidth = [=, &builder](unsigned offset, unsigned eltSize) -> unsigned {
+  auto getWidth = [this, endOffset, subRegOffset, &builder](unsigned offset, unsigned eltSize) -> unsigned {
     unsigned Widths[] = {8, 4, 2};
     for (auto w : Widths) {
       if (w > inst->getExecSize())
