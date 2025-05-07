@@ -130,11 +130,25 @@ define spir_kernel void @test_fdiv(
 entry:
   %res = fdiv bfloat %b1, %b2
   store bfloat %res, bfloat addrspace(1)* %out1, align 2
-; fdiv is expanded to float inv+mul
-; CHECK-VISA-DAG: inv {{.*}} [[RESINV:.*]](0,0)<1> {{.*}}<0;1,0>
-; CHECK-VISA-DAG: mul {{.*}} [[RESMUL:.*]](0,0)<1> [[RESINV]](0,0)<0;1,0> [[SRC1:.*]](0,0)<0;1,0>
-; CHECK-VISA-DAG: mov (M1_NM, 1) [[RES:.*]](0,0)<1> [[RESMUL]](0,0)<0;1,0>
-; CHECK-VISA-DAG: .decl [[RES]] {{.*}} type=bf {{.*}}
+; CHECK-VISA-DAG: and {{.*}} [[YExp:.*]](0,0)<1> [[Y_asInt:.*]](0,0)<0;1,0> 0x7f800000:d
+; CHECK-VISA-DAG: cmp.eq {{.*}} [[P1:.*]] [[YExp]](0,0)<0;1,0> 0x0:d
+; CHECK-VISA-DAG: ([[P1]]) sel {{.*}} [[ScaleUp:.*]](0,0)<1> 0x4f800000:f 0x3f800000:f
+; CHECK-VISA-DAG: cmp.ge {{.*}} [[P2:.*]] {{.*}} 0x64000000:ud
+; CHECK-VISA-DAG: ([[P2]]) sel {{.*}} [[Scale:.*]](0,0)<1> 0x2f800000:f [[ScaleUp]](0,0)<0;1,0>
+; CHECK-VISA-DAG: mul {{.*}} [[ScaledY:.*]](0,0)<1> [[Y:.*]](0,0)<0;1,0> [[Scale]](0,0)<0;1,0>
+; CHECK-VISA-DAG: inv {{.*}} [[ResInv:.*]](0,0)<1> [[ScaledY]](0,0)<0;1,0>
+; CHECK-VISA-DAG: mul {{.*}} [[TMP:.*]](0,0)<1> [[ResInv]](0,0)<0;1,0> [[X:.*]](0,0)<0;1,0>
+; CHECK-VISA-DAG: mul {{.*}} [[ResMul:.*]](0,0)<1> [[TMP]](0,0)<0;1,0> [[Scale]](0,0)<0;1,0>
+; CHECK-VISA-DAG: and {{.*}} [[YMantisa:.*]](0,0)<1> [[Y_asInt]](0,0)<0;1,0> 0x7fffff:d
+; CHECK-VISA-DAG: cmp.eq {{.*}} [[P3:.*]] [[YMantisa]](0,0)<0;1,0> 0x0:d
+; CHECK-VISA-DAG: cmp.eq {{.*}} [[P4:.*]] [[YExp]](0,0)<0;1,0> 0x0:d
+; CHECK-VISA-DAG: or {{.*}} [[IsZeroOrSubnormal:.*]] [[P4]] [[P3]]
+; CHECK-VISA-DAG: not {{.*}} [[IsNotZeroOrSubnormal:.*]] [[IsZeroOrSubnormal]]
+; CHECK-VISA-DAG: cmp.eq {{.*}} [[IsEqual:.*]] [[X]](0,0)<0;1,0> [[Y]](0,0)<0;1,0>
+; CHECK-VISA-DAG: and {{.*}} [[IsNotProperValue:.*]] [[IsEqual]] [[IsNotZeroOrSubnormal]]
+; CHECK-VISA-DAG: ([[IsNotProperValue]]) sel {{.*}} [[Res:.*]](0,0)<1> 0x3f800000:f  [[ResMul]]
+; CHECK-VISA-DAG: mov (M1_NM, 1) [[StoreRes:.*]](0,0)<1> [[Res]](0,0)<0;1,0>
+; CHECK-VISA-DAG: .decl [[StoreRes]] {{.*}} type=bf {{.*}}
   %res2 = fdiv <2 x bfloat> %b1_2, %b2_2
   store <2 x bfloat> %res2, <2 x bfloat> addrspace(1)* %out2, align 4
   %res4 = fdiv <4 x bfloat> %b1_4, %b2_4

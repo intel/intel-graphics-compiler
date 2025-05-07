@@ -2822,11 +2822,15 @@ bool IGC::expandFDIVInstructions(llvm::Function &F, ShaderType ShaderTy) {
                     V = Builder.CreateFMul(Y, X);
                 }
                 else {
-                    // Up cast to float, do rcp+mul in float, and down cast to half / bfloat.
+                    // Up cast to float, and down cast to half / bfloat.
+                    // div as float with additional checks for better precision and special cases like Inf, NaN. to be spec conformant.
                     Y = Builder.CreateFPExt(Y, Builder.getFloatTy());
-                    Y = Builder.CreateFDiv(ConstantFP::get(Ctx, APFloat(1.0f)), Y);
                     X = Builder.CreateFPExt(X, Builder.getFloatTy());
-                    V = Builder.CreateFMul(Y, X);
+                    V = Builder.CreateFDiv(X, Y);
+                    // Iterator at the begining of the loop is already at the next instruction,
+                    // so we want to set it back to handle this fdiv as normal one.
+                    Iter = BasicBlock::iterator(dyn_cast<Instruction>(V));
+
                     V = Builder.CreateFPTrunc(V, Inst->getType());
                 }
             }
