@@ -1903,7 +1903,7 @@ bool usesDynamicPolyPackingPolicies() const
 
 bool allowDivergentControlFlowRayQueryCheckRelease() const
 {
-    return m_WaTable.Wa_22019804511 != 0;
+    return m_WaTable.Wa_22019804511 == 0;
 }
 
 bool allowProceedBasedApproachForRayQueryDynamicRayManagementMechanism() const
