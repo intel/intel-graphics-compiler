@@ -1700,9 +1700,26 @@ namespace IGC
         return isUserFunction;
     }
 
-    bool isDiscardInstruction(const llvm::Instruction* I)
+    bool isHidingComplexControlFlow(const llvm::Instruction* I)
     {
-        return isa<GenIntrinsicInst>(I) && cast<GenIntrinsicInst>(I)->getIntrinsicID() == GenISAIntrinsic::GenISA_discard;
+        if (!isa<GenIntrinsicInst>(I))
+            return false;
+
+        if (isa<ContinuationHLIntrinsic>(I))
+            return true;
+
+        switch (cast<GenIntrinsicInst>(I)->getIntrinsicID())
+        {
+        case GenISAIntrinsic::GenISA_discard:
+        case GenISAIntrinsic::GenISA_ReportHitHL:
+        case GenISAIntrinsic::GenISA_AcceptHitAndEndSearchHL:
+        case GenISAIntrinsic::GenISA_IgnoreHitHL:
+            return true;
+            break;
+        default:
+            return false;
+            break;
+        }
     }
 
     bool isURBWriteIntrinsic(const llvm::Instruction* I)

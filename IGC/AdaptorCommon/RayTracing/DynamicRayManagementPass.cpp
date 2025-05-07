@@ -112,6 +112,7 @@ bool DynamicRayManagementPass::runOnFunction(Function& F)
     m_DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     m_PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
     m_LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    m_RayQueryCheckReleasePairs.clear();
 
     bool changed = false;
 
@@ -236,10 +237,9 @@ void DynamicRayManagementPass::FindLoadsFromAlloca(
 bool DynamicRayManagementPass::requiresSplittingCheckReleaseRegion(Instruction& I)
 {
     return
-        isa<ContinuationHLIntrinsic>(I) ||
         isBarrierIntrinsic(&I) ||
         isUserFunctionCall(&I) ||
-        isDiscardInstruction(&I);
+        isHidingComplexControlFlow(&I);
 }
 
 void DynamicRayManagementPass::FindProceedsInOperands(Instruction* I, SetVector<TraceRaySyncProceedHLIntrinsic*>& proceeds, SmallPtrSetImpl<Instruction*>& cache)
@@ -966,21 +966,6 @@ void DynamicRayManagementPass::HandleComplexControlFlow(Function& F)
 
             if (m_DT->dominates(rayQueryCheckIntrinsic, &I) && m_PDT->dominates(rayQueryReleaseIntrinsic, &I))
             {
-                // If the DisableRayQueryDynamicRayManagementMechanismForExternalFunctionsCalls flag
-                // is enabled, remove Check/Release pairs which encapsulates any external function call.
-                if (IGC_IS_FLAG_ENABLED(DisableRayQueryDynamicRayManagementMechanismForExternalFunctionsCalls) &&
-                    isa<ContinuationHLIntrinsic>(&I))
-                {
-                    rayQueryReleaseIntrinsic->eraseFromParent();
-                    rayQueryCheckIntrinsic->eraseFromParent();
-
-                    // Remove the pair from the vector in case more Barriers or External
-                    // calls are between them.
-                    m_RayQueryCheckReleasePairs.erase(m_RayQueryCheckReleasePairs.begin() + rayQueryCheckReleasePairIndex);
-
-                    break;
-                }
-
                 // If the DisableRayQueryDynamicRayManagementMechanismForBarriers flag
                 // is enabled, remove Check/Release pairs which encapsulates any Barrier.
                 if (IGC_IS_FLAG_ENABLED(DisableRayQueryDynamicRayManagementMechanismForBarriers) &&
@@ -996,7 +981,7 @@ void DynamicRayManagementPass::HandleComplexControlFlow(Function& F)
                     break;
                 }
 
-                if (isDiscardInstruction(&I) && !m_CGCtx->platform.allowDivergentControlFlowRayQueryCheckRelease())
+                if (isHidingComplexControlFlow(&I) && !m_CGCtx->platform.allowDivergentControlFlowRayQueryCheckRelease())
                 {
                     rayQueryReleaseIntrinsic->eraseFromParent();
                     rayQueryCheckIntrinsic->eraseFromParent();
