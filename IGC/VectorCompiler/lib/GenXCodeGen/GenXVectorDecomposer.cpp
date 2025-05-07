@@ -940,7 +940,7 @@ bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
 
   // Extra checks to avoid aggressive splitting.
   auto BB = Inst->getParent();
-  auto check = [=](Instruction *I) {
+  auto check = [this, BB](Instruction *I) {
     if (!I->hasOneUse() || I->getParent() != BB) {
       setNotDecomposing();
       return false;
@@ -962,7 +962,7 @@ bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
 
   // If there is a region read with a non-unit stride,
   // then adjust the splitting width appropriately.
-  auto adjustWidth = [=, &Width](Value *V) {
+  auto adjustWidth = [this, &Width](Value *V) {
     // If this region read only supports up to 16, then do not split into
     // simd 32. Otherwise it makes difficult to bale in this region read.
     if (Width == 32 && GenXIntrinsic::isRdRegion(V)) {

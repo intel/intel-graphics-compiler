@@ -399,7 +399,7 @@ bool GenXAddressCommoning::processBaseReg(LiveRange *LR)
         continue;
       auto user = cast<Instruction>(ui->getUser());
 
-      auto isBaledWrr = [=]() {
+      auto isBaledWrr = [this, V, user, LR]() {
         if (!isa<LoadInst>(V) || !GenXIntrinsic::isWrRegion(user) || !user->hasOneUse())
           return false;
         StoreInst *SI = dyn_cast<StoreInst>(user->user_back());

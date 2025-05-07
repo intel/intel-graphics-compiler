@@ -143,10 +143,10 @@ def generate(dscr_filename, out_path):
         args = []
         for key, value in intr:
             if key in ('opc'):
-                args.append('LITERAL | {}'.format(value))
+                args.append('LITERAL | {}'.format("(unsigned int)" + value))
             elif isinstance(value, list):
                 should_skip_operand = lambda x: x == 'RAW_OPERANDS' or ('BUILD_ONLY::') in str(x)
-                args.append(' | '.join([str(x) for x in value if not should_skip_operand(x)]))
+                args.append(' | '.join(["(unsigned int)" + str(x) for x in value if not should_skip_operand(x)]))
 
         return '{{ {}, {{ {} }} }}'.format(getIntrinsicName(name), ', '.join(args))
 

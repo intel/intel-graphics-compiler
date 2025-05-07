@@ -1599,7 +1599,7 @@ void GenXCoalescing::coalesceOutputArgs(FunctionGroup *FG) {
       LiveRange *LR1 = Liveness->getLiveRangeOrNull(V);
       LiveRange *LR2 = Liveness->getLiveRange(Arg);
 
-      auto coalesceInput = [=]() {
+      auto coalesceInput = [this, LR1, LR2]() {
         // When LR1 is null, the input value should be Undef. Otherwise, it
         // should be loaded as a constant.
         if (LR1 == nullptr || LR1 == LR2)
@@ -1682,7 +1682,7 @@ void GenXCoalescing::coalesceCallables() {
       LiveRange *LR1 = Liveness->getLiveRangeOrNull(V);
       LiveRange *LR2 = Liveness->getLiveRange(Arg);
 
-      auto coalesceInput = [=]() {
+      auto coalesceInput = [this, LR1, LR2]() {
         // When LR1 is null, the input value should be Undef. Otherwise, it
         // should be loaded as a constant.
         if (LR1 == nullptr || LR1 == LR2)

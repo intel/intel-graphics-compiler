@@ -283,28 +283,28 @@ private:
     default:
       return KernelMetadata::AK_NORMAL;
     case InternalIntrinsic::assert_buffer:
-      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_ASSERT_BUFFER;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_OCL_ASSERT_BUFFER;
     case vc::InternalIntrinsic::print_buffer:
-      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_PRINTF_BUFFER;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_OCL_PRINTF_BUFFER;
     case InternalIntrinsic::sync_buffer:
-      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_SYNC_BUFFER;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_OCL_SYNC_BUFFER;
     case GenXIntrinsic::genx_local_size:
-      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_LOCAL_SIZE;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_LOCAL_SIZE;
     case GenXIntrinsic::genx_local_id:
     case GenXIntrinsic::genx_local_id16:
-      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_LOCAL_ID;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_LOCAL_ID;
     case GenXIntrinsic::genx_group_count:
-      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_GROUP_COUNT;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_GROUP_COUNT;
     case GenXIntrinsic::genx_get_scoreboard_deltas:
-      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_SB_DELTAS;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_SB_DELTAS;
     case GenXIntrinsic::genx_get_scoreboard_bti:
-      return KernelMetadata::AK_SURFACE | KernelMetadata::IMP_SB_BTI;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_SURFACE) | KernelMetadata::IMP_SB_BTI;
     case GenXIntrinsic::genx_get_scoreboard_depcnt:
-      return KernelMetadata::AK_SURFACE | KernelMetadata::IMP_SB_DEPCNT;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_SURFACE) | KernelMetadata::IMP_SB_DEPCNT;
     case PseudoIntrinsic::PrivateBase:
-      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_PRIVATE_BASE;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_OCL_PRIVATE_BASE;
     case PseudoIntrinsic::ImplicitArgsBuffer:
-      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_IMPL_ARGS_BUFFER;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_IMPL_ARGS_BUFFER;
     }
     return KernelMetadata::AK_NORMAL;
   }
@@ -1169,7 +1169,7 @@ CMImpParam::processKernelParameters(Function *F,
     for (const auto &LinTy : ArgLin.second) {
       I2->setName("__arg_lin_" + ExplicitArg->getName() + "." +
                   std::to_string(LinTy.Offset));
-      ImpKinds.push_back(vc::KernelMetadata::AK_NORMAL |
+      ImpKinds.push_back(static_cast<vc::KernelMetadata::ImpValue>(vc::KernelMetadata::AK_NORMAL) |
                          vc::KernelMetadata::IMP_OCL_LINEARIZATION);
       auto &Ctx = F->getContext();
       auto *I32Ty = Type::getInt32Ty(Ctx);
@@ -1194,7 +1194,7 @@ CMImpParam::processKernelParameters(Function *F,
   // Update arg kinds for the NF.
   for (unsigned i = 0; i < KM.getNumArgs(); ++i) {
     if (LinearizedArgs.count(IGCLLVM::getArg(*NF, i)))
-      ArgKinds.push_back(vc::KernelMetadata::AK_NORMAL |
+      ArgKinds.push_back(static_cast<vc::KernelMetadata::ImpValue>(vc::KernelMetadata::AK_NORMAL) |
                          vc::KernelMetadata::IMP_OCL_BYVALSVM);
     else
       ArgKinds.push_back(KM.getArgKind(i));
