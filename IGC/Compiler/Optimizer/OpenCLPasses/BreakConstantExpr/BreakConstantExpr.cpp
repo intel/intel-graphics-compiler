@@ -265,7 +265,7 @@ bool BreakConstantExpr::breakConstantStruct(ConstantStruct* cs,
         }
     };
 
-    auto breakInst = [=](Instruction* I) {
+    auto breakInst = [this](Instruction* I) {
         bool changed = false;
         const int numOperands = (int)I->getNumOperands();
         for (int i = 0; i < numOperands; ++i) {

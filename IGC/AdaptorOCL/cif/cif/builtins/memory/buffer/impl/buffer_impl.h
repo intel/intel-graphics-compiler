@@ -39,7 +39,7 @@ CIF_DECLARE_INTERFACE_PIMPL(Buffer) : CIF::PimplBase {
   ///        pointer to alignof(ElementT)
   template<typename ElementT>
   bool PushBackRawCopy(const ElementT &newEl, bool packed = true){
-      static_assert(std::is_pod<ElementT>::value, "Supporting only POD types");
+      static_assert(std::is_standard_layout_v<ElementT> && std::is_trivial_v<ElementT>, "Supporting only POD types");
       if(packed == false){
           size_t alignment = alignof(ElementT);
           bool success = AlignUp(alignment);

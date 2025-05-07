@@ -4416,7 +4416,7 @@ namespace IGC
             }
         }
 
-        auto enableScheduler = [=]() {
+        auto enableScheduler = [this, isOptDisabled, context]() {
             // Check if preRA scheduler is disabled from input.
             if (isOptDisabled)
                 return false;

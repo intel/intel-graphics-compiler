@@ -2558,7 +2558,7 @@ namespace {
             else
                 maxBytes = getMaxLoadBytes(Ctx);
 
-            auto calculateSize = [=](bool Uniform)
+            auto calculateSize = [this, maxBytes](bool Uniform)
             {
                 int sz = (int)m_currVecSizeVar->size();
                 if (Uniform) {
@@ -4415,7 +4415,7 @@ Value* LdStCombine::gatherCopy(
     //          but this will introduce additional bitcast. And struct is
     //          preferred.
     //
-    auto isLvl2Vecmember = [=](Type* ty) {
+    auto isLvl2Vecmember = [this, DstEltBytes](Type* ty) {
         uint32_t n = (uint32_t)m_DL->getTypeStoreSize(ty->getScalarType());
         return ty->isVectorTy() && n < DstEltBytes;
     };

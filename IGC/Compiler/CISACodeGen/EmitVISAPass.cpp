@@ -20938,7 +20938,7 @@ void EmitPass::emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nE
 
     // The starting index of elements to be copied.
     unsigned i = 0;
-    auto partialCopy = [=, &i](SIMDMode mod)
+    auto partialCopy = [this, nElts, soff, doff, predicate, Dst, Src, &i](SIMDMode mod)
     {
         unsigned w = numLanes(mod);
         if (i + w > nElts)

@@ -2258,7 +2258,7 @@ CVariable* CShader::GetConstant(llvm::Constant* C, CVariable* dstVar)
         }
 
         // Emit a scalar move to load the element of index k.
-        auto copyScalar = [=](int k, CVariable* Var)
+        auto copyScalar = [this, C, eTy](int k, CVariable* Var)
         {
             Constant* const EC = C->getAggregateElement(k);
             IGC_ASSERT_MESSAGE(nullptr != EC, "Constant Vector: Invalid non-constant element!");
@@ -2280,7 +2280,7 @@ CVariable* CShader::GetConstant(llvm::Constant* C, CVariable* dstVar)
         };
 
         // Emit a simd4 move to load 4 byte float.
-        auto copyV4 = [=](int k, uint32_t vfimm, CVariable* Var)
+        auto copyV4 = [this](int k, uint32_t vfimm, CVariable* Var)
         {
             CVariable* Imm = ImmToVariable(vfimm, ISA_TYPE_VF);
             GetEncoder().SetUniformSIMDSize(SIMDMode::SIMD4);
