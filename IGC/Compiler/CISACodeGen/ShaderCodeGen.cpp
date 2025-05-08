@@ -71,6 +71,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/FPRoundingModeCoalescing.hpp"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/SplitStructurePhisPass/SplitStructurePhisPass.hpp"
 #include "Compiler/Legalizer/AddRequiredMemoryFences.h"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
@@ -1592,6 +1593,8 @@ void OptimizeIR(CodeGenContext* const pContext)
                     }
                 }
             }
+
+            mpm.add(new SplitStructurePhisPass());
 
             if (IGC_IS_FLAG_ENABLED(EnableRemoveLoopDependency))
             {
