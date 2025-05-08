@@ -423,6 +423,7 @@ DECLARE_IGC_REGKEY(bool, DumpZEInfoToConsole,           false, "Dump zeinfo to c
 DECLARE_IGC_REGKEY(debugString, ProgbinDumpFileName,    0,     "Specify filename to use for dumping progbin file to current dir", true)
 DECLARE_IGC_REGKEY(bool, ElfDumpEnable,                 false, "dump ELF file", true)
 DECLARE_IGC_REGKEY(bool, ElfTempDumpEnable,             false, "dump temporary ELF files", true)
+DECLARE_IGC_REGKEY(bool, SpvAsmDumpEnable,              false, "Dump spvasm file", true)
 DECLARE_IGC_REGKEY(debugString, DebugDumpNamePrefix,    0,     "Set a prefix to debug info dump filenames(with path) and drop hash info from them (for testing purposes)", true)
 DECLARE_IGC_REGKEY(bool, ShowFullVectorsInShaderDumps,  false, "print all elements of vectors in ShaderDumps, can dramatically increase ShaderDumps size", true)
 DECLARE_IGC_REGKEY(bool, PrintHexFloatInShaderDumpAsm,  true, "print floats in hex in asm dump", true)
