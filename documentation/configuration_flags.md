@@ -375,6 +375,7 @@ $ export IGC_ShaderDumpEnable=1
 | `DumpZEInfoToConsole` | Dump zeinfo to console | Available |
 | `ElfDumpEnable` | dump ELF file | Available |
 | `ElfTempDumpEnable` | dump temporary ELF files | Available |
+| `SpvAsmDumpEnable` | Dump spvasm file | Available |
 | `EnableCapsDump` | Enable hardware caps dump | Available |
 | `EnableCisDump` | Enable cis dump | Available |
 | `EnableCosDump` | Enable cos dump | Available |

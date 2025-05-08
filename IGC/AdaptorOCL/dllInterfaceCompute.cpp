@@ -607,16 +607,20 @@ bool ProcessElfInput(
                 DumpShaderFile(pOutputFolder, pSPIRVBitcode, size, hash, suffix + ".spv");
 
 #if defined(IGC_SPIRV_TOOLS_ENABLED)
-                spv_text spirvAsm = nullptr;
-                // Similarly replace any spvasm dump from GetSpecConstantsInfo
-                std::string prevSpvAsmPath = pOutputFolder;
-                prevSpvAsmPath += "OCL_asm" + spvHashString + ".spvasm";
-                llvm::sys::fs::remove(prevSpvAsmPath);
-                if (DisassembleSPIRV(pSPIRVBitcode, size, &spirvAsm) == SPV_SUCCESS)
+                if (IGC_IS_FLAG_ENABLED(SpvAsmDumpEnable))
                 {
-                    DumpShaderFile(pOutputFolder, spirvAsm->str, spirvAsm->length, hash, suffix + ".spvasm");
+                    spv_text spirvAsm = nullptr;
+                    // Similarly replace any spvasm dump from GetSpecConstantsInfo
+                    std::string prevSpvAsmPath = pOutputFolder;
+                    prevSpvAsmPath += "OCL_asm" + spvHashString + ".spvasm";
+                    llvm::sys::fs::remove(prevSpvAsmPath);
+                    if (DisassembleSPIRV(pSPIRVBitcode, size, &spirvAsm) == SPV_SUCCESS)
+                    {
+                        DumpShaderFile(pOutputFolder, spirvAsm->str, spirvAsm->length, hash, suffix + ".spvasm");
+                    }
+                    spvTextDestroy(spirvAsm);
                 }
-                spvTextDestroy(spirvAsm);
+
 #endif // defined(IGC_SPIRV_TOOLS_ENABLED)
             }
         }
@@ -1313,12 +1317,15 @@ bool TranslateBuildSPMD(
         {
             DumpShaderFile(pOutputFolder, pInputArgs->pInput, pInputArgs->InputSize, hash, ".spv", &inputf);
 #if defined(IGC_SPIRV_TOOLS_ENABLED)
-            spv_text spirvAsm = nullptr;
-            if (DisassembleSPIRV(pInputArgs->pInput, pInputArgs->InputSize, &spirvAsm) == SPV_SUCCESS)
+            if (IGC_IS_FLAG_ENABLED(SpvAsmDumpEnable))
             {
-                DumpShaderFile(pOutputFolder, spirvAsm->str, spirvAsm->length, hash, ".spvasm");
+                spv_text spirvAsm = nullptr;
+                if (DisassembleSPIRV(pInputArgs->pInput, pInputArgs->InputSize, &spirvAsm) == SPV_SUCCESS)
+                {
+                    DumpShaderFile(pOutputFolder, spirvAsm->str, spirvAsm->length, hash, ".spvasm");
+                }
+                spvTextDestroy(spirvAsm);
             }
-            spvTextDestroy(spirvAsm);
 #endif // defined(IGC_SPIRV_TOOLS_ENABLED)
         }
 
