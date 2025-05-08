@@ -405,6 +405,7 @@ DECLARE_IGC_REGKEY(bool, EnableDivergentBarrierCheck,   false, "Uses WIAnalysis 
 DECLARE_IGC_REGKEY(bool, EnableBitcastExtractInsertPattern,   true,  "Enable BitcastExtractInsertPattern in CustomSafeOptPass.", true)
 DECLARE_IGC_REGKEY(DWORD, ForceLoosenSimd32Occu,        2,     "Control loosenSimd32occu return value. 0 - off, 1 - on, 2 - platform default", false)
 DECLARE_IGC_REGKEY(bool, ForceFunctionsToNop,           false, "Replace functions with immediate return to help narrow down shaders; use with Options.txt.", false)
+DECLARE_IGC_REGKEY(bool, DisableWarnings,           false, "Disable all warnings generated from IGC compiler", true)
 
 DECLARE_IGC_GROUP("Shader dumping")
 DECLARE_IGC_REGKEY(bool, EnableCosDump, false, "Enable cos dump", true)
@@ -694,6 +695,11 @@ DECLARE_IGC_REGKEY(bool, DisablePrefetchToL1Cache, false, "Disable prefetch to L
 DECLARE_IGC_REGKEY(bool, ForceXYZworkGroupWalkOrder, true, "Force X/Y/Z WorkGroup walk order", true)
 
 DECLARE_IGC_GROUP("Performance experiments")
+DECLARE_IGC_REGKEY(DWORD, ManageableBarriersMode, 0, "Set the ManageableBarriers mode in which should work" \
+    "0 - Mix Mode of simple and dynamic ManageableBarriers"
+    "1 - Dynamic Mode Only, it will use SLM to store data related with barrier and use them in gateway nbarrier instructions."
+    "2 - Simple Mode Only, it will use constant value in gateway nbarrier instructions (without SLM)."
+    , true)
 DECLARE_IGC_REGKEY(bool, ForceNonCoherentStatelessBTI,  false, "Enable gneeration of non cache coherent stateless messages", false)
 DECLARE_IGC_REGKEY(bool, ForceSendsSupportOnSKLA0,      false, "Allow sends on SKL A0, may be unsafe", false)
 DECLARE_IGC_REGKEY(bool, DisableWaSendSEnableIndirectMsgDesc, false, "Disable a C0 WA WaSendSEnableIndirectMsgDesc, may be unsafe", false)
@@ -1053,10 +1059,10 @@ DECLARE_IGC_GROUP("Raytracing Options")
     DECLARE_IGC_REGKEY(bool, DisableInvalidateRTStackAfterLastRead, true, "Disables L1 cache invalidation after the last read of the RT stack. Affects rayqueries only", true)
     DECLARE_IGC_REGKEY(bool, DisableSWSubTriangleOpacityCullingEmulation, false, "Software Sub-Triangle Opacity Culling emulation", true)
     DECLARE_IGC_REGKEY(bool, DisableWideTraceRay, false, "Disable SIMD16 style message payloads for send.rta", true)
-    DECLARE_IGC_REGKEY(bool, ForceRTCheckInstanceLeafPtr, false, "Check MemHit::valid before loading GeometryIndex, PrimitiveIndex, etc.", true)
+    DECLARE_IGC_REGKEY(bool, ForceRTCheckInstanceLeafPtr, true, "Check MemHit::valid before loading GeometryIndex, PrimitiveIndex, etc.", true)
     DECLARE_IGC_REGKEY(DWORD, RTInValidDefaultIndex, 0xFFFFFFFF, "If MemHit::valid is false, the default value to return for some intrinsics like GeometryIndex or PrimitiveIndex etc.", true)
     DECLARE_IGC_REGKEY(DWORD, ForceRTCheckInstanceLeafPtrMask, 0xF, "Test only. 1: committedindex; 2: potentialindex", true)
-    DECLARE_IGC_REGKEY(bool,  ForceRTShortCircuitingOR, false, "Only for specific test.... Short curcite OR condition if CommittedGeometryIndex is used", true)
+    DECLARE_IGC_REGKEY(bool,  ForceRTShortCircuitingOR, true, "Only for specific test.... Short curcite OR condition if CommittedGeometryIndex is used", true)
     DECLARE_IGC_REGKEY(DWORD, RTFenceToggle, 0, "Toggle fences", true)
     DECLARE_IGC_REGKEY(bool, EnableLSCCacheOptimization, false, "Optimize store instructions for utilizing the LSC-L1 cache", false)
     DECLARE_IGC_REGKEY(bool, EnableSingleRQMemRayStore, true, "Store RayQuery MemRay[TOP] only once.", false)

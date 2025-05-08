@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2022 Intel Corporation
+Copyright (C) 2018-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -828,6 +828,9 @@ namespace IGC
 
     void CodeGenContext::EmitWarning(const char* warningstr, const llvm::Value* context)
     {
+        if (IGC_IS_FLAG_ENABLED(DisableWarnings))
+            return;
+
         this->oclWarningMessage << "\nwarning: ";
         EmitMessage(this->oclWarningMessage, warningstr, context);
         this->oclWarningMessage << "\n";

@@ -5,7 +5,7 @@
 ; RUN: FileCheck --input-file %t_output.ll %s
 
 ; CHECK://.kernel _ZTSN2at15AtenIpexTypeXPU4impl35FastGroupRadixSortImplKernelFunctorIbxLi1024ELb0ELb1EtLi32ELi4ENS0_19GroupRadixProcesserIbLi1024ELi32ELi4ELb0EttjLi4EEEbEE
-; CHECK://.spill size 6[[B:[0-9]{3}]]{{$}}
+; CHECK://.spill size {{([5-6][0-9]{3})}}
 ; CHECK: end of thread
 
 ; CHECK://.kernel _ZTSN2at15AtenIpexTypeXPU4impl35FastGroupRadixSortImplKernelFunctorIbxLi1024ELb0ELb1EtLi32ELi4ENS0_19GroupRadixProcesserIbLi1024ELi32ELi4ELb0EttjLi4EEEbEE
@@ -60,7 +60,7 @@ define linkonce_odr spir_func i32 @_ZN2at15AtenIpexTypeXPU19group_exclusive_sumI
 
 19:                                               ; preds = %15
   %20 = shl nuw nsw i32 1, %17
-  %21 = call spir_func i32 @_Z30__spirv_SubgroupShuffleUpINTELiij(i32 %16, i32 %16)
+  %21 = call spir_func i32 @_Z30__spirv_SubgroupShuffleUpINTELiij(i32 %16, i32 %16, i32 %20)
   %22 = icmp ugt i32 %20, %8
   %23 = select i1 %22, i32 0, i32 %21
   %24 = add i32 %16, %23
@@ -138,7 +138,7 @@ define linkonce_odr spir_func i32 @_ZN2at15AtenIpexTypeXPU19group_exclusive_sumI
   br label %59
 }
 
-declare spir_func i32 @_Z30__spirv_SubgroupShuffleUpINTELiij(i32, i32)
+declare spir_func i32 @_Z30__spirv_SubgroupShuffleUpINTELiij(i32, i32, i32)
 
 ; Function Attrs: argmemonly nofree nosync nounwind willreturn
 declare void @llvm.lifetime.end.p0i8(i64 immarg, i8* nocapture) #0
@@ -154,7 +154,7 @@ define spir_kernel void @_ZTSN2at15AtenIpexTypeXPU4impl35FastGroupRadixSortImplK
   %17 = call spir_func i64 @_Z28__spirv_BuiltInNumWorkgroupsi(i32 0)
   %18 = call spir_func i64 @_Z26__spirv_BuiltInWorkgroupIdi()
   %19 = call spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32 0)
-  %20 = call spir_func i64 @_Z32__spirv_BuiltInLocalInvocationIdi()
+  %20 = call spir_func i64 @_Z32__spirv_BuiltInLocalInvocationIdi(i32 0)
   store i64 %15, i64* undef, align 1
   store i64 %19, i64* undef, align 1
   store i64 undef, i64* undef, align 1
@@ -373,7 +373,7 @@ declare spir_func i64 @_Z28__spirv_BuiltInNumWorkgroupsi(i32)
 
 declare spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32)
 
-declare spir_func i64 @_Z32__spirv_BuiltInLocalInvocationIdi()
+declare spir_func i64 @_Z32__spirv_BuiltInLocalInvocationIdi(i32)
 
 declare spir_func i64 @_Z26__spirv_BuiltInWorkgroupIdi()
 

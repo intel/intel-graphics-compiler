@@ -2920,3 +2920,11 @@ void intel_rt_sync(rtfence_t fence);
 global void *intel_get_implicit_dispatch_globals();
 
 #endif // defined(cl_intel_pvc_rt_validation)
+
+typedef __local void manageable_barrier_t;
+manageable_barrier_t* intel_manageable_barrier_init(uint ProducerCount, uint ConsumerCount);
+void intel_manageable_barrier_release(manageable_barrier_t* BData);
+void intel_manageable_barrier_arrive(manageable_barrier_t* BData);
+void intel_manageable_barrier_wait(manageable_barrier_t* BData);
+void intel_manageable_barrier_arrivewait(manageable_barrier_t* BData);
+void intel_manageable_barrier_arrivedrop(manageable_barrier_t* BData);

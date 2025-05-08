@@ -19,21 +19,21 @@ SPDX-License-Identifier: MIT
 #include <vector>
 
 #if defined(_MSC_VER)
-static int opterr = 1, // if error message should be printed.
-    optind = 1,        // index into parent argv vector.
-    optopt,            // character checked for validity.
-    optreset;          // reset getopt.
-static char *optarg;   // argument associated with option.
+static int opterr = 1,       // if error message should be printed.
+    optind = 1,              // index into parent argv vector.
+    optopt,                  // character checked for validity.
+    optreset;                // reset getopt.
+static const char *optarg;   // argument associated with option.
 
 static const char BADCH = '?';
 static const char BADARG = ':';
-static char *EMSG = "";
+static const char *EMSG = "";
 
 ///
 /// @brief getopt Parse argc/argv argument vector.
 ///
 int getopt(int nargc, char *const nargv[], const char *ostr) {
-  static char *place = EMSG; // option letter processing
+  static const char *place = EMSG; // option letter processing
   const char *oli;           // option letter list index
 
   if (optreset || !*place) { // update scanning pointer
@@ -311,8 +311,8 @@ static void read_args(int argc, char *argv[], const char *Out) {
 }
 
 int main(int argc, char *argv[]) {
-  char *ExtraOptions = nullptr;
-  char *Out = nullptr;
+  const char *ExtraOptions = nullptr;
+  const char *Out = nullptr;
   char Action = '\0';
 
   int Opt;
