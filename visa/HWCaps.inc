@@ -815,7 +815,7 @@ bool needBothAcc(G4_Operand *opnd) const {
 }
 
 bool needBarrierWA() const {
-  return ((getOption(vISA_enableBarrierWA) || getOption(vISA_Debug)) &&
+  return (getOption(vISA_enableBarrierWA) &&
       (getPlatform() == Xe_XeHPSDV || getPlatform() == Xe_PVC ||
       getPlatform() == Xe_PVCXT || getPlatform() == Xe_DG2 ||
       getPlatform() == Xe_MTL));
