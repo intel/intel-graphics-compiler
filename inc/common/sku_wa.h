@@ -229,7 +229,6 @@ typedef struct _SKU_FEATURE_TABLE
         unsigned int   FtrGttCacheInvalidation          : 1;
         unsigned int   FtrMemorySeg                     : 1;
         unsigned int   FtrCacheCoherentMemSeg           : 1;
-        unsigned int   FtrDynamicDisplayAliasing        : 1;
         unsigned int   FtrLinearCCS                     : 1;
 
         unsigned int   FtrKMDTestSupportFromRegKey : 1;
