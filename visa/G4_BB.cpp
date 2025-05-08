@@ -875,7 +875,7 @@ uint32_t G4_BB::emitBankConflictXe(std::ostream &os_output, const G4_INST *inst,
     if (candidateNum > 1) {
       int c = 0;
       c = getConflictTimesForTGL(output, secondRegCandidate, sameConflictTimes,
-                                 zeroOne, isTGLLP, hasReducedBundles);
+                                 zeroOne, isTGLLP, false);
       conflictTimes += c;
       if (candidateNum == 2) {
         twoSrcConflicts += c;
