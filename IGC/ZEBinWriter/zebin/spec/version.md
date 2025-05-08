@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.54
+Version 1.55
 =======
 
 ## Versioning
@@ -16,6 +16,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.55**: Internal feature.
 - **Version 1.54**: Add execution env flag implicit_arg_buffer_used_by_code.
 - **Version 1.53**: Internal changes.
 - **Version 1.52**: Add has_lsc_stores_with_non_default_l1_cache_controls flag in zeinfo environment.
