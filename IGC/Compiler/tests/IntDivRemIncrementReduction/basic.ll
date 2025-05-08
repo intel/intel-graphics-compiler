@@ -40,3 +40,15 @@ define void @test_int_divrem_increment_reduction(i32 %a, i32 %b, ptr %dest1, ptr
   ret void
 }
 
+; We can't assume what the dividend will look like
+define i32 @test_arbitrary_dividend(float %a, i32 %b) {
+; CHECK-LABEL: @test_arbitrary_dividend(
+; CHECK: [[BC:%.*]] = bitcast float %a to i32
+; CHECK-NEXT: [[UDIV:%.*]] = udiv i32 [[BC]], %b
+; CHECK-NEXT: [[UREM:%.*]] = urem i32 [[BC]], %b
+  %bc = bitcast float %a to i32
+  %1 = udiv i32 %bc, %b
+  %2 = urem i32 %bc, %b
+  ret i32 %2
+}
+

@@ -398,7 +398,7 @@ void DivRemChain::deleteDeadDivRems() const {
 //    %g = udiv i32 %w3, %x
 //    %h = urem i32 %w3, %x
 std::pair<Value*, ConstantInt*> IntDivRemIncrementReductionImpl::getBaseAndOffset(Value* dividend) {
-  if (auto* dividendInst = dyn_cast<Instruction>(dividend)) {
+  if (auto* dividendInst = dyn_cast<BinaryOperator>(dividend)) {
     LLVM_DEBUG(dbgs() << "Checking base and offset for inst: " << *dividendInst << "\n");
     auto* c0 = dyn_cast<ConstantInt>(dividendInst->getOperand(0));
     auto* c1 = dyn_cast<ConstantInt>(dividendInst->getOperand(1));
