@@ -122,6 +122,7 @@ struct CompileOptions {
   bool DumpIR = false;
   bool DumpAsm = false;
   bool DumpDebugInfo = false;
+  bool DumpInstOffset = false;
 
   bool TimePasses = false;
   bool ShowStats = false;

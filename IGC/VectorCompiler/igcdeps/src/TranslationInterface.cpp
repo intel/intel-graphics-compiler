@@ -330,6 +330,9 @@ static void adjustDumpOptions(vc::CompileOptions &Opts) {
     Opts.DumpAsm = true;
     Opts.DumpDebugInfo = true;
   }
+
+  if (IGC_IS_FLAG_ENABLED(PrintInstOffsetInShaderDumpAsm))
+    Opts.DumpInstOffset = true;
 }
 
 static void adjustHashOptions(vc::CompileOptions &Opts,

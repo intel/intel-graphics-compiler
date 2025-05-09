@@ -5855,6 +5855,9 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-output");
     addArgument("-binary");
   }
+  if (BC.emitInstOffsets())
+    addArgument("-printInstOffsetInAsm");
+
   if (ST.needsWANoMaskFusedEU() && !DisableNoMaskWA)
     addArgument("-noMaskWA");
 

@@ -93,6 +93,8 @@ struct GenXBackendOptions {
   // Whether to enable dumps of kernel debug information
   bool EnableDebugInfoDumps = false;
   std::string DebugInfoDumpsNameOverride;
+  // Add instruction offsets as comments in the final assembly
+  bool EnableInstOffsetDumps = false;
 
   bool ForceArrayPromotion = false;
 
@@ -313,6 +315,8 @@ public:
   const std::string &dbgInfoDumpsNameOverride() const {
     return Options.DebugInfoDumpsNameOverride;
   }
+
+  bool emitInstOffsets() const { return Options.EnableInstOffsetDumps; }
 
   bool isArrayPromotionForced() const { return Options.ForceArrayPromotion; }
 

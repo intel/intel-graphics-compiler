@@ -247,6 +247,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.EnableAsmDumps = Opts.DumpAsm;
   BackendOpts.EnableIsaDumps = Opts.DumpIsa;
   BackendOpts.EnableDebugInfoDumps = Opts.DumpDebugInfo;
+  BackendOpts.EnableInstOffsetDumps = Opts.DumpInstOffset;
   BackendOpts.Dumper = Opts.Dumper.get();
   BackendOpts.ShaderOverrider = Opts.ShaderOverrider.get();
   BackendOpts.DisableStructSplitting = Opts.DisableStructSplitting;
