@@ -61,6 +61,16 @@ More documentation is available in the [documentation](./documentation) director
 * Intel&reg; Gen9 graphics
 
 
+No code changes may be introduced that would regress support for any currently supported hardware.
+All contributions must ensure continued compatibility and functionality across all supported hardware platforms.
+Failure to maintain hardware compatibility may result in the rejection or reversion of the contribution.
+
+Any deliberate modifications or removal of hardware support will be transparently communicated in the release notes.
+
+API options are solely considered as a stable interface.
+Any debug parameters, environmental variables, and internal data structures, are not considered as an interface and may be changed or removed at any time.
+
+
 ## How to provide feedback
 
 If you have any feedback or questions, please open an issue through the native github.com interface: https://github.com/intel/intel-graphics-compiler/issues.
@@ -68,5 +78,7 @@ If you have any feedback or questions, please open an issue through the native g
 
 ## How to contribute
 
-Create a pull request on github.com with your changes. Ensure that your modifications build without errors.
+Create a pull request on github.com with your changes.
+Ensure that your modifications build without errors.
 A maintainer will get in touch with you if there are any inquiries or concerns.
+
