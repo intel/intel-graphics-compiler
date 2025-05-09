@@ -920,6 +920,12 @@ namespace IGC::SPIRMD
             {
                 m_pModule->eraseNamedMetadata(OpenCLVersionsNode);
             }
+
+            llvm::NamedMDNode* SPIRVExtensionsNode = m_pModule->getNamedMetadata("igc.spirv.extensions");
+            if (SPIRVExtensionsNode)
+            {
+                m_pModule->eraseNamedMetadata(SPIRVExtensionsNode);
+            }
         }
 
     private:
