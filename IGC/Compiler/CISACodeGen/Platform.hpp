@@ -54,7 +54,7 @@ bool hasQWAddSupport() const
 bool hasNoInt64Inst() const {
     return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
         m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
-        m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE ||
+        // m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE || // same enum as JASPERLAKE
         m_platformInfo.eProductFamily == IGFX_JASPERLAKE ||
         m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP ||
         m_platformInfo.eProductFamily == IGFX_ROCKETLAKE ||
@@ -393,8 +393,7 @@ unsigned int GetBindlessSamplerSize() const
 
 unsigned int GetLogBindlessSamplerSize() const
 {
-    // Samplers are 16 bytes
-    return 4;
+    return (unsigned int) iSTD::Log2(GetBindlessSamplerSize());
 }
 
 bool SupportCPS() const
@@ -1326,7 +1325,7 @@ bool supportByteALUOperation() const
 bool hasNoFP64Inst() const {
     return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
         m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
-        m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE ||
+        //m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE || // same enum as JASPERLAKE
         m_platformInfo.eProductFamily == IGFX_JASPERLAKE ||
         m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP ||
         m_platformInfo.eProductFamily == IGFX_ROCKETLAKE ||
