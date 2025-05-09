@@ -56,11 +56,11 @@ namespace IGC
 
             LivenessData(
                 llvm::Instruction* allocationInstruction,
-                const llvm::SetVector<llvm::Instruction*>& usersOfAllocation,
+                llvm::SetVector<llvm::Instruction*>&& usersOfAllocation,
                 const llvm::LoopInfo& LI,
                 const llvm::DominatorTree& DT,
                 llvm::BasicBlock* userDominatorBlock = nullptr,
-                bool isLifetimeInfinite = false
+                llvm::SetVector<llvm::Instruction*>&& lifetimeLeakingUsers = {}
             );
 
             bool OverlapsWith(const LivenessData& LD) const;

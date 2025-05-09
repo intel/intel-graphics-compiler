@@ -224,9 +224,8 @@ AllocationBasedLivenessAnalysis::LivenessData* AllocationBasedLivenessAnalysis::
     auto* DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     auto* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
-    bool hasNoLifetimeEnd = false;
-
     SetVector<Instruction*> allUsers;
+    SetVector<Instruction*> lifetimeLeakingUsers;
     SmallVector<Use*> worklist;
 
     for (auto& use : I->uses())
@@ -266,31 +265,31 @@ AllocationBasedLivenessAnalysis::LivenessData* AllocationBasedLivenessAnalysis::
 
             break;
         case Instruction::PtrToInt:
-            hasNoLifetimeEnd = true;
+            lifetimeLeakingUsers.insert(II);
             break;
         case Instruction::Store:
             {
                 auto* storeI = cast<StoreInst>(II);
                 if (storeI->getValueOperand() == cast<Value>(use))
-                    hasNoLifetimeEnd = true;
+                    lifetimeLeakingUsers.insert(II);
             }
             break;
         case Instruction::Call:
             {
                 auto* callI = cast<CallInst>(II);
                 if (!callI->doesNotCapture(use->getOperandNo()))
-                    hasNoLifetimeEnd = true;
+                    lifetimeLeakingUsers.insert(II);
             }
             break;
         case Instruction::Load:
             break;
         default: // failsafe for handling "unapproved" instructions
-            hasNoLifetimeEnd = true;
+            lifetimeLeakingUsers.insert(II);
             break;
         }
     }
 
-    return new LivenessData(I, allUsers, *LI, *DT, commonDominator, hasNoLifetimeEnd);
+    return new LivenessData(I, std::move(allUsers), *LI, *DT, commonDominator, std::move(lifetimeLeakingUsers));
 }
 
 template<typename range>
@@ -327,8 +326,14 @@ static inline void doWorkLoop(
 
 }
 
-AllocationBasedLivenessAnalysis::LivenessData::LivenessData(Instruction* allocationInstruction, const SetVector<Instruction*>& usersOfAllocation, const LoopInfo& LI, const DominatorTree& DT, BasicBlock* userDominatorBlock, bool isLifetimeInfinite)
-{
+AllocationBasedLivenessAnalysis::LivenessData::LivenessData(
+    Instruction* allocationInstruction,
+    SetVector<Instruction*>&& usersOfAllocation,
+    const LoopInfo& LI,
+    const DominatorTree& DT,
+    BasicBlock* userDominatorBlock,
+    SetVector<Instruction*>&& lifetimeLeakingUsers
+) {
     if (!userDominatorBlock)
         userDominatorBlock = allocationInstruction->getParent();
 
@@ -363,25 +368,32 @@ AllocationBasedLivenessAnalysis::LivenessData::LivenessData(Instruction* allocat
     );
 
     // handle infinite lifetime
-    if (isLifetimeInfinite)
+    if (!lifetimeLeakingUsers.empty())
     {
         // traverse all the successors until there are no left.
-        auto bbInOnly = bbIn;
-        set_subtract(bbInOnly, bbOut);
+        decltype(bbIn) leakingbbIn;
+        decltype(bbOut) leakingbbOut;
 
-        for (auto* bb : bbInOnly)
-            worklist.push_back(bb);
-
-        // in case the only use is the one that causes lifetime escape
-        worklist.push_back(userDominatorBlock);
+        for (auto* I : lifetimeLeakingUsers)
+            worklist.push_back(I->getParent());
 
         doWorkLoop<llvm::succ_range>(
             worklist,
-            bbOut,
-            bbIn,
+            leakingbbOut,
+            leakingbbIn,
             [&](auto* currbb) { return llvm::successors(currbb); },
             [&](auto* currbb) { return false; }
         );
+
+        // add terminators to users, so we can later add them to our lifetimeEnd vector
+        auto leakingbbOnlyIn = leakingbbIn;
+        set_subtract(leakingbbOnlyIn, leakingbbOut);
+
+        for (auto* bb : leakingbbOnlyIn)
+            usersOfAllocation.insert(bb->getTerminator());
+
+        set_union(bbIn, leakingbbIn);
+        set_union(bbOut, leakingbbOut);
     }
 
     // if the lifetime escapes any loop, we should make sure all the loops blocks are included
@@ -469,7 +481,7 @@ AllocationBasedLivenessAnalysis::LivenessData::LivenessData(Instruction* allocat
         {
             for (auto& I : llvm::reverse(*bb))
             {
-                if (usersOfAllocation.contains(&I) || isLifetimeInfinite)
+                if (usersOfAllocation.contains(&I))
                 {
                     lifetimeEnds.push_back(&I);
                     break;
