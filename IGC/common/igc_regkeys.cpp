@@ -1366,6 +1366,7 @@ void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys)
         // Ignore some dump keys
         if (strcmp("ShaderDumpEnableAll", key) == 0 ||
             strcmp("ShaderDumpEnable", key) == 0 ||
+            strcmp("ShaderDumpRegexFilter", key) == 0 ||
             strcmp("DumpToCurrentDir", key) == 0 ||
             strcmp("EnableCosDump", key) == 0 ||
             strcmp("DumpToCustomDir", key) == 0 ||
