@@ -810,7 +810,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::RUNTIME_VALUE,
             KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER,
             KernelArg::ArgType::IMPLICIT_GLOBAL_OFFSET,
-            KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE,
 
             KernelArg::ArgType::PTR_LOCAL,
             KernelArg::ArgType::PTR_GLOBAL,
@@ -832,6 +831,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_LOCAL_SIZE,
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN,
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE,
+            KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE,
             KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET,
 
             KernelArg::ArgType::IMPLICIT_IMAGE_HEIGHT,
@@ -937,7 +937,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::RUNTIME_VALUE,
             KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER,
             KernelArg::ArgType::IMPLICIT_GLOBAL_OFFSET,
-            KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE,
             KernelArg::ArgType::PTR_LOCAL,
             KernelArg::ArgType::PTR_GLOBAL,
             KernelArg::ArgType::PTR_CONSTANT,
@@ -957,6 +956,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_LOCAL_SIZE,
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN,
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE,
+            KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE,
             KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET,
 
             KernelArg::ArgType::IMPLICIT_ARG_BUFFER,

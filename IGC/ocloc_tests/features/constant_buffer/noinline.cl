@@ -19,16 +19,16 @@ SPDX-License-Identifier: MIT
 // CHECK-SUBROUTINE-NEXT:     - arg_type:        global_id_offset
 // CHECK-SUBROUTINE-NEXT:       offset:          0
 // CHECK-SUBROUTINE-NEXT:       size:            12
-// CHECK-SUBROUTINE-NEXT:     - arg_type:        enqueued_local_size
-// CHECK-SUBROUTINE-NEXT:       offset:          12
-// CHECK-SUBROUTINE-NEXT:       size:            12
 // CHECK-SUBROUTINE-NEXT:     - arg_type:        arg_bypointer
-// CHECK-SUBROUTINE-NEXT:       offset:          24
+// CHECK-SUBROUTINE-NEXT:       offset:          16
 // CHECK-SUBROUTINE-NEXT:       size:            8
 // CHECK-SUBROUTINE-NEXT:       arg_index:       0
 // CHECK-SUBROUTINE-NEXT:       addrmode:        stateless
 // CHECK-SUBROUTINE-NEXT:       addrspace:       global
 // CHECK-SUBROUTINE-NEXT:       access_type:     readwrite
+// CHECK-SUBROUTINE-NEXT:     - arg_type:        enqueued_local_size
+// CHECK-SUBROUTINE-NEXT:       offset:          24
+// CHECK-SUBROUTINE-NEXT:       size:            12
 // CHECK-SUBROUTINE-NEXT:   per_thread_payload_arguments:
 // CHECK-SUBROUTINE-NEXT:     - arg_type:        local_id
 // CHECK-SUBROUTINE-NEXT:       offset:          0
