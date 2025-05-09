@@ -529,7 +529,7 @@ uint4 __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m16k4(long baseof
 uint16 __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m32k8(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 ulong4 __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_k4(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 ulong __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
-ulong2 __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ulong __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 ulong4 __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k4(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 
 // transpose with width=8, for A matrix of tf32
