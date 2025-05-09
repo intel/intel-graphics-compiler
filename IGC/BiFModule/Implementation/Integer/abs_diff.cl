@@ -17,11 +17,11 @@ uchar SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_abs_diff, _i8_i8, )( char x,
     uchar result;
     if (x > y)
     {
-        result = (uchar)(x - y);
+        result = (uchar)x - y;
     }
     else
     {
-        result = (uchar)(y - x);
+        result = (uchar)y - x;
     }
     return result;
 }
@@ -195,11 +195,11 @@ ushort SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_abs_diff, _i16_i16, )( short x,
     ushort result;
     if (x > y)
     {
-        result = (ushort)(x - y);
+        result = (ushort)x - y;
     }
     else
     {
-        result = (ushort)(y - x);
+        result = (ushort)y - x;
     }
     return result;
 }
@@ -373,11 +373,11 @@ uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_abs_diff, _i32_i32, )( int x,
     uint result;
     if (x > y)
     {
-        result = (uint)(x - y);
+        result = (uint)x - y;
     }
     else
     {
-        result = (uint)(y - x);
+        result = (uint)y - x;
     }
     return result;
 }
@@ -551,11 +551,11 @@ ulong SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_abs_diff, _i64_i64, )( long x,
     ulong result;
     if (x > y)
     {
-        result = (ulong)(x - y);
+        result = (ulong)x - y;
     }
     else
     {
-        result = (ulong)(y - x);
+        result = (ulong)y - x;
     }
     return result;
 }
