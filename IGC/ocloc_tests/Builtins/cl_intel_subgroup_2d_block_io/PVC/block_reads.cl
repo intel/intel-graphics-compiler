@@ -270,7 +270,7 @@ SPDX-License-Identifier: MIT
 // RUN: -DINPUT_TYPE=uint -DOUTPUT_TYPE=uint -DFUNCTION=intel_sub_group_2d_block_read_32b_1r8x2c -DDST_ARRAY_EL_TYPE=uint2 -DDST_ARRAY_EL_NUM=1" \
 // RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_2d_block_io" | FileCheck %s --check-prefix=CHECK-VISAASM-32B-1R-8X2C
 
-// CHECK-VISAASM-32B-1R-8X2C: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d32.16x1nn  flat[{{.+}},0x1FF,0x2D,0x1FF,V{{[0-9]+}},V{{[0-9]+}}
+// CHECK-VISAASM-32B-1R-8X2C: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d32.2x8x1nn  flat[{{.+}},0x1FF,0x2D,0x1FF,V{{[0-9]+}},V{{[0-9]+}}
 
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'DumpVISAASMToConsole=1' \
 // RUN: -DINPUT_TYPE=uint -DOUTPUT_TYPE=uint -DFUNCTION=intel_sub_group_2d_block_read_32b_2r8x2c -DDST_ARRAY_EL_TYPE=uint2 -DDST_ARRAY_EL_NUM=1" \

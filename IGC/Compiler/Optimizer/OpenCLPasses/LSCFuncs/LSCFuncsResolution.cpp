@@ -950,10 +950,9 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
             IGC_ASSERT_MESSAGE(funcName.consume_front("v2"), "Unrecognized v element in __builtin_IB_subgroup_block_read/write.");
         }
 
-        // Special handling of the following when GRF size = 64 bytes
+        // (1) Special handling of the following when GRF size = 64 bytes
         //    intel_sub_group_2d_block_read_8b_1r32x2c  (u8_m1k32v2)
         //    intel_sub_group_2d_block_read_16b_1r16x2c (u16_m1k16v2)
-        //    intel_sub_group_2d_block_read_32b_1r8x2c  (u32_m1k8v2)
         // They are defined to return 64 bytes, but the HW block read
         // returns 128 bytes (two GRFs, as a block size must be multiple
         // of GRF, unused part is zero-padded. Note that those APIs have
@@ -963,11 +962,17 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
         //
         // For those cases, instead of 2 blocks, using equivalent single-block
         // read to avoid those mov instructions by just doubling their width:
-        //   u8_m1k32v2  --> u8_m1k64v1
-        //   u16_m1k16v2 --> u16_m1k32v1
-        //   u32_m1k8v2  --> u32_m1k16v1
-        if (m_pCtx->platform.getGRFSize() == 64 && isRead &&
-            numBlocksV == 2 && tileHeight == 1 && (elemSize * tileWidth) == 256)
+        //   8b_m1k32v2  --> 8b_m1k64v1
+        //   16b_m1k16v2 --> 16b_m1k32v1
+        //
+        // (2) The following is an exception:
+        //    int2 = intel_sub_group_2d_block_read_32b_1r8x2c  (u32_m1k8v2)
+        // it is indeed defined as return 128 bytes. As this 2d read has
+        // 64 bytes, only lower 8 lanes have data and upper 8 lanes got zero.
+        // No change to this read!
+        if (m_pCtx->platform.getGRFSize() == 64 && isRead && numBlocksV == 2 &&
+            tileHeight == 1 && (elemSize * tileWidth) == 256 &&
+            elemSize != 32 /* exception shown above in (2) */)
         {
             numBlocksV = 1;
             tileWidth *= 2;
