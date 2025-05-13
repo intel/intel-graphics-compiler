@@ -116,6 +116,10 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   }
 
   BIF_FLAG_CTRL_SET(UseOOBChecks, PtrCGC->platform.needsOutOfBoundsBuiltinChecks());
+
+  // NOTE: No need to check for UseLegacyBindlessMode,
+  //       as it's unrelated to images.
+  BIF_FLAG_CTRL_SET(UseBindlessImage, PtrCGC->getModuleMetaData()->UseBindlessImage);
 }
 
 #undef BIF_FLAG_CTRL_SET

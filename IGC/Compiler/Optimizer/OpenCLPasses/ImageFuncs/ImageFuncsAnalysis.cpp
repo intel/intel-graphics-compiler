@@ -56,8 +56,9 @@ bool ImageFuncsAnalysis::runOnModule(Module& M) {
     m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    m_useAdvancedBindlessMode = ctx->getModuleMetaData()->compOpt.UseBindlessMode &&
-                                !ctx->getModuleMetaData()->compOpt.UseLegacyBindlessMode;
+    m_useAdvancedBindlessMode = ctx->getModuleMetaData()->UseBindlessImage;
+
+    m_useBindlessImageWithSamplerTracking = ctx->getModuleMetaData()->UseBindlessImageWithSamplerTracking;
 
     m_useSPVINTELBindlessImages = ctx->getModuleMetaData()->extensions.spvINTELBindlessImages;
 
@@ -170,6 +171,37 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     }
     else
     {
+        if (funcName.endswith("sample_l") && m_useBindlessImageWithSamplerTracking)
+        {
+            Value* callArg = ValueTracker::track(&CI, 1, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+            if (!callArg) return;
+            if (ConstantInt* ConstInt = dyn_cast<ConstantInt>(callArg))
+            {
+                // Inline sampler doesn't associate with an explicit argument.
+                // To avoid adding a new metadata entry, inline sampler value is stored as
+                // explicit argument number.
+                uint64_t InlineSamplerInitValue = ConstInt->getZExtValue();
+                auto [_, IsNew] = m_argMap[ImplicitArg::INLINE_SAMPLER].insert(
+                    int_cast<int>(InlineSamplerInitValue));
+                if (!IsNew) {
+                    // Sampler initialized by this specific value was already processed.
+                    // No new sampler will be created. Skip creating inline sampler metadata.
+                    return;
+                }
+
+                // Add metadata for the inline sampler.
+                ModuleMetaData* ModMD =
+                    getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+                FunctionMetaData& FuncMD = ModMD->FuncMD[CI.getFunction()];
+                ResourceAllocMD& ResAllocMD = FuncMD.resAllocMD;
+                InlineSamplersMD InlineSamplerMD;
+
+                CImagesBI::CreateInlineSamplerAnnotations(
+                    CI.getFunction()->getParent(), InlineSamplerMD, InlineSamplerInitValue);
+                InlineSamplerMD.index = m_inlineSamplerIndex++;
+                ResAllocMD.inlineSamplersMD.push_back(InlineSamplerMD);
+            }
+        }
         // Non image function, do nothing
         return;
     }
@@ -208,15 +240,6 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
                 imageFunc->insert(arg->getArgNo());
                 return;
             }
-        }
-        else if (m_useAdvancedBindlessMode)
-        {
-            IGC_ASSERT_MESSAGE(isa<ConstantInt>(callArg), "Expect inline sampler");
-            auto *inlineSampler = cast<ConstantInt>(callArg);
-            // Inline sampler doesn't associate with an explicit argument.
-            // To avoid adding a new metadata entry, inline sampler value is stored as explicit argument number.
-            m_argMap[ImplicitArg::INLINE_SAMPLER].insert(int_cast<int>(inlineSampler->getZExtValue()));
-            return;
         }
     }
 

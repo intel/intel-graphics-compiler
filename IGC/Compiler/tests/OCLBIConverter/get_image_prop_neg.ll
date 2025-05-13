@@ -74,7 +74,7 @@ declare spir_func i32 @__builtin_IB_get_image2d_array_size(i32 %img)
 !15 = !{!"compOpt", !16, !17}
 !16 = !{!"UseBindlessMode", i1 false}
 !17 = !{!"UseLegacyBindlessMode", i1 false}
-!18 = !{!"UseBindlessImage", i1 true}
+!18 = !{!"UseBindlessImage", i1 false}
 !19 = !{void (%spirv.Image._void_0_0_1_0_0_0_0 addrspace(1)*)* @kernel_1d_array, !1}
 !20 = !{!"FuncMD", !21, !22}
 !21 = distinct !{!"FuncMDMap[0]", void (%spirv.Image._void_0_0_1_0_0_0_0 addrspace(1)*)* @kernel_1d_array}

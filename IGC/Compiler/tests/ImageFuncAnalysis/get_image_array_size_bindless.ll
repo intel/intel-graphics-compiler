@@ -33,11 +33,12 @@ define i32 @bar(i32 %img) nounwind {
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc"}
-!4 = !{!"ModuleMD", !5}
+!4 = !{!"ModuleMD", !5, !9}
 !5 = !{!"compOpt", !6, !7}
 !6 = !{!"UseBindlessMode", i1 true}
 !7 = !{!"UseLegacyBindlessMode", i1 false}
 !8 = !{i32 (i32)* @bar, !1}
+!9 = !{!"UseBindlessImage", i1 true}
 
 ;CHECK-NOT: !{!"implicit_arg_desc", ![[A1:[0-9]+]]}
 ;CHECK-NOT: ![[A2:[0-9]+]] = !{i32 28, ![[A3:[0-9]+]]}

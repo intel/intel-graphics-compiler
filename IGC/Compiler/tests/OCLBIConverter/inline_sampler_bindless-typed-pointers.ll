@@ -16,39 +16,36 @@ target triple = "spir64-unknown-unknown"
 %spirv.Image._void_1_0_0_0_0_0_0 = type opaque
 %spirv.Sampler = type opaque
 
-define spir_kernel void @test(%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %srcImg, i32 %inlineSampler) {
+define spir_kernel void @test(%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %srcImg, i64 %inlineSampler) {
 entry:
-; CHECK: [[ZEXT:%[0-9]+]] = zext i32 %inlineSampler to i64
-; CHECK: [[OR:%[0-9]+]] = or i64 [[ZEXT]], 1
-; CHECK: [[TRUNC:%[0-9]+]] = trunc i64 [[OR]] to i32
-; CHECK: [[TRUNC_IMG:%[0-9]+]] = trunc i64 %1 to i32
-; CHECK: %bindless_img = inttoptr i32 [[TRUNC_IMG]] to float addrspace(393468)*
-; CHECK: %bindless_sampler = inttoptr i32 [[TRUNC]] to float addrspace(655360)*
-; CHECK: = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196860f32.p393468f32.p655360f32(float 0.000000e+00, float %CoordX, float %CoordY, float 0.000000e+00, float 0.000000e+00, float addrspace(196860)* undef, float addrspace(393468)* %bindless_img, float addrspace(655360)* %bindless_sampler, i32 0, i32 0, i32 0)
+; CHECK: [[INTTOPTR:%[0-9]+]] = inttoptr i64 %inlineSampler to %spirv.Sampler addrspace(2)*
+; CHECK: [[PTRTOINT:%[0-9]+]] = ptrtoint %spirv.Sampler addrspace(2)* [[INTTOPTR]] to i64
+; CHECK: [[OR:%[0-9]+]] = or i64 [[PTRTOINT]], 1
+; CHECK: %bindless_img = inttoptr i64 {{.*}} to float addrspace(393468)*
+; CHECK: %bindless_sampler = inttoptr i64 [[OR]] to float addrspace(655612)*
+; CHECK: = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196860f32.p393468f32.p655612f32(float 0.000000e+00, float %CoordX, float %CoordY, float 0.000000e+00, float 0.000000e+00, float addrspace(196860)* undef, float addrspace(393468)* %bindless_img, float addrspace(655612)* %bindless_sampler, i32 0, i32 0, i32 0)
 
-  %0 = inttoptr i64 16 to %spirv.Sampler addrspace(2)*
+  %0 = inttoptr i64 %inlineSampler to %spirv.Sampler addrspace(2)*
   %1 = ptrtoint %spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %srcImg to i64
   %2 = ptrtoint %spirv.Sampler addrspace(2)* %0 to i64
   %3 = or i64 %2, 1
-  %4 = trunc i64 %3 to i32
-  %5 = trunc i64 %1 to i32
-  %6 = call spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i32 %5, i32 %4, <2 x float> zeroinitializer, float 0.000000e+00)
+  %4 = call spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i64 %1, i64 %3, <2 x float> zeroinitializer, float 0.000000e+00)
   ret void
 }
 
-declare spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i32, i32, <2 x float>, float)
+declare spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i64, i64, <2 x float>, float)
 
 !igc.functions = !{!0}
 !IGCMetadata = !{!5}
 
-!0 = !{void (%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)*, i32)* @test, !1}
+!0 = !{void (%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)*, i64)* @test, !1}
 !1 = !{!2}
 !2 = !{!"implicit_arg_desc", !3}
 !3 = !{i32 33, !4}
 !4 = !{!"explicit_arg_num", i32 16}
 !5 = !{!"ModuleMD", !6, !20}
 !6 = !{!"FuncMD", !7, !8}
-!7 = !{!"FuncMDMap[0]", void (%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)*, i32)* @test}
+!7 = !{!"FuncMDMap[0]", void (%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)*, i64)* @test}
 !8 = !{!"FuncMDValue[0]", !9}
 !9 = !{!"resAllocMD", !10, !19}
 !10 = !{!"argAllocMDList", !11, !15}

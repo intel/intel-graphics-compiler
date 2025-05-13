@@ -60,6 +60,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/ImageFuncs/ImageFuncsAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ImageFuncs/ImageFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ImageFuncs/ResolveSampledImageBuiltins.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/PrepareInlineSamplerForBindless/PrepareInlineSamplerForBindless.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/ResolveInlineSamplerForBindless/ResolveInlineSamplerForBindless.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantAnalysis.hpp"
@@ -560,9 +562,12 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
 
     mpm.add(new ResolveOCLRaytracingBuiltins());
     mpm.add(createRayTracingIntrinsicAnalysisPass());
+    mpm.add(new PrepareInlineSamplerForBindless());
+
     // Adding implicit args based on Analysis passes
     mpm.add(new AddImplicitArgs());
 
+    mpm.add(new ResolveInlineSamplerForBindless());
     if (IGC_IS_FLAG_ENABLED(BufferBoundsChecking) || pContext->isBufferBoundsChecking())
     {
         mpm.add(new BufferBoundsCheckingPatcher());

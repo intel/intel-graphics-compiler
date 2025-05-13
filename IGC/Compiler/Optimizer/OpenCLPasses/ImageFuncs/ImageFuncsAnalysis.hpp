@@ -119,6 +119,9 @@ namespace IGC
         //        the snap_wa is unsupported. Consequently, it is effectively disabled
         //        by being lowered to a ConstantInt value of 0.
         bool m_useSPVINTELBindlessImages{};
+
+        bool m_useBindlessImageWithSamplerTracking{};
+        int m_inlineSamplerIndex = 0;
     };
 
 } // namespace IGC

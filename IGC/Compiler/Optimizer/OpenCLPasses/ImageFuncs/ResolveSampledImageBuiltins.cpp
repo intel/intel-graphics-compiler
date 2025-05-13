@@ -190,13 +190,18 @@ Value* ResolveSampledImageBuiltins::lowerGetSampler(CallInst& CI)
     //   %queried_sampler = zext i32 16 to i64
     if (CallInst* samplerInitializer = dyn_cast<CallInst>(samplerArg))
     {
-        IGC_ASSERT(samplerInitializer->getCalledFunction()->getName() == "__translate_sampler_initializer");
-        return ZExtInst::Create(
-            Instruction::ZExt,
-            samplerInitializer->getArgOperand(0),
-            Int64Ty,
-            "",
-            &CI);
+        // The __bindless_sampler_initializer calls are handled by PrepareInlineSamplerForBindless
+        // and ResolveInlineSamplerForBindless. They are meant to be replaced with inline sampler implicit arg.
+        if (!(samplerInitializer->getCalledFunction()->getName() == "__bindless_sampler_initializer"))
+        {
+            IGC_ASSERT(samplerInitializer->getCalledFunction()->getName() == "__translate_sampler_initializer");
+            return ZExtInst::Create(
+                Instruction::ZExt,
+                samplerInitializer->getArgOperand(0),
+                Int64Ty,
+                "",
+                &CI);
+        }
     }
 
     // In the case of sampler as kernel argument, transform the following sequence:

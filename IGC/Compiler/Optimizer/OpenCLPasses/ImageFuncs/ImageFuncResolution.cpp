@@ -53,8 +53,7 @@ void ImageFuncResolution::visitCallInst(CallInst& CI)
         return;
     }
 
-    bool isImplicitImageArgs = !m_pCtx->getModuleMetaData()->compOpt.UseBindlessMode ||
-                                    m_pCtx->getModuleMetaData()->compOpt.UseLegacyBindlessMode;
+    bool isImplicitImageArgs = !m_pCtx->getModuleMetaData()->UseBindlessImage;
 
     Value* imageRes = nullptr;
 
