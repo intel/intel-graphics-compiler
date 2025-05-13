@@ -298,7 +298,7 @@ void Layout::moveAtomicWrites2Loop(Function& func, LoopInfo& LI, bool onlyLocalM
     }
 
     // write: LoopWhereToMove mapping
-    std::map<Instruction*, llvm::Loop*> writesToMove;
+    llvm::MapVector<Instruction*, llvm::Loop*> writesToMove;
 
     for (auto read : reads)
     {
@@ -452,7 +452,7 @@ void Layout::LayoutBlocks(Function& func, LoopInfo& LI)
     std::vector<llvm::BasicBlock*> visitVec;
     std::set<llvm::BasicBlock*> visitSet;
     // Insertion Position per loop header
-    std::map<llvm::BasicBlock*, llvm::BasicBlock*> InsPos;
+    llvm::MapVector<llvm::BasicBlock*, llvm::BasicBlock*> InsPos;
 
     llvm::BasicBlock* entry = &(func.getEntryBlock());
     visitVec.push_back(entry);
