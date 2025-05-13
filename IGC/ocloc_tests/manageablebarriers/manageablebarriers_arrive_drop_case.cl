@@ -1,4 +1,4 @@
-// REQUIRES: regkeys, pvc-supported, debug
+// REQUIRES: regkeys, pvc-supported
 // RUN: ocloc compile -file %s -options " -cl-std=CL2.0 -igc_opts 'PrintToConsole=1 PrintAfter=ManageableBarriersResolution'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK
 
 //// Check if we have atomic to decrease the count of producers

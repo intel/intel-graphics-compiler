@@ -1,4 +1,4 @@
-// REQUIRES: regkeys, pvc-supported, debug
+// REQUIRES: regkeys, pvc-supported
 // RUN: ocloc compile -file %s -options " -cl-std=CL2.0 -igc_opts 'ManageableBarriersMode=1 PrintToConsole=1 PrintAfter=ManageableBarriersResolution'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK
 
 ///////////////////////////////////////////
