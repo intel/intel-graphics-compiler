@@ -3567,17 +3567,7 @@ bool AllowRemovingUnusedImplicitArguments(const CodeGenContext* ctx)
     if (value != TriboolFlag::Default)
         return value == TriboolFlag::Enabled;
 
-    if (!ctx->platform.supportsZEBin())
-        return false;
-
-    if (ctx->type == ShaderType::OPENCL_SHADER)
-    {
-        auto* OCLCtx = static_cast<const OpenCLProgramContext*>(ctx);
-        if (OCLCtx->m_InternalOptions.PromoteStatelessToBindless && OCLCtx->m_InternalOptions.UseBindlessLegacyMode)
-            return false;
-    }
-
-    return ctx->platform.isCoreChildOf(IGFX_XE_HP_CORE);
+    return false;
 }
 
 } // namespace IGC
