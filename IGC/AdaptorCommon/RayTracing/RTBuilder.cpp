@@ -2209,4 +2209,3 @@ template Value* RTBuilder::lowerRayInfo<RTBuilder::SyncStackPointerVal, RayQuery
     CallableShaderTypeMD,
     std::optional<bool>
 );
-

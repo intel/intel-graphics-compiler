@@ -1794,23 +1794,6 @@ public:
     Value* getFlags()  const { return getOperand(0); }
 };
 
-class ConvertRayQueryHandleToRTStackPointerIntrinsic : public GenIntrinsicInst {
-public:
-    // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const GenIntrinsicInst* I) {
-        GenISAIntrinsic::ID ID = I->getIntrinsicID();
-        return ID == GenISAIntrinsic::GenISA_ConvertRayQueryHandleToRTStackPointer;
-    }
-
-    static inline bool classof(const Value* V) {
-        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
-    }
-
-    Value* getRayQueryAllocationHandle() const {
-        return getOperand(0);
-    }
-};
-
 class RayQueryCheckIntrinsic : public GenIntrinsicInst {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
