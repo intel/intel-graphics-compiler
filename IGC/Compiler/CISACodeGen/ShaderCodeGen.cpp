@@ -1848,8 +1848,6 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add( createWaveAllJointReduction() );
         }
 
-        mpm.add(llvm::createEarlyCSEPass());
-
         if (IGC_IS_FLAG_ENABLED(EnableIntDivRemCombine)) {
             // simplify rem if the quotient is availble
             //
@@ -1871,7 +1869,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableIntDivRemIncrementReduction)) {
-            mpm.add(createIntDivRemIncrementReductionPass());
+          mpm.add(createIntDivRemIncrementReductionPass());
         }
         GFX_ONLY_PASS { mpm.add(createMergeMemFromBranchOptPass()); }
 
