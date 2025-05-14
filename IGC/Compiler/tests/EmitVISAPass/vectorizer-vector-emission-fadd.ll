@@ -361,7 +361,7 @@ declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 
 !324 = !{!"WaDisableVRS", i1 false}
 !325 = !{!"RelaxMemoryVisibilityFromPSOrdering", i1 false}
 !326 = !{!"WaEnableVMaskUnderNonUnifromCF", i1 false}
-!327 = !{!"csInfo", !328, !329, !330, !331, !332, !33, !34, !333, !334, !335, !336, !337, !338, !339, !340, !341, !342, !343, !344, !345, !66, !346, !347, !348, !349, !350, !351, !352}
+!327 = !{!"csInfo", !328, !329, !330, !331, !332, !33, !34, !333, !334, !335, !336, !337, !338, !339, !340, !341, !342, !343, !344, !345, !66, !346, !347, !348, !349, !351, !352}
 !328 = !{!"maxWorkGroupSize", i32 0}
 !329 = !{!"waveSize", i32 0}
 !330 = !{!"ComputeShaderSecondCompile"}
@@ -384,7 +384,6 @@ declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 
 !347 = !{!"walkOrderEnabled", i1 false}
 !348 = !{!"walkOrderOverride", i32 0}
 !349 = !{!"ResForHfPacking"}
-!350 = !{!"hasWaveMatrix", i1 false}
 !351 = !{!"constantFoldSimdSize", i1 false}
 !352 = !{!"isNodeShader", i1 false}
 !353 = !{!"msInfo", !354, !355, !356, !357, !358, !359, !360, !361, !362, !363, !364, !312, !310, !365}
