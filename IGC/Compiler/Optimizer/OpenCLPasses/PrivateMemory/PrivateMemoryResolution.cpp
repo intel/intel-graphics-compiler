@@ -374,7 +374,12 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
                 for (auto AI = childF->arg_begin(), AE = childF->arg_end(); AI != AE; ++AI)
                 {
                     // Argument offsets are also OWORD aligned
-                    argSize += iSTD::Align(static_cast<DWORD>(DL.getTypeAllocSize(AI->getType())), SIZE_OWORD);
+                    auto aiTy = AI->getType();
+
+                    if (aiTy->isMetadataTy())
+                        continue;
+
+                    argSize += iSTD::Align(static_cast<DWORD>(DL.getTypeAllocSize(aiTy)), SIZE_OWORD);
                 }
                 // Also do it for return value
                 if (!childF->getReturnType()->isVoidTy())
