@@ -314,7 +314,7 @@ namespace
                 return getStore()->getValueOperand();
             if (isa<StoreRawIntrinsic>(m_inst))
                 return getStoreRaw()->getArgOperand(2);
-            return getPredicatedStore()->getStoreValue();
+            return getPredicatedStore()->getValueOperand();
         }
         Value* getPointerOperand() const
         {

@@ -982,11 +982,19 @@ public:
     {
         return getOperand(0);
     }
+    inline Type* getPointerOperandType() const
+    {
+        return getPointerOperand()->getType();
+    }
+    inline unsigned getPointerAddressSpace() const
+    {
+        return getPointerOperandType()->getPointerAddressSpace();
+    }
     inline Value* getAlignmentValue() const {
         return getOperand(1);
     }
-    inline unsigned int getAlignment() const {
-        return static_cast<unsigned int>(cast<ConstantInt>(getAlignmentValue())->getZExtValue());
+    inline alignment_t getAlignment() const {
+        return static_cast<alignment_t>(cast<ConstantInt>(getAlignmentValue())->getZExtValue());
     }
     inline Value* getPredicate() const {
         return getOperand(2);
@@ -999,9 +1007,16 @@ public:
     {
         setOperand(1, ConstantInt::get(getOperand(1)->getType(), alignment));
     }
+    // Only simple load is currently promoted to predicated load:
     inline bool isVolatile() const {
-        // So far I did not find use case where volatile is used in predicated load
         return false;
+    }
+    inline bool isSimple() const {
+        return !isVolatile();
+    }
+    inline void setVolatile(bool isVolatile)
+    {
+        IGC_ASSERT(isVolatile == false);
     }
 };
 
@@ -1018,25 +1033,38 @@ public:
     inline Value* getPointerOperand() const {
         return getOperand(0);
     }
-    inline Value* getStoreValue() const {
+    inline Type* getPointerOperandType() const {
+        return getPointerOperand()->getType();
+    }
+    inline unsigned getPointerAddressSpace() const {
+        return getPointerOperandType()->getPointerAddressSpace();
+    }
+    inline Value* getValueOperand() const {
         return getOperand(1);
     }
     inline Value* getAlignmentValue() const {
         return getOperand(2);
     }
-    inline unsigned int getAlignment() const {
+    inline alignment_t getAlignment() const {
         IGC_ASSERT(isa<ConstantInt>(getAlignmentValue()));
         ConstantInt* val = dyn_cast<ConstantInt>(getAlignmentValue());
-        const unsigned int alignment = val ? int_cast<unsigned int>(val->getZExtValue()) : 1;
+        const alignment_t alignment = val ? int_cast<alignment_t>(val->getZExtValue()) : 1;
         return alignment;
     }
     inline void setAlignment(unsigned int alignment)
     {
         setOperand(2, ConstantInt::get(getOperand(2)->getType(), alignment));
     }
+    // only simple store is currently promoted to predicated store:
     inline bool isVolatile() const {
-        // So far I did not find use case where volatile is used in predicated load
         return false;
+    }
+    inline bool isSimple() const {
+        return !isVolatile();
+    }
+    inline void setVolatile(bool isVolatile)
+    {
+        IGC_ASSERT(isVolatile == false);
     }
     inline Value* getPredicate() const {
         return getOperand(3);
