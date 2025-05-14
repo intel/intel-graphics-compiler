@@ -156,13 +156,6 @@ namespace IGC
         void visitCallInst(llvm::CallInst& CI);
 
         static bool HasHWSupport(GFXCORE_FAMILY GFX_CORE);
-
-    private:
-        /// @brief  Indicates if the pass changed the processed function
-        inline bool isManageableBarriersAdded()
-        {
-            return mGlobalDataPoolPerFunc.size() > 0;
-        }
     };
 
 } // namespace IGC

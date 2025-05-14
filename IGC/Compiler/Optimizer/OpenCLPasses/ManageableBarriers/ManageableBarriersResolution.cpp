@@ -509,8 +509,8 @@ ManageableBarriersResolution::~ManageableBarriersResolution(void)
 
 bool ManageableBarriersResolution::runOnModule(Module& M)
 {
-    mSimpleBarrierIDCount = 1;
     mModule = &M;
+    bool isManageableBarriersAdded = false;
     mCurrentMode = static_cast<MBMode>(IGC_GET_FLAG_VALUE(ManageableBarriersMode));
     for (auto& F : M)
     {
@@ -520,6 +520,9 @@ bool ManageableBarriersResolution::runOnModule(Module& M)
 
             if (mManageBarrierInstructionsInit.size() > 0)
             {
+                mSimpleBarrierIDCount = 1;
+                isManageableBarriersAdded = true;
+
                 if (mCurrentMode == MBMode::Mix ||
                     mCurrentMode == MBMode::SimpleOnly)
                 {
@@ -552,13 +555,12 @@ bool ManageableBarriersResolution::runOnModule(Module& M)
         }
     }
 
-    if (isManageableBarriersAdded())
+    if (isManageableBarriersAdded)
     {
         // Add attribute NBarrierCnt to metadata
         auto MD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         // Adding max as it could be dynamic
         MD->NBarrierCnt = getMaxNamedBarrierCount();
-
         return true;
     }
     return false;

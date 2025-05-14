@@ -6655,7 +6655,8 @@ namespace IGC
 
         // Depend on vISA information about barriers presence to make sure that it's
         // always set properly, even if a barrier is used as a part of Inline vISA code only.
-        if (jitInfo->numBarriers != 0)
+        if (jitInfo->numBarriers != 0 &&
+            !m_program->m_State.GetHasBarrier())
         {
             if (context->getModuleMetaData()->NBarrierCnt > 0 ||
                 additionalVISAAsmToLink)
