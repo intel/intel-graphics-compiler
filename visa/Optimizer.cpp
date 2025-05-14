@@ -5748,6 +5748,8 @@ void Optimizer::postRA_HWWorkaround() {
   if (builder.hasFusedEUNoMaskWA()) {
     applyNoMaskWA();
   }
+  if (builder.supportNativeSIMD32())
+    fixDirectAddrBoundOnDst();
 }
 
 // should only be called post-RA, return true if this operand has overlapping
