@@ -1034,6 +1034,11 @@ INLINE void OVERLOADABLE FUNC_NAME(__global void* base_address, int width, int h
     __internal_##FUNC_NAME##_cache_controls(base_address, width, height, pitch, coord, (__private void *)destination, LSC_LDCC_DEFAULT);      \
 }
 
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_32r16x1c,  uchar32,    __builtin_IB_subgroup_block_read_cacheopts_u8_m32k16v1)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_16r16x2c,  uchar32,    __builtin_IB_subgroup_block_read_cacheopts_u8_m16k16v2)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_32r16x2c,  uchar64,    __builtin_IB_subgroup_block_read_cacheopts_u8_m32k16v2)
+
+
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_1r32x2c,             ushort,  ushort2,  __builtin_IB_subgroup_block_read_cacheopts_u8_m1k32v2)
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_2r32x2c,             ushort,  ushort4,  __builtin_IB_subgroup_block_read_cacheopts_u8_m2k32v2)
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_4r32x2c,             ushort,  ushort8,  __builtin_IB_subgroup_block_read_cacheopts_u8_m4k32v2)

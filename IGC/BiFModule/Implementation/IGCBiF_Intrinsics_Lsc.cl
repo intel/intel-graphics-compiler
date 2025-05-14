@@ -597,6 +597,11 @@ typedef ushort ushort64 __attribute__((ext_vector_type(64)));
 typedef uint uint32 __attribute__((ext_vector_type(32)));
 typedef uint uint64 __attribute__((ext_vector_type(64)));
 
+uchar32 __builtin_IB_subgroup_block_read_cacheopts_u8_m32k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+uchar32 __builtin_IB_subgroup_block_read_cacheopts_u8_m16k16v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uchar64 __builtin_IB_subgroup_block_read_cacheopts_u8_m32k16v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
 ushort32  __builtin_IB_subgroup_block_read_cacheopts_u8_m16k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 ushort64  __builtin_IB_subgroup_block_read_cacheopts_u8_m32k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 
