@@ -10698,6 +10698,19 @@ intrinsics:
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
+        name: "GenISA_ConvertRayQueryHandleToRTStackPointer"
+        comment: "Raytracing: Return RTStack pointer associated with the given rayquery allocation"
+        return_definition: !<ReturnDefinition>
+            type_definition: *p_any_
+            comment: "Pointer to the sync RTStack"
+        arguments:
+            - !<ArgumentDefinition>
+                name: RayQueryAllocationHandle
+                type_definition: *i32
+                comment: "RayQueryAllocationHandle"
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
         name: "GenISA_AsyncStackID"
         comment: "Raytracing: lane Async stack id"
         return_definition: !<ReturnDefinition>
