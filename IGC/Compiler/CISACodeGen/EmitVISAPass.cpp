@@ -25327,18 +25327,19 @@ LSC_CACHE_OPTS EmitPass::getDefaultRaytracingCachePolicy(bool isLoad) const
         return DefaultCacheCtrl;
 
     LSC_L1_L3_CC Opts;
-
+    LSC_L1_L3_CC genMemLoadCacheControl = LSC_L1C_WT_L3C_WB;
+    LSC_L1_L3_CC genMemStoreCacheControl = LSC_L1IAR_WB_L3C_WB;
     if (isLoad)
     {
         Opts = IGC_IS_FLAG_ENABLED(ForceGenMemLoadCacheCtrl) ?
             (LSC_L1_L3_CC)IGC_GET_FLAG_VALUE(GenMemLoadCacheCtrl) :
-            LSC_L1C_WT_L3C_WB;
+            genMemLoadCacheControl;
     }
     else
     {
         Opts = IGC_IS_FLAG_ENABLED(ForceGenMemStoreCacheCtrl) ?
             (LSC_L1_L3_CC)IGC_GET_FLAG_VALUE(GenMemStoreCacheCtrl) :
-            LSC_L1IAR_WB_L3C_WB;
+            genMemStoreCacheControl;
     }
 
     return translateLSCCacheControlsEnum(Opts, isLoad, nullptr);
