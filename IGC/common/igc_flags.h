@@ -174,6 +174,12 @@ DECLARE_IGC_REGKEY(bool, LoopSinkForce2dBlockReadsMaxSink, true,  "Sink as much 
 DECLARE_IGC_REGKEY(bool, LoopSinkEnableLateRescheduling, false,  "Schedule more aggressively in the end if the needed regpressure is still not achieved", false)
 DECLARE_IGC_REGKEY(bool, LoopSinkSkipDPASMacro,          false,  "If a dpas macro sequence is present, skip load sinking", true)
 
+// Load Splitting
+DECLARE_IGC_REGKEY(bool,  LS_enableLoadSplitting,       false, "Enable load splitting pass.", true)
+DECLARE_IGC_REGKEY(bool,  LS_ignoreSplitThreshold,      false, "If true, the pass splits loads regardless of the register pressure.", false)
+DECLARE_IGC_REGKEY(DWORD, LS_minSplitSize_GRF,          1, "Minimal split size in GRFs.", false)
+DECLARE_IGC_REGKEY(DWORD, LS_minSplitSize_E,            4, "Minimal split size in elements.", false)
+DECLARE_IGC_REGKEY(DWORD, LS_splitThresholdDelta_GRF,   2, "Register pressure must exceed total GRFs by this much for the load splitting to fire up.", false)
 
 DECLARE_IGC_REGKEY(bool, EnableLoopHoistConstant,       false, "Enables pass to check for specific loop patterns where variables are constant across all but the last iteration, and hoist them out of the loop.", false)
 DECLARE_IGC_REGKEY(bool, DisableCodeHoisting,           false, "Setting this to 1/true adds a compiler switch to disable code-hoisting", false)

@@ -39,6 +39,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/MemOpt.h"
 #include "Compiler/CISACodeGen/MemOpt2.h"
 #include "Compiler/CISACodeGen/MergeUniformStores.hpp"
+#include "Compiler/CISACodeGen/SplitLoads.h"
 #include "Compiler/CISACodeGen/PreRARematFlag.h"
 #include "Compiler/CISACodeGen/PromoteConstantStructs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Decompose2DBlockFuncs/Decompose2DBlockFuncs.hpp"
@@ -218,6 +219,10 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     {
         if (ctx.m_DriverInfo.WAEnableMemOpt2ForOCL())
             mpm.add(createMemOpt2Pass(16));
+    }
+
+    if (!isOptDisabled) {
+        mpm.add(createSplitLoadsPass());
     }
 
     // only limited code-sinking to several shader-type
