@@ -18,12 +18,14 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/Legalizer/TypeLegalizer.h"
 #include "Probe/Assertion.h"
 
 #define DEBUG_TYPE "PromoteToPredicatedMemoryAccess"
 
 using namespace llvm;
 using namespace IGC;
+using namespace IGC::Legalizer;
 
 static cl::opt<int> PredicatedMemOpIfConvertMaxInstrs(
     "igc-predmem-ifconv-max-instrs", cl::init(5), cl::Hidden,
@@ -108,6 +110,16 @@ void PromoteToPredicatedMemoryAccess::fixPhiNode(PHINode &Phi, BasicBlock &Prede
   Phi.eraseFromParent();
 }
 
+namespace {
+  bool IsTypeLegal(Type *Ty) {
+    if (!Ty->isIntOrIntVectorTy())
+      return true;
+
+    unsigned Width = Ty->getScalarSizeInBits();
+    return TypeLegalizer::isLegalInteger(Width) || Width == 1;
+  }
+} // namespace
+
 bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlock &BranchBB,
                                                 BasicBlock &ConvBB, BasicBlock &SuccBB,
                                                 bool Inverse) {
@@ -141,26 +153,34 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
     auto *Inst = dyn_cast<Instruction>(Phi.getIncomingValue(Idx));
     if (!Inst)
       return false;
-    if (!isa<LoadInst>(Inst))
+    if (auto *LI = dyn_cast<LoadInst>(Inst); !LI || !LI->isSimple())
+      return false;
+
+    if (!IsTypeLegal(Inst->getType()))
       return false;
 
     Insts[Inst] = Phi.getIncomingValueForBlock(&BranchBB);
   }
 
-  // Collect all the void
+  // Collect the rest of the instructions
   for (auto &I : ConvBB) {
     // Check if this load is handled in the previous loop
     if (isa<LoadInst>(&I) && Insts.count(&I))
         continue;
 
     // Store
-    if(isa<StoreInst>(&I)) {
+    if(auto *SI = dyn_cast<StoreInst>(&I)) {
+        if (!SI->isSimple() || !IsTypeLegal(SI->getValueOperand()->getType()))
+            return false;
         Insts[&I] = nullptr;
         continue;
     }
 
-    if (I.mayHaveSideEffects())
+    if (I.mayHaveSideEffects() || I.mayReadFromMemory())
       return false;
+
+    if (CallInst *CI = dyn_cast<CallInst>(&I); CI && CI->isConvergent())
+        return false;
   }
 
   LLVM_DEBUG(dbgs() << "Found if-convertible block:\n"

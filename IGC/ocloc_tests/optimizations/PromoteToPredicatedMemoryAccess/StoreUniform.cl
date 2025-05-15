@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 
 // CHECK-ASM:     (W&f{{[0-9\.]+}}) store.ugm.d32x1t.a64 (1|M0)  [r{{[0-9:]+}}]    r{{[0-9:]+}}
 
-__kernel void uniform_store(__global const float* in, __global float* out, const int predicate) {
+__kernel void uniform_store(__global float* out, const int predicate) {
     if (predicate)
-        out[0] = in[0];
+        out[0] = 3;
 }

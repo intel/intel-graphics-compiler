@@ -24,9 +24,10 @@ __kernel void test(__global const float* buffer1,
     __global const float* buffers[2] = {buffer1, buffer2};
     int gid = get_global_id(0);
     int bufferIndex = gid % 2;
+    __global const float* buffer = buffers[bufferIndex];
 
     float val = 0;
     if (gid < predicate)
-        val = buffers[bufferIndex][gid];
+        val = buffer[gid];
     outputBuffer[gid] = val;
 }

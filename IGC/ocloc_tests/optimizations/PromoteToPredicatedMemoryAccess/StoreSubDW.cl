@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 
 __kernel void basic(__global const char* in, __global char* out, const int predicate) {
     int gid = get_global_id(0);
+    char val = in[gid];
     if (gid < predicate)
-        out[gid] = in[gid];
+        out[gid] = val;
 }

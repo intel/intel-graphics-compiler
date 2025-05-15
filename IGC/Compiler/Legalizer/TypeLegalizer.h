@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -110,6 +110,21 @@ namespace IGC {
 
             bool runOnFunction(Function& F) override;
 
+            static bool isLegalInteger(unsigned width)
+            {
+                switch (width)
+                {
+                case 8:
+                case 16:
+                case 32:
+                case 64:
+                    return true;
+                default:
+                    break;
+                }
+                return false;
+            }
+
         private:
             void getAnalysisUsage(AnalysisUsage& AU) const override;
 
@@ -213,21 +228,6 @@ namespace IGC {
                 IGC_ASSERT(Width == FullWidth);
 
                 return Width;
-            }
-
-            bool isLegalInteger(unsigned width) const
-            {
-                switch (width)
-                {
-                case 8:
-                case 16:
-                case 32:
-                case 64:
-                    return true;
-                default:
-                    break;
-                }
-                return false;
             }
 
             /// getLargestLegalIntTypeSize() - Return the size of the largest legal

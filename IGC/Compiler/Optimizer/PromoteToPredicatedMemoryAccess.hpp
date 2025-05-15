@@ -27,7 +27,8 @@ namespace IGC
     //     %17 = call <4 x float> @llvm.genx.GenISA.PredicatedLoad.v4f32.p1v4f32.v4f32(<4 x float> addrspace(1)* %bitc0, i64 16, i1 %pred, <4 x float> %mergeValue)
     // if found in specific pattern and then performs if-conversion.
     //
-    // The pass looks for conditional branches that can be if-converted. The only "hammock" form
+    // Constraints:
+    // 1. The pass looks for conditional branches that can be if-converted. The only "hammock" form
     // of the control flow is supported, i.e. the true block has a single
     // predecessor and the false block has two predecessors. The true block must
     // have a single successor that is the false block.
@@ -37,9 +38,11 @@ namespace IGC
     //   }
     //   false block
     //
-    // All the instructions in the true block must be safe to execute in the false
+    // 2. All the instructions in the true block must be safe to execute in the false
     // block. The pass makes the instructions in the true block to be executed
     // conditionally and replaces branch to unconditional one.
+    // 3. Load/Store instructions should be simple.
+    // 4. Load/Store instructions should use legal data types.
     //
     // The pass expects that the simplifycfg pass will be run after it to clean up
     // the CFG.

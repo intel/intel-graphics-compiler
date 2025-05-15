@@ -44,3 +44,35 @@ st:
 exit:
   ret void
 }
+
+; early exit, not simple
+; CHECK-LABEL: @test3(
+define void @test3(<64 x i32> addrspace(1)* %dst, i1 %pred, <64 x i32> %data) {
+entry:
+; CHECK: br i1 %pred, label %st, label %exit
+  br i1 %pred, label %st, label %exit
+
+st:
+; CHECK: store volatile <64 x i32> %data, <64 x i32> addrspace(1)* %dst, align 4
+  store volatile <64 x i32> %data, <64 x i32> addrspace(1)* %dst, align 4
+  br label %exit
+
+exit:
+  ret void
+}
+
+; illegal int type, exit
+; CHECK-LABEL: @test4(
+define void @test4(<64 x i33> addrspace(1)* %dst, i1 %pred, <64 x i33> %data) {
+entry:
+; CHECK: br i1 %pred, label %st, label %exit
+  br i1 %pred, label %st, label %exit
+
+st:
+; CHECK: store <64 x i33> %data, <64 x i33> addrspace(1)* %dst, align 4
+  store <64 x i33> %data, <64 x i33> addrspace(1)* %dst, align 4
+  br label %exit
+
+exit:
+  ret void
+}
