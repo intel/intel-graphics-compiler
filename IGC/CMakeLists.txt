@@ -1086,7 +1086,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
     endif()
   endif()
 
-# NOTE: Increase bracket-depth to 512 for clang because we exceed the default limit of 256.
+# NOTE: Increase bracket-depth to 1024 for clang because we exceed the default limit of 256.
 #       This resulted in errors like:
 #       "instantiating fold expression with ... arguments exceeded expression nesting limit of 256"
   if(_igc_compiler_is_clang)
@@ -1095,7 +1095,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
         "${_compilerFlagName}"
         ALL_PATTERN ""
         SET_RAW
-        -fbracket-depth=512
+        -fbracket-depth=1024
     )
   endif()
 endforeach()
