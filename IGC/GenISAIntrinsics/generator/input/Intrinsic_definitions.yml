@@ -10566,9 +10566,9 @@ intrinsics:
                 type_definition: *i32
                 comment: "owordOffset : for SHADER_OUTPUT_TYPE_CLIPDISTANCE_LO or\
                     \ SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI it refers to either low (=0)\
-                    \ or high (=1) half of the Vertex Header's clipCullDistanceArray[8]\
-                    \ for SHADER_OUTPUT_TYPE_REPLICATED_POSITION it is viewId for\
-                    \ remained output types other than SHADER_OUTPUT_TYPE_DEFAULT\
+                    \ or high (=1) half of the Vertex Header's clipCullDistanceArray[8];\
+                    \ for SHADER_OUTPUT_TYPE_REPLICATED_POSITION it is viewId;\
+                    \ for remained output types other than SHADER_OUTPUT_TYPE_DEFAULT\
                     \ it is ignored (may be undef)"
             - !<ArgumentDefinition>
                 name: Arg6
