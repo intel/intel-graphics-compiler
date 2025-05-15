@@ -687,34 +687,6 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils,
   return PassedThreshold;
 }
 
-bool EmitPass::shouldDropToSIMD16(MetaDataUtils *pMdUtils,
-                                  llvm::Function *F) {
-  if (m_pCtx->type != ShaderType::OPENCL_SHADER || IGC_IS_FLAG_DISABLED(AllowEarlySIMD16DropForXE3)) {
-    return false;
-  }
-
-  if (!m_canAbortOnSpill || !m_pCtx->isAutoGRFSelectionEnabled() || !isEntryFunc(pMdUtils, F)) {
-    return false;
-  }
-
-  // If there are user set values for SIMD size or GRF number just return
-  if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) ||  m_pCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 0 ||
-      m_pCtx->getNumGRFPerThread( false) != 0) {
-    return false;
-  }
-
-  // Currently, we do this optimization only for XE3 but we can relax this requirement to all platforms
-  // where abortOnSpills is enabled.
-  if (!m_pCtx->platform.isCoreXE3()) {
-    return false;
-  }
-
-  auto MaxRegPressure = getMaxRegPressureInFunctionGroup(F, pMdUtils);
-  auto Threshold = IGC_GET_FLAG_VALUE(EarlySIMD16DropForXE3Threshold);
-  bool shouldDrop = MaxRegPressure > Threshold;
-  return shouldDrop;
-}
-
 bool EmitPass::runOnFunction(llvm::Function& F)
 {
     m_currFuncHasSubroutine = false;
@@ -781,11 +753,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         // to compile, we use this set to prepare data structures and we clear it after
         // compilation is done, not propagate it to the next stage
         m_pCtx->m_retryManager.earlyRetryKernelSet.insert(F.getName().str());
-        return false;
-    }
-
-    if (shouldDropToSIMD16(pMdUtils, &F))
-    {
         return false;
     }
 

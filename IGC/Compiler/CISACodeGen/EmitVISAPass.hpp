@@ -1184,8 +1184,6 @@ private:
 
     bool shouldForceEarlyRecompile(IGCMD::MetaDataUtils* pMdUtils, llvm::Function* F);
 
-    bool shouldDropToSIMD16(IGCMD::MetaDataUtils* pMdUtils, llvm::Function* F);
-
     bool isHalfGRFReturn(CVariable* dst, SIMDMode simdMode);
 
     void emitFeedbackEnable();
