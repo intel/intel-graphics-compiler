@@ -23,10 +23,13 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 
+#include "MemOptUtils.h"
+
 class MemInstCluster {
   IGC::CodeGenContext *CTX = nullptr;
   const DataLayout *DL = nullptr;
   AliasAnalysis *AA = nullptr;
+  TargetLibraryInfo* TLI = nullptr;
   unsigned MaxLiveOutThreshold = 0;
   llvm::DenseSet<Instruction *> Scheduled;
 
@@ -35,14 +38,15 @@ public:
   ~MemInstCluster() {}
 
   MemInstCluster(IGC::CodeGenContext *pCTX, const DataLayout *pDL,
-                 AliasAnalysis *pAA, unsigned MLT) {
-    init(pCTX, pDL, pAA, MLT);
+                 AliasAnalysis *pAA, TargetLibraryInfo* pTLI, unsigned MLT) {
+    init(pCTX, pDL, pAA, pTLI, MLT);
   }
   void init(IGC::CodeGenContext *pCTX, const DataLayout *pDL,
-            AliasAnalysis *pAA, unsigned MLT) {
+            AliasAnalysis *pAA, TargetLibraryInfo* pTLI, unsigned MLT) {
     CTX = pCTX;
     DL = pDL;
     AA = pAA;
+    TLI = pTLI;
     MaxLiveOutThreshold = MLT;
   }
   ///  Called by MemOpt2 to cluster GPGPU kernels
@@ -61,18 +65,10 @@ private:
   bool clusterLoad(BasicBlock *BB);
   bool isDefinedBefore(BasicBlock *BB, Instruction *I, Instruction *Pos) const;
   bool
-  isSafeToScheduleLoad(const LoadInst *LD,
+  isSafeToScheduleLoad(const IGC::ALoadInst& LD,
                        const SmallVectorImpl<Instruction *> *CheckList) const;
   bool schedule(BasicBlock *BB, Value *V, Instruction *&InsertPos,
                 const SmallVectorImpl<Instruction *> *CheckList = nullptr);
-
-  MemoryLocation getLocation(Instruction *I) const {
-    if (LoadInst *LD = dyn_cast<LoadInst>(I))
-      return MemoryLocation::get(LD);
-    if (StoreInst *ST = dyn_cast<StoreInst>(I))
-      return MemoryLocation::get(ST);
-    return MemoryLocation();
-  }
 
   unsigned getNumLiveOuts(Instruction *I) const;
 

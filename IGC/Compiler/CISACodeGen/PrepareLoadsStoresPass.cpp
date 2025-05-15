@@ -107,30 +107,30 @@ bool PrepareLoadsStoresPass::runOnFunction(Function &F)
     bool Changed = false;
     auto& DL = F.getParent()->getDataLayout();
 
-    IRBuilder<> IRB(F.getContext());
+    IGCIRBuilder<> IRB(F.getContext());
     bool StripVolatile = false;
 
     for (auto II = inst_begin(&F), EI = inst_end(&F); II != EI; /* empty */)
     {
         auto* I = &*II++;
 
-        if (auto * LI = dyn_cast<LoadInst>(I))
+        if (auto LI = ALoadInst::get(I); LI.has_value())
         {
             auto* PtrTy = LI->getPointerOperandType();
             if (!shouldSplit(PtrTy->getPointerAddressSpace()))
                 continue;
 
-            IRB.SetInsertPoint(LI);
+            IRB.SetInsertPoint(LI->inst());
 
-            if (auto [NewVal, _] = expand64BitLoad(IRB, DL, LI); NewVal)
+            if (auto [NewVal, _] = expand64BitLoad(IRB, DL, LI.value()); NewVal)
             {
                 Changed = true;
-                NewVal->takeName(LI);
-                LI->replaceAllUsesWith(NewVal);
-                LI->eraseFromParent();
+                NewVal->takeName(LI->inst());
+                LI->inst()->replaceAllUsesWith(NewVal);
+                LI->inst()->eraseFromParent();
             }
         }
-        else if (auto * SI = dyn_cast<StoreInst>(I))
+        else if (auto SI = AStoreInst::get(I); SI.has_value())
         {
             if (StripVolatile && (*SWStackAddrSpace == SI->getPointerAddressSpace()))
                 SI->setVolatile(false);
@@ -139,12 +139,12 @@ bool PrepareLoadsStoresPass::runOnFunction(Function &F)
             if (!shouldSplit(PtrTy->getPointerAddressSpace()))
                 continue;
 
-            IRB.SetInsertPoint(SI);
+            IRB.SetInsertPoint(SI->inst());
 
-            if (expand64BitStore(IRB, DL, SI))
+            if (expand64BitStore(IRB, DL, SI.value()))
             {
                 Changed = true;
-                SI->eraseFromParent();
+                SI->inst()->eraseFromParent();
             }
         }
     }

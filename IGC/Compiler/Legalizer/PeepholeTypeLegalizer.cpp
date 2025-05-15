@@ -154,7 +154,7 @@ void PeepholeTypeLegalizer::visitLoadInst(LoadInst& LI)
     if (!MustLegalizeScratch || LI.getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
         return;
 
-    IRBuilder<NoFolder> IRB(&LI);
+    IGCIRBuilder<NoFolder> IRB(&LI);
 
     if (auto [NewVal, _] = expand64BitLoad(IRB, *DL, &LI); NewVal)
     {
@@ -170,7 +170,7 @@ void PeepholeTypeLegalizer::visitStoreInst(StoreInst& SI)
     if (!MustLegalizeScratch || SI.getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
         return;
 
-    IRBuilder<NoFolder> IRB(&SI);
+    IGCIRBuilder<NoFolder> IRB(&SI);
 
     if (expand64BitStore(IRB, *DL, &SI))
     {

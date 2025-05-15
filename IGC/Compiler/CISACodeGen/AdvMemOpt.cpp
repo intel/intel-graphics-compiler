@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include <llvm/ADT/Optional.h>
+#include "llvmWrapper/Analysis/TargetLibraryInfo.h"
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -29,6 +30,8 @@ using namespace llvm::PatternMatch;
 using namespace IGC;
 using namespace IGC::IGCMD;
 
+#define DEBUG_TYPE "AdvMemOpt"
+
 namespace {
 
     class AdvMemOpt : public FunctionPass {
@@ -36,6 +39,7 @@ namespace {
         LoopInfo* LI = nullptr;
         PostDominatorTree* PDT = nullptr;
         WIAnalysis* WI = nullptr;
+        TargetLibraryInfo* TLI = nullptr;
 
     public:
         static char ID;
@@ -58,6 +62,7 @@ namespace {
             AU.addRequired<DominatorTreeWrapperPass>();
             AU.addRequired<LoopInfoWrapperPass>();
             AU.addRequired<PostDominatorTreeWrapperPass>();
+            AU.addRequired<TargetLibraryInfoWrapperPass>();
         }
 
         bool collectOperandInst(SmallPtrSetImpl<Instruction*>&,
@@ -96,10 +101,13 @@ namespace IGC {
         IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass);
+        IGC_INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
     IGC_INITIALIZE_PASS_END(AdvMemOpt, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 } // End namespace IGC
 
 bool AdvMemOpt::runOnFunction(Function& F) {
+    bool Changed = false;
+
     // Skip non-kernel function.
     MetaDataUtils* MDU = nullptr;
     MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -111,6 +119,7 @@ bool AdvMemOpt::runOnFunction(Function& F) {
     PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
     LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     WI = &getAnalysis<WIAnalysis>();
+    TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 
     SmallVector<Loop*, 8> InnermostLoops;
     for (auto I = LI->begin(), E = LI->end(); I != E; ++I)
@@ -138,7 +147,7 @@ bool AdvMemOpt::runOnFunction(Function& F) {
                 }
             }
         }
-        hoistUniformLoad(Line);
+        Changed |= hoistUniformLoad(Line);
     }
 
     auto* Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -151,8 +160,8 @@ bool AdvMemOpt::runOnFunction(Function& F) {
         // because, once ballot-loop is added, vISA finalizer cannot schedule
         // those sample operations.
         auto& DL = F.getParent()->getDataLayout();
-        IRBuilder<> IRB(F.getContext());
-        Cluster.init(Ctx, &DL, nullptr/*AA*/, 32);
+        IGCIRBuilder<> IRB(F.getContext());
+        Cluster.init(Ctx, &DL, nullptr/*AA*/, TLI, 32);
         for (Function::iterator I = F.begin(), E = F.end(); I != E;
              ++I) {
             BasicBlock *BB = &*I;
@@ -182,8 +191,8 @@ bool AdvMemOpt::runOnFunction(Function& F) {
                     if (!WI->isUniform(LI->getResourceValue())) {
                         NumResourceVarying++;
                     }
-                } else if (auto *SI = dyn_cast<StoreInst>(I)) {
-                    if (!WI->isUniform(SI))
+                } else if (auto SI = AStoreInst::get(I); SI.has_value()) {
+                    if (!WI->isUniform(SI->inst()))
                       continue;
 
                     unsigned AS = SI->getPointerAddressSpace();
@@ -191,15 +200,17 @@ bool AdvMemOpt::runOnFunction(Function& F) {
                         AS != ADDRESS_SPACE_GLOBAL)
                       continue;
 
-                    IRB.SetInsertPoint(SI);
+                    IRB.SetInsertPoint(SI->inst());
 
-                    if (auto NewSI = expand64BitStore(IRB, DL, SI)) {
+                    if (auto NewSI = expand64BitStore(IRB, DL, SI.value())) {
+                      auto NewASI = AStoreInst::get(NewSI);
                       WI->incUpdateDepend(NewSI, WIAnalysis::UNIFORM_THREAD);
-                      WI->incUpdateDepend(NewSI->getValueOperand(),
+                      WI->incUpdateDepend(NewASI->getValueOperand(),
                                           WIAnalysis::UNIFORM_THREAD);
-                      WI->incUpdateDepend(NewSI->getPointerOperand(),
+                      WI->incUpdateDepend(NewASI->getPointerOperand(),
                                           WIAnalysis::UNIFORM_THREAD);
-                      SI->eraseFromParent();
+                      SI->inst()->eraseFromParent();
+                      Changed = true;
                     }
                 }
             }
@@ -209,24 +220,29 @@ bool AdvMemOpt::runOnFunction(Function& F) {
                     NumResourceVarying;
                 // clustering method cannot handle memory dependence
                 if (!HasStore)
-                    Cluster.runForGFX(BB);
+                    Changed |= Cluster.runForGFX(BB);
             }
         }
     }
-    return false;
+    return Changed;
 }
 
 bool AdvMemOpt::isLeadCandidate(BasicBlock* BB) const {
-    // A candidate lead should have at least one uniform loads. In addition,
+    // A candidate lead should have at least one uniform load. In addition,
     // there's no instruction might to write memory from the last uniform loads
     // to the end.
+    LLVM_DEBUG(dbgs() << "Check lead candidate: " << BB->getName() << "\n");
     for (auto II = BB->rbegin(), IE = BB->rend(); II != IE; ++II) {
-        if (II->mayWriteToMemory())
+        if (II->mayWriteToMemory()) {
+            LLVM_DEBUG(dbgs() <<" - May write to memory. Bail out: " << *II << "\n");
             return false;
-        LoadInst* LD = dyn_cast<LoadInst>(&*II);
-        if (!LD || !WI->isUniform(LD))
+        }
+        std::optional<ALoadInst> LD = ALoadInst::get(&*II);
+        if (!LD.has_value() || !WI->isUniform(LD->inst())) {
+            LLVM_DEBUG(dbgs() << " - Not uniform load. Skip: " << *II << "\n");
             continue;
-        // Found uniform loads.
+        }
+        LLVM_DEBUG(dbgs() << "Found uniform loads.\n");
         return true;
     }
     return false;
@@ -351,42 +367,66 @@ bool AdvMemOpt::hoistInst(Instruction* LD, BasicBlock* BB) const {
 
 bool AdvMemOpt::hoistUniformLoad(ArrayRef<BasicBlock*> Line) const {
     bool Changed = false;
-    // Find the lead BB where to hoist uniform load.
+    LLVM_DEBUG(dbgs() << "Find the lead BB where to hoist uniform load.\n");
+
     auto BI = Line.begin();
     auto BE = Line.end();
+
     while (BI != BE) {
         if (!isLeadCandidate(*BI)) {
             ++BI;
             continue;
         }
+
         // Found lead.
         BasicBlock* Lead = *BI++;
-        BasicBlock* Prev = Lead;
+        LLVM_DEBUG(dbgs() << "Found lead to hoist to: " << Lead->getName() << "\n");
+
         for (; BI != BE; ++BI) {
             BasicBlock* Curr = *BI;
+            LLVM_DEBUG(dbgs() << " - Try to hoist from: " << Curr->getName() << "\n");
             // Check whether it's safe to hoist uniform loads from Curr to Lead by
             // checking all blocks between Prev and Curr.
-            if (hasMemoryWrite(Prev, Curr))
+            if (hasMemoryWrite(Lead, Curr)) {
+                LLVM_DEBUG(dbgs() << "- Memory write between Lead and Curr. Bail out.\n");
                 break;
+            }
+
             // Hoist uniform loads from Curr into Lead.
             for (auto II = Curr->getFirstNonPHI()->getIterator(),
                 IE = Curr->end(); II != IE; /*EMPTY*/) {
-                if (II->mayWriteToMemory())
+                LLVM_DEBUG(dbgs() << " - - Try hoisting: " << *II << "\n");
+
+                if (II->mayWriteToMemory()) {
+                    LLVM_DEBUG(dbgs() << " - - May write to memory. Bail out.\n");
                     break;
-                LoadInst* LD = dyn_cast<LoadInst>(&*II++);
-                if (!LD || !WI->isUniform(LD))
+                }
+
+                std::optional<ALoadInst> LD = ALoadInst::get(&*II++);
+                if (!LD.has_value() || !WI->isUniform(LD->inst())) {
+                    LLVM_DEBUG(dbgs() << " - - Not uniform load. Skip.\n");
                     continue;
-                if (!hoistInst(LD, Lead))
-                    break; // Bail out if any uniform load could not be hoisted safely.
-                  // Reset iterator
-                II = Curr->getFirstNonPHI()->getIterator();
+                }
+
+                if (!hoistInst(LD->inst(), Lead)) {
+                    LLVM_DEBUG(dbgs() << " - - Uniform load could not be hoisted safely. Bail out.\n");
+                    break;
+                }
                 Changed = true;
+                LLVM_DEBUG(dbgs() << " - - Hoisted!\n");
+
+                // Reset iterator
+                II = Curr->getFirstNonPHI()->getIterator();
             }
+
             // After hoisting uniform loads safely, if Curr has memory write, stop
             // hoisting further.
-            if (hasMemoryWrite(Curr))
+            if (hasMemoryWrite(Curr)) {
+                LLVM_DEBUG(dbgs() << "- Curr has memory write. Bail out.\n");
                 break;
+            }
         }
     }
+
     return Changed;
 }

@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -117,9 +118,9 @@ bool MemInstCluster::runForOCL(Function& F) {
 bool MemInstCluster::isSafeToMoveTo(Instruction* I, Instruction* Pos, const SmallVectorImpl<Instruction*>* CheckList) const {
     // TODO: So far, we simply don't allow rescheduling load/atomic operations.
     // Add alias analysis to allow memory operations to be rescheduled.
-    if (auto LD = dyn_cast<LoadInst>(I)) {
+    if (auto LD = ALoadInst::get(I); LD.has_value()) {
         if (CheckList)
-            return isSafeToScheduleLoad(LD, CheckList);
+            return isSafeToScheduleLoad(LD.value(), CheckList);
         return false;
     }
     if (GenIntrinsicInst * GII = dyn_cast<GenIntrinsicInst>(I)) {
@@ -292,26 +293,26 @@ bool MemInstCluster::clusterLoad(BasicBlock* BB) {
     unsigned MaxLiveOutByte = getMaxLiveOutThreshold() * 4;
     unsigned CountByte = 0;
     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
-        LoadInst* Lead = dyn_cast<LoadInst>(BI);
-        if (!Lead || !Lead->isSimple())
+        std::optional<ALoadInst> Lead = ALoadInst::get(&(*BI));
+        if (!Lead.has_value() || !Lead->isSimple())
             continue;
         if (Lead->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL &&
             Lead->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL)
             continue;
 
-        CountByte = getNumLiveOutBytes(Lead);
+        CountByte = getNumLiveOutBytes(Lead->inst());
         if (CountByte > MaxLiveOutByte)
             continue;
 
         SmallVector<Instruction*, 8> CheckList;
-        InsertPos = Lead;
+        InsertPos = Lead->inst();
         // Find candidate the cluster them.
         BasicBlock::iterator I = BasicBlock::iterator(InsertPos), E;
         for (I = std::next(I), E = BB->end(); I != E; ++I) {
             if (I->mayWriteToMemory())
                 CheckList.push_back(&(*I));
-            LoadInst* Next = dyn_cast<LoadInst>(I);
-            if (!Next || !Next->isSimple())
+            std::optional<ALoadInst> Next = ALoadInst::get(&(*I));
+            if (!Next.has_value() || !Next->isSimple())
                 continue;
             // Skip memory accesses on different memory address space.
             // FIXME: GetUnderlyingObject() cannot track through `inttoptr`
@@ -320,21 +321,21 @@ bool MemInstCluster::clusterLoad(BasicBlock* BB) {
             // same buffer.
             if (Next->getPointerAddressSpace() != Lead->getPointerAddressSpace())
                 continue;
-            CountByte += getNumLiveOutBytes(Next);
+            CountByte += getNumLiveOutBytes(Next->inst());
             if (CountByte > MaxLiveOutByte) {
-                BasicBlock::iterator I = BasicBlock::iterator(Next);
+                BasicBlock::iterator I = BasicBlock::iterator(Next->inst());
                 BI = std::prev(I);
                 break;
             }
-            Changed |= schedule(BB, Next, InsertPos, &CheckList);
+            Changed |= schedule(BB, Next->inst(), InsertPos, &CheckList);
         }
     }
     return Changed;
 }
 
-bool MemInstCluster::isSafeToScheduleLoad(const LoadInst* LD,
+bool MemInstCluster::isSafeToScheduleLoad(const ALoadInst& LD,
     const SmallVectorImpl<Instruction*>* CheckList) const {
-    MemoryLocation A = MemoryLocation::get(LD);
+    MemoryLocation A = getLocation(LD.inst(), TLI);
 
     for (auto* I : *CheckList) {
         // Skip instructions never writing to memory.
@@ -343,7 +344,7 @@ bool MemInstCluster::isSafeToScheduleLoad(const LoadInst* LD,
         if (!AA)
             return false;
         // Unsafe if there's alias.
-        MemoryLocation B = getLocation(I);
+        MemoryLocation B = getLocation(I, TLI);
         if (!A.Ptr || !B.Ptr || AA->alias(A, B))
             return false;
     }
@@ -419,6 +420,7 @@ class MemOpt2 : public FunctionPass {
         AU.addRequired<AAResultsWrapperPass>();
         AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<MetaDataUtilsWrapper>();
+        AU.addRequired<TargetLibraryInfoWrapperPass>();
     }
     MemInstCluster Cluster;
     unsigned MaxLiveOutThreshold = 16;
@@ -438,6 +440,7 @@ IGC_INITIALIZE_PASS_BEGIN(MemOpt2, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY,
                           PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
 IGC_INITIALIZE_PASS_END(MemOpt2, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY,
                         PASS_ANALYSIS)
 
@@ -456,7 +459,8 @@ bool MemOpt2::runOnFunction(Function &F) {
         getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto DL = &F.getParent()->getDataLayout();
     auto AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
+    auto TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 
-    Cluster.init(cgCtx, DL, AA, MaxLiveOutThreshold);
+    Cluster.init(cgCtx, DL, AA, TLI, MaxLiveOutThreshold);
     return Cluster.runForOCL(F);
 }

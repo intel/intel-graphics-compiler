@@ -19,9 +19,17 @@ SPDX-License-Identifier: MIT
 /// %x = load i64, i64 addrspace(1)* %"&x"
 /// ===>
 /// %7 = bitcast i64 addrspace(1)* %"&x" to <2 x i32> addrspace(1)*
-/// 8 = load <2 x i32>, <2 x i32> addrspace(1)* %7
+/// %8 = load <2 x i32>, <2 x i32> addrspace(1)* %7
 /// %9 = bitcast <2 x i32> %8 to i64
 ///
+/// Example with PredicatedLoad:
+///
+/// %x = call i64 @llvm.genx.GenISA.PredicatedLoad.i64.p1i64.i64(i64 addrspace(1)* %"&x", i64 8, i1 %p, i64 %mv)
+/// ===>
+/// %7 = bitcast i64 addrspace(1)* %"&x" to <2 x i32> addrspace(1)*
+/// %8 = bitcast i64 %mv to <2 x i32>
+/// %9 = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p1v2i32.v2i32(<2 x i32> addrspace(1)* %7, i64 8, i1 %p, <2 x i32> %8)
+/// %10 = bitcast <2 x i32> %9 to i64
 //===----------------------------------------------------------------------===//
 
 #include "PrepareLoadsStoresUtils.h"
@@ -94,15 +102,15 @@ static Value* getPtrToInt(IRBuilder<T> &IRB, Value* NewVal, Type* Ty)
 namespace IGC {
 
     template <typename T>
-    std::pair<Value*, LoadInst*>
-    expand64BitLoad(IRBuilder<T>& IRB, const DataLayout &DL, LoadInst* LI)
+    std::pair<Value*, Instruction*>
+    expand64BitLoad(IGCIRBuilder<T>& IRB, const DataLayout &DL, ALoadInst LI)
     {
-        auto* Ty = LI->getType();
+        auto* Ty = LI.getType();
         if (Ty->isAggregateType())
             return {};
 
         auto* EltTy = Ty->getScalarType();
-        auto* OldPtrTy = LI->getPointerOperandType();
+        auto* OldPtrTy = LI.getPointerOperandType();
         uint64_t NumEltBytes = DL.getTypeStoreSize(EltTy);
 
         if (NumEltBytes != 8)
@@ -117,11 +125,14 @@ namespace IGC {
         auto* PtrTy = PointerType::get(
             NewTy, OldPtrTy->getPointerAddressSpace());
 
-        auto* NewPtr = IRB.CreateBitCast(LI->getPointerOperand(), PtrTy);
+        auto* NewPtr = IRB.CreateBitCast(LI.getPointerOperand(), PtrTy);
 
-        LoadInst* NewLI =
-            IRB.CreateAlignedLoad(NewTy, NewPtr, IGCLLVM::getAlign(*LI));
-        NewLI->copyMetadata(*LI);
+        Value* MVal = nullptr;
+        if (auto *PLI = LI.getPredicatedLoadIntrinsic())
+            MVal = IRB.CreateBitCast(PLI->getMergeValue(), NewTy);
+
+        Instruction* NewLI = LI.CreateAlignedLoad(IRB, NewTy, NewPtr, MVal);
+        NewLI->copyMetadata(*LI.inst());
         Value* NewVal = NewLI;
 
         if (Ty->isPtrOrPtrVectorTy())
@@ -141,14 +152,20 @@ namespace IGC {
     }
 
     template <typename T>
-    StoreInst* expand64BitStore(IRBuilder<T>& IRB, const DataLayout &DL, StoreInst* SI)
+    std::pair<Value*, Instruction*>
+    expand64BitLoad(IGCIRBuilder<T>& IRB, const DataLayout &DL, LoadInst* LI) {
+        return expand64BitLoad(IRB, DL, ALoadInst::get(LI).value());
+    }
+
+    template <typename T>
+    Instruction* expand64BitStore(IGCIRBuilder<T>& IRB, const DataLayout &DL, AStoreInst SI)
     {
-        auto* Ty = SI->getValueOperand()->getType();
+        auto* Ty = SI.getValueOperand()->getType();
         if (Ty->isAggregateType())
             return nullptr;
 
         auto* EltTy = Ty->getScalarType();
-        auto* OldPtrTy = SI->getPointerOperandType();
+        auto* OldPtrTy = SI.getPointerOperandType();
         uint64_t NumEltBytes = DL.getTypeStoreSize(EltTy);
 
         if (NumEltBytes != 8)
@@ -161,7 +178,7 @@ namespace IGC {
 
         auto* NewTy = IGCLLVM::FixedVectorType::get(IRB.getInt32Ty(), NewNumElts);
 
-        Value* NewVal = SI->getValueOperand();
+        Value* NewVal = SI.getValueOperand();
         if (Ty->isPtrOrPtrVectorTy())
         {
             Type* NewTy = (NumElts == 1) ?
@@ -171,26 +188,42 @@ namespace IGC {
         }
         NewVal = IRB.CreateBitCast(NewVal, NewTy);
         auto* NewPtr = IRB.CreateBitCast(
-            SI->getPointerOperand(),
+            SI.getPointerOperand(),
             NewVal->getType()->getPointerTo(
                 OldPtrTy->getPointerAddressSpace()));
-        auto* NewST =
-            IRB.CreateAlignedStore(NewVal, NewPtr, IGCLLVM::getAlign(*SI));
-        NewST->copyMetadata(*SI);
+        auto* NewST = SI.CreateAlignedStore(IRB, NewVal, NewPtr);
+        NewST->copyMetadata(*SI.inst());
 
         return NewST;
     }
 
-    template std::pair<Value*, LoadInst*>
-        expand64BitLoad(IRBuilder<>& IRB, const DataLayout& DL, LoadInst* LI);
+    template <typename T>
+    Instruction* expand64BitStore(IGCIRBuilder<T>& IRB, const DataLayout &DL, StoreInst* SI) {
+        return expand64BitStore(IRB, DL, AStoreInst::get(SI).value());
+    }
 
-    template StoreInst* expand64BitStore(
-        IRBuilder<>& IRB, const DataLayout& DL, StoreInst* SI);
+    template std::pair<Value*, Instruction*>
+        expand64BitLoad(IGCIRBuilder<>& IRB, const DataLayout& DL, ALoadInst LI);
 
-    template std::pair<Value*, LoadInst*>
-        expand64BitLoad(IRBuilder<NoFolder>& IRB, const DataLayout& DL, LoadInst* LI);
+    template std::pair<Value*, Instruction*>
+        expand64BitLoad(IGCIRBuilder<NoFolder>& IRB, const DataLayout& DL, ALoadInst LI);
 
-    template StoreInst* expand64BitStore(
-        IRBuilder<NoFolder>& IRB, const DataLayout& DL, StoreInst* SI);
+    template std::pair<Value*, Instruction*>
+        expand64BitLoad(IGCIRBuilder<>& IRB, const DataLayout& DL, LoadInst* LI);
+
+    template std::pair<Value*, Instruction*>
+        expand64BitLoad(IGCIRBuilder<NoFolder>& IRB, const DataLayout& DL, LoadInst* LI);
+
+    template Instruction* expand64BitStore(
+        IGCIRBuilder<>& IRB, const DataLayout& DL, AStoreInst SI);
+
+    template Instruction* expand64BitStore(
+        IGCIRBuilder<NoFolder>& IRB, const DataLayout& DL, AStoreInst SI);
+
+    template Instruction* expand64BitStore(
+        IGCIRBuilder<>& IRB, const DataLayout& DL, StoreInst* SI);
+
+    template Instruction* expand64BitStore(
+        IGCIRBuilder<NoFolder>& IRB, const DataLayout& DL, StoreInst* SI);
 }
 
