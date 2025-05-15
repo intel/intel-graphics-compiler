@@ -1820,6 +1820,7 @@ public:
     }
 
     Value* getFlags()  const { return getOperand(0); }
+    Value* getQueryFlags()  const { return getOperand(1); }
 };
 
 class ConvertRayQueryHandleToRTStackPointerIntrinsic : public GenIntrinsicInst {

@@ -10695,6 +10695,10 @@ intrinsics:
                 name: Arg0
                 type_definition: *i32
                 comment: "rayFlags"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i16
+                comment: "rayQueryFlags"
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>

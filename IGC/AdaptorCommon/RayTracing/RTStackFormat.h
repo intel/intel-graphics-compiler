@@ -1270,6 +1270,11 @@ enum class RayFlags_Xe3 : uint16_t
 constexpr uint32_t RayFlagsMask_Xe3 = getRayFlagMask((uint32_t)RayFlags_Xe3::FORCE_2STATE_STOC);
 static_assert(sizeof(MemTravStack) == 32, "MemTravStack has to be 32 bytes large");
 
+enum class RayQueryFlags : uint16_t
+{
+    NONE = 0x00,
+};
+
 
 // On DG2, writes will not go to the L1$ unless they are 16-byte aligned
 // and at least 16 bytes in size.
