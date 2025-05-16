@@ -181,12 +181,15 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
 
                 TC::DumpShaderFile(pOutputFolder, pInput, inputSize, hash, ".spv", nullptr);
 #if defined(IGC_SPIRV_TOOLS_ENABLED)
-                spv_text spirvAsm = nullptr;
-                if (TC::DisassembleSPIRV(pInput, inputSize, &spirvAsm) == SPV_SUCCESS)
+                if (IGC_IS_FLAG_ENABLED(SpvAsmDumpEnable))
                 {
-                    TC::DumpShaderFile(pOutputFolder, spirvAsm->str, spirvAsm->length, hash, ".spvasm", nullptr);
+                    spv_text spirvAsm = nullptr;
+                    if (TC::DisassembleSPIRV(pInput, inputSize, &spirvAsm) == SPV_SUCCESS)
+                    {
+                        TC::DumpShaderFile(pOutputFolder, spirvAsm->str, spirvAsm->length, hash, ".spvasm", nullptr);
+                    }
+                    spvTextDestroy(spirvAsm);
                 }
-                spvTextDestroy(spirvAsm);
 #endif // defined(IGC_SPIRV_TOOLS_ENABLED)
             }
             llvm::StringRef strInput = llvm::StringRef(pInput, inputSize);
