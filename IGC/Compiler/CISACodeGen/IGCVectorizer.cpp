@@ -199,6 +199,7 @@ bool isBinarySafe(Instruction *I) {
 
     bool Result = false;
     auto* Binary = llvm::dyn_cast<BinaryOperator>(I);
+
     if (Binary) {
         auto OpCode = Binary->getOpcode();
         Result |=  OpCode == Instruction::FMul;
@@ -215,7 +216,22 @@ bool isPHISafe(Instruction *I) {
     return false;
 }
 
+
+bool isFloatTyped(Instruction* I) {
+
+    const auto* fixedVecType = llvm::dyn_cast<llvm::FixedVectorType>(I->getType());
+    if (fixedVecType) {
+        if (fixedVecType->getElementType()->isFloatTy())
+            return true;
+    }
+
+    return I->getType()->isFloatTy();
+}
+
 bool isSafeToVectorize(Instruction *I) {
+
+    bool isFloat = isFloatTyped(I);
+
     // this is a very limited approach for vectorizing but it's safe
     bool Result =
         isPHISafe(I)  ||
@@ -224,7 +240,7 @@ bool isSafeToVectorize(Instruction *I) {
         (llvm::isa<FPTruncInst>(I) && IGC_GET_FLAG_VALUE(VectorizerAllowFPTRUNC)) ||
         isBinarySafe(I);
 
-    return Result;
+    return Result && isFloat;
 }
 
 bool IGCVectorizer::handlePHI(VecArr &Slice) {
