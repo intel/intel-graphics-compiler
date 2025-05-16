@@ -183,6 +183,20 @@ DECLARE_IGC_REGKEY(DWORD, LS_minSplitSize_GRF,          1, "Minimal split size i
 DECLARE_IGC_REGKEY(DWORD, LS_minSplitSize_E,            4, "Minimal split size in elements.", false)
 DECLARE_IGC_REGKEY(DWORD, LS_splitThresholdDelta_GRF,   2, "Register pressure must exceed total GRFs by this much for the load splitting to fire up.", false)
 
+// Code Scheduling
+DECLARE_IGC_REGKEY(bool, DisableCodeScheduling,         true, "Disable local code scheduling", true)
+
+DECLARE_IGC_REGKEY(bool, EnableCodeSchedulingIfNoSpills, false, "Try rescheduling also when there are no spills", true)
+DECLARE_IGC_REGKEY(bool, CodeSchedulingForceMWOnly,     false, "Force scheduling to consider only latency", true)
+DECLARE_IGC_REGKEY(bool, CodeSchedulingForceRPOnly,     false, "Force scheduling to consider only register pressure", true)
+DECLARE_IGC_REGKEY(DWORD, CodeSchedulingAttemptsLimit,  5, "Limit the number of scheduling attempts", true)
+DECLARE_IGC_REGKEY(DWORD, CodeSchedulingRPMargin,       20, "Schedule so that the register pressure is less than #grf - margin", true)
+
+DECLARE_IGC_REGKEY(bool, DumpCodeScheduling,            false, "Dump code scheduling", true)
+DECLARE_IGC_REGKEY(DWORD, CodeSchedulingDumpLevel,      1, "Code scheduling dump verbosity level", true)
+DECLARE_IGC_REGKEY(bool, CodeSchedulingRenameAll,       false, "Allow renaming all values for debug purposes", false)
+DECLARE_IGC_REGKEY(debugString, CodeSchedulingConfig,   0,     "Override the default scheduling config. Debug only - no backward compatibility", false)
+
 DECLARE_IGC_REGKEY(bool, EnableLoopHoistConstant,       false, "Enables pass to check for specific loop patterns where variables are constant across all but the last iteration, and hoist them out of the loop.", false)
 DECLARE_IGC_REGKEY(bool, DisableCodeHoisting,           false, "Setting this to 1/true adds a compiler switch to disable code-hoisting", false)
 DECLARE_IGC_REGKEY(bool, EnableDeSSA,                   true,  "Setting this to 0/false adds a compiler switch to disable De-SSA", false)

@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/AdvCodeMotion.h"
 #include "Compiler/CISACodeGen/RematAddressArithmetic.h"
+#include "Compiler/CISACodeGen/VectorShuffleAnalysis.hpp"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CISACodeGen/IGCVectorizer.h"
 #include "Compiler/CISACodeGen/AdvMemOpt.h"
@@ -21,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PushAnalysis.hpp"
 #include "Compiler/CISACodeGen/ScalarizerCodeGen.hpp"
 #include "Compiler/CISACodeGen/HoistCongruentPhi.hpp"
+#include "Compiler/CISACodeGen/CodeScheduling.hpp"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
 #include "Compiler/CISACodeGen/AddressArithmeticSinking.hpp"
 #include "Compiler/CISACodeGen/AtomicOptPass.hpp"
@@ -239,6 +241,10 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
              && ctx.m_instrTypes.numInsts >= IGC_GET_FLAG_VALUE(CodeLoopSinkingMinSize))
         {
             mpm.add(new CodeLoopSinking());
+        }
+        if (IGC_IS_FLAG_DISABLED(DisableCodeScheduling) && (ctx.type == ShaderType::OPENCL_SHADER))
+        {
+            mpm.add(new CodeScheduling());
         }
     }
 

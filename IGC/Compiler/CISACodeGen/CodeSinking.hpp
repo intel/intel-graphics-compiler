@@ -15,6 +15,8 @@ See LICENSE.TXT for details.
 
 #pragma once
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Compiler/IGCPassSupport.h"
+#include "Compiler/CISACodeGen/VectorShuffleAnalysis.hpp"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CISACodeGen/TranslationTable.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
@@ -112,6 +114,7 @@ namespace IGC {
             AU.addRequired<llvm::DominatorTreeWrapperPass>();
             AU.addRequired<llvm::LoopInfoWrapperPass>();
             AU.addRequired<llvm::AAResultsWrapperPass>();
+            AU.addRequired<VectorShuffleAnalysis>();
             AU.addRequired<IGCLivenessAnalysis>();
             AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
             AU.addRequired<TargetLibraryInfoWrapperPass>();

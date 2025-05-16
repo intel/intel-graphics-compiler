@@ -10,7 +10,7 @@
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_subgroup_matrix_multiply_accumulate -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'PrintToConsole=1 PrintAfter=Layout'" 2>&1 | FileCheck %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'PrintToConsole=1,PrintAfter=Layout,DisableCodeScheduling=1'" 2>&1 | FileCheck %s
 
 target triple = "spir64-unknown-unknown"
 

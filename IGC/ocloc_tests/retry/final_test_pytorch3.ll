@@ -1,7 +1,7 @@
 ; REQUIRES: regkeys,mtl-supported
 ; RUN: llvm-as %s -o %t.bc
 
-; RUN: ocloc compile -llvm_input -file %t.bc -device mtl -options "-igc_opts 'VISAOptions=-asmToConsole'" &> %t_output.ll
+; RUN: ocloc compile -llvm_input -file %t.bc -device mtl -options "-igc_opts 'DisableCodeScheduling=1,VISAOptions=-asmToConsole'" &> %t_output.ll
 ; RUN: FileCheck --input-file %t_output.ll %s
 
 ; CHECK://.kernel _ZTSN2at15AtenIpexTypeXPU4impl35FastGroupRadixSortImplKernelFunctorIbxLi1024ELb0ELb1EtLi32ELi4ENS0_19GroupRadixProcesserIbLi1024ELi32ELi4ELb0EttjLi4EEEbEE
