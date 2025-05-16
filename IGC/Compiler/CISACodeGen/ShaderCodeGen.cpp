@@ -158,6 +158,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 #include "AdaptorCommon/RayTracing/RayTracingPasses.hpp"
 #include "AdaptorCommon/RayTracing/RayTracingAddressSpaceAliasAnalysis.h"
+#include "AdaptorCommon/RayTracing/API/RayDispatchGlobalData.h"
 #include "Compiler/SamplerPerfOptPass.hpp"
 #include "Compiler/CISACodeGen/HalfPromotion.h"
 #include "Compiler/CISACodeGen/CapLoopIterationsPass.h"
