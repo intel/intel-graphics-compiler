@@ -391,9 +391,7 @@ void OpenCLPrintfResolution::removeExcessArgs()
 
     Value* formatString = formatStringArgDesc->value;
     IGC::SHADER_PRINTF_TYPE dataType = formatStringArgDesc->argType;
-    if (dataType != SHADER_PRINTF_STRING_LITERAL) {
-        m_CGContext->EmitError("First printf argument has to contain a string literal.", formatString);
-    }
+    IGC_ASSERT(dataType == SHADER_PRINTF_STRING_LITERAL);
 
     if (auto GV = dyn_cast<GlobalVariable>(formatString))
     {
