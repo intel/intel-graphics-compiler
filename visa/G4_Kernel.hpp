@@ -266,7 +266,6 @@ private:
   unsigned lowerBoundGRF;
   unsigned upperBoundGRF;
   unsigned GRFModeUpValue;
-  const TARGET_PLATFORM platform;
   Options *options;
 };
 
