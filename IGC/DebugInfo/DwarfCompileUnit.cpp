@@ -2395,7 +2395,8 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
   LLVM_DEBUG(dbgs() << " PrivateBase(%X) + (%PerThreadOffset + "
                        " (simdSize*<var_offset>) + (simdLaneId * <var_size>))");
 
-  const auto *storageMD = var.getDbgInst()->getMetadata("StorageOffset");
+  const auto *DbgInst = var.getDbgInst();
+  const auto *storageMD = DbgInst->getMetadata("StorageOffset");
   IGC_ASSERT(storageMD != nullptr);
   const auto *VISAMod = loc.GetVISAModule();
   auto privateBaseRegNum = VISAMod->getPrivateBaseReg();
@@ -2414,6 +2415,7 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
   // Per Thread Offset 11 DW_OP_plus_uconst offset , i.e. simdSize * <variable
   // offset> 12 DW_OP_INTEL_push_simd_lane 13 DW_OP_const1u/2u/4u/8u
   // <variableSize>  , i.e. size in bytes 14 DW_OP_mul 15 DW_OP_plus
+  // 16 remaining opcodes from DIExpression
   auto simdSize = VISAMod->GetSIMDSize();
 
   // Rely on getVarInfo result here.
@@ -2525,6 +2527,15 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
                                      // , i.e. size in bytes
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);  // 14 DW_OP_mul
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus); // 15 DW_OP_plus
+
+  // 16 remaining opcodes from DIExpression
+  const DIExpression *DIExpr = DbgInst->getExpression();
+  for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end(); I != E;
+       ++I) {
+    auto op = I->getOp();
+    auto BF = DIEInteger::BestForm(false, op);
+    addUInt(Block, BF, op);
+  }
 
   return true;
 }
