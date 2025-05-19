@@ -554,6 +554,7 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
     env.offset_to_skip_per_thread_data_load = annotations.m_threadPayload.OffsetToSkipPerThreadDataLoad;;
     env.offset_to_skip_set_ffid_gp = annotations.m_threadPayload.OffsetToSkipSetFFIDGP;
     env.generate_local_id = annotations.m_threadPayload.generateLocalID;
+    env.has_lsc_stores_with_non_default_l1_cache_controls = annotations.m_executionEnvironment.HasLscStoresWithNonDefaultL1CacheControls;
 
     // extract required_sub_group_size from kernel attribute list
     // it will be in the format of "intel_reqd_sub_group_size(16)"

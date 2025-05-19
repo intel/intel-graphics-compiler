@@ -334,6 +334,7 @@ struct ExecutionEnvironment
     bool  RequireDisableEUFusion                      = false;
     DWORD PerThreadSpillMemoryUsage                   = 0;
     DWORD PerThreadPrivateMemoryUsage                 = 0;
+    bool HasLscStoresWithNonDefaultL1CacheControls    = false;
 };
 
 struct KernelTypeProgramBinaryInfo
