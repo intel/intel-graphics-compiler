@@ -767,7 +767,7 @@ void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
 void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
   if (I.isInlineAsm())
     return;
-  if (GenXIntrinsic::isAnyNonTrivialIntrinsic(&I))
+  if (vc::isAnyNonTrivialIntrinsic(&I))
     return;
   bool IsIndirectCall = I.isIndirectCall();
 // FIXME: Temporary solution until SPIRV translator conversion of unnamed
@@ -777,8 +777,7 @@ void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
   if (auto *CE = dyn_cast<ConstantExpr>(Op);
       CE && CE->getOpcode() == Instruction::BitCast) {
     auto *CalledFunction = cast<Function>(CE->getOperand(0));
-    IsIntrinsicIndirect =
-        GenXIntrinsic::isAnyNonTrivialIntrinsic(CalledFunction);
+    IsIntrinsicIndirect = vc::isAnyNonTrivialIntrinsic(CalledFunction);
     IGC_ASSERT_MESSAGE(IsIntrinsicIndirect, "Only intrinsic is expected");
   }
 

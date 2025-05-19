@@ -729,7 +729,7 @@ void GenXDepressurizer::processInstruction(Instruction *Inst) {
   Live->removeValue(Inst);
   // If this is a non-intrisic call, add the max pressure from inside the call.
   if (auto CI = dyn_cast<CallInst>(Inst)) {
-    if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(CI)) {
+    if (!vc::isAnyNonTrivialIntrinsic(CI)) {
       LLVM_DEBUG(dbgs() << "pressure inside subroutine: "
                         << SubroutinePressures[CI->getCalledFunction()]
                         << '\n');

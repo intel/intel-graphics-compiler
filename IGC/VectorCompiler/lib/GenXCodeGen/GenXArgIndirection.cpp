@@ -1058,11 +1058,11 @@ void SubroutineArg::gatherBalesToModify(Alignment Align)
       // Add the def to the list of bales that will need modifying, unless
       // it is a phi node or coalesced bitcast or insert/extract in struct
       // or a non-intrinsic call.
-      if (!isa<PHINode>(Inst) && (!isa<BitCastInst>(Inst)
-          || Pass->Liveness->getLiveRange(Inst->getOperand(0)) != ArgLR)
-          && !isa<InsertValueInst>(Inst) && !isa<ExtractValueInst>(Inst)
-          && (!isa<CallInst>(Inst)
-            || GenXIntrinsic::isAnyNonTrivialIntrinsic(Inst)))
+      if (!isa<PHINode>(Inst) &&
+          (!isa<BitCastInst>(Inst) ||
+           Pass->Liveness->getLiveRange(Inst->getOperand(0)) != ArgLR) &&
+          !isa<InsertValueInst>(Inst) && !isa<ExtractValueInst>(Inst) &&
+          (!isa<CallInst>(Inst) || vc::isAnyNonTrivialIntrinsic(Inst)))
         if (BalesSeen.insert(Inst).second)
           Pass->BalesToModify.push_back(Inst);
     } else if (V != Arg)
@@ -1071,8 +1071,7 @@ void SubroutineArg::gatherBalesToModify(Alignment Align)
       auto User = cast<Instruction>(ui->getUser());
       if (auto CI = dyn_cast<CallInst>(User)) {
         Function *CF = CI->getCalledFunction();
-        if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(CF) &&
-            !vc::requiresStackCall(CF)) {
+        if (!vc::isAnyNonTrivialIntrinsic(CF) && !vc::requiresStackCall(CF)) {
           // Non-intrinsic call. Ignore. (A call site using an arg being
           // indirected gets handled differently.)
           // Cannot indirect if there is a stack call. Do not ignore stack
@@ -1127,7 +1126,7 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
       return false;
     }
     unsigned IID = vc::getAnyIntrinsicID(MainInst->Inst);
-    if (GenXIntrinsic::isAnyNonTrivialIntrinsic(IID)) {
+    if (vc::isAnyNonTrivialIntrinsic(IID)) {
       auto IntrInfo = GenXIntrinsicInfo(IID);
       // Cannot indirect a raw or direct only operand.
       bool RawOrDirectOnly =

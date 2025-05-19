@@ -208,8 +208,7 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst) {
         setNotDecomposing(Inst, "use of function argument or constant");
     } else {
       // Any other def. This stops decomposition.
-      if ((isa<CallInst>(Inst) &&
-           !GenXIntrinsic::isAnyNonTrivialIntrinsic(Inst)) ||
+      if ((isa<CallInst>(Inst) && !vc::isAnyNonTrivialIntrinsic(Inst)) ||
           isa<ExtractValueInst>(Inst))
         setNotDecomposing(Inst, "return value from call");
       else
@@ -246,8 +245,7 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst) {
       // in the Seen set.)
       if (isa<InsertValueInst>(user) || isa<ReturnInst>(user))
         setNotDecomposing(user, "use as return value");
-      else if (isa<CallInst>(user) &&
-               !GenXIntrinsic::isAnyNonTrivialIntrinsic(user))
+      else if (isa<CallInst>(user) && !vc::isAnyNonTrivialIntrinsic(user))
         setNotDecomposing(user, "use as call argument");
       else
         setNotDecomposing(user, "other non-decomposable use");

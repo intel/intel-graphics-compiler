@@ -2097,7 +2097,7 @@ void GenXBaling::buildBaleSub(Instruction *Inst, Bale *B, bool IncludeAddr) cons
 
   if (isa<PHINode>(Inst) ||
       (isa<CallInst>(Inst) && !cast<CallInst>(Inst)->isInlineAsm() &&
-       !GenXIntrinsic::isAnyNonTrivialIntrinsic(Inst)))
+       !vc::isAnyNonTrivialIntrinsic(Inst)))
     return;
   if (IncludeAddr) {
     int AddrOperandNum = getAddrOperandNum(GenXIntrinsic::getGenXIntrinsicID(Inst));
