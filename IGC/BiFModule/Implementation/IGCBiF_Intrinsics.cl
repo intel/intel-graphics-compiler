@@ -224,6 +224,10 @@ double    __builtin_IB_dmin(double, double) __attribute__((const));
 double    __builtin_IB_dmax(double, double) __attribute__((const));
 #endif
 
+// Boolean function on three sources
+short __builtin_IB_bfn_i16(short, short, short, uchar) __attribute__((const));
+int   __builtin_IB_bfn_i32(int, int, int, uchar) __attribute__((const));
+
 // Atomic operations
 int      __builtin_IB_atomic_add_global_i32(__global int*, int);
 int      __builtin_IB_atomic_add_local_i32(__local int*, int);
