@@ -144,16 +144,13 @@ define void @CSMain(i32 %runtime_value_0, i32 %runtime_value_1, i32 %runtime_val
 ; layer 4
 ; CHECK: add (M1_NM, 32) reduceSrc_waveAllSrc0(0,0)<1> reduceSrc_waveAllSrc0(0,0)<4;2,1> reduceSrc_waveAllSrc0(0,2)<4;2,1>
 ; layer 5
-; CHECK: add (M1_NM, 16) reduceSrc_waveAllSrc0(0,0)<1> reduceSrc_waveAllSrc0(0,0)<2;1,1> reduceSrc_waveAllSrc0(0,1)<2;1,1>
-; copy to dest
-; CHECK: mov (M1_NM, 1) waveAllJoint(0,0)<1> reduceSrc_waveAllSrc0(0,0)<1;1,0>
+; CHECK: add (M1_NM, 16) waveAllJoint(0,0)<1> reduceSrc_waveAllSrc0(0,0)<2;1,1> reduceSrc_waveAllSrc0(0,1)<2;1,1>
 ; Joint Reduction Tree (1-wide, leftover from splitting the 17-wide vector into 16 and 1, almost identical to existing non-joint reduction tree generated from scalar WaveAll intrinsic further below)
 ; CHECK: add (M1_NM, 16) reduceSrc_waveAllSrc0(32,0)<1> reduceSrc_waveAllSrc0(32,0)<32;16,1> reduceSrc_waveAllSrc0(33,0)<32;16,1>
 ; CHECK: add (M1_NM, 8) reduceSrc_waveAllSrc0(32,0)<1> reduceSrc_waveAllSrc0(32,0)<16;8,1> reduceSrc_waveAllSrc0(32,8)<16;8,1>
 ; CHECK: add (M1_NM, 4) reduceSrc_waveAllSrc0(32,0)<1> reduceSrc_waveAllSrc0(32,0)<8;4,1> reduceSrc_waveAllSrc0(32,4)<8;4,1>
 ; CHECK: add (M1_NM, 2) reduceSrc_waveAllSrc0(32,0)<1> reduceSrc_waveAllSrc0(32,0)<4;2,1> reduceSrc_waveAllSrc0(32,2)<4;2,1>
-; CHECK: add (M1_NM, 1) reduceSrc_waveAllSrc0(32,0)<1> reduceSrc_waveAllSrc0(32,0)<2;1,1> reduceSrc_waveAllSrc0(32,1)<2;1,1>
-; CHECK: mov (M1_NM, 1) waveAllJoint(1,0)<1> reduceSrc_waveAllSrc0(32,0)<1;1,0>
+; CHECK: add (M1_NM, 1) waveAllJoint(1,0)<1> reduceSrc_waveAllSrc0(32,0)<2;1,1> reduceSrc_waveAllSrc0(32,1)<2;1,1>
   %waveAllJoint = call <17 x i32> @llvm.genx.GenISA.WaveAll.v17i32.i8.i32(<17 x i32> %waveAllSrc16, i8 0, i32 0)
   %res_f = call i32 @llvm.genx.GenISA.WaveAll.i32.i8.i32(i32 %f, i8 0, i32 0)
   %res_add_0 = extractelement <17 x i32> %waveAllJoint, i32 0
