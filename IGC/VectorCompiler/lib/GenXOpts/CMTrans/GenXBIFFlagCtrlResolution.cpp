@@ -89,7 +89,6 @@ void GenXBIFFlagCtrlResolution::FillFlagCtrl() {
   BIF_FLAG_CTRL_SET(hasHWLocalThreadID, false);
   BIF_FLAG_CTRL_SET(APIRS, false);
   BIF_FLAG_CTRL_SET(UseLSC, false);
-  BIF_FLAG_CTRL_SET(UseBfn, false);
   BIF_FLAG_CTRL_SET(ForceL1Prefetch, false);
   BIF_FLAG_CTRL_SET(UseNativeFP64GlobalAtomicAdd, false);
   BIF_FLAG_CTRL_SET(MaxHWThreadIDPerSubDevice, 1);

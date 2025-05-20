@@ -66,8 +66,6 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
                     PtrCGC->platform.hasThreadPauseSupport());
   BIF_FLAG_CTRL_SET(UseNative64BitFloatBuiltin,
                     !PtrCGC->platform.hasNoFP64Inst());
-  BIF_FLAG_CTRL_SET(UseBfn, IGC_IS_FLAG_ENABLED(EnableBfn) &&
-      PtrCGC->platform.supportBfnInstruction());
   BIF_FLAG_CTRL_SET(hasHWLocalThreadID, PtrCGC->platform.hasHWLocalThreadID());
   BIF_FLAG_CTRL_SET(CRMacros, PtrCGC->platform.hasCorrectlyRoundedMacros());
   BIF_FLAG_CTRL_SET(

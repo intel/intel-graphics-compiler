@@ -455,8 +455,6 @@ public:
     void emitftoi(llvm::GenIntrinsicInst* inst);
     void emitCtlz(const SSource& source);
 
-    void emitBfn(llvm::GenIntrinsicInst* inst);
-
 
     // VME
     void emitVMESendIME(llvm::GenIntrinsicInst* inst);

@@ -1758,9 +1758,6 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
 
     m_CommandMap[StringRef("__builtin_IB_samplepos")] = CSamplePos::create();
 
-    m_CommandMap["__builtin_IB_bfn_i16"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_bfn);
-    m_CommandMap["__builtin_IB_bfn_i32"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_bfn);
-
     // `dp4a` built-ins
     m_CommandMap["__builtin_IB_dp4a_ss"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_ss, false);
     m_CommandMap["__builtin_IB_dp4a_uu"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_uu, false);

@@ -9604,9 +9604,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_WaveClusteredInterleave:
         emitWaveClusteredInterleave(inst);
         break;
-    case GenISAIntrinsic::GenISA_bfn:
-        emitBfn(inst);
-        break;
     case GenISAIntrinsic::GenISA_dp4a_ss:
     case GenISAIntrinsic::GenISA_dp4a_uu:
     case GenISAIntrinsic::GenISA_dp4a_su:
@@ -17790,19 +17787,6 @@ void EmitPass::emitFPOWithNonDefaultRoundingMode(llvm::GenIntrinsicInst* inst)
     }
 
     ResetRoundingMode(inst);
-}
-
-void EmitPass::emitBfn(llvm::GenIntrinsicInst* inst)
-{
-    IGC_ASSERT_MESSAGE(isa<ConstantInt>(inst->getArgOperand(3)), "booleanFuncCtrl must be const!");
-    const uint8_t booleanFuncCtrl = int_cast<uint8_t>(cast<ConstantInt>(inst->getArgOperand(3))->getZExtValue());
-
-    CVariable* src0 = GetSymbol(inst->getOperand(0));
-    CVariable* src1 = GetSymbol(inst->getOperand(1));
-    CVariable* src2 = GetSymbol(inst->getOperand(2));
-
-    m_encoder->Bfn(booleanFuncCtrl, m_destination, src0, src1, src2);
-    m_encoder->Push();
 }
 
 void EmitPass::emitftoi(llvm::GenIntrinsicInst* inst)
