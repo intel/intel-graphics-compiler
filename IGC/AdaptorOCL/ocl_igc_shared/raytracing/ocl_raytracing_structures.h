@@ -100,16 +100,18 @@ public:
   uint64_t callStackHandlerKSP;        // this is the KSP of the continuation handler that is invoked by BTD when the read KSP is 0
   uint32_t stackSizePerRay;            // maximal stack size of a ray in 64 byte blocks
   uint32_t numDSSRTStacks;             // number of stacks per DSS
-  /* : 3; TODO: should this be a bitfield here?*/
-  uint32_t maxBVHLevels;               // the maximal number of supported instancing levels, 0->8, 1->1, 2->2, etc.
+  // TODO: update with:
+  // uint32_t maxBVHLevels       : 3;      // the maximal number of supported instancing levels, 0->8, 1->1, 2->2, etc.
+  // uint32_t hitGroupStride     : 13;    // stride of hit group shader records (16-bytes alignment)
+  // uint32_t missShaderStride   : 13;    // stride of miss shader records (8-bytes alignment)
+  // uint32_t _pad2_mbz          : 3;
+  uint32_t maxBVHLevels;
+  uint32_t flags              : 1;
+  uint32_t pad_mbz            : 31;
 
   // Not cached by HW
 public:
   uint64_t hitGroupBasePtr;            // base pointer of hit group shader record array (16-bytes alignment)
   uint64_t missShaderBasePtr;          // base pointer of miss shader record array (8-bytes alignment)
-  uint64_t callableShaderBasePtr;      // base pointer of callable shader record array (8-bytes alignment)
-  uint32_t hitGroupStride;             // stride of hit group shader records (16-bytes alignment)
-  uint32_t missShaderStride;           // stride of miss shader records (8-bytes alignment)
-  uint32_t callableShaderStride;       // stride of callable shader records (8-bytes alignment)
-  uint32_t dispatchRaysDimensions[3];  // dispatch dimensions of the thread grid
+  uint32_t _align_mbz[4];              // pad hardware section to 64 bytes
 };
