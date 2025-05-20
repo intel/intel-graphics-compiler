@@ -1007,7 +1007,7 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
         auto ui = OldConv->use_begin();
         auto user = cast<Instruction>(ui->getUser());
         auto NewExtract = R2.createRdRegion(NewConv, OldConv->getName(), user,
-            user->getDebugLoc(), /*ScalarAllowed=*/true);
+            user->getDebugLoc(), /*ScalarAllowed=*/!OldConv->getType()->isVectorTy());
         Numbering->setNumber(NewExtract, Numbering->getNumber(user));
         // At this late stage, I believe nothing relies on the baling type for
         // this instruction being set to RDREGION, but we set it anyway for
