@@ -297,26 +297,6 @@ bool IR_Builder::tryToAlignOperand(G4_Operand *opnd, unsigned short &offset,
                 alignByte == numEltPerGRF<Type_UB>() / 2) &&
                dcl && (dcl->getRegFile() == G4_ADDRESS)) {
 
-      // Get the single definition of the specified operand from the use
-      // inst.
-      auto getSingleDefInst = [](G4_INST *UI,
-                                 Gen4_Operand_Number OpndNum) -> G4_INST * {
-        G4_INST *Def = nullptr;
-        for (DEF_EDGE_LIST_ITER I = UI->defInstList.begin(),
-                                E = UI->defInstList.end();
-             I != E; ++I) {
-          if (I->second != OpndNum)
-            continue;
-          if (Def) {
-            // Not single defined, bail out
-            Def = nullptr;
-            break;
-          }
-          Def = I->first;
-        }
-        return Def;
-      };
-
       G4_INST *inst = opnd->getInst();
       if (inst) {
         // Check address calculation like:
@@ -3464,89 +3444,37 @@ void IR_Builder::doSimplification(G4_INST *inst) {
     return;
   }
 
-  // Perform 'mov' to 'movi' transform when it's a 'mov' of
-  // - simd8
-  // - it's a raw mov
-  // - dst is within a single GRF.
-  // - src uses VxH indirect access.
-  // - src is within one GRF.
-  // - indices to src are all within src.
-  // - destination stride in bytes must be equal to the source element size in
-  // bytes.
+  // Try movi promotion
+  if (canPromoteToMovi(inst)) {
+    // we verified types of the operands in canPromoteToMovi
+    G4_INST *LEA = getSingleDefInst(inst, Opnd_src0);
+    G4_Operand *Op0 = LEA->getSrc(0);
+    G4_AddrExp *AE = Op0->asAddrExp();
+    G4_Declare *Dcl = AE->getRegVar()->getDeclare();
 
-  // - both src and dst are dword data type:
-  bool canConvertMovToMovi =
-      inst->opcode() == G4_mov && inst->getExecSize() == g4::SIMD8 &&
-      inst->isRawMov() && inst->getDst() &&
-      !inst->getDst()->asDstRegRegion()->isCrossGRFDst(*this) &&
-      inst->getSrc(0) && inst->getSrc(0)->isSrcRegRegion() &&
-      inst->getSrc(0)->asSrcRegRegion()->isIndirect() &&
-      inst->getSrc(0)->asSrcRegRegion()->getRegion()->isRegionWH() &&
-      inst->getSrc(0)->asSrcRegRegion()->getRegion()->width == 1 &&
-      inst->getSrc(0)->getTypeSize() ==
-          inst->getDst()->getTypeSize() *
-              inst->getDst()->asDstRegRegion()->getHorzStride();
-  if (getPlatform() >= Xe2) {
-    canConvertMovToMovi = canConvertMovToMovi &&
-                          IS_DTYPE(inst->getDst()->getType()) &&
-                          IS_DTYPE(inst->getSrc(0)->getType());
-  }
-  if (canConvertMovToMovi) {
-    // Convert 'mov' to 'movi' if the following conditions are met.
+    // Set this instruction to movi
+    inst->setOpcode(G4_movi);
 
-    auto getSingleDefInst = [](G4_INST *UI,
-                               Gen4_Operand_Number OpndNum) -> G4_INST * {
-      G4_INST *Def = nullptr;
-      for (auto I = UI->def_begin(), E = UI->def_end(); I != E; ++I) {
-        if (I->second != OpndNum)
-          continue;
-        if (Def) {
-          // Not single defined, bail out
-          Def = nullptr;
-          break;
-        }
-        Def = I->first;
-      }
-      return Def;
-    };
-
+    // Adjust alignments
     unsigned SrcSizeInBytes =
         inst->getExecSize() * inst->getSrc(0)->getTypeSize();
-    if (SrcSizeInBytes == numEltPerGRF<Type_UB>() / 2 ||
-        SrcSizeInBytes == numEltPerGRF<Type_UB>()) {
-      G4_INST *LEA = getSingleDefInst(inst, Opnd_src0);
-      if (LEA && LEA->opcode() == G4_add &&
-          LEA->getExecSize() == inst->getExecSize()) {
-        G4_Operand *Op0 = LEA->getSrc(0);
-        G4_Operand *Op1 = LEA->getSrc(1);
-        G4_Declare *Dcl = nullptr;
-        int Offset = 0;
-        if (Op0->isAddrExp()) {
-          G4_AddrExp *AE = Op0->asAddrExp();
-          Dcl = AE->getRegVar()->getDeclare();
-          Offset = AE->getOffset();
-        }
-        if (Dcl && (Offset % SrcSizeInBytes) == 0 && Op1->isImm() &&
-            Op1->getType() == Type_UV) {
-          // Immeidates in 'uv' ensures each element is a
-          // byte-offset within half-GRF.
-          G4_SubReg_Align SubAlign = getGRFAlign();
-          if (SrcSizeInBytes <= numEltPerGRF<Type_UB>() / 2u)
-            SubAlign = (G4_SubReg_Align)(numEltPerGRF<Type_UW>() / 2);
-          inst->setOpcode(G4_movi);
-          if (!Dcl->isEvenAlign() && Dcl->getSubRegAlign() != getGRFAlign()) {
-            Dcl->setSubRegAlign(SubAlign);
-          }
-          const RegionDesc *rd = getRegionStride1();
-          inst->getSrc(0)->asSrcRegRegion()->setRegion(*this, rd);
-          // Set subreg alignment for the address variable.
-          Dcl = LEA->getDst()->getBase()->asRegVar()->getDeclare();
-          vISA_ASSERT(Dcl->getRegFile() == G4_ADDRESS,
-                      "Address variable is required.");
-          Dcl->setSubRegAlign(Eight_Word);
-        }
-      }
+    G4_SubReg_Align SubAlign = getGRFAlign();
+    if (SrcSizeInBytes <= numEltPerGRF<Type_UB>() / 2u) {
+      SubAlign = (G4_SubReg_Align)(numEltPerGRF<Type_UW>() / 2);
     }
+    if (!Dcl->isEvenAlign() && Dcl->getSubRegAlign() != getGRFAlign()) {
+      Dcl->setSubRegAlign(SubAlign);
+    }
+
+    // Movi requires indirect 1x1 region.
+    const RegionDesc *rd = getRegionStride1();
+    inst->getSrc(0)->asSrcRegRegion()->setRegion(*this, rd);
+
+    // Set subreg alignment for the address variable.
+    Dcl = LEA->getDst()->getBase()->asRegVar()->getDeclare();
+    vISA_ASSERT(Dcl->getRegFile() == G4_ADDRESS,
+                "Address variable is required.");
+    Dcl->setSubRegAlign(Eight_Word);
   }
 
   auto isInteger = [](G4_Operand *opnd, int64_t val) {
@@ -3632,4 +3560,187 @@ bool IR_Builder::mustReserveR1() const {
   if (getOption(vISA_AvoidUsingR0R1))
     return true;
   return false;
+}
+
+G4_INST * IR_Builder::getSingleDefInst(G4_INST *UI, Gen4_Operand_Number OpndNum) const
+{
+  G4_INST *Def = nullptr;
+  for (auto I = UI->def_begin(), E = UI->def_end(); I != E; ++I) {
+    if (I->second != OpndNum)
+      continue;
+    if (Def) {
+      // Not single defined, bail out
+      Def = nullptr;
+      break;
+    }
+    Def = I->first;
+  }
+  return Def;
+};
+
+bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
+  // Perform 'mov' to 'movi' transform when it's a 'mov' of
+  // - simd8
+  // - it's a raw mov
+  // - dst is within a single GRF.
+  // - src uses VxH indirect access.
+  // - src is within one GRF.
+  // - indices to src are all within src.
+  // - destination stride in bytes must be equal to the source element size in
+  // bytes.
+
+  // - both src and dst are dword data type:
+
+  bool emitMoreMoviCases = getOption(vISA_emitMoreMoviCases);
+
+  bool isMovOpcode = inst->opcode() == G4_mov;
+  bool isValidExecSize =
+      (inst->getExecSize() == g4::SIMD8) ||
+      (emitMoreMoviCases && (inst->getExecSize() <= g4::SIMD16));
+  bool isRawMov = inst->isRawMov();
+
+  bool hasDst = inst->getDst() != nullptr;
+  bool isNotCrossGRFDst =
+      hasDst && !inst->getDst()->asDstRegRegion()->isCrossGRFDst(*this);
+
+  bool hasSrc0 = inst->getSrc(0) != nullptr;
+  bool isSrcRegRegion = hasSrc0 && inst->getSrc(0)->isSrcRegRegion();
+  bool isIndirectSrc =
+      isSrcRegRegion && inst->getSrc(0)->asSrcRegRegion()->isIndirect();
+  bool isRegionWH =
+      isIndirectSrc &&
+      inst->getSrc(0)->asSrcRegRegion()->getRegion()->isRegionWH();
+  bool isWidthOne =
+      isRegionWH && inst->getSrc(0)->asSrcRegRegion()->getRegion()->width == 1;
+
+  bool isTypeSizeMatch = hasDst && hasSrc0 &&
+                         (inst->getSrc(0)->getTypeSize() ==
+                          (inst->getDst()->getTypeSize() *
+                           inst->getDst()->asDstRegRegion()->getHorzStride()));
+
+  // Combine all checks
+  bool canConvertMovToMovi = isMovOpcode && isValidExecSize && isRawMov &&
+                             isNotCrossGRFDst && isIndirectSrc && isWidthOne &&
+                             isTypeSizeMatch;
+
+  if (getPlatform() >= Xe2) {
+    canConvertMovToMovi = canConvertMovToMovi &&
+                          IS_DTYPE(inst->getDst()->getType()) &&
+                          IS_DTYPE(inst->getSrc(0)->getType());
+  }
+
+  if (!canConvertMovToMovi) {
+    return false;
+  }
+
+  // Convert 'mov' to 'movi' if the following conditions are met.
+
+  unsigned SrcSizeInBytes =
+      inst->getExecSize() * inst->getSrc(0)->getTypeSize();
+
+  if (!(emitMoreMoviCases || SrcSizeInBytes == numEltPerGRF<Type_UB>() / 2 ||
+        SrcSizeInBytes == numEltPerGRF<Type_UB>())) {
+    return false;
+  }
+
+  G4_INST *LEA = getSingleDefInst(inst, Opnd_src0);
+  if (!(LEA && LEA->opcode() == G4_add &&
+        LEA->getExecSize() == inst->getExecSize())) {
+    return false;
+  }
+
+  G4_Operand *Op0 = LEA->getSrc(0);
+  G4_Operand *Op1 = LEA->getSrc(1);
+  G4_Declare *Dcl = nullptr;
+  int Offset = 0;
+  if (Op0->isAddrExp()) {
+    G4_AddrExp *AE = Op0->asAddrExp();
+    Dcl = AE->getRegVar()->getDeclare();
+    Offset = AE->getOffset();
+  }
+
+  if (!Dcl) {
+    return false;
+  }
+
+  // Immediate in 'uv' ensures each element is a
+  // byte-offset within half-GRF.
+  bool isAlignedImmediateUV = (Offset % SrcSizeInBytes) == 0 && Op1->isImm() &&
+                              Op1->getType() == Type_UV;
+
+  if (isAlignedImmediateUV) {
+    return true;
+  }
+
+  // Op0's root declare size can make sure if all channels of indirect
+  // access fall into 1 GRF
+  bool isCandidateForSingleGRFPattern =
+      emitMoreMoviCases &&
+      Dcl->getRootDeclare()->getByteSize() <= numEltPerGRF<Type_UB>() &&
+      (Offset % SrcSizeInBytes) == 0 &&
+      (!Op1->isImm() || Op1->getType() == Type_UV) && LEA->isWriteEnableInst();
+
+  if (!isCandidateForSingleGRFPattern) {
+    return false;
+  }
+  // check if we match sanitized pattern:
+  // (W) and (16)             V1579(0,0)<2>:uw  V1579(0,0)<2;1,0>:uw  0xf:uw
+  // (W) shl (16)             ShuffleTmp_157(0,0)<1>:uw V1579(0,0)<2;1,0>:uw 0x1:uw
+  // (W) add (16)             A158(0,0)<1>:uw  &V3130+0 ShuffleTmp_157(0,0)<1;1,0>:uw
+  //     mov (16)             V3154(0,0)<1>:w  r[A158(0,0), 0]<1,0>:w
+
+  auto maybeShlOrMul = getSingleDefInst(LEA, Opnd_src1);
+  bool isMaybeShlOrMul = maybeShlOrMul &&
+                         (maybeShlOrMul->opcode() == G4_shl ||
+                          maybeShlOrMul->opcode() == G4_mul) &&
+                         maybeShlOrMul->getSrc(1)->isImm() &&
+                         maybeShlOrMul->isWriteEnableInst();
+
+  if (!isMaybeShlOrMul) {
+    return false;
+  }
+
+  auto maybeAnd = getSingleDefInst(maybeShlOrMul, Opnd_src0);
+  bool isNoMaskAndWithImm = maybeAnd && maybeAnd->opcode() == G4_and &&
+                            maybeAnd->isWriteEnableInst() &&
+                            maybeAnd->getSrc(1)->isImm();
+
+  if (!isNoMaskAndWithImm) {
+    return false;
+  }
+
+  // verify execsizes
+  bool areExecSizesEqual = inst->getExecSize() == LEA->getExecSize() &&
+                           inst->getExecSize() == maybeAnd->getExecSize() &&
+                           inst->getExecSize() == maybeShlOrMul->getExecSize();
+
+  if (!areExecSizesEqual) {
+    return false;
+  }
+
+  // check whether the address calculated is guaranteed to fit single GRF
+  // since we support both shl and mul, need to handle them both
+  int64_t indexSize = 0;
+  int64_t andImm = maybeAnd->getSrc(1)->asImm()->getInt();
+  int64_t shlOrMulImm = maybeShlOrMul->getSrc(1)->asImm()->getInt();
+  bool andImmIsPowOf2Min1 =
+      andImm > 0 &&
+      (andImm & (andImm + 1)) == 0; // this should be 1,3,7,15,31 etc;
+
+  if (maybeShlOrMul->opcode() == G4_mul) {
+    indexSize = andImm * shlOrMulImm;
+  } else {
+    indexSize = andImm << shlOrMulImm;
+  }
+
+  // Last check is verify that index size guarantees access smaller than GRF
+  // size.
+  // Note: we use "less" not "less or equal" since andImm value should be
+  // in pow2()-1 form which means that highest addressable index is last
+  // element within GRF.
+  // With "less or equal" it would address second GRF.
+  bool isSanitizedSingleGRFIndexing =
+      andImmIsPowOf2Min1 && (indexSize < numEltPerGRF<Type_UB>());
+
+  return isSanitizedSingleGRFIndexing;
 }

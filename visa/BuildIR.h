@@ -2423,9 +2423,12 @@ public:
 
   void materializeGlobalImm(G4_BB *entryBB); // why is in FlowGraph.cpp???
 
+  bool canPromoteToMovi(G4_INST *);
+
 #include "HWCaps.inc"
 
 private:
+  G4_INST* getSingleDefInst(G4_INST* UI, Gen4_Operand_Number OpndNum) const;
   G4_SrcRegRegion *createBindlessExDesc(uint32_t exdesc);
   uint32_t createSamplerMsgDesc(VISASampler3DSubOpCode samplerOp,
                                 bool isNativeSIMDSize, bool isFP16Return,

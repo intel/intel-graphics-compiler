@@ -4842,6 +4842,11 @@ namespace IGC
             SaveOption(vISA_ALTMode, true);
         }
 
+        if (IGC_GET_FLAG_VALUE(EnableEmitMoreMoviCases))
+        {
+            SaveOption(vISA_emitMoreMoviCases, true);
+        }
+
         //
         // Setting number of GRF and threads per EU is restricted to OCL only
         // Number of threads can be set by:

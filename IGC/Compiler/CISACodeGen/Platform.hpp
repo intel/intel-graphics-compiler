@@ -1910,5 +1910,9 @@ bool allowProceedBasedApproachForRayQueryDynamicRayManagementMechanism() const
     return IGC_IS_FLAG_DISABLED(DisableProceedBasedApproachForRayQueryDynamicRayManagementMechanism);
 }
 
+bool allowsMoviForType(VISA_Type type) const {
+  return IGC_GET_FLAG_VALUE(EnableEmitMoreMoviCases) && (type == ISA_TYPE_UD || type == ISA_TYPE_D);
+}
+
 };
 }//namespace IGC

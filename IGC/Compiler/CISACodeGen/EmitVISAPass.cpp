@@ -5829,13 +5829,31 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         // bit set. Inactive lanes contain garbage data and may cause an
         // out-of-bounds register access.
         bool laneIdCanBeOOB = !m_currShader->m_DriverInfo->needsRegisterAccessBoundsChecks();
-        if (!m_currShader->m_Platform->supportsOutOfBoundsGrfAccess() &&
-            !channelUniform &&
-            (m_encoder->IsSubSpanDestination() || laneIdCanBeOOB))
+
+        bool defaultConditions =
+            (!m_currShader->m_Platform->supportsOutOfBoundsGrfAccess() &&
+             !channelUniform &&
+             (m_encoder->IsSubSpanDestination() || laneIdCanBeOOB));
+
+        // Enabling movi requires that first lane even inactive will be within bounds of register we want.
+        // It also is limited to accessing single GRF.
+        // For uniform channel which will be simd1 there's probably no gain in movi.
+        bool isSingleGrf = data->GetSize() <= (unsigned)getGRFSize();
+        bool platformMoviTypeCheck = m_currShader->m_Platform->allowsMoviForType(data->GetType());
+        bool forcePreventOOB = isSingleGrf && platformMoviTypeCheck && !channelUniform;
+
+        if (defaultConditions || forcePreventOOB)
         {
             uint maskOfValidLanes = numLanes(m_currShader->m_State.m_dispatchSize) - 1;
             m_encoder->SetSrcRegion(0, 2, 1, 0);
             m_encoder->SetDstRegion(2);
+
+            // To support conversion to movi we need to make all calculations (shl, addr_add) of address NoMask.
+            // to avoid random data from previous execution in divergent CF.
+            if (forcePreventOOB)
+            {
+                m_encoder->SetNoMask();
+            }
             m_encoder->And(simdChannelUW, simdChannelUW,
                 m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
             m_encoder->Push();
@@ -5850,6 +5868,10 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         if (!channelUniform)
         {
             m_encoder->SetSrcRegion(0, 16, 8, 2);
+        }
+        if (forcePreventOOB)
+        {
+            m_encoder->SetNoMask();
         }
         m_encoder->Shl(pSrcElm, simdChannelUW,
             m_currShader->ImmToVariable(shtAmt, ISA_TYPE_UW));
@@ -5889,6 +5911,10 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
                 else // !channelUniform
                 {
                     m_encoder->SetSimdSize(SIMDMode::SIMD16);
+                    if (forcePreventOOB)
+                    {
+                        m_encoder->SetNoMask();
+                    }
 
                     m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
                     m_encoder->Push();
@@ -5924,6 +5950,10 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
                     m_encoder->SetMask(EMASK_H2);
                     m_encoder->SetSrcSubReg(0, 16);
                     m_encoder->SetSrcSubReg(1, 16);
+                    if (forcePreventOOB)
+                    {
+                        m_encoder->SetNoMask();
+                    }
                     m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
                     m_encoder->Push();
 
@@ -5994,6 +6024,10 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
             {
                 // also calculate the second half of address
                 m_encoder->SetSrcRegion(0, 16, 8, 2);
+                if (forcePreventOOB)
+                {
+                    m_encoder->SetNoMask();
+                }
                 m_encoder->Shl(pSrcElm, simdChannelUW,
                     m_currShader->ImmToVariable(shtAmt, ISA_TYPE_UW));
                 m_encoder->Push();
@@ -6016,6 +6050,11 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
             true,
             m_destination->getName());
 
+        if (forcePreventOOB)
+        {
+            m_encoder->SetNoMask();
+        }
+
         m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
         m_encoder->Push();
 
@@ -6025,6 +6064,10 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         if (isSimd32)
         {
             m_encoder->SetSecondHalf(true);
+            if (forcePreventOOB)
+            {
+                m_encoder->SetNoMask();
+            }
             m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
             m_encoder->Push();
             m_encoder->Copy(m_destination, pDstArrElm);

@@ -1938,6 +1938,20 @@ bool HWConformity::fixIndirectSrcForCompressedInst(INST_LIST_ITER i, G4_BB *bb) 
 }
 
 /*
+ * This function evenly splits movi from simd16 to simd8.
+ */
+bool HWConformity::fixIndirectMoviSimd16ToSimd8(INST_LIST_ITER i, G4_BB *bb) {
+  G4_INST *inst = *i;
+  if (inst->opcode() != G4_movi)
+    return false;
+  if (inst->getExecSize() == g4::SIMD16) {
+    // split the instruction
+    evenlySplitInst(i, bb);
+  }
+  return true;
+}
+
+/*
  * This function checks to see if the instruction's indirect operands
  * potentially require totally more than 8 distinct addr reg sub-registers, and
  * then determines which of the operands to spill into temporary GRFs so
@@ -5728,6 +5742,8 @@ void HWConformity::conformBB(G4_BB *bb) {
     fixIndirectOpnd(i, bb);
 
     fixIndirectSrcForCompressedInst(i, bb);
+
+    fixIndirectMoviSimd16ToSimd8(i, bb);
 
 #ifdef _DEBUG
     verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);

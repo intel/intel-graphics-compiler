@@ -684,6 +684,7 @@ DECLARE_IGC_REGKEY_ENUM(LscStoreCacheControlOverride, 0, "Overrides cache-contro
 DECLARE_IGC_REGKEY_ENUM(TgmLoadCacheControlOverride, 0, "Overrides cache-control options for non-intrinsic LSC tgm loads.", LSC_CACHE_CTRL_OPTIONS, true)
 DECLARE_IGC_REGKEY_ENUM(TgmStoreCacheControlOverride, 0, "Overrides cache-control options for non-intrinsic LSC tgm stores.", LSC_CACHE_CTRL_OPTIONS, true)
 DECLARE_IGC_REGKEY(bool, LscForceSpillNonStackcall, false, "Non-stack call kernels that spill will use LSC on DG2+", true)
+DECLARE_IGC_REGKEY(bool, EnableEmitMoreMoviCases, false, "Enables emitting movi for waveShuffle cases using And to keep index within single register.", true)
 DECLARE_IGC_REGKEY_ENUM(ForceRegisterAccessBoundsChecks, -1, \
     "Controls the behavior of RegisterAccessBoundsChecks, the pass that adds runtime bounds-checks for vector-indexing instructions." \
     "-1 - default behavior, the pass is enabled based on the API type or AILs" \

@@ -1740,6 +1740,10 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter) {
       // As F->BF does not support srcMod, cannot hoist if definst has mod.
       return false;
     }
+    // don't hoist if defInst could become a movi (localCopyProp is later pass)
+    if (fg.builder->canPromoteToMovi(defInst)) {
+      return false;
+    }
 
     // Further check data-dependency, that is, no other instruction
     // should have WAR or WAW dependency with this inst.

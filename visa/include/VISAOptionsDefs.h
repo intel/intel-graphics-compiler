@@ -147,6 +147,7 @@ DEF_VISA_OPTION(vISA_ChangeMoveType, ET_BOOL, "-ALTMode", UNUSED, true)
 DEF_VISA_OPTION(vISA_accSubstitution, ET_BOOL, "-noAccSub", UNUSED, true)
 DEF_VISA_OPTION(vISA_accSubBeforeRA, ET_BOOL, "-noAccSubBRA", UNUSED, true)
 DEF_VISA_OPTION(vISA_PreSchedForAcc, ET_BOOL, "-preSchedForAcc", UNUSED, false)
+DEF_VISA_OPTION(vISA_emitMoreMoviCases, ET_BOOL, "-emitMoreMoviCases", UNUSED, false)
 DEF_VISA_OPTION(
     vISA_EnableGatherWithImmPreRA, ET_INT32, "-gatherWithImmPreRA",
     "USAGE: -gatherWithImmPreRA <0|1|2|3> where 0 is disabled, 1 sampler is "
