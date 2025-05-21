@@ -76,6 +76,9 @@ public:
   VISA_BUILDER_API int Compile(const char *isaasmFileName,
                                bool emit_visa_only = false) override;
 
+  VISA_BUILDER_API int GetuInt32Option(vISAOptions option) override {
+      return m_options.getuInt32Option(option);
+  }
   VISA_BUILDER_API void SetOption(vISAOptions option, bool val) override {
     m_options.setOption(option, val);
   }

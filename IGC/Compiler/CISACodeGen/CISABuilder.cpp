@@ -5645,12 +5645,12 @@ namespace IGC
             SaveOption(vISA_AutoGRFSelection, true);
         }
 
-        if (lowerBoundGRF > 0)
+        if (lowerBoundGRF > 0 && vbuilder->GetuInt32Option(vISA_MinGRFNum) == 0)
         {
             SaveOption(vISA_MinGRFNum, lowerBoundGRF);
         }
 
-        if (upperBoundGRF > 0)
+        if (upperBoundGRF > 0 && vbuilder->GetuInt32Option(vISA_MaxGRFNum) == 0)
         {
             SaveOption(vISA_MaxGRFNum, upperBoundGRF);
         }

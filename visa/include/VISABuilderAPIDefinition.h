@@ -1321,6 +1321,7 @@ public:
   VISA_BUILDER_API virtual int Compile(const char *isaasmFileName,
                                        bool emit_visa_only = false) = 0;
 
+  VISA_BUILDER_API virtual int GetuInt32Option(vISAOptions option) = 0;
   VISA_BUILDER_API virtual void SetOption(vISAOptions option, bool val) = 0;
   VISA_BUILDER_API virtual void SetOption(vISAOptions option, uint32_t val) = 0;
   VISA_BUILDER_API virtual void SetOption(vISAOptions option,
