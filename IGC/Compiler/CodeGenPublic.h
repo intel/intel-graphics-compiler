@@ -475,7 +475,7 @@ namespace IGC
         unsigned int NOSBufferSize = 0;
         unsigned int ConstantBufferLoaded = 0;
         uint64_t     UavLoaded = 0;
-        unsigned int ShaderResourceLoaded[4];
+        unsigned int ShaderResourceLoaded[4] = {};
         unsigned int RenderTargetLoaded = 0;
 
         bool         hasControlFlow = false;
@@ -493,8 +493,8 @@ namespace IGC
         SSimplePushInfo simplePushInfoArr[g_c_maxNumberOfBufferPushed];
 
         uint64_t    SIMDInfo = 0;
-        void* m_StagingCtx;
-        bool m_RequestStage2;
+        void* m_StagingCtx = nullptr;
+        bool m_RequestStage2 = false;
     };
 
     /// Gen10+, corresponds to 3DSTATE_VF_SGVS_2 as described below
