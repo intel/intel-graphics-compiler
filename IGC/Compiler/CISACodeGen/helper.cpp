@@ -3516,7 +3516,8 @@ bool SeparateSpillAndScratch(const CodeGenContext* ctx)
     else
         separate = ctx->getModuleMetaData()->enableSeparateSpillPvtScratchSpace;
 
-    return (ctx->platform.hasScratchSurface() && separate);
+    return (ctx->platform.hasScratchSurface() && separate
+        );
 }
 
 bool UsedWithoutImmInMemInst( Value* varOffset )
