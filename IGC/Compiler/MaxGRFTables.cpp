@@ -9,8 +9,25 @@ SPDX-License-Identifier: MIT
 #include "MaxGRFTables.h"
 #include "Compiler/CISACodeGen/Platform.hpp"
 
+using namespace std;
 namespace IGC
 {
+    static constexpr MaxGRFEntry XE3_GRF[] =
+    {
+        {128, SIMDMode::SIMD16, HWLocalId::EITHER, 1024},
+        {128, SIMDMode::SIMD32, HWLocalId::VALUE1, 1024},
+        {128, SIMDMode::SIMD32, HWLocalId::VALUE0, 2048},
+        {160, SIMDMode::SIMD16, HWLocalId::EITHER,  768},
+        {160, SIMDMode::SIMD32, HWLocalId::VALUE1, 1024},
+        {160, SIMDMode::SIMD32, HWLocalId::VALUE0, 1536},
+        {192, SIMDMode::SIMD16, HWLocalId::EITHER,  640},
+        {192, SIMDMode::SIMD32, HWLocalId::VALUE1, 1024},
+        {192, SIMDMode::SIMD32, HWLocalId::VALUE0, 1280},
+        {256, SIMDMode::SIMD16, HWLocalId::EITHER,  512},
+        {256, SIMDMode::SIMD32, HWLocalId::EITHER, 1024}
+    };
+
+
     bool MaxGRFTable::MatchHWLocalID(HWLocalId fromTable, HWLocalId target)
     {
         // If target = '0', table entries with '0 or 1' and '0' are matched
@@ -22,16 +39,13 @@ namespace IGC
             return false;
     }
 
-    uint16_t MaxGRFTable::LookupMaxGRF(
-        SIMDMode simt, HWLocalId hwlid, unsigned int witems,
-        const vector<MaxGRFEntry>& table)
+    uint16_t MaxGRFTable::GetMaxGRF(
+        SIMDMode simt, HWLocalId hwlid, uint witems)
     {
-        MaxGRFEntry entry;
         // Reverse order intentionally
-        // GRF column is accessed in descening order
-        for (auto it = table.rbegin(); it != table.rend(); ++it)
+        // GRF column is accessed in descending order
+        for (auto& entry : llvm::reverse(table))
         {
-            entry = (*it);
             if (simt != entry.SIMT)
                 continue;
 
@@ -47,19 +61,8 @@ namespace IGC
     void MaxGRFTable::LoadTable(const CPlatform& platform)
     {
         {
-#define GRF_SIMT_LID_WITEMS(a, b, c, d) table.push_back({a, b, c, d});
-            XE3_GRF
-#undef GRF_SIMT_LID_WITEMS
+            table = XE3_GRF;
         }
-    }
-
-    uint16_t MaxGRFTable::GetMaxGRF(SIMDMode simt, HWLocalId hwlid,
-        uint16_t witems, const CPlatform& platform)
-    {
-        if (table.empty())
-            LoadTable(platform);
-
-        return LookupMaxGRF(simt, hwlid, witems, table);
     }
 
 } //namespace IGC
