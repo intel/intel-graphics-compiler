@@ -2140,10 +2140,13 @@ int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd,
   cisa_opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
   if (IS_GEN_BOTH_PATH) {
     G4_Declare *dcl = cisa_decl->genVar.dcl;
+    G4_Declare *aliasDcl = dcl->getRootDeclare();
 
     // replace vISA %null variable with a null dst to avoid confusing later
     // passes
-    if (cisa_decl->type == GENERAL_VAR && cisa_decl->index == 0) {
+    if (cisa_decl->type == GENERAL_VAR &&
+        (cisa_decl->index == 0 ||
+         (aliasDcl && strcmp(aliasDcl->getName(), "%null") == 0))) {
       cisa_opnd->g4opnd = m_builder->createNullDst(dcl->getElemType());
     } else {
       cisa_opnd->g4opnd = m_builder->createDst(
