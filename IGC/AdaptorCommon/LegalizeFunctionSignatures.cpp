@@ -294,18 +294,6 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
         // Create the new function signature by replacing the illegal types
         if (FunctionHasPromotableSRetArg(M, pFunc))
         {
-            // According to docs: https://llvm.org/docs/LangRef.html
-            // "A function that accepts an sret argument must return void. A return value may not be sret."
-            // So I'm skipping further modifications of such functions
-            // Because e.g
-            // spir_func void @__devicelib_catanf(%structtype addrspace(4)* sret(%structtype) align 4, (...)
-            // Was changed into
-            // declare spir_func %structtype @__devicelib_catanf(%structtype sret(%structtype) align 4)
-            // Which resulted in:
-            // Invalid struct return type!
-            // % structtype(% structtype)* @__devicelib_catanf
-            continue;
-
             retTypeOption = ReturnOpt::RETURN_STRUCT;
             ai++; // Skip adding the first arg
         }
