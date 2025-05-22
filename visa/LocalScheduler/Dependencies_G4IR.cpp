@@ -140,15 +140,15 @@ static DepType DoMemoryInterfereScratchSend(G4_INST *send1, G4_INST *send2,
         (depT == RET_WAW && !send1IsRead && !send2IsRead) ||
         (depT == RET_RAW && !send1IsRead && send2IsRead)) {
       // scratch guaranteed to return valid linear ImmOff
-      uint16_t leftOff1 = (uint16_t)send1->getMsgDesc()->getOffset()->immOff;
-      uint16_t leftOff2 = (uint16_t)send2->getMsgDesc()->getOffset()->immOff;
+      uint32_t leftOff1 = (uint32_t)send1->getMsgDesc()->getOffset()->immOff;
+      uint32_t leftOff2 = (uint32_t)send2->getMsgDesc()->getOffset()->immOff;
       auto bytesAccessed = [](const G4_INST *send) {
         return send->getMsgDesc()->isRead()
                    ? (uint16_t)send->getMsgDesc()->getDstLenBytes()
                    : (uint16_t)send->getMsgDesc()->getSrc1LenBytes();
       };
-      uint16_t rightOff1 = leftOff1 + bytesAccessed(send1) - 1;
-      uint16_t rightOff2 = leftOff2 + bytesAccessed(send2) - 1;
+      uint32_t rightOff1 = leftOff1 + bytesAccessed(send1) - 1;
+      uint32_t rightOff2 = leftOff2 + bytesAccessed(send2) - 1;
       if (leftOff1 > rightOff2 || leftOff2 > rightOff1) {
         return NODEP;
       }
