@@ -130,6 +130,8 @@ void BiFManagerHandler::LinkBiF(llvm::Module& Module)
 
         if (CallbackLinker == nullptr)
         {
+            BiFSection->get()->setDataLayout(Module.getDataLayout());
+            BiFSection->get()->setTargetTriple(Module.getTargetTriple());
             if (ld.linkInModule(std::move(*BiFSection),
                 llvm::Linker::OverrideFromSrc))
             {
