@@ -346,7 +346,7 @@ DECLARE_IGC_REGKEY(bool, EnableWaveShuffleIndexSinking, true, "Hoist identical i
 DECLARE_IGC_REGKEY(DWORD, WaveShuffleIndexSinkingMaxIterations, 3, "Max number of iterations to run iterative WaveShuffleIndexSinking", false)
 DECLARE_IGC_REGKEY(bool, EnableWaveAllJointReduction, true, "Enable Joint Reduction Optimization.", false)
 DECLARE_IGC_REGKEY(bool, EnablePromoteToPredicatedMemoryAccess, false, "Enable predicated load/store if conversion.", true)
-DECLARE_IGC_REGKEY(bool, EnableIntDivRemIncrementReduction, false, "Enable consecutive Int DivRem increment by constant optimization", false)
+DECLARE_IGC_REGKEY(bool, EnableIntDivRemIncrementReduction, true, "Enable consecutive Int DivRem increment by constant optimization", false)
 DECLARE_IGC_REGKEY(bool, DivRemIncrementCondBranchSimplify, false, "Create branches when simplifying consecutive udiv/urem groups increment dividend by constant greater than 1", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
