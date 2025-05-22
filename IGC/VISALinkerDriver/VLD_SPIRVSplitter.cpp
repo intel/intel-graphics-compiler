@@ -144,20 +144,30 @@ SpvSplitter::Parse(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
 }
 
 bool SpvSplitter::HasEntryPoints() const {
-  if (GetCurrentSPIRVType() == SPIRVTypeEnum::SPIRV_ESIMD)
-    return false;
-
-  if (entry_points_.empty())
+  auto CurSPIRVType = GetCurrentSPIRVType();
+  if (entry_points_.size() == 0)
     return false;
 
   bool AllEntryPointsAreSPMD =
-      std::all_of(entry_points_.begin(), entry_points_.end(),
-                  [&](auto id) { return !esimd_decorated_ids_.count(id); });
-  bool AllEntryPointsAreESIMD = !AllEntryPointsAreSPMD;
+      std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
+        return esimd_decorated_ids_.find(el) == esimd_decorated_ids_.end();
+      });
 
-  if (GetCurrentSPIRVType() == SPIRVTypeEnum::SPIRV_SPMD &&
-      AllEntryPointsAreESIMD)
+  bool AllEntryPointsAreESIMD =
+      std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
+        return esimd_decorated_ids_.find(el) != esimd_decorated_ids_.end();
+      });
+
+  if (CurSPIRVType == SPIRVTypeEnum::SPIRV_ESIMD && AllEntryPointsAreSPMD) {
     return false;
+  }
+
+  if (CurSPIRVType == SPIRVTypeEnum::SPIRV_SPMD && AllEntryPointsAreESIMD) {
+    return false;
+  }
+
+  // We currently do not support entry points in both parts.
+  IGC_ASSERT(AllEntryPointsAreESIMD || AllEntryPointsAreSPMD);
 
   return true;
 }
