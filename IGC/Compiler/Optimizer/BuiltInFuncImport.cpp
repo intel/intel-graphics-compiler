@@ -697,11 +697,8 @@ bool BIImport::runOnModule(Module& M)
                     else
                         global = cast<GlobalVariable>(arg0);
 
-                    IGC_ASSERT(nullptr != global);
-
                     auto* gArray = cast<ConstantDataArray>(global->getInitializer());
                     auto* pFunc = GetBuiltinFunction(gArray->getAsCString(), &M);
-
                     IGC_ASSERT(nullptr != pFunc);
 
                     pFunc->addFnAttr("IFCALL_BUILTIN");
