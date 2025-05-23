@@ -1463,6 +1463,7 @@ public:
     void setTMax(Value* V) { setOperand(15, V); }
     Value* getPayload() const { return getOperand(16); }
     Value* getComparisonValue() const { return getOperand(17); }
+    Value* getInternalRayFlags() const { return getOperand(18); }
 };
 
 class CallShaderHLIntrinsic : public ContinuationHLIntrinsic {
