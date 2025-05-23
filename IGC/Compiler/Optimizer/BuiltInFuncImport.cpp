@@ -686,15 +686,24 @@ bool BIImport::runOnModule(Module& M)
             {
                 if (CallInst* CI = dyn_cast<CallInst>(&*user))
                 {
-                    // Get the function by name
-                    GetElementPtrInst* const funcStrV = cast<GetElementPtrInst>(CI->getArgOperand(0));
-                    IGC_ASSERT(nullptr != funcStrV);
-                    GlobalVariable* const global = cast<GlobalVariable>(funcStrV->getOperand(0));
+                    // Strip if CI->getArgOperand(0) is ConstExpr bitcast which happens when
+                    // Translating with SPIRV-LLVM-Translator >= 16
+                    // Before 16 CI->getArgOperand(0) would return GEP instruction
+                    Value* arg0 = CI->getArgOperand(0)->stripPointerCasts();
+                    GlobalVariable* global = nullptr;
+
+                    if (auto* gepOp = dyn_cast<GEPOperator>(arg0))
+                        global = cast<GlobalVariable>(gepOp->getPointerOperand());
+                    else
+                        global = cast<GlobalVariable>(arg0);
+
                     IGC_ASSERT(nullptr != global);
-                    ConstantDataArray* const gArray = cast<ConstantDataArray>(global->getInitializer());
-                    IGC_ASSERT(nullptr != gArray);
-                    Function* const pFunc = GetBuiltinFunction(gArray->getAsCString(), &M);
+
+                    auto* gArray = cast<ConstantDataArray>(global->getInitializer());
+                    auto* pFunc = GetBuiltinFunction(gArray->getAsCString(), &M);
+
                     IGC_ASSERT(nullptr != pFunc);
+
                     pFunc->addFnAttr("IFCALL_BUILTIN");
                     pFunc->setCallingConv(llvm::CallingConv::SPIR_FUNC);
                     // Replace builtin with the actual function pointer
