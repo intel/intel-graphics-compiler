@@ -729,45 +729,29 @@ Value* RTBuilder::getObjRayOrig(
     RTBuilder::StackPointerVal* perLaneStackPtr, uint32_t dim, Value* ShaderTy,
     Instruction* I, bool checkInstanceLeafPtr)
 {
-
+    auto* transformWorldToObject = CreateOr(
+        {
+            CreateICmpEQ(ShaderTy, getInt32(CallableShaderTypeMD::ClosestHit)),
+        }
+    );
+    Instruction* trueTerm = nullptr;
+    Instruction* falseTerm = nullptr;
     auto* IP = &*GetInsertPoint();
+    SplitBlockAndInsertIfThenElse(transformWorldToObject, IP, &trueTerm, &falseTerm);
 
-    auto* oldBB = IP->getParent();
-    auto* bb = SplitBlock(oldBB, IP);
-
-    auto* isClosestHitBB = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("isClosestHitBB"), IP->getFunction(), bb);
-    SetInsertPoint(isClosestHitBB);
-    auto* isClosestHitBBTerm = CreateBr(bb); // we have to do this because the functions we call are going to split the block again...
-    SetInsertPoint(isClosestHitBBTerm);
+    SetInsertPoint(trueTerm);
     auto* newI = I->clone();
-    Insert(newI);
-    auto* isClosestHitV = this->TransformWorldToObject(perLaneStackPtr, dim, true, ShaderTy, newI, checkInstanceLeafPtr);
+    newI->insertBefore(trueTerm);
+    auto* trueV = this->TransformWorldToObject(perLaneStackPtr, dim, true, ShaderTy, newI, checkInstanceLeafPtr);
     newI->eraseFromParent();
 
-    auto* isMissBB = BasicBlock::Create(Context, VALUE_NAME("isMissBB"), IP->getFunction(), bb);
-    SetInsertPoint(isMissBB);
-    auto* isMissBBTerm = CreateBr(bb);
-    SetInsertPoint(isMissBBTerm);
-    auto* isMissV = getWorldRayOrig(perLaneStackPtr, dim);
-
-    auto* defaultBB = BasicBlock::Create(Context, VALUE_NAME("default"), IP->getFunction(), bb);
-    SetInsertPoint(defaultBB);
-    auto* defaultBBTerm = CreateBr(bb);
-    SetInsertPoint(defaultBBTerm);
-    auto* defaultV = getMemRayOrig(perLaneStackPtr, dim, BOTTOM_LEVEL_BVH, VALUE_NAME("ObjRayOrig[" + Twine(dim) + "]"));
-
-    // create switch statement
-    oldBB->getTerminator()->eraseFromParent();
-    SetInsertPoint(oldBB);
-    auto* switchI = CreateSwitch(ShaderTy, defaultBB);
-    switchI->addCase(getInt32(Miss), isMissBB);
-    switchI->addCase(getInt32(ClosestHit), isClosestHitBB);
+    SetInsertPoint(falseTerm);
+    auto* falseV = getMemRayOrig(perLaneStackPtr, dim, BOTTOM_LEVEL_BVH, VALUE_NAME("ObjRayOrig[" + Twine(dim) + "]"));
 
     SetInsertPoint(IP);
-    auto* info = CreatePHI(isClosestHitV->getType(), 3);
-    info->addIncoming(isClosestHitV, isClosestHitBBTerm->getParent());
-    info->addIncoming(isMissV, isMissBBTerm->getParent());
-    info->addIncoming(defaultV, defaultBBTerm->getParent());
+    auto* info = CreatePHI(trueV->getType(), 2);
+    info->addIncoming(trueV, trueTerm->getParent());
+    info->addIncoming(falseV, falseTerm->getParent());
 
     return info;
 }
@@ -776,45 +760,29 @@ Value* RTBuilder::getObjRayDir(
     RTBuilder::StackPointerVal* perLaneStackPtr, uint32_t dim, Value* ShaderTy,
     Instruction* I, bool checkInstanceLeafPtr)
 {
-
+    auto* transformWorldToObject = CreateOr(
+        {
+            CreateICmpEQ(ShaderTy, getInt32(CallableShaderTypeMD::ClosestHit)),
+        }
+    );
+    Instruction* trueTerm = nullptr;
+    Instruction* falseTerm = nullptr;
     auto* IP = &*GetInsertPoint();
+    SplitBlockAndInsertIfThenElse(transformWorldToObject, IP, &trueTerm, &falseTerm);
 
-    auto* oldBB = IP->getParent();
-    auto* bb = SplitBlock(oldBB, IP);
-
-    auto* isClosestHitBB = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("isClosestHitBB"), IP->getFunction(), bb);
-    SetInsertPoint(isClosestHitBB);
-    auto* isClosestHitBBTerm = CreateBr(bb); // we have to do this because the functions we call are going to split the block again...
-    SetInsertPoint(isClosestHitBBTerm);
+    SetInsertPoint(trueTerm);
     auto* newI = I->clone();
-    Insert(newI);
-    auto* isClosestHitV = this->TransformWorldToObject(perLaneStackPtr, dim, false, ShaderTy, newI, checkInstanceLeafPtr);
+    newI->insertBefore(trueTerm);
+    auto* trueV = this->TransformWorldToObject(perLaneStackPtr, dim, false, ShaderTy, newI, checkInstanceLeafPtr);
     newI->eraseFromParent();
 
-    auto* isMissBB = BasicBlock::Create(Context, VALUE_NAME("isMissBB"), IP->getFunction(), bb);
-    SetInsertPoint(isMissBB);
-    auto* isMissBBTerm = CreateBr(bb);
-    SetInsertPoint(isMissBBTerm);
-    auto* isMissV = getWorldRayDir(perLaneStackPtr, dim);
-
-    auto* defaultBB = BasicBlock::Create(Context, VALUE_NAME("default"), IP->getFunction(), bb);
-    SetInsertPoint(defaultBB);
-    auto* defaultBBTerm = CreateBr(bb);
-    SetInsertPoint(defaultBBTerm);
-    auto* defaultV = getMemRayDir(perLaneStackPtr, dim, BOTTOM_LEVEL_BVH, VALUE_NAME("ObjRayDir[" + Twine(dim) + "]"));
-
-    // create switch statement
-    oldBB->getTerminator()->eraseFromParent();
-    SetInsertPoint(oldBB);
-    auto* switchI = CreateSwitch(ShaderTy, defaultBB);
-    switchI->addCase(getInt32(Miss), isMissBB);
-    switchI->addCase(getInt32(ClosestHit), isClosestHitBB);
+    SetInsertPoint(falseTerm);
+    auto* falseV = getMemRayDir(perLaneStackPtr, dim, BOTTOM_LEVEL_BVH, VALUE_NAME("ObjRayDir[" + Twine(dim) + "]"));
 
     SetInsertPoint(IP);
-    auto* info = CreatePHI(isClosestHitV->getType(), 3);
-    info->addIncoming(isClosestHitV, isClosestHitBBTerm->getParent());
-    info->addIncoming(isMissV, isMissBBTerm->getParent());
-    info->addIncoming(defaultV, defaultBBTerm->getParent());
+    auto* info = CreatePHI(trueV->getType(), 2);
+    info->addIncoming(trueV, trueTerm->getParent());
+    info->addIncoming(falseV, falseTerm->getParent());
 
     return info;
 }

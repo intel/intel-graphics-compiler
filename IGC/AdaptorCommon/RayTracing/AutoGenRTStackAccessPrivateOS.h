@@ -1976,7 +1976,7 @@ auto* _getObjWorldAndWorldObj_Xe(Value* arg_0, Value* arg_1, Value* arg_2, Value
   SetInsertPoint(BB_5);
   auto* V_31 = CreateAnd(arg_1, getInt32(3));
   auto* V_32 = CreateICmpEQ(V_31, getInt32(0));
-  auto* V_33 = CreateSelect(V_32, ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEEsingle(), APInt(32, 0x3f800000))), ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEEsingle(), APInt(32, 0x0))));
+  auto* V_33 = CreateSelect(V_32, ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEEsingle(), APInt(32, 0x0))), ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEEsingle(), APInt(32, 0x3f800000))));
   CreateBr(BB_7);
   V_30->addIncoming(V_29, BB_6);
   V_30->addIncoming(V_33, BB_5);
@@ -2023,7 +2023,7 @@ auto* _getObjWorldAndWorldObj_Xe3(Value* arg_0, Value* arg_1, Value* arg_2, Valu
   SetInsertPoint(BB_5);
   auto* V_29 = CreateAnd(arg_1, getInt32(3));
   auto* V_30 = CreateICmpEQ(V_29, getInt32(0));
-  auto* V_31 = CreateSelect(V_30, ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEEsingle(), APInt(32, 0x3f800000))), ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEEsingle(), APInt(32, 0x0))));
+  auto* V_31 = CreateSelect(V_30, ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEEsingle(), APInt(32, 0x0))), ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEEsingle(), APInt(32, 0x3f800000))));
   CreateBr(BB_7);
   V_28->addIncoming(V_27, BB_6);
   V_28->addIncoming(V_31, BB_5);
