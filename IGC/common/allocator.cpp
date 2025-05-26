@@ -408,7 +408,7 @@ inline void* operator new(size_t size)
     return storage;
 }
 
-inline void operator delete(void* ptr)
+inline void operator delete(void* ptr) noexcept
 {
     CAllocator::Deallocate(ptr);
 }
@@ -419,7 +419,7 @@ inline void* operator new[](size_t size)
     return ::operator new(size);
 }
 
-inline void operator delete[](void* ptr)
+inline void operator delete[](void* ptr) noexcept
 {
     CAllocator::Deallocate(ptr);
 }
