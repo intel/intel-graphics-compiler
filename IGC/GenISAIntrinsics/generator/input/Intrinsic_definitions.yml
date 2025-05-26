@@ -11464,6 +11464,10 @@ intrinsics:
                 comment: "reserved"
             - !<ArgumentDefinition>
                 name: Arg18
+                type_definition: *i32
+                comment: "reserved"
+            - !<ArgumentDefinition>
+                name: Arg19
                 type_definition: *f32
                 comment: "reserved"
         attributes:
