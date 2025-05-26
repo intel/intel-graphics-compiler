@@ -9579,6 +9579,11 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     }
     case GenISAIntrinsic::GenISA_getSR0:
     {
+        if (!isa<ConstantInt>(inst->getOperand(0)))
+        {
+            m_pCtx->EmitError("Expected constant operand for GenISA_getSR0 intrinsic.", inst);
+            return;
+        }
         m_encoder->SetSrcSubReg(0, static_cast<uint16_t>(GetImmediateVal(inst->getOperand(0))));
         m_encoder->Copy(m_destination, m_currShader->GetSR0());
         m_encoder->Push();
