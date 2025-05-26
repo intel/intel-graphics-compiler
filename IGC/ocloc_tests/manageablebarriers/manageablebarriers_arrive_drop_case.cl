@@ -1,8 +1,8 @@
-// REQUIRES: regkeys, pvc-supported
-// RUN: ocloc compile -file %s -options " -cl-std=CL2.0 -igc_opts 'PrintToConsole=1 PrintAfter=ManageableBarriersResolution'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK
+// REQUIRES: regkeys, pvc-supported, llvm-16-plus
+// RUN: ocloc compile -file %s -options " -cl-std=CL2.0 -igc_opts 'EnableOpaquePointersBackend=1 PrintToConsole=1 PrintAfter=ManageableBarriersResolution'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK
 
 //// Check if we have atomic to decrease the count of producers
-// CHECK: call i32 @llvm.genx.GenISA.intatomicrawsinglelane.i32.p3i32.i32(i32 addrspace(3)* [[PTR:%[0-9]+]], i32 %PtrDstToInt, i32 0, i32 3)
+// CHECK: call i32 @llvm.genx.GenISA.intatomicrawsinglelane.i32.p3.i32(ptr addrspace(3) [[PTR:%[0-9]+]], i32 [[INT:%[0-9]+]], i32 0, i32 3)
 
 #pragma OPENCL EXTENSION cl_khr_subgroups : enable
 
