@@ -291,8 +291,9 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
         auto ai = pFunc->arg_begin();
         auto ei = pFunc->arg_end();
 
+        bool functionHasPromotableSRetArg = FunctionHasPromotableSRetArg(M, pFunc);
         // Create the new function signature by replacing the illegal types
-        if (FunctionHasPromotableSRetArg(M, pFunc))
+        if (functionHasPromotableSRetArg)
         {
             retTypeOption = ReturnOpt::RETURN_STRUCT;
             ai++; // Skip adding the first arg
@@ -319,6 +320,18 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
             {
                 fixArgType = true;
                 argTypes.push_back(PromotedStructValueType(M, ai));
+
+                if (pFunc->isDeclaration())
+                {
+                  // Since this is declaration only, then FixFunctionBody() will not fix it
+                  ai->removeAttr(llvm::Attribute::ByVal);
+
+                  // When we're promoting struct pointer to struct,
+                  // then we need to remove alignment attribute
+                  if (ai->getType()->isPtrOrPtrVectorTy()) {
+                    ai->removeAttr(llvm::Attribute::Alignment);
+                  }
+                }
             }
             else if (!isLegalSignatureType(M, ai->getType(), isStackCall))
             {
@@ -343,7 +356,9 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
             Function* pNewFunc = Function::Create(signature, pFunc->getLinkage(), pFunc->getName(), pFunc->getParent());
             pNewFunc->takeName(pFunc);
             pNewFunc->setCallingConv(pFunc->getCallingConv());
-            pNewFunc->setAttributes(pFunc->getAttributes());
+
+            // Copy attributes, but adjust their index if needed.
+           CopyAttributesAndAdjustForSkippedFunctionArgs(pFunc, pNewFunc, functionHasPromotableSRetArg);
 
             // Since we need to pass in pointers to be dereferenced by the new function,
             // remove the memory attribute restrictions on read access.
@@ -359,6 +374,36 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
             oldToNewFuncMap[pFunc] = pNewFunc;
         }
     }
+}
+
+void LegalizeFunctionSignatures::CopyAttributesAndAdjustForSkippedFunctionArgs(llvm::Function* pFunc, llvm::Function* pNewFunc, bool functionHasPromotableSRetArg)
+{
+  auto originalAttrs = pFunc->getAttributes();
+  SmallVector<AttributeSet, 4> NewArgAttrs(pFunc->arg_size());
+
+  bool shouldSkipFirstArg = functionHasPromotableSRetArg
+    && pFunc->hasParamAttribute(0, llvm::Attribute::StructRet);
+
+  if (shouldSkipFirstArg)
+  {
+    for (auto& Arg : pFunc->args())
+    {
+      if (Arg.getArgNo() == 0)
+        continue;
+
+      NewArgAttrs[Arg.getArgNo() - 1] = originalAttrs.getParamAttrs(Arg.getArgNo());
+    }
+  }
+  else
+  {
+    for (auto& Arg : pFunc->args())
+    {
+      NewArgAttrs[Arg.getArgNo()] = originalAttrs.getParamAttrs(Arg.getArgNo());
+    }
+  }
+
+  auto newAttrs = llvm::AttributeList::get(pFunc->getContext(), originalAttrs.getFnAttrs(), originalAttrs.getRetAttrs(), NewArgAttrs);
+  pNewFunc->setAttributes(newAttrs);
 }
 
 void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
