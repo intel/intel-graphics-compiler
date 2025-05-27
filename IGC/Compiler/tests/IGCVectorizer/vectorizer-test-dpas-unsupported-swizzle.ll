@@ -109,3 +109,9 @@ declare void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64, i32, i32, i32, i32, i3
 
 ; uselistorder directives
 uselistorder <8 x float> (<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1)* @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32, { 1, 0 }
+
+!igc.functions = !{!0}
+!0 = !{void ()* @quux, !1}
+!1 = !{!2, !3}
+!2 = !{!"function_type", i32 0}
+!3 = !{!"sub_group_size", i32 16}

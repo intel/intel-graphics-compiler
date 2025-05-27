@@ -51,6 +51,7 @@ class IGCVectorizer : public llvm::FunctionPass {
     };
 
     CodeGenContext *CGCtx = nullptr;
+    IGCMD::MetaDataUtils* MDUtils = nullptr;
 
     // when we vectorize, we build a new vector chain,
     // this map contains associations between scalar and vector
@@ -67,6 +68,7 @@ class IGCVectorizer : public llvm::FunctionPass {
     std::string LogStr;
     llvm::raw_string_ostream OutputLogStream = raw_string_ostream(LogStr);
     Module* M = nullptr;
+    bool checkIfSIMD16(llvm::Function &F);
     void initializeLogFile(Function& F);
     void writeLog();
 
@@ -104,6 +106,7 @@ class IGCVectorizer : public llvm::FunctionPass {
     virtual bool runOnFunction(llvm::Function &F) override;
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
         AU.addRequired<CodeGenContextWrapper>();
+        AU.addRequired<MetaDataUtilsWrapper>();
     }
     IGCVectorizer();
     IGCVectorizer(const std::string& FileName);

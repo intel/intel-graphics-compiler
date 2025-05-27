@@ -83,3 +83,9 @@ declare <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64, i32, i32, i32, i32
 
 declare void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32, <8 x i32>)
 
+!igc.functions = !{!0}
+!0 = !{void ()* @quux, !1}
+!1 = !{!2, !3}
+!2 = !{!"function_type", i32 0}
+!3 = !{!"sub_group_size", i32 16}
+
