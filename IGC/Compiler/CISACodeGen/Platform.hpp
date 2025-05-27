@@ -1911,7 +1911,7 @@ bool allowProceedBasedApproachForRayQueryDynamicRayManagementMechanism() const
 }
 
 bool allowsMoviForType(VISA_Type type) const {
-  return IGC_GET_FLAG_VALUE(EnableEmitMoreMoviCases) && (type == ISA_TYPE_UD || type == ISA_TYPE_D);
+  return (type == ISA_TYPE_UD || type == ISA_TYPE_D);
 }
 
 };

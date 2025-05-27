@@ -1221,7 +1221,7 @@ bool HWConformity::evenlySplitInst(INST_LIST_ITER iter, G4_BB *bb,
         } else if (srcs[j]->isScalarSrc() || (j == 0 && op == G4_line)) {
           // no need to split, but need to duplicate
           newInst->setSrc(builder.duplicateOperand(srcs[j]), j);
-        } else if (op == G4_movi && srcs[j]->asSrcRegRegion()->getRegion()->isRegion110()) {
+        } else if (op == G4_movi) {
           // we create temp region which is in VxH format
           RegionDesc VxHregionDesc = RegionDesc(UNDEFINED_SHORT, 1, 0);
 

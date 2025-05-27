@@ -5845,9 +5845,10 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         // Enabling movi requires that first lane even inactive will be within bounds of register we want.
         // It also is limited to accessing single GRF.
         // For uniform channel which will be simd1 there's probably no gain in movi.
+        bool moviPromotionEnabled = IGC_GET_FLAG_VALUE(EnableEmitMoreMoviCases);
         bool isSingleGrf = data->GetSize() <= (unsigned)getGRFSize();
         bool platformMoviTypeCheck = m_currShader->m_Platform->allowsMoviForType(data->GetType());
-        bool forcePreventOOB = isSingleGrf && platformMoviTypeCheck && !channelUniform;
+        bool forcePreventOOB = isSingleGrf && moviPromotionEnabled && platformMoviTypeCheck && !channelUniform;
 
         if (defaultConditions || forcePreventOOB)
         {
