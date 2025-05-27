@@ -39,6 +39,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/MemOpt.h"
 #include "Probe/Assertion.h"
 #include <DebugInfo/DwarfDebug.cpp>
+#include "MemOptUtils.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -116,9 +117,9 @@ namespace {
 
         void buildProfitVectorLengths(Function& F);
 
-        bool mergeLoad(LoadInst* LeadingLoad, MemRefListTy::iterator MI,
+        bool mergeLoad(ALoadInst& LeadingLoad, MemRefListTy::iterator MI,
             MemRefListTy& MemRefs, TrivialMemRefListTy& ToOpt);
-        bool mergeStore(StoreInst* LeadingStore, MemRefListTy::iterator MI,
+        bool mergeStore(AStoreInst& LeadingStore, MemRefListTy::iterator MI,
             MemRefListTy& MemRefs, TrivialMemRefListTy& ToOpt);
         bool removeRedBlockRead(GenIntrinsicInst* LeadingLoad, MemRefListTy::iterator MI,
             MemRefListTy& MemRefs, TrivialMemRefListTy& ToOpt, unsigned& SimdSize);
@@ -133,37 +134,8 @@ namespace {
         Value* getShuffle(Value* ShflId, Instruction* BlockReadToOptimize,
             Value* SgId, llvm::IRBuilder<>& Builder, unsigned& ToOptSize);
 
-        unsigned getNumElements(Type* Ty) const {
-            return Ty->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() : 1;
-        }
-
         Type* getVectorElementType(Type* Ty) const {
             return isa<VectorType>(Ty) ? cast<VectorType>(Ty)->getElementType() : Ty;
-        }
-
-        MemoryLocation getLocation(Instruction* I) const {
-
-            if (LoadInst * LI = dyn_cast<LoadInst>(I))
-                return MemoryLocation::get(LI);
-
-            if (StoreInst * SI = dyn_cast<StoreInst>(I))
-                return MemoryLocation::get(SI);
-
-            if (isa<LdRawIntrinsic>(I))
-                return llvm::MemoryLocation::getForArgument(llvm::cast<llvm::CallInst>(I), 0, TLI);
-
-            if (isa<StoreRawIntrinsic>(I))
-                return llvm::MemoryLocation::getForArgument(llvm::cast<llvm::CallInst>(I), 0, TLI);
-
-            if (GenIntrinsicInst* GInst = dyn_cast<GenIntrinsicInst>(I)) {
-                if (GInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead) {
-                    return llvm::MemoryLocation::getForArgument(llvm::cast<llvm::CallInst>(I), 0, TLI);
-                }
-            }
-
-            // TODO: Do coarse-grained thing so far. Need better checking for
-            // non load or store instructions which may read/write memory.
-            return MemoryLocation();
         }
 
         bool hasSameSize(Type* A, Type* B) const {
@@ -173,50 +145,10 @@ namespace {
             return DL->getTypeStoreSize(A) == DL->getTypeStoreSize(B);
         }
 
-        Value* createBitOrPointerCast(Value* V, Type* DestTy,
-            IRBuilder<>& Builder) const {
-            if (V->getType() == DestTy)
-                return V;
-
-            if (V->getType()->isPointerTy() && DestTy->isPointerTy()) {
-                PointerType* SrcPtrTy = cast<PointerType>(V->getType());
-                PointerType* DstPtrTy = cast<PointerType>(DestTy);
-                if (SrcPtrTy->getPointerAddressSpace() !=
-                    DstPtrTy->getPointerAddressSpace())
-                    return Builder.CreateAddrSpaceCast(V, DestTy);
-            }
-
-            if (V->getType()->isPointerTy()) {
-                if (DestTy->isIntegerTy()) {
-                    return Builder.CreatePtrToInt(V, DestTy);
-                }
-                else if (DestTy->isFloatingPointTy()) {
-                    uint32_t Size = (uint32_t)DestTy->getPrimitiveSizeInBits();
-                    Value* Cast = Builder.CreatePtrToInt(
-                        V, Builder.getIntNTy(Size));
-                    return Builder.CreateBitCast(Cast, DestTy);
-                }
-            }
-
-            if (DestTy->isPointerTy()) {
-                if (V->getType()->isIntegerTy()) {
-                    return Builder.CreateIntToPtr(V, DestTy);
-                }
-                else if (V->getType()->isFloatingPointTy()) {
-                    uint32_t Size = (uint32_t)V->getType()->getPrimitiveSizeInBits();
-                    Value* Cast = Builder.CreateBitCast(
-                        V, Builder.getIntNTy(Size));
-                    return Builder.CreateIntToPtr(Cast, DestTy);
-                }
-            }
-
-            return Builder.CreateBitCast(V, DestTy);
-        }
-
-        bool isSafeToMergeLoad(const LoadInst* Ld,
+        bool isSafeToMergeLoad(const ALoadInst& Ld,
             const SmallVectorImpl<Instruction*>& checkList) const;
         bool isSafeToMergeStores(
-            const SmallVectorImpl<std::tuple<StoreInst*, int64_t, MemRefListTy::iterator>>& Stores,
+            const SmallVectorImpl<std::tuple<Instruction*, int64_t, MemRefListTy::iterator>>& Stores,
             const SmallVectorImpl<Instruction*>& checkList) const;
 
         bool shouldSkip(const Value* Ptr) const {
@@ -245,7 +177,9 @@ namespace {
                 return true;
 
             if (auto GInst = dyn_cast<GenIntrinsicInst>(I)) {
-                if (GInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead) {
+                if (GInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead ||
+                    GInst->getIntrinsicID() == GenISAIntrinsic::GenISA_PredicatedLoad ||
+                    GInst->getIntrinsicID() == GenISAIntrinsic::GenISA_PredicatedStore){
                     return shouldSkip(I->getOperand(0));
                 }
             }
@@ -260,11 +194,11 @@ namespace {
         }
 
         template <typename AccessInstruction>
-        bool checkAlignmentBeforeMerge(const AccessInstruction* inst,
-            SmallVector<std::tuple<AccessInstruction*, int64_t, MemRefListTy::iterator>, 8> & AccessIntrs,
+        bool checkAlignmentBeforeMerge(const AccessInstruction& inst,
+            SmallVector<std::tuple<Instruction*, int64_t, MemRefListTy::iterator>, 8> & AccessIntrs,
             unsigned& NumElts)
         {
-            auto alignment = IGCLLVM::getAlignmentValue(inst);
+            auto alignment = inst.getAlignmentValue();
             if (alignment == 0)
             {
                 // SROA LLVM pass may sometimes set a load/store alignment to 0. It happens when
@@ -277,9 +211,9 @@ namespace {
                 CGC->EmitWarning("MemOpt expects alignment to be always explicitly set for the leading instruction!");
             }
 
-            if (alignment < 4 && !WI->isUniform(inst))
+            if (alignment < 4 && !WI->isUniform(inst.inst()))
             {
-                llvm::Type* dataType = isa<LoadInst>(inst) ? inst->getType() : inst->getOperand(0)->getType();
+                llvm::Type* dataType = inst.getValue()->getType();
                 unsigned scalarTypeSizeInBytes = unsigned(DL->getTypeSizeInBits(dataType->getScalarType()) / 8);
 
                 // Need the first offset value (not necessarily zero)
@@ -291,10 +225,8 @@ namespace {
                     int64_t accessSize = 0;
                     int64_t cur_offset = std::get<1>(*rit);
                     auto acessInst = std::get<0>(*rit);
-                    if (isa<LoadInst>(acessInst))
-                        accessSize = int64_t(DL->getTypeSizeInBits(acessInst->getType())) / 8;
-                    else
-                        accessSize = int64_t(DL->getTypeSizeInBits(acessInst->getOperand(0)->getType())) / 8;
+                    auto AI = AccessInstruction::get(acessInst);
+                    accessSize = int64_t(DL->getTypeSizeInBits(AI->getValue()->getType())) / 8;
                     mergedSize = cur_offset - firstOffset + accessSize;
                     // limit the size of merge when alignment < 4
                     if (mergedSize > 8)
@@ -309,7 +241,7 @@ namespace {
                 for (auto rit = AccessIntrs.rbegin(),
                     rie = AccessIntrs.rend(); rit != rie; ++rit)
                 {
-                    if (IGCLLVM::getAlignmentValue(std::get<0>(*rit)) >= 4)
+                    if (AccessInstruction::get(std::get<0>(*rit))->getAlignmentValue() >= 4)
                         return false;
                 }
 
@@ -543,11 +475,11 @@ bool MemOpt::runOnFunction(Function& F) {
             if (!I)
                 continue;
 
-            if (LoadInst * LI = dyn_cast<LoadInst>(I))
-                Changed |= mergeLoad(LI, MI, MemRefs, MemRefsToOptimize);
-            else if (StoreInst* SI = dyn_cast<StoreInst>(I)) {
+            if (auto ALI = ALoadInst::get(I); ALI.has_value())
+                Changed |= mergeLoad(ALI.value(), MI, MemRefs, MemRefsToOptimize);
+            else if (auto ASI = AStoreInst::get(I); ASI.has_value()) {
                 if (!DisableMergeStore)
-                    Changed |= mergeStore(SI, MI, MemRefs, MemRefsToOptimize);
+                    Changed |= mergeStore(ASI.value(), MI, MemRefs, MemRefsToOptimize);
             }
             else if (EnableRemoveRedBlockreads) {
                 if (GenIntrinsicInst* GInst = dyn_cast<GenIntrinsicInst>(I)) {
@@ -610,7 +542,7 @@ bool MemOpt::removeRedBlockRead(GenIntrinsicInst* LeadingBlockRead,
     const unsigned windowEnd = Limit + MI->second;
     auto ME = MemRefs.end();
 
-    MemoryLocation LeadingBlockReadMemLoc = getLocation(cast<Instruction>(LeadingBlockRead));
+    MemoryLocation LeadingBlockReadMemLoc = getLocation(cast<Instruction>(LeadingBlockRead), TLI);
     Type* LeadingBlockReadType = LeadingBlockRead->getType();
     Value* LeadingBlockReadBase = LeadingBlockRead->getOperand(0)->stripPointerCasts();
 
@@ -652,7 +584,7 @@ bool MemOpt::removeRedBlockRead(GenIntrinsicInst* LeadingBlockRead,
             }
         }
         else if (NextMemRef->mayWriteToMemory()) {
-            MemoryLocation WriteInstrMemLoc = getLocation(NextMemRef);
+            MemoryLocation WriteInstrMemLoc = getLocation(NextMemRef, TLI);
             if (!WriteInstrMemLoc.Ptr || !LeadingBlockReadMemLoc.Ptr || AA->alias(WriteInstrMemLoc, LeadingBlockReadMemLoc)) {
                 break;
             }
@@ -710,6 +642,76 @@ bool MemOpt::removeRedBlockRead(GenIntrinsicInst* LeadingBlockRead,
     }
     aMI->first = BlockReadToOptimize;
     return true;
+}
+
+namespace {
+    unsigned getNumElements(Type* Ty) {
+        return Ty->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() : 1;
+    }
+
+    template <typename T>
+    Value* createBitOrPointerCast(Value* V, Type* DestTy,
+        IGCIRBuilder<T>& Builder) {
+        if (V->getType() == DestTy)
+            return V;
+        if (V->getType()->isPointerTy() && DestTy->isPointerTy()) {
+            PointerType* SrcPtrTy = cast<PointerType>(V->getType());
+            PointerType* DstPtrTy = cast<PointerType>(DestTy);
+            if (SrcPtrTy->getPointerAddressSpace() !=
+                DstPtrTy->getPointerAddressSpace())
+                return Builder.CreateAddrSpaceCast(V, DestTy);
+        }
+        if (V->getType()->isPointerTy()) {
+            if (DestTy->isIntegerTy()) {
+                return Builder.CreatePtrToInt(V, DestTy);
+            }
+            else if (DestTy->isFloatingPointTy()) {
+                uint32_t Size = (uint32_t)DestTy->getPrimitiveSizeInBits();
+                Value* Cast = Builder.CreatePtrToInt(
+                    V, Builder.getIntNTy(Size));
+                return Builder.CreateBitCast(Cast, DestTy);
+            }
+        }
+        if (DestTy->isPointerTy()) {
+            if (V->getType()->isIntegerTy()) {
+                return Builder.CreateIntToPtr(V, DestTy);
+            }
+            else if (V->getType()->isFloatingPointTy()) {
+                uint32_t Size = (uint32_t)V->getType()->getPrimitiveSizeInBits();
+                Value* Cast = Builder.CreateBitCast(
+                    V, Builder.getIntNTy(Size));
+                return Builder.CreateIntToPtr(Cast, DestTy);
+            }
+        }
+        return Builder.CreateBitCast(V, DestTy);
+    }
+
+    template <typename T>
+    Value* CreateNewMergeValue(IGCIRBuilder<T>& Builder, Type* Ty,
+                               const SmallVector<Instruction *>& LoadsToMerge) {
+        Value* NewMergeValue = UndefValue::get(Ty);
+        unsigned idx = 0;
+        for (auto* Inst : LoadsToMerge) {
+            PredicatedLoadIntrinsic* PLI = ALoadInst::get(Inst)->getPredicatedLoadIntrinsic();
+            if (!PLI)
+                return nullptr;
+            Value* MergeValue = PLI->getMergeValue();
+            unsigned NumElements = getNumElements(MergeValue->getType());
+            Type* ScalarTy = Ty->getScalarType();
+            if (NumElements == 1) {
+                MergeValue = createBitOrPointerCast(MergeValue, ScalarTy, Builder);
+                NewMergeValue = Builder.CreateInsertElement(NewMergeValue, MergeValue, Builder.getInt32(idx++));
+                continue;
+            }
+
+            for (unsigned i = 0; i < NumElements; ++i) {
+                Value* ExtractValue = Builder.CreateExtractElement(MergeValue, Builder.getInt32(i));
+                ExtractValue = createBitOrPointerCast(ExtractValue, ScalarTy, Builder);
+                NewMergeValue = Builder.CreateInsertElement(NewMergeValue, ExtractValue, Builder.getInt32(idx++));
+            }
+        }
+        return NewMergeValue;
+    }
 }
 
 //Removes redundant blockread if both blockreads are scalar.
@@ -998,7 +1000,7 @@ std::optional<unsigned> MemOpt::chainedSelectAndPhis(Instruction* Inst , unsigne
     return MaxRemDepth;
 }
 
-bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
+bool MemOpt::mergeLoad(ALoadInst& LeadingLoad,
     MemRefListTy::iterator aMI, MemRefListTy& MemRefs,
     TrivialMemRefListTy& ToOpt)
 {
@@ -1017,15 +1019,15 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     //
     // Return value:  byte offset to LeadLastIdx. Return 0 if unknown.
     auto getGEPIdxDiffIfAppliable = [this](const SCEV*& LeadLastIdx,
-        LoadInst* LeadLd, LoadInst* NextLd)
+        ALoadInst& LeadLd, ALoadInst& NextLd)
     {
         // Only handle single-index GEP for now.
-        auto LeadGEP = dyn_cast<GetElementPtrInst>(LeadLd->getPointerOperand());
-        auto NextGEP = dyn_cast<GetElementPtrInst>(NextLd->getPointerOperand());
+        auto LeadGEP = dyn_cast<GetElementPtrInst>(LeadLd.getPointerOperand());
+        auto NextGEP = dyn_cast<GetElementPtrInst>(NextLd.getPointerOperand());
         if (LeadGEP && NextGEP &&
             LeadGEP->getPointerOperand() == NextGEP->getPointerOperand() &&
             LeadGEP->getNumIndices() == NextGEP->getNumIndices() &&
-            LeadLd->getType() == NextLd->getType() &&
+            LeadLd.getType() == NextLd.getType() &&
             LeadGEP->getNumIndices() > 0) {
             const int N = LeadGEP->getNumIndices();
             for (int i = 1; i < N; ++i) {
@@ -1069,7 +1071,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
                 auto Diff = dyn_cast<SCEVConstant>(SE->getMinusSCEV(NextIdx, LeadLastIdx));
                 if (Diff) {
                     // This returns 16 for <3 x i32>, not 12!
-                    uint32_t LoadedBytes = (uint32_t)DL->getTypeStoreSize(NextLd->getType());
+                    uint32_t LoadedBytes = (uint32_t)DL->getTypeStoreSize(NextLd.getType());
 
                     int64_t eltDiff = Diff->getValue()->getSExtValue();
                     return (int64_t)(eltDiff * LoadedBytes);
@@ -1081,16 +1083,14 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
 
     // Push the leading load into the list to be optimized (after
     // canonicalization.) It will be swapped with the new one if it's merged.
-    ToOpt.push_back(LeadingLoad);
+    ToOpt.push_back(LeadingLoad.inst());
 
-    if (!LeadingLoad->isSimple())
+    if (!LeadingLoad.isSimple())
         return false;
 
-    if (!LeadingLoad->isUnordered())
-        return false;
-
-    if (LeadingLoad->getType()->isPointerTy()) {
-        unsigned int AS = LeadingLoad->getType()->getPointerAddressSpace();
+    Type* LeadingLoadType = LeadingLoad.getType();
+    if (LeadingLoadType->isPointerTy()) {
+        unsigned int AS = LeadingLoadType->getPointerAddressSpace();
         if (CGC->getRegisterPointerSizeInBits(AS) != DL->getPointerSizeInBits(AS)) {
             // we cannot coalesce pointers which have been reduced as they are
             // bigger in memory than in register
@@ -1098,7 +1098,6 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         }
     }
 
-    Type* LeadingLoadType = LeadingLoad->getType();
     Type* LeadingLoadScalarType = LeadingLoadType->getScalarType();
     unsigned TypeSizeInBits =
         unsigned(DL->getTypeSizeInBits(LeadingLoadScalarType));
@@ -1107,7 +1106,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     SmallVector<unsigned, 8> profitVec;
     // FIXME: Enable for OCL shader only as other clients have regressions but
     // there's no way to trace down.
-    bool isUniformLoad = (CGC->type == ShaderType::OPENCL_SHADER) && (WI->isUniform(LeadingLoad));
+    bool isUniformLoad = (CGC->type == ShaderType::OPENCL_SHADER) && (WI->isUniform(LeadingLoad.inst()));
     if (isUniformLoad) {
         unsigned C = IGC_GET_FLAG_VALUE(UniformMemOpt4OW);
         C = (C == 1) ? 512 : 256;
@@ -1128,7 +1127,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     if (NumElts > profitVec[0])
         return false;
 
-    if (auto* Ptr = dyn_cast<Instruction>(LeadingLoad->getPointerOperand()))
+    if (auto* Ptr = dyn_cast<Instruction>(LeadingLoad.getPointerOperand()))
     {
         llvm::DenseMap<Instruction*, unsigned> depthTracking;
         if (!chainedSelectAndPhis(Ptr, 0, depthTracking))
@@ -1137,13 +1136,13 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         }
     }
 
-    const SCEV* LeadingPtr = SE->getSCEV(LeadingLoad->getPointerOperand());
+    const SCEV* LeadingPtr = SE->getSCEV(LeadingLoad.getPointerOperand());
     if (isa<SCEVCouldNotCompute>(LeadingPtr))
         return false;
     const SCEV* LeadingLastIdx = nullptr; // set on-demand
     bool DoCmpOnLastIdx = false;
     if (!EnableCanonicalizeGEP()) {
-        auto aGEP = dyn_cast<GetElementPtrInst>(LeadingLoad->getPointerOperand());
+        auto aGEP = dyn_cast<GetElementPtrInst>(LeadingLoad.getPointerOperand());
         if (aGEP && aGEP->hasIndices()) {
             // index starts from 1
             Value* ix = aGEP->getOperand(aGEP->getNumIndices());
@@ -1151,10 +1150,10 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         }
     }
 
-    // LoadInst, Offset, MemRefListTy::iterator, LeadingLoad's int2PtrOffset
-    SmallVector<std::tuple<LoadInst*, int64_t, MemRefListTy::iterator>, 8>
+    // ALoadInst, Offset, MemRefListTy::iterator, LeadingLoad's int2PtrOffset
+    SmallVector<std::tuple<Instruction *, int64_t, MemRefListTy::iterator>, 8>
         LoadsToMerge;
-    LoadsToMerge.push_back(std::make_tuple(LeadingLoad, 0, MI));
+    LoadsToMerge.push_back(std::make_tuple(LeadingLoad.inst(), 0, MI));
 
     // Loads to be merged is scanned in the program order and will be merged into
     // the leading load. So two edges of that consecutive region are checked
@@ -1191,24 +1190,25 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
 
         CheckList.push_back(NextMemRef);
 
-        LoadInst* NextLoad = dyn_cast<LoadInst>(NextMemRef);
+        auto NextLoad = ALoadInst::get(NextMemRef);
 
         // Skip non-load instruction.
-        if (!NextLoad)
+        if (!NextLoad.has_value())
             continue;
 
         // Bail out if that load is not a simple one.
         if (!NextLoad->isSimple())
             break;
 
-        // If we get an ordered load (such as a cst_seq atomic load/store) dont
-        // merge.
-        if (!NextLoad->isUnordered())
-            break;
-
         // Skip if that load is from different address spaces.
         if (NextLoad->getPointerAddressSpace() !=
-            LeadingLoad->getPointerAddressSpace())
+            LeadingLoad.getPointerAddressSpace())
+            continue;
+
+        // Skip if predicates are different (for non-predicated load, predicate
+        // is nullptr, so this check also filters out combination of predicated
+        // and non-predicated loads)
+        if (NextLoad->getPredicate() != LeadingLoad.getPredicate())
             continue;
 
         Type* NextLoadType = NextLoad->getType();
@@ -1226,14 +1226,14 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
             = dyn_cast<SCEVConstant>(SE->getMinusSCEV(NextPtr, LeadingPtr));
         // If addr cmp fails, try whether index cmp can be applied.
         if (DoCmpOnLastIdx && Offset == nullptr)
-            Off = getGEPIdxDiffIfAppliable(LeadingLastIdx, LeadingLoad, NextLoad);
+            Off = getGEPIdxDiffIfAppliable(LeadingLastIdx, LeadingLoad, NextLoad.value());
         // Skip load with non-constant distance.
         // If Off != 0, it is already a constant via index cmp
         if (Off == 0) {
             if (!Offset) {
                 SymbolicPointer LeadingSymPtr;
                 SymbolicPointer NextSymPtr;
-                if (SymbolicPointer::decomposePointer(LeadingLoad->getPointerOperand(),
+                if (SymbolicPointer::decomposePointer(LeadingLoad.getPointerOperand(),
                     LeadingSymPtr, CGC) ||
                     SymbolicPointer::decomposePointer(NextLoad->getPointerOperand(),
                         NextSymPtr, CGC) ||
@@ -1284,17 +1284,17 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
 
         // If the candidate load cannot be safely merged, merge mergable loads
         // currently found.
-        if (!isSafeToMergeLoad(NextLoad, CheckList))
+        if (!isSafeToMergeLoad(NextLoad.value(), CheckList))
             break;
 
-        LoadsToMerge.push_back(std::make_tuple(NextLoad, Off, MI));
+        LoadsToMerge.push_back(std::make_tuple(NextLoad->inst(), Off, MI));
     }
 
     unsigned s = LoadsToMerge.size();
     if (s < 2)
         return false;
 
-    IGCLLVM::IRBuilder<> Builder(LeadingLoad);
+    IGCIRBuilder<> Builder(LeadingLoad.inst());
 
     // Start to merge loads.
     IGC_ASSERT_MESSAGE(1 < NumElts, "It's expected to merge into at least 2-element vector!");
@@ -1332,7 +1332,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     // Loads to be merged will be merged into the leading load. However, the
     // pointer from the first load (with the minimal offset) will be used as the
     // new pointer.
-    LoadInst* FirstLoad = std::get<0>(LoadsToMerge.front());
+    ALoadInst FirstLoad = ALoadInst::get(std::get<0>(LoadsToMerge.front())).value();
     int64_t FirstOffset = std::get<1>(LoadsToMerge.front());
     IGC_ASSERT_MESSAGE(FirstOffset <= 0, "The 1st load should be either the leading load or load with smaller offset!");
 
@@ -1348,7 +1348,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     // Alternatively, we could schedule instructions calculating the first
     // pointer ahead the leading load. But it's much simpler to re-calculate
     // it due to the constant offset.
-    Value* Ptr = LeadingLoad->getPointerOperand();
+    Value* Ptr = LeadingLoad.getPointerOperand();
     if (FirstOffset < 0) {
         // If the first load is not the leading load, re-calculate the pointer
         // from the pointer of the leading load.
@@ -1358,11 +1358,11 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         Value* Idx = Builder.getInt64(FirstOffset / LdScalarSize);
         Type* Ty =
             PointerType::get(LeadingLoadScalarType,
-                LeadingLoad->getPointerAddressSpace());
+                LeadingLoad.getPointerAddressSpace());
         Ptr = Builder.CreateBitCast(Ptr, Ty);
 
         GEPOperator* FirstGEP =
-            dyn_cast<GEPOperator>(FirstLoad->getPointerOperand());
+            dyn_cast<GEPOperator>(FirstLoad.getPointerOperand());
         if (FirstGEP && FirstGEP->isInBounds())
             Ptr = Builder.CreateInBoundsGEP(LeadingLoadScalarType, Ptr, Idx);
         else
@@ -1371,11 +1371,18 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
 
     Type* NewLoadType = IGCLLVM::FixedVectorType::get(LeadingLoadScalarType, NumElts);
     Type* NewPointerType =
-        PointerType::get(NewLoadType, LeadingLoad->getPointerAddressSpace());
+        PointerType::get(NewLoadType, LeadingLoad.getPointerAddressSpace());
     Value* NewPointer = Builder.CreateBitCast(Ptr, NewPointerType);
-    LoadInst* NewLoad =
-        Builder.CreateAlignedLoad(NewLoadType, NewPointer, IGCLLVM::getAlign(*FirstLoad));
-    NewLoad->setDebugLoc(LeadingLoad->getDebugLoc());
+
+    // Prepare Merge Value if needed:
+    SmallVector<Instruction*> LoadsToMergeInsts;
+    for (auto& I : LoadsToMerge)
+        LoadsToMergeInsts.push_back(std::get<0>(I));
+    Value* NewMergeValue = CreateNewMergeValue(Builder, NewLoadType, LoadsToMergeInsts);
+
+    Instruction* NewLoad =
+        FirstLoad.CreateAlignedLoad(Builder, NewLoadType, NewPointer, NewMergeValue);
+    NewLoad->setDebugLoc(LeadingLoad.inst()->getDebugLoc());
 
     // Unpack the load value to their uses. For original vector loads, extracting
     // and inserting is necessary to avoid tracking uses of each element in the
@@ -1384,7 +1391,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     MDNode* mdLoadInv = nullptr;
     bool allInvariantLoads = true;
 
-    MDNode* nonTempMD = LeadingLoad->getMetadata("nontemporal");
+    MDNode* nonTempMD = LeadingLoad.inst()->getMetadata("nontemporal");
 
     for (auto& I : LoadsToMerge) {
         Type* Ty = std::get<0>(I)->getType();
@@ -1444,11 +1451,11 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     std::swap(ToOpt.back(), NewOne);
 
     for (auto& I : LoadsToMerge) {
-        LoadInst* LD = cast<LoadInst>(std::get<0>(I));
-        Value* Ptr = LD->getPointerOperand();
+        ALoadInst LD = ALoadInst::get(std::get<0>(I)).value();
+        Value* Ptr = LD.getPointerOperand();
         // make sure the load was merged before actually removing it
-        if (LD->use_empty()) {
-            LD->eraseFromParent();
+        if (LD.inst()->use_empty()) {
+            LD.inst()->eraseFromParent();
         }
         RecursivelyDeleteTriviallyDeadInstructions(Ptr);
         // Mark it as already merged.
@@ -1463,22 +1470,19 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     return true;
 }
 
-bool MemOpt::mergeStore(StoreInst* LeadingStore,
+bool MemOpt::mergeStore(AStoreInst& LeadingStore,
     MemRefListTy::iterator MI, MemRefListTy& MemRefs,
     TrivialMemRefListTy& ToOpt) {
     // Push the leading store into the list to be optimized (after
     // canonicalization.) It will be swapped with the new one if it's merged.
-    ToOpt.push_back(LeadingStore);
+    ToOpt.push_back(LeadingStore.inst());
 
-    if (!LeadingStore->isSimple())
+    if (!LeadingStore.isSimple())
         return false;
 
-    if (!LeadingStore->isUnordered())
-        return false;
-
-    if (LeadingStore->getValueOperand()->getType()->isPointerTy()) {
+    if (LeadingStore.getValueOperand()->getType()->isPointerTy()) {
         unsigned AS =
-            LeadingStore->getValueOperand()->getType()->getPointerAddressSpace();
+            LeadingStore.getValueOperand()->getType()->getPointerAddressSpace();
         if (CGC->getRegisterPointerSizeInBits(AS) != DL->getPointerSizeInBits(AS)) {
             // we cannot coalesce pointers which have been reduced as they are
             // bigger in memory than in register
@@ -1486,7 +1490,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         }
     }
     unsigned NumElts = 0;
-    Value* LeadingStoreVal = LeadingStore->getValueOperand();
+    Value* LeadingStoreVal = LeadingStore.getValueOperand();
     Type* LeadingStoreType = LeadingStoreVal->getType();
     Type* LeadingStoreScalarType = LeadingStoreType->getScalarType();
     unsigned StSize = unsigned(DL->getTypeStoreSize(LeadingStoreType));
@@ -1500,15 +1504,15 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
     if (NumElts >= profitVec[0])
         return false;
 
-    const SCEV* LeadingPtr = SE->getSCEV(LeadingStore->getPointerOperand());
+    const SCEV* LeadingPtr = SE->getSCEV(LeadingStore.getPointerOperand());
     if (isa<SCEVCouldNotCompute>(LeadingPtr))
         return false;
 
-    // StoreInst, Offset, MemRefListTy::iterator, LeadingStore's int2PtrOffset
-    SmallVector<std::tuple<StoreInst*, int64_t, MemRefListTy::iterator>, 8>
+    // AStoreInst, Offset, MemRefListTy::iterator, LeadingStore's int2PtrOffset
+    SmallVector<std::tuple<Instruction*, int64_t, MemRefListTy::iterator>, 8>
         StoresToMerge;
 
-    StoresToMerge.push_back(std::make_tuple(LeadingStore, 0, MI));
+    StoresToMerge.push_back(std::make_tuple(LeadingStore.inst(), 0, MI));
 
     // Stores to be merged are scanned in the program order from the leading store
     // but need to be merged into the tailing store. So two edges of that
@@ -1545,23 +1549,24 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
 
         CheckList.push_back(NextMemRef);
 
-        StoreInst* NextStore = dyn_cast<StoreInst>(NextMemRef);
+        std::optional<AStoreInst> NextStore = AStoreInst::get(NextMemRef);
         // Skip non-store instruction.
-        if (!NextStore)
+        if (!NextStore.has_value())
             continue;
 
         // Bail out if that store is not a simple one.
         if (!NextStore->isSimple())
             break;
 
-        // If we get an ordered store (such as a cst_seq atomic load/store) dont
-        // merge.
-        if (!NextStore->isUnordered())
-            break;
-
         // Skip if that store is from different address spaces.
         if (NextStore->getPointerAddressSpace() !=
-            LeadingStore->getPointerAddressSpace())
+            LeadingStore.getPointerAddressSpace())
+            continue;
+
+        // Skip if it is a predicated store and predicates are different
+        // (for non-predicated store, predicate is nullptr, so this check also
+        // filters out combination of predicated and non-predicated stores)
+        if (NextStore->getPredicate() != LeadingStore.getPredicate())
             continue;
 
         Value* NextStoreVal = NextStore->getValueOperand();
@@ -1584,7 +1589,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
             SymbolicPointer LeadingSymPtr;
             SymbolicPointer NextSymPtr;
             if (SymbolicPointer::decomposePointer(
-                LeadingStore->getPointerOperand(), LeadingSymPtr, CGC) ||
+                LeadingStore.getPointerOperand(), LeadingSymPtr, CGC) ||
                 SymbolicPointer::decomposePointer(NextStore->getPointerOperand(),
                     NextSymPtr, CGC) ||
                 NextSymPtr.getConstantOffset(LeadingSymPtr, Off))
@@ -1622,7 +1627,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         // Clear check list.
         CheckList.clear();
 
-        StoresToMerge.push_back(std::make_tuple(NextStore, Off, MI));
+        StoresToMerge.push_back(std::make_tuple(NextStore->inst(), Off, MI));
 
         if (Off > 0) {
             LastToLeading = Off + NextStoreSize;
@@ -1641,13 +1646,13 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         return false;
 
     // Tailing store is always the last one in the program order.
-    StoreInst* TailingStore = std::get<0>(StoresToMerge.back());
-    IGCLLVM::IRBuilder<> Builder(TailingStore);
+    Instruction* TailingStore = std::get<0>(StoresToMerge.back());
+    IGCIRBuilder<> Builder(TailingStore);
 
     // Start to merge stores.
     NumElts = 0;
     for (auto& I : StoresToMerge) {
-        Type* Ty = std::get<0>(I)->getValueOperand()->getType();
+        Type* Ty = AStoreInst::get(std::get<0>(I))->getValueOperand()->getType();
         NumElts += getNumElements(Ty);
     }
 
@@ -1662,7 +1667,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
             MaxElts = profitVec[k++];
         // Try remove stores to be merged.
         while (NumElts > MaxElts && s != 1) {
-            Type* Ty = std::get<0>(StoresToMerge[--s])->getValueOperand()->getType();
+            Type* Ty = AStoreInst::get(std::get<0>(StoresToMerge[--s]))->getValueOperand()->getType();
             NumElts -= getNumElements(Ty);
         }
     }
@@ -1678,7 +1683,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
     // Stores to be merged will be merged into the tailing store. However, the
     // pointer from the first store (with the minimal offset) will be used as the
     // new pointer.
-    StoreInst* FirstStore = std::get<0>(StoresToMerge.front());
+    AStoreInst FirstStore = AStoreInst::get(std::get<0>(StoresToMerge.front())).value();
 
     // Next we need to check alignment
     if (!checkAlignmentBeforeMerge(FirstStore, StoresToMerge, NumElts))
@@ -1694,7 +1699,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
     // of each element in the original vector store value.
     unsigned Pos = 0;
     for (auto& I : StoresToMerge) {
-        Value* Val = std::get<0>(I)->getValueOperand();
+        Value* Val = AStoreInst::get(std::get<0>(I))->getValueOperand();
         Type* Ty = Val->getType();
         Type* ScalarTy = Ty->getScalarType();
         IGC_ASSERT(hasSameSize(ScalarTy, LeadingStoreScalarType));
@@ -1743,12 +1748,10 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
     // tailing store, which is dominated by all mergable stores' address
     // calculations.
     Type* NewPointerType =
-        PointerType::get(NewStoreType, LeadingStore->getPointerAddressSpace());
+        PointerType::get(NewStoreType, LeadingStore.getPointerAddressSpace());
     Value* NewPointer =
-        Builder.CreateBitCast(FirstStore->getPointerOperand(), NewPointerType);
-    StoreInst* NewStore =
-        Builder.CreateAlignedStore(NewStoreVal, NewPointer,
-            IGCLLVM::getAlign(*FirstStore));
+        Builder.CreateBitCast(FirstStore.getPointerOperand(), NewPointerType);
+    Instruction* NewStore = FirstStore.CreateAlignedStore(Builder, NewStoreVal, NewPointer);
     NewStore->setDebugLoc(TailingStore->getDebugLoc());
 
     // Transfer !nontemporal metadata to the new store
@@ -1769,12 +1772,12 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
     std::swap(ToOpt.back(), NewOne);
 
     for (auto& I : StoresToMerge) {
-        StoreInst* ST = cast<StoreInst>(std::get<0>(I));
-        Value* Ptr = ST->getPointerOperand();
+        AStoreInst ST = AStoreInst::get(std::get<0>(I)).value();
+        Value* Ptr = ST.getPointerOperand();
         // Stores merged in the previous iterations can get merged again, so we need
         // to update ToOpt vector to avoid null instruction in there
-        ToOpt.erase(std::remove(ToOpt.begin(), ToOpt.end(), ST), ToOpt.end());
-        ST->eraseFromParent();
+        ToOpt.erase(std::remove(ToOpt.begin(), ToOpt.end(), ST.inst()), ToOpt.end());
+        ST.inst()->eraseFromParent();
         RecursivelyDeleteTriviallyDeadInstructions(Ptr);
 
         // Also, skip updating distance as the Window size is just a heuristic.
@@ -1797,16 +1800,16 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
 
 /// isSafeToMergeLoad() - checks whether there is any alias from the specified
 /// load to any one in the check list, which may write to that location.
-bool MemOpt::isSafeToMergeLoad(const LoadInst* Ld,
+bool MemOpt::isSafeToMergeLoad(const ALoadInst& Ld,
     const SmallVectorImpl<Instruction*>& CheckList) const {
-    MemoryLocation A = MemoryLocation::get(Ld);
+    MemoryLocation A = getLocation(Ld.inst(), TLI);
 
     for (auto* I : CheckList) {
         // Skip instructions never writing to memory.
         if (!I->mayWriteToMemory())
             continue;
 
-        MemoryLocation B = getLocation(I);
+        MemoryLocation B = getLocation(I, TLI);
 
         if (!A.Ptr || !B.Ptr || AA->alias(A, B))
             return false;
@@ -1819,7 +1822,7 @@ bool MemOpt::isSafeToMergeLoad(const LoadInst* Ld,
 /// specified store set to any one in the check list, which may read/write to
 /// that location.
 bool MemOpt::isSafeToMergeStores(
-    const SmallVectorImpl<std::tuple<StoreInst*, int64_t, MemRefListTy::iterator> >& Stores,
+    const SmallVectorImpl<std::tuple<Instruction*, int64_t, MemRefListTy::iterator> >& Stores,
     const SmallVectorImpl<Instruction*>& CheckList) const {
     // Arrange CheckList as the outer loop to favor the case where there are
     // back-to-back stores only.
@@ -1827,10 +1830,10 @@ bool MemOpt::isSafeToMergeStores(
         if (I->getMetadata(LLVMContext::MD_invariant_load))
             continue;
 
-        MemoryLocation A = getLocation(I);
+        MemoryLocation A = getLocation(I, TLI);
 
         for (auto& S : Stores) {
-            MemoryLocation B = getLocation(std::get<0>(S));
+            MemoryLocation B = getLocation(std::get<0>(S), TLI);
 
             if (!A.Ptr || !B.Ptr || AA->alias(A, B))
                 return false;
@@ -1897,10 +1900,10 @@ class BitCastOperator : public ConcreteOperator<Operator, Instruction::BitCast>
 
 bool MemOpt::canonicalizeGEP64(Instruction* I) const {
     Value* Ptr = nullptr;
-    if (auto LD = dyn_cast<LoadInst>(I))
-        Ptr = LD->getPointerOperand();
-    else if (auto ST = dyn_cast<StoreInst>(I))
-        Ptr = ST->getPointerOperand();
+    if (auto ALI = ALoadInst::get(I); ALI.has_value())
+        Ptr = ALI->getPointerOperand();
+    else if (auto ASI = AStoreInst::get(I); ASI.has_value())
+        Ptr = ASI->getPointerOperand();
 
     // Skip non 64-bit or non GEP-based pointers if any.
     if (auto Cast = dyn_cast_or_null<llvm::BitCastOperator>(Ptr))
@@ -1980,10 +1983,10 @@ bool MemOpt::canonicalizeGEP64(Instruction* I) const {
 
 bool MemOpt::optimizeGEP64(Instruction* I) const {
     Value* Ptr = nullptr;
-    if (auto LD = dyn_cast<LoadInst>(I))
-        Ptr = LD->getPointerOperand();
-    else if (auto ST = dyn_cast<StoreInst>(I))
-        Ptr = ST->getPointerOperand();
+    if (auto ALI = ALoadInst::get(I); ALI.has_value())
+        Ptr = ALI->getPointerOperand();
+    else if (auto ASI = AStoreInst::get(I); ASI.has_value())
+        Ptr = ASI->getPointerOperand();
 
     // Skip non 64-bit or non GEP-based pointers if any.
     if (auto Cast = dyn_cast_or_null<llvm::BitCastOperator>(Ptr))
@@ -2504,20 +2507,28 @@ namespace {
         BTS, A32, SLM, A64
     };
 
-    struct LdStInfo {
+    class LdStInfo {
         // Load (or load intrinsic) for loadCombine().
         // store (or store intrinsic) for storeCombine.
         Instruction* Inst;
         // Byte offset of 'Inst'->getPointerOperand() relative to
         // that of the leading load/store inst.
         int64_t      ByteOffset;
+        bool IsStore;
 
-        LdStInfo(Instruction* aI, int64_t aBO) : Inst(aI), ByteOffset(aBO) {}
+    public:
+        LdStInfo(Instruction* aI, int64_t aBO) : Inst(aI), ByteOffset(aBO) {
+            auto ASI = AStoreInst::get(aI);
+            IsStore = ASI.has_value();
+        }
+
         Type* getLdStType() const;
         uint32_t getAlignment() const;
         AddressModel getAddressModel(CodeGenContext* Ctx) const;
         Value* getValueOperand() const;
-        bool isStore() const { return isa<StoreInst>(Inst); }
+        bool isStore() const { return IsStore; }
+        int64_t getByteOffset() const { return ByteOffset; }
+        Instruction* getInst() const { return Inst; }
     };
 
     typedef SmallVector<LdStInfo, 8> InstAndOffsetPairs;
@@ -2711,6 +2722,7 @@ namespace {
         WIAnalysis* m_WI;
         CodeGenContext* m_CGC;
         Function* m_F;
+        TargetLibraryInfo* m_TLI;
 
     public:
         static char ID;
@@ -2718,7 +2730,7 @@ namespace {
         LdStCombine()
             : FunctionPass(ID)
             , m_DL(nullptr), m_AA(nullptr), m_WI(nullptr), m_CGC(nullptr)
-            , m_F(nullptr), m_hasLoadCombined(false), m_hasStoreCombined(false)
+            , m_F(nullptr), m_TLI(nullptr), m_hasLoadCombined(false), m_hasStoreCombined(false)
         {
             initializeLdStCombinePass(*PassRegistry::getPassRegistry());
         }
@@ -2830,19 +2842,13 @@ namespace {
             Value* CompositeVal,
             Instruction* InsertBefore);
 
+        // StructToVec:
+        //   convert a struct type to a vector type.
+        //     structVal -> <nelts x eltBytes>
+        Value* structToVec(IGCIRBuilder<>* irBuilder, BasicBlock* BB, Value* structVal, unsigned eltBytes, unsigned nelts);
+
         // Helper functions
         bool hasAlias(AliasSetTracker& AST, MemoryLocation& MemLoc);
-
-        // Symbolic difference of two address values
-        // return value:
-        //   true  if A1 - A0 = constant in bytes, and return that constant as BO.
-        //   false if A1 - A0 != constant. BO will be undefined.
-        // BO: byte offset
-        bool getDiffIfConstant(Value* A0, Value* A1, int64_t& ConstBO);
-
-        // If I0 and I1 are load/store insts, compare their address operands and return
-        // the constant difference if it is; return false otherwise.
-        bool getAddressDiffIfConstant(Instruction* I0, Instruction* I1, int64_t& ConstBO);
 
         // Create unique identified struct type
         StructType* getOrCreateUniqueIdentifiedStructType(
@@ -2979,6 +2985,9 @@ FunctionPass* IGC::createLdStCombinePass() {
 #undef PASS_DESC
 #undef PASS_CFG_ONLY
 #undef PASS_ANALYSIS
+#undef DEBUG_TYPE
+
+#define DEBUG_TYPE "LdStCombine"
 #define PASS_FLAG     "igc-ldstcombine"
 #define PASS_DESC     "IGC load/store combine"
 #define PASS_CFG_ONLY false
@@ -2995,59 +3004,35 @@ char LdStCombine::ID = 0;
 
 Type* LdStInfo::getLdStType() const
 {
-    if (LoadInst* LI = dyn_cast<LoadInst>(Inst))
-    {
-        return LI->getType();
-    }
-    else if (StoreInst* SI = dyn_cast<StoreInst>(Inst))
-    {
-        return SI->getValueOperand()->getType();
-    }
-    IGC_ASSERT(false);
-    return nullptr;
+    if (!isStore())
+        return ALoadInst::get(Inst)->getType();
+
+    return AStoreInst::get(Inst)->getValueOperand()->getType();
 }
 
 uint32_t LdStInfo::getAlignment() const
 {
-    if (LoadInst* LI = dyn_cast<LoadInst>(Inst))
-    {
-        return (uint32_t)IGCLLVM::getAlignmentValue(LI);
-    }
-    else if (StoreInst* SI = dyn_cast<StoreInst>(Inst))
-    {
-        return (uint32_t)IGCLLVM::getAlignmentValue(SI);
-    }
-    IGC_ASSERT(false);
-    return 1;
+    if (!isStore())
+        return (uint32_t)ALoadInst::get(Inst)->getAlignmentValue();
+
+    return (uint32_t)AStoreInst::get(Inst)->getAlignmentValue();
 }
 
 Value* LdStInfo::getValueOperand() const
 {
-    if (LoadInst* LI = dyn_cast<LoadInst>(Inst))
-    {
-        return LI;
-    }
-    else if (StoreInst* SI = dyn_cast<StoreInst>(Inst))
-    {
-        return SI->getValueOperand();
-    }
-    IGC_ASSERT(false);
-    return nullptr;
+    if (!isStore())
+        return Inst;
+
+    return AStoreInst::get(Inst)->getValueOperand();
 }
 
 AddressModel LdStInfo::getAddressModel(CodeGenContext* Ctx) const
 {
     Value* Ptr = nullptr;
-    if (LoadInst* LI = dyn_cast<LoadInst>(Inst))
-    {
-        Ptr = LI->getPointerOperand();
-    }
-    else if (StoreInst* SI = dyn_cast<StoreInst>(Inst)) {
-        Ptr = SI->getPointerOperand();
-    }
-    else {
-        IGC_ASSERT_MESSAGE(false, "Not support yet");
-    }
+    if (!isStore())
+        Ptr = ALoadInst::get(Inst)->getPointerOperand();
+    else
+        Ptr = AStoreInst::get(Inst)->getPointerOperand();
 
     PointerType* PTy = cast<PointerType>(Ptr->getType());
     const uint32_t AS = PTy->getPointerAddressSpace();
@@ -3098,32 +3083,6 @@ void LdStCombine::setInstOrder(BasicBlock* BB)
     }
 }
 
-bool LdStCombine::getDiffIfConstant(Value* A0, Value* A1, int64_t& constBO)
-{
-    // Using a simple integer symbolic expression (polynomial) as SCEV
-    // does not work well for this.
-    SymExpr* S0 = m_symEval.getSymExpr(A0);
-    SymExpr* S1 = m_symEval.getSymExpr(A1);
-    return m_symEval.isOffByConstant(S0, S1, constBO);
-}
-
-bool LdStCombine::getAddressDiffIfConstant(Instruction* I0, Instruction* I1, int64_t& BO)
-{
-    if (isa<LoadInst>(I0) && isa<LoadInst>(I1))
-    {
-        LoadInst* LI0 = static_cast<LoadInst*>(I0);
-        LoadInst* LI1 = static_cast<LoadInst*>(I1);
-        return getDiffIfConstant(LI0->getPointerOperand(), LI1->getPointerOperand(), BO);
-    }
-    if (isa<StoreInst>(I0) && isa<StoreInst>(I1))
-    {
-        StoreInst* SI0 = static_cast<StoreInst*>(I0);
-        StoreInst* SI1 = static_cast<StoreInst*>(I1);
-        return getDiffIfConstant(SI0->getPointerOperand(), SI1->getPointerOperand(), BO);
-    }
-    return false;
-}
-
 bool LdStCombine::advanceStructIndices(
     SmallVector<uint32_t, 2>& Indices, StructType* StTy)
 {
@@ -3148,6 +3107,7 @@ bool LdStCombine::advanceStructIndices(
 bool LdStCombine::runOnFunction(Function& F)
 {
     m_CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 
     // If EnableLdStCombine = 2, do it for both lsc and legacy messages.
     // The plan is to do it for LSC message only, ie, EnableLdStCombine=1.
@@ -3307,7 +3267,7 @@ void LdStCombine::combineStores()
 
     auto isStoreCandidate = [&](Instruction* I)
     {
-        if (StoreInst* SI = dyn_cast<StoreInst>(I))
+        if (std::optional<AStoreInst> SI = AStoreInst::get(I); SI.has_value())
         {
             // Sanity check
             Type* eTy = SI->getValueOperand()->getType()->getScalarType();
@@ -3320,8 +3280,7 @@ void LdStCombine::combineStores()
                                    m_instOrder.count(I) > 0);
             uint32_t eBytes = (uint32_t)m_DL->getTypeStoreSize(eTy);
             const bool legitSize = isPowerOf2_32(eBytes);
-            return (isOrigSt && !isVisited(I) &&
-                SI->isSimple() && SI->isUnordered());
+            return (isOrigSt && !isVisited(I) && SI->isSimple());
         }
         return false;
     };
@@ -3334,10 +3293,10 @@ void LdStCombine::combineStores()
         if (I->isFenceLike() && !IsDebugInst(I))
             return false;
 
-        if (isa<LoadInst>(I) ||
-            isa<StoreInst>(I) ||
+        if (ALoadInst::get(I).has_value() ||
+            AStoreInst::get(I).has_value() ||
             I->mayReadOrWriteMemory()) {
-            MemoryLocation memloc = MemoryLocation::get(I);
+            MemoryLocation memloc = getLocation(I, m_TLI);
             return !hasAlias(aAST, memloc);
         }
         return true;
@@ -3349,8 +3308,8 @@ void LdStCombine::combineStores()
     //       and better than using alias analysis (basicaa).
     auto hasOverlap = [this](InstAndOffsetPairs& aStores,
         Instruction* aI, int64_t aStart) {
-        StoreInst* aSI = dyn_cast<StoreInst>(aI);
-        if (aSI == nullptr)
+        std::optional<AStoreInst> aSI = AStoreInst::get(aI);
+        if (!aSI.has_value())
             return true;
         Type* Ty = aSI->getValueOperand()->getType();
         uint32_t TyBytes = (uint32_t)m_DL->getTypeStoreSize(Ty);
@@ -3361,7 +3320,7 @@ void LdStCombine::combineStores()
             Type* aTy = lsinfo.getLdStType();
             uint32_t aTyBytes = (uint32_t)m_DL->getTypeStoreSize(aTy);
             // 'lsinfo' byte range: [thisStart, thisEnd)
-            int64_t thisStart = lsinfo.ByteOffset;
+            int64_t thisStart = lsinfo.getByteOffset();
             int64_t thisEnd = thisStart + aTyBytes;
             if ((aStart >= thisStart && aStart < thisEnd) ||
                 (thisStart >= aStart && thisStart < aEnd))
@@ -3407,10 +3366,16 @@ void LdStCombine::combineStores()
 
                 int64_t offset;
                 if (isStoreCandidate(I) &&
-                    getAddressDiffIfConstant(base, I, offset)) {
+                    getAddressDiffIfConstant(base, I, offset, m_symEval)) {
                     // If both mayAlias and hasOverlap are true, stop
                     if (mayAlias && hasOverlap(Stores, I, offset))
                         break;
+
+                    // if predicates are different - stop
+                    if (AStoreInst::get(base)->getPredicate() !=
+                        AStoreInst::get(I)->getPredicate())
+                        break;
+
                     Stores.push_back(LdStInfo(I, offset));
                     AST.add(I);
                 }
@@ -3460,7 +3425,7 @@ void LdStCombine::combineLoads()
 
     auto isLoadCandidate = [&](Instruction* I)
     {
-        if (LoadInst* LI = dyn_cast<LoadInst>(I))
+        if (auto LI = ALoadInst::get(I); LI.has_value())
         {
             // Sanity check
             Type* eTy = LI->getType()->getScalarType();
@@ -3471,8 +3436,7 @@ void LdStCombine::combineLoads()
             // Only original, not-yet-visited load can be candidates.
             bool isOrigLd = (m_instOrder.size() == 0 ||
                 m_instOrder.count(I) > 0);
-            return (isOrigLd && !isVisited(I) &&
-                LI->isSimple() && LI->isUnordered());
+            return (isOrigLd && !isVisited(I) && LI->isSimple());
         }
         return false;
     };
@@ -3480,8 +3444,8 @@ void LdStCombine::combineLoads()
     // If 'I' can be moved up accross all inst in aAST, return true.
     auto canMoveUp = [this](AliasSetTracker& aAST, Instruction* I)
     {
-        if (isa<LoadInst>(I)) {
-            MemoryLocation memloc = MemoryLocation::get(I);
+        if (ALoadInst::get(I).has_value()) {
+            MemoryLocation memloc = getLocation(I, m_TLI);
             return !hasAlias(aAST, memloc);
         }
         return true;
@@ -3492,18 +3456,22 @@ void LdStCombine::combineLoads()
     m_hasLoadCombined = false;
     for (auto& BB : *m_F)
     {
+        LLVM_DEBUG(dbgs() << "Process BB: " << BB.getName() << "\n");
         init(&BB);
 
         auto IE = BB.end();
         for (auto II = BB.begin(); II != IE; ++II)
         {
             Instruction* base = &*II;
+            LLVM_DEBUG(dbgs() << "- Process base inst: " << *base << "\n");
+
             if (!isLoadCandidate(base)) {
                 continue;
             }
 
             uint32_t numInsts = 1;
             Loads.push_back(LdStInfo(base, 0));
+            LLVM_DEBUG(dbgs() << "- Added to Loads\n");
 
             // Keep store/maywritemem/fence insts for checking alias to see if those
             // stores block load candidates from moving to the first (leading) load.
@@ -3512,28 +3480,44 @@ void LdStCombine::combineLoads()
 
             for (auto JI = std::next(II); JI != IE; ++JI) {
                 Instruction* I = &*JI;
+                LLVM_DEBUG(dbgs() << "- - Process inst: " << *I << "\n");
 
                 if (!skipCounting(I))
                     ++numInsts;
 
                 // cannot merge beyond fence or window limit
-                if (I->isFenceLike() || numInsts > LDWINDOWSIZE) {
+                if ((I->isFenceLike() && !isa<PredicatedLoadIntrinsic>(I)) || numInsts > LDWINDOWSIZE) {
+                    LLVM_DEBUG(dbgs() << "- - Stop at fence or window limit\n");
                     break;
                 }
 
-                if (isa<StoreInst>(I) || I->mayWriteToMemory()) {
+                if (AStoreInst::get(I).has_value() || I->mayWriteToMemory()) {
                     AST.add(I);
+                    LLVM_DEBUG(dbgs() << "- - Added to AST. Continue to next instruction\n");
                     continue;
                 }
 
                 if (isLoadCandidate(I)) {
+                    LLVM_DEBUG(dbgs() << "- - It is load candidate\n");
                     int64_t offset;
-                    if (getAddressDiffIfConstant(base, I, offset)) {
+                    if (getAddressDiffIfConstant(base, I, offset, m_symEval)) {
+                        LLVM_DEBUG(dbgs() << "- - Found offset: " << offset << "\n");
                         if (canMoveUp(AST, I)) {
+                            LLVM_DEBUG(dbgs() << "- - Can move up\n");
+
+                            // if predicates are different - stop
+                            if (ALoadInst::get(base)->getPredicate() !=
+                                ALoadInst::get(I)->getPredicate()) {
+                                LLVM_DEBUG(dbgs() << "- - Predicates are different. Stop\n");
+                                break;
+                            }
+
                             Loads.push_back(LdStInfo(I, offset));
+                            LLVM_DEBUG(dbgs() << "- - Added to Loads\n");
                         } else {
                             // If it cannot be moved up, either keep going or
                             // stopping.  Choose stop for now.
+                            LLVM_DEBUG(dbgs() << "- - Cannot move up. Stop\n");
                             break;
                         }
                     }
@@ -3544,8 +3528,10 @@ void LdStCombine::combineLoads()
             //It creates a dummy load with the same alignment type as the previous load
             if (m_CGC->type != ShaderType::OPENCL_SHADER)
             {
-                if (m_CGC->getModuleMetaData()->compOpt.EnableLdStCombinewithDummyLoad)
+                if (m_CGC->getModuleMetaData()->compOpt.EnableLdStCombinewithDummyLoad) {
+                    LLVM_DEBUG(dbgs() << "- - Allow dummy load coalescing\n");
                     AllowDummyLoadCoalescing(Loads);
+                }
             }
 
             //   Note: For now, each load is considered once. For example,
@@ -3571,6 +3557,7 @@ void LdStCombine::combineLoads()
 
 void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
 {
+    LLVM_DEBUG(dbgs() << "Create bundles for " << LoadStores.size() << " instructions\n");
     //
     // SelectD32OrD64:
     // a utility class to select whether to use data element D32 or D64 when
@@ -3712,7 +3699,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
         for (int i = 0; i < SZ; ++i)
         {
             const LdStInfo* lsi = &LoadStores[i];
-            setVisited(lsi->Inst);
+            setVisited(lsi->getInst());
         }
         LoadStores.clear();
     };
@@ -3724,12 +3711,12 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
     }
 
     auto isBundled = [](const LdStInfo* LSI, DenseMap<const Instruction*, int>& L) {
-        return (L.count(LSI->Inst) > 0);
+        return (L.count(LSI->getInst()) > 0);
     };
     auto setBundled = [&isBundled](LdStInfo* LSI,
         DenseMap<const Instruction*, int>& L) {
         if (!isBundled(LSI, L)) {
-            L[LSI->Inst] = 1;
+            L[LSI->getInst()] = 1;
         }
     };
 
@@ -3738,18 +3725,18 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
     // Sort loads/stores in the order of increasing ByteOffset
     std::sort(LoadStores.begin(), LoadStores.end(),
         [](const LdStInfo& A, const LdStInfo& B) {
-            return A.ByteOffset < B.ByteOffset;
+            return A.getByteOffset() < B.getByteOffset();
         });
 
     const LdStInfo* lsi0 = &LoadStores[0];
-    LoadInst* LI = dyn_cast<LoadInst>(lsi0->Inst);
-    StoreInst* SI = dyn_cast<StoreInst>(lsi0->Inst);
-    LdStKind Kind = LI ? LdStKind::IS_LOAD : LdStKind::IS_STORE;
+    auto LI = ALoadInst::get(lsi0->getInst());
+    auto SI = AStoreInst::get(lsi0->getInst());
+    LdStKind Kind = LI.has_value() ? LdStKind::IS_LOAD : LdStKind::IS_STORE;
     bool isUniform = false;
     if (m_WI)
     {
         isUniform = m_WI->isUniform(
-            LI ? LI->getPointerOperand() : SI->getPointerOperand());
+            LI.has_value() ? LI->getPointerOperand() : SI->getPointerOperand());
     }
     const AddressModel AddrModel = lsi0->getAddressModel(m_CGC);
 
@@ -3830,7 +3817,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
             for (int j = i + 1; j < SZ; ++j) {
                 const LdStInfo* LSI = &LoadStores[j];
                 if (isBundled(LSI, m_combinedInsts) ||
-                    (leadLSI->ByteOffset + totalBytes) != LSI->ByteOffset)
+                    (leadLSI->getByteOffset() + totalBytes) != LSI->getByteOffset())
                 {
                     // stop as remaining stores are not contiguous
                     break;
@@ -3891,9 +3878,9 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
                     newBundle.LoadStores.push_back(tlsi);
                     setBundled(&tlsi, m_combinedInsts);
                     if (tlsi.isStore()) {
-                        appendToBeDeleted(tlsi.Inst);
+                        appendToBeDeleted(tlsi.getInst());
                     }
-                    setVisited(tlsi.Inst);
+                    setVisited(tlsi.getInst());
                 }
                 i = e + 1;
                 numRemainingLdSt -= bundle_nelts;
@@ -3940,28 +3927,35 @@ void LdStCombine::AllowDummyLoadCoalescing(const InstAndOffsetPairs& Loads)
     // % 176 = load half, half addrspace(3) * %175, align 2
     int size = Loads.size();
     LdStInfo LastLoad = Loads[size - 1];
-    uint32_t LastLoadSize = (uint32_t)m_DL->getTypeStoreSize(LastLoad.Inst->getType());
-    uint32_t currLoadSize = LastLoadSize + LastLoad.ByteOffset;
+    uint32_t LastLoadSize = (uint32_t)m_DL->getTypeStoreSize(LastLoad.getInst()->getType());
+    uint32_t currLoadSize = LastLoadSize + LastLoad.getByteOffset();
     if (currLoadSize % 4)
     {
         //Replicating the last load to make it DWORD aligned
         uint32_t newLoadSize = LastLoadSize;
         if (!((currLoadSize + newLoadSize) % 4))
         {
-            LoadInst* lead = static_cast<LoadInst*>(LastLoad.Inst);
-            Value* ldPtr = lead->getPointerOperand();
+            ALoadInst lead = ALoadInst::get(LastLoad.getInst()).value();
+            Value* ldPtr = lead.getPointerOperand();
             if (auto gep = dyn_cast<GetElementPtrInst>(ldPtr))
             {
                 if ((gep->getNumOperands() == 3) && (isa<ConstantPointerNull>(gep->getPointerOperand())))
                 {
-                    IRBuilder<> irBuilder(LastLoad.Inst);
+                    IGCIRBuilder<> irBuilder(LastLoad.getInst());
                     Value* AddInst = irBuilder.CreateAdd(gep->getOperand(2), irBuilder.getInt32(1));
                     Value* gepArg[] = { gep->getOperand(1), AddInst };
                     Value* Addr = irBuilder.CreateInBoundsGEP(gep->getSourceElementType(),
                         gep->getOperand(0), gepArg);
-                    Instruction* dummyLoad = static_cast<Instruction*>
-                        (irBuilder.CreateLoad(cast<GetElementPtrInst>(Addr)->getResultElementType(), Addr));
-                    (void)dummyLoad;
+
+                    // Create a dummy merge value:
+                    Type* Ty = cast<GetElementPtrInst>(Addr)->getResultElementType();
+                    Value *mergeValue = nullptr;
+                    if (IGCLLVM::FixedVectorType *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
+                        mergeValue = ConstantAggregateZero::get(Ty);
+                    else
+                        mergeValue = Constant::getNullValue(Ty);
+
+                    lead.CreateLoad(irBuilder, Ty, Addr, mergeValue);
                 }
             }
         }
@@ -4919,6 +4913,24 @@ void LdStCombine::scatterCopy(
     }
 }
 
+Value* LdStCombine::structToVec(IGCIRBuilder<>* irBuilder, BasicBlock* BB, Value* structVal, unsigned eltBytes, unsigned nelts) {
+    uint32_t totalBytes = eltBytes * nelts;
+    Type* eltTy;
+
+    // Use special bitcast from struct to int vec to use vector emit.
+    if (totalBytes < 4)
+        eltTy = Type::getIntNTy(BB->getContext(), totalBytes * 8); // <{i8, i8}>, use i16, not 2xi8
+    else
+        eltTy = Type::getIntNTy(BB->getContext(), eltBytes * 8);
+
+    // Use an int vector type as VTy
+    Type* VTy = (nelts == 1 || totalBytes < 4) ? eltTy : VectorType::get(eltTy, nelts, false);
+    Type* ITys[2] = { VTy, structVal->getType() };
+    Function* IntrDcl = GenISAIntrinsic::getDeclaration(BB->getParent()->getParent(),
+        GenISAIntrinsic::ID::GenISA_bitcastfromstruct, ITys);
+    return irBuilder->CreateCall(IntrDcl, structVal);
+}
+
 void LdStCombine::createCombinedStores(BasicBlock* BB)
 {
     for (auto& bundle : m_bundles)
@@ -4932,23 +4944,23 @@ void LdStCombine::createCombinedStores(BasicBlock* BB)
         // (Lead store, amaong all stores in the bundle, does not necessarily
         //  appear first in the BB; and the last store does not necessarily
         //  have the largest offset in the bundle.)
-        StoreInst* leadStore = static_cast<StoreInst*>(Stores[0].Inst);
+        AStoreInst leadStore = AStoreInst::get(Stores[0].getInst()).value();
         SmallVector<Value*, 16> storedValues;
-        storedValues.push_back(leadStore->getValueOperand());
-        StoreInst* anchorStore = leadStore;
+        storedValues.push_back(leadStore.getValueOperand());
+        Instruction* anchorStore = leadStore.inst();
         int n = m_instOrder[anchorStore];
         // insts are assigned order number starting from 0. Anchor store is
         // one with the largest inst order number.
         for (int i = 1, sz = (int)bundle.LoadStores.size(); i < sz; ++i)
         {
-            StoreInst* SI = static_cast<StoreInst*>(Stores[i].Inst);
-            int SI_no = m_instOrder[SI];
+            AStoreInst SI = AStoreInst::get(Stores[i].getInst()).value();
+            int SI_no = m_instOrder[SI.inst()];
             if (SI_no > n)
             {
                 n = SI_no;
-                anchorStore = SI;
+                anchorStore = SI.inst();
             }
-            storedValues.push_back(SI->getValueOperand());
+            storedValues.push_back(SI.getValueOperand());
         }
 
         int eltBytes = bundle.bundle_eltBytes;
@@ -4982,35 +4994,18 @@ void LdStCombine::createCombinedStores(BasicBlock* BB)
         Value* nV = gatherCopy(eltBytes, nelts, storedValues, anchorStore);
         Type* VTy = nV->getType();
 
-        IRBuilder<> irBuilder(anchorStore);
-        Value* storedVal = nV;
+        IGCIRBuilder<> irBuilder(anchorStore);
         if (VTy->isStructTy()) {
-            uint32_t totalBytes = eltBytes * nelts;
-            Type* eltTy;
-            // Use special bitcast from struct to int vec to use vector emit.
-            if (totalBytes < 4) {
-                // <{i8, i8}>, use i16, not 2xi8
-                eltTy = Type::getIntNTy(BB->getContext(), totalBytes * 8);
-            }
-            else {
-                eltTy = Type::getIntNTy(BB->getContext(), eltBytes * 8);
-            }
-            // Use an int vector type as VTy
-            VTy = (nelts == 1 || totalBytes < 4)
-                ? eltTy : VectorType::get(eltTy, nelts, false);
-            Type* ITys[2] = { VTy, nV->getType() };
-            Function* IntrDcl = GenISAIntrinsic::getDeclaration(
-                BB->getParent()->getParent(),
-                GenISAIntrinsic::ID::GenISA_bitcastfromstruct, ITys);
-            storedVal = irBuilder.CreateCall(IntrDcl, nV);
+            nV = structToVec(&irBuilder, BB, nV, eltBytes, nelts);
+            VTy = nV->getType();
         }
 
-        Value* Addr = leadStore->getPointerOperand();
+        Value* Addr = leadStore.getPointerOperand();
         PointerType* PTy = cast<PointerType>(Addr->getType());
         PointerType* nPTy = PointerType::get(VTy, PTy->getAddressSpace());
         Value* nAddr = irBuilder.CreateBitCast(Addr, nPTy);
-        StoreInst* finalStore = irBuilder.CreateAlignedStore(storedVal,
-            nAddr, IGCLLVM::getAlign(*leadStore), leadStore->isVolatile());
+        Instruction* finalStore = leadStore.CreateAlignedStore(irBuilder, nV,
+            nAddr, leadStore.isVolatile());
         finalStore->setDebugLoc(anchorStore->getDebugLoc());
 
         // Only keep metadata from leadStore.
@@ -5020,15 +5015,14 @@ void LdStCombine::createCombinedStores(BasicBlock* BB)
         //   Special case:
         //     1. set nontemporal if any merged store has it (make sense?)
         SmallVector<std::pair<unsigned, llvm::MDNode*>, 4> MDs;
-        leadStore->getAllMetadata(MDs);
+        leadStore.inst()->getAllMetadata(MDs);
         for (const auto& MII : MDs) {
             finalStore->setMetadata(MII.first, MII.second);
         }
 
         if (finalStore->getMetadata("nontemporal") == nullptr) {
             for (int i = 1, sz = (int)bundle.LoadStores.size(); i < sz; ++i) {
-                StoreInst* SI = static_cast<StoreInst*>(Stores[i].Inst);
-                if (MDNode* N = SI->getMetadata("nontemporal")) {
+                if (MDNode* N = Stores[i].getInst()->getMetadata("nontemporal")) {
                     finalStore->setMetadata("nontemporal", N);
                     break;
                 }
@@ -5046,6 +5040,8 @@ void LdStCombine::createCombinedStores(BasicBlock* BB)
 
 void LdStCombine::createCombinedLoads(BasicBlock* BB)
 {
+    LLVM_DEBUG(dbgs() << "LdStCombine::createCombinedLoads for BB: " << BB->getName() << "\n");
+
     for (auto& bundle : m_bundles)
     {
         InstAndOffsetPairs& Loads = bundle.LoadStores;
@@ -5060,26 +5056,26 @@ void LdStCombine::createCombinedLoads(BasicBlock* BB)
         // The new load will be inserted at the place of the first load in the
         // program order in this bundle, called the anchor load. The lead load
         // is the load with the smallest offset in the bundle.
-        LoadInst* leadLoad = static_cast<LoadInst*>(Loads[0].Inst);
+        ALoadInst leadLoad = ALoadInst::get(Loads[0].getInst()).value();
         SmallVector<Value*, 16> loadedValues;
-        loadedValues.push_back(leadLoad);
+        loadedValues.push_back(leadLoad.inst());
 
         // find anchor load.
-        LoadInst* anchorLoad = leadLoad;
-        const int leadLoadNum = m_instOrder[leadLoad];
-        const int leadOffset = (int)Loads[0].ByteOffset;
+        Instruction* anchorLoad = leadLoad.inst();
+        const int leadLoadNum = m_instOrder[leadLoad.inst()];
+        const int leadOffset = (int)Loads[0].getByteOffset();
         int anchorOffset = leadOffset;
         int n = leadLoadNum;
         // insts are assigned order number starting from 0. Anchor load is
         // one with the smallest inst order number.
         for (int i = 1, sz = (int)bundle.LoadStores.size(); i < sz; ++i) {
-            LoadInst* LI = static_cast<LoadInst*>(Loads[i].Inst);
+            Instruction* LI = Loads[i].getInst();
             int LI_no = m_instOrder[LI];
             if (LI_no < n)
             {
                 n = LI_no;
                 anchorLoad = LI;
-                anchorOffset = (int)Loads[i].ByteOffset;
+                anchorOffset = (int)Loads[i].getByteOffset();
             }
             loadedValues.push_back(LI);
         }
@@ -5112,19 +5108,19 @@ void LdStCombine::createCombinedLoads(BasicBlock* BB)
         Type* eltTy = Type::getIntNTy(BB->getContext(), eltBytes * 8);
         Type* VTy = (nelts == 1 ? eltTy : VectorType::get(eltTy, nelts, false));
 
-        IRBuilder<> irBuilder(anchorLoad);
-        Value* Addr = leadLoad->getPointerOperand();
+        IGCIRBuilder<> irBuilder(anchorLoad);
+        Value* Addr = leadLoad.getPointerOperand();
         // If leadLoad is different from anchorLoad and leadLoad's addr is
         // an instruction after anchorLoad, need to re-generate the address
         // of LeadLoad at anchorLoad place.
-        if (anchorLoad != leadLoad && isa<Instruction>(Addr)) {
+        if (anchorLoad != leadLoad.inst() && isa<Instruction>(Addr)) {
             Instruction* aI = cast<Instruction>(Addr);
             auto MI = m_instOrder.find(aI);
             if (MI != m_instOrder.end() && MI->second > anchorLoadNum)
             {
-                Value* anchorAddr = anchorLoad->getPointerOperand();
-                Type* bTy = Type::getInt8Ty(leadLoad->getContext());
-                Type* nTy = PointerType::get(bTy, leadLoad->getPointerAddressSpace());
+                Value* anchorAddr = ALoadInst::get(anchorLoad)->getPointerOperand();
+                Type* bTy = Type::getInt8Ty(leadLoad.inst()->getContext());
+                Type* nTy = PointerType::get(bTy, leadLoad.getPointerAddressSpace());
                 Value* nAddr = irBuilder.CreateBitCast(anchorAddr, nTy);
                 Value* aIdx = irBuilder.getInt64(leadOffset - anchorOffset);
                 GEPOperator* aGEP = dyn_cast<GEPOperator>(anchorAddr);
@@ -5139,8 +5135,23 @@ void LdStCombine::createCombinedLoads(BasicBlock* BB)
         PointerType* PTy = cast<PointerType>(Addr->getType());
         PointerType* nPTy = PointerType::get(VTy, PTy->getAddressSpace());
         Value* nAddr = irBuilder.CreateBitCast(Addr, nPTy);
-        LoadInst* finalLoad = irBuilder.CreateAlignedLoad(VTy, nAddr,
-            IGCLLVM::getAlign(*leadLoad), leadLoad->isVolatile());
+
+        // Merge "merge values" of each predicated load in loadedValues to use in a new load.
+        SmallVector<Value*, 16> mergeValues;
+        for (auto load : loadedValues)
+        {
+            PredicatedLoadIntrinsic *PLI = ALoadInst::get(load)->getPredicatedLoadIntrinsic();
+            if (!PLI)
+                break; // not a predicated load, no merge values
+            mergeValues.push_back(PLI->getMergeValue());
+        }
+
+        Value* mergeVal = mergeValues.empty() ? nullptr : gatherCopy(eltBytes, nelts, mergeValues, anchorLoad);
+        if (mergeVal && mergeVal->getType()->isStructTy())
+            mergeVal = structToVec(&irBuilder, BB, mergeVal, eltBytes, nelts);
+
+        Instruction *finalLoad = leadLoad.CreateAlignedLoad(irBuilder, VTy, nAddr, mergeVal,
+            leadLoad.isVolatile());
         finalLoad->setDebugLoc(anchorLoad->getDebugLoc());
 
         // Split loaded value and replace original loads with them.
@@ -5150,7 +5161,7 @@ void LdStCombine::createCombinedLoads(BasicBlock* BB)
         auto STII = std::find_if_not(
             bundle.LoadStores.begin(), bundle.LoadStores.end(),
             [](LdStInfo& LSI) {
-                auto md = LSI.Inst->getMetadata(LLVMContext::MD_invariant_load);
+                auto md = LSI.getInst()->getMetadata(LLVMContext::MD_invariant_load);
                 return md != nullptr;
             });
         if (STII == bundle.LoadStores.end()) {
@@ -5161,7 +5172,7 @@ void LdStCombine::createCombinedLoads(BasicBlock* BB)
         MDNode* nonTempMD = nullptr;
         std::for_each(bundle.LoadStores.begin(), bundle.LoadStores.end(),
             [&nonTempMD](LdStInfo& LSI) {
-                if (auto md = LSI.Inst->getMetadata("nontemporal"))
+                if (auto md = LSI.getInst()->getMetadata("nontemporal"))
                     nonTempMD = MDNode::concatenate(md, nonTempMD);
             });
 
@@ -5193,8 +5204,8 @@ void BundleInfo::print(raw_ostream& O, int BundleID) const
 
     for (const auto& II : LoadStores) {
         const LdStInfo& LSI = II;
-        O << "  (" << format_decimal(LSI.ByteOffset, 3) << ")   ";
-        O << *LSI.Inst << "\n";
+        O << "  (" << format_decimal(LSI.getByteOffset(), 3) << ")   ";
+        O << *LSI.getInst() << "\n";
     }
     O << "\n";
 }
