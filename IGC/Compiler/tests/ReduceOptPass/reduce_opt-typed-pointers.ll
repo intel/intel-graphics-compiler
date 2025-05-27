@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: igc_opt --typed-pointers %s -S -o - -opt-reduce-pass | FileCheck %s
-; REQUIRES: khronos-translator
 
 declare spir_func <3 x i64> @__spirv_BuiltInGlobalSize()
 declare spir_func <3 x i64> @__spirv_BuiltInGlobalOffset()

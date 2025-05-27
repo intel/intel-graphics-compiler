@@ -58,9 +58,6 @@ if llvm_version <= 15:
 if llvm_version >= 16:
   config.available_features.add('llvm-16-plus')
 
-config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-KHR'))
-config.available_features.add('khronos-translator')
-
 if not config.regkeys_disabled:
   config.available_features.add('regkeys')
 if config.opaque_pointers == '1':

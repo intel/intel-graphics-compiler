@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify -igc-correctly-rounded-div-sqrt -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
+; RUN: igc_opt -debugify -igc-correctly-rounded-div-sqrt -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; CorrectlyRoundedDivSqrt
 ; ------------------------------------------------
@@ -44,8 +44,7 @@ define spir_kernel void @test_fdiv(float %src1, float %src2) {
 ; Testcase 3
 ; Check that sqrt calls are renamed
 ;
-; CHECK-LEGACY: call float @__builtin_spirv_OpenCL_sqrt_cr_f32(float %src1)
-; CHECK-KHR: call float @_Z19__spirv_ocl_sqrt_cr_f32(float %src1)
+; CHECK: call float @_Z19__spirv_ocl_sqrt_cr_f32(float %src1)
 ; CHECK: call float @_Z7sqrt_cr_f32(float %src2)
 
   %5 = call float @__builtin_spirv_OpenCL_sqrt_f32(float %src1)

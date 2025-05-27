@@ -1,6 +1,6 @@
 ; REQUIRES: regkeys, spirv-as, dg2-supported
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
-; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefix=%SPV_CHECK_PREFIX%
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
                OpCapability Addresses
                OpCapability Kernel
                OpMemoryModel Physical32 OpenCL
@@ -21,8 +21,4 @@
                OpReturn
                OpFunctionEnd
 
-; CHECK-KHR: and i1 {{%a, %b|%b, %a}}
-
-; CHECK-LEGACY: %a = load i8, i8 addrspace(1)*
-; CHECK-LEGACY: %b = load i8, i8 addrspace(1)*
-; CHECK-LEGACY: and i8 %a, %b
+; CHECK: and i1 {{%a, %b|%b, %a}}

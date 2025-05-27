@@ -1,6 +1,6 @@
 ; REQUIRES: regkeys, spirv-as, dg2-supported
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
-; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefix=%SPV_CHECK_PREFIX%
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
                OpCapability Addresses
                OpCapability Kernel
                OpCapability Float16
@@ -20,10 +20,8 @@
                OpReturn
                OpFunctionEnd
 
-; CHECK-KHR-DAG: %frem.res = frem <2 x half> %a, %b
-; CHECK-KHR-DAG: %copysign.res = call <2 x half> @llvm.copysign.v2f16(<2 x half> %frem.res, <2 x half> %b)
-; CHECK-KHR-DAG: %fadd.res = fadd <2 x half> {{%frem\.res, %b|%b, %frem\.res}}
-; CHECK-KHR-DAG: %cmp.res = fcmp one <2 x half> {{%frem\.res, %copysign\.res|%copysign\.res, %frem\.res}}
-; CHECK-KHR: select <2 x i1> %cmp.res, <2 x half> %fadd.res, <2 x half> %copysign.res
-
-; CHECK-LEGACY: call spir_func <2 x half> @__builtin_spirv_OpFMod_v2f16_v2f16(<2 x half> %a, <2 x half> %b)
+; CHECK-DAG: %frem.res = frem <2 x half> %a, %b
+; CHECK-DAG: %copysign.res = call <2 x half> @llvm.copysign.v2f16(<2 x half> %frem.res, <2 x half> %b)
+; CHECK-DAG: %fadd.res = fadd <2 x half> {{%frem\.res, %b|%b, %frem\.res}}
+; CHECK-DAG: %cmp.res = fcmp one <2 x half> {{%frem\.res, %copysign\.res|%copysign\.res, %frem\.res}}
+; CHECK: select <2 x i1> %cmp.res, <2 x half> %fadd.res, <2 x half> %copysign.res

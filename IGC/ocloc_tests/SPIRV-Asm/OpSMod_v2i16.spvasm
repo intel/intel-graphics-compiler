@@ -1,6 +1,6 @@
 ; REQUIRES: regkeys, spirv-as, dg2-supported
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
-; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefix=%SPV_CHECK_PREFIX%
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
                OpCapability Addresses
                OpCapability Kernel
                OpCapability Int16
@@ -20,19 +20,10 @@
                OpReturn
                OpFunctionEnd
 
-; CHECK-KHR-DAG: %srem.res = srem <2 x i16> %a, %b
-; CHECK-KHR-DAG: %xor.res = xor <2 x i16> {{%a, %b|%b, %a}}
-; CHECK-KHR-DAG: %cmpsign.res = icmp slt <2 x i16> %xor.res, zeroinitializer
-; CHECK-KHR-DAG: %cmpsrem.res = icmp ne <2 x i16> {{%srem\.res, zeroinitializer|zeroinitializer, %srem\.res}}
-; CHECK-KHR-DAG: %add.res = add nsw <2 x i16> {{%srem\.res, %b|%b, %srem\.res}}
-; CHECK-KHR-DAG: %cmp.res = and <2 x i1> {{%cmpsign\.res, %cmpsrem\.res|%cmpsrem\.res, %cmpsign\.res}}
-; CHECK-KHR: select <2 x i1> %cmp.res, <2 x i16> %add.res, <2 x i16> %srem.res
-
-; CHECK-LEGACY: [[TMP1:%.*]] = srem <2 x i16> %a, %b
-; CHECK-LEGACY: [[TMP2:%.*]] = ashr <2 x i16> %a, <i16 15, i16 15>
-; CHECK-LEGACY: [[TMP3:%.*]] = ashr <2 x i16> %b, <i16 15, i16 15>
-; CHECK-LEGACY: [[TMP4:%.*]] = icmp ne <2 x i16> [[TMP2]], [[TMP3]]
-; CHECK-LEGACY: [[TMP5:%.*]] = icmp ne <2 x i16> [[TMP1]], zeroinitializer
-; CHECK-LEGACY: [[TMP6:%.*]] = and <2 x i1> [[TMP4]], [[TMP5]]
-; CHECK-LEGACY: [[TMP7:%.*]] = add <2 x i16> [[TMP1]], %b
-; CHECK-LEGACY: select <2 x i1> [[TMP6]], <2 x i16> [[TMP7]], <2 x i16> [[TMP1]]
+; CHECK-DAG: %srem.res = srem <2 x i16> %a, %b
+; CHECK-DAG: %xor.res = xor <2 x i16> {{%a, %b|%b, %a}}
+; CHECK-DAG: %cmpsign.res = icmp slt <2 x i16> %xor.res, zeroinitializer
+; CHECK-DAG: %cmpsrem.res = icmp ne <2 x i16> {{%srem\.res, zeroinitializer|zeroinitializer, %srem\.res}}
+; CHECK-DAG: %add.res = add nsw <2 x i16> {{%srem\.res, %b|%b, %srem\.res}}
+; CHECK-DAG: %cmp.res = and <2 x i1> {{%cmpsign\.res, %cmpsrem\.res|%cmpsrem\.res, %cmpsign\.res}}
+; CHECK: select <2 x i1> %cmp.res, <2 x i16> %add.res, <2 x i16> %srem.res

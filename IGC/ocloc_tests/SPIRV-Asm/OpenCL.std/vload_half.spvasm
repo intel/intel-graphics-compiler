@@ -1,44 +1,26 @@
 ; REQUIRES: regkeys, spirv-as, dg2-supported
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
-; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,%SPV_CHECK_PREFIX%
-
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
 ; LLVM15PLUS expects -emit-opaque-pointers to be passed
 
 ; CHECK-LABEL: spir_kernel void @test
 
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS1Dh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS1Dh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS1Dh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS1Dh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS3Dh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS3Dh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS3Dh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS3Dh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS2Dh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS2Dh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS2Dh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS2Dh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPDh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPDh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPDh(
-; CHECK-KHR: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPDh(
-
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p1f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p1f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p1f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p1f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p3f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p3f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p3f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p3f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p2f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p2f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p2f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p2f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p0f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p0f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p0f16(
-; CHECK-LEGACY: call spir_func float @{{[0-9A-z_]+}}vload_half_i32_p0f16(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS1Dh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS1Dh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS1Dh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS1Dh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS3Dh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS3Dh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS3Dh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS3Dh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS2Dh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS2Dh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS2Dh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS2Dh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPDh(
 
 ; CHECK-LLVM15PLUS: call spir_func float @_Z10vload_halfjPU3AS1KDh
 ; CHECK-LLVM15PLUS: call spir_func float @_Z10vload_halfjPU3AS1KDh

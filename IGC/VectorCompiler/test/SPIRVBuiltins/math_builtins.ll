@@ -8,17 +8,17 @@
 
 ; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXTranslateSPIRVBuiltins \
 ; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_BIF_TYPED_PTRS% -march=genx64 -mcpu=Gen9 \
-; RUN: -S < %s | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
+; RUN: -S < %s | FileCheck %s
 ; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXTranslateSPIRVBuiltins \
 ; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_BIF_OPAQUE_PTRS% -march=genx64 -mcpu=Gen9 \
-; RUN: -S < %s | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
+; RUN: -S < %s | FileCheck %s
 
 ; RUN: %opt_new_pm_typed -passes=GenXTranslateSPIRVBuiltins \
 ; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_BIF_TYPED_PTRS% -march=genx64 -mcpu=Gen9 \
-; RUN: -S < %s | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
+; RUN: -S < %s | FileCheck %s
 ; RUN: %opt_new_pm_opaque -passes=GenXTranslateSPIRVBuiltins \
 ; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_BIF_OPAQUE_PTRS% -march=genx64 -mcpu=Gen9 \
-; RUN: -S < %s | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
+; RUN: -S < %s | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 ; COM: datalayout should stay the same
@@ -52,26 +52,11 @@ define spir_func <2 x float> @spirv_native_log2_vector_dbl(<2 x float> %f) {
   ret <2 x float> %res
 }
 
-; CHECK-LEGACY-LABEL: define internal spir_func {{(noundef )?}}<16 x double> @_Z15__spirv_ocl_logDv16_d
-; CHECK-LEGACY-SAME: (<16 x double> {{(noundef )?}}[[ARG_LOG:%[^ ]+]])
-; CHECK-LEGACY: [[LOG_CALL:%[^ ]+]] = tail call spir_func {{(noundef )?}}<16 x double> @__builtin_spirv_OpenCL_log_v16f64(<16 x double> {{(noundef )?}}[[ARG_LOG]])
-; CHECK-LEGACY-NEXT: ret <16 x double> [[LOG_CALL]]
+; COM: FIXME: Not much to check there. Remove the case once the switch is done.
+; CHECK-NOT: call spir_func <16 x double> @__builtin_spirv_OpenCL_log_v16f64
 
 ; COM: FIXME: Not much to check there. Remove the case once the switch is done.
-; CHECK-KHR-NOT: call spir_func <16 x double> @__builtin_spirv_OpenCL_log_v16f64
-
-; CHECK-LEGACY-LABEL: define internal spir_func {{(noundef )?}}<16 x double> @_Z17__spirv_ocl_log10Dv16_d
-; CHECK-LEGACY-SAME: (<16 x double> {{(noundef )?}}[[LOG10_ARG:%[^ ]+]])
-; CHECK-LEGACY: [[LOG10_CALL:%[^ ]+]] = tail call spir_func {{(noundef )?}}<16 x double> @__builtin_spirv_OpenCL_log10_v16f64(<16 x double> {{(noundef )?}}[[LOG10_ARG]])
-; CHECK-LEGACY-NEXT: ret <16 x double> [[LOG10_CALL]]
+; CHECK-NOT: call spir_func <16 x double> @__builtin_spirv_OpenCL_log10_v16f64
 
 ; COM: FIXME: Not much to check there. Remove the case once the switch is done.
-; CHECK-KHR-NOT: call spir_func <16 x double> @__builtin_spirv_OpenCL_log10_v16f64
-
-; CHECK-LEGACY-LABEL: define internal spir_func {{(noundef )?}}<16 x double> @_Z18__spirv_ocl_sincosDv16_dPS_
-; CHECK-LEGACY-SAME: (<16 x double> {{(noundef )?}}[[SINCOS_ARG1:%[^ ]+]], <16 x double>* {{(noundef )?}}[[SINCOS_ARG2:%[^ ]+]])
-; CHECK-LEGACY: [[SINCOS_CALL:%[^ ]+]] = tail call spir_func {{(noundef )?}}<16 x double> @__builtin_spirv_OpenCL_sincos_v16f64_p0v16f64(<16 x double> {{(noundef )?}}[[SINCOS_ARG1]], <16 x double>* {{(noundef )?}}[[SINCOS_ARG2]])
-; CHECK-LEGACY-NEXT: ret <16 x double> [[SINCOS_CALL]]
-
-; COM: FIXME: Not much to check there. Remove the case once the switch is done.
-; CHECK-KHR-NOT: call spir_func <16 x double> @__builtin_spirv_OpenCL_sincos_v16f64_p0v16f64
+; CHECK-NOT: call spir_func <16 x double> @__builtin_spirv_OpenCL_sincos_v16f64_p0v16f64

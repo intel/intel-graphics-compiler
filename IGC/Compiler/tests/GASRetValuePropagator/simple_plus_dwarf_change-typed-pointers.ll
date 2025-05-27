@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: khronos-translator
+; XFAIL: *
 
 ; This test checks if DWARF attributes are updated correctly after changing address space from generic to SLM
 

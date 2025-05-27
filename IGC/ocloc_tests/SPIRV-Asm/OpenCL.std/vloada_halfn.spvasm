@@ -1,52 +1,30 @@
 ; REQUIRES: regkeys, spirv-as, dg2-supported
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
-; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,%SPV_CHECK_PREFIX%
-
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
 ; LLVM15PLUS expects -emit-opaque-pointers to be passed
 
 ; CHECK-LABEL: spir_kernel void @test
 
-; CHECK-KHR: call spir_func <2 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat2iPU3AS1Dhi(
-; CHECK-KHR: call spir_func <3 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat3iPU3AS1Dhi(
-; CHECK-KHR: call spir_func <4 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat4iPU3AS1Dhi(
-; CHECK-KHR: call spir_func <8 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat8iPU3AS1Dhi(
-; CHECK-KHR: call spir_func <16 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat16iPU3AS1Dhi(
-; CHECK-KHR: call spir_func <2 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat2iPU3AS3Dhi(
-; CHECK-KHR: call spir_func <3 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat3iPU3AS3Dhi(
-; CHECK-KHR: call spir_func <4 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat4iPU3AS3Dhi(
-; CHECK-KHR: call spir_func <8 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat8iPU3AS3Dhi(
-; CHECK-KHR: call spir_func <16 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat16iPU3AS3Dhi(
-; CHECK-KHR: call spir_func <2 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat2iPU3AS2Dhi(
-; CHECK-KHR: call spir_func <3 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat3iPU3AS2Dhi(
-; CHECK-KHR: call spir_func <4 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat4iPU3AS2Dhi(
-; CHECK-KHR: call spir_func <8 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat8iPU3AS2Dhi(
-; CHECK-KHR: call spir_func <16 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat16iPU3AS2Dhi(
-; CHECK-KHR: call spir_func <2 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat2iPDhi(
-; CHECK-KHR: call spir_func <3 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat3iPDhi(
-; CHECK-KHR: call spir_func <4 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat4iPDhi(
-; CHECK-KHR: call spir_func <8 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat8iPDhi(
-; CHECK-KHR: call spir_func <16 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat16iPDhi(
-
-; CHECK-LEGACY: call spir_func <2 x float> @{{[0-9A-z_]+}}vloada_half2_i32_p1f16_i32(
-; CHECK-LEGACY: call spir_func <3 x float> @{{[0-9A-z_]+}}vloada_half3_i32_p1f16_i32(
-; CHECK-LEGACY: call spir_func <4 x float> @{{[0-9A-z_]+}}vloada_half4_i32_p1f16_i32(
-; CHECK-LEGACY: call spir_func <8 x float> @{{[0-9A-z_]+}}vloada_half8_i32_p1f16_i32(
-; CHECK-LEGACY: call spir_func <16 x float> @{{[0-9A-z_]+}}vloada_half16_i32_p1f16_i32(
-; CHECK-LEGACY: call spir_func <2 x float> @{{[0-9A-z_]+}}vloada_half2_i32_p3f16_i32(
-; CHECK-LEGACY: call spir_func <3 x float> @{{[0-9A-z_]+}}vloada_half3_i32_p3f16_i32(
-; CHECK-LEGACY: call spir_func <4 x float> @{{[0-9A-z_]+}}vloada_half4_i32_p3f16_i32(
-; CHECK-LEGACY: call spir_func <8 x float> @{{[0-9A-z_]+}}vloada_half8_i32_p3f16_i32(
-; CHECK-LEGACY: call spir_func <16 x float> @{{[0-9A-z_]+}}vloada_half16_i32_p3f16_i32(
-; CHECK-LEGACY: call spir_func <2 x float> @{{[0-9A-z_]+}}vloada_half2_i32_p2f16_i32(
-; CHECK-LEGACY: call spir_func <3 x float> @{{[0-9A-z_]+}}vloada_half3_i32_p2f16_i32(
-; CHECK-LEGACY: call spir_func <4 x float> @{{[0-9A-z_]+}}vloada_half4_i32_p2f16_i32(
-; CHECK-LEGACY: call spir_func <8 x float> @{{[0-9A-z_]+}}vloada_half8_i32_p2f16_i32(
-; CHECK-LEGACY: call spir_func <16 x float> @{{[0-9A-z_]+}}vloada_half16_i32_p2f16_i32(
-; CHECK-LEGACY: call spir_func <2 x float> @{{[0-9A-z_]+}}vloada_half2_i32_p0f16_i32(
-; CHECK-LEGACY: call spir_func <3 x float> @{{[0-9A-z_]+}}vloada_half3_i32_p0f16_i32(
-; CHECK-LEGACY: call spir_func <4 x float> @{{[0-9A-z_]+}}vloada_half4_i32_p0f16_i32(
-; CHECK-LEGACY: call spir_func <8 x float> @{{[0-9A-z_]+}}vloada_half8_i32_p0f16_i32(
-; CHECK-LEGACY: call spir_func <16 x float> @{{[0-9A-z_]+}}vloada_half16_i32_p0f16_i32(
+; CHECK: call spir_func <2 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat2iPU3AS1Dhi(
+; CHECK: call spir_func <3 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat3iPU3AS1Dhi(
+; CHECK: call spir_func <4 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat4iPU3AS1Dhi(
+; CHECK: call spir_func <8 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat8iPU3AS1Dhi(
+; CHECK: call spir_func <16 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat16iPU3AS1Dhi(
+; CHECK: call spir_func <2 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat2iPU3AS3Dhi(
+; CHECK: call spir_func <3 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat3iPU3AS3Dhi(
+; CHECK: call spir_func <4 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat4iPU3AS3Dhi(
+; CHECK: call spir_func <8 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat8iPU3AS3Dhi(
+; CHECK: call spir_func <16 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat16iPU3AS3Dhi(
+; CHECK: call spir_func <2 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat2iPU3AS2Dhi(
+; CHECK: call spir_func <3 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat3iPU3AS2Dhi(
+; CHECK: call spir_func <4 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat4iPU3AS2Dhi(
+; CHECK: call spir_func <8 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat8iPU3AS2Dhi(
+; CHECK: call spir_func <16 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat16iPU3AS2Dhi(
+; CHECK: call spir_func <2 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat2iPDhi(
+; CHECK: call spir_func <3 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat3iPDhi(
+; CHECK: call spir_func <4 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat4iPDhi(
+; CHECK: call spir_func <8 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat8iPDhi(
+; CHECK: call spir_func <16 x float> @{{[0-9A-z_]+}}vloada_halfn_Rfloat16iPDhi(
 
 ; CHECK-LLVM15-PLUS: call spir_func <2 x float> @_Z12vloada_half2jPU3AS1KDh(
 ; CHECK-LLVM15-PLUS: call spir_func <3 x float> @_Z12vloada_half3jPU3AS1KDh(

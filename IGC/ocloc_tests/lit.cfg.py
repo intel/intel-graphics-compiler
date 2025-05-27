@@ -98,7 +98,3 @@ if config.is32b == "1":
 if config.debug_build:
   config.available_features.add('debug')
 
-config.available_features.add('khronos-translator')
-config.available_features.add('khronos-translator-' + config.llvm_version_major)
-config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-KHR'))
-
