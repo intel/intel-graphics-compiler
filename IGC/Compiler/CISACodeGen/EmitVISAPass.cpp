@@ -4609,6 +4609,7 @@ void EmitPass::FPTrunc(const SSource sources[2], const DstModifier& modifier) {
     if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
             sources[0].value->getType()->isVectorTy()) {
 
+        IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16, "As of now Vector Emission is only supported for SIMD16");
         unsigned VectorSize = getVectorSize(sources[0].value);
 
         // float is 4 bytes --> divide by 4
@@ -4648,6 +4649,7 @@ void EmitPass::Add(const SSource sources[2], const DstModifier& modifier)
             sources[0].value->getType()->isVectorTy() &&
             sources[1].value->getType()->isVectorTy()) {
 
+        IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16, "As of now Vector Emission is only supported for SIMD16");
         unsigned VectorSize = getVectorSize(sources[0].value);
 
         for (unsigned i = 0; i < VectorSize; ++i) {
@@ -4687,6 +4689,7 @@ void EmitPass::Mul(const SSource sources[2], const DstModifier& modifier)
             sources[0].value->getType()->isVectorTy() &&
             sources[1].value->getType()->isVectorTy()) {
 
+        IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16, "As of now Vector Emission is only supported for SIMD16");
         unsigned VectorSize = getVectorSize(sources[0].value);
 
         for (unsigned i = 0; i < VectorSize; ++i) {
@@ -4744,6 +4747,8 @@ void EmitPass::Div(const SSource sources[2], const DstModifier& modifier)
             sources[0].value->getType()->isVectorTy() &&
             sources[1].value->getType()->isVectorTy()) {
 
+        llvm::errs() <<  numLanes(m_encoder->GetSimdSize()) << "\n";
+        IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16, "As of now Vector Emission is only supported for SIMD16");
         unsigned VectorSize = getVectorSize(sources[0].value);
 
         for (unsigned i = 0; i < VectorSize; ++i) {
@@ -4771,6 +4776,7 @@ void EmitPass::Inv(const SSource sources[2], const DstModifier& modifier) {
             sources[0].value->getType()->isVectorTy() &&
             sources[1].value->getType()->isVectorTy()) {
 
+        IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16, "As of now Vector Emission is only supported for SIMD16");
         unsigned VectorSize = getVectorSize(sources[0].value);
 
         CVariable* src[1];
@@ -4833,6 +4839,7 @@ void EmitPass::FDiv(const SSource sources[2], const DstModifier& modifier)
             sources[0].value->getType()->isVectorTy() &&
             sources[1].value->getType()->isVectorTy()) {
 
+        IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16, "As of now Vector Emission is only supported for SIMD16");
         if (isVectorOfOnes(sources[0].value)) Inv(sources, modifier);
         else Div(sources,modifier);
 

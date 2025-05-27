@@ -1,6 +1,3 @@
-; UNSUPPORTED: system-windows
-; REQUIRES: regkeys
-
 ; RUN: igc_opt -S  --igc-vectorizer -dce < %s 2>&1 | FileCheck %s
 
 ; CHECK: %vectorized_binary = fdiv fast <8 x float>
@@ -11,7 +8,7 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 target triple = "spir64-unknown-unknown"
 
 ; Function Attrs: convergent nounwind
-define spir_kernel void @_attn_fwd() #0 {
+define spir_kernel void @quux() #0 {
   br label %._crit_edge
 
 ._crit_edge:                                      ; preds = %._crit_edge, %0
@@ -73,3 +70,9 @@ uselistorder float (float)* @llvm.exp2.f32, { 7, 6, 5, 4, 3, 2, 1, 0 }
 attributes #0 = { convergent nounwind }
 attributes #1 = { convergent nounwind readnone willreturn }
 attributes #2 = { nofree nosync nounwind readnone speculatable willreturn }
+
+!igc.functions = !{!0}
+!0 = !{void ()* @quux, !1}
+!1 = !{!2, !3}
+!2 = !{!"function_type", i32 0}
+!3 = !{!"sub_group_size", i32 16}

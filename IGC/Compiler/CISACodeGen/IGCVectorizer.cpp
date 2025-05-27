@@ -766,7 +766,24 @@ void IGCVectorizer::collectInstructionToProcess(VecArr &ToProcess,
     }
 }
 
+bool IGCVectorizer::checkIfSIMD16(llvm::Function &F) {
+
+    MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    bool Result = false;
+    if(MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
+        IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
+        unsigned SimdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
+        Result = SimdSize == 16;
+    }
+
+    return Result;
+}
+
 bool IGCVectorizer::runOnFunction(llvm::Function &F) {
+
+    // DPAS only allowed in simd16 mode + helps to reduce untested cases
+    if (!checkIfSIMD16(F)) return false;
+
     M = F.getParent();
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     initializeLogFile(F);

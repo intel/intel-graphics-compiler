@@ -1,6 +1,3 @@
-; UNSUPPORTED: system-windows
-; REQUIRES: pvc-supported, regkeys
-
 ; RUN: igc_opt -S  --igc-vectorizer -dce < %s 2>&1 | FileCheck %s
 
 ; CHECK: %vectorized_phi
@@ -12,7 +9,7 @@
 ; CHECK: %vector5 = insertelement <8 x float> %vector4
 ; CHECK: %vector6 = insertelement <8 x float> %vector5
 ; CHECK: %vector7 = insertelement <8 x float> %vector6
-; CHECK: %vectorized_binary = fmul <8 x float> %vector7, %vectorized_phi
+; CHECK: %vectorized_binary = fmul fast <8 x float> %vector7, %vectorized_phi
 ; CHECK: call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %vectorized_binary
 
 ; ModuleID = 'reduced.ll'
@@ -21,7 +18,7 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 target triple = "spir64-unknown-unknown"
 
 ; Function Attrs: convergent nounwind
-define spir_kernel void @_attn_fwd() #0 {
+define spir_kernel void @quux() {
   br label %._crit_edge
 
 ._crit_edge:                                      ; preds = %._crit_edge, %0
@@ -83,3 +80,9 @@ uselistorder float (float)* @llvm.exp2.f32, { 7, 6, 5, 4, 3, 2, 1, 0 }
 attributes #0 = { convergent nounwind }
 attributes #1 = { convergent nounwind readnone willreturn }
 attributes #2 = { nofree nosync nounwind readnone speculatable willreturn }
+
+!igc.functions = !{!0}
+!0 = !{void ()* @quux, !1}
+!1 = !{!2, !3}
+!2 = !{!"function_type", i32 0}
+!3 = !{!"sub_group_size", i32 16}
