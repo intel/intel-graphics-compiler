@@ -41,6 +41,26 @@ namespace IGCLLVM {
         return type->getTypeID() == llvm::Type::TypeID::BFloatTyID;
 #endif
     }
+
+    inline bool isTargetExtTy(const llvm::Type* PtrTy) {
+#if LLVM_VERSION_MAJOR < 16
+      // not supported below LLVM 16
+      // to be removed once we switch to 16
+      return false;
+#else
+      return PtrTy->isTargetExtTy();
+#endif
+    }
+
+    inline llvm::StringRef getTargetExtName(const llvm::Type* PtrTy) {
+#if LLVM_VERSION_MAJOR < 16
+      // not supported below LLVM 16
+      // to be removed once we switch to 16
+      return llvm::StringRef();
+#else
+      return PtrTy->getTargetExtName();
+#endif
+    }
 }
 
 #endif // IGCLLVM_IR_TYPE_H

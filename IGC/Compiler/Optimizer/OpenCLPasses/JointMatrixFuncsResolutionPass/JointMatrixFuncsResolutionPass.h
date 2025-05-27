@@ -82,6 +82,17 @@ namespace IGC
 
         bool parseMatrixTypeNameLegacy(const llvm::Type *opaqueType, JointMatrixTypeDescription *outDescription);
         bool ParseMatrixTypeName(llvm::Type *opaqueType, JointMatrixTypeDescription *outDescription);
+        bool ParseMatrixTypeNameNonExtTypeDetails(llvm::Type* opaqueType,
+          llvm::StringRef name,
+          bool IsJointMatrix,
+          JointMatrixTypeDescription* outDescription);
+#if LLVM_VERSION_MAJOR >= 16
+        bool ParseMatrixTypeNameExtTypeDetails(llvm::Type* opaqueType, bool IsJointMatrix, IGC::JointMatrixTypeDescription* outDescription);
+#endif
+
+        llvm::StringRef GetMatrixTypeName(llvm::Type* opaqueType);
+        bool SetLayoutFromUse(unsigned int use, IGC::JointMatrixTypeDescription* outDescription);
+        unsigned GetUseFromLegacyLayout(unsigned int legacyLayout);
 
         unsigned getNumRowsPerWI(const JointMatrixTypeDescription *desc);
         llvm::Type *ResolveType(llvm::Type *opaqueType, JointMatrixTypeDescription *outDesc);
