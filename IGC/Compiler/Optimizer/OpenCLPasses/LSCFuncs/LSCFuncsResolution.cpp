@@ -87,7 +87,7 @@ namespace {
         Instruction* CreateSubGroup2DBlockOperation(llvm::CallInst& CI, llvm::StringRef funcName, bool isRead);
 
         /// LSC Fence intrinsics call method
-        Instruction* CreateLSCFenceIntrinsicCallInst();
+        Instruction* CreateLSCFenceIntrinsicCallInst(CallInst& CI);
 
         Instruction* CreateLSCFenceEvictToMemory();
 
@@ -176,6 +176,7 @@ namespace {
         CodeGenContext* m_pCtx = nullptr;
         CallInst* m_pCurrInst = nullptr;
         Function* m_pCurrInstFunc = nullptr;
+        std::set<Instruction*> m_instsToErase{};
 
         // For verifying address payload for block 2d read/write.
         llvm::SmallVector<Instruction *, 32> m_lsc2dblock_readwrite;
@@ -277,6 +278,11 @@ bool LSCFuncsResolution::runOnFunction(Function &F)
     m_changed = false;
 
     visit(F);
+
+    for (auto* inst : m_instsToErase) {
+        inst->eraseFromParent();
+    }
+    m_instsToErase.clear();
 
     verifyBlock2DAddressPayload();
 
@@ -388,7 +394,7 @@ void LSCFuncsResolution::visitCallInst(CallInst &CI)
     }
     else if (FN.startswith(LSCFuncsResolution::PREFIX_LSC_FENCE)) {
         // LSC fence
-        lscCall = CreateLSCFenceIntrinsicCallInst();
+        lscCall = CreateLSCFenceIntrinsicCallInst(CI);
     } else {
         // not an LSC message, bail silently
         return;
@@ -404,7 +410,7 @@ void LSCFuncsResolution::visitCallInst(CallInst &CI)
     if (lscCall != nullptr) {
         lscCall->setDebugLoc(CI.getDebugLoc());
         CI.replaceAllUsesWith(lscCall);
-        CI.eraseFromParent();
+        m_instsToErase.insert(&CI);
 
         m_changed = true;
     }
@@ -1454,7 +1460,7 @@ Instruction* LSCFuncsResolution::CreateLSCStoreCmaskIntrinsicCallInst(
     return lscCall;
 }
 
-Instruction* LSCFuncsResolution::CreateLSCFenceIntrinsicCallInst() {
+Instruction* LSCFuncsResolution::CreateLSCFenceIntrinsicCallInst(CallInst& CI) {
     LSC_SFID memPort = decodeSfidFromName();
 
     auto context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -1479,6 +1485,12 @@ Instruction* LSCFuncsResolution::CreateLSCFenceIntrinsicCallInst() {
 
     if (scope && (scope->getZExtValue() == LSC_SCOPE_SYSACQ || scope->getZExtValue() == LSC_SCOPE_SYSREL))
     {
+        if (context->platform.isIntegratedGraphics() || context->platform.isCoreXE2())
+        {
+            // Global memory fences are not needed on integrated devices or on Xe2 platforms.
+            m_instsToErase.insert(&CI);
+            return nullptr;
+        }
         if (!context->platform.supportSystemFence())
         {
             reportError("platform does not support system fence");

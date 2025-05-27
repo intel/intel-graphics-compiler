@@ -774,6 +774,22 @@ bool supportsZEBin() const
     }
 }
 
+
+bool isIntegratedGraphics() const
+{
+    switch (m_platformInfo.eProductFamily)
+    {
+    case IGFX_DG1:
+    case IGFX_XE_HP_SDV:
+    case IGFX_DG2:
+    case IGFX_PVC:
+    case IGFX_BMG:
+        return false;
+    default:
+        return true;
+    }
+}
+
 bool loosenSimd32occu() const
 {
     if (IGC_GET_FLAG_VALUE(ForceLoosenSimd32Occu) == 2)
