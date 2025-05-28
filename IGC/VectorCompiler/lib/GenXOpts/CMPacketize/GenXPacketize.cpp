@@ -761,6 +761,23 @@ Value *GenXPacketize::packetizeConstant(Constant *C) {
   }
 }
 
+// Helper: vectorize scalar MD_range metadata for a vector instruction
+static void vectorizeRangeMetadata(Instruction *OldCI, Instruction *NewCI) {
+  auto *OldRangeMD = OldCI->getMetadata(LLVMContext::MD_range);
+  if (!OldRangeMD)
+    return;
+  Type *Ty = NewCI->getType();
+
+  // Currently, llvm15/16 work inconsistently with MD_range metadata for vectors.
+  // Link1: Verifier.cpp Verifier::visitRangeMetadata
+  //     -> "Range types must match instruction type!"
+  // Link2: ValueTracking.cpp llvm::computeKnownBitsFromRangeMetadata
+  //     -> ConstantInt *Lower = ... Ranges.getOperand(2 * i + 0)
+  if (auto *VecTy = dyn_cast<VectorType>(Ty))
+      NewCI->setMetadata(LLVMContext::MD_range, nullptr);
+  return;
+}
+
 //////////////////////////////////////////////////////////////////////////
 /// @brief Packetize an LLVM intrinsic.  Generally this means replacing
 ///        a scalar intrinsic function call with a vectored equivalent.
@@ -1659,8 +1676,10 @@ Value *GenXPacketize::packetizeInstruction(Instruction *Inst) {
         DII->replaceVariableLocationOp(Inst, Result);
     }
     // Copy any metadata to new instruction
-    if (Result != Inst && isa<Instruction>(Result))
+    if (Result != Inst && isa<Instruction>(Result)) {
       cast<Instruction>(Result)->copyMetadata(*Inst);
+      vectorizeRangeMetadata(Inst, dyn_cast<Instruction>(Result));
+    }
   }
   return Result;
 }
