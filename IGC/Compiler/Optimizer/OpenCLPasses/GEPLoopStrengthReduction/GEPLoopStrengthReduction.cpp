@@ -1122,6 +1122,13 @@ bool Analyzer::deconstructSCEV(const SCEV *S, Analyzer::DeconstructedSCEV &Resul
         if (Add->getNumOperands() != 2)
             return false;
 
+        // Scalar Evolution can produce SCEVAddRecExpr based on boolean type, for example:
+        //   {(true + (trunc i16 %localIdX to i1)),+,true}
+        // Ignore such expressions.
+        Type *Ty = Add->getStart()->getType();
+        if (Ty->isIntegerTy() && Ty->getScalarSizeInBits() == 1)
+            return false;
+
         const SCEV *OpStep = Add->getOperand(1);
 
         // Step must be constant in loop's body.
