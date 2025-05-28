@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -40,8 +40,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/Instructions.h"
 
+#include <list>
 #include <map>
 #include <set>
+#include <stack>
 
 namespace llvm {
 class Constant;
@@ -85,10 +87,13 @@ class VectorDecomposer {
   llvm::SmallVector<Instruction *, 8> NewInsts;
   unsigned DecomposedCount = 0;
   const unsigned GRFByteSize;
+  std::stack<std::pair<Use *, llvm::SmallVectorImpl<Value *> *>> DecomposeStack;
+  std::list<llvm::SmallVector<Value *, 8>> DecomposeParts;
 
 public:
   explicit VectorDecomposer(const GenXSubtarget *ST)
-      : ST(ST), GRFByteSize(ST ? ST->getGRFByteSize() : llvm::genx::defaultGRFByteSize) {}
+      : ST(ST), GRFByteSize(ST ? ST->getGRFByteSize()
+                               : llvm::genx::defaultGRFByteSize) {}
 
   // clear : clear anything stored
   void clear() {
@@ -97,6 +102,7 @@ public:
     Seen.clear();
     ToDelete.clear();
     DecomposedCount = 0;
+    DecomposeParts.clear();
   }
   // addStartWrRegion : add a wrregion with undef input to the list
   void addStartWrRegion(Instruction *Inst) { StartWrRegions.push_back(Inst); }
