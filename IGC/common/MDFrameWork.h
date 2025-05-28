@@ -470,6 +470,8 @@ enum class ShaderTypeMD
         bool WaEnableALTModeVisaWA                      = false;
         bool EnableLdStCombineforLoad                   = false;
         bool EnableLdStCombinewithDummyLoad             = false;
+        bool ForceUniformBuffer                         = false;
+        bool ForceUniformSurfaceSampler                 = false;
         bool EnableIndependentSharedMemoryFenceFunctionality = false;
         bool NewSpillCostFunction                       = false;
         bool EnableVRT                                  = false;
@@ -516,8 +518,6 @@ enum class ShaderTypeMD
         bool disableSplitOnSpill = false;
         bool enableNewSpillCostFunction = false;
         bool forceVISAPreSched = false;
-        bool forceUniformBuffer = false;
-        bool forceUniformSurfaceSampler = false;
         // disables dispatch along y and tiled order optimizations
         bool disableLocalIdOrderOptimizations = false;
         // force disables dispatch along y optimization
