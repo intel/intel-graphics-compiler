@@ -47,20 +47,21 @@ entry:
   ret void
 }
 
- ; with different predicates, we cannot merge loads/stores.
+ ; with different predicates, we cannot merge all loads. We cannot merge stores.
 
  ; CHECK-LABEL: define void @f0_different_predicates
- ; CHECK: %0 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* %src, i64 4, i1 true, i32 42)
- ; CHECK: %arrayidx1 = getelementptr inbounds i32, i32* %src, i32 1
- ; CHECK: %1 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* nonnull %arrayidx1, i64 4, i1 false, i32 43)
- ; CHECK: %arrayidx2 = getelementptr inbounds i32, i32* %src, i32 2
- ; CHECK: %2 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* nonnull %arrayidx2, i64 4, i1 true, i32 44)
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* %dst, i32 %0, i64 4, i1 true)
- ; CHECK: %arrayidx4 = getelementptr inbounds i32, i32* %dst, i32 1
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* nonnull %arrayidx4, i32 %1, i64 4, i1 false)
- ; CHECK: %arrayidx5 = getelementptr inbounds i32, i32* %dst, i32 2
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* nonnull %arrayidx5, i32 %2, i64 4, i1 true)
- ; CHECK: ret void
+ ; CHECK:  %0 = bitcast i32* %src to <3 x i32>*
+ ; CHECK:  %1 = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0v3i32.v3i32(<3 x i32>* %0, i64 4, i1 true, <3 x i32> <i32 42, i32 undef, i32 44>)
+ ; CHECK:  %2 = extractelement <3 x i32> %1, i64 0
+ ; CHECK:  %3 = extractelement <3 x i32> %1, i64 2
+ ; CHECK:  %arrayidx1 = getelementptr inbounds i32, i32* %src, i32 1
+ ; CHECK:  %4 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* nonnull %arrayidx1, i64 4, i1 false, i32 43)
+ ; CHECK:  call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* %dst, i32 %2, i64 4, i1 true)
+ ; CHECK:  %arrayidx4 = getelementptr inbounds i32, i32* %dst, i32 1
+ ; CHECK:  call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* nonnull %arrayidx4, i32 %4, i64 4, i1 false)
+ ; CHECK:  %arrayidx5 = getelementptr inbounds i32, i32* %dst, i32 2
+ ; CHECK:  call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* nonnull %arrayidx5, i32 %3, i64 4, i1 true)
+ ; CHECK:  ret void
 
  define void @f1(i32* %dst, i32* %src) {
  entry:
@@ -244,14 +245,15 @@ declare void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32*, i32, i64, i1)
 
 attributes #0 = { nounwind readonly }
 
-!igc.functions = !{!0, !3, !4, !5, !6, !7}
+!igc.functions = !{!0, !1, !2, !3, !4, !5, !6}
 
-!0 = !{void (i32*, i32*)* @f0, !1}
-!3 = !{void (i32*, i32*)* @f1, !1}
-!4 = !{void (i32*, i32*)* @f2, !1}
-!5 = !{void (i32, i32, i32*, i32*)* @f3, !1}
-!6 = !{void (i32, i32, i32*, i32*)* @f4, !1}
-!7 = !{void (i32*, i32*)* @f5, !1}
+!0 = !{void (i32*, i32*)* @f0, !10}
+!1 = !{void (i32*, i32*)* @f0_different_predicates, !10}
+!2 = !{void (i32*, i32*)* @f1, !10}
+!3 = !{void (i32*, i32*)* @f2, !10}
+!4 = !{void (i32, i32, i32*, i32*)* @f3, !10}
+!5 = !{void (i32, i32, i32*, i32*)* @f4, !10}
+!6 = !{void (i32*, i32*)* @f5, !10}
 
-!1 = !{!2}
-!2 = !{!"function_type", i32 0}
+!10 = !{!20}
+!20 = !{!"function_type", i32 0}

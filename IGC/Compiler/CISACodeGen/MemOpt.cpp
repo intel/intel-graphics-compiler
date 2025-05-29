@@ -88,6 +88,8 @@ namespace {
         // A list of memory references (within a BB) with the distance to the begining of the BB.
         typedef std::vector<std::pair<Instruction*, unsigned> > MemRefListTy;
         typedef std::vector<Instruction*> TrivialMemRefListTy;
+        // ALoadInst, Offset, MemRefListTy::iterator, LeadingLoad's int2PtrOffset
+        typedef SmallVector<std::tuple<Instruction *, int64_t, MemRefListTy::iterator>, 8> MergeVector;
 
     public:
         static char ID;
@@ -134,6 +136,10 @@ namespace {
         Value* getShuffle(Value* ShflId, Instruction* BlockReadToOptimize,
             Value* SgId, llvm::IRBuilder<>& Builder, unsigned& ToOptSize);
 
+        unsigned getNumElements(Type* Ty) {
+            return Ty->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() : 1;
+        }
+
         Type* getVectorElementType(Type* Ty) const {
             return isa<VectorType>(Ty) ? cast<VectorType>(Ty)->getElementType() : Ty;
         }
@@ -143,6 +149,95 @@ namespace {
             if (A == B)
                 return true;
             return DL->getTypeStoreSize(A) == DL->getTypeStoreSize(B);
+        }
+
+        Value* createBitOrPointerCast(Value* V, Type* DestTy,
+            IGCIRBuilder<>& Builder) {
+            if (V->getType() == DestTy)
+                return V;
+
+            if (V->getType()->isPointerTy() && DestTy->isPointerTy()) {
+                PointerType* SrcPtrTy = cast<PointerType>(V->getType());
+                PointerType* DstPtrTy = cast<PointerType>(DestTy);
+                if (SrcPtrTy->getPointerAddressSpace() !=
+                    DstPtrTy->getPointerAddressSpace())
+                    return Builder.CreateAddrSpaceCast(V, DestTy);
+            }
+
+            if (V->getType()->isPointerTy()) {
+                if (DestTy->isIntegerTy()) {
+                    return Builder.CreatePtrToInt(V, DestTy);
+                }
+                else if (DestTy->isFloatingPointTy()) {
+                    uint32_t Size = (uint32_t)DestTy->getPrimitiveSizeInBits();
+                    Value* Cast = Builder.CreatePtrToInt(
+                        V, Builder.getIntNTy(Size));
+                    return Builder.CreateBitCast(Cast, DestTy);
+                }
+            }
+
+            if (DestTy->isPointerTy()) {
+                if (V->getType()->isIntegerTy()) {
+                    return Builder.CreateIntToPtr(V, DestTy);
+                }
+                else if (V->getType()->isFloatingPointTy()) {
+                    uint32_t Size = (uint32_t)V->getType()->getPrimitiveSizeInBits();
+                    Value* Cast = Builder.CreateBitCast(
+                        V, Builder.getIntNTy(Size));
+                    return Builder.CreateIntToPtr(Cast, DestTy);
+                }
+            }
+
+            return Builder.CreateBitCast(V, DestTy);
+        }
+
+        /**
+         * @brief Creates a new merge value for merged load from a set of predicated loads' merge values.
+         *
+         * This function constructs a new combined merge value by merging the merge values of multiple predicated load intrinsics.
+         * Merge value from each input predicated load is inserted into the appropriate position in the resulting merge vector value,
+         * based on its offset and the scalar size. The function handles both scalar and vector merge input values.
+         *
+         * @param MergeValTy The type of the merged value to be created.
+         * @param LoadsToMerge A vector of tuples, each containing a load instruction and its associated offset.
+         * @param LdScalarSize The size (in bytes) of the scalar element being loaded in the combined load.
+         * @param NumElts Number of elements in the merged value vector.
+         * @return Value* The newly created merged value, or nullptr if we are merging generic loads, not predicated.
+         */
+        Value* CreateNewMergeValue(IGCIRBuilder<>& Builder, Type* MergeValTy,
+                                  const MergeVector& LoadsToMerge, unsigned LdScalarSize,
+                                  unsigned& NumElts) {
+            Value* NewMergeValue = UndefValue::get(MergeValTy);
+            unsigned Pos = 0;
+            int64_t FirstOffset = std::get<1>(LoadsToMerge.front());
+
+            for (auto& I : LoadsToMerge) {
+                PredicatedLoadIntrinsic* PLI = ALoadInst::get(std::get<0>(I))->getPredicatedLoadIntrinsic();
+                if (!PLI)
+                    return nullptr;
+
+                Value* MergeValue = PLI->getMergeValue();
+                unsigned MergeValNumElements = getNumElements(MergeValue->getType());
+                Type* MergeValScalarTy = MergeValTy->getScalarType();
+                Pos = unsigned((std::get<1>(I) - FirstOffset) / LdScalarSize);
+
+                if (MergeValNumElements == 1) {
+                    IGC_ASSERT_MESSAGE(Pos < NumElts, "Index is larger than the number of elements, we cannot update merge value.");
+                    MergeValue = createBitOrPointerCast(MergeValue, MergeValScalarTy, Builder);
+                    NewMergeValue = Builder.CreateInsertElement(NewMergeValue, MergeValue, Builder.getInt32(Pos));
+                    continue;
+                }
+
+                IGC_ASSERT_MESSAGE(Pos + MergeValNumElements <= NumElts,
+                    "Index is larger than the number of elements, we cannot update merge value.");
+
+                for (unsigned i = 0; i < MergeValNumElements; ++i) {
+                    Value* ExtractValue = Builder.CreateExtractElement(MergeValue, Builder.getInt32(i));
+                    ExtractValue = createBitOrPointerCast(ExtractValue, MergeValScalarTy, Builder);
+                    NewMergeValue = Builder.CreateInsertElement(NewMergeValue, ExtractValue, Builder.getInt32(Pos + i));
+                }
+            }
+            return NewMergeValue;
         }
 
         bool isSafeToMergeLoad(const ALoadInst& Ld,
@@ -644,76 +739,6 @@ bool MemOpt::removeRedBlockRead(GenIntrinsicInst* LeadingBlockRead,
     return true;
 }
 
-namespace {
-    unsigned getNumElements(Type* Ty) {
-        return Ty->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() : 1;
-    }
-
-    template <typename T>
-    Value* createBitOrPointerCast(Value* V, Type* DestTy,
-        IGCIRBuilder<T>& Builder) {
-        if (V->getType() == DestTy)
-            return V;
-        if (V->getType()->isPointerTy() && DestTy->isPointerTy()) {
-            PointerType* SrcPtrTy = cast<PointerType>(V->getType());
-            PointerType* DstPtrTy = cast<PointerType>(DestTy);
-            if (SrcPtrTy->getPointerAddressSpace() !=
-                DstPtrTy->getPointerAddressSpace())
-                return Builder.CreateAddrSpaceCast(V, DestTy);
-        }
-        if (V->getType()->isPointerTy()) {
-            if (DestTy->isIntegerTy()) {
-                return Builder.CreatePtrToInt(V, DestTy);
-            }
-            else if (DestTy->isFloatingPointTy()) {
-                uint32_t Size = (uint32_t)DestTy->getPrimitiveSizeInBits();
-                Value* Cast = Builder.CreatePtrToInt(
-                    V, Builder.getIntNTy(Size));
-                return Builder.CreateBitCast(Cast, DestTy);
-            }
-        }
-        if (DestTy->isPointerTy()) {
-            if (V->getType()->isIntegerTy()) {
-                return Builder.CreateIntToPtr(V, DestTy);
-            }
-            else if (V->getType()->isFloatingPointTy()) {
-                uint32_t Size = (uint32_t)V->getType()->getPrimitiveSizeInBits();
-                Value* Cast = Builder.CreateBitCast(
-                    V, Builder.getIntNTy(Size));
-                return Builder.CreateIntToPtr(Cast, DestTy);
-            }
-        }
-        return Builder.CreateBitCast(V, DestTy);
-    }
-
-    template <typename T>
-    Value* CreateNewMergeValue(IGCIRBuilder<T>& Builder, Type* Ty,
-                               const SmallVector<Instruction *>& LoadsToMerge) {
-        Value* NewMergeValue = UndefValue::get(Ty);
-        unsigned idx = 0;
-        for (auto* Inst : LoadsToMerge) {
-            PredicatedLoadIntrinsic* PLI = ALoadInst::get(Inst)->getPredicatedLoadIntrinsic();
-            if (!PLI)
-                return nullptr;
-            Value* MergeValue = PLI->getMergeValue();
-            unsigned NumElements = getNumElements(MergeValue->getType());
-            Type* ScalarTy = Ty->getScalarType();
-            if (NumElements == 1) {
-                MergeValue = createBitOrPointerCast(MergeValue, ScalarTy, Builder);
-                NewMergeValue = Builder.CreateInsertElement(NewMergeValue, MergeValue, Builder.getInt32(idx++));
-                continue;
-            }
-
-            for (unsigned i = 0; i < NumElements; ++i) {
-                Value* ExtractValue = Builder.CreateExtractElement(MergeValue, Builder.getInt32(i));
-                ExtractValue = createBitOrPointerCast(ExtractValue, ScalarTy, Builder);
-                NewMergeValue = Builder.CreateInsertElement(NewMergeValue, ExtractValue, Builder.getInt32(idx++));
-            }
-        }
-        return NewMergeValue;
-    }
-}
-
 //Removes redundant blockread if both blockreads are scalar.
 void MemOpt::removeScalarBlockRead(Instruction* BlockReadToOptimize,
     Instruction* BlockReadToRemove, Value* SgId,
@@ -1151,8 +1176,7 @@ bool MemOpt::mergeLoad(ALoadInst& LeadingLoad,
     }
 
     // ALoadInst, Offset, MemRefListTy::iterator, LeadingLoad's int2PtrOffset
-    SmallVector<std::tuple<Instruction *, int64_t, MemRefListTy::iterator>, 8>
-        LoadsToMerge;
+    MergeVector LoadsToMerge;
     LoadsToMerge.push_back(std::make_tuple(LeadingLoad.inst(), 0, MI));
 
     // Loads to be merged is scanned in the program order and will be merged into
@@ -1375,10 +1399,8 @@ bool MemOpt::mergeLoad(ALoadInst& LeadingLoad,
     Value* NewPointer = Builder.CreateBitCast(Ptr, NewPointerType);
 
     // Prepare Merge Value if needed:
-    SmallVector<Instruction*> LoadsToMergeInsts;
-    for (auto& I : LoadsToMerge)
-        LoadsToMergeInsts.push_back(std::get<0>(I));
-    Value* NewMergeValue = CreateNewMergeValue(Builder, NewLoadType, LoadsToMergeInsts);
+    Value* NewMergeValue = CreateNewMergeValue(Builder, NewLoadType, LoadsToMerge,
+                                               LdScalarSize, NumElts);
 
     Instruction* NewLoad =
         FirstLoad.CreateAlignedLoad(Builder, NewLoadType, NewPointer, NewMergeValue);
@@ -3486,7 +3508,7 @@ void LdStCombine::combineLoads()
                     ++numInsts;
 
                 // cannot merge beyond fence or window limit
-                if ((I->isFenceLike() && !isa<PredicatedLoadIntrinsic>(I)) || numInsts > LDWINDOWSIZE) {
+                if ((I->isFenceLike() && !isa<PredicatedLoadIntrinsic>(I) && !isa<PredicatedStoreIntrinsic>(I)) || numInsts > LDWINDOWSIZE) {
                     LLVM_DEBUG(dbgs() << "- - Stop at fence or window limit\n");
                     break;
                 }
@@ -3772,6 +3794,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
         {
             // 1. The first one is the leading store.
             const LdStInfo* leadLSI = &LoadStores[i];
+            LLVM_DEBUG(llvm::dbgs() << "Try leading LdSt: " << *leadLSI->getInst() << "\n");
             if (isBundled(leadLSI, m_combinedInsts) ||
                 (i+1) == SZ) /* skip for last one */ {
                 ++i;
@@ -3780,7 +3803,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
 
             if (m_WI && isUniform &&
                 !m_WI->isUniform(leadLSI->getValueOperand())) {
-                // no combining for *uniform-ptr = non-uniform value
+                LLVM_DEBUG(llvm::dbgs() << "No combining for *uniform-ptr = non-uniform value\n");
                 ++i;
                 continue;
             }
@@ -3816,6 +3839,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
             uint32_t vecSize = -1;
             for (int j = i + 1; j < SZ; ++j) {
                 const LdStInfo* LSI = &LoadStores[j];
+                LLVM_DEBUG(llvm::dbgs() << "Try to make bundle with: " << *LSI->getInst() << "\n");
                 if (isBundled(LSI, m_combinedInsts) ||
                     (leadLSI->getByteOffset() + totalBytes) != LSI->getByteOffset())
                 {
@@ -3824,7 +3848,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
                 }
                 if (m_WI && isUniform &&
                     !m_WI->isUniform(LSI->getValueOperand())) {
-                    // no combining for *uniform-ptr = non-uniform value
+                    LLVM_DEBUG(llvm::dbgs() << "No combining for *uniform-ptr = non-uniform value\n");
                     break;
                 }
 

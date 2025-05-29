@@ -211,6 +211,67 @@ entry:
   %c7.addr = bitcast i32 addrspace(1)* %c7.arrayidx1 to <4 x i8> addrspace(1)*
   store <4 x i8> %c7.e0.2, <4 x i8> addrspace(1)* %c7.addr, align 4
 
+;
+; case 8: load i8; load i8; atomicrmw add i8; load i8; store i8; load i8; load i8; --> load <2 x i8>; atomicrmw add i8; load i8; store i8; load <2 x i8>
+; only the first 2 loads and the last 2 loads were merged. loads in the middle were not merged due to instuction that may write to memory and store instruction
+; for which alias analysis does not guarantee that it is not writing to the same memory location.
+;
+; CHECK-LABEL: %c8.arrayidx
+; CHECK: call <2 x i8> @llvm.genx.GenISA.PredicatedLoad.v2i8.p1v2i8.v2i8(<2 x i8> addrspace(1)* %{{.*}}, i64 4, i1 true, <2 x i8> <i8 5, i8 6>)
+; CHECK: atomicrmw add i8
+; CHECK: call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %{{.*}}, i64 1, i1 true, i8 7)
+; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1i8.i8
+; CHECK: call <2 x i8> @llvm.genx.GenISA.PredicatedLoad.v2i8.p1v2i8.v2i8(<2 x i8> addrspace(1)* %{{.*}}, i64 1, i1 true, <2 x i8> <i8 8, i8 9>)
+;
+  %c8.si = bitcast i32 addrspace(1)* %si to i8 addrspace(1)*
+  %c8.arrayidx = getelementptr inbounds i8, i8 addrspace(1)* %c8.si, i64 %conv.i.i
+  %c8.0 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %c8.arrayidx, i64 4, i1 true, i8 5)
+  %c8.add.1 = add nuw nsw i64 %conv.i.i, 1
+  %c8.arrayidx.1 = getelementptr inbounds i8, i8 addrspace(1)* %c8.si, i64 %c8.add.1
+  %c8.1 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %c8.arrayidx.1, i64 1, i1 true, i8 6)
+  %a = atomicrmw add i8 addrspace(1)* %c8.arrayidx.1, i8 1 seq_cst
+  %c8.add.2 = add nuw nsw i64 %conv.i.i, 2
+  %c8.arrayidx.2 = getelementptr inbounds i8, i8 addrspace(1)* %c8.si, i64 %c8.add.2
+  %c8.2 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %c8.arrayidx.2, i64 1, i1 true, i8 7)
+  call void @llvm.genx.GenISA.PredicatedStore.p1i8.i8(i8 addrspace(1)* %c8.arrayidx.2, i8 1, i64 1, i1 true)
+  %c8.add.3 = add nuw nsw i64 %conv.i.i, 3
+  %c8.arrayidx.3 = getelementptr inbounds i8, i8 addrspace(1)* %c8.si, i64 %c8.add.3
+  %c8.3 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %c8.arrayidx.3, i64 1, i1 true, i8 8)
+  %c8.add.4 = add nuw nsw i64 %conv.i.i, 4
+  %c8.arrayidx.4 = getelementptr inbounds i8, i8 addrspace(1)* %c8.si, i64 %c8.add.4
+  %c8.4 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %c8.arrayidx.4, i64 1, i1 true, i8 9)
+  %c8.0.0 = zext i8 %c8.0 to i32
+  %c8.1.0 = zext i8 %c8.1 to i32
+  %c8.2.0 = zext i8 %c8.2 to i32
+  %c8.3.0 = zext i8 %c8.3 to i32
+  %c8.4.0 = zext i8 %c8.4 to i32
+  %c8.a = zext i8 %a to i32
+  %c8.e0  = add i32 %c8.1.0, %c8.0.0
+  %c8.e1  = add i32 %c8.3.0, %c8.2.0
+  %c8.e2  = add i32 %c8.e1, %c8.e0
+  %c8.e3  = add i32 %c8.e2, %c8.a
+  %c8.e4 = add i32 %c8.e3, %c8.4.0
+  store i32 %c8.e4, i32 addrspace(1)* %d, align 4
+
+;
+; case 9: load i32 p+1; load i32 p -> load <2 x i32>
+;    This is to test that lead load is not the first and therefore, an address of
+;    of anchor load is used instead. Case, when Lead's load address is not an Instruction.
+;
+; CHECK-LABEL:  store i32 %c8.e4
+; CHECK:        [[T9:%.*]] = bitcast i32 addrspace(1)* %si to <2 x i32> addrspace(1)*
+; CHECK:        {{.*}} = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p1v2i32.v2i32(<2 x i32> addrspace(1)* [[T9]], i64 4, i1 true, <2 x i32> <i32 6, i32 5>)
+;
+  %c9.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 1
+  %c9.0 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)* %c9.arrayidx, i64 4, i1 true, i32 5)
+  %c9.1 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)* %si, i64 4, i1 true, i32 6)
+  %c9.v.0 = insertelement <2 x i32> undef,    i32 %c9.0, i64 0
+  %c9.v.1 = insertelement <2 x i32> %c9.v.0, i32 %c9.1, i64 1
+  %c9.baseidx = add i64 %conv.i.i, 577
+  %c9.arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %d, i64 %c9.baseidx
+  %c9.addr = bitcast i32 addrspace(1)* %c9.arrayidx1 to <2 x i32> addrspace(1)*
+  store <2 x i32> %c9.v.1, <2 x i32> addrspace(1)* %c9.addr, align 4
+
 ; CHECK-LABEL: ret void
   ret void
 }
@@ -223,5 +284,7 @@ declare i16 @llvm.genx.GenISA.PredicatedLoad.i16.p1i16.i16(i16 addrspace(1)*, i6
 declare i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)*, i64, i1, i32) #0
 ; Function Attrs: nounwind readonly
 declare i64 @llvm.genx.GenISA.PredicatedLoad.i64.p1i64.i64(i64 addrspace(1)*, i64, i1, i64) #0
+
+declare void @llvm.genx.GenISA.PredicatedStore.p1i8.i8(i8 addrspace(1)*, i8, i64, i1)
 
 attributes #0 = { nounwind readonly }
