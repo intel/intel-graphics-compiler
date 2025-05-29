@@ -2985,6 +2985,9 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT) const {
   }
 
   if (depT <= NODEP || depT >= CONTROL_FLOW_BARRIER) {
+    if (kernel->fg.builder->modelSendSrcReadLatency() && inst->isSend()) {
+      return LT.getSendSrcReadLatency(inst);
+    }
     return node->getOccupancy();
   }
 

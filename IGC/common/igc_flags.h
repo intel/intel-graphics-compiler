@@ -89,6 +89,7 @@ DECLARE_IGC_REGKEY(DWORD,EnableIndirectInstEnd,         0,     "Enable the indir
 DECLARE_IGC_REGKEY(DWORD,EnableSWSBTokenBarrier,        0,     "Enable force specific instruction as a barrier for software scoreboard generation", true)
 DECLARE_IGC_REGKEY(DWORD,SWSBTokenNum,                  0,     "Total tokens used for SWSB.", true)
 DECLARE_IGC_REGKEY(bool, EnableGroupScheduleForBC,      false,  "Enable bank conflict reduction in scheduling.", true)
+DECLARE_IGC_REGKEY(bool, SchedWithSendSrcReadCycle,     false,  "Scheduling with GRF read cycle from send.", true)
 DECLARE_IGC_REGKEY(bool, EnableIGASWSB,                 false,  "Use IGA for SWSB", true)
 DECLARE_IGC_REGKEY(bool, EnableSWSBStitch,              false,  "Insert dependence resolve for kernel stitching", true)
 DECLARE_IGC_REGKEY(bool, DisableRegDistDep,             false,  "distable regDist dependence", true)
