@@ -5395,8 +5395,11 @@ namespace IGC
             SaveOption(vISA_IncSpillCostAllAddrTaken, false);
         }
 
-        if ((IGC_GET_FLAG_VALUE(LscImmOffsMatch) > 0 && m_program->m_DriverInfo->supportsLSCImmediateGlobalBaseOffsetForA32()) ||
-            IGC_GET_FLAG_VALUE(LscImmOffsMatch) > 1) {
+
+        bool enableLscImmOffsMatch =
+            IGC_GET_FLAG_VALUE(LscImmOffsMatch) > 1;
+
+        if (enableLscImmOffsMatch) {
             auto val = IGC_GET_FLAG_VALUE(LscImmOffsVisaOpts);
             SaveOption(vISA_lscEnableImmOffsFor, val);
         } else {
