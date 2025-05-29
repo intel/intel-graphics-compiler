@@ -6657,7 +6657,8 @@ void Optimizer::renameRegister() {
           newSrcRd = builder.getRegionScalar();
         } else {
           unsigned tExecSize = (execSize > 8) ? 8 : execSize;
-          if (RegionDesc::isLegal(tExecSize * dstHS, execSize, dstHS)) {
+          if (RegionDesc::isLegal(tExecSize * dstHS, execSize, dstHS) &&
+              (execSize * dstHS <= 32)) { // VS at most 32
             newSrcRd = builder.createRegionDesc((uint16_t)tExecSize * dstHS,
                                                 execSize, dstHS);
           } else {
