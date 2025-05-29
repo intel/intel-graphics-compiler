@@ -55,11 +55,10 @@ namespace IGC
         for (uint i = 0; i < patternMatch->m_numBlocks; i++)
         {
             SBasicBlock& block = patternMatch->m_blocks[i];
-
             // An empty block would have only one pattern matching the branch instruction
-            if (block.bb->sizeWithoutDebug() == 1)
+            if (block.m_dags.size() == 1)
             {
-                if (BranchInst * br = dyn_cast<BranchInst>(&block.bb->back()))
+                if (BranchInst * br = dyn_cast<BranchInst>(block.m_dags[0].m_root))
                 {
                     if (br->isUnconditional())
                     {
