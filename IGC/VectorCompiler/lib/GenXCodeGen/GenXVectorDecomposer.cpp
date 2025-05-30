@@ -496,7 +496,7 @@ void VectorDecomposer::decompose() {
   }
 
   while (!DecomposeStack.empty()) {
-    auto &[U, Parts] = DecomposeStack.top();
+    auto [U, Parts] = DecomposeStack.top();
     DecomposeStack.pop();
     decomposeTree(U, Parts);
   }
