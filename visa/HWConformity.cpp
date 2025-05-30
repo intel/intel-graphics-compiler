@@ -1154,26 +1154,7 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB *bb) {
       }
     }
   }
-  if (inst->opcode() == G4_bfn) {
-    // BFN requires its operands to be UD/UW
-    // ToDo: anyway to generalize this to all instructions requiring
-    // signed/unsigned int type? IGA doesn't seem to have API to query supported
-    // types
-    auto dst = inst->getDst();
-    if (dst->getType() == Type_D || dst->getType() == Type_W) {
-      dst->setType(builder, dst->getType() == Type_D ? Type_UD : Type_UW);
-    }
-    auto changeSrcToUnsigned = [this](G4_Operand *opnd) {
-      if (opnd->isSrcRegRegion() &&
-          (opnd->getType() == Type_D || opnd->getType() == Type_W)) {
-        opnd->asSrcRegRegion()->setType(
-            builder, opnd->getType() == Type_D ? Type_UD : Type_UW);
-      }
-    };
-    changeSrcToUnsigned(inst->getSrc(0));
-    changeSrcToUnsigned(inst->getSrc(1));
-    changeSrcToUnsigned(inst->getSrc(2));
-  }
+
   return changed;
 }
 
@@ -6483,6 +6464,12 @@ void HWConformity::chkHWConformity() {
 #ifdef _DEBUG
     verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
+
+    fixBfnInst(bb);
+#ifdef _DEBUG
+    verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
+#endif
+
     // fix source operand first to avoid redundant MOVs if this fix is done
     // after reducing execution size. used by 3d. Mainly to fix sel with two imm
     // sources
@@ -9958,5 +9945,49 @@ void HWConformity::fixImmAddrOffsetOOB(INST_LIST_ITER it, G4_BB *bb) {
     bb->insertAfter(it,
                     generateAddrAddInst(srcRR, srcRR->getSubRegOff(),
                                         -immAddrOff, G4_ExecSize(execSize)));
+  }
+}
+
+void HWConformity::fixBfnInst(G4_BB* bb) {
+  INST_LIST_ITER it = bb->begin();
+
+  for (auto iterEnd = bb->end(); it != iterEnd; ++it) {
+    G4_INST *inst = *it;
+    if (inst->opcode() != G4_bfn) {
+      continue;
+    }
+
+    // BFN requires its operands to be UD/UW
+    // ToDo: anyway to generalize this to all instructions requiring
+    // signed/unsigned int type? IGA doesn't seem to have API to query supported
+    // types
+    auto dst = inst->getDst();
+    if (dst->getType() == Type_D || dst->getType() == Type_W) {
+      dst->setType(builder, dst->getType() == Type_D ? Type_UD : Type_UW);
+    }
+
+    // When create visa immediate operand, we will lower immediate type.
+    // For example:
+    // bfn.xd8 (M1_NM, 1) V0042(0,0)<1> 0xffff8089:d 0xffffb4d8:d 0xffff895b:d
+    // lower to:
+    // (W) bfn.0xD8 (1) V0042(0,0)<1>:d  0x8089:w  0xb4d8:w  0x895b:w
+    // In this case, the dst is dword type, the immediate source operand should
+    // be dword as well. Since HW can only support 16b immediate value, we need
+    // to insert mov instruction to resolve it.
+    for (int i = 0; i < inst->getNumSrc(); i++)
+      if (inst->getSrc(i)->isImm() && IS_DTYPE(inst->getDst()->getType()) &&
+          inst->getSrc(i)->getType() == Type_W)
+        inst->setSrc(insertMovBefore(it, i, Type_D, bb), i);
+
+    auto changeSrcToUnsigned = [this](G4_Operand *opnd) {
+      if (opnd->isSrcRegRegion() &&
+          (opnd->getType() == Type_D || opnd->getType() == Type_W)) {
+        opnd->asSrcRegRegion()->setType(
+            builder, opnd->getType() == Type_D ? Type_UD : Type_UW);
+      }
+    };
+    changeSrcToUnsigned(inst->getSrc(0));
+    changeSrcToUnsigned(inst->getSrc(1));
+    changeSrcToUnsigned(inst->getSrc(2));
   }
 }
