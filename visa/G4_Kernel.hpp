@@ -155,6 +155,7 @@ public:
   unsigned setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
                                 bool forceGRFModedUp = false);
   bool hasLargerGRFSameThreads() const;
+  bool hasSmallerGRFSameThreads() const;
   unsigned getSpillThreshold() const;
 
   unsigned getNumGRF() const { return configs[currentMode].numGRF; }
@@ -266,6 +267,7 @@ private:
   unsigned lowerBoundGRF;
   unsigned upperBoundGRF;
   unsigned GRFModeUpValue;
+  const TARGET_PLATFORM platform;
   Options *options;
 };
 
