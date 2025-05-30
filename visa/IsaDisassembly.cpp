@@ -2725,13 +2725,13 @@ private:
       ss << "d64";
       break;
     case LSC_DATA_SIZE_8c32b:
-      ss << "d8c32";
+      ss << "d8u32";
       break;
     case LSC_DATA_SIZE_16c32b:
-      ss << "d16c32";
+      ss << "d16u32";
       break;
     case LSC_DATA_SIZE_16c32bH:
-      ss << "d16c32h";
+      ss << "d16u32h";
       break;
     default:
       formatBadEnum(dataSize);
