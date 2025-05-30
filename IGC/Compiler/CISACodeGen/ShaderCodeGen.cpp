@@ -1919,6 +1919,8 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
         if (pContext->type == ShaderType::COMPUTE_SHADER &&
+            pContext->m_DriverInfo.supportMergeUniformSimd1Stores() &&
+            pContext->platform.supportMergeUniformSimd1Stores() &&
             IGC_IS_FLAG_ENABLED(EnableUniformSimd1Stores))
         {
             mpm.add(new MergeUniformStores());
