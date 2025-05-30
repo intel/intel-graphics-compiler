@@ -6,7 +6,7 @@
 #
 #============================ end_copyright_notice =============================
 
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.5)
 
 message(STATUS "============================ SPIRV-Tools project ============================")
 
