@@ -24,12 +24,12 @@ entry:
 
   ; copy merge value. do predicated load, copy result
   ; CHECK: mov (M1_NM, 1) [[G_ALIAS0]](0,0)<0> 0x0:b
-  ; CHECK: (P1) lsc_load.ugm (M1_NM, 1)  [[GATHER0]]:d8c32  flat[
+  ; CHECK: (P1) lsc_load.ugm (M1_NM, 1)  [[GATHER0]]:d8u32  flat[
   ; CHECK: mov (M1_NM, 1) res0(0,0)<1> [[G_ALIAS0]](0,0)<0;1,0>
   %res0 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1.i8(ptr addrspace(1) %in, i64 1, i1 %p, i8 0)
 
   ; do predicated load, then do predicated copy of result to merge value which is used as dest.
-  ; CHECK: (P1) lsc_load.ugm (M1_NM, 1)  [[GATHER1]]:d8c32  flat[
+  ; CHECK: (P1) lsc_load.ugm (M1_NM, 1)  [[GATHER1]]:d8u32  flat[
   ; CHECK: (P1) mov (M1_NM, 1) mVi8(0,0)<1> [[G_ALIAS1]](0,0)<0;1,0>
   %mergeV = add i32 %predicate, 5
   %mVi8 = trunc i32 %mergeV to i8

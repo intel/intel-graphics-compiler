@@ -1054,7 +1054,7 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
     }
 
 
-:((d64|d32|d16|d8|d8c32|d16c32|d16c32h)|(u64|u32|u16|u8|u8c32|u16c32|u16c32h))(x(64|32|16|8|4|3|2|1))?t? {
+:((d64|d32|d16|d8|d8u32|d8c32|d16u32|d16c32|d16u32h|d16c32h)|(u64|u32|u16|u8|u8c32|u16c32|u16c32h))(x(64|32|16|8|4|3|2|1))?t? {
         TRACE("** LSC_DATA_SHAPE_TK");
 
         int off = 1;
@@ -1427,14 +1427,17 @@ static LSC_OP str2lscop(const char *str)
 static LSC_DATA_SIZE decodeDataSizePrefix(const char *yytext, int *off) {
     LSC_DATA_SIZE dsz = LSC_DATA_SIZE_INVALID;
     *off += 1; // 'd' or 'u'
-    if (strncmp(yytext + *off,"8c32", 4) == 0) {
+    if (strncmp(yytext + *off,"8u32", 4) == 0 ||
+        strncmp(yytext + *off,"8c32", 4) == 0) {
         dsz = LSC_DATA_SIZE_8c32b;
         *off += 4;
-    } else if (strncmp(yytext + *off, "16c32h", 6) == 0) {
+    } else if (strncmp(yytext + *off, "16u32h", 6) == 0 ||
+               strncmp(yytext + *off, "16c32h", 6) == 0) {
         // must be above "u16c32" case (longest match first)
         dsz = LSC_DATA_SIZE_16c32bH;
         *off += 6;
-    } else if (strncmp(yytext + *off, "16c32", 5) == 0) {
+    } else if (strncmp(yytext + *off, "16u32", 5) == 0 ||
+               strncmp(yytext + *off, "16c32", 5) == 0) {
         dsz = LSC_DATA_SIZE_16c32b;
         *off += 5;
     } else if (strncmp(yytext + *off, "64", 2) == 0) {
