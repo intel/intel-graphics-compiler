@@ -55,8 +55,15 @@ namespace IGC
         for (uint i = 0; i < patternMatch->m_numBlocks; i++)
         {
             SBasicBlock& block = patternMatch->m_blocks[i];
+
+            // Count dbg instructions in BB to determine whether BB can be marked as empty.
+            // BB is empty when only br or phi instruction are in the BB.
+            // We cannot use sizeWithoutDebug() method directly, because it also counts
+            // phi instructions, which we can ignore here (phis are ignored during add instruction to m_dags).
+            uint dbgInstrInBB = block.bb->size() - block.bb->sizeWithoutDebug();
+
             // An empty block would have only one pattern matching the branch instruction
-            if (block.m_dags.size() == 1)
+            if (block.m_dags.size() - dbgInstrInBB == 1)
             {
                 if (BranchInst * br = dyn_cast<BranchInst>(block.m_dags[0].m_root))
                 {
