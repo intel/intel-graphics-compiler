@@ -160,6 +160,7 @@ bool CustomUnsafeOptPass::runOnFunction(Function& F)
         reassociateMulAdd(F);
     }
 
+    LLVM_DEBUG(dbgs() << "F before erase: " << F << "\n");
     eraseCollectedInst();
 
     return true;
@@ -1980,17 +1981,12 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                         if (!patternFound &&
                             !m_ctx->getCompilerOption().DisableFDivToFMulInvOpt)
                         {
-                            if (!(fp0 && fp0->isExactlyValue(1.0)))
-                            {
-                                if (m_ctx->getModuleMetaData()->compOpt.FastRelaxedMath || I.hasAllowReciprocal())
-                                {
-                                    Value* invOp = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(opType, 1.0), op1, "", &I), &I);
-                                    I.replaceAllUsesWith(
-                                        copyIRFlags(BinaryOperator::CreateFMul(op0, invOp, "", &I), &I));
-                                    collectForErase(I);
-                                    patternFound = true;
-                                }
-                            }
+                          if (!(fp0 && fp0->isExactlyValue(1.0)) &&
+                              m_ctx->getModuleMetaData()
+                                  ->compOpt.FastRelaxedMath) {
+                            I.setHasAllowReciprocal(true);
+                            patternFound = true;
+                          }
                         }
                     }
                     m_isChanged |= patternFound;
@@ -2926,9 +2922,9 @@ void CustomUnsafeOptPass::eraseCollectedInst()
     if (m_instToErase.empty())
         return;
 
-    for (auto i : m_instToErase)
-    {
-        i->eraseFromParent();
+    for (auto i : m_instToErase) {
+      i->replaceAllUsesWith(PoisonValue::get(i->getType()));
+      i->eraseFromParent();
     }
     m_instToErase.clear();
 }
