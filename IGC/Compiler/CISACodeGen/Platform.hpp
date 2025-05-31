@@ -1930,10 +1930,5 @@ bool allowsMoviForType(VISA_Type type) const {
   return (type == ISA_TYPE_UD || type == ISA_TYPE_D);
 }
 
-bool supportMergeUniformSimd1Stores() const
-{
-    return isCoreChildOf(IGFX_XE2_HPG_CORE);
-}
-
 };
 }//namespace IGC
