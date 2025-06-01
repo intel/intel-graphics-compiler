@@ -67,8 +67,6 @@ namespace TC
         bool RespectPerInstructionContractFlag() const override { return true; }
 
         bool EnableLSCForLdRawAndStoreRawOnDG2() const override { return true; }
-
-        bool supportLscSamplerRouting() const override { return false; }
     };
 
     // In case some cpas are specific to NEO

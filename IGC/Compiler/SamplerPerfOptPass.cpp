@@ -404,7 +404,6 @@ bool SamplerPerfOptPass::runOnFunction(Function& F)
                     // DisableLscSamplerRouting is from UMD AIL to turn off per shader
                     if (ctx->platform.hasLSCSamplerRouting() &&
                         IGC_IS_FLAG_ENABLED(EnableLscSamplerRouting) &&
-                        ctx->m_DriverInfo.supportLscSamplerRouting() &&
                         !ctx->getModuleMetaData()->compOpt.DisableLscSamplerRouting &&
                         loadInst->getIntrinsicID() == GenISAIntrinsic::GenISA_ldptr)
                     {
