@@ -17354,7 +17354,7 @@ void EmitPass::emitTypedMemoryFence(llvm::Instruction* inst)
 
         m_encoder->LSC_Fence(LSC_TGM, scope, flushOpt);
         m_encoder->Push();
-        if (m_currShader->m_Platform->hasSamplerSupport())
+        if (m_currShader->m_Platform->hasSamplerSupport() && !m_currShader->m_Platform->supportsBGRATypedRead())
         {
             emitFlushSamplerCache();
         }

@@ -111,8 +111,8 @@ static void __intel_atomic_work_item_fence( Scope_t Memory, uint Semantics )
     {
         if (Semantics & ImageMemory)
         {
-            // An image fence requires a fence with R/W invalidate (L3 flush) + a flush
-            // of the sampler cache
+            // An image fence requires a fence with R/W invalidate (L3 flush)
+            // + for pre-DG2 platforms, sampler cache flush
             __intel_typedmemfence_handler(invalidateL1);
         }
         // A global/local memory fence requires a hardware fence in general,
