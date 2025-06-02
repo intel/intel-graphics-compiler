@@ -2993,6 +2993,7 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
         CVariable* SrcV = GetSymbol(src0);
         if (DstV != SrcV)
         {
+            m_encoder->Lifetime(VISAVarLifetime::LIFETIME_START, DstV);
             // Only copy SrcV's elements that have been initialized already.
             // For the example, DstV = %13, SrcV = %9;
             // 'toBeCopied' will be field {0, 1}, not {0,1,2,3}.
@@ -3275,6 +3276,60 @@ void EmitPass::EmitExtractValueFromLayoutStruct(ExtractValueInst* EVI)
     }
     else {
         emitVectorCopy(DstV, srcVal, n);
+    }
+}
+
+void EmitPass::EmitSelectStruct(SelectInst* SI)
+{
+    StructType* sTy = dyn_cast<StructType>(SI->getType());
+    IGC_ASSERT_MESSAGE(sTy, "This method is only for structs");
+
+    const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
+
+    auto* srcTrueV = SI->getTrueValue();
+    auto* srcFalseV = SI->getFalseValue();
+
+    auto* srcTrueS = GetSymbol(srcTrueV);
+    auto* srcFalseS = GetSymbol(srcFalseV);
+    auto* destS = GetSymbol(SI);
+    auto* cond = GetSymbol(SI->getCondition());
+
+    if (srcTrueS != destS && srcFalseS != destS)
+        // if we aren't coalescing with any of the operands, emit lifetime start for the struct
+        m_encoder->Lifetime(VISAVarLifetime::LIFETIME_START, destS);
+
+    auto iterator = {
+        std::make_tuple(srcTrueV, srcTrueS, false),
+        std::make_tuple(srcFalseV, srcFalseS, true)
+    };
+
+    for (auto [srcV, srcS, inv] : iterator)
+    {
+        // For now, do not support uniform dst and non-uniform src
+        IGC_ASSERT_MESSAGE(!srcS->IsUniform() || srcS->IsUniform() == destS->IsUniform(),
+            "Can't select non-uniform value into a uniform struct!");
+
+        if (srcS == destS)
+            continue;
+
+        SmallVector<std::vector<unsigned>> toBeCopied;
+        getAllDefinedMembers(srcV, toBeCopied);
+        for (const auto& II : toBeCopied)
+        {
+
+            Type* ty;
+            uint32_t byteOffset;
+            getStructMemberByteOffsetAndType_1(m_DL, sTy, II, ty, byteOffset);
+
+            uint32_t d_off =
+                byteOffset * (destS->IsUniform() ? 1 : nLanes);
+            uint32_t s_off =
+                byteOffset * (srcS->IsUniform() ? 1 : nLanes);
+
+            m_encoder->SetPredicate(cond);
+            m_encoder->SetInversePredicate(inv);
+            emitMayUnalignedVectorCopy(destS, d_off, srcS, s_off, ty);
+        }
     }
 }
 
@@ -5135,7 +5190,6 @@ void EmitPass::Select(const SSource sources[3], const DstModifier& modifier)
 
     m_encoder->Select(flag, m_destination, src0, src1);
     m_encoder->Push();
-
 }
 
 void EmitPass::PredAdd(const SSource& pred, bool invert, const SSource sources[2], const DstModifier& modifier)
@@ -11705,6 +11759,9 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
         break;
     case Instruction::ExtractValue:
         EmitExtractValueFromStruct(cast<ExtractValueInst>(inst));
+        break;
+    case Instruction::Select:
+        EmitSelectStruct(cast<SelectInst>(inst));
         break;
     case Instruction::Unreachable:
         break;

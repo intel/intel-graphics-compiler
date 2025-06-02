@@ -158,6 +158,7 @@ public:
     void EmitExtractValueFromStruct(llvm::ExtractValueInst* EI);
     void EmitInsertValueToLayoutStruct(llvm::InsertValueInst* IVI);
     void EmitExtractValueFromLayoutStruct(llvm::ExtractValueInst* EVI);
+    void EmitSelectStruct(llvm::SelectInst* SI);
     void emitVectorCopyToAOS(uint32_t AOSBytes,
         CVariable* Dst, CVariable* Src, uint32_t nElts,
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0) {

@@ -2118,7 +2118,8 @@ CVariable* CShader::GetStructVariable(llvm::Value* v)
         isa<InsertValueInst>(v) ||
         isa<CallInst>(v) ||
         isa<Argument>(v) ||
-        isa<PHINode>(v),
+        isa<PHINode>(v) ||
+        isa<SelectInst>(v),
         "Invalid instruction using struct type!");
 
     if (isa<InsertValueInst>(v))
@@ -2173,6 +2174,29 @@ CVariable* CShader::GetStructVariable(llvm::Value* v)
                     return it->second;
                 }
                 v = FirstInsertValueInst;
+            }
+        }
+    }
+    else if (auto* SI = dyn_cast<SelectInst>(v))
+    {
+        if (IGC_IS_FLAG_ENABLED(EnableDeSSA) && m_deSSA)
+        {
+            e_alignment pAlign = EALIGN_GRF;
+            Value* rVal = m_deSSA->getRootValue(v, &pAlign);
+
+            // If a struct type is coalesced with another non-struct type,
+            // need to call createAliasIfNeeded().  Otherwise, all coalesced
+            // structs are of the same type (Byte).
+            if (rVal && !rVal->getType()->isStructTy()) {
+                CVariable* rootV = GetSymbol(rVal);
+                return createAliasIfNeeded(v, rootV);
+            }
+
+            v = rVal ? rVal : v;
+            auto it = symbolMapping.find(v);
+            if (it != symbolMapping.end())
+            {
+                return it->second;
             }
         }
     }

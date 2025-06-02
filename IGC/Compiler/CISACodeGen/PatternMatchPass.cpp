@@ -3811,6 +3811,9 @@ namespace IGC
 
     bool CodeGenPatternMatch::MatchSelectModifier(llvm::SelectInst& I)
     {
+        if (I.getType()->isAggregateType())
+            return MatchSingleInstruction(I);
+
         struct SelectPattern : Pattern
         {
             SSource sources[3];
