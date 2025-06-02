@@ -1498,10 +1498,12 @@ void VectorPreProcess::getOrGenScalarValues(
     {
         bool genExtract = false;
         Value* V = VecVal;
+        IGC_ASSERT(scalars.size() == nelts);
         for (uint32_t i = 0; i < nelts; ++i)
         {
             scalars[i] = nullptr;
         }
+        uint32_t numEltsFound = 0;
         while (InsertElementInst * IEI = dyn_cast<InsertElementInst>(V))
         {
             Value* ixVal = IEI->getOperand(2);
@@ -1512,10 +1514,19 @@ void VectorPreProcess::getOrGenScalarValues(
                 break;
             }
             uint32_t ix = int_cast<unsigned int>(CI->getZExtValue());
-            scalars[ix] = IEI->getOperand(1);
+            if (scalars[ix] == nullptr)
+            {
+                scalars[ix] = IEI->getOperand(1);
+                ++numEltsFound;
+            }
+            if (numEltsFound == nelts)
+            {
+                break;
+            }
             V = IEI->getOperand(0);
         }
-        if (!isa<UndefValue>(V))
+        // Generate extractelement instructions if not all elements were found.
+        if (!isa<UndefValue>(V) && numEltsFound != nelts)
         {
             genExtract = true;
         }
