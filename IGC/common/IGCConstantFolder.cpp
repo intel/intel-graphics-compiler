@@ -193,40 +193,40 @@ static constexpr FloatSemantics semHF8 = { 8,   -6,  4,  8, true };
 
 inline uint32_t Round(
     uint32_t man,
-    uint32_t manShift,
+    uint32_t numLostBits,
     bool isNegative,
     uint32_t roundingMode)
 {
-    uint32_t lostBitsMask = BITMASK(manShift);
+    uint32_t lostBitsMask = BITMASK(numLostBits);
     uint32_t lostBits = man & lostBitsMask;
-    uint32_t lostBitsHalfMinusOne = BITMASK(manShift - 1);
-    uint32_t tieToEvenBias = (man & BIT(manShift)) >> manShift;
+    uint32_t lostBitsHalfMinusOne = BITMASK(numLostBits - 1);
+    uint32_t tieToEvenBias = (man & BIT(numLostBits)) >> numLostBits;
 
     switch (roundingMode)
     {
     case ROUND_TO_NEAREST_EVEN:
         man += lostBitsHalfMinusOne + tieToEvenBias;
-        man >>= manShift;
+        man >>= numLostBits;
         break;
     case ROUND_TO_NEGATIVE:
-        man >>= manShift;
+        man >>= numLostBits;
         if (lostBits != 0 && isNegative)
         {
             man += 1;
         }
         break;
     case ROUND_TO_POSITIVE:
-        man >>= manShift;
+        man >>= numLostBits;
         if (lostBits != 0 && !isNegative)
         {
             man += 1;
         }
         break;
     case ROUND_TO_ZERO:
-        man >>= manShift;
+        man >>= numLostBits;
         break;
     default:
-        man >>= manShift;
+        man >>= numLostBits;
         IGC_ASSERT_MESSAGE(0, "Unsupported rounding mode");
         break;
     }
@@ -251,6 +251,10 @@ inline uint32_t ConvertFloat(
     bool isPositive = !isNegative;
     bool isDenorm = expBits == 0 && manBits > 0;
     bool isZero = expBits == 0 && manBits == 0;
+    bool isInf = srcSem.hasNoInf ? false : (expBits == BITMASK(srcNumExpBits) && manBits == 0);
+    bool isNan = srcSem.hasNoInf ?
+        ((BITMASK(srcSem.sizeInBits - 1) & intVal) == BITMASK(srcSem.sizeInBits - 1)) :
+        (expBits == BITMASK(srcNumExpBits) && manBits != 0);
 
     int32_t srcExpBias = 1 - srcSem.minExponent;
     int32_t dstExpBias = 1 - dstSem.minExponent;
@@ -269,6 +273,20 @@ inline uint32_t ConvertFloat(
         infVal = nanVal;
         // E4M3 max normal = S.1111.110
         maxVal = signVal | (BITMASK(dstSem.sizeInBits - 1) & ~1);
+    }
+
+    // Handle special cases
+    if (isZero)
+    {
+        return signVal;
+    }
+    if (isInf)
+    {
+        return infVal;
+    }
+    if (isNan)
+    {
+        return nanVal;
     }
 
     // Normalize the mantissa
