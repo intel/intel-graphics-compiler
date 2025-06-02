@@ -4677,6 +4677,7 @@ void EmitPass::FPTrunc(const SSource sources[2], const DstModifier& modifier) {
     }
 }
 
+
 void EmitPass::Add(const SSource sources[2], const DstModifier& modifier)
 {
     CVariable* src[2];
@@ -4691,21 +4692,6 @@ void EmitPass::Add(const SSource sources[2], const DstModifier& modifier)
 
         IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16, "As of now Vector Emission is only supported for SIMD16");
         unsigned VectorSize = getVectorSize(sources[0].value);
-
-        bool AllUniform = src[0]->IsUniform() && src[1]->IsUniform() && m_destination->IsUniform();
-        // cannot emit 16 SIMD if SIMD SIZE is set to 8, but can emit 4
-        // simple ALU instructions has the same possible width as SIMD, "math" pipeline instructions
-        // has reduced width
-        bool CanEmitThisSize = VectorSize <= numLanes(m_currShader->m_SIMDSize);
-
-        if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
-            m_encoder->SetSrcRegion(0, 1, 1, 0);
-            m_encoder->SetSrcRegion(1, 1, 1, 0);
-            m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
-            m_encoder->Add(m_destination, src[0], src[1]);
-            m_encoder->Push();
-            return;
-        }
 
         for (unsigned i = 0; i < VectorSize; ++i) {
             SetSourceModifiers(0, sources[0]);
@@ -4740,29 +4726,12 @@ void EmitPass::Mul(const SSource sources[2], const DstModifier& modifier)
         src[i] = GetSrcVariable(sources[i]);
     }
 
-    unsigned SIMDSize = numLanes(m_currShader->m_SIMDSize);
-
     if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
             sources[0].value->getType()->isVectorTy() &&
             sources[1].value->getType()->isVectorTy()) {
 
         IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16, "As of now Vector Emission is only supported for SIMD16");
         unsigned VectorSize = getVectorSize(sources[0].value);
-
-        bool AllUniform = src[0]->IsUniform() && src[1]->IsUniform() && m_destination->IsUniform();
-        // cannot emit 16 SIMD if SIMD SIZE is set to 8, but can emit 4
-        // simple ALU instructions has the same possible width as SIMD, "math" pipeline instructions
-        // has reduced width
-        bool CanEmitThisSize = VectorSize <= SIMDSize;
-
-        if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
-            m_encoder->SetSrcRegion(0, 1, 1, 0);
-            m_encoder->SetSrcRegion(1, 1, 1, 0);
-            m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
-            m_encoder->Mul(m_destination, src[0], src[1]);
-            m_encoder->Push();
-            return;
-        }
 
         for (unsigned i = 0; i < VectorSize; ++i) {
             SetSourceModifiers(0, sources[0]);
@@ -4881,27 +4850,6 @@ void EmitPass::VectorMad(const SSource sources[3], const DstModifier& modifier) 
 
     unsigned VectorSize = getVectorSize(sources[0].value);
 
-    bool AllUniform = src[0]->IsUniform() &&
-        src[1]->IsUniform() && src[2]->IsUniform() &&
-        m_destination->IsUniform();
-
-    // cannot emit 16 SIMD if SIMD SIZE is set to 8, but can emit 4
-    // simple ALU instructions has the same possible width as SIMD, "math" pipeline instructions
-    // has reduced width
-    bool CanEmitThisSize = VectorSize <= numLanes(m_currShader->m_SIMDSize);
-
-    if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
-        // regioning must be updated by hand, DO NOT COPY for fptrunc
-        m_encoder->SetSrcRegion(0, 1, 1, 0);
-        m_encoder->SetSrcRegion(1, 1, 1, 0);
-        m_encoder->SetSrcRegion(2, 1, 1, 0);
-        // this will force no_mask and proper uniform SIMD SIZE
-        m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
-        m_encoder->Mad(m_destination, src[0], src[1], src[2]);
-        m_encoder->Push();
-        return;
-    }
-
     for (unsigned i = 0; i < VectorSize; ++i) {
 
         SetSourceModifiers(0, sources[0]);
@@ -4915,8 +4863,10 @@ void EmitPass::VectorMad(const SSource sources[3], const DstModifier& modifier) 
         if (src[2]->IsUniform()) m_encoder->SetSrcSubReg(2, i);
         else m_encoder->SetSrcSubVar(2, i);
 
+        bool AllAreUniform = src[0]->IsUniform() &&
+            src[1]->IsUniform() && src[2]->IsUniform();
 
-        if (AllUniform) m_encoder->SetDstSubReg(i);
+        if (AllAreUniform) m_encoder->SetDstSubReg(i);
         else m_encoder->SetDstSubVar(i);
 
         m_encoder->Mad(m_destination, src[0], src[1], src[2]);
