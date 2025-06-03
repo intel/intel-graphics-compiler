@@ -386,6 +386,7 @@ namespace IGC
         virtual unsigned getCSSIMD16_SpillThreshold() const { return IGC_GET_FLAG_VALUE(CSSIMD16_SpillThreshold); }
         virtual unsigned getCSSIMD32_SpillThreshold() const { return IGC_GET_FLAG_VALUE(CSSIMD32_SpillThreshold); }
 
+        virtual bool supportLscSamplerRouting() const { return true; }
         virtual bool supportBarrierControlFlowOptimization() const { return false; }
         virtual bool getLscStoresWithNonDefaultL1CacheControls() const { return true; }
 
