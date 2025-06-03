@@ -1307,6 +1307,10 @@ private:
 
   void createBindlessSampler();
 
+  // if vISA_DumpPerfStats is enabled, finalize the perf stats values before
+  // dumping
+  void finalizePerfStats(uint64_t binaryHash);
+
 private:
   // This member holds symbolic index of function when invoked via
   // API path. Builder client can use this id when invoking this

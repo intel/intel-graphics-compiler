@@ -464,15 +464,17 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
 
   if (m_options->getOption(vISA_DumpPerfStats) ||
       m_options->getOption(vISA_DumpPerfStatsVerbose)) {
-    // set BinaryHash
-    m_jitInfo->stats.binaryHash =
-        std::hash<std::string>{}(std::string((char*)binary, binarySize));
+    finalizePerfStats(std::hash<std::string>{}(std::string((char*)binary, binarySize)));
     dumpPerfStatsInJson(m_asmName);
   }
 
   return binary;
 }
 
+void VISAKernelImpl::finalizePerfStats(uint64_t binaryHash) {
+  // set BinaryHash
+  m_jitInfo->stats.binaryHash = binaryHash;
+}
 
 void KERNEL_INFO::collectStats(G4_Kernel &kernel) {
   for (auto decl : kernel.Declares) {
