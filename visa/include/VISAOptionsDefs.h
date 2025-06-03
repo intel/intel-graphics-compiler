@@ -299,6 +299,12 @@ DEF_VISA_OPTION(vISA_lscEnableImmOffsFor, ET_INT32, "-lscEnableImmOffsFor",
                 "Bit [17] enables offsets in spill/fill codegen.  "
                 "Confer with the type VISALscImmOffOpts.",
                 0x3003E)
+DEF_VISA_OPTION(vISA_lscEnableImmOffsetForA32Stateful, ET_BOOL,
+                "-lscDisableImmOffsetForA32Stateful",
+                "This is to control LSC immediate offset optimization "
+                "in InstCombine pass to work around hardware bound checking "
+                "problem of signed src0 for LSC SLM and A32 stateful messages.",
+                false)
 DEF_VISA_OPTION(vISA_PreserveR0InR0, ET_BOOL, "-preserver0", UNUSED, false)
 DEF_VISA_OPTION(vISA_StackCallABIVer, ET_INT32, "-abiver", "DEPRECATED, is a nop", 1)
 DEF_VISA_OPTION(vISA_LastCallerSavedGRF, ET_INT32, "-lastCallerSavedGRF",
