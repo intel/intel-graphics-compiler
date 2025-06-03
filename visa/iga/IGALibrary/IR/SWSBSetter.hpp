@@ -140,7 +140,9 @@ private:
   // clear dependency of the given dep
   void clearDepBuckets(DepSet &dep);
   // clear all sbid, set ids to all free and insert sync to sync with all pipes
-  void clearSBIDDependence(InstList::iterator insertPoint,
+  // return if there are active sbid in-use before and sync.allrd/sync.allwr
+  // instructions are inserted to sync them
+  bool clearSBIDDependence(InstList::iterator insertPoint,
                            Instruction *lastInst, Block *bb);
   // clear given input and output dependency in the buckets (for in-order pipes
   // only)

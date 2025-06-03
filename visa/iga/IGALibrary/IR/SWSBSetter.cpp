@@ -560,16 +560,26 @@ send.dc0 (16|M0)         r38       r118  null  0x0         a0.0 ret (16|M0)
 
 Right now mov will have false dependense on the first send.
 */
-void SWSBAnalyzer::clearSBIDDependence(InstList::iterator insertPoint,
+bool SWSBAnalyzer::clearSBIDDependence(InstList::iterator insertPoint,
                                        Instruction *lastInst, Block *bb) {
+
+  auto clearSBID = [&](const SBID& in) {
+    m_freeSBIDList[in.sbid].reset();
+    assert(m_IdToDepSetMap.find(in.sbid) != m_IdToDepSetMap.end());
+    assert(m_IdToDepSetMap[in.sbid].first->getDepClass() ==
+        DEP_CLASS::OUT_OF_ORDER);
+    clearDepBuckets(*m_IdToDepSetMap[in.sbid].first);
+    clearDepBuckets(*m_IdToDepSetMap[in.sbid].second);
+  };
+
   bool sbidInUse = false;
   for (uint32_t i = 0; i < m_SBIDCount; ++i) {
     // there are still dependencies that might be used outside of this basic
     // block
     if (!m_freeSBIDList[i].isFree) {
+      clearSBID(m_freeSBIDList[i]);
       sbidInUse = true;
     }
-    m_freeSBIDList[i].reset();
   }
 
   // if last instruction in basic block is EOT no need to generate flushes
@@ -583,6 +593,8 @@ void SWSBAnalyzer::clearSBIDDependence(InstList::iterator insertPoint,
   if (sbidInUse) {
     insertSyncAllRdWr(insertPoint, bb);
   }
+
+  return sbidInUse;
 }
 
 // Keeping track of dependencies that need to be cleared because they are no
@@ -1302,10 +1314,9 @@ void SWSBAnalyzer::run() {
         InstListIterator insert_point = instIter;
         if (first_inst_in_dpas_macro != instList.end())
           insert_point = first_inst_in_dpas_macro;
-        if (input->getDepClass() == DEP_CLASS::OUT_OF_ORDER)
+        bool forceSyncAll = clearSBIDDependence(insert_point, inst, bb);
+        if (!forceSyncAll && input->getDepClass() == DEP_CLASS::OUT_OF_ORDER)
           insertSyncAllRdWr(insert_point, bb);
-        else
-          clearSBIDDependence(insert_point, inst, bb);
 
         // clear in-order dependency
         clearBuckets(input, output);
