@@ -27,20 +27,17 @@ public:
   };
 
   Operand()
-      : m_kind(Kind::INVALID), m_lblBlock(nullptr), m_type(Type::INVALID),
-        m_regOpSrcMod(SrcModifier::NONE) {}
+    : m_regOpSrcMod(SrcModifier::NONE) {}
 
   // direct destination constructor (for constants etc)
   Operand(DstModifier dstMod, RegName rType, const RegRef &reg,
-          const Region::Horz &rgnHz, Type type)
-      : m_lblBlock(nullptr) {
+          const Region::Horz &rgnHz, Type type) {
     setDirectDestination(dstMod, rType, reg, rgnHz, type);
   }
 
   // direct source constructor (for constants etc)
   Operand(SrcModifier srcMod, RegName rType, const RegRef &reg,
-          const Region &rgn, Type type)
-      : m_lblBlock(nullptr) {
+          const Region &rgn, Type type) {
     setDirectSource(srcMod, rType, reg, rgn, type);
   }
 
@@ -152,7 +149,7 @@ public:
   }
 
 private:
-  Operand::Kind m_kind;
+  Operand::Kind m_kind = Kind::INVALID;
 
   // direct/indirect register information
   union {
@@ -183,7 +180,7 @@ private:
   Block *m_lblBlock = nullptr;
 
   // the operand type (e.g. :d, :f, etc...)
-  Type m_type;
+  Type m_type = Type::INVALID;
 
 public:
   // useful constants (reusable operands to streamline codegen)
