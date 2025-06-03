@@ -378,6 +378,21 @@ void GenXOCLRuntimeInfo::FunctionInfo::initInstructionLevelProperties(
       UsesDPAS = true;
       break;
     }
+
+    // a store intrinsic
+    if (auto *CI = dyn_cast<CallInst>(&Inst);
+        CI && !CI->doesNotAccessMemory() && !CI->onlyReadsMemory()) {
+      // a store intrinsic has cache opt
+      if (auto CacheOptsIndex =
+              vc::InternalIntrinsic::getMemoryCacheControlOperandIndex(IID);
+          CacheOptsIndex >= 0) {
+        auto *CacheOpts = cast<Constant>(Inst.getOperand(CacheOptsIndex));
+        auto *L1Opt = cast<ConstantInt>(CacheOpts->getAggregateElement(0u));
+        HasLscStoresWithNonDefaultL1CacheControls |=
+            static_cast<LSC_CACHE_OPT>(L1Opt->getZExtValue()) !=
+            LSC_CACHING_DEFAULT;
+      }
+    }
   }
 }
 
