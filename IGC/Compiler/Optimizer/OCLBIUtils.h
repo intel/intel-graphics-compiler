@@ -253,6 +253,14 @@ namespace IGC
         /// @brief  push the paired resource pointer into the function argument list
         void preparePairedResource(void);
 
+        /// @brief  Prepare args for GenISA_typedread intrinsic call.
+        /// @brief  Calls createGetBufferPtr, adds CoordX, Y and Z, then LOD.
+        void prepareTypedReadArgs();
+
+        /// @brief  Replace m_pCallInst with call to GenISA_typedread intrinsic.
+        /// @brief  Method specifically for handling read_write images.
+        void replaceGenISATypedRead();
+
         // m_pParamMap - maps image and sampler kernel parameters to BTIs
         //               and sampler array indexes, respecitvely
         ParamMap* m_pParamMap;
@@ -270,6 +278,7 @@ namespace IGC
         llvm::Value* CoordY;
         llvm::Value* CoordZ;
         bool m_IncorrectBti;
+        ModuleMetaData* m_modMD;
     };
 
     class CBuiltinsResolver

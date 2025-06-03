@@ -590,6 +590,40 @@ bool CImagesBI::derivedFromInt(const Value* pVal)
     return go(pVal);
 }
 
+void CImagesBI::prepareTypedReadArgs()
+{
+    createGetBufferPtr();
+    m_args.push_back(CoordX); // u
+    m_args.push_back(CoordY); // v
+    m_args.push_back(CoordZ); // r
+    m_args.push_back(m_pCallInst->getOperand(2)); // LOD
+}
+
+void CImagesBI::replaceGenISATypedRead()
+{
+    GenISAIntrinsic::ID intrinsicName = GenISAIntrinsic::GenISA_typedread;
+    Type* Tys[] = {m_args[0]->getType()};
+
+    Function* func = getFunctionDeclaration(intrinsicName, Tys);
+    Instruction* newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), m_pCallInst);
+    if (m_pCallInst->getType()->getScalarType() != m_pFloatType)
+    {
+        // GenISA_typedread intrinsic returns <4 x float>
+        // therefore we do bitcast that should disappear in the final code.
+        Type *CastTy = m_pCallInst->getType();
+        Instruction* tmp = BitCastInst::Create(
+            Instruction::BitCast,
+            newCall,
+            CastTy,
+            "",
+            m_pCallInst);
+        tmp->setDebugLoc(m_DL);
+        newCall = tmp;
+    }
+    newCall->setDebugLoc(m_DL);
+    m_pCallInst->replaceAllUsesWith(newCall);
+}
+
 class COCL_sample : public CImagesBI
 {
 public:
@@ -871,6 +905,20 @@ public:
     }
 };
 
+class COCL_ldui_rw : public CImagesBI
+{
+public:
+    COCL_ldui_rw(ParamMap* paramMap, InlineMap* inlineMap, int* nextSampler, Dimension Dim) : CImagesBI(paramMap, inlineMap, nextSampler, Dim) {}
+
+    void createIntrinsic()
+    {
+        Value* Coord = m_pCallInst->getOperand(1);
+        prepareCoords(m_dim, Coord, m_pIntZero);
+        prepareTypedReadArgs();
+        replaceGenISATypedRead();
+    }
+};
+
 class COCL_ld : public CImagesBI
 {
 public:
@@ -893,6 +941,20 @@ public:
             m_args[5]->getType(),
         };
         replaceGenISACallInst(GenISAIntrinsic::GenISA_ldptr, types);
+    }
+};
+
+class COCL_ld_rw : public CImagesBI
+{
+public:
+    COCL_ld_rw(ParamMap* paramMap, InlineMap* inlineMap, int* nextSampler, Dimension Dim) : CImagesBI(paramMap, inlineMap, nextSampler, Dim) {}
+
+    void createIntrinsic()
+    {
+        Value* Coord = m_pCallInst->getOperand(1);
+        prepareCoords(m_dim, Coord, m_pIntZero);
+        prepareTypedReadArgs();
+        replaceGenISATypedRead();
     }
 };
 
@@ -1411,6 +1473,29 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_OCL_2d_ld"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
     m_CommandMap["__builtin_IB_OCL_2darr_ld"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
     m_CommandMap["__builtin_IB_OCL_3d_ld"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
+
+    m_CommandMap["__builtin_IB_OCL_1d_ldui_ro"] = initImageClass<COCL_ldui>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
+    m_CommandMap["__builtin_IB_OCL_1darr_ldui_ro"] = initImageClass<COCL_ldui>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
+    m_CommandMap["__builtin_IB_OCL_2d_ldui_ro"] = initImageClass<COCL_ldui>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
+    m_CommandMap["__builtin_IB_OCL_2darr_ldui_ro"] = initImageClass<COCL_ldui>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
+    m_CommandMap["__builtin_IB_OCL_3d_ldui_ro"] = initImageClass<COCL_ldui>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
+    m_CommandMap["__builtin_IB_OCL_1d_ld_ro"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
+    m_CommandMap["__builtin_IB_OCL_1darr_ld_ro"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
+    m_CommandMap["__builtin_IB_OCL_2d_ld_ro"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
+    m_CommandMap["__builtin_IB_OCL_2darr_ld_ro"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
+    m_CommandMap["__builtin_IB_OCL_3d_ld_ro"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
+
+    m_CommandMap["__builtin_IB_OCL_1d_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
+    m_CommandMap["__builtin_IB_OCL_1darr_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
+    m_CommandMap["__builtin_IB_OCL_2d_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
+    m_CommandMap["__builtin_IB_OCL_2darr_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
+    m_CommandMap["__builtin_IB_OCL_3d_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
+    m_CommandMap["__builtin_IB_OCL_1d_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
+    m_CommandMap["__builtin_IB_OCL_1darr_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
+    m_CommandMap["__builtin_IB_OCL_2d_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
+    m_CommandMap["__builtin_IB_OCL_2darr_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
+    m_CommandMap["__builtin_IB_OCL_3d_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
+
     m_CommandMap["__builtin_IB_OCL_2d_ldmcs"] = initImageClass<COCL_ldmcs>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
     m_CommandMap["__builtin_IB_OCL_2darr_ldmcs"] = initImageClass<COCL_ldmcs>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
     m_CommandMap["__builtin_IB_OCL_2d_ld2dms"] = initImageClass<COCL_ld2dms>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);

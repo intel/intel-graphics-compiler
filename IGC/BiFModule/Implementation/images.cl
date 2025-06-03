@@ -1247,7 +1247,7 @@ DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_HALF(1,  )
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img2d_##ACC_QUAL* Image, int2 Coordinate)                        \
 {                                                                                                                   \
     long id = (long)__builtin_astype(Image, __global void*);                                                          \
-    return __builtin_IB_OCL_2d_ldui(id, Coordinate, 0);                                                             \
+    return __builtin_IB_OCL_2d_ldui_##ACC_QUAL(id, Coordinate, 0);                                                  \
 }                                                                                                                   \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img2d_##ACC_QUAL* Image, int2 Coordinate, int ImageOperands)     \
 {                                                                                                                   \
@@ -1265,7 +1265,7 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_##ACC_QUAL##_v2i32
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_##ACC_QUAL##_v2i32, _Rfloat4)(global Img2d_##ACC_QUAL* Image, int2 Coordinate)  \
 {                                                                                                                   \
     long id = (long)__builtin_astype(Image, __global void*);                                                          \
-    float4 res = __builtin_IB_OCL_2d_ld(id, Coordinate, 0);                                                         \
+    float4 res = __builtin_IB_OCL_2d_ld_##ACC_QUAL(id, Coordinate, 0);                                              \
     return __flush_denormals(res);                                                                                  \
 }                                                                                                                   \
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_##ACC_QUAL##_v2i32_i32, _Rfloat4)(global Img2d_##ACC_QUAL* Image, int2 Coordinate, int ImageOperands)  \
@@ -1277,7 +1277,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_##ACC_QUAL##_v2i
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img3d_##ACC_QUAL* Image, int3 Coordinate)                        \
 {                                                                                                                   \
     long id = (long)__builtin_astype(Image, __global void*);                                                          \
-    return __builtin_IB_OCL_3d_ldui( id, Coordinate, 0);                                                            \
+    return __builtin_IB_OCL_3d_ldui_##ACC_QUAL( id, Coordinate, 0);                                                 \
 }                                                                                                                   \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img3d_##ACC_QUAL* Image, int4 Coordinate)                        \
 {                                                                                                                   \
@@ -1311,7 +1311,7 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img3d_##ACC_QUAL##_v4i32
 float4 OVERLOADABLE __spirv_ImageRead_Rfloat4(global Img3d_##ACC_QUAL* Image, int3 Coordinate)                      \
 {                                                                                                                   \
     long id = (long)__builtin_astype(Image, __global void*);                                                          \
-    float4 res = __builtin_IB_OCL_3d_ld(id, Coordinate, 0);                                                         \
+    float4 res = __builtin_IB_OCL_3d_ld_##ACC_QUAL(id, Coordinate, 0);                                              \
     return __flush_denormals(res);                                                                                  \
 }                                                                                                                   \
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img3d_##ACC_QUAL##_v4i32, _Rfloat4)(global Img3d_##ACC_QUAL* Image, int4 Coordinate) \
@@ -1331,7 +1331,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img3d_##ACC_QUAL##_v4i
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate)                               \
 {                                                                                                                                \
     long id = (long)__builtin_astype(Image, __global void*);                                                                       \
-    return __builtin_IB_OCL_2darr_ldui(id, Coordinate, 0);                                                                       \
+    return __builtin_IB_OCL_2darr_ldui_##ACC_QUAL(id, Coordinate, 0);                                                            \
 }                                                                                                                                \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate)                               \
 {                                                                                                                                \
@@ -1365,7 +1365,7 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_array_##ACC_QUAL##
 float4 OVERLOADABLE __spirv_ImageRead_Rfloat4(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate)                             \
 {                                                                                                                                \
     long id = (long)__builtin_astype(Image, __global void*);                                                                       \
-    float4 res = __builtin_IB_OCL_2darr_ld(id, Coordinate, 0);                                                                   \
+    float4 res = __builtin_IB_OCL_2darr_ld_##ACC_QUAL(id, Coordinate, 0);                                                        \
     return __flush_denormals(res);                                                                                               \
 }                                                                                                                                \
 float4 OVERLOADABLE __spirv_ImageRead_Rfloat4(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate, int ImageOperands)          \
@@ -1385,7 +1385,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_array_##ACC_QUAL
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_##ACC_QUAL* Image, int Coordinate)                       \
 {                                                                                                                 \
     long id = (long)__builtin_astype(Image, __global void*);                                                        \
-    return __builtin_IB_OCL_1d_ldui( id, Coordinate, 0);                                                          \
+    return __builtin_IB_OCL_1d_ldui_##ACC_QUAL( id, Coordinate, 0);                                               \
 }                                                                                                                 \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_##ACC_QUAL* Image, int Coordinate, int ImageOperands)    \
 {                                                                                                                 \
@@ -1403,7 +1403,7 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_##ACC_QUAL##_i32_i
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_##ACC_QUAL##_i32, _Rfloat4)(global Img1d_##ACC_QUAL* Image, int Coordinate)  \
 {                                                                                                                 \
     long id = (long)__builtin_astype(Image, __global void*);                                                        \
-    float4 res = __builtin_IB_OCL_1d_ld(id, Coordinate, 0);                                                       \
+    float4 res = __builtin_IB_OCL_1d_ld_##ACC_QUAL(id, Coordinate, 0);                                            \
     return __flush_denormals(res);                                                                                \
 }                                                                                                                 \
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_##ACC_QUAL##_i32_i32, _Rfloat4)(global Img1d_##ACC_QUAL* Image, int Coordinate, int ImageOperands)  \
@@ -1415,7 +1415,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_##ACC_QUAL##_i32
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate)                              \
 {                                                                                                                               \
     long id = (long)__builtin_astype(Image, __global void*);                                                                      \
-    return __builtin_IB_OCL_1d_ldui( id, Coordinate, 0);                                                                        \
+    return __builtin_IB_OCL_1d_ldui_##ACC_QUAL( id, Coordinate, 0);                                                             \
 }                                                                                                                               \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, int ImageOperands)           \
 {                                                                                                                               \
@@ -1433,7 +1433,7 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_buffer_##ACC_QUAL#
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_buffer_##ACC_QUAL##_i32, _Rfloat4)(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate)  \
 {                                                                                                                               \
     long id = (long)__builtin_astype(Image, __global void*);                                                                      \
-    float4 res = __builtin_IB_OCL_1d_ld(id, Coordinate, 0);                                                                     \
+    float4 res = __builtin_IB_OCL_1d_ld_##ACC_QUAL(id, Coordinate, 0);                                                          \
     return __flush_denormals(res);                                                                                              \
 }                                                                                                                               \
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_buffer_##ACC_QUAL##_i32_i32, _Rfloat4)(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, int ImageOperands) \
@@ -1445,7 +1445,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_buffer_##ACC_QUA
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate)                              \
 {                                                                                                                               \
     long id = (long)__builtin_astype(Image, __global void*);                                                                      \
-    return __builtin_IB_OCL_1darr_ldui( id, Coordinate, 0);                                                                     \
+    return __builtin_IB_OCL_1darr_ldui_##ACC_QUAL( id, Coordinate, 0);                                                          \
 }                                                                                                                               \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, int ImageOperands)           \
 {                                                                                                                               \
@@ -1463,7 +1463,7 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_array_##ACC_QUAL##
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_array_##ACC_QUAL##_v2i32, _Rfloat4)(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate)  \
 {                                                                                                                               \
     long id = (long)__builtin_astype(Image, __global void*);                                                                      \
-    float4 res = __builtin_IB_OCL_1darr_ld(id, Coordinate, 0);                                                                  \
+    float4 res = __builtin_IB_OCL_1darr_ld_##ACC_QUAL(id, Coordinate, 0);                                                       \
     return __flush_denormals(res);                                                                                              \
 }                                                                                                                               \
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_array_##ACC_QUAL##_v2i32_i32, _Rfloat4)(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, int ImageOprands) \
@@ -1475,7 +1475,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_array_##ACC_QUAL
 float SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _f32_img2d_depth_##ACC_QUAL##_v2i32, _Rfloat)(global Img2d_depth_##ACC_QUAL* Image, int2 Coordinate)    \
 {                                                                                                                              \
     long id = (long)__builtin_astype(Image, __global void*);                                                                     \
-    float4 res = __builtin_IB_OCL_2d_ld(id, Coordinate, 0);                                                                    \
+    float4 res = __builtin_IB_OCL_2d_ld_##ACC_QUAL(id, Coordinate, 0);                                                         \
     return __flush_denormals(res).x;                                                                                           \
 }
 
@@ -1483,7 +1483,7 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _f32_img2d_depth_##ACC_QUAL##_
 float SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _f32_img2d_array_depth_##ACC_QUAL##_v4i32, _Rfloat)(global Img2d_array_depth_##ACC_QUAL* Image, int4 Coordinate)  \
 {                                                                                                                                        \
     long id = (long)__builtin_astype(Image, __global void*);                                                                               \
-    float4 res = __builtin_IB_OCL_2darr_ld(id, Coordinate.xyz, 0);                                                                       \
+    float4 res = __builtin_IB_OCL_2darr_ld_##ACC_QUAL(id, Coordinate.xyz, 0);                                                            \
     return __flush_denormals(res).x;                                                                                                     \
 }
 

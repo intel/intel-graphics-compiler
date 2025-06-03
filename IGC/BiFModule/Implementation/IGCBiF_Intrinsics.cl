@@ -63,17 +63,22 @@ uint4 __builtin_IB_OCL_2d_sample_dui(long, long, float2, float2, float2);
 uint4 __builtin_IB_OCL_2darr_sample_dui(long, long, float3, float2, float2);
 uint4 __builtin_IB_OCL_3d_sample_dui(long, long, float3, float3, float3);
 
-uint4 __builtin_IB_OCL_1d_ldui(long, int,  int);
-uint4 __builtin_IB_OCL_1darr_ldui(long, int2,  int);
-uint4 __builtin_IB_OCL_2d_ldui(long, int2, int);
-uint4 __builtin_IB_OCL_2darr_ldui(long, int3, int);
-uint4 __builtin_IB_OCL_3d_ldui(long, int3, int);
-
-float4 __builtin_IB_OCL_1d_ld(long, int,  int);
-float4 __builtin_IB_OCL_1darr_ld(long, int2,  int);
-float4 __builtin_IB_OCL_2d_ld(long, int2, int);
-float4 __builtin_IB_OCL_2darr_ld(long, int3, int);
-float4 __builtin_IB_OCL_3d_ld(long, int3, int);
+#define IMAGE_READS(ACC_QUAL) \
+uint4 __builtin_IB_OCL_1d_ldui##ACC_QUAL(long, int,  int); \
+uint4 __builtin_IB_OCL_1darr_ldui##ACC_QUAL(long, int2,  int); \
+uint4 __builtin_IB_OCL_2d_ldui##ACC_QUAL(long, int2, int); \
+uint4 __builtin_IB_OCL_2darr_ldui##ACC_QUAL(long, int3, int); \
+uint4 __builtin_IB_OCL_3d_ldui##ACC_QUAL(long, int3, int); \
+\
+float4 __builtin_IB_OCL_1d_ld##ACC_QUAL(long, int,  int); \
+float4 __builtin_IB_OCL_1darr_ld##ACC_QUAL(long, int2,  int); \
+float4 __builtin_IB_OCL_2d_ld##ACC_QUAL(long, int2, int); \
+float4 __builtin_IB_OCL_2darr_ld##ACC_QUAL(long, int3, int); \
+float4 __builtin_IB_OCL_3d_ld##ACC_QUAL(long, int3, int);
+IMAGE_READS(_rw)
+IMAGE_READS(_ro)
+IMAGE_READS() // no access qulifier is the same as ro.
+#undef IMAGE_READS
 
 float4 __builtin_IB_OCL_2d_ldmcs(long, int2);
 float4 __builtin_IB_OCL_2darr_ldmcs(long, int4);
