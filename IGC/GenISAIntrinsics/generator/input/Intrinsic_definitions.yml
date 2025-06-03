@@ -11760,3 +11760,22 @@ intrinsics:
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_AsyncStackPtrPlaceHolder"
+        comment: "Raytracing: Intrinsic used as marker in later passes to find per\
+            \ lane async stack base. It is just a cast and will be lowered prior to\
+            \ codegen"
+        return_definition: !<ReturnDefinition>
+            type_definition: *p_any_
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *any_int
+                comment: ""
+        attributes:
+            - !AttributeID "NoDuplicate"
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef

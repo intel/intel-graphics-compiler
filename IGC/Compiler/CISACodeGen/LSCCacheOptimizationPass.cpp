@@ -456,7 +456,9 @@ bool LSCCacheOptimizationPass::create_48_wide_store(Function& function)
             // which would look something like this:
             // %perLaneAsyncStackPointer24 = call noalias align 128 dereferenceable(256) %"struct.RTStackFormat::RTStack" addrspace(1)* @"llvm.genx.GenISA.AsyncStackPtr.p1struct.RTStackFormat::RTStack.i64"(i64 %19)
             if (auto* intrinsic_call = dyn_cast<GenIntrinsicInst>(i)) {
-                if (intrinsic_call->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_AsyncStackPtr) {
+                if ((intrinsic_call->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_AsyncStackPtr) ||
+                    (intrinsic_call->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_AsyncStackPtrPlaceHolder))
+                {
                     // Create an IRBuilder with an insertion point set to the given intrinsic_call instruction.
                     // IRBuilder automatically inserts instructions when it creates them,
                     // and the inserted instructions (dynamically allocated) are deleted when the function is destroyed.

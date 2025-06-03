@@ -52,6 +52,7 @@ static std::optional<RTMemRegion> getIntrinsicRegion(
     case GenISAIntrinsic::GenISA_LocalBufferPointer:
         return RTMemRegion::LocalArgs;
     case GenISAIntrinsic::GenISA_AsyncStackPtr:
+    case GenISAIntrinsic::GenISA_AsyncStackPtrPlaceHolder:
         return RTMemRegion::RTAsyncStack;
     case GenISAIntrinsic::GenISA_SyncStackPtr:
         return RTMemRegion::RTSyncStack;
