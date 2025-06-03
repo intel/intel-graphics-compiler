@@ -1541,16 +1541,28 @@ DEFN_SUB_GROUP_BROADCAST_VEC(double, f64)
 // The data that is returned for this invocation is the value of 'Data' for the invocation identified by 'InvocationId'.
 char SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i8_i32, )(char Data, uint InvocationId)
 {
+    if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+    {
+        InvocationId = InvocationId & (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1);
+    }
     return __builtin_IB_simd_shuffle_c(Data, InvocationId);
 }
 
 short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i16_i32, )(short Data, uint InvocationId)
 {
+    if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+    {
+        InvocationId = InvocationId & (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1);
+    }
     return __builtin_IB_simd_shuffle_us(as_ushort(Data), InvocationId);
 }
 
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i32_i32, )(int Data, uint InvocationId)
 {
+    if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+    {
+        InvocationId = InvocationId & (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1);
+    }
     return __builtin_IB_simd_shuffle(as_uint(Data), InvocationId);
 }
 
@@ -1566,18 +1578,30 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i64_i32, )(long Dat
 #ifdef cl_khr_fp16
 half SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _f16_i32, )(half Data, uint InvocationId)
 {
+    if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+    {
+        InvocationId = InvocationId & (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1);
+    }
     return __builtin_IB_simd_shuffle_h(Data, InvocationId);
 }
 #endif // cl_khr_fp16
 
 float SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _f32_i32, )(float Data, uint InvocationId)
 {
+    if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+    {
+        InvocationId = InvocationId & (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1);
+    }
     return __builtin_IB_simd_shuffle_f(Data, InvocationId);
 }
 
 #if defined(cl_khr_fp64)
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _f64_i32, )(double Data, uint InvocationId)
 {
+    if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+    {
+        InvocationId = InvocationId & (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1);
+    }
     return __builtin_IB_simd_shuffle_df(Data, InvocationId);
 }
 #endif // cl_khr_fp64
