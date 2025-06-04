@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt --igc-merge-allocas -S %s --platformpvc | FileCheck %s
+; RUN: igc_opt --igc-ocl-merge-allocas -S %s --platformpvc | FileCheck %s
 ; ------------------------------------------------
 ; MergeAllocas
 ; ------------------------------------------------

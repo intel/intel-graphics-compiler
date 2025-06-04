@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt --igc-lower-byval-attribute --igc-merge-allocas --igc-private-mem-resolution -S %s --platformpvc
+; RUN: igc_opt --igc-lower-byval-attribute --igc-ocl-merge-allocas --igc-private-mem-resolution -S %s --platformpvc
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------

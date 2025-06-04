@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; RUN: igc_opt --typed-pointers --regkey DisableMergingOfMultipleAllocasWithOffset=0 --regkey DisableMergingOfAllocasWithDifferentType=0 --igc-merge-allocas --igc-private-mem-resolution -S %s --platformpvc | FileCheck %s
+; RUN: igc_opt --typed-pointers --regkey DisableMergingOfMultipleAllocasWithOffset=0 --regkey DisableMergingOfAllocasWithDifferentType=0 --igc-ocl-merge-allocas --igc-private-mem-resolution -S %s --platformpvc | FileCheck %s
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --opaque-pointers -S --platformbmg --igc-merge-allocas %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -S --platformbmg --igc-ocl-merge-allocas %s | FileCheck %s
 
 ; Test interaction between control flow and escaping lifetime
 

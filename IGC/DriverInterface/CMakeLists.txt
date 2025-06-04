@@ -32,6 +32,7 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/util/BinaryStream.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/UnifyIROCL.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MergeAllocasOCL.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/zebin_builder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/LowerInvokeSIMD.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ResolveConstExprCalls.cpp"
@@ -56,7 +57,6 @@ list(APPEND IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/TraceRayInlineLoweringPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/DynamicRayManagementPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/SplitAsyncUtils.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/MergeAllocas.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/CrossingAnalysis.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/TraceRayInlinePrepPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/TraceRayInlineLatencySchedulerPass.cpp"
@@ -98,6 +98,7 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/util/BinaryStream.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/zebin_builder.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MergeAllocasOCL.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/LowerInvokeSIMD.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ResolveConstExprCalls.h"
 
@@ -124,7 +125,6 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingInterface.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/CrossingAnalysis.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/SplitAsyncUtils.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/MergeAllocas.h"
     )
 
   set(IGC_BUILD__HDR__RAYTRACING__API
@@ -138,6 +138,17 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/API/ADT/Array.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/API/ADT/Optional.h"
     )
+
+  set(IGC_BUILD__HDR_LivenessUtils
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/LivenessUtils/MergeAllocas.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/LivenessUtils/AllocationLivenessAnalyzer.cpp"
+  )
+  list(APPEND IGC_BUILD__HDR__DriverInterface "${IGC_BUILD__HDR_LivenessUtils}")
+  set(IGC_BUILD__SRC_LivenessUtils
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/LivenessUtils/MergeAllocas.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/LivenessUtils/AllocationLivenessAnalyzer.h"
+  )
+  list(APPEND IGC_BUILD__SRC__DriverInterface "${IGC_BUILD__SRC_LivenessUtils}")
 
 list(APPEND IGC_BUILD__SRC__DriverInterface
   "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/igc_features_and_workarounds_impl.cpp"

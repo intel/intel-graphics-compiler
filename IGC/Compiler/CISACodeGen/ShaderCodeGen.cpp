@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "AdaptorOCL/MergeAllocasOCL.h"
 #include "Compiler/Legalizer/PeepholeTypeLegalizer.hpp"
 #include "Compiler/CISACodeGen/layout.hpp"
 #include "Compiler/CISACodeGen/DeSSA.hpp"
@@ -300,7 +301,7 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
         mpm.add(createPromoteMemoryToRegisterPass());
         if (IGC_IS_FLAG_DISABLED(DisableMergeAllocasPrivateMemory) && ctx.type == ShaderType::OPENCL_SHADER)
         {
-            mpm.add(createMergeAllocas());
+            mpm.add(createMergeAllocasOCL());
         }
         if (ctx.type == ShaderType::OPENCL_SHADER &&
             !isOptDisabled &&
@@ -688,7 +689,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     {
         if (IGC_IS_FLAG_DISABLED(DisableMergeAllocasPrivateMemory) && ctx.type == ShaderType::OPENCL_SHADER)
         {
-            mpm.add(createMergeAllocas());
+            mpm.add(createMergeAllocasOCL());
         }
         if (ctx.type == ShaderType::OPENCL_SHADER &&
             !isOptDisabled &&
