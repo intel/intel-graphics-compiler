@@ -1331,6 +1331,7 @@ namespace TC
                             (strcmp(pParam, "-cl-intel-gtpin-rera") == 0) || //temporary options
                             (strcmp(pParam, "-cl-intel-256-GRF-per-thread") == 0) || //temporary options
                             (strcmp(pParam, "-ze-opt-256-GRF-per-thread") == 0) || //temporary options
+                            (strcmp(pParam, "-ze-exp-register-file-size") == 0) || //temporary options
                             (strcmp(pParam, "-ze-opt-large-register-file") == 0) || //temporary options
                             (strcmp(pParam, "-cl-intel-large-grf-kernel") == 0) ||
                             (strcmp(pParam, "-ze-opt-large-grf-kernel") == 0) ||
@@ -1400,17 +1401,10 @@ namespace TC
                             {
                                 checkBinaryType = true;
                             }
-                            else if (strcmp(pParam, "-cl-intel-num-thread-per-eu") == 0)
-                            {
-                                // Next token is N, so ignore it
-                                ignoreNextToken = true;
-                            }
-                            else if (strcmp(pParam, "-cl-intel-reqd-eu-thread-count") == 0)
-                            {
-                                // Next token is N, so ignore it
-                                ignoreNextToken = true;
-                            }
-                            else if (strcmp(pParam, "-ze-gtpin-scratch-area-size") == 0)
+                            else if (strcmp(pParam, "-cl-intel-num-thread-per-eu") == 0 ||
+                                     strcmp(pParam, "-cl-intel-reqd-eu-thread-count") == 0 ||
+                                     strcmp(pParam, "-ze-gtpin-scratch-area-size") == 0 ||
+                                     strcmp(pParam, "-ze-exp-register-file-size") == 0)
                             {
                                 // Next token is N, so ignore it
                                 ignoreNextToken = true;
