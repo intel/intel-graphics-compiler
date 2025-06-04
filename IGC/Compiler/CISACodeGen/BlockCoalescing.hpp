@@ -31,6 +31,7 @@ namespace IGC
             AU.addRequired<DeSSA>();
             AU.addRequired<CodeGenPatternMatch>();
             AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
         }
 
         bool runOnFunction(llvm::Function& F) override;

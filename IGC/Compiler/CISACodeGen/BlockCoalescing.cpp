@@ -25,6 +25,7 @@ IGC_INITIALIZE_PASS_BEGIN(BlockCoalescing, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG
 IGC_INITIALIZE_PASS_DEPENDENCY(DeSSA)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenPatternMatch)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(BlockCoalescing, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 namespace IGC
@@ -45,6 +46,8 @@ namespace IGC
             return false;
         }
 
+        auto* Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
         // If De-SSA is disabled we cannot remove empty blocks as they might contain move instructions
         if (IGC_IS_FLAG_ENABLED(DisableEmptyBlockRemoval) || IGC_IS_FLAG_DISABLED(EnableDeSSA))
         {
@@ -60,7 +63,11 @@ namespace IGC
             // BB is empty when only br or phi instruction are in the BB.
             // We cannot use sizeWithoutDebug() method directly, because it also counts
             // phi instructions, which we can ignore here (phis are ignored during add instruction to m_dags).
-            uint dbgInstrInBB = block.bb->size() - block.bb->sizeWithoutDebug();
+            uint dbgInstrInBB = 0;
+            if (!Ctx->getModuleMetaData()->compOpt.OptDisable)
+            {
+                dbgInstrInBB = block.bb->size() - block.bb->sizeWithoutDebug();
+            }
 
             // An empty block would have only one pattern matching the branch instruction
             if (block.m_dags.size() - dbgInstrInBB == 1)
