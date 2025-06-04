@@ -420,10 +420,7 @@ namespace IGC
 
     bool CodeGenPatternMatch::supportsLSCImmediateGlobalBaseOffset()
     {
-        bool res = IGC_GET_FLAG_VALUE(LscImmOffsMatch) > 1 ||
-            (m_Platform.matchImmOffsetsLSC() &&
-                (m_ctx->m_DriverInfo.supportsLSCImmediateGlobalBaseOffsetForA64() ||
-                    m_ctx->m_DriverInfo.supportsLSCImmediateGlobalBaseOffsetForA32()));
+        bool res = IGC_GET_FLAG_VALUE(LscImmOffsMatch) > 1 || m_Platform.matchImmOffsetsLSC();
         return res;
     }
 
@@ -2764,14 +2761,6 @@ namespace IGC
         bool isA64AddressingModel = addInstType->isPointerTy() &&
             IGC::isA64Ptr(cast<PointerType>(addInstType), m_ctx);
 
-        bool isSupportedCase =
-            (isA64AddressingModel && m_ctx->m_DriverInfo.supportsLSCImmediateGlobalBaseOffsetForA64()) ||
-            (!isA64AddressingModel && m_ctx->m_DriverInfo.supportsLSCImmediateGlobalBaseOffsetForA32()) ||
-            IGC_GET_FLAG_VALUE(LscImmOffsMatch) > 1;
-        if (!isSupportedCase)
-        {
-            return false;
-        }
         llvm::Instruction* intToPtrInst = nullptr;
         if (addSubInst->getOpcode() == llvm::Instruction::IntToPtr) {
             intToPtrInst = addSubInst;
@@ -2801,11 +2790,19 @@ namespace IGC
             llvm::Value* varOffset = isConstant0 ?
                 addSubInst->getOperand(1) : addSubInst->getOperand(0);
 
+            if(!isA64AddressingModel && m_ctx->type != ShaderType::OPENCL_SHADER && IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 2)
+                return false;
+
             // HW does an early bounds check on varOffset for A32 messages. Thus, if varOffset
             // is negative, then the bounds check fails early even though the immediate offset
             // would bring the final calculation to a positive number.
-            if (!isA64AddressingModel && !UsedWithoutImmInMemInst(varOffset) && !valueIsPositive(varOffset, m_DL) && IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3)
-                return false;
+            bool disableA32ImmediateGlobalBaseOffset =
+                !isA64AddressingModel &&
+                !UsedWithoutImmInMemInst(varOffset) &&
+                !valueIsPositive(varOffset, m_DL) &&
+                IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3;
+
+            if(disableA32ImmediateGlobalBaseOffset) return false;
 
             MarkAsSource(varOffset, IsSourceOfSample(&I));
 
