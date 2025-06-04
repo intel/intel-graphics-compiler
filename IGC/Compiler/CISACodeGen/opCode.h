@@ -156,6 +156,7 @@ DECLARE_OPCODE(GenISA_dp4a_ss, GenISAIntrinsic, llvm_dp4a_ss, false, true, true,
 DECLARE_OPCODE(GenISA_dp4a_uu, GenISAIntrinsic, llvm_dp4a_uu, false, true, true, true, false, false, false)
 DECLARE_OPCODE(GenISA_dp4a_su, GenISAIntrinsic, llvm_dp4a_su, false, true, true, true, false, false, false)
 DECLARE_OPCODE(GenISA_dp4a_us, GenISAIntrinsic, llvm_dp4a_us, false, true, true, true, false, false, false)
+DECLARE_OPCODE(GenISA_bfn, GenISAIntrinsic, llvm_bfn, false, false, false, false, false, false, false)
 
 // GS Intrinsics
 DECLARE_OPCODE(GenISA_OUTPUTGS, GenISAIntrinsic, llvm_output_gs, false, false, false, false, false, false, false)

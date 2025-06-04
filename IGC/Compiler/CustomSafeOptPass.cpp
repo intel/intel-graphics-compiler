@@ -851,6 +851,12 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
             break;
         }
 
+        case GenISAIntrinsic::GenISA_bfn:
+        {
+            visitBfn(inst);
+            break;
+        }
+
         case GenISAIntrinsic::GenISA_f32tof16_rtz:
         {
             visitf32tof16(inst);
@@ -1099,6 +1105,35 @@ void CustomSafeOptPass::visitBfi(llvm::CallInst* inst)
         inst->replaceAllUsesWith(inst->getOperand(3));
         inst->eraseFromParent();
     }
+}
+
+void CustomSafeOptPass::visitBfn(llvm::CallInst* inst)
+{
+    ConstantInt* op0 = dyn_cast<ConstantInt>(inst->getOperand(0));
+    ConstantInt* op1 = dyn_cast<ConstantInt>(inst->getOperand(1));
+    ConstantInt* op2 = dyn_cast<ConstantInt>(inst->getOperand(2));
+    ConstantInt* booleanFuncCtrl = dyn_cast<ConstantInt>(inst->getOperand(3));
+
+    if (!op0 || !op1 || !op2 || !booleanFuncCtrl)
+        return;
+
+    // Precalculate value.
+    uint64_t src0 = op0->getZExtValue();
+    uint64_t src1 = op1->getZExtValue();
+    uint64_t src2 = op2->getZExtValue();
+    uint64_t result = 0;
+
+    switch (booleanFuncCtrl->getZExtValue())
+    {
+    case 0xD8:
+        result = (src0 & src1) | (~src0 & src2);
+        break;
+    default:
+        return;
+    }
+
+    inst->replaceAllUsesWith(ConstantInt::get(inst->getType(), result, false));
+    inst->eraseFromParent();
 }
 
 void CustomSafeOptPass::visitMulH(CallInst* inst, bool isSigned)

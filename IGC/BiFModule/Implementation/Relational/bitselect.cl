@@ -9,13 +9,24 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
+// Bitselect can be implemented with the following boolean function:
+//   s0 & s1 | ~s0 & s2
+// where s0 = c, s1 = b, s2 = a
+// This maps to boolean function 0xD8.
 
 INLINE
 char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _i8_i8_i8, )( char a, char b, char c )
 {
-    char temp;
-    temp = (c & b) | (~c & a);
-    return temp;
+    if (BIF_FLAG_CTRL_GET(UseBfn))
+    {
+        return (char) __builtin_IB_bfn_i16((short)as_uchar(c), (short)as_uchar(b), (short)as_uchar(a), 0xD8);
+    }
+    else
+    {
+        char temp;
+        temp = (c & b) | (~c & a);
+        return temp;
+    }
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, char, char, i8 )
@@ -23,9 +34,16 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, char, char, i8 )
 INLINE
 short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _i16_i16_i16, )( short a, short b, short c )
 {
-    short temp;
-    temp = (c & b) | (~c & a);
-    return temp;
+    if (BIF_FLAG_CTRL_GET(UseBfn))
+    {
+        return __builtin_IB_bfn_i16(c, b, a, 0xD8);
+    }
+    else
+    {
+        short temp;
+        temp = (c & b) | (~c & a);
+        return temp;
+    }
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, short, short, i16 )
@@ -33,9 +51,16 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, short, short, i16 )
 INLINE
 int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _i32_i32_i32, )( int a, int b, int c )
 {
-    int temp;
-    temp = (c & b) | (~c & a);
-    return temp;
+    if (BIF_FLAG_CTRL_GET(UseBfn))
+    {
+        return __builtin_IB_bfn_i32(c, b, a, 0xD8);
+    }
+    else
+    {
+        int temp;
+        temp = (c & b) | (~c & a);
+        return temp;
+    }
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, int, int, i32 )
@@ -43,9 +68,22 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, int, int, i32 )
 INLINE
 long SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _i64_i64_i64, )( long a, long b, long c )
 {
-    long temp;
-    temp = (c & b) | (~c & a);
-    return temp;
+    if (BIF_FLAG_CTRL_GET(UseBfn))
+    {
+        int2 tmpA = as_int2(a);
+        int2 tmpB = as_int2(b);
+        int2 tmpC = as_int2(c);
+        int2 tmpResult;
+        tmpResult.s0 = __builtin_IB_bfn_i32(tmpC.s0, tmpB.s0, tmpA.s0, 0xD8);
+        tmpResult.s1 = __builtin_IB_bfn_i32(tmpC.s1, tmpB.s1, tmpA.s1, 0xD8);
+        return as_long(tmpResult);
+    }
+    else
+    {
+        long temp;
+        temp = (c & b) | (~c & a);
+        return temp;
+    }
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, long, long, i64 )

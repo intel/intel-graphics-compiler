@@ -59,6 +59,7 @@ namespace IGC
         void visitBinaryOperator(llvm::BinaryOperator& I);
         bool isEmulatedAdd(llvm::BinaryOperator& I);
         void visitBfi(llvm::CallInst* inst);
+        void visitBfn(llvm::CallInst* inst);
         void visitf32tof16(llvm::CallInst* inst);
         void visitSampleBptr(llvm::SampleIntrinsic* inst);
         void visitMulH(llvm::CallInst* inst, bool isSigned);
