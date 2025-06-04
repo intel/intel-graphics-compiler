@@ -168,6 +168,7 @@ public:
     void        AddPatchConstantSetup(uint index, CVariable* var);
 
     unsigned getSetupSize() const { return unsigned(setup.size()); }
+    CShaderProgram* GetParent() const { return m_parent; }
 
     // TODO: simplify calls to GetNewVariable to these shorter and more
     // expressive cases where possible.
