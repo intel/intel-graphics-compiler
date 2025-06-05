@@ -412,8 +412,9 @@ enum class ShaderTypeMD
         int LoadCacheDefault                            = -1;
         int StoreCacheDefault                           = -1;
 
-        unsigned VISAPreSchedRPThreshold           = 0;
-        unsigned SetLoopUnrollThreshold            = 0;
+        unsigned VISAPreSchedRPThreshold                = 0;
+        unsigned VISAPreSchedCtrl                       = 0;
+        unsigned SetLoopUnrollThreshold                 = 0;
         bool UnsafeMathOptimizations                    = false;
         bool disableCustomUnsafeOpts                    = false;
         bool disableReducePow                           = false;
@@ -522,6 +523,7 @@ enum class ShaderTypeMD
         unsigned char forcedSIMDSize = 0;  // 0 means not forced
         unsigned int forceTotalGRFNum = 0; // 0 means not forced
         unsigned int VISAPreSchedRPThreshold = 0; // 0 means use the default
+        unsigned int VISAPreSchedCtrl = 0; // 0 means use the default
         unsigned int SetLoopUnrollThreshold = 0; // 0 means use the default
         bool forceSpillCompression = false;
         bool allowLowerSimd = false;

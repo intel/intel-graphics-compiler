@@ -4459,26 +4459,39 @@ namespace IGC
             }
             else
             {
-                uint32_t V = m_program->m_DriverInfo->getVISAPreRASchedulerCtrl();
-                ctrlDpas = m_program->m_DriverInfo->getVISAPreRASchedulerCtrlDpas();
-                if (context->type == ShaderType::TASK_SHADER)
+                uint32_t VISAPreSchedCtrlVal = 0;
+                if (context->type == ShaderType::COMPUTE_SHADER)
+                    VISAPreSchedCtrlVal = context->getModuleMetaData()->csInfo.VISAPreSchedCtrl;
+                else if (context->type == ShaderType::PIXEL_SHADER)
+                    VISAPreSchedCtrlVal = context->getModuleMetaData()->compOpt.VISAPreSchedCtrl;
+
+                if (VISAPreSchedCtrlVal != 0)
                 {
-                    V = 4; // register pressure only
+                    SaveOption(vISA_preRA_ScheduleCtrl, VISAPreSchedCtrlVal);
                 }
-                else if (hasDpas && ctrlDpas != 0)
+                else
                 {
-                    V = ctrlDpas;
-                }
-                else  // platform-dependent setting for latency-scheduling
-                {
-                    if (!m_program->m_Platform->isCoreChildOf(IGFX_XE_HPG_CORE)) {
-                        V |= (1<<5);  // do not use iterative scheduling before DG2
+                    uint32_t V = m_program->m_DriverInfo->getVISAPreRASchedulerCtrl();
+                    ctrlDpas = m_program->m_DriverInfo->getVISAPreRASchedulerCtrlDpas();
+                    if (context->type == ShaderType::TASK_SHADER)
+                    {
+                        V = 4; // register pressure only
                     }
-                    if (!m_program->m_Platform->isCoreChildOf(IGFX_XE_HPC_CORE)) {
-                        V |= (1<<4);  // skip hold-list before PVC
+                    else if (hasDpas && ctrlDpas != 0)
+                    {
+                        V = ctrlDpas;
                     }
+                    else  // platform-dependent setting for latency-scheduling
+                    {
+                        if (!m_program->m_Platform->isCoreChildOf(IGFX_XE_HPG_CORE)) {
+                            V |= (1 << 5);  // do not use iterative scheduling before DG2
+                        }
+                        if (!m_program->m_Platform->isCoreChildOf(IGFX_XE_HPC_CORE)) {
+                            V |= (1 << 4);  // skip hold-list before PVC
+                        }
+                    }
+                    SaveOption(vISA_preRA_ScheduleCtrl, V);
                 }
-                SaveOption(vISA_preRA_ScheduleCtrl, V);
             }
 
             uint32_t VISAPreSchedVal = 0;
