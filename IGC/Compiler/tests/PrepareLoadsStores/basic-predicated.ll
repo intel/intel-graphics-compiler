@@ -75,3 +75,18 @@ define void @test_store_v2i64(<2 x i64> addrspace(1)* %a, <2 x i64> %b) {
 
 declare void @llvm.genx.GenISA.PredicatedStore.p1i64.i64(i64 addrspace(1)*, i64, i64, i1)
 declare void @llvm.genx.GenISA.PredicatedStore.p1v2i64.v2i64(<2 x i64> addrspace(1)*, <2 x i64>, i64, i1)
+
+; Verify that no transformations are applied to the aggregate type
+define void @test_load_aggregate({i64, i64} addrspace(1)* %a) {
+; CHECK-LABEL: @test_load_aggregate
+; CHECK:    call { i64, i64 } @llvm.genx.GenISA.PredicatedLoad.s.p1s.s({ i64, i64 } addrspace(1)* %a, i64 8, i1 true, { i64, i64 } { i64 3, i64 4 })
+; CHECK:    call void @llvm.genx.GenISA.PredicatedStore.p1s.s({ i64, i64 } addrspace(1)* %a, { i64, i64 }
+; CHECK:    ret void
+;
+  %1 = call { i64, i64 } @llvm.genx.GenISA.PredicatedLoad.s.p1s.s({ i64, i64 } addrspace(1)* %a, i64 8, i1 true, { i64, i64 } { i64 3, i64 4 })
+  call void @llvm.genx.GenISA.PredicatedStore.p1s.s({ i64, i64 } addrspace(1)* %a, { i64, i64 } %1, i64 8, i1 true)
+  ret void
+}
+
+declare { i64, i64 } @llvm.genx.GenISA.PredicatedLoad.s.p1s.s({ i64, i64 } addrspace(1)*, i64, i1, { i64, i64 }) #0
+declare void @llvm.genx.GenISA.PredicatedStore.p1s.s({ i64, i64 } addrspace(1)*, { i64, i64 }, i64, i1)

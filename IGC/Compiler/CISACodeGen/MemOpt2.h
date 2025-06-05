@@ -37,10 +37,6 @@ public:
   MemInstCluster() {}
   ~MemInstCluster() {}
 
-  MemInstCluster(IGC::CodeGenContext *pCTX, const DataLayout *pDL,
-                 AliasAnalysis *pAA, TargetLibraryInfo* pTLI, unsigned MLT) {
-    init(pCTX, pDL, pAA, pTLI, MLT);
-  }
   void init(IGC::CodeGenContext *pCTX, const DataLayout *pDL,
             AliasAnalysis *pAA, TargetLibraryInfo* pTLI, unsigned MLT) {
     CTX = pCTX;
