@@ -734,8 +734,16 @@ Value *GenerateBlockMemOpsPass::checkGep(Instruction *PtrInstr) {
         // If this is not a loop, we can't be sure of the flow. Better do nothing.
         if (Loop *L = LI->getLoopFor(BB)) {
             BasicBlock *Preheader = L->getLoopPreheader();
-            Value *IncomingVal1 = Phi->getIncomingValueForBlock(Preheader);
-            Gep = dyn_cast<GetElementPtrInst>(IncomingVal1);
+            // Ensure the loop preheader is an incoming block to the PHI node before querying it.
+            // The PHI provides the index used for a buffer load/store inside the loop, and the compiler
+            // needs to analyze this index pattern to determine if it can apply a block load/store optimization.
+            // If the preheader is not an incoming block, we cannot extract the initial value of the index,
+            // which prevents the compiler from recognizing the access pattern and applying the optimization.
+            // Additionally, calling getIncomingValueForBlock on a non-incoming block would crash or assert.
+            if (Preheader && Phi->getBasicBlockIndex(Preheader) >= 0) {
+                Value *IncomingVal1 = Phi->getIncomingValueForBlock(Preheader);
+                Gep = dyn_cast<GetElementPtrInst>(IncomingVal1);
+            }
         }
     } else {
         Gep = dyn_cast<GetElementPtrInst>(PtrInstr);
