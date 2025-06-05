@@ -814,6 +814,11 @@ bool supportsSIMD16TypedRW() const
     return isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
+bool supportsBGRATypedRead() const
+{
+    return isCoreChildOf(IGFX_XE_HP_CORE);
+}
+
 bool supportHWGenerateTID() const
 {
     return IGC_IS_FLAG_ENABLED(EnableHWGenerateThreadID) && isProductChildOf(IGFX_DG2);

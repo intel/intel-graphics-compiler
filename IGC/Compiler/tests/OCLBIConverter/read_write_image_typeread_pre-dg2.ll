@@ -16,14 +16,13 @@ target triple = "spir64-unknown-unknown"
 %spirv.Image._void_0_0_1_0_0_0_0 = type opaque
 %spirv.Image._void_0_0_1_0_0_0_1 = type opaque
 
-; RUN: igc_opt --opaque-pointers %s -S -o - -igc-conv-ocl-to-common -platformmtl | FileCheck %s
+; RUN: igc_opt --opaque-pointers %s -S -o - -igc-conv-ocl-to-common -platformtgllp | FileCheck %s
 
 ; Function Attrs: convergent nounwind
 define spir_kernel void @testKernel(%spirv.Image._void_0_0_1_0_0_0_2 addrspace(1)* %img, %spirv.Image._void_0_0_1_0_0_0_0 addrspace(1)* %newImg, %spirv.Image._void_0_0_1_0_0_0_1 addrspace(1)* %storeResultsImg, <8 x i32> %r0, <3 x i32> %globalOffset, <3 x i32> %enqueuedLocalSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i8 addrspace(1)* %indirectDataPointer, i8 addrspace(1)* %scratchPointer) #0 {
 entry:
-; CHECK-NOT: ldptr
-; CHECK:     typedread
-; CHECK:     bitcast <4 x float> %{{.*}} to <4 x i32>
+; CHECK-NOT: typedread
+; CHECK:     ldptr
   %vecinit = insertelement <2 x i32> undef, i32 1, i32 0
   %vecinit3 = insertelement <2 x i32> %vecinit, i32 2, i32 1
   %a0 = ptrtoint %spirv.Image._void_0_0_1_0_0_0_2 addrspace(1)* %img to i64

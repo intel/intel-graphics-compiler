@@ -1485,16 +1485,33 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_OCL_2darr_ld_ro"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
     m_CommandMap["__builtin_IB_OCL_3d_ld_ro"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
 
-    m_CommandMap["__builtin_IB_OCL_1d_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
-    m_CommandMap["__builtin_IB_OCL_1darr_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
-    m_CommandMap["__builtin_IB_OCL_2d_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
-    m_CommandMap["__builtin_IB_OCL_2darr_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
-    m_CommandMap["__builtin_IB_OCL_3d_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
-    m_CommandMap["__builtin_IB_OCL_1d_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
-    m_CommandMap["__builtin_IB_OCL_1darr_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
-    m_CommandMap["__builtin_IB_OCL_2d_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
-    m_CommandMap["__builtin_IB_OCL_2darr_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
-    m_CommandMap["__builtin_IB_OCL_3d_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
+    if (m_CodeGenContext->platform.supportsBGRATypedRead())
+    {
+        m_CommandMap["__builtin_IB_OCL_1d_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
+        m_CommandMap["__builtin_IB_OCL_1darr_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
+        m_CommandMap["__builtin_IB_OCL_2d_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
+        m_CommandMap["__builtin_IB_OCL_2darr_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
+        m_CommandMap["__builtin_IB_OCL_3d_ldui_rw"] = initImageClass<COCL_ldui_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
+        m_CommandMap["__builtin_IB_OCL_1d_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
+        m_CommandMap["__builtin_IB_OCL_1darr_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
+        m_CommandMap["__builtin_IB_OCL_2d_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
+        m_CommandMap["__builtin_IB_OCL_2darr_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
+        m_CommandMap["__builtin_IB_OCL_3d_ld_rw"] = initImageClass<COCL_ld_rw>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
+    }
+    else
+    {
+        // Some image formats are not supported for typed reads, must route through sampler instead.
+        m_CommandMap["__builtin_IB_OCL_1d_ldui_rw"] = initImageClass<COCL_ldui>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
+        m_CommandMap["__builtin_IB_OCL_1darr_ldui_rw"] = initImageClass<COCL_ldui>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
+        m_CommandMap["__builtin_IB_OCL_2d_ldui_rw"] = initImageClass<COCL_ldui>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
+        m_CommandMap["__builtin_IB_OCL_2darr_ldui_rw"] = initImageClass<COCL_ldui>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
+        m_CommandMap["__builtin_IB_OCL_3d_ldui_rw"] = initImageClass<COCL_ldui>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
+        m_CommandMap["__builtin_IB_OCL_1d_ld_rw"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
+        m_CommandMap["__builtin_IB_OCL_1darr_ld_rw"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
+        m_CommandMap["__builtin_IB_OCL_2d_ld_rw"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
+        m_CommandMap["__builtin_IB_OCL_2darr_ld_rw"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
+        m_CommandMap["__builtin_IB_OCL_3d_ld_rw"] = initImageClass<COCL_ld>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
+    }
 
     m_CommandMap["__builtin_IB_OCL_2d_ldmcs"] = initImageClass<COCL_ldmcs>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
     m_CommandMap["__builtin_IB_OCL_2darr_ldmcs"] = initImageClass<COCL_ldmcs>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
