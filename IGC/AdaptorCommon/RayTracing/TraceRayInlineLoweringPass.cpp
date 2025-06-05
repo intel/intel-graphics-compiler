@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/LoopInfo.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <vector>
+#include <unordered_map>
 #include "Probe/Assertion.h"
 
 using namespace IGC;
