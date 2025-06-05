@@ -1,4 +1,4 @@
-; REQUIRES: regkeys
+; REQUIRES: pvc-supported, regkeys
 ; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerEnablePartialVectorization=0 < %s 2>&1 | FileCheck %s
 
 ; CHECK: %vectorized_phi

@@ -6,53 +6,48 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: llvm-16-plus
 ; RUN: igc_opt --opaque-pointers -platformpvc -igc-joint-matrix-resolution -dce -S 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------
 ; JointMatrixFuncsResolutionPass
 ; ------------------------------------------------
 
-%intel.joint_matrix_packedA_8x8_f32_t = type opaque
-%intel.joint_matrix_acc_32x64_f32_t = type opaque
-
-define spir_kernel void @test_generic(i8* %src, i8* %dst) {
-  call void @load_store_generic(i8* %src, i8* %dst)
-  call void @load_store_large_generic(i8* %src, i8* %dst)
+define spir_kernel void @test_generic(ptr %src, ptr %dst) {
+  call void @load_store_generic(ptr %src, ptr %dst)
+  call void @load_store_large_generic(ptr %src, ptr %dst)
   ret void
 }
 
-define spir_kernel void @test_global(i8 addrspace(1)* %src, i8 addrspace(1)* %dst) {
-  call void @load_store_global(i8 addrspace(1)* %src, i8 addrspace(1)* %dst)
-  call void @load_store_large_global(i8 addrspace(1)* %src, i8 addrspace(1)* %dst)
+define spir_kernel void @test_global(ptr %src, ptr %dst) {
+  call void @load_store_global(ptr %src, ptr %dst)
+  call void @load_store_large_global(ptr %src, ptr %dst)
   ret void
 }
 
-define spir_kernel void @test_local(i8 addrspace(3)*  %src, i8 addrspace(3)* %dst) {
-  call void @load_store_local(i8 addrspace(3)* %src, i8 addrspace(3)* %dst)
-  call void @load_store_large_local(i8 addrspace(3)* %src, i8 addrspace(3)* %dst)
+define spir_kernel void @test_local(ptr  %src, ptr %dst) {
+  call void @load_store_local(ptr %src, ptr %dst)
+  call void @load_store_large_local(ptr %src, ptr %dst)
   ret void
 }
 
 ; CHECK-LABEL: define void @load_store_generic(
-define void @load_store_generic(i8* %src, i8* %dst) {
+define void @load_store_generic(ptr %src, ptr %dst) {
 
 ; Allocas:
 ; CHECK: [[TMP4:%.*]] = alloca <4 x i32>
 ; CHECK: [[PTR:%.*]] = alloca <4 x i32>
 
 ; Matrix load sequence:
-; CHECK: [[MATPTR:%.*]] = bitcast <4 x i32>* [[PTR]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_8x8_i32_4_generic_v8i8_pi32_i32(i8* [[MATPTR]], i8* %src, i32 8, i32 0)
-; CHECK: [[MATRIX:%.*]] = load <4 x i32>, <4 x i32>* [[PTR]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_8x8_i32_4_generic_v8i8_pi32_i32(ptr [[PTR]], ptr %src, i32 8, i32 0)
+; CHECK: [[MATRIX:%.*]] = load <4 x i32>, ptr [[PTR]]
 
-  %1 = call spir_func %intel.joint_matrix_packedA_8x8_f32_t* @__builtin_spirv_OpJointMatrixLoadINTEL_generic(i8* %src, i32 8, i32 0)
+  %1 = call spir_func target("spirv.CooperativeMatrixKHR", float, 3, 8, 8, 0) @__builtin_spirv_OpJointMatrixLoadINTEL_generic(ptr %src, i32 8, i32 0)
 
 ; Matrix store sequence:
-; CHECK: store <4 x i32> [[MATRIX]], <4 x i32>* [[TMP4]]
-; CHECK: [[TMP5:%.*]] = bitcast <4 x i32>* [[TMP4]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_SG16_8x8_i32_4_generic_pi64_v8i8(i8* %dst, i8* [[TMP5]], i32 8, i32 0)
+; CHECK: store <4 x i32> [[MATRIX]], ptr [[TMP4]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_SG16_8x8_i32_4_generic_pi64_v8i8(ptr %dst, ptr [[TMP4]], i32 8, i32 0)
 
-  call spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x8_generic(i8* %dst, %intel.joint_matrix_packedA_8x8_f32_t* %1, i32 8, i32 0)
+  call spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x8_generic(ptr %dst, target("spirv.CooperativeMatrixKHR", float, 3, 8, 8, 0) %1, i32 8, i32 0)
 
 ; CHECK: ret void
 
@@ -60,25 +55,23 @@ define void @load_store_generic(i8* %src, i8* %dst) {
 }
 
 ; CHECK-LABEL: define void @load_store_large_generic(
-define void @load_store_large_generic(i8* %src, i8* %dst) {
+define void @load_store_large_generic(ptr %src, ptr %dst) {
 
 ; Allocas:
 ; CHECK: [[TMP4:%.*]] = alloca { <64 x float>, <64 x float> }
 ; CHECK: [[PTR:%.*]] = alloca { <64 x float>, <64 x float> }
 
 ; Matrix load sequence:
-; CHECK: [[MATPTR:%.*]] = bitcast { <64 x float>, <64 x float> }* [[PTR]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_generic_v8i8_pi32_i32(i8* [[MATPTR]], i8* %src, i64 16, i32 0)
-; CHECK: [[MATRIX:%.*]] = load { <64 x float>, <64 x float> }, { <64 x float>, <64 x float> }* [[PTR]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_generic_v8i8_pi32_i32(ptr [[PTR]], ptr %src, i64 16, i32 0)
+; CHECK: [[MATRIX:%.*]] = load { <64 x float>, <64 x float> }, ptr [[PTR]]
 
-  %1 = call spir_func %intel.joint_matrix_acc_32x64_f32_t* @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_generic(i8* %src, i64 16, i32 0)
+  %1 = call spir_func target("spirv.CooperativeMatrixKHR", float, 3, 32, 64, 2) @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_generic(ptr %src, i64 16, i32 0)
 
 ; Matrix store sequence:
-; CHECK: store { <64 x float>, <64 x float> } [[MATRIX]], { <64 x float>, <64 x float> }* [[TMP4]]
-; CHECK: [[TMP5:%.*]] = bitcast { <64 x float>, <64 x float> }* [[TMP4]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_generic_pi64_v8i8(i8* %dst, i8* [[TMP5]], i64 8, i32 0)
+; CHECK: store { <64 x float>, <64 x float> } [[MATRIX]], ptr [[TMP4]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_generic_pi64_v8i8(ptr %dst, ptr [[TMP4]], i64 8, i32 0)
 
-  call spir_func void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_generic(i8* %dst, %intel.joint_matrix_acc_32x64_f32_t* %1, i64 8, i32 0)
+  call spir_func void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_generic(ptr %dst, target("spirv.CooperativeMatrixKHR", float, 3, 32, 64, 2) %1, i64 8, i32 0)
 
 ; CHECK: ret void
 
@@ -86,25 +79,23 @@ define void @load_store_large_generic(i8* %src, i8* %dst) {
 }
 
 ; CHECK-LABEL: define void @load_store_global(
-define void @load_store_global(i8 addrspace(1)* %src, i8 addrspace(1)* %dst) {
+define void @load_store_global(ptr %src, ptr %dst) {
 
 ; Allocas:
 ; CHECK: [[TMP4:%.*]] = alloca <4 x i32>
 ; CHECK: [[PTR:%.*]] = alloca <4 x i32>
 
 ; Matrix load sequence:
-; CHECK: [[MATPTR:%.*]] = bitcast <4 x i32>* [[PTR]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_8x8_i32_4_global_v8i8_pi32_i32(i8* [[MATPTR]], i8 addrspace(1)* %src, i32 8, i32 0)
-; CHECK: [[MATRIX:%.*]] = load <4 x i32>, <4 x i32>* [[PTR]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_8x8_i32_4_generic_v8i8_pi32_i32(ptr [[PTR]], ptr %src, i32 8, i32 0)
+; CHECK: [[MATRIX:%.*]] = load <4 x i32>, ptr [[PTR]]
 
-  %1 = call spir_func %intel.joint_matrix_packedA_8x8_f32_t* @__builtin_spirv_OpJointMatrixLoadINTEL_global(i8 addrspace(1)* %src, i32 8, i32 0)
+  %1 = call spir_func target("spirv.CooperativeMatrixKHR", float, 3, 8, 8, 0) @__builtin_spirv_OpJointMatrixLoadINTEL_global(ptr %src, i32 8, i32 0)
 
 ; Matrix store sequence:
-; CHECK: store <4 x i32> [[MATRIX]], <4 x i32>* [[TMP4]]
-; CHECK: [[TMP5:%.*]] = bitcast <4 x i32>* [[TMP4]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_SG16_8x8_i32_4_global_pi64_v8i8(i8 addrspace(1)* %dst, i8* [[TMP5]], i32 8, i32 0)
+; CHECK: store <4 x i32> [[MATRIX]], ptr [[TMP4]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_SG16_8x8_i32_4_generic_pi64_v8i8(ptr %dst, ptr [[TMP4]], i32 8, i32 0)
 
-  call spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x8_global(i8 addrspace(1)* %dst, %intel.joint_matrix_packedA_8x8_f32_t* %1, i32 8, i32 0)
+  call spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x8_global(ptr %dst, target("spirv.CooperativeMatrixKHR", float, 3, 8, 8, 0) %1, i32 8, i32 0)
 
 ; CHECK: ret void
 
@@ -112,25 +103,23 @@ define void @load_store_global(i8 addrspace(1)* %src, i8 addrspace(1)* %dst) {
 }
 
 ; CHECK-LABEL: define void @load_store_large_global(
-define void @load_store_large_global(i8 addrspace(1)* %src, i8 addrspace(1)* %dst) {
+define void @load_store_large_global(ptr %src, ptr %dst) {
 
 ; Allocas:
 ; CHECK: [[TMP4:%.*]] = alloca { <64 x float>, <64 x float> }
 ; CHECK: [[PTR:%.*]] = alloca { <64 x float>, <64 x float> }
 
 ; Matrix load sequence:
-; CHECK: [[MATPTR:%.*]] = bitcast { <64 x float>, <64 x float> }* [[PTR]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_global_v8i8_pi32_i32(i8* [[MATPTR]], i8 addrspace(1)* %src, i64 16, i32 0)
-; CHECK: [[MATRIX:%.*]] = load { <64 x float>, <64 x float> }, { <64 x float>, <64 x float> }* [[PTR]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_generic_v8i8_pi32_i32(ptr [[PTR]], ptr %src, i64 16, i32 0)
+; CHECK: [[MATRIX:%.*]] = load { <64 x float>, <64 x float> }, ptr [[PTR]]
 
-  %1 = call spir_func %intel.joint_matrix_acc_32x64_f32_t* @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_global(i8 addrspace(1)* %src, i64 16, i32 0)
+  %1 = call spir_func target("spirv.CooperativeMatrixKHR", float, 3, 32, 64, 2) @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_global(ptr %src, i64 16, i32 0)
 
 ; Matrix store sequence:
-; CHECK: store { <64 x float>, <64 x float> } [[MATRIX]], { <64 x float>, <64 x float> }* [[TMP4]]
-; CHECK: [[TMP5:%.*]] = bitcast { <64 x float>, <64 x float> }* [[TMP4]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_global_pi64_v8i8(i8 addrspace(1)* %dst, i8* [[TMP5]], i64 8, i32 0)
+; CHECK: store { <64 x float>, <64 x float> } [[MATRIX]], ptr [[TMP4]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_generic_pi64_v8i8(ptr %dst, ptr [[TMP4]], i64 8, i32 0)
 
-  call spir_func void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_global(i8 addrspace(1)* %dst, %intel.joint_matrix_acc_32x64_f32_t* %1, i64 8, i32 0)
+  call spir_func void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_global(ptr %dst, target("spirv.CooperativeMatrixKHR", float, 3, 32, 64, 2) %1, i64 8, i32 0)
 
 ; CHECK: ret void
 
@@ -138,25 +127,23 @@ define void @load_store_large_global(i8 addrspace(1)* %src, i8 addrspace(1)* %ds
 }
 
 ; CHECK-LABEL: define void @load_store_local(
-define void @load_store_local(i8 addrspace(3)* %src, i8 addrspace(3)* %dst) {
+define void @load_store_local(ptr %src, ptr %dst) {
 
 ; Allocas:
 ; CHECK: [[TMP4:%.*]] = alloca <4 x i32>
 ; CHECK: [[PTR:%.*]] = alloca <4 x i32>
 
 ; Matrix load sequence:
-; CHECK: [[MATPTR:%.*]] = bitcast <4 x i32>* [[PTR]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_8x8_i32_4_local_v8i8_pi32_i32(i8* [[MATPTR]], i8 addrspace(3)* %src, i32 8, i32 0)
-; CHECK: [[MATRIX:%.*]] = load <4 x i32>, <4 x i32>* [[PTR]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_8x8_i32_4_generic_v8i8_pi32_i32(ptr [[PTR]], ptr %src, i32 8, i32 0)
+; CHECK: [[MATRIX:%.*]] = load <4 x i32>, ptr [[PTR]]
 
-  %1 = call spir_func %intel.joint_matrix_packedA_8x8_f32_t* @__builtin_spirv_OpJointMatrixLoadINTEL_local(i8 addrspace(3)* %src, i32 8, i32 0)
+  %1 = call spir_func target("spirv.CooperativeMatrixKHR", float, 3, 8, 8, 0) @__builtin_spirv_OpJointMatrixLoadINTEL_local(ptr %src, i32 8, i32 0)
 
 ; Matrix store sequence:
-; CHECK: store <4 x i32> [[MATRIX]], <4 x i32>* [[TMP4]]
-; CHECK: [[TMP5:%.*]] = bitcast <4 x i32>* [[TMP4]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_SG16_8x8_i32_4_local_pi64_v8i8(i8 addrspace(3)* %dst, i8* [[TMP5]], i32 8, i32 0)
+; CHECK: store <4 x i32> [[MATRIX]], ptr [[TMP4]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_SG16_8x8_i32_4_generic_pi64_v8i8(ptr %dst, ptr [[TMP4]], i32 8, i32 0)
 
-  call spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x8_local(i8 addrspace(3)* %dst, %intel.joint_matrix_packedA_8x8_f32_t* %1, i32 8, i32 0)
+  call spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x8_local(ptr %dst, target("spirv.CooperativeMatrixKHR", float, 3, 8, 8, 0) %1, i32 8, i32 0)
 
 ; CHECK: ret void
 
@@ -164,49 +151,47 @@ define void @load_store_local(i8 addrspace(3)* %src, i8 addrspace(3)* %dst) {
 }
 
 ; CHECK-LABEL: define void @load_store_large_local(
-define void @load_store_large_local(i8 addrspace(3)* %src, i8 addrspace(3)* %dst) {
+define void @load_store_large_local(ptr %src, ptr %dst) {
 
 ; Allocas:
 ; CHECK: [[TMP4:%.*]] = alloca { <64 x float>, <64 x float> }
 ; CHECK: [[PTR:%.*]] = alloca { <64 x float>, <64 x float> }
 
 ; Matrix load sequence:
-; CHECK: [[MATPTR:%.*]] = bitcast { <64 x float>, <64 x float> }* [[PTR]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_local_v8i8_pi32_i32(i8* [[MATPTR]], i8 addrspace(3)* %src, i64 16, i32 0)
-; CHECK: [[MATRIX:%.*]] = load { <64 x float>, <64 x float> }, { <64 x float>, <64 x float> }* [[PTR]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_generic_v8i8_pi32_i32(ptr [[PTR]], ptr %src, i64 16, i32 0)
+; CHECK: [[MATRIX:%.*]] = load { <64 x float>, <64 x float> }, ptr [[PTR]]
 
-  %1 = call spir_func %intel.joint_matrix_acc_32x64_f32_t* @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_local(i8 addrspace(3)* %src, i64 16, i32 0)
+  %1 = call spir_func target("spirv.CooperativeMatrixKHR", float, 3, 32, 64, 2) @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_local(ptr %src, i64 16, i32 0)
 
 ; Matrix store sequence:
-; CHECK: store { <64 x float>, <64 x float> } [[MATRIX]], { <64 x float>, <64 x float> }* [[TMP4]]
-; CHECK: [[TMP5:%.*]] = bitcast { <64 x float>, <64 x float> }* [[TMP4]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_local_pi64_v8i8(i8 addrspace(3)* %dst, i8* [[TMP5]], i64 8, i32 0)
+; CHECK: store { <64 x float>, <64 x float> } [[MATRIX]], ptr [[TMP4]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_generic_pi64_v8i8(ptr %dst, ptr [[TMP4]], i64 8, i32 0)
 
-  call spir_func void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_local(i8 addrspace(3)* %dst, %intel.joint_matrix_acc_32x64_f32_t* %1, i64 8, i32 0)
+  call spir_func void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_local(ptr %dst, target("spirv.CooperativeMatrixKHR", float, 3, 32, 64, 2) %1, i64 8, i32 0)
 
 ; CHECK: ret void
 
   ret void
 }
 
-declare spir_func %intel.joint_matrix_packedA_8x8_f32_t* @__builtin_spirv_OpJointMatrixLoadINTEL_generic(i8*, i32, i32)
-declare spir_func %intel.joint_matrix_packedA_8x8_f32_t* @__builtin_spirv_OpJointMatrixLoadINTEL_global(i8 addrspace(1)*, i32, i32)
-declare spir_func %intel.joint_matrix_packedA_8x8_f32_t* @__builtin_spirv_OpJointMatrixLoadINTEL_local(i8 addrspace(3)*, i32, i32)
-declare spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x8_generic(i8*, %intel.joint_matrix_packedA_8x8_f32_t*, i32, i32)
-declare spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x8_global(i8 addrspace(1)*, %intel.joint_matrix_packedA_8x8_f32_t*, i32, i32)
-declare spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x8_local(i8 addrspace(3)*, %intel.joint_matrix_packedA_8x8_f32_t*, i32, i32)
+declare spir_func target("spirv.CooperativeMatrixKHR", float, 3, 8, 8, 0) @__builtin_spirv_OpJointMatrixLoadINTEL_generic(ptr, i32, i32)
+declare spir_func target("spirv.CooperativeMatrixKHR", float, 3, 8, 8, 0) @__builtin_spirv_OpJointMatrixLoadINTEL_global(ptr, i32, i32)
+declare spir_func target("spirv.CooperativeMatrixKHR", float, 3, 8, 8, 0) @__builtin_spirv_OpJointMatrixLoadINTEL_local(ptr, i32, i32)
+declare spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x8_generic(ptr, target("spirv.CooperativeMatrixKHR", float, 3, 8, 8, 0), i32, i32)
+declare spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x8_global(ptr, target("spirv.CooperativeMatrixKHR", float, 3, 8, 8, 0), i32, i32)
+declare spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x8_local(ptr, target("spirv.CooperativeMatrixKHR", float, 3, 8, 8, 0), i32, i32)
 
-declare %intel.joint_matrix_acc_32x64_f32_t* @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_generic(i8*, i64, i32)
-declare %intel.joint_matrix_acc_32x64_f32_t* @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_global(i8 addrspace(1)*, i64, i32)
-declare %intel.joint_matrix_acc_32x64_f32_t* @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_local(i8 addrspace(3)*, i64, i32)
-declare void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_generic(i8*, %intel.joint_matrix_acc_32x64_f32_t *, i64, i32)
-declare void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_global(i8 addrspace(1)*, %intel.joint_matrix_acc_32x64_f32_t *, i64, i32)
-declare void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_local(i8 addrspace(3)*, %intel.joint_matrix_acc_32x64_f32_t *, i64, i32)
+declare target("spirv.CooperativeMatrixKHR", float, 3, 32, 64, 2) @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_generic(ptr, i64, i32)
+declare target("spirv.CooperativeMatrixKHR", float, 3, 32, 64, 2) @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_global(ptr, i64, i32)
+declare target("spirv.CooperativeMatrixKHR", float, 3, 32, 64, 2) @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_local(ptr, i64, i32)
+declare void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_generic(ptr, target("spirv.CooperativeMatrixKHR", float, 3, 32, 64, 2), i64, i32)
+declare void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_global(ptr, target("spirv.CooperativeMatrixKHR", float, 3, 32, 64, 2), i64, i32)
+declare void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_local(ptr, target("spirv.CooperativeMatrixKHR", float, 3, 32, 64, 2), i64, i32)
 
 !igc.functions = !{!0, !4, !5}
-!0 = !{void (i8*, i8*)* @test_generic, !1}
-!4 = !{void (i8 addrspace(1)*, i8 addrspace(1)*)* @test_global, !1}
-!5 = !{void (i8 addrspace(3)*, i8 addrspace(3)*)* @test_local, !1}
+!0 = !{ptr @test_generic, !1}
+!4 = !{ptr @test_global, !1}
+!5 = !{ptr @test_local, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"sub_group_size", i32 16}

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt %s -S -o - -igc-joint-matrix-resolution --platformpvc --device-id 0x0BD4 2>&1 | FileCheck %s --check-prefix=CHECK-PVC-VG
+; RUN: igc_opt %s -S -o - -igc-joint-matrix-resolution --typed-pointers --platformpvc --device-id 0x0BD4 2>&1 | FileCheck %s --check-prefix=CHECK-PVC-VG
 ; ------------------------------------------------
 ; JointMatrixFuncsResolutionPass - verify whether matrix functionality without usage of
 ;                                  JointMatrixMadINTEL can be compiled on PVC-VG without

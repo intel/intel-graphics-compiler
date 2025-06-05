@@ -6,8 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: system-windows
-; REQUIRES: regkeys
+; REQUIRES: regkeys, pvc-supported
 
 ; RUN: igc_opt -S -dce -platformpvc -rev-id B -has-emulated-64-bit-insts -igc-emit-visa --regkey=DumpVISAASMToConsole=1 -simd-mode 16 < %s | FileCheck %s
 

@@ -9,7 +9,8 @@
 ; REQUIRES: llvm-16-plus
 ; RUN: igc_opt --typed-pointers -igc-joint-matrix-resolution -S --platformdg2 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------
-; JointMatrixFuncsResolutionPass
+; The purpose of this test is to test target extension types (JointMatrixINTEL and CooperativeMatrixKHR)
+; with typed pointers while using various TET parameters / formats
 ; ------------------------------------------------
 
 ; CHECK:   [[ALLOCA1:%.*]]  = alloca <3 x i32>, align 16

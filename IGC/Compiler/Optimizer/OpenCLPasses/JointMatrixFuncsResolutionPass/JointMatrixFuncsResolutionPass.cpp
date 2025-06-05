@@ -738,6 +738,12 @@ static bool isSupprtedLargeSlice(const JointMatrixTypeDescription *desc, bool us
     return false;
 }
 
+bool JointMatrixFuncsResolutionPass::ValidateIntegerBitWidth(
+    unsigned int bitWidth) {
+  bool result = bitWidth == 8 || bitWidth == 16 || bitWidth == 32;
+  return result;
+}
+
 // TODO: Currently this function doesn't take into account large slices, when reporting
 // supported parameters. This should be fixed.
 bool JointMatrixFuncsResolutionPass::ValidateLoadStore
@@ -1023,12 +1029,9 @@ bool JointMatrixFuncsResolutionPass::parseMatrixTypeNameLegacy(const Type *opaqu
     offset += 1; /* Skip type specifier, [f|i] */
     outDescription->bitWidth = parseNumber(name, &offset);
 
-    bool supportedBitWidth =
-        (outDescription->bitWidth == 8 ||
-         outDescription->bitWidth == 16 ||
-         outDescription->bitWidth == 32);
-    IGC_ASSERT_MESSAGE(supportedBitWidth,
-                       "Unexpected matrix element size.");
+    bool isBitWidthSupported =
+        ValidateIntegerBitWidth(outDescription->bitWidth);
+    IGC_ASSERT_MESSAGE(isBitWidthSupported, "Unexpected matrix element size.");
 
     return true;
 }
@@ -1123,12 +1126,9 @@ bool IGC::JointMatrixFuncsResolutionPass::ParseMatrixTypeNameExtTypeDetails(Type
     if (typeParam->isIntegerTy()) {
       outDescription->bitWidth = typeParam->getIntegerBitWidth();
 
-      if (outDescription->bitWidth != 8 &&
-          outDescription->bitWidth != 16 &&
-          outDescription->bitWidth != 32)
-      {
-        std::string msg = "Unexpected Matrix integer size: '"
-          + std::to_string(outDescription->bitWidth) + "'. Only integers of size 8/16/32 are allowed.";
+      if (!ValidateIntegerBitWidth(outDescription->bitWidth)) {
+        std::string msg = "Unexpected Matrix integer size: '" +
+                          std::to_string(outDescription->bitWidth) + "'.";
         LLVM_DEBUG(dbgs() << msg << "\n");
         m_Ctx->EmitError(msg.c_str(), nullptr);
         return false;
@@ -1377,10 +1377,76 @@ static bool isAccumulator32x32(const JointMatrixTypeDescription &desc) {
     return (desc.layout == LayoutRowMajor && desc.rows == 32 && desc.columns == 32);
 }
 
+#if LLVM_VERSION_MAJOR >= 16
+// When we alloca target extension type, later it is "ptr".
+// We need to figure out the type of "ptr" by traversing up.
+// Example:
+// %0 = alloca target("spirv.CooperativeMatrixKHR", i16, 3, 8, 16, 0)
+// %ptr = call spir_func ptr
+// @_Z19__spirv_AccessChainPU3AS4PU3AS143__spirv_CooperativeMatrixKHR(ptr %0,
+// i64 4)
+Type *JointMatrixFuncsResolutionPass::TryFindTargetExtensionTypeOfOpaquePtr(
+    Value *V) {
+  if (!V)
+    return nullptr;
+
+  for (auto &use : V->uses()) {
+    if (auto *ai = dyn_cast<AllocaInst>(use)) {
+      auto aiTy = ai->getAllocatedType();
+      if (IGCLLVM::isTargetExtTy(aiTy))
+        return aiTy;
+    } else if (auto *ci = dyn_cast<CallInst>(use)) {
+      auto funcReturnType = ci->getFunction()->getReturnType();
+      if (IGCLLVM::isTargetExtTy(funcReturnType))
+        return funcReturnType;
+    } else if (auto *spaceCast = dyn_cast<AddrSpaceCastInst>(use)) {
+      return TryFindTargetExtensionTypeOfOpaquePtr(
+          spaceCast->getPointerOperand());
+    }
+  }
+
+  return nullptr;
+}
+// When resolving e.g prefetch we need to figure out type of ptr
+// We can do it by traversing up.
+// It is similar to approach TryFindTargetExtensionTypeOfOpaquePtr
+Type *JointMatrixFuncsResolutionPass::TryFindTypeOfOpaquePtr(Value *V) {
+  if (!V)
+    return nullptr;
+
+  for (auto &use : V->uses()) {
+    if (auto *ai = dyn_cast<AllocaInst>(use)) {
+      auto aiTy = ai->getAllocatedType();
+      return aiTy;
+    } else if (auto *ci = dyn_cast<CallInst>(use)) {
+      auto funcReturnType = ci->getFunction()->getReturnType();
+      return funcReturnType;
+    } else if (auto *spaceCast = dyn_cast<AddrSpaceCastInst>(use)) {
+      return TryFindTypeOfOpaquePtr(spaceCast->getPointerOperand());
+    } else if (auto *gep = dyn_cast<GetElementPtrInst>(use)) {
+      return gep->getResultElementType();
+    } else if (auto *bitcast = dyn_cast<BitCastInst>(use)) {
+      if (!IGCLLVM::isOpaquePointerTy(bitcast->getSrcTy()))
+        return bitcast->getSrcTy();
+
+      return TryFindTypeOfOpaquePtr(bitcast->getOperand(0));
+    }
+  }
+
+  return nullptr;
+}
+#endif
+
 Type *JointMatrixFuncsResolutionPass::ResolveType(Type *inputType, JointMatrixTypeDescription *outDesc)
 {
     IGC_ASSERT_EXIT_MESSAGE(inputType && (inputType->isPointerTy() || IGCLLVM::isTargetExtTy(inputType)),
         "Unexpected type in matrix function resolution.");
+
+#if LLVM_VERSION_MAJOR >= 16
+    IGC_ASSERT_EXIT_MESSAGE(
+        !IGCLLVM::isOpaquePointerTy(inputType),
+        "Unexpected opaque pointer. Expected TargetExtensionType instead.");
+#endif
 
     JointMatrixTypeDescription desc;
     bool parseResult = ParseMatrixTypeName(inputType, &desc);
@@ -1484,32 +1550,52 @@ Instruction *JointMatrixFuncsResolutionPass::ResolvePrefetch(CallInst *CI)
     desc.columns = (unsigned)constIntValue(numColsVal);
 
     // Pointer type resolution
+    Type *ptrElemType = nullptr;
+
+#if LLVM_VERSION_MAJOR >= 16
+    if (IGCLLVM::isOpaquePointerTy(ptrVal->getType()))
+      ptrElemType = TryFindTypeOfOpaquePtr(ptrVal);
+    else
+#endif
     {
-        PointerType *ptrType = cast<PointerType>(ptrVal->getType());
-        Type *ptrElemType = IGCLLVM::getNonOpaquePtrEltTy(ptrType);
+      // To be removed after switch to LLVM 16 + full opaque pointers enablement
+      PointerType *ptrType = cast<PointerType>(ptrVal->getType());
+      ptrElemType = IGCLLVM::getNonOpaquePtrEltTy(ptrType);
+    }
 
-        if (StructType *structTy = dyn_cast<StructType>(ptrElemType)) {
-            if (structTy->getNumElements() == 1) {
-                ptrElemType = structTy->getElementType(0);
-                // we assume that only custom floating point types are wrapped into structs
-                desc.isFloating = true;
-            }
-        }
+    IGC_ASSERT_MESSAGE(ptrElemType, "Pointer type not found");
 
-        if (ptrElemType->isHalfTy()) {
-            desc.bitWidth = 16;
-            desc.isFloating = true;
-        } else if (ptrElemType->isFloatTy()) {
-            desc.bitWidth = 32;
-            desc.isFloating = true;
-        } else if (ptrElemType->isDoubleTy()) {
-            desc.bitWidth = 64;
-            desc.isFloating = true;
-        } else if (ptrElemType->isIntegerTy()) {
-            desc.bitWidth = cast<IntegerType>(ptrElemType)->getBitWidth();
-        } else {
-            m_Ctx->EmitError("Failed to resolve matrix prefetch pointer type", ptrVal);
-        }
+    if (StructType *structTy = dyn_cast<StructType>(ptrElemType)) {
+      if (structTy->getNumElements() == 1) {
+        ptrElemType = structTy->getElementType(0);
+        // we assume that only custom floating point types are wrapped into
+        // structs
+        desc.isFloating = true;
+      }
+    }
+
+    if (ptrElemType->isHalfTy()) {
+      desc.bitWidth = 16;
+      desc.isFloating = true;
+    } else if (ptrElemType->isFloatTy()) {
+      desc.bitWidth = 32;
+      desc.isFloating = true;
+    } else if (ptrElemType->isDoubleTy()) {
+      desc.bitWidth = 64;
+      desc.isFloating = true;
+    } else if (ptrElemType->isIntegerTy()) {
+      desc.bitWidth = cast<IntegerType>(ptrElemType)->getBitWidth();
+
+      if (!ValidateIntegerBitWidth(desc.bitWidth)) {
+        std::string msg = "Unexpected Matrix integer size: '" +
+                          std::to_string(desc.bitWidth) + "'.";
+        LLVM_DEBUG(dbgs() << msg << "\n");
+        m_Ctx->EmitError(msg.c_str(), ptrVal);
+        return nullptr;
+      }
+    } else {
+      m_Ctx->EmitError("Failed to resolve matrix prefetch pointer type",
+                       ptrVal);
     }
 
     LLVMContext &ctx = CI->getContext();
@@ -2268,13 +2354,32 @@ bool JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
             continue;
         }
 
+#if LLVM_VERSION_MAJOR < 16
         if(IGCLLVM::isOpaquePointerTy(CI->getArgOperand(0)->getType()))
             continue;
+#endif
 
         LLVM_DEBUG(dbgs() << " - PREPROCESS ACCESS CHAIN: " << *CI << "\n");
 
-        Type *chainBaseTy =
-            IGCLLVM::getNonOpaquePtrEltTy(CI->getArgOperand(0)->getType());
+        Type *chainBaseTy = nullptr;
+        auto operand0 = CI->getArgOperand(0);
+
+#if LLVM_VERSION_MAJOR >= 16
+        if (IGCLLVM::isOpaquePointerTy(operand0->getType())) {
+          chainBaseTy = TryFindTargetExtensionTypeOfOpaquePtr(operand0);
+          IGC_ASSERT_MESSAGE(chainBaseTy,
+                             "__spirv_AccessChain call 1st argument must be "
+                             "pointer to target extension type.");
+        } else
+#endif
+        {
+          // to be removed after we switch to LLVM 16 with opaque pointers by
+          // default
+          chainBaseTy = IGCLLVM::getNonOpaquePtrEltTy(operand0->getType());
+          IGC_ASSERT_MESSAGE(
+              chainBaseTy, "__spirv_AccessChain call 1st argument is invalid");
+        }
+
         IGC_ASSERT_MESSAGE(isMatrixType(chainBaseTy),
                            "__spirv_AccessChain call 1st argument must be cooperative matrix");
         Value *ptrToMatrix = CI->getArgOperand(0);
@@ -2755,8 +2860,10 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
 
     StringRef funcName = func->getName();
 
+#if LLVM_VERSION_MAJOR < 16
     if(IGCLLVM::isOpaquePointerTy(CI.getType()) || isAnyOperand(CI, IGCLLVM::isOpaquePointerTy))
         return;
+#endif
 
     /* Resolve calls to JointMatrix BIs that haven't been resolved yet. In
      * future when returning and passing matrices by argument is

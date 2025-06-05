@@ -1,5 +1,5 @@
 ; UNSUPPORTED: system-windows
-; REQUIRES: regkeys
+; REQUIRES: pvc-supported, regkeys
 
 ; RUN: igc_opt -S -dce -platformpvc -rev-id B -has-emulated-64-bit-insts -igc-emit-visa --regkey=DumpVISAASMToConsole=1 -simd-mode 16 < %s | FileCheck %s
 

@@ -6,43 +6,42 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: llvm-16-plus
 ; RUN: igc_opt --opaque-pointers -igc-joint-matrix-resolution -S --platformpvc 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------
-; JointMatrixFuncsResolutionPass
+; Testing whether load + store works fine with target extension types on opaque-pointers mode
 ; ------------------------------------------------
 
 define spir_kernel void @test_jm(
-  float addrspace(1)* %t1_src, float addrspace(1)* %t1_dst,
-  float addrspace(1)* %t2_src, float addrspace(1)* %t2_dst,
-  float addrspace(1)* %t3_src, float addrspace(1)* %t3_dst,
-  float addrspace(1)* %t4_src, float addrspace(1)* %t4_dst) {
-  call void @load_store_partial_cache_controls(float addrspace(1)* %t1_src, float addrspace(1)* %t1_dst)
-  call void @load_store_without_cache_controls(float addrspace(1)* %t2_src, float addrspace(1)* %t2_dst)
-  call void @load_store_l1l3_cache_controls(float addrspace(1)* %t3_src, float addrspace(1)* %t3_dst)
-  call void @load_store_invalid_cache_controls(float addrspace(1)* %t4_src, float addrspace(1)* %t4_dst)
+  ptr %t1_src, ptr %t1_dst,
+  ptr %t2_src, ptr %t2_dst,
+  ptr %t3_src, ptr %t3_dst,
+  ptr %t4_src, ptr %t4_dst) {
+  call void @load_store_partial_cache_controls(ptr %t1_src, ptr %t1_dst)
+  call void @load_store_without_cache_controls(ptr %t2_src, ptr %t2_dst)
+  call void @load_store_l1l3_cache_controls(ptr %t3_src, ptr %t3_dst)
+  call void @load_store_invalid_cache_controls(ptr %t4_src, ptr %t4_dst)
   ret void
 }
 
-%spirv.JointMatrixINTEL._float_8_16_3_3_2 = type opaque
-declare spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)*, i64, i32, i32, i32) #0
-declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)*, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)*, i64, i32, i32, i32) #0
+declare spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(ptr, i64, i32, i32, i32) #0
+declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(ptr, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2), i64, i32, i32, i32) #0
 
 
 
 ;
 ; This test sets cache controls only for L1 or only for L3. It checks that we fill missing information with defaults to produce valid cacheopt.
 ;
-define void @load_store_partial_cache_controls(float addrspace(1)* %src, float addrspace(1)* %dst) {
+define void @load_store_partial_cache_controls(ptr %src, ptr %dst) {
 ; CHECK-LABEL: define void @load_store_partial_cache_controls(
-; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_global_v8i8_pi32_i32(i8* %{{.*}}, float addrspace(1)* %decoratedsrc, i64 64, i32 3)
-; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_global_pi64_v8i8(float addrspace(1)* %decorateddst, i8* {{.*}}, i64 64, i32 6)
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_generic_v8i8_pi32_i32(ptr %{{.*}}, ptr %decoratedsrc, i64 64, i32 3)
+; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_generic_pi64_v8i8(ptr %decorateddst, ptr {{.*}}, i64 64, i32 6)
 ; CHECK: ret void
 ;
-%decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0, !spirv.Decorations !100
-%1 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
-%decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0, !spirv.Decorations !105
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %1, i64 64, i32 0, i32 3, i32 0) #0
+%decoratedsrc = getelementptr inbounds float, ptr %src, i64 0, !spirv.Decorations !100
+%1 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(ptr %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%decorateddst = getelementptr inbounds float, ptr %dst, i64 0, !spirv.Decorations !105
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(ptr %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %1, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 
@@ -50,16 +49,16 @@ ret void
 ;
 ; This test sets cache controls for both L1 and L3.
 ;
-define void @load_store_l1l3_cache_controls(float addrspace(1)* %src, float addrspace(1)* %dst) {
+define void @load_store_l1l3_cache_controls(ptr %src, ptr %dst) {
 ; CHECK-LABEL: define void @load_store_l1l3_cache_controls(
-; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_global_v8i8_pi32_i32(i8* {{.*}}, float addrspace(1)* %decoratedsrc, i64 64, i32 5)
-; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_global_pi64_v8i8(float addrspace(1)* %decorateddst, i8* {{.*}}, i64 64, i32 3)
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_generic_v8i8_pi32_i32(ptr {{.*}}, ptr %decoratedsrc, i64 64, i32 5)
+; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_generic_pi64_v8i8(ptr %decorateddst, ptr {{.*}}, i64 64, i32 3)
 ; CHECK: ret void
 ;
-%decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0, !spirv.Decorations !110
-%1 = call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
-%decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0, !spirv.Decorations !115
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %1, i64 64, i32 0, i32 3, i32 0) #0
+%decoratedsrc = getelementptr inbounds float, ptr %src, i64 0, !spirv.Decorations !110
+%1 = call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(ptr %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%decorateddst = getelementptr inbounds float, ptr %dst, i64 0, !spirv.Decorations !115
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(ptr %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %1, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 
@@ -67,14 +66,14 @@ ret void
 ;
 ; This test doesn't set cache controls. It checks that we use defaults (0).
 ;
-define void @load_store_without_cache_controls(float addrspace(1)* %src, float addrspace(1)* %dst) {
+define void @load_store_without_cache_controls(ptr %src, ptr %dst) {
 ; CHECK-LABEL: define void @load_store_without_cache_controls(
-; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_global_v8i8_pi32_i32(i8* {{.*}}, float addrspace(1)* %src, i64 64, i32 0)
-; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_global_pi64_v8i8(float addrspace(1)* %dst, i8* {{.*}}, i64 64, i32 0)
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_generic_v8i8_pi32_i32(ptr {{.*}}, ptr %src, i64 64, i32 0)
+; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_generic_pi64_v8i8(ptr %dst, ptr {{.*}}, i64 64, i32 0)
 ; CHECK: ret void
 ;
-%1 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %src, i64 64, i32 0, i32 3, i32 0) #0
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %dst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %1, i64 64, i32 0, i32 3, i32 0) #0
+%1 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(ptr %src, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(ptr %dst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %1, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 
@@ -82,27 +81,27 @@ ret void
 ;
 ; This tests sets invalid cache controls configuration. It checks that we fallback to defaults.
 ;
-define void @load_store_invalid_cache_controls(float addrspace(1)* %src, float addrspace(1)* %dst) {
+define void @load_store_invalid_cache_controls(ptr %src, ptr %dst) {
 ; CHECK-LABEL: define void @load_store_invalid_cache_controls(
-; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_global_v8i8_pi32_i32(i8* {{.*}}, float addrspace(1)* %decoratedsrc, i64 64, i32 4)
-; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_global_pi64_v8i8(float addrspace(1)* %decorateddst, i8* {{.*}}, i64 64, i32 7)
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_generic_v8i8_pi32_i32(ptr {{.*}}, ptr %decoratedsrc, i64 64, i32 4)
+; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_generic_pi64_v8i8(ptr %decorateddst, ptr {{.*}}, i64 64, i32 7)
 ; CHECK: ret void
 ; CHECK: Unsupported cache controls configuration requested. Applying default configuration.
 ; CHECK: Unsupported cache controls configuration requested. Applying default configuration.
 ; CHECK-NOT: Unsupported cache controls configuration requested. Applying default configuration.
 ; CHECK-NOT: error
 ;
-%decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0, !spirv.Decorations !120
-%1 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
-%decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0, !spirv.Decorations !125
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %1, i64 64, i32 0, i32 3, i32 0) #0
+%decoratedsrc = getelementptr inbounds float, ptr %src, i64 0, !spirv.Decorations !120
+%1 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(ptr %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%decorateddst = getelementptr inbounds float, ptr %dst, i64 0, !spirv.Decorations !125
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(ptr %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %1, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 
 
 
 !igc.functions = !{!0}
-!0 = !{void (float addrspace(1)*, float addrspace(1)*, float addrspace(1)*, float addrspace(1)*, float addrspace(1)*, float addrspace(1)*, float addrspace(1)*, float addrspace(1)*)* @test_jm, !1}
+!0 = !{ptr @test_jm, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"sub_group_size", i32 16}

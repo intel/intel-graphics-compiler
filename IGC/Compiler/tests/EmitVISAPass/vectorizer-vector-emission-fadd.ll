@@ -1,18 +1,18 @@
-; REQUIRES: regkeys
+; REQUIRES: pvc-supported, regkeys
 
 ; RUN: igc_opt -S -dce -platformpvc -rev-id B -has-emulated-64-bit-insts -igc-emit-visa --regkey=DumpVISAASMToConsole=1 -simd-mode 16 < %s | FileCheck %s
 
-; CHECK: .decl tmp15 v_type=G type=f num_elts=128 align=wordx32
-; CHECK: .decl tmp16 v_type=G type=f num_elts=8 align=dword
+; CHECK: .decl vectorized_phi v_type=G type=f num_elts=128 align=wordx32
+; CHECK: .decl vector v_type=G type=f num_elts=8 align=dword
 
-; CHECK: add (M1, 16) tmp15(0,0)<1> tmp16(0,0)<0;1,0> tmp15(0,0)<1;1,0>
-; CHECK: add (M1, 16) tmp15(1,0)<1> tmp16(0,1)<0;1,0> tmp15(1,0)<1;1,0>
-; CHECK: add (M1, 16) tmp15(2,0)<1> tmp16(0,2)<0;1,0> tmp15(2,0)<1;1,0>
-; CHECK: add (M1, 16) tmp15(3,0)<1> tmp16(0,3)<0;1,0> tmp15(3,0)<1;1,0>
-; CHECK: add (M1, 16) tmp15(4,0)<1> tmp16(0,4)<0;1,0> tmp15(4,0)<1;1,0>
-; CHECK: add (M1, 16) tmp15(5,0)<1> tmp16(0,5)<0;1,0> tmp15(5,0)<1;1,0>
-; CHECK: add (M1, 16) tmp15(6,0)<1> tmp16(0,6)<0;1,0> tmp15(6,0)<1;1,0>
-; CHECK: add (M1, 16) tmp15(7,0)<1> tmp16(0,7)<0;1,0> tmp15(7,0)<1;1,0>
+; CHECK: add (M1, 16) vectorized_phi(0,0)<1> vector(0,0)<0;1,0> vectorized_phi(0,0)<1;1,0>
+; CHECK: add (M1, 16) vectorized_phi(1,0)<1> vector(0,1)<0;1,0> vectorized_phi(1,0)<1;1,0>
+; CHECK: add (M1, 16) vectorized_phi(2,0)<1> vector(0,2)<0;1,0> vectorized_phi(2,0)<1;1,0>
+; CHECK: add (M1, 16) vectorized_phi(3,0)<1> vector(0,3)<0;1,0> vectorized_phi(3,0)<1;1,0>
+; CHECK: add (M1, 16) vectorized_phi(4,0)<1> vector(0,4)<0;1,0> vectorized_phi(4,0)<1;1,0>
+; CHECK: add (M1, 16) vectorized_phi(5,0)<1> vector(0,5)<0;1,0> vectorized_phi(5,0)<1;1,0>
+; CHECK: add (M1, 16) vectorized_phi(6,0)<1> vector(0,6)<0;1,0> vectorized_phi(6,0)<1;1,0>
+; CHECK: add (M1, 16) vectorized_phi(7,0)<1> vector(0,7)<0;1,0> vectorized_phi(7,0)<1;1,0>
 
 define spir_kernel void @blam(half addrspace(1)* %arg, half addrspace(1)* %arg1, half addrspace(1)* %arg2, float %arg3, i8 addrspace(1)* %arg4, float addrspace(1)* %arg5, <8 x i32> %arg6, <8 x i32> %arg7, i8* %arg8, i32 %arg9, i32 %arg10, i32 %arg11, i32 %arg12, i32 %arg13) {
 bb:

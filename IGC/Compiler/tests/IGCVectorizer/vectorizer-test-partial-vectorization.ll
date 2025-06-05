@@ -1,5 +1,5 @@
-; REQUIRES: regkeys, llvm-15-or-older
-; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowEXP2=0 --regkey=VectorizerEnablePartialVectorization=1 < %s 2>&1 | FileCheck %s
+; REQUIRES: pvc-supported, regkeys
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerEnablePartialVectorization=1 < %s 2>&1 | FileCheck %s
 
 ; CHECK: %vectorized_phi
 ; CHECK: [[vec_insert0:%vector.*]] = insertelement <8 x float> undef,

@@ -87,6 +87,8 @@ namespace IGC
           bool IsJointMatrix,
           JointMatrixTypeDescription* outDescription);
 #if LLVM_VERSION_MAJOR >= 16
+        llvm::Type *TryFindTargetExtensionTypeOfOpaquePtr(llvm::Value *V);
+        llvm::Type *TryFindTypeOfOpaquePtr(llvm::Value *V);
         bool ParseMatrixTypeNameExtTypeDetails(llvm::Type* opaqueType, bool IsJointMatrix, IGC::JointMatrixTypeDescription* outDescription);
 #endif
 
@@ -122,6 +124,7 @@ namespace IGC
                                       const JointMatrixTypeDescription *desc,
                                       const std::string& prefix);
 
+        bool ValidateIntegerBitWidth(unsigned int width);
         bool ValidateLoadStore
             (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, llvm::Value *ctx);
 
