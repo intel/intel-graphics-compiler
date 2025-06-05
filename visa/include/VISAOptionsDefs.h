@@ -718,6 +718,8 @@ DEF_VISA_OPTION(vISA_removeFence, ET_BOOL, "-removeFence",
                 "Remove fence if no write in a kernel", false)
 DEF_VISA_OPTION(vISA_skipGitHash, ET_BOOL, "-noGitHash",
                 "Do not emit git hash in .asm", false)
+DEF_VISA_OPTION(vISA_SendAWProfiling, ET_BOOL, "-sendAWProfiling",
+                "Emit after write profiling data in .asm", false)
 
 
 //=== HW Workarounds ===

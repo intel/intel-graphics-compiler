@@ -1030,6 +1030,7 @@ class SWSB {
   void setDefaultDistanceAtFirstInstruction();
 
   void quickTokenAllocation();
+  void TokenDepProfiling();
 
   // Token allocation
   void tokenAllocation();

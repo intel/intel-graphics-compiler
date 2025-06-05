@@ -5147,6 +5147,11 @@ namespace IGC
                      IGC_GET_FLAG_VALUE(EnableIndirectInstEnd));
         }
 
+        if (IGC_IS_FLAG_ENABLED(GetSendAfterWriteDistance))
+        {
+            SaveOption(vISA_SendAWProfiling, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(EnableGroupScheduleForBC))
         {
             SaveOption(vISA_EnableGroupScheduleForBC, true);

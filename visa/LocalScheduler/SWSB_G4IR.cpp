@@ -1742,6 +1742,33 @@ static BucketInfos generateBucketInfos(const LiveGRFBuckets &globalSendsLB){
   return bucketInfos;
 }
 
+void SWSB::TokenDepProfiling() {
+
+  calculateDist();
+
+  for (SBNode *node : SBSendNodes) {
+    for (auto node_it = node->succs.begin(); node_it != node->succs.end();) {
+      SBDEP_ITEM &dep = (*node_it);
+      SBNode *succNode = dep.node;
+      DepType type = dep.type;
+      if (type == RAW || type == WAW) {
+        int distance = (int)succNode->getNodeID() - (int)node->getNodeID();
+        if (!(node->getBBID() == succNode->getBBID() && distance > 0)) {
+          distance = BBVector[succNode->getBBID()]
+                         ->tokenLiveInDist[node->globalID] +
+                     succNode->getNodeID() - BBVector[succNode->getBBID()]->first_node;
+        }
+        std::stringstream ss;
+        ss << "AW Distance: " << distance;
+        node->GetInstruction()->addComment(ss.str());
+      }
+      node_it++;
+    }
+  }
+
+  return;
+}
+
 void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
                                     LiveGRFBuckets &globalSendsLB,
                                     LiveGRFBuckets &GRFAlignedGlobalSendsLB) {
@@ -1771,7 +1798,8 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
     bb->liveOutTokenNodes = BitSet(SBSendNodes.size(), false);
     bb->killedTokens = BitSet(totalTokenNum, false);
 
-    if (enableGlobalTokenAllocation || enableDistPropTokenAllocation) {
+    if (enableGlobalTokenAllocation || enableDistPropTokenAllocation ||
+        fg.builder->getOptions()->getOption(vISA_SendAWProfiling)) {
       bb->tokenLiveInDist =
           (unsigned *)SWSBMem.alloc(sizeof(unsigned) * globalSendNum);
       bb->tokenLiveOutDist =
@@ -1860,6 +1888,10 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
 
   // Add dependence according to analysis result
   addGlobalDependence(globalSendNum, &globalSendOpndList, SBNodes, p, false);
+
+  if (fg.builder->getOptions()->getOption(vISA_SendAWProfiling)) {
+    TokenDepProfiling();
+  }
 
   // SWSB token allocation with linear scan algorithm.
   if (enableGlobalTokenAllocation) {
@@ -3006,7 +3038,9 @@ bool SWSB::propogateDist(G4_BB *bb) {
     return false;
   }
 
-  vASSERT(!BBVector[bbID]->send_live_in.isEmpty());
+  if (BBVector[bbID]->send_live_in.isEmpty()) {
+    return false;
+  }
 
   SBBitSets temp_live_in;
   temp_live_in = BBVector[bbID]->send_live_in;
