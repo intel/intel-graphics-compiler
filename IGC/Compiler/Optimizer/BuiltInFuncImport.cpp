@@ -1359,6 +1359,77 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
             }
           }
         }
+
+        // Clang and SPIRV-Translator support integer-to-integer conversions with a provided rounding mode.
+        // Before LLVM 16, these cases were ignored by SPIRV-Translator, but with LLVM 16, IGC can receive
+        // builtins with a rounding mode for int-to-int conversions. For these conversions, we do not need to take
+        // the rounding mode into account and can handle them as default conversion builtins. To address this,
+        // we need to investigate these functions and strip the rounding mode from the function name.
+        // This also requires updating the length field in the builtin name. In the end, we should replace
+        // the old functions with the new ones.
+        // Clang: https://clang.llvm.org/doxygen/opencl-c_8h_source.html
+        // SPIRV-Translator: https://github.com/KhronosGroup/SPIRV-LLVM-Translator/blob/main/lib/SPIRV/runtime/OpenCL/inc/spirv_convert.h
+        //
+        // Example of handling conversion by the code below:
+        // Before:
+        //     declare spir_func i8 @_Z30__spirv_SConvert_Rchar_sat_rtei(i32)
+        // After:
+        //     declare spir_func i8 @_Z26__spirv_SConvert_Rchar_sati(i32)
+
+        std::string sConvert ="__spirv_SConvert";
+        std::string uConvert ="__spirv_UConvert";
+        std::string satConvertUToS ="__spirv_SatConvertUToS";
+        std::string satConvertSToU ="__spirv_SatConvertSToU";
+
+        auto stripRoundingMode = [](const std::string& mangled) -> std::string {
+            const std::vector<std::string> roundingModes = {"_rtz", "_rte", "_rtp", "_rtn"};
+            if (mangled[0] != '_' || mangled[1] != 'Z' || !std::isdigit(mangled[2]))
+                return mangled;
+
+            size_t lenStart = 2;
+            size_t lenEnd = lenStart;
+            while (lenEnd < mangled.size() && std::isdigit(mangled[lenEnd])) {
+                ++lenEnd;
+            }
+            if (lenEnd == lenStart)
+                return mangled;
+
+            int oldLen = std::stoi(mangled.substr(lenStart, lenEnd - lenStart));
+            std::string rest = mangled.substr(lenEnd);
+
+            for (const auto& mode : roundingModes) {
+                size_t pos = rest.find(mode);
+                if (pos != std::string::npos) {
+                    rest.erase(pos, mode.length());
+                    int newLen = oldLen - mode.length();
+                    return mangled.substr(0, lenStart) + std::to_string(newLen) + rest;
+                }
+            }
+            return mangled;
+        };
+
+        if(funcName.contains(sConvert) || funcName.contains(uConvert) ||
+           funcName.contains(satConvertUToS) || funcName.contains(satConvertSToU)) {
+
+            std::string newName = stripRoundingMode(funcName.str());
+
+            for (auto Users : pFunc->users()) {
+                if (auto CI = dyn_cast<CallInst>(Users)) {
+                    Function *newFunc = M.getFunction(newName);
+                    if (newFunc == nullptr) {
+                        FunctionType *FT = pFunc->getFunctionType();
+                        newFunc = Function::Create(FT, pFunc->getLinkage(), newName, M);
+                    }
+                    SmallVector<Value *, 8> Args;
+                    for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(CI); I != E; ++I) {
+                        Args.push_back(CI->getArgOperand(I));
+                    }
+                    auto newCI = CallInst::Create(newFunc, Args);
+                    newCI->setCallingConv(CI->getCallingConv());
+                    CallToReplace.push_back(std::pair<Instruction *, Instruction *>(CI, newCI));
+                }
+            }
+        }
     }
 
     for (const auto &InstTuple : InstToModify)
