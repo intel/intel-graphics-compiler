@@ -342,7 +342,6 @@ DECLARE_IGC_REGKEY(DWORD, FPRoundingModeCoalescingMaxDistance, 20, "Max distance
 DECLARE_IGC_REGKEY(bool, DisableDotAddToDp4aMerge, false, "Disable Dot and Add ops to Dp4a merge optimization.", false)
 DECLARE_IGC_REGKEY(bool, DisableLoopSplitWidePHIs, false, "Disable splitting of loop PHI values to eliminate subvector extract operations", false)
 DECLARE_IGC_REGKEY(bool, EnableBarrierControlFlowOptimizationPass, false, "Enable barrier control flow optimization pass", false)
-DECLARE_IGC_REGKEY(bool, EnableUniformSimd1Stores, false, "Collapse SIMD32 uniform stores into SIMD1 to reduce pressure", true)
 DECLARE_IGC_REGKEY(bool, EnableWaveShuffleIndexSinking, true, "Hoist identical instructions operating on WaveShuffleIndex instructions with the same source and a constant lane/channel", false)
 DECLARE_IGC_REGKEY(DWORD, WaveShuffleIndexSinkingMaxIterations, 3, "Max number of iterations to run iterative WaveShuffleIndexSinking", false)
 DECLARE_IGC_REGKEY(bool, EnableWaveAllJointReduction, false, "Enable Joint Reduction Optimization.", false)
