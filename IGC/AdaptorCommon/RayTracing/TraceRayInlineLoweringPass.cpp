@@ -209,6 +209,7 @@ void TraceRayInlineLoweringPass::LowerAllocateRayQuery(
         builder.SetInsertPoint(I);
         auto* rtstack = getShMemRayQueryRTStack(builder, I->getRayQueryAllocationHandle());
         I->replaceAllUsesWith(rtstack);
+        I->eraseFromParent();
     }
 }
 
