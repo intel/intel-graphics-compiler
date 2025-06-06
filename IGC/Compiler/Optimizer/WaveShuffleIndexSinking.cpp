@@ -339,7 +339,7 @@ namespace IGC
                         {
                             Instruction* lastAnchor = lastAnchorIdx == -1 ? cast<Instruction>(ShuffleOps[ i ]) : InstChains[ i ][ lastAnchorIdx ];
                             // operand to be replaced
-                            Instruction* rewirePrev = ( rewireIdx == 0 ) ? cast<Instruction>(ShuffleOps[ i ]) : InstChains[ i ][ rewireIdx - 1 ];
+                            Instruction* rewirePrev = InstChains[ i ][ rewireIdx - 1 ];
                             unsigned rewireOpIdx = InstChains[ i ][ rewireIdx ]->getOperand( 0 ) == rewirePrev ? 0 : 1;
                             InstChains[ i ][ rewireIdx ]->setOperand( rewireOpIdx, lastAnchor );
                             lastAnchorIdx = rewireIdx;

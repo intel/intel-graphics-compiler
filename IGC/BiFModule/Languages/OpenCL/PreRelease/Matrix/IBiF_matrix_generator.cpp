@@ -62,7 +62,7 @@ static string ToStringAbove1(int number) {
 }
 
 // Replaces all occurrences of `toReplace` with `newText` in `source`
-static string Replace(string source, string toReplace, string newText) {
+static string Replace(string source, string toReplace, const string& newText) {
     size_t pos = 0;
     while((pos = source.find(toReplace, pos)) != std::string::npos) {
         source.replace(pos, toReplace.length(), newText);
@@ -914,8 +914,7 @@ static string ImplementLargeLoadBase(MatrixSpec spec, AddrSpace addr, int numLoa
     s = Replace(s, "WiRowsPerLoad", to_string(wiRowsPerLoad));
     s = Replace(s, "NumLoads", to_string(numLoads));
     s = Replace(s, "Rows", to_string(spec.Rows));
-    if (isChecked) s = Replace(s, "LoadArgs", "");
-    else           s = Replace(s, "LoadArgs", "");
+    s = Replace(s, "LoadArgs", "");
     return s;
 }
 

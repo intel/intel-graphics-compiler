@@ -71,7 +71,7 @@ namespace IGC
             llvm::Value* ConsumerCount;
         };
 
-        llvm::Module* mModule;
+        llvm::Module* mModule = nullptr;
         MBMode mCurrentMode;
 
         llvm::DenseMap<llvm::CallInst*, MBFuncType> mManageBarrierInstructions;
