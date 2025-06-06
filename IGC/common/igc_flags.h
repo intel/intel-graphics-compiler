@@ -345,7 +345,7 @@ DECLARE_IGC_REGKEY(bool, EnableBarrierControlFlowOptimizationPass, false, "Enabl
 DECLARE_IGC_REGKEY(bool, EnableUniformSimd1Stores, false, "Collapse SIMD32 uniform stores into SIMD1 to reduce pressure", true)
 DECLARE_IGC_REGKEY(bool, EnableWaveShuffleIndexSinking, true, "Hoist identical instructions operating on WaveShuffleIndex instructions with the same source and a constant lane/channel", false)
 DECLARE_IGC_REGKEY(DWORD, WaveShuffleIndexSinkingMaxIterations, 3, "Max number of iterations to run iterative WaveShuffleIndexSinking", false)
-DECLARE_IGC_REGKEY(bool, EnableWaveAllJointReduction, true, "Enable Joint Reduction Optimization.", false)
+DECLARE_IGC_REGKEY(bool, EnableWaveAllJointReduction, false, "Enable Joint Reduction Optimization.", false)
 DECLARE_IGC_REGKEY(bool, EnablePromoteToPredicatedMemoryAccess, false, "Enable predicated load/store if conversion.", true)
 DECLARE_IGC_REGKEY(bool, EnableIntDivRemIncrementReduction, true, "Enable consecutive Int DivRem increment by constant optimization", false)
 DECLARE_IGC_REGKEY(bool, DivRemIncrementCondBranchSimplify, false, "Create branches when simplifying consecutive udiv/urem groups increment dividend by constant greater than 1", false)
