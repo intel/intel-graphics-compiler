@@ -40,7 +40,8 @@ SPDX-License-Identifier: MIT
 #include "common/SIPKernels/XeHPCSIPCSRDebugBindless.h"
 #include "common/SIPKernels/Xe2SIPCSRDebugBindless.h"
 #include "common/SIPKernels/Xe3_G_SIPDebugBindless.h"
-#include "common/SIPKernels/wmtp/Xe3_PTL.h"
+#include "common/SIPKernels/wmtp/Xe3_PTL_config_1x4.h"
+#include "common/SIPKernels/wmtp/Xe3_PTL_config_2x6.h"
 #include "common/SIPKernels/wmtp/XE2_config_128.h"
 #include "common/SIPKernels/wmtp/XE2_config_160.h"
 
@@ -51,10 +52,16 @@ using namespace USC;
 namespace SIP
 {
 // wmtp PTL SIP
-struct StateSaveAreaHeaderV4 Xe3SIP_WMTP_CSRDebugBindlessDebugHeader =
+struct StateSaveAreaHeaderV4 Xe3SIP_config_1x4_WMTP_CSRDebugBindlessDebugHeader =
 {
     {"tssarea", 0, {4, 0, 0}, sizeof(StateSaveAreaHeaderV4) / 8, {0, 0, 0}}, // versionHeader
-    XE3_CSR_DEBUG_BINDLESS_PTL_WMTP_DATA_SIZE // total_wmtp_data_size
+    XE3_CSR_DEBUG_BINDLESS_PTL_config_1x4_WMTP_DATA_SIZE // total_wmtp_data_size
+};
+
+struct StateSaveAreaHeaderV4 Xe3SIP_config_2x6_WMTP_CSRDebugBindlessDebugHeader =
+{
+    {"tssarea", 0, {4, 0, 0}, sizeof(StateSaveAreaHeaderV4) / 8, {0, 0, 0}}, // versionHeader
+    XE3_CSR_DEBUG_BINDLESS_PTL_config_2x6_WMTP_DATA_SIZE // total_wmtp_data_size
 };
 
 struct Xe3_G_DebugSurfaceLayout
@@ -1333,10 +1340,18 @@ void populateSIPKernelInfo(const IGC::CPlatform &platform,
      }
 
     // PTL wmtp Sip
-    SIPKernelInfo[XE3_CSR_DEBUG_BINDLESS] = std::make_tuple(
-            (void *)&Xe3_PTL, (int)sizeof(Xe3_PTL),
-            (void *)&Xe3SIP_WMTP_CSRDebugBindlessDebugHeader,  (int)sizeof(Xe3SIP_WMTP_CSRDebugBindlessDebugHeader));
+    {
+        // Xe3 1x4
+        SIPKernelInfo[XE3_CSR_DEBUG_BINDLESS_config_1x4] = std::make_tuple(
+                (void *)&Xe3_PTL_config_1x4, (int)sizeof(Xe3_PTL_config_1x4),
+                (void *)&Xe3SIP_config_1x4_WMTP_CSRDebugBindlessDebugHeader,  (int)sizeof(Xe3SIP_config_1x4_WMTP_CSRDebugBindlessDebugHeader));
 
+        // Xe3 2x6
+        SIPKernelInfo[XE3_CSR_DEBUG_BINDLESS_config_2x6] = std::make_tuple(
+                (void *)&Xe3_PTL_config_2x6, (int)sizeof(Xe3_PTL_config_2x6),
+                (void *)&Xe3SIP_config_2x6_WMTP_CSRDebugBindlessDebugHeader,  (int)sizeof(Xe3SIP_config_2x6_WMTP_CSRDebugBindlessDebugHeader));
+    }
+    
     // Xe3 / Xe3G
     SIPKernelInfo[XE3G_DEBUG_BINDLESS] = std::make_tuple((void*)&Xe3_G_SIPDebugBindless,
               (int)sizeof(Xe3_G_SIPDebugBindless), (void*)&Xe3_G_SIPDebugBindlessDebugHeaderV3,
@@ -1546,7 +1561,14 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         }
         else if(mode & SYSTEM_THREAD_MODE_CSR)
         {
-            SIPIndex = XE3_CSR_DEBUG_BINDLESS;
+            if(sysInfo.SliceCount == 1 && sysInfo.SubSliceCount == 4)
+            {
+                SIPIndex = XE3_CSR_DEBUG_BINDLESS_config_1x4;
+            }
+            //else if(sysInfo.SliceCount == 2 && sysInfo.SubSliceCount == 6)  or default case
+            {
+                SIPIndex = XE3_CSR_DEBUG_BINDLESS_config_2x6;
+            }
         }
         break;
 
