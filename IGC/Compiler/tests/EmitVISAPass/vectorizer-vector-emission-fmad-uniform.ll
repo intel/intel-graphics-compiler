@@ -1,7 +1,7 @@
 ; UNSUPPORTED: system-windows
 ; REQUIRES: regkeys
 
-; RUN: igc_opt -S -dce -platformpvc -rev-id B -has-emulated-64-bit-insts -igc-emit-visa --regkey=DumpVISAASMToConsole=1 -simd-mode 16 < %s | FileCheck %s
+; RUN: igc_opt -S -dce -platformpvc -rev-id B -has-emulated-64-bit-insts -igc-emit-visa --regkey=DumpVISAASMToConsole=1 --regkey=VectorizerUniformValueVectorizationEnabled=0 -simd-mode 16 < %s | FileCheck %s
 
 ; CHECK: .decl vectorized_phi1095 v_type=G type=f num_elts=8 align=dword
 ; CHECK: .decl vectorized_phi1116 v_type=G type=f num_elts=8 align=dword
