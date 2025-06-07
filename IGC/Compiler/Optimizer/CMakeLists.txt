@@ -37,6 +37,7 @@ set(IGC_BUILD__SRC__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/WaveShuffleIndexSinking.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/WaveAllJointReduction.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IntDivRemIncrementReduction.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/InstructionHoistingOptimization.cpp"
   )
 
 set(IGC_BUILD__SRC__Compiler_Optimizer
@@ -67,6 +68,7 @@ set(IGC_BUILD__HDR__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/WaveShuffleIndexSinking.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/WaveAllJointReduction.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IntDivRemIncrementReduction.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/InstructionHoistingOptimization.hpp"
   )
 
 set(IGC_BUILD__HDR__Optimizer

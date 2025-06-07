@@ -288,3 +288,4 @@ void initializeRemoveLoopDependencyPass(llvm::PassRegistry&);
 void initializeResourceLoopUnrollPass(llvm::PassRegistry&);
 void initializeInjectPrintfPass(llvm::PassRegistry&);
 void initializeWaveShuffleIndexSinkingPass(llvm::PassRegistry&);
+void initializeInstructionHoistingOptimizationPass(llvm::PassRegistry &);

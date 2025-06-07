@@ -499,6 +499,7 @@ enum class ShaderTypeMD
         bool WaDisablePayloadCoalescing                 = false;
         unsigned Quad8InputThreshold                    = 0;
         bool UseResourceLoopUnrollNested                = false;
+        bool UseInstructionHoistingOptimization         = false;
     };
 
     enum class ThreadIDLayout

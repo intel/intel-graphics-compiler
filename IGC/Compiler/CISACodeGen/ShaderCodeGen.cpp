@@ -103,6 +103,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/RuntimeValueVectorExtractPass.h"
 #include "Compiler/Optimizer/WaveShuffleIndexSinking.hpp"
 #include "Compiler/Optimizer/WaveAllJointReduction.hpp"
+#include "Compiler/Optimizer/InstructionHoistingOptimization.hpp"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 #include "Compiler/HandleLoadStoreInstructions.hpp"
 #include "Compiler/CustomSafeOptPass.hpp"
@@ -1912,7 +1913,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         {
             mpm.add(createDeadPHINodeEliminationPass());
         }
-
 
         if (IGC_IS_FLAG_ENABLED(EnableMadLoopSlice)) {
             mpm.add(createMadLoopSlicePass());

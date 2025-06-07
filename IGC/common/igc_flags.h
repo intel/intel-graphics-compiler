@@ -362,6 +362,9 @@ DECLARE_IGC_REGKEY(bool, EnableWaveAllJointReduction, false, "Enable Joint Reduc
 DECLARE_IGC_REGKEY(bool, EnablePromoteToPredicatedMemoryAccess, false, "Enable predicated load/store if conversion.", true)
 DECLARE_IGC_REGKEY(bool, EnableIntDivRemIncrementReduction, true, "Enable consecutive Int DivRem increment by constant optimization", false)
 DECLARE_IGC_REGKEY(bool, DivRemIncrementCondBranchSimplify, false, "Create branches when simplifying consecutive udiv/urem groups increment dividend by constant greater than 1", false)
+DECLARE_IGC_REGKEY(bool, EnableInstructionHoistingOptimization, false,
+                   "Enable optimization for hoisting latency instructions",
+                   false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0,                  false, " Copy a0 used for extended msg descriptor to dbg0 to help debug", false)
