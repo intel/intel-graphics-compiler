@@ -1,6 +1,6 @@
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2022-2025 Intel Corporation
+# Copyright (C) 2022-2024 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -105,8 +105,8 @@ Imported_Intrinsics = {
 ##
 ## * Return value: private/local/global pointer
 ##
-## This intrinsic attempts to explicitly convert a generic ptr to a
-##  private/local/global ptr. If the cast fails the intrinsic returns null pointer.
+## This intrisic attempts to explicitly convert a generic ptr to a
+##  private/local/global ptr. If the cast fails the intrisic returns null pointer.
     "cast_to_ptr_explicit" : { "result": "anyptr",
                                "arguments": ["ptr_generic"],
                                "attributes": "None",
@@ -216,15 +216,11 @@ Imported_Intrinsics = {
     "atomic_fmin" : { "result": "anyfloat",
                       "arguments": [ "anyptr", "int", "int",
                                      "anyfloat"],
-                      "attributes": "None",
-                      "memory_effects":
-                        { "access": "ModRef" }, },
+                      "attributes": "SideEffects", },
     "atomic_fmax" : { "result": "anyfloat",
                       "arguments": [ "anyptr", "int", "int",
                                      "anyfloat"],
-                      "attributes": "None",
-                      "memory_effects":
-                        { "access": "ModRef" }, },
+                      "attributes": "SideEffects", },
 
 ## ``llvm.vc.internal.rsqrtm`` : computes component-wise reciprocal square root
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -306,9 +302,7 @@ Imported_Intrinsics = {
                         "target" : [
                             "hasLSCMessages",
                         ],
-                        "attributes": "None",
-                        "memory_effects":
-                            { "access": "ModRef" }, },
+                        "attributes": "SideEffects", },
     "lsc_atomic_bss": { "result": "anyvector",
                         "arguments": [
                             "anyint", # vNxi1, predicate
@@ -327,9 +321,7 @@ Imported_Intrinsics = {
                         "target" : [
                             "hasLSCMessages",
                         ],
-                        "attributes": "None",
-                        "memory_effects":
-                            { "access": "ModRef" }, },
+                        "attributes": "SideEffects", },
     "lsc_atomic_slm": { "result": "anyvector",
                         "arguments": [
                             "anyint", # vNxi1, predicate
@@ -348,9 +340,7 @@ Imported_Intrinsics = {
                         "target" : [
                             "hasLSCMessages",
                         ],
-                        "attributes": "None",
-                        "memory_effects":
-                            { "access": "ModRef" }, },
+                        "attributes": "SideEffects", },
     "lsc_atomic_ugm": { "result": "anyvector",
                         "arguments": [
                             "anyint", # vNxi1, predicate
@@ -369,9 +359,7 @@ Imported_Intrinsics = {
                         "target" : [
                             "hasLSCMessages",
                         ],
-                        "attributes": "None",
-                        "memory_effects":
-                            { "access": "ModRef" }, },
+                        "attributes": "SideEffects", },
 
 ## ``llvm.vc.internal.lsc.load.*`` : LSC load intrinsics
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -861,7 +849,7 @@ Imported_Intrinsics = {
                                    "anyint", # cache controls
                                    "char",   # number of blocks
                                    "short",  # block width
-                                   "short",  # block height
+                                   "short",  # block heigth
                                    "long",   # memory base address
                                    "int",    # memory matrix width (minus 1)
                                    "int",    # memory matrix height (minus 1)
@@ -885,7 +873,7 @@ Imported_Intrinsics = {
                                               "anyint", # cache controls
                                               "char",   # number of blocks
                                               "short",  # block width
-                                              "short",  # block height
+                                              "short",  # block heigth
                                               "long",   # memory base address
                                               "int",    # memory matrix width (minus 1)
                                               "int",    # memory matrix height (minus 1)
@@ -909,7 +897,7 @@ Imported_Intrinsics = {
                                         "anyint", # cache controls
                                         "char",   # number of blocks
                                         "short",  # block width
-                                        "short",  # block height
+                                        "short",  # block heigth
                                         "long",   # memory base address
                                         "int",    # memory matrix width (minus 1)
                                         "int",    # memory matrix height (minus 1)
@@ -933,7 +921,7 @@ Imported_Intrinsics = {
                                        "anyint", # cache controls
                                        "char",   # number of blocks
                                        "short",  # block width
-                                       "short",  # block height
+                                       "short",  # block heigth
                                        "long",   # memory base address
                                        "int",    # memory matrix width (minus 1)
                                        "int",    # memory matrix height (minus 1)
@@ -954,7 +942,7 @@ Imported_Intrinsics = {
                                     "anyint",    # cache controls
                                     "char",      # number of blocks
                                     "short",     # block width
-                                    "short",     # block height
+                                    "short",     # block heigth
                                     "long",      # memory base address
                                     "int",       # memory matrix width (minus 1)
                                     "int",       # memory matrix height (minus 1)
@@ -1336,7 +1324,7 @@ Imported_Intrinsics = {
 ## * arg0: vNi1 Predicate (overloaded)
 ## * arg1: i16, Opcode [MBC]
 ## * arg2: i8, Channel mask [MBC]
-## * arg3: i16, Address offset packed immediate (aoffimmi) [MBC]
+## * arg3: i16, Address offset packed immediates (aoffimmi) [MBC]
 ## * arg4: i32, Surface BTI
 ## * arg5: vector to take values for masked simd lanes from
 ## * arg6: vNi32 or vNi16, first sampler message parameter (overloaded)
@@ -1619,9 +1607,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
-                                          "memory_effects":
-                                             { "access": "ModRef" }, },
+                                          "attributes" : "SideEffects" },
     "typed_atomic_sub_predef_surface" : { "result" : "anyvector",
                                           "arguments" : [
                                               "anyvector",
@@ -1635,9 +1621,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
-                                          "memory_effects":
-                                             { "access": "ModRef" }, },
+                                          "attributes" : "SideEffects" },
     "typed_atomic_min_predef_surface" : { "result" : "anyvector",
                                           "arguments" : [
                                               "anyvector",
@@ -1651,9 +1635,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
-                                          "memory_effects":
-                                             { "access": "ModRef" }, },
+                                          "attributes" : "SideEffects" },
     "typed_atomic_max_predef_surface" : { "result" : "anyvector",
                                           "arguments" : [
                                               "anyvector",
@@ -1667,9 +1649,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
-                                          "memory_effects":
-                                             { "access": "ModRef" }, },
+                                          "attributes" : "SideEffects" },
 
     "typed_atomic_xchg_predef_surface" : { "result" : "anyvector",
                                           "arguments" : [
@@ -1684,9 +1664,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
-                                          "memory_effects":
-                                             { "access": "ModRef" }, },
+                                          "attributes" : "SideEffects" },
     "typed_atomic_and_predef_surface" : { "result" : "anyvector",
                                           "arguments" : [
                                               "anyvector",
@@ -1700,9 +1678,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
-                                          "memory_effects":
-                                             { "access": "ModRef" }, },
+                                          "attributes" : "SideEffects" },
     "typed_atomic_or_predef_surface" : { "result" : "anyvector",
                                           "arguments" : [
                                               "anyvector",
@@ -1716,9 +1692,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
-                                          "memory_effects":
-                                             { "access": "ModRef" }, },
+                                          "attributes" : "SideEffects" },
 
 
     "typed_atomic_xor_predef_surface" : { "result" : "anyvector",
@@ -1734,9 +1708,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
-                                          "memory_effects":
-                                             { "access": "ModRef" }, },
+                                          "attributes" : "SideEffects" },
     "typed_atomic_imin_predef_surface" : { "result" : "anyvector",
                                           "arguments" : [
                                               "anyvector",
@@ -1750,9 +1722,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
-                                          "memory_effects":
-                                             { "access": "ModRef" }, },
+                                          "attributes" : "SideEffects" },
     "typed_atomic_imax_predef_surface" : { "result" : "anyvector",
                                           "arguments" : [
                                               "anyvector",
@@ -1766,9 +1736,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
-                                          "memory_effects":
-                                             { "access": "ModRef" }, },
+                                          "attributes" : "SideEffects" },
 
 ## ``llvm.vc.internal.typed.atomic.*.predef.surface.*`` : legacy atomic typed predefined surface
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1798,9 +1766,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                               "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
-                                          "memory_effects":
-                                             { "access": "ModRef" }, },
+                                          "attributes" : "SideEffects" },
     "typed_atomic_dec_predef_surface" : { "result" : "anyvector",
                                           "arguments" : [
                                               "anyvector",  # predicate
@@ -1813,9 +1779,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                               "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
-                                          "memory_effects":
-                                             { "access": "ModRef" }, },
+                                          "attributes" : "SideEffects" },
 
 ## ``llvm.vc.internal.typed.atomic.*.predef.surface.cmpxchg.*`` : legacy atomic typed CMPXCHG predefined surface
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1849,9 +1813,7 @@ Imported_Intrinsics = {
                                               "target" : [
                                                   "!noLegacyDataport"
                                               ],
-                                              "attributes": "None",
-                                              "memory_effects":
-                                                { "access": "ModRef" }, },
+                                              "attributes" : "SideEffects" },
 
 ## ``llvm.vc.internal.gather4.typed.predef.surface.*`` : legacy cmask typed load predefined surface
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
