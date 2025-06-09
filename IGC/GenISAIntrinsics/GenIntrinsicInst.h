@@ -1824,23 +1824,6 @@ public:
     Value* getQueryFlags()  const { return getOperand(1); }
 };
 
-class ConvertRayQueryHandleToRTStackPointerIntrinsic : public GenIntrinsicInst {
-public:
-    // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const GenIntrinsicInst* I) {
-        GenISAIntrinsic::ID ID = I->getIntrinsicID();
-        return ID == GenISAIntrinsic::GenISA_ConvertRayQueryHandleToRTStackPointer;
-    }
-
-    static inline bool classof(const Value* V) {
-        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
-    }
-
-    Value* getRayQueryAllocationHandle() const {
-        return getOperand(0);
-    }
-};
-
 class RayQueryCheckIntrinsic : public GenIntrinsicInst {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
@@ -1867,7 +1850,7 @@ public:
     }
 };
 
-class RayQueryInstrisicBase : public GenIntrinsicInst
+class RayQueryIntrinsicBase : public GenIntrinsicInst
 {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
@@ -1875,6 +1858,7 @@ public:
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         switch (ID)
         {
+        case GenISAIntrinsic::GenISA_ConvertRayQueryHandleToRTStackPointer:
         case GenISAIntrinsic::GenISA_TraceRayInlineHL:
         case GenISAIntrinsic::GenISA_TraceRaySyncProceedHL:
         case GenISAIntrinsic::GenISA_TraceRaySyncProceed:
@@ -1901,16 +1885,29 @@ public:
     Value* getQueryObjIndex() const { return getOperand(0); }
 };
 
-class TraceRayInlineHLIntrinsic : public RayQueryInstrisicBase {
+class ConvertRayQueryHandleToRTStackPointerIntrinsic : public RayQueryIntrinsicBase {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const RayQueryInstrisicBase* I) {
+    static inline bool classof(const GenIntrinsicInst* I) {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        return ID == GenISAIntrinsic::GenISA_ConvertRayQueryHandleToRTStackPointer;
+    }
+
+    static inline bool classof(const Value* V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+};
+
+class TraceRayInlineHLIntrinsic : public RayQueryIntrinsicBase {
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const RayQueryIntrinsicBase* I) {
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         return ID == GenISAIntrinsic::GenISA_TraceRayInlineHL;
     }
 
     static inline bool classof(const Value* V) {
-        return isa<RayQueryInstrisicBase>(V) && classof(cast<RayQueryInstrisicBase>(V));
+        return isa<RayQueryIntrinsicBase>(V) && classof(cast<RayQueryIntrinsicBase>(V));
     }
 
     Value* getBVH()  const { return getOperand(1); }
@@ -1938,109 +1935,109 @@ public:
     Value* getComparisonValue() const { return getOperand(12); }
 };
 
-class TraceRaySyncProceedHLIntrinsic : public RayQueryInstrisicBase {
+class TraceRaySyncProceedHLIntrinsic : public RayQueryIntrinsicBase {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const RayQueryInstrisicBase* I) {
+    static inline bool classof(const RayQueryIntrinsicBase* I) {
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         return ID == GenISAIntrinsic::GenISA_TraceRaySyncProceedHL;
     }
 
     static inline bool classof(const Value* V) {
-        return isa<RayQueryInstrisicBase>(V) && classof(cast<RayQueryInstrisicBase>(V));
+        return isa<RayQueryIntrinsicBase>(V) && classof(cast<RayQueryIntrinsicBase>(V));
     }
 };
 
-class TraceRaySyncProceedIntrinsic : public RayQueryInstrisicBase {
+class TraceRaySyncProceedIntrinsic : public RayQueryIntrinsicBase {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const RayQueryInstrisicBase* I) {
+    static inline bool classof(const RayQueryIntrinsicBase* I) {
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         return ID == GenISAIntrinsic::GenISA_TraceRaySyncProceed;
     }
 
     static inline bool classof(const Value* V) {
-        return isa<RayQueryInstrisicBase>(V) && classof(cast<RayQueryInstrisicBase>(V));
+        return isa<RayQueryIntrinsicBase>(V) && classof(cast<RayQueryIntrinsicBase>(V));
     }
 };
 
-class RayQueryAbortIntrinsic : public RayQueryInstrisicBase {
+class RayQueryAbortIntrinsic : public RayQueryIntrinsicBase {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const RayQueryInstrisicBase* I) {
+    static inline bool classof(const RayQueryIntrinsicBase* I) {
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         return ID == GenISAIntrinsic::GenISA_TraceRayInlineAbort;
     }
 
     static inline bool classof(const Value* V) {
-        return isa<RayQueryInstrisicBase>(V) && classof(cast<RayQueryInstrisicBase>(V));
+        return isa<RayQueryIntrinsicBase>(V) && classof(cast<RayQueryIntrinsicBase>(V));
     }
 };
 
-class RayQueryCommittedStatusIntrinsic : public RayQueryInstrisicBase {
+class RayQueryCommittedStatusIntrinsic : public RayQueryIntrinsicBase {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const RayQueryInstrisicBase* I) {
+    static inline bool classof(const RayQueryIntrinsicBase* I) {
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         return ID == GenISAIntrinsic::GenISA_TraceRayInlineCommittedStatus;
     }
 
     static inline bool classof(const Value* V) {
-        return isa<RayQueryInstrisicBase>(V) && classof(cast<RayQueryInstrisicBase>(V));
+        return isa<RayQueryIntrinsicBase>(V) && classof(cast<RayQueryIntrinsicBase>(V));
     }
 };
 
-class RayQueryCandidateTypeIntrinsic : public RayQueryInstrisicBase {
+class RayQueryCandidateTypeIntrinsic : public RayQueryIntrinsicBase {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const RayQueryInstrisicBase* I) {
+    static inline bool classof(const RayQueryIntrinsicBase* I) {
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         return ID == GenISAIntrinsic::GenISA_TraceRayInlineCandidateType;
     }
 
     static inline bool classof(const Value* V) {
-        return isa<RayQueryInstrisicBase>(V) && classof(cast<RayQueryInstrisicBase>(V));
+        return isa<RayQueryIntrinsicBase>(V) && classof(cast<RayQueryIntrinsicBase>(V));
     }
 };
 
-class RayQueryCommitNonOpaqueTriangleHit : public RayQueryInstrisicBase {
+class RayQueryCommitNonOpaqueTriangleHit : public RayQueryIntrinsicBase {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const RayQueryInstrisicBase* I) {
+    static inline bool classof(const RayQueryIntrinsicBase* I) {
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         return ID == GenISAIntrinsic::GenISA_TraceRayInlineCommitNonOpaqueTriangleHit;
     }
 
     static inline bool classof(const Value* V) {
-        return isa<RayQueryInstrisicBase>(V) && classof(cast<RayQueryInstrisicBase>(V));
+        return isa<RayQueryIntrinsicBase>(V) && classof(cast<RayQueryIntrinsicBase>(V));
     }
 };
 
-class RayQueryCommitProceduralPrimitiveHit : public RayQueryInstrisicBase {
+class RayQueryCommitProceduralPrimitiveHit : public RayQueryIntrinsicBase {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const RayQueryInstrisicBase* I) {
+    static inline bool classof(const RayQueryIntrinsicBase* I) {
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         return ID == GenISAIntrinsic::GenISA_TraceRayInlineCommitProceduralPrimitiveHit;
     }
 
     static inline bool classof(const Value* V) {
-        return isa<RayQueryInstrisicBase>(V) && classof(cast<RayQueryInstrisicBase>(V));
+        return isa<RayQueryIntrinsicBase>(V) && classof(cast<RayQueryIntrinsicBase>(V));
     }
 
     Value* getTHit() { return getOperand(1); }
 };
 
-class RayQueryInfoIntrinsic : public RayQueryInstrisicBase {
+class RayQueryInfoIntrinsic : public RayQueryIntrinsicBase {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const RayQueryInstrisicBase* I) {
+    static inline bool classof(const RayQueryIntrinsicBase* I) {
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         return ID == GenISAIntrinsic::GenISA_TraceRayInlineRayInfo;
     }
 
     static inline bool classof(const Value* V) {
-        return isa<RayQueryInstrisicBase>(V) && classof(cast<RayQueryInstrisicBase>(V));
+        return isa<RayQueryIntrinsicBase>(V) && classof(cast<RayQueryIntrinsicBase>(V));
     }
 
     IGC::DISPATCH_SHADER_RAY_INFO_TYPE getInfoKind() const {
@@ -2056,44 +2053,44 @@ public:
     }
 };
 
-class RayQueryShadowMemoryToSyncStack : public RayQueryInstrisicBase {
+class RayQueryShadowMemoryToSyncStack : public RayQueryIntrinsicBase {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const RayQueryInstrisicBase* I) {
+    static inline bool classof(const RayQueryIntrinsicBase* I) {
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         return ID == GenISAIntrinsic::GenISA_ShadowMemoryToSyncStack;
     }
 
     static inline bool classof(const Value* V) {
-        return isa<RayQueryInstrisicBase>(V) && classof(cast<RayQueryInstrisicBase>(V));
+        return isa<RayQueryIntrinsicBase>(V) && classof(cast<RayQueryIntrinsicBase>(V));
     }
 };
 
-class RayQuerySyncStackToShadowMemory : public RayQueryInstrisicBase {
+class RayQuerySyncStackToShadowMemory : public RayQueryIntrinsicBase {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const RayQueryInstrisicBase* I) {
+    static inline bool classof(const RayQueryIntrinsicBase* I) {
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         return ID == GenISAIntrinsic::GenISA_SyncStackToShadowMemory;
     }
 
     static inline bool classof(const Value* V) {
-        return isa<RayQueryInstrisicBase>(V) && classof(cast<RayQueryInstrisicBase>(V));
+        return isa<RayQueryIntrinsicBase>(V) && classof(cast<RayQueryIntrinsicBase>(V));
     }
 
     Value* getProceedReturnVal() const { return getOperand(1); }
 };
 
-class RayQueryReadTraceRaySync : public RayQueryInstrisicBase {
+class RayQueryReadTraceRaySync : public RayQueryIntrinsicBase {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const RayQueryInstrisicBase* I) {
+    static inline bool classof(const RayQueryIntrinsicBase* I) {
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         return ID == GenISAIntrinsic::GenISA_ReadTraceRaySync;
     }
 
     static inline bool classof(const Value* V) {
-        return isa<RayQueryInstrisicBase>(V) && classof(cast<RayQueryInstrisicBase>(V));
+        return isa<RayQueryIntrinsicBase>(V) && classof(cast<RayQueryIntrinsicBase>(V));
     }
 };
 

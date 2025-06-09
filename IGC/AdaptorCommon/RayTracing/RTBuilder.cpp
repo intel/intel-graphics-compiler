@@ -89,7 +89,7 @@ void RTBuilder::setInvariantLoad(LoadInst* LI)
         LI->setMetadata(LLVMContext::MD_invariant_load, EmptyNode);
 }
 
-Value* RTBuilder::getRtMemBasePtr(void)
+Value* RTBuilder::getRtMemBasePtr(Value* globalBufferPtr)
 {
 #define STYLE(X) {                                                      \
     using T = std::conditional_t<                                       \
@@ -100,7 +100,9 @@ Value* RTBuilder::getRtMemBasePtr(void)
         offsetof(T, rtMemBasePtr)); }
 #include "RayTracingMemoryStyle.h"
 #undef STYLE
-    return _get_rtMemBasePtr_Xe(VALUE_NAME("rtMemBasePtr"));
+    return globalBufferPtr ?
+        _get_rtMemBasePtr_fromGlobals_Xe(globalBufferPtr, VALUE_NAME("rtMemBasePtr")) :
+        _get_rtMemBasePtr_Xe(VALUE_NAME("rtMemBasePtr"));
 }
 
 Value* RTBuilder::getStackSizePerRay(void)
@@ -305,11 +307,12 @@ Value* RTBuilder::getSyncStackOffset(bool rtMemBasePtr)
         VALUE_NAME("SyncStackOffset"));
 }
 
-RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer(Value* syncStackOffset, RTBuilder::RTMemoryAccessMode Mode)
+RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer(Value* syncStackOffset, RTBuilder::RTMemoryAccessMode Mode, Value* globalBufferPtr)
 {
     auto* PointeeTy = getRTStack2Ty();
     if (Mode == RTBuilder::STATEFUL)
     {
+        IGC_ASSERT_MESSAGE(!globalBufferPtr, "Arbitrary global buffer is not supported in stateful mode");
         uint32_t AddrSpace = getRTSyncStackStatefulAddrSpace(*Ctx.getModuleMetaData());
         Value* perLaneStackPointer = this->CreateIntToPtr(syncStackOffset, PointerType::get(PointeeTy, AddrSpace));
         return static_cast<RTBuilder::SyncStackPointerVal*>(perLaneStackPointer);
@@ -318,7 +321,7 @@ RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer(Value* syncStackO
     {
         Value* memBasePtr = nullptr;
         {
-            memBasePtr = this->getRtMemBasePtr();
+            memBasePtr = this->getRtMemBasePtr(globalBufferPtr);
         }
         IGC_ASSERT(memBasePtr != nullptr);
 
@@ -332,7 +335,7 @@ RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer(Value* syncStackO
     }
 }
 
-RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer()
+RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer(Value* globalBufferPtr)
 {
     auto Mode = Ctx.getModuleMetaData()->rtInfo.RTSyncStackSurfaceStateOffset ?
         RTBuilder::STATEFUL :
@@ -344,7 +347,7 @@ RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer()
     auto* PtrTy = this->getRTStack2PtrTy(Mode, false);
 
     Value* stackOffset = this->getSyncStackOffset(RTBuilder::STATELESS == Mode);
-    stackOffset = this->getSyncStackPointer(stackOffset, Mode);
+    stackOffset = this->getSyncStackPointer(stackOffset, Mode, globalBufferPtr);
     return static_cast<RTBuilder::SyncStackPointerVal*>(
         this->CreateSyncStackPtrIntrinsic(stackOffset, PtrTy, true));
 }
@@ -354,11 +357,13 @@ TraceRayIntrinsic* RTBuilder::createTraceRay(
     Value* bvhLevel,
     Value* traceRayCtrl,
     bool isRayQuery,
+    Value* globalBufferPointer,
     const Twine& PayloadName)
 {
     Module* module = this->GetInsertBlock()->getModule();
 
-    Value* GlobalPointer = this->getGlobalBufferPtr();
+    if (!globalBufferPointer)
+        globalBufferPointer = this->getGlobalBufferPtr();
 
     GenISAIntrinsic::ID ID = isRayQuery ?
         GenISAIntrinsic::GenISA_TraceRaySync :
@@ -367,12 +372,12 @@ TraceRayIntrinsic* RTBuilder::createTraceRay(
     Function* traceFn = GenISAIntrinsic::getDeclaration(
         module,
         ID,
-        GlobalPointer->getType());
+        globalBufferPointer->getType());
 
     Value* payload = getTraceRayPayload(
         bvhLevel, traceRayCtrl, isRayQuery, PayloadName);
 
-    SmallVector<Value*, 4> Args{ GlobalPointer, payload };
+    SmallVector<Value*, 4> Args{ globalBufferPointer, payload };
 
 
     return cast<TraceRayIntrinsic>(this->CreateCall(traceFn, Args));
@@ -390,17 +395,19 @@ void RTBuilder::createReadSyncTraceRay(Value* val)
 TraceRaySyncIntrinsic* RTBuilder::createSyncTraceRay(
     Value* bvhLevel,
     Value* traceRayCtrl,
+    Value* globalBufferPointer,
     const Twine& PayloadName)
 {
-    return cast<TraceRaySyncIntrinsic>(createTraceRay(bvhLevel, this->CreateZExt(traceRayCtrl, this->getInt32Ty()), true, PayloadName));
+    return cast<TraceRaySyncIntrinsic>(createTraceRay(bvhLevel, this->CreateZExt(traceRayCtrl, this->getInt32Ty()), true, globalBufferPointer, PayloadName));
 }
 
 TraceRaySyncIntrinsic* RTBuilder::createSyncTraceRay(
     uint32_t bvhLevel,
     Value* traceRayCtrl,
+    Value* globalBufferPointer,
     const Twine& PayloadName)
 {
-    return cast<TraceRaySyncIntrinsic>(createTraceRay(this->getInt32(bvhLevel), this->CreateZExt(traceRayCtrl, this->getInt32Ty()), true, PayloadName));
+    return cast<TraceRaySyncIntrinsic>(createTraceRay(this->getInt32(bvhLevel), this->CreateZExt(traceRayCtrl, this->getInt32Ty()), true, globalBufferPointer, PayloadName));
 }
 
 
@@ -1781,6 +1788,13 @@ Type* RTBuilder::getRTStack2Ty() const
     return {};
 }
 
+Type* RTBuilder::getRTStack2PtrTy(bool async) const
+{
+    auto& rtInfo = Ctx.getModuleMetaData()->rtInfo;
+    auto& SSO = async ? rtInfo.RTAsyncStackSurfaceStateOffset : rtInfo.RTSyncStackSurfaceStateOffset;
+    return getRTStack2PtrTy(SSO ? RTBuilder::STATEFUL : RTBuilder::STATELESS, async);
+}
+
 Type* RTBuilder::getRTStack2PtrTy(
     RTBuilder::RTMemoryAccessMode Mode, bool async) const
 {
@@ -1993,7 +2007,8 @@ void RTBuilder::createTraceRayInlinePrologue(
     Value* RayFlags,
     Value* InstanceInclusionMask,
     Value* ComparisonValue,
-    Value* TMax)
+    Value* TMax,
+    bool updateFlags)
 {
     switch (getMemoryStyle())
     {
@@ -2005,7 +2020,8 @@ void RTBuilder::createTraceRayInlinePrologue(
             RayFlags,
             InstanceInclusionMask,
             ComparisonValue,
-            TMax);
+            TMax,
+            VAdapt{ *this, updateFlags });
         break;
     case RTMemoryStyle::Xe3:
         _createTraceRayInlinePrologue_Xe3(
@@ -2015,7 +2031,8 @@ void RTBuilder::createTraceRayInlinePrologue(
             RayFlags,
             InstanceInclusionMask,
             ComparisonValue,
-            TMax);
+            TMax,
+            VAdapt{ *this, updateFlags });
         break;
     }
 }

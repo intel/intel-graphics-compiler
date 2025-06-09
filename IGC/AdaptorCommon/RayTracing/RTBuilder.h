@@ -244,7 +244,7 @@ public:
         const Twine &TrueBBName = "",
         const Twine &JoinBBName = "");
 
-    Value* getRtMemBasePtr(void);
+    Value* getRtMemBasePtr(Value* globalBufferPtr = nullptr);
     Value* getStackSizePerRay(void);
     Value* getNumDSSRTStacks(void);
     Value* getMaxBVHLevels(void);
@@ -262,12 +262,12 @@ public:
     PreemptionDisableIntrinsic* CreatePreemptionDisableIntrinsic();
     PreemptionEnableIntrinsic* CreatePreemptionEnableIntrinsic(Value* Flag = nullptr);
 
-    SyncStackPointerVal* getSyncStackPointer();
+    SyncStackPointerVal* getSyncStackPointer(Value* globalBufferPtr = nullptr);
 
     void createReadSyncTraceRay(Value* val);
 
-    TraceRaySyncIntrinsic* createSyncTraceRay(Value* bvhLevel, Value* traceRayCtrl, const Twine& PayloadName = "");
-    TraceRaySyncIntrinsic* createSyncTraceRay(uint32_t bvhLevel, Value* traceRayCtrl, const Twine& PayloadName = "");
+    TraceRaySyncIntrinsic* createSyncTraceRay(Value* bvhLevel, Value* traceRayCtrl, Value* globalBufferPointer = nullptr, const Twine& PayloadName = "");
+    TraceRaySyncIntrinsic* createSyncTraceRay(uint32_t bvhLevel, Value* traceRayCtrl, Value* globalBufferPointer = nullptr, const Twine& PayloadName = "");
 
 
     std::pair<BasicBlock*, PHINode*>
@@ -394,12 +394,12 @@ public:
     Value* getSyncRTStackSize();
 
 private:
-    TraceRayIntrinsic* createTraceRay(Value* bvhLevel, Value* traceRayCtrl, bool isRayQuery, const Twine& PayloadName = "");
+    TraceRayIntrinsic* createTraceRay(Value* bvhLevel, Value* traceRayCtrl, bool isRayQuery, Value* globalBufferPointer = nullptr, const Twine& PayloadName = "");
 
     Value* canonizePointer(Value* Ptr);
     uint32_t getRTStack2Size() const;
     Value* getRTStackSize(uint32_t Align);
-    SyncStackPointerVal* getSyncStackPointer(Value* syncStackOffset, RTBuilder::RTMemoryAccessMode Mode);
+    SyncStackPointerVal* getSyncStackPointer(Value* syncStackOffset, RTBuilder::RTMemoryAccessMode Mode, Value* globalBufferPtr = nullptr);
     Value* getGeometryIndex(
         StackPointerVal* perLaneStackPtr, Value* leafType, Value* ShaderTy);
     Value* getPrimitiveIndex(
@@ -454,6 +454,7 @@ public:
 public:
     Type* getSMStack2Ty() const;
     Type* getRTStack2Ty() const;
+    Type* getRTStack2PtrTy(bool async = true) const;
     Type* getRTStack2PtrTy(RTMemoryAccessMode Mode, bool async = true) const;
     Type* getRayDispatchGlobalDataPtrTy(Module &M, IGC::ADDRESS_SPACE Addrspace);
 
@@ -476,7 +477,8 @@ public:
         Value* RayFlags,
         Value* InstanceInclusionMask,
         Value* ComparisonValue,
-        Value* TMax);
+        Value* TMax,
+        bool updateFlags = true);
 
     void emitSingleRQMemRayWrite(
         SyncStackPointerVal* HWStackPtr,

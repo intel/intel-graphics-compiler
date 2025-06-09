@@ -268,6 +268,10 @@ enum class ShaderTypeMD
         // existence of this value indicates we are opting into atomic pull tile walk
         // this field carries the uber tile dimensions, which needs to be passed on to the UMD.
         std::optional<std::array<uint32_t, 2>> uberTileDimensions;
+
+        // this fields marks how many hw stacks are needed to satisfy every shader in the module
+        // its std::max of numSyncRTStacks in all shaders
+        uint32_t numSyncRTStacks = 0;
     };
 
     // Info specific to each raytracing shader
@@ -312,6 +316,10 @@ enum class ShaderTypeMD
         // Shaders that satisfy `isPrimaryShaderIdentifier()` can also have
         // a collection of other names that they go by.
         std::vector<std::string> Aliases;
+
+        // this fields marks how many hw stacks the shader needs for its rayqueries
+        // some optimizations might want to know that
+        uint32_t numSyncRTStacks = 0;
 
         // for continuations used in ReorderThread, this field indicates the maximum value of the coherence hint
         uint32_t NumCoherenceHintBits = 0;

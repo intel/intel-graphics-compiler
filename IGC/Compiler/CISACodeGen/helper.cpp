@@ -1690,14 +1690,20 @@ namespace IGC
     {
         const CallInst* callInst = dyn_cast<CallInst>(I);
 
-        // Return true if:
-        // 1. callInst->getCalledFunction() == nullptr, this means indirect function call
-        // OR
-        // 2. Called function is not an Intrinsic.
-        bool isUserFunction = (callInst != nullptr) &&
-            ((callInst->getCalledFunction() == nullptr) || !callInst->getCalledFunction()->isIntrinsic());
+        // not a call instruction
+        if (callInst == nullptr)
+            return false;
 
-        return isUserFunction;
+        // is an indirect call
+        if (callInst->getCalledFunction() == nullptr)
+            return true;
+
+        // is intrinsic or declaration
+        if (callInst->getCalledFunction()->isIntrinsic() || callInst->getCalledFunction()->isDeclaration())
+            return false;
+
+        // is a call instruction, not an intrinsic and not a declaration - user function call
+        return true;
     }
 
     bool isHidingComplexControlFlow(const llvm::Instruction* I)

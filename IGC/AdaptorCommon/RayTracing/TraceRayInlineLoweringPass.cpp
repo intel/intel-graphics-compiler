@@ -102,7 +102,7 @@ private:
 
     std::pair<BasicBlock*, BasicBlock*> branchOnPotentialHitDone(
         RTBuilder &IRB,
-        RayQueryInstrisicBase *P);
+        RayQueryIntrinsicBase *P);
 
     void emitSingleRQMemRayWrite(RTBuilder& builder, Value* queryObjIndex);
     bool analyzeSingleRQMemRayWrite(const Function& F) const;
@@ -148,6 +148,13 @@ bool TraceRayInlineLoweringPass::runOnFunction(Function& F)
     LowerRayInfo(F);
     LowerCommitNonOpaqueTriangleHit(F);
     LowerCommitProceduralPrimitiveHit(F);
+
+    auto* modMD = m_CGCtx->getModuleMetaData();
+    uint32_t numSyncRTStacks = modMD->rtInfo.numSyncRTStacks = m_CGCtx->syncRTCallsNeedSplitting() ? 2 : 1;
+    modMD->FuncMD[&F].rtInfo.numSyncRTStacks = std::max(
+        modMD->FuncMD[&F].rtInfo.numSyncRTStacks,
+        numSyncRTStacks
+    );
 
     DumpLLVMIR(m_CGCtx, "TraceRayInlineLoweringPass");
     return true;
@@ -208,7 +215,7 @@ void TraceRayInlineLoweringPass::LowerAllocateRayQuery(
     for (auto* I : convertRayQueryToRTStackPointers)
     {
         builder.SetInsertPoint(I);
-        auto* rtstack = getShMemRayQueryRTStack(builder, I->getRayQueryAllocationHandle());
+        auto* rtstack = getShMemRayQueryRTStack(builder, I->getQueryObjIndex());
         I->replaceAllUsesWith(rtstack);
         I->eraseFromParent();
     }
@@ -346,7 +353,7 @@ void TraceRayInlineLoweringPass::LowerTraceRayInline(Function& F)
 std::pair<BasicBlock*, BasicBlock*>
 TraceRayInlineLoweringPass::branchOnPotentialHitDone(
     RTBuilder& IRB,
-    RayQueryInstrisicBase* P)
+    RayQueryIntrinsicBase* P)
 {
     auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(IRB, P->getQueryObjIndex());
     Value* NotDone = IRB.isDoneBitNotSet(ShadowMemStackPointer, false);
@@ -418,6 +425,7 @@ Value* TraceRayInlineLoweringPass::emitProceedMainBody(
     Value* retSyncRT = builder.createSyncTraceRay(
         builder.getBvhLevel(ShadowMemStackPointer, false),
         traceRayCtrl,
+        nullptr,
         VALUE_NAME("trace_ray_query"));
 
     return retSyncRT;

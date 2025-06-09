@@ -152,7 +152,7 @@ void TraceRayInlineLatencySchedulerPass::split(RayQuerySyncStackToShadowMemory* 
 
     auto isSuspendPoint = [&](Instruction* inst) {
         //RayQuery Instructions
-        if (auto* RQI = dyn_cast<RayQueryInstrisicBase>(inst)) {
+        if (auto* RQI = dyn_cast<RayQueryIntrinsicBase>(inst)) {
             return (RQI->getIntrinsicID() != GenISAIntrinsic::GenISA_SyncStackToShadowMemory &&
                 (RQI->getIntrinsicID() == GenISAIntrinsic::GenISA_TraceRaySyncProceed || mayAlias(RQI->getQueryObjIndex(), Stk2SM->getQueryObjIndex())));
         }else if (auto* GI = dyn_cast<GenIntrinsicInst>(inst)){

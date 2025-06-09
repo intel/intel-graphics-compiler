@@ -55,6 +55,7 @@ list(APPEND IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTStackFormat.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingInterface.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/TraceRayInlineLoweringPass.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/NewTraceRayInlineLoweringPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/DynamicRayManagementPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/SplitAsyncUtils.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/CrossingAnalysis.cpp"
@@ -125,6 +126,7 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingInterface.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/CrossingAnalysis.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/SplitAsyncUtils.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/NewTraceRayInlineLoweringPass.h"
     )
 
   set(IGC_BUILD__HDR__RAYTRACING__API

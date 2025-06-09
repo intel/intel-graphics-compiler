@@ -148,15 +148,19 @@ void RayTracingInlineLowering(CodeGenContext* pContext)
 
     if (pContext->platform.enableRayQueryThrottling(pContext->getModuleMetaData()->compOpt.EnableDynamicRQManagement))
     {
-        mpm.add(CreateDynamicRayManagementPass());
+        if (!pContext->m_DriverInfo.UseNewTraceRayInlineLoweringInNonRaytracingShaders())
+            mpm.add(CreateDynamicRayManagementPass());
     }
-
-    mpm.add(createTraceRayInlinePrepPass());
-    if (IGC_IS_FLAG_ENABLED(EnableRQHideLatency)) {
+    if (!pContext->m_DriverInfo.UseNewTraceRayInlineLoweringInNonRaytracingShaders())
+        mpm.add(createTraceRayInlinePrepPass());
+    if (IGC_IS_FLAG_ENABLED(EnableRQHideLatency) && !pContext->m_DriverInfo.UseNewTraceRayInlineLoweringInNonRaytracingShaders()) {
         mpm.add(createTraceRayInlineLatencySchedulerPass());
         mpm.add(createCFGSimplificationPass());
     }
-    mpm.add(CreateTraceRayInlineLoweringPass());
+    if (!pContext->m_DriverInfo.UseNewTraceRayInlineLoweringInNonRaytracingShaders())
+        mpm.add(CreateTraceRayInlineLoweringPass());
+    else
+        mpm.add(createInlineRaytracing());
     mpm.add(CreateRTGlobalsPointerLoweringPass());
 
 #ifdef _DEBUG

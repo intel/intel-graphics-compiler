@@ -32,14 +32,15 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
-AllocationLivenessAnalyzer::LivenessData AllocationLivenessAnalyzer::ProcessInstruction(Instruction* I)
+AllocationLivenessAnalyzer::LivenessData AllocationLivenessAnalyzer::ProcessInstruction(
+    Instruction* I,
+    DominatorTree& DT,
+    LoopInfo& LI
+)
 {
     // static allocas are usually going to be in the entry block
     // that's a practice, but we only care about the last block that dominates all uses
     BasicBlock* commonDominator = nullptr;
-    auto* DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-    auto* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-
     SetVector<Instruction*> allUsers;
     SetVector<Instruction*> lifetimeLeakingUsers;
     SmallVector<Use*> worklist;
@@ -49,7 +50,7 @@ AllocationLivenessAnalyzer::LivenessData AllocationLivenessAnalyzer::ProcessInst
         auto* UasI = cast<Instruction>(use.getUser());
         if (commonDominator)
         {
-            commonDominator = DT->findNearestCommonDominator(commonDominator, UasI->getParent());
+            commonDominator = DT.findNearestCommonDominator(commonDominator, UasI->getParent());
         }
         else
         {
@@ -59,16 +60,25 @@ AllocationLivenessAnalyzer::LivenessData AllocationLivenessAnalyzer::ProcessInst
         worklist.push_back(&use);
     }
 
+    auto addUsesFn = [&worklist](auto uses) {
+        for (auto& use : uses)
+            worklist.push_back(&use);
+    };
+
     // figure out the potential accesses to the memory via GEP and bitcasts
     while (!worklist.empty())
     {
         auto* use = worklist.pop_back_val();
         auto* II = cast<Instruction>(use->getUser());
 
-        if (allUsers.contains(II))
+        if (!allUsers.insert(II))
             continue;
 
-        allUsers.insert(II);
+        // a possible optimization here:
+        // 1. find all reachable blocks
+        // 2. cull uses that are not reachable from the allocation
+
+        commonDominator = DT.findNearestCommonDominator(commonDominator, II->getParent());
 
         switch (II->getOpcode())
         {
@@ -76,9 +86,7 @@ AllocationLivenessAnalyzer::LivenessData AllocationLivenessAnalyzer::ProcessInst
         case Instruction::GetElementPtr:
         case Instruction::BitCast:
         case Instruction::Select:
-            for (auto& use : II->uses())
-                worklist.push_back(&use);
-
+            addUsesFn(II->uses());
             break;
         case Instruction::PtrToInt:
             lifetimeLeakingUsers.insert(II);
@@ -86,8 +94,19 @@ AllocationLivenessAnalyzer::LivenessData AllocationLivenessAnalyzer::ProcessInst
         case Instruction::Store:
         {
             auto* storeI = cast<StoreInst>(II);
-            if (storeI->getValueOperand() == cast<Value>(use))
-                lifetimeLeakingUsers.insert(II);
+            if (storeI->getValueOperand() == use->get())
+            {
+                SmallVector<Instruction*> origins;
+                if (Provenance::tryFindPointerOrigin(storeI->getPointerOperand(), origins))
+                {
+                    for (auto* origin : origins)
+                        addUsesFn(origin->uses());
+                }
+                else
+                {
+                    lifetimeLeakingUsers.insert(II);
+                }
+            }
         }
         break;
         case Instruction::Call:
@@ -95,9 +114,14 @@ AllocationLivenessAnalyzer::LivenessData AllocationLivenessAnalyzer::ProcessInst
             auto* callI = cast<CallInst>(II);
             if (!callI->doesNotCapture(use->getOperandNo()))
                 lifetimeLeakingUsers.insert(II);
+
+            if (II->getType()->isPointerTy())
+                addUsesFn(II->uses());
         }
         break;
         case Instruction::Load:
+            if (II->getType()->isPointerTy())
+                addUsesFn(II->uses());
             break;
         default: // failsafe for handling "unapproved" instructions
             lifetimeLeakingUsers.insert(II);
@@ -105,7 +129,7 @@ AllocationLivenessAnalyzer::LivenessData AllocationLivenessAnalyzer::ProcessInst
         }
     }
 
-    return LivenessData(I, std::move(allUsers), *LI, *DT, commonDominator, std::move(lifetimeLeakingUsers));
+    return LivenessData(I, std::move(allUsers), LI, DT, commonDominator, std::move(lifetimeLeakingUsers));
 }
 
 void AllocationLivenessAnalyzer::getAnalysisUsage(llvm::AnalysisUsage& AU) const
@@ -264,6 +288,8 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(
         }
     }
 
+    // at this point we have all the blocks we need, so fill out the start/end data
+
     // substract the inflow blocks from the outflow blocks to find the block which starts the lifetime - there should be only one!
     auto bbOutOnly = bbOut;
     set_subtract(bbOutOnly, bbIn);
@@ -287,7 +313,7 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(
         {
             if (usersOfAllocation.contains(&I))
             {
-                lifetimeEnds.push_back(&I);
+                lifetimeEndInstructions.push_back(&I);
                 break;
             }
         }
@@ -297,6 +323,7 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(
     }
     else
     {
+        // find all blocks where lifetime flows in, but doesnt flow out
         auto bbOnlyIn = bbIn;
         set_subtract(bbOnlyIn, bbOut);
 
@@ -306,10 +333,27 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(
             {
                 if (usersOfAllocation.contains(&I))
                 {
-                    lifetimeEnds.push_back(&I);
+                    lifetimeEndInstructions.push_back(&I);
                     break;
                 }
             }
+        }
+    }
+
+    // collect lifetime end edges (where outflow block has successors that aren't inflow blocks)
+    for (auto* bb : bbOut)
+    {
+        // however, we can't just add successors
+        // because then we can accidentally execute lifetime end instruction twice
+        // which can end up causing issues similar to double-free
+        // we need to make sure every successor has a single predecessor
+        SmallVector<BasicBlock*> successors(llvm::successors(bb));
+        for (auto* succ : successors)
+        {
+            if (bbIn.contains(succ))
+                continue;
+
+            lifetimeEndEdges.push_back({ bb, succ });
         }
     }
 }
@@ -330,7 +374,7 @@ bool AllocationLivenessAnalyzer::LivenessData::OverlapsWith(const LivenessData& 
     for (auto& [LD1, LD2] : { std::make_pair(this, &LD), std::make_pair(&LD, this) })
     {
         // TODO: replace the whole logic with ContainsInstruction checks
-        for (auto* I : LD1->lifetimeEnds)
+        for (auto* I : LD1->lifetimeEndInstructions)
         {
             // what if LD1 is contained in a single block
             if (I->getParent() == LD1->lifetimeStart->getParent())
@@ -341,7 +385,7 @@ bool AllocationLivenessAnalyzer::LivenessData::OverlapsWith(const LivenessData& 
                 bool lifetimeStart = LD2->lifetimeStart->getParent() == bb && LD2->lifetimeStart->comesBefore(I);
 
                 auto* LD1_lifetimeStart = LD1->lifetimeStart; // we have to copy LD1.lifetimeStart to avoid clang complaining about LD1 being captured by the lambda
-                bool lifetimeEnd = any_of(LD2->lifetimeEnds, [&](auto* lifetimeEnd) {
+                bool lifetimeEnd = any_of(LD2->lifetimeEndInstructions, [&](auto* lifetimeEnd) {
                     return lifetimeEnd->getParent() == bb && LD1_lifetimeStart->comesBefore(lifetimeEnd);
                     });
 
@@ -381,7 +425,7 @@ bool AllocationLivenessAnalyzer::LivenessData::ContainsInstruction(const llvm::I
         if (I.comesBefore(lifetimeStart))
             return false;
 
-        if (lifetimeEnds[0]->comesBefore(&I))
+        if (lifetimeEndInstructions[0]->comesBefore(&I))
             return false;
 
         return true;
@@ -396,9 +440,54 @@ bool AllocationLivenessAnalyzer::LivenessData::ContainsInstruction(const llvm::I
     if (lifetimeStart->getParent() == bb && !I.comesBefore(lifetimeStart))
         return true;
 
-    bool overlapsWithEnd = any_of(lifetimeEnds, [&](auto* lifetimeEnd) {
+    bool overlapsWithEnd = any_of(lifetimeEndInstructions, [&](auto* lifetimeEnd) {
         return lifetimeEnd->getParent() == bb && !lifetimeEnd->comesBefore(&I);
         });
 
     return overlapsWithEnd;
+}
+
+namespace IGC
+{
+    namespace Provenance
+    {
+        static bool tryFindPointerOriginImpl(Value* ptr, SmallVectorImpl<Instruction*>& origins, DenseSet<Value*>& cache);
+
+        bool tryFindPointerOrigin(Value* ptr, SmallVectorImpl<Instruction*>& origins)
+        {
+            origins.clear();
+
+            DenseSet<Value*> cache;
+            bool found = tryFindPointerOriginImpl(ptr, origins, cache);
+
+            IGC_ASSERT_MESSAGE(found && !origins.empty(), "Origin reported as found but no origins were added!");
+
+            return found;
+        }
+
+        static bool tryFindPointerOrigin(GetElementPtrInst* Ptr, SmallVectorImpl<Instruction*>& origins, DenseSet<Value*>& cache)
+        {
+            return tryFindPointerOriginImpl(Ptr->getPointerOperand(), origins, cache);
+        }
+
+        static bool tryFindPointerOriginImpl(Value* ptr, SmallVectorImpl<Instruction*>& origins, DenseSet<Value*>& cache)
+        {
+            if (!cache.insert(ptr).second)
+                return true;
+
+            if (auto* GEP = dyn_cast<GetElementPtrInst>(ptr))
+            {
+                return tryFindPointerOrigin(GEP, origins, cache);
+            }
+
+            if (auto* allocaI = dyn_cast<AllocaInst>(ptr))
+            {
+                origins.push_back(allocaI);
+                return true;
+            }
+
+            return false;
+        }
+
+    }
 }

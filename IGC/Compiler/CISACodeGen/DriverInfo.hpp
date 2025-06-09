@@ -391,6 +391,9 @@ namespace IGC
 
         virtual bool supportsUniformPrivateMemorySpace() const { return false; }
         virtual uint32_t maxNumCoherenceHintBitsForReorderThread() const { return 0; }
+
+        virtual bool UseNewTraceRayInlineLoweringInRaytracingShaders() const { return false; }
+        virtual bool UseNewTraceRayInlineLoweringInNonRaytracingShaders() const { return false; }
 protected:
     bool autoGRFSelection = false;
     };

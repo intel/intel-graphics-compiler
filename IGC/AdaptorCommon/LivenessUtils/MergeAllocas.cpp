@@ -179,6 +179,9 @@ bool MergeAllocas::runOnFunction(Function &F) {
         return false;
     }
 
+    auto& DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+    auto& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+
     // in the past, the analysis pass used to be responsible for the liveness data objects
     // the pass got deleted as a part of refactor (it was leaking memory anyway),
     // so to avoid changing the logic, we create a backing storage for the liveness data objects
@@ -190,7 +193,7 @@ bool MergeAllocas::runOnFunction(Function &F) {
 
     for (auto& I : make_filter_range(instructions(F), [](auto& I) { return isa<AllocaInst>(&I); }))
     {
-        storage.push_back(ProcessInstruction(&I));
+        storage.push_back(ProcessInstruction(&I, DT, LI));
         ABLA.push_back(std::make_pair(&I, &storage.back()));
     }
 

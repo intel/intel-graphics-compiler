@@ -27,7 +27,15 @@ namespace IGC
     public:
         struct LivenessData {
             llvm::Instruction* lifetimeStart = nullptr;
-            llvm::SmallVector<llvm::Instruction*> lifetimeEnds;
+            llvm::SmallVector<llvm::Instruction*> lifetimeEndInstructions;
+
+            struct Edge
+            {
+                llvm::BasicBlock* from;
+                llvm::BasicBlock* to;
+            };
+
+            llvm::SmallVector<Edge> lifetimeEndEdges;
 
             llvm::DenseSet<llvm::BasicBlock*> bbIn;
             llvm::DenseSet<llvm::BasicBlock*> bbOut;
@@ -48,9 +56,19 @@ namespace IGC
         AllocationLivenessAnalyzer(char& pid) : llvm::FunctionPass(pid) {}
 
     protected:
-        LivenessData ProcessInstruction(llvm::Instruction* I);
+        LivenessData ProcessInstruction(
+            llvm::Instruction* I,
+            llvm::DominatorTree& DT,
+            llvm::LoopInfo& LI
+        );
 
         void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
         virtual void getAdditionalAnalysisUsage(llvm::AnalysisUsage& AU) const = 0;
     };
+
+    namespace Provenance
+    {
+        bool tryFindPointerOrigin(llvm::Value* ptr, llvm::SmallVectorImpl<llvm::Instruction*>& origins);
+    }
+
 } // namespace IGC
