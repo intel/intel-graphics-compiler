@@ -3448,6 +3448,29 @@ bool Optimizer::foldCmpToCondMod(G4_BB *bb, INST_LIST_ITER &iter) {
   if (getUnsignedTy(T1) != getUnsignedTy(T2)) {
     return false;
   }
+  if (!isSupportedCondModForLogicOp && T1 != T2) {
+    // If dst signedness of inst is not same as cmp src0, then only z/nz
+    // conditions can be evaluated correctly.
+    //
+    // If inst is a type-conversion mov then it's incorrect to use cmp src0
+    // type as mov dst type.
+    //
+    // mov A:d   B:f    // f->d mov
+    // cmp.gt P1 A:ud   0x0
+    //
+    // When folding cmp in the mov, we must preserve mov's dst type :d.
+    // Otherwise type-conversion semantics change which can lead to wrong
+    // result if f->d yields negative result.
+    //
+    // But if cmp used cmp.z/nz then folding is legal.
+    bool isDstSigned = IS_SIGNED_INT(T1);
+    bool isDstUnsigned = IS_SIGNED_INT(T1);
+    bool isSrcSigned = IS_SIGNED_INT(T2);
+    bool isSrcUnsigned = IS_SIGNED_INT(T2);
+    if (!(isDstSigned && isSrcSigned) && !(isDstUnsigned && isSrcUnsigned))
+      return false;
+  }
+
   // Skip if the dst needs saturating but it's used as different sign.
   if (inst->getSaturate() && T1 != T2) {
     return false;
