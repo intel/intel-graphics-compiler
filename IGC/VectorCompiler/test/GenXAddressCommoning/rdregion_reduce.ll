@@ -9,6 +9,7 @@
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXLiveRangesWrapper \
 ; RUN:  -GenXAddressCommoningWrapper -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN:  -mcpu=Gen9 -S < %s | FileCheck %s
+; REQUIRES: llvm_16_or_greater
 
 target datalayout = "e-p:64:64-p3:32:32-p6:32:32-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
