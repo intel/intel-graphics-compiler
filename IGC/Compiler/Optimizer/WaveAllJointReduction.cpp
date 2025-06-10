@@ -6,9 +6,12 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include <igc_regkeys.hpp>
+
 #include <GenISAIntrinsics/GenIntrinsicInst.h>
 #include "WaveAllJointReduction.hpp"
 #include "Compiler/IGCPassSupport.h"
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/ADT/SmallVector.h>
@@ -91,6 +94,12 @@ void WaveAllJointReductionImpl::visitCallInst( CallInst& callInst )
         if( waveAllInst->getSrc()->getType()->isVectorTy() )
         {
             return;
+        }
+
+        // Disable joint reduction optimization for >32-bit WaveAll operations
+        if (waveAllInst->getType()->getScalarSizeInBits() > 32) {
+            if (IGC_IS_FLAG_DISABLED(EnableWaveAllJointReduction64Bit))
+                return;
         }
 
         SmallVector<WaveAllIntrinsic*, 16> mergeList{ waveAllInst };
