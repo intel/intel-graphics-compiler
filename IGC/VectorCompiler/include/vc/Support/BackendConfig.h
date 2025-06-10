@@ -195,6 +195,9 @@ struct GenXBackendOptions {
   unsigned DepressurizerGRFThreshold = 2560;
   unsigned DepressurizerFlagGRFTolerance = 3840;
 
+  // Report LSC stores with non default L1 cache controls.
+  bool ReportLSCStoresWithNonDefaultL1CacheControls = false;
+
   // Calling enforceLLVMOptions queries the state of LLVM options and
   // updates BackendOptions accordingly.
   // Note: current implementation allows backend options to be configured by
@@ -409,6 +412,10 @@ public:
   }
   unsigned getDepressurizerFlagGRFTolerance() const {
     return Options.DepressurizerFlagGRFTolerance;
+  }
+
+  bool reportLSCStoresWithNonDefaultL1CacheControls() const {
+    return Options.ReportLSCStoresWithNonDefaultL1CacheControls;
   }
 };
 

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2024 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -314,7 +314,7 @@ GenXOCLRuntimeInfo::FunctionInfo::FunctionInfo(const FunctionGroup &FG,
       GRFSizeInBytes(ST.getGRFByteSize()),
       StatelessPrivateMemSize(
           vc::getStackAmount(FG.getHead(), BC.getStatelessPrivateMemSize())) {
-  initInstructionLevelProperties(FG, RI, ST);
+  initInstructionLevelProperties(FG, RI, ST, BC);
 
   auto *Func = FG.getHead();
 
@@ -337,7 +337,8 @@ GenXOCLRuntimeInfo::FunctionInfo::FunctionInfo(const FunctionGroup &FG,
 }
 
 void GenXOCLRuntimeInfo::FunctionInfo::initInstructionLevelProperties(
-    Function *Func, GenXOCLRuntimeInfo &RI, const GenXSubtarget &ST) {
+    Function *Func, GenXOCLRuntimeInfo &RI, const GenXSubtarget &ST,
+    const GenXBackendConfig &BC) {
   LLVM_DEBUG(dbgs() << "> Function: " << Func->getName() << "\n");
   for (auto &Inst : instructions(*Func)) {
     auto IID = vc::getAnyIntrinsicID(&Inst);
@@ -378,19 +379,37 @@ void GenXOCLRuntimeInfo::FunctionInfo::initInstructionLevelProperties(
       UsesDPAS = true;
       break;
     }
+
+    if (BC.reportLSCStoresWithNonDefaultL1CacheControls()) {
+      // a store intrinsic
+      if (auto *CI = dyn_cast<CallInst>(&Inst);
+          CI && !CI->doesNotAccessMemory() && !CI->onlyReadsMemory()) {
+        // a store intrinsic has cache opt
+        if (auto CacheOptsIndex =
+                vc::InternalIntrinsic::getMemoryCacheControlOperandIndex(IID);
+            CacheOptsIndex >= 0) {
+          auto *CacheOpts = cast<Constant>(Inst.getOperand(CacheOptsIndex));
+          auto *L1Opt = cast<ConstantInt>(CacheOpts->getAggregateElement(0u));
+          HasLscStoresWithNonDefaultL1CacheControls |=
+              static_cast<LSC_CACHE_OPT>(L1Opt->getZExtValue()) !=
+              LSC_CACHING_DEFAULT;
+        }
+      }
+    }
   }
 }
 
 void GenXOCLRuntimeInfo::FunctionInfo::initInstructionLevelProperties(
-    const FunctionGroup &FG, GenXOCLRuntimeInfo &RI, const GenXSubtarget &ST) {
+    const FunctionGroup &FG, GenXOCLRuntimeInfo &RI, const GenXSubtarget &ST,
+    const GenXBackendConfig &BC) {
   LLVM_DEBUG(dbgs() << "Function group: " << FG.getHead()->getName() << "\n");
   // Collect data from the kernel and subroutine callees
   for (Function *Func : FG)
-    initInstructionLevelProperties(Func, RI, ST);
+    initInstructionLevelProperties(Func, RI, ST, BC);
   // Collect data from directly-called stackcall functions
   for (const auto *Subgroup : FG.subgroups())
     for (Function *Func : *Subgroup)
-      initInstructionLevelProperties(Func, RI, ST);
+      initInstructionLevelProperties(Func, RI, ST, BC);
 }
 
 //===----------------------------------------------------------------------===//

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2022 Intel Corporation
+Copyright (C) 2021-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -31,7 +31,7 @@ def : PlainJoined<"llvm-options=">, Alias<llvm_options>,
   HelpText<"Alias for -llvm-options">;
 
 def target_features : PlainSeparate<"target-features">,
-  HelpText<"Auxilirary target features">;
+  HelpText<"Auxiliary target features">;
 def : PlainJoined<"target-features=">, Alias<target_features>,
   HelpText<"Alias for -target-features">;
 
@@ -53,7 +53,7 @@ def freset_time_report : PlainFlag<"freset-time-report">,
 def print_stats : PlainFlag<"print-stats">,
   HelpText<"Print performance metrics and statistics">;
 def freset_llvm_stats : PlainFlag<"freset-llvm-stats">,
-  HelpText<"Reset perfomance metrics before compilation">;
+  HelpText<"Reset performance metrics before compilation">;
 
 def stats_file : PlainSeparate<"stats-file">,
   HelpText<"Filename to write statistics to">;
@@ -69,14 +69,18 @@ def flush_l3_for_global : PlainFlag<"flush-l3-for-global">,
   HelpText<"Enable flushing L3 cache for globals">;
 
 def vc_loop_unroll_threshold : PlainSeparate<"vc-loop-unroll-threshold">,
-  HelpText<"Loop unroll threhsold for VC">;
+  HelpText<"Loop unroll threshold for VC">;
 def : PlainJoined<"vc-loop-unroll-threshold=">, Alias<vc_loop_unroll_threshold>,
   HelpText<"Alias for -vc-loop-unroll-threshold <value>">;
 
 def vc_ignore_loop_unroll_threshold_on_pragma : PlainFlag<"vc-ignore-loop-unroll-threshold-on-pragma">,
-  HelpText<"Ignore loop unroll threhsold on pragma for VC">;
+  HelpText<"Ignore loop unroll threshold on pragma for VC">;
 
 def vc_interop_subgroup_size : PlainSeparate<"vc-interop-subgroup-size">,
   HelpText<"Set subgroup size used for cross-module calls/returns">;
+
+def vc_report_lsc_stores_with_non_default_l1_cache_controls :
+  PlainFlag<"vc-report-lsc-stores-with-non-default-l1-cache-controls">,
+  HelpText<"Ignore loop unroll threshold on pragma for VC">;
 }
 // }} VC internal options

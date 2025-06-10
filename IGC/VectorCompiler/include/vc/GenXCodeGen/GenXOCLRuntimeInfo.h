@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2024 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -180,6 +180,7 @@ public:
     bool UsesReadWriteImages = false;
     bool UsesSample = false;
     bool DisableMidThreadPreemption = false;
+    bool HasLscStoresWithNonDefaultL1CacheControls  = false;
 
     unsigned GRFSizeInBytes;
     unsigned NumBarriers = 0;
@@ -191,10 +192,12 @@ public:
   private:
     void initInstructionLevelProperties(const FunctionGroup &FG,
                                         GenXOCLRuntimeInfo &RI,
-                                        const GenXSubtarget &ST);
+                                        const GenXSubtarget &ST,
+                                        const GenXBackendConfig &BC);
 
     void initInstructionLevelProperties(Function *Func, GenXOCLRuntimeInfo &RI,
-                                        const GenXSubtarget &ST);
+                                        const GenXSubtarget &ST,
+                                        const GenXBackendConfig &BC);
   };
 
   // Additional kernel info that are not provided by finalizer
@@ -277,6 +280,9 @@ public:
     bool usesSample() const { return FuncInfo.UsesSample; }
     bool usesReadWriteImages() const { return FuncInfo.UsesReadWriteImages; }
     bool requireDisableEUFusion() const { return FuncInfo.DisableEUFusion; }
+    bool hasLscStoresWithNonDefaultL1CacheControls() const {
+      return FuncInfo.HasLscStoresWithNonDefaultL1CacheControls;
+    }
 
     // Arguments accessors.
     arg_iterator arg_begin() { return ArgInfos.begin(); }

@@ -306,6 +306,9 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.DepressurizerGRFThreshold = Opts.DepressurizerGRFThreshold;
   BackendOpts.DepressurizerFlagGRFTolerance = Opts.DepressurizerFlagGRFTolerance;
 
+  BackendOpts.ReportLSCStoresWithNonDefaultL1CacheControls =
+      Opts.ReportLSCStoresWithNonDefaultL1CacheControls;
+
   return BackendOpts;
 }
 
@@ -919,6 +922,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.HasL3FlushForGlobal = true;
   if (InternalOptions.hasArg(OPT_vc_ignore_loop_unroll_threshold_on_pragma))
     Opts.IgnoreLoopUnrollThresholdOnPragma = true;
+  if (InternalOptions.hasArg(OPT_vc_report_lsc_stores_with_non_default_l1_cache_controls))
+    Opts.ReportLSCStoresWithNonDefaultL1CacheControls = true;
   if (InternalOptions.hasArg(OPT_emit_visa_only))
     Opts.EmitVisaOnly = true;
 

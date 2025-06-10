@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2024 Intel Corporation
+Copyright (C) 2019-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -834,6 +834,9 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
   ExecEnv.NumGRFRequired = JitterInfo.stats.numGRFTotal;
   ExecEnv.RequireDisableEUFusion = BackendInfo.requireDisableEUFusion();
   ExecEnv.IndirectStatelessCount = BackendInfo.getIndirectCount();
+  ExecEnv.HasLscStoresWithNonDefaultL1CacheControls =
+      BackendInfo.hasLscStoresWithNonDefaultL1CacheControls();
+
 
   // Allocate spill-fill buffer
   if (JitterInfo.hasStackcalls) {

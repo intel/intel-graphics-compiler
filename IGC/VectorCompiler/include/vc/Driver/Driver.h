@@ -169,6 +169,8 @@ struct CompileOptions {
 
   unsigned DepressurizerGRFThreshold = 2560;
   unsigned DepressurizerFlagGRFTolerance = 3840;
+
+  bool ReportLSCStoresWithNonDefaultL1CacheControls = false;
 };
 
 struct ExternalData {
