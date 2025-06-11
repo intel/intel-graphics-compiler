@@ -1151,9 +1151,7 @@ namespace IGC
             // the image arg is either bindless or stateful. check from "kernelArg->needsAllocation()"
             // For stateful image argument, the arg has 0 offset and 0 size
             zebin::PreDefinedAttrGetter::ArgAddrMode arg_addrmode =
-                m_ModuleMetadata->UseBindlessImage ?
-                    zebin::PreDefinedAttrGetter::ArgAddrMode::bindless :
-                    zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
+                zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
             uint arg_off = 0;
             uint arg_size = 0;
 
@@ -1304,9 +1302,7 @@ namespace IGC
             // For stateful image argument, the arg has 0 offset and 0 size
             // NOTE: we only have stateful sampler now
             zebin::PreDefinedAttrGetter::ArgAddrMode arg_addrmode =
-                m_ModuleMetadata->UseBindlessImage ?
-                    zebin::PreDefinedAttrGetter::ArgAddrMode::bindless :
-                    zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
+                zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
             uint arg_off = 0;
             uint arg_size = 0;
             if (kernelArg->needsAllocation()) {
