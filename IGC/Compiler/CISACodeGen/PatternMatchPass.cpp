@@ -2285,6 +2285,14 @@ namespace IGC
         BitCastInst* bitCastInst1 = llvm::dyn_cast<llvm::BitCastInst>(I.getOperand(1));
         BitCastInst* bitCastInst = NULL;
 
+        for (auto UI = I.user_begin(); UI != I.user_end(); ++UI)
+        {
+            if (isa<GenIntrinsicInst>(*UI, GenISAIntrinsic::GenISA_fsat))
+            {
+                return false;
+            }
+        }
+
         if (!bitCastInst0 && !bitCastInst1)
         {
             return false;
