@@ -2177,6 +2177,14 @@ void EmitPass::EmitAluIntrinsic(llvm::CallInst* I, const SSource source[2], cons
             }
             break;
         }
+        case Intrinsic::exp2:
+        {
+            if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && source[0].value->getType()->isVectorTy()) {
+                Exp2(source, modifier);
+            }
+            else EmitSimpleAlu(I, source, modifier);
+            break;
+        }
         case Intrinsic::powi:
             Powi(source, modifier);
             break;
@@ -4488,22 +4496,6 @@ void EmitPass::BinaryUnary(llvm::Instruction* inst, const SSource source[2], con
     }
 }
 
-void EmitPass::Sub(const SSource sources[2], const DstModifier& modifier)
-{
-    CVariable* src0 = GetSrcVariable(sources[0]);
-    CVariable* src1 = GetSrcVariable(sources[1]);
-    e_modifier mod1 = CombineModifier(EMOD_NEG, sources[1].mod);
-
-    m_encoder->SetDstModifier(modifier);
-    SetSourceModifiers(0, sources[0]);
-    SetSourceModifiers(1, sources[1]);
-    // override modifier of source 1
-    m_encoder->SetSrcModifier(1, mod1);
-    m_encoder->Add(m_destination, src0, src1);
-    m_encoder->Push();
-
-}
-
 void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool noMask) const
 {
 
@@ -4732,6 +4724,68 @@ void EmitPass::FPTrunc(const SSource sources[2], const DstModifier& modifier) {
     }
 }
 
+void EmitPass::Sub(const SSource sources[2], const DstModifier& modifier)
+{
+    CVariable* src[2];
+    for (int i = 0; i < 2; ++i)
+    {
+        src[i] = GetSrcVariable(sources[i]);
+    }
+    e_modifier mod1 = CombineModifier(EMOD_NEG, sources[1].mod);
+
+    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
+            sources[0].value->getType()->isVectorTy() &&
+            sources[1].value->getType()->isVectorTy()) {
+
+        IGC_ASSERT_EXIT_MESSAGE(m_encoder->GetSimdSize() == lanesToSIMDMode(16), "As of now Vector Emission is only supported for SIMD16");
+
+        unsigned VectorSize = getVectorSize(sources[0].value);
+
+        bool AllUniform = src[0]->IsUniform() && src[1]->IsUniform() && m_destination->IsUniform();
+
+        if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && VectorSize <= 16) {
+            m_encoder->SetSrcModifier(1, mod1);
+            m_encoder->SetSrcRegion(0, 1, 1, 0);
+            m_encoder->SetSrcRegion(1, 1, 1, 0);
+            m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
+            m_encoder->Add(m_destination, src[0], src[1]);
+            m_encoder->Push();
+            return;
+        }
+
+        for (unsigned i = 0; i < VectorSize; ++i) {
+            SetSourceModifiers(0, sources[0]);
+            SetSourceModifiers(1, sources[1]);
+            m_encoder->SetSrcModifier(1, mod1);
+
+            if (src[0]->IsUniform())
+                m_encoder->SetSrcSubReg(0, i);
+            else
+                m_encoder->SetSrcSubVar(0, i);
+            if (src[1]->IsUniform())
+                m_encoder->SetSrcSubReg(1, i);
+            else
+                m_encoder->SetSrcSubVar(1, i);
+
+            if (src[0]->IsUniform() && src[1]->IsUniform()) m_encoder->SetDstSubReg(i);
+            else m_encoder->SetDstSubVar(i);
+
+            m_encoder->Add(m_destination, src[0], src[1]);
+            m_encoder->Push();
+        }
+        return;
+    }
+
+    m_encoder->SetDstModifier(modifier);
+    SetSourceModifiers(0, sources[0]);
+    SetSourceModifiers(1, sources[1]);
+    // override modifier of source 1
+    m_encoder->SetSrcModifier(1, mod1);
+    m_encoder->Add(m_destination, src[0], src[1]);
+    m_encoder->Push();
+}
+
+
 void EmitPass::Add(const SSource sources[2], const DstModifier& modifier)
 {
     CVariable* src[2];
@@ -4874,7 +4928,6 @@ void EmitPass::Div(const SSource sources[2], const DstModifier& modifier)
             sources[0].value->getType()->isVectorTy() &&
             sources[1].value->getType()->isVectorTy()) {
 
-        llvm::errs() <<  numLanes(m_encoder->GetSimdSize()) << "\n";
         IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16, "As of now Vector Emission is only supported for SIMD16");
         unsigned VectorSize = getVectorSize(sources[0].value);
 
@@ -4907,7 +4960,8 @@ void EmitPass::Inv(const SSource sources[2], const DstModifier& modifier) {
         unsigned VectorSize = getVectorSize(sources[0].value);
 
         CVariable* src[1];
-        // sources[0] got used to check that it contains all 1
+        // sources[0] was used to check that it contains all 1
+        // that's why we are in INV
         src[0] = GetSrcVariable(sources[1]);
 
         for (unsigned i = 0; i < VectorSize; ++i) {
@@ -4922,6 +4976,45 @@ void EmitPass::Inv(const SSource sources[2], const DstModifier& modifier) {
                 m_encoder->SetDstSubVar(i);
             }
             m_encoder->Inv(m_destination, src[0]);
+            m_encoder->Push();
+        }
+    }
+    return;
+}
+
+void EmitPass::Exp2(const SSource sources[2], const DstModifier& modifier) {
+
+    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
+            sources[0].value->getType()->isVectorTy()) {
+
+        IGC_ASSERT_EXIT_MESSAGE(m_encoder->GetSimdSize() == lanesToSIMDMode(16), "As of now Vector Emission is only supported for SIMD16");
+
+        unsigned VectorSize = getVectorSize(sources[0].value);
+
+        CVariable* src[1];
+        src[0] = GetSrcVariable(sources[0]);
+        bool AllUniform = src[0]->IsUniform() && m_destination->IsUniform();
+
+        if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && VectorSize <= 16) {
+            m_encoder->SetSrcRegion(0, 1, 1, 0);
+            m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
+            m_encoder->Exp(m_destination, src[0]);
+            m_encoder->Push();
+            return;
+        }
+
+        for (unsigned i = 0; i < VectorSize; ++i) {
+            SetSourceModifiers(0, sources[0]);
+
+            if (AllUniform) {
+                m_encoder->SetSrcSubReg(0, i);
+                m_encoder->SetDstSubReg(i);
+            }
+            else {
+                m_encoder->SetSrcSubVar(0, i);
+                m_encoder->SetDstSubVar(i);
+            }
+            m_encoder->Exp(m_destination, src[0]);
             m_encoder->Push();
         }
     }

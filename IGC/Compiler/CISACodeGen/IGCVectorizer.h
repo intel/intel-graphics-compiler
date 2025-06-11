@@ -34,13 +34,12 @@ class IGCVectorizer : public llvm::FunctionPass {
     struct Slice {
         unsigned int OpNum;
         VecArr Vector;
-        Slice* Parent;
+        unsigned ParentIndex;
     };
 
     typedef llvm::SmallVector<Slice, 32> VecOfSlices;
     typedef llvm::SmallVector<VecOfSlices, 3> Tree;
     typedef std::unordered_map<Instruction*, VecArr*> InstructionToSliceMap;
-
 
     struct InsertStruct {
         Instruction* Final = nullptr;
@@ -58,6 +57,7 @@ class IGCVectorizer : public llvm::FunctionPass {
     // basically every element inside scalarSlice should point to the same
     // vectorized element which contains all of them
     std::unordered_map<Value*, Value*> ScalarToVector;
+    std::unordered_map<Value*, Value*> ReplacedDictionary;
     InstructionToSliceMap InstructionToSlice;
     // all vector instructions that were produced for chain will be stored
     // in this array, used for clean up if we bail
@@ -89,6 +89,7 @@ class IGCVectorizer : public llvm::FunctionPass {
     bool handleExtractElement(VecArr& Slice);
     bool handleCastInstruction(VecArr& Slice);
     bool handleBinaryInstruction(VecArr& Slice);
+    bool handleIntrinsic(VecArr& Slice);
     bool checkBinaryOperator(VecArr& Slice);
     bool handleIntrinsicInstruction(VecArr& Slice);
 
@@ -97,6 +98,7 @@ class IGCVectorizer : public llvm::FunctionPass {
 
     bool compareOperands(Value* A, Value* B);
     InsertElementInst* createVector(VecArr& Slice, Instruction* InsertPoint);
+    void replaceSliceInstructionsWithExtract(VecArr &Slice, Instruction* CreatedInst);
 
     public:
     llvm::StringRef getPassName() const override { return "IGCVectorizer"; }
