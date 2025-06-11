@@ -4826,7 +4826,8 @@ namespace IGC
             SaveOption(vISA_enableUnsafeCP_DF, true);
         }
 
-        uint32_t NumGRFSetting = context->getNumGRFPerThread(/*returnDefault*/ false );
+        uint32_t NumGRFSetting =
+            context->getNumGRFPerThread(/*returnDefault*/ false);
         if (IGC_GET_FLAG_VALUE(ReservedRegisterNum) != 0)
         {
             IGC_ASSERT_MESSAGE(NumGRFSetting == 0, "ReservedRegisterNum and TotalGRFNum registry keys cannot be used at the same time");
