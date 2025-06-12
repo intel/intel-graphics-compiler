@@ -193,6 +193,14 @@ DepType vISA::CheckBarrier(G4_INST *inst) {
   if (inst->isOptBarrier() || inst->isAtomicInst() || inst->opcode() == G4_madm) {
     return OPT_BARRIER;
   }
+
+  if (inst->opcode() == G4_math) {
+    G4_MathOp mathOp = inst->asMathInst()->getMathCtrl();
+    if (mathOp == MATH_INVM || mathOp == MATH_RSQRTM) { // Macro
+      return OPT_BARRIER;
+    }
+  }
+
   if (inst->isSend()) {
 
     if (inst->isSendConditional()) {

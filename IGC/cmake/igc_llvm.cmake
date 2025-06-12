@@ -74,9 +74,7 @@ set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT "-opaque-pointers=0")
 set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG "-opaque-pointers")
 
 if(IGC_BUILD__CLANG_VERSION_MAJOR GREATER_EQUAL 15)
-  if(NOT CMAKE_WDDM_LINUX)
-    set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG "-no-opaque-pointers")
-  endif()
+  set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG "-no-opaque-pointers")
 endif()
 
 # Based on the default behavior for opaque/typed pointers, propagate
