@@ -199,6 +199,7 @@ CONST: g_cInitVmeState
 \*****************************************************************************/
 static const SSharedStateSearchPathLUTState::_DW0::_Byte g_cInitSharedSearchPathLUTStates[ g_cNumSearchPathStatesGen6 ] =
 {
+// clang-format off
     { 0x01,0x01,0x01,0x01 }, // 0
     { 0x01,0x01,0x01,0x10 }, // 1
     { 0x0F,0x0F,0x0F,0x0F }, // 2
@@ -213,6 +214,7 @@ static const SSharedStateSearchPathLUTState::_DW0::_Byte g_cInitSharedSearchPath
     { 0x0F,0x0F,0x0F,0x00 }, // 11
     { 0x00,0x00,0x00,0x00 }, // 12
     { 0x00,0x00,0x00,0x00 }  // 13
+// clang-format on
 };
 
 /*****************************************************************************\

@@ -129,6 +129,7 @@ char ReplaceUnsupportedIntrinsics::ID = 0;
 
 const std::map< Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t > ReplaceUnsupportedIntrinsics::m_intrinsicToFunc =
 {
+// clang-format off
     { Intrinsic::fshl,       &ReplaceUnsupportedIntrinsics::replaceFunnelShift },
     { Intrinsic::fshr,       &ReplaceUnsupportedIntrinsics::replaceFunnelShift },
     { Intrinsic::memcpy,     &ReplaceUnsupportedIntrinsics::replaceMemcpy },
@@ -144,6 +145,7 @@ const std::map< Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t > Repl
     { Intrinsic::smin,       &ReplaceUnsupportedIntrinsics::replaceMinMax },
     { Intrinsic::umax,       &ReplaceUnsupportedIntrinsics::replaceMinMax },
     { Intrinsic::umin,       &ReplaceUnsupportedIntrinsics::replaceMinMax }
+// clang-format on
 };
 
 ReplaceUnsupportedIntrinsics::ReplaceUnsupportedIntrinsics() : FunctionPass(ID)

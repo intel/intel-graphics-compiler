@@ -144,12 +144,14 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
     OCL_API_CALL static bool SupportsTranslation(CodeType::CodeType_t inType, CodeType::CodeType_t outType){
         static std::pair<CodeType::CodeType_t, CodeType::CodeType_t> supportedTranslations[] =
             {
+// clang-format off
                   // from                 // to
                 { CodeType::elf,      CodeType::llvmBc },
                 { CodeType::elf,      CodeType::oclGenBin },
                 { CodeType::llvmLl,   CodeType::oclGenBin },
                 { CodeType::llvmBc,   CodeType::oclGenBin },
                 { CodeType::spirV,    CodeType::oclGenBin },
+// clang-format on
             };
         for(const auto & st : supportedTranslations){
             if((inType == st.first) && (outType == st.second)){

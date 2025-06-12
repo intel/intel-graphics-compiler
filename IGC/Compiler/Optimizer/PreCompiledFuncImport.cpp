@@ -198,6 +198,7 @@ const char* PreCompiledFuncImport::m_Int32EmuFunctionNames[NUM_INT32_EMU_FUNCTIO
 // The entry order must match to FunctionIDs enum!
 const PreCompiledFuncInfo PreCompiledFuncImport::m_functionInfos[NUM_FUNCTION_IDS] =
 {
+// clang-format off
     { "__igcbuiltin_dp_add",              LIBMOD_DP_ADD_SUB },
     { "__igcbuiltin_dp_sub",              LIBMOD_DP_ADD_SUB },
     { "__igcbuiltin_dp_fma",              LIBMOD_DP_FMA_MUL },
@@ -220,6 +221,7 @@ const PreCompiledFuncInfo PreCompiledFuncImport::m_functionInfos[NUM_FUNCTION_ID
     { "__igcbuiltin_dp_to_uint64",        LIBMOD_DP_CONV_I64 },
     { "__igcbuiltin_int64_to_dp",         LIBMOD_DP_CONV_I64 },
     { "__igcbuiltin_uint64_to_dp",        LIBMOD_DP_CONV_I64 },
+// clang-format on
 };
 
 // The entry order must match to LibraryModules enum!

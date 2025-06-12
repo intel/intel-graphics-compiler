@@ -2618,12 +2618,14 @@ inline SampleParamsFromCube LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_S
     //face 3(-Y) = (u, -v) , face 4(+Z) = (u, -v), face 5(+Z) = (-u, -v)
     //Refer to https://en.wikipedia.org/wiki/Cube_mapping for details
     llvm::Value *cubeCoordMap[6][3] = {
+// clang-format off
         { m_float1     ,    minus_floatv,   minus_floatu    }, //+x = face0
         { float_minus1 ,    minus_floatv,   float_u         }, //-x = face1
         { float_u ,         m_float1    ,   float_v         }, //+y = face2
         { float_u ,         float_minus1,   minus_floatv    }, //-y = face3
         { float_u ,         minus_floatv,   m_float1        }, //+z = face4
         { minus_floatu ,    minus_floatv,   float_minus1    }  //-z = face5
+// clang-format on
     };
     //Now populate the 6x3 array with values of cubeCoordMap
     llvm::Value *indexList[2];

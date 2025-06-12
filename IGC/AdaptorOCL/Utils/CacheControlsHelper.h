@@ -61,6 +61,7 @@ namespace IGC
 
     const CacheControlMapTy<StoreCacheControl> supportedStoreConfigs =
     {
+// clang-format off
         { LSC_L1UC_L3UC,       { StoreCacheControl::Uncached,     StoreCacheControl::Uncached  } },
         { LSC_L1UC_L3C_WB,     { StoreCacheControl::Uncached,     StoreCacheControl::WriteBack } },
         { LSC_L1C_WT_L3UC,     { StoreCacheControl::WriteThrough, StoreCacheControl::Uncached  } },
@@ -68,10 +69,12 @@ namespace IGC
         { LSC_L1S_L3UC,        { StoreCacheControl::Streaming,    StoreCacheControl::Uncached  } },
         { LSC_L1S_L3C_WB,      { StoreCacheControl::Streaming,    StoreCacheControl::WriteBack } },
         { LSC_L1IAR_WB_L3C_WB, { StoreCacheControl::WriteBack,    StoreCacheControl::WriteBack } }
+// clang-format on
     };
 
     const CacheControlMapTy<LoadCacheControl> supportedLoadConfigs =
     {
+// clang-format off
         { LSC_L1UC_L3UC,       { LoadCacheControl::Uncached,            LoadCacheControl::Uncached } },
         { LSC_L1UC_L3C_WB,     { LoadCacheControl::Uncached,            LoadCacheControl::Cached   } },
         { LSC_L1C_WT_L3UC,     { LoadCacheControl::Cached,              LoadCacheControl::Uncached } },
@@ -82,6 +85,7 @@ namespace IGC
         { LSC_L1UC_L3CC,       { LoadCacheControl::Uncached,            LoadCacheControl::ConstCached,        } },
         { LSC_L1C_L3CC,        { LoadCacheControl::Cached,              LoadCacheControl::ConstCached,        } },
         { LSC_L1IAR_L3IAR,     { LoadCacheControl::InvalidateAfterRead, LoadCacheControl::InvalidateAfterRead } },
+// clang-format on
     };
 
     using CacheLevel = uint64_t;

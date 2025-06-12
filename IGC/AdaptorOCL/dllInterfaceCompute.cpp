@@ -1845,6 +1845,7 @@ bool CIGCTranslationBlock::Initialize(const STB_CreateArgs* pCreateArgs)
 
 static constexpr STB_TranslationCode g_cICBETranslationCodes[] =
 {
+// clang-format off
     { { TB_DATA_FORMAT_ELF,           TB_DATA_FORMAT_LLVM_BINARY   } },
     { { TB_DATA_FORMAT_LLVM_TEXT,     TB_DATA_FORMAT_DEVICE_BINARY } },
     { { TB_DATA_FORMAT_LLVM_BINARY,   TB_DATA_FORMAT_DEVICE_BINARY } },
@@ -1856,6 +1857,7 @@ static constexpr STB_TranslationCode g_cICBETranslationCodes[] =
     { { TB_DATA_FORMAT_LLVM_TEXT,     TB_DATA_FORMAT_NON_COHERENT_DEVICE_BINARY } },
     { { TB_DATA_FORMAT_LLVM_BINARY,   TB_DATA_FORMAT_NON_COHERENT_DEVICE_BINARY } },
     { { TB_DATA_FORMAT_SPIR_V,        TB_DATA_FORMAT_NON_COHERENT_DEVICE_BINARY } }
+// clang-format on
 };
 
 TRANSLATION_BLOCK_API void Register(STB_RegisterArgs* pRegisterArgs)

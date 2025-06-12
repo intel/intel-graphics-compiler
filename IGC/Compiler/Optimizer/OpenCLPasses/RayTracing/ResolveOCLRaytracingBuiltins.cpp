@@ -28,12 +28,15 @@ IGC_INITIALIZE_PASS_END(ResolveOCLRaytracingBuiltins, PASS_FLAG, PASS_DESCRIPTIO
 
 namespace {
   std::map<std::string, std::function<void(ResolveOCLRaytracingBuiltins*, CallInst&)>> functionHandlersMap = {
+// clang-format off
     {"__builtin_IB_intel_get_rt_stack",                  &ResolveOCLRaytracingBuiltins::handleGetRtStack            },
     {"__builtin_IB_intel_get_thread_btd_stack",          &ResolveOCLRaytracingBuiltins::handleGetThreadBTDStack     },
     {"__builtin_IB_intel_get_global_btd_stack",          &ResolveOCLRaytracingBuiltins::handleGetGlobalBTDStack     },
     {"__builtin_IB_intel_dispatch_trace_ray_query",      &ResolveOCLRaytracingBuiltins::handleDispatchTraceRayQuery },
     {"__builtin_IB_intel_rt_sync",                       &ResolveOCLRaytracingBuiltins::handleRTSync                },
     {"__builtin_IB_intel_get_rt_global_buffer",          &ResolveOCLRaytracingBuiltins::handleGetRTGlobalBuffer     },
+// clang-format on
+// clang-format off
 
     // Handling for builtins operating on intel_ray_query_t from intel_rt_production extension
       {"__builtin_IB_intel_init_ray_query",                &ResolveOCLRaytracingBuiltins::handleInitRayQuery          },
@@ -43,6 +46,7 @@ namespace {
       {"__builtin_IB_intel_query_rt_stack",                &ResolveOCLRaytracingBuiltins::handleQuery                 },
       {"__builtin_IB_intel_query_ctrl",                    &ResolveOCLRaytracingBuiltins::handleQuery                 },
       {"__builtin_IB_intel_query_bvh_level",               &ResolveOCLRaytracingBuiltins::handleQuery                 },
+// clang-format on
   };
 }
 
