@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2024 Intel Corporation
+Copyright (C) 2022-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -171,6 +171,10 @@ unsigned getMemorySimdWidth(const llvm::Instruction *I);
 unsigned getMemoryRegisterElementSize(const llvm::Instruction *I);
 
 int getMemorySurfaceOperandIndex(unsigned IID);
+inline int getMemorySurfaceOperandIndex(const llvm::Instruction *I) {
+  return getMemorySurfaceOperandIndex(getInternalIntrinsicID(I));
+}
+
 int getMemorySamplerOperandIndex(unsigned IID);
 
 int getMemoryCacheControlOperandIndex(unsigned IID);
@@ -187,10 +191,12 @@ inline llvm::Value *getMemoryCacheControlOperand(const llvm::Instruction *I) {
 }
 
 int getMemoryAddressOperandIndex(unsigned IID);
+inline int getMemoryAddressOperandIndex(const llvm::Instruction *I) {
+  return getMemoryAddressOperandIndex(getInternalIntrinsicID(I));
+}
 
 inline llvm::Value *getMemoryAddressOperand(const llvm::Instruction *I) {
-  auto IID = getInternalIntrinsicID(I);
-  const auto Index = getMemoryAddressOperandIndex(IID);
+  const auto Index = getMemoryAddressOperandIndex(I);
   if (Index < 0)
     return nullptr;
   return I->getOperand(Index);

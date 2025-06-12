@@ -46,7 +46,8 @@ public:
 private:
   bool foldLscAddrCalculation(CallInst &CI);
 
-  Value *applyLscAddrFolding(Value *Offsets, APInt &Scale, APInt &Offset);
+  Value *applyLscAddrFolding(Value *Offsets, APInt &Scale, APInt &Offset,
+                             CallInst *Inst);
 
   static constexpr unsigned Block2DIndexX = 10;
   static constexpr unsigned Block2DIndexY = 11;
@@ -219,7 +220,7 @@ bool GenXLscAddrCalcFolding::foldLscAddrCalculation(CallInst &Inst) {
   OffsetAlignment = vc::InternalIntrinsic::getMemoryRegisterElementSize(&Inst) /
                     genx::ByteBits;
 
-  while (auto *NewIndex = applyLscAddrFolding(Index, Scale, Offset)) {
+  while (auto *NewIndex = applyLscAddrFolding(Index, Scale, Offset, &Inst)) {
     Index = NewIndex;
     Changed = true;
     LLVM_DEBUG(dbgs() << "LSC address folding found, index: " << *Index
@@ -245,7 +246,7 @@ bool GenXLscAddrCalcFolding::foldLscAddrCalculation(CallInst &Inst) {
   return Changed;
 }
 
-// applyLscAddrFolding : fold address calculation of LSC intriniscs
+// applyLscAddrFolding : fold address calculation of LSC intrinsics
 //
 // Addr = Offsets * Scale + Offsets
 //
@@ -256,7 +257,9 @@ bool GenXLscAddrCalcFolding::foldLscAddrCalculation(CallInst &Inst) {
 // This folding is done iteratively for chains of such operations.
 //
 Value *GenXLscAddrCalcFolding::applyLscAddrFolding(Value *Offsets, APInt &Scale,
-                                                   APInt &Offset) {
+                                                   APInt &Offset,
+                                                   CallInst *Inst) {
+  LLVM_DEBUG(dbgs() << "applyLscAddrFolding instruction: " << Inst << "\n");
   IGC_ASSERT(ST->hasLSCMessages() && ST->hasLSCOffset());
 
   if (!isa<BinaryOperator>(Offsets))
