@@ -35,6 +35,8 @@ SPDX-License-Identifier: MIT
 // The others are lower level internal utilities, used only by higher level macros.
 //
 // Explanation of code in original resource : https://www.fluentcpp.com/2019/08/30/how-to-disable-a-warning-in-cpp/
+
+// clang-format off
 #if defined(__clang__)
     #define DO_PRAGMA_DIAG(X) _Pragma(#X)                                                     // internal utility
     #define DISABLE_WARNING_PUSH         DO_PRAGMA_DIAG(GCC diagnostic push)
@@ -78,10 +80,11 @@ SPDX-License-Identifier: MIT
     #define DISABLE_WARNING_PADDING_AT_END_OF_STRUCT
     #define DISABLE_WARNING_ANON_TYPES_IN_ANON_UNION
 #endif
+// clang-format on
 
-
-DISABLE_WARNING_PUSH       // save the current pragma state, save the current compiler settings
-// select the warnings that we want to disable, for this file only
+// save the current pragma state, save the current compiler settings select the
+// warnings that we want to disable, for this file only
+DISABLE_WARNING_PUSH
 DISABLE_WARNING_ANONYMOUS_STRUCT_UNION
 DISABLE_WARNING_PADDING_AT_END_OF_STRUCT
 DISABLE_WARNING_ANON_TYPES_IN_ANON_UNION
