@@ -202,11 +202,6 @@ void InternalOptions::parseOptions(const char* internalOpts)
         }
     }
 
-    if (internalOptions.hasArg(OPT_disable_zebin_common))
-    {
-        DisableZEBinary = true;
-    }
-
     if (internalOptions.hasArg(OPT_exclude_ir_from_zebin_common))
     {
         ExcludeIRFromZEBinary = true;

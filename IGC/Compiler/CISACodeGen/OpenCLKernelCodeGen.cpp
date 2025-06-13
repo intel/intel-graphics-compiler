@@ -132,8 +132,7 @@ namespace IGC
 
     bool OpenCLProgramContext::forceGlobalMemoryAllocation() const
     {
-        return m_InternalOptions.ForceGlobalMemoryAllocation ||
-            (m_hasGlobalInPrivateAddressSpace && enableZEBinary());
+        return m_InternalOptions.ForceGlobalMemoryAllocation || m_hasGlobalInPrivateAddressSpace;
     }
 
     bool OpenCLProgramContext::allocatePrivateAsGlobalBuffer() const
@@ -527,8 +526,6 @@ namespace IGC
 
     void COpenCLKernel::CreateZEInlineSamplerAnnotations()
     {
-        IGC_ASSERT(m_Context->enableZEBinary());
-
         auto getZESamplerAddrMode = [](int addrMode)
         {
             switch (addrMode) {
@@ -2586,17 +2583,15 @@ namespace IGC
 
                 const uint offsetInPayload = offset - constantBufferStart - offsetCorrection;
 
-                // Create annotations for the kernel argument
-                // If an arg is unused, don't generate patch token for it.
-                CreateAnnotations(&arg, offsetInPayload);
-
-                if (m_Context->enableZEBinary()) {
-                    // FIXME: once we transit to zebin completely, we don't need to do
-                    // CreateAnnotations above. Only CreateZEPayloadArguments is required
-                    bool Res = CreateZEPayloadArguments(&arg, offsetInPayload, ptrArgsAttrMap);
-                    IGC_ASSERT_MESSAGE(Res, "ZEBin: unsupported KernelArg Type");
-                    (void) Res;
+                if (arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_IDS) {
+                    m_kernelInfo.m_threadPayload.HasLocalIDx = true;
+                    m_kernelInfo.m_threadPayload.HasLocalIDy = true;
+                    m_kernelInfo.m_threadPayload.HasLocalIDz = true;
                 }
+
+                bool Res = CreateZEPayloadArguments(&arg, offsetInPayload, ptrArgsAttrMap);
+                IGC_ASSERT_MESSAGE(Res, "ZEBin: unsupported KernelArg Type");
+                (void) Res;
 
                 if (arg.needsAllocation())
                 {
@@ -2649,21 +2644,10 @@ namespace IGC
 
         m_State.m_ConstantBufferLength = iSTD::Align(m_State.m_ConstantBufferLength, getGRFSize());
 
-        // FIXME: skip this function when EnableZEBinary
-        CreateInlineSamplerAnnotations();
-        if (m_Context->enableZEBinary())
-        {
-            CreateZEInlineSamplerAnnotations();
-            // Currently we don't support inline vme sampler in zebin.
-            // assertion tests if we force to EnableZEBinary but encounter inline vme sampler.
-            IGC_ASSERT_MESSAGE(!m_kernelInfo.m_HasInlineVmeSamplers, "ZEBin: Inline vme sampler unsupported");
-        }
-
-        // Handle kernel reflection for patch-token format
-        if (!m_Context->enableZEBinary()) {
-            CreateKernelArgInfo();
-            CreateKernelAttributeInfo();
-        }
+        CreateZEInlineSamplerAnnotations();
+        // Currently we don't support inline vme sampler in zebin.
+        // Assertion tests if we encounter inline vme sampler.
+        IGC_ASSERT_MESSAGE(!m_kernelInfo.m_HasInlineVmeSamplers, "ZEBin: Inline vme sampler unsupported");
 
         // Create annotations for printf string.
         CreatePrintfStringAnnotations();
@@ -2939,10 +2923,8 @@ namespace IGC
             m_kernelInfo.m_executionEnvironment.HasLscStoresWithNonDefaultL1CacheControls = m_State.GetHasLscStoresWithNonDefaultL1CacheControls();
         }
 
-        if (m_Context->enableZEBinary()) {
-            FillZEKernelArgInfo();
-            FillZEUserAttributes(funcInfoMD);
-        }
+        FillZEKernelArgInfo();
+        FillZEUserAttributes(funcInfoMD);
     }
 
     void COpenCLKernel::RecomputeBTLayout()
@@ -3073,20 +3055,17 @@ namespace IGC
 
             ctx->m_programInfo.m_initConstantAnnotation = std::move(initConstant);
 
-            if (ctx->enableZEBinary())
-            {
-                // String literals
-                auto& ipsbStringMDHandle = modMD->inlineBuffers[InlineProgramScopeBufferType::ConstantStrings];
-                std::unique_ptr<iOpenCL::InitConstantAnnotation> initStringConstant(new iOpenCL::InitConstantAnnotation());
-                initStringConstant->Alignment = ipsbStringMDHandle.alignment;
-                initStringConstant->AllocSize = ipsbStringMDHandle.allocSize;
+            // String literals
+            auto& ipsbStringMDHandle = modMD->inlineBuffers[InlineProgramScopeBufferType::ConstantStrings];
+            std::unique_ptr<iOpenCL::InitConstantAnnotation> initStringConstant(new iOpenCL::InitConstantAnnotation());
+            initStringConstant->Alignment = ipsbStringMDHandle.alignment;
+            initStringConstant->AllocSize = ipsbStringMDHandle.allocSize;
 
-                bufferSize = (ipsbStringMDHandle.Buffer).size();
-                initStringConstant->InlineData.resize(bufferSize);
-                memcpy_s(initStringConstant->InlineData.data(), bufferSize, ipsbStringMDHandle.Buffer.data(), bufferSize);
+            bufferSize = (ipsbStringMDHandle.Buffer).size();
+            initStringConstant->InlineData.resize(bufferSize);
+            memcpy_s(initStringConstant->InlineData.data(), bufferSize, ipsbStringMDHandle.Buffer.data(), bufferSize);
 
-                ctx->m_programInfo.m_initConstantStringAnnotation = std::move(initStringConstant);
-            }
+            ctx->m_programInfo.m_initConstantStringAnnotation = std::move(initStringConstant);
         }
 
         if (modMD->inlineBuffers[InlineProgramScopeBufferType::Globals].allocSize)
@@ -3510,10 +3489,6 @@ namespace IGC
         if (ctx->m_retryManager.IsFirstTry())
         {
             CollectProgramInfo(ctx);
-            if (!ctx->enableZEBinary())
-            {
-                ctx->m_programOutput.CreateProgramScopePatchStream(ctx->m_programInfo);
-            }
         }
 
         MetaDataUtils* pMdUtils = ctx->getMetaDataUtils();

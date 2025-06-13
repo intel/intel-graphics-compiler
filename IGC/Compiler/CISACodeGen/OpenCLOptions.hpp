@@ -114,7 +114,6 @@ public:
      uint32_t IntelScratchSpacePrivateMemoryMinimalSizePerThread = 0;
 
      bool EnableDivergentBarrierHandling             = false;
-     bool DisableZEBinary                            = false;
      bool EnableBufferBoundsChecking                 = false;
 
      // Compile only up to vISA stage.

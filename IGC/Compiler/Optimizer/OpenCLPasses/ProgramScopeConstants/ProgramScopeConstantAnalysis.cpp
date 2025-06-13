@@ -127,10 +127,9 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 
         InlineProgramScopeBufferType inlineProgramScopeBufferType = {};
 
-        // When ZeBin is enabled, constant variables that are string literals
+        // Constant variables that are string literals
         // used only by printf will be stored in the second constant buffer.
-        bool isZebinPrintfStringConst = Ctx->enableZEBinary() &&
-            OpenCLPrintfAnalysis::isPrintfOnlyStringConstant(globalVar);
+        bool isZebinPrintfStringConst = OpenCLPrintfAnalysis::isPrintfOnlyStringConstant(globalVar);
         // Here we follow SPV_EXT_relaxed_printf_string_address_space to relax
         // the address space requirement of printf strings and accept
         // non-constant address space printf strings. However, we expect it is
@@ -244,7 +243,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     // of const vars can't work well with printf strings.
     bool skipConstAndGlobalBaseArgs =
           IGC_IS_FLAG_ENABLED(DisableConstBaseGlobalBaseArg) ||
-          (Ctx->enableZEBinary() && !m_pModuleMd->stringConstants.empty());
+          !m_pModuleMd->stringConstants.empty();
 
     if (!skipConstAndGlobalBaseArgs &&
         (m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Constants].allocSize ||
@@ -439,49 +438,21 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
             // We can only patch global and constant pointers.
             if (pointedToAddrSpace == ADDRESS_SPACE_GLOBAL || pointedToAddrSpace == ADDRESS_SPACE_CONSTANT)
             {
-                if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->enableZEBinary())
-                {
-                    // For zebin, instead of relying on the old patching logic, we can let RT directly patch the
-                    // physical address of the previously defined global into the current buffer that uses it.
-                    // TODO: Remove old patch logic when zebin is enabled
-                    auto relocInfo = (addressSpace == ADDRESS_SPACE_GLOBAL) ?
-                        &m_pModuleMd->GlobalBufferAddressRelocInfo :
-                        &m_pModuleMd->ConstantBufferAddressRelocInfo;
+                // For zebin, instead of relying on the old patching logic, we can let RT directly patch the
+                // physical address of the previously defined global into the current buffer that uses it.
+                auto relocInfo = (addressSpace == ADDRESS_SPACE_GLOBAL) ?
+                    &m_pModuleMd->GlobalBufferAddressRelocInfo :
+                    &m_pModuleMd->ConstantBufferAddressRelocInfo;
 
-                    PointerAddressRelocInfo ginfo;
-                    ginfo.BufferOffset = inlineProgramScopeBuffer.size();
-                    ginfo.PointerSize = pointerSize;
-                    ginfo.Symbol = ptrBase->getName().str();
-                    relocInfo->push_back(ginfo);
+                PointerAddressRelocInfo ginfo;
+                ginfo.BufferOffset = inlineProgramScopeBuffer.size();
+                ginfo.PointerSize = pointerSize;
+                ginfo.Symbol = ptrBase->getName().str();
+                relocInfo->push_back(ginfo);
 
-                    // Here, we write the offset relative to the start of the base global var.
-                    // Runtime will add the base global's absolute address to the offset.
-                    inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), (char*)&offset, ((char*)&offset) + pointerSize);
-                }
-                else
-                {
-                    // Add the patching info for runtime
-                    pointerOffsetInfoList.push_back(PointerOffsetInfo(addressSpace, inlineProgramScopeBuffer.size(), pointedToAddrSpace));
-
-                    auto iter = inlineProgramScopeOffsets.find(ptrBase);
-                    if (iter != inlineProgramScopeOffsets.end())
-                    {
-                        const uint64_t pointeeOffset = iter->second + offset;
-                        // For old patching logic, write the offset relative to the entire global/constant buffer where the base global resides.
-                        // The base address of the buffer will be added to it at runtime.
-                        inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), (char*)&pointeeOffset, ((char*)&pointeeOffset) + pointerSize);
-                    }
-                    else
-                    {
-                        // If we can't find the base global variable, it must be a zero initialized value whose data is not directly copied.
-                        // Save the info for now, and patch it later once we have the offsets for this zeroinit global vars.
-                        unsigned toPatchIndexOfPointer = inlineProgramScopeBuffer.size();
-                        inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
-
-                        ZeroInitPatchInfo zeroInitPatchInfo = {inlineProgramScopeBufferType, toPatchIndexOfPointer, pointerSize, ptrBase, offset};
-                        m_PatchLaterDataVector.push_back(zeroInitPatchInfo);
-                    }
-                }
+                // Here, we write the offset relative to the start of the base global var.
+                // Runtime will add the base global's absolute address to the offset.
+                inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), (char*)&offset, ((char*)&offset) + pointerSize);
             }
             else
             {

@@ -31,8 +31,6 @@ namespace IGC
         uint32_t m_numUAVs = 0;
 
     private:
-        bool m_enableZEBinary;
-
         // To minimize negative performance implications caused by a dynamic generic address
         // space resolution, private memory can be allocated in the same address space as
         // global memory. It gives a possibility to treat private memory operations as global
@@ -76,17 +74,9 @@ namespace IGC
               }
             }
 
-
-            if (m_InternalOptions.DisableZEBinary) {
-                // Allow to disable ZEBin via internal options
-                m_enableZEBinary = false;
-            } else {
-                // Enable ZEBin for all supported platforms
-                m_enableZEBinary = platform.supportsZEBin();
-            }
         }
 
-        bool enableZEBinary() const override { return m_enableZEBinary; }
+        bool enableZEBinary() const override { return true; }
         bool isSPIRV() const;
         void setAsSPIRV();
         float getProfilingTimerResolution();

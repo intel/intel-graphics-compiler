@@ -684,16 +684,6 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
                 : determinePointerAlignment(
                       base, *DL, AC, F->getEntryBlock().getFirstNonPHI()) >= 4;
 
-        // When compiling with patch tokens, always assume that the address
-        // is aligned. This is a workaround for old OneMKL Releases. Assuming
-        // that the address is not aligned leads to using bufferOffset implicit
-        // argument. The additional argument confuses compatibility check in OneMKL
-        // and forces it to make a fallback to a different kernels.
-        // TODO: Remove below if statement as soon as support for old OneMKL
-        //       versions is dropped.
-        if (!m_ctx->enableZEBinary())
-            isAlignedPointee = true;
-
         // If m_hasBufferOffsetArg is true, the offset argument is added to
         // the final offset to make it definitely positive. Thus skip checking
         // if an offset is positive.
@@ -1053,7 +1043,7 @@ void StatelessToStateful::promote()
             // If the support for dynamic BTIs allocation is disabled, then BTIs are pre-assigned
             // in ResourceAllocator pass for all resources independently whether they are
             // accessed through stateful addressing model or not.
-            if (ctx->platform.supportDynamicBTIsAllocation() && ctx->enableZEBinary())
+            if (ctx->platform.supportDynamicBTIsAllocation())
             {
                 argAlloc->type = ResourceTypeEnum::UAVResourceType;
                 argAlloc->indexType = resAllocMD->uavsNumType + bufferPos;
@@ -1080,11 +1070,9 @@ void StatelessToStateful::addToPromotionMap(Instruction& I, Value* Ptr)
     Value* offset = nullptr;
     unsigned baseArgNumber = 0;
 
-    // Do not prmote implicit kernel arg "sync_buffer" access when zebin is enabled
     bool isPromotable =
         m_promotionMap.size() < maxPromotionCount &&
-        pointerIsPositiveOffsetFromKernelArgument(m_F, Ptr, offset, baseArgNumber,
-            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->enableZEBinary());
+        pointerIsPositiveOffsetFromKernelArgument(m_F, Ptr, offset, baseArgNumber, true);
 
     if (isPromotable)
     {

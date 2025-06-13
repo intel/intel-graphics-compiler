@@ -1,13 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt --typed-pointers --platformglk -igc-opencl-printf-resolution -S  < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-opencl-printf-resolution -S  < %s | FileCheck %s
 ; ------------------------------------------------
 ; OpenCLPrintfResolution
 ; ------------------------------------------------
@@ -54,17 +54,18 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
 ; CHECK:    [[CONV:%[A-z0-9]*]] = call spir_func double @__builtin_spirv_OpFConvert_f64_f32(float [[TMP2]])
 ; CHECK:    [[TMP3:%[A-z0-9]*]] = getelementptr inbounds [15 x i8], [15 x i8] addrspace(2)* @.str, i64 0, i64 0
 ; CHECK:    [[PTRBC:%[A-z0-9]*]] = bitcast i8 addrspace(1)* [[PRINTFBUFFER:%[A-z0-9]*]] to i32 addrspace(1)*
-; CHECK:    [[WRITE_OFFSET:%[A-z0-9]*]] = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* [[PTRBC]], i32 24)
-; CHECK:    [[END_OFFSET:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET]], 24
+; CHECK:    [[WRITE_OFFSET:%[A-z0-9]*]] = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* [[PTRBC]], i32 28)
+; CHECK:    [[END_OFFSET:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET]], 28
 ; CHECK:    [[WRITE_OFFSET1:%[A-z0-9]*]] = zext i32 [[WRITE_OFFSET]] to i64
 ; CHECK:    [[BUFFER_PTR:%[A-z0-9]*]] = ptrtoint i8 addrspace(1)* [[PRINTFBUFFER]] to i64
 ; CHECK:    [[WRITE_OFFSET2:%[A-z0-9]*]] = add i64 [[BUFFER_PTR]], [[WRITE_OFFSET1]]
 ; CHECK:    [[TMP4:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET]], 4194304
 ; CHECK:    br i1 [[TMP4]], label [[WRITE_OFFSET_TRUE:%[A-z0-9]*]], label [[WRITE_OFFSET_FALSE:%[A-z0-9]*]]
 ; CHECK:  write_offset_true:
-; CHECK:    [[WRITE_OFFSET_PTR:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET2]] to i32 addrspace(1)*
-; CHECK:    store i32 0, i32 addrspace(1)* [[WRITE_OFFSET_PTR]], align 4
-; CHECK:    [[WRITE_OFFSET3:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET2]], 4
+; CHECK:    [[WRITE_OFFSET_PTR:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET2]] to i64 addrspace(1)*
+; CHECK:    [[TMP5:%[A-z0-9]*]] = ptrtoint [15 x i8] addrspace(2)* @.str to i64
+; CHECK:    store i64 [[TMP5]], i64 addrspace(1)* [[WRITE_OFFSET_PTR]], align 4
+; CHECK:    [[WRITE_OFFSET3:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET2]], 8
 ; CHECK:    [[WRITE_OFFSET_PTR4:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET3]] to i32 addrspace(1)*
 ; CHECK:    store i32 3, i32 addrspace(1)* [[WRITE_OFFSET_PTR4]], align 4
 ; CHECK:    [[WRITE_OFFSET5:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET3]], 4
@@ -80,8 +81,8 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
 ; CHECK:    br label [[BBLOCKJOIN:%[A-z0-9]*]]
 ; CHECK:  write_offset_false:
 ; CHECK:    [[END_OFFSET12:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET]], 4
-; CHECK:    [[TMP5:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET12]], 4194304
-; CHECK:    br i1 [[TMP5]], label [[WRITE_ERROR_STRING:%[A-z0-9]*]], label [[BBLOCKFALSEJOIN:%[A-z0-9]*]]
+; CHECK:    [[TMP6:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET12]], 4194304
+; CHECK:    br i1 [[TMP6]], label [[WRITE_ERROR_STRING:%[A-z0-9]*]], label [[BBLOCKFALSEJOIN:%[A-z0-9]*]]
 ; CHECK:  write_error_string:
 ; CHECK:    [[WRITE_OFFSET_PTR13:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET2]] to i32 addrspace(1)*
 ; CHECK:    store i32 -1, i32 addrspace(1)* [[WRITE_OFFSET_PTR13]], align 4
@@ -93,20 +94,21 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
 ;
 ; Print v4f
 ;
-; CHECK:    [[TMP6:%[A-z0-9]*]] = load <4 x float>, <4 x float>* [[F]], align 16
-; CHECK:    [[TMP7:%[A-z0-9]*]] = getelementptr inbounds [16 x i8], [16 x i8] addrspace(2)* @.str.1, i64 0, i64 0
+; CHECK:    [[TMP7:%[A-z0-9]*]] = load <4 x float>, <4 x float>* [[F]], align 16
+; CHECK:    [[TMP8:%[A-z0-9]*]] = getelementptr inbounds [16 x i8], [16 x i8] addrspace(2)* @.str.1, i64 0, i64 0
 ; CHECK:    [[PTRBC14:%[A-z0-9]*]] = bitcast i8 addrspace(1)* [[PRINTFBUFFER]] to i32 addrspace(1)*
-; CHECK:    [[WRITE_OFFSET15:%[A-z0-9]*]] = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* [[PTRBC14]], i32 28)
-; CHECK:    [[END_OFFSET16:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET15]], 28
+; CHECK:    [[WRITE_OFFSET15:%[A-z0-9]*]] = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* [[PTRBC14]], i32 32)
+; CHECK:    [[END_OFFSET16:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET15]], 32
 ; CHECK:    [[WRITE_OFFSET17:%[A-z0-9]*]] = zext i32 [[WRITE_OFFSET15]] to i64
 ; CHECK:    [[BUFFER_PTR18:%[A-z0-9]*]] = ptrtoint i8 addrspace(1)* [[PRINTFBUFFER]] to i64
 ; CHECK:    [[WRITE_OFFSET19:%[A-z0-9]*]] = add i64 [[BUFFER_PTR18]], [[WRITE_OFFSET17]]
-; CHECK:    [[TMP8:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET16]], 4194304
-; CHECK:    br i1 [[TMP8]], label [[WRITE_OFFSET_TRUE21:%[A-z0-9]*]], label [[WRITE_OFFSET_FALSE22:%[A-z0-9]*]]
+; CHECK:    [[TMP9:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET16]], 4194304
+; CHECK:    br i1 [[TMP9]], label [[WRITE_OFFSET_TRUE21:%[A-z0-9]*]], label [[WRITE_OFFSET_FALSE22:%[A-z0-9]*]]
 ; CHECK:  write_offset_true21:
-; CHECK:    [[WRITE_OFFSET_PTR23:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET19]] to i32 addrspace(1)*
-; CHECK:    store i32 1, i32 addrspace(1)* [[WRITE_OFFSET_PTR23]], align 4
-; CHECK:    [[WRITE_OFFSET24:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET19]], 4
+; CHECK:    [[WRITE_OFFSET_PTR23:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET19]] to i64 addrspace(1)*
+; CHECK:    [[TMP10:%[A-z0-9]*]] = ptrtoint [16 x i8] addrspace(2)* @.str.1 to i64
+; CHECK:    store i64 [[TMP10]], i64 addrspace(1)* [[WRITE_OFFSET_PTR23]], align 4
+; CHECK:    [[WRITE_OFFSET24:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET19]], 8
 ; CHECK:    [[WRITE_OFFSET_PTR25:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET24]] to i32 addrspace(1)*
 ; CHECK:    store i32 13, i32 addrspace(1)* [[WRITE_OFFSET_PTR25]], align 4
 ; CHECK:    [[WRITE_OFFSET26:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET24]], 4
@@ -114,13 +116,13 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
 ; CHECK:    store i32 4, i32 addrspace(1)* [[WRITE_OFFSET_PTR27]], align 4
 ; CHECK:    [[WRITE_OFFSET28:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET26]], 4
 ; CHECK:    [[WRITE_OFFSET_PTR29:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET28]] to <4 x float> addrspace(1)*
-; CHECK:    store <4 x float> [[TMP6]], <4 x float> addrspace(1)* [[WRITE_OFFSET_PTR29]], align 4
+; CHECK:    store <4 x float> [[TMP7]], <4 x float> addrspace(1)* [[WRITE_OFFSET_PTR29]], align 4
 ; CHECK:    [[WRITE_OFFSET30:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET28]], 16
 ; CHECK:    br label [[BBLOCKJOIN20:%[A-z0-9]*]]
 ; CHECK:  write_offset_false22:
 ; CHECK:    [[END_OFFSET31:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET15]], 4
-; CHECK:    [[TMP9:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET31]], 4194304
-; CHECK:    br i1 [[TMP9]], label [[WRITE_ERROR_STRING32:%[A-z0-9]*]], label [[BBLOCKFALSEJOIN33:%[A-z0-9]*]]
+; CHECK:    [[TMP11:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET31]], 4194304
+; CHECK:    br i1 [[TMP11]], label [[WRITE_ERROR_STRING32:%[A-z0-9]*]], label [[BBLOCKFALSEJOIN33:%[A-z0-9]*]]
 ; CHECK:  write_error_string32:
 ; CHECK:    [[WRITE_OFFSET_PTR34:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET19]] to i32 addrspace(1)*
 ; CHECK:    store i32 -1, i32 addrspace(1)* [[WRITE_OFFSET_PTR34]], align 4
@@ -128,24 +130,25 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
 ; CHECK:  bblockFalseJoin33:
 ; CHECK:    br label [[BBLOCKJOIN20]]
 ; CHECK:  bblockJoin20:
-; CHECK:    [[PRINTF_RET_VAL35:%[A-z0-9]*]] = select i1 [[TMP8]], i32 0, i32 -1
+; CHECK:    [[PRINTF_RET_VAL35:%[A-z0-9]*]] = select i1 [[TMP9]], i32 0, i32 -1
 ;
 ; Print v4i8
 ;
-; CHECK:    [[TMP10:%[A-z0-9]*]] = load <4 x i8>, <4 x i8>* [[UC]], align 4
-; CHECK:    [[TMP11:%[A-z0-9]*]] = getelementptr inbounds [14 x i8], [14 x i8] addrspace(2)* @.str.2, i64 0, i64 0
+; CHECK:    [[TMP12:%[A-z0-9]*]] = load <4 x i8>, <4 x i8>* [[UC]], align 4
+; CHECK:    [[TMP13:%[A-z0-9]*]] = getelementptr inbounds [14 x i8], [14 x i8] addrspace(2)* @.str.2, i64 0, i64 0
 ; CHECK:    [[PTRBC36:%[A-z0-9]*]] = bitcast i8 addrspace(1)* [[PRINTFBUFFER]] to i32 addrspace(1)*
-; CHECK:    [[WRITE_OFFSET37:%[A-z0-9]*]] = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* [[PTRBC36]], i32 28)
-; CHECK:    [[END_OFFSET38:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET37]], 28
+; CHECK:    [[WRITE_OFFSET37:%[A-z0-9]*]] = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* [[PTRBC36]], i32 32)
+; CHECK:    [[END_OFFSET38:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET37]], 32
 ; CHECK:    [[WRITE_OFFSET39:%[A-z0-9]*]] = zext i32 [[WRITE_OFFSET37]] to i64
 ; CHECK:    [[BUFFER_PTR40:%[A-z0-9]*]] = ptrtoint i8 addrspace(1)* [[PRINTFBUFFER]] to i64
 ; CHECK:    [[WRITE_OFFSET41:%[A-z0-9]*]] = add i64 [[BUFFER_PTR40]], [[WRITE_OFFSET39]]
-; CHECK:    [[TMP12:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET38]], 4194304
-; CHECK:    br i1 [[TMP12]], label [[WRITE_OFFSET_TRUE43:%[A-z0-9]*]], label [[WRITE_OFFSET_FALSE44:%[A-z0-9]*]]
+; CHECK:    [[TMP14:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET38]], 4194304
+; CHECK:    br i1 [[TMP14]], label [[WRITE_OFFSET_TRUE43:%[A-z0-9]*]], label [[WRITE_OFFSET_FALSE44:%[A-z0-9]*]]
 ; CHECK:  write_offset_true43:
-; CHECK:    [[WRITE_OFFSET_PTR45:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET41]] to i32 addrspace(1)*
-; CHECK:    store i32 2, i32 addrspace(1)* [[WRITE_OFFSET_PTR45]], align 4
-; CHECK:    [[WRITE_OFFSET46:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET41]], 4
+; CHECK:    [[WRITE_OFFSET_PTR45:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET41]] to i64 addrspace(1)*
+; CHECK:    [[TMP15:%[A-z0-9]*]] = ptrtoint [14 x i8] addrspace(2)* @.str.2 to i64
+; CHECK:    store i64 [[TMP15]], i64 addrspace(1)* [[WRITE_OFFSET_PTR45]], align 4
+; CHECK:    [[WRITE_OFFSET46:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET41]], 8
 ; CHECK:    [[WRITE_OFFSET_PTR47:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET46]] to i32 addrspace(1)*
 ; CHECK:    store i32 9, i32 addrspace(1)* [[WRITE_OFFSET_PTR47]], align 4
 ; CHECK:    [[WRITE_OFFSET48:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET46]], 4
@@ -153,13 +156,13 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
 ; CHECK:    store i32 4, i32 addrspace(1)* [[WRITE_OFFSET_PTR49]], align 4
 ; CHECK:    [[WRITE_OFFSET50:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET48]], 4
 ; CHECK:    [[WRITE_OFFSET_PTR51:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET50]] to <4 x i8> addrspace(1)*
-; CHECK:    store <4 x i8> [[TMP10]], <4 x i8> addrspace(1)* [[WRITE_OFFSET_PTR51]], align 4
+; CHECK:    store <4 x i8> [[TMP12]], <4 x i8> addrspace(1)* [[WRITE_OFFSET_PTR51]], align 4
 ; CHECK:    [[WRITE_OFFSET52:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET50]], 16
 ; CHECK:    br label [[BBLOCKJOIN42:%[A-z0-9]*]]
 ; CHECK:  write_offset_false44:
 ; CHECK:    [[END_OFFSET53:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET37]], 4
-; CHECK:    [[TMP13:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET53]], 4194304
-; CHECK:    br i1 [[TMP13]], label [[WRITE_ERROR_STRING54:%[A-z0-9]*]], label [[BBLOCKFALSEJOIN55:%[A-z0-9]*]]
+; CHECK:    [[TMP16:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET53]], 4194304
+; CHECK:    br i1 [[TMP16]], label [[WRITE_ERROR_STRING54:%[A-z0-9]*]], label [[BBLOCKFALSEJOIN55:%[A-z0-9]*]]
 ; CHECK:  write_error_string54:
 ; CHECK:    [[WRITE_OFFSET_PTR56:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET41]] to i32 addrspace(1)*
 ; CHECK:    store i32 -1, i32 addrspace(1)* [[WRITE_OFFSET_PTR56]], align 4
@@ -167,35 +170,37 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
 ; CHECK:  bblockFalseJoin55:
 ; CHECK:    br label [[BBLOCKJOIN42]]
 ; CHECK:  bblockJoin42:
-; CHECK:    [[PRINTF_RET_VAL57:%[A-z0-9]*]] = select i1 [[TMP12]], i32 0, i32 -1
+; CHECK:    [[PRINTF_RET_VAL57:%[A-z0-9]*]] = select i1 [[TMP14]], i32 0, i32 -1
 ;
 ; Print string
 ;
-; CHECK:    [[TMP14:%[A-z0-9]*]] = getelementptr inbounds [4 x i8], [4 x i8] addrspace(2)* @.str.3, i64 0, i64 0
-; CHECK:    [[TMP15:%[A-z0-9]*]] = getelementptr inbounds [23 x i8], [23 x i8] addrspace(2)* @.str.4, i64 0, i64 0
+; CHECK:    [[TMP17:%[A-z0-9]*]] = getelementptr inbounds [4 x i8], [4 x i8] addrspace(2)* @.str.3, i64 0, i64 0
+; CHECK:    [[TMP18:%[A-z0-9]*]] = getelementptr inbounds [23 x i8], [23 x i8] addrspace(2)* @.str.4, i64 0, i64 0
 ; CHECK:    [[PTRBC58:%[A-z0-9]*]] = bitcast i8 addrspace(1)* [[PRINTFBUFFER]] to i32 addrspace(1)*
-; CHECK:    [[WRITE_OFFSET59:%[A-z0-9]*]] = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* [[PTRBC58]], i32 12)
-; CHECK:    [[END_OFFSET60:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET59]], 12
+; CHECK:    [[WRITE_OFFSET59:%[A-z0-9]*]] = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* [[PTRBC58]], i32 20)
+; CHECK:    [[END_OFFSET60:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET59]], 20
 ; CHECK:    [[WRITE_OFFSET61:%[A-z0-9]*]] = zext i32 [[WRITE_OFFSET59]] to i64
 ; CHECK:    [[BUFFER_PTR62:%[A-z0-9]*]] = ptrtoint i8 addrspace(1)* [[PRINTFBUFFER]] to i64
 ; CHECK:    [[WRITE_OFFSET63:%[A-z0-9]*]] = add i64 [[BUFFER_PTR62]], [[WRITE_OFFSET61]]
-; CHECK:    [[TMP16:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET60]], 4194304
-; CHECK:    br i1 [[TMP16]], label [[WRITE_OFFSET_TRUE65:%[A-z0-9]*]], label [[WRITE_OFFSET_FALSE66:%[A-z0-9]*]]
+; CHECK:    [[TMP19:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET60]], 4194304
+; CHECK:    br i1 [[TMP19]], label [[WRITE_OFFSET_TRUE65:%[A-z0-9]*]], label [[WRITE_OFFSET_FALSE66:%[A-z0-9]*]]
 ; CHECK:  write_offset_true65:
-; CHECK:    [[WRITE_OFFSET_PTR67:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET63]] to i32 addrspace(1)*
-; CHECK:    store i32 3, i32 addrspace(1)* [[WRITE_OFFSET_PTR67]], align 4
-; CHECK:    [[WRITE_OFFSET68:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET63]], 4
+; CHECK:    [[WRITE_OFFSET_PTR67:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET63]] to i64 addrspace(1)*
+; CHECK:    [[TMP20:%[A-z0-9]*]] = ptrtoint [4 x i8] addrspace(2)* @.str.3 to i64
+; CHECK:    store i64 [[TMP20]], i64 addrspace(1)* [[WRITE_OFFSET_PTR67]], align 4
+; CHECK:    [[WRITE_OFFSET68:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET63]], 8
 ; CHECK:    [[WRITE_OFFSET_PTR69:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET68]] to i32 addrspace(1)*
 ; CHECK:    store i32 5, i32 addrspace(1)* [[WRITE_OFFSET_PTR69]], align 4
 ; CHECK:    [[WRITE_OFFSET70:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET68]], 4
-; CHECK:    [[WRITE_OFFSET_PTR71:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET70]] to i32 addrspace(1)*
-; CHECK:    store i32 4, i32 addrspace(1)* [[WRITE_OFFSET_PTR71]], align 4
-; CHECK:    [[WRITE_OFFSET72:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET70]], 4
+; CHECK:    [[WRITE_OFFSET_PTR71:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET70]] to i64 addrspace(1)*
+; CHECK:    [[TMP21:%[A-z0-9]*]] = ptrtoint [23 x i8] addrspace(2)* @.str.4 to i64
+; CHECK:    store i64 [[TMP21]], i64 addrspace(1)* [[WRITE_OFFSET_PTR71]], align 4
+; CHECK:    [[WRITE_OFFSET72:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET70]], 8
 ; CHECK:    br label [[BBLOCKJOIN64:%[A-z0-9]*]]
 ; CHECK:  write_offset_false66:
 ; CHECK:    [[END_OFFSET73:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET59]], 4
-; CHECK:    [[TMP17:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET73]], 4194304
-; CHECK:    br i1 [[TMP17]], label [[WRITE_ERROR_STRING74:%[A-z0-9]*]], label [[BBLOCKFALSEJOIN75:%[A-z0-9]*]]
+; CHECK:    [[TMP22:%[A-z0-9]*]] = icmp ule i32 [[END_OFFSET73]], 4194304
+; CHECK:    br i1 [[TMP22]], label [[WRITE_ERROR_STRING74:%[A-z0-9]*]], label [[BBLOCKFALSEJOIN75:%[A-z0-9]*]]
 ; CHECK:  write_error_string74:
 ; CHECK:    [[WRITE_OFFSET_PTR76:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET63]] to i32 addrspace(1)*
 ; CHECK:    store i32 -1, i32 addrspace(1)* [[WRITE_OFFSET_PTR76]], align 4
@@ -203,7 +208,7 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
 ; CHECK:  bblockFalseJoin75:
 ; CHECK:    br label [[BBLOCKJOIN64]]
 ; CHECK:  bblockJoin64:
-; CHECK:    [[PRINTF_RET_VAL77:%[A-z0-9]*]] = select i1 [[TMP16]], i32 0, i32 -1
+; CHECK:    [[PRINTF_RET_VAL77:%[A-z0-9]*]] = select i1 [[TMP19]], i32 0, i32 -1
 ; CHECK:    ret void
 ;
   %f = alloca <4 x float>, align 16

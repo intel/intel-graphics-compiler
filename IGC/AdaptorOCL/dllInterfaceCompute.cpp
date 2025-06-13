@@ -897,15 +897,6 @@ bool ProcessElfInput(
             {
                 if (hasVISALinking)
                 {
-                    if (!Context.enableZEBinary()) {
-                        SetErrorMessage(
-                            "vISA linking can be used only with ZeBinary "
-                            "compiler output format. It seems that it is "
-                            "currently disabled for your platform.",
-                            OutputArgs);
-                        return false;
-                    }
-
                     ShaderHash hash = ShaderHashOCL(
                         reinterpret_cast<const UINT*>(InputArgs.pInput),
                         InputArgs.InputSize / 4);
@@ -1629,42 +1620,28 @@ bool TranslateBuildSPMD(
     oclContext.metrics.FinalizeStats();
     oclContext.metrics.OutputMetrics();
 
-    if (!oclContext.enableZEBinary())
+    llvm::SmallVector<char, 64> buf;
+    llvm::raw_svector_ostream llvm_os(buf);
+    const bool excludeIRFromZEBinary = IGC_IS_FLAG_ENABLED(ExcludeIRFromZEBinary) || oclContext.getModuleMetaData()->compOpt.ExcludeIRFromZEBinary;
+    const char* spv_data = nullptr;
+    uint32_t spv_size = 0;
+    if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V && !excludeIRFromZEBinary)
     {
-        Util::BinaryStream programBinary;
-        // Patch token based binary format
-        oclContext.m_programOutput.CreateKernelBinaries();
-        oclContext.m_programOutput.GetProgramBinary(programBinary, pointerSizeInBytes);
-        binarySize = static_cast<int>(programBinary.Size());
-        binaryOutput = new char[binarySize];
-        memcpy_s(binaryOutput, binarySize, programBinary.GetLinearPointer(), binarySize);
+        spv_data = pInputArgs->pInput;
+        spv_size = pInputArgs->InputSize;
     }
-    else
-    {
-        // ze binary format
-        llvm::SmallVector<char, 64> buf;
-        llvm::raw_svector_ostream llvm_os(buf);
-        const bool excludeIRFromZEBinary = IGC_IS_FLAG_ENABLED(ExcludeIRFromZEBinary) || oclContext.getModuleMetaData()->compOpt.ExcludeIRFromZEBinary;
-        const char* spv_data = nullptr;
-        uint32_t spv_size = 0;
-        if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V && !excludeIRFromZEBinary)
-        {
-            spv_data = pInputArgs->pInput;
-            spv_size = pInputArgs->InputSize;
-        }
 
-        // IGC metrics
-        size_t metricDataSize = oclContext.metrics.getMetricDataSize();
-        auto metricData = reinterpret_cast<const char*>(oclContext.metrics.getMetricData());
+    // IGC metrics
+    size_t metricDataSize = oclContext.metrics.getMetricDataSize();
+    auto metricData = reinterpret_cast<const char*>(oclContext.metrics.getMetricData());
 
-        oclContext.m_programOutput.GetZEBinary(llvm_os, pointerSizeInBytes,
-            spv_data, spv_size, metricData, metricDataSize, pInputArgs->pOptions, pInputArgs->OptionsSize);
+    oclContext.m_programOutput.GetZEBinary(llvm_os, pointerSizeInBytes,
+        spv_data, spv_size, metricData, metricDataSize, pInputArgs->pOptions, pInputArgs->OptionsSize);
 
-        // FIXME: try to avoid memory copy here
-        binarySize = buf.size();
-        binaryOutput = new char[binarySize];
-        memcpy_s(binaryOutput, binarySize, buf.data(), buf.size());
-    }
+    // FIXME: try to avoid memory copy here
+    binarySize = buf.size();
+    binaryOutput = new char[binarySize];
+    memcpy_s(binaryOutput, binarySize, buf.data(), buf.size());
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
         dumpOCLProgramBinary(oclContext, binaryOutput, binarySize);
