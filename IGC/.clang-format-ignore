@@ -1,0 +1,13 @@
+ZEBinWriter/zebin/source/autogen/*
+AdaptorCommon/RayTracing/AutoGen*
+
+# These files depend upon a specific header layout so the
+# python parsing script can process them
+common/MDFrameWork.h
+# These are preprocess included into MDFrameWork.h so
+# can't be modified
+common/RaytracingShaderTypes.h
+common/ShaderTypesIncl.h
+AdaptorCommon/RayTracing/HitGroups.h
+AdaptorCommon/RayTracing/ConstantsEnums.h
+AdaptorCommon/RayTracing/API/MemoryStyleEnum.h
