@@ -194,8 +194,11 @@ namespace IGC
             {
                 switch (GFX_GET_GMD_RELEASE_VERSION_RENDER(platform->getPlatformInfo()))
                 {
-                case GFX_GMD_ARCH_20_RELEASE_XE2_HPG_X2:
+                case GFX_GMD_ARCH_20_RELEASE_XE2_HPG_2001:
                     InitGt_20_01HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+                    break;
+                case GFX_GMD_ARCH_20_RELEASE_XE2_HPG_2002:
+                    InitGt_20_02HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
                     break;
                 case GFX_GMD_ARCH_20_RELEASE_XE2_LPG:
                     InitGt_20_04HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);

@@ -113,6 +113,7 @@ set(IGC_BUILD__SRC__Compiler
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_12_71_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_12_74_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_20_01_hw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_20_02_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_20_04_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_30_00_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_30_01_hw_wa.c"

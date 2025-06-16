@@ -153,7 +153,8 @@ typedef struct GFX_GMD_ID_DEF
 #define GFX_GMD_ARCH_12_RELEASE_XE_LP_LG                 (71)
 #define GFX_GMD_ARCH_12_RELEASE_XE_LPG_PLUS_1274         (74)
 
-#define GFX_GMD_ARCH_20_RELEASE_XE2_HPG_X2               (1)
+#define GFX_GMD_ARCH_20_RELEASE_XE2_HPG_2001             (1)
+#define GFX_GMD_ARCH_20_RELEASE_XE2_HPG_2002             (2)
 #define GFX_GMD_ARCH_20_RELEASE_XE2_LPG                  (4)
 
 #define GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3000             (0)
@@ -758,6 +759,10 @@ typedef enum __NATIVEGTTYPE
 #define DEV_ID_E212                             0xE212
 #define DEV_ID_E215                             0xE215
 #define DEV_ID_E216                             0xE216
+#define DEV_ID_E220                             0xE220
+#define DEV_ID_E221                             0xE221
+#define DEV_ID_E222                             0xE222
+#define DEV_ID_E223                             0xE223
 
 // PTL
 #define DEV_ID_B080                             0xB080
