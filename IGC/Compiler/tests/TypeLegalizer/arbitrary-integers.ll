@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2024 Intel Corporation
+; Copyright (C) 2022-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -34,13 +34,13 @@ define void @test_add(i8 %src) {
 
 define void @test_udiv(i8 %src1, i8 %src2) {
 ; CHECK-LABEL: @test_udiv(
-; CHECK:    [[TMP1:%.*]] = and i8 [[SRC1:%.*]], 63
-; CHECK:    [[TMP2:%.*]] = and i8 [[SRC2:%.*]], 63
-; CHECK:    [[DOTZEXT:%.*]] = and i8 [[TMP2]], 63
-; CHECK:    [[DOTZEXT1:%.*]] = and i8 [[TMP1]], 63
-; CHECK:    [[DOTPROMOTE:%.*]] = udiv i8 [[DOTZEXT1]], [[DOTZEXT]]
-; CHECK:    call void @use.i8(i8 [[DOTPROMOTE]])
-; CHECK:    ret void
+; CHECK:        [[TMP1:%.*]] = and i8 [[SRC1:%.*]], 63
+; CHECK:        [[TMP2:%.*]] = and i8 [[SRC2:%.*]], 63
+; CHECK-DAG:    [[DOTZEXT:%.*]] = and i8 [[TMP2]], 63
+; CHECK-DAG:    [[DOTZEXT1:%.*]] = and i8 [[TMP1]], 63
+; CHECK:        [[DOTPROMOTE:%.*]] = udiv i8 [[DOTZEXT1]], [[DOTZEXT]]
+; CHECK:        call void @use.i8(i8 [[DOTPROMOTE]])
+; CHECK:        ret void
 
   %1 = trunc i8 %src1 to i6
   %2 = trunc i8 %src2 to i6
@@ -52,15 +52,15 @@ define void @test_udiv(i8 %src1, i8 %src2) {
 
 define void @test_sdiv(i8 %src1, i8 %src2) {
 ; CHECK-LABEL: @test_sdiv(
-; CHECK:    [[TMP1:%.*]] = and i8 [[SRC1:%.*]], 63
-; CHECK:    [[TMP2:%.*]] = and i8 [[SRC2:%.*]], 63
-; CHECK:    [[DOTLSEXT:%.*]] = shl i8 [[TMP2]], 2
-; CHECK:    [[DOTRSEXT:%.*]] = ashr i8 [[DOTLSEXT]], 2
-; CHECK:    [[DOTLSEXT1:%.*]] = shl i8 [[TMP1]], 2
-; CHECK:    [[DOTRSEXT2:%.*]] = ashr i8 [[DOTLSEXT1]], 2
-; CHECK:    [[DOTPROMOTE:%.*]] = sdiv i8 [[DOTRSEXT2]], [[DOTRSEXT]]
-; CHECK:    call void @use.i8(i8 [[DOTPROMOTE]])
-; CHECK:    ret void
+; CHECK:        [[TMP1:%.*]] = and i8 [[SRC1:%.*]], 63
+; CHECK:        [[TMP2:%.*]] = and i8 [[SRC2:%.*]], 63
+; CHECK-DAG:    [[DOTLSEXT:%.*]] = shl i8 [[TMP2]], 2
+; CHECK-DAG:    [[DOTRSEXT:%.*]] = ashr i8 [[DOTLSEXT]], 2
+; CHECK-DAG:    [[DOTLSEXT1:%.*]] = shl i8 [[TMP1]], 2
+; CHECK-DAG:    [[DOTRSEXT2:%.*]] = ashr i8 [[DOTLSEXT1]], 2
+; CHECK:        [[DOTPROMOTE:%.*]] = sdiv i8 [[DOTRSEXT2]], [[DOTRSEXT]]
+; CHECK:        call void @use.i8(i8 [[DOTPROMOTE]])
+; CHECK:        ret void
 
   %1 = trunc i8 %src1 to i6
   %2 = trunc i8 %src2 to i6
@@ -89,13 +89,13 @@ define void @test_shl(i8 %src1, i8 %src2) {
 
 define void @test_lshr(i8 %src1, i8 %src2) {
 ; CHECK-LABEL: @test_lshr(
-; CHECK:    [[TMP1:%.*]] = and i8 [[SRC1:%.*]], 63
-; CHECK:    [[TMP2:%.*]] = and i8 [[SRC2:%.*]], 63
-; CHECK:    [[DOTZEXT:%.*]] = and i8 [[TMP2]], 63
-; CHECK:    [[DOTZEXT1:%.*]] = and i8 [[TMP1]], 63
-; CHECK:    [[DOTPROMOTE:%.*]] = lshr i8 [[DOTZEXT1]], [[DOTZEXT]]
-; CHECK:    call void @use.i8(i8 [[DOTPROMOTE]])
-; CHECK:    ret void
+; CHECK:        [[TMP1:%.*]] = and i8 [[SRC1:%.*]], 63
+; CHECK:        [[TMP2:%.*]] = and i8 [[SRC2:%.*]], 63
+; CHECK-DAG:    [[DOTZEXT:%.*]] = and i8 [[TMP2]], 63
+; CHECK-DAG:    [[DOTZEXT1:%.*]] = and i8 [[TMP1]], 63
+; CHECK:        [[DOTPROMOTE:%.*]] = lshr i8 [[DOTZEXT1]], [[DOTZEXT]]
+; CHECK:        call void @use.i8(i8 [[DOTPROMOTE]])
+; CHECK:        ret void
 
   %1 = trunc i8 %src1 to i6
   %2 = trunc i8 %src2 to i6
@@ -107,13 +107,13 @@ define void @test_lshr(i8 %src1, i8 %src2) {
 
 define void @test_ashr(i8 %src1, i8 %src2) {
 ; CHECK-LABEL: @test_ashr(
-; CHECK:    [[TMP1:%.*]] = and i8 [[SRC1:%.*]], 63
-; CHECK:    [[TMP2:%.*]] = and i8 [[SRC2:%.*]], 63
-; CHECK:    [[DOTZEXT:%.*]] = and i8 [[TMP2]], 63
-; CHECK:    [[DOTZEXT1:%.*]] = and i8 [[TMP1]], 63
-; CHECK:    [[DOTPROMOTE:%.*]] = lshr i8 [[DOTZEXT1]], [[DOTZEXT]]
-; CHECK:    call void @use.i8(i8 [[DOTPROMOTE]])
-; CHECK:    ret void
+; CHECK:        [[TMP1:%.*]] = and i8 [[SRC1:%.*]], 63
+; CHECK:        [[TMP2:%.*]] = and i8 [[SRC2:%.*]], 63
+; CHECK-DAG:    [[DOTZEXT:%.*]] = and i8 [[TMP2]], 63
+; CHECK-DAG:    [[DOTZEXT1:%.*]] = and i8 [[TMP1]], 63
+; CHECK:        [[DOTPROMOTE:%.*]] = lshr i8 [[DOTZEXT1]], [[DOTZEXT]]
+; CHECK:        call void @use.i8(i8 [[DOTPROMOTE]])
+; CHECK:        ret void
 
   %1 = trunc i8 %src1 to i6
   %2 = trunc i8 %src2 to i6
