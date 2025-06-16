@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -36,6 +36,7 @@ namespace IGC {
             const char* getSuffix() const { return TL->getSuffix(Promote); }
             Value* getSinglePromotedValueIfExist(Value* OriginalValue);
             Type* getSinglePromotedTypeIfExist(Type* OriginalType);
+            std::pair<Value*, Type*> preparePromotedIntrinsicInst(IntrinsicInst& I);
 
         private:
             // By default, capture all missing instructions!

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -18,12 +18,12 @@
 define i1 @test_fcmp_ueq(float %a, float %b) {
 ; CHECK-LABEL: define i1 @test_fcmp_ueq(
 ; CHECK-SAME: float [[A:%.*]], float [[B:%.*]]) {
-; CHECK:    [[TMP1:%.*]] = fcmp une float [[A]], [[A]]
-; CHECK:    [[TMP2:%.*]] = fcmp une float [[B]], [[B]]
-; CHECK:    [[TMP3:%.*]] = or i1 [[TMP1]], [[TMP2]]
-; CHECK:    [[TMP4:%.*]] = fcmp oeq float [[A]], [[B]]
-; CHECK:    [[TMP5:%.*]] = or i1 [[TMP3]], [[TMP4]]
-; CHECK:    ret i1 [[TMP5]]
+; CHECK-DAG:    [[TMP1:%.*]] = fcmp une float [[A]], [[A]]
+; CHECK-DAG:    [[TMP2:%.*]] = fcmp une float [[B]], [[B]]
+; CHECK:        [[TMP3:%.*]] = or i1 [[TMP1]], [[TMP2]]
+; CHECK:        [[TMP4:%.*]] = fcmp oeq float [[A]], [[B]]
+; CHECK:        [[TMP5:%.*]] = or i1 [[TMP3]], [[TMP4]]
+; CHECK:        ret i1 [[TMP5]]
 ;
   %1 = fcmp ueq float %a, %b
   ret i1 %1
@@ -94,12 +94,12 @@ define i1 @test_fcmp_uno(float %a, float %b) {
 define i1 @test_fcmp_one(float %a, float %b) {
 ; CHECK-LABEL: define i1 @test_fcmp_one(
 ; CHECK-SAME: float [[A:%.*]], float [[B:%.*]]) {
-; CHECK:    [[TMP1:%.*]] = fcmp oeq float [[B]], [[B]]
-; CHECK:    [[TMP2:%.*]] = fcmp oeq float [[A]], [[A]]
-; CHECK:    [[TMP3:%.*]] = and i1 [[TMP2]], [[TMP1]]
-; CHECK:    [[TMP4:%.*]] = fcmp une float [[A]], [[B]]
-; CHECK:    [[TMP5:%.*]] = and i1 [[TMP3]], [[TMP4]]
-; CHECK:    ret i1 [[TMP5]]
+; CHECK-DAG:    [[TMP1:%.*]] = fcmp oeq float [[B]], [[B]]
+; CHECK-DAG:    [[TMP2:%.*]] = fcmp oeq float [[A]], [[A]]
+; CHECK:        [[TMP3:%.*]] = and i1 [[TMP2]], [[TMP1]]
+; CHECK:        [[TMP4:%.*]] = fcmp une float [[A]], [[B]]
+; CHECK:        [[TMP5:%.*]] = and i1 [[TMP3]], [[TMP4]]
+; CHECK:        ret i1 [[TMP5]]
 ;
   %1 = fcmp one float %a, %b
   ret i1 %1
@@ -109,10 +109,10 @@ define i1 @test_fcmp_one(float %a, float %b) {
 define i1 @test_fcmp_ord(float %a, float %b) {
 ; CHECK-LABEL: define i1 @test_fcmp_ord(
 ; CHECK-SAME: float [[A:%.*]], float [[B:%.*]]) {
-; CHECK:    [[TMP1:%.*]] = fcmp oeq float [[B]], [[B]]
-; CHECK:    [[TMP2:%.*]] = fcmp oeq float [[A]], [[A]]
-; CHECK:    [[TMP3:%.*]] = and i1 [[TMP2]], [[TMP1]]
-; CHECK:    ret i1 [[TMP3]]
+; CHECK-DAG:    [[TMP1:%.*]] = fcmp oeq float [[B]], [[B]]
+; CHECK-DAG:    [[TMP2:%.*]] = fcmp oeq float [[A]], [[A]]
+; CHECK:        [[TMP3:%.*]] = and i1 [[TMP2]], [[TMP1]]
+; CHECK:        ret i1 [[TMP3]]
 ;
   %1 = fcmp ord float %a, %b
   ret i1 %1
