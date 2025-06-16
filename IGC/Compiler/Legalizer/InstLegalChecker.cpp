@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/Debug.h"
+#include <llvm/IR/Intrinsics.h>
 #include "llvmWrapper/IR/Instructions.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
@@ -164,6 +165,10 @@ LegalizeAction InstLegalChecker::visitIntrinsicInst(IntrinsicInst& I) {
         // case Intrinsic::round:
         return TL->getTypeLegalizeAction(I.getType());
         // Intrinsics on integer are legal iff their result types are legal.
+    case Intrinsic::umax:
+    case Intrinsic::umin:
+    case Intrinsic::smax:
+    case Intrinsic::smin:
     case Intrinsic::bswap:
     case Intrinsic::ctpop:
     case Intrinsic::ctlz:
