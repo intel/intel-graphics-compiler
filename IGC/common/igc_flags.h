@@ -552,7 +552,7 @@ DECLARE_IGC_REGKEY(bool, VectorizerAllowEXP2, false, "Allow EXP2 instructions in
 DECLARE_IGC_REGKEY(bool, VectorizerAllowMAXNUM, false, "Allow MAXNUM instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFMADMatching, true, "Allow FADD and FMUL instructions to be matched later in the pattern match pass", true)
 DECLARE_IGC_REGKEY(bool, VectorizerUniformValueVectorizationEnabled, true, "Vector Emitter emits vectorized instruction for uniform values", true)
-DECLARE_IGC_REGKEY(bool, VectorizerEnablePartialVectorization, false, "Not fully tested option, allows to substitute scalar part with partially vectorized through extract elements", true)
+DECLARE_IGC_REGKEY(bool, VectorizerEnablePartialVectorization, true, "Not fully tested option, allows to substitute scalar part with partially vectorized through extract elements", true)
 DECLARE_IGC_REGKEY(bool, DisableOCLScalarizer,          false, "Disable ScalarizeFunction pass in OCL pipeline", true)
 DECLARE_IGC_REGKEY(bool, DisablePHIScalarization,       false, "Disable scalarization of PHINode instructions", true)
 DECLARE_IGC_REGKEY(bool, EnableSelectiveScalarizer,     false,  "enable selective scalarizer on GPGPU path", true)

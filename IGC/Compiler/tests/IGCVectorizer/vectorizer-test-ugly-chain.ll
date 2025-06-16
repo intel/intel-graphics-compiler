@@ -1,4 +1,5 @@
-; RUN: igc_opt -S  --igc-vectorizer -dce < %s 2>&1 | FileCheck %s
+; REQUIRES: pvc-supported, regkeys
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerEnablePartialVectorization=0 < %s 2>&1 | FileCheck %s
 
 ; CHECK: %vectorized_phi
 ; CHECK: %vector = insertelement <8 x float> undef
