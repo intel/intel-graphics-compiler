@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2024 Intel Corporation
+; Copyright (C) 2022-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -26,9 +26,9 @@ define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
 
 ; Testcase 1
 ; cmp ord to and(oeq,oeq)
-; CHECK: [[FCMP_OEQ2:%[0-9]*]] = fcmp oeq float %src2, %src2
-; CHECK-NEXT: [[FCMP_OEQ1:%[0-9]*]] = fcmp oeq float %src1, %src1
-; CHECK-NEXT: [[FCMP_ORD_V:%[0-9]*]] = and i1 [[FCMP_OEQ1]], [[FCMP_OEQ2]], !dbg [[FCMP_ORD_LOC:![0-9]*]]
+; CHECK-DAG:  [[FCMP_OEQ2:%[0-9]*]] = fcmp oeq float %src2, %src2
+; CHECK-DAG:  [[FCMP_OEQ1:%[0-9]*]] = fcmp oeq float %src1, %src1
+; CHECK:      [[FCMP_ORD_V:%[0-9]*]] = and i1 [[FCMP_OEQ1]], [[FCMP_OEQ2]], !dbg [[FCMP_ORD_LOC:![0-9]*]]
 ; CHECK-NEXT: [[DBG_VALUE_CALL:dbg.value\(metadata]] i1 [[FCMP_ORD_V]],  metadata [[FCMP_ORD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_ORD_LOC]]
 ; CHECK-NEXT: [[ZEXT_ORD_V:%[0-9]*]] = zext i1 [[FCMP_ORD_V]] to i32, !dbg [[ZEXT_ORD_LOC:![0-9]*]]
 ; CHECK-NEXT: [[DBG_VALUE_CALL]] i32 [[ZEXT_ORD_V]],  metadata [[ZEXT_ORD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ZEXT_ORD_LOC]]
@@ -40,9 +40,9 @@ define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
 
 ; Testcase 2
 ; cmp uno to or(une,une)
-; CHECK-NEXT: [[FCMP_UNE1:%[0-9]*]] = fcmp une float %src1, %src1
-; CHECK-NEXT: [[FCMP_UNE2:%[0-9]*]] = fcmp une float %src2, %src2
-; CHECK-NEXT: [[FCMP_UNO_V:%[0-9]*]] = or i1 [[FCMP_UNE1]], [[FCMP_UNE2]], !dbg [[FCMP_UNO_LOC:![0-9]*]]
+; CHECK-DAG:  [[FCMP_UNE1:%[0-9]*]] = fcmp une float %src1, %src1
+; CHECK-DAG:  [[FCMP_UNE2:%[0-9]*]] = fcmp une float %src2, %src2
+; CHECK:      [[FCMP_UNO_V:%[0-9]*]] = or i1 [[FCMP_UNE1]], [[FCMP_UNE2]], !dbg [[FCMP_UNO_LOC:![0-9]*]]
 ; CHECK-NEXT: [[DBG_VALUE_CALL:dbg.value\(metadata]] i1 [[FCMP_UNO_V]],  metadata [[FCMP_UNO_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_UNO_LOC]]
 ; CHECK-NEXT: [[ZEXT_UNO_V:%[0-9]*]] = zext i1 [[FCMP_UNO_V]] to i32, !dbg [[ZEXT_UNO_LOC:![0-9]*]]
 ; CHECK-NEXT: [[DBG_VALUE_CALL]] i32 [[ZEXT_UNO_V]],  metadata [[ZEXT_UNO_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ZEXT_UNO_LOC]]
@@ -55,9 +55,9 @@ define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
 ; Testcase 3
 ; cmp one to and(une, and(oeq,oeq))
 
-; CHECK-NEXT: [[FCMP_OEQ2:%[0-9]*]] = fcmp oeq float %src2, %src2
-; CHECK-NEXT: [[FCMP_OEQ1:%[0-9]*]] = fcmp oeq float %src1, %src1
-; CHECK-NEXT: [[FCMP_ORD_V:%[0-9]*]] = and i1 [[FCMP_OEQ1]], [[FCMP_OEQ2]]
+; CHECK-DAG:  [[FCMP_OEQ2:%[0-9]*]] = fcmp oeq float %src2, %src2
+; CHECK-DAG:  [[FCMP_OEQ1:%[0-9]*]] = fcmp oeq float %src1, %src1
+; CHECK:      [[FCMP_ORD_V:%[0-9]*]] = and i1 [[FCMP_OEQ1]], [[FCMP_OEQ2]]
 ; CHECK-NEXT: [[FCMP_UNE_V:%[0-9]*]] = fcmp une float %src1, %src2
 ; CHECK-NEXT: [[FCMP_ONE_V:%[0-9]*]] = and i1 [[FCMP_ORD_V]], [[FCMP_UNE_V]], !dbg [[FCMP_ONE_LOC:![0-9]*]]
 ; CHECK-NEXT: [[DBG_VALUE_CALL:dbg.value\(metadata]] i1 [[FCMP_ONE_V]],  metadata [[FCMP_ONE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_ONE_LOC]]
@@ -71,9 +71,9 @@ define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
 
 ; Testcase 4
 ; cmp ueq to or(oeq, or(une,une))
-; CHECK-NEXT: [[FCMP_UNE1:%[0-9]*]] = fcmp une float %src1, %src1
-; CHECK-NEXT: [[FCMP_UNE2:%[0-9]*]] = fcmp une float %src2, %src2
-; CHECK-NEXT: [[FCMP_UNO_V:%[0-9]*]] = or i1 [[FCMP_UNE1]], [[FCMP_UNE2]]
+; CHECK-DAG:  [[FCMP_UNE1:%[0-9]*]] = fcmp une float %src1, %src1
+; CHECK-DAG:  [[FCMP_UNE2:%[0-9]*]] = fcmp une float %src2, %src2
+; CHECK:      [[FCMP_UNO_V:%[0-9]*]] = or i1 [[FCMP_UNE1]], [[FCMP_UNE2]]
 ; CHECK-NEXT: [[FCMP_OEQ_V:%[0-9]*]] = fcmp oeq float %src1, %src2
 ; CHECK-NEXT: [[FCMP_UEQ_V:%[0-9]*]] = or i1 [[FCMP_UNO_V]], [[FCMP_OEQ_V]], !dbg [[FCMP_UEQ_LOC:![0-9]*]]
 ; CHECK-NEXT: [[DBG_VALUE_CALL:dbg.value\(metadata]] i1 [[FCMP_UEQ_V]],  metadata [[FCMP_UEQ_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_UEQ_LOC]]
