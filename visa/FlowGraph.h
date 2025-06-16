@@ -288,6 +288,8 @@ public:
   G4_Declare *stackPtrDcl;
   G4_Declare *scratchRegDcl;
   G4_Declare *pseudoVCEDcl;
+  // When this is true, we reserve physical register assigned to SR.
+  bool reserveSR = false;
 
   // pseudo declares used by RA to model the save/restore variables at each call
   // site

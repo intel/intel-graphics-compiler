@@ -2059,6 +2059,7 @@ public:
   void verifySpillFill();
   void resetGlobalRAStates();
   bool canSkipFDE() const;
+  void initSRAsScratch() const;
 
   void insertPhyRegDecls();
 

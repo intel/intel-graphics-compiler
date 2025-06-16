@@ -3657,6 +3657,8 @@ void FlowGraph::addFrameSetupDeclares(IR_Builder &builder,
         "SR", G4_GRF, builder.numEltPerGRF<Type_UD>(), 1, Type_UD);
     scratchRegDcl->getRegVar()->setPhyReg(
         regPool.getGreg(getKernel()->stackCall.getSpillHeaderGRF()), 0);
+    // Note that scratch reg dcl assignment could change later in code based on
+    // platform/config (eg, stackcall).
   }
 }
 

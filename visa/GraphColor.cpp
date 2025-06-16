@@ -9093,6 +9093,13 @@ void ForbiddenRegs::generateReservedGRFForbidden(
   for (unsigned int i = 0; i < reservedGRFNum; i++) {
     forbiddenVec[index].set(largestNoneReservedReg - i, true);
   }
+
+  auto &fg = builder.kernel.fg;
+  if (fg.reserveSR) {
+    forbiddenVec[index].set(
+        fg.scratchRegDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum(),
+        true);
+  }
 }
 
 // ETO use only last 16 registers
@@ -10965,6 +10972,27 @@ void GlobalRA::createVariablesForHybridRAWithSpill() {
                                                  0);
 }
 
+void GlobalRA::initSRAsScratch() const {
+  // Verify old scratch dcl assignment before changing it
+  vISA_ASSERT(kernel.fg.scratchRegDcl->getRegVar()
+                      ->getPhyReg()
+                      ->asGreg()
+                      ->getRegNum() == kernel.stackCall.getSpillHeaderGRF(),
+              "unexpected assignment");
+  vISA_ASSERT(kernel.stackCall.getSpillHeaderGRF() ==
+                  kernel.stackCall.getFPSPGRF(),
+              "expecting same GRF");
+  // Use last caller save GRF for spill/fill addr computation. Since this
+  // address is used as LSC header, we must use 0th sub-reg of reserved
+  // GRF.
+  kernel.fg.scratchRegDcl->getRegVar()->setPhyReg(
+      regPool.getGreg(kernel.stackCall.getCallerSaveLastGRF()), 0);
+
+  // Mark SR assignment as reserved so other variables don't try to
+  // use it.
+  kernel.fg.reserveSR = true;
+}
+
 void GlobalRA::stackCallSaveRestore(bool hasStackCall) {
   //
   // If the graph has stack calls, then add the caller-save/callee-save pseudo
@@ -10988,6 +11016,7 @@ void GlobalRA::stackCallSaveRestore(bool hasStackCall) {
       builder.getBuiltinR0()->getRegVar()->setPhyReg(
           builder.phyregpool.getGreg(kernel.stackCall.getThreadHeaderGRF()), 0);
     }
+
   }
 }
 
