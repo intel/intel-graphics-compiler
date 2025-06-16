@@ -395,6 +395,14 @@ void InitGt_30_01HwWaTable(
        PWA_TABLE                       pWaTable,
        PSKU_FEATURE_TABLE              pSkuTable,
        PWA_INIT_PARAM                  pWaParam);
+void InitGt_30_03HwWaTable(
+       PWA_TABLE                       pWaTable,
+       PSKU_FEATURE_TABLE              pSkuTable,
+       PWA_INIT_PARAM                  pWaParam);
+void InitGt_30_00_SwWaTable(
+       PWA_TABLE                       pWaTable,
+       PSKU_FEATURE_TABLE              pSkuTable,
+       PWA_INIT_PARAM                  pWaParam);
 #ifdef __cplusplus
 }
 #endif

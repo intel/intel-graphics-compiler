@@ -220,10 +220,15 @@ namespace IGC
                 case GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3001:
                     InitGt_30_01HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
                     break;
+                case GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3003:
+                    InitGt_30_03HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+                    break;
                 default:
                     IGC_ASSERT_MESSAGE(0, "unknown IP");
                     break;
                 }
+                stWaInitParam.usWaIpShift = WA_BIT_GT;
+                InitGt_30_00_SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
                 break;
             }
             default:

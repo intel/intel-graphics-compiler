@@ -159,6 +159,7 @@ typedef struct GFX_GMD_ID_DEF
 
 #define GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3000             (0)
 #define GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3001             (1)
+#define GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3003             (3)
 
 #define GFX_GET_GMD_RELEASE_VERSION_RENDER(p)             ((p).sRenderBlockID.GmdID.GMDRelease)
 #define GFX_GET_GMD_RELEASE_VERSION_DISPLAY(p)            ((p).sDisplayBlockID.GmdID.GMDRelease)
@@ -773,6 +774,10 @@ typedef enum __NATIVEGTTYPE
 #define DEV_ID_B090                             0xB090
 #define DEV_ID_B0A0                             0xB0A0
 #define DEV_ID_B0B0                             0xB0B0
+
+// WCL
+#define DEV_ID_FD80                             0xFD80
+#define DEV_ID_FD81                             0xFD81
 
 #define GFX_IS_DG2_G11_CONFIG(d) ( ( d == DEV_ID_56A5 )             ||   \
                                  ( d == DEV_ID_56A6 )             ||   \
