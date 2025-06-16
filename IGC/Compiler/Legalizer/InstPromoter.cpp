@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/Transforms/Utils/Local.h"
+#include <llvm/IR/Intrinsics.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -666,31 +667,53 @@ bool InstPromoter::visitGenIntrinsicInst(GenIntrinsicInst& I) {
     return false;
 }
 
+std::pair<Value*, Type*>
+InstPromoter::preparePromotedIntrinsicInst(IntrinsicInst& I)
+{
+    SmallVector<Value*, 2> PromotedArgs;
+    // -1 because we want to avoid the last operand which is intrinsic declaration
+    for (unsigned i = 0; i < I.getNumOperands() - 1; i++) {
+        auto [ValSeq, ValAct] = TL->getLegalizedValues(I.getOperand(i));
+        Value* Val = I.getOperand(i);
+        if (ValAct != Legal)
+            Val = ValSeq->front();
+        PromotedArgs.push_back(Val);
+    }
+
+    auto [TySeq, Act] = TL->getLegalizedTypes(I.getType());
+    IGC_ASSERT(Act == Promote);
+    IGC_ASSERT(TySeq->size() == 1);
+    Type* PromotedTy = TySeq->front();
+
+
+    unsigned PromotedBitWidth = cast<IntegerType>(PromotedTy->getScalarType())->getBitWidth();
+    for(Value* Val : PromotedArgs) {
+        unsigned ValBitWidth = cast<IntegerType>(Val->getType()->getScalarType())->getBitWidth();
+        IGC_ASSERT(PromotedBitWidth == ValBitWidth);
+    }
+
+    Function* Func = Intrinsic::getDeclaration(I.getModule(), I.getIntrinsicID(), PromotedTy);
+    return {IRB->CreateCall(Func, PromotedArgs), PromotedTy};
+}
+
+
 bool InstPromoter::visitLLVMIntrinsicInst(IntrinsicInst& I) {
     switch (I.getIntrinsicID()) {
     case Intrinsic::bitreverse: {
-        auto [ValSeq, ValAct] = TL->getLegalizedValues(I.getOperand(0));
-
-        Value* Val = I.getOperand(0);
-        if (ValAct != Legal)
-            Val = ValSeq->front();
-
-        auto [TySeq, Act] = TL->getLegalizedTypes(I.getType());
-        IGC_ASSERT(Act == Promote);
-        IGC_ASSERT(TySeq->size() == 1);
-        Type* PromotedTy = TySeq->front();
+        auto [Call, PromotedTy] = preparePromotedIntrinsicInst(I);
         unsigned PromotedBitWidth = cast<IntegerType>(PromotedTy->getScalarType())->getBitWidth();
-        unsigned ValBitWidth = cast<IntegerType>(Val->getType()->getScalarType())->getBitWidth();
-        IGC_ASSERT(PromotedBitWidth == ValBitWidth);
-
-        Function* Func = Intrinsic::getDeclaration(I.getModule(), I.getIntrinsicID(), PromotedTy);
-        Value* Call = IRB->CreateCall(Func, Val);
         unsigned shift = PromotedBitWidth
             - cast<IntegerType>(I.getType()->getScalarType())->getBitWidth();
         IGC_ASSERT(shift > 0);
         Promoted = IRB->CreateLShr(Call, shift);
+        break;
     }
-    break;
+    case Intrinsic::smin:
+    case Intrinsic::smax:
+    case Intrinsic::umin:
+    case Intrinsic::umax:
+        Promoted = preparePromotedIntrinsicInst(I).first;
+        break;
     default:
         IGC_ASSERT_EXIT_MESSAGE(0, "UNKNOWN INSTRINSIC INSTRUCTION IS BEING PROMOTED!");
     }

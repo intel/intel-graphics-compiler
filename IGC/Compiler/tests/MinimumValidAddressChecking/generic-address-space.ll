@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -31,9 +31,9 @@ define spir_kernel void @kernel(ptr addrspace(1) %input) nounwind {
 ; CHECK-NEXT:     [[IS_GENERIC_GLOBAL:%[0-9]+]] = or i1 [[IS_ADDRESS_SPACE_TAG_0]], [[IS_ADDRESS_SPACE_TAG_7]]
 ; CHECK-NEXT:     [[CLEARING_TAG_TMP:%[0-9]+]] = shl i64 [[ADDRESS]], 4
 ; CHECK-NEXT:     [[ADDRESS_WITHOUT_ADDRESS_SPACE_TAG:%[0-9]+]] = ashr i64 [[CLEARING_TAG_TMP]], 4
-; CHECK-NEXT:     [[IS_ADDRESS_IN_VALID_REGION:%[0-9]+]] = icmp uge i64 [[ADDRESS_WITHOUT_ADDRESS_SPACE_TAG]], {{[0-9]+}}
-; CHECK-NEXT:     [[IS_NOT_GENERIC_GLOBAL:%[0-9]+]] = xor i1 [[IS_GENERIC_GLOBAL]], true
-; CHECK-NEXT:     [[IS_VALID_ADDRESS:%[0-9]+]] = or i1 [[IS_NOT_GENERIC_GLOBAL]], [[IS_ADDRESS_IN_VALID_REGION]]
+; CHECK-DAG:      [[IS_ADDRESS_IN_VALID_REGION:%[0-9]+]] = icmp uge i64 [[ADDRESS_WITHOUT_ADDRESS_SPACE_TAG]], {{[0-9]+}}
+; CHECK-DAG:      [[IS_NOT_GENERIC_GLOBAL:%[0-9]+]] = xor i1 [[IS_GENERIC_GLOBAL]], true
+; CHECK:          [[IS_VALID_ADDRESS:%[0-9]+]] = or i1 [[IS_NOT_GENERIC_GLOBAL]], [[IS_ADDRESS_IN_VALID_REGION]]
 ; CHECK-NEXT:     br i1 [[IS_VALID_ADDRESS]], label %minimumvalidaddresschecking.valid, label %minimumvalidaddresschecking.invalid
 
 ; CHECK:        minimumvalidaddresschecking.valid:
