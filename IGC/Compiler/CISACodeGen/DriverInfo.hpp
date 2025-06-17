@@ -294,7 +294,7 @@ namespace IGC
         virtual bool SupportsDispatchGPGPUWalkerAlongYFirst() const { return true; }
 
         /// Check if integer mad is enabled
-        virtual bool EnableIntegerMad() const { return false; }
+        virtual bool EnableIntegerMad() const { return true; }
 
         /// Respect per instruction 'contract' Fast-Math flag
         virtual bool RespectPerInstructionContractFlag() const { return false; }

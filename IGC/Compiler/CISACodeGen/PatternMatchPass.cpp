@@ -2367,219 +2367,209 @@ namespace IGC
         return true;
     }
 
-    bool CodeGenPatternMatch::MatchMad(llvm::BinaryOperator& I)
-    {
-        struct MadPattern : Pattern
-        {
-            SSource sources[3];
-            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
-            {
-                if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
-                        sources[0].value->getType()->isVectorTy() &&
-                        sources[1].value->getType()->isVectorTy() &&
-                        sources[2].value->getType()->isVectorTy())
-                    pass->VectorMad(sources, modifier);
-                else
-                    pass->Mad(sources, modifier);
+    bool CodeGenPatternMatch::MatchMad(llvm::BinaryOperator &I) {
+      struct MadPattern : Pattern {
+        SSource sources[3];
+        virtual void Emit(EmitPass *pass, const DstModifier &modifier) {
+          if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
+              sources[0].value->getType()->isVectorTy() &&
+              sources[1].value->getType()->isVectorTy() &&
+              sources[2].value->getType()->isVectorTy())
+            pass->VectorMad(sources, modifier);
+          else
+            pass->Mad(sources, modifier);
+        }
+      };
+
+      auto isFpMad = [](const Instruction &I) {
+        auto vecType = llvm::dyn_cast<FixedVectorType>(I.getType());
+        if (!vecType)
+          return I.getType()->isFloatingPointTy();
+
+        bool isFPType = vecType->getElementType()->isFloatingPointTy() &&
+                        IGC_IS_FLAG_ENABLED(VectorizerAllowFMADMatching);
+        return isFPType;
+      };
+
+      if (isFpMad(I) &&
+          (m_ctx->getModuleMetaData()->isPrecise ||
+           m_ctx->getModuleMetaData()->compOpt.disableMathRefactoring)) {
+        return false;
+      }
+      if (m_ctx->type == ShaderType::VERTEX_SHADER &&
+          m_ctx->m_DriverInfo.DisabeMatchMad()) {
+        return false;
+      }
+
+      if (bool allow =
+              m_ctx->getModuleMetaData()->allowMatchMadOptimizationforVS ||
+              IGC_IS_FLAG_ENABLED(WaAllowMatchMadOptimizationforVS);
+          m_ctx->type == ShaderType::VERTEX_SHADER &&
+          m_ctx->m_DriverInfo.PreventZFighting() && !allow) {
+        if (m_PosDep->PositionDependsOnInst(&I)) {
+          return false;
+        }
+      }
+
+      if (m_ctx->type == ShaderType::COMPUTE_SHADER &&
+          m_ctx->getModuleMetaData()->disableMatchMadOptimizationForCS) {
+        return false;
+      }
+
+      if (IGC_IS_FLAG_ENABLED(DisableMatchMad)) {
+        return false;
+      }
+
+      bool isFpMadWithContractionOverride = false;
+      if (isFpMad(I) && m_AllowContractions == false) {
+        if (I.hasAllowContract() &&
+            m_ctx->m_DriverInfo.RespectPerInstructionContractFlag()) {
+          isFpMadWithContractionOverride = true;
+        } else {
+          return false;
+        }
+      }
+      if (!isFpMad(I) && !(m_Platform.doIntegerMad() &&
+                           m_ctx->m_DriverInfo.EnableIntegerMad())) {
+        return false;
+      }
+
+      bool found = false;
+      llvm::Value *sources[3];
+      e_modifier src_mod[3];
+
+      IGC_ASSERT(I.getOpcode() == Instruction::FAdd ||
+                 I.getOpcode() == Instruction::FSub ||
+                 I.getOpcode() == Instruction::Add ||
+                 I.getOpcode() == Instruction::Sub);
+      if (I.getOperand(0) != I.getOperand(1)) {
+        for (uint i = 0; i < 2; i++) {
+          Value *src = SkipCanonicalize(I.getOperand(i));
+          if (FPExtInst *fpextInst = llvm::dyn_cast<llvm::FPExtInst>(src)) {
+            if (!m_Platform.supportMixMode() &&
+                fpextInst->getSrcTy()->getTypeID() == llvm::Type::HalfTyID) {
+              // no mix mode instructions
+            } else if (fpextInst->getSrcTy()->getTypeID() !=
+                           llvm::Type::DoubleTyID &&
+                       fpextInst->getDestTy()->getTypeID() !=
+                           llvm::Type::DoubleTyID) {
+              src = fpextInst->getOperand(0);
             }
+          }
+          llvm::BinaryOperator *mul = llvm::dyn_cast<llvm::BinaryOperator>(src);
+
+          if (mul && (mul->getOpcode() == Instruction::FMul ||
+                      mul->getOpcode() == Instruction::Mul)) {
+            // in case we know we won't be able to remove the mul we don't merge
+            // it
+            if (!m_PosDep->PositionDependsOnInst(mul) && NeedInstruction(*mul))
+              continue;
+
+            if (isFpMadWithContractionOverride && !mul->hasAllowContract())
+              continue;
+
+            sources[2] = SkipCanonicalize(I.getOperand(1 - i));
+            sources[1] = SkipCanonicalize(mul->getOperand(0));
+            sources[0] = SkipCanonicalize(mul->getOperand(1));
+
+            GetModifier(*sources[0], src_mod[0], sources[0]);
+            GetModifier(*sources[1], src_mod[1], sources[1]);
+            GetModifier(*sources[2], src_mod[2], sources[2]);
+
+            sources[0] = SkipCanonicalize(sources[0]);
+            sources[1] = SkipCanonicalize(sources[1]);
+            sources[2] = SkipCanonicalize(sources[2]);
+            if (I.getOpcode() == Instruction::FSub ||
+                I.getOpcode() == Instruction::Sub) {
+              if (i == 0) {
+                src_mod[2] = CombineModifier(EMOD_NEG, src_mod[2]);
+              } else {
+                if (llvm::isa<llvm::Constant>(sources[0])) {
+                  src_mod[1] = CombineModifier(EMOD_NEG, src_mod[1]);
+                } else {
+                  src_mod[0] = CombineModifier(EMOD_NEG, src_mod[0]);
+                }
+              }
+            }
+            found = true;
+            break;
+          }
+        }
+      }
+
+      // Check integer mad profitability.
+      if (found && !isFpMad(I)) {
+        // Multiplicants not allowed to both be constant, but this shouldn't
+        // be the case at this point, constants should have been folded by now
+        if (isa<ConstantInt>(sources[0]) && isa<ConstantInt>(sources[1])) {
+          return false;
+        }
+
+        auto isConstant16BitInt = [](ConstantInt *C) {
+          // only 16-bit int immediate is supported
+          return C->getValue().isNegative() ? C->getValue().sge(SHRT_MIN)
+                                            : C->getValue().ule(USHRT_MAX);
         };
 
-        auto isFpMad = [](const Instruction& I)
-        {
-            auto vecType = llvm::dyn_cast<FixedVectorType>(I.getType());
-            if (!vecType) return I.getType()->isFloatingPointTy();
+        // Mad instruction not profitable if add operand and one multiplicant
+        // are immediates and both >16-bits
+        // Will generate 2 extra mov instructions to mov constants to registers
+        // Just do mul + add separately, since add can potentially be optimized
+        // to add3
+        if ((isa<ConstantInt>(sources[0]) || isa<ConstantInt>(sources[1])) &&
+            isa<ConstantInt>(sources[2])) {
+          auto *C0 = isa<ConstantInt>(sources[0])
+                         ? cast<ConstantInt>(sources[0])
+                         : cast<ConstantInt>(sources[1]);
+          if (!isConstant16BitInt(C0) &&
+              !isConstant16BitInt(cast<ConstantInt>(sources[2]))) {
+            return false;
+          }
+        }
 
-            bool isFPType = vecType->getElementType()->isFloatingPointTy() &&
-                IGC_IS_FLAG_ENABLED(VectorizerAllowFMADMatching);
-            return isFPType;
+        auto isQWordValue = [](Value *V) {
+          while (isa<ZExtInst>(V) || isa<SExtInst>(V) || isa<BitCastInst>(V))
+            V = cast<Instruction>(V)->getOperand(0);
+          Type *T = V->getType();
+          return (T->isIntegerTy() && T->getScalarSizeInBits() == 64);
         };
 
+        // Mad instruction doesn't support QW type
+        if (isQWordValue(sources[0]) || isQWordValue(sources[1]))
+          return false;
+      }
 
-        if (isFpMad(I) && (m_ctx->getModuleMetaData()->isPrecise || m_ctx->getModuleMetaData()->compOpt.disableMathRefactoring))
-        {
-            return false;
-        }
-        if (m_ctx->type == ShaderType::VERTEX_SHADER &&
-            m_ctx->m_DriverInfo.DisabeMatchMad())
-        {
-            return false;
-        }
-
-        if (bool allow = m_ctx->getModuleMetaData()->allowMatchMadOptimizationforVS ||
-                         IGC_IS_FLAG_ENABLED(WaAllowMatchMadOptimizationforVS);
-            m_ctx->type == ShaderType::VERTEX_SHADER &&
-                           m_ctx->m_DriverInfo.PreventZFighting() && !allow)
-        {
-            if (m_PosDep->PositionDependsOnInst(&I))
-            {
-                return false;
-            }
-        }
-
-        if (m_ctx->type == ShaderType::COMPUTE_SHADER &&
-                           m_ctx->getModuleMetaData()->disableMatchMadOptimizationForCS)
-        {
-            return false;
-        }
-
-        if (IGC_IS_FLAG_ENABLED(DisableMatchMad))
-        {
-            return false;
-        }
-
-        bool isFpMadWithContractionOverride = false;
-        if (isFpMad(I) && m_AllowContractions == false)
-        {
-            if (I.hasAllowContract() && m_ctx->m_DriverInfo.RespectPerInstructionContractFlag())
-            {
-                isFpMadWithContractionOverride = true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-        if (!isFpMad(I) && !(m_Platform.doIntegerMad() && m_ctx->m_DriverInfo.EnableIntegerMad()))
-        {
-            return false;
-        }
-
-        bool found = false;
-        llvm::Value* sources[3];
-        e_modifier src_mod[3];
-
-        IGC_ASSERT(I.getOpcode() == Instruction::FAdd ||
-            I.getOpcode() == Instruction::FSub ||
-            I.getOpcode() == Instruction::Add ||
-            I.getOpcode() == Instruction::Sub);
-        if (I.getOperand(0) != I.getOperand(1))
-        {
-            for (uint i = 0; i < 2; i++)
-            {
-                Value* src = SkipCanonicalize(I.getOperand(i));
-                if (FPExtInst * fpextInst = llvm::dyn_cast<llvm::FPExtInst>(src))
-                {
-                    if (!m_Platform.supportMixMode() && fpextInst->getSrcTy()->getTypeID() == llvm::Type::HalfTyID)
-                    {
-                        // no mix mode instructions
-                    }
-                    else if (fpextInst->getSrcTy()->getTypeID() != llvm::Type::DoubleTyID &&
-                        fpextInst->getDestTy()->getTypeID() != llvm::Type::DoubleTyID)
-                    {
-                        src = fpextInst->getOperand(0);
-                    }
-                }
-                llvm::BinaryOperator* mul = llvm::dyn_cast<llvm::BinaryOperator>(src);
-
-                if (mul && (mul->getOpcode() == Instruction::FMul ||
-                    mul->getOpcode() == Instruction::Mul))
-                {
-                    // in case we know we won't be able to remove the mul we don't merge it
-                    if (!m_PosDep->PositionDependsOnInst(mul) && NeedInstruction(*mul))
-                        continue;
-
-                    if (isFpMadWithContractionOverride && !mul->hasAllowContract())
-                        continue;
-
-                    sources[2] = SkipCanonicalize(I.getOperand(1 - i));
-                    sources[1] = SkipCanonicalize(mul->getOperand(0));
-                    sources[0] = SkipCanonicalize(mul->getOperand(1));
-
-                    GetModifier(*sources[0], src_mod[0], sources[0]);
-                    GetModifier(*sources[1], src_mod[1], sources[1]);
-                    GetModifier(*sources[2], src_mod[2], sources[2]);
-
-                    sources[0] = SkipCanonicalize(sources[0]);
-                    sources[1] = SkipCanonicalize(sources[1]);
-                    sources[2] = SkipCanonicalize(sources[2]);
-                    if (I.getOpcode() == Instruction::FSub ||
-                        I.getOpcode() == Instruction::Sub)
-                    {
-                        if (i == 0)
-                        {
-                            src_mod[2] = CombineModifier(EMOD_NEG, src_mod[2]);
-                        }
-                        else
-                        {
-                            if (llvm::isa<llvm::Constant>(sources[0]))
-                            {
-                                src_mod[1] = CombineModifier(EMOD_NEG, src_mod[1]);
-                            }
-                            else
-                            {
-                                src_mod[0] = CombineModifier(EMOD_NEG, src_mod[0]);
-                            }
-                        }
-                    }
-                    found = true;
-                    break;
-                }
-            }
-        }
-
-        // Check integer mad profitability.
-        if (found && !isFpMad(I))
-        {
-            uint8_t numConstant = 0;
-            for (int i = 0; i < 3; i++)
-            {
-                if (isa<Constant>(sources[i]))
-                    numConstant++;
-
-                // Only one immediate is supported
-                if (numConstant > 1)
-                    return false;
-            }
-
-            auto isByteOrWordValue = [](Value* V) {
-                if (isa<ConstantInt>(V))
-                {
-                    // only 16-bit int immediate is supported
-                    APInt val = cast<ConstantInt>(V)->getValue();
-                    return val.sge(SHRT_MIN) && val.sle(SHRT_MAX);
-                }
-                // Trace the def-use chain and return the first non up-cast related value.
-                while (isa<ZExtInst>(V) || isa<SExtInst>(V) || isa<BitCastInst>(V))
-                    V = cast<Instruction>(V)->getOperand(0);
-                const unsigned DWordSizeInBits = 32;
-                return V->getType()->getScalarSizeInBits() < DWordSizeInBits;
+      if (found) {
+        MadPattern *pattern = new (m_allocator) MadPattern();
+        for (int i = 0; i < 3; i++) {
+          pattern->sources[i] =
+              GetSource(sources[i], src_mod[i], false, IsSourceOfSample(&I));
+          if (auto *c = dyn_cast<Constant>(sources[i])) {
+            auto isConstant16BitInt = [](Constant *C) {
+              // only 16-bit int immediate is supported in mad, otherwise need
+              // to use constant pool
+              if (auto *ci = dyn_cast<ConstantInt>(C)) {
+                return ci->getValue().isNegative()
+                           ? ci->getValue().sge(SHRT_MIN)
+                           : ci->getValue().ule(USHRT_MAX);
+              }
+              return false;
             };
-
-            // One multiplicant should be *W or *B.
-            if (!isByteOrWordValue(sources[0]) && !isByteOrWordValue(sources[1])
-                    )
-                return false;
-
-            auto isQWordValue = [](Value* V) {
-                while (isa<ZExtInst>(V) || isa<SExtInst>(V) || isa<BitCastInst>(V))
-                    V = cast<Instruction>(V)->getOperand(0);
-                Type* T = V->getType();
-                return (T->isIntegerTy() && T->getScalarSizeInBits() == 64);
-            };
-
-            // Mad instruction doesn't support QW type
-            if (isQWordValue(sources[0]) || isQWordValue(sources[1]))
-                return false;
-        }
-
-        if (found)
-        {
-            MadPattern* pattern = new (m_allocator) MadPattern();
-            for (int i = 0; i < 3; i++)
-            {
-                pattern->sources[i] = GetSource(sources[i], src_mod[i], false, IsSourceOfSample(&I));
-                if (isa<Constant>(sources[i]) &&
-                    (!m_Platform.support16BitImmSrcForMad() ||
-                    (!sources[i]->getType()->isHalfTy() && !sources[i]->getType()->isIntegerTy()) || i == 1))
-                {
-                    //CNL+ mad instruction allows 16 bit immediate for src0 and src2
-                    AddToConstantPool(I.getParent(), sources[i]);
-                    pattern->sources[i].fromConstantPool = true;
-                }
+            if (!m_Platform.support16BitImmSrcForMad() ||
+                (!c->getType()->isHalfTy() && !c->getType()->isBFloatTy() &&
+                 !isConstant16BitInt(c)) ||
+                i == 1) {
+              // CNL+ mad instruction allows 16 bit immediate for src0 and
+              // src2 - src0 is second operand of LLVM mul inst, constant
+              // should have been assigned to src0
+              AddToConstantPool(I.getParent(), sources[i]);
+              pattern->sources[i].fromConstantPool = true;
             }
-            AddPattern(pattern);
+          }
         }
-        return found;
+        AddPattern(pattern);
+      }
+      return found;
     }
 
     // match simdblockRead/Write with preceding inttoptr if possible
