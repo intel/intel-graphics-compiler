@@ -381,8 +381,9 @@ namespace IGC
         virtual unsigned getCSSIMD32_SpillThreshold() const { return IGC_GET_FLAG_VALUE(CSSIMD32_SpillThreshold); }
 
         virtual bool supportLscSamplerRouting() const { return true; }
-        virtual bool supportBarrierControlFlowOptimization() const { return false; }
-        virtual bool getLscStoresWithNonDefaultL1CacheControls() const { return true; }
+        virtual bool supportBarrierControlFlowOptimization() const {
+          return false;
+        }
 
         // Informs if the UMD understands atomic pull tile walk for raytracing
         virtual bool supportsAtomicPullSWTileWalk() const { return false; }
