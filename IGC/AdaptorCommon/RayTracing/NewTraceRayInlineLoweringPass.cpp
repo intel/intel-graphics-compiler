@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "IGC/common/StringMacros.hpp"
@@ -26,1029 +25,999 @@ SPDX-License-Identifier: MIT
 using namespace IGC;
 using namespace llvm;
 
-void InlineRaytracing::getAdditionalAnalysisUsage(AnalysisUsage& AU) const
-{
-    AU.addRequired<CodeGenContextWrapper>();
+void InlineRaytracing::getAdditionalAnalysisUsage(AnalysisUsage &AU) const {
+  AU.addRequired<CodeGenContextWrapper>();
 }
 
-bool InlineRaytracing::LowerAllocations(Function& F)
-{
-    RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
-    StringRef name = "RQObjectType";
-    /*
-    * struct RQObjectType
-    * {
-    *     void* addrspace(2) globalBufferPtr;
-    *     uint32_t rayQueryPackedData;
-    *     uint32_t rayFlags; // we know these at compile time, so technically no reason to waste space, but for simplicity just store them here now
-    * }
-    */
+bool InlineRaytracing::LowerAllocations(Function &F) {
+  RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
+  StringRef name = "RQObjectType";
+  /*
+   * struct RQObjectType
+   * {
+   *     void* addrspace(2) globalBufferPtr;
+   *     uint32_t rayQueryPackedData;
+   *     uint32_t rayFlags; // we know these at compile time, so technically no
+   * reason to waste space, but for simplicity just store them here now
+   * }
+   */
 
-    SmallVector<AllocateRayQueryIntrinsic*> AllocateRQInstructions;
+  SmallVector<AllocateRayQueryIntrinsic *> AllocateRQInstructions;
 
-    for (auto& I : instructions(F))
-    {
-        if (isa<AllocateRayQueryIntrinsic>(&I))
-            AllocateRQInstructions.push_back(cast<AllocateRayQueryIntrinsic>(&I));
+  for (auto &I : instructions(F)) {
+    if (isa<AllocateRayQueryIntrinsic>(&I))
+      AllocateRQInstructions.push_back(cast<AllocateRayQueryIntrinsic>(&I));
+  }
+
+  // no rayquery allocations
+  if (AllocateRQInstructions.empty())
+    return false;
+
+  auto *globalBufferPtrTy =
+      IRB.getRayDispatchGlobalDataPtrTy(*F.getParent(), ADDRESS_SPACE_CONSTANT);
+
+  if (!m_RQObjectType)
+    m_RQObjectType = StructType::create(
+        *m_pCGCtx->getLLVMContext(),
+        {globalBufferPtrTy, IRB.getInt32Ty(), IRB.getInt32Ty()}, name);
+
+  auto *getGlobalBufferPtrFnTy =
+      FunctionType::get(globalBufferPtrTy, IRB.getInt32Ty(), false);
+  auto *getGlobalBufferPtrFn = m_Functions[GET_GLOBAL_BUFFER_PTR] =
+      Function::Create(getGlobalBufferPtrFnTy, GlobalValue::PrivateLinkage,
+                       VALUE_NAME("getGlobalBufferPtrFn"), F.getParent());
+
+  auto *rtstackTy = IRB.getRTStack2PtrTy(false);
+  auto *getStackPointerFromGlobalBufferPtrFnTy =
+      FunctionType::get(rtstackTy, globalBufferPtrTy, false);
+  auto *getStackPointerFromGlobalBufferPtrFn =
+      m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER] =
+          Function::Create(getStackPointerFromGlobalBufferPtrFnTy,
+                           GlobalValue::PrivateLinkage,
+                           VALUE_NAME("getStackPointerFromGlobalBufferPtrFn"),
+                           F.getParent());
+
+  auto *getRQHandleFromRQObjectFnTy = FunctionType::get(
+      IRB.getInt32Ty(), m_RQObjectType->getPointerTo(), false);
+  auto *getRQHandleFromRQObjectFn = m_Functions[GET_RQ_HANDLE_FROM_RQ_OJECT] =
+      Function::Create(getRQHandleFromRQObjectFnTy, GlobalValue::PrivateLinkage,
+                       VALUE_NAME("getRQHandleFromRQObjectFn"), F.getParent());
+
+  getStackPointerFromGlobalBufferPtrFn->addParamAttr(
+      0, llvm::Attribute::NoCapture);
+  getRQHandleFromRQObjectFn->addParamAttr(0, llvm::Attribute::NoCapture);
+
+  // allocate rayquery instructions return i32 handle
+  // we want all rayqueries to be represent via our struct
+  // to do that, we allocate the object on the stack via alloca
+  // then update all the users to either use the objects directly or to convert
+  // them via our stub instruction
+  ValueToValueMapTy v2vMap;
+  for (auto *I : AllocateRQInstructions) {
+    // we are using value remapper so we can't explicitly erase the instruction
+    // mark it as read only so it gets removed due to no uses
+    cast<CallInst>(I)->addFnAttr(llvm::Attribute::ReadOnly);
+
+    IRB.SetInsertPoint(F.getEntryBlock().getFirstNonPHI());
+    auto *aI = IRB.CreateAlloca(m_RQObjectType);
+
+    IRB.SetInsertPoint(I);
+    if (m_pCGCtx->syncRTCallsNeedSplitting()) {
+      // create 2 globals and select the appropriate one depending on the lane
+      // id
+      auto *globalBufferPtr1 = IRB.CreateCall(
+          getGlobalBufferPtrFn, UndefValue::get(IRB.getInt32Ty()));
+      auto *globalBufferPtr2 = IRB.CreateCall(
+          getGlobalBufferPtrFn, UndefValue::get(IRB.getInt32Ty()));
+      auto *laneId = IRB.get32BitLaneID();
+      auto *cond =
+          IRB.CreateICmpULT(laneId, IRB.getInt32(numLanes(SIMDMode::SIMD16)));
+      auto *globalBufferPtr =
+          IRB.CreateSelect(cond, globalBufferPtr1, globalBufferPtr2,
+                           VALUE_NAME("GlobalBufferPtr"));
+      IRB.CreateStore(globalBufferPtr, IRB.CreateInBoundsGEP(
+                                           m_RQObjectType, aI,
+                                           {IRB.getInt32(0), IRB.getInt32(0)}));
+    } else {
+      auto *globalBufferPtr = IRB.CreateCall(getGlobalBufferPtrFn,
+                                             UndefValue::get(IRB.getInt32Ty()),
+                                             VALUE_NAME("GlobalBufferPtr"));
+      IRB.CreateStore(globalBufferPtr, IRB.CreateInBoundsGEP(
+                                           m_RQObjectType, aI,
+                                           {IRB.getInt32(0), IRB.getInt32(0)}));
     }
 
-    // no rayquery allocations
-    if (AllocateRQInstructions.empty())
-        return false;
+    // iniitalize it to done so when app calls proceed without tracerayinline,
+    // we dont traverse over garbage
+    setPackedData(IRB, aI,
+                  {IRB.getInt32(TRACE_RAY_DONE), IRB.getInt32(0),
+                   IRB.getInt32(0), IRB.getInt32(0),
+                   IRB.getInt32(CommittedHit)});
 
-    auto* globalBufferPtrTy = IRB.getRayDispatchGlobalDataPtrTy(*F.getParent(), ADDRESS_SPACE_CONSTANT);
+    // TODO: we shouldn't store the rayflags here because we know them at
+    // compile time
+    IRB.CreateStore(I->getFlags(),
+                    IRB.CreateInBoundsGEP(m_RQObjectType, aI,
+                                          {IRB.getInt32(0), IRB.getInt32(2)}));
+    v2vMap[I] = aI;
 
-    if (!m_RQObjectType)
-        m_RQObjectType = StructType::create(*m_pCGCtx->getLLVMContext(), { globalBufferPtrTy, IRB.getInt32Ty(), IRB.getInt32Ty() }, name);
+    SmallVector<Use *> worklist;
 
-    auto* getGlobalBufferPtrFnTy = FunctionType::get(globalBufferPtrTy, IRB.getInt32Ty(), false);
-    auto* getGlobalBufferPtrFn = m_Functions[GET_GLOBAL_BUFFER_PTR] = Function::Create(
-        getGlobalBufferPtrFnTy,
-        GlobalValue::PrivateLinkage,
-        VALUE_NAME("getGlobalBufferPtrFn"),
-        F.getParent()
-    );
+    for (auto &U : I->uses())
+      worklist.push_back(&U);
 
-    auto* rtstackTy = IRB.getRTStack2PtrTy(false);
-    auto* getStackPointerFromGlobalBufferPtrFnTy = FunctionType::get(rtstackTy, globalBufferPtrTy, false);
-    auto* getStackPointerFromGlobalBufferPtrFn = m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER] = Function::Create(
-        getStackPointerFromGlobalBufferPtrFnTy,
-        GlobalValue::PrivateLinkage,
-        VALUE_NAME("getStackPointerFromGlobalBufferPtrFn"),
-        F.getParent()
-    );
+    while (!worklist.empty()) {
+      auto *use = worklist.pop_back_val();
+      auto *II = cast<Instruction>(use->getUser());
+      if (v2vMap.count(II) == 1)
+        continue;
 
-    auto* getRQHandleFromRQObjectFnTy = FunctionType::get(IRB.getInt32Ty(), m_RQObjectType->getPointerTo(), false);
-    auto* getRQHandleFromRQObjectFn = m_Functions[GET_RQ_HANDLE_FROM_RQ_OJECT] = Function::Create(
-        getRQHandleFromRQObjectFnTy,
-        GlobalValue::PrivateLinkage,
-        VALUE_NAME("getRQHandleFromRQObjectFn"),
-        F.getParent()
-    );
+      if (auto *genI = dyn_cast<GenIntrinsicInst>(II)) {
+        // for example, we have something like this:
+        // %result = call fast float
+        // @llvm.genx.GenISA.TraceRayInlineRayInfo.f32(i32 %rayqueryhandle, i32
+        // 5, i32 0, i1 true) what we want is: %rayqueryhandle = call i32
+        // @getRQHandleFromRQObjectFn(ptr %rayqueryobject) %result = call fast
+        // float @llvm.genx.GenISA.TraceRayInlineRayInfo.f32(i32
+        // %rayqueryhandle, i32 5, i32 0, i1 true) later, when lowering
+        // TraceRayInlineRayInfo, we will just look up the first operand of
+        // %rayqueryhandle and use this
 
-    getStackPointerFromGlobalBufferPtrFn->addParamAttr(0, llvm::Attribute::NoCapture);
-    getRQHandleFromRQObjectFn->addParamAttr(0, llvm::Attribute::NoCapture);
+        IGC_ASSERT(v2vMap.count(use->get()) == 1);
 
-    // allocate rayquery instructions return i32 handle
-    // we want all rayqueries to be represent via our struct
-    // to do that, we allocate the object on the stack via alloca
-    // then update all the users to either use the objects directly or to convert them via our stub instruction
-    ValueToValueMapTy v2vMap;
-    for (auto* I : AllocateRQInstructions)
-    {
-        // we are using value remapper so we can't explicitly erase the instruction
-        // mark it as read only so it gets removed due to no uses
-        cast<CallInst>(I)->addFnAttr(llvm::Attribute::ReadOnly);
+        IRB.SetInsertPoint(genI);
+        auto *RQHandle =
+            IRB.CreateCall(getRQHandleFromRQObjectFn, {v2vMap[use->get()]});
+        use->set(RQHandle);
 
-        IRB.SetInsertPoint(F.getEntryBlock().getFirstNonPHI());
-        auto* aI = IRB.CreateAlloca(m_RQObjectType);
+        v2vMap[genI] = genI;
+      } else {
+        // in general case this would be very hard
+        // fortunately rayqueries are guaranteed to not be stored in anything
+        // more complex than a single dimensional array
+        switch (II->getOpcode()) {
+        case Instruction::Store: {
+          auto *storeI = cast<StoreInst>(II);
+          if (storeI->getValueOperand() == use->get()) {
+            SmallVector<Instruction *> origins;
+            auto hasOrigins = Provenance::tryFindPointerOrigin(
+                storeI->getPointerOperand(), origins);
 
-        IRB.SetInsertPoint(I);
-        if (m_pCGCtx->syncRTCallsNeedSplitting())
-        {
-            // create 2 globals and select the appropriate one depending on the lane id
-            auto* globalBufferPtr1 = IRB.CreateCall(getGlobalBufferPtrFn, UndefValue::get(IRB.getInt32Ty()));
-            auto* globalBufferPtr2 = IRB.CreateCall(getGlobalBufferPtrFn, UndefValue::get(IRB.getInt32Ty()));
-            auto* laneId = IRB.get32BitLaneID();
-            auto* cond = IRB.CreateICmpULT(laneId, IRB.getInt32(numLanes(SIMDMode::SIMD16)));
-            auto* globalBufferPtr = IRB.CreateSelect(cond, globalBufferPtr1, globalBufferPtr2, VALUE_NAME("GlobalBufferPtr"));
-            IRB.CreateStore(globalBufferPtr, IRB.CreateInBoundsGEP(m_RQObjectType, aI, { IRB.getInt32(0), IRB.getInt32(0) }));
-        }
-        else
-        {
-            auto* globalBufferPtr = IRB.CreateCall(getGlobalBufferPtrFn, UndefValue::get(IRB.getInt32Ty()), VALUE_NAME("GlobalBufferPtr"));
-            IRB.CreateStore(globalBufferPtr, IRB.CreateInBoundsGEP(m_RQObjectType, aI, { IRB.getInt32(0), IRB.getInt32(0) }));
-        }
+            IGC_ASSERT_MESSAGE(hasOrigins, "Origin not found?");
 
-        // iniitalize it to done so when app calls proceed without tracerayinline, we dont traverse over garbage
-        setPackedData(IRB, aI, { IRB.getInt32(TRACE_RAY_DONE), IRB.getInt32(0), IRB.getInt32(0), IRB.getInt32(0), IRB.getInt32(CommittedHit) });
-
-        // TODO: we shouldn't store the rayflags here because we know them at compile time
-        IRB.CreateStore(I->getFlags(), IRB.CreateInBoundsGEP(m_RQObjectType, aI, { IRB.getInt32(0), IRB.getInt32(2) }));
-        v2vMap[I] = aI;
-
-        SmallVector<Use*> worklist;
-
-        for (auto& U : I->uses())
-            worklist.push_back(&U);
-
-        while (!worklist.empty())
-        {
-            auto* use = worklist.pop_back_val();
-            auto* II = cast<Instruction>(use->getUser());
-            if (v2vMap.count(II) == 1)
+            for (auto *origin : origins) {
+              auto *array = cast<AllocaInst>(origin);
+              if (v2vMap.count(origin) == 1)
                 continue;
 
-            if (auto* genI = dyn_cast<GenIntrinsicInst>(II))
-            {
-                // for example, we have something like this:
-                // %result = call fast float @llvm.genx.GenISA.TraceRayInlineRayInfo.f32(i32 %rayqueryhandle, i32 5, i32 0, i1 true)
-                // what we want is:
-                // %rayqueryhandle = call i32 @getRQHandleFromRQObjectFn(ptr %rayqueryobject)
-                // %result = call fast float @llvm.genx.GenISA.TraceRayInlineRayInfo.f32(i32 %rayqueryhandle, i32 5, i32 0, i1 true)
-                // later, when lowering TraceRayInlineRayInfo, we will just look up the first operand of %rayqueryhandle and use this
+              auto *ty = ArrayType::get(
+                  m_RQObjectType->getPointerTo(),
+                  cast<ArrayType>(array->getAllocatedType())->getNumElements());
 
-                IGC_ASSERT(v2vMap.count(use->get()) == 1);
+              IRB.SetInsertPoint(array);
+              auto *newArray = IRB.CreateAlloca(ty);
+              v2vMap[array] = newArray;
 
-                IRB.SetInsertPoint(genI);
-                auto* RQHandle = IRB.CreateCall(getRQHandleFromRQObjectFn, { v2vMap[use->get()] });
-                use->set(RQHandle);
-
-                v2vMap[genI] = genI;
+              llvm::for_each(array->uses(),
+                             [&worklist](Use &U) { worklist.push_back(&U); });
             }
-            else
-            {
-                // in general case this would be very hard
-                // fortunately rayqueries are guaranteed to not be stored in anything more complex than a single dimensional array
-                switch (II->getOpcode())
-                {
-                case Instruction::Store:
-                {
-                    auto* storeI = cast<StoreInst>(II);
-                    if (storeI->getValueOperand() == use->get())
-                    {
-                        SmallVector<Instruction*> origins;
-                        auto hasOrigins = Provenance::tryFindPointerOrigin(storeI->getPointerOperand(), origins);
+          } else {
+            // skip if we didn't map out both operands yet
+            if (v2vMap.count(II->getOperand(0)) == 0 ||
+                v2vMap.count(II->getOperand(1)) == 0)
+              continue;
 
-                        IGC_ASSERT_MESSAGE(hasOrigins, "Origin not found?");
+            // we are descending from the parent array, create a new store
+            // instruction
+            IRB.SetInsertPoint(II);
+            v2vMap[II] = IRB.CreateStore(v2vMap[II->getOperand(0)],
+                                         v2vMap[II->getOperand(1)]);
+          }
+        } break;
+        case Instruction::GetElementPtr: {
+          // we should be coming down from an array in this case
+          IGC_ASSERT(v2vMap.count(II->getOperand(0)) == 1);
+          auto *array = cast<AllocaInst>(v2vMap[II->getOperand(0)]);
+          SmallVector<Value *> indices(cast<GetElementPtrInst>(II)->indices());
 
-                        for (auto* origin : origins)
-                        {
-                            auto* array = cast<AllocaInst>(origin);
-                            if (v2vMap.count(origin) == 1)
-                                continue;
+          IRB.SetInsertPoint(II);
+          v2vMap[II] =
+              IRB.CreateInBoundsGEP(array->getAllocatedType(), array, indices);
+          llvm::for_each(II->uses(),
+                         [&worklist](Use &U) { worklist.push_back(&U); });
+        } break;
+        case Instruction::Load:
+          IRB.SetInsertPoint(II);
+          v2vMap[II] = IRB.CreateLoad(m_RQObjectType->getPointerTo(),
+                                      v2vMap[II->getOperand(0)]);
+          llvm::for_each(II->uses(),
+                         [&worklist](Use &U) { worklist.push_back(&U); });
+          break;
+        case Instruction::Select:
+          // skip if we didn't map out both operands yet
+          if (v2vMap.count(II->getOperand(1)) == 0 ||
+              v2vMap.count(II->getOperand(2)) == 0)
+            continue;
 
-                            auto* ty = ArrayType::get(
-                                m_RQObjectType->getPointerTo(),
-                                cast<ArrayType>(array->getAllocatedType())->getNumElements()
-                            );
-
-                            IRB.SetInsertPoint(array);
-                            auto* newArray = IRB.CreateAlloca(ty);
-                            v2vMap[array] = newArray;
-
-                            llvm::for_each(array->uses(), [&worklist](Use& U) { worklist.push_back(&U); });
-                        }
-                    }
-                    else
-                    {
-                        // skip if we didn't map out both operands yet
-                        if (v2vMap.count(II->getOperand(0)) == 0 ||
-                            v2vMap.count(II->getOperand(1)) == 0)
-                            continue;
-
-                        // we are descending from the parent array, create a new store instruction
-                        IRB.SetInsertPoint(II);
-                        v2vMap[II] = IRB.CreateStore(v2vMap[II->getOperand(0)], v2vMap[II->getOperand(1)]);
-                    }
-                }
-                break;
-                case Instruction::GetElementPtr:
-                {
-                    // we should be coming down from an array in this case
-                    IGC_ASSERT(v2vMap.count(II->getOperand(0)) == 1);
-                    auto* array = cast<AllocaInst>(v2vMap[II->getOperand(0)]);
-                    SmallVector<Value*> indices(cast<GetElementPtrInst>(II)->indices());
-
-                    IRB.SetInsertPoint(II);
-                    v2vMap[II] = IRB.CreateInBoundsGEP(array->getAllocatedType(), array, indices);
-                    llvm::for_each(II->uses(), [&worklist](Use& U) { worklist.push_back(&U); });
-                }
-                break;
-                case Instruction::Load:
-                    IRB.SetInsertPoint(II);
-                    v2vMap[II] = IRB.CreateLoad(m_RQObjectType->getPointerTo(), v2vMap[II->getOperand(0)]);
-                    llvm::for_each(II->uses(), [&worklist](Use& U) { worklist.push_back(&U); });
-                    break;
-                case Instruction::Select:
-                    // skip if we didn't map out both operands yet
-                    if (v2vMap.count(II->getOperand(1)) == 0 ||
-                        v2vMap.count(II->getOperand(2)) == 0)
-                        continue;
-
-                    IRB.SetInsertPoint(II);
-                    v2vMap[II] = IRB.CreateSelect(II->getOperand(0), v2vMap[II->getOperand(1)], v2vMap[II->getOperand(2)]);
-                    llvm::for_each(II->uses(), [&worklist](Use& U) { worklist.push_back(&U); });
-                    break;
-                default:
-                    IGC_ASSERT(0);
-                    break;
-                }
-            }
+          IRB.SetInsertPoint(II);
+          v2vMap[II] =
+              IRB.CreateSelect(II->getOperand(0), v2vMap[II->getOperand(1)],
+                               v2vMap[II->getOperand(2)]);
+          llvm::for_each(II->uses(),
+                         [&worklist](Use &U) { worklist.push_back(&U); });
+          break;
+        default:
+          IGC_ASSERT(0);
+          break;
         }
+      }
     }
+  }
 
-    RemapFunction(F, v2vMap, RF_IgnoreMissingLocals | RF_ReuseAndMutateDistinctMDs);
+  RemapFunction(F, v2vMap,
+                RF_IgnoreMissingLocals | RF_ReuseAndMutateDistinctMDs);
 
-    return true;
+  return true;
 }
 
-//NOTE: workload specific logic, don't use it for common case!
-//only keep this logic here to make the HLK test pass before we get correct test
-// change:
-// if (a || (q.CommittedGeometryIndex() < q.CandidateGeometryIndex())
-//  do_sth;
-// to:
-// if (a)
-//     do_sth;
-// else if (q.CommittedGeometryIndex() < q.CandidateGeometryIndex())
-//     do_sth;
+// NOTE: workload specific logic, don't use it for common case!
+// only keep this logic here to make the HLK test pass before we get correct
+// test
+//  change:
+//  if (a || (q.CommittedGeometryIndex() < q.CandidateGeometryIndex())
+//   do_sth;
+//  to:
+//  if (a)
+//      do_sth;
+//  else if (q.CommittedGeometryIndex() < q.CandidateGeometryIndex())
+//      do_sth;
 //------------IR----------------------
-//old:==============================
-//  %lhs = ...
-//  % 47 = call i32 @llvm.genx.GenISA.TraceRayInlineRayInfo.i32(i32 % 13, i32 14, i32 0) //CommittedGeometryIndex()
-//  % 48 = ...
-//  % rhs = icmp ult i32 % 47, % 48
-//  % orRes = or i1 % lhs, % rhs
-//  br i1 % orRes, label % orBB, label % endBB
+// old:==============================
+//   %lhs = ...
+//   % 47 = call i32 @llvm.genx.GenISA.TraceRayInlineRayInfo.i32(i32 % 13, i32
+//   14, i32 0) //CommittedGeometryIndex() % 48 = ... % rhs = icmp ult i32 % 47,
+//   % 48 % orRes = or i1 % lhs, % rhs br i1 % orRes, label % orBB, label %
+//   endBB
 //
-//  orBB:
-//  call void ...
+//   orBB:
+//   call void ...
 //
-//  endBB:
-//  call void ...
+//   endBB:
+//   call void ...
 //
-//new:==============================
-//  %lhs = ...
-//  br i1 % lhs, label % orBB, label % rhsBB
+// new:==============================
+//   %lhs = ...
+//   br i1 % lhs, label % orBB, label % rhsBB
 //
-//  rhsBB:
-//  % 47 = call i32 @llvm.genx.GenISA.TraceRayInlineRayInfo.i32(i32 % 13, i32 14, i32 0) //CommittedGeometryIndex()
-//  % 48 = ...
-//  % rhs = icmp ult i32 % 47, % 48
-//  % orRes = or i1 % lhs, % rhs
-//  br i1 % orRes, label % orBB, label % endBB
-//  Note, above br still uses orRes to simplify the change. lhs == 0 here anyway
+//   rhsBB:
+//   % 47 = call i32 @llvm.genx.GenISA.TraceRayInlineRayInfo.i32(i32 % 13, i32
+//   14, i32 0) //CommittedGeometryIndex() % 48 = ... % rhs = icmp ult i32 % 47,
+//   % 48 % orRes = or i1 % lhs, % rhs br i1 % orRes, label % orBB, label %
+//   endBB Note, above br still uses orRes to simplify the change. lhs == 0 here
+//   anyway
 //
-//  orBB:
-//  call void ...
+//   orBB:
+//   call void ...
 //
-//  endBB:
-//  call void ...
-static bool forceShortCurcuitingOR_CommittedGeomIdx(RTBuilder& builder, Instruction* I)
-{
-    bool found = false;
-    Instruction* lhs = nullptr;
-    Instruction* rhs = nullptr;
-    Instruction* orI = nullptr;
-    BranchInst* brI = nullptr;
-    for (auto U1 : I->users())
-    {
-        if (isa<ICmpInst>(U1))
-        {   //found 2nd condition
-            for (auto U2 : U1->users())
-            {
-                if ((orI = dyn_cast<Instruction>(U2)))
-                {
-                    if (orI->getOpcode() == Instruction::Or)
-                    {
-                        brI = dyn_cast<llvm::BranchInst>(*orI->user_begin());
-                        lhs = dyn_cast<Instruction>(orI->getOperand(0));
-                        rhs = dyn_cast<Instruction>(orI->getOperand(1));
-                        found = (orI->getOperand(1) == U1 && brI && lhs && rhs);
-                        if (found)
-                        {
-                            break;
-                        }
-                    }
-                }
+//   endBB:
+//   call void ...
+static bool forceShortCurcuitingOR_CommittedGeomIdx(RTBuilder &builder,
+                                                    Instruction *I) {
+  bool found = false;
+  Instruction *lhs = nullptr;
+  Instruction *rhs = nullptr;
+  Instruction *orI = nullptr;
+  BranchInst *brI = nullptr;
+  for (auto U1 : I->users()) {
+    if (isa<ICmpInst>(U1)) { // found 2nd condition
+      for (auto U2 : U1->users()) {
+        if ((orI = dyn_cast<Instruction>(U2))) {
+          if (orI->getOpcode() == Instruction::Or) {
+            brI = dyn_cast<llvm::BranchInst>(*orI->user_begin());
+            lhs = dyn_cast<Instruction>(orI->getOperand(0));
+            rhs = dyn_cast<Instruction>(orI->getOperand(1));
+            found = (orI->getOperand(1) == U1 && brI && lhs && rhs);
+            if (found) {
+              break;
             }
+          }
         }
+      }
     }
-    if (!found)
-    {
-        return false;
-    }
+  }
+  if (!found) {
+    return false;
+  }
 
-    BasicBlock* orBB = brI->getSuccessor(0);
+  BasicBlock *orBB = brI->getSuccessor(0);
 
-    auto* lhsBlock = lhs->getParent();
-    auto* rhsBB = lhsBlock->splitBasicBlock(++lhs->getIterator(), VALUE_NAME("rhsBB"));
-    lhsBlock->getTerminator()->eraseFromParent();
-    builder.SetInsertPoint(lhsBlock);
-    builder.CreateCondBr(lhs, orBB, rhsBB);
+  auto *lhsBlock = lhs->getParent();
+  auto *rhsBB =
+      lhsBlock->splitBasicBlock(++lhs->getIterator(), VALUE_NAME("rhsBB"));
+  lhsBlock->getTerminator()->eraseFromParent();
+  builder.SetInsertPoint(lhsBlock);
+  builder.CreateCondBr(lhs, orBB, rhsBB);
 
-    builder.SetInsertPoint(I);
+  builder.SetInsertPoint(I);
 
-    //orI->eraseFromParent();
-#if defined( _DEBUG )
-    llvm::verifyModule(*I->getFunction()->getParent());
+  // orI->eraseFromParent();
+#if defined(_DEBUG)
+  llvm::verifyModule(*I->getFunction()->getParent());
 #endif
 
-    return true;
+  return true;
 }
 
-void InlineRaytracing::EmitPreTraceRayFence(RTBuilder& IRB, Value* rqObject)
-{
-    {
-        if (IGC_IS_FLAG_ENABLED(DisableLoadAsFenceOpInRaytracing))
-        {
-            IRB.CreateLSCFence(LSC_UGM, LSC_SCOPE_LOCAL, LSC_FENCE_OP_NONE);
-        }
-        else
-        {
-            // this is an optimization
-            // it's based on the idea that stores and loads are queued, so if a load completes, all stores before it are also completed
-            // the requirement is that the load and the store should use the same address, so we use the potential hit (last write in copyMemHitInProceed)
-            auto* potentialHit = IRB.getHitAddress(getStackPtr(IRB, rqObject), false);
+void InlineRaytracing::EmitPreTraceRayFence(RTBuilder &IRB, Value *rqObject) {
+  {
+    if (IGC_IS_FLAG_ENABLED(DisableLoadAsFenceOpInRaytracing)) {
+      IRB.CreateLSCFence(LSC_UGM, LSC_SCOPE_LOCAL, LSC_FENCE_OP_NONE);
+    } else {
+      // this is an optimization
+      // it's based on the idea that stores and loads are queued, so if a load
+      // completes, all stores before it are also completed the requirement is
+      // that the load and the store should use the same address, so we use the
+      // potential hit (last write in copyMemHitInProceed)
+      auto *potentialHit = IRB.getHitAddress(getStackPtr(IRB, rqObject), false);
 
-            auto* M = IRB.GetInsertPoint()->getModule();
-            auto* fn = GenISAIntrinsic::getDeclaration(
-                M,
-                GenISAIntrinsic::GenISA_LSCLoadWithSideEffects,
-                { IRB.getInt32Ty(), potentialHit->getType() }
-            );
+      auto *M = IRB.GetInsertPoint()->getModule();
+      auto *fn = GenISAIntrinsic::getDeclaration(
+          M, GenISAIntrinsic::GenISA_LSCLoadWithSideEffects,
+          {IRB.getInt32Ty(), potentialHit->getType()});
 
-            IRB.CreateCall(
-                fn,
-                {
-                    potentialHit,
-                    IRB.getInt32(0),
-                    IRB.getInt32(LSC_DATA_SIZE_32b),
-                    IRB.getInt32(LSC_DATA_ELEMS_1),
-                    IRB.getInt32(LSC_L1C_WT_L3C_WB)
-                },
-                VALUE_NAME("LSCLoadAsFence")
-            );
-        }
+      IRB.CreateCall(
+          fn,
+          {potentialHit, IRB.getInt32(0), IRB.getInt32(LSC_DATA_SIZE_32b),
+           IRB.getInt32(LSC_DATA_ELEMS_1), IRB.getInt32(LSC_L1C_WT_L3C_WB)},
+          VALUE_NAME("LSCLoadAsFence"));
     }
+  }
 }
 
 
-void InlineRaytracing::LowerIntrinsics(Function& F)
-{
-    SmallVector<RayQueryIntrinsicBase*> RQInstructions;
+void InlineRaytracing::LowerIntrinsics(Function &F) {
+  SmallVector<RayQueryIntrinsicBase *> RQInstructions;
 
-    for (auto& I : instructions(F))
-    {
-        if (isa<RayQueryIntrinsicBase>(&I))
-            RQInstructions.push_back(cast<RayQueryIntrinsicBase>(&I));
+  for (auto &I : instructions(F)) {
+    if (isa<RayQueryIntrinsicBase>(&I))
+      RQInstructions.push_back(cast<RayQueryIntrinsicBase>(&I));
+  }
+
+  RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
+
+  for (auto RQI : RQInstructions) {
+    auto *rqObject = cast<Instruction>(RQI->getQueryObjIndex())->getOperand(0);
+    IRB.SetInsertPoint(RQI);
+
+    switch (RQI->getIntrinsicID()) {
+    case GenISAIntrinsic::GenISA_ConvertRayQueryHandleToRTStackPointer:
+      RQI->replaceAllUsesWith(getStackPtr(IRB, rqObject));
+      break;
+    case GenISAIntrinsic::GenISA_TraceRayInlineHL: {
+      auto *I = cast<TraceRayInlineHLIntrinsic>(RQI);
+      Value *Vec = UndefValue::get(IGCLLVM::FixedVectorType::get(
+          IRB.getFloatTy(), I->getNumRayInfoFields()));
+      for (unsigned int i = 0; i < I->getNumRayInfoFields(); i++)
+        Vec = IRB.CreateInsertElement(Vec, I->getRayInfo(i), i);
+
+      auto *flags = IRB.CreateOr(I->getFlag(), getRayFlags(IRB, rqObject));
+
+      IRB.createTraceRayInlinePrologue(
+          getStackPtr(IRB, rqObject), Vec, IRB.getRootNodePtr(I->getBVH()),
+          flags, I->getMask(), I->getComparisonValue(), I->getTMax(), false);
+
+      auto *hasAcceptHitAndEndSearchFlag = IRB.CreateAnd(
+          flags, static_cast<uint32_t>(
+                     RTStackFormat::RayFlags::ACCEPT_FIRST_HIT_AND_END_SEARCH));
+
+      UnpackedData data;
+      data.TraceRayCtrl = IRB.getInt32(TRACE_RAY_INITIAL);
+      data.CommittedStatus = IRB.getInt32(0);
+      data.CandidateType = IRB.getInt32(0);
+      data.HasAcceptHitAndEndSearchFlag = IRB.CreateZExt(
+          IRB.CreateICmpNE(hasAcceptHitAndEndSearchFlag, IRB.getInt32(0)),
+          IRB.getInt32Ty());
+
+      data.CommittedDataLocation = IRB.getInt32(CommittedHit);
+
+      setPackedData(IRB, rqObject, data);
+      break;
     }
+    case GenISAIntrinsic::GenISA_TraceRaySyncProceedHL: {
+      auto *traceRayCtrl = getPackedData(IRB, rqObject).TraceRayCtrl;
+      auto *doNotAbort =
+          IRB.CreateICmpNE(traceRayCtrl, IRB.getInt32(TRACE_RAY_DONE));
+      auto *result =
+          IRB.CreatePHI(IRB.getInt1Ty(), 2, VALUE_NAME("ProceedResult"));
+      result->addIncoming(IRB.getFalse(), result->getParent());
+      auto [proceedBB, _] = IRB.createTriangleFlow(
+          doNotAbort, result, VALUE_NAME("NotAbortedProceedBB"),
+          VALUE_NAME("PostProceedBB"));
 
-    RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
+      IRB.SetInsertPoint(proceedBB->getTerminator());
 
-    for (auto RQI : RQInstructions)
-    {
-        auto* rqObject = cast<Instruction>(RQI->getQueryObjIndex())->getOperand(0);
-        IRB.SetInsertPoint(RQI);
+      // make sure the done bit is set to 0
+      // if we start the traversal and the done bit is set to 1, HW will just
+      // return
+      IRB.setDoneBit(getStackPtr(IRB, rqObject), false);
 
-        switch (RQI->getIntrinsicID())
-        {
-        case GenISAIntrinsic::GenISA_ConvertRayQueryHandleToRTStackPointer:
-            RQI->replaceAllUsesWith(getStackPtr(IRB, rqObject));
-            break;
-        case GenISAIntrinsic::GenISA_TraceRayInlineHL:
-        {
-            auto* I = cast<TraceRayInlineHLIntrinsic>(RQI);
-            Value* Vec = UndefValue::get(
-                IGCLLVM::FixedVectorType::get(
-                    IRB.getFloatTy(), I->getNumRayInfoFields()));
-            for (unsigned int i = 0; i < I->getNumRayInfoFields(); i++)
-                Vec = IRB.CreateInsertElement(Vec, I->getRayInfo(i), i);
-
-            auto* flags = IRB.CreateOr(I->getFlag(), getRayFlags(IRB, rqObject));
-
-            IRB.createTraceRayInlinePrologue(
-                getStackPtr(IRB, rqObject),
-                Vec,
-                IRB.getRootNodePtr(I->getBVH()),
-                flags,
-                I->getMask(),
-                I->getComparisonValue(),
-                I->getTMax(),
-                false);
-
-            auto* hasAcceptHitAndEndSearchFlag = IRB.CreateAnd(
-                flags,
-                static_cast<uint32_t>(RTStackFormat::RayFlags::ACCEPT_FIRST_HIT_AND_END_SEARCH)
-            );
-
-            UnpackedData data;
-            data.TraceRayCtrl = IRB.getInt32(TRACE_RAY_INITIAL);
-            data.CommittedStatus = IRB.getInt32(0);
-            data.CandidateType = IRB.getInt32(0);
-            data.HasAcceptHitAndEndSearchFlag = IRB.CreateZExt(
-                IRB.CreateICmpNE(hasAcceptHitAndEndSearchFlag, IRB.getInt32(0)), IRB.getInt32Ty()
-            );
-
-            data.CommittedDataLocation = IRB.getInt32(CommittedHit);
-
-            setPackedData(IRB, rqObject, data);
-            break;
-        }
-        case GenISAIntrinsic::GenISA_TraceRaySyncProceedHL:
-        {
-            auto* traceRayCtrl = getPackedData(IRB, rqObject).TraceRayCtrl;
-            auto* doNotAbort = IRB.CreateICmpNE(traceRayCtrl, IRB.getInt32(TRACE_RAY_DONE));
-            auto* result = IRB.CreatePHI(IRB.getInt1Ty(), 2, VALUE_NAME("ProceedResult"));
-            result->addIncoming(IRB.getFalse(), result->getParent());
-            auto [proceedBB, _] = IRB.createTriangleFlow(doNotAbort, result, VALUE_NAME("NotAbortedProceedBB"), VALUE_NAME("PostProceedBB"));
-
-            IRB.SetInsertPoint(proceedBB->getTerminator());
-
-            // make sure the done bit is set to 0
-            // if we start the traversal and the done bit is set to 1, HW will just return
-            IRB.setDoneBit(getStackPtr(IRB, rqObject), false);
-
-            EmitPreTraceRayFence(IRB, rqObject);
+      EmitPreTraceRayFence(IRB, rqObject);
 
 
-            auto* globalBufferPtr = getGlobalBufferPtr(IRB, rqObject);
-            auto* traceRay = cast<Instruction>(IRB.createSyncTraceRay(
-                IRB.getBvhLevel(
-                    getStackPtr(IRB, rqObject),
-                    false
-                ),
-                traceRayCtrl,
-                globalBufferPtr
-            ));
+      auto *globalBufferPtr = getGlobalBufferPtr(IRB, rqObject);
+      auto *traceRay = cast<Instruction>(IRB.createSyncTraceRay(
+          IRB.getBvhLevel(getStackPtr(IRB, rqObject), false), traceRayCtrl,
+          globalBufferPtr));
 
-            // add this for liveness analysis
-            cast<CallInst>(traceRay)->addParamAttr(0, llvm::Attribute::NoCapture);
+      // add this for liveness analysis
+      cast<CallInst>(traceRay)->addParamAttr(0, llvm::Attribute::NoCapture);
 
-            IRB.createReadSyncTraceRay(traceRay);
+      IRB.createReadSyncTraceRay(traceRay);
 
-            auto data = getPackedData(IRB, rqObject);
+      auto data = getPackedData(IRB, rqObject);
 
-            if (m_pCGCtx->platform.isRayQueryReturnOptimizationEnabled())
-            {
+      if (m_pCGCtx->platform.isRayQueryReturnOptimizationEnabled()) {
 
-                // unpack the return value following the RTStackFormat::RayQueryReturnData layout
-                auto* proceedFurther = IRB.CreateAnd(
-                    traceRay, (1 << static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::proceed_further)) - 1
-                );
+        // unpack the return value following the
+        // RTStackFormat::RayQueryReturnData layout
+        auto *proceedFurther = IRB.CreateAnd(
+            traceRay,
+            (1 << static_cast<uint32_t>(
+                 RTStackFormat::RayQueryReturnData::Bits::proceed_further)) -
+                1);
 
-                auto* committedStatus = IRB.CreateLShr(traceRay,
-                    static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::proceed_further)
-                );
-                committedStatus = IRB.CreateAnd(
-                    committedStatus,(1 << static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::committedStatus)) - 1
-                );
+        auto *committedStatus = IRB.CreateLShr(
+            traceRay,
+            static_cast<uint32_t>(
+                RTStackFormat::RayQueryReturnData::Bits::proceed_further));
+        committedStatus = IRB.CreateAnd(
+            committedStatus,
+            (1 << static_cast<uint32_t>(
+                 RTStackFormat::RayQueryReturnData::Bits::committedStatus)) -
+                1);
 
-                auto* candidateType = IRB.CreateLShr(traceRay,
-                    static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::proceed_further) +
-                    static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::committedStatus)
-                );
-                candidateType = IRB.CreateAnd(
-                    candidateType,
-                    (1 << static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::candidateType)) - 1
-                );
+        auto *candidateType = IRB.CreateLShr(
+            traceRay,
+            static_cast<uint32_t>(
+                RTStackFormat::RayQueryReturnData::Bits::proceed_further) +
+                static_cast<uint32_t>(
+                    RTStackFormat::RayQueryReturnData::Bits::committedStatus));
+        candidateType = IRB.CreateAnd(
+            candidateType,
+            (1 << static_cast<uint32_t>(
+                 RTStackFormat::RayQueryReturnData::Bits::candidateType)) -
+                1);
 
-                auto* notDone = IRB.CreateICmpEQ(proceedFurther, IRB.getInt32(1));
-                result->addIncoming(notDone, proceedBB);
+        auto *notDone = IRB.CreateICmpEQ(proceedFurther, IRB.getInt32(1));
+        result->addIncoming(notDone, proceedBB);
 
-                data.TraceRayCtrl = IRB.CreateSelect(
-                    notDone,
-                    IRB.getInt32(TRACE_RAY_CONTINUE),
-                    IRB.getInt32(TRACE_RAY_DONE)
-                );
+        data.TraceRayCtrl =
+            IRB.CreateSelect(notDone, IRB.getInt32(TRACE_RAY_CONTINUE),
+                             IRB.getInt32(TRACE_RAY_DONE));
 
-                data.CommittedStatus = committedStatus;
-                data.CandidateType = candidateType;
-                data.CommittedDataLocation = IRB.getInt32(CommittedHit);
-            }
-            else
-            {
-                auto* notDone = IRB.isDoneBitNotSet(getStackPtr(IRB, rqObject), false);
-                result->addIncoming(notDone, proceedBB);
+        data.CommittedStatus = committedStatus;
+        data.CandidateType = candidateType;
+        data.CommittedDataLocation = IRB.getInt32(CommittedHit);
+      } else {
+        auto *notDone = IRB.isDoneBitNotSet(getStackPtr(IRB, rqObject), false);
+        result->addIncoming(notDone, proceedBB);
 
-                data.TraceRayCtrl = IRB.CreateSelect(
-                    notDone,
-                    IRB.getInt32(TRACE_RAY_CONTINUE),
-                    IRB.getInt32(TRACE_RAY_DONE)
-                );
+        data.TraceRayCtrl =
+            IRB.CreateSelect(notDone, IRB.getInt32(TRACE_RAY_CONTINUE),
+                             IRB.getInt32(TRACE_RAY_DONE));
 
-                // we could technically defer loading these and check for RQ return optimization later,
-                // but the gains from this are questionable (if app isnt going to check these than theres no point to doing rayquery)
-                // and doing this now lets us localize the branching that stems from RQ return optimization
+        // we could technically defer loading these and check for RQ return
+        // optimization later, but the gains from this are questionable (if app
+        // isnt going to check these than theres no point to doing rayquery) and
+        // doing this now lets us localize the branching that stems from RQ
+        // return optimization
 
-                data.CommittedStatus = IRB.getCommittedStatus(getStackPtr(IRB, rqObject));
-                data.CandidateType = IRB.getCandidateType(getStackPtr(IRB, rqObject));
-                data.CommittedDataLocation = IRB.getInt32(CommittedHit);
-            }
+        data.CommittedStatus =
+            IRB.getCommittedStatus(getStackPtr(IRB, rqObject));
+        data.CandidateType = IRB.getCandidateType(getStackPtr(IRB, rqObject));
+        data.CommittedDataLocation = IRB.getInt32(CommittedHit);
+      }
 
-            setPackedData(IRB, rqObject, data);
+      setPackedData(IRB, rqObject, data);
 
 
-            RQI->replaceAllUsesWith(result);
-            break;
-        }
-        case GenISAIntrinsic::GenISA_TraceRaySyncProceed:
-            IGC_ASSERT_MESSAGE(0, "Shouldn't be emitted!");
-            break;
-        case GenISAIntrinsic::GenISA_ShadowMemoryToSyncStack:
-            IGC_ASSERT_MESSAGE(0, "Shouldn't be emitted!");
-            break;
-        case GenISAIntrinsic::GenISA_SyncStackToShadowMemory:
-            IGC_ASSERT_MESSAGE(0, "Shouldn't be emitted!");
-            break;
-        case GenISAIntrinsic::GenISA_TraceRayInlineAbort:
-        {
-            auto data = getPackedData(IRB, rqObject);
-            data.TraceRayCtrl = IRB.getInt32(TRACE_RAY_DONE);
-            setPackedData(IRB, rqObject, data);
-            break;
-        }
-        case GenISAIntrinsic::GenISA_TraceRayInlineCommittedStatus:
-            RQI->replaceAllUsesWith(getPackedData(IRB, rqObject).CommittedStatus);
-            break;
-        case GenISAIntrinsic::GenISA_TraceRayInlineCandidateType:
-            RQI->replaceAllUsesWith(getPackedData(IRB, rqObject).CandidateType);
-            break;
-        case GenISAIntrinsic::GenISA_TraceRayInlineRayInfo:
-        {
-            auto* I = cast<RayQueryInfoIntrinsic>(RQI);
-            auto data = getPackedData(IRB, rqObject);
-            auto* loadCommittedFromPotential =
-                IRB.CreateICmpEQ(
-                data.CommittedDataLocation,
-                IRB.getInt32(PotentialHit)
-            );
-
-            auto* shaderTy = IRB.CreateSelect(
-                loadCommittedFromPotential,
-                IRB.getInt32(AnyHit),
-                IRB.getInt32(I->isCommitted() ? ClosestHit : AnyHit)
-            );
-
-            switch (I->getInfoKind())
-            {
-            default:
-                I->replaceAllUsesWith(
-                    IRB.lowerRayInfo(
-                        getStackPtr(IRB, rqObject),
-                        I, shaderTy,
-                        std::nullopt
-                    )
-                );
-                break;
-                // leave this in for now, until we prove we don't need the hack anymore
-            case GEOMETRY_INDEX:
-            {
-                bool specialPattern = false;
-                if (I->isCommitted() && IGC_GET_FLAG_VALUE(ForceRTShortCircuitingOR))
-                {
-                    specialPattern = forceShortCurcuitingOR_CommittedGeomIdx(IRB, I);
-                }
-
-                Value* leafType = IRB.getLeafType(getStackPtr(IRB, rqObject), IRB.getInt1(I->isCommitted()));
-                Value* geoIndex = IRB.getGeometryIndex(getStackPtr(IRB, rqObject), I, leafType,
-                    IRB.getInt32(I->isCommitted() ? CallableShaderTypeMD::ClosestHit : CallableShaderTypeMD::AnyHit), !specialPattern);
-                IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(), "Invalid geometryIndex type!");
-                I->replaceAllUsesWith(geoIndex);
-                break;
-            }
-            }
-            break;
-        }
-        case GenISAIntrinsic::GenISA_TraceRayInlineCommitNonOpaqueTriangleHit:
-        {
-            auto data = getPackedData(IRB, rqObject);
-            auto* notDone = IRB.CreateAnd({
-                IRB.CreateICmpEQ(data.HasAcceptHitAndEndSearchFlag, IRB.getInt32(0)),
-                IRB.CreateICmpNE(data.TraceRayCtrl, IRB.getInt32(TRACE_RAY_DONE))
-            });
-
-            data.CommittedDataLocation = IRB.getInt32(PotentialHit);
-            data.TraceRayCtrl = IRB.CreateSelect(notDone, IRB.getInt32(TRACE_RAY_COMMIT), IRB.getInt32(TRACE_RAY_DONE));
-            data.CommittedStatus = IRB.getInt32(RTStackFormat::COMMITTED_STATUS::COMMITTED_TRIANGLE_HIT);
-
-            setPackedData(IRB, rqObject, data);
-            break;
-        }
-        case GenISAIntrinsic::GenISA_TraceRayInlineCommitProceduralPrimitiveHit:
-        {
-            auto data = getPackedData(IRB, rqObject);
-            auto* notDone = IRB.CreateAnd({
-                IRB.CreateICmpEQ(data.HasAcceptHitAndEndSearchFlag, IRB.getInt32(0)),
-                IRB.CreateICmpNE(data.TraceRayCtrl, IRB.getInt32(TRACE_RAY_DONE))
-            });
-
-            IRB.setHitT(
-                getStackPtr(IRB, rqObject),
-                cast<RayQueryCommitProceduralPrimitiveHit>(RQI)->getTHit(),
-                false
-            );
-
-            data.CommittedDataLocation = IRB.getInt32(PotentialHit);
-            data.TraceRayCtrl = IRB.CreateSelect(notDone, IRB.getInt32(TRACE_RAY_COMMIT), IRB.getInt32(TRACE_RAY_DONE));
-            data.CommittedStatus = IRB.getInt32(RTStackFormat::COMMITTED_STATUS::COMMITTED_PROCEDURAL_PRIMITIVE_HIT);
-
-            setPackedData(IRB, rqObject, data);
-            break;
-        }
-        default:
-            IGC_ASSERT_MESSAGE(0, "Missed an intrinsic?");
-            break;
-        }
+      RQI->replaceAllUsesWith(result);
+      break;
     }
+    case GenISAIntrinsic::GenISA_TraceRaySyncProceed:
+      IGC_ASSERT_MESSAGE(0, "Shouldn't be emitted!");
+      break;
+    case GenISAIntrinsic::GenISA_ShadowMemoryToSyncStack:
+      IGC_ASSERT_MESSAGE(0, "Shouldn't be emitted!");
+      break;
+    case GenISAIntrinsic::GenISA_SyncStackToShadowMemory:
+      IGC_ASSERT_MESSAGE(0, "Shouldn't be emitted!");
+      break;
+    case GenISAIntrinsic::GenISA_TraceRayInlineAbort: {
+      auto data = getPackedData(IRB, rqObject);
+      data.TraceRayCtrl = IRB.getInt32(TRACE_RAY_DONE);
+      setPackedData(IRB, rqObject, data);
+      break;
+    }
+    case GenISAIntrinsic::GenISA_TraceRayInlineCommittedStatus:
+      RQI->replaceAllUsesWith(getPackedData(IRB, rqObject).CommittedStatus);
+      break;
+    case GenISAIntrinsic::GenISA_TraceRayInlineCandidateType:
+      RQI->replaceAllUsesWith(getPackedData(IRB, rqObject).CandidateType);
+      break;
+    case GenISAIntrinsic::GenISA_TraceRayInlineRayInfo: {
+      auto *I = cast<RayQueryInfoIntrinsic>(RQI);
+      auto data = getPackedData(IRB, rqObject);
+      auto *loadCommittedFromPotential = IRB.CreateICmpEQ(
+          data.CommittedDataLocation, IRB.getInt32(PotentialHit));
 
-    llvm::for_each(RQInstructions, [](RayQueryIntrinsicBase* I) {
-        auto* RQHandle = cast<Instruction>(I->getQueryObjIndex());
-        I->eraseFromParent();
-        RQHandle->eraseFromParent();
-    });
+      auto *shaderTy = IRB.CreateSelect(
+          loadCommittedFromPotential, IRB.getInt32(AnyHit),
+          IRB.getInt32(I->isCommitted() ? ClosestHit : AnyHit));
+
+      switch (I->getInfoKind()) {
+      default:
+        I->replaceAllUsesWith(IRB.lowerRayInfo(getStackPtr(IRB, rqObject), I,
+                                               shaderTy, std::nullopt));
+        break;
+        // leave this in for now, until we prove we don't need the hack anymore
+      case GEOMETRY_INDEX: {
+        bool specialPattern = false;
+        if (I->isCommitted() && IGC_GET_FLAG_VALUE(ForceRTShortCircuitingOR)) {
+          specialPattern = forceShortCurcuitingOR_CommittedGeomIdx(IRB, I);
+        }
+
+        Value *leafType = IRB.getLeafType(getStackPtr(IRB, rqObject),
+                                          IRB.getInt1(I->isCommitted()));
+        Value *geoIndex = IRB.getGeometryIndex(
+            getStackPtr(IRB, rqObject), I, leafType,
+            IRB.getInt32(I->isCommitted() ? CallableShaderTypeMD::ClosestHit
+                                          : CallableShaderTypeMD::AnyHit),
+            !specialPattern);
+        IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(),
+                           "Invalid geometryIndex type!");
+        I->replaceAllUsesWith(geoIndex);
+        break;
+      }
+      }
+      break;
+    }
+    case GenISAIntrinsic::GenISA_TraceRayInlineCommitNonOpaqueTriangleHit: {
+      auto data = getPackedData(IRB, rqObject);
+      auto *notDone = IRB.CreateAnd(
+          {IRB.CreateICmpEQ(data.HasAcceptHitAndEndSearchFlag, IRB.getInt32(0)),
+           IRB.CreateICmpNE(data.TraceRayCtrl, IRB.getInt32(TRACE_RAY_DONE))});
+
+      data.CommittedDataLocation = IRB.getInt32(PotentialHit);
+      data.TraceRayCtrl =
+          IRB.CreateSelect(notDone, IRB.getInt32(TRACE_RAY_COMMIT),
+                           IRB.getInt32(TRACE_RAY_DONE));
+      data.CommittedStatus =
+          IRB.getInt32(RTStackFormat::COMMITTED_STATUS::COMMITTED_TRIANGLE_HIT);
+
+      setPackedData(IRB, rqObject, data);
+      break;
+    }
+    case GenISAIntrinsic::GenISA_TraceRayInlineCommitProceduralPrimitiveHit: {
+      auto data = getPackedData(IRB, rqObject);
+      auto *notDone = IRB.CreateAnd(
+          {IRB.CreateICmpEQ(data.HasAcceptHitAndEndSearchFlag, IRB.getInt32(0)),
+           IRB.CreateICmpNE(data.TraceRayCtrl, IRB.getInt32(TRACE_RAY_DONE))});
+
+      IRB.setHitT(getStackPtr(IRB, rqObject),
+                  cast<RayQueryCommitProceduralPrimitiveHit>(RQI)->getTHit(),
+                  false);
+
+      data.CommittedDataLocation = IRB.getInt32(PotentialHit);
+      data.TraceRayCtrl =
+          IRB.CreateSelect(notDone, IRB.getInt32(TRACE_RAY_COMMIT),
+                           IRB.getInt32(TRACE_RAY_DONE));
+      data.CommittedStatus = IRB.getInt32(
+          RTStackFormat::COMMITTED_STATUS::COMMITTED_PROCEDURAL_PRIMITIVE_HIT);
+
+      setPackedData(IRB, rqObject, data);
+      break;
+    }
+    default:
+      IGC_ASSERT_MESSAGE(0, "Missed an intrinsic?");
+      break;
+    }
+  }
+
+  llvm::for_each(RQInstructions, [](RayQueryIntrinsicBase *I) {
+    auto *RQHandle = cast<Instruction>(I->getQueryObjIndex());
+    I->eraseFromParent();
+    RQHandle->eraseFromParent();
+  });
 }
 
-InlineRaytracing::LivenessDataMap InlineRaytracing::AnalyzeLiveness(Function& F, DominatorTree& DT, LoopInfo& LI)
-{
-    LivenessDataMap data;
-    for (auto* I : m_Functions[GET_GLOBAL_BUFFER_PTR]->users())
-    {
-        data.insert(std::make_pair(cast<Instruction>(I), ProcessInstruction(cast<Instruction>(I), DT, LI)));
-    }
+InlineRaytracing::LivenessDataMap
+InlineRaytracing::AnalyzeLiveness(Function &F, DominatorTree &DT,
+                                  LoopInfo &LI) {
+  LivenessDataMap data;
+  for (auto *I : m_Functions[GET_GLOBAL_BUFFER_PTR]->users()) {
+    data.insert(
+        std::make_pair(cast<Instruction>(I),
+                       ProcessInstruction(cast<Instruction>(I), DT, LI)));
+  }
 
-    return data;
+  return data;
 }
 
-void InlineRaytracing::AssignGlobalBuffers(Function& F, const LivenessDataMap& livenessDataMap)
-{
-    RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
-    SmallVector<SmallVector<const LivenessData*>, 2> occupancyMap;
+void InlineRaytracing::AssignGlobalBuffers(
+    Function &F, const LivenessDataMap &livenessDataMap) {
+  RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
+  SmallVector<SmallVector<const LivenessData *>, 2> occupancyMap;
 
-    for (auto& entry : livenessDataMap)
-    {
-        auto* I = entry.first;
-        auto* LD = &entry.second;
-        // <= in "slot <= occupancyMap.size()" is on purpose
-        // this way, if we can't use any existing slot
-        // we will construct occupancyMap[occupancyMap.size()] and use the newly constructed slot
-        for (uint32_t slot = 0; slot <= occupancyMap.size(); slot++)
-        {
-            bool newSlotNeeded = slot == occupancyMap.size();
-            bool hasOverlaps =
-                !newSlotNeeded &&
-                any_of(
-                    occupancyMap[slot],
-                    [&LD](const LivenessData* occupyingLD) {
-                        return occupyingLD->OverlapsWith(*LD);
-                    }
-                );
+  for (auto &entry : livenessDataMap) {
+    auto *I = entry.first;
+    auto *LD = &entry.second;
+    // <= in "slot <= occupancyMap.size()" is on purpose
+    // this way, if we can't use any existing slot
+    // we will construct occupancyMap[occupancyMap.size()] and use the newly
+    // constructed slot
+    for (uint32_t slot = 0; slot <= occupancyMap.size(); slot++) {
+      bool newSlotNeeded = slot == occupancyMap.size();
+      bool hasOverlaps =
+          !newSlotNeeded &&
+          any_of(occupancyMap[slot], [&LD](const LivenessData *occupyingLD) {
+            return occupyingLD->OverlapsWith(*LD);
+          });
 
-            if (hasOverlaps)
-                continue;
+      if (hasOverlaps)
+        continue;
 
-            I->setOperand(0, IRB.getInt32(slot));
+      I->setOperand(0, IRB.getInt32(slot));
 
-            if (newSlotNeeded)
-                occupancyMap.push_back(SmallVector<const LivenessData*>());
+      if (newSlotNeeded)
+        occupancyMap.push_back(SmallVector<const LivenessData *>());
 
-            occupancyMap[slot].push_back(LD);
+      occupancyMap[slot].push_back(LD);
 
-            break;
-        }
+      break;
     }
+  }
 
-    m_numSlotsUsed = occupancyMap.size();
-    IGC_ASSERT_MESSAGE(m_numSlotsUsed, "what??");
+  m_numSlotsUsed = occupancyMap.size();
+  IGC_ASSERT_MESSAGE(m_numSlotsUsed, "what??");
 }
 
-void InlineRaytracing::InsertCacheControl(RTBuilder& IRB, RTBuilder::SyncStackPointerVal* stackPtr)
-{
-    if (IGC_IS_FLAG_DISABLED(DisableInvalidateRTStackAfterLastRead))
-    {
-        auto* fn = GenISAIntrinsic::getDeclaration(
-            m_pCGCtx->getModule(),
-            GenISAIntrinsic::GenISA_LSCLoadWithSideEffects,
-            { IRB.getInt32Ty(), stackPtr->getType() }
-        );
+void InlineRaytracing::InsertCacheControl(
+    RTBuilder &IRB, RTBuilder::SyncStackPointerVal *stackPtr) {
+    if (IGC_IS_FLAG_DISABLED(DisableInvalidateRTStackAfterLastRead)) {
+      auto *fn = GenISAIntrinsic::getDeclaration(
+          m_pCGCtx->getModule(), GenISAIntrinsic::GenISA_LSCLoadWithSideEffects,
+          {IRB.getInt32Ty(), stackPtr->getType()});
 
-        LSC_L1_L3_CC CacheCtrl =
-            m_pCGCtx->platform.isSupportedLSCCacheControlsEnum(LSC_L1IAR_L3IAR, true) ?
-            LSC_L1IAR_L3IAR :
-            LSC_L1IAR_WB_L3C_WB;
+      LSC_L1_L3_CC CacheCtrl =
+          m_pCGCtx->platform.isSupportedLSCCacheControlsEnum(LSC_L1IAR_L3IAR,
+                                                             true)
+              ? LSC_L1IAR_L3IAR
+              : LSC_L1IAR_WB_L3C_WB;
 
-        for (uint i = 0; i < IRB.getSyncStackSize() / m_pCGCtx->platform.LSCCachelineSize(); i++)
-        {
-            IRB.CreateCall(
-                fn,
-                {
-                    stackPtr,
-                    IRB.getInt32(i * m_pCGCtx->platform.LSCCachelineSize()),
-                    IRB.getInt32(LSC_DATA_SIZE_32b), // doesn't matter what we put here because the entire cacheline is invalidated
-                    IRB.getInt32(LSC_DATA_ELEMS_1),
-                    IRB.getInt32(CacheCtrl)
-                }
-            );
-        }
+      for (uint i = 0;
+           i < IRB.getSyncStackSize() / m_pCGCtx->platform.LSCCachelineSize();
+           i++) {
+        IRB.CreateCall(
+            fn,
+            {stackPtr, IRB.getInt32(i * m_pCGCtx->platform.LSCCachelineSize()),
+             IRB.getInt32(
+                 LSC_DATA_SIZE_32b), // doesn't matter what we put here because
+                                     // the entire cacheline is invalidated
+             IRB.getInt32(LSC_DATA_ELEMS_1), IRB.getInt32(CacheCtrl)});
+      }
     }
 }
 
-void InlineRaytracing::StopAndStartRayquery(RTBuilder& IRB, Instruction* I, Instruction* globalBufferPtr, bool doSpillFill, bool doRQCheckRelease)
-{
-    IRB.SetInsertPoint(I);
-    Value* liveStack = {};
+void InlineRaytracing::StopAndStartRayquery(RTBuilder &IRB, Instruction *I,
+                                            Instruction *globalBufferPtr,
+                                            bool doSpillFill,
+                                            bool doRQCheckRelease) {
+  IRB.SetInsertPoint(I);
+  Value *liveStack = {};
 
-    if (doSpillFill)
-    {
-        // spill the raytracing stack to the register file
-        auto* stackPtr = static_cast<RTBuilder::SyncStackPointerVal*>(
-            cast<Value>(IRB.CreateCall(m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER], IRB.Insert(globalBufferPtr->clone())))
-        );
+  if (doSpillFill) {
+    // spill the raytracing stack to the register file
+    auto *stackPtr = static_cast<RTBuilder::SyncStackPointerVal *>(
+        cast<Value>(IRB.CreateCall(
+            m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER],
+            IRB.Insert(globalBufferPtr->clone()))));
 
-        liveStack = IRB.CreateLoad(IRB.getRTStack2Ty(), stackPtr);
+    liveStack = IRB.CreateLoad(IRB.getRTStack2Ty(), stackPtr);
 
-        // handle cache control
-        InsertCacheControl(IRB, stackPtr);
+    // handle cache control
+    InsertCacheControl(IRB, stackPtr);
+  }
+
+  // handle rayquery release
+  if (doRQCheckRelease)
+    IRB.CreateRayQueryReleaseIntrinsic();
+
+  IRB.SetInsertPoint(I->getNextNode());
+
+  // handle rayquery check
+  if (doRQCheckRelease)
+    IRB.CreateRayQueryCheckIntrinsic();
+
+  if (doSpillFill) {
+    // fill the raytracing stack from the register file
+    auto *stackPtr = static_cast<RTBuilder::SyncStackPointerVal *>(
+        cast<Value>(IRB.CreateCall(
+            m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER],
+            IRB.Insert(globalBufferPtr->clone()))));
+
+    IRB.CreateStore(liveStack, stackPtr);
+  }
+}
+
+void InlineRaytracing::HandleOptimizationsAndSpills(
+    llvm::Function &F, LivenessDataMap &livenessDataMap, DominatorTree &DT,
+    LoopInfo &LI) {
+  RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
+
+  SmallVector<Instruction *> continuationInstructions;
+  SmallVector<Instruction *> indirectCallInstructions;
+  SmallVector<Instruction *> hiddenCFInstructions;
+  SmallVector<Instruction *> barrierInstructions;
+
+  for (auto &I : instructions(F)) {
+    if (isa<ContinuationHLIntrinsic>(&I))
+      continuationInstructions.push_back(&I);
+    else if (isUserFunctionCall(&I))
+      indirectCallInstructions.push_back(&I);
+    else if (isHidingComplexControlFlow(&I))
+      hiddenCFInstructions.push_back(&I);
+    else if (isBarrierIntrinsic(&I))
+      barrierInstructions.push_back(&I);
+  }
+
+  // TODO: if the platform cant support divergent control flow,
+  // we can still try doing throttling if we determine the liveness has a single
+  // end point LD->lifetimeEndInstructions.size() == 1 it is unclear if this
+  // will help though
+  bool doRQCheckRelease =
+      m_pCGCtx->platform.allowDivergentControlFlowRayQueryCheckRelease() &&
+      m_pCGCtx->platform.enableRayQueryThrottling(
+          m_pCGCtx->getModuleMetaData()->compOpt.EnableDynamicRQManagement) &&
+      m_numSlotsUsed == 1;
+
+  for (auto &entry : livenessDataMap) {
+    bool cfgChanged = false;
+
+    auto *globalBufferPtr = entry.first;
+    auto *LD = &entry.second;
+
+    // process the allocation acquire point
+    // handle rayquery check
+    if (doRQCheckRelease) {
+      // check before the allocation is acquired
+      IRB.SetInsertPoint(LD->lifetimeStart);
+      IRB.CreateRayQueryCheckIntrinsic();
     }
 
-    // handle rayquery release
-    if (doRQCheckRelease)
+    // process the allocation release points
+    for (auto *I : LD->lifetimeEndInstructions) {
+      IRB.SetInsertPoint(I->getNextNode());
+
+      auto *stackPtr = static_cast<RTBuilder::SyncStackPointerVal *>(
+          cast<Value>(IRB.CreateCall(
+              m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER],
+              IRB.Insert(globalBufferPtr->clone()))));
+
+      // handle cache control
+      InsertCacheControl(IRB, stackPtr);
+
+      // handle rayquery release
+      if (doRQCheckRelease)
         IRB.CreateRayQueryReleaseIntrinsic();
 
-    IRB.SetInsertPoint(I->getNextNode());
-
-    // handle rayquery check
-    if (doRQCheckRelease)
-        IRB.CreateRayQueryCheckIntrinsic();
-
-    if (doSpillFill)
-    {
-        // fill the raytracing stack from the register file
-        auto* stackPtr = static_cast<RTBuilder::SyncStackPointerVal*>(
-            cast<Value>(IRB.CreateCall(m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER], IRB.Insert(globalBufferPtr->clone())))
-            );
-
-        IRB.CreateStore(liveStack, stackPtr);
+      IGC_ASSERT(DT.dominates(LD->lifetimeStart, I));
     }
+
+    for (const auto &[from, to] : LD->lifetimeEndEdges) {
+      auto *succ = to;
+      // to avoid multiple executions of rayquery release instructions,
+      // we need to ensure that the "to" block has a single predecessor
+      if (!to->getSinglePredecessor()) {
+        succ = SplitEdge(from, succ);
+
+        // we invalidated other the liveness data for other instructions
+        cfgChanged = true;
+      }
+
+      IRB.SetInsertPoint(succ->getFirstNonPHI());
+
+      auto *stackPtr = static_cast<RTBuilder::SyncStackPointerVal *>(
+          cast<Value>(IRB.CreateCall(
+              m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER],
+              IRB.Insert(globalBufferPtr->clone()))));
+
+      // handle cache control
+      InsertCacheControl(IRB, stackPtr);
+
+      // handle rayquery release
+      if (doRQCheckRelease)
+        IRB.CreateRayQueryReleaseIntrinsic();
+
+      IGC_ASSERT(DT.dominates(LD->lifetimeStart, succ));
+    }
+
+    // handle continuation instructions
+    for (auto *I : continuationInstructions) {
+      if (!LD->ContainsInstruction(*I))
+        continue;
+
+        StopAndStartRayquery(IRB, I, globalBufferPtr, true, doRQCheckRelease);
+    }
+
+    // handle indirect calls
+    for (auto *I : indirectCallInstructions) {
+      if (!LD->ContainsInstruction(*I))
+        continue;
+
+      StopAndStartRayquery(IRB, I, globalBufferPtr, true, doRQCheckRelease);
+    }
+
+    // handle hidden control flow instructions
+    for (auto *I : hiddenCFInstructions) {
+      if (!LD->ContainsInstruction(*I))
+        continue;
+
+      StopAndStartRayquery(IRB, I, globalBufferPtr, true, doRQCheckRelease);
+    }
+
+    // handle barriers
+    for (auto *I : barrierInstructions) {
+      if (!LD->ContainsInstruction(*I))
+        continue;
+
+      StopAndStartRayquery(IRB, I, globalBufferPtr, false, doRQCheckRelease);
+    }
+
+    if (cfgChanged) {
+      auto nextentry = livenessDataMap.find(globalBufferPtr);
+
+      // TODO: can we incrementally update LoopInfo and DomTree?
+      DT.recalculate(F);
+
+      getAnalysis<LoopInfoWrapperPass>().releaseMemory();
+      getAnalysis<LoopInfoWrapperPass>().runOnFunction(F);
+      while (++nextentry != livenessDataMap.end())
+        nextentry->second = ProcessInstruction(
+            nextentry->first, DT,
+            getAnalysis<LoopInfoWrapperPass>().getLoopInfo());
+    }
+  }
 }
 
-void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function& F, LivenessDataMap& livenessDataMap, DominatorTree& DT, LoopInfo& LI)
-{
-    RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
+void InlineRaytracing::LowerGlobalBufferPtrs(Function &F) {
+  RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
+  SmallVector<Instruction *> getGBPInstructions;
 
-    SmallVector<Instruction*> continuationInstructions;
-    SmallVector<Instruction*> indirectCallInstructions;
-    SmallVector<Instruction*> hiddenCFInstructions;
-    SmallVector<Instruction*> barrierInstructions;
+  for (auto &U : m_Functions[GET_GLOBAL_BUFFER_PTR]->uses())
+    getGBPInstructions.push_back(cast<Instruction>(U.getUser()));
 
-    for (auto& I : instructions(F))
-    {
-        if (isa<ContinuationHLIntrinsic>(&I))
-            continuationInstructions.push_back(&I);
-        else if (isUserFunctionCall(&I))
-            indirectCallInstructions.push_back(&I);
-        else if (isHidingComplexControlFlow(&I))
-            hiddenCFInstructions.push_back(&I);
-        else if (isBarrierIntrinsic(&I))
-            barrierInstructions.push_back(&I);
-    }
+  for (auto &I : getGBPInstructions) {
+    uint32_t slot = static_cast<uint32_t>(
+        cast<ConstantInt>(I->getOperand(0))->getZExtValue());
 
-    // TODO: if the platform cant support divergent control flow,
-    // we can still try doing throttling if we determine the liveness has a single end point
-    // LD->lifetimeEndInstructions.size() == 1
-    // it is unclear if this will help though
-    bool doRQCheckRelease =
-        m_pCGCtx->platform.allowDivergentControlFlowRayQueryCheckRelease() &&
-        m_pCGCtx->platform.enableRayQueryThrottling(m_pCGCtx->getModuleMetaData()->compOpt.EnableDynamicRQManagement) &&
-        m_numSlotsUsed == 1;
+    IRB.SetInsertPoint(I);
+    auto *pFunc = GenISAIntrinsic::getDeclaration(
+        F.getParent(), GenISAIntrinsic::GenISA_RuntimeValue,
+        IRB.getRayDispatchGlobalDataPtrTy(*m_pCGCtx->getModule(),
+                                          ADDRESS_SPACE_CONSTANT));
 
-    for (auto& entry : livenessDataMap)
-    {
-        bool cfgChanged = false;
+    auto *mainGlobalBufferPtr = IRB.CreateCall(
+        pFunc,
+        IRB.getInt32(
+            m_pCGCtx->getModuleMetaData()->pushInfo.inlineRTGlobalPtrOffset));
 
-        auto* globalBufferPtr = entry.first;
-        auto* LD = &entry.second;
+    uint32_t offset =
+        slot * IGC::Align(sizeof(RayDispatchGlobalData), IGC::RTGlobalsAlign);
 
-        // process the allocation acquire point
-        // handle rayquery check
-        if (doRQCheckRelease)
-        {
-            // check before the allocation is acquired
-            IRB.SetInsertPoint(LD->lifetimeStart);
-            IRB.CreateRayQueryCheckIntrinsic();
-        }
+    auto *globalBufferPtr = IRB.CreateBitCast(
+        mainGlobalBufferPtr, IRB.getInt8PtrTy(ADDRESS_SPACE_CONSTANT));
+    globalBufferPtr = IRB.CreateInBoundsGEP(IRB.getInt8Ty(), globalBufferPtr,
+                                            IRB.getInt32(offset));
+    globalBufferPtr = IRB.CreateBitCast(
+        globalBufferPtr, mainGlobalBufferPtr->getType(),
+        VALUE_NAME("globalBuffer[" + std::to_string(slot) + "]"));
 
-        // process the allocation release points
-        for (auto* I : LD->lifetimeEndInstructions)
-        {
-            IRB.SetInsertPoint(I->getNextNode());
+    I->replaceAllUsesWith(globalBufferPtr);
+  }
 
-            auto* stackPtr = static_cast<RTBuilder::SyncStackPointerVal*>(
-                cast<Value>(IRB.CreateCall(m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER], IRB.Insert(globalBufferPtr->clone())))
-            );
-
-            // handle cache control
-            InsertCacheControl(IRB, stackPtr);
-
-            // handle rayquery release
-            if (doRQCheckRelease)
-                IRB.CreateRayQueryReleaseIntrinsic();
-
-            IGC_ASSERT(DT.dominates(LD->lifetimeStart, I));
-        }
-
-        for (const auto& [from, to] : LD->lifetimeEndEdges)
-        {
-            auto* succ = to;
-            // to avoid multiple executions of rayquery release instructions,
-            // we need to ensure that the "to" block has a single predecessor
-            if (!to->getSinglePredecessor())
-            {
-                succ = SplitEdge(from, succ);
-
-                // we invalidated other the liveness data for other instructions
-                cfgChanged = true;
-            }
-
-            IRB.SetInsertPoint(succ->getFirstNonPHI());
-
-            auto* stackPtr = static_cast<RTBuilder::SyncStackPointerVal*>(
-                cast<Value>(IRB.CreateCall(m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER], IRB.Insert(globalBufferPtr->clone())))
-            );
-
-            // handle cache control
-            InsertCacheControl(IRB, stackPtr);
-
-            // handle rayquery release
-            if (doRQCheckRelease)
-                IRB.CreateRayQueryReleaseIntrinsic();
-
-            IGC_ASSERT(DT.dominates(LD->lifetimeStart, succ));
-        }
-
-        // handle continuation instructions
-        for (auto* I : continuationInstructions)
-        {
-            if (!LD->ContainsInstruction(*I))
-                continue;
-
-            StopAndStartRayquery(IRB, I, globalBufferPtr, true, doRQCheckRelease);
-        }
-
-        // handle indirect calls
-        for (auto* I : indirectCallInstructions)
-        {
-            if (!LD->ContainsInstruction(*I))
-                continue;
-
-            StopAndStartRayquery(IRB, I, globalBufferPtr, true, doRQCheckRelease);
-        }
-
-        // handle hidden control flow instructions
-        for (auto* I : hiddenCFInstructions)
-        {
-            if (!LD->ContainsInstruction(*I))
-                continue;
-
-            StopAndStartRayquery(IRB, I, globalBufferPtr, true, doRQCheckRelease);
-        }
-
-        // handle barriers
-        for (auto* I : barrierInstructions)
-        {
-            if (!LD->ContainsInstruction(*I))
-                continue;
-
-            StopAndStartRayquery(IRB, I, globalBufferPtr, false, doRQCheckRelease);
-        }
-
-        if (cfgChanged)
-        {
-            auto nextentry = livenessDataMap.find(globalBufferPtr);
-
-            // TODO: can we incrementally update LoopInfo and DomTree?
-            DT.recalculate(F);
-
-            getAnalysis<LoopInfoWrapperPass>().releaseMemory();
-            getAnalysis<LoopInfoWrapperPass>().runOnFunction(F);
-            while (++nextentry != livenessDataMap.end())
-                nextentry->second = ProcessInstruction(nextentry->first, DT, getAnalysis<LoopInfoWrapperPass>().getLoopInfo());
-        }
-    }
+  llvm::for_each(getGBPInstructions,
+                 [](Instruction *I) { I->eraseFromParent(); });
 }
 
-void InlineRaytracing::LowerGlobalBufferPtrs(Function& F)
-{
-    RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
-    SmallVector<Instruction*> getGBPInstructions;
+void InlineRaytracing::LowerStackPtrs(Function &F) {
+  RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
+  SmallVector<Instruction *> stackPtrInstructions;
 
-    for (auto& U : m_Functions[GET_GLOBAL_BUFFER_PTR]->uses())
-        getGBPInstructions.push_back(cast<Instruction>(U.getUser()));
+  for (auto &U :
+       m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER]->uses())
+    stackPtrInstructions.push_back(cast<Instruction>(U.getUser()));
 
-    for (auto& I : getGBPInstructions)
-    {
-        uint32_t slot = static_cast<uint32_t>(cast<ConstantInt>(I->getOperand(0))->getZExtValue());
+  for (auto *I : stackPtrInstructions) {
+    IRB.SetInsertPoint(I);
+    auto *stackPtr = IRB.getSyncStackPointer(I->getOperand(0));
+    I->replaceAllUsesWith(stackPtr);
+  }
 
-        IRB.SetInsertPoint(I);
-        auto* pFunc =
-            GenISAIntrinsic::getDeclaration(
-                F.getParent(),
-                GenISAIntrinsic::GenISA_RuntimeValue,
-                IRB.getRayDispatchGlobalDataPtrTy(*m_pCGCtx->getModule(), ADDRESS_SPACE_CONSTANT));
-
-        auto* mainGlobalBufferPtr = IRB.CreateCall(
-            pFunc,
-            IRB.getInt32(m_pCGCtx->getModuleMetaData()->pushInfo.inlineRTGlobalPtrOffset)
-        );
-
-        uint32_t offset = slot * IGC::Align(sizeof(RayDispatchGlobalData), IGC::RTGlobalsAlign);
-
-        auto* globalBufferPtr = IRB.CreateBitCast(mainGlobalBufferPtr, IRB.getInt8PtrTy(ADDRESS_SPACE_CONSTANT));
-        globalBufferPtr = IRB.CreateInBoundsGEP(IRB.getInt8Ty(), globalBufferPtr, IRB.getInt32(offset));
-        globalBufferPtr = IRB.CreateBitCast(globalBufferPtr, mainGlobalBufferPtr->getType(), VALUE_NAME("globalBuffer[" + std::to_string(slot) + "]"));
-
-        I->replaceAllUsesWith(globalBufferPtr);
-    }
-
-    llvm::for_each(getGBPInstructions, [](Instruction* I) {I->eraseFromParent(); });
+  llvm::for_each(stackPtrInstructions,
+                 [](Instruction *I) { I->eraseFromParent(); });
 }
 
-void InlineRaytracing::LowerStackPtrs(Function& F)
-{
-    RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
-    SmallVector<Instruction*> stackPtrInstructions;
+bool InlineRaytracing::runOnFunction(Function &F) {
+  m_pCGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
-    for (auto& U : m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER]->uses())
-        stackPtrInstructions.push_back(cast<Instruction>(U.getUser()));
+  if (!m_pCGCtx->hasSyncRTCalls())
+    return false;
 
-    for (auto* I : stackPtrInstructions)
-    {
-        IRB.SetInsertPoint(I);
-        auto* stackPtr = IRB.getSyncStackPointer(I->getOperand(0));
-        I->replaceAllUsesWith(stackPtr);
+  for (auto &fn : m_Functions) {
+    IGC_ASSERT_MESSAGE(!fn, "Function leaked?");
+    if (fn) {
+      fn->eraseFromParent();
+      fn = nullptr;
     }
+  }
 
-    llvm::for_each(stackPtrInstructions, [](Instruction* I) {I->eraseFromParent(); });
-}
+  if (!LowerAllocations(F))
+    return false;
 
-bool InlineRaytracing::runOnFunction(Function& F)
-{
-    m_pCGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    auto& DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  LowerIntrinsics(F);
 
-    if (!m_pCGCtx->hasSyncRTCalls())
-        return false;
+  // TODO: we should split the pass here into two
+  // 1. to reduce work for liveness analysis, we can run simplifyCFG here
+  // 2. we wouldn't have to explicitly invalidate the analysis passes here
+  DT.recalculate(F);
 
-    for (auto& fn : m_Functions)
-    {
-        IGC_ASSERT_MESSAGE(!fn, "Function leaked?");
-        if (fn)
-        {
-            fn->eraseFromParent();
-            fn = nullptr;
-        }
+  getAnalysis<LoopInfoWrapperPass>().releaseMemory();
+  getAnalysis<LoopInfoWrapperPass>().runOnFunction(F);
+  auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+
+  auto livenessData = AnalyzeLiveness(F, DT, LI);
+  AssignGlobalBuffers(F, livenessData);
+  HandleOptimizationsAndSpills(F, livenessData, DT, LI);
+  LowerGlobalBufferPtrs(F);
+  LowerStackPtrs(F);
+
+  auto *MMD = m_pCGCtx->getModuleMetaData();
+
+  MMD->FuncMD[&F].rtInfo.numSyncRTStacks = m_numSlotsUsed;
+  MMD->rtInfo.numSyncRTStacks =
+      std::max(MMD->rtInfo.numSyncRTStacks, m_numSlotsUsed);
+
+  for (auto &fn : m_Functions) {
+    IGC_ASSERT_MESSAGE(fn->use_empty(), "Function leaked?");
+    if (fn) {
+      fn->eraseFromParent();
+      fn = nullptr;
     }
+  }
 
-    if (!LowerAllocations(F))
-        return false;
+  DumpLLVMIR(m_pCGCtx, "InlineRaytracing");
 
-    LowerIntrinsics(F);
+  IGC_ASSERT(verifyFunction(F, &dbgs()) == false);
 
-    // TODO: we should split the pass here into two
-    // 1. to reduce work for liveness analysis, we can run simplifyCFG here
-    // 2. we wouldn't have to explicitly invalidate the analysis passes here
-    DT.recalculate(F);
-
-    getAnalysis<LoopInfoWrapperPass>().releaseMemory();
-    getAnalysis<LoopInfoWrapperPass>().runOnFunction(F);
-    auto& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-
-    auto livenessData = AnalyzeLiveness(F, DT, LI);
-    AssignGlobalBuffers(F, livenessData);
-    HandleOptimizationsAndSpills(F, livenessData, DT, LI);
-    LowerGlobalBufferPtrs(F);
-    LowerStackPtrs(F);
-
-    auto* MMD = m_pCGCtx->getModuleMetaData();
-
-    MMD->FuncMD[&F].rtInfo.numSyncRTStacks = m_numSlotsUsed;
-    MMD->rtInfo.numSyncRTStacks = std::max(MMD->rtInfo.numSyncRTStacks, m_numSlotsUsed);
-
-    for (auto& fn : m_Functions)
-    {
-        IGC_ASSERT_MESSAGE(fn->use_empty(), "Function leaked?");
-        if (fn)
-        {
-            fn->eraseFromParent();
-            fn = nullptr;
-        }
-    }
-
-    DumpLLVMIR(m_pCGCtx, "InlineRaytracing");
-
-    IGC_ASSERT(verifyFunction(F, &dbgs()) == false);
-
-    return true;
+  return true;
 }
 
 // Register pass to igc-opt
-IGC_INITIALIZE_PASS_BEGIN(InlineRaytracing, "igc-inline-raytracing", "Handle inline raytracing", false, false)
+IGC_INITIALIZE_PASS_BEGIN(InlineRaytracing, "igc-inline-raytracing",
+                          "Handle inline raytracing", false, false)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-IGC_INITIALIZE_PASS_END(InlineRaytracing, "igc-inline-raytracing", "Handle inline raytracing", false, false)
+IGC_INITIALIZE_PASS_END(InlineRaytracing, "igc-inline-raytracing",
+                        "Handle inline raytracing", false, false)
 
 char InlineRaytracing::ID = 0;
 
-InlineRaytracing::InlineRaytracing() : AllocationLivenessAnalyzer(ID)
-{
-    initializeInlineRaytracingPass(*PassRegistry::getPassRegistry());
+InlineRaytracing::InlineRaytracing() : AllocationLivenessAnalyzer(ID) {
+  initializeInlineRaytracingPass(*PassRegistry::getPassRegistry());
 }
 
-namespace IGC
-{
-    Pass* createInlineRaytracing()
-    {
-        return new InlineRaytracing();
-    }
-}
+namespace IGC {
+Pass *createInlineRaytracing() { return new InlineRaytracing(); }
+} // namespace IGC
