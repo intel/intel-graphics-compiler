@@ -37,8 +37,6 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
    * {
    *     void* addrspace(2) globalBufferPtr;
    *     uint32_t rayQueryPackedData;
-   *     uint32_t rayFlags; // we know these at compile time, so technically no
-   * reason to waste space, but for simplicity just store them here now
    * }
    */
 
@@ -59,7 +57,7 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
   if (!m_RQObjectType)
     m_RQObjectType = StructType::create(
         *m_pCGCtx->getLLVMContext(),
-        {globalBufferPtrTy, IRB.getInt32Ty(), IRB.getInt32Ty()}, name);
+        {globalBufferPtrTy, IRB.getInt32Ty()}, name);
 
   auto *getGlobalBufferPtrFnTy =
       FunctionType::get(globalBufferPtrTy, IRB.getInt32Ty(), false);
@@ -78,7 +76,8 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
                            F.getParent());
 
   auto *getRQHandleFromRQObjectFnTy = FunctionType::get(
-      IRB.getInt32Ty(), m_RQObjectType->getPointerTo(), false);
+      IRB.getInt32Ty(), {m_RQObjectType->getPointerTo(), IRB.getInt32Ty()},
+      false);
   auto *getRQHandleFromRQObjectFn = m_Functions[GET_RQ_HANDLE_FROM_RQ_OJECT] =
       Function::Create(getRQHandleFromRQObjectFnTy, GlobalValue::PrivateLinkage,
                        VALUE_NAME("getRQHandleFromRQObjectFn"), F.getParent());
@@ -134,11 +133,6 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
                    IRB.getInt32(0), IRB.getInt32(0),
                    IRB.getInt32(CommittedHit)});
 
-    // TODO: we shouldn't store the rayflags here because we know them at
-    // compile time
-    IRB.CreateStore(I->getFlags(),
-                    IRB.CreateInBoundsGEP(m_RQObjectType, aI,
-                                          {IRB.getInt32(0), IRB.getInt32(2)}));
     v2vMap[I] = aI;
 
     SmallVector<Use *> worklist;
@@ -153,21 +147,21 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
         continue;
 
       if (auto *genI = dyn_cast<GenIntrinsicInst>(II)) {
+        // clang-format off
         // for example, we have something like this:
-        // %result = call fast float
-        // @llvm.genx.GenISA.TraceRayInlineRayInfo.f32(i32 %rayqueryhandle, i32
-        // 5, i32 0, i1 true) what we want is: %rayqueryhandle = call i32
-        // @getRQHandleFromRQObjectFn(ptr %rayqueryobject) %result = call fast
-        // float @llvm.genx.GenISA.TraceRayInlineRayInfo.f32(i32
-        // %rayqueryhandle, i32 5, i32 0, i1 true) later, when lowering
-        // TraceRayInlineRayInfo, we will just look up the first operand of
-        // %rayqueryhandle and use this
+        // %result = call fast float @llvm.genx.GenISA.TraceRayInlineRayInfo.f32(i32 %rayqueryhandle, i32 5, i32 0, i1 true)
+        // what we want is:
+        // %rayqueryhandle = call i32 @getRQHandleFromRQObjectFn(ptr %rayqueryobject, i32 %flags)
+        // %result = call fast float @llvm.genx.GenISA.TraceRayInlineRayInfo.f32(i32 %rayqueryhandle, i32 5, i32 0, i1 true)
+        // later, when lowering TraceRayInlineRayInfo,
+        // we will just look up the operands of %rayqueryhandle and use them to lower the intrinsic
+        // clang-format on
 
         IGC_ASSERT(v2vMap.count(use->get()) == 1);
 
         IRB.SetInsertPoint(genI);
-        auto *RQHandle =
-            IRB.CreateCall(getRQHandleFromRQObjectFn, {v2vMap[use->get()]});
+        auto *RQHandle = IRB.CreateCall(getRQHandleFromRQObjectFn,
+                                        {v2vMap[use->get()], I->getFlags()});
         use->set(RQHandle);
 
         v2vMap[genI] = genI;
@@ -386,7 +380,10 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
   RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
 
   for (auto RQI : RQInstructions) {
-    auto *rqObject = cast<Instruction>(RQI->getQueryObjIndex())->getOperand(0);
+    auto *convertRQHandleFromRQObject =
+        cast<Instruction>(RQI->getQueryObjIndex());
+    auto *rqObject = convertRQHandleFromRQObject->getOperand(0);
+    auto *rqFlags = convertRQHandleFromRQObject->getOperand(1);
     IRB.SetInsertPoint(RQI);
 
     switch (RQI->getIntrinsicID()) {
@@ -400,7 +397,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       for (unsigned int i = 0; i < I->getNumRayInfoFields(); i++)
         Vec = IRB.CreateInsertElement(Vec, I->getRayInfo(i), i);
 
-      auto *flags = IRB.CreateOr(I->getFlag(), getRayFlags(IRB, rqObject));
+      auto *flags = IRB.CreateOr(I->getFlag(), rqFlags);
 
       IRB.createTraceRayInlinePrologue(
           getStackPtr(IRB, rqObject), Vec, IRB.getRootNodePtr(I->getBVH()),

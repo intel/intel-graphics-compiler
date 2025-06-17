@@ -168,11 +168,6 @@ private:
     IRB.CreateStore(packedData, getAtIndexFromRayQueryObject(IRB, rqObject, 1));
   }
 
-  llvm::Value *getRayFlags(llvm::RTBuilder &IRB, llvm::Value *rqObject) {
-    return IRB.CreateLoad(IRB.getInt32Ty(),
-                          getAtIndexFromRayQueryObject(IRB, rqObject, 2));
-  }
-
   llvm::RTBuilder::SyncStackPointerVal *getStackPtr(llvm::RTBuilder &IRB,
                                                     llvm::Value *rqObject) {
     return static_cast<llvm::RTBuilder::SyncStackPointerVal *>(
