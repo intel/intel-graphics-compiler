@@ -70,6 +70,12 @@ namespace IGC
             NUM_FUNCTIONS
         };
 
+        enum CommittedDataLocation : bool
+        {
+            CommittedHit = 0,
+            PotentialHit = 1
+        };
+
         enum RQPackedDataBitOffsets : uint8_t
         {
             Start = 0,
@@ -77,6 +83,7 @@ namespace IGC
             CommittedStatus = 10,
             CandidateType = 11,
             HasAcceptHitAndEndSearchFlag = 12,
+            CommittedDataLocation = 13,
         };
 
         std::array<llvm::Function*, NUM_FUNCTIONS> m_Functions = { nullptr };
@@ -97,7 +104,8 @@ namespace IGC
             llvm::Value* TraceRayCtrl = nullptr;
             llvm::Value* CommittedStatus = nullptr;
             llvm::Value* CandidateType = nullptr;
-            llvm::Value* hasAcceptHitAndEndSearchFlag = nullptr;
+            llvm::Value* HasAcceptHitAndEndSearchFlag = nullptr;
+            llvm::Value* CommittedDataLocation = nullptr;
         };
 
         UnpackedData getPackedData(llvm::RTBuilder& IRB, llvm::Value* rqObject)
@@ -110,7 +118,8 @@ namespace IGC
                 std::make_tuple(&data.TraceRayCtrl, RQPackedDataBitOffsets::Start, RQPackedDataBitOffsets::TraceRayCtrl),
                 std::make_tuple(&data.CommittedStatus, RQPackedDataBitOffsets::TraceRayCtrl, RQPackedDataBitOffsets::CommittedStatus),
                 std::make_tuple(&data.CandidateType, RQPackedDataBitOffsets::CommittedStatus, RQPackedDataBitOffsets::CandidateType),
-                std::make_tuple(&data.hasAcceptHitAndEndSearchFlag, RQPackedDataBitOffsets::CandidateType, RQPackedDataBitOffsets::HasAcceptHitAndEndSearchFlag),
+                std::make_tuple(&data.HasAcceptHitAndEndSearchFlag, RQPackedDataBitOffsets::CandidateType, RQPackedDataBitOffsets::HasAcceptHitAndEndSearchFlag),
+                std::make_tuple(&data.CommittedDataLocation, RQPackedDataBitOffsets::HasAcceptHitAndEndSearchFlag, RQPackedDataBitOffsets::CommittedDataLocation),
             };
 
             for (auto [field, bitoffset, nextbitoffset] : iterator)
@@ -133,7 +142,8 @@ namespace IGC
                 std::make_tuple(&data.TraceRayCtrl, RQPackedDataBitOffsets::Start, RQPackedDataBitOffsets::TraceRayCtrl),
                 std::make_tuple(&data.CommittedStatus, RQPackedDataBitOffsets::TraceRayCtrl, RQPackedDataBitOffsets::CommittedStatus),
                 std::make_tuple(&data.CandidateType, RQPackedDataBitOffsets::CommittedStatus, RQPackedDataBitOffsets::CandidateType),
-                std::make_tuple(&data.hasAcceptHitAndEndSearchFlag, RQPackedDataBitOffsets::CandidateType, RQPackedDataBitOffsets::HasAcceptHitAndEndSearchFlag),
+                std::make_tuple(&data.HasAcceptHitAndEndSearchFlag, RQPackedDataBitOffsets::CandidateType, RQPackedDataBitOffsets::HasAcceptHitAndEndSearchFlag),
+                std::make_tuple(&data.CommittedDataLocation, RQPackedDataBitOffsets::HasAcceptHitAndEndSearchFlag, RQPackedDataBitOffsets::CommittedDataLocation),
             };
 
             llvm::Value* packedData = IRB.getInt32(0);

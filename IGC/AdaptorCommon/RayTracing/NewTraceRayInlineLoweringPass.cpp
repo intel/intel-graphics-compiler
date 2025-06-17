@@ -121,7 +121,7 @@ bool InlineRaytracing::LowerAllocations(Function& F)
         }
 
         // iniitalize it to done so when app calls proceed without tracerayinline, we dont traverse over garbage
-        setPackedData(IRB, aI, { IRB.getInt32(TRACE_RAY_DONE), IRB.getInt32(0), IRB.getInt32(0), IRB.getInt32(0) });
+        setPackedData(IRB, aI, { IRB.getInt32(TRACE_RAY_DONE), IRB.getInt32(0), IRB.getInt32(0), IRB.getInt32(0), IRB.getInt32(CommittedHit) });
 
         // TODO: we shouldn't store the rayflags here because we know them at compile time
         IRB.CreateStore(I->getFlags(), IRB.CreateInBoundsGEP(m_RQObjectType, aI, { IRB.getInt32(0), IRB.getInt32(2) }));
@@ -427,9 +427,11 @@ void InlineRaytracing::LowerIntrinsics(Function& F)
             data.TraceRayCtrl = IRB.getInt32(TRACE_RAY_INITIAL);
             data.CommittedStatus = IRB.getInt32(0);
             data.CandidateType = IRB.getInt32(0);
-            data.hasAcceptHitAndEndSearchFlag = IRB.CreateZExt(
+            data.HasAcceptHitAndEndSearchFlag = IRB.CreateZExt(
                 IRB.CreateICmpNE(hasAcceptHitAndEndSearchFlag, IRB.getInt32(0)), IRB.getInt32Ty()
             );
+
+            data.CommittedDataLocation = IRB.getInt32(CommittedHit);
 
             setPackedData(IRB, rqObject, data);
             break;
@@ -503,6 +505,7 @@ void InlineRaytracing::LowerIntrinsics(Function& F)
 
                 data.CommittedStatus = committedStatus;
                 data.CandidateType = candidateType;
+                data.CommittedDataLocation = IRB.getInt32(CommittedHit);
             }
             else
             {
@@ -521,6 +524,7 @@ void InlineRaytracing::LowerIntrinsics(Function& F)
 
                 data.CommittedStatus = IRB.getCommittedStatus(getStackPtr(IRB, rqObject));
                 data.CandidateType = IRB.getCandidateType(getStackPtr(IRB, rqObject));
+                data.CommittedDataLocation = IRB.getInt32(CommittedHit);
             }
 
             setPackedData(IRB, rqObject, data);
@@ -554,14 +558,26 @@ void InlineRaytracing::LowerIntrinsics(Function& F)
         case GenISAIntrinsic::GenISA_TraceRayInlineRayInfo:
         {
             auto* I = cast<RayQueryInfoIntrinsic>(RQI);
+            auto data = getPackedData(IRB, rqObject);
+            auto* loadCommittedFromPotential =
+                IRB.CreateICmpEQ(
+                data.CommittedDataLocation,
+                IRB.getInt32(PotentialHit)
+            );
+
+            auto* shaderTy = IRB.CreateSelect(
+                loadCommittedFromPotential,
+                IRB.getInt32(AnyHit),
+                IRB.getInt32(I->isCommitted() ? ClosestHit : AnyHit)
+            );
+
             switch (I->getInfoKind())
             {
             default:
                 I->replaceAllUsesWith(
                     IRB.lowerRayInfo(
                         getStackPtr(IRB, rqObject),
-                        I,
-                        I->isCommitted() ? CallableShaderTypeMD::ClosestHit : CallableShaderTypeMD::AnyHit,
+                        I, shaderTy,
                         std::nullopt
                     )
                 );
@@ -589,12 +605,14 @@ void InlineRaytracing::LowerIntrinsics(Function& F)
         {
             auto data = getPackedData(IRB, rqObject);
             auto* notDone = IRB.CreateAnd({
-                IRB.CreateICmpEQ(data.hasAcceptHitAndEndSearchFlag, IRB.getInt32(0)),
+                IRB.CreateICmpEQ(data.HasAcceptHitAndEndSearchFlag, IRB.getInt32(0)),
                 IRB.CreateICmpNE(data.TraceRayCtrl, IRB.getInt32(TRACE_RAY_DONE))
             });
-            IRB.createPotentialHit2CommittedHit(getStackPtr(IRB, rqObject));
+
+            data.CommittedDataLocation = IRB.getInt32(PotentialHit);
             data.TraceRayCtrl = IRB.CreateSelect(notDone, IRB.getInt32(TRACE_RAY_COMMIT), IRB.getInt32(TRACE_RAY_DONE));
             data.CommittedStatus = IRB.getInt32(RTStackFormat::COMMITTED_STATUS::COMMITTED_TRIANGLE_HIT);
+
             setPackedData(IRB, rqObject, data);
             break;
         }
@@ -602,12 +620,20 @@ void InlineRaytracing::LowerIntrinsics(Function& F)
         {
             auto data = getPackedData(IRB, rqObject);
             auto* notDone = IRB.CreateAnd({
-                IRB.CreateICmpEQ(data.hasAcceptHitAndEndSearchFlag, IRB.getInt32(0)),
+                IRB.CreateICmpEQ(data.HasAcceptHitAndEndSearchFlag, IRB.getInt32(0)),
                 IRB.CreateICmpNE(data.TraceRayCtrl, IRB.getInt32(TRACE_RAY_DONE))
             });
-            IRB.commitProceduralPrimitiveHit(getStackPtr(IRB, rqObject), cast<RayQueryCommitProceduralPrimitiveHit>(RQI)->getTHit());
+
+            IRB.setHitT(
+                getStackPtr(IRB, rqObject),
+                cast<RayQueryCommitProceduralPrimitiveHit>(RQI)->getTHit(),
+                false
+            );
+
+            data.CommittedDataLocation = IRB.getInt32(PotentialHit);
             data.TraceRayCtrl = IRB.CreateSelect(notDone, IRB.getInt32(TRACE_RAY_COMMIT), IRB.getInt32(TRACE_RAY_DONE));
             data.CommittedStatus = IRB.getInt32(RTStackFormat::COMMITTED_STATUS::COMMITTED_PROCEDURAL_PRIMITIVE_HIT);
+
             setPackedData(IRB, rqObject, data);
             break;
         }

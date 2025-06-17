@@ -506,13 +506,13 @@ public:
     Value* lowerRayInfo(
         StackPointerValT* perLaneStackPtr,
         RayInfoIntrinsicT* I,
-        IGC::CallableShaderTypeMD shaderType,
+        Value* shaderType,
         std::optional<bool> isProcedural)
     {
         return lowerRayInfo(
             perLaneStackPtr,
             I,
-            getInt32(shaderType),
+            shaderType,
             isProcedural.has_value() ? getInt1(*isProcedural) : nullptr);
     }
 

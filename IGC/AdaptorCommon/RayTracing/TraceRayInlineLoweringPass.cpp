@@ -680,7 +680,7 @@ void TraceRayInlineLoweringPass::LowerRayInfo(Function& F)
             I->replaceAllUsesWith(
                 builder.lowerRayInfo(ShadowMemStackPointer,
                     I,
-                    I->isCommitted() ? CallableShaderTypeMD::ClosestHit : CallableShaderTypeMD::AnyHit,
+                    builder.getInt32(I->isCommitted() ? ClosestHit : AnyHit),
                     std::nullopt
                 )
             );
