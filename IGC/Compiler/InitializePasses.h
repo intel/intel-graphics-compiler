@@ -154,6 +154,7 @@ void initializeSimd32ProfitabilityAnalysisPass(llvm::PassRegistry&);
 void initializeSetFastMathFlagsPass(llvm::PassRegistry&);
 void initializeSPIRMetaDataTranslationPass(llvm::PassRegistry&);
 void initializeSplitStructurePhisPassPass(llvm::PassRegistry&);
+void initializeMergeScalarPhisPassPass(llvm::PassRegistry &);
 void initializeSpv2dBlockIOResolutionPass(llvm::PassRegistry&);
 void initializeSpvSubgroupMMAResolutionPass(llvm::PassRegistry&);
 void initializeSplitLoadsPass(llvm::PassRegistry&);

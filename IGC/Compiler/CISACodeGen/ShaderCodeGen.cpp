@@ -75,6 +75,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/SplitStructurePhisPass/SplitStructurePhisPass.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/MergeScalarPhisPass/MergeScalarPhisPass.hpp"
 #include "Compiler/Legalizer/AddRequiredMemoryFences.h"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
@@ -227,6 +228,11 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
 
     if (!isOptDisabled) {
         mpm.add(createSplitLoadsPass());
+    }
+
+
+    if (IGC_IS_FLAG_ENABLED(EnableScalarPhisMerger)) {
+        mpm.add(new MergeScalarPhisPass());
     }
 
     // only limited code-sinking to several shader-type
@@ -1939,6 +1945,7 @@ void OptimizeIR(CodeGenContext* const pContext)
             if (IGC_IS_FLAG_ENABLED(VectorizerCheckScalarizer))
                 mpm.add(createScalarizerPass(SelectiveScalarizer::Auto));
         }
+
 
         mpm.run(*pContext->getModule());
     } // end scope

@@ -542,6 +542,7 @@ DECLARE_IGC_REGKEY(bool,  DisableMergeStore,            false, "[temp]If EnableL
 DECLARE_IGC_REGKEY(DWORD,MaxLiveOutThreshold,           0,     "Max LiveOut Threshold in MemOpt2", false)
 DECLARE_IGC_REGKEY(bool, DisableScalarAtomics,          false, "Disable the Scalar Atomics optimization", false)
 DECLARE_IGC_REGKEY(bool, EnableScalarTypedAtomics,      true, "Enable the Scalar Typed Atomics optimization", false)
+DECLARE_IGC_REGKEY(bool, EnableScalarPhisMerger, true, "enable optimization that merges scalar phi nodes into vector ones", true)
 DECLARE_IGC_REGKEY(bool, EnableVectorizer,              true, "Enable IGCVectorizer pass", true)
 DECLARE_IGC_REGKEY(bool, VectorizerCheckScalarizer,              false, "Add scalariser after vectorizer to check performance", true)
 DECLARE_IGC_REGKEY(DWORD, VectorizerList, -1, "Vectorize only one seed instruction with the provided number", true)
