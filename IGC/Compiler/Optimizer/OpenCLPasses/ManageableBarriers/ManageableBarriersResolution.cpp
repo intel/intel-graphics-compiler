@@ -540,12 +540,12 @@ bool ManageableBarriersResolution::runOnModule(Module& M)
                 }
 
                 // In first place, take care of the init functions
-                for (auto pair : mManageBarrierInstructionsInit)
+                for (auto& pair : mManageBarrierInstructionsInit)
                 {
                     emitInit(pair.first);
                 }
                 // Now, we can take the rest of the API calls
-                for (auto pair : mManageBarrierInstructions)
+                for (auto& pair : mManageBarrierInstructions)
                 {
                     emit(pair.first, pair.second);
                 }
@@ -639,7 +639,7 @@ bool ManageableBarriersResolution::hasSimpleCallsOnly(CallInst* pFunc)
 
 void ManageableBarriersResolution::lookForSimpleBarriers()
 {
-    for (auto init : mManageBarrierInstructionsInit)
+    for (auto& init : mManageBarrierInstructionsInit)
     {
         CallInst* pFunc = init.first;
         if (mCurrentMode == MBMode::SimpleOnly ||
@@ -693,12 +693,12 @@ ManageableBarriersResolution::SimpleBarrierStruct& ManageableBarriersResolution:
 
 void ManageableBarriersResolution::clearData()
 {
-    for (auto call : mManageBarrierInstructions)
+    for (auto& call : mManageBarrierInstructions)
     {
         call.first->eraseFromParent();
     }
 
-    for (auto init : mManageBarrierInstructionsInit)
+    for (auto& init : mManageBarrierInstructionsInit)
     {
         init.first->eraseFromParent();
     }

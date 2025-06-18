@@ -278,7 +278,7 @@ namespace IGC
         llvm::Value* CoordY;
         llvm::Value* CoordZ;
         bool m_IncorrectBti;
-        ModuleMetaData* m_modMD;
+        ModuleMetaData* m_modMD = nullptr;
     };
 
     class CBuiltinsResolver

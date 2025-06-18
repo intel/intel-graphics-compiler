@@ -188,7 +188,7 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
                     << "  ConvBB: " << ConvBB << "\n"
                     << "  SuccBB: " << SuccBB << "\n");
 
-  for (auto [Inst, MergeV] : Insts) {
+  for (auto& [Inst, MergeV] : Insts) {
     LLVM_DEBUG(dbgs() << "Converting instruction: " << *Inst << "\n");
     convertMemoryAccesses(Inst, MergeV, &Cond, Inverse);
   }

@@ -83,7 +83,7 @@ bool SplitStructurePhisPass::runOnFunction(Function &F) {
     // 2. create new phis for each scalar types
     // 3. save dead instructions for removal
     // 4. update incoming phis incoming values
-    for (auto PhiPair : PhiNodes) {
+    for (auto& PhiPair : PhiNodes) {
         PHINode *OldPhi = PhiPair.first;
         auto Indices = std::get<0>(PhiPair.second);
         ExtractValueMap ExtractValues = std::get<1>(PhiPair.second);

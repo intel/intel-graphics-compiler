@@ -77,7 +77,7 @@ namespace IGC
         llvm::DenseMap<llvm::CallInst*, MBFuncType> mManageBarrierInstructions;
         llvm::DenseMap<llvm::CallInst*, MBFuncType> mManageBarrierInstructionsInit;
         llvm::DenseMap<llvm::CallInst*, SimpleBarrierStruct> mManageBarrierInstructionsInitSimple;
-        int mSimpleBarrierIDCount;
+        int mSimpleBarrierIDCount = 0;
 
         llvm::DenseMap<llvm::Function*, llvm::Value*> mGlobalDataPoolPerFunc;
         llvm::DenseMap<llvm::Function*, llvm::Value*> mGlobalIDPoolPPerFunc;

@@ -3311,7 +3311,7 @@ void EmitPass::EmitSelectStruct(SelectInst* SI)
         std::make_tuple(srcFalseV, srcFalseS, true)
     };
 
-    for (auto [srcV, srcS, inv] : iterator)
+    for (auto& [srcV, srcS, inv] : iterator)
     {
         // For now, do not support uniform dst and non-uniform src
         IGC_ASSERT_MESSAGE(!srcS->IsUniform() || srcS->IsUniform() == destS->IsUniform(),

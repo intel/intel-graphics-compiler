@@ -40,8 +40,8 @@ class DestVector {
     DestVector(llvm::Value *SourceVec, llvm::InsertElementInst *DestVec, std::vector<int> ShuffleMask,
         std::vector<llvm::InsertElementInst *> IEs, std::vector<llvm::ExtractElementInst *> EEs,
         std::vector<llvm::Value *> SourceScalars)
-        : SourceVec(SourceVec), DestVec(DestVec), ShuffleMask(ShuffleMask), IEs(IEs), EEs(EEs),
-          SourceScalars(SourceScalars){};
+        : SourceVec(SourceVec), DestVec(DestVec), ShuffleMask(std::move(ShuffleMask)), IEs(std::move(IEs)), EEs(std::move(EEs)),
+          SourceScalars(std::move(SourceScalars)){};
 
     llvm::Value *SourceVec;
     llvm::InsertElementInst *DestVec; // first IE that creates a new vec (writes to Undef)
@@ -92,7 +92,7 @@ class DestVector {
 class VectorToScalarsPattern {
   public:
     VectorToScalarsPattern(llvm::Value *SourceVec, std::vector<llvm::ExtractElementInst *> EEs, bool AllUsesAreScalars)
-        : SourceVec(SourceVec), EEs(EEs), AllUsesAreScalars(AllUsesAreScalars){};
+        : SourceVec(SourceVec), EEs(std::move(EEs)), AllUsesAreScalars(AllUsesAreScalars){};
 
     bool areAllUsesScalars() const { return AllUsesAreScalars; }
 
