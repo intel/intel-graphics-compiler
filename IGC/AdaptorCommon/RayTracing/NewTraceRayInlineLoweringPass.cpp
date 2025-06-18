@@ -980,11 +980,13 @@ bool InlineRaytracing::runOnFunction(Function &F) {
   LowerGlobalBufferPtrs(F);
   LowerStackPtrs(F);
 
+  // set relevant metadata
   auto *MMD = m_pCGCtx->getModuleMetaData();
 
   MMD->FuncMD[&F].rtInfo.numSyncRTStacks = m_numSlotsUsed;
   MMD->rtInfo.numSyncRTStacks =
       std::max(MMD->rtInfo.numSyncRTStacks, m_numSlotsUsed);
+  MMD->FuncMD[&F].hasSyncRTCalls = true;
 
   for (auto &fn : m_Functions) {
     IGC_ASSERT_MESSAGE(fn->use_empty(), "Function leaked?");
