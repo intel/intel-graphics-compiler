@@ -361,7 +361,9 @@ public:
     Value* getHitBaryCentric(StackPointerVal* StackPointer, uint32_t idx, Value* CommittedHit);
 
 
-    Value* getGlobalBufferPtr(IGC::ADDRESS_SPACE Addrspace = IGC::ADDRESS_SPACE_CONSTANT);
+    Value *getGlobalBufferPtr(
+        IGC::ADDRESS_SPACE Addrspace = IGC::ADDRESS_SPACE_CONSTANT);
+    Value *getGlobalBufferPtrForSlot(IGC::ADDRESS_SPACE Addrspace, Value *slot);
     Value* getSyncStackID();
     Value* getSyncStackOffset(bool rtMemBasePtr = true);
     SpillValueIntrinsic* getSpillValue(Value* Val, uint64_t Offset);

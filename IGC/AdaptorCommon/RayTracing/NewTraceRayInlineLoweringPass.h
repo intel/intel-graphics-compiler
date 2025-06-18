@@ -43,13 +43,13 @@ private:
   bool LowerAllocations(llvm::Function &F);
   LivenessDataMap AnalyzeLiveness(llvm::Function &F, llvm::DominatorTree &DT,
                                   llvm::LoopInfo &LI);
-  void AssignGlobalBuffers(llvm::Function &F,
+  void AssignSlots(llvm::Function &F,
                            const LivenessDataMap &livenessDataMap);
   void HandleOptimizationsAndSpills(llvm::Function &F,
                                     LivenessDataMap &livenessDataMap,
                                     llvm::DominatorTree &DT,
                                     llvm::LoopInfo &LI);
-  void LowerGlobalBufferPtrs(llvm::Function &F);
+  void LowerSlotAssignments(llvm::Function &F);
   void LowerStackPtrs(llvm::Function &F);
 
   enum RQTraceRayCtrl : uint8_t {
@@ -65,9 +65,9 @@ private:
   };
 
   enum Functions : uint8_t {
-    GET_GLOBAL_BUFFER_PTR,
     GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER,
     GET_RQ_HANDLE_FROM_RQ_OJECT,
+    CREATE_RQ_OBJECT,
     NUM_FUNCTIONS
   };
 
@@ -92,8 +92,8 @@ private:
   }
 
   llvm::Value *getGlobalBufferPtr(llvm::RTBuilder &IRB, llvm::Value *rqObject) {
-    return IRB.CreateLoad(m_Functions[GET_GLOBAL_BUFFER_PTR]->getReturnType(),
-                          getAtIndexFromRayQueryObject(IRB, rqObject, 0));
+    auto *slot = IRB.CreateLoad(IRB.getInt32Ty(), getAtIndexFromRayQueryObject(IRB, rqObject, 0));
+    return IRB.getGlobalBufferPtrForSlot(ADDRESS_SPACE_CONSTANT, slot);
   }
 
   struct UnpackedData {
@@ -180,7 +180,7 @@ private:
   void InsertCacheControl(llvm::RTBuilder &IRB,
                           llvm::RTBuilder::SyncStackPointerVal *stackPtr);
   void StopAndStartRayquery(llvm::RTBuilder &IRB, llvm::Instruction *I,
-                            llvm::Instruction *globalBufferPtr,
+                            llvm::Value *globalBufferPtr,
                             bool doSpillFill, bool doRQCheckRelease);
 
 };

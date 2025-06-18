@@ -35,7 +35,7 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
   /*
    * struct RQObjectType
    * {
-   *     void* addrspace(2) globalBufferPtr;
+   *     uint32_t slot;
    *     uint32_t rayQueryPackedData;
    * }
    */
@@ -51,21 +51,21 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
   if (AllocateRQInstructions.empty())
     return false;
 
+  auto *rtstackTy = IRB.getRTStack2PtrTy(false);
   auto *globalBufferPtrTy =
       IRB.getRayDispatchGlobalDataPtrTy(*F.getParent(), ADDRESS_SPACE_CONSTANT);
 
   if (!m_RQObjectType)
-    m_RQObjectType = StructType::create(
-        *m_pCGCtx->getLLVMContext(),
-        {globalBufferPtrTy, IRB.getInt32Ty()}, name);
+    m_RQObjectType =
+        StructType::create(*m_pCGCtx->getLLVMContext(),
+                           {IRB.getInt32Ty(), IRB.getInt32Ty()}, name);
 
-  auto *getGlobalBufferPtrFnTy =
-      FunctionType::get(globalBufferPtrTy, IRB.getInt32Ty(), false);
-  auto *getGlobalBufferPtrFn = m_Functions[GET_GLOBAL_BUFFER_PTR] =
-      Function::Create(getGlobalBufferPtrFnTy, GlobalValue::PrivateLinkage,
-                       VALUE_NAME("getGlobalBufferPtrFn"), F.getParent());
+  auto *createRQObjectFnTy = FunctionType::get(m_RQObjectType->getPointerTo(),
+                                               IRB.getInt32Ty(), false);
+  auto *createRQObjectFn = m_Functions[CREATE_RQ_OBJECT] =
+      Function::Create(createRQObjectFnTy, GlobalValue::PrivateLinkage,
+                       VALUE_NAME("createRQObject"), F.getParent());
 
-  auto *rtstackTy = IRB.getRTStack2PtrTy(false);
   auto *getStackPointerFromGlobalBufferPtrFnTy =
       FunctionType::get(rtstackTy, globalBufferPtrTy, false);
   auto *getStackPointerFromGlobalBufferPtrFn =
@@ -84,7 +84,6 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
 
   getStackPointerFromGlobalBufferPtrFn->addParamAttr(
       0, llvm::Attribute::NoCapture);
-  getRQHandleFromRQObjectFn->addParamAttr(0, llvm::Attribute::NoCapture);
 
   // allocate rayquery instructions return i32 handle
   // we want all rayqueries to be represent via our struct
@@ -98,42 +97,35 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
     cast<CallInst>(I)->addFnAttr(llvm::Attribute::ReadOnly);
 
     IRB.SetInsertPoint(F.getEntryBlock().getFirstNonPHI());
-    auto *aI = IRB.CreateAlloca(m_RQObjectType);
+    Value *rqObject = nullptr;
 
     IRB.SetInsertPoint(I);
     if (m_pCGCtx->syncRTCallsNeedSplitting()) {
-      // create 2 globals and select the appropriate one depending on the lane
-      // id
-      auto *globalBufferPtr1 = IRB.CreateCall(
-          getGlobalBufferPtrFn, UndefValue::get(IRB.getInt32Ty()));
-      auto *globalBufferPtr2 = IRB.CreateCall(
-          getGlobalBufferPtrFn, UndefValue::get(IRB.getInt32Ty()));
+      // create 2 rq objects and select one based on the lane id
+
+      auto *rqObject1 =
+          IRB.CreateCall(createRQObjectFn, UndefValue::get(IRB.getInt32Ty()));
+      auto *rqObject2 =
+          IRB.CreateCall(createRQObjectFn, UndefValue::get(IRB.getInt32Ty()));
+
       auto *laneId = IRB.get32BitLaneID();
       auto *cond =
           IRB.CreateICmpULT(laneId, IRB.getInt32(numLanes(SIMDMode::SIMD16)));
-      auto *globalBufferPtr =
-          IRB.CreateSelect(cond, globalBufferPtr1, globalBufferPtr2,
-                           VALUE_NAME("GlobalBufferPtr"));
-      IRB.CreateStore(globalBufferPtr, IRB.CreateInBoundsGEP(
-                                           m_RQObjectType, aI,
-                                           {IRB.getInt32(0), IRB.getInt32(0)}));
+      rqObject =
+          IRB.CreateSelect(cond, rqObject1, rqObject2, VALUE_NAME("rqObject"));
     } else {
-      auto *globalBufferPtr = IRB.CreateCall(getGlobalBufferPtrFn,
-                                             UndefValue::get(IRB.getInt32Ty()),
-                                             VALUE_NAME("GlobalBufferPtr"));
-      IRB.CreateStore(globalBufferPtr, IRB.CreateInBoundsGEP(
-                                           m_RQObjectType, aI,
-                                           {IRB.getInt32(0), IRB.getInt32(0)}));
+      rqObject =
+          IRB.CreateCall(createRQObjectFn, UndefValue::get(IRB.getInt32Ty()));
     }
 
     // iniitalize it to done so when app calls proceed without tracerayinline,
     // we dont traverse over garbage
-    setPackedData(IRB, aI,
+    setPackedData(IRB, rqObject,
                   {IRB.getInt32(TRACE_RAY_DONE), IRB.getInt32(0),
                    IRB.getInt32(0), IRB.getInt32(0),
                    IRB.getInt32(CommittedHit)});
 
-    v2vMap[I] = aI;
+    v2vMap[I] = rqObject;
 
     SmallVector<Use *> worklist;
 
@@ -632,7 +624,7 @@ InlineRaytracing::LivenessDataMap
 InlineRaytracing::AnalyzeLiveness(Function &F, DominatorTree &DT,
                                   LoopInfo &LI) {
   LivenessDataMap data;
-  for (auto *I : m_Functions[GET_GLOBAL_BUFFER_PTR]->users()) {
+  for (auto *I : m_Functions[CREATE_RQ_OBJECT]->users()) {
     data.insert(
         std::make_pair(cast<Instruction>(I),
                        ProcessInstruction(cast<Instruction>(I), DT, LI)));
@@ -641,8 +633,8 @@ InlineRaytracing::AnalyzeLiveness(Function &F, DominatorTree &DT,
   return data;
 }
 
-void InlineRaytracing::AssignGlobalBuffers(
-    Function &F, const LivenessDataMap &livenessDataMap) {
+void InlineRaytracing::AssignSlots(Function &F,
+                                   const LivenessDataMap &livenessDataMap) {
   RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
   SmallVector<SmallVector<const LivenessData *>, 2> occupancyMap;
 
@@ -707,7 +699,7 @@ void InlineRaytracing::InsertCacheControl(
 }
 
 void InlineRaytracing::StopAndStartRayquery(RTBuilder &IRB, Instruction *I,
-                                            Instruction *globalBufferPtr,
+                                            Value *globalBufferPtr,
                                             bool doSpillFill,
                                             bool doRQCheckRelease) {
   IRB.SetInsertPoint(I);
@@ -718,7 +710,7 @@ void InlineRaytracing::StopAndStartRayquery(RTBuilder &IRB, Instruction *I,
     auto *stackPtr = static_cast<RTBuilder::SyncStackPointerVal *>(
         cast<Value>(IRB.CreateCall(
             m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER],
-            IRB.Insert(globalBufferPtr->clone()))));
+            globalBufferPtr)));
 
     liveStack = IRB.CreateLoad(IRB.getRTStack2Ty(), stackPtr);
 
@@ -741,7 +733,7 @@ void InlineRaytracing::StopAndStartRayquery(RTBuilder &IRB, Instruction *I,
     auto *stackPtr = static_cast<RTBuilder::SyncStackPointerVal *>(
         cast<Value>(IRB.CreateCall(
             m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER],
-            IRB.Insert(globalBufferPtr->clone()))));
+            globalBufferPtr)));
 
     IRB.CreateStore(liveStack, stackPtr);
   }
@@ -781,7 +773,7 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
   for (auto &entry : livenessDataMap) {
     bool cfgChanged = false;
 
-    auto *globalBufferPtr = entry.first;
+    auto *rqObject = entry.first;
     auto *LD = &entry.second;
 
     // process the allocation acquire point
@@ -796,10 +788,12 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
     for (auto *I : LD->lifetimeEndInstructions) {
       IRB.SetInsertPoint(I->getNextNode());
 
+      auto *globalBufferPtr =
+          getGlobalBufferPtr(IRB, IRB.Insert(rqObject->clone()));
       auto *stackPtr = static_cast<RTBuilder::SyncStackPointerVal *>(
           cast<Value>(IRB.CreateCall(
               m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER],
-              IRB.Insert(globalBufferPtr->clone()))));
+              globalBufferPtr)));
 
       // handle cache control
       InsertCacheControl(IRB, stackPtr);
@@ -824,10 +818,13 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
 
       IRB.SetInsertPoint(succ->getFirstNonPHI());
 
+      auto *globalBufferPtr =
+          getGlobalBufferPtr(IRB, IRB.Insert(rqObject->clone()));
+
       auto *stackPtr = static_cast<RTBuilder::SyncStackPointerVal *>(
           cast<Value>(IRB.CreateCall(
               m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER],
-              IRB.Insert(globalBufferPtr->clone()))));
+              globalBufferPtr)));
 
       // handle cache control
       InsertCacheControl(IRB, stackPtr);
@@ -844,6 +841,9 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
       if (!LD->ContainsInstruction(*I))
         continue;
 
+      auto *globalBufferPtr =
+          getGlobalBufferPtr(IRB, IRB.Insert(rqObject->clone()));
+
         StopAndStartRayquery(IRB, I, globalBufferPtr, true, doRQCheckRelease);
     }
 
@@ -851,6 +851,9 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
     for (auto *I : indirectCallInstructions) {
       if (!LD->ContainsInstruction(*I))
         continue;
+
+      auto *globalBufferPtr =
+          getGlobalBufferPtr(IRB, IRB.Insert(rqObject->clone()));
 
       StopAndStartRayquery(IRB, I, globalBufferPtr, true, doRQCheckRelease);
     }
@@ -860,6 +863,9 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
       if (!LD->ContainsInstruction(*I))
         continue;
 
+      auto *globalBufferPtr =
+          getGlobalBufferPtr(IRB, IRB.Insert(rqObject->clone()));
+
       StopAndStartRayquery(IRB, I, globalBufferPtr, true, doRQCheckRelease);
     }
 
@@ -868,11 +874,14 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
       if (!LD->ContainsInstruction(*I))
         continue;
 
+      auto *globalBufferPtr =
+          getGlobalBufferPtr(IRB, IRB.Insert(rqObject->clone()));
+
       StopAndStartRayquery(IRB, I, globalBufferPtr, false, doRQCheckRelease);
     }
 
     if (cfgChanged) {
-      auto nextentry = livenessDataMap.find(globalBufferPtr);
+      auto nextentry = livenessDataMap.find(rqObject);
 
       // TODO: can we incrementally update LoopInfo and DomTree?
       DT.recalculate(F);
@@ -887,43 +896,23 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
   }
 }
 
-void InlineRaytracing::LowerGlobalBufferPtrs(Function &F) {
+void InlineRaytracing::LowerSlotAssignments(Function &F) {
   RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
-  SmallVector<Instruction *> getGBPInstructions;
+  SmallVector<Instruction *> createRQInstructions;
 
-  for (auto &U : m_Functions[GET_GLOBAL_BUFFER_PTR]->uses())
-    getGBPInstructions.push_back(cast<Instruction>(U.getUser()));
+  for (auto &U : m_Functions[CREATE_RQ_OBJECT]->uses())
+    createRQInstructions.push_back(cast<Instruction>(U.getUser()));
 
-  for (auto &I : getGBPInstructions) {
-    uint32_t slot = static_cast<uint32_t>(
-        cast<ConstantInt>(I->getOperand(0))->getZExtValue());
-
+  for (auto *I : createRQInstructions) {
     IRB.SetInsertPoint(I);
-    auto *pFunc = GenISAIntrinsic::getDeclaration(
-        F.getParent(), GenISAIntrinsic::GenISA_RuntimeValue,
-        IRB.getRayDispatchGlobalDataPtrTy(*m_pCGCtx->getModule(),
-                                          ADDRESS_SPACE_CONSTANT));
+    auto *rqObject = IRB.CreateAlloca(m_RQObjectType);
+    auto *slotPtr = getAtIndexFromRayQueryObject(IRB, rqObject, 0);
+    IRB.CreateStore(I->getOperand(0), slotPtr);
 
-    auto *mainGlobalBufferPtr = IRB.CreateCall(
-        pFunc,
-        IRB.getInt32(
-            m_pCGCtx->getModuleMetaData()->pushInfo.inlineRTGlobalPtrOffset));
-
-    uint32_t offset =
-        slot * IGC::Align(sizeof(RayDispatchGlobalData), IGC::RTGlobalsAlign);
-
-    auto *globalBufferPtr = IRB.CreateBitCast(
-        mainGlobalBufferPtr, IRB.getInt8PtrTy(ADDRESS_SPACE_CONSTANT));
-    globalBufferPtr = IRB.CreateInBoundsGEP(IRB.getInt8Ty(), globalBufferPtr,
-                                            IRB.getInt32(offset));
-    globalBufferPtr = IRB.CreateBitCast(
-        globalBufferPtr, mainGlobalBufferPtr->getType(),
-        VALUE_NAME("globalBuffer[" + std::to_string(slot) + "]"));
-
-    I->replaceAllUsesWith(globalBufferPtr);
+    I->replaceAllUsesWith(rqObject);
   }
 
-  llvm::for_each(getGBPInstructions,
+  llvm::for_each(createRQInstructions,
                  [](Instruction *I) { I->eraseFromParent(); });
 }
 
@@ -975,9 +964,9 @@ bool InlineRaytracing::runOnFunction(Function &F) {
   auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
   auto livenessData = AnalyzeLiveness(F, DT, LI);
-  AssignGlobalBuffers(F, livenessData);
+  AssignSlots(F, livenessData);
   HandleOptimizationsAndSpills(F, livenessData, DT, LI);
-  LowerGlobalBufferPtrs(F);
+  LowerSlotAssignments(F);
   LowerStackPtrs(F);
 
   // set relevant metadata
