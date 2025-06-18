@@ -1076,6 +1076,28 @@ DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_4r6
 DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_8r64x1c,   uint8,     __builtin_IB_subgroup_block_read_cacheopts_u8_m8k64v1)
 DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_16r64x1c,  uint16,    __builtin_IB_subgroup_block_read_cacheopts_u8_m16k64v1)
 DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_32r64x1c,  uint32,    __builtin_IB_subgroup_block_read_cacheopts_u8_m32k64v1)
+
+// type d16, block width 8, array length 1
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_2r8x1c,   ushort,     __builtin_IB_subgroup_block_read_cacheopts_u16_m2k8v1)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_4r8x1c,   ushort2,    __builtin_IB_subgroup_block_read_cacheopts_u16_m4k8v1)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_8r8x1c,   ushort4,    __builtin_IB_subgroup_block_read_cacheopts_u16_m8k8v1)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_16r8x1c,  ushort8,    __builtin_IB_subgroup_block_read_cacheopts_u16_m16k8v1)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_32r8x1c,  ushort16,   __builtin_IB_subgroup_block_read_cacheopts_u16_m32k8v1)
+
+// type d16, block width 8, array length 2
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_2r8x2c,   ushort2,    __builtin_IB_subgroup_block_read_cacheopts_u16_m2k8v2)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_4r8x2c,   ushort4,    __builtin_IB_subgroup_block_read_cacheopts_u16_m4k8v2)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_8r8x2c,   ushort8,    __builtin_IB_subgroup_block_read_cacheopts_u16_m8k8v2)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_16r8x2c,  ushort16,   __builtin_IB_subgroup_block_read_cacheopts_u16_m16k8v2)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_32r8x2c,  ushort32,   __builtin_IB_subgroup_block_read_cacheopts_u16_m32k8v2)
+
+// type d16, block width 8, array length 4
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_2r8x4c,   ushort4,   __builtin_IB_subgroup_block_read_cacheopts_u16_m2k8v4)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_4r8x4c,   ushort8,   __builtin_IB_subgroup_block_read_cacheopts_u16_m4k8v4)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_8r8x4c,   ushort16,  __builtin_IB_subgroup_block_read_cacheopts_u16_m8k8v4)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_16r8x4c,  ushort32,  __builtin_IB_subgroup_block_read_cacheopts_u16_m16k8v4)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_32r8x4c,  ushort64,  __builtin_IB_subgroup_block_read_cacheopts_u16_m32k8v4)
+
 // type d16, block width 16, array length 1
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_1r16x1c,           ushort,     ushort,   __builtin_IB_subgroup_block_read_cacheopts_u16_m1k16v1)
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_2r16x1c,           ushort,     ushort2,  __builtin_IB_subgroup_block_read_cacheopts_u16_m2k16v1)
