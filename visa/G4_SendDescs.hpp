@@ -297,6 +297,7 @@ public:
   bool isGTWY() const {return getSFID() == SFID::GATEWAY;}
   //
   virtual bool isSLM() const = 0;
+  virtual bool isBTS() const = 0; // BTS stateful
   virtual bool isTyped() const = 0;
   virtual bool isAtomic() const = 0;
   virtual bool isBarrier() const = 0;
@@ -680,6 +681,7 @@ public:
   virtual std::optional<ImmOff> getOffset() const override;
 
   virtual bool isSLM() const override { return isSLMMessage(); }
+  virtual bool isBTS() const override;
   virtual bool isAtomic() const override { return isAtomicMessage(); }
   virtual bool isBarrier() const override;
   virtual bool isFence() const override;

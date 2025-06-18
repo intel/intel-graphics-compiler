@@ -1745,6 +1745,35 @@ bool G4_SendDescRaw::isBarrier() const {
   return funcID == SFID::GATEWAY && (funcCtrl & 0xFF) == 0x4;
 }
 
+bool G4_SendDescRaw::isBTS() const {
+  if (isLscOp()) {
+    switch (getLscAddrType()) {
+    case LSC_ADDR_TYPE_BSS:
+    case LSC_ADDR_TYPE_SS:
+    case LSC_ADDR_TYPE_BTI:
+      return true;
+    default:
+      break;
+    }
+  } else {
+    const G4_Operand *BTI = getBti();
+    uint32_t BTIImm = 0;
+    if (BTI && !BTI->isImm()) {
+      // Desc in reg, should be stateful.
+      return true;
+    } else if (BTI) {
+      BTIImm = (BTI->asImm()->getInt() & 0xFF);
+    } else {
+      BTIImm = (getDesc() & 0xFF);
+    }
+    constexpr uint32_t BSS_BTI = 252;
+    constexpr uint32_t BTI_MAX = 240;
+    if (BTIImm <= BTI_MAX || BTIImm == BSS_BTI)
+      return true;
+  }
+  return false;
+}
+
 std::optional<ImmOff> G4_SendDescRaw::getOffset() const {
   if (isLscOp()) {
     // technically unavailable until XE2, but this is binary compatible,
