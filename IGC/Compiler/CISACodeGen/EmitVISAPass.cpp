@@ -2185,6 +2185,15 @@ void EmitPass::EmitAluIntrinsic(llvm::CallInst* I, const SSource source[2], cons
             else EmitSimpleAlu(I, source, modifier);
             break;
         }
+        case Intrinsic::maxnum: {
+          if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
+              source[0].value->getType()->isVectorTy() &&
+              source[1].value->getType()->isVectorTy()) {
+            MaxNum(source, modifier);
+          } else
+            EmitSimpleAlu(I, source, modifier);
+          break;
+        }
         case Intrinsic::powi:
             Powi(source, modifier);
             break;
@@ -2671,6 +2680,7 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
 }
 
 void EmitPass::EmitMinMax(bool isMin, bool isUnsigned, const SSource sources[2], const DstModifier& modifier) {
+
     EOPCODE opCode = isMin ? llvm_min : llvm_max;
     CVariable* srcs[2] = { nullptr, nullptr };
     CVariable* dst = m_destination;
@@ -5051,6 +5061,67 @@ void EmitPass::Inv(const SSource sources[2], const DstModifier& modifier) {
         }
     }
     return;
+}
+
+void EmitPass::MaxNum(const SSource sources[2], const DstModifier &modifier) {
+  CVariable *src[2];
+  for (int i = 0; i < 2; ++i) {
+    src[i] = GetSrcVariable(sources[i]);
+  }
+
+  if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) &&
+      sources[0].value->getType()->isVectorTy() &&
+      sources[1].value->getType()->isVectorTy()) {
+
+    IGC_ASSERT_EXIT_MESSAGE(
+        numLanes(m_encoder->GetSimdSize()) == 16,
+        "As of now Vector Emission is only supported for SIMD16");
+    unsigned VectorSize = getVectorSize(sources[0].value);
+
+    bool AllUniform = src[0]->IsUniform() && src[1]->IsUniform() &&
+                      m_destination->IsUniform();
+    // cannot emit instruction with EXEC_SIZE 32 if SIMD SIZE of the kernel
+    // is set to 16, but can emit 2, 4, 8, 16
+    // simple ALU instruction has the same possible width as SIMD, "math"
+    // pipeline instruction has reduced width
+    bool CanEmitThisSize = VectorSize <= numLanes(m_currShader->m_SIMDSize);
+
+    if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) &&
+        AllUniform && CanEmitThisSize) {
+      m_encoder->SetSrcRegion(0, 1, 1, 0);
+      m_encoder->SetSrcRegion(1, 1, 1, 0);
+      m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
+      m_encoder->Max(m_destination, src[0], src[1]);
+      m_encoder->Push();
+      return;
+    }
+
+    for (unsigned i = 0; i < VectorSize; ++i) {
+      SetSourceModifiers(0, sources[0]);
+      SetSourceModifiers(1, sources[1]);
+
+      if (src[0]->IsUniform())
+        m_encoder->SetSrcSubReg(0, i);
+      else
+        m_encoder->SetSrcSubVar(0, i);
+      if (src[1]->IsUniform())
+        m_encoder->SetSrcSubReg(1, i);
+      else
+        m_encoder->SetSrcSubVar(1, i);
+
+      if (src[0]->IsUniform() && src[1]->IsUniform())
+        m_encoder->SetDstSubReg(i);
+      else
+        m_encoder->SetDstSubVar(i);
+
+      m_encoder->Max(m_destination, src[0], src[1]);
+      m_encoder->Push();
+    }
+    return;
+  }
+
+  IGC_ASSERT_EXIT_MESSAGE(0, " if we are at this part, something went wrong "
+                             "with maxnum vectorization");
 }
 
 void EmitPass::Exp2(const SSource sources[2], const DstModifier& modifier) {

@@ -105,6 +105,7 @@ public:
     void Div(const SSource[2], const DstModifier& modifier);
     void Inv(const SSource[2], const DstModifier& modifier);
     void Exp2(const SSource[2], const DstModifier& modifier);
+    void MaxNum(const SSource sources[2], const DstModifier &modifier);
     void Add(const SSource[2], const DstModifier& modifier);
     void FPTrunc(const SSource[2], const DstModifier& modifier);
     void Powi(const SSource[2], const DstModifier& modifier);
