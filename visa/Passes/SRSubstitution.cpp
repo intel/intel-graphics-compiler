@@ -617,6 +617,10 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
         return (G4_INST *)nullptr;
       }
 
+      if (inst->opcode() != G4_mov) {
+        return (G4_INST *)nullptr;
+      }
+
       G4_DstRegRegion *dst = inst->getDst();
       // dst GRF aligned and contigous
       if (dst->getSubRegOff() || dst->getHorzStride() != 1) {
@@ -687,7 +691,8 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
         movInstNum++;
       }
     } else {
-      if (movInst->getSrc(0) && movInst->getSrc(0)->isImm()) {
+      if (movInst->opcode() == G4_mov && movInst->getSrc(0) &&
+          movInst->getSrc(0)->isImm()) {
         // Check if there is mov instruction with same imm value
         G4_INST *lvnMov = getRemoveableImm(movInst, immMovs);
 
