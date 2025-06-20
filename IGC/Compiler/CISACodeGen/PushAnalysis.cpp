@@ -1092,8 +1092,9 @@ namespace IGC
         {
             // Priority order of how the push constant mode is determined:
             //   1.) Registry Keys
-            //   2.) Compiler Input
-            //   3.) Default Logic dependent on platform and attributes of the shader
+            //   2.) UMD Input
+            //   3.) Compiler Input
+            //   4.) Default Logic dependent on platform and attributes of the shader
 
             // 1.) Check registry keys
             if(pushConstantMode == PushConstantMode::DEFAULT)
@@ -1104,13 +1105,23 @@ namespace IGC
                 }
             }
 
-            // 2.) Check compiler input
+            // 2.) Check UMD input
+            if (pushConstantMode == PushConstantMode::DEFAULT)
+            {
+                uint32_t val = m_context->getModuleMetaData()->compOpt.ForcePushConstantMode;
+                if (val != 0)
+                {
+                    pushConstantMode = (PushConstantMode)val;
+                }
+            }
+
+            // 3.) Check compiler input
             if (pushConstantMode == PushConstantMode::DEFAULT)
             {
                 pushConstantMode = m_context->m_pushConstantMode;
             }
 
-            // 3.) Default Logic dependent on platform and attributes of the shader
+            // 4.) Default Logic dependent on platform and attributes of the shader
             if (pushConstantMode == PushConstantMode::DEFAULT)
             {
                 if (m_context->m_DriverInfo.SupportsSimplePushOnly())
