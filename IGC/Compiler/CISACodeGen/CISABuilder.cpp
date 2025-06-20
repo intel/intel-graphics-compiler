@@ -4934,7 +4934,6 @@ namespace IGC
                 SaveOption(vISA_AutoGRFSelection, true);
             }
         }
-
         if (m_program->m_Platform->forceSamplerHeader())
         {
             SaveOption(vISA_samplerHeaderWA, true);

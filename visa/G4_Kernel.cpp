@@ -2198,7 +2198,8 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
           currentMode = newGRFMode < maxGRFMode ? newGRFMode : maxGRFMode;
         }
 
-        if (spillAllowed && !hasSmallerGRFSameThreads() && currentMode > 0) {
+        if (spillAllowed && !hasSmallerGRFSameThreads() && currentMode > 0 &&
+            configs[currentMode - 1].VRTEnable) {
           unsigned lowerGRFNum = configs[currentMode - 1].numGRF;
           // Select a lower GRF number in PreRA in case the register
           // pressure computed is a bit higher (e.g. 4%) than the lower GRF
