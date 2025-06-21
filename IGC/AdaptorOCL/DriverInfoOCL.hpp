@@ -81,6 +81,7 @@ namespace TC
         bool SupportInlineAssembly() const override { return true; }
         /// Enables the use of inline data on XeHP_SDV+
         virtual bool UseInlineData() const override { return true; }
+        bool getLscStoresWithNonDefaultL1CacheControls() const override{ return false; }
     };
 
 }//namespace TC

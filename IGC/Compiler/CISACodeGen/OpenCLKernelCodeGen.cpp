@@ -2844,9 +2844,6 @@ namespace IGC
 
         m_Context->SetSIMDInfo(SIMD_SELECTED, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
 
-        // Use this for others later to match clang-formatter style needs
-        auto &execEnv = m_kernelInfo.m_executionEnvironment;
-
         m_kernelInfo.m_executionEnvironment.CompiledSIMDSize = numLanes(simdMode);
         m_kernelInfo.m_executionEnvironment.SIMDInfo = m_Context->GetSIMDInfo();
 
@@ -2936,8 +2933,11 @@ namespace IGC
         m_kernelInfo.m_executionEnvironment.UseBindlessMode = m_Context->m_InternalOptions.UseBindlessMode;
         m_kernelInfo.m_executionEnvironment.HasStackCalls = HasStackCalls();
 
-        execEnv.HasLscStoresWithNonDefaultL1CacheControls =
-            m_State.GetHasLscStoresWithNonDefaultL1CacheControls();
+
+        if (m_Context->m_DriverInfo.getLscStoresWithNonDefaultL1CacheControls())
+        {
+            m_kernelInfo.m_executionEnvironment.HasLscStoresWithNonDefaultL1CacheControls = m_State.GetHasLscStoresWithNonDefaultL1CacheControls();
+        }
 
         if (m_Context->enableZEBinary()) {
             FillZEKernelArgInfo();
