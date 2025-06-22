@@ -159,11 +159,10 @@ class Optimizer {
     if (kernel.useAutoGRFSelection()) {
       unsigned InitialGRFNumber = kernel.getNumRegTotal();
       Sched.runWithGRFSelection(KernelPressure);
-      if (kernel.getuInt32Option(vISA_ForceGRFModeUp) > 0 &&
-          InitialGRFNumber != kernel.getNumRegTotal()) {
-        // Only re-schedule when ForceGRFModeUP is set
+      // FIXME: remove the platform check when 3D regressions are resolved
+      bool PlatformCheck = true;
+      if (PlatformCheck && InitialGRFNumber != kernel.getNumRegTotal())
         Sched.run(KernelPressure);
-      }
     } else {
       Sched.run(KernelPressure);
     }
