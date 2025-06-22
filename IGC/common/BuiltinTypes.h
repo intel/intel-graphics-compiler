@@ -10,10 +10,16 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/DerivedTypes.h"
+#include <llvm/IR/Module.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
 
-bool isImageBuiltinType(llvm::Type *builtinTy);
+bool isTargetExtTy(llvm::Type *Ty);
+bool isImageBuiltinType(llvm::Type *BuiltinTy);
+
+#if LLVM_VERSION_MAJOR >= 16
+void retypeTargetExtTyArgs(llvm::Module *M);
+#endif
 
 } // namespace IGC
