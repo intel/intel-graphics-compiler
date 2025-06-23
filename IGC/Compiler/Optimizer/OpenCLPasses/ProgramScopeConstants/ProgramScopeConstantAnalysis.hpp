@@ -91,16 +91,6 @@ namespace IGC
 
         const llvm::DataLayout* m_DL = nullptr;
         ModuleMetaData* m_pModuleMd = nullptr;
-
-        // Used to patch offsets for zero initialized globals
-        struct ZeroInitPatchInfo {
-            InlineProgramScopeBufferType toPatchDataVectorType;
-            size_t toPatchIndexOfPointer;
-            unsigned toPatchSizeOfPointer;
-            llvm::GlobalVariable* pointerBase;
-            int64_t pointerOffset;
-        };
-        std::vector<ZeroInitPatchInfo> m_PatchLaterDataVector;
     };
 
 } // namespace IGC

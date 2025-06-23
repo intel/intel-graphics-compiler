@@ -196,23 +196,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         offset += (unsigned)(m_DL->getTypeAllocSize(globalVar->getValueType()));
     }
 
-    // Patch the offsets for usages of zero initialized globals after those offsets have been calculated in the previous step.
-    // TODO: Remove this logic after enabling ZeBinary, since we will switch the patching to use relocation table instead.
-    for (const ZeroInitPatchInfo &patchData : m_PatchLaterDataVector)
-    {
-        DataVector& toPatchDataVector = m_pModuleMd->inlineBuffers[patchData.toPatchDataVectorType].Buffer;
-        char* whereToPatch = (char *)&toPatchDataVector[patchData.toPatchIndexOfPointer];
-        unsigned patchSize = patchData.toPatchSizeOfPointer;
-        GlobalVariable* globalVar = patchData.pointerBase;
-
-        auto iter = inlineProgramScopeOffsets.find(globalVar);
-        IGC_ASSERT(iter != inlineProgramScopeOffsets.end());
-
-        const uint64_t patchOffset = iter->second + patchData.pointerOffset;
-        IGC_ASSERT(patchSize <= sizeof(patchOffset));
-        memcpy_s(whereToPatch, patchSize, (char*)&patchOffset, patchSize);
-    }
-
     if (inlineProgramScopeOffsets.size())
     {
         // Add globals tracked in metadata to the "llvm.used" list so they won't be deleted by optimizations
