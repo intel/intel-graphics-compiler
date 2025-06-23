@@ -407,7 +407,8 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       break;
     }
     case GenISAIntrinsic::GenISA_TraceRaySyncProceedHL: {
-      auto *traceRayCtrl = getPackedData(IRB, rqObject).TraceRayCtrl;
+      auto data = getPackedData(IRB, rqObject);
+      auto *traceRayCtrl = data.TraceRayCtrl;
       auto *doNotAbort =
           IRB.CreateICmpNE(traceRayCtrl, IRB.getInt32(TRACE_RAY_DONE));
       auto *result =
@@ -419,10 +420,29 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
 
       IRB.SetInsertPoint(proceedBB->getTerminator());
 
-      // make sure the done bit is set to 0
-      // if we start the traversal and the done bit is set to 1, HW will just
-      // return
-      IRB.setDoneBit(getStackPtr(IRB, rqObject), false);
+      {
+        // make sure the done bit is set to 0
+        // if we start the traversal and the done bit is set to 1, HW will just
+        // return
+        // we conditionally set valid hit to 1 as well, see comment in
+        // CommitProceduralPrimitiveHit case
+        auto *cond =
+            IRB.CreateICmpEQ(data.CommittedDataLocation,
+                             IRB.getInt32(CommittedDataLocation::PotentialHit));
+        auto *IP = &*IRB.GetInsertPoint();
+
+        Instruction *ifTerm, *elseTerm;
+
+        SplitBlockAndInsertIfThenElse(cond, IP, &ifTerm, &elseTerm);
+        IRB.SetInsertPoint(ifTerm);
+        IRB.setDoneBit(getStackPtr(IRB, rqObject), false);
+        IRB.setHitValid(getStackPtr(IRB, rqObject), false);
+
+        IRB.SetInsertPoint(elseTerm);
+        IRB.setDoneBit(getStackPtr(IRB, rqObject), false);
+
+        IRB.SetInsertPoint(IP);
+      }
 
       EmitPreTraceRayFence(IRB, rqObject);
 
@@ -436,8 +456,6 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       cast<CallInst>(traceRay)->addParamAttr(0, llvm::Attribute::NoCapture);
 
       IRB.createReadSyncTraceRay(traceRay);
-
-      auto data = getPackedData(IRB, rqObject);
 
       if (m_pCGCtx->platform.isRayQueryReturnOptimizationEnabled()) {
 
@@ -590,6 +608,12 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       IRB.setHitT(getStackPtr(IRB, rqObject),
                   cast<RayQueryCommitProceduralPrimitiveHit>(RQI)->getTHit(),
                   false);
+
+      // here we should set hit.valid to 1
+      // however, this would emit RMW sequence and thus is not optimal for
+      // performance we have to touch the same DWORD on Proceed anyway (to set
+      // the hit.done to 0) so we will set hit.valid = 1 and hit.done = 1 in one
+      // write when doing Proceed
 
       data.CommittedDataLocation = IRB.getInt32(PotentialHit);
       data.TraceRayCtrl =
