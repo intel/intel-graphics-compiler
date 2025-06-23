@@ -43,8 +43,7 @@ private:
   bool LowerAllocations(llvm::Function &F);
   LivenessDataMap AnalyzeLiveness(llvm::Function &F, llvm::DominatorTree &DT,
                                   llvm::LoopInfo &LI);
-  void AssignSlots(llvm::Function &F,
-                           const LivenessDataMap &livenessDataMap);
+  void AssignSlots(llvm::Function &F, const LivenessDataMap &livenessDataMap);
   void HandleOptimizationsAndSpills(llvm::Function &F,
                                     LivenessDataMap &livenessDataMap,
                                     llvm::DominatorTree &DT,
@@ -65,7 +64,7 @@ private:
   };
 
   enum Functions : uint8_t {
-    GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER,
+    GET_STACK_POINTER_FROM_RQ_OBJECT,
     GET_RQ_HANDLE_FROM_RQ_OJECT,
     CREATE_RQ_OBJECT,
     NUM_FUNCTIONS
@@ -92,7 +91,8 @@ private:
   }
 
   llvm::Value *getGlobalBufferPtr(llvm::RTBuilder &IRB, llvm::Value *rqObject) {
-    auto *slot = IRB.CreateLoad(IRB.getInt32Ty(), getAtIndexFromRayQueryObject(IRB, rqObject, 0));
+    auto *slot = IRB.CreateLoad(IRB.getInt32Ty(),
+                                getAtIndexFromRayQueryObject(IRB, rqObject, 0));
     return IRB.getGlobalBufferPtrForSlot(ADDRESS_SPACE_CONSTANT, slot);
   }
 
@@ -172,16 +172,15 @@ private:
                                                     llvm::Value *rqObject) {
     return static_cast<llvm::RTBuilder::SyncStackPointerVal *>(
         llvm::cast<llvm::Value>(IRB.CreateCall(
-            m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER],
-            getGlobalBufferPtr(IRB, rqObject))));
+            m_Functions[GET_STACK_POINTER_FROM_RQ_OBJECT], rqObject)));
   }
 
   void EmitPreTraceRayFence(llvm::RTBuilder &IRB, llvm::Value *rqObject);
   void InsertCacheControl(llvm::RTBuilder &IRB,
                           llvm::RTBuilder::SyncStackPointerVal *stackPtr);
   void StopAndStartRayquery(llvm::RTBuilder &IRB, llvm::Instruction *I,
-                            llvm::Value *globalBufferPtr,
-                            bool doSpillFill, bool doRQCheckRelease);
+                            llvm::Value *rqObject, bool doSpillFill,
+                            bool doRQCheckRelease);
 
 };
 

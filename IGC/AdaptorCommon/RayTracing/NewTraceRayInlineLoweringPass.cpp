@@ -52,8 +52,6 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
     return false;
 
   auto *rtstackTy = IRB.getRTStack2PtrTy(false);
-  auto *globalBufferPtrTy =
-      IRB.getRayDispatchGlobalDataPtrTy(*F.getParent(), ADDRESS_SPACE_CONSTANT);
 
   if (!m_RQObjectType)
     m_RQObjectType =
@@ -66,14 +64,11 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
       Function::Create(createRQObjectFnTy, GlobalValue::PrivateLinkage,
                        VALUE_NAME("createRQObject"), F.getParent());
 
-  auto *getStackPointerFromGlobalBufferPtrFnTy =
-      FunctionType::get(rtstackTy, globalBufferPtrTy, false);
-  auto *getStackPointerFromGlobalBufferPtrFn =
-      m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER] =
-          Function::Create(getStackPointerFromGlobalBufferPtrFnTy,
-                           GlobalValue::PrivateLinkage,
-                           VALUE_NAME("getStackPointerFromGlobalBufferPtrFn"),
-                           F.getParent());
+  auto *getStackPointerFnTy =
+      FunctionType::get(rtstackTy, m_RQObjectType->getPointerTo(), false);
+  auto *getStackPointerFn = m_Functions[GET_STACK_POINTER_FROM_RQ_OBJECT] =
+      Function::Create(getStackPointerFnTy, GlobalValue::PrivateLinkage,
+                       VALUE_NAME("getStackPointerFn"), F.getParent());
 
   auto *getRQHandleFromRQObjectFnTy = FunctionType::get(
       IRB.getInt32Ty(), {m_RQObjectType->getPointerTo(), IRB.getInt32Ty()},
@@ -82,8 +77,7 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
       Function::Create(getRQHandleFromRQObjectFnTy, GlobalValue::PrivateLinkage,
                        VALUE_NAME("getRQHandleFromRQObjectFn"), F.getParent());
 
-  getStackPointerFromGlobalBufferPtrFn->addParamAttr(
-      0, llvm::Attribute::NoCapture);
+  getStackPointerFn->addParamAttr(0, llvm::Attribute::NoCapture);
 
   // allocate rayquery instructions return i32 handle
   // we want all rayqueries to be represent via our struct
@@ -699,18 +693,14 @@ void InlineRaytracing::InsertCacheControl(
 }
 
 void InlineRaytracing::StopAndStartRayquery(RTBuilder &IRB, Instruction *I,
-                                            Value *globalBufferPtr,
-                                            bool doSpillFill,
+                                            Value *rqObject, bool doSpillFill,
                                             bool doRQCheckRelease) {
   IRB.SetInsertPoint(I);
   Value *liveStack = {};
 
   if (doSpillFill) {
     // spill the raytracing stack to the register file
-    auto *stackPtr = static_cast<RTBuilder::SyncStackPointerVal *>(
-        cast<Value>(IRB.CreateCall(
-            m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER],
-            globalBufferPtr)));
+    auto *stackPtr = getStackPtr(IRB, rqObject);
 
     liveStack = IRB.CreateLoad(IRB.getRTStack2Ty(), stackPtr);
 
@@ -730,10 +720,7 @@ void InlineRaytracing::StopAndStartRayquery(RTBuilder &IRB, Instruction *I,
 
   if (doSpillFill) {
     // fill the raytracing stack from the register file
-    auto *stackPtr = static_cast<RTBuilder::SyncStackPointerVal *>(
-        cast<Value>(IRB.CreateCall(
-            m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER],
-            globalBufferPtr)));
+    auto *stackPtr = getStackPtr(IRB, rqObject);
 
     IRB.CreateStore(liveStack, stackPtr);
   }
@@ -786,14 +773,9 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
 
     // process the allocation release points
     for (auto *I : LD->lifetimeEndInstructions) {
-      IRB.SetInsertPoint(I->getNextNode());
+      IRB.SetInsertPoint(isa<ReturnInst>(I) ? I : I->getNextNode());
 
-      auto *globalBufferPtr =
-          getGlobalBufferPtr(IRB, IRB.Insert(rqObject->clone()));
-      auto *stackPtr = static_cast<RTBuilder::SyncStackPointerVal *>(
-          cast<Value>(IRB.CreateCall(
-              m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER],
-              globalBufferPtr)));
+      auto *stackPtr = getStackPtr(IRB, IRB.Insert(rqObject->clone()));
 
       // handle cache control
       InsertCacheControl(IRB, stackPtr);
@@ -818,13 +800,7 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
 
       IRB.SetInsertPoint(succ->getFirstNonPHI());
 
-      auto *globalBufferPtr =
-          getGlobalBufferPtr(IRB, IRB.Insert(rqObject->clone()));
-
-      auto *stackPtr = static_cast<RTBuilder::SyncStackPointerVal *>(
-          cast<Value>(IRB.CreateCall(
-              m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER],
-              globalBufferPtr)));
+      auto *stackPtr = getStackPtr(IRB, IRB.Insert(rqObject->clone()));
 
       // handle cache control
       InsertCacheControl(IRB, stackPtr);
@@ -841,10 +817,9 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
       if (!LD->ContainsInstruction(*I))
         continue;
 
-      auto *globalBufferPtr =
-          getGlobalBufferPtr(IRB, IRB.Insert(rqObject->clone()));
-
-        StopAndStartRayquery(IRB, I, globalBufferPtr, true, doRQCheckRelease);
+      IRB.SetInsertPoint(I);
+        StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), true,
+                             doRQCheckRelease);
     }
 
     // handle indirect calls
@@ -852,10 +827,9 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
       if (!LD->ContainsInstruction(*I))
         continue;
 
-      auto *globalBufferPtr =
-          getGlobalBufferPtr(IRB, IRB.Insert(rqObject->clone()));
-
-      StopAndStartRayquery(IRB, I, globalBufferPtr, true, doRQCheckRelease);
+      IRB.SetInsertPoint(I);
+      StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), true,
+                           doRQCheckRelease);
     }
 
     // handle hidden control flow instructions
@@ -863,10 +837,9 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
       if (!LD->ContainsInstruction(*I))
         continue;
 
-      auto *globalBufferPtr =
-          getGlobalBufferPtr(IRB, IRB.Insert(rqObject->clone()));
-
-      StopAndStartRayquery(IRB, I, globalBufferPtr, true, doRQCheckRelease);
+      IRB.SetInsertPoint(I);
+      StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), true,
+                           doRQCheckRelease);
     }
 
     // handle barriers
@@ -874,10 +847,9 @@ void InlineRaytracing::HandleOptimizationsAndSpills(
       if (!LD->ContainsInstruction(*I))
         continue;
 
-      auto *globalBufferPtr =
-          getGlobalBufferPtr(IRB, IRB.Insert(rqObject->clone()));
-
-      StopAndStartRayquery(IRB, I, globalBufferPtr, false, doRQCheckRelease);
+      IRB.SetInsertPoint(I);
+      StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), false,
+                           doRQCheckRelease);
     }
 
     if (cfgChanged) {
@@ -920,13 +892,13 @@ void InlineRaytracing::LowerStackPtrs(Function &F) {
   RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
   SmallVector<Instruction *> stackPtrInstructions;
 
-  for (auto &U :
-       m_Functions[GET_STACK_POINTER_FROM_GLOBAL_BUFFER_POINTER]->uses())
+  for (auto &U : m_Functions[GET_STACK_POINTER_FROM_RQ_OBJECT]->uses())
     stackPtrInstructions.push_back(cast<Instruction>(U.getUser()));
 
   for (auto *I : stackPtrInstructions) {
     IRB.SetInsertPoint(I);
-    auto *stackPtr = IRB.getSyncStackPointer(I->getOperand(0));
+    auto *stackPtr =
+        IRB.getSyncStackPointer(getGlobalBufferPtr(IRB, I->getOperand(0)));
     I->replaceAllUsesWith(stackPtr);
   }
 
