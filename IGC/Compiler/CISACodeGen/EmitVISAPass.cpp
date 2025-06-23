@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2782,6 +2782,70 @@ void EmitPass::EmitIntegerTruncWithSat(bool isSignedDst, bool isSignedSrc, const
 
     m_encoder->Cast(dst, src);
     m_encoder->Push();
+}
+
+// Emits 4 conversion instructions that downconvert 4 values to a packed
+// <4 x i8> value.
+void EmitPass::EmitPack4i8(const std::array<SSource, 4>& sources, const DstModifier& dstMod)
+{
+    CVariable* dst = m_currShader->GetNewAlias(m_destination, ISA_TYPE_UB, 0, 0);
+    for (uint32_t i = 0; i < 4; ++i)
+    {
+        m_encoder->SetDstModifier(dstMod);
+        CVariable* src = GetSrcVariable(sources[i]);
+
+        m_encoder->SetDstRegion(4);
+        m_encoder->SetDstSubReg(i);
+        m_encoder->Cast(dst, src);
+        m_encoder->Push();
+    }
+}
+
+// Emits a conversion instruction that upconverts an 8-bit value from 
+// a packed <4 x i8> value.
+void EmitPass::EmitUnpack4i8(const SSource& source, uint32_t index, bool isUnsigned, const DstModifier& dstMod)
+{
+    auto type = isUnsigned ? ISA_TYPE_UB : ISA_TYPE_B;
+    CVariable* src = m_currShader->GetNewAlias(GetSrcVariable(source), type, 0, 0);
+    CVariable* dst = m_destination;
+    if (isUnsigned)
+    {
+        dst = m_currShader->BitCast(dst, GetUnsignedIntegerType(dst->GetType()));
+    }
+    m_encoder->SetDstModifier(dstMod);
+    m_encoder->SetSrcSubReg(0, index);
+    if (!src->IsUniform())
+    {
+        m_encoder->SetSrcRegion(0, 4, 1, 0);
+    }
+    m_encoder->Cast(dst, src);
+    m_encoder->Push();
+}
+
+// Emits 8-bit integer move operations that repack 4 i8 values from a packed
+// <4 x i8> variale into a packed <4 x i8> destination variable.
+void EmitPass::EmitRepack4i8(const std::array<SSource, 4>& sources, const std::array<uint32_t, 4>& mappings, const DstModifier& dstMod)
+{
+    CVariable* dst = m_currShader->GetNewAlias(m_destination, ISA_TYPE_UB, 0, 0);
+    for (uint32_t i = 0; i < 4; ++i)
+    {
+        if (isa<UndefValue>(sources[i].value))
+        {
+            continue;
+        }
+        m_encoder->SetDstModifier(dstMod);
+        CVariable* src = GetSrcVariable(sources[i]);
+
+        m_encoder->SetDstRegion(4);
+        m_encoder->SetDstSubReg(i);
+        m_encoder->SetSrcSubReg(0, mappings[i]);
+        if (!src->IsUniform())
+        {
+            m_encoder->SetSrcRegion(0, 4, 1, 0);
+        }
+        m_encoder->Cast(dst, src);
+        m_encoder->Push();
+    }
 }
 
 // This function generates copy:

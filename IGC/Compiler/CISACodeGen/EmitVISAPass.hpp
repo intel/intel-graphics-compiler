@@ -143,6 +143,9 @@ public:
     void EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst);
     void EmitSIToFPZExt(const SSource& source, const DstModifier& dstMod);
     void EmitIntegerTruncWithSat(bool isSignedDst, bool isSignedSrc, const SSource& source, const DstModifier& dstMod);
+    void EmitPack4i8(const std::array<SSource, 4>& sources, const DstModifier& dstMod);
+    void EmitUnpack4i8(const SSource& source, uint32_t index, bool isUnsigned, const DstModifier& dstMod);
+    void EmitRepack4i8(const std::array<SSource, 4>& sources, const std::array<uint32_t, 4>& mappings, const DstModifier& dstMod);
     void EmitAddPair(llvm::GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod);
     void EmitSubPair(llvm::GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod);
     void EmitMulPair(llvm::GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod);
