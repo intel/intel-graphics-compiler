@@ -5827,16 +5827,37 @@ namespace IGC
         {
             if (llvm::CmpInst * cmp = llvm::dyn_cast<llvm::CmpInst>(max->getOperand(0)))
             {
+                auto SkipAsr = [max](uint32_t idx)
+                {
+                    ConstantInt* c1 = dyn_cast<ConstantInt>(max->getOperand(1));
+                    ConstantInt* c2 = dyn_cast<ConstantInt>(max->getOperand(2));
+                    Instruction* op = dyn_cast<Instruction>(max->getOperand(idx));
+                    if (((c1 && c1->isZeroValue()) || (c2 && c2->isZeroValue())) &&
+                        (op && op->getOpcode() == Instruction::AShr))
+                    {
+                        return op->getOperand(0);
+                    }
+                    return max->getOperand(idx);
+                };
                 if (isGreaterOrLowerPredicate(cmp->getPredicate()))
                 {
                     if ((cmp->getOperand(0) == max->getOperand(1) && cmp->getOperand(1) == max->getOperand(2)) ||
                         (cmp->getOperand(0) == max->getOperand(2) && cmp->getOperand(1) == max->getOperand(1)))
                     {
+                        isMin = isLowerPredicate(cmp->getPredicate()) ^ (cmp->getOperand(0) == max->getOperand(2));
+                        found = true;
+                    }
+                    else if ((cmp->getOperand(0) == SkipAsr(1) && cmp->getOperand(1) == SkipAsr(2)) ||
+                        (cmp->getOperand(0) == SkipAsr(2) && cmp->getOperand(1) == SkipAsr(1)))
+                    {
+                        isMin = isLowerPredicate(cmp->getPredicate()) ^ (cmp->getOperand(0) == SkipAsr(2));
+                        found = true;
+                    }
+                    if (found)
+                    {
                         source0 = max->getOperand(1);
                         source1 = max->getOperand(2);
-                        isMin = isLowerPredicate(cmp->getPredicate()) ^ (cmp->getOperand(0) == max->getOperand(2));
                         isUnsigned = IsUnsignedCmp(cmp->getPredicate());
-                        found = true;
                     }
                 }
             }
