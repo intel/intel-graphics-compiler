@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; RUN: igc_opt -platformbmg --regkey EnableInstructionHoistingOptimization --igc-instruction-hoisting-optimization -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -platformbmg --typed-pointers --regkey EnableInstructionHoistingOptimization --igc-instruction-hoisting-optimization -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; EnableInstructionHoistingOptimization:
 ; ------------------------------------------------
