@@ -159,13 +159,13 @@ struct SBFootprint {
   }
   SBFootprint(FOOTPRINT_TYPE ft, G4_Type t, unsigned short LB,
               unsigned short RB, G4_INST *i, bool isByteType = false)
-      : fType(ft), type((unsigned short)t), LeftB(LB), RightB(RB), inst(i), isFcvtByteType(isByteType) {
+      : fType(ft), type((unsigned short)t), LeftB(LB), RightB(RB), isFcvtByteType(isByteType), inst(i){
     isPrecision = false;
   }
   SBFootprint(FOOTPRINT_TYPE ft, GenPrecision p, unsigned short LB,
               unsigned short RB, G4_INST *i, bool isByteType = false)
-      : fType(ft), type((unsigned short)p), LeftB(LB), RightB(RB), inst(i),
-        isPrecision(true), isFcvtByteType(isByteType) {
+      : fType(ft), type((unsigned short)p), LeftB(LB), RightB(RB),
+        isPrecision(true), isFcvtByteType(isByteType), inst(i) {
   }
 
   void setOffset(unsigned short o) { offset = o; }
@@ -319,8 +319,8 @@ public:
   }
 
   SBNode(uint32_t id, int ALUId, uint32_t BBId, G4_INST *i)
-      : nodeID(id), ALUID(ALUId), BBID(BBId),
-        footprints(Opnd_total_num, nullptr) {
+      : footprints(Opnd_total_num, nullptr), nodeID(id), BBID(BBId), ALUID(ALUId)
+   {
     clearAllDistInfo();
     if (i->isDpas()) {
       G4_InstDpas *dpasInst = i->asDpasInst();

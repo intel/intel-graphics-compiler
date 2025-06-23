@@ -978,6 +978,7 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(
   twoSrc.GetOperandControls().SetSrc0Regfile(
       TranslateVisaToHDLRegFile(EncodingHelper::GetSrcRegFile(src0)));
 
+  [[maybe_unused]]
   bool src0ImmOk = inst->isMath() && inst->asMathInst()->isOneSrcMath();
   vISA_ASSERT(src0ImmOk || !src0->isImm(),
                "src0 is immediate in two src instruction!");

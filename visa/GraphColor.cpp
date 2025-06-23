@@ -62,10 +62,10 @@ static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 Interference::Interference(const LivenessAnalysis *l, GlobalRA &g)
     : gra(g), kernel(g.kernel), lrs(gra.incRA.getLRs()),
       builder(*g.kernel.fg.builder), maxId(l->getNumSelectedVar()),
+      rowSize(maxId / BITS_DWORD + 1),
       splitStartId(l->getNumSplitStartID()), splitNum(l->getNumSplitVar()),
-      liveAnalysis(l), rowSize(maxId / BITS_DWORD + 1), aug(*this, *l, g),
-      incRA(g.incRA), sparseMatrix(g.intfStorage.sparseMatrix),
-      sparseIntf(g.intfStorage.sparseIntf) {
+      liveAnalysis(l),  aug(*this, *l, g), incRA(g.incRA),
+      sparseIntf(g.intfStorage.sparseIntf), sparseMatrix(g.intfStorage.sparseMatrix) {
   denseMatrixLimit = builder.getuint32Option(vISA_DenseMatrixLimit);
   incRA.registerNextIter((G4_RegFileKind)l->getSelectedRF(), l, this);
 }
@@ -1039,13 +1039,7 @@ void BankConflictPass::setupBankConflictsForBBTGL(G4_BB *bb,
                                                   unsigned &sendInstNum,
                                                   unsigned numRegLRA,
                                                   unsigned &internalConflict) {
-  float GRFRatio = 0;
   G4_INST *prevInst = nullptr;
-
-  if (numRegLRA) {
-    GRFRatio = ((float)(numRegLRA - SECOND_HALF_BANK_START_GRF)) /
-               SECOND_HALF_BANK_START_GRF;
-  }
 
   for (auto i = bb->rbegin(), rend = bb->rend(); i != rend; i++) {
     G4_INST *inst = (*i);
@@ -1313,7 +1307,7 @@ void GlobalRA::reportSpillInfo(const LivenessAnalysis &liveness,
 
       if (getLocalLR(spillVar->getDeclare())) {
         if (getLocalLR(spillVar->getDeclare())->isLiveRangeLocal()) {
-          int start, end;
+          [[maybe_unused]] int start, end;
           unsigned dummy;
           start = getLocalLR(spillVar->getDeclare())
                       ->getFirstRef(dummy)
@@ -2717,7 +2711,7 @@ void Interference::countNeighbors() {
 
   uint32_t numNeighbor = 0;
   uint32_t maxNeighbor = 0;
-  uint32_t maxIndex = 0;
+  [[maybe_unused]] uint32_t maxIndex = 0;
   uint32_t numEdges = 0;
   for (int i = 0, numVar = (int)sparseIntf.size(); i < numVar; ++i) {
     if (lrs[i]->getPhyReg() == nullptr) {
@@ -3985,7 +3979,7 @@ void Augmentation::buildUnknownArgRetval() {
 
   // Verify that no interval straddles function boundaries
   if (gra.verifyAugmentation) {
-    auto getFunc = [&](G4_INST *inst) {
+      [[maybe_unused]] auto getFunc = [&](G4_INST *inst) {
       unsigned int lexId = inst->getLexicalId();
 
       int funcId = 0;
@@ -4000,8 +3994,8 @@ void Augmentation::buildUnknownArgRetval() {
     for (G4_Declare *dcl : kernel.Declares) {
       auto &allIntervals = gra.getAllIntervals(dcl);
       for (auto &interval : allIntervals) {
-        auto start = interval.start;
-        auto end = interval.end;
+        [[maybe_unused]] auto start = interval.start;
+        [[maybe_unused]] auto end = interval.end;
         vISA_ASSERT(getFunc(start) == getFunc(end),
                     "interval straddles functions");
       }
@@ -6292,9 +6286,10 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
 GraphColor::GraphColor(LivenessAnalysis &live, bool hybrid, bool forceSpill_)
     : gra(live.gra), totalGRFRegCount(gra.kernel.getNumRegTotal()),
       numVar(live.getNumSelectedVar()), intf(&live, gra), regPool(gra.regPool),
-      builder(gra.builder), isHybrid(hybrid), forceSpill(forceSpill_),
-      GCMem(GRAPH_COLOR_MEM_SIZE), kernel(gra.kernel), liveAnalysis(live),
-      lrs(live.gra.incRA.getLRs()) {
+      builder(gra.builder), lrs(live.gra.incRA.getLRs()), isHybrid(hybrid),
+      forceSpill(forceSpill_), GCMem(GRAPH_COLOR_MEM_SIZE), kernel(gra.kernel),
+      liveAnalysis(live)
+{
   spAddrRegSig.resize(builder.getNumAddrRegisters(), 0);
   m_options = builder.getOptions();
 }

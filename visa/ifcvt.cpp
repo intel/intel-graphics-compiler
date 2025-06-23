@@ -264,7 +264,7 @@ class IfConverter {
     if (maskOpt & InstOpt_WriteEnable)
       return false;
 
-    unsigned ifMaskOpt = ifInst->getMaskOption();
+    [[maybe_unused]] unsigned ifMaskOpt = ifInst->getMaskOption();
     vISA_ASSERT((ifMaskOpt & InstOpt_WriteEnable) == 0,
                 "Unexpected 'NoMask' in 'if' emask.");
 

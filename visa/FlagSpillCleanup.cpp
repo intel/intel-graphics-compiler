@@ -1023,7 +1023,7 @@ void FlagSpillCleanup::spillFillCodeCleanFlag(
   SCRATCH_PTR_VEC candidateList;
   FlowGraph &fg = kernel.fg;
 
-  int candidate_size = 0;
+  [[maybe_unused]] int candidate_size = 0;
   for (auto bb : fg) {
     INST_LIST_ITER inst_it = bb->begin();
 

@@ -365,9 +365,7 @@ static void setDEPPipeClass(SWSB_ENCODE_MODE enc_mode, DepSet &dep,
 }
 
 DepSet::DepSet(const InstIDs &instIdCntr, const DepSetBuilder &dsb)
-    : m_instruction(nullptr), m_dType(DEP_TYPE::NONE), m_hasIndirect(false),
-      m_hasSR(false), m_dPipe(DEP_PIPE::NONE), m_dClass(DEP_CLASS::NONE),
-      m_InstIDs(instIdCntr.global, instIdCntr.inOrder, instIdCntr.floatPipe,
+    : m_InstIDs(instIdCntr.global, instIdCntr.inOrder, instIdCntr.floatPipe,
                 instIdCntr.intPipe, instIdCntr.longPipe, instIdCntr.mathPipe,
                 instIdCntr.scalarPipe), m_DB(dsb) {
   m_bucketList.reserve(4);
@@ -719,7 +717,7 @@ DepSetBuilder::DpasMacroBuilder::getSuppressionBlockCandidate(
   }
 
   assert(sb->size());
-  return std::move(sb);
+  return sb;
 }
 
 bool DepSetBuilder::DpasMacroBuilder::srcIsSuppressCandidate(
@@ -1007,7 +1005,7 @@ void DepSet::setInputsFlagDep() {
   const FlagModifier fm = m_instruction->getFlagModifier();
   bool readsFlagRegister =
       pred.function != PredCtrl::NONE ||
-      m_instruction->getOp() == Op::SEL && fm != FlagModifier::NONE;
+      (m_instruction->getOp() == Op::SEL && fm != FlagModifier::NONE);
   if (readsFlagRegister) {
     // add the ARF offset from ExecMaskOffset
     // E.g.

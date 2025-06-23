@@ -1851,8 +1851,8 @@ void Optimizer::applyNoMaskWA() {
   auto doPredicateAndFlagModifierInstWA = [&](G4_BB *aBB, INST_LIST_ITER &aII,
                                               G4_RegVar *aFlagVar) {
     G4_INST *I = *aII;
-    G4_Predicate *P = I->getPredicate();
-    G4_CondMod *M = I->getCondMod();
+    [[maybe_unused]] G4_Predicate *P = I->getPredicate();
+    [[maybe_unused]] G4_CondMod *M = I->getCondMod();
     vISA_ASSERT((P && M), "ICE: expect both predicate and flagModifier!");
     vISA_ASSERT(P->getTopDcl() == M->getTopDcl(),
                 "ICE: both predicate and flagMod must be the same flag!");
@@ -1914,8 +1914,8 @@ void Optimizer::applyNoMaskWA() {
   auto doSimpleInstWA = [&](G4_BB *aBB, INST_LIST_ITER &aII,
                             G4_RegVar *aFlagVar) {
     G4_INST *I = *aII;
-    G4_Predicate *P = I->getPredicate();
-    G4_CondMod *M = I->getCondMod();
+    [[maybe_unused]] G4_Predicate *P = I->getPredicate();
+    [[maybe_unused]] G4_CondMod *M = I->getCondMod();
     vISA_ASSERT((P == nullptr && M == nullptr),
                 "ICE: expect neither pred nor condmod!");
 
@@ -2044,7 +2044,7 @@ void Optimizer::applyNoMaskWA() {
                                                        : nullptr);
         G4_DstRegRegion *dreg = I->getDst();
         if (O_f != nullptr) {
-          bool isValid =
+          [[maybe_unused]] bool isValid =
               FlagDefUse::getFlagRegAndSubreg(O_f, WAFreg, WAFsreg, ty);
           vISA_ASSERT(isValid,
                       "Flag should've been assigned physical reg already!");
@@ -2061,7 +2061,7 @@ void Optimizer::applyNoMaskWA() {
               O != nullptr,
               "ICE: inst must have flag operands if it uses all flags!");
 
-          bool isValid =
+          [[maybe_unused]] bool isValid =
               FlagDefUse::getFlagRegAndSubreg(O, WAFreg, WAFsreg, ty);
           vISA_ASSERT(isValid,
                       "Flag should've been assigned physical reg already!");
@@ -2100,7 +2100,7 @@ void Optimizer::applyNoMaskWA() {
         for (int i = 0; i < 2; ++i) {
           G4_Operand *O = (i == 0 ? (G4_Operand *)dreg : (G4_Operand *)sreg);
           if (!isNull(O) && O->isFlag()) {
-            bool isValid = FlagDefUse::getFlagRegAndSubreg(O, fr, fsr, ty);
+            [[maybe_unused]] bool isValid = FlagDefUse::getFlagRegAndSubreg(O, fr, fsr, ty);
             vISA_ASSERT(isValid,
                         "Flag should've been assigned physical reg already!");
 

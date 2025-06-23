@@ -33,9 +33,6 @@ static void deducePayloadSizes(PayloadLengths &lens, Platform p, SFID sfid,
   if (execElems < FULL_EXEC_SIZE / 2)
     execElems = FULL_EXEC_SIZE / 2;
 
-  auto opIsGroup = [&](SendOp opGroup) {
-    return (static_cast<int>(result.info.op) & static_cast<int>(opGroup)) != 0;
-  };
   auto isVectorMessageSimd1 = [&]() {
     bool isSimd1 = mi.isTransposed() || mi.op == SendOp::LOAD_STRIDED ||
                    mi.op == SendOp::STORE_STRIDED;

@@ -2244,7 +2244,7 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
               src->getBase()->isRegAllocPartaker()) {
             auto preg = src->getBase()->asRegVar()->getPhyReg();
             if (preg && preg->isGreg()) {
-              unsigned int srcLen = 0;
+              [[maybe_unused]] unsigned int srcLen = 0;
               if (j == 0)
                 srcLen = inst->asSendInst()->getMsgDesc()->getSrc0LenRegs();
               else if (j == 1)
@@ -2633,7 +2633,7 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
       if (inst->opcode() == G4_pseudo_fcall) {
         if (ret != nullptr && ret->getRegVar() != nullptr) {
           G4_RegVar *var = ret->getRegVar();
-          uint32_t varID = var->getId();
+          [[maybe_unused]] uint32_t varID = var->getId();
           vISA_ASSERT(var->getId() == varID,
                       "RA verification error: Invalid regVar ID!");
           vISA_ASSERT(var->getPhyReg()->isGreg(),
@@ -2778,7 +2778,7 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
 
           // verify EOT source
           if (inst->isEOT() && kernel.fg.builder->hasEOTGRFBinding()) {
-            uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
+            [[maybe_unused]] uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
             vISA_ASSERT(
                 regNum >= 112,
                 "RA verification error: EOT source: %s is assigned to r.%d",

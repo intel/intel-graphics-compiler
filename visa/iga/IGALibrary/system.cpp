@@ -215,8 +215,6 @@ unsigned iga::LastError() {
 #endif // _WIN32
 }
 
-static void add_strerror_r_to_error(char *errMsg, int strerror_r_return_value) {
-}
 static void add_strerror_r_to_error(char *errMsg,
                                     char *strerror_r_return_value) {
   errMsg = strerror_r_return_value;
@@ -254,8 +252,8 @@ std::string iga::FixupPath(const std::string &path) {
   // The approach here is to expand the path to a normalized absolute path.
   // This is a bit pesky because GetFullPathNameA is limited to 260 chars.
   // So we must use GetFullPathNameW. We will.
-  //  0. manually replace / with \
-    //  1. convert the path to absolute using GetFullPathNameW
+  //  0. manually replace '/' with '\'
+  //  1. convert the path to absolute using GetFullPathNameW
   //     (GetFullPathNameA is still limited to 260)
   //  2. convert back to UTF-8
   //  3. prefix a \\?\ so that CreateFile (under std::ofstream) won't

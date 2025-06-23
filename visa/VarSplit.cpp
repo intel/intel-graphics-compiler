@@ -339,7 +339,7 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
   src = src->getRootDeclare();
   unsigned int numRows = dst->getNumRows();
   unsigned int bytesRemaining = dst->getByteSize();
-  const unsigned int maxDstSize = 2;
+  [[maybe_unused]] const unsigned int maxDstSize = 2;
 
   auto insertCopy = [&](G4_INST *inst) {
     if (pushBack || bb->size() == 0) {

@@ -55,7 +55,7 @@ struct Fragment {
 
   constexpr Fragment(const char *_name, int _offset, int _length,
                      Kind _kind = Kind::ENCODED)
-      : name(_name), offset(_offset), length(_length), kind(_kind) {}
+      : kind(_kind), name(_name), offset(_offset), length(_length) {}
   constexpr Fragment() : Fragment(nullptr, NO_OFFSET, 0, Kind::INVALID) {}
 
   // We could lower this to C++11 if we really tried.

@@ -862,7 +862,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
         auto &callerBuilder = caller->fg.builder;
         auto &calleeBuilder = callee->fg.builder;
         auto getPointerOffset = [&](G4_INST *inst, long long offset) {
-          auto execSize = static_cast<int>(inst->getExecSize());
+          [[maybe_unused]] auto execSize = static_cast<int>(inst->getExecSize());
           auto typeSize = inst->getSrc(0)->getTypeSize() * 8;
           switch (inst->opcode()) {
           case G4_mov: {

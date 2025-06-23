@@ -71,11 +71,6 @@ static size_t OffsetOf(const Model &m, RegName rn, int reg) {
   return (size_t)reg * m.getBytesPerReg(rn) * 8;
 }
 
-static size_t offsetOf(const Model &m, RegName rn, RegRef rr,
-                       size_t typeSizeBits) {
-  return OffsetOf(m, rn, rr.regNum) + rr.subRegNum * typeSizeBits;
-}
-
 size_t RegSet::offsetOf(RegName rn, int reg) const {
   return OffsetOf(model, rn, reg);
 }
@@ -555,7 +550,6 @@ bool RegSet::addExplicitDestinationOutputs(const Instruction &i) {
   const auto &op = i.getDestination();
   auto typeSizeBits = TypeSizeInBitsWithDefault(op.getType(), 32);
 
-  Region rgn = op.getRegion();
   switch (op.getKind()) {
   case Operand::Kind::DIRECT:
     // includes send target (a GRF, not null reg)
@@ -647,7 +641,7 @@ bool RegSet::addImplicitAccumulatorAccess(const Instruction &i, bool isDst) {
   bool accessesAcc = false;
   accessesAcc |= i.is(Op::MACH); // mac and mach uses both input and output
   accessesAcc |= isDst && i.hasInstOpt(InstOpt::ACCWREN);
-  accessesAcc |= isDst && i.is(Op::ADDC) || i.is(Op::SUBB);
+  accessesAcc |= (isDst && i.is(Op::ADDC)) || i.is(Op::SUBB);
   accessesAcc |= !isDst && i.is(Op::MAC);
   accessesAcc |= i.is(Op::MACL);
   if (accessesAcc) {

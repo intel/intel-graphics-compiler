@@ -445,7 +445,6 @@ void KernelCost::collectPerfMetrics()
   BB_LIST& BBs = m_kernel->fg.getBBList();
   const int numFuncs = (int)m_metrics.size();
   for (int i = 0; i < numFuncs; ++i) {
-    const bool isKernel = ((i + 1) == numFuncs);
     FuncCost &FC = m_metrics[i];
     FuncInfo *pFI = FC.m_funcInfo;
     G4_BB *StartBB = pFI->getInitBB();

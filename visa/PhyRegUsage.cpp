@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 using namespace vISA;
 
 PhyRegUsage::PhyRegUsage(PhyRegAllocationState &p, FreePhyRegs &pFPR)
-    : gra(p.gra), AS(p), FPR(pFPR), lrs(p.lrs), colorHeuristic(FIRST_FIT),
+    : gra(p.gra), lrs(p.lrs), colorHeuristic(FIRST_FIT), FPR(pFPR), AS(p),
       totalGRFNum(p.totalGRF), honorBankBias(p.doBankConflict),
       avoidBundleConflict(p.doBundleConflict),
       builder(*p.gra.kernel.fg.builder), regPool(p.gra.regPool) {
@@ -1209,10 +1209,10 @@ PhyRegAllocationState::PhyRegAllocationState(
     GlobalRA &g, const LiveRangeVec &l, G4_RegFileKind r, unsigned int m,
     unsigned int bank1_s, unsigned int bank1_e, unsigned int bank2_s,
     unsigned int bank2_e, bool doBC, bool doBundleReduction)
-    : gra(g), lrs(l), rFile(r), maxGRFCanBeUsed(m), startGRFReg(0),
-      startARFReg(0), startFlagReg(0), bank1_start(bank1_s), bank1_end(bank1_e),
+    : gra(g),  rFile(r), maxGRFCanBeUsed(m), startARFReg(0), startFlagReg(0),
+      startGRFReg(0), bank1_start(bank1_s), bank1_end(bank1_e),
       bank2_start(bank2_s), bank2_end(bank2_e), doBankConflict(doBC),
-      doBundleConflict(doBundleReduction) {
+      doBundleConflict(doBundleReduction), lrs(l) {
   totalGRF = gra.kernel.getNumRegTotal();
   startScalarReg = 0;
 }

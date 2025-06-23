@@ -166,7 +166,7 @@ void *gtPinData::getIndirRefs(unsigned int &size) {
       auto size = target->getByteSize();
       indirs.push_back(std::make_pair(start, size));
     }
-    return std::move(indirs);
+    return indirs;
   };
 
   for (auto bb : kernel.fg.getBBList()) {
@@ -704,6 +704,7 @@ void G4_Kernel::evalAddrExp() {
   }
 }
 
+[[maybe_unused]]
 static std::vector<std::string> split(const std::string &str,
                                       const char *delimiter) {
   std::vector<std::string> v;

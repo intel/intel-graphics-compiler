@@ -2049,7 +2049,7 @@ void vISAVerifier::verifyInstructionCompare(const CISA_INST *inst) {
   ///     opnd0              opnd1  opnd2 opnd3
   /// cmp.rel_op (exec_size) dst    src1  src2
 
-  ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
+  [[maybe_unused]] ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
   vISA_ASSERT(ISA_CMP == opcode, "illegal opcode for compare instruction");
 
   for (unsigned i = 0; i < inst->opnd_num; i++) {
@@ -2079,7 +2079,7 @@ void vISAVerifier::verifyInstructionCompare(const CISA_INST *inst) {
 }
 
 void vISAVerifier::verifyInstructionAddress(const CISA_INST *inst) {
-  ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
+  [[maybe_unused]] ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
   vISA_ASSERT(ISA_ADDR_ADD == opcode,
               "Illegal opcode for address instruction.");
 
@@ -2472,7 +2472,7 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST *inst) {
       /// mmf mode
       const vector_opnd &mmf = getVectorOperand(inst, i++);
       if (mmf.getOperandClass() == OPERAND_IMMEDIATE) {
-        unsigned val = mmf.opnd_val.const_opnd._val.ival;
+        [[maybe_unused]] unsigned val = mmf.opnd_val.const_opnd._val.ival;
         vISA_ASSERT(val <= VA_MIN_ENABLE,
                     "MINMAX MMF Mode operand out of range.");
       }
@@ -2521,7 +2521,7 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST *inst) {
       /// mmf mode
       const vector_opnd &mmf = getVectorOperand(inst, i++);
       if (mmf.getOperandClass() == OPERAND_IMMEDIATE) {
-        unsigned val = mmf.opnd_val.const_opnd._val.ival;
+        [[maybe_unused]] unsigned val = mmf.opnd_val.const_opnd._val.ival;
         vISA_ASSERT(val <= VA_MIN_ENABLE,
                     "MINMAXFILTER MMF Mode operand out of range.");
       }
@@ -4484,13 +4484,11 @@ void vISAVerifier::verifyKernelHeader() {
   // Verify inputs.
   // v3.3+, kernel may have explicit arguments followed by implicit ones.
   // This information is only used by the CM runtime, not by Finalizer.
-  unsigned implicitIndex = header->getInputCount();
   uint32_t versionNum =
       getVersionAsInt(header->getMajorVersion(), header->getMinorVersion());
   if (versionNum >= getVersionAsInt(3, 3)) {
     for (unsigned i = 0; i < header->getInputCount(); i++) {
       if (header->getInput(i)->getImplicitKind() != 0) {
-        implicitIndex = i;
         break;
       }
     }

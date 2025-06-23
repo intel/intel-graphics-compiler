@@ -58,9 +58,9 @@ class VISAKernelImpl : public VISAFunction {
 public:
   VISAKernelImpl(enum VISA_BUILD_TYPE type, CISA_IR_Builder *cisaBuilder,
                  const char *name, unsigned int funcId)
-      : m_mem(4096), m_CISABuilder(cisaBuilder),
-        m_options(cisaBuilder->getOptions()), m_functionId(funcId),
-        m_fastPathOpndPool() {
+      : m_functionId(funcId), m_CISABuilder(cisaBuilder),
+        m_fastPathOpndPool(), m_options(cisaBuilder->getOptions())
+  {
     mBuildOption = m_CISABuilder->getBuilderOption();
     m_magic_number = COMMON_ISA_MAGIC_NUM;
     m_major_version = m_CISABuilder->getMajorVersion();
@@ -1333,7 +1333,7 @@ private:
   std::vector<std::string> m_string_pool;
   enum VISA_BUILD_TYPE m_type;
 
-  vISA::Mem_Manager m_mem;
+  vISA::Mem_Manager m_mem = 4096;
   std::string m_name;
   std::string m_asmName;
   std::string m_sanitizedName;

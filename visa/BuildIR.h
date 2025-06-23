@@ -260,9 +260,9 @@ public:
 //
 class IR_Builder {
 public:
-  const char *curFile;
-  unsigned int curLine;
-  int curCISAOffset;
+  const char *curFile = nullptr;
+  unsigned int curLine = 0;
+  int curCISAOffset = -1;
 
   static const int OrphanVISAIndex = 0xffffffff;
   int debugInfoPlaceholder =
@@ -287,7 +287,7 @@ private:
     IR_Builder &builder;
 
   public:
-    GlobalImmPool(IR_Builder &b) : builder(b), immArray(), dclArray() {}
+    GlobalImmPool(IR_Builder &b) : builder(b) {}
     G4_Declare *addImmVal(G4_Imm *imm, int numElt);
     int size() const { return curSize; }
     const ImmVal &getImmVal(int i) { return immArray[i]; }
@@ -305,7 +305,7 @@ private:
 
   int subroutineId = -1;     // the kernel itself has id 0, as we always emit a
                              // subroutine label for kernel too
-  enum VISA_BUILD_TYPE type; // as opposed to what?
+  enum VISA_BUILD_TYPE type = VISA_BUILD_TYPE::KERNEL; // as opposed to what?
 
   uint32_t m_next_local_label_id = 0;
 
@@ -365,7 +365,7 @@ private:
   // Indicates that sampler header cache (builtinSamplerHeader) is correctly
   // initialized with r0 contents.
   // Used only when vISA_cacheSamplerHeader option is set.
-  bool builtinSamplerHeaderInitialized;
+  bool builtinSamplerHeaderInitialized = false;
   // for PVC send WAR WA
   bool hasDF = false;
   // function call related declares
@@ -457,14 +457,14 @@ private:
   const CISA_IR_Builder *parentBuilder = nullptr;
 
   // stores all metadata ever allocated
-  Mem_Manager metadataMem;
+  Mem_Manager metadataMem = 4096;
   std::vector<Metadata *> allMDs;
   std::vector<MDNode *> allMDNodes;
 
   FrequencyInfo freqInfoManager;
 
   // bump pointer allocator for variable and label names, used for IR dump only.
-  Mem_Manager debugNameMem;
+  Mem_Manager debugNameMem = 4096;
 
   // Whether the kernel should avoid clobbering or even reading R0, this
   // is generally due to mid-thread preemption.

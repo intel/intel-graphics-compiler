@@ -103,10 +103,9 @@ static Region macroDefaultSourceRegion(int srcOpIx, const OpSpec &os,
 }
 
 Decoder::Decoder(const Model &model, ErrorHandler &errHandler)
-    : GEDBitProcessor(model, errHandler),
-      m_gedModel(lowerPlatform(model.platform)),
-      m_SWSBEncodeMode(model.getSWSBEncodeMode()), m_kernel(nullptr),
-      m_opSpec(nullptr), m_binary(nullptr) {
+    : GEDBitProcessor(model, errHandler) {
+    m_gedModel = lowerPlatform(model.platform);
+    m_SWSBEncodeMode = model.getSWSBEncodeMode();
   IGA_ASSERT(m_gedModel != GED_MODEL_INVALID, "invalid GED model");
 }
 
@@ -1783,7 +1782,7 @@ bool Decoder::hasImplicitScalingType(Type &type, DirRegOpInfo &dri) {
 ImmVal Decoder::decodeSrcImmVal(Type t) {
   ImmVal val;
   val.kind = ImmVal::Kind::UNDEF;
-  memset(&val, 0, sizeof(val)); // zero value in case GED only sets bottom bits
+  val.reset();
 
   GED_DECODE_RAW_TO(Imm, val.u64);
   setImmValKind(t, val);
@@ -2021,7 +2020,7 @@ void Decoder::decodeThreadOptions(Instruction *inst, GED_THREAD_CTRL trdCntrl) {
 template <SourceIndex S> ImmVal Decoder::decodeTernarySrcImmVal(Type t) {
   ImmVal val;
   val.kind = ImmVal::Kind::UNDEF;
-  memset(&val, 0, sizeof(val)); // zero value in case GED only sets bottom bits
+  val.reset();
 
   if (S == SourceIndex::SRC0) {
     GED_DECODE_RAW_TO(Src0TernaryImm, val.u64);

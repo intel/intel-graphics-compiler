@@ -1626,32 +1626,6 @@ int IR_Builder::translateVISATypedAtomicInst(
   return VISA_SUCCESS;
 }
 
-static void BuildMH2_A32_PSM(IR_Builder *IRB, G4_Declare *header,
-                             uint16_t scale, G4_Operand *globalOffset) {
-  // Clear header
-  G4_DstRegRegion *h = IRB->createDst(header->getRegVar(), 0, 0, 1, Type_UD);
-  IRB->createMov(g4::SIMD8, h, IRB->createImm(0, Type_UD), InstOpt_WriteEnable,
-                 true);
-  // Copy global offset if necessary.
-  if (!(globalOffset->isImm() && globalOffset->asImm()->isZero())) {
-    G4_DstRegRegion *gOffDst =
-        IRB->createDst(header->getRegVar(), 0, 5, 1, Type_UD);
-    IRB->createMov(g4::SIMD1, gOffDst, globalOffset, InstOpt_WriteEnable, true);
-  }
-  // Copy scale pitch if necessary.
-  if (scale != 0) {
-    G4_Operand *scaleImm = IRB->createImm(scale, Type_UD);
-    G4_DstRegRegion *pitchDst =
-        IRB->createDst(header->getRegVar(), 0, 0, 1, Type_UD);
-    IRB->createMov(g4::SIMD1, pitchDst, scaleImm, InstOpt_WriteEnable, true);
-  }
-  // Copy PSM which is set to 0xFFFF so far.
-  G4_Operand *maskImm = IRB->createImm(0xFFFF, Type_UD);
-  G4_DstRegRegion *pitchDst =
-      IRB->createDst(header->getRegVar(), 0, 7, 1, Type_UD);
-  IRB->createMov(g4::SIMD1, pitchDst, maskImm, InstOpt_WriteEnable, true);
-}
-
 // apply the sideband offset (can be either imm or variable) to the message
 // descriptor
 void IR_Builder::applySideBandOffset(G4_Operand *sideBand,
@@ -1681,27 +1655,6 @@ void IR_Builder::applySideBandOffset(G4_Operand *sideBand,
   createBinOp(G4_add, g4::SIMD1, a0Dst, a0Src,
               createImm(sendMsgDesc->getExtendedDesc(), Type_UD),
               InstOpt_WriteEnable, true);
-}
-
-static void BuildMH2_A32(IR_Builder *IRB, G4_Declare *header, uint16_t scale,
-                         G4_Operand *globalOffset) {
-  // Clear header
-  G4_DstRegRegion *h = IRB->createDst(header->getRegVar(), 0, 0, 1, Type_UD);
-  IRB->createMov(g4::SIMD8, h, IRB->createImm(0, Type_UD), InstOpt_WriteEnable,
-                 true);
-  // Copy global offset if necessary.
-  if (!(globalOffset->isImm() && globalOffset->asImm()->isZero())) {
-    G4_DstRegRegion *gOffDst =
-        IRB->createDst(header->getRegVar(), 0, 5, 1, Type_UD);
-    IRB->createMov(g4::SIMD1, gOffDst, globalOffset, InstOpt_WriteEnable, true);
-  }
-  // Copy scale pitch if necessary.
-  if (scale != 0) {
-    G4_Operand *scaleImm = IRB->createImm(scale, Type_UD);
-    G4_DstRegRegion *pitchDst =
-        IRB->createDst(header->getRegVar(), 0, 0, 1, Type_UD);
-    IRB->createMov(g4::SIMD1, pitchDst, scaleImm, InstOpt_WriteEnable, true);
-  }
 }
 
 int IR_Builder::translateVISAGather4ScaledInst(

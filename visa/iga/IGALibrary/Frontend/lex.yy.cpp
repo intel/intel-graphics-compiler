@@ -1464,6 +1464,7 @@ static yy_state_type yy_try_NUL_trans(yy_state_type yy_current_state,
 
 #ifndef YY_NO_UNPUT
 
+[[maybe_unused]]
 static void yyunput(int c, char *yy_bp, yyscan_t yyscanner) {
   char *yy_cp;
   struct yyguts_t *yyg = (struct yyguts_t *)yyscanner;

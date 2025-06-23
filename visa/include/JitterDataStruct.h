@@ -80,6 +80,25 @@ public:
   uint32_t staticCycle = 0;
   uint32_t loopNestedStallCycle = 0;
   uint32_t loopNestedCycle = 0;
+
+  void reset() {
+    binaryHash = 0;
+    numGRFUsed = 0;
+    numGRFTotal = 0;
+    numThreads = 0;
+    numAsmCountUnweighted = 0;
+    numFlagSpillStore = 0;
+    numFlagSpillLoad = 0;
+    numGRFSpillFillWeighted = 0;
+    scratchSpaceSizeLimit = 0;
+    spillMemUsed = 0;
+    numCycles = 0;
+    maxGRFPressure = 0;
+    sendStallCycle = 0;
+    staticCycle = 0;
+    loopNestedStallCycle = 0;
+    loopNestedCycle = 0;
+  }
 };
 
 // PERF_STATS_VERBOSE - the verbose vISA static performance stats.
@@ -153,9 +172,36 @@ struct PERF_STATS_VERBOSE {
   uint32_t augIntfNum = 0;
 
   // preRA scheduler counters
-  uint32_t minRegClusterCount;
-  uint32_t minRegSUCount;
-  uint32_t minRegRestCount;
+  uint32_t minRegClusterCount = 0;
+  uint32_t minRegSUCount = 0;
+  uint32_t minRegRestCount = 0;
+
+  void reset() {
+      BCNum = 0;
+      numByteRMWs = 0;
+      numALUInst = 0;
+      accSubDef = 0;
+      accSubUse = 0;
+      accSubCandidateDef = 0;
+      accSubCandidateUse = 0;
+      syncInstCount = 0;
+      tokenReuseCount = 0;
+      singlePipeAtOneDistNum = 0;
+      allAtOneDistNum = 0;
+      AfterWriteTokenDepCount = 0;
+      AfterReadTokenDepCount = 0;
+      RAIterNum = 0;
+      varNum = 0;
+      globalVarNum = 0;
+      maxRP = 0;
+      maxNeighbors = 0;
+      avgNeighbors = 0;
+      normIntfNum = 0;
+      augIntfNum = 0;
+      minRegClusterCount = 0;
+      minRegSUCount = 0;
+      minRegRestCount = 0;
+  }
 };
 
 struct PERF_SENDINFO {
@@ -166,6 +212,12 @@ struct PERF_SENDINFO {
   std::vector<uint32_t> src1Vec;
   // 3rd element = dst Lenth
   std::vector<uint32_t> destVec;
+
+  void reset() {
+      src0Vec.clear();
+      src1Vec.clear();
+      destVec.clear();
+  };
 };
 
 struct FINALIZER_INFO {
@@ -217,6 +269,27 @@ struct FINALIZER_INFO {
   PERF_STATS stats;
   PERF_STATS_VERBOSE statsVerbose;
   PERF_SENDINFO sendInfo;
+
+  void reset() {
+      DO_NOT_USE_isSpill = false;
+      genDebugInfo = nullptr;
+      genDebugInfoSize = 0;
+      numBarriers = 0;
+      BBNum = 0;
+      BBInfo = nullptr;
+      avoidRetry = false;
+      freeGRFInfo = nullptr;
+      freeGRFInfoSize = 0;
+      numBytesScratchGtpin = 0;
+      hasStackcalls = false;
+      offsetToSkipPerThreadDataLoad = 0;
+      offsetToSkipCrossThreadDataLoad = 0;
+      offsetToSkipSetFFIDGP = 0;
+      offsetToSkipSetFFIDGP1 = 0;
+      stats.reset();
+      statsVerbose.reset();
+      sendInfo.reset();
+  }
 };
 
 llvm::json::Value toJSON(const PERF_STATS &p);

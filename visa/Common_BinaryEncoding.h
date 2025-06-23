@@ -277,7 +277,7 @@ class BinInstList : public std::vector<BinInst *> {};
 
 const uint32_t COMPACT_TABLE_SIZE = 32;
 const uint32_t COMPACT_TABLE_SIZE_3SRC = 4;
-
+[[maybe_unused]]
 static uint32_t IVBCompactControlTable[COMPACT_TABLE_SIZE] = {
     0x00000002, // 000,0000,0000,0000,0010
     0x00004000, // 000,0100,0000,0000,0000
@@ -312,7 +312,7 @@ static uint32_t IVBCompactControlTable[COMPACT_TABLE_SIZE] = {
     0x00028000, // 010,1000,0000,0000,0000
     0x00028100  // 010,1000,0001,0000,0000
 };
-
+[[maybe_unused]]
 static uint32_t IVBCompactSourceTable[COMPACT_TABLE_SIZE] = {
     0x00000000, // 000000000000
     0x00000002, // 000000000010
@@ -347,7 +347,7 @@ static uint32_t IVBCompactSourceTable[COMPACT_TABLE_SIZE] = {
     0x0000046A, // 010001101010
     0x00000588  // 010110001000
 };
-
+[[maybe_unused]]
 static uint32_t IVBCompactSubRegTable[COMPACT_TABLE_SIZE] = {
     0x00000000, // 000,0000,0000,0000
     0x00000001, // 000,0000,0000,0001
@@ -382,6 +382,7 @@ static uint32_t IVBCompactSubRegTable[COMPACT_TABLE_SIZE] = {
     0x00007000, // 111,0000,0000,0000
     0x0000701C  // 111,0000,0001,1100
 };
+[[maybe_unused]]
 static uint32_t IVBCompactDataTypeTable[COMPACT_TABLE_SIZE] = {
     0x00008001, // 00,1000,0000,0000,0001
     0x00008020, // 00,1000,0000,0010,0000
@@ -419,7 +420,7 @@ static uint32_t IVBCompactDataTypeTable[COMPACT_TABLE_SIZE] = {
 
 // DataTypeIndex Compact Instruction Field Mappings 1/2 Source Operands DevBDW
 // DataTypeIndex 21-Bit Mapping Mapped Meaning
-
+[[maybe_unused]]
 static uint32_t BDWCompactDataTypeTable[COMPACT_TABLE_SIZE] = {
     0x00040001, // 001000000000000000001
     0x00040040, // 001000000000001000000
@@ -455,6 +456,7 @@ static uint32_t BDWCompactDataTypeTable[COMPACT_TABLE_SIZE] = {
     0x0004B248, // 001001011001001001000
 };
 
+[[maybe_unused]]
 static uint32_t ICLCompactDataTypeTable[COMPACT_TABLE_SIZE] = {
     0x40001, // 001000000000000000001
     0x40040, // 001000000000001000000
@@ -491,6 +493,7 @@ static uint32_t ICLCompactDataTypeTable[COMPACT_TABLE_SIZE] = {
 };
 
 // ControlIndex Compact Instruction Field Mappings 3 Source Operands BDW/CHV
+[[maybe_unused]]
 static uint32_t BDWCompactControlTable3Src[COMPACT_TABLE_SIZE_3SRC] = {
     0x00806001, // 100000000110000000000001
     0x00006001, // 000000000110000000000001
@@ -499,6 +502,7 @@ static uint32_t BDWCompactControlTable3Src[COMPACT_TABLE_SIZE_3SRC] = {
 };
 
 // SourceIndex Compact Instruction Field Mappings 3 Source Operands BDW/CHV
+[[maybe_unused]]
 static uint64_t BDWCompactSourceTable3Src[COMPACT_TABLE_SIZE_3SRC] = {
     0x07272720F000, // 0001110010011100100111001000001111000000000000
     0x07272720F002, // 0001110010011100100111001000001111000000000010
@@ -2056,7 +2060,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction3Src(G4_INST *inst) {
   uint32_t controlIndex;
   uint32_t bits_034_032 = mybin->GetBits(34, 32);
   uint32_t bits_028_008 = mybin->GetBits(28, 8);
-  bool mustCompact = !(mybin->GetMustCompactFlag());
+  [[maybe_unused]] bool mustCompact = !(mybin->GetMustCompactFlag());
   if (!CompactControlTable3Src.FindBDWIndex(controlIndex, bits_034_032,
                                             bits_028_008)) {
     vISA_ASSERT(mustCompact, "Compaction failure for control table");
@@ -2115,7 +2119,7 @@ inline bool BinaryEncodingBase::CHVcompactOneInstruction3Src(G4_INST *inst) {
   uint32_t bits_036_035 = mybin->GetBits(36, 35);
   uint32_t bits_034_032 = mybin->GetBits(34, 32);
   uint32_t bits_028_008 = mybin->GetBits(28, 8);
-  bool mustCompact = !(mybin->GetMustCompactFlag());
+  [[maybe_unused]] bool mustCompact = !(mybin->GetMustCompactFlag());
   if (!CompactControlTable3Src.FindCHVIndex(controlIndex, bits_036_035,
                                             bits_034_032, bits_028_008)) {
     vISA_ASSERT(mustCompact, "Compaction failure for control table");
@@ -2194,7 +2198,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction(G4_INST *inst) {
   uint32_t bits_010_009 = mybin->GetBits(10, 9);
   uint32_t bits_034_034 = mybin->GetBits(34, 34);
   uint32_t bits_008_008 = mybin->GetBits(8, 8);
-  bool mustCompact = !(mybin->GetMustCompactFlag());
+  [[maybe_unused]] bool mustCompact = !(mybin->GetMustCompactFlag());
   if (!BDWCompactControlTable.FindIndex(
           controlIndex, bits_033_032, bits_031_031, bits_023_012, bits_010_009,
           bits_034_034, bits_008_008)) {

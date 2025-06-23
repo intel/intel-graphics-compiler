@@ -196,13 +196,14 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
                  G4_InstOpts opt)
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
       useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
-      sat(s ? true : false), dead(false), evenlySplitInst(false),
+       dead(false), evenlySplitInst(false),
       doPostRA(false), canBeAcc(false), doNotDelete(false), execSize(size),
       builder(irb) {
   // FIXME: Currently srcs would be initialized with a list that has max
   // allowed size in ctor. Probably should initialize srcs with the actual
   // required srcs of the inst instead.
   srcs = {s0, s1, s2, s3};
+  sat = s ? true : false;
   initOperands();
 }
 
@@ -212,11 +213,12 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
                  G4_Operand *s4, G4_InstOpts opt)
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
       useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
-      sat(s ? true : false), dead(false), evenlySplitInst(false),
+      dead(false), evenlySplitInst(false),
       doPostRA(false), canBeAcc(false), doNotDelete(false), execSize(size),
       builder(irb) {
   vISA_ASSERT(isDpas(), "Currently only dpas variants support 5 srcs");
   srcs = {s0, s1, s2, s3, s4};
+  sat = s ? true : false;
   initOperands();
 }
 
@@ -227,10 +229,11 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
                  G4_InstOpts opt)
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
       useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
-      sat(s ? true : false), dead(false), evenlySplitInst(false),
+      dead(false), evenlySplitInst(false),
       doPostRA(false), canBeAcc(false), doNotDelete(false), execSize(size),
       builder(irb) {
   srcs = {s0, s1, s2, s3, s4, s5, s6, s7};
+  sat = s ? true : false;
   initOperands();
 }
 
@@ -3833,8 +3836,8 @@ void G4_Areg::emit(std::ostream &output) {
 // initial all values idential to rgn's
 //
 G4_SrcRegRegion::G4_SrcRegRegion(G4_SrcRegRegion &rgn)
-    : G4_Operand(G4_Operand::srcRegRegion), acc(rgn.acc), regOff(rgn.regOff),
-      subRegOff(rgn.subRegOff) {
+    : G4_Operand(G4_Operand::srcRegRegion), regOff(rgn.regOff),
+      subRegOff(rgn.subRegOff), acc(rgn.acc) {
   base = rgn.base;
   mod = rgn.mod;
   immAddrOff = rgn.immAddrOff;
@@ -5140,7 +5143,7 @@ void PhyRegPool::rebuildRegPool(Mem_Manager &m, unsigned int numRegisters) {
 G4_Declare::G4_Declare(const IR_Builder &builder, const char *n,
                        G4_RegFileKind k, uint32_t numElems, G4_Type ty,
                        std::vector<G4_Declare *> &dcllist)
-    : name(n), regFile(k), elemInfo(ty, numElems, builder.getGRFSize()),
+    : name(n), elemInfo(ty, numElems, builder.getGRFSize()), regFile(k),
       GRFByteSize(builder.getGRFSize()), addressed(false), builtin(false),
       liveIn(false), liveOut(false), payloadLiveOut(false), noWidening(false),
       isSplittedDcl(false), isPartialDcl(false), refInSend(false),
@@ -5334,15 +5337,6 @@ void G4_Predicate::emit(std::ostream &output) {
 }
 
 void G4_Predicate::emit_body(std::ostream &output) {
-  static const char *align16ControlNames[] = {"",
-                                              "xyzw",
-                                              "x",
-                                              "y",
-                                              "z",
-                                              "w",
-                                              "any4h",
-                                              "all4h"};
-
   if (state == PredState_Minus) {
     output << '!';
   }
@@ -6412,27 +6406,6 @@ void G4_Operand::updateFootPrint(BitSet &footprint, bool isSet,
   unsigned lb = getLeftBound();
   unsigned rb = getRightBound();
   const bool doFastPath = true; // for debugging
-  // Check if the left bound and the right bound are within footprint.
-  auto boundsChecking = [&]() {
-    // FIXME: Currently focus on checking out-of-bounds access for GRF
-    // first, and some special cases are skipped.
-    // 1. Skip ARF now because ARF is special and might not have the
-    //    correct footprint size set in LocalDataflow for example.
-    // 2. Skip FLAG now because IGC might create a predicate var with
-    //    8 elements, i.e., SETP (8), while the access granularity of FLAG
-    //    is a word (16 bits)
-    if (isAreg())
-      return true;
-    if (isFlag())
-      return true;
-    return lb <= rb && rb < footprint.getSize();
-  };
-  //  vISA_ASSERT(!builder.getOption(vISA_boundsChecking) || boundsChecking(),
-  //              "Out-of-bounds access found in "
-  //                  << *getInst() << "\n"
-  //                  << "For operand " << *this << ", the footprint size is "
-  //                 << footprint.getSize() << " and the accessing range is ["
-  //                  << lb << ", " << rb << "]\n");
 
   if (doFastPath && lb % N == 0 && (rb + 1) % N == 0) {
     // lb is 32-byte aligned, set one dword at a time

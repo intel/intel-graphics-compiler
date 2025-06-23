@@ -137,8 +137,8 @@ protected:
   std::ostream &o;
 
   BasicFormatter(bool _printAnsi, std::ostream &out)
-      : printAnsi(_printAnsi), currColCapacity((size_t)-1), currColSize(0),
-        currLineDebt(0), o(out) {
+      : currColCapacity((size_t)-1), currColSize(0),
+        currLineDebt(0), printAnsi(_printAnsi), o(out) {
     // TODO: could make these mappable via environment variable
     // export IGA_FormatAnsiRegisterArf="\033[38;2;138;43;211m"
     // export IGA_FormatAnsiMnemonic=...

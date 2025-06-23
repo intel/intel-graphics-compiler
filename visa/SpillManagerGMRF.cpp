@@ -113,14 +113,15 @@ SpillManagerGRF::SpillManagerGRF(
     const Interference *intf, const LR_LIST *spilledLRs, bool failSafeSpill,
     unsigned spillRegSize, unsigned indrSpillRegSize,
     bool enableSpillSpaceCompression, bool useScratchMsg)
-    : gra(g), builder_(g.kernel.fg.builder), latestImplicitVarIdCount_(0),
-      lvInfo_(lvInfo), varIdCount_(lvInfo->getNumSelectedVar()),
-      lrInfo_(&g.incRA.getLRs()), spilledLRs_(spilledLRs),
-      nextSpillOffset_(spillAreaOffset),
-      doSpillSpaceCompression(enableSpillSpaceCompression),
-      failSafeSpill_(failSafeSpill), spillIntf_(intf),
-      useScratchMsg_(useScratchMsg), refs(g.kernel),
-      context(g, &g.incRA.getLRs()) {
+  : gra(g), builder_(g.kernel.fg.builder), varIdCount_(lvInfo->getNumSelectedVar()),
+    latestImplicitVarIdCount_(0),
+    lvInfo_(lvInfo), lrInfo_(&g.incRA.getLRs()), spilledLRs_(spilledLRs),
+    nextSpillOffset_(spillAreaOffset),
+    doSpillSpaceCompression(enableSpillSpaceCompression),
+    failSafeSpill_(failSafeSpill), spillIntf_(intf),
+    useScratchMsg_(useScratchMsg), refs(g.kernel),
+    context(g, &g.incRA.getLRs()) {
+
   spillAreaOffset_ = spillAreaOffset;
   builder_->instList.clear();
   spillRegStart_ = g.kernel.getNumRegTotal();
@@ -173,12 +174,12 @@ SpillManagerGRF::SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,
                                  LSLR_LIST *spilledLSLRs,
                                  bool enableSpillSpaceCompression,
                                  bool useScratchMsg)
-    : gra(g), builder_(g.kernel.fg.builder), latestImplicitVarIdCount_(0),
-      lvInfo_(lvInfo), varIdCount_(lvInfo->getNumSelectedVar()),
-      spilledLSLRs_(spilledLSLRs), nextSpillOffset_(spillAreaOffset),
-      doSpillSpaceCompression(enableSpillSpaceCompression),
-      failSafeSpill_(false), useScratchMsg_(useScratchMsg), refs(g.kernel),
-      context(g), lrInfo_(nullptr) {
+  : gra(g), builder_(g.kernel.fg.builder), varIdCount_(lvInfo->getNumSelectedVar()),
+    latestImplicitVarIdCount_(0), lvInfo_(lvInfo), lrInfo_(nullptr),
+    spilledLSLRs_(spilledLSLRs), nextSpillOffset_(spillAreaOffset),
+    doSpillSpaceCompression(enableSpillSpaceCompression),
+    failSafeSpill_(false), useScratchMsg_(useScratchMsg), refs(g.kernel),
+    context(g) {
   spillAreaOffset_ = spillAreaOffset;
   builder_->instList.clear();
   curInst = nullptr;
@@ -363,7 +364,7 @@ unsigned SpillManagerGRF::calculateSpillDisp(G4_RegVar *regVar) const {
 
   using LocList = std::list<G4_RegVar *>;
   LocList locList;
-  unsigned lrId = (regVar->getId() >= varIdCount_)
+  [[maybe_unused]] unsigned lrId = (regVar->getId() >= varIdCount_)
                       ? regVar->getBaseRegVar()->getId()
                       : regVar->getId();
   vASSERT(lrId < varIdCount_);
@@ -425,7 +426,7 @@ unsigned SpillManagerGRF::calculateSpillDispForLS(G4_RegVar *regVar) const {
   // spilled live ranges and put them into a list in ascending order.
 
   std::vector<G4_RegVar *> locList;
-  unsigned lrId = (regVar->getId() >= varIdCount_)
+  [[maybe_unused]] unsigned lrId = (regVar->getId() >= varIdCount_)
                       ? regVar->getBaseRegVar()->getId()
                       : regVar->getId();
   vASSERT(lrId < varIdCount_);
@@ -743,13 +744,6 @@ unsigned SpillManagerGRF::getRegionByteSize(G4_SrcRegRegion *region,
               (region->getRegion()->width - 1) +
           region->getElemSize();
   return size;
-}
-
-// Get the max exec size on a 256 bit vector for the input operand.
-static unsigned getMaxExecSize(G4_Operand *operand) {
-  const unsigned size = Type_UNDEF + 1;
-  static unsigned maxExecSize[size]{8, 8, 16, 16, 16, 16, 8, 8, 0};
-  return maxExecSize[operand->getType()];
 }
 
 // Check if the instruction is a SIMD 16 or 32 instruction that is logically

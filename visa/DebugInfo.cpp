@@ -2241,7 +2241,7 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
                                 << m.offset << " bytes" << offstr << "\n");
       }
     } else if (inst->getMsgDesc()->isRead()) {
-      uint32_t srcreg, dstreg;
+      [[maybe_unused]] uint32_t srcreg, dstreg;
       srcreg = inst->getSrc(0)->getLinearizedStart() /
                builder.numEltPerGRF<Type_UB>();
       dstreg = inst->getDst()->getLinearizedStart() /
@@ -2269,7 +2269,8 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
               mapIt.second.second.offset == offsetForReg) {
             saveRestoreMap.erase(mapIt.first);
 
-            const char *offstr = RegOrMem::MemAbs ? "abs" : "off befp";
+            const char* offstr =
+                (mapIt.second.first == RegOrMem::MemAbs) ? "abs" : "off befp";
             (void)offstr;
             DEBUG_VERBOSE("Restored r" << reg << ".0 (8):d from mem offset "
                                        << offsetForReg << " bytes (" << offstr

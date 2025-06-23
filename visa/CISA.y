@@ -30,10 +30,9 @@ void CISAerror(CISA_IR_Builder* builder, char const* msg);
 int yylex(CISA_IR_Builder *pBuilder);
 extern int CISAlineno;
 
-static bool streq(const char *sym0, const char *sym1);
+[[maybe_unused]] static bool streq(const char *sym0, const char *sym1);
 static bool ParseAlign(CISA_IR_Builder* pBuilder, const char *sym, VISA_Align &value);
 static VISA_Align AlignBytesToVisaAlignment(int bytes);
-static int DataTypeSizeOf(VISA_Type type);
 static bool ParseEMask(const char* sym, VISA_EMask_Ctrl &emask);
 
 //

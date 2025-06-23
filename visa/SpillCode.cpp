@@ -36,7 +36,7 @@ G4_Declare *SpillManager::createNewSpillLocDeclare(G4_Declare *dcl) {
     // take care different data type reg moves of spill code. For now, just
     // assume data types of addr reg are UW
     //
-    G4_Type type = dcl->getElemType();
+    [[maybe_unused]] G4_Type type = dcl->getElemType();
     vISA_ASSERT(type == Type_UW || type == Type_W || type == Type_UD ||
                     type == Type_D,
                 "addr reg's type should be UW or UD");

@@ -325,7 +325,7 @@ static void checkNamedBarrierSrc(G4_Operand *src, bool isBarrierId,
                                  const G4_Kernel &kernel) {
   if (src->isImm()) {
     if (isBarrierId) {
-      uint32_t val = (uint32_t)src->asImm()->getInt();
+      [[maybe_unused]] uint32_t val = (uint32_t)src->asImm()->getInt();
       vISA_ASSERT(val < kernel.getMaxNumOfBarriers(), "illegal named barrier id");
     }
   } else if (src->isSrcRegRegion()) {
@@ -340,7 +340,7 @@ static void checkNamedBarrierSrc(G4_Operand *src, bool isBarrierId,
 static void checkNamedBarrierType(G4_Operand *src) {
   enum class NamedBarrierType { BOTH = 0, PRODUCER = 1, CONSUMER = 2 };
   if (src->isImm()) {
-    uint32_t val = (uint32_t)src->asImm()->getInt();
+    [[maybe_unused]] uint32_t val = (uint32_t)src->asImm()->getInt();
     vISA_ASSERT(val == 0 || val == 1 || val == 2, "illegal named barrier type");
   } else if (src->isSrcRegRegion()) {
     vISA_ASSERT(src->asSrcRegRegion()->isScalar(),

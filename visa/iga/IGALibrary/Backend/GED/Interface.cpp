@@ -23,7 +23,7 @@ void iga::ged::Encode(const Model &m, const EncoderOpts &eopts,
   uint32_t bitsLen32 = 0;
   try {
     enc.encodeKernel(k, k.getMemManager(), bits, bitsLen32);
-  } catch (FatalError) {
+  } catch (FatalError &) {
     // error already reported
   }
   bitsLen = bitsLen32;
@@ -39,7 +39,7 @@ Kernel *iga::ged::Decode(const Model &m, const DecoderOpts &dopts,
     iga::Decoder decoder(m, eh);
     k = dopts.useNumericLabels ? decoder.decodeKernelNumeric(bits, bitsLen)
                                : decoder.decodeKernelBlocks(bits, bitsLen);
-  } catch (FatalError) {
+  } catch (FatalError &) {
     // error already reported
   }
   return k;

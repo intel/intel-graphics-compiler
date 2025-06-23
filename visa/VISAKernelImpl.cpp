@@ -7737,8 +7737,8 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedInst(
     //
     ADD_OPND(numOpnds, opnds, CreateOtherOpnd(cacheOpts.l1, ISA_TYPE_UB));
     ADD_OPND(numOpnds, opnds, CreateOtherOpnd(cacheOpts.l3, ISA_TYPE_UB));
-  if (hasOV(lscSfid, subOpcode))
-    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(ov, ISA_TYPE_BOOL));
+    if (hasOV(lscSfid, subOpcode))
+      ADD_OPND(numOpnds, opnds, CreateOtherOpnd(ov, ISA_TYPE_BOOL));
     //
     ADD_OPND(numOpnds, opnds, CreateOtherOpnd(addr.type, ISA_TYPE_UB));
     ADD_OPND(numOpnds, opnds, CreateOtherOpnd(addr.immScale, ISA_TYPE_UW));
@@ -8345,7 +8345,7 @@ VISAKernelImpl::AppendVISALscUntypedAppendCounterAtomicInst(
     ADD_OPND(numOpnds, opnds, dst);
     // src0 address
     VISA_RawOpnd *src0Addr = nullptr;
-    int nullOperandCreateStatus = CreateVISANullRawOperand(src0Addr, false);
+    [[maybe_unused]] int nullOperandCreateStatus = CreateVISANullRawOperand(src0Addr, false);
     vISA_ASSERT(nullOperandCreateStatus == VISA_SUCCESS, "not able to create null operand");
     ADD_OPND(numOpnds, opnds, src0Addr);
     // src1 data
