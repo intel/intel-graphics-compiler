@@ -307,7 +307,10 @@ Value* RTBuilder::getSyncStackOffset(bool rtMemBasePtr)
         VALUE_NAME("SyncStackOffset"));
 }
 
-RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer(Value* syncStackOffset, RTBuilder::RTMemoryAccessMode Mode, Value* globalBufferPtr)
+RTBuilder::SyncStackPointerVal *RTBuilder::getSyncStackPointer(
+    RTBuilder::RTMemoryAccessMode Mode,
+    Value *syncStackOffset,
+    Value* globalBufferPtr)
 {
     auto* PointeeTy = getRTStack2Ty();
     if (Mode == RTBuilder::STATEFUL)
@@ -335,11 +338,20 @@ RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer(Value* syncStackO
     }
 }
 
-RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer(Value* globalBufferPtr)
+// forceRTStackAccessMode is an optional parameter which allows to
+// override the global settings.
+RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer(
+    Value* globalBufferPtr,
+    std::optional<RTBuilder::RTMemoryAccessMode> forceRTStackAccessMode)
 {
     auto Mode = Ctx.getModuleMetaData()->rtInfo.RTSyncStackSurfaceStateOffset ?
         RTBuilder::STATEFUL :
         RTBuilder::STATELESS;
+
+    if (forceRTStackAccessMode.has_value())
+    {
+        Mode = *forceRTStackAccessMode;
+    }
 
     // requests for the sync stack pointer in early phases of compilation
     // will return a marker intrinsic that can be analyzed later by cache ctrl pass.
@@ -347,7 +359,7 @@ RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer(Value* globalBuff
     auto* PtrTy = this->getRTStack2PtrTy(Mode, false);
 
     Value* stackOffset = this->getSyncStackOffset(RTBuilder::STATELESS == Mode);
-    stackOffset = this->getSyncStackPointer(stackOffset, Mode, globalBufferPtr);
+    stackOffset = this->getSyncStackPointer(Mode, stackOffset, globalBufferPtr);
     return static_cast<RTBuilder::SyncStackPointerVal*>(
         this->CreateSyncStackPtrIntrinsic(stackOffset, PtrTy, true));
 }

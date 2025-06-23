@@ -262,7 +262,9 @@ public:
     PreemptionDisableIntrinsic* CreatePreemptionDisableIntrinsic();
     PreemptionEnableIntrinsic* CreatePreemptionEnableIntrinsic(Value* Flag = nullptr);
 
-    SyncStackPointerVal* getSyncStackPointer(Value* globalBufferPtr = nullptr);
+    SyncStackPointerVal* getSyncStackPointer(
+        Value* globalBufferPtr = nullptr,
+        std::optional<RTBuilder::RTMemoryAccessMode> forceRTStackAccessMode = std::nullopt);
 
     void createReadSyncTraceRay(Value* val);
 
@@ -401,7 +403,7 @@ private:
     Value* canonizePointer(Value* Ptr);
     uint32_t getRTStack2Size() const;
     Value* getRTStackSize(uint32_t Align);
-    SyncStackPointerVal* getSyncStackPointer(Value* syncStackOffset, RTBuilder::RTMemoryAccessMode Mode, Value* globalBufferPtr = nullptr);
+    SyncStackPointerVal* getSyncStackPointer(RTBuilder::RTMemoryAccessMode Mode, Value* syncStackOffset, Value* globalBufferPtr = nullptr);
     Value* getGeometryIndex(
         StackPointerVal* perLaneStackPtr, Value* leafType, Value* ShaderTy);
     Value* getPrimitiveIndex(
