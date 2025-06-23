@@ -527,6 +527,7 @@ public:
   DIEBlock *buildGeneral(DbgVariable &, const VISAVariableLocation &,
                          const std::vector<DbgDecoder::LiveIntervalsVISA> *,
                          IGC::DIE *);
+  unsigned int stackValueOffset = 0;
 
 private:
   bool buildPrivateBaseRegBased(const DbgVariable &, IGC::DIEBlock *,

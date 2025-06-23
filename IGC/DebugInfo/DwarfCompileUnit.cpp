@@ -2775,6 +2775,7 @@ IGC::DIEBlock *CompileUnit::buildGeneral(
   offsetTaken = 0;
   skipOff = nullptr;
   emitLocation = false;
+  stackValueOffset = 0;
 
   LLVM_DEBUG(dbgs() << "  building DWARF info for the variable ["
                     << var.getName() << "]\n");
@@ -2810,7 +2811,9 @@ IGC::DIEBlock *CompileUnit::buildGeneral(
   }
 
   if (skipOff) {
-    unsigned int offsetEnd = Block->ComputeSizeOnTheFly(Asm);
+    // In split SIMD case, we want to skip to DW_OP_stack_value at the end,
+    // not past it.
+    unsigned int offsetEnd = Block->ComputeSizeOnTheFly(Asm) - stackValueOffset;
     cast<DIEInteger>(skipOff)->setValue(offsetEnd - offsetTaken);
   }
 

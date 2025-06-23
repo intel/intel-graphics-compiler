@@ -77,7 +77,8 @@ kernel void test(global int* in, global int* out) {
 // CHECK-DWARF-SAME: (DW_OP_INTEL_push_simd_lane; DW_OP_lit16; DW_OP_ge; DW_OP_bra: [[GID_BR:[0-9]+]];
 // CHECK-DWARF-SAME: DW_OP_INTEL_push_simd_lane; DW_OP_lit3; DW_OP_shr; DW_OP_plus_uconst: {{[0-9]+}};
 // CHECK-DWARF-SAME: DW_OP_INTEL_push_simd_lane; [[GID_MAIN_EXPR:DW_OP_lit7; DW_OP_and; DW_OP_const1u: 32; DW_OP_mul; DW_OP_INTEL_regval_bits: 32; DW_OP_const4u: 4294967295; DW_OP_and]];
-// CHECK-DWARF-SAME: DW_OP_skip: [[GID_BR]];
+// COM: skip to DW_OP_stack_value, where all lanes should meet
+// CHECK-DWARF-SAME: DW_OP_skip: 21
 // CHECK-DWARF-SAME: DW_OP_INTEL_push_simd_lane; DW_OP_lit16; DW_OP_minus; DW_OP_lit3; DW_OP_shr; DW_OP_plus_uconst: {{[0-9]+}};
 // CHECK-DWARF-SAME: DW_OP_INTEL_push_simd_lane; [[GID_MAIN_EXPR]]; DW_OP_stack_value)
 // CHECK-DWARF-NEXT: <End of list>
@@ -86,7 +87,8 @@ kernel void test(global int* in, global int* out) {
 // CHECK-DWARF-SAME: (DW_OP_INTEL_push_simd_lane; DW_OP_lit16; DW_OP_ge; DW_OP_bra: [[MUL_BR:[0-9]+]];
 // CHECK-DWARF-SAME: DW_OP_INTEL_push_simd_lane; DW_OP_lit3; DW_OP_shr; DW_OP_plus_uconst: {{[0-9]+}};
 // CHECK-DWARF-SAME: DW_OP_INTEL_push_simd_lane; [[MUL_MAIN_EXPR:DW_OP_lit7; DW_OP_and; DW_OP_const1u: 32; DW_OP_mul; DW_OP_INTEL_regval_bits: 32]];
-// CHECK-DWARF-SAME: DW_OP_skip: [[MUL_BR]];
+// COM: skip to DW_OP_stack_value, where all lanes should meet
+// CHECK-DWARF-SAME: DW_OP_skip: 15
 // CHECK-DWARF-SAME: DW_OP_INTEL_push_simd_lane; DW_OP_lit16; DW_OP_minus; DW_OP_lit3; DW_OP_shr; DW_OP_plus_uconst: {{[0-9]+}};
 // CHECK-DWARF-SAME: DW_OP_INTEL_push_simd_lane; [[MUL_MAIN_EXPR]]; DW_OP_stack_value)
 // CHECK-DWARF-NEXT: <End of list>

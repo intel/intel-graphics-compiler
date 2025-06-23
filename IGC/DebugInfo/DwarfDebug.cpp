@@ -232,6 +232,7 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
 
   if (isStackValueNeeded) {
     CU->addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_stack_value);
+    CU->stackValueOffset = 1;
   }
 }
 
