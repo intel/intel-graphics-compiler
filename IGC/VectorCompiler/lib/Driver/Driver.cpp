@@ -184,7 +184,6 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
   if (Opts.TranslateLegacyMemoryIntrinsics)
     Features.AddFeature("translate_legacy_message");
   if (Opts.Binary == vc::BinaryKind::Default ||
-      Opts.Binary == vc::BinaryKind::OpenCL ||
       Opts.Binary == vc::BinaryKind::ZE)
     Features.AddFeature("ocl_runtime");
   if (Opts.HasHalfSIMDLSC)
@@ -940,22 +939,15 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
   }
 
   Opts.Binary = vc::BinaryKind::ZE;
-  if (opt::Arg* A = InternalOptions.getLastArg(
-      OPT_binary_format, OPT_disable_zebin_common)) {
-    auto OptID = A->getOption().getID();
-    if (OptID == OPT_disable_zebin_common)
-        Opts.Binary = vc::BinaryKind::OpenCL;
-    else {
-      StringRef Val = A->getValue();
-      auto MaybeBinary = StringSwitch<std::optional<vc::BinaryKind>>(Val)
-                             .Case("cm", vc::BinaryKind::CM)
-                             .Case("ocl", vc::BinaryKind::OpenCL)
-                             .Case("ze", vc::BinaryKind::ZE)
-                             .Default(std::nullopt);
-      if (!MaybeBinary)
-        return makeOptionError(*A, InternalOptions, /*IsInternal=*/true);
-      Opts.Binary = MaybeBinary.value();
-    }
+  if (opt::Arg *A = InternalOptions.getLastArg(OPT_binary_format)) {
+    StringRef Val = A->getValue();
+    auto MaybeBinary = StringSwitch<std::optional<vc::BinaryKind>>(Val)
+                           .Case("cm", vc::BinaryKind::CM)
+                           .Case("ze", vc::BinaryKind::ZE)
+                           .Default(std::nullopt);
+    if (!MaybeBinary)
+      return makeOptionError(*A, InternalOptions, /*IsInternal=*/true);
+    Opts.Binary = MaybeBinary.value();
   }
 
   if (opt::Arg *A = InternalOptions.getLastArg(OPT_vc_loop_unroll_threshold)) {

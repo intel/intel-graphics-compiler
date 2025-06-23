@@ -63,10 +63,7 @@ struct CompileOptions {
 
   // Output binary format
   // Internal options:
-  //   -[cl,ze]-disable-zebin
-  //   -binary-format=[ocl,ze,cm]
-  // Debug keys:
-  //   IGC_EnableZEBinary=[0,1]
+  //   -binary-format=[ze,cm]
   BinaryKind Binary = BinaryKind::Default;
 
   // Api accessible options.

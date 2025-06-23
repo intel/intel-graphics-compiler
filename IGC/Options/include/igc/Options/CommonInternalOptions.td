@@ -27,10 +27,6 @@ defm emit_zebin_visa_sections : CommonFlag<"emit-zebin-visa-sections">,
 def emit_visa_only : PlainFlag<"emit-visa-only">,
   HelpText<"Compile until vISA">;
 
-// -cl-disable-zebin, -ze-disable-zebin
-defm disable_zebin : CommonFlag<"disable-zebin">,
-  HelpText<"Emit binary in legacy format">;
-
 defm buffer_bounds_checking : CommonFlag<"buffer-bounds-checking">,
   HelpText<"Enable buffer bounds checking">;
 

@@ -43,7 +43,7 @@ SPDX-License-Identifier: MIT
 enum class FunctionControl { Default, StackCall };
 
 namespace vc {
-enum class BinaryKind { Default, CM, OpenCL, ZE };
+enum class BinaryKind { Default, CM, ZE };
 } // namespace vc
 
 namespace llvm {
@@ -133,7 +133,7 @@ struct GenXBackendOptions {
   bool UseBindlessImages = false;
 
   // Output binary format
-  vc::BinaryKind Binary = vc::BinaryKind::OpenCL;
+  vc::BinaryKind Binary = vc::BinaryKind::ZE;
 
   // Add vISA asm as sections in ZeBin
   bool EmitZebinVisaSections = false;

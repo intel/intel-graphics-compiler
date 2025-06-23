@@ -493,11 +493,6 @@ fillExternalData(vc::BinaryKind Binary, llvm::StringRef CPUStr,
                         vc::bif::RawKind::PrintfCM64>(ExtData))
       return {};
     break;
-  case vc::BinaryKind::OpenCL:
-    if (!fillPrintfData<vc::bif::RawKind::PrintfOCL32,
-                        vc::bif::RawKind::PrintfOCL64>(ExtData))
-      return {};
-    break;
   case vc::BinaryKind::ZE:
     if (!fillPrintfData<vc::bif::RawKind::PrintfZE32,
                         vc::bif::RawKind::PrintfZE64>(ExtData))
@@ -634,28 +629,7 @@ translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
                                IGCPlatform.getWATable(), Input};
   vc::createBinary(CMProgram, CompileResult);
 
-  switch (Opts.Binary) {
-  case vc::BinaryKind::OpenCL: {
-    validateCMProgramForOCLBin(CMProgram);
-    CMProgram.CreateKernelBinaries();
-    Util::BinaryStream ProgramBinary;
-    CMProgram.GetProgramBinary(ProgramBinary, CompileResult.PointerSizeInBytes);
-    llvm::StringRef BinaryRef{ProgramBinary.GetLinearPointer(),
-                              static_cast<std::size_t>(ProgramBinary.Size())};
-
-    Util::BinaryStream ProgramDebugData;
-    CMProgram.GetProgramDebugData(ProgramDebugData);
-    llvm::StringRef DebugInfoRef{
-        ProgramDebugData.GetLinearPointer(),
-        static_cast<std::size_t>(ProgramDebugData.Size())};
-
-    if (CMProgram.HasErrors())
-      return CMProgram.GetError();
-
-    outputBinary(BinaryRef, DebugInfoRef, OutputArgs);
-    break;
-  }
-  case vc::BinaryKind::ZE: {
+  if (Opts.Binary == vc::BinaryKind::ZE) {
     llvm::SmallVector<char, 0> ProgramBinary;
     llvm::raw_svector_ostream ProgramBinaryOS{ProgramBinary};
     CMProgram.GetZEBinary(ProgramBinaryOS, CompileResult.PointerSizeInBytes);
@@ -668,9 +642,7 @@ translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
 
     llvm::StringRef BinaryRef{ProgramBinary.data(), ProgramBinary.size()};
     outputBinary(BinaryRef, {}, OutputArgs);
-    break;
-  }
-  default:
+  } else {
     IGC_ASSERT_EXIT_MESSAGE(0, "Unknown binary format");
   }
 
