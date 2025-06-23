@@ -228,7 +228,6 @@ namespace IGC
         unsigned int                    getStructArgOffset()    const;
         unsigned int                    getLocationIndex()      const;
         unsigned int                    getLocationCount()      const;
-        iOpenCL::DATA_PARAMETER_TOKEN   getDataParamToken()     const;
         bool                            typeAlwaysNeedsAllocation() const;
         bool                            getImgAccessedFloatCoords() const { return m_imageInfo.accessedByFloatCoord; }
         bool                            getImgAccessedIntCoords()   const { return m_imageInfo.accessedByIntCoord; }
@@ -371,9 +370,6 @@ namespace IGC
         /// @brief  If this argument has multiple data fields (aka, structs) then m_next points to
         ///         the subsequent field in the struct.
         std::vector<KernelArg>          m_subArguments;
-
-        /// @brief Maps kernel argument types to their associated data param tokens
-        static const std::map<KernelArg::ArgType, iOpenCL::DATA_PARAMETER_TOKEN> argTypeTokenMap;
     };
 
     /// @brief  KernelArgsOrder class is used to define an order in which CISA variables are mapped to

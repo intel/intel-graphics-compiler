@@ -160,68 +160,6 @@ void OpenCLPrintfResolution::visitCallInst(CallInst& callInst)
     }
 }
 
-std::string OpenCLPrintfResolution::getEscapedString(const ConstantDataSequential* pCDS)
-{
-    std::string Name;
-    // This is to avoid unnecessary characters that exceed the char range
-    for (unsigned i = 0, len = pCDS->getNumElements() - 1; i != len; i++)
-    {
-        if (isa<ConstantInt>(pCDS->getElementAsConstant(i)))
-        {
-            if ((cast<ConstantInt>(pCDS->getElementAsConstant(i))->getZExtValue()) > 127)
-            {
-                Name = "";
-                return Name;
-            }
-            unsigned char C = (char)cast<ConstantInt>(pCDS->getElementAsConstant(i))->getZExtValue();
-
-            if (isprint(C) &&
-                (C != '\\') &&
-                (C != '"'))
-            {
-                Name.push_back(C);
-            }
-            else
-            {
-                Name.push_back('\\');
-                switch (C)
-                {
-                case '\a':
-                    Name.push_back('a');
-                    break;
-                case '\b':
-                    Name.push_back('b');
-                    break;
-                case '\f':
-                    Name.push_back('f');
-                    break;
-                case '\n':
-                    Name.push_back('n');
-                    break;
-                case '\r':
-                    Name.push_back('r');
-                    break;
-                case '\t':
-                    Name.push_back('t');
-                    break;
-                case '\v':
-                    Name.push_back('v');
-                    break;
-                default:
-                    Name.push_back(C);
-                    break;
-                }
-            }
-        }
-        else
-        {
-            Name = "";
-            return Name;
-        }
-    }
-    return Name;
-}
-
 Value* OpenCLPrintfResolution::processPrintfString(Value* arg, Function& F)
 {
     GlobalVariable* formatString = nullptr;

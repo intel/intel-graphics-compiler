@@ -135,12 +135,6 @@ namespace IGC
         // Recomputes the binding table layout according to the present kernel args
         void RecomputeBTLayout();
 
-        // Set m_HasTID to true if TID functions were found
-        void SetHasTID();
-
-        // Set m_HasGlobalSize to true if TID functions were found
-        void SetHasGlobalSize();
-
         bool HasFullDispatchMask() override;
 
         // Returns the immediate value mapped to GlobalVariable c.
@@ -178,9 +172,6 @@ namespace IGC
         typedef std::map<uint32_t, PtrArgAttrType> PtrArgsAttrMapType;
 
     protected:
-        // Creates appropriate annotation based on the kernel arg
-        void CreateAnnotations(IGC::KernelArg* kernelArg, uint payloadPosition);
-
         // Fill SOpenCLKernelInfo::m_zePayloadArgs
         // Return true: if the argument is supported in ZEBinary and it's created successfully
         // Return false: if the argument cannot be supported by ZEBinary
@@ -188,11 +179,9 @@ namespace IGC
             IGC::KernelArg* kernelArg, uint payloadPosition, PtrArgsAttrMapType& ptrArgsAttrMap);
 
         // Fill SOpenCLKernelInfo::m_zeUserAttribute for ZEBinary
-        // (PT pass: CreateKernelAttributeInfo)
         void FillZEUserAttributes(IGC::IGCMD::FunctionInfoMetaDataHandle& funcInfoMD);
 
         // Fill SOpenCLKernelInfo::m_zeKernelArgInfo for ZEBinary
-        // (PT pass: CreateKernelArgInfo)
         void FillZEKernelArgInfo();
 
         // a helper function to get image type from kernelArg
@@ -202,19 +191,11 @@ namespace IGC
         iOpenCL::SAMPLER_OBJECT_TYPE getSamplerTypeFromKernelArg(const KernelArg& kernelArg);
 
         // Creates annotations for inline sampler_t objects
-        void CreateInlineSamplerAnnotations();
         void CreateZEInlineSamplerAnnotations();
 
-        // Creates annotations for kernel argument information (kernel reflection)
-        void CreateKernelArgInfo();
-
-        // Creates annotations for kernel attribution information (kernel reflection)
-        void CreateKernelAttributeInfo();
-        std::string getVecTypeHintString(const IGC::IGCMD::VectorTypeHintMetaDataHandle& vecTypeHintInfo) const;
+        // A helper function to get vector type hint string for filling user attributes
         std::string getVecTypeHintTypeString(const IGC::IGCMD::VectorTypeHintMetaDataHandle& vecTypeHintInfo) const;
-        std::string getThreadGroupSizeString(IGC::IGCMD::ThreadGroupSizeMetaDataHandle& threadGroupSize, bool isHint);
-        std::string getSubGroupSizeString(IGC::IGCMD::SubGroupSizeMetaDataHandle& subGroupSize);
-        std::string getWorkgroupWalkOrderString(const IGC::WorkGroupWalkOrderMD& workgroupWalkOrder);
+
         // Create annotation for printf strings.
         void CreatePrintfStringAnnotations();
 
@@ -226,8 +207,6 @@ namespace IGC
 
         // Resolve the binding table index for resource resInfo (using the BTL)
         unsigned int getBTI(SOpenCLKernelInfo::SResourceInfo& resInfo);
-
-        bool hasStatefulAccess(unsigned bti);
 
         // Find the sum of inline local sizes used by this kernel
         unsigned int getSumFixedTGSMSizes(llvm::Function* F);
