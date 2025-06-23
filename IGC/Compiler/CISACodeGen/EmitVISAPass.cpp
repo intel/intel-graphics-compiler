@@ -5472,6 +5472,9 @@ void EmitPass::emitSetDebugReg(llvm::Instruction* inst)
         m_encoder->Push();
     }
 
+    if (inst->use_empty())
+        return;
+
     // read dbg0.1
     m_encoder->SetSrcSubReg(0, 1);
     m_encoder->SetSrcRegion(0, 0, 1, 0);

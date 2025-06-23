@@ -176,6 +176,64 @@ namespace llvm {
             return this->CreateCall(func, Arg, Name);
         }
 
+        inline void SetDebugReg(Value* V, const Twine& Name = "")
+        {
+          Module *M = this->GetInsertBlock()->getParent()->getParent();
+          Function *fn = GenISAIntrinsic::getDeclaration(
+              M, GenISAIntrinsic::GenISA_SetDebugReg);
+
+          if (!isa<Constant>(V)) {
+
+            // read the first lane because debug register requires the value to
+            // be uniform
+            Function *waveBallotFn = GenISAIntrinsic::getDeclaration(
+                M, GenISAIntrinsic::GenISA_WaveBallot);
+
+            Function *waveShuffleIndexFn = GenISAIntrinsic::getDeclaration(
+                M, GenISAIntrinsic::GenISA_WaveShuffleIndex,
+                V->getType());
+
+            Function *fblFn = GenISAIntrinsic::getDeclaration(
+                M, GenISAIntrinsic::GenISA_firstbitLo);
+
+            CallInst *ballot = this->CreateCall2(waveBallotFn, this->getTrue(),
+                                                 this->getInt32(0));
+
+            auto *firstLaneId = this->CreateCall(fblFn, ballot);
+            V = this->CreateCall3(waveShuffleIndexFn, V, firstLaneId,
+                                  this->getInt32(0));
+          }
+
+          if (V->getType() == this->getInt32Ty()) {
+            this->CreateCall(fn, V, Name);
+            return;
+          }
+
+          if (V->getType()->isPointerTy()) {
+            V = this->CreatePtrToInt(V, this->getInt64Ty());
+            this->CreateCall(fn, this->CreateTrunc(V, this->getInt32Ty()),
+                             Name);
+            this->CreateCall(
+                fn,
+                this->CreateTrunc(this->CreateLShr(V, 32), this->getInt32Ty()),
+                Name);
+            return;
+          }
+
+          if (V->getType()->getPrimitiveSizeInBits() == 32) {
+            this->CreateCall(fn, this->CreateBitCast(V, this->getInt32Ty()),
+                             Name);
+            return;
+          }
+
+          IGC_ASSERT_MESSAGE(0, "Unhandled?");
+        }
+
+        inline void SetDebugReg(uint32_t V, const Twine& Name = "")
+        {
+          this->SetDebugReg(this->getInt32(V));
+        }
+
     private:
 
         inline Value* CreateAllValuesAreConstantFP(Value** values,
@@ -195,5 +253,5 @@ namespace llvm {
         }
     };
 
-} // end namespace llvm
+    } // end namespace llvm
 
