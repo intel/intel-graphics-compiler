@@ -392,7 +392,8 @@ BinaryEncodingIGA::BinaryEncodingIGA(vISA::G4_Kernel &k, const std::string& fnam
 
 SWSB_ENCODE_MODE BinaryEncodingIGA::getIGASWSBEncodeMode() const {
 
-  if (platform == TARGET_PLATFORM::Xe_MTL)
+  if (platform == TARGET_PLATFORM::Xe_MTL ||
+      platform == TARGET_PLATFORM::Xe_ARL)
     return SWSB_ENCODE_MODE::ThreeDistPipeDPMath;
 
   return platformModel->getSWSBEncodeMode();
