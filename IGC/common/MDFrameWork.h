@@ -499,6 +499,7 @@ enum class ShaderTypeMD
         bool WaDisablePayloadCoalescing                 = false;
         unsigned Quad8InputThreshold                    = 0;
         bool UseResourceLoopUnrollNested                = false;
+        bool DisableLoopUnroll                          = false;
         unsigned ForcePushConstantMode                  = 0;
         bool UseInstructionHoistingOptimization         = false;
     };

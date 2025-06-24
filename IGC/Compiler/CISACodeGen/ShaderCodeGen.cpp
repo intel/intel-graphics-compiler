@@ -1551,9 +1551,15 @@ void OptimizeIR(CodeGenContext* const pContext)
                 {
                     LoopUnrollThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThreshold);
                 }
+                else if (pContext->getModuleMetaData()->compOpt.SetLoopUnrollThreshold > 0)
+                {
+                    LoopUnrollThreshold = pContext->getModuleMetaData()->compOpt.SetLoopUnrollThreshold;
+                }
 
                 // if the shader contains indexable_temp, we'll keep unroll
-                bool unroll = IGC_IS_FLAG_DISABLED(DisableLoopUnroll);
+                bool unroll =
+                    !pContext->getModuleMetaData()->compOpt.DisableLoopUnroll &&
+                    IGC_IS_FLAG_DISABLED(DisableLoopUnroll);
                 bool hasIndexTemp = (pContext->m_indexableTempSize[0] > 0);
                 bool disableLoopUnrollStage1 =
                     IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) &&
@@ -1579,7 +1585,10 @@ void OptimizeIR(CodeGenContext* const pContext)
                 }
 
                 // Second unrolling with the same threshold.
-                if (LoopUnrollThreshold > 0 && !IGC_IS_FLAG_ENABLED(DisableLoopUnroll))
+                unroll =
+                    !pContext->getModuleMetaData()->compOpt.DisableLoopUnroll &&
+                    IGC_IS_FLAG_DISABLED(DisableLoopUnroll);
+                if (LoopUnrollThreshold > 0 && unroll)
                 {
                     mpm.add(llvm::createLoopUnrollPass(2, false, false, -1, -1,
                                                        -1, -1, -1, -1));
@@ -1757,9 +1766,15 @@ void OptimizeIR(CodeGenContext* const pContext)
                     {
                         LoopUnrollThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThreshold);
                     }
+                    else if (pContext->getModuleMetaData()->compOpt.SetLoopUnrollThreshold > 0)
+                    {
+                        LoopUnrollThreshold = pContext->getModuleMetaData()->compOpt.SetLoopUnrollThreshold;
+                    }
 
                     // if the shader contains indexable_temp, we'll keep unroll
-                    bool unroll = IGC_IS_FLAG_DISABLED(DisableLoopUnroll);
+                    bool unroll =
+                        !pContext->getModuleMetaData()->compOpt.DisableLoopUnroll &&
+                        IGC_IS_FLAG_DISABLED(DisableLoopUnroll);
                     bool hasIndexTemp = (pContext->m_indexableTempSize[0] > 0);
                     // Enable loop unrolling for stage 1 for now due to persisting regressions
                     bool disableLoopUnrollStage1 =

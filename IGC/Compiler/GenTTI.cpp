@@ -185,7 +185,8 @@ namespace llvm {
             {
                 LoopUnrollThreshold = ctx->getModuleMetaData()->csInfo.SetLoopUnrollThreshold;
             }
-            else if (ctx->type == ShaderType::PIXEL_SHADER && ctx->getModuleMetaData()->compOpt.SetLoopUnrollThreshold > 0)
+            else if ((ctx->type == ShaderType::PIXEL_SHADER || ctx->type == ShaderType::RAYTRACING_SHADER) &&
+                ctx->getModuleMetaData()->compOpt.SetLoopUnrollThreshold > 0)
             {
                 LoopUnrollThreshold = ctx->getModuleMetaData()->compOpt.SetLoopUnrollThreshold;
             }
