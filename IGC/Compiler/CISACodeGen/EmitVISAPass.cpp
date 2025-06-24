@@ -9501,7 +9501,18 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     }
     case GenISAIntrinsic::GenISA_getSR0:
     {
-        m_encoder->SetSrcSubReg(0, static_cast<uint16_t>(GetImmediateVal(inst->getOperand(0))));
+        if (!isa<ConstantInt>(inst->getOperand(0)))
+        {
+            m_pCtx->EmitError("Expected constant operand 0 for GenISA_getSR0 intrinsic.", inst);
+            return;
+        }
+        uint subReg = GetImmediateVal(inst->getOperand(0));
+        if (subReg > 3)
+        {
+            m_pCtx->EmitError("GenISA_getSR0 intrinsic expects operand 0 value in the range [0-3].", inst);
+            return;
+        }
+        m_encoder->SetSrcSubReg(0, static_cast<uint16_t>(subReg));
         m_encoder->Copy(m_destination, m_currShader->GetSR0());
         m_encoder->Push();
         break;
@@ -9510,6 +9521,36 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     {
         m_encoder->SetSrcSubReg(0, 0);
         m_encoder->Copy(m_destination, m_currShader->GetSR0());
+        m_encoder->Push();
+        break;
+    }
+    case GenISAIntrinsic::GenISA_setSR0:
+    {
+        if (!isa<ConstantInt>(inst->getOperand(0)))
+        {
+            m_pCtx->EmitError("Expected constant operand 0 for GenISA_setSR0 intrinsic.", inst);
+            return;
+        }
+        uint subReg = GetImmediateVal(inst->getOperand(0));
+        if (subReg != 1 && subReg != 2)
+        {
+            m_pCtx->EmitError("GenISA_setSR0 intrinsic expects operand 0 value to be 1 or 2. Other parts of SR0 are read-only.", inst);
+            return;
+        }
+        m_encoder->SetDstSubReg(static_cast<uint16_t>(subReg));
+        CVariable* val = GetSymbol(inst->getOperand(1));
+        if (val->GetType() != ISA_TYPE_UD && val->GetType() != ISA_TYPE_D)
+        {
+            m_pCtx->EmitError("GenISA_setSR0 intrinsic expects a variable of type UD or D", inst);
+            return;
+        }
+        if (val->GetType() != ISA_TYPE_UD) {
+            // if type of val would be signed, m_encoder->Copy would add a signed alias for sr0 destination,
+            // which is not valid.
+            val = m_currShader->BitCast(val, ISA_TYPE_UD);
+        }
+
+        m_encoder->Copy(m_currShader->GetSR0(), val);
         m_encoder->Push();
         break;
     }

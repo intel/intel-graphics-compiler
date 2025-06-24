@@ -5823,6 +5823,23 @@ intrinsics:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
+        name: "GenISA_setSR0"
+        comment: "Set value of sr0.# state register"
+        return_definition: !<ReturnDefinition>
+            type_definition: *void
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *i32
+                comment: "index/offset of the subregister within sr0"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i32
+                comment: "value to be set"
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
         name: "GenISA_globalSync"
         comment: ""
         return_definition: !<ReturnDefinition>
