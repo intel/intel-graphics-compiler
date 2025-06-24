@@ -836,8 +836,8 @@ static bool isReadWritePreDefinedVar(uint32_t index, uint32_t byteOffset) {
     // tm0.4
     return true;
   } else if (internalIndex == PreDefinedVarsInternal::SR0 &&
-             (byteOffset == 8 || byteOffset == 12)) {
-    // sr0.2, sr0.3
+             (byteOffset == 4 || byteOffset == 8)) {
+    // sr0.1, sr0.2
     return true;
   } else {
     return false;

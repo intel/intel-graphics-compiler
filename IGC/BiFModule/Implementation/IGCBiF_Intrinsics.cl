@@ -165,6 +165,7 @@ uint      __builtin_IB_subslice_id(void) __attribute__((const));
 uint      __builtin_IB_dual_subslice_id(void) __attribute__((const));
 uint      __builtin_IB_eu_id(void) __attribute__((const));
 uint      __builtin_IB_get_sr0(uint DWNumber); // DWNumber=0|1|2|3
+void      __builtin_IB_set_sr0(uint DWNumber, uint Value); // DWNumber=0|1|2|3
 uint      __builtin_IB_eu_thread_id(void) __attribute__((const));
 void      __builtin_IB_profile_snapshot(int point_type,int point_index) __attribute__((const));
 void      __builtin_IB_profile_aggregated(int point_type,int point_index) __attribute__((const));
