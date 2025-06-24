@@ -121,13 +121,13 @@ namespace IGC
             return tmp;
         }
 
-        bool operator == (const _Myt& rhs)
+        bool operator == (const _Myt& rhs) const
         {
             return m_pNode == rhs.m_pNode &&
                 m_index == rhs.m_index;
         }
 
-        bool operator != (const _Myt& rhs)
+        bool operator != (const _Myt& rhs) const
         {
             return !this->operator==(rhs);
         }
