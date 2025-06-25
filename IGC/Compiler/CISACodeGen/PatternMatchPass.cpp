@@ -3247,7 +3247,7 @@ namespace IGC
                 isa<ConstantInt>(extract->getIndexOperand()) &&
                 isa<BitCastInst>(extract->getVectorOperand()) &&
                 cast<BitCastInst>(extract->getVectorOperand())->getType()->isIntOrIntVectorTy(8) &&
-                cast<BitCastInst>(extract->getVectorOperand())->getOperand(0)->getType()->isIntegerTy(32))
+                cast<BitCastInst>(extract->getVectorOperand())->getOperand(0)->getType()->getPrimitiveSizeInBits() == 32)
             {
                 UnpackPattern* pattern = new (m_allocator) UnpackPattern();
                 auto bitcast = cast<BitCastInst>(extract->getVectorOperand());
@@ -3284,7 +3284,7 @@ namespace IGC
             }
         };
 
-        if (I.getType()->isIntegerTy(32) &&
+        if (I.getType()->getPrimitiveSizeInBits() == 32 &&
             I.getOperand(0)->getType()->isIntOrIntVectorTy(8) &&
             isa<InsertElementInst>(I.getOperand(0)))
         {
@@ -3388,7 +3388,7 @@ namespace IGC
             }
         };
 
-        if (I.getType()->isIntegerTy(32) &&
+        if ((I.getType()->getPrimitiveSizeInBits() == 32) &&
             I.getOperand(0)->getType()->isIntOrIntVectorTy(8) &&
             isa<InsertElementInst>(I.getOperand(0)))
         {
@@ -3422,7 +3422,7 @@ namespace IGC
                     if (!ee ||
                         !isa<ConstantInt>(ee->getOperand(1)) ||
                         !isa<BitCastInst>(ee->getOperand(0)) ||
-                        !(cast<BitCastInst>(ee->getOperand(0)))->getOperand(0)->getType()->isIntegerTy(32))
+                        ((cast<BitCastInst>(ee->getOperand(0)))->getOperand(0)->getType()->getPrimitiveSizeInBits() != 32))
                     {
                         return false;
                     }
@@ -3433,7 +3433,7 @@ namespace IGC
                 else
                 {
                     if (!isa<UndefValue>(baseVec) &&
-                        (!isa<BitCastInst>(baseVec) || !(cast<BitCastInst>(baseVec))->getOperand(0)->getType()->isIntegerTy(32)))
+                        (!isa<BitCastInst>(baseVec) || (cast<BitCastInst>(baseVec))->getOperand(0)->getType()->getPrimitiveSizeInBits() != 32))
                     {
                         return false;
                     }
@@ -3535,7 +3535,7 @@ namespace IGC
                             if (isa<ConstantInt>(extract->getIndexOperand()) &&
                                 isa<BitCastInst>(extract->getVectorOperand()) &&
                                 cast<BitCastInst>(extract->getVectorOperand())->getType()->isIntOrIntVectorTy(8) &&
-                                cast<BitCastInst>(extract->getVectorOperand())->getOperand(0)->getType()->isIntegerTy(32))
+                                cast<BitCastInst>(extract->getVectorOperand())->getOperand(0)->getType()->getPrimitiveSizeInBits() == 32)
                             {
                                 sources[i] = std::make_tuple(
                                     true,
