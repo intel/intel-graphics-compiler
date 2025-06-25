@@ -1029,7 +1029,7 @@ const KernelArg& KernelArgs::const_iterator::operator*()
     return *m_minor;
 }
 
-bool KernelArgs::const_iterator::operator!=(const const_iterator& iterator)
+bool KernelArgs::const_iterator::operator!=(const const_iterator& iterator) const
 {
     if (m_empty)
         return (m_major != iterator.m_major);
@@ -1037,7 +1037,7 @@ bool KernelArgs::const_iterator::operator!=(const const_iterator& iterator)
         return (m_major != iterator.m_major) || (m_minor != iterator.m_minor);
 }
 
-bool KernelArgs::const_iterator::operator==(const const_iterator& iterator)
+bool KernelArgs::const_iterator::operator==(const const_iterator& iterator) const
 {
     if (m_empty)
         return (m_major == iterator.m_major);

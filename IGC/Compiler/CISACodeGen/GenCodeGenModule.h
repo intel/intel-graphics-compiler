@@ -104,11 +104,11 @@ namespace IGC {
             {
                 return *minor;
             }
-            bool operator==(const iterator& rhs)
+            bool operator==(const iterator& rhs) const
             {
                 return (major == rhs.major && minor == rhs.minor);
             }
-            bool operator!=(const iterator& rhs)
+            bool operator!=(const iterator& rhs) const
             {
                 return !(*this == rhs);
             }

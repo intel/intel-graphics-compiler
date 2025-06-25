@@ -459,13 +459,13 @@ namespace IGC
             ///         by checking if they point to the same element
             /// @param  iterator    An iterator to compare this iterator
             /// @return true if the iterators pare different, false otherwise
-            bool operator!=(const const_iterator& iterator);
+            bool operator!=(const const_iterator& iterator) const;
 
             /// @brief  Checks whether this iterator and the given iterator are same
             ///         by checking if they point to the same element
             /// @param  iterator    An iterator to compare this iterator
             /// @return true if the iterators are same, false otherwise
-            bool operator==(const const_iterator& iterator);
+            bool operator==(const const_iterator& iterator) const;
 
         private:
             AllocationArgs::const_iterator          m_major;

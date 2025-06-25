@@ -204,7 +204,7 @@ namespace IGC
 
             void updateUses();
 
-            bool operator==(const llvm::Function* F) {
+            bool operator==(const llvm::Function* F) const {
                 return this->F == F;
             }
 

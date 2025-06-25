@@ -653,13 +653,13 @@ public:
              node_it != LB->nodeBucketsArray[bucket].bucketVec.end());
       return *this;
     }
-    bool operator==(const BN_iterator &it2) {
+    bool operator==(const BN_iterator &it2) const {
       vASSERT(LB == it2.LB && iterateAll == it2.iterateAll);
       // NOTE: order of comparisons matters: if different buckets
       //       then node_its are of different vectors
       return (bucket == it2.bucket && node_it == it2.node_it);
     }
-    bool operator!=(const BN_iterator &it2) {
+    bool operator!=(const BN_iterator &it2) const {
       vASSERT(LB == it2.LB && iterateAll == it2.iterateAll);
       return (!(*this == it2));
     }
