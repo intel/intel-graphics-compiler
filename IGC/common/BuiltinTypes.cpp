@@ -22,18 +22,18 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 
 namespace IGC {
-bool isTargetExtTy(llvm::Type *Ty) {
+bool isTargetExtTy(const llvm::Type *Ty) {
 #if LLVM_VERSION_MAJOR >= 16
   return Ty->isTargetExtTy();
 #endif
   return false;
 }
 
-bool isImageBuiltinType(llvm::Type *BuiltinTy) {
+bool isImageBuiltinType(const llvm::Type *BuiltinTy) {
   if (BuiltinTy->isPointerTy() && !IGCLLVM::isOpaquePointerTy(BuiltinTy))
     BuiltinTy = IGCLLVM::getNonOpaquePtrEltTy(BuiltinTy);
 
-  if (StructType *StructTy = dyn_cast<StructType>(BuiltinTy);
+  if (const StructType *StructTy = dyn_cast<StructType>(BuiltinTy);
       StructTy && StructTy->isOpaque()) {
     StringRef BuiltinName = StructTy->getName();
     llvm::SmallVector<llvm::StringRef, 3> Buffer;
@@ -51,7 +51,7 @@ bool isImageBuiltinType(llvm::Type *BuiltinTy) {
       return true;
   }
 #if LLVM_VERSION_MAJOR >= 16
-  else if (TargetExtType *ExtTy = dyn_cast<TargetExtType>(BuiltinTy);
+  else if (const TargetExtType *ExtTy = dyn_cast<TargetExtType>(BuiltinTy);
            ExtTy && (ExtTy->getName() == "spirv.Image" ||
                      ExtTy->getName() == "spirv.SampledImage")) {
     return true;
@@ -61,14 +61,27 @@ bool isImageBuiltinType(llvm::Type *BuiltinTy) {
   return false;
 }
 
-static bool isAnyArgTargetExtTy(const llvm::Function &F) {
-  for (const llvm::Argument &A : F.args())
-    if (IGC::isTargetExtTy(A.getType()))
+#if LLVM_VERSION_MAJOR >= 16
+static bool isNonOpenCLBuiltinType(const llvm::Type *Ty) {
+  const llvm::TargetExtType *TET = dyn_cast<llvm::TargetExtType>(Ty);
+  if (!TET)
+    return false;
+
+  StringRef Name = TET->getTargetExtName();
+  return Name.starts_with("spirv.CooperativeMatrixKHR") ||
+         Name.starts_with("spirv.JointMatrixINTEL");
+}
+
+static bool isAnyArgOpenCLTargetExtTy(const llvm::Function &F) {
+  for (const llvm::Argument &A : F.args()) {
+    const Type *ArgTy = A.getType();
+    if (isTargetExtTy(ArgTy) && !isNonOpenCLBuiltinType(ArgTy))
       return true;
+  }
+
   return false;
 }
 
-#if LLVM_VERSION_MAJOR >= 16
 static Function *
 cloneFunctionWithPtrArgsInsteadTargetExtTy(Function &F, StringRef NameSuffix) {
   Module &M = *F.getParent();
@@ -78,7 +91,7 @@ cloneFunctionWithPtrArgsInsteadTargetExtTy(Function &F, StringRef NameSuffix) {
   ParamTys.reserve(F.arg_size());
   for (Argument &Arg : F.args()) {
     Type *T = Arg.getType();
-    if (IGC::isTargetExtTy(T)) {
+    if (isTargetExtTy(T) && !isNonOpenCLBuiltinType(T)) {
       unsigned AS = 0;
       auto *TargetExtTy = cast<llvm::TargetExtType>(T);
       StringRef TyName = TargetExtTy->getName();
@@ -162,7 +175,7 @@ static void replaceFunctionAtCallsites(Function &OldF, Function &NewF) {
   }
 }
 
-void retypeTargetExtTyArgs(Module *M) {
+void retypeOpenCLTargetExtTyArgs(Module *M) {
   constexpr StringLiteral TempSuffix = ".__retype_tmp";
   SmallVector<Function *, 8> RetypedFuncs;
 
@@ -171,7 +184,7 @@ void retypeTargetExtTyArgs(Module *M) {
     // if (F.isDeclaration())
     //   continue;
 
-    if (!isAnyArgTargetExtTy(F))
+    if (!isAnyArgOpenCLTargetExtTy(F))
       continue;
 
     if (Function *NewF =

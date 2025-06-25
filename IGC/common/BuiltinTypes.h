@@ -15,11 +15,11 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-bool isTargetExtTy(llvm::Type *Ty);
-bool isImageBuiltinType(llvm::Type *BuiltinTy);
+bool isTargetExtTy(const llvm::Type *Ty);
+bool isImageBuiltinType(const llvm::Type *BuiltinTy);
 
 #if LLVM_VERSION_MAJOR >= 16
-void retypeTargetExtTyArgs(llvm::Module *M);
+void retypeOpenCLTargetExtTyArgs(llvm::Module *M);
 #endif
 
 } // namespace IGC
