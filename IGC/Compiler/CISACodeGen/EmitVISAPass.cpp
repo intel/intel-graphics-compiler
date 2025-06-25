@@ -2702,7 +2702,7 @@ void EmitPass::Powi(const SSource sources[2], const DstModifier& modifier)
     }
     else
     {
-        src1Float = m_currShader->GetNewVariable(src0);
+        src1Float = m_currShader->GetNewVariable(src1Int->GetNumberElement(), ISA_TYPE_F, src1Int->GetAlign(), CName(src1Int->getName(), "float"));
         m_encoder->Cast(src1Float, src1Int);
     }
     m_encoder->SetDstModifier(modifier);
