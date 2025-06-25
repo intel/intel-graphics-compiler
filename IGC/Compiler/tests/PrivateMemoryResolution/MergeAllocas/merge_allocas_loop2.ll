@@ -19,7 +19,7 @@ target triple = "spir64-unknown-unknown"
 %"class.sycl::_V1::vec.73" = type { <3 x double> }
 
 ; Function Attrs: noinline optnone
-define internal spir_func i1 @_ZN12_GLOBAL__N_117check_elems_equalIdLi3EEEbRKN4sycl3_V13vecIT_XT0_EEES7_.28() #0 {
+define internal spir_func i1 @testFn() #0 {
   %1 = alloca %"class.sycl::_V1::vec.73", i32 0, align 32
   br label %2
 
@@ -39,8 +39,8 @@ define internal spir_func i1 @_ZN12_GLOBAL__N_117check_elems_equalIdLi3EEEbRKN4s
   ret i1 false
 }
 
-define spir_kernel void @_ZTSN16accessor_utility34buffer_accessor_get_pointer_kernelIN25accessor_api_local_fp64__11kernel_nameIN4sycl3_V13vecIdLi3EEEEELi0ELNS4_6access4modeE1026ELNS8_6targetE2016ELNS8_11placeholderE0EEE() {
-  %1 = call spir_func i1 @_ZN12_GLOBAL__N_117check_elems_equalIdLi3EEEbRKN4sycl3_V13vecIT_XT0_EEES7_.28()
+define spir_kernel void @main() {
+  %1 = call spir_func i1 @testFn()
   ret void
 }
 

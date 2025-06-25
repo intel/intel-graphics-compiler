@@ -21,7 +21,7 @@ declare void @llvm.dbg.declare(metadata, metadata, metadata) #0
 declare void @llvm.memcpy.p4i8.p4i8.i64(i8 addrspace(4)* noalias nocapture writeonly, i8 addrspace(4)* noalias nocapture readonly, i64, i1 immarg) #1
 
 ; Function Attrs: noinline optnone
-define internal spir_func i1 @_ZN12_GLOBAL__N_117check_elems_equalIdLi3EEEbRKN4sycl3_V13vecIT_XT0_EEES7_.28(i1 %0) #2 {
+define internal spir_func i1 @testFn(i1 %0) #2 {
   %2 = alloca %"class.sycl::_V1::vec.73", i32 0, align 32
   %3 = addrspacecast %"class.sycl::_V1::vec.73"* null to %"class.sycl::_V1::vec.73" addrspace(4)*
   br label %4
@@ -45,8 +45,8 @@ define internal spir_func i1 @_ZN12_GLOBAL__N_117check_elems_equalIdLi3EEEbRKN4s
   ret i1 false
 }
 
-define spir_kernel void @_ZTSN16accessor_utility34buffer_accessor_get_pointer_kernelIN25accessor_api_local_fp64__11kernel_nameIN4sycl3_V13vecIdLi3EEEEELi0ELNS4_6access4modeE1026ELNS8_6targetE2016ELNS8_11placeholderE0EEE() {
-  %1 = call spir_func i1 @_ZN12_GLOBAL__N_117check_elems_equalIdLi3EEEbRKN4sycl3_V13vecIT_XT0_EEES7_.28(i1 undef)
+define spir_kernel void @main() {
+  %1 = call spir_func i1 @testFn(i1 undef)
   ret void
 }
 

@@ -34,6 +34,7 @@ namespace IGC
             std::size_t alignment;
             // start offset of this alloca in top level alloca (if any)
             std::size_t offset;
+            bool isUniform;
         };
 
         MergeAllocas(char& pid) : AllocationLivenessAnalyzer(pid) {}

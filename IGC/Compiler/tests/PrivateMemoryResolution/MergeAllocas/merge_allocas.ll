@@ -24,8 +24,8 @@ declare void @llvm.assume(i1 noundef) #1
 
 declare spir_func void @__itt_offload_wi_finish_wrapper()
 
-define spir_kernel void @_ZTS43Kernel_NoReusePrivMem_SameFunc_AlwaysInline(float addrspace(1)* %0, i64 %1, i64 %2, i32 %3, i32 %4, i32 %5) {
-; CHECK-LABEL: _ZTS43Kernel_NoReusePrivMem_SameFunc_AlwaysInline
+define spir_kernel void @main(float addrspace(1)* %0, i64 %1, i64 %2, i32 %3, i32 %4, i32 %5) {
+; CHECK-LABEL: main
 ; CHECK-NEXT: alloca [128 x float], align 4
 ; CHECK-NOT: alloca [128 x float], align 4
   %7 = alloca [128 x float], align 4

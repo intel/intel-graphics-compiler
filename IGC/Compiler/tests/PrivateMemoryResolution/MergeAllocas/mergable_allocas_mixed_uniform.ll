@@ -10,15 +10,13 @@
 ; MergeAllocas
 ; ------------------------------------------------
 
-; Check that allocas are not merged if optnone attribute is set
-; Function Attrs: noinline optnone
-define spir_kernel void @testFn() #0 {
+; Check that allocas are not merged if they are not both uniform or non-uniform.
+define spir_kernel void @testFn() {
 ; CHECK-LABEL: testFn
 ; CHECK-NEXT: alloca [128 x float], i32 0, align 4
 ; CHECK-NEXT: alloca [128 x float], i32 0, align 4
-  %1 = alloca [128 x float], i32 0, align 4
+  %1 = alloca [128 x float], i32 0, align 4, !uniform !0
   %2 = alloca [128 x float], i32 0, align 4
   ret void
 }
-
-attributes #0 = { noinline optnone }
+!0 = !{i1 true}
