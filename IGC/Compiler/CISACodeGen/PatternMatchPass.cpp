@@ -961,6 +961,46 @@ namespace IGC
         return true;
     }
 
+    bool CodeGenPatternMatch::MatchShrSatModifier(llvm::SelectInst& I)
+    {
+        struct ShrSatPattern : public Pattern
+        {
+            SSource sources[2];
+            Instruction* inst;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                DstModifier mod = modifier;
+                mod.sat = true;
+                pass->EmitSimpleAlu(GetOpCode(inst), sources, mod, true /*isUnsigned*/);
+            }
+        };
+
+        Value* LHS = nullptr, * RHS = nullptr;
+        if (isMax(&I, LHS, RHS))
+        {
+            if (isa<ConstantInt>(LHS) || isa<ConstantInt>(RHS))
+            {
+                ConstantInt* c = isa<ConstantInt>(LHS) ? cast<ConstantInt>(LHS) : cast<ConstantInt>(RHS);
+                if (c->getZExtValue() == 0)
+                {
+                    Value* v = isa<ConstantInt>(LHS) ? RHS : LHS;
+                    if (isa<LShrOperator>(v) || isa<AShrOperator>(v))
+                    {
+                        Instruction* inst = cast<Instruction>(v);
+                        ShrSatPattern* pattern = new (m_allocator) ShrSatPattern();
+                        pattern->inst = inst;
+                        pattern->sources[0] = GetSource(inst->getOperand(0), false, false, IsSourceOfSample(&I));
+                        pattern->sources[1] = GetSource(inst->getOperand(1), false, false, IsSourceOfSample(&I));
+                        AddPattern(pattern);
+
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     void CodeGenPatternMatch::visitFPToSIInst(llvm::FPToSIInst& I) {
         bool match = MatchFPToIntegerWithSaturation(I) || MatchModifier(I);
         IGC_ASSERT_MESSAGE(match, "Pattern match Failed");
@@ -1162,6 +1202,7 @@ namespace IGC
     {
         bool match = MatchFloatingPointSatModifier(I) ||
             MatchIntegerTruncSatModifier(I) ||
+            MatchShrSatModifier(I) ||
             MatchAbsNeg(I) ||
             MatchFPToIntegerWithSaturation(I) ||
             MatchMinMax(I) ||
@@ -3236,9 +3277,10 @@ namespace IGC
         struct PackPattern : public Pattern
         {
             std::array<SSource, 4> sources;
+            std::array<bool, 4> isSat;
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                pass->EmitPack4i8(sources, modifier);
+                pass->EmitPack4i8(sources, isSat, modifier);
             }
         };
 
@@ -3247,6 +3289,7 @@ namespace IGC
             isa<InsertElementInst>(I.getOperand(0)))
         {
             Value* sources[4] = {};
+            bool isSat[4] = {};
             auto ie = cast<InsertElementInst>(I.getOperand(0));
             uint32_t elemsFound = 0;
             while (ie)
@@ -3275,10 +3318,46 @@ namespace IGC
             }
             if (elemsFound == 4)
             {
+                // Check if the sources can be promoted to the "sat" qualifier
+                for (uint32_t i = 0; i < 4; ++i)
+                {
+                    // Lambda checks if one of the source values is a constant
+                    // value equal to `imm` and returns the other source value.
+                    auto GetOtherSource = [&](const auto& src, uint32_t imm)->Value*
+                    {
+                        if (isa<ConstantInt>(src[0]) || isa<ConstantInt>(src[1]))
+                        {
+                            ConstantInt* c = isa<ConstantInt>(src[0]) ? cast<ConstantInt>(src[0]) : cast<ConstantInt>(src[1]);
+                            if (c->getZExtValue() == imm)
+                            {
+                                return isa<ConstantInt>(src[0]) ? src[1] : src[0];
+                            }
+                        }
+                        return nullptr;
+                    };
+                    Value* minSources[2];
+                    if (isMin(sources[i], minSources[0], minSources[1]))
+                    {
+                        if (Value* minVal = GetOtherSource(minSources, 127))
+                        {
+                            Value* maxSources[2];
+                            if (isMax(minVal, maxSources[0], maxSources[1]) &&
+                                GetOtherSource(maxSources, 0))
+                            {
+                                sources[i] = minVal;
+                                isSat[i] = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if (elemsFound == 4)
+            {
                 PackPattern* pattern = new (m_allocator) PackPattern();
                 for (uint32_t i = 0; i < 4; ++i)
                 {
                     pattern->sources[i] = GetSource(sources[i], false, false, IsSourceOfSample(&I));
+                    pattern->isSat[i] = isSat[i];
                 }
                 AddPattern(pattern);
                 return true;
@@ -6204,7 +6283,7 @@ namespace IGC
         return found;
     }
 
-    inline bool isMax(llvm::Value* max, llvm::Value*& source0, llvm::Value*& source1)
+    bool isMax(llvm::Value* max, llvm::Value*& source0, llvm::Value*& source1)
     {
         bool isMin, isUnsigned;
         llvm::Value* maxSource0;
@@ -6221,7 +6300,7 @@ namespace IGC
         return false;
     }
 
-    inline bool isMin(llvm::Value* min, llvm::Value*& source0, llvm::Value*& source1)
+    bool isMin(llvm::Value* min, llvm::Value*& source0, llvm::Value*& source1)
     {
         bool isMin, isUnsigned;
         llvm::Value* maxSource0;

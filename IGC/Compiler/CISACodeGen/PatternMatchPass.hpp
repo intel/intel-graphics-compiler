@@ -244,6 +244,7 @@ namespace IGC
         std::tuple<llvm::Value*, unsigned, VISA_Type> isFPToSignedIntSatWithInexactConstant(llvm::SelectInst* I);
         std::tuple<llvm::Value*, unsigned, VISA_Type> isFPToUnsignedIntSatWithInexactConstant(llvm::SelectInst* I);
         bool MatchIntegerTruncSatModifier(llvm::SelectInst& I);
+        bool MatchShrSatModifier(llvm::SelectInst& I);
         std::tuple<llvm::Value*, bool, bool> isIntegerSatTrunc(llvm::SelectInst*);
 
         bool MatchSIToFPZExt(llvm::SIToFPInst* S2FI);
@@ -362,6 +363,8 @@ namespace IGC
     bool isSat(llvm::Instruction* sat, llvm::Value*& source, bool& isUnsigned);
     bool isOne(llvm::Value* zero);
     bool isMinOrMax(llvm::Value* inst, llvm::Value*& source0, llvm::Value*& source1, bool& isMin, bool& isUnsigned);
+    bool isMax(llvm::Value* max, llvm::Value*& source0, llvm::Value*& source1);
+    bool isMin(llvm::Value* min, llvm::Value*& source0, llvm::Value*& source1);
     bool isCandidateForConstantPool(llvm::Value * val);
     e_modifier CombineModifier(e_modifier mod1, e_modifier mod2);
 

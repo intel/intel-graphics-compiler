@@ -2391,7 +2391,7 @@ void EmitPass::EmitSimpleAlu(Instruction* inst, CVariable* dst, CVariable* src0,
     EmitSimpleAlu(GetOpCode(inst), dst, src0, src1);
 }
 
-void EmitPass::EmitSimpleAlu(EOPCODE opCode, const SSource sources[2], const DstModifier& modifier)
+void EmitPass::EmitSimpleAlu(EOPCODE opCode, const SSource sources[2], const DstModifier& modifier, bool isUnsigned)
 {
     CVariable* srcs[2] = { nullptr, nullptr };
 
@@ -2403,8 +2403,13 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, const SSource sources[2], const Dst
         srcs[1] = GetSrcVariable(sources[1], sources[1].fromConstantPool);
         SetSourceModifiers(1, sources[1]);
     }
+    CVariable* dst = m_destination;
+    if (isUnsigned)
+    {
+        dst = m_currShader->BitCast(m_destination, GetUnsignedType(m_destination->GetType()));
+    }
     m_encoder->SetDstModifier(modifier);
-    EmitSimpleAlu(opCode, m_destination, srcs[0], srcs[1]);
+    EmitSimpleAlu(opCode, dst, srcs[0], srcs[1]);
 }
 
 void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CVariable* src1)
@@ -2786,12 +2791,14 @@ void EmitPass::EmitIntegerTruncWithSat(bool isSignedDst, bool isSignedSrc, const
 
 // Emits 4 conversion instructions that downconvert 4 values to a packed
 // <4 x i8> value.
-void EmitPass::EmitPack4i8(const std::array<SSource, 4>& sources, const DstModifier& dstMod)
+void EmitPass::EmitPack4i8(const std::array<SSource, 4>& sources, const std::array<bool, 4> isSat, const DstModifier& dstMod)
 {
-    CVariable* dst = m_currShader->GetNewAlias(m_destination, ISA_TYPE_UB, 0, 0);
+    CVariable* dst = m_currShader->GetNewAlias(m_destination, ISA_TYPE_B, 0, 0);
     for (uint32_t i = 0; i < 4; ++i)
     {
-        m_encoder->SetDstModifier(dstMod);
+        DstModifier mod = dstMod;
+        mod.sat = isSat[i];
+        m_encoder->SetDstModifier(mod);
         CVariable* src = GetSrcVariable(sources[i]);
 
         m_encoder->SetDstRegion(4);
@@ -2801,7 +2808,7 @@ void EmitPass::EmitPack4i8(const std::array<SSource, 4>& sources, const DstModif
     }
 }
 
-// Emits a conversion instruction that upconverts an 8-bit value from 
+// Emits a conversion instruction that upconverts an 8-bit value from
 // a packed <4 x i8> value.
 void EmitPass::EmitUnpack4i8(const SSource& source, uint32_t index, bool isUnsigned, const DstModifier& dstMod)
 {
