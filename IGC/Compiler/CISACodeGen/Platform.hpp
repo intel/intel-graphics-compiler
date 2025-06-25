@@ -526,7 +526,13 @@ bool hasSamplerFeedbackSurface() const
 
 unsigned getSurfaceStateSize() const
 {
+  {
     return 64;
+  }
+}
+
+unsigned int getLogSurfaceSize() const {
+  return (unsigned int)iSTD::Log2(getSurfaceStateSize());
 }
 
 // logical subslice id
