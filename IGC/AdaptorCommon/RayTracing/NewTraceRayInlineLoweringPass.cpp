@@ -414,41 +414,11 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       auto *result =
           IRB.CreatePHI(IRB.getInt1Ty(), 2, VALUE_NAME("ProceedResult"));
       result->addIncoming(IRB.getFalse(), result->getParent());
-      auto [proceedBB, abortBB] = IRB.createTriangleFlow(
+      auto [proceedBB, _] = IRB.createTriangleFlow(
           doNotAbort, result, VALUE_NAME("NotAbortedProceedBB"),
           VALUE_NAME("PostProceedBB"));
 
-      auto *entryBB = proceedBB->getUniquePredecessor();
-      entryBB->getTerminator()->eraseFromParent();
-
-      // clang-format off
-      // there are 4 cases here:
-      // 1. the ray was just initialized:
-      //    enter the traversal block
-      // 2. we are mid traversal and app did not commit any hit since last
-      // proceed
-      //    set the done bit to 1
-      //    enter the traversal block
-      // 3. we are mid traversal and app has committed a hit since last proceed
-      //    set the done bit to 1
-      //    set the valid bit to 1
-      // 4. we are done with traversal
-      //    skip the traversal block
-      // clang-format on
-
-      // Create a block to handle 2 and 3
-      auto *setDoneBB = BasicBlock::Create(
-          *m_pCGCtx->getLLVMContext(), VALUE_NAME("setDoneBB"), &F, proceedBB);
-
-      IRB.SetInsertPoint(entryBB);
-      auto *switchI = IRB.CreateSwitch(traceRayCtrl, setDoneBB, 2);
-      switchI->addCase(IRB.getInt32(TRACE_RAY_DONE), abortBB);
-      switchI->addCase(IRB.getInt32(TRACE_RAY_INITIAL), proceedBB);
-
-      // add unreachable to the new block so we can split it
-      IRB.SetInsertPoint(setDoneBB);
-      auto *IP = IRB.CreateUnreachable();
-      IRB.SetInsertPoint(IP);
+      IRB.SetInsertPoint(proceedBB->getTerminator());
 
       {
         // make sure the done bit is set to 0
@@ -459,6 +429,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
         auto *cond =
             IRB.CreateICmpEQ(data.CommittedDataLocation,
                              IRB.getInt32(CommittedDataLocation::PotentialHit));
+        auto *IP = &*IRB.GetInsertPoint();
 
         Instruction *ifTerm, *elseTerm;
 
@@ -466,18 +437,12 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
         IRB.SetInsertPoint(ifTerm);
         IRB.setDoneBit(getStackPtr(IRB, rqObject), false);
         IRB.setHitValid(getStackPtr(IRB, rqObject), false);
-        IRB.CreateBr(proceedBB);
-        ifTerm->eraseFromParent();
 
         IRB.SetInsertPoint(elseTerm);
         IRB.setDoneBit(getStackPtr(IRB, rqObject), false);
-        IRB.CreateBr(proceedBB);
-        elseTerm->eraseFromParent();
 
         IRB.SetInsertPoint(IP);
       }
-
-      IRB.SetInsertPoint(proceedBB->getFirstNonPHI());
 
       EmitPreTraceRayFence(IRB, rqObject);
 
@@ -525,7 +490,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
                 1);
 
         auto *notDone = IRB.CreateICmpEQ(proceedFurther, IRB.getInt32(1));
-        result->addIncoming(notDone, IRB.GetInsertBlock());
+        result->addIncoming(notDone, proceedBB);
 
         data.TraceRayCtrl =
             IRB.CreateSelect(notDone, IRB.getInt32(TRACE_RAY_CONTINUE),
@@ -536,7 +501,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
         data.CommittedDataLocation = IRB.getInt32(CommittedHit);
       } else {
         auto *notDone = IRB.isDoneBitNotSet(getStackPtr(IRB, rqObject), false);
-        result->addIncoming(notDone, IRB.GetInsertBlock());
+        result->addIncoming(notDone, proceedBB);
 
         data.TraceRayCtrl =
             IRB.CreateSelect(notDone, IRB.getInt32(TRACE_RAY_CONTINUE),

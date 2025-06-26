@@ -2541,7 +2541,7 @@ void _createTraceRayInlinePrologue_Xe(Value* arg_0, Value* arg_1, Value* arg_2, 
   auto* V_37 = CreateInBoundsGEP(_igc_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
   CreateStore(getInt32(0), V_37);
   auto* V_38 = CreateInBoundsGEP(_igc_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
-  CreateStore(getInt32(268435456), V_38);
+  CreateStore(getInt32(0), V_38);
   CreateBr(_JoinBB);
   V_21->addIncoming(V_20, BB_9);
   V_21->addIncoming(arg_3, BB_8);
@@ -2594,7 +2594,7 @@ void _createTraceRayInlinePrologue_Xe3(Value* arg_0, Value* arg_1, Value* arg_2,
   auto* V_33 = CreateInBoundsGEP(_igc_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
   CreateStore(getInt32(0), V_33);
   auto* V_34 = CreateInBoundsGEP(_igc_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
-  CreateStore(getInt32(268435456), V_34);
+  CreateStore(getInt32(0), V_34);
   CreateBr(_JoinBB);
   V_18->addIncoming(V_17, BB_9);
   V_18->addIncoming(arg_3, BB_8);
