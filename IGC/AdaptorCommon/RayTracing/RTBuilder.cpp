@@ -1132,8 +1132,12 @@ Value* RTBuilder::TransformWorldToObject(
 {
     if (checkInstanceLeafPtr && IGC_IS_FLAG_ENABLED(ForceRTCheckInstanceLeafPtr))
     {
+        this->SetInsertPoint(I);
+        auto *forCommitted =
+          CreateICmpEQ(ShaderTy, getInt32(CallableShaderTypeMD::ClosestHit),
+                       VALUE_NAME("TransformWorldToObjectShaderTy"));
         auto [ValidBB, PN] =
-            validateInstanceLeafPtr(perLaneStackPtr, I, CreateICmpEQ(ShaderTy, getInt32(CallableShaderTypeMD::ClosestHit)));
+          validateInstanceLeafPtr(perLaneStackPtr, I, forCommitted);
         this->SetInsertPoint(ValidBB->getTerminator());
         Value* validVal = TransformWorldToObject(perLaneStackPtr, dim, isOrigin, ShaderTy);
         PN->addIncoming(validVal, getUnsetPhiBlock(PN));
