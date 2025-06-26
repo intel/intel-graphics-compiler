@@ -520,19 +520,15 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     if (newValue != value)
     {
         promotedValuesCache[value] = newValue;
-        if (value->getType() == newValue->getType())
-        {
-            value->replaceAllUsesWith(newValue);
-        }
-        else
-        {
-            for (const auto& user : value->users())
-            {
-                if (!wasPromoted(user))
-                {
-                    promotionQueue.push(user);
-                }
+        auto ty = value->getType();
+        if (!IGCLLVM::isOpaquePointerTy(ty) && ty == newValue->getType()) {
+          value->replaceAllUsesWith(newValue);
+        } else {
+          for (const auto &user : value->users()) {
+            if (!wasPromoted(user)) {
+              promotionQueue.push(user);
             }
+          }
         }
     }
     return newValue;
