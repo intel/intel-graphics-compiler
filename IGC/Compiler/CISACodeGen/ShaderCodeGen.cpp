@@ -231,7 +231,7 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     }
 
 
-    if (IGC_IS_FLAG_ENABLED(EnableScalarPhisMerger)) {
+    if (IGC_IS_FLAG_ENABLED(EnableScalarPhisMerger) && ctx.type == ShaderType::OPENCL_SHADER) {
         mpm.add(new MergeScalarPhisPass());
     }
 
