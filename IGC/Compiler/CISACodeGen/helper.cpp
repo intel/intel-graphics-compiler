@@ -1260,6 +1260,9 @@ namespace IGC
             case GenISAIntrinsic::GenISA_LSCLoadWithSideEffects:
             case GenISAIntrinsic::GenISA_LSCLoadBlock:
             case GenISAIntrinsic::GenISA_LSCLoadCmask:
+            case GenISAIntrinsic::GenISA_LSCStore:
+            case GenISAIntrinsic::GenISA_LSCStoreBlock:
+            case GenISAIntrinsic::GenISA_LSCStoreCmask:
                 pBuffer = intr->getOperand(0);
                 break;
             case GenISAIntrinsic::GenISA_intatomicrawA64:
