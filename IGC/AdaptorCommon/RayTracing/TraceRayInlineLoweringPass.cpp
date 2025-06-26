@@ -66,7 +66,7 @@ private:
     //FIXME: hack code, fix this hack in stage 2.
     bool singleRQProceed = true;
 
-    void LowerAllocateRayQuery(Function& F, unsigned numProceeds);
+    bool LowerAllocateRayQuery(Function& F, unsigned numProceeds);
     void LowerTraceRayInline(Function& F);
     void LowerTraceRaySyncProceedIntrinsic(Function& F);
     void LowerSyncStackToShadowMemory(Function& F);
@@ -138,7 +138,9 @@ bool TraceRayInlineLoweringPass::runOnFunction(Function& F)
     unsigned numProceeds;
     std::tie(singleRQProceed, numProceeds) = analyzeSingleRQProceed(F);
 
-    LowerAllocateRayQuery(F, numProceeds);
+    if (!LowerAllocateRayQuery(F, numProceeds))
+        return false;
+
     LowerTraceRayInline(F);
     LowerTraceRaySyncProceedIntrinsic(F);
     LowerSyncStackToShadowMemory(F);
@@ -150,18 +152,22 @@ bool TraceRayInlineLoweringPass::runOnFunction(Function& F)
     LowerCommitProceduralPrimitiveHit(F);
 
     auto* modMD = m_CGCtx->getModuleMetaData();
-    uint32_t numSyncRTStacks = modMD->rtInfo.numSyncRTStacks = m_CGCtx->syncRTCallsNeedSplitting() ? 2 : 1;
-    modMD->FuncMD[&F].rtInfo.numSyncRTStacks = std::max(
-        modMD->FuncMD[&F].rtInfo.numSyncRTStacks,
-        numSyncRTStacks
-    );
+    uint32_t numSyncRTStacks = m_CGCtx->syncRTCallsNeedSplitting() ? 2 : 1;
+
+    modMD->rtInfo.numSyncRTStacks =
+        std::max(modMD->rtInfo.numSyncRTStacks, numSyncRTStacks);
+
+    auto FMD = modMD->FuncMD.find(&F);
+    if (FMD != modMD->FuncMD.end()) {
+      FMD->second.rtInfo.numSyncRTStacks = numSyncRTStacks;
+    }
 
     DumpLLVMIR(m_CGCtx, "TraceRayInlineLoweringPass");
     return true;
 }
 
 
-void TraceRayInlineLoweringPass::LowerAllocateRayQuery(
+bool TraceRayInlineLoweringPass::LowerAllocateRayQuery(
     Function& F, unsigned numProceeds)
 {
     SmallVector<ConvertRayQueryHandleToRTStackPointerIntrinsic*> convertRayQueryToRTStackPointers;
@@ -175,7 +181,7 @@ void TraceRayInlineLoweringPass::LowerAllocateRayQuery(
     }
 
     if (AllocateRayQueries.empty())
-        return;
+        return false;
 
     ModuleMetaData* modMD = m_CGCtx->getModuleMetaData();
     if (modMD->FuncMD.find(&F) == modMD->FuncMD.end()) {
@@ -219,6 +225,8 @@ void TraceRayInlineLoweringPass::LowerAllocateRayQuery(
         I->replaceAllUsesWith(rtstack);
         I->eraseFromParent();
     }
+
+    return true;
 }
 
 std::pair<bool, unsigned>
