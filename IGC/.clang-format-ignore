@@ -1,6 +1,9 @@
 ZEBinWriter/zebin/source/autogen/*
 AdaptorCommon/RayTracing/AutoGen*
 
+CMFE/AdaptorCM/Interface.h
+CMFE/AdaptorCM/Frontend.h
+
 # These files depend upon a specific header layout so the
 # python parsing script can process them
 common/MDFrameWork.h
