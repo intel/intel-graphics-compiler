@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -162,6 +162,7 @@ public:
 };
 
 static_assert(sizeof(KSP) == 8, "changed?");
+
 
 
 struct NodeInfo
@@ -328,7 +329,7 @@ struct MemRay<Xe>
         rayMask               = 8,
 
         ComparisonValue       = 7,
-        pad2                  = 8,
+        pad2 = 8,
     };
 
     // 32 B
@@ -430,7 +431,8 @@ struct MemRay<Xe>
         struct {
             uint64_t instLeafPtr : (T)Bits::instLeafPtr;  // the pointer to instance leaf in case we traverse an instance (64-bytes alignment)
             uint64_t rayMask     : (T)Bits::rayMask;      // ray mask used for ray masking
-            uint64_t pad2        : (T)Bits::pad2;
+
+            uint64_t pad2 : (T)Bits::pad2;
         };
     };
 };

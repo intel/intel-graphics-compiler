@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2024 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -198,6 +198,7 @@ struct RayDispatchGlobalData
             dispatchRaysDimensions[1] = umd.GetDispatchHeight();
             dispatchRaysDimensions[2] = umd.GetDispatchDepth();
             uberTilesMap              = umd.GetUberTilesMap();
+
         }
     };
 
@@ -320,6 +321,7 @@ static_assert((sizeof(RayDispatchGlobalData::RT::Xe) - sizeof(RayDispatchGlobalD
 static_assert((sizeof(RayDispatchGlobalData::RT::Xe3) - sizeof(RayDispatchGlobalData::RayDispatchGlobalDataCommon)) % 64 == 0, "Unexpected GlobalData alignment");
 
 static_assert(sizeof(RayDispatchGlobalData) == 192, "unexpected size?");
+
 static_assert(sizeof(RayDispatchGlobalData::RT::Xe) == sizeof(RayDispatchGlobalData), "unexpected size?");
 static_assert(sizeof(RayDispatchGlobalData::RT::Xe3) == sizeof(RayDispatchGlobalData), "unexpected size?");
 static_assert(offsetof(RayDispatchGlobalData::RT::Xe, common) == offsetof(RayDispatchGlobalData::RT::Xe3, common), "unexpected size?");

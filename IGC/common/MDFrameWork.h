@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -856,6 +856,7 @@ enum class ShaderTypeMD
     bool isBindless(const IGC::FunctionMetaData &funcMD);
     bool isContinuation(const IGC::FunctionMetaData& funcMD);
     bool isCallStackHandler(const IGC::FunctionMetaData &funcMD);
+
 
     // User annotations query functions
     int extractAnnotatedNumThreads(const IGC::FunctionMetaData& funcMD);

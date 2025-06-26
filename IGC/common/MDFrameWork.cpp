@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -561,6 +561,7 @@ bool IGC::isCallStackHandler(const IGC::FunctionMetaData &funcMD)
 {
     return funcMD.rtInfo.callableShaderType == IGC::CallStackHandler;
 }
+
 
 int IGC::extractAnnotatedNumThreads(const IGC::FunctionMetaData& funcMD)
 {

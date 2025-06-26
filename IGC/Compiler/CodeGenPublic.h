@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -568,6 +568,7 @@ namespace IGC
         // encounters a null shader. It is optional because there is
         // no need to compile it for collection state objects.
         std::optional<SBindlessProgram> callStackHandler;
+
 
         typedef llvm::SmallVector<SBindlessProgram, 8> BindlessShaderVec;
         // These are the raygen shaders
