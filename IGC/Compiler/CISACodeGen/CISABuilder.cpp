@@ -6686,7 +6686,8 @@ namespace IGC
             !m_program->m_State.GetHasBarrier())
         {
             if (context->getModuleMetaData()->NBarrierCnt > 0 ||
-                additionalVISAAsmToLink)
+                additionalVISAAsmToLink ||
+                jitInfo->numBarriers > 1)
             {
                 m_program->m_State.SetBarrierNumber(NamedBarriersResolution::AlignNBCnt2BarrierNumber(jitInfo->numBarriers));
             }

@@ -275,7 +275,7 @@ static void generateNamedBarrier(int &status, IR_Builder &irb,
 }
 
 
-void IR_Builder::generateSingleBarrier(G4_Predicate *prd) {
+void IR_Builder::generateSingleBarrier(G4_Predicate *prd, uint32_t id) {
   // single barrier: # producer = # consumer = # threads, barrier id = 0
   // For now produce no fence
   // Number of threads per threadgroup is r0.2[31:24]
@@ -286,12 +286,12 @@ void IR_Builder::generateSingleBarrier(G4_Predicate *prd) {
   //   Hdr.2:d[31:24,23:16]
   G4_Declare *header = createTempVar(8, Type_UD, getGRFAlign());
   auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
-  uint32_t headerInitValDw2 = 0x0; // initial value for DWord2
+  uint32_t headerInitValDw2 = id; // initial value for DWord2
   if (getPlatform() >= Xe2 && getOption(vISA_ActiveThreadsOnlyBarrier)) {
     headerInitValDw2 |= (1 << 8);
   }
   // Header.2:d has the following format:
-  //  bits[7:0] = 0x0 (barrier id)
+  //  bits[7:0] = id (barrier id)
   //  bits[8] = active only thread barrier
   //  bits[15:14] = 0 (producer/consumer)
   //  bits[23:16] = num producers = r0.11:b (r0.2[31:24] = num threads in tg)
@@ -534,16 +534,12 @@ int IR_Builder::translateVISAWaitInst(G4_Operand *mask) {
   return VISA_SUCCESS;
 }
 
-void IR_Builder::updateBarrier() {
-  // The legacy barrier is always allocated to id 0.
-  usedBarriers.set(0, true);
-}
-
-void IR_Builder::generateBarrierSend(G4_Predicate *prd) {
-  updateBarrier();
+void IR_Builder::generateBarrierSend(G4_Predicate *prd, uint32_t id = 0) {
+  // The id = 0 is the alias for the regular threadgroup barrier.
+  usedBarriers.set(id, true);
 
   if (hasUnifiedBarrier()) {
-    generateSingleBarrier(prd);
+    generateSingleBarrier(prd, id);
     return;
   }
 
@@ -576,8 +572,9 @@ void IR_Builder::generateBarrierSend(G4_Predicate *prd) {
                  createImm(desc, Type_UD), InstOpt_WriteEnable, msgDesc, true);
 }
 
-void IR_Builder::generateBarrierWait(G4_Predicate *prd) {
-  updateBarrier();
+void IR_Builder::generateBarrierWait(G4_Predicate *prd, uint32_t id = 0) {
+  // The id = 0 is the alias for the regular threadgroup barrier.
+  usedBarriers.set(id, true);
 
   G4_Operand *waitSrc = nullptr;
   if (!hasUnifiedBarrier()) {
@@ -592,8 +589,8 @@ void IR_Builder::generateBarrierWait(G4_Predicate *prd) {
     }
   } else {
     if (getPlatform() >= Xe_PVC) {
-      // PVC: sync.bar 0
-      waitSrc = createImm(0, Type_UD);
+      // PVC: sync.bar id
+      waitSrc = createImm(id, Type_UD);
     } else {
       // DG2: sync.bar null
       waitSrc = createNullSrc(Type_UD);
@@ -752,9 +749,9 @@ int IR_Builder::translateVISASplitBarrierInst(G4_Predicate *prd,
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   if (isSignal) {
-    generateBarrierSend(prd);
+    generateBarrierSend(prd, 1);
   } else {
-    generateBarrierWait(prd);
+    generateBarrierWait(prd, 1);
   }
 
   return VISA_SUCCESS;
