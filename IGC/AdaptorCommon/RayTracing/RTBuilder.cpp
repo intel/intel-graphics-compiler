@@ -2049,7 +2049,8 @@ void RTBuilder::createTraceRayInlinePrologue(
     Value* InstanceInclusionMask,
     Value* ComparisonValue,
     Value* TMax,
-    bool updateFlags)
+    bool updateFlags,
+    bool initialDoneBitValue)
 {
     switch (getMemoryStyle())
     {
@@ -2062,7 +2063,8 @@ void RTBuilder::createTraceRayInlinePrologue(
             InstanceInclusionMask,
             ComparisonValue,
             TMax,
-            VAdapt{ *this, updateFlags });
+            VAdapt{ *this, updateFlags },
+            VAdapt{ *this, initialDoneBitValue });
         break;
     case RTMemoryStyle::Xe3:
         _createTraceRayInlinePrologue_Xe3(
@@ -2073,7 +2075,8 @@ void RTBuilder::createTraceRayInlinePrologue(
             InstanceInclusionMask,
             ComparisonValue,
             TMax,
-            VAdapt{ *this, updateFlags });
+            VAdapt{ *this, updateFlags },
+            VAdapt{ *this, initialDoneBitValue });
         break;
     }
 }

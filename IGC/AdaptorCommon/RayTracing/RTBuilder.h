@@ -482,7 +482,8 @@ public:
         Value* InstanceInclusionMask,
         Value* ComparisonValue,
         Value* TMax,
-        bool updateFlags = true);
+        bool updateFlags = true,
+        bool initialDoneBitValue = false);
 
     void emitSingleRQMemRayWrite(
         SyncStackPointerVal* HWStackPtr,
