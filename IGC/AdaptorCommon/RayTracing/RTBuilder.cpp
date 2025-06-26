@@ -761,6 +761,7 @@ Value* RTBuilder::getObjRayOrig(
     auto* newI = I->clone();
     Insert(newI);
     auto* isClosestHitV = this->TransformWorldToObject(perLaneStackPtr, dim, true, ShaderTy, newI, checkInstanceLeafPtr);
+    isClosestHitV->setName(VALUE_NAME("isClosestHitV"));
     newI->eraseFromParent();
 
     auto* isMissBB = BasicBlock::Create(Context, VALUE_NAME("isMissBB"), IP->getFunction(), bb);
@@ -768,12 +769,14 @@ Value* RTBuilder::getObjRayOrig(
     auto* isMissBBTerm = CreateBr(bb);
     SetInsertPoint(isMissBBTerm);
     auto* isMissV = getWorldRayOrig(perLaneStackPtr, dim);
+    isMissV->setName(VALUE_NAME("isMissV"));
 
     auto* defaultBB = BasicBlock::Create(Context, VALUE_NAME("default"), IP->getFunction(), bb);
     SetInsertPoint(defaultBB);
     auto* defaultBBTerm = CreateBr(bb);
     SetInsertPoint(defaultBBTerm);
     auto* defaultV = getMemRayOrig(perLaneStackPtr, dim, BOTTOM_LEVEL_BVH, VALUE_NAME("ObjRayOrig[" + Twine(dim) + "]"));
+    defaultV->setName(VALUE_NAME("defaultV"));
 
     // create switch statement
     oldBB->getTerminator()->eraseFromParent();

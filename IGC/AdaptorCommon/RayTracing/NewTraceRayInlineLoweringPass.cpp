@@ -98,18 +98,21 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
       // create 2 rq objects and select one based on the lane id
 
       auto *rqObject1 =
-          IRB.CreateCall(createRQObjectFn, UndefValue::get(IRB.getInt32Ty()));
+          IRB.CreateCall(createRQObjectFn, UndefValue::get(IRB.getInt32Ty()),
+                         VALUE_NAME("RQObject"));
       auto *rqObject2 =
-          IRB.CreateCall(createRQObjectFn, UndefValue::get(IRB.getInt32Ty()));
+          IRB.CreateCall(createRQObjectFn, UndefValue::get(IRB.getInt32Ty()),
+                         VALUE_NAME("RQObject"));
 
       auto *laneId = IRB.get32BitLaneID();
       auto *cond =
           IRB.CreateICmpULT(laneId, IRB.getInt32(numLanes(SIMDMode::SIMD16)));
       rqObject =
-          IRB.CreateSelect(cond, rqObject1, rqObject2, VALUE_NAME("rqObject"));
+          IRB.CreateSelect(cond, rqObject1, rqObject2, VALUE_NAME("RQObject"));
     } else {
       rqObject =
-          IRB.CreateCall(createRQObjectFn, UndefValue::get(IRB.getInt32Ty()));
+          IRB.CreateCall(createRQObjectFn, UndefValue::get(IRB.getInt32Ty()),
+                         VALUE_NAME("RQObject"));
     }
 
     // iniitalize it to done so when app calls proceed without tracerayinline,
@@ -147,7 +150,8 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
 
         IRB.SetInsertPoint(genI);
         auto *RQHandle = IRB.CreateCall(getRQHandleFromRQObjectFn,
-                                        {v2vMap[use->get()], I->getFlags()});
+                                        {v2vMap[use->get()], I->getFlags()},
+                                        VALUE_NAME("RQHandle"));
         use->set(RQHandle);
 
         v2vMap[genI] = genI;
@@ -175,7 +179,8 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
                   cast<ArrayType>(array->getAllocatedType())->getNumElements());
 
               IRB.SetInsertPoint(array);
-              auto *newArray = IRB.CreateAlloca(ty);
+              auto *newArray = IRB.CreateAlloca(ty, nullptr, array->getName(),
+                                                array->getAddressSpace());
               v2vMap[array] = newArray;
 
               llvm::for_each(array->uses(),
@@ -201,15 +206,15 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
           SmallVector<Value *> indices(cast<GetElementPtrInst>(II)->indices());
 
           IRB.SetInsertPoint(II);
-          v2vMap[II] =
-              IRB.CreateInBoundsGEP(array->getAllocatedType(), array, indices);
+          v2vMap[II] = IRB.CreateInBoundsGEP(array->getAllocatedType(), array,
+                                             indices, II->getName());
           llvm::for_each(II->uses(),
                          [&worklist](Use &U) { worklist.push_back(&U); });
         } break;
         case Instruction::Load:
           IRB.SetInsertPoint(II);
           v2vMap[II] = IRB.CreateLoad(m_RQObjectType->getPointerTo(),
-                                      v2vMap[II->getOperand(0)]);
+                                      v2vMap[II->getOperand(0)], II->getName());
           llvm::for_each(II->uses(),
                          [&worklist](Use &U) { worklist.push_back(&U); });
           break;
@@ -222,7 +227,7 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
           IRB.SetInsertPoint(II);
           v2vMap[II] =
               IRB.CreateSelect(II->getOperand(0), v2vMap[II->getOperand(1)],
-                               v2vMap[II->getOperand(2)]);
+                               v2vMap[II->getOperand(2)], II->getName());
           llvm::for_each(II->uses(),
                          [&worklist](Use &U) { worklist.push_back(&U); });
           break;
@@ -585,7 +590,8 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       auto *I = cast<RayQueryInfoIntrinsic>(RQI);
       auto data = getPackedData(IRB, rqObject);
       auto *loadCommittedFromPotential = IRB.CreateICmpEQ(
-          data.CommittedDataLocation, IRB.getInt32(PotentialHit));
+          data.CommittedDataLocation, IRB.getInt32(PotentialHit),
+          VALUE_NAME("loadCommittedInfoFromPotentialHit"));
 
       auto *shaderTy = IRB.CreateSelect(
           loadCommittedFromPotential, IRB.getInt32(AnyHit),
