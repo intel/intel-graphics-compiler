@@ -3589,7 +3589,7 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
   // - destination stride in bytes must be equal to the source element size in
   // bytes.
 
-  // - both src and dst are dword data type:
+  // - both src and dst are dword data type for PVC+ platforms:
 
   bool emitMoreMoviCases = getOption(vISA_emitMoreMoviCases);
 
@@ -3623,7 +3623,7 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
                              isNotCrossGRFDst && isIndirectSrc && isWidthOne &&
                              isTypeSizeMatch;
 
-  if (getPlatform() >= Xe2) {
+  if (getPlatform() >= Xe_PVC) {
     canConvertMovToMovi = canConvertMovToMovi &&
                           IS_DTYPE(inst->getDst()->getType()) &&
                           IS_DTYPE(inst->getSrc(0)->getType());
