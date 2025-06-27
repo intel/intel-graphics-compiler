@@ -795,16 +795,21 @@ IR_Builder::IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k,
                        Mem_Manager &m, Options *options,
                        CISA_IR_Builder *parent, FINALIZER_INFO *jitInfo,
                        const WA_TABLE *pWaTable)
-    : curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this),
-      metaData(jitInfo), type(VISA_BUILD_TYPE::KERNEL), parentBuilder(parent),
-      builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable),
-      m_options(options), CanonicalRegionStride0(0, 1, 0),
-      CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0),
-      CanonicalRegionStride4(4, 1, 0), mem(m),
-      phyregpool(m, k.grfMode.getInitalGRFNum()),
-      hashtable(m), rgnpool(m), dclpool(m, *this), instList(alloc), kernel(k),
-      metadataMem(4096), debugNameMem(4096),
-      r0AccessMode(getR0AccessFromOptions()), freqInfoManager(this, k) {
+    : immPool(*this),
+      metaData(jitInfo),
+      m_pWaTable(pWaTable),
+      m_options(options),
+      CanonicalRegionStride0(0, 1, 0),
+      CanonicalRegionStride1(1, 1, 0),
+      CanonicalRegionStride2(2, 1, 0),
+      CanonicalRegionStride4(4, 1, 0),
+      parentBuilder(parent),
+      freqInfoManager(this, k),
+      r0AccessMode(getR0AccessFromOptions()),
+      mem(m), phyregpool(m, k.grfMode.getInitalGRFNum()),
+      hashtable(m), rgnpool(m), dclpool(m, *this), instList(alloc),
+      kernel(k)
+{
   num_temp_dcl = 0;
   kernel.setBuilder(this); // kernel needs pointer to the builder
   if (!getIsPayload())
@@ -816,9 +821,15 @@ IR_Builder::IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k,
 
   arg_size = 0;
   return_var_size = 0;
-
   if (metaData != NULL) {
+#if defined(__GNUC__) && (__GNUC__ >= 8)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
+#endif
     memset(metaData, 0, sizeof(FINALIZER_INFO));
+#if defined(__GNUC__) && (__GNUC__ >= 8)
+#pragma GCC diagnostic pop
+#endif
   }
 
   usedBarriers = BitSet(kernel.getMaxNumOfBarriers(), false);
@@ -2608,7 +2619,7 @@ G4_SendDescRaw *IR_Builder::createLscMsgDesc(
   const unsigned execSize = Get_VISA_Exec_Size(execSizeEnum);
   int src1Len = 0;
   uint32_t dataRegs = 1;
-  bool isBlock2D =
+  [[maybe_unused]] bool isBlock2D =
       op == LSC_OP::LSC_LOAD_BLOCK2D || op == LSC_OP::LSC_STORE_BLOCK2D;
   vISA_ASSERT(!isBlock2D, "block2d not implemented yet");
 

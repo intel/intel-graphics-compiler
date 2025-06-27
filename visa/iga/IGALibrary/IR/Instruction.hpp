@@ -53,14 +53,7 @@ public:
   // TODO: phase this constructor out
   Instruction(const OpSpec &os, ExecSize execSize, ChannelOffset chOff,
               MaskCtrl mc)
-      : m_opSpec(os), m_sf(InvalidFC::INVALID), m_maskCtrl(mc),
-        m_pred(PredCtrl::NONE, false), m_flagReg(REGREF_ZERO_ZERO),
-        m_execSize(execSize), m_chOff(chOff),
-        m_flagModifier(FlagModifier::NONE), m_instLoc(Loc::INVALID),
-        m_instId(0xFFFFFFFF), m_pc(0), m_exImmOffDesc(0), m_sendDstLength(-1),
-        m_sendSrc0Length(-1), m_sendSrc1Length(-1)
-  {
-  }
+      : m_opSpec(os), m_maskCtrl(mc), m_execSize(execSize), m_chOff(chOff) {}
   Instruction(const Instruction &) = delete;
   Instruction& operator=(const Instruction&) = delete;
 
@@ -228,24 +221,26 @@ public:
 
 private:
   const OpSpec &m_opSpec; // information about the specific inst op
-  Subfunction m_sf; // e.g. MathFC::INV for math.inv, SFID::DC0 for send.dc0
+  // SFID, e.g. MathFC::INV for math.inv, SFID::DC0 for send.dc0
+  Subfunction m_sf = InvalidFC::INVALID;
 
   MaskCtrl m_maskCtrl; // (W) WrEn (write enable / NoMask)
   Predication m_pred;  // predication function (and logical sign)
-  RegRef m_flagReg;    // shared by m_pred and m_flagModifier
+  RegRef m_flagReg = REGREF_ZERO_ZERO; // shared by m_pred and m_flagModifier
 
   ExecSize m_execSize;
   ChannelOffset m_chOff;
   Operand m_dst;
   Operand m_srcs[3];
 
-  FlagModifier m_flagModifier; // conditional-modifier function
+  // conditional-modifier function
+  FlagModifier m_flagModifier = FlagModifier::NONE;
 
   // Xe2: given an reg ExDesc, this holds the extra bits for the
   // immediate offset part.  In the case of an immediate ExDesc
   // (below); this should be 0 (the immediate offset is part of m_desc
   // as in eralier platforms for that case).
-  uint32_t m_exImmOffDesc;
+  uint32_t m_exImmOffDesc = 0;
   SendDesc m_exDesc;
   SendDesc m_desc;
 
@@ -304,9 +299,9 @@ private:
   // extract them here.  In some cases (e.g. reg descriptors), we can't
   // help you.  Oppose architects that propose instruction definitions
   // that are taken form registers.
-  int m_sendDstLength;  // -1 if unknown
-  int m_sendSrc0Length; // -1 if unknown
-  int m_sendSrc1Length; // -1 if unknown
+  int m_sendDstLength = -1;  // -1 if unknown
+  int m_sendSrc0Length = -1; // -1 if unknown
+  int m_sendSrc1Length = -1; // -1 if unknown
 
   InstOptSet m_instOpts; // miscellaneous instruction attributes
   SWSB m_depInfo;
@@ -315,13 +310,15 @@ private:
   InlineBinaryType m_inlineBinary = {0};
   bool m_isInlineBinaryInst = false;
 
-  int m_instId; // unique id for this instruction
-                // (unique in the kernel)
+  int m_instId = 0xFFFFFFFF; // unique id for this instruction
+                             // (unique in the kernel)
 
-  int32_t m_pc;  // the encode/decode PC for this instruction
-  Loc m_instLoc; // source location info we keep this
-                 // separate from the PC since we
-                 // use both during assembly
+  int32_t m_pc = 0; // the encode/decode PC for this instruction
+
+  // source location info we keep this
+  // separate from the PC since we
+  // use both during assembly
+  Loc m_instLoc = Loc::INVALID;
 
   // e.g. for illegal instruction extended info (e.g. decode errors)
   // enables us to emit things like

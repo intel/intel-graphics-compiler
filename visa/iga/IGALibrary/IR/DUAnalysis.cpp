@@ -523,21 +523,6 @@ void fake(const void *vlp, std::ostream &os) {
 
 using LivePaths = std::map<Instruction *, LivePath>;
 
-static std::string FormatLivePaths(const LivePaths &lps) {
-  std::stringstream ss;
-  bool first = true;
-  ss << "{";
-  for (const auto &pair : lps) {
-    if (first)
-      first = false;
-    else
-      ss << ",";
-    ss << pair.second.str();
-  }
-  ss << "}";
-  return ss.str();
-}
-
 enum class EdgeType { FALLTHROUGH, JUMP };
 
 // Information pertaining to a given block.  We convert this to

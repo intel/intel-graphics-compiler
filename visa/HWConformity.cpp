@@ -1951,7 +1951,6 @@ bool HWConformity::fixIndirectOpnd(INST_LIST_ITER i, G4_BB *bb) {
   bool null_src1 = !src1 || (inst->isMath() && src1->isNullReg());
 
   const int addr_reg_max_count = 16;
-  const int addr_reg_size = TypeSize(Type_UW);
   int src_uniq_count = 0;
   int src1_count = 0;
   int src0_count = 0;
@@ -1959,7 +1958,7 @@ bool HWConformity::fixIndirectOpnd(INST_LIST_ITER i, G4_BB *bb) {
   int dst_count = 0;
   bool nospill_src1 = false;
   bool nospill_src0 = false;
-  bool nospill_dst = false;
+  [[maybe_unused]] bool nospill_dst = false;
   bool spill_src1 = false;
   bool spill_src0 = false;
   bool spill_dst = false;
@@ -2338,7 +2337,6 @@ bool HWConformity::fixMULInst(INST_LIST_ITER &i, G4_BB *bb) {
   G4_INST *inst = *i;
   G4_DstRegRegion *dst = inst->getDst();
   G4_ExecSize execSize = inst->getExecSize();
-  bool srcExchanged = false;
 
   if (dst->isAccReg()) {
     return false;
@@ -2357,7 +2355,6 @@ bool HWConformity::fixMULInst(INST_LIST_ITER &i, G4_BB *bb) {
 
   if (src0->isImm() && !src1->isImm()) {
     inst->swapSrc(0, 1);
-    srcExchanged = true;
   }
 
   if (!builder.supportSrcModforMul() &&
@@ -3005,7 +3002,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
       rgnToUse = builder.getRegionScalar();
     else if (!src0RR->isIndirect()) {
       uint16_t stride = 0;
-      bool legal =
+      [[maybe_unused]] bool legal =
           src0RR->getRegion()->isSingleStride(inst->getExecSize(), stride);
       vISA_ASSERT(legal, "unsupported region");
       if (stride == 1)

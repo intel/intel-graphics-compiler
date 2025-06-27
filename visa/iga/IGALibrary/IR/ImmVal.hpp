@@ -64,6 +64,8 @@ struct ImmVal {
 
   void Abs();
   void Negate();
+
+  void reset() { u64 = 0; }
 }; // class ImmVal
 } // namespace iga
 #endif // _IGA_IMMVAL_HPP_

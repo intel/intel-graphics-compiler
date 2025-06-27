@@ -1024,7 +1024,7 @@ void Formatter::formatRegister(RegName regName, RegRef reg, bool emitSubReg,
   }
   formatBareRegisterUnescaped(regName, (int)reg.regNum);
 
-  if (emitSubReg && ri->hasSubregs() || reg.subRegNum != 0) {
+  if ((emitSubReg && ri->hasSubregs()) || reg.subRegNum != 0) {
     if (isSIMT)
       emit(ANSI_FADED); // a boring SIMT access => fade the text
     emit('.');

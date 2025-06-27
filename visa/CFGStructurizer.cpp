@@ -1418,7 +1418,7 @@ ANodeHG *CFGStructurizer::getEnclosingANodeHG(ANode *AN) {
       } else {
         // Error message
         G4_BB *predBB = pred->getBeginBB();
-        G4_INST *predGoto = getGotoInst(predBB);
+        [[maybe_unused]] G4_INST *predGoto = getGotoInst(predBB);
 
         // If predGoto is null, it means that a non-goto branching inst like
         // jmpi jumps into a range of goto instrutions, such as the following:
@@ -1793,6 +1793,7 @@ ANodeBB *CFGStructurizer::addLandingBB(ANodeHG *node,
 }
 
 // Add a new empty BB as a predecessor of splitBB.
+[[maybe_unused]]
 ANode *CFGStructurizer::addSplitBBAtBegin(G4_BB *splitBB) {
   G4_BB *newBB = createBBWithLabel();
   G4_Label *newLabel = newBB->getLabel();
@@ -1924,6 +1925,7 @@ void CFGStructurizer::reConnectAllPreds(ANode *from, ANode *to) {
 // Re-connect every successors of "from" to its new predecesor "to". Update
 // "to"'s succs and its new successors' preds. Note that "from"'s succs are
 // left unchanged.
+[[maybe_unused]]
 void CFGStructurizer::reConnectAllSuccs(ANode *from, ANode *to) {
   for (ANList::iterator I = from->succs.begin(), E = from->succs.end(); I != E;
        ++I) {
@@ -2771,7 +2773,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB) {
   execSize = execSize > 1 ? execSize : kernelExecSize;
   ANList::iterator II = node->children.begin();
   ANode *thenNode = *(++II); // children[1]
-  G4_BB *end = node->getEndBB();
+  [[maybe_unused]] G4_BB *end = node->getEndBB();
   G4_BB *exit = node->getExitBB();
 
   vISA_ASSERT(end->getPhysicalSucc() == exit,

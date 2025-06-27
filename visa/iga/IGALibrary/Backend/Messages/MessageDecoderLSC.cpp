@@ -330,8 +330,7 @@ struct MessageDecoderLSC : MessageDecoder {
     bool exDescHasImmOff = platform() >= Platform::XE2;
     if (!exDescHasImmOff)
       return;
-      bool isBlock2d =
-          op == SendOp::LOAD_BLOCK2D || op == SendOp::STORE_BLOCK2D;
+    bool isBlock2d = op == SendOp::LOAD_BLOCK2D || op == SendOp::STORE_BLOCK2D;
     // immediate offset bits go in SendDesc if ExDesc is imm
     // if ExDesc is Reg then they go in dedicated exImmOffDesc
     uint32_t baseOffBits = exDesc.isReg() ? exImmOffDesc : exDesc.imm;
@@ -640,7 +639,7 @@ struct MessageDecoderLSC : MessageDecoder {
         "DataOrder", 15,
         "non-transposed (vector elements are in successive registers)",
         "transposed (vector elements are in the same register)");
-    if (vectorSize > 1 || transposed && !opIsBlock2d) {
+    if (vectorSize > 1 || (transposed && !opIsBlock2d)) {
       vsym << 'x' << vectorSize;
     }
     if (transposed && op == SendOp::LOAD_STATUS) {

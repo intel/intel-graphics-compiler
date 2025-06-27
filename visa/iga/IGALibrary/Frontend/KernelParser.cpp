@@ -1273,7 +1273,6 @@ public:
       // we do add an explicit null parameter for src1
       // it's very possible there are some simulator tests floating
       // aroudn that require this old form.
-      auto brcStart = NextLoc();
       ParseSrcOp(0);
       if (m_srcKinds[0] == Operand::Kind::IMMEDIATE ||
           m_srcKinds[0] == Operand::Kind::LABEL || LookingAtIdentEq("null")) {
@@ -2884,7 +2883,6 @@ public:
   void ParseSendSrc1OpWithOptLen(int &src1Len) {
     m_srcLocs[1] = NextLoc();
     src1Len = -1;
-    const Token regnameTk = Next();
     const RegInfo *regInfo;
     int regNum;
     bool parsedType = false;
@@ -3801,7 +3799,6 @@ public:
     }
 
     // match :<Type> or :<SubBytePrecision>
-    Loc colonLoc = NextLoc();
     Type ty = TryParseOpType(SRC_TYPES);
     if (ty == Type::INVALID) {
       FailT("invalid type");
@@ -4490,7 +4487,7 @@ Kernel *iga::ParseGenKernel(const Model &m, const char *inp,
   KernelParser p(m, h, inp, e, popts);
   try {
     p.ParseListing();
-  } catch (SyntaxError) {
+  } catch (SyntaxError &) {
     // no need to handle it (error handler has already recorded the errors)
     delete k;
     return nullptr;

@@ -42,26 +42,26 @@ SPDX-License-Identifier: MIT
 static const char *timerNames[TIMER_NUM_TIMERS]{"Total", "GED"};
 
 #ifdef _WIN32
-static int64_t CurrTicks() {
+[[maybe_unused]] static int64_t CurrTicks() {
   LARGE_INTEGER li;
   QueryPerformanceCounter(&li);
   return li.QuadPart;
 }
-static int64_t CurrFreq() {
+[[maybe_unused]] static int64_t CurrFreq() {
   LARGE_INTEGER li;
   QueryPerformanceFrequency(&li);
   return li.QuadPart;
 }
 #else
 // Linux
-static int64_t CurrTicks() {
+[[maybe_unused]] static int64_t CurrTicks() {
   struct timespec t;
   if (clock_gettime(CLOCK_TYPE, &t) != 0) {
     return 0;
   }
   return 1000000000LL * t.tv_sec + t.tv_nsec;
 }
-static int64_t CurrFreq() {
+[[maybe_unused]] static int64_t CurrFreq() {
   // clock_gettime is in nanos
   return 1000;
 }

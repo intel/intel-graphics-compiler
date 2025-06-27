@@ -2298,13 +2298,10 @@ int IR_Builder::translateVISAInvmRsqtmInst(
 
   G4_SrcRegRegion *src0RR = operandToDirectSrcRegRegion(
       *this, src0Opnd, G4_ExecSize(element_size), instExecSize);
-  const bool src0Copied = (src0RR->getTopDcl() != src0Opnd->getTopDcl());
   G4_SrcRegRegion *src1RR = nullptr;
   if (src1Opnd)
     src1RR = operandToDirectSrcRegRegion(
         *this, src1Opnd, G4_ExecSize(element_size), instExecSize);
-  const bool src1Copied =
-      (src1RR && (src1RR->getTopDcl() != src1Opnd->getTopDcl()));
 
   bool needsSrc0Move =
        (src0RR->getModifier() != Mod_src_undef ||

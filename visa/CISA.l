@@ -61,6 +61,7 @@ void resetGlobalVariables() {
 %}
 
 %option yylineno
+%option nounput
 
 %x   eat_comment
 %x   string_literal
@@ -1647,17 +1648,6 @@ static unsigned char FENCEOptions(const char* str)
     }
 
     return result;
-}
-
-static COMMON_ISA_VME_OP_MODE VMEType(const char* str)
-{
-    for (int i = 0; i < VME_OP_MODE_NUM; i++)
-        if (!strcmp(vme_op_mode_str[i], str))
-            return (COMMON_ISA_VME_OP_MODE)i;
-
-    YY_FATAL_ERROR("Invalid Media Mode");
-
-    return VME_OP_MODE_NUM;
 }
 
 static CHANNEL_OUTPUT_FORMAT Get_Channel_Output(const char* str)

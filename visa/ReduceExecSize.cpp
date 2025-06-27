@@ -416,7 +416,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB *bb) {
                     // we ignore it
                     G4_DstRegRegion *newDst =
                         insertMovAfter(iter, dst, dst->getType(), bb);
-                    bool alignTmpDst =
+                    [[maybe_unused]] bool alignTmpDst =
                         builder.tryToAlignOperand(newDst, dstOffset, 16);
                     vISA_ASSERT(alignTmpDst,
                                  "must be able to oword align tmp dst");
@@ -1259,7 +1259,7 @@ bool HWConformity::evenlySplitInst(INST_LIST_ITER iter, G4_BB *bb,
       G4_InstOption newMask =
           G4_INST::offsetToMask(currExSize, newMaskOffset, nibOk);
       if (newMask == InstOpt_NoOpt) {
-        bool useMask = inst->getPredicate() || inst->getCondModBase() ||
+        [[maybe_unused]] bool useMask = inst->getPredicate() || inst->getCondModBase() ||
                        (!bb->isAllLaneActive() && !inst->isWriteEnableInst());
         vISA_ASSERT(!useMask,
                      "no legal emask found for the split instruction");

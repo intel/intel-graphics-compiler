@@ -34,7 +34,7 @@ SPDX-License-Identifier: MIT
   } while (0)
 
 #define GED_DECODE_RAW(GED_TYPE, ID, FIELD)                                    \
-  GED_TYPE ID;                                                                 \
+  [[maybe_unused]] GED_TYPE ID;                                                                 \
   GED_DECODE_RAW_TO(FIELD, ID);
 
 #define GED_DECODE(IGA_TYPE, GED_TYPE, ID, FIELD)                              \
@@ -400,14 +400,14 @@ protected:
   GED_MODEL m_gedModel;
 
   // decode-level state (valid below decodeKernel variants)
-  Kernel *m_kernel;
+  Kernel *m_kernel = nullptr;
 
   // state shared below decodeInstToBlock()
   // info about the instruction being converted to IGA IR
   ged_ins_t m_currGedInst;
-  const OpSpec *m_opSpec;
+  const OpSpec *m_opSpec = nullptr;
   Subfunction m_subfunc;
-  const void *m_binary;
+  const void *m_binary = nullptr;
 
   // SWSB encoding mode
   SWSB_ENCODE_MODE m_SWSBEncodeMode = SWSB_ENCODE_MODE::SWSBInvalidMode;

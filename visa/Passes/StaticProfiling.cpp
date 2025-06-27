@@ -70,7 +70,6 @@ unsigned StaticCycleProfiling::BBStaticCycleProfiling(G4_BB *bb) {
       }
     }
 
-    using DistanceType = vISA::G4_INST::DistanceType;
     SB_INST_PIPE depPipe = PIPE_NONE;
     if ((unsigned)inst->getDistance()) {
       depPipe = inst->getDistDepPipeXe();

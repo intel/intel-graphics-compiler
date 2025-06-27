@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #ifndef MEMCPY_S
 #define MEMCPY_S
 typedef int errno_t;
+[[maybe_unused]]
 static errno_t memcpy_s(void *dst, size_t numberOfElements, const void *src,
                         size_t count) {
   if ((dst == NULL) || (src == NULL)) {

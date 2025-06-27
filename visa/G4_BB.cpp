@@ -210,9 +210,7 @@ void G4_BB::emitBasicInstructionComment(std::ostream &output,
                                         INST_LIST_ITER &it, int *suppressRegs,
                                         int *lastRegs, int32_t pc) {
   const G4_INST *inst = *it;
-
   auto platform = inst->getPlatform();
-  unsigned grfSize = parent->builder->getGRFSize();
 
   if (!inst->isLabel() && inst->opcode() < G4_NUM_OPCODE) {
     output << " // ";

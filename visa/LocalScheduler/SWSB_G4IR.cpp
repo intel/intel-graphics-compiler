@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
+[[maybe_unused]]
 static uint8_t getDPASPipelineCycle(uint8_t repc) {
   switch (repc) {
   case REP_1:
@@ -35,6 +36,7 @@ static uint8_t getDPASPipelineCycle(uint8_t repc) {
   return 0;
 }
 
+[[maybe_unused]]
 static uint8_t getDPASGRFReadCycle(uint8_t repc) {
   switch (repc) {
   case REP_1:
@@ -231,6 +233,7 @@ static bool WARDepRequired(const G4_INST *inst1, const G4_INST *inst2) {
 // we put them here instead of inside G4_Operand since this is only valid till
 // after RA It's the caller's responsibility to ensure that opnd1 and opnd2 are
 // both GRF allocated
+[[maybe_unused]]
 static bool operandOverlap(G4_Operand *opnd1, G4_Operand *opnd2) {
   return (opnd1->getLinearizedStart() <= opnd2->getLinearizedStart() &&
           opnd1->getLinearizedEnd() > opnd2->getLinearizedStart()) ||
@@ -4531,7 +4534,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
         if (distType == G4_INST::DistanceType::DISTALL) {
           bool hasAfterWrite = false;
           for (int i = 0; i < (int)node->getDepTokenNum(); i++) {
-            unsigned short token = (unsigned short)-1;
+            [[maybe_unused]] unsigned short token = (unsigned short)-1;
             SWSBTokenType type = SWSBTokenType::TOKEN_NONE;
             token = node->getDepToken(i, type);
             if (type == SWSBTokenType::AFTER_WRITE) {
@@ -5959,7 +5962,7 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode *node,
   while ((ptvar = p.getPointsTo(addrdcl->getRegVar(), vid++, offset)) !=
          nullptr) {
 
-    uint32_t varID = ptvar->getId();
+    [[maybe_unused]] uint32_t varID = ptvar->getId();
     G4_Declare *dcl = ptvar->getDeclare()->getRootDeclare();
     G4_RegVar *var = dcl->getRegVar();
 
@@ -8823,7 +8826,7 @@ void G4_BB_SB::createAddGRFEdge(SBNode *pred, SBNode *succ, DepType d,
       // Change the dependency type to d
       curSucc.type = d;
       curSucc.attr = a;
-      bool findPred = false;
+      [[maybe_unused]] bool findPred = false;
       for (int j = 0; j < (int)(succ->preds.size()); j++) {
         SBDEP_ITEM &curPred = succ->preds[j];
 
@@ -9113,7 +9116,7 @@ void SWSB::dumpImmDom(ImmDominator *dom) const {
     for (auto pred : bb->Preds) {
       printf("BB%d, ", pred->getId());
     }
-    auto &idomBB = dom->getIDoms()[bb->getId()];
+    [[maybe_unused]] auto &idomBB = dom->getIDoms()[bb->getId()];
     vASSERT(idomBB != nullptr);
     printf("\n\t iDOM: BB%d -- DOM SUCC: ",
            dom->getIDoms()[bb->getId()]->getId());

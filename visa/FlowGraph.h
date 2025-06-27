@@ -218,13 +218,13 @@ class FlowGraph {
   // another data structure instead of modifying this one
   BB_LIST BBs;
 
-  unsigned traversalNum; // used for flow graph traversals
-  unsigned numBBId;      // number of basic blocks
-  bool reducible;        // reducibility of the graph
-  bool doIPA;            // requires inter-procedural liveness analysis
-  bool hasStackCalls; // indicates that the flowgraph contains STACK_CALL calls
-  bool isStackCallFunc; // indicates the function is a STACK_CALL function
-  G4_Kernel *pKernel;   // back pointer to the kernel object
+  unsigned traversalNum = 0;    // used for flow graph traversals
+  unsigned numBBId = 0;         // number of basic blocks
+  bool reducible = true;        // reducibility of the graph
+  bool doIPA = false;           // requires inter-procedural liveness analysis
+  bool hasStackCalls = false;   // indicates that the flowgraph contains STACK_CALL calls
+  bool isStackCallFunc = false; // indicates the function is a STACK_CALL function
+  G4_Kernel *pKernel;           // back pointer to the kernel object
 
   // list of all BBs ever created
   // This list only grows and is freed when the FlowGraph is destroyed
@@ -276,18 +276,18 @@ public:
                        // id. When there are no subroutines, this container
                        // is empty, ie it doesn't contain kernelInfo.
 
-  FuncInfo *kernelInfo; // the call info for the kernel function
+  FuncInfo *kernelInfo = nullptr; // the call info for the kernel function
 
-  IR_Builder *builder; // needed to create new instructions (mainly labels)
+  IR_Builder *builder = nullptr; // needed to create new instructions (mainly labels)
 
   // TODO: It's rather strange that global operand table is part of FlowGraph.
   //       Consider moving it and the class elsewhere.
   GlobalOpndHashTable globalOpndHT;
 
-  G4_Declare *framePtrDcl;
-  G4_Declare *stackPtrDcl;
-  G4_Declare *scratchRegDcl;
-  G4_Declare *pseudoVCEDcl;
+  G4_Declare *framePtrDcl = nullptr;
+  G4_Declare *stackPtrDcl = nullptr;
+  G4_Declare *scratchRegDcl = nullptr;
+  G4_Declare *pseudoVCEDcl = nullptr;
   // When this is true, we reserve physical register assigned to SR.
   bool reserveSR = false;
 
@@ -429,12 +429,10 @@ public:
 
   FlowGraph() = delete;
 
-  FlowGraph(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel *kernel, Mem_Manager &m)
-      : traversalNum(0), numBBId(0), reducible(true), doIPA(false),
-        hasStackCalls(false), isStackCallFunc(false), pKernel(kernel), mem(m),
-        instListAlloc(alloc), kernelInfo(NULL), builder(NULL), globalOpndHT(m),
-        framePtrDcl(NULL), stackPtrDcl(NULL), scratchRegDcl(NULL),
-        pseudoVCEDcl(NULL), immDom(*kernel), pDom(*kernel), loops(*kernel) {}
+  FlowGraph(INST_LIST_NODE_ALLOCATOR& alloc, G4_Kernel* kernel, Mem_Manager& m)
+      : pKernel(kernel), immDom(*kernel), pDom(*kernel), loops(*kernel), mem(m),
+        instListAlloc(alloc), globalOpndHT(m)
+  {}
 
   ~FlowGraph();
   FlowGraph(const FlowGraph&) = delete;

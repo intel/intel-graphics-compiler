@@ -38,6 +38,7 @@ static bool isSamplerMsgWithPO(VISASampler3DSubOpCode samplerOp) {
   return false;
 }
 
+[[maybe_unused]]
 static MsgOp ConvertSamplerOpToMsgOp(VISASampler3DSubOpCode op) {
   switch (op) {
   case VISASampler3DSubOpCode::VISA_3D_SAMPLE:
@@ -1746,6 +1747,7 @@ static void checkCPSEnable(VISASampler3DSubOpCode op, unsigned reponseLength,
   vISA_ASSERT_INPUT(execSize == 8 || execSize == 16,
       "CPS LOD Compensation Enable only valid for SIMD8* or SIMD16*");
 
+  [[maybe_unused]]
   bool isCPSAvailable = op == VISA_3D_SAMPLE || op == VISA_3D_SAMPLE_B ||
                         op == VISA_3D_SAMPLE_C || op == VISA_3D_SAMPLE_B_C ||
                         op == VISA_3D_SAMPLE_PO || op == VISA_3D_SAMPLE_PO_B ||
@@ -1773,7 +1775,7 @@ static G4_Operand *createSampleHeader(IR_Builder *builder, G4_Declare *header,
   G4_Imm *immOpndSecondDword = builder->createImm(secondDword, Type_UD);
   G4_DstRegRegion *payloadDstRgn =
       builder->createDst(header->getRegVar(), 0, 2, 1, Type_UD);
-  G4_INST *headerInst = nullptr;
+  [[maybe_unused]] G4_INST *headerInst = nullptr;
   if (aoffimmi->isImm()) {
     // mov (1) payload(0,2) immOpndSecondDword
     headerInst =

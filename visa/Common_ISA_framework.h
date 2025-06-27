@@ -61,7 +61,6 @@ namespace CisaFramework {
 class CisaInst {
 public:
   CisaInst(vISA::Mem_Manager &mem) : m_mem(mem), m_size(0) {
-    memset(&m_cisa_instruction, 0, sizeof(CISA_INST));
     m_size = 1; // opcode size
   }
 

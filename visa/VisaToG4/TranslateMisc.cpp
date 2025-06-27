@@ -329,10 +329,6 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
   }
 
   // Otherwise, we have to do some copying
-  auto alignTo = [](size_t a, size_t n) {
-    return (n + a - 1) - ((n + a - 1) % a);
-  };
-
   int numPayloadGRF = 0;
   // precompute the necessary region size
   for (G4_SrcRegRegion *src : srcs) {

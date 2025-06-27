@@ -593,7 +593,7 @@ DEF_VISA_OPTION(vISA_HybridRAWithSpill, ET_BOOL, "-hybridRAWithSpill", UNUSED,
 DEF_VISA_OPTION(vISA_SelectiveFastRA, ET_BOOL, "-selectiveFastRA", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_SelectiveRAInstThreshold, ET_INT32, "-selectiveRAInstThreshold",
-                UNUSED, 128*1024)
+                UNUSED, 131072) // 128*1024
 DEF_VISA_OPTION(vISA_SelectiveRAGlobaVarRatioThreshold, ET_CSTR, "-selectiveRAGVRatioThreshold",
                 UNUSED, "0.16")
 DEF_VISA_OPTION(vISA_EnableSwapAccSub, ET_BOOL, "-swapAccSub", UNUSED, true)

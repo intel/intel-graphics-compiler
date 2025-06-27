@@ -236,24 +236,24 @@ private:
   uint32_t getDPASOpsPerChan(Type src1_ty, Type src2_ty, bool isDF);
 
 private:
-  Instruction *m_instruction;
+  Instruction *m_instruction = nullptr;
 
   // track the inst id counters when it reach to this instruction
   const InstIDs m_InstIDs;
 
   const DepSetBuilder &m_DB;
 
-  DEP_TYPE m_dType;
-  DEP_PIPE m_dPipe;
-  DEP_CLASS m_dClass;
+  DEP_TYPE m_dType = DEP_TYPE::NONE;
+  DEP_PIPE m_dPipe = DEP_PIPE::NONE;
+  DEP_CLASS m_dClass = DEP_CLASS::NONE;
   BitSet<> *bits;
   std::vector<size_t> m_bucketList;
   SBID m_sbid;
-  bool m_hasIndirect;
+  bool m_hasIndirect = false;
   // set true if the instruction has access the special registers: CR, CE, SR
   // In this case we cannot be sure which register it is actually affect,
   // will need to sync all pipes
-  bool m_hasSR;
+  bool m_hasSR = false;
   void formatShortReg(std::ostream &os, bool &first, const char *reg_name,
                       size_t reg_num, size_t reg_start, size_t reg_len) const;
 

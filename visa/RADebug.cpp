@@ -413,7 +413,7 @@ void GlobalRA::reportUndefinedUses(LivenessAnalysis &liveAnalysis, G4_BB *bb,
   }
 
   if (referencedDcl->getRegVar()->isRegAllocPartaker()) {
-    const char *opndName = "";
+    [[maybe_unused]] const char *opndName = "";
 
     if (opndNum == Opnd_pred) {
       opndName = "predicate";

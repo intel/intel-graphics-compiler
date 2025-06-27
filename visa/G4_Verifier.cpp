@@ -274,7 +274,7 @@ void G4Verifier::verifyDstSrcOverlap(G4_INST *inst) {
       if (src != NULL && !src->isNullReg() && src->getTopDcl() &&
           (src->getTopDcl()->getRegFile() == G4_GRF ||
            src->getTopDcl()->getRegFile() == G4_INPUT)) {
-        bool overlap = dataHazardCheck(dst, src);
+        [[maybe_unused]] bool overlap = dataHazardCheck(dst, src);
 
         int srcStart =
             src->getLinearizedStart() / kernel.numEltPerGRF<Type_UB>();
@@ -299,7 +299,7 @@ void G4Verifier::verifySend(G4_INST *inst) {
 
     bool checkEoT = inst->isEOT() && kernel.fg.builder->hasEOTGRFBinding();
     if (checkEoT) {
-      auto checkEOTSrc = [this](G4_SrcRegRegion *src) {
+        [[maybe_unused]] auto checkEOTSrc = [this](G4_SrcRegRegion *src) {
         // Send instruction's header and payload must be placed in last 16 GRFs if the EOT flag is set.
         const unsigned int EOTStart = (kernel.getNumRegTotal()-16) * kernel.numEltPerGRF<Type_UB>();
         if (src->isNullReg()) {
@@ -330,7 +330,7 @@ void G4Verifier::verifySend(G4_INST *inst) {
         int src1Start =
             src1->getLinearizedStart() / kernel.numEltPerGRF<Type_UB>();
         int src1End = src1Start + inst->getMsgDesc()->getSrc1LenRegs() - 1;
-        bool noOverlap = src0End < src1Start || src1End < src0Start;
+        [[maybe_unused]] bool noOverlap = src0End < src1Start || src1End < src0Start;
         vISA_ASSERT(noOverlap, "split send src0 and src1 overlap");
       }
     }
@@ -338,13 +338,13 @@ void G4Verifier::verifySend(G4_INST *inst) {
     if (kernel.fg.builder->WaDisableSendSrcDstOverlap()) {
       if (!dst->isNullReg()) {
         if (src0->getBase()->isGreg()) {
-          bool noOverlap =
+          [[maybe_unused]] bool noOverlap =
               dst->getLinearizedEnd() < src0->getLinearizedStart() ||
               src0->getLinearizedEnd() < dst->getLinearizedStart();
           vISA_ASSERT(noOverlap, "send dst and src0 overlap");
         }
         if (src1 && !src1->isNullReg()) {
-          bool noOverlap =
+          [[maybe_unused]] bool noOverlap =
               dst->getLinearizedEnd() < src1->getLinearizedStart() ||
               src1->getLinearizedEnd() < dst->getLinearizedStart();
           vISA_ASSERT(noOverlap, "split send dst and src1 overlap");
@@ -494,7 +494,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
       if (kernel.fg.builder->supportNativeSIMD32() &&
           inst->getExecSize() == g4::SIMD32 && opnd->getTypeSize() == 8) {
-        bool indirect1x1 = opnd->isIndirect()  &&
+        [[maybe_unused]] bool indirect1x1 = opnd->isIndirect()  &&
                            !opnd->asSrcRegRegion()->getRegion()->isRegionWH();
         vISA_ASSERT(!indirect1x1,
                     "Must not be indirect 1x1 addressing mode for SIMD32 "
@@ -752,9 +752,9 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
       // oword-aligned for implicit acc source, its subreg offset should be
       // identical to that of the dst
       if (opnd->isAccReg()) {
-        uint32_t offset = opnd->getLinearizedStart() % 32;
+        [[maybe_unused]] uint32_t offset = opnd->getLinearizedStart() % 32;
         if (inst->getDst()) {
-          uint32_t dstOffset = inst->getDst()->getLinearizedStart() % 32;
+          [[maybe_unused]] uint32_t dstOffset = inst->getDst()->getLinearizedStart() % 32;
           if (opnd == inst->getImplAccSrc()) {
             vISA_ASSERT(offset == dstOffset,
                    "implicit acc source must have identical offset as dst");
@@ -973,7 +973,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
   G4_Type s2Ty = src2->getType();
   G4_Operand *opnd3 = dpasInst->getSrc(3);
   G4_SrcRegRegion *src3 = opnd3 ? opnd3->asSrcRegRegion() : nullptr;
-  G4_Type s3Ty = src3 ? src3->getType() : Type_UNDEF;
+  [[maybe_unused]] G4_Type s3Ty = src3 ? src3->getType() : Type_UNDEF;
 
   // No source modifier
   if (std::any_of(dpasInst->src_begin(), dpasInst->src_end(),

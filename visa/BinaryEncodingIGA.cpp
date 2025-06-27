@@ -335,8 +335,8 @@ private:
   static MathFC getMathFC(const G4_INST *inst);
   Type getIGAType(const G4_INST *I, Gen4_Operand_Number O, TARGET_PLATFORM P);
 
-  void *m_kernelBuffer;
-  uint32_t m_kernelBufferSize;
+  void *m_kernelBuffer = nullptr;
+  uint32_t m_kernelBufferSize = 0;
 }; // class BinaryEncodingIGA
 
 Platform
@@ -384,8 +384,7 @@ BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform) {
 }
 
 BinaryEncodingIGA::BinaryEncodingIGA(vISA::G4_Kernel &k, const std::string& fname)
-    : kernel(k), fileName(fname), m_kernelBuffer(nullptr),
-      m_kernelBufferSize(0), platform(k.fg.builder->getPlatform()) {
+    : kernel(k), fileName(fname), platform(k.fg.builder->getPlatform()) {
   platformModel = Model::LookupModel(getIGAInternalPlatform(platform));
   IGAKernel = new Kernel(*platformModel);
 }
@@ -1025,7 +1024,7 @@ void BinaryEncodingIGA::getIGAFlagInfo(G4_INST *inst, const OpSpec *opSpec,
   G4_Predicate *predG4 = inst->getPredicate();
   G4_CondMod *condModG4 = inst->getCondMod();
   RegRef predFlag;
-  bool hasPredFlag = false;
+  [[maybe_unused]] bool hasPredFlag = false;
 
   if (opSpec->supportsPredication() && predG4 != nullptr) {
     pred = getIGAPredication(predG4, inst->getExecSize(), *kernel.fg.builder);
@@ -1977,6 +1976,7 @@ Predication BinaryEncodingIGA::getIGAPredication(const G4_Predicate *predG4,
   // Xe_PVC+ has removed predCtrl width. Only .any, .all and .seq (default) are
   // supported. Try to translate PredCtrl values to compatible ones on Xe_PVC+
   // Return true on success, false on fail
+  [[maybe_unused]]
   auto translatePredCtrl = [&](G4_Predicate_Control &predCtrl) {
     if (builder.predCtrlHasWidth())
       return true;

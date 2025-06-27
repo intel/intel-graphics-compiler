@@ -156,8 +156,7 @@ public:
     state.dirty.qw1 = 0;
     state.fragmentsSet.clear();
 #endif
-    memset(_bits, 0, sizeof(*_bits));
-    bits = _bits;
+    _bits->reset();
     encodeForPlatform(i);
   }
 

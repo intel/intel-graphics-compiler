@@ -11,10 +11,6 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
-// on legacy platforms EOT bit is encode in bit[5] of the exdesc.
-// used by the rawSend/rawSends instructions
-static bool isExDescEOT(uint32_t val) { return val & 0x20; }
-
 int IR_Builder::translateVISARawSendInst(
     G4_Predicate *predOpnd, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
     uint8_t modifiers, unsigned int exDesc, uint8_t numSrc, uint8_t numDst,

@@ -204,7 +204,6 @@ void MessageDecoderOther::tryDecodeRC() {
 
   static const uint32_t RT_READ = 0xD;
   static const uint32_t RT_WRITE = 0xC;
-  static const uint32_t RTR_SIMD = 0x1;
 
   std::string descSfx;
   sym << "rt";
@@ -461,12 +460,11 @@ void MessageDecoderOther::tryDecodeRC_XE2() {
   }
 
   // Desc[18] .pscps - per sample coarse pixel shading
-  bool header = false;
   if (mt == RT_READ) {
     decodeReserved(18, 1);
   } else {
-    header = decodeBit(18, "PerSampleOutCPS",
-                       "per-sample outputs coarse pixel shading", "psocps");
+    decodeBit(18, "PerSampleOutCPS",
+                  "per-sample outputs coarse pixel shading", "psocps");
   }
 
   // Desc[13] .psps - per sample pixel shading

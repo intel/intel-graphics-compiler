@@ -302,9 +302,9 @@ void Optimizer::addFFIDProlog() {
 // +---------------------+ <-- perThreadOffsetMem  R4 +------------------------+ <- perThreadLoadGRF + numPerThreadGRF
 // |                     | \                          | inline data (optional) |
 // |  per thread data T0 |    numPerThreadGRF      R5 +------------------------+ <-- crossThreadLoadStartGRF
-// |                     | /    (GRFs)                |  cross thread data     | \
+// |                     | /    (GRFs)                |  cross thread data     |  |
 // +---------------------+                            |                        |  numCrossThreadDW (Dwords)
-// |                     |                            |                        | /
+// |                     |                            |                        |  |
 // |  per thread data T1 |                            +------------------------+
 // |                     |                           (NOTE: register numbers are examples)
 // +---------------------+                           vISA_loadThreadPayloadStartReg shifts payload in GRF

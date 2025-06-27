@@ -45,8 +45,7 @@ public:
   CISA_IR_Builder(TARGET_PLATFORM platform, VISA_BUILDER_OPTION buildOption,
                   vISABuilderMode mode, int majorVersion, int minorVersion,
                   const WA_TABLE *pWaTable)
-      : mBuildOption(buildOption), m_builderMode(mode), m_mem(4096),
-        m_pWaTable(pWaTable) {
+      : mBuildOption(buildOption), m_builderMode(mode), m_pWaTable(pWaTable) {
     m_platformInfo = vISA::PlatformInfo::LookupPlatformInfo(platform);
     vISA_ASSERT(m_platformInfo != nullptr, "null m_platformInfo");
     m_header.major_version = majorVersion;
@@ -696,7 +695,7 @@ public:
 private:
   const vISA::PlatformInfo *m_platformInfo;
 
-  vISA::Mem_Manager m_mem;
+  vISA::Mem_Manager m_mem = 4096;
   const VISA_BUILDER_OPTION mBuildOption;
   // FIXME: we need to make 3D/media per kernel instead of per builder
   const vISABuilderMode m_builderMode;

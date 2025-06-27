@@ -167,7 +167,7 @@ struct InstDsts {
   RegSet flagModifier;
   RegSet destinations;
 
-  InstDsts(const Model &m) : destinations(m), flagModifier(m) {}
+  InstDsts(const Model &m) : flagModifier(m), destinations(m) {}
 
   RegSet unionOf() const { return RegSet::unionOf(flagModifier, destinations); }
   bool subtractFrom(RegSet &rs) const {

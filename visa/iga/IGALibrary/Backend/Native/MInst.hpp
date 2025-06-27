@@ -33,6 +33,7 @@ struct MInst {
   };
 
   MInst() { qw0 = qw1 = 0; }
+  void reset() { qw0 = qw1 = 0; }
 
   bool operator==(const MInst &rhs) const {
     return qw0 == rhs.qw0 && qw1 == rhs.qw1;

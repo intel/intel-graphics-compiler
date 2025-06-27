@@ -1789,8 +1789,8 @@ globalLinearScan::globalLinearScan(
     unsigned int lastLexID, bool bankConflict, bool internalConflict, Mem_Manager* GLSMem)
     : gra(g), builder(g.builder), GLSMem(GLSMem), pregManager(pregMgr),
       liveIntervals(lv), preAssignedIntervals(assignedLiveIntervals),
-      inputIntervals(inputLivelIntervals), numRowsEOT(numEOT),
-      lastLexicalID(lastLexID), numRegLRA(numReg), doBankConflict(bankConflict),
+      inputIntervals(inputLivelIntervals), numRegLRA(numReg), numRowsEOT(numEOT),
+      lastLexicalID(lastLexID),  doBankConflict(bankConflict),
       highInternalConflict(internalConflict) {
   startGRFReg = 0;
   activeGRF.resize(g.kernel.getNumRegTotal());

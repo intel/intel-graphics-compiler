@@ -1051,7 +1051,7 @@ public:
               GenPrecision a, GenPrecision w, uint8_t sd, uint8_t rc)
       : G4_INST(builder, nullptr, o, nullptr, g4::NOSAT, size, d, s0, s1, s2,
                 s3, s4, opt),
-        Src2Precision(a), Src1Precision(w), SystolicDepth(sd), RepeatCount(rc) {
+        Src1Precision(w), Src2Precision(a), SystolicDepth(sd), RepeatCount(rc) {
   }
 
   G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
