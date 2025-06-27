@@ -290,7 +290,7 @@ static VISA_PredVar *readPreVarNG(unsigned &bytePos, const char *buf,
                                   RoutineContainer &container) {
   vISA_ASSERT_INPUT(buf != nullptr, "Argument Exception: argument buf  is NULL.");
 
-  [[maybe_unused]] uint8_t tag = 0;
+  uint8_t tag = 0;
   READ_CISA_FIELD(tag, uint8_t, bytePos, buf);
 
   uint16_t index = 0;
@@ -2448,6 +2448,7 @@ static void
 readInstructionLscUntypedAppendCounterAtomic(LSC_OP subOpcode,
                                              unsigned &bytePos, const char *buf,
                                              RoutineContainer &container) {
+  const LscOpInfo opInfo = LscOpInfoGet(subOpcode);
 
   VISA_EMask_Ctrl execMask = vISA_EMASK_M1;
   VISA_Exec_Size execSize = EXEC_SIZE_ILLEGAL;
@@ -2700,9 +2701,9 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     VISA_GenVar *decl = NULL;
     VISA_Type varType = (VISA_Type)((var->bit_properties) & 0xF);
     VISA_Align varAlign = (VISA_Align)((var->bit_properties >> 4) & 0xF);
-    [[maybe_unused]] uint8_t aliasScopeSpecifier =
+    uint8_t aliasScopeSpecifier =
         header.variables[declID].alias_scope_specifier;
-    [[maybe_unused]] int status = VISA_SUCCESS;
+    int status = VISA_SUCCESS;
 
     vISA_ASSERT(aliasScopeSpecifier == 0,
            "file scope variables are no longer supported");
@@ -2760,7 +2761,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     /// VISA Builder Call
     addr_info_t *var = &header.addresses[declID];
     VISA_AddrVar *decl = NULL;
-    [[maybe_unused]] int status = kernelBuilderImpl->CreateVISAAddrVar(
+    int status = kernelBuilderImpl->CreateVISAAddrVar(
         decl, header.strings[var->name_index], var->num_elements);
     vISA_ASSERT(VISA_SUCCESS == status, "Failed to add VISA address variable.");
 
@@ -2799,7 +2800,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     /// VISA Builder Call
     pred_info_t *var = &header.predicates[declID];
     VISA_PredVar *decl = NULL;
-    [[maybe_unused]] int status = kernelBuilderImpl->CreateVISAPredVar(
+    int status = kernelBuilderImpl->CreateVISAPredVar(
         decl, header.strings[var->name_index], var->num_elements);
     vISA_ASSERT(VISA_SUCCESS == status,
                 "Failed to add VISA predicate vairable.");
@@ -2831,7 +2832,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     unsigned declID = i;
     label_info_t *var = &header.labels[declID];
     VISA_LabelOpnd *decl = NULL;
-    [[maybe_unused]] int status = kernelBuilderImpl->CreateVISALabelVar(
+    int status = kernelBuilderImpl->CreateVISALabelVar(
         decl,
         getDeclLabelString("L", var->name_index, header,
                            VISA_Label_Kind(var->kind))
@@ -2876,7 +2877,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     unsigned declID = i;
     state_info_t *var = &header.samplers[declID];
     VISA_SamplerVar *decl = NULL;
-    [[maybe_unused]] int status = kernelBuilderImpl->CreateVISASamplerVar(
+    int status = kernelBuilderImpl->CreateVISASamplerVar(
         decl, header.strings[var->name_index], var->num_elements);
     vISA_ASSERT(VISA_SUCCESS == status, "Failed to add VISA sampler variable.");
 
@@ -2924,7 +2925,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     unsigned declID = i;
     state_info_t *var = &header.surfaces[declID];
     VISA_SurfaceVar *decl = NULL;
-    [[maybe_unused]] int status = kernelBuilderImpl->CreateVISASurfaceVar(
+    int status = kernelBuilderImpl->CreateVISASurfaceVar(
         decl, header.strings[var->name_index], var->num_elements);
     vISA_ASSERT(VISA_SUCCESS == status, "Failed to add VISA surface variable.");
 
@@ -2945,7 +2946,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     container.surfaceVarDecls[i] = decl;
   }
 
-  [[maybe_unused]] int vmeCount = 0;
+  int vmeCount = 0;
   READ_CISA_FIELD(vmeCount, uint8_t, bytePos, buf);
   vISA_ASSERT(vmeCount == 0, "VME variable is no longer supported");
   header.vme_count = 0;
@@ -2985,7 +2986,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
         vISA_ASSERT_UNREACHABLE("Incorrect input variable type.");
       }
 
-      [[maybe_unused]] int status = kernelBuilderImpl->CreateVISAInputVar(
+      int status = kernelBuilderImpl->CreateVISAInputVar(
           decl, var->offset, var->size, var->getImplicitKind());
       vISA_ASSERT(VISA_SUCCESS == status, "Failed to add VISA input variable.");
 

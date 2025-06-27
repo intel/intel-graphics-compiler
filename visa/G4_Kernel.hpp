@@ -323,7 +323,7 @@ public:
                      G4_INST *aSmall_start, G4_INST *aSmall_patch,
                      G4_INST *aBig_start, G4_INST *aBig_patch,
                      G4_INST *aBig_call, G4_INST *aSmall_call)
-      : Big_BB(aBig_BB), Small_BB(aSmall_BB), IP_WA_placeholder(aIP_WA),
+      : IP_WA_placeholder(aIP_WA), Big_BB(aBig_BB), Small_BB(aSmall_BB),
         Small_start(aSmall_start), Small_patch(aSmall_patch),
         Big_start(aBig_start), Big_patch(aBig_patch), Big_call(aBig_call),
         Small_call(aSmall_call) {}

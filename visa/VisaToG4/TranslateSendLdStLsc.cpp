@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
-[[maybe_unused]]
 static MsgOp ConvertLSCOpToMsgOp(LSC_OP op) {
   switch (op) {
   case LSC_OP::LSC_LOAD:
@@ -98,7 +97,6 @@ static MsgOp ConvertLSCOpToMsgOp(LSC_OP op) {
   }
 }
 
-[[maybe_unused]]
 static DataSize ConvertLSCDataSize(LSC_DATA_SIZE ds) {
   switch (ds) {
   case LSC_DATA_SIZE_8b:
@@ -119,7 +117,6 @@ static DataSize ConvertLSCDataSize(LSC_DATA_SIZE ds) {
   return DataSize::INVALID;
 }
 
-[[maybe_unused]]
 static DataOrder ConvertLSCDataOrder(LSC_DATA_ORDER dord, bool vnni = false) {
   switch (dord) {
   case LSC_DATA_ORDER_NONTRANSPOSE:
@@ -143,7 +140,6 @@ G4_ExecSize IR_Builder::lscMinExecSize(LSC_SFID lscSfid) const {
   return G4_ExecSize(minExecSize);
 }
 
-[[maybe_unused]]
 static VecElems ConvertLSCDataElems(LSC_DATA_ELEMS de) {
   switch (de) {
   case LSC_DATA_ELEMS_1:
@@ -169,7 +165,6 @@ static VecElems ConvertLSCDataElems(LSC_DATA_ELEMS de) {
 }
 
 
-[[maybe_unused]]
 static Caching ConvertLSCCacheOpt(LSC_CACHE_OPT co) {
   switch (co) {
   case LSC_CACHING_DEFAULT:
@@ -523,7 +518,7 @@ int IR_Builder::translateLscUntypedInst(
 
   int src1Len = 0;
   uint32_t dstLen = 0;
-  [[maybe_unused]] uint32_t src0Len = addrRegs;
+  uint32_t src0Len = addrRegs;
   if (opInfo.isLoad()) {
     if (isNullOperand(dstRead)) {
       dstLen = 0; // prefetch
@@ -773,6 +768,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
 
   int src1Len = 0;
   uint32_t dstLen = 0;
+  uint32_t src0Len = addrRegs;
 
   if (opInfo.isLoad()) {
     if (isNullOperand(dstRead)) {
@@ -783,6 +779,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
     src1Len = 0;
   } else if (opInfo.isStore()) {
     dstLen = 0;
+    src0Len = addrRegs;
     src1Len = (int)dataRegs;
   } else {
     check(false, "unexpected message type");
@@ -908,6 +905,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
 
   int src1Len = 0;
   uint32_t dstLen = 0;
+  uint32_t src0Len = addrRegs;
 
   if (opInfo.isLoad()) {
     if (isNullOperand(dstRead)) {
@@ -918,6 +916,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
     src1Len = 0;
   } else if (opInfo.isStore()) {
     dstLen = 0;
+    src0Len = addrRegs;
     src1Len = (int)dataRegs;
   } else {
     check(false, "unexpected message type");
@@ -1680,6 +1679,7 @@ G4_SrcRegRegion *IR_Builder::lscCheckRegion(G4_Predicate *pred,
                                             G4_ExecSize execSize,
                                             VISA_EMask_Ctrl execCtrl,
                                             G4_SrcRegRegion *src) {
+  const G4_Type srcType = src->getType();
   // Later extension could repack and work in these case,
   // for now throw a tantrum if they give us
   // ... VAR<2;1,0>
@@ -1751,9 +1751,7 @@ G4_SrcRegRegion *IR_Builder::lscMulAdd(G4_Predicate *pred, G4_ExecSize execSize,
   }
 }
 
-[[maybe_unused]]
 static bool isPow2(int x) { return (x & (x - 1)) == 0; }
-[[maybe_unused]]
 static int intLog2(int x) {
   int shiftAmt = 0;
   while (x > 1) {
@@ -1967,10 +1965,9 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(G4_Predicate *pred,
                                          VISA_EMask_Ctrl execCtrl,
                                          G4_SrcRegRegion *src0,
                                          int16_t mulImm) {
-  if (mulImm == 1) {
+  if (mulImm == 1)
     return src0;
-  }
-  vISA_ASSERT_UNREACHABLE("mul64-aos not supported yet");
+    vISA_ASSERT_UNREACHABLE("mul64-aos not supported yet");
   return nullptr;
 }
 

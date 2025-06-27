@@ -807,7 +807,7 @@ void PointsToAnalysis::removeFromPointsTo(G4_RegVar *addr,
   }
 
   REGVAR_VECTOR &vec = pointsToSets[addrPointsToSetIndex[id]];
-  [[maybe_unused]] bool removed = false;
+  bool removed = false;
 
   for (REGVAR_VECTOR::iterator it = vec.begin(); it != vec.end(); it++) {
     pointInfo cur = (*it);

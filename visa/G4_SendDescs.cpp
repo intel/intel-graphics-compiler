@@ -25,12 +25,10 @@ static uint64_t getBitFieldMask(int off, int len) {
 static uint64_t getBitField(uint64_t bits, int off, int len) {
   return ((bits & getBitFieldMask(off, len)) >> off);
 }
-[[maybe_unused]]
 static uint64_t getSignedBitField(uint64_t bits, int off, int len) {
   auto shlToTopSignBit = 64 - off - len;
   return (int64_t)(bits << shlToTopSignBit) >> (shlToTopSignBit + off);
 }
-[[maybe_unused]]
 static uint64_t putBitField(uint64_t bits, int off, int len, uint64_t val) {
   const uint64_t mask = getBitFieldMask(off, len);
   return (bits & ~mask) | (mask & (val << off));
@@ -118,7 +116,6 @@ std::string vISA::ToSymbol(vISA::SFID sfid) {
   }
 }
 
-[[maybe_unused]]
 static std::string ToSymbolDataSize(int reg, int mem) {
   if (reg == mem)
     return "d" + std::to_string(reg);
@@ -593,7 +590,6 @@ G4_SendDescRaw::G4_SendDescRaw(uint32_t fCtrl, uint32_t regs2rcv,
     desc.value |= (((unsigned)m_sti->asImm()->getInt()) << 8); // [11:8]
   }
 
-  [[maybe_unused]]
   uint32_t totalMaxLength = builder.getMaxSendMessageLength();
   vISA_ASSERT(extDesc.layout.extMsgLength + desc.layout.msgLength <
                    totalMaxLength,
@@ -606,7 +602,7 @@ G4_SendDescRaw::G4_SendDescRaw(uint32_t descBits, uint32_t extDescBits,
     : G4_SendDesc(G4_SendDesc::Kind::RAW,
                   intToSFID(extDescBits & 0xF, builder.getPlatform()),
                   builder), // [3:0]
-      accessType(access), funcCtrlValid(true), m_sti(sti), m_bti(bti) {
+      accessType(access), m_sti(sti), m_bti(bti), funcCtrlValid(true) {
   desc.value = descBits;
   extDesc.value = extDescBits;
   src1Len = (extDescBits >> 6) & 0x1F;  // [10:6]
@@ -630,8 +626,8 @@ G4_SendDescRaw::G4_SendDescRaw(SFID _sfid, uint32_t _desc, uint32_t _extDesc,
                                G4_ExecSize execSize, bool isValidFuncCtrl,
                                const IR_Builder &builder)
     : G4_SendDesc(G4_SendDesc::Kind::RAW, _sfid, execSize, builder),
-      accessType(access), funcCtrlValid(isValidFuncCtrl), m_sti(nullptr), m_bti(bti)
-{
+      accessType(access), m_sti(nullptr), m_bti(bti),
+      funcCtrlValid(isValidFuncCtrl) {
   isLscDescriptor = _sfid == SFID::UGM || _sfid == SFID::UGML ||
                     _sfid == SFID::SLM || _sfid == SFID::TGM;
   if (irb.getPlatform() >= Xe2) {
@@ -1350,7 +1346,6 @@ bool G4_SendDescRaw::isOwordLoad() const {
   static const uint32_t MSD_CC_OWAB = 0x1;     // DC_CC
   static const uint32_t MSD_CC_OWB = 0x0;      // DC_CC
   static const uint32_t MSD1R_A64_OWB = 0x14;  // DC1 A64 [13:12] == 1
-  [[maybe_unused]]
   static const uint32_t MSD1R_A64_OWAB = 0x14; // DC1 A64 [13:12] == 0
   bool isDc0Owb =
       funcID == SFID::DP_DC0 && (msgType == MSD0R_OWAB || msgType == MSD0R_OWB);
@@ -1813,7 +1808,6 @@ std::optional<ImmOff> G4_SendDescRaw::getOffset() const {
   return std::nullopt;
 }
 
-[[maybe_unused]]
 static Caching cachingToG4(LSC_CACHE_OPT co) {
   switch (co) {
   case LSC_CACHING_DEFAULT:
@@ -1967,7 +1961,7 @@ void G4_SendDescRaw::setCaching(Caching l1, Caching l3) {
   bool isBits17_19 = true;
   isBits17_19 = (irb.getPlatform() < Xe2);
   fieldMask = isBits17_19 ? (0x7 << 17) : (0xF << 16);
-  [[maybe_unused]] bool success =
+  bool success =
       LscTryEncodeCacheOpts(opInfo, visaCopts, cacheEnc, isBits17_19);
   vISA_ASSERT(success, "failed to set caching options");
   desc.value &= ~fieldMask;

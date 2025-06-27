@@ -752,7 +752,7 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
   return Changed;
 }
 
-[[maybe_unused]] bool BB_Scheduler::verifyScheduling() {
+bool BB_Scheduler::verifyScheduling() {
   std::set<G4_INST *> Insts;
   for (auto Inst : *(getBB()))
     Insts.insert(Inst);
@@ -2853,7 +2853,7 @@ void preDDD::dumpDagTxt(RegisterPressure &rp) {
   ofile.close();
 }
 
-[[maybe_unused]] void preDDD::dumpDagDot() {
+void preDDD::dumpDagDot() {
   const char *asmFileName = "nullasm";
   getOptions()->getOption(VISA_AsmFileName, asmFileName);
   std::string fileName(asmFileName);
@@ -3008,7 +3008,7 @@ void BB_ACC_Scheduler::commit() {
   return;
 }
 
-[[maybe_unused]] bool BB_ACC_Scheduler::verifyScheduling() {
+bool BB_ACC_Scheduler::verifyScheduling() {
   std::set<G4_INST *> Insts;
   for (auto Inst : *(getBB()))
     Insts.insert(Inst);

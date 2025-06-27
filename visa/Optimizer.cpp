@@ -4262,19 +4262,24 @@ void MSGTable::reusePreviousHeader(G4_INST *dest, G4_INST *source,
  */
 void MSGTable::insertHeaderMovInst(G4_INST *source_send, IR_Builder &builder,
                                    G4_BB *bb) {
+  G4_INST *inst = NULL;
   INST_LIST_ITER pos;
 
   switch (first) {
   case HEADER_FULL_REGISTER:
+    inst = m;
     pos = m_it;
     break;
   case HEADER_X:
+    inst = mDot0;
     pos = mDot0_it;
     break;
   case HEADER_Y:
+    inst = mDot1;
     pos = mDot1_it;
     break;
   case HEADER_SIZE:
+    inst = mDot2;
     pos = mDot2_it;
     break;
   default:
@@ -5408,6 +5413,8 @@ void Optimizer::cleanMessageHeader() {
     msgList.clear();
     auto MSGTableMem = MSGTableAlloc.Allocate();
     MSGTable *newItem = new (MSGTableMem) MSGTable();
+    // FIXME: memset is suspicious here given MSGTable is not POD.
+    memset(newItem, 0, sizeof(MSGTable));
     newItem->first = HEADER_UNDEF;
 
     msgList.push_front(newItem);
@@ -5436,6 +5443,7 @@ void Optimizer::cleanMessageHeader() {
         if (inst->isSend()) {
           auto MSGTableMem = MSGTableAlloc.Allocate();
           MSGTable *item = new (MSGTableMem) MSGTable();
+          memset(item, 0, sizeof(MSGTable));
           item->first = HEADER_UNDEF;
           msgList.push_front(item);
         }
@@ -7995,7 +8003,7 @@ void Optimizer::staticProfiling() {
 }
 
 static void markBreakpoint(G4_BB *bb, INST_LIST_ITER it, IR_Builder *builder) {
-  [[maybe_unused]] G4_INST *inst = *it;
+  G4_INST *inst = *it;
   vISA_ASSERT(inst->isIntrinsic() &&
                   inst->asIntrinsicInst()->getIntrinsicId() ==
                       Intrinsic::Breakpoint,

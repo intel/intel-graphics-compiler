@@ -379,7 +379,6 @@ extern GenPrecision_Info_t
 
 class print_format_provider_t {
 public:
-  virtual ~print_format_provider_t() {}
 
   virtual uint16_t getMajorVersion() const = 0;
   virtual uint16_t getMinorVersion() const = 0;
@@ -615,15 +614,15 @@ struct VISA_LabelOpnd : VISA_opnd {};
 struct VISA_StateOpndHandle : VISA_opnd {};
 
 struct CISA_INST {
-  unsigned char opcode = 0;
-  unsigned char execsize = 0;
-  unsigned char modifier = 0; /// Mainly used for media ld/store.
-  ISA_Inst_Type isa_type = ISA_Inst_Mov; // initialize to 0x0
+  unsigned char opcode;
+  unsigned char execsize;
+  unsigned char modifier; /// Mainly used for media ld/store.
+  ISA_Inst_Type isa_type;
   PredicateOpnd pred;
-  VISA_opnd **opnd_array = nullptr;
+  VISA_opnd **opnd_array;
   // note that opnd_num does not include predicate and execution mask operands
-  unsigned opnd_num = 0;
-  unsigned id = 0;
+  unsigned opnd_num;
+  unsigned id;
 
   VISA_Exec_Size getExecSize() const {
     return (VISA_Exec_Size)(execsize & 0xF);

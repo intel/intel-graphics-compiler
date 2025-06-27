@@ -30,7 +30,7 @@ protected:
 
 public:
   JSONFormatterV2(std::ostream &o, const FormatOpts &os, const void *bs)
-      : BasicFormatter(false, o), model(os.model), opts(os),
+      : BasicFormatter(false, o), opts(os), model(os.model),
         bits((const uint8_t *)bs), EMPTY_SET(os.model) {
     o << std::boolalpha;
     if (opts.liveAnalysis) {

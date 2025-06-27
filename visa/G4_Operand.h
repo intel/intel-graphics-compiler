@@ -156,12 +156,12 @@ public:
   virtual ~G4_Operand() {}
 
 protected:
-  G4_INST *inst = nullptr;
+  G4_INST *inst;
 
   // FIXME: It's redundant to keep both top_dcl and base. We should have a union
   // based on operand kind.
-  G4_Declare *top_dcl = nullptr;
-  G4_VarBase *base = nullptr;
+  G4_Declare *top_dcl;
+  G4_VarBase *base;
 
   // TODO: Should we track footprint at word granularity instead?
   uint64_t bitVec[2]; // bit masks at byte granularity (for flags, at bit
@@ -169,9 +169,9 @@ protected:
 
   // Group byte-sized fields together.
   Kind kind;
-  G4_Type type = Type_UNDEF;
-  bool rightBoundSet = false;
-  G4_AccRegSel accRegSel = ACC_UNDEFINED;
+  G4_Type type;
+  bool rightBoundSet;
+  G4_AccRegSel accRegSel;
 
   // [left_bound, right_bound] describes the region in the root variable that
   // this operand touches. for variables and addresses:
@@ -186,18 +186,22 @@ protected:
   //  (rb - lb) < 32 always holds for flags
   //  for predicate and conditonal modifiers, the bounds are also effected by the
   //  quarter control
-  uint16_t left_bound = 0;
-  uint16_t right_bound = 0;
-  uint16_t byteOffset = 0;
+  uint16_t left_bound;
+  uint16_t right_bound;
+  uint16_t byteOffset;
 
   explicit G4_Operand(Kind k, G4_Type ty = Type_UNDEF,
                       G4_VarBase *base = nullptr)
-      : base(base), kind(k), type(ty){
+      : kind(k), type(ty), inst(nullptr), top_dcl(nullptr), base(base),
+        rightBoundSet(false), byteOffset(0), accRegSel(ACC_UNDEFINED),
+        left_bound(0), right_bound(0) {
     bitVec[0] = bitVec[1] = 0;
   }
 
   G4_Operand(Kind k, G4_VarBase *base)
-      : base(base), kind(k) {
+      : kind(k), type(Type_UNDEF), inst(nullptr), top_dcl(nullptr), base(base),
+        rightBoundSet(false), byteOffset(0), accRegSel(ACC_UNDEFINED),
+        left_bound(0), right_bound(0) {
     bitVec[0] = bitVec[1] = 0;
   }
 
@@ -486,7 +490,7 @@ class G4_Reloc_Imm : public G4_Imm {
   // G4_Reloc_Imm is a relocation target field.
   // Use Build_IR::createRelocImm to construct one of these operands.
   G4_Reloc_Imm(GenRelocType rt, const char *sym, int64_t val, G4_Type ty)
-    : G4_Imm(val, ty), relocKind(rt), symbol(sym) {}
+    : G4_Imm(val, ty), symbol(sym), relocKind(rt) {}
 
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 public:
@@ -542,8 +546,8 @@ class G4_SrcRegRegion final : public G4_Operand {
   G4_SrcRegRegion(const IR_Builder &builder, G4_SrcModifier m, G4_RegAccess a,
                   G4_VarBase *b, short roff, short sroff, const RegionDesc *rd,
                   G4_Type ty, G4_AccRegSel regSel = ACC_UNDEFINED)
-      : G4_Operand(G4_Operand::srcRegRegion, ty, b), desc(rd), regOff(roff),
-        subRegOff(sroff), mod(m), acc(a) {
+      : G4_Operand(G4_Operand::srcRegRegion, ty, b), mod(m), acc(a), desc(rd),
+        regOff(roff), subRegOff(sroff) {
     immAddrOff = 0;
     accRegSel = regSel;
 
@@ -849,8 +853,8 @@ class G4_Predicate final : public G4_Operand {
 
   G4_Predicate(G4_PredState s, G4_VarBase *flag, unsigned short srOff,
                G4_Predicate_Control ctrl)
-      : G4_Operand(G4_Operand::predicate, flag), state(s), control(ctrl),
-        subRegOff(srOff) {
+      : G4_Operand(G4_Operand::predicate, flag), state(s), subRegOff(srOff),
+        control(ctrl) {
     top_dcl = getBase()->asRegVar()->getDeclare();
     vISA_ASSERT(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
     if (getBase()->asRegVar()->getPhyReg()) {

@@ -41,12 +41,12 @@ namespace vISA {
 class MSGTable {
 public:
   // below instructions are to be compared against the current send
-  G4_INST *send = nullptr;   // the reference send
-  G4_INST *a0Dot0 = nullptr; // def of a0.0
-  G4_INST *m = nullptr;      // def of m
-  G4_INST *mDot0= nullptr;   // def of m.0: X
-  G4_INST *mDot1= nullptr;   // def of m.1: Y
-  G4_INST *mDot2= nullptr;   // def of m.2: size
+  G4_INST *send;   // the reference send
+  G4_INST *a0Dot0; // def of a0.0
+  G4_INST *m;      // def of m
+  G4_INST *mDot0;  // def of m.0: X
+  G4_INST *mDot1;  // def of m.1: Y
+  G4_INST *mDot2;  // def of m.2: size
 
   INST_LIST_ITER a0Dot0_it;
   INST_LIST_ITER m_it;
@@ -55,15 +55,15 @@ public:
   INST_LIST_ITER mDot2_it;
 
   bool invalid = false;
-  bool opt = false; // if the catched send is used
+  bool opt; // if the catched send is used
 
   // below shows whether there are new defs to determine reuse or remove
   // if redundant, then remove; otherwise, reuse the catched header
-  bool isXRedef = false;      // X is used to define m.0
-  bool isYRedef = false;      // Y is used to define m.1
-  bool isSizeRedef = false;   // Size is used to define m.2
-  bool isR0Dot0Redef = false; // r0.0 is used to define m
-  HEADER_ORDER first = HEADER_UNDEF;
+  bool isXRedef;      // X is used to define m.0
+  bool isYRedef;      // Y is used to define m.1
+  bool isSizeRedef;   // Size is used to define m.2
+  bool isR0Dot0Redef; // r0.0 is used to define m
+  HEADER_ORDER first;
 
   void insertHeaderMovInst(G4_INST *, IR_Builder &, G4_BB *);
   void reusePreviousHeader(G4_INST *, G4_INST *, G4_INST *, IR_Builder &);

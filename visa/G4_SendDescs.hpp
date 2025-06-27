@@ -280,10 +280,10 @@ protected:
 
 public:
   G4_SendDesc(Kind k, SFID _sfid, const IR_Builder &builder)
-      : kind(k), irb(builder), sfid(_sfid), execSize(g4::SIMD_UNDEFINED) {}
+      : kind(k), sfid(_sfid), execSize(g4::SIMD_UNDEFINED), irb(builder) {}
   G4_SendDesc(Kind k, SFID _sfid, G4_ExecSize _execSize,
               const IR_Builder &builder)
-      : kind(k), irb(builder), sfid(_sfid), execSize(_execSize) {}
+      : kind(k), sfid(_sfid), execSize(_execSize), irb(builder) {}
 
   SFID getSFID() const { return sfid; }
 

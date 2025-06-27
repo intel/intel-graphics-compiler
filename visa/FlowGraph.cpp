@@ -579,11 +579,12 @@ void FlowGraph::normalizeFlowGraph() {
   // it will create problems inserting code. This function handles such patterns
   // by creating new basic block and guaranteeing that fcall's successor has a
   // single predecessor.
+  auto fnInfo = kernelInfo;
   for (BB_LIST_ITER it = BBs.begin(); it != BBs.end(); it++) {
     G4_BB *bb = *it;
 
     if (bb->getBBType() & G4_BB_INIT_TYPE) {
-      bb->getFuncInfo();
+      fnInfo = bb->getFuncInfo();
     }
 
     if (bb->isEndWithFCall()) {
@@ -1650,7 +1651,7 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable &funcInfoHT) {
       if (bb->getBBType() & G4_BB_INIT_TYPE) {
         // Remove it from funcInfoHT.
         int funcId = bb->getId();
-        [[maybe_unused]] unsigned numErased = funcInfoHT.erase(funcId);
+        unsigned numErased = funcInfoHT.erase(funcId);
         vASSERT(numErased == 1);
       } else if (bb->getBBType() & G4_BB_CALL_TYPE) {
         // If call bb is removed, its return BB shuld be removed as well.
@@ -1855,7 +1856,7 @@ void FlowGraph::removeRedundantLabels() {
           if (isIndirectJmpTarget(i)) {
             // due to the switchjmp we may have multiple jmpi
             // at the end of a block.
-            [[maybe_unused]] bool foundMatchingJmp = false;
+            bool foundMatchingJmp = false;
             for (INST_LIST::iterator iter = --pred->end();
                  iter != pred->begin(); --iter) {
               i = *iter;
@@ -2682,7 +2683,7 @@ void FlowGraph::markDivergentBBs() {
       for (G4_BB *predBB : BB->Preds) {
         if (!isBackwardBranch(predBB, BB)) {
           G4_opcode t_opc = predBB->getLastOpcode();
-          [[maybe_unused]] bool isBr = (t_opc == G4_goto || t_opc == G4_jmpi);
+          bool isBr = (t_opc == G4_goto || t_opc == G4_jmpi);
           vISA_ASSERT((!isBr || (BB->getId() > predBB->getId())),
                  "backward Branch did not set correctly!");
           continue;
@@ -3296,8 +3297,8 @@ void FlowGraph::findNestedDivergentBBs(
     //
     // The following is always true:
     //    LastDivergentBBId >= LastNestedBBId
-    int LastDivergentBBId = -1;
-    int LastNestedBBId = -1;
+    int LastDivergentBBId;
+    int LastNestedBBId;
 
     void setLastDivergentBBId(G4_BB *toBB) {
       LastDivergentBBId = std::max(LastDivergentBBId, (int)toBB->getId());
@@ -3318,7 +3319,7 @@ void FlowGraph::findNestedDivergentBBs(
     }
 
   public:
-    CFState() {}
+    CFState() : LastNestedBBId(-1), LastDivergentBBId(-1) {}
 
     bool isInDivergentBranch() const { return (LastDivergentBBId > 0); }
     bool isInNestedDivergentBranch() const { return LastNestedBBId > 0; }

@@ -386,8 +386,8 @@ void SWSBAnalyzer::setDistanceDependency(DepSet *dep, SWSB &swsb, bool isWAW,
     // FOR WAW if PREV is SHORT and curr is LONG then write will
     // finish before current write, no need to set swsb
     bool isWAWHazard =
-        ((prevDepPipe == DEP_PIPE::SHORT && currDepPipe == DEP_PIPE::LONG) ||
-         (prevDepPipe == DEP_PIPE::SHORT && currDepPipe == DEP_PIPE::SHORT)) &&
+        (prevDepPipe == DEP_PIPE::SHORT && currDepPipe == DEP_PIPE::LONG ||
+         prevDepPipe == DEP_PIPE::SHORT && currDepPipe == DEP_PIPE::SHORT) &&
         isWAW;
     // require swsb for all the other kinds of dependency
     if (!isWAWHazard) {

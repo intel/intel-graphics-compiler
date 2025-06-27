@@ -39,13 +39,15 @@ struct regMap {
 };
 
 struct regMapBRA {
-  G4_INST *inst = nullptr;
-  Gen4_Operand_Number opndNum = Opnd_total_num;
-  unsigned int offset = 0;
-  G4_Operand *opnd = nullptr;
+  G4_INST *inst;
+  Gen4_Operand_Number opndNum;
+  unsigned int offset;
+  G4_Operand *opnd;
 
-  regMapBRA() {}
-
+  regMapBRA()
+      : inst(nullptr), offset(0), opnd(nullptr), opndNum(Opnd_total_num) {
+    ;
+  }
   regMapBRA(G4_INST *i, Gen4_Operand_Number n, unsigned int off,
             G4_Operand *src)
       : inst(i), opndNum(n), offset(off), opnd(src) {

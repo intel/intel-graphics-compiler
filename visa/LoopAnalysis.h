@@ -23,7 +23,6 @@ class PointsToAnalysis;
 // run() classes.
 class Analysis {
 public:
-  virtual ~Analysis() {}
   void setStale() { stale = true; }
   void setValid() { stale = false; }
 

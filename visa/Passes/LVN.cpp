@@ -675,6 +675,7 @@ void LVN::removePhysicalVarRedefs(G4_DstRegRegion *dst) {
 }
 
 void LVN::removeFlagVarRedefs(G4_Declare *topdcl) {
+  auto it = dclValueTable.find(topdcl);
 
   for (auto &all : lvnTable) {
     for (auto it = all.second.begin(); it != all.second.end();) {
@@ -1413,6 +1414,7 @@ void LVN::addValueToTable(G4_INST *inst, Value &oldValue) {
   };
 
   for (auto &item : perInstValueCache) {
+    auto it = dclValueTable.find(item.first);
     item.second->active = true;
     dclValueTable[item.first].push_back(item.second);
   }

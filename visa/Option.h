@@ -331,7 +331,7 @@ private:
       return defValue.getCStr();
     }
     explicit VISAOptionsDB(Options *opt)
-        : options(opt), optionsMap(static_cast<int>(vISA_NUM_OPTIONS)) {}
+        : optionsMap(static_cast<int>(vISA_NUM_OPTIONS)), options(opt) {}
 
     ~VISAOptionsDB() {}
   };

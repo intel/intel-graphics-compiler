@@ -362,6 +362,7 @@ kv_status_t kv_get_send_exdesc_immoff(const kv_t *kv, int32_t pc,
     return KV_DESCRIPTOR_INVALID;
   }
 
+  const auto exDesc = inst->getExtMsgDescriptor();
   const auto desc = inst->getMsgDescriptor();
 
   auto addrType = ((desc.imm >> 29) & 0x3); // Desc[30:29]
@@ -452,6 +453,7 @@ kv_status_t kv_get_message_type(const kv_t *kv, int32_t pc,
     return kv_status_t::KV_NON_SEND_INSTRUCTION;
   }
 
+  auto exDesc = inst->getExtMsgDescriptor();
   auto desc = inst->getMsgDescriptor();
 
   // NOTE: we could probably get the message just from desc

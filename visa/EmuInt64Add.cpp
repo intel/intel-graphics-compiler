@@ -30,8 +30,9 @@ void EmuInt64Add::transform() {
         continue;
       }
 
-      vISA_ASSERT(inst->getExecSize() == g4::SIMD1,
-          "Only handle scalar operation for now");
+      G4_ExecSize execSize = inst->getExecSize();
+      G4_ExecSize newExecSize = g4::SIMD2;
+      vISA_ASSERT(execSize == g4::SIMD1, "Only handle scalar operation for now");
 
       // Assume addend0->getTypeSize() >= addend1->getTypeSize()
       bool needSwap = inst->getSrc(0)->getTypeSize() < inst->getSrc(1)->getTypeSize();

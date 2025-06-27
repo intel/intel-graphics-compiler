@@ -1632,7 +1632,7 @@ void LocalRA::printInputLiveIntervals() {
                 << "\n");
 
   for (auto it = inputIntervals.begin(); it != inputIntervals.end(); it++) {
-    [[maybe_unused]] unsigned int regWordIdx, lrEndIdx, regNum, subRegInWord;
+    unsigned int regWordIdx, lrEndIdx, regNum, subRegInWord;
 
     InputLiveRange lr = *it;
 
