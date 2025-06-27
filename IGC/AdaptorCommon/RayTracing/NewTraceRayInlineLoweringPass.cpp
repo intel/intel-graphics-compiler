@@ -390,9 +390,10 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
 
       auto *flags = IRB.CreateOr(I->getFlag(), rqFlags);
 
-      IRB.createTraceRayInlinePrologue(
-          getStackPtr(IRB, rqObject), Vec, IRB.getRootNodePtr(I->getBVH()),
-          flags, I->getMask(), I->getComparisonValue(), I->getTMax(), false, true);
+      IRB.createTraceRayInlinePrologue(getStackPtr(IRB, rqObject), Vec,
+                                       IRB.getRootNodePtr(I->getBVH()), flags,
+                                       I->getMask(), I->getComparisonValue(),
+                                       I->getTMax(), false, true);
 
       auto *hasAcceptHitAndEndSearchFlag = IRB.CreateAnd(
           flags, static_cast<uint32_t>(
@@ -478,22 +479,28 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
         IRB.setDoneBit(getStackPtr(IRB, rqObject), false);
         IRB.CreateBr(proceedBB);
         elseTerm->eraseFromParent();
-
-        IRB.SetInsertPoint(IP);
       }
 
       IRB.SetInsertPoint(proceedBB->getFirstNonPHI());
+      auto *bvhLevel =
+          IRB.CreatePHI(IRB.getInt32Ty(), 2, VALUE_NAME("BVHLevel"));
+
+      for (auto *predBB : predecessors(proceedBB))
+        bvhLevel->addIncoming(
+            IRB.getInt32(predBB == switchI->getParent()
+                             ? RTStackFormat::TOP_LEVEL_BVH
+                             : RTStackFormat::BOTTOM_LEVEL_BVH),
+            predBB);
 
       EmitPreTraceRayFence(IRB, rqObject);
 
 
       auto *globalBufferPtr = getGlobalBufferPtr(IRB, rqObject);
-      auto *traceRay = cast<Instruction>(IRB.createSyncTraceRay(
-          IRB.getBvhLevel(getStackPtr(IRB, rqObject), false), traceRayCtrl,
-          globalBufferPtr));
+      CallInst *traceRay =
+          IRB.createSyncTraceRay(bvhLevel, traceRayCtrl, globalBufferPtr);
 
       // add this for liveness analysis
-      cast<CallInst>(traceRay)->addParamAttr(0, llvm::Attribute::NoCapture);
+      traceRay->addParamAttr(0, llvm::Attribute::NoCapture);
 
       IRB.createReadSyncTraceRay(traceRay);
 
