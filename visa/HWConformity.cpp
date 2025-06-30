@@ -9600,7 +9600,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
     }
     G4_INST *hiMovInst = builder.createMov(execSize, dstHi, hiMovSrc,
                                            madwInst->getMaskOption(), false);
-    hiMovInst->setPredicate(madwInst->getPredicate());
+    hiMovInst->setPredicate(builder.duplicateOperand(madwInst->getPredicate()));
     hiMovInst->setSaturate(madwInst->getSaturate());
     bb->insertAfter(insertIter, hiMovInst);
     maintainDU4TempMov(madwInst, hiMovInst);
@@ -9656,9 +9656,10 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
     // 1, create a new mul inst
     G4_DstRegRegion *accDstOpnd =
         builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, tmpType);
-    auto newMul = builder.createBinOp(
-        G4_mul, execSize, accDstOpnd, builder.duplicateOperand(src0),
-        builder.duplicateOperand(src1), origOptions, false);
+    auto newMul =
+        builder.createBinOp(origPredicate, G4_mul, execSize, accDstOpnd,
+                            builder.duplicateOperand(src0),
+                            builder.duplicateOperand(src1), origOptions, false);
     auto startIter = bb->insertBefore(it, newMul);
     madwInst->copyDefsTo(newMul, false);
     // change src1 type to uw type
@@ -9673,7 +9674,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
     G4_INST *machInst = builder.createMach(
         execSize, dstHi32, builder.duplicateOperand(src0),
         builder.duplicateOperand(src1), origOptions, tmpType);
-    machInst->setPredicate(origPredicate);
+    machInst->setPredicate(builder.duplicateOperand(origPredicate));
     *it = machInst;
     madwInst->transferUse(machInst);
     madwInst->removeAllDefs();
@@ -9692,21 +9693,27 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
                             tmpType);
       auto movInst = builder.createMov(execSize, dstLo32, accSrcOpndMov,
                                        origOptions, false);
-      movInst->setPredicate(origPredicate);
+      movInst->setPredicate(builder.duplicateOperand(origPredicate));
       endIter = bb->insertAfter(endIter, movInst);
     } else {
       // 3, create a addc inst
+      //    addc instruction can be :ud data type
       auto dstLo32 = builder.createDst(dst->getBase(), dst->getRegOff(),
-                                       dst->getSubRegOff(), 1, tmpType);
+                                       dst->getSubRegOff(), 1,
+                                       getUnsignedType(TypeSize(tmpType)));
       auto accSrcOpnd =
           builder.createSrc(builder.phyregpool.getAcc0Reg(), 0, 0,
                             execSize == g4::SIMD1 ? builder.getRegionScalar()
                                                   : builder.getRegionStride1(),
-                            tmpType);
+                            getUnsignedType(TypeSize(tmpType)));
+      auto addcSrc1 = builder.duplicateOperand(src2);
+      if (addcSrc1->isImm())
+        addcSrc1 = builder.createImm(addcSrc1->asImm()->getImm(), Type_UD);
+      else
+        addcSrc1->asSrcRegRegion()->setType(builder, Type_UD);
       auto addcInst = builder.createBinOp(
-          G4_addc, execSize, dstLo32, accSrcOpnd,
-          builder.duplicateOperand(src2), origOptions, false);
-      addcInst->setPredicate(origPredicate);
+          G4_addc, execSize, dstLo32, accSrcOpnd, addcSrc1, origOptions, false);
+      addcInst->setPredicate(builder.duplicateOperand(origPredicate));
       addcInst->setImplAccDst(builder.duplicateOperand(accDstOpnd));
       addcInst->setOptionOn(InstOpt_AccWrCtrl);
       endIter = bb->insertAfter(endIter, addcInst);
@@ -9720,7 +9727,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
       auto addInst = builder.createBinOp(
           G4_add, execSize, builder.duplicateOperand(dstHi32),
           builder.duplicateOperand(accSrcOpnd), src1Add, origOptions, false);
-      addInst->setPredicate(origPredicate);
+      addInst->setPredicate(builder.duplicateOperand(origPredicate));
       endIter = bb->insertAfter(endIter, addInst);
     }
 
