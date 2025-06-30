@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.57
+Version 1.58
 =======
 
 ## Versioning
@@ -16,6 +16,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.58**: Add new enum value NT_INTELGT_INDIRECT_ACCESS_BUFFER_VERSION
 - **Version 1.57**: Internal feature.
 - **Version 1.56**: Internal feature.
 - **Version 1.55**: Internal feature.

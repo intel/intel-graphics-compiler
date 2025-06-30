@@ -75,6 +75,9 @@ enum {
     // The description is the version of Indirect Access Detection implementation
     // stored in a 4-byte ELF word.
     NT_INTELGT_INDIRECT_ACCESS_DETECTION_VERSION = 7,
+    // The descritpion is the major version of Indirect Access Buffer layout
+    // stored in a 4-byte ELF word.
+    NT_INTELGT_INDIRECT_ACCESS_BUFFER_MAJOR_VERSION = 8,
 };
 
 struct TargetMetadata {
