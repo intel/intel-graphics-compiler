@@ -2165,20 +2165,21 @@ bool SymbolicPointer::checkTerms(const Term* T, const Term* OtherT, int64_t& Off
             Inst0->getOperand(1) != Inst1->getOperand(1))
             return true;
 
-        if (Inst0->getOpcode() == Instruction::Sub) {
-            if (Inst0->getOperand(0) == Inst1->getOperand(0)) {
-                OpNum = 1;
-                IsPositive = !IsPositive;
-            } else {
-                OpNum = 0;
-            }
-        } else {
-            if (Inst0->getOperand(1) == Inst1->getOperand(1)) {
-                OpNum = 0;
-            } else {
-                OpNum = 1;
-            }
+        if (Inst0->getOperand(0) == Inst1->getOperand(0) &&
+            Inst0->getOperand(1) == Inst1->getOperand(1)) {
+            OpNum = 3;
+            return false;
         }
+
+        if (Inst0->getOperand(0) == Inst1->getOperand(0)) {
+            OpNum = 1;
+        } else {
+            OpNum = 0;
+        }
+
+        if (Inst0->getOpcode() == Instruction::Sub)
+            if (Inst0->getOperand(0) == Inst1->getOperand(0))
+                IsPositive = !IsPositive;
 
         return false;
     };
@@ -2196,8 +2197,11 @@ bool SymbolicPointer::checkTerms(const Term* T, const Term* OtherT, int64_t& Off
     if (checkInstructions(InstOp0, OtherInstOp0))
         return true;
 
-    auto ConstInt  = dyn_cast<ConstantInt>(InstOp0->getOperand(1));
-    auto OtherConstInt = dyn_cast<ConstantInt>(OtherInstOp0->getOperand(1));
+    if (OpNum == 3)
+        return false;
+
+    auto ConstInt  = dyn_cast<ConstantInt>(InstOp0->getOperand(OpNum));
+    auto OtherConstInt = dyn_cast<ConstantInt>(OtherInstOp0->getOperand(OpNum));
     if (!ConstInt || !OtherConstInt)
         return true;
 
