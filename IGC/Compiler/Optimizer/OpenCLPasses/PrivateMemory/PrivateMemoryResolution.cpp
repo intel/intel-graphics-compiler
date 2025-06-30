@@ -524,6 +524,11 @@ static void sinkAllocas(SmallVectorImpl<AllocaInst*>& Allocas) {
         for (unsigned i = 1; i < UInsts.size(); ++i) {
             Instruction* Use = UInsts[i];
             BasicBlock* UseBB = Use->getParent();
+
+            // skip unreachable BB
+            if (UseBB->use_empty() && !UseBB->isEntryBlock())
+                continue;
+
             DomBB = DT.findNearestCommonDominator(DomBB, UseBB);
             if (!DomBB) {
                 break;
@@ -598,6 +603,11 @@ static void sinkAllocaSingleUse(SmallVectorImpl<AllocaInst*>& Allocas) {
             for (unsigned i = 1; i < UInsts.size(); ++i) {
                 Instruction* Use = UInsts[i];
                 BasicBlock* UseBB = Use->getParent();
+
+                // skip unreachable BB
+                if (UseBB->use_empty() && !UseBB->isEntryBlock())
+                    continue;
+
                 DomBB = DT.findNearestCommonDominator(DomBB, UseBB);
                 if (!DomBB) {
                     break;
