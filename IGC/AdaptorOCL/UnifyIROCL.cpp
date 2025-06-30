@@ -6,11 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include <chrono>
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/ScaledNumber.h>
-#include "llvm/ADT/PostOrderIterator.h"
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Analysis/CFGPrinter.h>
@@ -41,6 +38,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/EstimateFunctionSize.h"
 #include "Compiler/CISACodeGen/FixAddrSpaceCast.h"
+#include "Compiler/Optimizer/OpenCLPasses/GenericCastToPtrOpt/GenericCastToPtrOpt.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GASResolving.h"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GASRetValuePropagator.h"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/StaticGASResolution.h"
@@ -63,7 +61,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/PrepareInlineSamplerForBindless/PrepareInlineSamplerForBindless.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ResolveInlineSamplerForBindless/ResolveInlineSamplerForBindless.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
@@ -71,11 +68,9 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/ResourceAllocator/ResourceAllocator.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BreakConstantExpr/BreakConstantExpr.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LocalBuffers/InlineLocalsResolution.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/ReplaceUnsupportedIntrinsics/ReplaceUnsupportedIntrinsics.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Atomics/ResolveOCLAtomics.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WGFuncs/WGFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AlignmentAnalysis/AlignmentAnalysis.hpp"
-#include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/InjectPrintf.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/OpenCLPrintfAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/OpenCLPrintfResolution.hpp"
@@ -83,15 +78,12 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OCLBIConverter.h"
 #include "Compiler/Optimizer/OpenCLPasses/SetFastMathFlags/SetFastMathFlags.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/CorrectlyRoundedDivSqrt/CorrectlyRoundedDivSqrt.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/AddressSpaceAliasAnalysis/AddressSpaceAliasAnalysis.h"
 #include "Compiler/Optimizer/OpenCLPasses/DeviceEnqueueFuncs/DeviceEnqueue.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/UndefinedReferences/UndefinedReferencesPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/SubGroupFuncs/SubGroupFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BIFTransforms/BIFTransforms.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BreakdownIntrinsic/BreakdownIntrinsic.h"
 #include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass/TransformUnmaskedFunctionsPass.h"
-#include "Compiler/Optimizer/OpenCLPasses/StatelessToStateful/StatelessToStateful.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/KernelFunctionCloning/KernelFunctionCloning.h"
 #include "Compiler/Optimizer/OpenCLPasses/NontemporalLoadsAndStoresInAssert/NontemporalLoadsAndStoresInAssert.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/HandleDevicelibAssert/HandleDevicelibAssert.hpp"
@@ -114,13 +106,10 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/AccuracyDecoratedCallsBiFResolution/AccuracyDecoratedCallsBiFResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ScalarArgAsPointer/ScalarArgAsPointer.hpp"
 #include "AdaptorCommon/RayTracing/RayTracingPasses.hpp"
-#include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/FixResourcePtr.hpp"
-#include "Compiler/InitializePasses.h"
 #include "Compiler/MetaDataApi/SpirMetaDataApi.h"
 #include "Compiler/Optimizer/ReduceOptPass.hpp"
-#include "Compiler/CustomUnsafeOptPass.hpp"
 #include "MoveStaticAllocas.h"
 #include "preprocess_spvir/PreprocessSPVIR.h"
 #include "preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
@@ -138,20 +127,15 @@ SPDX-License-Identifier: MIT
 
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
-#include "common/debug/Dump.hpp"
-#include "common/MemStats.h"
 
 #include <iStdLib/utility.h>
 
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
 #include "Compiler/CISACodeGen/TimeStatsCounter.h"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
-#include "Compiler/DebugInfo/Utils.h"
 #include "Compiler/Builtins/BIFFlagCtrl/BIFFlagCtrlResolution.hpp"
-#include "DebugInfo/VISADebugEmitter.hpp"
 
 #include <string>
-#include <algorithm>
 
 #include <Metrics/IGCMetric.h>
 
@@ -443,6 +427,10 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
 
         // mark load and stores inside assert calls as nontemporal to avoid caching.
         mpm.add(new NontemporalLoadsAndStoresInAssert());
+
+        if (IGC_IS_FLAG_ENABLED(EnableGenericCastToPtrOpt)) {
+          mpm.add(new GenericCastToPtrOpt());
+        }
 
         // Report undef references after setting func attribs for import linking
         mpm.add(new UndefinedReferencesPass());

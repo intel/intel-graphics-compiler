@@ -62,6 +62,7 @@ void initializeErrorCheckPass(llvm::PassRegistry&);
 void initializePoisonFP64KernelsPass(llvm::PassRegistry&);
 void initializeReduceOptPassPass(llvm::PassRegistry&);
 void initializeTypesLegalizationPassPass(llvm::PassRegistry&);
+void initializeGenericCastToPtrOptPass(llvm::PassRegistry &);
 void initializeGASResolvingPass(llvm::PassRegistry&);
 void initializeGASRetValuePropagatorPass(llvm::PassRegistry&);
 void initializeStaticGASResolutionPass(llvm::PassRegistry&);
