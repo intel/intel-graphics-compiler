@@ -1152,7 +1152,8 @@ public:
       VISA_VectorOpnd *renderTargetIndex, vISA_RT_CONTROLS cntrls,
       VISA_StateOpndHandle *surface, VISA_RawOpnd *r1HeaderOpnd,
       VISA_VectorOpnd *sampleIndex, VISA_VectorOpnd *cPSCounter,
-      uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray) = 0;
+      uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray
+      ) = 0;
 
   VISA_BUILDER_API virtual int AppendVISA3dURBWrite(
       VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,

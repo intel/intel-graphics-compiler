@@ -1007,7 +1007,8 @@ public:
       VISA_VectorOpnd *renderTargetIndex, vISA_RT_CONTROLS cntrls,
       VISA_StateOpndHandle *surface, VISA_RawOpnd *r1HeaderOpnd,
       VISA_VectorOpnd *sampleIndex, VISA_VectorOpnd *cPSCounter,
-      uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray) override;
+      uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray
+  ) override;
 
   VISA_BUILDER_API int AppendVISA3dURBWrite(
       VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
