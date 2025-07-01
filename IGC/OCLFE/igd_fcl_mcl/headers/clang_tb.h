@@ -175,6 +175,9 @@ namespace FCL {
   bool GetFCLDumpToCurrentDir();
   bool GetFCLDumpToCustomDir();
   bool GetFCLEnableKernelNamesBasedHash();
+#if LLVM_VERSION_MAJOR <= 16
+  bool GetFCLEnableOpaquePointersBackend();
+#endif
 } // namespace FCL
 
 // convenient macro to check FCL flags

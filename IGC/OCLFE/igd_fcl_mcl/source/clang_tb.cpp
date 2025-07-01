@@ -84,6 +84,9 @@ namespace FCL
     int32_t FCLDumpToCustomDir = 0;
     int32_t FCLShDumpPidDis = 0;
     int32_t FCLEnableKernelNamesBasedHash = 0;
+#if LLVM_VERSION_MAJOR <= 16
+    int32_t FCLEnableOpaquePointersBackend = 0;
+#endif
     int32_t FCLEnvKeysRead = 0;
     std::string RegKeysFlagsFromOptions = "";
 
@@ -195,6 +198,12 @@ namespace FCL
             FCLDumpToCustomDir  = getFCLIGCBinaryKey("DumpToCustomDir") || (RegKeysFlagsFromOptions.find("DumpToCustomDir=") != std::string::npos);
             FCLShDumpPidDis        = getFCLIGCBinaryKey("ShaderDumpPidDisable") || (RegKeysFlagsFromOptions.find("ShaderDumpPidDisable=1") != std::string::npos);
             FCLEnableKernelNamesBasedHash = getFCLIGCBinaryKey("EnableKernelNamesBasedHash") || (RegKeysFlagsFromOptions.find("EnableKernelNamesBasedHash=1") != std::string::npos);
+#if LLVM_VERSION_MAJOR <= 16
+            FCLEnableOpaquePointersBackend =
+                getFCLIGCBinaryKey("EnableOpaquePointersBackend") ||
+                (RegKeysFlagsFromOptions.find(
+                     "EnableOpaquePointersBackend=1") != std::string::npos);
+#endif
             FCLEnvKeysRead = 1;
         }
     }
@@ -228,6 +237,13 @@ namespace FCL
         FCLReadKeysFromEnv();
         return FCLEnableKernelNamesBasedHash;
     }
+
+#if LLVM_VERSION_MAJOR <= 16
+    bool GetFCLEnableOpaquePointersBackend() {
+      FCLReadKeysFromEnv();
+      return FCLEnableOpaquePointersBackend;
+    }
+#endif
 
     OutputFolderName  GetBaseIGCOutputFolder()
     {
@@ -1522,12 +1538,18 @@ namespace TC
             optionsEx += " -debug-info-kind=line-tables-only -dwarf-version=4";
         }
 
-        // Possibly override the opaque/typed pointers' setting based on what's
-        // passed from the build system.
-        // TODO: Consider introducing a separate FCL environment variable for
-        // tweaking this, similarly to IGC_EnableOpaquePointersBackend.
-        optionsEx += " ";
-        optionsEx += __IGC_OPAQUE_POINTERS_DEFAULT_ARG_CLANG;
+#if LLVM_VERSION_MAJOR <= 16 && defined(IGC_DEBUG_VARIABLES)
+        // Allow to dynamically switch from typed to opaque pointers on
+        // LLVM <= 16. Disabling opaque pointers dynamically is not possible.
+        if (FCL_IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend)) {
+          optionsEx += " -opaque-pointers";
+        } else {
+#endif
+          optionsEx += " ";
+          optionsEx += __IGC_OPAQUE_POINTERS_DEFAULT_ARG_CLANG;
+#if LLVM_VERSION_MAJOR <= 16 && defined(IGC_DEBUG_VARIABLES)
+        }
+#endif
 
         std::string extensionsFromInternalOptions = GetSubstring(pInternalOptions, "-cl-ext=");
 
