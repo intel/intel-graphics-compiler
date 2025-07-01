@@ -72,7 +72,7 @@ namespace IGC
         };
 
         llvm::Module* mModule = nullptr;
-        MBMode mCurrentMode;
+        MBMode mCurrentMode = {};
 
         llvm::DenseMap<llvm::CallInst*, MBFuncType> mManageBarrierInstructions;
         llvm::DenseMap<llvm::CallInst*, MBFuncType> mManageBarrierInstructionsInit;

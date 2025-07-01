@@ -184,7 +184,7 @@ class SchedulingConfig {
             Values.push_back(std::stoi(ConfigString));
         }
         IGC_ASSERT(Values.size() == OptionValues.size());
-        OptionValues = Values;
+        OptionValues = std::move(Values);
     }
 
     void printOptions(llvm::raw_ostream *LogStream) {
@@ -251,7 +251,9 @@ class RegisterPressureTracker {
         }
     }
 
+    RegisterPressureTracker& operator=(const RegisterPressureTracker&) = delete;
     RegisterPressureTracker() = delete;
+    ~RegisterPressureTracker() = default;
 
     // TODO reuse instead of copy from IGCLivenessAnalysis.cpp
     unsigned int computeSizeInBytes(Value *V, unsigned int SIMD, WIAnalysisRunner *WI, const DataLayout &DL) {
@@ -1388,6 +1390,9 @@ class BBScheduler {
             IGC_ASSERT(this->VSA->getDestVector(BB->getTerminator()) == nullptr);
         }
 
+        Schedule& operator=(const Schedule&) = delete;
+        ~Schedule() = default;
+
         // Copy constructor for Schedule
         Schedule(const Schedule &S)
             : LogStream(S.LogStream), RT(S.RT), // RT is copyable
@@ -1498,7 +1503,7 @@ class BBScheduler {
 
         void addHandicapped(Instruction *I, int RP) { Handicapped[I] = RP; }
 
-        void setRefLiveIntervals(DenseMap<Instruction *, int32_t> Intervals) { RefLiveIntervals = Intervals; }
+        void setRefLiveIntervals(const DenseMap<Instruction *, int32_t>& Intervals) { RefLiveIntervals = Intervals; }
 
         void commit() {
             // Reorder the real LLVM instructions
@@ -1603,7 +1608,7 @@ class BBScheduler {
                         break;
                     }
                 }
-                Nodes = LowestRPNodes;
+                Nodes = std::move(LowestRPNodes);
                 return Nodes;
             };
 
@@ -1625,7 +1630,7 @@ class BBScheduler {
                         break;
                     }
                 }
-                Nodes = MaxWeightNodes;
+                Nodes = std::move(MaxWeightNodes);
                 return Nodes;
             };
 
@@ -1657,7 +1662,7 @@ class BBScheduler {
                     }
                 }
                 if (LargeBlockLoads.size() > 0) {
-                    Nodes = LargeBlockLoads;
+                    Nodes = std::move(LargeBlockLoads);
                 }
                 return Nodes;
             };
@@ -1702,7 +1707,7 @@ class BBScheduler {
                     }
                 }
                 if (LoadsThatUnlockDPASes.size() > 0) {
-                    Nodes = LoadsThatUnlockDPASes;
+                    Nodes = std::move(LoadsThatUnlockDPASes);
                 }
                 return Nodes;
             };
@@ -1715,7 +1720,7 @@ class BBScheduler {
                     }
                 }
                 if (DPASNodes.size() > 0) {
-                    Nodes = DPASNodes;
+                    Nodes = std::move(DPASNodes);
                 }
                 return Nodes;
             };
