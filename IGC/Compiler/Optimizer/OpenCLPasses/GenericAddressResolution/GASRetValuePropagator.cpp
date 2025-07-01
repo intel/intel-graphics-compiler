@@ -303,8 +303,11 @@ void GASRetValuePropagator::updateDwarfAddressSpace(Function *F) {
     IGC_ASSERT_MESSAGE(subtype, "Type field must point at DISubroutineType");
 
     DITypeRefArray functionTypes = subtype->getTypeArray();
-    IGC_ASSERT_MESSAGE(functionTypes.size() > 0, "DITypeRefArray can't be empty");
-    IGC_ASSERT_MESSAGE(functionTypes[0], "Null return value not expected");
+
+    // The Dwarf metadata may not contain the necessary information about the
+    //  returned type. That is why this check is added to prevent possible crash.
+    if (functionTypes.size() == 0 || functionTypes[0] == 0)
+        return;
 
     DIDerivedType *returnType = cast<DIDerivedType>(functionTypes[0]);
 
