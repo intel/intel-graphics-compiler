@@ -161,7 +161,8 @@ class Optimizer {
       Sched.runWithGRFSelection(KernelPressure);
       // FIXME: remove the platform check when 3D regressions are resolved
       bool PlatformCheck = true;
-      if (PlatformCheck && InitialGRFNumber != kernel.getNumRegTotal())
+      if (PlatformCheck && InitialGRFNumber != kernel.getNumRegTotal() &&
+          kernel.getNumRegTotal() > InitialGRFNumber)
         Sched.run(KernelPressure);
     } else {
       Sched.run(KernelPressure);

@@ -2243,6 +2243,11 @@ bool GRFMode::hasSmallerGRFSameThreads() const {
 unsigned GRFMode::getSpillThreshold() const {
   if (platform < Xe3)
     return 0;
+  // FIXME: currently spill thresholds for <128GRF are
+  // causing some performance regressions. We need more
+  // study to define proper thresholds for this range.
+  if (configs[currentMode].numGRF < 128)
+    return 0;
   if (configs[currentMode].numGRF == 256 &&
       options->getuInt32Option(vISA_SpillAllowed256GRF) > 0)
     return options->getuInt32Option(vISA_SpillAllowed256GRF);
