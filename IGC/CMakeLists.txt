@@ -270,16 +270,15 @@ if (FCL_ENABLED)
   unset(_allowBifLink)
 endif()
 
-# TODO: Change this flag to opt-out or remove completely once
-# opaque pointers are fully supported within the IGC stack.
-option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "[Experimental] Enable opaque pointers across the IGC stack.\
-  Forces opaque pointers' usage in IGC/LLVM passes, OCL Clang FE and built-in functions' bitcode"
-  OFF)
-# TODO: Remove the deprecated flag
-option(IGC_OPTION__LLVM_OPAQUE_POINTERS_ENABLED "[DEPRECATED] Allow usage of opaque pointers within LLVM transformations" OFF)
-if(IGC_OPTION__LLVM_OPAQUE_POINTERS_ENABLED)
-  message(WARNING "IGC_OPTION__LLVM_OPAQUE_POINTERS_ENABLED is deprecated. Please use the implied IGC_OPTION__API_ENABLE_OPAQUE_POINTERS flag directly")
-  set(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS ON)
+# TODO: Remove this flag once only LLVM 16+ is supported (no possibility to enable typed pointers).
+if(IGC_OPTION__LLVM_PREFERRED_VERSION VERSION_GREATER_EQUAL 16)
+  option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "[Experimental] Enable opaque pointers across the IGC stack.\
+    Forces opaque pointers' usage in IGC/LLVM passes, OCL Clang FE and built-in functions' bitcode.\
+    Enabled by default for LLVM 16+." ON)
+else()
+  option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "[Experimental] Enable opaque pointers across the IGC stack.\
+    Forces opaque pointers' usage in IGC/LLVM passes, OCL Clang FE and built-in functions' bitcode.\
+    Enabled by default for LLVM 16+." OFF)
 endif()
 
 option(IGC_OPTION__ENABLE_LIT_TESTS "Enable lit testing for IGC compiler. May require additional tools like llvm lit and opt" OFF)
