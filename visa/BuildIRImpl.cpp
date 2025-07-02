@@ -944,6 +944,7 @@ void IR_Builder::initScratchSurfaceOffset() {
           std::find_if(instList.begin(), instList.end(),
                         [](G4_INST *inst) { return !inst->isLabel(); });
       instList.insert(iter, andInst);
+      setSSOInst(andInst);
 
       // scratchSurfaceOffset (r0.5+0x400)>>4 is reserved for spillfill,
       // pvtmem should use r0.5>>4 shift-right by 4 is done before send-msg
@@ -963,6 +964,7 @@ void IR_Builder::initScratchSurfaceOffset() {
           std::find_if(instList.begin(), instList.end(),
                         [](G4_INST *inst) { return !inst->isLabel(); });
       instList.insert(iter, andInst);
+      setSSOInst(andInst);
     }
   }
 
