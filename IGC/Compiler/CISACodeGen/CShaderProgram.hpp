@@ -32,6 +32,7 @@ namespace IGC
         CShaderProgram& operator=(const CShaderProgram&) = delete;
         CShader* GetOrCreateShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
         CShader* GetShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
+        CShader* GetShaderIfAny(ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
         void DeleteShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
         CodeGenContext* GetContext() { return m_context; }
 

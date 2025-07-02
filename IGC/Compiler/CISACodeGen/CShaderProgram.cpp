@@ -47,6 +47,19 @@ CShader*& CShaderProgram::GetShaderPtr(SIMDMode simd, ShaderDispatchMode mode)
     return m_SIMDshaders[0];
 }
 
+CShader* CShaderProgram::GetShaderIfAny(ShaderDispatchMode mode)
+{
+    auto simdToAnalysis = { SIMDMode::SIMD32, SIMDMode::SIMD16, SIMDMode::SIMD8 };
+
+    for (auto simd : simdToAnalysis)
+    {
+        if (auto* shader = GetShader(simd, mode); shader && shader->ProgramOutput()->m_programSize > 0)
+            return shader;
+    }
+
+    return nullptr;
+}
+
 void CShaderProgram::ClearShaderPtr(SIMDMode simd)
 {
     switch (simd)

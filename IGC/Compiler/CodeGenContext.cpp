@@ -279,23 +279,8 @@ namespace IGC
         {
             auto simdToAnalysis = { SIMDMode::SIMD32, SIMDMode::SIMD16, SIMDMode::SIMD8 };
 
-            CShader* previousShader = nullptr;
-            CShader* currentShader = nullptr;
-
-            // Get shaders
-            for (auto simd : simdToAnalysis)
-            {
-                if (!previousShader && pPrevious->GetShader(simd) &&
-                    (pPrevious->GetShader(simd)->ProgramOutput()->m_programSize > 0))
-                {
-                    previousShader = pPrevious->GetShader(simd);
-                }
-                if (!currentShader && pCurrent->GetShader(simd) &&
-                    (pCurrent->GetShader(simd)->ProgramOutput()->m_programSize > 0))
-                {
-                    currentShader = pCurrent->GetShader(simd);
-                }
-            }
+            CShader* previousShader = pPrevious->GetShaderIfAny();
+            CShader* currentShader = pCurrent->GetShaderIfAny();
 
             IGC_ASSERT(currentShader);
             IGC_ASSERT(previousShader);
