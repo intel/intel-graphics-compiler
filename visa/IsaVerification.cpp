@@ -1670,7 +1670,8 @@ void vISAVerifier::verifyInstructionArith(const CISA_INST *inst) {
       break;
     case ISA_DIV:
       REPORT_INSTRUCTION(options,
-                         dstType == ISA_TYPE_F || dstType == ISA_TYPE_HF,
+                         dstType == ISA_TYPE_F || dstType == ISA_TYPE_HF ||
+                             dstType == ISA_TYPE_DF,
                          "%s does not support saturation on integer types.",
                          ISA_Inst_Table[opcode].str);
     default:
