@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -36,21 +36,21 @@ define spir_kernel void @test_gep(i32 addrspace(1)* %dst, i32 addrspace(1)* %src
 case1:
   %simdLaneId16 = call i16 @llvm.genx.GenISA.simdLaneId()
   %simdLaneId = zext i16 %simdLaneId16 to i32
-  %idbase1 = add nsw nuw i32 %Offset32, %simdLaneId
+  %idbase1 = add nsw i32 %Offset32, %simdLaneId
   %id1.1 = zext i32 %idbase1 to i64
   %addr1.1 = getelementptr inbounds i32, i32 addrspace(1)* %src, i64 %id1.1
   %res1.0 = load i32, i32 addrspace(1)* %addr1.1, align 4
-  %add11.1 = add nsw nuw i32 %idbase1, 4
+  %add11.1 = add nsw i32 %idbase1, 4
   %id1.2 = zext i32 %add11.1 to i64
   %addr1.2 = getelementptr inbounds i32, i32 addrspace(1)* %src, i64 %id1.2
   %res1.1 = load i32, i32 addrspace(1)* %addr1.2, align 4
   %sum1.0 = add nsw i32 %res1.0, %res1.1
-  %add11.2 = add nsw nuw i32 %idbase1, 8
+  %add11.2 = add nsw i32 %idbase1, 8
   %id1.3 = zext i32 %add11.2 to i64
   %addr1.3 = getelementptr inbounds i32, i32 addrspace(1)* %src, i64 %id1.3
   %res1.2 = load i32, i32 addrspace(1)* %addr1.3, align 4
   %sum1.1 = add nsw i32 %sum1.0, %res1.2
-  %add11.3 = add nsw nuw i32 %idbase1, 12
+  %add11.3 = add nsw i32 %idbase1, 12
   %id1.4 = zext i32 %add11.3 to i64
   %addr1.4 = getelementptr inbounds i32, i32 addrspace(1)* %src, i64 %id1.4
   %res1.3 = load i32, i32 addrspace(1)* %addr1.4, align 4
