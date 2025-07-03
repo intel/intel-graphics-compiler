@@ -123,9 +123,9 @@ static bool tryParseInt(const char *which, std::string inp, uint64_t &val) {
     }
     val = std::stoull(inp, nullptr, base);
     return true;
-  } catch (std::invalid_argument i) {
+  } catch (const std::invalid_argument &) {
     return false;
-  } catch (std::out_of_range i) {
+  } catch (const std::out_of_range &) {
     fatalExitWithMessage("-Xdsd: ", which, ": ", inp, ": value out of range");
   }
 }

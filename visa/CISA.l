@@ -50,7 +50,6 @@ static MEDIA_LD_mod            mediaMode(const char* str);
 static OutputFormatControl     avs_control(const char* str);
 static AVSExecMode             avsExecMode(const char* str);
 static unsigned char           FENCEOptions(const char* str);
-static COMMON_ISA_VME_OP_MODE  VMEType(const char *str);
 static CHANNEL_OUTPUT_FORMAT   Get_Channel_Output(const char* str);
 static void                    appendStringLiteralChar(char c, char *buf, size_t *len);
 
