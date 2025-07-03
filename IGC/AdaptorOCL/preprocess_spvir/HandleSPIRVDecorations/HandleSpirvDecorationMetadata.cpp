@@ -62,27 +62,28 @@ void HandleSpirvDecorationMetadata::handleInstructionsDecorations()
     visit(m_Module);
 }
 
-void HandleSpirvDecorationMetadata::handleGlobalVariablesDecorations()
-{
-    for (auto& globalVariable : m_Module->globals())
-    {
-        auto spirvDecorations = parseSPIRVDecorationsFromMD(&globalVariable);
-        for (auto& [DecorationId, MDNodes] : spirvDecorations)
-        {
-            switch (DecorationId)
-            {
-                // IDecHostAccessINTEL
-                case 6147:
-                {
-                    IGC_ASSERT_MESSAGE(MDNodes.size() == 1,
-                        "Only one HostAccessINTEL decoration can be applied to a single global variable!");
-                    handleHostAccessIntel(globalVariable, *MDNodes.begin());
-                    break;
-                }
-                default: continue;
-            }
-        }
+void HandleSpirvDecorationMetadata::handleGlobalVariablesDecorations() {
+  for (auto &globalVariable : m_Module->globals()) {
+    auto spirvDecorations = parseSPIRVDecorationsFromMD(&globalVariable);
+    for (auto &[DecorationId, MDNodes] : spirvDecorations) {
+      switch (DecorationId) {
+      // IDecHostAccessINTEL
+      // We use two IDs (6147 and 6188) to preserve backward compatibility with
+      // older versions
+      case 6147: // Old ID
+      case 6188: // New ID
+      {
+        IGC_ASSERT_MESSAGE(MDNodes.size() == 1,
+                           "Only one HostAccessINTEL decoration can be applied "
+                           "to a single global variable!");
+        handleHostAccessIntel(globalVariable, *MDNodes.begin());
+        break;
+      }
+      default:
+        continue;
+      }
     }
+  }
 }
 
 void HandleSpirvDecorationMetadata::handleHostAccessIntel(GlobalVariable& globalVariable, MDNode* node)
