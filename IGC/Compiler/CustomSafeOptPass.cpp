@@ -4009,19 +4009,19 @@ void GenSpecificPattern::visitTruncInst(llvm::TruncInst& I)
 
 void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
 {
-    // from
-    // %neg = fneg double %1
-    // to
-    // %neg = fsub double -0.000000e+00, %1
-    // vISA have parser which looks for such operation pattern "0 - x"
-    // and adds source modifier for this region/value.
+  // from
+  // %neg = fneg double %1
+  // to
+  // %neg = fsub double -0.000000e+00, %1
+  // vISA have parser which looks for such operation pattern "0 - x"
+  // and adds source modifier for this region/value.
 
-    IRBuilder<> builder(&I);
-    Value* fsub = nullptr;
+  IRBuilder<> builder(&I);
+  Value *fsub = nullptr;
 
-    if (IGCLLVM::isBFloatTy(I.getType())) {
+  if (IGCLLVM::isBFloatTy(I.getType())) {
         return;
-    }
+  }
 
     if (!I.getType()->isVectorTy())
     {
