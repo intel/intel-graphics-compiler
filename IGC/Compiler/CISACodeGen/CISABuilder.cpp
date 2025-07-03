@@ -9546,12 +9546,15 @@ namespace IGC
         VISA_RawOpnd* pSrc = nullptr;
         VISA_RawOpnd* pDst = nullptr;
 
+        VISA_EMask_Ctrl mask = {};
         if (subOp == LSC_STORE_QUAD || subOp == LSC_STORE_QUAD_MSRT)
         {
+            mask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
             pSrc = GetRawSource(pSrcDst, 0);
         }
         else
         {
+            mask = GetAluEMask(pSrcDst);
             pDst = GetRawSource(pSrcDst, 0);
         }
         // TODO unify the way we calculate offset for raw sources, maybe we shouldn't use offset at all
@@ -9565,7 +9568,6 @@ namespace IGC
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         IGC_ASSERT(m_encoderState.m_dstOperand.subVar == 0);
 
-        VISA_EMask_Ctrl mask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
         VISA_VectorOpnd* globalOffsetOpnd = GetVISALSCSurfaceOpnd(resource->m_surfaceType, resource->m_resource);
         LSC_DATA_SHAPE dataShape{};
         dataShape.size = LSC_GetElementSize(elemSize);
