@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -380,9 +380,9 @@ uint __get_pipe_max_packets_wo(write_only pipe int pipe_, uint bytes, uint align
 // Internal Debug Built-Ins (TODO: implement for IGC?)
 
 __attribute__((always_inline))
-ulong OVERLOADABLE intel_get_cycle_counter( void )
+ulong OVERLOADABLE intel_get_cycle_counter(void)
 {
-    return __builtin_spirv_OpReadClockKHR_i64_i32(0);
+    return SPIRV_BUILTIN(ReadClockKHR, _i64_i32, _Rulong)(0);
 }
 
 __attribute__((always_inline))

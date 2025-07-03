@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -5545,8 +5545,8 @@ void SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(prefetch, _p1v8f64_i64, )( global doub
 void SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(prefetch, _p1v16f64_i64, )( global double16* p, long num_elements);
 #endif // defined(cl_khr_fp64)
 
-uint  __builtin_spirv_OpReadClockKHR_i32_i32(uint scope);
-ulong __builtin_spirv_OpReadClockKHR_i64_i32(uint scope);
+ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReadClockKHR, _i64_i32, _Rulong)(int scope);
+uint2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReadClockKHR, _v2i32_i32, _Ruint2)(int scope);
 
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )(void);
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(GlobalHWThreadIDINTEL, , )(void);
