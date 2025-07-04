@@ -1053,6 +1053,7 @@ bool MemOpt::mergeLoad(ALoadInst& LeadingLoad,
             LeadGEP->getPointerOperand() == NextGEP->getPointerOperand() &&
             LeadGEP->getNumIndices() == NextGEP->getNumIndices() &&
             LeadLd.getType() == NextLd.getType() &&
+            LeadGEP->getResultElementType() == NextGEP->getResultElementType() &&
             LeadGEP->getNumIndices() > 0) {
             const int N = LeadGEP->getNumIndices();
             for (int i = 1; i < N; ++i) {
@@ -1096,10 +1097,10 @@ bool MemOpt::mergeLoad(ALoadInst& LeadingLoad,
                 auto Diff = dyn_cast<SCEVConstant>(SE->getMinusSCEV(NextIdx, LeadLastIdx));
                 if (Diff) {
                     // This returns 16 for <3 x i32>, not 12!
-                    uint32_t LoadedBytes = (uint32_t)DL->getTypeStoreSize(NextLd.getType());
+                    uint32_t EltBytes = (uint32_t)DL->getTypeStoreSize(NextGEP->getResultElementType());
 
                     int64_t eltDiff = Diff->getValue()->getSExtValue();
-                    return (int64_t)(eltDiff * LoadedBytes);
+                    return (int64_t)(eltDiff * EltBytes);
                 }
             }
         }
