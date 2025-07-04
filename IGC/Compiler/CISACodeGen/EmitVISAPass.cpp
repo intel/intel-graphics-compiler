@@ -2801,9 +2801,14 @@ void EmitPass::EmitIntegerTruncWithSat(bool isSignedDst, bool isSignedSrc, const
     m_encoder->Push();
 }
 
-// Emits 4 conversion instructions that downconvert 4 values to a packed
-// <4 x i8> value.
-void EmitPass::EmitPack4i8(const std::array<SSource, 4>& sources, const std::array<bool, 4> isSat, const DstModifier& dstMod)
+// Emits 4 `mov' or `sel` instructions that downconvert and write its results to
+// a packed <4 x i8> value.
+void EmitPass::EmitPack4i8(
+    const std::array<EOPCODE, 4>& opcodes,
+    const std::array<SSource, 4>& sources0,
+    const std::array<SSource, 4>& sources1,
+    const std::array<bool, 4> isSat,
+    const DstModifier& dstMod)
 {
     CVariable* dst = m_currShader->GetNewAlias(m_destination, ISA_TYPE_B, 0, 0);
     for (uint32_t i = 0; i < 4; ++i)
@@ -2811,11 +2816,26 @@ void EmitPass::EmitPack4i8(const std::array<SSource, 4>& sources, const std::arr
         DstModifier mod = dstMod;
         mod.sat = isSat[i];
         m_encoder->SetDstModifier(mod);
-        CVariable* src = GetSrcVariable(sources[i]);
-
         m_encoder->SetDstRegion(4);
         m_encoder->SetDstSubReg(i);
-        m_encoder->Cast(dst, src);
+
+        CVariable* src0 = GetSrcVariable(sources0[i]);
+        switch (opcodes[i])
+        {
+        case llvm_bitcast:
+            m_encoder->Cast(dst, src0);
+            break;
+        case llvm_min:
+        case llvm_max:
+        {
+            CVariable* src1 = GetSrcVariable(sources1[i]);
+            EmitSimpleAlu(opcodes[i], dst, src0, src1);
+            break;
+        }
+        default:
+            IGC_ASSERT_MESSAGE(0, "Unsupported opcode for EmitPack4i8");
+            break;
+        }
         m_encoder->Push();
     }
 }

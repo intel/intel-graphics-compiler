@@ -1293,6 +1293,7 @@ namespace IGC
             break;
         case Instruction::Or:
             match =
+                MatchPack4i8(I) ||
                 MatchBfn(I) ||
                 MatchBoolOp(I) ||
                 MatchLogicAlu(I);
@@ -3263,7 +3264,10 @@ namespace IGC
         return false;
     }
 
-    // Matches the following sequence:
+    // Matches the following patterns
+    //
+    // Pattern 1, pack 4 i8 into i32
+    // Match the following sequence:
     //  %x8 = trunc i32 %x to i8
     //  %y8 = trunc i32 %y to i8
     //  %z8 = trunc i32 %z to i8
@@ -3273,97 +3277,276 @@ namespace IGC
     //  %vec2 = insertelement <4 x i8> %vec1, i8 %z8, i64 2
     //  %vec3 = insertelement <4 x i8> %vec2, i8 %w8, i64 3
     //  %dst = bitcast <4 x i8> %vec3 to i32
-    bool CodeGenPatternMatch::MatchPack4i8(BitCastInst& I)
+    // And generate:
+    //  mov (M1_NM, 1) dst_0(0,0)<4> x(0,0)<0;1,0>
+    //  mov (M1_NM, 1) dst_0(0,1)<4> y(0,0)<0;1,0>
+    //  mov (M1_NM, 1) dst_0(0,2)<4> z(0,0)<0;1,0>
+    //  mov (M1_NM, 1) dst_0(0,3)<4> w(0,0)<0;1,0>
+    //
+    // Pattern 2, pack 4 i8 into i32 with saturation
+    // Match the following sequence:
+    //  %x1 = max i32 %x0, 0
+    //  %x2 = min i32 %x1, 127
+    //  %y1 = max i32 %y0, 0
+    //  %y2 = min i32 %y1, 127
+    //  %z1 = max i32 %z0, 0
+    //  %z2 = min i32 %z1, 127
+    //  %w1 = max i32 %w0, 0
+    //  %w2 = min i32 %w1, 127
+    //  %x8 = trunc i32 %x2 to i8
+    //  %y8 = trunc i32 %y2 to i8
+    //  %z8 = trunc i32 %z2 to i8
+    //  %w8 = trunc i32 %w2 to i8
+    //  %vec0 = insertelement <4 x i8> undef, i8 %x8, i64 0
+    //  %vec1 = insertelement <4 x i8> %vec0, i8 %y8, i64 1
+    //  %vec2 = insertelement <4 x i8> %vec1, i8 %z8, i64 2
+    //  %vec3 = insertelement <4 x i8> %vec2, i8 %w8, i64 3
+    //  %dst = bitcast <4 x i8> %vec3 to i32
+    // And generate:
+    //  max.sat (M1_NM, 1) xyzw_0(0,0)<4> x(0,0)<0;1,0> 0x0:d
+    //  max.sat (M1_NM, 1) xyzw_0(0,1)<4> y(0,0)<0;1,0> 0x0:d
+    //  max.sat (M1_NM, 1) xyzw_0(0,2)<4> z(0,0)<0;1,0> 0x0:d
+    //  max.sat (M1_NM, 1) xyzw_0(0,3)<4> w(0,0)<0;1,0> 0x0:d
+    //
+    // Pattern 3, pack 4 i8 into i32 with saturation
+    // Match the following sequence:
+    //  %x1 = max i32 %x0, 0
+    //  %x2 = min i32 %x1, 127
+    //  %y1 = max i32 %y0, 0
+    //  %y2 = min i32 %y1, 127
+    //  %z1 = max i32 %z0, 0
+    //  %z2 = min i32 %z1, 127
+    //  %w1 = max i32 %w0, 0
+    //  %w2 = min i32 %w1, 127
+    //  %y8 = shl nuw nsw i32 %y2, 8
+    //  %xy = or i32 %x2, %y8
+    //  %z8 = shl nuw nsw i32 %z2, 16
+    //  %xyz = or i32 %z8, %xy
+    //  %w8 = shl nuw nsw i32 %w2, 24
+    //  %dst = or i32 %xyz, %w8
+    // And generate:
+    //  max.sat (M1_NM, 1) xyzw_0(0,0)<4> x(0,0)<0;1,0> 0x0:d
+    //  max.sat (M1_NM, 1) xyzw_0(0,1)<4> y(0,0)<0;1,0> 0x0:d
+    //  max.sat (M1_NM, 1) xyzw_0(0,2)<4> z(0,0)<0;1,0> 0x0:d
+    //  max.sat (M1_NM, 1) xyzw_0(0,3)<4> w(0,0)<0;1,0> 0x0:d
+    //
+    bool CodeGenPatternMatch::MatchPack4i8(Instruction& I)
     {
+        using namespace llvm::PatternMatch; // Scoped using declaration.
+
         struct PackPattern : public Pattern
         {
-            std::array<SSource, 4> sources;
+            std::array<EOPCODE, 4> opcodes;
+            std::array<SSource, 4> sources0;
+            std::array<SSource, 4> sources1;
             std::array<bool, 4> isSat;
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                pass->EmitPack4i8(sources, isSat, modifier);
+                pass->EmitPack4i8(opcodes, sources0, sources1, isSat, modifier);
             }
         };
 
-        if (!I.getType()->isVectorTy() &&
+        // Lambda matches a `min` or `max` operation with a specific immediate
+        // constant value (equal to `imm`) and returns the other source value
+        // in the `otherSrc`.
+        auto MatchMinMaxWithImm = [this](Value* v, uint64_t imm, bool matchMin, Value*& otherSrc)->bool
+        {
+            bool isUnsigned;
+            bool isMin;
+            Value* src[2];
+            if (isMinOrMax(v, src[0], src[1], isMin, isUnsigned) &&
+                isMin == matchMin &&
+                (isa<ConstantInt>(src[0]) || isa<ConstantInt>(src[1])))
+            {
+                ConstantInt* c = isa<ConstantInt>(src[0]) ? cast<ConstantInt>(src[0]) : cast<ConstantInt>(src[1]);
+                if (c->getZExtValue() == imm)
+                {
+                    otherSrc = isa<ConstantInt>(src[0]) ? src[1] : src[0];
+                    return true;
+                }
+            }
+            return false;
+        };
+        // Lambda matches clamp(x, 0, 127) pattern.
+        // If the pattern is found `x` is returned in the `clampedVal` reference.
+        auto MatchClamp0_127 = [&MatchMinMaxWithImm](Value* v, Value*& clampedVal)->bool
+        {
+            bool matchMin = true;
+            bool matchMax = false;
+            Value* src[2];
+            // Match either of:
+            // v = min(max(x, 0), 127)
+            // v = max(min(x, 127), 0)
+            if ((MatchMinMaxWithImm(v, 127, matchMin, src[0]) &&
+                 MatchMinMaxWithImm(src[0], 0, matchMax, src[1])) ||
+                (MatchMinMaxWithImm(v, 0, matchMax, src[0]) &&
+                 MatchMinMaxWithImm(src[0], 127, matchMin, src[1])))
+            {
+                clampedVal = src[1];
+                return true;
+            }
+            return false;
+        };
+
+        EOPCODE opcodes[4] = {};
+        Value* sources0[4] = {};
+        Value* sources1[4] = {};
+        bool isSat[4] = {};
+
+        uint32_t elemsFound = 0;
+
+        // Match patterns 1 and 2
+        if (isa<BitCastInst>(I) &&
+            !I.getType()->isVectorTy() &&
             I.getType()->getPrimitiveSizeInBits() == 32 &&
             I.getOperand(0)->getType()->isIntOrIntVectorTy(8) &&
             isa<InsertElementInst>(I.getOperand(0)))
         {
-            Value* sources[4] = {};
-            bool isSat[4] = {};
             auto ie = cast<InsertElementInst>(I.getOperand(0));
-            uint32_t elemsFound = 0;
+            // Match sequences of InsertElementInsts, e.g.:
+            //  %vec0 = insertelement <4 x i8> undef, i8 %x8, i64 0
+            //  %vec1 = insertelement <4 x i8> %vec0, i8 %y8, i64 1
+            //  %vec2 = insertelement <4 x i8> %vec1, i8 %z8, i64 2
+            //  %vec3 = insertelement <4 x i8> %vec2, i8 %w8, i64 3
             while (ie)
             {
                 auto idxVal = dyn_cast<ConstantInt>(ie->getOperand(2));
                 auto idx = idxVal ? idxVal->getZExtValue() : 0;
-                if (idxVal && sources[idx] == nullptr)
+                if (idxVal && sources0[idx] == nullptr)
                 {
-                    sources[idx] = ie->getOperand(1);
+                    sources0[idx] = ie->getOperand(1);
                     ++elemsFound;
+                }
+                else
+                {
+                    // Non-constant index is not supported.
+                    break;
                 }
                 ie = dyn_cast<InsertElementInst>(ie->getOperand(0));
             }
             if (elemsFound == 4)
             {
+                // Match sequences integer trunc, e.g.:
+                //  %x8 = trunc i32 %x2 to i8
                 elemsFound = 0;
                 for (uint32_t i = 0; i < 4; ++i)
                 {
-                    auto trunc = dyn_cast<TruncInst>(sources[i]);
+                    auto trunc = dyn_cast<TruncInst>(sources0[i]);
                     if (trunc)
                     {
-                        sources[i] = trunc->getOperand(0);
+                        opcodes[i] = llvm_bitcast;
+                        sources0[i] = trunc->getOperand(0);
                         ++elemsFound;
                     }
                 }
             }
             if (elemsFound == 4)
             {
-                // Check if the sources can be promoted to the "sat" qualifier
+                // Match pattern 2
+                // Match clamping of values to 0..127 range, e.g.:
+                //  %x1 = max i32 %x0, 0
+                //  %x2 = min i32 %x1, 127
                 for (uint32_t i = 0; i < 4; ++i)
                 {
-                    // Lambda checks if one of the source values is a constant
-                    // value equal to `imm` and returns the other source value.
-                    auto GetOtherSource = [&](const auto& src, uint32_t imm)->Value*
+                    Value* srcToSat;
+                    if (MatchClamp0_127(sources0[i], srcToSat))
                     {
-                        if (isa<ConstantInt>(src[0]) || isa<ConstantInt>(src[1]))
-                        {
-                            ConstantInt* c = isa<ConstantInt>(src[0]) ? cast<ConstantInt>(src[0]) : cast<ConstantInt>(src[1]);
-                            if (c->getZExtValue() == imm)
-                            {
-                                return isa<ConstantInt>(src[0]) ? src[1] : src[0];
-                            }
-                        }
-                        return nullptr;
-                    };
-                    Value* minSources[2];
-                    if (isMin(sources[i], minSources[0], minSources[1]))
-                    {
-                        if (Value* minVal = GetOtherSource(minSources, 127))
-                        {
-                            Value* maxSources[2];
-                            if (isMax(minVal, maxSources[0], maxSources[1]) &&
-                                GetOtherSource(maxSources, 0))
-                            {
-                                sources[i] = minVal;
-                                isSat[i] = true;
-                            }
-                        }
+                        opcodes[i] = llvm_max;
+                        sources0[i] = srcToSat;
+                        sources1[i] = ConstantInt::get(srcToSat->getType(), 0);
+                        isSat[i] = true;
                     }
                 }
             }
-            if (elemsFound == 4)
+        }
+        // Match pattern 3
+        else if (I.getType()->getPrimitiveSizeInBits() == 32 &&
+            isa<BinaryOperator>(&I) &&
+            cast<BinaryOperator>(&I)->getOpcode() == Instruction::Or)
+        {
+            auto orInst = cast<BinaryOperator>(&I);
+            while (orInst)
             {
-                PackPattern* pattern = new (m_allocator) PackPattern();
-                for (uint32_t i = 0; i < 4; ++i)
+                // Match sequences of or + shl instructions, e.g.
+                //  %y8 = shl nuw nsw i32 %y2, 8
+                //  %xy = or i32 %x2, %y8
+                ConstantInt* shlImm = nullptr;
+                Value* shlSrc = nullptr;
+                Value* orSrc = nullptr;
+                if (match(orInst, m_Or(m_Value(orSrc), m_Shl(m_Value(shlSrc), m_ConstantInt(shlImm)))) ||
+                    match(orInst, m_Or(m_Shl(m_Value(shlSrc), m_ConstantInt(shlImm)), m_Value(orSrc))))
                 {
-                    pattern->sources[i] = GetSource(sources[i], false, false, IsSourceOfSample(&I));
-                    pattern->isSat[i] = isSat[i];
+                    // Lambda sets source values of a `sel` instruction.
+                    auto SetSource = [&](uint32_t i, Value* src0)
+                    {
+                        IGC_ASSERT(sources0[i] == nullptr);
+                        IGC_ASSERT(sources1[i] == nullptr);
+                        opcodes[i] = llvm_max;
+                        sources0[i] = src0;
+                        sources1[i] = ConstantInt::get(src0->getType(), 0);
+                        isSat[i] = true;
+                    };
+                    // Match clamping of the `shl` source to 0..127 range, e.g.:
+                    //  %x1 = max i32 %x0, 0
+                    //  %x2 = min i32 %x1, 127
+                    //  %x8 = shl nuw nsw i32 %x2, 8
+                    Value* srcToSat;
+                    uint32_t i = int_cast<uint32_t>(shlImm->getZExtValue());
+                    if (MatchClamp0_127(shlSrc, srcToSat) &&
+                        ((i % 8) == 0 && (i / 8) < 4))
+                    {
+                        SetSource(i / 8, srcToSat);
+                        ++elemsFound;
+                    }
+                    // Match clamping of the `or` source to 0..127 range, e.g.:
+                    //  %x1 = max i32 %x0, 0
+                    //  %x2 = min i32 %x1, 127
+                    //  %xy = or i32 %x2, %y8
+                    if (MatchClamp0_127(orSrc, srcToSat))
+                    {
+                        SetSource(0, srcToSat);
+                        ++elemsFound;
+                    }
                 }
-                AddPattern(pattern);
-                return true;
+                if (elemsFound != 4 &&
+                    orSrc &&
+                    isa<BinaryOperator>(orSrc) &&
+                    cast<BinaryOperator>(orSrc)->getOpcode() == Instruction::Or)
+                {
+                    // Continue checking other remaining channels
+                    orInst = cast<BinaryOperator>(orSrc);
+                }
+                else
+                {
+                    // All elements found, or an unsupported pattern.
+                    orInst = nullptr;
+                }
             }
+        }
+        // TODO: consider adding support for patterns, where not all 4 i8 values
+        // are packed, for example:
+        //   %x8 = trunc i32 %x to i8
+        //   %y8 = trunc i32 %y to i8
+        //   %z8 = trunc i32 %z to i8
+        //   %vec0 = insertelement <4 x i8> zeroinitializer, i8 %x8, i64 0
+        //   %vec1 = insertelement <4 x i8> %vec0, i8 %y8, i64 1
+        //   %vec2 = insertelement <4 x i8> %vec1, i8 %z8, i64 2
+        //   %dst = bitcast <4 x i8> %vec3 to i32
+        if (elemsFound == 4)
+        {
+            PackPattern* pattern = new (m_allocator) PackPattern();
+            for (uint32_t i = 0; i < 4; ++i)
+            {
+                pattern->opcodes[i] = opcodes[i];
+                pattern->sources0[i] = GetSource(sources0[i], false, false, IsSourceOfSample(&I));
+                if (sources1[i] != nullptr)
+                {
+                    pattern->sources1[i] = GetSource(sources1[i], false, false, IsSourceOfSample(&I));
+                }
+                pattern->isSat[i] = isSat[i];
+            }
+            AddPattern(pattern);
+            return true;
         }
         return false;
     }
