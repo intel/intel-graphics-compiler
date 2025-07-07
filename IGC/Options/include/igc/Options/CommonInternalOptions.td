@@ -34,5 +34,8 @@ defm buffer_bounds_checking : CommonFlag<"buffer-bounds-checking">,
 defm minimum_valid_address_checking : CommonSeparate<"minimum-valid-address-checking">,
   HelpText<"Set minimal valid address">;
 
+// -cl-intel-disable-sendwarwa, -ze-opt-disable-sendwarwa
+defm disable_sendwarwa : CommonFlag<"disable-sendwarwa">,
+  HelpText<"Disable SendWAR WA PVC platform only">;
 }
 // }} Common internal options

@@ -5115,6 +5115,12 @@ namespace IGC
             SaveOption(vISA_PVCSendWARWA, true);
         }
 
+        if (context->type == ShaderType::OPENCL_SHADER &&
+            static_cast<OpenCLProgramContext*>(context)->m_InternalOptions.DisableSendWARWA)
+        {
+            SaveOption(vISA_PVCSendWARWA, false);
+        }
+
         if (IGC_IS_FLAG_ENABLED(SWSBReplaceARWithAW))
         {
             SaveOption(vISA_SWSBReplaceARWithAW, true);

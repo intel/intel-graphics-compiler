@@ -122,6 +122,10 @@ public:
 
     uint64_t MinimumValidAddress              = 0;
 
+    // This option disables SendWAR WA
+    // This applies to PVC platform only
+    bool DisableSendWARWA = false;
+
 private:
      void parseOptions(const char* internalOpts);
      };

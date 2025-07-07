@@ -5825,8 +5825,9 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   }
 
   // enable Send WAR WA for PVC
-  if ((ST.getTargetId() == GenXSubtarget::XeHPC) ||
-      (ST.getTargetId() == GenXSubtarget::XeHPCVG)) {
+  if (((ST.getTargetId() == GenXSubtarget::XeHPC) ||
+      (ST.getTargetId() == GenXSubtarget::XeHPCVG)) &&
+      !BC.isSendWARWADisabled()) {
     addArgument("-PVCSendWARWA");
   }
 
