@@ -138,6 +138,7 @@ namespace IGC
         bool visitGetElementPtrInst(llvm::GetElementPtrInst&);
         bool visitIntrinsicInst(llvm::IntrinsicInst&);
         bool visitLoadInst(llvm::LoadInst&);
+        bool MismatchDetected(llvm::Instruction &LI);
         bool visitStoreInst(llvm::StoreInst&);
     };
 

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "PointersSettings.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/RegisterPressureEstimate.hpp"
@@ -21,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include <llvmWrapper/ADT/Optional.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -622,11 +624,74 @@ bool SOALayoutChecker::visitIntrinsicInst(IntrinsicInst& II)
            IID == llvm::Intrinsic::lifetime_end;
 }
 
+// Detection of mismatch between type sizes of
+// alloca -> load / store
+// or
+// alloca -> gep -> load / store
+bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
+
+  if (!isa<LoadInst>(I) && !isa<StoreInst>(I))
+    return false;
+
+  // Only detect mismatch if are have opaque pointers (LLVM>=16)
+  if (!IGC::AreOpaquePointersEnabled())
+    return false;
+
+  if (!pInfo->baseType)
+    return false;
+
+  Type *allocaTy = allocaRef.getAllocatedType();
+  bool allocaIsVecOrArr = allocaTy->isVectorTy() || allocaTy->isArrayTy();
+
+  if (!allocaIsVecOrArr)
+    return false;
+
+  bool useOldAlgorithm = !useNewAlgo(pInfo->baseType);
+
+  if (useOldAlgorithm) {
+    auto DL = I.getParent()->getParent()->getParent()->getDataLayout();
+
+    Type *pUserTy = I.getType();
+
+    if (auto *storeInst = dyn_cast<StoreInst>(&I))
+      pUserTy = storeInst->getValueOperand()->getType();
+
+    if (auto *pgep = dyn_cast<GetElementPtrInst>(parentLevelInst)) {
+      allocaTy = pgep->getResultElementType();
+    } else {
+      if (auto *arrTy = dyn_cast<ArrayType>(allocaTy)) {
+        allocaTy = arrTy->getElementType();
+      } else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(allocaTy)) {
+        allocaTy = vec->getElementType();
+      }
+
+      if (auto *arrTy = dyn_cast<ArrayType>(pUserTy)) {
+        pUserTy = arrTy->getElementType();
+      } else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(pUserTy)) {
+        pUserTy = vec->getElementType();
+      }
+    }
+
+    auto allocaSize = DL.getTypeAllocSize(allocaTy);
+    auto vecTySize = DL.getTypeAllocSize(pUserTy);
+
+    if (vecTySize != allocaSize) {
+      pInfo->canUseSOALayout = false;
+      return true;
+    }
+  }
+  return false;
+}
+
 bool SOALayoutChecker::visitLoadInst(LoadInst& LI)
 {
     bool isVectorLoad = LI.getType()->isVectorTy();
     isVectorSOA &= isVectorLoad;
     pInfo->allUsesAreVector &= isVectorLoad;
+
+    if (MismatchDetected(LI))
+      return false;
+
     return LI.isSimple();
 }
 
@@ -643,6 +708,10 @@ bool SOALayoutChecker::visitStoreInst(StoreInst& SI)
         // GEP instruction is the stored value of the StoreInst (unsupported case)
         return false;
     }
+
+    if (MismatchDetected(SI))
+      return false;
+
     return true;
 }
 

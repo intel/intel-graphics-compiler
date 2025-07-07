@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "Probe/Assertion.h"
 #include <llvm/IR/LLVMRemarkStreamer.h>
+#include <PointersSettings.h>
 
 namespace IGC
 {
@@ -360,9 +361,6 @@ namespace IGC
         return result != std::end(cache) ? result : nullptr;
     }
 
-    static cl::opt<bool>
-      ForceTypedPointers("typed-pointers", cl::desc("Use typed pointers (if both typed and opaque are used, then opaque will be used)"), cl::init(false));
-
     LLVMContextWrapper::LLVMContextWrapper(bool createResourceDimTypes)
         : m_UserAddrSpaceMD(this)
     {
@@ -381,12 +379,7 @@ namespace IGC
         // with a precedence over the environment flag.
         if (IGC::canOverwriteLLVMCtxPtrMode(basePtr))
         {
-          bool enableOpaquePointers = __IGC_OPAQUE_POINTERS_API_ENABLED || IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend);
-
-          if (ForceTypedPointers.getValue())
-          {
-            enableOpaquePointers = false;
-          }
+          bool enableOpaquePointers = AreOpaquePointersEnabled();
 
           IGCLLVM::setOpaquePointers(basePtr, enableOpaquePointers);
         }
