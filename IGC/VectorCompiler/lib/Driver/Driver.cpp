@@ -300,6 +300,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.EnableHashMovsAtPrologue = Opts.EnableHashMovsAtPrologue;
   BackendOpts.AsmHash = Opts.AsmHash;
 
+  BackendOpts.DisableSendWARWA = Opts.DisableSendWARWA;
   BackendOpts.EnableCostModel = Opts.CollectCostInfo;
 
   BackendOpts.DepressurizerGRFThreshold = Opts.DepressurizerGRFThreshold;
@@ -920,6 +921,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.IgnoreLoopUnrollThresholdOnPragma = true;
   if (InternalOptions.hasArg(OPT_emit_visa_only))
     Opts.EmitVisaOnly = true;
+  if (InternalOptions.hasArg(OPT_disable_sendwarwa_common))
+    Opts.DisableSendWARWA = true;
 
   if (opt::Arg *A = InternalOptions.getLastArg(OPT_vc_interop_subgroup_size)) {
     StringRef Val = A->getValue();

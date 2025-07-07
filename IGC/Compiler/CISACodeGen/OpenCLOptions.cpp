@@ -423,6 +423,13 @@ void InternalOptions::parseOptions(const char* internalOpts)
             MinimumValidAddress = val;
         }
     }
+
+    if (internalOptions.hasArg(OPT_disable_sendwarwa_common))
+    {
+        // This option disables SendWAR WA
+        // This applies to PVC platform only
+        DisableSendWARWA = true;
+    }
 }
 
 void Options::parseOptions(const char* opts)

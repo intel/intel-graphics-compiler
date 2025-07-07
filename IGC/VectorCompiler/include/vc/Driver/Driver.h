@@ -142,6 +142,8 @@ struct CompileOptions {
   bool HasGPUFenceScopeOnSingleTileGPUs = false;
   bool HasHalfSIMDLSC = false;
   bool EmitVisaOnly = false;
+  // -ze-disable-sendwarwa
+  bool DisableSendWARWA = false;
 
   // from IGC_XXX env
   FunctionControl FCtrl = FunctionControl::Default;

@@ -117,6 +117,9 @@ struct GenXBackendOptions {
   // Non-owning pointer to workaround table.
   const WA_TABLE *WATable = nullptr;
 
+  // This option disables SendWAR WA PVC only
+  bool DisableSendWARWA = false;
+
   // Number of general-purpose registers available for a kernel thread, 0 is to
   // use default value.
   unsigned GRFSize = 0;
@@ -395,6 +398,8 @@ public:
   }
 
   uint64_t getAsmHash() const { return Options.AsmHash; }
+
+  bool isSendWARWADisabled() const { return Options.DisableSendWARWA; }
 
   bool isCostModelEnabled() const { return Options.EnableCostModel; }
 
