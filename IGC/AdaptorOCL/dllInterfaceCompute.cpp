@@ -1655,18 +1655,6 @@ bool TranslateBuildSPMD(
     pOutputArgs->OutputSize = binarySize;
     pOutputArgs->pOutput = binaryOutput;
 
-    // Prepare and set program debug data
-    size_t debugDataSize = 0;
-    oclContext.m_programOutput.GetProgramDebugDataSize(debugDataSize);
-    if (debugDataSize > 0)
-    {
-        char* debugDataOutput = new char[debugDataSize];
-        oclContext.m_programOutput.GetProgramDebugData(debugDataOutput, debugDataSize);
-
-        pOutputArgs->DebugDataSize = debugDataSize;
-        pOutputArgs->pDebugData = debugDataOutput;
-    }
-
     COMPILER_TIME_END(&oclContext, TIME_TOTAL);
 
     COMPILER_TIME_PER_PASS_PRINT(&oclContext, ShaderType::OPENCL_SHADER, oclContext.hash);

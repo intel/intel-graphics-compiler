@@ -70,9 +70,7 @@ public:
         const IGC::SOpenCLKernelInfo& annotations,
         const IGC::SOpenCLKernelCostExpInfo& costExpAnnotation,
         const uint32_t grfSize,
-        const IGC::CBTILayout& layout,
-        const std::vector<NamedVISAAsm>& visaasm,
-        bool isProgramDebuggable);
+        const std::vector<NamedVISAAsm>& visaasm);
 
     // getElfSymbol - find a symbol name in ELF binary and return a symbol entry
     // that will later be transformed to ZE binary format
@@ -228,11 +226,6 @@ private:
     /// Calculate correct (pure) size of ELF binary, because m_debugDataSize in kernel output
     /// contains something else.
     size_t calcElfSize(void* elfBin, size_t elfSize);
-
-    /// add debug environment
-    void addKernelDebugEnv(const IGC::SOpenCLKernelInfo& annotations,
-                           const IGC::CBTILayout& layout,
-                           zebin::zeInfoKernel& zeinfoKernel);
 
     /// add visasm of the kernel
     void addKernelVISAAsm(const std::string& kernel, const std::string& visaasm);

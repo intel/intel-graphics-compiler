@@ -79,9 +79,7 @@ void ZEBinaryBuilder::createKernel(
     const SOpenCLKernelInfo& annotations,
     const IGC::SOpenCLKernelCostExpInfo& costExpAnnotation,
     const uint32_t grfSize,
-    const CBTILayout& layout,
-    const std::vector<NamedVISAAsm>& visaasm,
-    bool isProgramDebuggable)
+    const std::vector<NamedVISAAsm>& visaasm)
 {
     ZEELFObjectBuilder::SectionID textID =
         addKernelBinary(annotations.m_kernelName, rawIsaBinary, rawIsaBinarySize);
@@ -124,8 +122,6 @@ void ZEBinaryBuilder::createKernel(
     addFunctionAttrs(annotations);
     for (auto &&[name, visa] : visaasm)
         addKernelVISAAsm(name, visa);
-    if (isProgramDebuggable)
-        addKernelDebugEnv(annotations, layout, zeKernel);
 }
 
 void ZEBinaryBuilder::addGlobalHostAccessInfo(const SOpenCLProgramInfo& annotations)
@@ -955,15 +951,6 @@ void ZEBinaryBuilder::printZEInfo(const std::string& filename)
     llvm::raw_fd_ostream os(filename, EC);
     if (!EC)
         printZEInfo(os);
-}
-
-void ZEBinaryBuilder::addKernelDebugEnv(const SOpenCLKernelInfo& annotations,
-                                        const CBTILayout& layout,
-                                        zeInfoKernel& zeinfoKernel)
-{
-    // TODO: Check if we could remove sip surface related fields.
-    // Leave sip_surface_bti and sip_surface_offset unset as runtime does not
-    // require BTI 0 and bindless offset should be purely managed by driver.
 }
 
 void ZEBinaryBuilder::addKernelVISAAsm(const std::string& kernel,

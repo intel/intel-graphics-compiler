@@ -140,132 +140,6 @@ void CGen8OpenCLProgram::clearBeforeRetry()
     }
 }
 
-RETVAL CGen8OpenCLProgramBase::GetProgramDebugData(Util::BinaryStream& programDebugData)
-{
-    // Used by VC only
-    RETVAL retValue = g_cInitRetValue;
-
-    unsigned numDebugBinaries = 0;
-    for (const auto& data : m_KernelBinaries)
-    {
-        if (data.vcKernelDebugData && data.vcKernelDebugData->Size() > 0)
-        {
-            numDebugBinaries++;
-        }
-    }
-
-    if (numDebugBinaries)
-    {
-        iOpenCL::SProgramDebugDataHeaderIGC header;
-
-        memset(&header, 0, sizeof(header));
-
-        header.Magic = iOpenCL::MAGIC_CL;
-        header.Version = iOpenCL::CURRENT_ICBE_VERSION;
-        header.Device = m_Platform.eRenderCoreFamily;
-        header.NumberOfKernels = numDebugBinaries;
-        header.SteppingId = m_Platform.usRevId;
-
-        programDebugData.Write(header);
-
-        for (const auto& data : m_KernelBinaries)
-        {
-            if (data.vcKernelDebugData && data.vcKernelDebugData->Size() > 0)
-            {
-                programDebugData.Write(*data.vcKernelDebugData.get());
-            }
-        }
-    }
-
-    return retValue;
-}
-
-RETVAL CGen8OpenCLProgramBase::GetProgramDebugDataSize(size_t& totalDbgInfoBufferSize)
-{
-    RETVAL retValue = g_cInitRetValue;
-
-    unsigned numDebugBinaries = 0;
-    for (auto& data : m_KernelBinaries)
-    {
-        if (data.dbgInfo.header &&
-            data.dbgInfo.header->Size() > 0 &&
-            data.dbgInfo.dbgInfoBufferSize > 0)
-        {
-            numDebugBinaries++;
-        }
-    }
-
-    totalDbgInfoBufferSize = 0;
-    if (numDebugBinaries)
-    {
-        totalDbgInfoBufferSize += sizeof(iOpenCL::SProgramDebugDataHeaderIGC);
-        for (auto& data : m_KernelBinaries)
-        {
-            if (!data.dbgInfo.header)
-                continue;
-            totalDbgInfoBufferSize += (size_t)data.dbgInfo.header->Size() +
-                (size_t)(data.dbgInfo.dbgInfoBufferSize +
-                data.dbgInfo.extraAlignBytes);
-        }
-    }
-
-    return retValue;
-}
-
-RETVAL CGen8OpenCLProgramBase::GetProgramDebugData(char* dstBuffer, size_t dstBufferSize)
-{
-    RETVAL retValue = g_cInitRetValue;
-    size_t offset = 0;
-
-    auto Append = [&offset, dstBuffer, dstBufferSize](const void* src, size_t srcSize)
-    {
-        memcpy_s(dstBuffer + offset, dstBufferSize - offset, src, srcSize);
-        offset += srcSize;
-    };
-
-    unsigned numDebugBinaries = 0;
-    for (auto& data : m_KernelBinaries)
-    {
-        if (data.dbgInfo.header &&
-            data.dbgInfo.header->Size() > 0 &&
-            data.dbgInfo.dbgInfoBufferSize > 0)
-        {
-            numDebugBinaries++;
-        }
-    }
-
-    if( numDebugBinaries )
-    {
-        iOpenCL::SProgramDebugDataHeaderIGC header;
-
-        memset( &header, 0, sizeof( header ) );
-
-        header.Magic = iOpenCL::MAGIC_CL;
-        header.Version = iOpenCL::CURRENT_ICBE_VERSION;
-        header.Device = m_Platform.eRenderCoreFamily;
-        header.NumberOfKernels = numDebugBinaries;
-        header.SteppingId = m_Platform.usRevId;
-
-        Append(&header, sizeof(header));
-
-        const uint64_t zero = 0;
-        for (auto& data : m_KernelBinaries)
-        {
-            if (data.dbgInfo.header &&
-                data.dbgInfo.header->Size() > 0 &&
-                data.dbgInfo.dbgInfoBufferSize > 0)
-            {
-                Append((void*)data.dbgInfo.header->GetLinearPointer(), (size_t)data.dbgInfo.header->Size());
-                Append(data.dbgInfo.dbgInfoBuffer, data.dbgInfo.dbgInfoBufferSize);
-                IGC_ASSERT(data.dbgInfo.extraAlignBytes <= sizeof(zero));
-                Append((void*)&zero, data.dbgInfo.extraAlignBytes);
-            }
-        }
-    }
-
-    return retValue;
-}
-
 static void dumpZEInfo(const IGC::CodeGenContext &Ctx,
                        ZEBinaryBuilder &ZEBuilder, bool toConsole = false) {
     if (toConsole) {
@@ -574,9 +448,7 @@ bool CGen8OpenCLProgram::GetZEBinary(
                 kernel->m_kernelInfo,
                 kernel->m_kernelCostexpInfo,
                 kernel->getGRFSize(),
-                m_Context.btiLayout,
-                pOutput->m_VISAAsm,
-                m_ContextProvider.isProgramDebuggable());
+                pOutput->m_VISAAsm);
 
             // FIXME: Handle IGC_IS_FLAG_ENABLED(ShaderDumpEnable) and
             // IGC_IS_FLAG_ENABLED(ShaderOverride)

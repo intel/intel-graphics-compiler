@@ -58,13 +58,6 @@ public:
     /// CGen8OpenCLProgram::CreateKernelBinaries or CGen8CMProgram::CreateKernelBinaries
     RETVAL GetProgramBinary(Util::BinaryStream& programBinary,
         unsigned pointerSizeInBytes);
-    /// GetProgramDebugDataSize - get size of debug info patch token
-    RETVAL GetProgramDebugDataSize(size_t& totalDbgInfoBufferSize);
-    /// GetProgramDebugData - get debug data binary for legacy (Patch token based)
-    /// binary format
-    RETVAL GetProgramDebugData(char* dstBuffer, size_t dstBufferSize);
-    /// GetProgramDebugData - get program debug data API used by VC.
-    RETVAL GetProgramDebugData(Util::BinaryStream& programDebugData);
     /// CreateProgramScopePatchStream - get program scope patch token for legacy
     /// (Patch token based) binary format
     void CreateProgramScopePatchStream(const IGC::SOpenCLProgramInfo& programInfo);
