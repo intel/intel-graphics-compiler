@@ -110,7 +110,7 @@ struct Timer {
 } // namespace vISA
 
 static vISA::Timer timers[static_cast<int>(TimerID::NUM_TIMERS)];
-static LARGE_INTEGER proc_freq;
+[[maybe_unused]] static LARGE_INTEGER proc_freq;
 static int numTimers = static_cast<int>(TimerID::NUM_TIMERS);
 
 void initTimer() {
@@ -154,7 +154,7 @@ int createNewTimer(const char *name) {
 }
 
 void startTimer(TimerID timerId) {
-  int timer = static_cast<int>(timerId);
+  [[maybe_unused]] int timer = static_cast<int>(timerId);
 #ifdef MEASURE_COMPILATION_TIME
   if (timer < static_cast<int>(TimerID::NUM_TIMERS)) {
 #if defined(_DEBUG) && defined(CHECK_TIMER)
@@ -181,7 +181,7 @@ void startTimer(TimerID timerId) {
 }
 
 void stopTimer(TimerID timerId) {
-  int timer = static_cast<int>(timerId);
+  [[maybe_unused]] int timer = static_cast<int>(timerId);
 #ifdef MEASURE_COMPILATION_TIME
   if (timer < static_cast<int>(TimerID::NUM_TIMERS)) {
     LARGE_INTEGER stop;

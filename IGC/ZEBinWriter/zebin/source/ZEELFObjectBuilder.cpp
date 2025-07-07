@@ -727,7 +727,8 @@ void ELFWriter::writeSections()
             // kernel or function symbol in .symtab so that gtpin can do a fast
             // lookup.
             llvm::StringRef symName = entry.sectName;
-            auto res = symName.consume_front(m_ObjBuilder.m_GTPinInfoName);
+            [[maybe_unused]] auto res =
+                symName.consume_front(m_ObjBuilder.m_GTPinInfoName);
             IGC_ASSERT(res);
             if (symName.consume_front(".")) {
                 auto it = m_SymNameIdxMap.find(symName.str());
