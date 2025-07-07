@@ -272,7 +272,7 @@ bool EmitPass::IsNoMaskAllowed(Instruction* inst)
 {
     if (auto* I = dyn_cast<LoadInst>(inst))
     {
-        if (IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) && shouldGenerateLSC(I))
+        if (IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads))
             return true;
 
         BufferType bufType = DecodeBufferType(I->getPointerAddressSpace());
@@ -19493,6 +19493,13 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             gatherDst = m_currShader->GetNewAlias(m_destination,
                 destType, (uint16_t)eltOffBytes, (uint16_t)nbelts);
         }
+
+        if (IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads))
+        {
+            CVariable* pred = GetCombinedVMaskPred();
+            m_encoder->SetPredicate(pred);
+        }
+
         VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
         switch (messageType) {
         case VectorMessage::MESSAGE_A32_BYTE_SCATTERED_RW:
