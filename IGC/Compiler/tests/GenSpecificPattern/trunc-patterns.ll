@@ -49,3 +49,13 @@ define i32 @test3(i32 %a, i32 %b) {
   %res = trunc i64 %add to i32
   ret i32 %res
 }
+
+define i32 @test4(i32 %a, i1 %b) {
+; CHECK-LABEL: define i32 @test4(
+; CHECK: [[RES:%.*]] = add i64 %s1, %s2
+  %s1 = sext i32 %a to i64
+  %s2 = sext i1 %b to i64
+  %add = add i64 %s1, %s2
+  %res = trunc i64 %add to i32
+  ret i32 %res
+}

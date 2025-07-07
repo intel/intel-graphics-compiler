@@ -3997,6 +3997,8 @@ void GenSpecificPattern::visitTruncInst(llvm::TruncInst& I)
     {
         if (I.getType() != LHS->getType())
             return;
+        if (LHS->getType() != RHS->getType())
+            return;
         IRBuilder<> IRB(&I);
         auto* Res = IRB.CreateAdd(LHS, RHS);
         I.replaceAllUsesWith(Res);
