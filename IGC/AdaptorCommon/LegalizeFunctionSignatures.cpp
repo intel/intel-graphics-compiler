@@ -215,6 +215,15 @@ inline StructType* PromotedStructValueType(const Module& M, const Argument* arg)
     return nullptr;
 }
 
+inline StructType* StructTypeFromCallInstArg(const CallInst* callInst, unsigned argNo)
+{
+#if LLVM_VERSION_MAJOR >= 15
+    return dyn_cast_or_null<StructType>(callInst->getParamStructRetType(argNo));
+#else
+    return dyn_cast_or_null<StructType>(callInst->getAttributes().getParamStructRetType(argNo));
+#endif
+}
+
 // BE does not handle struct load/store, so instead store each element of the struct value to the GEP of the struct pointer
 inline void StoreToStruct(IGCLLVM::IRBuilder<>& builder, Value* strVal, Value* strPtr)
 {
@@ -702,7 +711,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
             }
             Type* retType =
                 retTypeOption == ReturnOpt::RETURN_BY_REF ? Type::getVoidTy(callInst->getContext()) :
-                retTypeOption == ReturnOpt::RETURN_STRUCT ? PromotedStructValueType(M, callInst->getFunction()->getArg(0)) :
+                retTypeOption == ReturnOpt::RETURN_STRUCT ? StructTypeFromCallInstArg(callInst, 0) :
                 retTypeOption == ReturnOpt::RETURN_LEGAL_INT ? LegalizedIntVectorType(M, callInst->getType()) :
                 callInst->getType();
             newFnTy = FunctionType::get(retType, argTypes, false);

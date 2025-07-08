@@ -683,7 +683,7 @@ Function* PromoteBools::promoteFunction(Function* function)
 
 GlobalVariable* PromoteBools::promoteGlobalVariable(GlobalVariable* globalVariable)
 {
-    if (!globalVariable || !typeNeedsPromotion(globalVariable->getType()))
+    if (!globalVariable || !typeNeedsPromotion(globalVariable->getValueType()))
     {
         return globalVariable;
     }
@@ -1093,13 +1093,12 @@ LoadInst* PromoteBools::promoteLoad(LoadInst* load)
         return nullptr;
     }
 
-    auto src = load->getOperand(0);
-
-    if (!wasPromotedAnyOf(load->operands()) && !typeNeedsPromotion(src->getType()))
+    if (!wasPromotedAnyOf(load->operands()) && !typeNeedsPromotion(load->getType()))
     {
         return load;
     }
 
+    auto src = load->getOperand(0);
     auto newSrc = getOrCreatePromotedValue(src);
     auto newType = getOrCreatePromotedType(load->getType());
     auto newLoad = new LoadInst(
