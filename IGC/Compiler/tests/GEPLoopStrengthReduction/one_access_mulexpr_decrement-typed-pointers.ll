@@ -21,12 +21,12 @@ entry:
 
 ; CHECK-LABEL: for.body.lr.ph:
 ; CHECK:        [[MUL1:%.*]] = mul i32 %a, 39
-; CHECK:        [[SEXT1:%.*]] = sext i32 [[MUL1]] to i64
-; CHECK:        [[MUL2:%.*]] = mul i64 %b, [[SEXT1]]
+; CHECK:        [[ZEXT:%.*]] = zext i32 [[MUL1]] to i64
+; CHECK:        [[MUL2:%.*]] = mul i64 %b, [[ZEXT]]
 ; CHECK:        [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[MUL2]]
 ; CHECK:        [[MUL3:%.*]] = mul i32 %a, -2
-; CHECK:        [[SEXT2:%.*]] = sext i32 [[MUL3]] to i64
-; CHECK:        [[STEP:%.*]] = mul i64 %b, [[SEXT2]]
+; CHECK:        [[SEXT:%.*]] = sext i32 [[MUL3]] to i64
+; CHECK:        [[STEP:%.*]] = mul i64 %b, [[SEXT]]
 for.body.lr.ph:                                   ; preds = %entry
   br label %for.body
 
