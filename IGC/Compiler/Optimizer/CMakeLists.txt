@@ -38,6 +38,7 @@ set(IGC_BUILD__SRC__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/WaveAllJointReduction.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IntDivRemIncrementReduction.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/InstructionHoistingOptimization.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/WaveBallotCSE.cpp"
   )
 
 set(IGC_BUILD__SRC__Compiler_Optimizer
@@ -69,6 +70,7 @@ set(IGC_BUILD__HDR__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/WaveAllJointReduction.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IntDivRemIncrementReduction.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/InstructionHoistingOptimization.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/WaveBallotCSE.hpp"
   )
 
 set(IGC_BUILD__HDR__Optimizer
