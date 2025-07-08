@@ -390,7 +390,7 @@ namespace SCEVHelper
     class SCEVAddBuilder
     {
     public:
-        SCEVAddBuilder(ScalarEvolution &SE) : SE(SE) {}
+        SCEVAddBuilder(ScalarEvolution &SE, bool DropExt = false) : SE(SE), DropExt(DropExt) {}
 
         SCEVAddBuilder &add(const SCEV *S, bool Negative = false);
 
@@ -410,6 +410,7 @@ namespace SCEVHelper
 
         ScalarEvolution &SE;
         SmallVector<Op, 16> Ops;
+        bool DropExt;
     };
 
     // Builds SCEVMulExpr instance. Function ScalarEvolution::getMulExpr requires all
@@ -559,7 +560,7 @@ bool ReductionCandidateGroup::addToGroup(ScalarEvolution &SE, GetElementPtrInst 
     // Can't use ScalarEvolution::computeConstantDifference, as it only
     // supports SCEVAddExpr with two operands. Calculate difference as:
     //     new candidate's operands + (-1 * base's operands)
-    SCEVHelper::SCEVAddBuilder Builder(SE);
+    SCEVHelper::SCEVAddBuilder Builder(SE, true);
     const SCEVConstant *Sum = dyn_cast<SCEVConstant>(Builder.add(S).addNegative(Base.S).build());
     if (!Sum)
         return false;
@@ -1085,8 +1086,17 @@ bool Analyzer::doInitialValidation(GetElementPtrInst *GEP)
 // parsed and reduced.
 bool Analyzer::deconstructSCEV(const SCEV *S, Analyzer::DeconstructedSCEV &Result)
 {
-    // Drop ext instructions to analyze nested content.
-    S = SCEVHelper::dropExt(S);
+    // In case of ext instruction analyze nested content.
+    if (isa<SCEVZeroExtendExpr>(S) || isa<SCEVSignExtendExpr>(S))
+    {
+        if (!deconstructSCEV(dyn_cast<SCEVCastExpr>(S)->getOperand(), Result))
+            return false;
+
+        if (S->getType() != Result.Start->getType())
+            Result.Start = isa<SCEVSignExtendExpr>(S) ? SE.getSignExtendExpr(Result.Start, S->getType()) : SE.getZeroExtendExpr(Result.Start, S->getType());
+
+        return IGCLLVM::isSafeToExpandAt(Result.Start, &L.getLoopPreheader()->back(), &SE, &E);
+    }
 
     // First check if expression can be fully expanded in preheader. If so, no need
     // to process is further, but instead treat expression as:
@@ -1564,7 +1574,8 @@ SCEVHelper::SCEVAddBuilder &SCEVHelper::SCEVAddBuilder::add(const SCEV *S, bool 
     IGC_ASSERT(S->getType()->isIntegerTy());
 
     // strip extend
-    S = SCEVHelper::dropExt(S);
+    if (DropExt)
+        S = SCEVHelper::dropExt(S);
 
     if (auto *Expr = dyn_cast<SCEVAddExpr>(S))
     {
@@ -1606,9 +1617,6 @@ const SCEV *SCEVHelper::SCEVAddBuilder::build()
 SCEVHelper::SCEVMulBuilder &SCEVHelper::SCEVMulBuilder::add(const SCEV *S)
 {
     IGC_ASSERT(S->getType()->isIntegerTy());
-
-    // strip extend
-    S = SCEVHelper::dropExt(S);
 
     Ops.emplace_back(S);
 
