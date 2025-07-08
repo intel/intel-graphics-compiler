@@ -20,8 +20,7 @@ declare void @llvm.dbg.declare(metadata, metadata, metadata) #0
 ; Function Attrs: argmemonly nofree nounwind willreturn
 declare void @llvm.memcpy.p4i8.p4i8.i64(i8 addrspace(4)* noalias nocapture writeonly, i8 addrspace(4)* noalias nocapture readonly, i64, i1 immarg) #1
 
-; Function Attrs: noinline optnone
-define internal spir_func i1 @testFn(i1 %0) #2 {
+define internal spir_func i1 @testFn(i1 %0) {
   %2 = alloca %"class.sycl::_V1::vec.73", i32 0, align 32
   %3 = addrspacecast %"class.sycl::_V1::vec.73"* null to %"class.sycl::_V1::vec.73" addrspace(4)*
   br label %4
@@ -52,4 +51,3 @@ define spir_kernel void @main() {
 
 attributes #0 = { nofree nosync nounwind readnone speculatable willreturn }
 attributes #1 = { argmemonly nofree nounwind willreturn }
-attributes #2 = { noinline optnone }

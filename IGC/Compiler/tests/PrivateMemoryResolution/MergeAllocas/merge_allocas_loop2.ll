@@ -18,8 +18,7 @@ target triple = "spir64-unknown-unknown"
 
 %"class.sycl::_V1::vec.73" = type { <3 x double> }
 
-; Function Attrs: noinline optnone
-define internal spir_func i1 @testFn() #0 {
+define internal spir_func i1 @testFn(){
   %1 = alloca %"class.sycl::_V1::vec.73", i32 0, align 32
   br label %2
 
@@ -43,5 +42,3 @@ define spir_kernel void @main() {
   %1 = call spir_func i1 @testFn()
   ret void
 }
-
-attributes #0 = { noinline optnone }
