@@ -385,9 +385,6 @@ void IGCRegisterPressurePrinter::dumpRegPressure(llvm::Function &F,
     if (Filter && *Filter != '\0' && !std::regex_search(F.getName().str(), std::regex(Filter)))
         return;
 
-    // force print all
-    PrinterType = 2;
-
     std::string Output;
     Output.reserve(32768);
 
@@ -583,7 +580,6 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
     unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F));
 
     if (DumpToFile) {
-        PrinterType = 1;
         dumpRegPressure(F, SIMD);
     } else {
         // basically only for LIT testing

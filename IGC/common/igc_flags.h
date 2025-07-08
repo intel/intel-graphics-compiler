@@ -927,7 +927,8 @@ DECLARE_IGC_REGKEY(bool, AllowSIMD16DropForXE2, true, "Controls the switch for X
 DECLARE_IGC_REGKEY(bool, AllowSIMD16DropForXE3, true, "Controls the switch for XE3 simd16 drop", false)
 DECLARE_IGC_REGKEY(bool, AllowEarlySIMD16DropForXE3, true, "Controls the early drop to simd16 for XE3", false)
 DECLARE_IGC_REGKEY(DWORD, EarlySIMD16DropForXE3Threshold, 190, "Threshold for the early drop to simd16 for XE3", false)
-DECLARE_IGC_REGKEY(DWORD, RegPressureVerbocity,   0,  "Different printing types", false)
+DECLARE_IGC_REGKEY(DWORD, RegPressureVerbocity, 2, "Different printing types",
+                   false)
 DECLARE_IGC_REGKEY(DWORD, RetryRevertExcessiveSpillingKernelThreshold, 10000,  "Sets the threshold for Retry Manager to know which kernel is considered as Excessive Spilling and applies different set of rules", false)
 DECLARE_IGC_REGKEY(DWORD, RetryRevertExcessiveSpillingKernelCoefficient, 102,  "Sets the coefficient for Retry Manager to know whether we should revert back to a previously compiled kernel", false)
 DECLARE_IGC_REGKEY(DWORD, ForceSIMDRPELimit, 1000, "Cutoff value for register estimator, when higher than that kernel is switched to lower SIMD when possible", false)
