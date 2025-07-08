@@ -36,12 +36,12 @@ def : PlainJoined<"target-features=">, Alias<target_features>,
   HelpText<"Alias for -target-features">;
 
 def binary_format : PlainSeparate<"binary-format">,
-  HelpText<"Set in which format should be generated binary; values: 'cm', 'ocl' or 'ze'">;
+  HelpText<"Set in which format should be generated binary; values: 'cm' or 'ze'">;
 def : PlainJoined<"binary-format=">, Alias<binary_format>,
   HelpText<"Alias for -binary-format <value>">;
 
 def : PlainSeparate<"runtime">, Alias<binary_format>,
-  HelpText<"Set runtime for which binary should be generated; values: 'ocl' or 'cm'">;
+  HelpText<"Set runtime for which binary should be generated; values: 'cm' or 'ze'">;
 def : PlainJoined<"runtime=">, Alias<binary_format>,
   HelpText<"Alias for -runtime <value>">;
 
