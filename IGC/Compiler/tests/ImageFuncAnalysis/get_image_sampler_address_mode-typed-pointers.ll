@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2024 Intel Corporation
+; Copyright (C) 2017-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -30,4 +30,11 @@ define i32 @foo(%spirv.Sampler addrspace(2)* %sampler) nounwind {
 ;CHECK: ![[A1]] = !{i32 30, ![[A2:[0-9]+]]}
 ;CHECK: ![[A2]] = !{!"explicit_arg_num", i32 0}
 
-
+; The following metadata are needed to recognize functions using image/sampler arguments:
+!IGCMetadata = !{!4}
+!4 = !{!"ModuleMD", !5}
+!5 = !{!"FuncMD", !6, !7}
+!6 = !{!"FuncMDMap[0]", i32 (%spirv.Sampler addrspace(2)*)* @foo}
+!7 = !{!"FuncMDValue[0]", !8}
+!8 = !{!"m_OpenCLArgTypes", !9}
+!9 = !{!"m_OpenCLArgTypesVec[0]", !"sampler_t"}

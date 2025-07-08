@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2024 Intel Corporation
+; Copyright (C) 2022-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -245,3 +245,13 @@ attributes #2 = { convergent nounwind readnone }
 !54 = !DILocation(line: 9, column: 4, scope: !12)
 !55 = !DILocation(line: 9, column: 11, scope: !12)
 !56 = !DILocation(line: 11, column: 1, scope: !12)
+
+; The following metadata are needed to recognize functions using image/sampler arguments:
+!IGCMetadata = !{!57}
+!57 = !{!"ModuleMD", !58}
+!58 = !{!"FuncMD", !59, !60}
+!59 = !{!"FuncMDMap[0]", void (%opencl.image3d_t.read_only addrspace(1)*, i32 addrspace(1)*)* @sample_kernel}
+!60 = !{!"FuncMDValue[0]", !61}
+!61 = !{!"m_OpenCLArgTypes", !62, !63}
+!62 = !{!"m_OpenCLArgTypesVec[0]", !"image3d_t"}
+!63 = !{!"m_OpenCLArgTypesVec[1]", !"int*"}
