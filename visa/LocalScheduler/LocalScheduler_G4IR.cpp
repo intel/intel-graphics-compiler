@@ -1185,6 +1185,83 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
   return suppressionSrcs > 1;
 }
 
+bool DDD::hasDpasReadSuppression(G4_INST *prevInst, G4_INST *nextInst) const {
+  if (!prevInst->isDpas() || !nextInst->isDpas()) {
+    return false;
+  }
+
+  // No special registers except acc and GRF
+  for (Gen4_Operand_Number opndNum :
+       {Opnd_pred, Opnd_condMod, Opnd_implAccSrc, Opnd_implAccDst}) {
+    G4_Operand *opnd = prevInst->getOperand(opndNum);
+    // Skip if no operand or the operand is not touched by the instruction
+    if (opnd) {
+      return false;
+    }
+  }
+
+  // Only support GRF registers in operands
+  for (Gen4_Operand_Number opndNum :
+       {Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2}) {
+    G4_Operand *opnd = prevInst->getOperand(opndNum);
+    // Skip if no operand or the operand is not touched by the instruction
+    if (!opnd->isGreg() && !opnd->isImm()) {
+      return false;
+    }
+  }
+
+  int currInstRegs[G4_MAX_SRCS];
+  int nextInstRegs[G4_MAX_SRCS];
+
+  // Get the sources of previous instruction
+  for (unsigned i = 0; i < 3; i++) {
+    currInstRegs[i] = -1;
+    G4_Operand *srcOpnd = prevInst->getSrc(i);
+    if (srcOpnd) {
+      if (srcOpnd->isSrcRegRegion() && srcOpnd->asSrcRegRegion()->getBase() &&
+          !srcOpnd->asSrcRegRegion()->isIndirect() &&
+          srcOpnd->asSrcRegRegion()->getBase()->isRegVar()) {
+        G4_RegVar *baseVar =
+            static_cast<G4_RegVar *>(srcOpnd->asSrcRegRegion()->getBase());
+        if (baseVar->isGreg()) {
+          uint32_t byteAddress = srcOpnd->getLinearizedStart();
+          currInstRegs[i] = byteAddress / kernel->numEltPerGRF<Type_UB>();
+        }
+      }
+    }
+  }
+
+  // Get the source of the next instruction
+  for (unsigned i = 0; i < 3; i++) {
+    nextInstRegs[i] = -1;
+    G4_Operand *srcOpnd = nextInst->getSrc(i);
+    if (srcOpnd) {
+      if (srcOpnd->isSrcRegRegion() && srcOpnd->asSrcRegRegion()->getBase() &&
+          !srcOpnd->asSrcRegRegion()->isIndirect() &&
+          srcOpnd->asSrcRegRegion()->getBase()->isRegVar()) {
+        G4_RegVar *baseVar =
+            static_cast<G4_RegVar *>(srcOpnd->asSrcRegRegion()->getBase());
+        if (baseVar->isGreg()) {
+          uint32_t byteAddress = srcOpnd->getLinearizedStart();
+          nextInstRegs[i] = byteAddress / kernel->numEltPerGRF<Type_UB>();
+        }
+      }
+    }
+  }
+
+  // Src1 suppression
+  if (currInstRegs[1] == nextInstRegs[1] && currInstRegs[1] != -1) {
+    return true;
+  }
+
+  // Src2 suppression
+  if (currInstRegs[2] == nextInstRegs[2] && currInstRegs[2] != -1) {
+    return true;
+  }
+
+  return false;
+}
+
 
 bool DDD::canInSameDPASMacro(G4_INST *curInst, G4_INST *nextInst,
                                BitSet &liveDst, BitSet &liveSrc, bool sameSrcOneOnly) const {
@@ -2592,6 +2669,155 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     return scheduled;
   };
 
+  // Enable DPAS scheduling
+  auto scheduleForDpas = [&]() -> bool {
+    return (!readyList.empty() || !preReadyQueue.empty()) && lastScheduled &&
+           kernel->fg.builder->hasDPAS() &&
+           getOptions()->getOption(vISA_scheduleforDPASMacro) &&
+           (lastScheduled->getInstructions()->front()->isDpas());
+  };
+
+  // Check if depends on just scheduled previous DPAS intruction
+  auto hasDepOnPreDpas = [&](Node *node,
+                             std::vector<Node *> &preDPASNodeVec) -> bool {
+    for (auto predNode : preDPASNodeVec) {
+      auto iter = std::find_if(node->preds.begin(), node->preds.end(),
+                               [=](Edge e) { return e.getNode() == predNode; });
+      if (iter != node->preds.end()) {
+        return true;
+        break;
+      }
+    }
+    return false;
+  };
+
+  // Add node back to scheduling list/queue
+  auto addBackReadyList = [&](int i, int readyListSize, Node *node) -> void {
+    if (i < readyListSize) {
+      readyList.push(node);
+    } else {
+      preReadyQueue.push(node);
+    }
+  };
+
+  // Apply DPAS heuristic, pick the DPAS instruction which has no dependence
+  // with scheduled ones, prefer the instruction with read suppression in source
+  // operands.
+  auto applyDpasHeuristic = [&](Node *scheduled,
+                                Node *lastScheduled) -> Node * {
+    G4_INST *inst = lastScheduled->getInstructions()->front();
+    Node *reScheduled = nullptr;
+
+    // Last scheduled instruction must be DPAS instruction
+    if (!inst->isDpas())
+      return nullptr;
+
+    // Collect the dpas which are just scheduled, stop when meet a none-dpas
+    // instruction.
+    std::vector<Node *> preDPASNodeVec;
+    for (int i = schedule->scheduledNodes.size() - 1; i >= 0; i--) {
+      Node *scheduledNode = schedule->scheduledNodes[i];
+      G4_INST *scheduledInst = scheduledNode->getInstructions()->front();
+      // Dpas only
+      if (!scheduledInst->isDpas())
+        break;
+      preDPASNodeVec.push_back(scheduledNode);
+    }
+
+    Node *macroCandidate = nullptr;
+    bool hasDep = false;
+    // Check if current scheduled is the macro candidate
+    G4_INST *scheduledInst = scheduled->getInstructions()->front();
+    if ((scheduled->getInstructions()->size() == 1) &&
+        scheduledInst->isDpas() &&
+        inst->asDpasInst()->checksMacroTypes(*scheduledInst->asDpasInst())) {
+      hasDep = hasDepOnPreDpas(scheduled, preDPASNodeVec);
+      if (!hasDep && hasDpasReadSuppression(inst, scheduledInst)) {
+        return scheduled; // It's good candidate already, don't return nullptr
+                          // which may be changed by other heuritics
+      }
+      if (!hasDep) { // scheduled itself is a candidate
+        macroCandidate = scheduled;
+      }
+    }
+
+    // Prepare the scan vector which contains all nodes from readyList and
+    // preReadyQueue
+    std::vector<Node *> readyNodeVec;
+    const size_t readyListSize = readyList.size();
+    while (!readyList.empty()) {
+      Node *readyNode = readyList.top();
+      readyList.pop();
+      readyNodeVec.push_back(readyNode);
+    }
+    const size_t preQueueSize = preReadyQueue.size();
+    while (!preReadyQueue.empty()) {
+      Node *preReadyNode = preReadyQueue.top();
+      preReadyQueue.pop();
+      readyNodeVec.push_back(preReadyNode);
+    }
+
+    int i = 0;
+    bool hasSuppressoinCandidate = false;
+    for (auto node : readyNodeVec) {
+      G4_INST *nodeInst = node->getInstructions()->front();
+
+      // Not candidate, push back to original queue
+      if ((node->getInstructions()->size() != 1) || !nodeInst->isDpas() ||
+          !inst->asDpasInst()->checksMacroTypes(*nodeInst->asDpasInst()) ||
+          hasDepOnPreDpas(node, preDPASNodeVec)) {
+        addBackReadyList(i, readyListSize, node);
+        i++;
+        continue;
+      }
+
+      // Find one with read suppression, stop scan
+      if (hasDpasReadSuppression(inst, nodeInst)) {
+        // If there is a candidate without read suppression, push candidate to
+        // ready list
+        if (macroCandidate && macroCandidate != scheduled) {
+          readyList.push(macroCandidate);
+          macroCandidate = nullptr;
+        }
+        hasSuppressoinCandidate = true;
+        reScheduled = node;
+        i++;
+        break;
+      }
+
+      // Has candidate already, add back to original list
+      if (macroCandidate) {
+        addBackReadyList(i, readyListSize, node);
+      } else {
+        macroCandidate = node;
+      }
+
+      i++;
+    }
+
+    // No read suppresion candidate, and reschedule happened
+    if (!hasSuppressoinCandidate && macroCandidate &&
+        macroCandidate != scheduled) {
+      reScheduled = macroCandidate;
+    }
+
+    // Add not scanned nodes back to list/queue
+    for (size_t j = i; j < readyNodeVec.size(); j++) {
+      addBackReadyList(j, readyListSize, readyNodeVec[j]);
+    }
+
+    // If rescheduled, push the scheduled to readyList
+    if (reScheduled) {
+      readyList.push(scheduled);
+    }
+
+    // The total size of readyList and preReadyQueue shouldn't be changed
+    assert(readyListSize + preQueueSize ==
+           readyList.size() + preReadyQueue.size());
+
+    return reScheduled;
+  };
+
   // try to avoid bank conflict for Xe
   // Such as in following case:
   // r40 and r56 are from same bundle and have conflict
@@ -2898,6 +3124,11 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
         heuCandidate =
             applySendQueueHeuristic(oQueue, oQueueStallCycle, scheduled);
       }
+    }
+
+    // Scheduling for DPAS instructions
+    if (!heuCandidate && scheduleForDpas()) {
+      heuCandidate = applyDpasHeuristic(scheduled, lastScheduled);
     }
 
     if (!heuCandidate && scheduleForSuppression()) {

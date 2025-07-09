@@ -333,6 +333,7 @@ public:
                           BitSet &liveSrc) const;
   bool hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
                           bool multipSuppression) const;
+  bool hasDpasReadSuppression(G4_INST *prevInst, G4_INST *nextInst) const;
 
 private:
   bool canInSameDPASMacro(G4_INST *curInst, G4_INST *nextInst,

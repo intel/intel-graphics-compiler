@@ -573,6 +573,8 @@ DEF_VISA_OPTION(vISA_EnableDPASBundleConflictReduction, ET_BOOL,
 DEF_VISA_OPTION(vISA_NoDPASMacro, ET_BOOL, "-noDPASMacro", UNUSED, false)
 DEF_VISA_OPTION(vISA_forceDPASMacro, ET_BOOL, "-forceDPASMacro", "DEPRECATED, is a nop", false)
 DEF_VISA_OPTION(vISA_KeepDPASMacroInSchedule, ET_BOOL, "-keepDPASMacroInSchedule", UNUSED, false)
+DEF_VISA_OPTION(vISA_scheduleforDPASMacro, ET_BOOL, "-scheduleforDPASMacro",
+                UNUSED, false)
 DEF_VISA_OPTION(vISA_TrueDepOnly, ET_BOOL, "-trueDepOnly", UNUSED, false)
 DEF_VISA_OPTION(vISA_SplitMov64, ET_INT32, "-SplitMov64",
                 "USAGE: -SplitMov64 (0|1|2)\n", 0)
