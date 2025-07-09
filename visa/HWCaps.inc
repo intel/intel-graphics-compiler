@@ -582,6 +582,12 @@ bool hasByteALU() const {
   return getPlatform() < Xe_PVC;
 }
 
+bool supportsByteDestinationSubreg2Or3() const {
+  // If destination is UB or B, the destination subregnum can be aligned
+  // to byte 0, 1, 2 or 3 of the dword execution channel.
+  return getPlatform() >= Xe_PVC;
+}
+
 bool hasSingleALUPipe() const { return getPlatform() == GENX_TGLLP; }
 
 bool hasMathRSIsuue() const { return getPlatform() == GENX_TGLLP && getOption(vISA_InsertDummyMovForHWRSWA); }

@@ -1780,7 +1780,16 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB *bb, G4_Type extype,
   unsigned short dst_byte_offset;
   builder.tryToAlignOperand(dst, dst_byte_offset, extypesize);
   if (!((dst_byte_offset % extypesize == 0) ||
-        (byteDst && (dst_byte_offset % extypesize == 1))) ||
+       /*
+        * If destination is UB or B, the destination subregnum can be aligned
+        * to byte 0 or 1 of the word execution channel.
+        */
+        (byteDst && (dst_byte_offset % extypesize == 1)) ||
+       /*
+        * If destination is UB or B, the destination subregnum can be aligned
+        * to byte 0, 1, 2 or 3 of the dword execution channel.
+        */
+        (byteDst && extypesize == 4 && builder.supportsByteDestinationSubreg2Or3())) ||
       /*
        * Dynamic offset can be odd for serialized instructions
        * or when horizontal offset is dynamic.
