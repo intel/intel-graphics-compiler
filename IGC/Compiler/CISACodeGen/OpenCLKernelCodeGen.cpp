@@ -305,49 +305,11 @@ namespace IGC
 
     COpenCLKernel::~COpenCLKernel()
     {
-        ClearKernelInfo();
         m_simdProgram.Destroy();
-    }
-
-    void COpenCLKernel::ClearKernelInfo()
-    {
-        // Global pointer arguments
-        m_kernelInfo.m_pointerArgument.clear();
-
-        // Non-argument pointer inputs
-        m_kernelInfo.m_pointerInput.clear();
-
-        // Local pointer arguments
-        m_kernelInfo.m_localPointerArgument.clear();
-
-        // Sampler inputs
-        m_kernelInfo.m_samplerInput.clear();
-
-        // Sampler arguments
-        m_kernelInfo.m_samplerArgument.clear();
-
-        // Scalar inputs
-        m_kernelInfo.m_constantInputAnnotation.clear();
-
-        // Scalar arguments
-        m_kernelInfo.m_constantArgumentAnnotation.clear();
-
-        // Image arguments
-        m_kernelInfo.m_imageInputAnnotations.clear();
-
-        // Kernel Arg Reflection Info
-        m_kernelInfo.m_kernelArgInfo.clear();
-
-        // Printf strings
-        m_kernelInfo.m_printfStringAnnotations.clear();
-
-        // Argument to BTI/Sampler index map
-        m_kernelInfo.m_argIndexMap.clear();
     }
 
     void COpenCLKernel::PreCompile()
     {
-        ClearKernelInfo();
         CreateImplicitArgs();
         //We explicitly want this to be GRF-sized, without relation to simd width
 
@@ -700,24 +662,6 @@ namespace IGC
         return vecTypeString;
     }
 
-    void COpenCLKernel::CreatePrintfStringAnnotations()
-    {
-        auto printfStrings = GetPrintfStrings(*entry->getParent());
-
-        for (const auto& printfString : printfStrings)
-        {
-            auto printfAnnotation = std::make_unique<iOpenCL::PrintfStringAnnotation>();
-            printfAnnotation->Index = printfString.first;
-            printfAnnotation->StringSize = printfString.second.size() + 1;
-            printfAnnotation->StringData = new char[printfAnnotation->StringSize + 1];
-
-            memcpy_s(printfAnnotation->StringData, printfAnnotation->StringSize, printfString.second.c_str(), printfAnnotation->StringSize);
-            printfAnnotation->StringData[printfAnnotation->StringSize - 1] = '\0';
-
-            m_kernelInfo.m_printfStringAnnotations.push_back(std::move(printfAnnotation));
-        }
-    }
-
     bool COpenCLKernel::CreateZEPayloadArguments(
         IGC::KernelArg* kernelArg, uint payloadPosition,
         PtrArgsAttrMapType& ptrArgsAttrMap)
@@ -1009,8 +953,10 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImage(m_kernelInfo.m_zePayloadArgs,
                     arg_off, arg_size, arg_idx, arg_addrmode, access_type, image_type);
-            // TODO: When ZEBIN path supports inline sampler, follow Patch
-            // Token path to check InlineSamplersAllow3DImageTransformation().
+            // TODO: When ZEBIN path supports inline sampler, follow Patch Token
+            // path to check if the samplers allow 3D images to be represented
+            // as arrays of 2D images.
+            // (deprecated InlineSamplersAllow3DImageTransformation())
             arg.image_transformable =
                 kernelArg->getArgType() == KernelArg::ArgType::IMAGE_3D &&
                 kernelArg->getImgAccessedIntCoords() &&
@@ -1545,9 +1491,6 @@ namespace IGC
         m_kernelInfo.m_threadPayload.HasGroupID = false;
         m_kernelInfo.m_threadPayload.HasLocalID = false;
         m_kernelInfo.m_threadPayload.UnusedPerThreadConstantPresent = false;
-        m_kernelInfo.m_printfBufferAnnotation = nullptr;
-        m_kernelInfo.m_syncBufferAnnotation = nullptr;
-        m_kernelInfo.m_rtGlobalBufferAnnotation = nullptr;
         m_kernelInfo.m_threadPayload.HasStageInGridOrigin = false;
         m_kernelInfo.m_threadPayload.HasStageInGridSize = false;
         m_kernelInfo.m_threadPayload.HasRTStackID = false;
@@ -1819,12 +1762,6 @@ namespace IGC
         m_State.m_ConstantBufferLength = iSTD::Align(m_State.m_ConstantBufferLength, getGRFSize());
 
         CreateZEInlineSamplerAnnotations();
-        // Currently we don't support inline vme sampler in zebin.
-        // Assertion tests if we encounter inline vme sampler.
-        IGC_ASSERT_MESSAGE(!m_kernelInfo.m_HasInlineVmeSamplers, "ZEBin: Inline vme sampler unsupported");
-
-        // Create annotations for printf string.
-        CreatePrintfStringAnnotations();
     }
 
     bool COpenCLKernel::isUnusedArg(KernelArg& arg) const
@@ -2249,48 +2186,6 @@ namespace IGC
             memcpy_s(initGlobal->InlineData.data(), bufferSize, ipsbMDHandle.Buffer.data(), bufferSize);
 
             ctx->m_programInfo.m_initGlobalAnnotation = std::move(initGlobal);
-        }
-
-        {
-            auto& FuncMap = ctx->getModuleMetaData()->FuncMD;
-            for (const auto& i : FuncMap)
-            {
-                std::unique_ptr<iOpenCL::KernelTypeProgramBinaryInfo> initConstant(new iOpenCL::KernelTypeProgramBinaryInfo());
-                initConstant->KernelName = i.first->getName().str();
-                if (i.second.IsFinalizer)
-                {
-
-                    initConstant->Type = iOpenCL::PROGRAM_SCOPE_KERNEL_DESTRUCTOR;
-                    ctx->m_programInfo.m_initKernelTypeAnnotation.push_back(std::move(initConstant));
-                }
-                else if (i.second.IsInitializer)
-                {
-                    initConstant->Type = iOpenCL::PROGRAM_SCOPE_KERNEL_CONSTRUCTOR;
-                    ctx->m_programInfo.m_initKernelTypeAnnotation.push_back(std::move(initConstant));
-                }
-
-            }
-        }
-
-        for (const auto& globPtrInfo : modMD->GlobalPointerProgramBinaryInfos)
-        {
-            auto initGlobalPointer = std::make_unique<iOpenCL::GlobalPointerAnnotation>();
-            initGlobalPointer->PointeeAddressSpace = globPtrInfo.PointeeAddressSpace;
-            initGlobalPointer->PointeeBufferIndex = globPtrInfo.PointeeBufferIndex;
-            initGlobalPointer->PointerBufferIndex = globPtrInfo.PointerBufferIndex;
-            initGlobalPointer->PointerOffset = globPtrInfo.PointerOffset;
-            ctx->m_programInfo.m_initGlobalPointerAnnotation.push_back(std::move(initGlobalPointer));
-        }
-
-        for (const auto& constPtrInfo : modMD->ConstantPointerProgramBinaryInfos)
-        {
-            auto  initConstantPointer = std::make_unique<iOpenCL::ConstantPointerAnnotation>();
-            initConstantPointer->PointeeAddressSpace = constPtrInfo.PointeeAddressSpace;
-            initConstantPointer->PointeeBufferIndex = constPtrInfo.PointeeBufferIndex;
-            initConstantPointer->PointerBufferIndex = constPtrInfo.PointerBufferIndex;
-            initConstantPointer->PointerOffset = constPtrInfo.PointerOffset;
-
-            ctx->m_programInfo.m_initConstantPointerAnnotation.push_back(std::move(initConstantPointer));
         }
 
         // Pointer address relocation table data for GLOBAL buffer

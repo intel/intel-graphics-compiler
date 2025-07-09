@@ -362,8 +362,6 @@ $ export IGC_ShaderDumpEnable=1
 | `DumpHasNonKernelArgLdSt` | Print if hasNonKernelArg load/store to stderr | Available |
 | `DumpLLVMIR` | dump LLVM IR | Available |
 | `DumpLoopSink` | Dump debug info in LoopSink | - |
-| `DumpOCLProgramInfo` | dump OpenCL Patch Tokens, Kernel/Program Binary Header | Available |
-| `DumpPatchTokens` | Enable dumping of patch tokens. | Available |
 | `DumpResourceLoop` | dump resource loop detected by ResourceLoopAnalysis | Available |
 | `DumpTimeStats` | Timing of translation, code generation, finalizer, etc | Available |
 | `DumpTimeStatsCoarse` | Only collect/dump coarse level time stats, i.e. skip opt detail timer for now | Available |

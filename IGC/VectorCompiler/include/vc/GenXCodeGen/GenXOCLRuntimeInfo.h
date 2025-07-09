@@ -252,8 +252,6 @@ public:
     // Deduced from actual function instructions.
     bool usesGroupId() const { return FuncInfo.UsesGroupId; }
 
-    bool supportsDebugging() const { return FuncInfo.SupportsDebugging; }
-
     // SIMD size is always set by igcmc to one. Preserve this here.
     unsigned getSIMDSize() const { return 1; }
     unsigned getSLMSize() const { return FuncInfo.SLMSize; }
@@ -355,11 +353,6 @@ public:
     SectionInfo Constant;
     SectionInfo Global;
     // Real global string variables that are used in printf.
-    // By design this can be filled only for zebin flow for now.
-    // It should be possible to put all string variables into this section.
-    // Though it would require merging \p Constant and \p ConstString for
-    // oclbin on patch token generation side. So for now it isn't done this
-    // way.
     SectionInfo ConstString;
 
     void clear() {

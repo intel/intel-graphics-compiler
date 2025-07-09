@@ -19,8 +19,6 @@ CONST: Caps
 \*****************************************************************************/
 const DWORD g_cNumSamplersPerProgram    = 16;
 const DWORD g_cNumSurfacesPerProgram    = 252;
-const DWORD g_cNumSearchPathStatesGen6  = 14;
-const DWORD g_cNumMBModeSetsGen6        = 4;
 
 /*****************************************************************************\
 CONST: g_cGen8HwCaps_GT4

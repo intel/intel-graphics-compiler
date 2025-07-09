@@ -52,7 +52,6 @@ public:
   IGC::SOpenCLKernelCostExpInfo m_kernelCostExpInfo;
   IGC::COCLBTILayout m_btiLayout;
   uint32_t m_GRFSizeInBytes = 0;
-  bool m_SupportsDebugging = false;
 
   // getter for convenience
   const IGC::SProgramOutput &getProgramOutput() const {
@@ -76,7 +75,7 @@ public:
   // 1D/2D/3D Surface
   void createImageAnnotation(const KernelArgInfo &ArgInfo, unsigned Offset);
 
-  // add a pointer patch token.
+  // Add pointer argument information to ZEInfo
   void createPointerGlobalAnnotation(const KernelArgInfo &ArgInfo,
                                      unsigned Offset);
 
@@ -88,7 +87,7 @@ public:
                                    unsigned statelessPrivateMemSize,
                                    bool isStateful);
 
-  // add a stateful buffer patch token.
+  // Add stateful buffer information to ZEInfo
   void createBufferStatefulAnnotation(unsigned argNo, ArgAccessKind accessKind);
 
   // Local or global size
@@ -118,31 +117,9 @@ using TmpFilesStorage = std::map<std::string, ToolOutputHolder>;
 
 class CGen8CMProgram : public iOpenCL::CGen8OpenCLProgramBase {
 public:
-  class CMProgramCtxProvider
-      : public iOpenCL::CGen8OpenCLStateProcessor::IProgramContext {
-  public:
-    CMProgramCtxProvider() {}
-
-    ShaderHash getProgramHash() const override { return {}; }
-    bool needsSystemKernel() const override { return false; }
-    // TODO: VC Kernels should always allocate SIP surface (to allow debugging)
-    bool isProgramDebuggable() const override {
-      return KernelIsDebuggable;
-    }
-    bool hasProgrammableBorderColor() const override { return false; }
-    bool useBindlessMode() const override { return false; }
-    bool useBindlessLegacyMode() const override { return false; }
-
-    bool KernelIsDebuggable = false;
-  };
-
   explicit CGen8CMProgram(const CompileOptions &Opts, PLATFORM platform,
-                          const WA_TABLE &WATable,
                           llvm::ArrayRef<char> SPIRV = {});
 
-  // Produce the final ELF binary with the given CM kernels
-  // in OpenCL format.
-  void CreateKernelBinaries();
   void GetZEBinary(llvm::raw_pwrite_stream &programBinary,
                    unsigned pointerSizeInBytes) override;
   bool HasErrors() const { return !m_ErrorLog.empty(); };
@@ -154,10 +131,9 @@ public:
   using CMKernelsStorage = std::vector<std::unique_ptr<CMKernel>>;
   CMKernelsStorage m_kernels;
 
-  // Data structure to create patch token based binaries.
+  // Data structure to create binaries.
   std::unique_ptr<IGC::SOpenCLProgramInfo> m_programInfo;
 
-  CMProgramCtxProvider m_ContextProvider;
   std::string m_ErrorLog;
 
 private:

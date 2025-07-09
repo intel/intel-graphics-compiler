@@ -467,8 +467,6 @@ DECLARE_IGC_REGKEY(bool, EnableCapsDump,                false, "Enable hardware 
 DECLARE_IGC_REGKEY(bool, EnableLivenessDump,            false, "Enable dumping out liveness info on stderr.", true)
 DECLARE_IGC_REGKEY(DWORD, ForceRPE,                     0,     "Force RPE (RegisterEstimator) computation if > 0. If 2, force RPE per inst.", true)
 DECLARE_IGC_REGKEY(DWORD, RPEDumpLevel,                 0,     "> 0 : dump info of register pressure estimate on stderr. See igc_flags.hpp level defs.", false)
-DECLARE_IGC_REGKEY(bool, DumpOCLProgramInfo,            false, "dump OpenCL Patch Tokens, Kernel/Program Binary Header", true)
-DECLARE_IGC_REGKEY(bool, DumpPatchTokens,               false, "Enable dumping of patch tokens.", true)
 DECLARE_IGC_REGKEY(bool, DumpVariableAlias,             false, "Dump variable alias info, valid if EnableVariableAlias is on", true)
 DECLARE_IGC_REGKEY(bool, DumpResourceLoop,              false, "dump resource loop detected by ResourceLoopAnalysis", true)
 DECLARE_IGC_REGKEY(bool, DumpDeSSA,                     false, "dump DeSSA info into file.", true)

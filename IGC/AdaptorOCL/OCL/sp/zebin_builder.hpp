@@ -10,7 +10,10 @@ SPDX-License-Identifier: MIT
 
 #include <vector>
 #include <ZEELFObjectBuilder.hpp>
-#include "sp_g8.h"
+#include "OCL/util/BinaryStream.h"
+#include "OCL/CommandStream/SamplerTypes.h"
+#include "OCL/Platform/cmd_media_caps_g8.h"
+#include "ocl_igc_shared/executable_format/patch_list.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "CLElfLib/ElfReader.h"
 
@@ -31,6 +34,16 @@ namespace vISA
 
 namespace iOpenCL
 {
+
+class DisallowCopy {
+public:
+  DisallowCopy() {};
+  virtual ~DisallowCopy() {};
+
+private:
+  DisallowCopy(const DisallowCopy &);
+  DisallowCopy &operator=(const DisallowCopy &);
+};
 
 /// ZEBinaryBuilder - Provides services to create a ZE Binary from given
 /// SProgramOutput information

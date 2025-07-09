@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/Status.h"
 #include "vc/igcdeps/cmc.h"
 
-#include "AdaptorOCL/OCL/sp/sp_g8.h"
 #include "lldWrapper/Common/Driver.h"
 
 #include <llvm/Support/Debug.h>
@@ -28,9 +27,8 @@ struct DebugInfo {
 
 // Implementation of CGen8CMProgram.
 CGen8CMProgram::CGen8CMProgram(const CompileOptions &Opts, PLATFORM platform,
-                               const WA_TABLE &WATable,
                                llvm::ArrayRef<char> SPIRV)
-    : CGen8OpenCLProgramBase(platform, m_ContextProvider, WATable),
+    : CGen8OpenCLProgramBase(platform),
       m_programInfo(new IGC::SOpenCLProgramInfo), m_opts(Opts), m_spirv(SPIRV) {
 }
 
@@ -139,42 +137,6 @@ std::unique_ptr<llvm::MemoryBuffer> CGen8CMProgram::buildZeDebugInfo() {
 llvm::Error CGen8CMProgram::GetError() const {
   IGC_ASSERT(HasErrors());
   return llvm::make_error<vc::OutputBinaryCreationError>(m_ErrorLog);
-}
-
-void CGen8CMProgram::CreateKernelBinaries() {
-  CreateProgramScopePatchStream(*m_programInfo);
-  for (const auto &kernel : m_kernels) {
-    // Create the kernel binary streams.
-    iOpenCL::KernelData data;
-    data.kernelBinary = std::make_unique<Util::BinaryStream>();
-
-    m_ContextProvider.KernelIsDebuggable = kernel->m_SupportsDebugging;
-    m_StateProcessor.CreateKernelBinary(
-        reinterpret_cast<const char *>(kernel->getProgramOutput().m_programBin),
-        kernel->getProgramOutput().m_programSize, kernel->m_kernelInfo,
-        *m_programInfo, kernel->m_btiLayout, *(data.kernelBinary),
-        m_pSystemThreadKernelOutput,
-        kernel->getProgramOutput().m_unpaddedProgramSize);
-
-    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-      m_opts.Dumper->dumpCos(
-          m_StateProcessor.m_oclStateDebugMessagePrintOut,
-          vc::legalizeShaderDumpName(kernel->m_kernelInfo.m_kernelName));
-
-    if (kernel->getProgramOutput().m_debugDataSize) {
-      data.vcKernelDebugData = std::make_unique<Util::BinaryStream>();
-      m_StateProcessor.CreateKernelDebugData(
-          reinterpret_cast<const char *>(
-              kernel->getProgramOutput().m_debugData),
-          kernel->getProgramOutput().m_debugDataSize,
-          reinterpret_cast<const char *>(
-              kernel->getProgramOutput().m_debugDataGenISA),
-          kernel->getProgramOutput().m_debugDataGenISASize,
-          kernel->m_kernelInfo.m_kernelName, *data.vcKernelDebugData);
-    }
-    m_StateProcessor.m_oclStateDebugMessagePrintOut.clear();
-    m_KernelBinaries.push_back(std::move(data));
-  }
 }
 
 void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,

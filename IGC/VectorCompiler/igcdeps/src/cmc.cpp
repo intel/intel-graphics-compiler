@@ -78,147 +78,10 @@ getZEArgAccessType(GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType accessKind)
     }
 }
 
-namespace {
-class KernelArgInfoBuilder
-{
-    using ArgKind = GenXOCLRuntimeInfo::KernelArgInfo::KindType;
-    using ArgAccessKind = GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType;
-
-    struct AccessQualifiers
-    {
-        static constexpr const char* None = "NONE";
-        static constexpr const char* ReadOnly = "read_only";
-        static constexpr const char* WriteOnly = "write_only";
-        static constexpr const char* ReadWrite = "read_write";
-
-        static const char* get(ArgAccessKind AccessKindID)
-        {
-            switch (AccessKindID)
-            {
-                case ArgAccessKind::None:
-                    return None;
-                case ArgAccessKind::ReadOnly:
-                    return ReadOnly;
-                case ArgAccessKind::WriteOnly:
-                    return WriteOnly;
-                case ArgAccessKind::ReadWrite:
-                default:
-                    return ReadWrite;
-            }
-        }
-    };
-    struct AddressQualifiers
-    {
-        static constexpr const char* Global = "__global";
-        static constexpr const char* Local = "__local";
-        static constexpr const char* Private = "__private";
-        static constexpr const char* Constant = "__constant";
-        static constexpr const char* NotSpecified = "not_specified";
-
-        static const char* get(ArgKind ArgKindID)
-        {
-            switch (ArgKindID)
-            {
-                case ArgKind::General:
-                  return Private;
-                case ArgKind::Buffer:
-                case ArgKind::SVM:
-                case ArgKind::Image1D:
-                case ArgKind::Image1DArray:
-                case ArgKind::Image2D:
-                case ArgKind::Image2DArray:
-                case ArgKind::Image2DMediaBlock:
-                case ArgKind::Image3D:
-                  return Global;
-                case ArgKind::Sampler:
-                  return Constant;
-                case ArgKind::SLM:
-                  return Local;
-                default:
-                  IGC_ASSERT_EXIT_MESSAGE(
-                      0, "implicit args cannot appear in kernel arg info");
-            }
-            return NotSpecified;
-        }
-    };
-    struct TypeQualifiers
-    {
-        static constexpr const char* None = "NONE";
-        static constexpr const char* Const = "const";
-        static constexpr const char* Volatile = "volatile";
-        static constexpr const char* Restrict = "restrict";
-        static constexpr const char* Pipe = "pipe";
-    };
-    using KernArgAnnotation = iOpenCL::KernelArgumentInfoAnnotation;
-    using ArgInfoSeq = std::vector<std::unique_ptr<KernArgAnnotation>>;
-    ArgInfoSeq ArgInfos;
-
-public:
-    void insert(int Index, ArgKind ArgKindID, ArgAccessKind AccessKindID)
-    {
-        resizeStorageIfRequired(Index + 1);
-        ArgInfos[Index] = get(ArgKindID, AccessKindID);
-    }
-
-    // It is users responsibility to delete the annotation.
-    static std::unique_ptr<KernArgAnnotation> get(ArgKind ArgKindID,
-            ArgAccessKind AccessKind = ArgAccessKind::None)
-    {
-        auto Annotation = std::make_unique<KernArgAnnotation>();
-        Annotation->AddressQualifier = AddressQualifiers::get(ArgKindID);
-        Annotation->AccessQualifier = AccessQualifiers::get(AccessKind);
-        Annotation->ArgumentName = "";
-        Annotation->TypeName = "";
-        Annotation->TypeQualifier = TypeQualifiers::None;
-        return Annotation;
-    }
-
-    ArgInfoSeq emit() &&
-    {
-        IGC_ASSERT_MESSAGE(checkArgInfosCorrectness(),
-                           "arg info token is incorrect");
-        return std::move(ArgInfos);
-    }
-
-private:
-    void resizeStorageIfRequired(int RequiredSize)
-    {
-        IGC_ASSERT_MESSAGE(RequiredSize > 0, "invalid required size");
-        if (RequiredSize <= static_cast<int>(ArgInfos.size()))
-            return;
-
-        ArgInfos.reserve(RequiredSize);
-        for (int i = ArgInfos.size(); i < RequiredSize; ++i) {
-          ArgInfos.emplace_back(std::unique_ptr<KernArgAnnotation>());
-        }
-    }
-
-    // Returns whether arg infos are correct.
-    bool checkArgInfosCorrectness() const
-    {
-        return std::none_of(ArgInfos.begin(), ArgInfos.end(),
-            [](const auto &ArgInfo){ return ArgInfo.get() == nullptr; });
-    }
-};
-} // anonymous namespace
-
 void CMKernel::createConstArgumentAnnotation(unsigned argNo,
                                              unsigned sizeInBytes,
                                              unsigned payloadPosition,
                                              unsigned offsetInArg) {
-    auto constInput = std::make_unique<iOpenCL::ConstantArgumentAnnotation>();
-
-    constInput->Offset = offsetInArg;
-    constInput->PayloadPosition = payloadPosition;
-    constInput->PayloadSizeInBytes = sizeInBytes;
-    constInput->ArgumentNumber = argNo;
-    constInput->LocationIndex = 0;
-    constInput->LocationCount = 0;
-    constInput->IsEmulationArgument = false;
-
-    m_kernelInfo.m_constantArgumentAnnotation.push_back(std::move(constInput));
-
-    // EnableZEBinary: ZEBinary related code
     zebin::ZEInfoBuilder::addPayloadArgumentByValue(m_kernelInfo.m_zePayloadArgs,
         payloadPosition, sizeInBytes, argNo, offsetInArg, false);
 }
@@ -254,18 +117,6 @@ void CMKernel::createSamplerAnnotation(const KernelArgInfo &ArgInfo,
     // if more than one sampler index exists
     BTI = 0;
   }
-
-  auto SamplerArg = std::make_unique<SamplerArgumentAnnotation>();
-  SamplerArg->SamplerType = SamplerType;
-  SamplerArg->ArgumentNumber = Index;
-  SamplerArg->SamplerTableIndex = BTI;
-  SamplerArg->LocationIndex = 0;
-  SamplerArg->LocationCount = 0;
-  SamplerArg->IsBindlessAccess = IsBindless;
-  SamplerArg->IsEmulationArgument = false;
-  SamplerArg->PayloadPosition = Offset;
-
-  m_kernelInfo.m_samplerArgument.push_back(std::move(SamplerArg));
 
   const auto ZeAddrMode = IsBindless
                               ? PreDefinedAttrGetter::ArgAddrMode::bindless
@@ -332,22 +183,7 @@ void CMKernel::createImageAnnotation(const KernelArgInfo &ArgInfo,
     Offset = 0;
   }
 
-  auto ImageInput = std::make_unique<ImageArgumentAnnotation>();
   auto ImageType = getOCLImageType(Kind);
-
-  ImageInput->ArgumentNumber = Index;
-  ImageInput->IsFixedBindingTableIndex = !IsBindless;
-  ImageInput->BindingTableIndex = BTI;
-  ImageInput->ImageType = ImageType;
-  ImageInput->LocationIndex = 0;
-  ImageInput->LocationCount = 0;
-  ImageInput->IsEmulationArgument = false;
-  ImageInput->AccessedByFloatCoords = false;
-  ImageInput->AccessedByIntCoords = false;
-  ImageInput->IsBindlessAccess = IsBindless;
-  ImageInput->PayloadPosition = Offset;
-  ImageInput->Writeable = Access != ArgAccessKind::ReadOnly;
-  m_kernelInfo.m_imageInputAnnotations.push_back(std::move(ImageInput));
 
   const auto ZeAddrMode = IsBindless
                               ? PreDefinedAttrGetter::ArgAddrMode::bindless
@@ -382,21 +218,6 @@ void CMKernel::createPointerGlobalAnnotation(const KernelArgInfo &ArgInfo,
   const auto SourceOffset = ArgInfo.getOffsetInArg();
   const bool IsLinearization = SourceOffset != 0 || ArgInfo.getArgNo() != Index;
 
-  auto PtrAnnotation = std::make_unique<PointerArgumentAnnotation>();
-
-  PtrAnnotation->IsStateless = AddrMode != ArgAddressMode::Bindless;
-  PtrAnnotation->IsBindlessAccess = AddrMode == ArgAddressMode::Bindless;
-  PtrAnnotation->HasStatefulAccess = AddrMode == ArgAddressMode::Stateful;
-  PtrAnnotation->AddressSpace = KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL;
-  PtrAnnotation->ArgumentNumber = Index;
-  PtrAnnotation->BindingTableIndex = BTI;
-  PtrAnnotation->PayloadPosition = Offset;
-  PtrAnnotation->PayloadSizeInBytes = Size;
-  PtrAnnotation->LocationIndex = 0;
-  PtrAnnotation->LocationCount = 0;
-  PtrAnnotation->IsEmulationArgument = false;
-  m_kernelInfo.m_pointerArgument.push_back(std::move(PtrAnnotation));
-
   PreDefinedAttrGetter::ArgAddrMode ZeAddrMode;
   if (AddrMode == ArgAddressMode::Bindless) {
     IGC_ASSERT(!IsLinearization);
@@ -426,19 +247,6 @@ void CMKernel::createPointerGlobalAnnotation(const KernelArgInfo &ArgInfo,
 void CMKernel::createPointerLocalAnnotation(unsigned index, unsigned offset,
                                             unsigned sizeInBytes,
                                             unsigned alignment) {
-  auto locAnnotation = std::make_unique<iOpenCL::LocalArgumentAnnotation>();
-
-  locAnnotation->Alignment = alignment;
-
-  // TODO: offset must be aligned.
-  locAnnotation->PayloadPosition = offset;
-  locAnnotation->PayloadSizeInBytes = sizeInBytes;
-  locAnnotation->ArgumentNumber = index;
-  locAnnotation->LocationIndex = 0;
-  locAnnotation->LocationCount = 0;
-  m_kernelInfo.m_localPointerArgument.push_back(std::move(locAnnotation));
-
-  // EnableZEBinary: ZEBinary related code
   zebin::ZEInfoBuilder::addPayloadArgumentByPointer(
       m_kernelInfo.m_zePayloadArgs, offset, sizeInBytes, index,
       zebin::PreDefinedAttrGetter::ArgAddrMode::slm,
@@ -450,19 +258,6 @@ void CMKernel::createPrivateBaseAnnotation(unsigned argNo, unsigned byteSize,
                                            unsigned payloadPosition, int BTI,
                                            unsigned statelessPrivateMemSize,
                                            bool isStateful) {
-  auto ptrAnnotation = std::make_unique<iOpenCL::PrivateInputAnnotation>();
-  ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_PRIVATE;
-  ptrAnnotation->ArgumentNumber = argNo;
-  // PerThreadPrivateMemorySize is defined as "Total private memory requirements for each OpenCL work-item."
-  ptrAnnotation->PerThreadPrivateMemorySize = statelessPrivateMemSize;
-  ptrAnnotation->BindingTableIndex = BTI;
-  ptrAnnotation->IsStateless = !isStateful;
-  ptrAnnotation->PayloadPosition = payloadPosition;
-  ptrAnnotation->PayloadSizeInBytes = byteSize;
-  ptrAnnotation->HasStatefulAccess = isStateful;
-  m_kernelInfo.m_pointerInput.push_back(std::move(ptrAnnotation));
-
-  // EnableZEBinary: ZEBinary related code
   zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
       m_kernelInfo.m_zePayloadArgs,
       zebin::PreDefinedAttrGetter::ArgType::private_base_stateless,
@@ -471,18 +266,6 @@ void CMKernel::createPrivateBaseAnnotation(unsigned argNo, unsigned byteSize,
 
 void CMKernel::createBufferStatefulAnnotation(unsigned argNo,
                                               ArgAccessKind accessKind) {
-  auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
-
-  constInput->ConstantType = iOpenCL::DATA_PARAMETER_BUFFER_STATEFUL;
-  constInput->Offset = 0;
-  constInput->PayloadPosition = 0;
-  constInput->PayloadSizeInBytes = 0;
-  constInput->ArgumentNumber = argNo;
-  constInput->LocationIndex = 0;
-  constInput->LocationCount = 0;
-  m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
-
-  // EnableZEBinary: ZEBinary related code
   zebin::ZEInfoBuilder::addPayloadArgumentByPointer(
       m_kernelInfo.m_zePayloadArgs, 0, 0, argNo,
       zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
@@ -493,23 +276,6 @@ void CMKernel::createBufferStatefulAnnotation(unsigned argNo,
 void CMKernel::createSizeAnnotation(unsigned initPayloadPosition,
                                     iOpenCL::DATA_PARAMETER_TOKEN Type)
 {
-    for (int i = 0, payloadPosition = initPayloadPosition;
-         i < 3;
-         ++i, payloadPosition += iOpenCL::DATA_PARAMETER_DATA_SIZE)
-    {
-        auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
-        DWORD sizeInBytes = iOpenCL::DATA_PARAMETER_DATA_SIZE;
-
-        constInput->ConstantType = Type;
-        constInput->Offset = i * sizeInBytes;
-        constInput->PayloadPosition = payloadPosition;
-        constInput->PayloadSizeInBytes = sizeInBytes;
-        constInput->ArgumentNumber = 0;
-        constInput->LocationIndex = 0;
-        constInput->LocationCount = 0;
-        m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
-    }
-    // EnableZEBinary: ZEBinary related code
     zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
         getZEArgType(Type), initPayloadPosition,
         iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
@@ -518,7 +284,6 @@ void CMKernel::createSizeAnnotation(unsigned initPayloadPosition,
 void CMKernel::createAssertBufferArgAnnotation(unsigned Index, unsigned BTI,
                                                unsigned Size,
                                                unsigned ArgOffset) {
-    // EnableZEBinary: ZEBinary related code
     zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
         m_kernelInfo.m_zePayloadArgs,
         zebin::PreDefinedAttrGetter::ArgType::assert_buffer, ArgOffset, Size);
@@ -527,15 +292,6 @@ void CMKernel::createAssertBufferArgAnnotation(unsigned Index, unsigned BTI,
 void CMKernel::createPrintfBufferArgAnnotation(unsigned Index, unsigned BTI,
                                                unsigned Size,
                                                unsigned ArgOffset) {
-  m_kernelInfo.m_printfBufferAnnotation =
-      std::make_unique<iOpenCL::PrintfBufferAnnotation>();
-  m_kernelInfo.m_argIndexMap[Index] = BTI;
-  m_kernelInfo.m_printfBufferAnnotation->ArgumentNumber = Index;
-  m_kernelInfo.m_printfBufferAnnotation->PayloadPosition = ArgOffset;
-  m_kernelInfo.m_printfBufferAnnotation->Index = 0;
-  m_kernelInfo.m_printfBufferAnnotation->DataSize = Size;
-
-  // EnableZEBinary: ZEBinary related code
   zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
       m_kernelInfo.m_zePayloadArgs,
       zebin::PreDefinedAttrGetter::ArgType::printf_buffer, ArgOffset, Size);
@@ -544,7 +300,6 @@ void CMKernel::createPrintfBufferArgAnnotation(unsigned Index, unsigned BTI,
 void CMKernel::createSyncBufferArgAnnotation(unsigned Index, unsigned BTI,
                                              unsigned Size,
                                              unsigned ArgOffset) {
-  // EnableZEBinary: ZEBinary related code
   zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
       m_kernelInfo.m_zePayloadArgs,
       zebin::PreDefinedAttrGetter::ArgType::sync_buffer, ArgOffset, Size);
@@ -552,17 +307,6 @@ void CMKernel::createSyncBufferArgAnnotation(unsigned Index, unsigned BTI,
 
 void CMKernel::createImplArgsBufferAnnotation(unsigned Size,
                                               unsigned ArgOffset) {
-  auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
-
-  constInput->ConstantType = iOpenCL::DATA_PARAMETER_IMPL_ARG_BUFFER;
-  constInput->Offset = 0;
-  constInput->PayloadPosition = ArgOffset;
-  constInput->PayloadSizeInBytes = Size;
-  constInput->ArgumentNumber = 0;
-  constInput->LocationIndex = 0;
-  constInput->LocationCount = 0;
-  m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
-
   zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
       m_kernelInfo.m_zePayloadArgs,
       zebin::PreDefinedAttrGetter::ArgType::implicit_arg_buffer, ArgOffset,
@@ -634,73 +378,25 @@ static void setFuncSectionInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
   std::tie(KernelProgram.m_funcSymbolTable, KernelProgram.m_funcSymbolTableSize,
            KernelProgram.m_funcSymbolTableEntries) =
       vc::emitLegacyFunctionSymbolTable(Info.Func.Symbols);
+
   // Points to the first function symbol and also one past last kernel symbol.
   const auto FirstFuncIt =
       std::partition_point(Info.Func.Symbols.begin(), Info.Func.Symbols.end(),
                            [](const vISA::ZESymEntry &Entry) {
                              return Entry.s_type == vISA::GenSymType::S_KERNEL;
                            });
+
   KernelProgram.m_symbols.function =
       IGC::SProgramOutput::SymbolListTy{FirstFuncIt, Info.Func.Symbols.end()};
-  // EnableZEBinary: ZEBinary related code
   KernelProgram.m_symbols.local =
       IGC::SProgramOutput::SymbolListTy{Info.Func.Symbols.begin(), FirstFuncIt};
 }
 
-static void generateKernelArgInfo(
-    const GenXOCLRuntimeInfo::KernelInfo &KInfo,
-    std::vector<std::unique_ptr<iOpenCL::KernelArgumentInfoAnnotation>> &ArgsAnnotation) {
-  KernelArgInfoBuilder ArgsAnnotationBuilder;
-  for (auto &Arg : KInfo.args()) {
-    using KindType = GenXOCLRuntimeInfo::KernelArgInfo::KindType;
-    switch (Arg.getKind()) {
-    case KindType::General:
-    case KindType::Buffer:
-    case KindType::SVM:
-    case KindType::SLM:
-    case KindType::Sampler:
-    case KindType::Image1D:
-    case KindType::Image1DArray:
-    case KindType::Image2D:
-    case KindType::Image2DArray:
-    case KindType::Image2DMediaBlock:
-    case KindType::Image3D:
-      ArgsAnnotationBuilder.insert(Arg.getIndex(), Arg.getKind(),
-                                   Arg.getAccessKind());
-      break;
-    default:
-      continue;
-    }
-  }
-  ArgsAnnotation = std::move(ArgsAnnotationBuilder).emit();
-}
-
 static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
                              CMKernel &Kernel) {
-  llvm::transform(
-      llvm::enumerate(Info.getPrintStrings()),
-      std::back_inserter(Kernel.m_kernelInfo.m_printfStringAnnotations),
-      [](const auto EnumStr) {
-        auto StringAnnotation = std::make_unique<iOpenCL::PrintfStringAnnotation>();
-        StringAnnotation->Index = EnumStr.index();
-        const std::string &PrintString = EnumStr.value();
-        const unsigned StringSize = PrintString.size();
-        StringAnnotation->StringSize = StringSize;
-        // Though string size is present in annotation, string
-        // should be null terminated: patchtokens processor
-        // ignores size field for some reason.
-        StringAnnotation->StringData = new char[StringSize + 1];
-        std::copy_n(PrintString.c_str(), StringSize + 1,
-                    StringAnnotation->StringData);
-        return StringAnnotation;
-      });
-
   // This is the starting constant thread payload
   // r0-r1 are reserved for SIMD1 dispatch
   const unsigned ConstantPayloadStart = Info.getGRFSizeInBytes() * 2;
-
-  // Setup argument to BTI mapping.
-  Kernel.m_kernelInfo.m_argIndexMap.clear();
 
   for (const GenXOCLRuntimeInfo::KernelArgInfo &Arg : Info.args()) {
     IGC_ASSERT_MESSAGE(Arg.getOffset() >= ConstantPayloadStart,
@@ -728,11 +424,9 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
       if (checkStateful(Arg.getBTI()))
         Kernel.createBufferStatefulAnnotation(Arg.getIndex(),
                                               Arg.getAccessKind());
-      Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::SVM:
       Kernel.createPointerGlobalAnnotation(Arg, ArgOffset);
-      Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::SLM:
       Kernel.createPointerLocalAnnotation(
@@ -740,7 +434,6 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
       break;
     case ArgKind::Sampler:
       Kernel.createSamplerAnnotation(Arg, ArgOffset);
-      Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::Image1D:
     case ArgKind::Image1DArray:
@@ -749,7 +442,6 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
     case ArgKind::Image2DMediaBlock:
     case ArgKind::Image3D:
       Kernel.createImageAnnotation(Arg, ArgOffset);
-      Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::AssertBuffer:
       Kernel.createAssertBufferArgAnnotation(Arg.getIndex(), Arg.getBTI(),
@@ -770,7 +462,6 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
                                          checkStateful(Arg.getBTI()));
       Kernel.m_kernelInfo.m_executionEnvironment
           .PerThreadPrivateOnStatelessSize = PrivMemSize;
-      Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
     } break;
     case ArgKind::ByValSVM:
       // Do nothing because it has already been linearized and implicit args
@@ -781,7 +472,6 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
       break;
     }
   }
-  generateKernelArgInfo(Info, Kernel.m_kernelInfo.m_kernelArgInfo);
 
   const unsigned MaxArgEnd = std::accumulate(
       Info.arg_begin(), Info.arg_end(), ConstantPayloadStart,
@@ -812,7 +502,6 @@ static uint32_t getConservativeVISAStackSize(const PLATFORM& platform) {
 static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
                              const vISA::FINALIZER_INFO &JitterInfo,
                              CMKernel &Kernel) {
-  Kernel.m_SupportsDebugging = BackendInfo.supportsDebugging();
   Kernel.m_GRFSizeInBytes = BackendInfo.getGRFSizeInBytes();
   Kernel.m_kernelInfo.m_kernelName = BackendInfo.getName();
 
@@ -963,8 +652,7 @@ static void setCostInfo(const GenXOCLRuntimeInfo::CostInfoT &CostInfo,
   }
 }
 
-// Transform backend collected into encoder format (OCL patchtokens or L0
-// structures).
+// Transform backend collected into encoder format.
 static void fillKernelInfo(const GenXOCLRuntimeInfo::CompiledKernel &CompKernel,
                            CMKernel &ResKernel) {
   setExecutionInfo(CompKernel.getKernelInfo(), CompKernel.getJitterInfo(),
@@ -1021,11 +709,6 @@ fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
         std::move(ConstStringAnnotation);
 
   // Symbols.
-  std::tie(ProgramInfo.m_legacySymbolTable.m_buffer,
-           ProgramInfo.m_legacySymbolTable.m_size,
-           ProgramInfo.m_legacySymbolTable.m_entries) =
-      vc::emitLegacyModuleSymbolTable(ModuleInfo.Constant.Symbols,
-                                      ModuleInfo.Global.Symbols);
   ProgramInfo.m_zebinSymbolTable.global = ModuleInfo.Global.Symbols;
   ProgramInfo.m_zebinSymbolTable.globalConst = ModuleInfo.Constant.Symbols;
   ProgramInfo.m_zebinSymbolTable.globalStringConst =

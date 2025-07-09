@@ -37,94 +37,22 @@ SPDX-License-Identifier: MIT
 namespace iOpenCL
 {
 
-extern RETVAL g_cInitRetValue;
-
-ShaderHash CGen8OpenCLProgram::CLProgramCtxProvider::getProgramHash() const {
-    return m_Context.hash;
-}
-bool CGen8OpenCLProgram::CLProgramCtxProvider::needsSystemKernel() const {
-    const auto& options = m_Context.m_InternalOptions;
-    return options.IncludeSIPCSR ||
-        options.IncludeSIPKernelDebug ||
-        options.IncludeSIPKernelDebugWithLocalMemory;
-}
-bool CGen8OpenCLProgram::CLProgramCtxProvider::isProgramDebuggable() const {
-    return m_Context.m_InternalOptions.KernelDebugEnable;
-}
-bool CGen8OpenCLProgram::CLProgramCtxProvider::hasProgrammableBorderColor() const {
-    return false;
-}
-
-bool CGen8OpenCLProgram::CLProgramCtxProvider::useBindlessMode() const {
-    return m_Context.m_InternalOptions.UseBindlessMode;
-}
-bool CGen8OpenCLProgram::CLProgramCtxProvider::useBindlessLegacyMode() const {
-    return m_Context.m_InternalOptions.UseBindlessLegacyMode;
-}
-
-
-CGen8OpenCLProgramBase::CGen8OpenCLProgramBase(PLATFORM platform,
-                                               const CGen8OpenCLStateProcessor::IProgramContext& Ctx, const WA_TABLE& WATable)
-    : m_Platform(platform),
-      m_StateProcessor(platform, Ctx, WATable)
+CGen8OpenCLProgramBase::CGen8OpenCLProgramBase(PLATFORM platform)
+    : m_Platform(platform)
 {
-    m_ProgramScopePatchStream = new Util::BinaryStream;
 }
 
 CGen8OpenCLProgramBase::~CGen8OpenCLProgramBase()
 {
-    delete m_ProgramScopePatchStream;
-
     if (m_pSystemThreadKernelOutput)
     {
         SIP::CSystemThread::DeleteSystemThreadKernel(m_pSystemThreadKernelOutput);
     }
 }
 
-RETVAL CGen8OpenCLProgramBase::GetProgramBinary(
-    Util::BinaryStream& programBinary,
-    unsigned pointerSizeInBytes )
-{
-    RETVAL retValue = g_cInitRetValue;
-
-    iOpenCL::SProgramBinaryHeader   header;
-
-    memset( &header, 0, sizeof( header ) );
-
-    header.Magic = iOpenCL::MAGIC_CL;
-    header.Version = iOpenCL::CURRENT_ICBE_VERSION;
-    header.Device = m_Platform.eRenderCoreFamily;
-    header.GPUPointerSizeInBytes = pointerSizeInBytes;
-    header.NumberOfKernels = m_KernelBinaries.size();
-    header.SteppingId = m_Platform.usRevId;
-    header.PatchListSize = int_cast<DWORD>(m_ProgramScopePatchStream->Size());
-
-    if (IGC_IS_FLAG_ENABLED(DumpOCLProgramInfo))
-    {
-        DebugProgramBinaryHeader(&header, m_StateProcessor.m_oclStateDebugMessagePrintOut);
-    }
-
-    programBinary.Write( header );
-
-    programBinary.Write( *m_ProgramScopePatchStream );
-
-    for( auto& data : m_KernelBinaries )
-    {
-        programBinary.Write( *(data.kernelBinary) );
-    }
-
-    return retValue;
-}
-
-void CGen8OpenCLProgramBase::CreateProgramScopePatchStream(const IGC::SOpenCLProgramInfo& annotations)
-{
-    m_StateProcessor.CreateProgramScopePatchStream(annotations, *m_ProgramScopePatchStream);
-}
-
 CGen8OpenCLProgram::CGen8OpenCLProgram(PLATFORM platform, const IGC::OpenCLProgramContext& context)
     : m_Context(context),
-      m_ContextProvider(context),
-      CGen8OpenCLProgramBase(platform, m_ContextProvider, context.platform.getWATable())
+      CGen8OpenCLProgramBase(platform)
 {
 }
 
@@ -159,102 +87,6 @@ static void dumpZEInfo(const IGC::CodeGenContext &Ctx,
     {
         ZEBuilder.printZEInfo(filename.str());
     }
-}
-
-void dumpOCLKernelBinary(
-    const IGC::COpenCLKernel *Kernel,
-    const KernelData &data)
-{
-    using namespace IGC;
-    using namespace IGC::Debug;
-
-    auto *Ctx = Kernel->GetContext();
-
-    std::string kernelName(Kernel->m_kernelInfo.m_kernelName);
-    Kernel->getShaderFileName(kernelName);
-
-    auto name = DumpName(IGC::Debug::GetShaderOutputName())
-        .Hash(Ctx->hash)
-        .Type(ShaderType::OPENCL_SHADER)
-        .PostFix(kernelName)
-        .Extension("kernbin");
-
-    const auto &KernBin = data.kernelBinary;
-    IGC_ASSERT(KernBin);
-
-    if (name.allow())
-    {
-        std::error_code EC;
-        llvm::raw_fd_ostream f(name.str(), EC);
-        if (!EC)
-            f.write(KernBin->GetLinearPointer(), (size_t)KernBin->Size());
-    }
-}
-
-void overrideOCLKernelBinary(
-    const IGC::COpenCLKernel *Kernel,
-    KernelData &data)
-{
-    using namespace IGC;
-    using namespace IGC::Debug;
-
-    auto *Ctx = Kernel->GetContext();
-
-    std::string kernelName(Kernel->m_kernelInfo.m_kernelName);
-    Kernel->getShaderFileName(kernelName);
-
-    auto name = DumpName(IGC::Debug::GetShaderOutputName())
-        .Hash(Ctx->hash)
-        .Type(ShaderType::OPENCL_SHADER)
-        .PostFix(kernelName)
-        .Extension("kernbin");
-
-    std::string Path = name.overridePath();
-
-    std::ifstream f(Path, std::ios::binary);
-    if (!f.is_open())
-        return;
-
-    appendToShaderOverrideLogFile(Path, "OVERRIDDEN: ");
-
-    f.seekg(0, f.end);
-    int newBinarySize = (int)f.tellg();
-    f.seekg(0, f.beg);
-
-    auto &KernBin = data.kernelBinary;
-    KernBin.reset();
-
-    KernBin = std::make_unique<Util::BinaryStream>();
-
-    std::unique_ptr<char[]> Buf(new char[newBinarySize]);
-    f.read(Buf.get(), newBinarySize);
-
-    IGC_ASSERT_MESSAGE(f.good(), "Not fully read!");
-
-    KernBin->Write(Buf.get(), newBinarySize);
-}
-
-void dumpOCLCos(const IGC::COpenCLKernel *Kernel, const std::string &stateDebugMsg) {
-    IGC::CodeGenContext* context = Kernel->GetContext();
-
-    auto dumpName =
-        IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
-        .Type(ShaderType::OPENCL_SHADER)
-        .Hash(context->hash)
-        .StagedInfo(context);
-
-    std::string kernelName(Kernel->m_kernelInfo.m_kernelName);
-    Kernel->getShaderFileName(kernelName);
-    dumpName = dumpName.PostFix(kernelName);
-
-    dumpName = dumpName.DispatchMode(Kernel->m_ShaderDispatchMode);
-    dumpName = dumpName.SIMDSize(Kernel->m_State.m_dispatchSize).Retry(context->m_retryManager.GetRetryId()).Extension("cos");
-
-    auto dump = IGC::Debug::Dump(dumpName, IGC::Debug::DumpType::COS_TEXT);
-
-    IGC::Debug::DumpLock();
-    dump.stream() << stateDebugMsg;
-    IGC::Debug::DumpUnlock();
 }
 
 static std::string getKernelDumpName(const IGC::COpenCLKernel* kernel)
@@ -700,86 +532,6 @@ bool CGen8OpenCLProgram::GetZEBinary(
         dumpZEInfo(m_Context, zebuilder, true);
 
     return retValue;
-}
-
-void CGen8OpenCLProgram::CreateKernelBinaries()
-{
-    for (auto& pKernel : m_ShaderProgramList)
-    {
-        IGC::COpenCLKernel* simd8Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
-        IGC::COpenCLKernel* simd16Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
-        IGC::COpenCLKernel* simd32Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
-
-        // Determine how many simd modes we have per kernel
-        std::vector<IGC::COpenCLKernel*> kernelVec;
-        if (m_Context.m_enableSimdVariantCompilation && m_Context.getModuleMetaData()->csInfo.forcedSIMDSize == 0)
-        {
-            // For multiple SIMD modes, send SIMD modes in descending order
-            if (IGC::COpenCLKernel::IsValidShader(simd32Shader))
-                kernelVec.push_back(simd32Shader);
-            if (IGC::COpenCLKernel::IsValidShader(simd16Shader))
-                kernelVec.push_back(simd16Shader);
-            if (IGC::COpenCLKernel::IsValidShader(simd8Shader))
-                kernelVec.push_back(simd8Shader);
-        }
-        else
-        {
-            if (IGC::COpenCLKernel::IsValidShader(simd32Shader))
-                kernelVec.push_back(simd32Shader);
-            else if (IGC::COpenCLKernel::IsValidShader(simd16Shader))
-                kernelVec.push_back(simd16Shader);
-            else if (IGC::COpenCLKernel::IsValidShader(simd8Shader))
-                kernelVec.push_back(simd8Shader);
-        }
-
-        for (const auto& kernel : kernelVec)
-        {
-            IGC::SProgramOutput* pOutput = kernel->ProgramOutput();
-
-            // Create the kernel binary streams
-            KernelData data;
-            data.kernelBinary = std::make_unique<Util::BinaryStream>();
-
-            m_StateProcessor.CreateKernelBinary(
-                (const char*)pOutput->m_programBin,
-                pOutput->m_programSize,
-                kernel->m_kernelInfo,
-                m_Context.m_programInfo,
-                m_Context.btiLayout,
-                *(data.kernelBinary),
-                m_pSystemThreadKernelOutput,
-                pOutput->m_unpaddedProgramSize);
-
-            if (IGC_IS_FLAG_ENABLED(EnableCosDump))
-                  dumpOCLCos(kernel,
-                             m_StateProcessor.m_oclStateDebugMessagePrintOut);
-
-            if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-                dumpOCLKernelBinary(kernel, data);
-
-            if (IGC_IS_FLAG_ENABLED(ShaderOverride))
-                overrideOCLKernelBinary(kernel, data);
-
-            IGC_ASSERT(data.kernelBinary && data.kernelBinary->Size() > 0);
-
-            // Create the debug data binary streams
-            if (pOutput->m_debugDataSize > 0 || pOutput->m_debugDataGenISASize > 0)
-            {
-                data.dbgInfo.header = std::make_unique<Util::BinaryStream>();
-
-                m_StateProcessor.CreateKernelDebugData(
-                    (const char*)pOutput->m_debugData,
-                    pOutput->m_debugDataSize,
-                    (const char*)pOutput->m_debugDataGenISA,
-                    pOutput->m_debugDataGenISASize,
-                    kernel->m_kernelInfo.m_kernelName,
-                    data.dbgInfo);
-            }
-
-            m_StateProcessor.m_oclStateDebugMessagePrintOut.clear();
-            m_KernelBinaries.push_back(std::move(data));
-        }
-    }
 }
 
 } // namespace iOpenCL

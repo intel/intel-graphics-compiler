@@ -196,9 +196,6 @@ namespace IGC
         // A helper function to get vector type hint string for filling user attributes
         std::string getVecTypeHintTypeString(const IGC::IGCMD::VectorTypeHintMetaDataHandle& vecTypeHintInfo) const;
 
-        // Create annotation for printf strings.
-        void CreatePrintfStringAnnotations();
-
         // Load from MD and return the resource information for argument number argNo
         SOpenCLKernelInfo::SResourceInfo getResourceInfo(int argNo);
 
@@ -223,8 +220,6 @@ namespace IGC
         std::map<llvm::Value*, unsigned int> m_localOffsetsMap;
 
         OpenCLProgramContext* m_Context;
-
-        void ClearKernelInfo();
     private:
         WorkGroupWalkOrderMD getWorkGroupWalkOrder();
         void tryHWGenerateLocalIDs();

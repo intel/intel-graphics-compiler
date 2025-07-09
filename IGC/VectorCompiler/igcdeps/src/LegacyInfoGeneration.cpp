@@ -20,52 +20,6 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
-// appendLegacySymbolTable: a helper function to append symbols to a legacy
-// symbol table.
-// Output iterator is represented by a pointer \p OutIt, so the table/array
-// it points to has to have enough space.
-// The range [\p First, \p Last) must consist of vISA::ZESymEntry elements.
-template <typename InputIter>
-void appendLegacySymbolTable(InputIter First, InputIter Last,
-                             vISA::GenSymEntry *OutIt) {
-  std::transform(
-      First, Last, OutIt, [](const vISA::ZESymEntry &SI) {
-        vISA::GenSymEntry Entry;
-        Entry.s_offset = SI.s_offset;
-        Entry.s_size = SI.s_size;
-        Entry.s_type = SI.s_type;
-        IGC_ASSERT_MESSAGE(SI.s_name.size() < vISA::MAX_SYMBOL_NAME_LENGTH,
-                           "no solution for long symbol names for legacy "
-                           "symbol info is yet provided");
-        IGC_ASSERT_MESSAGE(sizeof(Entry.s_name) ==
-                               vISA::MAX_SYMBOL_NAME_LENGTH *
-                                   sizeof(Entry.s_name[0]),
-                           "vISA::GenSymEntry structure is inconsistent");
-        std::copy(SI.s_name.begin(), SI.s_name.end(), Entry.s_name);
-        // Null-terminating the string.
-        Entry.s_name[SI.s_name.size()] = '\0';
-        return Entry;
-      });
-}
-
-std::tuple<void *, unsigned, unsigned>
-vc::emitLegacyModuleSymbolTable(const GenXOCLRuntimeInfo::SymbolSeq &Constants,
-                                const GenXOCLRuntimeInfo::SymbolSeq &Globals) {
-  unsigned Entries = Constants.size() + Globals.size();
-  if (Entries == 0)
-    return {nullptr, 0, 0};
-
-  unsigned Size = Entries * sizeof(vISA::GenSymEntry);
-  // this will be eventually freed in AdaptorOCL
-  auto *Buffer = static_cast<vISA::GenSymEntry *>(
-      std::malloc(Entries * sizeof(vISA::GenSymEntry)));
-  auto *Inserter = Buffer;
-  appendLegacySymbolTable(Constants.begin(), Constants.end(), Inserter);
-  Inserter += Constants.size();
-  appendLegacySymbolTable(Globals.begin(), Globals.end(), Inserter);
-  return {Buffer, Size, Entries};
-}
-
 void vc::validateFunctionSymbolTable(
     const GenXOCLRuntimeInfo::SymbolSeq &Funcs) {
   auto IsKernel = [](const vISA::ZESymEntry &Entry) {
@@ -92,6 +46,5 @@ vc::emitLegacyFunctionSymbolTable(const GenXOCLRuntimeInfo::SymbolSeq &Funcs) {
   auto Size = Entries * sizeof(vISA::GenSymEntry);
   auto *Buffer = reinterpret_cast<vISA::GenSymEntry *>(
       std::malloc(Entries * sizeof(vISA::GenSymEntry)));
-  appendLegacySymbolTable(Start, Funcs.end(), Buffer);
   return {Buffer, Size, Entries};
 }

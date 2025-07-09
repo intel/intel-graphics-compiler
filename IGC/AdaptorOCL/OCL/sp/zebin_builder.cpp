@@ -552,18 +552,6 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
     env.generate_local_id = annotations.m_threadPayload.generateLocalID;
     env.has_lsc_stores_with_non_default_l1_cache_controls = annotations.m_executionEnvironment.HasLscStoresWithNonDefaultL1CacheControls;
 
-    // extract required_sub_group_size from kernel attribute list
-    // it will be in the format of "intel_reqd_sub_group_size(16)"
-    const std::string pat = "intel_reqd_sub_group_size(";
-    const std::string& attrs = annotations.m_kernelAttributeInfo;
-    size_t p1 = attrs.find(pat);
-    if (p1 != std::string::npos) {
-        p1 += pat.size();
-        size_t p2 = attrs.find(')', p1);
-        IGC_ASSERT(p2 != std::string::npos && p1 < p2);
-        env.required_sub_group_size = std::stoul(attrs.substr(p1, p2 - p1));
-    }
-
     if(annotations.m_executionEnvironment.HasFixedWorkGroupSize)
     {
         env.required_work_group_size.push_back(annotations.m_executionEnvironment.FixedWorkgroupSize[0]);

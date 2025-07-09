@@ -32,7 +32,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "visa/include/RelocationInfo.h"
 #include <ZEInfo.hpp>
-
+#include "AdaptorOCL/OCL/KernelAnnotations.hpp"
 #include "AdaptorOCL/OCL/sp/spp_g8.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
@@ -604,38 +604,9 @@ namespace IGC
         std::string m_kernelName = {};
         QWORD       m_ShaderHashCode = {};
 
-        std::vector<std::unique_ptr<iOpenCL::PointerInputAnnotation>>       m_pointerInput;
-        std::vector<std::shared_ptr<iOpenCL::PointerArgumentAnnotation>>    m_pointerArgument;
-        std::vector<std::unique_ptr<iOpenCL::LocalArgumentAnnotation>>      m_localPointerArgument;
-        std::vector<std::unique_ptr<iOpenCL::SamplerInputAnnotation>>       m_samplerInput;
-        std::vector<std::unique_ptr<iOpenCL::SamplerArgumentAnnotation>>    m_samplerArgument;
-        std::vector<std::unique_ptr<iOpenCL::ConstantInputAnnotation>>      m_constantInputAnnotation;
-        std::vector<std::unique_ptr<iOpenCL::ConstantArgumentAnnotation>>   m_constantArgumentAnnotation;
-        std::vector<std::unique_ptr<iOpenCL::ImageArgumentAnnotation>>      m_imageInputAnnotations;
-        std::vector<std::unique_ptr<iOpenCL::KernelArgumentInfoAnnotation>> m_kernelArgInfo;
-        std::vector<std::unique_ptr<iOpenCL::PrintfStringAnnotation>>       m_printfStringAnnotations;
-
-        std::unique_ptr<iOpenCL::PrintfBufferAnnotation>    m_printfBufferAnnotation = nullptr;
-        std::unique_ptr<iOpenCL::SyncBufferAnnotation>      m_syncBufferAnnotation = nullptr;
-        std::unique_ptr<iOpenCL::RTGlobalBufferAnnotation>  m_rtGlobalBufferAnnotation = nullptr;
-        std::unique_ptr<iOpenCL::StartGASAnnotation>        m_startGAS = nullptr;
-        std::unique_ptr<iOpenCL::WindowSizeGASAnnotation>   m_WindowSizeGAS = nullptr;
-        std::unique_ptr<iOpenCL::PrivateMemSizeAnnotation>  m_PrivateMemSize = nullptr;
-        std::string                                         m_kernelAttributeInfo = {};
-
-        bool                                                m_HasInlineVmeSamplers = false;
-
-        // This maps argument numbers to BTI and sampler indices
-        // (e.g. kernel argument 3, which is is an image_2d, may be mapped to BTI 6)
-        std::map<DWORD, unsigned int> m_argIndexMap = {};
-
-        std::map<unsigned int, std::shared_ptr<iOpenCL::PointerArgumentAnnotation>> m_argOffsetMap = {};
-
         iOpenCL::ThreadPayload        m_threadPayload = {};
 
         iOpenCL::ExecutionEnvironment m_executionEnvironment = {};
-
-        iOpenCL::KernelTypeProgramBinaryInfo m_kernelTypeInfo = {};
 
         SKernelProgram                m_kernelProgram = {};
 
@@ -680,25 +651,15 @@ namespace IGC
             SymbolSeq globalConst;       // global constant symbols
             SymbolSeq globalStringConst; // global string constant symbols
         };
-        struct LegacySymbolTable
-        {
-            void* m_buffer = nullptr;
-            unsigned int m_size = 0;
-            unsigned int m_entries = 0;
-        };
 
         typedef std::vector<vISA::ZEHostAccessEntry> ZEBinGlobalHostAccessTable;
 
         std::unique_ptr<iOpenCL::InitConstantAnnotation> m_initConstantAnnotation;
         std::unique_ptr<iOpenCL::InitConstantAnnotation> m_initConstantStringAnnotation;
         std::unique_ptr<iOpenCL::InitGlobalAnnotation> m_initGlobalAnnotation;
-        std::vector<std::unique_ptr<iOpenCL::ConstantPointerAnnotation> > m_initConstantPointerAnnotation;
-        std::vector<std::unique_ptr<iOpenCL::GlobalPointerAnnotation> > m_initGlobalPointerAnnotation;
-        std::vector<std::unique_ptr<iOpenCL::KernelTypeProgramBinaryInfo> > m_initKernelTypeAnnotation;
 
         ZEBinRelocTable m_GlobalPointerAddressRelocAnnotation;
         ZEBinProgramSymbolTable m_zebinSymbolTable;
-        LegacySymbolTable m_legacySymbolTable;
         ZEBinGlobalHostAccessTable m_zebinGlobalHostAccessTable;
         bool m_hasCrossThreadOffsetRelocations = false;
         bool m_hasPerThreadOffsetRelocations = false;

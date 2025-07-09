@@ -15,15 +15,6 @@ SPDX-License-Identifier: MIT
 
 namespace vc {
 
-// Emits legacy symbol table based on the provided zebin symbol tables.
-// Module symbols consist of constant and global symbols.
-// Returns pointer to the buffer with the symbols, the size of the buffer and
-// the number of entries in the buffer respectively. The buffer is allocated
-// via std::malloc.
-std::tuple<void *, unsigned, unsigned> emitLegacyModuleSymbolTable(
-    const llvm::GenXOCLRuntimeInfo::SymbolSeq &Constants,
-    const llvm::GenXOCLRuntimeInfo::SymbolSeq &Globals);
-
 // Validates zebin function symbol table. Kernel symbols should go first, after
 // them should go other function symbols. Curently there cannot be more than
 // 1 kernel symbol. It is possible to have no kernel symbols in the table.
