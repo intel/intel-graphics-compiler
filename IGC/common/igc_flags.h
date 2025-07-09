@@ -553,7 +553,7 @@ DECLARE_IGC_REGKEY(bool, VectorizerAllowFMUL, true, "Allow FMUL instructions ins
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFADD, true, "Allow FADD instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFSUB, true, "Allow FSUB instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowEXP2, true, "Allow EXP2 instructions inside vectorizer", true)
-DECLARE_IGC_REGKEY(bool, VectorizerAllowMAXNUM, false, "Allow MAXNUM instructions inside vectorizer", true)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowMAXNUM, true, "Allow MAXNUM instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFMADMatching, true, "Allow FADD and FMUL instructions to be matched later in the pattern match pass", true)
 DECLARE_IGC_REGKEY(bool, VectorizerUniformValueVectorizationEnabled, true, "Vector Emitter emits vectorized instruction for uniform values", true)
 DECLARE_IGC_REGKEY(bool, VectorizerEnablePartialVectorization, true, "Not fully tested option, allows to substitute scalar part with partially vectorized through extract elements", true)
