@@ -8358,8 +8358,12 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
     // split currently can't handle packed imm
     // Also don't split src byte type since scalar byte to float conversion is
     // not allowed
-    auto canSplit = [](G4_INST *inst) {
-      if (inst->getPredicate() || inst->getCondMod()) {
+    auto canSplit = [](G4_INST *inst, G4_BB *bb) {
+      // Can not split any instruction except for NoMask ones because there is
+      // no legal emask for the split instructions.
+      bool isNoMaskInst = !inst->getPredicate() &&
+                          (inst->isWriteEnableInst() || bb->isAllLaneActive());
+      if (inst->getPredicate() || inst->getCondMod() || !isNoMaskInst) {
         return false;
       }
       for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
@@ -8370,7 +8374,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
       }
       return true;
     };
-    if (canSplit(inst)) {
+    if (canSplit(inst, bb)) {
       auto prevIt = it == bb->begin() ? it : std::prev(it);
       if (evenlySplitInst(it, bb)) {
         // split introduces new moves which may need fixing
