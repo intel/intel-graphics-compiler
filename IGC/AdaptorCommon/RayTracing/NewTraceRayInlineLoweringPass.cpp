@@ -704,6 +704,13 @@ void InlineRaytracing::AssignSlots(Function &F,
   RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
   SmallVector<SmallVector<const LivenessData *>, 2> occupancyMap;
 
+  if (IGC_IS_FLAG_SET(AddDummySlotsForNewInlineRaytracing)) {
+    for (uint32_t i = 0;
+         i < IGC_GET_FLAG_VALUE(AddDummySlotsForNewInlineRaytracing); i++) {
+      occupancyMap.push_back(SmallVector<const LivenessData *>());
+    }
+  }
+
   for (auto &entry : livenessDataMap) {
     auto *I = entry.first;
     auto *LD = &entry.second;
@@ -711,7 +718,9 @@ void InlineRaytracing::AssignSlots(Function &F,
     // this way, if we can't use any existing slot
     // we will construct occupancyMap[occupancyMap.size()] and use the newly
     // constructed slot
-    for (uint32_t slot = 0; slot <= occupancyMap.size(); slot++) {
+    for (uint32_t slot =
+             IGC_GET_FLAG_VALUE(AddDummySlotsForNewInlineRaytracing);
+         slot <= occupancyMap.size(); slot++) {
       bool newSlotNeeded = slot == occupancyMap.size();
       bool hasOverlaps =
           !newSlotNeeded &&

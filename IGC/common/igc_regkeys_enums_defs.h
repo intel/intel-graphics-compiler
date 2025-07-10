@@ -102,6 +102,12 @@ SPDX-License-Identifier: MIT
 #endif // TRIBOOL_OPTION
 
 
+#ifdef NEW_INLINE_RAYTRACING_FLAG
+#define NEW_INLINE_RAYTRACING_MASK                                                            \
+    NEW_INLINE_RAYTRACING_FLAG(NonRTShaders, 0x01, "Enable for all non-raytracing shaders") \
+    NEW_INLINE_RAYTRACING_FLAG(RTShaders,    0x02, "Enable for all raytracing shaders")
+#endif // NEW_INLINE_RAYTRACING_FLAG
+
 #ifdef INJECT_PRINTF_OPTION
 #define INJECT_PRINTF_OPTIONS                        \
     INJECT_PRINTF_OPTION(InjectPrintfNone, 0)\

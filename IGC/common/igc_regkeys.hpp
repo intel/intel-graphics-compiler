@@ -296,4 +296,12 @@ enum class TriboolFlag : int
 #undef TRIBOOL_OPTION
 #undef TRIBOOL_OPTIONS
 };
+enum class NewInlineRaytracingMask : unsigned {
+  None = 0,
+#define NEW_INLINE_RAYTRACING_FLAG(Name, Val, Description) Name = Val,
+#include "igc_regkeys_enums_defs.h"
+  NEW_INLINE_RAYTRACING_MASK
+#undef NEW_INLINE_RAYTRACING_FLAG
+#undef NEW_INLINE_RAYTRACING_MASK
+};
 } // namespace IGC
