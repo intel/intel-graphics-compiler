@@ -33,15 +33,17 @@ entry:
 ; CHECK: ret float %x
 
 ; x/3 => x * 1/3
-define float @div_add_arcp(float %x) #0 {
+define float @div_to_mul(float %x) #0 {
 entry:
   %0 = fdiv float %x, 3.000000e+00
   ret float %0
 }
 
-; CHECK-LABEL: define float @div_add_arcp
-; CHECK: %0 = fdiv arcp float %x, 3.000000e+00
-; CHECK: ret float %0
+; CHECK-LABEL: define float @div_to_mul
+; CHECK-NOT: fdiv float %x, 3.000000e+00
+; CHECK: %0 = fdiv float 1.000000e+00, 3.000000e+00
+; CHECK: %1 = fmul float %x, %0
+; CHECK: ret float %1
 
 !IGCMetadata = !{!0}
 
