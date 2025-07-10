@@ -32,7 +32,7 @@ extern int CISAlineno;
 
 [[maybe_unused]] static bool streq(const char *sym0, const char *sym1);
 static bool ParseAlign(CISA_IR_Builder* pBuilder, const char *sym, VISA_Align &value);
-static VISA_Align AlignBytesToVisaAlignment(int bytes);
+static bool AlignBytesToVisaAlignment(int bytes, VISA_Align &val);
 static bool ParseEMask(const char* sym, VISA_EMask_Ctrl &emask);
 
 //
@@ -873,8 +873,7 @@ Align:
     |
     ALIGN_EQ IntExp {
         // e.g. %sizeof(GRF) or %sizeof(DECL)
-        $$ = AlignBytesToVisaAlignment((int)$2);
-        if ($$ == ALIGN_UNDEF) {
+        if (!AlignBytesToVisaAlignment((int)$2, $$)) {
             PARSE_ERROR("invalid align size (must be 1, 2, 4, 8, ..., 128)");
         }
     }
@@ -3341,9 +3340,8 @@ static bool ParseAlign(CISA_IR_Builder* pBuilder, const char *sym, VISA_Align &v
 }
 
 
-static VISA_Align AlignBytesToVisaAlignment(int bytes)
+static bool AlignBytesToVisaAlignment(int bytes, VISA_Align &val)
 {
-    VISA_Align val = ALIGN_UNDEF;
     switch (bytes) {
     case 1:   val = ALIGN_BYTE; break;
     case 2:   val = ALIGN_WORD; break;
@@ -3353,9 +3351,9 @@ static VISA_Align AlignBytesToVisaAlignment(int bytes)
     case 32:  val = ALIGN_HWORD; break;
     case 64:  val = ALIGN_32WORD; break;
     case 128: val = ALIGN_64WORD; break;
-    default:  val = ALIGN_UNDEF; break;
+    default:  val = ALIGN_UNDEF; return false;
     }
-    return val;
+    return true;
 }
 
 
