@@ -1638,6 +1638,44 @@ void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
   }
 }
 
+void SWSB::handleSubRoutineCall() {
+  for (G4_BB_SB *bb : BBVector) {
+    if (bb->last_node == INVALID_ID) {
+      continue;
+    }
+
+    SBNode *node = SBNodes[bb->last_node];
+
+    if (node->GetInstruction()->isCall() ||
+        node->GetInstruction()->isReturn()) {
+
+      // Add dependencies for all after write dependencies live before call
+      for (unsigned globalID : bb->send_live_out.dst) {
+        for (SBBucketNode *sBucketNode : globalDstSBSendNodes[globalID]) {
+          SBNode *sNode = sBucketNode->node;
+          bb->createAddGRFEdge(sNode, node, RAW, DEP_EXPLICT);
+        }
+      }
+
+      // Add dependencies for all after read dependencies live before call
+      for (unsigned globalID : bb->send_live_out.src) {
+        for (SBBucketNode *sBucketNode : globalSrcSBSendNodes[globalID]) {
+          SBNode *sNode = sBucketNode->node;
+          bb->createAddGRFEdge(sNode, node, WAR, DEP_EXPLICT);
+        }
+      }
+    }
+    if (node->GetInstruction()->isReturn() ||
+        node->GetInstruction()->isFReturn()) {
+      node->GetInstruction()->setDistance(1);
+      if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes()) {
+        node->GetInstruction()->setDistanceTypeXe(
+            G4_INST::DistanceType::DISTALL);
+      }
+    }
+  }
+}
+
 //
 // Set the global ID bit vector of each bucket touched by corresponding
 // operands
@@ -1839,6 +1877,8 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
   } else {
     addGlobalDependence(globalSendNum, &globalSendOpndList, SBNodes, p, true);
   }
+
+  handleSubRoutineCall();
 
   for (G4_BB_SB *bb : BBVector) {
     bb->send_live_in_scalar = bb->send_live_in;
@@ -2178,6 +2218,7 @@ void SWSB::SWSBGenerator() {
   if (!SBSendNodes.empty()) {
     SWSBGlobalTokenGenerator(p, LB, globalSendsLB, GRFAlignedGlobalSendsLB);
   } else {
+    handleSubRoutineCall();
     insertTokenSync();
   }
 
@@ -4688,8 +4729,7 @@ void SWSB::insertTokenSync() {
           }
         }
       }
-      if (inst->isCall() || inst->isReturn() || inst->isFCall() ||
-          inst->isFReturn()) {
+      if (inst->isFCall() || inst->isFReturn()) {
         G4_INST *synInst = insertSyncAllRDInstruction(bb, 0, inst_it);
         synInst->setLexicalId(newInstID);
         synInst = insertSyncAllWRInstruction(bb, 0, inst_it);
@@ -7483,9 +7523,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     if ((builder.getOption(vISA_EnableSwitch) &&
          node->GetInstruction()->isYieldInst()) ||
         (node->GetInstruction()->isCall() ||
-         node->GetInstruction()->isFCall() ||
-         node->GetInstruction()->isReturn() ||
-         node->GetInstruction()->isFReturn()) ||
+         node->GetInstruction()->isFCall()) ||
         (VISA_WA_CHECK(builder.getPWaTable(), Wa_14013672992) &&
          node->GetInstruction()->isEOT())) {
       node->setDistance(1);

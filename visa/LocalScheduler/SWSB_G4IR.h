@@ -1122,6 +1122,7 @@ class SWSB {
   void SWSBDepDistanceGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
                                 LiveGRFBuckets &globalSendsLB,
                                 LiveGRFBuckets &GRFAlignedGlobalSendsLB);
+  void handleSubRoutineCall();
   void SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
                                 LiveGRFBuckets &globalSendsLB,
                                 LiveGRFBuckets &GRFAlignedGlobalSendsLB);
