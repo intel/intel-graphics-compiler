@@ -6214,21 +6214,25 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         bool platformMoviTypeCheck = m_currShader->m_Platform->allowsMoviForType(data->GetType());
         bool forcePreventOOB = isSingleGrf && moviPromotionEnabled && platformMoviTypeCheck && !channelUniform;
 
-        if (defaultConditions || forcePreventOOB)
-        {
-            uint maskOfValidLanes = numLanes(m_currShader->m_State.m_dispatchSize) - 1;
-            m_encoder->SetSrcRegion(0, 2, 1, 0);
-            m_encoder->SetDstRegion(2);
+        if (defaultConditions || forcePreventOOB) {
+          uint maskOfValidLanes =
+              numLanes(m_currShader->m_State.m_dispatchSize) - 1;
 
-            // To support conversion to movi we need to make all calculations (shl, addr_add) of address NoMask.
-            // to avoid random data from previous execution in divergent CF.
-            if (forcePreventOOB)
-            {
-                m_encoder->SetNoMask();
-            }
-            m_encoder->And(simdChannelUW, simdChannelUW,
-                m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
-            m_encoder->Push();
+          // To support conversion to movi we need to make all calculations
+          // (shl, addr_add) of address NoMask. to avoid random data from
+          // previous execution in divergent CF.
+          if (forcePreventOOB) {
+            m_encoder->SetNoMask();
+          }
+          CVariable *tempCopy = m_currShader->GetNewVariable(
+              simdChannel, "SanitizedIndexShuffleTmp");
+
+          m_encoder->And(
+              tempCopy, simdChannel,
+              m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
+          m_encoder->Push();
+
+          simdChannelUW = m_currShader->BitCast(tempCopy, ISA_TYPE_UW);
         }
         CVariable* pSrcElm = m_currShader->GetNewVariable(
             simdChannel->GetNumberElement(),

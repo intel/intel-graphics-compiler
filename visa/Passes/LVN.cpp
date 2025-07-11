@@ -1087,7 +1087,7 @@ bool isNonUniformSrcRegion(G4_SrcRegRegion *srcRgn) {
 bool LVN::addValue(G4_INST *inst) {
   auto isAllowedOpcode = [](G4_INST *inst) {
     if (inst->opcode() == G4_mov || inst->opcode() == G4_shl ||
-        inst->opcode() == G4_shr)
+        inst->opcode() == G4_and || inst->opcode() == G4_shr)
       return true;
     return false;
   };
