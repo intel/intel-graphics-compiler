@@ -105,7 +105,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/WaveShuffleIndexSinking.hpp"
 #include "Compiler/Optimizer/WaveAllJointReduction.hpp"
 #include "Compiler/Optimizer/InstructionHoistingOptimization.hpp"
-#include "Compiler/Optimizer/WaveBallotCSE.hpp"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 #include "Compiler/HandleLoadStoreInstructions.hpp"
 #include "Compiler/CustomSafeOptPass.hpp"
@@ -1399,8 +1398,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
         mpm.add(createLogicalAndToBranchPass());
-
-
         mpm.add(llvm::createEarlyCSEPass());
 
 

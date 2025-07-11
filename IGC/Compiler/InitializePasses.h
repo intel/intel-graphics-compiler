@@ -290,4 +290,3 @@ void initializeResourceLoopUnrollPass(llvm::PassRegistry&);
 void initializeInjectPrintfPass(llvm::PassRegistry&);
 void initializeWaveShuffleIndexSinkingPass(llvm::PassRegistry&);
 void initializeInstructionHoistingOptimizationPass(llvm::PassRegistry &);
-void initializeWaveBallotCSEPass(llvm::PassRegistry &);
