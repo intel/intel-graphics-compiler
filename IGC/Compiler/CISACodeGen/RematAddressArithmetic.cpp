@@ -515,7 +515,8 @@ bool isRematInstruction(llvm::Value* V) {
 
     bool IntToPtr = llvm::isa<IntToPtrInst>(V);
     bool AddrSpCast = llvm::isa<AddrSpaceCastInst>(V);
-    bool BitCast = llvm::isa<BitCastInst>(V);
+    // use only bitcasts on pointers as a seed instruction
+    bool BitCast = llvm::isa<BitCastInst>(V) && V->getType()->isPointerTy();
     bool GEP = llvm::isa<GetElementPtrInst>(V);
 
     bool Result = IntToPtr || AddrSpCast || BitCast || GEP;
@@ -530,6 +531,7 @@ void CloneAddressArithmetic::collectInstToProcess(RematSet& ToProcess, Function&
             bool IsLoad = llvm::isa<LoadInst>(I);
             bool IsStore = llvm::isa<StoreInst>(I);
             bool IsCall = llvm::isa<CallInst>(I);
+
             if (!IsLoad && !IsStore && !IsCall) continue;
 
             llvm::Value* V =

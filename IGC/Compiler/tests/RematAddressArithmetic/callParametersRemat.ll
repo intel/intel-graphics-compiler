@@ -17,6 +17,7 @@ target triple = "spir64-unknown-unknown"
 %struct.packed_float3 = type { float, float, float }
 
 declare spir_func void @target_func(%"struct.ONEAPIKernelContext::LightSample" addrspace(4)*)
+declare spir_func void @target_func_bitcast_no_ptr(double)
 
 define spir_kernel void @main() {
 entry:
@@ -32,5 +33,33 @@ if.end46:
 ; CHECK-NEXT: call spir_func void @target_func(%"struct.ONEAPIKernelContext::LightSample" addrspace(4)* [[CAST]])
 cleanup.cont.i:                                   ; preds = %if.end46
   call spir_func void @target_func(%"struct.ONEAPIKernelContext::LightSample" addrspace(4)* %ls.ascast.i)
+  ret void
+}
+
+define spir_func void @bar(i64 %arg1) {
+entry:
+  %val2 = mul i64 %arg1, 2
+  %val3 = mul i64 %arg1, 3
+  %cast_val2 = bitcast i64 %val2 to double
+  %cast_val3 = bitcast i64 %val3 to double
+  ; CHECK: [[VAL2:%.*]] = mul i64 [[ARG1:%.*]], 2
+  ; CHECK: [[VAL3:%.*]] = mul i64 [[ARG1]], 3
+  ; CHECK: bitcast i64 [[VAL2]] to double
+  ; CHECK: bitcast i64 [[VAL3]] to double
+  ; CHECK: br label %if.end46
+  %ls.i = alloca %"struct.ONEAPIKernelContext::LightSample", i32 0, align 4
+  br label %if.end46
+
+if.end46:
+  %ls.ascast.i = addrspacecast %"struct.ONEAPIKernelContext::LightSample"* %ls.i to %"struct.ONEAPIKernelContext::LightSample" addrspace(4)*
+  br label %cleanup.cont.i
+; CHECK-LABEL: cleanup.cont.i:
+; CHECK-NEXT: [[REMAT:%.*]] = alloca %"struct.ONEAPIKernelContext::LightSample", i32 0, align 4
+; CHECK-NEXT: [[CAST:%.*]] = addrspacecast %"struct.ONEAPIKernelContext::LightSample"* [[REMAT]] to %"struct.ONEAPIKernelContext::LightSample" addrspace(4)*
+; CHECK-NEXT: call spir_func void @target_func(%"struct.ONEAPIKernelContext::LightSample" addrspace(4)* [[CAST]])
+cleanup.cont.i:                                   ; preds = %if.end46
+  call spir_func void @target_func(%"struct.ONEAPIKernelContext::LightSample" addrspace(4)* %ls.ascast.i)
+  call spir_func void @target_func_bitcast_no_ptr(double %cast_val2)
+  call spir_func void @target_func_bitcast_no_ptr(double %cast_val3)
   ret void
 }
