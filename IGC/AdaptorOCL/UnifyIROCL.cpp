@@ -134,7 +134,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/MinimumValidAddressChecking/MinimumValidAddressChecking.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Spv2dBlockIOResolution/Spv2dBlockIOResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/SpvSubgroupMMAResolution/SpvSubgroupMMAResolution.hpp"
-#include "Compiler/Optimizer/PromoteToPredicatedMemoryAccess.hpp"
 
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
@@ -651,12 +650,6 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
     mpm.add(new BreakConstantExpr());
 
     mpm.add(new ScalarArgAsPointerAnalysis());
-
-    // Inserting Predicated Load If Conversion pass before OCL Scalaraizer to simplify pattern matching for the pass
-    if (IGC_IS_FLAG_ENABLED(EnablePromoteToPredicatedMemoryAccess))
-    {
-        mpm.add(new PromoteToPredicatedMemoryAccess());
-    }
 
     if (IGC_IS_FLAG_DISABLED(DisableOCLScalarizer))
     {

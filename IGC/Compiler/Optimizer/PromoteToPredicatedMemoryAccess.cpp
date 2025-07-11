@@ -95,7 +95,7 @@ bool PromoteToPredicatedMemoryAccess::runOnFunction(Function &F) {
     Builder.CreateBr(TargetBB);
     BI->eraseFromParent();
 
-    // Remove the phi nodes int the target block
+    // Remove the phi nodes in the target block
     for (auto &Phi : make_early_inc_range(JoinBB->phis()))
       fixPhiNode(Phi, *TargetBB, *SplitBB);
   }
@@ -133,8 +133,10 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
     return false;
 
   const auto NumInstrs = count_if(ConvBB, [](const Instruction &I) {
-    return !I.isTerminator() && !isa<CastInst>(&I) && !isa<PHINode>(&I);
+    return !I.isTerminator() && !isa<CastInst>(&I) && !isa<PHINode>(&I) &&
+           !isa<ExtractElementInst>(&I) && !isa<DbgInfoIntrinsic>(&I);
   });
+
   if (NumInstrs > PredicatedMemOpIfConvertMaxInstrs) {
     LLVM_DEBUG(dbgs() << "Skip block, number of instructions " << NumInstrs
                       << " is more than threshold " << PredicatedMemOpIfConvertMaxInstrs << "\n"
@@ -142,7 +144,18 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
     return false;
   }
 
-  SmallDenseMap<Instruction *, Value *> Insts;
+  // Map with a `key` that is a memory instruction that should be converted to
+  // predicated and for loads `value` is a merge value that should be used for
+  // stores `value` is always nullptr
+  SmallDenseMap<Instruction *, Value *> SimpleInsts;
+
+  // Map with a `key` that is a load instruction that should be converted to
+  // predicated. The difference from SimpleInsts is loaded value is a vector
+  // that is scalarized and scalar values are used in PHI in the next basic
+  // block, not direct result of load, so it should be handled differently Map
+  // `value` is a vector of Values, that should be used to compose merge value
+  // for predicated load
+  SmallDenseMap<Instruction *, SmallVector<Value *, 4>> ScalarizedInsts;
 
   // Collect all the instructions that are used outside the candidate block
   for (auto &Phi : SuccBB.phis()) {
@@ -153,26 +166,74 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
     auto *Inst = dyn_cast<Instruction>(Phi.getIncomingValue(Idx));
     if (!Inst)
       return false;
-    if (auto *LI = dyn_cast<LoadInst>(Inst); !LI || !LI->isSimple())
-      return false;
 
-    if (!IsTypeLegal(Inst->getType()))
-      return false;
+    if (auto *LI = dyn_cast<LoadInst>(Inst)) {
+      if (!LI->isSimple() || !IsTypeLegal(Inst->getType()))
+        return false;
 
-    Insts[Inst] = Phi.getIncomingValueForBlock(&BranchBB);
+      SimpleInsts[Inst] = Phi.getIncomingValueForBlock(&BranchBB);
+      continue;
+    }
+
+    // Support scalarized case:
+    // ConvBB:
+    //   %17 = load <4 x float>, ptr addrspace(1) %16
+    //   %.scalar = extractelement <4 x float> %17, i64 0
+    //   %.scalar15 = extractelement <4 x float> %17, i64 1
+    //   %.scalar16 = extractelement <4 x float> %17, i64 2
+    //   %.scalar17 = extractelement <4 x float> %17, i64 3
+    //   br label %SuccBB
+    // SuccBB:
+    //   %bc311 = phi float [ %.scalar, %ConvBB ], [ 0.000000e+00, %BranchBB ]
+    //   %bc312 = phi float [ %.scalar15, %ConvBB ], [ 0.000000e+00, %BranchBB ]
+    //   %bc313 = phi float [ %.scalar16, %ConvBB ], [ 0.000000e+00, %BranchBB ]
+    //   %bc314 = phi float [ %.scalar17, %ConvBB ], [ 0.000000e+00, %BranchBB ]
+    if (auto *EE = dyn_cast<ExtractElementInst>(Inst)) {
+      if (!isa<ConstantInt>(EE->getIndexOperand()))
+        return false;
+
+      auto *Load = dyn_cast<LoadInst>(EE->getVectorOperand());
+      if (!Load || !Load->isSimple() || !IsTypeLegal(Load->getType()))
+        return false;
+      if (Load->getParent() != &ConvBB)
+        return false;
+
+      // Compose merge value for load
+      auto &MergeVector = ScalarizedInsts[Load];
+      if (MergeVector.empty()) {
+        FixedVectorType *VecTy = cast<FixedVectorType>(Load->getType());
+        MergeVector.resize(VecTy->getNumElements(),
+                           Constant::getNullValue(EE->getType()));
+      }
+      unsigned Idx = cast<ConstantInt>(EE->getIndexOperand())->getZExtValue();
+      if (Idx >= MergeVector.size()) {
+        LLVM_DEBUG(dbgs() << "Skip block, index " << Idx
+                          << " is more than vector size " << MergeVector.size()
+                          << "\n"
+                          << "For ConvBB: " << ConvBB << "\n");
+        IGC_ASSERT_MESSAGE(0, "Index is more than vector size");
+        return false;
+      }
+      MergeVector[Idx] = Phi.getIncomingValueForBlock(&BranchBB);
+      continue;
+    }
+
+    // Unsupported instruction coming from Phi
+    return false;
   }
 
   // Collect the rest of the instructions
   for (auto &I : ConvBB) {
     // Check if this load is handled in the previous loop
-    if (isa<LoadInst>(&I) && Insts.count(&I))
-        continue;
+    if (isa<LoadInst>(&I) &&
+        (SimpleInsts.count(&I) || ScalarizedInsts.count(&I)))
+      continue;
 
     // Store
     if(auto *SI = dyn_cast<StoreInst>(&I)) {
         if (!SI->isSimple() || !IsTypeLegal(SI->getValueOperand()->getType()))
             return false;
-        Insts[&I] = nullptr;
+        SimpleInsts[&I] = nullptr;
         continue;
     }
 
@@ -188,12 +249,22 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
                     << "  ConvBB: " << ConvBB << "\n"
                     << "  SuccBB: " << SuccBB << "\n");
 
-  for (auto& [Inst, MergeV] : Insts) {
+  for (auto &[Inst, MergeV] : SimpleInsts) {
     LLVM_DEBUG(dbgs() << "Converting instruction: " << *Inst << "\n");
     convertMemoryAccesses(Inst, MergeV, &Cond, Inverse);
   }
 
-  return !Insts.empty();
+  for (auto &[Inst, MergeV] : ScalarizedInsts) {
+    LLVM_DEBUG(dbgs() << "Converting scalarized instruction: " << *Inst
+                      << "\n");
+    Value *MergeVVec = PoisonValue::get(Inst->getType());
+    IRBuilder<> Builder(Inst);
+    for (unsigned i = 0; i < MergeV.size(); ++i)
+      MergeVVec = Builder.CreateInsertElement(MergeVVec, MergeV[i], i);
+    convertMemoryAccesses(Inst, MergeVVec, &Cond, Inverse);
+  }
+
+  return !SimpleInsts.empty() || !ScalarizedInsts.empty();
 }
 
 void PromoteToPredicatedMemoryAccess::convertMemoryAccesses(Instruction *Mem, Value *MergeV,

@@ -44,6 +44,7 @@ void initializeCrossPhaseConstPropPass(llvm::PassRegistry&);
 void initializeCustomLoopVersioningPass(llvm::PassRegistry&);
 void initializeCustomSafeOptPassPass(llvm::PassRegistry&);
 void initializeCustomUnsafeOptPassPass(llvm::PassRegistry&);
+void initializeHoistConvOpToDomPass(llvm::PassRegistry &);
 void initializeHoistFMulInLoopPassPass(llvm::PassRegistry&);
 void initializeHandleFRemInstructionsPass(llvm::PassRegistry&);
 void initializeDeSSAPass(llvm::PassRegistry&);

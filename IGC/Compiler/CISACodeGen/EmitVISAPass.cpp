@@ -14055,10 +14055,7 @@ CVariable* EmitPass::GetHalfExecutionMask()
     }
 
     VISA_Type maskType = m_currShader->m_State.m_dispatchSize > SIMDMode::SIMD16 ? ISA_TYPE_UD : ISA_TYPE_UW;
-    CVariable* eMask = m_currShader->GetNewVariable(1, maskType, EALIGN_DWORD, true, CName::NONE);
-    m_encoder->SetNoMask();
-    m_encoder->Cast(eMask, currBlock->m_activeMask);
-    m_encoder->Push();
+    CVariable *eMask = CastFlagToVariable(currBlock->m_activeMask);
 
     // for SIMD32, clear out the other half
     if (maskType == ISA_TYPE_UD)
@@ -14071,6 +14068,22 @@ CVariable* EmitPass::GetHalfExecutionMask()
     }
 
     return eMask;
+}
+
+// Cast flag to variable
+CVariable *EmitPass::CastFlagToVariable(CVariable *flag) {
+  IGC_ASSERT_MESSAGE(flag->GetType() == ISA_TYPE_BOOL,
+                     "Expecting a bool type variable");
+  VISA_Type maskType = m_currShader->m_State.m_dispatchSize > SIMDMode::SIMD16
+                           ? ISA_TYPE_UD
+                           : ISA_TYPE_UW;
+  CVariable *eMask = m_currShader->GetNewVariable(1, maskType, EALIGN_DWORD,
+                                                  true, CName::NONE);
+  m_encoder->SetNoMask();
+  m_encoder->Cast(eMask, flag);
+  m_encoder->Push();
+
+  return eMask;
 }
 
 // Execution mask for the entire dispatch size, not for either first or second half instance.
@@ -14095,13 +14108,7 @@ CVariable* EmitPass::GetExecutionMask(CVariable*& vecMaskVar)
     m_encoder->SetSubSpanDestination(isSubSpanDst);
     vecMaskVar = flag;
 
-    VISA_Type maskType = m_currShader->m_State.m_dispatchSize > SIMDMode::SIMD16 ? ISA_TYPE_UD : ISA_TYPE_UW;
-    CVariable* eMask = m_currShader->GetNewVariable(1, maskType, EALIGN_DWORD, true, CName::NONE);
-    m_encoder->SetNoMask();
-    m_encoder->Cast(eMask, flag);
-    m_encoder->Push();
-
-    return eMask;
+    return CastFlagToVariable(flag);
 }
 
 CVariable* EmitPass::GetExecutionMask()
@@ -20545,6 +20552,10 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
 
     uint32_t width = numLanes(m_currShader->m_SIMDSize);
 
+    CVariable *predicateVar = nullptr;
+    if (predicate)
+      predicateVar = GetSymbol(predicate);
+
     // Non-transpose LSC: address is 2GRF aligned; data (DW) is GRF aligned.
     e_alignment addrAlign = UseA32 ? EALIGN_GRF : EALIGN_2GRF;
     e_alignment dataAlign = ((4 * width) <= (uint32_t)getGRFSize()) ? EALIGN_GRF : EALIGN_2GRF;
@@ -20559,7 +20570,13 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
     {
         if (!srcUniform)
         {
+          if (predicate) {
+            CVariable *offset = nullptr;
+            CVariable *eMask = CastFlagToVariable(predicateVar);
+            stVar = UniformCopy(stVar, offset, eMask);
+          } else {
             stVar = UniformCopy(stVar);
+          }
         }
 
         bool need4GRFAlign = (!UseA32 && !m_currShader->m_Platform->hasHalfSIMDLSC());
@@ -20608,7 +20625,9 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
                 m_pCtx->EmitError("Predicated store is not expected.", nullptr);
                 IGC_ASSERT_MESSAGE(false, "Unexpected scenario: resource loop with predicated store!");
             }
-            m_encoder->SetPredicate(GetSymbol(predicate));
+            m_encoder->SetPredicate(predicateVar);
+            if (doUniformStore)
+              m_encoder->SetPredicateMode(EPRED_ANY);
         }
 
       // NumElts = 1
@@ -20711,8 +20730,10 @@ void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32,
         ResourceDescriptor /*resource*/, bool /*needLoop*/) {
         m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
-        if (predicate)
-            m_encoder->SetPredicate(GetSymbol(predicate));
+        if (predicate) {
+          m_encoder->SetPredicate(GetSymbol(predicate));
+          m_encoder->SetPredicateMode(EPRED_ANY);
+        }
         emitLSCStore(CacheOpts,
                      stVar, eOffset, dSize * 8, vSize, 0, &Resource, AddrSize,
                      LSC_DATA_ORDER_TRANSPOSE, ImmOffset, ImmScale, AddrSpace);

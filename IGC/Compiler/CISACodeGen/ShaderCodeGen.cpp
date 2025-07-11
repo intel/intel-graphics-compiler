@@ -161,6 +161,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/GenRotate.hpp"
 #include "Compiler/SampleCmpToDiscard.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
+#include "Compiler/Optimizer/HoistConvOpToDom.hpp"
+#include "Compiler/Optimizer/PromoteToPredicatedMemoryAccess.hpp"
 #include "AdaptorCommon/RayTracing/RayTracingPasses.hpp"
 #include "AdaptorCommon/RayTracing/RayTracingAddressSpaceAliasAnalysis.h"
 #include "AdaptorCommon/RayTracing/API/RayDispatchGlobalData.h"
@@ -1685,6 +1687,16 @@ void OptimizeIR(CodeGenContext* const pContext)
                 GFX_ONLY_PASS { mpm.add(createIGCIndirectICBPropagaionPass()); }
             }
             GFX_ONLY_PASS { mpm.add(new GenUpdateCB()); }
+
+            // Inserting PromoteToPredicatedMemoryAccess after GVN and several
+            // other passes, to not block optimizations changing LLVM
+            // load/stores, but before multiple SimplifyCFGs to allow more
+            // aggressive CFG simplification.
+            if (IGC_IS_FLAG_ENABLED(EnablePromoteToPredicatedMemoryAccess)) {
+              mpm.add(new HoistConvOpToDom());
+              mpm.add(llvm::createCFGSimplificationPass());
+              mpm.add(new PromoteToPredicatedMemoryAccess());
+            }
 
             if (IGC_IS_FLAG_ENABLED(EnableJumpThreading) &&
                 !pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))

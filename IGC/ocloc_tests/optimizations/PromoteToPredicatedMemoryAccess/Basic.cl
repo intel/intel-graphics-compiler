@@ -36,10 +36,10 @@ SPDX-License-Identifier: MIT
 // CHECK-ASM:         mov (32|M0)              r{{[0-9]+}}.0<1>:f    [[Z1]].2<0;1,0>:f
 // CHECK-ASM:         mov (32|M0)              r{{[0-9]+}}.0<1>:f    [[Z1]].3<0;1,0>:f
 // CHECK-ASM: ([[F2]])  load.ugm.d32x4.a64 (32|M0)  [[L4]]:8       [{{[a-z0-9:]+}}]
-// CHECK-ASM: (~[[F1]]) goto (32|M0)                         [[LABEL:[_a-z0-9A-Z]+]]   [[LABEL]]
-// CHECK-ASM: {{[_a-z0-9A-Z]+}}:
+// CHECK-ASM: ([[F1]]) goto (32|M0)                         [[LABEL1:[_a-z0-9A-Z]+]]   [[LABEL1]]
+// CHECK-ASM: [[LABEL1]]:
 // CHECK-ASM:         store.ugm.d32x4.a64 (32|M0)  [{{[a-z0-9:]+}}]    r{{[0-9]+}}:8
-// CHECK-ASM: [[LABEL]]:
+// CHECK-ASM: {{[_a-z0-9A-Z]+}}:
 // CHECK-ASM: ([[F2]])  store.ugm.d32x4.a64 (32|M0)  [{{[a-z0-9:]+}}]    r{{[0-9]+}}:8
 
 // Constant merge value
@@ -76,8 +76,6 @@ __kernel void add_kernel(__global const float4* in0, __global const float4* in1,
     out[gid] = result;
   }
 
-  if(fgtGid) {
-    result = result - f4In10 - f4In11;
+  if(fgtGid)
     out[gid] = result;
-  }
 }

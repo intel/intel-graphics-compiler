@@ -17,8 +17,6 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CodeGenContextWrapper.hpp"
 
-using namespace llvm;
-
 namespace IGC
 {
     // This pass replaces LLVM IR load/store
@@ -47,33 +45,31 @@ namespace IGC
     // The pass expects that the simplifycfg pass will be run after it to clean up
     // the CFG.
 
-    class PromoteToPredicatedMemoryAccess : public FunctionPass
-    {
-    public:
-        static char ID;
-        explicit PromoteToPredicatedMemoryAccess();
-        ~PromoteToPredicatedMemoryAccess() {}
+class PromoteToPredicatedMemoryAccess : public llvm::FunctionPass {
+public:
+  static char ID;
+  explicit PromoteToPredicatedMemoryAccess();
+  ~PromoteToPredicatedMemoryAccess() {}
 
-        StringRef getPassName() const override
-        {
-            return "PromoteToPredicatedMemoryAccess";
-        }
+  llvm::StringRef getPassName() const override {
+    return "PromoteToPredicatedMemoryAccess";
+  }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<CodeGenContextWrapper>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-        bool runOnFunction(Function &F) override;
+  bool runOnFunction(llvm::Function &F) override;
 
-    private:
-        bool trySingleBlockIfConv(Value &Cond, BasicBlock &BranchBB,
-                                  BasicBlock &ConvBB, BasicBlock &SuccBB,
-                                  bool Inverse = false);
+private:
+  bool trySingleBlockIfConv(llvm::Value &Cond, llvm::BasicBlock &BranchBB,
+                            llvm::BasicBlock &ConvBB, llvm::BasicBlock &SuccBB,
+                            bool Inverse = false);
 
-        void convertMemoryAccesses(Instruction *Mem, Value *MergeV, Value *Cond,
-                                   bool Inverse);
+  void convertMemoryAccesses(llvm::Instruction *Mem, llvm::Value *MergeV,
+                             llvm::Value *Cond, bool Inverse);
 
-        void fixPhiNode(PHINode &Phi, BasicBlock &Predecessor, BasicBlock &CondBlock);
-    };
+  void fixPhiNode(llvm::PHINode &Phi, llvm::BasicBlock &Predecessor,
+                  llvm::BasicBlock &CondBlock);
+};
 } // namespace IGC
