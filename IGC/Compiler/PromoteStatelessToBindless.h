@@ -55,7 +55,7 @@ namespace IGC
         // be identical to the first. Needed to convert to null address.
         typedef std::pair<llvm::Value*, llvm::Value*> BindlessAccessInsts;
         // Map of the srcPtr (kernel arg resource) to a vector of instructions accessing it
-        llvm::DenseMap<llvm::Value*, llvm::SmallVector<BindlessAccessInsts, 8>> m_SrcPtrToAccessMap;
+        llvm::MapVector<llvm::Value*, llvm::SmallVector<BindlessAccessInsts, 8>> m_SrcPtrToAccessMap;
         // Tracks the set of resources that must have at least one stateless access
         std::set<llvm::Value*> m_SrcPtrNeedStatelessAccess;
 
