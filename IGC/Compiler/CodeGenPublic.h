@@ -90,6 +90,14 @@ namespace IGC
     struct BifLLVMModule;
     class CodeGenContext;
 
+    struct SIMDInfoStruct {
+      uint32_t simd8 = 0;
+      uint32_t simd16 = 0;
+      uint32_t simd32 = 0;
+      uint32_t dual_simd8 = 0;
+      uint32_t quad_simd8_dynamic = 0;
+    };
+
     struct SProgramOutput
     {
     public:
@@ -432,29 +440,27 @@ namespace IGC
         bool value[4];
     };
 
-    enum SIMDInfoBit
-    {
-        SIMD_SELECTED,       // 0: if the SIMD is selected. If 1, all the other bits are ignored.
-        SIMD_RETRY,          // 1: is a retry
-        SIMD_SKIP_HW,        // 2: skip this SIMD due to HW restriction / WA.
-        SIMD_SKIP_REGPRES,   // 3: skip this SIMD due to register pressure early out.
-        SIMD_SKIP_SPILL,     // 4: skip this SIMD due to spill or high chance of spilling.
-        SIMD_SKIP_STALL,     // 5: skip this SIMD due to stall cycle or thread occupancy heuristic.
-        SIMD_SKIP_THGRPSIZE, // 6: skip due to threadGroupSize heuristic(CS / OCL only).
-        SIMD_SKIP_PERF,      // 7: skip this SIMD due to performance concern (dx12 + discard, MRT, etc) or other reasons.
-        SIMD_SKIP_ML,        // 8: skip this SIMD due to ML engine prediction.
-        SIMD_FORCE_CONTENT,  // 9: force this simd due to shader content (simd32 if WaveActive, barriers + interlocks)
-        SIMD_FORCE_HINT,     // 10: force this simd by hint(s) (now for WaveSize only)
-        SIMD_INFO_RESERVED   // 11: *** If new entry is added, make sure it still fits in m_SIMDInfo ***
-    };
-
-    enum SIMDInfoOffset
-    {
-        SIMD8_OFFSET = 0,
-        SIMD16_OFFSET = SIMD_INFO_RESERVED,
-        SIMD32_OFFSET = SIMD_INFO_RESERVED*2,
-        DUAL_SIMD8_OFFSET = SIMD_INFO_RESERVED * 3,
-        QUAD_SIMD8_DYNAMIC_OFFSET = SIMD_INFO_RESERVED*6,
+    enum SIMDInfoBit {
+      SIMD_SELECTED, // 0: if the SIMD is selected. If 1, all the other bits are
+                     // ignored.
+      SIMD_RETRY,    // 1: is a retry
+      SIMD_SKIP_HW,  // 2: skip this SIMD due to HW restriction / WA.
+      SIMD_SKIP_REGPRES,   // 3: skip this SIMD due to register pressure early
+                           // out.
+      SIMD_SKIP_SPILL,     // 4: skip this SIMD due to spill or high chance of
+                           // spilling.
+      SIMD_SKIP_STALL,     // 5: skip this SIMD due to stall cycle or thread
+                           // occupancy heuristic.
+      SIMD_SKIP_THGRPSIZE, // 6: skip due to threadGroupSize heuristic(CS / OCL
+                           // only).
+      SIMD_SKIP_PERF, // 7: skip this SIMD due to performance concern (dx12 +
+                      // discard, MRT, etc) or other reasons.
+      SIMD_SKIP_ML,   // 8: skip this SIMD due to ML engine prediction.
+      SIMD_FORCE_CONTENT, // 9: force this simd due to shader content (simd32 if
+                          // WaveActive, barriers + interlocks)
+      SIMD_FORCE_HINT, // 10: force this simd by hint(s) (now for WaveSize only)
+      SIMD_INFO_RESERVED // 11: *** If new entry is added, make sure it still
+                         // fits in m_SIMDInfo ***
     };
 
     struct SKernelProgram
@@ -492,7 +498,8 @@ namespace IGC
 
         SSimplePushInfo simplePushInfoArr[g_c_maxNumberOfBufferPushed];
 
-        uint64_t    SIMDInfo = 0;
+        SIMDInfoStruct SIMDInfo;
+
         void* m_StagingCtx = nullptr;
         bool m_RequestStage2 = false;
 
@@ -982,9 +989,10 @@ namespace IGC
         std::vector<int> m_gsNonDefaultIdxMap;
         std::vector<int> m_psIdxMap;
         DWORD LtoUsedMask = 0;
-        uint64_t m_SIMDInfo = 0;
         uint32_t HdcEnableIndexSize = 0;
         std::vector<RoutingIndex> HdcEnableIndexValues;
+
+        SIMDInfoStruct m_SIMDInfo;
 
         // Raytracing (any shader type)
         BVHInfo bvhInfo;
@@ -1021,41 +1029,39 @@ namespace IGC
         virtual void setFlagsPerCtx();
 
     public:
-        CodeGenContext(
-            ShaderType          _type,      ///< shader type
-            const CBTILayout& _bitLayout, ///< binding table layout to be used in code gen
-            const CPlatform& _platform,  ///< IGC HW platform description
-            const CDriverInfo& driverInfo, ///< Queries to know runtime features support
-            const bool          createResourceDimTypes = true,
-            LLVMContextWrapper* LLVMContext = nullptr)///< LLVM context to use, if null a new one will be created
-            : type(_type), platform(_platform), btiLayout(_bitLayout), m_DriverInfo(driverInfo),
-            llvmCtxWrapper(LLVMContext), m_SIMDInfo(0)
-        {
-            if (llvmCtxWrapper == nullptr)
-            {
-                initLLVMContextWrapper(createResourceDimTypes);
-            }
-            else
-            {
-                llvmCtxWrapper->AddRef();
-            }
-
-            m_indexableTempSize.resize(64);
-
-            for (uint i = 0; i < TOTAL_TYPES; i++)
-            {
-                for (uint j = 0; j < TOTAL_STAGE; j++)
-                {
-                    instrStat[i][j] = 0;
-                }
-            }
-
-            // Per context flag/key adjustment
-            setFlagsPerCtx();
-
-            // Set retry behavor for Disable()
-            m_retryManager.perKernel = (type == ShaderType::OPENCL_SHADER);
+      CodeGenContext(
+          ShaderType _type, ///< shader type
+          const CBTILayout
+              &_bitLayout, ///< binding table layout to be used in code gen
+          const CPlatform &_platform, ///< IGC HW platform description
+          const CDriverInfo
+              &driverInfo, ///< Queries to know runtime features support
+          const bool createResourceDimTypes = true,
+          LLVMContextWrapper *LLVMContext =
+              nullptr) ///< LLVM context to use, if null a new one will be
+                       ///< created
+          : type(_type), platform(_platform), btiLayout(_bitLayout),
+            m_DriverInfo(driverInfo), llvmCtxWrapper(LLVMContext) {
+        if (llvmCtxWrapper == nullptr) {
+          initLLVMContextWrapper(createResourceDimTypes);
+        } else {
+          llvmCtxWrapper->AddRef();
         }
+
+        m_indexableTempSize.resize(64);
+
+        for (uint i = 0; i < TOTAL_TYPES; i++) {
+          for (uint j = 0; j < TOTAL_STAGE; j++) {
+            instrStat[i][j] = 0;
+          }
+        }
+
+        // Per context flag/key adjustment
+        setFlagsPerCtx();
+
+        // Set retry behavor for Disable()
+        m_retryManager.perKernel = (type == ShaderType::OPENCL_SHADER);
+      }
 
         CodeGenContext(CodeGenContext&) = delete;
         CodeGenContext& operator =(CodeGenContext&) = delete;
@@ -1131,57 +1137,61 @@ namespace IGC
 
         bool isSWSubTriangleOpacityCullingEmulationEnabled() const;
 
-        unsigned int GetSIMDInfoOffset(SIMDMode simd, ShaderDispatchMode mode)
-        {
-            unsigned int offset = 0;
+        enum Action { Set, Clear };
 
-            switch (mode) {
-            case ShaderDispatchMode::NOT_APPLICABLE:
-                switch (simd) {
-                case SIMDMode::SIMD8:
-                    offset = SIMD8_OFFSET;
-                    break;
-                case SIMDMode::SIMD16:
-                    offset = SIMD16_OFFSET;
-                    break;
-                case SIMDMode::SIMD32:
-                    offset = SIMD32_OFFSET;
-                    break;
-                default:
-                    break;
-                }
-                break;
-
-            case ShaderDispatchMode::DUAL_SIMD8:
-                offset = DUAL_SIMD8_OFFSET;
-                break;
-            case ShaderDispatchMode::QUAD_SIMD8_DYNAMIC:
-                offset = QUAD_SIMD8_DYNAMIC_OFFSET;
-                break;
-
+        // ModifySIMDInfo is used by both Set and ClearSIMDInfo. Since Clear
+        // function doesn't have bit information, it defaults to
+        // SIMD_INFO_RESERVED if the argument is not passed. bit will not be
+        // used when action is Action::clear
+        void ModifySIMDInfo(SIMDMode simd, ShaderDispatchMode mode,
+                            Action action,
+                            SIMDInfoBit bit = SIMD_INFO_RESERVED) {
+          uint32_t bit_value = 1UL << bit;
+          bool clear = action == Action::Clear ? true : false;
+          switch (mode) {
+          case ShaderDispatchMode::NOT_APPLICABLE:
+            switch (simd) {
+            case SIMDMode::SIMD8:
+              m_SIMDInfo.simd8 = clear ? 0 : m_SIMDInfo.simd8 | bit_value;
+              break;
+            case SIMDMode::SIMD16:
+              m_SIMDInfo.simd16 = clear ? 0 : m_SIMDInfo.simd16 | bit_value;
+              break;
+            case SIMDMode::SIMD32:
+              m_SIMDInfo.simd32 = clear ? 0 : m_SIMDInfo.simd32 | bit_value;
+              break;
             default:
-                break;
+              IGC_ASSERT_MESSAGE(0, "Unknown SIMD Mode");
+              break;
             }
-            IGC_ASSERT(offset < 64);
-            return offset;
+            break;
+
+          case ShaderDispatchMode::DUAL_SIMD8:
+            m_SIMDInfo.dual_simd8 =
+                clear ? 0 : m_SIMDInfo.dual_simd8 | bit_value;
+            break;
+          case ShaderDispatchMode::QUAD_SIMD8_DYNAMIC:
+            m_SIMDInfo.quad_simd8_dynamic =
+                clear ? 0 : m_SIMDInfo.quad_simd8_dynamic | bit_value;
+            break;
+
+          default:
+            IGC_ASSERT_MESSAGE(0, "Unknown SIMD Mode");
+            break;
+          }
         }
 
-        void SetSIMDInfo(SIMDInfoBit bit, SIMDMode simd, ShaderDispatchMode mode)
-        {
-            unsigned int offset = GetSIMDInfoOffset(simd, mode);
-            unsigned int shift = bit + offset;
-            IGC_ASSERT(shift < 64);
-            m_SIMDInfo |= 1ULL << shift;
+        void SetSIMDInfo(SIMDInfoBit bit, SIMDMode simd,
+                         ShaderDispatchMode mode) {
+          IGC_ASSERT(bit < SIMD_INFO_RESERVED);
+          ModifySIMDInfo(simd, mode, Action::Set, bit);
         }
 
-        void ClearSIMDInfo(SIMDMode simd, ShaderDispatchMode mode)
-        {
-            unsigned int offset = GetSIMDInfoOffset(simd, mode);
-            IGC_ASSERT(offset < 64);
-            m_SIMDInfo &= ~(0xffULL << offset);
+        void ClearSIMDInfo(SIMDMode simd, ShaderDispatchMode mode) {
+          ModifySIMDInfo(simd, mode, Action::Clear);
         }
 
-        uint64_t GetSIMDInfo() { return m_SIMDInfo; }
+        SIMDInfoStruct GetSIMDInfo() const { return m_SIMDInfo; }
 
         SIMDMode GetSIMDMode() const;
 

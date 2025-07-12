@@ -1939,8 +1939,8 @@ namespace IGC
 
         m_Context->SetSIMDInfo(SIMD_SELECTED, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
 
-        m_kernelInfo.m_executionEnvironment.CompiledSIMDSize = numLanes(simdMode);
-        m_kernelInfo.m_executionEnvironment.SIMDInfo = m_Context->GetSIMDInfo();
+        m_kernelInfo.m_executionEnvironment.CompiledSIMDSize =
+            numLanes(simdMode);
 
         m_kernelInfo.m_executionEnvironment.PerThreadPrivateMemoryUsage =
             pOutput->m_UseScratchSpacePrivateMemory ?

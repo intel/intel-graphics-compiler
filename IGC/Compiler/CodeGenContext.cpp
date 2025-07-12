@@ -432,7 +432,11 @@ namespace IGC
         PRINT_CTX_MEMBER(m_NumGRFPerThread);
         PRINT_CTX_MEMBER(m_numPasses);
         PRINT_CTX_MEMBER(m_sampler);
-        PRINT_CTX_MEMBER(m_SIMDInfo);
+        PRINT_CTX_MEMBER(m_SIMDInfo.simd8);
+        PRINT_CTX_MEMBER(m_SIMDInfo.simd16);
+        PRINT_CTX_MEMBER(m_SIMDInfo.simd32);
+        PRINT_CTX_MEMBER(m_SIMDInfo.dual_simd8);
+        PRINT_CTX_MEMBER(m_SIMDInfo.quad_simd8_dynamic);
         PRINT_CTX_MEMBER(m_src1RemovedForBlendOpt);
         PRINT_CTX_MEMBER(m_tempCount);
         PRINT_CTX_MEMBER(m_threadCombiningOptDone);

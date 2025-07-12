@@ -89,8 +89,7 @@ struct ExecutionEnvironment
     DWORD  NumGRFRequired                             = 0;
     DWORD  WorkgroupWalkOrder[3]                      = {};
     bool   HasGlobalAtomics                           = false;
-    bool   UseBindlessMode                            = false;
-    uint64_t SIMDInfo                                 = 0;
+    bool UseBindlessMode = false;
     bool  HasDPAS                                     = false;
     bool  HasRTCalls                                  = false;
     DWORD StatelessWritesCount                        = 0;
