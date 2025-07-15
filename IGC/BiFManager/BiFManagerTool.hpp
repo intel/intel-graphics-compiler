@@ -114,4 +114,4 @@ namespace IGC
             void WriteHeader(const llvm::StringRef HeaderPath);
         };
     }
-}
+}
