@@ -6584,9 +6584,10 @@ namespace {
         void ThreeWayLoadSpiltOpt(Function& F);
         void findOptCases(SelectInst* I);
         bool HasSrcFromEE(Instruction* I, uint selNum, Instruction*& loadInst);
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<CodeGenContextWrapper>();
+        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+          AU.addRequired<CodeGenContextWrapper>();
+          AU.addRequired<DominatorTreeWrapperPass>();
+          AU.addRequired<PostDominatorTreeWrapperPass>();
         }
     private:
         struct loadGroup {
@@ -7442,267 +7443,373 @@ void InsertBranchOpt::atomicSplitOpt(Function& F, int mode)
     }
 }
 
-void typedWriteZeroStoreCheck(Function& F, CodeGenContext* pCtx)
-{
-    for (auto BI = F.begin(), BE = F.end(); BI != BE; ++BI)
-    {
-        for (auto II = BI->begin(); II != BI->end(); ++II)
-        {
-            Instruction* faddInst[4], * fmulInst[4], * eeInst[4];
-            std::vector<PHINode*>phiNodes;
-            //Obtain typedWrite
-            if (GenIntrinsicInst* tyWrite = dyn_cast<GenIntrinsicInst>(&*II))
-            {
-                if (tyWrite->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite ||
-                    tyWrite->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwriteMS)
-                {
-                    bool checksAreGreen = true;
+// Returns true if the instruction is safe to rematerialize.
+//
+// An instruction is considered rematerializable if it:
+//   - Is not a PHI, Alloca, Store, terminator, EH pad, or debug/pseudo
+//   instruction
+//   - Is not a Load (loads may have side effects or depend on memory state)
+//   - Is a Call only if it has no side effects and does not read from memory
+//   - Does not write to memory
+// This function is used to determine if an instruction can be safely cloned
+// and re-inserted elsewhere without changing program semantics.
+static bool isRematerializable(const Instruction *I) {
+  if (isa<PHINode>(I) || isa<AllocaInst>(I) || isa<StoreInst>(I) ||
+      I->isTerminator() || I->isEHPad() || I->isDebugOrPseudoInst())
+    return false;
 
-                    //Many chances for the conditions to not be met, and so there are early outs in place
-                    for (int i = 0; i < 4; i++)
-                    {
-                        //Check if typedwrite values come from fadd
-                        faddInst[i] = dyn_cast<Instruction>(tyWrite->getOperand(i + 5));
-                        if (!faddInst[i] || faddInst[i]->getOpcode() != Instruction::FAdd)
-                        {
-                            checksAreGreen = false;
-                            break;
-                        }
+  if (const LoadInst *LI = dyn_cast<LoadInst>(I)) {
+    return false;
+  }
 
-                        //Check if fAdd has a value from an fmul
-                        fmulInst[i] = dyn_cast<Instruction>(faddInst[i]->getOperand(0));
-                        if (!fmulInst[i] || fmulInst[i]->getOpcode() != Instruction::FMul)
-                        {
-                            checksAreGreen = false;
-                            break;
-                        }
+  if (const CallInst *CI = dyn_cast<CallInst>(I)) {
+    if (CI->mayHaveSideEffects() || CI->mayReadFromMemory())
+      return false;
+    return true;
+  }
 
-                        //Confirm whether fadd is using a value from an extract elem inst
-                        eeInst[i] = dyn_cast<ExtractElementInst>(faddInst[i]->getOperand(1));
-                        if (!eeInst[i] || !isa<ExtractElementInst>(faddInst[i]->getOperand(1)))
-                        {
-                            checksAreGreen = false;
-                            break;
-                        }
+  if (I->mayWriteToMemory())
+    return false;
 
-                        //Check if extract elem comes from a typedRead
-                        GenIntrinsicInst* tyRead = dyn_cast<GenIntrinsicInst>(eeInst[i]->getOperand(0));
-                        if (!tyRead ||
-                            (tyWrite->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite && tyRead->getIntrinsicID() != GenISAIntrinsic::GenISA_typedread) ||
-                            (tyWrite->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwriteMS && tyRead->getIntrinsicID() != GenISAIntrinsic::GenISA_typedreadMS))
-                        {
-                            checksAreGreen = false;
-                            break;
-                        }
-                    }
-
-                    //if all checks are green, can set up tyW and tyr
-                    if (!checksAreGreen)
-                    {
-                        continue;
-                    }
-
-                    //Check phi node to find target block and if phi node can have 0
-                    BasicBlock* fromBB = nullptr;
-                    bool allPhiContainsZeroAndOnlyOneNonZero = false;
-                    bool breakOut = false;
-
-                    for (Instruction* fmul : fmulInst)
-                    {
-                        if (PHINode* p = dyn_cast<PHINode>(fmul->getOperand(1)))
-                        {
-                            bool currentNodeContainsZero = false;
-                            bool onlyOneNonZeroFound = false;
-                            if (p->getNumIncomingValues() <= 4)
-                            {
-                                for (unsigned int predIndex = 0; predIndex < p->getNumIncomingValues(); ++predIndex)
-                                {
-                                    if (ConstantFP* fp = dyn_cast<ConstantFP>(p->getIncomingValue(predIndex)))
-                                    {
-                                        if (!fp->isZero())
-                                        {
-                                            //If there are multiple non zero values, break immediately
-                                            if (onlyOneNonZeroFound)
-                                            {
-                                                onlyOneNonZeroFound = false;
-                                                break;
-                                            }
-
-                                            fromBB = p->getIncomingBlock(predIndex);
-
-                                            if (!onlyOneNonZeroFound)
-                                            {
-                                                onlyOneNonZeroFound = true;
-                                            }
-
-                                            if (currentNodeContainsZero && onlyOneNonZeroFound)
-                                            {
-                                                continue;
-                                            }
-                                            else
-                                            {
-                                                currentNodeContainsZero = false;
-                                            }
-                                        }
-                                        else if (fp->isZero())
-                                        {
-                                            currentNodeContainsZero = true;
-                                        }
-
-                                        if (currentNodeContainsZero && onlyOneNonZeroFound)
-                                        {
-                                            allPhiContainsZeroAndOnlyOneNonZero = true;
-                                        }
-                                        else
-                                        {
-                                            allPhiContainsZeroAndOnlyOneNonZero = false;
-                                        }
-                                    }
-                                    else if (Value* val = dyn_cast<Value>(p->getIncomingValue(predIndex)))
-                                    {
-                                        //If one value has already been found, then this would be the second time
-                                        if (onlyOneNonZeroFound)
-                                        {
-                                            onlyOneNonZeroFound = false;
-                                            break;
-                                        }
-
-                                        fromBB = p->getIncomingBlock(predIndex);
-
-                                        if (!onlyOneNonZeroFound)
-                                        {
-                                            onlyOneNonZeroFound = true;
-                                        }
-
-                                        if (currentNodeContainsZero && onlyOneNonZeroFound)
-                                        {
-                                            continue;
-                                        }
-                                        else
-                                        {
-                                            currentNodeContainsZero = false;
-                                        }
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                allPhiContainsZeroAndOnlyOneNonZero = false;
-                            }
-
-                            //Break out and return if one of the phi nodes can't have 0 or has more than one nonzero
-                            if (allPhiContainsZeroAndOnlyOneNonZero)
-                            {
-                                phiNodes.push_back(p);
-                            }
-                            else
-                            {
-                                breakOut = true;
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            breakOut = true;
-                            break;
-                        }
-                    }
-
-                    Instruction* tyW = cast<GenIntrinsicInst>(tyWrite);
-                    Instruction* tyR = cast<GenIntrinsicInst>(eeInst[0]->getOperand(0));
-
-                    int paramCnt = 5;
-                    for (int j = 0; j < paramCnt; j++)
-                    {
-                        if (tyR->getOperand(j) != tyW->getOperand(j))
-                        {
-                            breakOut = true;
-                        }
-                    }
-
-                    if (breakOut)
-                    {
-                        break;
-                    }
-                    II++;
-
-                    //accounting for IntToPtrInsts used for the typedread/write
-                    Instruction* u = nullptr;
-                    Instruction* addIntoOpt = nullptr;
-
-                    if (IntToPtrInst* intoOpt = dyn_cast<IntToPtrInst>(tyR->getOperand(0)))
-                    {
-                        Instruction* prev = cast<Instruction>(intoOpt->getOperand(0));
-                        if (GenIntrinsicInst* runTimeVal = dyn_cast<GenIntrinsicInst>(prev->getOperand(0)))
-                        {
-                           if (runTimeVal->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue)
-                           {
-                              //If all of these check out, then clone the IntOprPtr instr
-                              u = intoOpt->clone();
-                              addIntoOpt = prev->clone();
-                           }
-                        }
-                    }
-
-                    IGC_ASSERT( fromBB != nullptr );
-                    if (fromBB != nullptr)
-                    {
-                        if (u != nullptr && addIntoOpt != nullptr)
-                        {
-                            addIntoOpt->insertBefore(fromBB->getTerminator());
-                            u->insertBefore(fromBB->getTerminator());
-                            u->setOperand(0, addIntoOpt);
-                        }
-                        tyR->setOperand(0, u);
-                        tyR->removeFromParent();
-                        tyR->insertBefore(fromBB->getTerminator());
-
-                        //How to check for redundant inst?
-                        for (int k = 0; k < 3; k++)
-                        {
-                            eeInst[k]->removeFromParent();
-                            eeInst[k]->insertBefore(fromBB->getTerminator());
-                        }
-
-                        //ensure that the fmul instructions are given the values that the phi nodes had
-
-                        for (int i = 0; i < 3; i++)
-                        {
-                            PHINode* ph = dyn_cast<PHINode>(fmulInst[i]->getOperand(1));
-                            Value* val = ph->getIncomingValue(0);
-                            fmulInst[i]->setOperand(1, val);
-                            fmulInst[i]->removeFromParent();
-                            fmulInst[i]->insertBefore(fromBB->getTerminator());
-                            faddInst[i]->removeFromParent();
-                            faddInst[i]->insertBefore(fromBB->getTerminator());
-                        }
-
-                        tyW->setOperand(0, u);
-                        tyW->removeFromParent();
-                        tyW->insertBefore(fromBB->getTerminator());
-                    }
-                }
-            }
-        }
-    }
+  return true;
 }
 
-bool InsertBranchOpt::runOnFunction(Function& F)
-{
-    pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+// Returns true if the value V is rematerializable at the start of fromBB.
+//
+// This function checks if V (which may be a constant, argument, or instruction)
+// can be recomputed at the start of fromBB. It performs an iterative DFS over
+// the operand chain, ensuring that all instructions in the chain are either
+// available (dominate fromBB) or are themselves rematerializable. Constants
+// and function arguments are always considered rematerializable.
+bool isRematerializable(Value *V, const Instruction *dest,
+                        const DominatorTree &DT) {
+  // Use a stack for iterative DFS
+  SmallVector<Value *, 8> stack;
+  SmallPtrSet<Value *, 16> visited;
+  stack.push_back(V);
 
-    int mode = IGC_IS_FLAG_ENABLED( EnableAtomicBranch ) ? IGC_GET_FLAG_VALUE( EnableAtomicBranch ) : pContext->getModuleMetaData()->csInfo.atomicBranch;
-    if( mode )
-    {
-        atomicSplitOpt( F, mode );
+  while (!stack.empty()) {
+    Value *cur = stack.pop_back_val();
+    if (visited.insert(cur).second == false)
+      continue;
+
+    // Constants and function arguments are always rematerializable
+    if (isa<Constant>(cur) || isa<Argument>(cur))
+      continue;
+
+    if (auto *I = dyn_cast<Instruction>(cur)) {
+      // If it dominates fromBB, it's available
+      if (DT.dominates(I, dest))
+        continue;
+      // Must not have side effects or read/write memory
+      if (!isRematerializable(I))
+        return false;
+      // Push all operands to the stack for further checking
+      for (unsigned op = 0; op < I->getNumOperands(); ++op) {
+        Value *opV = I->getOperand(op);
+        if (!visited.contains(opV))
+          stack.push_back(opV);
+      }
+      continue;
     }
-
-    if (IGC_IS_FLAG_ENABLED(EnableThreeWayLoadSpiltOpt) || pContext->getModuleMetaData()->enableThreeWayLoadSpiltOpt)
-    {
-        ThreeWayLoadSpiltOpt(F);
-    }
-
-    typedWriteZeroStoreCheck(F, pContext);
-
+    // Not a constant, argument, or instruction: not rematerializable
     return false;
+  }
+  return true;
+}
+
+/// Checks if a PHI node has all but one incoming value as zero, and returns
+/// the non-zero value and its incoming block. Returns false if the pattern
+/// does not match.
+static bool getUniqueNonZeroPhiValue(PHINode *phi, Value *&nonZeroVal,
+                                     BasicBlock *&nonZeroBB) {
+  nonZeroVal = nullptr;
+  for (unsigned j = 0; j < phi->getNumIncomingValues(); ++j) {
+    Value *v = phi->getIncomingValue(j);
+    ConstantFP *fp = dyn_cast<ConstantFP>(v);
+    if (!fp || !fp->isZero()) {
+      if (nonZeroVal != nullptr) {
+        return false;
+      }
+      nonZeroVal = v;
+      if (nonZeroBB != nullptr && nonZeroBB != phi->getIncomingBlock(j)) {
+        return false;
+      }
+      nonZeroBB = phi->getIncomingBlock(j);
+    }
+  }
+  return nonZeroVal;
+}
+
+// Rematerializes a chain of instructions rooted at rootInst before
+// insertBefore.
+//
+// This function iteratively clones and inserts all instructions in the chain
+// that do not dominate insertBefore, ensuring that all operands are available
+// or rematerialized as needed. The rematerialization is performed in
+// topological order (from leaves to root). If any instruction in the chain is
+// not rematerializable, returns nullptr. Otherwise, returns the rematerialized
+// value corresponding to rootInst in the target block.
+static Value *rematerializeChainIterative(Value *rootVal,
+                                          Instruction *insertBefore,
+                                          const DominatorTree &DT) {
+  Instruction *rootInst = dyn_cast<Instruction>(rootVal);
+  if (rootInst == nullptr) {
+    return rootVal;
+  }
+  std::unordered_map<Value *, Value *> rematMap;
+  std::vector<Instruction *> worklist;
+  std::vector<Instruction *> topoOrder;
+
+  // 1. Collect all instructions in the chain that need to be rematerialized.
+  worklist.push_back(rootInst);
+  while (!worklist.empty()) {
+    Instruction *inst = worklist.back();
+    worklist.pop_back();
+
+    if (rematMap.count(inst))
+      continue;
+
+    // If not rematerializable, bail out.
+    if (!isRematerializable(inst))
+      return nullptr;
+
+    // If dominates, no need to rematerialize.
+    if (DT.dominates(inst, insertBefore)) {
+      rematMap[inst] = inst;
+      continue;
+    }
+
+    topoOrder.push_back(inst);
+
+    for (unsigned i = 0; i < inst->getNumOperands(); ++i) {
+      if (Instruction *opInst = dyn_cast<Instruction>(inst->getOperand(i))) {
+        worklist.push_back(opInst);
+      }
+    }
+  }
+
+  // 2. Rematerialize in topological order (from operands to root).
+  std::reverse(topoOrder.begin(), topoOrder.end());
+  for (Instruction *inst : topoOrder) {
+    SmallVector<Value *, 4> newOps;
+    for (unsigned i = 0; i < inst->getNumOperands(); ++i) {
+      Value *op = inst->getOperand(i);
+      auto it = rematMap.find(op);
+      if (it != rematMap.end()) {
+        newOps.push_back(it->second);
+      } else {
+        newOps.push_back(op);
+      }
+    }
+    Instruction *newInst = inst->clone();
+    for (unsigned i = 0; i < newOps.size(); ++i)
+      newInst->setOperand(i, newOps[i]);
+    newInst->insertBefore(insertBefore);
+    rematMap[inst] = newInst;
+  }
+
+  return rematMap[rootInst];
+}
+
+/// Performs the zero-store check and transformation for typedwrite intrinsics.
+/// This optimization looks for a specific pattern where a typedwrite is
+/// guarded by a PHI node that is zero on all but one path, and rematerializes
+/// the computation in the unique non-zero block.
+/// The zero-store is a case when the store instruction doesn't change
+/// the values in the resource.
+void typedWriteZeroStoreCheck(Function &F, DominatorTree &DT,
+                              PostDominatorTree &PDT) {
+  for (auto &BB : F) {
+    for (auto &I : llvm::make_early_inc_range(BB)) {
+      // Obtain typedWrite
+      if (GenIntrinsicInst *tyWrite = dyn_cast<GenIntrinsicInst>(&I)) {
+
+        if (tyWrite->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite ||
+            tyWrite->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwriteMS) {
+          constexpr uint32_t numArgs = 4;
+          uint32_t numActiveChannels = numArgs;
+          constexpr int paramCnt = 5;
+          Instruction *faddInst[numArgs], *fmulInst[numArgs];
+          ExtractElementInst *eeInst[numArgs]{};
+          Value *incomingNonZeroValues[numArgs]{};
+          GenIntrinsicInst *tyR = nullptr;
+          bool checksAreGreen = true;
+
+          // Many chances for the conditions to not be met, and so there are
+          // early outs in place
+          for (uint32_t i = 0; i < numActiveChannels; i++) {
+            // Check if typedwrite values come from fadd
+            faddInst[i] =
+                dyn_cast<Instruction>(tyWrite->getOperand(i + paramCnt));
+            if (!faddInst[i] || faddInst[i]->getOpcode() != Instruction::FAdd ||
+                faddInst[i]->getUniqueUndroppableUser() == nullptr) {
+              checksAreGreen = false;
+              break;
+            }
+
+            // Check if fAdd has a value from an fmul
+            fmulInst[i] = dyn_cast<Instruction>(faddInst[i]->getOperand(0));
+            if (!fmulInst[i] || fmulInst[i]->getOpcode() != Instruction::FMul ||
+                fmulInst[i]->getNumUses() > 1) {
+              checksAreGreen = false;
+              break;
+            }
+
+            // Confirm whether fadd is using a value from an extract elem inst
+            eeInst[i] =
+                dyn_cast<ExtractElementInst>(faddInst[i]->getOperand(1));
+            if (!eeInst[i]) {
+              checksAreGreen = false;
+              break;
+            }
+
+            // Check extractelement index
+            if (!isa<ConstantInt>(eeInst[i]->getIndexOperand()) ||
+                cast<ConstantInt>(eeInst[i]->getIndexOperand())
+                        ->getZExtValue() != i) {
+              checksAreGreen = false;
+              break;
+            }
+
+            // Check if extract elem comes from a typedRead
+            GenIntrinsicInst *tyRead =
+                dyn_cast<GenIntrinsicInst>(eeInst[i]->getOperand(0));
+            if (!tyRead || (tyR != nullptr && tyR != tyRead) ||
+                tyRead->getNumUses() > numArgs ||
+                (tyWrite->getIntrinsicID() ==
+                     GenISAIntrinsic::GenISA_typedwrite &&
+                 tyRead->getIntrinsicID() !=
+                     GenISAIntrinsic::GenISA_typedread) ||
+                (tyWrite->getIntrinsicID() ==
+                     GenISAIntrinsic::GenISA_typedwriteMS &&
+                 tyRead->getIntrinsicID() !=
+                     GenISAIntrinsic::GenISA_typedreadMS)) {
+              checksAreGreen = false;
+              break;
+            }
+            tyR = tyRead;
+            numActiveChannels = tyRead->getNumUses();
+          }
+
+          for (uint32_t i = numActiveChannels; i < numArgs && checksAreGreen;
+               i++) {
+            bool found = false;
+            Value *channelVal = tyWrite->getOperand(i + paramCnt);
+            for (uint32_t j = 0; j < numActiveChannels && !found; j++) {
+              found = channelVal == faddInst[j];
+            }
+            checksAreGreen = found;
+          }
+
+          // if all checks are green, can set up tyW and tyr
+          if (!checksAreGreen) {
+            continue;
+          }
+
+          // Check phi node to find target block and if phi node can have 0
+          BasicBlock *fromBB = nullptr;
+          bool breakOut = false;
+
+          for (uint32_t i = 0; i < numActiveChannels && !breakOut; i++) {
+            Instruction *fmul = fmulInst[i];
+            if (PHINode *p = dyn_cast<PHINode>(fmul->getOperand(1))) {
+              breakOut = !getUniqueNonZeroPhiValue(p, incomingNonZeroValues[i],
+                                                   fromBB);
+            } else {
+              breakOut = true;
+              break;
+            }
+          }
+
+          Instruction *tyW = cast<GenIntrinsicInst>(tyWrite);
+
+          for (int i = 0; i < paramCnt && !breakOut; i++) {
+            breakOut = tyR->getOperand(i) != tyW->getOperand(i) ||
+                       !isRematerializable(tyR->getOperand(i),
+                                           fromBB->getTerminator(), DT);
+          }
+
+          breakOut = breakOut || fromBB == nullptr ||
+                     !PDT.dominates(tyWrite->getParent(), fromBB);
+
+          if (breakOut) {
+            continue;
+          }
+
+          llvm::Value *rematerializedVals[paramCnt]{};
+          for (int i = 0; i < paramCnt; i++) {
+            rematerializedVals[i] = rematerializeChainIterative(
+                tyR->getOperand(i), fromBB->getTerminator(), DT);
+            IGC_ASSERT(rematerializedVals[i]);
+          }
+
+          tyR->removeFromParent();
+          tyR->insertBefore(fromBB->getTerminator());
+
+          // How to check for redundant inst?
+          for (uint32_t i = 0; i < numActiveChannels; i++) {
+            eeInst[i]->removeFromParent();
+            eeInst[i]->insertBefore(fromBB->getTerminator());
+          }
+
+          // ensure that the fmul instructions are given the values that the
+          // phi nodes had
+
+          for (uint32_t i = 0; i < numActiveChannels; i++) {
+            Instruction *fmulOp = fmulInst[i];
+            Instruction *faddOp = faddInst[i];
+            fmulOp->removeFromParent();
+            fmulOp->insertBefore(fromBB->getTerminator());
+            // Fix FMul operands: rematerialize non-PHI, replace PHI with
+            // non-zero value
+            for (unsigned op = 0; op < fmulOp->getNumOperands(); ++op) {
+              Value *origOp = fmulOp->getOperand(op);
+              if (isa<PHINode>(origOp)) {
+                fmulOp->setOperand(op, incomingNonZeroValues[i]);
+              } else if (Instruction *instOp = dyn_cast<Instruction>(origOp)) {
+                Value *remat = rematerializeChainIterative(instOp, fmulOp, DT);
+                fmulOp->setOperand(op, remat);
+              } else {
+                fmulOp->setOperand(op, origOp);
+              }
+            }
+            faddOp->removeFromParent();
+            faddOp->insertBefore(fromBB->getTerminator());
+          }
+
+          tyW->removeFromParent();
+          tyW->insertBefore(fromBB->getTerminator());
+
+          for (uint32_t i = 0; i < paramCnt; i++) {
+            tyR->setOperand(i, rematerializedVals[i]);
+            tyW->setOperand(i, rematerializedVals[i]);
+          }
+        }
+      }
+    }
+  }
+}
+
+bool InsertBranchOpt::runOnFunction(Function &F) {
+  pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  int mode = IGC_IS_FLAG_ENABLED(EnableAtomicBranch)
+                 ? IGC_GET_FLAG_VALUE(EnableAtomicBranch)
+                 : pContext->getModuleMetaData()->csInfo.atomicBranch;
+  if (mode) {
+    atomicSplitOpt(F, mode);
+  }
+
+  if (IGC_IS_FLAG_ENABLED(EnableThreeWayLoadSpiltOpt) ||
+      pContext->getModuleMetaData()->enableThreeWayLoadSpiltOpt) {
+    ThreeWayLoadSpiltOpt(F);
+  }
+
+  if (IGC_IS_FLAG_DISABLED(DisableTypedWriteZeroStoreCheck)) {
+    typedWriteZeroStoreCheck(
+        F, getAnalysis<DominatorTreeWrapperPass>().getDomTree(),
+        getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree());
+  }
+
+  return false;
 }
