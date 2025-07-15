@@ -22653,10 +22653,6 @@ bool EmitPass::ResourceLoopHeader(
     }
     m_currShader->IncNumSampleBallotLoops();
 
-    if (destination)
-    {
-        m_encoder->Lifetime(LIFETIME_START, (CVariable*)destination);
-    }
 
     label = m_encoder->GetNewLabelID("_opt_resource_loop");
     m_encoder->AddDivergentResourceLoopLabel(label);
