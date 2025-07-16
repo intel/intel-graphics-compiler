@@ -341,6 +341,7 @@ struct Model {
   bool supportsAlign16Ternary() const { return platform < Platform::GEN10; }
   bool supportsAlign16MacroInst() const { return platform <= Platform::GEN10; }
 
+
   uint32_t getNumGRF() const;
   uint32_t getNumFlagReg() const;
   uint32_t getGRFByteSize() const;

@@ -439,6 +439,7 @@ static_assert(sizeof(iga_disassemble_options_t) == 6 * 4,
 /* just the default decoding opts */
 #define IGA_DECODING_OPTS_DEFAULT (0u)
 
+
 /*
  * Disassembles kernel bits into a string.
  *

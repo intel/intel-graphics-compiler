@@ -213,6 +213,7 @@ private:
   void applyGedWorkarounds(const Kernel &k, size_t bitsLen);
   void encodeOptions(const Instruction &inst);
 
+
   //////////////////////////////////////////////////////////////////////
   // platform specific queries *but sometimes need the instruction too)
   //

@@ -437,6 +437,7 @@ public:
     checkForLegacyFields(dopts, errHandler);
     DecoderOpts dopts2(
         (dopts.formatting_opts & IGA_FORMATTING_OPT_NUMERIC_LABELS) != 0);
+
     if ((dopts.decoder_opts & IGA_DECODING_OPT_NATIVE) == 0) {
       if (!iga::ged::IsDecodeSupported(m_model, dopts2)) {
         return IGA_UNSUPPORTED_PLATFORM;

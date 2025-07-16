@@ -116,6 +116,7 @@ public:
     }
   }
 
+
   bool isMacro() const;
 
 private:

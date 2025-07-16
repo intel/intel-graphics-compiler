@@ -59,6 +59,7 @@ public:
   // enable IGA swsb set. When enabled, the original swsb in the input
   // instructions will be obsoleted
   void enableIGAAutoDeps(bool enable = true) { m_enableAutoDeps = enable; }
+
 };
 
 #endif // _IGA_ENCODER_WRAPPER_HPP
