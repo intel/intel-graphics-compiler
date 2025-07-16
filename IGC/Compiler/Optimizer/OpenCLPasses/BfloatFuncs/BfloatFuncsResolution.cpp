@@ -231,9 +231,16 @@ void BfloatFuncsResolution::handleMinMax(CallInst &CI,
     auto Op0Bf = bitcastToBfloat(Op0);
     auto Op1Bf = bitcastToBfloat(Op1);
 
+    // According to OpenCL C spec:
+    // If one argument is a NaN, fmax() or fmin() returns the other argument.
+    // If both arguments are NaNs, fmax() or fmin() returns a NaN.
     auto CompareInst = m_builder->CreateFCmp(Pred, Op0Bf, Op1Bf);
     auto SelectInst = m_builder->CreateSelect(CompareInst, Op0Bf, Op1Bf);
-    auto Res = m_builder->CreateBitCast(SelectInst, CI.getType());
+    auto IsNaNOp0 = m_builder->CreateFCmp(CmpInst::Predicate::FCMP_UNO, Op0Bf, Op0Bf);
+    auto OtherVal = m_builder->CreateSelect(IsNaNOp0, Op1Bf, Op0Bf);
+    auto CompareNaNInst = m_builder->CreateFCmp(CmpInst::Predicate::FCMP_ORD, Op0Bf, Op1Bf);
+    auto SelectInst3 = m_builder->CreateSelect(CompareNaNInst, SelectInst, OtherVal);
+    auto Res = m_builder->CreateBitCast(SelectInst3, CI.getType());
 
     CI.replaceAllUsesWith(Res);
     m_instructionsToRemove.push_back(&CI);
