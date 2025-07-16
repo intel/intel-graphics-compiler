@@ -271,7 +271,7 @@ void GraphColor::getExtraInterferenceInfo() {
 #if defined(_WIN32)
     llvm::sys::path::append(intfName, "C:", "Intel", "IGC", "ShaderOverride");
 #else
-    llvm::sys::path::append(intfName, "/", "tmp", "IntelIGC", "ShaderOVerride");
+    llvm::sys::path::append(intfName, "/", "tmp", "IntelIGC", "ShaderOverride");
 #endif
     vASSERT(m_options->getOptionCstr(VISA_AsmFileName));
     llvm::StringRef asmName = m_options->getOptionCstr(VISA_AsmFileName);
