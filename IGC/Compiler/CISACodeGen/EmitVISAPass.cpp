@@ -8776,8 +8776,7 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic *inst) {
           : false;
   uint label = 0;
   CVariable *flag = nullptr;
-  CVariable *dest = dst ? dst : m_destination;
-  bool needLoop = ResourceLoopHeader(dest, resource, sampler, flag, label);
+  bool needLoop = ResourceLoopHeader(dst, resource, sampler, flag, label);
   ResourceLoopSubIteration(resource, sampler, flag, label);
   m_encoder->SetPredicate(flag);
   m_encoder->Gather4Inst(opCode, offset, resource, pairedResource, sampler,
@@ -15963,8 +15962,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr,
       }
       uint label = 0;
       CVariable *flag = nullptr;
-      CVariable *dest = pDst ? pDst : m_destination;
-      bool needLoop = ResourceLoopHeader(dest, resource, flag, label);
+      bool needLoop = ResourceLoopHeader(pDst, resource, flag, label);
       ResourceLoopSubIteration(resource, flag, label);
       if (shouldGenerateLSC(pInst)) {
         auto cacheOpts = LSC_DEFAULT_CACHING;
@@ -21525,6 +21523,11 @@ bool EmitPass::ResourceLoopHeader(const CVariable *destination,
   }
   m_currShader->IncNumSampleBallotLoops();
 
+  auto *md = m_pCtx->getModuleMetaData();
+  if (destination && IGC_IS_FLAG_ENABLED(EnableResourceLoopDestLifeTimeStart) &&
+      !md->compOpt.DisableResourceLoopDestLifeTimeStart) {
+    m_encoder->Lifetime(LIFETIME_START, (CVariable *)destination);
+  }
 
   label = m_encoder->GetNewLabelID("_opt_resource_loop");
   m_encoder->AddDivergentResourceLoopLabel(label);
