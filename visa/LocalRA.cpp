@@ -802,6 +802,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign,
                                                   : bankAlign;
       G4_SubReg_Align subAlign =
           builder.GRFAlign() ? builder.getGRFAlign() : gra.getSubRegAlign(dcl);
+      auto dclLR = gra.getLocalLR(dcl);
 
       if (assignFromFront) {
         BankAlign preferBank = BankAlign::Either;
@@ -809,11 +810,13 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign,
             getOccupiedBundle(builder, gra, dcl, preferBank);
         nrows = phyRegMgr.findFreeRegs(
             sizeInWords, assignAlign, subAlign, regNum, subregNum, 0,
-            numRegLRA - 1, occupiedBundles, 0, false, emptyForbidden);
+            numRegLRA - 1, occupiedBundles, 0, false,
+            dclLR ? dclLR->getForbidden() : emptyForbidden);
       } else {
-        nrows = phyRegMgr.findFreeRegs(sizeInWords, assignAlign, subAlign,
-                                       regNum, subregNum, numRegLRA - 1, 0, 0,
-                                       0, false, emptyForbidden);
+        nrows = phyRegMgr.findFreeRegs(
+            sizeInWords, assignAlign, subAlign, regNum, subregNum,
+            numRegLRA - 1, 0, 0, 0, false,
+            dclLR ? dclLR->getForbidden() : emptyForbidden);
       }
 
       if (nrows) {
