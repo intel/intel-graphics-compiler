@@ -399,9 +399,8 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock &blk, SDAG &sdag,
   }
 
   if (CallInst *callInst = dyn_cast<CallInst>(sdag.m_root)) {
-    // Disable slicing for function calls
-    Function *F = dyn_cast<Function>(IGCLLVM::getCalledValue(callInst));
-    if (!F || F->hasFnAttribute("visaStackCall")) {
+    // Disable slicing for function calls (stackcalls and subroutines)
+    if (isUserFunctionCall(callInst)) {
       numInstance = 1;
       slicing = false;
     }
@@ -11637,7 +11636,7 @@ void EmitPass::emitCall(llvm::CallInst *inst) {
     // When both symbols are the same, then this argument passing has been
     // lifted to use a global vISA variable, just skip the copy.
     if (Dst != Src) {
-      emitCopyAll(Dst, Src, Arg.getType());
+      emitCopyAllInstances(Dst, Src, Arg.getType());
     }
   }
   m_currFuncHasSubroutine = true;
@@ -11648,7 +11647,7 @@ void EmitPass::emitCall(llvm::CallInst *inst) {
   if (!inst->use_empty()) {
     CVariable *Dst = GetSymbol(inst);
     CVariable *Src = m_currShader->getOrCreateReturnSymbol(F);
-    emitCopyAll(Dst, Src, inst->getType());
+    emitCopyAllInstances(Dst, Src, inst->getType());
   }
 }
 
@@ -11667,7 +11666,7 @@ void EmitPass::emitReturn(llvm::ReturnInst *inst) {
     if (!RetTy->isVoidTy()) {
       CVariable *Dst = m_currShader->getOrCreateReturnSymbol(F);
       CVariable *Src = GetSymbol(inst->getReturnValue());
-      emitCopyAll(Dst, Src, RetTy);
+      emitCopyAllInstances(Dst, Src, RetTy);
     }
 
     m_encoder->SubroutineRet(nullptr, F);
@@ -21034,6 +21033,14 @@ void EmitPass::emitCopyAll(CVariable *Dst, CVariable *Src, llvm::Type *Ty) {
     IGC_ASSERT_MESSAGE(Ty->isSingleValueType(), "not supported");
     m_encoder->Copy(Dst, Src);
     m_encoder->Push();
+  }
+}
+
+void EmitPass::emitCopyAllInstances(CVariable *Dst, CVariable *Src,
+                                    llvm::Type *type) {
+  for (uint instance = 0; instance < Dst->GetNumberInstance(); instance++) {
+    m_encoder->SetSecondHalf(instance == 1 ? true : false);
+    emitCopyAll(Dst, Src, type);
   }
 }
 
