@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024-2025 Intel Corporation
+; Copyright (C) 2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -84,8 +84,8 @@ attributes #2 = { convergent nounwind readnone willreturn }
 !5 = !{i32 2, i32 0}
 !6 = !{!"ModuleMD", !7}
 !7 = !{!"FuncMD", !8, !9}
-!8 = !{!"FuncMDMap[0]", void (%spirv.Image addrspace(1)*, %spirv.Sampler addrspace(2)*)* @foo}
-!9 = !{!"FuncMDValue[0]", !10, !20}
+!8 = !{!"FuncMDMap[71]", void (%spirv.Image addrspace(1)*, %spirv.Sampler addrspace(2)*)* @foo}
+!9 = !{!"FuncMDValue[71]", !10}
 !10 = !{!"resAllocMD", !11}
 !11 = !{!"argAllocMDList", !12, !16}
 !12 = !{!"argAllocMDListVec[1]", !13, !14, !15}
@@ -96,10 +96,5 @@ attributes #2 = { convergent nounwind readnone willreturn }
 !17 = !{!"type", i32 1}
 !18 = !{!"extensionType", i32 0}
 !19 = !{!"indexType", i32 1}
-
-; The following metadata are needed to recognize functions using image/sampler arguments:
-!20 = !{!"m_OpenCLArgTypes", !21, !22}
-!21 = !{!"m_OpenCLArgTypesVec[0]", !"image2d_t"}
-!22 = !{!"m_OpenCLArgTypesVec[1]", !"sampler_t"}
 
 ; CHECK: ![[A1:[0-9]+]] = !{!"explicit_arg_num", i32 1}

@@ -495,12 +495,7 @@ uint PayloadMapping::GetNonAdjustedNumPayloadElements_Sample(const SampleIntrins
     EOPCODE opCode = GetOpCode(inst);
     llvm::Type* cubeTextureType = GetResourceDimensionType(*inst->getModule(), RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE);
     llvm::Type* cubeArrayTextureType = GetResourceDimensionType(*inst->getModule(), RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE);
-    // TODO: Remove the following shader type check once all adapters support
-    // opaque pointers.
-    llvm::Type *textureType =
-        m_CodeGenContext->type == ShaderType::OPENCL_SHADER
-            ? nullptr
-            : inst->getTexturePtrEltTy();
+    llvm::Type* textureType = inst->getTexturePtrEltTy();
     bool isCube = (textureType == cubeTextureType || textureType == cubeArrayTextureType);
     ValidateNumberofSources(opCode, isCube, numSources);
 
