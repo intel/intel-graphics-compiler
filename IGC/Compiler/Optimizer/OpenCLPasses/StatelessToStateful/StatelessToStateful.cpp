@@ -562,21 +562,19 @@ bool StatelessToStateful::pointerIsFromKernelArgument(Value& ptr)
     return false;
 }
 
-//  Examine uses: look for loads/stores (which may carry explicit
-//  alignment) or a GEP that reveals an ABI alignment from its element
-//  type.
-static alignment_t examinePointerUses(Value *Ptr, const DataLayout &DL)
+static alignment_t determinePointerAlignment(
+    Value *Ptr,
+    const DataLayout &DL,
+    AssumptionCache *AC,
+    Instruction *InsertionPt)
 {
     alignment_t BestAlign = 0;
 
+    // 1) Examine uses: look for loads/stores (which may carry explicit
+    //    alignment) or a GEP that reveals an ABI alignment from its element
+    //    type.
     for (User *U : Ptr->users()) {
-      if (auto *BC = dyn_cast<BitCastInst>(U)) {
-        IGC_ASSERT_MESSAGE(BC->getType()->isPointerTy(),
-                           "Pointer type is expected");
-        alignment_t BcAlign = examinePointerUses(BC, DL);
-        if (BcAlign > BestAlign)
-          BestAlign = BcAlign;
-      } else if(auto *LI = dyn_cast<LoadInst>(U)) {
+      if (auto *LI = dyn_cast<LoadInst>(U)) {
         // Load has an explicit alignment.
         alignment_t LdAlign = LI->getAlign().value();
         if (LdAlign > BestAlign)
@@ -599,19 +597,6 @@ static alignment_t examinePointerUses(Value *Ptr, const DataLayout &DL)
         }
       }
     }
-    return BestAlign;
-}
-
-static alignment_t determinePointerAlignment(
-    Value *Ptr,
-    const DataLayout &DL,
-    AssumptionCache *AC,
-    Instruction *InsertionPt)
-{
-    // 1) Examine uses: look for loads/stores (which may carry explicit
-    //    alignment) or a GEP that reveals an ABI alignment from its element
-    //    type.
-    alignment_t BestAlign = examinePointerUses(Ptr, DL);
 
     // 2) If this pointer is actually a function parameter, see if it has an
     //    alignment attribute.
