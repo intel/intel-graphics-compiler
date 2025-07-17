@@ -177,6 +177,61 @@ void PreprocessSPVIR::visitCallInst(CallInst& CI)
     }
 }
 
+static void fixKernelArgBaseTypes(Module &M) {
+  LLVMContext &Ctx = M.getContext();
+
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+
+    MDNode *TyMD = F.getMetadata("kernel_arg_type");
+    MDNode *BaseMD = F.getMetadata("kernel_arg_base_type");
+    if (!TyMD)
+      continue;
+
+    if (!BaseMD) {
+      // OpenCL base type node missing, copy all.
+      F.setMetadata("kernel_arg_base_type", TyMD);
+      continue;
+    }
+
+    unsigned N = TyMD->getNumOperands();
+    if (BaseMD->getNumOperands() != N) {
+      // Mismatched sizes.
+      continue;
+    }
+
+    bool NeedPatch = false;
+    SmallVector<Metadata *, 8> NewBase;
+    NewBase.reserve(N);
+
+    for (unsigned i = 0; i < N; ++i) {
+      auto *TyStr = dyn_cast<MDString>(TyMD->getOperand(i));
+      auto *BaseStr = dyn_cast<MDString>(BaseMD->getOperand(i));
+      // Keep original if found non‑MDString.
+      if (!TyStr || !BaseStr) {
+        NewBase.push_back(BaseMD->getOperand(i));
+        continue;
+      }
+
+      StringRef Ty = TyStr->getString();
+      StringRef Base = BaseStr->getString();
+
+      if (Ty.endswith("_t") && Ty != Base) {
+        NeedPatch = true;
+        NewBase.push_back(MDString::get(Ctx, Ty));
+      } else {
+        NewBase.push_back(BaseStr);
+      }
+    }
+
+    if (NeedPatch) {
+      MDNode *Patched = MDNode::get(Ctx, NewBase);
+      F.setMetadata("kernel_arg_base_type", Patched);
+    }
+  }
+}
+
 bool PreprocessSPVIR::runOnModule(Module& M) {
     m_Module = static_cast<IGCLLVM::Module*>(&M);
     IRBuilder<> builder(M.getContext());
@@ -187,6 +242,13 @@ bool PreprocessSPVIR::runOnModule(Module& M) {
     processBuiltinsWithArrayArguments();
 
     visit(M);
+
+    // Ensure that every OpenCL builtin type (*_t) listed in !kernel_arg_type is
+    // also present in !kernel_arg_base_type at the same position. Some
+    // frontends with partial TargetExtTy support emit pointer types in
+    // !kernel_arg_base_type (instead of an actual OpenCL builtin type), this is
+    // incorrect and inconsistent with the prior behavior.
+    fixKernelArgBaseTypes(M);
 
     // Retype function arguments of OpenCL types represented as TargetExtTy to
     // use opaque pointers instead. This is necessary to match function
