@@ -50,10 +50,12 @@ public:
   KernelView(
       iga_gen_t platf, const void *bytes, size_t bytesLength,
       iga::SWSB_ENCODE_MODE swsb_mode = iga::SWSB_ENCODE_MODE::SWSBInvalidMode,
-      char *decodeLog = nullptr, size_t decodeLogLen = 0)
+      char *decodeLog = nullptr, size_t decodeLogLen = 0
+      )
       : m_kv(nullptr), m_disasm_status(IGA_SUCCESS), m_gen(platf) {
     m_kv = kv_create(platf, bytes, bytesLength, &m_disasm_status, decodeLog,
-                     decodeLogLen, static_cast<uint32_t>(swsb_mode));
+                     decodeLogLen, static_cast<uint32_t>(swsb_mode)
+                    );
   }
 
   // The destructor automatically deallocates the underlying kernel view

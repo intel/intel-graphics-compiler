@@ -89,7 +89,8 @@ typedef enum {
  */
 IGA_API struct kv_t *kv_create(iga_gen_t plat, const void *bytes, size_t bytes_len,
                         iga_status_t *status, char *errbuf, size_t errbuf_cap,
-                        uint32_t swsb_enc_mode /* iga::SWSB_ENCODE_MODE */);
+                        uint32_t swsb_enc_mode /* iga::SWSB_ENCODE_MODE */
+                         );
 
 /*
  * Destroys a kernel view deallocating all resources sequestered by the kv_t

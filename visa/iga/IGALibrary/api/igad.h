@@ -148,7 +148,8 @@ typedef iga_status_t(CDECLATTRIBUTE *pIGAOpspecOp)(iga_opspec_t op,
 typedef kv_t *(CDECLATTRIBUTE *pIGAKVCreate)(
     iga_gen_t plat, const void *bytes, size_t bytes_len, iga_status_t *status,
     char *errbuf, size_t errbuf_cap,
-    /* iga::SWSB_ENCODE_MODE */ uint32_t swsb_mode);
+    /* iga::SWSB_ENCODE_MODE */ uint32_t swsb_mode
+    );
 #define IGA_KV_DELETE_STR "kv_delete"
 typedef void(CDECLATTRIBUTE *pIGAKVDelete)(kv_t *);
 
