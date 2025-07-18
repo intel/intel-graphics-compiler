@@ -15,6 +15,8 @@ SPDX-License-Identifier: MIT
 #include "../PointsToAnalysis.h"
 
 #define MAXIMAL_S0_SRC0_GRF_LENGTH 15
+#define MAXIMAL_S0_SRC0_GRF_LENGTH_LARGE_GRF 8
+
 typedef enum _INDIRECT_TYPE {
   NO_INDIRECT_SEND = 0,
   SAMPLER_MSG_ONLY = 1,
@@ -63,8 +65,9 @@ struct regCandidates {
 
 struct regCandidatesBRA {
   int firstDefID;
+  bool isLargeGRF;
   std::vector<regMapBRA> dstSrcMap;
-  regCandidatesBRA() : firstDefID(-1) { dstSrcMap.clear(); }
+  regCandidatesBRA() : firstDefID(-1), isLargeGRF(false) { dstSrcMap.clear(); }
 };
 
 class SRSubPass {
@@ -108,7 +111,7 @@ public:
   }
   bool isSRCandidateAfterRA(G4_INST *inst, regCandidatesBRA &dstSrcRegs);
   bool replaceWithSendiAfterRA(G4_BB *bb, INST_LIST_ITER instIter,
-                                regCandidatesBRA &dstSrcRegs);
+                               regCandidatesBRA &dstSrcRegs);
   void SRSubAfterRA(G4_BB *bb);
 };
 

@@ -349,6 +349,7 @@ public:
   bool isFillIntrinsic() const;
   G4_FillIntrinsic *asFillIntrinsic() const;
   bool isPseudoAddrMovIntrinsic() const;
+  bool isPseudoAddrMovWIntrinsic() const;
   bool isSplitIntrinsic() const;
   bool isCallerSave() const;
   bool isCallerRestore() const;
@@ -464,12 +465,6 @@ public:
   G4_InstIntrinsic *asIntrinsicInst() const {
     vISA_ASSERT(isIntrinsic(), ERROR_UNKNOWN);
     return (G4_InstIntrinsic *)this;
-  }
-
-  G4_PseudoAddrMovIntrinsic *asPseudoAddrMovIntrinsic() const {
-    vISA_ASSERT(isPseudoAddrMovIntrinsic(), "not a fill intrinsic");
-    return const_cast<G4_PseudoAddrMovIntrinsic *>(
-        reinterpret_cast<const G4_PseudoAddrMovIntrinsic *>(this));
   }
 
   const G4_InstSend *asSendInst() const {
@@ -1310,6 +1305,7 @@ public:
     }
   }
 
+
   G4_Operand *getMsgDescOperand() const {
     return isSplitSend() ? srcs[2] : srcs[1];
   }
@@ -1400,6 +1396,7 @@ enum class Intrinsic {
   CalleeRestore,
   FlagSpill,
   PseudoAddrMov,
+  PseudoAddrMovW,
   NamedBarrierWA,
   BarrierWA,
   IEEEExceptionTrap,
@@ -1454,11 +1451,14 @@ class G4_InstIntrinsic : public G4_INST {
           {Intrinsic::FlagSpill, "flagSpill", 0, 1, Phase::RA, 0},
           {Intrinsic::PseudoAddrMov, "pseudo_addr_mov", 1, 8,
            Phase::BinaryEncoding, 0},
+          {Intrinsic::PseudoAddrMovW, "pseudo_addr_mov_w", 1, 4,
+           Phase::BinaryEncoding, 0},
           {Intrinsic::NamedBarrierWA, "namedBarrierWA", 1, 1, Phase::SWSB, 0},
           {Intrinsic::BarrierWA, "barrierWA", 1, 0, Phase::SWSB, 0},
           {Intrinsic::IEEEExceptionTrap, "ieee_exception_trap", 1, 0,
            Phase::SWSB, 0},
-          {Intrinsic::Breakpoint, "breakpoint", 0, 0, Phase::SWSB, 1ull << HasSideEffects},
+          {Intrinsic::Breakpoint, "breakpoint", 0, 0, Phase::SWSB,
+           1ull << HasSideEffects},
       };
 
 public:
@@ -1617,7 +1617,13 @@ inline G4_FillIntrinsic *G4_INST::asFillIntrinsic() const {
 
 inline bool G4_INST::isPseudoAddrMovIntrinsic() const {
   return isIntrinsic() &&
-         asIntrinsicInst()->getIntrinsicId() == Intrinsic::PseudoAddrMov;
+         (asIntrinsicInst()->getIntrinsicId() == Intrinsic::PseudoAddrMov ||
+          asIntrinsicInst()->getIntrinsicId() == Intrinsic::PseudoAddrMovW);
+}
+
+inline bool G4_INST::isPseudoAddrMovWIntrinsic() const {
+  return isIntrinsic() &&
+         asIntrinsicInst()->getIntrinsicId() == Intrinsic::PseudoAddrMovW;
 }
 
 inline bool G4_INST::isSplitIntrinsic() const {

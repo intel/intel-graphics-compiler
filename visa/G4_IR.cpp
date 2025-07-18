@@ -7806,6 +7806,7 @@ void G4_InstIntrinsic::computeRightBound(G4_Operand *opnd) {
       opnd->setRightBound(opnd->left_bound + getDstByteSize() - 1);
     break;
   case Intrinsic::PseudoAddrMov:
+  case Intrinsic::PseudoAddrMovW:
     if (opnd != getDst()) { // Source operand only, dst operand will be handled
                             // as normal dst
       opnd->setLeftBound(opnd->left_bound +

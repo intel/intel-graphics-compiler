@@ -367,6 +367,9 @@ DEF_VISA_OPTION(vISA_SpillMemOffset, ET_INT32, "-spilloffset",
                 "USAGE: -spilloffset <offset>\n", 0)
 DEF_VISA_OPTION(vISA_ReservedGRFNum, ET_INT32, "-reservedGRFNum",
                 "USAGE: -reservedGRFNum <regNum>\n", 0)
+DEF_VISA_OPTION(vISA_ReservedFromFrontGRFNum, ET_INT32,
+                "-reservedFromFrontGRFNum",
+                "USAGE: -reservedFromFrontGRFNum <regNum>\n", 0)
 DEF_VISA_OPTION(vISA_TotalGRFNum, ET_INT32, "-TotalGRFNum",
                 "USAGE: -TotalGRFNum <regNum>\n", 0)
 DEF_VISA_OPTION(vISA_MaxRAIterations, ET_INT32, "-maxRAIterations",

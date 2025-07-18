@@ -39,7 +39,8 @@ static bool regSortCompareAfterRA(regMapBRA map1, regMapBRA map2) {
   return false;
 }
 
-void changeToIndirectSend(G4_INST *inst, G4_Declare *s0Var, int totalRegs, IR_Builder &builder) {
+void changeToIndirectSend(G4_INST *inst, G4_Declare *s0Var, int totalRegs,
+                          IR_Builder &builder, bool isLargeGRF) {
   // Change the send instruction to sendi
   G4_InstSend *Send = inst->asSendInst();
     G4_SendDescRaw *desc = Send->getMsgDescRaw();
@@ -53,8 +54,9 @@ void changeToIndirectSend(G4_INST *inst, G4_Declare *s0Var, int totalRegs, IR_Bu
     inst->setSrc(msgDescImm, 2);
 
   // Replace source 0 with scalar register
-  G4_SrcRegRegion *headerOpnd = builder.createSrcRegRegion(
-      Mod_src_undef, IndirGRF, s0Var->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UB);
+  G4_SrcRegRegion *headerOpnd =
+      builder.createSrcRegRegion(Mod_src_undef, IndirGRF, s0Var->getRegVar(), 0,
+                                 0, builder.getRegionScalar(), Type_UB);
   // Replace source 1 with null.
   G4_SrcRegRegion *payloadToUse = builder.createNullSrc(Type_UD);
 
@@ -284,7 +286,7 @@ bool SRSubPass::replaceWithSendi(G4_BB *bb, INST_LIST_ITER instIter,
     bb->insertBefore(instIter, movInst);
   }
 
-  changeToIndirectSend(inst, s0Var, totalRegs, builder);
+  changeToIndirectSend(inst, s0Var, totalRegs, builder, false);
 
   return true;
 }
@@ -431,7 +433,7 @@ void SRSubPass::SRSub(G4_BB *bb) {
 // Check if current instruction is the candidate of sendi.
 // Recorded as candidate.
 bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
-                                              regCandidatesBRA &dstSrcRegs) {
+                                            regCandidatesBRA &dstSrcRegs) {
   if (!inst->isSend()) {
     return false;
   }
@@ -460,7 +462,7 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
     return false;
   }
 
-  //The size of LSC src0 and src1 may not be GRF aligned.
+  // The size of LSC src0 and src1 may not be GRF aligned.
   if (inst->getMsgDesc()->getSrc1LenBytes() % builder.getGRFSize() != 0 ||
       inst->getMsgDesc()->getSrc0LenBytes() % builder.getGRFSize() != 0) {
     return false;
@@ -748,11 +750,12 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
   return true;
 }
 
+
 // Replace the send instruction with the payload of
 // Insert the scalar register intialization mov instructions.
 bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
-                                                 INST_LIST_ITER instIter,
-                                                 regCandidatesBRA &dstSrcRegs) {
+                                               INST_LIST_ITER instIter,
+                                               regCandidatesBRA &dstSrcRegs) {
   G4_INST *inst = *instIter;
   std::vector<G4_AddrExp *> srcs;
   G4_AddrExp *src;
@@ -854,21 +857,38 @@ bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
 
   // Initialize the scalar registers.
   uint16_t UQNum = totalRegs > (TypeSize(Type_UQ) / TypeSize(Type_UB)) ? 2 : 1;
+  if (dstSrcRegs.isLargeGRF) {
+    UQNum = totalRegs > (TypeSize(Type_UQ) / TypeSize(Type_UW)) ? 2 : 1;
+  }
   G4_Declare *s0Var = builder.createTempScalar(UQNum, "S0_");
   s0Var->getRegVar()->setPhyReg(builder.phyregpool.getScalarReg(), 0);
   G4_DstRegRegion *dst =
       builder.createDst(s0Var->getRegVar(), 0, 0, 1, Type_UQ);
-  G4_INST *movInst = builder.createIntrinsicAddrMovInst(
-      Intrinsic::PseudoAddrMov, dst, srcs[0], srcs[1], srcs[2], srcs[3],
-      srcs[4], srcs[5], srcs[6], srcs[7], false);
+  G4_INST *movInst = nullptr;
+  if (!dstSrcRegs.isLargeGRF) {
+    movInst = builder.createIntrinsicAddrMovInst(
+        Intrinsic::PseudoAddrMov, dst, srcs[0], srcs[1], srcs[2], srcs[3],
+        srcs[4], srcs[5], srcs[6], srcs[7], false);
+  } else {
+    movInst = builder.createIntrinsicAddrMovInst(
+        Intrinsic::PseudoAddrMovW, dst, srcs[0], srcs[1], srcs[2], srcs[3],
+        nullptr, nullptr, nullptr, nullptr, false);
+  }
   bb->insertBefore(instIter, movInst);
 
-  if (totalRegs > 8) {
+  if (UQNum > 1) {
     G4_DstRegRegion *dst1 =
         builder.createDst(s0Var->getRegVar(), 0, 1, 1, Type_UQ);
-    G4_INST *movInst1 = builder.createIntrinsicAddrMovInst(
-        Intrinsic::PseudoAddrMov, dst1, srcs[8], srcs[9], srcs[10], srcs[11],
-        srcs[12], srcs[13], srcs[14], nullptr, false);
+    G4_INST *movInst1 = nullptr;
+    if (!dstSrcRegs.isLargeGRF) {
+      movInst1 = builder.createIntrinsicAddrMovInst(
+          Intrinsic::PseudoAddrMov, dst1, srcs[8], srcs[9], srcs[10], srcs[11],
+          srcs[12], srcs[13], srcs[14], nullptr, false);
+    } else {
+      movInst1 = builder.createIntrinsicAddrMovInst(
+          Intrinsic::PseudoAddrMovW, dst1, srcs[4], srcs[5], srcs[6], srcs[7],
+          nullptr, nullptr, nullptr, nullptr, false);
+    }
     bb->insertBefore(instIter, movInst1);
   }
 
@@ -883,7 +903,7 @@ bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
     }
   }
 
-  changeToIndirectSend(inst, s0Var, totalRegs, builder);
+  changeToIndirectSend(inst, s0Var, totalRegs, builder, dstSrcRegs.isLargeGRF);
 
   return true;
 }
@@ -1005,7 +1025,8 @@ void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
               int srcRegLB = (*dstSrcRegsIter).opnd->getLinearizedStart();
               int srcRegRB = (*dstSrcRegsIter).opnd->getLinearizedEnd();
               if (!(srcRegRB < dstRegLB || srcRegLB > dstRegRB)) {
-                // Register is redefined.
+
+                // Register is redefined
                 dstSrcRegsIter =
                     candidates[inst].dstSrcMap.erase(dstSrcRegsIter);
               } else {

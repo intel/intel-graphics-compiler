@@ -1801,8 +1801,11 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
   const iga::Model *igaModel =
       iga::Model::LookupModel(iga::ToPlatform(igaPlatform));
   iga::SWSB_ENCODE_MODE swsbEncodeMode = igaModel->getSWSBEncodeMode();
+
+
   KernelView kv(igaPlatform, binary, binarySize, swsbEncodeMode, errBuf,
-                ERROR_STRING_MAX_LENGTH);
+                ERROR_STRING_MAX_LENGTH
+  );
 
   if (!kv.decodeSucceeded()) {
     const char *MSG =

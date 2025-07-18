@@ -9051,6 +9051,8 @@ void ForbiddenRegs::generateReservedGRFForbidden(
   bool hasStackCall = builder.kernel.fg.getHasStackCalls() ||
                       builder.kernel.fg.getIsStackCallFunc();
   uint32_t reservedGRFNum = builder.getuint32Option(vISA_ReservedGRFNum);
+  uint32_t reservedFromFrontGRFNum =
+      builder.getuint32Option(vISA_ReservedFromFrontGRFNum);
   unsigned int stackCallRegSize =
       hasStackCall ? builder.kernel.stackCall.numReservedABIGRF() : 0;
 
@@ -9087,6 +9089,10 @@ void ForbiddenRegs::generateReservedGRFForbidden(
 
   for (unsigned int i = 0; i < reservedGRFNum; i++) {
     forbiddenVec[index].set(largestNoneReservedReg - i, true);
+  }
+
+  for (unsigned int i = 0; i < reservedFromFrontGRFNum; i++) {
+    forbiddenVec[index].set(i, true);
   }
 
   auto &fg = builder.kernel.fg;

@@ -2177,7 +2177,9 @@ G4_INST *IR_Builder::createIntrinsicAddrMovInst(
     G4_Operand *src1, G4_Operand *src2, G4_Operand *src3, G4_Operand *src4,
     G4_Operand *src5, G4_Operand *src6, G4_Operand *src7, bool addToInstList) {
   G4_INST *i = nullptr;
-  vISA_ASSERT(intrinId == Intrinsic::PseudoAddrMov, "expect pseudo_mov op");
+  vISA_ASSERT(intrinId == Intrinsic::PseudoAddrMov ||
+                  intrinId == Intrinsic::PseudoAddrMovW,
+              "expect pseudo_mov op");
 
   i = new (mem) G4_PseudoAddrMovIntrinsic(*this, intrinId, dst, src0, src1,
                                           src2, src3, src4, src5, src6, src7);

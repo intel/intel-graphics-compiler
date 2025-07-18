@@ -1309,7 +1309,11 @@ void Optimizer::removePseudoMov() {
           unsigned int regNum =
               (static_cast<G4_Greg *>(regVar->getPhyReg()))->getRegNum();
           regNum += src->asAddrExp()->getOffset() / kernel.getGRFSize();
-          value |= (uint64_t)regNum << 8 * i;
+          if (inst->isPseudoAddrMovWIntrinsic()) {
+            value |= (uint64_t)regNum << (16 * i);
+          } else {
+            value |= (uint64_t)regNum << (8 * i);
+          }
         }
         G4_Imm *src = builder.createImm(value, Type_UQ);
         G4_INST *movInst = builder.createMov(g4::SIMD1, inst->getDst(), src,
