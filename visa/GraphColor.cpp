@@ -6774,7 +6774,7 @@ void GraphColor::removeConstrained() {
 void GraphColor::determineColorOrdering() {
   numColor = 0;
   if (liveAnalysis.livenessClass(G4_GRF))
-    numColor = totalGRFRegCount;
+    numColor = totalGRFRegCount - reserveSpillGRFCount;
   else if (liveAnalysis.livenessClass(G4_ADDRESS))
     numColor = builder.getNumAddrRegisters();
   else if (liveAnalysis.livenessClass(G4_FLAG))
