@@ -57,8 +57,6 @@ private:
 public:
   VISAObjectDebugInfo(const CompiledObjectInfo &COIn);
 
-  const CompiledObjectInfo &getCompiledObject() const { return CO; }
-
   const CallFrameInfo &getCFI() const { return CO.cfi; }
 
   RelocOffsetTy getRelocOffset() const { return CO.relocOffset; }
