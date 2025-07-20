@@ -29,26 +29,22 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/StringRef.h"
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class RuntimeValueVectorExtractPass : public llvm::FunctionPass, public llvm::InstVisitor<RuntimeValueVectorExtractPass>
-    {
-    public:
-        RuntimeValueVectorExtractPass();
+namespace IGC {
+class RuntimeValueVectorExtractPass : public llvm::FunctionPass,
+                                      public llvm::InstVisitor<RuntimeValueVectorExtractPass> {
+public:
+  RuntimeValueVectorExtractPass();
 
-        virtual bool runOnFunction(llvm::Function& F) override;
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "RuntimeValueVectorExtractPass";
-        }
+  virtual llvm::StringRef getPassName() const override { return "RuntimeValueVectorExtractPass"; }
 
-        void visitExtractElementInst(llvm::ExtractElementInst& I);
+  void visitExtractElementInst(llvm::ExtractElementInst &I);
 
-        bool changed;
+  bool changed;
 
-        static char ID;
-    };
-}
+  static char ID;
+};
+} // namespace IGC

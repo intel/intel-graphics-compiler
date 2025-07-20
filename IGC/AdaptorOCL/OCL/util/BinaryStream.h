@@ -10,45 +10,39 @@ SPDX-License-Identifier: MIT
 
 #include <sstream>
 
-namespace Util
-{
+namespace Util {
 
-class BinaryStream
-{
+class BinaryStream {
 public:
-    BinaryStream();
-    ~BinaryStream();
+  BinaryStream();
+  ~BinaryStream();
 
-    bool Write( const char* s, std::streamsize n );
+  bool Write(const char *s, std::streamsize n);
 
-    bool Write( const BinaryStream& in );
+  bool Write(const BinaryStream &in);
 
-    template< class T >
-    bool Write( const T& in );
+  template <class T> bool Write(const T &in);
 
-    bool WriteAt( const char* s, std::streamsize n, std::streamsize loc );
+  bool WriteAt(const char *s, std::streamsize n, std::streamsize loc);
 
-    template< class T >
-    bool WriteAt( const T& in, std::streamsize loc ) { return WriteAt( (const char*)&in, sizeof(T), loc ); }
+  template <class T> bool WriteAt(const T &in, std::streamsize loc) {
+    return WriteAt((const char *)&in, sizeof(T), loc);
+  }
 
-    bool Align( std::streamsize alignment );
-    bool AddPadding( std::streamsize padding );
+  bool Align(std::streamsize alignment);
+  bool AddPadding(std::streamsize padding);
 
-    const char* GetLinearPointer();
+  const char *GetLinearPointer();
 
-    std::streamsize Size() const;
-    std::streamsize Size();
+  std::streamsize Size() const;
+  std::streamsize Size();
 
 private:
-    std::stringstream m_membuf;
+  std::stringstream m_membuf;
 
-    std::string m_LinearPointer;
+  std::string m_LinearPointer;
 };
 
-template< class T >
-bool BinaryStream::Write(const T& in )
-{
-    return Write( (const char*)&in, sizeof(T) );
-}
+template <class T> bool BinaryStream::Write(const T &in) { return Write((const char *)&in, sizeof(T)); }
 
-}
+} // namespace Util

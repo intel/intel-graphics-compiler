@@ -13,13 +13,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "common/LLVMWarningsPop.hpp"
 
-namespace llvm
-{
-    class AllocaInst;
+namespace llvm {
+class AllocaInst;
 } // namespace llvm
 
-namespace IGC
-{
+namespace IGC {
 ////////////////////////////////////////////////////////////////////////////////
 /// This pass analyzes all uses of array-of-vector allocas to find unused
 /// vector elements. The type of alloca is modified to remove the unused vector
@@ -38,27 +36,25 @@ namespace IGC
 ///   %a = load float, float* %addr1
 ///   ret float %a
 ///////////////////////////////////////////////////////////////////////////////
-class ShrinkArrayAllocaPass : public llvm::FunctionPass
-{
+class ShrinkArrayAllocaPass : public llvm::FunctionPass {
 public:
-    static char ID;
+  static char ID;
 
-    ShrinkArrayAllocaPass();
-    ~ShrinkArrayAllocaPass() {};
+  ShrinkArrayAllocaPass();
+  ~ShrinkArrayAllocaPass() {};
 
-    virtual bool runOnFunction(llvm::Function& function) override;
+  virtual bool runOnFunction(llvm::Function &function) override;
 
-    virtual llvm::StringRef getPassName() const override;
-
-private:
-    void GatherAllocas(llvm::Function& F);
-    bool Resolve();
+  virtual llvm::StringRef getPassName() const override;
 
 private:
-    using UsageInfo = llvm::SmallVector<bool, 4>;
-    llvm::SmallVector<std::pair<llvm::AllocaInst*, UsageInfo>, 4> m_AllocaInfo;
+  void GatherAllocas(llvm::Function &F);
+  bool Resolve();
+
+private:
+  using UsageInfo = llvm::SmallVector<bool, 4>;
+  llvm::SmallVector<std::pair<llvm::AllocaInst *, UsageInfo>, 4> m_AllocaInfo;
 };
 
-void initializeShrinkArrayAllocaPassPass(llvm::PassRegistry&);
+void initializeShrinkArrayAllocaPassPass(llvm::PassRegistry &);
 } // namespace IGC
-

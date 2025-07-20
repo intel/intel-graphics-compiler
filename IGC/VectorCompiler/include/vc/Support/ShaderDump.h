@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 namespace llvm {
 class Module;
 class GenXBackendConfig;
-}
+} // namespace llvm
 
 namespace vc {
 

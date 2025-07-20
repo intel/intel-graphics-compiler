@@ -24,6 +24,6 @@ constexpr auto oclGenBin = CodeTypeCoder::Enc("OCL_GEN_BIN");
 constexpr auto elf = CodeTypeCoder::Enc("ELF");
 constexpr auto undefined = CodeTypeCoder::Enc("UNDEFINED");
 constexpr auto invalid = CodeTypeCoder::Enc("INVALID");
-}
+} // namespace CodeType
 
-}
+} // namespace IGC

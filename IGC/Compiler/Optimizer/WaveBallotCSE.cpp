@@ -67,10 +67,8 @@ private:
 #define PASS_DESCRIPTION "WaveBallotCSE"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(WaveBallotCSE, PASS_FLAG, PASS_DESCRIPTION,
-                          PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(WaveBallotCSE, PASS_FLAG, PASS_DESCRIPTION,
-                        PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(WaveBallotCSE, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(WaveBallotCSE, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char WaveBallotCSE::ID = 0;
 
@@ -140,15 +138,10 @@ bool WaveBallotCSE::ProcessFunction(llvm::Function &F) {
 }
 
 ////////////////////////////////////////////////////////////////////////////
-bool WaveBallotCSE::runOnFunction(llvm::Function &F) {
-
-  return ProcessFunction(F);
-}
+bool WaveBallotCSE::runOnFunction(llvm::Function &F) { return ProcessFunction(F); }
 
 ////////////////////////////////////////////////////////////////////////
-void WaveBallotCSE::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
-  AU.setPreservesCFG();
-}
+void WaveBallotCSE::getAnalysisUsage(llvm::AnalysisUsage &AU) const { AU.setPreservesCFG(); }
 
 ////////////////////////////////////////////////////////////////////////
 FunctionPass *createWaveBallotCSE() { return new WaveBallotCSE(); }

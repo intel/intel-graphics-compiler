@@ -54,152 +54,147 @@ using namespace IGC::IGCMD;
 //
 
 namespace {
-    class KernelFunctionCloning : public ModulePass {
-    public:
-        static char ID;
+class KernelFunctionCloning : public ModulePass {
+public:
+  static char ID;
 
-        KernelFunctionCloning() : ModulePass(ID) {}
+  KernelFunctionCloning() : ModulePass(ID) {}
 
-        bool runOnModule(Module&) override;
+  bool runOnModule(Module &) override;
 
-        llvm::StringRef getPassName() const override {
-            return "KernelFunctionCloning";
-        }
+  llvm::StringRef getPassName() const override { return "KernelFunctionCloning"; }
 
-    private:
-        void getAnalysisUsage(AnalysisUsage& AU) const override {
-            AU.setPreservesCFG();
-            AU.addRequired<CodeGenContextWrapper>();
-            AU.addRequired<MetaDataUtilsWrapper>();
-        }
-    };
+private:
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
+};
 
 } // End anonymous namespace
 
 namespace IGC {
 
-    ModulePass* createKernelFunctionCloningPass() {
-        return new KernelFunctionCloning();
-    }
+ModulePass *createKernelFunctionCloningPass() { return new KernelFunctionCloning(); }
 
 #define PASS_FLAG "igc-kernel-function-cloning"
 #define PASS_DESC "Clone kernel functions if it's called."
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-    IGC_INITIALIZE_PASS_BEGIN(KernelFunctionCloning, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
-        IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-        IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-        IGC_INITIALIZE_PASS_END(KernelFunctionCloning, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(KernelFunctionCloning, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_END(KernelFunctionCloning, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-} // End IGC namespace
+} // namespace IGC
 
 char KernelFunctionCloning::ID = 0;
 
-template <typename PatternTypeFirst, typename... PatternTypeRest>
-struct PatternChecker {
-    template <typename Checker>
-    static bool run(User* user, Checker check) {
-        auto casted = dyn_cast<PatternTypeFirst>(user);
-        if (!casted)
-            return false;
+template <typename PatternTypeFirst, typename... PatternTypeRest> struct PatternChecker {
+  template <typename Checker> static bool run(User *user, Checker check) {
+    auto casted = dyn_cast<PatternTypeFirst>(user);
+    if (!casted)
+      return false;
 
-        if constexpr (sizeof...(PatternTypeRest) > 0) {
-            for (auto user : casted->users()) {
-                if (!PatternChecker<PatternTypeRest...>::run(user, check)) {
-                    return false;
-                }
-            }
+    if constexpr (sizeof...(PatternTypeRest) > 0) {
+      for (auto user : casted->users()) {
+        if (!PatternChecker<PatternTypeRest...>::run(user, check)) {
+          return false;
         }
-        return check(casted);
+      }
     }
+    return check(casted);
+  }
 };
 
-bool KernelFunctionCloning::runOnModule(Module& M) {
-    MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+bool KernelFunctionCloning::runOnModule(Module &M) {
+  MetaDataUtils *MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
-    // Collect kernel functions being called.
-    SmallVector<Function*, 8> KernelsToClone;
-    for (auto& F : M) {
-        auto FII = MDU->findFunctionsInfoItem(&F);
-        if (FII == MDU->end_FunctionsInfo())
-            continue;
-        // Check this kernell function is called.
-        for (auto* U : F.users()) {
-            //
-            // Ignore if it's a user semantic decoration on function.
-            //
-            // GlobalVariable("llvm.global.annotations"):
-            //    ConstantArray:
-            //       ConstantStruct:
-            //          BitCastOperator:
-            //             Function = [ANNOTATED_FUNCTION]
-            //          GetElementPtr:
-            //             GlobalVariable = [ANNOTATION]
-            //       ConstantStruct:
-            //       ...
-            //
-            bool user_semantic = PatternChecker<BitCastOperator, ConstantStruct, ConstantArray, GlobalVariable>::run(U, [](User *user) {
-                if (auto casted = dyn_cast<GlobalVariable>(user)) {
-                    return casted->getName().compare("llvm.global.annotations") == 0;
-                }
-                return true;
-            });
-
-            if (user_semantic) {
-                continue;
+  // Collect kernel functions being called.
+  SmallVector<Function *, 8> KernelsToClone;
+  for (auto &F : M) {
+    auto FII = MDU->findFunctionsInfoItem(&F);
+    if (FII == MDU->end_FunctionsInfo())
+      continue;
+    // Check this kernell function is called.
+    for (auto *U : F.users()) {
+      //
+      // Ignore if it's a user semantic decoration on function.
+      //
+      // GlobalVariable("llvm.global.annotations"):
+      //    ConstantArray:
+      //       ConstantStruct:
+      //          BitCastOperator:
+      //             Function = [ANNOTATED_FUNCTION]
+      //          GetElementPtr:
+      //             GlobalVariable = [ANNOTATION]
+      //       ConstantStruct:
+      //       ...
+      //
+      bool user_semantic =
+          PatternChecker<BitCastOperator, ConstantStruct, ConstantArray, GlobalVariable>::run(U, [](User *user) {
+            if (auto casted = dyn_cast<GlobalVariable>(user)) {
+              return casted->getName().compare("llvm.global.annotations") == 0;
             }
-            IGCLLVM::CallSite* call = nullptr;
+            return true;
+          });
+
+      if (user_semantic) {
+        continue;
+      }
+      IGCLLVM::CallSite *call = nullptr;
 #if LLVM_VERSION_MAJOR < 11
-            IGCLLVM::CallSite callSite(U);
-            call = &callSite;
+      IGCLLVM::CallSite callSite(U);
+      call = &callSite;
 #else
-            call = dyn_cast<IGCLLVM::CallSite>(U);
+      call = dyn_cast<IGCLLVM::CallSite>(U);
 #endif
-            if (!call)
-                continue;
-            KernelsToClone.push_back(&F);
-            break;
-        }
+      if (!call)
+        continue;
+      KernelsToClone.push_back(&F);
+      break;
+    }
+  }
+
+  // Clone it
+  bool Changed = false;
+  for (auto *F : KernelsToClone) {
+    ValueToValueMapTy VMap;
+    auto *NewF = CloneFunction(F, VMap);
+    NewF->setLinkage(GlobalValue::InternalLinkage);
+    if (!F->getParent()->getFunction(NewF->getName()))
+      F->getParent()->getFunctionList().push_back(NewF);
+
+    // Collect pointers to users (callsites) of the original kernel
+    // function and loop through the collection. Otherwise when looping
+    // through F->users(), calling call->setCalledFunction(NewF) modifies
+    // the F->users() by removing the very first element (second element
+    // becomes first) and the loop skips every second element.
+    SmallVector<User *, 8> originalKernelFunctionUsers;
+    for (auto *U : F->users()) {
+      originalKernelFunctionUsers.push_back(U);
     }
 
-    // Clone it
-    bool Changed = false;
-    for (auto* F : KernelsToClone) {
-        ValueToValueMapTy VMap;
-        auto* NewF = CloneFunction(F, VMap);
-        NewF->setLinkage(GlobalValue::InternalLinkage);
-        if (!F->getParent()->getFunction(NewF->getName()))
-            F->getParent()->getFunctionList().push_back(NewF);
-
-        // Collect pointers to users (callsites) of the original kernel
-        // function and loop through the collection. Otherwise when looping
-        // through F->users(), calling call->setCalledFunction(NewF) modifies
-        // the F->users() by removing the very first element (second element
-        // becomes first) and the loop skips every second element.
-        SmallVector<User*, 8> originalKernelFunctionUsers;
-        for (auto* U : F->users()) {
-              originalKernelFunctionUsers.push_back(U);
-        }
-
-        // Replace the original calls to kernel function with calls to user
-        // function clone at the callsites.
-        for (auto& U : originalKernelFunctionUsers) {
-            IGCLLVM::CallSite* call = nullptr;
+    // Replace the original calls to kernel function with calls to user
+    // function clone at the callsites.
+    for (auto &U : originalKernelFunctionUsers) {
+      IGCLLVM::CallSite *call = nullptr;
 #if LLVM_VERSION_MAJOR < 11
-            IGCLLVM::CallSite callSite(U);
-            call = &callSite;
+      IGCLLVM::CallSite callSite(U);
+      call = &callSite;
 #else
-            call = dyn_cast<IGCLLVM::CallSite>(U);
+      call = dyn_cast<IGCLLVM::CallSite>(U);
 #endif
-            if (!call)
-                continue;
+      if (!call)
+        continue;
 
-            if (call->getCalledFunction()->getType() == NewF->getType())
-                call->setCalledFunction(NewF);
-        }
-
-        Changed = true;
+      if (call->getCalledFunction()->getType() == NewF->getType())
+        call->setCalledFunction(NewF);
     }
 
-    return Changed;
+    Changed = true;
+  }
+
+  return Changed;
 }

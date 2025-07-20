@@ -16,7 +16,7 @@ struct GenXCloneIndirectFunctionsPass
     : public llvm::PassInfoMixin<GenXCloneIndirectFunctionsPass> {
 
   explicit GenXCloneIndirectFunctionsPass(GenXBackendConfigPass::Result &BC)
-      : BC(BC){};
+      : BC(BC) {};
 
   llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
 

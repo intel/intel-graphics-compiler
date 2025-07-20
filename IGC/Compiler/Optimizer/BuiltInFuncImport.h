@@ -21,112 +21,98 @@ SPDX-License-Identifier: MIT
 #include <set>
 #include <queue>
 
-namespace IGC
-{
-    /// This pass imports built-in functions from source module to destination module.
-    class BIImport : public llvm::ModulePass
-    {
-    public:
-        // Pass identification, replacement for typeid.
-        static char ID;
+namespace IGC {
+/// This pass imports built-in functions from source module to destination module.
+class BIImport : public llvm::ModulePass {
+public:
+  // Pass identification, replacement for typeid.
+  static char ID;
 
+  /// @brief Constructor
+  BIImport();
 
+  /// @brief analyses used
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-        /// @brief Constructor
-        BIImport();
+  /// @brief Provides name of pass
+  virtual llvm::StringRef getPassName() const override { return "BIImport"; }
 
-        /// @brief analyses used
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<CodeGenContextWrapper>();
-        }
+  /// @brief Main entry point.
+  ///        Find all builtins to import, and import them along with callees and globals.
+  /// @param M The destination module.
+  bool runOnModule(llvm::Module &M) override;
 
-        /// @brief Provides name of pass
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "BIImport";
-        }
+  static void supportOldManglingSchemes(llvm::Module &M);
+  static std::unique_ptr<llvm::Module> Construct(llvm::Module &M, CLElfLib::CElfReader *pElfReader, bool hasSizet);
 
-        /// @brief Main entry point.
-        ///        Find all builtins to import, and import them along with callees and globals.
-        /// @param M The destination module.
-        bool runOnModule(llvm::Module& M) override;
+protected:
+  // Type used to hold a vector of Functions and augment it during traversal.
+  typedef std::vector<llvm::Function *> TFunctionsVec;
+  /// @brief Get all the functions called by given function.
+  /// @param [IN] pFunc The given function.
+  /// @param [OUT] calledFuncs The list of all functions called by pFunc.
+  static void GetCalledFunctions(const llvm::Function *pFunc, TFunctionsVec &calledFuncs);
 
-        static void supportOldManglingSchemes(llvm::Module& M);
-        static std::unique_ptr<llvm::Module> Construct(llvm::Module& M, CLElfLib::CElfReader* pElfReader, bool hasSizet);
-    protected:
+  /// @brief  Remove function bitcasts that sometimes may appear due to the changed in the way
+  ///         the BiFs are linked. We can remove this code once llvm implements typeless pointers.
+  void removeFunctionBitcasts(llvm::Module &M);
 
-        // Type used to hold a vector of Functions and augment it during traversal.
-        typedef std::vector<llvm::Function*>       TFunctionsVec;
-        /// @brief Get all the functions called by given function.
-        /// @param [IN] pFunc The given function.
-        /// @param [OUT] calledFuncs The list of all functions called by pFunc.
-        static void GetCalledFunctions(const llvm::Function* pFunc, TFunctionsVec& calledFuncs);
+  /// @brief  Initialize values for global flags needed for the built-ins (FlushDenormal).
+  ///         Only initializes flags that the built-ins need.
+  void InitializeBIFlags(llvm::Module &M);
 
-        /// @brief  Remove function bitcasts that sometimes may appear due to the changed in the way
-        ///         the BiFs are linked. We can remove this code once llvm implements typeless pointers.
-        void removeFunctionBitcasts(llvm::Module& M);
+  /// @brief  Search through all builtin modules for the specified function.
+  /// @param  funcName - name of func to search for.
+  static llvm::Function *GetBuiltinFunction(llvm::StringRef funcName, llvm::Module *GenericModule);
+  /// @brief  Read elf Header file that is constructed by Build Packager and write to a DenseMap.
+  static void WriteElfHeaderToMap(llvm::DenseMap<llvm::StringRef, int> &Map, char *pData, size_t dataSize);
 
-        /// @brief  Initialize values for global flags needed for the built-ins (FlushDenormal).
-        ///         Only initializes flags that the built-ins need.
-        void InitializeBIFlags(llvm::Module& M);
+  /// @brief Fix SPIR builtins return type
+  void fixSPIRFunctionsReturnType(llvm::Module &M);
 
-        /// @brief  Search through all builtin modules for the specified function.
-        /// @param  funcName - name of func to search for.
-        static llvm::Function* GetBuiltinFunction(llvm::StringRef funcName, llvm::Module* GenericModule);
-        /// @brief  Read elf Header file that is constructed by Build Packager and write to a DenseMap.
-        static void WriteElfHeaderToMap(llvm::DenseMap<llvm::StringRef, int>& Map, char* pData, size_t dataSize);
-
-        /// @brief Fix SPIR builtins return type
-        void fixSPIRFunctionsReturnType(llvm::Module& M);
-
-        /// @brief Fix invalid bitcasts generated by older Clang
-        void fixInvalidBitcasts(llvm::Module& M);
-    };
+  /// @brief Fix invalid bitcasts generated by older Clang
+  void fixInvalidBitcasts(llvm::Module &M);
+};
 
 } // namespace IGC
 
-extern "C" llvm::ModulePass* createBuiltInImportPass();
+extern "C" llvm::ModulePass *createBuiltInImportPass();
 
-namespace IGC
-{
-    class PreBIImportAnalysis : public llvm::ModulePass
-    {
-    public:
-        // Pass identification, replacement for typeid
-        static char ID;
+namespace IGC {
+class PreBIImportAnalysis : public llvm::ModulePass {
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
 
-        /// @brief  Constructor
-        PreBIImportAnalysis();
+  /// @brief  Constructor
+  PreBIImportAnalysis();
 
-        /// @brief  Destructor
-        ~PreBIImportAnalysis() {}
+  /// @brief  Destructor
+  ~PreBIImportAnalysis() {}
 
-        /// @brief  Provides name of pass
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "PreBIImportAnalysis";
-        }
+  /// @brief  Provides name of pass
+  virtual llvm::StringRef getPassName() const override { return "PreBIImportAnalysis"; }
 
-        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<CodeGenContextWrapper>();
-        }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-        /// @brief  Main entry point.
-        /// @param  M The destination module.
-        virtual bool runOnModule(llvm::Module& M) override;
+  /// @brief  Main entry point.
+  /// @param  M The destination module.
+  virtual bool runOnModule(llvm::Module &M) override;
 
-        static const llvm::StringRef OCL_GET_GLOBAL_OFFSET;
-        static const llvm::StringRef OCL_GET_LOCAL_ID;
-        static const llvm::StringRef OCL_GET_GROUP_ID;
-        static const llvm::StringRef OCL_GET_SUBGROUP_ID_IGC_SPVIR;
-        static const llvm::StringRef OCL_GET_SUBGROUP_ID_KHR_SPVIR;
-        static const llvm::StringRef OCL_GET_SUBGROUP_ID;
-        static const llvm::StringRef OCL_SUBGROUP_BLOCK_PREFIX;
-        static const llvm::StringRef OCL_SUBGROUP_IMAGE_BLOCK_PREFIX;
-    };
+  static const llvm::StringRef OCL_GET_GLOBAL_OFFSET;
+  static const llvm::StringRef OCL_GET_LOCAL_ID;
+  static const llvm::StringRef OCL_GET_GROUP_ID;
+  static const llvm::StringRef OCL_GET_SUBGROUP_ID_IGC_SPVIR;
+  static const llvm::StringRef OCL_GET_SUBGROUP_ID_KHR_SPVIR;
+  static const llvm::StringRef OCL_GET_SUBGROUP_ID;
+  static const llvm::StringRef OCL_SUBGROUP_BLOCK_PREFIX;
+  static const llvm::StringRef OCL_SUBGROUP_IMAGE_BLOCK_PREFIX;
+};
 
 } // namespace IGC

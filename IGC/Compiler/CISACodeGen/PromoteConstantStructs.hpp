@@ -15,7 +15,5 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
-void initializePromoteConstantStructsPass(llvm::PassRegistry&);
-llvm::FunctionPass* createPromoteConstantStructsPass();
-
-
+void initializePromoteConstantStructsPass(llvm::PassRegistry &);
+llvm::FunctionPass *createPromoteConstantStructsPass();

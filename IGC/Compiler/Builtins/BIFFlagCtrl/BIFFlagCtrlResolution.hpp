@@ -18,13 +18,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-#define BIF_FLAG_CONTROL(BIF_FLAG_TYPE, BIF_FLAG_NAME)                            \
-  BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME),
+#define BIF_FLAG_CONTROL(BIF_FLAG_TYPE, BIF_FLAG_NAME) BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME),
 
-#define BIF_FLAG_CTRL_SET(BIF_FLAG_NAME, BIF_FLAG_VALUE)                          \
-  ListDelegates.emplace(BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME), [this]() -> bool {      \
-    return replace(BIF_FLAG_VALUE,                                                \
-                   pModule->getGlobalVariable(BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME))); \
+#define BIF_FLAG_CTRL_SET(BIF_FLAG_NAME, BIF_FLAG_VALUE)                                                               \
+  ListDelegates.emplace(BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME), [this]() -> bool {                                           \
+    return replace(BIF_FLAG_VALUE, pModule->getGlobalVariable(BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME)));                      \
   })
 
 
@@ -45,9 +43,7 @@ public:
   ~BIFFlagCtrlResolution();
 
   /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override {
-    return "BIFFlagCtrlResolution";
-  }
+  virtual llvm::StringRef getPassName() const override { return "BIFFlagCtrlResolution"; }
 
   virtual bool runOnModule(llvm::Module &M) override;
 

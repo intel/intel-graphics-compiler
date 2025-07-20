@@ -15,34 +15,27 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class UnreachableHandling : public llvm::FunctionPass, public llvm::InstVisitor<UnreachableHandling>
-    {
-    public:
-        static char ID;
+namespace IGC {
+class UnreachableHandling : public llvm::FunctionPass, public llvm::InstVisitor<UnreachableHandling> {
+public:
+  static char ID;
 
-        UnreachableHandling();
-        ~UnreachableHandling() {}
+  UnreachableHandling();
+  ~UnreachableHandling() {}
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "UnreachableHandling";
-        }
+  virtual llvm::StringRef getPassName() const override { return "UnreachableHandling"; }
 
-        virtual bool runOnFunction(llvm::Function& F) override;
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {}
 
-        void visitUnreachableInst(llvm::UnreachableInst& I);
+  void visitUnreachableInst(llvm::UnreachableInst &I);
 
-    private:
-        bool m_changed = false;
-        std::vector<llvm::UnreachableInst*> m_instsToReplace;
+private:
+  bool m_changed = false;
+  std::vector<llvm::UnreachableInst *> m_instsToReplace;
 
-        void replaceUnreachable(llvm::UnreachableInst* I);
-    };
+  void replaceUnreachable(llvm::UnreachableInst *I);
+};
 
 } // namespace IGC

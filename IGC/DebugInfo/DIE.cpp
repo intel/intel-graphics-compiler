@@ -84,12 +84,10 @@ void DIEAbbrev::Emit(StreamEmitter *AP) const {
     const DIEAbbrevData &AttrData = Data[i];
 
     // Emit attribute type.
-    AP->EmitULEB128(AttrData.getAttribute(),
-                    dwarf::AttributeString(AttrData.getAttribute()));
+    AP->EmitULEB128(AttrData.getAttribute(), dwarf::AttributeString(AttrData.getAttribute()));
 
     // Emit form type.
-    AP->EmitULEB128(AttrData.getForm(),
-                    dwarf::FormEncodingString(AttrData.getForm()));
+    AP->EmitULEB128(AttrData.getForm(), dwarf::FormEncodingString(AttrData.getForm()));
   }
 
   // Mark end of abbreviation.
@@ -99,13 +97,12 @@ void DIEAbbrev::Emit(StreamEmitter *AP) const {
 
 #ifndef NDEBUG
 void DIEAbbrev::print(raw_ostream &O) {
-  O << "Abbreviation @" << format("0x%lx", (long)(intptr_t)this) << "  "
-    << dwarf::TagString(Tag) << " " << dwarf::ChildrenString(ChildrenFlag)
-    << '\n';
+  O << "Abbreviation @" << format("0x%lx", (long)(intptr_t)this) << "  " << dwarf::TagString(Tag) << " "
+    << dwarf::ChildrenString(ChildrenFlag) << '\n';
 
   for (unsigned i = 0, N = Data.size(); i < N; ++i) {
-    O << "  " << dwarf::AttributeString(Data[i].getAttribute()) << "  "
-      << dwarf::FormEncodingString(Data[i].getForm()) << '\n';
+    O << "  " << dwarf::AttributeString(Data[i].getAttribute()) << "  " << dwarf::FormEncodingString(Data[i].getForm())
+      << '\n';
   }
 }
 
@@ -159,11 +156,10 @@ void DIE::print(raw_ostream &O, unsigned IndentCount) const {
   bool isBlock = Abbrev.getTag() == 0;
 
   if (!isBlock) {
-    O << Indent << "Die: " << format("0x%lx", (long)(intptr_t)this)
-      << ", Offset: " << Offset << ", Size: " << Size << "\n";
+    O << Indent << "Die: " << format("0x%lx", (long)(intptr_t)this) << ", Offset: " << Offset << ", Size: " << Size
+      << "\n";
 
-    O << Indent << dwarf::TagString(Abbrev.getTag()) << " "
-      << dwarf::ChildrenString(Abbrev.getChildrenFlag()) << "\n";
+    O << Indent << dwarf::TagString(Abbrev.getTag()) << " " << dwarf::ChildrenString(Abbrev.getChildrenFlag()) << "\n";
   } else {
     O << "Size: " << Size << "\n";
   }
@@ -298,9 +294,7 @@ void DIEInteger::print(raw_ostream &O) const {
 
 /// EmitValue - Emit expression value.
 ///
-void DIEExpr::EmitValue(StreamEmitter *AP, dwarf::Form Form) const {
-  AP->EmitValue(Expr, SizeOf(AP, Form));
-}
+void DIEExpr::EmitValue(StreamEmitter *AP, dwarf::Form Form) const { AP->EmitValue(Expr, SizeOf(AP, Form)); }
 
 /// SizeOf - Determine size of expression value in bytes.
 ///
@@ -329,8 +323,7 @@ void DIEExpr::print(raw_ostream &O) const {
 ///
 void DIELabel::EmitValue(StreamEmitter *AP, dwarf::Form Form) const {
   AP->EmitLabelReference(Label, SizeOf(AP, Form),
-                         Form == dwarf::DW_FORM_strp ||
-                             Form == dwarf::DW_FORM_sec_offset ||
+                         Form == dwarf::DW_FORM_strp || Form == dwarf::DW_FORM_sec_offset ||
                              Form == dwarf::DW_FORM_ref_addr);
 }
 
@@ -371,9 +364,7 @@ unsigned DIEDelta::SizeOf(StreamEmitter *AP, dwarf::Form Form) const {
 }
 
 #ifndef NDEBUG
-void DIEDelta::print(raw_ostream &O) const {
-  O << "Del: " << LabelHi->getName() << "-" << LabelLo->getName();
-}
+void DIEDelta::print(raw_ostream &O) const { O << "Del: " << LabelHi->getName() << "-" << LabelLo->getName(); }
 #endif
 
 //===----------------------------------------------------------------------===//
@@ -382,15 +373,11 @@ void DIEDelta::print(raw_ostream &O) const {
 
 /// EmitValue - Emit string value.
 ///
-void DIEString::EmitValue(StreamEmitter *AP, dwarf::Form Form) const {
-  Access->EmitValue(AP, Form);
-}
+void DIEString::EmitValue(StreamEmitter *AP, dwarf::Form Form) const { Access->EmitValue(AP, Form); }
 
 /// SizeOf - Determine size of delta value in bytes.
 ///
-unsigned DIEString::SizeOf(StreamEmitter *AP, dwarf::Form Form) const {
-  return Access->SizeOf(AP, Form);
-}
+unsigned DIEString::SizeOf(StreamEmitter *AP, dwarf::Form Form) const { return Access->SizeOf(AP, Form); }
 
 #ifndef NDEBUG
 void DIEString::print(raw_ostream &O) const {
@@ -412,14 +399,10 @@ void DIEInlinedString::EmitValue(StreamEmitter *AP, dwarf::Form Form) const {
 
 /// SizeOf - Determine size of delta value in bytes.
 ///
-unsigned DIEInlinedString::SizeOf(StreamEmitter *AP, dwarf::Form Form) const {
-  return Str.size() + 1;
-}
+unsigned DIEInlinedString::SizeOf(StreamEmitter *AP, dwarf::Form Form) const { return Str.size() + 1; }
 
 #ifndef NDEBUG
-void DIEInlinedString::print(raw_ostream &O) const {
-  O << "Inlined string: " << Str << "\tSymbol: ";
-}
+void DIEInlinedString::print(raw_ostream &O) const { O << "Inlined string: " << Str << "\tSymbol: "; }
 #endif
 
 //===----------------------------------------------------------------------===//
@@ -428,9 +411,7 @@ void DIEInlinedString::print(raw_ostream &O) const {
 
 /// EmitValue - Emit debug information entry offset.
 ///
-void DIEEntry::EmitValue(StreamEmitter *AP, dwarf::Form Form) const {
-  AP->EmitInt32(Entry->getOffset());
-}
+void DIEEntry::EmitValue(StreamEmitter *AP, dwarf::Form Form) const { AP->EmitInt32(Entry->getOffset()); }
 
 unsigned DIEEntry::getRefAddrSize(StreamEmitter *AP, unsigned DwarfVersion) {
   // DWARF4: References that use the attribute form DW_FORM_ref_addr are
@@ -443,9 +424,7 @@ unsigned DIEEntry::getRefAddrSize(StreamEmitter *AP, unsigned DwarfVersion) {
 }
 
 #ifndef NDEBUG
-void DIEEntry::print(raw_ostream &O) const {
-  O << format("Die: 0x%lx", (long)(intptr_t)Entry);
-}
+void DIEEntry::print(raw_ostream &O) const { O << format("Die: 0x%lx", (long)(intptr_t)Entry); }
 #endif
 
 //===----------------------------------------------------------------------===//
@@ -478,8 +457,7 @@ unsigned DIEBlock::ComputeSizeOnTheFly(StreamEmitter *AP) const {
 
 /// EmitToRawBuffer - emit data to raw buffer for encoding in debug_loc.
 void DIEBlock::EmitToRawBuffer(std::vector<unsigned char> &buffer) {
-  auto insertData = [](const void *ptr, unsigned size,
-                       std::vector<unsigned char> &vec) {
+  auto insertData = [](const void *ptr, unsigned size, std::vector<unsigned char> &vec) {
     for (unsigned i = 0; i < size; ++i) {
       vec.push_back(*(((const unsigned char *)ptr) + i));
     }

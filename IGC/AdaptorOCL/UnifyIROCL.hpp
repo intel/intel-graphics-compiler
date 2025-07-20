@@ -9,9 +9,8 @@ SPDX-License-Identifier: MIT
 #pragma once
 #include "Compiler/CodeGenPublic.h"
 
-namespace IGC
-{
-    void UnifyIROCL(OpenCLProgramContext* pContext);
+namespace IGC {
+void UnifyIROCL(OpenCLProgramContext *pContext);
 
-    void UnifyIRSPIR(OpenCLProgramContext* pContext);
-}
+void UnifyIRSPIR(OpenCLProgramContext *pContext);
+} // namespace IGC

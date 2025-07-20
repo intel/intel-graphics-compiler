@@ -16,34 +16,32 @@ SPDX-License-Identifier: MIT
 #include "AllocationLivenessAnalyzer.h"
 
 namespace llvm {
-    class Function;
+class Function;
 } // namespace llvm
 
-namespace IGC
-{
-    class MergeAllocas : public AllocationLivenessAnalyzer
-    {
-    public:
-        struct AllocaInfo {
-            llvm::SmallVector<AllocaInfo*> nonOverlapingAllocas;
-            llvm::AllocaInst* allocaI;
-            AllocationLivenessAnalyzer::LivenessData* livenessData;
-            unsigned int addressSpace;
-            std::size_t allocationSize;
-            std::size_t remainingSize;
-            std::size_t alignment;
-            // start offset of this alloca in top level alloca (if any)
-            std::size_t offset;
-            bool isUniform;
-        };
+namespace IGC {
+class MergeAllocas : public AllocationLivenessAnalyzer {
+public:
+  struct AllocaInfo {
+    llvm::SmallVector<AllocaInfo *> nonOverlapingAllocas;
+    llvm::AllocaInst *allocaI;
+    AllocationLivenessAnalyzer::LivenessData *livenessData;
+    unsigned int addressSpace;
+    std::size_t allocationSize;
+    std::size_t remainingSize;
+    std::size_t alignment;
+    // start offset of this alloca in top level alloca (if any)
+    std::size_t offset;
+    bool isUniform;
+  };
 
-        MergeAllocas(char& pid) : AllocationLivenessAnalyzer(pid) {}
+  MergeAllocas(char &pid) : AllocationLivenessAnalyzer(pid) {}
 
-        bool runOnFunction(llvm::Function& F) override;
-        virtual bool skipInstruction(llvm::Function& F, AllocationLivenessAnalyzer::LivenessData& LD) = 0;
-        void getAdditionalAnalysisUsage(llvm::AnalysisUsage& AU) const override {};
+  bool runOnFunction(llvm::Function &F) override;
+  virtual bool skipInstruction(llvm::Function &F, AllocationLivenessAnalyzer::LivenessData &LD) = 0;
+  void getAdditionalAnalysisUsage(llvm::AnalysisUsage &AU) const override {};
 
-    private:
-        std::vector<AllocaInfo> AllAllocasInfos;
-    };
+private:
+  std::vector<AllocaInfo> AllAllocasInfos;
+};
 } // namespace IGC

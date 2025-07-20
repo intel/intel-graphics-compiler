@@ -16,39 +16,32 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class ErrorCheck : public llvm::FunctionPass, public llvm::InstVisitor<ErrorCheck>
-    {
-    public:
-        static char ID;
+namespace IGC {
+class ErrorCheck : public llvm::FunctionPass, public llvm::InstVisitor<ErrorCheck> {
+public:
+  static char ID;
 
-        ErrorCheck();
+  ErrorCheck();
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "Error Check";
-        }
+  virtual llvm::StringRef getPassName() const override { return "Error Check"; }
 
-        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<CodeGenContextWrapper>();
-            AU.addRequired<MetaDataUtilsWrapper>();
-        }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
 
-        virtual bool runOnFunction(llvm::Function& F) override;
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-        void visitInstruction(llvm::Instruction& I);
+  void visitInstruction(llvm::Instruction &I);
 
-        void visitCallInst(llvm::CallInst& CI);
+  void visitCallInst(llvm::CallInst &CI);
 
-    private:
-        bool m_hasError = false;
+private:
+  bool m_hasError = false;
 
-        void checkArgsSize(llvm::Function& F);
+  void checkArgsSize(llvm::Function &F);
 
-        void handleFP64EmulationMode(llvm::Instruction& I);
-    };
+  void handleFP64EmulationMode(llvm::Instruction &I);
+};
 
 } // namespace IGC
-

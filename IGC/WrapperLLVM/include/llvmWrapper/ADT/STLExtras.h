@@ -13,9 +13,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/STLExtras.h"
 #include <memory>
 
-namespace IGCLLVM
-{
-    using std::make_unique;
+namespace IGCLLVM {
+using std::make_unique;
 }
 
 #endif

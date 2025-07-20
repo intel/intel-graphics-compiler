@@ -18,29 +18,27 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
-namespace IGCLLVM
-{
-    bool isSafeToExpand(const llvm::SCEV* S, llvm::ScalarEvolution* SE, llvm::SCEVExpander* SCEVE)
-    {
-        IGC_ASSERT(SE);
-        IGC_ASSERT(SCEVE);
-#if (LLVM_VERSION_MAJOR < 15) || defined (IGC_LLVM_TRUNK_REVISION)
-        return isSafeToExpand(S, *SE);
+namespace IGCLLVM {
+bool isSafeToExpand(const llvm::SCEV *S, llvm::ScalarEvolution *SE, llvm::SCEVExpander *SCEVE) {
+  IGC_ASSERT(SE);
+  IGC_ASSERT(SCEVE);
+#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+  return isSafeToExpand(S, *SE);
 #else
-        return SCEVE->isSafeToExpand(S);
+  return SCEVE->isSafeToExpand(S);
 #endif
-    }
-
-    bool isSafeToExpandAt(const llvm::SCEV* S, const llvm::Instruction* InsertionPoint, llvm::ScalarEvolution* SE, llvm::SCEVExpander* SCEVE)
-    {
-        IGC_ASSERT(SE);
-        IGC_ASSERT(SCEVE);
-#if (LLVM_VERSION_MAJOR < 15) || defined (IGC_LLVM_TRUNK_REVISION)
-        return isSafeToExpandAt(S, InsertionPoint, *SE);
-#else
-        return SCEVE->isSafeToExpandAt(S, InsertionPoint);
-#endif
-    }
 }
+
+bool isSafeToExpandAt(const llvm::SCEV *S, const llvm::Instruction *InsertionPoint, llvm::ScalarEvolution *SE,
+                      llvm::SCEVExpander *SCEVE) {
+  IGC_ASSERT(SE);
+  IGC_ASSERT(SCEVE);
+#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+  return isSafeToExpandAt(S, InsertionPoint, *SE);
+#else
+  return SCEVE->isSafeToExpandAt(S, InsertionPoint);
+#endif
+}
+} // namespace IGCLLVM
 
 #endif // IGCLLVM_TRANSFORMS_UTILS_SCALAREVOLUTIONEXPANDER_H

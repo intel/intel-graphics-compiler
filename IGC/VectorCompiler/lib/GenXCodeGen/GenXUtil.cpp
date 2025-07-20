@@ -75,12 +75,11 @@ struct InstScanner {
  *          M = Module (can be 0 as long as InsertBefore is not 0)
  */
 CallInst *genx::createConvert(Value *In, const Twine &Name,
-    Instruction *InsertBefore, Module *M)
-{
+                              Instruction *InsertBefore, Module *M) {
   if (!M)
     M = InsertBefore->getModule();
-  Function *Decl = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_convert,
-      In->getType());
+  Function *Decl = GenXIntrinsic::getGenXDeclaration(
+      M, GenXIntrinsic::genx_convert, In->getType());
   return CallInst::Create(Decl, In, Name, InsertBefore);
 }
 
@@ -94,14 +93,13 @@ CallInst *genx::createConvert(Value *In, const Twine &Name,
  *          M = Module (can be 0 as long as InsertBefore is not 0)
  */
 CallInst *genx::createConvertAddr(Value *In, int Offset, const Twine &Name,
-    Instruction *InsertBefore, Module *M)
-{
+                                  Instruction *InsertBefore, Module *M) {
   if (!M)
     M = InsertBefore->getModule();
   auto OffsetVal = ConstantInt::get(In->getType()->getScalarType(), Offset);
-  Function *Decl = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_convert_addr,
-      In->getType());
-  Value *Args[] = { In, OffsetVal };
+  Function *Decl = GenXIntrinsic::getGenXDeclaration(
+      M, GenXIntrinsic::genx_convert_addr, In->getType());
+  Value *Args[] = {In, OffsetVal};
   return CallInst::Create(Decl, Args, Name, InsertBefore);
 }
 
@@ -112,13 +110,13 @@ CallInst *genx::createConvertAddr(Value *In, int Offset, const Twine &Name,
  * but in that case M must be non-0 and set to the Module.
  */
 CallInst *genx::createAddAddr(Value *Lhs, Value *Rhs, const Twine &Name,
-    Instruction *InsertBefore, Module *M)
-{
+                              Instruction *InsertBefore, Module *M) {
   if (!M)
     M = InsertBefore->getModule();
   Value *Args[] = {Lhs, Rhs};
   Type *Tys[] = {Rhs->getType(), Lhs->getType()};
-  Function *Decl = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_add_addr, Tys);
+  Function *Decl =
+      GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_add_addr, Tys);
   return CallInst::Create(Decl, Args, Name, InsertBefore);
 }
 
@@ -144,15 +142,16 @@ CallInst *genx::createUnifiedRet(Type *Ty, const Twine &Name, Module *M) {
  * result. For scalar case only LSB of the result is set to corresponding value.
  */
 unsigned genx::getPredicateConstantAsInt(const Constant *C) {
-  IGC_ASSERT_MESSAGE(C->getType()->isIntOrIntVectorTy(1),
-    "wrong argument: constant of i1 or Nxi1 type was expected");
+  IGC_ASSERT_MESSAGE(
+      C->getType()->isIntOrIntVectorTy(1),
+      "wrong argument: constant of i1 or Nxi1 type was expected");
   if (auto CI = dyn_cast<ConstantInt>(C))
     return CI->getZExtValue(); // scalar
   unsigned Bits = 0;
   unsigned NumElements =
       cast<IGCLLVM::FixedVectorType>(C->getType())->getNumElements();
   IGC_ASSERT_MESSAGE(NumElements <= sizeof(Bits) * CHAR_BIT,
-    "vector has too much elements, it won't fit into Bits");
+                     "vector has too much elements, it won't fit into Bits");
   for (unsigned i = 0; i != NumElements; ++i) {
     auto El = C->getAggregateElement(i);
     if (!isa<UndefValue>(El))
@@ -186,10 +185,9 @@ Constant *genx::getConstantSubvector(const Constant *V, unsigned StartIdx,
  * concatConstants : concatenate two possibly vector constants, giving a
  *      vector constant
  */
-Constant *genx::concatConstants(Constant *C1, Constant *C2)
-{
+Constant *genx::concatConstants(Constant *C1, Constant *C2) {
   IGC_ASSERT(C1->getType()->getScalarType() == C2->getType()->getScalarType());
-  Constant *CC[] = { C1, C2 };
+  Constant *CC[] = {C1, C2};
   SmallVector<Constant *, 8> Vec;
   bool AllUndef = true;
   for (unsigned Idx = 0; Idx != 2; ++Idx) {
@@ -212,7 +210,8 @@ Constant *genx::concatConstants(Constant *C1, Constant *C2)
 }
 
 /***********************************************************************
- * findClosestCommonDominator : find closest common dominator of some instructions
+ * findClosestCommonDominator : find closest common dominator of some
+ * instructions
  *
  * Enter:   DT = dominator tree
  *          Insts = the instructions
@@ -289,8 +288,7 @@ Instruction *genx::findClosestCommonDominator(const DominatorTree *DT,
  * in the same register as the result. This function returns the operand number
  * of the two address operand if any, or None if not.
  */
-std::optional<unsigned> genx::getTwoAddressOperandNum(CallInst *CI)
-{
+std::optional<unsigned> genx::getTwoAddressOperandNum(CallInst *CI) {
   auto IntrinsicID = vc::getAnyIntrinsicID(CI);
   if (!vc::isAnyNonTrivialIntrinsic(IntrinsicID))
     return std::nullopt; // not intrinsic
@@ -305,14 +303,14 @@ std::optional<unsigned> genx::getTwoAddressOperandNum(CallInst *CI)
   unsigned Num = IGCLLVM::getNumArgOperands(CI);
   if (!Num)
     return std::nullopt; // no args
-  --Num; // Num = last arg number, could be two address operand
+  --Num;                 // Num = last arg number, could be two address operand
   if (isa<UndefValue>(CI->getOperand(Num)))
     return std::nullopt; // operand is undef, must be RAW_NULLALLOWED
   if (II.getArgInfo(Num).getCategory() != GenXIntrinsicInfo::TWOADDR)
     return std::nullopt; // not two addr operand
   if (CI->use_empty() && II.getRetInfo().rawNullAllowed())
     return std::nullopt; // unused result will be V0
-  return Num; // it is two addr
+  return Num;            // it is two addr
 }
 
 /***********************************************************************
@@ -327,8 +325,7 @@ bool genx::isPredicate(Instruction *Inst) {
  * isNot : test whether an instruction is a "not" instruction (an xor with
  *    constant all ones)
  */
-bool genx::isNot(Instruction *Inst)
-{
+bool genx::isNot(Instruction *Inst) {
   if (Inst->getOpcode() == Instruction::Xor)
     if (auto C = dyn_cast<Constant>(Inst->getOperand(1)))
       if (C->isAllOnesValue())
@@ -340,8 +337,7 @@ bool genx::isNot(Instruction *Inst)
  * isPredNot : test whether an instruction is a "not" instruction (an xor
  *    with constant all ones) with predicate (i1 or vector of i1) type
  */
-bool genx::isPredNot(Instruction *Inst)
-{
+bool genx::isPredNot(Instruction *Inst) {
   return isPredicate(Inst) && isNot(Inst);
 }
 
@@ -349,8 +345,7 @@ bool genx::isPredNot(Instruction *Inst)
  * isIntNot : test whether an instruction is a "not" instruction (an xor
  *    with constant all ones) with non-predicate type
  */
-bool genx::isIntNot(Instruction *Inst)
-{
+bool genx::isIntNot(Instruction *Inst) {
   return !isPredicate(Inst) && isNot(Inst);
 }
 
@@ -358,10 +353,9 @@ bool genx::isIntNot(Instruction *Inst)
  * invertCondition : Invert the given predicate value, possibly reusing
  * an existing copy.
  */
-Value *genx::invertCondition(Value *Condition)
-{
+Value *genx::invertCondition(Value *Condition) {
   IGC_ASSERT_MESSAGE(Condition->getType()->getScalarType()->isIntegerTy(1),
-    "Condition is not of predicate type");
+                     "Condition is not of predicate type");
   // First: Check if it's a constant.
   if (Constant *C = dyn_cast<Constant>(Condition))
     return ConstantExpr::getNot(C);
@@ -426,8 +420,7 @@ bool genx::isBFloat16Cast(const Instruction *I) {
  * ShuffleVectorAnalyzer::getAsSlice : see if the shufflevector is a slice on
  *    operand 0, and if so return the start index, or -1 if it is not a slice
  */
-int ShuffleVectorAnalyzer::getAsSlice()
-{
+int ShuffleVectorAnalyzer::getAsSlice() {
   unsigned WholeWidth =
       cast<IGCLLVM::FixedVectorType>(SI->getOperand(0)->getType())
           ->getNumElements();
@@ -474,9 +467,8 @@ bool ShuffleVectorAnalyzer::isReplicatedSlice() const {
     return false;
 
   // Find first non-one difference.
-  auto SliceEnd =
-      std::adjacent_find(Begin, End,
-                         [](int Prev, int Next) { return Next - Prev != 1; });
+  auto SliceEnd = std::adjacent_find(
+      Begin, End, [](int Prev, int Next) { return Next - Prev != 1; });
   // If not found, then it is simple slice.
   if (SliceEnd == End)
     return true;
@@ -621,7 +613,7 @@ void makeSVIIndexesOperandIndexes(const ShuffleVectorInst &SI,
     return;
   }
   IGC_ASSERT_MESSAGE(&Operand == SI.getOperand(1),
-    "wrong argument: a shufflevector operand was expected");
+                     "wrong argument: a shufflevector operand was expected");
   std::transform(FirstIt, LastIt, OutIt, [FirstOpSize](int MaskVal) {
     if (MaskVal < 0)
       return MaskIndex::getUndef();
@@ -645,11 +637,14 @@ template <typename ForwardIter>
 std::pair<ForwardIter, std::optional<int>>
 estimateHorizontalStride(ForwardIter FirstIt, ForwardIter LastIt) {
 
-  IGC_ASSERT_MESSAGE(FirstIt != LastIt, "the range must contain at least 1 element");
-  IGC_ASSERT_MESSAGE(std::none_of(FirstIt, LastIt, [](MaskIndex Idx) { return Idx.isAnotherOp(); }),
-   "There must not be any AnotherOp indices in the range");
+  IGC_ASSERT_MESSAGE(FirstIt != LastIt,
+                     "the range must contain at least 1 element");
+  IGC_ASSERT_MESSAGE(
+      std::none_of(FirstIt, LastIt,
+                   [](MaskIndex Idx) { return Idx.isAnotherOp(); }),
+      "There must not be any AnotherOp indices in the range");
   IGC_ASSERT_MESSAGE(FirstIt->isDefined(),
-    "first element in range must be a valid index");
+                     "first element in range must be a valid index");
   auto NextDefined =
       std::find_if(std::next(FirstIt), LastIt,
                    [](MaskIndex Elem) { return Elem.isDefined(); });
@@ -682,13 +677,16 @@ estimateHorizontalStride(ForwardIter FirstIt, ForwardIter LastIt) {
 template <typename ForwardIter>
 Region matchVectorRegionByIndexes(Region FirstElemRegion, ForwardIter FirstIt,
                                   ForwardIter LastIt, int BoundIndex) {
-  IGC_ASSERT_MESSAGE(FirstIt != LastIt, "the range must contain at least 1 element");
-  IGC_ASSERT_MESSAGE(std::none_of(FirstIt, LastIt, [](MaskIndex Idx) { return Idx.isAnotherOp(); }),
-    "There must not be any AnotherOp indices in the range.");
+  IGC_ASSERT_MESSAGE(FirstIt != LastIt,
+                     "the range must contain at least 1 element");
+  IGC_ASSERT_MESSAGE(
+      std::none_of(FirstIt, LastIt,
+                   [](MaskIndex Idx) { return Idx.isAnotherOp(); }),
+      "There must not be any AnotherOp indices in the range.");
   IGC_ASSERT_MESSAGE(FirstIt->isDefined(),
-    "expected FirstIt and --LastIt point to valid indices");
+                     "expected FirstIt and --LastIt point to valid indices");
   IGC_ASSERT_MESSAGE(std::prev(LastIt)->isDefined(),
-    "expected FirstIt and --LastIt point to valid indices");
+                     "expected FirstIt and --LastIt point to valid indices");
 
   if (std::distance(FirstIt, LastIt) == 1)
     return FirstElemRegion;
@@ -737,13 +735,16 @@ Region matchVectorRegionByIndexes(Region FirstElemRegion, ForwardIter FirstIt,
 //    empty value otherwise
 template <typename ForwardIter>
 std::optional<int> estimateVerticalStride(Region FirstRowRegion,
-                                           ForwardIter FirstIt,
-                                           ForwardIter ReferenceIt) {
+                                          ForwardIter FirstIt,
+                                          ForwardIter ReferenceIt) {
 
-  IGC_ASSERT_MESSAGE(std::distance(FirstIt, ReferenceIt) >= static_cast<std::ptrdiff_t>(FirstRowRegion.Width),
-    "Reference element must not be part of first row");
-  IGC_ASSERT_MESSAGE(std::all_of(FirstIt, std::next(FirstIt, FirstRowRegion.Width), [](MaskIndex Elem) { return Elem.isDefined(); }),
-    "First row must contain only valid indices");
+  IGC_ASSERT_MESSAGE(std::distance(FirstIt, ReferenceIt) >=
+                         static_cast<std::ptrdiff_t>(FirstRowRegion.Width),
+                     "Reference element must not be part of first row");
+  IGC_ASSERT_MESSAGE(
+      std::all_of(FirstIt, std::next(FirstIt, FirstRowRegion.Width),
+                  [](MaskIndex Elem) { return Elem.isDefined(); }),
+      "First row must contain only valid indices");
   IGC_ASSERT_MESSAGE(ReferenceIt->isDefined(), "Reference index must be valid");
 
   int Width = FirstRowRegion.Width;
@@ -778,16 +779,22 @@ template <typename ForwardIter>
 Region matchMatrixRegionByIndexes(Region FirstRowRegion, ForwardIter FirstIt,
                                   ForwardIter LastIt, ForwardIter LastDefinedIt,
                                   int BoundIndex) {
-  IGC_ASSERT_MESSAGE(FirstRowRegion.NumElements == FirstRowRegion.Width,
-    "wrong argunent: vector region (with no vstride) was expected");
-  IGC_ASSERT_MESSAGE(FirstRowRegion.VStride == 0,
-    "wrong argunent: vector region (with no vstride) was expected");
-  IGC_ASSERT_MESSAGE(FirstIt->isDefined(),
-    "expected FirstIt and LastDefinedIt point to valid indices");
-  IGC_ASSERT_MESSAGE(LastDefinedIt->isDefined(),
-    "expected FirstIt and LastDefinedIt point to valid indices");
-  IGC_ASSERT_MESSAGE(std::distance(FirstIt, LastIt) >= static_cast<std::ptrdiff_t>(FirstRowRegion.Width),
-    "wrong argument: number of indexes must be at least equal to region width");
+  IGC_ASSERT_MESSAGE(
+      FirstRowRegion.NumElements == FirstRowRegion.Width,
+      "wrong argunent: vector region (with no vstride) was expected");
+  IGC_ASSERT_MESSAGE(
+      FirstRowRegion.VStride == 0,
+      "wrong argunent: vector region (with no vstride) was expected");
+  IGC_ASSERT_MESSAGE(
+      FirstIt->isDefined(),
+      "expected FirstIt and LastDefinedIt point to valid indices");
+  IGC_ASSERT_MESSAGE(
+      LastDefinedIt->isDefined(),
+      "expected FirstIt and LastDefinedIt point to valid indices");
+  IGC_ASSERT_MESSAGE(std::distance(FirstIt, LastIt) >=
+                         static_cast<std::ptrdiff_t>(FirstRowRegion.Width),
+                     "wrong argument: number of indexes must be at least equal "
+                     "to region width");
 
   auto FirstRowEndIt = std::next(FirstIt, FirstRowRegion.Width);
   if (FirstRowEndIt == LastIt)
@@ -848,7 +855,7 @@ ShuffleVectorAnalyzer::OperandRegionInfo
 ShuffleVectorAnalyzer::getMaskRegionPrefix(int StartIdx) {
   IGC_ASSERT_MESSAGE(StartIdx >= 0, "Start index is out of bound");
   IGC_ASSERT_MESSAGE(StartIdx < static_cast<int>(SI->getShuffleMask().size()),
-    "Start index is out of bound");
+                     "Start index is out of bound");
 
   auto MaskVals = SI->getShuffleMask();
   auto StartIt = std::next(MaskVals.begin(), StartIdx);
@@ -887,8 +894,7 @@ ShuffleVectorAnalyzer::getMaskRegionPrefix(int StartIdx) {
  *
  * Return:  start index, or -1 if it is not an unslice
  */
-int ShuffleVectorAnalyzer::getAsUnslice()
-{
+int ShuffleVectorAnalyzer::getAsUnslice() {
   auto SI2 = dyn_cast<ShuffleVectorInst>(SI->getOperand(1));
   if (!SI2)
     return -1;
@@ -961,8 +967,7 @@ static int nEltSplatMask(ArrayRef<int> Mask) {
  * ShuffleVectorAnalyzer::getAsSplat : if shufflevector is a splat, get the
  *      splatted input, with its vector index if the input is a vector
  */
-ShuffleVectorAnalyzer::SplatInfo ShuffleVectorAnalyzer::getAsSplat()
-{
+ShuffleVectorAnalyzer::SplatInfo ShuffleVectorAnalyzer::getAsSplat() {
   Value *InVec1 = SI->getOperand(0);
   Value *InVec2 = SI->getOperand(1);
 
@@ -1102,8 +1107,7 @@ IVSplitter::RegionTrait IVSplitter::describeSplit(RegionType RT, size_t ElNum) {
     // take every second element;
     Result.ElStride = 2;
     Result.ElOffset = (RT == RegionType::LoRegion) ? 0 : 1;
-  }
-  else if (RT == RegionType::FirstHalf || RT == RegionType::SecondHalf) {
+  } else if (RT == RegionType::FirstHalf || RT == RegionType::SecondHalf) {
     // take every element, sequentially
     Result.ElStride = 1;
     Result.ElOffset = (RT == RegionType::FirstHalf) ? 0 : ElNum;
@@ -1210,7 +1214,8 @@ IVSplitter::splitValue(Value &Val, RegionType RT1, const Twine &Name1,
     Value *V2 = splitConstantVector(KV32, RT2);
     return {V1, V2};
   }
-  auto *ShreddedVal = new BitCastInst(&Val, VI32Ty, BaseName + ".iv32cast", &Inst);
+  auto *ShreddedVal =
+      new BitCastInst(&Val, VI32Ty, BaseName + ".iv32cast", &Inst);
   ShreddedVal->setDebugLoc(DL);
 
   auto R1 = createSplitRegion(VI32Ty, RT1);
@@ -1218,7 +1223,7 @@ IVSplitter::splitValue(Value &Val, RegionType RT1, const Twine &Name1,
 
   auto R2 = createSplitRegion(VI32Ty, RT2);
   auto *V2 = R2.createRdRegion(ShreddedVal, BaseName + Name2, &Inst, DL);
-  return { V1, V2 };
+  return {V1, V2};
 }
 
 IVSplitter::LoHiSplit IVSplitter::splitOperandLoHi(unsigned SourceIdx,
@@ -1246,8 +1251,8 @@ IVSplitter::HalfSplit IVSplitter::splitValueHalf(Value &V, bool FoldConstants) {
   return {Splitted.first, Splitted.second};
 }
 
-Value* IVSplitter::combineSplit(Value &V1, Value &V2, RegionType RT1,
-                                RegionType RT2, const Twine& Name,
+Value *IVSplitter::combineSplit(Value &V1, Value &V2, RegionType RT1,
+                                RegionType RT2, const Twine &Name,
                                 bool Scalarize) {
   const auto &DL = Inst.getDebugLoc();
 
@@ -1277,7 +1282,6 @@ Value* IVSplitter::combineSplit(Value &V1, Value &V2, RegionType RT1,
     Result->setDebugLoc(DL);
   }
   return Result;
-
 }
 Value *IVSplitter::combineLoHiSplit(const LoHiSplit &Split, const Twine &Name,
                                     bool Scalarize) {
@@ -1305,8 +1309,7 @@ Value *IVSplitter::combineHalfSplit(const HalfSplit &Split, const Twine &Name,
  * This modifies each phi node in Succ as follows: the incoming for BB is
  * replaced by an incoming for each of BB's predecessors.
  */
-void genx::adjustPhiNodesForBlockRemoval(BasicBlock *Succ, BasicBlock *BB)
-{
+void genx::adjustPhiNodesForBlockRemoval(BasicBlock *Succ, BasicBlock *BB) {
   for (auto i = Succ->begin(), e = Succ->end(); i != e; ++i) {
     auto Phi = dyn_cast<PHINode>(&*i);
     if (!Phi)
@@ -1373,10 +1376,9 @@ Value *genx::sinkAdd(Value *V) {
           Offset -= CI->getSExtValue() * Scale;
           if (IdxVal != Inst)
             NeedChange = true;
-        } else if(Inst->getOpcode() == Instruction::Or) {
-          if (!haveNoCommonBitsSet(Inst->getOperand(0),
-                                  Inst->getOperand(1),
-                                  Inst->getModule()->getDataLayout()))
+        } else if (Inst->getOpcode() == Instruction::Or) {
+          if (!haveNoCommonBitsSet(Inst->getOperand(0), Inst->getOperand(1),
+                                   Inst->getModule()->getDataLayout()))
             break;
           Offset += CI->getSExtValue() * Scale;
           if (V != Inst)
@@ -1413,30 +1415,28 @@ Value *genx::sinkAdd(Value *V) {
 }
 
 /***********************************************************************
-* reorderBlocks : reorder blocks to increase fallthrough, and specifically
-*    to satisfy the requirements of SIMD control flow
-*/
-#define SUCCSZANY     (true)
-#define SUCCHASINST   (succ->size() > 1)
-#define SUCCNOINST    (succ->size() <= 1)
-#define SUCCANYLOOP   (true)
+ * reorderBlocks : reorder blocks to increase fallthrough, and specifically
+ *    to satisfy the requirements of SIMD control flow
+ */
+#define SUCCSZANY (true)
+#define SUCCHASINST (succ->size() > 1)
+#define SUCCNOINST (succ->size() <= 1)
+#define SUCCANYLOOP (true)
 
-#define PUSHSUCC(BLK, C1, C2) \
-        for(succ_iterator succIter = succ_begin(BLK), succEnd = succ_end(BLK); \
-          succIter!=succEnd; ++succIter) {                                   \
-          llvm::BasicBlock *succ = *succIter;                                \
-          if (!visitSet.count(succ) && C1 && C2) {                           \
-            visitVec.push_back(succ);                                        \
-            visitSet.insert(succ);                                           \
-            break;                                                           \
-          }                                                                  \
-        }
+#define PUSHSUCC(BLK, C1, C2)                                                  \
+  for (succ_iterator succIter = succ_begin(BLK), succEnd = succ_end(BLK);      \
+       succIter != succEnd; ++succIter) {                                      \
+    llvm::BasicBlock *succ = *succIter;                                        \
+    if (!visitSet.count(succ) && C1 && C2) {                                   \
+      visitVec.push_back(succ);                                                \
+      visitSet.insert(succ);                                                   \
+      break;                                                                   \
+    }                                                                          \
+  }
 
-static bool HasSimdGotoJoinInBlock(BasicBlock *BB)
-{
-  for (BasicBlock::iterator BBI = BB->begin(),
-                            BBE = BB->end();
-       BBI != BBE; ++BBI) {
+static bool HasSimdGotoJoinInBlock(BasicBlock *BB) {
+  for (BasicBlock::iterator BBI = BB->begin(), BBE = BB->end(); BBI != BBE;
+       ++BBI) {
     auto IID = GenXIntrinsic::getGenXIntrinsicID(&*BBI);
     if (IID == GenXIntrinsic::genx_simdcf_goto ||
         IID == GenXIntrinsic::genx_simdcf_join)
@@ -1445,20 +1445,19 @@ static bool HasSimdGotoJoinInBlock(BasicBlock *BB)
   return false;
 }
 
-void genx::LayoutBlocks(Function &func, LoopInfo &LI)
-{
-  std::vector<llvm::BasicBlock*> visitVec;
-  std::set<llvm::BasicBlock*> visitSet;
+void genx::LayoutBlocks(Function &func, LoopInfo &LI) {
+  std::vector<llvm::BasicBlock *> visitVec;
+  std::set<llvm::BasicBlock *> visitSet;
   // Insertion Position per loop header
-  std::map<llvm::BasicBlock*, llvm::BasicBlock*> InsPos;
+  std::map<llvm::BasicBlock *, llvm::BasicBlock *> InsPos;
 
-  llvm::BasicBlock* entry = &(func.getEntryBlock());
+  llvm::BasicBlock *entry = &(func.getEntryBlock());
   visitVec.push_back(entry);
   visitSet.insert(entry);
   InsPos[entry] = entry;
 
   while (!visitVec.empty()) {
-    llvm::BasicBlock* blk = visitVec.back();
+    llvm::BasicBlock *blk = visitVec.back();
     llvm::Loop *curLoop = LI.getLoopFor(blk);
     if (curLoop) {
       auto hd = curLoop->getHeader();
@@ -1485,8 +1484,7 @@ void genx::LayoutBlocks(Function &func, LoopInfo &LI)
             blk->moveBefore(insp);
             InsPos[hd] = blk;
           }
-        }
-        else {
+        } else {
           // move the entire loop to the beginning of
           // the parent loop
           auto LoopStart = InsPos[hd];
@@ -1497,17 +1495,16 @@ void genx::LayoutBlocks(Function &func, LoopInfo &LI)
           if (LoopStart == hd) {
             // single block loop
             hd->moveBefore(insp);
-          }
-          else {
+          } else {
             // loop-header is not moved yet, so should be at the end
             // use splice
-            IGCLLVM::splice(&func, insp->getIterator(), &func, LoopStart->getIterator(), hd->getIterator());
+            IGCLLVM::splice(&func, insp->getIterator(), &func,
+                            LoopStart->getIterator(), hd->getIterator());
             hd->moveBefore(LoopStart);
           }
           InsPos[PaHd] = hd;
         }
-      }
-      else {
+      } else {
         auto insp = InsPos[entry];
         if (blk != insp) {
           blk->moveBefore(insp);
@@ -1564,17 +1561,16 @@ void genx::LayoutBlocks(Function &func, LoopInfo &LI)
   }
 }
 
-void genx::LayoutBlocks(Function &func)
-{
-  std::vector<llvm::BasicBlock*> visitVec;
-  std::set<llvm::BasicBlock*> visitSet;
+void genx::LayoutBlocks(Function &func) {
+  std::vector<llvm::BasicBlock *> visitVec;
+  std::set<llvm::BasicBlock *> visitSet;
   // Reorder basic block to allow more fall-through
-  llvm::BasicBlock* entry = &(func.getEntryBlock());
+  llvm::BasicBlock *entry = &(func.getEntryBlock());
   visitVec.push_back(entry);
   visitSet.insert(entry);
 
   while (!visitVec.empty()) {
-    llvm::BasicBlock* blk = visitVec.back();
+    llvm::BasicBlock *blk = visitVec.back();
     // push in the empty successor
     PUSHSUCC(blk, SUCCANYLOOP, SUCCNOINST);
     if (blk != visitVec.back())
@@ -1723,7 +1719,8 @@ Instruction *genx::foldBitCastInst(Instruction *Inst) {
     }
   } else if (LI && LI->hasOneUse()) {
     if (auto CI = dyn_cast<BitCastInst>(LI->user_back())) {
-      auto NewPtrTy = PointerType::get(CI->getType(), LI->getPointerAddressSpace());
+      auto NewPtrTy =
+          PointerType::get(CI->getType(), LI->getPointerAddressSpace());
       auto NewPtr = ConstantExpr::getBitCast(GV, NewPtrTy);
       auto NewLI = new LoadInst(CI->getType(), NewPtr, "",
                                 /*volatile*/ LI->isVolatile(), Inst);
@@ -1986,7 +1983,7 @@ genx::ConstraintType genx::getInlineAsmConstraintType(StringRef Codes) {
 unsigned
 genx::getInlineAsmMatchedOperand(const InlineAsm::ConstraintInfo &Info) {
   IGC_ASSERT_MESSAGE(genx::isInlineAsmMatchingInputConstraint(Info),
-    "Matching input expected");
+                     "Matching input expected");
   int OperandValue = std::stoi(Info.Codes.front());
   IGC_ASSERT(OperandValue >= 0);
   return OperandValue;
@@ -1998,7 +1995,7 @@ std::vector<GenXInlineAsmInfo> genx::getGenXInlineAsmInfo(MDNode *MD) {
     auto EntryMD = dyn_cast<MDTuple>(MDOp);
     IGC_ASSERT_MESSAGE(EntryMD, "error setting metadata for inline asm");
     IGC_ASSERT_MESSAGE(EntryMD->getNumOperands() == 3,
-      "error setting metadata for inline asm");
+                       "error setting metadata for inline asm");
     ConstantAsMetadata *Op0 =
         dyn_cast<ConstantAsMetadata>(EntryMD->getOperand(0));
     ConstantAsMetadata *Op1 =
@@ -2023,7 +2020,7 @@ std::vector<GenXInlineAsmInfo> genx::getGenXInlineAsmInfo(CallInst *CI) {
   if (!MD) {
     auto *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
     IGC_ASSERT_MESSAGE(IA->getConstraintString().empty(),
-      "No info only for empty constraint string");
+                       "No info only for empty constraint string");
     (void)IA;
     return std::vector<GenXInlineAsmInfo>();
   }
@@ -2160,7 +2157,7 @@ bool genx::isPredefRegDestination(const Value *V) {
 
 // info is at main template function
 CastInst *genx::scalarizeOrVectorizeIfNeeded(Instruction *Inst,
-  Instruction *InstToReplace) {
+                                             Instruction *InstToReplace) {
   SmallVector<Type *, 1> Types = {InstToReplace->getType()};
   return scalarizeOrVectorizeIfNeeded(Inst, Types.begin(), Types.end());
 }

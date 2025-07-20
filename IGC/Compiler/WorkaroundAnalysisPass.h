@@ -21,69 +21,57 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "common/IGCIRBuilder.h"
 
-namespace IGC
-{
-    class WorkaroundAnalysis : public llvm::FunctionPass,
-        public llvm::InstVisitor<WorkaroundAnalysis>
-    {
-        LLVM3DBuilder<>* m_builder = nullptr;
-    public:
-        static char ID;
+namespace IGC {
+class WorkaroundAnalysis : public llvm::FunctionPass, public llvm::InstVisitor<WorkaroundAnalysis> {
+  LLVM3DBuilder<> *m_builder = nullptr;
 
-        WorkaroundAnalysis();
+public:
+  static char ID;
 
-        ~WorkaroundAnalysis() {}
+  WorkaroundAnalysis();
 
-        virtual bool runOnFunction(llvm::Function& F) override;
+  ~WorkaroundAnalysis() {}
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "WorkaroundAnalysis Pass";
-        }
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<CodeGenContextWrapper>();
-        }
+  virtual llvm::StringRef getPassName() const override { return "WorkaroundAnalysis Pass"; }
 
-        void visitCallInst(llvm::CallInst& I);
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-    private:
-        void processDeferredInstruction(llvm::Instruction* I);
-        void GatherOffsetWorkaround(llvm::SamplerGatherIntrinsic* gatherpo);
-        void ldmsOffsetWorkaournd(llvm::LdMSIntrinsic* ldms);
-        const llvm::DataLayout* m_pDataLayout = nullptr;
-        llvm::Module* m_pModule = nullptr;
-        CodeGenContextWrapper* m_pCtxWrapper = nullptr;
-        llvm::SmallVector<llvm::Instruction*, 4> m_DeferredInstructions;
-    };
+  void visitCallInst(llvm::CallInst &I);
 
-    class WAFMinFMax : public llvm::FunctionPass,
-        public llvm::InstVisitor<WAFMinFMax>
-    {
-    public:
-        static char ID;
-        WAFMinFMax();
-        virtual ~WAFMinFMax() { }
+private:
+  void processDeferredInstruction(llvm::Instruction *I);
+  void GatherOffsetWorkaround(llvm::SamplerGatherIntrinsic *gatherpo);
+  void ldmsOffsetWorkaournd(llvm::LdMSIntrinsic *ldms);
+  const llvm::DataLayout *m_pDataLayout = nullptr;
+  llvm::Module *m_pModule = nullptr;
+  CodeGenContextWrapper *m_pCtxWrapper = nullptr;
+  llvm::SmallVector<llvm::Instruction *, 4> m_DeferredInstructions;
+};
 
-        bool runOnFunction(llvm::Function& F) override;
+class WAFMinFMax : public llvm::FunctionPass, public llvm::InstVisitor<WAFMinFMax> {
+public:
+  static char ID;
+  WAFMinFMax();
+  virtual ~WAFMinFMax() {}
 
-        llvm::StringRef getPassName() const override
-        {
-            return "WAFMinFMax";
-        }
-        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<CodeGenContextWrapper>();
-        }
+  bool runOnFunction(llvm::Function &F) override;
 
-        void visitCallInst(llvm::CallInst& I);
+  llvm::StringRef getPassName() const override { return "WAFMinFMax"; }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-    private:
-        llvm::IGCIRBuilder<>* m_builder = nullptr;
-        CodeGenContext* m_ctx = nullptr;
-    };
+  void visitCallInst(llvm::CallInst &I);
+
+private:
+  llvm::IGCIRBuilder<> *m_builder = nullptr;
+  CodeGenContext *m_ctx = nullptr;
+};
 
 } // namespace IGC

@@ -38,11 +38,12 @@ namespace {
 class GenXIMadPostLegalization : public FunctionPass {
   DominatorTree *DT = nullptr;
   GenXBaling *Baling = nullptr;
+
 public:
   static char ID;
 
-  explicit GenXIMadPostLegalization() :
-      FunctionPass(ID), DT(nullptr), Baling(nullptr) {}
+  explicit GenXIMadPostLegalization()
+      : FunctionPass(ID), DT(nullptr), Baling(nullptr) {}
 
   StringRef getPassName() const override {
     return "GenX IMAD post-legalization pass";
@@ -68,10 +69,12 @@ namespace llvm {
 void initializeGenXIMadPostLegalizationPass(PassRegistry &);
 }
 
-INITIALIZE_PASS_BEGIN(GenXIMadPostLegalization, "GenXIMadLegalization", "GenXIMadLegalization", false, false)
+INITIALIZE_PASS_BEGIN(GenXIMadPostLegalization, "GenXIMadLegalization",
+                      "GenXIMadLegalization", false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GenXFuncBaling)
-INITIALIZE_PASS_END(GenXIMadPostLegalization, "GenXIMadLegalization", "GenXIMadLegalization", false, false)
+INITIALIZE_PASS_END(GenXIMadPostLegalization, "GenXIMadLegalization",
+                    "GenXIMadLegalization", false, false)
 
 FunctionPass *llvm::createGenXIMadPostLegalizationPass() {
   initializeGenXIMadPostLegalizationPass(*PassRegistry::getPassRegistry());
@@ -80,7 +83,8 @@ FunctionPass *llvm::createGenXIMadPostLegalizationPass() {
 
 static bool isIntegerMadIntrinsic(Value *V) {
   switch (GenXIntrinsic::getGenXIntrinsicID(V)) {
-  default: break;
+  default:
+    break;
   case GenXIntrinsic::genx_ssmad:
   case GenXIntrinsic::genx_sumad:
   case GenXIntrinsic::genx_usmad:
@@ -96,7 +100,8 @@ static bool isIntegerMadIntrinsic(Value *V) {
 
 static bool isIntegerMulIntrinsic(Value *V) {
   switch (GenXIntrinsic::getGenXIntrinsicID(V)) {
-  default: break;
+  default:
+    break;
   case GenXIntrinsic::genx_ssmul:
   case GenXIntrinsic::genx_sumul:
   case GenXIntrinsic::genx_usmul:

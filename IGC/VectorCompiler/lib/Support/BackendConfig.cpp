@@ -82,9 +82,9 @@ static cl::opt<bool> DisableNonOverlappingRegionOptOpt(
     "vc-disable-non-overlapping-region-opt", cl::Hidden,
     cl::desc("Disable non-overlapping region optimization"));
 
-static cl::opt<bool> DisableIndvarsOptOpt(
-    "vc-disable-indvars-opt", cl::Hidden,
-    cl::desc("Disable induction variable optimization"));
+static cl::opt<bool>
+    DisableIndvarsOptOpt("vc-disable-indvars-opt", cl::Hidden,
+                         cl::desc("Disable induction variable optimization"));
 
 static cl::opt<unsigned>
     StatelessPrivateMemSizeOpt("dbgonly-enforce-privmem-stateless",
@@ -141,7 +141,8 @@ static cl::opt<bool> VCIgnoreLoopUnrollThresholdOnPragma(
     cl::desc("Ignore threshold value for LLVM loop unroll pass when pragma is "
              "used"));
 
-static cl::opt<unsigned> InteropSubgroupSizeOpt("vc-interop-subgroup-size", cl::Hidden,
+static cl::opt<unsigned> InteropSubgroupSizeOpt(
+    "vc-interop-subgroup-size", cl::Hidden,
     cl::desc("Set subgroup size used for cross-module calls"));
 
 // This checker/fixup pass is only necessary until all the passes
@@ -205,8 +206,10 @@ void GenXBackendOptions::enforceLLVMOptions() {
                            VCIgnoreLoopUnrollThresholdOnPragma);
   enforceOptionIfSpecified(InteropSubgroupSize, InteropSubgroupSizeOpt);
   enforceOptionIfSpecified(CheckGVClobbering, CheckGVClobberingOpt);
-  enforceOptionIfSpecified(DepressurizerGRFThreshold, DepressurizerGRFThresholdOpt);
-  enforceOptionIfSpecified(DepressurizerFlagGRFTolerance, DepressurizerFlagGRFToleranceOpt);
+  enforceOptionIfSpecified(DepressurizerGRFThreshold,
+                           DepressurizerGRFThresholdOpt);
+  enforceOptionIfSpecified(DepressurizerFlagGRFTolerance,
+                           DepressurizerFlagGRFToleranceOpt);
 }
 
 static std::unique_ptr<MemoryBuffer>
@@ -217,7 +220,7 @@ readBiFModuleFromFile(const cl::opt<std::string> &File) {
       MemoryBuffer::getFileOrSTDIN(File);
   if (!FileOrErr)
     report_fatal_error(llvm::StringRef("opening OpenCL BiF file failed: " +
-                       FileOrErr.getError().message()));
+                                       FileOrErr.getError().message()));
   return std::move(FileOrErr.get());
 }
 
@@ -226,7 +229,8 @@ GenXBackendData::GenXBackendData(InitFromLLMVOpts) {
                        readBiFModuleFromFile(VCBuiltinsBiFPath));
   setOwningBiFModuleIf(BiFKind::VCSPIRVBuiltins,
                        readBiFModuleFromFile(VCSPIRVBuiltinsBiFPath));
-  setOwningBiFModuleIf(BiFKind::VCPrintf, readBiFModuleFromFile(VCPrintfBiFPath));
+  setOwningBiFModuleIf(BiFKind::VCPrintf,
+                       readBiFModuleFromFile(VCPrintfBiFPath));
 }
 
 void GenXBackendData::setOwningBiFModule(

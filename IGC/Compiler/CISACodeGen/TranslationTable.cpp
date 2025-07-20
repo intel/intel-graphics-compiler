@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
 
-
 using namespace IGC;
 using namespace llvm;
 
@@ -27,52 +26,43 @@ char TranslationTable::ID = 0;
 IGC_INITIALIZE_PASS_BEGIN(TranslationTable, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_END(TranslationTable, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-namespace IGC
-{
+namespace IGC {
 
-    TranslationTable::TranslationTable() : FunctionPass(ID)
-    {
-        initializeTranslationTablePass(*PassRegistry::getPassRegistry());
-    }
+TranslationTable::TranslationTable() : FunctionPass(ID) {
+  initializeTranslationTablePass(*PassRegistry::getPassRegistry());
+}
 
-    bool TranslationTable::runOnFunction(Function& F)
-    {
-        (void)run(F);
-        return false;
-    }
+bool TranslationTable::runOnFunction(Function &F) {
+  (void)run(F);
+  return false;
+}
 
-    bool TranslationTable::run(Function& F)
-    {
-        unsigned int counter = 0;
+bool TranslationTable::run(Function &F) {
+  unsigned int counter = 0;
 
-        //initialize all arguments
-        for (llvm::Function::arg_iterator funcArg = F.arg_begin(), funcArge = F.arg_end();
-            funcArg != funcArge; ++funcArg)
-        {
-            counter++;
-        }
+  // initialize all arguments
+  for (llvm::Function::arg_iterator funcArg = F.arg_begin(), funcArge = F.arg_end(); funcArg != funcArge; ++funcArg) {
+    counter++;
+  }
 
-        inst_iterator it = inst_begin(F);
-        inst_iterator  e = inst_end(F);
-        for (; it != e; ++it)
-        {
-            counter++;
-        }
+  inst_iterator it = inst_begin(F);
+  inst_iterator e = inst_end(F);
+  for (; it != e; ++it) {
+    counter++;
+  }
 
-        m_NumIDS = counter;
+  m_NumIDS = counter;
 
-        return true;
-    }
+  return true;
+}
 
-    void TranslationTable::RegisterNewValueAndAssignID(Value* val)
-    {
-        m_NumIDS++;
+void TranslationTable::RegisterNewValueAndAssignID(Value *val) {
+  m_NumIDS++;
 
-        auto cvi = m_ValueMaps.begin();
-        auto cve = m_ValueMaps.end();
-        for (; cvi != cve; ++cvi)
-        {
-            (*cvi)->Update();
-        }
-    }
-} //namespace IGC
+  auto cvi = m_ValueMaps.begin();
+  auto cve = m_ValueMaps.end();
+  for (; cvi != cve; ++cvi) {
+    (*cvi)->Update();
+  }
+}
+} // namespace IGC

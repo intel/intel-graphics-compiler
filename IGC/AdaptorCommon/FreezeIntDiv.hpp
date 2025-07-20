@@ -17,6 +17,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
-    llvm::FunctionPass* createFreezeIntDivPass();
-    void initializeFreezeIntDivPass(llvm::PassRegistry&);
-}
+llvm::FunctionPass *createFreezeIntDivPass();
+void initializeFreezeIntDivPass(llvm::PassRegistry &);
+} // namespace IGC

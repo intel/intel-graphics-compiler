@@ -16,37 +16,28 @@ SPDX-License-Identifier: MIT
 #include "common/debug/DebugMacros.hpp"
 #include <string>
 
-namespace llvm
-{
-    class AssemblyAnnotationWriter;
-    class Value;
-}
+namespace llvm {
+class AssemblyAnnotationWriter;
+class Value;
+} // namespace llvm
 
+namespace IGC {
+namespace Debug {
+void Banner(llvm::raw_ostream &OS, std::string const &message);
 
-namespace IGC
-{
-    namespace Debug
-    {
-        void Banner(llvm::raw_ostream & OS, std::string const& message);
+/// Stream that writes to both std::cout and OutputDebugString
+llvm::raw_ostream &ods();
 
-        /// Stream that writes to both std::cout and OutputDebugString
-        llvm::raw_ostream& ods();
+void Warning(const char *pExpr, unsigned int line, const char *pFileName, std::string const &message);
 
-        void Warning(
-            const char*           pExpr,
-            unsigned int          line,
-            const char*           pFileName,
-            std::string    const& message );
+void RegisterErrHandlers();
+void ReleaseErrHandlers();
 
-        void RegisterErrHandlers();
-        void ReleaseErrHandlers();
+void RegisterComputeErrHandlers(llvm::LLVMContext &C);
 
-        void RegisterComputeErrHandlers(llvm::LLVMContext &C);
+extern void DumpLock();
+extern void DumpUnlock();
+} // namespace Debug
 
-        extern void DumpLock();
-        extern void DumpUnlock();
-    }
-
-    int getPointerSize(llvm::Module &M);
-}
-
+int getPointerSize(llvm::Module &M);
+} // namespace IGC

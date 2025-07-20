@@ -16,27 +16,19 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
-namespace IGC
-{
-    /// @brief  Disables loop unroll for each loop by setting llvm.loop.unroll.disable
-    class DisableLoopUnrollOnRetry : public LoopPass
-    {
-    public:
-        static char ID;
+namespace IGC {
+/// @brief  Disables loop unroll for each loop by setting llvm.loop.unroll.disable
+class DisableLoopUnrollOnRetry : public LoopPass {
+public:
+  static char ID;
 
-        DisableLoopUnrollOnRetry();
+  DisableLoopUnrollOnRetry();
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
-        {
-            AU.setPreservesCFG();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const { AU.setPreservesCFG(); }
 
-        virtual StringRef getPassName() const
-        {
-            return "DisableLoopUnrollOnRetry";
-        }
+  virtual StringRef getPassName() const { return "DisableLoopUnrollOnRetry"; }
 
-        virtual bool runOnLoop(Loop* L, LPPassManager& LPM);
-    };
+  virtual bool runOnLoop(Loop *L, LPPassManager &LPM);
+};
 
 } // namespace IGC

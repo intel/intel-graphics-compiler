@@ -17,7 +17,7 @@ namespace {
 template <bool IsSigned, int N>
 CM_NODEBUG CM_INLINE vector<uint64_t, N> __impl_fptoi(vector<double, N> a) {
   // vector of floats -> vector of ints
-  vector<uint32_t, 2 *N> LoHi = a.template format<uint32_t>();
+  vector<uint32_t, 2 * N> LoHi = a.template format<uint32_t>();
   const vector<uint32_t, N> MantissaMask((1u << 20) - 1);
   const vector<uint32_t, N> ExpMask(0x7ff);
   const vector<uint32_t, N> Zero(0);
@@ -45,7 +45,7 @@ CM_NODEBUG CM_INLINE vector<uint64_t, N> __impl_fptoi(vector<double, N> a) {
   auto IsShiftGT64 = (MantShift >= vector<int32_t, N>(64)) |
                      (MantShift <= vector<int32_t, N>(-64));
   Shifted64.merge(vector<uint64_t, N>(0), IsShiftGT64);
-  vector<uint32_t, 2 *N> Shifted = Shifted64.template format<uint32_t>();
+  vector<uint32_t, 2 * N> Shifted = Shifted64.template format<uint32_t>();
   vector<uint32_t, N> LoRes = Shifted.template select<N, 2>(0);
   vector<uint32_t, N> HiRes = Shifted.template select<N, 2>(1);
 

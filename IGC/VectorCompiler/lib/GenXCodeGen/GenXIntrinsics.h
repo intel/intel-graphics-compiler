@@ -67,119 +67,134 @@ public:
     OPNDMASK = ~(CATMASK | FLAGMASK),
 
     // A field that does not contain an operand number or literal value:
-    IMPLICITPRED =          GENX_ITR_CATVAL(0x01), // implicit predication field
-    NULLRAW =               GENX_ITR_CATVAL(0x02), // null raw operand
-    ISBARRIER =             GENX_ITR_CATVAL(0x03), // intrinsic is barrier: suppress nobarrier attribute
+    IMPLICITPRED = GENX_ITR_CATVAL(0x01), // implicit predication field
+    NULLRAW = GENX_ITR_CATVAL(0x02),      // null raw operand
+    ISBARRIER = GENX_ITR_CATVAL(
+        0x03), // intrinsic is barrier: suppress nobarrier attribute
 
-    EXECSIZE =              GENX_ITR_CATVAL(0x04), // execution size
-    EXECSIZE_GE2 =          GENX_ITR_CATVAL(0x05), // execution size (must be >= 2)
-    EXECSIZE_GE4 =          GENX_ITR_CATVAL(0x06), // execution size (must be >= 4)
-    EXECSIZE_GE8 =          GENX_ITR_CATVAL(0x07), // execution size (must be >= 8)
-    EXECSIZE_NOT2 =         GENX_ITR_CATVAL(0x08), // execution size (cannot be 2)
+    EXECSIZE = GENX_ITR_CATVAL(0x04),      // execution size
+    EXECSIZE_GE2 = GENX_ITR_CATVAL(0x05),  // execution size (must be >= 2)
+    EXECSIZE_GE4 = GENX_ITR_CATVAL(0x06),  // execution size (must be >= 4)
+    EXECSIZE_GE8 = GENX_ITR_CATVAL(0x07),  // execution size (must be >= 8)
+    EXECSIZE_NOT2 = GENX_ITR_CATVAL(0x08), // execution size (cannot be 2)
 
-    ELEMENTWISE =           GENX_ITR_CATVAL(0x09), // intrinsic has element-wise semantics
+    ELEMENTWISE = GENX_ITR_CATVAL(0x09), // intrinsic has element-wise semantics
 
     // A field that contains a literal value the operand field
-    LITERAL =               GENX_ITR_CATVAL(0x0a), // literal byte (usually opcode)
-    LITMASK =               ~CATMASK,
+    LITERAL = GENX_ITR_CATVAL(0x0a), // literal byte (usually opcode)
+    LITMASK = ~CATMASK,
 
     // A field that contains an operand number, other than general:
-    FIRST_OPERAND =         GENX_ITR_CATVAL(0x10),
-    LOG2OWORDS =            GENX_ITR_CATVAL(0x10), // log2 number of owords
-    NUMGRFS =               GENX_ITR_CATVAL(0x11), // rounded up number of GRFs
-    EXECSIZE_FROM_ARG =     GENX_ITR_CATVAL(0x12), // exec_size field inferred from width of
-                                                   // predication arg
-    SVMGATHERBLOCKSIZE =    GENX_ITR_CATVAL(0x13), // svm gather block size, inferred from data type
-    LOG2OWORDS_PLUS_8 =     GENX_ITR_CATVAL(0x14), // log2 number of owords, plus 8
-    GATHERNUMELTS =         GENX_ITR_CATVAL(0x15), // gather/scatter "num elements" field
-    TRANSPOSEHEIGHT =       GENX_ITR_CATVAL(0x16), // block_height field in transpose
-    LOG2ELTSIZE =           GENX_ITR_CATVAL(0x17), // log2 element size in gather/scatter
-    ARGCOUNT =              GENX_ITR_CATVAL(0x18), // Byte containing number of non-undef operands
-    EXECSIZE_FROM_BYTE =    GENX_ITR_CATVAL(0x19), // exec_size specified in byte
-      ARGCOUNTMASK =        GENX_ITR_FLAGMASK(0, 3), // Space for minumum argument count
-      ARGCOUNTMIN1 =        GENX_ITR_FLAGENUM(0, 1), // Must have at least one argument
-    BITWIDTH =              GENX_ITR_CATVAL(0x1a), // bit width of svm atomic instructions
-    EXECSIZE_NOMASK =       GENX_ITR_CATVAL(0x1b), // execution size with NoMask
-    DATASIZE =              GENX_ITR_CATVAL(0x1c), // deduce LSC data size from element type
+    FIRST_OPERAND = GENX_ITR_CATVAL(0x10),
+    LOG2OWORDS = GENX_ITR_CATVAL(0x10),        // log2 number of owords
+    NUMGRFS = GENX_ITR_CATVAL(0x11),           // rounded up number of GRFs
+    EXECSIZE_FROM_ARG = GENX_ITR_CATVAL(0x12), // exec_size field inferred from
+                                               // width of predication arg
+    SVMGATHERBLOCKSIZE =
+        GENX_ITR_CATVAL(0x13), // svm gather block size, inferred from data type
+    LOG2OWORDS_PLUS_8 = GENX_ITR_CATVAL(0x14), // log2 number of owords, plus 8
+    GATHERNUMELTS =
+        GENX_ITR_CATVAL(0x15), // gather/scatter "num elements" field
+    TRANSPOSEHEIGHT = GENX_ITR_CATVAL(0x16), // block_height field in transpose
+    LOG2ELTSIZE = GENX_ITR_CATVAL(0x17), // log2 element size in gather/scatter
+    ARGCOUNT =
+        GENX_ITR_CATVAL(0x18), // Byte containing number of non-undef operands
+    EXECSIZE_FROM_BYTE = GENX_ITR_CATVAL(0x19), // exec_size specified in byte
+    ARGCOUNTMASK = GENX_ITR_FLAGMASK(0, 3), // Space for minumum argument count
+    ARGCOUNTMIN1 = GENX_ITR_FLAGENUM(0, 1), // Must have at least one argument
+    BITWIDTH = GENX_ITR_CATVAL(0x1a), // bit width of svm atomic instructions
+    EXECSIZE_NOMASK = GENX_ITR_CATVAL(0x1b), // execution size with NoMask
+    DATASIZE = GENX_ITR_CATVAL(0x1c), // deduce LSC data size from element type
 
     // A field that contains an operand number, other than general, and it
     // is the "real" use of the operand, rather than an auxiliary use
     // such as a "number of GRFs" field relating to this operand.
-    FIRST_REAL_OPERAND =    GENX_ITR_CATVAL(0x20),
-    BYTE =                  GENX_ITR_CATVAL(0x20), // constant byte operand
-    SHORT =                 GENX_ITR_CATVAL(0x21), // constant short operand
-    INT =                   GENX_ITR_CATVAL(0x22), // constant int operand
-    ADDRESS =               GENX_ITR_CATVAL(0x23), // address operand
-    PREDICATE =             GENX_ITR_CATVAL(0x24), // predicate operand
-      PREDICATE_ZEROED =    GENX_ITR_FLAGVAL(0),
+    FIRST_REAL_OPERAND = GENX_ITR_CATVAL(0x20),
+    BYTE = GENX_ITR_CATVAL(0x20),      // constant byte operand
+    SHORT = GENX_ITR_CATVAL(0x21),     // constant short operand
+    INT = GENX_ITR_CATVAL(0x22),       // constant int operand
+    ADDRESS = GENX_ITR_CATVAL(0x23),   // address operand
+    PREDICATE = GENX_ITR_CATVAL(0x24), // predicate operand
+    PREDICATE_ZEROED = GENX_ITR_FLAGVAL(0),
     Z_PREDICATE = PREDICATE | PREDICATE_ZEROED,
-    SAMPLER =               GENX_ITR_CATVAL(0x25), // sampler operand
-    SURFACE =               GENX_ITR_CATVAL(0x26), // surface operand
+    SAMPLER = GENX_ITR_CATVAL(0x25), // sampler operand
+    SURFACE = GENX_ITR_CATVAL(0x26), // surface operand
     // byte height of media 2D block, inferred from the width operand
     // pointed at and the size of the return type or final operand type
-    MEDIAHEIGHT =           GENX_ITR_CATVAL(0x27),
+    MEDIAHEIGHT = GENX_ITR_CATVAL(0x27),
     // predication control field from explicit predicate arg
-    PREDICATION =           GENX_ITR_CATVAL(0x28),
+    PREDICATION = GENX_ITR_CATVAL(0x28),
     // chmask field in load/sample, with exec size bit
-    SAMPLECHMASK =          GENX_ITR_CATVAL(0x29),
+    SAMPLECHMASK = GENX_ITR_CATVAL(0x29),
     // does not appear in the vISA output, but needs to be two address
     // coalesced with result
-    TWOADDR =               GENX_ITR_CATVAL(0x2a),
-    CONSTVI1ASI32 =         GENX_ITR_CATVAL(0x2b), // constant vXi1 written as i32 (used in setp)
-    RAW =                   GENX_ITR_CATVAL(0x2c), // raw operand or result,
-      // Raw descriptor flags, 3 bits used
-      RAW_UNSIGNED =        GENX_ITR_FLAGVAL(0),   // raw operand/result must be unsigned
-      RAW_SIGNED =          GENX_ITR_FLAGVAL(1),   // raw operand/result must be signed
-      RAW_NULLALLOWED =     GENX_ITR_FLAGVAL(2),   // raw operand or result can be null (V0)
-    URAW =                  RAW | RAW_UNSIGNED,
-    SRAW =                  RAW | RAW_SIGNED,
-    CACHEOPTS =             GENX_ITR_CATVAL(0x2d),
+    TWOADDR = GENX_ITR_CATVAL(0x2a),
+    CONSTVI1ASI32 =
+        GENX_ITR_CATVAL(0x2b),   // constant vXi1 written as i32 (used in setp)
+    RAW = GENX_ITR_CATVAL(0x2c), // raw operand or result,
+    // Raw descriptor flags, 3 bits used
+    RAW_UNSIGNED = GENX_ITR_FLAGVAL(0), // raw operand/result must be unsigned
+    RAW_SIGNED = GENX_ITR_FLAGVAL(1),   // raw operand/result must be signed
+    RAW_NULLALLOWED =
+        GENX_ITR_FLAGVAL(2), // raw operand or result can be null (V0)
+    URAW = RAW | RAW_UNSIGNED,
+    SRAW = RAW | RAW_SIGNED,
+    CACHEOPTS = GENX_ITR_CATVAL(0x2d),
 
     // A general operand
-    GENERAL =               GENX_ITR_CATVAL(0x2e),
+    GENERAL = GENX_ITR_CATVAL(0x2e),
     // A general operand with compile-time signedness choosing
-    GENERAL_CTSIGN =        GENERAL,
+    GENERAL_CTSIGN = GENERAL,
     // A predefined surface operand
-    PREDEF_SURFACE =        GENX_ITR_CATVAL(0x2f),
+    PREDEF_SURFACE = GENX_ITR_CATVAL(0x2f),
     // A predefined sampler operand
-    PREDEF_SAMPLER =        GENX_ITR_CATVAL(0x30),
+    PREDEF_SAMPLER = GENX_ITR_CATVAL(0x30),
 
     // Modifiers for destination or source, 7 bits used
-    UNSIGNED =              GENX_ITR_FLAGVAL(0), // int type forced to unsigned
-    SIGNED =                GENX_ITR_FLAGVAL(1), // int type forced to signed
-    ALIGNMENT =             GENX_ITR_FLAGMASK(2, 2),
-      UNALIGNED =           GENX_ITR_FLAGENUM(2, 0), // no alignment requirements (default)
-      QWALIGNED =           GENX_ITR_FLAGENUM(2, 1), // must be qword aligned
-      OWALIGNED =           GENX_ITR_FLAGENUM(2, 2), // must be oword aligned
-      GRFALIGNED =          GENX_ITR_FLAGENUM(2, 3), // must be grf aligned
-    RESTRICTION =           GENX_ITR_FLAGMASK(4, 3), // field with operand width restriction
-      FIXED4 =              GENX_ITR_FLAGENUM(4, 1), // operand is fixed size 4 vector and contiguous
-      CONTIGUOUS =          GENX_ITR_FLAGENUM(4, 2), // operand must be contiguous
-      SCALARORCONTIGUOUS =  GENX_ITR_FLAGENUM(4, 3), // operand must be stride 0 or contiguous
-      TWICEWIDTH =          GENX_ITR_FLAGENUM(4, 4), // operand is twice the execution width
-      STRIDE1 =             GENX_ITR_FLAGENUM(4, 5), // horizontal stride must be 1
-      ONLY_LEGAL_REGION =   GENX_ITR_FLAGENUM(4, 6), // instruction can be baled with only legal
-                                                     // region that won`t be splitted
+    UNSIGNED = GENX_ITR_FLAGVAL(0), // int type forced to unsigned
+    SIGNED = GENX_ITR_FLAGVAL(1),   // int type forced to signed
+    ALIGNMENT = GENX_ITR_FLAGMASK(2, 2),
+    UNALIGNED = GENX_ITR_FLAGENUM(2, 0),  // no alignment requirements (default)
+    QWALIGNED = GENX_ITR_FLAGENUM(2, 1),  // must be qword aligned
+    OWALIGNED = GENX_ITR_FLAGENUM(2, 2),  // must be oword aligned
+    GRFALIGNED = GENX_ITR_FLAGENUM(2, 3), // must be grf aligned
+    RESTRICTION =
+        GENX_ITR_FLAGMASK(4, 3), // field with operand width restriction
+    FIXED4 = GENX_ITR_FLAGENUM(
+        4, 1), // operand is fixed size 4 vector and contiguous
+    CONTIGUOUS = GENX_ITR_FLAGENUM(4, 2), // operand must be contiguous
+    SCALARORCONTIGUOUS =
+        GENX_ITR_FLAGENUM(4, 3), // operand must be stride 0 or contiguous
+    TWICEWIDTH =
+        GENX_ITR_FLAGENUM(4, 4),       // operand is twice the execution width
+    STRIDE1 = GENX_ITR_FLAGENUM(4, 5), // horizontal stride must be 1
+    ONLY_LEGAL_REGION =
+        GENX_ITR_FLAGENUM(4, 6), // instruction can be baled with only legal
+                                 // region that won`t be splitted
     // Modifiers for destination only, 2 bits used
-    SATURATION =            GENX_ITR_FLAGMASK(7, 2),
-    SATURATION_DEFAULT =    GENX_ITR_FLAGENUM(7, 0), // saturation default: not saturated, fp is
-                                                     //  allowed to bale in to saturate inst
-    SATURATION_SATURATE =   GENX_ITR_FLAGENUM(7, 1), // saturated
-    SATURATION_NOSAT =      GENX_ITR_FLAGENUM(7, 2), // fp not allowed to bale in to saturate inst
-    SATURATION_INTALLOWED = GENX_ITR_FLAGENUM(7, 3), // int is allowed to bale in to saturate,
-                                   // because inst cannot overflow so
-                                   // saturation only required on destination
-                                   // truncation
+    SATURATION = GENX_ITR_FLAGMASK(7, 2),
+    SATURATION_DEFAULT =
+        GENX_ITR_FLAGENUM(7, 0), // saturation default: not saturated, fp is
+                                 //  allowed to bale in to saturate inst
+    SATURATION_SATURATE = GENX_ITR_FLAGENUM(7, 1), // saturated
+    SATURATION_NOSAT =
+        GENX_ITR_FLAGENUM(7, 2), // fp not allowed to bale in to saturate inst
+    SATURATION_INTALLOWED =
+        GENX_ITR_FLAGENUM(7, 3), // int is allowed to bale in to saturate,
+                                 // because inst cannot overflow so
+                                 // saturation only required on destination
+                                 // truncation
     // Modifiers for source only, 4 bits used
-    NOIMM =                 GENX_ITR_FLAGVAL(7), // source not allowed to be immediate
-    MODIFIER =              GENX_ITR_FLAGMASK(8, 2),
-    MODIFIER_DEFAULT =      GENX_ITR_FLAGENUM(8, 0), // src modifier default: none
-    MODIFIER_ARITH =        GENX_ITR_FLAGENUM(8, 1), // src modifier: arithmetic
-    MODIFIER_LOGIC =        GENX_ITR_FLAGENUM(8, 2), // src modifier: logic
-    MODIFIER_EXTONLY =      GENX_ITR_FLAGENUM(8, 3), // src modifier: extend only
-    DIRECTONLY =            GENX_ITR_FLAGVAL(10), // indirect region not allowed
-    IMM16ONLY =             GENX_ITR_FLAGVAL(11), // source allowed to be only 16 bit immediate
-    NULLALLOWED =           GENX_ITR_FLAGVAL(12), // source allowed to be null register
+    NOIMM = GENX_ITR_FLAGVAL(7), // source not allowed to be immediate
+    MODIFIER = GENX_ITR_FLAGMASK(8, 2),
+    MODIFIER_DEFAULT = GENX_ITR_FLAGENUM(8, 0), // src modifier default: none
+    MODIFIER_ARITH = GENX_ITR_FLAGENUM(8, 1),   // src modifier: arithmetic
+    MODIFIER_LOGIC = GENX_ITR_FLAGENUM(8, 2),   // src modifier: logic
+    MODIFIER_EXTONLY = GENX_ITR_FLAGENUM(8, 3), // src modifier: extend only
+    DIRECTONLY = GENX_ITR_FLAGVAL(10),          // indirect region not allowed
+    IMM16ONLY =
+        GENX_ITR_FLAGVAL(11), // source allowed to be only 16 bit immediate
+    NULLALLOWED = GENX_ITR_FLAGVAL(12), // source allowed to be null register
 
   };
   struct ArgInfo {
@@ -246,7 +261,8 @@ public:
     }
     // isArgOrRet : test whether this field has an arg index
     bool isArgOrRet() const {
-      if (isGeneral()) return true;
+      if (isGeneral())
+        return true;
       if ((Info & CATMASK) >= FIRST_OPERAND)
         return true;
       return false;
@@ -254,7 +270,8 @@ public:
     // isRealArgOrRet : test whether this field has an arg index, and is
     // a "real" use of the arg
     bool isRealArgOrRet() const {
-      if (isGeneral()) return true;
+      if (isGeneral())
+        return true;
       if ((Info & CATMASK) >= FIRST_REAL_OPERAND)
         return true;
       return false;
@@ -291,12 +308,13 @@ public:
       if (isRaw())
         return true;
       switch (Info & CATMASK) {
-        case TWOADDR:
-        case PREDICATION:
-        case SURFACE:
-        case SAMPLER:
-          return true;
-        default: break;
+      case TWOADDR:
+      case PREDICATION:
+      case SURFACE:
+      case SAMPLER:
+        return true;
+      default:
+        break;
       }
       return false;
     }

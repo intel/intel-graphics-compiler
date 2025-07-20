@@ -9,15 +9,11 @@ SPDX-License-Identifier: MIT
 #pragma once
 #include "patch_shared.h"
 
-namespace iOpenCL
-{
+namespace iOpenCL {
 
 /*****************************************************************************\
 STRUCT: SKernelBinaryHeaderGen10
 \*****************************************************************************/
-struct SKernelBinaryHeaderGen10 :
-       SKernelBinaryHeaderCommon
-{
-};
+struct SKernelBinaryHeaderGen10 : SKernelBinaryHeaderCommon {};
 
-} // namespace
+} // namespace iOpenCL

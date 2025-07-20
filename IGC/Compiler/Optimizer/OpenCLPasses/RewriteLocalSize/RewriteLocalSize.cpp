@@ -43,22 +43,20 @@ IGC_INITIALIZE_PASS_END(RewriteLocalSize, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_
 
 char RewriteLocalSize::ID = 0;
 
-RewriteLocalSize::RewriteLocalSize() : ModulePass(ID)
-{
-    initializeRewriteLocalSizePass(*PassRegistry::getPassRegistry());
+RewriteLocalSize::RewriteLocalSize() : ModulePass(ID) {
+  initializeRewriteLocalSizePass(*PassRegistry::getPassRegistry());
 }
 
-bool RewriteLocalSize::runOnModule(Module& M)
-{
-    Function* LS = M.getFunction(WIFuncsAnalysis::GET_LOCAL_SIZE);
-    if (!LS)
-        return false;
+bool RewriteLocalSize::runOnModule(Module &M) {
+  Function *LS = M.getFunction(WIFuncsAnalysis::GET_LOCAL_SIZE);
+  if (!LS)
+    return false;
 
-    Function* ELS = M.getFunction(WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE);
-    if (!ELS)
-        LS->setName(WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE);
-    else
-        LS->replaceAllUsesWith(ELS);
+  Function *ELS = M.getFunction(WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE);
+  if (!ELS)
+    LS->setName(WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE);
+  else
+    LS->replaceAllUsesWith(ELS);
 
-    return true;
+  return true;
 }

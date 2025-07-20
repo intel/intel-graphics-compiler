@@ -25,12 +25,10 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Hoist conversion operations to dominator"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(HoistConvOpToDom, PASS_FLAG, PASS_DESCRIPTION,
-                          PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(HoistConvOpToDom, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-IGC_INITIALIZE_PASS_END(HoistConvOpToDom, PASS_FLAG, PASS_DESCRIPTION,
-                        PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(HoistConvOpToDom, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 namespace IGC {
 char HoistConvOpToDom::ID = 0;
@@ -39,8 +37,7 @@ HoistConvOpToDom::HoistConvOpToDom() : FunctionPass(ID) {
   initializeHoistConvOpToDomPass(*PassRegistry::getPassRegistry());
 }
 
-BasicBlock *
-HoistConvOpToDom::findNearestCommonDominator(const PHINode &PHI) const {
+BasicBlock *HoistConvOpToDom::findNearestCommonDominator(const PHINode &PHI) const {
   BasicBlock *CommonDominator = nullptr;
   for (unsigned i = 0; i < PHI.getNumIncomingValues(); ++i) {
     BasicBlock *IncomingBB = PHI.getIncomingBlock(i);
@@ -48,8 +45,7 @@ HoistConvOpToDom::findNearestCommonDominator(const PHINode &PHI) const {
       CommonDominator = IncomingBB;
       continue;
     }
-    CommonDominator =
-        m_DT->findNearestCommonDominator(CommonDominator, IncomingBB);
+    CommonDominator = m_DT->findNearestCommonDominator(CommonDominator, IncomingBB);
   }
   return CommonDominator;
 }
@@ -65,8 +61,7 @@ bool HoistConvOpToDom::runOnFunction(Function &F) {
       CastInst *FirstCast = dyn_cast<CastInst>(FirstIncoming);
       if (!FirstCast)
         continue;
-      LLVM_DEBUG(dbgs() << "HoistConvOpToDom: Found PHI with cast: "
-                        << *FirstCast << "\n");
+      LLVM_DEBUG(dbgs() << "HoistConvOpToDom: Found PHI with cast: " << *FirstCast << "\n");
 
       SmallPtrSet<Instruction *, 4> ToUpdate;
       bool AllSame = true;
@@ -96,8 +91,7 @@ bool HoistConvOpToDom::runOnFunction(Function &F) {
       FirstCast->moveBefore(CommonDominator->getTerminator());
 
       for (auto *I : ToUpdate) {
-        LLVM_DEBUG(dbgs() << "HoistConvOpToDom: Replacing " << *I << " with "
-                          << *FirstCast << "\n");
+        LLVM_DEBUG(dbgs() << "HoistConvOpToDom: Replacing " << *I << " with " << *FirstCast << "\n");
         I->replaceAllUsesWith(FirstCast);
         I->eraseFromParent();
       }

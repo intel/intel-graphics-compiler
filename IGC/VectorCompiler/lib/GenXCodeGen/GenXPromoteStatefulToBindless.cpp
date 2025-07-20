@@ -24,8 +24,10 @@ SPDX-License-Identifier: MIT
 ///
 /// This is transformed to the following IR:
 ///
-///   call void @llvm.genx.write.predef.surface.p0i32(i32* @llvm.genx.predefined.bss, i32 %buf)
-///   call void @llvm.genx.oword.st.predef.surface.p0i32.v8i32(i32* @llvm.genx.predefined.bss, i32 %addr, <8 x i32> %src)
+///   call void @llvm.genx.write.predef.surface.p0i32(i32*
+///   @llvm.genx.predefined.bss, i32 %buf) call void
+///   @llvm.genx.oword.st.predef.surface.p0i32.v8i32(i32*
+///   @llvm.genx.predefined.bss, i32 %addr, <8 x i32> %src)
 ///
 /// Pass is intended to be as simple as possible to utilize benefits from
 /// previous passes like lowering and legalization. This is sort of
@@ -426,8 +428,8 @@ static void createSurfaceStateOffsetWrite(Value &SSO, IRBuilder<> &IRB,
 static void createSamplerStateOffsetWrite(Value &SSO, IRBuilder<> &IRB,
                                           Module &M, GlobalVariable &BSS) {
   Type *Tys[] = {BSS.getType()};
-  auto *Decl =
-      vc::getAnyDeclaration(&M, vc::InternalIntrinsic::write_predef_sampler, Tys);
+  auto *Decl = vc::getAnyDeclaration(
+      &M, vc::InternalIntrinsic::write_predef_sampler, Tys);
   Value *Args[] = {&BSS, &SSO};
   IRB.CreateCall(Decl->getFunctionType(), Decl, Args);
 }

@@ -11,18 +11,18 @@ SPDX-License-Identifier: MIT
 // === Bitfield accessors
 // === --------------------------------------------------------------------===
 ushort __getBits16(ushort value, uint startBit, uint width);
-uint __getBits32(uint value, uint startBit, uint width);
-ulong __getBits64(ulong value, uint startBit, uint width);
-short __getSignExtendedBits16(ushort value, uint startBit, uint width);
-int __getSignExtendedBits32(uint value, uint startBit, uint width);
-long __getSignExtendedBits64(ulong value, uint startBit, uint width);
+uint   __getBits32(uint value, uint startBit, uint width);
+ulong  __getBits64(ulong value, uint startBit, uint width);
+short  __getSignExtendedBits16(ushort value, uint startBit, uint width);
+int    __getSignExtendedBits32(uint value, uint startBit, uint width);
+long   __getSignExtendedBits64(ulong value, uint startBit, uint width);
 
 // === --------------------------------------------------------------------===
 // === Bitfield setters
 // === --------------------------------------------------------------------===
 ushort __setBits16(ushort value, ushort slot, uint startBit, uint width);
-uint __setBits32(uint value, uint slot, uint startBit, uint width);
-ulong __setBits64(ulong value, ulong slot, uint startBit, uint width);
+uint   __setBits32(uint value, uint slot, uint startBit, uint width);
+ulong  __setBits64(ulong value, ulong slot, uint startBit, uint width);
 
 // === --------------------------------------------------------------------===
 // === Helper functions

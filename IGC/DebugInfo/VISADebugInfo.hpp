@@ -68,17 +68,11 @@ public:
 
   const CisaIndexLUT &getCISAIndexLUT() const { return CO.CISAIndexMap; }
 
-  const VisaToGenMapping &getVisaToGenLUT() const {
-    return VISAIndexToAllGenISAOff;
-  }
+  const VisaToGenMapping &getVisaToGenLUT() const { return VISAIndexToAllGenISAOff; }
 
-  const GenIsaToSizeMapping &getGenToSizeInBytesLUT() const {
-    return GenISAInstSizeBytes;
-  }
+  const GenIsaToSizeMapping &getGenToSizeInBytesLUT() const { return GenISAInstSizeBytes; }
 
-  const GenToVisaIndexes &getGenToVisaIndexLUT() const {
-    return GenISAToVISAIndex;
-  }
+  const GenToVisaIndexes &getGenToVisaIndexLUT() const { return GenISAToVISAIndex; }
 
   void dump() const;
   void print(llvm::raw_ostream &OS) const;
@@ -89,8 +83,7 @@ class VISADebugInfo {
   const IGC::DbgDecoder DecodedDebugStorage;
 
   using CompiledObjectDI = IGC::DbgDecoder::DbgInfoFormat;
-  using DebugInfoHolders =
-      std::unordered_map<const CompiledObjectDI *, VISAObjectDebugInfo>;
+  using DebugInfoHolders = std::unordered_map<const CompiledObjectDI *, VISAObjectDebugInfo>;
   DebugInfoHolders DebugInfoMap;
 
 public:
@@ -99,15 +92,12 @@ public:
 
   // get's the underlying IGC::DbgDecoder object
   // TODO: remove, for now we need it for backwards compatibility.
-  const IGC::DbgDecoder &getRawDecodedData() const {
-    return DecodedDebugStorage;
-  }
+  const IGC::DbgDecoder &getRawDecodedData() const { return DecodedDebugStorage; }
 
   // gets Visa Object Debug Info that corresponds to a particular named
   // entity - that is a kernel/stack-called function or a subroutine
   const VISAObjectDebugInfo &getVisaObjectDI(const VISAModule &VM) const;
-  const VISAObjectDebugInfo &
-  getVisaObjectByCompliledObjectName(llvm::StringRef CompiledObjectName) const;
+  const VISAObjectDebugInfo &getVisaObjectByCompliledObjectName(llvm::StringRef CompiledObjectName) const;
 
   void dump() const;
   void print(llvm::raw_ostream &OS) const;

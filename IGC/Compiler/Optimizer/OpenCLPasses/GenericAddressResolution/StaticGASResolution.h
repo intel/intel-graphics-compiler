@@ -14,30 +14,21 @@ using namespace IGC;
 
 namespace IGC {
 
-    llvm::FunctionPass* createStaticGASResolution();
+llvm::FunctionPass *createStaticGASResolution();
 
-    class StaticGASResolution : public FunctionPass
-    {
-    public:
-        static char ID;
+class StaticGASResolution : public FunctionPass {
+public:
+  static char ID;
 
-        StaticGASResolution() : FunctionPass(ID)
-        {
-            initializeStaticGASResolutionPass(*PassRegistry::getPassRegistry());
-        }
+  StaticGASResolution() : FunctionPass(ID) { initializeStaticGASResolutionPass(*PassRegistry::getPassRegistry()); }
 
-        bool runOnFunction(Function&) override;
+  bool runOnFunction(Function &) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<CastToGASAnalysis>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CastToGASAnalysis>(); }
 
-        virtual StringRef getPassName() const override
-        {
-            return "StaticGASResolution";
-        }
-    private:
-        GASInfo* m_GI = nullptr;
-    };
+  virtual StringRef getPassName() const override { return "StaticGASResolution"; }
+
+private:
+  GASInfo *m_GI = nullptr;
+};
 } // End namespace IGC

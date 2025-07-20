@@ -16,64 +16,64 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-    namespace Legalizer {
+namespace Legalizer {
 
-        class InstExpander : public InstVisitor<InstExpander, bool> {
-            friend class InstVisitor<InstExpander, bool>;
+class InstExpander : public InstVisitor<InstExpander, bool> {
+  friend class InstVisitor<InstExpander, bool>;
 
-            TypeLegalizer* TL;
-            BuilderType* IRB;
+  TypeLegalizer *TL;
+  BuilderType *IRB;
 
-            ValueSeq Expanded;
+  ValueSeq Expanded;
 
-        public:
-            InstExpander(TypeLegalizer* L, BuilderType* B) : TL(L), IRB(B) {}
+public:
+  InstExpander(TypeLegalizer *L, BuilderType *B) : TL(L), IRB(B) {}
 
-            bool expand(Instruction* I);
+  bool expand(Instruction *I);
 
-        private:
-            /// Helpers
-            const char* getSuffix() const { return TL->getSuffix(Expand); }
+private:
+  /// Helpers
+  const char *getSuffix() const { return TL->getSuffix(Expand); }
 
-        private:
-            // By default, capture all missing instructions!
-            bool visitInstruction(Instruction& I);
+private:
+  // By default, capture all missing instructions!
+  bool visitInstruction(Instruction &I);
 
-            /// Terminator instructions
-            ///
+  /// Terminator instructions
+  ///
 
-            bool visitTerminatorInst(IGCLLVM::TerminatorInst& I);
+  bool visitTerminatorInst(IGCLLVM::TerminatorInst &I);
 
-            /// Standard binary operators
-            ///
+  /// Standard binary operators
+  ///
 
-            bool visitAdd(BinaryOperator& I);
-            bool visitSub(BinaryOperator& I);
-            bool visitMul(BinaryOperator& I);
-            bool visitUDiv(BinaryOperator& I);
-            bool visitSDiv(BinaryOperator& I);
-            bool visitURem(BinaryOperator& I);
-            bool visitSRem(BinaryOperator& I);
-            bool visitShl(BinaryOperator& I);
-            bool visitLShr(BinaryOperator& I);
-            bool visitAShr(BinaryOperator& I);
-            bool visitBinaryOperator(BinaryOperator& I);
+  bool visitAdd(BinaryOperator &I);
+  bool visitSub(BinaryOperator &I);
+  bool visitMul(BinaryOperator &I);
+  bool visitUDiv(BinaryOperator &I);
+  bool visitSDiv(BinaryOperator &I);
+  bool visitURem(BinaryOperator &I);
+  bool visitSRem(BinaryOperator &I);
+  bool visitShl(BinaryOperator &I);
+  bool visitLShr(BinaryOperator &I);
+  bool visitAShr(BinaryOperator &I);
+  bool visitBinaryOperator(BinaryOperator &I);
 
-            /// Memory operators
-            ///
+  /// Memory operators
+  ///
 
-            bool visitLoadInst(LoadInst& I);
-            bool visitStoreInst(StoreInst& I);
+  bool visitLoadInst(LoadInst &I);
+  bool visitStoreInst(StoreInst &I);
 
-            /// Cast operators
-            ///
+  /// Cast operators
+  ///
 
-            bool visitTruncInst(TruncInst& I);
-            bool visitZExtInst(ZExtInst& I);
-            bool visitBitCastInst(BitCastInst& I);
-        };
+  bool visitTruncInst(TruncInst &I);
+  bool visitZExtInst(ZExtInst &I);
+  bool visitBitCastInst(BitCastInst &I);
+};
 
-    } // End Legalizer namespace
+} // namespace Legalizer
 
-} // End IGC namespace
+} // namespace IGC
 #endif // LEGALIZER_INSTEXPANDER_H

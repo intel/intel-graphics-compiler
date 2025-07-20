@@ -22,49 +22,41 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class CodeGenContext;
+namespace IGC {
+class CodeGenContext;
 }
 
-namespace IGC
-{
-    class BfloatFuncsResolution : public llvm::FunctionPass, public llvm::InstVisitor<BfloatFuncsResolution>
-    {
-    public:
-        static char ID;
+namespace IGC {
+class BfloatFuncsResolution : public llvm::FunctionPass, public llvm::InstVisitor<BfloatFuncsResolution> {
+public:
+  static char ID;
 
-        BfloatFuncsResolution();
+  BfloatFuncsResolution();
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-          AU.addRequired<CodeGenContextWrapper>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
 
-        virtual bool runOnFunction(llvm::Function& F) override;
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-        void visitCallInst(llvm::CallInst& CI);
+  void visitCallInst(llvm::CallInst &CI);
 
 #if LLVM_VERSION_MAJOR >= 14
-// Below functions use bfloat type. We Leave the visitCallInst function
-// to detect if the builtins were used on unsupported LLVM version.
-    private:
-        void handleCompare(llvm::CallInst &CI, llvm::CmpInst::Predicate Pred);
-        void handleSelect(llvm::CallInst &CI);
-        void handleMinMax(llvm::CallInst &CI, llvm::CmpInst::Predicate Pred);
-        void handleArithmetic(llvm::CallInst &CI, unsigned Opcode, bool isMadInstruction = false);
-        void handleMath(llvm::CallInst &CI, llvm::Intrinsic::ID Operation,
-                        bool needsGenISAIntrinsic = false);
+  // Below functions use bfloat type. We Leave the visitCallInst function
+  // to detect if the builtins were used on unsupported LLVM version.
+private:
+  void handleCompare(llvm::CallInst &CI, llvm::CmpInst::Predicate Pred);
+  void handleSelect(llvm::CallInst &CI);
+  void handleMinMax(llvm::CallInst &CI, llvm::CmpInst::Predicate Pred);
+  void handleArithmetic(llvm::CallInst &CI, unsigned Opcode, bool isMadInstruction = false);
+  void handleMath(llvm::CallInst &CI, llvm::Intrinsic::ID Operation, bool needsGenISAIntrinsic = false);
 
-
-        // Helpers.
-        llvm::Value *bitcastToBfloat(llvm::Value *V);
-        llvm::Type *getTypeBasedOnType(llvm::Type *OrgType,
-                                       llvm::Type *DesiredTypeScalar);
+  // Helpers.
+  llvm::Value *bitcastToBfloat(llvm::Value *V);
+  llvm::Type *getTypeBasedOnType(llvm::Type *OrgType, llvm::Type *DesiredTypeScalar);
 #endif
-        bool m_changed = false;
-        std::vector<llvm::Instruction *> m_instructionsToRemove;
-        llvm::IRBuilder<> *m_builder = nullptr;
-        IGC::CodeGenContext *m_ctx = nullptr;
-    };
+  bool m_changed = false;
+  std::vector<llvm::Instruction *> m_instructionsToRemove;
+  llvm::IRBuilder<> *m_builder = nullptr;
+  IGC::CodeGenContext *m_ctx = nullptr;
+};
 
 } // namespace IGC

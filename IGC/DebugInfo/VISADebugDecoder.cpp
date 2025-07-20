@@ -10,21 +10,18 @@ SPDX-License-Identifier: MIT
 
 #include <llvm/ADT/Twine.h>
 
-template <typename T>
-static void PrintItems(llvm::raw_ostream &OS, const T &Items,
-                       const char *Separator = " ") {
+template <typename T> static void PrintItems(llvm::raw_ostream &OS, const T &Items, const char *Separator = " ") {
   bool First = true;
-  std::for_each(Items.begin(), Items.end(),
-                [&First, &OS, &Separator](const auto &Item) {
-                  if (!First)
-                    OS << Separator;
-                  else
-                    First = false;
+  std::for_each(Items.begin(), Items.end(), [&First, &OS, &Separator](const auto &Item) {
+    if (!First)
+      OS << Separator;
+    else
+      First = false;
 
-                  OS << "(";
-                  Item.print(OS);
-                  OS << ")";
-                });
+    OS << "(";
+    Item.print(OS);
+    OS << ")";
+  });
 }
 
 void IGC::DbgDecoder::Mapping::Register::print(llvm::raw_ostream &OS) const {
@@ -34,8 +31,7 @@ void IGC::DbgDecoder::Mapping::Register::print(llvm::raw_ostream &OS) const {
 void IGC::DbgDecoder::Mapping::Register::dump() const { print(llvm::dbgs()); }
 
 void IGC::DbgDecoder::Mapping::Memory::print(llvm::raw_ostream &OS) const {
-  OS << "MemMap<" << ((isBaseOffBEFP == 1) ? "AbsBase(" : "BE_FP(")
-     << memoryOffset << ")>";
+  OS << "MemMap<" << ((isBaseOffBEFP == 1) ? "AbsBase(" : "BE_FP(") << memoryOffset << ")>";
 }
 
 void IGC::DbgDecoder::Mapping::Memory::dump() const { print(llvm::dbgs()); }
@@ -95,8 +91,7 @@ void IGC::DbgDecoder::LiveIntervalGenISA::print(llvm::raw_ostream &OS) const {
 void IGC::DbgDecoder::LiveIntervalGenISA::dump() const { print(llvm::dbgs()); }
 
 void IGC::DbgDecoder::SubroutineInfo::print(llvm::raw_ostream &OS) const {
-  OS << "[" << startVISAIndex << ";" << endVISAIndex << "] Name=" << name
-     << ", retvals: ";
+  OS << "[" << startVISAIndex << ";" << endVISAIndex << "] Name=" << name << ", retvals: ";
   PrintItems(OS, retval, ", ");
 }
 
@@ -164,9 +159,7 @@ void IGC::DbgDecoder::DbgInfoFormat::print(llvm::raw_ostream &OS) const {
   OS << "  Subroutines (VI-sorted): [\n    ";
   auto SubsCopy = subs;
   std::sort(SubsCopy.begin(), SubsCopy.end(),
-            [](const auto &LSub, const auto &RSub) {
-              return LSub.startVISAIndex < RSub.startVISAIndex;
-            });
+            [](const auto &LSub, const auto &RSub) { return LSub.startVISAIndex < RSub.startVISAIndex; });
   PrintItems(OS, SubsCopy, "\n    ");
   OS << "\n  ]\n";
   OS << "  CFI: {\n";
@@ -180,8 +173,7 @@ void IGC::DbgDecoder::DbgInfoFormat::print(llvm::raw_ostream &OS) const {
   std::for_each(CISAIndexMap.begin(), CISAIndexMap.end(), [&OS](const auto &V) {
     auto VisaIndex = V.first;
     auto GenOff = V.second;
-    OS << "    GI: 0x" << llvm::Twine::utohexstr(GenOff)
-       << " -> VI: " << VisaIndex << "\n";
+    OS << "    GI: 0x" << llvm::Twine::utohexstr(GenOff) << " -> VI: " << VisaIndex << "\n";
   });
   OS << "  }\n";
   OS << "</VISADebugInfo>";

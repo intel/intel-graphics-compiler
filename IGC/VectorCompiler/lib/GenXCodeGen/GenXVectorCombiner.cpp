@@ -205,7 +205,8 @@ bool GenXVectorCombiner::isSuitableRdRegion(Instruction &RdRegionInst) {
 
 // Checks that wrregions are in right order:
 // 1) element in list should be connected with next one
-// 2) RdRegions and WrRegions have the same arguments for offset and width, so do not check them twice
+// 2) RdRegions and WrRegions have the same arguments for offset and width, so
+// do not check them twice
 bool GenXVectorCombiner::checkWrRegions(
     const SmallVectorImpl<InstructionPack> &List) {
   if (!List.front().WrRegion->hasOneUse())
@@ -226,7 +227,7 @@ bool GenXVectorCombiner::checkWrRegions(
 // Checks that rdregions are in right order and "fill" all original vector.
 bool GenXVectorCombiner::checkRdRegions(
     const SmallVectorImpl<InstructionPack> &List) {
-  Value* Original = List.front().RdRegion->getOperand(0);
+  Value *Original = List.front().RdRegion->getOperand(0);
   unsigned OriginalWidth =
       cast<IGCLLVM::FixedVectorType>(Original->getType())->getNumElements();
 
@@ -367,8 +368,9 @@ bool GenXVectorCombiner::processWorkList() {
       Constant *ScalarSecondOperand =
           cast<Constant>(RefAnyInstPack.Operation->getOperand(1))
               ->getSplatValue();
-      unsigned NumericWidth = cast<IGCLLVM::FixedVectorType>(OriginalSrc->getType())
-                      ->getNumElements();
+      unsigned NumericWidth =
+          cast<IGCLLVM::FixedVectorType>(OriginalSrc->getType())
+              ->getNumElements();
       auto Width = IGCLLVM::getElementCount(NumericWidth);
       Constant *WideConstant =
           ConstantVector::getSplat(Width, ScalarSecondOperand);

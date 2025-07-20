@@ -17,44 +17,35 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instruction.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    /// @brief Mark 3d images as 2d image arrays if possible.
-    class Image3dToImage2darray : public llvm::FunctionPass, public llvm::InstVisitor<Image3dToImage2darray>
-    {
-    public:
-        /// @brief  Pass identification.
-        static char ID;
+namespace IGC {
+/// @brief Mark 3d images as 2d image arrays if possible.
+class Image3dToImage2darray : public llvm::FunctionPass, public llvm::InstVisitor<Image3dToImage2darray> {
+public:
+  /// @brief  Pass identification.
+  static char ID;
 
-        Image3dToImage2darray();
+  Image3dToImage2darray();
 
-        ~Image3dToImage2darray() {}
+  ~Image3dToImage2darray() {}
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "Image3dToImage2darray";
-        }
+  virtual llvm::StringRef getPassName() const override { return "Image3dToImage2darray"; }
 
-        virtual bool runOnFunction(llvm::Function& F) override;
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.setPreservesCFG();
-            AU.addRequired<MetaDataUtilsWrapper>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
 
-        void visitCallInst(llvm::CallInst& CI);
+  void visitCallInst(llvm::CallInst &CI);
 
-    private:
-        bool m_Changed;
-        IGCMD::MetaDataUtils* m_MetadataUtils;
-        IGC::ModuleMetaData* m_modMD;
-        static bool createImageAnnotations(
-            llvm::GenIntrinsicInst* pCall,
-            unsigned imageIdx,
-            const IGCMD::MetaDataUtils* pMdUtils,
-            const IGC::ModuleMetaData* m_modMD,
-            const llvm::Value* pCoord);
-    };
+private:
+  bool m_Changed;
+  IGCMD::MetaDataUtils *m_MetadataUtils;
+  IGC::ModuleMetaData *m_modMD;
+  static bool createImageAnnotations(llvm::GenIntrinsicInst *pCall, unsigned imageIdx,
+                                     const IGCMD::MetaDataUtils *pMdUtils, const IGC::ModuleMetaData *m_modMD,
+                                     const llvm::Value *pCoord);
+};
 
 } // namespace IGC

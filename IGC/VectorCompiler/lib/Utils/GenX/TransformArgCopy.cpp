@@ -594,8 +594,7 @@ getTransformedFuncCallArgs(CallInst &OrigCall,
     }
   }
 
-  IGC_ASSERT_MESSAGE(NewCallOps.size() ==
-                         OrigCall.arg_size() - OmittedCount,
+  IGC_ASSERT_MESSAGE(NewCallOps.size() == OrigCall.arg_size() - OmittedCount,
                      "varargs are unexpected");
   return NewCallOps;
 }
@@ -795,7 +794,8 @@ static Value *passGlobalAsCallArg(GlobalArgInfo GAI, CallInst &OrigCall) {
   // We should should load the global first to pass it by value.
   if (GAI.Kind == GlobalArgKind::ByValueIn ||
       GAI.Kind == GlobalArgKind::ByValueInOut)
-    return new LoadInst(GAI.GV->getValueType(), GAI.GV, GAI.GV->getName() + ".val",
+    return new LoadInst(GAI.GV->getValueType(), GAI.GV,
+                        GAI.GV->getName() + ".val",
                         /* isVolatile */ false, &OrigCall);
   IGC_ASSERT_MESSAGE(
       GAI.Kind == GlobalArgKind::ByPointer,

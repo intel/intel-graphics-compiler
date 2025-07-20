@@ -16,10 +16,10 @@ template <typename T, int width>
 using vector_impl = T __attribute__((ext_vector_type(width)));
 
 template <bool B, typename T, typename F> struct conditional {
-    using type = T;
+  using type = T;
 };
 template <typename T, typename F> struct conditional<false, T, F> {
-    using type = F;
+  using type = F;
 };
 
 } // namespace detail

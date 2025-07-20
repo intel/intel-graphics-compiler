@@ -51,8 +51,8 @@ static cl::opt<bool> PrintFunctionsUsers(
     "fga-print-functions-users", cl::init(true), cl::Hidden,
     cl::desc("FunctionGroupAnalysis::print emits users of functions"));
 
-static cl::opt<bool> PrintFunctionGroupInfo("print-function-group-info",
-    cl::init(false), cl::Hidden,
+static cl::opt<bool> PrintFunctionGroupInfo(
+    "print-function-group-info", cl::init(false), cl::Hidden,
     cl::desc("Print additional info after FunctionGroupAnalysis pass done"));
 
 bool FunctionGroup::verify() const {
@@ -189,9 +189,9 @@ void FunctionGroupAnalysis::addToFunctionGroup(FunctionGroup *FG, Function *F,
                                                FGType Type) {
   IGC_ASSERT(FG);
   IGC_ASSERT_MESSAGE(FG->getParent()->getModule() == M,
-    "attaching to FunctionGroup from wrong Module");
+                     "attaching to FunctionGroup from wrong Module");
   IGC_ASSERT_MESSAGE(!GroupMap[Type][F],
-    "Function already attached to FunctionGroup");
+                     "Function already attached to FunctionGroup");
   GroupMap[Type][F] = FG;
   FG->push_back(F);
 }
@@ -301,8 +301,7 @@ template <typename CallbackOnEdge, typename UnaryPredicate>
 static void traverseCallGraphEdges(const FunctionGroupAnalysis::CallGraphTy &CG,
                                    Function *StartPoint, CallbackOnEdge OnEdge,
                                    UnaryPredicate Pred) {
-  traverseCallGraph(
-      CG, StartPoint, [](Function *) {}, OnEdge, Pred);
+  traverseCallGraph(CG, StartPoint, [](Function *) {}, OnEdge, Pred);
 }
 
 using FGHead = Function;

@@ -185,7 +185,10 @@ bool GenXTrampolineInsertion::runOnModule(Module &M) {
 #endif
   IGC_ASSERT_MESSAGE(
       llvm::none_of(M.functions(),
-        [&](const Function& F) { return F.hasAddressTaken() && BECfg.directCallsOnly(F.getName()); }),
+                    [&](const Function &F) {
+                      return F.hasAddressTaken() &&
+                             BECfg.directCallsOnly(F.getName());
+                    }),
       "A function has address taken inside the module that contradicts "
       "DirectCallsOnly option");
 

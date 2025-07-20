@@ -19,44 +19,40 @@ See LICENSE.TXT for details.
 #include <llvm/Analysis/LoopInfo.h>
 #include "common/LLVMWarningsPop.hpp"
 
-
 namespace IGC {
 
 class AddressArithmeticSinking : public llvm::FunctionPass {
 
 private:
-    llvm::DominatorTree* DT = nullptr;
+  llvm::DominatorTree *DT = nullptr;
 
 public:
-    static char ID;
-    // SinkingDepth argument to set m_SinkingDepth member
-    // Set it to 4 as default because from experiment this value provide
-    // good decreasing register pressure and does not greatly increase dynamic
-    // instruction counter
-    AddressArithmeticSinking(unsigned SinkingDepth = 4);
-    virtual bool runOnFunction(llvm::Function& F) override;
+  static char ID;
+  // SinkingDepth argument to set m_SinkingDepth member
+  // Set it to 4 as default because from experiment this value provide
+  // good decreasing register pressure and does not greatly increase dynamic
+  // instruction counter
+  AddressArithmeticSinking(unsigned SinkingDepth = 4);
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-    virtual llvm::StringRef getPassName() const override {
-        return IGCOpts::AddressArithmeticSinkingPass;
-    }
+  virtual llvm::StringRef getPassName() const override { return IGCOpts::AddressArithmeticSinkingPass; }
 
-    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
-        AU.setPreservesCFG();
-        AU.addRequired<IGC::CodeGenContextWrapper>();
-        AU.addRequired<llvm::DominatorTreeWrapperPass>();
-        AU.addPreserved<llvm::DominatorTreeWrapperPass>();
-    }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<IGC::CodeGenContextWrapper>();
+    AU.addRequired<llvm::DominatorTreeWrapperPass>();
+    AU.addPreserved<llvm::DominatorTreeWrapperPass>();
+  }
 
 private:
-    // Parameter to limit the number of sinked instruction in address arithmetic chain
-    unsigned m_SinkingDepth;
+  // Parameter to limit the number of sinked instruction in address arithmetic chain
+  unsigned m_SinkingDepth;
 
-    bool sink(llvm::Instruction* I);
-    bool ProcessBB(llvm::BasicBlock* BB);
+  bool sink(llvm::Instruction *I);
+  bool ProcessBB(llvm::BasicBlock *BB);
 
-    llvm::BasicBlock* FindSinkTarget(llvm::Instruction* I);
+  llvm::BasicBlock *FindSinkTarget(llvm::Instruction *I);
 };
-void initializeAddressArithmeticSinkingPass(llvm::PassRegistry&);
+void initializeAddressArithmeticSinkingPass(llvm::PassRegistry &);
 
 } // namespace IGC
-

@@ -13,30 +13,29 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-bool CIF_GET_INTERFACE_CLASS(OclTranslationOutput, 1)::Successful() const {
-  return CIF_GET_PIMPL()->Successful();
+bool CIF_GET_INTERFACE_CLASS(OclTranslationOutput, 1)::Successful() const { return CIF_GET_PIMPL()->Successful(); }
+
+bool CIF_GET_INTERFACE_CLASS(OclTranslationOutput, 1)::HasWarnings() const { return CIF_GET_PIMPL()->HasWarnings(); }
+
+CIF::Builtins::BufferBase *CIF_GET_INTERFACE_CLASS(OclTranslationOutput,
+                                                   1)::GetBuildLogImpl(CIF::Version_t bufferVersion) {
+  return CIF_GET_PIMPL()->GetBuildLog(bufferVersion);
 }
 
-bool CIF_GET_INTERFACE_CLASS(OclTranslationOutput, 1)::HasWarnings() const {
-  return CIF_GET_PIMPL()->HasWarnings();
+CIF::Builtins::BufferBase *CIF_GET_INTERFACE_CLASS(OclTranslationOutput,
+                                                   1)::GetOutputImpl(CIF::Version_t bufferVersion) {
+  return CIF_GET_PIMPL()->GetOutput(bufferVersion);
 }
 
-CIF::Builtins::BufferBase *CIF_GET_INTERFACE_CLASS(OclTranslationOutput, 1)::GetBuildLogImpl(CIF::Version_t bufferVersion){
-    return CIF_GET_PIMPL()->GetBuildLog(bufferVersion);
-}
-
-CIF::Builtins::BufferBase *CIF_GET_INTERFACE_CLASS(OclTranslationOutput, 1)::GetOutputImpl(CIF::Version_t bufferVersion){
-    return CIF_GET_PIMPL()->GetOutput(bufferVersion);
-}
-
-CIF::Builtins::BufferBase *CIF_GET_INTERFACE_CLASS(OclTranslationOutput, 1)::GetDebugDataImpl(CIF::Version_t bufferVersion){
-    return CIF_GET_PIMPL()->GetDebugData(bufferVersion);
+CIF::Builtins::BufferBase *CIF_GET_INTERFACE_CLASS(OclTranslationOutput,
+                                                   1)::GetDebugDataImpl(CIF::Version_t bufferVersion) {
+  return CIF_GET_PIMPL()->GetDebugData(bufferVersion);
 }
 
 CodeType::CodeType_t CIF_GET_INTERFACE_CLASS(OclTranslationOutput, 1)::GetOutputType() const {
   return CIF_GET_PIMPL()->GetOutputType();
 }
 
-}
+} // namespace IGC
 
 #include "cif/macros/disable.h"

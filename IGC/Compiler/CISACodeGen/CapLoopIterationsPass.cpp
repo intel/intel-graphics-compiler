@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 // so no infinite loops occur.
 //===----------------------------------------------------------------------===//
 
-
 #include "CapLoopIterationsPass.h"
 #include "IGCIRBuilder.h"
 #include "Compiler/IGCPassSupport.h"
@@ -36,71 +35,57 @@ IGC_INITIALIZE_PASS_END(CapLoopIterations, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG
 
 char CapLoopIterations::ID = 0;
 
-CapLoopIterations::CapLoopIterations() : FunctionPass(ID), m_iterationLimit(UINT_MAX)
-{
-    initializeCapLoopIterationsPass(*PassRegistry::getPassRegistry());
+CapLoopIterations::CapLoopIterations() : FunctionPass(ID), m_iterationLimit(UINT_MAX) {
+  initializeCapLoopIterationsPass(*PassRegistry::getPassRegistry());
 }
 
-CapLoopIterations::CapLoopIterations(uint32_t iterationLimit) : FunctionPass(ID), m_iterationLimit(iterationLimit)
-{
-    initializeCapLoopIterationsPass(*PassRegistry::getPassRegistry());
+CapLoopIterations::CapLoopIterations(uint32_t iterationLimit) : FunctionPass(ID), m_iterationLimit(iterationLimit) {
+  initializeCapLoopIterationsPass(*PassRegistry::getPassRegistry());
 }
 
-void CapLoopIterations::getAnalysisUsage(llvm::AnalysisUsage& AU) const
-{
-    AU.addRequired<LoopInfoWrapperPass>();
-}
+void CapLoopIterations::getAnalysisUsage(llvm::AnalysisUsage &AU) const { AU.addRequired<LoopInfoWrapperPass>(); }
 
-bool CapLoopIterations::runOnFunction(Function& F)
-{
-    auto changed = false;
-    auto& loopInfo = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-    auto IRB = IRBuilder(F.getContext());
+bool CapLoopIterations::runOnFunction(Function &F) {
+  auto changed = false;
+  auto &loopInfo = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  auto IRB = IRBuilder(F.getContext());
 
-    for (auto loop : loopInfo.getLoopsInPreorder())
-    {
-        if (!loop->isLoopSimplifyForm()) // preheader is required
-            continue;
+  for (auto loop : loopInfo.getLoopsInPreorder()) {
+    if (!loop->isLoopSimplifyForm()) // preheader is required
+      continue;
 
-        IRB.SetInsertPoint(loop->getHeader()->getFirstNonPHI());
+    IRB.SetInsertPoint(loop->getHeader()->getFirstNonPHI());
 
-        auto counterphi = IRB.CreatePHI(IRB.getInt32Ty(), 2, "counterphi");
-        counterphi->addIncoming(IRB.getInt32(0), loop->getLoopPreheader());
+    auto counterphi = IRB.CreatePHI(IRB.getInt32Ty(), 2, "counterphi");
+    counterphi->addIncoming(IRB.getInt32(0), loop->getLoopPreheader());
 
-        auto counter = IRB.CreateAdd(counterphi, IRB.getInt32(1), "counter");
-        counterphi->addIncoming(counter, loop->getLoopLatch());
+    auto counter = IRB.CreateAdd(counterphi, IRB.getInt32(1), "counter");
+    counterphi->addIncoming(counter, loop->getLoopLatch());
 
-        auto forceexit = IRB.CreateICmpEQ(counter, IRB.getInt32(m_iterationLimit), "forceloopexit");
+    auto forceexit = IRB.CreateICmpEQ(counter, IRB.getInt32(m_iterationLimit), "forceloopexit");
 
-        llvm::SmallVector<std::pair<BasicBlock*, BasicBlock*>, 4> exitedges;
+    llvm::SmallVector<std::pair<BasicBlock *, BasicBlock *>, 4> exitedges;
 
-        loop->getExitEdges(exitedges);
+    loop->getExitEdges(exitedges);
 
-        for (const auto& [exitingbb, exitbb] : exitedges)
+    for (const auto &[exitingbb, exitbb] : exitedges) {
+      if (auto br = dyn_cast<BranchInst>(exitingbb->getTerminator())) {
+        if (!br->isConditional())
+          continue;
+
+        IRB.SetInsertPoint(br);
+
+        if (br->getSuccessor(0) == exitbb) // br i1 %cond, %exit, %notexit
         {
-            if (auto br = dyn_cast<BranchInst>(exitingbb->getTerminator()))
-            {
-                if (!br->isConditional())
-                    continue;
-
-                IRB.SetInsertPoint(br);
-
-                if (br->getSuccessor(0) == exitbb) // br i1 %cond, %exit, %notexit
-                {
-                    br->setCondition(
-                        IRB.CreateOr(forceexit, br->getCondition())
-                    );
-                }
-                else // br i1 %cond, %notexit, %exit
-                {
-                    br->setCondition(
-                        IRB.CreateAnd(IRB.CreateNot(forceexit), br->getCondition())
-                    );
-                }
-            }
+          br->setCondition(IRB.CreateOr(forceexit, br->getCondition()));
+        } else // br i1 %cond, %notexit, %exit
+        {
+          br->setCondition(IRB.CreateAnd(IRB.CreateNot(forceexit), br->getCondition()));
         }
-
-        changed = true;
+      }
     }
-    return changed;
+
+    changed = true;
+  }
+  return changed;
 }

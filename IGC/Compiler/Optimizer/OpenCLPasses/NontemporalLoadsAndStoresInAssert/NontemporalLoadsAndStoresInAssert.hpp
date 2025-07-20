@@ -25,15 +25,11 @@ public:
   NontemporalLoadsAndStoresInAssert();
   ~NontemporalLoadsAndStoresInAssert() {}
 
-  virtual llvm::StringRef getPassName() const override {
-    return "NontemporalLoadsAndStoresInAssert";
-  }
+  virtual llvm::StringRef getPassName() const override { return "NontemporalLoadsAndStoresInAssert"; }
 
   virtual bool runOnModule(llvm::Module &M) override;
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-  }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
 };
 
 } // namespace IGC

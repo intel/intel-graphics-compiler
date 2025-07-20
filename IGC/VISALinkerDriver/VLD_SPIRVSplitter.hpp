@@ -25,12 +25,11 @@ using ProgramStreamType = std::vector<uint32_t>;
 // Splits SPIR-V module that contains ESIMD and SPMD parts into separate
 // SPIR-V modules.
 // Returns a pair of binaries: first is SPMD module, second is ESIMD module.
-llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
-SplitSPMDAndESIMD(const char *spvBuffer, uint32_t spvBufferSizeInBytes);
+llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>> SplitSPMDAndESIMD(const char *spvBuffer,
+                                                                                  uint32_t spvBufferSizeInBytes);
 
 // Detects the type of the SPIR-V module, e.g. SPMD, ESIMD, SPMD+ESIMD
-llvm::Expected<SPVMetadata> GetVLDMetadata(const char *spv_buffer,
-                                           uint32_t spv_buffer_size_in_bytes);
+llvm::Expected<SPVMetadata> GetVLDMetadata(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes);
 
 // Class used to split SPMD and ESIMD parts of input SPIR-V module.
 class SpvSplitter {
@@ -38,12 +37,11 @@ public:
   // Splits SPIR-V module that contains ESIMD and SPMD parts into separate
   // SPIR-V modules.
   // Returns a pair of binaries: first is SPMD module, second is ESIMD module.
-  llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
-  Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes);
+  llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>> Split(const char *spv_buffer,
+                                                                        uint32_t spv_buffer_size_in_bytes);
 
   // Parses the SPIR-V module and returns metadata necessary for visa linking.
-  llvm::Expected<SPVMetadata> Parse(const char *spv_buffer,
-                                    uint32_t spv_buffer_size_in_bytes);
+  llvm::Expected<SPVMetadata> Parse(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes);
 
   const uint32_t GetForcedSubgroupSize() const;
 
@@ -79,14 +77,11 @@ private:
 
   llvm::Error HandleExecutionMode(llvm::ArrayRef<uint32_t> words);
 
-  void AddInstToProgram(llvm::ArrayRef<uint32_t> words,
-                        ProgramStreamType &program);
+  void AddInstToProgram(llvm::ArrayRef<uint32_t> words, ProgramStreamType &program);
 
-  std::string DecodeStringLiteral(llvm::ArrayRef<uint32_t> words,
-                                  size_t startIndex);
+  std::string DecodeStringLiteral(llvm::ArrayRef<uint32_t> words, size_t startIndex);
 
-  llvm::Error ParseSPIRV(const char *spv_buffer,
-                         uint32_t spv_buffer_size_in_bytes);
+  llvm::Error ParseSPIRV(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes);
 
   // Returns current SPIR-V Module type. Must be called after ParseSPIRV
   SPIRVTypeEnum GetCurrentSPIRVType() const;

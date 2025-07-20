@@ -86,10 +86,7 @@ public:
 // Use following templated method to get encoded register number
 // for regx and bregx operations. For eg, if GRF to encode in regx is
 // 10 then invoke method as GetEncodedRegNum<RegisterNumbering::GRFBase>(10).
-template <unsigned int EncodeBase>
-unsigned int GetEncodedRegNum(unsigned int i) {
-  return (EncodeBase + i);
-}
+template <unsigned int EncodeBase> unsigned int GetEncodedRegNum(unsigned int i) { return (EncodeBase + i); }
 
 class StreamEmitter;
 
@@ -106,8 +103,7 @@ class DIEAbbrevData {
   llvm::dwarf::Form Form;
 
 public:
-  DIEAbbrevData(llvm::dwarf::Attribute A, llvm::dwarf::Form F)
-      : Attribute(A), Form(F) {}
+  DIEAbbrevData(llvm::dwarf::Attribute A, llvm::dwarf::Form F) : Attribute(A), Form(F) {}
 
   // Accessors.
   llvm::dwarf::Attribute getAttribute() const { return Attribute; }
@@ -200,8 +196,7 @@ protected:
 
 public:
   explicit DIE(unsigned Tag)
-      : Offset(0), Size(0),
-        Abbrev((llvm::dwarf::Tag)Tag, llvm::dwarf::DW_CHILDREN_no), Parent(0) {}
+      : Offset(0), Size(0), Abbrev((llvm::dwarf::Tag)Tag, llvm::dwarf::DW_CHILDREN_no), Parent(0) {}
   virtual ~DIE();
   DIE(const DIE &) = delete;
   DIE &operator=(const DIE &) = delete;
@@ -227,8 +222,7 @@ public:
 
   /// addValue - Add a value and attributes to a DIE.
   ///
-  void addValue(llvm::dwarf::Attribute Attribute, llvm::dwarf::Form Form,
-                DIEValue *Value) {
+  void addValue(llvm::dwarf::Attribute Attribute, llvm::dwarf::Form Form, DIEValue *Value) {
     Abbrev.AddAttribute(Attribute, Form);
     Values.push_back(Value);
   }
@@ -259,16 +253,7 @@ class DIEValue {
   virtual void anchor() {}
 
 public:
-  enum {
-    isInteger,
-    isString,
-    isExpr,
-    isLabel,
-    isDelta,
-    isEntry,
-    isBlock,
-    isInlinedString
-  };
+  enum { isInteger, isString, isExpr, isLabel, isDelta, isEntry, isBlock, isInlinedString };
 
 protected:
   /// Type - Type of data stored in the value.
@@ -413,8 +398,7 @@ class DIEDelta : public DIEValue {
   const llvm::MCSymbol *LabelLo;
 
 public:
-  DIEDelta(const llvm::MCSymbol *Hi, const llvm::MCSymbol *Lo)
-      : DIEValue(isDelta), LabelHi(Hi), LabelLo(Lo) {}
+  DIEDelta(const llvm::MCSymbol *Hi, const llvm::MCSymbol *Lo) : DIEValue(isDelta), LabelHi(Hi), LabelLo(Lo) {}
 
   /// EmitValue - Emit delta value.
   ///
@@ -440,8 +424,7 @@ class DIEString : public DIEValue {
   const llvm::StringRef Str;
 
 public:
-  DIEString(const DIEValue *Acc, const llvm::StringRef S)
-      : DIEValue(isString), Access(Acc), Str(S) {}
+  DIEString(const DIEValue *Acc, const llvm::StringRef S) : DIEValue(isString), Access(Acc), Str(S) {}
 
   /// getString - Grab the string out of the object.
   llvm::StringRef getString() const { return Str; }
@@ -469,9 +452,7 @@ class DIEInlinedString : public DIEValue {
   std::string Str;
 
 public:
-  DIEInlinedString(const llvm::StringRef S) : DIEValue(isInlinedString) {
-    Str = S.str();
-  }
+  DIEInlinedString(const llvm::StringRef S) : DIEValue(isInlinedString) { Str = S.str(); }
 
   /// getString - Grab the string out of the object.
   llvm::StringRef getString() const { return Str; }
@@ -485,9 +466,7 @@ public:
   virtual unsigned SizeOf(StreamEmitter *AP, llvm::dwarf::Form Form) const;
 
   // Implement isa/cast/dyncast.
-  static bool classof(const DIEValue *D) {
-    return D->getType() == isInlinedString;
-  }
+  static bool classof(const DIEValue *D) { return D->getType() == isInlinedString; }
 
 #ifndef NDEBUG
   virtual void print(llvm::raw_ostream &O) const;
@@ -503,10 +482,8 @@ class DIEEntry : public DIEValue {
   unsigned DwarfVersion;
 
 public:
-  explicit DIEEntry(DIE *E, unsigned Version)
-      : DIEValue(isEntry), Entry(E), DwarfVersion(Version) {
-    IGC_ASSERT_MESSAGE(nullptr != E,
-                       "Cannot construct a DIEEntry with a null DIE");
+  explicit DIEEntry(DIE *E, unsigned Version) : DIEValue(isEntry), Entry(E), DwarfVersion(Version) {
+    IGC_ASSERT_MESSAGE(nullptr != E, "Cannot construct a DIEEntry with a null DIE");
   }
 
   DIE *getEntry() const { return Entry; }
@@ -518,9 +495,7 @@ public:
   /// SizeOf - Determine size of debug information entry in bytes.
   ///
   virtual unsigned SizeOf(StreamEmitter *AP, llvm::dwarf::Form Form) const {
-    return Form == llvm::dwarf::DW_FORM_ref_addr
-               ? getRefAddrSize(AP, DwarfVersion)
-               : sizeof(int32_t);
+    return Form == llvm::dwarf::DW_FORM_ref_addr ? getRefAddrSize(AP, DwarfVersion) : sizeof(int32_t);
   }
 
   /// Returns size of a ref_addr entry.

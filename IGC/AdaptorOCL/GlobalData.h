@@ -15,13 +15,12 @@ SPDX-License-Identifier: MIT
 /*****************************************************************************\
 Global Data: Platform, Sku Features, and Workaround Table
 \*****************************************************************************/
-typedef struct _SGlobalData
-{
-    const PLATFORM*          pPlatform;   // Target platform
-    const SKU_FEATURE_TABLE* pSkuTable;   // SKU table
-    const WA_TABLE*          pWaTable;    // WA table
-    const GT_SYSTEM_INFO*    pSysInfo;    // GtType
+typedef struct _SGlobalData {
+  const PLATFORM *pPlatform;          // Target platform
+  const SKU_FEATURE_TABLE *pSkuTable; // SKU table
+  const WA_TABLE *pWaTable;           // WA table
+  const GT_SYSTEM_INFO *pSysInfo;     // GtType
 
-    // Profiling timer resolution depending on platform
-    float                    ProfilingTimerResolution;
+  // Profiling timer resolution depending on platform
+  float ProfilingTimerResolution;
 } SGlobalData;

@@ -20,19 +20,15 @@ using namespace llvm;
 #define PASS_DESCRIPTION "Prepare OCL inline sampler for bindless"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(PrepareInlineSamplerForBindless, PASS_FLAG,
-                          PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(PrepareInlineSamplerForBindless, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(PrepareInlineSamplerForBindless, PASS_FLAG,
-                        PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(PrepareInlineSamplerForBindless, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char PrepareInlineSamplerForBindless::ID = 0;
 
-PrepareInlineSamplerForBindless::PrepareInlineSamplerForBindless()
-    : FunctionPass(ID) {
-  initializePrepareInlineSamplerForBindlessPass(
-      *PassRegistry::getPassRegistry());
+PrepareInlineSamplerForBindless::PrepareInlineSamplerForBindless() : FunctionPass(ID) {
+  initializePrepareInlineSamplerForBindlessPass(*PassRegistry::getPassRegistry());
 }
 
 bool PrepareInlineSamplerForBindless::runOnFunction(Function &F) {
@@ -69,15 +65,14 @@ void PrepareInlineSamplerForBindless::visitCallInst(CallInst &CI) {
   mChanged = true;
 
   IGC_ASSERT_MESSAGE(isa<ConstantInt>(CI.getArgOperand(0)),
-      "Sampler initializer calls can only be made with const int values!");
+                     "Sampler initializer calls can only be made with const int values!");
 
   // Inline sampler doesn't associate with an explicit argument.
   // To avoid adding a new metadata entry, inline sampler value is stored as
   // explicit argument number.
   auto *InlineSamplerInit = cast<ConstantInt>(CI.getArgOperand(0));
   int InlineSamplerInitValue = InlineSamplerInit->getZExtValue();
-  auto [_, IsNew] = mArgMap[ImplicitArg::INLINE_SAMPLER].insert(
-      int_cast<int>(InlineSamplerInitValue));
+  auto [_, IsNew] = mArgMap[ImplicitArg::INLINE_SAMPLER].insert(int_cast<int>(InlineSamplerInitValue));
   if (!IsNew) {
     // Sampler initialized by this specific value was already processed.
     // No new sampler will be created. Skip creating inline sampler metadata.
@@ -85,14 +80,12 @@ void PrepareInlineSamplerForBindless::visitCallInst(CallInst &CI) {
   }
 
   // Add metadata for the inline sampler.
-  ModuleMetaData *ModMD =
-      getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  ModuleMetaData *ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
   FunctionMetaData &FuncMD = ModMD->FuncMD[CI.getFunction()];
   ResourceAllocMD &ResAllocMD = FuncMD.resAllocMD;
   InlineSamplersMD InlineSamplerMD;
 
-  CImagesBI::CreateInlineSamplerAnnotations(
-      CI.getFunction()->getParent(), InlineSamplerMD, InlineSamplerInitValue);
+  CImagesBI::CreateInlineSamplerAnnotations(CI.getFunction()->getParent(), InlineSamplerMD, InlineSamplerInitValue);
   InlineSamplerMD.index = mInlineSamplerIndex++;
   ResAllocMD.inlineSamplersMD.push_back(InlineSamplerMD);
 }

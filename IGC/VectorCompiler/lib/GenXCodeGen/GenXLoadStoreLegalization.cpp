@@ -488,7 +488,8 @@ Value *GenXLoadStoreLegalization::extendUntypedBlockLoad2d(CallInst &CI) const {
 
   if (WidthBytes % ST->getGRFByteSize()) {
     SmallVector<Type *, 2> OverloadedTypes;
-    auto NewNumElements = alignTo(NumElements, ST->getGRFByteSize() / ElemSizeBytes);
+    auto NewNumElements =
+        alignTo(NumElements, ST->getGRFByteSize() / ElemSizeBytes);
     auto *VTy = IGCLLVM::FixedVectorType::get(ETy, NewNumElements);
     OverloadedTypes.push_back(VTy);
     const auto CacheControlIndex =

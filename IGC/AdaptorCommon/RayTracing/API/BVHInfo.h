@@ -10,25 +10,18 @@ SPDX-License-Identifier: MIT
 
 #include <stdint.h>
 
-namespace IGC
-{
-    struct BVHInfo
-    {
-        // This is provided so that:
-        // 1) No load of the offset is required (since we have it right here)
-        // 2) A branch is not needed to guard the load if the bvh ptr is null
-        // 3) The removed branch will enable better vectorization in many cases
-        bool hasFixedOffset = false;
-        size_t offset = 0;
+namespace IGC {
+struct BVHInfo {
+       // This is provided so that:
+       // 1) No load of the offset is required (since we have it right here)
+       // 2) A branch is not needed to guard the load if the bvh ptr is null
+       // 3) The removed branch will enable better vectorization in many cases
+  bool hasFixedOffset = false;
+  size_t offset = 0;
 
-        bool uses64Bit = false;
-        inline bool operator==(const BVHInfo& RHS) const
-        {
-            return (
-                uses64Bit == RHS.uses64Bit &&
-                hasFixedOffset == RHS.hasFixedOffset &&
-                offset == RHS.offset
-                );
-        }
-    };
+  bool uses64Bit = false;
+  inline bool operator==(const BVHInfo &RHS) const {
+    return (uses64Bit == RHS.uses64Bit && hasFixedOffset == RHS.hasFixedOffset && offset == RHS.offset);
+  }
+};
 } // namespace IGC

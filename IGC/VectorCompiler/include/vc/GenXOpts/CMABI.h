@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 namespace llvm {
 void initializeCMABIPass(PassRegistry &);
 void initializeCMABILegacyPass(PassRegistry &);
-}
+} // namespace llvm
 
 struct CMABIPass : public llvm::PassInfoMixin<CMABIPass> {
   llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);

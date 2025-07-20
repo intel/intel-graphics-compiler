@@ -8,33 +8,25 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-class ShaderHash
-{
+class ShaderHash {
 public:
-    ShaderHash()
-        : asmHash(0)
-        , nosHash(0)
-        , psoHash(0)
-        , perShaderPsoHash(0)
-        , rtlHash(0)
-        , dcHash(0)
-        , ltoHash(0)
-        , stateHash(0)
-    {}
-    QWORD getAsmHash() const { return asmHash; }
-    QWORD getNosHash() const { return nosHash; }
-    QWORD getPsoHash() const { return psoHash; }
-    QWORD getPerShaderPsoHash() const { return perShaderPsoHash; }
+  ShaderHash()
+      : asmHash(0), nosHash(0), psoHash(0), perShaderPsoHash(0), rtlHash(0), dcHash(0), ltoHash(0), stateHash(0) {}
+  QWORD getAsmHash() const { return asmHash; }
+  QWORD getNosHash() const { return nosHash; }
+  QWORD getPsoHash() const { return psoHash; }
+  QWORD getPerShaderPsoHash() const { return perShaderPsoHash; }
 
-    bool is_set() const { return ((asmHash | nosHash | psoHash | perShaderPsoHash | rtlHash | dcHash | ltoHash | stateHash) != 0); }
+  bool is_set() const {
+    return ((asmHash | nosHash | psoHash | perShaderPsoHash | rtlHash | dcHash | ltoHash | stateHash) != 0);
+  }
 
-    QWORD asmHash;
-    QWORD nosHash;
-    QWORD psoHash;
-    QWORD perShaderPsoHash;
-    QWORD rtlHash;
-    QWORD dcHash;
-    QWORD ltoHash;
-    QWORD stateHash;
+  QWORD asmHash;
+  QWORD nosHash;
+  QWORD psoHash;
+  QWORD perShaderPsoHash;
+  QWORD rtlHash;
+  QWORD dcHash;
+  QWORD ltoHash;
+  QWORD stateHash;
 };
-

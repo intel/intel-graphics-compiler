@@ -10,8 +10,7 @@ SPDX-License-Identifier: MIT
 #define __SPIRV_MACROS_H__
 
 #define SPIRV_OVERLOADABLE __attribute__((overloadable))
-#define SPIRV_BUILTIN(opcode, old_mangling, new_mangling) \
-    __spirv_##opcode##new_mangling
+#define SPIRV_BUILTIN(opcode, old_mangling, new_mangling) __spirv_##opcode##new_mangling
 #define SPIRV_BUILTIN_NO_OP(opcode, old_mangling, new_mangling) \
     __spirv_##opcode##new_mangling
 #define SPIRV_OCL_BUILTIN(func, old_mangling, new_mangling) \

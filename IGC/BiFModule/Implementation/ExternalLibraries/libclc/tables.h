@@ -34,24 +34,22 @@ THE SOFTWARE.
 
 #define TABLE_MANGLE(NAME) __clc_##NAME
 
-#define DECLARE_TABLE(TYPE,NAME,LENGTH) \
-    TABLE_SPACE TYPE NAME [ LENGTH ]
+#define DECLARE_TABLE(TYPE, NAME, LENGTH) TABLE_SPACE TYPE NAME[LENGTH]
 
-#define TABLE_FUNCTION(TYPE,TABLE,NAME) \
-    TYPE TABLE_MANGLE(NAME)(size_t idx) { \
-        return TABLE[idx]; \
+#define TABLE_FUNCTION(TYPE, TABLE, NAME) \
+    TYPE TABLE_MANGLE(NAME)(size_t idx)   \
+    {                                     \
+        return TABLE[idx];                \
     }
 
-#define TABLE_FUNCTION_DECL(TYPE, NAME) \
-    TYPE TABLE_MANGLE(NAME)(size_t idx);
+#define TABLE_FUNCTION_DECL(TYPE, NAME) TYPE TABLE_MANGLE(NAME)(size_t idx);
 
-#define USE_TABLE(NAME, IDX) \
-    TABLE_MANGLE(NAME)(IDX)
+#define USE_TABLE(NAME, IDX) TABLE_MANGLE(NAME)(IDX)
 
 TABLE_FUNCTION_DECL(float2, loge_tbl);
 TABLE_FUNCTION_DECL(float, log_inv_tbl);
 TABLE_FUNCTION_DECL(float2, log2_tbl);
-TABLE_FUNCTION_DECL(uint4,  pibits_tbl);
+TABLE_FUNCTION_DECL(uint4, pibits_tbl);
 TABLE_FUNCTION_DECL(float2, sinhcosh_tbl);
 TABLE_FUNCTION_DECL(float2, cbrt_tbl);
 TABLE_FUNCTION_DECL(float, exp_tbl);

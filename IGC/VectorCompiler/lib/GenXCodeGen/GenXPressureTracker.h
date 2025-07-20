@@ -41,7 +41,7 @@ class PressureTracker {
   std::vector<Segment> HighPressureSegments;
 
 public:
-  PressureTracker(const DataLayout& DL, FunctionGroup &FG, GenXLiveness *L,
+  PressureTracker(const DataLayout &DL, FunctionGroup &FG, GenXLiveness *L,
                   bool WithByteWidening = false)
       : DL(DL), FG(FG), Liveness(L), WithByteWidening(WithByteWidening) {
     calculate();
@@ -59,7 +59,9 @@ public:
   bool intersectWithRedRegion(LiveRange *LR) const;
 
   // Return the list of variables that are likely to be widened.
-  const std::vector<LiveRange *> &getWidenVariables() { return WidenCandidates; }
+  const std::vector<LiveRange *> &getWidenVariables() {
+    return WidenCandidates;
+  }
 
   // Decrease pressure assuming no widening on variable for LR.
   void decreasePressure(LiveRange *LR);
@@ -73,4 +75,4 @@ private:
 } // namespace genx
 } // namespace llvm
 
-#endif  // TARGET_GENX_PRESSURE_TRACKER_H
+#endif // TARGET_GENX_PRESSURE_TRACKER_H

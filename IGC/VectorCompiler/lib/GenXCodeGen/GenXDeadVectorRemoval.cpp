@@ -118,7 +118,8 @@ bool GenXDeadVectorRemoval::runOnFunction(Function &F) {
           I.getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum);
       if (isa<UndefValue>(NewValueOp)) {
         LLVM_DEBUG(dbgs() << "Bypassing " << I << "\n");
-        auto OldValueOp = I.getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
+        auto OldValueOp =
+            I.getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
         I.replaceAllUsesWith(OldValueOp);
         ToErase.push_back(&I);
       }

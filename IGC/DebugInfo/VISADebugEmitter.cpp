@@ -43,9 +43,7 @@ using namespace CLElfLib; // ElfReader related typedefs
 
 IDebugEmitter *IDebugEmitter::Create() { return new DebugEmitter(); }
 
-void IDebugEmitter::Release(IDebugEmitter *pDebugEmitter) {
-  delete pDebugEmitter;
-}
+void IDebugEmitter::Release(IDebugEmitter *pDebugEmitter) { delete pDebugEmitter; }
 
 DebugEmitter::DebugEmitter() : IDebugEmitter(), m_outStream(m_str) {}
 DebugEmitter::~DebugEmitter() { Reset(); }
@@ -60,10 +58,8 @@ void DebugEmitter::Reset() {
   m_initialized = false;
 }
 
-void DebugEmitter::Initialize(std::unique_ptr<VISAModule> VM,
-                              const DebugEmitterOpts &Opts) {
-  IGC_ASSERT_MESSAGE(false == m_initialized,
-                     "DebugEmitter is already initialized!");
+void DebugEmitter::Initialize(std::unique_ptr<VISAModule> VM, const DebugEmitterOpts &Opts) {
+  IGC_ASSERT_MESSAGE(false == m_initialized, "DebugEmitter is already initialized!");
   // IGC_ASSERT(!doneOnce);
   m_initialized = true;
 
@@ -79,16 +75,13 @@ void DebugEmitter::Initialize(std::unique_ptr<VISAModule> VM,
   }
 
   const auto &dataLayout = m_pVISAModule->GetDataLayout();
-  m_pStreamEmitter = std::make_unique<StreamEmitter>(
-      m_outStream, dataLayout, m_pVISAModule->GetTargetTriple(), Opts);
-  m_pDwarfDebug =
-      std::make_unique<DwarfDebug>(m_pStreamEmitter.get(), m_pVISAModule);
+  m_pStreamEmitter = std::make_unique<StreamEmitter>(m_outStream, dataLayout, m_pVISAModule->GetTargetTriple(), Opts);
+  m_pDwarfDebug = std::make_unique<DwarfDebug>(m_pStreamEmitter.get(), m_pVISAModule);
 
   registerVISA(m_pVISAModule);
 }
 
-void DebugEmitter::processCurrentFunction(bool finalize,
-                                          const IGC::VISAObjectDebugInfo &VDI) {
+void DebugEmitter::processCurrentFunction(bool finalize, const IGC::VISAObjectDebugInfo &VDI) {
 
   auto EmitIpLabel = [&](unsigned int ip) {
     // Emit label before %ip
@@ -111,8 +104,7 @@ void DebugEmitter::processCurrentFunction(bool finalize,
 
   LLVM_DEBUG(dbgs() << "[DwarfDebug][IP-RANGE] initial bounds info: "
                     << "subEnd = " << subEnd << "(VI), "
-                    << "lastGenOff = 0x" << llvm::Twine::utohexstr(lastGenOff)
-                    << "\n");
+                    << "lastGenOff = 0x" << llvm::Twine::utohexstr(lastGenOff) << "\n");
 
   // SIMD width
   m_pDwarfDebug->simdWidth = m_pVISAModule->GetSIMDSize();
@@ -140,10 +132,8 @@ void DebugEmitter::processCurrentFunction(bool finalize,
   }
 
   LLVM_DEBUG(dbgs() << "[DwarfDebug][IP-RANGE] updated bounds info: "
-                    << "lastGenOff = 0x" << llvm::Twine::utohexstr(lastGenOff)
-                    << "\n");
-  LLVM_DEBUG(dbgs() << "[DwarfDebug][IP-RANGE] GenISAInstructions selected: "
-                    << GenISAToVISAIndex.size() << "\n");
+                    << "lastGenOff = 0x" << llvm::Twine::utohexstr(lastGenOff) << "\n");
+  LLVM_DEBUG(dbgs() << "[DwarfDebug][IP-RANGE] GenISAInstructions selected: " << GenISAToVISAIndex.size() << "\n");
 
   auto genxISA = m_pVISAModule->getGenBinary();
   DebugLoc prevSrcLoc = DebugLoc();
@@ -167,8 +157,7 @@ void DebugEmitter::processCurrentFunction(bool finalize,
     pc = item.GenOffset;
 
     const auto &VisaIndexToInst = m_pVISAModule->getVisaIndexToInstLUT();
-    const auto &VisaIndexToVisaSizeIndex =
-        m_pVISAModule->getVisaIndexToVisaSizeIndexLUT();
+    const auto &VisaIndexToVisaSizeIndex = m_pVISAModule->getVisaIndexToVisaSizeIndexLUT();
 
     auto InstIt = VisaIndexToInst.end();
     auto SizeIndexIt = VisaIndexToVisaSizeIndex.find(item.VisaOffset);
@@ -184,8 +173,7 @@ void DebugEmitter::processCurrentFunction(bool finalize,
       auto NumVISAInsts = SizeIndexIt->second.VisaInstrNum;
       // Loop till at least one VISA instruction
       // is found.
-      for (unsigned int visaId = StartIdx; visaId != (StartIdx + NumVISAInsts);
-           visaId++) {
+      for (unsigned int visaId = StartIdx; visaId != (StartIdx + NumVISAInsts); visaId++) {
         InstIt = VisaIndexToInst.find(visaId);
         if (InstIt != VisaIndexToInst.end())
           break;
@@ -202,9 +190,8 @@ void DebugEmitter::processCurrentFunction(bool finalize,
       continue;
 
     const auto *scope = loc->getScope();
-    auto src = m_pDwarfDebug->getOrCreateSourceID(
-        scope->getFilename(), scope->getDirectory(),
-        m_pStreamEmitter->GetDwarfCompileUnitID());
+    auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(),
+                                                  m_pStreamEmitter->GetDwarfCompileUnitID());
 
     unsigned int Flags = 0;
     // Add is_stmt flag if (line, inlinedAt) pair is seen for the first time.
@@ -212,18 +199,15 @@ void DebugEmitter::processCurrentFunction(bool finalize,
     // previous location, because we need additional BP after inlined function
     // returns.
     if (!m_pDwarfDebug->isStmtExists(loc.getLine(), loc.getInlinedAt(), true) ||
-        (lastInlinedAtLocation &&
-         lastInlinedAtLocation->getLine() == loc.getLine() &&
+        (lastInlinedAtLocation && lastInlinedAtLocation->getLine() == loc.getLine() &&
          lastInlinedAtLocation->getScope() == loc.getScope())) {
       Flags |= DWARF2_FLAG_IS_STMT;
     }
 
-    if (!m_pDwarfDebug->prologueEndExists(
-            loc.get()->getScope()->getSubprogram(), loc.getInlinedAt(), true)) {
+    if (!m_pDwarfDebug->prologueEndExists(loc.get()->getScope()->getSubprogram(), loc.getInlinedAt(), true)) {
       Flags |= DWARF2_FLAG_PROLOGUE_END;
     }
-    m_pStreamEmitter->EmitDwarfLocDirective(src, loc.getLine(), loc.getCol(),
-                                            Flags, 0, 0, scope->getFilename());
+    m_pStreamEmitter->EmitDwarfLocDirective(src, loc.getLine(), loc.getCol(), Flags, 0, 0, scope->getFilename());
 
     prevSrcLoc = loc;
     lastInlinedAtLocation = loc.getInlinedAt();
@@ -232,8 +216,7 @@ void DebugEmitter::processCurrentFunction(bool finalize,
     size_t unpaddedSize = m_pVISAModule->getUnpaddedProgramSize();
 
     IGC_ASSERT(unpaddedSize <= genxISA.size());
-    IGC_ASSERT((pc < genxISA.size() && pc < unpaddedSize) ||
-               pc == unpaddedSize);
+    IGC_ASSERT((pc < genxISA.size() && pc < unpaddedSize) || pc == unpaddedSize);
 
     EmitIpLabel(pc);
     for (unsigned int i = pc; i != unpaddedSize; i++) {
@@ -253,8 +236,7 @@ void DebugEmitter::processCurrentFunction(bool finalize,
   m_pDwarfDebug->highPc = lastGenOff;
 
   LLVM_DEBUG(dbgs() << "[DwarfDebug][IP-RANGE] updated bounds info: "
-                    << "high_pc = 0x"
-                    << llvm::Twine::utohexstr(m_pDwarfDebug->highPc) << "\n");
+                    << "high_pc = 0x" << llvm::Twine::utohexstr(m_pDwarfDebug->highPc) << "\n");
 }
 
 void DebugEmitter::SetDISPCache(DwarfDISubprogramCache *DISPCache) {
@@ -262,14 +244,12 @@ void DebugEmitter::SetDISPCache(DwarfDISubprogramCache *DISPCache) {
   m_pDwarfDebug->setDISPCache(DISPCache);
 }
 
-std::vector<char> DebugEmitter::Finalize(bool Finalize,
-                                         const IGC::VISADebugInfo &VD) {
+std::vector<char> DebugEmitter::Finalize(bool Finalize, const IGC::VISADebugInfo &VD) {
   if (!m_debugEnabled) {
     return {};
   }
 
-  IGC_ASSERT_MESSAGE(m_pVISAModule,
-                     "active visa object must be selected before finalization");
+  IGC_ASSERT_MESSAGE(m_pVISAModule, "active visa object must be selected before finalization");
   IGC_ASSERT(m_pDwarfDebug);
   const auto &VisaDbgInfo = m_pVISAModule->getVisaObjectDI(VD);
   m_pDwarfDebug->setVisaDbgInfo(VisaDbgInfo);
@@ -283,8 +263,7 @@ std::vector<char> DebugEmitter::Finalize(bool Finalize,
   // Collect debug information for given function.
   m_pStreamEmitter->SwitchSection(m_pStreamEmitter->GetTextSection());
 
-  LLVM_DEBUG(dbgs() << "[DwarfDebug] beginFunction called for <"
-                    << pFunc->getName() << "> ---\n");
+  LLVM_DEBUG(dbgs() << "[DwarfDebug] beginFunction called for <" << pFunc->getName() << "> ---\n");
   m_pDwarfDebug->beginFunction(pFunc, m_pVISAModule);
   LLVM_DEBUG(dbgs() << "[DwarfDebug] beginFunction end ***\n");
 
@@ -332,21 +311,17 @@ std::vector<char> DebugEmitter::Finalize(bool Finalize,
   } else {
     // Text section's name to be extended by a kernel name.
     size_t endOfDotTextNameOffset = 0;
-    prepareElfForZeBinary(is64Bit, m_str.begin(), m_str.size(),
-                          EntryNameWithDot.size(), &endOfDotTextNameOffset);
+    prepareElfForZeBinary(is64Bit, m_str.begin(), m_str.size(), EntryNameWithDot.size(), &endOfDotTextNameOffset);
 
     // First copy ELF binary from the beginning to the .text name (included)
     // located in the .str.tab
-    std::copy(m_str.begin(), m_str.begin() + endOfDotTextNameOffset,
-              Result.begin());
+    std::copy(m_str.begin(), m_str.begin() + endOfDotTextNameOffset, Result.begin());
     // Next concatenate .text with a kernel name (a dot joining both names also
     // added).
-    std::copy(EntryNameWithDot.begin(), EntryNameWithDot.end(),
-              Result.begin() + endOfDotTextNameOffset);
+    std::copy(EntryNameWithDot.begin(), EntryNameWithDot.end(), Result.begin() + endOfDotTextNameOffset);
     // Finally copy remaining part of ELF binary.
     std::copy(m_str.begin() + endOfDotTextNameOffset + 1, m_str.end(),
-              Result.begin() + endOfDotTextNameOffset + 1 +
-                  EntryNameWithDot.size());
+              Result.begin() + endOfDotTextNameOffset + 1 + EntryNameWithDot.size());
   }
 
   writeProgramHeaderTable(is64Bit, Result.data(), ContentSize);
@@ -358,10 +333,8 @@ std::vector<char> DebugEmitter::Finalize(bool Finalize,
   return std::move(Result);
 }
 
-void DebugEmitter::prepareElfForZeBinary(bool is64Bit, char *pElfBuffer,
-                                         size_t elfBufferSize,
-                                         size_t kernelNameWithDotSize,
-                                         size_t *pEndOfDotTextNameInStrtab) {
+void DebugEmitter::prepareElfForZeBinary(bool is64Bit, char *pElfBuffer, size_t elfBufferSize,
+                                         size_t kernelNameWithDotSize, size_t *pEndOfDotTextNameInStrtab) {
   // ELF binary header contains 'SectionHeadersOffset' (e_shoff in ELF spec.),
   // which is an offset to section headers placed one by one. A location (index)
   // of the header with names (including section name) is stored in the ELF
@@ -381,29 +354,24 @@ void DebugEmitter::prepareElfForZeBinary(bool is64Bit, char *pElfBuffer,
     SElf64Header *pElf64Header = (SElf64Header *)pElfBuffer;
 
     // First simply validate ELF binary
-    IGC_ASSERT_MESSAGE(
-        pElf64Header && (pElf64Header->Identity[ID_IDX_MAGIC0] == ELF_MAG0) &&
-            (pElf64Header->Identity[ID_IDX_MAGIC1] == ELF_MAG1) &&
-            (pElf64Header->Identity[ID_IDX_MAGIC2] == ELF_MAG2) &&
-            (pElf64Header->Identity[ID_IDX_MAGIC3] == ELF_MAG3) &&
-            (pElf64Header->Identity[ID_IDX_CLASS] == EH_CLASS_64),
-        "ELF file header incorrect");
+    IGC_ASSERT_MESSAGE(pElf64Header && (pElf64Header->Identity[ID_IDX_MAGIC0] == ELF_MAG0) &&
+                           (pElf64Header->Identity[ID_IDX_MAGIC1] == ELF_MAG1) &&
+                           (pElf64Header->Identity[ID_IDX_MAGIC2] == ELF_MAG2) &&
+                           (pElf64Header->Identity[ID_IDX_MAGIC3] == ELF_MAG3) &&
+                           (pElf64Header->Identity[ID_IDX_CLASS] == EH_CLASS_64),
+                       "ELF file header incorrect");
 
     // Using the Section Name Table Index, calculate the offset to the String
     // Table (.strtab) header.
     size_t entrySize = pElf64Header->SectionHeaderEntrySize;
     size_t nameSectionHeaderOffset =
-        (size_t)pElf64Header->SectionHeadersOffset +
-        (pElf64Header->SectionNameTableIndex * entrySize);
-    IGC_ASSERT_MESSAGE(pElf64Header->SectionNameTableIndex <
-                           pElf64Header->NumSectionHeaderEntries,
+        (size_t)pElf64Header->SectionHeadersOffset + (pElf64Header->SectionNameTableIndex * entrySize);
+    IGC_ASSERT_MESSAGE(pElf64Header->SectionNameTableIndex < pElf64Header->NumSectionHeaderEntries,
                        "ELF header incorrect");
-    IGC_ASSERT_MESSAGE(nameSectionHeaderOffset < elfBufferSize,
-                       "ELF header incorrect");
+    IGC_ASSERT_MESSAGE(nameSectionHeaderOffset < elfBufferSize, "ELF header incorrect");
 
     // Using the offset found above get a header of the String Table section
-    SElf64SectionHeader *pNamesSectionHeader =
-        (SElf64SectionHeader *)((char *)pElf64Header + nameSectionHeaderOffset);
+    SElf64SectionHeader *pNamesSectionHeader = (SElf64SectionHeader *)((char *)pElf64Header + nameSectionHeaderOffset);
     SElf64SectionHeader *pSectionHeader = NULL;
     size_t indexedSectionHeaderOffset = 0;
     Elf64_Word textSectionHeaderName = 0;
@@ -413,31 +381,23 @@ void DebugEmitter::prepareElfForZeBinary(bool is64Bit, char *pElfBuffer,
 
     // Scan section headers to find the Text section using simple section name
     // comparison.
-    for (unsigned int elfSectionIdx = 1;
-         elfSectionIdx < pElf64Header->NumSectionHeaderEntries;
-         elfSectionIdx++) {
+    for (unsigned int elfSectionIdx = 1; elfSectionIdx < pElf64Header->NumSectionHeaderEntries; elfSectionIdx++) {
       // Calculate a byte offset to the current section's header
-      indexedSectionHeaderOffset = (size_t)pElf64Header->SectionHeadersOffset +
-                                   (elfSectionIdx * entrySize);
+      indexedSectionHeaderOffset = (size_t)pElf64Header->SectionHeadersOffset + (elfSectionIdx * entrySize);
 
       // Get a header of the current section
-      pSectionHeader = (SElf64SectionHeader *)((char *)pElf64Header +
-                                               indexedSectionHeaderOffset);
+      pSectionHeader = (SElf64SectionHeader *)((char *)pElf64Header + indexedSectionHeaderOffset);
 
       // Using the byte offset from the current section's header, find the
       // current section's name in the String Table.
-      sectionNameOffset =
-          (size_t)pNamesSectionHeader->DataOffset + pSectionHeader->Name;
+      sectionNameOffset = (size_t)pNamesSectionHeader->DataOffset + pSectionHeader->Name;
       pSectionName = (char *)pElf64Header + sectionNameOffset;
 
       // Check if the Text section is found.
       if (pSectionName && (strcmp(pSectionName, ".text") == 0)) {
-        textSectionHeaderName =
-            pSectionHeader->Name; // Remember for the next loop over sections.
-        textSectionNameOffset =
-            sectionNameOffset; // Remember for the next loop over sections.
-        pNamesSectionHeader->DataSize +=
-            kernelNameWithDotSize; //.strtab size increases not .text section
+        textSectionHeaderName = pSectionHeader->Name;           // Remember for the next loop over sections.
+        textSectionNameOffset = sectionNameOffset;              // Remember for the next loop over sections.
+        pNamesSectionHeader->DataSize += kernelNameWithDotSize; //.strtab size increases not .text section
 
         // Return an offset (from the beginning of ELF binary) to the first
         // character after '.text'
@@ -451,14 +411,10 @@ void DebugEmitter::prepareElfForZeBinary(bool is64Bit, char *pElfBuffer,
     // - change location of each section name located after the Text section
     // name in .strtab
     // - change data offset of each section located after the .strtab section
-    for (unsigned int elfSectionIdx = 1;
-         elfSectionIdx < pElf64Header->NumSectionHeaderEntries;
-         elfSectionIdx++) {
-      indexedSectionHeaderOffset = (size_t)pElf64Header->SectionHeadersOffset +
-                                   (elfSectionIdx * entrySize);
+    for (unsigned int elfSectionIdx = 1; elfSectionIdx < pElf64Header->NumSectionHeaderEntries; elfSectionIdx++) {
+      indexedSectionHeaderOffset = (size_t)pElf64Header->SectionHeadersOffset + (elfSectionIdx * entrySize);
 
-      pSectionHeader = (SElf64SectionHeader *)((char *)pElf64Header +
-                                               indexedSectionHeaderOffset);
+      pSectionHeader = (SElf64SectionHeader *)((char *)pElf64Header + indexedSectionHeaderOffset);
       if (pSectionHeader->Name > textSectionHeaderName) {
         pSectionHeader->Name += kernelNameWithDotSize;
       }
@@ -496,16 +452,14 @@ void DebugEmitter::setElfType(bool is64Bit, void *pBuffer) {
     return;
 
   if (is64Bit) {
-    void *etypeOff =
-        ((char *)pBuffer) + (offsetof(llvm::ELF::Elf64_Ehdr, e_type));
+    void *etypeOff = ((char *)pBuffer) + (offsetof(llvm::ELF::Elf64_Ehdr, e_type));
     if (m_pStreamEmitter->GetEmitterSettings().EnableRelocation) {
       *((llvm::ELF::Elf64_Half *)etypeOff) = llvm::ELF::ET_REL;
     } else {
       *((llvm::ELF::Elf64_Half *)etypeOff) = llvm::ELF::ET_EXEC;
     }
   } else {
-    void *etypeOff =
-        ((char *)pBuffer) + (offsetof(llvm::ELF::Elf32_Ehdr, e_type));
+    void *etypeOff = ((char *)pBuffer) + (offsetof(llvm::ELF::Elf32_Ehdr, e_type));
     if (m_pStreamEmitter->GetEmitterSettings().EnableRelocation) {
       *((llvm::ELF::Elf32_Half *)etypeOff) = llvm::ELF::ET_REL;
     } else {
@@ -514,8 +468,7 @@ void DebugEmitter::setElfType(bool is64Bit, void *pBuffer) {
   }
 }
 
-void DebugEmitter::writeProgramHeaderTable(bool is64Bit, void *pBuffer,
-                                           unsigned int size) {
+void DebugEmitter::writeProgramHeaderTable(bool is64Bit, void *pBuffer, unsigned int size) {
   // Write program header table at end of elf
   if (is64Bit) {
     llvm::ELF::Elf64_Phdr hdr;
@@ -527,14 +480,11 @@ void DebugEmitter::writeProgramHeaderTable(bool is64Bit, void *pBuffer,
     hdr.p_filesz = size;
     hdr.p_memsz = size;
     hdr.p_align = 4;
-    void *phOffAddr =
-        ((char *)pBuffer) + (offsetof(llvm::ELF::Elf64_Ehdr, e_phoff));
+    void *phOffAddr = ((char *)pBuffer) + (offsetof(llvm::ELF::Elf64_Ehdr, e_phoff));
     *(llvm::ELF::Elf64_Off *)(phOffAddr) = size;
-    ((char *)pBuffer)[offsetof(llvm::ELF::Elf64_Ehdr, e_phentsize)] =
-        sizeof(llvm::ELF::Elf64_Phdr);
+    ((char *)pBuffer)[offsetof(llvm::ELF::Elf64_Ehdr, e_phentsize)] = sizeof(llvm::ELF::Elf64_Phdr);
     ((char *)pBuffer)[offsetof(llvm::ELF::Elf64_Ehdr, e_phnum)] = 1;
-    memcpy_s((char *)pBuffer + size, sizeof(llvm::ELF::Elf64_Phdr), &hdr,
-             sizeof(hdr));
+    memcpy_s((char *)pBuffer + size, sizeof(llvm::ELF::Elf64_Phdr), &hdr, sizeof(hdr));
   } else {
     llvm::ELF::Elf32_Phdr hdr;
     hdr.p_type = llvm::ELF::PT_LOAD;
@@ -545,14 +495,11 @@ void DebugEmitter::writeProgramHeaderTable(bool is64Bit, void *pBuffer,
     hdr.p_memsz = size;
     hdr.p_flags = 0;
     hdr.p_align = 4;
-    void *phOffAddr =
-        ((char *)pBuffer) + (offsetof(llvm::ELF::Elf32_Ehdr, e_phoff));
+    void *phOffAddr = ((char *)pBuffer) + (offsetof(llvm::ELF::Elf32_Ehdr, e_phoff));
     *(llvm::ELF::Elf32_Off *)(phOffAddr) = size;
-    ((char *)pBuffer)[offsetof(llvm::ELF::Elf32_Ehdr, e_phentsize)] =
-        sizeof(llvm::ELF::Elf32_Phdr);
+    ((char *)pBuffer)[offsetof(llvm::ELF::Elf32_Ehdr, e_phentsize)] = sizeof(llvm::ELF::Elf32_Phdr);
     ((char *)pBuffer)[offsetof(llvm::ELF::Elf32_Ehdr, e_phnum)] = 1;
-    memcpy_s((char *)pBuffer + size, sizeof(llvm::ELF::Elf32_Phdr), &hdr,
-             sizeof(hdr));
+    memcpy_s((char *)pBuffer + size, sizeof(llvm::ELF::Elf32_Phdr), &hdr, sizeof(hdr));
   }
 }
 
@@ -576,9 +523,7 @@ void DebugEmitter::BeginEncodingMark() { m_pVISAModule->BeginEncodingMark(); }
 
 void DebugEmitter::EndEncodingMark() { m_pVISAModule->EndEncodingMark(); }
 // TODO: do we really need it?
-void DebugEmitter::registerVISA(IGC::VISAModule *VM) {
-  m_pDwarfDebug->registerVISA(VM);
-}
+void DebugEmitter::registerVISA(IGC::VISAModule *VM) { m_pDwarfDebug->registerVISA(VM); }
 void DebugEmitter::setCurrentVISA(IGC::VISAModule *VM) {
   // TODO: add assertion statement to check that this module is registered/owned
   m_pVISAModule = VM;

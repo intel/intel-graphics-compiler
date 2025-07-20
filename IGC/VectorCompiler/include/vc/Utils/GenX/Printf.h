@@ -46,7 +46,8 @@ llvm::GlobalVariable *getConstStringGVFromOperandOptional(llvm::Value &Op);
 const llvm::GlobalVariable &getConstStringGVFromOperand(const llvm::Value &Op);
 llvm::GlobalVariable &getConstStringGVFromOperand(llvm::Value &Op);
 
-std::optional<llvm::StringRef> getConstStringFromOperandOptional(const llvm::Value &Op);
+std::optional<llvm::StringRef>
+getConstStringFromOperandOptional(const llvm::Value &Op);
 llvm::StringRef getConstStringFromOperand(const llvm::Value &Op);
 
 // Information about a single printf argument.

@@ -55,22 +55,17 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/StringRef.h"
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class RuntimeValueLegalizationPass : public llvm::ModulePass
-    {
-    public:
-        RuntimeValueLegalizationPass();
+namespace IGC {
+class RuntimeValueLegalizationPass : public llvm::ModulePass {
+public:
+  RuntimeValueLegalizationPass();
 
-        virtual bool runOnModule(llvm::Module& module) override;
+  virtual bool runOnModule(llvm::Module &module) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "RuntimeValueLegalizationPass";
-        }
+  virtual llvm::StringRef getPassName() const override { return "RuntimeValueLegalizationPass"; }
 
-        static char ID;
-    };
-}
+  static char ID;
+};
+} // namespace IGC

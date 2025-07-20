@@ -11,12 +11,12 @@ SPDX-License-Identifier: MIT
 namespace llvm {
 void initializeGenXRegionCollapsingPass(PassRegistry &);
 class GenXSubtarget;
-}
+} // namespace llvm
 
 struct GenXRegionCollapsingPass
     : public llvm::PassInfoMixin<GenXRegionCollapsingPass> {
   const llvm::TargetMachine *TM;
-  explicit GenXRegionCollapsingPass(const llvm::TargetMachine *TM) : TM(TM){};
+  explicit GenXRegionCollapsingPass(const llvm::TargetMachine *TM) : TM(TM) {};
   llvm::PreservedAnalyses run(llvm::Function &F,
                               llvm::FunctionAnalysisManager &AM);
 };

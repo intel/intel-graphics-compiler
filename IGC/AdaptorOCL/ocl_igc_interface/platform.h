@@ -24,7 +24,7 @@ using TypeErasedEnum = uint64_t;
 
 CIF_DECLARE_INTERFACE(Platform, "PLATFORM")
 
-CIF_DEFINE_INTERFACE_VER(Platform, 1){
+CIF_DEFINE_INTERFACE_VER(Platform, 1) {
   CIF_INHERIT_CONSTRUCTOR();
 
   OCL_API_CALL virtual TypeErasedEnum GetProductFamily() const;
@@ -66,6 +66,6 @@ CIF_GENERATE_VERSIONS_LIST(Platform);
 CIF_MARK_LATEST_VERSION(PlatformLatest, Platform);
 using PlatformTagOCL = Platform<2>; // Note : can tag with different version for
                                     //        transition periods
-}
+} // namespace IGC
 
 #include "cif/macros/disable.h"

@@ -14,7 +14,6 @@ Use for code changes that need to happen, but are not in place now.
 \*****************************************************************************/
 #define TODO(x)
 
-
 /*****************************************************************************\
 MACRO: VALUE_NAME
 Wrapper for LLVM twine names.
@@ -22,10 +21,9 @@ Wrapper for LLVM twine names.
 Use this to wrap twine name parameters in IRBuilder calls so that we don't
 have to pay the cost of it in the release build.
 \*****************************************************************************/
-#if defined( _DEBUG )
-#   define VALUE_NAME_ENABLE 1
-#   define VALUE_NAME(STR) (STR)
+#if defined(_DEBUG)
+#define VALUE_NAME_ENABLE 1
+#define VALUE_NAME(STR) (STR)
 #else
-#   define VALUE_NAME(STR) ("")
+#define VALUE_NAME(STR) ("")
 #endif
-

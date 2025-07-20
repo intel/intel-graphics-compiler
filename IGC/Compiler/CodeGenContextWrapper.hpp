@@ -13,40 +13,35 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class CodeGenContext;
-    class CBTILayout;
-    class CPlatform;
-    class CDriverInfo;
-    // This pass provides access to  CodeGenContext.
-    //
-    // To use this from within another pass:
-    //  1. Add CodeGenContextWrapper to the pass manager.
-    //  2. Use getAnalysisIfAvailable on CodeGenContextWrapper:
-    //       CodeGenContextWrapper* pCtxWrapper = getAnalysis<CodeGenContextWrapper>();
-    //  3. Get the CodeGenContext:
-    //      CodeGenContext* ctx = pCtxWrapper->getCodeGenContext();
+namespace IGC {
+class CodeGenContext;
+class CBTILayout;
+class CPlatform;
+class CDriverInfo;
+// This pass provides access to  CodeGenContext.
+//
+// To use this from within another pass:
+//  1. Add CodeGenContextWrapper to the pass manager.
+//  2. Use getAnalysisIfAvailable on CodeGenContextWrapper:
+//       CodeGenContextWrapper* pCtxWrapper = getAnalysis<CodeGenContextWrapper>();
+//  3. Get the CodeGenContext:
+//      CodeGenContext* ctx = pCtxWrapper->getCodeGenContext();
 
-    class CodeGenContextWrapper : public llvm::ImmutablePass
-    {
-    public:
-        static char ID;
+class CodeGenContextWrapper : public llvm::ImmutablePass {
+public:
+  static char ID;
 
-        // Constructs a wrapper to the given CodeGenContext instance.
-        CodeGenContextWrapper(CodeGenContext* pCtx);
-        CodeGenContextWrapper();
+  // Constructs a wrapper to the given CodeGenContext instance.
+  CodeGenContextWrapper(CodeGenContext *pCtx);
+  CodeGenContextWrapper();
 
-        // return the Context
-        CodeGenContext* getCodeGenContext();
+  // return the Context
+  CodeGenContext *getCodeGenContext();
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "CodeGen Context Wrapper";
-        }
+  virtual llvm::StringRef getPassName() const override { return "CodeGen Context Wrapper"; }
 
-    private:
-        CodeGenContext* m_ctx;
-    };
+private:
+  CodeGenContext *m_ctx;
+};
 
 } // namespace IGC

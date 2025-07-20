@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC::Legalizer;
 
-bool InstSoftener::soften(Instruction* I) {
-    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
-    return false;
+bool InstSoftener::soften(Instruction *I) {
+  IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
+  return false;
 }

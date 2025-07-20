@@ -22,36 +22,34 @@ namespace IGC {
 //  An optimized reduce uses non-zero work items less than a regular one.
 //  Applies to workspace dimension equals 3 only.
 
-class ReduceOptPass : public llvm::FunctionPass  {
+class ReduceOptPass : public llvm::FunctionPass {
 public:
-    static char ID;
+  static char ID;
 
-    ReduceOptPass();
+  ReduceOptPass();
 
-    virtual llvm::StringRef getPassName() const override {
-        return "Reduce Optimisation Pass";
-    }
+  virtual llvm::StringRef getPassName() const override { return "Reduce Optimisation Pass"; }
 
-    virtual bool runOnFunction(llvm::Function &F) override;
+  virtual bool runOnFunction(llvm::Function &F) override;
 
 private:
-    //This function recursively checks if the result of the reduce
-    //function is only used by the work item with the local_linear_id == 0
-    //or global_linear_id == 0.
-    bool checkUsers(llvm::Value *MainVal, llvm::Value *Val, llvm::BasicBlock *BB);
+  // This function recursively checks if the result of the reduce
+  // function is only used by the work item with the local_linear_id == 0
+  // or global_linear_id == 0.
+  bool checkUsers(llvm::Value *MainVal, llvm::Value *Val, llvm::BasicBlock *BB);
 
-    //Helper functions for checking the condition of using the reduce result
-    bool checkSelect(llvm::Instruction *Sel);
-    bool checkBranch(llvm::BasicBlock *Bb);
-    bool checkCmp(llvm::Value *Val);
-    bool checkGlobalId(llvm::Value *Val);
-    bool checkLocalId(llvm::Value *Val);
-    bool checkBuiltInName(llvm::Value *I, const std::string &Name);
+  // Helper functions for checking the condition of using the reduce result
+  bool checkSelect(llvm::Instruction *Sel);
+  bool checkBranch(llvm::BasicBlock *Bb);
+  bool checkCmp(llvm::Value *Val);
+  bool checkGlobalId(llvm::Value *Val);
+  bool checkLocalId(llvm::Value *Val);
+  bool checkBuiltInName(llvm::Value *I, const std::string &Name);
 
-    bool createReduceWI0(llvm::Instruction *ReduceInstr);
+  bool createReduceWI0(llvm::Instruction *ReduceInstr);
 
-    bool Changed = false;
-    llvm::Module *M = nullptr;
+  bool Changed = false;
+  llvm::Module *M = nullptr;
 };
 
 } // namespace IGC

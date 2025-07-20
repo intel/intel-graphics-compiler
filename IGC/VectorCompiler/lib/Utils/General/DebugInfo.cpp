@@ -152,10 +152,11 @@ llvm::DIGlobalVariableExpression *vc::DIBuilder::createGlobalVariableExpression(
   IGC_ASSERT(CU);
   auto &Ctx = M.getContext();
 
-  auto *GV = DIGlobalVariable::getDistinct(Ctx, cast_or_null<DIScope>(CU),
-      Name, LinkageName, CU->getFile(), 0 /*Line No*/, Type,
-      true /*IsLocalToUnit*/, true /*isDefined*/, nullptr /*Decl*/,
-      nullptr /*TemplateParams*/, 0 /*AlignInBits*/, nullptr /*Annotation*/);
+  auto *GV = DIGlobalVariable::getDistinct(
+      Ctx, cast_or_null<DIScope>(CU), Name, LinkageName, CU->getFile(),
+      0 /*Line No*/, Type, true /*IsLocalToUnit*/, true /*isDefined*/,
+      nullptr /*Decl*/, nullptr /*TemplateParams*/, 0 /*AlignInBits*/,
+      nullptr /*Annotation*/);
   auto *EmptyExpr = DIExpression::get(Ctx, llvm::ArrayRef<uint64_t>());
   auto *GVE = DIGlobalVariableExpression::get(Ctx, GV, EmptyExpr);
 

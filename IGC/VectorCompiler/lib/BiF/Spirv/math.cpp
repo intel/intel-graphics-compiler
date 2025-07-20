@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 
 using namespace cm;
 
-
 CM_NODEBUG CM_INLINE int __spirv_Unordered(float src0, float src1) {
   return math::is_unordered(src0, src1);
 }
@@ -67,7 +66,8 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(roundne, float, 2, cm::math::roundne)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(roundne, float, 3, cm::math::roundne)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(roundne, float, 4, cm::math::roundne)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(roundne, float, 8, cm::math::roundne)
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(roundne, float, 16, cm::math::roundne)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(roundne, float, 16,
+                                           cm::math::roundne)
 
 #define SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(FUNC_NAME, ELEMENT_TYPE, N, \
                                                    CUSTOM_NAME)                \

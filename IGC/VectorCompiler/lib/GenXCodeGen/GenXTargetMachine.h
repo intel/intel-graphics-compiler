@@ -46,6 +46,7 @@ class GenXTargetMachine : public IGCLLVM::LLVMTargetMachine {
   std::unique_ptr<GenXBackendConfig> BC;
   bool Is64Bit;
   GenXSubtarget Subtarget;
+
 public:
   GenXTargetMachine(const Target &T, const Triple &TT, StringRef CPU,
                     StringRef FS, const TargetOptions &Options,
@@ -66,8 +67,8 @@ public:
   GenXTargetMachine(const GenXTargetMachine &) = delete;
   GenXTargetMachine &operator=(const GenXTargetMachine &) = delete;
 
-  bool addPassesToEmitFile(PassManagerBase &PM, raw_pwrite_stream &o, raw_pwrite_stream *pi,
-                           CodeGenFileType FileType,
+  bool addPassesToEmitFile(PassManagerBase &PM, raw_pwrite_stream &o,
+                           raw_pwrite_stream *pi, CodeGenFileType FileType,
                            bool /*DisableVerify*/ = true,
                            MachineModuleInfo *MMI = nullptr) override;
 
@@ -85,8 +86,8 @@ public:
   const TargetSubtargetInfo *getSubtargetImpl(const Function &) const override {
     return &Subtarget;
   }
-  TargetTransformInfo getTargetTransformInfo(const Function &F)
-      LLVM_GET_TTI_API_QUAL override;
+  TargetTransformInfo
+  getTargetTransformInfo(const Function &F) LLVM_GET_TTI_API_QUAL override;
 
   const GenXSubtarget &getGenXSubtarget() const { return Subtarget; }
 
@@ -141,8 +142,7 @@ public:
 // the GenX backend.
 // FIXME: inherit from BasicTTImpl. This requires introducing
 // TargetLowering in VC.
-class GenXTTIImpl : public IGCLLVM::TTIImplCRTPBase<GenXTTIImpl>
-{
+class GenXTTIImpl : public IGCLLVM::TTIImplCRTPBase<GenXTTIImpl> {
   using BaseT = IGCLLVM::TTIImplCRTPBase<GenXTTIImpl>;
   using TTI = TargetTransformInfo;
   friend BaseT;
@@ -167,13 +167,13 @@ public:
   InstructionCost getUserCost(const User *U, ArrayRef<const Value *> Operands,
                               TTI::TargetCostKind CostKind) {
     if (auto EV = dyn_cast<ExtractValueInst>(U)) {
-      switch(GenXIntrinsic::getGenXIntrinsicID(EV->getOperand(0))) {
-        case GenXIntrinsic::genx_simdcf_goto:
-        case GenXIntrinsic::genx_simdcf_join:
-          // Do not allow such EVs to be TCC_Free
-          return TTI::TCC_Basic;
-        default:
-          break;
+      switch (GenXIntrinsic::getGenXIntrinsicID(EV->getOperand(0))) {
+      case GenXIntrinsic::genx_simdcf_goto:
+      case GenXIntrinsic::genx_simdcf_join:
+        // Do not allow such EVs to be TCC_Free
+        return TTI::TCC_Basic;
+      default:
+        break;
       }
     }
 
@@ -191,8 +191,7 @@ public:
 
   void getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
                                TTI::UnrollingPreferences &UP,
-                               OptimizationRemarkEmitter *ORE
-  );
+                               OptimizationRemarkEmitter *ORE);
 
   void getPeelingPreferences(Loop *, ScalarEvolution &,
                              TTI::PeelingPreferences &) const;
@@ -272,6 +271,6 @@ void initializeGenXLCECalculationPass(PassRegistry &);
 void initializeGenXFloatControlPass(PassRegistry &);
 void initializeGenXCountIndirectStatelessPass(PassRegistry &);
 void initializeGenXUnfreezePass(PassRegistry &);
-} // End llvm namespace
+} // namespace llvm
 
 #endif

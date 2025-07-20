@@ -36,9 +36,7 @@ public:
   static char ID;
   explicit GenXRawSendRipper() : FunctionPass(ID) {}
 
-  StringRef getPassName() const override {
-    return "GenX RAW send ripper";
-  }
+  StringRef getPassName() const override { return "GenX RAW send ripper"; }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesCFG();
@@ -54,8 +52,8 @@ void initializeGenXRawSendRipperPass(PassRegistry &);
 } // End namespace llvm
 
 char GenXRawSendRipper::ID = 0;
-INITIALIZE_PASS(GenXRawSendRipper, "GenXRawSendRipper",
-                "Rip chain of raw send", false, false)
+INITIALIZE_PASS(GenXRawSendRipper, "GenXRawSendRipper", "Rip chain of raw send",
+                false, false)
 
 FunctionPass *llvm::createGenXRawSendRipperPass() {
   initializeGenXRawSendRipperPass(*PassRegistry::getPassRegistry());

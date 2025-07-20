@@ -295,7 +295,8 @@ class GenXUnbaling : public FGPassImplInterface, public IDMixin<GenXUnbaling> {
   GenXLiveness *Liveness = nullptr;
   GenXNumbering *Numbering = nullptr;
   DominatorTree *DT = nullptr;
-  bool Modified = false;;
+  bool Modified = false;
+  ;
   BasicBlock *CurBlock = nullptr;
   std::map<BasicBlock *, int> ReachabilityCache;
   std::set<Instruction *> InstSeen;
@@ -303,13 +304,14 @@ class GenXUnbaling : public FGPassImplInterface, public IDMixin<GenXUnbaling> {
   SmallVector<Instruction *, 4> ToErase;
   // Fields used to process a single two address instruction.
   struct ToUnbaleEntry {
-    Instruction *Inst; // instruction to unbale
+    Instruction *Inst;         // instruction to unbale
     Instruction *InsertBefore; // where to move it to, 0 if no move
     ToUnbaleEntry(Instruction *Inst, Instruction *InsertBefore)
         : Inst(Inst), InsertBefore(InsertBefore) {}
   };
   SmallVector<ToUnbaleEntry, 4> ToUnbale;
   std::map<Instruction *, Instruction *> CommonBaleMap;
+
 public:
   explicit GenXUnbaling() {}
   static StringRef getPassName() { return "GenX unbaling"; }
@@ -388,13 +390,14 @@ void GenXUnbaling::processFunc(Function *F) {
   LLVM_DEBUG(dbgs() << "GenXUnbaling on " << F->getName() << "\n");
   DT = getAnalysis<DominatorTreeGroupWrapperPass>().getDomTree(F);
   for (po_iterator<BasicBlock *> i = po_begin(&F->getEntryBlock()),
-      e = po_end(&F->getEntryBlock()); i != e; ++i) {
+                                 e = po_end(&F->getEntryBlock());
+       i != e; ++i) {
     CurBlock = *i;
     // Process our incomings of successors' phi nodes.
     auto TI = CurBlock->getTerminator();
     for (unsigned si = 0, se = TI->getNumSuccessors(); si != se; ++si) {
       BasicBlock *Succ = TI->getSuccessor(si);
-      for (auto bi = Succ->begin(); ; ++bi) {
+      for (auto bi = Succ->begin();; ++bi) {
         auto Phi = dyn_cast<PHINode>(bi);
         if (!Phi)
           break;
@@ -404,7 +407,7 @@ void GenXUnbaling::processFunc(Function *F) {
       }
     }
     for (auto Inst = &CurBlock->back(); Inst;
-        Inst = Inst == &CurBlock->front() ? nullptr : Inst->getPrevNode()) {
+         Inst = Inst == &CurBlock->front() ? nullptr : Inst->getPrevNode()) {
       // Process a two address instruction. (All two address instructions are
       // intrinsics and thus calls.)
       if (auto CI = dyn_cast<CallInst>(Inst)) {
@@ -552,12 +555,12 @@ bool GenXUnbaling::interfere(Value *V1, Value *V2) {
  * start of the block containing the phi node itself.
  */
 void GenXUnbaling::processTwoAddrOrPhi(Instruction *Inst,
-    unsigned TwoAddrOperandNum) {
+                                       unsigned TwoAddrOperandNum) {
   Value *TwoAddrOperand = Inst->getOperand(TwoAddrOperandNum);
   if (isa<Constant>(TwoAddrOperand))
     return;
-  LLVM_DEBUG(dbgs() << "\nGenXUnbaling::processTwoAddrOrPhi[" << TwoAddrOperandNum
-               << "]: " << *Inst << "\n");
+  LLVM_DEBUG(dbgs() << "\nGenXUnbaling::processTwoAddrOrPhi["
+                    << TwoAddrOperandNum << "]: " << *Inst << "\n");
   if (!scanUsesForUnbaleAndMove(Inst, TwoAddrOperand))
     return;
   // Move the tree of bitcasts containing TwoAddrOperand to just after its def.
@@ -605,12 +608,12 @@ void GenXUnbaling::processTwoAddrOrPhi(Instruction *Inst,
     Instruction *Unbale = ti->Inst;
     Instruction *InsertBefore = ti->InsertBefore;
     LLVM_DEBUG(dbgs() << "Unbaling and/or moving " << Unbale->getName()
-                 << " (or removing if it is a duplicate)\n");
+                      << " (or removing if it is a duplicate)\n");
     // Unbale from its bale parent (if any).
     if (auto UnbaleFrom = Baling->getBaleParent(Unbale)) {
       LLVM_DEBUG(dbgs() << "Unbaling " << Unbale->getName() << " from "
-                   << UnbaleFrom->getName() << " in bale "
-                   << Baling->getBaleHead(UnbaleFrom)->getName() << "\n");
+                        << UnbaleFrom->getName() << " in bale "
+                        << Baling->getBaleHead(UnbaleFrom)->getName() << "\n");
       BaleInfo BI = Baling->getBaleInfo(UnbaleFrom);
       BI.clearOperandBaled(Unbale->use_begin()->getOperandNo());
       Baling->setBaleInfo(UnbaleFrom, BI);
@@ -618,7 +621,7 @@ void GenXUnbaling::processTwoAddrOrPhi(Instruction *Inst,
     auto Found = CommonBaleMap.find(Unbale);
     if (Found != CommonBaleMap.end()) {
       LLVM_DEBUG(dbgs() << "Duplicate of " << Found->second->getName()
-                   << ", removing\n");
+                        << ", removing\n");
       Unbale->replaceAllUsesWith(Found->second);
       Bale B;
       Baling->buildBale(Unbale, &B, /*IncludeAddr=*/true);
@@ -628,8 +631,8 @@ void GenXUnbaling::processTwoAddrOrPhi(Instruction *Inst,
       // Move it if necessary.
       if (InsertBefore) {
         LLVM_DEBUG(dbgs() << "Moving bale at " << Unbale->getName()
-            << " to before " << InsertBefore->getName()
-            << " in " << InsertBefore->getParent()->getName() << "\n");
+                          << " to before " << InsertBefore->getName() << " in "
+                          << InsertBefore->getParent()->getName() << "\n");
         Bale B;
         Baling->buildBale(Unbale, &B, /*IncludeAddr=*/true);
         for (auto bi = B.begin(), be = B.end(); bi != be; ++bi) {
@@ -695,8 +698,7 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
   while (auto BC = dyn_cast<BitCastInst>(Root))
     Root = BC->getOperand(0);
   for (unsigned bci = 0;;) {
-    for (auto ui = Root->use_begin(), ue = Root->use_end();
-        ui != ue; ++ui) {
+    for (auto ui = Root->use_begin(), ue = Root->use_end(); ui != ue; ++ui) {
       auto User = cast<Instruction>(ui->getUser());
       if (auto Phi = dyn_cast<PHINode>(User)) {
         if (Phi == Inst)
@@ -706,10 +708,17 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
         int Position =
             getReachability(Phi->getIncomingBlock(*ui)->getTerminator(),
                             dyn_cast<Instruction>(Root));
-        LLVM_DEBUG(dbgs() << "phi use in " << User->getName() << " is "
-            << (Position == BEFORE ? "before" : (Position == AFTER ? "after"
-                : (Position == REACHES ? "reaches" : (Position == NOTREACHES
-                    ? "notreaches" : "unknown")))) << "\n");
+        LLVM_DEBUG(
+            dbgs() << "phi use in " << User->getName() << " is "
+                   << (Position == BEFORE
+                           ? "before"
+                           : (Position == AFTER ? "after"
+                                                : (Position == REACHES
+                                                       ? "reaches"
+                                                       : (Position == NOTREACHES
+                                                              ? "notreaches"
+                                                              : "unknown"))))
+                   << "\n");
         if (Position == BEFORE || Position == NOTREACHES)
           continue;
         return false;
@@ -720,16 +729,23 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
       LLVM_DEBUG(dbgs() << "use in " << *User << "\n");
       if (!UseSeen.insert(User).second) {
         LLVM_DEBUG(dbgs() << "use in " << User->getName()
-                     << " has already been accounted for\n");
+                          << " has already been accounted for\n");
         continue;
       }
       // Determine the use's position relative to the current position. We use
       // the bale head's position.
       int Position = getReachability(UserHead, dyn_cast<Instruction>(Root));
-      LLVM_DEBUG(dbgs() << "use in " << User->getName() << " is "
-          << (Position == BEFORE ? "before" : (Position == AFTER ? "after"
-              : (Position == REACHES ? "reaches" : (Position == NOTREACHES
-                  ? "notreaches" : "unknown")))) << "\n");
+      LLVM_DEBUG(
+          dbgs() << "use in " << User->getName() << " is "
+                 << (Position == BEFORE
+                         ? "before"
+                         : (Position == AFTER
+                                ? "after"
+                                : (Position == REACHES
+                                       ? "reaches"
+                                       : (Position == NOTREACHES ? "notreaches"
+                                                                 : "unknown"))))
+                 << "\n");
       if (Position == NOTREACHES)
         continue; // ignore use unreachable from Inst
       if (isa<BitCastInst>(User)) {
@@ -745,7 +761,7 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
       // Check that the use is operand 0 of rdregion.
       if (ui->getOperandNo() || !GenXIntrinsic::isRdRegion(User)) {
         LLVM_DEBUG(dbgs() << "use in " << User->getName()
-                     << " is after but is not rdregion\n");
+                          << " is after but is not rdregion\n");
         return false;
       }
       // If the result of the rdregion is too big (more than 32 elements or
@@ -753,8 +769,7 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
       // baled in to a raw operand of a shared function intrinsic. Unbaling it
       // would result in an illegally wide instruction.
       if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(User->getType())) {
-        if (VT->getNumElements() > 32U
-            || VT->getPrimitiveSizeInBits() > 512U) {
+        if (VT->getNumElements() > 32U || VT->getPrimitiveSizeInBits() > 512U) {
           LLVM_DEBUG(dbgs() << User->getName() << " is too wide to unbale\n");
           return false;
         }
@@ -771,8 +786,8 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
         // resulting smaller bale contains at least two uses of TwoAddrOperand
         // (or a bitcast thereof), and each outside-bale operand in the bale is
         // defined before Inst.
-        Unbale = dyn_cast<Instruction>(
-            UserHead->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));
+        Unbale = dyn_cast<Instruction>(UserHead->getOperand(
+            GenXIntrinsic::GenXRegion::NewValueOperandNum));
         if (Unbale) {
           // We use IncludeAddr=true on the buildBale. That makes it include
           // any address calculation (convert.addr and add.addr ops), even
@@ -799,8 +814,8 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
             if (Opnd == Root)
               ++UseCount;
             else
-              for (auto ri = BitCasts.begin(),
-                        re = BitCasts.end(); ri != re; ++ri)
+              for (auto ri = BitCasts.begin(), re = BitCasts.end(); ri != re;
+                   ++ri)
                 if (bi->Inst->getOperand(0) == *ri)
                   ++UseCount;
           }
@@ -814,9 +829,9 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
           } else {
             LLVM_DEBUG(dbgs() << "Trying unbale from wrregion\n");
             if (!UseSeen.insert(Unbale).second) {
-              LLVM_DEBUG(dbgs() << "use (unbale from wrregion) in "
-                           << User->getName()
-                           << " has already been accounted for\n");
+              LLVM_DEBUG(dbgs()
+                         << "use (unbale from wrregion) in " << User->getName()
+                         << " has already been accounted for\n");
               continue;
             }
           }
@@ -838,15 +853,22 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
         // Get the position relative to Inst of the sub-bale we propose to
         // unbale. If it is already BEFORE, then we don't need to check for all
         // outside-bale operands being before Inst.
-        int UnbalePos = getReachability(Unbale,
-              dyn_cast<Instruction>(TwoAddrOperand));
-        LLVM_DEBUG(dbgs() << "proposed unbale " << Unbale->getName() << " is "
-            << (Position == BEFORE ? "before" : (Position == AFTER ? "after"
-                : (Position == REACHES ? "reaches" : (Position == NOTREACHES
-                    ? "notreaches" : "unknown")))) << "\n");
+        int UnbalePos =
+            getReachability(Unbale, dyn_cast<Instruction>(TwoAddrOperand));
+        LLVM_DEBUG(
+            dbgs() << "proposed unbale " << Unbale->getName() << " is "
+                   << (Position == BEFORE
+                           ? "before"
+                           : (Position == AFTER ? "after"
+                                                : (Position == REACHES
+                                                       ? "reaches"
+                                                       : (Position == NOTREACHES
+                                                              ? "notreaches"
+                                                              : "unknown"))))
+                   << "\n");
         if (UnbalePos == BEFORE) {
           InsertBefore = nullptr; // no need to move instruction
-          break; // ok to unbale here
+          break;                  // ok to unbale here
         }
         // We need to move the unbaled instruction. Work out where we need to
         // move it to.
@@ -857,8 +879,9 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
           // addr inst, or we were processing a phi incoming rather than a two
           // addr inst. We want to find the nearest common dominator and insert
           // at the end of that block.
-          InsertBefore = DT->findNearestCommonDominator(
-                CurBlock, Unbale->getParent())->getTerminator();
+          InsertBefore =
+              DT->findNearestCommonDominator(CurBlock, Unbale->getParent())
+                  ->getTerminator();
           // Ensure we have a legal insertion point in the presence of SIMD CF.
           InsertBefore = GotoJoin::getLegalInsertionPoint(InsertBefore, DT);
         }
@@ -868,7 +891,7 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
         bool IsBeforeInst = true;
         for (auto bi = B.begin(), be = B.end(); bi != be; ++bi) {
           for (unsigned oi = 0, oe = bi->Inst->getNumOperands();
-              oi != oe && IsBeforeInst; ++oi) {
+               oi != oe && IsBeforeInst; ++oi) {
             if (!bi->Info.isOperandBaled(oi)) {
               auto Opnd = bi->Inst->getOperand(oi);
               // Check for Opnd's definition being before the insert point:
@@ -883,16 +906,17 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
                 //     at the end of its basic block.
                 if (OpndInst->getParent() == InsertBefore->getParent()) {
                   if (InsertBefore == Inst)
-                    IsBeforeInst &= OpndInst != Inst
-                        && InstSeen.find(OpndInst) == InstSeen.end();
+                    IsBeforeInst &= OpndInst != Inst &&
+                                    InstSeen.find(OpndInst) == InstSeen.end();
                 } else
                   // 3. If in different basic block, check dominance.
-                  IsBeforeInst &= DT->dominates(
-                      OpndInst->getParent(), InsertBefore->getParent());
+                  IsBeforeInst &= DT->dominates(OpndInst->getParent(),
+                                                InsertBefore->getParent());
               }
               if (!IsBeforeInst) {
-                LLVM_DEBUG(dbgs() << "  outside-bale operand " << Opnd->getName()
-                    << " is not before Inst\n");
+                LLVM_DEBUG(dbgs()
+                           << "  outside-bale operand " << Opnd->getName()
+                           << " is not before Inst\n");
                 break;
               }
             }
@@ -910,7 +934,7 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
           // wrregion. This has now failed, and we re-try unbaling just the
           // rdregion use.
           LLVM_DEBUG(dbgs() << "Failed to unbale out of wrregion; "
-                       << "retrying at rdregion\n");
+                            << "retrying at rdregion\n");
           Unbale = User;
           B.clear();
           continue;
@@ -926,7 +950,7 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
       auto Found = CommonBales.find(B);
       if (Found != CommonBales.end()) {
         LLVM_DEBUG(dbgs() << "Found common bale "
-                     << Found->getHead()->Inst->getName() << "\n");
+                          << Found->getHead()->Inst->getName() << "\n");
         CommonBaleMap[Unbale] = Found->getHead()->Inst;
       } else {
         CommonBales.insert(std::move(B));
@@ -934,14 +958,13 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
         UnbaleCount += Baling->isBaled(Unbale);
       }
       // Add this bale to the list of bales to unbale and/or move.
-      LLVM_DEBUG(
-        if (!InsertBefore)
-          dbgs() << "Adding " << Unbale->getName() << " to ToUnbale list\n";
-        else
-          dbgs() << "Adding " << Unbale->getName() << " (with move to before "
-              << InsertBefore->getName() << " in "
-              << InsertBefore->getParent()->getName() << ") to Unbale list\n";
-      );
+      LLVM_DEBUG(if (!InsertBefore) dbgs()
+                     << "Adding " << Unbale->getName() << " to ToUnbale list\n";
+                 else dbgs()
+                 << "Adding " << Unbale->getName() << " (with move to before "
+                 << InsertBefore->getName() << " in "
+                 << InsertBefore->getParent()->getName()
+                 << ") to Unbale list\n";);
       ToUnbale.push_back(ToUnbaleEntry(Unbale, InsertBefore));
     }
     // Also look at uses of bitcasts in the bitcast tree.
@@ -951,7 +974,7 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
   }
   if (ToUnbale.empty()) {
     LLVM_DEBUG(dbgs() << "Nothing to unbale/move, "
-                 << "must already be kill use at Inst\n");
+                      << "must already be kill use at Inst\n");
     return false;
   }
   // Calculate how many instructions would be needed for the copy caused by
@@ -962,8 +985,8 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
   unsigned NumCopies = NumBytes / 64U; // one copy per 2 GRFs
   NumBytes -= NumCopies * 64U;
   NumCopies += countPopulation(NumBytes); // extra copy per power of 2
-  LLVM_DEBUG(dbgs() << NumCopies << " copy insts, vs "
-               << UnbaleCount << " unbales\n");
+  LLVM_DEBUG(dbgs() << NumCopies << " copy insts, vs " << UnbaleCount
+                    << " unbales\n");
   if (NumCopies < UnbaleCount) {
     LLVM_DEBUG(dbgs() << "Too many new instructions, code would be worse.\n");
     return false;
@@ -997,15 +1020,15 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
  * We keep a cache of results. This is cleared when the current basic block
  * changes.
  */
-int GenXUnbaling::getReachability(Instruction *Inst, Instruction *Def)
-{
+int GenXUnbaling::getReachability(Instruction *Inst, Instruction *Def) {
   auto Block = Inst->getParent();
   // Check simple case of same basic block.
   if (CurBlock == Block)
     return InstSeen.find(Inst) != InstSeen.end() ? AFTER : BEFORE;
   // Check ReachabilityCache.
-  auto It = ReachabilityCache.insert(
-      std::pair<BasicBlock *, int>(Block, UNKNOWN)).first;
+  auto It =
+      ReachabilityCache.insert(std::pair<BasicBlock *, int>(Block, UNKNOWN))
+          .first;
   if (It->second != UNKNOWN)
     return It->second;
   // Check dominance.
@@ -1053,12 +1076,11 @@ int GenXUnbaling::getReachability(Instruction *Inst, Instruction *Def)
  * we only do that if we can prove that it does not make the code worse, which
  * it does if the rdregion input is still live after the sequence.
  */
-void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr)
-{
+void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr) {
   // Avoid processing a sequence of N wrregions N times, giving O(N^2)
   // complexity -- only process when we see the end of the sequence.
-  if (InstSeenInProcessNonOverlappingRegion.find(EndWr)
-      != InstSeenInProcessNonOverlappingRegion.end())
+  if (InstSeenInProcessNonOverlappingRegion.find(EndWr) !=
+      InstSeenInProcessNonOverlappingRegion.end())
     return;
   // Find the sequence of wrregions, each except the last having the next as
   // its only use.
@@ -1066,8 +1088,8 @@ void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr)
   Value *StartWrInput = nullptr;
   bool WrVariableIndex = false;
   for (;;) {
-    WrVariableIndex |=!isa<Constant>(
-          StartWr->getOperand(GenXIntrinsic::GenXRegion::WrIndexOperandNum));
+    WrVariableIndex |= !isa<Constant>(
+        StartWr->getOperand(GenXIntrinsic::GenXRegion::WrIndexOperandNum));
     StartWrInput =
         StartWr->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
     if (!GenXIntrinsic::isWrRegion(StartWrInput))
@@ -1093,7 +1115,8 @@ void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr)
     for (auto bi = B.begin(), be = B.end(); bi != be; ++bi) {
       if (bi->Info.Type != BaleInfo::RDREGION)
         continue;
-      Value *Input = bi->Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
+      Value *Input =
+          bi->Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
       if (Input->getType() != StartWrInput->getType())
         continue;
       RdInput = Input;
@@ -1116,14 +1139,14 @@ void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr)
     // otherwise we could be making the code worse. The use of RdInput is
     // counted as being at its user's bale head.
     auto Def = dyn_cast<Instruction>(RdInput);
-    for (auto ui = RdInput->use_begin(), ue = RdInput->use_end();
-        ui != ue; ++ui) {
+    for (auto ui = RdInput->use_begin(), ue = RdInput->use_end(); ui != ue;
+         ++ui) {
       auto User = cast<Instruction>(ui->getUser());
       auto UserHead = Baling->getBaleHead(User);
       switch (getReachability(UserHead, Def)) {
-        case AFTER:
-        case REACHES:
-          return;
+      case AFTER:
+      case REACHES:
+        return;
       }
     }
   }
@@ -1141,8 +1164,8 @@ void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr)
     // For elements overwritten by Wr, change corresponding elements in C to
     // undef.
     Region R = makeRegionFromBaleInfo(ThisWr, BaleInfo());
-    C = R.evaluateConstantWrRegion(C,
-        Constant::getAllOnesValue(ThisWr->getOperand(1)->getType()));
+    C = R.evaluateConstantWrRegion(
+        C, Constant::getAllOnesValue(ThisWr->getOperand(1)->getType()));
     // Move on to next wrregion.
     if (ThisWr == EndWr)
       break;
@@ -1212,8 +1235,8 @@ void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr)
   if (isa<UndefValue>(StartWrInput))
     StartWr->setOperand(0, RdInput);
   // Now remove the useless wrregions found above.
-  for (auto i = UselessWrRegions.begin(), e = UselessWrRegions.end();
-      i != e; ++i) {
+  for (auto i = UselessWrRegions.begin(), e = UselessWrRegions.end(); i != e;
+       ++i) {
     auto Wr = *i;
     auto Rd = cast<Instruction>(
         Wr->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));

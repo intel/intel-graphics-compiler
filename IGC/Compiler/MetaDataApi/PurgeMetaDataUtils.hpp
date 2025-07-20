@@ -13,29 +13,22 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 
-namespace IGC
-{
-    class PurgeMetaDataUtils : public llvm::ModulePass
-    {
-    public:
-        PurgeMetaDataUtils();
+namespace IGC {
+class PurgeMetaDataUtils : public llvm::ModulePass {
+public:
+  PurgeMetaDataUtils();
 
-        ~PurgeMetaDataUtils() {}
+  ~PurgeMetaDataUtils() {}
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "PurgeMetaDataUtilsPass";
-        }
+  virtual llvm::StringRef getPassName() const override { return "PurgeMetaDataUtilsPass"; }
 
-        virtual bool runOnModule(llvm::Module& M) override;
+  virtual bool runOnModule(llvm::Module &M) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
-            AU.addRequired<MetaDataUtilsWrapper>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
 
-        // Pass identification, replacement for typeid
-        static char ID;
-    };
+  // Pass identification, replacement for typeid
+  static char ID;
+};
 
-    bool purgeMetaDataUtils(llvm::Module& M, MetaDataUtilsWrapper* MDUW);
+bool purgeMetaDataUtils(llvm::Module &M, MetaDataUtilsWrapper *MDUW);
 } // namespace IGC

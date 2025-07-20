@@ -17,11 +17,11 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-    llvm::ImmutablePass* createAddressSpaceAAWrapperPass();
-    llvm::ImmutablePass* createIGCExternalAAWrapper();
-    void addJointAddressSpaceAAResults(llvm::Pass&, llvm::Function&, llvm::AAResults&);
+llvm::ImmutablePass *createAddressSpaceAAWrapperPass();
+llvm::ImmutablePass *createIGCExternalAAWrapper();
+void addJointAddressSpaceAAResults(llvm::Pass &, llvm::Function &, llvm::AAResults &);
 
-} // End IGC namespace
+} // namespace IGC
 
-void initializeAddressSpaceAAWrapperPassPass(llvm::PassRegistry&);
-void initializeIGCExternalAAWrapperPass(llvm::PassRegistry&);
+void initializeAddressSpaceAAWrapperPassPass(llvm::PassRegistry &);
+void initializeIGCExternalAAWrapperPass(llvm::PassRegistry &);

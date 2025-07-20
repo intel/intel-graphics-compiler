@@ -12,15 +12,11 @@ Abstract:   Contains Gen9 patch structure definitions
 #pragma once
 #include "patch_shared.h"
 
-namespace iOpenCL
-{
+namespace iOpenCL {
 
 /*****************************************************************************\
 STRUCT: SKernelBinaryHeaderGen9
 \*****************************************************************************/
-struct SKernelBinaryHeaderGen9 :
-       SKernelBinaryHeaderCommon
-{
-};
+struct SKernelBinaryHeaderGen9 : SKernelBinaryHeaderCommon {};
 
-} // namespace
+} // namespace iOpenCL

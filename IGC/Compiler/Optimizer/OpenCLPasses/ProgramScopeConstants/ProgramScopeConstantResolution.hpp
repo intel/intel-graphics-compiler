@@ -14,40 +14,33 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    /// @brief  This pass resolves references to inline constants
-    class ProgramScopeConstantResolution : public llvm::ModulePass
-    {
-    public:
-        // Pass identification, replacement for typeid
-        static char ID;
+namespace IGC {
+/// @brief  This pass resolves references to inline constants
+class ProgramScopeConstantResolution : public llvm::ModulePass {
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
 
-        /// @brief  Constructor
-        ProgramScopeConstantResolution(bool RunCautiously = false);
+  /// @brief  Constructor
+  ProgramScopeConstantResolution(bool RunCautiously = false);
 
-        /// @brief  Destructor
-        ~ProgramScopeConstantResolution() {}
+  /// @brief  Destructor
+  ~ProgramScopeConstantResolution() {}
 
-        /// @brief  Provides name of pass
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "ProgramScopeConstantResolutionPass";
-        }
+  /// @brief  Provides name of pass
+  virtual llvm::StringRef getPassName() const override { return "ProgramScopeConstantResolutionPass"; }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<CodeGenContextWrapper>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-        /// @brief  Main entry point.
-        /// @param  M The destination module.
-        virtual bool runOnModule(llvm::Module& M) override;
+  /// @brief  Main entry point.
+  /// @param  M The destination module.
+  virtual bool runOnModule(llvm::Module &M) override;
 
-    private:
-        bool RunCautiously;
-
-    };
+private:
+  bool RunCautiously;
+};
 
 } // namespace IGC

@@ -40,96 +40,82 @@ inline bool onlyWritesMemory(llvm::Function *F) {
 #endif
 }
 
-inline void pushBackBasicBlock(llvm::Function* F, llvm::BasicBlock* BB) {
+inline void pushBackBasicBlock(llvm::Function *F, llvm::BasicBlock *BB) {
 #if LLVM_VERSION_MAJOR < 16
-    F->getBasicBlockList().push_back(BB);
+  F->getBasicBlockList().push_back(BB);
 #else
-    F->insert(F->end(), BB);
+  F->insert(F->end(), BB);
 #endif
 }
 
-inline void splice(llvm::Function* pNewFunc, llvm::Function::iterator it, llvm::Function* pOldFunc) {
+inline void splice(llvm::Function *pNewFunc, llvm::Function::iterator it, llvm::Function *pOldFunc) {
 #if LLVM_VERSION_MAJOR < 16
-    pNewFunc->getBasicBlockList().splice(it, pOldFunc->getBasicBlockList());
+  pNewFunc->getBasicBlockList().splice(it, pOldFunc->getBasicBlockList());
 #else
-    pNewFunc->splice(it, pOldFunc);
+  pNewFunc->splice(it, pOldFunc);
 #endif
 }
 
-inline void splice(llvm::Function* pNewFunc, llvm::Function::iterator it, llvm::Function* pOldFunc, llvm::BasicBlock* BB) {
+inline void splice(llvm::Function *pNewFunc, llvm::Function::iterator it, llvm::Function *pOldFunc,
+                   llvm::BasicBlock *BB) {
 #if LLVM_VERSION_MAJOR < 16
-    pNewFunc->getBasicBlockList().splice(it, pOldFunc->getBasicBlockList(), BB);
+  pNewFunc->getBasicBlockList().splice(it, pOldFunc->getBasicBlockList(), BB);
 #else
-    pNewFunc->splice(it, pOldFunc, BB->getIterator());
+  pNewFunc->splice(it, pOldFunc, BB->getIterator());
 #endif
 }
 
-inline void splice(
-    llvm::Function* pNewFunc,
-    llvm::Function::iterator it,
-    llvm::Function* pOldFunc,
-    llvm::Function::iterator itBegin,
-    llvm::Function::iterator itEnd) {
+inline void splice(llvm::Function *pNewFunc, llvm::Function::iterator it, llvm::Function *pOldFunc,
+                   llvm::Function::iterator itBegin, llvm::Function::iterator itEnd) {
 #if LLVM_VERSION_MAJOR < 16
-    pNewFunc->getBasicBlockList().splice(it, pOldFunc->getBasicBlockList(), itBegin, itEnd);
+  pNewFunc->getBasicBlockList().splice(it, pOldFunc->getBasicBlockList(), itBegin, itEnd);
 #else
-    pNewFunc->splice(it, pOldFunc, itBegin, itEnd);
+  pNewFunc->splice(it, pOldFunc, itBegin, itEnd);
 #endif
 }
 
-inline auto rbegin(llvm::Function* pFunc) {
+inline auto rbegin(llvm::Function *pFunc) {
 #if LLVM_VERSION_MAJOR < 16
-    return pFunc->getBasicBlockList().rbegin();
+  return pFunc->getBasicBlockList().rbegin();
 #else
-    return std::make_reverse_iterator(pFunc->end());
+  return std::make_reverse_iterator(pFunc->end());
 #endif
 }
 
-inline auto rend(llvm::Function* pFunc) {
+inline auto rend(llvm::Function *pFunc) {
 #if LLVM_VERSION_MAJOR < 16
-    return pFunc->getBasicBlockList().rend();
+  return pFunc->getBasicBlockList().rend();
 #else
-    return std::make_reverse_iterator(pFunc->begin());
+  return std::make_reverse_iterator(pFunc->begin());
 #endif
 }
 
-inline void insertBasicBlock(
-    llvm::Function* pFunc,
-    llvm::Function::iterator it,
-    llvm::BasicBlock* BB) {
+inline void insertBasicBlock(llvm::Function *pFunc, llvm::Function::iterator it, llvm::BasicBlock *BB) {
 #if LLVM_VERSION_MAJOR < 16
-    pFunc->getBasicBlockList().insert(it, BB);
+  pFunc->getBasicBlockList().insert(it, BB);
 #else
-    pFunc->insert(it, BB);
+  pFunc->insert(it, BB);
 #endif
 }
 
-inline void setMemoryEffects(llvm::Function& F, IGCLLVM::MemoryEffects ME) {
+inline void setMemoryEffects(llvm::Function &F, IGCLLVM::MemoryEffects ME) {
   F.removeFnAttrs(ME.getOverridenAttrKinds());
   F.addFnAttrs(ME.getAsAttrBuilder(F.getContext()));
 }
 
-inline void setDoesNotAccessMemory(llvm::Function& F) {
-  setMemoryEffects(F, IGCLLVM::MemoryEffects::none());
-}
+inline void setDoesNotAccessMemory(llvm::Function &F) { setMemoryEffects(F, IGCLLVM::MemoryEffects::none()); }
 
-inline void setOnlyReadsMemory(llvm::Function& F) {
-  setMemoryEffects(F, IGCLLVM::MemoryEffects::readOnly());
-}
+inline void setOnlyReadsMemory(llvm::Function &F) { setMemoryEffects(F, IGCLLVM::MemoryEffects::readOnly()); }
 
-inline void setOnlyWritesMemory(llvm::Function& F) {
-  setMemoryEffects(F, IGCLLVM::MemoryEffects::writeOnly());
-}
+inline void setOnlyWritesMemory(llvm::Function &F) { setMemoryEffects(F, IGCLLVM::MemoryEffects::writeOnly()); }
 
-inline void setOnlyAccessesArgMemory(llvm::Function& F) {
-  setMemoryEffects(F, IGCLLVM::MemoryEffects::argMemOnly());
-}
+inline void setOnlyAccessesArgMemory(llvm::Function &F) { setMemoryEffects(F, IGCLLVM::MemoryEffects::argMemOnly()); }
 
-inline void setOnlyAccessesInaccessibleMemory(llvm::Function& F) {
+inline void setOnlyAccessesInaccessibleMemory(llvm::Function &F) {
   setMemoryEffects(F, IGCLLVM::MemoryEffects::inaccessibleMemOnly());
 }
 
-inline void setOnlyAccessesInaccessibleMemOrArgMem(llvm::Function& F) {
+inline void setOnlyAccessesInaccessibleMemOrArgMem(llvm::Function &F) {
   setMemoryEffects(F, IGCLLVM::MemoryEffects::inaccessibleOrArgMemOnly());
 }
 

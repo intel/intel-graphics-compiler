@@ -19,33 +19,31 @@ SPDX-License-Identifier: MIT
 
 #include <optional>
 
-namespace IGC
-{
-    // Simple class to query the position of each arg in a raytracing shader.
-    class ArgQuery
-    {
-    public:
-        ArgQuery(const llvm::Function& F, const CodeGenContext& Ctx);
-        ArgQuery(const FunctionMetaData& FMD);
-        ArgQuery(CallableShaderTypeMD FuncType, const FunctionMetaData& FMD);
+namespace IGC {
+// Simple class to query the position of each arg in a raytracing shader.
+class ArgQuery {
+public:
+  ArgQuery(const llvm::Function &F, const CodeGenContext &Ctx);
+  ArgQuery(const FunctionMetaData &FMD);
+  ArgQuery(CallableShaderTypeMD FuncType, const FunctionMetaData &FMD);
 
-        llvm::Argument* getPayloadArg(const llvm::Function* F) const;
-        llvm::Argument* getHitAttribArg(const llvm::Function* F) const;
-    private:
-        // Unlike DXR, Vulkan raytracing allows the optional specification of these
-        // values.
-        std::optional<uint32_t> TraceRayPayloadIdx;
-        std::optional<uint32_t> HitAttributeIdx;
-        std::optional<uint32_t> CallableShaderPayloadIdx;
+  llvm::Argument *getPayloadArg(const llvm::Function *F) const;
+  llvm::Argument *getHitAttribArg(const llvm::Function *F) const;
 
-        CallableShaderTypeMD ShaderTy = NumberOfCallableShaderTypes;
-    private:
-        std::optional<uint32_t> getPayloadArgNo() const;
-        std::optional<uint32_t> getHitAttribArgNo() const;
-        const llvm::Argument* getArg(
-            const llvm::Function* F,
-            std::optional<uint32_t> ArgNo) const;
+private:
+  // Unlike DXR, Vulkan raytracing allows the optional specification of these
+  // values.
+  std::optional<uint32_t> TraceRayPayloadIdx;
+  std::optional<uint32_t> HitAttributeIdx;
+  std::optional<uint32_t> CallableShaderPayloadIdx;
 
-        void init(CallableShaderTypeMD FuncType, const FunctionMetaData& FMD);
-    };
+  CallableShaderTypeMD ShaderTy = NumberOfCallableShaderTypes;
+
+private:
+  std::optional<uint32_t> getPayloadArgNo() const;
+  std::optional<uint32_t> getHitAttribArgNo() const;
+  const llvm::Argument *getArg(const llvm::Function *F, std::optional<uint32_t> ArgNo) const;
+
+  void init(CallableShaderTypeMD FuncType, const FunctionMetaData &FMD);
+};
 } // namespace IGC

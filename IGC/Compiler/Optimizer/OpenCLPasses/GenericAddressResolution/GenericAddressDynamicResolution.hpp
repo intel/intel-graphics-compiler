@@ -13,6 +13,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
-    llvm::FunctionPass* createGenericAddressDynamicResolutionPass();
-    void initializeGenericAddressDynamicResolutionPass(llvm::PassRegistry&);
+llvm::FunctionPass *createGenericAddressDynamicResolutionPass();
+void initializeGenericAddressDynamicResolutionPass(llvm::PassRegistry &);
 } // End namespace IGC

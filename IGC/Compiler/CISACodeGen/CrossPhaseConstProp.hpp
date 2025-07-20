@@ -8,13 +8,11 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-namespace llvm
-{
-    class FunctionPass;
+namespace llvm {
+class FunctionPass;
 }
 
-namespace IGC
-{
-    struct PSSignature;
-    llvm::FunctionPass* createCrossPhaseConstPropPass(PSSignature* signature);
-}  // namespace IGC
+namespace IGC {
+struct PSSignature;
+llvm::FunctionPass *createCrossPhaseConstPropPass(PSSignature *signature);
+} // namespace IGC

@@ -20,7 +20,7 @@ CM_NODEBUG CM_INLINE vector<double, N> __impl_uitofp(vector<uint64_t, N> a) {
   const vector<uint32_t, N> Ones(0xffffffff);
   const vector<uint32_t, N> One(1);
 
-  vector<uint32_t, 2 *N> LoHi = a.template format<uint32_t>();
+  vector<uint32_t, 2 * N> LoHi = a.template format<uint32_t>();
   vector<uint32_t, N> Lo = LoHi.template select<N, 2>(0);
   vector<uint32_t, N> Hi = LoHi.template select<N, 2>(1);
   // TODO : replace with clz for 64 bit
@@ -42,7 +42,7 @@ CM_NODEBUG CM_INLINE vector<double, N> __impl_uitofp(vector<uint64_t, N> a) {
   auto IsRightShift = Shift < vector<int32_t, N>(0);
   Shifted64.merge(ToShift >> -Shift, IsRightShift);
 
-  vector<uint32_t, 2 *N> Shifted = Shifted64.template format<uint32_t>();
+  vector<uint32_t, 2 * N> Shifted = Shifted64.template format<uint32_t>();
   vector<uint32_t, N> LoMant = Shifted.template select<N, 2>(0);
   vector<uint32_t, N> HiMant = Shifted.template select<N, 2>(1);
   // delete hidden bit

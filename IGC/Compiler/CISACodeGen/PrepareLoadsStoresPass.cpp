@@ -40,33 +40,28 @@ using namespace llvm;
 using namespace IGC;
 using IGCLLVM::getAlign;
 
-class PrepareLoadsStoresPass : public FunctionPass
-{
+class PrepareLoadsStoresPass : public FunctionPass {
 public:
-    PrepareLoadsStoresPass() : FunctionPass(ID)
-    {
-        initializePrepareLoadsStoresPassPass(*PassRegistry::getPassRegistry());
-    }
+  PrepareLoadsStoresPass() : FunctionPass(ID) {
+    initializePrepareLoadsStoresPassPass(*PassRegistry::getPassRegistry());
+  }
 
-    bool runOnFunction(Function &F) override;
-    StringRef getPassName() const override
-    {
-        return "PrepareLoadsStoresPass";
-    }
+  bool runOnFunction(Function &F) override;
+  StringRef getPassName() const override { return "PrepareLoadsStoresPass"; }
 
-    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-    {
-        AU.setPreservesCFG();
-        AU.addRequired<CodeGenContextWrapper>();
-    }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-    static char ID;
+  static char ID;
+
 private:
-    std::optional<uint32_t> RTAsyncStackAddrSpace;
-    std::optional<uint32_t> RTSyncStackAddrSpace;
-    std::optional<uint32_t> SWStackAddrSpace;
+  std::optional<uint32_t> RTAsyncStackAddrSpace;
+  std::optional<uint32_t> RTSyncStackAddrSpace;
+  std::optional<uint32_t> SWStackAddrSpace;
 
-    bool shouldSplit(uint32_t AddrSpace) const;
+  bool shouldSplit(uint32_t AddrSpace) const;
 };
 
 char PrepareLoadsStoresPass::ID = 0;
@@ -80,84 +75,66 @@ IGC_INITIALIZE_PASS_BEGIN(PrepareLoadsStoresPass, PASS_FLAG, PASS_DESCRIPTION, P
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(PrepareLoadsStoresPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-bool PrepareLoadsStoresPass::shouldSplit(uint32_t AddrSpace) const
-{
-    return (AddrSpace == ADDRESS_SPACE_GLOBAL ||
-            AddrSpace == RTAsyncStackAddrSpace     ||
-            AddrSpace == RTSyncStackAddrSpace ||
-            AddrSpace == SWStackAddrSpace);
+bool PrepareLoadsStoresPass::shouldSplit(uint32_t AddrSpace) const {
+  return (AddrSpace == ADDRESS_SPACE_GLOBAL || AddrSpace == RTAsyncStackAddrSpace ||
+          AddrSpace == RTSyncStackAddrSpace || AddrSpace == SWStackAddrSpace);
 }
 
-bool PrepareLoadsStoresPass::runOnFunction(Function &F)
-{
-    auto *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    auto& rtInfo = Ctx->getModuleMetaData()->rtInfo;
+bool PrepareLoadsStoresPass::runOnFunction(Function &F) {
+  auto *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  auto &rtInfo = Ctx->getModuleMetaData()->rtInfo;
 
-    if (rtInfo.SWStackSurfaceStateOffset)
-    {
-        SWStackAddrSpace =
-            RTBuilder::getSWStackStatefulAddrSpace(*Ctx->getModuleMetaData());
+  if (rtInfo.SWStackSurfaceStateOffset) {
+    SWStackAddrSpace = RTBuilder::getSWStackStatefulAddrSpace(*Ctx->getModuleMetaData());
+  }
+  if (rtInfo.RTSyncStackSurfaceStateOffset) {
+    RTSyncStackAddrSpace = RTBuilder::getRTSyncStackStatefulAddrSpace(*Ctx->getModuleMetaData());
+  }
+
+  bool Changed = false;
+  auto &DL = F.getParent()->getDataLayout();
+
+  IGCIRBuilder<> IRB(F.getContext());
+  bool StripVolatile = false;
+
+  for (auto II = inst_begin(&F), EI = inst_end(&F); II != EI; /* empty */) {
+    auto *I = &*II++;
+
+    if (auto LI = ALoadInst::get(I); LI.has_value()) {
+      auto *PtrTy = LI->getPointerOperandType();
+      if (!shouldSplit(PtrTy->getPointerAddressSpace()))
+        continue;
+
+      IRB.SetInsertPoint(LI->inst());
+
+      if (auto [NewVal, _] = expand64BitLoad(IRB, DL, LI.value()); NewVal) {
+        Changed = true;
+        NewVal->takeName(LI->inst());
+        LI->inst()->replaceAllUsesWith(NewVal);
+        LI->inst()->eraseFromParent();
+      }
+    } else if (auto SI = AStoreInst::get(I); SI.has_value()) {
+      if (StripVolatile && (*SWStackAddrSpace == SI->getPointerAddressSpace()))
+        SI->setVolatile(false);
+
+      auto *PtrTy = SI->getPointerOperandType();
+      if (!shouldSplit(PtrTy->getPointerAddressSpace()))
+        continue;
+
+      IRB.SetInsertPoint(SI->inst());
+
+      if (expand64BitStore(IRB, DL, SI.value())) {
+        Changed = true;
+        SI->inst()->eraseFromParent();
+      }
     }
-    if (rtInfo.RTSyncStackSurfaceStateOffset)
-    {
-        RTSyncStackAddrSpace =
-            RTBuilder::getRTSyncStackStatefulAddrSpace(*Ctx->getModuleMetaData());
-    }
+  }
 
-    bool Changed = false;
-    auto& DL = F.getParent()->getDataLayout();
-
-    IGCIRBuilder<> IRB(F.getContext());
-    bool StripVolatile = false;
-
-    for (auto II = inst_begin(&F), EI = inst_end(&F); II != EI; /* empty */)
-    {
-        auto* I = &*II++;
-
-        if (auto LI = ALoadInst::get(I); LI.has_value())
-        {
-            auto* PtrTy = LI->getPointerOperandType();
-            if (!shouldSplit(PtrTy->getPointerAddressSpace()))
-                continue;
-
-            IRB.SetInsertPoint(LI->inst());
-
-            if (auto [NewVal, _] = expand64BitLoad(IRB, DL, LI.value()); NewVal)
-            {
-                Changed = true;
-                NewVal->takeName(LI->inst());
-                LI->inst()->replaceAllUsesWith(NewVal);
-                LI->inst()->eraseFromParent();
-            }
-        }
-        else if (auto SI = AStoreInst::get(I); SI.has_value())
-        {
-            if (StripVolatile && (*SWStackAddrSpace == SI->getPointerAddressSpace()))
-                SI->setVolatile(false);
-
-            auto* PtrTy = SI->getPointerOperandType();
-            if (!shouldSplit(PtrTy->getPointerAddressSpace()))
-                continue;
-
-            IRB.SetInsertPoint(SI->inst());
-
-            if (expand64BitStore(IRB, DL, SI.value()))
-            {
-                Changed = true;
-                SI->inst()->eraseFromParent();
-            }
-        }
-    }
-
-    return Changed;
+  return Changed;
 }
 
-namespace IGC
-{
+namespace IGC {
 
-Pass* createPrepareLoadsStoresPass(void)
-{
-    return new PrepareLoadsStoresPass();
-}
+Pass *createPrepareLoadsStoresPass(void) { return new PrepareLoadsStoresPass(); }
 
 } // namespace IGC

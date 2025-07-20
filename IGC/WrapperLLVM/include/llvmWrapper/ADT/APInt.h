@@ -33,65 +33,65 @@ using UnsignedDivisionByConstantInfo = llvm::APInt::mu;
 
 inline SignedDivisionByConstantInfo getAPIntMagic(const llvm::APInt &value) {
 #if LLVM_VERSION_MAJOR >= 14
-    return llvm::SignedDivisionByConstantInfo::get(value);
+  return llvm::SignedDivisionByConstantInfo::get(value);
 #else
-    return value.magic();
+  return value.magic();
 #endif
 }
 
 inline UnsignedDivisionByConstantInfo getAPIntMagicUnsigned(const llvm::APInt &value, const unsigned LeadingZeros = 0) {
 #if LLVM_VERSION_MAJOR >= 16
-    // Basing on this: [https://reviews.llvm.org/D140924]
-    return UnsignedDivisionByConstantInfo::get(value, LeadingZeros, false);
+  // Basing on this: [https://reviews.llvm.org/D140924]
+  return UnsignedDivisionByConstantInfo::get(value, LeadingZeros, false);
 #elif LLVM_VERSION_MAJOR >= 14
-    return UnsignedDivisionByConstantInfo::get(value, LeadingZeros);
+  return UnsignedDivisionByConstantInfo::get(value, LeadingZeros);
 #else
-    return value.magicu(LeadingZeros);
+  return value.magicu(LeadingZeros);
 #endif
 }
 
 inline bool IsAddition(const UnsignedDivisionByConstantInfo &mu) {
 #if LLVM_VERSION_MAJOR >= 14
-    return mu.IsAdd;
+  return mu.IsAdd;
 #else
-    return mu.a;
+  return mu.a;
 #endif
 }
 
 inline unsigned ShiftAmount(const UnsignedDivisionByConstantInfo &mu) {
 #if LLVM_VERSION_MAJOR >= 16
-    // Basing on this: https://reviews.llvm.org/D141014
-    return IsAddition(mu) ? mu.PostShift + 1 : mu.PostShift;
+  // Basing on this: https://reviews.llvm.org/D141014
+  return IsAddition(mu) ? mu.PostShift + 1 : mu.PostShift;
 #elif LLVM_VERSION_MAJOR >= 14
-    return mu.ShiftAmount;
+  return mu.ShiftAmount;
 #else
-    return mu.s;
+  return mu.s;
 #endif
 }
 
 inline unsigned ShiftAmount(const SignedDivisionByConstantInfo &ms) {
 #if LLVM_VERSION_MAJOR >= 14
-    return ms.ShiftAmount;
+  return ms.ShiftAmount;
 #else
-    return ms.s;
+  return ms.s;
 #endif
 }
 
 inline llvm::APInt MagicNumber(const UnsignedDivisionByConstantInfo &mu) {
 #if LLVM_VERSION_MAJOR >= 14
-    return mu.Magic;
+  return mu.Magic;
 #else
-    return mu.m;
+  return mu.m;
 #endif
 }
 
 inline llvm::APInt MagicNumber(const SignedDivisionByConstantInfo &ms) {
 #if LLVM_VERSION_MAJOR >= 14
-    return ms.Magic;
+  return ms.Magic;
 #else
-    return ms.m;
+  return ms.m;
 #endif
 }
-}
+} // namespace IGCLLVM
 
 #endif

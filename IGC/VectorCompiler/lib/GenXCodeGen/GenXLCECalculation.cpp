@@ -178,8 +178,8 @@ Value *LCEFinder::visitBinaryOperator(BinaryOperator &BO) {
     return nullptr;
 
   float ConstAsFP = isa<ConstantFP>(C)
-                         ? cast<ConstantFP>(C)->getValue().convertToFloat()
-                         : cast<ConstantInt>(C)->getSExtValue();
+                        ? cast<ConstantFP>(C)->getValue().convertToFloat()
+                        : cast<ConstantInt>(C)->getSExtValue();
   switch (Opcode) {
   default:
     return nullptr;

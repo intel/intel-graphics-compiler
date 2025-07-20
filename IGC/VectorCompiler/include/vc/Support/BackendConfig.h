@@ -220,11 +220,11 @@ class GenXBackendData {
   // The owner of OpenCL generic BiF module.
   // For now it is only required for llvm-lit/debugging,
   // in libigc mode this field always holds nullptr.
-  std::array<std::unique_ptr<MemoryBuffer>, BiFKind::Size>  BiFModuleOwner;
+  std::array<std::unique_ptr<MemoryBuffer>, BiFKind::Size> BiFModuleOwner;
 
 public:
   std::array<MemoryBufferRef, BiFKind::Size> BiFModule;
-  llvm::ArrayRef<const char*> VISALTOStrings;
+  llvm::ArrayRef<const char *> VISALTOStrings;
   llvm::StringSet<> DirectCallFunctions;
 
   struct InitFromLLMVOpts {};
@@ -248,7 +248,7 @@ protected:
 
   GenXBackendConfigResult(GenXBackendOptions &&OptionsIn,
                           GenXBackendData &&DataIn)
-      : Options(std::move(OptionsIn)), Data(std::move(DataIn)){};
+      : Options(std::move(OptionsIn)), Data(std::move(DataIn)) {};
 
   GenXBackendConfigResult()
       : Options{GenXBackendOptions::InitFromLLVMOpts{}},
@@ -270,7 +270,7 @@ public:
     return Data.BiFModule[Kind];
   }
 
-  llvm::ArrayRef<const char*> getVISALTOStrings() const {
+  llvm::ArrayRef<const char *> getVISALTOStrings() const {
     return Data.VISALTOStrings;
   }
 
@@ -334,9 +334,7 @@ public:
     return Options.DisableLiveRangesCoalescing;
   }
 
-  bool disableExtraCoalescing() const {
-    return Options.DisableExtraCoalescing;
-  }
+  bool disableExtraCoalescing() const { return Options.DisableExtraCoalescing; }
 
   bool disableNonOverlappingRegionOpt() const {
     return Options.DisableNonOverlappingRegionOpt;
@@ -348,9 +346,7 @@ public:
     return Options.StatelessPrivateMemSize;
   }
 
-  bool isDisableFinalizerMsg() const {
-    return Options.DisableFinalizerMsg;
-  }
+  bool isDisableFinalizerMsg() const { return Options.DisableFinalizerMsg; }
 
   bool isDisableEUFusion() const { return Options.DisableEUFusion; }
 
@@ -361,9 +357,7 @@ public:
   bool isAutoLargeGRFMode() const { return Options.AutoLargeGRF; }
 
   // Return pointer to WA_TABLE. Can be null.
-  const WA_TABLE *getWATable() const {
-    return Options.WATable;
-  }
+  const WA_TABLE *getWATable() const { return Options.WATable; }
 
   bool doStructSplitting() const { return !Options.DisableStructSplitting; }
 
@@ -380,7 +374,8 @@ public:
   bool enablePreemption() const { return Options.EnablePreemption; }
 
   bool directCallsOnly(llvm::StringRef FunctionName = "") const {
-      return Options.DirectCallsOnly || Data.DirectCallFunctions.count(FunctionName);
+    return Options.DirectCallsOnly ||
+           Data.DirectCallFunctions.count(FunctionName);
   }
 
   bool emitVisaOnly() const { return Options.EmitVisaOnly; }

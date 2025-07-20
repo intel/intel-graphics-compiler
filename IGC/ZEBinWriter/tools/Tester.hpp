@@ -19,8 +19,8 @@ namespace zebin {
 
 class Tester {
 public:
-    static void testZEInfoOutput();
-    static void testELFOutput();
+  static void testZEInfoOutput();
+  static void testELFOutput();
 };
 
 } // namespace zebin

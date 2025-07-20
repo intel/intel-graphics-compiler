@@ -44,18 +44,16 @@ class VISAModule;
 /// InsnRange - This is used to track range of instructions with identical
 /// lexical scope.
 ///
-typedef std::pair<const llvm::Instruction *, const llvm::Instruction *>
-    InsnRange;
+typedef std::pair<const llvm::Instruction *, const llvm::Instruction *> InsnRange;
 
 //===----------------------------------------------------------------------===//
 /// LexicalScope - This class is used to track scope information.
 ///
 class LexicalScope {
 public:
-  LexicalScope(LexicalScope *P, const llvm::DILocalScope *D,
-               const llvm::DILocation *I, bool A)
-      : Parent(P), Desc(D), InlinedAtLocation(I), AbstractScope(A),
-        LastInsn(nullptr), FirstInsn(nullptr), DFSIn(0), DFSOut(0) {
+  LexicalScope(LexicalScope *P, const llvm::DILocalScope *D, const llvm::DILocation *I, bool A)
+      : Parent(P), Desc(D), InlinedAtLocation(I), AbstractScope(A), LastInsn(nullptr), FirstInsn(nullptr), DFSIn(0),
+        DFSOut(0) {
     IGC_ASSERT_MESSAGE((!D || D->isResolved()), "Expected resolved node");
     IGC_ASSERT_MESSAGE((!I || I->isResolved()), "Expected resolved node");
     if (Parent)
@@ -165,23 +163,17 @@ public:
 
   /// isCurrentFunctionScope - Return true if given lexical scope represents
   /// current function.
-  bool isCurrentFunctionScope(const LexicalScope *LS) {
-    return LS == CurrentFnLexicalScope;
-  }
+  bool isCurrentFunctionScope(const LexicalScope *LS) { return LS == CurrentFnLexicalScope; }
 
   /// getCurrentFunctionScope - Return lexical scope for the current function.
-  LexicalScope *getCurrentFunctionScope() const {
-    return CurrentFnLexicalScope;
-  }
+  LexicalScope *getCurrentFunctionScope() const { return CurrentFnLexicalScope; }
 
   /// findLexicalScope - Find lexical scope, either regular or inlined, for the
   /// given DebugLoc. Return NULL if not found.
   LexicalScope *findLexicalScope(const llvm::DILocation *DL);
 
   /// getAbstractScopesList - Return a reference to list of abstract scopes.
-  llvm::ArrayRef<LexicalScope *> getAbstractScopesList() const {
-    return AbstractScopesList;
-  }
+  llvm::ArrayRef<LexicalScope *> getAbstractScopesList() const { return AbstractScopesList; }
 
   /// findAbstractScope - Find an abstract scope or return NULL.
   LexicalScope *findAbstractScope(const llvm::DILocalScope *N) {
@@ -190,8 +182,7 @@ public:
   }
 
   /// findInlinedScope - Find an inlined scope for the given scope/inlined-at.
-  LexicalScope *findInlinedScope(const llvm::DILocalScope *N,
-                                 const llvm::DILocation *IA) {
+  LexicalScope *findInlinedScope(const llvm::DILocalScope *N, const llvm::DILocation *IA) {
     auto I = InlinedLexicalScopeMap.find(std::make_pair(N, IA));
     return I != InlinedLexicalScopeMap.end() ? &I->second : nullptr;
   }
@@ -211,29 +202,24 @@ public:
 private:
   /// getOrCreateLexicalScope - Find lexical scope for the given Scope/IA. If
   /// not available then create new lexical scope.
-  LexicalScope *getOrCreateLexicalScope(const llvm::DILocalScope *Scope,
-                                        const llvm::DILocation *IA = nullptr);
+  LexicalScope *getOrCreateLexicalScope(const llvm::DILocalScope *Scope, const llvm::DILocation *IA = nullptr);
   LexicalScope *getOrCreateLexicalScope(const llvm::DILocation *DL) {
-    return DL ? getOrCreateLexicalScope(DL->getScope(), DL->getInlinedAt())
-              : nullptr;
+    return DL ? getOrCreateLexicalScope(DL->getScope(), DL->getInlinedAt()) : nullptr;
   }
 
   /// getOrCreateRegularScope - Find or create a regular lexical scope.
   LexicalScope *getOrCreateRegularScope(const llvm::DILocalScope *Scope);
 
   /// getOrCreateInlinedScope - Find or create an inlined lexical scope.
-  LexicalScope *getOrCreateInlinedScope(const llvm::DILocalScope *Scope,
-                                        const llvm::DILocation *InlinedAt);
+  LexicalScope *getOrCreateInlinedScope(const llvm::DILocalScope *Scope, const llvm::DILocation *InlinedAt);
 
   /// extractLexicalScopes - Extract instruction ranges for each lexical scopes
   /// for the given machine function.
-  void extractLexicalScopes(
-      llvm::SmallVectorImpl<InsnRange> &MIRanges,
-      llvm::DenseMap<const llvm::Instruction *, LexicalScope *> &M);
+  void extractLexicalScopes(llvm::SmallVectorImpl<InsnRange> &MIRanges,
+                            llvm::DenseMap<const llvm::Instruction *, LexicalScope *> &M);
   void constructScopeNest(LexicalScope *Scope);
-  void assignInstructionRanges(
-      llvm::SmallVectorImpl<InsnRange> &MIRanges,
-      llvm::DenseMap<const llvm::Instruction *, LexicalScope *> &M);
+  void assignInstructionRanges(llvm::SmallVectorImpl<InsnRange> &MIRanges,
+                               llvm::DenseMap<const llvm::Instruction *, LexicalScope *> &M);
 
 private:
   const VISAModule *VisaM;
@@ -244,10 +230,8 @@ private:
 
   /// InlinedLexicalScopeMap - Tracks inlined function scopes in current
   /// function.
-  std::unordered_map<
-      std::pair<const llvm::DILocalScope *, const llvm::DILocation *>,
-      LexicalScope,
-      llvm::pair_hash<const llvm::DILocalScope *, const llvm::DILocation *>>
+  std::unordered_map<std::pair<const llvm::DILocalScope *, const llvm::DILocation *>, LexicalScope,
+                     llvm::pair_hash<const llvm::DILocalScope *, const llvm::DILocation *>>
       InlinedLexicalScopeMap;
 
   /// AbstractScopeMap - These scopes are  not included LexicalScopeMap.

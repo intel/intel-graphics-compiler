@@ -8,20 +8,18 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-namespace llvm
-{
-    class Pass;
+namespace llvm {
+class Pass;
 }
 
-namespace IGC
-{
-llvm::Pass* createRayTracingIntrinsicAnalysisPass();
-llvm::Pass* createRayTracingIntrinsicResolutionPass();
-llvm::Pass* createTraceRayInlinePrepPass();
-llvm::Pass* createTraceRayInlineLatencySchedulerPass();
-llvm::Pass* CreateTraceRayInlineLoweringPass();
-llvm::Pass* createInlineRaytracing();
-llvm::Pass* CreateDynamicRayManagementPass();
-llvm::Pass* CreateRTGlobalsPointerLoweringPass();
-llvm::Pass* createOverrideTMaxPass(unsigned OverrideValue);
-}
+namespace IGC {
+llvm::Pass *createRayTracingIntrinsicAnalysisPass();
+llvm::Pass *createRayTracingIntrinsicResolutionPass();
+llvm::Pass *createTraceRayInlinePrepPass();
+llvm::Pass *createTraceRayInlineLatencySchedulerPass();
+llvm::Pass *CreateTraceRayInlineLoweringPass();
+llvm::Pass *createInlineRaytracing();
+llvm::Pass *CreateDynamicRayManagementPass();
+llvm::Pass *CreateRTGlobalsPointerLoweringPass();
+llvm::Pass *createOverrideTMaxPass(unsigned OverrideValue);
+} // namespace IGC

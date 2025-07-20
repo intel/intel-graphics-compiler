@@ -143,17 +143,18 @@ void StackAnalysis::visitAllocaInst(AllocaInst &AI) {
     return;
   }
 
-  auto AllocaSize = llvm::divideCeil(*AI.getAllocationSizeInBits(m_DL),
-                                     genx::ByteBits);
-  auto AllocaAlign = std::max(IGCLLVM::getAlignmentValue(&AI), visa::BytesPerSVMPtr);
+  auto AllocaSize =
+      llvm::divideCeil(*AI.getAllocationSizeInBits(m_DL), genx::ByteBits);
+  auto AllocaAlign =
+      std::max(IGCLLVM::getAlignmentValue(&AI), visa::BytesPerSVMPtr);
   if (AllocaAlign == 0)
     AllocaAlign = m_DL.getPrefTypeAlign(AI.getAllocatedType()).value();
   AllocaAlign = std::max(AllocaAlign, visa::BytesPerSVMPtr);
 
   CurFuncState.m_UsedSz = llvm::alignTo(CurFuncState.m_UsedSz, AllocaAlign);
   CurFuncState.m_UsedSz += AllocaSize;
-  CurFuncState.m_RequiredAlign = std::max(CurFuncState.m_RequiredAlign,
-                                          AllocaAlign);
+  CurFuncState.m_RequiredAlign =
+      std::max(CurFuncState.m_RequiredAlign, AllocaAlign);
 }
 
 // Check for indirect calls
@@ -173,7 +174,7 @@ std::optional<std::pair<uint64_t, alignment_t>>
 StackAnalysis::checkFunction(Function &F) {
   auto pOnF = m_ProcessedFs.find(&F);
   IGC_ASSERT_EXIT_MESSAGE(pOnF != m_ProcessedFs.end(),
-                     "Function must be inserted before checking");
+                          "Function must be inserted before checking");
 
   auto &StateOfF = pOnF->second;
 

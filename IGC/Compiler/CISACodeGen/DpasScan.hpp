@@ -12,11 +12,11 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
-    class DpasScan : public llvm::FunctionPass {
-    public:
-        static char ID;
-        DpasScan();
-        bool runOnFunction(llvm::Function& F) override;
-        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
-    };
+class DpasScan : public llvm::FunctionPass {
+public:
+  static char ID;
+  DpasScan();
+  bool runOnFunction(llvm::Function &F) override;
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
+};
 } // namespace IGC

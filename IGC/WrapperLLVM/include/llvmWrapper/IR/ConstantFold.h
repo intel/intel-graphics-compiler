@@ -15,47 +15,43 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/ConstantFold.h"
 #endif
 
-namespace IGCLLVM
-{
-    inline llvm::Constant* ConstantFoldExtractValueInstruction(
-        llvm::Constant* Agg, llvm::ArrayRef<unsigned> Idxs,
-        llvm::Type* OnlyIfReducedTy = nullptr) {
+namespace IGCLLVM {
+inline llvm::Constant *ConstantFoldExtractValueInstruction(llvm::Constant *Agg, llvm::ArrayRef<unsigned> Idxs,
+                                                           llvm::Type *OnlyIfReducedTy = nullptr) {
 #if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
-        return llvm::ConstantExpr::getExtractValue(Agg, Idxs, OnlyIfReducedTy);
+  return llvm::ConstantExpr::getExtractValue(Agg, Idxs, OnlyIfReducedTy);
 #else
-        return llvm::ConstantFoldExtractValueInstruction(Agg, Idxs);
+  return llvm::ConstantFoldExtractValueInstruction(Agg, Idxs);
 #endif
-    }
-
-    inline llvm::Constant* ConstantFoldInsertValueInstruction(
-        llvm::Constant* Agg, llvm::Constant* Val,
-        llvm::ArrayRef<unsigned> Idxs, llvm::Type* OnlyIfReducedTy = nullptr) {
-#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
-        return llvm::ConstantExpr::getInsertValue(
-            Agg, Val, Idxs, OnlyIfReducedTy);
-#else
-        return llvm::ConstantFoldInsertValueInstruction(Agg, Val, Idxs);
-#endif
-    }
-
-    inline llvm::Constant* ConstantFoldBinaryInstruction(
-        unsigned Opcode, llvm::Constant* V1, llvm::Constant* V2) {
-#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
-        // TODO: Add other opcodes as needed
-        switch (Opcode) {
-        case llvm::Instruction::SDiv:
-            return llvm::ConstantExpr::getSDiv(V1, V2);
-            break;
-        case llvm::Instruction::UDiv:
-            return llvm::ConstantExpr::getUDiv(V1, V2);
-            break;
-        default:
-            llvm_unreachable("Unhandled binary inst opcode");
-        }
-#else
-        return llvm::ConstantFoldBinaryInstruction(Opcode, V1, V2);
-#endif
-    }
 }
+
+inline llvm::Constant *ConstantFoldInsertValueInstruction(llvm::Constant *Agg, llvm::Constant *Val,
+                                                          llvm::ArrayRef<unsigned> Idxs,
+                                                          llvm::Type *OnlyIfReducedTy = nullptr) {
+#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+  return llvm::ConstantExpr::getInsertValue(Agg, Val, Idxs, OnlyIfReducedTy);
+#else
+  return llvm::ConstantFoldInsertValueInstruction(Agg, Val, Idxs);
+#endif
+}
+
+inline llvm::Constant *ConstantFoldBinaryInstruction(unsigned Opcode, llvm::Constant *V1, llvm::Constant *V2) {
+#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+  // TODO: Add other opcodes as needed
+  switch (Opcode) {
+  case llvm::Instruction::SDiv:
+    return llvm::ConstantExpr::getSDiv(V1, V2);
+    break;
+  case llvm::Instruction::UDiv:
+    return llvm::ConstantExpr::getUDiv(V1, V2);
+    break;
+  default:
+    llvm_unreachable("Unhandled binary inst opcode");
+  }
+#else
+  return llvm::ConstantFoldBinaryInstruction(Opcode, V1, V2);
+#endif
+}
+} // namespace IGCLLVM
 
 #endif // IGCLLVM_IR_CONSTANT_FOLD_H

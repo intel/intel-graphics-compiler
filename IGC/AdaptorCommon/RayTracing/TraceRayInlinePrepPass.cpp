@@ -26,29 +26,21 @@ using namespace llvm;
 using namespace IGC;
 using namespace RTStackFormat;
 
-class TraceRayInlinePrepPass : public FunctionPass
-{
+class TraceRayInlinePrepPass : public FunctionPass {
 public:
-    TraceRayInlinePrepPass(): FunctionPass(ID)
-    {
-        initializeTraceRayInlinePrepPassPass(*PassRegistry::getPassRegistry());
-    }
+  TraceRayInlinePrepPass() : FunctionPass(ID) {
+    initializeTraceRayInlinePrepPassPass(*PassRegistry::getPassRegistry());
+  }
 
-    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-    {
-        AU.addRequired<CodeGenContextWrapper>();
-    }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
 
-    bool runOnFunction(Function &F) override;
-    StringRef getPassName() const override
-    {
-        return "TraceRayInlinePrepPass";
-    }
+  bool runOnFunction(Function &F) override;
+  StringRef getPassName() const override { return "TraceRayInlinePrepPass"; }
 
-    static char ID;
+  static char ID;
 
 private:
-    void lowerPI(Function& F);
+  void lowerPI(Function &F);
 };
 
 char TraceRayInlinePrepPass::ID = 0;
@@ -70,57 +62,46 @@ IGC_INITIALIZE_PASS_END(TraceRayInlinePrepPass, PASS_FLAG2, PASS_DESCRIPTION2, P
 /// bool status = RayQuerySyncStackToShadowMemory(retPI);
 /// if(status)
 /// ...
-/// TODO:   Right now, we don't use a separate GenISA_ShadowMemoryToSyncStack here, but we might want to do it later if necessary.
-void TraceRayInlinePrepPass::lowerPI(Function& F)
-{
-    SmallVector<TraceRaySyncProceedHLIntrinsic*, 4> ProceedHLs;
-    for (auto& I : instructions(F))
-    {
-        if (auto* PI = dyn_cast<TraceRaySyncProceedHLIntrinsic>(&I))
-            ProceedHLs.push_back(PI);
-    }
+/// TODO:   Right now, we don't use a separate GenISA_ShadowMemoryToSyncStack here, but we might want to do it later if
+/// necessary.
+void TraceRayInlinePrepPass::lowerPI(Function &F) {
+  SmallVector<TraceRaySyncProceedHLIntrinsic *, 4> ProceedHLs;
+  for (auto &I : instructions(F)) {
+    if (auto *PI = dyn_cast<TraceRaySyncProceedHLIntrinsic>(&I))
+      ProceedHLs.push_back(PI);
+  }
 
-    if (ProceedHLs.empty())
-        return;
-
-    RTBuilder IRB(F.getContext(), *getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
-    for (auto* PIHL : ProceedHLs)
-    {
-        IRB.SetInsertPoint(PIHL->getNextNode());
-
-        Function* proceedFunc = GenISAIntrinsic::getDeclaration(
-            PIHL->getModule(), GenISAIntrinsic::GenISA_TraceRaySyncProceed);
-        CallInst* PI = IRB.CreateCall(proceedFunc, PIHL->getQueryObjIndex());
-
-        Function* stk2SMFunc = GenISAIntrinsic::getDeclaration(
-            PIHL->getModule(),
-            GenISAIntrinsic::GenISA_SyncStackToShadowMemory);
-        Value* args[] = {
-            PIHL->getQueryObjIndex(),
-            PI
-        };
-        CallInst* stk2SM = IRB.CreateCall(stk2SMFunc, args);
-
-        PIHL->replaceAllUsesWith(stk2SM);
-        PIHL->eraseFromParent();
-    }
+  if (ProceedHLs.empty())
     return;
+
+  RTBuilder IRB(F.getContext(), *getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  for (auto *PIHL : ProceedHLs) {
+    IRB.SetInsertPoint(PIHL->getNextNode());
+
+    Function *proceedFunc =
+        GenISAIntrinsic::getDeclaration(PIHL->getModule(), GenISAIntrinsic::GenISA_TraceRaySyncProceed);
+    CallInst *PI = IRB.CreateCall(proceedFunc, PIHL->getQueryObjIndex());
+
+    Function *stk2SMFunc =
+        GenISAIntrinsic::getDeclaration(PIHL->getModule(), GenISAIntrinsic::GenISA_SyncStackToShadowMemory);
+    Value *args[] = {PIHL->getQueryObjIndex(), PI};
+    CallInst *stk2SM = IRB.CreateCall(stk2SMFunc, args);
+
+    PIHL->replaceAllUsesWith(stk2SM);
+    PIHL->eraseFromParent();
+  }
+  return;
 }
 
-bool TraceRayInlinePrepPass::runOnFunction(Function &F)
-{
-    SmallVector<RayQuerySyncStackToShadowMemory*, 4> Stk2SMs;
-    lowerPI(F);
+bool TraceRayInlinePrepPass::runOnFunction(Function &F) {
+  SmallVector<RayQuerySyncStackToShadowMemory *, 4> Stk2SMs;
+  lowerPI(F);
 
-    return true;
+  return true;
 }
 
-namespace IGC
-{
+namespace IGC {
 
-Pass* createTraceRayInlinePrepPass(void)
-{
-    return new TraceRayInlinePrepPass();
-}
+Pass *createTraceRayInlinePrepPass(void) { return new TraceRayInlinePrepPass(); }
 
 } // namespace IGC

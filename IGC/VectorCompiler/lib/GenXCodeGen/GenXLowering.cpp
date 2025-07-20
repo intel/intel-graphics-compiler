@@ -3693,7 +3693,8 @@ bool GenXLowering::lowerCttz(CallInst *CI) {
 }
 
 bool GenXLowering::lowerCtlz(CallInst *CI) {
-  // The hardware only supports the ctlz operation for 32-bit integers, so we lower 8 and 16 bit integer operations as follows:
+  // The hardware only supports the ctlz operation for 32-bit integers, so we
+  // lower 8 and 16 bit integer operations as follows:
   // 1. Zext i8 -> i32
   // 2. ctlz.i32
   // 3. res = ctlz.i32 - (32 - 8)

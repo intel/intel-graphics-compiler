@@ -20,7 +20,6 @@ inline float unorm24_to_float(uint u)
     return (float)(u & 0xFFFFFF) * (1.f / 0xFFFFFF);
 }
 
-
 // === --------------------------------------------------------------------===
 // === TraceRayCtrl
 // === --------------------------------------------------------------------===
@@ -33,7 +32,6 @@ typedef enum
     TRACE_RAY_INITIAL_MB = 4,  // Loads committed hit
     TRACE_RAY_DONE       = -1, // For internal use only
 } TraceRayCtrl;
-
 
 // === --------------------------------------------------------------------===
 // === NodeType
@@ -55,7 +53,7 @@ typedef enum
 // === --------------------------------------------------------------------===
 typedef enum
 {
-    SUB_TYPE_QUAD_MBLUR = 4,          // motion blur quad leaf (128 bytes)
+    SUB_TYPE_QUAD_MBLUR = 4, // motion blur quad leaf (128 bytes)
 } SubType;
 
 // === --------------------------------------------------------------------===
@@ -70,7 +68,6 @@ typedef struct __attribute__((packed))
     uint  reserved1[13];
     ulong dispatchGlobalsPtr;
 } HWAccel;
-
 
 // === --------------------------------------------------------------------===
 // === MemRay
@@ -121,18 +118,20 @@ typedef struct __attribute__((packed, aligned(32)))
 inline ulong MemRay_getRootNodePtr(MemRay* memray)
 {
     if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE) return memray->data[0];
-    return __getBits64(memray->data[0],  0, 48);
+    return __getBits64(memray->data[0], 0, 48);
 }
 
 inline ulong MemRay_getRayFlags(MemRay* memray)
 {
-    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE) return __getBits64(memray->data[2], 0, 16);
+    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE)
+        return __getBits64(memray->data[2], 0, 16);
     return __getBits64(memray->data[0], 48, 16);
 }
 
 inline ulong MemRay_getShaderIndexMultiplier(MemRay* memray)
 {
-    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE) return __getBits64(memray->data[3], 16, 4);
+    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE)
+        return __getBits64(memray->data[3], 16, 4);
     return __getBits64(memray->data[2], 56, 8);
 }
 
@@ -144,7 +143,8 @@ inline ulong MemRay_getInstLeafPtr(MemRay* memray)
 
 inline ulong MemRay_getRayMask(MemRay* memray)
 {
-    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE) return __getBits64(memray->data[2], 16, 8);
+    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE)
+        return __getBits64(memray->data[2], 16, 8);
     return __getBits64(memray->data[3], 48, 8);
 }
 
@@ -153,7 +153,6 @@ inline float MemRay_getTime(MemRay* memray)
     uint truncVal = (uint)__getBits64(memray->data[3], 32, 32);
     return as_float(truncVal);
 }
-
 
 // === MemRay setters
 inline void MemRay_setRootNodePtr(MemRay* memray, ulong val)
@@ -215,7 +214,6 @@ inline void MemRay_setTime(MemRay* memray, float val)
     }
 }
 
-
 // === --------------------------------------------------------------------===
 // === MemHit
 // === --------------------------------------------------------------------===
@@ -271,40 +269,64 @@ typedef struct __attribute__((packed, aligned(32)))
     //           6:64 [58] - instLeafPtr     pointer to BVH instance leaf node (MSBs of 64b pointer aligned to 64B)
 } MemHit;
 
-
 // === MemHit getters
 inline uint MemHit_getPrimIndexDelta(MemHit* memhit)
 {
-    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE) return __getBits32(memhit->data0, 0, 5);
+    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE)
+        return __getBits32(memhit->data0, 0, 5);
     return __getBits32(memhit->data0, 0, 16);
 }
 
 inline long MemHit_getPrimLeafAddr(MemHit* memhit)
 {
-    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE) return __getSignExtendedBits64(memhit->data1[0], 6, 58);
+    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE)
+        return __getSignExtendedBits64(memhit->data1[0], 6, 58);
     return __getSignExtendedBits64(memhit->data1[0], 0, 42);
 }
 
 inline long MemHit_getInstLeafAddr(MemHit* memhit)
 {
-    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE) return __getSignExtendedBits64(memhit->data1[1], 6, 58);
+    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE)
+        return __getSignExtendedBits64(memhit->data1[1], 6, 58);
     return __getSignExtendedBits64(memhit->data1[1], 0, 42);
 }
 
 inline intel_float2 MemHit_getUV(MemHit* memhit)
 {
-    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE) return (intel_float2){unorm24_to_float(memhit->dataUV[0]), unorm24_to_float(memhit->dataUV[1])};
+    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE)
+        return (intel_float2){unorm24_to_float(memhit->dataUV[0]),
+                              unorm24_to_float(memhit->dataUV[1])};
     return (intel_float2){((float*)memhit->dataUV)[0], ((float*)memhit->dataUV)[1]};
 }
 
-inline uint MemHit_getValid(MemHit* memhit)         { return __getBits32(memhit->data0, 16, 1); }
-inline uint MemHit_getLeafType(MemHit* memhit)      { return __getBits32(memhit->data0, 17, 3); }
-inline uint MemHit_getPrimLeafIndex(MemHit* memhit) { return __getBits32(memhit->data0, 20, 4); }
-inline uint MemHit_getBvhLevel(MemHit* memhit)      { return __getBits32(memhit->data0, 24, 3); }
-inline uint MemHit_getFrontFace(MemHit* memhit)     { return __getBits32(memhit->data0, 27, 1); }
-inline uint MemHit_getDone(MemHit* memhit)          { return __getBits32(memhit->data0, 28, 1); }
-inline uint MemHit_getLeafNodeSubType(MemHit* memhit) { return __getBits32(memhit->data0, 12, 4); }
-
+inline uint MemHit_getValid(MemHit* memhit)
+{
+    return __getBits32(memhit->data0, 16, 1);
+}
+inline uint MemHit_getLeafType(MemHit* memhit)
+{
+    return __getBits32(memhit->data0, 17, 3);
+}
+inline uint MemHit_getPrimLeafIndex(MemHit* memhit)
+{
+    return __getBits32(memhit->data0, 20, 4);
+}
+inline uint MemHit_getBvhLevel(MemHit* memhit)
+{
+    return __getBits32(memhit->data0, 24, 3);
+}
+inline uint MemHit_getFrontFace(MemHit* memhit)
+{
+    return __getBits32(memhit->data0, 27, 1);
+}
+inline uint MemHit_getDone(MemHit* memhit)
+{
+    return __getBits32(memhit->data0, 28, 1);
+}
+inline uint MemHit_getLeafNodeSubType(MemHit* memhit)
+{
+    return __getBits32(memhit->data0, 12, 4);
+}
 
 // === MemHit setters
 inline void MemHit_clearUV(MemHit* memhit)
@@ -333,9 +355,14 @@ inline void MemHit_setUV(MemHit* memhit, float u, float v)
     ((float*)memhit->dataUV)[1] = v;
 }
 
-inline void MemHit_setValid(MemHit* memhit, bool value) { memhit->data0 = __setBits32(memhit->data0, value ? 1 : 0, 16, 1); }
-inline void MemHit_setDone(MemHit* memhit, bool value)  { memhit->data0 = __setBits32(memhit->data0, value ? 1 : 0, 28, 1); }
-
+inline void MemHit_setValid(MemHit* memhit, bool value)
+{
+    memhit->data0 = __setBits32(memhit->data0, value ? 1 : 0, 16, 1);
+}
+inline void MemHit_setDone(MemHit* memhit, bool value)
+{
+    memhit->data0 = __setBits32(memhit->data0, value ? 1 : 0, 28, 1);
+}
 
 // === MemHit methods
 inline global void* MemHit_getPrimLeafPtr(MemHit* memhit)
@@ -348,11 +375,10 @@ inline global void* MemHit_getInstanceLeafPtr(MemHit* memhit)
     return to_global((void*)(MemHit_getInstLeafAddr(memhit) * 64));
 }
 
-
 // === --------------------------------------------------------------------===
 // === RTStack
 // === --------------------------------------------------------------------===
-typedef struct __attribute__ ((packed, aligned(64)))
+typedef struct __attribute__((packed, aligned(64)))
 {
     enum HitType
     {
@@ -369,7 +395,7 @@ typedef struct __attribute__ ((packed, aligned(64)))
     MemRay ray[2];
 
     // 64 B
-    char   travStack[32 * 2];
+    char travStack[32 * 2];
 } RTStack;
 
 // === RTStack Accessors
@@ -381,8 +407,8 @@ inline MemHit* get_query_hit(intel_ray_query_t rayquery, intel_hit_type_t ty)
 
 inline MemHit* get_rt_stack_hit(void* rtstack, intel_hit_type_t ty)
 {
-    RTStack* rtStack = rtstack;
-    return &rtStack->hit[ty];
+        RTStack* rtStack = rtstack;
+        return &rtStack->hit[ty];
 }
 
 inline MemRay* get_rt_stack_ray(void* rtstack, uchar raynum)
@@ -394,7 +420,7 @@ inline MemRay* get_rt_stack_ray(void* rtstack, uchar raynum)
 // === --------------------------------------------------------------------===
 // === PrimLeafDesc
 // === --------------------------------------------------------------------===
-typedef struct __attribute__((packed,aligned(8)))
+typedef struct __attribute__((packed, aligned(8)))
 {
 #define MAX_GEOM_INDEX ((uint)(0x3FFFFFFF));
 #define MAX_SHADER_INDEX ((uint)(0xFFFFFF));
@@ -403,7 +429,7 @@ typedef struct __attribute__((packed,aligned(8)))
     // and disabling the opaque/non_opaque culling.
     enum Type
     {
-        TYPE_NONE = 0,
+        TYPE_NONE                     = 0,
         TYPE_OPACITY_CULLING_ENABLED  = 0,
         TYPE_OPACITY_CULLING_DISABLED = 1
     };
@@ -433,20 +459,37 @@ typedef struct __attribute__((packed,aligned(8)))
 } PrimLeafDesc;
 
 // === PrimLeafDesc getters
-inline uint PrimLeafDesc_getShaderIndex(PrimLeafDesc* leaf) { return __getBits32(leaf->data[0],  0, 24); }
-inline uint PrimLeafDesc_getGeomMask(PrimLeafDesc* leaf)    { return __getBits32(leaf->data[0], 24,  8); }
-inline uint PrimLeafDesc_getGeomIndex(PrimLeafDesc* leaf)   { return __getBits32(leaf->data[1],  0, 24); }
+inline uint PrimLeafDesc_getShaderIndex(PrimLeafDesc* leaf)
+{
+    return __getBits32(leaf->data[0], 0, 24);
+}
+inline uint PrimLeafDesc_getGeomMask(PrimLeafDesc* leaf)
+{
+    return __getBits32(leaf->data[0], 24, 8);
+}
+inline uint PrimLeafDesc_getGeomIndex(PrimLeafDesc* leaf)
+{
+    return __getBits32(leaf->data[1], 0, 24);
+}
 
 // === PrimLeafDesc setters
-inline uint PrimLeafDesc_setShaderIndex(PrimLeafDesc* leaf, uint val) { leaf->data[0] = __setBits32(leaf->data[0], val,  0, 24); }
-inline uint PrimLeafDesc_setGeomMask(PrimLeafDesc* leaf, uint val)    { leaf->data[0] = __setBits32(leaf->data[0], val, 24,  8); }
-inline uint PrimLeafDesc_setGeomIndex(PrimLeafDesc* leaf, uint val)   { leaf->data[1] = __setBits32(leaf->data[1], val,  0, 24); }
-
+inline uint PrimLeafDesc_setShaderIndex(PrimLeafDesc* leaf, uint val)
+{
+    leaf->data[0] = __setBits32(leaf->data[0], val, 0, 24);
+}
+inline uint PrimLeafDesc_setGeomMask(PrimLeafDesc* leaf, uint val)
+{
+    leaf->data[0] = __setBits32(leaf->data[0], val, 24, 8);
+}
+inline uint PrimLeafDesc_setGeomIndex(PrimLeafDesc* leaf, uint val)
+{
+    leaf->data[1] = __setBits32(leaf->data[1], val, 0, 24);
+}
 
 // === --------------------------------------------------------------------===
 // === QuadLeaf
 // === --------------------------------------------------------------------===
-typedef struct __attribute__((packed,aligned(64)))
+typedef struct __attribute__((packed, aligned(64)))
 {
     PrimLeafDesc leafDesc;
     unsigned int primIndex0;
@@ -480,14 +523,27 @@ typedef struct __attribute__((packed,aligned(64)))
 // === QuadLeaf getters
 inline uint QuadLeaf_getPrimIndex1Delta(QuadLeaf* leaf)
 {
-    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE) return __getBits32(leaf->data, 0, 5);
+    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE)
+        return __getBits32(leaf->data, 0, 5);
     return __getBits32(leaf->data, 0, 16);
 }
 
-inline uint QuadLeaf_getJ0(QuadLeaf* leaf)   { return __getBits32(leaf->data, 16,  2); }
-inline uint QuadLeaf_getJ1(QuadLeaf* leaf)   { return __getBits32(leaf->data, 18,  2); }
-inline uint QuadLeaf_getJ2(QuadLeaf* leaf)   { return __getBits32(leaf->data, 20,  2); }
-inline uint QuadLeaf_getLast(QuadLeaf* leaf) { return __getBits32(leaf->data, 22,  1); }
+inline uint QuadLeaf_getJ0(QuadLeaf* leaf)
+{
+    return __getBits32(leaf->data, 16, 2);
+}
+inline uint QuadLeaf_getJ1(QuadLeaf* leaf)
+{
+    return __getBits32(leaf->data, 18, 2);
+}
+inline uint QuadLeaf_getJ2(QuadLeaf* leaf)
+{
+    return __getBits32(leaf->data, 20, 2);
+}
+inline uint QuadLeaf_getLast(QuadLeaf* leaf)
+{
+    return __getBits32(leaf->data, 22, 1);
+}
 
 // === QuadLeaf setters
 inline void QuadLeaf_setPrimIndex1Delta(QuadLeaf* leaf, uint val)
@@ -500,10 +556,22 @@ inline void QuadLeaf_setPrimIndex1Delta(QuadLeaf* leaf, uint val)
     leaf->data = __setBits32(leaf->data, val, 0, 16);
 }
 
-inline void QuadLeaf_setJ0(QuadLeaf* leaf, uint val)   { leaf->data = __setBits32(leaf->data, val, 16,  2); }
-inline void QuadLeaf_setJ1(QuadLeaf* leaf, uint val)   { leaf->data = __setBits32(leaf->data, val, 18,  2); }
-inline void QuadLeaf_setJ2(QuadLeaf* leaf, uint val)   { leaf->data = __setBits32(leaf->data, val, 20,  2); }
-inline void QuadLeaf_setLast(QuadLeaf* leaf, uint val) { leaf->data = __setBits32(leaf->data, val, 22,  1); }
+inline void QuadLeaf_setJ0(QuadLeaf* leaf, uint val)
+{
+    leaf->data = __setBits32(leaf->data, val, 16, 2);
+}
+inline void QuadLeaf_setJ1(QuadLeaf* leaf, uint val)
+{
+    leaf->data = __setBits32(leaf->data, val, 18, 2);
+}
+inline void QuadLeaf_setJ2(QuadLeaf* leaf, uint val)
+{
+    leaf->data = __setBits32(leaf->data, val, 20, 2);
+}
+inline void QuadLeaf_setLast(QuadLeaf* leaf, uint val)
+{
+    leaf->data = __setBits32(leaf->data, val, 22, 1);
+}
 
 // === --------------------------------------------------------------------===
 // === QuadLeaf_MBlur
@@ -595,11 +663,10 @@ float3 QuadLeaf_MBlur_getVertexDiff(QuadLeaf_MBlur* leaf, unsigned int j)
         return (float3){leaf->v3_diff[0], leaf->v3_diff[1], leaf->v3_diff[2]};
 }
 
-
 // === --------------------------------------------------------------------===
 // === ProceduralLeaf
 // === --------------------------------------------------------------------===
-typedef struct __attribute__((packed,aligned(64)))
+typedef struct __attribute__((packed, aligned(64)))
 {
 #define PROCEDURAL_N 13
 
@@ -610,17 +677,29 @@ typedef struct __attribute__((packed,aligned(64)))
     //    4:32-N [32-N-4] - padding        -
     // 32-N:32   [     N] - last           bit vector with a last bit per primitive
 
-    uint _primIndex[PROCEDURAL_N]; // primitive indices of all primitives stored inside the leaf
+    uint _primIndex
+        [PROCEDURAL_N]; // primitive indices of all primitives stored inside the leaf
 } ProceduralLeaf;
 
 // === ProceduralLeaf accessors
 
-inline uint ProceduralLeaf_getNumPrimitives(ProceduralLeaf* leaf) { return __getBits32(leaf->data,                 0,             4); }
-inline uint ProceduralLeaf_getLast(ProceduralLeaf* leaf)          { return __getBits32(leaf->data, 32 - PROCEDURAL_N,  PROCEDURAL_N); }
+inline uint ProceduralLeaf_getNumPrimitives(ProceduralLeaf* leaf)
+{
+    return __getBits32(leaf->data, 0, 4);
+}
+inline uint ProceduralLeaf_getLast(ProceduralLeaf* leaf)
+{
+    return __getBits32(leaf->data, 32 - PROCEDURAL_N, PROCEDURAL_N);
+}
 
-inline uint ProceduralLeaf_setNumPrimitives(ProceduralLeaf* leaf, uint val) { leaf->data = __setBits32(leaf->data, val,                 0,             4); }
-inline uint ProceduralLeaf_setLast(ProceduralLeaf* leaf, uint val)          { leaf->data = __setBits32(leaf->data, val, 32 - PROCEDURAL_N,  PROCEDURAL_N); }
-
+inline uint ProceduralLeaf_setNumPrimitives(ProceduralLeaf* leaf, uint val)
+{
+    leaf->data = __setBits32(leaf->data, val, 0, 4);
+}
+inline uint ProceduralLeaf_setLast(ProceduralLeaf* leaf, uint val)
+{
+    leaf->data = __setBits32(leaf->data, val, 32 - PROCEDURAL_N, PROCEDURAL_N);
+}
 
 // === --------------------------------------------------------------------===
 // === InstanceLeaf
@@ -663,7 +742,8 @@ typedef struct
         float world2obj_vx[3]; // 1st column of Worl2Obj transform
         float world2obj_vy[3]; // 2nd column of Worl2Obj transform
         float world2obj_vz[3]; // 3rd column of Worl2Obj transform
-        float obj2world_p[3];  // translation of Obj2World transform (on purpose in first 64 bytes)
+        float obj2world_p
+            [3]; // translation of Obj2World transform (on purpose in first 64 bytes)
     } part0;
 
     /* second 64 bytes accessed during shading */
@@ -694,7 +774,8 @@ inline ulong InstanceLeaf_getStartNodePtr(InstanceLeaf* leaf)
 
 inline ulong InstanceLeaf_getInstFlags(InstanceLeaf* leaf)
 {
-    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE) return __getBits32(leaf->part0.data0[1], 0, 8);
+    if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE)
+        return __getBits32(leaf->part0.data0[1], 0, 8);
     return __getBits64(leaf->part0.data1, 48, 8);
 }
 
@@ -704,9 +785,14 @@ inline ulong InstanceLeaf_getBvhPtr(InstanceLeaf* leaf)
     return __getBits64(leaf->part1.data, 0, 48);
 }
 
-inline uint InstanceLeaf_getGeomMask(InstanceLeaf* leaf)           { return __getBits32(leaf->part0.data0[0], 24,  8); }
-inline uint InstanceLeaf_getDisableOpacityCull(InstanceLeaf* leaf) { return __getBits32(leaf->part0.data0[1], 29,  1); }
-
+inline uint InstanceLeaf_getGeomMask(InstanceLeaf* leaf)
+{
+    return __getBits32(leaf->part0.data0[0], 24, 8);
+}
+inline uint InstanceLeaf_getDisableOpacityCull(InstanceLeaf* leaf)
+{
+    return __getBits32(leaf->part0.data0[1], 29, 1);
+}
 
 // === InstanceLeaf setters
 inline void InstanceLeaf_setStartNodePtr(InstanceLeaf* leaf, ulong val)
@@ -739,5 +825,11 @@ inline void InstanceLeaf_setBvhPtr(InstanceLeaf* leaf, ulong val)
     leaf->part1.data = __setBits64(leaf->part1.data, val, 0, 48);
 }
 
-inline void InstanceLeaf_setGeomMask(InstanceLeaf* leaf, uint val)           { leaf->part0.data0[0] = __setBits32(leaf->part0.data0[0], val, 24,  8); }
-inline void InstanceLeaf_setDisableOpacityCull(InstanceLeaf* leaf, uint val) { leaf->part0.data0[1] = __setBits32(leaf->part0.data0[1], val, 29,  1); }
+inline void InstanceLeaf_setGeomMask(InstanceLeaf* leaf, uint val)
+{
+    leaf->part0.data0[0] = __setBits32(leaf->part0.data0[0], val, 24, 8);
+}
+inline void InstanceLeaf_setDisableOpacityCull(InstanceLeaf* leaf, uint val)
+{
+    leaf->part0.data0[1] = __setBits32(leaf->part0.data0[1], val, 29, 1);
+}

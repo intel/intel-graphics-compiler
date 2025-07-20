@@ -32,4 +32,4 @@ protected:
 // for OS-specific versions, please refer to OS_NAME/LibaryHandle.h headers
 std::unique_ptr<LibraryHandle> OpenLibrary(const std::string &path, bool addOsSpecificExtensionToPath);
 std::unique_ptr<LibraryHandle> OpenLibrary(const std::wstring &path, bool addOsSpecificExtensionToPath);
-}
+} // namespace CIF

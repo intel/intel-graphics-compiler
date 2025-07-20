@@ -46,9 +46,7 @@ public:
       uint16_t regNum;
       uint16_t subRegNum; // for GRF, in byte offset
 
-      bool operator==(const Register &rhs) const {
-        return (regNum == rhs.regNum && subRegNum == rhs.subRegNum);
-      }
+      bool operator==(const Register &rhs) const { return (regNum == rhs.regNum && subRegNum == rhs.subRegNum); }
 
       void print(llvm::raw_ostream &OS) const;
       void dump() const;
@@ -60,8 +58,7 @@ public:
       int32_t memoryOffset : 31;  // memory offset
 
       bool operator==(const Memory &rhs) const {
-        return (isBaseOffBEFP == rhs.isBaseOffBEFP &&
-                memoryOffset == rhs.memoryOffset);
+        return (isBaseOffBEFP == rhs.isBaseOffBEFP && memoryOffset == rhs.memoryOffset);
       }
 
       void print(llvm::raw_ostream &OS) const;
@@ -75,12 +72,7 @@ public:
   class VarAlloc {
   public:
     enum VirtualVarType { VirTypeAddress = 0, VirTypeFlag = 1, VirTypeGRF = 2 };
-    enum PhysicalVarType {
-      PhyTypeAddress = 0,
-      PhyTypeFlag = 1,
-      PhyTypeGRF = 2,
-      PhyTypeMemory = 3
-    };
+    enum PhysicalVarType { PhyTypeAddress = 0, PhyTypeFlag = 1, PhyTypeGRF = 2, PhyTypeMemory = 3 };
     VirtualVarType virtualType;
     PhysicalVarType physicalType;
     Mapping mapping;
@@ -102,8 +94,7 @@ public:
     }
 
     bool isSpill() const {
-      if (var.physicalType ==
-          DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory)
+      if (var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory)
         return true;
 
       return false;
@@ -195,8 +186,7 @@ public:
 
       // Assume that be_fp is available throughout the function
       // and at the same location.
-      IGC_ASSERT_MESSAGE(befp.front().var.physicalType == VarAlloc::PhyTypeGRF,
-                         "BE_FP not in register");
+      IGC_ASSERT_MESSAGE(befp.front().var.physicalType == VarAlloc::PhyTypeGRF, "BE_FP not in register");
 
       regNum = befp.front().var.mapping.r.regNum;
       subRegNum = befp.front().var.mapping.r.subRegNum;
@@ -269,12 +259,10 @@ private:
     DbgDecoder::VarAlloc data;
 
     data.virtualType = (DbgDecoder::VarAlloc::VirtualVarType)read<uint8_t>(dbg);
-    data.physicalType =
-        (DbgDecoder::VarAlloc::PhysicalVarType)read<uint8_t>(dbg);
+    data.physicalType = (DbgDecoder::VarAlloc::PhysicalVarType)read<uint8_t>(dbg);
 
     enum class PhyType : unsigned { Address = 0, Flag = 1, GRF = 2, Mem = 3 };
-    if (data.physicalType == (unsigned)PhyType::Address ||
-        data.physicalType == (unsigned)PhyType::Flag ||
+    if (data.physicalType == (unsigned)PhyType::Address || data.physicalType == (unsigned)PhyType::Flag ||
         data.physicalType == (unsigned)PhyType::GRF) {
       readMappingReg(data.mapping);
     } else if (data.physicalType == (unsigned)PhyType::Mem) {
@@ -303,8 +291,7 @@ private:
       for (unsigned int j = 0; j != count; j++) {
         uint32_t cisaOffset = read<uint32_t>(dbg);
         uint32_t genOffset = read<uint32_t>(dbg);
-        f.CISAOffsetMap.push_back(
-            std::make_pair(cisaOffset, f.relocOffset + genOffset));
+        f.CISAOffsetMap.push_back(std::make_pair(cisaOffset, f.relocOffset + genOffset));
       }
 
       // cisa index map
@@ -312,8 +299,7 @@ private:
       for (unsigned int j = 0; j != count; j++) {
         uint32_t cisaIndex = read<uint32_t>(dbg);
         uint32_t genOffset = read<uint32_t>(dbg);
-        f.CISAIndexMap.push_back(
-            std::make_pair(cisaIndex, f.relocOffset + genOffset));
+        f.CISAIndexMap.push_back(std::make_pair(cisaIndex, f.relocOffset + genOffset));
       }
 
       // var info

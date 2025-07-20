@@ -14,26 +14,23 @@ SPDX-License-Identifier: MIT
 namespace IGC {
 namespace VLD {
 
-llvm::Expected<SPVMetadata> GetVLDMetadata(const char *spv_buffer,
-                                           uint32_t spv_buffer_size_in_bytes) {
+llvm::Expected<SPVMetadata> GetVLDMetadata(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   return SpvSplitter().Parse(spv_buffer, spv_buffer_size_in_bytes);
 }
 
-llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
-SplitSPMDAndESIMD(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
+llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>> SplitSPMDAndESIMD(const char *spv_buffer,
+                                                                                  uint32_t spv_buffer_size_in_bytes) {
 
   SpvSplitter splitter;
   return splitter.Split(spv_buffer, spv_buffer_size_in_bytes);
 }
 
-llvm::Error SpvSplitter::ParseSPIRV(const char *spv_buffer,
-                                    uint32_t spv_buffer_size_in_bytes) {
+llvm::Error SpvSplitter::ParseSPIRV(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   const uint32_t *const binary = reinterpret_cast<const uint32_t *>(spv_buffer);
   const size_t word_count = (spv_buffer_size_in_bytes / sizeof(uint32_t));
 
   if (word_count < 5) {
-    return llvm::createStringError(llvm::inconvertibleErrorCode(),
-                                   "SPIR-V binary is too short!");
+    return llvm::createStringError(llvm::inconvertibleErrorCode(), "SPIR-V binary is too short!");
   }
 
   // Skip the header (magic, version, generator, bound, schema)
@@ -49,17 +46,15 @@ llvm::Error SpvSplitter::ParseSPIRV(const char *spv_buffer,
     uint16_t wordCount = word >> 16;
 
     if (wordCount == 0) {
-      return llvm::createStringError(
-          llvm::inconvertibleErrorCode(),
-          "Invalid SPIR-V instruction with word count 0 at offset " +
-              std::to_string(offset));
+      return llvm::createStringError(llvm::inconvertibleErrorCode(),
+                                     "Invalid SPIR-V instruction with word count 0 at offset " +
+                                         std::to_string(offset));
     }
 
     if (offset + wordCount > word_count) {
-      return llvm::createStringError(
-          llvm::inconvertibleErrorCode(),
-          "SPIR-V instruction at offset " + std::to_string(offset) +
-              " extends beyond the end of the binary");
+      return llvm::createStringError(llvm::inconvertibleErrorCode(), "SPIR-V instruction at offset " +
+                                                                         std::to_string(offset) +
+                                                                         " extends beyond the end of the binary");
     }
 
     llvm::ArrayRef<uint32_t> instWords(&binary[offset], wordCount);
@@ -73,9 +68,8 @@ llvm::Error SpvSplitter::ParseSPIRV(const char *spv_buffer,
   }
 
   if (!has_spmd_functions_ && !has_esimd_functions_) {
-    return llvm::createStringError(
-        llvm::inconvertibleErrorCode(),
-        "SPIR-V file did not contain any SPMD or ESIMD functions!");
+    return llvm::createStringError(llvm::inconvertibleErrorCode(),
+                                   "SPIR-V file did not contain any SPMD or ESIMD functions!");
   }
 
   return llvm::Error::success();
@@ -90,8 +84,8 @@ SPIRVTypeEnum SpvSplitter::GetCurrentSPIRVType() const {
 
   return SPIRVTypeEnum::SPIRV_ESIMD;
 }
-llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
-SpvSplitter::Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
+llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>> SpvSplitter::Split(const char *spv_buffer,
+                                                                                   uint32_t spv_buffer_size_in_bytes) {
   this->Reset();
   this->only_detect_ = false;
   auto parseError = ParseSPIRV(spv_buffer, spv_buffer_size_in_bytes);
@@ -103,15 +97,12 @@ SpvSplitter::Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   // Add declarations of ESIMD functions that are called from SPMD module,
   // otherwise SPIR-V reader might fail.
   for (auto esimd_func_id : esimd_functions_to_declare_) {
-    if (esimd_function_declarations_.find(esimd_func_id) ==
-        esimd_function_declarations_.end()) {
-      return llvm::createStringError(
-          llvm::inconvertibleErrorCode(),
-          "SPIR-V Splitter error: ESIMD function declaration not found!");
+    if (esimd_function_declarations_.find(esimd_func_id) == esimd_function_declarations_.end()) {
+      return llvm::createStringError(llvm::inconvertibleErrorCode(),
+                                     "SPIR-V Splitter error: ESIMD function declaration not found!");
     }
 
-    spmd_program_.insert(spmd_program_.end(),
-                         esimd_function_declarations_[esimd_func_id].begin(),
+    spmd_program_.insert(spmd_program_.end(), esimd_function_declarations_[esimd_func_id].begin(),
                          esimd_function_declarations_[esimd_func_id].end());
   }
 
@@ -130,8 +121,7 @@ SpvSplitter::Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   return std::make_pair(spmd_program_, esimd_program_);
 }
 
-llvm::Expected<SPVMetadata>
-SpvSplitter::Parse(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
+llvm::Expected<SPVMetadata> SpvSplitter::Parse(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   this->Reset();
   this->only_detect_ = true;
   auto parseError = ParseSPIRV(spv_buffer, spv_buffer_size_in_bytes);
@@ -148,15 +138,13 @@ bool SpvSplitter::HasEntryPoints() const {
   if (entry_points_.size() == 0)
     return false;
 
-  bool AllEntryPointsAreSPMD =
-      std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
-        return esimd_decorated_ids_.find(el) == esimd_decorated_ids_.end();
-      });
+  bool AllEntryPointsAreSPMD = std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
+    return esimd_decorated_ids_.find(el) == esimd_decorated_ids_.end();
+  });
 
-  bool AllEntryPointsAreESIMD =
-      std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
-        return esimd_decorated_ids_.find(el) != esimd_decorated_ids_.end();
-      });
+  bool AllEntryPointsAreESIMD = std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
+    return esimd_decorated_ids_.find(el) != esimd_decorated_ids_.end();
+  });
 
   if (CurSPIRVType == SPIRVTypeEnum::SPIRV_ESIMD && AllEntryPointsAreSPMD) {
     return false;
@@ -185,22 +173,15 @@ SPVMetadata SpvSplitter::GetVLDMetadata() const {
 const uint32_t SpvSplitter::GetForcedSubgroupSize() const {
   if (entry_point_to_subgroup_size_map_.size() == 0)
     return 0;
-  IGC_ASSERT(std::all_of(
-      entry_point_to_subgroup_size_map_.begin(),
-      entry_point_to_subgroup_size_map_.end(), [&](auto &el) {
-        return el.second == entry_point_to_subgroup_size_map_.begin()->second;
-      }));
+  IGC_ASSERT(std::all_of(entry_point_to_subgroup_size_map_.begin(), entry_point_to_subgroup_size_map_.end(),
+                         [&](auto &el) { return el.second == entry_point_to_subgroup_size_map_.begin()->second; }));
 
   return entry_point_to_subgroup_size_map_.begin()->second;
 }
 
-const std::vector<std::string> &SpvSplitter::GetExportedFunctions() const {
-  return exported_functions_;
-}
+const std::vector<std::string> &SpvSplitter::GetExportedFunctions() const { return exported_functions_; }
 
-const std::vector<std::string> &SpvSplitter::GetImportedFunctions() const {
-  return imported_functions_;
-}
+const std::vector<std::string> &SpvSplitter::GetImportedFunctions() const { return imported_functions_; }
 
 void SpvSplitter::Reset() {
   spmd_program_.clear();
@@ -344,8 +325,7 @@ llvm::Error SpvSplitter::HandleFunctionStart(llvm::ArrayRef<uint32_t> words) {
     cur_esimd_function_id_ = resultId;
 
     AddInstToProgram(words, esimd_program_);
-    AddInstToProgram(words,
-                     esimd_function_declarations_[cur_esimd_function_id_]);
+    AddInstToProgram(words, esimd_function_declarations_[cur_esimd_function_id_]);
   } else {
     is_inside_spmd_function_ = true;
     has_spmd_functions_ = true;
@@ -355,8 +335,7 @@ llvm::Error SpvSplitter::HandleFunctionStart(llvm::ArrayRef<uint32_t> words) {
   return llvm::Error::success();
 }
 
-llvm::Error
-SpvSplitter::HandleFunctionParameter(llvm::ArrayRef<uint32_t> words) {
+llvm::Error SpvSplitter::HandleFunctionParameter(llvm::ArrayRef<uint32_t> words) {
   // OpFunctionParameter instruction format:
   // Word 0: WordCount and Opcode
   // Word 1: Result Type ID
@@ -364,8 +343,7 @@ SpvSplitter::HandleFunctionParameter(llvm::ArrayRef<uint32_t> words) {
 
   if (is_inside_esimd_function_) {
     AddInstToProgram(words, esimd_program_);
-    AddInstToProgram(words,
-                     esimd_function_declarations_[cur_esimd_function_id_]);
+    AddInstToProgram(words, esimd_function_declarations_[cur_esimd_function_id_]);
   } else {
     AddInstToProgram(words, spmd_program_);
   }
@@ -378,8 +356,7 @@ llvm::Error SpvSplitter::HandleFunctionEnd(llvm::ArrayRef<uint32_t> words) {
 
   if (is_inside_esimd_function_) {
     AddInstToProgram(words, esimd_program_);
-    AddInstToProgram(words,
-                     esimd_function_declarations_[cur_esimd_function_id_]);
+    AddInstToProgram(words, esimd_function_declarations_[cur_esimd_function_id_]);
     cur_esimd_function_id_ = -1;
   }
   if (is_inside_spmd_function_) {
@@ -426,9 +403,8 @@ llvm::Error SpvSplitter::HandleExecutionMode(llvm::ArrayRef<uint32_t> words) {
       uint32_t sgSize = words[3];
       entry_point_to_subgroup_size_map_.insert({entryPointId, sgSize});
     } else {
-      return llvm::createStringError(
-          llvm::inconvertibleErrorCode(),
-          "OpExecutionMode SubgroupSize requires an additional operand");
+      return llvm::createStringError(llvm::inconvertibleErrorCode(),
+                                     "OpExecutionMode SubgroupSize requires an additional operand");
     }
   }
 
@@ -438,15 +414,13 @@ llvm::Error SpvSplitter::HandleExecutionMode(llvm::ArrayRef<uint32_t> words) {
   return llvm::Error::success();
 }
 
-void SpvSplitter::AddInstToProgram(llvm::ArrayRef<uint32_t> words,
-                                   ProgramStreamType &program) {
+void SpvSplitter::AddInstToProgram(llvm::ArrayRef<uint32_t> words, ProgramStreamType &program) {
   if (!only_detect_) {
     program.insert(program.end(), words.begin(), words.end());
   }
 }
 
-std::string SpvSplitter::DecodeStringLiteral(llvm::ArrayRef<uint32_t> words,
-                                             size_t startIndex) {
+std::string SpvSplitter::DecodeStringLiteral(llvm::ArrayRef<uint32_t> words, size_t startIndex) {
   std::string result;
   for (size_t i = startIndex; i < words.size(); ++i) {
     uint32_t word = words[i];

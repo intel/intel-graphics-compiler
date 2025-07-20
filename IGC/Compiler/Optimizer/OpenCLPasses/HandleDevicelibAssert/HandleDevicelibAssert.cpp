@@ -19,7 +19,8 @@ using namespace IGC;
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-handle-devicelib-assert"
-#define PASS_DESCRIPTION "Remove definition of __devicelib_assert_fail if provided by DPCPP, so that IGC builtin is used."
+#define PASS_DESCRIPTION                                                                                               \
+  "Remove definition of __devicelib_assert_fail if provided by DPCPP, so that IGC builtin is used."
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(HandleDevicelibAssert, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
@@ -29,10 +30,8 @@ char HandleDevicelibAssert::ID = 0;
 
 static const char *ASSERT_FUNCTION_NAME = "__devicelib_assert_fail";
 
-HandleDevicelibAssert::HandleDevicelibAssert()
-    : ModulePass(ID) {
-  initializeHandleDevicelibAssertPass(
-      *PassRegistry::getPassRegistry());
+HandleDevicelibAssert::HandleDevicelibAssert() : ModulePass(ID) {
+  initializeHandleDevicelibAssertPass(*PassRegistry::getPassRegistry());
 }
 
 bool HandleDevicelibAssert::runOnModule(Module &M) {
@@ -42,11 +41,11 @@ bool HandleDevicelibAssert::runOnModule(Module &M) {
     if (!F.getName().equals(ASSERT_FUNCTION_NAME))
       continue;
 
-    if (F.isDeclaration()) continue;
+    if (F.isDeclaration())
+      continue;
 
     F.deleteBody();
     changed = true;
-
   }
   return changed;
 }

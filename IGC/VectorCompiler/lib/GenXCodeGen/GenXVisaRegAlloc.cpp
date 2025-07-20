@@ -95,8 +95,7 @@ void GenXVisaRegAlloc::releaseMemory() {
  * This is currently a trivial allocator that just gives a new vISA virtual
  * register to every single Value.
  */
-bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
-{
+bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg) {
   FG = &FGArg;
   Liveness = &getAnalysis<GenXLiveness>();
   Numbering = &getAnalysis<GenXNumbering>();
@@ -333,7 +332,8 @@ void AccumulatorUsageLocalizer::getSplitForLiveRange(genx::LiveRange *LR,
   MapVector<BasicBlock *, std::vector<Instruction *>> LRValuesForBB;
   for (auto &SV : LR->getValues()) {
     auto *I = dyn_cast<Instruction>(SV.getValue());
-    if (I) LRValuesForBB[I->getParent()].push_back(I);
+    if (I)
+      LRValuesForBB[I->getParent()].push_back(I);
   }
 
   for (auto &[BB, Insts] : LRValuesForBB) {
@@ -443,8 +443,7 @@ bool AccumulatorUsageLocalizer::isArithmeticChainInst(const Value *V) {
 void GenXVisaRegAlloc::getLiveRangesForValue(
     Value *V, std::vector<LiveRange *> &LRs) const {
   auto Ty = V->getType();
-  for (unsigned i = 0, e = IndexFlattener::getNumElements(Ty);
-      i != e; ++i) {
+  for (unsigned i = 0, e = IndexFlattener::getNumElements(Ty); i != e; ++i) {
     SimpleValue SV(V, i);
     LiveRange *LR = Liveness->getLiveRangeOrNull(SV);
     if (!LR || LR->getCategory() == vc::RegCategory::None)
@@ -500,8 +499,7 @@ static LiveRange *coalesceConstState(Instruction &ToCoalesce,
  * load of a surface variable are coalesced together. This allows the CM code
  * to use lots of printfs without running out of surface variables.
  */
-void GenXVisaRegAlloc::extraCoalescing()
-{
+void GenXVisaRegAlloc::extraCoalescing() {
   LiveRange *CommonSurface = nullptr;
   LiveRange *CommonSampler = nullptr;
   for (auto fgi = FG->begin(), fge = FG->end(); fgi != fge; ++fgi) {
@@ -636,8 +634,9 @@ void GenXVisaRegAlloc::extraCoalescing()
           // (after coalescing alignment requirements can become stricter, and
           // kernel arguments have already fixed alignment).
           if (FG->getHead() == F &&
-              std::any_of(OperandLR->value_begin(), OperandLR->value_end(),
-                [](AssertingSV SV) { return isa<Argument>(SV.getValue()); }))
+              std::any_of(
+                  OperandLR->value_begin(), OperandLR->value_end(),
+                  [](AssertingSV SV) { return isa<Argument>(SV.getValue()); }))
             continue;
           if (Liveness->interfere(LR, OperandLR))
             continue;
@@ -677,7 +676,7 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
   if (LR->Category == vc::RegCategory::Predicate) {
     auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     IGC_ASSERT_MESSAGE((!VT || genx::exactLog2(VT->getNumElements()) >= 0),
-      "invalid predicate width");
+                       "invalid predicate width");
     (void)VT;
   }
   // Allocate the register, also setting the alignment.
@@ -981,11 +980,11 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const FunctionGroup *FG) const {
     IGC_ASSERT_MESSAGE(RN, "No register allocated for LR");
     OS << "[";
     RN->print(OS);
-    Type *ElTy = IndexFlattener::getElementType(SV.getValue()->getType(),
-          SV.getIndex());
+    Type *ElTy =
+        IndexFlattener::getElementType(SV.getValue()->getType(), SV.getIndex());
     unsigned Bytes = vc::getTypeSize(ElTy).inBytes();
     bool IsFlag = ElTy->getScalarType()->isIntegerTy(1);
-    OS << "] (" << Bytes << " bytes, length " << i->Length <<") ";
+    OS << "] (" << Bytes << " bytes, length " << i->Length << ") ";
     // Dump some indication of what the live range is. For a kernel argument,
     // show its name. For an instruction with debug info, show the location.
     // We try and find the earliest definition with debug info to show.

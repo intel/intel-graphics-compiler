@@ -16,8 +16,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC {
-    llvm::FunctionPass* createTypeDemotePass();
-    void initializeTypeDemotePass(llvm::PassRegistry&);
+llvm::FunctionPass *createTypeDemotePass();
+void initializeTypeDemotePass(llvm::PassRegistry &);
 } // End namespace IGC
 
 #endif // _CISA_TYPEDEMOTE_H_

@@ -56,8 +56,7 @@ public:
   /// @brief Initialize debug emitter for processing the given shader.
   /// @param MainVisa module to process, and emit debug info for.
   /// @param debugEnabled indicator for emitting debug info or not.
-  virtual void Initialize(std::unique_ptr<IGC::VISAModule> VM,
-                          const DebugEmitterOpts &Opts) = 0;
+  virtual void Initialize(std::unique_ptr<IGC::VISAModule> VM, const DebugEmitterOpts &Opts) = 0;
 
   /// @brief DISPCache is used to optimize discovery of DISubprogram
   //  nodes. Calling this method is optional (this is an optimization).
@@ -67,8 +66,7 @@ public:
   /// @param Finalize [IN] indicates whether this is last function in group.
   /// @param VisaDbgIngo [IN] holds decoded VISA debug information.
   /// @return memory buffer which contains the emitted debug info.
-  virtual std::vector<char> Finalize(bool Finalize,
-                                     const IGC::VISADebugInfo &VisaDbgInfo) = 0;
+  virtual std::vector<char> Finalize(bool Finalize, const IGC::VISADebugInfo &VisaDbgInfo) = 0;
 
   /// @brief Process instruction before emitting its VISA code.
   /// @param pInst instruction to process.

@@ -22,30 +22,21 @@ SPDX-License-Identifier: MIT
 using namespace IGC;
 using namespace llvm;
 
-class OverrideTMaxPass : public FunctionPass
-{
+class OverrideTMaxPass : public FunctionPass {
 public:
-    OverrideTMaxPass(uint32_t OverrideValue = 0) :
-        OverrideValue(OverrideValue),
-        FunctionPass(ID)
-    {
-        initializeOverrideTMaxPassPass(*PassRegistry::getPassRegistry());
-    }
+  OverrideTMaxPass(uint32_t OverrideValue = 0) : OverrideValue(OverrideValue), FunctionPass(ID) {
+    initializeOverrideTMaxPassPass(*PassRegistry::getPassRegistry());
+  }
 
-    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-    {
-        AU.setPreservesCFG();
-    }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
 
-    bool runOnFunction(Function &F) override;
-    StringRef getPassName() const override
-    {
-        return "OverrideTMaxPass";
-    }
+  bool runOnFunction(Function &F) override;
+  StringRef getPassName() const override { return "OverrideTMaxPass"; }
 
-    static char ID;
+  static char ID;
+
 private:
-    uint32_t OverrideValue = 0;
+  uint32_t OverrideValue = 0;
 };
 
 char OverrideTMaxPass::ID = 0;
@@ -58,47 +49,38 @@ char OverrideTMaxPass::ID = 0;
 IGC_INITIALIZE_PASS_BEGIN(OverrideTMaxPass, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
 IGC_INITIALIZE_PASS_END(OverrideTMaxPass, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
 
-bool OverrideTMaxPass::runOnFunction(Function &F)
-{
-    if (OverrideValue == 0)
-        return false;
+bool OverrideTMaxPass::runOnFunction(Function &F) {
+  if (OverrideValue == 0)
+    return false;
 
-    IRBuilder<> IRB(F.getContext());
-    auto updateTMax = [&](auto* GII)
-    {
-        auto* Val = ConstantFP::get(
-            IRB.getFloatTy(), static_cast<double>(OverrideValue));
-        GII->setTMax(Val);
+  IRBuilder<> IRB(F.getContext());
+  auto updateTMax = [&](auto *GII) {
+    auto *Val = ConstantFP::get(IRB.getFloatTy(), static_cast<double>(OverrideValue));
+    GII->setTMax(Val);
 
-        return true;
-    };
+    return true;
+  };
 
-    bool Changed = false;
-    for (auto& I : instructions(F))
-    {
-        auto* GII = dyn_cast<GenIntrinsicInst>(&I);
-        if (!GII)
-            continue;
+  bool Changed = false;
+  for (auto &I : instructions(F)) {
+    auto *GII = dyn_cast<GenIntrinsicInst>(&I);
+    if (!GII)
+      continue;
 
-        switch (GII->getIntrinsicID())
-        {
-        case GenISAIntrinsic::GenISA_TraceRayInlineHL:
-            Changed |= updateTMax(cast<TraceRayInlineHLIntrinsic>(GII));
-            break;
-        default:
-            break;
-        }
+    switch (GII->getIntrinsicID()) {
+    case GenISAIntrinsic::GenISA_TraceRayInlineHL:
+      Changed |= updateTMax(cast<TraceRayInlineHLIntrinsic>(GII));
+      break;
+    default:
+      break;
     }
+  }
 
-    return Changed;
+  return Changed;
 }
 
-namespace IGC
-{
+namespace IGC {
 
-Pass* createOverrideTMaxPass(uint32_t OverrideValue)
-{
-    return new OverrideTMaxPass(OverrideValue);
-}
+Pass *createOverrideTMaxPass(uint32_t OverrideValue) { return new OverrideTMaxPass(OverrideValue); }
 
 } // namespace IGC

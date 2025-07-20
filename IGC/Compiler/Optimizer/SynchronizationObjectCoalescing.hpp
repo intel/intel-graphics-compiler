@@ -8,19 +8,17 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-namespace llvm
-{
+namespace llvm {
 class Pass;
 class PassRegistry;
-}
+} // namespace llvm
 
-namespace IGC
-{
+namespace IGC {
 ////////////////////////////////////////////////////////////////////////
 /// @brief This pass is responsible for reducing the number of synchronization
 /// instruction. Moreover, the necessary memory fences can decrease their
 /// scope of influence.
-llvm::Pass* createSynchronizationObjectCoalescing();
+llvm::Pass *createSynchronizationObjectCoalescing();
 } // namespace IGC
 
-void initializeSynchronizationObjectCoalescingPass(llvm::PassRegistry&);
+void initializeSynchronizationObjectCoalescingPass(llvm::PassRegistry &);

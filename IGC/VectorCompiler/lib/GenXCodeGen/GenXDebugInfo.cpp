@@ -221,8 +221,8 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 
 static cl::opt<bool>
-    DbgOpt_ValidationEnable("vc-dbginfo-enable-validation",
-                            cl::init(false), cl::Hidden,
+    DbgOpt_ValidationEnable("vc-dbginfo-enable-validation", cl::init(false),
+                            cl::Hidden,
                             cl::desc("same as IGC_DebugInfoValidation"));
 static cl::opt<bool>
     DbgOpt_ZeBinCompatible("vc-experimental-dbg-info-zebin-compatible",
@@ -268,7 +268,7 @@ static bool hasCopy(const ContainerT &Container,
 // will always happen and therefore copies can be silently inserted.
 template <typename ContainerT, class... ArgsT>
 static std::enable_if_t<IsNonCheckedEmplace<ContainerT>::value, void>
-checkedEmplace(ContainerT &Container, ArgsT &&... Args) {
+checkedEmplace(ContainerT &Container, ArgsT &&...Args) {
   auto Result = Container.emplace(std::forward<ArgsT>(Args)...);
   IGC_ASSERT_MESSAGE(!hasCopy(Container, Result),
                      "a copy of the existing element was emplaced");
@@ -279,7 +279,7 @@ checkedEmplace(ContainerT &Container, ArgsT &&... Args) {
 // pair whose second element has bool type, this version will be called.
 template <typename ContainerT, class... ArgsT>
 static std::enable_if_t<IsCheckedEmplace<ContainerT>::value, void>
-checkedEmplace(ContainerT &Container, ArgsT &&... Args) {
+checkedEmplace(ContainerT &Container, ArgsT &&...Args) {
   auto Result = Container.emplace(std::forward<ArgsT>(Args)...);
   IGC_ASSERT_MESSAGE(Result.second, "unexpected insertion failure");
   (void)Result;
@@ -416,7 +416,7 @@ public:
   }
 
   std::vector<const Function *>
-    getSecondaryFunctions(const Function *PrimaryFunction) const;
+  getSecondaryFunctions(const Function *PrimaryFunction) const;
 
   ModuleToVisaTransformInfo(VISABuilder &VB, const FunctionGroupAnalysis &FGA,
                             const CallGraph &CG);
@@ -798,11 +798,10 @@ public:
     }
 
     std::vector<Gen2VisaIdx> Gen2Visa;
-    std::transform(VisaKernelDI->CISAIndexMap.begin(),
-                   VisaKernelDI->CISAIndexMap.end(),
-                   std::back_inserter(Gen2Visa), [](const auto &V2G) {
-                     return Gen2VisaIdx{V2G.second, V2G.first};
-                   });
+    std::transform(
+        VisaKernelDI->CISAIndexMap.begin(), VisaKernelDI->CISAIndexMap.end(),
+        std::back_inserter(Gen2Visa),
+        [](const auto &V2G) { return Gen2VisaIdx{V2G.second, V2G.first}; });
 
     const auto &GenBinary = GOW.getGenBinary();
     // Make Sure that gen isa indeces are inside GenBinary
@@ -844,16 +843,15 @@ public:
                const GenXBaling &BAn, const Function &F,
                CompiledVisaWrapper &&CW, const genx::di::VisaMapping &V2I,
                const ModuleToVisaTransformInfo &MVTI, bool IsPrimary)
-      : F{F}, ST{STIn}, VisaMapping{V2I},
-        CompiledVisa{std::move(CW)}, RA{RAIn}, BA{BAn}, MVTI(MVTI),
-        VISAModule(const_cast<Function *>(&F), IsPrimary) {
+      : F{F}, ST{STIn}, VisaMapping{V2I}, CompiledVisa{std::move(CW)}, RA{RAIn},
+        BA{BAn}, MVTI(MVTI), VISAModule(const_cast<Function *>(&F), IsPrimary) {
 
     if (MVTI.isSubroutine(&F))
-       SetType(ObjectType::SUBROUTINE);
+      SetType(ObjectType::SUBROUTINE);
     else if (MVTI.isKernelFunction(&F))
-       SetType(ObjectType::KERNEL);
+      SetType(ObjectType::KERNEL);
     else
-       SetType(ObjectType::STACKCALL_FUNC);
+      SetType(ObjectType::STACKCALL_FUNC);
   }
 
   ~GenXFunction() {
@@ -892,16 +890,14 @@ public:
     IGC_ASSERT_MESSAGE(0, "getPrivateBaseReg() - not implemented");
     return 0;
   }
-  unsigned getGRFSizeInBytes() const override {
-    return ST.getGRFByteSize();
-  }
+  unsigned getGRFSizeInBytes() const override { return ST.getGRFByteSize(); }
   unsigned getNumGRFs() const override {
     return CompiledVisa.getJitInfo().stats.numGRFTotal;
   }
   unsigned getPointerSize() const override {
     return F.getParent()->getDataLayout().getPointerSize();
   }
-  uint64_t getTypeSizeInBits(Type* Ty) const override {
+  uint64_t getTypeSizeInBits(Type *Ty) const override {
     return F.getParent()->getDataLayout().getTypeSizeInBits(Ty);
   }
   ArrayRef<char> getGenDebug() const override {
@@ -1000,7 +996,8 @@ public:
 
     IGC_ASSERT(isa<DbgInfoIntrinsic>(DbgInst));
 
-    LLVM_DEBUG(dbgs() << " >>>\n  GetVariableLocation for " << *DbgInst << "\n");
+    LLVM_DEBUG(dbgs() << " >>>\n  GetVariableLocation for " << *DbgInst
+                      << "\n");
     const DIVariable *VarDescr = nullptr;
     if (const auto *PDbgAddrInst = dyn_cast<DbgDeclareInst>(DbgInst)) {
       VarDescr = PDbgAddrInst->getVariable();
@@ -1053,8 +1050,8 @@ public:
   }
   uint16_t GetSIMDSize() const override { return 1; }
 
-  void* getPrivateBase() const override { return nullptr; };
-  void setPrivateBase(void*) override {};
+  void *getPrivateBase() const override { return nullptr; };
+  void setPrivateBase(void *) override {};
 
   bool hasPTO() const override { return false; }
   int getPTOReg() const override { return -1; }
@@ -1451,8 +1448,8 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
   EmitterHolder Emitter(IGC::IDebugEmitter::Create(), Deleter);
 
   const auto &ST = getAnalysis<TargetPassConfig>()
-      .getTM<GenXTargetMachine>()
-      .getGenXSubtarget();
+                       .getTM<GenXTargetMachine>()
+                       .getGenXSubtarget();
   auto *FGA = &getAnalysis<FunctionGroupAnalysis>();
   std::vector<const GenXVisaRegAlloc *> VisaRegAllocs;
   std::vector<const GenXBaling *> BalingList;
@@ -1505,9 +1502,7 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
   return;
 }
 
-void GenXDebugInfo::cleanup() {
-  ElfOutputs.clear();
-}
+void GenXDebugInfo::cleanup() { ElfOutputs.clear(); }
 
 void GenXDebugInfo::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<FunctionGroupAnalysis>();

@@ -62,94 +62,94 @@ class VISABuilder;
 class VISAKernel;
 
 namespace llvm {
-  class GenXSubtarget;
+class GenXSubtarget;
 
-  //--------------------------------------------------------------------
-  // GenXModule pass. Stores the information from various parts of the
-  // GenX writing process
-  class GenXModule : public ModulePass {
-    const GenXSubtarget *ST = nullptr;
-    LLVMContext *Ctx = nullptr;
-    const GenXBackendConfig *BC = nullptr;
+//--------------------------------------------------------------------
+// GenXModule pass. Stores the information from various parts of the
+// GenX writing process
+class GenXModule : public ModulePass {
+  const GenXSubtarget *ST = nullptr;
+  LLVMContext *Ctx = nullptr;
+  const GenXBackendConfig *BC = nullptr;
 
-    // Visa option parser contains code that just stores c-strings as
-    // pointers without copying. Store all strings here.
-    BumpPtrAllocator ArgStorage;
+  // Visa option parser contains code that just stores c-strings as
+  // pointers without copying. Store all strings here.
+  BumpPtrAllocator ArgStorage;
 
-    VISABuilder *CisaBuilder = nullptr;
-    void InitCISABuilder();
+  VISABuilder *CisaBuilder = nullptr;
+  void InitCISABuilder();
 
-    VISABuilder *VISAAsmTextReader = nullptr;
-    void InitVISAAsmReader();
+  VISABuilder *VISAAsmTextReader = nullptr;
+  void InitVISAAsmReader();
 
-    bool InlineAsm = false;
-    bool CheckForInlineAsm(Module &M) const;
+  bool InlineAsm = false;
+  bool CheckForInlineAsm(Module &M) const;
 
+  bool DisableFinalizerOpts = false;
+  bool EmitDebugInformation = false;
+  bool ImplicitArgsBufferIsUsed = false;
+  // represents number of visa instructions in a *kernel*
+  std::unordered_map<const Function *, unsigned> VisaCounter;
+  // stores vISA mappings for each *function* (including kernel subroutines)
+  std::unordered_map<const Function *, genx::di::VisaMapping> VisaMapping;
+
+  bool HasError = false;
+
+private:
+  void cleanup() {
+    VisaMapping.clear();
+    VisaCounter.clear();
+    DestroyCISABuilder();
+    DestroyVISAAsmReader();
+    ArgStorage.Reset();
+    HasError = false;
+  }
+
+  GenXModule *getGenXModule() { return this; }
+
+public:
+  static char ID;
+
+  // Additional info requred to create VISABuilder.
+  struct InfoForFinalizer final {
     bool DisableFinalizerOpts = false;
     bool EmitDebugInformation = false;
-    bool ImplicitArgsBufferIsUsed = false;
-    // represents number of visa instructions in a *kernel*
-    std::unordered_map<const Function *, unsigned> VisaCounter;
-    // stores vISA mappings for each *function* (including kernel subroutines)
-    std::unordered_map<const Function *, genx::di::VisaMapping> VisaMapping;
-
-    bool HasError = false;
-
-  private:
-    void cleanup() {
-      VisaMapping.clear();
-      VisaCounter.clear();
-      DestroyCISABuilder();
-      DestroyVISAAsmReader();
-      ArgStorage.Reset();
-      HasError = false;
-    }
-
-    GenXModule *getGenXModule() { return this; }
-
-  public:
-    static char ID;
-
-    // Additional info requred to create VISABuilder.
-    struct InfoForFinalizer final {
-      bool DisableFinalizerOpts = false;
-      bool EmitDebugInformation = false;
-      bool EmitCrossThreadOffsetRelocation = false;
-    };
-
-    explicit GenXModule() : ModulePass(ID) {}
-    ~GenXModule() { cleanup(); }
-    GenXModule(const GenXModule &) = delete;
-    GenXModule &operator=(const GenXModule &) = delete;
-
-    StringRef getPassName() const override { return "GenX module"; }
-    void getAnalysisUsage(AnalysisUsage &AU) const override;
-    bool runOnModule(Module &M) override;
-    void releaseMemory() override { cleanup(); }
-
-    const GenXSubtarget *getSubtarget() const { return ST; }
-    bool HasInlineAsm() const { return InlineAsm; }
-    VISABuilder *GetCisaBuilder();
-    VISABuilder *GetVISAAsmReader();
-    void DestroyCISABuilder();
-    void DestroyVISAAsmReader();
-    LLVMContext &getContext();
-
-    void setHasError() { HasError = true; }
-    bool hasError() const { return HasError; }
-
-    bool emitDebugInformation() const { return EmitDebugInformation; }
-    void updateVisaMapping(const Function *F, const Instruction *Inst,
-                           unsigned VisaIndex, StringRef Reason);
-    void updateVisaCountMapping(const Function *F, const Instruction *Inst,
-                                unsigned VisaIndex, StringRef Reason);
-    const genx::di::VisaMapping *getVisaMapping(const Function *F) const;
-    // Returns additional info requred to create VISABuilder.
-    // Subtarget must be already initialized before calling this method.
-    InfoForFinalizer getInfoForFinalizer() const;
+    bool EmitCrossThreadOffsetRelocation = false;
   };
 
-  void initializeGenXModulePass(PassRegistry &);
+  explicit GenXModule() : ModulePass(ID) {}
+  ~GenXModule() { cleanup(); }
+  GenXModule(const GenXModule &) = delete;
+  GenXModule &operator=(const GenXModule &) = delete;
+
+  StringRef getPassName() const override { return "GenX module"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnModule(Module &M) override;
+  void releaseMemory() override { cleanup(); }
+
+  const GenXSubtarget *getSubtarget() const { return ST; }
+  bool HasInlineAsm() const { return InlineAsm; }
+  VISABuilder *GetCisaBuilder();
+  VISABuilder *GetVISAAsmReader();
+  void DestroyCISABuilder();
+  void DestroyVISAAsmReader();
+  LLVMContext &getContext();
+
+  void setHasError() { HasError = true; }
+  bool hasError() const { return HasError; }
+
+  bool emitDebugInformation() const { return EmitDebugInformation; }
+  void updateVisaMapping(const Function *F, const Instruction *Inst,
+                         unsigned VisaIndex, StringRef Reason);
+  void updateVisaCountMapping(const Function *F, const Instruction *Inst,
+                              unsigned VisaIndex, StringRef Reason);
+  const genx::di::VisaMapping *getVisaMapping(const Function *F) const;
+  // Returns additional info requred to create VISABuilder.
+  // Subtarget must be already initialized before calling this method.
+  InfoForFinalizer getInfoForFinalizer() const;
+};
+
+void initializeGenXModulePass(PassRegistry &);
 
 } // end namespace llvm
 #endif // ndef GENXMODULE_H

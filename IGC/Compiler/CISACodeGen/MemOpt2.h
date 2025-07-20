@@ -29,7 +29,7 @@ class MemInstCluster {
   IGC::CodeGenContext *CTX = nullptr;
   const DataLayout *DL = nullptr;
   AliasAnalysis *AA = nullptr;
-  TargetLibraryInfo* TLI = nullptr;
+  TargetLibraryInfo *TLI = nullptr;
   unsigned MaxLiveOutThreshold = 0;
   llvm::DenseSet<Instruction *> Scheduled;
 
@@ -37,8 +37,8 @@ public:
   MemInstCluster() {}
   ~MemInstCluster() {}
 
-  void init(IGC::CodeGenContext *pCTX, const DataLayout *pDL,
-            AliasAnalysis *pAA, TargetLibraryInfo* pTLI, unsigned MLT) {
+  void init(IGC::CodeGenContext *pCTX, const DataLayout *pDL, AliasAnalysis *pAA, TargetLibraryInfo *pTLI,
+            unsigned MLT) {
     CTX = pCTX;
     DL = pDL;
     AA = pAA;
@@ -55,14 +55,11 @@ private:
 
   bool clusterMediaBlockRead(BasicBlock *BB);
 
-  bool isSafeToMoveTo(Instruction *I, Instruction *Pos,
-                      const SmallVectorImpl<Instruction *> *CheckList) const;
+  bool isSafeToMoveTo(Instruction *I, Instruction *Pos, const SmallVectorImpl<Instruction *> *CheckList) const;
 
   bool clusterLoad(BasicBlock *BB);
   bool isDefinedBefore(BasicBlock *BB, Instruction *I, Instruction *Pos) const;
-  bool
-  isSafeToScheduleLoad(const IGC::ALoadInst& LD,
-                       const SmallVectorImpl<Instruction *> *CheckList) const;
+  bool isSafeToScheduleLoad(const IGC::ALoadInst &LD, const SmallVectorImpl<Instruction *> *CheckList) const;
   bool schedule(BasicBlock *BB, Value *V, Instruction *&InsertPos,
                 const SmallVectorImpl<Instruction *> *CheckList = nullptr);
 
@@ -72,9 +69,7 @@ private:
 
   unsigned getMaxLiveOutThreshold() const {
     static unsigned MaxLiveOutThreshold =
-        IGC_GET_FLAG_VALUE(MaxLiveOutThreshold)
-            ? IGC_GET_FLAG_VALUE(MaxLiveOutThreshold)
-            : 4;
+        IGC_GET_FLAG_VALUE(MaxLiveOutThreshold) ? IGC_GET_FLAG_VALUE(MaxLiveOutThreshold) : 4;
     return MaxLiveOutThreshold;
   }
 };

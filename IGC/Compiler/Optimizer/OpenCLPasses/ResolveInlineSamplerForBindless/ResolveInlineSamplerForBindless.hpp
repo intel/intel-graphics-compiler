@@ -27,18 +27,15 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-class ResolveInlineSamplerForBindless
-    : public llvm::FunctionPass,
-      public llvm::InstVisitor<ResolveInlineSamplerForBindless> {
+class ResolveInlineSamplerForBindless : public llvm::FunctionPass,
+                                        public llvm::InstVisitor<ResolveInlineSamplerForBindless> {
 public:
   static char ID;
 
   ResolveInlineSamplerForBindless();
   ~ResolveInlineSamplerForBindless() override = default;
 
-  llvm::StringRef getPassName() const override {
-    return "ResolveInlineSamplerForBindless";
-  }
+  llvm::StringRef getPassName() const override { return "ResolveInlineSamplerForBindless"; }
 
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     AU.setPreservesCFG();

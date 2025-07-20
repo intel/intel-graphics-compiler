@@ -46,7 +46,7 @@ public:
   IGCLLVM::Module *M;
   IGCLLVM::IRBuilder<> *IRB;
 
-  uint32_t VWidth;   // vector width target simd
+  uint32_t VWidth; // vector width target simd
 
   // Built in types: scalar
   Type *Int1Ty;
@@ -105,7 +105,7 @@ public:
   Value *VSQRTPS(Value *A, const Twine &Name = "");
   Value *UI_TO_FP(Value *V, Type *DestTy, const Twine &Name = "");
 
-  //#include "PacketBuilder_misc.h"
+  // #include "PacketBuilder_misc.h"
   Constant *C(int Val);
   Constant *C(uint32_t Val);
   Constant *C(float Val);
@@ -143,7 +143,7 @@ public:
   uint32_t getTypeSize(Type *Ty);
 
   Value *BITCAST(Value *V, Type *DestTy, const Twine &Name = "");
-  CallInst *CALLA(Value *Callee, ArrayRef<Value *> Args = ArrayRef<Value*>(),
+  CallInst *CALLA(Value *Callee, ArrayRef<Value *> Args = ArrayRef<Value *>(),
                   const Twine &Name = "", MDNode *FPMathTag = nullptr);
   Value *CAST(Instruction::CastOps Op, Value *V, Type *DestTy,
               const Twine &Name = "");
@@ -172,8 +172,9 @@ public:
   AllocaInst *ALLOCA(Type *Ty, Value *ArraySize = nullptr,
                      const Twine &Name = "");
   Value *INT_TO_PTR(Value *V, Type *DestTy, const Twine &Name = "");
-  CallInst *MASKED_GATHER(Type *Ty, Value *Ptrs, unsigned Align, Value *Mask = nullptr,
-                          Value *PassThru = nullptr, const Twine &Name = "");
+  CallInst *MASKED_GATHER(Type *Ty, Value *Ptrs, unsigned Align,
+                          Value *Mask = nullptr, Value *PassThru = nullptr,
+                          const Twine &Name = "");
   CallInst *MASKED_SCATTER(Value *Val, Value *Ptrs, unsigned Align,
                            Value *Mask = nullptr);
   CallInst *MASKED_STORE(Value *Val, Value *Ptr, unsigned Align, Value *Mask);

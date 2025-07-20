@@ -166,7 +166,8 @@ bool GenXInlineAsmLowering::runOnFunction(Function &F) {
 // where this information is needed.
 MDNode *GenXInlineAsmLowering::createInlineAsmMetadata(
     CallInst *CI, const ConstraintInfoVector &ConstraintsInfo) const {
-  IGC_ASSERT_MESSAGE(!ConstraintsInfo.empty(), "Non empty constraints expected");
+  IGC_ASSERT_MESSAGE(!ConstraintsInfo.empty(),
+                     "Non empty constraints expected");
   IGC_ASSERT_MESSAGE(CI->isInlineAsm(), "Inline asm expected");
 
   Type *Int1Ty = Type::getInt1Ty(*Context);
@@ -208,7 +209,7 @@ Type *GenXInlineAsmLowering::rewriteTypeForConstraintIfNeeded(
 
 Type *GenXInlineAsmLowering::rewriteTypeForCR(Type *CRType) const {
   IGC_ASSERT_MESSAGE(CRType->isIntOrIntVectorTy(),
-    "Expected integer inputs for 'cr' constraint");
+                     "Expected integer inputs for 'cr' constraint");
   Type *Int1Ty = Type::getInt1Ty(*Context);
   return CRType->isVectorTy()
              ? IGCLLVM::FixedVectorType::get(
@@ -297,7 +298,8 @@ void GenXInlineAsmLowering::replaceInlineAsmUses(
 // truncations for inputs and zero extensions for outputs.
 CallInst *GenXInlineAsmLowering::recreateInlineAsmWithCR(
     CallInst *CI, const GenXConstraintInfoVector &ConstraintsInfo) {
-  IGC_ASSERT_MESSAGE(!ConstraintsInfo.empty(), "Non empty constraints expected");
+  IGC_ASSERT_MESSAGE(!ConstraintsInfo.empty(),
+                     "Non empty constraints expected");
   IGC_ASSERT_MESSAGE(CI->isInlineAsm(), "Inline asm expected");
 
   // If there exist 'cr' output a new result type must be constructed

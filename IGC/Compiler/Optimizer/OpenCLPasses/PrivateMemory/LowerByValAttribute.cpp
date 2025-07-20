@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
 
-
 using namespace llvm;
 using namespace IGC;
 
@@ -41,44 +40,41 @@ IGC_INITIALIZE_PASS_END(LowerByValAttribute, PASS_FLAG, PASS_DESCRIPTION, PASS_C
 // but just decorates a pointer with ByVal. It moves the responsibility, for generating a copy,
 // to the backend compiler (IGC).
 
-LowerByValAttribute::LowerByValAttribute(void) : FunctionPass(ID)
-{
-    initializeLowerByValAttributePass(*PassRegistry::getPassRegistry());
+LowerByValAttribute::LowerByValAttribute(void) : FunctionPass(ID) {
+  initializeLowerByValAttributePass(*PassRegistry::getPassRegistry());
 }
 
-bool LowerByValAttribute::runOnFunction(Function& F)
-{
-    visit(F);
+bool LowerByValAttribute::runOnFunction(Function &F) {
+  visit(F);
 
-    return m_changed;
+  return m_changed;
 }
 
-void LowerByValAttribute::visitCallInst(CallInst& CI)
-{
-    auto& DL = CI.getModule()->getDataLayout();
+void LowerByValAttribute::visitCallInst(CallInst &CI) {
+  auto &DL = CI.getModule()->getDataLayout();
 
-    // Skip intrinsics
-    auto F = CI.getCalledFunction();
-    if (F && F->isDeclaration()) return;
+  // Skip intrinsics
+  auto F = CI.getCalledFunction();
+  if (F && F->isDeclaration())
+    return;
 
-    for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(&CI); ++i)
-    {
-        Value* OpI = CI.getArgOperand(i);
-        if (isa<UndefValue>(OpI)) continue;
+  for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(&CI); ++i) {
+    Value *OpI = CI.getArgOperand(i);
+    if (isa<UndefValue>(OpI))
+      continue;
 
-        Type* OpITy = OpI->getType();
-        if (!OpITy->isPointerTy()) continue;
+    Type *OpITy = OpI->getType();
+    if (!OpITy->isPointerTy())
+      continue;
 
-        if (CI.paramHasAttr(i, llvm::Attribute::ByVal) && !CI.paramHasAttr(i, llvm::Attribute::ReadOnly))
-        {
-            Type* ElTy = CI.getParamByValType(i);
-            IGCLLVM::IRBuilder<> builder(&CI);
-            Value* AI = builder.CreateAlloca(ElTy);
-            builder.CreateMemCpy(
-                AI, OpI, DL.getTypeAllocSize(ElTy), DL.getABITypeAlign(ElTy).value());
-            auto AC = builder.CreateAddrSpaceCast(AI, OpITy);
-            CI.replaceUsesOfWith(OpI, AC);
-            m_changed = true;
-        }
+    if (CI.paramHasAttr(i, llvm::Attribute::ByVal) && !CI.paramHasAttr(i, llvm::Attribute::ReadOnly)) {
+      Type *ElTy = CI.getParamByValType(i);
+      IGCLLVM::IRBuilder<> builder(&CI);
+      Value *AI = builder.CreateAlloca(ElTy);
+      builder.CreateMemCpy(AI, OpI, DL.getTypeAllocSize(ElTy), DL.getABITypeAlign(ElTy).value());
+      auto AC = builder.CreateAddrSpaceCast(AI, OpITy);
+      CI.replaceUsesOfWith(OpI, AC);
+      m_changed = true;
     }
+  }
 }

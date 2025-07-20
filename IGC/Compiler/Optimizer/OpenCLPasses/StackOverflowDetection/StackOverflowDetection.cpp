@@ -31,21 +31,17 @@ IGC_INITIALIZE_PASS_END(StackOverflowDetectionPass, PASS_FLAG, PASS_DESCRIPTION,
 char StackOverflowDetectionPass::ID = 0;
 
 StackOverflowDetectionPass::StackOverflowDetectionPass() : ModulePass(ID) {
-  initializeStackOverflowDetectionPassPass(
-      *PassRegistry::getPassRegistry());
+  initializeStackOverflowDetectionPassPass(*PassRegistry::getPassRegistry());
 }
 
-StackOverflowDetectionPass::StackOverflowDetectionPass(Mode mode_)
-  : StackOverflowDetectionPass() {
-  mode = mode_;
-}
+StackOverflowDetectionPass::StackOverflowDetectionPass(Mode mode_) : StackOverflowDetectionPass() { mode = mode_; }
 
 bool StackOverflowDetectionPass::removeDummyCalls(Module &M) {
   std::vector<llvm::Instruction *> ToDeleteInstructions;
 
   for (Function &F : M) {
-    for (auto&& BB : F) {
-      for (auto& I : BB) {
+    for (auto &&BB : F) {
+      for (auto &I : BB) {
         if (auto callI = llvm::dyn_cast<llvm::CallInst>(&I)) {
           Function *callFunction = callI->getCalledFunction();
           if (callFunction) {
@@ -66,17 +62,14 @@ bool StackOverflowDetectionPass::removeDummyCalls(Module &M) {
   return !ToDeleteInstructions.empty();
 }
 
-bool StackOverflowDetectionPass::removeCallsAndFunctionsIfNoStackCallsOrVLA(
-    Module &M, IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD) {
+bool StackOverflowDetectionPass::removeCallsAndFunctionsIfNoStackCallsOrVLA(Module &M, IGCMD::MetaDataUtils *pMdUtils,
+                                                                            ModuleMetaData *pModMD) {
   bool changed = false;
-  bool HasStackCallsOrVLA = std::any_of(
-    M.getFunctionList().begin(), M.getFunctionList().end(), [](auto &F) {
-      return F.hasFnAttribute("visaStackCall") ||
-             F.hasFnAttribute("hasVLA");
-    });
+  bool HasStackCallsOrVLA = std::any_of(M.getFunctionList().begin(), M.getFunctionList().end(), [](auto &F) {
+    return F.hasFnAttribute("visaStackCall") || F.hasFnAttribute("hasVLA");
+  });
   if (!HasStackCallsOrVLA) {
-    for (auto FuncName : {STACK_OVERFLOW_INIT_BUILTIN_NAME,
-                          STACK_OVERFLOW_DETECTION_BUILTIN_NAME}) {
+    for (auto FuncName : {STACK_OVERFLOW_INIT_BUILTIN_NAME, STACK_OVERFLOW_DETECTION_BUILTIN_NAME}) {
       if (auto F = M.getFunction(FuncName)) {
         std::vector<llvm::CallInst *> CallersToDelete;
         for (auto User : F->users()) {
@@ -104,7 +97,7 @@ bool StackOverflowDetectionPass::runOnModule(Module &M) {
   }
 
   bool changed = false;
-  auto& MDUWAnalysis = getAnalysis<MetaDataUtilsWrapper>();
+  auto &MDUWAnalysis = getAnalysis<MetaDataUtilsWrapper>();
   auto pMdUtils = MDUWAnalysis.getMetaDataUtils();
   auto pModMD = MDUWAnalysis.getModuleMetaData();
   const bool isLibraryCompilation = pModMD->compOpt.IsLibraryCompilation;
@@ -125,18 +118,15 @@ bool StackOverflowDetectionPass::runOnModule(Module &M) {
   // Two dummy calls that we insterted in Mode::Initialize run were there to prevent dead code elimination
   // of __stackoverflow_init and __stackoverflow_detection implementations before reaching EmitVisaPass.
 
-  if (mode == Mode::RemoveDummyCalls ||
-      mode == Mode::AnalyzeAndCleanup)
-  {
+  if (mode == Mode::RemoveDummyCalls || mode == Mode::AnalyzeAndCleanup) {
     if (mode == Mode::RemoveDummyCalls) {
       changed = removeDummyCalls(M);
     } else {
-       changed = removeCallsAndFunctionsIfNoStackCallsOrVLA(M, pMdUtils, pModMD);
+      changed = removeCallsAndFunctionsIfNoStackCallsOrVLA(M, pMdUtils, pModMD);
     }
 
     if (changed) {
-      CodeGenContext *pContext =
-          getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+      CodeGenContext *pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
       pMdUtils->save(*pContext->getLLVMContext());
     }
     return changed;
@@ -152,16 +142,14 @@ bool StackOverflowDetectionPass::runOnModule(Module &M) {
 
       if (isEntryFunction) {
         auto StackOverflowInitFunc = M.getOrInsertFunction(
-            STACK_OVERFLOW_INIT_BUILTIN_NAME,
-            FunctionType::get(Type::getVoidTy(M.getContext()), {}, false));
+            STACK_OVERFLOW_INIT_BUILTIN_NAME, FunctionType::get(Type::getVoidTy(M.getContext()), {}, false));
         Function *Callee = cast<Function>(StackOverflowInitFunc.getCallee());
         IGC_ASSERT(Callee);
         auto InitCall = builder.CreateCall(Callee);
         InitCall->setCallingConv(CallingConv::SPIR_FUNC);
       }
       auto StackOverflowDetectionFunc = M.getOrInsertFunction(
-          STACK_OVERFLOW_DETECTION_BUILTIN_NAME,
-          FunctionType::get(Type::getVoidTy(M.getContext()), {}, false));
+          STACK_OVERFLOW_DETECTION_BUILTIN_NAME, FunctionType::get(Type::getVoidTy(M.getContext()), {}, false));
       Function *Callee = cast<Function>(StackOverflowDetectionFunc.getCallee());
       IGC_ASSERT(Callee);
       auto CallInst = builder.CreateCall(Callee);

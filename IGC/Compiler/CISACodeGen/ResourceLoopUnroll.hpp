@@ -8,17 +8,15 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-namespace llvm
-{
+namespace llvm {
 class Pass;
 class PassRegistry;
-}
+} // namespace llvm
 
-namespace IGC
-{
+namespace IGC {
 ////////////////////////////////////////////////////////////////////////
 /// @brief This pass is responsible for optimizing resource loop unroll
-llvm::Pass* createResourceLoopUnroll();
+llvm::Pass *createResourceLoopUnroll();
 } // namespace IGC
 
-void initializeResourceLoopUnrollPass(llvm::PassRegistry&);
+void initializeResourceLoopUnrollPass(llvm::PassRegistry &);

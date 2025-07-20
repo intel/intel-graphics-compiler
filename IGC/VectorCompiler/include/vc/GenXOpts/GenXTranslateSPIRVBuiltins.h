@@ -17,7 +17,7 @@ void initializeGenXTranslateSPIRVBuiltinsPass(PassRegistry &);
 struct GenXTranslateSPIRVBuiltinsPass
     : public llvm::PassInfoMixin<GenXTranslateSPIRVBuiltinsPass> {
   explicit GenXTranslateSPIRVBuiltinsPass(GenXBackendConfigPass::Result &BC)
-      : BC(BC){};
+      : BC(BC) {};
   llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
 
 private:

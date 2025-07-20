@@ -58,9 +58,7 @@ const llvm::Instruction *getNextInst(const llvm::Instruction *start);
 // https://github.com/KhronosGroup/SPIRV-LLVM-Translator/blob/main/docs/SPIRVRepresentationInLLVM.rst#address-spaces
 constexpr unsigned DwarfLocalAddressSpaceTag = 3u;
 
-static inline bool isSLMAddressSpaceTag(unsigned addrSpace) {
-  return addrSpace == DwarfLocalAddressSpaceTag;
-}
+static inline bool isSLMAddressSpaceTag(unsigned addrSpace) { return addrSpace == DwarfLocalAddressSpaceTag; }
 
 namespace IGC {
 class StreamEmitter;
@@ -93,12 +91,10 @@ public:
   uint64_t end = 0;
 
   DotDebugLocEntry() : m_pDbgInst(nullptr), Variable(nullptr) {}
-  DotDebugLocEntry(const llvm::MCSymbol *B, const llvm::MCSymbol *E,
-                   const llvm::DbgVariableIntrinsic *pDbgInst,
+  DotDebugLocEntry(const llvm::MCSymbol *B, const llvm::MCSymbol *E, const llvm::DbgVariableIntrinsic *pDbgInst,
                    const llvm::MDNode *V)
       : m_pDbgInst(pDbgInst), Variable(V) {}
-  DotDebugLocEntry(const uint64_t s, const uint64_t e,
-                   const llvm::DbgVariableIntrinsic *pDbgInst,
+  DotDebugLocEntry(const uint64_t s, const uint64_t e, const llvm::DbgVariableIntrinsic *pDbgInst,
                    const llvm::MDNode *V)
       : start(s), end(e), m_pDbgInst(pDbgInst), Variable(V) {}
 
@@ -156,8 +152,7 @@ private:
 
 public:
   // AbsVar may be NULL.
-  DbgVariable(const llvm::DILocalVariable *V,
-              const llvm::DILocation *IA = nullptr, DbgVariable *AV = nullptr)
+  DbgVariable(const llvm::DILocalVariable *V, const llvm::DILocation *IA = nullptr, DbgVariable *AV = nullptr)
       : Var(V), IA(IA), AbsVar(AV) {}
 
   // Accessors.
@@ -208,14 +203,10 @@ public:
   bool currentLocationIsVector() const;
 
   bool currentLocationIsInlined() const { return isLocationInlined; }
-  void setLocationInlined(bool isInlined = true) {
-    isLocationInlined = isInlined;
-  }
+  void setLocationInlined(bool isInlined = true) { isLocationInlined = isInlined; }
 
   DbgRegisterType getLocationRegisterType() const { return RegType; }
-  void setLocationRegisterType(DbgRegisterType RegType) {
-    this->RegType = RegType;
-  }
+  void setLocationRegisterType(DbgRegisterType RegType) { this->RegType = RegType; }
 
   void emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const;
 
@@ -250,8 +241,7 @@ public:
 
   static bool IsSupportedDebugInst(const llvm::Instruction *Inst);
   void print(llvm::raw_ostream &O, bool NestedAbstract = false) const;
-  static void printDbgInst(llvm::raw_ostream &O, const llvm::Instruction *Inst,
-                           const char *NodePrefixes = "     ");
+  static void printDbgInst(llvm::raw_ostream &O, const llvm::Instruction *Inst, const char *NodePrefixes = "     ");
 #ifndef NDEBUG
   void dump() const;
   static void dumpDbgInst(const llvm::Instruction *Inst);
@@ -339,9 +329,7 @@ class DwarfDebug {
   std::vector<SymbolCU> ArangeLabels;
 
   // Provides a unique id per text section.
-  typedef llvm::DenseMap<const llvm::MCSection *,
-                         llvm::SmallVector<SymbolCU, 8>>
-      SectionMapType;
+  typedef llvm::DenseMap<const llvm::MCSection *, llvm::SmallVector<SymbolCU, 8>> SectionMapType;
   SectionMapType SectionMap;
 
   ::IGC::LexicalScopes LScopes;
@@ -351,8 +339,7 @@ class DwarfDebug {
 
   // Collection of dbg variables of a scope.
   using DbgVariablesVect = llvm::SmallVector<DbgVariable *, 8>;
-  using ScopeVariablesMap =
-      llvm::DenseMap<::IGC::LexicalScope *, DbgVariablesVect>;
+  using ScopeVariablesMap = llvm::DenseMap<::IGC::LexicalScope *, DbgVariablesVect>;
   ScopeVariablesMap ScopeVariables;
 
   // List of arguments for current function.
@@ -390,18 +377,15 @@ class DwarfDebug {
   // For each user variable, keep a list of DBG_VALUE instructions in order.
   // The list can also contain normal instructions that clobber the previous
   // DBG_VALUE.
-  using InstructionsList =
-      llvm::SmallVector<const llvm::DbgVariableIntrinsic *, 4>;
-  typedef llvm::DenseMap<const llvm::MDNode *, InstructionsList>
-      DbgValueHistoryMap;
+  using InstructionsList = llvm::SmallVector<const llvm::DbgVariableIntrinsic *, 4>;
+  typedef llvm::DenseMap<const llvm::MDNode *, InstructionsList> DbgValueHistoryMap;
   DbgValueHistoryMap DbgValues;
 
   llvm::SmallVector<const llvm::MCSymbol *, 8> DebugRangeSymbols;
 
   // Store vector of MCSymbol->Raw .debug_ranges data.
   // MCSymbol* is nullptr when not using relocatable elf.
-  std::vector<std::pair<llvm::MCSymbol *, llvm::SmallVector<unsigned int, 8>>>
-      GenISADebugRangeSymbols;
+  std::vector<std::pair<llvm::MCSymbol *, llvm::SmallVector<unsigned int, 8>>> GenISADebugRangeSymbols;
 
   // Previous instruction's location information. This is used to determine
   // label location to indicate scope boundries in llvm::dwarf debug info.
@@ -416,8 +400,7 @@ class DwarfDebug {
   // the beginning of each supported llvm::dwarf section.  These are used to
   // form section offsets and are created by EmitSectionLabels.
   llvm::MCSymbol *DwarfInfoSectionSym, *DwarfAbbrevSectionSym;
-  llvm::MCSymbol *DwarfStrSectionSym, *TextSectionSym,
-      *DwarfDebugRangeSectionSym;
+  llvm::MCSymbol *DwarfStrSectionSym, *TextSectionSym, *DwarfDebugRangeSectionSym;
   llvm::MCSymbol *DwarfDebugLocSectionSym, *DwarfLineSectionSym;
   llvm::MCSymbol *FunctionBeginSym, *FunctionEndSym;
   llvm::MCSymbol *ModuleBeginSym, *ModuleEndSym;
@@ -445,9 +428,7 @@ class DwarfDebug {
   // Collection of strings for this unit and assorted symbols.
   // A String->Symbol mapping of strings used by indirect
   // references.
-  typedef llvm::StringMap<std::pair<llvm::MCSymbol *, unsigned>,
-                          llvm::BumpPtrAllocator &>
-      StrPool;
+  typedef llvm::StringMap<std::pair<llvm::MCSymbol *, unsigned>, llvm::BumpPtrAllocator &> StrPool;
   StrPool StringPool;
   unsigned NextStringPoolNumber;
   std::string StringPref;
@@ -459,8 +440,7 @@ class DwarfDebug {
 
 private:
   // AbsVar may be NULL.
-  DbgVariable *createDbgVariable(const llvm::DILocalVariable *V,
-                                 const llvm::DILocation *IA = nullptr,
+  DbgVariable *createDbgVariable(const llvm::DILocalVariable *V, const llvm::DILocation *IA = nullptr,
                                  DbgVariable *AV = nullptr);
 
   void addScopeVariable(::IGC::LexicalScope *LS, DbgVariable *Var);
@@ -488,8 +468,7 @@ private:
   /// \brief Construct a DIE for this scope.
   DIE *constructScopeDIE(CompileUnit *TheCU, ::IGC::LexicalScope *Scope);
   /// A helper function to create children of a Scope DIE.
-  DIE *createScopeChildrenDIE(CompileUnit *TheCU, ::IGC::LexicalScope *Scope,
-                              llvm::SmallVectorImpl<DIE *> &Children);
+  DIE *createScopeChildrenDIE(CompileUnit *TheCU, ::IGC::LexicalScope *Scope, llvm::SmallVectorImpl<DIE *> &Children);
 
   /// \brief Emit initial Dwarf sections with a label at the start of each one.
   void emitSectionLabels();
@@ -545,8 +524,7 @@ private:
   /// \brief Register a source line with debug info. Returns the unique
   /// label that was emitted and which provides correspondence to the
   /// source line list.
-  void recordSourceLine(unsigned Line, unsigned Col, const llvm::MDNode *Scope,
-                        unsigned Flags);
+  void recordSourceLine(unsigned Line, unsigned Col, const llvm::MDNode *Scope, unsigned Flags);
 
   /// \brief Indentify instructions that are marking the beginning of or
   /// ending of a scope.
@@ -554,13 +532,10 @@ private:
 
   /// \brief If Var is an current function argument that add it in
   /// CurrentFnArguments list.
-  bool addCurrentFnArgument(const llvm::Function *MF, DbgVariable *Var,
-                            ::IGC::LexicalScope *Scope);
+  bool addCurrentFnArgument(const llvm::Function *MF, DbgVariable *Var, ::IGC::LexicalScope *Scope);
 
   /// \brief Populate LexicalScope entries with variables' info.
-  void collectVariableInfo(
-      const llvm::Function *MF,
-      llvm::SmallPtrSet<const llvm::MDNode *, 16> &ProcessedVars);
+  void collectVariableInfo(const llvm::Function *MF, llvm::SmallPtrSet<const llvm::MDNode *, 16> &ProcessedVars);
 
   /// \brief Ensure that a label will be emitted before MI.
   void requestLabelBeforeInsn(const llvm::Instruction *MI) {
@@ -580,9 +555,7 @@ private:
   }
 
   /// \brief Return Label immediately following the instruction.
-  llvm::MCSymbol *getLabelAfterInsn(const llvm::Instruction *MI) {
-    return LabelsAfterInsn.lookup(MI);
-  }
+  llvm::MCSymbol *getLabelAfterInsn(const llvm::Instruction *MI) { return LabelsAfterInsn.lookup(MI); }
 
   /// isSubprogramContext - Return true if Context is either a subprogram
   /// or another context nested inside a subprogram.
@@ -602,17 +575,11 @@ public:
 
   IGC::StreamEmitter &getStreamEmitter() const { return *Asm; }
 
-  const IGC::DebugEmitterOpts &getEmitterSettings() const {
-    return EmitSettings;
-  }
+  const IGC::DebugEmitterOpts &getEmitterSettings() const { return EmitSettings; }
   void setDISPCache(DwarfDISubprogramCache *Cache) { DISPCache = Cache; }
 
-  void insertDIE(const llvm::MDNode *TypeMD, DIE *Die) {
-    MDTypeNodeToDieMap.insert(std::make_pair(TypeMD, Die));
-  }
-  DIE *getDIE(const llvm::MDNode *TypeMD) {
-    return MDTypeNodeToDieMap.lookup(TypeMD);
-  }
+  void insertDIE(const llvm::MDNode *TypeMD, DIE *Die) { MDTypeNodeToDieMap.insert(std::make_pair(TypeMD, Die)); }
+  DIE *getDIE(const llvm::MDNode *TypeMD) { return MDTypeNodeToDieMap.lookup(TypeMD); }
 
   /// \brief Emit all Dwarf sections that should come prior to the
   /// content.
@@ -643,8 +610,7 @@ public:
   /// \brief Look up the source id with the given directory and source file
   /// names. If none currently exists, create a new id and insert it in the
   /// SourceIds map.
-  unsigned getOrCreateSourceID(llvm::StringRef DirName,
-                               llvm::StringRef FullName, unsigned CUID);
+  unsigned getOrCreateSourceID(llvm::StringRef DirName, llvm::StringRef FullName, unsigned CUID);
 
   /// Returns the Dwarf Version.
   unsigned getDwarfVersion() const { return DwarfVersion; }
@@ -668,8 +634,7 @@ public:
   void ExtractConstantData(const llvm::Constant *ConstVal, DataVector &R) const;
 
   /// Construct imported_module or imported_declaration DIE.
-  void constructThenAddImportedEntityDIE(CompileUnit *TheCU,
-                                         llvm::DIImportedEntity *IE);
+  void constructThenAddImportedEntityDIE(CompileUnit *TheCU, llvm::DIImportedEntity *IE);
 
 private:
   // DISubprograms used by the currently processed shader
@@ -681,19 +646,16 @@ private:
   const IGC::VISAObjectDebugInfo *VisaDbgInfo = nullptr;
 
   // store all instructions corresponding to same InlinedAt MDNode
-  llvm::DenseMap<llvm::MDNode *, std::vector<const llvm::Instruction *>>
-      SameIATInsts;
+  llvm::DenseMap<llvm::MDNode *, std::vector<const llvm::Instruction *>> SameIATInsts;
 
   // Store label for each %ip
   llvm::DenseMap<unsigned int, llvm::MCSymbol *> LabelsBeforeIp;
 
   // function, inlinedAt
-  llvm::DenseMap<llvm::DISubprogram *, llvm::SmallPtrSet<llvm::DILocation *, 5>>
-      prologueEnd;
+  llvm::DenseMap<llvm::DISubprogram *, llvm::SmallPtrSet<llvm::DILocation *, 5>> prologueEnd;
 
 public:
-  bool prologueEndExists(llvm::DISubprogram *sp, llvm::DILocation *dl,
-                         bool add) {
+  bool prologueEndExists(llvm::DISubprogram *sp, llvm::DILocation *dl, bool add) {
     auto it = prologueEnd.find(sp);
     if (it == prologueEnd.end()) {
       if (add)
@@ -741,9 +703,7 @@ public:
     return *VisaDbgInfo;
   }
 
-  void setVisaDbgInfo(const IGC::VISAObjectDebugInfo &VDI) {
-    VisaDbgInfo = &VDI;
-  }
+  void setVisaDbgInfo(const IGC::VISAObjectDebugInfo &VDI) { VisaDbgInfo = &VDI; }
 
   llvm::MCSymbol *CopyDebugLoc(unsigned int offset);
   unsigned int CopyDebugLocNoReloc(unsigned int o);
@@ -784,8 +744,7 @@ public:
   }
 
 private:
-  void encodeRange(CompileUnit *TheCU, DIE *ScopeDIE,
-                   const llvm::SmallVectorImpl<InsnRange> *Ranges);
+  void encodeRange(CompileUnit *TheCU, DIE *ScopeDIE, const llvm::SmallVectorImpl<InsnRange> *Ranges);
   void encodeScratchAddrSpace(std::vector<uint8_t> &data);
   uint32_t writeSubroutineCIE();
   uint32_t writeStackcallCIE();

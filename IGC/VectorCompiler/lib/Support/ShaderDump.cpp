@@ -71,8 +71,9 @@ static void writeContentToFile(const Twine &Name, llvm::ArrayRef<char> Blob) {
 
 std::string vc::legalizeShaderDumpName(const llvm::Twine &FileName) {
   std::string Result = FileName.str();
-  std::replace_if(Result.begin(), Result.end(),
-                  [](auto c) { return (!std::isalnum(c) && c != '.'); }, '_');
+  std::replace_if(
+      Result.begin(), Result.end(),
+      [](auto c) { return (!std::isalnum(c) && c != '.'); }, '_');
   return Result;
 }
 

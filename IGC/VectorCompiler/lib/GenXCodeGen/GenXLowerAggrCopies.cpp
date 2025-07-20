@@ -225,12 +225,13 @@ bool GenXLowerAggrCopies::runOnFunction(Function &F) {
       } else {
 #if LLVM_VERSION_MAJOR >= 16
         if (!TTIp) {
-            const TargetTransformInfo &TTI = getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
+          const TargetTransformInfo &TTI =
+              getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
 #endif
-        expandMemCpyAsLoop(Memcpy, TTI);
+          expandMemCpyAsLoop(Memcpy, TTI);
 #if LLVM_VERSION_MAJOR >= 16
-        }
-        else expandMemCpyAsLoop(Memcpy, *TTIp);
+        } else
+          expandMemCpyAsLoop(Memcpy, *TTIp);
 #endif
       }
     } else if (MemMoveInst *Memmove = dyn_cast<MemMoveInst>(MemCall)) {
@@ -273,12 +274,15 @@ void GenXLowerAggrCopies::expandMemMov2VecLoadStore(T *MemCall) {
   unsigned SrcAddrSpace =
       cast<PointerType>(SrcAddr->getType())->getAddressSpace();
 
-  auto *LoadPtrV = IRB.CreateBitCast(SrcAddr, VecTy->getPointerTo(SrcAddrSpace));
+  auto *LoadPtrV =
+      IRB.CreateBitCast(SrcAddr, VecTy->getPointerTo(SrcAddrSpace));
   auto *Load = IRB.CreateLoad(VecTy, LoadPtrV);
   Load->setAlignment(IGCLLVM::getSourceAlign(*MemCall));
 
-  unsigned DstAddrSpace = cast<PointerType>(DstAddr->getType())->getAddressSpace();
-  auto *StorePtrV = IRB.CreateBitCast(DstAddr, VecTy->getPointerTo(DstAddrSpace));
+  unsigned DstAddrSpace =
+      cast<PointerType>(DstAddr->getType())->getAddressSpace();
+  auto *StorePtrV =
+      IRB.CreateBitCast(DstAddr, VecTy->getPointerTo(DstAddrSpace));
   auto *Store = IRB.CreateStore(Load, StorePtrV);
   Store->setAlignment(IGCLLVM::getDestAlign(*MemCall));
 }

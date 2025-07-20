@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 
-
 using namespace llvm;
 using namespace IGC;
 
@@ -30,51 +29,43 @@ IGC_INITIALIZE_PASS_END(UnreachableHandling, PASS_FLAG, PASS_DESCRIPTION, PASS_C
 
 char UnreachableHandling::ID = 0;
 
-UnreachableHandling::UnreachableHandling() : FunctionPass(ID)
-{
-    initializeUnreachableHandlingPass(*PassRegistry::getPassRegistry());
+UnreachableHandling::UnreachableHandling() : FunctionPass(ID) {
+  initializeUnreachableHandlingPass(*PassRegistry::getPassRegistry());
 }
 
+void UnreachableHandling::visitUnreachableInst(UnreachableInst &I) { m_instsToReplace.push_back(&I); }
 
-void UnreachableHandling::visitUnreachableInst(UnreachableInst& I) {
+void IGC::UnreachableHandling::replaceUnreachable(llvm::UnreachableInst *I) {
+  assert(I);
+  IRBuilder<> builder(I->getContext());
+  Function *F = I->getFunction();
 
-    m_instsToReplace.push_back(&I);
-}
+  ReturnInst *ret =
+      F->getReturnType()->isVoidTy() ? builder.CreateRetVoid() : builder.CreateRet(UndefValue::get(F->getReturnType()));
 
-void IGC::UnreachableHandling::replaceUnreachable(llvm::UnreachableInst* I)
-{
-    assert(I);
-    IRBuilder<> builder(I->getContext());
-    Function* F = I->getFunction();
-
-    ReturnInst* ret = F->getReturnType()->isVoidTy() ?
-        builder.CreateRetVoid() :
-        builder.CreateRet(UndefValue::get(F->getReturnType()));
-
-    // If this is the last instruction in the BB, just replace it with return instruction.
-    if (&I->getParent()->back() == I) {
-        IGCLLVM::pushBackInstruction(I->getParent(), ret);
-        I->eraseFromParent();
-        return;
-    }
-
-    // If there were some other instructions after, split the basic block and let DCE handle it.
-    auto BB = I->getParent();
-    BB->splitBasicBlock(I);
-    auto BBWithRet = BasicBlock::Create(F->getContext(), "", F);
-    IGCLLVM::pushBackInstruction(BBWithRet, ret);
-    cast<BranchInst>(BB->getTerminator())->setSuccessor(0, BBWithRet);
+  // If this is the last instruction in the BB, just replace it with return instruction.
+  if (&I->getParent()->back() == I) {
+    IGCLLVM::pushBackInstruction(I->getParent(), ret);
     I->eraseFromParent();
+    return;
+  }
+
+  // If there were some other instructions after, split the basic block and let DCE handle it.
+  auto BB = I->getParent();
+  BB->splitBasicBlock(I);
+  auto BBWithRet = BasicBlock::Create(F->getContext(), "", F);
+  IGCLLVM::pushBackInstruction(BBWithRet, ret);
+  cast<BranchInst>(BB->getTerminator())->setSuccessor(0, BBWithRet);
+  I->eraseFromParent();
 }
 
-bool UnreachableHandling::runOnFunction(Function& F)
-{
-    m_instsToReplace.clear();
-    visit(F);
+bool UnreachableHandling::runOnFunction(Function &F) {
+  m_instsToReplace.clear();
+  visit(F);
 
-    for (auto I : m_instsToReplace) {
-        replaceUnreachable(I);
-    }
+  for (auto I : m_instsToReplace) {
+    replaceUnreachable(I);
+  }
 
-    return m_instsToReplace.size() > 0;
+  return m_instsToReplace.size() > 0;
 }

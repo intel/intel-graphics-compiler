@@ -105,9 +105,10 @@ private:
   IGCLLVM::FixedVectorType &getVectorTypeForAlloca(AllocaInst &Alloca,
                                                    Type &ElemTy) const;
 
-  bool checkTypes(Type* CurBaseTy, Type* NewTy) const;
-  bool checkAllocaUsesInternal(Instruction *I, Type* CurBaseTy, bool NeedCheckTypes) const;
-  bool checkPtrToIntCandidate(PtrToIntInst *PTI, Type* CurBaseTy) const;
+  bool checkTypes(Type *CurBaseTy, Type *NewTy) const;
+  bool checkAllocaUsesInternal(Instruction *I, Type *CurBaseTy,
+                               bool NeedCheckTypes) const;
+  bool checkPtrToIntCandidate(PtrToIntInst *PTI, Type *CurBaseTy) const;
 
   const DataLayout *DL = nullptr;
   LLVMContext *Ctx = nullptr;
@@ -608,15 +609,13 @@ void TransposeHelper::handleStoreInst(StoreInst *Store,
       auto *Val = IRB.CreateExtractElement(StoreVal, VectorIdx);
       auto *Index = IRB.CreateAdd(Idx.Index, VectorIdx);
       IGC_ASSERT_MESSAGE(
-          DL->getTypeSizeInBits(Val->getType()) ==
-              Idx.ElementSizeInBits,
+          DL->getTypeSizeInBits(Val->getType()) == Idx.ElementSizeInBits,
           "stored type considered vector element size must correspond");
       WriteOut = IRB.CreateInsertElement(WriteOut, Val, Index);
     }
   } else {
     IGC_ASSERT_MESSAGE(
-        DL->getTypeSizeInBits(StoreVal->getType()) ==
-            Idx.ElementSizeInBits,
+        DL->getTypeSizeInBits(StoreVal->getType()) == Idx.ElementSizeInBits,
         "stored type considered vector element size must correspond");
     WriteOut = IRB.CreateInsertElement(WriteOut, StoreVal, Idx.Index);
   }
@@ -847,7 +846,8 @@ unsigned int GenXPromoteArray::extractAllocaSize(AllocaInst *Alloca) {
   return totalArrayStructureSize;
 }
 
-bool GenXPromoteArray::checkPtrToIntCandidate(PtrToIntInst *PTI, Type *CurBaseTy) const {
+bool GenXPromoteArray::checkPtrToIntCandidate(PtrToIntInst *PTI,
+                                              Type *CurBaseTy) const {
   // Here we handle only the most common patterns for LLVM and SVM
   // gather/scatter instructions:
   //   * ptrtoint->insertelem->shuffle->arith_op->svm_gather/scatter,
@@ -929,7 +929,7 @@ bool GenXPromoteArray::checkPtrToIntCandidate(PtrToIntInst *PTI, Type *CurBaseTy
   return true;
 }
 
-bool GenXPromoteArray::checkTypes(Type* CurBaseTy, Type* NewTy) const {
+bool GenXPromoteArray::checkTypes(Type *CurBaseTy, Type *NewTy) const {
   auto *NewBaseTy = getBaseType(NewTy, nullptr);
   // either the point-to-element-type is the same or
   // the point-to-element-type is the byte or a function pointer
@@ -942,7 +942,8 @@ bool GenXPromoteArray::checkTypes(Type* CurBaseTy, Type* NewTy) const {
   return true;
 }
 
-bool GenXPromoteArray::checkAllocaUsesInternal(Instruction *I, Type *CurBaseTy, bool NeedCheckTypes) const {
+bool GenXPromoteArray::checkAllocaUsesInternal(Instruction *I, Type *CurBaseTy,
+                                               bool NeedCheckTypes) const {
   for (Value::user_iterator UseIt = I->user_begin(), UseE = I->user_end();
        UseIt != UseE; ++UseIt) {
     if (auto *GEP = dyn_cast<GetElementPtrInst>(*UseIt)) {
@@ -987,7 +988,8 @@ bool GenXPromoteArray::checkAllocaUsesInternal(Instruction *I, Type *CurBaseTy, 
           return false;
         break;
       case Intrinsic::masked_scatter:
-        if (NeedCheckTypes && !checkTypes(CurBaseTy, II->getOperand(0)->getType()))
+        if (NeedCheckTypes &&
+            !checkTypes(CurBaseTy, II->getOperand(0)->getType()))
           return false;
         break;
       default:
@@ -1082,10 +1084,11 @@ void GenXPromoteArray::selectAllocasToHandle() {
     return;
 
   std::sort(AllocasToPrivMem.begin(), AllocasToPrivMem.end(),
-            [this](const AllocaInst *LHS, const AllocaInst *RHS)
-            {
-              auto LHSSize = IGCLLVM::makeOptional(LHS->getAllocationSizeInBits(*DL));
-              auto RHSSize = IGCLLVM::makeOptional(RHS->getAllocationSizeInBits(*DL));
+            [this](const AllocaInst *LHS, const AllocaInst *RHS) {
+              auto LHSSize =
+                  IGCLLVM::makeOptional(LHS->getAllocationSizeInBits(*DL));
+              auto RHSSize =
+                  IGCLLVM::makeOptional(RHS->getAllocationSizeInBits(*DL));
 
               return LHSSize.value() < RHSSize.value();
             });
@@ -1093,7 +1096,8 @@ void GenXPromoteArray::selectAllocasToHandle() {
       AllocasToPrivMem.begin(), AllocasToPrivMem.end(),
       TotalAllocaLimitOpt.getValue(),
       [this](std::size_t PrevSum, const AllocaInst *CurAlloca) {
-        auto CurAllocaSize = IGCLLVM::makeOptional(CurAlloca->getAllocationSizeInBits(*DL));
+        auto CurAllocaSize =
+            IGCLLVM::makeOptional(CurAlloca->getAllocationSizeInBits(*DL));
         return PrevSum + CurAllocaSize.value() / genx::ByteBits;
       });
 

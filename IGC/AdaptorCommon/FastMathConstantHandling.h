@@ -12,8 +12,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    void initializeFastMathConstantHandlingPass(llvm::PassRegistry&);
-    llvm::FunctionPass* createFastMathConstantHandling();
-}
+namespace IGC {
+void initializeFastMathConstantHandlingPass(llvm::PassRegistry &);
+llvm::FunctionPass *createFastMathConstantHandling();
+} // namespace IGC

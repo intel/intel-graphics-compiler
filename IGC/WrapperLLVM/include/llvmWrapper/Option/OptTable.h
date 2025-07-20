@@ -18,14 +18,12 @@ namespace IGCLLVM {
 using GenericOptTable =
 #if LLVM_VERSION_MAJOR >= 16
     llvm::opt::GenericOptTable;
-#else // LLVM_VERSION_MAJOR
+#else  // LLVM_VERSION_MAJOR
     llvm::opt::OptTable;
 #endif // LLVM_VERSION_MAJOR
 
-inline void printHelp(const llvm::opt::OptTable &Options, llvm::raw_ostream &OS,
-                      const char *Usage, const char *Title,
-                      unsigned FlagsToInclude, unsigned FlagsToExclude,
-                      bool ShowAllAliases) {
+inline void printHelp(const llvm::opt::OptTable &Options, llvm::raw_ostream &OS, const char *Usage, const char *Title,
+                      unsigned FlagsToInclude, unsigned FlagsToExclude, bool ShowAllAliases) {
   Options.
 #if LLVM_VERSION_MAJOR <= 12
       PrintHelp
@@ -35,8 +33,7 @@ inline void printHelp(const llvm::opt::OptTable &Options, llvm::raw_ostream &OS,
       (OS, Usage, Title, FlagsToInclude, FlagsToExclude, ShowAllAliases);
 }
 
-inline void printHelp(const llvm::opt::OptTable &Options, llvm::raw_ostream &OS,
-                      const char *Usage, const char *Title,
+inline void printHelp(const llvm::opt::OptTable &Options, llvm::raw_ostream &OS, const char *Usage, const char *Title,
                       bool ShowHidden = false, bool ShowAllAliases = false) {
   Options.
 #if LLVM_VERSION_MAJOR <= 12

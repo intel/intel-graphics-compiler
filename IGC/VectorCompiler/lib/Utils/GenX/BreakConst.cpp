@@ -59,7 +59,7 @@ static Value *buildLegalizedConstantVector(ArrayRef<Value *> Vals,
                                            Instruction *InsertPt,
                                            const DebugLoc &DbgLoc) {
   IGC_ASSERT(!Vals.empty());
-  const auto& DL = InsertPt->getModule()->getDataLayout();
+  const auto &DL = InsertPt->getModule()->getDataLayout();
   Type *ScalarType = Vals.front()->getType();
   Value *Result = undefVector(ScalarType, Vals.size());
   IntegerType *I16Ty = Type::getInt16Ty(InsertPt->getContext());

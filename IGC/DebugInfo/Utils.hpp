@@ -18,13 +18,10 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-template <class ContainerType, class BinaryFunction,
-          class Sorter = std::less<typename ContainerType::key_type>>
-static void OrderedTraversal(const ContainerType &Data, BinaryFunction Visit,
-                             Sorter SortProcedure = {}) {
+template <class ContainerType, class BinaryFunction, class Sorter = std::less<typename ContainerType::key_type>>
+static void OrderedTraversal(const ContainerType &Data, BinaryFunction Visit, Sorter SortProcedure = {}) {
   std::vector<typename ContainerType::key_type> Keys;
-  std::transform(Data.begin(), Data.end(), std::back_inserter(Keys),
-                 [](const auto &KV) { return KV.first; });
+  std::transform(Data.begin(), Data.end(), std::back_inserter(Keys), [](const auto &KV) { return KV.first; });
   std::sort(Keys.begin(), Keys.end(), SortProcedure);
   for (const auto &Key : Keys) {
     auto FoundIt = Data.find(Key);
@@ -52,8 +49,7 @@ inline int32_t getSourceLangLiteralMDValueLegacy(const llvm::Module *module) {
   }
 
   auto constant = llvm::cast<llvm::ConstantAsMetadata>(sourceLangLiteral);
-  return int32_t(
-      llvm::cast<llvm::ConstantInt>(constant->getValue())->getZExtValue());
+  return int32_t(llvm::cast<llvm::ConstantInt>(constant->getValue())->getZExtValue());
 }
 
 //
@@ -72,9 +68,7 @@ inline int32_t getSourceLangLiteralMDValueLegacy(const llvm::Module *module) {
 //   !1835 = !DICompileUnit(...
 //   ...
 //
-inline int32_t
-getSourceLangLiteralMDValue(const llvm::DICompileUnit *compileUnit,
-                            const llvm::Module *module) {
+inline int32_t getSourceLangLiteralMDValue(const llvm::DICompileUnit *compileUnit, const llvm::Module *module) {
   const auto flagName = "Source Lang Literal";
 
   if (!module->getModuleFlag(flagName)) {
@@ -89,18 +83,15 @@ getSourceLangLiteralMDValue(const llvm::DICompileUnit *compileUnit,
   for (auto &op : node->operands()) {
     auto entry = llvm::cast<llvm::MDTuple>(op);
     if (llvm::cast<llvm::DICompileUnit>(entry->getOperand(0)) == compileUnit) {
-      auto constant =
-          llvm::cast<llvm::ConstantAsMetadata>(entry->getOperand(1));
-      return int32_t(
-          llvm::cast<llvm::ConstantInt>(constant->getValue())->getZExtValue());
+      auto constant = llvm::cast<llvm::ConstantAsMetadata>(entry->getOperand(1));
+      return int32_t(llvm::cast<llvm::ConstantInt>(constant->getValue())->getZExtValue());
     }
   }
 
   return SOURCE_LANG_LITERAL_MD_IS_NOT_PRESENT;
 }
 
-inline uint16_t getSourceLanguage(const llvm::DICompileUnit *compileUnit,
-                                  const llvm::Module *module) {
+inline uint16_t getSourceLanguage(const llvm::DICompileUnit *compileUnit, const llvm::Module *module) {
   int32_t sourceLanguage = getSourceLangLiteralMDValue(compileUnit, module);
   if (sourceLanguage == SOURCE_LANG_LITERAL_MD_IS_NOT_PRESENT) {
     sourceLanguage = compileUnit->getSourceLanguage();

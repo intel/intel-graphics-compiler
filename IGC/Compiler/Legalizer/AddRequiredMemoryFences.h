@@ -11,8 +11,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/PassRegistry.h"
 #include "common/LLVMWarningsPop.hpp"
-namespace IGC
-{
-llvm::FunctionPass* createAddRequiredMemoryFencesPass();
-void initializeAddRequiredMemoryFencesPass(llvm::PassRegistry&);
-}
+namespace IGC {
+llvm::FunctionPass *createAddRequiredMemoryFencesPass();
+void initializeAddRequiredMemoryFencesPass(llvm::PassRegistry &);
+} // namespace IGC

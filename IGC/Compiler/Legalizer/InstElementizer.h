@@ -16,28 +16,28 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-    namespace Legalizer {
+namespace Legalizer {
 
-        class InstElementizer : public InstVisitor<InstElementizer, bool> {
-            friend class InstVisitor<InstElementizer, bool>;
+class InstElementizer : public InstVisitor<InstElementizer, bool> {
+  friend class InstVisitor<InstElementizer, bool>;
 
-            TypeLegalizer* TL;
-            BuilderType* IRB;
+  TypeLegalizer *TL;
+  BuilderType *IRB;
 
-            ValueSeq Elementized;
+  ValueSeq Elementized;
 
-        public:
-            InstElementizer(TypeLegalizer* L, BuilderType* B) : TL(L), IRB(B) {}
+public:
+  InstElementizer(TypeLegalizer *L, BuilderType *B) : TL(L), IRB(B) {}
 
-            bool elementize(Instruction* I);
+  bool elementize(Instruction *I);
 
-        private:
-            /// Helpers
-            const char* getSuffix() const { return TL->getSuffix(Elementize); }
-        };
+private:
+  /// Helpers
+  const char *getSuffix() const { return TL->getSuffix(Elementize); }
+};
 
-    } // End Legalizer namespace
+} // namespace Legalizer
 
-} // End IGC namespace
+} // namespace IGC
 
 #endif // LEGALIZER_INSTELEMENTIZER_H

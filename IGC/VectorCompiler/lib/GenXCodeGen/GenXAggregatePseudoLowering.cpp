@@ -201,7 +201,7 @@ static Instruction *getInsertionPtForSplitOp(Use &Op, Instruction &Inst) {
   if (isa<Instruction>(OpVal))
     return getFirstInsertionPtAfter(cast<Instruction>(OpVal));
   IGC_ASSERT_MESSAGE(isa<Constant>(OpVal) || isa<Argument>(OpVal),
-    "only instruction, constant or argument are expected");
+                     "only instruction, constant or argument are expected");
   return getFirstInsertionPtBefore(Op, Inst);
 }
 
@@ -244,7 +244,7 @@ static SplitOpsMap
 createSplitOperands(Instruction &Inst,
                     const std::vector<IdxListType> &IdxLists) {
   IGC_ASSERT_MESSAGE(hasAggregateOperand(Inst),
-    "wrong argument: inst must have aggregate operand");
+                     "wrong argument: inst must have aggregate operand");
   auto AggregateOps = make_filter_range(Inst.operands(), [](const Use &U) {
     return U->getType()->isAggregateType();
   });
@@ -503,8 +503,9 @@ static std::vector<IdxListType> createIdxLists(Type *AggrTy) {
 }
 
 void GenXAggregatePseudoLowering::processInst(Instruction &Inst) {
-  IGC_ASSERT_MESSAGE(hasAggregate(Inst),
-    "wrong argument: instruction doesn't work with aggregates");
+  IGC_ASSERT_MESSAGE(
+      hasAggregate(Inst),
+      "wrong argument: instruction doesn't work with aggregates");
   Type *AggrTy = getAggregateType(Inst);
   auto IdxLists = createIdxLists(AggrTy);
   SplitOpsMap NewOperands;

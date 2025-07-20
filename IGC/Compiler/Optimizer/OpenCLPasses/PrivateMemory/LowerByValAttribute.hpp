@@ -14,21 +14,19 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class LowerByValAttribute : public llvm::FunctionPass, public llvm::InstVisitor<LowerByValAttribute>
-    {
-    public:
-        static char ID;
+namespace IGC {
+class LowerByValAttribute : public llvm::FunctionPass, public llvm::InstVisitor<LowerByValAttribute> {
+public:
+  static char ID;
 
-        LowerByValAttribute();
+  LowerByValAttribute();
 
-        virtual bool runOnFunction(llvm::Function& F) override;
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-        void visitCallInst(llvm::CallInst& CI);
+  void visitCallInst(llvm::CallInst &CI);
 
-    private:
-        bool m_changed = false;
-    };
+private:
+  bool m_changed = false;
+};
 
 } // namespace IGC

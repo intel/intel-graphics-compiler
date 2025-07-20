@@ -21,60 +21,55 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace std;
 
-namespace IGC
-{
-    class CVariable;
-    class VISAModule;
-    class CShader;
-    class CVariable;
-    class IDebugEmitter;
+namespace IGC {
+class CVariable;
+class VISAModule;
+class CShader;
+class CVariable;
+class IDebugEmitter;
 
-    class DebugInfoData
-    {
-    public:
-        llvm::DenseMap<llvm::Function*, VISAModule*> m_VISAModules;
-        // Store mapping of llvm::Value->CVariable per llvm::Function.
-        // The mapping is obtained from CShader at end of EmitVISAPass for F.
-        llvm::DenseMap<const llvm::Function*, llvm::DenseMap<llvm::Value*, CVariable*>> m_FunctionSymbols;
-        CShader* m_pShader = nullptr;
-        IDebugEmitter* m_pDebugEmitter = nullptr;
+class DebugInfoData {
+public:
+  llvm::DenseMap<llvm::Function *, VISAModule *> m_VISAModules;
+  // Store mapping of llvm::Value->CVariable per llvm::Function.
+  // The mapping is obtained from CShader at end of EmitVISAPass for F.
+  llvm::DenseMap<const llvm::Function *, llvm::DenseMap<llvm::Value *, CVariable *>> m_FunctionSymbols;
+  CShader *m_pShader = nullptr;
+  IDebugEmitter *m_pDebugEmitter = nullptr;
 
-        // Detect instructions with an address class pattern. Then remove all opcodes of this pattern from
-        // this instruction's last operand (metadata of DIExpression).
-        static void extractAddressClass(llvm::Function& F);
+  // Detect instructions with an address class pattern. Then remove all opcodes of this pattern from
+  // this instruction's last operand (metadata of DIExpression).
+  static void extractAddressClass(llvm::Function &F);
 
-        static void markVariableAsOutput(CShader* pShader, CVariable *pVariable);
-        static void saveAndMarkPrivateMemoryVars(llvm::Function &F, CShader *pShader);
+  static void markVariableAsOutput(CShader *pShader, CVariable *pVariable);
+  static void saveAndMarkPrivateMemoryVars(llvm::Function &F, CShader *pShader);
 
-        void addVISAModule(llvm::Function* F, VISAModule* m)
-        {
-            IGC_ASSERT_MESSAGE(m_VISAModules.find(F) == m_VISAModules.end(), "Reinserting VISA module for function");
+  void addVISAModule(llvm::Function *F, VISAModule *m) {
+    IGC_ASSERT_MESSAGE(m_VISAModules.find(F) == m_VISAModules.end(), "Reinserting VISA module for function");
 
-            m_VISAModules.insert(std::make_pair(F, m));
-        }
+    m_VISAModules.insert(std::make_pair(F, m));
+  }
 
-        static bool hasDebugInfo(CShader* pShader);
+  static bool hasDebugInfo(CShader *pShader);
 
-        void transferMappings(const llvm::Function& F);
-        CVariable* getMapping(const llvm::Function& F, const llvm::Value* V);
+  void transferMappings(const llvm::Function &F);
+  CVariable *getMapping(const llvm::Function &F, const llvm::Value *V);
 
-        unsigned int getVISADclId(const CVariable* CVar, unsigned index)
-        {
-            auto it = CVarToVISADclId.find(CVar);
-            if (it == CVarToVISADclId.end())
-            {
-                IGC_ASSERT_MESSAGE(false, "Didn't find VISA dcl id");
-                return 0;
-            }
-            if (index == 0)
-                return (*it).second.first;
-            else if (index == 1)
-                return (*it).second.second;
-            return 0;
-        }
+  unsigned int getVISADclId(const CVariable *CVar, unsigned index) {
+    auto it = CVarToVISADclId.find(CVar);
+    if (it == CVarToVISADclId.end()) {
+      IGC_ASSERT_MESSAGE(false, "Didn't find VISA dcl id");
+      return 0;
+    }
+    if (index == 0)
+      return (*it).second.first;
+    else if (index == 1)
+      return (*it).second.second;
+    return 0;
+  }
 
-    private:
-        std::unordered_set<const CVariable*> m_outputVals;
-        llvm::DenseMap<const CVariable*, std::pair<unsigned int, unsigned int>> CVarToVISADclId;
-    };
+private:
+  std::unordered_set<const CVariable *> m_outputVals;
+  llvm::DenseMap<const CVariable *, std::pair<unsigned int, unsigned int>> CVarToVISADclId;
 };
+}; // namespace IGC

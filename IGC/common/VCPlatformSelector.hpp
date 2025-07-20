@@ -34,8 +34,7 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
   if (GmdId.Value != 0) {
     static std::string PlatformId;
     std::ostringstream Out;
-    Out << GmdId.GmdID.GMDArch << '.' << GmdId.GmdID.GMDRelease << '.'
-        << GmdId.GmdID.RevisionID;
+    Out << GmdId.GmdID.GMDArch << '.' << GmdId.GmdID.GMDRelease << '.' << GmdId.GmdID.RevisionID;
     PlatformId = Out.str();
     return PlatformId.c_str();
   }
@@ -99,9 +98,9 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
   case IGFX_BMG:
     return "bmg";
   case IGFX_LUNARLAKE:
-      return "lnl";
+    return "lnl";
   case IGFX_PTL:
-      return "ptl";
+    return "ptl";
   default:
     break;
   }

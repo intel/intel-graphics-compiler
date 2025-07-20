@@ -26,54 +26,53 @@ using AllocatorT = void *(CIF_CALLING_CONV *)(size_t size);
 using ReallocatorT = void *(CIF_CALLING_CONV *)(void *oldMemory, size_t oldSize, size_t newSize);
 
 /// Custom deallocator function
-using DeallocatorT = void (CIF_CALLING_CONV *)(void *memory);
+using DeallocatorT = void(CIF_CALLING_CONV *)(void *memory);
 
 /// Builtin interface that can be used as generic buffer
 CIF_DECLARE_COMMON_INTERFACE(Buffer, "CIF_BUFFER");
 
 /// v #1
-CIF_DEFINE_INTERFACE_VER(Buffer, 1){
+CIF_DEFINE_INTERFACE_VER(Buffer, 1) {
   CIF_INHERIT_CONSTRUCTOR();
 
   /// Get address to underlying buffer with ElementT as pointer element type
-  template<typename ElementT>
-  ElementT *GetMemoryWriteable(){
-      return reinterpret_cast<ElementT*>(GetMemoryRawWriteable());
+  template <typename ElementT> ElementT *GetMemoryWriteable() {
+    return reinterpret_cast<ElementT *>(GetMemoryRawWriteable());
   }
 
   /// Get address to underlying const buffer with ElementT as pointer element type
-  template<typename ElementT>
-  const ElementT *GetMemory() const{
-      return reinterpret_cast<const ElementT*>(GetMemoryRaw());
+  template <typename ElementT> const ElementT *GetMemory() const {
+    return reinterpret_cast<const ElementT *>(GetMemoryRaw());
   }
 
   /// Get size in units of ElementT (ElementT == void version)
-  template<typename ElementT>
-  const typename std::enable_if<std::is_void<ElementT>::value, size_t>::type GetSize() const{
-      return GetSizeRaw();
+  template <typename ElementT>
+  const typename std::enable_if<std::is_void<ElementT>::value, size_t>::type GetSize() const {
+    return GetSizeRaw();
   }
 
   /// Get size in units of ElementT (ElementT != void version)
-  template<typename ElementT>
-  const typename std::enable_if<false == std::is_void<ElementT>::value, size_t>::type GetSize() const{
-      return GetSizeRaw() / sizeof(ElementT);
+  template <typename ElementT>
+  const typename std::enable_if<false == std::is_void<ElementT>::value, size_t>::type GetSize() const {
+    return GetSizeRaw() / sizeof(ElementT);
   }
 
   /// Copies given element to the end of the buffer
   /// Note : If (packed == false), then this function will automatically align current underlying buffer
   ///        pointer to alignof(ElementT)
-  template<typename ElementT>
-  bool PushBackRawCopy(const ElementT &newEl, bool packed = true){
-      static_assert(std::is_standard_layout_v<ElementT> && std::is_trivial_v<ElementT> && std::is_trivially_copyable_v<ElementT>, "Supporting only POD types");
-      if(packed == false){
-          size_t alignment = alignof(ElementT);
-          bool success = AlignUp(static_cast<uint32_t>(alignment));
-          if(success == false){
-              return false;
-          }
+  template <typename ElementT> bool PushBackRawCopy(const ElementT &newEl, bool packed = true) {
+    static_assert(std::is_standard_layout_v<ElementT> && std::is_trivial_v<ElementT> &&
+                      std::is_trivially_copyable_v<ElementT>,
+                  "Supporting only POD types");
+    if (packed == false) {
+      size_t alignment = alignof(ElementT);
+      bool success = AlignUp(static_cast<uint32_t>(alignment));
+      if (success == false) {
+        return false;
       }
+    }
 
-      return PushBackRawBytes(&newEl, sizeof(ElementT));
+    return PushBackRawBytes(&newEl, sizeof(ElementT));
   }
 
   /// Sets custom allocator and deallocator functions to be used by this buffer interface
@@ -135,49 +134,51 @@ CIF_GENERATE_VERSIONS_LIST(Buffer);
 CIF_MARK_LATEST_VERSION(BufferLatest, Buffer);
 using BufferSimple = Buffer<1>; /// tag the most common version
 
-template<typename BufferInterface = BufferLatest>
-CIF::RAII::UPtr_t<BufferInterface> CreateConstBuffer(CIF::CIFMain *provider, const void *data, size_t size){
-    if(provider == nullptr){
-        return CIF::RAII::UPtr<BufferInterface>(nullptr);
-    }
-    auto buff = provider->CreateBuiltin<BufferInterface>();
-    if(buff == nullptr){
-        return CIF::RAII::UPtr<BufferInterface>(nullptr);
-    }
-    if((data != nullptr) && (size != 0)){
-        buff->SetUnderlyingStorage(data, size);
-    }
-    return buff;
+template <typename BufferInterface = BufferLatest>
+CIF::RAII::UPtr_t<BufferInterface> CreateConstBuffer(CIF::CIFMain *provider, const void *data, size_t size) {
+  if (provider == nullptr) {
+    return CIF::RAII::UPtr<BufferInterface>(nullptr);
+  }
+  auto buff = provider->CreateBuiltin<BufferInterface>();
+  if (buff == nullptr) {
+    return CIF::RAII::UPtr<BufferInterface>(nullptr);
+  }
+  if ((data != nullptr) && (size != 0)) {
+    buff->SetUnderlyingStorage(data, size);
+  }
+  return buff;
 }
 
-template<typename BufferInterface = BufferLatest>
-CIF::RAII::UPtr_t<BufferInterface> CreateWriteableBuffer(CIF::CIFMain *provider, const void *initialData, size_t initialSize){
-    auto buff = CreateConstBuffer<BufferInterface>(provider, initialData, initialSize);
-    if(buff == nullptr){
-        return CIF::RAII::UPtr<BufferInterface>(nullptr);
-    }
-    auto writeableMem = buff->GetMemoryRawWriteable();
-    if(writeableMem == nullptr && (initialData != nullptr && initialSize != 0)){
-        // failed to allocate new memory in writeable memory
-        return CIF::RAII::UPtr<BufferInterface>(nullptr);
-    }
-    return buff;
+template <typename BufferInterface = BufferLatest>
+CIF::RAII::UPtr_t<BufferInterface> CreateWriteableBuffer(CIF::CIFMain *provider, const void *initialData,
+                                                         size_t initialSize) {
+  auto buff = CreateConstBuffer<BufferInterface>(provider, initialData, initialSize);
+  if (buff == nullptr) {
+    return CIF::RAII::UPtr<BufferInterface>(nullptr);
+  }
+  auto writeableMem = buff->GetMemoryRawWriteable();
+  if (writeableMem == nullptr && (initialData != nullptr && initialSize != 0)) {
+    // failed to allocate new memory in writeable memory
+    return CIF::RAII::UPtr<BufferInterface>(nullptr);
+  }
+  return buff;
 }
 
-template<typename BufferInterface = BufferLatest>
-CIF::RAII::UPtr_t<BufferInterface> CreateBufferFromPtr(CIF::CIFMain *provider, void *ptr, size_t size, DeallocatorT ptrDeallocator){
-    auto buff = CreateConstBuffer<BufferInterface>(provider, nullptr, 0);
-    if(buff == nullptr){
-        return CIF::RAII::UPtr<BufferInterface>(nullptr);
-    }
+template <typename BufferInterface = BufferLatest>
+CIF::RAII::UPtr_t<BufferInterface> CreateBufferFromPtr(CIF::CIFMain *provider, void *ptr, size_t size,
+                                                       DeallocatorT ptrDeallocator) {
+  auto buff = CreateConstBuffer<BufferInterface>(provider, nullptr, 0);
+  if (buff == nullptr) {
+    return CIF::RAII::UPtr<BufferInterface>(nullptr);
+  }
 
-    buff->SetUnderlyingStorage(ptr, size, ptrDeallocator);
+  buff->SetUnderlyingStorage(ptr, size, ptrDeallocator);
 
-    return buff;
+  return buff;
 }
 
-}
+} // namespace Builtins
 
-}
+} // namespace CIF
 
 #include "cif/macros/disable.h"

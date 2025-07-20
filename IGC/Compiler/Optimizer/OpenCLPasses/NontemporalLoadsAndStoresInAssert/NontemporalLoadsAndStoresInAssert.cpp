@@ -32,10 +32,8 @@ char NontemporalLoadsAndStoresInAssert::ID = 0;
 
 static const char *ASSERT_FUNCTION_NAME = "__devicelib_assert_fail";
 
-NontemporalLoadsAndStoresInAssert::NontemporalLoadsAndStoresInAssert()
-    : ModulePass(ID) {
-  initializeNontemporalLoadsAndStoresInAssertPass(
-      *PassRegistry::getPassRegistry());
+NontemporalLoadsAndStoresInAssert::NontemporalLoadsAndStoresInAssert() : ModulePass(ID) {
+  initializeNontemporalLoadsAndStoresInAssertPass(*PassRegistry::getPassRegistry());
 }
 
 bool NontemporalLoadsAndStoresInAssert::runOnModule(Module &M) {
@@ -48,8 +46,7 @@ bool NontemporalLoadsAndStoresInAssert::runOnModule(Module &M) {
     for (auto I = inst_begin(F); I != inst_end(F); ++I) {
       if (isa<LoadInst>(*I) || isa<StoreInst>(*I)) {
         Constant *One = ConstantInt::get(Type::getInt32Ty(I->getContext()), 1);
-        MDNode *Node =
-            MDNode::get(I->getContext(), ConstantAsMetadata::get(One));
+        MDNode *Node = MDNode::get(I->getContext(), ConstantAsMetadata::get(One));
         I->setMetadata(LLVMContext::MD_nontemporal, Node);
         changed = true;
       }

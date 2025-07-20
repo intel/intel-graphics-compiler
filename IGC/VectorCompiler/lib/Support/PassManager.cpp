@@ -128,7 +128,7 @@ class PassSetOption {
 
 public:
   template <typename... Mods>
-  PassSetOption(const Mods &... Ms)
+  PassSetOption(const Mods &...Ms)
       : CLOption(Ms..., cl::ZeroOrMore, cl::CommaSeparated) {}
   auto &getValue() { return CLOption.getValue(); }
   bool empty() { return getValue().empty(); }
@@ -171,13 +171,14 @@ llvm::raw_ostream &getOutputStreamForIRDump(IRDumpType DumpType,
   if (!SplitIRDumps)
     return llvm::errs();
 
-  std::string DumpName = ss.str() + "_" +
+  std::string DumpName =
+      ss.str() + "_" +
       (((DumpType == IRDumpType::Before) ? Twine("before_") : Twine("after_")) +
        PassArg + N.str() + ".ll")
           .str();
-  std::replace_if(DumpName.begin(), DumpName.end(),
-                  [](unsigned char c) { return !std::isalnum(c) && c != '.'; },
-                  '_');
+  std::replace_if(
+      DumpName.begin(), DumpName.end(),
+      [](unsigned char c) { return !std::isalnum(c) && c != '.'; }, '_');
   return getFileStreamForIRDump(DumpName);
 }
 

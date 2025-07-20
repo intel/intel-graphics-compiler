@@ -14,41 +14,37 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
-namespace IGCLLVM
-{
-    inline void setOpaquePointers(llvm::LLVMContext* Ctx, const bool Enable)
-    {
-        IGC_ASSERT_MESSAGE(Ctx, "Null LLVMContext pointer!");
+namespace IGCLLVM {
+inline void setOpaquePointers(llvm::LLVMContext *Ctx, const bool Enable) {
+  IGC_ASSERT_MESSAGE(Ctx, "Null LLVMContext pointer!");
 #if LLVM_VERSION_MAJOR == 14
-        if (Enable)
-            Ctx->enableOpaquePointers();
+  if (Enable)
+    Ctx->enableOpaquePointers();
 #elif LLVM_VERSION_MAJOR >= 15
-        Ctx->setOpaquePointers(Enable);
+  Ctx->setOpaquePointers(Enable);
 #endif // LLVM_VERSION_MAJOR
-    };
+};
 } // end namespace IGCLLVM
 
-namespace IGC
-{
-    inline bool canOverwriteLLVMCtxPtrMode(llvm::LLVMContext* Ctx)
-    {
-        IGC_ASSERT_MESSAGE(Ctx, "Null LLVMContext pointer!");
+namespace IGC {
+inline bool canOverwriteLLVMCtxPtrMode(llvm::LLVMContext *Ctx) {
+  IGC_ASSERT_MESSAGE(Ctx, "Null LLVMContext pointer!");
 #if LLVM_VERSION_MAJOR < 14
-        return false;
+  return false;
 #elif LLVM_VERSION_MAJOR == 14
-        // With LLVM 14, we invoke a proper check for the -opaque-pointers CL
-        // option. Regardless of whether it's false by LLVM 14's default, or
-        // through an explicit setting, we deem it acceptable for IGC to
-        // override this when opaque pointers are force-enabled in experimental
-        // mode.
-        return Ctx->supportsTypedPointers();
+  // With LLVM 14, we invoke a proper check for the -opaque-pointers CL
+  // option. Regardless of whether it's false by LLVM 14's default, or
+  // through an explicit setting, we deem it acceptable for IGC to
+  // override this when opaque pointers are force-enabled in experimental
+  // mode.
+  return Ctx->supportsTypedPointers();
 #elif LLVM_VERSION_MAJOR >= 15
-        // With LLVM 15-16, we should not trigger CL option evaluation, as the
-        // OPs mode will then get set as a permanent default. The only
-        // alternative is to use an API below, non-native for LLVM 16.
-        return !Ctx->hasSetOpaquePointersValue();
+  // With LLVM 15-16, we should not trigger CL option evaluation, as the
+  // OPs mode will then get set as a permanent default. The only
+  // alternative is to use an API below, non-native for LLVM 16.
+  return !Ctx->hasSetOpaquePointersValue();
 #endif // LLVM_VERSION_MAJOR
-    }
+}
 } // end namespace IGC
 
 #endif // IGCLLVM_IR_LLVMCONTEXT_H

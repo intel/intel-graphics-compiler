@@ -13,42 +13,34 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    // A pass that walks over call instructions and replaces all __builtin_IB_work_group
-    // with corresponding GenISA intrinsics.
-    //
-    class WGFuncResolution : public llvm::ModulePass, public llvm::InstVisitor<WGFuncResolution>
-    {
-    public:
-        // Pass identification, replacement for typeid
-        static char ID;
+namespace IGC {
+// A pass that walks over call instructions and replaces all __builtin_IB_work_group
+// with corresponding GenISA intrinsics.
+//
+class WGFuncResolution : public llvm::ModulePass, public llvm::InstVisitor<WGFuncResolution> {
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
 
-        /// @brief  Constructor
-        WGFuncResolution();
+  /// @brief  Constructor
+  WGFuncResolution();
 
-        /// @brief  Provides name of pass
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "WGFuncResolution";
-        }
+  /// @brief  Provides name of pass
+  virtual llvm::StringRef getPassName() const override { return "WGFuncResolution"; }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.setPreservesCFG();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
 
-        // Entry point of the pass.
-        virtual bool runOnModule(llvm::Module& M) override;
+  // Entry point of the pass.
+  virtual bool runOnModule(llvm::Module &M) override;
 
-        // Call instructions visitor.
-        void visitCallInst(llvm::CallInst& callInst);
+  // Call instructions visitor.
+  void visitCallInst(llvm::CallInst &callInst);
 
-    private:
-        llvm::Module* m_pModule = nullptr;
+private:
+  llvm::Module *m_pModule = nullptr;
 
-        /// @brief  Indicates if the pass changed the processed function
-        bool m_changed{};
-    };
+  /// @brief  Indicates if the pass changed the processed function
+  bool m_changed{};
+};
 
 } // namespace IGC

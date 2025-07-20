@@ -22,8 +22,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace llvm
-{
+namespace llvm {
 class PassRegistry;
 } // namespace llvm
 
@@ -49,5 +48,5 @@ private:
   bool runOnFunction(llvm::Function &F);
 };
 
-void initializeCallMergerPass(llvm::PassRegistry&);
+void initializeCallMergerPass(llvm::PassRegistry &);
 } // namespace IGC

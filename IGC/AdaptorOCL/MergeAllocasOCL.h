@@ -9,29 +9,23 @@ SPDX-License-Identifier: MIT
 #include "../AdaptorCommon/LivenessUtils/MergeAllocas.h"
 #include "llvm/PassRegistry.h"
 
-namespace llvm
-{
-    class PassRegistry;
+namespace llvm {
+class PassRegistry;
 }
 
-namespace IGC
-{
-    class MergeAllocasOCL : public MergeAllocas
-    {
-        bool skipInstruction(llvm::Function& F, AllocationLivenessAnalyzer::LivenessData& LD) override;
+namespace IGC {
+class MergeAllocasOCL : public MergeAllocas {
+  bool skipInstruction(llvm::Function &F, AllocationLivenessAnalyzer::LivenessData &LD) override;
 
-    public:
-        static char ID;
+public:
+  static char ID;
 
-        MergeAllocasOCL();
+  MergeAllocasOCL();
 
-        llvm::StringRef getPassName() const override
-        {
-            return "MergeAllocasOCL";
-        }
-    };
+  llvm::StringRef getPassName() const override { return "MergeAllocasOCL"; }
+};
 
-    llvm::Pass* createMergeAllocasOCL();
-}
+llvm::Pass *createMergeAllocasOCL();
+} // namespace IGC
 
-void initializeMergeAllocasOCLPass(llvm::PassRegistry&);
+void initializeMergeAllocasOCLPass(llvm::PassRegistry &);

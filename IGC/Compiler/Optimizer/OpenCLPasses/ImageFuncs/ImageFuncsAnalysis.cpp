@@ -27,9 +27,8 @@ IGC_INITIALIZE_PASS_END(ImageFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CF
 
 char ImageFuncsAnalysis::ID = 0;
 
-ImageFuncsAnalysis::ImageFuncsAnalysis() : ModulePass(ID)
-{
-    initializeImageFuncsAnalysisPass(*PassRegistry::getPassRegistry());
+ImageFuncsAnalysis::ImageFuncsAnalysis() : ModulePass(ID) {
+  initializeImageFuncsAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
 // All image functions needed resolved by implicit arguments
@@ -51,195 +50,155 @@ const llvm::StringRef ImageFuncsAnalysis::GET_FLAT_IMAGE_HEIGHT = "__builtin_IB_
 const llvm::StringRef ImageFuncsAnalysis::GET_FLAT_IMAGE_WIDTH = "__builtin_IB_get_flat_image_width";
 const llvm::StringRef ImageFuncsAnalysis::GET_FLAT_IMAGE_PITCH = "__builtin_IB_get_flat_image_pitch";
 
-bool ImageFuncsAnalysis::runOnModule(Module& M) {
-    bool changed = false;
-    m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool ImageFuncsAnalysis::runOnModule(Module &M) {
+  bool changed = false;
+  m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    m_useAdvancedBindlessMode = ctx->getModuleMetaData()->UseBindlessImage;
+  m_useAdvancedBindlessMode = ctx->getModuleMetaData()->UseBindlessImage;
 
-    m_useBindlessImageWithSamplerTracking = ctx->getModuleMetaData()->UseBindlessImageWithSamplerTracking;
+  m_useBindlessImageWithSamplerTracking = ctx->getModuleMetaData()->UseBindlessImageWithSamplerTracking;
 
-    m_useSPVINTELBindlessImages = ctx->getModuleMetaData()->extensions.spvINTELBindlessImages;
+  m_useSPVINTELBindlessImages = ctx->getModuleMetaData()->extensions.spvINTELBindlessImages;
 
-    // Run on all functions defined in this module
-    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
-        Function* pFunc = &(*I);
-        if (pFunc->isDeclaration()) continue;
-        if (runOnFunction(*pFunc))
-        {
-            changed = true;
-        }
+  // Run on all functions defined in this module
+  for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
+    Function *pFunc = &(*I);
+    if (pFunc->isDeclaration())
+      continue;
+    if (runOnFunction(*pFunc)) {
+      changed = true;
     }
+  }
 
-    // Update LLVM metadata based on IGC MetadataUtils
-    if (changed)
-        m_pMDUtils->save(M.getContext());
+  // Update LLVM metadata based on IGC MetadataUtils
+  if (changed)
+    m_pMDUtils->save(M.getContext());
 
-    return changed;
+  return changed;
 }
 
-bool ImageFuncsAnalysis::runOnFunction(Function& F) {
+bool ImageFuncsAnalysis::runOnFunction(Function &F) {
 
-    // Visit the function
-    visit(F);
+  // Visit the function
+  visit(F);
 
-    ImplicitArgs::addImageArgs(F, m_argMap, m_pMDUtils);
+  ImplicitArgs::addImageArgs(F, m_argMap, m_pMDUtils);
 
-    m_argMap.clear();
+  m_argMap.clear();
 
-    return true;
+  return true;
 }
 
-void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
-{
-    if (!CI.getCalledFunction())
-    {
+void ImageFuncsAnalysis::visitCallInst(CallInst &CI) {
+  if (!CI.getCalledFunction()) {
+    return;
+  }
+
+  StringRef funcName = CI.getCalledFunction()->getName();
+
+  // Check for OpenCL image dimension function calls
+  std::set<int> *imageFunc = nullptr;
+
+  if (funcName == GET_IMAGE_HEIGHT && !m_useAdvancedBindlessMode) {
+    imageFunc = &m_argMap[ImplicitArg::IMAGE_HEIGHT];
+  } else if (funcName == GET_IMAGE_WIDTH && !m_useAdvancedBindlessMode) {
+    imageFunc = &m_argMap[ImplicitArg::IMAGE_WIDTH];
+  } else if (funcName == GET_IMAGE_DEPTH && !m_useAdvancedBindlessMode) {
+    imageFunc = &m_argMap[ImplicitArg::IMAGE_DEPTH];
+  } else if (funcName == GET_IMAGE_NUM_MIP_LEVELS) {
+    imageFunc = &m_argMap[ImplicitArg::IMAGE_NUM_MIP_LEVELS];
+  } else if (funcName == GET_IMAGE_CHANNEL_DATA_TYPE) {
+    imageFunc = &m_argMap[ImplicitArg::IMAGE_CHANNEL_DATA_TYPE];
+  } else if (funcName == GET_IMAGE_CHANNEL_ORDER) {
+    imageFunc = &m_argMap[ImplicitArg::IMAGE_CHANNEL_ORDER];
+  } else if (funcName == GET_IMAGE_SRGB_CHANNEL_ORDER) {
+    imageFunc = &m_argMap[ImplicitArg::IMAGE_SRGB_CHANNEL_ORDER];
+  } else if ((funcName == GET_IMAGE1D_ARRAY_SIZE || funcName == GET_IMAGE2D_ARRAY_SIZE) && !m_useAdvancedBindlessMode) {
+    imageFunc = &m_argMap[ImplicitArg::IMAGE_ARRAY_SIZE];
+  } else if (funcName == GET_IMAGE_NUM_SAMPLES) {
+    imageFunc = &m_argMap[ImplicitArg::IMAGE_NUM_SAMPLES];
+  } else if (funcName == GET_SAMPLER_ADDRESS_MODE) {
+    imageFunc = &m_argMap[ImplicitArg::SAMPLER_ADDRESS];
+  } else if (funcName == GET_SAMPLER_NORMALIZED_COORDS) {
+    imageFunc = &m_argMap[ImplicitArg::SAMPLER_NORMALIZED];
+  }
+  // The SNAP_WA is disabled for SPV_INTEL_bindless_images extension.
+  // For further information, refer to the ImageFuncResolution.cpp file.
+  else if (funcName == GET_SAMPLER_SNAP_WA_REQUIRED && !m_useSPVINTELBindlessImages) {
+    imageFunc = &m_argMap[ImplicitArg::SAMPLER_SNAP_WA];
+  } else if (funcName == GET_FLAT_IMAGE_BASEOFFSET) {
+    imageFunc = &m_argMap[ImplicitArg::FLAT_IMAGE_BASEOFFSET];
+  } else if (funcName == GET_FLAT_IMAGE_HEIGHT) {
+    imageFunc = &m_argMap[ImplicitArg::FLAT_IMAGE_HEIGHT];
+  } else if (funcName == GET_FLAT_IMAGE_WIDTH) {
+    imageFunc = &m_argMap[ImplicitArg::FLAT_IMAGE_WIDTH];
+  } else if (funcName == GET_FLAT_IMAGE_PITCH) {
+    imageFunc = &m_argMap[ImplicitArg::FLAT_IMAGE_PITCH];
+  } else {
+    if (funcName.endswith("sample_l") && m_useBindlessImageWithSamplerTracking) {
+      Value *callArg = ValueTracker::track(&CI, 1, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                           getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+      if (!callArg)
         return;
-    }
-
-    StringRef funcName = CI.getCalledFunction()->getName();
-
-    // Check for OpenCL image dimension function calls
-    std::set<int>* imageFunc = nullptr;
-
-    if (funcName == GET_IMAGE_HEIGHT && !m_useAdvancedBindlessMode)
-    {
-        imageFunc = &m_argMap[ImplicitArg::IMAGE_HEIGHT];
-    }
-    else if (funcName == GET_IMAGE_WIDTH && !m_useAdvancedBindlessMode)
-    {
-        imageFunc = &m_argMap[ImplicitArg::IMAGE_WIDTH];
-    }
-    else if (funcName == GET_IMAGE_DEPTH && !m_useAdvancedBindlessMode)
-    {
-        imageFunc = &m_argMap[ImplicitArg::IMAGE_DEPTH];
-    }
-    else if (funcName == GET_IMAGE_NUM_MIP_LEVELS)
-    {
-        imageFunc = &m_argMap[ImplicitArg::IMAGE_NUM_MIP_LEVELS];
-    }
-    else if (funcName == GET_IMAGE_CHANNEL_DATA_TYPE)
-    {
-        imageFunc = &m_argMap[ImplicitArg::IMAGE_CHANNEL_DATA_TYPE];
-    }
-    else if (funcName == GET_IMAGE_CHANNEL_ORDER)
-    {
-        imageFunc = &m_argMap[ImplicitArg::IMAGE_CHANNEL_ORDER];
-    }
-    else if (funcName == GET_IMAGE_SRGB_CHANNEL_ORDER)
-    {
-        imageFunc = &m_argMap[ImplicitArg::IMAGE_SRGB_CHANNEL_ORDER];
-    }
-    else if ((funcName == GET_IMAGE1D_ARRAY_SIZE || funcName == GET_IMAGE2D_ARRAY_SIZE) && !m_useAdvancedBindlessMode)
-    {
-        imageFunc = &m_argMap[ImplicitArg::IMAGE_ARRAY_SIZE];
-    }
-    else if (funcName == GET_IMAGE_NUM_SAMPLES)
-    {
-        imageFunc = &m_argMap[ImplicitArg::IMAGE_NUM_SAMPLES];
-    }
-    else if (funcName == GET_SAMPLER_ADDRESS_MODE)
-    {
-        imageFunc = &m_argMap[ImplicitArg::SAMPLER_ADDRESS];
-    }
-    else if (funcName == GET_SAMPLER_NORMALIZED_COORDS)
-    {
-        imageFunc = &m_argMap[ImplicitArg::SAMPLER_NORMALIZED];
-    }
-    // The SNAP_WA is disabled for SPV_INTEL_bindless_images extension.
-    // For further information, refer to the ImageFuncResolution.cpp file.
-    else if (funcName == GET_SAMPLER_SNAP_WA_REQUIRED && !m_useSPVINTELBindlessImages)
-    {
-        imageFunc = &m_argMap[ImplicitArg::SAMPLER_SNAP_WA];
-    }
-    else if (funcName == GET_FLAT_IMAGE_BASEOFFSET)
-    {
-        imageFunc = &m_argMap[ImplicitArg::FLAT_IMAGE_BASEOFFSET];
-    }
-    else if (funcName == GET_FLAT_IMAGE_HEIGHT)
-    {
-        imageFunc = &m_argMap[ImplicitArg::FLAT_IMAGE_HEIGHT];
-    }
-    else if (funcName == GET_FLAT_IMAGE_WIDTH)
-    {
-        imageFunc = &m_argMap[ImplicitArg::FLAT_IMAGE_WIDTH];
-    }
-    else if (funcName == GET_FLAT_IMAGE_PITCH)
-    {
-        imageFunc = &m_argMap[ImplicitArg::FLAT_IMAGE_PITCH];
-    }
-    else
-    {
-        if (funcName.endswith("sample_l") && m_useBindlessImageWithSamplerTracking)
-        {
-            Value* callArg = ValueTracker::track(&CI, 1, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
-            if (!callArg) return;
-            if (ConstantInt* ConstInt = dyn_cast<ConstantInt>(callArg))
-            {
-                // Inline sampler doesn't associate with an explicit argument.
-                // To avoid adding a new metadata entry, inline sampler value is stored as
-                // explicit argument number.
-                uint64_t InlineSamplerInitValue = ConstInt->getZExtValue();
-                auto [_, IsNew] = m_argMap[ImplicitArg::INLINE_SAMPLER].insert(
-                    int_cast<int>(InlineSamplerInitValue));
-                if (!IsNew) {
-                    // Sampler initialized by this specific value was already processed.
-                    // No new sampler will be created. Skip creating inline sampler metadata.
-                    return;
-                }
-
-                // Add metadata for the inline sampler.
-                ModuleMetaData* ModMD =
-                    getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-                FunctionMetaData& FuncMD = ModMD->FuncMD[CI.getFunction()];
-                ResourceAllocMD& ResAllocMD = FuncMD.resAllocMD;
-                InlineSamplersMD InlineSamplerMD;
-
-                CImagesBI::CreateInlineSamplerAnnotations(
-                    CI.getFunction()->getParent(), InlineSamplerMD, InlineSamplerInitValue);
-                InlineSamplerMD.index = m_inlineSamplerIndex++;
-                ResAllocMD.inlineSamplersMD.push_back(InlineSamplerMD);
-            }
+      if (ConstantInt *ConstInt = dyn_cast<ConstantInt>(callArg)) {
+        // Inline sampler doesn't associate with an explicit argument.
+        // To avoid adding a new metadata entry, inline sampler value is stored as
+        // explicit argument number.
+        uint64_t InlineSamplerInitValue = ConstInt->getZExtValue();
+        auto [_, IsNew] = m_argMap[ImplicitArg::INLINE_SAMPLER].insert(int_cast<int>(InlineSamplerInitValue));
+        if (!IsNew) {
+          // Sampler initialized by this specific value was already processed.
+          // No new sampler will be created. Skip creating inline sampler metadata.
+          return;
         }
-        // Non image function, do nothing
+
+        // Add metadata for the inline sampler.
+        ModuleMetaData *ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        FunctionMetaData &FuncMD = ModMD->FuncMD[CI.getFunction()];
+        ResourceAllocMD &ResAllocMD = FuncMD.resAllocMD;
+        InlineSamplersMD InlineSamplerMD;
+
+        CImagesBI::CreateInlineSamplerAnnotations(CI.getFunction()->getParent(), InlineSamplerMD,
+                                                  InlineSamplerInitValue);
+        InlineSamplerMD.index = m_inlineSamplerIndex++;
+        ResAllocMD.inlineSamplersMD.push_back(InlineSamplerMD);
+      }
+    }
+    // Non image function, do nothing
+    return;
+  }
+
+  // Extract the arg num and add it to the appropriate data structure
+  IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(&CI) == 1,
+                     "Supported image/sampler functions are expected to have only one argument");
+
+  // We only care about image and sampler arguments here, inline samplers
+  // don't require extra kernel parameters.
+  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  Value *callArg = ValueTracker::track(&CI, 0, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), modMD);
+
+  // Return false when sampler track back to a SYCL bindless image argment,
+  // since in this case we don't need implicit args.
+  auto isImageOrSamplerArgument = [modMD](Argument *arg) {
+    FunctionMetaData funcMD = modMD->FuncMD.find(arg->getParent())->second;
+    std::string typeName = funcMD.m_OpenCLArgBaseTypes[arg->getArgNo()];
+    return typeName.rfind("sampler_t", 0) != std::string::npos || typeName.rfind("image", 0) != std::string::npos;
+  };
+
+  // TODO: For now assume that we may not trace a sampler/texture for indirect access.
+  // In this case we provide no WA support for indirect case and all WAs will return 0.
+  // These WAs need to be reworked to support indirect case in the future.
+  if (callArg) {
+    if (Argument *arg = dyn_cast<Argument>(callArg)) {
+      if (isImageOrSamplerArgument(arg)) {
+        imageFunc->insert(arg->getArgNo());
         return;
+      }
     }
+  }
 
-    // Extract the arg num and add it to the appropriate data structure
-    IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(&CI) == 1, "Supported image/sampler functions are expected to have only one argument");
-
-    // We only care about image and sampler arguments here, inline samplers
-    // don't require extra kernel parameters.
-    ModuleMetaData *modMD =
-        getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    Value *callArg = ValueTracker::track(
-        &CI, 0, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), modMD);
-
-    // Return false when sampler track back to a SYCL bindless image argment,
-    // since in this case we don't need implicit args.
-    auto isImageOrSamplerArgument = [modMD](Argument *arg) {
-      FunctionMetaData funcMD = modMD->FuncMD.find(arg->getParent())->second;
-      std::string typeName = funcMD.m_OpenCLArgBaseTypes[arg->getArgNo()];
-      return typeName.rfind("sampler_t", 0) != std::string::npos ||
-             typeName.rfind("image", 0) != std::string::npos;
-    };
-
-    // TODO: For now assume that we may not trace a sampler/texture for indirect access.
-    // In this case we provide no WA support for indirect case and all WAs will return 0.
-    // These WAs need to be reworked to support indirect case in the future.
-    if (callArg)
-    {
-        if (Argument * arg = dyn_cast<Argument>(callArg))
-        {
-            if (isImageOrSamplerArgument(arg))
-            {
-                imageFunc->insert(arg->getArgNo());
-                return;
-            }
-        }
-    }
-
-    // Only these args should be hit by the indirect case
-    IGC_ASSERT(funcName == GET_SAMPLER_ADDRESS_MODE || funcName == GET_SAMPLER_NORMALIZED_COORDS || funcName == GET_SAMPLER_SNAP_WA_REQUIRED);
+  // Only these args should be hit by the indirect case
+  IGC_ASSERT(funcName == GET_SAMPLER_ADDRESS_MODE || funcName == GET_SAMPLER_NORMALIZED_COORDS ||
+             funcName == GET_SAMPLER_SNAP_WA_REQUIRED);
 }

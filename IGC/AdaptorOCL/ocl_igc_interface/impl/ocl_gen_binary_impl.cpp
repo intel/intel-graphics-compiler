@@ -11,8 +11,6 @@ SPDX-License-Identifier: MIT
 
 #include "cif/macros/enable.h"
 
-namespace IGC {
-
-}
+namespace IGC {}
 
 #include "cif/macros/disable.h"

@@ -180,7 +180,7 @@ public:
     bool UsesReadWriteImages = false;
     bool UsesSample = false;
     bool DisableMidThreadPreemption = false;
-    bool HasLscStoresWithNonDefaultL1CacheControls  = false;
+    bool HasLscStoresWithNonDefaultL1CacheControls = false;
 
     unsigned GRFSizeInBytes;
     unsigned NumBarriers = 0;

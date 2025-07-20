@@ -106,16 +106,14 @@ void VISAVariableLocation::print(raw_ostream &OS) const {
     else
       OS << "false";
   } else {
-    std::array<std::pair<const char *, bool>, 7> Props = {
-        {{"IsImmediate:", IsImmediate()},
-         {"HasSurface:", HasSurface()},
-         {"HasLocation:", HasLocation()},
-         {"IsInMemory:", IsInMemory()},
-         {"IsRegister:", IsRegister()},
-         {"IsVectorized:", IsVectorized()},
-         {"IsInGlobalAddressSpace:", IsInGlobalAddrSpace()}}};
-    if (std::all_of(Props.begin(), Props.end(),
-                    [](const auto &Item) { return Item.second == false; })) {
+    std::array<std::pair<const char *, bool>, 7> Props = {{{"IsImmediate:", IsImmediate()},
+                                                           {"HasSurface:", HasSurface()},
+                                                           {"HasLocation:", HasLocation()},
+                                                           {"IsInMemory:", IsInMemory()},
+                                                           {"IsRegister:", IsRegister()},
+                                                           {"IsVectorized:", IsVectorized()},
+                                                           {"IsInGlobalAddressSpace:", IsInGlobalAddrSpace()}}};
+    if (std::all_of(Props.begin(), Props.end(), [](const auto &Item) { return Item.second == false; })) {
       OS << "empty";
     } else {
       OS << "UNEXPECTED_FORMAT: true, ";
@@ -143,16 +141,11 @@ void VISAModule::BeginInstruction(Instruction *pInst) {
 }
 
 void VISAModule::EndInstruction(Instruction *pInst) {
-  IGC_ASSERT_MESSAGE(
-      m_instList.size() > 0,
-      "Trying to end Instruction other than the last one called with begin!");
-  IGC_ASSERT_MESSAGE(
-      m_instList.back() == pInst,
-      "Trying to end Instruction other than the last one called with begin!");
-  IGC_ASSERT_MESSAGE(m_instInfoMap.count(pInst),
-                     "Trying to end instruction more than once!");
-  IGC_ASSERT_MESSAGE(m_instInfoMap[pInst].m_size == INVALID_SIZE,
-                     "Trying to end instruction more than once!");
+  IGC_ASSERT_MESSAGE(m_instList.size() > 0, "Trying to end Instruction other than the last one called with begin!");
+  IGC_ASSERT_MESSAGE(m_instList.back() == pInst,
+                     "Trying to end Instruction other than the last one called with begin!");
+  IGC_ASSERT_MESSAGE(m_instInfoMap.count(pInst), "Trying to end instruction more than once!");
+  IGC_ASSERT_MESSAGE(m_instInfoMap[pInst].m_size == INVALID_SIZE, "Trying to end instruction more than once!");
 
   // Assume VISA Id was updated by this point, validate that.
   ValidateVisaId();
@@ -180,13 +173,9 @@ const Module *VISAModule::GetModule() const { return m_Func->getParent(); }
 
 const Function *VISAModule::GetEntryFunction() const { return m_Func; }
 
-const LLVMContext &VISAModule::GetContext() const {
-  return GetModule()->getContext();
-}
+const LLVMContext &VISAModule::GetContext() const { return GetModule()->getContext(); }
 
-const std::string VISAModule::GetDataLayout() const {
-  return GetModule()->getDataLayout().getStringRepresentation();
-}
+const std::string VISAModule::GetDataLayout() const { return GetModule()->getDataLayout().getStringRepresentation(); }
 
 const std::string &VISAModule::GetTargetTriple() const { return m_triple; }
 
@@ -248,8 +237,7 @@ void VISAModule::rebuildVISAIndexes() {
 // It is assumed that if startRegNum is within caller save area then entire
 // variable is in caller save area.
 std::vector<std::tuple<uint64_t, uint64_t, unsigned int>>
-VISAModule::getAllCallerSave(const VISAObjectDebugInfo &VDI,
-                             uint64_t startRange, uint64_t endRange,
+VISAModule::getAllCallerSave(const VISAObjectDebugInfo &VDI, uint64_t startRange, uint64_t endRange,
                              DbgDecoder::LiveIntervalsVISA &genIsaRange) const {
   std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> callerSaveIPs;
 
@@ -268,11 +256,9 @@ VISAModule::getAllCallerSave(const VISAObjectDebugInfo &VDI,
   const auto &CFI = VDI.getCFI();
   auto callerSaveStartIt = CFI.callerSaveEntry.end();
 
-  for (auto callerSaveIt = CFI.callerSaveEntry.begin();
-       callerSaveIt != CFI.callerSaveEntry.end(); ++callerSaveIt) {
+  for (auto callerSaveIt = CFI.callerSaveEntry.begin(); callerSaveIt != CFI.callerSaveEntry.end(); ++callerSaveIt) {
     auto &callerSave = (*callerSaveIt);
-    if (prevSize > 0 && prevSize > callerSave.numEntries &&
-        !inCallerSaveSection) {
+    if (prevSize > 0 && prevSize > callerSave.numEntries && !inCallerSaveSection) {
       // It means previous there was a call instruction
       // between prev and current instruction.
       callerSaveStartIt = callerSaveIt;
@@ -281,10 +267,8 @@ VISAModule::getAllCallerSave(const VISAObjectDebugInfo &VDI,
     }
 
     if ((*callerSaveIt).numEntries == 0 && inCallerSaveSection) {
-      uint64_t callerSaveIp =
-          (*callerSaveStartIt).genIPOffset + VDI.getRelocOffset();
-      uint64_t callerRestoreIp =
-          (*callerSaveIt).genIPOffset + VDI.getRelocOffset();
+      uint64_t callerSaveIp = (*callerSaveStartIt).genIPOffset + VDI.getRelocOffset();
+      uint64_t callerRestoreIp = (*callerSaveIt).genIPOffset + VDI.getRelocOffset();
       // End of current caller save section
       if (startRange < callerSaveIp) {
         callerRestoreIp = std::min<uint64_t>(endRange, callerRestoreIp);
@@ -293,9 +277,8 @@ VISAModule::getAllCallerSave(const VISAObjectDebugInfo &VDI,
           // startRegNum is saved to caller save area around the stack call.
           if ((callerSaveReg.srcRegOff / getGRFSizeInBytes()) == startRegNum) {
             // Emit caller save/restore only if %ip is within range
-            callerSaveIPs.emplace_back(std::make_tuple(
-                callerSaveIp, callerRestoreIp,
-                (unsigned int)callerSaveReg.dst.m.memoryOffset));
+            callerSaveIPs.emplace_back(
+                std::make_tuple(callerSaveIp, callerRestoreIp, (unsigned int)callerSaveReg.dst.m.memoryOffset));
             inCallerSaveSection = false;
             break;
           }
@@ -317,8 +300,7 @@ void VISAModule::coalesceRanges(GenISARange &GenISARange) {
 
   class Comp {
   public:
-    bool operator()(const std::pair<unsigned int, unsigned int> &a,
-                    const std::pair<unsigned int, unsigned int> &b) {
+    bool operator()(const std::pair<unsigned int, unsigned int> &a, const std::pair<unsigned int, unsigned int> &b) {
       return a.first < b.first;
     }
   } Comp;
@@ -329,18 +311,15 @@ void VISAModule::coalesceRanges(GenISARange &GenISARange) {
   std::sort(GenISARange.begin(), GenISARange.end(), Comp);
 
   for (unsigned int i = 0; i != GenISARange.size() - 1; i++) {
-    if (GenISARange[i].first == (unsigned int)-1 &&
-        GenISARange[i].second == (unsigned int)-1)
+    if (GenISARange[i].first == (unsigned int)-1 && GenISARange[i].second == (unsigned int)-1)
       continue;
 
     for (unsigned int j = i + 1; j != GenISARange.size(); j++) {
-      if (GenISARange[j].first == (unsigned int)-1 &&
-          GenISARange[j].second == (unsigned int)-1)
+      if (GenISARange[j].first == (unsigned int)-1 && GenISARange[j].second == (unsigned int)-1)
         continue;
 
       if (GenISARange[j].first >= GenISARange[i].second &&
-          GenISARange[j].first <=
-              (CoalescingThreshold + GenISARange[i].second)) {
+          GenISARange[j].first <= (CoalescingThreshold + GenISARange[i].second)) {
         GenISARange[i].second = GenISARange[j].second;
         GenISARange[j].first = (unsigned int)-1;
         GenISARange[j].second = (unsigned int)-1;
@@ -349,10 +328,7 @@ void VISAModule::coalesceRanges(GenISARange &GenISARange) {
   }
 
   GenISARange.erase(std::remove_if(GenISARange.begin(), GenISARange.end(),
-                                   [](const auto &Range) {
-                                     return Range.first == -1 &&
-                                            Range.second == -1;
-                                   }),
+                                   [](const auto &Range) { return Range.first == -1 && Range.second == -1; }),
                     GenISARange.end());
 }
 
@@ -361,19 +337,16 @@ void VISAModule::print(raw_ostream &OS) const {
   OS << "[DBG] VisaModule\n";
 
   OS << "  --- VisaIndexToInst Dump\n";
-  OrderedTraversal(
-      VisaIndexToInst, [&OS](const auto &VisaIdx, const auto &Inst) {
-        OS << "    VI2Inst: " << VisaIdx << " ->  inst: " << *Inst << "\n";
-      });
+  OrderedTraversal(VisaIndexToInst, [&OS](const auto &VisaIdx, const auto &Inst) {
+    OS << "    VI2Inst: " << VisaIdx << " ->  inst: " << *Inst << "\n";
+  });
   OS << "  ___\n";
 
   OS << "  --- VISAIndexToSize Dump\n";
-  OrderedTraversal(VisaIndexToVisaSizeIndex,
-                   [&OS](const auto &VisaIdx, const auto &VisaInterval) {
-                     OS << "    VI2Size: " << VisaIdx
-                        << " -> {offset: " << VisaInterval.VisaOffset
-                        << ", size: " << VisaInterval.VisaInstrNum << "}\n";
-                   });
+  OrderedTraversal(VisaIndexToVisaSizeIndex, [&OS](const auto &VisaIdx, const auto &VisaInterval) {
+    OS << "    VI2Size: " << VisaIdx << " -> {offset: " << VisaInterval.VisaOffset
+       << ", size: " << VisaInterval.VisaInstrNum << "}\n";
+  });
   OS << "  ___\n";
 }
 
@@ -389,8 +362,7 @@ const llvm::Instruction *getNextInst(const llvm::Instruction *start) {
   return (const llvm::Instruction *)nullptr;
 }
 
-const VISAModule::GenISARanges &
-VISAModule::getAllGenISARanges(const VISAObjectDebugInfo &VDI) {
+const VISAModule::GenISARanges &VISAModule::getAllGenISARanges(const VISAObjectDebugInfo &VDI) {
   // Return vector of GenISARange elements for each instruction in module.
   // Corresponding index of instruction in resulting vector can be retrieved
   // from m_genISARangeIndex.
@@ -425,8 +397,7 @@ VISAModule::getAllGenISARanges(const VISAObjectDebugInfo &VDI) {
     // to return a range of corresponding Gen ISA instructions. Instruction
     // scheduling in Gen ISA means several independent sub-ranges will be
     // present.
-    for (auto VISAIndex = startVISAOffset;
-         VISAIndex != (startVISAOffset + VISASize); VISAIndex++) {
+    for (auto VISAIndex = startVISAOffset; VISAIndex != (startVISAOffset + VISASize); VISAIndex++) {
       auto it = VisaToGenMapping.find(VISAIndex);
       if (it == VisaToGenMapping.end())
         continue;
@@ -450,9 +421,7 @@ VISAModule::getAllGenISARanges(const VISAObjectDebugInfo &VDI) {
   return m_genISARanges;
 }
 
-VISAModule::GenISARange
-VISAModule::getGenISARange(const VISAObjectDebugInfo &VDI,
-                           const InsnRange &Range) {
+VISAModule::GenISARange VISAModule::getGenISARange(const VISAObjectDebugInfo &VDI, const InsnRange &Range) {
   // Given a range, return vector of start-end range for corresponding Gen ISA
   // instructions
   const auto *start = Range.first;
@@ -475,8 +444,7 @@ VISAModule::getGenISARange(const VISAObjectDebugInfo &VDI,
   const auto endIndex = m_genISARangeIndex.find(end)->second;
   while (startIndex != (endIndex + 1)) {
     if (!GenISARanges[startIndex].empty()) {
-      GenISARange.insert(GenISARange.end(), GenISARanges[startIndex].begin(),
-                         GenISARanges[startIndex].end());
+      GenISARange.insert(GenISARange.end(), GenISARanges[startIndex].begin(), GenISARanges[startIndex].end());
     }
     ++startIndex;
   }
@@ -511,9 +479,7 @@ VISAModule::getGenISARange(const VISAObjectDebugInfo &VDI,
   return std::move(GenISARange);
 }
 
-const DbgDecoder::VarInfo *
-VISAModule::getVarInfo(const VISAObjectDebugInfo &VDI,
-                       unsigned int vreg) const {
+const DbgDecoder::VarInfo *VISAModule::getVarInfo(const VISAObjectDebugInfo &VDI, unsigned int vreg) const {
   auto &Cache = *VICache.get();
   if (Cache.empty()) {
     for (const auto &VarInfo : VDI.getVISAVariables()) {
@@ -543,13 +509,11 @@ bool VISAModule::hasOrIsStackCall(const VISAObjectDebugInfo &VDI) const {
   return IsIntelSymbolTableVoidProgram();
 }
 
-const std::vector<DbgDecoder::SubroutineInfo> *
-VISAModule::getSubroutines(const VISAObjectDebugInfo &VDI) const {
+const std::vector<DbgDecoder::SubroutineInfo> *VISAModule::getSubroutines(const VISAObjectDebugInfo &VDI) const {
   return &VDI.getSubroutines();
 }
 
-const VISAObjectDebugInfo &
-VISAModule::getVisaObjectDI(const VISADebugInfo &VD) const {
+const VISAObjectDebugInfo &VISAModule::getVisaObjectDI(const VISADebugInfo &VD) const {
   return VD.getVisaObjectDI(*this);
 }
 
@@ -559,8 +523,7 @@ bool VISAVariableLocation::IsSampler() const {
 
   auto surface = GetSurface();
   if (surface >= VISAModule::SAMPLER_REGISTER_BEGIN &&
-      surface <
-          VISAModule::SAMPLER_REGISTER_BEGIN + VISAModule::SAMPLER_REGISTER_NUM)
+      surface < VISAModule::SAMPLER_REGISTER_BEGIN + VISAModule::SAMPLER_REGISTER_NUM)
     return true;
   return false;
 }
@@ -571,8 +534,7 @@ bool VISAVariableLocation::IsTexture() const {
 
   auto surface = GetSurface();
   if (surface >= VISAModule::TEXTURE_REGISTER_BEGIN &&
-      surface <
-          VISAModule::TEXTURE_REGISTER_BEGIN + VISAModule::TEXTURE_REGISTER_NUM)
+      surface < VISAModule::TEXTURE_REGISTER_BEGIN + VISAModule::TEXTURE_REGISTER_NUM)
     return true;
   return false;
 }

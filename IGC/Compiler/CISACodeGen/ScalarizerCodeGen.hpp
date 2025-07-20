@@ -14,30 +14,23 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class ScalarizerCodeGen : public llvm::FunctionPass, public llvm::InstVisitor<ScalarizerCodeGen>
-    {
-    public:
-        static char ID;
+namespace IGC {
+class ScalarizerCodeGen : public llvm::FunctionPass, public llvm::InstVisitor<ScalarizerCodeGen> {
+public:
+  static char ID;
 
-        ScalarizerCodeGen();
+  ScalarizerCodeGen();
 
-        virtual llvm::StringRef getPassName() const
-        {
-            return "Scalarizer in Codegen";
-        }
+  virtual llvm::StringRef getPassName() const { return "Scalarizer in Codegen"; }
 
-        virtual bool runOnFunction(llvm::Function& F);
-        void visitBinaryOperator(llvm::BinaryOperator& I);
-        void visitCastInst(llvm::CastInst& I);
+  virtual bool runOnFunction(llvm::Function &F);
+  void visitBinaryOperator(llvm::BinaryOperator &I);
+  void visitCastInst(llvm::CastInst &I);
 #if LLVM_VERSION_MAJOR >= 10
-        void visitFNeg(llvm::UnaryOperator& I);
+  void visitFNeg(llvm::UnaryOperator &I);
 #endif
 
-    private:
-        llvm::IRBuilder<>* m_builder = nullptr;
-    };
-}
-
-
+private:
+  llvm::IRBuilder<> *m_builder = nullptr;
+};
+} // namespace IGC

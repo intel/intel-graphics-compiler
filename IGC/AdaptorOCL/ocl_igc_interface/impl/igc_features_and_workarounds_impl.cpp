@@ -17,13 +17,9 @@ namespace IGC {
 // Helpers for clarity
 // Basically, these forward GetX/SetX from interface (of given version)
 // to GT_SYSTEM_INFO inside pImpl
-#define DEFINE_GET_SET(INTERFACE, VERSION, NAME, TYPE)\
-    TYPE CIF_GET_INTERFACE_CLASS(INTERFACE, VERSION)::Get##NAME() const {\
-        return CIF_GET_PIMPL()->FeTable.NAME;\
-    }\
-    void CIF_GET_INTERFACE_CLASS(INTERFACE, VERSION)::Set##NAME(TYPE v) {\
-        CIF_GET_PIMPL()->FeTable.NAME = v;\
-    }
+#define DEFINE_GET_SET(INTERFACE, VERSION, NAME, TYPE)                                                                 \
+  TYPE CIF_GET_INTERFACE_CLASS(INTERFACE, VERSION)::Get##NAME() const { return CIF_GET_PIMPL()->FeTable.NAME; }        \
+  void CIF_GET_INTERFACE_CLASS(INTERFACE, VERSION)::Set##NAME(TYPE v) { CIF_GET_PIMPL()->FeTable.NAME = v; }
 
 DEFINE_GET_SET(IgcFeaturesAndWorkarounds, 1, FtrDesktop, bool);
 DEFINE_GET_SET(IgcFeaturesAndWorkarounds, 1, FtrChannelSwizzlingXOREnabled, bool);
@@ -51,13 +47,13 @@ DEFINE_GET_SET(IgcFeaturesAndWorkarounds, 1, FtrPooledEuEnabled, bool);
 DEFINE_GET_SET(IgcFeaturesAndWorkarounds, 1, FtrResourceStreamer, bool);
 
 uint32_t CIF_GET_INTERFACE_CLASS(IgcFeaturesAndWorkarounds, 2)::GetMaxOCLParamSize() const {
-    return CIF_GET_PIMPL()->OCLCaps.MaxParameterSize;
+  return CIF_GET_PIMPL()->OCLCaps.MaxParameterSize;
 }
 void CIF_GET_INTERFACE_CLASS(IgcFeaturesAndWorkarounds, 2)::SetMaxOCLParamSize(uint32_t s) {
-    IGC_ASSERT(s >= OCLCaps::MINIMAL_MAX_PARAMETER_SIZE);
-    CIF_GET_PIMPL()->OCLCaps.MaxParameterSize = s;
+  IGC_ASSERT(s >= OCLCaps::MINIMAL_MAX_PARAMETER_SIZE);
+  CIF_GET_PIMPL()->OCLCaps.MaxParameterSize = s;
 }
 
-}
+} // namespace IGC
 
 #include "cif/macros/disable.h"

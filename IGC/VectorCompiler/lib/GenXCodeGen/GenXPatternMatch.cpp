@@ -113,8 +113,8 @@ static cl::opt<bool> EnableMinMaxMatcher("enable-minmax", cl::init(true),
                                          cl::Hidden,
                                          cl::desc("Enable min/max matching."));
 STATISTIC(NumOfAdd3Matched, "Number of add3 instructions matched");
-static cl::opt<bool> EnableAdd3Matcher(IGC_STRDEBUG("enable-add3"), cl::init(true),
-                                       cl::Hidden,
+static cl::opt<bool> EnableAdd3Matcher(IGC_STRDEBUG("enable-add3"),
+                                       cl::init(true), cl::Hidden,
                                        cl::desc("Enable add3 matching."));
 STATISTIC(NumOfBfnMatched, "Number of BFN instructions matched");
 static cl::opt<bool> EnableBfnMatcher("enable-bfn", cl::init(true), cl::Hidden,
@@ -299,7 +299,8 @@ private:
 class MadMatcher {
 public:
   explicit MadMatcher(Instruction *I)
-      : AInst(I), MInst(nullptr), ID(GenXIntrinsic::not_any_intrinsic), NegIndex(-1) {
+      : AInst(I), MInst(nullptr), ID(GenXIntrinsic::not_any_intrinsic),
+        NegIndex(-1) {
     IGC_ASSERT_MESSAGE(I, "null instruction");
     Srcs[0] = Srcs[1] = Srcs[2] = nullptr;
   }
@@ -1077,7 +1078,8 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
       simplifyCmp(Cmp);
       // Call 'all'.
       auto M = I.getModule();
-      auto Fn = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_all, VTy);
+      auto Fn =
+          GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_all, VTy);
       auto NewVal = Builder.CreateCall(Fn, Cmp);
       I.replaceAllUsesWith(NewVal);
       Changed = true;

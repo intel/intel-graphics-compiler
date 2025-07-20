@@ -11,37 +11,28 @@ SPDX-License-Identifier: MIT
 #include "common/StringMacros.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 
-#include "common/LLVMWarningsPush.hpp"  // for suppressing LLVM warnings
+#include "common/LLVMWarningsPush.hpp" // for suppressing LLVM warnings
 #include <llvm/IR/Function.h>
-#include "common/LLVMWarningsPop.hpp"   // for suppressing LLVM warnings
+#include "common/LLVMWarningsPop.hpp" // for suppressing LLVM warnings
 
 namespace IGC {
 
-class RaytracingStatefulPass : public llvm::FunctionPass
-{
+class RaytracingStatefulPass : public llvm::FunctionPass {
 public:
-    RaytracingStatefulPass() : FunctionPass(ID) {}
+  RaytracingStatefulPass() : FunctionPass(ID) {}
 
-    llvm::StringRef getPassName() const override
-    {
-        return "RaytracingStatefulPass";
-    }
+  llvm::StringRef getPassName() const override { return "RaytracingStatefulPass"; }
 
-    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-    {
-        AU.setPreservesCFG();
-        AU.addRequired<CodeGenContextWrapper>();
-    }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-    bool runOnFunction(llvm::Function& function) override;
+  bool runOnFunction(llvm::Function &function) override;
 
-    static char ID;
+  static char ID;
 };
 
-inline llvm::FunctionPass* createRaytracingStatefulPass()
-{
-    return new RaytracingStatefulPass();
-}
+inline llvm::FunctionPass *createRaytracingStatefulPass() { return new RaytracingStatefulPass(); }
 
-}  // namespace IGC
-
+} // namespace IGC

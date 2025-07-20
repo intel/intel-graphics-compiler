@@ -12,33 +12,24 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class RewriteLocalSize : public llvm::ModulePass
-    {
-    public:
-        // Pass identification, replacement for typeid
-        static char ID;
+namespace IGC {
+class RewriteLocalSize : public llvm::ModulePass {
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
 
-        /// @brief  Constructor
-        RewriteLocalSize();
+  /// @brief  Constructor
+  RewriteLocalSize();
 
-        /// @brief  Destructor
-        ~RewriteLocalSize() {}
+  /// @brief  Destructor
+  ~RewriteLocalSize() {}
 
-        /// @brief  Provides name of pass
-        llvm::StringRef getPassName() const override
-        {
-            return "RewriteLocalSize";
-        }
+  /// @brief  Provides name of pass
+  llvm::StringRef getPassName() const override { return "RewriteLocalSize"; }
 
-        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.setPreservesCFG();
-        }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
 
-        bool runOnModule(llvm::Module& M) override;
-    };
+  bool runOnModule(llvm::Module &M) override;
+};
 
 } // namespace IGC
-

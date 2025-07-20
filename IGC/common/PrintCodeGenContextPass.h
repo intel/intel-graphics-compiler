@@ -21,19 +21,16 @@ SPDX-License-Identifier: MIT
 namespace IGC {
 class PrintCodeGenContextPass : public llvm::ModulePass {
 public:
-    static char ID;
+  static char ID;
 
-    PrintCodeGenContextPass();
-    PrintCodeGenContextPass(llvm::raw_ostream &Stream);
-    bool runOnModule(llvm::Module &M) override;
+  PrintCodeGenContextPass();
+  PrintCodeGenContextPass(llvm::raw_ostream &Stream);
+  bool runOnModule(llvm::Module &M) override;
 
-    void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-    {
-        AU.addRequired<CodeGenContextWrapper>();
-    }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
 
 private:
-    llvm::raw_ostream& Stream;
+  llvm::raw_ostream &Stream;
 };
-void initializePrintCodeGenContextPassPass(llvm::PassRegistry&);
+void initializePrintCodeGenContextPassPass(llvm::PassRegistry &);
 } // namespace IGC

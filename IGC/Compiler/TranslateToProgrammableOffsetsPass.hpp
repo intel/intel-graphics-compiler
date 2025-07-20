@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Pass.h"
 #include "common/LLVMWarningsPop.hpp"
-namespace IGC
-{
-    llvm::FunctionPass* createTranslateToProgrammableOffsetsPass();
+namespace IGC {
+llvm::FunctionPass *createTranslateToProgrammableOffsetsPass();
 }

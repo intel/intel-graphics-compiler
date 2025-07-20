@@ -13,11 +13,9 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
-namespace IGC
-{
-    class SPIRVParser
-    {
-    public:
-        static std::vector<std::string> getEntryPointNames(const StringRef binary);
-    };
-}
+namespace IGC {
+class SPIRVParser {
+public:
+  static std::vector<std::string> getEntryPointNames(const StringRef binary);
+};
+} // namespace IGC

@@ -772,14 +772,7 @@ Value *GenXTranslateIntrinsics::translateLscTyped(CallInst &I) const {
   auto *Func = vc::InternalIntrinsic::getInternalDeclaration(M, NewIID, Types);
 
   SmallVector<Value *, 9> Args = {
-      Pred,
-      CacheOpts,
-      ChannelMask,
-      BTI,
-      U,
-      V,
-      R,
-      LOD,
+      Pred, CacheOpts, ChannelMask, BTI, U, V, R, LOD,
   };
   if (Src)
     Args.push_back(Src);
@@ -833,12 +826,7 @@ Value *GenXTranslateIntrinsics::translateLscTyped2D(CallInst &I) const {
   auto *Func = vc::InternalIntrinsic::getInternalDeclaration(M, NewIID, Types);
 
   SmallVector<Value *, 7> Args = {
-      CacheOpts,
-      BTI,
-      BlockHeight,
-      BlockWidth,
-      X,
-      Y,
+      CacheOpts, BTI, BlockHeight, BlockWidth, X, Y,
   };
   if (Src)
     Args.push_back(Src);

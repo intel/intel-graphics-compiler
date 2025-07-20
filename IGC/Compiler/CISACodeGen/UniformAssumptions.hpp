@@ -16,43 +16,41 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-    class UniformAssumptions : public llvm::FunctionPass, public llvm::InstVisitor<UniformAssumptions>
-    {
+class UniformAssumptions : public llvm::FunctionPass, public llvm::InstVisitor<UniformAssumptions> {
 
-    public:
-        static char ID; // Pass identification
+public:
+  static char ID; // Pass identification
 
-        UniformAssumptions(bool ForceUniformTexture = false, bool ForceUniformBuffer = false);
+  UniformAssumptions(bool ForceUniformTexture = false, bool ForceUniformBuffer = false);
 
-        virtual bool runOnFunction(llvm::Function& F) override;
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-        void visitCallInst(llvm::CallInst& CI);
+  void visitCallInst(llvm::CallInst &CI);
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
-            AU.setPreservesCFG();
-            AU.addRequired<WIAnalysis>();
-            AU.addRequired<CodeGenContextWrapper>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<WIAnalysis>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-    private:
-        static const int s_cMaxRecursion = 16;
+private:
+  static const int s_cMaxRecursion = 16;
 
-        bool IsAssumedUniform(llvm::Value* V, int recursionLevel = 0) const;
-        void MakeUniformResourceOperand(llvm::Value* V, llvm::CallInst* CI);
-        void HoistAssumptions(llvm::Function& F);
-        void CollectAssumptions(llvm::Function& F);
-        void OptimizeResourceAccesses(llvm::Function& F);
+  bool IsAssumedUniform(llvm::Value *V, int recursionLevel = 0) const;
+  void MakeUniformResourceOperand(llvm::Value *V, llvm::CallInst *CI);
+  void HoistAssumptions(llvm::Function &F);
+  void CollectAssumptions(llvm::Function &F);
+  void OptimizeResourceAccesses(llvm::Function &F);
 
-        bool m_forceUniformTexture;
-        bool m_forceUniformBuffer;
-        bool m_changed = false;
-        WIAnalysis* m_WIAnalysis = nullptr;
-        CodeGenContext* m_pCodeGenContext = nullptr;
+  bool m_forceUniformTexture;
+  bool m_forceUniformBuffer;
+  bool m_changed = false;
+  WIAnalysis *m_WIAnalysis = nullptr;
+  CodeGenContext *m_pCodeGenContext = nullptr;
 
-        bool m_collectingAssumptions = false;
-        llvm::SmallVector<llvm::GenIntrinsicInst*, 8> m_assumptions;
-    };
-  void initializeUniformAssumptionsPass(llvm::PassRegistry&);
+  bool m_collectingAssumptions = false;
+  llvm::SmallVector<llvm::GenIntrinsicInst *, 8> m_assumptions;
+};
+void initializeUniformAssumptionsPass(llvm::PassRegistry &);
 
-}
-
+} // namespace IGC

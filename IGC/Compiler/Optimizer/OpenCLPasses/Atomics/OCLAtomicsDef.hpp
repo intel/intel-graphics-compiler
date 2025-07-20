@@ -58,7 +58,7 @@ DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_cmpxchg_global_f32", EATOMIC_FCMPWR, POI
 DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_cmpxchg_local_i32", EATOMIC_CMPXCHG, SLM)
 DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_cmpxchg_local_f32", EATOMIC_FCMPWR, SLM)
 
-//64 bit Atomics
+// 64 bit Atomics
 DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_add_global_i64", EATOMIC_IADD64, POINTER)
 DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_sub_global_i64", EATOMIC_SUB64, POINTER)
 DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_xchg_global_i64", EATOMIC_XCHG64, POINTER)

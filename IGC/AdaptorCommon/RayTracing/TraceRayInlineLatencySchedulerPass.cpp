@@ -10,8 +10,8 @@ SPDX-License-Identifier: MIT
 ///
 /// This pass schedules latency of rayquery.Proceed() by moving SyncStackToShadowMemory instructions
 /// to as far away as possible from TraceRaySyncProceed.
-/// Note: any BB w/ suspendPoint is split first into <B3.0,B3.1>, <B7.0,B7.1> like below, where B3.1 and B7.1 holds suspendPoint.
-/// Given CFG & DT like below. PTD is opposite of DT.
+/// Note: any BB w/ suspendPoint is split first into <B3.0,B3.1>, <B7.0,B7.1> like below, where B3.1 and B7.1 holds
+/// suspendPoint. Given CFG & DT like below. PTD is opposite of DT.
 ///     CFG                         DT
 ///     B0                          B0
 ///    /  \                    /    |    \
@@ -78,31 +78,23 @@ using namespace llvm;
 using namespace IGC;
 using namespace RTStackFormat;
 
-class TraceRayInlineLatencySchedulerPass : public FunctionPass
-{
+class TraceRayInlineLatencySchedulerPass : public FunctionPass {
 public:
-    TraceRayInlineLatencySchedulerPass(): FunctionPass(ID)
-    {
-        initializeTraceRayInlineLatencySchedulerPassPass(*PassRegistry::getPassRegistry());
-    }
+  TraceRayInlineLatencySchedulerPass() : FunctionPass(ID) {
+    initializeTraceRayInlineLatencySchedulerPassPass(*PassRegistry::getPassRegistry());
+  }
 
-    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-    {
-        AU.addRequired<CodeGenContextWrapper>();
-    }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
 
-    bool runOnFunction(Function &F) override;
-    StringRef getPassName() const override
-    {
-        return "TraceRayInlineLatencySchedulerPass";
-    }
+  bool runOnFunction(Function &F) override;
+  StringRef getPassName() const override { return "TraceRayInlineLatencySchedulerPass"; }
 
-    static char ID;
+  static char ID;
 
 private:
-    void split(RayQuerySyncStackToShadowMemory* Stk2SM, vector<Instruction*>& SPIs);
-    void schedule(RayQuerySyncStackToShadowMemory* Stk2SM, vector<Instruction*>& SPIs);
-    BasicBlock* findFarthestSafeBB(Instruction* src, SuspendCrossingInfo& checker);
+  void split(RayQuerySyncStackToShadowMemory *Stk2SM, vector<Instruction *> &SPIs);
+  void schedule(RayQuerySyncStackToShadowMemory *Stk2SM, vector<Instruction *> &SPIs);
+  BasicBlock *findFarthestSafeBB(Instruction *src, SuspendCrossingInfo &checker);
 };
 
 char TraceRayInlineLatencySchedulerPass::ID = 0;
@@ -111,126 +103,118 @@ char TraceRayInlineLatencySchedulerPass::ID = 0;
 #define PASS_DESCRIPTION2 "schedule tracerayinline latency"
 #define PASS_CFG_ONLY2 false
 #define PASS_ANALYSIS2 false
-IGC_INITIALIZE_PASS_BEGIN(TraceRayInlineLatencySchedulerPass, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_BEGIN(TraceRayInlineLatencySchedulerPass, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2,
+                          PASS_ANALYSIS2)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(TraceRayInlineLatencySchedulerPass, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_END(TraceRayInlineLatencySchedulerPass, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2,
+                        PASS_ANALYSIS2)
 
-bool TraceRayInlineLatencySchedulerPass::runOnFunction(Function &F)
-{
-    SmallVector<RayQuerySyncStackToShadowMemory*, 4> Stk2SMs;
-    for (auto& I : instructions(F))
-    {
-        if (auto* stk2SM = dyn_cast<RayQuerySyncStackToShadowMemory>(&I))
-            Stk2SMs.push_back(stk2SM);
+bool TraceRayInlineLatencySchedulerPass::runOnFunction(Function &F) {
+  SmallVector<RayQuerySyncStackToShadowMemory *, 4> Stk2SMs;
+  for (auto &I : instructions(F)) {
+    if (auto *stk2SM = dyn_cast<RayQuerySyncStackToShadowMemory>(&I))
+      Stk2SMs.push_back(stk2SM);
+  }
+
+  unordered_map<RayQuerySyncStackToShadowMemory *, vector<Instruction *>> SPIs;
+  for (auto &Stk2SM : Stk2SMs) {
+    split(Stk2SM, SPIs[Stk2SM]);
+  }
+
+  for (auto &Stk2SM : Stk2SMs) {
+    schedule(Stk2SM, SPIs[Stk2SM]);
+  }
+
+  return true;
+}
+
+void TraceRayInlineLatencySchedulerPass::split(RayQuerySyncStackToShadowMemory *Stk2SM, vector<Instruction *> &SPIs) {
+  Function &F = *Stk2SM->getParent()->getParent();
+  // to be conservative, we only return false when two constant arguments are not equal.
+  auto mayAlias = [](Value *objIdx1, Value *objIdx2) {
+    ConstantInt *CIdx1 = dyn_cast<ConstantInt>(objIdx1);
+    ConstantInt *CIdx2 = dyn_cast<ConstantInt>(objIdx2);
+    if (CIdx1 && CIdx2) {
+      uint32_t idx1 = static_cast<uint32_t>(CIdx1->getZExtValue());
+      uint32_t idx2 = static_cast<uint32_t>(CIdx1->getZExtValue());
+      return (idx1 == idx2);
     }
-
-    unordered_map<RayQuerySyncStackToShadowMemory*, vector<Instruction*>> SPIs;
-    for (auto& Stk2SM : Stk2SMs) {
-        split(Stk2SM, SPIs[Stk2SM]);
-    }
-
-    for (auto& Stk2SM : Stk2SMs) {
-        schedule(Stk2SM, SPIs[Stk2SM]);
-    }
-
     return true;
+  };
+
+  auto isSuspendPoint = [&](Instruction *inst) {
+    // RayQuery Instructions
+    if (auto *RQI = dyn_cast<RayQueryIntrinsicBase>(inst)) {
+      return (RQI->getIntrinsicID() != GenISAIntrinsic::GenISA_SyncStackToShadowMemory &&
+              (RQI->getIntrinsicID() == GenISAIntrinsic::GenISA_TraceRaySyncProceed ||
+               mayAlias(RQI->getQueryObjIndex(), Stk2SM->getQueryObjIndex())));
+    } else if (auto *GI = dyn_cast<GenIntrinsicInst>(inst)) {
+      // The last two asyncRT intrinsics, IgnoreHit() and AcceptHitAndEndSearch(), are not suspendpoints
+      // because they will cause shader to end immediately (instead of let shader to continue to end)
+      return (isa<ContinuationHLIntrinsic>(GI) || isa<TraceRayIntrinsic>(GI) || isa<ReportHitHLIntrinsic>(GI));
+    } else if (isa<CallInst>(inst) && !isa<IntrinsicInst>(inst)) {
+      // We are conservative here because non-intrinsic function might call SuspendPoint instructions.
+      return true;
+    }
+    return false;
+  };
+
+  for (auto &I : instructions(F)) {
+    if (isSuspendPoint(&I)) {
+      SPIs.push_back(&I);
+    }
+  }
+
+  for (auto *user : Stk2SM->users()) {
+    if (Instruction *inst = dyn_cast<Instruction>(user))
+      SPIs.push_back(inst);
+  }
+
+  if (SPIs.empty())
+    return;
+
+  for (auto *SPI : SPIs) {
+    splitAround(SPI, VALUE_NAME("Cont"));
+  }
+
+  rewritePHIs(F);
 }
 
-void TraceRayInlineLatencySchedulerPass::split(RayQuerySyncStackToShadowMemory* Stk2SM, vector<Instruction*>& SPIs) {
-    Function& F = *Stk2SM->getParent()->getParent();
-    //to be conservative, we only return false when two constant arguments are not equal.
-    auto mayAlias = [](Value* objIdx1, Value* objIdx2) {
-        ConstantInt* CIdx1 = dyn_cast<ConstantInt>(objIdx1);
-        ConstantInt* CIdx2 = dyn_cast<ConstantInt>(objIdx2);
-        if (CIdx1 && CIdx2) {
-            uint32_t idx1 = static_cast<uint32_t>(CIdx1->getZExtValue());
-            uint32_t idx2 = static_cast<uint32_t>(CIdx1->getZExtValue());
-            return (idx1 == idx2);
-        }
-        return true;
-    };
-
-    auto isSuspendPoint = [&](Instruction* inst) {
-        //RayQuery Instructions
-        if (auto* RQI = dyn_cast<RayQueryIntrinsicBase>(inst)) {
-            return (RQI->getIntrinsicID() != GenISAIntrinsic::GenISA_SyncStackToShadowMemory &&
-                (RQI->getIntrinsicID() == GenISAIntrinsic::GenISA_TraceRaySyncProceed || mayAlias(RQI->getQueryObjIndex(), Stk2SM->getQueryObjIndex())));
-        }else if (auto* GI = dyn_cast<GenIntrinsicInst>(inst)){
-            //The last two asyncRT intrinsics, IgnoreHit() and AcceptHitAndEndSearch(), are not suspendpoints
-            //because they will cause shader to end immediately (instead of let shader to continue to end)
-            return (isa<ContinuationHLIntrinsic>(GI) ||
-                isa <TraceRayIntrinsic>(GI) ||
-                isa <ReportHitHLIntrinsic>(GI));
-        }else if (isa<CallInst>(inst) && !isa<IntrinsicInst>(inst)) {
-            //We are conservative here because non-intrinsic function might call SuspendPoint instructions.
-            return true;
-        }
-        return false;
-    };
-
-    for (auto& I : instructions(F)) {
-        if (isSuspendPoint(&I)){
-            SPIs.push_back(&I);
-        }
-    }
-
-    for (auto* user : Stk2SM->users()) {
-        if (Instruction* inst = dyn_cast<Instruction>(user))
-            SPIs.push_back(inst);
-    }
-
-    if (SPIs.empty())
-        return;
-
-    for (auto* SPI : SPIs) {
-        splitAround(SPI, VALUE_NAME("Cont"));
-    }
-
-    rewritePHIs(F);
+void TraceRayInlineLatencySchedulerPass::schedule(RayQuerySyncStackToShadowMemory *Stk2SM,
+                                                  vector<Instruction *> &SPIs) {
+  Function &F = *Stk2SM->getParent()->getParent();
+  SuspendCrossingInfo checker(F, SPIs);
+  BasicBlock *tgt = findFarthestSafeBB(Stk2SM, checker);
+  Stk2SM->moveBefore(tgt->getTerminator());
 }
 
-void TraceRayInlineLatencySchedulerPass::schedule(RayQuerySyncStackToShadowMemory* Stk2SM, vector<Instruction*>& SPIs) {
-    Function& F = *Stk2SM->getParent()->getParent();
-    SuspendCrossingInfo checker(F, SPIs);
-    BasicBlock* tgt = findFarthestSafeBB(Stk2SM, checker);
-    Stk2SM->moveBefore(tgt->getTerminator());
-}
-
-//This function finds the farthest "safe" BB away from src BB.
+// This function finds the farthest "safe" BB away from src BB.
 //"safe" here means src can be safely moved to this BB.
-//Note that "distance" here is not accurate because we use DT instead of CFG to traverse
-BasicBlock* TraceRayInlineLatencySchedulerPass::findFarthestSafeBB(Instruction* src,
-    SuspendCrossingInfo& checker)
-{
-    BasicBlock* srcBB = src->getParent();
-    PostDominatorTree PDT(*srcBB->getParent());
-    DominatorTree DT(*srcBB->getParent());
-    BasicBlock* farthestBB = srcBB;
-    DomTreeNodeBase<BasicBlock>* cNode = DT.getNode(srcBB);
-    while (cNode) {
-        DomTreeNodeBase<BasicBlock>* newCNode = nullptr;
-        // TODO: change to node->children() once we move to llvm11
-        for (auto nodeV = cNode->begin(); nodeV != cNode->end(); nodeV++) {
-            auto* BBV = (*nodeV)->getBlock();
-            if (PDT.dominates(BBV, srcBB) &&
-                !checker.hasPathCrossingSuspendPoint(srcBB, BBV)) {
-                newCNode = *nodeV;
-                farthestBB = BBV;
-                break;
-            }
-        }
-        cNode = newCNode;
+// Note that "distance" here is not accurate because we use DT instead of CFG to traverse
+BasicBlock *TraceRayInlineLatencySchedulerPass::findFarthestSafeBB(Instruction *src, SuspendCrossingInfo &checker) {
+  BasicBlock *srcBB = src->getParent();
+  PostDominatorTree PDT(*srcBB->getParent());
+  DominatorTree DT(*srcBB->getParent());
+  BasicBlock *farthestBB = srcBB;
+  DomTreeNodeBase<BasicBlock> *cNode = DT.getNode(srcBB);
+  while (cNode) {
+    DomTreeNodeBase<BasicBlock> *newCNode = nullptr;
+    // TODO: change to node->children() once we move to llvm11
+    for (auto nodeV = cNode->begin(); nodeV != cNode->end(); nodeV++) {
+      auto *BBV = (*nodeV)->getBlock();
+      if (PDT.dominates(BBV, srcBB) && !checker.hasPathCrossingSuspendPoint(srcBB, BBV)) {
+        newCNode = *nodeV;
+        farthestBB = BBV;
+        break;
+      }
     }
-    return farthestBB;
+    cNode = newCNode;
+  }
+  return farthestBB;
 }
 
+namespace IGC {
 
-namespace IGC
-{
-
-Pass* createTraceRayInlineLatencySchedulerPass(void)
-{
-    return new TraceRayInlineLatencySchedulerPass();
-}
+Pass *createTraceRayInlineLatencySchedulerPass(void) { return new TraceRayInlineLatencySchedulerPass(); }
 
 } // namespace IGC

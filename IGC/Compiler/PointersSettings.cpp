@@ -13,11 +13,10 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 namespace IGC {
-static cl::opt<bool>
-    ForceTypedPointers("typed-pointers",
-                       cl::desc("Use typed pointers (if both typed and opaque "
-                                "are used, then opaque will be used)"),
-                       cl::init(false));
+static cl::opt<bool> ForceTypedPointers("typed-pointers",
+                                        cl::desc("Use typed pointers (if both typed and opaque "
+                                                 "are used, then opaque will be used)"),
+                                        cl::init(false));
 
 std::optional<bool> OpaquePointersCache;
 
@@ -25,8 +24,7 @@ bool AreOpaquePointersEnabled() {
   if (OpaquePointersCache.has_value())
     return OpaquePointersCache.value();
 
-  bool enableOpaquePointers = __IGC_OPAQUE_POINTERS_API_ENABLED ||
-                              IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend);
+  bool enableOpaquePointers = __IGC_OPAQUE_POINTERS_API_ENABLED || IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend);
 
   if (ForceTypedPointers.getValue()) {
     enableOpaquePointers = false;

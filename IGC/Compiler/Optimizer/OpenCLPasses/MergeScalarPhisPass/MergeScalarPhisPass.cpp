@@ -27,10 +27,8 @@ char MergeScalarPhisPass::ID = 0;
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 
-IGC_INITIALIZE_PASS_BEGIN(MergeScalarPhisPass, PASS_FLAG, PASS_DESCRIPTION,
-                          PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(MergeScalarPhisPass, PASS_FLAG, PASS_DESCRIPTION,
-                        PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(MergeScalarPhisPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(MergeScalarPhisPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 // The MergeScalarPhisPass is a function pass designed to optimize the handling
 // of scalar PHI nodes. This pass merges scalar PHI nodes into a single vector
@@ -110,8 +108,7 @@ bool MergeScalarPhisPass::makeChanges() {
     auto NumIncValues = FirstPN->getNumIncomingValues();
 
     IRBuilder<> Builder(FirstPN);
-    auto *NewPhi = cast<PHINode>(
-        Builder.CreatePHI(VectorType, NumIncValues, "merged_vector_phi"));
+    auto *NewPhi = cast<PHINode>(Builder.CreatePHI(VectorType, NumIncValues, "merged_vector_phi"));
 
     if (FirstPN->getDebugLoc())
       NewPhi->setDebugLoc(FirstPN->getDebugLoc());
@@ -119,8 +116,7 @@ bool MergeScalarPhisPass::makeChanges() {
     for (unsigned i = 0; i < NumIncValues; ++i) {
       Value *Incoming = FirstPN->getIncomingValue(i);
       auto *EEI = cast<ExtractElementInst>(Incoming);
-      NewPhi->addIncoming(EEI->getVectorOperand(),
-                          FirstPN->getIncomingBlock(i));
+      NewPhi->addIncoming(EEI->getVectorOperand(), FirstPN->getIncomingBlock(i));
     }
 
     BasicBlock *BB = FirstPN->getParent();
@@ -128,8 +124,8 @@ bool MergeScalarPhisPass::makeChanges() {
     for (auto *PN : Entry.second) {
       auto *EEI = cast<ExtractElementInst>(PN->getIncomingValue(0));
       auto *CI = cast<ConstantInt>(EEI->getIndexOperand());
-      auto *NewEEI = cast<ExtractElementInst>(Builder.CreateExtractElement(
-        NewPhi, CI->getZExtValue(), "extract_merged"));
+      auto *NewEEI =
+          cast<ExtractElementInst>(Builder.CreateExtractElement(NewPhi, CI->getZExtValue(), "extract_merged"));
       if (EEI->getDebugLoc())
         NewEEI->setDebugLoc(EEI->getDebugLoc());
 
@@ -156,15 +152,13 @@ bool MergeScalarPhisPass::makeChanges() {
 // Condition 6: Number of PHI nodes in a group should be equal to the vector
 // size.
 void MergeScalarPhisPass::collectPhiNodes(Function &F) {
-  auto getVectorOperandForPhiNode = [](PHINode *PN,
-                                       unsigned IncomingIndex) -> Value * {
+  auto getVectorOperandForPhiNode = [](PHINode *PN, unsigned IncomingIndex) -> Value * {
     Value *IncVal = PN->getIncomingValue(IncomingIndex);
     auto *EEI = cast<ExtractElementInst>(IncVal);
     return EEI->getVectorOperand();
   };
 
-  auto getEEIFromPhi = [](PHINode *PN,
-                          unsigned IncomingIndex) -> ExtractElementInst * {
+  auto getEEIFromPhi = [](PHINode *PN, unsigned IncomingIndex) -> ExtractElementInst * {
     Value *IncVal = PN->getIncomingValue(IncomingIndex);
     return dyn_cast<ExtractElementInst>(IncVal);
   };
@@ -241,14 +235,12 @@ void MergeScalarPhisPass::collectPhiNodes(Function &F) {
         // All PHI nodes corresponding to the same vector value should be in one
         // basic block.
         if (VectorToPhiNodesMap.find(FirstEEIVectorOp) != VectorToPhiNodesMap.end()) {
-          if (VectorToPhiNodesMap[FirstEEIVectorOp][0]->getParent() !=
-              PN->getParent()) {
+          if (VectorToPhiNodesMap[FirstEEIVectorOp][0]->getParent() != PN->getParent()) {
             continue;
           }
 
           // All PN in the group should have the same number of incoming values.
-          if (VectorToPhiNodesMap[FirstEEIVectorOp][0]->getNumIncomingValues() !=
-              CurNumIncValues) {
+          if (VectorToPhiNodesMap[FirstEEIVectorOp][0]->getNumIncomingValues() != CurNumIncValues) {
             continue;
           }
         }
@@ -273,8 +265,7 @@ void MergeScalarPhisPass::collectPhiNodes(Function &F) {
 
     // Check Condition 6
     Type *VType = getVectorOperandForPhiNode(FirstPhiNode, 0)->getType();
-    size_t NumElements =
-        cast<VectorType>(VType)->getElementCount().getFixedValue();
+    size_t NumElements = cast<VectorType>(VType)->getElementCount().getFixedValue();
     if (NumElements != PhiNodes.size()) {
       It = VectorToPhiNodesMap.erase(It);
       continue;

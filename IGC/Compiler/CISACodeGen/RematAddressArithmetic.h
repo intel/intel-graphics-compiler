@@ -16,10 +16,10 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC {
-    llvm::FunctionPass* createRematAddressArithmeticPass();
-    void initializeRematAddressArithmeticPass(llvm::PassRegistry&);
-    llvm::FunctionPass* createCloneAddressArithmeticPass();
-    void initializeCloneAddressArithmeticPass(llvm::PassRegistry&);
+llvm::FunctionPass *createRematAddressArithmeticPass();
+void initializeRematAddressArithmeticPass(llvm::PassRegistry &);
+llvm::FunctionPass *createCloneAddressArithmeticPass();
+void initializeCloneAddressArithmeticPass(llvm::PassRegistry &);
 } // End namespace IGC
 
 #endif // _CISA_REMATADDRESSARITHMETIC_H_

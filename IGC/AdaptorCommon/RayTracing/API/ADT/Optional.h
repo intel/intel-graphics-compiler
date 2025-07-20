@@ -21,51 +21,42 @@ SPDX-License-Identifier: MIT
 
 namespace Interface {
 
-template <typename T>
-class Optional
-{
-    static_assert(std::is_arithmetic_v<T>, "simple types for now!");
+template <typename T> class Optional {
+  static_assert(std::is_arithmetic_v<T>, "simple types for now!");
 
-    T Val;
-    bool Valid = false;
+  T Val;
+  bool Valid = false;
+
 public:
-    Optional() : Valid(false) {}
-    Optional(T V) : Val(V), Valid(true) {}
-    Optional(const Optional& RHS) = default;
-    Optional& operator=(const Optional& RHS) = default;
-    Optional(Optional&& RHS) = default;
-    Optional& operator=(Optional&& RHS) = default;
+  Optional() : Valid(false) {}
+  Optional(T V) : Val(V), Valid(true) {}
+  Optional(const Optional &RHS) = default;
+  Optional &operator=(const Optional &RHS) = default;
+  Optional(Optional &&RHS) = default;
+  Optional &operator=(Optional &&RHS) = default;
 
-    bool has_value() const { return Valid; }
+  bool has_value() const { return Valid; }
 
-    explicit operator bool() const { return has_value(); }
+  explicit operator bool() const { return has_value(); }
 
-    const T* operator->() const
-    {
-        assert(has_value());
-        return &Val;
-    }
-    T* operator->()
-    {
-        assert(has_value());
-        return &Val;
-    }
-    const T& operator*() const
-    {
-        assert(has_value());
-        return Val;
-    }
-    T& operator*()
-    {
-        assert(has_value());
-        return Val;
-    }
+  const T *operator->() const {
+    assert(has_value());
+    return &Val;
+  }
+  T *operator->() {
+    assert(has_value());
+    return &Val;
+  }
+  const T &operator*() const {
+    assert(has_value());
+    return Val;
+  }
+  T &operator*() {
+    assert(has_value());
+    return Val;
+  }
 
-    void reset()
-    {
-        Valid = false;
-    }
+  void reset() { Valid = false; }
 };
 
-
-} // Interface
+} // namespace Interface

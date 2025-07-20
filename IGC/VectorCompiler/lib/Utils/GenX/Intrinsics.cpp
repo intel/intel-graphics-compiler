@@ -12,10 +12,8 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 
 CallInst *vc::createAnyIntrinsic(IRBuilder<> &Builder,
-                                  ArrayRef<Value *> Operands,
-                                  unsigned IID,
-                                  ArrayRef<Type *> Types,
-                                  const Twine &Name) {
+                                 ArrayRef<Value *> Operands, unsigned IID,
+                                 ArrayRef<Type *> Types, const Twine &Name) {
   Module *M = Builder.GetInsertBlock()->getModule();
   Function *Fn = vc::getAnyDeclaration(M, IID, Types);
   IGC_ASSERT_MESSAGE(Fn, "not found correct intrinsic");

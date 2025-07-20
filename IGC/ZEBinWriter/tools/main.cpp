@@ -8,6 +8,4 @@ SPDX-License-Identifier: MIT
 
 #include "ZEInfoReader.h"
 
-int main(int argc, const char** argv) {
-    return zeinfo_reader_main(argc, argv);
-}
+int main(int argc, const char **argv) { return zeinfo_reader_main(argc, argv); }

@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    llvm::FunctionPass* createWaveShuffleIndexSinking();
+namespace IGC {
+llvm::FunctionPass *createWaveShuffleIndexSinking();
 } // namespace IGC

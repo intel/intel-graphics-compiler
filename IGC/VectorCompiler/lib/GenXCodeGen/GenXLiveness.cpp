@@ -61,8 +61,7 @@ void GenXLiveness::getAnalysisUsage(AnalysisUsage &AU) {
 /***********************************************************************
  * runOnFunctionGroup : do nothing
  */
-bool GenXLiveness::runOnFunctionGroup(FunctionGroup &ArgFG)
-{
+bool GenXLiveness::runOnFunctionGroup(FunctionGroup &ArgFG) {
   LLVM_DEBUG(dbgs() << "init GenXLiveness\n");
   FG = &ArgFG;
   Subtarget = &getAnalysis<TargetPassConfig>()
@@ -141,8 +140,7 @@ static vc::RegCategory getDefaultCategory(SimpleValue SV) {
  * 1. adds the SimpleValue to the LiveRange's value list;
  * 2. sets the SimpleValue's entry in the map to point to the LiveRange.
  */
-void GenXLiveness::setLiveRange(SimpleValue V, LiveRange *LR)
-{
+void GenXLiveness::setLiveRange(SimpleValue V, LiveRange *LR) {
   IGC_ASSERT_MESSAGE(
       LiveRangeMap.find(V) == end(),
       "Attempting to set LiveRange for Value that already has one");
@@ -173,8 +171,7 @@ void LiveRange::setAlignmentFromValue(const DataLayout &DL, const SimpleValue V,
 /***********************************************************************
  * rebuildCallGraph : rebuild GenXLiveness's call graph
  */
-void GenXLiveness::rebuildCallGraph()
-{
+void GenXLiveness::rebuildCallGraph() {
   LLVM_DEBUG(dbgs() << "Rebuilding CallGraph\n");
   CG = std::make_unique<genx::CallGraph>(FG);
   CG->build(this);
@@ -192,8 +189,7 @@ void GenXLiveness::rebuildCallGraph()
  * The subroutine LR has weak liveness, as that's what we want to add to
  * anything live over a call to the subroutine.
  */
-void GenXLiveness::buildSubroutineLRs()
-{
+void GenXLiveness::buildSubroutineLRs() {
   LLVM_DEBUG(dbgs() << "BuildingSubroutineLRs\n");
   if (FG->size() == 1) {
     LLVM_DEBUG(dbgs() << "No subroutines\n");
@@ -211,13 +207,13 @@ void GenXLiveness::buildSubroutineLRs()
  *
  * This is recursive.
  */
-LiveRange *GenXLiveness::visitPropagateSLRs(Function *F)
-{
+LiveRange *GenXLiveness::visitPropagateSLRs(Function *F) {
   LLVM_DEBUG(dbgs() << "VisitPropagateSLRs begin\n");
   LiveRange *LR = getOrCreateLiveRange(F);
   // Add a segment for just this function.
   LR->push_back(Segment(Numbering->getNumber(F),
-      Numbering->getNumber(F->back().getTerminator()) + 1, Segment::WEAK));
+                        Numbering->getNumber(F->back().getTerminator()) + 1,
+                        Segment::WEAK));
   // For each child...
   genx::CallGraph::Node *N = CG->getNode(F);
   for (auto i = N->begin(), e = N->end(); i != e; ++i) {
@@ -239,8 +235,7 @@ LiveRange *GenXLiveness::visitPropagateSLRs(Function *F)
  * differing at the def if it is the return value of a call, and at a use
  * that is a call arg.
  */
-void GenXLiveness::buildLiveRange(Value *V)
-{
+void GenXLiveness::buildLiveRange(Value *V) {
   LLVM_DEBUG(dbgs() << "Building LiveRange for :" << *V << "\n");
   Type *Ty = V->getType();
   if (!Ty->isAggregateType()) {
@@ -278,8 +273,7 @@ void GenXLiveness::buildLiveRange(Value *V)
  * validly coalesced, without having any way of checking that.
  *
  */
-LiveRange *GenXLiveness::buildLiveRange(SimpleValue V)
-{
+LiveRange *GenXLiveness::buildLiveRange(SimpleValue V) {
   LLVM_DEBUG(dbgs() << "Building LiveRange for SimpleValue: " << V << "\n");
   LiveRange *LR = getOrCreateLiveRange(V);
   rebuildLiveRange(LR);
@@ -288,8 +282,7 @@ LiveRange *GenXLiveness::buildLiveRange(SimpleValue V)
   return LR;
 }
 
-void GenXLiveness::rebuildLiveRange(LiveRange *LR)
-{
+void GenXLiveness::rebuildLiveRange(LiveRange *LR) {
   LLVM_DEBUG(dbgs() << "Rebuilding LiveRange: " << *LR << "\n");
   LR->getOrDefaultCategory();
   LR->Segments.clear();
@@ -299,8 +292,7 @@ void GenXLiveness::rebuildLiveRange(LiveRange *LR)
   LLVM_DEBUG(dbgs() << "Rebuilding LiveRange result: " << *LR << "\n");
 }
 
-void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
-{
+void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV) {
   LLVM_DEBUG(dbgs() << "rebuilding LiveRange: " << *LR
                     << " for SimpleValue: " << SV << "\n");
   Value *V = SV.getValue();
@@ -319,7 +311,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
     // for each call site, also from the site of the pre-copy to the return
     // instruction.
     LLVM_DEBUG(dbgs() << "It is UnifiedRet\n");
-    for (auto *U: Func->users()) {
+    for (auto *U : Func->users()) {
       if (auto *CI = genx::checkFunctionCall(U, Func)) {
         LR->push_back(Numbering->getNumber(CI),
                       Numbering->getRetPostCopyNumber(CI, SV.getIndex()));
@@ -329,7 +321,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
     for (auto fi = Func->begin(), fe = Func->end(); fi != fe; ++fi)
       if (auto RI = dyn_cast<ReturnInst>(fi->getTerminator())) {
         LR->push_back(Numbering->getRetPreCopyNumber(RI, SV.getIndex()),
-            Numbering->getNumber(RI));
+                      Numbering->getNumber(RI));
         LLVM_DEBUG(dbgs() << "It is ReturnInst, Adding Segment: " << *LR
                           << "\n");
       }
@@ -378,9 +370,8 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
   // The stack for predecessors that need to be processed:
   SmallVector<BasicBlock *, 8> Stack;
   // Process each use.
-  for (Value::use_iterator i = V->use_begin(), e = V->use_end();
-      i != e; ++i) {
-    auto& U = *i;
+  for (Value::use_iterator i = V->use_begin(), e = V->use_end(); i != e; ++i) {
+    auto &U = *i;
     if (LiveElements->getLiveElements(&U).isAllDead())
       continue;
     BasicBlock *BB = nullptr;
@@ -487,7 +478,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
       auto Pred = Phi->getIncomingBlock(i);
       auto BBNum = Numbering->getBBNumber(Pred);
       LR->push_back(Segment(Numbering->getPhiNumber(Phi, Pred),
-            BBNum->EndNumber, Segment::PHICPY));
+                            BBNum->EndNumber, Segment::PHICPY));
     }
   }
   LR->sortAndMerge();
@@ -500,7 +491,8 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
       auto E = &*i;
       // See if this call is in a segment of the LR.
       auto Seg = LR->find(E->Number);
-      if (Seg != LR->end() && Seg->getStart() <= E->Number && Seg->getEnd() > E->Number) {
+      if (Seg != LR->end() && Seg->getStart() <= E->Number &&
+          Seg->getEnd() > E->Number) {
         // Yes it is. Merge the subroutine LR of the callee into our LR.
         if (!E->Call->getCalledFunction()->hasFnAttribute("CMStackCall"))
           LR->addSegments(getLiveRange(E->Call->getCalledFunction()));
@@ -544,15 +536,14 @@ void GenXLiveness::removeBale(Bale &B) {
  * Calling this with a value that does not have a live range is silently
  * ignored.
  */
-void GenXLiveness::removeValue(Value *V)
-{
+void GenXLiveness::removeValue(Value *V) {
   LLVM_DEBUG(dbgs() << "Removing Value: " << *V << "\n");
-  for (unsigned i = 0, e = IndexFlattener::getNumElements(V->getType()); i != e; ++i)
+  for (unsigned i = 0, e = IndexFlattener::getNumElements(V->getType()); i != e;
+       ++i)
     removeValue(SimpleValue(V, i));
 }
 
-void GenXLiveness::removeValue(SimpleValue V)
-{
+void GenXLiveness::removeValue(SimpleValue V) {
   LLVM_DEBUG(dbgs() << "Removing SimpleValue: " << V << "\n");
   LiveRange *LR = removeValueNoDelete(V);
   if (LR && !LR->Values.size()) {
@@ -561,8 +552,7 @@ void GenXLiveness::removeValue(SimpleValue V)
   }
 }
 
-LiveRange *GenXLiveness::removeValueNoDelete(SimpleValue V)
-{
+LiveRange *GenXLiveness::removeValueNoDelete(SimpleValue V) {
   LiveRangeMap_t::iterator i = LiveRangeMap.find(V);
   if (i == end())
     return nullptr;
@@ -583,8 +573,7 @@ LiveRange *GenXLiveness::removeValueNoDelete(SimpleValue V)
  * removeValuesNoDelete : remove all values from the live range, but do not
  *        delete the LR
  */
-void GenXLiveness::removeValuesNoDelete(LiveRange *LR)
-{
+void GenXLiveness::removeValuesNoDelete(LiveRange *LR) {
   LLVM_DEBUG(dbgs() << "Removing all Values in LR, not delete " << *LR << "\n");
   for (auto vi = LR->value_begin(), ve = LR->value_end(); vi != ve; ++vi)
     LiveRangeMap.erase(*vi);
@@ -595,17 +584,15 @@ void GenXLiveness::removeValuesNoDelete(LiveRange *LR)
  * replaceValue : update liveness such that NewVal has OldVal's live range,
  *    and OldVal does not have one at all.
  */
-void GenXLiveness::replaceValue(Value *OldVal, Value *NewVal)
-{
+void GenXLiveness::replaceValue(Value *OldVal, Value *NewVal) {
   LLVM_DEBUG(dbgs() << "Replace Values: from " << *OldVal << " to " << *NewVal
                     << "\n");
   for (unsigned i = 0, e = IndexFlattener::getNumElements(OldVal->getType());
-      i != e; ++i)
+       i != e; ++i)
     replaceValue(SimpleValue(OldVal, i), SimpleValue(NewVal, i));
 }
 
-void GenXLiveness::replaceValue(SimpleValue OldVal, SimpleValue NewVal)
-{
+void GenXLiveness::replaceValue(SimpleValue OldVal, SimpleValue NewVal) {
   LLVM_DEBUG(dbgs() << "Replace SimpleValues: from " << OldVal << " to "
                     << NewVal << "\n");
   LiveRangeMap_t::iterator i = LiveRangeMap.find(OldVal);
@@ -623,8 +610,7 @@ void GenXLiveness::replaceValue(SimpleValue OldVal, SimpleValue NewVal)
 /***********************************************************************
  * getOrCreateLiveRange : get live range for a value, creating if necessary
  */
-LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V)
-{
+LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V) {
   auto [i, isInserted] = LiveRangeMap.emplace(V, nullptr);
   LLVM_DEBUG(dbgs() << "getOrCreateLiveRange for SimpleValue: " << V << " "
                     << (isInserted ? "Inserted" : "Not inserted") << "\n");
@@ -678,8 +664,7 @@ LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V,
  * eraseLiveRange : get rid of live range for a Value, possibly multiple
  *  ones if it is an aggregate value
  */
-void GenXLiveness::eraseLiveRange(Value *V)
-{
+void GenXLiveness::eraseLiveRange(Value *V) {
   LLVM_DEBUG(dbgs() << "Erasing LiveRange for Value: " << *V << "\n");
   Type *Ty = V->getType();
   if (!Ty->isAggregateType()) {
@@ -693,8 +678,7 @@ void GenXLiveness::eraseLiveRange(Value *V)
 /***********************************************************************
  * eraseLiveRange : get rid of live range for a Value, if any
  */
-void GenXLiveness::eraseLiveRange(SimpleValue V)
-{
+void GenXLiveness::eraseLiveRange(SimpleValue V) {
   LLVM_DEBUG(dbgs() << "Erasing LiveRange for SimpleValue: " << V << "\n");
   auto LR = getLiveRangeOrNull(V);
   if (LR)
@@ -705,8 +689,7 @@ void GenXLiveness::eraseLiveRange(SimpleValue V)
  * eraseLiveRange : get rid of the specified live range, and remove its
  *        values from the map
  */
-void GenXLiveness::eraseLiveRange(LiveRange *LR)
-{
+void GenXLiveness::eraseLiveRange(LiveRange *LR) {
   LLVM_DEBUG(dbgs() << "Erasing LiveRange: " << *LR << "\n");
   for (auto vi = LR->value_begin(), ve = LR->value_end(); vi != ve; ++vi)
     LiveRangeMap.erase(*vi);
@@ -719,8 +702,7 @@ void GenXLiveness::eraseLiveRange(LiveRange *LR)
  * The returned LiveRange pointer is valid only until the next time the
  * live ranges are modified, including the case of coalescing.
  */
-const LiveRange *GenXLiveness::getLiveRangeOrNull(SimpleValue V) const
-{
+const LiveRange *GenXLiveness::getLiveRangeOrNull(SimpleValue V) const {
   LLVM_DEBUG(dbgs() << "Getting LiveRangeOrNull for: " << V);
   auto i = LiveRangeMap.find(V);
   if (i == end()) {
@@ -731,9 +713,9 @@ const LiveRange *GenXLiveness::getLiveRangeOrNull(SimpleValue V) const
   return i->second;
 }
 
-LiveRange *GenXLiveness::getLiveRangeOrNull(SimpleValue V)
-{
-  return const_cast<LiveRange*>(static_cast<const GenXLiveness*>(this)->getLiveRangeOrNull(V));
+LiveRange *GenXLiveness::getLiveRangeOrNull(SimpleValue V) {
+  return const_cast<LiveRange *>(
+      static_cast<const GenXLiveness *>(this)->getLiveRangeOrNull(V));
 }
 
 /***********************************************************************
@@ -742,8 +724,7 @@ LiveRange *GenXLiveness::getLiveRangeOrNull(SimpleValue V)
  * The returned LiveRange pointer is valid only until the next time the
  * live ranges are modified, including the case of coalescing.
  */
-LiveRange *GenXLiveness::getLiveRange(SimpleValue V)
-{
+LiveRange *GenXLiveness::getLiveRange(SimpleValue V) {
   LiveRange *LR = getLiveRangeOrNull(V);
   IGC_ASSERT_MESSAGE(LR, "no live range found");
   return LR;
@@ -785,7 +766,7 @@ Value *GenXLiveness::getUnifiedRetIfExist(Function *F) const {
 Value *GenXLiveness::createUnifiedRet(Function *F) {
   IGC_ASSERT_MESSAGE(!F->isDeclaration(), "must be a function definition");
   IGC_ASSERT_EXIT_MESSAGE(UnifiedRets.find(F) == UnifiedRets.end(),
-    "Unified ret must not have been already created");
+                          "Unified ret must not have been already created");
   Type *Ty = F->getReturnType();
   IGC_ASSERT(!Ty->isVoidTy());
   auto URet = genx::createUnifiedRet(Ty, "", F->getParent());
@@ -819,8 +800,7 @@ Value *GenXLiveness::createUnifiedRet(Function *F) {
  * A unified ret value is a call instruction that is
  * not attached to any BB, and is in the UnifiedRetFunc map.
  */
-Function *GenXLiveness::isUnifiedRet(Value *V)
-{
+Function *GenXLiveness::isUnifiedRet(Value *V) {
   // Quick checks first.
   auto Inst = dyn_cast<CallInst>(V);
   if (!Inst)
@@ -839,8 +819,7 @@ Function *GenXLiveness::isUnifiedRet(Value *V)
  *
  * This is used when replacing a function with a new one in GenXArgIndirection.
  */
-void GenXLiveness::moveUnifiedRet(Function *OldF, Function *NewF)
-{
+void GenXLiveness::moveUnifiedRet(Function *OldF, Function *NewF) {
   auto i = UnifiedRets.find(OldF);
   if (i == UnifiedRets.end())
     return;
@@ -859,8 +838,7 @@ void GenXLiveness::moveUnifiedRet(Function *OldF, Function *NewF)
  * segment, the first segment is returned. If the number is after the
  * last segment, end() is returned.
  */
-LiveRange::iterator LiveRange::find(unsigned Pos)
-{
+LiveRange::iterator LiveRange::find(unsigned Pos) {
   size_t Len = size();
   if (!Len)
     return end();
@@ -938,10 +916,8 @@ bool GenXLiveness::interfere(LiveRange *LR1, LiveRange *LR2) {
  *
  * Then a and b can coalesce.
  *
- * But suppose b and c are the same value, or had previously been copy coalesced.
- * Then we have live ranges
- * a:[N-1,..)
- * b,c:[..,N)
+ * But suppose b and c are the same value, or had previously been copy
+ * coalesced. Then we have live ranges a:[N-1,..) b,c:[..,N)
  *
  * and a and b now interfere needlessly.
  *
@@ -975,7 +951,7 @@ bool GenXLiveness::twoAddrInterfere(LiveRange *LR1, LiveRange *LR2) {
   // Check each def in LR1 and LR2 for being a two address op that causes us to
   // discount a single number interference site.
   for (auto LR = LR1, OtherLR = LR2; LR;
-      LR = LR == LR1 ? LR2 : nullptr, OtherLR = LR1) {
+       LR = LR == LR1 ? LR2 : nullptr, OtherLR = LR1) {
     for (auto vi = LR->value_begin(), ve = LR->value_end(); vi != ve; ++vi) {
       auto CI = dyn_cast<CallInst>(vi->getValue());
       if (!CI)
@@ -1016,9 +992,8 @@ bool GenXLiveness::twoAddrInterfere(LiveRange *LR1, LiveRange *LR2) {
  * function returns true only if there is interference that cannot be described
  * in Sites.
  */
-bool GenXLiveness::getSingleInterferenceSites(LiveRange *LR1, LiveRange *LR2,
-    SmallVectorImpl<unsigned> *Sites)
-{
+bool GenXLiveness::getSingleInterferenceSites(
+    LiveRange *LR1, LiveRange *LR2, SmallVectorImpl<unsigned> *Sites) {
   // Swap if necessary to make LR1 the one with more segments.
   if (LR1->size() < LR2->size())
     std::swap(LR1, LR2);
@@ -1074,9 +1049,10 @@ bool GenXLiveness::getSingleInterferenceSites(LiveRange *LR1, LiveRange *LR2,
  * unnecessary interference for a phi incoming through a critical edge, where
  * the incoming is likely to be used in the other successor as well.
  */
-bool GenXLiveness::checkIfOverlappingSegmentsInterfere(
-    LiveRange *LR1, Segment *S1, LiveRange *LR2, Segment *S2)
-{
+bool GenXLiveness::checkIfOverlappingSegmentsInterfere(LiveRange *LR1,
+                                                       Segment *S1,
+                                                       LiveRange *LR2,
+                                                       Segment *S2) {
   if (S1->isWeak() && S2->isWeak())
     return false; // both segments weak
   if (S2->Strength == Segment::PHICPY) {
@@ -1118,24 +1094,18 @@ bool GenXLiveness::checkIfOverlappingSegmentsInterfere(
  * Return:  new live range (LR1 and LR2 now invalid)
  */
 LiveRange *GenXLiveness::coalesce(LiveRange *LR1, LiveRange *LR2,
-    bool DisallowCASC)
-{
+                                  bool DisallowCASC) {
   IGC_ASSERT_MESSAGE(LR1 != LR2, "cannot coalesce an LR to itself");
   IGC_ASSERT_MESSAGE(LR1->Category == LR2->Category,
-    "cannot coalesce two LRs with different categories");
+                     "cannot coalesce two LRs with different categories");
   // Make LR1 the one with the longer list of segments.
   if (LR2->Segments.size() > LR1->Segments.size()) {
     LiveRange *temp = LR1;
     LR1 = LR2;
     LR2 = temp;
   }
-  LLVM_DEBUG(
-    dbgs() << "Coalescing \"";
-    LR1->print(dbgs());
-    dbgs() << "\" and \"";
-    LR2->print(dbgs());
-    dbgs() << "\"\n"
-  );
+  LLVM_DEBUG(dbgs() << "Coalescing \""; LR1->print(dbgs());
+             dbgs() << "\" and \""; LR2->print(dbgs()); dbgs() << "\"\n");
   // Do the merge of the segments.
   merge(LR1, LR2);
   // Copy LR2's values across to LR1.
@@ -1149,11 +1119,7 @@ LiveRange *GenXLiveness::coalesce(LiveRange *LR1, LiveRange *LR2,
   // Set DisallowCASC.
   LR1->DisallowCASC |= LR2->DisallowCASC | DisallowCASC;
   delete LR2;
-  LLVM_DEBUG(
-    dbgs() << "  giving \"";
-    LR1->print(dbgs());
-    dbgs() << "\"\n"
-  );
+  LLVM_DEBUG(dbgs() << "  giving \""; LR1->print(dbgs()); dbgs() << "\"\n");
   return LR1;
 }
 
@@ -1189,8 +1155,7 @@ bool GenXLiveness::copyInterfere(LiveRange *LR1, LiveRange *LR2) {
  * wrapsAround : detects if V1 is a phi node and V2 wraps round to a use
  *              in a phi node in the same basic block as V1 and after it
  */
-bool GenXLiveness::wrapsAround(Value *V1, Value *V2)
-{
+bool GenXLiveness::wrapsAround(Value *V1, Value *V2) {
   auto PhiDef = dyn_cast<PHINode>(V1);
   if (!PhiDef)
     return false;
@@ -1250,20 +1215,21 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
       // predicate to another, so we copy all 0s into the destination
       // then "or" the source into it.
       Instruction *NewInst = CastInst::Create(Instruction::BitCast,
-          Constant::getNullValue(InputTy), InputTy, Name, InsertBefore);
+                                              Constant::getNullValue(InputTy),
+                                              InputTy, Name, InsertBefore);
       Numbering->setNumber(NewInst, Number);
       if (AdjustLRs)
         setLiveRange(SimpleValue(NewInst), LR);
       NewInst = BinaryOperator::Create(Instruction::Or, NewInst, InputVal, Name,
-          InsertBefore);
+                                       InsertBefore);
       Numbering->setNumber(NewInst, Number);
       if (AdjustLRs)
         setLiveRange(SimpleValue(NewInst), LR);
       return NewInst;
     }
     // Predicate input is constant.
-    auto NewInst = CastInst::Create(Instruction::BitCast, InputVal,
-        InputTy, Name, InsertBefore);
+    auto NewInst = CastInst::Create(Instruction::BitCast, InputVal, InputTy,
+                                    Name, InsertBefore);
     Numbering->setNumber(NewInst, Number);
     if (AdjustLRs)
       setLiveRange(SimpleValue(NewInst), LR);
@@ -1298,7 +1264,7 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
     } else {
       // BitCast used to represent a normal copy.
       NewInst = CastInst::Create(Instruction::BitCast, InputVal,
-          InputVal->getType(), Name, InsertBefore);
+                                 InputVal->getType(), Name, InsertBefore);
     }
     if (Number)
       Numbering->setNumber(NewInst, Number);
@@ -1307,35 +1273,36 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
     return NewInst;
   }
 
-  auto collectFragment = [](Value *V, unsigned MaxFrag,
-                         SmallVectorImpl<std::pair<unsigned, unsigned>>& Frag,
-                         unsigned MaxElt) {
-    while (!isa<UndefValue>(V)) {
-      if (!GenXIntrinsic::isWrRegion(V))
-        return true;
-      IntrinsicInst *WII = cast<IntrinsicInst>(V);
-      Region R = makeRegionFromBaleInfo(WII, BaleInfo());
-      if (R.Indirect || !R.isContiguous() || !R.isWholeNumRows())
-        return true;
-      if ((R.Offset % R.ElementBytes) != 0)
-        return true;
-      unsigned Base = R.getOffsetInElements();
-      for (unsigned Offset = 0; Offset < R.NumElements; /*EMPTY*/) {
-        unsigned NumElts = std::min(MaxElt, R.NumElements - Offset);
-        // Round NumElts down to power of 2. That is how many elements we
-        // are copying this time round the loop.
-        IGC_ASSERT_EXIT(NumElts > 0);
-        NumElts = 1 << genx::log2(NumElts);
-        Frag.push_back(std::make_pair(Base + Offset, NumElts));
-        Offset += NumElts;
-      }
-      V = WII->getOperand(0);
-    }
-    if (Frag.size() > MaxFrag)
-      return true;
-    std::sort(Frag.begin(), Frag.end());
-    return false;
-  };
+  auto collectFragment =
+      [](Value *V, unsigned MaxFrag,
+         SmallVectorImpl<std::pair<unsigned, unsigned>> &Frag,
+         unsigned MaxElt) {
+        while (!isa<UndefValue>(V)) {
+          if (!GenXIntrinsic::isWrRegion(V))
+            return true;
+          IntrinsicInst *WII = cast<IntrinsicInst>(V);
+          Region R = makeRegionFromBaleInfo(WII, BaleInfo());
+          if (R.Indirect || !R.isContiguous() || !R.isWholeNumRows())
+            return true;
+          if ((R.Offset % R.ElementBytes) != 0)
+            return true;
+          unsigned Base = R.getOffsetInElements();
+          for (unsigned Offset = 0; Offset < R.NumElements; /*EMPTY*/) {
+            unsigned NumElts = std::min(MaxElt, R.NumElements - Offset);
+            // Round NumElts down to power of 2. That is how many elements we
+            // are copying this time round the loop.
+            IGC_ASSERT_EXIT(NumElts > 0);
+            NumElts = 1 << genx::log2(NumElts);
+            Frag.push_back(std::make_pair(Base + Offset, NumElts));
+            Offset += NumElts;
+          }
+          V = WII->getOperand(0);
+        }
+        if (Frag.size() > MaxFrag)
+          return true;
+        std::sort(Frag.begin(), Frag.end());
+        return false;
+      };
 
   unsigned NumElements = R.NumElements;
   SmallVector<std::pair<unsigned, unsigned>, 8> Fragments;
@@ -1363,7 +1330,7 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
     // Create the rdregion. Do not add this to a live range because it is
     // going to be baled in to the wrregion.
     Instruction *RdRegion = R.createRdRegion(InputVal, Name, InsertBefore,
-        DebugLoc(), true/*AllowScalar*/);
+                                             DebugLoc(), true /*AllowScalar*/);
     if (Baling)
       Baling->setBaleInfo(RdRegion, BaleInfo(BaleInfo::RDREGION, 0));
     if (Number)
@@ -1401,8 +1368,7 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
  * One day we could re-introduce some simple optimized paths, such as when
  * LR2 has a single segment.
  */
-void GenXLiveness::merge(LiveRange *LR1, LiveRange *LR2)
-{
+void GenXLiveness::merge(LiveRange *LR1, LiveRange *LR2) {
   LR1->addSegments(LR2);
   LR1->sortAndMerge();
 }
@@ -1423,8 +1389,7 @@ void GenXLiveness::merge(LiveRange *LR1, LiveRange *LR2)
  * unused DAG of instructions rather than just an unused tree, for example
  * where we have a rd-wr sequence and all the rds use the same input.
  */
-void GenXLiveness::eraseUnusedTree(Instruction *TopInst)
-{
+void GenXLiveness::eraseUnusedTree(Instruction *TopInst) {
   SmallVector<Instruction *, 4> Stack;
   std::set<Instruction *> ToErase;
   Stack.push_back(TopInst);
@@ -1488,8 +1453,7 @@ void GenXLiveness::setArgAddressBase(Value *Addr, Value *Base) {
  * Return:  The Value for the base that the address is used with, or some
  *          other Value that is coalesced with that
  */
-Value *GenXLiveness::getAddressBase(Value *Addr)
-{
+Value *GenXLiveness::getAddressBase(Value *Addr) {
   // Get the base register from the rdregion/wrregion that the index is used
   // in. This might involve going via an add or an rdregion.
   Use *U = &*Addr->use_begin();
@@ -1514,7 +1478,7 @@ Value *GenXLiveness::getAddressBase(Value *Addr)
   // GenXArgIndirection. Instead we have AddressBaseMap to provide the mapping.
   auto i = ArgAddressBaseMap.find(Addr);
   IGC_ASSERT_EXIT_MESSAGE(i != ArgAddressBaseMap.end(),
-    "base register not found for address");
+                          "base register not found for address");
   Value *BaseV = i->second;
   LiveRange *LR = getLiveRange(BaseV);
   // Find a SimpleValue in the live range that is not an aggregate member.
@@ -1545,11 +1509,10 @@ std::vector<Value *> GenXLiveness::getAddressWithBase(Value *Base) {
 /***********************************************************************
  * isNoopCastCoalesced : see if the no-op cast has been coalesced away
  *
- * This handles the case that the input and result of the no-op cast are coalesced
- * in to the same live range.
+ * This handles the case that the input and result of the no-op cast are
+ * coalesced in to the same live range.
  */
-bool GenXLiveness::isNoopCastCoalesced(CastInst *CI)
-{
+bool GenXLiveness::isNoopCastCoalesced(CastInst *CI) {
   IGC_ASSERT(genx::isNoopCast(CI));
   return getLiveRangeOrNull(CI) == getLiveRangeOrNull(CI->getOperand(0));
 }
@@ -1558,13 +1521,13 @@ bool GenXLiveness::isNoopCastCoalesced(CastInst *CI)
  * dump, print : dump the liveness info
  */
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-void GenXLiveness::dump()
-{
-  print(errs()); errs() << '\n';
+void GenXLiveness::dump() {
+  print(errs());
+  errs() << '\n';
 }
-void LiveRange::dump() const
-{
-  print(errs()); errs() << '\n';
+void LiveRange::dump() const {
+  print(errs());
+  errs() << '\n';
 }
 #endif
 
@@ -1620,10 +1583,8 @@ void GenXLiveness::print(raw_ostream &OS, const FunctionGroup *dummy) const {
  * LiveRange::testLiveRanges : tests if no segments abut or overlap or are
  * in the wrong order. Live range's segments should be well formed.
  */
-bool LiveRange::testLiveRanges() const
-{
-  auto testAdjacentSegments = [](const Segment& A, const Segment& B)
-  {
+bool LiveRange::testLiveRanges() const {
+  auto testAdjacentSegments = [](const Segment &A, const Segment &B) {
     const bool P1 = (A.Strength != B.Strength);
     const bool P2 = (A.getEnd() < B.getStart());
     const bool SegmentIsGood = (P1 || P2);
@@ -1651,8 +1612,7 @@ bool LiveRange::testLiveRanges() const
  * This function only gets called when adding a single segment to a live
  * range when inserting a copy in coalescing.
  */
-void LiveRange::addSegment(Segment Seg)
-{
+void LiveRange::addSegment(Segment Seg) {
   iterator i = find(Seg.getStart()), e = end();
   if (i == e) {
     // New segment off end.
@@ -1688,8 +1648,7 @@ void LiveRange::addSegment(Segment Seg)
  * LiveRange::setSegmentsFrom : for this live range, clear out its segments
  *    and copy them from the other live range
  */
-void LiveRange::setSegmentsFrom(LiveRange *Other)
-{
+void LiveRange::setSegmentsFrom(LiveRange *Other) {
   Segments.clear();
   Segments.append(Other->Segments.begin(), Other->Segments.end());
 }
@@ -1697,8 +1656,7 @@ void LiveRange::setSegmentsFrom(LiveRange *Other)
 /***********************************************************************
  * LiveRange::addSegments : add segments of LR2 into this
  */
-void LiveRange::addSegments(LiveRange *LR2)
-{
+void LiveRange::addSegments(LiveRange *LR2) {
   Segments.append(LR2->Segments.begin(), LR2->Segments.end());
 }
 
@@ -1746,7 +1704,7 @@ void LiveRange::sortAndMerge() {
       Segment NS =
           *std::max_element(OpenedSegments.begin(), OpenedSegments.end(),
                             [](Segment L, Segment R) {
-                               return L.Strength < R.Strength;
+                              return L.Strength < R.Strength;
                             }); // New segment
       if (NewSegments.size() > 0 &&
           NewSegments.rbegin()->getEnd() == prevBorder &&
@@ -1831,15 +1789,18 @@ void LiveRange::print(raw_ostream &OS, bool Details) const {
 /***********************************************************************
  * LiveRange::printSegments : print the live range's segments
  */
-void LiveRange::printSegments(raw_ostream &OS) const
-{
-  for (auto ri = Segments.begin(), re = Segments.end();
-      ri != re; ++ri) {
+void LiveRange::printSegments(raw_ostream &OS) const {
+  for (auto ri = Segments.begin(), re = Segments.end(); ri != re; ++ri) {
     OS << "[";
     switch (ri->Strength) {
-      case Segment::WEAK: OS << "w"; break;
-      case Segment::PHICPY: OS << "ph"; break;
-      case Segment::STRONG: /* do nothing */ break;
+    case Segment::WEAK:
+      OS << "w";
+      break;
+    case Segment::PHICPY:
+      OS << "ph";
+      break;
+    case Segment::STRONG: /* do nothing */
+      break;
     }
     OS << ri->getStart() << "," << ri->getEnd() << ")";
   }

@@ -42,8 +42,7 @@ CGen8CMProgram::extractRawDebugInfo(llvm::raw_ostream &ErrStream) {
         const auto &KO = Kernel->getProgramOutput();
         if (!KO.m_debugData)
           return DebugInfo{KernelName, llvm::StringRef{}};
-        const auto *RawData =
-            reinterpret_cast<const char *>(KO.m_debugData);
+        const auto *RawData = reinterpret_cast<const char *>(KO.m_debugData);
         return DebugInfo{KernelName,
                          llvm::StringRef{RawData, KO.m_debugDataSize}};
       });
@@ -161,16 +160,15 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
   for (const auto &kernel : m_kernels) {
     zebuilder.createKernel(
         reinterpret_cast<const char *>(kernel->getProgramOutput().m_programBin),
-        kernel->getProgramOutput().m_programSize, kernel->m_kernelInfo, kernel->m_kernelCostExpInfo,
-        kernel->m_GRFSizeInBytes,
+        kernel->getProgramOutput().m_programSize, kernel->m_kernelInfo,
+        kernel->m_kernelCostExpInfo, kernel->m_GRFSizeInBytes,
         kernel->getProgramOutput().m_VISAAsm);
   }
 
   bool HasDebugInformation =
-      std::any_of(m_kernels.begin(), m_kernels.end(),
-                  [](const auto& kernel) {
-                    return kernel->getProgramOutput().m_debugDataSize > 0;
-                  });
+      std::any_of(m_kernels.begin(), m_kernels.end(), [](const auto &kernel) {
+        return kernel->getProgramOutput().m_debugDataSize > 0;
+      });
   if (HasDebugInformation) {
     DebugInfoHolder = buildZeDebugInfo();
     if (DebugInfoHolder) {

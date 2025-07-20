@@ -17,37 +17,36 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/MapVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
-class FunctionUpgrader
-{
+class FunctionUpgrader {
 private:
-    llvm::Function* m_pFunction = nullptr;
+  llvm::Function *m_pFunction = nullptr;
 
-    // map place holder argument with the real argument
-    llvm::MapVector<llvm::LoadInst*, llvm::Argument*> m_pNewArguments;
-    std::vector<llvm::LoadInst*> m_placeHolders;
+  // map place holder argument with the real argument
+  llvm::MapVector<llvm::LoadInst *, llvm::Argument *> m_pNewArguments;
+  std::vector<llvm::LoadInst *> m_placeHolders;
 
-    llvm::FunctionType* UpgradeFunctionTypeWithNewArgs();
+  llvm::FunctionType *UpgradeFunctionTypeWithNewArgs();
 
-    llvm::Function* UpgradeFunctionWithNewArgs();
+  llvm::Function *UpgradeFunctionWithNewArgs();
 
-    void CleanPlaceHoldersArgs();
+  void CleanPlaceHoldersArgs();
 
 public:
-    void SetFunctionToUpgrade(llvm::Function* pFunction);
-    void Clean();
+  void SetFunctionToUpgrade(llvm::Function *pFunction);
+  void Clean();
 
-    int SizeArgFromRebuild();
+  int SizeArgFromRebuild();
 
-    bool IsUsedPlacedHolder(llvm::Value* PlaceHolderToCheck);
+  bool IsUsedPlacedHolder(llvm::Value *PlaceHolderToCheck);
 
-    llvm::Argument* GetArgumentFromRebuild(llvm::Value* pPlaceHolderArg);
-    llvm::Argument* GetArgumentFromRebuild(llvm::LoadInst* pPlaceHolderArg);
-    std::vector<llvm::LoadInst*> GetPlaceholderVec();
+  llvm::Argument *GetArgumentFromRebuild(llvm::Value *pPlaceHolderArg);
+  llvm::Argument *GetArgumentFromRebuild(llvm::LoadInst *pPlaceHolderArg);
+  std::vector<llvm::LoadInst *> GetPlaceholderVec();
 
-    llvm::Value* AddArgument(llvm::StringRef argName, llvm::Type* argType);
+  llvm::Value *AddArgument(llvm::StringRef argName, llvm::Type *argType);
 
-    uint32_t GetArgumentsSize();
-    llvm::Function* RebuildFunction();
+  uint32_t GetArgumentsSize();
+  llvm::Function *RebuildFunction();
 
-    bool NeedToRebuild();
+  bool NeedToRebuild();
 };

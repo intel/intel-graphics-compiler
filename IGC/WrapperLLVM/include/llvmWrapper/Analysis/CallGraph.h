@@ -15,34 +15,30 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/CallSite.h"
 #endif
 
-namespace IGCLLVM
-{
+namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR == 10 || LLVM_VERSION_MAJOR == 9
-    class CallGraphNode : public llvm::CallGraphNode
-    {
-      public:
-        inline void replaceCallEdge(llvm::CallSite CS, llvm::CallSite NewCS, llvm::CallGraphNode *NewNode)
-        {
-            llvm::CallGraphNode::replaceCallEdge(*llvm::cast<llvm::CallBase>(CS.getInstruction()),
-                                                 *llvm::cast<llvm::CallBase>(NewCS.getInstruction()),
-                                                 NewNode);
-        }
-    };
+class CallGraphNode : public llvm::CallGraphNode {
+public:
+  inline void replaceCallEdge(llvm::CallSite CS, llvm::CallSite NewCS, llvm::CallGraphNode *NewNode) {
+    llvm::CallGraphNode::replaceCallEdge(*llvm::cast<llvm::CallBase>(CS.getInstruction()),
+                                         *llvm::cast<llvm::CallBase>(NewCS.getInstruction()), NewNode);
+  }
+};
 #else
 using CallGraphNode = llvm::CallGraphNode;
 #endif
 
 #if LLVM_VERSION_MAJOR < 11
-    struct CallRecord final {
-        llvm::Optional<llvm::WeakTrackingVH> first{};
-        llvm::CallGraphNode *second{nullptr};
+struct CallRecord final {
+  llvm::Optional<llvm::WeakTrackingVH> first{};
+  llvm::CallGraphNode *second{nullptr};
 
-        CallRecord() = default;
-        CallRecord(llvm::CallGraphNode::CallRecord CR) : first{CR.first}, second{CR.second} {}
-    };
+  CallRecord() = default;
+  CallRecord(llvm::CallGraphNode::CallRecord CR) : first{CR.first}, second{CR.second} {}
+};
 #else
-    using CallRecord = llvm::CallGraphNode::CallRecord;
+using CallRecord = llvm::CallGraphNode::CallRecord;
 #endif
-}
+} // namespace IGCLLVM
 
 #endif

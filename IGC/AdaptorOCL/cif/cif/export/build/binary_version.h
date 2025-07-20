@@ -26,5 +26,5 @@ inline Version_t GetBinaryVersion() {
   return CIF::UnknownVersion;
 #endif
 }
-}
-}
+} // namespace Build
+} // namespace CIF

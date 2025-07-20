@@ -275,8 +275,7 @@ constexpr unsigned DEF_PICK_SIZE = 64;
 constexpr unsigned DEF_NUM_OF_LOADS = 4;
 constexpr unsigned DEF_NUM_OF_PICKS_PER_LOAD = 4;
 constexpr unsigned DEF_NUM_OF_CASTS_OR_USERS_PER_PICK = 2;
-constexpr unsigned DEF_NUM_OF_USERS_PER_PICK =
-    DEF_NUM_OF_CASTS_OR_USERS_PER_PICK * DEF_NUM_OF_CASTS_OR_USERS_PER_PICK;
+constexpr unsigned DEF_NUM_OF_USERS_PER_PICK = DEF_NUM_OF_CASTS_OR_USERS_PER_PICK * DEF_NUM_OF_CASTS_OR_USERS_PER_PICK;
 constexpr unsigned DEF_NUM_OF_OPTS = 4;
 
 struct Pick;
@@ -287,10 +286,8 @@ struct MBRange;
 /// (undef).
 struct Pick : public SmallVector<int, DEF_PICK_SIZE> {
   explicit Pick() : SmallVector<int, DEF_PICK_SIZE>() {}
-  explicit Pick(unsigned size, int init = -1)
-      : SmallVector<int, DEF_PICK_SIZE>(size, init) {}
-  Pick(std::initializer_list<int> init)
-      : SmallVector<int, DEF_PICK_SIZE>(init) {}
+  explicit Pick(unsigned size, int init = -1) : SmallVector<int, DEF_PICK_SIZE>(size, init) {}
+  Pick(std::initializer_list<int> init) : SmallVector<int, DEF_PICK_SIZE>(init) {}
 
   /// Returns `true` if the pick is `{0,1,2,...,length-1}`.
   bool isTrivial(unsigned length) const;
@@ -345,8 +342,7 @@ struct MBRange {
 
   /// Returns the last element of the range.
   int last() const {
-    return grPitch * (static_cast<int>(0 < numOfGr ? numOfGr : 1) - 1) + first +
-           static_cast<int>(grSize) - 1;
+    return grPitch * (static_cast<int>(0 < numOfGr ? numOfGr : 1) - 1) + first + static_cast<int>(grSize) - 1;
   }
 
   /// Returns the `n`-th element of the range.
@@ -398,9 +394,8 @@ bool Pick::isTrivial(unsigned length) const {
 
 Pick Pick::pickFrom(const Pick &origin) const {
   Pick newPick = Pick(size());
-  std::transform(begin(), end(), newPick.begin(), [&](int n) -> int {
-    return 0 <= n && static_cast<unsigned>(n) < origin.size() ? origin[n] : -1;
-  });
+  std::transform(begin(), end(), newPick.begin(),
+                 [&](int n) -> int { return 0 <= n && static_cast<unsigned>(n) < origin.size() ? origin[n] : -1; });
   return newPick;
 }
 
@@ -415,8 +410,7 @@ Pick Pick::narrowTo(const MBRange &mbr) const {
 
 Pick Pick::createIdentityPick(unsigned size, int begin) {
   Pick interval = Pick(size);
-  std::generate(interval.begin(), interval.end(),
-                [&]() -> int { return begin++; });
+  std::generate(interval.begin(), interval.end(), [&]() -> int { return begin++; });
   return interval;
 }
 
@@ -448,43 +442,31 @@ raw_ostream &operator<<(raw_ostream &os, const Pick &pick) {
 
 int MBRange::operator[](int n) const { return (*this)(n / grSize, n % grSize); }
 
-int MBRange::operator()(int group, int elt) const {
-  return group * grPitch + first + elt;
-}
+int MBRange::operator()(int group, int elt) const { return group * grPitch + first + elt; }
 
 bool MBRange::contains(int x) const {
   return empty()       ? false
-         : 1 < numOfGr ? first <= x && x <= last() &&
-                             (x - first) % grPitch < static_cast<int>(grSize)
+         : 1 < numOfGr ? first <= x && x <= last() && (x - first) % grPitch < static_cast<int>(grSize)
                        : first <= x && x <= last();
 }
 
-MBRange::Containment MBRange::containsOrExcludes(const Pick &pick,
-                                                 bool allowUndefs) const {
+MBRange::Containment MBRange::containsOrExcludes(const Pick &pick, bool allowUndefs) const {
   if (pick.empty())
     return MBRange::Containment::Contains;
   if (empty())
     return MBRange::Containment::Excludes;
-  return std::any_of(pick.begin(), pick.end(),
-                     [&](int x) -> bool { return contains(x); })
+  return std::any_of(pick.begin(), pick.end(), [&](int x) -> bool { return contains(x); })
              ? std::all_of(pick.begin(), pick.end(),
-                           [&](int x) -> bool {
-                             return contains(x) || (allowUndefs && x < 0);
-                           })
+                           [&](int x) -> bool { return contains(x) || (allowUndefs && x < 0); })
                    ? MBRange::Containment::Contains
                    : MBRange::Containment::Intersects
-         : std::all_of(pick.begin(), pick.end(),
-                       [&](int x) -> bool { return !contains(x); })
+         : std::all_of(pick.begin(), pick.end(), [&](int x) -> bool { return !contains(x); })
              ? MBRange::Containment::Excludes
              : MBRange::Containment::Intersects;
 }
 
 int MBRange::indexOf(int x) const {
-  return contains(x)
-             ? 1 < numOfGr
-                   ? (x - first) / grPitch * grSize + (x - first) % grPitch
-                   : x - first
-             : -1;
+  return contains(x) ? 1 < numOfGr ? (x - first) / grPitch * grSize + (x - first) % grPitch : x - first : -1;
 }
 
 Pick MBRange::toPick() const {
@@ -586,16 +568,14 @@ enum : unsigned {
 /// as `unsigned int`. Assumes `GII->getArgOperand(n)` exists and can be cast to
 /// `ConstantInt`.
 static unsigned getArgZ(GenIntrinsicInst *GII, unsigned n) {
-  return static_cast<unsigned>(
-      cast<ConstantInt>(GII->getArgOperand(n))->getZExtValue());
+  return static_cast<unsigned>(cast<ConstantInt>(GII->getArgOperand(n))->getZExtValue());
 }
 
 /// Returns the numeric value of the argument number `n` to the intrinsic `GII`
 /// as `signed int`. Assumes `GII->getArgOperand(n)` exists and can be cast to
 /// `ConstantInt`.
 static int getArgS(GenIntrinsicInst *GII, unsigned n) {
-  return static_cast<int>(
-      cast<ConstantInt>(GII->getArgOperand(n))->getSExtValue());
+  return static_cast<int>(cast<ConstantInt>(GII->getArgOperand(n))->getSExtValue());
 }
 
 #define DBG(x) LLVM_DEBUG(x)
@@ -607,9 +587,8 @@ using MBRanges = SmallVector<MBRange, DEF_NUM_OF_PICKS_PER_LOAD>;
 /// load vector. It gathers all picks from the load together with the associated
 /// bitcasts and their users.
 struct TraceData {
-  using Cast = SmallDenseMap<
-      Type *, SmallVector<Instruction *, DEF_NUM_OF_CASTS_OR_USERS_PER_PICK>,
-      DEF_NUM_OF_CASTS_OR_USERS_PER_PICK>;
+  using Cast = SmallDenseMap<Type *, SmallVector<Instruction *, DEF_NUM_OF_CASTS_OR_USERS_PER_PICK>,
+                             DEF_NUM_OF_CASTS_OR_USERS_PER_PICK>;
   using Casts = SmallVector<Cast, DEF_NUM_OF_PICKS_PER_LOAD>;
   using ToRemove = SmallVector<Instruction *, DEF_NUM_OF_PICKS_PER_LOAD + 1>;
 
@@ -646,15 +625,13 @@ private:
     Instruction *fun;
 
     explicit Node() : Pick(), type(nullptr), fun(nullptr) {}
-    Node(const Pick &pick, Type *type, Instruction *fun)
-        : Pick(pick), type{type}, fun{fun} {}
+    Node(const Pick &pick, Type *type, Instruction *fun) : Pick(pick), type{type}, fun{fun} {}
   };
 
   std::optional<Node> addBitCast(const Node &previous, BitCastInst *BCI);
   std::optional<Node> addShuffle(const Node &previous, ShuffleVectorInst *SVI);
-  std::optional<Node> addExtractInsertSequence(
-      const Node &previous, ExtractElementInst *EEI,
-      SmallPtrSet<Value *, DEF_NUM_OF_PICKS_PER_LOAD> &extractsToSkip);
+  std::optional<Node> addExtractInsertSequence(const Node &previous, ExtractElementInst *EEI,
+                                               SmallPtrSet<Value *, DEF_NUM_OF_PICKS_PER_LOAD> &extractsToSkip);
   void addLeaf(const Node &leaf);
 };
 
@@ -699,14 +676,12 @@ struct LoadData {
     // From the point of view of the loaded vectors, the total bit width is:
     // totalBW = vectorLength * SIMD * scalarBitWidth.
     // From this:
-    return (blockWidth_E * blockHeight_E * numOfBlocks * elementBitWidth) /
-           (vectorLength * scalarBitWidth);
+    return (blockWidth_E * blockHeight_E * numOfBlocks * elementBitWidth) / (vectorLength * scalarBitWidth);
   }
 
   /// Returns the size of a single scalar multiplied by the SIMD.
   unsigned scalarMemSize_B() const {
-    return (blockWidth_E * blockHeight_E * numOfBlocks * elementBitWidth) /
-           (8 * vectorLength);
+    return (blockWidth_E * blockHeight_E * numOfBlocks * elementBitWidth) / (8 * vectorLength);
   }
 
   /// Returns the minimum valid group length for the split load.
@@ -738,9 +713,7 @@ struct Load : public LoadData {
 
   explicit Load() = default;
   Load(const LoadData &data) : LoadData(data) {}
-  Load(const Load &rhs)
-      : LoadData(rhs), GII(rhs.GII), xOffset_E(rhs.xOffset_E),
-        yOffset_P(rhs.yOffset_P) {}
+  Load(const Load &rhs) : LoadData(rhs), GII(rhs.GII), xOffset_E(rhs.xOffset_E), yOffset_P(rhs.yOffset_P) {}
   Load &operator=(const Load &rhs) {
     if (this != &rhs) {
       LoadData::operator=(rhs);
@@ -802,8 +775,7 @@ raw_ostream &operator<<(raw_ostream &os, const Dims &dims) {
 /// scalar type and the size of the vector.
 static std::pair<IntegerType *, unsigned> getScalarTypeAndSize(Value *V) {
   std::pair<IntegerType *, unsigned> ret{nullptr, 0};
-  IGCLLVM::FixedVectorType *vectorTy =
-      dyn_cast<IGCLLVM::FixedVectorType>(V->getType());
+  IGCLLVM::FixedVectorType *vectorTy = dyn_cast<IGCLLVM::FixedVectorType>(V->getType());
   if (!vectorTy)
     return ret;
   ret.first = dyn_cast<IntegerType>(vectorTy->getElementType());
@@ -814,8 +786,7 @@ static std::pair<IntegerType *, unsigned> getScalarTypeAndSize(Value *V) {
 }
 
 /// Creates the function of a given name in LLVM.
-static Function *createFunction(StringRef name, Module *currModule,
-                                ArrayRef<Value *> args, Type *retTy,
+static Function *createFunction(StringRef name, Module *currModule, ArrayRef<Value *> args, Type *retTy,
                                 Function *copyAttrAfter = nullptr) {
   SmallVector<Type *, NUM_OF_BLOCKLOAD_ARGS> argsTy;
   argsTy.assign(args.size(), nullptr);
@@ -823,8 +794,7 @@ static Function *createFunction(StringRef name, Module *currModule,
     argsTy[i] = args[i]->getType();
   }
   FunctionType *newFunTy = FunctionType::get(retTy, argsTy, false);
-  Function *newFun = Function::Create(newFunTy, GlobalValue::ExternalLinkage,
-                                      name, currModule);
+  Function *newFun = Function::Create(newFunTy, GlobalValue::ExternalLinkage, name, currModule);
   if (copyAttrAfter) {
     newFun->copyAttributesFrom(copyAttrAfter);
     if (isa<GlobalObject>(copyAttrAfter)) {
@@ -837,19 +807,14 @@ static Function *createFunction(StringRef name, Module *currModule,
 /// Adds `offset` to `value` if `offset` is non-zero.
 static Value *createAdd(IRBuilder<> &builder, Value *value, unsigned offset) {
   return offset ? (isa<ConstantInt>(value)
-                       ? builder.getInt32(
-                             static_cast<unsigned>(
-                                 cast<ConstantInt>(value)->getZExtValue()) +
-                             offset)
-                       : builder.CreateAdd(value, builder.getInt32(offset), "",
-                                           true, true))
+                       ? builder.getInt32(static_cast<unsigned>(cast<ConstantInt>(value)->getZExtValue()) + offset)
+                       : builder.CreateAdd(value, builder.getInt32(offset), "", true, true))
                 : value;
 }
 
 // ===========================================================================
 
-bool Config::initialize(Function *F, CodeGenContext *inCGC,
-                        IGCLivenessAnalysis *inRPE) {
+bool Config::initialize(Function *F, CodeGenContext *inCGC, IGCLivenessAnalysis *inRPE) {
   CGC = inCGC;
   RPE = inRPE;
   if (!F || !CGC || !RPE)
@@ -882,10 +847,8 @@ bool Config::initialize(Function *F, CodeGenContext *inCGC,
     break;
   }
   actualSimd = 0;
-  if (RPE->MDUtils && RPE->MDUtils->findFunctionsInfoItem(F) !=
-                          RPE->MDUtils->end_FunctionsInfo()) {
-    IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD =
-        RPE->MDUtils->getFunctionsInfoItem(F);
+  if (RPE->MDUtils && RPE->MDUtils->findFunctionsInfoItem(F) != RPE->MDUtils->end_FunctionsInfo()) {
+    IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = RPE->MDUtils->getFunctionsInfoItem(F);
     actualSimd = funcInfoMD->getSubGroupSize()->getSIMDSize();
   }
 
@@ -894,53 +857,42 @@ bool Config::initialize(Function *F, CodeGenContext *inCGC,
   numOfRegs = CGC->getNumGRFPerThread();
 
   minSplitSize_B = minSplitSize_GRF * sizeOfRegs_B;
-  splitThreshold_B =
-      (static_cast<int>(numOfRegs) + splitThresholdDelta_GRF) * sizeOfRegs_B;
+  splitThreshold_B = (static_cast<int>(numOfRegs) + splitThresholdDelta_GRF) * sizeOfRegs_B;
 
-  DBG(Module *newM = F->getParent();
-      if (newM != M) {
-        M = newM;
-        dbgs() << "CONFIG DATA:\n";
-        dbgs() << " -- SPLITTING ENABLED / ignore reg pressure          = "
-               << enableLoadSplitting << " / " << ignoreSplitThreshold << "\n";
-        dbgs() << " -- register size [B] / number of registers          = "
-               << sizeOfRegs_B << " / " << numOfRegs << "\n";
-        dbgs() << " -- default SIMD / actual SIMD                       = "
-               << defaultSimd << " / " << actualSimd << "\n";
-        dbgs() << " -- split threshold [B]                              = "
-               << splitThreshold_B << "\n";
-        dbgs() << " -- min split size [E] / min split size [B]          = "
-               << minSplitSize_E << " / " << minSplitSize_B << "\n";
-      });
+  DBG(Module *newM = F->getParent(); if (newM != M) {
+    M = newM;
+    dbgs() << "CONFIG DATA:\n";
+    dbgs() << " -- SPLITTING ENABLED / ignore reg pressure          = " << enableLoadSplitting << " / "
+           << ignoreSplitThreshold << "\n";
+    dbgs() << " -- register size [B] / number of registers          = " << sizeOfRegs_B << " / " << numOfRegs << "\n";
+    dbgs() << " -- default SIMD / actual SIMD                       = " << defaultSimd << " / " << actualSimd << "\n";
+    dbgs() << " -- split threshold [B]                              = " << splitThreshold_B << "\n";
+    dbgs() << " -- min split size [E] / min split size [B]          = " << minSplitSize_E << " / " << minSplitSize_B
+           << "\n";
+  });
   return true;
 }
 
 // ===========================================================================
 
-std::optional<TraceData::Node> TraceData::addBitCast(const Node &previous,
-                                                     BitCastInst *BCI) {
-  IGCLLVM::FixedVectorType *srcTy =
-      dyn_cast<IGCLLVM::FixedVectorType>(BCI->getSrcTy());
-  IGCLLVM::FixedVectorType *destTy =
-      dyn_cast<IGCLLVM::FixedVectorType>(BCI->getDestTy());
+std::optional<TraceData::Node> TraceData::addBitCast(const Node &previous, BitCastInst *BCI) {
+  IGCLLVM::FixedVectorType *srcTy = dyn_cast<IGCLLVM::FixedVectorType>(BCI->getSrcTy());
+  IGCLLVM::FixedVectorType *destTy = dyn_cast<IGCLLVM::FixedVectorType>(BCI->getDestTy());
   if (!(srcTy && destTy))
     return std::nullopt;
   // We only allow bitcasts that preserve the size of the underlying scalar
   // type.
-  if (srcTy->getElementType()->getScalarSizeInBits() !=
-      destTy->getElementType()->getScalarSizeInBits())
+  if (srcTy->getElementType()->getScalarSizeInBits() != destTy->getElementType()->getScalarSizeInBits())
     return std::nullopt;
   return TraceData::Node(previous, destTy->getElementType(), BCI);
 }
 
-std::optional<TraceData::Node> TraceData::addShuffle(const Node &previous,
-                                                     ShuffleVectorInst *SVI) {
+std::optional<TraceData::Node> TraceData::addShuffle(const Node &previous, ShuffleVectorInst *SVI) {
   if (!isa<IGCLLVM::FixedVectorType>(SVI->getType()))
     return std::nullopt;
   // Previous node is a bitcast, shuffle vector, insert element, or the original
   // load, so we checked that previous->fun has the type of a fixed vector.
-  unsigned previousVectorLength =
-      cast<IGCLLVM::FixedVectorType>(previous.fun->getType())->getNumElements();
+  unsigned previousVectorLength = cast<IGCLLVM::FixedVectorType>(previous.fun->getType())->getNumElements();
   // We must make sure that the shuffle vector is a pick from the previous
   // vector. The other vector must be undef.
   int beginPos, endPos;
@@ -957,16 +909,15 @@ std::optional<TraceData::Node> TraceData::addShuffle(const Node &previous,
   }
   // Pick::fromMask guarantees that the pick is entirely contained in [beginPos,
   // endPos].
-  std::optional<Pick> newPick =
-      Pick::fromMask(SVI->getShuffleMask(), beginPos, endPos);
+  std::optional<Pick> newPick = Pick::fromMask(SVI->getShuffleMask(), beginPos, endPos);
   if (!newPick)
     return std::nullopt;
   return TraceData::Node(newPick->pickFrom(previous), previous.type, SVI);
 }
 
-std::optional<TraceData::Node> TraceData::addExtractInsertSequence(
-    const TraceData::Node &previous, ExtractElementInst *EEI,
-    SmallPtrSet<Value *, DEF_NUM_OF_PICKS_PER_LOAD> &extractsToSkip) {
+std::optional<TraceData::Node>
+TraceData::addExtractInsertSequence(const TraceData::Node &previous, ExtractElementInst *EEI,
+                                    SmallPtrSet<Value *, DEF_NUM_OF_PICKS_PER_LOAD> &extractsToSkip) {
 
   auto isValidExtract = [&](ExtractElementInst *E) -> bool {
     if (!isa<IGCLLVM::FixedVectorType>(E->getVectorOperand()->getType()))
@@ -990,8 +941,7 @@ std::optional<TraceData::Node> TraceData::addExtractInsertSequence(
     return dyn_cast<InsertElementInst>(*E->user_begin());
   };
 
-  auto getAssociatedExtract =
-      [&](InsertElementInst *I) -> ExtractElementInst * {
+  auto getAssociatedExtract = [&](InsertElementInst *I) -> ExtractElementInst * {
     return dyn_cast<ExtractElementInst>(I->getOperand(1));
   };
 
@@ -1072,9 +1022,7 @@ std::optional<TraceData::Node> TraceData::addExtractInsertSequence(
   //  - from which vector we pick
   //  - how many elements we pick
 
-  unsigned newVectorLength =
-      cast<IGCLLVM::FixedVectorType>(EIs.front().second->getType())
-          ->getNumElements();
+  unsigned newVectorLength = cast<IGCLLVM::FixedVectorType>(EIs.front().second->getType())->getNumElements();
   Value *pickingFrom = EIs.front().first->getVectorOperand();
   Value *currentBuildVector = nullptr;
   Pick pick = Pick(newVectorLength, -1);
@@ -1084,8 +1032,7 @@ std::optional<TraceData::Node> TraceData::addExtractInsertSequence(
   //  - we keep building the same vector
   //  - we assign each index only once
 
-  auto addPick =
-      [&](std::pair<ExtractElementInst *, InsertElementInst *> &ei) -> bool {
+  auto addPick = [&](std::pair<ExtractElementInst *, InsertElementInst *> &ei) -> bool {
     if (ei.first->getVectorOperand() != pickingFrom)
       return false;
     if (currentBuildVector) {
@@ -1094,10 +1041,8 @@ std::optional<TraceData::Node> TraceData::addExtractInsertSequence(
     }
     currentBuildVector = ei.second;
 
-    unsigned origIdx =
-        cast<ConstantInt>(ei.first->getIndexOperand())->getZExtValue();
-    unsigned newIdx =
-        cast<ConstantInt>(ei.second->getOperand(2))->getZExtValue();
+    unsigned origIdx = cast<ConstantInt>(ei.first->getIndexOperand())->getZExtValue();
+    unsigned newIdx = cast<ConstantInt>(ei.second->getOperand(2))->getZExtValue();
     if (pick[newIdx] != -1)
       return false;
     pick[newIdx] = origIdx;
@@ -1113,8 +1058,7 @@ std::optional<TraceData::Node> TraceData::addExtractInsertSequence(
   if (!addPick(EIs.back()))
     return std::nullopt;
   toRemove.push_back(EIs.back().first);
-  return TraceData::Node(pick.pickFrom(previous), previous.type,
-                         EIs.back().second);
+  return TraceData::Node(pick.pickFrom(previous), previous.type, EIs.back().second);
 }
 
 void TraceData::addLeaf(const Node &leaf) {
@@ -1125,8 +1069,7 @@ void TraceData::addLeaf(const Node &leaf) {
     typesToCastTo[it - picks->begin()][leaf.type].push_back(leaf.fun);
   } else {
     picks->push_back(leaf);
-    typesToCastTo.push_back(
-        Cast{{leaf.type, SmallVector<Instruction *, 1>(1, leaf.fun)}});
+    typesToCastTo.push_back(Cast{{leaf.type, SmallVector<Instruction *, 1>(1, leaf.fun)}});
   }
 }
 
@@ -1141,9 +1084,8 @@ bool TraceData::tracePicks(GenIntrinsicInst *GII) {
   toRemove.clear();
 
   SmallVector<TraceData::Node, DEF_NUM_OF_PICKS_PER_LOAD + 1> activeNodes;
-  activeNodes.emplace_back(
-      Pick::createIdentityPick(vectorLength()),
-      cast<IGCLLVM::FixedVectorType>(GII->getType())->getElementType(), GII);
+  activeNodes.emplace_back(Pick::createIdentityPick(vectorLength()),
+                           cast<IGCLLVM::FixedVectorType>(GII->getType())->getElementType(), GII);
   TraceData::Node currNode;
   // We need to skip the extract elements that are part of the already processed
   // insert/extract sequence.
@@ -1176,8 +1118,7 @@ bool TraceData::tracePicks(GenIntrinsicInst *GII) {
       } else if (ExtractElementInst *EEI = dyn_cast<ExtractElementInst>(next)) {
         if (extractsToSkip.count(EEI))
           continue;
-        std::optional<TraceData::Node> newNode =
-            addExtractInsertSequence(currNode, EEI, extractsToSkip);
+        std::optional<TraceData::Node> newNode = addExtractInsertSequence(currNode, EEI, extractsToSkip);
         if (!newNode) {
           return false;
         }
@@ -1195,11 +1136,9 @@ void TraceData::putPicks(IRBuilder<> &builder, Value *load) {
     return;
 
   // This assumes no repeated values in the pick.
-  auto putPick = [&](const Pick &pick, Value *loadOrCast,
-                     Type *scalarTy) -> Value * {
+  auto putPick = [&](const Pick &pick, Value *loadOrCast, Type *scalarTy) -> Value * {
     Value *elem;
-    Value *newVector =
-        UndefValue::get(IGCLLVM::FixedVectorType::get(scalarTy, pick.size()));
+    Value *newVector = UndefValue::get(IGCLLVM::FixedVectorType::get(scalarTy, pick.size()));
     for (unsigned insertPos = 0; insertPos < pick.size(); ++insertPos) {
       if (pick[insertPos] < 0)
         continue;
@@ -1223,9 +1162,7 @@ void TraceData::putPicks(IRBuilder<> &builder, Value *load) {
     // If a pick is non-trivial, we insert the insert/extract sequence.
     // picksVal is the resulting value, or the origianl load if no pick is
     // required.
-    picksVal = pick.isTrivial(vectorLength())
-                   ? loadOrCast
-                   : putPick(pick, loadOrCast, scalarTy);
+    picksVal = pick.isTrivial(vectorLength()) ? loadOrCast : putPick(pick, loadOrCast, scalarTy);
 
     // For each pick we cast picksVal to the appropriate type and replace the
     // users. pickAndCastVal is the resulting value of the cast, if needed, or
@@ -1234,8 +1171,7 @@ void TraceData::putPicks(IRBuilder<> &builder, Value *load) {
       if (type == scalarTy) {
         pickAndCastVal = picksVal;
       } else {
-        pickAndCastVal = builder.CreateBitCast(
-            picksVal, IGCLLVM::FixedVectorType::get(type, pick.size()));
+        pickAndCastVal = builder.CreateBitCast(picksVal, IGCLLVM::FixedVectorType::get(type, pick.size()));
       }
       for (Instruction *user : users) {
         // The only case when fun == newCallAndCast is when the load goes
@@ -1286,9 +1222,7 @@ std::unique_ptr<TraceData> TraceData::pickSubpicksOf(const MBRange &mbr) {
 
 /// Creates a vector of MBRange's, each of the same `grSize`, `grPitch`, and
 /// `numOfGr`. The ranges cover the entire vector of length `vectorLength`.
-static std::optional<MBRanges> makeUniform(unsigned grSize, int grPitch,
-                                           unsigned numOfGr,
-                                           unsigned vectorLength) {
+static std::optional<MBRanges> makeUniform(unsigned grSize, int grPitch, unsigned numOfGr, unsigned vectorLength) {
   if (!vectorLength)
     return std::nullopt;
   if (grSize == grPitch) {
@@ -1305,8 +1239,7 @@ static std::optional<MBRanges> makeUniform(unsigned grSize, int grPitch,
       mbrs[n] = MBRange(n * grSize, grSize, grPitch, 1);
     }
   } else {
-    if (vectorLength % (grPitch * numOfGr) || grPitch % grSize ||
-        grPitch <= static_cast<int>(grSize) || grPitch <= 0)
+    if (vectorLength % (grPitch * numOfGr) || grPitch % grSize || grPitch <= static_cast<int>(grSize) || grPitch <= 0)
       return std::nullopt;
     unsigned numInBlock = grPitch / grSize;
     unsigned blockPitch = grPitch * numOfGr;
@@ -1314,8 +1247,7 @@ static std::optional<MBRanges> makeUniform(unsigned grSize, int grPitch,
     mbrs.resize(numInBlock * numOfBlocks);
     for (unsigned n = 0; n < numOfBlocks; ++n) {
       for (unsigned m = 0; m < numInBlock; ++m) {
-        mbrs[n * numInBlock + m] =
-            MBRange(n * blockPitch + m * grSize, grSize, grPitch, numOfGr);
+        mbrs[n * numInBlock + m] = MBRange(n * blockPitch + m * grSize, grSize, grPitch, numOfGr);
       }
     }
   }
@@ -1325,9 +1257,7 @@ static std::optional<MBRanges> makeUniform(unsigned grSize, int grPitch,
 /// Creates a vector of MBRange's, each of the same `grSize`, `grPitch`, and
 /// `numOfGr` and covering the entire vector of length `vectorLength`
 /// grid-uniformly. Each pick of `picks` must fit into exactly one range.
-static std::optional<MBRanges> makeGridUniformPicks(const Picks &picks,
-                                                    unsigned vectorLength,
-                                                    unsigned blockLength) {
+static std::optional<MBRanges> makeGridUniformPicks(const Picks &picks, unsigned vectorLength, unsigned blockLength) {
   if (picks.empty())
     return std::nullopt;
   MBRanges mbrs;
@@ -1336,8 +1266,7 @@ static std::optional<MBRanges> makeGridUniformPicks(const Picks &picks,
     // The picks must be grid-uniform. No undefs allowed.
     std::optional<MBRange> mbr = MBRange::fromPick(picks[n]);
     if (!mbr) {
-      DBG(dbgs() << "    -- Pick " << picks[n]
-                 << " is not a valid multi-block range.\n");
+      DBG(dbgs() << "    -- Pick " << picks[n] << " is not a valid multi-block range.\n");
       return std::nullopt;
     }
     if (mbr->numOfGr == 1) {
@@ -1351,33 +1280,26 @@ static std::optional<MBRanges> makeGridUniformPicks(const Picks &picks,
     return std::nullopt;
   }
   if (!std::all_of(std::next(mbrs.begin()), mbrs.end(), [&](const MBRange &x) {
-        return x.grPitch == mbr.grPitch && x.grSize == mbr.grSize &&
-               x.numOfGr == mbr.numOfGr;
+        return x.grPitch == mbr.grPitch && x.grSize == mbr.grSize && x.numOfGr == mbr.numOfGr;
       })) {
     DBG(dbgs() << "    -- Multi-block ranges of different sizes.\n");
     return std::nullopt;
   }
   if (mbr.numOfGr == 1) {
-    if (!isPowerOf2_32(mbr.grSize) || vectorLength % mbr.grSize ||
-        mbr.first % mbr.grSize) {
-      DBG(dbgs() << "    -- Invalid size of multi-block range " << mbr
-                 << ".\n");
+    if (!isPowerOf2_32(mbr.grSize) || vectorLength % mbr.grSize || mbr.first % mbr.grSize) {
+      DBG(dbgs() << "    -- Invalid size of multi-block range " << mbr << ".\n");
       return std::nullopt;
     }
   } else {
-    if (!(isPowerOf2_32(mbr.grSize) && isPowerOf2_32(mbr.grPitch) &&
-          isPowerOf2_32(mbr.numOfGr))) {
-      DBG(dbgs() << "    -- Invalid size of multi-block range " << mbr
-                 << ".\n");
+    if (!(isPowerOf2_32(mbr.grSize) && isPowerOf2_32(mbr.grPitch) && isPowerOf2_32(mbr.numOfGr))) {
+      DBG(dbgs() << "    -- Invalid size of multi-block range " << mbr << ".\n");
       return std::nullopt;
     }
     // - group size must be smaller than block length and be its divisor
     // - group pitch must match the block length (there are no gaps between
     // blocks)
-    if (blockLength <= mbr.grSize || blockLength % mbr.grSize ||
-        mbr.grPitch != blockLength) {
-      DBG(dbgs() << "    -- Invalid size of multi-block range " << mbr
-                 << ".\n");
+    if (blockLength <= mbr.grSize || blockLength % mbr.grSize || mbr.grPitch != blockLength) {
+      DBG(dbgs() << "    -- Invalid size of multi-block range " << mbr << ".\n");
       return std::nullopt;
     }
     unsigned numOfBlocks = vectorLength / blockLength;
@@ -1386,10 +1308,8 @@ static std::optional<MBRanges> makeGridUniformPicks(const Picks &picks,
     // - first elt in each group must be a multiple of the group size
     // - number of groups must be a divisor of the number of blocks
     // - the block with first elt must be a multiple of the number of groups
-    if (firstInGr % mbr.grSize || numOfBlocks % mbr.numOfGr ||
-        grStart % mbr.numOfGr) {
-      DBG(dbgs() << "    -- Invalid size of multi-block range " << mbr
-                 << ".\n");
+    if (firstInGr % mbr.grSize || numOfBlocks % mbr.numOfGr || grStart % mbr.numOfGr) {
+      DBG(dbgs() << "    -- Invalid size of multi-block range " << mbr << ".\n");
       return std::nullopt;
     }
   }
@@ -1405,8 +1325,7 @@ static std::optional<MBRanges> makeGridUniformPicks(const Picks &picks,
     }
   }
   if (std::find(allPicks.begin(), allPicks.end(), 0) != allPicks.end()) {
-    DBG(dbgs()
-        << "    -- Multi-block ranges do not cover the entire vector.\n");
+    DBG(dbgs() << "    -- Multi-block ranges do not cover the entire vector.\n");
     return std::nullopt;
   }
   DBG(dbgs() << "    -- Multi-block ranges are valid.\n";
@@ -1421,12 +1340,10 @@ bool LoadData::isValidLoad() const {
   // 1. We must avoid padding, otherwise the splitting would fail.
   // 2. All parameters are power of two, so that the splitting is possible.
   // 3. The length of the vector is at least 2 (so we don't deal with v1s).
-  if (!isPowerOf2_32(vectorLength) || !isPowerOf2_32(blockWidth_E) ||
-      !isPowerOf2_32(blockHeight_E) || !isPowerOf2_32(numOfBlocks) ||
-      !isPowerOf2_32(scalarBitWidth) || !isPowerOf2_32(elementBitWidth))
+  if (!isPowerOf2_32(vectorLength) || !isPowerOf2_32(blockWidth_E) || !isPowerOf2_32(blockHeight_E) ||
+      !isPowerOf2_32(numOfBlocks) || !isPowerOf2_32(scalarBitWidth) || !isPowerOf2_32(elementBitWidth))
     return false;
-  if ((blockHeight_E * blockWidth_E * elementBitWidth / 8) %
-      config().sizeOfRegs_B)
+  if ((blockHeight_E * blockWidth_E * elementBitWidth / 8) % config().sizeOfRegs_B)
     return false; // so we don't deal with padding
   if (scalarBitWidth % elementBitWidth)
     return false;       // so scalarBitLength >= elementBitLength
@@ -1435,26 +1352,21 @@ bool LoadData::isValidLoad() const {
 
 
   DBG(
-      bool ok = true; if (transposed && vnni) ok = false;
-      else if (!transposed and !vnni) {
+      bool ok = true; if (transposed && vnni) ok = false; else if (!transposed and !vnni) {
         unsigned rowBytesPerBlk = ((elementBitWidth / 8) * blockWidth_E);
         if ((rowBytesPerBlk * numOfBlocks) > 64 || rowBytesPerBlk < 4)
           ok = false;
       } else if (transposed) {
-        bool isValid64 =
-            (elementBitWidth == 64 && blockHeight_E == 8 &&
-             (blockWidth_E <= 4 || (blockWidth_E == 8 && config().isLegitW8)));
-        bool isValid32 =
-            (elementBitWidth == 32 && blockHeight_E <= 32 && blockWidth_E <= 8);
+        bool isValid64 = (elementBitWidth == 64 && blockHeight_E == 8 &&
+                          (blockWidth_E <= 4 || (blockWidth_E == 8 && config().isLegitW8)));
+        bool isValid32 = (elementBitWidth == 32 && blockHeight_E <= 32 && blockWidth_E <= 8);
         if (numOfBlocks != 1 || !(isValid32 || isValid64))
           ok = false;
       } else if (vnni) {
         // scalarBitWidth / elementBitWidth is ok since scalarBitLength %
         // elementBitLength == 0.
-        bool isValid8 =
-            (elementBitWidth == 8 && blockHeight_E >= 4 && blockWidth_E >= 4);
-        bool isValid16 = (elementBitWidth == 16 && blockHeight_E >= 2 &&
-                          blockWidth_E >= 2 && blockWidth_E <= 32);
+        bool isValid8 = (elementBitWidth == 8 && blockHeight_E >= 4 && blockWidth_E >= 4);
+        bool isValid16 = (elementBitWidth == 16 && blockHeight_E >= 2 && blockWidth_E >= 2 && blockWidth_E <= 32);
         if (!(isValid8 || isValid16))
           ok = false;
       } if (!ok) {
@@ -1493,26 +1405,20 @@ unsigned LoadData::getMinGroupLength(unsigned atLeastThisLarge) const {
   // so N must be greater or equal than the bit width of 1 GRF.
   minGroupLen = PowerOf2Ceil(std::max(minGroupLen, atLeastThisLarge));
   if (minGroupLen * scalarMemSize_B() < config().sizeOfRegs_B) {
-    minGroupLen =
-        PowerOf2Ceil(divideCeil(config().sizeOfRegs_B, scalarMemSize_B()));
+    minGroupLen = PowerOf2Ceil(divideCeil(config().sizeOfRegs_B, scalarMemSize_B()));
   }
   return minGroupLen;
 }
 
 bool LoadData::sameAsLoad(const LoadData &rhs) const {
-  return blockWidth_E == rhs.blockWidth_E &&
-         blockHeight_E == rhs.blockHeight_E && numOfBlocks == rhs.numOfBlocks &&
-         vectorLength == rhs.vectorLength &&
-         scalarBitWidth == rhs.scalarBitWidth &&
-         elementBitWidth == rhs.elementBitWidth &&
-         transposed == rhs.transposed && vnni == rhs.vnni;
+  return blockWidth_E == rhs.blockWidth_E && blockHeight_E == rhs.blockHeight_E && numOfBlocks == rhs.numOfBlocks &&
+         vectorLength == rhs.vectorLength && scalarBitWidth == rhs.scalarBitWidth &&
+         elementBitWidth == rhs.elementBitWidth && transposed == rhs.transposed && vnni == rhs.vnni;
 }
 
 std::string LoadData::getBlockLoadName() const {
   return std::string("llvm.genx.GenISA.LSC2DBlockRead.") +
-         (1 < vectorLength ? "v" + std::to_string(vectorLength)
-                           : std::string()) +
-         "i" + std::to_string(scalarBitWidth);
+         (1 < vectorLength ? "v" + std::to_string(vectorLength) : std::string()) + "i" + std::to_string(scalarBitWidth);
 }
 
 // ===========================================================================
@@ -1546,15 +1452,13 @@ bool Load::tracePicks() {
 PossibleDims Load::possibleDims() {
   if (!trace || !trace->picks || trace->picks->empty())
     return {};
-  std::optional<MBRanges> minSplitOpt =
-      makeGridUniformPicks(*trace->picks, vectorLength, groupLength());
+  std::optional<MBRanges> minSplitOpt = makeGridUniformPicks(*trace->picks, vectorLength, groupLength());
   if (!minSplitOpt || !minSplitOpt->size())
     return {};
   // those are already PowerOf2Ceil'ed:
   unsigned minGrSize = getMinGroupLength(minSplitOpt->front().grSize);
   unsigned minNumOfGr = minSplitOpt->front().numOfGr;
-  DBG(dbgs() << "    -- Minimal block size = " << minGrSize << " x "
-             << minNumOfGr << ".\n");
+  DBG(dbgs() << "    -- Minimal block size = " << minGrSize << " x " << minNumOfGr << ".\n");
 
   // For multiple blocks, if dims.numOfGr > 1, the subgroup cannot cover the
   // entire group, i.e., dims.grSize < groupLength(). However, if dims.numOfGr =
@@ -1562,18 +1466,15 @@ PossibleDims Load::possibleDims() {
   // proper subdimension of 4x4, but 4x2 is not, as it is equivalent to 8x1.
   PossibleDims dims;
   // First, dimensions with a single group.
-  for (unsigned grSize = std::max(groupLength() * minNumOfGr, minGrSize);
-       grSize <= vectorLength; grSize *= 2) {
-    if (grSize < config().minSplitSize_E ||
-        grSize * scalarMemSize_B() < config().minSplitSize_B)
+  for (unsigned grSize = std::max(groupLength() * minNumOfGr, minGrSize); grSize <= vectorLength; grSize *= 2) {
+    if (grSize < config().minSplitSize_E || grSize * scalarMemSize_B() < config().minSplitSize_B)
       continue;
     dims.insert({grSize, 1});
   }
   // Next, dimensions with a multiple groups.
   for (unsigned grSize = minGrSize; grSize < groupLength(); grSize *= 2) {
     for (unsigned numOfGr = minNumOfGr; numOfGr <= numOfBlocks; numOfGr *= 2) {
-      if (grSize * numOfGr < config().minSplitSize_E ||
-          grSize * numOfGr * scalarMemSize_B() < config().minSplitSize_B)
+      if (grSize * numOfGr < config().minSplitSize_E || grSize * numOfGr * scalarMemSize_B() < config().minSplitSize_B)
         continue;
       dims.insert({grSize, numOfGr});
     }
@@ -1584,9 +1485,7 @@ PossibleDims Load::possibleDims() {
   } else if (dims.size() == 1) {
     DBG(dbgs() << " -- [SKIP] No possible splits.\n");
   }
-  DBG(dbgs() << "    -- Possible dimensions:\n";
-      for (const Dims &d
-           : dims) { dbgs() << "       -- " << d << "\n"; });
+  DBG(dbgs() << "    -- Possible dimensions:\n"; for (const Dims &d : dims) { dbgs() << "       -- " << d << "\n"; });
   return dims;
 }
 
@@ -1596,9 +1495,8 @@ Load &Load::splitFlat(const MBRange &range) {
   vectorLength = static_cast<unsigned>(range.size());
   numOfBlocks = blockEnd - blockStart + 1;
   xOffset_E += static_cast<int>(blockStart * blockWidth_E);
-  yOffset_P +=
-      static_cast<int>(range.first % blockHeight_E); // old block height
-  blockHeight_E = range.size() / numOfBlocks;        // new block height
+  yOffset_P += static_cast<int>(range.first % blockHeight_E); // old block height
+  blockHeight_E = range.size() / numOfBlocks;                 // new block height
   return *this;
 }
 
@@ -1617,17 +1515,13 @@ Load &Load::splitVNNI(const MBRange &range) {
   vectorLength = static_cast<unsigned>(range.size());
   numOfBlocks = blockEnd - blockStart + 1;
   xOffset_E += static_cast<int>(blockStart * blockWidth_E);
-  yOffset_P += static_cast<int>((range.first % blockHeight_S) *
-                                scalarInElts); // old block height
-  blockHeight_E =
-      (range.size() / numOfBlocks) * scalarInElts; // new block height
+  yOffset_P += static_cast<int>((range.first % blockHeight_S) * scalarInElts); // old block height
+  blockHeight_E = (range.size() / numOfBlocks) * scalarInElts;                 // new block height
   return *this;
 }
 
 std::unique_ptr<Load> Load::splitLoadData(const MBRange &range) {
-  unsigned scalarToEltRatio =
-      scalarBitWidth /
-      elementBitWidth; // scalarBitWidth % elementBitWidth == 0 was checked.
+  unsigned scalarToEltRatio = scalarBitWidth / elementBitWidth; // scalarBitWidth % elementBitWidth == 0 was checked.
   if (range.first % scalarToEltRatio) {
     DBG(dbgs() << " -- [ERROR] Position of the first element does not "
                   "divide the scalar to element ratio.\n");
@@ -1671,39 +1565,28 @@ CallInst *Load::putBlockLoad(IRBuilder<> &builder) {
     args[i] = GII->getArgOperand(i);
   }
 
-  Function *newLoadFun =
-      builder.GetInsertBlock()->getModule()->getFunction(getBlockLoadName());
+  Function *newLoadFun = builder.GetInsertBlock()->getModule()->getFunction(getBlockLoadName());
   if (!newLoadFun) {
-    newLoadFun = createFunction(
-        getBlockLoadName(), builder.GetInsertBlock()->getModule(), args,
-        IGCLLVM::FixedVectorType::get(scalarTy, vectorLength),
-        GII->getCalledFunction());
+    newLoadFun = createFunction(getBlockLoadName(), builder.GetInsertBlock()->getModule(), args,
+                                IGCLLVM::FixedVectorType::get(scalarTy, vectorLength), GII->getCalledFunction());
   }
 
   args[LSC2D_BlockRead::argBlockWidth_inElts] = builder.getInt32(blockWidth_E);
-  args[LSC2D_BlockRead::argBlockHeight_inElts] =
-      builder.getInt32(blockHeight_E);
+  args[LSC2D_BlockRead::argBlockHeight_inElts] = builder.getInt32(blockHeight_E);
   args[LSC2D_BlockRead::argNumOfBlocks] = builder.getInt32(numOfBlocks);
-  Value *valX =
-      createAdd(builder, GII->getArgOperand(LSC2D_BlockRead::argXOffset_inElts),
-                xOffset_E);
-  Value *valY = createAdd(
-      builder, GII->getArgOperand(LSC2D_BlockRead::argYOffset_inPitches),
-      yOffset_P);
+  Value *valX = createAdd(builder, GII->getArgOperand(LSC2D_BlockRead::argXOffset_inElts), xOffset_E);
+  Value *valY = createAdd(builder, GII->getArgOperand(LSC2D_BlockRead::argYOffset_inPitches), yOffset_P);
   args[LSC2D_BlockRead::argXOffset_inElts] = valX;
   args[LSC2D_BlockRead::argYOffset_inPitches] = valY;
 
-  CallInst *newGII =
-      builder.CreateCall(newLoadFun->getFunctionType(), newLoadFun, args);
+  CallInst *newGII = builder.CreateCall(newLoadFun->getFunctionType(), newLoadFun, args);
   GII = cast<GenIntrinsicInst>(newGII);
   return newGII;
 }
 
 bool Load::fillBlockData() {
-  if (!(isa<ConstantInt>(
-            GII->getArgOperand(LSC2D_BlockRead::argBlockHeight_inElts)) &&
-        isa<ConstantInt>(
-            GII->getArgOperand(LSC2D_BlockRead::argBlockWidth_inElts)) &&
+  if (!(isa<ConstantInt>(GII->getArgOperand(LSC2D_BlockRead::argBlockHeight_inElts)) &&
+        isa<ConstantInt>(GII->getArgOperand(LSC2D_BlockRead::argBlockWidth_inElts)) &&
         isa<ConstantInt>(GII->getArgOperand(LSC2D_BlockRead::argSizeInBits)) &&
         isa<ConstantInt>(GII->getArgOperand(LSC2D_BlockRead::argNumOfBlocks)) &&
         isa<ConstantInt>(GII->getArgOperand(LSC2D_BlockRead::argIsTranspose)) &&
@@ -1741,8 +1624,7 @@ void Load::removeOldInstructions() {
 namespace IGC::LS {
 
 struct LoadSplitter::Impl {
-  static std::unique_ptr<LoadSplitter::Impl>
-  Create(Function *inF, CodeGenContext *inCGC, IGCLivenessAnalysis *inRPE);
+  static std::unique_ptr<LoadSplitter::Impl> Create(Function *inF, CodeGenContext *inCGC, IGCLivenessAnalysis *inRPE);
 
   bool isRPHigh(BasicBlock *BB);
   PossibleDims possibleDims(GenIntrinsicInst *GII);
@@ -1750,8 +1632,7 @@ struct LoadSplitter::Impl {
   bool splitAllToSmallest(BasicBlock *BB);
 
 private:
-  SmallDenseMap<GenIntrinsicInst *, std::unique_ptr<Load>, DEF_NUM_OF_LOADS>
-      blockLoadsMap;
+  SmallDenseMap<GenIntrinsicInst *, std::unique_ptr<Load>, DEF_NUM_OF_LOADS> blockLoadsMap;
   SmallDenseMap<GenIntrinsicInst *, Dims, DEF_NUM_OF_LOADS> dimsMap;
 
   using SplitLoads = SmallVector<std::unique_ptr<Load>, DEF_NUM_OF_LOADS>;
@@ -1762,11 +1643,8 @@ private:
 
 // ==========================================================================
 
-std::unique_ptr<LoadSplitter> LoadSplitter::Create(Function *inF,
-                                                   CodeGenContext *inCGC,
-                                                   IGCLivenessAnalysis *inRPE) {
-  std::unique_ptr<LoadSplitter> ret =
-      std::unique_ptr<LoadSplitter>(new LoadSplitter());
+std::unique_ptr<LoadSplitter> LoadSplitter::Create(Function *inF, CodeGenContext *inCGC, IGCLivenessAnalysis *inRPE) {
+  std::unique_ptr<LoadSplitter> ret = std::unique_ptr<LoadSplitter>(new LoadSplitter());
   ret->impl = Impl::Create(inF, inCGC, inRPE);
   if (!ret->impl) {
     return nullptr;
@@ -1776,25 +1654,17 @@ std::unique_ptr<LoadSplitter> LoadSplitter::Create(Function *inF,
 
 bool LoadSplitter::isRPHigh(BasicBlock *BB) { return impl->isRPHigh(BB); }
 
-PossibleDims LoadSplitter::possibleDims(GenIntrinsicInst *GII) {
-  return impl->possibleDims(GII);
-}
+PossibleDims LoadSplitter::possibleDims(GenIntrinsicInst *GII) { return impl->possibleDims(GII); }
 
-bool LoadSplitter::splitAllToSmallest(BasicBlock *BB) {
-  return impl->splitAllToSmallest(BB);
-}
+bool LoadSplitter::splitAllToSmallest(BasicBlock *BB) { return impl->splitAllToSmallest(BB); }
 
-bool LoadSplitter::split(GenIntrinsicInst *GII, Dims dims) {
-  return impl->split(GII, dims);
-}
+bool LoadSplitter::split(GenIntrinsicInst *GII, Dims dims) { return impl->split(GII, dims); }
 
 // ==========================================================================
 
-std::unique_ptr<LoadSplitter::Impl>
-LoadSplitter::Impl::Create(Function *inF, CodeGenContext *inCGC,
-                           IGCLivenessAnalysis *inRPE) {
-  std::unique_ptr<LoadSplitter::Impl> ret =
-      std::unique_ptr<LoadSplitter::Impl>(new LoadSplitter::Impl());
+std::unique_ptr<LoadSplitter::Impl> LoadSplitter::Impl::Create(Function *inF, CodeGenContext *inCGC,
+                                                               IGCLivenessAnalysis *inRPE) {
+  std::unique_ptr<LoadSplitter::Impl> ret = std::unique_ptr<LoadSplitter::Impl>(new LoadSplitter::Impl());
   if (!config().initialize(inF, inCGC, inRPE)) {
     return nullptr;
   }
@@ -1802,10 +1672,8 @@ LoadSplitter::Impl::Create(Function *inF, CodeGenContext *inCGC,
 }
 
 bool LoadSplitter::Impl::isRPHigh(BasicBlock *BB) {
-  int regPressure = config().RPE->getMaxRegCountForBB(*BB, config().SIMD()) *
-                    config().sizeOfRegs_B;
-  DBG(dbgs() << " -- Reg Pressure = " << regPressure
-             << " B, threshold = " << config().splitThreshold_B << " B.\n");
+  int regPressure = config().RPE->getMaxRegCountForBB(*BB, config().SIMD()) * config().sizeOfRegs_B;
+  DBG(dbgs() << " -- Reg Pressure = " << regPressure << " B, threshold = " << config().splitThreshold_B << " B.\n");
   if (regPressure <= config().splitThreshold_B) {
     DBG(dbgs() << " [SKIP] Register pressure below threshold.\n");
     return false;
@@ -1832,8 +1700,7 @@ bool LoadSplitter::Impl::processBlockLoad(GenIntrinsicInst *GII) {
     return false;
   }
   DBG(dbgs() << " -- [OK] Picks are valid:\n";
-      for (const Pick &pick
-           : *load->trace->picks) { dbgs() << "    -- " << pick << "\n"; });
+      for (const Pick &pick : *load->trace->picks) { dbgs() << "    -- " << pick << "\n"; });
   blockLoadsMap[GII] = std::move(load);
   return true;
 }
@@ -1856,8 +1723,7 @@ PossibleDims LoadSplitter::Impl::possibleDims(GenIntrinsicInst *GII) {
   return dims;
 }
 
-LoadSplitter::Impl::SplitLoads
-LoadSplitter::Impl::splitBlockLoad(Load &load, const MBRanges &splits) {
+LoadSplitter::Impl::SplitLoads LoadSplitter::Impl::splitBlockLoad(Load &load, const MBRanges &splits) {
   unsigned numOfSplits = load.vectorLength / splits.front().size();
   if (numOfSplits == 1) {
     DBG(dbgs() << " -- [SKIP] No need to split the block load.\n");
@@ -1906,8 +1772,7 @@ bool LoadSplitter::Impl::split(GenIntrinsicInst *GII, Dims dims) {
     for (unsigned r = 0; r < mbrs.size(); ++r) {
       const MBRange &mbr = mbrs[r];
       for (const Pick &pick : picks) {
-        if (mbr.containsOrExcludes(pick, false) ==
-            MBRange::Containment::Intersects) {
+        if (mbr.containsOrExcludes(pick, false) == MBRange::Containment::Intersects) {
           return false;
         }
       }
@@ -1922,8 +1787,7 @@ bool LoadSplitter::Impl::split(GenIntrinsicInst *GII, Dims dims) {
     DBG(dbgs() << " -- [SKIP] Nothing to split.\n");
     return false;
   }
-  std::optional<MBRanges> splitsOpt = makeUniform(
-      dims.grSize, load.groupLength(), dims.numOfGr, load.vectorLength);
+  std::optional<MBRanges> splitsOpt = makeUniform(dims.grSize, load.groupLength(), dims.numOfGr, load.vectorLength);
   if (!splitsOpt) {
     DBG(dbgs() << " -- [ERROR] Split is not valid.\n");
     return false;
@@ -1974,8 +1838,7 @@ bool LoadSplitter::Impl::splitAllToSmallest(BasicBlock *BB) {
     DBG(dbgs() << " [SKIP] No loads left to split.\n");
     return false;
   }
-  DBG(dbgs() << " -- Number of block loads = " << blockLoadsMap.size()
-             << ".\n");
+  DBG(dbgs() << " -- Number of block loads = " << blockLoadsMap.size() << ".\n");
 
   DBG(dbgs() << "\nCalculating possible splits:\n");
   for (auto &[GII, loadPtr] : blockLoadsMap) {
@@ -2040,26 +1903,21 @@ char SplitLoads::ID = 0;
 #define PASS_DESCRIPTION "Splits 2D LSC block loads into smaller chunks"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(SplitLoads, PASS_FLAG, PASS_DESCRIPTION,
-                          PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(SplitLoads, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
-IGC_INITIALIZE_PASS_END(SplitLoads, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
-                        PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(SplitLoads, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 FunctionPass *IGC::createSplitLoadsPass() { return new SplitLoads(); }
 
-SplitLoads::SplitLoads() : FunctionPass(ID) {
-  initializeSplitLoadsPass(*PassRegistry::getPassRegistry());
-}
+SplitLoads::SplitLoads() : FunctionPass(ID) { initializeSplitLoadsPass(*PassRegistry::getPassRegistry()); }
 
 bool SplitLoads::runOnFunction(Function &F) {
   if (!config().enableLoadSplitting || skipFunction(F)) {
     return false;
   }
-  loadSplitter = LoadSplitter::Create(
-      &F, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
-      &getAnalysis<IGCLivenessAnalysis>());
+  loadSplitter = LoadSplitter::Create(&F, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                                      &getAnalysis<IGCLivenessAnalysis>());
   if (!loadSplitter) {
     return false;
   }
@@ -2067,8 +1925,7 @@ bool SplitLoads::runOnFunction(Function &F) {
   DBG(dbgs() << "\nSPLITLOADS ON: " << F.getName() << "\n");
 
   auto pad = [](const std::string &s, size_t len) -> std::string {
-    return s.size() < len ? s + std::string(len - s.size(), ' ')
-                          : s.substr(0, len);
+    return s.size() < len ? s + std::string(len - s.size(), ' ') : s.substr(0, len);
   };
 
   bool codeChanged = false;
@@ -2076,8 +1933,7 @@ bool SplitLoads::runOnFunction(Function &F) {
     bool splitterChangesCode = loadSplitter->splitAllToSmallest(&BB);
     codeChanged |= splitterChangesCode;
     if (splitterChangesCode) {
-      DBG(dbgs() << "BB: " << pad(BB.getName().str(), 20)
-                 << " : SPLIT SUCCESSFUL.\n");
+      DBG(dbgs() << "BB: " << pad(BB.getName().str(), 20) << " : SPLIT SUCCESSFUL.\n");
     } else {
       DBG(dbgs() << "BB: " << pad(BB.getName().str(), 20) << " : NO SPLITS.\n");
     }

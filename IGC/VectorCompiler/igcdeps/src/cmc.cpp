@@ -30,60 +30,58 @@ SPDX-License-Identifier: MIT
 using namespace vc;
 using namespace llvm;
 
-CMKernel::CMKernel(const PLATFORM& platform)
-    : m_platform(platform)
-    , m_btiLayout(new USC::SShaderStageBTLayout)
-{
-    std::memset(m_btiLayout.getModifiableLayout(), 0, sizeof(USC::SShaderStageBTLayout));
+CMKernel::CMKernel(const PLATFORM &platform)
+    : m_platform(platform), m_btiLayout(new USC::SShaderStageBTLayout) {
+  std::memset(m_btiLayout.getModifiableLayout(), 0,
+              sizeof(USC::SShaderStageBTLayout));
 }
 
-CMKernel::~CMKernel()
-{
-    // TODO: refactor memory managment.
-    m_kernelInfo.m_kernelProgram.simd1.Destroy();
-    delete m_btiLayout.getModifiableLayout();
+CMKernel::~CMKernel() {
+  // TODO: refactor memory managment.
+  m_kernelInfo.m_kernelProgram.simd1.Destroy();
+  delete m_btiLayout.getModifiableLayout();
 }
 
-static zebin::PreDefinedAttrGetter::ArgType getZEArgType(iOpenCL::DATA_PARAMETER_TOKEN type) {
-    switch(type) {
-    case iOpenCL::DATA_PARAMETER_ENQUEUED_LOCAL_WORK_SIZE:
-        return zebin::PreDefinedAttrGetter::ArgType::local_size;
-    case iOpenCL::DATA_PARAMETER_GLOBAL_WORK_OFFSET:
-        return zebin::PreDefinedAttrGetter::ArgType::global_id_offset;
-    case iOpenCL::DATA_PARAMETER_NUM_WORK_GROUPS:
-        // copied from OCL behavior
-        return zebin::PreDefinedAttrGetter::ArgType::group_count;
-    default:
-        IGC_ASSERT_MESSAGE(0, "unsupported argument type");
-        return zebin::PreDefinedAttrGetter::ArgType::arg_byvalue;
-    }
+static zebin::PreDefinedAttrGetter::ArgType
+getZEArgType(iOpenCL::DATA_PARAMETER_TOKEN type) {
+  switch (type) {
+  case iOpenCL::DATA_PARAMETER_ENQUEUED_LOCAL_WORK_SIZE:
+    return zebin::PreDefinedAttrGetter::ArgType::local_size;
+  case iOpenCL::DATA_PARAMETER_GLOBAL_WORK_OFFSET:
+    return zebin::PreDefinedAttrGetter::ArgType::global_id_offset;
+  case iOpenCL::DATA_PARAMETER_NUM_WORK_GROUPS:
+    // copied from OCL behavior
+    return zebin::PreDefinedAttrGetter::ArgType::group_count;
+  default:
+    IGC_ASSERT_MESSAGE(0, "unsupported argument type");
+    return zebin::PreDefinedAttrGetter::ArgType::arg_byvalue;
+  }
 }
 
-static zebin::PreDefinedAttrGetter::ArgAccessType
-getZEArgAccessType(GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType accessKind)
-{
-    using ArgAccessKind = GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType;
-    switch(accessKind)
-    {
-    case ArgAccessKind::ReadOnly:
-        return zebin::PreDefinedAttrGetter::ArgAccessType::readonly;
-    case ArgAccessKind::WriteOnly:
-        return zebin::PreDefinedAttrGetter::ArgAccessType::writeonly;
-    case ArgAccessKind::ReadWrite:
-        return zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
-    case ArgAccessKind::None:
-    default:
-        IGC_ASSERT_MESSAGE(0, "invalid access type");
-        return zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
-    }
+static zebin::PreDefinedAttrGetter::ArgAccessType getZEArgAccessType(
+    GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType accessKind) {
+  using ArgAccessKind = GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType;
+  switch (accessKind) {
+  case ArgAccessKind::ReadOnly:
+    return zebin::PreDefinedAttrGetter::ArgAccessType::readonly;
+  case ArgAccessKind::WriteOnly:
+    return zebin::PreDefinedAttrGetter::ArgAccessType::writeonly;
+  case ArgAccessKind::ReadWrite:
+    return zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
+  case ArgAccessKind::None:
+  default:
+    IGC_ASSERT_MESSAGE(0, "invalid access type");
+    return zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
+  }
 }
 
 void CMKernel::createConstArgumentAnnotation(unsigned argNo,
                                              unsigned sizeInBytes,
                                              unsigned payloadPosition,
                                              unsigned offsetInArg) {
-    zebin::ZEInfoBuilder::addPayloadArgumentByValue(m_kernelInfo.m_zePayloadArgs,
-        payloadPosition, sizeInBytes, argNo, offsetInArg, false);
+  zebin::ZEInfoBuilder::addPayloadArgumentByValue(m_kernelInfo.m_zePayloadArgs,
+                                                  payloadPosition, sizeInBytes,
+                                                  argNo, offsetInArg, false);
 }
 
 void CMKernel::createSamplerAnnotation(const KernelArgInfo &ArgInfo,
@@ -129,27 +127,25 @@ void CMKernel::createSamplerAnnotation(const KernelArgInfo &ArgInfo,
 }
 
 static iOpenCL::IMAGE_MEMORY_OBJECT_TYPE
-getOCLImageType(llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType Kind)
-{
-    using KindType = llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType;
-    switch (Kind)
-    {
-    case KindType::Image1D:
-        return iOpenCL::IMAGE_MEMORY_OBJECT_1D;
-    case KindType::Image1DArray:
-        return iOpenCL::IMAGE_MEMORY_OBJECT_1D_ARRAY;
-    case KindType::Image2D:
-        return iOpenCL::IMAGE_MEMORY_OBJECT_2D;
-    case KindType::Image2DArray:
-        return iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY;
-    case KindType::Image2DMediaBlock:
-        return iOpenCL::IMAGE_MEMORY_OBJECT_2D_MEDIA_BLOCK;
-    case KindType::Image3D:
-        return iOpenCL::IMAGE_MEMORY_OBJECT_3D;
-    default:
-        IGC_ASSERT_MESSAGE(0, "Unexpected image kind");
-        return iOpenCL::IMAGE_MEMORY_OBJECT_INVALID;
-    }
+getOCLImageType(llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType Kind) {
+  using KindType = llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType;
+  switch (Kind) {
+  case KindType::Image1D:
+    return iOpenCL::IMAGE_MEMORY_OBJECT_1D;
+  case KindType::Image1DArray:
+    return iOpenCL::IMAGE_MEMORY_OBJECT_1D_ARRAY;
+  case KindType::Image2D:
+    return iOpenCL::IMAGE_MEMORY_OBJECT_2D;
+  case KindType::Image2DArray:
+    return iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY;
+  case KindType::Image2DMediaBlock:
+    return iOpenCL::IMAGE_MEMORY_OBJECT_2D_MEDIA_BLOCK;
+  case KindType::Image3D:
+    return iOpenCL::IMAGE_MEMORY_OBJECT_3D;
+  default:
+    IGC_ASSERT_MESSAGE(0, "Unexpected image kind");
+    return iOpenCL::IMAGE_MEMORY_OBJECT_INVALID;
+  }
 }
 
 static inline bool checkStateful(unsigned int BTI) {
@@ -197,11 +193,12 @@ void CMKernel::createImageAnnotation(const KernelArgInfo &ArgInfo,
     ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs, BTI, Index);
 }
 
-void CMKernel::createImplicitArgumentsAnnotation(unsigned payloadPosition)
-{
-    createSizeAnnotation(payloadPosition, iOpenCL::DATA_PARAMETER_GLOBAL_WORK_OFFSET);
-    payloadPosition += 3 * iOpenCL::DATA_PARAMETER_DATA_SIZE;
-    createSizeAnnotation(payloadPosition, iOpenCL::DATA_PARAMETER_LOCAL_WORK_SIZE);
+void CMKernel::createImplicitArgumentsAnnotation(unsigned payloadPosition) {
+  createSizeAnnotation(payloadPosition,
+                       iOpenCL::DATA_PARAMETER_GLOBAL_WORK_OFFSET);
+  payloadPosition += 3 * iOpenCL::DATA_PARAMETER_DATA_SIZE;
+  createSizeAnnotation(payloadPosition,
+                       iOpenCL::DATA_PARAMETER_LOCAL_WORK_SIZE);
 }
 
 void CMKernel::createPointerGlobalAnnotation(const KernelArgInfo &ArgInfo,
@@ -274,19 +271,18 @@ void CMKernel::createBufferStatefulAnnotation(unsigned argNo,
 }
 
 void CMKernel::createSizeAnnotation(unsigned initPayloadPosition,
-                                    iOpenCL::DATA_PARAMETER_TOKEN Type)
-{
-    zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
-        getZEArgType(Type), initPayloadPosition,
-        iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
+                                    iOpenCL::DATA_PARAMETER_TOKEN Type) {
+  zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
+      m_kernelInfo.m_zePayloadArgs, getZEArgType(Type), initPayloadPosition,
+      iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
 }
 
 void CMKernel::createAssertBufferArgAnnotation(unsigned Index, unsigned BTI,
                                                unsigned Size,
                                                unsigned ArgOffset) {
-    zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
-        m_kernelInfo.m_zePayloadArgs,
-        zebin::PreDefinedAttrGetter::ArgType::assert_buffer, ArgOffset, Size);
+  zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
+      m_kernelInfo.m_zePayloadArgs,
+      zebin::PreDefinedAttrGetter::ArgType::assert_buffer, ArgOffset, Size);
 }
 
 void CMKernel::createPrintfBufferArgAnnotation(unsigned Index, unsigned BTI,
@@ -314,56 +310,55 @@ void CMKernel::createImplArgsBufferAnnotation(unsigned Size,
 }
 
 // TODO: refactor this function with the OCL part.
-void CMKernel::RecomputeBTLayout(int numUAVs, int numResources)
-{
-    USC::SShaderStageBTLayout* layout = m_btiLayout.getModifiableLayout();
+void CMKernel::RecomputeBTLayout(int numUAVs, int numResources) {
+  USC::SShaderStageBTLayout *layout = m_btiLayout.getModifiableLayout();
 
-    // The BT layout contains the minimum and the maximum number BTI for each kind
-    // of resource. E.g. UAVs may be mapped to BTIs 0..3, SRVs to 4..5, and the scratch
-    // surface to 6.
-    // Note that the names are somewhat misleading. They are used for the sake of consistency
-    // with the ICBE sources.
+  // The BT layout contains the minimum and the maximum number BTI for each kind
+  // of resource. E.g. UAVs may be mapped to BTIs 0..3, SRVs to 4..5, and the
+  // scratch surface to 6. Note that the names are somewhat misleading. They are
+  // used for the sake of consistency with the ICBE sources.
 
-    // Some fields are always 0 for OCL.
-    layout->resourceNullBoundOffset = 0;
-    layout->immediateConstantBufferOffset = 0;
-    layout->interfaceConstantBufferOffset = 0;
-    layout->constantBufferNullBoundOffset = 0;
-    layout->JournalIdx = 0;
-    layout->JournalCounterIdx = 0;
+  // Some fields are always 0 for OCL.
+  layout->resourceNullBoundOffset = 0;
+  layout->immediateConstantBufferOffset = 0;
+  layout->interfaceConstantBufferOffset = 0;
+  layout->constantBufferNullBoundOffset = 0;
+  layout->JournalIdx = 0;
+  layout->JournalCounterIdx = 0;
 
-    // And TGSM (aka SLM) is always 254.
-    layout->TGSMIdx = 254;
+  // And TGSM (aka SLM) is always 254.
+  layout->TGSMIdx = 254;
 
-    int index = 0;
+  int index = 0;
 
-    // Now, allocate BTIs for all the SRVs.
-    layout->minResourceIdx = index;
-    if (numResources) {
-        index += numResources - 1;
-        layout->maxResourceIdx = index++;
-    } else {
-        layout->maxResourceIdx = index;
-    }
+  // Now, allocate BTIs for all the SRVs.
+  layout->minResourceIdx = index;
+  if (numResources) {
+    index += numResources - 1;
+    layout->maxResourceIdx = index++;
+  } else {
+    layout->maxResourceIdx = index;
+  }
 
-    // Now, ConstantBuffers - used as a placeholder for the inline constants, if present.
-    layout->minConstantBufferIdx = index;
-    layout->maxConstantBufferIdx = index;
+  // Now, ConstantBuffers - used as a placeholder for the inline constants, if
+  // present.
+  layout->minConstantBufferIdx = index;
+  layout->maxConstantBufferIdx = index;
 
-    // Now, the UAVs
-    layout->minUAVIdx = index;
-    if (numUAVs) {
-        index += numUAVs - 1;
-        layout->maxUAVIdx = index++;
-    } else {
-        layout->maxUAVIdx = index;
-    }
+  // Now, the UAVs
+  layout->minUAVIdx = index;
+  if (numUAVs) {
+    index += numUAVs - 1;
+    layout->maxUAVIdx = index++;
+  } else {
+    layout->maxUAVIdx = index;
+  }
 
-    // And finally, the scratch surface
-    layout->surfaceScratchIdx = index++;
+  // And finally, the scratch surface
+  layout->surfaceScratchIdx = index++;
 
-    // Overall number of used BT entries, not including TGSM.
-    layout->maxBTsize = index;
+  // Overall number of used BT entries, not including TGSM.
+  layout->maxBTsize = index;
 }
 
 static void setFuncSectionInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
@@ -487,7 +482,7 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
 
 // a helper function to get the conservative vISA stack size when having
 // stack call
-static uint32_t getConservativeVISAStackSize(const PLATFORM& platform) {
+static uint32_t getConservativeVISAStackSize(const PLATFORM &platform) {
   auto isPVCXT = [](const PLATFORM &platform) {
     return platform.eProductFamily == IGFX_PVC &&
            platform.usRevId >= REVISION_B;
@@ -722,8 +717,9 @@ fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
   IGC_ASSERT_MESSAGE(
       ModuleInfo.ConstString.Relocations.empty(),
       "relocations inside constant string section are not supported");
-  ProgramInfo.m_hasCrossThreadOffsetRelocations = HasCrossThreadOffsetRelocations;
-  ProgramInfo.m_hasPerThreadOffsetRelocations  = HasPerThreadOffsetRelocations;
+  ProgramInfo.m_hasCrossThreadOffsetRelocations =
+      HasCrossThreadOffsetRelocations;
+  ProgramInfo.m_hasPerThreadOffsetRelocations = HasPerThreadOffsetRelocations;
 };
 
 void vc::createBinary(
@@ -736,6 +732,6 @@ void vc::createBinary(
     CMProgram.m_kernels.push_back(std::move(K));
   }
   fillOCLProgramInfo(*CMProgram.m_programInfo, CompiledModule.ModuleInfo,
-      CMProgram.HasCrossThreadOffsetRelocations(),
-      CMProgram.HasPerThreadOffsetRelocations());
+                     CMProgram.HasCrossThreadOffsetRelocations(),
+                     CMProgram.HasPerThreadOffsetRelocations());
 }

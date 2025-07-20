@@ -22,10 +22,10 @@ using uint64_t = unsigned long;
 using int128_t = long long;
 using uint128_t = unsigned long long;
 
-using intptr_t =
-    typename cl::detail::conditional<sizeof(void *) == 4, int32_t, int64_t>::type;
-using uintptr_t =
-    typename cl::detail::conditional<sizeof(void *) == 4, uint32_t, uint64_t>::type;
+using intptr_t = typename cl::detail::conditional<sizeof(void *) == 4, int32_t,
+                                                  int64_t>::type;
+using uintptr_t = typename cl::detail::conditional<sizeof(void *) == 4,
+                                                   uint32_t, uint64_t>::type;
 
 using uchar = unsigned char;
 using ushort = unsigned short;

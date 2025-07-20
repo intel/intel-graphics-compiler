@@ -87,10 +87,8 @@ public:
   /// @param isVectorized true if the underlying virtual variable has been
   /// vectorized during codegen.
   /// @param m points to VISAModule corresponding to this location
-  VISAVariableLocation(unsigned int surfaceReg, unsigned int locationValue,
-                       bool isRegister, bool isInMemory,
-                       unsigned int vectorNumElements, bool isVectorized,
-                       const VISAModule *m) {
+  VISAVariableLocation(unsigned int surfaceReg, unsigned int locationValue, bool isRegister, bool isInMemory,
+                       unsigned int vectorNumElements, bool isVectorized, const VISAModule *m) {
     m_hasSurface = true;
     m_surfaceReg = surfaceReg;
     m_hasLocation = true;
@@ -123,10 +121,8 @@ public:
   /// @param isGlobalAddrSpace true if variable represents a src var belonging
   /// to global address space.
   /// @param m points to VISAModule corresponding to this location
-  VISAVariableLocation(unsigned int locationValue, bool isRegister,
-                       bool isInMemory, unsigned int vectorNumElements,
-                       bool isVectorized, bool isGlobalAddrSpace,
-                       const VISAModule *m) {
+  VISAVariableLocation(unsigned int locationValue, bool isRegister, bool isInMemory, unsigned int vectorNumElements,
+                       bool isVectorized, bool isGlobalAddrSpace, const VISAModule *m) {
     m_hasLocation = true;
     m_isInMemory = isInMemory;
     m_isRegister = isRegister;
@@ -144,9 +140,7 @@ public:
   /// @param locationValue value indicates the address/register of the location.
   /// @param offsets list of offsets for each piece of location
   /// @param m points to VISAModule corresponding to this location
-  VISAVariableLocation(unsigned int locationValue,
-                       llvm::SmallVector<unsigned, 0> &&offsets,
-                       const VISAModule *m)
+  VISAVariableLocation(unsigned int locationValue, llvm::SmallVector<unsigned, 0> &&offsets, const VISAModule *m)
       : m_offsets(std::move(offsets)) {
     m_hasLocation = true;
     m_isRegister = true;
@@ -164,7 +158,7 @@ public:
   VISAVariableLocation &operator=(const VISAVariableLocation &) = default;
 
   /// @brief Destructor
-  ~VISAVariableLocation(){};
+  ~VISAVariableLocation() {};
 
   // Getter methods
   bool IsImmediate() const { return m_isImmediate; }
@@ -191,8 +185,7 @@ public:
   bool IsSLM() const { return m_isSLM; }
 
   void AddSecondReg(unsigned int locationValue) {
-    IGC_ASSERT_MESSAGE(m_isRegister,
-                       "Second location must be filled only for regs");
+    IGC_ASSERT_MESSAGE(m_isRegister, "Second location must be filled only for regs");
     m_locationSecondReg = locationValue;
   }
   bool HasLocationSecondReg() const { return m_locationSecondReg != ~0; }
@@ -285,17 +278,11 @@ private:
 public:
   Address(GfxAddress addr = 0) : m_addr(addr) {}
 
-  Space GetSpace() const {
-    return (Space)((m_addr >> c_space_shift) & c_space_mask);
-  }
+  Space GetSpace() const { return (Space)((m_addr >> c_space_shift) & c_space_mask); }
 
-  uint32_t GetIndex() const {
-    return (uint32_t)((m_addr >> c_index_shift) & c_index_mask);
-  }
+  uint32_t GetIndex() const { return (uint32_t)((m_addr >> c_index_shift) & c_index_mask); }
 
-  uint64_t GetOffset() const {
-    return ((m_addr >> c_offset_shift) & c_offset_mask);
-  }
+  uint64_t GetOffset() const { return ((m_addr >> c_offset_shift) & c_offset_mask); }
 
   uint64_t GetAddress() const { return m_addr; }
 
@@ -308,20 +295,17 @@ public:
   void SetSpace(Space space) {
     GfxAddress s = static_cast<GfxAddress>(space);
     IGC_ASSERT(s == (s & c_space_mask));
-    m_addr = (m_addr & ~(c_space_mask << c_space_shift)) |
-             ((s & c_space_mask) << c_space_shift);
+    m_addr = (m_addr & ~(c_space_mask << c_space_shift)) | ((s & c_space_mask) << c_space_shift);
   }
 
   void SetIndex(uint32_t index) {
     IGC_ASSERT(index == (index & c_index_mask));
-    m_addr = (m_addr & ~(c_index_mask << c_index_shift)) |
-             ((index & c_index_mask) << c_index_shift);
+    m_addr = (m_addr & ~(c_index_mask << c_index_shift)) | ((index & c_index_mask) << c_index_shift);
   }
 
   void SetOffset(uint64_t offset) {
     IGC_ASSERT(offset == (offset & c_offset_mask));
-    m_addr = (m_addr & ~(c_offset_mask << c_offset_shift)) |
-             ((offset & c_offset_mask) << c_offset_shift);
+    m_addr = (m_addr & ~(c_offset_mask << c_offset_shift)) | ((offset & c_offset_mask) << c_offset_shift);
   }
 
   void Set(Space space, uint32_t index, uint64_t offset) {
@@ -341,8 +325,7 @@ const unsigned int INVALID_SIZE = (~0);
 class InstructionInfo {
 public:
   InstructionInfo() : m_size(INVALID_SIZE), m_offset(0) {}
-  InstructionInfo(unsigned int size, unsigned int offset)
-      : m_size(size), m_offset(offset) {}
+  InstructionInfo(unsigned int size, unsigned int offset) : m_size(size), m_offset(offset) {}
   unsigned int m_size;
   unsigned int m_offset;
 };
@@ -352,23 +335,15 @@ public:
 /// TODO: rename this class to something like VISAFunction/VISAObject
 class VISAModule {
 public:
-  enum class ObjectType {
-    UNKNOWN = 0,
-    KERNEL = 1,
-    STACKCALL_FUNC = 2,
-    SUBROUTINE = 3
-  };
+  enum class ObjectType { UNKNOWN = 0, KERNEL = 1, STACKCALL_FUNC = 2, SUBROUTINE = 3 };
 
   using InstList = std::vector<const llvm::Instruction *>;
   using iterator = InstList::iterator;
   using const_iterator = InstList::const_iterator;
-  using GenISARange =
-      llvm::SmallVector<std::pair<unsigned int, unsigned int>, 4>;
+  using GenISARange = llvm::SmallVector<std::pair<unsigned int, unsigned int>, 4>;
   using GenISARanges = llvm::SmallVector<GenISARange, 32>;
-  using GenISARangeIndex =
-      llvm::DenseMap<const llvm::Instruction *, std::size_t>;
-  using InstInfoMap =
-      llvm::DenseMap<const llvm::Instruction *, InstructionInfo>;
+  using GenISARangeIndex = llvm::DenseMap<const llvm::Instruction *, std::size_t>;
+  using InstInfoMap = llvm::DenseMap<const llvm::Instruction *, InstructionInfo>;
 
   /// Constants represents VISA register encoding in DWARF
   static constexpr unsigned int LOCAL_SURFACE_BTI = (254);
@@ -393,13 +368,11 @@ private:
   using VisaIndexToVisaSizeIndexMap = llvm::DenseMap<unsigned, VisaSizeIndex>;
   VisaIndexToVisaSizeIndexMap VisaIndexToVisaSizeIndex;
 
-  using VisaIndexToInstMap =
-      llvm::DenseMap<unsigned, const llvm::Instruction *>;
+  using VisaIndexToInstMap = llvm::DenseMap<unsigned, const llvm::Instruction *>;
   VisaIndexToInstMap VisaIndexToInst;
 
   // mapping between virtual registers and VarInfo (see VISADebugDecoder.hpp)
-  using VarInfoCache =
-      std::unordered_map<unsigned, const DbgDecoder::VarInfo *>;
+  using VarInfoCache = std::unordered_map<unsigned, const DbgDecoder::VarInfo *>;
 
   std::string m_triple = "vISA_64";
   bool IsPrimaryFunc = false;
@@ -434,21 +407,16 @@ public:
   /// @param StackCallContext is true for subroutines when caller is
   /// a stack call function. For non-subroutines this field contains
   /// no useful meaning.
-  VISAModule(llvm::Function *AssociatedFunc, bool IsPrimary,
-             bool StackCallContext = false)
+  VISAModule(llvm::Function *AssociatedFunc, bool IsPrimary, bool StackCallContext = false)
       : m_Func(AssociatedFunc), IsPrimaryFunc(IsPrimary) {
     IsStackCallContext = StackCallContext;
   }
 
   virtual ~VISAModule() {}
 
-  const VisaIndexToVisaSizeIndexMap &getVisaIndexToVisaSizeIndexLUT() const {
-    return VisaIndexToVisaSizeIndex;
-  }
+  const VisaIndexToVisaSizeIndexMap &getVisaIndexToVisaSizeIndexLUT() const { return VisaIndexToVisaSizeIndex; }
 
-  const VisaIndexToInstMap &getVisaIndexToInstLUT() const {
-    return VisaIndexToInst;
-  }
+  const VisaIndexToInstMap &getVisaIndexToInstLUT() const { return VisaIndexToInst; }
   /// @brief true if the underlying function correspond to the
   /// "primary entry point".
   bool isPrimaryFunc() const { return IsPrimaryFunc; }
@@ -509,8 +477,7 @@ public:
   /// instruction.
   /// @param Instruction to query.
   /// @return variable location in VISA.
-  virtual VISAVariableLocation
-  GetVariableLocation(const llvm::Instruction *pInst) const = 0;
+  virtual VISAVariableLocation GetVariableLocation(const llvm::Instruction *pInst) const = 0;
 
   /// @brief Updates VISA instruction id to current instruction number.
   virtual void UpdateVisaId() = 0;
@@ -523,39 +490,32 @@ public:
   virtual uint16_t GetSIMDSize() const = 0;
 
   /// @brief Return whether llvm instruction is the catch all intrinsic
-  virtual bool IsCatchAllIntrinsic(const llvm::Instruction *pInst) const {
-    return false;
-  }
+  virtual bool IsCatchAllIntrinsic(const llvm::Instruction *pInst) const { return false; }
 
   ///  @brief return false if inst is a placeholder instruction
   bool IsExecutableInst(const llvm::Instruction &inst);
-  const DbgDecoder::VarInfo *getVarInfo(const VISAObjectDebugInfo &VD,
-                                        unsigned int vreg) const;
+  const DbgDecoder::VarInfo *getVarInfo(const VISAObjectDebugInfo &VD, unsigned int vreg) const;
 
   bool hasOrIsStackCall(const VISAObjectDebugInfo &VD) const;
 
   // TODO: deprectate this function
-  const std::vector<DbgDecoder::SubroutineInfo> *
-  getSubroutines(const VISAObjectDebugInfo &VD) const;
+  const std::vector<DbgDecoder::SubroutineInfo> *getSubroutines(const VISAObjectDebugInfo &VD) const;
 
   void rebuildVISAIndexes();
 
   const GenISARanges &getAllGenISARanges(const VISAObjectDebugInfo &VD);
 
-  GenISARange getGenISARange(const VISAObjectDebugInfo &VD,
-                             const InsnRange &Range);
+  GenISARange getGenISARange(const VISAObjectDebugInfo &VD, const InsnRange &Range);
 
   // Given %ip range and variable location, returns vector of locations where
   // variable is available in memory due to caller save sequence. Return format
   // is: <start %ip of caller save, end %ip of caller save, stack slot offset
   // for caller save>
-  std::vector<std::tuple<uint64_t, uint64_t, unsigned int>>
-  getAllCallerSave(const VISAObjectDebugInfo &VD, uint64_t startRange,
-                   uint64_t endRange,
-                   DbgDecoder::LiveIntervalsVISA &Locs) const;
+  std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> getAllCallerSave(const VISAObjectDebugInfo &VD,
+                                                                             uint64_t startRange, uint64_t endRange,
+                                                                             DbgDecoder::LiveIntervalsVISA &Locs) const;
 
-  virtual const VISAObjectDebugInfo &
-  getVisaObjectDI(const VISADebugInfo &VDI) const;
+  virtual const VISAObjectDebugInfo &getVisaObjectDI(const VISADebugInfo &VDI) const;
 
   virtual unsigned getUnpaddedProgramSize() const = 0;
   virtual bool isLineTableOnly() const = 0;

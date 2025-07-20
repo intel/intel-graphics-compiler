@@ -30,31 +30,28 @@ char MoveStaticAllocas::ID = 0;
 
 // This function is copied from LLVM's InlineFunction.
 static bool allocaWouldBeStaticInEntry(const AllocaInst *AI) {
-    return isa<Constant>(AI->getArraySize()) && !AI->isUsedWithInAlloca();
+  return isa<Constant>(AI->getArraySize()) && !AI->isUsedWithInAlloca();
 }
 
-MoveStaticAllocas::MoveStaticAllocas() : FunctionPass(ID)
-{
-    initializeMoveStaticAllocasPass(*PassRegistry::getPassRegistry());
+MoveStaticAllocas::MoveStaticAllocas() : FunctionPass(ID) {
+  initializeMoveStaticAllocasPass(*PassRegistry::getPassRegistry());
 }
 
-bool MoveStaticAllocas::runOnFunction(llvm::Function &F)
-{
-    std::vector<AllocaInst*> staticAllocas;
+bool MoveStaticAllocas::runOnFunction(llvm::Function &F) {
+  std::vector<AllocaInst *> staticAllocas;
 
-    // Note: we are also moving static allocas that are already in the entry BB.
-    for (auto inst = inst_begin(F), endInst = inst_end(F); inst != endInst; ++inst) {
-        if (AllocaInst* allocaInst = dyn_cast<AllocaInst>(&*inst)) {
-            if (allocaInst->isStaticAlloca() || allocaWouldBeStaticInEntry(allocaInst)) {
-                staticAllocas.push_back(allocaInst);
-            }
-        }
+  // Note: we are also moving static allocas that are already in the entry BB.
+  for (auto inst = inst_begin(F), endInst = inst_end(F); inst != endInst; ++inst) {
+    if (AllocaInst *allocaInst = dyn_cast<AllocaInst>(&*inst)) {
+      if (allocaInst->isStaticAlloca() || allocaWouldBeStaticInEntry(allocaInst)) {
+        staticAllocas.push_back(allocaInst);
+      }
     }
+  }
 
-    for (auto I = staticAllocas.rbegin(), E = staticAllocas.rend(); I != E; ++I) {
-        (*I)->moveBefore(&*F.getEntryBlock().getFirstInsertionPt());
-    }
+  for (auto I = staticAllocas.rbegin(), E = staticAllocas.rend(); I != E; ++I) {
+    (*I)->moveBefore(&*F.getEntryBlock().getFirstInsertionPt());
+  }
 
-    return staticAllocas.size() > 0;
+  return staticAllocas.size() > 0;
 }
-

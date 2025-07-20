@@ -8,13 +8,12 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-namespace llvm
-{
-    class ModulePass;
+namespace llvm {
+class ModulePass;
 }
 
-llvm::ModulePass* createProcessFuncAttributesPass();
+llvm::ModulePass *createProcessFuncAttributesPass();
 
-llvm::ModulePass* createProcessBuiltinMetaDataPass();
+llvm::ModulePass *createProcessBuiltinMetaDataPass();
 
-llvm::ModulePass* createInsertDummyKernelForSymbolTablePass();
+llvm::ModulePass *createInsertDummyKernelForSymbolTablePass();

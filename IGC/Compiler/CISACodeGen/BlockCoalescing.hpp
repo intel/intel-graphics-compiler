@@ -15,39 +15,36 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class CodeGenContextWrapper;
+namespace IGC {
+class CodeGenContextWrapper;
 
-    class BlockCoalescing : public llvm::FunctionPass
-    {
-    public:
-        static char ID;
+class BlockCoalescing : public llvm::FunctionPass {
+public:
+  static char ID;
 
-        BlockCoalescing();
+  BlockCoalescing();
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
-            AU.setPreservesAll();
-            AU.addRequired<DeSSA>();
-            AU.addRequired<CodeGenPatternMatch>();
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<CodeGenContextWrapper>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesAll();
+    AU.addRequired<DeSSA>();
+    AU.addRequired<CodeGenPatternMatch>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-        bool runOnFunction(llvm::Function& F) override;
+  bool runOnFunction(llvm::Function &F) override;
 
-        virtual llvm::StringRef getPassName() const override {
-            return "BlockCoalescing";
-        }
-        bool IsEmptyBlock(llvm::BasicBlock* bb);
-        /// look for the next none-empty basick block
-        llvm::BasicBlock* SkipEmptyBasicBlock(llvm::BasicBlock* bb);
-        /// look for the destination to jump to if the block is empty
-        llvm::BasicBlock* FollowEmptyBlock(llvm::BasicBlock* bb);
-    protected:
-        llvm::DenseSet<llvm::BasicBlock*> m_emptyBlocks;
+  virtual llvm::StringRef getPassName() const override { return "BlockCoalescing"; }
+  bool IsEmptyBlock(llvm::BasicBlock *bb);
+  /// look for the next none-empty basick block
+  llvm::BasicBlock *SkipEmptyBasicBlock(llvm::BasicBlock *bb);
+  /// look for the destination to jump to if the block is empty
+  llvm::BasicBlock *FollowEmptyBlock(llvm::BasicBlock *bb);
 
-    private:
-        bool hasEmptyBlockLoop(llvm::BasicBlock* EmptyBlock);
-    };
-}
+protected:
+  llvm::DenseSet<llvm::BasicBlock *> m_emptyBlocks;
+
+private:
+  bool hasEmptyBlockLoop(llvm::BasicBlock *EmptyBlock);
+};
+} // namespace IGC

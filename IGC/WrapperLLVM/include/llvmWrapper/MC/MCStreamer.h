@@ -15,28 +15,28 @@ SPDX-License-Identifier: MIT
 namespace IGCLLVM {
 inline void initSections(llvm::MCStreamer *streamer, bool NoExecStack, const llvm::MCContext *Context) {
 #if LLVM_VERSION_MAJOR >= 14
-    streamer->initSections(NoExecStack, *(Context->getSubtargetInfo()));
+  streamer->initSections(NoExecStack, *(Context->getSubtargetInfo()));
 #else
-    streamer->InitSections(NoExecStack);
+  streamer->InitSections(NoExecStack);
 #endif
 }
 
 inline void switchSection(llvm::MCStreamer *streamer, llvm::MCSection *Section,
                           const llvm::MCExpr *Subsection = nullptr) {
 #if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
-    streamer->SwitchSection(Section, Subsection);
+  streamer->SwitchSection(Section, Subsection);
 #else
-    streamer->switchSection(Section, Subsection);
+  streamer->switchSection(Section, Subsection);
 #endif
 }
 
 inline void finish(llvm::MCStreamer *streamer) {
 #if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
-    streamer->Finish();
+  streamer->Finish();
 #else
-    streamer->finish();
+  streamer->finish();
 #endif
 }
-}
+} // namespace IGCLLVM
 
 #endif

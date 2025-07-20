@@ -31,172 +31,166 @@ using namespace IGC::Legalizer;
 
 char TypeLegalizer::ID = 0;
 
-TypeLegalizer::TypeLegalizer() : FunctionPass(ID),
-                                 DL(nullptr),
-                                 ILC(nullptr),
-                                 IPromoter(nullptr),
-                                 /*
-                                 IExpander(nullptr),
-                                 ISoftener(nullptr),
-                                 IScalarizer(nullptr),
-                                 IElementizer(nullptr),
-                                 */
-                                 TheModule(nullptr),
-                                 TheFunction(nullptr) {
-    initializeTypeLegalizerPass(*PassRegistry::getPassRegistry());
+TypeLegalizer::TypeLegalizer()
+    : FunctionPass(ID), DL(nullptr), ILC(nullptr), IPromoter(nullptr),
+      /*
+      IExpander(nullptr),
+      ISoftener(nullptr),
+      IScalarizer(nullptr),
+      IElementizer(nullptr),
+      */
+      TheModule(nullptr), TheFunction(nullptr) {
+  initializeTypeLegalizerPass(*PassRegistry::getPassRegistry());
 }
 
-void TypeLegalizer::getAnalysisUsage(AnalysisUsage& AU) const {
-    AU.addRequired<DominatorTreeWrapperPass>();
-    AU.setPreservesCFG();
+void TypeLegalizer::getAnalysisUsage(AnalysisUsage &AU) const {
+  AU.addRequired<DominatorTreeWrapperPass>();
+  AU.setPreservesCFG();
 }
 
+FunctionPass *createTypeLegalizerPass() { return new TypeLegalizer(); }
 
-FunctionPass* createTypeLegalizerPass() { return new TypeLegalizer(); }
-
-#define PASS_FLAG     "igc-type-legalizer"
-#define PASS_DESC     "IGC Type Legalizer"
+#define PASS_FLAG "igc-type-legalizer"
+#define PASS_DESC "IGC Type Legalizer"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(TypeLegalizer, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
-//IGC_INITIALIZE_PASS_DEPENDENCY(DataLayout);
+// IGC_INITIALIZE_PASS_DEPENDENCY(DataLayout);
 IGC_INITIALIZE_PASS_END(TypeLegalizer, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 // IGC supports type i64 natively or by emulation
 const unsigned int MAX_LEGAL_INT_SIZE_IN_BITS = 64;
 
-bool TypeLegalizer::runOnFunction(Function & F) {
-    DL = &F.getParent()->getDataLayout();
-    DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+bool TypeLegalizer::runOnFunction(Function &F) {
+  DL = &F.getParent()->getDataLayout();
+  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
-    IGC_ASSERT_MESSAGE(DL->isLittleEndian(), "ONLY SUPPORT LITTLE ENDIANNESS!");
+  IGC_ASSERT_MESSAGE(DL->isLittleEndian(), "ONLY SUPPORT LITTLE ENDIANNESS!");
 
-    BuilderType TheBuilder(F.getContext(), TargetFolder(*DL));
-    IRB = &TheBuilder;
+  BuilderType TheBuilder(F.getContext(), TargetFolder(*DL));
+  IRB = &TheBuilder;
 
-    InstLegalChecker TheLegalChecker(this);
-    InstPromoter ThePromoter(this, &TheBuilder);
-    /*
-    InstExpander TheExpander(this, &TheBuilder);
-    InstSoftener TheSoftener(this, &TheBuilder);
-    InstScalarizer TheScalarizer(this, &TheBuilder);
-    InstElementizer TheElementizer(this, &TheBuilder);
-    */
+  InstLegalChecker TheLegalChecker(this);
+  InstPromoter ThePromoter(this, &TheBuilder);
+  /*
+  InstExpander TheExpander(this, &TheBuilder);
+  InstSoftener TheSoftener(this, &TheBuilder);
+  InstScalarizer TheScalarizer(this, &TheBuilder);
+  InstElementizer TheElementizer(this, &TheBuilder);
+  */
 
-    ILC = &TheLegalChecker;
-    IPromoter = &ThePromoter;
-    /*
-    IExpander = &TheExpander;
-    ISoftener = &TheSoftener;
-    IScalarizer = &TheScalarizer;
-    IElementizer = &TheElementizer;
-    */
+  ILC = &TheLegalChecker;
+  IPromoter = &ThePromoter;
+  /*
+  IExpander = &TheExpander;
+  ISoftener = &TheSoftener;
+  IScalarizer = &TheScalarizer;
+  IElementizer = &TheElementizer;
+  */
 
-    TheModule = F.getParent();
-    TheFunction = &F;
+  TheModule = F.getParent();
+  TheFunction = &F;
 
-    TypeMap.clear();
-    ValueMap.clear();
+  TypeMap.clear();
+  ValueMap.clear();
 
-    bool Changed = false;
+  bool Changed = false;
 
-    // Changed |= legalizeArguments(F);
-    Changed |= preparePHIs(F);
-    Changed |= legalizeInsts(F);
-    Changed |= populatePHIs(F);
-    // Changed |= legalizeTerminators(F);
+  // Changed |= legalizeArguments(F);
+  Changed |= preparePHIs(F);
+  Changed |= legalizeInsts(F);
+  Changed |= populatePHIs(F);
+  // Changed |= legalizeTerminators(F);
 
-    eraseIllegalInsts();
+  eraseIllegalInsts();
 
-    DL = nullptr;
-    DT = nullptr;
+  DL = nullptr;
+  DT = nullptr;
 
-    IRB = nullptr;
+  IRB = nullptr;
 
-    ILC = nullptr;
-    IPromoter = nullptr;
-    /*
-    IExpander = nullptr;
-    ISoftener = nullptr;
-    IScalarizer = nullptr;
-    IElementizer = nullptr;
-    */
-    TheModule = nullptr;
-    TheFunction = nullptr;
+  ILC = nullptr;
+  IPromoter = nullptr;
+  /*
+  IExpander = nullptr;
+  ISoftener = nullptr;
+  IScalarizer = nullptr;
+  IElementizer = nullptr;
+  */
+  TheModule = nullptr;
+  TheFunction = nullptr;
 
-    return Changed;
+  return Changed;
 }
 
-LegalizeAction
-TypeLegalizer::getTypeLegalizeAction(Type* Ty) const {
-    // Pointer type is always legal.
-    if (Ty->isPointerTy())
-        return Legal;
-
-    // Array and Struct are currently skipped, but expected to be treated in Elementize
-    if (Ty->isArrayTy() || Ty->isStructTy())
-        return Legal;
-
-    // Vector type!
-    if (Ty->isVectorTy())
-        return getTypeLegalizeAction(cast<VectorType>(Ty)->getElementType());
-
-    // Floating point types always need native support; otherwise, they needs
-    // software emulation.
-    if (Ty->isFloatingPointTy()) {
-        // Only support 'half', 'float', 'bfloat' and 'double'.
-        if (Ty->isHalfTy()) return Legal;
-        if (Ty->isFloatTy()) return Legal;
-        if (Ty->isDoubleTy()) return Legal;
-        if (IGCLLVM::isBFloatTy(Ty)) return Legal;
-
-        return SoftenFloat;
-    }
-
-    IntegerType* ITy = dyn_cast<IntegerType>(Ty);
-    IGC_ASSERT_EXIT_MESSAGE(nullptr != ITy, "DON'T KNOW HOW TO LEGALIZE TYPE!");
-
-    unsigned Width = getTypeSizeInBits(ITy);
-
-    if (Width == 1)
-        return Legal;
-
-    if (isLegalInteger(Width))
-        return Legal;
-
-    if (DL->fitsInLegalInteger(Width) || Width <= MAX_LEGAL_INT_SIZE_IN_BITS)
-        return Promote;
-
-    // Expand action is not supported
+LegalizeAction TypeLegalizer::getTypeLegalizeAction(Type *Ty) const {
+  // Pointer type is always legal.
+  if (Ty->isPointerTy())
     return Legal;
+
+  // Array and Struct are currently skipped, but expected to be treated in Elementize
+  if (Ty->isArrayTy() || Ty->isStructTy())
+    return Legal;
+
+  // Vector type!
+  if (Ty->isVectorTy())
+    return getTypeLegalizeAction(cast<VectorType>(Ty)->getElementType());
+
+  // Floating point types always need native support; otherwise, they needs
+  // software emulation.
+  if (Ty->isFloatingPointTy()) {
+    // Only support 'half', 'float', 'bfloat' and 'double'.
+    if (Ty->isHalfTy())
+      return Legal;
+    if (Ty->isFloatTy())
+      return Legal;
+    if (Ty->isDoubleTy())
+      return Legal;
+    if (IGCLLVM::isBFloatTy(Ty))
+      return Legal;
+
+    return SoftenFloat;
+  }
+
+  IntegerType *ITy = dyn_cast<IntegerType>(Ty);
+  IGC_ASSERT_EXIT_MESSAGE(nullptr != ITy, "DON'T KNOW HOW TO LEGALIZE TYPE!");
+
+  unsigned Width = getTypeSizeInBits(ITy);
+
+  if (Width == 1)
+    return Legal;
+
+  if (isLegalInteger(Width))
+    return Legal;
+
+  if (DL->fitsInLegalInteger(Width) || Width <= MAX_LEGAL_INT_SIZE_IN_BITS)
+    return Promote;
+
+  // Expand action is not supported
+  return Legal;
 }
 
-LegalizeAction
-TypeLegalizer::getLegalizeAction(Value* V) const {
-    if (Instruction * I = dyn_cast<Instruction>(V))
-        return ILC->check(I);
-    return getTypeLegalizeAction(V->getType());
-}
-
-LegalizeAction
-TypeLegalizer::getLegalizeAction(Instruction* I) const {
+LegalizeAction TypeLegalizer::getLegalizeAction(Value *V) const {
+  if (Instruction *I = dyn_cast<Instruction>(V))
     return ILC->check(I);
+  return getTypeLegalizeAction(V->getType());
 }
 
-std::pair<TypeSeq*, LegalizeAction>
-TypeLegalizer::getLegalizedTypes(Type* Ty, bool legalizeToScalar) {
-    LegalizeAction Act = getTypeLegalizeAction(Ty);
-    TypeSeq* TySeq = nullptr;
+LegalizeAction TypeLegalizer::getLegalizeAction(Instruction *I) const { return ILC->check(I); }
 
-    switch (Act) {
-    case Legal:
-        break;
-    case Promote:
-        TySeq = getPromotedTypeSeq(Ty, legalizeToScalar);
-        break;
-    case SoftenFloat:
-        TySeq = getSoftenedTypeSeq(Ty);
-        break;
+std::pair<TypeSeq *, LegalizeAction> TypeLegalizer::getLegalizedTypes(Type *Ty, bool legalizeToScalar) {
+  LegalizeAction Act = getTypeLegalizeAction(Ty);
+  TypeSeq *TySeq = nullptr;
+
+  switch (Act) {
+  case Legal:
+    break;
+  case Promote:
+    TySeq = getPromotedTypeSeq(Ty, legalizeToScalar);
+    break;
+  case SoftenFloat:
+    TySeq = getSoftenedTypeSeq(Ty);
+    break;
     /*
     case Expand:
         TySeq = getExpandedTypeSeq(Ty);
@@ -208,66 +202,76 @@ TypeLegalizer::getLegalizedTypes(Type* Ty, bool legalizeToScalar) {
         TySeq = getElementizedTypeSeq(Ty);
         break;
     */
-    }
+  }
 
-    return std::make_pair(TySeq, Act);
+  return std::make_pair(TySeq, Act);
 }
 
-TypeSeq* TypeLegalizer::getPromotedTypeSeq(Type* Ty, bool legalizeToScalar) {
-    IGC_ASSERT(Ty->isIntOrIntVectorTy());
-    IGC_ASSERT(getTypeLegalizeAction(Ty) == Promote);
+TypeSeq *TypeLegalizer::getPromotedTypeSeq(Type *Ty, bool legalizeToScalar) {
+  IGC_ASSERT(Ty->isIntOrIntVectorTy());
+  IGC_ASSERT(getTypeLegalizeAction(Ty) == Promote);
 
-    auto [TMI, New] = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
-    if (!New) {
-        IGC_ASSERT(TMI->second.size() == 1);
-        return &TMI->second;
-    }
-
-    Type* PromotedTy =
-        DL->getSmallestLegalIntType(Ty->getContext(),
-            getTypeSizeInBits(legalizeToScalar ? Ty : Ty->getScalarType()));
-
-    if (!PromotedTy && getTypeSizeInBits(Ty) < MAX_LEGAL_INT_SIZE_IN_BITS)
-    {
-        PromotedTy = Type::getIntNTy(Ty->getContext(), MAX_LEGAL_INT_SIZE_IN_BITS);
-    }
-
-    if (!legalizeToScalar && Ty->isVectorTy())
-    {
-        unsigned Elems = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
-        PromotedTy = IGCLLVM::FixedVectorType::get(PromotedTy, Elems);
-    }
-
-    TMI->second.push_back(PromotedTy);
-
+  auto [TMI, New] = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
+  if (!New) {
+    IGC_ASSERT(TMI->second.size() == 1);
     return &TMI->second;
+  }
+
+  Type *PromotedTy =
+      DL->getSmallestLegalIntType(Ty->getContext(), getTypeSizeInBits(legalizeToScalar ? Ty : Ty->getScalarType()));
+
+  if (!PromotedTy && getTypeSizeInBits(Ty) < MAX_LEGAL_INT_SIZE_IN_BITS) {
+    PromotedTy = Type::getIntNTy(Ty->getContext(), MAX_LEGAL_INT_SIZE_IN_BITS);
+  }
+
+  if (!legalizeToScalar && Ty->isVectorTy()) {
+    unsigned Elems = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
+    PromotedTy = IGCLLVM::FixedVectorType::get(PromotedTy, Elems);
+  }
+
+  TMI->second.push_back(PromotedTy);
+
+  return &TMI->second;
 }
 
-TypeSeq* TypeLegalizer::getSoftenedTypeSeq(Type* Ty) {
-    IGC_ASSERT(Ty->isFloatingPointTy());
-    IGC_ASSERT(getTypeLegalizeAction(Ty) == SoftenFloat);
+TypeSeq *TypeLegalizer::getSoftenedTypeSeq(Type *Ty) {
+  IGC_ASSERT(Ty->isFloatingPointTy());
+  IGC_ASSERT(getTypeLegalizeAction(Ty) == SoftenFloat);
 
-    auto [TMI, New] = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
-    if (!New) {
-        IGC_ASSERT(TMI->second.size() == 1);
-        return &TMI->second;
-    }
-
-    unsigned Width = 0;
-    switch (Ty->getTypeID()) {
-    case Type::HalfTyID: Width = 16; break;
-    case Type::FloatTyID: Width = 32; break;
-    case Type::DoubleTyID: Width = 64; break;
-    case Type::X86_FP80TyID: Width = 80; break;
-    case Type::FP128TyID: Width = 128; break;
-    case Type::PPC_FP128TyID: Width = 128; break;
-    default: IGC_ASSERT_EXIT_MESSAGE(0, "INVALID FLOATING POINT TYPE!");
-    }
-
-    Type* SoftenedTy = Type::getIntNTy(Ty->getContext(), Width);
-    TMI->second.push_back(SoftenedTy);
-
+  auto [TMI, New] = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
+  if (!New) {
+    IGC_ASSERT(TMI->second.size() == 1);
     return &TMI->second;
+  }
+
+  unsigned Width = 0;
+  switch (Ty->getTypeID()) {
+  case Type::HalfTyID:
+    Width = 16;
+    break;
+  case Type::FloatTyID:
+    Width = 32;
+    break;
+  case Type::DoubleTyID:
+    Width = 64;
+    break;
+  case Type::X86_FP80TyID:
+    Width = 80;
+    break;
+  case Type::FP128TyID:
+    Width = 128;
+    break;
+  case Type::PPC_FP128TyID:
+    Width = 128;
+    break;
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "INVALID FLOATING POINT TYPE!");
+  }
+
+  Type *SoftenedTy = Type::getIntNTy(Ty->getContext(), Width);
+  TMI->second.push_back(SoftenedTy);
+
+  return &TMI->second;
 }
 
 /*
@@ -340,98 +344,89 @@ TypeSeq* TypeLegalizer::getElementizedTypeSeq(Type* Ty) {
 }
 */
 
-std::pair<ValueSeq*, LegalizeAction>
-TypeLegalizer::getLegalizedValues(Value* V, bool isSigned) {
-    LegalizeAction Act = getTypeLegalizeAction(V->getType());
+std::pair<ValueSeq *, LegalizeAction> TypeLegalizer::getLegalizedValues(Value *V, bool isSigned) {
+  LegalizeAction Act = getTypeLegalizeAction(V->getType());
 
-    if (Act == Legal)
-        return std::make_pair(nullptr, Legal);
+  if (Act == Legal)
+    return std::make_pair(nullptr, Legal);
 
-    auto C = dyn_cast<Constant>(V);
-    if (C != nullptr)
-        ValueMap.erase(V);
+  auto C = dyn_cast<Constant>(V);
+  if (C != nullptr)
+    ValueMap.erase(V);
 
-    auto [VMI, New] = ValueMap.insert(std::make_pair(V, ValueSeq()));
-    if (!New)
-        return std::make_pair(&VMI->second, Act);
-
-    if (!C)
-        return std::make_pair(nullptr, Act);
-
-    // We visit instructions in topological order and we handle phis and
-    // arguments specially, so we shouldn't see a use before a def here except
-    // constants.
-    TypeSeq* TySeq = nullptr;
-    std::tie(TySeq, Act) = getLegalizedTypes(C->getType());
-
-    switch (Act) {
-    case Legal:
-        IGC_ASSERT_MESSAGE(0, "LEGAL CONSTANT IS BEING LEGALIZED!");
-        break;
-    case Promote:
-        promoteConstant(&VMI->second, TySeq, C, isSigned);
-        break;
-    case SoftenFloat:
-        softenConstant(&VMI->second, TySeq, C);
-        break;
-    /*
-    case Expand:
-        expandConstant(&VMI->second, TySeq, C);
-        break;
-    case Scalarize:
-        scalarizeConstant(&VMI->second, TySeq, C);
-        break;
-    case Elementize:
-        elementizeConstant(&VMI->second, TySeq, C);
-        break;
-    */
-    default:
-        IGC_ASSERT(0);
-        break;
-    }
-
+  auto [VMI, New] = ValueMap.insert(std::make_pair(V, ValueSeq()));
+  if (!New)
     return std::make_pair(&VMI->second, Act);
+
+  if (!C)
+    return std::make_pair(nullptr, Act);
+
+  // We visit instructions in topological order and we handle phis and
+  // arguments specially, so we shouldn't see a use before a def here except
+  // constants.
+  TypeSeq *TySeq = nullptr;
+  std::tie(TySeq, Act) = getLegalizedTypes(C->getType());
+
+  switch (Act) {
+  case Legal:
+    IGC_ASSERT_MESSAGE(0, "LEGAL CONSTANT IS BEING LEGALIZED!");
+    break;
+  case Promote:
+    promoteConstant(&VMI->second, TySeq, C, isSigned);
+    break;
+  case SoftenFloat:
+    softenConstant(&VMI->second, TySeq, C);
+    break;
+  /*
+  case Expand:
+      expandConstant(&VMI->second, TySeq, C);
+      break;
+  case Scalarize:
+      scalarizeConstant(&VMI->second, TySeq, C);
+      break;
+  case Elementize:
+      elementizeConstant(&VMI->second, TySeq, C);
+      break;
+  */
+  default:
+    IGC_ASSERT(0);
+    break;
+  }
+
+  return std::make_pair(&VMI->second, Act);
 }
 
-void
-TypeLegalizer::setLegalizedValues(Value* OVal,
-    ArrayRef<Value*> LegalizedVals) {
-    auto [VMI, New] = ValueMap.insert(std::make_pair(OVal, ValueSeq()));
-    IGC_ASSERT(New);
+void TypeLegalizer::setLegalizedValues(Value *OVal, ArrayRef<Value *> LegalizedVals) {
+  auto [VMI, New] = ValueMap.insert(std::make_pair(OVal, ValueSeq()));
+  IGC_ASSERT(New);
 
-    for (auto* V : LegalizedVals)
-        VMI->second.push_back(V);
+  for (auto *V : LegalizedVals)
+    VMI->second.push_back(V);
 }
 
-bool
-TypeLegalizer::hasLegalizedValues(Value* V) const {
-    IGC_ASSERT(!V->getType()->isVoidTy());
+bool TypeLegalizer::hasLegalizedValues(Value *V) const {
+  IGC_ASSERT(!V->getType()->isVoidTy());
 
-    LegalizeAction Act = getTypeLegalizeAction(V->getType());
+  LegalizeAction Act = getTypeLegalizeAction(V->getType());
 
-    if (Act == Legal)
-        return true;
+  if (Act == Legal)
+    return true;
 
-    return ValueMap.find(V) != ValueMap.end();
+  return ValueMap.find(V) != ValueMap.end();
 }
 
-void TypeLegalizer::promoteConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
-    Constant* C, bool isSigned) {
-    IGC_ASSERT(TySeq->size() == 1);
+void TypeLegalizer::promoteConstant(ValueSeq *ValSeq, TypeSeq *TySeq, Constant *C, bool isSigned) {
+  IGC_ASSERT(TySeq->size() == 1);
 
-    Type* PromotedTy = TySeq->front();
+  Type *PromotedTy = TySeq->front();
 
-    auto* ExtValue = isSigned ?
-        ConstantExpr::getSExt(C, PromotedTy) :
-        ConstantExpr::getZExt(C, PromotedTy);
+  auto *ExtValue = isSigned ? ConstantExpr::getSExt(C, PromotedTy) : ConstantExpr::getZExt(C, PromotedTy);
 
-    ValSeq->push_back(ExtValue);
+  ValSeq->push_back(ExtValue);
 }
 
-void TypeLegalizer::softenConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
-    Constant* C) {
-    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
-
+void TypeLegalizer::softenConstant(ValueSeq *ValSeq, TypeSeq *TySeq, Constant *C) {
+  IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
 }
 
 /*
@@ -563,80 +558,80 @@ bool TypeLegalizer::legalizeArguments(Function& F) {
 }
 */
 
-bool TypeLegalizer::preparePHIs(Function& F) {
-    bool Changed = false;
+bool TypeLegalizer::preparePHIs(Function &F) {
+  bool Changed = false;
 
-    for (auto& BB : F) {
-        for (BasicBlock::iterator BI = BB.begin(); ; ) {
-            PHINode* PN = dyn_cast<PHINode>(BI++);
-            if (!PN) break;
+  for (auto &BB : F) {
+    for (BasicBlock::iterator BI = BB.begin();;) {
+      PHINode *PN = dyn_cast<PHINode>(BI++);
+      if (!PN)
+        break;
 
-            Type* Ty = PN->getType();
-            auto [TySeq, Act] = getLegalizedTypes(Ty);
-            switch (Act) {
-            case Legal:
-                // Skip legal PHI node.
-                continue;
-            case Promote:
-            case SoftenFloat: {
-                IGC_ASSERT(TySeq->size() == 1);
-                Type* PromotedTy = TySeq->front();
-                StringRef Name = PN->getName();
-                PHINode* Promoted =
-                    PHINode::Create(PromotedTy, PN->getNumIncomingValues(),
-                        Twine(Name, getSuffix(Act)), &(*BI));
-                Promoted->setDebugLoc(PN->getDebugLoc());
-                replaceAllDbgUsesWith(*PN, *Promoted, *PN, *DT);
-                setLegalizedValues(PN, Promoted);
-                BI = BasicBlock::iterator(Promoted);
-                break;
-            }
-/*
-            case Expand:
-            case Scalarize:
-            case Elementize: {
-                StringRef Name = PN->getName();
-                unsigned NumIncomingValues = PN->getNumIncomingValues();
-                SmallVector<Value*, 8> Expanded;
-                unsigned Part = 0;
-                for (auto* Ty : *TySeq) {
-                    PHINode* N =
-                        PHINode::Create(Ty, NumIncomingValues,
-                            Twine(Name, getSuffix(Act)) + Twine(Part++), &(*BI));
-                    Expanded.push_back(N);
-                }
-                setLegalizedValues(PN, Expanded);
-                BI = BasicBlock::iterator(cast<Instruction>(Expanded.front()));
-                break;
-            }
-*/
-            default: continue;
-            }
-            Changed = true;
-        }
+      Type *Ty = PN->getType();
+      auto [TySeq, Act] = getLegalizedTypes(Ty);
+      switch (Act) {
+      case Legal:
+        // Skip legal PHI node.
+        continue;
+      case Promote:
+      case SoftenFloat: {
+        IGC_ASSERT(TySeq->size() == 1);
+        Type *PromotedTy = TySeq->front();
+        StringRef Name = PN->getName();
+        PHINode *Promoted =
+            PHINode::Create(PromotedTy, PN->getNumIncomingValues(), Twine(Name, getSuffix(Act)), &(*BI));
+        Promoted->setDebugLoc(PN->getDebugLoc());
+        replaceAllDbgUsesWith(*PN, *Promoted, *PN, *DT);
+        setLegalizedValues(PN, Promoted);
+        BI = BasicBlock::iterator(Promoted);
+        break;
+      }
+        /*
+                    case Expand:
+                    case Scalarize:
+                    case Elementize: {
+                        StringRef Name = PN->getName();
+                        unsigned NumIncomingValues = PN->getNumIncomingValues();
+                        SmallVector<Value*, 8> Expanded;
+                        unsigned Part = 0;
+                        for (auto* Ty : *TySeq) {
+                            PHINode* N =
+                                PHINode::Create(Ty, NumIncomingValues,
+                                    Twine(Name, getSuffix(Act)) + Twine(Part++), &(*BI));
+                            Expanded.push_back(N);
+                        }
+                        setLegalizedValues(PN, Expanded);
+                        BI = BasicBlock::iterator(cast<Instruction>(Expanded.front()));
+                        break;
+                    }
+        */
+      default:
+        continue;
+      }
+      Changed = true;
     }
+  }
 
-    return Changed;
+  return Changed;
 }
 
-bool TypeLegalizer::populatePromotedPHI(PHINode* PN) {
-    ValueSeq* ValSeq = nullptr;
-    std::tie(ValSeq, std::ignore) = getLegalizedValues(PN);
+bool TypeLegalizer::populatePromotedPHI(PHINode *PN) {
+  ValueSeq *ValSeq = nullptr;
+  std::tie(ValSeq, std::ignore) = getLegalizedValues(PN);
+  IGC_ASSERT(ValSeq->size() == 1);
+  IGC_ASSERT(isa<PHINode>(ValSeq->front()));
+
+  PHINode *Promoted = cast<PHINode>(ValSeq->front());
+  IGC_ASSERT(Promoted->getNumIncomingValues() == 0);
+
+  for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i) {
+    std::tie(ValSeq, std::ignore) = getLegalizedValues(PN->getIncomingValue(i));
     IGC_ASSERT(ValSeq->size() == 1);
-    IGC_ASSERT(isa<PHINode>(ValSeq->front()));
 
-    PHINode* Promoted = cast<PHINode>(ValSeq->front());
-    IGC_ASSERT(Promoted->getNumIncomingValues() == 0);
+    Promoted->addIncoming(ValSeq->front(), PN->getIncomingBlock(i));
+  }
 
-    for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i) {
-        std::tie(ValSeq, std::ignore) =
-            getLegalizedValues(PN->getIncomingValue(i));
-        IGC_ASSERT(ValSeq->size() == 1);
-
-        Promoted->addIncoming(ValSeq->front(), PN->getIncomingBlock(i));
-    }
-
-    return true;
+  return true;
 }
 /*
 bool TypeLegalizer::populateExpandedPHI(PHINode* PN) {
@@ -680,93 +675,96 @@ bool TypeLegalizer::populateElementizedPHI(PHINode* PN) {
 }
 */
 
-bool TypeLegalizer::populatePHIs(Function& F) {
-    bool Changed = false;
+bool TypeLegalizer::populatePHIs(Function &F) {
+  bool Changed = false;
 
-    for (auto& BB : F) {
-        for (BasicBlock::iterator BI = BB.begin(); ; ) {
-            PHINode* PN = dyn_cast<PHINode>(BI++);
-            if (!PN) break;
+  for (auto &BB : F) {
+    for (BasicBlock::iterator BI = BB.begin();;) {
+      PHINode *PN = dyn_cast<PHINode>(BI++);
+      if (!PN)
+        break;
 
-            LegalizeAction Act = getLegalizeAction(PN);
+      LegalizeAction Act = getLegalizeAction(PN);
 
-            switch (Act) {
-            case Legal:
-                continue;
-            case Promote:
-                Changed |= populatePromotedPHI(PN);
-                break;
-            /*
-            case Expand:
-                Changed |= populateExpandedPHI(PN);
-                break;
-            case SoftenFloat:
-                Changed |= populateSoftenedPHI(PN);
-                break;
-            case Scalarize:
-                Changed |= populateScalarizedPHI(PN);
-                break;
-            case Elementize:
-                Changed |= populateElementizedPHI(PN);
-                break;
-            */
-            default: continue;
-            }
-            IllegalInsts.insert(PN);
-        }
+      switch (Act) {
+      case Legal:
+        continue;
+      case Promote:
+        Changed |= populatePromotedPHI(PN);
+        break;
+      /*
+      case Expand:
+          Changed |= populateExpandedPHI(PN);
+          break;
+      case SoftenFloat:
+          Changed |= populateSoftenedPHI(PN);
+          break;
+      case Scalarize:
+          Changed |= populateScalarizedPHI(PN);
+          break;
+      case Elementize:
+          Changed |= populateElementizedPHI(PN);
+          break;
+      */
+      default:
+        continue;
+      }
+      IllegalInsts.insert(PN);
     }
+  }
 
-    return Changed;
+  return Changed;
 }
 
-bool TypeLegalizer::legalizeInsts(Function& F) {
-    bool Changed = false;
+bool TypeLegalizer::legalizeInsts(Function &F) {
+  bool Changed = false;
 
-    // Legalize instructions in a topological order so that the 'def' is always
-    // legalized before the legalization of the 'use'.
-    ReversePostOrderTraversal<Function*> RPOT(&F);
-    for (auto& BB : RPOT) {
-        for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
-            Instruction* I = &(*BI);
+  // Legalize instructions in a topological order so that the 'def' is always
+  // legalized before the legalization of the 'use'.
+  ReversePostOrderTraversal<Function *> RPOT(&F);
+  for (auto &BB : RPOT) {
+    for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
+      Instruction *I = &(*BI);
 
-            // Skip terminator insts which are handled specially.
-            if (I->isTerminator())
-                continue;
+      // Skip terminator insts which are handled specially.
+      if (I->isTerminator())
+        continue;
 
-            // Skip PHI nodes which are populated later.
-            if (isa<PHINode>(I))
-                continue;
+      // Skip PHI nodes which are populated later.
+      if (isa<PHINode>(I))
+        continue;
 
-            switch (getLegalizeAction(I)) {
-            case Legal:
-                // Skip legal instructions.
-                continue;
-            case Promote:
-                Changed |= IPromoter->promote(I);
-                break;
-            /*
-            case Expand:
-                Changed |= IExpander->expand(I);
-                break;
-            case SoftenFloat:
-                Changed |= ISoftener->soften(I);
-                break;
-            case Scalarize:
-                Changed |= IScalarizer->scalarize(I);
-                break;
-            case Elementize:
-                Changed |= IElementizer->elementize(I);
-                break;
-            */
-            default: continue;
-            }
+      switch (getLegalizeAction(I)) {
+      case Legal:
+        // Skip legal instructions.
+        continue;
+      case Promote:
+        Changed |= IPromoter->promote(I);
+        break;
+      /*
+      case Expand:
+          Changed |= IExpander->expand(I);
+          break;
+      case SoftenFloat:
+          Changed |= ISoftener->soften(I);
+          break;
+      case Scalarize:
+          Changed |= IScalarizer->scalarize(I);
+          break;
+      case Elementize:
+          Changed |= IElementizer->elementize(I);
+          break;
+      */
+      default:
+        continue;
+      }
 
-            if ((!hasLegalRetType(I) && !isReservedLegal(I)) || I->use_empty())
-                IllegalInsts.insert(I);
-        }
+      if ((!hasLegalRetType(I) && !isReservedLegal(I)) || I->use_empty())
+        IllegalInsts.insert(I);
     }
+  }
 
-    return Changed;
+  return Changed;
 }
 
 /*
@@ -835,12 +833,12 @@ bool TypeLegalizer::elementizeRet(ReturnInst* RI) {
 */
 
 void TypeLegalizer::eraseIllegalInsts() {
-    for (auto* I : IllegalInsts) {
-        Type* Ty = I->getType();
+  for (auto *I : IllegalInsts) {
+    Type *Ty = I->getType();
 
-        if (!Ty->isVoidTy())
-            I->replaceAllUsesWith(UndefValue::get(Ty));
-        I->eraseFromParent();
-    }
-    IllegalInsts.clear();
+    if (!Ty->isVoidTy())
+      I->replaceAllUsesWith(UndefValue::get(Ty));
+    I->eraseFromParent();
+  }
+  IllegalInsts.clear();
 }

@@ -68,15 +68,15 @@ void generateOverloadedTypes(GenXIntrinsic::ID Id, LLVMContext &Ctx,
   }
 }
 
-static std::string ty2s(Type* ty) {
+static std::string ty2s(Type *ty) {
   std::string type_str;
   llvm::raw_string_ostream rso(type_str);
   ty->print(rso, true);
   return rso.str();
 }
-static std::string k2s(std::map<std::string, Attribute::AttrKind>& s,
+static std::string k2s(std::map<std::string, Attribute::AttrKind> &s,
                        Attribute::AttrKind kkk) {
-  for (const auto& i: s) {
+  for (const auto &i : s) {
     if (i.second == kkk)
       return i.first;
   }
@@ -89,11 +89,9 @@ protected:
     M_->setTargetTriple("spir64-unknown-unknown");
   }
 
-  void TearDown() override {
-    M_.reset();
-  }
+  void TearDown() override { M_.reset(); }
 
-  Module* Retranslate(LLVMContext& ctx, std::string& err) {
+  Module *Retranslate(LLVMContext &ctx, std::string &err) {
     err.clear();
     std::stringstream ss;
     writeSpirv(M_.get(), ss, err);
@@ -104,7 +102,7 @@ protected:
     std::string s_sv_ir = ss.str();
     std::istrstream ir_stream(s_sv_ir.data(), s_sv_ir.size());
 
-    Module* result = nullptr;
+    Module *result = nullptr;
     readSpirv(ctx, ir_stream, result, err);
 
     if (!err.empty())
@@ -132,10 +130,10 @@ TEST_F(SpirvConvertionsTest, IntrinsicAttrs) {
     SmallVector<Type *, 8> Tyss;
     generateOverloadedTypes(XID, Ctx_, Tyss);
 
-    Function* f = GenXIntrinsic::getGenXDeclaration(M_.get(), XID, Tyss);
+    Function *f = GenXIntrinsic::getGenXDeclaration(M_.get(), XID, Tyss);
     SmallVector<Value *, 8> Args;
-    for (Type* ty: f->getFunctionType()->params()) {
-      Value* arg = llvm::Constant::getNullValue(ty);
+    for (Type *ty : f->getFunctionType()->params()) {
+      Value *arg = llvm::Constant::getNullValue(ty);
       Args.push_back(arg);
 
       FN_.insert(f->getName().str());
@@ -154,7 +152,7 @@ TEST_F(SpirvConvertionsTest, IntrinsicAttrs) {
 
   std::string err;
   LLVMContext C;
-  Module* M = Retranslate(C, err);
+  Module *M = Retranslate(C, err);
   if (!M) {
     FAIL() << "failure during retranslation: " << err << "\n";
     return;
@@ -163,10 +161,10 @@ TEST_F(SpirvConvertionsTest, IntrinsicAttrs) {
   // M_->dump();
   // M->dump();
 
-  for (const std::string& fname :FN_) {
+  for (const std::string &fname : FN_) {
     // std::cout << "processing <" << fname << ">" << "\n";
-    Function* fl = M->getFunction(fname);
-    Function* fr = M_->getFunction(fname);
+    Function *fl = M->getFunction(fname);
+    Function *fr = M_->getFunction(fname);
 
     if (!fl)
       FAIL() << "could not find <" << fname << "> in the converted Module\n";
@@ -189,17 +187,15 @@ TEST_F(SpirvConvertionsTest, FunctionAttrs) {
   // is that I don't know how to diffirentiate between attributes which require
   // a value from those that don't.
   std::map<std::string, Attribute::AttrKind> kinds = {
-    { "Convergent", Attribute::Convergent },
-    { "NoReturn", Attribute::NoReturn },
-    { "NoInline", Attribute::NoInline },
-    { "NoUnwind", Attribute::NoUnwind },
-    { "SafeStack", Attribute::SafeStack },
+      {"Convergent", Attribute::Convergent}, {"NoReturn", Attribute::NoReturn},
+      {"NoInline", Attribute::NoInline},     {"NoUnwind", Attribute::NoUnwind},
+      {"SafeStack", Attribute::SafeStack},
   };
-  for (const auto& k : kinds) {
+  for (const auto &k : kinds) {
     Type *FArgTy[] = {Type::getInt32PtrTy(Ctx_)};
     FunctionType *FT = FunctionType::get(Type::getVoidTy(Ctx_), FArgTy, false);
-    Function* test_f =
-      Function::Create(FT, Function::ExternalLinkage, k.first, M_.get());
+    Function *test_f =
+        Function::Create(FT, Function::ExternalLinkage, k.first, M_.get());
     for (unsigned i = Attribute::None; i < Attribute::EndAttrKinds; ++i) {
       if (test_f->hasFnAttribute((Attribute::AttrKind)i)) {
         test_f->removeFnAttr((Attribute::AttrKind)i);
@@ -212,25 +208,24 @@ TEST_F(SpirvConvertionsTest, FunctionAttrs) {
 
   std::string err;
   LLVMContext C;
-  Module* M = Retranslate(C, err);
+  Module *M = Retranslate(C, err);
   if (!M) {
     FAIL() << "failure during retranslation: " << err << "\n";
     return;
   }
-  for (const auto& k : kinds) {
-    Function* fl = M->getFunction(k.first);
-    Function* fr = M_->getFunction(k.first);
+  for (const auto &k : kinds) {
+    Function *fl = M->getFunction(k.first);
+    Function *fr = M_->getFunction(k.first);
     for (unsigned i = Attribute::None; i < Attribute::EndAttrKinds; ++i) {
       Attribute::AttrKind att = (Attribute::AttrKind)i;
       if ((fl->hasFnAttribute(att) != fr->hasFnAttribute(att))) {
-        FAIL() << "Attriubute mismatch for <" << k.first << "> at attr:" <<
-            i << " (" << k2s(kinds, att) << ")\n";
+        FAIL() << "Attriubute mismatch for <" << k.first << "> at attr:" << i
+               << " (" << k2s(kinds, att) << ")\n";
       }
     }
   }
   // M_->dump();
   // M->dump();
 }
-
 
 } // namespace

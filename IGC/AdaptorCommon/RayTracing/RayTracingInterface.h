@@ -23,7 +23,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include <vector>
 
-namespace IGC
-{
-    void RayTracingInlineLowering(CodeGenContext* pContext);
-}
+namespace IGC {
+void RayTracingInlineLowering(CodeGenContext *pContext);
+} // namespace IGC

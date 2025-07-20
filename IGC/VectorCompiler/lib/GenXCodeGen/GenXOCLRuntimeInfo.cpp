@@ -421,7 +421,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(
     const Function &Kernel, const vc::KernelMetadata &KM,
     const GenXSubtarget &ST, const GenXBackendConfig &BC) {
   IGC_ASSERT_MESSAGE(Kernel.arg_size() == KM.getNumArgs(),
-    "Expected same number of arguments");
+                     "Expected same number of arguments");
   // Some arguments are part of thread payload and do not require
   // entries in arguments info for OCL runtime.
   auto NonPayloadArgs =
@@ -477,8 +477,8 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
 GenXOCLRuntimeInfo::CompiledKernel::CompiledKernel(
     KernelInfo &&KI, const CostInfoT &CI, const vISA::FINALIZER_INFO &JI,
     const GTPinInfo &GI, std::vector<char> DbgInfoIn)
-    : CompilerInfo(std::move(KI)), CostInfo(CI), JitterInfo(JI),
-      GtpinInfo(GI), DebugInfo{std::move(DbgInfoIn)} {}
+    : CompilerInfo(std::move(KI)), CostInfo(CI), JitterInfo(JI), GtpinInfo(GI),
+      DebugInfo{std::move(DbgInfoIn)} {}
 
 //===----------------------------------------------------------------------===//
 //
@@ -553,9 +553,11 @@ appendFuncBinary(genx::BinaryDataAccumulator<const GlobalValue *> &GenBinary,
   void *GenBin = nullptr;
   int GenBinSize = 0;
   CISA_CALL(BuiltFunc.GetGenxBinary(GenBin, GenBinSize));
-  IGC_ASSERT_MESSAGE(GenBin,
+  IGC_ASSERT_MESSAGE(
+      GenBin,
       "Unexpected null buffer or zero-sized kernel (compilation failed?)");
-  IGC_ASSERT_MESSAGE(GenBinSize,
+  IGC_ASSERT_MESSAGE(
+      GenBinSize,
       "Unexpected null buffer or zero-sized kernel (compilation failed?)");
   GenBinary.append(&Func, ArrayRef<uint8_t>{static_cast<uint8_t *>(GenBin),
                                             static_cast<size_t>(GenBinSize)});
@@ -720,7 +722,7 @@ ModuleDataT::ModuleDataT(const Module &M) {
       make_filter_range(M.globals(), [](const GlobalVariable &GV) {
         return vc::isRealGlobalVariable(GV);
       });
-  SmallVector<const GlobalVariable*, 4> ZeroInitialized;
+  SmallVector<const GlobalVariable *, 4> ZeroInitialized;
   for (auto &GV : RealGlobals) {
     if (GV.isConstant()) {
       if (GV.hasAttribute(vc::PrintfStringVariable))
@@ -1057,8 +1059,9 @@ bool GenXOCLRuntimeInfo::runOnModule(Module &M) {
                        .getGenXSubtarget();
   const auto &DBG = getAnalysis<GenXDebugInfo>();
 
-  VISABuilder &VB =
-      *((GM.HasInlineAsm() || !BC.getVISALTOStrings().empty()) ? GM.GetVISAAsmReader() : GM.GetCisaBuilder());
+  VISABuilder &VB = *((GM.HasInlineAsm() || !BC.getVISALTOStrings().empty())
+                          ? GM.GetVISAAsmReader()
+                          : GM.GetCisaBuilder());
 
   CompiledModule = RuntimeInfoCollector{*this, FGA, BC, VB, ST, M, DBG}.run();
   return false;

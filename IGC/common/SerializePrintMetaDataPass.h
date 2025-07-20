@@ -29,7 +29,7 @@ public:
   SerializePrintMetaDataPass(llvm::raw_ostream *Stream = nullptr);
   bool runOnModule(llvm::Module &M) override;
 
-  void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     AU.setPreservesCFG();
     AU.addPreserved<MetaDataUtilsWrapper>();
   }
@@ -44,5 +44,5 @@ private:
   void CollectInsideMD(llvm::MDNode *Node);
   void CollectInsideMD(llvm::Metadata *Node);
 };
-void initializeSerializePrintMetaDataPassPass(llvm::PassRegistry&);
+void initializeSerializePrintMetaDataPassPass(llvm::PassRegistry &);
 } // namespace IGC

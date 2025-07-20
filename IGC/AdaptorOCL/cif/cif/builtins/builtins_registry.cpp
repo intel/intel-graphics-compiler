@@ -17,24 +17,25 @@ namespace CIF {
 namespace Builtins {
 
 // List of all supported builtins
-using AllBuiltinsListT =  InterfacesList<CIF::Builtins::Buffer>;
+using AllBuiltinsListT = InterfacesList<CIF::Builtins::Buffer>;
 
-bool IsBuiltin(InterfaceId_t intId){
-    return AllBuiltinsListT::ContainsInterface(intId);
+bool IsBuiltin(InterfaceId_t intId) { return AllBuiltinsListT::ContainsInterface(intId); }
+
+ICIF *Create(InterfaceId_t entryPointInterface, Version_t version, ICIF *parentInterface) {
+  return AllBuiltinsListT::template forwardToOne<Helpers::ForwardCreateInterfaceImpl, ICIF *, ICIF *>(
+      entryPointInterface, nullptr, version, version, parentInterface);
 }
 
-ICIF *Create(InterfaceId_t entryPointInterface, Version_t version, ICIF *parentInterface){
-    return AllBuiltinsListT::template forwardToOne<Helpers::ForwardCreateInterfaceImpl, ICIF *, ICIF *>(entryPointInterface, nullptr, version, version, parentInterface);
+bool GetSupportedVersions(InterfaceId_t entryPointInterface, Version_t &verMin, Version_t &verMax) {
+  return AllBuiltinsListT::template forwardToOne<Helpers::ForwardGetSupportedVersions, bool>(entryPointInterface, false,
+                                                                                             verMin, verMax);
 }
 
-bool GetSupportedVersions(InterfaceId_t entryPointInterface, Version_t &verMin, Version_t &verMax){
-    return AllBuiltinsListT::template forwardToOne<Helpers::ForwardGetSupportedVersions, bool>(entryPointInterface, false, verMin, verMax);
+InterfaceId_t FindIncompatible(InterfaceId_t entryPointInterface, CIF::CompatibilityDataHandle handle) {
+  return AllBuiltinsListT::template forwardToOne<Helpers::ForwardGetFirstIncompatible, InterfaceId_t>(
+      entryPointInterface, entryPointInterface, handle);
 }
 
-InterfaceId_t FindIncompatible(InterfaceId_t entryPointInterface, CIF::CompatibilityDataHandle handle){
-    return AllBuiltinsListT::template forwardToOne<Helpers::ForwardGetFirstIncompatible, InterfaceId_t>(entryPointInterface, entryPointInterface, handle);
-}
+} // namespace Builtins
 
-}
-
-}
+} // namespace CIF

@@ -17,22 +17,16 @@ namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR < 11
 inline unsigned getElementCount(unsigned EC) { return EC; }
 #elif LLVM_VERSION_MAJOR == 11
-inline llvm::ElementCount getElementCount(unsigned EC) {
-  return llvm::ElementCount(EC, false);
-}
+inline llvm::ElementCount getElementCount(unsigned EC) { return llvm::ElementCount(EC, false); }
 #else
-inline llvm::ElementCount getElementCount(unsigned EC) {
-  return llvm::ElementCount::get(EC, false);
-}
+inline llvm::ElementCount getElementCount(unsigned EC) { return llvm::ElementCount::get(EC, false); }
 #endif
 #if LLVM_VERSION_MAJOR <= 11
 using TypeSize = unsigned;
 inline IGCLLVM::TypeSize getTypeSize(unsigned TS) { return TS; }
 #else
 using TypeSize = llvm::TypeSize;
-inline llvm::TypeSize getTypeSize(unsigned TS) {
-  return llvm::TypeSize::get(TS, false);
-}
+inline llvm::TypeSize getTypeSize(unsigned TS) { return llvm::TypeSize::get(TS, false); }
 #endif
 } // namespace IGCLLVM
 

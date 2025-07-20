@@ -14,19 +14,14 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/APSInt.h"
 
-namespace IGCLLVM
-{
-  inline std::string toString(const llvm::APInt &I, unsigned Radix, bool Signed,
-                            bool formatAsCLiteral = false) {
-      llvm::SmallString<40> S;
-      I.toString(S, Radix, Signed, formatAsCLiteral);
-      return std::string(S.str());
-  }
-
-  inline std::string toString(const llvm::APSInt &I, unsigned Radix)
-  {
-      return IGCLLVM::toString(I, Radix, I.isSigned());
-  }
+namespace IGCLLVM {
+inline std::string toString(const llvm::APInt &I, unsigned Radix, bool Signed, bool formatAsCLiteral = false) {
+  llvm::SmallString<40> S;
+  I.toString(S, Radix, Signed, formatAsCLiteral);
+  return std::string(S.str());
 }
+
+inline std::string toString(const llvm::APSInt &I, unsigned Radix) { return IGCLLVM::toString(I, Radix, I.isSigned()); }
+} // namespace IGCLLVM
 
 #endif

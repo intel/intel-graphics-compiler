@@ -20,51 +20,47 @@ SPDX-License-Identifier: MIT
 #include "visa/include/visa_igc_common_header.h"
 
 namespace llvm {
-    class RTBuilder;
+class RTBuilder;
 }
 
 namespace IGC {
 
-  class ResolveOCLRaytracingBuiltins : public llvm::ModulePass, public llvm::InstVisitor<ResolveOCLRaytracingBuiltins> {
+class ResolveOCLRaytracingBuiltins : public llvm::ModulePass, public llvm::InstVisitor<ResolveOCLRaytracingBuiltins> {
 
-  public:
-    // Pass identification, replacement for typeid
-    static char ID;
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
 
-    ResolveOCLRaytracingBuiltins();
+  ResolveOCLRaytracingBuiltins();
 
-    virtual llvm::StringRef getPassName() const override {
-      return "ResolveOCLRaytracingBuiltins";
-    }
+  virtual llvm::StringRef getPassName() const override { return "ResolveOCLRaytracingBuiltins"; }
 
-    void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-    {
-      AU.addRequired<CodeGenContextWrapper>();
-    }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
 
-    virtual bool runOnModule(llvm::Module& M) override;
+  virtual bool runOnModule(llvm::Module &M) override;
 
-    void visitCallInst(llvm::CallInst& callInst);
+  void visitCallInst(llvm::CallInst &callInst);
 
-    void handleGetRtStack(llvm::CallInst& callInst);
-    void handleGetThreadBTDStack(llvm::CallInst& callInst);
-    void handleGetGlobalBTDStack(llvm::CallInst& callInst);
-    void handleDispatchTraceRayQuery(llvm::CallInst& callInst);
-    void handleRTSync(llvm::CallInst& callInst);
-    void handleGetRTGlobalBuffer(llvm::CallInst& callInst);
-    void handleInitRayQuery(llvm::CallInst& callInst);
-    void handleUpdateRayQuery(llvm::CallInst& callInst);
-    void handleQuery(llvm::CallInst& callInst);
+  void handleGetRtStack(llvm::CallInst &callInst);
+  void handleGetThreadBTDStack(llvm::CallInst &callInst);
+  void handleGetGlobalBTDStack(llvm::CallInst &callInst);
+  void handleDispatchTraceRayQuery(llvm::CallInst &callInst);
+  void handleRTSync(llvm::CallInst &callInst);
+  void handleGetRTGlobalBuffer(llvm::CallInst &callInst);
+  void handleInitRayQuery(llvm::CallInst &callInst);
+  void handleUpdateRayQuery(llvm::CallInst &callInst);
+  void handleQuery(llvm::CallInst &callInst);
 
-  private:
-    CodeGenContext* m_pCtx = nullptr;
-    std::vector<llvm::CallInst*> m_callsToReplace;
-    llvm::RTBuilder* m_builder = nullptr;
+private:
+  CodeGenContext *m_pCtx = nullptr;
+  std::vector<llvm::CallInst *> m_callsToReplace;
+  llvm::RTBuilder *m_builder = nullptr;
 
-    void handleGetBTDStack(llvm::CallInst& callInst, const bool isGlobal);
+  void handleGetBTDStack(llvm::CallInst &callInst, const bool isGlobal);
 
-    void defineOpaqueTypes();
+  void defineOpaqueTypes();
 
-    llvm::Value* getIntrinsicValue(llvm::GenISAIntrinsic::ID intrinsicId, llvm::ArrayRef<llvm::Value*> args = llvm::ArrayRef<llvm::Value*>());
-  };
-}
+  llvm::Value *getIntrinsicValue(llvm::GenISAIntrinsic::ID intrinsicId,
+                                 llvm::ArrayRef<llvm::Value *> args = llvm::ArrayRef<llvm::Value *>());
+};
+} // namespace IGC

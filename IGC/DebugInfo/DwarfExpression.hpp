@@ -37,8 +37,7 @@ public:
     End = Expr->expr_op_end();
   }
 
-  DIExpressionCursor(ArrayRef<uint64_t> Expr)
-      : Start(Expr.begin()), End(Expr.end()) {}
+  DIExpressionCursor(ArrayRef<uint64_t> Expr) : Start(Expr.begin()), End(Expr.end()) {}
 
   DIExpressionCursor(const DIExpressionCursor &) = default;
 
@@ -78,9 +77,7 @@ public:
   DIExpression::expr_op_iterator end() const { return End; }
 
   /// Retrieve the fragment information, if any.
-  Optional<DIExpression::FragmentInfo> getFragmentInfo() const {
-    return DIExpression::getFragmentInfo(Start, End);
-  }
+  Optional<DIExpression::FragmentInfo> getFragmentInfo() const { return DIExpression::getFragmentInfo(Start, End); }
 };
 
 class DwarfExpression {
@@ -103,7 +100,7 @@ protected:
   void emitConstu(uint64_t Value);
 
 public:
-  DwarfExpression(CompileUnit &CU) : CU(CU){};
+  DwarfExpression(CompileUnit &CU) : CU(CU) {};
 
   /// This needs to be called last to commit any pending changes.
   void finalize();
@@ -116,9 +113,7 @@ public:
   /// DW_OP_LLVM_arg operations are resolved by calling (\p InsertArg).
   //
   /// \return false if any call to (\p InsertArg) returns false.
-  bool addExpression(
-      DIExpressionCursor &&Expr,
-      llvm::function_ref<bool(unsigned, DIExpressionCursor &)> InsertArg);
+  bool addExpression(DIExpressionCursor &&Expr, llvm::function_ref<bool(unsigned, DIExpressionCursor &)> InsertArg);
 
   ~DwarfExpression() = default;
 };

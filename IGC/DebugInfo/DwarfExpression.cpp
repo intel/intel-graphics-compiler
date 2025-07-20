@@ -25,9 +25,8 @@ void DwarfExpression::emitConstu(uint64_t Value) {
   }
 }
 
-bool DwarfExpression::addExpression(
-    DIExpressionCursor &&ExprCursor,
-    llvm::function_ref<bool(unsigned, DIExpressionCursor &)> InsertArg) {
+bool DwarfExpression::addExpression(DIExpressionCursor &&ExprCursor,
+                                    llvm::function_ref<bool(unsigned, DIExpressionCursor &)> InsertArg) {
   // Entry values can currently only cover the initial register location,
   // and not any other parts of the following DWARF expression.
   // assert(!IsEmittingEntryValue && "Can't emit entry value around

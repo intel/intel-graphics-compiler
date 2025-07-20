@@ -10,45 +10,35 @@ SPDX-License-Identifier: MIT
 #include "stdint.h"
 #include "patch_shared.h"
 
-namespace iOpenCL
-{
+namespace iOpenCL {
 
 /*****************************************************************************\
 STRUCT: SKernelBinaryHeaderGen7
 \*****************************************************************************/
-struct SKernelBinaryHeaderGen7 :
-       SKernelBinaryHeaderCommon
-{
-};
+struct SKernelBinaryHeaderGen7 : SKernelBinaryHeaderCommon {};
 
 /*****************************************************************************\
 STRUCT: SPatchMediaInterfaceDescriptorLoad
 \*****************************************************************************/
-struct SPatchMediaInterfaceDescriptorLoad :
-       SPatchItemHeader
-{
-    uint32_t   InterfaceDescriptorDataOffset;
+struct SPatchMediaInterfaceDescriptorLoad : SPatchItemHeader {
+  uint32_t InterfaceDescriptorDataOffset;
 };
 
 /*****************************************************************************\
 STRUCT: SPatchInterfaceDescriptorData
 \*****************************************************************************/
-struct SPatchInterfaceDescriptorData :
-       SPatchItemHeader
-{
-    uint32_t   Offset;
-    uint32_t   SamplerStateOffset;
-    uint32_t   KernelOffset;
-    uint32_t   BindingTableOffset;
+struct SPatchInterfaceDescriptorData : SPatchItemHeader {
+  uint32_t Offset;
+  uint32_t SamplerStateOffset;
+  uint32_t KernelOffset;
+  uint32_t BindingTableOffset;
 };
 
 /*****************************************************************************\
 STRUCT: SPatchDataParameterStream
 \*****************************************************************************/
-struct SPatchDataParameterStream :
-       SPatchItemHeader
-{
-    uint32_t   DataParameterStreamSize;
+struct SPatchDataParameterStream : SPatchItemHeader {
+  uint32_t DataParameterStreamSize;
 };
 
-} // namespace
+} // namespace iOpenCL

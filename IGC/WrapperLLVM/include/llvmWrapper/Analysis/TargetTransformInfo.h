@@ -19,33 +19,27 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/InstructionCost.h"
 #endif
 
-namespace IGCLLVM
-{
-    template <typename T> class TTIImplCRTPBase : public llvm::TargetTransformInfoImplCRTPBase<T>
-    {
-    private:
-        using CRTPBaseT = llvm::TargetTransformInfoImplCRTPBase<T>;
-    public:
-        TTIImplCRTPBase(const llvm::DataLayout& DL) : CRTPBaseT(DL) {
+namespace IGCLLVM {
+template <typename T> class TTIImplCRTPBase : public llvm::TargetTransformInfoImplCRTPBase<T> {
+private:
+  using CRTPBaseT = llvm::TargetTransformInfoImplCRTPBase<T>;
 
-        }
+public:
+  TTIImplCRTPBase(const llvm::DataLayout &DL) : CRTPBaseT(DL) {}
 #if LLVM_VERSION_MAJOR <= 12
-        unsigned int
+  unsigned int
 #else
-        llvm::InstructionCost
+  llvm::InstructionCost
 #endif
-        getInstructionCost(
-            const llvm::User* U,
-            llvm::ArrayRef<const llvm::Value* > Operands,
-            llvm::TargetTransformInfo::TargetCostKind CostKind)
-        {
+  getInstructionCost(const llvm::User *U, llvm::ArrayRef<const llvm::Value *> Operands,
+                     llvm::TargetTransformInfo::TargetCostKind CostKind) {
 #if LLVM_VERSION_MAJOR >= 16
-            return CRTPBaseT::getInstructionCost(U, Operands, CostKind);
-#else // LLVM_VERSION_MAJOR
-            return CRTPBaseT::getUserCost(U, Operands, CostKind);
+    return CRTPBaseT::getInstructionCost(U, Operands, CostKind);
+#else  // LLVM_VERSION_MAJOR
+    return CRTPBaseT::getUserCost(U, Operands, CostKind);
 #endif // LLVM_VERSION_MAJOR
-        }
-    };
-}
+  }
+};
+} // namespace IGCLLVM
 
 #endif

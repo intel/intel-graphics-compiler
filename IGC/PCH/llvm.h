@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 /// Not used ones are commented out with a reason for exclusion
 //===----------------------------------------------------------------------===//
 
-
 // LLVM
 #include "../common/LLVMWarningsPush.hpp"
 #include "llvm-c/Core.h"

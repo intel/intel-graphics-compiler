@@ -8,11 +8,11 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 #ifdef CIF_EXPORT
-#  undef CIF_EXPORT
+#undef CIF_EXPORT
 #endif
 
 #ifdef CIF_IMPORT
-#  undef CIF_IMPORT
+#undef CIF_IMPORT
 #endif
 
 #define CIF_IMPORT

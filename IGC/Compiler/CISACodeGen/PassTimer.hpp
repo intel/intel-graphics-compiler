@@ -16,31 +16,22 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include "common/LLVMWarningsPop.hpp"
 
-class PassTimer : public llvm::ModulePass
-{
+class PassTimer : public llvm::ModulePass {
 public:
-    PassTimer(IGC::CodeGenContext* ctx, COMPILE_TIME_INTERVALS index, bool isStart) : llvm::ModulePass(ID)
-    {
-        m_context = ctx;
-        m_index = index;
-        m_isStart = isStart;
-    }
-    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-    {
-        AU.setPreservesAll();
-    }
+  PassTimer(IGC::CodeGenContext *ctx, COMPILE_TIME_INTERVALS index, bool isStart) : llvm::ModulePass(ID) {
+    m_context = ctx;
+    m_index = index;
+    m_isStart = isStart;
+  }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesAll(); }
 
-    virtual bool runOnModule(llvm::Module& M) override;
+  virtual bool runOnModule(llvm::Module &M) override;
 
-    virtual llvm::StringRef getPassName() const override
-    {
-        return "passTimer";
-    }
+  virtual llvm::StringRef getPassName() const override { return "passTimer"; }
 
 private:
-    IGC::CodeGenContext* m_context;
-    static char ID;
-    COMPILE_TIME_INTERVALS m_index;
-    bool m_isStart;
+  IGC::CodeGenContext *m_context;
+  static char ID;
+  COMPILE_TIME_INTERVALS m_index;
+  bool m_isStart;
 };
-

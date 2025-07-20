@@ -272,10 +272,8 @@ static Value *propagateShuffleVector(ShuffleVectorInst *Shuffle) {
     }
   }
 
-  LLVM_DEBUG(dbgs() << "Combined mask: "; for (int Val
-                                               : CombinedMask) dbgs()
-                                          << Val << " ";
-             dbgs() << "\n");
+  LLVM_DEBUG(dbgs() << "Combined mask: ";
+             for (int Val : CombinedMask) dbgs() << Val << " "; dbgs() << "\n");
 
   // Create the final shuffle vector with the combined mask.
   IRBuilder<> Builder(Shuffle);
@@ -380,10 +378,8 @@ static Value *simplifyShuffleVectorChain(ShuffleVectorInst *Shuffle) {
     }
   }
 
-  LLVM_DEBUG(dbgs() << "Combined mask: "; for (int Val
-                                               : CombinedMask) dbgs()
-                                          << Val << " ";
-             dbgs() << "\n");
+  LLVM_DEBUG(dbgs() << "Combined mask: ";
+             for (int Val : CombinedMask) dbgs() << Val << " "; dbgs() << "\n");
 
   // Create the final shuffle vector with the combined mask.
   IRBuilder<> Builder(Shuffle);

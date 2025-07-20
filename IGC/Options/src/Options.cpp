@@ -15,53 +15,48 @@ using namespace llvm::opt;
 using llvm::raw_ostream;
 
 #if LLVM_VERSION_MAJOR >= 16
-#define PREFIX(NAME, VALUE)                                                       \
-  static constexpr llvm::StringLiteral API_INIT_##NAME[] = VALUE;                 \
-  static llvm::ArrayRef<llvm::StringLiteral> API_##NAME(                          \
-                           API_INIT_##NAME, std::size(API_INIT_##NAME) - 1);
-  #include "igc/Options/ApiOptions.inc"
+#define PREFIX(NAME, VALUE)                                                                                            \
+  static constexpr llvm::StringLiteral API_INIT_##NAME[] = VALUE;                                                      \
+  static llvm::ArrayRef<llvm::StringLiteral> API_##NAME(API_INIT_##NAME, std::size(API_INIT_##NAME) - 1);
+#include "igc/Options/ApiOptions.inc"
 #undef PREFIX
 
-#define PREFIX(NAME, VALUE)                                                            \
-  static constexpr llvm::StringLiteral INTERNAL_INIT_##NAME[] = VALUE;                 \
-  static llvm::ArrayRef<llvm::StringLiteral> INTERNAL_##NAME(                          \
-                           INTERNAL_INIT_##NAME, std::size(INTERNAL_INIT_##NAME) - 1);
-  #include "igc/Options/InternalOptions.inc"
+#define PREFIX(NAME, VALUE)                                                                                            \
+  static constexpr llvm::StringLiteral INTERNAL_INIT_##NAME[] = VALUE;                                                 \
+  static llvm::ArrayRef<llvm::StringLiteral> INTERNAL_##NAME(INTERNAL_INIT_##NAME, std::size(INTERNAL_INIT_##NAME) - 1);
+#include "igc/Options/InternalOptions.inc"
 #undef PREFIX
 #else
-  #define PREFIX(NAME, VALUE) static const char* const API_##NAME[] = VALUE;
-  #include "igc/Options/ApiOptions.inc"
-  #undef PREFIX
+#define PREFIX(NAME, VALUE) static const char *const API_##NAME[] = VALUE;
+#include "igc/Options/ApiOptions.inc"
+#undef PREFIX
 
-  #define PREFIX(NAME, VALUE) static const char* const INTERNAL_##NAME[] = VALUE;
-  #include "igc/Options/InternalOptions.inc"
-  #undef PREFIX
+#define PREFIX(NAME, VALUE) static const char *const INTERNAL_##NAME[] = VALUE;
+#include "igc/Options/InternalOptions.inc"
+#undef PREFIX
 #endif
 
 static const OptTable::Info ApiInfoTable[] = {
-#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
-               HELPTEXT, METAVAR, VALUES)                                      \
-  {API_##PREFIX,        NAME,  HELPTEXT, METAVAR,          api::OPT_##ID,      \
-   Option::KIND##Class, PARAM, FLAGS,    api::OPT_##GROUP, api::OPT_##ALIAS,   \
-   ALIASARGS,           VALUES},
+#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM, HELPTEXT, METAVAR, VALUES)               \
+  {API_##PREFIX, NAME,  HELPTEXT,         METAVAR,          api::OPT_##ID, Option::KIND##Class,                        \
+   PARAM,        FLAGS, api::OPT_##GROUP, api::OPT_##ALIAS, ALIASARGS,     VALUES},
 #include "igc/Options/ApiOptions.inc"
 #undef OPTION
 };
 
 static const OptTable::Info InternalInfoTable[] = {
-#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
-               HELPTEXT, METAVAR, VALUES)                                      \
-  {INTERNAL_##PREFIX,                                                          \
-   NAME,                                                                       \
-   HELPTEXT,                                                                   \
-   METAVAR,                                                                    \
-   internal::OPT_##ID,                                                         \
-   Option::KIND##Class,                                                        \
-   PARAM,                                                                      \
-   FLAGS,                                                                      \
-   internal::OPT_##GROUP,                                                      \
-   internal::OPT_##ALIAS,                                                      \
-   ALIASARGS,                                                                  \
+#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM, HELPTEXT, METAVAR, VALUES)               \
+  {INTERNAL_##PREFIX,                                                                                                  \
+   NAME,                                                                                                               \
+   HELPTEXT,                                                                                                           \
+   METAVAR,                                                                                                            \
+   internal::OPT_##ID,                                                                                                 \
+   Option::KIND##Class,                                                                                                \
+   PARAM,                                                                                                              \
+   FLAGS,                                                                                                              \
+   internal::OPT_##GROUP,                                                                                              \
+   internal::OPT_##ALIAS,                                                                                              \
+   ALIASARGS,                                                                                                          \
    VALUES},
 #include "igc/Options/InternalOptions.inc"
 #undef OPTION

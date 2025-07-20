@@ -19,7 +19,7 @@ CM_NODEBUG CM_INLINE vector<half, N> __impl_uitofp(vector<uint64_t, N> a) {
   const vector<uint32_t, N> Zero(0);
   const vector<uint32_t, N> Ones(0xffffffff);
 
-  vector<uint32_t, 2 *N> LoHi = a.template format<uint32_t>();
+  vector<uint32_t, 2 * N> LoHi = a.template format<uint32_t>();
   vector<uint32_t, N> Lo = LoHi.template select<N, 2>(0);
   vector<uint32_t, N> Hi = LoHi.template select<N, 2>(1);
   // max half value is 65504 (0xffe0)

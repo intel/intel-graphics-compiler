@@ -42,9 +42,10 @@ class GenXCFSimplification : public FunctionPass {
   static const unsigned Threshold;
   bool Modified = false;
   SmallVector<BasicBlock *, 4> BranchedOver;
+
 public:
   static char ID;
-  explicit GenXCFSimplification() : FunctionPass(ID) { }
+  explicit GenXCFSimplification() : FunctionPass(ID) {}
   StringRef getPassName() const override {
     return "GenX SIMD CF simplification";
   }
@@ -64,27 +65,28 @@ const unsigned GenXCFSimplification::Threshold = 9999;
 } // end anonymous namespace
 
 char GenXCFSimplification::ID = 0;
-namespace llvm { void initializeGenXCFSimplificationPass(PassRegistry &); }
-INITIALIZE_PASS_BEGIN(GenXCFSimplification, "GenXCFSimplification", "GenXCFSimplification", false, false)
-INITIALIZE_PASS_END(GenXCFSimplification, "GenXCFSimplification", "GenXCFSimplification", false, false)
+namespace llvm {
+void initializeGenXCFSimplificationPass(PassRegistry &);
+}
+INITIALIZE_PASS_BEGIN(GenXCFSimplification, "GenXCFSimplification",
+                      "GenXCFSimplification", false, false)
+INITIALIZE_PASS_END(GenXCFSimplification, "GenXCFSimplification",
+                    "GenXCFSimplification", false, false)
 
-FunctionPass *llvm::createGenXCFSimplificationPass()
-{
+FunctionPass *llvm::createGenXCFSimplificationPass() {
   initializeGenXCFSimplificationPass(*PassRegistry::getPassRegistry());
   return new GenXCFSimplification();
 }
 
-void GenXCFSimplification::getAnalysisUsage(AnalysisUsage &AU) const
-{
-}
+void GenXCFSimplification::getAnalysisUsage(AnalysisUsage &AU) const {}
 
 /***********************************************************************
  * GenXCFSimplification::runOnFunction : process one function to
  *    simplify SIMD CF
  */
-bool GenXCFSimplification::runOnFunction(Function &F)
-{
-  LLVM_DEBUG(dbgs() << "GenXCFSimplification::runOnFunction(" << F.getName() << ")\n");
+bool GenXCFSimplification::runOnFunction(Function &F) {
+  LLVM_DEBUG(dbgs() << "GenXCFSimplification::runOnFunction(" << F.getName()
+                    << ")\n");
   Modified = false;
   // Build a list of simple branched over basic blocks.
   for (auto fi = F.begin(), fe = F.end(); fi != fe; ++fi) {
@@ -103,13 +105,13 @@ bool GenXCFSimplification::runOnFunction(Function &F)
     Modified = true;
     // The joined together block may now be a simple branched over block.
     if (isBranchedOverBlock(SubsumedInto)) {
-      LLVM_DEBUG(dbgs() << "is branched over: " << SubsumedInto->getName() << "\n");
+      LLVM_DEBUG(dbgs() << "is branched over: " << SubsumedInto->getName()
+                        << "\n");
       BranchedOver.push_back(SubsumedInto);
     }
   }
   return Modified;
 }
-
 
 /***********************************************************************
  * isBranchedOverBlock : detect whether a basic block is a simple branched
@@ -117,8 +119,7 @@ bool GenXCFSimplification::runOnFunction(Function &F)
  * and the predecessor must end in a conditional branch whose other
  * successor is our successor.
  */
-bool GenXCFSimplification::isBranchedOverBlock(BasicBlock *BB)
-{
+bool GenXCFSimplification::isBranchedOverBlock(BasicBlock *BB) {
   if (BB->use_empty())
     return false; // no predecessors
   if (!BB->hasOneUse())
@@ -146,8 +147,7 @@ bool GenXCFSimplification::isBranchedOverBlock(BasicBlock *BB)
  *
  * Return:  0 if unchanged, else the basic block that BB has been subsumed into
  */
-BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB)
-{
+BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB) {
   LLVM_DEBUG(dbgs() << "processBranchedOverBlock: " << BB->getName() << "\n");
   // Check that the condition to enter the branched over block is an any
   // of a predicate.
@@ -155,17 +155,17 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB)
   auto Cond = PredBr->getCondition();
   bool Inverted = false;
   switch (GenXIntrinsic::getGenXIntrinsicID(Cond)) {
-    case GenXIntrinsic::genx_any:
-      if (PredBr->getSuccessor(0) != BB)
-        return nullptr; // branch is the wrong way round
-      break;
-    case GenXIntrinsic::genx_all:
-      if (PredBr->getSuccessor(1) != BB)
-        return nullptr; // branch is the wrong way round
-      Inverted = true;
-      break;
-    default:
-      return nullptr; // condition not "any" or "all"
+  case GenXIntrinsic::genx_any:
+    if (PredBr->getSuccessor(0) != BB)
+      return nullptr; // branch is the wrong way round
+    break;
+  case GenXIntrinsic::genx_all:
+    if (PredBr->getSuccessor(1) != BB)
+      return nullptr; // branch is the wrong way round
+    Inverted = true;
+    break;
+  default:
+    return nullptr; // condition not "any" or "all"
   }
   Cond = cast<Instruction>(Cond)->getOperand(0);
   LLVM_DEBUG(dbgs() << "branched over simd cf block: " << BB->getName()
@@ -183,7 +183,7 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB)
   unsigned Count = 0;
   BasicBlock *Succ = BB->getTerminator()->getSuccessor(0);
   BasicBlock *Pred = PredBr->getParent();
-  for (auto Inst = &Succ->front(); ; Inst = Inst->getNextNode()) {
+  for (auto Inst = &Succ->front();; Inst = Inst->getNextNode()) {
     auto Phi = dyn_cast<PHINode>(Inst);
     if (!Phi)
       break;
@@ -191,7 +191,7 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB)
     Value *V = Phi->getIncomingValueForBlock(BB);
     Value *Orig = Phi->getIncomingValueForBlock(Pred);
     LLVM_DEBUG(dbgs() << "V: " << *V << "\n"
-        << "Orig: " << *Orig << "\n");
+                      << "Orig: " << *Orig << "\n");
     if (V == Orig)
       continue;
     // Check for special case that Orig is constant 0 and V is the condition
@@ -229,8 +229,9 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB)
       }
       if (!GenXIntrinsic::isWrRegion(Inst))
         break;
-      if (!isPredSubsetOf(Inst->getOperand(
-              GenXIntrinsic::GenXRegion::PredicateOperandNum), Cond, Inverted))
+      if (!isPredSubsetOf(
+              Inst->getOperand(GenXIntrinsic::GenXRegion::PredicateOperandNum),
+              Cond, Inverted))
         break;
       V = Inst->getOperand(0);
     }
@@ -268,7 +269,7 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB)
   // In each phi node in the successor, change the incoming for the predecessor
   // to match the incoming for our BB, and remove the incoming for our BB.
   // If that would leave only one incoming, then remove the phi node.
-  for (auto Inst = &Succ->front();; ) {
+  for (auto Inst = &Succ->front();;) {
     auto Phi = dyn_cast<PHINode>(Inst);
     if (!Phi)
       break;
@@ -311,19 +312,17 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB)
  *    if Inverted is set)
  */
 bool GenXCFSimplification::isPredSubsetOf(Value *Pred1, Value *Pred2,
-      bool Inverted)
-{
+                                          bool Inverted) {
   if (Pred1 == Pred2 && !Inverted)
     return true;
   auto BO = dyn_cast<BinaryOperator>(Pred1);
   if (!BO)
     return false;
   if (BO->getOpcode() == Instruction::And)
-    return isPredSubsetOf(BO->getOperand(0), Pred2, Inverted)
-      || isPredSubsetOf(BO->getOperand(1), Pred2, Inverted);
+    return isPredSubsetOf(BO->getOperand(0), Pred2, Inverted) ||
+           isPredSubsetOf(BO->getOperand(1), Pred2, Inverted);
   if (BO->getOpcode() == Instruction::Xor)
     if (auto C = dyn_cast<Constant>(BO->getOperand(1)))
       return BO->getOperand(0) == Pred2 && C->isAllOnesValue();
   return false;
 }
-

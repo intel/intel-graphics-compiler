@@ -42,10 +42,9 @@ static cl::opt<bool>
     StackScratchMem("stack-scratch-mem",
                     cl::desc("Specify what surface should be used for stack"),
                     cl::init(true));
-static cl::opt<bool>
-  EnforceLongLongEmulation("dbgonly-enforce-i64-emulation",
-                           cl::desc("Enforce i64 emulation"),
-                           cl::init(false));
+static cl::opt<bool> EnforceLongLongEmulation("dbgonly-enforce-i64-emulation",
+                                              cl::desc("Enforce i64 emulation"),
+                                              cl::init(false));
 static cl::opt<bool>
     EnforceDivRem32Emulation("dbgonly-enforce-divrem32-emulation",
                              cl::desc("Enforce divrem32 emulation"),
@@ -86,8 +85,7 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
 
 GenXSubtarget::GenXSubtarget(const Triple &TT, const std::string &CPU,
                              const std::string &FS)
-    : GenXGenSubtargetInfo(TT, CPU, /*TuneCPU=*/CPU, FS),
-      TargetTriple(TT) {
+    : GenXGenSubtargetInfo(TT, CPU, /*TuneCPU=*/CPU, FS), TargetTriple(TT) {
   initSubtargetFeatures(CPU, FS);
 }
 

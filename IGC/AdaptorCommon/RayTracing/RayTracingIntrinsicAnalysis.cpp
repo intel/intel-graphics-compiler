@@ -35,30 +35,24 @@ using namespace llvm;
 //
 // Pass detects the use of ray tracing intrinsics and prepares them for
 // addition as implicit arguments
-class RayTracingIntrinsicAnalysis : public ModulePass, public InstVisitor<RayTracingIntrinsicAnalysis>
-{
+class RayTracingIntrinsicAnalysis : public ModulePass, public InstVisitor<RayTracingIntrinsicAnalysis> {
 public:
-    RayTracingIntrinsicAnalysis();
-    bool runOnModule(Module& M) override;
-    bool runOnFunction(Function &F);
-    StringRef getPassName() const override
-    {
-        return "RayTracingIntrinsicAnalysis";
-    }
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-    {
-        AU.addRequired<MetaDataUtilsWrapper>();
-    }
+  RayTracingIntrinsicAnalysis();
+  bool runOnModule(Module &M) override;
+  bool runOnFunction(Function &F);
+  StringRef getPassName() const override { return "RayTracingIntrinsicAnalysis"; }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
 
-    void visitCallInst(CallInst &CI);
+  void visitCallInst(CallInst &CI);
 
-    static char ID;
+  static char ID;
+
 private:
-    bool hasGlobalPointer = false;
-    bool hasLocalPointer = false;
-    bool hasStackID = false;
-    bool hasInlinedData = false;
-    IGCMD::MetaDataUtils* pMdUtils = nullptr;
+  bool hasGlobalPointer = false;
+  bool hasLocalPointer = false;
+  bool hasStackID = false;
+  bool hasInlinedData = false;
+  IGCMD::MetaDataUtils *pMdUtils = nullptr;
 };
 
 #define PASS_FLAG "raytracing-intrinsic-analysis"
@@ -70,101 +64,85 @@ IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(RayTracingIntrinsicAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 RayTracingIntrinsicAnalysis::RayTracingIntrinsicAnalysis() : ModulePass(ID) {
-    initializeRayTracingIntrinsicAnalysisPass(*PassRegistry::getPassRegistry());
+  initializeRayTracingIntrinsicAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
 char RayTracingIntrinsicAnalysis::ID = 0;
 
-void RayTracingIntrinsicAnalysis::visitCallInst(CallInst &CI)
-{
-    if (auto *GII = dyn_cast<GenIntrinsicInst>(&CI))
-    {
-        switch (GII->getIntrinsicID())
-        {
-        case GenISAIntrinsic::GenISA_GlobalBufferPointer:
-            hasGlobalPointer = true;
-            return;
-        case GenISAIntrinsic::GenISA_LocalBufferPointer:
-            hasLocalPointer = true;
-            return;
-        case GenISAIntrinsic::GenISA_AsyncStackID:
-            hasStackID = true;
-            return;
-        case GenISAIntrinsic::GenISA_InlinedData:
-            hasInlinedData = true;
-            return;
-        default:
-            break;
-        }
+void RayTracingIntrinsicAnalysis::visitCallInst(CallInst &CI) {
+  if (auto *GII = dyn_cast<GenIntrinsicInst>(&CI)) {
+    switch (GII->getIntrinsicID()) {
+    case GenISAIntrinsic::GenISA_GlobalBufferPointer:
+      hasGlobalPointer = true;
+      return;
+    case GenISAIntrinsic::GenISA_LocalBufferPointer:
+      hasLocalPointer = true;
+      return;
+    case GenISAIntrinsic::GenISA_AsyncStackID:
+      hasStackID = true;
+      return;
+    case GenISAIntrinsic::GenISA_InlinedData:
+      hasInlinedData = true;
+      return;
+    default:
+      break;
     }
+  }
 }
 
-bool RayTracingIntrinsicAnalysis::runOnModule(Module& M)
-{
-    bool changed = false;
-    pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    // Run on all functions defined in this module
-    for (Function& F : M)
-    {
-        if (F.isDeclaration())
-        {
-            continue;
-        }
-        if (runOnFunction(F))
-        {
-            changed = true;
-        }
+bool RayTracingIntrinsicAnalysis::runOnModule(Module &M) {
+  bool changed = false;
+  pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  // Run on all functions defined in this module
+  for (Function &F : M) {
+    if (F.isDeclaration()) {
+      continue;
     }
+    if (runOnFunction(F)) {
+      changed = true;
+    }
+  }
 
-    // Update LLVM metadata based on IGC MetadataUtils
-    if (changed)
-        pMdUtils->save(M.getContext());
+  // Update LLVM metadata based on IGC MetadataUtils
+  if (changed)
+    pMdUtils->save(M.getContext());
 
-    return changed;
+  return changed;
 }
 
-bool RayTracingIntrinsicAnalysis::runOnFunction(Function &F)
-{
-    if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
-        return false;
+bool RayTracingIntrinsicAnalysis::runOnFunction(Function &F) {
+  if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
+    return false;
 
-    hasGlobalPointer = false;
-    hasLocalPointer  = false;
-    hasStackID       = false;
-    hasInlinedData   = false;
+  hasGlobalPointer = false;
+  hasLocalPointer = false;
+  hasStackID = false;
+  hasInlinedData = false;
 
-    visit(F);
+  visit(F);
 
-    bool changed = false;
-    SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
+  bool changed = false;
+  SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
 
-    if (hasGlobalPointer)
-        implicitArgs.push_back(ImplicitArg::RT_GLOBAL_BUFFER_POINTER);
+  if (hasGlobalPointer)
+    implicitArgs.push_back(ImplicitArg::RT_GLOBAL_BUFFER_POINTER);
 
-    if (hasLocalPointer)
-        implicitArgs.push_back(ImplicitArg::RT_LOCAL_BUFFER_POINTER);
+  if (hasLocalPointer)
+    implicitArgs.push_back(ImplicitArg::RT_LOCAL_BUFFER_POINTER);
 
-    if (hasStackID)
-        implicitArgs.push_back(ImplicitArg::RT_STACK_ID);
+  if (hasStackID)
+    implicitArgs.push_back(ImplicitArg::RT_STACK_ID);
 
-    if (hasInlinedData)
-        implicitArgs.push_back(ImplicitArg::RT_INLINED_DATA);
+  if (hasInlinedData)
+    implicitArgs.push_back(ImplicitArg::RT_INLINED_DATA);
 
-    if (!implicitArgs.empty())
-    {
-        // Create IGC metadata representing the implicit args needed by this function
-        ImplicitArgs::addImplicitArgsTotally(
-            F,
-            implicitArgs,
-            pMdUtils);
-        changed = true;
-    }
-    return changed;
+  if (!implicitArgs.empty()) {
+    // Create IGC metadata representing the implicit args needed by this function
+    ImplicitArgs::addImplicitArgsTotally(F, implicitArgs, pMdUtils);
+    changed = true;
+  }
+  return changed;
 }
-namespace IGC
-{
-    Pass* createRayTracingIntrinsicAnalysisPass()
-    {
-        return new RayTracingIntrinsicAnalysis();
-    }
-}
+namespace IGC {
+Pass *createRayTracingIntrinsicAnalysisPass() { return new RayTracingIntrinsicAnalysis(); }
+} // namespace IGC

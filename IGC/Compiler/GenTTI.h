@@ -15,54 +15,46 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Analysis/TargetTransformInfo.h"
 #include "common/LLVMWarningsPop.hpp"
 
-namespace llvm
-{
+namespace llvm {
 
-    // This implementation allows us to define our own costs for the GenIntrinsics
-    // Did not use BasicTTIImplBase because the overloaded constructors have TragetMachine as an argument,
-    // so I inherited from its parent which has only DL as its arguments
-    class GenIntrinsicsTTIImpl : public IGCLLVM::TTIImplCRTPBase<GenIntrinsicsTTIImpl>
-    {
-        typedef IGCLLVM::TTIImplCRTPBase<GenIntrinsicsTTIImpl> BaseT;
-        typedef TargetTransformInfo TTI;
-        friend BaseT;
-        IGC::CodeGenContext* ctx;
-    public:
-        GenIntrinsicsTTIImpl(IGC::CodeGenContext* pCtx) :
-            BaseT(pCtx->getModule()->getDataLayout()), ctx(pCtx) {}
+// This implementation allows us to define our own costs for the GenIntrinsics
+// Did not use BasicTTIImplBase because the overloaded constructors have TragetMachine as an argument,
+// so I inherited from its parent which has only DL as its arguments
+class GenIntrinsicsTTIImpl : public IGCLLVM::TTIImplCRTPBase<GenIntrinsicsTTIImpl> {
+  typedef IGCLLVM::TTIImplCRTPBase<GenIntrinsicsTTIImpl> BaseT;
+  typedef TargetTransformInfo TTI;
+  friend BaseT;
+  IGC::CodeGenContext *ctx;
 
-        bool shouldBuildLookupTables();
+public:
+  GenIntrinsicsTTIImpl(IGC::CodeGenContext *pCtx) : BaseT(pCtx->getModule()->getDataLayout()), ctx(pCtx) {}
 
-        bool isLoweredToCall(const Function* F);
+  bool shouldBuildLookupTables();
 
-        void* getAdjustedAnalysisPointer(const void* ID);
+  bool isLoweredToCall(const Function *F);
 
-        // [POC] Implemented to use InferAddressSpaces pass after
-        // PrivateMemoryToSLM pass to propagate ADDRESS_SPACE_PRIVATE
-        // from variables to memory operations.
-        unsigned getFlatAddressSpace();
+  void *getAdjustedAnalysisPointer(const void *ID);
 
-        void getUnrollingPreferences(Loop* L,
-            ScalarEvolution & SE,
-            TTI::UnrollingPreferences & UP, 
-            OptimizationRemarkEmitter* ORE
-        );
+  // [POC] Implemented to use InferAddressSpaces pass after
+  // PrivateMemoryToSLM pass to propagate ADDRESS_SPACE_PRIVATE
+  // from variables to memory operations.
+  unsigned getFlatAddressSpace();
 
-        void getPeelingPreferences(Loop* L, ScalarEvolution& SE,
-            TTI::PeelingPreferences& PP);
+  void getUnrollingPreferences(Loop *L, ScalarEvolution &SE, TTI::UnrollingPreferences &UP,
+                               OptimizationRemarkEmitter *ORE);
 
-        bool isProfitableToHoist(Instruction* I);
+  void getPeelingPreferences(Loop *L, ScalarEvolution &SE, TTI::PeelingPreferences &PP);
 
-       llvm::InstructionCost getUserCost(const User* U, ArrayRef<const Value*> Operands,
-           TTI::TargetCostKind CostKind);
+  bool isProfitableToHoist(Instruction *I);
 
-       llvm::InstructionCost getInstructionCost(const User* U, ArrayRef<const Value*> Operands,
-           TTI::TargetCostKind CostKind);
+  llvm::InstructionCost getUserCost(const User *U, ArrayRef<const Value *> Operands, TTI::TargetCostKind CostKind);
 
-    private:
-       llvm::InstructionCost internalCalculateCost(const User* U, ArrayRef<const Value*> Operands,
-           TTI::TargetCostKind CostKind);
+  llvm::InstructionCost getInstructionCost(const User *U, ArrayRef<const Value *> Operands,
+                                           TTI::TargetCostKind CostKind);
 
-    };
+private:
+  llvm::InstructionCost internalCalculateCost(const User *U, ArrayRef<const Value *> Operands,
+                                              TTI::TargetCostKind CostKind);
+};
 
-}
+} // namespace llvm

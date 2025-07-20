@@ -17,11 +17,11 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC {
-    void initializeAdvCodeMotionPass(llvm::PassRegistry&);
-    llvm::FunctionPass* createAdvCodeMotionPass(unsigned Control);
+void initializeAdvCodeMotionPass(llvm::PassRegistry &);
+llvm::FunctionPass *createAdvCodeMotionPass(unsigned Control);
 } // End namespace IGC
 
-void initializeMadLoopSlicePass(llvm::PassRegistry&);
-llvm::FunctionPass* createMadLoopSlicePass();
+void initializeMadLoopSlicePass(llvm::PassRegistry &);
+llvm::FunctionPass *createMadLoopSlicePass();
 
 #endif // _CISA_ADVCODEMOTION_H_

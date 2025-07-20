@@ -27,29 +27,21 @@ IGC_INITIALIZE_PASS_END(DisableLoopUnrollOnRetry, PASS_FLAG, PASS_DESCRIPTION, P
 
 char DisableLoopUnrollOnRetry::ID = 0;
 
-DisableLoopUnrollOnRetry::DisableLoopUnrollOnRetry()
-    : LoopPass(ID)
-{
-    initializeDisableLoopUnrollOnRetryPass(*PassRegistry::getPassRegistry());
+DisableLoopUnrollOnRetry::DisableLoopUnrollOnRetry() : LoopPass(ID) {
+  initializeDisableLoopUnrollOnRetryPass(*PassRegistry::getPassRegistry());
 }
 
-bool DisableLoopUnrollOnRetry::runOnLoop(Loop* L, LPPassManager& LPM)
-{
-    bool changed = false;
-    if (MDNode * LoopID = L->getLoopID())
-    {
-        if (!(GetUnrollMetadata(LoopID, "llvm.loop.unroll.enable") ||
-            GetUnrollMetadata(LoopID, "llvm.loop.unroll.full") ||
-            GetUnrollMetadata(LoopID, "llvm.loop.unroll.count")))
-        {
-            L->setLoopAlreadyUnrolled(); //This sets loop to llvm.loop.unroll.disable
-            changed = true;
-        }
+bool DisableLoopUnrollOnRetry::runOnLoop(Loop *L, LPPassManager &LPM) {
+  bool changed = false;
+  if (MDNode *LoopID = L->getLoopID()) {
+    if (!(GetUnrollMetadata(LoopID, "llvm.loop.unroll.enable") || GetUnrollMetadata(LoopID, "llvm.loop.unroll.full") ||
+          GetUnrollMetadata(LoopID, "llvm.loop.unroll.count"))) {
+      L->setLoopAlreadyUnrolled(); // This sets loop to llvm.loop.unroll.disable
+      changed = true;
     }
-    else
-    {
-        L->setLoopAlreadyUnrolled(); //This sets loop to llvm.loop.unroll.disable
-        changed = true;
-    }
-    return changed;
+  } else {
+    L->setLoopAlreadyUnrolled(); // This sets loop to llvm.loop.unroll.disable
+    changed = true;
+  }
+  return changed;
 }

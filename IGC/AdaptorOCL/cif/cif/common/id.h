@@ -30,7 +30,6 @@ constexpr Version_t BaseVersion = 0;
 constexpr Version_t MinVersion = BaseVersion + 1;
 constexpr Version_t MaxVersion = TraitsSpecialVersion - 1;
 
-constexpr InterfaceId_t InvalidInterface =
-    std::numeric_limits<InterfaceId_t>::max();
+constexpr InterfaceId_t InvalidInterface = std::numeric_limits<InterfaceId_t>::max();
 constexpr InterfaceId_t UnknownInterface = InvalidInterface - 1;
-}
+} // namespace CIF

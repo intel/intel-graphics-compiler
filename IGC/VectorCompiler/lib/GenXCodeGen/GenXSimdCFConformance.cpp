@@ -762,8 +762,8 @@ void GenXSimdCFConformance::gatherEMVals() {
   Type *I1Ty = Type::getInt1Ty(M->getContext());
   Type *EMTy = IGCLLVM::FixedVectorType::get(I1Ty, 32);
   Type *Tys[] = {EMTy};
-  auto *SavemaskFunc = vc::getAnyDeclaration(
-      M, GenXIntrinsic::genx_simdcf_savemask, Tys);
+  auto *SavemaskFunc =
+      vc::getAnyDeclaration(M, GenXIntrinsic::genx_simdcf_savemask, Tys);
   for (auto ui = SavemaskFunc->use_begin(), ue = SavemaskFunc->use_end();
        ui != ue; ++ui) {
     auto *Savemask = dyn_cast<CallInst>(ui->getUser());
@@ -780,8 +780,8 @@ void GenXSimdCFConformance::gatherEMVals() {
   if (SavemaskFunc->use_empty())
     SavemaskFunc->eraseFromParent();
 
-  auto *UnmaskFunc = vc::getAnyDeclaration(
-      M, GenXIntrinsic::genx_simdcf_unmask, Tys);
+  auto *UnmaskFunc =
+      vc::getAnyDeclaration(M, GenXIntrinsic::genx_simdcf_unmask, Tys);
   for (auto ui = UnmaskFunc->use_begin(), ue = UnmaskFunc->use_end(); ui != ue;
        ++ui) {
     auto *Unmask = dyn_cast<CallInst>(ui->getUser());
@@ -797,8 +797,8 @@ void GenXSimdCFConformance::gatherEMVals() {
   if (UnmaskFunc->use_empty())
     UnmaskFunc->eraseFromParent();
 
-  auto *RemaskFunc = vc::getAnyDeclaration(
-      M, GenXIntrinsic::genx_simdcf_remask, Tys);
+  auto *RemaskFunc =
+      vc::getAnyDeclaration(M, GenXIntrinsic::genx_simdcf_remask, Tys);
   for (auto ui = RemaskFunc->use_begin(), ue = RemaskFunc->use_end(); ui != ue;
        ++ui) {
     auto *Remask = dyn_cast<CallInst>(ui->getUser());
@@ -819,8 +819,7 @@ void GenXSimdCFConformance::gatherEMVals() {
     RemaskFunc->eraseFromParent();
 
   // delete useless cm_unmask_begin and cm_unmask_end
-  auto *UnmaskEF =
-      vc::getAnyDeclaration(M, GenXIntrinsic::genx_unmask_end);
+  auto *UnmaskEF = vc::getAnyDeclaration(M, GenXIntrinsic::genx_unmask_end);
   for (auto ui = UnmaskEF->use_begin(), ue = UnmaskEF->use_end(); ui != ue;) {
     auto u = ui->getUser();
     ++ui;
@@ -830,8 +829,7 @@ void GenXSimdCFConformance::gatherEMVals() {
   if (UnmaskEF->use_empty())
     UnmaskEF->eraseFromParent();
 
-  auto *UnmaskBF =
-      vc::getAnyDeclaration(M, GenXIntrinsic::genx_unmask_begin);
+  auto *UnmaskBF = vc::getAnyDeclaration(M, GenXIntrinsic::genx_unmask_begin);
   for (auto ui = UnmaskBF->use_begin(), ue = UnmaskBF->use_end(); ui != ue;) {
     auto u = ui->getUser();
     ++ui;
@@ -2074,9 +2072,9 @@ Value *GenXSimdCFConformance::getEMProducer(Value *User,
  */
 void GenXSimdCFConformance::lowerUnsuitableGetEMs() {
   auto *I1Ty = Type::getInt1Ty(M->getContext());
-  auto *GetEMDecl = vc::getAnyDeclaration(
-      M, GenXIntrinsic::genx_simdcf_get_em,
-      {IGCLLVM::FixedVectorType::get(I1Ty, 32)});
+  auto *GetEMDecl =
+      vc::getAnyDeclaration(M, GenXIntrinsic::genx_simdcf_get_em,
+                            {IGCLLVM::FixedVectorType::get(I1Ty, 32)});
   std::vector<Instruction *> ToDelete;
   for (auto ui = GetEMDecl->use_begin(); ui != GetEMDecl->use_end();) {
     std::set<Value *> Visited;
@@ -2460,7 +2458,8 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V) {
     auto User2 = cast<Instruction>(ui2->getUser());
     unsigned OpNum = ui2->getOperandNo();
     ++ui2;
-    LLVM_DEBUG(dbgs() << "checkAllUsesAreSelectOrWrRegion: for user " << *User2 << "\n");
+    LLVM_DEBUG(dbgs() << "checkAllUsesAreSelectOrWrRegion: for user " << *User2
+                      << "\n");
     if (isa<SelectInst>(User2))
       continue;
 
@@ -3054,8 +3053,7 @@ bool GenXSimdCFConformance::getConnectedVals(
   } else {
     if (!UsersToLower.empty()) {
       LLVM_DEBUG(dbgs() << "getConnectedVals: find bad users:\n";
-                 for (auto &BadUser
-                      : UsersToLower) {
+                 for (auto &BadUser : UsersToLower) {
                    dbgs() << "    ";
                    BadUser.print(dbgs());
                  });
@@ -3848,8 +3846,8 @@ void GenXSimdCFConformance::lowerGoto(CallInst *Goto) {
   // Insert that back into EM. That is result 0.
   Results[0] = EM = insertCond(EM, SubEM, Goto->getName() + ".EM", Goto, DL);
   // Result 2: BranchCond = !any(SubEM)
-  Function *AnyFunc = vc::getAnyDeclaration(
-      M, GenXIntrinsic::genx_any, SubEM->getType());
+  Function *AnyFunc =
+      vc::getAnyDeclaration(M, GenXIntrinsic::genx_any, SubEM->getType());
   auto Any = CallInst::Create(AnyFunc, SubEM, SubEM->getName() + ".any", Goto);
   Any->setDebugLoc(DL);
   auto Not = BinaryOperator::Create(Instruction::Xor, Any,
@@ -3882,8 +3880,8 @@ void GenXSimdCFConformance::lowerJoin(CallInst *Join) {
   // Insert that back into EM. That is result 0.
   Results[0] = EM = insertCond(EM, SubEM, Join->getName() + ".EM", Join, DL);
   // Result 1: BranchCond = !any(SubEM)
-  Function *AnyFunc = vc::getAnyDeclaration(
-      M, GenXIntrinsic::genx_any, SubEM->getType());
+  Function *AnyFunc =
+      vc::getAnyDeclaration(M, GenXIntrinsic::genx_any, SubEM->getType());
   auto Any = CallInst::Create(AnyFunc, SubEM, SubEM->getName() + ".any", Join);
   Any->setDebugLoc(DL);
   auto Not = BinaryOperator::Create(Instruction::Xor, Any,
@@ -4442,7 +4440,7 @@ void GenXSimdCFConformance::replaceGetEMUse(Instruction *Inst,
       // Replace with lowered EM
       auto it = LoweredEMValsMap.find(JPData.getRealEM());
       IGC_ASSERT_EXIT_MESSAGE(it != LoweredEMValsMap.end(),
-                         "Should be checked earlier");
+                              "Should be checked earlier");
       Instruction *LoweredEM = cast<Instruction>(it->second);
       Inst->setOperand(i, LoweredEM);
 

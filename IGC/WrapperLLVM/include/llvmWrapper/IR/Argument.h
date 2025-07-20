@@ -24,7 +24,7 @@ inline bool hasByRefAttr(const llvm::Argument *arg) {
 #endif
 }
 
-inline llvm::Type* getParamByRefType(const llvm::Argument *arg) {
+inline llvm::Type *getParamByRefType(const llvm::Argument *arg) {
 #if LLVM_VERSION_MAJOR > 11
   return arg->getParamByRefType();
 #else
@@ -37,20 +37,19 @@ inline void setParamByRefType([[maybe_unused]] llvm::Argument *arg, [[maybe_unus
 #endif
 }
 
-inline llvm::Type* getArgAttrEltTy(const llvm::Argument* Arg) {
-    llvm::AttributeSet ParamAttrs =
-        Arg->getParent()->getAttributes().getParamAttrs(Arg->getArgNo());
-    if (llvm::Type* ByValTy = ParamAttrs.getByValType())
-        return ByValTy;
-    if (llvm::Type* ByRefTy = ParamAttrs.getByRefType())
-        return ByRefTy;
-    if (llvm::Type* PreAllocTy = ParamAttrs.getPreallocatedType())
-        return PreAllocTy;
-    if (llvm::Type* InAllocaTy = ParamAttrs.getInAllocaType())
-        return InAllocaTy;
-    if (llvm::Type* SRetTy = ParamAttrs.getStructRetType())
-        return SRetTy;
-    return nullptr;
+inline llvm::Type *getArgAttrEltTy(const llvm::Argument *Arg) {
+  llvm::AttributeSet ParamAttrs = Arg->getParent()->getAttributes().getParamAttrs(Arg->getArgNo());
+  if (llvm::Type *ByValTy = ParamAttrs.getByValType())
+    return ByValTy;
+  if (llvm::Type *ByRefTy = ParamAttrs.getByRefType())
+    return ByRefTy;
+  if (llvm::Type *PreAllocTy = ParamAttrs.getPreallocatedType())
+    return PreAllocTy;
+  if (llvm::Type *InAllocaTy = ParamAttrs.getInAllocaType())
+    return InAllocaTy;
+  if (llvm::Type *SRetTy = ParamAttrs.getStructRetType())
+    return SRetTy;
+  return nullptr;
 }
 
 } // namespace IGCLLVM

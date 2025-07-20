@@ -20,94 +20,75 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-namespace IGC
-{
-    class DebugInfoData;
-    class VISADebugInfo;
-}
+namespace IGC {
+class DebugInfoData;
+class VISADebugInfo;
+} // namespace IGC
 
-namespace IGCMetrics
-{
-    const char* const funcMetrics = "llvm.igc.metric";
+namespace IGCMetrics {
+const char *const funcMetrics = "llvm.igc.metric";
 
-    class IGCMetric
-    {
-    private:
-        void* igcMetric;
-    public:
-        IGCMetric();
-        ~IGCMetric();
-        IGCMetric(const IGCMetric&) = delete;
-        IGCMetric& operator=(const IGCMetric&) = delete;
-        bool Enable();
-        void Init(ShaderHash* Hash, bool isDebugInfo);
+class IGCMetric {
+private:
+  void *igcMetric;
 
-        size_t getMetricDataSize();
-        const void* const getMetricData();
+public:
+  IGCMetric();
+  ~IGCMetric();
+  IGCMetric(const IGCMetric &) = delete;
+  IGCMetric &operator=(const IGCMetric &) = delete;
+  bool Enable();
+  void Init(ShaderHash *Hash, bool isDebugInfo);
 
-        void CollectLoops(llvm::LoopInfo* loopInfo);
-        void CollectLoops(llvm::Loop* loop);
+  size_t getMetricDataSize();
+  const void *const getMetricData();
 
-        void CollectFunctions(llvm::Module* pModule);
+  void CollectLoops(llvm::LoopInfo *loopInfo);
+  void CollectLoops(llvm::Loop *loop);
 
-        void StatBeginEmuFunc(llvm::Instruction* instruction);
-        void StatEndEmuFunc(llvm::Instruction* emulatedInstruction);
+  void CollectFunctions(llvm::Module *pModule);
 
-        void StatIncCoalesced(llvm::Instruction* coalescedAccess);
+  void StatBeginEmuFunc(llvm::Instruction *instruction);
+  void StatEndEmuFunc(llvm::Instruction *emulatedInstruction);
 
-        void CollectRegStats(KERNEL_INFO* vISAstats, llvm::Function* pFunc);
+  void StatIncCoalesced(llvm::Instruction *coalescedAccess);
 
-        void UpdateVariable(llvm::Value* Org, llvm::Value* New);
-        void CollectMem2Reg(llvm::AllocaInst* pAllocaInst, IGC::StatusPrivArr2Reg status);
+  void CollectRegStats(KERNEL_INFO *vISAstats, llvm::Function *pFunc);
 
-        void CollectLoopCyclomaticComplexity(
-            llvm::Function* pFunc,
-            int LoopCyclomaticComplexity,
-            int LoopCyclomaticComplexity_Max);
+  void UpdateVariable(llvm::Value *Org, llvm::Value *New);
+  void CollectMem2Reg(llvm::AllocaInst *pAllocaInst, IGC::StatusPrivArr2Reg status);
 
-        void CollectNestedLoopsWithMultipleExits(
-            llvm::Function* pFunc,
-            float NestedLoopsWithMultipleExitsRatio,
-            float NestedLoopsWithMultipleExitsRatio_Max);
+  void CollectLoopCyclomaticComplexity(llvm::Function *pFunc, int LoopCyclomaticComplexity,
+                                       int LoopCyclomaticComplexity_Max);
 
-        void CollectLongStridedLdStInLoop(
-            llvm::Function* pFunc,
-            llvm::Loop* pProblematicLoop,
-            int LongStridedLdStInLoop_LdCnt,
-            int LongStridedLdStInLoop_StCnt,
-            int LongStridedLdStInLoop_MaxCntLdOrSt);
+  void CollectNestedLoopsWithMultipleExits(llvm::Function *pFunc, float NestedLoopsWithMultipleExitsRatio,
+                                           float NestedLoopsWithMultipleExitsRatio_Max);
 
-        void CollectIsGeminiLakeWithDoubles(
-            llvm::Function* pFunc,
-            bool IsGeminiLakeWithDoubles);
+  void CollectLongStridedLdStInLoop(llvm::Function *pFunc, llvm::Loop *pProblematicLoop,
+                                    int LongStridedLdStInLoop_LdCnt, int LongStridedLdStInLoop_StCnt,
+                                    int LongStridedLdStInLoop_MaxCntLdOrSt);
 
-        void CollectInstructionCnt(
-            llvm::Function* pFunc,
-            int InstCnt,
-            int InstCntMax);
+  void CollectIsGeminiLakeWithDoubles(llvm::Function *pFunc, bool IsGeminiLakeWithDoubles);
 
-        void CollectThreadGroupSize(
-            llvm::Function* pFunc,
-            int ThreadGroupSize,
-            int ThreadGroupSizeMax);
+  void CollectInstructionCnt(llvm::Function *pFunc, int InstCnt, int InstCntMax);
 
-        void CollectThreadGroupSizeHint(
-            llvm::Function* pFunc,
-            int ThreadGroupSizeHint,
-            int ThreadGroupSizeHintMax);
+  void CollectThreadGroupSize(llvm::Function *pFunc, int ThreadGroupSize, int ThreadGroupSizeMax);
 
-        void CollectIsSubGroupFuncIn(llvm::Function* pFunc, bool flag);
+  void CollectThreadGroupSizeHint(llvm::Function *pFunc, int ThreadGroupSizeHint, int ThreadGroupSizeHintMax);
 
-        void CollectGen9Gen10WithIEEESqrtDivFunc(llvm::Function* pFunc, bool flag);
+  void CollectIsSubGroupFuncIn(llvm::Function *pFunc, bool flag);
 
-        void CollectNonUniformLoop(llvm::Function* pFunc, short LoopCount, llvm::Loop* problematicLoop);
+  void CollectGen9Gen10WithIEEESqrtDivFunc(llvm::Function *pFunc, bool flag);
 
-        void CollectDataFromDebugInfo(llvm::Function* pFunc, IGC::DebugInfoData *pDebugInfo, const IGC::VISADebugInfo *pDebugDecoder);
+  void CollectNonUniformLoop(llvm::Function *pFunc, short LoopCount, llvm::Loop *problematicLoop);
 
-        void FinalizeStats();
+  void CollectDataFromDebugInfo(llvm::Function *pFunc, IGC::DebugInfoData *pDebugInfo,
+                                const IGC::VISADebugInfo *pDebugDecoder);
 
-        void OutputMetrics();
+  void FinalizeStats();
 
-        static bool isMetricFuncCall(llvm::CallInst* pCallInst);
-    };
-}
+  void OutputMetrics();
+
+  static bool isMetricFuncCall(llvm::CallInst *pCallInst);
+};
+} // namespace IGCMetrics

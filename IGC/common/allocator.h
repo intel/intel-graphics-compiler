@@ -12,33 +12,29 @@ SPDX-License-Identifier: MIT
 #include <stdlib.h>
 #include <stdint.h>
 
-namespace IGC
-{
-inline void * aligned_malloc(size_t nBytes, size_t alignBytes)
-{
-    void * kernel = nullptr;
-#if   defined(_WIN32)
-    kernel = _aligned_malloc(nBytes, alignBytes);
+namespace IGC {
+inline void *aligned_malloc(size_t nBytes, size_t alignBytes) {
+  void *kernel = nullptr;
+#if defined(_WIN32)
+  kernel = _aligned_malloc(nBytes, alignBytes);
 #elif defined(ANDROID)
-    kernel = memalign(alignBytes, nBytes);
+  kernel = memalign(alignBytes, nBytes);
 #else // !defined(_WIN32) && !defined(ANDROID)
-    if (posix_memalign(&kernel, alignBytes, nBytes))
-    {
-        kernel = nullptr;
-    }
+  if (posix_memalign(&kernel, alignBytes, nBytes)) {
+    kernel = nullptr;
+  }
 #endif
-    return kernel;
+  return kernel;
 }
 
-inline void aligned_free(void *ptr)
-{
-#if   defined(_WIN32)
-    _aligned_free(ptr);
+inline void aligned_free(void *ptr) {
+#if defined(_WIN32)
+  _aligned_free(ptr);
 #else // !defined(_WIN32)
-    free(ptr);
+  free(ptr);
 #endif
 }
 
-}
+} // namespace IGC
 
-#endif //ALLOCATOR_H
+#endif // ALLOCATOR_H

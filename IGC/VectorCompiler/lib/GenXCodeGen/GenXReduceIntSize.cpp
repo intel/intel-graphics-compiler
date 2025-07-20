@@ -21,8 +21,8 @@ SPDX-License-Identifier: MIT
 ///
 /// For scalar operations, LLVM already contains passes to do this. But it does
 /// not seem to for vectors, possibly because OpenCL does not have C-like
-/// promotion rules for vectors. CM does have C-like promotion rules for vectors,
-/// so we need to cope with unnecessarily promoted operations.
+/// promotion rules for vectors. CM does have C-like promotion rules for
+/// vectors, so we need to cope with unnecessarily promoted operations.
 ///
 /// Operation of the pass
 /// ^^^^^^^^^^^^^^^^^^^^^
@@ -37,9 +37,9 @@ SPDX-License-Identifier: MIT
 ///
 /// Then it does a forwards scan, spotting where an instruction can be converted
 /// to a smaller int size because the operands have only the lower part of the
-/// value set (zext/sext, or an "and" with e.g. 0xff). The modified instruction with
-/// a smaller int size then needs a ZExt/SExt inserting. Thus the reduced int size
-/// is propagated forwards.
+/// value set (zext/sext, or an "and" with e.g. 0xff). The modified instruction
+/// with a smaller int size then needs a ZExt/SExt inserting. Thus the reduced
+/// int size is propagated forwards.
 ///
 //===----------------------------------------------------------------------===//
 #include "GenX.h"
@@ -90,6 +90,7 @@ class GenXReduceIntSize : public FunctionPass {
   };
   DominatorTree *DT = nullptr;
   bool Modified = false;
+
 public:
   static char ID;
   explicit GenXReduceIntSize(DominatorTree *DT = nullptr)
@@ -111,7 +112,9 @@ private:
 } // end anonymous namespace
 
 char GenXReduceIntSize::ID = 0;
-namespace llvm { void initializeGenXReduceIntSizePass(PassRegistry &); }
+namespace llvm {
+void initializeGenXReduceIntSizePass(PassRegistry &);
+}
 #if LLVM_VERSION_MAJOR >= 16
 llvm::PreservedAnalyses
 GenXReduceIntSizePass::run(Function &F, FunctionAnalysisManager &AM) {
@@ -123,9 +126,11 @@ GenXReduceIntSizePass::run(Function &F, FunctionAnalysisManager &AM) {
 }
 #endif
 
-INITIALIZE_PASS_BEGIN(GenXReduceIntSize, "GenXReduceIntSize", "GenXReduceIntSize", false, false)
+INITIALIZE_PASS_BEGIN(GenXReduceIntSize, "GenXReduceIntSize",
+                      "GenXReduceIntSize", false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-INITIALIZE_PASS_END(GenXReduceIntSize, "GenXReduceIntSize", "GenXReduceIntSize", false, false)
+INITIALIZE_PASS_END(GenXReduceIntSize, "GenXReduceIntSize", "GenXReduceIntSize",
+                    false, false)
 
 class ExtOperator : public Operator {
 public:
@@ -144,14 +149,12 @@ public:
   }
 };
 
-FunctionPass *llvm::createGenXReduceIntSizePass()
-{
+FunctionPass *llvm::createGenXReduceIntSizePass() {
   initializeGenXReduceIntSizePass(*PassRegistry::getPassRegistry());
   return new GenXReduceIntSize();
 }
 
-void GenXReduceIntSize::getAnalysisUsage(AnalysisUsage &AU) const
-{
+void GenXReduceIntSize::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<DominatorTreeWrapperPass>();
   AU.addPreserved<DominatorTreeWrapperPass>();
   AU.setPreservesCFG();
@@ -161,8 +164,7 @@ void GenXReduceIntSize::getAnalysisUsage(AnalysisUsage &AU) const
  * GenXReduceIntSize::runOnFunction : process one function to
  *    reduce integer size where possible
  */
-bool GenXReduceIntSize::runOnFunction(Function &F)
-{
+bool GenXReduceIntSize::runOnFunction(Function &F) {
   if (!DT)
     DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   // Reverse scan: This does a postordered depth first traversal of the CFG,
@@ -170,21 +172,23 @@ bool GenXReduceIntSize::runOnFunction(Function &F)
   // see a def after its uses (ignoring phi node uses).
   Modified = false;
   for (po_iterator<BasicBlock *> i = po_begin(&F.getEntryBlock()),
-      e = po_end(&F.getEntryBlock()); i != e; ++i) {
+                                 e = po_end(&F.getEntryBlock());
+       i != e; ++i) {
     BasicBlock *BB = *i;
     // This loop scans the BB in reverse, and allows processReverseInst to
     // erase Inst and other instructions.
-    for (auto Inst = &BB->back(); Inst; )
+    for (auto Inst = &BB->back(); Inst;)
       Inst = reverseProcessInst(Inst);
   }
   // Forward scan: This does a preordered depth first traversal of the CFG to
   // ensure that we see a def before its uses (ignoring phi node uses).
   for (df_iterator<BasicBlock *> i = df_begin(&F.getEntryBlock()),
-      e = df_end(&F.getEntryBlock()); i != e; ++i) {
+                                 e = df_end(&F.getEntryBlock());
+       i != e; ++i) {
     BasicBlock *BB = *i;
     // This loop scans the BB forward, and allows processForwardInst to erase
     // Inst and other instructions.
-    for (auto Inst = &BB->front(); Inst; )
+    for (auto Inst = &BB->front(); Inst;)
       Inst = forwardProcessInst(Inst);
   }
   return Modified;
@@ -193,8 +197,7 @@ bool GenXReduceIntSize::runOnFunction(Function &F)
 /***********************************************************************
  * getAndNumBits : get the number of lower bits set by an "and" instruction
  */
-static unsigned getAndNumBits(Instruction *Inst)
-{
+static unsigned getAndNumBits(Instruction *Inst) {
   if (auto C = dyn_cast<Constant>(Inst->getOperand(1))) {
     if ((C = C->getSplatValue())) {
       uint64_t Val = cast<ConstantInt>(C)->getZExtValue();
@@ -208,15 +211,13 @@ static unsigned getAndNumBits(Instruction *Inst)
  * getPrev : get the previous instruction, or 0 if at start of BB
  * getNext : get the next instruction, or 0 if at end of BB
  */
-static Instruction *getPrev(Instruction *Inst)
-{
+static Instruction *getPrev(Instruction *Inst) {
   if (&Inst->getParent()->front() == Inst)
     return nullptr;
   return Inst->getPrevNode();
 }
 
-static Instruction *getNext(Instruction *Inst)
-{
+static Instruction *getNext(Instruction *Inst) {
   if (&Inst->getParent()->back() == Inst)
     return nullptr;
   return Inst->getNextNode();
@@ -231,8 +232,7 @@ static Instruction *getNext(Instruction *Inst)
  * Return:  the previous instruction (after any erases done in here), 0 if
  *          at start of block
  */
-Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
-{
+Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst) {
   Instruction *Prev = getPrev(Inst);
   // Ignore if not at least a 4 vector.
   auto VT = dyn_cast<VectorType>(Inst->getType());
@@ -242,7 +242,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
     return Prev;
   unsigned NumBits = VT->getElementType()->getPrimitiveSizeInBits();
   if (NumBits == 1)
-      return Prev;
+    return Prev;
   unsigned TruncBits = 0;
   // See if the value is only used in instructions that use fewer bits (trunc,
   // and, shl).  Get the max truncated size.
@@ -251,7 +251,8 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
     auto user = cast<Instruction>(ui->getUser());
     switch (user->getOpcode()) {
     case Instruction::Trunc:
-      ThisTruncBits = user->getType()->getScalarType()->getPrimitiveSizeInBits();
+      ThisTruncBits =
+          user->getType()->getScalarType()->getPrimitiveSizeInBits();
       break;
     case Instruction::And:
       ThisTruncBits = getAndNumBits(user);
@@ -282,7 +283,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
   if (TruncBits >= NumBits)
     return Prev; // Inst is used somewhere that cannot truncate.
   LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: can truncate to "
-      << TruncBits << " bits: " << *Inst << "\n");
+                    << TruncBits << " bits: " << *Inst << "\n");
   Value *NewVal = nullptr;
   Instruction *NewInst = nullptr;
   // Put new code _after_ original instruction, so we don't see it again in
@@ -299,14 +300,15 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
         TruncBits += cast<ConstantInt>(C)->getSExtValue();
         // Round TruncBits up to next power of two no smaller than 8.
         TruncBits = std::max(8, 1 << genx::log2(TruncBits * 2 - 1));
-        LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: actually can only truncate right shift to "
-            << TruncBits << " bits\n");
+        LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: actually can only "
+                             "truncate right shift to "
+                          << TruncBits << " bits\n");
         if (TruncBits < NumBits) {
           NewInst = BinaryOperator::Create(
               (Instruction::BinaryOps)Inst->getOpcode(),
               truncValue(Inst->getOperand(0), TruncBits, InsertBefore, DL),
-              truncValue(Inst->getOperand(1), TruncBits, InsertBefore, DL),
-              "", InsertBefore);
+              truncValue(Inst->getOperand(1), TruncBits, InsertBefore, DL), "",
+              InsertBefore);
           break;
         }
       }
@@ -318,7 +320,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
     // to all ones.
     if (auto C = dyn_cast<Constant>(Inst->getOperand(1))) {
       if (cast<Constant>(truncValue(C, TruncBits, InsertBefore, DL))
-          ->isAllOnesValue()) {
+              ->isAllOnesValue()) {
         // Remove the "and".
         NewVal = truncValue(Inst->getOperand(0), TruncBits, InsertBefore, DL);
         break;
@@ -332,33 +334,31 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
   case Instruction::Sub:
   case Instruction::Mul:
   case Instruction::Shl: {
-      // These binary operators can just truncate.
-      Value *Fst = truncValue(Inst->getOperand(0), TruncBits, InsertBefore, DL),
-            *Snd = truncValue(Inst->getOperand(1), TruncBits, InsertBefore, DL);
-      NewInst = BinaryOperator::Create(
-          (Instruction::BinaryOps)Inst->getOpcode(), Fst, Snd, "", InsertBefore);
-    }
-    break;
+    // These binary operators can just truncate.
+    Value *Fst = truncValue(Inst->getOperand(0), TruncBits, InsertBefore, DL),
+          *Snd = truncValue(Inst->getOperand(1), TruncBits, InsertBefore, DL);
+    NewInst = BinaryOperator::Create((Instruction::BinaryOps)Inst->getOpcode(),
+                                     Fst, Snd, "", InsertBefore);
+  } break;
   case Instruction::ZExt:
   case Instruction::SExt: {
-      NewVal = Inst->getOperand(0);
-      unsigned NewBits = NewVal->getType()->getScalarType()
-          ->getPrimitiveSizeInBits();
-      if (TruncBits != NewBits) {
-        // The value still needs extending, just not as much as before. Or it
-        // might need to be truncated.
-        unsigned NumElements =
-            cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements();
-        int Opcode = Instruction::Trunc;
-        if (TruncBits > NewBits)
-          Opcode = Inst->getOpcode();
-        auto ElTy = Type::getIntNTy(InsertBefore->getContext(), TruncBits);
-        auto Ty = IGCLLVM::FixedVectorType::get(ElTy, NumElements);
-        NewInst = CastInst::Create((Instruction::CastOps)Opcode, NewVal,
-            Ty, "", InsertBefore);
-      }
+    NewVal = Inst->getOperand(0);
+    unsigned NewBits =
+        NewVal->getType()->getScalarType()->getPrimitiveSizeInBits();
+    if (TruncBits != NewBits) {
+      // The value still needs extending, just not as much as before. Or it
+      // might need to be truncated.
+      unsigned NumElements =
+          cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements();
+      int Opcode = Instruction::Trunc;
+      if (TruncBits > NewBits)
+        Opcode = Inst->getOpcode();
+      auto ElTy = Type::getIntNTy(InsertBefore->getContext(), TruncBits);
+      auto Ty = IGCLLVM::FixedVectorType::get(ElTy, NumElements);
+      NewInst = CastInst::Create((Instruction::CastOps)Opcode, NewVal, Ty, "",
+                                 InsertBefore);
     }
-    break;
+  } break;
   case Instruction::ShuffleVector: {
     auto *Shuffle = cast<ShuffleVectorInst>(Inst);
     if (!Shuffle->isZeroEltSplat())
@@ -366,18 +366,20 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
     if (cast<IGCLLVM::FixedVectorType>(Shuffle->getOperand(0)->getType())
             ->getNumElements() == 1) {
       // This shufflevector is a splat from a 1-vector.
-      auto TruncatedInput = truncValue(Shuffle->getOperand(0), TruncBits,
-          InsertBefore, DL);
-      NewInst = new ShuffleVectorInst(TruncatedInput,
-          UndefValue::get(TruncatedInput->getType()), IGCLLVM::getShuffleMaskForBitcode(Shuffle), "",
-          InsertBefore);
+      auto TruncatedInput =
+          truncValue(Shuffle->getOperand(0), TruncBits, InsertBefore, DL);
+      NewInst = new ShuffleVectorInst(
+          TruncatedInput, UndefValue::get(TruncatedInput->getType()),
+          IGCLLVM::getShuffleMaskForBitcode(Shuffle), "", InsertBefore);
       break;
     }
     // Detect when the shufflevector is the second half of an
     // insertelement+shufflevector sequence being used to implement
     // a splat (and the insertelement has no other use). For example:
-    //  %splat.splatinsert.i = insertelement <16 x i32> undef, i32 %direction, i32 0, !dbg !355
-    //  %splat.splat.i = shufflevector <16 x i32> %splat.splatinsert.i, <16 x i32> undef, <16 x i32> zeroinitializer, !dbg !355
+    //  %splat.splatinsert.i = insertelement <16 x i32> undef, i32 %direction,
+    //  i32 0, !dbg !355 %splat.splat.i = shufflevector <16 x i32>
+    //  %splat.splatinsert.i, <16 x i32> undef, <16 x i32> zeroinitializer, !dbg
+    //  !355
     if (auto IE = dyn_cast<InsertElementInst>(Shuffle->getOperand(0))) {
       if (IE->hasOneUse()) {
         if (auto C = dyn_cast<Constant>(IE->getOperand(2))) {
@@ -387,18 +389,19 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
             unsigned NumElements =
                 cast<IGCLLVM::FixedVectorType>(Shuffle->getType())
                     ->getNumElements();
-            auto ElTy = Type::getIntNTy(InsertBefore->getContext(),
-                  TruncBits);
+            auto ElTy = Type::getIntNTy(InsertBefore->getContext(), TruncBits);
             auto Ty = IGCLLVM::FixedVectorType::get(ElTy, NumElements);
-            auto NewScalar = CastInst::Create(Instruction::Trunc,
-                IE->getOperand(1), ElTy,
+            auto NewScalar = CastInst::Create(
+                Instruction::Trunc, IE->getOperand(1), ElTy,
                 IE->getOperand(1)->getName() + ".reduceintsize", InsertBefore);
             NewScalar->setDebugLoc(IE->getDebugLoc());
-            auto NewIE = InsertElementInst::Create(UndefValue::get(Ty),
-                NewScalar, IE->getOperand(2), "", InsertBefore);
+            auto NewIE =
+                InsertElementInst::Create(UndefValue::get(Ty), NewScalar,
+                                          IE->getOperand(2), "", InsertBefore);
             NewIE->setDebugLoc(IE->getDebugLoc());
             NewIE->takeName(IE);
-            NewInst = new ShuffleVectorInst(NewIE, UndefValue::get(Ty),
+            NewInst = new ShuffleVectorInst(
+                NewIE, UndefValue::get(Ty),
                 IGCLLVM::getShuffleMaskForBitcode(Shuffle), "", InsertBefore);
             break;
           }
@@ -417,7 +420,8 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
   }
   IGC_ASSERT(NewVal);
   // NewVal is the replacement for Inst with a smaller int size.
-  LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: NewVal: " << *NewVal << "\n");
+  LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: NewVal: " << *NewVal
+                    << "\n");
   // Replace the uses of Inst, which we know are all things that
   // have a reduced size requirement (trunc, and).
   while (!Inst->use_empty()) {
@@ -426,51 +430,53 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
         user->getType()->getScalarType()->getPrimitiveSizeInBits();
     switch (user->getOpcode()) {
     case Instruction::Trunc: {
-        auto ThisNewVal = NewVal;
-        if (ThisTruncBits != TruncBits) {
-          // We need a new trunc.
-          auto NewTI = CastInst::Create(Instruction::Trunc, NewVal, user->getType(),
-              "", user);
-          NewTI->takeName(user);
-          NewTI->setDebugLoc(user->getDebugLoc());
-          LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: NewTI: " << *NewTI << "\n");
-          ThisNewVal = NewTI;
-        }
-        user->replaceAllUsesWith(ThisNewVal);
-        user->eraseFromParent();
+      auto ThisNewVal = NewVal;
+      if (ThisTruncBits != TruncBits) {
+        // We need a new trunc.
+        auto NewTI = CastInst::Create(Instruction::Trunc, NewVal,
+                                      user->getType(), "", user);
+        NewTI->takeName(user);
+        NewTI->setDebugLoc(user->getDebugLoc());
+        LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: NewTI: " << *NewTI
+                          << "\n");
+        ThisNewVal = NewTI;
       }
-      break;
+      user->replaceAllUsesWith(ThisNewVal);
+      user->eraseFromParent();
+    } break;
     case Instruction::And: {
-        auto ThisNewVal = NewVal;
-        if (ThisTruncBits != TruncBits) {
-          // We need a replacement "and" instruction with a different type.
-          auto NewAnd = BinaryOperator::Create(Instruction::And, NewVal,
-              truncValue(user->getOperand(1), TruncBits,
-                user, user->getDebugLoc()),
-              "", user);
-          NewAnd->takeName(user);
-          NewAnd->setDebugLoc(user->getDebugLoc());
-          LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: NewAnd: " << *NewAnd << "\n");
-          ThisNewVal = NewAnd;
+      auto ThisNewVal = NewVal;
+      if (ThisTruncBits != TruncBits) {
+        // We need a replacement "and" instruction with a different type.
+        auto NewAnd =
+            BinaryOperator::Create(Instruction::And, NewVal,
+                                   truncValue(user->getOperand(1), TruncBits,
+                                              user, user->getDebugLoc()),
+                                   "", user);
+        NewAnd->takeName(user);
+        NewAnd->setDebugLoc(user->getDebugLoc());
+        LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: NewAnd: " << *NewAnd
+                          << "\n");
+        ThisNewVal = NewAnd;
 
-          // Need to trunc or extend our new instruction's result to match
-          // the result of the "and".
-          IGC_ASSERT(ThisNewVal);
-          auto NewCast = CastInst::Create(
-              ThisTruncBits > TruncBits ? Instruction::ZExt : Instruction::Trunc,
-              ThisNewVal, user->getType(), "", user);
-          if (NewVal == ThisNewVal)
-            NewCast->takeName(user);
-          else
-            NewCast->setName(ThisNewVal->getName() + ".cast");
-          NewCast->setDebugLoc(user->getDebugLoc());
-          LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: NewCast: " << *NewCast << "\n");
-          ThisNewVal = NewCast;
-        }
-        user->replaceAllUsesWith(ThisNewVal);
-        user->eraseFromParent();
+        // Need to trunc or extend our new instruction's result to match
+        // the result of the "and".
+        IGC_ASSERT(ThisNewVal);
+        auto NewCast = CastInst::Create(
+            ThisTruncBits > TruncBits ? Instruction::ZExt : Instruction::Trunc,
+            ThisNewVal, user->getType(), "", user);
+        if (NewVal == ThisNewVal)
+          NewCast->takeName(user);
+        else
+          NewCast->setName(ThisNewVal->getName() + ".cast");
+        NewCast->setDebugLoc(user->getDebugLoc());
+        LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: NewCast: " << *NewCast
+                          << "\n");
+        ThisNewVal = NewCast;
       }
-      break;
+      user->replaceAllUsesWith(ThisNewVal);
+      user->eraseFromParent();
+    } break;
     default:
       IGC_ASSERT_MESSAGE(0, "unexpected use");
       break;
@@ -508,8 +514,8 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
  *          DL = debug loc for any new instruction
  */
 Value *GenXReduceIntSize::truncValue(Value *V, unsigned NumBits,
-    Instruction *InsertBefore, const DebugLoc &DL)
-{
+                                     Instruction *InsertBefore,
+                                     const DebugLoc &DL) {
   unsigned NumElements =
       cast<IGCLLVM::FixedVectorType>(V->getType())->getNumElements();
   auto ElTy = Type::getIntNTy(InsertBefore->getContext(), NumBits);
@@ -532,8 +538,8 @@ Value *GenXReduceIntSize::truncValue(Value *V, unsigned NumBits,
       return ConstantVector::get(Vals);
     } else if (auto CDV = dyn_cast<ConstantDataVector>(C)) {
       for (unsigned i = 0, e = CDV->getNumElements(); i != e; ++i)
-        Vals.push_back(Constant::getIntegerValue(ElTy,
-              APInt(NumBits, CDV->getElementAsInteger(i))));
+        Vals.push_back(Constant::getIntegerValue(
+            ElTy, APInt(NumBits, CDV->getElementAsInteger(i))));
       return ConstantVector::get(Vals);
     }
   }
@@ -543,21 +549,21 @@ Value *GenXReduceIntSize::truncValue(Value *V, unsigned NumBits,
     case Instruction::Trunc:
     case Instruction::ZExt:
     case Instruction::SExt: {
-        // The value is the result of a truncate or extend.
-        // See if the input is already the right size.
-        Value *Input = Inst->getOperand(0);
-        if (Input->getType() == Ty)
-          return Input;
-        // Instead of truncating the value, truncate or extend the input.
-        auto NewInst = CastInst::Create(
-            Input->getType()->getScalarType()->getPrimitiveSizeInBits()
-              < NumBits ? (Instruction::CastOps)Inst->getOpcode()
+      // The value is the result of a truncate or extend.
+      // See if the input is already the right size.
+      Value *Input = Inst->getOperand(0);
+      if (Input->getType() == Ty)
+        return Input;
+      // Instead of truncating the value, truncate or extend the input.
+      auto NewInst = CastInst::Create(
+          Input->getType()->getScalarType()->getPrimitiveSizeInBits() < NumBits
+              ? (Instruction::CastOps)Inst->getOpcode()
               : Instruction::Trunc,
-            Input, Ty, Inst->getName() + ".reduceintsize", InsertBefore);
-        NewInst->setDebugLoc(DL);
-        LLVM_DEBUG(dbgs() << "GenXReduceIntSize::truncVal: " << *NewInst << "\n");
-        return NewInst;
-      }
+          Input, Ty, Inst->getName() + ".reduceintsize", InsertBefore);
+      NewInst->setDebugLoc(DL);
+      LLVM_DEBUG(dbgs() << "GenXReduceIntSize::truncVal: " << *NewInst << "\n");
+      return NewInst;
+    }
     case Instruction::And:
       if (auto C = dyn_cast<Constant>(Inst->getOperand(1))) {
         auto VNB = getValueNumBits(C);
@@ -568,8 +574,7 @@ Value *GenXReduceIntSize::truncValue(Value *V, unsigned NumBits,
             if (Mask.isMask(NumBits))
               // The value is the result of an "and" that only keeps bits
               // within the truncated size. Just use its input.
-              return
-                  truncValue(Inst->getOperand(0), NumBits, InsertBefore, DL);
+              return truncValue(Inst->getOperand(0), NumBits, InsertBefore, DL);
           }
         }
       }
@@ -579,8 +584,8 @@ Value *GenXReduceIntSize::truncValue(Value *V, unsigned NumBits,
     }
   }
   // Create a new trunc instruction.
-  auto NewInst = CastInst::Create(Instruction::Trunc, V, Ty,
-      V->getName() + ".reduceintsize", InsertBefore);
+  auto NewInst = CastInst::Create(
+      Instruction::Trunc, V, Ty, V->getName() + ".reduceintsize", InsertBefore);
   NewInst->setDebugLoc(DL);
   LLVM_DEBUG(dbgs() << "GenXReduceIntSize::truncVal: " << *NewInst << "\n");
   return NewInst;
@@ -606,14 +611,15 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
     // Transform (add zext(A), Val) to (zext (add zext(A), Val)).
     if (Ty->isIntegerTy(32) &&
         match(Inst, m_Add(m_ZExt(m_Value(A)), m_APInt(Val))))
-      if (A->getType()->isIntegerTy(8) && Val->isNonNegative() && Val->isIntN(8)) {
+      if (A->getType()->isIntegerTy(8) && Val->isNonNegative() &&
+          Val->isIntN(8)) {
         IRBuilder<> Builder(Inst);
         IntegerType *I16Ty = Builder.getInt16Ty();
         APInt NVal = Val->trunc(16);
         Instruction *NewInst = cast<Instruction>(
-            Builder.CreateZExt(
-              Builder.CreateAdd(Builder.CreateZExt(A, I16Ty),
-                                ConstantInt::get(I16Ty, NVal)), Ty));
+            Builder.CreateZExt(Builder.CreateAdd(Builder.CreateZExt(A, I16Ty),
+                                                 ConstantInt::get(I16Ty, NVal)),
+                               Ty));
         NewInst->takeName(Inst);
         Inst->replaceAllUsesWith(NewInst);
         Inst->eraseFromParent();
@@ -663,14 +669,12 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
         if (!isa<VectorType>(Src->getType())) {
           VectorType *VTy =
               IGCLLVM::FixedVectorType::get(Src->getType(), NumElts);
-          Src =
-              InsertElementInst::Create(UndefValue::get(VTy), Src,
-                                        Constant::getNullValue(I32Ty), "",
-                                        InsertBefore);
+          Src = InsertElementInst::Create(UndefValue::get(VTy), Src,
+                                          Constant::getNullValue(I32Ty), "",
+                                          InsertBefore);
         }
-        NewInst =
-            new ShuffleVectorInst(Src, UndefValue::get(Src->getType()),
-                                  Mask, "", InsertBefore);
+        NewInst = new ShuffleVectorInst(Src, UndefValue::get(Src->getType()),
+                                        Mask, "", InsertBefore);
         if (Ext->getOpcode() == Instruction::ZExt)
           NewInst = new ZExtInst(NewInst, Inst->getType(), "", InsertBefore);
         else
@@ -682,42 +686,44 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
     /*fallthrough*/
   case Instruction::AShr:
     goto binop;
-  case Instruction::And:
-    {
-      Value *A;
-      const APInt *Val;
-      if (match(Inst, m_And(m_Value(A), m_APInt(Val))) &&
-          Val->isMask(Val->getActiveBits())) {
-        TruncBits = std::max(16, 1 << genx::log2(Val->getActiveBits() * 2 - 1));
-        NeedSignExtend = false;
-        goto binop;
-      }
-      // "And" can just truncate, if both operands are truncated, and need the
-      // same kind of extension.
-      auto VNB0 = getValueNumBits(Inst->getOperand(0));
-      auto VNB1 = getValueNumBits(Inst->getOperand(1),
-            /*PreferSigned=*/VNB0.IsSignExtended);
-      if (VNB0.IsSignExtended == VNB1.IsSignExtended) {
-        TruncBits = std::max(VNB0.NumBits, VNB1.NumBits);
-        NeedSignExtend = VNB0.IsSignExtended;
-        // Round TruncBits up to next power of two no smaller than 8.
-        TruncBits = std::max(8, 1 << genx::log2(TruncBits * 2 - 1));
-        if (TruncBits < NumBits) {
-          auto Opnd1 = truncValue(Inst->getOperand(1), TruncBits, InsertBefore, DL);
-          if (auto C = dyn_cast<Constant>(Opnd1)) {
-            if (C->isAllOnesValue()) {
-              // An "and" with constant that is now all ones can be omitted.
-              // This bypasses the usual rule that an "and", like most other
-              // operators, should not be truncated smaller than 16.
-              LLVM_DEBUG(dbgs() << "GenXReduceIntSize::forward: can truncate to " << TruncBits
-                  << " bits and remove completely: " << *Inst << "\n");
-              NewVal = truncValue(Inst->getOperand(0), TruncBits, InsertBefore, DL);
-              break;
-            }
+  case Instruction::And: {
+    Value *A;
+    const APInt *Val;
+    if (match(Inst, m_And(m_Value(A), m_APInt(Val))) &&
+        Val->isMask(Val->getActiveBits())) {
+      TruncBits = std::max(16, 1 << genx::log2(Val->getActiveBits() * 2 - 1));
+      NeedSignExtend = false;
+      goto binop;
+    }
+    // "And" can just truncate, if both operands are truncated, and need the
+    // same kind of extension.
+    auto VNB0 = getValueNumBits(Inst->getOperand(0));
+    auto VNB1 = getValueNumBits(Inst->getOperand(1),
+                                /*PreferSigned=*/VNB0.IsSignExtended);
+    if (VNB0.IsSignExtended == VNB1.IsSignExtended) {
+      TruncBits = std::max(VNB0.NumBits, VNB1.NumBits);
+      NeedSignExtend = VNB0.IsSignExtended;
+      // Round TruncBits up to next power of two no smaller than 8.
+      TruncBits = std::max(8, 1 << genx::log2(TruncBits * 2 - 1));
+      if (TruncBits < NumBits) {
+        auto Opnd1 =
+            truncValue(Inst->getOperand(1), TruncBits, InsertBefore, DL);
+        if (auto C = dyn_cast<Constant>(Opnd1)) {
+          if (C->isAllOnesValue()) {
+            // An "and" with constant that is now all ones can be omitted.
+            // This bypasses the usual rule that an "and", like most other
+            // operators, should not be truncated smaller than 16.
+            LLVM_DEBUG(dbgs() << "GenXReduceIntSize::forward: can truncate to "
+                              << TruncBits << " bits and remove completely: "
+                              << *Inst << "\n");
+            NewVal =
+                truncValue(Inst->getOperand(0), TruncBits, InsertBefore, DL);
+            break;
           }
         }
       }
     }
+  }
     goto binop;
   case Instruction::Or:
   case Instruction::Xor:
@@ -726,7 +732,7 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
     {
       auto VNB0 = getValueNumBits(Inst->getOperand(0));
       auto VNB1 = getValueNumBits(Inst->getOperand(1),
-            /*PreferSigned=*/VNB0.IsSignExtended);
+                                  /*PreferSigned=*/VNB0.IsSignExtended);
       if (VNB0.IsSignExtended == VNB1.IsSignExtended) {
         TruncBits = std::max(VNB0.NumBits, VNB1.NumBits);
         NeedSignExtend = VNB0.IsSignExtended;
@@ -847,7 +853,8 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
   }
   if (!NewVal)
     return Next;
-  LLVM_DEBUG(dbgs() << "GenXReduceIntSize::forward: NewVal: " << *NewVal << "\n");
+  LLVM_DEBUG(dbgs() << "GenXReduceIntSize::forward: NewVal: " << *NewVal
+                    << "\n");
   // Replace uses of Inst. The default is that we zero/sign extend back to the
   // original size. However, if the use is in a trunc or zext/sext, then we can
   // combine.
@@ -866,25 +873,25 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
       goto combine;
     case Instruction::Trunc:
     combine: {
-        unsigned TargetNumBits = user->getType()->getScalarType()
-            ->getPrimitiveSizeInBits();
-        if (TargetNumBits != TruncBits) {
-          auto NewCast = CastInst::Create(
-              TargetNumBits > TruncBits
-                  ? (NeedSignExtend ? Instruction::SExt : Instruction::ZExt)
-                  : Instruction::Trunc,
-              NewVal, user->getType(), "", user);
-          NewCast->takeName(user);
-          NewCast->setDebugLoc(user->getDebugLoc());
-          LLVM_DEBUG(dbgs() << "GenXReduceIntSize::forward: NewCast: "
-              << *NewCast << "\n");
-          ThisNewVal = NewCast;
-        }
-        user->replaceAllUsesWith(ThisNewVal);
-        if (user == Next)
-          Next = getNext(Next);
-        user->eraseFromParent();
+      unsigned TargetNumBits =
+          user->getType()->getScalarType()->getPrimitiveSizeInBits();
+      if (TargetNumBits != TruncBits) {
+        auto NewCast = CastInst::Create(
+            TargetNumBits > TruncBits
+                ? (NeedSignExtend ? Instruction::SExt : Instruction::ZExt)
+                : Instruction::Trunc,
+            NewVal, user->getType(), "", user);
+        NewCast->takeName(user);
+        NewCast->setDebugLoc(user->getDebugLoc());
+        LLVM_DEBUG(dbgs() << "GenXReduceIntSize::forward: NewCast: " << *NewCast
+                          << "\n");
+        ThisNewVal = NewCast;
       }
+      user->replaceAllUsesWith(ThisNewVal);
+      if (user == Next)
+        Next = getNext(Next);
+      user->eraseFromParent();
+    }
       continue;
     }
     // Default case.
@@ -896,8 +903,8 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
           Inst->getType(), NewVal->getName() + ".reduceintsize_extend",
           Inst->getNextNode());
       Extended->setDebugLoc(Inst->getDebugLoc());
-      LLVM_DEBUG(dbgs() << "GenXReduceIntSize::forward: Extended: "
-          << *Extended << "\n");
+      LLVM_DEBUG(dbgs() << "GenXReduceIntSize::forward: Extended: " << *Extended
+                        << "\n");
       replaceAllDbgUsesWith(*Inst, *Extended, *Inst, *DT);
     }
     *Inst->use_begin() = Extended;
@@ -949,9 +956,8 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
  *   - IsSignExtended, true if the missing bits are derived by sign extending
  *        rather than zero extending
  */
-GenXReduceIntSize::ValueNumBits GenXReduceIntSize::getValueNumBits(
-      Value *V, bool PreferSigned)
-{
+GenXReduceIntSize::ValueNumBits
+GenXReduceIntSize::getValueNumBits(Value *V, bool PreferSigned) {
   unsigned NumBits = V->getType()->getScalarType()->getPrimitiveSizeInBits();
   if (auto C = dyn_cast<Constant>(V)) {
     if (C->getType()->isVectorTy())
@@ -959,8 +965,9 @@ GenXReduceIntSize::ValueNumBits GenXReduceIntSize::getValueNumBits(
     if (C) {
       int64_t Val = cast<ConstantInt>(C)->getSExtValue();
       if (Val >= 0)
-        return ValueNumBits(64 - llvm::countLeadingZeros((uint64_t)Val)
-            + PreferSigned, /*IsSignExtended=*/PreferSigned);
+        return ValueNumBits(64 - llvm::countLeadingZeros((uint64_t)Val) +
+                                PreferSigned,
+                            /*IsSignExtended=*/PreferSigned);
       if (Val == std::numeric_limits<int64_t>::min())
         return ValueNumBits(64, /*isSignExtended=*/false);
       unsigned const BitsWithSignBit =
@@ -979,8 +986,11 @@ GenXReduceIntSize::ValueNumBits GenXReduceIntSize::getValueNumBits(
                                      ->getScalarType()
                                      ->getPrimitiveSizeInBits());
   case Instruction::SExt:
-    return ValueNumBits(Inst->getOperand(0)->getType()->getScalarType()
-      ->getPrimitiveSizeInBits(), /*IsSignExtended=*/true);
+    return ValueNumBits(Inst->getOperand(0)
+                            ->getType()
+                            ->getScalarType()
+                            ->getPrimitiveSizeInBits(),
+                        /*IsSignExtended=*/true);
   case Instruction::And:
     if (auto C = dyn_cast<Constant>(Inst->getOperand(1))) {
       ValueNumBits VNB = getValueNumBits(C);
@@ -994,7 +1004,8 @@ GenXReduceIntSize::ValueNumBits GenXReduceIntSize::getValueNumBits(
 
 Value *GenXReduceIntSize::getSplatValue(ShuffleVectorInst *SVI) const {
   auto ShuffleMask = SVI->getShuffleMask();
-  if (std::any_of(ShuffleMask.begin(), ShuffleMask.end(), [](int V) { return V != 0; }))
+  if (std::any_of(ShuffleMask.begin(), ShuffleMask.end(),
+                  [](int V) { return V != 0; }))
     return nullptr;
 
   Value *Src = SVI->getOperand(0);

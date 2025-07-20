@@ -71,7 +71,7 @@ private:
  * the LiveRange for a value that does not need it because it is a baled
  * in instruction.
  */
-bool testDuplicates(/*const*/ llvm::GenXLiveness& Liveness) {
+bool testDuplicates(/*const*/ llvm::GenXLiveness &Liveness) {
   if (std::any_of(Liveness.begin(), Liveness.end(),
                   [](const auto &X) { return X.second == nullptr; })) {
     llvm::errs() << "Liveness contains NULL live ranges\n";
@@ -130,8 +130,7 @@ void GenXLiveRanges::getAnalysisUsage(AnalysisUsage &AU) {
 /***********************************************************************
  * runOnFunctionGroup : run the liveness analysis for this FunctionGroup
  */
-bool GenXLiveRanges::runOnFunctionGroup(FunctionGroup &ArgFG)
-{
+bool GenXLiveRanges::runOnFunctionGroup(FunctionGroup &ArgFG) {
   FG = &ArgFG;
   const auto &BC = getAnalysis<GenXBackendConfig>();
   Baling = &getAnalysis<GenXGroupBaling>();
@@ -166,8 +165,7 @@ bool GenXLiveRanges::isPredefinedVariable(Value *V) const {
 /***********************************************************************
  * buildLiveRanges : build live ranges for all args and instructions
  */
-void GenXLiveRanges::buildLiveRanges()
-{
+void GenXLiveRanges::buildLiveRanges() {
   // Build live ranges for global variables;
   for (auto &G : FG->getModule()->globals())
     Liveness->buildLiveRange(&G);
@@ -181,9 +179,11 @@ void GenXLiveRanges::buildLiveRanges()
       Liveness->buildLiveRange(Liveness->getUnifiedRet(Func));
     }
     // Build live ranges for code.
-    for (Function::iterator fi = Func->begin(), fe = Func->end(); fi != fe; ++fi) {
+    for (Function::iterator fi = Func->begin(), fe = Func->end(); fi != fe;
+         ++fi) {
       BasicBlock *BB = &*fi;
-      for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be; ++bi) {
+      for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be;
+           ++bi) {
         Instruction *Inst = &*bi;
         // Skip building live range for instructions
         // - has no destination
@@ -198,23 +198,23 @@ void GenXLiveRanges::buildLiveRanges()
           if (Inst->use_empty()) {
             unsigned IID = vc::getAnyIntrinsicID(Inst);
             switch (IID) {
-              case GenXIntrinsic::not_any_intrinsic:
-              case GenXIntrinsic::genx_rdregioni:
-              case GenXIntrinsic::genx_rdregionf:
-              case GenXIntrinsic::genx_wrregioni:
-              case GenXIntrinsic::genx_wrregionf:
-              case GenXIntrinsic::genx_wrconstregion:
-                break;
-              default: {
-                  GenXIntrinsicInfo::ArgInfo AI
-                      = GenXIntrinsicInfo(IID).getRetInfo();
-                  if (AI.isRaw() && AI.rawNullAllowed()) {
-                    // Unused RAW_NULLALLOWED result.
-                    Liveness->eraseLiveRange(Inst);
-                    continue;
-                  }
-                  break;
-                }
+            case GenXIntrinsic::not_any_intrinsic:
+            case GenXIntrinsic::genx_rdregioni:
+            case GenXIntrinsic::genx_rdregionf:
+            case GenXIntrinsic::genx_wrregioni:
+            case GenXIntrinsic::genx_wrregionf:
+            case GenXIntrinsic::genx_wrconstregion:
+              break;
+            default: {
+              GenXIntrinsicInfo::ArgInfo AI =
+                  GenXIntrinsicInfo(IID).getRetInfo();
+              if (AI.isRaw() && AI.rawNullAllowed()) {
+                // Unused RAW_NULLALLOWED result.
+                Liveness->eraseLiveRange(Inst);
+                continue;
+              }
+              break;
+            }
             }
           }
           // Build its live range.
@@ -228,4 +228,3 @@ void GenXLiveRanges::buildLiveRanges()
     }
   }
 }
-

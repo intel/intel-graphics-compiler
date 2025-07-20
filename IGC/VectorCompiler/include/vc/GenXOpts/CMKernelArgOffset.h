@@ -18,7 +18,7 @@ struct CMKernelArgOffsetPass
   static char ID;
   explicit CMKernelArgOffsetPass(unsigned GrfByteSize = 32,
                                  bool UseBindlessImages = false)
-      : GrfByteSize(GrfByteSize), UseBindlessImages(UseBindlessImages){};
+      : GrfByteSize(GrfByteSize), UseBindlessImages(UseBindlessImages) {};
 
   llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
 

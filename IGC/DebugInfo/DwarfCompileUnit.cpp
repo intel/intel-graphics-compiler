@@ -63,11 +63,10 @@ static const APInt &getIntConstFromMdOperand(const MDNode *MD, unsigned OpIdx) {
   return getConstMdOperand(MD, OpIdx)->getValue()->getUniqueInteger();
 }
 
-PieceBuilder::PieceBuilder(uint16_t RegNum, size_t NumGRFs,
-                           uint64_t RegSizeBits, uint64_t VarSizeBits,
+PieceBuilder::PieceBuilder(uint16_t RegNum, size_t NumGRFs, uint64_t RegSizeBits, uint64_t VarSizeBits,
                            uint64_t SubRegOffsetBits)
-    : NumGRFs(NumGRFs), RegNum(RegNum), RegSizeBits(RegSizeBits),
-      VariableSizeInBits(VarSizeBits), SubRegOffsetInBits(SubRegOffsetBits) {
+    : NumGRFs(NumGRFs), RegNum(RegNum), RegSizeBits(RegSizeBits), VariableSizeInBits(VarSizeBits),
+      SubRegOffsetInBits(SubRegOffsetBits) {
   IGC_ASSERT(SubRegOffsetInBits < RegSizeBits);
   IGC_ASSERT(RegSizeBits > 0);
   IGC_ASSERT(NumGRFs > 0);
@@ -80,8 +79,7 @@ unsigned PieceBuilder::pieceCount() const {
     ++Count;
   constexpr unsigned MaxUint = std::numeric_limits<unsigned>::max();
   bool NoOverflow = Count <= MaxUint;
-  IGC_ASSERT_MESSAGE(NoOverflow,
-                     "number of required pieces does not fit unsigned int");
+  IGC_ASSERT_MESSAGE(NoOverflow, "number of required pieces does not fit unsigned int");
   if (!NoOverflow)
     return 0;
   return static_cast<unsigned>(Count);
@@ -92,8 +90,7 @@ IGC::PieceBuilder::PieceInfo PieceBuilder::get(unsigned index) const {
   auto AlignedSize = SubRegOffsetInBits + VariableSizeInBits;
   if (index == 0) {
     auto Offset = SubRegOffsetInBits;
-    auto Size =
-        (AlignedSize > RegSizeBits) ? RegSizeBits - Offset : VariableSizeInBits;
+    auto Size = (AlignedSize > RegSizeBits) ? RegSizeBits - Offset : VariableSizeInBits;
     return PieceInfo{index + RegNum, Size, Offset};
   }
   if (RegSizeBits * (index + 1) <= AlignedSize) {
@@ -106,10 +103,8 @@ IGC::PieceBuilder::PieceInfo PieceBuilder::get(unsigned index) const {
 }
 
 /// CompileUnit - Compile unit constructor.
-CompileUnit::CompileUnit(unsigned UID, DIE *D, DICompileUnit *Node,
-                         StreamEmitter *A, IGC::DwarfDebug *DW)
-    : UniqueID(UID), Node(Node), CUDie(D), Asm(A),
-      EmitSettings(A->GetEmitterSettings()), DD(DW), IndexTyDie(0),
+CompileUnit::CompileUnit(unsigned UID, DIE *D, DICompileUnit *Node, StreamEmitter *A, IGC::DwarfDebug *DW)
+    : UniqueID(UID), Node(Node), CUDie(D), Asm(A), EmitSettings(A->GetEmitterSettings()), DD(DW), IndexTyDie(0),
       DebugInfoOffset(0) {
   DIEIntegerOne = new (DIEValueAllocator) DIEInteger(1);
   insertDIE(Node, D);
@@ -119,8 +114,7 @@ CompileUnit::CompileUnit(unsigned UID, DIE *D, DICompileUnit *Node,
     auto *M = DW->GetVISAModule()->GetModule();
     for (auto &F : *M) {
       if (F.getSubprogram() &&
-          (F.hasFnAttribute("visaStackCall") ||
-           F.getCallingConv() == llvm::CallingConv::SPIR_KERNEL)) {
+          (F.hasFnAttribute("visaStackCall") || F.getCallingConv() == llvm::CallingConv::SPIR_KERNEL)) {
         ExtFunc.insert(F.getSubprogram());
         if (F.getSubprogram()->getDeclaration())
           ExtFunc.insert(F.getSubprogram()->getDeclaration());
@@ -141,8 +135,7 @@ CompileUnit::~CompileUnit() {
 /// createDIEEntry - Creates a new DIEEntry to be a proxy for a debug
 /// information entry.
 IGC::DIEEntry *CompileUnit::createDIEEntry(DIE *Entry) {
-  DIEEntry *Value =
-      new (DIEValueAllocator) DIEEntry(Entry, DD->getDwarfVersion());
+  DIEEntry *Value = new (DIEValueAllocator) DIEEntry(Entry, DD->getDwarfVersion());
   return Value;
 }
 
@@ -194,8 +187,7 @@ int64_t CompileUnit::getDefaultLowerBound() const {
 static bool isShareableAcrossCUs(const llvm::MDNode *D) {
   // When the MDNode can be part of the type system, the DIE can be
   // shared across CUs.
-  return (isa<DIType>(D) ||
-          (isa<DISubprogram>(D) && !(cast<DISubprogram>(D)->isDefinition())));
+  return (isa<DIType>(D) || (isa<DISubprogram>(D) && !(cast<DISubprogram>(D)->isDefinition())));
 }
 
 /// getDIE - Returns the debug information entry map slot for the
@@ -229,34 +221,26 @@ void CompileUnit::addFlag(DIE *Die, dwarf::Attribute Attribute) {
 
 /// addUInt - Add an unsigned integer attribute data and value.
 ///
-void CompileUnit::addUInt(DIE *Die, dwarf::Attribute Attribute,
-                          std::optional<dwarf::Form> Form, uint64_t Integer) {
+void CompileUnit::addUInt(DIE *Die, dwarf::Attribute Attribute, std::optional<dwarf::Form> Form, uint64_t Integer) {
   if (!Form) {
     Form = DIEInteger::BestForm(false, Integer);
   }
-  DIEValue *Value = Integer == 1 ? DIEIntegerOne
-                                 : new (DIEValueAllocator) DIEInteger(Integer);
+  DIEValue *Value = Integer == 1 ? DIEIntegerOne : new (DIEValueAllocator) DIEInteger(Integer);
   Die->addValue(Attribute, *Form, Value);
 }
 
-void CompileUnit::addUInt(IGC::DIEBlock *Block, dwarf::Form Form,
-                          uint64_t Integer) {
+void CompileUnit::addUInt(IGC::DIEBlock *Block, dwarf::Form Form, uint64_t Integer) {
   IGC_ASSERT_MESSAGE(
-      (Form == dwarf::Form::DW_FORM_data1 &&
-       Integer <= std::numeric_limits<unsigned char>::max()) ||
-          (Form == dwarf::Form::DW_FORM_data2 &&
-           Integer <= std::numeric_limits<unsigned short>::max()) ||
-          (Form == dwarf::Form::DW_FORM_data4 &&
-               Integer <= std::numeric_limits<unsigned int>::max() ||
-           (Form != dwarf::Form::DW_FORM_data1 &&
-            Form != dwarf::Form::DW_FORM_data2 &&
+      (Form == dwarf::Form::DW_FORM_data1 && Integer <= std::numeric_limits<unsigned char>::max()) ||
+          (Form == dwarf::Form::DW_FORM_data2 && Integer <= std::numeric_limits<unsigned short>::max()) ||
+          (Form == dwarf::Form::DW_FORM_data4 && Integer <= std::numeric_limits<unsigned int>::max() ||
+           (Form != dwarf::Form::DW_FORM_data1 && Form != dwarf::Form::DW_FORM_data2 &&
             Form != dwarf::Form::DW_FORM_data4)),
       "Insufficient bits in form for encoding");
   addUInt(Block, (dwarf::Attribute)0, Form, Integer);
 }
 
-void CompileUnit::addBitPiece(IGC::DIEBlock *Block, uint64_t SizeBits,
-                              uint64_t OffsetBits) {
+void CompileUnit::addBitPiece(IGC::DIEBlock *Block, uint64_t SizeBits, uint64_t OffsetBits) {
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
   addUInt(Block, dwarf::DW_FORM_udata, SizeBits);
   addUInt(Block, dwarf::DW_FORM_udata, OffsetBits);
@@ -264,8 +248,7 @@ void CompileUnit::addBitPiece(IGC::DIEBlock *Block, uint64_t SizeBits,
 
 /// addSInt - Add an signed integer attribute data and value.
 ///
-void CompileUnit::addSInt(DIE *Die, dwarf::Attribute Attribute,
-                          std::optional<dwarf::Form> Form, int64_t Integer) {
+void CompileUnit::addSInt(DIE *Die, dwarf::Attribute Attribute, std::optional<dwarf::Form> Form, int64_t Integer) {
   if (!Form) {
     Form = DIEInteger::BestForm(true, Integer);
   }
@@ -273,19 +256,14 @@ void CompileUnit::addSInt(DIE *Die, dwarf::Attribute Attribute,
   Die->addValue(Attribute, *Form, Value);
 }
 
-void CompileUnit::addSInt(IGC::DIEBlock *Die, std::optional<dwarf::Form> Form,
-                          int64_t Integer) {
-  IGC_ASSERT_MESSAGE((Form == dwarf::Form::DW_FORM_data1 &&
-                      Integer >= std::numeric_limits<signed char>::min() &&
+void CompileUnit::addSInt(IGC::DIEBlock *Die, std::optional<dwarf::Form> Form, int64_t Integer) {
+  IGC_ASSERT_MESSAGE((Form == dwarf::Form::DW_FORM_data1 && Integer >= std::numeric_limits<signed char>::min() &&
                       Integer <= std::numeric_limits<signed char>::max()) ||
-                         (Form == dwarf::Form::DW_FORM_data2 &&
-                          Integer >= std::numeric_limits<short>::min() &&
+                         (Form == dwarf::Form::DW_FORM_data2 && Integer >= std::numeric_limits<short>::min() &&
                           Integer <= std::numeric_limits<short>::max()) ||
-                         (Form == dwarf::Form::DW_FORM_data4 &&
-                          Integer >= std::numeric_limits<int>::min() &&
+                         (Form == dwarf::Form::DW_FORM_data4 && Integer >= std::numeric_limits<int>::min() &&
                           Integer <= std::numeric_limits<int>::max()) ||
-                         (Form != dwarf::Form::DW_FORM_data1 &&
-                          Form != dwarf::Form::DW_FORM_data2 &&
+                         (Form != dwarf::Form::DW_FORM_data1 && Form != dwarf::Form::DW_FORM_data2 &&
                           Form != dwarf::Form::DW_FORM_data4),
                      "Insufficient bits in form for encoding");
   addSInt(Die, (dwarf::Attribute)0, Form, Integer);
@@ -296,8 +274,7 @@ void CompileUnit::addSInt(IGC::DIEBlock *Die, std::optional<dwarf::Form> Form,
 /// more predictable sizes. In the case of split dwarf we emit an index
 /// into another table which gets us the static offset into the string
 /// table.
-void CompileUnit::addString(DIE *Die, dwarf::Attribute Attribute,
-                            StringRef String) {
+void CompileUnit::addString(DIE *Die, dwarf::Attribute Attribute, StringRef String) {
   // Emit string inlined
   auto Str = new (DIEValueAllocator) DIEInlinedString(String);
   // Collect all inlined string DIEs to later call dtor
@@ -307,30 +284,26 @@ void CompileUnit::addString(DIE *Die, dwarf::Attribute Attribute,
 
 /// addExpr - Add a Dwarf expression attribute data and value.
 ///
-void CompileUnit::addExpr(IGC::DIEBlock *Die, dwarf::Form Form,
-                          const MCExpr *Expr) {
+void CompileUnit::addExpr(IGC::DIEBlock *Die, dwarf::Form Form, const MCExpr *Expr) {
   DIEValue *Value = new (DIEValueAllocator) DIEExpr(Expr);
   Die->addValue((dwarf::Attribute)0, Form, Value);
 }
 
 /// addLabel - Add a Dwarf label attribute data and value.
 ///
-void CompileUnit::addLabel(DIE *Die, dwarf::Attribute Attribute,
-                           dwarf::Form Form, const MCSymbol *Label) {
+void CompileUnit::addLabel(DIE *Die, dwarf::Attribute Attribute, dwarf::Form Form, const MCSymbol *Label) {
   DIEValue *Value = new (DIEValueAllocator) DIELabel(Label);
   Die->addValue(Attribute, Form, Value);
 }
 
-void CompileUnit::addLabel(IGC::DIEBlock *Die, dwarf::Form Form,
-                           const MCSymbol *Label) {
+void CompileUnit::addLabel(IGC::DIEBlock *Die, dwarf::Form Form, const MCSymbol *Label) {
   addLabel(Die, (dwarf::Attribute)0, Form, Label);
 }
 
 /// addLabelAddress - Add a dwarf label attribute data and value using
 /// DW_FORM_addr or DW_FORM_GNU_addr_index.
 ///
-void CompileUnit::addLabelAddress(DIE *Die, dwarf::Attribute Attribute,
-                                  MCSymbol *Label) {
+void CompileUnit::addLabelAddress(DIE *Die, dwarf::Attribute Attribute, MCSymbol *Label) {
   if (Label) {
     DD->addArangeLabel(SymbolCU(this, Label));
   }
@@ -344,8 +317,7 @@ void CompileUnit::addLabelAddress(DIE *Die, dwarf::Attribute Attribute,
   }
 }
 
-void CompileUnit::addLabelLoc(DIE *Die, dwarf::Attribute Attribute,
-                              MCSymbol *Label) {
+void CompileUnit::addLabelLoc(DIE *Die, dwarf::Attribute Attribute, MCSymbol *Label) {
   if (Label != NULL) {
     DD->addArangeLabel(SymbolCU(this, Label));
     DIEValue *Value = new (DIEValueAllocator) DIELabel(Label);
@@ -364,8 +336,7 @@ void CompileUnit::addOpAddress(IGC::DIEBlock *Die, const MCSymbol *Sym) {
 
 /// addDelta - Add a label delta attribute data and value.
 ///
-void CompileUnit::addDelta(DIE *Die, dwarf::Attribute Attribute,
-                           dwarf::Form Form, const MCSymbol *Hi,
+void CompileUnit::addDelta(DIE *Die, dwarf::Attribute Attribute, dwarf::Form Form, const MCSymbol *Hi,
                            const MCSymbol *Lo) {
   DIEValue *Value = new (DIEValueAllocator) DIEDelta(Hi, Lo);
   Die->addValue(Attribute, Form, Value);
@@ -373,13 +344,11 @@ void CompileUnit::addDelta(DIE *Die, dwarf::Attribute Attribute,
 
 /// addDIEEntry - Add a DIE attribute data and value.
 ///
-void CompileUnit::addDIEEntry(DIE *Die, dwarf::Attribute Attribute,
-                              DIE *Entry) {
+void CompileUnit::addDIEEntry(DIE *Die, dwarf::Attribute Attribute, DIE *Entry) {
   addDIEEntry(Die, Attribute, createDIEEntry(Entry));
 }
 
-void CompileUnit::addDIEEntry(DIE *Die, dwarf::Attribute Attribute,
-                              DIEEntry *Entry) {
+void CompileUnit::addDIEEntry(DIE *Die, dwarf::Attribute Attribute, DIEEntry *Entry) {
   const DIE *DieCU = Die->getCompileUnitOrNull();
   const DIE *EntryCU = Entry->getEntry()->getCompileUnitOrNull();
   if (!DieCU) {
@@ -389,15 +358,13 @@ void CompileUnit::addDIEEntry(DIE *Die, dwarf::Attribute Attribute,
   if (!EntryCU) {
     EntryCU = getCUDie();
   }
-  dwarf::Form Form =
-      EntryCU == DieCU ? dwarf::DW_FORM_ref4 : dwarf::DW_FORM_ref_addr;
+  dwarf::Form Form = EntryCU == DieCU ? dwarf::DW_FORM_ref4 : dwarf::DW_FORM_ref_addr;
   Die->addValue(Attribute, Form, Entry);
 }
 
 /// Create a DIE with the given Tag, add the DIE to its parent, and
 /// call insertDIE if MD is not null.
-IGC::DIE *CompileUnit::createAndAddDIE(unsigned Tag, DIE &Parent,
-                                       llvm::DINode *N) {
+IGC::DIE *CompileUnit::createAndAddDIE(unsigned Tag, DIE &Parent, llvm::DINode *N) {
   DIE *Die = new DIE(Tag);
   Parent.addChild(Die);
   if (N) {
@@ -409,8 +376,7 @@ IGC::DIE *CompileUnit::createAndAddDIE(unsigned Tag, DIE &Parent,
 
 /// addBlock - Add block data.
 ///
-void CompileUnit::addBlock(DIE *Die, dwarf::Attribute Attribute,
-                           IGC::DIEBlock *Block) {
+void CompileUnit::addBlock(DIE *Die, dwarf::Attribute Attribute, IGC::DIEBlock *Block) {
   Block->ComputeSize(Asm);
   DIEBlocks.push_back(Block); // Memoize so we can call the destructor later on.
   Die->addValue(Attribute, Block->BestForm(), Block);
@@ -423,8 +389,7 @@ void CompileUnit::addSourceLine(DIE *Die, DIScope *S, unsigned Line) {
   if (Line == 0)
     return;
 
-  unsigned FileID = DD->getOrCreateSourceID(S->getFilename(), S->getDirectory(),
-                                            getUniqueID());
+  unsigned FileID = DD->getOrCreateSourceID(S->getFilename(), S->getDirectory(), getUniqueID());
   IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
   addUInt(Die, dwarf::DW_AT_decl_file, std::nullopt, FileID);
   addUInt(Die, dwarf::DW_AT_decl_line, std::nullopt, Line);
@@ -437,9 +402,7 @@ void CompileUnit::addSourceLine(DIE *Die, DIImportedEntity *IE, unsigned Line) {
   if (Line == 0)
     return;
 
-  unsigned FileID =
-      DD->getOrCreateSourceID(IE->getFile()->getFilename(),
-                              IE->getFile()->getDirectory(), getUniqueID());
+  unsigned FileID = DD->getOrCreateSourceID(IE->getFile()->getFilename(), IE->getFile()->getDirectory(), getUniqueID());
   IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
   addUInt(Die, dwarf::DW_AT_decl_file, std::nullopt, FileID);
   addUInt(Die, dwarf::DW_AT_decl_line, std::nullopt, Line);
@@ -493,8 +456,7 @@ void CompileUnit::addRegisterOp(IGC::DIEBlock *TheDie, unsigned DWReg) {
 }
 
 /// addRegisterOffset - Add register offset.
-void CompileUnit::addRegisterOffset(IGC::DIEBlock *TheDie, unsigned DWReg,
-                                    int64_t Offset) {
+void CompileUnit::addRegisterOffset(IGC::DIEBlock *TheDie, unsigned DWReg, int64_t Offset) {
   auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(DWReg);
   if (DWRegEncoded < 32) {
     addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_breg0 + DWRegEncoded);
@@ -508,8 +470,7 @@ void CompileUnit::addRegisterOffset(IGC::DIEBlock *TheDie, unsigned DWReg,
 /// isTypeSigned - Return true if the type is signed.
 static bool isTypeSigned(DwarfDebug *DD, DIType *Ty, int *SizeInBits) {
   if (isa<DIDerivedType>(Ty)) {
-    return isTypeSigned(DD, DD->resolve(cast<DIDerivedType>(Ty)->getBaseType()),
-                        SizeInBits);
+    return isTypeSigned(DD, DD->resolve(cast<DIDerivedType>(Ty)->getBaseType()), SizeInBits);
   }
   if (isa<DIBasicType>(Ty)) {
     if (cast<DIBasicType>(Ty)->getEncoding() == dwarf::DW_ATE_signed ||
@@ -531,8 +492,7 @@ bool isUnsignedDIType(DwarfDebug *DD, DIType *Ty) {
   DIBasicType *BTy = dyn_cast_or_null<DIBasicType>(Ty);
   if (BTy) {
     unsigned Encoding = BTy->getEncoding();
-    if (Encoding == dwarf::DW_ATE_unsigned ||
-        Encoding == dwarf::DW_ATE_unsigned_char ||
+    if (Encoding == dwarf::DW_ATE_unsigned || Encoding == dwarf::DW_ATE_unsigned_char ||
         Encoding == dwarf::DW_ATE_boolean) {
       return true;
     }
@@ -547,8 +507,7 @@ void CompileUnit::addConstantFPValue(DIE *Die, const ConstantFP *CFP) {
 }
 
 /// addConstantValue - Add constant value entry in variable DIE.
-void CompileUnit::addConstantValue(DIE *Die, const ConstantInt *CI,
-                                   bool Unsigned) {
+void CompileUnit::addConstantValue(DIE *Die, const ConstantInt *CI, bool Unsigned) {
   addConstantValue(Die, CI->getValue(), Unsigned);
 }
 
@@ -558,8 +517,7 @@ void CompileUnit::addConstantValue(DIE *Die, const APInt &Val, bool Unsigned) {
   if (CIBitWidth <= 64) {
     // If we're a signed constant definitely use sdata.
     if (!Unsigned) {
-      addSInt(Die, dwarf::DW_AT_const_value, dwarf::DW_FORM_sdata,
-              Val.getSExtValue());
+      addSInt(Die, dwarf::DW_AT_const_value, dwarf::DW_FORM_sdata, Val.getSExtValue());
       return;
     }
 
@@ -600,8 +558,7 @@ void CompileUnit::addConstantValue(DIE *Die, const APInt &Val, bool Unsigned) {
     if (LittleEndian) {
       c = (uint8_t)(Ptr64[i / 8] >> (8 * (i & 7)));
     } else {
-      c = (uint8_t)(Ptr64[(NumBytes - 1 - i) / 8] >>
-                    (8 * ((NumBytes - 1 - i) & 7)));
+      c = (uint8_t)(Ptr64[(NumBytes - 1 - i) / 8] >> (8 * ((NumBytes - 1 - i) & 7)));
     }
     addUInt(Block, dwarf::DW_FORM_data1, c);
   }
@@ -629,8 +586,7 @@ void CompileUnit::addConstantUValue(DIEBlock *TheDie, uint64_t Val) {
 }
 
 /// addConstantData - Add constant data entry in variable DIE.
-void CompileUnit::addConstantData(DIE *Die, const unsigned char *Ptr8,
-                                  int NumBytes) {
+void CompileUnit::addConstantData(DIE *Die, const unsigned char *Ptr8, int NumBytes) {
   IGC::DIEBlock *Block = new (DIEValueAllocator) IGC::DIEBlock();
 
   bool LittleEndian = Asm->IsLittleEndian();
@@ -650,11 +606,9 @@ void CompileUnit::addTemplateParams(DIE &Buffer, llvm::DINodeArray TParams) {
   // Add template parameters.
   for (const auto *Element : TParams) {
     if (auto *TTP = dyn_cast<DITemplateTypeParameter>(Element))
-      constructTemplateTypeParameterDIE(
-          Buffer, const_cast<DITemplateTypeParameter *>(TTP));
+      constructTemplateTypeParameterDIE(Buffer, const_cast<DITemplateTypeParameter *>(TTP));
     else if (auto *TVP = dyn_cast<DITemplateValueParameter>(Element))
-      constructTemplateValueParameterDIE(
-          Buffer, const_cast<DITemplateValueParameter *>(TVP));
+      constructTemplateValueParameterDIE(Buffer, const_cast<DITemplateValueParameter *>(TVP));
   }
 }
 
@@ -737,8 +691,7 @@ void CompileUnit::addType(DIE *Entity, DIType *Ty, dwarf::Attribute Attribute) {
 // addSimdWidth - add SIMD width
 void CompileUnit::addSimdWidth(DIE *Die, uint16_t SimdWidth) {
   // Emit SIMD width
-  addUInt(Die, (dwarf::Attribute)DW_AT_INTEL_simd_width, dwarf::DW_FORM_data2,
-          SimdWidth);
+  addUInt(Die, (dwarf::Attribute)DW_AT_INTEL_simd_width, dwarf::DW_FORM_data2, SimdWidth);
 }
 
 void CompileUnit::extractSubRegValue(IGC::DIEBlock *Block, unsigned char Sz) {
@@ -756,11 +709,9 @@ void CompileUnit::extractSubRegValue(IGC::DIEBlock *Block, unsigned char Sz) {
 // surface
 // - Bindless Sampler State Base Addres when variable located in bindless
 // sampler Note: Scratch space location is not handled here.
-void CompileUnit::addBindlessOrStatelessLocation(
-    IGC::DIEBlock *Block, const VISAVariableLocation &Loc,
-    uint32_t baseAddrEncoded) {
-  IGC_ASSERT_MESSAGE(Loc.IsInGlobalAddrSpace(),
-                     "Neither bindless nor stateless");
+void CompileUnit::addBindlessOrStatelessLocation(IGC::DIEBlock *Block, const VISAVariableLocation &Loc,
+                                                 uint32_t baseAddrEncoded) {
+  IGC_ASSERT_MESSAGE(Loc.IsInGlobalAddrSpace(), "Neither bindless nor stateless");
   if (Loc.IsRegister()) {
     // Stateless surface or bindless surface or bindless sampler with offset not
     // available as literal. For example, if offset were available in register
@@ -784,10 +735,8 @@ void CompileUnit::addBindlessOrStatelessLocation(
 
     uint16_t grfRegNum = VarInfo->lrs.front().getGRF().regNum;
     unsigned int grfSubReg = VarInfo->lrs.front().getGRF().subRegNum;
-    auto bitOffsetToSurfReg =
-        grfSubReg * 8; // Bit-offset to GRF with surface offset
-    auto varSizeInBits =
-        32; // To be verified with DV.getRegisterValueSizeInBits(DD);
+    auto bitOffsetToSurfReg = grfSubReg * 8; // Bit-offset to GRF with surface offset
+    auto varSizeInBits = 32;                 // To be verified with DV.getRegisterValueSizeInBits(DD);
 
     addUInt(Block, dwarf::DW_FORM_data1,
             baseAddrEncoded); // Base address of surface or sampler
@@ -813,7 +762,7 @@ void CompileUnit::addBindlessOrStatelessLocation(
     uint32_t offset = Loc.GetOffset();
 
     addUInt(Block, dwarf::DW_FORM_data1,
-            baseAddrEncoded); // Base address of surface or sampler
+            baseAddrEncoded);                     // Base address of surface or sampler
     addSInt(Block, dwarf::DW_FORM_sdata, offset); // Offset to base address
     return;
   }
@@ -823,11 +772,9 @@ void CompileUnit::addBindlessOrStatelessLocation(
 
 // addStatelessLocation - add a sequence of attributes to calculate stateless
 // surface location of variable
-void CompileUnit::addStatelessLocation(IGC::DIEBlock *Block,
-                                       const VISAVariableLocation &Loc) {
+void CompileUnit::addStatelessLocation(IGC::DIEBlock *Block, const VISAVariableLocation &Loc) {
   // Use virtual debug register with Stateless Surface State Base Address
-  uint32_t statelessBaseAddrEncoded =
-      GetEncodedRegNum<RegisterNumbering::GenStateBase>(dwarf::DW_OP_breg0);
+  uint32_t statelessBaseAddrEncoded = GetEncodedRegNum<RegisterNumbering::GenStateBase>(dwarf::DW_OP_breg0);
   IGC_ASSERT_MESSAGE(Loc.HasSurface(), "Missing surface for variable location");
 
   addBindlessOrStatelessLocation(Block, Loc, statelessBaseAddrEncoded);
@@ -835,12 +782,9 @@ void CompileUnit::addStatelessLocation(IGC::DIEBlock *Block,
 
 // addBindlessSurfaceLocation - add a sequence of attributes to calculate
 // bindless surface location of variable
-void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock *Block,
-                                             const VISAVariableLocation &Loc) {
+void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock *Block, const VISAVariableLocation &Loc) {
   // Use virtual debug register with Bindless Surface State Base Address
-  uint32_t bindlessSurfBaseAddrEncoded =
-      GetEncodedRegNum<RegisterNumbering::BindlessSurfStateBase>(
-          dwarf::DW_OP_breg0);
+  uint32_t bindlessSurfBaseAddrEncoded = GetEncodedRegNum<RegisterNumbering::BindlessSurfStateBase>(dwarf::DW_OP_breg0);
 
   IGC_ASSERT_MESSAGE(Loc.HasSurface(), "Missing surface for variable location");
 
@@ -862,8 +806,7 @@ void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock *Block,
   // 11 DW_OP_push_bit_piece_stack
 
   uint16_t regNumWithBindlessOffset = 0; // TBD Bindless offset in GRF
-  uint16_t bitOffsetToBindlessReg =
-      0; // TBD bit-offset to GRF with bindless offset
+  uint16_t bitOffsetToBindlessReg = 0;   // TBD bit-offset to GRF with bindless offset
 
   addRegOrConst(Block, // Bindless offset to base address
                 regNumWithBindlessOffset);
@@ -893,8 +836,7 @@ void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock *Block,
 
     uint16_t regNumWithSurfOffset = VarInfo->lrs.front().getGRF().regNum;
     unsigned int subReg = VarInfo->lrs.front().getGRF().subRegNum;
-    auto bitOffsetToSurfReg =
-        subReg * 8; // Bit-offset to GRF with surface offset
+    auto bitOffsetToSurfReg = subReg * 8; // Bit-offset to GRF with surface offset
     // auto sizeInBits = (VISAMod->m_pShader->getGRFSize() * 8) - offsetInBits;
 
     addRegOrConst(Block, // Surface offset (in GRF) to base address
@@ -915,11 +857,9 @@ void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock *Block,
 
 // addBindlessScratchSpaceLocation - add a sequence of attributes to calculate
 // bindless scratch space location of variable
-void CompileUnit::addBindlessScratchSpaceLocation(
-    IGC::DIEBlock *Block, const VISAVariableLocation &Loc) {
+void CompileUnit::addBindlessScratchSpaceLocation(IGC::DIEBlock *Block, const VISAVariableLocation &Loc) {
   // Use virtual debug register with Surface State Base Address
-  uint32_t surfStateBaseAddrEncoded =
-      GetEncodedRegNum<RegisterNumbering::SurfStateBase>(dwarf::DW_OP_breg0);
+  uint32_t surfStateBaseAddrEncoded = GetEncodedRegNum<RegisterNumbering::SurfStateBase>(dwarf::DW_OP_breg0);
 
   IGC_ASSERT_MESSAGE(Loc.HasSurface(), "Missing surface for variable location");
 
@@ -967,15 +907,13 @@ void CompileUnit::addBindlessScratchSpaceLocation(
 
     const auto *VarInfo = VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNum);
     if (!VarInfo) {
-      LLVM_DEBUG(dbgs() << "warning: could not build bindless scratch offset (V"
-                        << regNum << ")");
+      LLVM_DEBUG(dbgs() << "warning: could not build bindless scratch offset (V" << regNum << ")");
       return;
     }
 
     uint16_t regNumWithSurfOffset = VarInfo->lrs.front().getGRF().regNum;
     unsigned int subReg = VarInfo->lrs.front().getGRF().subRegNum;
-    auto bitOffsetToSurfReg =
-        subReg * 8; // Bit-offset to GRF with surface offset
+    auto bitOffsetToSurfReg = subReg * 8; // Bit-offset to GRF with surface offset
     // auto sizeInBits = (VISAMod->m_pShader->getGRFSize() * 8) - offsetInBits;
 
     addRegOrConst(Block, // Surface offset (in GRF) to base address
@@ -996,12 +934,10 @@ void CompileUnit::addBindlessScratchSpaceLocation(
 
 // addBindlessSamplerLocation - add a sequence of attributes to calculate
 // bindless sampler location of variable
-void CompileUnit::addBindlessSamplerLocation(IGC::DIEBlock *Block,
-                                             const VISAVariableLocation &Loc) {
+void CompileUnit::addBindlessSamplerLocation(IGC::DIEBlock *Block, const VISAVariableLocation &Loc) {
   // Use virtual debug register with Bindless Sampler State Base Address
   uint32_t bindlessSamplerBaseAddrEncoded =
-      GetEncodedRegNum<RegisterNumbering::BindlessSamplerStateBase>(
-          dwarf::DW_OP_breg0);
+      GetEncodedRegNum<RegisterNumbering::BindlessSamplerStateBase>(dwarf::DW_OP_breg0);
 
   IGC_ASSERT_MESSAGE(Loc.IsSampler(), "Missing sampler for variable location");
 
@@ -1018,8 +954,7 @@ void CompileUnit::addBE_FP(IGC::DIEBlock *Block) {
   uint32_t BE_FP_RegNum = 0, BE_FP_SubRegNum = 0;
   const auto &VisaDbgInfo = DD->getVisaDebugInfo();
 
-  bool hasValidBEFP =
-      VisaDbgInfo.getCFI().getBEFPRegNum(BE_FP_RegNum, BE_FP_SubRegNum);
+  bool hasValidBEFP = VisaDbgInfo.getCFI().getBEFPRegNum(BE_FP_RegNum, BE_FP_SubRegNum);
   if (!hasValidBEFP)
     return;
 
@@ -1040,22 +975,17 @@ void CompileUnit::addBE_FP(IGC::DIEBlock *Block) {
 
 // addScratchLocation - add a sequence of attributes to emit scratch space
 // location of variable
-void CompileUnit::addScratchLocation(IGC::DIEBlock *Block,
-                                     uint32_t memoryOffset,
-                                     int32_t vectorOffset) {
+void CompileUnit::addScratchLocation(IGC::DIEBlock *Block, uint32_t memoryOffset, int32_t vectorOffset) {
   uint32_t offset = memoryOffset + vectorOffset;
   // For spills to the scratch area at offset available as literal
   uint32_t scratchBaseAddrEncoded = 0;
   if (DD->GetVISAModule()->usesSlot1ScratchSpill()) {
     // 1 DW_OP_breg11 <offset>    , breg11 stands for Scratch Space Base
     //                              Address + 1 (Slot#1)
-    scratchBaseAddrEncoded =
-        GetEncodedRegNum<RegisterNumbering::ScratchBaseSlot1>(
-            dwarf::DW_OP_breg0);
+    scratchBaseAddrEncoded = GetEncodedRegNum<RegisterNumbering::ScratchBaseSlot1>(dwarf::DW_OP_breg0);
   } else {
     // 1 DW_OP_breg6 <offset>    , breg6 stands for Scratch Space Base Address
-    scratchBaseAddrEncoded =
-        GetEncodedRegNum<RegisterNumbering::ScratchBase>(dwarf::DW_OP_breg0);
+    scratchBaseAddrEncoded = GetEncodedRegNum<RegisterNumbering::ScratchBase>(dwarf::DW_OP_breg0);
   }
 
   addUInt(Block, dwarf::DW_FORM_data1,
@@ -1134,10 +1064,8 @@ void CompileUnit::addScratchLocation(IGC::DIEBlock *Block,
 // 11 DW_OP_const1u 16 or 8
 // 12 DW_OP_INTEL_bit_piece_stack
 //
-void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV,
-                              const VISAVariableLocation &Loc,
-                              const DbgDecoder::LiveIntervalsVISA *lr,
-                              uint16_t simdWidthOffset, bool isPacked,
+void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV, const VISAVariableLocation &Loc,
+                              const DbgDecoder::LiveIntervalsVISA *lr, uint16_t simdWidthOffset, bool isPacked,
                               bool isSecondHalf) {
   auto EmitPushSimdLane = [this](IGC::DIEBlock *Block, bool isSecondHalf) {
     addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);
@@ -1155,12 +1083,9 @@ void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV,
   const auto *VISAMod = Loc.GetVISAModule();
   auto varSizeInBits = DV.getRegisterValueSizeInBits(DD);
 
-  LLVM_DEBUG(dbgs() << "  addSimdLane(varSizeInBits: " << varSizeInBits
-                    << ", simdWidthOffset: " << simdWidthOffset
-                    << ", isPacked: " << isPacked
-                    << ", isSecondHalf: " << isSecondHalf << ")\n");
-  IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0,
-                     "Variable's size not aligned to byte");
+  LLVM_DEBUG(dbgs() << "  addSimdLane(varSizeInBits: " << varSizeInBits << ", simdWidthOffset: " << simdWidthOffset
+                    << ", isPacked: " << isPacked << ", isSecondHalf: " << isSecondHalf << ")\n");
+  IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Variable's size not aligned to byte");
 
   if (lr->isSpill()) {
     // CASE 1: Example of expression generated for 64-bit or 32-bit ptr to a
@@ -1170,8 +1095,7 @@ void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV,
 
     EmitPushSimdLane(Block, isSecondHalf);
     // *8 if 64-bit ptr or *4 if 32-bit ptr.
-    dwarf::LocationAtom litOP =
-        dwarf::DW_OP_lit3; // Assumed for varSizeInBits == 64
+    dwarf::LocationAtom litOP = dwarf::DW_OP_lit3; // Assumed for varSizeInBits == 64
 
     if (varSizeInBits == 32) {
       litOP = dwarf::DW_OP_lit2;
@@ -1180,8 +1104,7 @@ void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV,
     } else if (varSizeInBits == 8) {
       litOP = dwarf::DW_OP_lit0;
     } else {
-      IGC_ASSERT_MESSAGE((varSizeInBits == 64),
-                         "Unexpected spilled ptr or variable size");
+      IGC_ASSERT_MESSAGE((varSizeInBits == 64), "Unexpected spilled ptr or variable size");
     }
 
     addUInt(Block, dwarf::DW_FORM_data1, litOP);
@@ -1238,21 +1161,16 @@ void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV,
 
     // If unpacked then small variable takes up 32 bits else when packed fits
     // its exact size
-    uint32_t bitsUsedByVar =
-        (isPacked || varSizeInBits > 32) ? (uint32_t)varSizeInBits : 32;
-    uint32_t variablesInSingleGRF =
-        (VISAMod->getGRFSizeInBits()) / bitsUsedByVar;
-    uint32_t valForSubRegLit = variablesInSingleGRF > 0
-                                   ? (uint32_t)std::log2(variablesInSingleGRF)
-                                   : 0;
+    uint32_t bitsUsedByVar = (isPacked || varSizeInBits > 32) ? (uint32_t)varSizeInBits : 32;
+    uint32_t variablesInSingleGRF = (VISAMod->getGRFSizeInBits()) / bitsUsedByVar;
+    uint32_t valForSubRegLit = variablesInSingleGRF > 0 ? (uint32_t)std::log2(variablesInSingleGRF) : 0;
 
     // TODO: missing case lr->getGRF().subRegNum > 0
     // unsigned int subReg = lr->getGRF().subRegNum;
     // auto offsetInBits = subReg * 8;
-    uint32_t regNumOffset =
-        (variablesInSingleGRF == 0 || simdWidthOffset < variablesInSingleGRF)
-            ? 0
-            : (simdWidthOffset / variablesInSingleGRF);
+    uint32_t regNumOffset = (variablesInSingleGRF == 0 || simdWidthOffset < variablesInSingleGRF)
+                                ? 0
+                                : (simdWidthOffset / variablesInSingleGRF);
     uint32_t regNum = lr->getGRF().regNum + regNumOffset;
     auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(regNum);
 
@@ -1276,8 +1194,7 @@ void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV,
 
 // emitBitPiecesForRegVal - emit bitPieces DW_OP_bit_piece sequence for
 // register value. It is used to describe vector variables in registers.
-void CompileUnit::emitBitPiecesForRegVal(IGC::DIEBlock *Block,
-                                         const PieceBuilder &pieceBuilder) {
+void CompileUnit::emitBitPiecesForRegVal(IGC::DIEBlock *Block, const PieceBuilder &pieceBuilder) {
   for (unsigned i = 0, e = pieceBuilder.pieceCount(); i < e; ++i) {
     auto Piece = pieceBuilder.get(i);
     addRegisterOp(Block, Piece.regNum);
@@ -1287,8 +1204,7 @@ void CompileUnit::emitBitPiecesForRegVal(IGC::DIEBlock *Block,
 
 // addSimdLaneScalar - add a sequence of attributes to calculate location of
 // scalar variable e.g. a GRF subregister.
-void CompileUnit::addSimdLaneScalar(IGC::DIEBlock *Block, const DbgVariable &DV,
-                                    const VISAVariableLocation &Loc,
+void CompileUnit::addSimdLaneScalar(IGC::DIEBlock *Block, const DbgVariable &DV, const VISAVariableLocation &Loc,
                                     const DbgDecoder::LiveIntervalsVISA &lr) {
   IGC_ASSERT_MESSAGE(!lr.isSpill(), "Scalar spilled in scratch space");
   auto varSizeInBits = DV.getRegisterValueSizeInBits(DD);
@@ -1305,11 +1221,9 @@ void CompileUnit::addSimdLaneScalar(IGC::DIEBlock *Block, const DbgVariable &DV,
 
   // Direct vector value in registers. We want to emit pieces.
   if (DV.currentLocationIsVector()) {
-    PieceBuilder pieceBuilder(regNum, numGRFs, registerSizeInBits,
-                              varSizeInBits, offsetInBits);
+    PieceBuilder pieceBuilder(regNum, numGRFs, registerSizeInBits, varSizeInBits, offsetInBits);
     LLVM_DEBUG(dbgs() << "  emitBitPiecesForRegVal("
-                      << "varSizeInBits: " << varSizeInBits
-                      << ", offsetInBits: " << offsetInBits << ")\n");
+                      << "varSizeInBits: " << varSizeInBits << ", offsetInBits: " << offsetInBits << ")\n");
     emitBitPiecesForRegVal(Block, pieceBuilder);
     return;
   }
@@ -1318,24 +1232,21 @@ void CompileUnit::addSimdLaneScalar(IGC::DIEBlock *Block, const DbgVariable &DV,
   // on stack.
   addRegOrConst(Block, regNum);
   addConstantUValue(Block, offsetInBits);
-  IGC_ASSERT_MESSAGE(varSizeInBits <= 64,
-                     "Entries pushed onto DWARF stack are limited to 8 bytes");
+  IGC_ASSERT_MESSAGE(varSizeInBits <= 64, "Entries pushed onto DWARF stack are limited to 8 bytes");
   extractSubRegValue(Block, varSizeInBits);
 }
 
 // addSimdLaneRegionBase - add a sequence of attributes to calculate location of
 // region base address variable for vc-backend
-void CompileUnit::addSimdLaneRegionBase(
-    IGC::DIEBlock *Block, const DbgVariable &DV,
-    const VISAVariableLocation &Loc, const DbgDecoder::LiveIntervalsVISA *lr) {
+void CompileUnit::addSimdLaneRegionBase(IGC::DIEBlock *Block, const DbgVariable &DV, const VISAVariableLocation &Loc,
+                                        const DbgDecoder::LiveIntervalsVISA *lr) {
   auto OffsetsCount = Loc.GetRegionOffsetsCount();
   IGC_ASSERT(OffsetsCount);
   // Calculate size of register piece
   auto PieceSizeInBits = DV.getRegisterValueSizeInBits(DD) / OffsetsCount;
   if (DD->getEmitterSettings().EnableDebugInfoValidation)
     DD->getStreamEmitter().verifyRegisterLocationExpr(DV, *DD);
-  LLVM_DEBUG(dbgs() << "  addSimdLaneRegionBase(PieceSizeInBits: "
-                    << PieceSizeInBits << ")\n");
+  LLVM_DEBUG(dbgs() << "  addSimdLaneRegionBase(PieceSizeInBits: " << PieceSizeInBits << ")\n");
   // TODO Support special logic for "sequential" regions
   for (size_t i = 0; i < OffsetsCount; ++i) {
     auto Offset = Loc.GetRegionOffset(i);
@@ -1381,9 +1292,7 @@ std::string CompileUnit::getParentContextString(DIScope *Context) const {
 
   // Reverse iterate over our list to go from the outermost construct to the
   // innermost.
-  for (SmallVectorImpl<DIScope *>::reverse_iterator I = Parents.rbegin(),
-                                                    E = Parents.rend();
-       I != E; ++I) {
+  for (SmallVectorImpl<DIScope *>::reverse_iterator I = Parents.rbegin(), E = Parents.rend(); I != E; ++I) {
     DIScope *Ctx = *I;
     StringRef Name = Ctx->getName();
     if (!Name.empty()) {
@@ -1400,9 +1309,7 @@ std::string CompileUnit::getParentContextString(DIScope *Context) const {
 // lineNumber?fileName?directory There is a workaround for DIModule creation in
 // earlier LLVM versions, where a line and a file parameters are not supported
 // in DIBuilder.
-void CompileUnit::decodeLineAndFileForISysRoot(StringRef &lineAndFile,
-                                               unsigned int *line,
-                                               std::string *file,
+void CompileUnit::decodeLineAndFileForISysRoot(StringRef &lineAndFile, unsigned int *line, std::string *file,
                                                std::string *directory) {
 #if LLVM_VERSION_MAJOR < 11
   SmallVector<StringRef, 8> splitStr;
@@ -1432,8 +1339,7 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIBasicType *BTy) {
   if (BTy->getTag() == dwarf::DW_TAG_unspecified_type)
     return;
 
-  addUInt(&Buffer, dwarf::DW_AT_encoding, dwarf::DW_FORM_data1,
-          BTy->getEncoding());
+  addUInt(&Buffer, dwarf::DW_AT_encoding, dwarf::DW_FORM_data1, BTy->getEncoding());
 
   uint64_t Size = BTy->getSizeInBits() >> 3;
   addUInt(&Buffer, dwarf::DW_AT_byte_size, std::nullopt, Size);
@@ -1470,8 +1376,7 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIStringType *STy) {
 
   if (STy->getEncoding()) {
     // For eventual Unicode support.
-    addUInt(&Buffer, dwarf::DW_AT_encoding, dwarf::DW_FORM_data1,
-            STy->getEncoding());
+    addUInt(&Buffer, dwarf::DW_AT_encoding, dwarf::DW_FORM_data1, STy->getEncoding());
   }
 }
 #endif
@@ -1497,17 +1402,14 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIDerivedType *DTy) {
     addUInt(&Buffer, dwarf::DW_AT_byte_size, std::nullopt, Size);
 
   if (Tag == dwarf::DW_TAG_ptr_to_member_type)
-    addDIEEntry(&Buffer, dwarf::DW_AT_containing_type,
-                getOrCreateTypeDIE(resolve(DTy->getClassType())));
+    addDIEEntry(&Buffer, dwarf::DW_AT_containing_type, getOrCreateTypeDIE(resolve(DTy->getClassType())));
   // Add source line info if available and TyDesc is not a forward declaration.
   if (!DTy->isForwardDecl())
     addSourceLine(&Buffer, DTy);
 
-  auto dwarfAddressSpaceOptional =
-      IGCLLVM::makeOptional(DTy->getDWARFAddressSpace());
+  auto dwarfAddressSpaceOptional = IGCLLVM::makeOptional(DTy->getDWARFAddressSpace());
 
-  if (dwarfAddressSpaceOptional &&
-      isSLMAddressSpaceTag(*dwarfAddressSpaceOptional)) {
+  if (dwarfAddressSpaceOptional && isSLMAddressSpaceTag(*dwarfAddressSpaceOptional)) {
     addUInt(&Buffer, dwarf::DW_AT_address_class, std::nullopt, 1);
   }
 }
@@ -1572,8 +1474,7 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DISubroutineType *STy) {
   // function has been prototyped.
   uint16_t Language = getLanguage();
   if (isPrototyped &&
-      (Language == dwarf::DW_LANG_C89 || Language == dwarf::DW_LANG_C99 ||
-       Language == dwarf::DW_LANG_ObjC))
+      (Language == dwarf::DW_LANG_C89 || Language == dwarf::DW_LANG_C99 || Language == dwarf::DW_LANG_ObjC))
     addFlag(&Buffer, dwarf::DW_AT_prototyped);
 }
 
@@ -1621,8 +1522,7 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DICompositeType *CTy) {
     // function has been prototyped.
     uint16_t Language = getLanguage();
     if (isPrototyped &&
-        (Language == dwarf::DW_LANG_C89 || Language == dwarf::DW_LANG_C99 ||
-         Language == dwarf::DW_LANG_ObjC))
+        (Language == dwarf::DW_LANG_C89 || Language == dwarf::DW_LANG_C99 || Language == dwarf::DW_LANG_ObjC))
       addFlag(&Buffer, dwarf::DW_AT_prototyped);
   } break;
   case dwarf::DW_TAG_structure_type:
@@ -1637,12 +1537,10 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DICompositeType *CTy) {
         DISubprogram *SP = cast<DISubprogram>(Element);
         ElemDie = getOrCreateSubprogramDIE(SP);
 
-        dwarf::AccessAttribute dw_access =
-            (SP->isProtected()) ? dwarf::DW_ACCESS_protected
-            : (SP->isPrivate()) ? dwarf::DW_ACCESS_private
-                                : dwarf::DW_ACCESS_public;
-        addUInt(ElemDie, dwarf::DW_AT_accessibility, dwarf::DW_FORM_data1,
-                dw_access);
+        dwarf::AccessAttribute dw_access = (SP->isProtected()) ? dwarf::DW_ACCESS_protected
+                                           : (SP->isPrivate()) ? dwarf::DW_ACCESS_private
+                                                               : dwarf::DW_ACCESS_public;
+        addUInt(ElemDie, dwarf::DW_AT_accessibility, dwarf::DW_FORM_data1, dw_access);
 
         if (SP->isExplicit()) {
           addFlag(ElemDie, dwarf::DW_AT_explicit);
@@ -1663,14 +1561,11 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DICompositeType *CTy) {
 
     DIType *ContainingType = resolve(CTy->getBaseType());
     if (ContainingType && isa<DICompositeType>(ContainingType))
-      addDIEEntry(&Buffer, dwarf::DW_AT_containing_type,
-                  getOrCreateTypeDIE(ContainingType));
+      addDIEEntry(&Buffer, dwarf::DW_AT_containing_type, getOrCreateTypeDIE(ContainingType));
 
     // Add template parameters to a class, structure or union types.
     // FIXME: The support isn't in the metadata for this yet.
-    if (Tag == dwarf::DW_TAG_class_type ||
-        Tag == dwarf::DW_TAG_structure_type ||
-        Tag == dwarf::DW_TAG_union_type) {
+    if (Tag == dwarf::DW_TAG_class_type || Tag == dwarf::DW_TAG_structure_type || Tag == dwarf::DW_TAG_union_type) {
       addTemplateParams(Buffer, CTy->getTemplateParams());
     }
 
@@ -1684,8 +1579,7 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DICompositeType *CTy) {
   if (!Name.empty())
     addString(&Buffer, dwarf::DW_AT_name, Name);
 
-  if (Tag == dwarf::DW_TAG_enumeration_type ||
-      Tag == dwarf::DW_TAG_class_type || Tag == dwarf::DW_TAG_structure_type ||
+  if (Tag == dwarf::DW_TAG_enumeration_type || Tag == dwarf::DW_TAG_class_type || Tag == dwarf::DW_TAG_structure_type ||
       Tag == dwarf::DW_TAG_union_type) {
     // Add size if non-zero (derived types might be zero-sized.)
     // TODO: Do we care about size for enum forward declarations?
@@ -1714,19 +1608,15 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DICompositeType *CTy) {
 
   // Add flags if available
   if (CTy->isTypePassByValue())
-    addUInt(&Buffer, dwarf::DW_AT_calling_convention, dwarf::DW_FORM_data1,
-            dwarf::DW_CC_pass_by_value);
+    addUInt(&Buffer, dwarf::DW_AT_calling_convention, dwarf::DW_FORM_data1, dwarf::DW_CC_pass_by_value);
   if (CTy->isTypePassByReference())
-    addUInt(&Buffer, dwarf::DW_AT_calling_convention, dwarf::DW_FORM_data1,
-            dwarf::DW_CC_pass_by_reference);
+    addUInt(&Buffer, dwarf::DW_AT_calling_convention, dwarf::DW_FORM_data1, dwarf::DW_CC_pass_by_reference);
 }
 
 /// constructTemplateTypeParameterDIE - Construct new DIE for the given
 /// DITemplateTypeParameter.
-void CompileUnit::constructTemplateTypeParameterDIE(
-    DIE &Buffer, DITemplateTypeParameter *TP) {
-  DIE *ParamDIE =
-      createAndAddDIE(dwarf::DW_TAG_template_type_parameter, Buffer);
+void CompileUnit::constructTemplateTypeParameterDIE(DIE &Buffer, DITemplateTypeParameter *TP) {
+  DIE *ParamDIE = createAndAddDIE(dwarf::DW_TAG_template_type_parameter, Buffer);
   // Add the type if it exists, it could be void and therefore no type.
   if (TP->getType()) {
     addType(ParamDIE, resolve(TP->getType()));
@@ -1738,8 +1628,7 @@ void CompileUnit::constructTemplateTypeParameterDIE(
 
 /// constructTemplateValueParameterDIE - Construct new DIE for the given
 /// DITemplateValueParameter.
-void CompileUnit::constructTemplateValueParameterDIE(
-    DIE &Buffer, DITemplateValueParameter *VP) {
+void CompileUnit::constructTemplateValueParameterDIE(DIE &Buffer, DITemplateValueParameter *VP) {
   DIE *ParamDIE = createAndAddDIE(VP->getTag(), Buffer);
 
   // Add the type if there is one, template template and template parameter
@@ -1753,8 +1642,7 @@ void CompileUnit::constructTemplateValueParameterDIE(
 
   if (Metadata *Val = VP->getValue()) {
     if (ConstantInt *CI = mdconst::dyn_extract<ConstantInt>(Val)) {
-      addConstantValue(ParamDIE, CI,
-                       isUnsignedDIType(DD, resolve(VP->getType())));
+      addConstantValue(ParamDIE, CI, isUnsignedDIType(DD, resolve(VP->getType())));
     } else if (GlobalValue *GV = mdconst::dyn_extract<GlobalValue>(Val)) {
       // For declaration non-type template parameters (such as global values and
       // functions)
@@ -1766,8 +1654,7 @@ void CompileUnit::constructTemplateValueParameterDIE(
       addBlock(ParamDIE, dwarf::DW_AT_location, Block);
     } else if (VP->getTag() == dwarf::DW_TAG_GNU_template_template_param) {
       IGC_ASSERT(isa<MDString>(Val));
-      addString(ParamDIE, dwarf::DW_AT_GNU_template_name,
-                cast<MDString>(Val)->getString());
+      addString(ParamDIE, dwarf::DW_AT_GNU_template_name, cast<MDString>(Val)->getString());
     } else if (VP->getTag() == dwarf::DW_TAG_GNU_template_parameter_pack) {
       IGC_ASSERT(isa<MDNode>(Val));
       // DIArray A(cast<MDNode>(Val));
@@ -1862,8 +1749,7 @@ IGC::DIE *CompileUnit::getOrCreateSubprogramDIE(DISubprogram *SP) {
   StringRef LinkageName = SP->getLinkageName();
   if (!LinkageName.empty()) {
     if (EmitSettings.EmitATLinkageName) {
-      addString(SPDie, dwarf::DW_AT_linkage_name,
-                llvm::GlobalValue::dropLLVMManglingEscape(LinkageName));
+      addString(SPDie, dwarf::DW_AT_linkage_name, llvm::GlobalValue::dropLLVMManglingEscape(LinkageName));
     }
   }
 
@@ -1889,8 +1775,7 @@ IGC::DIE *CompileUnit::getOrCreateSubprogramDIE(DISubprogram *SP) {
   // language.
   uint16_t Language = getLanguage();
   if (SP->isPrototyped() &&
-      (Language == dwarf::DW_LANG_C89 || Language == dwarf::DW_LANG_C99 ||
-       Language == dwarf::DW_LANG_ObjC)) {
+      (Language == dwarf::DW_LANG_C89 || Language == dwarf::DW_LANG_C99 || Language == dwarf::DW_LANG_ObjC)) {
     addFlag(SPDie, dwarf::DW_AT_prototyped);
   }
 
@@ -1918,8 +1803,7 @@ IGC::DIE *CompileUnit::getOrCreateSubprogramDIE(DISubprogram *SP) {
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_constu);
     addUInt(Block, dwarf::DW_FORM_udata, SP->getVirtualIndex());
     addBlock(SPDie, dwarf::DW_AT_vtable_elem_location, Block);
-    ContainingTypeMap.insert(
-        std::make_pair(SPDie, resolve(SP->getContainingType())));
+    ContainingTypeMap.insert(std::make_pair(SPDie, resolve(SP->getContainingType())));
   }
 
   if (!SP->isDefinition()) {
@@ -2007,36 +1891,27 @@ IGC::DIE *CompileUnit::getOrCreateModuleDIE(DIModule *MD) {
   return MDDie;
 }
 
-DIEDwarfExpression::DIEDwarfExpression(const StreamEmitter &AP, CompileUnit &CU,
-                                       DIEBlock &DIE)
+DIEDwarfExpression::DIEDwarfExpression(const StreamEmitter &AP, CompileUnit &CU, DIEBlock &DIE)
     : DwarfExpression(CU), AP(AP), OutDIE(DIE) {}
 
 void DwarfExpression::addExpression(DIExpressionCursor &&ExprCursor) {
-  addExpression(std::move(ExprCursor),
-                [](unsigned Idx, DIExpressionCursor &Cursor) -> bool {
-                  llvm_unreachable("unhandled opcode found in expression");
-                });
+  addExpression(std::move(ExprCursor), [](unsigned Idx, DIExpressionCursor &Cursor) -> bool {
+    llvm_unreachable("unhandled opcode found in expression");
+  });
 }
 
 void DIEDwarfExpression::emitOp(uint8_t Op, const char *Comment) {
   CU.addUInt(&getActiveDIE(), dwarf::DW_FORM_data1, Op);
 }
 
-void DIEDwarfExpression::emitSigned(int64_t Value) {
-  CU.addSInt(&getActiveDIE(), dwarf::DW_FORM_sdata, Value);
-}
+void DIEDwarfExpression::emitSigned(int64_t Value) { CU.addSInt(&getActiveDIE(), dwarf::DW_FORM_sdata, Value); }
 
-void DIEDwarfExpression::emitUnsigned(uint64_t Value) {
-  CU.addUInt(&getActiveDIE(), dwarf::DW_FORM_udata, Value);
-}
+void DIEDwarfExpression::emitUnsigned(uint64_t Value) { CU.addUInt(&getActiveDIE(), dwarf::DW_FORM_udata, Value); }
 
-void DIEDwarfExpression::emitData1(uint8_t Value) {
-  CU.addUInt(&getActiveDIE(), dwarf::DW_FORM_data1, Value);
-}
+void DIEDwarfExpression::emitData1(uint8_t Value) { CU.addUInt(&getActiveDIE(), dwarf::DW_FORM_data1, Value); }
 
 /// constructSubrangeDIE - Construct subrange DIE from DISubrange.
-void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR,
-                                       DIE *IndexTy) {
+void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR, DIE *IndexTy) {
   DIE *DW_Subrange = createAndAddDIE(dwarf::DW_TAG_subrange_type, Buffer);
   addDIEEntry(DW_Subrange, dwarf::DW_AT_type, IndexTy);
 
@@ -2047,8 +1922,7 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR,
   int64_t DefaultLowerBound = getDefaultLowerBound();
 
 #if LLVM_VERSION_MAJOR >= 13
-  auto AddBoundTypeEntry = [&](dwarf::Attribute Attr,
-                               DISubrange::BoundType Bound) {
+  auto AddBoundTypeEntry = [&](dwarf::Attribute Attr, DISubrange::BoundType Bound) {
     if (auto *BV = Bound.dyn_cast<DIVariable *>()) {
       if (auto *VarDIE = getDIE(BV))
         addDIEEntry(DW_Subrange, Attr, VarDIE);
@@ -2062,8 +1936,7 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR,
       if (Attr == dwarf::DW_AT_count) {
         if (BI->getSExtValue() != -1)
           addUInt(DW_Subrange, Attr, std::nullopt, BI->getSExtValue());
-      } else if (Attr != dwarf::DW_AT_lower_bound || DefaultLowerBound == -1 ||
-                 BI->getSExtValue() != DefaultLowerBound)
+      } else if (Attr != dwarf::DW_AT_lower_bound || DefaultLowerBound == -1 || BI->getSExtValue() != DefaultLowerBound)
         addSInt(DW_Subrange, Attr, dwarf::DW_FORM_sdata, BI->getSExtValue());
     }
   };
@@ -2089,8 +1962,7 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR,
     if (Count != -1 && Count != 0) {
       // FIXME: An unbounded array should reference the expression that defines
       // the array.
-      addUInt(DW_Subrange, dwarf::DW_AT_upper_bound, std::nullopt,
-              LowerBound + Count - 1);
+      addUInt(DW_Subrange, dwarf::DW_AT_upper_bound, std::nullopt, LowerBound + Count - 1);
     }
   }
 #endif
@@ -2142,8 +2014,7 @@ void CompileUnit::constructArrayTypeDIE(DIE &Buffer, DICompositeType *CTy) {
     IdxTy = createAndAddDIE(dwarf::DW_TAG_base_type, *CUDie);
     addString(IdxTy, dwarf::DW_AT_name, "int");
     addUInt(IdxTy, dwarf::DW_AT_byte_size, std::nullopt, sizeof(int32_t));
-    addUInt(IdxTy, dwarf::DW_AT_encoding, dwarf::DW_FORM_data1,
-            dwarf::DW_ATE_signed);
+    addUInt(IdxTy, dwarf::DW_AT_encoding, dwarf::DW_FORM_data1, dwarf::DW_ATE_signed);
     setIndexTyDie(IdxTy);
   }
 
@@ -2173,8 +2044,7 @@ void CompileUnit::constructEnumTypeDIE(DIE &Buffer, DICompositeType *CTy) {
                           .getZExtValue()
 #endif
           ;
-      addSInt(Enumerator, dwarf::DW_AT_const_value, dwarf::DW_FORM_sdata,
-              Value);
+      addSInt(Enumerator, dwarf::DW_AT_const_value, dwarf::DW_FORM_sdata, Value);
     }
   }
   DIType *DTy = resolve(CTy->getBaseType());
@@ -2190,9 +2060,8 @@ void CompileUnit::constructEnumTypeDIE(DIE &Buffer, DICompositeType *CTy) {
 /// constructContainingTypeDIEs - Construct DIEs for types that contain
 /// vtables.
 void CompileUnit::constructContainingTypeDIEs() {
-  for (DenseMap<DIE *, const MDNode *>::iterator CI = ContainingTypeMap.begin(),
-                                                 CE = ContainingTypeMap.end();
-       CI != CE; ++CI) {
+  for (DenseMap<DIE *, const MDNode *>::iterator CI = ContainingTypeMap.begin(), CE = ContainingTypeMap.end(); CI != CE;
+       ++CI) {
     DIE *SPDie = CI->first;
     DINode *D = cast<DINode>(const_cast<MDNode *>(CI->second));
     if (!D)
@@ -2204,11 +2073,9 @@ void CompileUnit::constructContainingTypeDIEs() {
   }
 }
 
-IGC::DIE *CompileUnit::constructVariableDIE(DbgVariable &DV,
-                                            bool isScopeAbstract) {
+IGC::DIE *CompileUnit::constructVariableDIE(DbgVariable &DV, bool isScopeAbstract) {
   StringRef Name = DV.getName();
-  LLVM_DEBUG(dbgs() << "[DwarfDebug] constructing DIE for variable <" << Name
-                    << ">\n");
+  LLVM_DEBUG(dbgs() << "[DwarfDebug] constructing DIE for variable <" << Name << ">\n");
   // Define variable debug information entry.
   DIE *VariableDie = new DIE(DV.getTag());
   DbgVariable *AbsVar = DV.getAbstractVariable();
@@ -2246,8 +2113,7 @@ IGC::DIE *CompileUnit::constructVariableDIE(DbgVariable &DV,
       addLabelLoc(VariableDie, dwarf::DW_AT_location, LocLabel);
     } else {
       Offset = DD->CopyDebugLocNoReloc(Offset);
-      addUInt(VariableDie, dwarf::DW_AT_location, dwarf::DW_FORM_sec_offset,
-              Offset);
+      addUInt(VariableDie, dwarf::DW_AT_location, dwarf::DW_FORM_sec_offset, Offset);
     }
 
     DV.setDIE(VariableDie);
@@ -2269,20 +2135,17 @@ IGC::DIE *CompileUnit::constructVariableDIE(DbgVariable &DV,
   return VariableDie;
 }
 
-void CompileUnit::buildLocation(const llvm::Instruction *pDbgInst,
-                                DbgVariable &DV, IGC::DIE *VariableDie) {
+void CompileUnit::buildLocation(const llvm::Instruction *pDbgInst, DbgVariable &DV, IGC::DIE *VariableDie) {
   auto *F = pDbgInst->getParent()->getParent();
   const auto *VISAModule = DD->GetVISAModule(F);
   auto Loc = VISAModule->GetVariableLocation(pDbgInst);
-  LLVM_DEBUG(dbgs() << "  buildLocation at vISA location:\n";
-             Loc.print(dbgs()));
+  LLVM_DEBUG(dbgs() << "  buildLocation at vISA location:\n"; Loc.print(dbgs()));
 
   // Variable can be immdeiate or in a location (but not both)
   if (Loc.IsImmediate()) {
     const Constant *pConstVal = Loc.GetImmediate();
     if (const ConstantInt *pConstInt = dyn_cast<ConstantInt>(pConstVal)) {
-      addConstantValue(VariableDie, pConstInt,
-                       isUnsignedDIType(DD, DV.getType()));
+      addConstantValue(VariableDie, pConstInt, isUnsignedDIType(DD, DV.getType()));
     } else if (const ConstantFP *pConstFP = dyn_cast<ConstantFP>(pConstVal)) {
       addConstantFPValue(VariableDie, pConstFP);
     } else {
@@ -2300,8 +2163,7 @@ void CompileUnit::buildLocation(const llvm::Instruction *pDbgInst,
     locationAT = buildSLM(DV, Loc, VariableDie);
   else if (Loc.IsSampler())
     locationAT = buildSampler(DV, Loc);
-  else if (Loc.HasSurface() && (DV.getType() && DV.getType()->getTag() ==
-                                                    dwarf::DW_TAG_pointer_type))
+  else if (Loc.HasSurface() && (DV.getType() && DV.getType()->getTag() == dwarf::DW_TAG_pointer_type))
     locationAT = buildPointer(DV, Loc);
   else
     locationAT = buildGeneral(DV, Loc, nullptr, VariableDie);
@@ -2310,8 +2172,7 @@ void CompileUnit::buildLocation(const llvm::Instruction *pDbgInst,
     addBlock(VariableDie, dwarf::DW_AT_location, locationAT);
 }
 
-IGC::DIEBlock *CompileUnit::buildPointer(const DbgVariable &var,
-                                         const VISAVariableLocation &loc) {
+IGC::DIEBlock *CompileUnit::buildPointer(const DbgVariable &var, const VISAVariableLocation &loc) {
   auto bti = loc.GetSurface() - VISAModule::TEXTURE_REGISTER_BEGIN;
 
   LLVM_DEBUG(dbgs() << "  buildingPointer, bti_idx = " << bti << "\n");
@@ -2355,17 +2216,14 @@ IGC::DIEBlock *CompileUnit::buildPointer(const DbgVariable &var,
   return Block;
 }
 
-IGC::DIEBlock *CompileUnit::buildSampler(const DbgVariable &var,
-                                         const VISAVariableLocation &loc) {
+IGC::DIEBlock *CompileUnit::buildSampler(const DbgVariable &var, const VISAVariableLocation &loc) {
   IGC::DIEBlock *Block = new (DIEValueAllocator) IGC::DIEBlock();
 
   if (loc.IsInGlobalAddrSpace()) {
     addBindlessSamplerLocation(Block, loc); // Emit SLM location expression
   } else {
     Address addr;
-    addr.Set(Address::Space::eSampler,
-             loc.GetSurface() - VISAModule::SAMPLER_REGISTER_BEGIN,
-             loc.GetOffset());
+    addr.Set(Address::Space::eSampler, loc.GetSurface() - VISAModule::SAMPLER_REGISTER_BEGIN, loc.GetOffset());
 
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const8u);
     addUInt(Block, dwarf::DW_FORM_data8, addr.GetAddress());
@@ -2374,23 +2232,19 @@ IGC::DIEBlock *CompileUnit::buildSampler(const DbgVariable &var,
   return Block;
 }
 
-IGC::DIEBlock *CompileUnit::buildSLM(const DbgVariable &var,
-                                     const VISAVariableLocation &loc,
-                                     IGC::DIE *VariableDie) {
+IGC::DIEBlock *CompileUnit::buildSLM(const DbgVariable &var, const VISAVariableLocation &loc, IGC::DIE *VariableDie) {
   // Add SLM offset based location. Add DW_AT_address_class mark because for
   // some reason not adding dwarfAddressSpace on type.
   IGC::DIEBlock *Block = new (DIEValueAllocator) IGC::DIEBlock();
   uint32_t offset = loc.GetOffset();
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_addr);
   addUInt(Block, dwarf::DW_FORM_addr, (uint64_t)offset);
-  IGC_ASSERT_MESSAGE(VariableDie,
-                     "Expected variable DIE to emit address_class for SLM");
+  IGC_ASSERT_MESSAGE(VariableDie, "Expected variable DIE to emit address_class for SLM");
   addUInt(VariableDie, dwarf::DW_AT_address_class, std::nullopt, 1);
   return Block;
 }
 
-bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
-                                           IGC::DIEBlock *Block,
+bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var, IGC::DIEBlock *Block,
                                            const VISAVariableLocation &loc) {
   LLVM_DEBUG(dbgs() << " PrivateBase(%X) + (%PerThreadOffset + "
                        " (simdSize*<var_offset>) + (simdLaneId * <var_size>))");
@@ -2419,28 +2273,22 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
   auto simdSize = VISAMod->GetSIMDSize();
 
   // Rely on getVarInfo result here.
-  const auto *VarInfoPrivBase =
-      VISAMod->getVarInfo(DD->getVisaDebugInfo(), privateBaseRegNum);
+  const auto *VarInfoPrivBase = VISAMod->getVarInfo(DD->getVisaDebugInfo(), privateBaseRegNum);
   if (!VarInfoPrivBase) {
-    LLVM_DEBUG(dbgs() << "warning: could not get PrivateBase LR (V"
-                      << privateBaseRegNum << ")");
+    LLVM_DEBUG(dbgs() << "warning: could not get PrivateBase LR (V" << privateBaseRegNum << ")");
     return false;
   }
 
-  LLVM_DEBUG(dbgs() << "  PrivateBase: "; VarInfoPrivBase->print(dbgs());
-             dbgs() << "\n");
+  LLVM_DEBUG(dbgs() << "  PrivateBase: "; VarInfoPrivBase->print(dbgs()); dbgs() << "\n");
 
-  IGC_ASSERT_MESSAGE(VarInfoPrivBase->lrs.empty() ||
-                         VarInfoPrivBase->lrs.front().isGRF() ||
+  IGC_ASSERT_MESSAGE(VarInfoPrivBase->lrs.empty() || VarInfoPrivBase->lrs.front().isGRF() ||
                          VarInfoPrivBase->lrs.front().isSpill(),
                      "Unexpected location of variable");
 
   if (VarInfoPrivBase->lrs.front().isGRF()) {
     uint16_t grfRegNumPrivBase = VarInfoPrivBase->lrs.front().getGRF().regNum;
-    unsigned int grfSubRegNumPrivBase =
-        VarInfoPrivBase->lrs.front().getGRF().subRegNum;
-    auto bitOffsetToPrivBaseReg =
-        grfSubRegNumPrivBase * 8; // Bit-offset to GRF with Private Base
+    unsigned int grfSubRegNumPrivBase = VarInfoPrivBase->lrs.front().getGRF().subRegNum;
+    auto bitOffsetToPrivBaseReg = grfSubRegNumPrivBase * 8; // Bit-offset to GRF with Private Base
 
     addRegOrConst(Block, // 1 DW_OP_regx <Private Base reg encoded>
                   grfRegNumPrivBase);
@@ -2451,8 +2299,7 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
     extractSubRegValue(Block, 64);
   } else if (VarInfoPrivBase->lrs.front().isSpill()) {
     unsigned int memOffsetPrivBase = 0;
-    memOffsetPrivBase =
-        VarInfoPrivBase->lrs.front().getSpillOffset().memoryOffset;
+    memOffsetPrivBase = VarInfoPrivBase->lrs.front().getSpillOffset().memoryOffset;
     addScratchLocation(Block, memOffsetPrivBase, 0);
     addBE_FP(Block);
   }
@@ -2460,29 +2307,23 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
   auto regNumPerThOff = VISAMod->getPTOReg();
 
   // Rely on getVarInfo result here.
-  const auto *VarInfoPerThOff =
-      VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNumPerThOff);
+  const auto *VarInfoPerThOff = VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNumPerThOff);
   if (!VarInfoPerThOff) {
-    LLVM_DEBUG(dbgs() << "warning: could not get PTO LR (V" << regNumPerThOff
-                      << ")");
+    LLVM_DEBUG(dbgs() << "warning: could not get PTO LR (V" << regNumPerThOff << ")");
     return false;
   }
 
-  LLVM_DEBUG(dbgs() << "  PerThOffset: "; VarInfoPerThOff->print(dbgs());
-             dbgs() << "\n");
-  IGC_ASSERT_MESSAGE(VarInfoPerThOff->lrs.empty() ||
-                         VarInfoPerThOff->lrs.front().isGRF() ||
+  LLVM_DEBUG(dbgs() << "  PerThOffset: "; VarInfoPerThOff->print(dbgs()); dbgs() << "\n");
+  IGC_ASSERT_MESSAGE(VarInfoPerThOff->lrs.empty() || VarInfoPerThOff->lrs.front().isGRF() ||
                          VarInfoPerThOff->lrs.front().isSpill(),
                      "Unexpected location of variable");
 
   if (VarInfoPerThOff->lrs.front().isGRF()) {
     uint16_t grfRegNumPTO = VarInfoPerThOff->lrs.front().getGRF().regNum;
     unsigned int grfSubRegPTO = VarInfoPerThOff->lrs.front().getGRF().subRegNum;
-    auto bitOffsetToPTOReg =
-        grfSubRegPTO * 8; // Bit-offset to GRF with Per Thread Offset
+    auto bitOffsetToPTOReg = grfSubRegPTO * 8; // Bit-offset to GRF with Per Thread Offset
 
-    auto DWRegPTOEncoded =
-        GetEncodedRegNum<RegisterNumbering::GRFBase>(grfRegNumPTO);
+    auto DWRegPTOEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(grfRegNumPTO);
     addUInt(Block, dwarf::DW_FORM_data1,
             dwarf::DW_OP_constu); // 5 DW_OP_constu <Per Thread reg encoded>
     addUInt(Block, dwarf::DW_FORM_udata,
@@ -2508,8 +2349,8 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
   offset = simdSize * getIntConstFromMdOperand(storageMD, 0).getSExtValue();
 
   addUInt(Block, dwarf::DW_FORM_data1,
-          dwarf::DW_OP_plus_uconst); // 11 DW_OP_plus_uconst offset , i.e.
-                                     // simdSize * <variable offset>
+          dwarf::DW_OP_plus_uconst);            // 11 DW_OP_plus_uconst offset , i.e.
+                                                // simdSize * <variable offset>
   addUInt(Block, dwarf::DW_FORM_udata, offset); // Offset
 
   addUInt(Block, dwarf::DW_FORM_data1,
@@ -2517,21 +2358,18 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
 
   auto varSizeInBytes = var.getRegisterValueSizeInBits(DD) / 8;
 
-  LLVM_DEBUG(dbgs() << "  var Offset: " << offset
-                    << ", var Size: " << varSizeInBytes << "\n");
-  IGC_ASSERT_MESSAGE((var.getRegisterValueSizeInBits(DD) & 0x7) == 0,
-                     "Unexpected variable size");
+  LLVM_DEBUG(dbgs() << "  var Offset: " << offset << ", var Size: " << varSizeInBytes << "\n");
+  IGC_ASSERT_MESSAGE((var.getRegisterValueSizeInBits(DD) & 0x7) == 0, "Unexpected variable size");
 
   addConstantUValue(Block,
-                    varSizeInBytes); // 13 DW_OP_const1u/2u/4u/8u <variableSize>
-                                     // , i.e. size in bytes
+                    varSizeInBytes);                       // 13 DW_OP_const1u/2u/4u/8u <variableSize>
+                                                           // , i.e. size in bytes
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);  // 14 DW_OP_mul
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus); // 15 DW_OP_plus
 
   // 16 remaining opcodes from DIExpression
   const DIExpression *DIExpr = DbgInst->getExpression();
-  for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end(); I != E;
-       ++I) {
+  for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end(); I != E; ++I) {
     auto op = I->getOp();
     auto BF = DIEInteger::BestForm(false, op);
     addUInt(Block, BF, op);
@@ -2540,8 +2378,7 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
   return true;
 }
 
-bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
-                                  const VISAVariableLocation &loc) {
+bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block, const VISAVariableLocation &loc) {
   const auto *storageMD = var.getDbgInst()->getMetadata("StorageOffset");
   IGC_ASSERT(nullptr != storageMD);
   const auto *VISAMod = loc.GetVISAModule();
@@ -2550,11 +2387,9 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
 
   LLVM_DEBUG(dbgs() << "  generating FP-based location\n");
   auto simdSize = VISAMod->GetSIMDSize();
-  uint64_t storageOffset =
-      simdSize * getIntConstFromMdOperand(storageMD, 0).getZExtValue();
+  uint64_t storageOffset = simdSize * getIntConstFromMdOperand(storageMD, 0).getZExtValue();
   uint64_t storageSize = getIntConstFromMdOperand(sizeMD, 0).getZExtValue();
-  LLVM_DEBUG(dbgs() << "  StorageOffset: " << storageOffset
-                    << ", StorageSize: " << storageSize << "\n");
+  LLVM_DEBUG(dbgs() << "  StorageOffset: " << storageOffset << ", StorageSize: " << storageSize << "\n");
 
   // There is a private value in the current stack frame
   // 1 DW_OP_regx <Frame Pointer reg encoded>
@@ -2573,24 +2408,20 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
   // Rely on getVarInfo result here.
   const auto *VarInfoFP = VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNumFP);
   if (!VarInfoFP) {
-    LLVM_DEBUG(dbgs() << "warning: no gen loc info for FP (V" << regNumFP
-                      << ")");
+    LLVM_DEBUG(dbgs() << "warning: no gen loc info for FP (V" << regNumFP << ")");
     return false;
   }
-  LLVM_DEBUG(dbgs() << "  FramePointer: "; VarInfoFP->print(dbgs());
-             dbgs() << "\n");
+  LLVM_DEBUG(dbgs() << "  FramePointer: "; VarInfoFP->print(dbgs()); dbgs() << "\n");
 
   uint16_t grfRegNumFP = VarInfoFP->lrs.front().getGRF().regNum;
   uint16_t grfSubRegNumFP = VarInfoFP->lrs.front().getGRF().subRegNum;
-  auto bitOffsetToFPReg =
-      grfSubRegNumFP * 8; // Bit-offset to GRF with Frame Pointer
+  auto bitOffsetToFPReg = grfSubRegNumFP * 8; // Bit-offset to GRF with Frame Pointer
 
   addRegOrConst(Block, grfRegNumFP); // 1 DW_OP_regx <Frame Pointer reg encoded>
 
   //   Register ID is shifted by offset
-  addConstantUValue(
-      Block,
-      bitOffsetToFPReg); // 2 DW_OP_const1u/2u <bit-offset to Frame Pointer reg>
+  addConstantUValue(Block,
+                    bitOffsetToFPReg); // 2 DW_OP_const1u/2u <bit-offset to Frame Pointer reg>
   extractSubRegValue(Block, 64);
 
   addUInt(Block, dwarf::DW_FORM_data1,
@@ -2599,13 +2430,13 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
   addUInt(Block, dwarf::DW_FORM_udata, VISAMod->getFPOffset());
 
   addUInt(Block, dwarf::DW_FORM_data1,
-          DW_OP_INTEL_push_simd_lane);   // 6 DW_OP_INTEL_push_simd_lane
-  addConstantUValue(Block, storageSize); // 7 DW_OP_const1u/2u/4u/8u storageSize
+          DW_OP_INTEL_push_simd_lane);                     // 6 DW_OP_INTEL_push_simd_lane
+  addConstantUValue(Block, storageSize);                   // 7 DW_OP_const1u/2u/4u/8u storageSize
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);  // 8 DW_OP_mul
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus); // 9 DW_OP_plus
 
   addUInt(Block, dwarf::DW_FORM_data1,
-          dwarf::DW_OP_plus_uconst); // 10 DW_OP_plus_uconst storageOffset
+          dwarf::DW_OP_plus_uconst);                   // 10 DW_OP_plus_uconst storageOffset
   addUInt(Block, dwarf::DW_FORM_udata, storageOffset); // storageOffset
 
   var.emitExpression(this, Block);
@@ -2613,9 +2444,8 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
   return true;
 }
 
-bool CompileUnit::buildSlicedLoc(
-    DbgVariable &var, IGC::DIEBlock *Block, const VISAVariableLocation &loc,
-    const std::vector<DbgDecoder::LiveIntervalsVISA> *vars) {
+bool CompileUnit::buildSlicedLoc(DbgVariable &var, IGC::DIEBlock *Block, const VISAVariableLocation &loc,
+                                 const std::vector<DbgDecoder::LiveIntervalsVISA> *vars) {
   LLVM_DEBUG(dbgs() << "  sliced variable, pushing lane \n");
   // DW_OP_push_simd_lane
   // DW_OP_lit16
@@ -2661,10 +2491,8 @@ bool CompileUnit::buildSlicedLoc(
   return true;
 }
 
-bool CompileUnit::buildValidVar(
-    DbgVariable &var, IGC::DIEBlock *Block, const VISAVariableLocation &loc,
-    const std::vector<DbgDecoder::LiveIntervalsVISA> *vars,
-    DbgRegisterType regType) {
+bool CompileUnit::buildValidVar(DbgVariable &var, IGC::DIEBlock *Block, const VISAVariableLocation &loc,
+                                const std::vector<DbgDecoder::LiveIntervalsVISA> *vars, DbgRegisterType regType) {
   const DbgDecoder::VarInfo *VarInfo = nullptr;
   const auto *VISAMod = loc.GetVISAModule();
 
@@ -2675,8 +2503,7 @@ bool CompileUnit::buildValidVar(
     VarInfo = VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNum);
 
     if (VarInfo)
-      LLVM_DEBUG(dbgs() << "  general vISA Variable info: ";
-                 VarInfo->print(dbgs()); dbgs() << "\n");
+      LLVM_DEBUG(dbgs() << "  general vISA Variable info: "; VarInfo->print(dbgs()); dbgs() << "\n");
     else
       LLVM_DEBUG(dbgs() << "  warning: could not get vISA Variable info\n");
   }
@@ -2692,8 +2519,7 @@ bool CompileUnit::buildValidVar(
   else
     return false;
 
-  LLVM_DEBUG(dbgs() << "  emitting variable location at LR: <";
-             lrToUse->print(dbgs()); dbgs() << ">\n");
+  LLVM_DEBUG(dbgs() << "  emitting variable location at LR: <"; lrToUse->print(dbgs()); dbgs() << ">\n");
   var.setLocationRegisterType(regType);
   emitLocation = true;
   if (lrToUse->isGRF()) {
@@ -2707,20 +2533,15 @@ bool CompileUnit::buildValidVar(
       var.emitExpression(this, Block);
       return false;
     } else {
-      for (unsigned int vectorElem = 0; vectorElem < loc.GetVectorNumElements();
-           ++vectorElem) {
+      for (unsigned int vectorElem = 0; vectorElem < loc.GetVectorNumElements(); ++vectorElem) {
         // Emit SIMD lane for GRF (unpacked)
         constexpr auto MaxUI16 = std::numeric_limits<uint16_t>::max();
         const auto registerSizeInBits = DD->GetVISAModule()->getGRFSizeInBits();
-        const auto instrSimdWidth =
-            (DD->simdWidth > 16 && registerSizeInBits == 256) ? 16
-                                                              : DD->simdWidth;
+        const auto instrSimdWidth = (DD->simdWidth > 16 && registerSizeInBits == 256) ? 16 : DD->simdWidth;
         auto SimdOffset = instrSimdWidth * vectorElem;
-        IGC_ASSERT(DD->simdWidth <= 32 && vectorElem < MaxUI16 &&
-                   SimdOffset < MaxUI16);
+        IGC_ASSERT(DD->simdWidth <= 32 && vectorElem < MaxUI16 && SimdOffset < MaxUI16);
         if (loc.IsRegister())
-          addSimdLane(Block, var, loc, lrToUse, (uint16_t)(SimdOffset), false,
-                      isSecondHalf);
+          addSimdLane(Block, var, loc, lrToUse, (uint16_t)(SimdOffset), false, isSecondHalf);
       }
     }
   } else if (lrToUse->isSpill()) {
@@ -2737,48 +2558,39 @@ bool CompileUnit::buildValidVar(
 
       unsigned varSizeInBits = var.getRegisterValueSizeInBits(DD);
 
-      unsigned varSizeInReg =
-          (loc.IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
+      unsigned varSizeInReg = (loc.IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
 
       IGC_ASSERT(DD->simdWidth != 0);
       unsigned FullSizeInBits = varSizeInReg * DD->simdWidth;
-      unsigned numOfRegs = (FullSizeInBits > GrfSizeInBits)
-                               ? (FullSizeInBits / GrfSizeInBits)
-                               : 1;
+      unsigned numOfRegs = (FullSizeInBits > GrfSizeInBits) ? (FullSizeInBits / GrfSizeInBits) : 1;
       IGC_ASSERT(numOfRegs <= std::numeric_limits<uint16_t>::max());
 
-      for (unsigned int vectorElem = 0; vectorElem < loc.GetVectorNumElements();
-           ++vectorElem) {
+      for (unsigned int vectorElem = 0; vectorElem < loc.GetVectorNumElements(); ++vectorElem) {
         unsigned VectorOffset = vectorElem * numOfRegs * GrfSizeBytes;
-        IGC_ASSERT(VectorOffset <=
-                   static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
-        addScratchLocation(Block, lrToUse->getSpillOffset().memoryOffset,
-                           static_cast<int32_t>(VectorOffset));
+        IGC_ASSERT(VectorOffset <= static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
+        addScratchLocation(Block, lrToUse->getSpillOffset().memoryOffset, static_cast<int32_t>(VectorOffset));
         addBE_FP(Block);
         // Emit SIMD lane for spill (unpacked)
         addSimdLane(Block, var, loc, lrToUse, 0, false, isSecondHalf);
       }
     }
   } else {
-    LLVM_DEBUG(
-        dbgs() << "  <warning> variable is neither in GRF nor spilled\n");
+    LLVM_DEBUG(dbgs() << "  <warning> variable is neither in GRF nor spilled\n");
   }
   var.emitExpression(this, Block);
   return true;
 }
 
-IGC::DIEBlock *CompileUnit::buildGeneral(
-    DbgVariable &var, const VISAVariableLocation &loc,
-    const std::vector<DbgDecoder::LiveIntervalsVISA> *vars,
-    IGC::DIE *VariableDie) {
+IGC::DIEBlock *CompileUnit::buildGeneral(DbgVariable &var, const VISAVariableLocation &loc,
+                                         const std::vector<DbgDecoder::LiveIntervalsVISA> *vars,
+                                         IGC::DIE *VariableDie) {
   IGC::DIEBlock *Block = new (DIEValueAllocator) IGC::DIEBlock();
   offsetTaken = 0;
   skipOff = nullptr;
   emitLocation = false;
   stackValueOffset = 0;
 
-  LLVM_DEBUG(dbgs() << "  building DWARF info for the variable ["
-                    << var.getName() << "]\n");
+  LLVM_DEBUG(dbgs() << "  building DWARF info for the variable [" << var.getName() << "]\n");
   const auto *storageMD = var.getDbgInst()->getMetadata("StorageOffset");
   const auto *VISAMod = loc.GetVISAModule();
   IGC_ASSERT_MESSAGE(VISAMod, "VISA Module is expected for LOC");
@@ -2885,19 +2697,15 @@ void CompileUnit::constructMemberDIE(DIE &Buffer, DIDerivedType *DT) {
       // This is not a bitfield.
       OffsetInBytes = DT->getOffsetInBits() >> 3;
     }
-    addUInt(MemberDie, dwarf::DW_AT_data_member_location, std::nullopt,
-            OffsetInBytes);
+    addUInt(MemberDie, dwarf::DW_AT_data_member_location, std::nullopt, OffsetInBytes);
   }
-  dwarf::AccessAttribute dw_access =
-      (DT->isProtected()) ? dwarf::DW_ACCESS_protected
-      : (DT->isPrivate()) ? dwarf::DW_ACCESS_private
-                          : dwarf::DW_ACCESS_public;
-  addUInt(MemberDie, dwarf::DW_AT_accessibility, dwarf::DW_FORM_data1,
-          dw_access);
+  dwarf::AccessAttribute dw_access = (DT->isProtected()) ? dwarf::DW_ACCESS_protected
+                                     : (DT->isPrivate()) ? dwarf::DW_ACCESS_private
+                                                         : dwarf::DW_ACCESS_public;
+  addUInt(MemberDie, dwarf::DW_AT_accessibility, dwarf::DW_FORM_data1, dw_access);
 
   if (DT->isVirtual()) {
-    addUInt(MemberDie, dwarf::DW_AT_virtuality, dwarf::DW_FORM_data1,
-            dwarf::DW_VIRTUALITY_virtual);
+    addUInt(MemberDie, dwarf::DW_AT_virtuality, dwarf::DW_FORM_data1, dwarf::DW_VIRTUALITY_virtual);
   }
 
   if (DT->isArtificial()) {
@@ -2910,8 +2718,7 @@ IGC::DIE *CompileUnit::getOrCreateStaticMemberDIE(DIDerivedType *DT) {
   // Construct the context before querying for the existence of the DIE in case
   // such construction creates the DIE.
   DIE *ContextDIE = getOrCreateContextDIE(resolve(DT->getScope()));
-  IGC_ASSERT_MESSAGE(dwarf::isType(ContextDIE->getTag()),
-                     "Static member should belong to a type.");
+  IGC_ASSERT_MESSAGE(dwarf::isType(ContextDIE->getTag()), "Static member should belong to a type.");
 
   DIE *StaticMemberDIE = getDIE(DT);
   if (StaticMemberDIE)
@@ -2929,15 +2736,12 @@ IGC::DIE *CompileUnit::getOrCreateStaticMemberDIE(DIDerivedType *DT) {
 
   // FIXME: We could omit private if the parent is a class_type, and
   // public if the parent is something else.
-  dwarf::AccessAttribute dw_access =
-      (DT->isProtected()) ? dwarf::DW_ACCESS_protected
-      : (DT->isPrivate()) ? dwarf::DW_ACCESS_private
-                          : dwarf::DW_ACCESS_public;
-  addUInt(StaticMemberDIE, dwarf::DW_AT_accessibility, dwarf::DW_FORM_data1,
-          dw_access);
+  dwarf::AccessAttribute dw_access = (DT->isProtected()) ? dwarf::DW_ACCESS_protected
+                                     : (DT->isPrivate()) ? dwarf::DW_ACCESS_private
+                                                         : dwarf::DW_ACCESS_public;
+  addUInt(StaticMemberDIE, dwarf::DW_AT_accessibility, dwarf::DW_FORM_data1, dw_access);
 
-  if (const ConstantInt *CI =
-          dyn_cast_or_null<ConstantInt>(DT->getConstant())) {
+  if (const ConstantInt *CI = dyn_cast_or_null<ConstantInt>(DT->getConstant())) {
     addConstantValue(StaticMemberDIE, CI, isUnsignedDIType(DD, Ty));
   }
 
@@ -2948,8 +2752,7 @@ IGC::DIE *CompileUnit::getOrCreateStaticMemberDIE(DIDerivedType *DT) {
   return StaticMemberDIE;
 }
 
-void CompileUnit::emitHeader(const MCSection *ASection,
-                             const MCSymbol *ASectionSym) {
+void CompileUnit::emitHeader(const MCSection *ASection, const MCSymbol *ASectionSym) {
   // Emit ("DWARF version number");
   Asm->EmitInt16(DD->getDwarfVersion());
   // DWARF5
@@ -2960,15 +2763,13 @@ void CompileUnit::emitHeader(const MCSection *ASection,
   // Emit ("Offset Into Abbrev. Section");
   if (EmitSettings.EnableRelocation)
     // Emit 4-byte offset since we're using DWARF4 32-bit format
-    Asm->EmitLabelReference(
-        Asm->GetTempSymbol(
-            /*ASection->getLabelBeginName()*/ ".debug_abbrev_begin"),
-        4);
+    Asm->EmitLabelReference(Asm->GetTempSymbol(
+                                /*ASection->getLabelBeginName()*/ ".debug_abbrev_begin"),
+                            4);
   else
-    Asm->EmitSectionOffset(
-        Asm->GetTempSymbol(
-            /*ASection->getLabelBeginName()*/ ".debug_abbrev_begin"),
-        ASectionSym);
+    Asm->EmitSectionOffset(Asm->GetTempSymbol(
+                               /*ASection->getLabelBeginName()*/ ".debug_abbrev_begin"),
+                           ASectionSym);
   // DWARF4
   if (DD->getDwarfVersion() <= 4) {
     Asm->EmitInt8(Asm->GetPointerSize());

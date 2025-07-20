@@ -18,14 +18,12 @@ CIF::RAII::UPtr_t<CIFMain> OpenLibraryInterface(LibraryHandle &lib) {
   if (createMainFuncPtr == nullptr) {
     return CIF::RAII::UPtr(ret = nullptr);
   }
-  auto CreateCIFFunc =
-      reinterpret_cast<CIF::CreateCIFMainFunc_t>(createMainFuncPtr);
+  auto CreateCIFFunc = reinterpret_cast<CIF::CreateCIFMainFunc_t>(createMainFuncPtr);
   auto main = (*CreateCIFFunc)();
   return CIF::RAII::UPtr(main);
 }
 
-std::unique_ptr<CIFPackage>
-OpenLibraryInterface(std::unique_ptr<CIF::LibraryHandle> &&lib) {
+std::unique_ptr<CIFPackage> OpenLibraryInterface(std::unique_ptr<CIF::LibraryHandle> &&lib) {
   if (lib.get() == nullptr) {
     return std::unique_ptr<CIFPackage>(nullptr);
   }
@@ -33,4 +31,4 @@ OpenLibraryInterface(std::unique_ptr<CIF::LibraryHandle> &&lib) {
   CIFPackage *pckg = new CIFPackage(std::move(entryPoint), std::move(lib));
   return std::unique_ptr<CIFPackage>(pckg);
 }
-}
+} // namespace CIF

@@ -11,17 +11,13 @@ SPDX-License-Identifier: MIT
 
 #include "cif/macros/enable.h"
 
-namespace IGC{
+namespace IGC {
 // Helpers for clarity
 // Basically, these forward GetX/SetX from interface (of given version)
 // to GT_SYSTEM_INFO inside pImpl
-#define DEFINE_GET_SET(INTERFACE, VERSION, NAME, TYPE)\
-    TYPE CIF_GET_INTERFACE_CLASS(INTERFACE, VERSION)::Get##NAME() const {\
-        return CIF_GET_PIMPL()->gsi.NAME;\
-    }\
-    void CIF_GET_INTERFACE_CLASS(INTERFACE, VERSION)::Set##NAME(TYPE v) {\
-        CIF_GET_PIMPL()->gsi.NAME = v;\
-    }
+#define DEFINE_GET_SET(INTERFACE, VERSION, NAME, TYPE)                                                                 \
+  TYPE CIF_GET_INTERFACE_CLASS(INTERFACE, VERSION)::Get##NAME() const { return CIF_GET_PIMPL()->gsi.NAME; }            \
+  void CIF_GET_INTERFACE_CLASS(INTERFACE, VERSION)::Set##NAME(TYPE v) { CIF_GET_PIMPL()->gsi.NAME = v; }
 
 DEFINE_GET_SET(GTSystemInfo, 1, EUCount, uint32_t);
 DEFINE_GET_SET(GTSystemInfo, 1, ThreadCount, uint32_t);
@@ -51,6 +47,6 @@ DEFINE_GET_SET(GTSystemInfo, 3, DualSubSliceCount, uint32_t);
 
 DEFINE_GET_SET(GTSystemInfo, 4, SLMSizeInKb, uint32_t);
 
-}
+} // namespace IGC
 
 #include "cif/macros/disable.h"

@@ -16,61 +16,58 @@ SPDX-License-Identifier: MIT
 
 #define DEBUG_TYPE "gas-resolver"
 
-namespace IGC{
+namespace IGC {
 
-    typedef IRBuilder<llvm::NoFolder> BuilderType;
+typedef IRBuilder<llvm::NoFolder> BuilderType;
 
-    class GASPropagator : public InstVisitor<GASPropagator, bool> {
-        friend class InstVisitor<GASPropagator, bool>;
+class GASPropagator : public InstVisitor<GASPropagator, bool> {
+  friend class InstVisitor<GASPropagator, bool>;
 
-        LoopInfo* const LI;
-        BuilderType IRB;
+  LoopInfo *const LI;
+  BuilderType IRB;
 
-        Use* TheUse;
-        Value* TheVal;
+  Use *TheUse;
+  Value *TheVal;
 
-        // Phi node being able to be resolved from its initial value.
-        DenseSet<PHINode*> ResolvableLoopPHIs;
+  // Phi node being able to be resolved from its initial value.
+  DenseSet<PHINode *> ResolvableLoopPHIs;
 
-    public:
-        GASPropagator(LLVMContext& Ctx, LoopInfo* LoopInfo)
-            : IRB(Ctx), LI(LoopInfo), TheUse(nullptr), TheVal(nullptr) {
-            populateResolvableLoopPHIs();
-        }
+public:
+  GASPropagator(LLVMContext &Ctx, LoopInfo *LoopInfo) : IRB(Ctx), LI(LoopInfo), TheUse(nullptr), TheVal(nullptr) {
+    populateResolvableLoopPHIs();
+  }
 
-        bool propagateToUser(Use* U, Value* V) {
-            TheUse = U;
-            TheVal = V;
-            Instruction* I = cast<Instruction>(U->getUser());
-            return visit(*I);
-        }
-        bool propagateToAllUsers(AddrSpaceCastInst* I);
-        void propagate(Value* I);
-    private:
-        void populateResolvableLoopPHIs();
-        void populateResolvableLoopPHIsForLoop(const Loop* L);
-        bool isResolvableLoopPHI(PHINode* PN) const {
-            return ResolvableLoopPHIs.count(PN) != 0;
-        }
-        bool isAddrSpaceResolvable(PHINode* PN, const Loop* L,
-            BasicBlock* BackEdge) const;
+  bool propagateToUser(Use *U, Value *V) {
+    TheUse = U;
+    TheVal = V;
+    Instruction *I = cast<Instruction>(U->getUser());
+    return visit(*I);
+  }
+  bool propagateToAllUsers(AddrSpaceCastInst *I);
+  void propagate(Value *I);
 
-        bool visitInstruction(Instruction& I);
+private:
+  void populateResolvableLoopPHIs();
+  void populateResolvableLoopPHIsForLoop(const Loop *L);
+  bool isResolvableLoopPHI(PHINode *PN) const { return ResolvableLoopPHIs.count(PN) != 0; }
+  bool isAddrSpaceResolvable(PHINode *PN, const Loop *L, BasicBlock *BackEdge) const;
 
-        bool visitLoadInst(LoadInst&);
-        bool visitStoreInst(StoreInst&);
-        bool visitAddrSpaceCastInst(AddrSpaceCastInst&);
-        bool visitBitCastInst(BitCastInst&);
-        bool visitPtrToIntInst(PtrToIntInst&);
-        bool visitGetElementPtrInst(GetElementPtrInst&);
-        bool visitPHINode(PHINode&);
-        bool visitICmp(ICmpInst&);
-        bool visitSelect(SelectInst&);
-        bool visitMemCpyInst(MemCpyInst&);
-        bool visitMemMoveInst(MemMoveInst&);
-        bool visitMemSetInst(MemSetInst&);
-        bool visitCallInst(CallInst&);
-        bool visitDbgDeclareInst(DbgDeclareInst&);
-        bool visitDbgValueInst(DbgValueInst&);
-    };
+  bool visitInstruction(Instruction &I);
+
+  bool visitLoadInst(LoadInst &);
+  bool visitStoreInst(StoreInst &);
+  bool visitAddrSpaceCastInst(AddrSpaceCastInst &);
+  bool visitBitCastInst(BitCastInst &);
+  bool visitPtrToIntInst(PtrToIntInst &);
+  bool visitGetElementPtrInst(GetElementPtrInst &);
+  bool visitPHINode(PHINode &);
+  bool visitICmp(ICmpInst &);
+  bool visitSelect(SelectInst &);
+  bool visitMemCpyInst(MemCpyInst &);
+  bool visitMemMoveInst(MemMoveInst &);
+  bool visitMemSetInst(MemSetInst &);
+  bool visitCallInst(CallInst &);
+  bool visitDbgDeclareInst(DbgDeclareInst &);
+  bool visitDbgValueInst(DbgValueInst &);
+};
 } // End namespace IGC

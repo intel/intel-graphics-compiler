@@ -40,13 +40,15 @@ std::string vc_error_category::message(int condition) const {
   case errc::invalid_module:
     return std::string(ErrorTraits<errc::invalid_module>::getMessage());
   case errc::target_machine_not_created:
-    return std::string(ErrorTraits<errc::target_machine_not_created>::getMessage());
+    return std::string(
+        ErrorTraits<errc::target_machine_not_created>::getMessage());
   case errc::not_vc_codegen:
     return std::string(ErrorTraits<errc::not_vc_codegen>::getMessage());
   case errc::invalid_api_option:
     return std::string(ErrorTraits<errc::invalid_api_option>::getMessage());
   case errc::invalid_internal_option:
-    return std::string(ErrorTraits<errc::invalid_internal_option>::getMessage());
+    return std::string(
+        ErrorTraits<errc::invalid_internal_option>::getMessage());
   case errc::bif_load_fail:
     return std::string(ErrorTraits<errc::bif_load_fail>::getMessage());
   case errc::output_not_created:

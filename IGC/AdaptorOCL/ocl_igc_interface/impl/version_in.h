@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-
 #ifndef IGC_VERSION_H
 #define IGC_VERSION_H
 

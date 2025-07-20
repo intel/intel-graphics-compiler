@@ -56,7 +56,7 @@ class GenXGASDynamicResolution : public FunctionPass,
   bool CanPrivateBeGeneric = false;
   bool CanGlobalBeGeneric = false;
   const unsigned PrivateTag = 1; // tag 001.
-  const unsigned LocalTag = 2; // tag 010.
+  const unsigned LocalTag = 2;   // tag 010.
 public:
   static char ID;
   explicit GenXGASDynamicResolution() : FunctionPass(ID) {}
@@ -67,6 +67,7 @@ public:
     AU.addRequired<GenXGASCastWrapper>();
   }
   bool runOnFunction(Function &F) override;
+
 public:
   void visitAddrSpaceCastInst(AddrSpaceCastInst &CI) const;
   // visitCallInst is overridden since visitIntrinsicInst will not be
@@ -75,6 +76,7 @@ public:
   void visitIntrinsicInst(IntrinsicInst &Intrinsic) const;
   void visitLoadInst(LoadInst &LdI) const;
   void visitStoreInst(StoreInst &StI) const;
+
 private:
   void resolveOnLoadStore(Instruction &I, Value *PtrOp) const;
   Value *lowerGenericCastToPtr(IntrinsicInst &Intrinsic) const;
@@ -233,7 +235,7 @@ bool GenXGASDynamicResolution::runOnFunction(Function &F) {
   CanGlobalBeGeneric = GI.canGenericPointToGlobal(F);
 
   // Save list of BBs before iterating because visit() can create new BBs.
-  SmallVector<BasicBlock*, 8> BBs;
+  SmallVector<BasicBlock *, 8> BBs;
   for (auto bi = F.begin(), be = F.end(); bi != be; ++bi)
     BBs.push_back(&*bi);
 
@@ -247,7 +249,7 @@ bool GenXGASDynamicResolution::runOnFunction(Function &F) {
       // In that case check for BB->end() is not valid.
       Instruction *NextInst = &*ii;
       Instruction *End = &ii->getParent()->back();
-      if(NextInst == End)
+      if (NextInst == End)
         break;
     }
   }
@@ -257,14 +259,15 @@ bool GenXGASDynamicResolution::runOnFunction(Function &F) {
 void GenXGASDynamicResolution::visitLoadInst(LoadInst &LdI) const {
   auto PtrOp = LdI.getPointerOperand();
   auto AS = vc::getAddrSpace(PtrOp->getType());
-  if(AS != vc::AddrSpace::Generic)
+  if (AS != vc::AddrSpace::Generic)
     return;
 
   if (!CanLocalBeGeneric) {
     IGCLLVM::IRBuilder<> Builder{&LdI};
     auto GlobalPtrOp = createASCast(Builder, PtrOp, vc::AddrSpace::Global);
-    auto NewInst = Builder.CreateAlignedLoad(LdI.getType(), GlobalPtrOp, IGCLLVM::getAlign(LdI),
-                                      LdI.isVolatile(), "globalOrPrivateLoad");
+    auto NewInst = Builder.CreateAlignedLoad(
+        LdI.getType(), GlobalPtrOp, IGCLLVM::getAlign(LdI), LdI.isVolatile(),
+        "globalOrPrivateLoad");
     LdI.replaceAllUsesWith(NewInst);
     LdI.eraseFromParent();
   } else
@@ -274,7 +277,7 @@ void GenXGASDynamicResolution::visitLoadInst(LoadInst &LdI) const {
 void GenXGASDynamicResolution::visitStoreInst(StoreInst &StI) const {
   auto PtrOp = StI.getPointerOperand();
   auto AS = vc::getAddrSpace(PtrOp->getType());
-  if(AS != vc::AddrSpace::Generic)
+  if (AS != vc::AddrSpace::Generic)
     return;
 
   if (!CanLocalBeGeneric) {
@@ -313,10 +316,10 @@ void GenXGASDynamicResolution::visitIntrinsicInst(IntrinsicInst &I) const {
   case Intrinsic::masked_gather:
   case Intrinsic::masked_scatter: {
     auto PtrOp = I.getArgOperand(0);
-    if(IntrinsicID == Intrinsic::masked_scatter)
+    if (IntrinsicID == Intrinsic::masked_scatter)
       PtrOp = I.getArgOperand(1);
     unsigned AS = vc::getAddrSpace(PtrOp->getType());
-    if(AS != vc::AddrSpace::Generic)
+    if (AS != vc::AddrSpace::Generic)
       break;
 
     IGCLLVM::IRBuilder<> Builder{&I};

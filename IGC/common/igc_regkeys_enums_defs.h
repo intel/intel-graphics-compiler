@@ -32,86 +32,88 @@ SPDX-License-Identifier: MIT
 
 #define LSC_CACHE_CTRL_NUM 12
 #ifdef LSC_CACHE_CTRL_OPTION
-    #define LSC_CACHE_CTRL_OPTIONS_WITH_CTRL_NUM(ctrl_num)                                                                                                      \
-        LSC_CACHE_CTRL_OPTION(LSC_L1DEF_L3DEF,     0,  "default")                                                                       \
-        LSC_CACHE_CTRL_OPTION(LSC_L1UC_L3UC,       1,  "Load: L1 uncached   L3 uncached # Store: L1 uncached      L3 uncached")         \
-        LSC_CACHE_CTRL_OPTION(LSC_L1UC_L3C_WB,     2,  "Load: L1 uncached   L3 cached   # Store: L1 uncached      L3 write-back")       \
-        LSC_CACHE_CTRL_OPTION(LSC_L1C_WT_L3UC,     3,  "Load: L1 cached     L3 uncached # Store: L1 write-through L3 uncached")         \
-        LSC_CACHE_CTRL_OPTION(LSC_L1C_WT_L3C_WB,   4,  "Load: L1 cached     L3 cached   # Store: L1 write-through L3 write-back")       \
-        LSC_CACHE_CTRL_OPTION(LSC_L1S_L3UC,        5,  "Load: L1 streaming  L3 uncached # Store: L1 streaming     L3 uncached")         \
-        LSC_CACHE_CTRL_OPTION(LSC_L1S_L3C_WB,      6,  "Load: L1 streaming  L3 cached   # Store: L1 streaming     L3 write-back")       \
-        LSC_CACHE_CTRL_OPTION(LSC_L1IAR_WB_L3C_WB, 7,  "Load: L1 invalidate after read L3 cached # Store: L1 write-back L3 write-back") \
-        LSC_CACHE_CTRL_OPTION(LSC_L1UC_L3CC,       8,  "Load: L1 uncached   L3 const-cached # Store: N/A")                              \
-        LSC_CACHE_CTRL_OPTION(LSC_L1C_L3CC,        9,  "Load: L1 cached     L3 const-cached # Store: N/A")                              \
-        LSC_CACHE_CTRL_OPTION(LSC_L1IAR_L3IAR,     10, "Load: L1 invalidate after read L3 invalidate after read # Store: N/A")          \
-                                                                                                                                        \
-        LSC_CACHE_CTRL_OPTION(LSC_CC_INVALID,      11, "Invalid") \
-        LSC_CACHE_CTRL_OPTION(LSC_CC_NUM,          ctrl_num, "Invalid")
+#define LSC_CACHE_CTRL_OPTIONS_WITH_CTRL_NUM(ctrl_num)                                                                 \
+  LSC_CACHE_CTRL_OPTION(LSC_L1DEF_L3DEF, 0, "default")                                                                 \
+  LSC_CACHE_CTRL_OPTION(LSC_L1UC_L3UC, 1, "Load: L1 uncached   L3 uncached # Store: L1 uncached      L3 uncached")     \
+  LSC_CACHE_CTRL_OPTION(LSC_L1UC_L3C_WB, 2, "Load: L1 uncached   L3 cached   # Store: L1 uncached      L3 write-back") \
+  LSC_CACHE_CTRL_OPTION(LSC_L1C_WT_L3UC, 3, "Load: L1 cached     L3 uncached # Store: L1 write-through L3 uncached")   \
+  LSC_CACHE_CTRL_OPTION(LSC_L1C_WT_L3C_WB, 4,                                                                          \
+                        "Load: L1 cached     L3 cached   # Store: L1 write-through L3 write-back")                     \
+  LSC_CACHE_CTRL_OPTION(LSC_L1S_L3UC, 5, "Load: L1 streaming  L3 uncached # Store: L1 streaming     L3 uncached")      \
+  LSC_CACHE_CTRL_OPTION(LSC_L1S_L3C_WB, 6, "Load: L1 streaming  L3 cached   # Store: L1 streaming     L3 write-back")  \
+  LSC_CACHE_CTRL_OPTION(LSC_L1IAR_WB_L3C_WB, 7,                                                                        \
+                        "Load: L1 invalidate after read L3 cached # Store: L1 write-back L3 write-back")               \
+  LSC_CACHE_CTRL_OPTION(LSC_L1UC_L3CC, 8, "Load: L1 uncached   L3 const-cached # Store: N/A")                          \
+  LSC_CACHE_CTRL_OPTION(LSC_L1C_L3CC, 9, "Load: L1 cached     L3 const-cached # Store: N/A")                           \
+  LSC_CACHE_CTRL_OPTION(LSC_L1IAR_L3IAR, 10, "Load: L1 invalidate after read L3 invalidate after read # Store: N/A")   \
+                                                                                                                       \
+  LSC_CACHE_CTRL_OPTION(LSC_CC_INVALID, 11, "Invalid")                                                                 \
+  LSC_CACHE_CTRL_OPTION(LSC_CC_NUM, ctrl_num, "Invalid")
 
-    #define LSC_CACHE_CTRL_OPTIONS LSC_CACHE_CTRL_OPTIONS_WITH_CTRL_NUM(LSC_CACHE_CTRL_NUM)
+#define LSC_CACHE_CTRL_OPTIONS LSC_CACHE_CTRL_OPTIONS_WITH_CTRL_NUM(LSC_CACHE_CTRL_NUM)
 #endif // LSC_CACHE_CTRL_OPTION
 
 #ifdef EARLY_OUT_CS_PATTERN
-    #define EARLY_OUT_CS_PATTERNS                           \
-        EARLY_OUT_CS_PATTERN(SamplePatternEnable,     0x1)  \
-        EARLY_OUT_CS_PATTERN(DPMaxPatternEnable,      0x2)  \
-        EARLY_OUT_CS_PATTERN(DPFSatPatternEnable,     0x4)  \
-        EARLY_OUT_CS_PATTERN(NdotLPatternEnable,      0x8)  \
-        EARLY_OUT_CS_PATTERN(SelectFcmpPatternEnable, 0x10)
+#define EARLY_OUT_CS_PATTERNS                                                                                          \
+  EARLY_OUT_CS_PATTERN(SamplePatternEnable, 0x1)                                                                       \
+  EARLY_OUT_CS_PATTERN(DPMaxPatternEnable, 0x2)                                                                        \
+  EARLY_OUT_CS_PATTERN(DPFSatPatternEnable, 0x4)                                                                       \
+  EARLY_OUT_CS_PATTERN(NdotLPatternEnable, 0x8)                                                                        \
+  EARLY_OUT_CS_PATTERN(SelectFcmpPatternEnable, 0x10)
 #endif // EARLY_OUT_CS_PATTERN
 
 #ifdef EARLY_OUT_PS_PATTERN
-    #define EARLY_OUT_PS_PATTERNS                             \
-        EARLY_OUT_PS_PATTERN(SamplePatternEnable,       0x1)  \
-        EARLY_OUT_PS_PATTERN(DPMaxPatternEnable,        0x2)  \
-        EARLY_OUT_PS_PATTERN(DPFSatPatternEnable,       0x4)  \
-        EARLY_OUT_PS_PATTERN(NdotLPatternEnable,        0x8)  \
-        EARLY_OUT_PS_PATTERN(DirectOutputPatternEnable, 0x10) \
-        EARLY_OUT_PS_PATTERN(MulMaxMatchEnable,         0x20)
+#define EARLY_OUT_PS_PATTERNS                                                                                          \
+  EARLY_OUT_PS_PATTERN(SamplePatternEnable, 0x1)                                                                       \
+  EARLY_OUT_PS_PATTERN(DPMaxPatternEnable, 0x2)                                                                        \
+  EARLY_OUT_PS_PATTERN(DPFSatPatternEnable, 0x4)                                                                       \
+  EARLY_OUT_PS_PATTERN(NdotLPatternEnable, 0x8)                                                                        \
+  EARLY_OUT_PS_PATTERN(DirectOutputPatternEnable, 0x10)                                                                \
+  EARLY_OUT_PS_PATTERN(MulMaxMatchEnable, 0x20)
 #endif // EARLY_OUT_PS_PATTERN
 
 // Not able to convert a C++ value (ShaderType::) back to preprocessor
 // copy value by hand
 #ifdef SHADER_TYPE_MASK
-#define SHADER_TYPE_MASKS   \
-            SHADER_TYPE_MASK(VS,       0x2) \
-            SHADER_TYPE_MASK(HS,       0x4) \
-            SHADER_TYPE_MASK(DS,       0x8) \
-            SHADER_TYPE_MASK(GS,       0x10)\
-            SHADER_TYPE_MASK(TS,       0x20)\
-            SHADER_TYPE_MASK(MS,       0x40)\
-            SHADER_TYPE_MASK(PS,       0x80)\
-            SHADER_TYPE_MASK(CS,       0x100)   \
-            SHADER_TYPE_MASK(OCL,      0x200)   \
-            SHADER_TYPE_MASK(RT,       0x400)
+#define SHADER_TYPE_MASKS                                                                                              \
+  SHADER_TYPE_MASK(VS, 0x2)                                                                                            \
+  SHADER_TYPE_MASK(HS, 0x4)                                                                                            \
+  SHADER_TYPE_MASK(DS, 0x8)                                                                                            \
+  SHADER_TYPE_MASK(GS, 0x10)                                                                                           \
+  SHADER_TYPE_MASK(TS, 0x20)                                                                                           \
+  SHADER_TYPE_MASK(MS, 0x40)                                                                                           \
+  SHADER_TYPE_MASK(PS, 0x80)                                                                                           \
+  SHADER_TYPE_MASK(CS, 0x100)                                                                                          \
+  SHADER_TYPE_MASK(OCL, 0x200)                                                                                         \
+  SHADER_TYPE_MASK(RT, 0x400)
 #endif // SHADER_TYPE_MASKS
 
 #ifdef FP_BINOP_INSTRUCTION
-    #define FP_BINOP_INSTRUCTIONS                  \
-            FP_BINOP_INSTRUCTION(FAdd,       0x1)  \
-            FP_BINOP_INSTRUCTION(FSub,       0x2)  \
-            FP_BINOP_INSTRUCTION(FMul,       0x4)  \
-            FP_BINOP_INSTRUCTION(FDiv,       0x8)
+#define FP_BINOP_INSTRUCTIONS                                                                                          \
+  FP_BINOP_INSTRUCTION(FAdd, 0x1)                                                                                      \
+  FP_BINOP_INSTRUCTION(FSub, 0x2)                                                                                      \
+  FP_BINOP_INSTRUCTION(FMul, 0x4)                                                                                      \
+  FP_BINOP_INSTRUCTION(FDiv, 0x8)
 #endif // FP_BINOP_INSTRUCTION
 
 #ifdef TRIBOOL_OPTION
-#define TRIBOOL_OPTIONS         \
-    TRIBOOL_OPTION(Default, -1) \
-    TRIBOOL_OPTION(Disabled, 0) \
-    TRIBOOL_OPTION(Enabled,  1)
+#define TRIBOOL_OPTIONS                                                                                                \
+  TRIBOOL_OPTION(Default, -1)                                                                                          \
+  TRIBOOL_OPTION(Disabled, 0)                                                                                          \
+  TRIBOOL_OPTION(Enabled, 1)
 #endif // TRIBOOL_OPTION
 
 
 #ifdef NEW_INLINE_RAYTRACING_FLAG
-#define NEW_INLINE_RAYTRACING_MASK                                                            \
-    NEW_INLINE_RAYTRACING_FLAG(NonRTShaders, 0x01, "Enable for all non-raytracing shaders") \
-    NEW_INLINE_RAYTRACING_FLAG(RTShaders,    0x02, "Enable for all raytracing shaders")
+#define NEW_INLINE_RAYTRACING_MASK                                                                                     \
+  NEW_INLINE_RAYTRACING_FLAG(NonRTShaders, 0x01, "Enable for all non-raytracing shaders")                              \
+  NEW_INLINE_RAYTRACING_FLAG(RTShaders, 0x02, "Enable for all raytracing shaders")
 #endif // NEW_INLINE_RAYTRACING_FLAG
 
 #ifdef INJECT_PRINTF_OPTION
-#define INJECT_PRINTF_OPTIONS                        \
-    INJECT_PRINTF_OPTION(InjectPrintfNone, 0)\
-    INJECT_PRINTF_OPTION(InjectPrintfLoads, 1)\
-    INJECT_PRINTF_OPTION(InjectPrintfStores, 2)\
-    INJECT_PRINTF_OPTION(InjectPrintfLoadsAndStores, 3)
+#define INJECT_PRINTF_OPTIONS                                                                                          \
+  INJECT_PRINTF_OPTION(InjectPrintfNone, 0)                                                                            \
+  INJECT_PRINTF_OPTION(InjectPrintfLoads, 1)                                                                           \
+  INJECT_PRINTF_OPTION(InjectPrintfStores, 2)                                                                          \
+  INJECT_PRINTF_OPTION(InjectPrintfLoadsAndStores, 3)
 #endif // INJECT_PRINTF_OPTION

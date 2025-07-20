@@ -1201,7 +1201,7 @@ bool llvm::genx::simplifyRegionInsts(
     bool IsInLoop = LI && LI->getLoopFor(&BB);
     for (auto I = BB.begin(); I != BB.end();) {
       Instruction *Inst = &*I++;
-      if (auto* V = simplifyRegionInst(Inst, DL, ST, DT)) {
+      if (auto *V = simplifyRegionInst(Inst, DL, ST, DT)) {
         if (isa<Instruction>(V) &&
             !genx::isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
                 Inst, cast<Instruction>(V), DT))

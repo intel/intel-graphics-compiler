@@ -13,6 +13,5 @@ class FunctionPass;
 }
 
 namespace IGC {
-llvm::FunctionPass* createDecompose2DBlockFuncsPass();
-}  // namespace IGC
-
+llvm::FunctionPass *createDecompose2DBlockFuncsPass();
+} // namespace IGC

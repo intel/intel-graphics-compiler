@@ -834,8 +834,8 @@ const Instruction *getAVLoadKillOrNull(
     const bool ChangeSearchDirectionBasedOnDominance = false,
     bool PosProvedReachableFromVLoad = false,
     const DominatorTree *const DT = nullptr,
-    const SmallPtrSet<const BasicBlock *, 2>
-        *const ExcludeBlocksOnCfgTraversal = nullptr,
+    const SmallPtrSet<const BasicBlock *, 2> *const
+        ExcludeBlocksOnCfgTraversal = nullptr,
     const llvm::SmallVector<const Instruction *, 8> *const KillCallSites =
         nullptr);
 

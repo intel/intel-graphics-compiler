@@ -12,31 +12,28 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-class MatchCommonKernelPatterns : public llvm::FunctionPass
-    {
-    public:
-        static char ID;
+namespace IGC {
+class MatchCommonKernelPatterns : public llvm::FunctionPass {
+public:
+  static char ID;
 
-        MatchCommonKernelPatterns();
+  MatchCommonKernelPatterns();
 
-        virtual llvm::StringRef getPassName() const override {
-            return "Match common kernel patterns";
-        }
+  virtual llvm::StringRef getPassName() const override { return "Match common kernel patterns"; }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-            AU.addRequired<CodeGenContextWrapper>();
-            AU.setPreservesAll();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.setPreservesAll();
+  }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
-    private:
-        bool isInterpreterPattern(const llvm::Function &F) const;
-        bool isBBPartOfInterpreterPattern(const llvm::BasicBlock *BB) const;
-        bool isBBBackEdge(const llvm::BasicBlock *BB, const llvm::BasicBlock *EntryBB) const;
-        llvm::Value *getInterpreterSwitchArg(const llvm::BasicBlock *BB) const;
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-        CodeGenContext *Ctx = nullptr;
-    };
-}
+private:
+  bool isInterpreterPattern(const llvm::Function &F) const;
+  bool isBBPartOfInterpreterPattern(const llvm::BasicBlock *BB) const;
+  bool isBBBackEdge(const llvm::BasicBlock *BB, const llvm::BasicBlock *EntryBB) const;
+  llvm::Value *getInterpreterSwitchArg(const llvm::BasicBlock *BB) const;
+
+  CodeGenContext *Ctx = nullptr;
+};
+} // namespace IGC

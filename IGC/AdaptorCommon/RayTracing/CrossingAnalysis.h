@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 //
 //===----------------------------------------------------------------------===//
 
-
 #pragma once
 #include "Probe/Assertion.h"
 #include "Compiler/CodeGenPublic.h"
@@ -28,7 +27,7 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-void splitAround(llvm::Instruction* I, const llvm::Twine& Name);
+void splitAround(llvm::Instruction *I, const llvm::Twine &Name);
 
 class BlockToIndexMapping {
   llvm::SmallVector<llvm::BasicBlock *, 32> V;
@@ -65,35 +64,35 @@ public:
 //
 
 class SuspendCrossingInfo {
-    BlockToIndexMapping Mapping;
+  BlockToIndexMapping Mapping;
 
-    struct BlockData {
-        llvm::BitVector Consumes;
-        llvm::BitVector Kills;
-        bool Suspend = false;
-    };
-    llvm::SmallVector<BlockData, 32> Block;
+  struct BlockData {
+    llvm::BitVector Consumes;
+    llvm::BitVector Kills;
+    bool Suspend = false;
+  };
+  llvm::SmallVector<BlockData, 32> Block;
 
-    llvm::iterator_range<llvm::succ_iterator> successors(BlockData const& BD) const;
+  llvm::iterator_range<llvm::succ_iterator> successors(BlockData const &BD) const;
 
-    BlockData& getBlockData(llvm::BasicBlock* BB);
+  BlockData &getBlockData(llvm::BasicBlock *BB);
 
 public:
-    void print(llvm::raw_ostream& OS) const;
-    void print(llvm::raw_ostream& OS, llvm::StringRef Label, llvm::BitVector const& BV) const;
+  void print(llvm::raw_ostream &OS) const;
+  void print(llvm::raw_ostream &OS, llvm::StringRef Label, llvm::BitVector const &BV) const;
 
-    void dump() const;
-    void dumpToFile(const CodeGenContext *Ctx) const;
+  void dump() const;
+  void dumpToFile(const CodeGenContext *Ctx) const;
 
-    SuspendCrossingInfo(llvm::Function& F, const std::vector<llvm::Instruction*>& SuspendPoints);
+  SuspendCrossingInfo(llvm::Function &F, const std::vector<llvm::Instruction *> &SuspendPoints);
 
-    bool hasPathCrossingSuspendPoint(llvm::BasicBlock* DefBB, llvm::BasicBlock* UseBB) const;
+  bool hasPathCrossingSuspendPoint(llvm::BasicBlock *DefBB, llvm::BasicBlock *UseBB) const;
 
-    bool isDefinitionAcrossSuspend(llvm::BasicBlock* DefBB, llvm::User* U) const;
+  bool isDefinitionAcrossSuspend(llvm::BasicBlock *DefBB, llvm::User *U) const;
 
-    bool isDefinitionAcrossSuspend(llvm::Argument& A, llvm::User* U) const;
+  bool isDefinitionAcrossSuspend(llvm::Argument &A, llvm::User *U) const;
 
-    bool isDefinitionAcrossSuspend(llvm::Instruction& I, llvm::User* U) const;
+  bool isDefinitionAcrossSuspend(llvm::Instruction &I, llvm::User *U) const;
 };
 
 } // namespace IGC

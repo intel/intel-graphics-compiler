@@ -15,23 +15,19 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-    class ResolveConstExprCalls : public llvm::ModulePass {
-        // Resolves pseudo indirect constexpr cast calls
-    public:
-        static char ID;
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const {
-            AU.setPreservesCFG();
-        }
+class ResolveConstExprCalls : public llvm::ModulePass {
+  // Resolves pseudo indirect constexpr cast calls
+public:
+  static char ID;
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const { AU.setPreservesCFG(); }
 
-        ResolveConstExprCalls();
+  ResolveConstExprCalls();
 
-        ~ResolveConstExprCalls() {}
+  ~ResolveConstExprCalls() {}
 
-        virtual bool runOnModule(llvm::Module& M);
+  virtual bool runOnModule(llvm::Module &M);
 
-        virtual llvm::StringRef getPassName() const {
-            return "ResolveConstExprCalls";
-        }
-    };
+  virtual llvm::StringRef getPassName() const { return "ResolveConstExprCalls"; }
+};
 
 } // namespace IGC

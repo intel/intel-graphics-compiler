@@ -17,8 +17,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
-    llvm::FunctionPass* createEvaluateFreezePass();
-    void initializeEvaluateFreezePass(llvm::PassRegistry&);
-} // IGC::
+llvm::FunctionPass *createEvaluateFreezePass();
+void initializeEvaluateFreezePass(llvm::PassRegistry &);
+} // namespace IGC
 
 #endif // _CISA_EVALUATEFEEZE_HPP_

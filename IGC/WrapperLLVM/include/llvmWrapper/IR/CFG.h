@@ -14,10 +14,10 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR >= 11
-    using llvm::const_succ_iterator;
+using llvm::const_succ_iterator;
 #else
-    using const_succ_iterator = llvm::succ_const_iterator;
+using const_succ_iterator = llvm::succ_const_iterator;
 #endif
-}
+} // namespace IGCLLVM
 
 #endif

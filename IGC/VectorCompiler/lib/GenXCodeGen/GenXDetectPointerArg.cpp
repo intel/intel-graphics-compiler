@@ -201,7 +201,8 @@ void GenXDetectPointerArg::visitLoadInst(LoadInst &LI) {
   analyzeValue(LI.getPointerOperand());
 }
 
-static std::optional<int64_t> accumulateConstantOffset(GetElementPtrInst &GEPI) {
+static std::optional<int64_t>
+accumulateConstantOffset(GetElementPtrInst &GEPI) {
   int64_t Offset = 0;
   auto &DL = GEPI.getModule()->getDataLayout();
 

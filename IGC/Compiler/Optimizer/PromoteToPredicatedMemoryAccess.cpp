@@ -27,9 +27,10 @@ using namespace llvm;
 using namespace IGC;
 using namespace IGC::Legalizer;
 
-static cl::opt<int> PredicatedMemOpIfConvertMaxInstrs(
-    "igc-predmem-ifconv-max-instrs", cl::init(5), cl::Hidden,
-    cl::desc("Max number of instructions in a block to consider replacing memory access with predicated memory access and if-converting"));
+static cl::opt<int>
+    PredicatedMemOpIfConvertMaxInstrs("igc-predmem-ifconv-max-instrs", cl::init(5), cl::Hidden,
+                                      cl::desc("Max number of instructions in a block to consider replacing memory "
+                                               "access with predicated memory access and if-converting"));
 
 #define PASS_FLAG "igc-promote-to-predicated-memory-access"
 #define PASS_DESCRIPTION "Replace memory access with predicated memory access and if-convert"
@@ -40,21 +41,19 @@ IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(PromoteToPredicatedMemoryAccess, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 namespace IGC {
-    char PromoteToPredicatedMemoryAccess::ID = 0;
+char PromoteToPredicatedMemoryAccess::ID = 0;
 
-    PromoteToPredicatedMemoryAccess::PromoteToPredicatedMemoryAccess() : FunctionPass(ID)
-    {
-        initializePromoteToPredicatedMemoryAccessPass(*PassRegistry::getPassRegistry());
-    }
+PromoteToPredicatedMemoryAccess::PromoteToPredicatedMemoryAccess() : FunctionPass(ID) {
+  initializePromoteToPredicatedMemoryAccessPass(*PassRegistry::getPassRegistry());
+}
 
 bool PromoteToPredicatedMemoryAccess::runOnFunction(Function &F) {
-  CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-  bool isStatlessToBindlessEnabled = (pCtx->type == ShaderType::OPENCL_SHADER &&
-                                      static_cast<OpenCLProgramContext*>(pCtx)->m_InternalOptions.PromoteStatelessToBindless);
-  if (!pCtx->platform.hasLSC() ||
-      !pCtx->platform.LSCEnabled() ||
-      isStatlessToBindlessEnabled ||
+  bool isStatlessToBindlessEnabled =
+      (pCtx->type == ShaderType::OPENCL_SHADER &&
+       static_cast<OpenCLProgramContext *>(pCtx)->m_InternalOptions.PromoteStatelessToBindless);
+  if (!pCtx->platform.hasLSC() || !pCtx->platform.LSCEnabled() || isStatlessToBindlessEnabled ||
       pCtx->useStatelessToStateful()) {
     LLVM_DEBUG(dbgs() << "Skip promotion to predicated memory operations because one of conditions is false:\n"
                       << " - Platform has LSC: " << pCtx->platform.hasLSC() << "\n"
@@ -103,26 +102,24 @@ bool PromoteToPredicatedMemoryAccess::runOnFunction(Function &F) {
   return !WorkList.empty();
 }
 
-void PromoteToPredicatedMemoryAccess::fixPhiNode(PHINode &Phi, BasicBlock &Predecessor,
-                                      BasicBlock &CondBlock) {
+void PromoteToPredicatedMemoryAccess::fixPhiNode(PHINode &Phi, BasicBlock &Predecessor, BasicBlock &CondBlock) {
   auto *IncomingV = Phi.getIncomingValueForBlock(&Predecessor);
   Phi.replaceAllUsesWith(IncomingV);
   Phi.eraseFromParent();
 }
 
 namespace {
-  bool IsTypeLegal(Type *Ty) {
-    if (!Ty->isIntOrIntVectorTy())
-      return true;
+bool IsTypeLegal(Type *Ty) {
+  if (!Ty->isIntOrIntVectorTy())
+    return true;
 
-    unsigned Width = Ty->getScalarSizeInBits();
-    return TypeLegalizer::isLegalInteger(Width) || Width == 1;
-  }
+  unsigned Width = Ty->getScalarSizeInBits();
+  return TypeLegalizer::isLegalInteger(Width) || Width == 1;
+}
 } // namespace
 
-bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlock &BranchBB,
-                                                BasicBlock &ConvBB, BasicBlock &SuccBB,
-                                                bool Inverse) {
+bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlock &BranchBB, BasicBlock &ConvBB,
+                                                           BasicBlock &SuccBB, bool Inverse) {
   if (!ConvBB.hasNPredecessors(1))
     return false;
 
@@ -133,13 +130,13 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
     return false;
 
   const auto NumInstrs = count_if(ConvBB, [](const Instruction &I) {
-    return !I.isTerminator() && !isa<CastInst>(&I) && !isa<PHINode>(&I) &&
-           !isa<ExtractElementInst>(&I) && !isa<DbgInfoIntrinsic>(&I);
+    return !I.isTerminator() && !isa<CastInst>(&I) && !isa<PHINode>(&I) && !isa<ExtractElementInst>(&I) &&
+           !isa<DbgInfoIntrinsic>(&I);
   });
 
   if (NumInstrs > PredicatedMemOpIfConvertMaxInstrs) {
-    LLVM_DEBUG(dbgs() << "Skip block, number of instructions " << NumInstrs
-                      << " is more than threshold " << PredicatedMemOpIfConvertMaxInstrs << "\n"
+    LLVM_DEBUG(dbgs() << "Skip block, number of instructions " << NumInstrs << " is more than threshold "
+                      << PredicatedMemOpIfConvertMaxInstrs << "\n"
                       << "For ConvBB: " << ConvBB << "\n");
     return false;
   }
@@ -202,14 +199,11 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
       auto &MergeVector = ScalarizedInsts[Load];
       if (MergeVector.empty()) {
         FixedVectorType *VecTy = cast<FixedVectorType>(Load->getType());
-        MergeVector.resize(VecTy->getNumElements(),
-                           Constant::getNullValue(EE->getType()));
+        MergeVector.resize(VecTy->getNumElements(), Constant::getNullValue(EE->getType()));
       }
       unsigned Idx = cast<ConstantInt>(EE->getIndexOperand())->getZExtValue();
       if (Idx >= MergeVector.size()) {
-        LLVM_DEBUG(dbgs() << "Skip block, index " << Idx
-                          << " is more than vector size " << MergeVector.size()
-                          << "\n"
+        LLVM_DEBUG(dbgs() << "Skip block, index " << Idx << " is more than vector size " << MergeVector.size() << "\n"
                           << "For ConvBB: " << ConvBB << "\n");
         IGC_ASSERT_MESSAGE(0, "Index is more than vector size");
         return false;
@@ -225,23 +219,22 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
   // Collect the rest of the instructions
   for (auto &I : ConvBB) {
     // Check if this load is handled in the previous loop
-    if (isa<LoadInst>(&I) &&
-        (SimpleInsts.count(&I) || ScalarizedInsts.count(&I)))
+    if (isa<LoadInst>(&I) && (SimpleInsts.count(&I) || ScalarizedInsts.count(&I)))
       continue;
 
     // Store
-    if(auto *SI = dyn_cast<StoreInst>(&I)) {
-        if (!SI->isSimple() || !IsTypeLegal(SI->getValueOperand()->getType()))
-            return false;
-        SimpleInsts[&I] = nullptr;
-        continue;
+    if (auto *SI = dyn_cast<StoreInst>(&I)) {
+      if (!SI->isSimple() || !IsTypeLegal(SI->getValueOperand()->getType()))
+        return false;
+      SimpleInsts[&I] = nullptr;
+      continue;
     }
 
     if (I.mayHaveSideEffects() || I.mayReadFromMemory())
       return false;
 
     if (CallInst *CI = dyn_cast<CallInst>(&I); CI && CI->isConvergent())
-        return false;
+      return false;
   }
 
   LLVM_DEBUG(dbgs() << "Found if-convertible block:\n"
@@ -255,8 +248,7 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
   }
 
   for (auto &[Inst, MergeV] : ScalarizedInsts) {
-    LLVM_DEBUG(dbgs() << "Converting scalarized instruction: " << *Inst
-                      << "\n");
+    LLVM_DEBUG(dbgs() << "Converting scalarized instruction: " << *Inst << "\n");
     Value *MergeVVec = PoisonValue::get(Inst->getType());
     IRBuilder<> Builder(Inst);
     for (unsigned i = 0; i < MergeV.size(); ++i)
@@ -267,8 +259,8 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
   return !SimpleInsts.empty() || !ScalarizedInsts.empty();
 }
 
-void PromoteToPredicatedMemoryAccess::convertMemoryAccesses(Instruction *Mem, Value *MergeV,
-                                                            Value *Cond, bool Inverse) {
+void PromoteToPredicatedMemoryAccess::convertMemoryAccesses(Instruction *Mem, Value *MergeV, Value *Cond,
+                                                            bool Inverse) {
   LLVM_DEBUG(dbgs() << "Converting memory access: " << *Mem << "\n");
   bool IsLoad = isa<LoadInst>(Mem);
   IGC_ASSERT(IsLoad || isa<StoreInst>(Mem));
@@ -276,7 +268,7 @@ void PromoteToPredicatedMemoryAccess::convertMemoryAccesses(Instruction *Mem, Va
 
   IRBuilder<> Builder(Mem);
   Module *Mod = Mem->getParent()->getModule();
-  LLVMContext& Ctx = Mem->getContext();
+  LLVMContext &Ctx = Mem->getContext();
   Type *Int64Ty = Type::getInt64Ty(Ctx);
 
   if (Inverse) {
@@ -285,35 +277,35 @@ void PromoteToPredicatedMemoryAccess::convertMemoryAccesses(Instruction *Mem, Va
   }
 
   if (IsLoad) {
-    LoadInst* Load = cast<LoadInst>(Mem);
+    LoadInst *Load = cast<LoadInst>(Mem);
     Type *MemType = Mem->getType();
     Value *Ptr = Load->getPointerOperand();
     GenISAIntrinsic::ID iid = GenISAIntrinsic::GenISA_PredicatedLoad;
-    Type* ITys[3] = { MemType, Ptr->getType(), MemType };
+    Type *ITys[3] = {MemType, Ptr->getType(), MemType};
     Function *predLoadFunc = GenISAIntrinsic::getDeclaration(Mod, iid, ITys);
 
     Value *AlignV = ConstantInt::get(Int64Ty, IGCLLVM::getAlignmentValue(Load));
-    Value* Args[4] = { Ptr, AlignV, Cond, MergeV };
+    Value *Args[4] = {Ptr, AlignV, Cond, MergeV};
     Instruction *PredLoad = Builder.CreateCall(predLoadFunc, Args);
     PredLoad->takeName(Mem);
     PredLoad->setDebugLoc(Mem->getDebugLoc());
 
-    if (MDNode* lscMetadata = Mem->getMetadata("lsc.cache.ctrl"))
-        PredLoad->setMetadata("lsc.cache.ctrl", lscMetadata);
+    if (MDNode *lscMetadata = Mem->getMetadata("lsc.cache.ctrl"))
+      PredLoad->setMetadata("lsc.cache.ctrl", lscMetadata);
 
     Mem->replaceAllUsesWith(PredLoad);
     LLVM_DEBUG(dbgs() << "Converted memory access: " << *PredLoad << "\n");
   } else {
-    StoreInst* Store = cast<StoreInst>(Mem);
+    StoreInst *Store = cast<StoreInst>(Mem);
     Value *ValToStore = Store->getValueOperand();
     Value *Ptr = Store->getPointerOperand();
 
     GenISAIntrinsic::ID iid = GenISAIntrinsic::GenISA_PredicatedStore;
-    Type* ITys[2] = { Ptr->getType(), ValToStore->getType() };
+    Type *ITys[2] = {Ptr->getType(), ValToStore->getType()};
     Function *predStoreFunc = GenISAIntrinsic::getDeclaration(Mod, iid, ITys);
 
     Value *AlignV = ConstantInt::get(Int64Ty, IGCLLVM::getAlignmentValue(Store));
-    Value* Args[4] = { Ptr, ValToStore, AlignV, Cond };
+    Value *Args[4] = {Ptr, ValToStore, AlignV, Cond};
     Instruction *PredStore = Builder.CreateCall(predStoreFunc, Args);
     PredStore->setDebugLoc(Mem->getDebugLoc());
     LLVM_DEBUG(dbgs() << "Converted memory access: " << *PredStore << "\n");

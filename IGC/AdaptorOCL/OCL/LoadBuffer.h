@@ -14,13 +14,11 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 
-namespace llvm
-{
-    MemoryBuffer* LoadBufferFromResource(const char *pResName, const char *pResType);
+namespace llvm {
+MemoryBuffer *LoadBufferFromResource(const char *pResName, const char *pResType);
 
-    /// LoadBufferFromFile - Loads a buffer from a file in disk
-    ///
-    MemoryBuffer* LoadBufferFromFile( const std::string &FileName );
+/// LoadBufferFromFile - Loads a buffer from a file in disk
+///
+MemoryBuffer *LoadBufferFromFile(const std::string &FileName);
 
 } // namespace llvm
-

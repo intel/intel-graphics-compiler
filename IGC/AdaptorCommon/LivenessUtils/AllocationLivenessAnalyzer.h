@@ -14,61 +14,49 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 namespace llvm {
-    class BasicBlock;
-    class DominatorTree;
-    class Instruction;
-    class LoopInfo;
+class BasicBlock;
+class DominatorTree;
+class Instruction;
+class LoopInfo;
 } // namespace llvm
 
-namespace IGC
-{
-    class AllocationLivenessAnalyzer : public llvm::FunctionPass
-    {
-    public:
-        struct LivenessData {
-            llvm::Instruction* lifetimeStart = nullptr;
-            llvm::SmallVector<llvm::Instruction*> lifetimeEndInstructions;
+namespace IGC {
+class AllocationLivenessAnalyzer : public llvm::FunctionPass {
+public:
+  struct LivenessData {
+    llvm::Instruction *lifetimeStart = nullptr;
+    llvm::SmallVector<llvm::Instruction *> lifetimeEndInstructions;
 
-            struct Edge
-            {
-                llvm::BasicBlock* from;
-                llvm::BasicBlock* to;
-            };
-
-            llvm::SmallVector<Edge> lifetimeEndEdges;
-
-            llvm::DenseSet<llvm::BasicBlock*> bbIn;
-            llvm::DenseSet<llvm::BasicBlock*> bbOut;
-
-            LivenessData(
-                llvm::Instruction* allocationInstruction,
-                llvm::SetVector<llvm::Instruction*>&& usersOfAllocation,
-                const llvm::LoopInfo& LI,
-                const llvm::DominatorTree& DT,
-                llvm::BasicBlock* userDominatorBlock = nullptr,
-                llvm::SetVector<llvm::Instruction*>&& lifetimeLeakingUsers = {}
-            );
-
-            bool OverlapsWith(const LivenessData& LD) const;
-            bool ContainsInstruction(const llvm::Instruction& I) const;
-        };
-
-        AllocationLivenessAnalyzer(char& pid) : llvm::FunctionPass(pid) {}
-
-    protected:
-        LivenessData ProcessInstruction(
-            llvm::Instruction* I,
-            llvm::DominatorTree& DT,
-            llvm::LoopInfo& LI
-        );
-
-        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
-        virtual void getAdditionalAnalysisUsage(llvm::AnalysisUsage& AU) const = 0;
+    struct Edge {
+      llvm::BasicBlock *from;
+      llvm::BasicBlock *to;
     };
 
-    namespace Provenance
-    {
-        bool tryFindPointerOrigin(llvm::Value* ptr, llvm::SmallVectorImpl<llvm::Instruction*>& origins);
-    }
+    llvm::SmallVector<Edge> lifetimeEndEdges;
+
+    llvm::DenseSet<llvm::BasicBlock *> bbIn;
+    llvm::DenseSet<llvm::BasicBlock *> bbOut;
+
+    LivenessData(llvm::Instruction *allocationInstruction, llvm::SetVector<llvm::Instruction *> &&usersOfAllocation,
+                 const llvm::LoopInfo &LI, const llvm::DominatorTree &DT,
+                 llvm::BasicBlock *userDominatorBlock = nullptr,
+                 llvm::SetVector<llvm::Instruction *> &&lifetimeLeakingUsers = {});
+
+    bool OverlapsWith(const LivenessData &LD) const;
+    bool ContainsInstruction(const llvm::Instruction &I) const;
+  };
+
+  AllocationLivenessAnalyzer(char &pid) : llvm::FunctionPass(pid) {}
+
+protected:
+  LivenessData ProcessInstruction(llvm::Instruction *I, llvm::DominatorTree &DT, llvm::LoopInfo &LI);
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
+  virtual void getAdditionalAnalysisUsage(llvm::AnalysisUsage &AU) const = 0;
+};
+
+namespace Provenance {
+bool tryFindPointerOrigin(llvm::Value *ptr, llvm::SmallVectorImpl<llvm::Instruction *> &origins);
+}
 
 } // namespace IGC

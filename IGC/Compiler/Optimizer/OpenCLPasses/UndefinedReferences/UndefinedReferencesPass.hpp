@@ -13,31 +13,21 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 
-namespace IGC
-{
+namespace IGC {
 
-    class UndefinedReferencesPass : public llvm::ModulePass
-    {
-    public:
+class UndefinedReferencesPass : public llvm::ModulePass {
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
 
-        // Pass identification, replacement for typeid
-        static char ID;
+  UndefinedReferencesPass();
 
-        UndefinedReferencesPass();
+  ~UndefinedReferencesPass() {}
 
-        ~UndefinedReferencesPass() {}
+  virtual llvm::StringRef getPassName() const override { return "UndefinedReferencesPass"; }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "UndefinedReferencesPass";
-        }
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<CodeGenContextWrapper>();
-        }
-
-        virtual bool runOnModule(llvm::Module& M) override;
-
-    };
+  virtual bool runOnModule(llvm::Module &M) override;
+};
 
 } // namespace IGC

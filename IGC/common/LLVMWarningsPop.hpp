@@ -27,20 +27,20 @@ SPDX-License-Identifier: MIT
 
 // Do some checking to make sure the includes are in the right order
 // It is super easy to get this wrong...
-#if !defined( LLVM_WARNINGS_PUSH )
-#   error "Improperly structured LLVMWarnings{Push,Pop}.hpp includes ( pop included, with no prior push included )"
+#if !defined(LLVM_WARNINGS_PUSH)
+#error "Improperly structured LLVMWarnings{Push,Pop}.hpp includes ( pop included, with no prior push included )"
 #endif
-#if defined( LLVM_WARNINGS_POP )
-#   error "Improperly structured LLVMWarnings{Push,Pop}.hpp includes ( pop included twice with no push inbetween )"
+#if defined(LLVM_WARNINGS_POP)
+#error "Improperly structured LLVMWarnings{Push,Pop}.hpp includes ( pop included twice with no push inbetween )"
 #endif
 #define LLVM_WARNINGS_POP
 #undef LLVM_WARNINGS_PUSH
 
- // Do the actual pop
+// Do the actual pop
 #ifdef _MSC_VER
-#   pragma  warning( pop )
+#pragma warning(pop)
 #endif
 
 #if defined(__linux__)
-#   pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 #endif

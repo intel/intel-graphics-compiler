@@ -16,59 +16,48 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    // Checks if function can be unmased and transforms the attributes of
-    // function definition and each call site
-    class TransformUnmaskedFunctionsPass final : public llvm::FunctionPass
-    {
-    public:
-        static char ID;
+namespace IGC {
+// Checks if function can be unmased and transforms the attributes of
+// function definition and each call site
+class TransformUnmaskedFunctionsPass final : public llvm::FunctionPass {
+public:
+  static char ID;
 
-        TransformUnmaskedFunctionsPass();
-        ~TransformUnmaskedFunctionsPass() {}
+  TransformUnmaskedFunctionsPass();
+  ~TransformUnmaskedFunctionsPass() {}
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "TransformUnmaskedFunctionsPass";
-        }
+  virtual llvm::StringRef getPassName() const override { return "TransformUnmaskedFunctionsPass"; }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.setPreservesCFG();
-            AU.addRequired<IGC::MetaDataUtilsWrapper>();
-            AU.addRequired<IGC::CodeGenContextWrapper>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<IGC::MetaDataUtilsWrapper>();
+    AU.addRequired<IGC::CodeGenContextWrapper>();
+  }
 
-        virtual bool runOnFunction(llvm::Function& F) override;
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-    private:
-        ModuleMetaData* MMD;
-    };
-
-    // Inlines functions marked as unmasked correclty modifying all related metadata.
-    class InlineUnmaskedFunctionsPass final : public llvm::ModulePass
-    {
-    public:
-        static char ID;
-
-        InlineUnmaskedFunctionsPass();
-        ~InlineUnmaskedFunctionsPass() {}
-
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "InlineUnmaskedFunctionsPass";
-        }
-
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<IGC::MetaDataUtilsWrapper>();
-            AU.addRequired<IGC::CodeGenContextWrapper>();
-        }
-
-        virtual bool runOnModule(llvm::Module& M) override;
-
-    private:
-        ModuleMetaData* MMD;
-    };
+private:
+  ModuleMetaData *MMD;
 };
+
+// Inlines functions marked as unmasked correclty modifying all related metadata.
+class InlineUnmaskedFunctionsPass final : public llvm::ModulePass {
+public:
+  static char ID;
+
+  InlineUnmaskedFunctionsPass();
+  ~InlineUnmaskedFunctionsPass() {}
+
+  virtual llvm::StringRef getPassName() const override { return "InlineUnmaskedFunctionsPass"; }
+
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<IGC::MetaDataUtilsWrapper>();
+    AU.addRequired<IGC::CodeGenContextWrapper>();
+  }
+
+  virtual bool runOnModule(llvm::Module &M) override;
+
+private:
+  ModuleMetaData *MMD;
+};
+}; // namespace IGC

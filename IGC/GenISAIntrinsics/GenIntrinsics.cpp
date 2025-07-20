@@ -16,87 +16,68 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
 
+namespace IGC {
 
-namespace IGC
-{
+static llvm::GenISAIntrinsic::ID GetID(const llvm::Function &func, bool useContextWrapper) {
+  if (useContextWrapper) {
+    LLVMContextWrapper &ctxWrapper = static_cast<LLVMContextWrapper &>(func.getContext());
+    LLVMContextWrapper::SafeIntrinsicIDCacheTy &SafeIntrinsicIdCache = ctxWrapper.m_SafeIntrinsicIDCache;
 
-static llvm::GenISAIntrinsic::ID GetID(const llvm::Function& func, bool useContextWrapper)
-{
-    if (useContextWrapper)
-    {
-        LLVMContextWrapper& ctxWrapper = static_cast<LLVMContextWrapper&>(func.getContext());
-        LLVMContextWrapper::SafeIntrinsicIDCacheTy& SafeIntrinsicIdCache = ctxWrapper.m_SafeIntrinsicIDCache;
-
-        //If you do not find the function ptr as key corresponding to the GenISAIntrinsic::ID add the new key
-        auto it = SafeIntrinsicIdCache.find(&func);
-        if (it == SafeIntrinsicIdCache.end()) {
-            llvm::GenISAIntrinsic::ID id = llvm::GenISAIntrinsic::ID::no_intrinsic;
-            const llvm::ValueName* const pValueName = func.getValueName();
-            if (nullptr != pValueName)
-            {
-                llvm::StringRef prefix = GetIntrinsicPrefixName();
-                llvm::StringRef Name = pValueName->getKey();
-                if (Name.size() > prefix.size() && Name.startswith(prefix))
-                {
-                    id = static_cast<llvm::GenISAIntrinsic::ID>(LookupIntrinsicId(Name.data()));
-                    SafeIntrinsicIdCache[&func] = static_cast<uint32_t>(id);
-                }
-            }
-            return id;
+    // If you do not find the function ptr as key corresponding to the GenISAIntrinsic::ID add the new key
+    auto it = SafeIntrinsicIdCache.find(&func);
+    if (it == SafeIntrinsicIdCache.end()) {
+      llvm::GenISAIntrinsic::ID id = llvm::GenISAIntrinsic::ID::no_intrinsic;
+      const llvm::ValueName *const pValueName = func.getValueName();
+      if (nullptr != pValueName) {
+        llvm::StringRef prefix = GetIntrinsicPrefixName();
+        llvm::StringRef Name = pValueName->getKey();
+        if (Name.size() > prefix.size() && Name.startswith(prefix)) {
+          id = static_cast<llvm::GenISAIntrinsic::ID>(LookupIntrinsicId(Name.data()));
+          SafeIntrinsicIdCache[&func] = static_cast<uint32_t>(id);
         }
-        else
-        {
-            // If you have an entry for the function ptr corresponding to the GenISAIntrinsic::ID return it back,
-            //instead of going through a lengthy look-up.
-            return (static_cast<llvm::GenISAIntrinsic::ID>(it->second));
-        }
+      }
+      return id;
+    } else {
+      // If you have an entry for the function ptr corresponding to the GenISAIntrinsic::ID return it back,
+      // instead of going through a lengthy look-up.
+      return (static_cast<llvm::GenISAIntrinsic::ID>(it->second));
     }
-    else
-    {
-        llvm::GenISAIntrinsic::ID id = llvm::GenISAIntrinsic::ID::no_intrinsic;
-        const llvm::ValueName* const pValueName = func.getValueName();
-        if (nullptr != pValueName)
-        {
-            llvm::StringRef prefix = GetIntrinsicPrefixName();
-            llvm::StringRef Name = pValueName->getKey();
-            if (Name.size() > prefix.size() && Name.startswith(prefix))
-            {
-                id = static_cast<llvm::GenISAIntrinsic::ID>(LookupIntrinsicId(Name.data()));
-            }
-        }
-        return id;
+  } else {
+    llvm::GenISAIntrinsic::ID id = llvm::GenISAIntrinsic::ID::no_intrinsic;
+    const llvm::ValueName *const pValueName = func.getValueName();
+    if (nullptr != pValueName) {
+      llvm::StringRef prefix = GetIntrinsicPrefixName();
+      llvm::StringRef Name = pValueName->getKey();
+      if (Name.size() > prefix.size() && Name.startswith(prefix)) {
+        id = static_cast<llvm::GenISAIntrinsic::ID>(LookupIntrinsicId(Name.data()));
+      }
     }
+    return id;
+  }
 }
 
 } // namespace IGC
 
-namespace llvm
-{
-namespace GenISAIntrinsic
-{
+namespace llvm {
+namespace GenISAIntrinsic {
 
-std::string getName(ID id, ArrayRef<Type*> OverloadedTys /*= None*/, ArrayRef<Type*> OverloadedPointeeTys /*= None*/)
-{
-    return IGC::GetName(id, OverloadedTys, OverloadedPointeeTys);
+std::string getName(ID id, ArrayRef<Type *> OverloadedTys /*= None*/,
+                    ArrayRef<Type *> OverloadedPointeeTys /*= None*/) {
+  return IGC::GetName(id, OverloadedTys, OverloadedPointeeTys);
 }
 
-IntrinsicComments getIntrinsicComments(ID id)
-{
-    return IGC::GetIntrinsicComments(id);
+IntrinsicComments getIntrinsicComments(ID id) { return IGC::GetIntrinsicComments(id); }
+
+Function *getDeclaration(Module *M, ID id, ArrayRef<Type *> OverloadedTys /*= None*/,
+                         ArrayRef<Type *> OverloadedPointeeTys /*= None*/) {
+  return IGC::GetDeclaration(M, id, OverloadedTys, OverloadedPointeeTys);
 }
 
-Function* getDeclaration(Module* M, ID id, ArrayRef<Type*> OverloadedTys /*= None*/, ArrayRef<Type*> OverloadedPointeeTys /*= None*/)
-{
-    return IGC::GetDeclaration(M, id, OverloadedTys, OverloadedPointeeTys);
-}
-
-ID getIntrinsicID(const Function* F, bool useContextWrapper /*= true*/)
-{
-    if (F != nullptr)
-    {
-        return IGC::GetID(*F, useContextWrapper);
-    }
-    return ID::no_intrinsic;
+ID getIntrinsicID(const Function *F, bool useContextWrapper /*= true*/) {
+  if (F != nullptr) {
+    return IGC::GetID(*F, useContextWrapper);
+  }
+  return ID::no_intrinsic;
 }
 
 } // namespace GenISAIntrinsic

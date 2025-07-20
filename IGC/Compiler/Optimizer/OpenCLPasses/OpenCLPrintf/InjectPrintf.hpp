@@ -13,28 +13,24 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/IR/IRBuilder.h"
 
-namespace IGC
-{
-    class InjectPrintf : public llvm::FunctionPass
-    {
-    public:
-        static char ID;
+namespace IGC {
+class InjectPrintf : public llvm::FunctionPass {
+public:
+  static char ID;
 
-        InjectPrintf();
-        ~InjectPrintf() {}
+  InjectPrintf();
+  ~InjectPrintf() {}
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "InjectPrintf";
-        }
+  virtual llvm::StringRef getPassName() const override { return "InjectPrintf"; }
 
-        bool runOnFunction(llvm::Function& F) override;
+  bool runOnFunction(llvm::Function &F) override;
 
-    private:
-        llvm::GlobalVariable* createGlobalFormatStr(llvm::Module* module, llvm::LLVMContext& context);
-        llvm::Value* createGEP(llvm::GlobalVariable* globalVariable, llvm::Instruction* insertBefore);
-        void insertPrintf(llvm::IRBuilder<>& builder, llvm::FunctionCallee printfFunc, llvm::GlobalVariable* formatStrGlobal, llvm::Instruction* inst, llvm::Value* pointerOperand, llvm::Type* valueType);
-    };
-}
+private:
+  llvm::GlobalVariable *createGlobalFormatStr(llvm::Module *module, llvm::LLVMContext &context);
+  llvm::Value *createGEP(llvm::GlobalVariable *globalVariable, llvm::Instruction *insertBefore);
+  void insertPrintf(llvm::IRBuilder<> &builder, llvm::FunctionCallee printfFunc, llvm::GlobalVariable *formatStrGlobal,
+                    llvm::Instruction *inst, llvm::Value *pointerOperand, llvm::Type *valueType);
+};
+} // namespace IGC
 
 #endif // INJECT_PRINTF_HPP

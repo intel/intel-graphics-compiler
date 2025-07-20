@@ -55,8 +55,7 @@ struct PushInfo;
 // Helper Function
 VISA_Type GetType(llvm::Type *pType, CodeGenContext *pDataLayout);
 uint64_t GetImmediateVal(llvm::Value *Const);
-e_alignment GetPreferredAlignment(llvm::Value *Val, WIAnalysis *WIA,
-                                  CodeGenContext *pContext);
+e_alignment GetPreferredAlignment(llvm::Value *Val, WIAnalysis *WIA, CodeGenContext *pContext);
 
 class CShaderProgram;
 
@@ -93,22 +92,18 @@ public:
   bool IsRecompilationRequestForced();
 
 protected:
-  CShader(llvm::Function *, CShaderProgram *pProgram,
-          GenericShaderState &GState);
+  CShader(llvm::Function *, CShaderProgram *pProgram, GenericShaderState &GState);
 
 public:
   virtual ~CShader();
   CShader(const CShader &) = delete;
   CShader &operator=(const CShader &) = delete;
   void Destroy();
-  virtual void InitEncoder(
-      SIMDMode simdMode, bool canAbortOnSpill,
-      ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE);
+  virtual void InitEncoder(SIMDMode simdMode, bool canAbortOnSpill,
+                           ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE);
   virtual void PreCompile() {}
   virtual void PreCompileFunction(llvm::Function &F) { IGC_UNUSED(F); }
-  virtual void ParseShaderSpecificOpcode(llvm::Instruction *inst) {
-    IGC_UNUSED(inst);
-  }
+  virtual void ParseShaderSpecificOpcode(llvm::Instruction *inst) { IGC_UNUSED(inst); }
   virtual void AllocatePayload() {}
   virtual void AddPrologue() {}
   virtual void PreAnalysisPass();
@@ -123,8 +118,7 @@ public:
     IGC_ASSERT_MESSAGE(0, "Should be overridden in a derived class!");
     return nullptr;
   }
-  virtual CVariable *GetURBInputHandle(CVariable *pVertexIndex,
-                                       BasicBlock *block) {
+  virtual CVariable *GetURBInputHandle(CVariable *pVertexIndex, BasicBlock *block) {
     IGC_UNUSED(pVertexIndex);
     IGC_UNUSED(block);
     IGC_ASSERT_MESSAGE(0, "Should be overridden in a derived class!");
@@ -146,17 +140,13 @@ public:
     IGC_UNUSED(F);
     return false;
   }
-  virtual bool CompileSIMDSize(SIMDMode simdMode, EmitPass &EP,
-                               llvm::Function &F) {
+  virtual bool CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F) {
     IGC_UNUSED(F);
     IGC_UNUSED(EP);
     return CompileSIMDSizeInCommon(simdMode);
   }
-  CVariable *
-  LazyCreateCCTupleBackingVariable(CoalescingEngine::CCTuple *ccTuple,
-                                   VISA_Type baseType = ISA_TYPE_UD);
-  CVariable *GetSymbol(llvm::Value *value, bool fromConstantPool = false,
-                       e_alignment MinAlign = EALIGN_AUTO);
+  CVariable *LazyCreateCCTupleBackingVariable(CoalescingEngine::CCTuple *ccTuple, VISA_Type baseType = ISA_TYPE_UD);
+  CVariable *GetSymbol(llvm::Value *value, bool fromConstantPool = false, e_alignment MinAlign = EALIGN_AUTO);
   void AddSetup(uint index, CVariable *var);
   bool AppendPayloadSetup(CVariable *var);
   void AddPatchTempSetup(CVariable *var);
@@ -178,28 +168,21 @@ public:
   //     return GetNewVariable(1, type, alignOf_TODO(type), true, name);
   // }
 
-  CVariable *GetNewVariable(uint16_t nbElement, VISA_Type type,
-                            e_alignment align, const CName &name) {
+  CVariable *GetNewVariable(uint16_t nbElement, VISA_Type type, e_alignment align, const CName &name) {
     return GetNewVariable(nbElement, type, align, false, 1, name);
   }
-  CVariable *GetNewVariable(uint16_t nbElement, VISA_Type type,
-                            e_alignment align, UniformArgWrap uniform,
+  CVariable *GetNewVariable(uint16_t nbElement, VISA_Type type, e_alignment align, UniformArgWrap uniform,
                             const CName &name) {
     return GetNewVariable(nbElement, type, align, uniform, 1, name);
   }
-  CVariable *GetNewVariable(uint16_t nbElement, VISA_Type type,
-                            e_alignment align, UniformArgWrap uniform,
+  CVariable *GetNewVariable(uint16_t nbElement, VISA_Type type, e_alignment align, UniformArgWrap uniform,
                             uint16_t numberInstance, const CName &name);
   CVariable *GetNewVariable(const CVariable *from, const CName &name = CName());
-  CVariable *GetNewAddressVariable(uint16_t nbElement, VISA_Type type,
-                                   UniformArgWrap uniform, bool vectorUniform,
+  CVariable *GetNewAddressVariable(uint16_t nbElement, VISA_Type type, UniformArgWrap uniform, bool vectorUniform,
                                    const CName &name);
-  CVariable *GetNewVector(llvm::Value *val,
-                          e_alignment preferredAlign = EALIGN_AUTO);
-  CVariable *GetNewAlias(CVariable *var, VISA_Type type, uint16_t offset,
-                         uint16_t numElements);
-  CVariable *GetNewAlias(CVariable *var, VISA_Type type, uint16_t offset,
-                         uint16_t numElements, bool uniform);
+  CVariable *GetNewVector(llvm::Value *val, e_alignment preferredAlign = EALIGN_AUTO);
+  CVariable *GetNewAlias(CVariable *var, VISA_Type type, uint16_t offset, uint16_t numElements);
+  CVariable *GetNewAlias(CVariable *var, VISA_Type type, uint16_t offset, uint16_t numElements, bool uniform);
   // Create a multi-instance alias of a single-instance variable.
   CVariable *GetNewAlias(CVariable *var, uint16_t numInstances);
 
@@ -212,16 +195,14 @@ public:
   // do cross lane in SIMD32
   CVariable *GetVarHalf(CVariable *var, unsigned int half);
 
-  void CopyVariable(CVariable *dst, CVariable *src, uint dstSubVar = 0,
-                    uint srcSubVar = 0);
+  void CopyVariable(CVariable *dst, CVariable *src, uint dstSubVar = 0, uint srcSubVar = 0);
   void PackAndCopyVariable(CVariable *dst, CVariable *src, uint subVar = 0);
   void CopyVariableRaw(CVariable *dst, CVariable *src);
   CVariable *CopyVariableRaw(CVariable *src, bool singleInstance = true);
   bool IsValueUsed(llvm::Value *value);
   CVariable *GetGlobalCVar(llvm::Value *value);
   uint GetNbElementAndMask(llvm::Value *value, uint32_t &mask);
-  void CreatePayload(uint regCount, uint idxOffset, CVariable *&payload,
-                     llvm::Instruction *inst, uint paramOffset,
+  void CreatePayload(uint regCount, uint idxOffset, CVariable *&payload, llvm::Instruction *inst, uint paramOffset,
                      uint8_t hfFactor);
   uint GetNbVectorElementAndMask(llvm::Value *value, uint32_t &mask);
   uint16_t AdjustExtractIndex(llvm::Value *value, uint16_t elemIndex);
@@ -264,17 +245,14 @@ public:
 
   void RemoveBitRange(CVariable *&src, unsigned removebit, unsigned range);
 
-  void AllocateInput(CVariable *var, uint offset, uint instance = 0,
-                     bool forceLiveOut = false);
+  void AllocateInput(CVariable *var, uint offset, uint instance = 0, bool forceLiveOut = false);
   void AllocateOutput(CVariable *var, uint offset, uint instance = 0);
   void AllocatePred(CVariable *var, uint offset, bool forceLiveOut = false);
-  CVariable *ImmToVariable(uint64_t immediate, VISA_Type type,
-                           bool isCodePatchCandidate = false);
+  CVariable *ImmToVariable(uint64_t immediate, VISA_Type type, bool isCodePatchCandidate = false);
   CVariable *GetConstant(llvm::Constant *C, CVariable *dstVar = nullptr);
   CVariable *GetScalarConstant(llvm::Value *c);
   CVariable *GetUndef(VISA_Type type);
-  llvm::Constant *findCommonConstant(llvm::Constant *C, uint elts,
-                                     uint currentEmitElts, bool &allSame);
+  llvm::Constant *findCommonConstant(llvm::Constant *C, uint elts, uint currentEmitElts, bool &allSame);
   virtual unsigned int GetSLMMappingValue(llvm::Value *c);
   virtual CVariable *GetSLMMapping(llvm::Value *c);
   CVariable *BitCast(CVariable *var, VISA_Type newType);
@@ -294,9 +272,7 @@ public:
 
   void SetUniformHelper(WIAnalysis *WI) { m_WI = WI; }
   void SetDeSSAHelper(DeSSA *deSSA) { m_deSSA = deSSA; }
-  void SetCoalescingEngineHelper(CoalescingEngine *ce) {
-    m_coalescingEngine = ce;
-  }
+  void SetCoalescingEngineHelper(CoalescingEngine *ce) { m_coalescingEngine = ce; }
   void SetCodeGenHelper(CodeGenPatternMatch *CG) { m_CG = CG; }
   void SetPushInfoHelper(PushInfo *PI) { pushInfo = *PI; }
   void SetEmitPassHelper(EmitPass *EP) { m_EmitPass = EP; }
@@ -304,9 +280,7 @@ public:
   void SetDataLayout(const llvm::DataLayout *DL) { m_DL = DL; }
   void SetVariableReuseAnalysis(VariableReuseAnalysis *VRA) { m_VRA = VRA; }
   void SetResourceLoopAnalysis(ResourceLoopAnalysis *RLA) { m_RLA = RLA; }
-  void SetMetaDataUtils(IGC::IGCMD::MetaDataUtils *pMdUtils) {
-    m_pMdUtils = pMdUtils;
-  }
+  void SetMetaDataUtils(IGC::IGCMD::MetaDataUtils *pMdUtils) { m_pMdUtils = pMdUtils; }
   void SetScratchSpaceSize(uint size) { m_ScratchSpaceSize = size; }
 
   // Set FGA and also FunctionGroup attributes
@@ -331,16 +305,12 @@ public:
   void SetHasStackCalls(bool hasStackCall) { m_HasStackCall = hasStackCall; }
   bool HasNestedCalls() const { return m_HasNestedCall; }
   bool HasIndirectCalls() const { return m_HasIndirectCall; }
-  bool IsIntelSymbolTableVoidProgram() const {
-    return m_IsIntelSymbolTableVoidProgram;
-  }
+  bool IsIntelSymbolTableVoidProgram() const { return m_IsIntelSymbolTableVoidProgram; }
   int PrivateMemoryPerWI() const { return m_PrivateMemoryPerWI; }
 
   IGCMD::MetaDataUtils *GetMetaDataUtils() { return m_pMdUtils; }
 
-  virtual void SetShaderSpecificHelper(EmitPass *emitPass) {
-    IGC_UNUSED(emitPass);
-  }
+  virtual void SetShaderSpecificHelper(EmitPass *emitPass) { IGC_UNUSED(emitPass); }
 
   void AllocateConstants(uint &offset);
   void AllocateSimplePushConstants(uint &offset);
@@ -355,8 +325,7 @@ public:
   /// bytes. Used e.g. for indirect addressing via a0 register.
   CVariable *GetPerLaneOffsetsReg(uint typeSizeInBytes);
 
-  void GetPayloadElementSymbols(llvm::Value *inst, CVariable *payload[],
-                                int vecWidth);
+  void GetPayloadElementSymbols(llvm::Value *inst, CVariable *payload[], int vecWidth);
 
   CodeGenContext *GetContext() const { return m_ctx; }
 
@@ -435,17 +404,11 @@ public:
   static constexpr DWORD MAX_BINDING_TABLE_INDEX = 251;
   static constexpr uint cMessageExtendedDescriptorEOTBit = BIT(5);
 
-  CVariable *GetCCTupleToVariableMapping(CoalescingEngine::CCTuple *ccTuple) {
-    return ccTupleMapping[ccTuple];
-  }
+  CVariable *GetCCTupleToVariableMapping(CoalescingEngine::CCTuple *ccTuple) { return ccTupleMapping[ccTuple]; }
 
-  void addConstantInPool(llvm::Constant *C, CVariable *Var) {
-    ConstantPool[C] = Var;
-  }
+  void addConstantInPool(llvm::Constant *C, CVariable *Var) { ConstantPool[C] = Var; }
 
-  CVariable *lookupConstantInPool(llvm::Constant *C) {
-    return ConstantPool.lookup(C);
-  }
+  CVariable *lookupConstantInPool(llvm::Constant *C) { return ConstantPool.lookup(C); }
 
   unsigned int EvaluateSIMDConstExpr(llvm::Value *C);
 
@@ -459,10 +422,9 @@ public:
   CVariable *getOrCreateReturnSymbol(llvm::Function *F);
   /// This method is used to create the vISA variable for function F's formal
   /// argument
-  CVariable *getOrCreateArgumentSymbol(
-      llvm::Argument *Arg,
-      bool ArgInCallee, // true if Arg isn't in current func
-      bool useStackCall = false);
+  CVariable *getOrCreateArgumentSymbol(llvm::Argument *Arg,
+                                       bool ArgInCallee, // true if Arg isn't in current func
+                                       bool useStackCall = false);
   void UpdateSymbolMap(llvm::Value *v, CVariable *CVar);
   VISA_Type GetType(llvm::Type *type);
   uint32_t GetNumElts(llvm::Type *type, bool isUniform = false);
@@ -470,24 +432,17 @@ public:
   /// Evaluate constant expression and return the result immediate value.
   uint64_t GetConstantExpr(llvm::ConstantExpr *C);
 
-  uint32_t GetMaxUsedBindingTableEntryCount(void) const {
-    return m_State.GetMaxUsedBindingTableEntryCount();
-  }
+  uint32_t GetMaxUsedBindingTableEntryCount(void) const { return m_State.GetMaxUsedBindingTableEntryCount(); }
 
-  uint32_t GetBindingTableEntryBitmap(void) const {
-    return m_State.GetBindingTableEntryBitmap();
-  }
+  uint32_t GetBindingTableEntryBitmap(void) const { return m_State.GetBindingTableEntryBitmap(); }
 
-  void SetBindingTableEntryCountAndBitmap(bool directIdx, BufferType bufType,
-                                          uint32_t typeBti, uint32_t bti) {
+  void SetBindingTableEntryCountAndBitmap(bool directIdx, BufferType bufType, uint32_t typeBti, uint32_t bti) {
     if (bti <= MAX_BINDING_TABLE_INDEX) {
       if (directIdx) {
-        m_State.m_BindingTableEntryCount =
-            (bti <= m_pBtiLayout->GetBindingTableEntryCount())
-                ? (std::max(bti, m_State.m_BindingTableEntryCount))
-                : m_State.m_BindingTableEntryCount;
-        m_State.m_BindingTableUsedEntriesBitmap |=
-            BIT(bti / cBTEntriesPerCacheLine);
+        m_State.m_BindingTableEntryCount = (bti <= m_pBtiLayout->GetBindingTableEntryCount())
+                                               ? (std::max(bti, m_State.m_BindingTableEntryCount))
+                                               : m_State.m_BindingTableEntryCount;
+        m_State.m_BindingTableUsedEntriesBitmap |= BIT(bti / cBTEntriesPerCacheLine);
 
         if (bufType == RESOURCE) {
           m_State.m_shaderResourceLoaded[typeBti / 32] |= BIT(typeBti % 32);
@@ -500,10 +455,9 @@ public:
         }
       } else {
         // Indirect addressing, set the maximum BTI.
-        m_State.m_BindingTableEntryCount =
-            m_pBtiLayout->GetBindingTableEntryCount();
-        m_State.m_BindingTableUsedEntriesBitmap |= BITMASK_RANGE(
-            0, (m_State.m_BindingTableEntryCount / cBTEntriesPerCacheLine));
+        m_State.m_BindingTableEntryCount = m_pBtiLayout->GetBindingTableEntryCount();
+        m_State.m_BindingTableUsedEntriesBitmap |=
+            BITMASK_RANGE(0, (m_State.m_BindingTableEntryCount / cBTEntriesPerCacheLine));
 
         if (bufType == RESOURCE || bufType == BINDLESS_TEXTURE) {
           unsigned int MaxArray = m_pBtiLayout->GetTextureIndexSize() / 32;
@@ -511,20 +465,15 @@ public:
             m_State.m_shaderResourceLoaded[i] = 0xffffffff;
           }
 
-          for (unsigned int i = MaxArray * 32;
-               i < m_pBtiLayout->GetTextureIndexSize(); i++) {
+          for (unsigned int i = MaxArray * 32; i < m_pBtiLayout->GetTextureIndexSize(); i++) {
             m_State.m_shaderResourceLoaded[MaxArray] = BIT(i % 32);
           }
-        } else if (bufType == CONSTANT_BUFFER ||
-                   bufType == BINDLESS_CONSTANT_BUFFER) {
-          m_State.m_constantBufferLoaded |=
-              BITMASK_RANGE(0, m_pBtiLayout->GetConstantBufferIndexSize());
+        } else if (bufType == CONSTANT_BUFFER || bufType == BINDLESS_CONSTANT_BUFFER) {
+          m_State.m_constantBufferLoaded |= BITMASK_RANGE(0, m_pBtiLayout->GetConstantBufferIndexSize());
         } else if (bufType == UAV || bufType == BINDLESS) {
-          m_State.m_uavLoaded |=
-              QWBITMASK_RANGE(0, m_pBtiLayout->GetUavIndexSize());
+          m_State.m_uavLoaded |= QWBITMASK_RANGE(0, m_pBtiLayout->GetUavIndexSize());
         } else if (bufType == RENDER_TARGET) {
-          m_State.m_renderTargetLoaded |=
-              BITMASK_RANGE(0, m_pBtiLayout->GetRenderTargetIndexSize());
+          m_State.m_renderTargetLoaded |= BITMASK_RANGE(0, m_pBtiLayout->GetRenderTargetIndexSize());
         }
       }
     }
@@ -532,10 +481,8 @@ public:
 
   static unsigned GetIMEReturnPayloadSize(llvm::GenIntrinsicInst *I);
 
-  void addCVarsForVectorBC(llvm::BitCastInst *BCI,
-                           const llvm::SmallVector<CVariable *, 8> &CVars) {
-    IGC_ASSERT_MESSAGE(m_VectorBCItoCVars.find(BCI) ==
-                           std::end(m_VectorBCItoCVars),
+  void addCVarsForVectorBC(llvm::BitCastInst *BCI, const llvm::SmallVector<CVariable *, 8> &CVars) {
+    IGC_ASSERT_MESSAGE(m_VectorBCItoCVars.find(BCI) == std::end(m_VectorBCItoCVars),
                        "a variable already exists for this vector bitcast");
     m_VectorBCItoCVars.try_emplace(BCI, CVars);
   }
@@ -548,18 +495,10 @@ public:
     return (*iter).second[index];
   }
 
-  void SetHasGlobalStatelessAccess() {
-    m_HasGlobalStatelessMemoryAccess = true;
-  }
-  bool GetHasGlobalStatelessAccess() const {
-    return m_HasGlobalStatelessMemoryAccess;
-  }
-  void SetHasConstantStatelessAccess() {
-    m_HasConstantStatelessMemoryAccess = true;
-  }
-  bool GetHasConstantStatelessAccess() const {
-    return m_HasConstantStatelessMemoryAccess;
-  }
+  void SetHasGlobalStatelessAccess() { m_HasGlobalStatelessMemoryAccess = true; }
+  bool GetHasGlobalStatelessAccess() const { return m_HasGlobalStatelessMemoryAccess; }
+  void SetHasConstantStatelessAccess() { m_HasConstantStatelessMemoryAccess = true; }
+  bool GetHasConstantStatelessAccess() const { return m_HasConstantStatelessMemoryAccess; }
   void SetHasGlobalAtomics() { m_HasGlobalAtomics = true; }
   bool GetHasGlobalAtomics() const { return m_HasGlobalAtomics; }
   bool GetHasEval() const { return m_State.GetHasEval(); }
@@ -567,9 +506,7 @@ public:
   void IncIndirectStatelessCount() { ++m_IndirectStatelessCount; }
   void IncNumSampleBallotLoops() { ++m_NumSampleBallotLoops; }
   uint32_t GetStatelessWritesCount() const { return m_StatelessWritesCount; }
-  uint32_t GetIndirectStatelessCount() const {
-    return m_IndirectStatelessCount;
-  }
+  uint32_t GetIndirectStatelessCount() const { return m_IndirectStatelessCount; }
   uint32_t GetNumSampleBallotLoops() const { return m_NumSampleBallotLoops; }
 
   // In bytes
@@ -590,25 +527,15 @@ public:
 
   // Note that for PVC A0 simd16, PVCLSCEnabled() returns true
   // but no LSC is generated!
-  bool PVCLSCEnabled() const {
-    return m_Platform->isCoreChildOf(IGFX_XE_HPC_CORE) && m_Platform->hasLSC();
-  }
+  bool PVCLSCEnabled() const { return m_Platform->isCoreChildOf(IGFX_XE_HPC_CORE) && m_Platform->hasLSC(); }
 
-  e_alignment getGRFAlignment() const {
-    return CVariable::getAlignment(getGRFSize());
-  }
+  e_alignment getGRFAlignment() const { return CVariable::getAlignment(getGRFSize()); }
 
-  llvm::DenseMap<llvm::Value *, CVariable *> &GetSymbolMapping() {
-    return symbolMapping;
-  }
+  llvm::DenseMap<llvm::Value *, CVariable *> &GetSymbolMapping() { return symbolMapping; }
 
-  llvm::DenseMap<llvm::Value *, CVariable *> &GetGlobalMapping() {
-    return globalSymbolMapping;
-  }
+  llvm::DenseMap<llvm::Value *, CVariable *> &GetGlobalMapping() { return globalSymbolMapping; }
 
-  llvm::DenseMap<llvm::Constant *, CVariable *> &GetConstantMapping() {
-    return ConstantPool;
-  }
+  llvm::DenseMap<llvm::Constant *, CVariable *> &GetConstantMapping() { return ConstantPool; }
 
   int64_t GetKernelArgOffset(CVariable *argV) {
     auto it = kernelArgToPayloadOffsetMap.find(argV);
@@ -625,12 +552,9 @@ public:
   ////////////////////////////////////////////////////////////////////
   // NOTE: for vector load/stores instructions pass the
   // optional instruction argument checks additional constraints
-  static Tristate
-  shouldGenerateLSCQuery(const CodeGenContext &Ctx,
-                         llvm::Instruction *vectorLdStInst = nullptr,
-                         SIMDMode Mode = SIMDMode::UNKNOWN);
-  bool shouldGenerateLSC(llvm::Instruction *vectorLdStInst = nullptr,
-                         bool isTGM = false);
+  static Tristate shouldGenerateLSCQuery(const CodeGenContext &Ctx, llvm::Instruction *vectorLdStInst = nullptr,
+                                         SIMDMode Mode = SIMDMode::UNKNOWN);
+  bool shouldGenerateLSC(llvm::Instruction *vectorLdStInst = nullptr, bool isTGM = false);
   bool forceCacheCtrl(llvm::Instruction *vectorLdStInst = nullptr);
   uint32_t totalBytesToStoreOrLoad(llvm::Instruction *vectorLdStInst);
 
@@ -646,14 +570,11 @@ private:
   int m_shaderProgramID = 0; // unique for each shaderProgram
   // Return DefInst's CVariable if it could be reused for UseInst, and return
   // nullptr otherwise.
-  CVariable *reuseSourceVar(llvm::Instruction *UseInst,
-                            llvm::Instruction *DefInst,
-                            e_alignment preferredAlign);
+  CVariable *reuseSourceVar(llvm::Instruction *UseInst, llvm::Instruction *DefInst, e_alignment preferredAlign);
 
   // Return nullptr if no source variable is reused. Otherwise return a
   // CVariable from its source operand.
-  CVariable *GetSymbolFromSource(llvm::Instruction *UseInst,
-                                 e_alignment preferredAlign);
+  CVariable *GetSymbolFromSource(llvm::Instruction *UseInst, e_alignment preferredAlign);
 
 protected:
   CShaderProgram *m_parent = nullptr;
@@ -719,8 +640,7 @@ protected:
   CVariable *m_FP = nullptr;
   CVariable *m_SavedFP = nullptr;
   CVariable *m_ARGV = nullptr;
-  std::array<CVariable *, NUM_ARG_SPACE_RESERVATION_SLOTS>
-      m_ARGVReservedVariables{};
+  std::array<CVariable *, NUM_ARG_SPACE_RESERVATION_SLOTS> m_ARGVReservedVariables{};
   uint32_t m_ARGVReservedVariablesTotalSize = 0;
   CVariable *m_RETV = nullptr;
   CVariable *m_SavedSRetPtr = nullptr;
@@ -731,8 +651,7 @@ protected:
 
   // for each vector BCI whose uses are all extractElt with imm offset,
   // we store the CVariables for each index
-  llvm::DenseMap<llvm::Instruction *, llvm::SmallVector<CVariable *, 8>>
-      m_VectorBCItoCVars;
+  llvm::DenseMap<llvm::Instruction *, llvm::SmallVector<CVariable *, 8>> m_VectorBCItoCVars;
 
   // Those two are for stateful token setup. It is a quick
   // special case checking. Once a generic approach is added,
@@ -780,16 +699,14 @@ static const SInstContext g_InitContext = {
 
 struct PSSignature;
 
-void AddCodeGenPasses(
-    CodeGenContext &ctx, CShaderProgram::KernelShaderMap &shaders,
-    IGCPassManager &Passes, SIMDMode simdMode, bool canAbortOnSpill,
-    ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE,
-    PSSignature *pSignature = nullptr);
+void AddCodeGenPasses(CodeGenContext &ctx, CShaderProgram::KernelShaderMap &shaders, IGCPassManager &Passes,
+                      SIMDMode simdMode, bool canAbortOnSpill,
+                      ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE,
+                      PSSignature *pSignature = nullptr);
 
 
 bool SimdEarlyCheck(CodeGenContext *ctx);
-void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm,
-                           PSSignature *pSignature = nullptr);
+void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature *pSignature = nullptr);
 void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm);
 void destroyShaderMap(CShaderProgram::KernelShaderMap &shaders);
 void unify_opt_PreProcess(CodeGenContext *pContext);

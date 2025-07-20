@@ -12,8 +12,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/MathExtras.h"
 
-namespace IGCLLVM
-{
+namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR < 10
 
 // NOTE: Implementation of SubOverflow and MulOverflow is taken from llvm 10
@@ -21,9 +20,7 @@ namespace IGCLLVM
 
 /// Subtract two signed integers, computing the two's complement truncated
 /// result, returning true if an overflow ocurred.
-template <typename T>
-typename std::enable_if<std::is_signed<T>::value, T>::type
-SubOverflow(T X, T Y, T &Result) {
+template <typename T> typename std::enable_if<std::is_signed<T>::value, T>::type SubOverflow(T X, T Y, T &Result) {
   // Perform the unsigned addition.
   using U = typename std::make_unsigned<T>::type;
   const U UX = static_cast<U>(X);
@@ -42,12 +39,9 @@ SubOverflow(T X, T Y, T &Result) {
   return false;
 }
 
-
 /// Multiply two signed integers, computing the two's complement truncated
 /// result, returning true if an overflow ocurred.
-template <typename T>
-typename std::enable_if<std::is_signed<T>::value, T>::type
-MulOverflow(T X, T Y, T &Result) {
+template <typename T> typename std::enable_if<std::is_signed<T>::value, T>::type MulOverflow(T X, T Y, T &Result) {
   // Perform the unsigned multiplication on absolute values.
   using U = typename std::make_unsigned<T>::type;
   const U UX = X < 0 ? (0 - static_cast<U>(X)) : static_cast<U>(X);
@@ -73,10 +67,10 @@ MulOverflow(T X, T Y, T &Result) {
 
 #else
 
-using llvm::SubOverflow;
 using llvm::MulOverflow;
+using llvm::SubOverflow;
 
 #endif
-}
+} // namespace IGCLLVM
 
 #endif

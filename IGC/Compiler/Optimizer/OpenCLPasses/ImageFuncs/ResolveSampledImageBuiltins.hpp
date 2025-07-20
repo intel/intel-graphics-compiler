@@ -16,43 +16,37 @@ SPDX-License-Identifier: MIT
 
 #include <unordered_set>
 
-namespace IGC
-{
-    /// @brief  ResolveSampledImageBuiltins pass is used for resolving getter builtins operating on VMEImageINTEL and SampledImage objects.
-    ///         SPIR-V Friendly IR represents OpVMEImageINTEL and OpSampledImage opcodes as a functions returning global pointer to opaque type.
-    ///         Since it's not convenient to allocate global memory within BiFModule, these builtins are just declared there and resolved in this pass.
+namespace IGC {
+/// @brief  ResolveSampledImageBuiltins pass is used for resolving getter builtins operating on VMEImageINTEL and
+/// SampledImage objects.
+///         SPIR-V Friendly IR represents OpVMEImageINTEL and OpSampledImage opcodes as a functions returning global
+///         pointer to opaque type. Since it's not convenient to allocate global memory within BiFModule, these builtins
+///         are just declared there and resolved in this pass.
 
-    class ResolveSampledImageBuiltins : public llvm::ModulePass, public llvm::InstVisitor<ResolveSampledImageBuiltins>
-    {
-    public:
-        static char ID;
+class ResolveSampledImageBuiltins : public llvm::ModulePass, public llvm::InstVisitor<ResolveSampledImageBuiltins> {
+public:
+  static char ID;
 
-        ResolveSampledImageBuiltins();
-        ~ResolveSampledImageBuiltins() {}
+  ResolveSampledImageBuiltins();
+  ~ResolveSampledImageBuiltins() {}
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "ResolveSampledImageBuiltins";
-        }
+  virtual llvm::StringRef getPassName() const override { return "ResolveSampledImageBuiltins"; }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-        {
-            AU.addRequired<MetaDataUtilsWrapper>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
 
-        virtual bool runOnModule(llvm::Module& M) override;
-        void visitCallInst(llvm::CallInst& CI);
+  virtual bool runOnModule(llvm::Module &M) override;
+  void visitCallInst(llvm::CallInst &CI);
 
-        static const llvm::StringRef GET_IMAGE;
-        static const llvm::StringRef GET_SAMPLER;
+  static const llvm::StringRef GET_IMAGE;
+  static const llvm::StringRef GET_SAMPLER;
 
-    private:
-        llvm::Value* lowerGetImage(llvm::CallInst& CI);
-        llvm::Value* lowerGetSampler(llvm::CallInst& CI);
+private:
+  llvm::Value *lowerGetImage(llvm::CallInst &CI);
+  llvm::Value *lowerGetSampler(llvm::CallInst &CI);
 
-        bool m_changed = false;
-        ModuleMetaData* modMD = nullptr;
-        std::unordered_set<llvm::CallInst*> m_builtinsToRemove;
-    };
+  bool m_changed = false;
+  ModuleMetaData *modMD = nullptr;
+  std::unordered_set<llvm::CallInst *> m_builtinsToRemove;
+};
 
 } // namespace IGC

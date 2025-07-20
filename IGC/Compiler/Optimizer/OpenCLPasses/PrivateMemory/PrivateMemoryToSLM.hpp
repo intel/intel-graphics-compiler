@@ -16,51 +16,43 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
-namespace IGC
-{
-    // It is convenient to represent the null pointer as the zero
-    // bit-pattern. However, SLM address 0 is legal, and we want to be able
-    // to use it.
-    // To go around this, we set all valid pointers to have a non-zero high
-    // nibble.
-    constexpr unsigned int VALID_LOCAL_HIGH_BITS = 0x10000000;
-    constexpr unsigned int LOW_BITS_MASK = VALID_LOCAL_HIGH_BITS - 1;
+namespace IGC {
+// It is convenient to represent the null pointer as the zero
+// bit-pattern. However, SLM address 0 is legal, and we want to be able
+// to use it.
+// To go around this, we set all valid pointers to have a non-zero high
+// nibble.
+constexpr unsigned int VALID_LOCAL_HIGH_BITS = 0x10000000;
+constexpr unsigned int LOW_BITS_MASK = VALID_LOCAL_HIGH_BITS - 1;
 
-    // Experimental pass to move private memory allocations to SLM where it's
-    // profitable. The pass is able to handle Compute and OpenCL shader types.
-    class PrivateMemoryToSLM : public ModulePass
-    {
+// Experimental pass to move private memory allocations to SLM where it's
+// profitable. The pass is able to handle Compute and OpenCL shader types.
+class PrivateMemoryToSLM : public ModulePass {
 
-    public:
-        static char ID;
+public:
+  static char ID;
 
-        PrivateMemoryToSLM(bool enableOptReport = false);
-        PrivateMemoryToSLM(
-            std::string forcedBuffers,
-            bool enableOptReport);
-        ~PrivateMemoryToSLM() {}
+  PrivateMemoryToSLM(bool enableOptReport = false);
+  PrivateMemoryToSLM(std::string forcedBuffers, bool enableOptReport);
+  ~PrivateMemoryToSLM() {}
 
-        virtual StringRef getPassName() const override
-        {
-            return "PrivateMemoryToSLMPass";
-        }
+  virtual StringRef getPassName() const override { return "PrivateMemoryToSLMPass"; }
 
-        virtual void getAnalysisUsage(AnalysisUsage& AU) const override
-        {
-            AU.setPreservesCFG();
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<CodeGenContextWrapper>();
-            AU.addRequired<ModuleAllocaAnalysis>();
-        }
+  virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<ModuleAllocaAnalysis>();
+  }
 
-        virtual bool runOnModule(Module& M) override;
+  virtual bool runOnModule(Module &M) override;
 
-        static const unsigned int SLM_LOCAL_VARIABLE_ALIGNMENT;
-        static const unsigned int SLM_LOCAL_SIZE_ALIGNMENT;
+  static const unsigned int SLM_LOCAL_VARIABLE_ALIGNMENT;
+  static const unsigned int SLM_LOCAL_SIZE_ALIGNMENT;
 
-    private:
-        bool m_EnableOptReport;
-        bool m_ForceAll;
-        std::vector<std::string> m_ForcedBuffers;
-    };
-}
+private:
+  bool m_EnableOptReport;
+  bool m_ForceAll;
+  std::vector<std::string> m_ForcedBuffers;
+};
+} // namespace IGC

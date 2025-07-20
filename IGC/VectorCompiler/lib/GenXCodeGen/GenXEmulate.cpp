@@ -84,8 +84,7 @@ static cl::opt<bool> OptStricterConverts(
     cl::desc("strict check will break on 64-bit convers which are NOT noop"));
 // TODO: we expect this to be turned on by default
 static cl::opt<bool> OptStrictEmulationRequests(
-    "vc-i64emu-strict-requests", cl::init(false),
-    cl::Hidden,
+    "vc-i64emu-strict-requests", cl::init(false), cl::Hidden,
     cl::desc("Explicit emulation requests are subject to stricter checks"));
 static cl::opt<bool> OptIcmpEnable("vc-i64emu-icmp-enable", cl::init(true),
                                    cl::Hidden,
@@ -105,16 +104,16 @@ struct OpType {
 };
 static std::function<bool(const OpType &, const OpType &)> OpTypeComparator =
     [](const OpType &ot1, const OpType &ot2) {
-  if (ot1.Opcode < ot2.Opcode)
-    return true;
-  if (ot2.Opcode < ot1.Opcode)
-    return false;
-  if (ot1.ResType < ot2.ResType)
-    return true;
-  if (ot2.ResType < ot1.ResType)
-    return false;
-  return ot1.FirstArgType < ot2.FirstArgType;
-};
+      if (ot1.Opcode < ot2.Opcode)
+        return true;
+      if (ot2.Opcode < ot1.Opcode)
+        return false;
+      if (ot1.ResType < ot2.ResType)
+        return true;
+      if (ot2.ResType < ot1.ResType)
+        return false;
+      return ot1.FirstArgType < ot2.FirstArgType;
+    };
 
 template <typename T> static void processToEraseList(T &EraseList) {
   std::for_each(EraseList.begin(), EraseList.end(),
@@ -701,7 +700,8 @@ Value *GenXEmulate::Emu64Expander::visitICmp(ICmpInst &Cmp) {
 
   if (isI64PointerOp(Cmp)) {
     if (!OptProcessPtrs) {
-      LLVM_DEBUG(dbgs() << "i64-emu::WARNING: " << Cmp << " won't be emulated\n");
+      LLVM_DEBUG(dbgs() << "i64-emu::WARNING: " << Cmp
+                        << " won't be emulated\n");
       return nullptr;
     }
 
@@ -1057,10 +1057,10 @@ Value *GenXEmulate::Emu64Expander::visitGenxTrunc(CallInst &CI) {
 
 Value *GenXEmulate::Emu64Expander::visitMinMax(CallInst &CI) {
   auto Builder = getIRBuilder();
-  Value* Lhs = CI.getOperand(0);
-  Value* Rhs = CI.getOperand(1);
+  Value *Lhs = CI.getOperand(0);
+  Value *Rhs = CI.getOperand(1);
 
-  Value* CondVal = nullptr;
+  Value *CondVal = nullptr;
   // We create 2 64-bit operations:
   // compare and select.
   // Then we replace those with yet-another expander instance
@@ -1155,24 +1155,25 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
     auto HiAdd2 =
         buildAddc(M, Builder, *HiAdd1.Val, *LoAdd.CB, "int_emu.ssadd.h2.");
     // auto F
-    auto *MaskBit31    = K.getSplat(1 << 31);
-    auto *MaxSigned32  = K.getSplat((1u << 31u) - 1u);
-    //Overflow = (x >> (os - 1)) == (y >> (os - 1)) &&
-    //           (x >> (os - 1)) != (result >> (os - 1)) ? 1 : 0;
+    auto *MaskBit31 = K.getSplat(1 << 31);
+    auto *MaxSigned32 = K.getSplat((1u << 31u) - 1u);
+    // Overflow = (x >> (os - 1)) == (y >> (os - 1)) &&
+    //            (x >> (os - 1)) != (result >> (os - 1)) ? 1 : 0;
     auto *SignOp0 = Builder.CreateAnd(Src0.Hi, MaskBit31);
     auto *SignOp1 = Builder.CreateAnd(Src1.Hi, MaskBit31);
     auto *SignRes = Builder.CreateAnd(HiAdd2.Val, MaskBit31);
 
     auto *FlagSignOpMatch = Builder.CreateICmpEQ(SignOp0, SignOp1);
     auto *FlagSignResMismatch = Builder.CreateICmpNE(SignOp0, SignRes);
-    auto *FlagOverflow = Builder.CreateAnd(FlagSignOpMatch, FlagSignResMismatch);
+    auto *FlagOverflow =
+        Builder.CreateAnd(FlagSignOpMatch, FlagSignResMismatch);
 
     // by default we assume that we have positive saturation
     auto *Lo = Builder.CreateSelect(FlagOverflow, K.getOnes(), LoAdd.Val);
     auto *Hi = Builder.CreateSelect(FlagOverflow, MaxSigned32, HiAdd2.Val);
     // if negative, change the saturation value
-    auto *FlagNegativeSat = Builder.CreateAnd(FlagOverflow,
-                                 Builder.CreateICmpSLT(SignOp0, K.getZero()));
+    auto *FlagNegativeSat = Builder.CreateAnd(
+        FlagOverflow, Builder.CreateICmpSLT(SignOp0, K.getZero()));
     Lo = Builder.CreateSelect(FlagNegativeSat, K.getZero(), Lo);
     Hi = Builder.CreateSelect(FlagNegativeSat, K.getSplat(1 << 31), Hi);
 

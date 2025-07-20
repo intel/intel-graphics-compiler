@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 namespace llvm {
-    class ModulePass;
+class ModulePass;
 }
 
-llvm::ModulePass* createBIFTransformsPass();
+llvm::ModulePass *createBIFTransformsPass();

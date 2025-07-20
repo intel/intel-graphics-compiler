@@ -51,9 +51,9 @@ inline bool isAnyNonTrivialIntrinsic(const llvm::Value *V) {
 //  (e.g., those using iAny, fAny, vAny, or iPTRAny).
 // For a declaration of an overloaded intrinsic,
 // Tys must provide exactly one type for each overloaded type in the intrinsic.
-llvm::Function *
-getAnyDeclaration(llvm::Module *M, unsigned ID,
-                  llvm::ArrayRef<llvm::Type *> Tys = llvm::ArrayRef<llvm::Type*>());
+llvm::Function *getAnyDeclaration(
+    llvm::Module *M, unsigned ID,
+    llvm::ArrayRef<llvm::Type *> Tys = llvm::ArrayRef<llvm::Type *>());
 
 std::string getAnyName(unsigned id, llvm::ArrayRef<llvm::Type *> Tys);
 

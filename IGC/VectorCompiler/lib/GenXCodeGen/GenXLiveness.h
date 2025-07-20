@@ -222,7 +222,9 @@ public:
     return IndexFlattener::getElementType(V->getType(), Index);
   }
   // Comparisons
-  bool operator==(SimpleValue Rhs) const { return V == Rhs.V && Index == Rhs.Index; }
+  bool operator==(SimpleValue Rhs) const {
+    return V == Rhs.V && Index == Rhs.Index;
+  }
   bool operator!=(SimpleValue Rhs) const { return !(*this == Rhs); }
   bool operator<(SimpleValue Rhs) const {
     if (V != Rhs.V)
@@ -286,8 +288,9 @@ struct Segment {
 private:
   unsigned Start;
   unsigned End;
+
 public:
-  Segment() :  Strength(STRONG), Start(0), End(0) {}
+  Segment() : Strength(STRONG), Start(0), End(0) {}
   Segment(unsigned S, unsigned E, SegmentType Strength = STRONG)
       : Strength(Strength) {
     IGC_ASSERT(E >= S);
@@ -299,31 +302,29 @@ public:
     IGC_ASSERT(End >= S);
     Start = S;
   }
-  unsigned getEnd() const noexcept{ return End; }
-  void setEnd(unsigned E) noexcept{
+  unsigned getEnd() const noexcept { return End; }
+  void setEnd(unsigned E) noexcept {
     IGC_ASSERT(E >= Start);
     End = E;
   }
-  void setStartEnd(unsigned S, unsigned E) noexcept{
+  void setStartEnd(unsigned S, unsigned E) noexcept {
     IGC_ASSERT(E >= S);
     Start = S;
     End = E;
   }
-  bool operator<(Segment Rhs) const noexcept{
+  bool operator<(Segment Rhs) const noexcept {
     if (Start != Rhs.Start)
       return Start < Rhs.Start;
     return End < Rhs.End;
   }
 
   // use this via std::hash<Segment> (see end of this file)
-  size_t hash() const noexcept {
-    return hash_combine(Start, End, Strength);
-  }
-  bool operator==(Segment Rhs) const noexcept{
+  size_t hash() const noexcept { return hash_combine(Start, End, Strength); }
+  bool operator==(Segment Rhs) const noexcept {
     return (Start == Rhs.Start) && (End == Rhs.End) &&
            (Strength == Rhs.Strength);
   }
-  bool isWeak() const noexcept{ return Strength == WEAK; }
+  bool isWeak() const noexcept { return Strength == WEAK; }
 };
 
 // LiveRange : a collection of Segment structs, in order, describing
@@ -340,9 +341,9 @@ class LiveRange {
 
 public:
   vc::RegCategory Category;
-  unsigned LogAlignment :7;
-  bool DisallowCASC: 1; // disallow call arg special coalescing
-  unsigned Offset :12; // kernel arg offset, else 0
+  unsigned LogAlignment : 7;
+  bool DisallowCASC : 1; // disallow call arg special coalescing
+  unsigned Offset : 12;  // kernel arg offset, else 0
   LiveRange()
       : Category(vc::RegCategory::None), LogAlignment(0), DisallowCASC(false),
         Offset(0) {}
@@ -358,7 +359,7 @@ public:
   // Iterator forwarders for Values.
   using value_iterator = Values_t::iterator;
   using const_value_iterator = Values_t::const_iterator;
-  Values_t& getValues() { return Values; }
+  Values_t &getValues() { return Values; }
   value_iterator value_begin() { return Values.begin(); }
   value_iterator value_end() { return Values.end(); }
   const_value_iterator value_begin() const { return Values.begin(); }
@@ -370,10 +371,16 @@ public:
   // of being equal to the segment's End), or, if in a hole, the
   // iterator of the next segment, or, if at end, end().
   iterator find(unsigned Num);
-  void clear() { Segments.clear(); Values.clear(); }
+  void clear() {
+    Segments.clear();
+    Values.clear();
+  }
   void push_back(Segment Seg) { Segments.push_back(Seg); }
   void push_back(unsigned S, unsigned E) { Segments.push_back(Segment(S, E)); }
-  SimpleValue addValue(SimpleValue V) { Values.push_back(V); return V; }
+  SimpleValue addValue(SimpleValue V) {
+    Values.push_back(V);
+    return V;
+  }
   // contains : test whether live range contains instruction number
   bool contains(unsigned Num) {
     iterator i = find(Num);
@@ -390,8 +397,11 @@ public:
   // setAlignmentFromValue : increase alignment if necessary from a value
   void setAlignmentFromValue(const DataLayout &DL, const SimpleValue V,
                              const unsigned GRFWidth);
-  // setLogAlignment : set log alignment to greater than implied by the LR's values
-  void setLogAlignment(unsigned Align) { LogAlignment = std::max(LogAlignment, Align); }
+  // setLogAlignment : set log alignment to greater than implied by the LR's
+  // values
+  void setLogAlignment(unsigned Align) {
+    LogAlignment = std::max(LogAlignment, Align);
+  }
   // addSegment : add a segment to a live range
   void addSegment(Segment Seg);
   // setSegmentsFrom : for this live range, clear out its segments
@@ -408,6 +418,7 @@ public:
   void dump() const;
   void print(raw_ostream &OS, bool Detailed = false) const;
   void printSegments(raw_ostream &OS) const;
+
 private:
   void value_clear() { Values.clear(); }
   bool testLiveRanges() const;
@@ -421,6 +432,7 @@ inline raw_ostream &operator<<(raw_ostream &OS, const LiveRange &LR) {
 // CallGraph : the call graph within a FunctionGroup
 class CallGraph {
   FunctionGroup *FG = nullptr;
+
 public:
   class Node;
   struct Edge {
@@ -435,14 +447,17 @@ public:
   };
   class Node {
     std::set<Edge> Edges;
+
   public:
     typedef std::set<Edge>::iterator iterator;
     iterator begin() { return Edges.begin(); }
     iterator end() { return Edges.end(); }
     void insert(Edge E) { Edges.insert(E); }
   };
+
 private:
   std::map<Function *, Node> Nodes;
+
 public:
   // constructor from FunctionGroup
   CallGraph(FunctionGroup *FG) : FG(FG) {}
@@ -504,7 +519,9 @@ public:
   const_iterator begin() const { return LiveRangeMap.begin(); }
   const_iterator end() const { return LiveRangeMap.end(); }
   // getLiveRange : get the live range for a Value of non-aggregate type
-  genx::LiveRange *getLiveRange(Value *V) { return getLiveRange(genx::SimpleValue(V)); }
+  genx::LiveRange *getLiveRange(Value *V) {
+    return getLiveRange(genx::SimpleValue(V));
+  }
   // getLiveRange : get the live range for a genx::SimpleValue
   genx::LiveRange *getLiveRange(genx::SimpleValue V);
   // getLiveRangeOrNull : get the live range for a Value, or 0 if none
@@ -524,17 +541,24 @@ public:
   // eraseLiveRange : get rid of the specified live range, and remove its
   // values from the map
   void eraseLiveRange(genx::LiveRange *LR);
-  // twoAddrInterfere : check whether two live ranges interfere, allowing for single number interference sites at two address ops
+  // twoAddrInterfere : check whether two live ranges interfere, allowing for
+  // single number interference sites at two address ops
   bool twoAddrInterfere(genx::LiveRange *LR1, genx::LiveRange *LR2);
   // interfere : test whether two live ranges interfere
   bool interfere(genx::LiveRange *LR1, genx::LiveRange *LR2);
-  // getSingleInterferenceSites : check whether two live ranges interfere, returning single number interference sites
-  bool getSingleInterferenceSites(genx::LiveRange *LR1, genx::LiveRange *LR2, SmallVectorImpl<unsigned> *Sites);
+  // getSingleInterferenceSites : check whether two live ranges interfere,
+  // returning single number interference sites
+  bool getSingleInterferenceSites(genx::LiveRange *LR1, genx::LiveRange *LR2,
+                                  SmallVectorImpl<unsigned> *Sites);
   // checkIfOverlappingSegmentsInterfere : given two segments that have been
   //    shown to overlap, check whether their strengths make them interfere
-  bool checkIfOverlappingSegmentsInterfere(genx::LiveRange *LR1, genx::Segment *S1, genx::LiveRange *LR2, genx::Segment *S2);
+  bool checkIfOverlappingSegmentsInterfere(genx::LiveRange *LR1,
+                                           genx::Segment *S1,
+                                           genx::LiveRange *LR2,
+                                           genx::Segment *S2);
   // coalesce : coalesce two live ranges
-  genx::LiveRange *coalesce(genx::LiveRange *LR1, genx::LiveRange *LR2, bool DisallowCASC);
+  genx::LiveRange *coalesce(genx::LiveRange *LR1, genx::LiveRange *LR2,
+                            bool DisallowCASC);
   // Set the GenXNumbering pointer for use by live range building
   void setNumbering(GenXNumbering *N) { Numbering = N; }
   GenXNumbering *getNumbering() { return Numbering; }
@@ -579,13 +603,15 @@ public:
   void moveUnifiedRet(Function *OldF, Function *NewF);
   // copyInterfere : test whether two live ranges copy-interfere
   bool copyInterfere(genx::LiveRange *LR1, genx::LiveRange *LR2);
-  // See if V1 is a phi node and V2 wraps round to a phi use in the same BB after V1's def
+  // See if V1 is a phi node and V2 wraps round to a phi use in the same BB
+  // after V1's def
   static bool wrapsAround(Value *V1, Value *V2);
   // Insert a copy of a non-aggregate value.
   Instruction *insertCopy(Value *InputVal, genx::LiveRange *LR,
                           Instruction *InsertBefore, const Twine &Name,
                           unsigned Number, const GenXSubtarget *ST);
-  // eraseUnusedTree : erase unused tree of instructions, and remove from GenXLiveness
+  // eraseUnusedTree : erase unused tree of instructions, and remove from
+  // GenXLiveness
   void eraseUnusedTree(Instruction *Inst);
   // setArgAddressBase : set the base value of an argument indirect address
   void setArgAddressBase(Value *Addr, Value *Base);

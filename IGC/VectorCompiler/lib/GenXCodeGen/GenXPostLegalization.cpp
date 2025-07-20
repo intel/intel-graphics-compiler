@@ -61,9 +61,10 @@ class GenXPostLegalization : public FunctionPass {
   const DataLayout *DL = nullptr;
   const GenXSubtarget *ST = nullptr;
   const DominatorTree *DT = nullptr;
+
 public:
   static char ID;
-  explicit GenXPostLegalization() : FunctionPass(ID) { }
+  explicit GenXPostLegalization() : FunctionPass(ID) {}
   StringRef getPassName() const override {
     return "GenX post-legalization pass";
   }
@@ -71,11 +72,12 @@ public:
   bool runOnFunction(Function &F) override;
 };
 
-} // end namespace llvm
-
+} // namespace
 
 char GenXPostLegalization::ID = 0;
-namespace llvm { void initializeGenXPostLegalizationPass(PassRegistry &); }
+namespace llvm {
+void initializeGenXPostLegalizationPass(PassRegistry &);
+}
 INITIALIZE_PASS_BEGIN(GenXPostLegalization, "GenXPostLegalization",
                       "GenXPostLegalization", false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass);
@@ -97,8 +99,7 @@ void GenXPostLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
 /***********************************************************************
  * GenXPostLegalization::runOnFunction : process one function
  */
-bool GenXPostLegalization::runOnFunction(Function &F)
-{
+bool GenXPostLegalization::runOnFunction(Function &F) {
   DL = &F.getParent()->getDataLayout();
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
@@ -112,7 +113,8 @@ bool GenXPostLegalization::runOnFunction(Function &F)
 
   for (Function::iterator fi = F.begin(), fe = F.end(); fi != fe; ++fi) {
     BasicBlock *BB = &*fi;
-    for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be; ++bi) {
+    for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be;
+         ++bi) {
       Instruction *Inst = &*bi;
       switch (vc::getAnyIntrinsicID(Inst)) {
       default:

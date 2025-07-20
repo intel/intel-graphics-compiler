@@ -13,47 +13,40 @@ SPDX-License-Identifier: MIT
 
 namespace CIF {
 
-inline void AbortImpl(){
+inline void AbortImpl() {
 #if defined(NDEBUG)
-    throw std::runtime_error("Internal Error.");
+  throw std::runtime_error("Internal Error.");
 #else
-    std::abort();
+  std::abort();
 #endif
 }
 
-template<typename T = void>
-inline T Abort();
+template <typename T = void> inline T Abort();
 
-template<typename T>
-inline T Abort(){
-    AbortImpl();
-    T t{};
-    return t;
+template <typename T> inline T Abort() {
+  AbortImpl();
+  T t{};
+  return t;
 }
 
-template<>
-inline void Abort() {
-    AbortImpl();
+template <> inline void Abort() { AbortImpl(); }
+
+namespace Sanity {
+
+template <typename T> inline T *NotNullOrAbort(T *ptr) {
+  if (ptr == nullptr) {
+    Abort();
+  }
+  return ptr;
 }
 
-namespace Sanity{
-
-template<typename T>
-inline T *NotNullOrAbort(T *ptr){
-    if(ptr == nullptr){
-        Abort();
-    }
-    return ptr;
+template <typename T> inline T &ToReferenceOrAbort(T *ptr) {
+  if (ptr == nullptr) {
+    Abort();
+  }
+  return *ptr;
 }
 
-template<typename T>
-inline T &ToReferenceOrAbort(T *ptr){
-    if(ptr == nullptr){
-        Abort();
-    }
-    return *ptr;
-}
+} // namespace Sanity
 
-}
-
-}
+} // namespace CIF

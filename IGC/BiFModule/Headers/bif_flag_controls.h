@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-
 #ifndef __BIF_FLAG_CONTROL_H__
 #define __BIF_FLAG_CONTROL_H__
 

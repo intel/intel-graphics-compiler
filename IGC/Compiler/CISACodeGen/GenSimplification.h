@@ -16,8 +16,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC {
-    llvm::FunctionPass* createGenSimplificationPass();
-    void initializeGenSimplificationPass(llvm::PassRegistry&);
+llvm::FunctionPass *createGenSimplificationPass();
+void initializeGenSimplificationPass(llvm::PassRegistry &);
 } // End namespace IGC
 
 #endif // _CISA_GENSIMPLIFICATION_H_

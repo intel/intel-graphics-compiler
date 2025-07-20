@@ -25,8 +25,8 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace genx;
 
-using GenXIntrinsic::GenXRegion::OldValueOperandNum;
 using GenXIntrinsic::GenXRegion::NewValueOperandNum;
+using GenXIntrinsic::GenXRegion::OldValueOperandNum;
 using GenXIntrinsic::GenXRegion::PredicateOperandNum;
 
 static cl::opt<bool>
@@ -356,7 +356,8 @@ void GenXLiveElements::processFunction(const Function &F) {
     auto Inst = Worklist.pop_back_val();
     IGC_ASSERT(LiveMap.count(Inst));
     const auto &InstLiveElems = LiveMap.lookup(Inst);
-    LLVM_DEBUG(dbgs() << "Visiting:\n" << *Inst << " " << InstLiveElems << "\n");
+    LLVM_DEBUG(dbgs() << "Visiting:\n"
+                      << *Inst << " " << InstLiveElems << "\n");
     // Estimate each operand
     for (auto &Op : Inst->operands()) {
       if (!isa<Instruction>(Op) && !isa<Argument>(Op))

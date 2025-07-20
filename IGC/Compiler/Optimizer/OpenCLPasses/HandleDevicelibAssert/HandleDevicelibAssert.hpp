@@ -24,14 +24,11 @@ public:
   HandleDevicelibAssert();
   ~HandleDevicelibAssert() {}
 
-  virtual llvm::StringRef getPassName() const override {
-    return "HandleDevicelibAssert";
-  }
+  virtual llvm::StringRef getPassName() const override { return "HandleDevicelibAssert"; }
 
   virtual bool runOnModule(llvm::Module &M) override;
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-  }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {}
 };
 
 } // namespace IGC

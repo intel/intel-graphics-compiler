@@ -22,14 +22,14 @@ SPDX-License-Identifier: MIT
 ///
 /// 3. implicit OCL/L0 args set up, e.g. private base, byval arg linearization.
 ///
-/// The r0 implicit args are represented in LLVM IR by special intrinsics, and the
-/// GenX backend generates these to special reserved vISA registers.
+/// The r0 implicit args are represented in LLVM IR by special intrinsics, and
+/// the GenX backend generates these to special reserved vISA registers.
 ///
-/// For the CM runtime implicit args in (2) above, in vISA 3.2 and earlier, these were also
-/// represented by LLVM special intrinsics and vISA special reserved vISA registers.
-/// Because they are specific to the CM runtime, and not any other user of vISA,
-/// vISA 3.3 has removed them, and instead they are handled much like other kernel
-/// args in the input table.
+/// For the CM runtime implicit args in (2) above, in vISA 3.2 and earlier,
+/// these were also represented by LLVM special intrinsics and vISA special
+/// reserved vISA registers. Because they are specific to the CM runtime, and
+/// not any other user of vISA, vISA 3.3 has removed them, and instead they are
+/// handled much like other kernel args in the input table.
 ///
 /// The *kind* byte in the input table has two fields:
 ///
@@ -40,17 +40,20 @@ SPDX-License-Identifier: MIT
 ///   protocol agreed between the CM compiler (in fact this pass) and the CM
 ///   runtime.
 ///
-/// Within the CM compiler, the vISA input table for a kernel is represented by an
-/// array of kind bytes, each one corresponding to an argument of the kernel function.
+/// Within the CM compiler, the vISA input table for a kernel is represented by
+/// an array of kind bytes, each one corresponding to an argument of the kernel
+/// function.
 ///
-/// Clang codegen still generates special intrinsics for these CM runtime implicit
-/// args. It is the job of this CMImpParam pass to transform those intrinsics:
+/// Clang codegen still generates special intrinsics for these CM runtime
+/// implicit args. It is the job of this CMImpParam pass to transform those
+/// intrinsics:
 ///
 /// * where the intrinsic for a CM runtime implicit arg is used somewhere:
 ///
 ///   - a global variable is created for it;
 ///
-///   - for any kernel that uses the implicit arg (or can reach a subroutine that
+///   - for any kernel that uses the implicit arg (or can reach a subroutine
+///   that
 ///     uses it), the implicit arg is added to the input table in the kernel
 ///     metadata and as an extra arg to the definition of the kernel itself,
 ///     and its value is stored into the global variable;
@@ -62,7 +65,8 @@ SPDX-License-Identifier: MIT
 ///
 ///   - kernels that require implicit args buffer being allocated are marked;
 ///
-/// * each use of the intrinsic for a CM runtime implicit arg is transformed into
+/// * each use of the intrinsic for a CM runtime implicit arg is transformed
+/// into
 ///   a load of the corresponding global variable.
 ///
 /// Like any other global variable, the subsequent CMABI pass turns the global
@@ -283,28 +287,39 @@ private:
     default:
       return KernelMetadata::AK_NORMAL;
     case InternalIntrinsic::assert_buffer:
-      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_OCL_ASSERT_BUFFER;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) |
+             KernelMetadata::IMP_OCL_ASSERT_BUFFER;
     case vc::InternalIntrinsic::print_buffer:
-      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_OCL_PRINTF_BUFFER;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) |
+             KernelMetadata::IMP_OCL_PRINTF_BUFFER;
     case InternalIntrinsic::sync_buffer:
-      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_OCL_SYNC_BUFFER;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) |
+             KernelMetadata::IMP_OCL_SYNC_BUFFER;
     case GenXIntrinsic::genx_local_size:
-      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_LOCAL_SIZE;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) |
+             KernelMetadata::IMP_LOCAL_SIZE;
     case GenXIntrinsic::genx_local_id:
     case GenXIntrinsic::genx_local_id16:
-      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_LOCAL_ID;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) |
+             KernelMetadata::IMP_LOCAL_ID;
     case GenXIntrinsic::genx_group_count:
-      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_GROUP_COUNT;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) |
+             KernelMetadata::IMP_GROUP_COUNT;
     case GenXIntrinsic::genx_get_scoreboard_deltas:
-      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_SB_DELTAS;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) |
+             KernelMetadata::IMP_SB_DELTAS;
     case GenXIntrinsic::genx_get_scoreboard_bti:
-      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_SURFACE) | KernelMetadata::IMP_SB_BTI;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_SURFACE) |
+             KernelMetadata::IMP_SB_BTI;
     case GenXIntrinsic::genx_get_scoreboard_depcnt:
-      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_SURFACE) | KernelMetadata::IMP_SB_DEPCNT;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_SURFACE) |
+             KernelMetadata::IMP_SB_DEPCNT;
     case PseudoIntrinsic::PrivateBase:
-      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_OCL_PRIVATE_BASE;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) |
+             KernelMetadata::IMP_OCL_PRIVATE_BASE;
     case PseudoIntrinsic::ImplicitArgsBuffer:
-      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) | KernelMetadata::IMP_IMPL_ARGS_BUFFER;
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) |
+             KernelMetadata::IMP_IMPL_ARGS_BUFFER;
     }
     return KernelMetadata::AK_NORMAL;
   }
@@ -313,10 +328,10 @@ private:
     if (GlobalsMap.count(IID))
       return GlobalsMap[IID];
 
-    Type * Ty = getIntrinRetType(F->getContext(), IID);
+    Type *Ty = getIntrinRetType(F->getContext(), IID);
     IGC_ASSERT(Ty);
 
-    auto IntrinsicName = vc::getAnyName(IID, ArrayRef<Type*>());
+    auto IntrinsicName = vc::getAnyName(IID, ArrayRef<Type *>());
     GlobalVariable *NewVar = new GlobalVariable(
         *F->getParent(), Ty, false, GlobalVariable::InternalLinkage,
         UndefValue::get(Ty), "__imparg_" + IntrinsicName);
@@ -340,10 +355,11 @@ private:
     auto *DGVType = DBuilder.translateTypeToDIType(*Var.getValueType());
     if (!DGVType) {
       LLVM_DEBUG(dbgs() << "ERROR: could not create debug info for implict var:"
-                 << Var << "\n");
+                        << Var << "\n");
       return;
     }
-    auto *GVE = DBuilder.createGlobalVariableExpression(DiName, DiName, DGVType);
+    auto *GVE =
+        DBuilder.createGlobalVariableExpression(DiName, DiName, DGVType);
     Var.addDebugInfo(GVE);
   }
 
@@ -900,8 +916,7 @@ ArgLinearization CMImpParam::GenerateArgsLinearizationInfo(Function &F) {
       continue;
 
     IGC_ASSERT(isa<PointerType>(Arg.getType()));
-    auto *STy =
-        cast<StructType>(F.getParamByValType(Arg.getArgNo()));
+    auto *STy = cast<StructType>(F.getParamByValType(Arg.getArgNo()));
     Lin[&Arg] = LinearizeAggregateType(STy);
   }
   return Lin;
@@ -977,7 +992,8 @@ void CMImpParam::ConvertToOCLPayload(Module &M) {
       auto UInst = dyn_cast<Instruction>(*UI++);
       if (UInst) {
         IRBuilder<> Builder(UInst);
-        Value *Val = Builder.CreateCall(LID16, llvm::ArrayRef<Value *>(), UInst->getName() + ".i16");
+        Value *Val = Builder.CreateCall(LID16, llvm::ArrayRef<Value *>(),
+                                        UInst->getName() + ".i16");
         Val = Builder.CreateZExt(Val, Ty32);
         Val->takeName(UInst);
         UInst->replaceAllUsesWith(Val);
@@ -1049,7 +1065,7 @@ template <bool IsEntry> void CallGraphTraverser::visitFunction(Function &F) {
 
 static std::string getImplicitArgName(unsigned IID) {
   if (!isPseudoIntrinsic(IID))
-    return "impl.arg." + vc::getAnyName(IID, llvm::ArrayRef<Type*>());
+    return "impl.arg." + vc::getAnyName(IID, llvm::ArrayRef<Type *>());
   switch (IID) {
   case PseudoIntrinsic::ImplicitArgsBuffer:
     return "impl.arg.impl.args.buffer";
@@ -1104,7 +1120,7 @@ CMImpParam::processKernelParameters(Function *F,
 
   FunctionType *NFTy = FunctionType::get(F->getReturnType(), ArgTys, false);
   IGC_ASSERT_MESSAGE((NFTy != F->getFunctionType()),
-    "type out of sync, expect bool arguments)");
+                     "type out of sync, expect bool arguments)");
 
   // Add any function attributes
   AttrBuilder B(Context, PAL.getFnAttrs());
@@ -1169,7 +1185,8 @@ CMImpParam::processKernelParameters(Function *F,
     for (const auto &LinTy : ArgLin.second) {
       I2->setName("__arg_lin_" + ExplicitArg->getName() + "." +
                   std::to_string(LinTy.Offset));
-      ImpKinds.push_back(static_cast<vc::KernelMetadata::ImpValue>(vc::KernelMetadata::AK_NORMAL) |
+      ImpKinds.push_back(static_cast<vc::KernelMetadata::ImpValue>(
+                             vc::KernelMetadata::AK_NORMAL) |
                          vc::KernelMetadata::IMP_OCL_LINEARIZATION);
       auto &Ctx = F->getContext();
       auto *I32Ty = Type::getInt32Ty(Ctx);
@@ -1194,7 +1211,8 @@ CMImpParam::processKernelParameters(Function *F,
   // Update arg kinds for the NF.
   for (unsigned i = 0; i < KM.getNumArgs(); ++i) {
     if (LinearizedArgs.count(IGCLLVM::getArg(*NF, i)))
-      ArgKinds.push_back(static_cast<vc::KernelMetadata::ImpValue>(vc::KernelMetadata::AK_NORMAL) |
+      ArgKinds.push_back(static_cast<vc::KernelMetadata::ImpValue>(
+                             vc::KernelMetadata::AK_NORMAL) |
                          vc::KernelMetadata::IMP_OCL_BYVALSVM);
     else
       ArgKinds.push_back(KM.getArgKind(i));

@@ -304,10 +304,9 @@ bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
 
   bool Detected = false;
   for (const auto &U : LI->users()) {
-    Detected |= CheckUserInst(
-        CheckGVClobbOpt_ChkWithBales
-            ? Baling->getBaleHead(cast<Instruction>(U))
-            : cast<Instruction>(U));
+    Detected |= CheckUserInst(CheckGVClobbOpt_ChkWithBales
+                                  ? Baling->getBaleHead(cast<Instruction>(U))
+                                  : cast<Instruction>(U));
   }
 
   return Detected;

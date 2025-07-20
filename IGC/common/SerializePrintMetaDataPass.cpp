@@ -27,8 +27,7 @@ IGC_INITIALIZE_PASS_END(SerializePrintMetaDataPass, PASS_FLAG, PASS_DESCRIPTION,
 
 char SerializePrintMetaDataPass::ID = 0;
 
-SerializePrintMetaDataPass::SerializePrintMetaDataPass(llvm::raw_ostream *Stream)
-    : Stream(Stream), ModulePass(ID) {
+SerializePrintMetaDataPass::SerializePrintMetaDataPass(llvm::raw_ostream *Stream) : Stream(Stream), ModulePass(ID) {
   initializeSerializePrintMetaDataPassPass(*PassRegistry::getPassRegistry());
 }
 
@@ -36,9 +35,9 @@ bool SerializePrintMetaDataPass::runOnModule(llvm::Module &M) {
   bool Changed = false;
 
   if (auto *MDUW = getAnalysisIfAvailable<MetaDataUtilsWrapper>()) {
-    IGCMD::MetaDataUtils* MDUtils = MDUW->getMetaDataUtils();
+    IGCMD::MetaDataUtils *MDUtils = MDUW->getMetaDataUtils();
     MDUtils->save(M.getContext());
-    ModuleMetaData* const ModuleMD = MDUW->getModuleMetaData();
+    ModuleMetaData *const ModuleMD = MDUW->getModuleMetaData();
     serialize(*ModuleMD, &M);
     Changed = true;
   }
@@ -68,8 +67,7 @@ void SerializePrintMetaDataPass::PrintAllMD(llvm::Module *pM) {
 }
 
 void SerializePrintMetaDataPass::PrintNamedMD(llvm::Module *M) {
-  for (auto md_i = M->named_metadata_begin(); md_i != M->named_metadata_end();
-       ++md_i) {
+  for (auto md_i = M->named_metadata_begin(); md_i != M->named_metadata_end(); ++md_i) {
     auto Node = &*md_i;
 
     if (Node) {
@@ -81,8 +79,7 @@ void SerializePrintMetaDataPass::PrintNamedMD(llvm::Module *M) {
 }
 
 void SerializePrintMetaDataPass::CollectModuleMD(llvm::Module *M) {
-  for (auto md_i = M->named_metadata_begin(); md_i != M->named_metadata_end();
-       ++md_i) {
+  for (auto md_i = M->named_metadata_begin(); md_i != M->named_metadata_end(); ++md_i) {
     auto Node = &*md_i;
 
     if (Node) {
@@ -92,8 +89,7 @@ void SerializePrintMetaDataPass::CollectModuleMD(llvm::Module *M) {
     }
   }
 
-  for (auto global_i = M->global_begin(); global_i != M->global_end();
-       ++global_i) {
+  for (auto global_i = M->global_begin(); global_i != M->global_end(); ++global_i) {
     CollectValueMD(&*global_i);
   }
 }
@@ -121,8 +117,7 @@ void SerializePrintMetaDataPass::CollectValueMD(llvm::Value *Val) {
         if (auto callFunc = callInstr->getCalledFunction()) {
           if (callFunc->getName().startswith("llvm.")) {
             for (unsigned i = 0; i < instr->getNumOperands(); ++i) {
-              if (auto valAsMD = llvm::dyn_cast<llvm::MetadataAsValue>(
-                      instr->getOperand(i))) {
+              if (auto valAsMD = llvm::dyn_cast<llvm::MetadataAsValue>(instr->getOperand(i))) {
                 CollectInsideMD(valAsMD->getMetadata());
               }
             }

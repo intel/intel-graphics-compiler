@@ -16,10 +16,9 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-    void initializeKernelFunctionCloningPass(llvm::PassRegistry&);
-    llvm::ModulePass* createKernelFunctionCloningPass();
+void initializeKernelFunctionCloningPass(llvm::PassRegistry &);
+llvm::ModulePass *createKernelFunctionCloningPass();
 
-} // End IGC namespace
+} // namespace IGC
 
 #endif // _OPENCL_KERNELFUNCTIONCLONING_H_
-

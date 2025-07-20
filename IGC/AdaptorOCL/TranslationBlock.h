@@ -13,40 +13,39 @@ SPDX-License-Identifier: MIT
 #include "CommonMacros.h"
 
 #if defined(_WIN32)
-    // INSIDE_PLUGIN must be defined in the pre-processor definitions of the
-    // CTranslationBlock DLL project
-    #define TRANSLATION_BLOCK_CALLING_CONV __cdecl
-    #ifndef TRANSLATION_BLOCK_API
-        #ifdef INSIDE_PLUGIN
-            #define TRANSLATION_BLOCK_API __declspec(dllexport)
-        #else
-            #define TRANSLATION_BLOCK_API __declspec(dllimport)
-        #endif
-    #endif
+// INSIDE_PLUGIN must be defined in the pre-processor definitions of the
+// CTranslationBlock DLL project
+#define TRANSLATION_BLOCK_CALLING_CONV __cdecl
+#ifndef TRANSLATION_BLOCK_API
+#ifdef INSIDE_PLUGIN
+#define TRANSLATION_BLOCK_API __declspec(dllexport)
+#else
+#define TRANSLATION_BLOCK_API __declspec(dllimport)
+#endif
+#endif
 #else
 #define TRANSLATION_BLOCK_CALLING_CONV
-    #ifndef TRANSLATION_BLOCK_API
-        #define TRANSLATION_BLOCK_API __attribute__((visibility("default")))
-    #endif
+#ifndef TRANSLATION_BLOCK_API
+#define TRANSLATION_BLOCK_API __attribute__((visibility("default")))
+#endif
 #endif
 
-namespace TC
-{
+namespace TC {
 static const uint32_t STB_VERSION = 1006UL;
 static const uint32_t STB_MAX_ERROR_STRING_SIZE = 1024UL;
 
 // Forward prototyping
 struct STB_RegisterArgs;
 struct STB_CreateArgs;
-class  CTranslationBlock;
+class CTranslationBlock;
 
-extern "C" TRANSLATION_BLOCK_API void TRANSLATION_BLOCK_CALLING_CONV Register(STB_RegisterArgs* pRegisterArgs);
-extern "C" TRANSLATION_BLOCK_API CTranslationBlock* TRANSLATION_BLOCK_CALLING_CONV Create(STB_CreateArgs* pCreateArgs);
-extern "C" TRANSLATION_BLOCK_API void TRANSLATION_BLOCK_CALLING_CONV Delete(CTranslationBlock* pBlock);
+extern "C" TRANSLATION_BLOCK_API void TRANSLATION_BLOCK_CALLING_CONV Register(STB_RegisterArgs *pRegisterArgs);
+extern "C" TRANSLATION_BLOCK_API CTranslationBlock *TRANSLATION_BLOCK_CALLING_CONV Create(STB_CreateArgs *pCreateArgs);
+extern "C" TRANSLATION_BLOCK_API void TRANSLATION_BLOCK_CALLING_CONV Delete(CTranslationBlock *pBlock);
 
-typedef void (TRANSLATION_BLOCK_CALLING_CONV *PFNREGISTER)(STB_RegisterArgs* pRegisterArgs);
-typedef CTranslationBlock* (TRANSLATION_BLOCK_CALLING_CONV *PFNCREATE)(STB_CreateArgs* pCreateArgs);
-typedef void (TRANSLATION_BLOCK_CALLING_CONV *PFNDELETE)(CTranslationBlock* pBlock);
+typedef void(TRANSLATION_BLOCK_CALLING_CONV *PFNREGISTER)(STB_RegisterArgs *pRegisterArgs);
+typedef CTranslationBlock *(TRANSLATION_BLOCK_CALLING_CONV *PFNCREATE)(STB_CreateArgs *pCreateArgs);
+typedef void(TRANSLATION_BLOCK_CALLING_CONV *PFNDELETE)(CTranslationBlock *pBlock);
 
 #undef TRANSLATION_BLOCK_CALLING_CONV
 
@@ -59,25 +58,24 @@ Description:
     Possible i/o formats for the translation classes
 
 \******************************************************************************/
-enum TB_DATA_FORMAT
-{
-    TB_DATA_FORMAT_UNKNOWN,
-    TB_DATA_FORMAT_OCL_TEXT,
-    TB_DATA_FORMAT_OCL_BINARY,
-    TB_DATA_FORMAT_LLVM_TEXT,
-    TB_DATA_FORMAT_LLVM_BINARY,
-    TB_DATA_FORMAT_GHAL_TEXT,
-    TB_DATA_FORMAT_GHAL_BINARY,
-    TB_DATA_FORMAT_DEVICE_TEXT,
-    TB_DATA_FORMAT_DEVICE_BINARY,
-    TB_DATA_FORMAT_LLVM_ARCHIVE,
-    TB_DATA_FORMAT_ELF,
-    TB_DATA_FORMAT_RS_LLVM_BINARY,
-    TB_DATA_FORMAT_RS_INFO,
-    TB_DATA_FORMAT_SPIR_V,
-    TB_DATA_FORMAT_COHERENT_DEVICE_BINARY,
-    TB_DATA_FORMAT_NON_COHERENT_DEVICE_BINARY,
-    NUM_TB_DATA_FORMATS
+enum TB_DATA_FORMAT {
+  TB_DATA_FORMAT_UNKNOWN,
+  TB_DATA_FORMAT_OCL_TEXT,
+  TB_DATA_FORMAT_OCL_BINARY,
+  TB_DATA_FORMAT_LLVM_TEXT,
+  TB_DATA_FORMAT_LLVM_BINARY,
+  TB_DATA_FORMAT_GHAL_TEXT,
+  TB_DATA_FORMAT_GHAL_BINARY,
+  TB_DATA_FORMAT_DEVICE_TEXT,
+  TB_DATA_FORMAT_DEVICE_BINARY,
+  TB_DATA_FORMAT_LLVM_ARCHIVE,
+  TB_DATA_FORMAT_ELF,
+  TB_DATA_FORMAT_RS_LLVM_BINARY,
+  TB_DATA_FORMAT_RS_INFO,
+  TB_DATA_FORMAT_SPIR_V,
+  TB_DATA_FORMAT_COHERENT_DEVICE_BINARY,
+  TB_DATA_FORMAT_NON_COHERENT_DEVICE_BINARY,
+  NUM_TB_DATA_FORMATS
 };
 
 /******************************************************************************\
@@ -89,15 +87,13 @@ Description:
     Structure used to describe the requested translation type
 
 \******************************************************************************/
-union STB_TranslationCode
-{
-    struct
-    {
-        TB_DATA_FORMAT Input  : 16;
-        TB_DATA_FORMAT Output : 16;
-    }Type;
+union STB_TranslationCode {
+  struct {
+    TB_DATA_FORMAT Input : 16;
+    TB_DATA_FORMAT Output : 16;
+  } Type;
 
-    uint32_t Code;
+  uint32_t Code;
 };
 
 /******************************************************************************\
@@ -109,17 +105,15 @@ Description:
     Structure used to store arguments used to pass data to the Create function
 
 \******************************************************************************/
-struct STB_CreateArgs
-{
-    //INFO keep two first fields in this order ! for version ICBE 1003 compatibility
-    STB_TranslationCode TranslationCode;
-    void*               pCreateData;
+struct STB_CreateArgs {
+  // INFO keep two first fields in this order ! for version ICBE 1003 compatibility
+  STB_TranslationCode TranslationCode;
+  void *pCreateData;
 
-    STB_CreateArgs()
-    {
-        TranslationCode.Code = 0;
-        pCreateData = NULL;
-    }
+  STB_CreateArgs() {
+    TranslationCode.Code = 0;
+    pCreateData = NULL;
+  }
 };
 
 /******************************************************************************\
@@ -138,18 +132,16 @@ Note:
     Version is contained in this header
 
 \******************************************************************************/
-struct STB_RegisterArgs
-{
-    uint32_t                 Version;
-    uint32_t                 NumTranslationCodes;
-    STB_TranslationCode*     pTranslationCodes;
+struct STB_RegisterArgs {
+  uint32_t Version;
+  uint32_t NumTranslationCodes;
+  STB_TranslationCode *pTranslationCodes;
 
-    STB_RegisterArgs()
-    {
-        Version = STB_VERSION;
-        NumTranslationCodes = 0;
-        pTranslationCodes = NULL;
-    }
+  STB_RegisterArgs() {
+    Version = STB_VERSION;
+    NumTranslationCodes = 0;
+    pTranslationCodes = NULL;
+  }
 };
 
 /******************************************************************************\
@@ -161,48 +153,46 @@ Description:
     Structure used to pass input variables to the translation block
 
 \******************************************************************************/
-struct STB_TranslateInputArgs
-{
-    char*           pInput;               // data to be translated
-    uint32_t        InputSize;            // size of data to be translated
-    const char*     pOptions;             // list of build/compile options
-    uint32_t        OptionsSize;          // size of options list
-    const char*     pInternalOptions;     // list of build/compile options
-    uint32_t        InternalOptionsSize;  // size of options list
-    void*           pTracingOptions;      // instrumentation options
-    uint32_t        TracingOptionsCount;  // number of instrumentation options
-    void*           GTPinInput;           // input structure for GTPin requests
-    bool            CompileTimeStatisticsEnable;
-    const uint32_t* pSpecConstantsIds;    // user-defined spec constants ids
-    const uint64_t* pSpecConstantsValues; // spec constants values to be translated
-    uint32_t        SpecConstantsSize;    // number of specialization constants
-    const char**    pVISAAsmToLinkArray;  // array of additional visa assembly in text format
-                                          // that should be linked with compiled module.
-                                          // Used e.g. for "sginvoke" functionality.
-    uint32_t        NumVISAAsmsToLink;
-    const char**    pDirectCallFunctions;
-    uint32_t        NumDirectCallFunctions;
+struct STB_TranslateInputArgs {
+  char *pInput;                 // data to be translated
+  uint32_t InputSize;           // size of data to be translated
+  const char *pOptions;         // list of build/compile options
+  uint32_t OptionsSize;         // size of options list
+  const char *pInternalOptions; // list of build/compile options
+  uint32_t InternalOptionsSize; // size of options list
+  void *pTracingOptions;        // instrumentation options
+  uint32_t TracingOptionsCount; // number of instrumentation options
+  void *GTPinInput;             // input structure for GTPin requests
+  bool CompileTimeStatisticsEnable;
+  const uint32_t *pSpecConstantsIds;    // user-defined spec constants ids
+  const uint64_t *pSpecConstantsValues; // spec constants values to be translated
+  uint32_t SpecConstantsSize;           // number of specialization constants
+  const char **pVISAAsmToLinkArray;     // array of additional visa assembly in text format
+                                        // that should be linked with compiled module.
+                                        // Used e.g. for "sginvoke" functionality.
+  uint32_t NumVISAAsmsToLink;
+  const char **pDirectCallFunctions;
+  uint32_t NumDirectCallFunctions;
 
-    STB_TranslateInputArgs()
-    {
-        pInput                      = NULL;
-        InputSize                   = 0;
-        pOptions                    = NULL;
-        OptionsSize                 = 0;
-        pInternalOptions            = NULL;
-        InternalOptionsSize         = 0;
-        pTracingOptions             = NULL;
-        TracingOptionsCount         = 0;
-        GTPinInput                  = NULL;
-        CompileTimeStatisticsEnable = false;
-        pSpecConstantsIds           = NULL;
-        pSpecConstantsValues        = NULL;
-        SpecConstantsSize           = 0;
-        pVISAAsmToLinkArray         = NULL;
-        NumVISAAsmsToLink           = 0;
-        pDirectCallFunctions        = NULL;
-        NumDirectCallFunctions      = 0;
-    }
+  STB_TranslateInputArgs() {
+    pInput = NULL;
+    InputSize = 0;
+    pOptions = NULL;
+    OptionsSize = 0;
+    pInternalOptions = NULL;
+    InternalOptionsSize = 0;
+    pTracingOptions = NULL;
+    TracingOptionsCount = 0;
+    GTPinInput = NULL;
+    CompileTimeStatisticsEnable = false;
+    pSpecConstantsIds = NULL;
+    pSpecConstantsValues = NULL;
+    SpecConstantsSize = 0;
+    pVISAAsmToLinkArray = NULL;
+    NumVISAAsmsToLink = 0;
+    pDirectCallFunctions = NULL;
+    NumDirectCallFunctions = 0;
+  }
 };
 
 /******************************************************************************\
@@ -214,31 +204,28 @@ Description:
     Structure used to hold data returned from the translation block
 
 \******************************************************************************/
-struct STB_TranslateOutputArgs
-{
-    char*       pOutput;            // pointer to translated data buffer
-    uint32_t    OutputSize;         // translated data buffer size (bytes)
-    char*       pErrorString;       // string to print if translate fails
-    uint32_t    ErrorStringSize;    // size of error string
-    char*       pDebugData;         // pointer to translated debug data buffer
-    uint32_t    DebugDataSize;      // translated debug data data size (bytes)
+struct STB_TranslateOutputArgs {
+  char *pOutput;            // pointer to translated data buffer
+  uint32_t OutputSize;      // translated data buffer size (bytes)
+  char *pErrorString;       // string to print if translate fails
+  uint32_t ErrorStringSize; // size of error string
+  char *pDebugData;         // pointer to translated debug data buffer
+  uint32_t DebugDataSize;   // translated debug data data size (bytes)
 
-    STB_TranslateOutputArgs()
-    {
-        pOutput             = NULL;
-        OutputSize          = 0;
-        pErrorString        = NULL;
-        ErrorStringSize     = 0;
-        pDebugData          = NULL;
-        DebugDataSize       = 0;
-    }
+  STB_TranslateOutputArgs() {
+    pOutput = NULL;
+    OutputSize = 0;
+    pErrorString = NULL;
+    ErrorStringSize = 0;
+    pDebugData = NULL;
+    DebugDataSize = 0;
+  }
 };
 
-struct TranslationBlockVersion
-{
-    static const uint32_t VersioningIsUnsupported = (uint32_t)-1;
-    uint32_t TBVersion;   // STB_VERSION version of this translation block
-    uint32_t BuildId;     // build ID (for CI builds) of this translation block
+struct TranslationBlockVersion {
+  static const uint32_t VersioningIsUnsupported = (uint32_t)-1;
+  uint32_t TBVersion; // STB_VERSION version of this translation block
+  uint32_t BuildId;   // build ID (for CI builds) of this translation block
 };
 
 /******************************************************************************\
@@ -248,38 +235,33 @@ Class:
 Description:
     Interface used to expose required functions to translation plug-ins
 \******************************************************************************/
-class CTranslationBlock
-{
+class CTranslationBlock {
 public:
-    virtual bool Translate(
-        const STB_TranslateInputArgs* pInput,
-        STB_TranslateOutputArgs* pOutput ) = 0;
+  virtual bool Translate(const STB_TranslateInputArgs *pInput, STB_TranslateOutputArgs *pOutput) = 0;
 
-    virtual bool FreeAllocations( STB_TranslateOutputArgs* pOutput ) = 0;
+  virtual bool FreeAllocations(STB_TranslateOutputArgs *pOutput) = 0;
 
-    virtual bool GetOpcodes( void* pOpcodes, uint32_t pOpcodesSize )
-    {
-        IGC_UNUSED(pOpcodes);
-        IGC_UNUSED(pOpcodesSize);
-        return false;
-    }
-    virtual bool GetOpcodesCount( uint32_t* pOpcodesCount, uint32_t* pOpcodeSize )
-    {
-        IGC_UNUSED(pOpcodesCount);
-        IGC_UNUSED(pOpcodeSize);
-        return false;
-    }
-    virtual TranslationBlockVersion GetVersion() const {
-        TranslationBlockVersion tbv;
-        tbv.TBVersion = TC::STB_VERSION;
-        uint32_t buildId = TranslationBlockVersion::VersioningIsUnsupported;
+  virtual bool GetOpcodes(void *pOpcodes, uint32_t pOpcodesSize) {
+    IGC_UNUSED(pOpcodes);
+    IGC_UNUSED(pOpcodesSize);
+    return false;
+  }
+  virtual bool GetOpcodesCount(uint32_t *pOpcodesCount, uint32_t *pOpcodeSize) {
+    IGC_UNUSED(pOpcodesCount);
+    IGC_UNUSED(pOpcodeSize);
+    return false;
+  }
+  virtual TranslationBlockVersion GetVersion() const {
+    TranslationBlockVersion tbv;
+    tbv.TBVersion = TC::STB_VERSION;
+    uint32_t buildId = TranslationBlockVersion::VersioningIsUnsupported;
 #ifdef TB_BUILD_ID
-        buildId = TB_BUILD_ID;
+    buildId = TB_BUILD_ID;
 #endif
-        tbv.BuildId = buildId;
+    tbv.BuildId = buildId;
 
-        return tbv;
-    }
-    virtual ~CTranslationBlock() {}
+    return tbv;
+  }
+  virtual ~CTranslationBlock() {}
 };
 } // namespace TC

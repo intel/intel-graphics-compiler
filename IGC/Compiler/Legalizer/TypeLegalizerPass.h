@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/PassRegistry.h"
 #include "common/LLVMWarningsPop.hpp"
 
-void initializeTypeLegalizerPass(llvm::PassRegistry&);
-llvm::FunctionPass* createTypeLegalizerPass();
+void initializeTypeLegalizerPass(llvm::PassRegistry &);
+llvm::FunctionPass *createTypeLegalizerPass();
 
 #endif // LEGALIZER_TYPELEGALIZERPASS_H

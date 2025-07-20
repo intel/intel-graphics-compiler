@@ -8,4 +8,4 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-llvm::FunctionPass* createRemoveNonPositionOutputPass();
+llvm::FunctionPass *createRemoveNonPositionOutputPass();

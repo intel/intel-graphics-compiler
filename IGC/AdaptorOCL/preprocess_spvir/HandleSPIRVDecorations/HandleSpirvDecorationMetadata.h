@@ -20,59 +20,55 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 
-namespace IGC
-{
-    class HandleSpirvDecorationMetadata : public llvm::ModulePass, public llvm::InstVisitor<HandleSpirvDecorationMetadata>
-    {
-    public:
-        static char ID;
+namespace IGC {
+class HandleSpirvDecorationMetadata : public llvm::ModulePass, public llvm::InstVisitor<HandleSpirvDecorationMetadata> {
+public:
+  static char ID;
 
-        HandleSpirvDecorationMetadata();
-        ~HandleSpirvDecorationMetadata() {}
+  HandleSpirvDecorationMetadata();
+  ~HandleSpirvDecorationMetadata() {}
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "HandleSpirvDecorationMetadata";
-        }
+  virtual llvm::StringRef getPassName() const override { return "HandleSpirvDecorationMetadata"; }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.setPreservesCFG();
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<CodeGenContextWrapper>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-        virtual bool runOnModule(llvm::Module& F) override;
+  virtual bool runOnModule(llvm::Module &F) override;
 
-        void visitLoadInst(llvm::LoadInst& I);
-        void visitStoreInst(llvm::StoreInst& I);
-        void visitCallInst(llvm::CallInst& I);
-        void visit2DBlockReadCallInst(llvm::CallInst& I, llvm::StringRef unmangledName);
-        void visit2DBlockWriteCallInst(llvm::CallInst& I, llvm::StringRef unmangledName);
-        void visitPrefetchCallInst(llvm::CallInst& I);
-        void visit1DBlockReadCallInst(llvm::CallInst& I);
-        void visit1DBlockWriteCallInst(llvm::CallInst& I);
-        void visit1DBlockPrefetchCallInst(llvm::CallInst& I);
-        void visitOCL1DBlockPrefetchCallInst(llvm::CallInst& I, llvm::SmallVectorImpl<llvm::StringRef>& Matches);
+  void visitLoadInst(llvm::LoadInst &I);
+  void visitStoreInst(llvm::StoreInst &I);
+  void visitCallInst(llvm::CallInst &I);
+  void visit2DBlockReadCallInst(llvm::CallInst &I, llvm::StringRef unmangledName);
+  void visit2DBlockWriteCallInst(llvm::CallInst &I, llvm::StringRef unmangledName);
+  void visitPrefetchCallInst(llvm::CallInst &I);
+  void visit1DBlockReadCallInst(llvm::CallInst &I);
+  void visit1DBlockWriteCallInst(llvm::CallInst &I);
+  void visit1DBlockPrefetchCallInst(llvm::CallInst &I);
+  void visitOCL1DBlockPrefetchCallInst(llvm::CallInst &I, llvm::SmallVectorImpl<llvm::StringRef> &Matches);
 
-    private:
-        llvm::Module* m_Module = nullptr;
-        CodeGenContext* m_pCtx = nullptr;
-        ModuleMetaData* m_Metadata = nullptr;
-        bool m_changed = false;
-        llvm::DenseSet<llvm::Function*> m_BuiltinsToRemove;
+private:
+  llvm::Module *m_Module = nullptr;
+  CodeGenContext *m_pCtx = nullptr;
+  ModuleMetaData *m_Metadata = nullptr;
+  bool m_changed = false;
+  llvm::DenseSet<llvm::Function *> m_BuiltinsToRemove;
 
-        void handleInstructionsDecorations();
-        void handleGlobalVariablesDecorations();
+  void handleInstructionsDecorations();
+  void handleGlobalVariablesDecorations();
 
-        void handleHostAccessIntel(llvm::GlobalVariable& globalVariable, llvm::MDNode* node);
-        template<typename T>
-        void handleCacheControlINTEL(llvm::Instruction& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes);
-        template<typename T>
-        void handleCacheControlINTELFor2DBlockIO(llvm::CallInst& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes, llvm::StringRef unmangledName);
-        void handleCacheControlINTELForPrefetch(llvm::CallInst& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes);
-        template<typename T>
-        void handleCacheControlINTELFor1DBlockIO(llvm::CallInst& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes);
-        void handleCacheControlINTELForOCL1DBlockPrefetch(llvm::CallInst& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes, llvm::SmallVectorImpl<llvm::StringRef>& Matches);
-    };
-}
+  void handleHostAccessIntel(llvm::GlobalVariable &globalVariable, llvm::MDNode *node);
+  template <typename T>
+  void handleCacheControlINTEL(llvm::Instruction &I, llvm::SmallPtrSetImpl<llvm::MDNode *> &MDNodes);
+  template <typename T>
+  void handleCacheControlINTELFor2DBlockIO(llvm::CallInst &I, llvm::SmallPtrSetImpl<llvm::MDNode *> &MDNodes,
+                                           llvm::StringRef unmangledName);
+  void handleCacheControlINTELForPrefetch(llvm::CallInst &I, llvm::SmallPtrSetImpl<llvm::MDNode *> &MDNodes);
+  template <typename T>
+  void handleCacheControlINTELFor1DBlockIO(llvm::CallInst &I, llvm::SmallPtrSetImpl<llvm::MDNode *> &MDNodes);
+  void handleCacheControlINTELForOCL1DBlockPrefetch(llvm::CallInst &I, llvm::SmallPtrSetImpl<llvm::MDNode *> &MDNodes,
+                                                    llvm::SmallVectorImpl<llvm::StringRef> &Matches);
+};
+} // namespace IGC

@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 
 #include <memory>
 
-
 namespace vc {
 std::unique_ptr<ShaderOverrider>
 createVC_IGCShaderOverrider(ShaderHash const &Hash, PLATFORM const &Platform);

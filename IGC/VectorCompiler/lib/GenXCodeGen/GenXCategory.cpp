@@ -13,8 +13,8 @@ SPDX-License-Identifier: MIT
 /// This pass performs five functions:
 ///
 /// 1. It splits any struct phi into a phi for each element of the struct. This
-///    is done in GenXLowering, but a subsequent pass can re-insert a struct phi so
-///    this pass mops those up.
+///    is done in GenXLowering, but a subsequent pass can re-insert a struct phi
+///    so this pass mops those up.
 ///
 /// 2. It resolves each overlapping circular phi value.
 ///
@@ -41,8 +41,8 @@ SPDX-License-Identifier: MIT
 /// 4. It determines the register category and increased alignment requirement
 ///    (e.g. use as a raw operand) of each value, and stores it by creating a
 ///    LiveRange for the value and storing it there. At this stage the LiveRange
-///    does not contain any other information; GenXLiveRanges populates it further
-///    (or erases it if the value turns out to be baled in).
+///    does not contain any other information; GenXLiveRanges populates it
+///    further (or erases it if the value turns out to be baled in).
 ///
 /// 5. It inserts instructions as required to convert from one register
 ///    category to another, where a value has its def and uses not all requiring
@@ -154,268 +154,268 @@ using namespace genx;
 
 namespace {
 
-  // CategoryAndAlignment : values returned from getCategoryAndAlignment*
-  // functions
-  struct CategoryAndAlignment {
-    vc::RegCategory Cat;
-    unsigned Align;
-    CategoryAndAlignment(vc::RegCategory Cat, unsigned Align = 0)
-        : Cat(Cat), Align(Align) {}
-  };
+// CategoryAndAlignment : values returned from getCategoryAndAlignment*
+// functions
+struct CategoryAndAlignment {
+  vc::RegCategory Cat;
+  unsigned Align;
+  CategoryAndAlignment(vc::RegCategory Cat, unsigned Align = 0)
+      : Cat(Cat), Align(Align) {}
+};
 
-  class UsesCatInfo;
+class UsesCatInfo;
 
-  // GenX category pass
-  class GenXCategory : public FGPassImplInterface,
-                       public IDMixin<GenXCategory> {
-    Function *Func = nullptr;
-    vc::KernelMetadata KM;
-    GenXLiveness *Liveness = nullptr;
-    DominatorTreeGroupWrapperPass *DTs = nullptr;
-    const GenXSubtarget *Subtarget = nullptr;
-    const DataLayout *DL = nullptr;
-    SmallVector<Instruction *, 8> ToErase;
-    bool Modified = false;
-    // Vector of arguments and phi nodes that did not get a category.
-    SmallVector<Value *, 8> NoCategory;
-    bool InFGHead = false;
-    // Sometimes the pass may stuck on strongly connected components.
-    // This field indentifies such case and notifies that there's no need
-    // to wait till some other value's category is defined.
-    bool EnforceCategoryPromotion = false;
+// GenX category pass
+class GenXCategory : public FGPassImplInterface, public IDMixin<GenXCategory> {
+  Function *Func = nullptr;
+  vc::KernelMetadata KM;
+  GenXLiveness *Liveness = nullptr;
+  DominatorTreeGroupWrapperPass *DTs = nullptr;
+  const GenXSubtarget *Subtarget = nullptr;
+  const DataLayout *DL = nullptr;
+  SmallVector<Instruction *, 8> ToErase;
+  bool Modified = false;
+  // Vector of arguments and phi nodes that did not get a category.
+  SmallVector<Value *, 8> NoCategory;
+  bool InFGHead = false;
+  // Sometimes the pass may stuck on strongly connected components.
+  // This field indentifies such case and notifies that there's no need
+  // to wait till some other value's category is defined.
+  bool EnforceCategoryPromotion = false;
 
-  public:
-    explicit GenXCategory() {}
-    static StringRef getPassName() { return "GenX category conversion"; }
-    static void getAnalysisUsage(AnalysisUsage &AU);
-    bool runOnFunctionGroup(FunctionGroup &FG) override;
-    vc::RegCategory getCategoryForPhiIncomings(PHINode *Phi) const;
-    vc::RegCategory getCategoryForCallArg(Function *Callee,
-                                          unsigned ArgNo) const;
-    vc::RegCategory getCategoryForInlasmConstraintedOp(CallInst *CI,
-                                                       unsigned ArgNo,
-                                                       bool IsOutput) const;
-    CategoryAndAlignment getCategoryAndAlignmentForDef(Value *V) const;
-    CategoryAndAlignment getCategoryAndAlignmentForUse(Value::use_iterator U) const;
+public:
+  explicit GenXCategory() {}
+  static StringRef getPassName() { return "GenX category conversion"; }
+  static void getAnalysisUsage(AnalysisUsage &AU);
+  bool runOnFunctionGroup(FunctionGroup &FG) override;
+  vc::RegCategory getCategoryForPhiIncomings(PHINode *Phi) const;
+  vc::RegCategory getCategoryForCallArg(Function *Callee, unsigned ArgNo) const;
+  vc::RegCategory getCategoryForInlasmConstraintedOp(CallInst *CI,
+                                                     unsigned ArgNo,
+                                                     bool IsOutput) const;
+  CategoryAndAlignment getCategoryAndAlignmentForDef(Value *V) const;
+  CategoryAndAlignment
+  getCategoryAndAlignmentForUse(Value::use_iterator U) const;
 
-  private:
-    using ConvListT = std::array<llvm::Instruction *, vc::numRegCategories()>;
+private:
+  using ConvListT = std::array<llvm::Instruction *, vc::numRegCategories()>;
 
-    bool processFunction(Function *F);
-    bool fixCircularPhis(Function *F);
-    bool processValue(Value *V);
-    bool handleLeftover();
-    Instruction *createConversion(Value *V, vc::RegCategory Cat);
-    ConvListT buildConversions(Value *Def, CategoryAndAlignment DefInfo, const UsesCatInfo &UsesInfo);
-  };
+  bool processFunction(Function *F);
+  bool fixCircularPhis(Function *F);
+  bool processValue(Value *V);
+  bool handleLeftover();
+  Instruction *createConversion(Value *V, vc::RegCategory Cat);
+  ConvListT buildConversions(Value *Def, CategoryAndAlignment DefInfo,
+                             const UsesCatInfo &UsesInfo);
+};
 
-  // AUse : an address use of a value in processValue()
-  struct AUse {
-    Instruction *user;
-    unsigned OperandNum;
-    vc::RegCategory Cat;
-    AUse(Value::use_iterator U, vc::RegCategory Cat)
-        : user(cast<Instruction>(U->getUser())), OperandNum(U->getOperandNo()),
-          Cat(Cat) {}
-  };
+// AUse : an address use of a value in processValue()
+struct AUse {
+  Instruction *user;
+  unsigned OperandNum;
+  vc::RegCategory Cat;
+  AUse(Value::use_iterator U, vc::RegCategory Cat)
+      : user(cast<Instruction>(U->getUser())), OperandNum(U->getOperandNo()),
+        Cat(Cat) {}
+};
 
-  // almost real input iterator, minimum for range for was implemented
-  class Iterator final {
-    unsigned ShiftedMask_ = 0;
-    vc::RegCategoryIterator CurCatIt_;
+// almost real input iterator, minimum for range for was implemented
+class Iterator final {
+  unsigned ShiftedMask_ = 0;
+  vc::RegCategoryIterator CurCatIt_;
 
-  public:
-    Iterator() = default;
+public:
+  Iterator() = default;
 
-    Iterator(unsigned Mask, vc::RegCategory Cat)
-        : ShiftedMask_(Mask), CurCatIt_(Cat) {
-      validate();
-    }
+  Iterator(unsigned Mask, vc::RegCategory Cat)
+      : ShiftedMask_(Mask), CurCatIt_(Cat) {
+    validate();
+  }
 
-    vc::RegCategory operator*() const {
-      validate();
-      return *CurCatIt_;
-    }
+  vc::RegCategory operator*() const {
+    validate();
+    return *CurCatIt_;
+  }
 
-    Iterator &operator++() {
-      validate();
-      ShiftedMask_ /= 2;
-      ++CurCatIt_;
-      if (ShiftedMask_ == 0) {
-        CurCatIt_ = vc::end(vc::RegCategoryView{});
-        validate();
-        return *this;
-      }
-      for (; ShiftedMask_ % 2 == 0; ShiftedMask_ /= 2, ++CurCatIt_)
-        ;
+  Iterator &operator++() {
+    validate();
+    ShiftedMask_ /= 2;
+    ++CurCatIt_;
+    if (ShiftedMask_ == 0) {
+      CurCatIt_ = vc::end(vc::RegCategoryView{});
       validate();
       return *this;
     }
+    for (; ShiftedMask_ % 2 == 0; ShiftedMask_ /= 2, ++CurCatIt_)
+      ;
+    validate();
+    return *this;
+  }
 
-    friend bool operator==(const Iterator &lhs, const Iterator &rhs) {
-      return (lhs.ShiftedMask_ == rhs.ShiftedMask_ &&
-              lhs.CurCatIt_ == rhs.CurCatIt_);
+  friend bool operator==(const Iterator &lhs, const Iterator &rhs) {
+    return (lhs.ShiftedMask_ == rhs.ShiftedMask_ &&
+            lhs.CurCatIt_ == rhs.CurCatIt_);
+  }
+
+  friend bool operator!=(const Iterator &lhs, const Iterator &rhs) {
+    return !(lhs == rhs);
+  }
+
+private:
+  void validate() const {
+    IGC_ASSERT_MESSAGE(
+        (ShiftedMask_ % 2 == 1 || CurCatIt_ == vc::end(vc::RegCategoryView{})),
+        "invalid state");
+  }
+};
+
+// Implements only begin() and end()
+// to iterate over categories of uses.
+class Categories final {
+  unsigned Mask_;
+
+public:
+  explicit Categories(unsigned Mask) : Mask_(Mask) {}
+
+  Iterator begin() const {
+    // we have no category
+    if (!Mask_)
+      return end();
+    // we have NONE category
+    if (Mask_ % 2 == 1)
+      return Iterator(Mask_, vc::RegCategory::None);
+    // we adding NONE category
+    Iterator FalseBegin(Mask_ + 1, vc::RegCategory::None);
+    // and now we get the real first category
+    return ++FalseBegin;
+  }
+
+  Iterator end() const { return {}; }
+};
+
+// Encapsulates Category'n'Alignment analysis of value uses.
+class UsesCatInfo final {
+  using UsesT = llvm::SmallVector<AUse, 8>;
+  UsesT Uses_;
+  unsigned Mask_;
+  unsigned MaxAlign_;
+  vc::RegCategory MostUsedCat_;
+
+public:
+  UsesCatInfo()
+      : Uses_(), Mask_(0), MaxAlign_(0), MostUsedCat_(vc::RegCategory::None) {}
+
+  UsesCatInfo(const GenXCategory &PassInfo, Value *V) : UsesCatInfo() {
+    std::array<int, vc::numRegCategories()> Stat = {0};
+    for (auto ui = V->use_begin(), ue = V->use_end(); ui != ue; ++ui) {
+      auto CatAlign = PassInfo.getCategoryAndAlignmentForUse(ui);
+      MaxAlign_ = std::max(MaxAlign_, CatAlign.Align);
+      Uses_.push_back(AUse(ui, CatAlign.Cat));
+      Mask_ |= 1 << static_cast<unsigned>(CatAlign.Cat);
+      if (CatAlign.Cat != vc::RegCategory::None)
+        ++vc::accessContainer(Stat, CatAlign.Cat);
     }
+    auto MaxInStatIt = std::max_element(Stat.begin(), Stat.end());
+    MostUsedCat_ = static_cast<vc::RegCategory>(MaxInStatIt - Stat.begin());
+  }
 
-    friend bool operator!=(const Iterator &lhs, const Iterator &rhs) {
-      return !(lhs == rhs);
-    }
+  bool empty() const { return !Mask_; }
 
-  private:
-    void validate() const {
-      IGC_ASSERT_MESSAGE((ShiftedMask_ % 2 == 1 ||
-                          CurCatIt_ == vc::end(vc::RegCategoryView{})),
-                         "invalid state");
-    }
-  };
+  bool allHaveCat(vc::RegCategory cat) const {
+    return !(Mask_ & ~(1 << static_cast<unsigned>(cat)));
+  }
 
-  // Implements only begin() and end()
-  // to iterate over categories of uses.
-  class Categories final {
-    unsigned Mask_;
+  const UsesT &getUses() const { return Uses_; }
 
-  public:
-    explicit Categories(unsigned Mask) : Mask_(Mask) {}
+  unsigned getMaxAlign() const { return MaxAlign_; }
 
-    Iterator begin() const {
-      // we have no category
-      if (!Mask_)
-        return end();
-      // we have NONE category
-      if (Mask_ % 2 == 1)
-        return Iterator(Mask_, vc::RegCategory::None);
-      // we adding NONE category
-      Iterator FalseBegin(Mask_ + 1, vc::RegCategory::None);
-      // and now we get the real first category
-      return ++FalseBegin;
-    }
-
-    Iterator end() const { return {}; }
-  };
-
-  // Encapsulates Category'n'Alignment analysis of value uses.
-  class UsesCatInfo final {
-    using UsesT = llvm::SmallVector<AUse, 8>;
-    UsesT Uses_;
-    unsigned Mask_;
-    unsigned MaxAlign_;
-    vc::RegCategory MostUsedCat_;
-
-  public:
-    UsesCatInfo()
-        : Uses_(), Mask_(0), MaxAlign_(0), MostUsedCat_(vc::RegCategory::None) {
-    }
-
-    UsesCatInfo(const GenXCategory &PassInfo, Value *V) : UsesCatInfo() {
-      std::array<int, vc::numRegCategories()> Stat = {0};
-      for (auto ui = V->use_begin(), ue = V->use_end(); ui != ue; ++ui) {
-        auto CatAlign = PassInfo.getCategoryAndAlignmentForUse(ui);
-        MaxAlign_ = std::max(MaxAlign_, CatAlign.Align);
-        Uses_.push_back(AUse(ui, CatAlign.Cat));
-        Mask_ |= 1 << static_cast<unsigned>(CatAlign.Cat);
-        if (CatAlign.Cat != vc::RegCategory::None)
-          ++vc::accessContainer(Stat, CatAlign.Cat);
-      }
-      auto MaxInStatIt = std::max_element(Stat.begin(), Stat.end());
-      MostUsedCat_ = static_cast<vc::RegCategory>(MaxInStatIt - Stat.begin());
-    }
-
-    bool empty() const { return !Mask_; }
-
-    bool allHaveCat(vc::RegCategory cat) const {
-      return !(Mask_ & ~(1 << static_cast<unsigned>(cat)));
-    }
-
-    const UsesT &getUses() const { return Uses_; }
-
-    unsigned getMaxAlign() const { return MaxAlign_; }
-
-    // When there's no real category uses (real is anything but NONE)
-    // behavior is undefined.
-    vc::RegCategory getMostUsedCat() const {
-      IGC_ASSERT_MESSAGE(!empty(),
+  // When there's no real category uses (real is anything but NONE)
+  // behavior is undefined.
+  vc::RegCategory getMostUsedCat() const {
+    IGC_ASSERT_MESSAGE(
+        !empty(),
         "works only for cases when there are uses with real categories");
-      IGC_ASSERT_MESSAGE(
-          !allHaveCat(vc::RegCategory::None),
-          "works only for cases when there are uses with real categories");
-      return MostUsedCat_;
-    }
+    IGC_ASSERT_MESSAGE(
+        !allHaveCat(vc::RegCategory::None),
+        "works only for cases when there are uses with real categories");
+    return MostUsedCat_;
+  }
 
-    // meant to be used in range for
-    Categories getCategories() const { return Categories(Mask_); }
-  };
+  // meant to be used in range for
+  Categories getCategories() const { return Categories(Mask_); }
+};
 
-  void placeConvAfterDef(Function *Func, Instruction *Conv, Value *Def) {
-    if (Instruction *Inst = dyn_cast<Instruction>(Def)) {
-      if (isa<PHINode>(Inst)) {
-        // Original value is a PHI. Inserting conversion right after it can
-        // produce incorrect IR in case of several PHI nodes since they must be
-        // grouped at top of basic block. So insert the conversion after all PHI
-        // nodes.
-        auto *FirstNonPhiInst = Inst->getParent()->getFirstNonPHI();
-        Conv->insertBefore(FirstNonPhiInst);
-        Conv->setDebugLoc(Inst->getDebugLoc());
-        return;
-      }
-      // Original value is an instruction. Insert just after it.
-      Conv->insertAfter(Inst);
+void placeConvAfterDef(Function *Func, Instruction *Conv, Value *Def) {
+  if (Instruction *Inst = dyn_cast<Instruction>(Def)) {
+    if (isa<PHINode>(Inst)) {
+      // Original value is a PHI. Inserting conversion right after it can
+      // produce incorrect IR in case of several PHI nodes since they must be
+      // grouped at top of basic block. So insert the conversion after all PHI
+      // nodes.
+      auto *FirstNonPhiInst = Inst->getParent()->getFirstNonPHI();
+      Conv->insertBefore(FirstNonPhiInst);
       Conv->setDebugLoc(Inst->getDebugLoc());
-    } else {
-      IGC_ASSERT_MESSAGE(isa<Argument>(Def), "must be an argument if not an instruction");
-      // Original value is a function argument. Insert at the start of the
-      // function.
-      Conv->insertBefore(&*Func->begin()->begin());
+      return;
     }
+    // Original value is an instruction. Insert just after it.
+    Conv->insertAfter(Inst);
+    Conv->setDebugLoc(Inst->getDebugLoc());
+  } else {
+    IGC_ASSERT_MESSAGE(isa<Argument>(Def),
+                       "must be an argument if not an instruction");
+    // Original value is a function argument. Insert at the start of the
+    // function.
+    Conv->insertBefore(&*Func->begin()->begin());
   }
+}
 
-  void placeConvBeforeUse(Instruction *Conv, Instruction *Use,
-                          unsigned UseOperand) {
-    if (auto PhiUse = dyn_cast<PHINode>(Use)) {
-      // Use is in a phi node. Insert before terminator in corresponding
-      // incoming block.
-      Conv->insertBefore(PhiUse->getIncomingBlock(UseOperand)->getTerminator());
-    } else {
-      // Insert just before use.
-      Conv->insertBefore(Use);
-      Conv->setDebugLoc(Use->getDebugLoc());
-    }
+void placeConvBeforeUse(Instruction *Conv, Instruction *Use,
+                        unsigned UseOperand) {
+  if (auto PhiUse = dyn_cast<PHINode>(Use)) {
+    // Use is in a phi node. Insert before terminator in corresponding
+    // incoming block.
+    Conv->insertBefore(PhiUse->getIncomingBlock(UseOperand)->getTerminator());
+  } else {
+    // Insert just before use.
+    Conv->insertBefore(Use);
+    Conv->setDebugLoc(Use->getDebugLoc());
   }
+}
 
-  } // end anonymous namespace
+} // end anonymous namespace
 
-  namespace llvm {
-  void initializeGenXCategoryWrapperPass(PassRegistry &);
-  using GenXCategoryWrapper = FunctionGroupWrapperPass<GenXCategory>;
-  } // namespace llvm
-  INITIALIZE_PASS_BEGIN(GenXCategoryWrapper, "GenXCategoryWrapper",
-                        "GenXCategoryWrapper", false, false)
-  INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
-  INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
-  INITIALIZE_PASS_END(GenXCategoryWrapper, "GenXCategoryWrapper",
+namespace llvm {
+void initializeGenXCategoryWrapperPass(PassRegistry &);
+using GenXCategoryWrapper = FunctionGroupWrapperPass<GenXCategory>;
+} // namespace llvm
+INITIALIZE_PASS_BEGIN(GenXCategoryWrapper, "GenXCategoryWrapper",
                       "GenXCategoryWrapper", false, false)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
+INITIALIZE_PASS_END(GenXCategoryWrapper, "GenXCategoryWrapper",
+                    "GenXCategoryWrapper", false, false)
 
-  ModulePass *llvm::createGenXCategoryWrapperPass() {
-    initializeGenXCategoryWrapperPass(*PassRegistry::getPassRegistry());
-    return new GenXCategoryWrapper();
-  }
+ModulePass *llvm::createGenXCategoryWrapperPass() {
+  initializeGenXCategoryWrapperPass(*PassRegistry::getPassRegistry());
+  return new GenXCategoryWrapper();
+}
 
-  void GenXCategory::getAnalysisUsage(AnalysisUsage &AU) {
-    AU.addRequired<DominatorTreeGroupWrapperPass>();
-    AU.addRequired<GenXLiveness>();
-    AU.addRequired<TargetPassConfig>();
-    AU.addPreserved<GenXModule>();
-    AU.addPreserved<GenXLiveness>();
-    AU.addPreserved<FunctionGroupAnalysis>();
-    AU.addPreserved<DominatorTreeGroupWrapperPass>();
-    AU.setPreservesCFG();
-  }
+void GenXCategory::getAnalysisUsage(AnalysisUsage &AU) {
+  AU.addRequired<DominatorTreeGroupWrapperPass>();
+  AU.addRequired<GenXLiveness>();
+  AU.addRequired<TargetPassConfig>();
+  AU.addPreserved<GenXModule>();
+  AU.addPreserved<GenXLiveness>();
+  AU.addPreserved<FunctionGroupAnalysis>();
+  AU.addPreserved<DominatorTreeGroupWrapperPass>();
+  AU.setPreservesCFG();
+}
 
 /***********************************************************************
  * runOnFunctionGroup : run the category conversion pass for
  *      this FunctionGroup
  */
-bool GenXCategory::runOnFunctionGroup(FunctionGroup &FG)
-{
+bool GenXCategory::runOnFunctionGroup(FunctionGroup &FG) {
   KM = vc::KernelMetadata{FG.getHead()};
   DTs = &getAnalysis<DominatorTreeGroupWrapperPass>();
   Liveness = &getAnalysis<GenXLiveness>();
@@ -428,9 +428,10 @@ bool GenXCategory::runOnFunctionGroup(FunctionGroup &FG)
   if (KM.isKernel()) {
     // Get the offset of each kernel arg.
     for (auto ai = FG.getHead()->arg_begin(), ae = FG.getHead()->arg_end();
-        ai != ae; ++ai) {
+         ai != ae; ++ai) {
       Argument *Arg = &*ai;
-      Liveness->getOrCreateLiveRange(Arg)->Offset = KM.getArgOffset(Arg->getArgNo());
+      Liveness->getOrCreateLiveRange(Arg)->Offset =
+          KM.getArgOffset(Arg->getArgNo());
     }
   }
   // Mop up any struct phis, splitting into elements.
@@ -477,7 +478,8 @@ static bool commonUpPredicate(BasicBlock *BB) {
   SmallDenseMap<key_type, SmallVector<Instruction *, 8>> ValMap;
 
   for (auto &Inst : *BB) {
-    if (GenXIntrinsic::getGenXIntrinsicID(&Inst) == GenXIntrinsic::genx_constantpred) {
+    if (GenXIntrinsic::getGenXIntrinsicID(&Inst) ==
+        GenXIntrinsic::genx_constantpred) {
       Constant *V = cast<Constant>(Inst.getOperand(0));
       if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(V->getType())) {
         unsigned NElts = VT->getNumElements();
@@ -527,8 +529,7 @@ static bool commonUpPredicate(BasicBlock *BB) {
  * see the constant add used in an indirect region (and convert it into a
  * llvm.genx.add.addr) before we see the instruction it uses.
  */
-bool GenXCategory::processFunction(Function *F)
-{
+bool GenXCategory::processFunction(Function *F) {
   Func = F;
   // Before doing the category conversion, fix circular phis.
   Modified = fixCircularPhis(F);
@@ -536,12 +537,13 @@ bool GenXCategory::processFunction(Function *F)
   loadPhiConstants(*F, DTs->getDomTree(F), *Subtarget, *DL, false);
   // Process all instructions.
   for (po_iterator<BasicBlock *> i = po_begin(&Func->getEntryBlock()),
-      e = po_end(&Func->getEntryBlock()); i != e; ++i) {
+                                 e = po_end(&Func->getEntryBlock());
+       i != e; ++i) {
     // This loop scans the basic block backwards. If any code is inserted
     // before the current point, that code is scanned too.
     BasicBlock *BB = *i;
     for (Instruction *Inst = &BB->back(); Inst;
-        Inst = (Inst == &BB->front() ? nullptr : Inst->getPrevNode())) {
+         Inst = (Inst == &BB->front() ? nullptr : Inst->getPrevNode())) {
       Modified |= loadNonSimpleConstants(Inst, *Subtarget, *DL, nullptr);
       Modified |= loadConstants(Inst, *Subtarget, *DL);
       if (!processValue(Inst))
@@ -582,13 +584,12 @@ bool GenXCategory::processFunction(Function *F)
  * possible, and only fall back to inserting a copy if there is circularity
  * (e.g. a loop that swaps two variables in its body).
  */
-bool GenXCategory::fixCircularPhis(Function *F)
-{
+bool GenXCategory::fixCircularPhis(Function *F) {
   bool Modified = false;
   for (auto fi = Func->begin(), fe = Func->end(); fi != fe; ++fi) {
     BasicBlock *BB = &*fi;
     // Process phi nodes in one basic block.
-    for (auto bi = BB->begin(); ; ++bi) {
+    for (auto bi = BB->begin();; ++bi) {
       auto Phi = dyn_cast<PHINode>(&*bi);
       if (!Phi)
         break; // end of phi nodes
@@ -626,8 +627,7 @@ bool GenXCategory::fixCircularPhis(Function *F)
  * This returns false only for a function argument or a phi node where all
  * uses are in phi nodes which themselves do not have a category yet.
  */
-bool GenXCategory::processValue(Value *V)
-{
+bool GenXCategory::processValue(Value *V) {
   // Check for special cases.
   // Ignore void.
   if (V->getType()->isVoidTy())
@@ -659,7 +659,8 @@ bool GenXCategory::processValue(Value *V)
       // The "no categories at all" case can only happen for a value that is
       // defined by a function argument or a phi node and used only in phi
       // nodes or subroutine call args.
-      IGC_ASSERT_MESSAGE((isa<Argument>(V) || isa<PHINode>(V)), "no register category");
+      IGC_ASSERT_MESSAGE((isa<Argument>(V) || isa<PHINode>(V)),
+                         "no register category");
       return false;
     }
     // Value defined with a category but only used in phi nodes.
@@ -677,19 +678,20 @@ bool GenXCategory::processValue(Value *V)
       DefInfo.Cat = UsesInfo.getMostUsedCat();
   }
 
-  Liveness->getOrCreateLiveRange(V, DefInfo.Cat, std::max(DefInfo.Align, UsesInfo.getMaxAlign()));
+  Liveness->getOrCreateLiveRange(
+      V, DefInfo.Cat, std::max(DefInfo.Align, UsesInfo.getMaxAlign()));
   auto Convs = buildConversions(V, DefInfo, UsesInfo);
   for (auto &UseInfo : UsesInfo.getUses()) {
     if (UseInfo.Cat != DefInfo.Cat && UseInfo.Cat != vc::RegCategory::None) {
       Instruction *Conv;
       if (UseInfo.Cat == vc::RegCategory::Address) {
-        // Case of address category requires a separate conversion for each use, at least until we
-        // get to GenXAddressCommoning where we decide whether we can common some of them up.
+        // Case of address category requires a separate conversion for each use,
+        // at least until we get to GenXAddressCommoning where we decide whether
+        // we can common some of them up.
         Conv = createConversion(V, UseInfo.Cat);
         placeConvBeforeUse(Conv, UseInfo.user, UseInfo.OperandNum);
         Liveness->getOrCreateLiveRange(Conv)->setCategory(UseInfo.Cat);
-      }
-      else
+      } else
         Conv = vc::accessContainer(Convs, UseInfo.Cat);
       IGC_ASSERT_MESSAGE(Conv, "must have such conversion");
       UseInfo.user->setOperand(UseInfo.OperandNum, Conv);
@@ -714,7 +716,7 @@ bool GenXCategory::processValue(Value *V)
  */
 Instruction *GenXCategory::createConversion(Value *V, vc::RegCategory Cat) {
   IGC_ASSERT_MESSAGE(V->getType()->getScalarType()->isIntegerTy(),
-    "createConversion expects int type");
+                     "createConversion expects int type");
   if (Cat == vc::RegCategory::Address) {
     Value *Input = V;
     int Offset = 0;
@@ -736,7 +738,8 @@ Instruction *GenXCategory::createConversion(Value *V, vc::RegCategory Cat) {
       // GenXAddressCommoning sorts that out by adjusting the constant offset in
       // the llvm.genx.convert.addr.
       return createAddAddr(Input, ConstantInt::get(V->getType(), Offset),
-          V->getName() + ".addradd", nullptr, Func->getParent());
+                           V->getName() + ".addradd", nullptr,
+                           Func->getParent());
     }
   }
   // Normal conversion. If the source is an integer creation intrinsic
@@ -748,10 +751,10 @@ Instruction *GenXCategory::createConversion(Value *V, vc::RegCategory Cat) {
     if (GenXIntrinsic::getGenXIntrinsicID(V) == GenXIntrinsic::genx_constanti)
       V = cast<CallInst>(V)->getArgOperand(0);
     return createConvert(V, V->getName() + ".categoryconv", nullptr,
-        Func->getParent());
+                         Func->getParent());
   }
   return createConvertAddr(V, 0, V->getName() + ".categoryconv", nullptr,
-      Func->getParent());
+                           Func->getParent());
 }
 
 /***********************************************************************
@@ -790,17 +793,17 @@ GenXCategory::buildConversions(Value *Def, CategoryAndAlignment DefInfo,
  */
 static vc::RegCategory intrinsicCategoryToRegCategory(unsigned ICat) {
   switch (ICat) {
-    case GenXIntrinsicInfo::ADDRESS:
-      return vc::RegCategory::Address;
-    case GenXIntrinsicInfo::PREDICATION:
-    case GenXIntrinsicInfo::PREDICATE:
-      return vc::RegCategory::Predicate;
-    case GenXIntrinsicInfo::SAMPLER:
-      return vc::RegCategory::Sampler;
-    case GenXIntrinsicInfo::SURFACE:
-      return vc::RegCategory::Surface;
-    default:
-      return vc::RegCategory::General;
+  case GenXIntrinsicInfo::ADDRESS:
+    return vc::RegCategory::Address;
+  case GenXIntrinsicInfo::PREDICATION:
+  case GenXIntrinsicInfo::PREDICATE:
+    return vc::RegCategory::Predicate;
+  case GenXIntrinsicInfo::SAMPLER:
+    return vc::RegCategory::Sampler;
+  case GenXIntrinsicInfo::SURFACE:
+    return vc::RegCategory::Surface;
+  default:
+    return vc::RegCategory::General;
   }
 }
 
@@ -810,8 +813,8 @@ static vc::RegCategory intrinsicCategoryToRegCategory(unsigned ICat) {
  * This returns RegCategory:: value, or RegCategory::None if no category
  * is discernable.
  */
-CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
-{
+CategoryAndAlignment
+GenXCategory::getCategoryAndAlignmentForDef(Value *V) const {
   if (V->getType()->getScalarType()->getPrimitiveSizeInBits() == 1)
     return vc::RegCategory::Predicate;
   if (Argument *Arg = dyn_cast<Argument>(V)) {
@@ -907,7 +910,8 @@ GenXCategory::getCategoryForInlasmConstraintedOp(CallInst *CI, unsigned ArgNo,
                                                  bool IsOutput) const {
   IGC_ASSERT_MESSAGE(CI->isInlineAsm(), "Inline asm expected");
   InlineAsm *IA = dyn_cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
-  IGC_ASSERT_MESSAGE(!IA->getConstraintString().empty(), "Here should be constraints");
+  IGC_ASSERT_MESSAGE(!IA->getConstraintString().empty(),
+                     "Here should be constraints");
 
   auto ConstraintsInfo = genx::getGenXInlineAsmInfo(CI);
 
@@ -917,7 +921,8 @@ GenXCategory::getCategoryForInlasmConstraintedOp(CallInst *CI, unsigned ArgNo,
 
   switch (Info.getConstraintType()) {
   default:
-    IGC_ASSERT_EXIT_MESSAGE(0, "unreachable while setting category in constraints");
+    IGC_ASSERT_EXIT_MESSAGE(
+        0, "unreachable while setting category in constraints");
   case ConstraintType::Constraint_a:
   case ConstraintType::Constraint_rw:
   case ConstraintType::Constraint_r:
@@ -937,9 +942,8 @@ GenXCategory::getCategoryForInlasmConstraintedOp(CallInst *CI, unsigned ArgNo,
  * This returns RegCategory:: value, or vc::RegCategory::None if no category
  * is discernable.
  */
-CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
-      Value::use_iterator U) const
-{
+CategoryAndAlignment
+GenXCategory::getCategoryAndAlignmentForUse(Value::use_iterator U) const {
   Value *V = U->get();
   if (V->getType()->getScalarType()->isIntegerTy(1))
     return vc::RegCategory::Predicate;
@@ -973,45 +977,45 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
       // For a read or write region or element intrisic, where the use we have
       // is the address, mark as needing an address register.
       switch (IntrinID) {
-        case GenXIntrinsic::not_any_intrinsic:
-          // Arg in subroutine call. Get the category from the function arg,
-          // or the arg at another call site. (We should not have disagreement
-          // among the call sites and the function arg, since whichever one
-          // gets a category first forces the category of all the others.)
-          Category = getCategoryForCallArg(Callee, U->getOperandNo());
-          break;
-        case GenXIntrinsic::genx_convert_addr:
-          Category = vc::RegCategory::General;
-          break;
-        case GenXIntrinsic::genx_rdregioni:
-        case GenXIntrinsic::genx_rdregionf:
-          if (U->getOperandNo() == 4) // is addr-operand
-            Category = vc::RegCategory::Address;
-          else if (GenXIntrinsic::GenXRegion::OldValueOperandNum == U->getOperandNo())
-            Category = vc::RegCategory::None; // do not assign use-category
-          break;
-        case GenXIntrinsic::genx_wrregioni:
-        case GenXIntrinsic::genx_wrregionf:
-          if (U->getOperandNo() == 5) // is addr-operand
-            Category = vc::RegCategory::Address;
-           break;
-        case Intrinsic::fabs:
-        case GenXIntrinsic::genx_absi:
-        case GenXIntrinsic::genx_output:
-        case GenXIntrinsic::genx_output_1:
-          break;
-        default: {
-            // For any other intrinsic, look up the argument class.
-            GenXIntrinsicInfo II(IntrinID);
-            auto AI = II.getArgInfo(U->getOperandNo());
-            return CategoryAndAlignment(
-                intrinsicCategoryToRegCategory(AI.getCategory()),
-                getLogAlignment(AI.getAlignment(),
-                                Subtarget ? Subtarget->getGRFByteSize()
-                                          : defaultGRFByteSize));
-          }
-          break;
-          }
+      case GenXIntrinsic::not_any_intrinsic:
+        // Arg in subroutine call. Get the category from the function arg,
+        // or the arg at another call site. (We should not have disagreement
+        // among the call sites and the function arg, since whichever one
+        // gets a category first forces the category of all the others.)
+        Category = getCategoryForCallArg(Callee, U->getOperandNo());
+        break;
+      case GenXIntrinsic::genx_convert_addr:
+        Category = vc::RegCategory::General;
+        break;
+      case GenXIntrinsic::genx_rdregioni:
+      case GenXIntrinsic::genx_rdregionf:
+        if (U->getOperandNo() == 4) // is addr-operand
+          Category = vc::RegCategory::Address;
+        else if (GenXIntrinsic::GenXRegion::OldValueOperandNum ==
+                 U->getOperandNo())
+          Category = vc::RegCategory::None; // do not assign use-category
+        break;
+      case GenXIntrinsic::genx_wrregioni:
+      case GenXIntrinsic::genx_wrregionf:
+        if (U->getOperandNo() == 5) // is addr-operand
+          Category = vc::RegCategory::Address;
+        break;
+      case Intrinsic::fabs:
+      case GenXIntrinsic::genx_absi:
+      case GenXIntrinsic::genx_output:
+      case GenXIntrinsic::genx_output_1:
+        break;
+      default: {
+        // For any other intrinsic, look up the argument class.
+        GenXIntrinsicInfo II(IntrinID);
+        auto AI = II.getArgInfo(U->getOperandNo());
+        return CategoryAndAlignment(
+            intrinsicCategoryToRegCategory(AI.getCategory()),
+            getLogAlignment(AI.getAlignment(), Subtarget
+                                                   ? Subtarget->getGRFByteSize()
+                                                   : defaultGRFByteSize));
+      } break;
+      }
     }
   }
   return Category;
@@ -1093,14 +1097,14 @@ vc::RegCategory GenXCategory::getCategoryForCallArg(Function *Callee,
       return Cat;
   }
   // Then try the arg at each call site.
-  for (auto *U: Callee->users()) {
+  for (auto *U : Callee->users()) {
     if (auto *CI = checkFunctionCall(U, Callee)) {
       auto ArgV = CI->getArgOperand(ArgNo);
-        if (auto LR = Liveness->getLiveRangeOrNull(ArgV)) {
-          auto Cat = LR->getCategory();
-          if (Cat != vc::RegCategory::None)
-            return Cat;
-        }
+      if (auto LR = Liveness->getLiveRangeOrNull(ArgV)) {
+        auto Cat = LR->getCategory();
+        if (Cat != vc::RegCategory::None)
+          return Cat;
+      }
     }
   }
   // special case handling to break deadlock when all uses are undef or stack

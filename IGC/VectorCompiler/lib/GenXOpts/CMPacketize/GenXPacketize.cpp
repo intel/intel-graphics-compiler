@@ -768,13 +768,13 @@ static void vectorizeRangeMetadata(Instruction *OldCI, Instruction *NewCI) {
     return;
   Type *Ty = NewCI->getType();
 
-  // Currently, llvm15/16 work inconsistently with MD_range metadata for vectors.
-  // Link1: Verifier.cpp Verifier::visitRangeMetadata
+  // Currently, llvm15/16 work inconsistently with MD_range metadata for
+  // vectors. Link1: Verifier.cpp Verifier::visitRangeMetadata
   //     -> "Range types must match instruction type!"
   // Link2: ValueTracking.cpp llvm::computeKnownBitsFromRangeMetadata
   //     -> ConstantInt *Lower = ... Ranges.getOperand(2 * i + 0)
   if (auto *VecTy = dyn_cast<VectorType>(Ty))
-      NewCI->setMetadata(LLVMContext::MD_range, nullptr);
+    NewCI->setMetadata(LLVMContext::MD_range, nullptr);
   return;
 }
 
@@ -1807,7 +1807,7 @@ void GenXPacketize::lowerControlFlowAfter(std::vector<Function *> &SIMTFuncs) {
     CFL.processFunction(Fn);
     // Remove 'NoInline' attributes from calls - up to this point, they
     // have only been removed from the definition of functions
-    for(auto ui = Fn->use_begin(), ue = Fn->use_end(); ui != ue; ++ui) {
+    for (auto ui = Fn->use_begin(), ue = Fn->use_end(); ui != ue; ++ui) {
       if (auto *I = dyn_cast<CallInst>(ui->getUser())) {
         if (I->hasFnAttr(Attribute::NoInline)) {
           I->removeFnAttr(Attribute::NoInline);

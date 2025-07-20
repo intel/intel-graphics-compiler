@@ -17,33 +17,33 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CodeGenContextWrapper.hpp"
 
-namespace IGC
-{
-    // This pass replaces LLVM IR load/store
-    //     %17 = load <4 x float>, <4 x float> addrspace(1)* %bitc0, align 16
-    // with GenISA predicated load/store intrinsic
-    //     %17 = call <4 x float> @llvm.genx.GenISA.PredicatedLoad.v4f32.p1v4f32.v4f32(<4 x float> addrspace(1)* %bitc0, i64 16, i1 %pred, <4 x float> %mergeValue)
-    // if found in specific pattern and then performs if-conversion.
-    //
-    // Constraints:
-    // 1. The pass looks for conditional branches that can be if-converted. The only "hammock" form
-    // of the control flow is supported, i.e. the true block has a single
-    // predecessor and the false block has two predecessors. The true block must
-    // have a single successor that is the false block.
-    //
-    //   if (cmp) {
-    //     true block
-    //   }
-    //   false block
-    //
-    // 2. All the instructions in the true block must be safe to execute in the false
-    // block. The pass makes the instructions in the true block to be executed
-    // conditionally and replaces branch to unconditional one.
-    // 3. Load/Store instructions should be simple.
-    // 4. Load/Store instructions should use legal data types.
-    //
-    // The pass expects that the simplifycfg pass will be run after it to clean up
-    // the CFG.
+namespace IGC {
+// This pass replaces LLVM IR load/store
+//     %17 = load <4 x float>, <4 x float> addrspace(1)* %bitc0, align 16
+// with GenISA predicated load/store intrinsic
+//     %17 = call <4 x float> @llvm.genx.GenISA.PredicatedLoad.v4f32.p1v4f32.v4f32(<4 x float> addrspace(1)* %bitc0, i64
+//     16, i1 %pred, <4 x float> %mergeValue)
+// if found in specific pattern and then performs if-conversion.
+//
+// Constraints:
+// 1. The pass looks for conditional branches that can be if-converted. The only "hammock" form
+// of the control flow is supported, i.e. the true block has a single
+// predecessor and the false block has two predecessors. The true block must
+// have a single successor that is the false block.
+//
+//   if (cmp) {
+//     true block
+//   }
+//   false block
+//
+// 2. All the instructions in the true block must be safe to execute in the false
+// block. The pass makes the instructions in the true block to be executed
+// conditionally and replaces branch to unconditional one.
+// 3. Load/Store instructions should be simple.
+// 4. Load/Store instructions should use legal data types.
+//
+// The pass expects that the simplifycfg pass will be run after it to clean up
+// the CFG.
 
 class PromoteToPredicatedMemoryAccess : public llvm::FunctionPass {
 public:
@@ -51,25 +51,18 @@ public:
   explicit PromoteToPredicatedMemoryAccess();
   ~PromoteToPredicatedMemoryAccess() {}
 
-  llvm::StringRef getPassName() const override {
-    return "PromoteToPredicatedMemoryAccess";
-  }
+  llvm::StringRef getPassName() const override { return "PromoteToPredicatedMemoryAccess"; }
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.addRequired<CodeGenContextWrapper>();
-  }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
 
   bool runOnFunction(llvm::Function &F) override;
 
 private:
-  bool trySingleBlockIfConv(llvm::Value &Cond, llvm::BasicBlock &BranchBB,
-                            llvm::BasicBlock &ConvBB, llvm::BasicBlock &SuccBB,
-                            bool Inverse = false);
+  bool trySingleBlockIfConv(llvm::Value &Cond, llvm::BasicBlock &BranchBB, llvm::BasicBlock &ConvBB,
+                            llvm::BasicBlock &SuccBB, bool Inverse = false);
 
-  void convertMemoryAccesses(llvm::Instruction *Mem, llvm::Value *MergeV,
-                             llvm::Value *Cond, bool Inverse);
+  void convertMemoryAccesses(llvm::Instruction *Mem, llvm::Value *MergeV, llvm::Value *Cond, bool Inverse);
 
-  void fixPhiNode(llvm::PHINode &Phi, llvm::BasicBlock &Predecessor,
-                  llvm::BasicBlock &CondBlock);
+  void fixPhiNode(llvm::PHINode &Phi, llvm::BasicBlock &Predecessor, llvm::BasicBlock &CondBlock);
 };
 } // namespace IGC

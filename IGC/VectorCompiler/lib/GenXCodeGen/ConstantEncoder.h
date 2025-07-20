@@ -244,7 +244,7 @@ private:
 
 template <typename DataOutIter, typename RelocOutIter>
 ConstantEncoder(const llvm::DataLayout &, DataOutIter, RelocOutIter)
-    ->ConstantEncoder<DataOutIter, RelocOutIter>;
+    -> ConstantEncoder<DataOutIter, RelocOutIter>;
 
 template <typename DataOutIterT, typename RelocOutIterT>
 std::size_t encodeConstant(const llvm::Constant &Const,

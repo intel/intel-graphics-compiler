@@ -39,8 +39,7 @@ struct Dims {
   unsigned size() const { return grSize * numOfGr; }
 
   bool operator<(const Dims &rhs) const {
-    return grSize < rhs.grSize ||
-           (grSize == rhs.grSize && numOfGr < rhs.numOfGr);
+    return grSize < rhs.grSize || (grSize == rhs.grSize && numOfGr < rhs.numOfGr);
   }
 };
 
@@ -94,8 +93,7 @@ struct Config {
     return config;
   }
 
-  bool initialize(Function *inF, CodeGenContext *inCGC,
-                  IGCLivenessAnalysis *inRPE);
+  bool initialize(Function *inF, CodeGenContext *inCGC, IGCLivenessAnalysis *inRPE);
 
 private:
   Config() = default;
@@ -111,8 +109,7 @@ public:
   /// @param inF   LLVM function pointer.
   /// @param inCGC The code generation context.
   /// @param inRPE The register pressure estimator.
-  static std::unique_ptr<LoadSplitter>
-  Create(Function *inF, CodeGenContext *inCGC, IGCLivenessAnalysis *inRPE);
+  static std::unique_ptr<LoadSplitter> Create(Function *inF, CodeGenContext *inCGC, IGCLivenessAnalysis *inRPE);
 
   LoadSplitter(const LoadSplitter &) = delete;
   LoadSplitter &operator=(const LoadSplitter &) = delete;

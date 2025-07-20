@@ -106,7 +106,8 @@ bool GenXFloatControl::getFloatControl(Function &F, uint32_t *Val) {
   return true;
 }
 
-Value *GenXFloatControl::buildCr0Update(uint32_t Value, Instruction *InsertBefore) {
+Value *GenXFloatControl::buildCr0Update(uint32_t Value,
+                                        Instruction *InsertBefore) {
   IRBuilder<> B(InsertBefore);
   auto &DL = InsertBefore->getDebugLoc();
   auto *M = InsertBefore->getModule();
@@ -114,12 +115,17 @@ Value *GenXFloatControl::buildCr0Update(uint32_t Value, Instruction *InsertBefor
   auto *VTy = IGCLLVM::FixedVectorType::get(Ty, 4);
   auto *Id = B.getInt32(PreDefined_Vars::PREDEFINED_CR0);
   Region R(Ty);
-  auto *ReadPredefDecl = vc::getAnyDeclaration(M, GenXIntrinsic::genx_read_predef_reg, {VTy, VTy});
-  auto *WritePredefDecl = vc::getAnyDeclaration(M, GenXIntrinsic::genx_write_predef_reg, {VTy, VTy});
-  auto *AndReadPredef = B.CreateCall(ReadPredefDecl, {Id, UndefValue::get(VTy)});
-  auto *AndRdRegion = R.createRdRegion(AndReadPredef, "", InsertBefore, DL, true);
+  auto *ReadPredefDecl =
+      vc::getAnyDeclaration(M, GenXIntrinsic::genx_read_predef_reg, {VTy, VTy});
+  auto *WritePredefDecl = vc::getAnyDeclaration(
+      M, GenXIntrinsic::genx_write_predef_reg, {VTy, VTy});
+  auto *AndReadPredef =
+      B.CreateCall(ReadPredefDecl, {Id, UndefValue::get(VTy)});
+  auto *AndRdRegion =
+      R.createRdRegion(AndReadPredef, "", InsertBefore, DL, true);
   auto *And = B.CreateAnd(AndRdRegion, ~Mask);
-  auto *AndWrRegion = R.createWrRegion(AndReadPredef, And, "", InsertBefore, DL);
+  auto *AndWrRegion =
+      R.createWrRegion(AndReadPredef, And, "", InsertBefore, DL);
   B.CreateCall(WritePredefDecl, {Id, AndWrRegion});
   auto *OrReadPredef = B.CreateCall(ReadPredefDecl, {Id, UndefValue::get(VTy)});
   auto *OrRdRegion = R.createRdRegion(OrReadPredef, "", InsertBefore, DL, true);
@@ -129,7 +135,7 @@ Value *GenXFloatControl::buildCr0Update(uint32_t Value, Instruction *InsertBefor
   return AndRdRegion;
 }
 
-void GenXFloatControl::buildCr0Write(Value* V, Instruction *InsertBefore) {
+void GenXFloatControl::buildCr0Write(Value *V, Instruction *InsertBefore) {
   IRBuilder<> B(InsertBefore);
   auto &DL = InsertBefore->getDebugLoc();
   auto *M = InsertBefore->getModule();
@@ -137,10 +143,11 @@ void GenXFloatControl::buildCr0Write(Value* V, Instruction *InsertBefore) {
   auto *VTy = IGCLLVM::FixedVectorType::get(Ty, 4);
   auto *Id = B.getInt32(PreDefined_Vars::PREDEFINED_CR0);
   Region R(Ty);
-  auto *ReadPredefDecl = vc::getAnyDeclaration(M, GenXIntrinsic::genx_read_predef_reg, {VTy, VTy});
-  auto *WritePredefDecl = vc::getAnyDeclaration(M, GenXIntrinsic::genx_write_predef_reg, {VTy, VTy});
+  auto *ReadPredefDecl =
+      vc::getAnyDeclaration(M, GenXIntrinsic::genx_read_predef_reg, {VTy, VTy});
+  auto *WritePredefDecl = vc::getAnyDeclaration(
+      M, GenXIntrinsic::genx_write_predef_reg, {VTy, VTy});
   auto *ReadPredef = B.CreateCall(ReadPredefDecl, {Id, UndefValue::get(VTy)});
   auto *WrRegion = R.createWrRegion(ReadPredef, V, "", InsertBefore, DL);
   B.CreateCall(WritePredefDecl, {Id, WrRegion});
 }
-

@@ -23,154 +23,138 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/shaderHash.hpp"
 #include "EmUtils.h"
 
-namespace USC
-{
-    struct ShaderD3D;
+namespace USC {
+struct ShaderD3D;
 }
 
-namespace IGC
-{
-    enum PrecisionType : uint8_t
-    {
-        PRECISION_UNUSED, U8, U4, U2, S8, S4, S2,
-        BF8,
-        HF8,
-        TF32 = 10,
-        BF16, FP16
-    };
+namespace IGC {
+enum PrecisionType : uint8_t {
+  PRECISION_UNUSED,
+  U8,
+  U4,
+  U2,
+  S8,
+  S4,
+  S2,
+  BF8,
+  HF8,
+  TF32 = 10,
+  BF16,
+  FP16
+};
 
-    inline uint32_t getPrecisionInBits(PrecisionType P)
-    {
-        switch (P)
-        {
-        default:
-            break;
-        case BF16:
-        case FP16:
-            return 16;
-        case U8:
-        case S8:
-            return 8;
-        case U4:
-        case S4:
-            return 4;
-        case U2:
-        case S2:
-            return 2;
-        // PVC
-        case TF32:
-            return 32;
-        }
-        return 0;
-    }
+inline uint32_t getPrecisionInBits(PrecisionType P) {
+  switch (P) {
+  default:
+    break;
+  case BF16:
+  case FP16:
+    return 16;
+  case U8:
+  case S8:
+    return 8;
+  case U4:
+  case S4:
+    return 4;
+  case U2:
+  case S2:
+    return 2;
+    // PVC
+  case TF32:
+    return 32;
+  }
+  return 0;
 }
+} // namespace IGC
 
-enum class SIMDMode : unsigned char
-{
-    UNKNOWN,
-    SIMD1,
-    SIMD2,
-    SIMD4,
-    SIMD8,
-    SIMD16,
-    SIMD32,
-    END,
-    BEGIN = 0
-};
+enum class SIMDMode : unsigned char { UNKNOWN, SIMD1, SIMD2, SIMD4, SIMD8, SIMD16, SIMD32, END, BEGIN = 0 };
 
-enum class SIMDStatus : unsigned char
-{
-    SIMD_BEGIN = 0,
-    SIMD_PASS,
-    SIMD_FUNC_FAIL,
-    SIMD_PERF_FAIL,
-    SIMD_END
-};
+enum class SIMDStatus : unsigned char { SIMD_BEGIN = 0, SIMD_PASS, SIMD_FUNC_FAIL, SIMD_PERF_FAIL, SIMD_END };
 
-inline uint16_t numLanes(SIMDMode width)
-{
-    switch(width)
-    {
-    case SIMDMode::SIMD1   : return 1;
-    case SIMDMode::SIMD2   : return 2;
-    case SIMDMode::SIMD4   : return 4;
-    case SIMDMode::SIMD8   : return 8;
-    case SIMDMode::SIMD16  : return 16;
-    case SIMDMode::SIMD32  : return 32;
-    case SIMDMode::UNKNOWN :
-    default:
-        IGC_ASSERT_MESSAGE(0, "unreachable");
-        return 1;
-    }
+inline uint16_t numLanes(SIMDMode width) {
+  switch (width) {
+  case SIMDMode::SIMD1:
+    return 1;
+  case SIMDMode::SIMD2:
+    return 2;
+  case SIMDMode::SIMD4:
+    return 4;
+  case SIMDMode::SIMD8:
+    return 8;
+  case SIMDMode::SIMD16:
+    return 16;
+  case SIMDMode::SIMD32:
+    return 32;
+  case SIMDMode::UNKNOWN:
+  default:
+    IGC_ASSERT_MESSAGE(0, "unreachable");
+    return 1;
+  }
 }
 
 inline SIMDMode lanesToSIMDMode(unsigned lanes) {
-    switch (lanes) {
-    case  1: return SIMDMode::SIMD1;
-    case  2: return SIMDMode::SIMD2;
-    case  4: return SIMDMode::SIMD4;
-    case  8: return SIMDMode::SIMD8;
-    case 16: return SIMDMode::SIMD16;
-    case 32: return SIMDMode::SIMD32;
-    default:
-        IGC_ASSERT_MESSAGE(0, "Unexpected number of lanes!");
-        return SIMDMode::UNKNOWN;
-    }
+  switch (lanes) {
+  case 1:
+    return SIMDMode::SIMD1;
+  case 2:
+    return SIMDMode::SIMD2;
+  case 4:
+    return SIMDMode::SIMD4;
+  case 8:
+    return SIMDMode::SIMD8;
+  case 16:
+    return SIMDMode::SIMD16;
+  case 32:
+    return SIMDMode::SIMD32;
+  default:
+    IGC_ASSERT_MESSAGE(0, "Unexpected number of lanes!");
+    return SIMDMode::UNKNOWN;
+  }
 }
 
-enum class ShaderType
-{
+enum class ShaderType {
 #include "ShaderTypesIncl.h"
 };
 
-enum class ShaderDispatchMode
-{
-    NOT_APPLICABLE,
-    SINGLE_PATCH,
-    DUAL_PATCH,
-    EIGHT_PATCH,
-    DUAL_SIMD8,
-    QUAD_SIMD8_DYNAMIC, // 3DTATE_PS_BODY::PolyPackingPolicy::POLY_PACK8_DYNAMIC
-    END,
-    BEGIN = 0
+enum class ShaderDispatchMode {
+  NOT_APPLICABLE,
+  SINGLE_PATCH,
+  DUAL_PATCH,
+  EIGHT_PATCH,
+  DUAL_SIMD8,
+  QUAD_SIMD8_DYNAMIC, // 3DTATE_PS_BODY::PolyPackingPolicy::POLY_PACK8_DYNAMIC
+  END,
+  BEGIN = 0
 };
 
-static const char *ShaderTypeString[] = {
-    "ERROR",
-    "VS",
-    "HS",
-    "DS",
-    "GS",
-    "TASK",
-    "MESH",
-    "PS",
-    "CS",
-    "OCL",
-    "RAYDISPATCH",
-    "ERROR"
-};
+static const char *ShaderTypeString[] = {"ERROR",
+                                         "VS",
+                                         "HS",
+                                         "DS",
+                                         "GS",
+                                         "TASK",
+                                         "MESH",
+                                         "PS",
+                                         "CS",
+                                         "OCL",
+                                         "RAYDISPATCH",
+                                         "ERROR"};
 
 static_assert(sizeof(ShaderTypeString) / sizeof(*ShaderTypeString) == static_cast<size_t>(ShaderType::END) + 1,
-    "Update the array");
+              "Update the array");
 
-template <typename TIter>
-class RangeWrapper
-{
+template <typename TIter> class RangeWrapper {
 public:
-    TIter& begin() { return m_first; }
-    TIter& end() { return m_last; }
+  TIter &begin() { return m_first; }
+  TIter &end() { return m_last; }
 
 private:
-    RangeWrapper( TIter first, TIter last )
-        : m_first(first)
-        , m_last(last)
-    { }
+  RangeWrapper(TIter first, TIter last) : m_first(first), m_last(last) {}
 
-    TIter m_first;
-    TIter m_last;
+  TIter m_first;
+  TIter m_last;
 
-    template <typename T>
-    friend inline RangeWrapper<T> range( const T& first, const T& last );
+  template <typename T> friend inline RangeWrapper<T> range(const T &first, const T &last);
 };
 
 /**
@@ -186,56 +170,33 @@ private:
  *         ...
  *     }
  */
-template <typename TIter>
-inline RangeWrapper<TIter> range( const TIter& first, const TIter& last )
-{
-    return RangeWrapper<TIter>(first, last);
+template <typename TIter> inline RangeWrapper<TIter> range(const TIter &first, const TIter &last) {
+  return RangeWrapper<TIter>(first, last);
 }
 
-template <typename TEnum>
-class EnumIter
-{
+template <typename TEnum> class EnumIter {
 public:
-    EnumIter operator++(/* prefix */)
-    {
-        increment_me();
-        return *this;
-    }
-    EnumIter operator++(int /* postfix */)
-    {
-        TEnum old(m_val);
-        increment_me();
-        return old;
-    }
-    TEnum operator*() const
-    {
-        return m_val;
-    }
-    bool operator!=(EnumIter const& other) const
-    {
-        return !is_equal(other);
-    }
-    bool operator==(EnumIter const& other) const
-    {
-        return is_equal(other);
-    }
+  EnumIter operator++(/* prefix */) {
+    increment_me();
+    return *this;
+  }
+  EnumIter operator++(int /* postfix */) {
+    TEnum old(m_val);
+    increment_me();
+    return old;
+  }
+  TEnum operator*() const { return m_val; }
+  bool operator!=(EnumIter const &other) const { return !is_equal(other); }
+  bool operator==(EnumIter const &other) const { return is_equal(other); }
+
 private:
-    EnumIter(TEnum init)
-        : m_val(init)
-    {}
-    bool is_equal(EnumIter const& other) const
-    {
-        return m_val == other.m_val;
-    }
-    void increment_me()
-    {
-         m_val = static_cast<TEnum>( static_cast<unsigned int>(m_val) + 1 );
-    }
+  EnumIter(TEnum init) : m_val(init) {}
+  bool is_equal(EnumIter const &other) const { return m_val == other.m_val; }
+  void increment_me() { m_val = static_cast<TEnum>(static_cast<unsigned int>(m_val) + 1); }
 
-    template <typename T>
-    friend inline RangeWrapper<EnumIter<T>> eRange(T, T);
+  template <typename T> friend inline RangeWrapper<EnumIter<T>> eRange(T, T);
 
-    TEnum m_val;
+  TEnum m_val;
 };
 
 /**
@@ -250,9 +211,8 @@ private:
  * };
  */
 template <typename TEnum>
-inline RangeWrapper<EnumIter<TEnum>> eRange( TEnum begin = TEnum::BEGIN, TEnum end = TEnum::END)
-{
-    return range( EnumIter<TEnum>(begin), EnumIter<TEnum>(end) );
+inline RangeWrapper<EnumIter<TEnum>> eRange(TEnum begin = TEnum::BEGIN, TEnum end = TEnum::END) {
+  return range(EnumIter<TEnum>(begin), EnumIter<TEnum>(end));
 }
 
 /// Template that should be used when a static_cast of a larger integer
@@ -264,80 +224,67 @@ inline RangeWrapper<EnumIter<TEnum>> eRange( TEnum begin = TEnum::BEGIN, TEnum e
 /// Could be necessary when dealing with other interfaces, otherwise think twice before
 /// using it - maybe changing types or modifying the code design would be better.
 template <typename TDst, typename TSrc>
-inline typename std::enable_if<
-    std::is_signed<TDst>::value && std::is_signed<TSrc>::value,
-    TDst>::type int_cast(TSrc value)
-{
-    static_assert(std::is_integral<TDst>::value && std::is_integral<TSrc>::value,
-        "int_cast<>() should be used only for conversions between integer types.");
+inline typename std::enable_if<std::is_signed<TDst>::value && std::is_signed<TSrc>::value, TDst>::type
+int_cast(TSrc value) {
+  static_assert(std::is_integral<TDst>::value && std::is_integral<TSrc>::value,
+                "int_cast<>() should be used only for conversions between integer types.");
 
-    IGC_ASSERT(std::numeric_limits<TDst>::min() <= value);
-    IGC_ASSERT(value <= std::numeric_limits<TDst>::max());
+  IGC_ASSERT(std::numeric_limits<TDst>::min() <= value);
+  IGC_ASSERT(value <= std::numeric_limits<TDst>::max());
 
-    return static_cast<TDst>(value);
+  return static_cast<TDst>(value);
 }
 
 template <typename TDst, typename TSrc>
-inline typename std::enable_if<
-    std::is_signed<TDst>::value && std::is_unsigned<TSrc>::value,
-    TDst>::type int_cast(TSrc value)
-{
-    static_assert(std::is_integral<TDst>::value && std::is_integral<TSrc>::value,
-        "int_cast<>() should be used only for conversions between integer types.");
+inline typename std::enable_if<std::is_signed<TDst>::value && std::is_unsigned<TSrc>::value, TDst>::type
+int_cast(TSrc value) {
+  static_assert(std::is_integral<TDst>::value && std::is_integral<TSrc>::value,
+                "int_cast<>() should be used only for conversions between integer types.");
 
-    IGC_ASSERT(value <= static_cast<typename std::make_unsigned<TDst>::type>(std::numeric_limits<TDst>::max()));
+  IGC_ASSERT(value <= static_cast<typename std::make_unsigned<TDst>::type>(std::numeric_limits<TDst>::max()));
 
-    return static_cast<TDst>(value);
+  return static_cast<TDst>(value);
 }
 
 template <typename TDst, typename TSrc>
-inline typename std::enable_if<
-    std::is_unsigned<TDst>::value && std::is_signed<TSrc>::value,
-    TDst>::type int_cast(TSrc value)
-{
-    static_assert(std::is_integral<TDst>::value && std::is_integral<TSrc>::value,
-        "int_cast<>() should be used only for conversions between integer types.");
+inline typename std::enable_if<std::is_unsigned<TDst>::value && std::is_signed<TSrc>::value, TDst>::type
+int_cast(TSrc value) {
+  static_assert(std::is_integral<TDst>::value && std::is_integral<TSrc>::value,
+                "int_cast<>() should be used only for conversions between integer types.");
 
-    IGC_ASSERT(0 <= value);
-    IGC_ASSERT(static_cast<typename std::make_unsigned<TSrc>::type>(value) <= std::numeric_limits<TDst>::max());
+  IGC_ASSERT(0 <= value);
+  IGC_ASSERT(static_cast<typename std::make_unsigned<TSrc>::type>(value) <= std::numeric_limits<TDst>::max());
 
-    return static_cast<TDst>(value);
+  return static_cast<TDst>(value);
 }
 
 template <typename TDst, typename TSrc>
-inline typename std::enable_if<
-    std::is_unsigned<TDst>::value && std::is_unsigned<TSrc>::value,
-    TDst>::type int_cast(TSrc value)
-{
-    static_assert(std::is_integral<TDst>::value && std::is_integral<TSrc>::value,
-        "int_cast<>() should be used only for conversions between integer types.");
+inline typename std::enable_if<std::is_unsigned<TDst>::value && std::is_unsigned<TSrc>::value, TDst>::type
+int_cast(TSrc value) {
+  static_assert(std::is_integral<TDst>::value && std::is_integral<TSrc>::value,
+                "int_cast<>() should be used only for conversions between integer types.");
 
-    IGC_ASSERT(value <= std::numeric_limits<TDst>::max());
-    return static_cast<TDst>(value);
+  IGC_ASSERT(value <= std::numeric_limits<TDst>::max());
+  return static_cast<TDst>(value);
 }
 
 template <typename TDst>
-inline typename std::enable_if<
-    std::is_unsigned<TDst>::value,
-    TDst>::type int_cast(llvm::TypeSize value)
-{
-    static_assert(std::is_integral<TDst>::value,
-        "int_cast<>() should be used only for conversions between integer types.");
+inline typename std::enable_if<std::is_unsigned<TDst>::value, TDst>::type int_cast(llvm::TypeSize value) {
+  static_assert(std::is_integral<TDst>::value,
+                "int_cast<>() should be used only for conversions between integer types.");
 
-    IGC_ASSERT(value.getFixedValue() <= std::numeric_limits<TDst>::max());
-    return static_cast<TDst>(value.getFixedValue());
+  IGC_ASSERT(value.getFixedValue() <= std::numeric_limits<TDst>::max());
+  return static_cast<TDst>(value.getFixedValue());
 }
 
 template <typename TDst>
-inline typename std::enable_if<
-    std::is_signed<TDst>::value,
-    TDst>::type int_cast(llvm::TypeSize value)
-{
-    static_assert(std::is_integral<TDst>::value,
-        "int_cast<>() should be used only for conversions between integer types.");
+inline typename std::enable_if<std::is_signed<TDst>::value, TDst>::type int_cast(llvm::TypeSize value) {
+  static_assert(std::is_integral<TDst>::value,
+                "int_cast<>() should be used only for conversions between integer types.");
 
-    IGC_ASSERT(value.getFixedValue() <= static_cast<typename std::make_unsigned<TDst>::type>(std::numeric_limits<TDst>::max()));
-    return static_cast<TDst>(value.getFixedValue());
+  IGC_ASSERT(value.getFixedValue() <=
+             static_cast<typename std::make_unsigned<TDst>::type>(std::numeric_limits<TDst>::max()));
+  return static_cast<TDst>(value.getFixedValue());
 }
 
-#endif //IGC_COMMON_TYPES_H
+#endif // IGC_COMMON_TYPES_H

@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-llvm::FunctionPass* createSinkCommonOffsetFromGEPPass();
+llvm::FunctionPass *createSinkCommonOffsetFromGEPPass();
 void initializeSinkCommonOffsetFromGEPPass(llvm::PassRegistry &);
 
 } // End namespace IGC

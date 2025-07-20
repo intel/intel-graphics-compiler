@@ -95,8 +95,9 @@ static std::string makeOutputName(const Function &F, StringRef DumpNamePrefix,
 
   std::string Filename = (DumpNamePrefix + Name + DumpNameSuffix).str();
   // Sanitize templated kernel names.
-  std::replace_if(Filename.begin(), Filename.end(),
-                  [](const char x) { return x == '<' || x == '>'; }, '_');
+  std::replace_if(
+      Filename.begin(), Filename.end(),
+      [](const char x) { return x == '<' || x == '>'; }, '_');
 
   return Filename;
 }

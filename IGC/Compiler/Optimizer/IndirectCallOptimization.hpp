@@ -13,31 +13,23 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class IndirectCallOptimization : public llvm::FunctionPass
-    {
-    public:
-        static char ID;
+namespace IGC {
+class IndirectCallOptimization : public llvm::FunctionPass {
+public:
+  static char ID;
 
-        IndirectCallOptimization();
-        ~IndirectCallOptimization() {}
+  IndirectCallOptimization();
+  ~IndirectCallOptimization() {}
 
-        llvm::StringRef getPassName() const override
-        {
-            return "IndirectCallOptimization";
-        }
+  llvm::StringRef getPassName() const override { return "IndirectCallOptimization"; }
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-        {
-            AU.addRequired<MetaDataUtilsWrapper>();
-        }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
 
-        bool runOnFunction(llvm::Function &F) override;
+  bool runOnFunction(llvm::Function &F) override;
 
-        bool visitCallInst(llvm::CallInst &CI);
+  bool visitCallInst(llvm::CallInst &CI);
 
-    private:
-    };
-    void initializeIndirectCallOptimizationPass(llvm::PassRegistry&);
+private:
+};
+void initializeIndirectCallOptimizationPass(llvm::PassRegistry &);
 } // namespace IGC

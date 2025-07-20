@@ -12,8 +12,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    llvm::FunctionPass* createFixSampleDInputsPass();
-    void initializeFixSampleDInputsPassPass(llvm::PassRegistry&);
-}
+namespace IGC {
+llvm::FunctionPass *createFixSampleDInputsPass();
+void initializeFixSampleDInputsPassPass(llvm::PassRegistry &);
+} // namespace IGC

@@ -221,9 +221,9 @@ bool genx::loadNonSimpleConstants(
       // input of a wrregion, so it does not get CSEd. CSEing it is
       // counter-productive because, if it has multiple uses, it will
       // need to be two-address copied by GenXCoalescing anyway.
-      if (GenXIntrinsic::isWrRegion(IID)
-          && i == GenXIntrinsic::GenXRegion::OldValueOperandNum
-          && CL.isBigSimple())
+      if (GenXIntrinsic::isWrRegion(IID) &&
+          i == GenXIntrinsic::GenXRegion::OldValueOperandNum &&
+          CL.isBigSimple())
         continue;
       // Similarly, do not load a "big simple" constant for a call arg.
       if (CI && IID == GenXIntrinsic::not_any_intrinsic && CL.isBigSimple())
@@ -831,7 +831,8 @@ bool genx::checkAddPattern(Function *F, std::vector<CallInst *> &ConstList,
   for (auto I = ConstList.begin();
        I != ConstList.end() && I + 1 != ConstList.end(); ++I) {
     for (auto J = I + 1; J != ConstList.end();) {
-      Modified |= checkApplyAddPattern(I, J, ToRemove, ConstList, ST->hasAdd64());
+      Modified |=
+          checkApplyAddPattern(I, J, ToRemove, ConstList, ST->hasAdd64());
     }
   }
   auto JCurr = ToRemove.end();
@@ -900,7 +901,7 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
         };
 
         // For each incoming:
-        for (; oi != oe; ++oi ) {
+        for (; oi != oe; ++oi) {
           auto Incoming = Inst->getOperand(oi);
           // If it is a phi node or two address instruction, push it into the
           // web for processing later.
@@ -912,7 +913,7 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
             // For any other inst or arg, see if it has any other use in a phi
             // node or two address inst, and push that into the web.
             for (auto ui = Incoming->use_begin(), ue = Incoming->use_end();
-                ui != ue; ++ui) {
+                 ui != ue; ++ui) {
               auto User = cast<Instruction>(ui->getUser());
               // Add bitcasts into the web to process their users too
               if (IsPhiOrTwoAddress(User) ||
@@ -925,7 +926,8 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
         // Now process each use of the result of the phi node or two address
         // instruction. If the use is in a phi node or is a two address operand,
         // push the user into the web.
-        for (auto ui = Inst->use_begin(), ue = Inst->use_end(); ui != ue; ++ui) {
+        for (auto ui = Inst->use_begin(), ue = Inst->use_end(); ui != ue;
+             ++ui) {
           auto User = cast<Instruction>(ui->getUser());
           if (IsPhiOrTwoAddress(User))
             if (Done.insert(User).second)
@@ -933,10 +935,10 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
         }
       }
       LLVM_DEBUG(
-        dbgs() << "loadPhiConstants: Web of phi nodes and two address insts:\n";
-        for (auto wi = Web.begin(), we = Web.end(); wi != we; ++wi)
-          dbgs() << **wi << "\n"
-      );
+          dbgs()
+              << "loadPhiConstants: Web of phi nodes and two address insts:\n";
+          for (auto wi = Web.begin(), we = Web.end(); wi != we; ++wi) dbgs()
+          << **wi << "\n");
       // Now process the web, ignoring anything other than phi nodes.
       // Gather the distinct constants, and every use for each one in a phi
       // node.
@@ -957,7 +959,8 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
 
       for (auto *Inst : WebPhis) {
         auto *Phi = cast<PHINode>(Inst);
-        for (unsigned oi = 0, oe = Phi->getNumIncomingValues(); oi != oe; ++oi) {
+        for (unsigned oi = 0, oe = Phi->getNumIncomingValues(); oi != oe;
+             ++oi) {
           Use *U = &Phi->getOperandUse(oi);
           auto *C = dyn_cast<Constant>(*U);
           if (!C || isa<UndefValue>(C))
@@ -987,22 +990,22 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
         }
       }
       // Handle each distinct constant.
-      for (unsigned dci = 0, dce = DistinctConstants.size(); dci != dce; ++dci) {
+      for (unsigned dci = 0, dce = DistinctConstants.size(); dci != dce;
+           ++dci) {
         Constant *C = DistinctConstants[dci];
         auto Entry = &ConstantUses[C];
         if (Entry->size() != 1) {
           LLVM_DEBUG(
-            dbgs() << "multiple use of " << *C << "\n";
-            for (unsigned ei = 0, ee = Entry->size(); ei != ee; ++ei)
-              dbgs() << *(*Entry)[ei]->getUser() << "\n"
-          );
+              dbgs() << "multiple use of " << *C << "\n";
+              for (unsigned ei = 0, ee = Entry->size(); ei != ee; ++ei) dbgs()
+              << *(*Entry)[ei]->getUser() << "\n");
         }
         // Find the closest common dominator of the incoming blocks of all phi
         // uses of the constant. That is where we want to insert the constant
         // load.
         Use *U = (*Entry)[0];
-        auto InsertBB = cast<PHINode>(U->getUser())
-            ->getIncomingBlock(U->getOperandNo());
+        auto InsertBB =
+            cast<PHINode>(U->getUser())->getIncomingBlock(U->getOperandNo());
         for (unsigned ei = 1, ee = Entry->size(); ei != ee; ++ei) {
           U = (*Entry)[ei];
           auto Phi = cast<PHINode>(U->getUser());
@@ -1063,7 +1066,8 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
             Use *U = &CI->getOperandUse(oi);
             auto *UC = dyn_cast<Constant>(*U);
             if (UC && UC == C) {
-              if (CI->getParent() != InsertBB && DT->dominates(InsertBB, CI->getParent()))
+              if (CI->getParent() != InsertBB &&
+                  DT->dominates(InsertBB, CI->getParent()))
                 *U = CreateOrReuseCast(Load, U->get()->getType(), InsertBefore);
             }
           }
@@ -1109,7 +1113,7 @@ void ConstantLoader::fixSimple(int OperandIdx) {
   IGC_ASSERT_MESSAGE(User, "user must be provided");
   IGC_ASSERT_MESSAGE(NewC, "no need to fix simple case");
   IGC_ASSERT_MESSAGE(User->getOperand(OperandIdx) == C,
-    "wrong arguments: wrong operand index was provided");
+                     "wrong arguments: wrong operand index was provided");
   User->setOperand(OperandIdx, NewC);
   C = NewC;
   // indicate that we no longer need fix
@@ -1264,7 +1268,7 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst) {
             SubV, "constant.split.simple" + Twine(Idx), Inst,
             Inst->getDebugLoc());
       } else {
-        Value* SubV = SubLoader.loadNonSimple(Inst);
+        Value *SubV = SubLoader.loadNonSimple(Inst);
         Result = R.createWrRegion(
             Result ? (Value *)Result : (Value *)UndefValue::get(C->getType()),
             SubV, "constant.split.complex" + Twine(Idx), Inst,
@@ -1292,7 +1296,8 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst) {
  *          maximizing how many of NeededBits are set
  */
 unsigned ConstantLoader::getRegionBits(unsigned NeededBits,
-    unsigned OptionalBits, unsigned VecWidth) {
+                                       unsigned OptionalBits,
+                                       unsigned VecWidth) {
   if (!NeededBits)
     return 0;
   // Get the first and last element numbers in NeededBits.
@@ -1314,12 +1319,13 @@ unsigned ConstantLoader::getRegionBits(unsigned NeededBits,
   unsigned BestBits = 0;
   unsigned BestCount = 0;
   // Try each stride.
-  static const unsigned StrideBitsTable[] = { 0xffffffffU, 0x55555555U, 0x11111111U };
+  static const unsigned StrideBitsTable[] = {0xffffffffU, 0x55555555U,
+                                             0x11111111U};
   for (unsigned LogStride = 0, Stride = 1;
-      LogStride <= 2U && LogStride < LogMaxWidth;
-      ++LogStride, Stride <<= 1U) {
+       LogStride <= 2U && LogStride < LogMaxWidth; ++LogStride, Stride <<= 1U) {
     // Try each width (not including 1).
-    for (unsigned Width = 1U << (LogMaxWidth - LogStride); Width > 1; Width >>= 1) {
+    for (unsigned Width = 1U << (LogMaxWidth - LogStride); Width > 1;
+         Width >>= 1) {
       if (Width <= BestCount)
         break;
       // Try each start index.
@@ -1360,7 +1366,8 @@ unsigned ConstantLoader::getRegionBits(unsigned NeededBits,
 Instruction *ConstantLoader::loadSplatConstant(Instruction *InsertPos) {
   // Skip scalar types, vector type with just one element, or boolean vector.
   auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
-  if (!VTy || VTy->getNumElements() == 1 || VTy->getScalarType()->isIntegerTy(1))
+  if (!VTy || VTy->getNumElements() == 1 ||
+      VTy->getScalarType()->isIntegerTy(1))
     return nullptr;
   // Skip non-splat vector.
   Constant *C1 = IGCLLVM::Constant::getSplatValue(C, /* AllowUndefs */ true);
@@ -1428,7 +1435,8 @@ Instruction *ConstantLoader::load(Instruction *InsertBefore) {
 
   IRBuilder<> Builder(InsertBefore);
 
-  if (!PackedFloat && !PackedIntScale && !isa<UndefValue>(C)) { // not packed int constant or undef
+  if (!PackedFloat && !PackedIntScale &&
+      !isa<UndefValue>(C)) { // not packed int constant or undef
     if (auto CC = getConsolidatedConstant(C)) {
       // We're loading a vector of byte or short (but not i1). Use int so the
       // instruction does not use so many channels. This may also save it being
@@ -1477,7 +1485,8 @@ Instruction *ConstantLoader::load(Instruction *InsertBefore) {
 
 /***********************************************************************
  * ConstantLoader::loadNonPackedIntConst : insert instruction to load a constant
- *                               that are not packed because they have width > 8.
+ *                               that are not packed because they have width
+ * > 8.
  *
  * Enter:   C = constant to load
  *          InsertBefore = insert new instruction before here
@@ -1723,7 +1732,7 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore) {
     return load(InsertBefore);
   }
   IGC_ASSERT_MESSAGE(!C->getType()->getScalarType()->isIntegerTy(1),
-    "not expecting predicate in here");
+                     "not expecting predicate in here");
   if (Constant *Consolidated = getConsolidatedConstant(C)) {
     // Load as a consolidated constant, then bitcast to the correct type.
     auto Load =
@@ -1731,7 +1740,7 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore) {
             .loadBig(InsertBefore);
     IGC_ASSERT(Load);
     Load = CastInst::Create(Instruction::BitCast, Load, C->getType(),
-        Load->getName() + ".cast", InsertBefore);
+                            Load->getName() + ".cast", InsertBefore);
     if (AddedInstructions)
       AddedInstructions->push_back(Load);
     return Load;
@@ -1743,7 +1752,7 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore) {
   unsigned MaxSize = 2 * GRFWidthInBits / ElementBits;
   MaxSize = std::min(MaxSize, getMaxSIMDSize(InsertBefore));
   Instruction *Result = nullptr;
-  for (unsigned Idx = 0; Idx != NumElements; ) {
+  for (unsigned Idx = 0; Idx != NumElements;) {
     IGC_ASSERT_EXIT(NumElements > Idx);
     unsigned Size = std::min(1U << genx::log2(NumElements - Idx), MaxSize);
     // Load this subvector constant if necessary, and insert into the overall
@@ -1793,7 +1802,7 @@ bool ConstantLoader::isLegalSize() const {
  */
 bool ConstantLoader::isBigSimple() const {
   IGC_ASSERT_MESSAGE(!needFixingSimple(),
-    "simple case shall be fixed first before this call");
+                     "simple case shall be fixed first before this call");
   if (isa<UndefValue>(C))
     return true; // undef is simple
   auto VT = dyn_cast<VectorType>(C->getType());
@@ -1813,12 +1822,12 @@ bool ConstantLoader::isBigSimple() const {
  */
 bool ConstantLoader::isSimple() const {
   IGC_ASSERT_MESSAGE(!needFixingSimple(),
-    "simple case shall be fixed first before this call");
+                     "simple case shall be fixed first before this call");
   if (isa<UndefValue>(C))
     return true; // undef is simple (and generates no vISA code)
   if (C->getType()->getScalarType()->isIntegerTy(1) && C->isAllOnesValue())
     return true; // all 1s predicate is simple
-  if(User && User->isBinaryOp())
+  if (User && User->isBinaryOp())
     if (isa<VectorType>(C->getType()))
       if (auto splat = C->getSplatValue())
         if (splat->isZeroValue())
@@ -1858,17 +1867,18 @@ bool ConstantLoader::isPackedIntVector() const {
     if (!User)
       return true; // user not specified -- assume it is a mov, so wrong element
                    //  size is allowed
-    if (!C->getType()->getScalarType()->isIntegerTy(16)
-        && GenXIntrinsic::getGenXIntrinsicID(User) != GenXIntrinsic::genx_constanti
-        && !GenXIntrinsic::isWrRegion(User))
+    if (!C->getType()->getScalarType()->isIntegerTy(16) &&
+        GenXIntrinsic::getGenXIntrinsicID(User) !=
+            GenXIntrinsic::genx_constanti &&
+        !GenXIntrinsic::isWrRegion(User))
       return false; // wrong element size when it is not a mov
     switch (User->getOpcode()) {
-      case Instruction::And:
-      case Instruction::Or:
-      case Instruction::Xor:
-        return false; // disallow packed vector in logic op
-      default:
-        break;
+    case Instruction::And:
+    case Instruction::Or:
+    case Instruction::Xor:
+      return false; // disallow packed vector in logic op
+    default:
+      break;
     }
     return true;
   }
@@ -1929,8 +1939,7 @@ Constant *ConstantLoader::getConsolidatedConstant(Constant *C) {
       if (auto CI = dyn_cast<ConstantInt>(El)) {
         Bits = CI->getSExtValue();
         IsUndef = false;
-      }
-      else if (auto CI = dyn_cast<ConstantFP>(El)) {
+      } else if (auto CI = dyn_cast<ConstantFP>(El)) {
         APFloat V = CI->getValueAPF();
         Bits = V.bitcastToAPInt().getZExtValue();
         IsUndef = false;
@@ -1961,7 +1970,8 @@ void ConstantLoader::analyze() {
     return; // don't analyze if already a splat
   unsigned NumElements = VT->getNumElements();
   if (VT->getElementType()->isIntegerTy()) {
-    unsigned MaxSize = 2 * Subtarget.getGRFByteSize(); // element type is boolean
+    unsigned MaxSize =
+        2 * Subtarget.getGRFByteSize(); // element type is boolean
     if (!VT->getElementType()->isIntegerTy(1)) {
       unsigned ElmSz = VT->getScalarSizeInBits() / genx::ByteBits;
       MaxSize = 2 * Subtarget.getGRFByteSize() / ElmSz;
@@ -2029,16 +2039,16 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
     return;
   if (ResArith <= ImmIntVec::MaxUInt) {
     if (Min >= ImmIntVec::MinUInt && Max <= ImmIntVec::MaxUInt) {
-      // Values all in the range [MinUInt..MaxUInt]. We can do this with a packed
-      // unsigned int with no extra scaling or adjustment.
+      // Values all in the range [MinUInt..MaxUInt]. We can do this with a
+      // packed unsigned int with no extra scaling or adjustment.
       PackedIntScale = 1;
       PackedIntAdjust = 0;
       PackedIntMax = Max;
       return;
     }
     if (Min >= ImmIntVec::MinSInt && Max <= ImmIntVec::MaxSInt) {
-      // Values all in the range [MinSInt..MaxSInt]. We can do this with a packed
-      // unsigned int with no extra scaling or adjustment.
+      // Values all in the range [MinSInt..MaxSInt]. We can do this with a
+      // packed unsigned int with no extra scaling or adjustment.
       PackedIntScale = 1;
       PackedIntAdjust = -8;
       PackedIntMax = Max + 8;
@@ -2072,7 +2082,7 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
   // Calculate the GCD (greatest common divisor) of the diffs
   uint64_t GCD = Diffs[0];
   if (Diffs.size() > 1) {
-    for(unsigned i = 1; i < Diffs.size(); i++)
+    for (unsigned i = 1; i < Diffs.size(); i++)
       GCD = std::gcd(GCD, Diffs[i]);
   }
   // Scale should fit in signed integer
@@ -2092,14 +2102,17 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
   // by using unsigned or signed packed vector respectively.
   if (!(Min % CurScale)) {
     if (Min >= ImmIntVec::MinUInt &&
-        (!IGCLLVM::MulOverflow(CurScale, static_cast<int64_t>(ImmIntVec::MaxUInt), ResArith) &&
+        (!IGCLLVM::MulOverflow(
+             CurScale, static_cast<int64_t>(ImmIntVec::MaxUInt), ResArith) &&
          Max <= ResArith)) {
       PackedIntAdjust = ImmIntVec::MinUInt;
       return;
     }
-    if ((!IGCLLVM::MulOverflow(CurScale, static_cast<int64_t>(ImmIntVec::MinSInt), ResArith) &&
+    if ((!IGCLLVM::MulOverflow(
+             CurScale, static_cast<int64_t>(ImmIntVec::MinSInt), ResArith) &&
          Min >= ResArith) &&
-        (!IGCLLVM::MulOverflow(CurScale, static_cast<int64_t>(ImmIntVec::MaxSInt), ResArith) &&
+        (!IGCLLVM::MulOverflow(
+             CurScale, static_cast<int64_t>(ImmIntVec::MaxSInt), ResArith) &&
          Max <= ResArith)) {
       PackedIntAdjust = Min;
       PackedIntMax = ImmIntVec::MaxSInt;
@@ -2107,7 +2120,8 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
     }
     // Special case all pre-scaled values being in [-15,0] as we can do that
     // by negating the scale and not needing to adjust.
-    if ((!IGCLLVM::MulOverflow(CurScale, static_cast<int64_t>(-ImmIntVec::MaxUInt), ResArith) &&
+    if ((!IGCLLVM::MulOverflow(
+             CurScale, static_cast<int64_t>(-ImmIntVec::MaxUInt), ResArith) &&
          Min >= ResArith) &&
         Max <= -ImmIntVec::MinUInt) {
       PackedIntAdjust = ImmIntVec::MinUInt;

@@ -42,9 +42,9 @@ SPDX-License-Identifier: MIT
 /// in its slot, and the corresponding SimpleValue in the unified return value
 /// has an extra segment of live range from the slot up to the return.
 ///
-/// A kernel has a slot for each kernel arg copy. A copy is inserted into such a slot in
-/// GenXCoalescing if the kernel arg offset is not aligned enough for the uses
-/// of the value.
+/// A kernel has a slot for each kernel arg copy. A copy is inserted into such a
+/// slot in GenXCoalescing if the kernel arg offset is not aligned enough for
+/// the uses of the value.
 ///
 /// **IR restriction**: After this pass, it is very difficult to modify code
 /// other than by inserting copies in the reserved slots above, as it would
@@ -72,22 +72,23 @@ class GenXNumbering : public FGPassImplInterface,
   FunctionGroup *FG = nullptr;
   GenXBaling *Baling = nullptr;
   struct BBNumber {
-    unsigned Index; // 0-based index in list of basic blocks
+    unsigned Index;     // 0-based index in list of basic blocks
     unsigned PhiNumber; // instruction number of first phi node in successor
     unsigned EndNumber; // instruction number of end of block
   };
   // BBNumbers : The 0-based number (index) of each basic block.
   ValueMap<const BasicBlock *, BBNumber,
-          IgnoreRAUWValueMapConfig<const BasicBlock *>> BBNumbers;
+           IgnoreRAUWValueMapConfig<const BasicBlock *>>
+      BBNumbers;
   // Numbers : The map of instruction numbers.
-  ValueMap<const Value *, unsigned,
-          IgnoreRAUWValueMapConfig<const Value *>> Numbers;
+  ValueMap<const Value *, unsigned, IgnoreRAUWValueMapConfig<const Value *>>
+      Numbers;
   // StartNumbers : for a CallInst, the start number of where arg pre-copies
   // are considered to be. This is stored, instead of being calculated from
   // the CallInst's number, so that a CallInst can change number of args, as
   // happens in GenXArgIndirection.
-  ValueMap<const Value *, unsigned,
-          IgnoreRAUWValueMapConfig<const Value *>> StartNumbers;
+  ValueMap<const Value *, unsigned, IgnoreRAUWValueMapConfig<const Value *>>
+      StartNumbers;
   // NumberToPhiIncomingMap : map from instruction number to the phi incoming
   // (phi node plus incoming index) it represents. We assume that a phi node is
   //  never deleted after GenXNumbering. It is implemented as multimap because
@@ -114,17 +115,21 @@ public:
   // get and set "start instruction number" for a CallInst
   unsigned getStartNumber(Value *V) { return StartNumbers[V]; }
   void setStartNumber(Value *V, unsigned Number) { StartNumbers[V] = Number; }
-  // get number for kernel arg copy, arg pre-copy, ret pre-copy and ret post-copy sites
-  unsigned getArgIndirectionNumber(CallInst *CI, unsigned OperandNum, unsigned Index);
+  // get number for kernel arg copy, arg pre-copy, ret pre-copy and ret
+  // post-copy sites
+  unsigned getArgIndirectionNumber(CallInst *CI, unsigned OperandNum,
+                                   unsigned Index);
   unsigned getKernelArgCopyNumber(Argument *Arg);
-  unsigned getArgPreCopyNumber(CallInst *CI, unsigned OperandNum, unsigned Index);
+  unsigned getArgPreCopyNumber(CallInst *CI, unsigned OperandNum,
+                               unsigned Index);
   unsigned getRetPreCopyNumber(ReturnInst *RI, unsigned Index);
   unsigned getRetPostCopyNumber(CallInst *CI, unsigned Index);
   // get the number of a phi incoming, where its copy will be inserted
   // if necessary
   unsigned getPhiNumber(PHINode *Phi, BasicBlock *BB) const;
   unsigned getPhiNumber(PHINode *Phi, BasicBlock *BB);
-  // getPhiIncomingFromNumber : get the phi incoming for a number returned from getPhiNumber
+  // getPhiIncomingFromNumber : get the phi incoming for a number returned from
+  // getPhiNumber
   std::unordered_map<PHINode *, unsigned>
   getPhiIncomingFromNumber(unsigned Number);
   // Debug dump
@@ -142,4 +147,4 @@ void initializeGenXNumberingWrapperPass(PassRegistry &);
 using GenXNumberingWrapper = FunctionGroupWrapperPass<GenXNumbering>;
 
 } // end namespace llvm
-#endif //ndef GENXNUMBERING_H
+#endif // ndef GENXNUMBERING_H

@@ -19,32 +19,28 @@ SPDX-License-Identifier: MIT
 
 #include <map>
 
-class LegalizeFunctionSignatures : public llvm::ModulePass
-{
+class LegalizeFunctionSignatures : public llvm::ModulePass {
 public:
-    static char ID;
+  static char ID;
 
-    LegalizeFunctionSignatures();
+  LegalizeFunctionSignatures();
 
-    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
-    {
-        AU.addRequired<IGC::CodeGenContextWrapper>();
-        AU.addRequired<IGC::MetaDataUtilsWrapper>();
-    }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const {
+    AU.addRequired<IGC::CodeGenContextWrapper>();
+    AU.addRequired<IGC::MetaDataUtilsWrapper>();
+  }
 
-    virtual bool runOnModule(llvm::Module& M);
+  virtual bool runOnModule(llvm::Module &M);
 
-    void FixFunctionSignatures(llvm::Module& M);
-    void FixFunctionBody(llvm::Module& M);
-    void FixFunctionUsers(llvm::Module& M);
-    void FixCallInstruction(llvm::Module& M, llvm::CallInst* callInst);
-    void CopyAttributesAndAdjustForSkippedFunctionArgs(llvm::Function* pFunc, llvm::Function* pNewFunc, bool functionHasPromotableSRetArg);
+  void FixFunctionSignatures(llvm::Module &M);
+  void FixFunctionBody(llvm::Module &M);
+  void FixFunctionUsers(llvm::Module &M);
+  void FixCallInstruction(llvm::Module &M, llvm::CallInst *callInst);
+  void CopyAttributesAndAdjustForSkippedFunctionArgs(llvm::Function *pFunc, llvm::Function *pNewFunc,
+                                                     bool functionHasPromotableSRetArg);
 
-    virtual llvm::StringRef getPassName() const
-    {
-        return "LegalizeFunctionSignatures";
-    }
+  virtual llvm::StringRef getPassName() const { return "LegalizeFunctionSignatures"; }
 
 private:
-    llvm::MapVector<llvm::Function*, llvm::Function*> oldToNewFuncMap;
+  llvm::MapVector<llvm::Function *, llvm::Function *> oldToNewFuncMap;
 };

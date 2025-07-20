@@ -22,37 +22,30 @@ IGC_INITIALIZE_PASS_END(RemoveCodeAssumptions, PASS_FLAG, PASS_DESCRIPTION, PASS
 
 char RemoveCodeAssumptions::ID = 0;
 
-RemoveCodeAssumptions::RemoveCodeAssumptions()
-    : FunctionPass(ID)
-{
-    initializeRemoveCodeAssumptionsPass(*PassRegistry::getPassRegistry());
+RemoveCodeAssumptions::RemoveCodeAssumptions() : FunctionPass(ID) {
+  initializeRemoveCodeAssumptionsPass(*PassRegistry::getPassRegistry());
 }
 
-bool RemoveCodeAssumptions::runOnFunction(Function& F)
-{
-    visit(F);
+bool RemoveCodeAssumptions::runOnFunction(Function &F) {
+  visit(F);
 
-    bool changed = m_instructionsToRemove.size() > 0;
-    for (auto I : m_instructionsToRemove)
-    {
-        I->eraseFromParent();
-    }
-    m_instructionsToRemove.clear();
+  bool changed = m_instructionsToRemove.size() > 0;
+  for (auto I : m_instructionsToRemove) {
+    I->eraseFromParent();
+  }
+  m_instructionsToRemove.clear();
 
-    return changed;
+  return changed;
 }
 
+void RemoveCodeAssumptions::visitIntrinsicInst(llvm::IntrinsicInst &I) {
+  auto intrinsicID = I.getIntrinsicID();
 
-void RemoveCodeAssumptions::visitIntrinsicInst(llvm::IntrinsicInst& I)
-{
-    auto intrinsicID = I.getIntrinsicID();
-
-    switch (intrinsicID)
-    {
-    case Intrinsic::assume:
-        m_instructionsToRemove.push_back(&I);
-        break;
-    default:
-        break;
-    }
+  switch (intrinsicID) {
+  case Intrinsic::assume:
+    m_instructionsToRemove.push_back(&I);
+    break;
+  default:
+    break;
+  }
 }

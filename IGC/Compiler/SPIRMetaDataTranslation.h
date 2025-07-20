@@ -14,30 +14,25 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
+namespace IGC {
+bool isLegalOCLVersion(int major, int minor);
 
-namespace IGC
-{
-    bool isLegalOCLVersion(int major, int minor);
+// This pass Translates SPIR metadata to IGC metadata
+class SPIRMetaDataTranslation : public llvm::ModulePass {
+public:
+  static char ID;
 
-    // This pass Translates SPIR metadata to IGC metadata
-    class SPIRMetaDataTranslation : public llvm::ModulePass
-    {
-    public:
-        static char ID;
+  SPIRMetaDataTranslation();
 
-        SPIRMetaDataTranslation();
+  ~SPIRMetaDataTranslation() {}
 
-        ~SPIRMetaDataTranslation() {}
+  void translateKernelMetadataIntoOpenCLKernelsMD(llvm::Module &M);
+  bool runOnModule(llvm::Module &M) override;
 
-        void translateKernelMetadataIntoOpenCLKernelsMD(llvm::Module& M);
-        bool runOnModule(llvm::Module& M) override;
-
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<CodeGenContextWrapper>();
-            AU.addRequired<MetaDataUtilsWrapper>();
-        }
-
-    };
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
+};
 
 } // namespace IGC

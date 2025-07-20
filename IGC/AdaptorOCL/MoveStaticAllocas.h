@@ -19,30 +19,23 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    /*
-    This pass searches for "static" alloca instructions in function that are not
-    in the entry block and moves them. This prevents llvm from inserting
-    @llvm.stacksave and @llvm.stackrestore that are not handled by IGC.
-    */
-    class MoveStaticAllocas : public llvm::FunctionPass
-    {
-    public:
-        static char ID;
+namespace IGC {
+/*
+This pass searches for "static" alloca instructions in function that are not
+in the entry block and moves them. This prevents llvm from inserting
+@llvm.stacksave and @llvm.stackrestore that are not handled by IGC.
+*/
+class MoveStaticAllocas : public llvm::FunctionPass {
+public:
+  static char ID;
 
-        MoveStaticAllocas();
+  MoveStaticAllocas();
 
-        ~MoveStaticAllocas() {}
+  ~MoveStaticAllocas() {}
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "MoveStaticAllocasPass";
-        }
+  virtual llvm::StringRef getPassName() const override { return "MoveStaticAllocasPass"; }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
-
-
-    };
+  virtual bool runOnFunction(llvm::Function &F) override;
+};
 
 } // namespace IGC

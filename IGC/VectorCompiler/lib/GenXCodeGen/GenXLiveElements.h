@@ -148,8 +148,7 @@ private:
 };
 
 // Function pass wrapper for GenXLiveElements
-class GenXFuncLiveElements : public FunctionPass,
-                             public GenXLiveElements {
+class GenXFuncLiveElements : public FunctionPass, public GenXLiveElements {
 public:
   static char ID;
 

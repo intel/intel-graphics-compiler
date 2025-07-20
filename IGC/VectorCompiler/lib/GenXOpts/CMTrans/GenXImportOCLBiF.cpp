@@ -241,7 +241,8 @@ void BIConvert::runOnModule(Module &M) {
           tys0[0] = InstCall->getArgOperand(0)->getType();
           // build argument list for the 1st intrinsic
           args0.append(InstCall->op_begin(),
-                       InstCall->op_begin() + IGCLLVM::getNumArgOperands(InstCall));
+                       InstCall->op_begin() +
+                           IGCLLVM::getNumArgOperands(InstCall));
           Function *IntrinFunc0 =
               GenXIntrinsic::getAnyDeclaration(&M, pair.first, tys0);
           Instruction *IntrinCall0 = CallInst::Create(
@@ -396,8 +397,8 @@ static void removeFunctionBitcasts(Module &M) {
             if (oldRetTypeSize > newRetTypeSize)
               castOp = Instruction::Trunc;
             else {
-              AttributeSet retAttrs = funcToBeChanged->getAttributes()
-                                          .getRetAttrs();
+              AttributeSet retAttrs =
+                  funcToBeChanged->getAttributes().getRetAttrs();
               if (retAttrs.hasAttribute(Attribute::ZExt))
                 castOp = Instruction::ZExt;
               else if (retAttrs.hasAttribute(Attribute::SExt))
@@ -535,4 +536,3 @@ bool GenXImportOCLBiF::runOnModule(Module &M) {
   BIConvert{}.runOnModule(M);
   return true;
 }
-

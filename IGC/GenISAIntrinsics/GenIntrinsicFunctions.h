@@ -16,22 +16,23 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 
-namespace llvm
-{
+namespace llvm {
 class Type;
 class Module;
-} // namespace IGC
+} // namespace llvm
 
-namespace IGC
-{
-std::string getMangledTypeStr(llvm::Type* Ty);
+namespace IGC {
+std::string getMangledTypeStr(llvm::Type *Ty);
 
-const char* GetIntrinsicPrefixName();
+const char *GetIntrinsicPrefixName();
 
-std::string GetName(llvm::GenISAIntrinsic::ID id, llvm::ArrayRef<llvm::Type*> OverloadedTys, llvm::ArrayRef<llvm::Type*> overloadedPointeeTys);
+std::string GetName(llvm::GenISAIntrinsic::ID id, llvm::ArrayRef<llvm::Type *> OverloadedTys,
+                    llvm::ArrayRef<llvm::Type *> overloadedPointeeTys);
 
 llvm::GenISAIntrinsic::IntrinsicComments GetIntrinsicComments(llvm::GenISAIntrinsic::ID id);
 
-llvm::Function* GetDeclaration(llvm::Module* pModule, llvm::GenISAIntrinsic::ID id, llvm::ArrayRef<llvm::Type*> overloadedTys, llvm::ArrayRef<llvm::Type*> overloadedPointeeTys);
+llvm::Function *GetDeclaration(llvm::Module *pModule, llvm::GenISAIntrinsic::ID id,
+                               llvm::ArrayRef<llvm::Type *> overloadedTys,
+                               llvm::ArrayRef<llvm::Type *> overloadedPointeeTys);
 
 } // namespace IGC

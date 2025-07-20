@@ -66,16 +66,14 @@ void LexicalScopes::initialize(const IGC::VISAModule *M) {
 
 /// extractLexicalScopes - Extract instruction ranges for each lexical scopes
 /// for the given machine function.
-void LexicalScopes::extractLexicalScopes(
-    SmallVectorImpl<InsnRange> &MIRanges,
-    DenseMap<const Instruction *, LexicalScope *> &MI2ScopeMap) {
+void LexicalScopes::extractLexicalScopes(SmallVectorImpl<InsnRange> &MIRanges,
+                                         DenseMap<const Instruction *, LexicalScope *> &MI2ScopeMap) {
 
   // Scan each instruction and create scopes. First build working set of scopes.
   const Instruction *RangeBeginMI = nullptr;
   const Instruction *PrevMI = nullptr;
   const DILocation *PrevDL = nullptr;
-  for (IGC::VISAModule::const_iterator II = VisaM->begin(), IE = VisaM->end();
-       II != IE; ++II) {
+  for (IGC::VISAModule::const_iterator II = VisaM->begin(), IE = VisaM->end(); II != IE; ++II) {
     const Instruction *MInsn = *II;
 
     // Check if instruction has valid location information.
@@ -141,8 +139,7 @@ LexicalScope *LexicalScopes::findLexicalScope(const DILocation *DL) {
 
 /// getOrCreateLexicalScope - Find lexical scope for the given DebugLoc. If
 /// not available then create new lexical scope.
-LexicalScope *LexicalScopes::getOrCreateLexicalScope(const DILocalScope *Scope,
-                                                     const DILocation *IA) {
+LexicalScope *LexicalScopes::getOrCreateLexicalScope(const DILocalScope *Scope, const DILocation *IA) {
   if (IA) {
     // Create an abstract scope for inlined function.
     getOrCreateAbstractScope(Scope);
@@ -154,8 +151,7 @@ LexicalScope *LexicalScopes::getOrCreateLexicalScope(const DILocalScope *Scope,
 }
 
 /// getOrCreateRegularScope - Find or create a regular lexical scope.
-LexicalScope *
-LexicalScopes::getOrCreateRegularScope(const DILocalScope *Scope) {
+LexicalScope *LexicalScopes::getOrCreateRegularScope(const DILocalScope *Scope) {
   Scope = Scope->getNonLexicalBlockFileScope();
 
   auto I = LexicalScopeMap.find(Scope);
@@ -181,9 +177,7 @@ LexicalScopes::getOrCreateRegularScope(const DILocalScope *Scope) {
 }
 
 /// getOrCreateInlinedScope - Find or create an inlined lexical scope.
-LexicalScope *
-LexicalScopes::getOrCreateInlinedScope(const DILocalScope *Scope,
-                                       const DILocation *InlinedAt) {
+LexicalScope *LexicalScopes::getOrCreateInlinedScope(const DILocalScope *Scope, const DILocation *InlinedAt) {
   Scope = Scope->getNonLexicalBlockFileScope();
   std::pair<const DILocalScope *, const DILocation *> P(Scope, InlinedAt);
   auto I = InlinedLexicalScopeMap.find(P);
@@ -204,8 +198,7 @@ LexicalScopes::getOrCreateInlinedScope(const DILocalScope *Scope,
 }
 
 /// getOrCreateAbstractScope - Find or create an abstract lexical scope.
-LexicalScope *
-LexicalScopes::getOrCreateAbstractScope(const DILocalScope *Scope) {
+LexicalScope *LexicalScopes::getOrCreateAbstractScope(const DILocalScope *Scope) {
   IGC_ASSERT_MESSAGE(Scope, "Invalid Scope encoding!");
   Scope = Scope->getNonLexicalBlockFileScope();
   auto I = AbstractScopeMap.find(Scope);
@@ -236,9 +229,7 @@ void LexicalScopes::constructScopeNest(LexicalScope *Scope) {
     LexicalScope *WS = WorkStack.back();
     const SmallVectorImpl<LexicalScope *> &Children = WS->getChildren();
     bool visitedChildren = false;
-    for (SmallVectorImpl<LexicalScope *>::const_iterator SI = Children.begin(),
-                                                         SE = Children.end();
-         SI != SE; ++SI) {
+    for (SmallVectorImpl<LexicalScope *>::const_iterator SI = Children.begin(), SE = Children.end(); SI != SE; ++SI) {
       LexicalScope *ChildScope = *SI;
       if (!ChildScope->getDFSOut()) {
         WorkStack.push_back(ChildScope);
@@ -256,13 +247,10 @@ void LexicalScopes::constructScopeNest(LexicalScope *Scope) {
 
 /// assignInstructionRanges - Find ranges of instructions covered by each
 /// lexical scope.
-void LexicalScopes::assignInstructionRanges(
-    SmallVectorImpl<InsnRange> &MIRanges,
-    DenseMap<const Instruction *, LexicalScope *> &MI2ScopeMap) {
+void LexicalScopes::assignInstructionRanges(SmallVectorImpl<InsnRange> &MIRanges,
+                                            DenseMap<const Instruction *, LexicalScope *> &MI2ScopeMap) {
   LexicalScope *PrevLexicalScope = NULL;
-  for (SmallVectorImpl<InsnRange>::const_iterator RI = MIRanges.begin(),
-                                                  RE = MIRanges.end();
-       RI != RE; ++RI) {
+  for (SmallVectorImpl<InsnRange>::const_iterator RI = MIRanges.begin(), RE = MIRanges.end(); RI != RE; ++RI) {
     const InsnRange &R = *RI;
     LexicalScope *S = MI2ScopeMap.lookup(R.first);
     IGC_ASSERT_MESSAGE(S, "Lost LexicalScope for a machine instruction!");

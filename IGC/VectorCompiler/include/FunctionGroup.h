@@ -287,7 +287,9 @@ inline raw_ostream &operator<<(raw_ostream &OS,
   return OS;
 }
 
-template <typename FGPassImpl> struct IDMixin { inline static char ID = 0; };
+template <typename FGPassImpl> struct IDMixin {
+  inline static char ID = 0;
+};
 
 // FunctionGroupWrapperPass - a type of pass that
 // runs a pass instance per FunctionGroup, and for each FunctionGroup data holds

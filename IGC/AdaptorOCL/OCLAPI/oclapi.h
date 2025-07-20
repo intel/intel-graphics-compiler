@@ -10,9 +10,9 @@ SPDX-License-Identifier: MIT
 #define OCL_API_CALLS_H
 
 #if defined(_WIN32)
-    #define OCL_API_CALL
+#define OCL_API_CALL
 #else
-    #define OCL_API_CALL __attribute__ ((visibility("default")))
+#define OCL_API_CALL __attribute__((visibility("default")))
 #endif
 
 #endif // OCL_API_CALLS_H

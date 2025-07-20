@@ -25,8 +25,7 @@ namespace {
 // If V is scalar, return 1.
 // if V is vector, return the number of elements.
 inline int getNumElts(Value *V) {
-  IGCLLVM::FixedVectorType *VTy =
-      dyn_cast<IGCLLVM::FixedVectorType>(V->getType());
+  IGCLLVM::FixedVectorType *VTy = dyn_cast<IGCLLVM::FixedVectorType>(V->getType());
   return VTy ? (int)VTy->getNumElements() : 1;
 }
 
@@ -36,11 +35,8 @@ inline int getTypeSizeInBits(Type *Ty) {
   return scalarBits * (VTy ? (int)VTy->getNumElements() : 1);
 }
 
-e_alignment getMinAlignment(Value *V, WIAnalysis *WIA,
-                            CodeGenContext *pContext) {
-  auto grfAlignment = [pContext]() {
-    return pContext->platform.getGRFSize() == 64 ? EALIGN_32WORD : EALIGN_HWORD;
-  };
+e_alignment getMinAlignment(Value *V, WIAnalysis *WIA, CodeGenContext *pContext) {
+  auto grfAlignment = [pContext]() { return pContext->platform.getGRFSize() == 64 ? EALIGN_32WORD : EALIGN_HWORD; };
 
   auto getSendPayloadAlignment = [pContext](const bool Is64BitTy) {
     if (pContext->platform.getGRFSize() == 64 /*bytes*/)
@@ -92,8 +88,7 @@ e_alignment getMinAlignment(Value *V, WIAnalysis *WIA,
 
 char VariableReuseAnalysis::ID = 0;
 
-IGC_INITIALIZE_PASS_BEGIN(VariableReuseAnalysis, "VariableReuseAnalysis",
-                          "VariableReuseAnalysis", false, true)
+IGC_INITIALIZE_PASS_BEGIN(VariableReuseAnalysis, "VariableReuseAnalysis", "VariableReuseAnalysis", false, true)
 // IGC_INITIALIZE_PASS_DEPENDENCY(RegisterEstimator)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
@@ -104,19 +99,14 @@ IGC_INITIALIZE_PASS_DEPENDENCY(DeSSA)
 IGC_INITIALIZE_PASS_DEPENDENCY(CoalescingEngine)
 IGC_INITIALIZE_PASS_DEPENDENCY(BlockCoalescing)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(VariableReuseAnalysis, "VariableReuseAnalysis",
-                        "VariableReuseAnalysis", false, true)
+IGC_INITIALIZE_PASS_END(VariableReuseAnalysis, "VariableReuseAnalysis", "VariableReuseAnalysis", false, true)
 
-llvm::FunctionPass *IGC::createVariableReuseAnalysisPass() {
-  return new VariableReuseAnalysis;
-}
+llvm::FunctionPass *IGC::createVariableReuseAnalysisPass() { return new VariableReuseAnalysis; }
 
 VariableReuseAnalysis::VariableReuseAnalysis()
-    : FunctionPass(ID), m_pCtx(nullptr), m_WIA(nullptr), m_LV(nullptr),
-      m_DeSSA(nullptr), m_PatternMatch(nullptr), m_coalescingEngine(nullptr),
-      m_RPE(nullptr), m_SimdSize(0), m_IsFunctionPressureLow(Status::Undef),
-      m_IsBlockPressureLow(Status::Undef),
-      m_BBSizeThreshold(IGC_GET_FLAG_VALUE(ScalarAliasBBSizeThreshold)) {
+    : FunctionPass(ID), m_pCtx(nullptr), m_WIA(nullptr), m_LV(nullptr), m_DeSSA(nullptr), m_PatternMatch(nullptr),
+      m_coalescingEngine(nullptr), m_RPE(nullptr), m_SimdSize(0), m_IsFunctionPressureLow(Status::Undef),
+      m_IsBlockPressureLow(Status::Undef), m_BBSizeThreshold(IGC_GET_FLAG_VALUE(ScalarAliasBBSizeThreshold)) {
   initializeVariableReuseAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
@@ -140,8 +130,7 @@ bool VariableReuseAnalysis::runOnFunction(Function &F) {
   // Nothing but cleanup data from previous runs.
   reset();
 
-  if (IGC_IS_FLAG_ENABLED(EnableVariableAlias) && m_DeSSA &&
-      !m_pCtx->getModuleMetaData()->compOpt.OptDisable &&
+  if (IGC_IS_FLAG_ENABLED(EnableVariableAlias) && m_DeSSA && !m_pCtx->getModuleMetaData()->compOpt.OptDisable &&
       m_pCtx->platform.GetPlatformFamily() >= IGFX_GEN9_CORE) {
     // Setup ArgDeSSARoot (for subroutine, it might be conservative,
     // but it should work.).
@@ -185,8 +174,7 @@ bool VariableReuseAnalysis::runOnFunction(Function &F) {
                       .Pass("VariableAlias")
                       .PostFix(F.getName().str())
                       .Extension("txt");
-      printAlias(Debug::Dump(name, Debug::DumpType::DBG_MSG_TEXT).stream(),
-                 m_F);
+      printAlias(Debug::Dump(name, Debug::DumpType::DBG_MSG_TEXT).stream(), m_F);
     }
   }
 
@@ -194,9 +182,7 @@ bool VariableReuseAnalysis::runOnFunction(Function &F) {
   return false;
 }
 
-static unsigned getMaxReuseDistance(uint16_t size) {
-  return (size == 8) ? 10 : 5;
-}
+static unsigned getMaxReuseDistance(uint16_t size) { return (size == 8) ? 10 : 5; }
 
 bool VariableReuseAnalysis::checkUseInst(Instruction *UseInst, LiveVars *LV) {
   BasicBlock *CurBB = UseInst->getParent();
@@ -241,8 +227,7 @@ bool VariableReuseAnalysis::checkUseInst(Instruction *UseInst, LiveVars *LV) {
   return FarUseLoc <= DefLoc + FarUseDistance;
 }
 
-bool VariableReuseAnalysis::checkDefInst(Instruction *DefInst,
-                                         Instruction *UseInst, LiveVars *LV) {
+bool VariableReuseAnalysis::checkDefInst(Instruction *DefInst, Instruction *UseInst, LiveVars *LV) {
   IGC_ASSERT(nullptr != DefInst);
   IGC_ASSERT(nullptr != UseInst);
   // If dessa is disabled (LV = null), skip
@@ -314,9 +299,8 @@ void VariableReuseAnalysis::mergeVariables(Function *F) {
 
         // For now, coalescing out and input if at least one of them
         // is local, and input is the last use.
-        if ((m_WIA && m_WIA->whichDepend(out) == m_WIA->whichDepend(input)) &&
-            !hasBeenPayloadCoalesced(input) && !hasBeenPayloadCoalesced(out) &&
-            !m_DeSSA->interfere(out, input)) {
+        if ((m_WIA && m_WIA->whichDepend(out) == m_WIA->whichDepend(input)) && !hasBeenPayloadCoalesced(input) &&
+            !hasBeenPayloadCoalesced(out) && !m_DeSSA->interfere(out, input)) {
           // For dpas, alignment for out/input are the same
           e_alignment align = EALIGN_AUTO;
           if (m_WIA) {
@@ -363,9 +347,7 @@ void VariableReuseAnalysis::visitLiveInstructions(Function *F) {
 // all definitions if no definition dominates the rest, or right before
 // the definition that dominates the rest definitions. If a value in AllVals
 // is an argument, no lifeTimeStart is needed.
-void VariableReuseAnalysis::setLifeTimeStartPos(Value *RootVal,
-                                                ValueVectorTy &AllVals,
-                                                BlockCoalescing *theBC) {
+void VariableReuseAnalysis::setLifeTimeStartPos(Value *RootVal, ValueVectorTy &AllVals, BlockCoalescing *theBC) {
   SmallSet<BasicBlock *, 8> defBBSet;
   SmallSet<BasicBlock *, 8> phiSrcMovBBSet;
   for (int i = 0, sz = (int)AllVals.size(); i < sz; ++i) {
@@ -410,8 +392,7 @@ void VariableReuseAnalysis::setLifeTimeStartPos(Value *RootVal,
   }
 
   // phiSrcMovBBSet
-  for (auto II = phiSrcMovBBSet.begin(), IE = phiSrcMovBBSet.end(); II != IE;
-       ++II) {
+  for (auto II = phiSrcMovBBSet.begin(), IE = phiSrcMovBBSet.end(); II != IE; ++II) {
     BasicBlock *aB = *II;
     NearestDomBB = m_DT->findNearestCommonDominator(NearestDomBB, aB);
   }
@@ -548,8 +529,7 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst &I) {
   // disable the existing extractMask optimization, which will
   // cause perf regression.
   if (Instruction *Inst = dyn_cast<Instruction>(vecVal)) {
-    if (IGC_IS_FLAG_DISABLED(EnableExtractMask) &&
-        (isSampleInstruction(Inst) || isLdInstruction(Inst))) {
+    if (IGC_IS_FLAG_DISABLED(EnableExtractMask) && (isSampleInstruction(Inst) || isLdInstruction(Inst))) {
       // OCL can have sample (image read), not ld. For 3d/mac,
       // need to check more
       return;
@@ -559,8 +539,7 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst &I) {
   // If inst is dead, EEI is an argument, or EEI & vecVal have
   // different uniformness, skip it. (Current igc & visa interface
   // requires any argument value to be a root value, not alias.)
-  if (m_HasBecomeNoopInsts.count(EEI) || m_DeSSA->isNoopAliaser(EEI) ||
-      isOrCoalescedWithArg(EEI) ||
+  if (m_HasBecomeNoopInsts.count(EEI) || m_DeSSA->isNoopAliaser(EEI) || isOrCoalescedWithArg(EEI) ||
       (m_WIA && m_WIA->whichDepend(EEI) != m_WIA->whichDepend(vecVal))) {
     return;
   }
@@ -606,8 +585,7 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst &I) {
   m_HasBecomeNoopInsts[EEI] = 1;
 }
 
-void VariableReuseAnalysis::printAlias(raw_ostream &OS,
-                                       const Function *F) const {
+void VariableReuseAnalysis::printAlias(raw_ostream &OS, const Function *F) const {
   auto toString = [](e_alignment A) -> const char * {
     switch (A) {
     case EALIGN_BYTE:
@@ -661,8 +639,7 @@ void VariableReuseAnalysis::printAlias(raw_ostream &OS,
     return n0 < n1;
   };
 
-  OS << "\nSummary of Variable Alias Info: "
-     << (F ? F->getName().str() : "Function") << "\n";
+  OS << "\nSummary of Variable Alias Info: " << (F ? F->getName().str() : "Function") << "\n";
 
   SmallVector<SBaseVecDesc *, 64> sortedAlias;
   for (auto &MI : m_baseVecMap) {
@@ -675,16 +652,14 @@ void VariableReuseAnalysis::printAlias(raw_ostream &OS,
     SBaseVecDesc *BV = sortedAlias[i];
     Value *aliasee = BV->BaseVector;
 
-    OS << "Aliasee : " << *aliasee << "  align: " << toString(BV->Align)
-       << "\n";
+    OS << "Aliasee : " << *aliasee << "  align: " << toString(BV->Align) << "\n";
     std::sort(BV->Aliasers.begin(), BV->Aliasers.end(), SubVecCmp);
     for (auto VI : BV->Aliasers) {
       SSubVecDesc *aSV = VI;
       Value *aliaser = aSV->Aliaser;
       bool isSinglVal = m_DeSSA ? m_DeSSA->isSingleValued(aliaser) : true;
       const char *inCC = !isSinglVal ? ".inDessaCC" : "";
-      OS << "    " << *aliaser << "  [" << aSV->StartElementOffset << "]"
-         << inCC << "\n";
+      OS << "    " << *aliaser << "  [" << aSV->StartElementOffset << "]" << inCC << "\n";
     }
     OS << "\n";
   }
@@ -741,8 +716,7 @@ void VariableReuseAnalysis::sortAliasResult() {
 void VariableReuseAnalysis::dumpAlias() const { printAlias(dbgs(), m_F); }
 
 // Add alias Aliaser -> Aliasee[Idx]
-void VariableReuseAnalysis::addVecAlias(Value *Aliaser, Value *Aliasee,
-                                        Value *OrigBaseVec, int Idx,
+void VariableReuseAnalysis::addVecAlias(Value *Aliaser, Value *Aliasee, Value *OrigBaseVec, int Idx,
                                         e_alignment AliaseeAlign) {
   auto getLargerAlign = [](e_alignment A0, e_alignment A1) -> e_alignment {
     if (A0 == EALIGN_AUTO)
@@ -814,8 +788,7 @@ SSubVecDesc *VariableReuseAnalysis::getOrCreateSubVecDesc(Value *V) {
   return m_aliasMap[V];
 }
 
-SBaseVecDesc *VariableReuseAnalysis::getOrCreateBaseVecDesc(Value *V, Value *OV,
-                                                            e_alignment A) {
+SBaseVecDesc *VariableReuseAnalysis::getOrCreateBaseVecDesc(Value *V, Value *OV, e_alignment A) {
   if (m_baseVecMap.count(V) == 0) {
     SBaseVecDesc *BV = new (Allocator) SBaseVecDesc(V, OV, A);
     m_baseVecMap.insert(std::make_pair(V, BV));
@@ -879,8 +852,8 @@ bool VariableReuseAnalysis::hasAnotherDCCAsAliasee(Value *V) const {
 // Return value:
 //   true :  if all elements are inserted with IEI of constant index
 //   false:  otherwise.
-bool VariableReuseAnalysis::getAllInsEltsIfAvailable(
-    InsertElementInst *FirstIEI, VecInsEltInfoTy &AllIEIs, bool OnlySameBB) {
+bool VariableReuseAnalysis::getAllInsEltsIfAvailable(InsertElementInst *FirstIEI, VecInsEltInfoTy &AllIEIs,
+                                                     bool OnlySameBB) {
   int nelts = getNumElts(FirstIEI);
 
   // Sanity
@@ -965,8 +938,7 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(
       return false;
 
     // Make sure FromVec or E have the same uniformness as V.
-    if ((E && V_dep != m_WIA->whichDepend(E)) ||
-        (FromVec && V_dep != m_WIA->whichDepend(FromVec)))
+    if ((E && V_dep != m_WIA->whichDepend(E)) || (FromVec && V_dep != m_WIA->whichDepend(FromVec)))
       return false;
   }
   return true;
@@ -1011,8 +983,7 @@ Value *VariableReuseAnalysis::traceAliasValue(Value *V) {
 //
 //  Input: IEI
 //  Output: IEI_ix, S, V, V_ix
-bool VariableReuseAnalysis::getElementValue(InsertElementInst *IEI, int &IEI_ix,
-                                            Value *&S, Value *&V, int &V_ix) {
+bool VariableReuseAnalysis::getElementValue(InsertElementInst *IEI, int &IEI_ix, Value *&S, Value *&V, int &V_ix) {
   // Return value: S or (V, V_ix)
   S = nullptr;
   V = nullptr;
@@ -1028,8 +999,7 @@ bool VariableReuseAnalysis::getElementValue(InsertElementInst *IEI, int &IEI_ix,
   IEI_ix = (int)CI->getZExtValue();
 
   Value *elem0 = IEI->getOperand(1);
-  if (hasBeenPayloadCoalesced(elem0) || isa<Constant>(elem0) ||
-      isOrCoalescedWithArg(elem0)) {
+  if (hasBeenPayloadCoalesced(elem0) || isa<Constant>(elem0) || isOrCoalescedWithArg(elem0)) {
     // If elem0 has been payload-coalesced, is constant,
     // or it has been aliased to an argument, skip it.
     return false;
@@ -1085,8 +1055,7 @@ void VariableReuseAnalysis::InsertElementAliasing(Function *F) {
   // To avoid increasing GRF pressure, skip if F is too large or not an entry
   const int32_t NumBBThreshold = IGC_GET_FLAG_VALUE(VectorAliasBBThreshold);
   bool OnlySameBB = getNumBBs(F) > NumBBThreshold;
-  MetaDataUtils *pMdUtils =
-      getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   if (control == 0 || !isEntryFunc(pMdUtils, F)) {
     return;
   }
@@ -1154,8 +1123,7 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy &AllIEIs) {
   }
 
   for (int i = 1; i < nelts; ++i) {
-    if (AllIEIs[i].FromVec != BaseVec ||
-        AllIEIs[i].FromVec_eltIx != (BaseStartIx + i))
+    if (AllIEIs[i].FromVec != BaseVec || AllIEIs[i].FromVec_eltIx != (BaseStartIx + i))
       return false;
   }
 
@@ -1232,8 +1200,7 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy &AllIEIs) {
     if (!m_DeSSA->isNoopAliaser(EEI)) {
       // Set EEI as an aliser, thus it become noop.
       Value *EEI_nv = m_DeSSA->getNodeValue(EEI);
-      addVecAlias(EEI_nv, Base_nv, BaseVec, AllIEIs[i].FromVec_eltIx,
-                  EALIGN_AUTO);
+      addVecAlias(EEI_nv, Base_nv, BaseVec, AllIEIs[i].FromVec_eltIx, EALIGN_AUTO);
       m_HasBecomeNoopInsts[EEI] = 1;
     }
   }
@@ -1242,8 +1209,7 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy &AllIEIs) {
 
 // Check if IEI is a base vector created by other sub-vectors
 // or scalars. If it is, create alias and return true.
-bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB,
-                                            VecInsEltInfoTy &AllIEIs) {
+bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &AllIEIs) {
   const auto control = (m_pCtx->getVectorCoalescingControl() & 0x3);
   SmallVector<std::pair<Value *, int>, 8> SubVecs;
   auto IsInSubVecs = [&SubVecs](Value *Val) {
@@ -1312,8 +1278,7 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB,
       // Note this works for special case in which NextSub = nullptr.
       isSubCandidate = true;
       Value *NextElt = (i < (nelts - 1)) ? AllIEIs[i + 1].Elt : nullptr;
-      if (!NextElt || (NextSub && IsInSubVecs(NextSub)) ||
-          (!NextSub && IsInSubVecs(NextElt))) {
+      if (!NextElt || (NextSub && IsInSubVecs(NextSub)) || (!NextSub && IsInSubVecs(NextElt))) {
         isSubCandidate = false;
       }
       Sub = NextSub;
@@ -1397,9 +1362,7 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB,
 
 // Return all aliased values of VecAliasee, given the alias:
 //           Aliaser->(VecAliasee, Idx)
-void VariableReuseAnalysis::getAllAliasVals(ValueVectorTy &AliasVals,
-                                            Value *Aliaser, Value *VecAliasee,
-                                            int Idx) {
+void VariableReuseAnalysis::getAllAliasVals(ValueVectorTy &AliasVals, Value *Aliaser, Value *VecAliasee, int Idx) {
   AliasVals.clear();
   auto II = m_aliasMap.find(VecAliasee);
   AliasVals.push_back(VecAliasee);
@@ -1421,8 +1384,7 @@ void VariableReuseAnalysis::getAllAliasVals(ValueVectorTy &AliasVals,
 
 // Given two values : Sub and (Base, BaseIdx), check if theses two value
 // interfere each other. Assume these two values are dessa node values.
-bool VariableReuseAnalysis::aliasInterfere(Value *Sub, Value *Base,
-                                           int BaseIdx) {
+bool VariableReuseAnalysis::aliasInterfere(Value *Sub, Value *Base, int BaseIdx) {
   // Vec0 : set of values aliased to Sub (as aliasee). Sub cannot be aliaser
   //        as algo does not make an aliaser twice.
   // Vec1 : set of values aliased to Sub if Sub aliases to (Base, BaseIdx).
@@ -1450,8 +1412,7 @@ bool VariableReuseAnalysis::aliasInterfere(Value *Sub, Value *Base,
 }
 
 // Check if a value is used in instructions that we handle.
-VariableReuseAnalysis::AState
-VariableReuseAnalysis::getCandidateStateUse(Value *V) const {
+VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateUse(Value *V) const {
   // If any of its use is used as func arg, skip
   AState retSt = AState::OK;
   for (User *U : V->users()) {
@@ -1480,8 +1441,7 @@ VariableReuseAnalysis::getCandidateStateUse(Value *V) const {
 }
 
 // Check if a value is defined by instructions that we handle.
-VariableReuseAnalysis::AState
-VariableReuseAnalysis::getCandidateStateDef(Value *V) const {
+VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateDef(Value *V) const {
   Value *Val = V;
   CastInst *CI = dyn_cast<CastInst>(Val);
   if (CI && isNoOpInst(CI, m_pCtx)) {
@@ -1538,8 +1498,7 @@ bool VariableReuseAnalysis::isExtractMaskCandidate(Value *V) const {
 
 // Check if SubVec is aligned if it becomes a sub-vector at Base_ix of
 // BaseVec. If so, return true with SubVec alignment in BaseAlign.
-bool VariableReuseAnalysis::checkSubAlign(e_alignment &BaseAlign, Value *SubVec,
-                                          Value *BaseVec, int Base_ix) {
+bool VariableReuseAnalysis::checkSubAlign(e_alignment &BaseAlign, Value *SubVec, Value *BaseVec, int Base_ix) {
   auto maxAlign = [](e_alignment A, e_alignment B) {
     if (A == EALIGN_AUTO)
       return B;
@@ -1616,8 +1575,7 @@ bool VariableReuseAnalysis::checkSubAlign(e_alignment &BaseAlign, Value *SubVec,
   return true;
 }
 
-bool VariableReuseAnalysis::skipScalarAliaser(BasicBlock *BB,
-                                              Value *ScalarVal) const {
+bool VariableReuseAnalysis::skipScalarAliaser(BasicBlock *BB, Value *ScalarVal) const {
   Instruction *I = dyn_cast<Instruction>(ScalarVal);
   // Don't count dbg instructions in BB
   unsigned InstCountInBB = BB->sizeWithoutDebug();

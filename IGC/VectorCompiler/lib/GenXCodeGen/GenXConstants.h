@@ -25,9 +25,10 @@ namespace genx {
 
 // ConstantLoader : class to insert instruction(s) to load a constant
 class ConstantLoader {
-  friend bool loadNonSimpleConstants(
-    Instruction *Inst, const GenXSubtarget &Subtarget, const DataLayout &DL,
-    SmallVectorImpl<Instruction *> *AddedInstructions);
+  friend bool
+  loadNonSimpleConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
+                         const DataLayout &DL,
+                         SmallVectorImpl<Instruction *> *AddedInstructions);
 
   Constant *C;
   Instruction *User;
@@ -46,8 +47,8 @@ class ConstantLoader {
   int64_t PackedIntAdjust = 0; // amount to adjust by, special casing 0 or -8
                                //  when PackedIntScale is 1
   unsigned PackedIntMax = 0;   // max value in packed vector, used when scale is
-                               //  1 and adjust is 0 to tell whether it would fit
-                               //  in 0..7
+                             //  1 and adjust is 0 to tell whether it would fit
+                             //  in 0..7
   bool PackedFloat = false;
 
 public:
@@ -133,7 +134,7 @@ bool cleanupConstantLoads(Function *F, std::vector<CallInst *> &ConstList);
 
 // Replace one of paired constants to add-instruction
 bool checkAddPattern(Function *F, std::vector<CallInst *> &ConstList,
-    const GenXSubtarget *ST);
+                     const GenXSubtarget *ST);
 
 // Load a constant using the llvm.genx.constant intrinsic.
 inline Instruction *

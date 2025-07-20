@@ -15,48 +15,46 @@ SPDX-License-Identifier: MIT
 #include <common/allocator.h>
 #include <common/Stats.hpp>
 
-namespace IGC
-{
-    class CShader;
-    class CodeGenContext;
+namespace IGC {
+class CShader;
+class CodeGenContext;
 
-    /// This class contains the information for the different SIMD version
-    /// of a kernel. Each kernel in the module is associated to one CShaderProgram
-    class CShaderProgram
-    {
-    public:
-        typedef llvm::MapVector<llvm::Function*, CShaderProgram*> KernelShaderMap;
-        CShaderProgram(CodeGenContext* ctx, llvm::Function* kernel);
-        ~CShaderProgram();
-        CShaderProgram(const CShaderProgram&) = delete;
-        CShaderProgram& operator=(const CShaderProgram&) = delete;
-        CShader* GetOrCreateShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
-        CShader* GetShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
-        CShader* GetShaderIfAny(ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
-        void DeleteShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
-        CodeGenContext* GetContext() { return m_context; }
+/// This class contains the information for the different SIMD version
+/// of a kernel. Each kernel in the module is associated to one CShaderProgram
+class CShaderProgram {
+public:
+  typedef llvm::MapVector<llvm::Function *, CShaderProgram *> KernelShaderMap;
+  CShaderProgram(CodeGenContext *ctx, llvm::Function *kernel);
+  ~CShaderProgram();
+  CShaderProgram(const CShaderProgram &) = delete;
+  CShaderProgram &operator=(const CShaderProgram &) = delete;
+  CShader *GetOrCreateShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
+  CShader *GetShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
+  CShader *GetShaderIfAny(ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
+  void DeleteShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
+  CodeGenContext *GetContext() { return m_context; }
 
-        llvm::Function* getLLVMFunction() const { return m_kernel; }
-        ShaderStats* m_shaderStats = nullptr;
+  llvm::Function *getLLVMFunction() const { return m_kernel; }
+  ShaderStats *m_shaderStats = nullptr;
 
-        // invoked to clear Func ptr when the current module is deleted (so is func within it).
-        void clearBeforeRetry();
+  // invoked to clear Func ptr when the current module is deleted (so is func within it).
+  void clearBeforeRetry();
 
-        bool hasShaderOutput(CShader* shader);
+  bool hasShaderOutput(CShader *shader);
 
-        void freeShaderOutput(CShader* shader);
+  void freeShaderOutput(CShader *shader);
 
-        void ClearShaderPtr(SIMDMode simd);
+  void ClearShaderPtr(SIMDMode simd);
 
-    protected:
-        CShader*& GetShaderPtr(SIMDMode simd, ShaderDispatchMode mode);
-        CShader* CreateNewShader(SIMDMode simd);
+protected:
+  CShader *&GetShaderPtr(SIMDMode simd, ShaderDispatchMode mode);
+  CShader *CreateNewShader(SIMDMode simd);
 
-        CodeGenContext* m_context = nullptr;
-        llvm::Function* m_kernel = nullptr;
-        std::array<CShader*, 9> m_SIMDshaders;
+  CodeGenContext *m_context = nullptr;
+  llvm::Function *m_kernel = nullptr;
+  std::array<CShader *, 9> m_SIMDshaders;
 
-    public:
-        typedef std::unique_ptr<CShaderProgram> UPtr;
-    };
-}
+public:
+  typedef std::unique_ptr<CShaderProgram> UPtr;
+};
+} // namespace IGC

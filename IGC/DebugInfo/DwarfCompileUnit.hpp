@@ -59,8 +59,7 @@ public:
     uint64_t offsetBits;
   };
 
-  PieceBuilder(uint16_t RegNum, size_t NumGRFs, uint64_t RegSizeBits,
-               uint64_t VarSizeBits, uint64_t SubRegOffsetBits);
+  PieceBuilder(uint16_t RegNum, size_t NumGRFs, uint64_t RegSizeBits, uint64_t VarSizeBits, uint64_t SubRegOffsetBits);
   unsigned pieceCount() const;
   PieceInfo get(unsigned index) const;
 
@@ -124,23 +123,19 @@ class CompileUnit {
   DIEInteger *DIEIntegerOne;
 
 public:
-  CompileUnit(unsigned UID, DIE *D, llvm::DICompileUnit *CU, StreamEmitter *A,
-              IGC::DwarfDebug *DW);
+  CompileUnit(unsigned UID, DIE *D, llvm::DICompileUnit *CU, StreamEmitter *A, IGC::DwarfDebug *DW);
   ~CompileUnit();
   CompileUnit(const CompileUnit &) = delete;
   CompileUnit &operator=(const CompileUnit &) = delete;
 
   using ImportedEntityList = llvm::SmallVector<const llvm::MDNode *, 8>;
-  using ImportedEntityMap =
-      llvm::DenseMap<const llvm::MDNode *, ImportedEntityList>;
+  using ImportedEntityMap = llvm::DenseMap<const llvm::MDNode *, ImportedEntityList>;
 
   ImportedEntityMap ImportedEntities;
 
   // Accessors.
   unsigned getUniqueID() const { return UniqueID; }
-  uint16_t getLanguage() const {
-    return getSourceLanguage(Node, DD->GetVISAModule()->GetModule());
-  }
+  uint16_t getLanguage() const { return getSourceLanguage(Node, DD->GetVISAModule()->GetModule()); }
   llvm::DICompileUnit *getNode() const { return Node; }
   DIE *getCUDie() const { return CUDie; }
 
@@ -181,26 +176,21 @@ public:
 
   /// addUInt - Add an unsigned integer attribute data and value.
   ///
-  void addUInt(DIE *Die, llvm::dwarf::Attribute Attribute,
-               std::optional<llvm::dwarf::Form> Form, uint64_t Integer);
+  void addUInt(DIE *Die, llvm::dwarf::Attribute Attribute, std::optional<llvm::dwarf::Form> Form, uint64_t Integer);
 
   void addUInt(DIEBlock *Block, llvm::dwarf::Form Form, uint64_t Integer);
 
-  void addBitPiece(IGC::DIEBlock *Block, uint64_t SizeBits,
-                   uint64_t OffsetBits);
+  void addBitPiece(IGC::DIEBlock *Block, uint64_t SizeBits, uint64_t OffsetBits);
 
   /// addSInt - Add an signed integer attribute data and value.
   ///
-  void addSInt(DIE *Die, llvm::dwarf::Attribute Attribute,
-               std::optional<llvm::dwarf::Form> Form, int64_t Integer);
+  void addSInt(DIE *Die, llvm::dwarf::Attribute Attribute, std::optional<llvm::dwarf::Form> Form, int64_t Integer);
 
-  void addSInt(DIEBlock *Die, std::optional<llvm::dwarf::Form> Form,
-               int64_t Integer);
+  void addSInt(DIEBlock *Die, std::optional<llvm::dwarf::Form> Form, int64_t Integer);
 
   /// addString - Add a string attribute data and value.
   ///
-  void addString(DIE *Die, llvm::dwarf::Attribute Attribute,
-                 const llvm::StringRef Str);
+  void addString(DIE *Die, llvm::dwarf::Attribute Attribute, const llvm::StringRef Str);
 
   /// addExpr - Add a Dwarf expression attribute data and value.
   ///
@@ -208,22 +198,18 @@ public:
 
   /// addLabel - Add a Dwarf label attribute data and value.
   ///
-  void addLabel(DIE *Die, llvm::dwarf::Attribute Attribute,
-                llvm::dwarf::Form Form, const llvm::MCSymbol *Label);
+  void addLabel(DIE *Die, llvm::dwarf::Attribute Attribute, llvm::dwarf::Form Form, const llvm::MCSymbol *Label);
 
-  void addLabel(DIEBlock *Die, llvm::dwarf::Form Form,
-                const llvm::MCSymbol *Label);
+  void addLabel(DIEBlock *Die, llvm::dwarf::Form Form, const llvm::MCSymbol *Label);
 
   /// addLabelAddress - Add a dwarf label attribute data and value using
   /// either DW_FORM_addr or DW_FORM_GNU_addr_index.
   ///
-  void addLabelAddress(DIE *Die, llvm::dwarf::Attribute Attribute,
-                       llvm::MCSymbol *Label);
+  void addLabelAddress(DIE *Die, llvm::dwarf::Attribute Attribute, llvm::MCSymbol *Label);
 
   // addLabelLoc - Add dwarf label attribute data and value using
   // DW_FORM_sec_offset.
-  void addLabelLoc(DIE *Die, llvm::dwarf::Attribute Attribute,
-                   llvm::MCSymbol *Label);
+  void addLabelLoc(DIE *Die, llvm::dwarf::Attribute Attribute, llvm::MCSymbol *Label);
 
   /// addOpAddress - Add a dwarf op address data and value using the
   /// form given and an op of either DW_FORM_addr or DW_FORM_GNU_addr_index.
@@ -232,8 +218,7 @@ public:
 
   /// addDelta - Add a label delta attribute data and value.
   ///
-  void addDelta(DIE *Die, llvm::dwarf::Attribute Attribute,
-                llvm::dwarf::Form Form, const llvm::MCSymbol *Hi,
+  void addDelta(DIE *Die, llvm::dwarf::Attribute Attribute, llvm::dwarf::Form Form, const llvm::MCSymbol *Hi,
                 const llvm::MCSymbol *Lo);
 
   /// addDIEEntry - Add a DIE attribute data and value.
@@ -285,8 +270,7 @@ public:
   /// addType - Add a new type attribute to the specified entity. This takes
   /// and attribute parameter because DW_AT_friend attributes are also
   /// type references.
-  void addType(DIE *Entity, llvm::DIType *Ty,
-               llvm::dwarf::Attribute Attribute = llvm::dwarf::DW_AT_type);
+  void addType(DIE *Entity, llvm::DIType *Ty, llvm::dwarf::Attribute Attribute = llvm::dwarf::DW_AT_type);
 
   // addSimdWidth - add SIMD width
   void addSimdWidth(DIE *Die, uint16_t SimdWidth);
@@ -299,9 +283,7 @@ public:
   // surface
   // - Bindless Sampler State Base Addres when variable located in bindless
   // sampler
-  void addBindlessOrStatelessLocation(DIEBlock *Block,
-                                      const VISAVariableLocation &Loc,
-                                      uint32_t baseAddr);
+  void addBindlessOrStatelessLocation(DIEBlock *Block, const VISAVariableLocation &Loc, uint32_t baseAddr);
 
   // addStatelessLocation - add a sequence of attributes to calculate stateless
   // surface location of variable
@@ -309,18 +291,15 @@ public:
 
   // addBindlessSurfaceLocation - add a sequence of attributes to calculate
   // bindless surface location of variable
-  void addBindlessSurfaceLocation(DIEBlock *Block,
-                                  const VISAVariableLocation &Loc);
+  void addBindlessSurfaceLocation(DIEBlock *Block, const VISAVariableLocation &Loc);
 
   // addBindlessSamplerLocation - add a sequence of attributes to calculate
   // bindless sampler location of variable
-  void addBindlessSamplerLocation(DIEBlock *Block,
-                                  const VISAVariableLocation &Loc);
+  void addBindlessSamplerLocation(DIEBlock *Block, const VISAVariableLocation &Loc);
 
   // addBindlessScratchSpaceLocation - add a sequence of attributes to calculate
   // bindless scratch space location of variable
-  void addBindlessScratchSpaceLocation(DIEBlock *Block,
-                                       const VISAVariableLocation &Loc);
+  void addBindlessScratchSpaceLocation(DIEBlock *Block, const VISAVariableLocation &Loc);
 
   // addBE_FP - emits operations to add contents of BE_FP to current top of
   // dwarf stack
@@ -328,31 +307,25 @@ public:
 
   // addScratchLocation - add a sequence of attributes to emit scratch space
   // location of variable
-  void addScratchLocation(DIEBlock *Block, uint32_t memoryOffset,
-                          int32_t vectorOffset);
+  void addScratchLocation(DIEBlock *Block, uint32_t memoryOffset, int32_t vectorOffset);
 
   // addSimdLane - add a sequence of attributes to calculate location of
   // variable among SIMD lanes, e.g. a GRF subregister.
-  void addSimdLane(DIEBlock *Block, const DbgVariable &DV,
-                   const VISAVariableLocation &Loc,
-                   const DbgDecoder::LiveIntervalsVISA *lr, uint16_t regOffset,
-                   bool isPacked, bool isSecondHalf);
+  void addSimdLane(DIEBlock *Block, const DbgVariable &DV, const VISAVariableLocation &Loc,
+                   const DbgDecoder::LiveIntervalsVISA *lr, uint16_t regOffset, bool isPacked, bool isSecondHalf);
 
   // addSimdLaneScalar - add a sequence of attributes to calculate location of
   // scalar variable e.g. a GRF subregister.
-  void addSimdLaneScalar(DIEBlock *Block, const DbgVariable &DV,
-                         const VISAVariableLocation &Loc,
+  void addSimdLaneScalar(DIEBlock *Block, const DbgVariable &DV, const VISAVariableLocation &Loc,
                          const DbgDecoder::LiveIntervalsVISA &lr);
 
   // emitBitPiecesForRegVal - emit bitPieces DW_OP_bit_piece sequence for
   // register value. It is used to describe vector variables in registers.
-  void emitBitPiecesForRegVal(IGC::DIEBlock *Block,
-                              const PieceBuilder &pieceBuilder);
+  void emitBitPiecesForRegVal(IGC::DIEBlock *Block, const PieceBuilder &pieceBuilder);
 
   // addSimdLaneRegionBase - add a sequence of attributes to calculate location
   // of region base address variable for vc-backend
-  void addSimdLaneRegionBase(IGC::DIEBlock *Block, const DbgVariable &DV,
-                             const VISAVariableLocation &Loc,
+  void addSimdLaneRegionBase(IGC::DIEBlock *Block, const DbgVariable &DV, const VISAVariableLocation &Loc,
                              const DbgDecoder::LiveIntervalsVISA *lr);
 
   // emit expression to extract sub-reg value
@@ -363,8 +336,7 @@ public:
   // lineNumber-fileNameIncludingDirectory There is a workaround for DIModule
   // creation in earlier LLVM versions, where a line and a file parameters are
   // not supported in DIBuilder.
-  void decodeLineAndFileForISysRoot(llvm::StringRef &lineAndFile,
-                                    unsigned int *line, std::string *file,
+  void decodeLineAndFileForISysRoot(llvm::StringRef &lineAndFile, unsigned int *line, std::string *file,
                                     std::string *directory);
 
   /// Construct import_module DIE.
@@ -411,8 +383,7 @@ public:
       return;
     }
 
-    auto *LocalScope =
-        llvm::cast<llvm::DILocalScope>(Scope)->getNonLexicalBlockFileScope();
+    auto *LocalScope = llvm::cast<llvm::DILocalScope>(Scope)->getNonLexicalBlockFileScope();
     ImportedEntities[LocalScope].push_back(IE);
   }
 
@@ -432,8 +403,7 @@ public:
   }
 
   /// Emit the header for this unit, not including the initial length field.
-  void emitHeader(const llvm::MCSection *ASection,
-                  const llvm::MCSymbol *ASectionSym);
+  void emitHeader(const llvm::MCSection *ASection, const llvm::MCSymbol *ASectionSym);
 
 private:
   /// constructTypeDIE - Construct basic type die from llvm::DIBasicType.
@@ -469,13 +439,11 @@ private:
 
   /// constructTemplateTypeParameterDIE - Construct new DIE for the given
   /// llvm::DITemplateTypeParameter.
-  void constructTemplateTypeParameterDIE(DIE &Buffer,
-                                         llvm::DITemplateTypeParameter *TP);
+  void constructTemplateTypeParameterDIE(DIE &Buffer, llvm::DITemplateTypeParameter *TP);
 
   /// constructTemplateValueParameterDIE - Construct new DIE for the given
   /// llvm::DITemplateValueParameter.
-  void constructTemplateValueParameterDIE(DIE &Buffer,
-                                          llvm::DITemplateValueParameter *TVP);
+  void constructTemplateValueParameterDIE(DIE &Buffer, llvm::DITemplateValueParameter *TVP);
 
   /// getOrCreateStaticMemberDIE - Create new static data member DIE.
   DIE *getOrCreateStaticMemberDIE(llvm::DIDerivedType *DT);
@@ -489,14 +457,10 @@ private:
 
   /// getDIEEntry - Returns the debug information entry for the specified
   /// debug variable.
-  DIEEntry *getDIEEntry(const llvm::MDNode *N) const {
-    return MDNodeToDIEEntryMap.lookup(N);
-  }
+  DIEEntry *getDIEEntry(const llvm::MDNode *N) const { return MDNodeToDIEEntryMap.lookup(N); }
 
   /// insertDIEEntry - Insert debug information entry into the map.
-  void insertDIEEntry(const llvm::MDNode *N, DIEEntry *E) {
-    MDNodeToDIEEntryMap.insert(std::make_pair(N, E));
-  }
+  void insertDIEEntry(const llvm::MDNode *N, DIEEntry *E) { MDNodeToDIEEntryMap.insert(std::make_pair(N, E)); }
 
   // getIndexTyDie - Get an anonymous type for index type.
   DIE *getIndexTyDie() { return IndexTyDie; }
@@ -511,9 +475,7 @@ private:
 
   /// resolve - Look in the DwarfDebug map for the llvm::MDNode that
   /// corresponds to the reference.
-  template <typename T> inline T *resolve(T *Ref) const {
-    return DD->resolve(Ref);
-  }
+  template <typename T> inline T *resolve(T *Ref) const { return DD->resolve(Ref); }
 
 public:
   // Added for 1-step elf
@@ -522,25 +484,18 @@ public:
   DIEBlock *buildSampler(const DbgVariable &, const VISAVariableLocation &);
 
   // buildSLM - Build expression for location described as offset in SLM memory.
-  DIEBlock *buildSLM(const DbgVariable &, const VISAVariableLocation &,
-                     IGC::DIE *);
+  DIEBlock *buildSLM(const DbgVariable &, const VISAVariableLocation &, IGC::DIE *);
   DIEBlock *buildGeneral(DbgVariable &, const VISAVariableLocation &,
-                         const std::vector<DbgDecoder::LiveIntervalsVISA> *,
-                         IGC::DIE *);
+                         const std::vector<DbgDecoder::LiveIntervalsVISA> *, IGC::DIE *);
   unsigned int stackValueOffset = 0;
 
 private:
-  bool buildPrivateBaseRegBased(const DbgVariable &, IGC::DIEBlock *,
-                                const VISAVariableLocation &);
-  bool buildFpBasedLoc(const DbgVariable &, IGC::DIEBlock *,
-                       const VISAVariableLocation &);
-  bool buildSlicedLoc(DbgVariable &, IGC::DIEBlock *,
-                      const VISAVariableLocation &,
+  bool buildPrivateBaseRegBased(const DbgVariable &, IGC::DIEBlock *, const VISAVariableLocation &);
+  bool buildFpBasedLoc(const DbgVariable &, IGC::DIEBlock *, const VISAVariableLocation &);
+  bool buildSlicedLoc(DbgVariable &, IGC::DIEBlock *, const VISAVariableLocation &,
                       const std::vector<DbgDecoder::LiveIntervalsVISA> *);
-  bool buildValidVar(DbgVariable &, IGC::DIEBlock *,
-                     const VISAVariableLocation &,
-                     const std::vector<DbgDecoder::LiveIntervalsVISA> *,
-                     DbgRegisterType);
+  bool buildValidVar(DbgVariable &, IGC::DIEBlock *, const VISAVariableLocation &,
+                     const std::vector<DbgDecoder::LiveIntervalsVISA> *, DbgRegisterType);
 
   // Variables, used in buildGeneral-algorithm:
   bool emitLocation = false;

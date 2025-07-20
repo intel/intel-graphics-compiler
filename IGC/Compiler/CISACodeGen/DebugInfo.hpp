@@ -24,56 +24,46 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 using namespace std;
 
-namespace IGC
-{
-    class CVariable;
-    class VISADebugInfo;
+namespace IGC {
+class CVariable;
+class VISADebugInfo;
 
-    class DebugInfoPass : public llvm::ModulePass
-    {
-    public:
-        DebugInfoPass();
-        DebugInfoPass(CShaderProgram::KernelShaderMap&);
-        virtual llvm::StringRef getPassName() const  override { return "DebugInfoPass"; }
-        virtual ~DebugInfoPass();
-        static char ID;
+class DebugInfoPass : public llvm::ModulePass {
+public:
+  DebugInfoPass();
+  DebugInfoPass(CShaderProgram::KernelShaderMap &);
+  virtual llvm::StringRef getPassName() const override { return "DebugInfoPass"; }
+  virtual ~DebugInfoPass();
+  static char ID;
 
-    private:
-        CShaderProgram::KernelShaderMap& kernels;
-        CShader* m_currShader = nullptr;
-        IDebugEmitter* m_pDebugEmitter = nullptr;
+private:
+  CShaderProgram::KernelShaderMap &kernels;
+  CShader *m_currShader = nullptr;
+  IDebugEmitter *m_pDebugEmitter = nullptr;
 
-        virtual bool runOnModule(llvm::Module& M) override;
-        virtual bool doInitialization(llvm::Module& M) override;
-        virtual bool doFinalization(llvm::Module& M) override;
+  virtual bool runOnModule(llvm::Module &M) override;
+  virtual bool doInitialization(llvm::Module &M) override;
+  virtual bool doFinalization(llvm::Module &M) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.setPreservesAll();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.setPreservesAll();
+  }
 
-        void EmitDebugInfo(bool, const IGC::VISADebugInfo &VDI);
-    };
-
-    class CatchAllLineNumber : public llvm::FunctionPass
-    {
-    public:
-        CatchAllLineNumber();
-        virtual ~CatchAllLineNumber();
-        static char ID;
-
-        llvm::StringRef getPassName() const override {
-            return "CatchAllLineNumber";
-        }
-
-    private:
-
-        virtual bool runOnFunction(llvm::Function& F) override;
-
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.setPreservesAll();
-        }
-    };
+  void EmitDebugInfo(bool, const IGC::VISADebugInfo &VDI);
 };
+
+class CatchAllLineNumber : public llvm::FunctionPass {
+public:
+  CatchAllLineNumber();
+  virtual ~CatchAllLineNumber();
+  static char ID;
+
+  llvm::StringRef getPassName() const override { return "CatchAllLineNumber"; }
+
+private:
+  virtual bool runOnFunction(llvm::Function &F) override;
+
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesAll(); }
+};
+}; // namespace IGC

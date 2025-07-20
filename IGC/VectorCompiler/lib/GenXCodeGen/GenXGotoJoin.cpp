@@ -29,21 +29,22 @@ using namespace genx;
  * It is an EM value if it is an extractvalue instruction extracting element
  * 0 from the struct returned by goto/join.
  */
-bool GotoJoin::isEMValue(Value *V)
-{
+bool GotoJoin::isEMValue(Value *V) {
   if (auto *EI = dyn_cast<ExtractValueInst>(V)) {
-    if (EI->getIndices()[0] == 0/* element number of EM in goto/join struct */) {
+    if (EI->getIndices()[0] ==
+        0 /* element number of EM in goto/join struct */) {
       switch (GenXIntrinsic::getGenXIntrinsicID(EI->getAggregateOperand())) {
-        case GenXIntrinsic::genx_simdcf_goto:
-        case GenXIntrinsic::genx_simdcf_join:
-          return true;
-        default:
-          break;
+      case GenXIntrinsic::genx_simdcf_goto:
+      case GenXIntrinsic::genx_simdcf_join:
+        return true;
+      default:
+        break;
       }
     }
   }
   if (auto *PHI = dyn_cast<PHINode>(V)) {
-    auto It = find_if(PHI->incoming_values(), [](Use &U) { return isEMValue(U); });
+    auto It =
+        find_if(PHI->incoming_values(), [](Use &U) { return isEMValue(U); });
     return It != PHI->incoming_values().end();
   }
   return false;
@@ -54,14 +55,13 @@ bool GotoJoin::isEMValue(Value *V)
  *
  * Return:    the join instruction, 0 if join not found
  */
-CallInst *GotoJoin::findJoin(CallInst *Goto)
-{
+CallInst *GotoJoin::findJoin(CallInst *Goto) {
   // Find the RM value from the goto. We know that the only
   // uses of the goto are extracts.
   ExtractValueInst *RM = nullptr;
   for (auto ui = Goto->use_begin(), ue = Goto->use_end(); ui != ue; ++ui) {
     auto Extract = dyn_cast<ExtractValueInst>(ui->getUser());
-    if (Extract && Extract->getIndices()[0] == 1/* RM index in struct */) {
+    if (Extract && Extract->getIndices()[0] == 1 /* RM index in struct */) {
       RM = Extract;
       break;
     }
@@ -75,8 +75,8 @@ CallInst *GotoJoin::findJoin(CallInst *Goto)
   RMVals.insert(RM);
   for (unsigned ri = 0; !Join && ri != RMVals.size(); ++ri) {
     auto RM = RMVals[ri];
-    for (auto ui = RM->use_begin(), ue = RM->use_end();
-        !Join && ui != ue; ++ui) {
+    for (auto ui = RM->use_begin(), ue = RM->use_end(); !Join && ui != ue;
+         ++ui) {
       auto User = cast<Instruction>(ui->getUser());
       if (isa<PHINode>(User)) {
         RMVals.insert(User);
@@ -89,29 +89,29 @@ CallInst *GotoJoin::findJoin(CallInst *Goto)
         }
       }
       switch (GenXIntrinsic::getGenXIntrinsicID(User)) {
-        case GenXIntrinsic::genx_simdcf_join:
-          // We have found the join the RM is for.
-          Join = cast<CallInst>(User);
-          break;
-        case GenXIntrinsic::genx_simdcf_goto: {
-          // This is another goto that modifies the same RM. Find the
-          // extractvalue for the updated RM value.
-          ExtractValueInst *Extract = nullptr;
-          for (auto gui = User->use_begin(), gue = User->use_end();
-              gui != gue; ++gui) {
-            auto ThisExtract = dyn_cast<ExtractValueInst>(gui->getUser());
-            if (ThisExtract
-                && ThisExtract->getIndices()[0] == 1/*RM index in struct*/) {
-              Extract = ThisExtract;
-              break;
-            }
+      case GenXIntrinsic::genx_simdcf_join:
+        // We have found the join the RM is for.
+        Join = cast<CallInst>(User);
+        break;
+      case GenXIntrinsic::genx_simdcf_goto: {
+        // This is another goto that modifies the same RM. Find the
+        // extractvalue for the updated RM value.
+        ExtractValueInst *Extract = nullptr;
+        for (auto gui = User->use_begin(), gue = User->use_end(); gui != gue;
+             ++gui) {
+          auto ThisExtract = dyn_cast<ExtractValueInst>(gui->getUser());
+          if (ThisExtract &&
+              ThisExtract->getIndices()[0] == 1 /*RM index in struct*/) {
+            Extract = ThisExtract;
+            break;
           }
-          if (Extract)
-            RMVals.insert(Extract);
-          break;
         }
-        default:
-          return nullptr; // unexpected use of RM
+        if (Extract)
+          RMVals.insert(Extract);
+        break;
+      }
+      default:
+        return nullptr; // unexpected use of RM
       }
     }
   }
@@ -126,9 +126,9 @@ CallInst *GotoJoin::findJoin(CallInst *Goto)
  * (which generate no code).
  *
  */
-bool GotoJoin::isValidJoin(CallInst *Join)
-{
-  IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(Join) == GenXIntrinsic::genx_simdcf_join);
+bool GotoJoin::isValidJoin(CallInst *Join) {
+  IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(Join) ==
+             GenXIntrinsic::genx_simdcf_join);
   auto BB = Join->getParent();
   // If this block has a goto/join predecessor of which it is "true" successor,
   // check that this block starts with a join -- not necessarily the join we
@@ -138,7 +138,8 @@ bool GotoJoin::isValidJoin(CallInst *Join)
   auto Inst = BB->getFirstNonPHIOrDbg();
   while (isa<BitCastInst>(Inst))
     Inst = Inst->getNextNode();
-  if (GenXIntrinsic::getGenXIntrinsicID(Inst) == GenXIntrinsic::genx_simdcf_join)
+  if (GenXIntrinsic::getGenXIntrinsicID(Inst) ==
+      GenXIntrinsic::genx_simdcf_join)
     return true;
   return false;
 }
@@ -151,8 +152,7 @@ bool GotoJoin::isValidJoin(CallInst *Join)
  *
  * For a block for which this returns true, a pass must not insert code.
  */
-bool GotoJoin::isBranchingJoinLabelBlock(BasicBlock *BB)
-{
+bool GotoJoin::isBranchingJoinLabelBlock(BasicBlock *BB) {
   auto Join = isBranchingJoinBlock(BB);
   if (!Join || Join != BB->getFirstNonPHIOrDbg())
     return false;
@@ -184,8 +184,8 @@ BasicBlock *GotoJoin::getBranchingBlockForBB(BasicBlock *BB,
     // PredBr is a branch that has BB as its "true" successor. First skip a
     // critical edge splitter.
     auto PredBB = PredBr->getParent();
-    if (SkipCriticalEdgeSplitter && PredBr->getNumSuccessors() == 1
-        && PredBr == PredBB->getFirstNonPHIOrDbg() && PredBB->hasOneUse()) {
+    if (SkipCriticalEdgeSplitter && PredBr->getNumSuccessors() == 1 &&
+        PredBr == PredBB->getFirstNonPHIOrDbg() && PredBB->hasOneUse()) {
       auto ui2 = PredBB->use_begin();
       PredBr = dyn_cast<BranchInst>(ui2->getUser());
       if (!PredBr || ui2->getOperandNo() != PredBr->getNumOperands() - 1)
@@ -217,10 +217,10 @@ bool GotoJoin::isJoinLabel(BasicBlock *BB, bool SkipCriticalEdgeSplitter) {
  * See the comment at the top of isBranchingGotoJoinBlock regarding the case
  * of a goto with an unconditional branch.
  */
-CallInst *GotoJoin::isGotoBlock(BasicBlock *BB)
-{
+CallInst *GotoJoin::isGotoBlock(BasicBlock *BB) {
   auto Goto = isBranchingGotoJoinBlock(BB);
-  if (GenXIntrinsic::getGenXIntrinsicID(Goto) != GenXIntrinsic::genx_simdcf_goto)
+  if (GenXIntrinsic::getGenXIntrinsicID(Goto) !=
+      GenXIntrinsic::genx_simdcf_goto)
     Goto = nullptr;
   return Goto;
 }
@@ -229,10 +229,10 @@ CallInst *GotoJoin::isGotoBlock(BasicBlock *BB)
  * isBranchingJoinBlock : see if a basic block is a branching
  *    join block, returning the join if so
  */
-CallInst *GotoJoin::isBranchingJoinBlock(BasicBlock *BB)
-{
+CallInst *GotoJoin::isBranchingJoinBlock(BasicBlock *BB) {
   auto Join = isBranchingGotoJoinBlock(BB);
-  if (GenXIntrinsic::getGenXIntrinsicID(Join) != GenXIntrinsic::genx_simdcf_join)
+  if (GenXIntrinsic::getGenXIntrinsicID(Join) !=
+      GenXIntrinsic::genx_simdcf_join)
     Join = nullptr;
   return Join;
 }
@@ -247,8 +247,7 @@ CallInst *GotoJoin::isBranchingJoinBlock(BasicBlock *BB)
  * moveCodeInGotoBlocks having sunk the goto and its extracts to the end of the
  * block.
  */
-CallInst *GotoJoin::isBranchingGotoJoinBlock(BasicBlock *BB)
-{
+CallInst *GotoJoin::isBranchingGotoJoinBlock(BasicBlock *BB) {
   auto Br = dyn_cast<BranchInst>(BB->getTerminator());
   if (!Br)
     return nullptr;
@@ -260,7 +259,8 @@ CallInst *GotoJoin::isBranchingGotoJoinBlock(BasicBlock *BB)
     Value *LastInst = Br->getPrevNode();
     if (auto EV = dyn_cast<ExtractValueInst>(LastInst))
       LastInst = EV->getOperand(0);
-    if (GenXIntrinsic::getGenXIntrinsicID(LastInst) == GenXIntrinsic::genx_simdcf_goto)
+    if (GenXIntrinsic::getGenXIntrinsicID(LastInst) ==
+        GenXIntrinsic::genx_simdcf_goto)
       return cast<CallInst>(LastInst);
     return nullptr;
   }
@@ -273,11 +273,11 @@ CallInst *GotoJoin::isBranchingGotoJoinBlock(BasicBlock *BB)
   if (!GotoJoin || GotoJoin->getParent() != BB)
     return nullptr;
   switch (GenXIntrinsic::getGenXIntrinsicID(GotoJoin)) {
-    case GenXIntrinsic::genx_simdcf_goto:
-    case GenXIntrinsic::genx_simdcf_join:
-      return GotoJoin;
-    default:
-      break;
+  case GenXIntrinsic::genx_simdcf_goto:
+  case GenXIntrinsic::genx_simdcf_join:
+    return GotoJoin;
+  default:
+    break;
   }
   return nullptr;
 }
@@ -296,8 +296,7 @@ CallInst *GotoJoin::isBranchingGotoJoinBlock(BasicBlock *BB)
  * insertion point is there, move to just before the goto/join.
  */
 Instruction *GotoJoin::getLegalInsertionPoint(Instruction *InsertBefore,
-    DominatorTree *DomTree)
-{
+                                              DominatorTree *DomTree) {
   auto *InsertPoint = InsertBefore;
   auto *InsertBB = InsertBefore->getParent();
   while (isBranchingJoinLabelBlock(InsertBB)) {
@@ -326,4 +325,3 @@ Instruction *GotoJoin::getLegalInsertionPoint(Instruction *InsertBefore,
   }
   return InsertPoint;
 }
-

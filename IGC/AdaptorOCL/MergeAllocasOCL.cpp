@@ -17,28 +17,22 @@ SPDX-License-Identifier: MIT
 using namespace IGC;
 using namespace llvm;
 
-bool MergeAllocasOCL::skipInstruction(llvm::Function& F, AllocationLivenessAnalyzer::LivenessData& LD)
-{
-    return false;
-}
+bool MergeAllocasOCL::skipInstruction(llvm::Function &F, AllocationLivenessAnalyzer::LivenessData &LD) { return false; }
 
 // Register pass to igc-opt
-IGC_INITIALIZE_PASS_BEGIN(MergeAllocasOCL, "igc-ocl-merge-allocas", "Try to reuse allocas with nonoverlapping lifetimes - opencl version", false, false)
+IGC_INITIALIZE_PASS_BEGIN(MergeAllocasOCL, "igc-ocl-merge-allocas",
+                          "Try to reuse allocas with nonoverlapping lifetimes - opencl version", false, false)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-IGC_INITIALIZE_PASS_END(MergeAllocasOCL, "igc-ocl-merge-allocas", "Try to reuse allocas with nonoverlapping lifetimes - opencl version", false, false)
+IGC_INITIALIZE_PASS_END(MergeAllocasOCL, "igc-ocl-merge-allocas",
+                        "Try to reuse allocas with nonoverlapping lifetimes - opencl version", false, false)
 
 char MergeAllocasOCL::ID = 0;
 
-MergeAllocasOCL::MergeAllocasOCL() : MergeAllocas(ID)
-{
-    initializeMergeAllocasOCLPass(*PassRegistry::getPassRegistry());
+MergeAllocasOCL::MergeAllocasOCL() : MergeAllocas(ID) {
+  initializeMergeAllocasOCLPass(*PassRegistry::getPassRegistry());
 }
 
-namespace IGC
-{
-    Pass* createMergeAllocasOCL()
-    {
-        return new MergeAllocasOCL();
-    }
-}
+namespace IGC {
+Pass *createMergeAllocasOCL() { return new MergeAllocasOCL(); }
+} // namespace IGC

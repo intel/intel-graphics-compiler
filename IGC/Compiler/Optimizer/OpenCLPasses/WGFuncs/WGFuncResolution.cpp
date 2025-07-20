@@ -27,43 +27,38 @@ IGC_INITIALIZE_PASS_END(WGFuncResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_
 
 char WGFuncResolution::ID = 0;
 
-WGFuncResolution::WGFuncResolution() : ModulePass(ID)
-{
-    initializeWGFuncResolutionPass(*PassRegistry::getPassRegistry());
+WGFuncResolution::WGFuncResolution() : ModulePass(ID) {
+  initializeWGFuncResolutionPass(*PassRegistry::getPassRegistry());
 }
 
-bool WGFuncResolution::runOnModule(Module& M)
-{
-    m_changed = false;
-    m_pModule = &M;
+bool WGFuncResolution::runOnModule(Module &M) {
+  m_changed = false;
+  m_pModule = &M;
 
-    visit(M);
+  visit(M);
 
-    return m_changed;
+  return m_changed;
 }
 
-void WGFuncResolution::visitCallInst(CallInst& callInst)
-{
-    Function* pCalledFunc = callInst.getCalledFunction();
-    if (!pCalledFunc)
-    {
-        // Indirect call
-        return;
-    }
-    StringRef funcName = pCalledFunc->getName();
-    if (funcName.startswith("__builtin_IB_work_group_any"))
-    {
-        SmallVector<Value*, 1> args;
+void WGFuncResolution::visitCallInst(CallInst &callInst) {
+  Function *pCalledFunc = callInst.getCalledFunction();
+  if (!pCalledFunc) {
+    // Indirect call
+    return;
+  }
+  StringRef funcName = pCalledFunc->getName();
+  if (funcName.startswith("__builtin_IB_work_group_any")) {
+    SmallVector<Value *, 1> args;
 
-        args.push_back(callInst.getOperand(0));
+    args.push_back(callInst.getOperand(0));
 
-        Function* isaIntrinFunc = GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_WorkGroupAny);
-        CallInst* isaIntrinCall = CallInst::Create(isaIntrinFunc, args, callInst.getName(), &callInst);
+    Function *isaIntrinFunc = GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_WorkGroupAny);
+    CallInst *isaIntrinCall = CallInst::Create(isaIntrinFunc, args, callInst.getName(), &callInst);
 
-        isaIntrinCall->setDebugLoc(callInst.getDebugLoc());
+    isaIntrinCall->setDebugLoc(callInst.getDebugLoc());
 
-        callInst.replaceAllUsesWith(isaIntrinCall);
-        callInst.eraseFromParent();
-        m_changed = true;
-    }
+    callInst.replaceAllUsesWith(isaIntrinCall);
+    callInst.eraseFromParent();
+    m_changed = true;
+  }
 }

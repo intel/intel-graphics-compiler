@@ -24,31 +24,23 @@ using namespace IGC;
 IGC_INITIALIZE_PASS_BEGIN(RuntimeValueVectorExtractPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_END(RuntimeValueVectorExtractPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-namespace IGC
-{
+namespace IGC {
 
 char RuntimeValueVectorExtractPass::ID = 0;
 
 ////////////////////////////////////////////////////////////////////////////
-RuntimeValueVectorExtractPass::RuntimeValueVectorExtractPass() :
-    llvm::FunctionPass(ID),
-    changed(false)
-{
-    initializeRuntimeValueVectorExtractPassPass(*llvm::PassRegistry::getPassRegistry());
+RuntimeValueVectorExtractPass::RuntimeValueVectorExtractPass() : llvm::FunctionPass(ID), changed(false) {
+  initializeRuntimeValueVectorExtractPassPass(*llvm::PassRegistry::getPassRegistry());
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void RuntimeValueVectorExtractPass::getAnalysisUsage(llvm::AnalysisUsage& AU) const
-{
-    AU.setPreservesCFG();
-}
+void RuntimeValueVectorExtractPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const { AU.setPreservesCFG(); }
 
 ////////////////////////////////////////////////////////////////////////////
-bool RuntimeValueVectorExtractPass::runOnFunction(llvm::Function& F)
-{
-    changed = false;
-    visit(F);
-    return changed;
+bool RuntimeValueVectorExtractPass::runOnFunction(llvm::Function &F) {
+  changed = false;
+  visit(F);
+  return changed;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -64,48 +56,39 @@ bool RuntimeValueVectorExtractPass::runOnFunction(llvm::Function& F)
 // with:
 //   %scalar  = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 4)
 //   %scalar1 = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 5)
-void RuntimeValueVectorExtractPass::visitExtractElementInst(llvm::ExtractElementInst& I)
-{
-    // Optimization works only on constant indexes
-    if (isa<ConstantInt>(I.getIndexOperand()))
-    {
-        GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(I.getVectorOperand());
-        if (GII &&
-            GII->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue &&
-            isa<ConstantInt>(GII->getOperand(0)) &&
-            isa<IGCLLVM::FixedVectorType>(GII->getType()))
-        {
-            IGCLLVM::FixedVectorType* giiVectorType = cast<IGCLLVM::FixedVectorType>(GII->getType());
-            // Only 32-bit and 64-bit values are supported at the moment
-            if (giiVectorType->getElementType()->getPrimitiveSizeInBits() == 32 ||
-                giiVectorType->getElementType()->getPrimitiveSizeInBits() == 64)
-            {
-                bool is64bit = giiVectorType->getElementType()->getPrimitiveSizeInBits() == 64;
+void RuntimeValueVectorExtractPass::visitExtractElementInst(llvm::ExtractElementInst &I) {
+  // Optimization works only on constant indexes
+  if (isa<ConstantInt>(I.getIndexOperand())) {
+    GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(I.getVectorOperand());
+    if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue && isa<ConstantInt>(GII->getOperand(0)) &&
+        isa<IGCLLVM::FixedVectorType>(GII->getType())) {
+      IGCLLVM::FixedVectorType *giiVectorType = cast<IGCLLVM::FixedVectorType>(GII->getType());
+      // Only 32-bit and 64-bit values are supported at the moment
+      if (giiVectorType->getElementType()->getPrimitiveSizeInBits() == 32 ||
+          giiVectorType->getElementType()->getPrimitiveSizeInBits() == 64) {
+        bool is64bit = giiVectorType->getElementType()->getPrimitiveSizeInBits() == 64;
 
-                IRBuilder<> Builder(&I);
-                Function* runtimeValueFunc = GenISAIntrinsic::getDeclaration(I.getModule(),
-                    GenISAIntrinsic::GenISA_RuntimeValue,
-                    giiVectorType->getElementType());
+        IRBuilder<> Builder(&I);
+        Function *runtimeValueFunc = GenISAIntrinsic::getDeclaration(
+            I.getModule(), GenISAIntrinsic::GenISA_RuntimeValue, giiVectorType->getElementType());
 
-                const uint32_t eeiIndex  = int_cast<uint32_t>(cast<ConstantInt>(I.getIndexOperand())->getZExtValue());
-                const uint32_t giiOffset = int_cast<uint32_t>(cast<ConstantInt>(GII->getOperand(0))->getZExtValue());
+        const uint32_t eeiIndex = int_cast<uint32_t>(cast<ConstantInt>(I.getIndexOperand())->getZExtValue());
+        const uint32_t giiOffset = int_cast<uint32_t>(cast<ConstantInt>(GII->getOperand(0))->getZExtValue());
 
-                // Calculate new offset
-                const uint32_t offset = giiOffset + (is64bit ? eeiIndex * 2 : eeiIndex);
+        // Calculate new offset
+        const uint32_t offset = giiOffset + (is64bit ? eeiIndex * 2 : eeiIndex);
 
-                Value* CI = Builder.CreateCall(runtimeValueFunc, Builder.getInt32(offset));
+        Value *CI = Builder.CreateCall(runtimeValueFunc, Builder.getInt32(offset));
 
-                I.replaceAllUsesWith(CI);
-                I.eraseFromParent();
+        I.replaceAllUsesWith(CI);
+        I.eraseFromParent();
 
-                changed = true;
-            }
-            else
-            {
-                IGC_ASSERT_MESSAGE(0, "Only 32-bit and 64-bit values are supported at the moment");
-            }
-        }
+        changed = true;
+      } else {
+        IGC_ASSERT_MESSAGE(0, "Only 32-bit and 64-bit values are supported at the moment");
+      }
     }
+  }
 }
 
-}
+} // namespace IGC

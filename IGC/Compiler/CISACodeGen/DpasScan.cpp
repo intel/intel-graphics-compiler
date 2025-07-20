@@ -31,40 +31,40 @@ IGC_INITIALIZE_PASS_END(DpasScan, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PA
 
 char DpasScan::ID = 0;
 
-DpasScan::DpasScan() : FunctionPass(DpasScan::ID) {
-    initializeDpasScanPass(*PassRegistry::getPassRegistry());
+DpasScan::DpasScan() : FunctionPass(DpasScan::ID) { initializeDpasScanPass(*PassRegistry::getPassRegistry()); }
+
+void DpasScan::getAnalysisUsage(AnalysisUsage &AU) const {
+  AU.addRequired<WIAnalysis>();
+  AU.addRequired<MetaDataUtilsWrapper>();
+
+  AU.addPreservedID(WIAnalysis::ID);
 }
 
-void DpasScan::getAnalysisUsage(AnalysisUsage& AU) const {
-    AU.addRequired<WIAnalysis>();
-    AU.addRequired<MetaDataUtilsWrapper>();
-
-    AU.addPreservedID(WIAnalysis::ID);
-}
-
-bool DpasScan::runOnFunction(Function& F) {
-    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    // exit early because DisableEUFusion was already set
-    if (modMD->compOpt.DisableEUFusion) return false;
-
-    WIAnalysis* analysis = &getAnalysis<WIAnalysis>();
-    for (auto IIter = inst_begin(F), EIter = inst_end(F); IIter != EIter; ++IIter) {
-        Instruction *I = &*IIter;
-
-        if (auto GInst = dyn_cast<GenIntrinsicInst>(I)) {
-            auto intrinsidId = GInst->getIntrinsicID();
-
-            switch (intrinsidId) {
-            default: break;
-            case GenISAIntrinsic::GenISA_dpas:
-            case GenISAIntrinsic::GenISA_sub_group_dpas:
-                if (analysis->insideDivergentCF(I)) {
-                    modMD->compOpt.DisableEUFusion = true;
-                    return true;
-                }
-            }
-        }
-    }
-
+bool DpasScan::runOnFunction(Function &F) {
+  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  // exit early because DisableEUFusion was already set
+  if (modMD->compOpt.DisableEUFusion)
     return false;
+
+  WIAnalysis *analysis = &getAnalysis<WIAnalysis>();
+  for (auto IIter = inst_begin(F), EIter = inst_end(F); IIter != EIter; ++IIter) {
+    Instruction *I = &*IIter;
+
+    if (auto GInst = dyn_cast<GenIntrinsicInst>(I)) {
+      auto intrinsidId = GInst->getIntrinsicID();
+
+      switch (intrinsidId) {
+      default:
+        break;
+      case GenISAIntrinsic::GenISA_dpas:
+      case GenISAIntrinsic::GenISA_sub_group_dpas:
+        if (analysis->insideDivergentCF(I)) {
+          modMD->compOpt.DisableEUFusion = true;
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
 }

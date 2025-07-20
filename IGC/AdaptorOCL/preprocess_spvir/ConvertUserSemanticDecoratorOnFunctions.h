@@ -19,27 +19,21 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 
-namespace IGC
-{
-    class ConvertUserSemanticDecoratorOnFunctions : public llvm::ModulePass
-    {
-    public:
-        static char ID;
+namespace IGC {
+class ConvertUserSemanticDecoratorOnFunctions : public llvm::ModulePass {
+public:
+  static char ID;
 
-        ConvertUserSemanticDecoratorOnFunctions();
-        ~ConvertUserSemanticDecoratorOnFunctions() {}
+  ConvertUserSemanticDecoratorOnFunctions();
+  ~ConvertUserSemanticDecoratorOnFunctions() {}
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "ConvertUserSemanticDecoratorOnFunctions";
-        }
+  virtual llvm::StringRef getPassName() const override { return "ConvertUserSemanticDecoratorOnFunctions"; }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.setPreservesCFG();
-            AU.addRequired<MetaDataUtilsWrapper>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
 
-        virtual bool runOnModule(llvm::Module& F) override;
-    };
-}
+  virtual bool runOnModule(llvm::Module &F) override;
+};
+} // namespace IGC

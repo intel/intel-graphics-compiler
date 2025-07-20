@@ -51,8 +51,7 @@ public:
   /// @param raw_ostream instance of raw_ostream to emit all bitcode into.
   /// @param dataLayout data layout string.
   /// @param targetTriple target triple string.
-  StreamEmitter(llvm::raw_pwrite_stream &, const std::string &dataLayout,
-                const std::string &targetTriple,
+  StreamEmitter(llvm::raw_pwrite_stream &, const std::string &dataLayout, const std::string &targetTriple,
                 const Settings &EmitterOptions);
 
   /// @brief Destructor.
@@ -85,8 +84,7 @@ public:
   /// @brief Set the current section where code is being emitted to.
   /// @param pSection section to switch to
   /// @param pSubsection subsiction to switch to (optional)
-  void SwitchSection(const llvm::MCSection *pSection,
-                     const llvm::MCExpr *pSubsection = 0) const;
+  void SwitchSection(const llvm::MCSection *pSection, const llvm::MCExpr *pSubsection = 0) const;
 
   /// @brief sympol getters
   /// @param pGV Global Variable
@@ -122,13 +120,11 @@ public:
 
   /// @brief Emit the expression @p value into the output as a native
   ///        integer of the given @p size bytes.
-  void EmitValue(const llvm::MCExpr *pValue, unsigned size,
-                 unsigned addrSpace = 0) const;
+  void EmitValue(const llvm::MCExpr *pValue, unsigned size, unsigned addrSpace = 0) const;
 
   /// @brief Special case of EmitValue that avoids the client having
   ///        to pass in a MCExpr for constant integers.
-  void EmitIntValue(uint64_t value, unsigned size,
-                    unsigned addrSpace = 0) const;
+  void EmitIntValue(uint64_t value, unsigned size, unsigned addrSpace = 0) const;
 
   /// @brief Emit a byte directive and value.
   void EmitInt8(int value) const;
@@ -143,8 +139,7 @@ public:
   void EmitSLEB128(int64_t value, const char *pDesc = 0) const;
 
   /// @brief emit the specified unsigned leb128 value.
-  void EmitULEB128(uint64_t value, llvm::StringRef desc = "",
-                   unsigned padTo = 0) const;
+  void EmitULEB128(uint64_t value, llvm::StringRef desc = "", unsigned padTo = 0) const;
 
   /// @brief Emit a label
   void EmitLabel(llvm::MCSymbol *pLabel) const;
@@ -152,34 +147,29 @@ public:
   /// @brief Emit something like ".long pHi-pLo" where the size in bytes
   ///        of the directive is specified by size and pHi/pLo specify the
   ///        labels.  This implicitly uses .set if it is available.
-  void EmitLabelDifference(const llvm::MCSymbol *pHi, const llvm::MCSymbol *pLo,
-                           unsigned size) const;
+  void EmitLabelDifference(const llvm::MCSymbol *pHi, const llvm::MCSymbol *pLo, unsigned size) const;
 
   /// @brief Emit something like ".long pHi+offset-pLo" where the size in bytes
   ///        of the directive is specified by size and pHi/pLo specify the
   ///        labels.  This implicitly uses .set if it is available.
-  void EmitLabelOffsetDifference(const llvm::MCSymbol *pHi, uint64_t offset,
-                                 const llvm::MCSymbol *pLo,
+  void EmitLabelOffsetDifference(const llvm::MCSymbol *pHi, uint64_t offset, const llvm::MCSymbol *pLo,
                                  unsigned size) const;
 
   /// @brief Emit something like ".long pLabel+offset" where the size in bytes
   ///        of the directive is specified by size and pLabel specifies the
   ///        label.  This implicitly uses .set if it is available.
-  void EmitLabelPlusOffset(const llvm::MCSymbol *pLabel, uint64_t offset,
-                           unsigned size, bool isSectionRelative = false) const;
+  void EmitLabelPlusOffset(const llvm::MCSymbol *pLabel, uint64_t offset, unsigned size,
+                           bool isSectionRelative = false) const;
 
   /// @brief Emit something like ".long pLabel" where the size in bytes of the
   ///        directive is specified by size and pLabel specifies the label.
-  void EmitLabelReference(const llvm::MCSymbol *pLabel, unsigned size,
-                          bool isSectionRelative = false) const;
+  void EmitLabelReference(const llvm::MCSymbol *pLabel, unsigned size, bool isSectionRelative = false) const;
 
-  void EmitELFDiffSize(llvm::MCSymbol *pLabel, const llvm::MCSymbol *pHi,
-                       const llvm::MCSymbol *pLo) const;
+  void EmitELFDiffSize(llvm::MCSymbol *pLabel, const llvm::MCSymbol *pHi, const llvm::MCSymbol *pLo) const;
 
   /// @brief Special case of EmitValue that avoids the client
   ///        having to pass in a MCExpr for MCSymbols.
-  void EmitSymbolValue(const llvm::MCSymbol *pSym, unsigned size,
-                       unsigned addrSpace = 0) const;
+  void EmitSymbolValue(const llvm::MCSymbol *pSym, unsigned size, unsigned addrSpace = 0) const;
 
   /// @brief Emit the 4-byte offset of pLabel from the start of its section.
   ///        This can be done with a special directive if the target supports
@@ -188,25 +178,20 @@ public:
   ///
   ///        SectionLabel is a temporary label emitted at the start of the
   ///        section that pLabel lives in.
-  void EmitSectionOffset(const llvm::MCSymbol *pLabel,
-                         const llvm::MCSymbol *pSectionLabel) const;
+  void EmitSectionOffset(const llvm::MCSymbol *pLabel, const llvm::MCSymbol *pSectionLabel) const;
 
   /// @brief Emit dwarf register operation.
-  void EmitDwarfRegOp(unsigned reg, unsigned offset = 0,
-                      bool indirect = 0) const;
+  void EmitDwarfRegOp(unsigned reg, unsigned offset = 0, bool indirect = 0) const;
 
   /// @brief Associate a filename with a specified logical file number.
   ///        This implements the DWARF2 '.file 4 "foo.c"' assembler directive.
-  bool EmitDwarfFileDirective(unsigned fileNo, llvm::StringRef directory,
-                              llvm::StringRef filename,
+  bool EmitDwarfFileDirective(unsigned fileNo, llvm::StringRef directory, llvm::StringRef filename,
                               unsigned cuID = 0) const;
 
   /// @brief This implements the DWARF2 '.loc fileno lineno ...' assembler
   /// directive.
-  void EmitDwarfLocDirective(unsigned fileNo, unsigned line, unsigned column,
-                             unsigned flags, unsigned isa,
-                             unsigned discriminator,
-                             llvm::StringRef fileName) const;
+  void EmitDwarfLocDirective(unsigned fileNo, unsigned line, unsigned column, unsigned flags, unsigned isa,
+                             unsigned discriminator, llvm::StringRef fileName) const;
 
   /// @brief Maps given line table symbol to given ID
   void SetMCLineTableSymbol(llvm::MCSymbol *pSym, unsigned id) const;
@@ -216,14 +201,10 @@ public:
 
   const std::string &getErrors() const { return ErrorLog; }
 
-  void reportUsabilityIssue(llvm::StringRef Msg,
-                            const llvm::Value *Ctx = nullptr);
-  void verifyRegisterLocationSize(const DbgVariable &VarVal,
-                                  const DwarfDebug &DD,
-                                  unsigned MaxGRFSpaceInBits,
+  void reportUsabilityIssue(llvm::StringRef Msg, const llvm::Value *Ctx = nullptr);
+  void verifyRegisterLocationSize(const DbgVariable &VarVal, const DwarfDebug &DD, unsigned MaxGRFSpaceInBits,
                                   uint64_t ExpectedSize);
-  void verifyRegisterLocationExpr(const DbgVariable &VarVal,
-                                  const DwarfDebug &DD);
+  void verifyRegisterLocationExpr(const DbgVariable &VarVal, const DwarfDebug &DD);
 
 private:
   class DiagnosticBuff {

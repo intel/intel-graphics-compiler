@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 namespace cm {
 namespace detail {
 
-template<typename T, int width>
+template <typename T, int width>
 using vector_impl = T __attribute__((ext_vector_type(width)));
 
 // offset into vector

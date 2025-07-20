@@ -22,13 +22,13 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 #define DEBUG_TYPE "GenXBIFFlagCtrlResolution"
 
-#define BIF_FLAG_CONTROL(BIF_FLAG_TYPE, BIF_FLAG_NAME)                            \
+#define BIF_FLAG_CONTROL(BIF_FLAG_TYPE, BIF_FLAG_NAME)                         \
   BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME),
 
-#define BIF_FLAG_CTRL_SET(BIF_FLAG_NAME, BIF_FLAG_VALUE)                          \
-  ListDelegates.emplace(BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME), [this]() -> bool {      \
-    return replace(BIF_FLAG_VALUE,                                                \
-                   pModule->getGlobalVariable(BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME))); \
+#define BIF_FLAG_CTRL_SET(BIF_FLAG_NAME, BIF_FLAG_VALUE)                       \
+  ListDelegates.emplace(BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME), [this]() -> bool {   \
+    return replace(BIF_FLAG_VALUE, pModule->getGlobalVariable(                 \
+                                       BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME)));     \
   })
 
 
@@ -119,7 +119,9 @@ bool GenXBIFFlagCtrlResolution::runOnModule(Module &M) {
       // it's executing the delegate function
       wasModuleUpdated |= iter->second();
     } else {
-      IGC_ASSERT_EXIT_MESSAGE(0, "[BIF_VC] Missing setup for flag %s in FillFlagCtrl function", bif_flag.str().c_str());
+      IGC_ASSERT_EXIT_MESSAGE(
+          0, "[BIF_VC] Missing setup for flag %s in FillFlagCtrl function",
+          bif_flag.str().c_str());
     }
   }
 

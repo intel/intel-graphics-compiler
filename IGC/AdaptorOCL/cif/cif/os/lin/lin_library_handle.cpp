@@ -12,10 +12,10 @@ namespace CIF {
 
 std::unique_ptr<LibraryHandle> OpenLibrary(const std::string &path, bool addOsSpecificExtensionToPath) {
   void *mod = nullptr;
-  if(addOsSpecificExtensionToPath){
-      mod = dlopen((path + ".so").c_str(), RTLD_NOW);
-  }else{
-      mod = dlopen(path.c_str(), RTLD_NOW);
+  if (addOsSpecificExtensionToPath) {
+    mod = dlopen((path + ".so").c_str(), RTLD_NOW);
+  } else {
+    mod = dlopen(path.c_str(), RTLD_NOW);
   }
   return OpenLibrary(UniquePtrLibrary(mod));
 }
@@ -24,4 +24,4 @@ std::unique_ptr<LibraryHandle> OpenLibrary(const std::wstring &path, bool addOsS
   std::string pathAsString(path.begin(), path.end());
   return OpenLibrary(pathAsString, addOsSpecificExtensionToPath);
 }
-}
+} // namespace CIF

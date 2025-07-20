@@ -23,50 +23,50 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 class CodeScheduling : public llvm::FunctionPass {
-        // llvm::DominatorTree* DT = nullptr;
-        // llvm::PostDominatorTree* PDT = nullptr;
-        // llvm::LoopInfo* LI = nullptr;
-    llvm::AliasAnalysis *AA = nullptr;
-    VectorShuffleAnalysis *VSA = nullptr;
-    WIAnalysisRunner *WI = nullptr;
-        // IGCMD::MetaDataUtils* MDUtils = nullptr;
-    IGCLivenessAnalysis *RPE = nullptr;
-    IGCFunctionExternalRegPressureAnalysis *FRPE = nullptr;
-    CodeGenContext *CTX = nullptr;
+  // llvm::DominatorTree* DT = nullptr;
+  // llvm::PostDominatorTree* PDT = nullptr;
+  // llvm::LoopInfo* LI = nullptr;
+  llvm::AliasAnalysis *AA = nullptr;
+  VectorShuffleAnalysis *VSA = nullptr;
+  WIAnalysisRunner *WI = nullptr;
+  // IGCMD::MetaDataUtils* MDUtils = nullptr;
+  IGCLivenessAnalysis *RPE = nullptr;
+  IGCFunctionExternalRegPressureAnalysis *FRPE = nullptr;
+  CodeGenContext *CTX = nullptr;
 
-  public:
-    static char ID; // Pass identification
+public:
+  static char ID; // Pass identification
 
-    CodeScheduling();
+  CodeScheduling();
 
-    virtual bool runOnFunction(llvm::Function &F) override;
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-        AU.setPreservesCFG();
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
 
-            // AU.addRequired<llvm::DominatorTreeWrapperPass>();
-            // AU.addRequired<llvm::LoopInfoWrapperPass>();
-            // AU.addRequired<llvm::AAResultsWrapperPass>();
-        AU.addRequired<IGCLivenessAnalysis>();
-        AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
-        AU.addRequired<CodeGenContextWrapper>();
-        AU.addRequired<VectorShuffleAnalysis>();
+    // AU.addRequired<llvm::DominatorTreeWrapperPass>();
+    // AU.addRequired<llvm::LoopInfoWrapperPass>();
+    // AU.addRequired<llvm::AAResultsWrapperPass>();
+    AU.addRequired<IGCLivenessAnalysis>();
+    AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<VectorShuffleAnalysis>();
 
-            // AU.addPreserved<llvm::DominatorTreeWrapperPass>();
-            // AU.addPreserved<llvm::LoopInfoWrapperPass>();
-            // AU.addPreserved<llvm::AAResultsWrapperPass>();
-        AU.addPreserved<IGCLivenessAnalysis>();
-        AU.addPreserved<IGCFunctionExternalRegPressureAnalysis>();
-        AU.addPreserved<VectorShuffleAnalysis>();
-    }
+    // AU.addPreserved<llvm::DominatorTreeWrapperPass>();
+    // AU.addPreserved<llvm::LoopInfoWrapperPass>();
+    // AU.addPreserved<llvm::AAResultsWrapperPass>();
+    AU.addPreserved<IGCLivenessAnalysis>();
+    AU.addPreserved<IGCFunctionExternalRegPressureAnalysis>();
+    AU.addPreserved<VectorShuffleAnalysis>();
+  }
 
-  private:
-        /// dumping
-    std::string Log;
-    llvm::raw_string_ostream LogStringStream;
-    llvm::raw_ostream *LogStream = nullptr;
+private:
+  /// dumping
+  std::string Log;
+  llvm::raw_string_ostream LogStringStream;
+  llvm::raw_ostream *LogStream = nullptr;
 
-    void dumpToFile(const std::string &Log);
+  void dumpToFile(const std::string &Log);
 };
 
 void initializeCodeSchedulingPass(llvm::PassRegistry &);

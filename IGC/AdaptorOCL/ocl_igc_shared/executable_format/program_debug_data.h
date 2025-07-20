@@ -10,8 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include <stdint.h>
 
-namespace iOpenCL
-{
+namespace iOpenCL {
 //
 // The layout of the (IGC) program debug data is as follows:
 //
@@ -51,28 +50,24 @@ namespace iOpenCL
 /*****************************************************************************\
 STRUCT: SProgramDebugDataHeaderIGC
 \*****************************************************************************/
-typedef struct _SProgramDebugDataHeaderIGC
-{
-    uint32_t         Magic;
-    uint32_t         Version;
-    uint32_t         Size;
-    uint32_t         Device;
-    uint32_t         SteppingId;
-    uint32_t         GPUPointerSizeInBytes;
-    uint32_t         NumberOfKernels;
+typedef struct _SProgramDebugDataHeaderIGC {
+  uint32_t Magic;
+  uint32_t Version;
+  uint32_t Size;
+  uint32_t Device;
+  uint32_t SteppingId;
+  uint32_t GPUPointerSizeInBytes;
+  uint32_t NumberOfKernels;
 } SProgramDebugDataHeaderIGC;
-
 
 /*****************************************************************************\
 STRUCT: SKernelDebugDataHeaderIGC
 \*****************************************************************************/
-typedef struct _SKernelDebugDataHeaderIGC
-{
-    uint32_t         KernelNameSize;
-    uint32_t         SizeVisaDbgInBytes;
-    uint32_t         SizeGenIsaDbgInBytes;
+typedef struct _SKernelDebugDataHeaderIGC {
+  uint32_t KernelNameSize;
+  uint32_t SizeVisaDbgInBytes;
+  uint32_t SizeGenIsaDbgInBytes;
 } SKernelDebugDataHeaderIGC;
-
 
 //
 // The layout of the program debug data is as follows:
@@ -137,71 +132,64 @@ typedef struct _SKernelDebugDataHeaderIGC
 /*****************************************************************************\
 STRUCT: SProgramDebugDataHeader
 \*****************************************************************************/
-typedef struct _SProgramDebugDataHeader
-{
-    uint32_t         Magic;
-    uint32_t         Version;
-    uint32_t         Size;
-    uint32_t         StringTableSize;
-    uint32_t         DirTableSize;
-    uint32_t         FileTableSize;
-    uint32_t         Device;
-    uint32_t         SteppingId;
-    uint32_t         GPUPointerSizeInBytes;
-    uint32_t         NumberOfKernels;
-    uint32_t         NumberOfKernelsWithDebugData;
+typedef struct _SProgramDebugDataHeader {
+  uint32_t Magic;
+  uint32_t Version;
+  uint32_t Size;
+  uint32_t StringTableSize;
+  uint32_t DirTableSize;
+  uint32_t FileTableSize;
+  uint32_t Device;
+  uint32_t SteppingId;
+  uint32_t GPUPointerSizeInBytes;
+  uint32_t NumberOfKernels;
+  uint32_t NumberOfKernelsWithDebugData;
 } SProgramDebugDataHeader;
 
 /*****************************************************************************\
 STRUCT: SProgramProgramDebugDataDirTableHeader
 \*****************************************************************************/
-typedef struct _SProgramDebugDataDirTableHeader
-{
-    uint32_t         NumberOfDirs;
+typedef struct _SProgramDebugDataDirTableHeader {
+  uint32_t NumberOfDirs;
 } SProgramDebugDataDirTableHeader;
 
 /*****************************************************************************\
 STRUCT: SProgramProgramDebugDataFileTableHeader
 \*****************************************************************************/
-typedef struct _SProgramDebugDataFileTableHeader
-{
-    uint32_t         NumberOfFiles;
+typedef struct _SProgramDebugDataFileTableHeader {
+  uint32_t NumberOfFiles;
 } SProgramDebugDataFileTableHeader;
 
 /*****************************************************************************\
 STRUCT: SProgramDebugDataFileTableEntry
 \*****************************************************************************/
-typedef struct _SProgramDebugDataFileTableEntry
-{
-    uint32_t         DirIndex;
+typedef struct _SProgramDebugDataFileTableEntry {
+  uint32_t DirIndex;
 } SProgramDebugDataFileTableEntry;
 
 /*****************************************************************************\
 STRUCT: SKernelDebugDataHeader
 \*****************************************************************************/
-typedef struct _SKernelDebugDataHeader
-{
-    uint32_t         KernelIndex;
-    uint32_t         CodeOffset;
-    uint32_t         Size;
+typedef struct _SKernelDebugDataHeader {
+  uint32_t KernelIndex;
+  uint32_t CodeOffset;
+  uint32_t Size;
 } SKernelDebugDataHeader;
 
 /*****************************************************************************\
 STRUCT: SKernelDebugDataLineTableHeader
 \*****************************************************************************/
-typedef struct _SKernelDebugDataLineTableHeader
-{
-    uint32_t         NumberOfEntries;
+typedef struct _SKernelDebugDataLineTableHeader {
+  uint32_t NumberOfEntries;
 } SKernelDebugDataLineTableHeader;
 
 /*****************************************************************************\
 STRUCT: SKernelDebugDataLineTableEntry
 \*****************************************************************************/
-typedef struct _SKernelDebugDataLineTableEntry
-{
-    uint32_t         Offset;
-    uint32_t         LineColumnNumber;
-    uint32_t         FileIndex;
+typedef struct _SKernelDebugDataLineTableEntry {
+  uint32_t Offset;
+  uint32_t LineColumnNumber;
+  uint32_t FileIndex;
 } SKernelDebugDataLineTableEntry;
 
-}; // iOpenCL
+}; // namespace iOpenCL

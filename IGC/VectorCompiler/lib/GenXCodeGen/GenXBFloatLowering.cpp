@@ -79,7 +79,6 @@ public:
 private:
   void lowerCastToBFloat(CastInst &Inst);
   void lowerCastFromBFloat(CastInst &Inst);
-
 };
 
 } // end namespace

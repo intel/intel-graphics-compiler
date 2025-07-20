@@ -94,18 +94,16 @@ void PrepareModuleStructs(Module &M) {
     Vals->eraseFromParent();
   for (auto *Vals : ToRemoveGotoJoin)
     Vals->eraseFromParent();
-  for (auto *Func: ToRemoveFunc)
+  for (auto *Func : ToRemoveFunc)
     Func->eraseFromParent();
-
 }
 
-int spirvReadVerify(const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
-                    const uint64_t *SpecConstVals, unsigned SpecConstSz, LLVMContext &Context,
-                    void (*OutSaver)(const char *pOut, size_t OutSize,
-                                     void *OutUserData),
-                    void *OutUserData,
-                    void (*ErrSaver)(const char *pErrMsg, void *ErrUserData),
-                    void *ErrUserData) {
+int spirvReadVerify(
+    const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
+    const uint64_t *SpecConstVals, unsigned SpecConstSz, LLVMContext &Context,
+    void (*OutSaver)(const char *pOut, size_t OutSize, void *OutUserData),
+    void *OutUserData, void (*ErrSaver)(const char *pErrMsg, void *ErrUserData),
+    void *ErrUserData) {
   llvm::StringRef SpirvInput = llvm::StringRef(pIn, InSz);
   std::istringstream IS(SpirvInput.str());
   std::unique_ptr<llvm::Module> M;

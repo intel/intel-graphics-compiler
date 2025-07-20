@@ -281,11 +281,12 @@ public:
   // Default constructor: assume single element
   Region() : CMRegion() {}
   // Construct from a type.
-  Region(Type *Ty, const DataLayout *DL = nullptr) : CMRegion(Ty, DL){};
+  Region(Type *Ty, const DataLayout *DL = nullptr) : CMRegion(Ty, DL) {};
   // Construct from a value.
-  Region(const Value *V, const DataLayout *DL = nullptr) : CMRegion(V, DL){};
+  Region(const Value *V, const DataLayout *DL = nullptr) : CMRegion(V, DL) {};
   // Construct from a bitmap of which elements to set (legal 1D region)
-  Region(unsigned Bits, unsigned ElementBytes) : CMRegion(Bits, ElementBytes){};
+  Region(unsigned Bits, unsigned ElementBytes)
+      : CMRegion(Bits, ElementBytes) {};
 };
 
 inline llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const CMRegion &R) {

@@ -93,19 +93,19 @@ getModuleFromLLVMText(ArrayRef<char> Input, LLVMContext &C) {
 }
 
 static Expected<std::unique_ptr<llvm::Module>>
-getModuleFromLLVMBinary(ArrayRef<char> Input, LLVMContext& C) {
+getModuleFromLLVMBinary(ArrayRef<char> Input, LLVMContext &C) {
 
   llvm::MemoryBufferRef BufferRef(llvm::StringRef(Input.data(), Input.size()),
-    "Deserialized LLVM Module");
+                                  "Deserialized LLVM Module");
   auto ExpModule = llvm::parseBitcodeFile(BufferRef, C);
 
   if (!ExpModule)
     return llvm::handleExpected(
         std::move(ExpModule),
         []() -> llvm::Error {
-            IGC_ASSERT_UNREACHABLE(); // Should create new error
+          IGC_ASSERT_UNREACHABLE(); // Should create new error
         },
-        [](const llvm::ErrorInfoBase& E) {
+        [](const llvm::ErrorInfoBase &E) {
           return make_error<vc::BadBitcodeError>(E.message());
         });
 
@@ -157,7 +157,7 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
   if (!Opts.FeaturesString.empty()) {
     SmallVector<StringRef, 8> AuxFeatures;
     StringRef(Opts.FeaturesString).split(AuxFeatures, ",", -1, false);
-    for (const auto& F: AuxFeatures) {
+    for (const auto &F : AuxFeatures) {
       auto Feature = F.trim();
       bool Enabled = Feature.consume_front("+");
       if (!Enabled) {
@@ -227,8 +227,10 @@ template <typename T> bool getDefaultOverridableFlag(T OptFlag, bool Default) {
 static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   GenXBackendOptions BackendOpts;
   if (Opts.StackMemSize) {
-    BackendOpts.StackSurfaceMaxSize = IGCLLVM::makeOptional(Opts.StackMemSize).value();
-    BackendOpts.StatelessPrivateMemSize = IGCLLVM::makeOptional(Opts.StackMemSize).value();
+    BackendOpts.StackSurfaceMaxSize =
+        IGCLLVM::makeOptional(Opts.StackMemSize).value();
+    BackendOpts.StatelessPrivateMemSize =
+        IGCLLVM::makeOptional(Opts.StackMemSize).value();
   }
 
   // disabled because mixed bindless and bindful addressing is not supported
@@ -304,7 +306,8 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.EnableCostModel = Opts.CollectCostInfo;
 
   BackendOpts.DepressurizerGRFThreshold = Opts.DepressurizerGRFThreshold;
-  BackendOpts.DepressurizerFlagGRFTolerance = Opts.DepressurizerFlagGRFTolerance;
+  BackendOpts.DepressurizerFlagGRFTolerance =
+      Opts.DepressurizerFlagGRFTolerance;
 
   BackendOpts.ReportLSCStoresWithNonDefaultL1CacheControls =
       Opts.ReportLSCStoresWithNonDefaultL1CacheControls;
@@ -315,7 +318,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
 static GenXBackendData createBackendData(const vc::ExternalData &Data,
                                          int PointerSizeInBits) {
   IGC_ASSERT_MESSAGE(PointerSizeInBits == 32 || PointerSizeInBits == 64,
-      "only 32 and 64 bit pointers are expected");
+                     "only 32 and 64 bit pointers are expected");
   GenXBackendData BackendData;
   BackendData.BiFModule[BiFKind::VCBuiltins] =
       llvm::MemoryBufferRef{*Data.VCBuiltinsBIFModule};
@@ -329,7 +332,7 @@ static GenXBackendData createBackendData(const vc::ExternalData &Data,
         llvm::MemoryBufferRef{*Data.VCPrintf32BIFModule};
 
   BackendData.VISALTOStrings = Data.VISALTOStrings;
-  for(auto& FName : Data.DirectCallFunctions) {
+  for (auto &FName : Data.DirectCallFunctions) {
     BackendData.DirectCallFunctions.insert(FName);
   }
   return std::move(BackendData);
@@ -461,9 +464,9 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
                                        legacy::PassManager &PM) {
   TargetLibraryInfoImpl TLII{TM.getTargetTriple()};
   PM.add(new TargetLibraryInfoWrapperPass(TLII));
-  PM.add(new GenXBackendConfig{createBackendOptions(Opts),
-                               createBackendData(ExtData,
-                                   TM.getPointerSizeInBits(0))});
+  PM.add(new GenXBackendConfig{
+      createBackendOptions(Opts),
+      createBackendData(ExtData, TM.getPointerSizeInBits(0))});
 
 #ifndef NDEBUG
   // Do not enforce IR verification at an arbitrary moments in release builds
@@ -855,8 +858,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
       Opts.CodegenOptLevel = vc::OptimizerLevel::None;
   }
 
-  if (opt::Arg *A =
-          ApiOptions.getLastArg(OPT_vc_codegen_optimize, OPT_opt_disable_common)) {
+  if (opt::Arg *A = ApiOptions.getLastArg(OPT_vc_codegen_optimize,
+                                          OPT_opt_disable_common)) {
     auto MaybeLevel = deriveOptimizationLevel(A, OPT_vc_codegen_optimize);
     if (!MaybeLevel)
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
@@ -878,7 +881,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
     Opts.DepressurizerGRFThreshold = Result;
   }
-  if (opt::Arg *A = ApiOptions.getLastArg(OPT_depressurizer_flag_grf_tolerance)) {
+  if (opt::Arg *A =
+          ApiOptions.getLastArg(OPT_depressurizer_flag_grf_tolerance)) {
     StringRef Val = A->getValue();
     unsigned Result;
     if (Val.getAsInteger(/*Radix=*/0, Result))
@@ -922,7 +926,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.HasL3FlushForGlobal = true;
   if (InternalOptions.hasArg(OPT_vc_ignore_loop_unroll_threshold_on_pragma))
     Opts.IgnoreLoopUnrollThresholdOnPragma = true;
-  if (InternalOptions.hasArg(OPT_vc_report_lsc_stores_with_non_default_l1_cache_controls))
+  if (InternalOptions.hasArg(
+          OPT_vc_report_lsc_stores_with_non_default_l1_cache_controls))
     Opts.ReportLSCStoresWithNonDefaultL1CacheControls = true;
   if (InternalOptions.hasArg(OPT_emit_visa_only))
     Opts.EmitVisaOnly = true;
@@ -1010,8 +1015,8 @@ static std::string composeLLVMArgs(const opt::ArgList &ApiArgs,
     Result += " -finalizer-opts='-GTPinReRA'";
   if (ApiArgs.hasArg(IGC::options::api::OPT_gtpin_grf_info_common))
     Result += " -finalizer-opts='-getfreegrfinfo -rerapostschedule'";
-  if (opt::Arg *A =
-          ApiArgs.getLastArg(IGC::options::api::OPT_gtpin_scratch_area_size_common)) {
+  if (opt::Arg *A = ApiArgs.getLastArg(
+          IGC::options::api::OPT_gtpin_scratch_area_size_common)) {
     Result += " -finalizer-opts='-GTPinScratchAreaSize ";
     Result += A->getValue();
     Result += "'";

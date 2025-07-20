@@ -16,16 +16,14 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/InstrTypes.h"
 #endif
 
-namespace IGCLLVM
-{
+namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR <= 10
-    using llvm::CallSite;
-    using CallSiteRef = IGCLLVM::CallSite;
+using llvm::CallSite;
+using CallSiteRef = IGCLLVM::CallSite;
 #else
-    using CallSite = llvm::CallBase;
-    using CallSiteRef = IGCLLVM::CallSite&;
+using CallSite = llvm::CallBase;
+using CallSiteRef = IGCLLVM::CallSite &;
 #endif
-}
+} // namespace IGCLLVM
 
 #endif
-

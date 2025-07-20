@@ -13,5 +13,5 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
-    llvm::Pass* createPrepareLoadsStoresPass();
+llvm::Pass *createPrepareLoadsStoresPass();
 } // namespace IGC

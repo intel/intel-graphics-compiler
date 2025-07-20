@@ -22,327 +22,228 @@ SPDX-License-Identifier: MIT
 #include <atomic>
 #include "Probe/Assertion.h"
 
-namespace IGC
-{
-    // Base interface for the metadata struct object
-    // Meta data object support the following behaviors:
-    //  * Ref counting
-    //  * Dirty bit
-    //  * Optional support for 'named object'
-    // 'named object' is a metadata object with the first operand containing the 'id' string
-    struct IMetaDataObject
-    {
-        IMetaDataObject(const llvm::MDNode* pNode, bool hasId) :
-            m_refCount(0),
-            m_id(hasId ? getIdNode(pNode) : NULL)
-        {
-        }
+namespace IGC {
+// Base interface for the metadata struct object
+// Meta data object support the following behaviors:
+//  * Ref counting
+//  * Dirty bit
+//  * Optional support for 'named object'
+// 'named object' is a metadata object with the first operand containing the 'id' string
+struct IMetaDataObject {
+  IMetaDataObject(const llvm::MDNode *pNode, bool hasId) : m_refCount(0), m_id(hasId ? getIdNode(pNode) : NULL) {}
 
-        IMetaDataObject(const char* name) :
-            m_refCount(0),
-            m_id(name)
-        {
-        }
+  IMetaDataObject(const char *name) : m_refCount(0), m_id(name) {}
 
-        IMetaDataObject() :
-            m_refCount(0),
-            m_id(NULL)
-        {}
+  IMetaDataObject() : m_refCount(0), m_id(NULL) {}
 
-        virtual ~IMetaDataObject()
-        {}
+  virtual ~IMetaDataObject() {}
 
-        void addRef()
-        {
-            m_refCount++;
-        }
+  void addRef() { m_refCount++; }
 
-        void releaseRef()
-        {
-            if (--m_refCount == 0)
-                delete this;
-        }
+  void releaseRef() {
+    if (--m_refCount == 0)
+      delete this;
+  }
 
-        llvm::StringRef getId()
-        {
-            return m_id.get();
-        }
+  llvm::StringRef getId() { return m_id.get(); }
 
-        void setId(const std::string& id)
-        {
-            m_id.set(id);
-        }
+  void setId(const std::string &id) { m_id.set(id); }
 
-        virtual bool dirty() const = 0;
+  virtual bool dirty() const = 0;
 
-        virtual void discardChanges() = 0;
+  virtual void discardChanges() = 0;
 
-    protected:
-        // Returns the Id node given the parent MDNode
-        // Id node is always a first operand of the parent node and
-        // should be stored as MDString
-        llvm::Metadata* getIdNode(const llvm::MDNode* pNode) const
-        {
-            if (NULL == pNode)
-            {
-                // optional node
-                return NULL;
-            }
+protected:
+  // Returns the Id node given the parent MDNode
+  // Id node is always a first operand of the parent node and
+  // should be stored as MDString
+  llvm::Metadata *getIdNode(const llvm::MDNode *pNode) const {
+    if (NULL == pNode) {
+      // optional node
+      return NULL;
+    }
 
-            IGC_ASSERT_MESSAGE(0 < pNode->getNumOperands(), "Named list doesn't have a name node");
+    IGC_ASSERT_MESSAGE(0 < pNode->getNumOperands(), "Named list doesn't have a name node");
 
-            llvm::MDString* pIdNode = llvm::dyn_cast<llvm::MDString>(pNode->getOperand(0));
+    llvm::MDString *pIdNode = llvm::dyn_cast<llvm::MDString>(pNode->getOperand(0));
 
-            // This could be a nullptr too. Intentional.
-            return pIdNode;
-        }
+    // This could be a nullptr too. Intentional.
+    return pIdNode;
+  }
 
-        // Returns the start index
-        unsigned int getStartIndex() const
-        {
-            return m_id.hasValue() ? 1 : 0;
-        }
+  // Returns the start index
+  unsigned int getStartIndex() const { return m_id.hasValue() ? 1 : 0; }
 
-        // Returns a node given the parent MDNode and the node index
-        llvm::Metadata* getNumberedNode(const llvm::MDNode* pParentNode, unsigned int Index) const
-        {
-            if (!pParentNode)
-            {
-                return nullptr;
-            }
-            return pParentNode->getOperand(getStartIndex() + Index).get();
-        }
+  // Returns a node given the parent MDNode and the node index
+  llvm::Metadata *getNumberedNode(const llvm::MDNode *pParentNode, unsigned int Index) const {
+    if (!pParentNode) {
+      return nullptr;
+    }
+    return pParentNode->getOperand(getStartIndex() + Index).get();
+  }
 
-        // Returns a node given the parent MDNode and the node name
-        llvm::MDNode* getNamedNode(const llvm::MDNode* pParentNode, const char* pName) const
-        {
-            auto isNamedNode = [](const llvm::Metadata* pNode, const char* pName)
-            {
-                const llvm::MDNode* pMDNode = llvm::dyn_cast<llvm::MDNode>(pNode);
-                if (!pMDNode || pMDNode->getNumOperands() == 0)
-                {
-                    return false;
-                }
+  // Returns a node given the parent MDNode and the node name
+  llvm::MDNode *getNamedNode(const llvm::MDNode *pParentNode, const char *pName) const {
+    auto isNamedNode = [](const llvm::Metadata *pNode, const char *pName) {
+      const llvm::MDNode *pMDNode = llvm::dyn_cast<llvm::MDNode>(pNode);
+      if (!pMDNode || pMDNode->getNumOperands() == 0) {
+        return false;
+      }
 
-                const llvm::MDString* pIdNode = llvm::dyn_cast<const llvm::MDString>(pMDNode->getOperand(0));
-                if (!pIdNode)
-                {
-                    return false;
-                }
+      const llvm::MDString *pIdNode = llvm::dyn_cast<const llvm::MDString>(pMDNode->getOperand(0));
+      if (!pIdNode) {
+        return false;
+      }
 
-                return pIdNode->getString().compare(pName) == 0;
-            };
-
-            if (!pParentNode)
-            {
-                return nullptr;
-            }
-
-            using NodeIterator = MetaDataIterator<llvm::Metadata>;
-            for (NodeIterator i = NodeIterator(pParentNode, getStartIndex()), e = NodeIterator(pParentNode); i != e; ++i)
-            {
-                if (i.get() && isNamedNode(i.get(), pName))
-                {
-                    return llvm::cast<llvm::MDNode>(i.get());
-                }
-            }
-            return nullptr;
-        }
-
-        void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
-        {
-            if (m_id.hasValue())
-                m_id.save(context, getIdNode(pNode));
-        }
-
-        llvm::Metadata* generateNode(llvm::LLVMContext& context) const
-        {
-            return m_id.generateNode(context);
-        }
-
-    private:
-        mutable std::atomic<int> m_refCount;
-        MetaDataValue<std::string>  m_id;
+      return pIdNode->getString().compare(pName) == 0;
     };
 
-    // Smart pointer for handling the IMetaDataObject interfaces
-    template<class T>
-    class MetaObjectHandle
-    {
-    public:
-        typedef T ObjectType;
+    if (!pParentNode) {
+      return nullptr;
+    }
 
-        explicit MetaObjectHandle(T* rhs = 0)
-            : m_ptr(rhs)
-        {
-            addRef();
-        }
+    using NodeIterator = MetaDataIterator<llvm::Metadata>;
+    for (NodeIterator i = NodeIterator(pParentNode, getStartIndex()), e = NodeIterator(pParentNode); i != e; ++i) {
+      if (i.get() && isNamedNode(i.get(), pName)) {
+        return llvm::cast<llvm::MDNode>(i.get());
+      }
+    }
+    return nullptr;
+  }
 
-        MetaObjectHandle(const MetaObjectHandle<T>& rhs)
-            : m_ptr(rhs.get())
-        {
-            addRef();
-        }
+  void save(llvm::LLVMContext &context, llvm::MDNode *pNode) const {
+    if (m_id.hasValue())
+      m_id.save(context, getIdNode(pNode));
+  }
 
-        template<class _Other>
-        MetaObjectHandle(const MetaObjectHandle<_Other>& rhs)
-            : m_ptr(rhs.get())
-        {
-            addRef();
-        }
+  llvm::Metadata *generateNode(llvm::LLVMContext &context) const { return m_id.generateNode(context); }
 
-        template<class _Other>
-        operator MetaObjectHandle<_Other>() const
-        {
-            return (MetaObjectHandle<_Other>(*this));
-        }
+private:
+  mutable std::atomic<int> m_refCount;
+  MetaDataValue<std::string> m_id;
+};
 
-        template<class _Other>
-        MetaObjectHandle<T>& operator=(const MetaObjectHandle<_Other>& rhs)
-        {
-            reset(rhs.get());
-            return (*this);
-        }
+// Smart pointer for handling the IMetaDataObject interfaces
+template <class T> class MetaObjectHandle {
+public:
+  typedef T ObjectType;
 
-        MetaObjectHandle<T>& operator=(const MetaObjectHandle<T>& rhs)
-        {
-            reset(rhs.get());
-            return (*this);
-        }
+  explicit MetaObjectHandle(T *rhs = 0) : m_ptr(rhs) { addRef(); }
 
-        MetaObjectHandle<T>& operator=(const MetaObjectHandle<T>* rhs)
-        {
-            reset(rhs->get());
-            return (*this);
-        }
+  MetaObjectHandle(const MetaObjectHandle<T> &rhs) : m_ptr(rhs.get()) { addRef(); }
 
-        MetaObjectHandle<T>& operator=(T* rhs)
-        {
-            reset(rhs);
-            return (*this);
-        }
+  template <class _Other> MetaObjectHandle(const MetaObjectHandle<_Other> &rhs) : m_ptr(rhs.get()) { addRef(); }
 
-        ~MetaObjectHandle()
-        {
-            releaseRef();
-        }
+  template <class _Other> operator MetaObjectHandle<_Other>() const { return (MetaObjectHandle<_Other>(*this)); }
 
-        T& operator*() const
-        {
-            IGC_ASSERT(m_ptr != 0);
-            return (*get());
-        }
+  template <class _Other> MetaObjectHandle<T> &operator=(const MetaObjectHandle<_Other> &rhs) {
+    reset(rhs.get());
+    return (*this);
+  }
 
-        T* operator->() const
-        {
-            IGC_ASSERT(m_ptr != 0);
-            return (get());
-        }
+  MetaObjectHandle<T> &operator=(const MetaObjectHandle<T> &rhs) {
+    reset(rhs.get());
+    return (*this);
+  }
 
-        T* get() const
-        {
-            return (m_ptr);
-        }
+  MetaObjectHandle<T> &operator=(const MetaObjectHandle<T> *rhs) {
+    reset(rhs->get());
+    return (*this);
+  }
 
-        T** getOutPtr()
-        {
-            return (&m_ptr);
-        }
+  MetaObjectHandle<T> &operator=(T *rhs) {
+    reset(rhs);
+    return (*this);
+  }
 
-        void addRef()
-        {
-            if (m_ptr)
-                m_ptr->addRef();
-        }
+  ~MetaObjectHandle() { releaseRef(); }
 
-        void releaseRef()
-        {
-            if (m_ptr)
-                m_ptr->releaseRef();
-            m_ptr = 0;
-        }
+  T &operator*() const {
+    IGC_ASSERT(m_ptr != 0);
+    return (*get());
+  }
 
-        T* release()
-        {   // !!! This method do not decrement the reference count and thus should be used with care !!!
-            T* _Tmp = m_ptr;
-            m_ptr = nullptr;
-            return (_Tmp);
-        }
+  T *operator->() const {
+    IGC_ASSERT(m_ptr != 0);
+    return (get());
+  }
 
-        void reset(T* rhs = nullptr)
-        {
-            releaseRef();
-            m_ptr = rhs;
-            addRef();
-        }
+  T *get() const { return (m_ptr); }
 
-        bool dirty() const
-        {
-            if (m_ptr)
-                return m_ptr->dirty();
-            return false;
-        }
+  T **getOutPtr() { return (&m_ptr); }
 
-        void discardChanges()
-        {
-            if (m_ptr)
-                m_ptr->discardChanges();
-        }
+  void addRef() {
+    if (m_ptr)
+      m_ptr->addRef();
+  }
 
-        llvm::Metadata* generateNode(llvm::LLVMContext& context) const
-        {
-            if (m_ptr)
-                return m_ptr->generateNode(context);
-            return NULL;
-        }
+  void releaseRef() {
+    if (m_ptr)
+      m_ptr->releaseRef();
+    m_ptr = 0;
+  }
 
-        void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
-        {
-            if (m_ptr)
-                m_ptr->save(context, pNode);
-        }
+  T *release() { // !!! This method do not decrement the reference count and thus should be used with care !!!
+    T *_Tmp = m_ptr;
+    m_ptr = nullptr;
+    return (_Tmp);
+  }
 
-    private:
-        T* m_ptr;    // the wrapped object pointer
-    };
+  void reset(T *rhs = nullptr) {
+    releaseRef();
+    m_ptr = rhs;
+    addRef();
+  }
 
-    template< class T>
-    struct MDValueTraits<MetaObjectHandle<T>>
-    {
-        typedef MetaObjectHandle<T> value_type;
+  bool dirty() const {
+    if (m_ptr)
+      return m_ptr->dirty();
+    return false;
+  }
 
-        static value_type load(llvm::Metadata* pNode)
-        {
-            if (NULL == pNode)
-            {
-                return MetaObjectHandle<T>(new T());
-            }
-            else
-            {
-                llvm::MDNode* const pMDNode = llvm::dyn_cast<llvm::MDNode>(pNode);
-                IGC_ASSERT_MESSAGE(nullptr != pMDNode, "pNode is not an MDNode value");
-                return MetaObjectHandle<T>(new T(pMDNode, false));
-            }
-        }
+  void discardChanges() {
+    if (m_ptr)
+      m_ptr->discardChanges();
+  }
 
-        static llvm::Metadata* generateValue(llvm::LLVMContext& context, const value_type& val)
-        {
-            return val->generateNode(context);
-        }
+  llvm::Metadata *generateNode(llvm::LLVMContext &context) const {
+    if (m_ptr)
+      return m_ptr->generateNode(context);
+    return NULL;
+  }
 
-        static bool dirty(const value_type& val)
-        {
-            return val->dirty();
-        }
+  void save(llvm::LLVMContext &context, llvm::MDNode *pNode) const {
+    if (m_ptr)
+      m_ptr->save(context, pNode);
+  }
 
-        static void discardChanges(value_type& val)
-        {
-            val->discardChanges();
-        }
+private:
+  T *m_ptr; // the wrapped object pointer
+};
 
-        static void save(llvm::LLVMContext& context, llvm::Metadata* target, const value_type& val)
-        {
-            val->save(context, llvm::cast<llvm::MDNode>(target));
-        }
-    };
-}
+template <class T> struct MDValueTraits<MetaObjectHandle<T>> {
+  typedef MetaObjectHandle<T> value_type;
+
+  static value_type load(llvm::Metadata *pNode) {
+    if (NULL == pNode) {
+      return MetaObjectHandle<T>(new T());
+    } else {
+      llvm::MDNode *const pMDNode = llvm::dyn_cast<llvm::MDNode>(pNode);
+      IGC_ASSERT_MESSAGE(nullptr != pMDNode, "pNode is not an MDNode value");
+      return MetaObjectHandle<T>(new T(pMDNode, false));
+    }
+  }
+
+  static llvm::Metadata *generateValue(llvm::LLVMContext &context, const value_type &val) {
+    return val->generateNode(context);
+  }
+
+  static bool dirty(const value_type &val) { return val->dirty(); }
+
+  static void discardChanges(value_type &val) { val->discardChanges(); }
+
+  static void save(llvm::LLVMContext &context, llvm::Metadata *target, const value_type &val) {
+    val->save(context, llvm::cast<llvm::MDNode>(target));
+  }
+};
+} // namespace IGC

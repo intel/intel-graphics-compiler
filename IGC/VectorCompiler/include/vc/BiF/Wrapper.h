@@ -75,13 +75,11 @@ llvm::StringRef getRawDataForArch<RawKind::Builtins>(llvm::StringRef CPUStr) {
   return getVCBuiltinsRawData(CPUStr);
 }
 
-template<>
-llvm::StringRef getRawData<RawKind::PrintfOCL32>() {
+template <> llvm::StringRef getRawData<RawKind::PrintfOCL32>() {
   return getPrintfOCL32RawData();
 }
 
-template<>
-llvm::StringRef getRawData<RawKind::PrintfOCL64>() {
+template <> llvm::StringRef getRawData<RawKind::PrintfOCL64>() {
   return getPrintfOCL64RawData();
 }
 

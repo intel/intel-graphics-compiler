@@ -8,13 +8,11 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-namespace llvm
-{
-    class ModulePass;
+namespace llvm {
+class ModulePass;
 }
 
-namespace IGC
-{
-    /// Lower down alloca to private memory
-    llvm::ModulePass* CreatePrivateMemoryResolution();
-}
+namespace IGC {
+/// Lower down alloca to private memory
+llvm::ModulePass *CreatePrivateMemoryResolution();
+} // namespace IGC

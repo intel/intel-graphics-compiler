@@ -15,9 +15,9 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC {
-  llvm::FunctionPass *createLoopDeadCodeEliminationPass();
-  void initializeLoopDeadCodeEliminationPass(llvm::PassRegistry &);
+llvm::FunctionPass *createLoopDeadCodeEliminationPass();
+void initializeLoopDeadCodeEliminationPass(llvm::PassRegistry &);
 
-  llvm::FunctionPass* createDeadPHINodeEliminationPass();
-  void initializeDeadPHINodeEliminationPass(llvm::PassRegistry &);
+llvm::FunctionPass *createDeadPHINodeEliminationPass();
+void initializeDeadPHINodeEliminationPass(llvm::PassRegistry &);
 } // End namespace IGC

@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 #ifndef _CISA_GENERATEFREQUENCYDATA_HPP_
 #define _CISA_GENERATEFREQUENCYDATA_HPP_
 
-
 // This pass generates static profile information and embed it as meta data
 // Static profile information includes block freq
 
@@ -20,9 +19,9 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-  llvm::ModulePass* createGenerateFrequencyDataPass();
-  void initializeGenerateFrequencyDataPass(llvm::PassRegistry&);
-}
+llvm::ModulePass *createGenerateFrequencyDataPass();
+void initializeGenerateFrequencyDataPass(llvm::PassRegistry &);
+} // namespace IGC
 
 namespace FrequencyDataDS {
 typedef enum {

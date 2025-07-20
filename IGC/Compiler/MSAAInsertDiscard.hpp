@@ -16,39 +16,30 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class MSAAInsertDiscard : public llvm::FunctionPass, public llvm::InstVisitor<MSAAInsertDiscard>
-    {
-    private:
-        bool done{};
-        llvm::IRBuilder<>* m_builder = nullptr;
-        CodeGenContextWrapper* m_pCtxWrapper = nullptr;
-        unsigned int m_kernelSize{};
+namespace IGC {
+class MSAAInsertDiscard : public llvm::FunctionPass, public llvm::InstVisitor<MSAAInsertDiscard> {
+private:
+  bool done{};
+  llvm::IRBuilder<> *m_builder = nullptr;
+  CodeGenContextWrapper *m_pCtxWrapper = nullptr;
+  unsigned int m_kernelSize{};
 
-        int getiCMPValue();
+  int getiCMPValue();
 
-    public:
+public:
+  static char ID;
+  MSAAInsertDiscard();
 
-        static char ID;
-        MSAAInsertDiscard();
+  ~MSAAInsertDiscard() {}
 
-        ~MSAAInsertDiscard() {}
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-        virtual bool runOnFunction(llvm::Function& F) override;
+  virtual llvm::StringRef getPassName() const override { return "MSAAInsertDiscard"; }
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "MSAAInsertDiscard";
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<CodeGenContextWrapper>();
-        }
-
-        void visitCallInst(llvm::CallInst& I);
-    };
-}
+  void visitCallInst(llvm::CallInst &I);
+};
+} // namespace IGC
 
 #endif

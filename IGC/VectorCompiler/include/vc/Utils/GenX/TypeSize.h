@@ -36,15 +36,11 @@ public:
   using SzType = uint64_t;
 
   using DLTypeSize = llvm::TypeSize;
-  static DLTypeSize InvalidDLSize() {
-    return DLTypeSize::Fixed(0);
-  }
-  static DLTypeSize FixedDLSize(uint64_t SZ) {
-    return DLTypeSize::Fixed(SZ);
-  }
+  static DLTypeSize InvalidDLSize() { return DLTypeSize::Fixed(0); }
+  static DLTypeSize FixedDLSize(uint64_t SZ) { return DLTypeSize::Fixed(SZ); }
 
   TypeSizeWrapper() = default;
-  TypeSizeWrapper(DLTypeSize TS) : TS(TS){};
+  TypeSizeWrapper(DLTypeSize TS) : TS(TS) {};
   TypeSizeWrapper(uint64_t TSIn) : TS{FixedDLSize(TSIn)} {};
 
   SzType inBytesCeil() const { return asIntegralCeil<ByteBits>(); }
@@ -113,7 +109,8 @@ private:
                        "Type is too large to operate on");
     IGC_ASSERT_MESSAGE(BitsAsUI >= 0, "Could not determine size of Type");
     if constexpr (Strict) {
-      IGC_ASSERT_MESSAGE(BitsAsUI % UnitBitSize == 0,
+      IGC_ASSERT_MESSAGE(
+          BitsAsUI % UnitBitSize == 0,
           "Type size in bits cannot be represented in requested units exactly");
       return BitsAsUI / UnitBitSize;
     } else {

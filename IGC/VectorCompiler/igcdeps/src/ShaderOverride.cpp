@@ -53,9 +53,9 @@ VC_IGCShaderOverrider::VC_IGCShaderOverrider(ShaderHash const &InHash,
 // '_'.
 // Name = gjdn&85Lg -> return =  gjdn_85Lg
 static std::string legalizeName(std::string Name) {
-  std::replace_if(Name.begin(), Name.end(),
-                  [](unsigned char c) { return (!isalnum(c) && c != '_'); },
-                  '_');
+  std::replace_if(
+      Name.begin(), Name.end(),
+      [](unsigned char c) { return (!isalnum(c) && c != '_'); }, '_');
   return Name;
 }
 

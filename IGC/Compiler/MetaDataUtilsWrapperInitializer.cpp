@@ -23,14 +23,12 @@ IGC_INITIALIZE_PASS_END(MetaDataUtilsWrapperInitializer, PASS_FLAG, PASS_DESCRIP
 
 char MetaDataUtilsWrapperInitializer::ID = 0;
 
-MetaDataUtilsWrapperInitializer::MetaDataUtilsWrapperInitializer() : ModulePass(ID)
-{
-    initializeMetaDataUtilsWrapperInitializerPass(*PassRegistry::getPassRegistry());
+MetaDataUtilsWrapperInitializer::MetaDataUtilsWrapperInitializer() : ModulePass(ID) {
+  initializeMetaDataUtilsWrapperInitializerPass(*PassRegistry::getPassRegistry());
 }
 
-bool MetaDataUtilsWrapperInitializer::runOnModule(Module& M)
-{
-    MetaDataUtilsWrapper& mduw = getAnalysis<MetaDataUtilsWrapper>();
-    mduw.getMetaDataUtils()->setModule(&M);
-    return true;
+bool MetaDataUtilsWrapperInitializer::runOnModule(Module &M) {
+  MetaDataUtilsWrapper &mduw = getAnalysis<MetaDataUtilsWrapper>();
+  mduw.getMetaDataUtils()->setModule(&M);
+  return true;
 }

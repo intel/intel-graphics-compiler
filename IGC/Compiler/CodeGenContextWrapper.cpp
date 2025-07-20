@@ -24,20 +24,13 @@ IGC_INITIALIZE_PASS_END(CodeGenContextWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS
 
 char CodeGenContextWrapper::ID = 0;
 
-CodeGenContextWrapper::CodeGenContextWrapper(CodeGenContext* pCtx) : ImmutablePass(ID), m_ctx(pCtx)
-{
-    initializeCodeGenContextWrapperPass(*PassRegistry::getPassRegistry());
+CodeGenContextWrapper::CodeGenContextWrapper(CodeGenContext *pCtx) : ImmutablePass(ID), m_ctx(pCtx) {
+  initializeCodeGenContextWrapperPass(*PassRegistry::getPassRegistry());
 }
 
-
-CodeGenContextWrapper::CodeGenContextWrapper() : ImmutablePass(ID), m_ctx(nullptr)
-{
-    initializeCodeGenContextWrapperPass(*PassRegistry::getPassRegistry());
-    IGC_ASSERT_MESSAGE(0, "CodeGenContextWrapper shouldn't get here in runtime");
+CodeGenContextWrapper::CodeGenContextWrapper() : ImmutablePass(ID), m_ctx(nullptr) {
+  initializeCodeGenContextWrapperPass(*PassRegistry::getPassRegistry());
+  IGC_ASSERT_MESSAGE(0, "CodeGenContextWrapper shouldn't get here in runtime");
 }
 
-CodeGenContext* CodeGenContextWrapper::getCodeGenContext()
-{
-    return m_ctx;
-}
-
+CodeGenContext *CodeGenContextWrapper::getCodeGenContext() { return m_ctx; }

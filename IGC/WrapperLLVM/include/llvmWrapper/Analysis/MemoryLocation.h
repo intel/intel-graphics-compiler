@@ -18,24 +18,20 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instructions.h"
 #endif
 
-namespace IGCLLVM
-{
+namespace IGCLLVM {
 
-    class LocationSize : public llvm::LocationSize
-    {
-    public:
+class LocationSize : public llvm::LocationSize {
+public:
 #if LLVM_VERSION_MAJOR < 12
-        // LLVM 12 introduced changes in LocationSize available parameters.
-        // "Unknown" memory location changed name to "BeforeOrAfterPointer"
-        // having the same value ~uint64_t(0).
-        //
-        //     Differential revision: https://reviews.llvm.org/D91649
-        //
-        constexpr static llvm::LocationSize beforeOrAfterPointer() {
-            return llvm::LocationSize::unknown();
-        }
+  // LLVM 12 introduced changes in LocationSize available parameters.
+  // "Unknown" memory location changed name to "BeforeOrAfterPointer"
+  // having the same value ~uint64_t(0).
+  //
+  //     Differential revision: https://reviews.llvm.org/D91649
+  //
+  constexpr static llvm::LocationSize beforeOrAfterPointer() { return llvm::LocationSize::unknown(); }
 #endif
-    };
-}
+};
+} // namespace IGCLLVM
 
 #endif

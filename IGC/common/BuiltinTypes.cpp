@@ -36,27 +36,22 @@ bool isImageBuiltinType(const llvm::Type *BuiltinTy) {
   if (BuiltinTy->isPointerTy() && !IGCLLVM::isOpaquePointerTy(BuiltinTy))
     BuiltinTy = IGCLLVM::getNonOpaquePtrEltTy(BuiltinTy);
 
-  if (const StructType *StructTy = dyn_cast<StructType>(BuiltinTy);
-      StructTy && StructTy->isOpaque()) {
+  if (const StructType *StructTy = dyn_cast<StructType>(BuiltinTy); StructTy && StructTy->isOpaque()) {
     StringRef BuiltinName = StructTy->getName();
     llvm::SmallVector<llvm::StringRef, 3> Buffer;
     BuiltinName.split(Buffer, ".");
     if (Buffer.size() < 2)
       return false;
-    bool IsOpenCLImage = Buffer[0].equals("opencl") &&
-                         Buffer[1].startswith("image") &&
-                         Buffer[1].endswith("_t");
+    bool IsOpenCLImage = Buffer[0].equals("opencl") && Buffer[1].startswith("image") && Buffer[1].endswith("_t");
     bool IsSPIRVImage =
-        Buffer[0].equals("spirv") &&
-        (Buffer[1].startswith("Image") || Buffer[1].startswith("SampledImage"));
+        Buffer[0].equals("spirv") && (Buffer[1].startswith("Image") || Buffer[1].startswith("SampledImage"));
 
     if (IsOpenCLImage || IsSPIRVImage)
       return true;
   }
 #if LLVM_VERSION_MAJOR >= 16
   else if (const TargetExtType *ExtTy = dyn_cast<TargetExtType>(BuiltinTy);
-           ExtTy && (ExtTy->getName() == "spirv.Image" ||
-                     ExtTy->getName() == "spirv.SampledImage")) {
+           ExtTy && (ExtTy->getName() == "spirv.Image" || ExtTy->getName() == "spirv.SampledImage")) {
     return true;
   }
 #endif
@@ -71,8 +66,7 @@ static bool isNonOpenCLBuiltinType(const llvm::Type *Ty) {
     return false;
 
   StringRef Name = TET->getTargetExtName();
-  return Name.starts_with("spirv.CooperativeMatrixKHR") ||
-         Name.starts_with("spirv.JointMatrixINTEL");
+  return Name.starts_with("spirv.CooperativeMatrixKHR") || Name.starts_with("spirv.JointMatrixINTEL");
 }
 
 static bool isAnyArgOpenCLTargetExtTy(const llvm::Function &F) {
@@ -87,12 +81,10 @@ static bool isAnyArgOpenCLTargetExtTy(const llvm::Function &F) {
 
 static bool isDeclarationWithOpenCLTargetExtTyRet(const llvm::Function &F) {
   const Type *RetTy = F.getReturnType();
-  return F.isDeclaration() && isTargetExtTy(RetTy) &&
-         !isNonOpenCLBuiltinType(RetTy);
+  return F.isDeclaration() && isTargetExtTy(RetTy) && !isNonOpenCLBuiltinType(RetTy);
 }
 
-static unsigned
-getAddressSpaceForTargetExtTy(const llvm::TargetExtType *TargetExtTy) {
+static unsigned getAddressSpaceForTargetExtTy(const llvm::TargetExtType *TargetExtTy) {
   StringRef TyName = TargetExtTy->getName();
   if (TyName.startswith("spirv.Queue"))
     return ADDRESS_SPACE_PRIVATE;
@@ -104,8 +96,7 @@ getAddressSpaceForTargetExtTy(const llvm::TargetExtType *TargetExtTy) {
   return 0;
 }
 
-static Function *
-cloneFunctionWithPtrArgsInsteadTargetExtTy(Function &F, StringRef NameSuffix) {
+static Function *cloneFunctionWithPtrArgsInsteadTargetExtTy(Function &F, StringRef NameSuffix) {
   Module &M = *F.getParent();
   LLVMContext &C = M.getContext();
 
@@ -121,15 +112,12 @@ cloneFunctionWithPtrArgsInsteadTargetExtTy(Function &F, StringRef NameSuffix) {
   }
 
   Type *NewRetTy = F.getReturnType();
-  if (F.isDeclaration() && isTargetExtTy(NewRetTy) &&
-      !isNonOpenCLBuiltinType(NewRetTy))
-    NewRetTy = PointerType::get(
-        C, getAddressSpaceForTargetExtTy(cast<llvm::TargetExtType>(NewRetTy)));
+  if (F.isDeclaration() && isTargetExtTy(NewRetTy) && !isNonOpenCLBuiltinType(NewRetTy))
+    NewRetTy = PointerType::get(C, getAddressSpaceForTargetExtTy(cast<llvm::TargetExtType>(NewRetTy)));
 
   FunctionType *NewFTy = FunctionType::get(NewRetTy, ParamTys, F.isVarArg());
 
-  Function *NewF = Function::Create(NewFTy, F.getLinkage(), F.getAddressSpace(),
-                                    F.getName() + NameSuffix, &M);
+  Function *NewF = Function::Create(NewFTy, F.getLinkage(), F.getAddressSpace(), F.getName() + NameSuffix, &M);
   NewF->copyAttributesFrom(&F);
 
   ValueToValueMapTy VMap;
@@ -140,8 +128,7 @@ cloneFunctionWithPtrArgsInsteadTargetExtTy(Function &F, StringRef NameSuffix) {
   }
 
   SmallVector<ReturnInst *, 8> Rets;
-  CloneFunctionInto(NewF, &F, VMap, CloneFunctionChangeType::LocalChangesOnly,
-                    Rets);
+  CloneFunctionInto(NewF, &F, VMap, CloneFunctionChangeType::LocalChangesOnly, Rets);
 
   return NewF;
 }
@@ -168,8 +155,7 @@ static void replaceFunctionAtCallsites(Function &OldF, Function &NewF) {
 
         if (!V->getType()->isPointerTy()) {
           IRBuilder<> EntryB(&*CB->getFunction()->getEntryBlock().begin());
-          AllocaInst *Tmp = EntryB.CreateAlloca(V->getType(), nullptr,
-                                                V->getName() + ".addr");
+          AllocaInst *Tmp = EntryB.CreateAlloca(V->getType(), nullptr, V->getName() + ".addr");
           EntryB.CreateStore(V, Tmp);
 
           V = Tmp;
@@ -201,12 +187,10 @@ void retypeOpenCLTargetExtTyArgs(Module *M) {
   SmallVector<Function *, 8> RetypedFuncs;
 
   for (Function &F : *M) {
-    if (!isAnyArgOpenCLTargetExtTy(F) &&
-        !isDeclarationWithOpenCLTargetExtTyRet(F))
+    if (!isAnyArgOpenCLTargetExtTy(F) && !isDeclarationWithOpenCLTargetExtTyRet(F))
       continue;
 
-    if (Function *NewF =
-            cloneFunctionWithPtrArgsInsteadTargetExtTy(F, TempSuffix))
+    if (Function *NewF = cloneFunctionWithPtrArgsInsteadTargetExtTy(F, TempSuffix))
       RetypedFuncs.push_back(NewF);
   }
 
@@ -228,13 +212,11 @@ void retypeOpenCLTargetExtTyArgs(Module *M) {
     StringRef OrigName = NewF->getName().drop_back(TempSuffix.size());
     const Function *OldF = M->getFunction(OrigName);
     auto It = FirstUseIndex.find(OldF);
-    return It == FirstUseIndex.end() ? std::numeric_limits<size_t>::max()
-                                     : It->second;
+    return It == FirstUseIndex.end() ? std::numeric_limits<size_t>::max() : It->second;
   };
 
-  std::stable_sort(
-      RetypedFuncs.begin(), RetypedFuncs.end(),
-      [&](Function *A, Function *B) { return idxOf(A) < idxOf(B); });
+  std::stable_sort(RetypedFuncs.begin(), RetypedFuncs.end(),
+                   [&](Function *A, Function *B) { return idxOf(A) < idxOf(B); });
 
   for (Function *NewF : RetypedFuncs) {
     StringRef OriginalName = NewF->getName().drop_back(TempSuffix.size());

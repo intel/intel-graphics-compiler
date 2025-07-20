@@ -29,119 +29,109 @@ IGC_INITIALIZE_PASS_END(SetFastMathFlags, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_
 
 char SetFastMathFlags::ID = 0;
 
-SetFastMathFlags::SetFastMathFlags() : ModulePass(ID)
-{
-    m_Mask.setFast();
-    initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
+SetFastMathFlags::SetFastMathFlags() : ModulePass(ID) {
+  m_Mask.setFast();
+  initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
 }
 
-SetFastMathFlags::SetFastMathFlags(FastMathFlags Mask) : ModulePass(ID)
-{
-    m_Mask = Mask;
-    initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
+SetFastMathFlags::SetFastMathFlags(FastMathFlags Mask) : ModulePass(ID) {
+  m_Mask = Mask;
+  initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
 }
 
-SetFastMathFlags::SetFastMathFlags(FastMathFlags Mask, bool skipUnsafeFpMathAttr) : ModulePass(ID)
-{
-    m_Mask = Mask;
-    m_skipUnsafeFpMathAttr = skipUnsafeFpMathAttr;
-    initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
+SetFastMathFlags::SetFastMathFlags(FastMathFlags Mask, bool skipUnsafeFpMathAttr) : ModulePass(ID) {
+  m_Mask = Mask;
+  m_skipUnsafeFpMathAttr = skipUnsafeFpMathAttr;
+  initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
 }
 
-bool SetFastMathFlags::runOnModule(Module& M)
-{
-    auto hasFnAttributeSet = [](Function& F, StringRef Attr)
-    {
-        return F.hasFnAttribute(Attr) && F.getFnAttribute(Attr).getValueAsString() == "true";
-    };
+bool SetFastMathFlags::runOnModule(Module &M) {
+  auto hasFnAttributeSet = [](Function &F, StringRef Attr) {
+    return F.hasFnAttribute(Attr) && F.getFnAttribute(Attr).getValueAsString() == "true";
+  };
 
-    const ModuleMetaData& modMD = *(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
-    bool changed = false;
-    for (Function& F : M) {
-        FastMathFlags fmfs;
-        // We determine if we have to use the unsafe-fp-math attr or we can omit it
-        bool unsafeFpMathAttrCheck = m_skipUnsafeFpMathAttr || hasFnAttributeSet(F, "unsafe-fp-math");
-        // Fast relaxed math implies all other flags.
-        if (modMD.compOpt.FastRelaxedMath && unsafeFpMathAttrCheck) {
-            fmfs.setFast();
-            fmfs &= m_Mask;
-            changed |= setFlags(F, fmfs);
-            continue;
-        }
-        // Unsafe math implies no signed zeros.
-        if ((modMD.compOpt.NoSignedZeros || modMD.compOpt.UnsafeMathOptimizations) && (hasFnAttributeSet(F, "no-signed-zeros-fp-math"))) {
-            fmfs.setNoSignedZeros();
-        }
-        // Finite math implies no infs and nans.
-        if (modMD.compOpt.FiniteMathOnly) {
-            if (hasFnAttributeSet(F, "no-infs-fp-math")) {
-                fmfs.setNoInfs();
-            }
-            if (hasFnAttributeSet(F, "no-nans-fp-math")) {
-                fmfs.setNoNaNs();
-            }
-        }
-        fmfs &= m_Mask;
-        changed |= setFlags(F, fmfs);
+  const ModuleMetaData &modMD = *(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  bool changed = false;
+  for (Function &F : M) {
+    FastMathFlags fmfs;
+    // We determine if we have to use the unsafe-fp-math attr or we can omit it
+    bool unsafeFpMathAttrCheck = m_skipUnsafeFpMathAttr || hasFnAttributeSet(F, "unsafe-fp-math");
+    // Fast relaxed math implies all other flags.
+    if (modMD.compOpt.FastRelaxedMath && unsafeFpMathAttrCheck) {
+      fmfs.setFast();
+      fmfs &= m_Mask;
+      changed |= setFlags(F, fmfs);
+      continue;
     }
-    return changed;
+    // Unsafe math implies no signed zeros.
+    if ((modMD.compOpt.NoSignedZeros || modMD.compOpt.UnsafeMathOptimizations) &&
+        (hasFnAttributeSet(F, "no-signed-zeros-fp-math"))) {
+      fmfs.setNoSignedZeros();
+    }
+    // Finite math implies no infs and nans.
+    if (modMD.compOpt.FiniteMathOnly) {
+      if (hasFnAttributeSet(F, "no-infs-fp-math")) {
+        fmfs.setNoInfs();
+      }
+      if (hasFnAttributeSet(F, "no-nans-fp-math")) {
+        fmfs.setNoNaNs();
+      }
+    }
+    fmfs &= m_Mask;
+    changed |= setFlags(F, fmfs);
+  }
+  return changed;
 }
 
-static bool setMathFlags(IntrinsicInst* II) {
-    switch (II->getIntrinsicID()) {
-    case Intrinsic::pow:
-    case Intrinsic::exp2:
-    case Intrinsic::log:
-    case Intrinsic::sqrt:
-        II->setFast(true);
-        return true;
-    default:
-        break;
-    }
+static bool setMathFlags(IntrinsicInst *II) {
+  switch (II->getIntrinsicID()) {
+  case Intrinsic::pow:
+  case Intrinsic::exp2:
+  case Intrinsic::log:
+  case Intrinsic::sqrt:
+    II->setFast(true);
+    return true;
+  default:
+    break;
+  }
+  return false;
+}
+
+bool SetFastMathFlags::setFlags(Function &F, FastMathFlags fmfs) {
+  if (!fmfs.any()) {
     return false;
-}
+  }
 
-bool SetFastMathFlags::setFlags(Function& F, FastMathFlags fmfs)
-{
-    if (!fmfs.any())
-    {
-        return false;
-    }
+  StringRef fName = F.getName();
+  if (fName.equals("__ocl_svml_cos") || fName.equals("__ocl_svml_sin")) {
+    return false;
+  }
 
-    StringRef fName = F.getName();
-    if (fName.equals("__ocl_svml_cos") ||
-        fName.equals("__ocl_svml_sin"))
-    {
-        return false;
+  bool changed = false;
+  for (inst_iterator i = inst_begin(&F), e = inst_end(&F); i != e; ++i) {
+    unsigned int op = i->getOpcode();
+    switch (op) {
+    case Instruction::FNeg:
+    case Instruction::FAdd:
+    case Instruction::FSub:
+    case Instruction::FMul:
+    case Instruction::FDiv:
+    case Instruction::FRem:
+      i->setFastMathFlags(fmfs); // this actually does an OR between flags.
+      changed = true;
+      break;
+    case Instruction::Call:
+      if (auto II = dyn_cast<IntrinsicInst>(&*i)) {
+        if (fmfs.isFast())
+          changed |= setMathFlags(II);
+      } else if (isa<FPMathOperator>(&*i)) {
+        i->setFastMathFlags(fmfs);
+        changed = true;
+      }
+      break;
+    default:
+      break;
     }
-
-    bool changed = false;
-    for (inst_iterator i = inst_begin(&F), e = inst_end(&F); i != e; ++i)
-    {
-        unsigned int op = i->getOpcode();
-        switch (op) {
-        case Instruction::FNeg:
-        case Instruction::FAdd:
-        case Instruction::FSub:
-        case Instruction::FMul:
-        case Instruction::FDiv:
-        case Instruction::FRem:
-            i->setFastMathFlags(fmfs); // this actually does an OR between flags.
-            changed = true;
-            break;
-        case Instruction::Call:
-            if (auto II = dyn_cast<IntrinsicInst>(&*i)) {
-                if (fmfs.isFast())
-                    changed |= setMathFlags(II);
-            }
-            else if (isa<FPMathOperator>(&*i)) {
-                i->setFastMathFlags(fmfs);
-                changed = true;
-            }
-            break;
-        default:
-            break;
-        }
-    }
-    return changed;
+  }
+  return changed;
 }

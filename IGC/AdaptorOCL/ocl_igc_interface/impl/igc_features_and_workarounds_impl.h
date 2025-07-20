@@ -23,9 +23,7 @@ namespace IGC {
 
 CIF_DECLARE_INTERFACE_PIMPL(IgcFeaturesAndWorkarounds) : CIF::PimplBase {
 
-  OCL_API_CALL CIF_PIMPL_DECLARE_CONSTRUCTOR() {
-      CIF::SafeZeroOut(FeTable);
-  }
+  OCL_API_CALL CIF_PIMPL_DECLARE_CONSTRUCTOR() { CIF::SafeZeroOut(FeTable); }
 
   _SUscSkuFeatureTable FeTable;
   OCLCaps OCLCaps;
@@ -35,6 +33,6 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcFeaturesAndWorkarounds) : CIF::PimplBase {
 
 CIF_DEFINE_INTERFACE_TO_PIMPL_FORWARDING_CTOR_DTOR(IgcFeaturesAndWorkarounds);
 
-}
+} // namespace IGC
 
 #include "cif/macros/disable.h"

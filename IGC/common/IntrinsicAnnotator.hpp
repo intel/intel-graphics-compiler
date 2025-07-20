@@ -15,13 +15,11 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 
-namespace IGC
-{
-    class IntrinsicAnnotator : public llvm::AssemblyAnnotationWriter
-    {
-    public:
-        IntrinsicAnnotator() {}
-        ~IntrinsicAnnotator() {}
-        void emitFunctionAnnot(const llvm::Function* func, llvm::formatted_raw_ostream&) override;
-    };
-}
+namespace IGC {
+class IntrinsicAnnotator : public llvm::AssemblyAnnotationWriter {
+public:
+  IntrinsicAnnotator() {}
+  ~IntrinsicAnnotator() {}
+  void emitFunctionAnnot(const llvm::Function *func, llvm::formatted_raw_ostream &) override;
+};
+} // namespace IGC

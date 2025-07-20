@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
-void initializeLdShrinkPass(llvm::PassRegistry&);
-llvm::FunctionPass* createLdShrinkPass();
+void initializeLdShrinkPass(llvm::PassRegistry &);
+llvm::FunctionPass *createLdShrinkPass();
 
 #endif // _CISA_LDSHRINK_H_

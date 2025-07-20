@@ -16,6 +16,6 @@ class Target;
 Target &getTheGenXTarget32();
 Target &getTheGenXTarget64();
 
-}
+} // namespace llvm
 
 #endif

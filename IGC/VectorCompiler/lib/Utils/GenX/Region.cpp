@@ -51,10 +51,9 @@ static const DataLayout *getDL(const Value *V) {
 CMRegion::CMRegion(Type *Ty, const DataLayout *DL)
     : ElementBytes(0), ElementTy(0), NumElements(1), VStride(0), Width(1),
       Stride(1), Offset(0), Indirect(0), IndirectIdx(0), IndirectAddrOffset(0),
-      Mask(0), ParentWidth(0)
-{
+      Mask(0), ParentWidth(0) {
   IGC_ASSERT_MESSAGE(!Ty->isAggregateType(),
-    "cannot create region based on an aggregate type");
+                     "cannot create region based on an aggregate type");
   ElementTy = Ty;
   if (IGCLLVM::FixedVectorType *VT =
           dyn_cast<IGCLLVM::FixedVectorType>(ElementTy)) {
@@ -69,7 +68,7 @@ CMRegion::CMRegion(Type *Ty, const DataLayout *DL)
     unsigned BitSize = ElementTy->getPrimitiveSizeInBits();
     ElementBytes = alignTo<8>(BitSize) / 8;
     IGC_ASSERT_MESSAGE(ElementBytes,
-      "Cannot compute element size without data layout");
+                       "Cannot compute element size without data layout");
   }
 }
 
@@ -94,44 +93,43 @@ CMRegion::CMRegion(const Instruction *Inst, bool WantParentWidth)
   const Value *Subregion = 0;
   IGC_ASSERT(isa<CallInst>(Inst));
   switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
-    case GenXIntrinsic::genx_rdpredregion:
-      NumElements =
-          cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements();
-      Width = NumElements;
-      Offset = cast<ConstantInt>(Inst->getOperand(1))->getZExtValue();
-      ElementBytes = 1;
-      return;
-    case GenXIntrinsic::genx_wrpredregion:
-      NumElements =
-          cast<IGCLLVM::FixedVectorType>(Inst->getOperand(1)->getType())
-              ->getNumElements();
-      Width = NumElements;
-      Offset = cast<ConstantInt>(Inst->getOperand(2))->getZExtValue();
-      ElementBytes = 1;
-      return;
-    case GenXIntrinsic::genx_rdregioni:
-    case GenXIntrinsic::genx_rdregionf:
-      ArgIdx = 1;
-      // The size/type of the region is given by the return value:
-      Subregion = Inst;
-      break;
-    case GenXIntrinsic::genx_wrregioni:
-    case GenXIntrinsic::genx_wrregionf:
-    case GenXIntrinsic::genx_wrconstregion:
-      ArgIdx = 2;
-      // The size/type of the region is given by the "subregion value to
-      // write" operand:
-      Subregion = Inst->getOperand(1);
-      // For wrregion, while we're here, also get the mask. We set mask to NULL
-      // if the mask operand is constant 1 (i.e. not predicated).
-      Mask = Inst->getOperand(GenXIntrinsic::GenXRegion::PredicateOperandNum);
-      if (auto C = dyn_cast<Constant>(Mask))
-        if (C->isAllOnesValue())
-          Mask = 0;
-      break;
-    default:
-      IGC_ASSERT(0);
-      break;
+  case GenXIntrinsic::genx_rdpredregion:
+    NumElements =
+        cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements();
+    Width = NumElements;
+    Offset = cast<ConstantInt>(Inst->getOperand(1))->getZExtValue();
+    ElementBytes = 1;
+    return;
+  case GenXIntrinsic::genx_wrpredregion:
+    NumElements = cast<IGCLLVM::FixedVectorType>(Inst->getOperand(1)->getType())
+                      ->getNumElements();
+    Width = NumElements;
+    Offset = cast<ConstantInt>(Inst->getOperand(2))->getZExtValue();
+    ElementBytes = 1;
+    return;
+  case GenXIntrinsic::genx_rdregioni:
+  case GenXIntrinsic::genx_rdregionf:
+    ArgIdx = 1;
+    // The size/type of the region is given by the return value:
+    Subregion = Inst;
+    break;
+  case GenXIntrinsic::genx_wrregioni:
+  case GenXIntrinsic::genx_wrregionf:
+  case GenXIntrinsic::genx_wrconstregion:
+    ArgIdx = 2;
+    // The size/type of the region is given by the "subregion value to
+    // write" operand:
+    Subregion = Inst->getOperand(1);
+    // For wrregion, while we're here, also get the mask. We set mask to NULL
+    // if the mask operand is constant 1 (i.e. not predicated).
+    Mask = Inst->getOperand(GenXIntrinsic::GenXRegion::PredicateOperandNum);
+    if (auto C = dyn_cast<Constant>(Mask))
+      if (C->isAllOnesValue())
+        Mask = 0;
+    break;
+  default:
+    IGC_ASSERT(0);
+    break;
   }
   // Get the region parameters.
   IGC_ASSERT_EXIT(Subregion);
@@ -151,7 +149,7 @@ CMRegion::CMRegion(const Instruction *Inst, bool WantParentWidth)
   // Get the start index.
   Value *V = Inst->getOperand(ArgIdx);
   IGC_ASSERT_MESSAGE(V->getType()->getScalarType()->isIntegerTy(16),
-    "region index must be i16 or vXi16 type");
+                     "region index must be i16 or vXi16 type");
 
   if (ConstantInt *CI = dyn_cast<ConstantInt>(V))
     Offset = CI->getSExtValue(); // Constant index.
@@ -177,8 +175,8 @@ CMRegion::CMRegion(const Instruction *Inst, bool WantParentWidth)
       // VStride == Width * Stride, so we can canonicalize to a 1D region,
       // but only if not indirect or not asked to preserve parentwidth,
       // and never if multi-indirect.
-      if (!Indirect
-          || (!isa<VectorType>(Indirect->getType()) && !WantParentWidth)) {
+      if (!Indirect ||
+          (!isa<VectorType>(Indirect->getType()) && !WantParentWidth)) {
         Width = NumElements;
         VStride = 0;
         ParentWidth = 0;
@@ -187,8 +185,8 @@ CMRegion::CMRegion(const Instruction *Inst, bool WantParentWidth)
       // We can turn a 2D width 1 region into a 1D region, but if it is
       // indirect it invalidates ParentWidth. So only do it if not asked
       // to keep ParentWidth. Also we cannot do it if it is multi-indirect.
-      if (!Indirect
-          || (!isa<VectorType>(Indirect->getType()) && !WantParentWidth)) {
+      if (!Indirect ||
+          (!isa<VectorType>(Indirect->getType()) && !WantParentWidth)) {
         Width = NumElements;
         Stride = VStride;
         VStride = 0;
@@ -214,14 +212,14 @@ CMRegion::CMRegion(const Instruction *Inst, bool WantParentWidth)
 CMRegion::CMRegion(unsigned Bits, unsigned ElementBytes)
     : ElementBytes(ElementBytes), ElementTy(0), NumElements(1), VStride(1),
       Width(1), Stride(1), Offset(0), Indirect(0), IndirectIdx(0),
-      IndirectAddrOffset(0), Mask(0), ParentWidth(0)
-{
+      IndirectAddrOffset(0), Mask(0), ParentWidth(0) {
   IGC_ASSERT(Bits);
   Offset = llvm::countTrailingZeros(Bits);
 
-  // It might seem problematic that countTrailingZeros may return 32 and that we could do shift by 32 here.
-  // But countTrailingZeros would return 32 in scenario where "Bits" variable is 0
-  // And IGC_ASSERT(Bits) covers this case... in debug mode, at least.
+  // It might seem problematic that countTrailingZeros may return 32 and that we
+  // could do shift by 32 here. But countTrailingZeros would return 32 in
+  // scenario where "Bits" variable is 0 And IGC_ASSERT(Bits) covers this
+  // case... in debug mode, at least.
   if (Offset < std::numeric_limits<unsigned>::digits) {
     Bits >>= Offset;
     Offset *= ElementBytes;
@@ -241,8 +239,7 @@ CMRegion::CMRegion(unsigned Bits, unsigned ElementBytes)
  *
  * This does not modify the Mask; the caller needs to do that separately.
  */
-void CMRegion::getSubregion(unsigned StartIdx, unsigned Size)
-{
+void CMRegion::getSubregion(unsigned StartIdx, unsigned Size) {
   if (Indirect && isa<VectorType>(Indirect->getType())) {
     // Vector indirect (multi indirect). Set IndirectIdx to the index of
     // the start element in the vector indirect.
@@ -281,8 +278,8 @@ void CMRegion::getSubregion(unsigned StartIdx, unsigned Size)
  * Return:  newly created instruction
  */
 Instruction *CMRegion::createRdRegion(Value *Input, const Twine &Name,
-    Instruction *InsertBefore, const DebugLoc &DL, bool AllowScalar)
-{
+                                      Instruction *InsertBefore,
+                                      const DebugLoc &DL, bool AllowScalar) {
   IGC_ASSERT_MESSAGE(ElementBytes, "not expecting i1 element type");
 
   Value *StartIdx = getStartIdx(Name, InsertBefore, DL);
@@ -290,12 +287,13 @@ Instruction *CMRegion::createRdRegion(Value *Input, const Twine &Name,
   Value *ParentWidthArg = UndefValue::get(I32Ty);
   if (Indirect)
     ParentWidthArg = ConstantInt::get(I32Ty, ParentWidth);
-  Value *Args[] = {   // Args to new rdregion:
-      Input, // input to original rdregion
+  Value *Args[] = {
+      // Args to new rdregion:
+      Input,                            // input to original rdregion
       ConstantInt::get(I32Ty, VStride), // vstride
-      ConstantInt::get(I32Ty, Width), // width
-      ConstantInt::get(I32Ty, Stride), // stride
-      StartIdx, // start index (in bytes)
+      ConstantInt::get(I32Ty, Width),   // width
+      ConstantInt::get(I32Ty, Stride),  // stride
+      StartIdx,                         // start index (in bytes)
       ParentWidthArg // parent width (if variable start index)
   };
   IGC_ASSERT_MESSAGE(
@@ -314,7 +312,8 @@ Instruction *CMRegion::createRdRegion(Value *Input, const Twine &Name,
 
 /***********************************************************************
  * CMRegion::createWrRegion : create wrregion instruction for subregion
- * CMRegion::createWrConstRegion : create wrconstregion instruction for subregion
+ * CMRegion::createWrConstRegion : create wrconstregion instruction for
+ * subregion
  *
  * Enter:   OldVal = vector value to insert subregion into (can be undef)
  *          Input = subregion value to insert (can be scalar, as long as
@@ -332,9 +331,9 @@ Instruction *CMRegion::createWrRegion(Value *OldVal, Value *Input,
                                       Instruction *InsertBefore,
                                       const DebugLoc &DL) {
   return createWrCommonRegion(OldVal->getType()->isFPOrFPVectorTy()
-        ? GenXIntrinsic::genx_wrregionf : GenXIntrinsic::genx_wrregioni,
-      OldVal, Input,
-      Name, InsertBefore, DL);
+                                  ? GenXIntrinsic::genx_wrregionf
+                                  : GenXIntrinsic::genx_wrregioni,
+                              OldVal, Input, Name, InsertBefore, DL);
 }
 
 Instruction *CMRegion::createWrConstRegion(Value *OldVal, Value *Input,
@@ -345,7 +344,7 @@ Instruction *CMRegion::createWrConstRegion(Value *OldVal, Value *Input,
   IGC_ASSERT(!Mask);
   IGC_ASSERT(isa<Constant>(Input));
   return createWrCommonRegion(GenXIntrinsic::genx_wrconstregion, OldVal, Input,
-      Name, InsertBefore, DL);
+                              Name, InsertBefore, DL);
 }
 
 Instruction *CMRegion::createWrCommonRegion(GenXIntrinsic::ID IID,
@@ -360,9 +359,11 @@ Instruction *CMRegion::createWrCommonRegion(GenXIntrinsic::ID IID,
             cast<IGCLLVM::FixedVectorType>(Input->getType())->getNumElements(),
         "input value and region are inconsistent");
   else
-    IGC_ASSERT_MESSAGE(NumElements == 1, "input value and region are inconsistent");
-  IGC_ASSERT_MESSAGE(OldVal->getType()->getScalarType() == Input->getType()->getScalarType(),
-    "scalar type mismatch");
+    IGC_ASSERT_MESSAGE(NumElements == 1,
+                       "input value and region are inconsistent");
+  IGC_ASSERT_MESSAGE(OldVal->getType()->getScalarType() ==
+                         Input->getType()->getScalarType(),
+                     "scalar type mismatch");
   Value *StartIdx = getStartIdx(Name, InsertBefore, DL);
   IntegerType *I32Ty = Type::getInt32Ty(Input->getContext());
   Value *ParentWidthArg = UndefValue::get(I32Ty);
@@ -374,15 +375,16 @@ Instruction *CMRegion::createWrCommonRegion(GenXIntrinsic::ID IID,
   if (!MaskArg)
     MaskArg = ConstantInt::get(Type::getInt1Ty(Input->getContext()), 1);
   // Build the wrregion.
-  Value *Args[] = {   // Args to new wrregion:
-      OldVal, // original vector
-      Input, // value to write into subregion
+  Value *Args[] = {
+      // Args to new wrregion:
+      OldVal,                           // original vector
+      Input,                            // value to write into subregion
       ConstantInt::get(I32Ty, VStride), // vstride
-      ConstantInt::get(I32Ty, Width), // width
-      ConstantInt::get(I32Ty, Stride), // stride
-      StartIdx, // start index (in bytes)
+      ConstantInt::get(I32Ty, Width),   // width
+      ConstantInt::get(I32Ty, Stride),  // stride
+      StartIdx,                         // start index (in bytes)
       ParentWidthArg, // parent width (if variable start index)
-      MaskArg // mask
+      MaskArg         // mask
   };
   Module *M = InsertBefore->getModule();
   Function *Decl = getGenXRegionDeclaration(M, IID, nullptr, Args);
@@ -409,19 +411,20 @@ Instruction *CMRegion::createWrCommonRegion(GenXIntrinsic::ID IID,
  * the region parameters (the start index and size) directly into this method.
  */
 Instruction *CMRegion::createRdPredRegion(Value *Input, unsigned Index,
-    unsigned Size, const Twine &Name, Instruction *InsertBefore,
-    const DebugLoc &DL)
-{
+                                          unsigned Size, const Twine &Name,
+                                          Instruction *InsertBefore,
+                                          const DebugLoc &DL) {
   Type *I32Ty = Type::getInt32Ty(InsertBefore->getContext());
-  Value *Args[] = { // Args to new rdpredregion call:
-    Input, // input predicate
-    ConstantInt::get(I32Ty, Index) // start offset
+  Value *Args[] = {
+      // Args to new rdpredregion call:
+      Input,                         // input predicate
+      ConstantInt::get(I32Ty, Index) // start offset
   };
   auto RetTy =
       IGCLLVM::FixedVectorType::get(Args[0]->getType()->getScalarType(), Size);
   Module *M = InsertBefore->getModule();
   Function *Decl = getGenXRegionDeclaration(M, GenXIntrinsic::genx_rdpredregion,
-      RetTy, Args);
+                                            RetTy, Args);
   Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
   NewInst->setDebugLoc(DL);
   return NewInst;
@@ -458,11 +461,10 @@ Value *CMRegion::createRdVectorSplat(const DataLayout &DL, unsigned NumElements,
 }
 
 /***********************************************************************
-* GetConstantSubvector : get a contiguous region from a vector constant
-*/
-static Constant *GetConstantSubvector(Constant *V,
-  unsigned StartIdx, unsigned Size)
-{
+ * GetConstantSubvector : get a contiguous region from a vector constant
+ */
+static Constant *GetConstantSubvector(Constant *V, unsigned StartIdx,
+                                      unsigned Size) {
   Type *ElTy = cast<IGCLLVM::FixedVectorType>(V->getType())->getElementType();
   Type *RegionTy = IGCLLVM::FixedVectorType::get(ElTy, Size);
   if (isa<UndefValue>(V))
@@ -479,9 +481,9 @@ static Constant *GetConstantSubvector(Constant *V,
 }
 
 Value *CMRegion::createRdPredRegionOrConst(Value *Input, unsigned Index,
-    unsigned Size, const Twine &Name, Instruction *InsertBefore,
-    const DebugLoc &DL)
-{
+                                           unsigned Size, const Twine &Name,
+                                           Instruction *InsertBefore,
+                                           const DebugLoc &DL) {
   if (auto C = dyn_cast<Constant>(Input))
     return GetConstantSubvector(C, Index, Size);
   return createRdPredRegion(Input, Index, Size, Name, InsertBefore, DL);
@@ -503,18 +505,19 @@ Value *CMRegion::createRdPredRegionOrConst(Value *Input, unsigned Index,
  * the only region parameter (the start index) directly into this method.
  */
 Instruction *CMRegion::createWrPredRegion(Value *OldVal, Value *Input,
-    unsigned Index, const Twine &Name, Instruction *InsertBefore,
-    const DebugLoc &DL)
-{
+                                          unsigned Index, const Twine &Name,
+                                          Instruction *InsertBefore,
+                                          const DebugLoc &DL) {
   IntegerType *I32Ty = Type::getInt32Ty(Input->getContext());
-  Value *Args[] = {   // Args to new wrpredregion:
-      OldVal, // original vector
-      Input, // value to write into subregion
+  Value *Args[] = {
+      // Args to new wrpredregion:
+      OldVal,                         // original vector
+      Input,                          // value to write into subregion
       ConstantInt::get(I32Ty, Index), // start index
   };
   Module *M = InsertBefore->getModule();
   Function *Decl = getGenXRegionDeclaration(M, GenXIntrinsic::genx_wrpredregion,
-      nullptr, Args);
+                                            nullptr, Args);
   Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
   NewInst->setDebugLoc(DL);
   return NewInst;
@@ -537,15 +540,17 @@ Instruction *CMRegion::createWrPredRegion(Value *OldVal, Value *Input,
  * the only region parameter (the start index) directly into this method.
  */
 Instruction *CMRegion::createWrPredPredRegion(Value *OldVal, Value *Input,
-    unsigned Index, Value *Pred, const Twine &Name, Instruction *InsertBefore,
-    const DebugLoc &DL)
-{
-  Type *Tys[] = { OldVal->getType(), Input->getType() };
+                                              unsigned Index, Value *Pred,
+                                              const Twine &Name,
+                                              Instruction *InsertBefore,
+                                              const DebugLoc &DL) {
+  Type *Tys[] = {OldVal->getType(), Input->getType()};
   Function *CalledFunc = GenXIntrinsic::getGenXDeclaration(
       InsertBefore->getModule(), GenXIntrinsic::genx_wrpredpredregion, Tys);
-  Value *Args[] = { OldVal, Input,
+  Value *Args[] = {
+      OldVal, Input,
       ConstantInt::get(Type::getInt32Ty(InsertBefore->getContext()), Index),
-      Pred };
+      Pred};
   auto NewInst = CallInst::Create(CalledFunc, Args, "", InsertBefore);
   NewInst->setDebugLoc(DL);
   return NewInst;
@@ -559,8 +564,7 @@ Instruction *CMRegion::createWrPredPredRegion(Value *OldVal, Value *Input,
  * such that its type changes. The called function then needs to change
  * because it is decorated with overloaded types.
  */
-void CMRegion::setRegionCalledFunc(Instruction *Inst)
-{
+void CMRegion::setRegionCalledFunc(Instruction *Inst) {
   auto CI = cast<CallInst>(Inst);
   SmallVector<Value *, 8> Opnds;
   for (unsigned i = 0, e = IGCLLVM::getNumArgOperands(CI); i != e; ++i)
@@ -581,32 +585,32 @@ void CMRegion::setRegionCalledFunc(Instruction *Inst)
  *
  * Return:  the Function
  */
-Function *CMRegion::getGenXRegionDeclaration(Module *M,
-    GenXIntrinsic::ID IID, Type *RetTy, ArrayRef<Value *> Args)
-{
+Function *CMRegion::getGenXRegionDeclaration(Module *M, GenXIntrinsic::ID IID,
+                                             Type *RetTy,
+                                             ArrayRef<Value *> Args) {
   switch (IID) {
-    case GenXIntrinsic::genx_rdregioni:
-    case GenXIntrinsic::genx_rdregionf: {
-      Type *Tys[] = { RetTy, Args[0]->getType(), Args[4]->getType() };
-      return GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-    }
-    case GenXIntrinsic::genx_wrregioni:
-    case GenXIntrinsic::genx_wrregionf:
-    case GenXIntrinsic::genx_wrconstregion: {
-      Type *Tys[] = { Args[0]->getType(), Args[1]->getType(),
-          Args[5]->getType(), Args[7]->getType() };
-      return GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-    }
-    case GenXIntrinsic::genx_rdpredregion: {
-      Type *Tys[] = { RetTy, Args[0]->getType() };
-      return GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-    }
-    case GenXIntrinsic::genx_wrpredregion: {
-      Type *Tys[] = { Args[0]->getType(), Args[1]->getType() };
-      return GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-    }
-    default:
-      IGC_ASSERT_EXIT_MESSAGE(0, "unrecognized region intrinsic ID");
+  case GenXIntrinsic::genx_rdregioni:
+  case GenXIntrinsic::genx_rdregionf: {
+    Type *Tys[] = {RetTy, Args[0]->getType(), Args[4]->getType()};
+    return GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
+  }
+  case GenXIntrinsic::genx_wrregioni:
+  case GenXIntrinsic::genx_wrregionf:
+  case GenXIntrinsic::genx_wrconstregion: {
+    Type *Tys[] = {Args[0]->getType(), Args[1]->getType(), Args[5]->getType(),
+                   Args[7]->getType()};
+    return GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
+  }
+  case GenXIntrinsic::genx_rdpredregion: {
+    Type *Tys[] = {RetTy, Args[0]->getType()};
+    return GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
+  }
+  case GenXIntrinsic::genx_wrpredregion: {
+    Type *Tys[] = {Args[0]->getType(), Args[1]->getType()};
+    return GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
+  }
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "unrecognized region intrinsic ID");
   }
   return nullptr;
 }
@@ -617,8 +621,7 @@ Function *CMRegion::getGenXRegionDeclaration(Module *M,
  * This is common code used by both createRdRegion and createWrRegion.
  */
 Value *CMRegion::getStartIdx(const Twine &Name, Instruction *InsertBefore,
-    const DebugLoc &DL)
-{
+                             const DebugLoc &DL) {
   IntegerType *I16Ty = Type::getInt16Ty(InsertBefore->getContext());
   if (!Indirect)
     return ConstantInt::get(I16Ty, Offset);
@@ -628,8 +631,8 @@ Value *CMRegion::getStartIdx(const Twine &Name, Instruction *InsertBefore,
       // We have a vector indirect and we need to take a subregion of it.
       CMRegion IdxRegion(Indirect);
       IdxRegion.getSubregion(IndirectIdx, NumElements / Width);
-      Indirect = IdxRegion.createRdRegion(Indirect,
-          Name + ".multiindirect_idx_subregion", InsertBefore, DL);
+      Indirect = IdxRegion.createRdRegion(
+          Indirect, Name + ".multiindirect_idx_subregion", InsertBefore, DL);
       IndirectIdx = 0;
     }
   }
@@ -640,7 +643,7 @@ Value *CMRegion::getStartIdx(const Twine &Name, Instruction *InsertBefore,
       OffsetVal = ConstantVector::getSplat(
           IGCLLVM::getElementCount(VT->getNumElements()), OffsetVal);
     auto BO = BinaryOperator::Create(Instruction::Add, Index, OffsetVal,
-        Name + ".indirect_idx_add", InsertBefore);
+                                     Name + ".indirect_idx_add", InsertBefore);
     BO->setDebugLoc(DL);
     Index = BO;
   }
@@ -652,8 +655,7 @@ Value *CMRegion::getStartIdx(const Twine &Name, Instruction *InsertBefore,
  *      parameters other than start offset, also allowing element type to
  *      be different
  */
-bool CMRegion::isSimilar(const CMRegion &R2) const
-{
+bool CMRegion::isSimilar(const CMRegion &R2) const {
   if (ElementBytes == R2.ElementBytes)
     return isStrictlySimilar(R2);
   // Change the element type to match, so we can compare the regions.
@@ -739,17 +741,16 @@ bool CMRegion::isContiguous() const {
  * CMRegion::isWhole : test whether a region covers exactly the whole of the
  *      given type, allowing for the element type being different
  */
-bool CMRegion::isWhole(Type *Ty, const DataLayout *DL) const
-{
+bool CMRegion::isWhole(Type *Ty, const DataLayout *DL) const {
   return isContiguous() && Offset == 0 &&
-    NumElements * ElementBytes == vc::getTypeSize(Ty, DL).inBytes();
+         NumElements * ElementBytes == vc::getTypeSize(Ty, DL).inBytes();
 }
 
 /***********************************************************************
  * evaluateConstantRdRegion : evaluate rdregion with constant input
  */
-Constant *CMRegion::evaluateConstantRdRegion(Constant *Input, bool AllowScalar)
-{
+Constant *CMRegion::evaluateConstantRdRegion(Constant *Input,
+                                             bool AllowScalar) {
   IGC_ASSERT(!Indirect);
   if (NumElements != 1)
     AllowScalar = false;
@@ -792,8 +793,8 @@ Constant *CMRegion::evaluateConstantRdRegion(Constant *Input, bool AllowScalar)
 /***********************************************************************
  * evaluateConstantWrRegion : evaluate wrregion with constant inputs
  */
-Constant *CMRegion::evaluateConstantWrRegion(Constant *OldVal, Constant *NewVal)
-{
+Constant *CMRegion::evaluateConstantWrRegion(Constant *OldVal,
+                                             Constant *NewVal) {
   IGC_ASSERT(!Indirect);
   SmallVector<Constant *, 8> Vec;
   for (unsigned i = 0, e = cast<IGCLLVM::FixedVectorType>(OldVal->getType())
@@ -829,7 +830,8 @@ bool CMRegion::changeElementType(Type *NewElementType, const DataLayout *DL) {
   // TODO: enable this assert once out codebase is ready
   // IGC_ASSERT(DL);
   IGC_ASSERT(ElementBytes);
-  IGC_ASSERT_MESSAGE(Offset % ElementBytes == 0, "Impossible offset (in bytes) for data type");
+  IGC_ASSERT_MESSAGE(Offset % ElementBytes == 0,
+                     "Impossible offset (in bytes) for data type");
 
   if (Indirect || Mask)
     return false;
@@ -913,8 +915,7 @@ bool CMRegion::changeElementType(Type *NewElementType, const DataLayout *DL) {
  * the caller needs to check that the resulting region is legal by calling
  * isWholeNumRows().
  */
-bool CMRegion::append(CMRegion AR)
-{
+bool CMRegion::append(CMRegion AR) {
   IGC_ASSERT(AR.isWholeNumRows());
   if (Indirect != AR.Indirect)
     return false;
@@ -922,14 +923,13 @@ bool CMRegion::append(CMRegion AR)
   unsigned ARNumRows = AR.NumElements / AR.Width;
   // Consider each row of AR separately.
   for (unsigned ARRow = 0; ARRow != ARNumRows;
-      ++ARRow, AR.Offset += AR.VStride * AR.ElementBytes) {
+       ++ARRow, AR.Offset += AR.VStride * AR.ElementBytes) {
     if (NumElements == Width) {
       // This region is currently 1D.
       if (NumElements == 1) {
         IGC_ASSERT(ElementBytes);
         Stride = (AR.Offset - Offset) / ElementBytes;
-      }
-      else if (AR.Width != 1 && Stride != AR.Stride)
+      } else if (AR.Width != 1 && Stride != AR.Stride)
         return false; // Mismatched stride.
       int NextOffset = Offset + Width * Stride * ElementBytes;
       if (AR.Offset == NextOffset) {
@@ -949,8 +949,8 @@ bool CMRegion::append(CMRegion AR)
     // This region is already 2D.
     IGC_ASSERT(Width);
     unsigned ExtraBit = NumElements % Width;
-    int NextOffset = Offset + ((VStride * (NumElements / Width))
-        + ExtraBit) * ElementBytes;
+    int NextOffset =
+        Offset + ((VStride * (NumElements / Width)) + ExtraBit) * ElementBytes;
     if (NextOffset != AR.Offset)
       return false; // Mismatched next offset.
     if (AR.Width > Width - ExtraBit)
@@ -967,14 +967,10 @@ bool CMRegion::append(CMRegion AR)
  * Region debug dump/print
  */
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-void CMRegion::dump() const
-{
-  errs() << *this << "\n";
-}
+void CMRegion::dump() const { errs() << *this << "\n"; }
 #endif
 
-void CMRegion::print(raw_ostream &OS) const
-{
+void CMRegion::print(raw_ostream &OS) const {
   OS << *IGCLLVM::FixedVectorType::get(ElementTy, NumElements) << " <"
      << VStride << ";" << Width << "," << Stride << ">(";
   if (Indirect) {

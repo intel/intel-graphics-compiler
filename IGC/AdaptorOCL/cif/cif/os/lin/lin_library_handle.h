@@ -14,23 +14,19 @@ SPDX-License-Identifier: MIT
 
 namespace CIF {
 
-void RAIIReleaseHelper(void * mod) noexcept {
+void RAIIReleaseHelper(void *mod) noexcept {
   if (nullptr == mod) {
     return;
   }
   dlclose(mod);
 }
 
-using UniquePtrLibrary_t = std::unique_ptr<void,
-                                           decltype(&RAIIReleaseHelper)>;
-inline UniquePtrLibrary_t UniquePtrLibrary(void* mod) {
-  return UniquePtrLibrary_t(mod, &CIF::RAIIReleaseHelper);
-}
+using UniquePtrLibrary_t = std::unique_ptr<void, decltype(&RAIIReleaseHelper)>;
+inline UniquePtrLibrary_t UniquePtrLibrary(void *mod) { return UniquePtrLibrary_t(mod, &CIF::RAIIReleaseHelper); }
 
 class LinLibraryHandle : public LibraryHandle {
 public:
-  LinLibraryHandle(void* module, bool ownsHandle)
-      : module(module), ownsHandle(ownsHandle) {}
+  LinLibraryHandle(void *module, bool ownsHandle) : module(module), ownsHandle(ownsHandle) {}
   ~LinLibraryHandle() override {
     if (ownsHandle && (nullptr != module)) {
       dlclose(module);
@@ -45,7 +41,7 @@ public:
   }
 
 protected:
-  void* module;
+  void *module;
   bool ownsHandle;
 };
 
@@ -57,9 +53,9 @@ inline std::unique_ptr<LibraryHandle> OpenLibrary(UniquePtrLibrary_t module) {
 }
 
 // open based on existing handle - does not take ownership over handle
-inline std::unique_ptr<LibraryHandle> OpenLibrary(void* module) {
+inline std::unique_ptr<LibraryHandle> OpenLibrary(void *module) {
   std::unique_ptr<LibraryHandle> ret;
   ret.reset(new LinLibraryHandle(module, false));
   return ret;
 }
-}
+} // namespace CIF

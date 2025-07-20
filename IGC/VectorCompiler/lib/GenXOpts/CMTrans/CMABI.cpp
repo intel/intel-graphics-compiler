@@ -196,7 +196,8 @@ private:
 ///     %8 = load <8 x float> * %v3, align 32
 ///
 ///     %9 = { <8 x float>, <8 x float>, <8 x float> }
-///          call @f3_transformed(<8 x float> %6, <8 x float> %7, <8 x float> %8)
+///          call @f3_transformed(<8 x float> %6, <8 x float> %7, <8 x float>
+///          %8)
 ///
 ///     %10 = extractvalue { <8 x float>, <8 x float>, <8 x float> } %9, 0
 ///     store <8  x float> %10, <8 x float>* %v1, align 32
@@ -585,8 +586,8 @@ void CMABIBase<CallGraphImpl>::LocalizeGlobals(LocalizationInfo &LI) {
         /*ArraySize=*/nullptr, GVAlign, GV->getName() + ".local", &FirstI);
 
     if (!isa<UndefValue>(GV->getInitializer()))
-      new StoreInst(GV->getInitializer(), Alloca, /*isVolatile=*/false,
-                    GVAlign, &FirstI);
+      new StoreInst(GV->getInitializer(), Alloca, /*isVolatile=*/false, GVAlign,
+                    &FirstI);
 
     vc::DIBuilder::createDbgDeclareForLocalizedGlobal(*Alloca, *GV, FirstI);
 
@@ -938,7 +939,7 @@ void CMABIBase<CallGraphImpl>::diagnoseOverlappingArgs(CallInst *CI) {
   // Using ArgIndex starting at 1 so we can reserve 0 to mean "element does not
   // come from any by-ref arg".
   for (unsigned ArgIndex = 1, NumArgs = IGCLLVM::getNumArgOperands(CI);
-      ArgIndex <= NumArgs; ++ArgIndex) {
+       ArgIndex <= NumArgs; ++ArgIndex) {
     Value *Arg = CI->getOperand(ArgIndex - 1);
     if (!Arg->getType()->isPointerTy())
       continue;
@@ -1004,10 +1005,12 @@ void CMABIBase<CallGraphImpl>::diagnoseOverlappingArgs(CallInst *CI) {
         // fewer result elements. Just use an arbitrarily chosen non-zero entry
         // of the N input elements to set the 1 result element.
         IGC_ASSERT(!(OpndEntry->size() & ((1U << LogRatio) - 1)));
-        for (unsigned i = 0, e = OpndEntry->size(); i != e; i += 1U << LogRatio) {
+        for (unsigned i = 0, e = OpndEntry->size(); i != e;
+             i += 1U << LogRatio) {
           unsigned FoundArgIndex = 0;
           for (unsigned j = 0; j != 1U << LogRatio; ++j)
-            FoundArgIndex = std::max(FoundArgIndex, (unsigned)(*OpndEntry)[i + j]);
+            FoundArgIndex =
+                std::max(FoundArgIndex, (unsigned)(*OpndEntry)[i + j]);
           TempVector.push_back(FoundArgIndex);
         }
         VectorToMerge = &TempVector;
@@ -1022,59 +1025,71 @@ void CMABIBase<CallGraphImpl>::diagnoseOverlappingArgs(CallInst *CI) {
     } else if (auto CI = dyn_cast<CallInst>(Inst)) {
       if (auto CF = CI->getCalledFunction()) {
         switch (GenXIntrinsic::getGenXIntrinsicID(CF)) {
-          default:
-            break;
-          case GenXIntrinsic::genx_wrregionf:
-          case GenXIntrinsic::genx_wrregioni:
-            // wrregion: As long as it is constant index, propagate the argument
-            // indices into the appropriate elements of the result.
-            if (auto IdxC = dyn_cast<Constant>(CI->getOperand(
-                    GenXIntrinsic::GenXRegion::WrIndexOperandNum))) {
-              unsigned Idx = 0;
-              if (!IdxC->isNullValue()) {
-                auto IdxCI = dyn_cast<ConstantInt>(IdxC);
-                if (!IdxCI) {
-                  LLVM_DEBUG(dbgs() << "Ignoring variable index wrregion\n");
-                  break;
-                }
-                Idx = IdxCI->getZExtValue();
-              }
-              Idx /= (CI->getType()->getScalarType()->getPrimitiveSizeInBits() / 8U);
-              // First copy the "old value" input to the map entry.
-              auto OpndEntry = &ValMap[CI->getOperand(
-                    GenXIntrinsic::GenXRegion::OldValueOperandNum)];
-              auto Entry = &ValMap[CI];
-              Entry->clear();
-              Entry->insert(Entry->begin(), OpndEntry->begin(), OpndEntry->end());
-              // Then copy the "new value" elements according to the region.
-              TempVector.resize(
-                  dyn_cast<IGCLLVM::FixedVectorType>(CI->getType())->getNumElements(), 0);
-              int VStride = cast<ConstantInt>(CI->getOperand(
-                    GenXIntrinsic::GenXRegion::WrVStrideOperandNum))->getSExtValue();
-              unsigned Width = cast<ConstantInt>(CI->getOperand(
-                    GenXIntrinsic::GenXRegion::WrWidthOperandNum))->getZExtValue();
-              IGC_ASSERT_MESSAGE((Width > 0), "Width of a region must be non-zero");
-              int Stride = cast<ConstantInt>(CI->getOperand(
-                    GenXIntrinsic::GenXRegion::WrStrideOperandNum))->getSExtValue();
-              OpndEntry = &ValMap[CI->getOperand(
-                    GenXIntrinsic::GenXRegion::NewValueOperandNum)];
-              unsigned NumElements = OpndEntry->size();
-              if (!NumElements)
+        default:
+          break;
+        case GenXIntrinsic::genx_wrregionf:
+        case GenXIntrinsic::genx_wrregioni:
+          // wrregion: As long as it is constant index, propagate the argument
+          // indices into the appropriate elements of the result.
+          if (auto IdxC = dyn_cast<Constant>(CI->getOperand(
+                  GenXIntrinsic::GenXRegion::WrIndexOperandNum))) {
+            unsigned Idx = 0;
+            if (!IdxC->isNullValue()) {
+              auto IdxCI = dyn_cast<ConstantInt>(IdxC);
+              if (!IdxCI) {
+                LLVM_DEBUG(dbgs() << "Ignoring variable index wrregion\n");
                 break;
-              for (unsigned RowIdx = Idx, Row = 0, Col = 0,
-                    NumRows = NumElements / Width;; Idx += Stride, ++Col) {
-                if (Col == Width) {
-                  Col = 0;
-                  if (++Row == NumRows)
-                    break;
-                  Idx = RowIdx += VStride;
-                }
-                TempVector[Idx] = (*OpndEntry)[Row * Width + Col];
               }
-              VectorToMerge = &TempVector;
-              Key = CI;
+              Idx = IdxCI->getZExtValue();
             }
-            break;
+            Idx /=
+                (CI->getType()->getScalarType()->getPrimitiveSizeInBits() / 8U);
+            // First copy the "old value" input to the map entry.
+            auto OpndEntry = &ValMap[CI->getOperand(
+                GenXIntrinsic::GenXRegion::OldValueOperandNum)];
+            auto Entry = &ValMap[CI];
+            Entry->clear();
+            Entry->insert(Entry->begin(), OpndEntry->begin(), OpndEntry->end());
+            // Then copy the "new value" elements according to the region.
+            TempVector.resize(dyn_cast<IGCLLVM::FixedVectorType>(CI->getType())
+                                  ->getNumElements(),
+                              0);
+            int VStride =
+                cast<ConstantInt>(
+                    CI->getOperand(
+                        GenXIntrinsic::GenXRegion::WrVStrideOperandNum))
+                    ->getSExtValue();
+            unsigned Width =
+                cast<ConstantInt>(
+                    CI->getOperand(
+                        GenXIntrinsic::GenXRegion::WrWidthOperandNum))
+                    ->getZExtValue();
+            IGC_ASSERT_MESSAGE((Width > 0),
+                               "Width of a region must be non-zero");
+            int Stride = cast<ConstantInt>(
+                             CI->getOperand(
+                                 GenXIntrinsic::GenXRegion::WrStrideOperandNum))
+                             ->getSExtValue();
+            OpndEntry = &ValMap[CI->getOperand(
+                GenXIntrinsic::GenXRegion::NewValueOperandNum)];
+            unsigned NumElements = OpndEntry->size();
+            if (!NumElements)
+              break;
+            for (unsigned RowIdx = Idx, Row = 0, Col = 0,
+                          NumRows = NumElements / Width;
+                 ; Idx += Stride, ++Col) {
+              if (Col == Width) {
+                Col = 0;
+                if (++Row == NumRows)
+                  break;
+                Idx = RowIdx += VStride;
+              }
+              TempVector[Idx] = (*OpndEntry)[Row * Width + Col];
+            }
+            VectorToMerge = &TempVector;
+            Key = CI;
+          }
+          break;
         }
       }
     }
@@ -1082,12 +1097,12 @@ void CMABIBase<CallGraphImpl>::diagnoseOverlappingArgs(CallInst *CI) {
       continue;
     auto Entry = &ValMap[Key];
     LLVM_DEBUG(dbgs() << "Merging :";
-      for (unsigned i = 0; i != VectorToMerge->size(); ++i)
-        dbgs() << " " << (unsigned)(*VectorToMerge)[i];
-      dbgs() << "\ninto " << Key->getName() << ":";
-      for (unsigned i = 0; i != Entry->size(); ++i)
-        dbgs() << " " << (unsigned)(*Entry)[i];
-      dbgs() << "\n");
+               for (unsigned i = 0; i != VectorToMerge->size(); ++i) dbgs()
+               << " " << (unsigned)(*VectorToMerge)[i];
+               dbgs() << "\ninto " << Key->getName() << ":";
+               for (unsigned i = 0; i != Entry->size(); ++i) dbgs()
+               << " " << (unsigned)(*Entry)[i];
+               dbgs() << "\n");
     if (Entry->empty())
       Entry->insert(Entry->end(), VectorToMerge->begin(), VectorToMerge->end());
     else {
@@ -1096,11 +1111,12 @@ void CMABIBase<CallGraphImpl>::diagnoseOverlappingArgs(CallInst *CI) {
         unsigned ArgIdx1 = (*VectorToMerge)[i];
         unsigned ArgIdx2 = (*Entry)[i];
         if (ArgIdx1 && ArgIdx2 && ArgIdx1 != ArgIdx2) {
-          LLVM_DEBUG(dbgs() << "By ref args overlap: args " << ArgIdx1 << " and " << ArgIdx2 << "\n");
+          LLVM_DEBUG(dbgs() << "By ref args overlap: args " << ArgIdx1
+                            << " and " << ArgIdx2 << "\n");
           if (ArgIdx1 > ArgIdx2)
             std::swap(ArgIdx1, ArgIdx2);
           if (Reported.insert(std::pair<unsigned, unsigned>(ArgIdx1, ArgIdx2))
-                .second) {
+                  .second) {
             // Not already reported.
             vc::fatal(Inst->getContext(), "CMABI",
                       "by reference arguments " + Twine(ArgIdx1) + " and " +
@@ -1112,9 +1128,9 @@ void CMABIBase<CallGraphImpl>::diagnoseOverlappingArgs(CallInst *CI) {
       }
     }
     LLVM_DEBUG(dbgs() << "giving:";
-      for (unsigned i = 0; i != Entry->size(); ++i)
-        dbgs() << " " << (unsigned)(*Entry)[i];
-      dbgs() << "\n");
+               for (unsigned i = 0; i != Entry->size(); ++i) dbgs()
+               << " " << (unsigned)(*Entry)[i];
+               dbgs() << "\n");
     if (Key == Inst) {
       // Not the case that we have a store and we are using the pointer as
       // the key. In ther other cases that do a merge (bitcast and wrregion),
@@ -1155,12 +1171,14 @@ namespace {
 // %argref1 = alloca <8 x float>, align 32
 //
 // (CopyInRegion/CopyInStore)
-// %rdr = tail call <8 x float> @llvm.genx.rdregionf(<960 x float> %m, i32 0, i32 8, i32 1, i16 0, i32 undef)
-// call void @llvm.genx.vstore(<8 x float> %rdr, <8 x float>* %argref)
+// %rdr = tail call <8 x float> @llvm.genx.rdregionf(<960 x float> %m, i32 0,
+// i32 8, i32 1, i16 0, i32 undef) call void @llvm.genx.vstore(<8 x float> %rdr,
+// <8 x float>* %argref)
 //
 // (CopyOutRegion/CopyOutLoad)
 // %ld = call <8 x float> @llvm.genx.vload(<8 x float>* %argref)
-// %wr = call <960 x float> @llvm.genx.wrregionf(<960 x float> %m, <8 x float> %ld, i32 0, i32 8, i32 1, i16 0, i32 undef, i1 true)
+// %wr = call <960 x float> @llvm.genx.wrregionf(<960 x float> %m, <8 x float>
+// %ld, i32 0, i32 8, i32 1, i16 0, i32 undef, i1 true)
 //
 struct ArgRefPattern {
   // Alloca of this reference argument.
@@ -1254,14 +1272,12 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
           auto U = *UI++;
           WL.push_back(U);
         }
-      }
-      else if (auto CI = dyn_cast<CastInst>(Inst)) {
+      } else if (auto CI = dyn_cast<CastInst>(Inst)) {
         for (auto UI = CI->user_begin(); UI != CI->user_end();) {
           auto U = *UI++;
           WL.push_back(U);
         }
-      }
-      else if (auto SI = dyn_cast<StoreInst>(Inst)) {
+      } else if (auto SI = dyn_cast<StoreInst>(Inst)) {
         auto Ptr = SI->getPointerOperand()->stripPointerCasts();
         if (auto PI = dyn_cast<AllocaInst>(Ptr)) {
           AllocaMap[PI] = &G;
@@ -1283,8 +1299,7 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
       if (GV) {
         if (!GV->hasAttribute("genx_volatile"))
           GV = nullptr;
-      }
-      else if (auto LI = dyn_cast<LoadInst>(Ptr)) {
+      } else if (auto LI = dyn_cast<LoadInst>(Ptr)) {
         auto PV = LI->getPointerOperand()->stripPointerCasts();
         if (auto PI = dyn_cast<AllocaInst>(PV)) {
           if (AllocaMap.find(PI) != AllocaMap.end()) {
@@ -1314,8 +1329,7 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
           Inst.replaceAllUsesWith(LI);
         }
         ToErase.push_back(&Inst);
-      }
-      else {
+      } else {
         // change to vload/vstore that has the same address space as
         // the global-var in order to clean up unnecessary addr-cast.
         auto AS1 = GV->getType()->getAddressSpace();
@@ -1324,22 +1338,22 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
           if (GenXIntrinsic::isVStore(&Inst)) {
             auto PtrTy = cast<PointerType>(Inst.getOperand(1)->getType());
             PtrTy = PointerType::getWithSamePointeeType(PtrTy, AS1);
-            auto PtrCast = Builder.CreateAddrSpaceCast(Inst.getOperand(1), PtrTy);
-            Type* Tys[] = { Inst.getOperand(0)->getType(),
-                           PtrCast->getType() };
-            Value* Args[] = { Inst.getOperand(0), PtrCast };
-            Function* Fn = GenXIntrinsic::getGenXDeclaration(
-              F.getParent(), GenXIntrinsic::genx_vstore, Tys);
+            auto PtrCast =
+                Builder.CreateAddrSpaceCast(Inst.getOperand(1), PtrTy);
+            Type *Tys[] = {Inst.getOperand(0)->getType(), PtrCast->getType()};
+            Value *Args[] = {Inst.getOperand(0), PtrCast};
+            Function *Fn = GenXIntrinsic::getGenXDeclaration(
+                F.getParent(), GenXIntrinsic::genx_vstore, Tys);
             Builder.CreateCall(Fn, Args, Inst.getName());
-          }
-          else {
+          } else {
             auto PtrTy = cast<PointerType>(Inst.getOperand(0)->getType());
             PtrTy = PointerType::getWithSamePointeeType(PtrTy, AS1);
-            auto PtrCast = Builder.CreateAddrSpaceCast(Inst.getOperand(0), PtrTy);
-            Type* Tys[] = { Inst.getType(), PtrCast->getType() };
-            Function* Fn = GenXIntrinsic::getGenXDeclaration(
-              F.getParent(), GenXIntrinsic::genx_vload, Tys);
-            Value* VLoad = Builder.CreateCall(Fn, PtrCast, Inst.getName());
+            auto PtrCast =
+                Builder.CreateAddrSpaceCast(Inst.getOperand(0), PtrTy);
+            Type *Tys[] = {Inst.getType(), PtrCast->getType()};
+            Function *Fn = GenXIntrinsic::getGenXDeclaration(
+                F.getParent(), GenXIntrinsic::genx_vload, Tys);
+            Value *VLoad = Builder.CreateCall(Fn, PtrCast, Inst.getName());
             Inst.replaceAllUsesWith(VLoad);
           }
           ToErase.push_back(&Inst);
@@ -1451,7 +1465,8 @@ bool ArgRefPattern::match(DominatorTree &DT, PostDominatorTree &PDT) {
   auto Cmp = [&](CallInst *L, CallInst *R) { return DT.dominates(L, R); };
   CopyInStore = *std::min_element(Stores.begin(), Stores.end(), Cmp);
   CopyInRegion = dyn_cast<CallInst>(CopyInStore->getArgOperand(0));
-  if (!CopyInRegion || !CopyInRegion->hasOneUse() || !GenXIntrinsic::isRdRegion(CopyInRegion))
+  if (!CopyInRegion || !CopyInRegion->hasOneUse() ||
+      !GenXIntrinsic::isRdRegion(CopyInRegion))
     return false;
 
   for (auto SI : Stores)
@@ -1463,17 +1478,17 @@ bool ArgRefPattern::match(DominatorTree &DT, PostDominatorTree &PDT) {
 
   // find a unique load that post-dominates all other users if exists.
   auto PostCmp = [&](CallInst *L, CallInst *R) {
-      BasicBlock *LBB = L->getParent();
-      BasicBlock *RBB = R->getParent();
-      if (LBB != RBB)
-          return PDT.dominates(LBB, RBB);
+    BasicBlock *LBB = L->getParent();
+    BasicBlock *RBB = R->getParent();
+    if (LBB != RBB)
+      return PDT.dominates(LBB, RBB);
 
-      // Loop through the basic block until we find L or R.
-      BasicBlock::const_iterator I = LBB->begin();
-      for (; &*I != L && &*I != R; ++I)
-          /*empty*/;
+    // Loop through the basic block until we find L or R.
+    BasicBlock::const_iterator I = LBB->begin();
+    for (; &*I != L && &*I != R; ++I)
+      /*empty*/;
 
-      return &*I == R;
+    return &*I == R;
   };
   CopyOutLoad = *std::min_element(Loads.begin(), Loads.end(), PostCmp);
 
@@ -1498,9 +1513,8 @@ bool ArgRefPattern::match(DominatorTree &DT, PostDominatorTree &PDT) {
   // Ensure read-in and write-out to the same region. It is possible that region
   // collasping does not simplify region accesses completely.
   // Probably we should use an assertion statement on region descriptors.
-  if (CopyOutRegion &&
-      !isBitwiseIdentical(CopyInRegion->getOperand(0),
-                          CopyOutRegion->getOperand(0)))
+  if (CopyOutRegion && !isBitwiseIdentical(CopyInRegion->getOperand(0),
+                                           CopyOutRegion->getOperand(0)))
     return false;
 
   // It should be OK to rewrite all loads and stores into the argref.
@@ -1542,8 +1556,9 @@ void ArgRefPattern::process(DominatorTree &DT) {
                      CopyInRegion->getArgOperand(4), // offset
                      CopyInRegion->getArgOperand(5), // parent width
                      ConstantInt::getTrue(Type::getInt1Ty(M->getContext()))};
-    auto ID = OldVal->getType()->isFPOrFPVectorTy() ? GenXIntrinsic::genx_wrregionf
-                                                    : GenXIntrinsic::genx_wrregioni;
+    auto ID = OldVal->getType()->isFPOrFPVectorTy()
+                  ? GenXIntrinsic::genx_wrregionf
+                  : GenXIntrinsic::genx_wrregioni;
     Type *Tys[] = {Args[0]->getType(), Args[1]->getType(), Args[5]->getType(),
                    Args[7]->getType()};
     auto WrFn = GenXIntrinsic::getGenXDeclaration(M, ID, Tys);

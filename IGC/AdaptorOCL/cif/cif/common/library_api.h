@@ -27,10 +27,10 @@ struct CIFMain;
 using CreateCIFMainFunc_t = CIF::CIFMain *(CREATE_CIF_MAIN_CALLING_CONV *)();
 #define STR2(X) #X
 #define STR(X) STR2(X)
-static const char * const CreateCIFMainFuncName = STR(EXPORTED_FUNC_NAME);
+static const char *const CreateCIFMainFuncName = STR(EXPORTED_FUNC_NAME);
 #undef STR
 #undef STR2
-}
+} // namespace CIF
 
 #ifdef CIF_EXPORT
 CIF::CIFMain *CreateCIFMainImpl();
@@ -40,9 +40,7 @@ extern "C" {
 // entry point to shared object (dynamic library)
 // the only function that gets exported explicitly
 #if defined CIF_EXPORT
-CREATE_CIF_MAIN_API void *CREATE_CIF_MAIN_CALLING_CONV EXPORTED_FUNC_NAME() {
-  return CreateCIFMainImpl();
-}
+CREATE_CIF_MAIN_API void *CREATE_CIF_MAIN_CALLING_CONV EXPORTED_FUNC_NAME() { return CreateCIFMainImpl(); }
 #endif
 }
 

@@ -11,8 +11,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    llvm::FunctionPass* CreateMCSOptimization();
-    void initializeMCSOptimizationPass(llvm::PassRegistry&);
-}
+namespace IGC {
+llvm::FunctionPass *CreateMCSOptimization();
+void initializeMCSOptimizationPass(llvm::PassRegistry &);
+} // namespace IGC

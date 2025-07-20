@@ -86,41 +86,42 @@ using namespace genx;
  * GenXTidyControlFlow pass declaration
  */
 namespace {
-  class GenXTidyControlFlow : public FunctionPass {
-    const GenXSubtarget *ST = nullptr;
-    GenXLiveness *Liveness = nullptr;
-    bool Modified = false;
-  public:
-    static char ID;
-    explicit GenXTidyControlFlow() : FunctionPass(ID), Modified(false) {}
-    StringRef getPassName() const override { return "GenX tidy control flow"; }
+class GenXTidyControlFlow : public FunctionPass {
+  const GenXSubtarget *ST = nullptr;
+  GenXLiveness *Liveness = nullptr;
+  bool Modified = false;
 
-    void getAnalysisUsage(AnalysisUsage &AU) const override {
-      AU.addPreserved<GenXModule>();
-      AU.addPreserved<GenXGroupBaling>();
-      AU.addPreserved<GenXLivenessWrapper>();
-      AU.addPreserved<GenXNumbering>();
-      AU.addPreserved<FunctionGroupAnalysis>();
-      AU.addRequired<FunctionGroupAnalysis>();
-      AU.addRequired<GenXLivenessWrapper>();
-      AU.addRequired<LoopInfoWrapperPass>();
-      AU.addRequired<TargetPassConfig>();
-    }
+public:
+  static char ID;
+  explicit GenXTidyControlFlow() : FunctionPass(ID), Modified(false) {}
+  StringRef getPassName() const override { return "GenX tidy control flow"; }
 
-    bool runOnFunction(Function &F) override;
-    // createPrinterPass : get a pass to print the IR, together with the GenX
-    // specific analyses
-    Pass *createPrinterPass(raw_ostream &O,
-                            const std::string &Banner) const override {
-      return createGenXPrinterPass(O, Banner);
-    }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addPreserved<GenXModule>();
+    AU.addPreserved<GenXGroupBaling>();
+    AU.addPreserved<GenXLivenessWrapper>();
+    AU.addPreserved<GenXNumbering>();
+    AU.addPreserved<FunctionGroupAnalysis>();
+    AU.addRequired<FunctionGroupAnalysis>();
+    AU.addRequired<GenXLivenessWrapper>();
+    AU.addRequired<LoopInfoWrapperPass>();
+    AU.addRequired<TargetPassConfig>();
+  }
 
-  private:
-    void removeEmptyBlocks(Function *F);
-    void reorderBlocks(Function *F);
-    void fixGotoOverBranch(Function *F);
-    void fixReturns(Function *F);
-  };
+  bool runOnFunction(Function &F) override;
+  // createPrinterPass : get a pass to print the IR, together with the GenX
+  // specific analyses
+  Pass *createPrinterPass(raw_ostream &O,
+                          const std::string &Banner) const override {
+    return createGenXPrinterPass(O, Banner);
+  }
+
+private:
+  void removeEmptyBlocks(Function *F);
+  void reorderBlocks(Function *F);
+  void fixGotoOverBranch(Function *F);
+  void fixReturns(Function *F);
+};
 } // end anonymous namespace.
 
 char GenXTidyControlFlow::ID = 0;
@@ -129,8 +130,7 @@ namespace llvm {
 void initializeGenXTidyControlFlowPass(PassRegistry &);
 }
 
-INITIALIZE_PASS_BEGIN(GenXTidyControlFlow,
-                      "GenXTidyControlFlow",
+INITIALIZE_PASS_BEGIN(GenXTidyControlFlow, "GenXTidyControlFlow",
                       "GenXTidyControlFlow", false, false)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
@@ -155,14 +155,14 @@ static void moveDbgBeforeBlockRemoval(BasicBlock *BB, Instruction *InsertBefore,
     if (MakeUndef)
       IGCLLVM::setKillLocation(DBG);
   }
-  IGC_ASSERT_MESSAGE(BB->front().isTerminator(), "Expected that only terminator instruction remains");
+  IGC_ASSERT_MESSAGE(BB->front().isTerminator(),
+                     "Expected that only terminator instruction remains");
 }
 
 /***********************************************************************
  * GenXTidyControlFlow::runOnFunction : process a function
  */
-bool GenXTidyControlFlow::runOnFunction(Function &F)
-{
+bool GenXTidyControlFlow::runOnFunction(Function &F) {
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
@@ -180,11 +180,10 @@ bool GenXTidyControlFlow::runOnFunction(Function &F)
 /***********************************************************************
  * removeEmptyBlocks
  */
-void GenXTidyControlFlow::removeEmptyBlocks(Function *F)
-{
+void GenXTidyControlFlow::removeEmptyBlocks(Function *F) {
   Function::iterator fi = F->begin(), fe = F->end();
   // Don't consider the entry block.
-  for (++fi; fi != fe; ) {
+  for (++fi; fi != fe;) {
     BasicBlock *BB = &*fi;
     // Increment iterator here as we may be removing this block.
     ++fi;
@@ -203,11 +202,12 @@ void GenXTidyControlFlow::removeEmptyBlocks(Function *F)
     // the "false" leg of a goto/join. In that case we do not remove the
     // block, as reorderBlocks below may rely on it to ensure that the "false"
     // successor of a goto/join can be made fallthrough.
-    if (BB->hasOneUse()
-        && BB->use_begin()->getOperandNo() == 1 /*false successor*/
-        && GotoJoin::isBranchingGotoJoinBlock(cast<Instruction>(
-            BB->use_begin()->getUser())->getParent())) {
-      LLVM_DEBUG(dbgs() << "removeEmptyBlocks: not removing " << BB->getName() << "\n");
+    if (BB->hasOneUse() &&
+        BB->use_begin()->getOperandNo() == 1 /*false successor*/
+        && GotoJoin::isBranchingGotoJoinBlock(
+               cast<Instruction>(BB->use_begin()->getUser())->getParent())) {
+      LLVM_DEBUG(dbgs() << "removeEmptyBlocks: not removing " << BB->getName()
+                        << "\n");
       continue;
     }
     // We are removing this block. First adjust phi nodes in the successor.
@@ -228,9 +228,8 @@ void GenXTidyControlFlow::removeEmptyBlocks(Function *F)
  * reorderBlocks : reorder blocks to increase fallthrough, and specifically
  *    to satisfy the requirements of SIMD control flow
  */
-void GenXTidyControlFlow::reorderBlocks(Function *F)
-{
-  LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+void GenXTidyControlFlow::reorderBlocks(Function *F) {
+  LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   if (LI.empty())
     LayoutBlocks(*F);
   else
@@ -243,8 +242,7 @@ void GenXTidyControlFlow::reorderBlocks(Function *F)
  *
  * See the comment at the top of the file.
  */
-void GenXTidyControlFlow::fixGotoOverBranch(Function *F)
-{
+void GenXTidyControlFlow::fixGotoOverBranch(Function *F) {
   for (auto fi = F->begin(), fe = F->end(); fi != fe; ++fi) {
     BasicBlock *BB = &*fi;
     auto Goto = GotoJoin::isGotoBlock(BB);
@@ -339,4 +337,3 @@ void GenXTidyControlFlow::fixReturns(Function *F) {
     Modified = true;
   }
 }
-

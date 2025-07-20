@@ -46,130 +46,111 @@ using namespace IGC;
 
 // This must be run prior to any raytracing passes so the BTI slots are
 // allocated for them to use.
-static void setupRegionBTIs(CodeGenContext* pContext)
-{
-    if (!pContext->m_DriverInfo.supportsRaytracingStatefulAccesses())
-        return;
+static void setupRegionBTIs(CodeGenContext *pContext) {
+  if (!pContext->m_DriverInfo.supportsRaytracingStatefulAccesses())
+    return;
 
-    SIMDMode Mode = SIMDMode::UNKNOWN;
-    if (auto SIMDSize = pContext->knownSIMDSize())
-        Mode = *SIMDSize;
+  SIMDMode Mode = SIMDMode::UNKNOWN;
+  if (auto SIMDSize = pContext->knownSIMDSize())
+    Mode = *SIMDSize;
 
-    // We need to take advantage of the LSC messages to do bindless through
-    // the surface state heap.
-    if (!pContext->platform.LSCEnabled(Mode))
-        return;
+  // We need to take advantage of the LSC messages to do bindless through
+  // the surface state heap.
+  if (!pContext->platform.LSCEnabled(Mode))
+    return;
 
-    auto getAddrspace = [&]()
-    {
-        BufferType BufType =
-            IGC_IS_FLAG_ENABLED(DisableRTBindlessAccess) ?
-                IGC::UAV :
-                IGC::SSH_BINDLESS;
+  auto getAddrspace = [&]() {
+    BufferType BufType = IGC_IS_FLAG_ENABLED(DisableRTBindlessAccess) ? IGC::UAV : IGC::SSH_BINDLESS;
 
-        // There's nothing special about using UndefValue here. We just need
-        // to encode the address space as indirect.
-        return EncodeAS4GFXResource(
-            *UndefValue::get(Type::getInt32Ty(*pContext->getLLVMContext())),
-            BufType,
-            pContext->getUniqueIndirectIdx());
-    };
+    // There's nothing special about using UndefValue here. We just need
+    // to encode the address space as indirect.
+    return EncodeAS4GFXResource(*UndefValue::get(Type::getInt32Ty(*pContext->getLLVMContext())), BufType,
+                                pContext->getUniqueIndirectIdx());
+  };
 
-    auto& rtInfo = pContext->getModuleMetaData()->rtInfo;
+  auto &rtInfo = pContext->getModuleMetaData()->rtInfo;
 
-    // bump the index once in case the index is already in use
-    pContext->getUniqueIndirectIdx();
+  // bump the index once in case the index is already in use
+  pContext->getUniqueIndirectIdx();
 
-    uint32_t BaseOffset = 0;
-    if (pContext->type == ShaderType::RAYTRACING_SHADER)
-    {
-        auto disableStatefulSWStack = false;
+  uint32_t BaseOffset = 0;
+  if (pContext->type == ShaderType::RAYTRACING_SHADER) {
+    auto disableStatefulSWStack = false;
 
 
-        if (IGC_IS_FLAG_DISABLED(DisableStatefulRTStackAccess))
-        {
-            rtInfo.RTAsyncStackAddrspace = getAddrspace();
-            rtInfo.RTAsyncStackSurfaceStateOffset = BaseOffset++;
-        }
-
-        if (IGC_IS_FLAG_DISABLED(DisableStatefulSWHotZoneAccess))
-        {
-            rtInfo.SWHotZoneAddrspace = getAddrspace();
-            rtInfo.SWHotZoneSurfaceStateOffset = BaseOffset++;
-        }
-
-        if (IGC_IS_FLAG_DISABLED(DisableStatefulSWStackAccess) && !disableStatefulSWStack)
-        {
-            rtInfo.SWStackAddrspace = getAddrspace();
-            rtInfo.SWStackSurfaceStateOffset = BaseOffset++;
-        }
-
-        if (IGC_IS_FLAG_DISABLED(DisableStatefulRTSyncStackAccess4RTShader))
-        {
-            rtInfo.RTSyncStackAddrspace = getAddrspace();
-            rtInfo.RTSyncStackSurfaceStateOffset = BaseOffset++;
-        }
+    if (IGC_IS_FLAG_DISABLED(DisableStatefulRTStackAccess)) {
+      rtInfo.RTAsyncStackAddrspace = getAddrspace();
+      rtInfo.RTAsyncStackSurfaceStateOffset = BaseOffset++;
     }
-    else
-    {
-        if (IGC_IS_FLAG_DISABLED(DisableStatefulRTSyncStackAccess4nonRTShader))
-        {
-            rtInfo.RTSyncStackAddrspace = getAddrspace();
-            rtInfo.RTSyncStackSurfaceStateOffset = BaseOffset++;
-        }
+
+    if (IGC_IS_FLAG_DISABLED(DisableStatefulSWHotZoneAccess)) {
+      rtInfo.SWHotZoneAddrspace = getAddrspace();
+      rtInfo.SWHotZoneSurfaceStateOffset = BaseOffset++;
     }
+
+    if (IGC_IS_FLAG_DISABLED(DisableStatefulSWStackAccess) && !disableStatefulSWStack) {
+      rtInfo.SWStackAddrspace = getAddrspace();
+      rtInfo.SWStackSurfaceStateOffset = BaseOffset++;
+    }
+
+    if (IGC_IS_FLAG_DISABLED(DisableStatefulRTSyncStackAccess4RTShader)) {
+      rtInfo.RTSyncStackAddrspace = getAddrspace();
+      rtInfo.RTSyncStackSurfaceStateOffset = BaseOffset++;
+    }
+  } else {
+    if (IGC_IS_FLAG_DISABLED(DisableStatefulRTSyncStackAccess4nonRTShader)) {
+      rtInfo.RTSyncStackAddrspace = getAddrspace();
+      rtInfo.RTSyncStackSurfaceStateOffset = BaseOffset++;
+    }
+  }
 }
 
-static void setupRTMemoryStyle(CodeGenContext* pContext)
-{
-    auto& rtInfo = pContext->getModuleMetaData()->rtInfo;
+static void setupRTMemoryStyle(CodeGenContext *pContext) {
+  auto &rtInfo = pContext->getModuleMetaData()->rtInfo;
 
-    rtInfo.MemStyle = RTMemoryStyle::Xe;
+  rtInfo.MemStyle = RTMemoryStyle::Xe;
 
-    if (pContext->bvhInfo.uses64Bit)
-    {
-        rtInfo.MemStyle = RTMemoryStyle::Xe3;
+    if (pContext->bvhInfo.uses64Bit) {
+      rtInfo.MemStyle = RTMemoryStyle::Xe3;
     }
 }
 
 
-namespace IGC
-{
+namespace IGC {
 
-void RayTracingInlineLowering(CodeGenContext* pContext)
-{
-    IGCPassManager mpm(pContext, "RayTracingInlineLowering");
-    setupRegionBTIs(pContext);
-    setupRTMemoryStyle(pContext);
-    mpm.add(new CodeGenContextWrapper(pContext));
+void RayTracingInlineLowering(CodeGenContext *pContext) {
+  IGCPassManager mpm(pContext, "RayTracingInlineLowering");
+  setupRegionBTIs(pContext);
+  setupRTMemoryStyle(pContext);
+  mpm.add(new CodeGenContextWrapper(pContext));
 
-    if (IGC_IS_FLAG_ENABLED(OverrideTMax))
-        mpm.add(createOverrideTMaxPass(IGC_GET_FLAG_VALUE(OverrideTMax)));
+  if (IGC_IS_FLAG_ENABLED(OverrideTMax))
+    mpm.add(createOverrideTMaxPass(IGC_GET_FLAG_VALUE(OverrideTMax)));
 
-    if (pContext->platform.enableRayQueryThrottling(pContext->getModuleMetaData()->compOpt.EnableDynamicRQManagement))
-    {
-        if (!pContext->m_DriverInfo.UseNewTraceRayInlineLoweringInNonRaytracingShaders())
-            mpm.add(CreateDynamicRayManagementPass());
-    }
+  if (pContext->platform.enableRayQueryThrottling(pContext->getModuleMetaData()->compOpt.EnableDynamicRQManagement)) {
     if (!pContext->m_DriverInfo.UseNewTraceRayInlineLoweringInNonRaytracingShaders())
-        mpm.add(createTraceRayInlinePrepPass());
-    if (IGC_IS_FLAG_ENABLED(EnableRQHideLatency) && !pContext->m_DriverInfo.UseNewTraceRayInlineLoweringInNonRaytracingShaders()) {
-        mpm.add(createTraceRayInlineLatencySchedulerPass());
-        mpm.add(createCFGSimplificationPass());
-    }
-    if (!pContext->m_DriverInfo.UseNewTraceRayInlineLoweringInNonRaytracingShaders())
-        mpm.add(CreateTraceRayInlineLoweringPass());
-    else
-        mpm.add(createInlineRaytracing());
-    mpm.add(CreateRTGlobalsPointerLoweringPass());
+      mpm.add(CreateDynamicRayManagementPass());
+  }
+  if (!pContext->m_DriverInfo.UseNewTraceRayInlineLoweringInNonRaytracingShaders())
+    mpm.add(createTraceRayInlinePrepPass());
+  if (IGC_IS_FLAG_ENABLED(EnableRQHideLatency) &&
+      !pContext->m_DriverInfo.UseNewTraceRayInlineLoweringInNonRaytracingShaders()) {
+    mpm.add(createTraceRayInlineLatencySchedulerPass());
+    mpm.add(createCFGSimplificationPass());
+  }
+  if (!pContext->m_DriverInfo.UseNewTraceRayInlineLoweringInNonRaytracingShaders())
+    mpm.add(CreateTraceRayInlineLoweringPass());
+  else
+    mpm.add(createInlineRaytracing());
+  mpm.add(CreateRTGlobalsPointerLoweringPass());
 
 #ifdef _DEBUG
-    // Run verification after generating continuation functions to ensure
-    // that we still have well formed IR
-    mpm.add(createVerifierPass(false));
+  // Run verification after generating continuation functions to ensure
+  // that we still have well formed IR
+  mpm.add(createVerifierPass(false));
 #endif // _DEBUG
 
-    mpm.run(*pContext->getModule());
+  mpm.run(*pContext->getModule());
 }
 
 } // namespace IGC

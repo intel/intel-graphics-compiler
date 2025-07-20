@@ -36,10 +36,11 @@ namespace {
 class GenXPrinter : public FunctionPass {
   raw_ostream &OS;
   const std::string Banner;
+
 public:
   static char ID;
   explicit GenXPrinter(raw_ostream &OS, const std::string &Banner)
-    : FunctionPass(ID), OS(OS), Banner(Banner) { }
+      : FunctionPass(ID), OS(OS), Banner(Banner) {}
   StringRef getPassName() const override { return "GenX printer pass"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addUsedIfAvailable<FunctionGroupAnalysis>();
@@ -58,6 +59,7 @@ public:
 class GenXGroupPrinter : public ModulePass {
   raw_ostream &OS;
   const std::string Banner;
+
 public:
   static char ID;
   explicit GenXGroupPrinter(raw_ostream &OS, const std::string &Banner)
@@ -84,12 +86,12 @@ public:
   bool runOnFunctionGroup(FunctionGroup &FG);
 };
 
-} // end namespace llvm
+} // namespace
 
 char GenXPrinter::ID = 0;
 
-FunctionPass *llvm::createGenXPrinterPass(raw_ostream &O, const std::string &Banner)
-{
+FunctionPass *llvm::createGenXPrinterPass(raw_ostream &O,
+                                          const std::string &Banner) {
   FunctionPass *Created = new GenXPrinter(O, Banner);
   IGC_ASSERT(Created);
   return Created;
@@ -191,7 +193,7 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
   F.getReturnType()->print(OS, /*IsForDebug=*/false, /*NoDetails=*/true);
   OS << " @" << F.getName() << "(";
   for (Function::arg_iterator fb = F.arg_begin(), fi = fb, fe = F.arg_end();
-      fi != fe; ) {
+       fi != fe;) {
     if (fi != fb)
       OS << ", ";
     Argument *Arg = &*fi;
@@ -206,7 +208,8 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
     BasicBlock *BB = &*fi;
     if (!BB->use_empty())
       OS << BB->getName() << ":\n";
-    for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be; ++bi) {
+    for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be;
+         ++bi) {
       Instruction *Inst = &*bi;
       if (!Baling || !Baling->isBaled(Inst)) {
         printPropertiesForValue(OS, *Inst, Liveness, RA);
@@ -227,8 +230,7 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
             OS << "\n";
           } else {
             OS << "  bale {\n";
-            for (Bale::iterator i = B.begin(),
-                e = B.end(); i != e; ++i) {
+            for (Bale::iterator i = B.begin(), e = B.end(); i != e; ++i) {
               unsigned Num = 0;
               if (Numbering)
                 Num = Numbering->getNumber(i->Inst);
@@ -237,8 +239,11 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
               OS << "   ";
               i->Inst->print(OS);
               switch (i->Info.Type) {
-                case BaleInfo::MAININST: break;
-                default: OS << " {" << i->Info.getTypeString() << "}"; break;
+              case BaleInfo::MAININST:
+                break;
+              default:
+                OS << " {" << i->Info.getTypeString() << "}";
+                break;
               }
               OS << "\n";
             }

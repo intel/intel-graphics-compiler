@@ -46,7 +46,7 @@ class GenXDebugLegalization : public FunctionPass {
 
 public:
   static char ID;
-  explicit GenXDebugLegalization() : FunctionPass(ID) { }
+  explicit GenXDebugLegalization() : FunctionPass(ID) {}
   StringRef getPassName() const override { return "GenX debug legalization"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunction(Function &F) override;
@@ -59,33 +59,37 @@ private:
 } // end anonymous namespace
 
 char GenXDebugLegalization::ID = 0;
-namespace llvm { void initializeGenXDebugLegalizationPass(PassRegistry &); }
-INITIALIZE_PASS_BEGIN(GenXDebugLegalization, "GenXDebugLegalization", "GenXDebugLegalization", false, false)
-INITIALIZE_PASS_END(GenXDebugLegalization, "GenXDebugLegalization", "GenXDebugLegalization", false, false)
+namespace llvm {
+void initializeGenXDebugLegalizationPass(PassRegistry &);
+}
+INITIALIZE_PASS_BEGIN(GenXDebugLegalization, "GenXDebugLegalization",
+                      "GenXDebugLegalization", false, false)
+INITIALIZE_PASS_END(GenXDebugLegalization, "GenXDebugLegalization",
+                    "GenXDebugLegalization", false, false)
 
 FunctionPass *llvm::createGenXDebugLegalizationPass() {
   initializeGenXDebugLegalizationPass(*PassRegistry::getPassRegistry());
   return new GenXDebugLegalization;
 }
 
-void GenXDebugLegalization::getAnalysisUsage(AnalysisUsage &AU) const
-{
+void GenXDebugLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesCFG();
 }
 
-// Detect instructions with an address class pattern. Then remove all opcodes of this pattern from
-// this instruction's last operand (metadata of DIExpression).
+// Detect instructions with an address class pattern. Then remove all opcodes of
+// this pattern from this instruction's last operand (metadata of DIExpression).
 // Pattern: !DIExpression(DW_OP_constu, 4, DW_OP_swap, DW_OP_xderef)
 bool GenXDebugLegalization::extractAddressClass(Function &F) {
   bool Modified = false;
   DIBuilder di(*F.getParent());
 
-  for (auto& bb : F) {
-    for (auto& pInst : bb) {
-      if (auto* DI = dyn_cast<DbgVariableIntrinsic>(&pInst)) {
-        const DIExpression* DIExpr = DI->getExpression();
+  for (auto &bb : F) {
+    for (auto &pInst : bb) {
+      if (auto *DI = dyn_cast<DbgVariableIntrinsic>(&pInst)) {
+        const DIExpression *DIExpr = DI->getExpression();
         llvm::SmallVector<uint64_t, 5> newElements;
-        for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end(); I != E; ++I) {
+        for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end();
+             I != E; ++I) {
           if (I->getOp() == dwarf::DW_OP_constu) {
             auto patternI = I;
             if (++patternI != E && patternI->getOp() == dwarf::DW_OP_swap &&
@@ -98,7 +102,7 @@ bool GenXDebugLegalization::extractAddressClass(Function &F) {
         }
 
         if (newElements.size() < DIExpr->getNumElements()) {
-          DIExpression* newDIExpr = di.createExpression(newElements);
+          DIExpression *newDIExpr = di.createExpression(newElements);
           DI->setExpression(newDIExpr);
           Modified = true;
         }
@@ -129,11 +133,9 @@ bool GenXDebugLegalization::removeDIArgList(Function &F) {
  * GenXDebugLegalization::runOnFunction : process one function to
  *    reduce integer size where possible
  */
-bool GenXDebugLegalization::runOnFunction(Function &F)
-{
+bool GenXDebugLegalization::runOnFunction(Function &F) {
   bool Modified = false;
   Modified |= extractAddressClass(F);
   Modified |= removeDIArgList(F);
   return Modified;
 }
-

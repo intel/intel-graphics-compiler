@@ -170,6 +170,7 @@ protected:
   Value *Mask = nullptr;
   enum CFRegionKind { RK_IfReg, RK_LoopReg, RK_BaseReg };
   const CFRegionKind Kind;
+
 public:
   SimdCFRegion(BasicBlock *Entry, BasicBlock *Exit, RegionInfo *RI,
                DominatorTree *DT, SimdCFRegion *Parent, CFRegionKind K);
@@ -252,6 +253,7 @@ class SimdCFLoopRegion final : public SimdCFRegionBase {
   Loop *SimdLoop;
   BranchInst *SimdLoopBranch = nullptr;
   BasicBlock *LoopHead = nullptr;
+
 public:
   SimdCFLoopRegion(BasicBlock *, Loop *, BasicBlock *, RegionInfo *,
                    DominatorTree *, SimdCFRegion *Parent = nullptr);
@@ -389,10 +391,10 @@ bool SimdCFIfRegion::verify() const {
     return false;
   };
 
-  LLVM_DEBUG(dbgs() << " Dump blocks name: \n"; for (auto *BB
-                                                     : *RegionCheck->Blocks()) {
-    dbgs() << " BB = " << BB->getName() << "\n";
-  });
+  LLVM_DEBUG(dbgs() << " Dump blocks name: \n";
+             for (auto *BB : *RegionCheck->Blocks()) {
+               dbgs() << " BB = " << BB->getName() << "\n";
+             });
   if (find_if(*RegionCheck->Blocks(), CheckIf) != RegionCheck->Blocks()->end())
     return false;
   if (!hasElse())
@@ -529,8 +531,8 @@ class GenXPredToSimdCF final : public FunctionPass {
   BasicBlock *JPSplit = nullptr;
   BasicBlock *OldCondBB = nullptr;
   bool NeedSwap = false;
-public:
 
+public:
   static constexpr unsigned MAX_SIMD_CF_WIDTH = 32;
 
   static char ID;
@@ -774,11 +776,9 @@ BasicBlock *GenXPredToSimdCF::getIfExitFromElseBranch(BranchInst &BrInst) {
   if (!BrInst.isConditional())
     return nullptr;
   auto *IfElseEntry = getIfElseEntry(BrInst);
-  auto IfExit =
-      std::find_if(BrInst.successors().begin(), BrInst.successors().end(),
-                   [IfElseEntry, this](BasicBlock *BB) {
-                     return BB != IfElseEntry;
-                   });
+  auto IfExit = std::find_if(
+      BrInst.successors().begin(), BrInst.successors().end(),
+      [IfElseEntry, this](BasicBlock *BB) { return BB != IfElseEntry; });
   return IfExit != BrInst.successors().end() ? *IfExit : nullptr;
 }
 
@@ -823,11 +823,9 @@ BasicBlock *GenXPredToSimdCF::getIfElseEntry(BranchInst &BrInst) {
 BasicBlock *GenXPredToSimdCF::getIfElseEnd(BranchInst &BrInst) {
   if (!BrInst.isConditional())
     return nullptr;
-  auto IfExitPos =
-      std::find_if(BrInst.successors().begin(), BrInst.successors().end(),
-                   [&BrInst, this](BasicBlock *BB) {
-                     return BB != getIfElseEntry(BrInst);
-                   });
+  auto IfExitPos = std::find_if(
+      BrInst.successors().begin(), BrInst.successors().end(),
+      [&BrInst, this](BasicBlock *BB) { return BB != getIfElseEntry(BrInst); });
   if (IfExitPos == BrInst.successors().end())
     return nullptr;
   auto *IfExit = *IfExitPos;
@@ -861,7 +859,8 @@ bool GenXPredToSimdCF::analizeInsts(BBContainer *Container, Value *Cond) {
   TryToFindBlock = [&](User *Usr, Value *PredInst, MatcherType Matcher) {
     if (Matcher(Usr, PredInst)) {
       auto *Inst = cast<Instruction>(Usr);
-      LLVM_DEBUG(dbgs() << Inst->getFunction()->getName() << " - " << Inst->getName() << "\n");
+      LLVM_DEBUG(dbgs() << Inst->getFunction()->getName() << " - "
+                        << Inst->getName() << "\n");
       BBs.insert(Inst->getParent());
     }
     if (auto *Inst = dyn_cast<PHINode>(Usr))

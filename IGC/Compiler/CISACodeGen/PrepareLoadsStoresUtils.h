@@ -16,24 +16,14 @@ SPDX-License-Identifier: MIT
 #include "MemOptUtils.h"
 
 namespace IGC {
-    template <typename T>
-    std::pair<llvm::Value*, llvm::Instruction*> expand64BitLoad(
-        llvm::IGCIRBuilder<T> &IRB,
-        const llvm::DataLayout &DL,
-        llvm::LoadInst* LI);
-    template <typename T>
-    std::pair<llvm::Value*, llvm::Instruction*> expand64BitLoad(
-        llvm::IGCIRBuilder<T> &IRB,
-        const llvm::DataLayout &DL,
-        ALoadInst LI);
-    template <typename T>
-    llvm::Instruction* expand64BitStore(
-        llvm::IGCIRBuilder<T> &IRB,
-        const llvm::DataLayout &DL,
-        llvm::StoreInst* SI);
-    template <typename T>
-    llvm::Instruction* expand64BitStore(
-        llvm::IGCIRBuilder<T> &IRB,
-        const llvm::DataLayout &DL,
-        AStoreInst SI);
+template <typename T>
+std::pair<llvm::Value *, llvm::Instruction *> expand64BitLoad(llvm::IGCIRBuilder<T> &IRB, const llvm::DataLayout &DL,
+                                                              llvm::LoadInst *LI);
+template <typename T>
+std::pair<llvm::Value *, llvm::Instruction *> expand64BitLoad(llvm::IGCIRBuilder<T> &IRB, const llvm::DataLayout &DL,
+                                                              ALoadInst LI);
+template <typename T>
+llvm::Instruction *expand64BitStore(llvm::IGCIRBuilder<T> &IRB, const llvm::DataLayout &DL, llvm::StoreInst *SI);
+template <typename T>
+llvm::Instruction *expand64BitStore(llvm::IGCIRBuilder<T> &IRB, const llvm::DataLayout &DL, AStoreInst SI);
 } // namespace IGC

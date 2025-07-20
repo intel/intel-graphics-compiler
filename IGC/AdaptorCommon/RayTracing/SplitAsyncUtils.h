@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 //
 //===----------------------------------------------------------------------===//
 
-
 #pragma once
 
 #include "Compiler/CodeGenPublic.h"
@@ -31,54 +30,40 @@ SPDX-License-Identifier: MIT
 namespace IGC {
 
 class Spill {
-    llvm::WeakTrackingVH Def = nullptr;
-    llvm::Instruction* User = nullptr;
-public:
-    Spill(llvm::Value* Def, llvm::User* U) :
-        Def(Def), User(llvm::cast<llvm::Instruction>(U)) {}
+  llvm::WeakTrackingVH Def = nullptr;
+  llvm::Instruction *User = nullptr;
 
-    llvm::Value* def() const { return Def; }
-    llvm::Instruction* user() const { return User; }
-    llvm::BasicBlock* userBlock() const { return User->getParent(); }
+public:
+  Spill(llvm::Value *Def, llvm::User *U) : Def(Def), User(llvm::cast<llvm::Instruction>(U)) {}
+
+  llvm::Value *def() const { return Def; }
+  llvm::Instruction *user() const { return User; }
+  llvm::BasicBlock *userBlock() const { return User->getParent(); }
 };
 
-void rewritePHIs(llvm::Function& F);
+void rewritePHIs(llvm::Function &F);
 
-void insertSpills(
-    CodeGenContext* CGCtx,
-    llvm::Function& F,
-    const llvm::SmallVector<Spill, 8>& Spills);
+void insertSpills(CodeGenContext *CGCtx, llvm::Function &F, const llvm::SmallVector<Spill, 8> &Spills);
 
-void rewriteMaterializableInstructions(const llvm::SmallVector<Spill, 8>& Spills);
+void rewriteMaterializableInstructions(const llvm::SmallVector<Spill, 8> &Spills);
 
-enum class RematStage
-{
-    MID,
-    LATE
-};
+enum class RematStage { MID, LATE };
 
-class RematChecker
-{
+class RematChecker {
 public:
-    RematChecker(CodeGenContext& Ctx, RematStage Stage);
-    std::optional<std::vector<llvm::Instruction*>>
-    canFullyRemat(
-        llvm::Instruction* I,
-        uint32_t Threshold,
-        llvm::ValueToValueMapTy* VM = nullptr) const;
+  RematChecker(CodeGenContext &Ctx, RematStage Stage);
+  std::optional<std::vector<llvm::Instruction *>> canFullyRemat(llvm::Instruction *I, uint32_t Threshold,
+                                                                llvm::ValueToValueMapTy *VM = nullptr) const;
+
 private:
-    bool canFullyRemat(
-        llvm::Instruction* I,
-        std::vector<llvm::Instruction*>& Insts,
-        std::unordered_set<llvm::Instruction*>& Visited,
-        unsigned StartDepth,
-        unsigned Depth,
-        llvm::ValueToValueMapTy* VM) const;
-    bool materializable(const llvm::Instruction& I) const;
-    bool isReadOnly(const llvm::Value* Ptr) const;
+  bool canFullyRemat(llvm::Instruction *I, std::vector<llvm::Instruction *> &Insts,
+                     std::unordered_set<llvm::Instruction *> &Visited, unsigned StartDepth, unsigned Depth,
+                     llvm::ValueToValueMapTy *VM) const;
+  bool materializable(const llvm::Instruction &I) const;
+  bool isReadOnly(const llvm::Value *Ptr) const;
 
-    CodeGenContext& Ctx;
-    RematStage Stage;
+  CodeGenContext &Ctx;
+  RematStage Stage;
 };
 
 } // namespace IGC

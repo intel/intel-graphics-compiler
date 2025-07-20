@@ -28,19 +28,15 @@ using namespace IGC;
 using namespace llvm;
 
 // Register pass to igc-opt
-namespace IGC
-{
+namespace IGC {
 #define PASS_FLAG "call-merger-pass"
-#define PASS_DESCRIPTION                                                       \
-  "Merge mutually exclusive calls to enable further inlining."
+#define PASS_DESCRIPTION "Merge mutually exclusive calls to enable further inlining."
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(CallMerger, PASS_FLAG, PASS_DESCRIPTION,
-                          PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(CallMerger, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(EstimateFunctionSize)
-IGC_INITIALIZE_PASS_END(CallMerger, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
-                        PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(CallMerger, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 } // namespace IGC
 
 using CallSiteMap = DenseMap<Function *, SmallVector<CallInst *, 2>>;
@@ -69,17 +65,17 @@ void setNewTerminator(BasicBlock *oldBB, BasicBlock *newBB) {
 
 // We assume that BBs with call instructions have terminator with single successor
 // and that the list of uses of both calls is the same.
-void mergeCalls(Function* F, CallInst *call1, CallInst *call2) {
-  auto* parentBB1 = call1->getParent();
-  auto* parentBB2 = call2->getParent();
-  auto* successorBB = parentBB1->getSingleSuccessor();
+void mergeCalls(Function *F, CallInst *call1, CallInst *call2) {
+  auto *parentBB1 = call1->getParent();
+  auto *parentBB2 = call2->getParent();
+  auto *successorBB = parentBB1->getSingleSuccessor();
 
-  auto* newBB = llvm::BasicBlock::Create(F->getContext(), "mergedCallsBB", F, successorBB);
+  auto *newBB = llvm::BasicBlock::Create(F->getContext(), "mergedCallsBB", F, successorBB);
   llvm::IRBuilder<> Builder(newBB);
 
   IGC_ASSERT(call1->arg_size() == call2->arg_size());
 
-  SmallVector<Value*, 4> args;
+  SmallVector<Value *, 4> args;
   for (unsigned i = 0; i < call1->arg_size(); ++i) {
     auto *arg1 = call1->getArgOperand(i);
     auto *arg2 = call2->getArgOperand(i);
@@ -92,7 +88,7 @@ void mergeCalls(Function* F, CallInst *call1, CallInst *call2) {
     PN->addIncoming(arg2, parentBB2);
     args.push_back(PN);
   }
-  auto* newCall = Builder.CreateCall(call1->getCalledFunction(), args);
+  auto *newCall = Builder.CreateCall(call1->getCalledFunction(), args);
   newCall->setCallingConv(call1->getCallingConv());
   newCall->setAttributes(call1->getAttributes());
   newCall->setTailCall(call1->isTailCall());
@@ -100,11 +96,11 @@ void mergeCalls(Function* F, CallInst *call1, CallInst *call2) {
 
   setNewTerminator(parentBB1, newBB);
   setNewTerminator(parentBB2, newBB);
-  for (auto& u: call1->uses()) {
+  for (auto &u : call1->uses()) {
     auto *userI = cast<Instruction>(u.getUser());
     userI->replaceUsesOfWith(call1, newCall);
   }
-  for (auto& u: call2->uses()) {
+  for (auto &u : call2->uses()) {
     auto *userI = cast<Instruction>(u.getUser());
     userI->replaceUsesOfWith(call2, newCall);
   }
@@ -121,8 +117,8 @@ bool haveSingleCommonSuccessor(CallInst *call1, CallInst *call2) {
   return true;
 }
 
-bool isAfterInstInBB(Instruction* inst1, Instruction* inst2){
-  for (auto& I : *inst1->getParent()) {
+bool isAfterInstInBB(Instruction *inst1, Instruction *inst2) {
+  for (auto &I : *inst1->getParent()) {
     if (&I == inst1) {
       return false;
     }
@@ -138,7 +134,7 @@ bool hasUsesInCurrentBB(CallInst *call) {
 
   // Check if call results is used in same block as call
   for (auto *user : call->users()) {
-    auto* userI = cast<Instruction>(user);
+    auto *userI = cast<Instruction>(user);
     if (userI->getParent() == currentBB) {
       return true;
     }
@@ -146,12 +142,12 @@ bool hasUsesInCurrentBB(CallInst *call) {
 
   // Check if any non const argument is used in call block
   // after call
-  for (auto& arg : call->args()) {
+  for (auto &arg : call->args()) {
     if (!arg->getType()->isPointerTy()) {
       continue;
     }
     for (auto *user : arg->users()) {
-      if (auto* userI = dyn_cast<Instruction>(user)) {
+      if (auto *userI = dyn_cast<Instruction>(user)) {
         if (userI == call || userI->getParent() != currentBB) {
           continue;
         }
@@ -186,35 +182,32 @@ bool hasSameUsesAs(CallInst *call1, CallInst *call2) {
 }
 
 void filterCallSites(CallSiteMap &callSites, EstimateFunctionSize *EFS) {
-  SmallVector<Function*, 4> elementsToErase;
+  SmallVector<Function *, 4> elementsToErase;
   size_t PerFuncThreshold = IGC_GET_FLAG_VALUE(SubroutineInlinerThreshold);
 
-  for (const auto&[calledFunc, callInsts] : callSites) {
+  for (const auto &[calledFunc, callInsts] : callSites) {
     if (callInsts.size() != 2) {
       elementsToErase.push_back(calledFunc);
       continue;
     }
 
     // We don't need to process function that can't get inlined
-    if (calledFunc->hasFnAttribute(llvm::Attribute::NoInline) ||
-        calledFunc->hasFnAttribute("igc-force-stackcall") ||
-        calledFunc->hasFnAttribute("KMPLOCK")){
+    if (calledFunc->hasFnAttribute(llvm::Attribute::NoInline) || calledFunc->hasFnAttribute("igc-force-stackcall") ||
+        calledFunc->hasFnAttribute("KMPLOCK")) {
       elementsToErase.push_back(calledFunc);
       continue;
     }
 
     // We can skip functions that are small enough to be inlined.
     if (EFS->getExpandedSize(calledFunc) <= PerFuncThreshold) {
-        elementsToErase.push_back(calledFunc);
-        continue;
+      elementsToErase.push_back(calledFunc);
+      continue;
     }
 
     // We can merge calls with common successor, without result or args having uses in
     // call block. We also only merge function calls with same use list.
-    if (!haveSingleCommonSuccessor(callInsts[0], callInsts[1]) ||
-        hasUsesInCurrentBB(callInsts[0]) ||
-        hasUsesInCurrentBB(callInsts[1]) ||
-      !hasSameUsesAs(callInsts[0], callInsts[1])) {
+    if (!haveSingleCommonSuccessor(callInsts[0], callInsts[1]) || hasUsesInCurrentBB(callInsts[0]) ||
+        hasUsesInCurrentBB(callInsts[1]) || !hasSameUsesAs(callInsts[0], callInsts[1])) {
       elementsToErase.push_back(calledFunc);
       continue;
     }
@@ -228,28 +221,26 @@ void filterCallSites(CallSiteMap &callSites, EstimateFunctionSize *EFS) {
 
 char CallMerger::ID = 0;
 
-CallMerger::CallMerger() : ModulePass(ID) {
-  initializeCallMergerPass(*PassRegistry::getPassRegistry());
-}
+CallMerger::CallMerger() : ModulePass(ID) { initializeCallMergerPass(*PassRegistry::getPassRegistry()); }
 
 void CallMerger::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.addRequired<CodeGenContextWrapper>();
   AU.addRequired<EstimateFunctionSize>();
 }
 
-bool CallMerger::runOnFunction(Function& F) {
-    auto callSites = collectAllCallSites(F);
+bool CallMerger::runOnFunction(Function &F) {
+  auto callSites = collectAllCallSites(F);
 
-    filterCallSites(callSites, EFS);
-    if (callSites.empty()) {
-        return false;
-    }
+  filterCallSites(callSites, EFS);
+  if (callSites.empty()) {
+    return false;
+  }
 
-    for (auto&[calledFunc, callInsts] : callSites) {
-      mergeCalls(&F, callInsts[0], callInsts[1]);
-    }
+  for (auto &[calledFunc, callInsts] : callSites) {
+    mergeCalls(&F, callInsts[0], callInsts[1]);
+  }
 
-    return true;
+  return true;
 }
 
 bool CallMerger::runOnModule(Module &M) {
@@ -258,10 +249,8 @@ bool CallMerger::runOnModule(Module &M) {
 
   // We don't need to do any work if all functions will get inlined
   // or function control is not default.
-  if (IGC::ForceAlwaysInline(CTX) ||
-      CTX->m_enableSubroutine == false ||
-      getFunctionControl(CTX) != FLAG_FCALL_DEFAULT ||
-      !EFS->shouldEnableSubroutine()) {
+  if (IGC::ForceAlwaysInline(CTX) || CTX->m_enableSubroutine == false ||
+      getFunctionControl(CTX) != FLAG_FCALL_DEFAULT || !EFS->shouldEnableSubroutine()) {
     return false;
   }
 

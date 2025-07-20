@@ -40,7 +40,6 @@ public:
     return m_Divergent.find(&BB) == m_Divergent.end();
   }
 
-
 private:
   Function *F = nullptr;
   PostDominatorTree *PDT = nullptr;

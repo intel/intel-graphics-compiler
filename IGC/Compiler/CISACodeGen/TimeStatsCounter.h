@@ -16,19 +16,13 @@ SPDX-License-Identifier: MIT
 #include <string>
 
 namespace IGC {
-    enum TimeStatsCounterStartEndMode
-    {
-        STATS_COUNTER_START,
-        STATS_COUNTER_END
-    };
+enum TimeStatsCounterStartEndMode { STATS_COUNTER_START, STATS_COUNTER_END };
 
-    enum TimeStatsCounterType
-    {
-        STATS_COUNTER_LLVM_PASS,
-        STATS_COUNTER_ENUM_TYPE
-    };
+enum TimeStatsCounterType { STATS_COUNTER_LLVM_PASS, STATS_COUNTER_ENUM_TYPE };
 
-    llvm::ModulePass* createTimeStatsCounterPass(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _interval, TimeStatsCounterStartEndMode _mode);
-    llvm::ModulePass* createTimeStatsIGCPass(CodeGenContext* _ctx, std::string _igcPass, TimeStatsCounterStartEndMode _mode);
-    void initializeTimeStatsCounterPass(llvm::PassRegistry&);
+llvm::ModulePass *createTimeStatsCounterPass(CodeGenContext *_ctx, COMPILE_TIME_INTERVALS _interval,
+                                             TimeStatsCounterStartEndMode _mode);
+llvm::ModulePass *createTimeStatsIGCPass(CodeGenContext *_ctx, std::string _igcPass,
+                                         TimeStatsCounterStartEndMode _mode);
+void initializeTimeStatsCounterPass(llvm::PassRegistry &);
 } // End namespace IGC

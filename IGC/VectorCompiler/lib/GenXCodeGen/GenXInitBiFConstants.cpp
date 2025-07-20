@@ -78,8 +78,8 @@ bool GenXInitBiFConstants::runOnModule(Module &Mod) {
 
   Result |= initGlobalConstant("__cm_cl_MaxHWThreadIDPerSubDevice",
                                ST->getMaxThreadsNumPerSubDevice());
-  Result |= initGlobalConstant("__cm_cl_TargetSupportsIEEE",
-                               ST->hasIEEEDivSqrt());
+  Result |=
+      initGlobalConstant("__cm_cl_TargetSupportsIEEE", ST->hasIEEEDivSqrt());
 
   return Result;
 }

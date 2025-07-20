@@ -60,8 +60,8 @@ private:
 
 static VcPayloadInfo tryExtractPayload(const char *Input, size_t InputSize) {
   // Payload format:
-  // |-vc-payload|api opts|internal opts|i64(IR size)|i64(Payload size)|-vc-payload|
-  // NOTE: <api/internal opts> are c-strings.
+  // |-vc-payload|api opts|internal opts|i64(IR size)|i64(Payload
+  // size)|-vc-payload| NOTE: <api/internal opts> are c-strings.
   //
   // Should be in sync with:
   //    Source/IGC/AdaptorOCL/ocl_igc_interface/impl/fcl_ocl_translation_ctx_impl.cpp
@@ -80,8 +80,7 @@ static VcPayloadInfo tryExtractPayload(const char *Input, size_t InputSize) {
   // Read IR and Payload sizes. We already ensured that we have the room.
   uint64_t IrSize;
   uint64_t PayloadSize;
-  const char *IrSizeBuff =
-      InputEnd - PayloadMarkerSize - 2 * sizeof(uint64_t);
+  const char *IrSizeBuff = InputEnd - PayloadMarkerSize - 2 * sizeof(uint64_t);
   const char *PayloadSizeBuff =
       InputEnd - PayloadMarkerSize - 1 * sizeof(uint64_t);
   memcpy_s(&IrSize, sizeof(IrSize), IrSizeBuff, sizeof(IrSize));
@@ -97,7 +96,7 @@ static VcPayloadInfo tryExtractPayload(const char *Input, size_t InputSize) {
 
   // Make sure that we have a zero-terminated c-string (vc-options are encoded
   // as such).
-  auto ApiOptsStart  = IREnd + PayloadMarkerSize;
+  auto ApiOptsStart = IREnd + PayloadMarkerSize;
   auto ApiOptsEnd = std::find(ApiOptsStart, InputEnd, 0);
   if (ApiOptsEnd == InputEnd)
     return {};
@@ -211,8 +210,8 @@ static void adjustFileType(TC::TB_DATA_FORMAT DataFormat,
     Opts.FType = vc::FileType::LLVM_TEXT;
     return;
   case TC::TB_DATA_FORMAT::TB_DATA_FORMAT_LLVM_BINARY:
-      Opts.FType = vc::FileType::LLVM_BINARY;
-      return;
+    Opts.FType = vc::FileType::LLVM_BINARY;
+    return;
   case TC::TB_DATA_FORMAT::TB_DATA_FORMAT_SPIR_V:
     Opts.FType = vc::FileType::SPIRV;
     return;
@@ -314,8 +313,10 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
       IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend))
     Opts.EnableOpaquePointers = true;
 
-  Opts.DepressurizerGRFThreshold = IGC_GET_FLAG_VALUE(VCDepressurizerGRFThreshold);
-  Opts.DepressurizerFlagGRFTolerance = IGC_GET_FLAG_VALUE(VCDepressurizerFlagGRFTolerance);
+  Opts.DepressurizerGRFThreshold =
+      IGC_GET_FLAG_VALUE(VCDepressurizerGRFThreshold);
+  Opts.DepressurizerFlagGRFTolerance =
+      IGC_GET_FLAG_VALUE(VCDepressurizerFlagGRFTolerance);
 }
 
 static void adjustKernelMetrics(vc::CompileOptions &Opts) {

@@ -16,7 +16,7 @@ void initializeGenXBTIAssignmentPass(PassRegistry &);
 
 struct GenXBTIAssignmentPass
     : public llvm::PassInfoMixin<GenXBTIAssignmentPass> {
-  explicit GenXBTIAssignmentPass(GenXBackendConfigPass::Result &BC) : BC(BC){};
+  explicit GenXBTIAssignmentPass(GenXBackendConfigPass::Result &BC) : BC(BC) {};
   llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
 
 private:

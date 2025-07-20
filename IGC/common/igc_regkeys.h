@@ -15,13 +15,13 @@ SPDX-License-Identifier: MIT
 // If these enum and bitmask regkeys have not been explicitly opted-in to,
 // default back to using DWORD which is understood by all users.
 #ifndef DECLARE_IGC_REGKEY_ENUM
-#define DECLARE_IGC_REGKEY_ENUM(regkeyName, defaultValue, description, values, releaseMode) \
-    DECLARE_IGC_REGKEY(DWORD, regkeyName, defaultValue, description ". " values, releaseMode)
+#define DECLARE_IGC_REGKEY_ENUM(regkeyName, defaultValue, description, values, releaseMode)                            \
+  DECLARE_IGC_REGKEY(DWORD, regkeyName, defaultValue, description ". " values, releaseMode)
 #endif
 
 #ifndef DECLARE_IGC_REGKEY_BITMASK
-#define DECLARE_IGC_REGKEY_BITMASK(regkeyName, defaultValue, description, values, releaseMode) \
-    DECLARE_IGC_REGKEY(DWORD, regkeyName, defaultValue, description ". " values, releaseMode)
+#define DECLARE_IGC_REGKEY_BITMASK(regkeyName, defaultValue, description, values, releaseMode)                         \
+  DECLARE_IGC_REGKEY(DWORD, regkeyName, defaultValue, description ". " values, releaseMode)
 #endif
 
 #define LSC_CACHE_CTRL_OPTION(Name, Val, Description) #Name " [" Description "]=" #Val ","

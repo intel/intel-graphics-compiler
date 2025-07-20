@@ -24,9 +24,8 @@ IGC_INITIALIZE_PASS_END(ExtensionFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PAS
 
 char ExtensionFuncsAnalysis::ID = 0;
 
-ExtensionFuncsAnalysis::ExtensionFuncsAnalysis() : ModulePass(ID)
-{
-    initializeExtensionFuncsAnalysisPass(*PassRegistry::getPassRegistry());
+ExtensionFuncsAnalysis::ExtensionFuncsAnalysis() : ModulePass(ID) {
+  initializeExtensionFuncsAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
 const StringRef ExtensionFuncsAnalysis::VME_MB_BLOCK_TYPE = "__builtin_IB_vme_mb_block_type";
@@ -36,67 +35,59 @@ const StringRef ExtensionFuncsAnalysis::VME_SEARCH_PATH_TYPE = "__builtin_IB_vme
 const StringRef ExtensionFuncsAnalysis::VME_HELPER_GET_HANDLE = "__builtin_IB_vme_helper_get_handle";
 const StringRef ExtensionFuncsAnalysis::VME_HELPER_GET_AS = "__builtin_IB_vme_helper_get_as";
 
-bool ExtensionFuncsAnalysis::runOnModule(Module& M)
-{
-    bool changed = false;
-    m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    // Run on all functions defined in this module
-    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
-    {
-        Function* pFunc = &(*I);
-        if (pFunc->isDeclaration()) continue;
-        if (runOnFunction(*pFunc))
-        {
-            changed = true;
-        }
+bool ExtensionFuncsAnalysis::runOnModule(Module &M) {
+  bool changed = false;
+  m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  // Run on all functions defined in this module
+  for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
+    Function *pFunc = &(*I);
+    if (pFunc->isDeclaration())
+      continue;
+    if (runOnFunction(*pFunc)) {
+      changed = true;
     }
+  }
 
-    // Update LLVM metadata based on IGC MetadataUtils
-    if (changed)
-        m_pMDUtils->save(M.getContext());
+  // Update LLVM metadata based on IGC MetadataUtils
+  if (changed)
+    m_pMDUtils->save(M.getContext());
 
-    return changed;
+  return changed;
 }
 
-bool ExtensionFuncsAnalysis::runOnFunction(Function& F)
-{
-    // Processing new function
-    m_hasVME = false;
+bool ExtensionFuncsAnalysis::runOnFunction(Function &F) {
+  // Processing new function
+  m_hasVME = false;
 
-    // Visit the function
-    visit(F);
+  // Visit the function
+  visit(F);
 
-    // Check if VME implicit information is needed based on the function analysis
-    if (!m_hasVME) return false;
+  // Check if VME implicit information is needed based on the function analysis
+  if (!m_hasVME)
+    return false;
 
-    // Add the implicit arguments needed by this function
-    SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
+  // Add the implicit arguments needed by this function
+  SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
 
-    implicitArgs.push_back(ImplicitArg::VME_MB_BLOCK_TYPE);
-    implicitArgs.push_back(ImplicitArg::VME_SUBPIXEL_MODE);
-    implicitArgs.push_back(ImplicitArg::VME_SAD_ADJUST_MODE);
-    implicitArgs.push_back(ImplicitArg::VME_SEARCH_PATH_TYPE);
+  implicitArgs.push_back(ImplicitArg::VME_MB_BLOCK_TYPE);
+  implicitArgs.push_back(ImplicitArg::VME_SUBPIXEL_MODE);
+  implicitArgs.push_back(ImplicitArg::VME_SAD_ADJUST_MODE);
+  implicitArgs.push_back(ImplicitArg::VME_SEARCH_PATH_TYPE);
 
-    // Create the metadata representing the VME implicit args needed by this function
-    ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
+  // Create the metadata representing the VME implicit args needed by this function
+  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
 
-    return true;
+  return true;
 }
 
-void ExtensionFuncsAnalysis::visitCallInst(CallInst& CI)
-{
-    // Check for VME function calls
-    if (Function * F = CI.getCalledFunction())
-    {
-        StringRef funcName = F->getName();
-        if (funcName.equals(VME_MB_BLOCK_TYPE) ||
-            funcName.equals(VME_SUBPIXEL_MODE) ||
-            funcName.equals(VME_SAD_ADJUST_MODE) ||
-            funcName.equals(VME_SEARCH_PATH_TYPE) ||
-            funcName.startswith(VME_HELPER_GET_HANDLE) ||
-            funcName.startswith(VME_HELPER_GET_AS))
-        {
-            m_hasVME = true;
-        }
+void ExtensionFuncsAnalysis::visitCallInst(CallInst &CI) {
+  // Check for VME function calls
+  if (Function *F = CI.getCalledFunction()) {
+    StringRef funcName = F->getName();
+    if (funcName.equals(VME_MB_BLOCK_TYPE) || funcName.equals(VME_SUBPIXEL_MODE) ||
+        funcName.equals(VME_SAD_ADJUST_MODE) || funcName.equals(VME_SEARCH_PATH_TYPE) ||
+        funcName.startswith(VME_HELPER_GET_HANDLE) || funcName.startswith(VME_HELPER_GET_AS)) {
+      m_hasVME = true;
     }
+  }
 }

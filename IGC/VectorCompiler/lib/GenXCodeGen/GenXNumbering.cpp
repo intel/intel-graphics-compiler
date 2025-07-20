@@ -49,8 +49,7 @@ void GenXNumbering::getAnalysisUsage(AnalysisUsage &AU) {
 /***********************************************************************
  * runOnFunctionGroup : run pass
  */
-bool GenXNumbering::runOnFunctionGroup(FunctionGroup &ArgFG)
-{
+bool GenXNumbering::runOnFunctionGroup(FunctionGroup &ArgFG) {
   FG = &ArgFG;
   Baling = &getAnalysis<GenXGroupBaling>();
   unsigned Num = 0;
@@ -72,11 +71,11 @@ void GenXNumbering::releaseMemory() {
 /***********************************************************************
  * numberInstructionsInFunc : number the instructions in a function
  */
-unsigned GenXNumbering::numberInstructionsInFunc(Function *Func, unsigned Num)
-{
+unsigned GenXNumbering::numberInstructionsInFunc(Function *Func, unsigned Num) {
   // Number the function, reserving one number for the args.
   Numbers[Func] = Num++;
-  for (Function::iterator fi = Func->begin(), fe = Func->end(); fi != fe; ++fi) {
+  for (Function::iterator fi = Func->begin(), fe = Func->end(); fi != fe;
+       ++fi) {
     BasicBlock *Block = &*fi;
     // Number the basic block.
     auto BBNumber = &BBNumbers[Block];
@@ -88,7 +87,7 @@ unsigned GenXNumbering::numberInstructionsInFunc(Function *Func, unsigned Num)
         ++Num;
     // Iterate the instructions.
     Instruction *Inst;
-    for (BasicBlock::iterator bi = Block->begin(); ; ++bi) {
+    for (BasicBlock::iterator bi = Block->begin();; ++bi) {
       Inst = &*bi;
       if (Inst->isTerminator())
         break;
@@ -102,7 +101,8 @@ unsigned GenXNumbering::numberInstructionsInFunc(Function *Func, unsigned Num)
           // for:
           //  - a slot for each element of the args, two numbers per element:
           //    1. one for the address setup in case it is an address arg added
-          //       by arg indirection (as returned by getArgIndirectionNumber());
+          //       by arg indirection (as returned by
+          //       getArgIndirectionNumber());
           //    2. one for a pre-copy inserted if coalescing fails (as returned
           //       by getArgPreCopyNumber());
           //
@@ -118,9 +118,10 @@ unsigned GenXNumbering::numberInstructionsInFunc(Function *Func, unsigned Num)
           // two slots, and most calls never have address args added by arg
           // indirection. But treating all call args the same is easier, and
           // wasting numbers does not really matter.
-          PreReserve = 2 * IndexFlattener::getNumArgElements(
-                CI->getFunctionType());
-          PreReserve += 2 * IGCLLVM::getNumArgOperands(CI); // extra for pre-copy addresses of args
+          PreReserve =
+              2 * IndexFlattener::getNumArgElements(CI->getFunctionType());
+          PreReserve += 2 * IGCLLVM::getNumArgOperands(
+                                CI); // extra for pre-copy addresses of args
           unsigned NumRetVals = IndexFlattener::getNumElements(CI->getType());
           PreReserve += NumRetVals; // extra for pre-copy addresses of retvals
           PostReserve = NumRetVals;
@@ -145,7 +146,8 @@ unsigned GenXNumbering::numberInstructionsInFunc(Function *Func, unsigned Num)
     for (unsigned i = 0, e = TI->getNumSuccessors(); i != e; ++i) {
       BasicBlock *Succ = TI->getSuccessor(i);
       unsigned NumPhis = 0;
-      for (BasicBlock::iterator sbi = Succ->begin(), sbe = Succ->end(); sbi != sbe; ++sbi) {
+      for (BasicBlock::iterator sbi = Succ->begin(), sbe = Succ->end();
+           sbi != sbe; ++sbi) {
         if (!isa<PHINode>(&*sbi))
           break;
         NumPhis++;
@@ -173,8 +175,7 @@ unsigned GenXNumbering::numberInstructionsInFunc(Function *Func, unsigned Num)
 /***********************************************************************
  * getBaleNumber : get instruction number for head of bale, 0 if none
  */
-unsigned GenXNumbering::getBaleNumber(Instruction *Inst)
-{
+unsigned GenXNumbering::getBaleNumber(Instruction *Inst) {
   Inst = Baling->getBaleHead(Inst);
   return getNumber(Inst);
 }
@@ -192,8 +193,7 @@ unsigned GenXNumbering::getNumber(Value *V) const {
 /***********************************************************************
  * setNumber : get instruction number
  */
-void GenXNumbering::setNumber(Value *V, unsigned Number)
-{
+void GenXNumbering::setNumber(Value *V, unsigned Number) {
   Numbers[V] = Number;
 }
 
@@ -209,19 +209,18 @@ void GenXNumbering::setNumber(Value *V, unsigned Number)
  * slot in fact has two numbers, and this returns the first one. (The second
  * one is used for arg pre-copy when coalescing fails.)
  */
-unsigned GenXNumbering::getArgIndirectionNumber(CallInst *CI, unsigned OperandNum,
-    unsigned Index)
-{
+unsigned GenXNumbering::getArgIndirectionNumber(CallInst *CI,
+                                                unsigned OperandNum,
+                                                unsigned Index) {
   auto FT = cast<FunctionType>(CI->getFunctionType());
-  return getStartNumber(CI) + 2 * (IndexFlattener::flattenArg(FT, OperandNum)
-        + Index);
+  return getStartNumber(CI) +
+         2 * (IndexFlattener::flattenArg(FT, OperandNum) + Index);
 }
 
 /***********************************************************************
  * getKernelArgCopyNumber : get number of kernel arg copy slot
  */
-unsigned GenXNumbering::getKernelArgCopyNumber(Argument *Arg)
-{
+unsigned GenXNumbering::getKernelArgCopyNumber(Argument *Arg) {
   IGC_ASSERT(vc::isKernel(Arg->getParent()));
   return Numbers[&Arg->getParent()->front()] + 1 + Arg->getArgNo();
 }
@@ -239,8 +238,7 @@ unsigned GenXNumbering::getKernelArgCopyNumber(Argument *Arg)
  * one is used for address loading in arg indirection.)
  */
 unsigned GenXNumbering::getArgPreCopyNumber(CallInst *CI, unsigned OperandNum,
-    unsigned Index)
-{
+                                            unsigned Index) {
   return getArgIndirectionNumber(CI, OperandNum, Index) + 1;
 }
 
@@ -253,10 +251,9 @@ unsigned GenXNumbering::getArgPreCopyNumber(CallInst *CI, unsigned OperandNum,
  * For each flattened index in the return type, there is one slot before the
  * return instruction.
  */
-unsigned GenXNumbering::getRetPreCopyNumber(ReturnInst *RI, unsigned Index)
-{
-  return getNumber(RI)
-      - IndexFlattener::getNumElements(RI->getOperand(0)->getType()) + Index;
+unsigned GenXNumbering::getRetPreCopyNumber(ReturnInst *RI, unsigned Index) {
+  return getNumber(RI) -
+         IndexFlattener::getNumElements(RI->getOperand(0)->getType()) + Index;
 }
 
 /***********************************************************************
@@ -268,8 +265,7 @@ unsigned GenXNumbering::getRetPreCopyNumber(ReturnInst *RI, unsigned Index)
  * For each flattened index in the return type, there is one slot after the call
  * instruction.
  */
-unsigned GenXNumbering::getRetPostCopyNumber(CallInst *CI, unsigned Index)
-{
+unsigned GenXNumbering::getRetPostCopyNumber(CallInst *CI, unsigned Index) {
   return getNumber(CI) + 1 + Index;
 }
 
@@ -279,15 +275,13 @@ unsigned GenXNumbering::getRetPostCopyNumber(CallInst *CI, unsigned Index)
  * The non-const version caches the result in NumberToPhiIncomingMap, for the
  * later use of getPhiIncomingFromNumber.
  */
-unsigned GenXNumbering::getPhiNumber(PHINode *Phi, BasicBlock *BB) const
-{
+unsigned GenXNumbering::getPhiNumber(PHINode *Phi, BasicBlock *BB) const {
   // The instruction number is the count of phi nodes before it added to the
   // PhiNumber for the predecessor.
   return BBNumbers.find(BB)->second.PhiNumber + getPhiOffset(Phi);
 }
 
-unsigned GenXNumbering::getPhiNumber(PHINode *Phi, BasicBlock *BB)
-{
+unsigned GenXNumbering::getPhiNumber(PHINode *Phi, BasicBlock *BB) {
   unsigned Number = ((const GenXNumbering *)this)->getPhiNumber(Phi, BB);
   NumberToPhiIncomingMap.emplace(
       Number, std::make_pair(Phi, Phi->getBasicBlockIndex(BB)));
@@ -314,11 +308,11 @@ GenXNumbering::getPhiIncomingFromNumber(unsigned Number) {
 /***********************************************************************
  * getPhiOffset : get phi node offset (the 0 based index within its block)
  */
-unsigned GenXNumbering::getPhiOffset(PHINode *Phi) const
-{
+unsigned GenXNumbering::getPhiOffset(PHINode *Phi) const {
   // Count phi nodes from start of basic block to here.
   unsigned Count = 0;
-  for (BasicBlock::const_iterator bi = Phi->getParent()->begin(); &*bi != Phi; ++bi)
+  for (BasicBlock::const_iterator bi = Phi->getParent()->begin(); &*bi != Phi;
+       ++bi)
     ++Count;
   return Count;
 }
@@ -327,23 +321,24 @@ unsigned GenXNumbering::getPhiOffset(PHINode *Phi) const
  * dump, print : dump the instruction numbering
  */
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-void GenXNumbering::dump()
-{
-  print(errs()); errs() << '\n';
+void GenXNumbering::dump() {
+  print(errs());
+  errs() << '\n';
 }
 #endif
 
-void GenXNumbering::print(raw_ostream &OS) const
-{
+void GenXNumbering::print(raw_ostream &OS) const {
   OS << "GenXNumbering for FunctionGroup " << FG->getName() << "\n";
   for (auto fgi = FG->begin(), fge = FG->end(); fgi != fge; ++fgi) {
     Function *Func = *fgi;
     if (FG->size() != 1)
       OS << Func->getName() << ":\n";
-    for (Function::iterator fi = Func->begin(), fe = Func->end(); fi != fe; ++fi) {
+    for (Function::iterator fi = Func->begin(), fe = Func->end(); fi != fe;
+         ++fi) {
       BasicBlock *BB = &*fi;
       OS << "\n" << Numbers.find(BB)->second << " " << BB->getName() << ":\n";
-      for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be; ++bi) {
+      for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be;
+           ++bi) {
         Instruction *Inst = &*bi;
         if (Numbers.find(Inst) == Numbers.end())
           OS << " - ";
@@ -356,7 +351,8 @@ void GenXNumbering::print(raw_ostream &OS) const
       auto TI = cast<IGCLLVM::TerminatorInst>(BB->getTerminator());
       if (TI->getNumSuccessors()) {
         BasicBlock *Succ = TI->getSuccessor(0);
-        for (BasicBlock::iterator sbi = Succ->begin(), sbe = Succ->end(); sbi != sbe; ++sbi) {
+        for (BasicBlock::iterator sbi = Succ->begin(), sbe = Succ->end();
+             sbi != sbe; ++sbi) {
           if (PHINode *Phi = dyn_cast<PHINode>(&*sbi)) {
             OS << "(" << getPhiNumber(Phi, BB) << ")  ";
             Phi->print(OS);

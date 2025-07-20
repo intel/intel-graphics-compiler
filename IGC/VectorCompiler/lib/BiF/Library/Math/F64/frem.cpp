@@ -37,7 +37,7 @@ CM_NODEBUG CM_INLINE vector<uint32_t, N> get_exp(vector<double, N> x) {
 
 template <int N>
 CM_NODEBUG CM_INLINE vector<double, N> and_mantissa_loss(vector<double, N> x) {
-  vector<uint32_t, 2 *N> x_split = x.template format<uint32_t>();
+  vector<uint32_t, 2 * N> x_split = x.template format<uint32_t>();
   vector<uint32_t, N> x_lo = x_split.template select<N, 2>(0);
   x_lo &= mantissa_32loss;
   x_split.template select<N, 2>(0) = x_lo;
@@ -69,7 +69,7 @@ CM_NODEBUG CM_INLINE vector<double, N> round_to_int(vector<double, N> q) {
 template <int N>
 CM_NODEBUG CM_INLINE vector<double, N> xor_sign(vector<double, N> a,
                                                 vector<uint32_t, N> sign) {
-  vector<uint32_t, 2 *N> a_split = a.template format<uint32_t>();
+  vector<uint32_t, 2 * N> a_split = a.template format<uint32_t>();
   vector<uint32_t, N> a_hi = a_split.template select<N, 2>(1);
   a_hi = a_hi ^ sign;
   a_split.template select<N, 2>(1) = a_hi;

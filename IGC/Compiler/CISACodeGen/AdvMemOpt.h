@@ -17,8 +17,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC {
-    void initializeAdvMemOptPass(llvm::PassRegistry&);
-    llvm::FunctionPass* createAdvMemOptPass();
+void initializeAdvMemOptPass(llvm::PassRegistry &);
+llvm::FunctionPass *createAdvMemOptPass();
 } // End namespace IGC
 
 #endif // _CISA_ADVMEMOPT_H_

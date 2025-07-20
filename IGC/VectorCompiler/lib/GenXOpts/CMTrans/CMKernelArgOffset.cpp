@@ -133,7 +133,7 @@ namespace {
 struct GrfParamZone {
   unsigned Start;
   unsigned End;
-  GrfParamZone(unsigned s, unsigned e) : Start(s), End(e){};
+  GrfParamZone(unsigned s, unsigned e) : Start(s), End(e) {};
 };
 
 // CMKernelArgOffset pass
@@ -257,7 +257,8 @@ void CMKernelArgOffset::resolveByValArgs(Function *F) const {
     Value *BaseAsI8Ptr = Builder.CreateBitCast(Base, Builder.getInt8PtrTy(),
                                                Base->getName() + ".i8");
     for (const auto &Info : KM->arg_lin(&Arg)) {
-      Value *StoreAddrUntyped = Builder.CreateGEP(Builder.getInt8Ty(), BaseAsI8Ptr, Info.Offset);
+      Value *StoreAddrUntyped =
+          Builder.CreateGEP(Builder.getInt8Ty(), BaseAsI8Ptr, Info.Offset);
       Value *StoreAddrTyped = Builder.CreateBitCast(
           StoreAddrUntyped, Info.Arg->getType()->getPointerTo());
       Builder.CreateStore(Info.Arg, StoreAddrTyped);
@@ -297,7 +298,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     unsigned Offset = GrfStartOffset;
 
     unsigned ThreadPayloads[] = {
-      Offset, // R1: local_id_x, local_id_y, local_id_z
+        Offset, // R1: local_id_x, local_id_y, local_id_z
     };
     auto getImpOffset = [&](uint32_t ArgKind) -> int {
       if (vc::isLocalIDKind(ArgKind))
@@ -362,8 +363,8 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
       auto Desc = KM->getArgTypeDesc(Idx++);
       // Buffer is treated as stateless global pointer!
       bool IsPtr = vc::isDescBufferType(Desc) ||
-                      (UseBindlessImages && (vc::isDescImageType(Desc) ||
-                                             vc::isDescSamplerType(Desc)));
+                   (UseBindlessImages &&
+                    (vc::isDescImageType(Desc) || vc::isDescSamplerType(Desc)));
 
       // Skip alaready assigned arguments.
       if (PlacedArgs.count(&Arg))

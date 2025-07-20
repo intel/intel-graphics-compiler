@@ -14,34 +14,27 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 namespace llvm {
-    class Value;
-    class DataLayout;
-}
+class Value;
+class DataLayout;
+} // namespace llvm
 
 namespace IGC {
 
-enum class RTMemRegion : uint32_t
-{
-    RTAsyncStack,
-    RTSyncStack,
-    SWStack,
-    SWHotZone,
-    RTGlobals,
-    LocalArgs,
+enum class RTMemRegion : uint32_t {
+  RTAsyncStack,
+  RTSyncStack,
+  SWStack,
+  SWHotZone,
+  RTGlobals,
+  LocalArgs,
 };
 
-std::optional<RTMemRegion>
-getRTRegionByAddrspace(const llvm::Value* V, const ModuleMetaData& MMD);
+std::optional<RTMemRegion> getRTRegionByAddrspace(const llvm::Value *V, const ModuleMetaData &MMD);
 
-std::optional<RTMemRegion> getRegionOffset(
-    const llvm::Value* Ptr,
-    const ModuleMetaData& moduleMetaData,
-    const llvm::DataLayout* DL = nullptr,
-    uint64_t* Offset = nullptr,
-    uint64_t* dereferenceable_value = nullptr);
+std::optional<RTMemRegion> getRegionOffset(const llvm::Value *Ptr, const ModuleMetaData &moduleMetaData,
+                                           const llvm::DataLayout *DL = nullptr, uint64_t *Offset = nullptr,
+                                           uint64_t *dereferenceable_value = nullptr);
 
-std::optional<RTMemRegion>
-getRTRegion(const llvm::Value* Ptr, const ModuleMetaData &MMD);
+std::optional<RTMemRegion> getRTRegion(const llvm::Value *Ptr, const ModuleMetaData &MMD);
 
 } // namespace IGC
-

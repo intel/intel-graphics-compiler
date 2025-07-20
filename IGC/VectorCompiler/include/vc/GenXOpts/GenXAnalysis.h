@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 //
 //===----------------------------------------------------------------------===//
 
-
 #ifndef VC_GENXOPTS_GENXANALYSIS_H
 #define VC_GENXOPTS_GENXANALYSIS_H
 
@@ -40,9 +39,9 @@ Constant *ConstantFoldGenXIntrinsic(unsigned IID, Type *RetTy,
                                     ArrayRef<Constant *> Operands,
                                     Instruction *CSInst, const DataLayout &DL);
 
-/// ConstantFoldGenX - Attempt to constant fold genx-related instruction (intrinsic).
-/// This function tries to fold operands and then tries to fold instruction
-/// itself. Returns nullptr if folding was unsuccessful.
+/// ConstantFoldGenX - Attempt to constant fold genx-related instruction
+/// (intrinsic). This function tries to fold operands and then tries to fold
+/// instruction itself. Returns nullptr if folding was unsuccessful.
 Constant *ConstantFoldGenX(Instruction *I, const DataLayout &DL);
 
 /// Given a GenX intrinsic and a set of arguments, see if we can fold the

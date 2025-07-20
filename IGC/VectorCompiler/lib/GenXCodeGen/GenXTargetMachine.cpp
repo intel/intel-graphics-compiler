@@ -12,8 +12,8 @@ SPDX-License-Identifier: MIT
 /// Non-pass classes
 /// ================
 ///
-/// This section documents some GenX backend classes and abstractions that are not
-/// in themselves passes, but are used by the passes.
+/// This section documents some GenX backend classes and abstractions that are
+/// not in themselves passes, but are used by the passes.
 ///
 /// .. include:: GenXAlignmentInfo.h
 ///
@@ -99,9 +99,9 @@ static cl::opt<std::string>
     FGDumpsPrefix("vc-fg-dump-prefix", cl::init(""), cl::Hidden,
                   cl::desc("prefix to use for FG dumps"));
 
-static cl::opt<bool>
-    SkipOCLRuntimeInfo("vc-skip-ocl-runtime-info", cl::init(false), cl::Hidden,
-                  cl::desc("skip GenXOCLRuntimeInfo in addPassesToEmitFile for llc tests"));
+static cl::opt<bool> SkipOCLRuntimeInfo(
+    "vc-skip-ocl-runtime-info", cl::init(false), cl::Hidden,
+    cl::desc("skip GenXOCLRuntimeInfo in addPassesToEmitFile for llc tests"));
 
 static cl::opt<bool> EmitVLoadStore(
     "genx-emit-vldst", cl::init(true), cl::Hidden,
@@ -250,15 +250,13 @@ void initializeGenXPasses(PassRegistry &registry) {
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
-TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(
-  const Function &F) LLVM_GET_TTI_API_QUAL
-{
+TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function &F)
+    LLVM_GET_TTI_API_QUAL {
   GenXTTIImpl GTTI(F.getParent()->getDataLayout(), *BC, Subtarget);
   return TargetTransformInfo(std::move(GTTI));
 }
 void GenXTTIImpl::getUnrollingPreferences(
-    Loop *L, ScalarEvolution &SE,
-    TargetTransformInfo::UnrollingPreferences &UP,
+    Loop *L, ScalarEvolution &SE, TargetTransformInfo::UnrollingPreferences &UP,
     OptimizationRemarkEmitter *ORE) {
   if (BC.ignoreLoopUnrollThresholdOnPragma() &&
       GetUnrollMetadataForLoop(L, "llvm.loop.unroll.enable"))
@@ -488,12 +486,9 @@ extern "C" void LLVMInitializeGenXPasses() {
 //===----------------------------------------------------------------------===//
 // Pass Pipeline Configuration
 //===----------------------------------------------------------------------===//
-bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
-                                            raw_pwrite_stream &o,
-                                            raw_pwrite_stream * pi,
-                                            CodeGenFileType FileType,
-                                            bool DisableVerify,
-                                            MachineModuleInfo *) {
+bool GenXTargetMachine::addPassesToEmitFile(
+    PassManagerBase &PM, raw_pwrite_stream &o, raw_pwrite_stream *pi,
+    CodeGenFileType FileType, bool DisableVerify, MachineModuleInfo *) {
   // We can consider the .isa file to be an object file, or an assembly file
   // which may later be converted to GenX code by the Finalizer. If we're
   // asked to produce any other type of file return true to indicate an error.
@@ -523,7 +518,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createSROAPass());
   vc::addPass(PM, createEarlyCSEPass());
   vc::addPass(PM, createLowerExpectIntrinsicPass());
-  vc::addPass(PM, createCFGSimplificationPass(SimplifyCFGOptions().hoistCommonInsts(true)));
+  vc::addPass(PM, createCFGSimplificationPass(
+                      SimplifyCFGOptions().hoistCommonInsts(true)));
   vc::addPass(PM, createInstructionCombiningPass());
   vc::addPass(PM, createCFGSimplificationPass());
 
@@ -704,7 +700,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   ///
   vc::addPass(PM, createEarlyCSEPass());
   /// .. include:: GenXPatternMatch.cpp
-  vc::addPass(PM, createGenXPatternMatchPass(PatternMatchKind::PreLegalization));
+  vc::addPass(PM,
+              createGenXPatternMatchPass(PatternMatchKind::PreLegalization));
 
   if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
@@ -769,7 +766,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   ///
   vc::addPass(PM, createEarlyCSEPass());
   /// .. include:: GenXPatternMatch.cpp
-  vc::addPass(PM, createGenXPatternMatchPass(PatternMatchKind::PostLegalization));
+  vc::addPass(PM,
+              createGenXPatternMatchPass(PatternMatchKind::PostLegalization));
 
   if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
@@ -928,7 +926,8 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PM.add(createPromoteMemoryToRegisterPass());
     PM.add(createInferAddressSpacesPass());
     PM.add(createEarlyCSEPass(true));
-    PM.add(createCFGSimplificationPass(SimplifyCFGOptions().hoistCommonInsts(true)));
+    PM.add(createCFGSimplificationPass(
+        SimplifyCFGOptions().hoistCommonInsts(true)));
     PM.add(createInstructionCombiningPass());
     PM.add(createDeadCodeEliminationPass());
     PM.add(createSROAPass());
@@ -947,7 +946,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   // vldst.
   if (EmitVLoadStore) {
     auto AddLowerLoadStore = [this](const PassManagerBuilder &Builder,
-                                PassManagerBase &PM) {
+                                    PassManagerBase &PM) {
       GenXPassConfig *PassConfig = createGenXPassConfig(*this, PM);
       vc::addPass(PM, PassConfig);
       const GenXBackendConfig &BackendConfig = PassConfig->getBackendConfig();

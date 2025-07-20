@@ -18,36 +18,30 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class BufferBoundsCheckingPatcher : public llvm::ModulePass, public llvm::InstVisitor<BufferBoundsCheckingPatcher>
-    {
-    public:
-        static char ID;
-        static constexpr const char* BUFFER_SIZE_PLACEHOLDER_FUNCTION_NAME = "__bufferboundschecking.bufferSizePlaceholder";
+namespace IGC {
+class BufferBoundsCheckingPatcher : public llvm::ModulePass, public llvm::InstVisitor<BufferBoundsCheckingPatcher> {
+public:
+  static char ID;
+  static constexpr const char *BUFFER_SIZE_PLACEHOLDER_FUNCTION_NAME = "__bufferboundschecking.bufferSizePlaceholder";
 
-        BufferBoundsCheckingPatcher();
-        ~BufferBoundsCheckingPatcher() = default;
+  BufferBoundsCheckingPatcher();
+  ~BufferBoundsCheckingPatcher() = default;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& analysisUsage) const override
-        {
-            analysisUsage.addRequired<MetaDataUtilsWrapper>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &analysisUsage) const override {
+    analysisUsage.addRequired<MetaDataUtilsWrapper>();
+  }
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "BufferBoundsCheckingPatcher";
-        }
+  virtual llvm::StringRef getPassName() const override { return "BufferBoundsCheckingPatcher"; }
 
-        virtual bool runOnModule(llvm::Module& M) override;
+  virtual bool runOnModule(llvm::Module &M) override;
 
-        void visitCallInst(llvm::CallInst& icmp);
+  void visitCallInst(llvm::CallInst &icmp);
 
-    private:
-        ImplicitArgs* implicitArgs = nullptr;
-        IGCMD::MetaDataUtils* metadataUtils = nullptr;
-        llvm::SmallVector<llvm::CallInst*, 8> toRemove;
+private:
+  ImplicitArgs *implicitArgs = nullptr;
+  IGCMD::MetaDataUtils *metadataUtils = nullptr;
+  llvm::SmallVector<llvm::CallInst *, 8> toRemove;
 
-        llvm::Argument* getBufferSizeArg(llvm::Function* function, uint32_t n);
-    };
-}
+  llvm::Argument *getBufferSizeArg(llvm::Function *function, uint32_t n);
+};
+} // namespace IGC

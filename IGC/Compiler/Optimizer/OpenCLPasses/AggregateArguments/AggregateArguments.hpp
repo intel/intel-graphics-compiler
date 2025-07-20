@@ -17,73 +17,59 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class AggregateArgumentsAnalysis : public llvm::ModulePass
-    {
-    public:
+namespace IGC {
+class AggregateArgumentsAnalysis : public llvm::ModulePass {
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
 
-        // Pass identification, replacement for typeid
-        static char ID;
+  AggregateArgumentsAnalysis();
 
-        AggregateArgumentsAnalysis();
+  virtual llvm::StringRef getPassName() const override { return "AggregateArgumentsAnalysis"; }
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "AggregateArgumentsAnalysis";
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.setPreservesCFG();
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<CodeGenContextWrapper>();
-        }
+  virtual bool runOnModule(llvm::Module &M) override;
 
-        virtual bool runOnModule(llvm::Module& M) override;
+private:
+  void addImplictArgs(llvm::Type *type, uint64_t baseAllocaOffset);
 
-    private:
-        void addImplictArgs(llvm::Type* type, uint64_t baseAllocaOffset);
+private:
+  const llvm::DataLayout *m_pDL{};
+  ImplicitArg::StructArgList m_argList;
+  IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
+};
 
-    private:
-        const llvm::DataLayout* m_pDL{};
-        ImplicitArg::StructArgList m_argList;
-        IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
+class ResolveAggregateArguments : public llvm::FunctionPass {
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
 
-    };
+  ResolveAggregateArguments();
 
-    class ResolveAggregateArguments : public llvm::FunctionPass
-    {
-    public:
+  virtual llvm::StringRef getPassName() const override { return "ResolveAggregateArguments"; }
 
-        // Pass identification, replacement for typeid
-        static char ID;
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-        ResolveAggregateArguments();
+  virtual bool runOnFunction(llvm::Function &F) override;
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "ResolveAggregateArguments";
-        }
+private:
+  void storeArgument(const llvm::Argument *, llvm::AllocaInst *base, IGCLLVM::IRBuilder<> &irBuilder);
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.setPreservesCFG();
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<CodeGenContextWrapper>();
-        }
+  void getImplicitArg(unsigned int explicitArgNo, unsigned int &startArgNo, unsigned int &endArgNo);
 
-        virtual bool runOnFunction(llvm::Function& F) override;
+protected:
+  llvm::Function *m_pFunction = nullptr;
 
-    private:
-        void storeArgument(const llvm::Argument*, llvm::AllocaInst* base, IGCLLVM::IRBuilder<>& irBuilder);
-
-        void getImplicitArg(unsigned int explicitArgNo, unsigned int& startArgNo, unsigned int& endArgNo);
-
-    protected:
-        llvm::Function* m_pFunction = nullptr;
-
-        ImplicitArgs m_implicitArgs;
-    };
+  ImplicitArgs m_implicitArgs;
+};
 
 } // namespace IGC

@@ -14,7 +14,9 @@ namespace cl {
 
 namespace detail {
 
-template <typename T> struct type_identity { using type = T; };
+template <typename T> struct type_identity {
+  using type = T;
+};
 
 template <typename T> auto try_add_lvalue_reference(int) -> type_identity<T &>;
 template <typename T, typename G>
@@ -34,11 +36,17 @@ template <typename T>
 struct add_rvalue_reference : decltype(detail::try_add_rvalue_reference<T>(0)) {
 };
 
-template <typename T> struct remove_reference { using type = T; };
+template <typename T> struct remove_reference {
+  using type = T;
+};
 
-template <typename T> struct remove_reference<T &> { using type = T; };
+template <typename T> struct remove_reference<T &> {
+  using type = T;
+};
 
-template <typename T> struct remove_reference<T &&> { using type = T; };
+template <typename T> struct remove_reference<T &&> {
+  using type = T;
+};
 
 template <typename T>
 using remove_reference_t = typename remove_reference<T>::type;
@@ -66,10 +74,18 @@ template <typename T> struct is_same<T, T> : true_type {};
 template <bool B, typename T, typename F>
 using conditional = detail::conditional<B, T, F>;
 
-template <typename T> struct remove_cv { using type = T; };
-template <typename T> struct remove_cv<const T> { using type = T; };
-template <typename T> struct remove_cv<volatile T> { using type = T; };
-template <typename T> struct remove_cv<const volatile T> { using type = T; };
+template <typename T> struct remove_cv {
+  using type = T;
+};
+template <typename T> struct remove_cv<const T> {
+  using type = T;
+};
+template <typename T> struct remove_cv<volatile T> {
+  using type = T;
+};
+template <typename T> struct remove_cv<const volatile T> {
+  using type = T;
+};
 
 template <typename T> struct pointer_traits;
 

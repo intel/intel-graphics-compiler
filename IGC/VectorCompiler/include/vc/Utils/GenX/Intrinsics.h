@@ -283,10 +283,10 @@ getInternalDeclarationForIdFromArgs(llvm::Type *RetTy, Range &&Args,
 //  A pointer to created Intrinsic/GenXIntrinsic/InternalIntrinsic, with
 //    ID == IID and arguments from \p Operands;
 llvm::CallInst *createAnyIntrinsic(llvm::IRBuilder<> &Builder,
-                                    llvm::ArrayRef<llvm::Value *> Operands,
-                                    unsigned IID,
-                                    llvm::ArrayRef<llvm::Type *> Types = {},
-                                    const llvm::Twine &Name = "");
+                                   llvm::ArrayRef<llvm::Value *> Operands,
+                                   unsigned IID,
+                                   llvm::ArrayRef<llvm::Type *> Types = {},
+                                   const llvm::Twine &Name = "");
 
 } // namespace vc
 

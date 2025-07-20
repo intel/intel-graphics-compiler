@@ -14,8 +14,7 @@ SPDX-License-Identifier: MIT
 namespace IGC::detail {
 class SignalGuard {
 public:
-  SignalGuard(int Signal, void (*Handler)(int, siginfo_t *, void *))
-      : Signal(Signal) {
+  SignalGuard(int Signal, void (*Handler)(int, siginfo_t *, void *)) : Signal(Signal) {
     sigaction(Signal, nullptr, &SAOld);
     struct sigaction SA{};
     sigemptyset(&SA.sa_mask);
@@ -24,9 +23,7 @@ public:
     sigaction(Signal, &SA, nullptr);
   }
 
-  ~SignalGuard() {
-    sigaction(Signal, &SAOld, nullptr);
-  }
+  ~SignalGuard() { sigaction(Signal, &SAOld, nullptr); }
 
   SignalGuard(const SignalGuard &) = delete;
   SignalGuard &operator=(const SignalGuard &) = delete;
@@ -37,8 +34,7 @@ private:
 }; // class SignalGuard
 } // namespace IGC::detail
 
-#define SET_SIG_HANDLER(SIG)                                                   \
-  ::IGC::detail::SignalGuard SG##SIG(SIG, signalHandler);
+#define SET_SIG_HANDLER(SIG) ::IGC::detail::SignalGuard SG##SIG(SIG, signalHandler);
 
 #define REMOVE_SIG_HANDLER(SIG) (void)SG##SIG;
 

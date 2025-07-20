@@ -66,13 +66,14 @@ bool GenXVerify::runOnModule(Module &M) {
   return false;
 }
 
-void GenXVerify::visitGlobalVariable(const GlobalVariable &GV){
+void GenXVerify::visitGlobalVariable(const GlobalVariable &GV) {
   if (!GV.hasAttribute(genx::FunctionMD::GenXVolatile))
     return;
   ensure(GV.getAddressSpace() == vc::AddrSpace::Private,
          "a volatile variable must reside in private address space", GV);
   auto InvalidUser = llvm::find_if(GV.users(), [](const User *U) {
-    const auto *I = dyn_cast<Instruction>(genx::peelBitCastsWhileSingleUserChain(U));
+    const auto *I =
+        dyn_cast<Instruction>(genx::peelBitCastsWhileSingleUserChain(U));
     return !I || !(genx::isAVStore(I) || genx::isAVLoad(I));
   });
   if (InvalidUser == GV.user_end())

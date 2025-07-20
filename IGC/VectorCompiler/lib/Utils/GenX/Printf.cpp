@@ -91,7 +91,8 @@ const GlobalVariable *vc::getConstStringGVFromOperandOptional(const Value &Op) {
   auto &MaybeGEP = ignoreCastToGenericAS(Op);
   // GEP can be missing in case of opaque pointers
   if (isConstantString(MaybeGEP))
-    return &cast<GlobalVariable>(MaybeGEP);;
+    return &cast<GlobalVariable>(MaybeGEP);
+  ;
   if (!isa<GEPOperator>(MaybeGEP))
     return nullptr;
   auto &GEP = cast<GEPOperator>(MaybeGEP);
@@ -121,7 +122,8 @@ GlobalVariable &vc::getConstStringGVFromOperand(Value &Op) {
       getConstStringGVFromOperand(static_cast<const Value &>(Op)));
 }
 
-std::optional<StringRef> vc::getConstStringFromOperandOptional(const Value &Op) {
+std::optional<StringRef>
+vc::getConstStringFromOperandOptional(const Value &Op) {
   auto *GV = getConstStringGVFromOperandOptional(Op);
   if (!GV)
     return {};

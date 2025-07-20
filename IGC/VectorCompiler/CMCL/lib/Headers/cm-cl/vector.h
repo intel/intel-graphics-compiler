@@ -28,8 +28,7 @@ template <typename T, int width> class vector;
 // FIXME: mask should be a separate class, bool type should be utilized.
 template <int width> using mask = vector<char, width>;
 
-template<typename T, int width>
-class vector {
+template <typename T, int width> class vector {
   using vector_impl = detail::vector_impl<T, width>;
   vector_impl impl;
 
@@ -87,17 +86,11 @@ public:
     return *this;
   }
 
-  vector operator~() const {
-    return ~impl;
-  }
+  vector operator~() const { return ~impl; }
 
-  vector operator-() const {
-    return -impl;
-  }
+  vector operator-() const { return -impl; }
 
-  vector operator+() const {
-    return impl;
-  }
+  vector operator+() const { return impl; }
 
   vector operator&=(vector rhs) {
     impl &= rhs.impl;
@@ -335,7 +328,7 @@ public:
   // Even though we have a template version of opertor=, standard assignment
   // will win the overload. And it's implicitly deleted.
   vector_slice operator=(vector_slice rhs) {
-    return operator=<stride, OrigT, orig_width>(rhs);
+    return operator= <stride, OrigT, orig_width>(rhs);
   }
 
   template <int new_sub_width, int new_stride>

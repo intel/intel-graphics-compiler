@@ -8,12 +8,10 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-namespace llvm
-{
-    class FunctionPass;
+namespace llvm {
+class FunctionPass;
 }
 
-namespace IGC
-{
-    llvm::FunctionPass* createPromoteInt8TypePass();
+namespace IGC {
+llvm::FunctionPass *createPromoteInt8TypePass();
 }

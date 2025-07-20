@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/PassRegistry.h"
 #include "common/LLVMWarningsPop.hpp"
 
-void initializeEmu64OpsPass(llvm::PassRegistry&);
-llvm::FunctionPass* createEmu64OpsPass();
+void initializeEmu64OpsPass(llvm::PassRegistry &);
+llvm::FunctionPass *createEmu64OpsPass();
 
 #endif // EMU64OPSPASS_H

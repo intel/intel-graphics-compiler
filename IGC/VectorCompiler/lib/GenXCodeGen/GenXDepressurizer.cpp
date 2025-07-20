@@ -242,7 +242,7 @@ public:
 
 private:
   std::set<Value *> Values[NUMCATS];
-  unsigned Pressure; // overall register pressure
+  unsigned Pressure;           // overall register pressure
   unsigned Pressures[NUMCATS]; // pressure for each individual category
 public:
   Liveness() : Pressure(0) {
@@ -287,7 +287,10 @@ public:
   unsigned cat_end() { return NUMCATS; }
   // Debug print and dump
   void print(raw_ostream &OS);
-  void dump() { print(dbgs()); dbgs() << '\n'; }
+  void dump() {
+    print(dbgs());
+    dbgs() << '\n';
+  }
 };
 
 // Superbale : a sequence of bales where each is headed by a wrregion whose
@@ -302,7 +305,10 @@ struct Superbale {
   SmallVector<Value *, 8> Operands;
   Instruction *getHead() { return Bales[0]; }
   void print(raw_ostream &OS);
-  void dump() { print(dbgs()); dbgs() << '\n'; }
+  void dump() {
+    print(dbgs());
+    dbgs() << '\n';
+  }
 };
 
 // SinkCandidate : a candidate superbale for sinking
@@ -373,8 +379,8 @@ private:
   bool sink(Instruction *InsertBefore, Superbale *SB, bool AllowClone = false);
   bool sinkOnce(Instruction *InsertBefore, Superbale *SB, ArrayRef<Use *> Uses);
   bool modifyLiveness(Liveness *Live, Superbale *SB);
-  int  getSuperbaleKillSize(Superbale *SB);
-  int  getSinkBenefit(Superbale *SB, Liveness::Category Cat, unsigned Headroom);
+  int getSuperbaleKillSize(Superbale *SB);
+  int getSinkBenefit(Superbale *SB, Liveness::Category Cat, unsigned Headroom);
   bool fillSuperbale(Superbale *SB, Instruction *Inst, bool IsFlag);
   void MergeCandidate(SinkCandidate &Lhs, SinkCandidate &Rhs);
   void fillTwoAddrValueMap(BasicBlock *BB);
@@ -385,7 +391,7 @@ private:
 namespace llvm {
 void initializeGenXDepressurizerWrapperPass(PassRegistry &);
 using GenXDepressurizerWrapper = FunctionGroupWrapperPass<GenXDepressurizer>;
-}
+} // namespace llvm
 INITIALIZE_PASS_BEGIN(GenXDepressurizerWrapper, "GenXDepressurizerWrapper",
                       "GenXDepressurizerWrapper", false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
@@ -442,7 +448,8 @@ bool GenXDepressurizer::runOnFunctionGroup(FunctionGroup &FG) {
  * processFunction : run depressurizer on one function
  */
 void GenXDepressurizer::processFunction(Function *F) {
-  LLVM_DEBUG(dbgs() << "GenXDepressurizer on function " << F->getName() << '\n');
+  LLVM_DEBUG(dbgs() << "GenXDepressurizer on function " << F->getName()
+                    << '\n');
   MaxPressure = 0;
   DT = getAnalysis<DominatorTreeGroupWrapperPass>().getDomTree(F);
   LI = new LoopInfoBase<BasicBlock, Loop>();
@@ -461,7 +468,7 @@ void GenXDepressurizer::processFunction(Function *F) {
   delete PCFG;
   delete LI;
   LLVM_DEBUG(dbgs() << "max pressure " << MaxPressure << " for function "
-               << F->getName() << '\n');
+                    << F->getName() << '\n');
   SubroutinePressures[F] = MaxPressure;
 }
 

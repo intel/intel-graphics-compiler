@@ -20,16 +20,12 @@ void RAIIReleaseHelper(HMODULE mod) {
   FreeLibrary(mod);
 }
 
-using UniquePtrHMODULE_t = std::unique_ptr<std::remove_pointer<HMODULE>::type,
-                                           decltype(&RAIIReleaseHelper)>;
-inline UniquePtrHMODULE_t UniquePtrHMODULE(HMODULE mod) {
-  return UniquePtrHMODULE_t(mod, RAIIReleaseHelper);
-}
+using UniquePtrHMODULE_t = std::unique_ptr<std::remove_pointer<HMODULE>::type, decltype(&RAIIReleaseHelper)>;
+inline UniquePtrHMODULE_t UniquePtrHMODULE(HMODULE mod) { return UniquePtrHMODULE_t(mod, RAIIReleaseHelper); }
 
 class WinLibraryHandle : public LibraryHandle {
 public:
-  WinLibraryHandle(HMODULE module, bool ownsHandle)
-      : module(module), ownsHandle(ownsHandle) {}
+  WinLibraryHandle(HMODULE module, bool ownsHandle) : module(module), ownsHandle(ownsHandle) {}
   ~WinLibraryHandle() override {
     if (ownsHandle && (NULL != module)) {
       FreeLibrary(module);
@@ -61,4 +57,4 @@ inline std::unique_ptr<LibraryHandle> OpenLibrary(HMODULE module) {
   ret.reset(new WinLibraryHandle(module, false));
   return ret;
 }
-}
+} // namespace CIF

@@ -20,42 +20,33 @@ using namespace IGC;
 
 namespace {
 
-    class MarkReadOnlyLoad : public FunctionPass,
-        public InstVisitor<MarkReadOnlyLoad>
-    {
-    public:
-        static char ID;
+class MarkReadOnlyLoad : public FunctionPass, public InstVisitor<MarkReadOnlyLoad> {
+public:
+  static char ID;
 
-        MarkReadOnlyLoad();
-        ~MarkReadOnlyLoad() {}
+  MarkReadOnlyLoad();
+  ~MarkReadOnlyLoad() {}
 
-        StringRef getPassName() const override
-        {
-            return "MarkReadOnlyLoadPass";
-        }
+  StringRef getPassName() const override { return "MarkReadOnlyLoadPass"; }
 
-        void getAnalysisUsage(AnalysisUsage& AU) const override
-        {
-            AU.addRequired<CodeGenContextWrapper>();
-            AU.setPreservesCFG();
-        }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.setPreservesCFG();
+  }
 
-        bool runOnFunction(Function& F) override;
+  bool runOnFunction(Function &F) override;
 
-        void visitLoadInst(LoadInst& LI);
+  void visitLoadInst(LoadInst &LI);
 
-    private:
-        MDNode* m_mdNode = nullptr;
-        bool m_changed{};
-    };
+private:
+  MDNode *m_mdNode = nullptr;
+  bool m_changed{};
+};
 
 } // namespace
 
 namespace IGC {
-    FunctionPass* createMarkReadOnlyLoadPass()
-    {
-        return new MarkReadOnlyLoad();
-    }
+FunctionPass *createMarkReadOnlyLoadPass() { return new MarkReadOnlyLoad(); }
 
 } // namespace IGC
 
@@ -63,61 +54,47 @@ namespace IGC {
 #define PASS_DESCRIPTION "Mark readonly load"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(MarkReadOnlyLoad,
-    PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-    IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-    IGC_INITIALIZE_PASS_END(MarkReadOnlyLoad,
-        PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(MarkReadOnlyLoad, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_END(MarkReadOnlyLoad, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-    char MarkReadOnlyLoad::ID = 0;
+char MarkReadOnlyLoad::ID = 0;
 
-MarkReadOnlyLoad::MarkReadOnlyLoad()
-    : FunctionPass(ID)
-{
-    initializeMarkReadOnlyLoadPass(*PassRegistry::getPassRegistry());
+MarkReadOnlyLoad::MarkReadOnlyLoad() : FunctionPass(ID) {
+  initializeMarkReadOnlyLoadPass(*PassRegistry::getPassRegistry());
 }
 
-bool MarkReadOnlyLoad::runOnFunction(Function& F)
-{
-    m_changed = false;
-    m_mdNode = MDNode::get(F.getContext(), nullptr);
+bool MarkReadOnlyLoad::runOnFunction(Function &F) {
+  m_changed = false;
+  m_mdNode = MDNode::get(F.getContext(), nullptr);
 
-    visit(F);
-    return m_changed;
+  visit(F);
+  return m_changed;
 }
 
-void MarkReadOnlyLoad::visitLoadInst(LoadInst& LI)
-{
-    bool isRO = false;
+void MarkReadOnlyLoad::visitLoadInst(LoadInst &LI) {
+  bool isRO = false;
 
-    if (LI.getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT)
-    {
-        isRO = true;
-    }
-    else if (auto *srcPtr = TracePointerSource(LI.getPointerOperand()))
-    {
-        if (isa<GenIntrinsicInst>(srcPtr))
-        {
-            unsigned bufId = 0;
-            BufferType bufTy;
-            BufferAccessType accTy;
-            bool needBufferOffset = false; // Unused
+  if (LI.getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT) {
+    isRO = true;
+  } else if (auto *srcPtr = TracePointerSource(LI.getPointerOperand())) {
+    if (isa<GenIntrinsicInst>(srcPtr)) {
+      unsigned bufId = 0;
+      BufferType bufTy;
+      BufferAccessType accTy;
+      bool needBufferOffset = false; // Unused
 
-            // check whether we are doing read only access on buffer (e.g. on UAV)
-            if (GetResourcePointerInfo(
-                srcPtr, bufId, bufTy, accTy, needBufferOffset))
-            {
-                if (accTy == BufferAccessType::ACCESS_READ)
-                {
-                    isRO = true;
-                }
-            }
+      // check whether we are doing read only access on buffer (e.g. on UAV)
+      if (GetResourcePointerInfo(srcPtr, bufId, bufTy, accTy, needBufferOffset)) {
+        if (accTy == BufferAccessType::ACCESS_READ) {
+          isRO = true;
         }
+      }
     }
+  }
 
-    if (isRO)
-    {
-        m_changed = true;
-        LI.setMetadata(LLVMContext::MD_invariant_load, m_mdNode);
-    }
+  if (isRO) {
+    m_changed = true;
+    LI.setMetadata(LLVMContext::MD_invariant_load, m_mdNode);
+  }
 }

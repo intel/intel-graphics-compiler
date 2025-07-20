@@ -237,7 +237,7 @@ class GenXPrologEpilogInsertion
 
   std::pair<Value *, Value *>
   createBinOpPredefReg(PreDefined_Vars RegID, IRBuilder<> &IRB,
-                       Instruction::BinaryOps Opc, Value* Val,
+                       Instruction::BinaryOps Opc, Value *Val,
                        bool Copy = false, bool UpdateReg = true) const;
 
   std::pair<Value *, Value *>

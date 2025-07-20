@@ -36,16 +36,21 @@ DEF_IMAGE_TYPE(__spirv_Image__void_2_0_0_0_0_0, Img3d)
 
 typedef global struct __spirv_SampledImage__void_1_0_0_0_0_0_0* __spirv_SampledImage_2D;
 typedef global struct __spirv_SampledImage__void_2_0_0_0_0_0_0* __spirv_SampledImage_3D;
-typedef global struct __spirv_SampledImage__void_1_0_1_0_0_0_0* __spirv_SampledImage_2D_array;
+typedef global struct __spirv_SampledImage__void_1_0_1_0_0_0_0*
+    __spirv_SampledImage_2D_array;
 typedef global struct __spirv_SampledImage__void_0_0_0_0_0_0_0* __spirv_SampledImage_1D;
-typedef global struct __spirv_SampledImage__void_0_0_1_0_0_0_0* __spirv_SampledImage_1D_array;
-typedef global struct __spirv_SampledImage__void_1_1_0_0_0_0_0* __spirv_SampledImage_2D_depth;
-typedef global struct __spirv_SampledImage__void_1_1_1_0_0_0_0* __spirv_SampledImage_2D_array_depth;
+typedef global struct __spirv_SampledImage__void_0_0_1_0_0_0_0*
+    __spirv_SampledImage_1D_array;
+typedef global struct __spirv_SampledImage__void_1_1_0_0_0_0_0*
+    __spirv_SampledImage_2D_depth;
+typedef global struct __spirv_SampledImage__void_1_1_1_0_0_0_0*
+    __spirv_SampledImage_2D_array_depth;
 
 // SPV_INTEL_device_side_avc_motion_estimation types
 
 struct __spirv_VmeImageINTEL__void_1_0_0_0_0_0_0;
-typedef global struct __spirv_VmeImageINTEL__void_1_0_0_0_0_0_0* __spirv_VmeImageINTEL__void_1_0_0_0_0_0_0;
+typedef global struct __spirv_VmeImageINTEL__void_1_0_0_0_0_0_0*
+    __spirv_VmeImageINTEL__void_1_0_0_0_0_0_0;
 
 typedef constant struct __spirv_Sampler*                 __spirv_Sampler;
 typedef global struct __spirv_Image__void_1_0_0_0_0_0_0* __spirv_Image;

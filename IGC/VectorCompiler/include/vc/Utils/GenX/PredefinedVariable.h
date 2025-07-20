@@ -134,7 +134,8 @@ inline llvm::GlobalVariable &createBSS(llvm::Module &M) {
   return createPV<ID::BSS>(M);
 }
 
-// Creates BindlessSampler predefined variable. Matches \p createPV restrictions.
+// Creates BindlessSampler predefined variable. Matches \p createPV
+// restrictions.
 inline llvm::GlobalVariable &createBindlessSampler(llvm::Module &M) {
   return createPV<ID::BindlessSampler>(M);
 }

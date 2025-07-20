@@ -204,8 +204,8 @@ public:
   FuncUsersUpdaterNewPM(llvm::Function &OrigFuncIn, llvm::Function &NewFuncIn,
                         const TransformedFuncInfo &NewFuncInfoIn,
                         llvm::LazyCallGraph &CGIn)
-      : OrigFunc{OrigFuncIn}, NewFunc{NewFuncIn},
-        NewFuncInfo{NewFuncInfoIn}, CG{CGIn} {}
+      : OrigFunc{OrigFuncIn}, NewFunc{NewFuncIn}, NewFuncInfo{NewFuncInfoIn},
+        CG{CGIn} {}
 
   void run();
 

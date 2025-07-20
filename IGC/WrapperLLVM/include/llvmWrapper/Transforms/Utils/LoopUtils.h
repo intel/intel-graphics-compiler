@@ -13,15 +13,14 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
 
-namespace IGCLLVM
-{
-    inline bool isInnermost(llvm::Loop *L) {
+namespace IGCLLVM {
+inline bool isInnermost(llvm::Loop *L) {
 #if LLVM_VERSION_MAJOR >= 12
-        return L->isInnermost();
+  return L->isInnermost();
 #else
-        return L->empty();
+  return L->empty();
 #endif
-    }
 }
+} // namespace IGCLLVM
 
 #endif

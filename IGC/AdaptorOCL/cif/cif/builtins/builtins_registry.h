@@ -24,6 +24,6 @@ bool GetSupportedVersions(InterfaceId_t entryPointInterface, Version_t &verMin, 
 
 InterfaceId_t FindIncompatible(InterfaceId_t entryPointInterface, CIF::CompatibilityDataHandle handle);
 
-}
+} // namespace Builtins
 
-}
+} // namespace CIF

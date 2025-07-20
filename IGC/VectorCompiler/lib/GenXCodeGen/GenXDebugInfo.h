@@ -26,7 +26,7 @@ class ModuleToVisaTransformInfo;
 struct ProgramInfo;
 
 namespace IGC {
-  struct DebugEmitterOpts;
+struct DebugEmitterOpts;
 } // namespace IGC
 
 namespace llvm {

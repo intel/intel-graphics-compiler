@@ -22,13 +22,9 @@ public:
 
   MergeScalarPhisPass();
 
-  virtual llvm::StringRef getPassName() const override {
-    return "Merge scalar phis pass";
-  }
+  virtual llvm::StringRef getPassName() const override { return "Merge scalar phis pass"; }
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-  }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
 
   virtual bool runOnFunction(llvm::Function &F) override;
 
@@ -38,8 +34,7 @@ private:
   void cleanUpIR();
   bool makeChanges();
 
-  llvm::MapVector<llvm::Value *, llvm::SmallVector<llvm::PHINode *, 4>>
-      VectorToPhiNodesMap;
+  llvm::MapVector<llvm::Value *, llvm::SmallVector<llvm::PHINode *, 4>> VectorToPhiNodesMap;
   llvm::SmallSet<llvm::PHINode *, 16> PhiNodesToRemove;
   llvm::SmallSet<llvm::ExtractElementInst *, 16> ExtrElementsToRemove;
 };

@@ -53,7 +53,7 @@ class GenXExtractVectorizer : public FunctionPass {
 public:
   struct Extract {
     Instruction *Inst; // the binary operator applied to the extracted element
-    int Offset; // constant offset from the rdregion
+    int Offset;        // constant offset from the rdregion
     Extract(Instruction *Inst, int Offset) : Inst(Inst), Offset(Offset) {}
     // Sort in offset order
     bool operator<(const Extract &Other) const { return Offset < Other.Offset; }
@@ -80,7 +80,7 @@ public:
     Instruction *InsertPt;
   };
   static char ID;
-  explicit GenXExtractVectorizer() : FunctionPass(ID) { }
+  explicit GenXExtractVectorizer() : FunctionPass(ID) {}
   StringRef getPassName() const override { return "GenX Extract Vectorizer"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<DominatorTreeWrapperPass>();
@@ -94,11 +94,12 @@ private:
   void processBucket(BucketInfo &BI);
 };
 
-}// end namespace llvm
-
+} // namespace
 
 char GenXExtractVectorizer::ID = 0;
-namespace llvm { void initializeGenXExtractVectorizerPass(PassRegistry &); }
+namespace llvm {
+void initializeGenXExtractVectorizerPass(PassRegistry &);
+}
 INITIALIZE_PASS_BEGIN(GenXExtractVectorizer, "GenXExtractVectorizer",
                       "GenXExtractVectorizer", false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
@@ -107,8 +108,7 @@ INITIALIZE_PASS_END(GenXExtractVectorizer, "GenXExtractVectorizer",
                     "GenXExtractVectorizer", false, false)
 
 // Publicly exposed interface to pass...
-FunctionPass *llvm::createGenXExtractVectorizerPass()
-{
+FunctionPass *llvm::createGenXExtractVectorizerPass() {
   initializeGenXExtractVectorizerPass(*PassRegistry::getPassRegistry());
   return new GenXExtractVectorizer();
 }
@@ -116,8 +116,7 @@ FunctionPass *llvm::createGenXExtractVectorizerPass()
 /***********************************************************************
  * runOnFunction : run the extract vectorizer for this Function
  */
-bool GenXExtractVectorizer::runOnFunction(Function &F)
-{
+bool GenXExtractVectorizer::runOnFunction(Function &F) {
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
   // Scan the code looking for vector values that have an extract (a rdregion
@@ -238,8 +237,7 @@ static bool isProfitable(const GenXExtractVectorizer::Bucket &B) {
  * has at least one scalar extracted from it (using rdregion), in the hope that
  * we can vectorize it as the first stage of the histogram optimization
  */
-void GenXExtractVectorizer::processExtracted(Value *V)
-{
+void GenXExtractVectorizer::processExtracted(Value *V) {
   // Gather the scalar extracting rdregion uses of V into buckets, one for
   // each binaryoperator with constant rhs that the extracted value is used in.
   std::map<BucketIndex, Bucket> Buckets;
@@ -275,7 +273,8 @@ void GenXExtractVectorizer::processExtracted(Value *V)
     // The Extract pushed into the bucket contains:
     //  - the binaryoperator itself (from which we can find the rdregion)
     //  - the constant offset part of the rdregion index.
-    Buckets[BucketIndex(User2->getOpcode(), CastTo, R.Indirect, User2->getType())]
+    Buckets[BucketIndex(User2->getOpcode(), CastTo, R.Indirect,
+                        User2->getType())]
         .push_back(Extract(User2, R.Offset));
   }
 
@@ -376,5 +375,3 @@ void GenXExtractVectorizer::processBucket(BucketInfo &BI) {
   Extracted.push_back(NewInst);
   Modified = true;
 }
-
-

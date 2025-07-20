@@ -20,35 +20,29 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 
-namespace IGC
-{
-    class LowerInvokeSIMD : public llvm::ModulePass, public llvm::InstVisitor<LowerInvokeSIMD>
-    {
-    public:
-        static char ID;
+namespace IGC {
+class LowerInvokeSIMD : public llvm::ModulePass, public llvm::InstVisitor<LowerInvokeSIMD> {
+public:
+  static char ID;
 
-        LowerInvokeSIMD();
+  LowerInvokeSIMD();
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "LowerInvokeSIMD";
-        }
+  virtual llvm::StringRef getPassName() const override { return "LowerInvokeSIMD"; }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<CodeGenContextWrapper>();
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.setPreservesCFG();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.setPreservesCFG();
+  }
 
-        virtual bool runOnModule(llvm::Module& F) override;
-        void visitCallInst(llvm::CallInst& CI);
+  virtual bool runOnModule(llvm::Module &F) override;
+  void visitCallInst(llvm::CallInst &CI);
 
-    private:
-        IGCLLVM::IRBuilder<>* m_Builder = nullptr;
-        llvm::ValueMap<llvm::Function*, llvm::Function*> m_OldFuncToNewFuncMap;
-        bool m_changed = false;
+private:
+  IGCLLVM::IRBuilder<> *m_Builder = nullptr;
+  llvm::ValueMap<llvm::Function *, llvm::Function *> m_OldFuncToNewFuncMap;
+  bool m_changed = false;
 
-        void fixUniformParamsAndSIMDSize(const llvm::Function* ESIMDFunction, llvm::CallInst& NewCall);
-    };
-}
+  void fixUniformParamsAndSIMDSize(const llvm::Function *ESIMDFunction, llvm::CallInst &NewCall);
+};
+} // namespace IGC

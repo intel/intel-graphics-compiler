@@ -17,39 +17,32 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DataLayout.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    /// @brief This pass allocates UAV and SRV numbers to kernel arguments.
-    class ResourceAllocator : public llvm::ModulePass
-    {
-    public:
-        // Pass identification, replacement for typeid
-        static char ID;
+namespace IGC {
+/// @brief This pass allocates UAV and SRV numbers to kernel arguments.
+class ResourceAllocator : public llvm::ModulePass {
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
 
-        /// @brief  Constructor
-        ResourceAllocator();
+  /// @brief  Constructor
+  ResourceAllocator();
 
-        /// @brief  Provides name of pass
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "ResourceAllocatorPass";
-        }
+  /// @brief  Provides name of pass
+  virtual llvm::StringRef getPassName() const override { return "ResourceAllocatorPass"; }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.setPreservesCFG();
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<ExtensionArgAnalysis>();
-            AU.addRequired<CodeGenContextWrapper>();
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<ExtensionArgAnalysis>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
 
-        /// @brief  Main entry point.
-        /// @param  M The destination module.
-        virtual bool runOnModule(llvm::Module& M) override;
+  /// @brief  Main entry point.
+  /// @param  M The destination module.
+  virtual bool runOnModule(llvm::Module &M) override;
 
-    protected:
-
-        bool runOnFunction(llvm::Function& F);
-    };
+protected:
+  bool runOnFunction(llvm::Function &F);
+};
 
 } // namespace IGC

@@ -53,8 +53,7 @@ struct SBaseVecDesc {
   llvm::SmallVector<SSubVecDesc *, 16> Aliasers;
 
   SBaseVecDesc(llvm::Value *V, llvm::Value *OV, e_alignment A)
-      : Align(A), BaseVector(V),
-        OrigType(llvm::dyn_cast<llvm::VectorType>(OV->getType())) {
+      : Align(A), BaseVector(V), OrigType(llvm::dyn_cast<llvm::VectorType>(OV->getType())) {
     IGC_ASSERT(OrigType != nullptr);
   }
 };
@@ -83,10 +82,8 @@ struct SSubVecDesc {
   short StartElementOffset; // in the unit of BaseVector's element type
   short NumElts;            // the number of elements of Aliaser
 
-  SSubVecDesc(llvm::Value *V)
-      : Aliaser(V), Aliasee(nullptr), StartElementOffset(0) {
-    IGCLLVM::FixedVectorType *VTy =
-        llvm::dyn_cast<IGCLLVM::FixedVectorType>(V->getType());
+  SSubVecDesc(llvm::Value *V) : Aliaser(V), Aliasee(nullptr), StartElementOffset(0) {
+    IGCLLVM::FixedVectorType *VTy = llvm::dyn_cast<IGCLLVM::FixedVectorType>(V->getType());
     NumElts = VTy ? (short)VTy->getNumElements() : 1;
   }
 };
@@ -140,9 +137,7 @@ struct SVecInsEltInfo {
   llvm::Value *FromVec;
   int FromVec_eltIx;
 
-  SVecInsEltInfo()
-      : IEI(nullptr), Elt(nullptr), EEI(nullptr), FromVec(nullptr),
-        FromVec_eltIx(0) {}
+  SVecInsEltInfo() : IEI(nullptr), Elt(nullptr), EEI(nullptr), FromVec(nullptr), FromVec_eltIx(0) {}
 };
 
 /// RPE based analysis for querying variable reuse status.
@@ -165,8 +160,7 @@ struct SVecInsEltInfo {
 /// (1) RPE(x) >= Threshold for any x between DInst and UInst (inclusive), or
 /// (2) RPE(x) >= Threshold for any use x of UInst.
 ///
-class VariableReuseAnalysis : public llvm::FunctionPass,
-                              public llvm::InstVisitor<VariableReuseAnalysis> {
+class VariableReuseAnalysis : public llvm::FunctionPass, public llvm::InstVisitor<VariableReuseAnalysis> {
 public:
   static char ID;
 
@@ -197,9 +191,7 @@ public:
     AU.addRequired<CodeGenContextWrapper>();
   }
 
-  llvm::StringRef getPassName() const override {
-    return "VariableReuseAnalysis";
-  }
+  llvm::StringRef getPassName() const override { return "VariableReuseAnalysis"; }
 
   /// Initialize per-function states. In particular, check if the entire
   /// function has a low pressure.
@@ -213,21 +205,14 @@ public:
     }
   }
 
-  bool isCurFunctionPressureLow() const {
-    return m_IsFunctionPressureLow == Status::True;
-  }
+  bool isCurFunctionPressureLow() const { return m_IsFunctionPressureLow == Status::True; }
 
-  bool isCurBlockPressureLow() const {
-    return m_IsBlockPressureLow == Status::True;
-  }
+  bool isCurBlockPressureLow() const { return m_IsBlockPressureLow == Status::True; }
 
   /// RAII class to initialize and cleanup basic block level cache.
   class EnterBlockRAII {
   public:
-    explicit EnterBlockRAII(VariableReuseAnalysis *VRA, llvm::BasicBlock *BB)
-        : VRA(VRA) {
-      VRA->BeginBlock(BB);
-    }
+    explicit EnterBlockRAII(VariableReuseAnalysis *VRA, llvm::BasicBlock *BB) : VRA(VRA) { VRA->BeginBlock(BB); }
     ~EnterBlockRAII() { VRA->EndBlock(); }
     EnterBlockRAII(const EnterBlockRAII &) = delete;
     EnterBlockRAII &operator=(const EnterBlockRAII &) = delete;
@@ -239,8 +224,7 @@ public:
   bool checkUseInst(llvm::Instruction *UInst, LiveVars *LV);
 
   // Check def instruction's legality and its pressure impact.
-  bool checkDefInst(llvm::Instruction *DInst, llvm::Instruction *UInst,
-                    LiveVars *LV);
+  bool checkDefInst(llvm::Instruction *DInst, llvm::Instruction *UInst, LiveVars *LV);
 
   // Visitor
   void visitExtractElementInst(llvm::ExtractElementInst &I);
@@ -261,8 +245,7 @@ public:
   llvm::Value *getAliasRootValue(llvm::Value *V);
 
   /// printAlias - print value aliasing info in human readable form
-  void printAlias(llvm::raw_ostream &OS,
-                  const llvm::Function *F = nullptr) const;
+  void printAlias(llvm::raw_ostream &OS, const llvm::Function *F = nullptr) const;
   /// dumpAalias - dump alias info to dbgs().
   void dumpAlias() const;
 
@@ -338,14 +321,11 @@ public:
     return false;
   }
 
-  void addVecAlias(llvm::Value *Aliaser, llvm::Value *Aliasee,
-                   llvm::Value *OrigBaseVec, int Idx,
+  void addVecAlias(llvm::Value *Aliaser, llvm::Value *Aliasee, llvm::Value *OrigBaseVec, int Idx,
                    e_alignment AliaseeAlign = EALIGN_AUTO);
   SSubVecDesc *getOrCreateSubVecDesc(llvm::Value *V);
-  SBaseVecDesc *getOrCreateBaseVecDesc(llvm::Value *V, llvm::Value *OV,
-                                       e_alignment A);
-  void getAllAliasVals(ValueVectorTy &AliasVals, llvm::Value *Aliaser,
-                       llvm::Value *VecAliasee, int Idx);
+  SBaseVecDesc *getOrCreateBaseVecDesc(llvm::Value *V, llvm::Value *OV, e_alignment A);
+  void getAllAliasVals(ValueVectorTy &AliasVals, llvm::Value *Aliaser, llvm::Value *VecAliasee, int Idx);
 
   // No need to emit code for instructions in this map due to aliasing
   llvm::DenseMap<llvm::Instruction *, int> m_HasBecomeNoopInsts;
@@ -357,8 +337,7 @@ public:
   //   2. m_LifetimeAtEndOfBB :  BB -> set of values
   //        Add lifetime start for all values in the set at the end of BB.
   llvm::DenseMap<llvm::Value *, llvm::BasicBlock *> m_LifetimeAt1stDefOfBB;
-  llvm::DenseMap<llvm::BasicBlock *, llvm::TinyPtrVector<llvm::Value *>>
-      m_LifetimeAtEndOfBB;
+  llvm::DenseMap<llvm::BasicBlock *, llvm::TinyPtrVector<llvm::Value *>> m_LifetimeAtEndOfBB;
 
 private:
   void reset() {
@@ -394,8 +373,7 @@ private:
 
   void visitLiveInstructions(llvm::Function *F);
 
-  void setLifeTimeStartPos(llvm::Value *RootVal, ValueVectorTy &AllVals,
-                           BlockCoalescing *theBC);
+  void setLifeTimeStartPos(llvm::Value *RootVal, ValueVectorTy &AllVals, BlockCoalescing *theBC);
   void postProcessing();
 
   void sortAliasResult();
@@ -404,19 +382,14 @@ private:
   bool canBeAlias(llvm::CastInst *I);
 
   // If V has been payload-coalesced, return true.
-  bool hasBeenPayloadCoalesced(llvm::Value *V) {
-    return (m_coalescingEngine->GetValueCCTupleMapping(V) != nullptr);
-  }
+  bool hasBeenPayloadCoalesced(llvm::Value *V) { return (m_coalescingEngine->GetValueCCTupleMapping(V) != nullptr); }
 
   void mergeVariables(llvm::Function *F);
   void InsertElementAliasing(llvm::Function *F);
 
   llvm::Value *traceAliasValue(llvm::Value *V);
-  bool getElementValue(llvm::InsertElementInst *IEI, int &IEI_ix,
-                       llvm::Value *&S, llvm::Value *&V, int &V_ix);
-  bool getAllInsEltsIfAvailable(llvm::InsertElementInst *FirstIEI,
-                                VecInsEltInfoTy &AllIEIs,
-                                bool OnlySameBB = false);
+  bool getElementValue(llvm::InsertElementInst *IEI, int &IEI_ix, llvm::Value *&S, llvm::Value *&V, int &V_ix);
+  bool getAllInsEltsIfAvailable(llvm::InsertElementInst *FirstIEI, VecInsEltInfoTy &AllIEIs, bool OnlySameBB = false);
 
   bool processExtractFrom(VecInsEltInfoTy &AllIEIs);
   bool processInsertTo(llvm::BasicBlock *BB, VecInsEltInfoTy &AllIEIs);
@@ -442,14 +415,13 @@ private:
   AState getCandidateStateUse(llvm::Value *V) const;
   AState getCandidateStateDef(llvm::Value *V) const;
   bool aliasOkay(AState A, AState B, AState C) const {
-    if ((A == AState::TARGET || B == AState::TARGET || C == AState::TARGET) &&
-        A != AState::SKIP && B != AState::SKIP && C != AState::SKIP) {
+    if ((A == AState::TARGET || B == AState::TARGET || C == AState::TARGET) && A != AState::SKIP && B != AState::SKIP &&
+        C != AState::SKIP) {
       return true;
     }
     return false;
   }
-  bool checkSubAlign(e_alignment &BaseAlign, llvm::Value *Subvec,
-                     llvm::Value *Basevec, int Base_ix);
+  bool checkSubAlign(e_alignment &BaseAlign, llvm::Value *Subvec, llvm::Value *Basevec, int Base_ix);
 
   CodeGenContext *m_pCtx;
   WIAnalysis *m_WIA;

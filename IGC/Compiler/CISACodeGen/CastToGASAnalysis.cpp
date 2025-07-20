@@ -40,143 +40,130 @@ IGC_INITIALIZE_PASS_END(CastToGASAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG
 #undef PASS_CFG_ONLY
 #undef PASS_ANALYSIS
 
-void CastToGASAnalysis::getAllFuncsAccessibleFromKernel(const Function* F, CallGraph& CG, SmallPtrSetImpl<const Function*>& funcs, bool& disruptAnalysis) const
-{
-    IGC_ASSERT(F->getCallingConv() == CallingConv::SPIR_KERNEL);
+void CastToGASAnalysis::getAllFuncsAccessibleFromKernel(const Function *F, CallGraph &CG,
+                                                        SmallPtrSetImpl<const Function *> &funcs,
+                                                        bool &disruptAnalysis) const {
+  IGC_ASSERT(F->getCallingConv() == CallingConv::SPIR_KERNEL);
 
-    disruptAnalysis = false;
+  disruptAnalysis = false;
 
-    SmallVector<const Function*, 16> worklist;
-    worklist.push_back(F);
+  SmallVector<const Function *, 16> worklist;
+  worklist.push_back(F);
 
-    while (!worklist.empty())
-    {
-        const Function* F = worklist.back();
-        worklist.pop_back();
+  while (!worklist.empty()) {
+    const Function *F = worklist.back();
+    worklist.pop_back();
 
-        CallGraphNode& N = *CG[F];
-        for (IGCLLVM::CallRecord CE : N)
-        {
-            const Function* child = CE.second->getFunction();
-            if (!child)
-            {
-                std::optional<llvm::WeakTrackingVH> CEVal = IGCLLVM::makeOptional(CE.first);
+    CallGraphNode &N = *CG[F];
+    for (IGCLLVM::CallRecord CE : N) {
+      const Function *child = CE.second->getFunction();
+      if (!child) {
+        std::optional<llvm::WeakTrackingVH> CEVal = IGCLLVM::makeOptional(CE.first);
 
-                if (!CEVal.has_value())
-                    continue;
+        if (!CEVal.has_value())
+          continue;
 
-                if (CallBase* CB = dyn_cast_or_null<CallBase>(CEVal.value()))
-                {
-                    if (CB->isIndirectCall())
-                    {
-                        // Continue gathering all functions accessible from kernel "F" even if disruption
-                        // happens to find out what functions need additional control flow for GAS accesses
-                        disruptAnalysis = true;
-                    }
-                }
-                continue;
-            }
-
-            if (child->isDeclaration()) continue;
-
-            const bool notVisited = funcs.insert(child).second;
-            if (notVisited)
-            {
-                worklist.push_back(child);
-            }
+        if (CallBase *CB = dyn_cast_or_null<CallBase>(CEVal.value())) {
+          if (CB->isIndirectCall()) {
+            // Continue gathering all functions accessible from kernel "F" even if disruption
+            // happens to find out what functions need additional control flow for GAS accesses
+            disruptAnalysis = true;
+          }
         }
+        continue;
+      }
+
+      if (child->isDeclaration())
+        continue;
+
+      const bool notVisited = funcs.insert(child).second;
+      if (notVisited) {
+        worklist.push_back(child);
+      }
     }
+  }
 }
 
-unsigned CastToGASAnalysis::hasCastsToGeneric(const Function* F)
-{
-    if (castInfoCache.count(F))
-        return castInfoCache[F];
+unsigned CastToGASAnalysis::hasCastsToGeneric(const Function *F) {
+  if (castInfoCache.count(F))
+    return castInfoCache[F];
 
-    unsigned castInfo = 0;
-    for (auto& I : instructions(F))
-    {
-        if (castInfo == (HasPrivateToGenericCast | HasLocalToGenericCast)) break;
+  unsigned castInfo = 0;
+  for (auto &I : instructions(F)) {
+    if (castInfo == (HasPrivateToGenericCast | HasLocalToGenericCast))
+      break;
 
-        if (auto* ASC = dyn_cast<AddrSpaceCastInst>(&I))
-        {
-            if (ASC->getDestAddressSpace() != ADDRESS_SPACE_GENERIC)
-                continue;
+    if (auto *ASC = dyn_cast<AddrSpaceCastInst>(&I)) {
+      if (ASC->getDestAddressSpace() != ADDRESS_SPACE_GENERIC)
+        continue;
 
-            unsigned AS = ASC->getSrcAddressSpace();
-            if (AS == ADDRESS_SPACE_PRIVATE)
-                castInfo |= HasPrivateToGenericCast;
-            else if (AS == ADDRESS_SPACE_LOCAL)
-                castInfo |= HasLocalToGenericCast;
-        }
+      unsigned AS = ASC->getSrcAddressSpace();
+      if (AS == ADDRESS_SPACE_PRIVATE)
+        castInfo |= HasPrivateToGenericCast;
+      else if (AS == ADDRESS_SPACE_LOCAL)
+        castInfo |= HasLocalToGenericCast;
     }
+  }
 
-    castInfoCache[F] = castInfo;
+  castInfoCache[F] = castInfo;
 
-    return castInfo;
+  return castInfo;
 }
 
-void CastToGASAnalysis::setInfoForGroup(
-    llvm::SmallPtrSetImpl<const llvm::Function*>& functionsGroup,
-    unsigned castInfo)
-{
-    for (auto F : functionsGroup)
-    {
-        auto E = GI.FunctionMap.find(F);
-        if (E != GI.FunctionMap.end())
-        {
-            // If a function already exists in the map, it means that it is called by more than one
-            // kernel. Existing element represents a result of an analysis processed on another
-            // kernel call graph. Below code makes an OR operation on previous and current analysis
-            // results to take both into account.
-            GI.FunctionMap[F] = E->second | castInfo;
-            continue;
-        }
-
-        GI.FunctionMap[F] = castInfo;
+void CastToGASAnalysis::setInfoForGroup(llvm::SmallPtrSetImpl<const llvm::Function *> &functionsGroup,
+                                        unsigned castInfo) {
+  for (auto F : functionsGroup) {
+    auto E = GI.FunctionMap.find(F);
+    if (E != GI.FunctionMap.end()) {
+      // If a function already exists in the map, it means that it is called by more than one
+      // kernel. Existing element represents a result of an analysis processed on another
+      // kernel call graph. Below code makes an OR operation on previous and current analysis
+      // results to take both into account.
+      GI.FunctionMap[F] = E->second | castInfo;
+      continue;
     }
+
+    GI.FunctionMap[F] = castInfo;
+  }
 }
 
-bool CastToGASAnalysis::runOnModule(Module& M)
-{
-    m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    GI.noLocalToGenericOptionEnabled = m_ctx->noLocalToGenericOptionEnabled();
-    GI.allocatePrivateAsGlobalBuffer = m_ctx->allocatePrivateAsGlobalBuffer();
+bool CastToGASAnalysis::runOnModule(Module &M) {
+  m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  GI.noLocalToGenericOptionEnabled = m_ctx->noLocalToGenericOptionEnabled();
+  GI.allocatePrivateAsGlobalBuffer = m_ctx->allocatePrivateAsGlobalBuffer();
 
-    if (GI.noLocalToGenericOptionEnabled && GI.allocatePrivateAsGlobalBuffer)
-        return false;
-
-    castInfoCache.clear();
-    CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-    for (auto& F : M.functions()) {
-        if (F.getCallingConv() != llvm::CallingConv::SPIR_KERNEL)
-            continue;
-
-        bool disruptAnalysis = false;
-        SmallPtrSet<const Function*, 32> functions;
-        getAllFuncsAccessibleFromKernel(&F, CG, functions, disruptAnalysis);
-        functions.insert(&F);
-
-        if (disruptAnalysis)
-        {
-            setInfoForGroup(functions, HasPrivateToGenericCast | HasLocalToGenericCast);
-            continue;
-        }
-
-        unsigned info = 0;
-        for (auto F : functions)
-        {
-            info |= hasCastsToGeneric(F);
-
-            // early exit if private and local casts have been found
-            if (info == (HasPrivateToGenericCast | HasLocalToGenericCast))
-                break;
-        }
-
-        setInfoForGroup(functions, info);
-    }
-
+  if (GI.noLocalToGenericOptionEnabled && GI.allocatePrivateAsGlobalBuffer)
     return false;
+
+  castInfoCache.clear();
+  CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+  for (auto &F : M.functions()) {
+    if (F.getCallingConv() != llvm::CallingConv::SPIR_KERNEL)
+      continue;
+
+    bool disruptAnalysis = false;
+    SmallPtrSet<const Function *, 32> functions;
+    getAllFuncsAccessibleFromKernel(&F, CG, functions, disruptAnalysis);
+    functions.insert(&F);
+
+    if (disruptAnalysis) {
+      setInfoForGroup(functions, HasPrivateToGenericCast | HasLocalToGenericCast);
+      continue;
+    }
+
+    unsigned info = 0;
+    for (auto F : functions) {
+      info |= hasCastsToGeneric(F);
+
+      // early exit if private and local casts have been found
+      if (info == (HasPrivateToGenericCast | HasLocalToGenericCast))
+        break;
+    }
+
+    setInfoForGroup(functions, info);
+  }
+
+  return false;
 }
 
 char CastToGASInfo::ID = 0;
@@ -192,11 +179,7 @@ IGC_INITIALIZE_PASS_END(CastToGASInfo, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONL
 #undef PASS_CFG_ONLY
 #undef PASS_ANALYSIS
 
-CastToGASInfo::CastToGASInfo()
-    : ImmutablePass(ID)
-{
-    initializeCastToGASInfoPass(*PassRegistry::getPassRegistry());
-}
+CastToGASInfo::CastToGASInfo() : ImmutablePass(ID) { initializeCastToGASInfoPass(*PassRegistry::getPassRegistry()); }
 
 char CastToGASInfoWrapper::ID = 0;
 
@@ -213,16 +196,13 @@ IGC_INITIALIZE_PASS_END(CastToGASInfoWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_
 #undef PASS_CFG_ONLY
 #undef PASS_ANALYSIS
 
-CastToGASInfoWrapper::CastToGASInfoWrapper()
-    : ModulePass(ID)
-{
-    initializeCastToGASInfoWrapperPass(*PassRegistry::getPassRegistry());
+CastToGASInfoWrapper::CastToGASInfoWrapper() : ModulePass(ID) {
+  initializeCastToGASInfoWrapperPass(*PassRegistry::getPassRegistry());
 }
 
-bool CastToGASInfoWrapper::runOnModule(Module& M)
-{
-    CastToGASAnalysis& CTGA = getAnalysis<CastToGASAnalysis>();
-    CastToGASInfo& CTGI = getAnalysis<CastToGASInfo>();
-    CTGI.setGASInfo(CTGA.getGASInfo());
-    return false;
+bool CastToGASInfoWrapper::runOnModule(Module &M) {
+  CastToGASAnalysis &CTGA = getAnalysis<CastToGASAnalysis>();
+  CastToGASInfo &CTGI = getAnalysis<CastToGASInfo>();
+  CTGI.setGASInfo(CTGA.getGASInfo());
+  return false;
 }

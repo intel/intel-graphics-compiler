@@ -19,34 +19,34 @@ namespace {
 
 template <int N>
 CM_NODEBUG CM_INLINE mask<N> check_is_nan_or_inf(vector<double, N> q) {
-  vector<uint32_t, 2 *N> q_split = q.template format<uint32_t>();
+  vector<uint32_t, 2 * N> q_split = q.template format<uint32_t>();
   vector<uint32_t, N> q_hi = q_split.template select<N, 2>(1);
   return (q_hi >= exp_32bitmask);
 }
 
 template <int N>
 CM_NODEBUG CM_INLINE vector<uint32_t, N> get_exp(vector<double, N> x) {
-  vector<uint32_t, 2 *N> x_split = x.template format<uint32_t>();
+  vector<uint32_t, 2 * N> x_split = x.template format<uint32_t>();
   vector<uint32_t, N> x_hi = x_split.template select<N, 2>(1);
   return (x_hi >> exp_shift) & exp_mask;
 }
 
 template <int N>
 CM_NODEBUG CM_INLINE vector<uint32_t, N> get_sign(vector<double, N> x) {
-  vector<uint32_t, 2 *N> x_split = x.template format<uint32_t>();
+  vector<uint32_t, 2 * N> x_split = x.template format<uint32_t>();
   vector<uint32_t, N> x_hi = x_split.template select<N, 2>(1);
   return x_hi & sign_32bit;
 }
 
 template <int N> CM_NODEBUG CM_INLINE mask<N> is_denormal(vector<double, N> x) {
-  vector<uint32_t, 2 *N> x_int = x.template format<uint32_t>();
+  vector<uint32_t, 2 * N> x_int = x.template format<uint32_t>();
   vector<uint32_t, N> x_hi = x_int.template select<N, 2>(1);
   return x_hi < min_sign_exp;
 }
 
 template <int N>
 CM_NODEBUG CM_INLINE vector<uint32_t, N> sep_exp(vector<double, N> x) {
-  vector<uint32_t, 2 *N> x_int = x.template format<uint32_t>();
+  vector<uint32_t, 2 * N> x_int = x.template format<uint32_t>();
   vector<uint32_t, N> x_hi = x_int.template select<N, 2>(1);
   vector<uint32_t, N> res = (x_hi >> exp_shift) - exp_bias;
   return res >> 1;
@@ -55,7 +55,7 @@ CM_NODEBUG CM_INLINE vector<uint32_t, N> sep_exp(vector<double, N> x) {
 template <int N>
 CM_NODEBUG CM_INLINE vector<double, N> fill_hi_part(vector<uint32_t, N> in) {
   vector<double, N> res = 0;
-  vector<uint32_t, 2 *N> res_int = res.template format<uint32_t>();
+  vector<uint32_t, 2 * N> res_int = res.template format<uint32_t>();
   res_int.template select<N, 2>(1) = in;
   res = res_int.template format<double>();
   return res;
@@ -88,7 +88,7 @@ CM_NODEBUG CM_INLINE vector<double, N> rsqrt_float(vector<double, N> x) {
 template <int N>
 CM_NODEBUG CM_INLINE vector<double, N> uint64_sub_hi(vector<double, N> x,
                                                      vector<uint32_t, N> hi) {
-  vector<uint32_t, 2 *N> ex_mx_int = 0;
+  vector<uint32_t, 2 * N> ex_mx_int = 0;
   ex_mx_int.template select<N, 2>(1) = hi;
   vector<uint64_t, N> ex_u64 = ex_mx_int.template format<uint64_t>();
   vector<uint64_t, N> mx_u64 = x.template format<uint64_t>();

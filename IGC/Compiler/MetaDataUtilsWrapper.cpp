@@ -22,33 +22,24 @@ IGC_INITIALIZE_PASS(MetaDataUtilsWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_
 
 char MetaDataUtilsWrapper::ID = 0;
 
-MetaDataUtilsWrapper::MetaDataUtilsWrapper(MetaDataUtils* pMdUtils, ModuleMetaData* moduleMD) : ImmutablePass(ID), m_pMdUtils(pMdUtils), modMD(moduleMD), m_isUtilsOwner(false)
-{
-    initializeMetaDataUtilsWrapperPass(*PassRegistry::getPassRegistry());
+MetaDataUtilsWrapper::MetaDataUtilsWrapper(MetaDataUtils *pMdUtils, ModuleMetaData *moduleMD)
+    : ImmutablePass(ID), m_pMdUtils(pMdUtils), modMD(moduleMD), m_isUtilsOwner(false) {
+  initializeMetaDataUtilsWrapperPass(*PassRegistry::getPassRegistry());
 }
 
-MetaDataUtilsWrapper::MetaDataUtilsWrapper() : ImmutablePass(ID), m_isUtilsOwner(true)
-{
-    initializeMetaDataUtilsWrapperPass(*PassRegistry::getPassRegistry());
-    m_pMdUtils = new MetaDataUtils();
-    modMD = new ModuleMetaData();
+MetaDataUtilsWrapper::MetaDataUtilsWrapper() : ImmutablePass(ID), m_isUtilsOwner(true) {
+  initializeMetaDataUtilsWrapperPass(*PassRegistry::getPassRegistry());
+  m_pMdUtils = new MetaDataUtils();
+  modMD = new ModuleMetaData();
 }
 
-MetaDataUtilsWrapper::~MetaDataUtilsWrapper()
-{
-    if (m_isUtilsOwner)
-    {
-        delete m_pMdUtils;
-        delete modMD;
-    }
+MetaDataUtilsWrapper::~MetaDataUtilsWrapper() {
+  if (m_isUtilsOwner) {
+    delete m_pMdUtils;
+    delete modMD;
+  }
 }
 
-MetaDataUtils* MetaDataUtilsWrapper::getMetaDataUtils()
-{
-    return m_pMdUtils;
-}
+MetaDataUtils *MetaDataUtilsWrapper::getMetaDataUtils() { return m_pMdUtils; }
 
-ModuleMetaData* MetaDataUtilsWrapper::getModuleMetaData()
-{
-    return modMD;
-}
+ModuleMetaData *MetaDataUtilsWrapper::getModuleMetaData() { return modMD; }

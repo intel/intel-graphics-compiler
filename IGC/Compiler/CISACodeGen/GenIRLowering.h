@@ -17,8 +17,8 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-    llvm::FunctionPass* createGenIRLowerPass();
-    llvm::FunctionPass* createGEPLoweringPass();
+llvm::FunctionPass *createGenIRLowerPass();
+llvm::FunctionPass *createGEPLoweringPass();
 
 } // End namespace IGC
 

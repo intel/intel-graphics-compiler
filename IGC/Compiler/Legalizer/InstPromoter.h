@@ -16,70 +16,70 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-    namespace Legalizer {
+namespace Legalizer {
 
-        class InstPromoter : public InstVisitor<InstPromoter, bool> {
-            friend class InstVisitor<InstPromoter, bool>;
+class InstPromoter : public InstVisitor<InstPromoter, bool> {
+  friend class InstVisitor<InstPromoter, bool>;
 
-            TypeLegalizer* TL;
-            BuilderType* IRB;
+  TypeLegalizer *TL;
+  BuilderType *IRB;
 
-            Value* Promoted = nullptr;
+  Value *Promoted = nullptr;
 
-        public:
-            InstPromoter(TypeLegalizer* L, BuilderType* B) : TL(L), IRB(B) {}
+public:
+  InstPromoter(TypeLegalizer *L, BuilderType *B) : TL(L), IRB(B) {}
 
-            bool promote(Instruction* I);
+  bool promote(Instruction *I);
 
-        private:
-            /// Helpers
-            const char* getSuffix() const { return TL->getSuffix(Promote); }
-            Value* getSinglePromotedValueIfExist(Value* OriginalValue);
-            Type* getSinglePromotedTypeIfExist(Type* OriginalType);
-            std::pair<Value*, Type*> preparePromotedIntrinsicInst(IntrinsicInst& I);
+private:
+  /// Helpers
+  const char *getSuffix() const { return TL->getSuffix(Promote); }
+  Value *getSinglePromotedValueIfExist(Value *OriginalValue);
+  Type *getSinglePromotedTypeIfExist(Type *OriginalType);
+  std::pair<Value *, Type *> preparePromotedIntrinsicInst(IntrinsicInst &I);
 
-        private:
-            // By default, capture all missing instructions!
-            bool visitInstruction(Instruction& I);
+private:
+  // By default, capture all missing instructions!
+  bool visitInstruction(Instruction &I);
 
-            /// Terminator instructions
-            ///
+  /// Terminator instructions
+  ///
 
-            bool visitTerminatorInst(IGCLLVM::TerminatorInst& I);
+  bool visitTerminatorInst(IGCLLVM::TerminatorInst &I);
 
-            /// Standard binary operators
-            ///
-            bool visitSelectInst(SelectInst& I);
+  /// Standard binary operators
+  ///
+  bool visitSelectInst(SelectInst &I);
 
-            bool visitICmpInst(ICmpInst& I);
+  bool visitICmpInst(ICmpInst &I);
 
-            bool visitBinaryOperator(BinaryOperator& I);
+  bool visitBinaryOperator(BinaryOperator &I);
 
-            /// Memory operators
-            ///
+  /// Memory operators
+  ///
 
-            bool visitAllocaInst(AllocaInst& I);
-            bool visitLoadInst(LoadInst& I);
-            bool visitStoreInst(StoreInst& I);
+  bool visitAllocaInst(AllocaInst &I);
+  bool visitLoadInst(LoadInst &I);
+  bool visitStoreInst(StoreInst &I);
 
-            /// Cast operators
+  /// Cast operators
 
-            bool visitTruncInst(TruncInst& I);
-            bool visitSExtInst(SExtInst& I);
-            bool visitZExtInst(ZExtInst& I);
-            bool visitBitCastInst(BitCastInst& I);
+  bool visitTruncInst(TruncInst &I);
+  bool visitSExtInst(SExtInst &I);
+  bool visitZExtInst(ZExtInst &I);
+  bool visitBitCastInst(BitCastInst &I);
 
-            /// Other operators
+  /// Other operators
 
-            bool visitExtractElementInst(ExtractElementInst& I);
-            bool visitInsertElementInst(InsertElementInst& I);
-            bool visitGenIntrinsicInst(GenIntrinsicInst& I);
-            bool visitLLVMIntrinsicInst(IntrinsicInst& I);
-            bool visitCallInst(CallInst& I);
-        };
+  bool visitExtractElementInst(ExtractElementInst &I);
+  bool visitInsertElementInst(InsertElementInst &I);
+  bool visitGenIntrinsicInst(GenIntrinsicInst &I);
+  bool visitLLVMIntrinsicInst(IntrinsicInst &I);
+  bool visitCallInst(CallInst &I);
+};
 
-    } // End Legalizer namespace
+} // namespace Legalizer
 
-} // End IGC namespace
+} // namespace IGC
 
 #endif // LEGALIZER_INSTPROMOTER_H

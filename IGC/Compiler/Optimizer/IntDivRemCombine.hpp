@@ -13,9 +13,9 @@ SPDX-License-Identifier: MIT
 
 #include <llvm/Pass.h>
 
-
-namespace llvm {class FunctionPass;}
-namespace IGC
-{
-    llvm::FunctionPass* createIntDivRemCombinePass();
+namespace llvm {
+class FunctionPass;
+}
+namespace IGC {
+llvm::FunctionPass *createIntDivRemCombinePass();
 } // namespace IGC

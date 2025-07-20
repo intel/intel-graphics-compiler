@@ -75,7 +75,8 @@ public:
   }
 
   Instruction *visitBinaryOperator(BinaryOperator &OrigBO) {
-    IGC_ASSERT_MESSAGE(NewOperands.size() == 2, "binary operator has 2 operands");
+    IGC_ASSERT_MESSAGE(NewOperands.size() == 2,
+                       "binary operator has 2 operands");
     return BinaryOperator::Create(OrigBO.getOpcode(), NewOperands[0],
                                   NewOperands[1]);
   }

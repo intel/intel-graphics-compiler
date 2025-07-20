@@ -19,16 +19,12 @@ SPDX-License-Identifier: MIT
 
 namespace CIF {
 
-template <typename BaseClass = ICIF>
-class ICIFImpl : public BaseClass {
+template <typename BaseClass = ICIF> class ICIFImpl : public BaseClass {
   static_assert(std::is_base_of<ICIF, BaseClass>::value, "Invalid BaseClass");
 
 public:
   template <typename... ArgsT>
-  ICIFImpl(Version_t version, ArgsT && ... args)
-      : BaseClass(std::forward<ArgsT>(args)...),
-        refCount(1)
-  {
+  ICIFImpl(Version_t version, ArgsT &&...args) : BaseClass(std::forward<ArgsT>(args)...), refCount(1) {
     this->version = version;
   }
 
@@ -44,9 +40,7 @@ public:
 
   void Retain() override { ++refCount; }
 
-  uint32_t GetRefCount() const override {
-      return refCount.load();
-  }
+  uint32_t GetRefCount() const override { return refCount.load(); }
 
   Version_t GetEnabledVersion() const override { return version; }
 
@@ -55,9 +49,8 @@ protected:
   Version_t version;
 };
 
-template<typename InterfaceT, typename ... ArgsT>
-InterfaceT* CreateImplVer(ArgsT && ... args){
-    return new ICIFImpl<InterfaceT>(InterfaceT::GetVersion(), std::forward<ArgsT>(args)...);
+template <typename InterfaceT, typename... ArgsT> InterfaceT *CreateImplVer(ArgsT &&...args) {
+  return new ICIFImpl<InterfaceT>(InterfaceT::GetVersion(), std::forward<ArgsT>(args)...);
 }
 
-}
+} // namespace CIF

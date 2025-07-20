@@ -10,16 +10,12 @@ SPDX-License-Identifier: MIT
 
 char PassTimer::ID = 0;
 
-bool PassTimer::runOnModule(llvm::Module& M)
-{
-    if (m_isStart)
-    {
-        COMPILER_TIME_START(m_context, m_index);
-    }
-    else
-    {
-        COMPILER_TIME_END(m_context, m_index);
-    }
+bool PassTimer::runOnModule(llvm::Module &M) {
+  if (m_isStart) {
+    COMPILER_TIME_START(m_context, m_index);
+  } else {
+    COMPILER_TIME_END(m_context, m_index);
+  }
 
-    return false;
+  return false;
 }

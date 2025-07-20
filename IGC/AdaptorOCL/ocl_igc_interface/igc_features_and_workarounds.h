@@ -23,7 +23,7 @@ namespace IGC {
 
 CIF_DECLARE_INTERFACE(IgcFeaturesAndWorkarounds, "IGC_FE_WA")
 
-CIF_DEFINE_INTERFACE_VER(IgcFeaturesAndWorkarounds, 1){
+CIF_DEFINE_INTERFACE_VER(IgcFeaturesAndWorkarounds, 1) {
   CIF_INHERIT_CONSTRUCTOR();
 
   OCL_API_CALL virtual bool GetFtrDesktop() const;
@@ -79,7 +79,6 @@ CIF_DEFINE_INTERFACE_VER(IgcFeaturesAndWorkarounds, 1){
 
   OCL_API_CALL virtual bool GetFtrResourceStreamer() const;
   OCL_API_CALL virtual void SetFtrResourceStreamer(bool v);
-
 };
 
 CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcFeaturesAndWorkarounds, 2, 1) {
@@ -88,10 +87,7 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcFeaturesAndWorkarounds, 2, 1) {
   OCL_API_CALL virtual void SetMaxOCLParamSize(uint32_t s);
   OCL_API_CALL virtual uint32_t GetMaxOCLParamSize() const;
 };
-CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcFeaturesAndWorkarounds, 3, 2) {
-    CIF_INHERIT_CONSTRUCTOR();
-};
-
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcFeaturesAndWorkarounds, 3, 2) { CIF_INHERIT_CONSTRUCTOR(); };
 
 CIF_GENERATE_VERSIONS_LIST(IgcFeaturesAndWorkarounds);
 CIF_MARK_LATEST_VERSION(IgcFeaturesAndWorkaroundsLatest, IgcFeaturesAndWorkarounds);
@@ -99,8 +95,8 @@ CIF_MARK_LATEST_VERSION(IgcFeaturesAndWorkaroundsLatest, IgcFeaturesAndWorkaroun
 using IgcFeaturesAndWorkaroundsTagOCL = IgcFeaturesAndWorkarounds<3>; // transition time - remove this using
                                                                       // and uncomment the one below when finished
 
-//using IgcFeaturesAndWorkaroundsTagOCL = IgcFeaturesAndWorkaroundsLatest; // Note : can tag with different version for
-                                                                        //        transition periods
-}
+// using IgcFeaturesAndWorkaroundsTagOCL = IgcFeaturesAndWorkaroundsLatest; // Note : can tag with different version for
+//         transition periods
+} // namespace IGC
 
 #include "cif/macros/disable.h"

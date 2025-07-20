@@ -136,7 +136,7 @@ public:
 // warn means warn and continue working (unless handler redefined)
 template <typename... Args>
 void warn(WarningName WN, llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
-          const llvm::Twine &Desc, Args &&... args) {
+          const llvm::Twine &Desc, Args &&...args) {
   DiagnosticInfo Diag{std::forward<Args>(args)..., Prefix, Desc,
                       llvm::DS_Warning, WN};
   Ctx.diagnose(Diag);
@@ -145,14 +145,14 @@ void warn(WarningName WN, llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
 // overload for generic warnings
 template <typename... Args>
 void warn(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
-          const llvm::Twine &Desc, Args &&... args) {
+          const llvm::Twine &Desc, Args &&...args) {
   warn(WarningName::Generic, Ctx, Prefix, Desc, std::forward<Args>(args)...);
 }
 
 // overload for explicit pass
 template <typename... Args>
 void warn(WarningName WN, llvm::LLVMContext &Ctx, const llvm::Pass &Pass,
-          const llvm::Twine &Desc, Args &&... args) {
+          const llvm::Twine &Desc, Args &&...args) {
   warn(WN, Ctx, Pass.getPassName(), Desc, std::forward<Args>(args)...);
 }
 
@@ -160,7 +160,7 @@ void warn(WarningName WN, llvm::LLVMContext &Ctx, const llvm::Pass &Pass,
 template <typename... Args>
 void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
               const llvm::Twine &Desc, llvm::DiagnosticSeverity DSType,
-              WarningName WN, Args &&... args) {
+              WarningName WN, Args &&...args) {
   DiagnosticInfo Diag{std::forward<Args>(args)..., Prefix, Desc, DSType, WN};
   Ctx.diagnose(Diag);
 }
@@ -168,7 +168,7 @@ void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
 // overload in case we are more certain
 template <typename... Args>
 void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
-              const llvm::Twine &Desc, Args &&... args) {
+              const llvm::Twine &Desc, Args &&...args) {
   DiagnosticInfo Diag{std::forward<Args>(args)..., Prefix, Desc, llvm::DS_Error,
                       WarningName::NotAWarning};
   Ctx.diagnose(Diag);
@@ -177,7 +177,7 @@ void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
 // fatal means fatal that is why it is marked noreturn
 template <typename... Args>
 [[noreturn]] void fatal(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
-                        const llvm::Twine &Desc, Args &&... args) {
+                        const llvm::Twine &Desc, Args &&...args) {
   DiagnosticInfo Diag{std::forward<Args>(args)..., Prefix, Desc, llvm::DS_Error,
                       WarningName::NotAWarning};
   Ctx.diagnose(Diag);
@@ -188,7 +188,7 @@ template <typename... Args>
 // pass name overload for fatal
 template <typename... Args>
 [[noreturn]] void fatal(llvm::LLVMContext &Ctx, const llvm::Pass &Pass,
-                        const llvm::Twine &Desc, Args &&... args) {
+                        const llvm::Twine &Desc, Args &&...args) {
   fatal(Ctx, Pass.getPassName(), Desc, std::forward<Args>(args)...);
 }
 

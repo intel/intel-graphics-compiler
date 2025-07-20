@@ -72,12 +72,10 @@ namespace IGC {
 ///    %98 = extractelement <4 x float> %37, i64 3
 ///......
 // clang-format on
-class InstructionHoistingOptimization
-    : public llvm::FunctionPass,
-      public llvm::InstVisitor<InstructionHoistingOptimization> {
+class InstructionHoistingOptimization : public llvm::FunctionPass,
+                                        public llvm::InstVisitor<InstructionHoistingOptimization> {
 public:
-  static char
-      ID; ///< ID used by the llvm PassManager (the value is not important)
+  static char ID; ///< ID used by the llvm PassManager (the value is not important)
 
   InstructionHoistingOptimization();
 
@@ -127,8 +125,7 @@ private:
   inline bool isHoistableInstruction(Value *op, BasicBlock *hoistBB) {
     if (auto *I = dyn_cast<Instruction>(op)) {
       auto *currBB = I->getParent();
-      if (isa<LoadInst>(I) || isa<LdRawIntrinsic>(I) ||
-          isa<SampleIntrinsic>(I)) {
+      if (isa<LoadInst>(I) || isa<LdRawIntrinsic>(I) || isa<SampleIntrinsic>(I)) {
         return false;
       }
       if (currBB != hoistBB) {
@@ -148,8 +145,7 @@ private:
   }
 
   inline void InsertHoistableInstruction(Instruction *hoistInstr) {
-    auto isDuplicate = [](std::vector<Instruction *> hoistedInstr,
-                          Instruction *newInstr) -> bool {
+    auto isDuplicate = [](std::vector<Instruction *> hoistedInstr, Instruction *newInstr) -> bool {
       auto it = std::find(hoistedInstr.begin(), hoistedInstr.end(), newInstr);
       return it != hoistedInstr.end();
     };
@@ -163,10 +159,8 @@ private:
 char InstructionHoistingOptimization::ID = 0;
 
 ////////////////////////////////////////////////////////////////////////////
-InstructionHoistingOptimization::InstructionHoistingOptimization()
-    : llvm::FunctionPass(ID) {
-  initializeInstructionHoistingOptimizationPass(
-      *PassRegistry::getPassRegistry());
+InstructionHoistingOptimization::InstructionHoistingOptimization() : llvm::FunctionPass(ID) {
+  initializeInstructionHoistingOptimizationPass(*PassRegistry::getPassRegistry());
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -186,8 +180,7 @@ bool InstructionHoistingOptimization::runOnFunction(llvm::Function &F) {
 
 ////////////////////////////////////////////////////////////////////////
 void InstructionHoistingOptimization::visitCallInst(llvm::CallInst &CI) {
-  if (llvm::GenIntrinsicInst *pIntr =
-          llvm::dyn_cast<llvm::GenIntrinsicInst>(&CI)) {
+  if (llvm::GenIntrinsicInst *pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(&CI)) {
     if (auto *SI = dyn_cast<SampleIntrinsic>(pIntr)) {
       m_SamplerInstructions.push_back(SI);
     }
@@ -239,8 +232,7 @@ void InstructionHoistingOptimization::CollectHoistableInstructions() {
       }
 
       if (Instruction *I = dyn_cast<Instruction>(Op)) {
-        if (isa<LoadInst>(I) || isa<LdRawIntrinsic>(I) ||
-            isa<SampleIntrinsic>(I)) {
+        if (isa<LoadInst>(I) || isa<LdRawIntrinsic>(I) || isa<SampleIntrinsic>(I)) {
           canInstrHoisted = false;
           break;
         }
@@ -295,8 +287,7 @@ bool InstructionHoistingOptimization::ProcessFunction(llvm::Function &F) {
 }
 
 ////////////////////////////////////////////////////////////////////////
-void InstructionHoistingOptimization::getAnalysisUsage(
-    llvm::AnalysisUsage &AU) const {
+void InstructionHoistingOptimization::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.addRequired<CodeGenContextWrapper>();
   AU.addRequired<DominatorTreeWrapperPass>();
   AU.addRequired<LoopInfoWrapperPass>();
@@ -309,9 +300,7 @@ void InstructionHoistingOptimization::InvalidateMembers() {
 }
 
 ////////////////////////////////////////////////////////////////////////
-llvm::Pass *createInstructionHoistingOptimization() {
-  return new InstructionHoistingOptimization();
-}
+llvm::Pass *createInstructionHoistingOptimization() { return new InstructionHoistingOptimization(); }
 
 } // namespace IGC
 
@@ -322,10 +311,8 @@ using namespace IGC;
 #define PASS_DESCRIPTION "InstructionHoistingOptimization"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(InstructionHoistingOptimization, PASS_FLAG,
-                          PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(InstructionHoistingOptimization, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-IGC_INITIALIZE_PASS_END(InstructionHoistingOptimization, PASS_FLAG,
-                        PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(InstructionHoistingOptimization, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)

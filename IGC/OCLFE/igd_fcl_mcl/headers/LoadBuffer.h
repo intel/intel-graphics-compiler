@@ -13,11 +13,13 @@ SPDX-License-Identifier: MIT
 #include <list>
 #include <memory>
 
-  #define LLVM_EXIT(a) { (throw std::exception()); }
+#define LLVM_EXIT(a)                                                                                                   \
+  {                                                                                                                    \
+    (throw std::exception());                                                                                          \
+  }
 
 namespace llvm {
-    char* LoadCharBufferFromResource(unsigned int ResNumber, const char *pResType, long unsigned int& m_buffSize);
+char *LoadCharBufferFromResource(unsigned int ResNumber, const char *pResType, long unsigned int &m_buffSize);
 } // namespace llvm
 
 #endif // IGIL_LOADBUFFER_H
-

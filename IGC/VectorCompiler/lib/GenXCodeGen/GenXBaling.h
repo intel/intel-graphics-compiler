@@ -10,23 +10,23 @@ SPDX-License-Identifier: MIT
 /// GenXBaling
 /// ----------
 ///
-/// GenX instruction baling is the process of determining which LLVM instructions
-/// can be combined into a single vISA instruction. Such a group of LLVM
-/// instructions is known as a *bale*. A bale typically has a *main instruction*
-/// and then optionally modifiers and region instructions on the sources and
-/// the destination of the main instruction. However it is possible to have a
-/// bale with no main instruction, for example just a rdregion, a modifier and
-/// a wrregion.
+/// GenX instruction baling is the process of determining which LLVM
+/// instructions can be combined into a single vISA instruction. Such a group of
+/// LLVM instructions is known as a *bale*. A bale typically has a *main
+/// instruction* and then optionally modifiers and region instructions on the
+/// sources and the destination of the main instruction. However it is possible
+/// to have a bale with no main instruction, for example just a rdregion, a
+/// modifier and a wrregion.
 ///
 /// Bale example
 /// ^^^^^^^^^^^^
 ///
 /// .. image:: GenXDesign_bale.png
 ///
-/// This example shows a bale that is pretty much as complicated as you can get in
-/// a single bale. Each small blue box is an LLVM IR instruction, with arrows showing
-/// how each one is used. Other than the *bale head* instruction at the top, an
-/// instruction in a bale has only one use, which is within the bale.
+/// This example shows a bale that is pretty much as complicated as you can get
+/// in a single bale. Each small blue box is an LLVM IR instruction, with arrows
+/// showing how each one is used. Other than the *bale head* instruction at the
+/// top, an instruction in a bale has only one use, which is within the bale.
 ///
 /// The baling pass
 /// ^^^^^^^^^^^^^^^
@@ -54,8 +54,8 @@ SPDX-License-Identifier: MIT
 ///      or the pass making the change also updates the baling analysis.
 ///
 ///    The GenXBaling pass also detects where an instruction is baled in to
-///    another, but the instruction has other uses too. In this case it clones the
-///    instruction. Thus we end up with any baled in instruction having only
+///    another, but the instruction has other uses too. In this case it clones
+///    the instruction. Thus we end up with any baled in instruction having only
 ///    one use (with an exception for goto/join -- see below).
 ///
 ///    Thus the GenXBaling pass is not a pure analysis, as it can modify the
@@ -64,10 +64,13 @@ SPDX-License-Identifier: MIT
 /// 2. Using the map set up by the GenXBaling analysis, several functions are
 ///    provided for use by other passes:
 ///
-///    * getBaleInfo()/setBaleInfo() allow another pass to directly inspect and modify
-///      the baling info for an instruction. The BaleInfo for an instruction gives:
+///    * getBaleInfo()/setBaleInfo() allow another pass to directly inspect and
+///    modify
+///      the baling info for an instruction. The BaleInfo for an instruction
+///      gives:
 ///
-///      - Type, the role of the instruction in the bale (e.g. it is a rdregion);
+///      - Type, the role of the instruction in the bale (e.g. it is a
+///      rdregion);
 ///      - a bitmap of which operands are baled into it, together with methods
 ///        for getting and setting the bit for a particular operand.
 ///
@@ -77,13 +80,15 @@ SPDX-License-Identifier: MIT
 ///    * isBaled() says whether the given instruction is baled into anything
 ///
 ///    * getBaleHead() returns the instruction at the head of the bale that the
-///      given instruction is baled into, which is the same as the given instruction
-///      if it is not baled into anything.
+///      given instruction is baled into, which is the same as the given
+///      instruction if it is not baled into anything.
 ///
-///    * buildBale() takes a head instruction (one for which isBaled is false) and
+///    * buildBale() takes a head instruction (one for which isBaled is false)
+///    and
 ///      fills out a Bale struct with a vector of BaleInst structs for all the
 ///      instructions in the bale, where each BaleInst contains a pointer to the
-///      instruction and its BaleInfo struct (as in getBaleInfo()/setBaleInfo()).
+///      instruction and its BaleInfo struct (as in
+///      getBaleInfo()/setBaleInfo()).
 ///
 /// Criteria for baling
 /// ^^^^^^^^^^^^^^^^^^^
@@ -92,13 +97,14 @@ SPDX-License-Identifier: MIT
 /// instructions can be combined into the same vISA instruction:
 ///
 /// * A rdregion with a variable index can bale in an add constant (where the
-///   constant is splatted if vector) that generates the index. In second baling,
-///   the constant add is in fact a ``llvm.genx.add.addr`` intrinsic, because that
-///   is what GenXCategory converted it to.
+///   constant is splatted if vector) that generates the index. In second
+///   baling, the constant add is in fact a ``llvm.genx.add.addr`` intrinsic,
+///   because that is what GenXCategory converted it to.
 ///
-/// * GenXBaling is where an instruction gets recognized as a modifier, for example
-///   subtract from 0 is a negate modifier. The instruction is left as it is, and
-///   its modifier equivalent (e.g. ``BaleInfo::NEGMOD``) is set up in the
+/// * GenXBaling is where an instruction gets recognized as a modifier, for
+/// example
+///   subtract from 0 is a negate modifier. The instruction is left as it is,
+///   and its modifier equivalent (e.g. ``BaleInfo::NEGMOD``) is set up in the
 ///   instruction's BaleInfo.
 ///
 /// * SExt/ZExt are also treated as modifiers, although not always balable. See
@@ -108,63 +114,71 @@ SPDX-License-Identifier: MIT
 ///
 /// * A modifier can bale in another modifier in some circumstances.
 ///
-/// * In particular, SExt/ZExt normally cannot bale in another modifier, but they
+/// * In particular, SExt/ZExt normally cannot bale in another modifier, but
+/// they
 ///   are allowed to bale in an abs modifier as a bodge to fix a problem where
 ///   the LLVM IR generated for ``cm_abs`` does not properly represent its
-///   semantics. See ``dc93b907 GenXBaling: bodge to work around cm_abs problems``.
+///   semantics. See ``dc93b907 GenXBaling: bodge to work around cm_abs
+///   problems``.
 ///
-/// * A main instruction can bale a modifier or rdregion into each operand in some
+/// * A main instruction can bale a modifier or rdregion into each operand in
+/// some
 ///   circumstances:
 ///
 ///   - Some ALU intrinsics have region requirements, e.g. oword aligned,
 ///     contiguous. GenXBaling enforces those requirements by only baling in an
-///     rdregion that satifies them, but only in second baling. First baling does
-///     the baling anyway, as we want GenXLegalization to consider the instructions
-///     as one bale as it might legalize in a way that makes the region legal for
-///     the instruction.
+///     rdregion that satifies them, but only in second baling. First baling
+///     does the baling anyway, as we want GenXLegalization to consider the
+///     instructions as one bale as it might legalize in a way that makes the
+///     region legal for the instruction.
 ///
 ///   - Baling an SExt/ZExt in is how we represent a vISA instruction such as
-///     ``add`` with a result type different to operand type. The two operands can
-///     have different types too in Gen, but vISA insists they are the same (if not
-///     constant). So:
+///     ``add`` with a result type different to operand type. The two operands
+///     can have different types too in Gen, but vISA insists they are the same
+///     (if not constant). So:
 ///
-///     1. In first baling, we allow SExt/ZExt from different types to be baled in
-///        to the two operands. This tends to make GenXLegalization legalize them
-///        to the same vector width as the main instruction.
+///     1. In first baling, we allow SExt/ZExt from different types to be baled
+///     in
+///        to the two operands. This tends to make GenXLegalization legalize
+///        them to the same vector width as the main instruction.
 ///
-///     2. In second baling, we do not allow SExt/ZExt from different types (or one
-///        SExt/ZExt where the other operand does not have one) to be baled in. This
-///        yields a legal vISA instruction, but having done (1) also allows the
-///        finalizer to fold the extend into the instruction.
+///     2. In second baling, we do not allow SExt/ZExt from different types (or
+///     one
+///        SExt/ZExt where the other operand does not have one) to be baled in.
+///        This yields a legal vISA instruction, but having done (1) also allows
+///        the finalizer to fold the extend into the instruction.
 ///
 ///   - A raw operand (of a send or shared function intrinsic) has its own
 ///     restrictions -- it can bale in a rdregion, but the region has to be
 ///     contiguous and GRF aligned.
 ///
 ///   - There is special case code for where send or a shared function intrinsic
-///     has a ``TWOADDR`` raw operand, one that does not appear as a vISA operand
-///     in its own right but is implicitly the same register as the result. The
-///     twoaddr raw operand can bale in a rdregion (with region contiguous and GRF
-///     aligned) as long as the result can be baled into a wrregion with the same
-///     region parameters and the same "old value" input. This represents where a
-///     send or shared function intrinsic does a predicated partial write, and the
-///     place it does the partial write to is a region in a vISA register.
+///     has a ``TWOADDR`` raw operand, one that does not appear as a vISA
+///     operand in its own right but is implicitly the same register as the
+///     result. The twoaddr raw operand can bale in a rdregion (with region
+///     contiguous and GRF aligned) as long as the result can be baled into a
+///     wrregion with the same region parameters and the same "old value" input.
+///     This represents where a send or shared function intrinsic does a
+///     predicated partial write, and the place it does the partial write to is
+///     a region in a vISA register.
 ///
-/// * ``llvm.genx.sat`` represents floating point saturation, and is a modifier that
+/// * ``llvm.genx.sat`` represents floating point saturation, and is a modifier
+/// that
 ///   is different to the other modifiers because it is not a source modifier. A
 ///   saturate can bale in a main instruction or modifier or rdregion.
 ///
 /// * A wrregion can do the following baling:
 ///
 ///   - It can bale a main instruction (subject to region restrictions in second
-///     baling), a saturate, a modifier or a rdregion into its "new value" input.
+///     baling), a saturate, a modifier or a rdregion into its "new value"
+///     input.
 ///
 ///   - Like rdregion, it can bale a constant add into its index operand.
 ///
 /// * Anything with a predicate (wrregion, select, send, all/any, some shared
 ///   function intrinsics) can bale in a predicate not, and any of those things,
-///   including the not, can bale in an rdpredregion to represent using e.g. an M3
-///   flag to use only part of the predicate. However predicate baling is not
+///   including the not, can bale in an rdpredregion to represent using e.g. an
+///   M3 flag to use only part of the predicate. However predicate baling is not
 ///   done in first baling, as GenXLegalization does not want to consider the
 ///   operations together.
 ///
@@ -173,18 +187,18 @@ SPDX-License-Identifier: MIT
 /// Baling of goto/join into br
 /// ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ///
-/// The goto and join intrinsics have multiple return values, returned in a single
-/// struct. One of the return values is the scalar i1 !any value that is then used
-/// in a conditional branch.
+/// The goto and join intrinsics have multiple return values, returned in a
+/// single struct. One of the return values is the scalar i1 !any value that is
+/// then used in a conditional branch.
 ///
 /// In second baling, we want the goto/join, the extractvalue of the !any
 /// result, and the conditional branch to be baled together, so we can generate
 /// a single goto/join instruction.
 ///
-/// However the struct result of the goto/join has other uses, the extractvalues of
-/// the other results. Thus, in this special case, we have a bale where the
-/// goto/join instruction inside the bale has uses other than the inside-bale use.
-/// This needs special case code to handle in GenXBaling.
+/// However the struct result of the goto/join has other uses, the extractvalues
+/// of the other results. Thus, in this special case, we have a bale where the
+/// goto/join instruction inside the bale has uses other than the inside-bale
+/// use. This needs special case code to handle in GenXBaling.
 ///
 /// In the future it may be worth considering a generalization of this idea of a
 /// bale that is not a strict tree of instructions, so that we can use LLVM IR
@@ -206,7 +220,8 @@ SPDX-License-Identifier: MIT
 /// an intrinsic, it marks the rdregion's input's LiveRange as needing to be 32
 /// aligned. GenXCategory sets most alignment requirements, but baling in
 /// a rdregion or baling a main instruction into a wrregion imposes alignment
-/// requirements on the vISA register that the region is read from or written to.
+/// requirements on the vISA register that the region is read from or written
+/// to.
 ///
 //===----------------------------------------------------------------------===//
 #ifndef GENXBALING_H
@@ -229,14 +244,14 @@ SPDX-License-Identifier: MIT
 #include <string>
 
 namespace llvm {
-  class BranchInst;
-  class CallInst;
-  class DebugLoc;
-  class GenXLiveness;
-  class Instruction;
-  class raw_ostream;
-  class Twine;
-  class Value;
+class BranchInst;
+class CallInst;
+class DebugLoc;
+class GenXLiveness;
+class Instruction;
+class raw_ostream;
+class Twine;
+class Value;
 
 namespace genx {
 
@@ -244,14 +259,35 @@ namespace genx {
 struct BaleInfo {
   // Type is how this instruction relates to its bale, whether it is a
   // rdregion, wrregion, modifier, or main instruction.
-  enum { MAININST, WRREGION, SATURATE, NOTMOD, NEGMOD, ABSMOD,
-      RDREGION, ADDRADD, ADDROR, RDPREDREGION, ALLANY, NOTP, ZEXT, SEXT,
-      SHUFFLEPRED, WRPREDREGION, WRPREDPREDREGION, CMPDST, GSTORE, REGINTR };
+  enum {
+    MAININST,
+    WRREGION,
+    SATURATE,
+    NOTMOD,
+    NEGMOD,
+    ABSMOD,
+    RDREGION,
+    ADDRADD,
+    ADDROR,
+    RDPREDREGION,
+    ALLANY,
+    NOTP,
+    ZEXT,
+    SEXT,
+    SHUFFLEPRED,
+    WRPREDREGION,
+    WRPREDPREDREGION,
+    CMPDST,
+    GSTORE,
+    REGINTR
+  };
   uint16_t Type;
   uint16_t Bits; // bitmap of which operands are baled in
   BaleInfo(int Type = MAININST, unsigned Bits = 0) : Type(Type), Bits(Bits) {}
   // isOperandBaled() : read Bits to see if operand is baled
-  bool isOperandBaled(unsigned OperandNum) const { return (Bits >> OperandNum) & 1; }
+  bool isOperandBaled(unsigned OperandNum) const {
+    return (Bits >> OperandNum) & 1;
+  }
   // clearOperandBaled() : clear bit that says that operand is baled
   void clearOperandBaled(unsigned OperandNum) { Bits &= ~(1 << OperandNum); }
   // setOperandBaled() : set bit that says that operand is baled
@@ -276,9 +312,13 @@ class Bale {
   typedef SmallVector<BaleInst, 8> Insts_t;
   Insts_t Insts;
   hash_code Hash;
+
 public:
   Bale() : Hash(0) {}
-  void clear() { Insts.clear(); Hash = 0; }
+  void clear() {
+    Insts.clear();
+    Hash = 0;
+  }
   // push_front : push an instruction onto the "front", i.e. it is baled
   // into an instruction already in the bale
   void push_front(BaleInst BI) { Insts.push_back(BI); }
@@ -329,9 +369,7 @@ public:
       return getPreHeadIt();
     return getHeadIt();
   }
-  BaleInst *getHeadIgnoreGStore() {
-    return &*getHeadIgnoreGStoreIt();
-  }
+  BaleInst *getHeadIgnoreGStore() { return &*getHeadIgnoreGStoreIt(); }
   llvm::SmallPtrSet<const Instruction *, 2> getVLoadSources() const;
   bool hasVLoadSources() const;
   bool endsWithGStore() const {
@@ -342,9 +380,7 @@ public:
   // hash : set hash code for bale. Must be called before using comparison
   // operators.
   void hash();
-  hash_code getHash() const {
-    return Hash;
-  }
+  hash_code getHash() const { return Hash; }
   // Comparison operators. Two bales are equivalent if they compute the same
   // value, that is, they have the same opcodes in the instructions, the
   // instructions are baled together in the same way, and the operands coming
@@ -370,10 +406,10 @@ inline raw_ostream &operator<<(raw_ostream &OS, const Bale &B) {
 } // end namespace genx
 
 //----------------------------------------------------------------------
-// GenXBaling : the baling information for a Function or FunctionGroup (depending
-// on whether GenXFuncBaling or GenXGroupBaling created it)
+// GenXBaling : the baling information for a Function or FunctionGroup
+// (depending on whether GenXFuncBaling or GenXGroupBaling created it)
 class GenXBaling {
-  typedef llvm::ValueMap<const Value*, genx::BaleInfo,
+  typedef llvm::ValueMap<const Value *, genx::BaleInfo,
                          IgnoreRAUWValueMapConfig<const Value *>>
       InstMap_t;
   const GenXSubtarget *ST;
@@ -390,6 +426,7 @@ class GenXBaling {
   typedef SmallVector<NeedClone, 8> NeedCloneStack_t;
   NeedCloneStack_t NeedCloneStack;
   SmallVector<CallInst *, 4> TwoAddrSends;
+
 protected:
   BalingKind Kind;
   const DominatorTree *DT;
@@ -428,7 +465,8 @@ public:
   // getBaleHead : return the head of the bale containing this instruction
   Instruction *getBaleHead(Instruction *Inst) const;
   // buildBale : build Bale from head instruction. B assumed empty on entry
-  void buildBale(Instruction *Inst, genx::Bale *B, bool IncludeAddr = false) const;
+  void buildBale(Instruction *Inst, genx::Bale *B,
+                 bool IncludeAddr = false) const;
   // store : store updated BaleInfo for Instruction (used to unbale by
   // GenXLegalization)
   void store(genx::BaleInst BI);
@@ -476,7 +514,8 @@ private:
   void buildBaleSub(Instruction *Inst, genx::Bale *B, bool IncludeAddr) const;
   void processBranch(BranchInst *Branch);
   void processTwoAddrSend(CallInst *CI);
-  void setOperandBaled(Instruction *Inst, unsigned OperandNum, genx::BaleInfo *BI);
+  void setOperandBaled(Instruction *Inst, unsigned OperandNum,
+                       genx::BaleInfo *BI);
   void doClones();
   Instruction *getOrUnbaleExtend(Instruction *Inst, genx::BaleInfo *BI,
                                  unsigned OperandNum, bool Unbale);
@@ -548,7 +587,9 @@ using GenXGroupBalingWrapper = FunctionGroupWrapperPass<GenXGroupBaling>;
 } // end namespace llvm
 
 template <> struct std::hash<llvm::genx::Bale> {
-  std::size_t operator()(const llvm::genx::Bale &B) const { return B.getHash(); }
+  std::size_t operator()(const llvm::genx::Bale &B) const {
+    return B.getHash();
+  }
 };
 
 #endif // GENXBALING_H

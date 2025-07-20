@@ -12,19 +12,15 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/CodeGen/CommandFlags.h"
 
-namespace IGCLLVM
-{
-namespace codegen
-{
-    llvm::TargetOptions
-        InitTargetOptionsFromCodeGenFlags(const llvm::Triple& TheTriple)
-    {
+namespace IGCLLVM {
+namespace codegen {
+llvm::TargetOptions InitTargetOptionsFromCodeGenFlags(const llvm::Triple &TheTriple) {
 #if LLVM_VERSION_MAJOR <= 11
-        return llvm::codegen::InitTargetOptionsFromCodeGenFlags();
+  return llvm::codegen::InitTargetOptionsFromCodeGenFlags();
 #else
-        return llvm::codegen::InitTargetOptionsFromCodeGenFlags(TheTriple);
+  return llvm::codegen::InitTargetOptionsFromCodeGenFlags(TheTriple);
 #endif
-    }
+}
 } // namespace codegen
 } // namespace IGCLLVM
 

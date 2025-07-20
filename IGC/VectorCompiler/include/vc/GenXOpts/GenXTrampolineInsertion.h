@@ -18,7 +18,7 @@ struct GenXTrampolineInsertionPass
     : public llvm::PassInfoMixin<GenXTrampolineInsertionPass> {
 
   explicit GenXTrampolineInsertionPass(GenXBackendConfigPass::Result &BC)
-      : BC(BC){};
+      : BC(BC) {};
 
   llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
 

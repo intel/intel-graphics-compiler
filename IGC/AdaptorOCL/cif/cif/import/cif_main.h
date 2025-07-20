@@ -41,4 +41,4 @@ protected:
 // helpers for opening CIF Main inferface over given library handle
 CIF::RAII::UPtr_t<CIFMain> OpenLibraryInterface(CIF::LibraryHandle &lib);
 std::unique_ptr<CIFPackage> OpenLibraryInterface(std::unique_ptr<CIF::LibraryHandle> &&lib);
-}
+} // namespace CIF

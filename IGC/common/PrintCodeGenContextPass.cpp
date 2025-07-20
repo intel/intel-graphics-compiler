@@ -27,14 +27,12 @@ IGC_INITIALIZE_PASS_END(PrintCodeGenContextPass, PASS_FLAG, PASS_DESCRIPTION, PA
 
 char PrintCodeGenContextPass::ID = 0;
 
-PrintCodeGenContextPass::PrintCodeGenContextPass()
-    : Stream(llvm::errs()), ModulePass(ID) {}
+PrintCodeGenContextPass::PrintCodeGenContextPass() : Stream(llvm::errs()), ModulePass(ID) {}
 
-PrintCodeGenContextPass::PrintCodeGenContextPass(llvm::raw_ostream &Stream)
-    : Stream(Stream), ModulePass(ID) {}
+PrintCodeGenContextPass::PrintCodeGenContextPass(llvm::raw_ostream &Stream) : Stream(Stream), ModulePass(ID) {}
 
 bool PrintCodeGenContextPass::runOnModule(llvm::Module &M) {
-    getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->print(Stream);
-    return false;
+  getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->print(Stream);
+  return false;
 }
 } // namespace IGC

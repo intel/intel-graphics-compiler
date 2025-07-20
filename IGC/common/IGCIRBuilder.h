@@ -24,234 +24,183 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "CommonMacros.h"
 
-//This Builder class provides definitions for functions calls that were once available till LLVM version 3.6.0
+// This Builder class provides definitions for functions calls that were once available till LLVM version 3.6.0
 //===--------------------------------------------------------------------===
-// CreateCall Variations which are removed in 3.8 for API Simplification, which IGC still finds convenient to use
+//  CreateCall Variations which are removed in 3.8 for API Simplification, which IGC still finds convenient to use
 
 //===--------------------------------------------------------------------===
 namespace llvm {
 
-    template<typename T = ConstantFolder, typename InserterTy = IRBuilderDefaultInserter >
-    class IGCIRBuilder : public IGCLLVM::IRBuilder<T, InserterTy>
-    {
-    public:
-        IGCIRBuilder(LLVMContext &C, const T &F, InserterTy I = InserterTy(),
-            MDNode *FPMathTag = nullptr,
-            ArrayRef<OperandBundleDef> OpBundles = {})
-            : IGCLLVM::IRBuilder<T, InserterTy>(C, F, I, FPMathTag, OpBundles){}
+template <typename T = ConstantFolder, typename InserterTy = IRBuilderDefaultInserter>
+class IGCIRBuilder : public IGCLLVM::IRBuilder<T, InserterTy> {
+public:
+  IGCIRBuilder(LLVMContext &C, const T &F, InserterTy I = InserterTy(), MDNode *FPMathTag = nullptr,
+               ArrayRef<OperandBundleDef> OpBundles = {})
+      : IGCLLVM::IRBuilder<T, InserterTy>(C, F, I, FPMathTag, OpBundles) {}
 
-        explicit IGCIRBuilder(LLVMContext &C, MDNode *FPMathTag = nullptr,
-            ArrayRef<OperandBundleDef> OpBundles = {})
-            : IGCLLVM::IRBuilder<T, InserterTy>(C, FPMathTag, OpBundles){}
+  explicit IGCIRBuilder(LLVMContext &C, MDNode *FPMathTag = nullptr, ArrayRef<OperandBundleDef> OpBundles = {})
+      : IGCLLVM::IRBuilder<T, InserterTy>(C, FPMathTag, OpBundles) {}
 
-        explicit IGCIRBuilder(BasicBlock *TheBB, MDNode *FPMathTag = nullptr)
-            : IGCLLVM::IRBuilder<T, InserterTy>(TheBB, FPMathTag){}
+  explicit IGCIRBuilder(BasicBlock *TheBB, MDNode *FPMathTag = nullptr)
+      : IGCLLVM::IRBuilder<T, InserterTy>(TheBB, FPMathTag) {}
 
-        explicit IGCIRBuilder(Instruction *IP, MDNode *FPMathTag = nullptr,
-            ArrayRef<OperandBundleDef> OpBundles = {})
-            : IGCLLVM::IRBuilder<T, InserterTy>(IP, FPMathTag, OpBundles) {}
+  explicit IGCIRBuilder(Instruction *IP, MDNode *FPMathTag = nullptr, ArrayRef<OperandBundleDef> OpBundles = {})
+      : IGCLLVM::IRBuilder<T, InserterTy>(IP, FPMathTag, OpBundles) {}
 
-        CallInst *CreateCall2(Value *Callee, Value *Arg1, Value *Arg2,
-            const Twine &Name = "") {
-            IGC_UNUSED(Name);
-            Value *Args[] = { Arg1, Arg2 };
-            return this->CreateCall(Callee, Args);
+  CallInst *CreateCall2(Value *Callee, Value *Arg1, Value *Arg2, const Twine &Name = "") {
+    IGC_UNUSED(Name);
+    Value *Args[] = {Arg1, Arg2};
+    return this->CreateCall(Callee, Args);
+  }
+
+  CallInst *CreateCall3(Value *Callee, Value *Arg1, Value *Arg2, Value *Arg3, const Twine &Name = "") {
+    IGC_UNUSED(Name);
+    Value *Args[] = {Arg1, Arg2, Arg3};
+    return this->CreateCall(Callee, Args);
+  }
+
+  CallInst *CreateCall4(Value *Callee, Value *Arg1, Value *Arg2, Value *Arg3, Value *Arg4, const Twine &Name = "") {
+    IGC_UNUSED(Name);
+    Value *Args[] = {Arg1, Arg2, Arg3, Arg4};
+    return this->CreateCall(Callee, Args);
+  }
+
+  CallInst *CreateCall5(Value *Callee, Value *Arg1, Value *Arg2, Value *Arg3, Value *Arg4, Value *Arg5,
+                        const Twine &Name = "") {
+    IGC_UNUSED(Name);
+    Value *Args[] = {Arg1, Arg2, Arg3, Arg4, Arg5};
+    return this->CreateCall(Callee, Args);
+  }
+
+  inline Value *CreateAnyValuesNotZero(Value **values, unsigned nvalues) {
+    Value *f0 = ConstantFP::get(values[0]->getType(), 0.0);
+    Value *ne0 = this->CreateFCmpUNE(values[0], f0);
+    for (unsigned i = 1; i < nvalues; i++) {
+      ne0 = this->CreateOr(ne0, this->CreateFCmpUNE(values[i], f0));
+    }
+    return ne0;
+  }
+
+  inline Value *CreateAllValuesAreZeroF(Value **values, unsigned nvalues) {
+    if (nvalues) {
+      return CreateAllValuesAreConstantFP(values, nvalues, ConstantFP::get(values[0]->getType(), 0.0));
+    }
+    return nullptr;
+  }
+
+  inline Value *CreateAllValuesAreOneF(Value **values, unsigned nvalues) {
+    if (nvalues) {
+      return CreateAllValuesAreConstantFP(values, nvalues, ConstantFP::get(values[0]->getType(), 1.0));
+    }
+    return nullptr;
+  }
+
+  inline Value *CreateExtractElementOrPropagate(Value *vec, Value *idx, const Twine &name = "") {
+    if (vec == nullptr || idx == nullptr)
+      return nullptr;
+    Value *srcVec = vec;
+
+    // Traverse ir that created source vector, looking for
+    // insertelement with the index we are interested in
+    while (auto *IE = dyn_cast<InsertElementInst>(srcVec)) {
+      Value *srcVal = IE->getOperand(1);
+      Value *srcIdx = IE->getOperand(2);
+
+      auto *cSrcIdx = dyn_cast<ConstantInt>(srcIdx);
+      auto *cIdx = dyn_cast<ConstantInt>(idx);
+      if (srcIdx == idx || (cSrcIdx && cIdx && cSrcIdx->getZExtValue() == cIdx->getZExtValue())) {
+        return srcVal;
+      } else {
+        // If index isn't constant we cannot iterate further, since
+        // we don't know which element was replaced in just visited
+        // insertelement.
+        if (!isa<ConstantInt>(idx)) {
+          break;
         }
+        // This is not the instruction we are looking for.
+        // Get it's source and iterate further.
+        srcVec = IE->getOperand(0);
+      }
+    }
 
-        CallInst *CreateCall3(Value *Callee, Value *Arg1, Value *Arg2, Value *Arg3,
-            const Twine &Name = "") {
-            IGC_UNUSED(Name);
-            Value *Args[] = { Arg1, Arg2, Arg3 };
-            return this->CreateCall(Callee, Args);
-        }
+    // We cannot find value to propagate propagate, add extractelement
+    return this->CreateExtractElement(vec, idx, name);
+  }
 
-        CallInst *CreateCall4(Value *Callee, Value *Arg1, Value *Arg2, Value *Arg3,
-            Value *Arg4, const Twine &Name = "") {
-            IGC_UNUSED(Name);
-            Value *Args[] = { Arg1, Arg2, Arg3, Arg4 };
-            return this->CreateCall(Callee, Args);
-        }
+  inline Value *CreateExtractElementOrPropagate(Value *vec, uint64_t idx, const Twine &name = "") {
+    return CreateExtractElementOrPropagate(vec, this->getInt64(idx), name);
+  }
 
-        CallInst *CreateCall5(Value *Callee, Value *Arg1, Value *Arg2, Value *Arg3,
-            Value *Arg4, Value *Arg5, const Twine &Name = "") {
-            IGC_UNUSED(Name);
-            Value *Args[] = { Arg1, Arg2, Arg3, Arg4, Arg5 };
-            return this->CreateCall(Callee, Args);
-        }
+  inline Function *llvm_GenISA_staticConstantPatch(Type *RetTy, Type *ArgTy) {
+    Module *module = this->GetInsertBlock()->getParent()->getParent();
 
-        inline Value* CreateAnyValuesNotZero(Value** values, unsigned nvalues)
-        {
-            Value* f0 = ConstantFP::get(values[0]->getType(), 0.0);
-            Value* ne0 = this->CreateFCmpUNE(values[0], f0);
-            for (unsigned i = 1; i < nvalues; i++)
-            {
-                ne0 = this->CreateOr(ne0,
-                    this->CreateFCmpUNE(values[i], f0));
-            }
-            return ne0;
-        }
+    Type *Tys[] = {RetTy, ArgTy};
 
-        inline Value* CreateAllValuesAreZeroF(Value** values, unsigned nvalues)
-        {
-            if (nvalues)
-            {
-                return CreateAllValuesAreConstantFP(values, nvalues,
-                    ConstantFP::get(values[0]->getType(), 0.0));
-            }
-            return nullptr;
-        }
+    Function *func_llvm_GenISA_staticConstantPatchValue =
+        GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_staticConstantPatchValue, Tys);
+    return func_llvm_GenISA_staticConstantPatchValue;
+  }
 
-        inline Value* CreateAllValuesAreOneF(Value** values, unsigned nvalues)
-        {
-            if (nvalues)
-            {
-                return CreateAllValuesAreConstantFP(values, nvalues,
-                    ConstantFP::get(values[0]->getType(), 1.0));
-            }
-            return nullptr;
-        }
+  inline CallInst *CreateStaticConstantPatch(Type *RetTy, StringRef patchName, const Twine &Name = "") {
+    auto *Arg = ConstantDataArray::getString(RetTy->getContext(), patchName, false);
+    Function *func = llvm_GenISA_staticConstantPatch(RetTy, Arg->getType());
+    return this->CreateCall(func, Arg, Name);
+  }
 
-        inline Value* CreateExtractElementOrPropagate(Value* vec, Value* idx, const Twine& name = "")
-        {
-            if(vec == nullptr || idx == nullptr) return nullptr;
-            Value* srcVec = vec;
+  inline void SetDebugReg(Value *V, const Twine &Name = "") {
+    Module *M = this->GetInsertBlock()->getParent()->getParent();
+    Function *fn = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_SetDebugReg);
 
-            // Traverse ir that created source vector, looking for
-            // insertelement with the index we are interested in
-            while(auto* IE = dyn_cast<InsertElementInst>(srcVec))
-            {
-                Value* srcVal = IE->getOperand(1);
-                Value* srcIdx = IE->getOperand(2);
+    if (!isa<Constant>(V)) {
 
-                auto* cSrcIdx = dyn_cast<ConstantInt>(srcIdx);
-                auto* cIdx    = dyn_cast<ConstantInt>(idx);
-                if(srcIdx == idx ||
-                   (cSrcIdx && cIdx &&
-                    cSrcIdx->getZExtValue() == cIdx->getZExtValue()))
-                {
-                    return srcVal;
-                }
-                else
-                {
-                    // If index isn't constant we cannot iterate further, since
-                    // we don't know which element was replaced in just visited
-                    // insertelement.
-                    if(!isa<ConstantInt>(idx))
-                    {
-                        break;
-                    }
-                    // This is not the instruction we are looking for.
-                    // Get it's source and iterate further.
-                    srcVec = IE->getOperand(0);
-                }
-            }
+      // read the first lane because debug register requires the value to
+      // be uniform
+      Function *waveBallotFn = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_WaveBallot);
 
-            // We cannot find value to propagate propagate, add extractelement
-            return this->CreateExtractElement(vec, idx, name);
-        }
+      Function *waveShuffleIndexFn =
+          GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_WaveShuffleIndex, V->getType());
 
-        inline Value* CreateExtractElementOrPropagate(Value* vec, uint64_t idx, const Twine& name = "")
-        {
-            return CreateExtractElementOrPropagate(vec, this->getInt64(idx), name);
-        }
+      Function *fblFn = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_firstbitLo);
 
-        inline Function* llvm_GenISA_staticConstantPatch(Type* RetTy, Type* ArgTy)
-        {
-            Module* module = this->GetInsertBlock()->getParent()->getParent();
+      CallInst *ballot = this->CreateCall2(waveBallotFn, this->getTrue(), this->getInt32(0));
 
-            Type* Tys[] = { RetTy, ArgTy };
+      auto *firstLaneId = this->CreateCall(fblFn, ballot);
+      V = this->CreateCall3(waveShuffleIndexFn, V, firstLaneId, this->getInt32(0));
+    }
 
-            Function* func_llvm_GenISA_staticConstantPatchValue =
-                GenISAIntrinsic::getDeclaration(
-                    module,
-                    GenISAIntrinsic::GenISA_staticConstantPatchValue,
-                    Tys);
-            return func_llvm_GenISA_staticConstantPatchValue;
-        }
+    if (V->getType() == this->getInt32Ty()) {
+      this->CreateCall(fn, V, Name);
+      return;
+    }
 
-        inline CallInst* CreateStaticConstantPatch(Type* RetTy, StringRef patchName, const Twine& Name = "")
-        {
-            auto* Arg = ConstantDataArray::getString(RetTy->getContext(), patchName, false);
-            Function* func = llvm_GenISA_staticConstantPatch(RetTy, Arg->getType());
-            return this->CreateCall(func, Arg, Name);
-        }
+    if (V->getType()->isPointerTy()) {
+      V = this->CreatePtrToInt(V, this->getInt64Ty());
+      this->CreateCall(fn, this->CreateTrunc(V, this->getInt32Ty()), Name);
+      this->CreateCall(fn, this->CreateTrunc(this->CreateLShr(V, 32), this->getInt32Ty()), Name);
+      return;
+    }
 
-        inline void SetDebugReg(Value* V, const Twine& Name = "")
-        {
-          Module *M = this->GetInsertBlock()->getParent()->getParent();
-          Function *fn = GenISAIntrinsic::getDeclaration(
-              M, GenISAIntrinsic::GenISA_SetDebugReg);
+    if (V->getType()->getPrimitiveSizeInBits() == 32) {
+      this->CreateCall(fn, this->CreateBitCast(V, this->getInt32Ty()), Name);
+      return;
+    }
 
-          if (!isa<Constant>(V)) {
+    IGC_ASSERT_MESSAGE(0, "Unhandled?");
+  }
 
-            // read the first lane because debug register requires the value to
-            // be uniform
-            Function *waveBallotFn = GenISAIntrinsic::getDeclaration(
-                M, GenISAIntrinsic::GenISA_WaveBallot);
+  inline void SetDebugReg(uint32_t V, const Twine &Name = "") { this->SetDebugReg(this->getInt32(V)); }
 
-            Function *waveShuffleIndexFn = GenISAIntrinsic::getDeclaration(
-                M, GenISAIntrinsic::GenISA_WaveShuffleIndex,
-                V->getType());
+private:
+  inline Value *CreateAllValuesAreConstantFP(Value **values, unsigned nvalues, Value *constVal) {
+    if (nvalues) {
+      Value *aeq = this->CreateFCmpOEQ(values[0], constVal);
+      for (unsigned i = 1; i < nvalues; i++) {
+        aeq = this->CreateAnd(aeq, this->CreateFCmpOEQ(values[i], constVal));
+      }
+      return aeq;
+    }
+    return nullptr;
+  }
+};
 
-            Function *fblFn = GenISAIntrinsic::getDeclaration(
-                M, GenISAIntrinsic::GenISA_firstbitLo);
-
-            CallInst *ballot = this->CreateCall2(waveBallotFn, this->getTrue(),
-                                                 this->getInt32(0));
-
-            auto *firstLaneId = this->CreateCall(fblFn, ballot);
-            V = this->CreateCall3(waveShuffleIndexFn, V, firstLaneId,
-                                  this->getInt32(0));
-          }
-
-          if (V->getType() == this->getInt32Ty()) {
-            this->CreateCall(fn, V, Name);
-            return;
-          }
-
-          if (V->getType()->isPointerTy()) {
-            V = this->CreatePtrToInt(V, this->getInt64Ty());
-            this->CreateCall(fn, this->CreateTrunc(V, this->getInt32Ty()),
-                             Name);
-            this->CreateCall(
-                fn,
-                this->CreateTrunc(this->CreateLShr(V, 32), this->getInt32Ty()),
-                Name);
-            return;
-          }
-
-          if (V->getType()->getPrimitiveSizeInBits() == 32) {
-            this->CreateCall(fn, this->CreateBitCast(V, this->getInt32Ty()),
-                             Name);
-            return;
-          }
-
-          IGC_ASSERT_MESSAGE(0, "Unhandled?");
-        }
-
-        inline void SetDebugReg(uint32_t V, const Twine& Name = "")
-        {
-          this->SetDebugReg(this->getInt32(V));
-        }
-
-    private:
-
-        inline Value* CreateAllValuesAreConstantFP(Value** values,
-            unsigned nvalues, Value* constVal)
-        {
-            if (nvalues)
-            {
-                Value* aeq = this->CreateFCmpOEQ(values[0], constVal);
-                for (unsigned i = 1; i < nvalues; i++)
-                {
-                    aeq = this->CreateAnd(aeq,
-                        this->CreateFCmpOEQ(values[i], constVal));
-                }
-                return aeq;
-            }
-            return nullptr;
-        }
-    };
-
-    } // end namespace llvm
-
+} // end namespace llvm

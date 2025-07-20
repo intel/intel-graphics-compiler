@@ -13,49 +13,40 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/PatternMatch.h"
 
-namespace IGCLLVM
-{
-    using TerminatorInst = llvm::Instruction;
+namespace IGCLLVM {
+using TerminatorInst = llvm::Instruction;
 
-    namespace BinaryOperator
-    {
-        inline bool isNot(const llvm::Value *V)
-        {
-            return llvm::PatternMatch::match(V, llvm::PatternMatch::m_Not(llvm::PatternMatch::m_Value()));
-        }
-    }
-
-    inline void removeFnAttr(llvm::CallInst *CI, llvm::Attribute::AttrKind Kind)
-    {
-#if LLVM_VERSION_MAJOR >= 14
-        CI->removeFnAttr(Kind);
-#else
-        CI->removeAttribute(llvm::AttributeList::FunctionIndex, Kind);
-#endif
-    }
-
-    inline void addFnAttr(llvm::CallInst *CI, llvm::Attribute::AttrKind Kind)
-    {
-#if LLVM_VERSION_MAJOR >= 14
-        CI->addFnAttr(Kind);
-#else
-        CI->addAttribute(llvm::AttributeList::FunctionIndex, Kind);
-#endif
-    }
-
-    inline void addFnAttr(llvm::CallInst *CI, llvm::Attribute Attr)
-    {
-        addFnAttr(CI, Attr.getKindAsEnum());
-    }
-
-    inline uint64_t getRetDereferenceableBytes(llvm::CallBase* Call)
-    {
-#if LLVM_VERSION_MAJOR >= 14
-        return Call->getRetDereferenceableBytes();
-#else
-        return Call->getDereferenceableBytes(llvm::AttributeList::ReturnIndex);
-#endif
-    }
+namespace BinaryOperator {
+inline bool isNot(const llvm::Value *V) {
+  return llvm::PatternMatch::match(V, llvm::PatternMatch::m_Not(llvm::PatternMatch::m_Value()));
 }
+} // namespace BinaryOperator
+
+inline void removeFnAttr(llvm::CallInst *CI, llvm::Attribute::AttrKind Kind) {
+#if LLVM_VERSION_MAJOR >= 14
+  CI->removeFnAttr(Kind);
+#else
+  CI->removeAttribute(llvm::AttributeList::FunctionIndex, Kind);
+#endif
+}
+
+inline void addFnAttr(llvm::CallInst *CI, llvm::Attribute::AttrKind Kind) {
+#if LLVM_VERSION_MAJOR >= 14
+  CI->addFnAttr(Kind);
+#else
+  CI->addAttribute(llvm::AttributeList::FunctionIndex, Kind);
+#endif
+}
+
+inline void addFnAttr(llvm::CallInst *CI, llvm::Attribute Attr) { addFnAttr(CI, Attr.getKindAsEnum()); }
+
+inline uint64_t getRetDereferenceableBytes(llvm::CallBase *Call) {
+#if LLVM_VERSION_MAJOR >= 14
+  return Call->getRetDereferenceableBytes();
+#else
+  return Call->getDereferenceableBytes(llvm::AttributeList::ReturnIndex);
+#endif
+}
+} // namespace IGCLLVM
 
 #endif

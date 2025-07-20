@@ -17,34 +17,30 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 
-namespace IGC
-{
-    class PreprocessSPVIR : public llvm::ModulePass, public llvm::InstVisitor<PreprocessSPVIR>
-    {
-    public:
-        static char ID;
+namespace IGC {
+class PreprocessSPVIR : public llvm::ModulePass, public llvm::InstVisitor<PreprocessSPVIR> {
+public:
+  static char ID;
 
-        PreprocessSPVIR();
-        ~PreprocessSPVIR() {}
+  PreprocessSPVIR();
+  ~PreprocessSPVIR() {}
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "PreprocessSPVIR";
-        }
+  virtual llvm::StringRef getPassName() const override { return "PreprocessSPVIR"; }
 
-        virtual bool runOnModule(llvm::Module& F) override;
-        void visitCallInst(llvm::CallInst& CI);
-        void visitOpenCLEISPrintf(llvm::CallInst& CI);
+  virtual bool runOnModule(llvm::Module &F) override;
+  void visitCallInst(llvm::CallInst &CI);
+  void visitOpenCLEISPrintf(llvm::CallInst &CI);
 
-        static bool isSPVIR(llvm::StringRef funcName);
-    private:
-        bool hasArrayArg(llvm::Function& F);
-        void processBuiltinsWithArrayArguments(llvm::Function& F);
-        void processBuiltinsWithArrayArguments();
-        void createCallAndReplace(llvm::CallInst& oldCallInst, llvm::StringRef newFuncName, std::vector<llvm::Value*>& args);
+  static bool isSPVIR(llvm::StringRef funcName);
 
-        IGCLLVM::Module* m_Module = nullptr;
-        llvm::IRBuilder<>* m_Builder = nullptr;
-        bool m_changed = false;
-    };
-}
+private:
+  bool hasArrayArg(llvm::Function &F);
+  void processBuiltinsWithArrayArguments(llvm::Function &F);
+  void processBuiltinsWithArrayArguments();
+  void createCallAndReplace(llvm::CallInst &oldCallInst, llvm::StringRef newFuncName, std::vector<llvm::Value *> &args);
+
+  IGCLLVM::Module *m_Module = nullptr;
+  llvm::IRBuilder<> *m_Builder = nullptr;
+  bool m_changed = false;
+};
+} // namespace IGC

@@ -20,19 +20,15 @@ using namespace llvm;
 #define PASS_DESCRIPTION "Resolve OCL inline sampler for bindless"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ResolveInlineSamplerForBindless, PASS_FLAG,
-                          PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ResolveInlineSamplerForBindless, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(ResolveInlineSamplerForBindless, PASS_FLAG,
-                        PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ResolveInlineSamplerForBindless, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ResolveInlineSamplerForBindless::ID = 0;
 
-ResolveInlineSamplerForBindless::ResolveInlineSamplerForBindless()
-    : FunctionPass(ID) {
-  initializeResolveInlineSamplerForBindlessPass(
-      *PassRegistry::getPassRegistry());
+ResolveInlineSamplerForBindless::ResolveInlineSamplerForBindless() : FunctionPass(ID) {
+  initializeResolveInlineSamplerForBindlessPass(*PassRegistry::getPassRegistry());
 }
 
 bool ResolveInlineSamplerForBindless::runOnFunction(Function &F) {
@@ -64,17 +60,15 @@ void ResolveInlineSamplerForBindless::visitCallInst(CallInst &CI) {
   ImplicitArgs ImplicitArgs(*(CI.getFunction()), mMDUtils);
 
   IGC_ASSERT_MESSAGE(isa<ConstantInt>(CI.getArgOperand(0)),
-      "Sampler initializer calls can only be made with const int values!");
+                     "Sampler initializer calls can only be made with const int values!");
 
   auto *InlineSamplerInit = cast<ConstantInt>(CI.getArgOperand(0));
   int InlineSamplerInitValue = InlineSamplerInit->getZExtValue();
-  Argument *InlineSamplerArg = ImplicitArgs.getNumberedImplicitArg(
-      *(CI.getFunction()), ImplicitArg::INLINE_SAMPLER,
-      int_cast<int>(InlineSamplerInitValue));
+  Argument *InlineSamplerArg = ImplicitArgs.getNumberedImplicitArg(*(CI.getFunction()), ImplicitArg::INLINE_SAMPLER,
+                                                                   int_cast<int>(InlineSamplerInitValue));
 
   IRBuilder<> Builder(&CI);
-  Value *ArgToPtr = Builder.CreateIntToPtr(
-      InlineSamplerArg, CI.getFunctionType()->getReturnType());
+  Value *ArgToPtr = Builder.CreateIntToPtr(InlineSamplerArg, CI.getFunctionType()->getReturnType());
 
   CI.replaceAllUsesWith(ArgToPtr);
   CI.eraseFromParent();

@@ -107,9 +107,9 @@ inline bool isInternalNonTrivialIntrinsic(const llvm::Value *V) {
 /// using iAny, fAny, vAny, or iPTRAny).  For a declaration of an overloaded
 /// intrinsic, Tys must provide exactly one type for each overloaded type in
 /// the intrinsic.
-llvm::Function *
-getInternalDeclaration(llvm::Module *M, ID id,
-                       llvm::ArrayRef<llvm::Type *> Tys = llvm::ArrayRef<llvm::Type*>());
+llvm::Function *getInternalDeclaration(
+    llvm::Module *M, ID id,
+    llvm::ArrayRef<llvm::Type *> Tys = llvm::ArrayRef<llvm::Type *>());
 
 /// InternalIntrinsic::isOverloadedArg(ID, ArgNum) - Return true if ArgNum
 /// in intrinsic overloaded
@@ -119,8 +119,8 @@ bool isOverloadedArg(unsigned IntrinID, unsigned ArgNum);
 /// in intrinsic is overloaded
 bool isOverloadedRet(unsigned IntrinID);
 
-std::string getInternalName(ID id,
-                            llvm::ArrayRef<llvm::Type *> Tys = llvm::ArrayRef<llvm::Type*>());
+std::string getInternalName(
+    ID id, llvm::ArrayRef<llvm::Type *> Tys = llvm::ArrayRef<llvm::Type *>());
 
 bool isInternalMemoryIntrinsic(ID id);
 

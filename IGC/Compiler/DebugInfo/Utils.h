@@ -19,24 +19,23 @@ SPDX-License-Identifier: MIT
 namespace IGC {
 namespace Utils {
 
-    #define __OCL_DBG_VARIABLES 9
+#define __OCL_DBG_VARIABLES 9
 
-    /// @brief return true if given module contain debug info
-    /// @param M The LLVM module.
-    /// @return true if given module contain debug info
-    bool HasDebugInfo(llvm::Module& M);
+/// @brief return true if given module contain debug info
+/// @param M The LLVM module.
+/// @return true if given module contain debug info
+bool HasDebugInfo(llvm::Module &M);
 
-    /// @brief creates a new call instruction to llvm.dbg.value intrinsic with
-    ///        same information as in debug info of given global variable and
-    ///        with value set to new given value.
-    /// @param pGlobalVar global variable to handle its debug info
-    /// @param pNewVal new value to map to the source variable (in the debug info)
-    /// @param pEntryPoint entry point instruction to add new instructions before.
-    /// @isIndirect true iff pNewValue type is a pointer to source variable type.
-    /// @return new call instruction to llvm.dbg.value intrinsic
-    llvm::Instruction* UpdateGlobalVarDebugInfo(
-            llvm::GlobalVariable* pGlobalVar, llvm::Value* pNewVal,
-            llvm::Instruction* pEntryPoint, bool isIndirect);
+/// @brief creates a new call instruction to llvm.dbg.value intrinsic with
+///        same information as in debug info of given global variable and
+///        with value set to new given value.
+/// @param pGlobalVar global variable to handle its debug info
+/// @param pNewVal new value to map to the source variable (in the debug info)
+/// @param pEntryPoint entry point instruction to add new instructions before.
+/// @isIndirect true iff pNewValue type is a pointer to source variable type.
+/// @return new call instruction to llvm.dbg.value intrinsic
+llvm::Instruction *UpdateGlobalVarDebugInfo(llvm::GlobalVariable *pGlobalVar, llvm::Value *pNewVal,
+                                            llvm::Instruction *pEntryPoint, bool isIndirect);
 
 } // namespace Utils
 } // namespace IGC

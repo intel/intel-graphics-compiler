@@ -20,27 +20,22 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
-namespace IGC
-{
-    class CapLoopIterations : public FunctionPass
-    {
-    public:
-        CapLoopIterations();
-        CapLoopIterations(uint32_t iterationLimit);
+namespace IGC {
+class CapLoopIterations : public FunctionPass {
+public:
+  CapLoopIterations();
+  CapLoopIterations(uint32_t iterationLimit);
 
-        virtual bool runOnFunction(Function& F) override;
+  virtual bool runOnFunction(Function &F) override;
 
-        llvm::StringRef getPassName() const override
-        {
-            return "CapLoopIterationsPass";
-        }
+  llvm::StringRef getPassName() const override { return "CapLoopIterationsPass"; }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
 
-        static char ID;
+  static char ID;
 
-    private:
-        uint32_t m_iterationLimit = UINT_MAX;
-    };
+private:
+  uint32_t m_iterationLimit = UINT_MAX;
+};
 
-}
+} // namespace IGC

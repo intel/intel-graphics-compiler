@@ -19,11 +19,9 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/Types.hpp"
 
 namespace llvm {
-    class FunctionPass;
+class FunctionPass;
 }
 
-namespace IGC
-{
-    llvm::FunctionPass* createDpasFuncsResolutionPass();
+namespace IGC {
+llvm::FunctionPass *createDpasFuncsResolutionPass();
 } // namespace IGC
-

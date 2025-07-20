@@ -243,7 +243,8 @@ vector<T, width> truncate(vector<T, width> src) {
 }
 
 template <typename T> T roundne(T src) { return detail::roundne(src); }
-template <typename T, int width> vector<T, width> roundne(vector<T, width> src) {
+template <typename T, int width>
+vector<T, width> roundne(vector<T, width> src) {
   return detail::roundne(src.cl_vector());
 }
 

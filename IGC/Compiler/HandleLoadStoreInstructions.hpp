@@ -15,42 +15,36 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    /// @brief  This pass converts store/load on doubles into store/loads on i32 or float types.
-    class HandleLoadStoreInstructions : public llvm::FunctionPass, public llvm::InstVisitor<HandleLoadStoreInstructions, void>
-    {
-    public:
-        // Pass identification, replacement for typeid
-        static char ID;
+namespace IGC {
+/// @brief  This pass converts store/load on doubles into store/loads on i32 or float types.
+class HandleLoadStoreInstructions : public llvm::FunctionPass,
+                                    public llvm::InstVisitor<HandleLoadStoreInstructions, void> {
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
 
-        /// @brief  Constructor
-        HandleLoadStoreInstructions();
+  /// @brief  Constructor
+  HandleLoadStoreInstructions();
 
-        /// @brief  Destructor
-        ~HandleLoadStoreInstructions() {}
+  /// @brief  Destructor
+  ~HandleLoadStoreInstructions() {}
 
-        /// @brief  Provides name of pass
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "HandleLoadStoreInstructionsPass";
-        }
+  /// @brief  Provides name of pass
+  virtual llvm::StringRef getPassName() const override { return "HandleLoadStoreInstructionsPass"; }
 
-        /// @brief  Main entry point.
-        /// @param  F The destination function.
-        virtual bool runOnFunction(llvm::Function& F) override;
-        void visitLoadInst(llvm::LoadInst& I);
-        void visitStoreInst(llvm::StoreInst& I);
+  /// @brief  Main entry point.
+  /// @param  F The destination function.
+  virtual bool runOnFunction(llvm::Function &F) override;
+  void visitLoadInst(llvm::LoadInst &I);
+  void visitStoreInst(llvm::StoreInst &I);
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-        }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {}
 
-    protected:
-        void HandleLoadStore();
+protected:
+  void HandleLoadStore();
 
-        /// @brief  Indicates if the pass changed the processed function
-        bool m_changed = false;
-    };
+  /// @brief  Indicates if the pass changed the processed function
+  bool m_changed = false;
+};
 
 } // namespace IGC

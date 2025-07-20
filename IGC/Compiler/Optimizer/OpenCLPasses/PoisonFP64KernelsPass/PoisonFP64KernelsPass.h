@@ -18,40 +18,34 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/CallGraphSCCPass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class PoisonFP64Kernels : public llvm::CallGraphSCCPass
-    {
-    public:
-        static char ID;
-        static const char *attributeName;
+namespace IGC {
+class PoisonFP64Kernels : public llvm::CallGraphSCCPass {
+public:
+  static char ID;
+  static const char *attributeName;
 
-        PoisonFP64Kernels();
+  PoisonFP64Kernels();
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "Poison FP64 Kernels";
-        }
+  virtual llvm::StringRef getPassName() const override { return "Poison FP64 Kernels"; }
 
-        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<CodeGenContextWrapper>();
-            AU.addRequired<MetaDataUtilsWrapper>();
-        }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
 
-        virtual bool doInitialization(llvm::CallGraph &CG) override;
-        virtual bool runOnSCC(llvm::CallGraphSCC &SCC) override;
-        virtual bool doFinalization(llvm::CallGraph &CG) override;
+  virtual bool doInitialization(llvm::CallGraph &CG) override;
+  virtual bool runOnSCC(llvm::CallGraphSCC &SCC) override;
+  virtual bool doFinalization(llvm::CallGraph &CG) override;
 
-        void markForRemoval(llvm::Function *F);
+  void markForRemoval(llvm::Function *F);
 
-    private:
-        /* Use set as an index of found FP64 functions. Store the order in
-         * which they were encountered in sequential container. Since this is a
-         * CallGraphSCC pass the reverse of this order should give us the safe
-         * removal order (from callers to callees) */
-        llvm::SmallPtrSet<llvm::Function *, 8> fp64Functions;
-        llvm::SmallVector<llvm::Function *, 8> fp64FunctionsOrder;
-    };
+private:
+  /* Use set as an index of found FP64 functions. Store the order in
+   * which they were encountered in sequential container. Since this is a
+   * CallGraphSCC pass the reverse of this order should give us the safe
+   * removal order (from callers to callees) */
+  llvm::SmallPtrSet<llvm::Function *, 8> fp64Functions;
+  llvm::SmallVector<llvm::Function *, 8> fp64FunctionsOrder;
+};
 
 } // namespace IGC

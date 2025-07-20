@@ -210,7 +210,7 @@ public:
 
     Type *getTyAt(unsigned Index) const;
     unsigned getIdxAt(unsigned Index) const;
-    Value* getValAt(unsigned Index) const;
+    Value *getValAt(unsigned Index) const;
     std::pair<Type *&, unsigned &> at(unsigned Index);
     std::pair<Type *const &, const unsigned &> at(unsigned Index) const;
 
@@ -279,9 +279,9 @@ public:
     auto types() const { return make_range(ty_begin(), ty_end()); }
     auto values() const { return make_range(val_begin(), val_end()); }
 
-    void emplace_back(Type &Ty, unsigned Index, Value* V = nullptr);
+    void emplace_back(Type &Ty, unsigned Index, Value *V = nullptr);
     void push_back(const value_type &Elem);
-    void emplace_back(const SElement &Elem, Value* V = nullptr);
+    void emplace_back(const SElement &Elem, Value *V = nullptr);
 
     void print(raw_ostream &Os = llvm::errs()) const;
   };
@@ -498,7 +498,7 @@ private:
       std::tuple<std::vector<GetElementPtrInst *>, std::vector<PtrToIntInst *>>>
   getInstUses(Instruction &I);
   static std::optional<uint64_t> processAddOrInst(Instruction &I,
-                                             BinaryOperator &BO);
+                                                  BinaryOperator &BO);
 
   bool processGEP(GetElementPtrInst &GEPI, const TypeToInstrMap &NewInstr,
                   InstsToSubstitute /*OUT*/ &InstToInst);
@@ -1208,7 +1208,8 @@ void Substituter::createLifetime(Instruction *OldI, AllocaInst *NewAI) {
     if (auto *CastI = dyn_cast<BitCastInst>(User)) {
       createLifetime(CastI, NewAI);
     } else if (auto *II = dyn_cast<IntrinsicInst>(User)) {
-      auto MaybeSize = IGCLLVM::makeOptional(NewAI->getAllocationSizeInBits(DL));
+      auto MaybeSize =
+          IGCLLVM::makeOptional(NewAI->getAllocationSizeInBits(DL));
       IGC_ASSERT_EXIT(MaybeSize.has_value());
 
       IRBuilder<> Builder(II);
@@ -1332,8 +1333,9 @@ void Substituter::updateDbgInfo(ArrayRef<Type *> TypesToGenerateDI,
       // Offset from OrigStruct.
       Offset = getOffsetInBits(IdxOfOrigStruct, &STy);
 
-    auto FragExpr = IGCLLVM::makeOptional(
-        DIExpression::createFragmentExpression(&Expr, Offset, DL.getTypeAllocSizeInBits(TyToGenDI)));
+    auto FragExpr =
+        IGCLLVM::makeOptional(DIExpression::createFragmentExpression(
+            &Expr, Offset, DL.getTypeAllocSizeInBits(TyToGenDI)));
 
     IGC_ASSERT_MESSAGE(FragExpr.has_value(), "Failed to create new expression");
 
@@ -1392,7 +1394,7 @@ Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
                         return getBaseTy(PossibleTy) == &PlainType;
                       });
                   IGC_ASSERT_EXIT_MESSAGE(FindIt != ListOfPossibleTypes.end(),
-                                     "No substitution type.");
+                                          "No substitution type.");
                   // Skip indices if it gives unwrapped type.
                   if (!FindIt->isUnwrapped())
                     LocalIdxPath.emplace_back(*FindIt, V);
@@ -1614,7 +1616,8 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
       if (!processGEP(*GEP, NewInstructions, InstToInst))
         return false;
     for (PtrToIntInst *PTI : UsesPTI)
-      if (!processPTI(*PTI, GEPI.getResultElementType(), NewInstructions, InstToInst))
+      if (!processPTI(*PTI, GEPI.getResultElementType(), NewInstructions,
+                      InstToInst))
         return false;
   } else {
     Type *PrevType = IdxPath.getTyAt(PlainTyIdx);
@@ -1740,7 +1743,7 @@ bool Substituter::processPTI(PtrToIntInst &PTI, Type *Ty,
 // Callculates offset after add instruction.
 //
 std::optional<uint64_t> Substituter::processAddOrInst(Instruction &User,
-                                                 BinaryOperator &BO) {
+                                                      BinaryOperator &BO) {
   IGC_ASSERT_EXIT(BO.getOpcode() == Instruction::Add ||
                   BO.getOpcode() == Instruction::Or);
   // Do Ptr Offset calculation.
@@ -1890,7 +1893,8 @@ DependencyGraph::SElementsOfType::SElementsOfType(
   std::iota(IndicesOfTypes.begin(), IndicesOfTypes.end(), 0);
 }
 
-void DependencyGraph::SElementsOfType::emplace_back(Type &Ty, unsigned Index, Value* V) {
+void DependencyGraph::SElementsOfType::emplace_back(Type &Ty, unsigned Index,
+                                                    Value *V) {
   Types.emplace_back(&Ty);
   IndicesOfTypes.emplace_back(Index);
   Values.emplace_back(V);
@@ -1947,7 +1951,8 @@ DependencyGraph::SElementsOfType::at(unsigned Index) const {
 //          Block of const_iterator definition for SElementsOfType
 //__________________________________________________________________
 DependencyGraph::SElementsOfType::const_iterator::const_iterator(
-    const_ty_iterator TyItIn, const_idx_iterator IdxItIn, const_val_iterator ValItIn)
+    const_ty_iterator TyItIn, const_idx_iterator IdxItIn,
+    const_val_iterator ValItIn)
     : TyIt{TyItIn}, IdxIt{IdxItIn}, ValIt{ValItIn} {}
 
 DependencyGraph::SElementsOfType::const_iterator::reference

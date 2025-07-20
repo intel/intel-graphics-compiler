@@ -50,13 +50,11 @@ public:
   DebugEmitter &operator=(const DebugEmitter &) = delete;
 
   // IDebugEmitter interface methods
-  void Initialize(std::unique_ptr<VISAModule> VM,
-                  const DebugEmitterOpts &Opts) override;
+  void Initialize(std::unique_ptr<VISAModule> VM, const DebugEmitterOpts &Opts) override;
 
   void SetDISPCache(DwarfDISubprogramCache *DISPCache) override;
 
-  std::vector<char> Finalize(bool Finalize,
-                             const IGC::VISADebugInfo &VisaDbgInfo) override;
+  std::vector<char> Finalize(bool Finalize, const IGC::VISADebugInfo &VisaDbgInfo) override;
 
   void BeginInstruction(llvm::Instruction *pInst) override;
   void EndInstruction(llvm::Instruction *pInst) override;
@@ -74,8 +72,7 @@ public:
 private:
   /// @brief Reset Debug Emitter instance.
   void Reset();
-  void processCurrentFunction(bool Finalize,
-                              const IGC::VISAObjectDebugInfo &VisaDbgInfo);
+  void processCurrentFunction(bool Finalize, const IGC::VISAObjectDebugInfo &VisaDbgInfo);
 
 private:
   bool m_initialized = false;
@@ -95,8 +92,7 @@ private:
   unsigned int lastGenOff = 0;
 
   void writeProgramHeaderTable(bool is64Bit, void *pBuffer, unsigned int size);
-  void prepareElfForZeBinary(bool is64Bit, char *pElfBuffer,
-                             size_t elfBufferSize, size_t kernelNameWithDotSize,
+  void prepareElfForZeBinary(bool is64Bit, char *pElfBuffer, size_t elfBufferSize, size_t kernelNameWithDotSize,
                              size_t *pEndOfDotTextNameInStrtab);
   void setElfType(bool is64Bit, void *pBuffer);
 };

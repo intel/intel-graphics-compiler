@@ -474,7 +474,6 @@ createMainInst<BuiltinID::AtomicUgm>(const std::vector<Value *> &Operands,
   return *CI;
 }
 
-
 //----------------------- Rounding operations ----------------------------//
 template <>
 Value &createMainInst<BuiltinID::Ceil>(const std::vector<Value *> &Operands,
@@ -738,7 +737,8 @@ createMainInst<BuiltinID::AtomicRMW>(const std::vector<Value *> &Operands,
       cast<ConstantInt>(Operands[AtomicRMWOperand::Operation])
           ->getSExtValue()));
   return *IRB.CreateAtomicRMW(BinOp, Ptr, Operands[AtomicRMWOperand::Operand],
-      llvm::MaybeAlign{}, Ordering, Ctx.getOrInsertSyncScopeID(ScopeName));
+                              llvm::MaybeAlign{}, Ordering,
+                              Ctx.getOrInsertSyncScopeID(ScopeName));
 }
 
 template <>

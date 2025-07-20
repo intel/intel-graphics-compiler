@@ -42,7 +42,9 @@ int vc::getAddrSpace(const Type *PtrOrPtrVec) {
       "wrong argument: pointer or vector of pointers type is expected");
   if (PtrOrPtrVec->isPointerTy())
     return PtrOrPtrVec->getPointerAddressSpace();
-  return cast<VectorType>(PtrOrPtrVec)->getElementType()->getPointerAddressSpace();
+  return cast<VectorType>(PtrOrPtrVec)
+      ->getElementType()
+      ->getPointerAddressSpace();
 }
 
 bool vc::isDegenerateVectorType(llvm::Type const &Ty) {
@@ -93,16 +95,16 @@ Type *vc::getNewTypeForCast(Type *OldOutType, Type *OldInType,
   if (OldOutVecType) {
     // <4 x char> -> <2 x int> : <8 x char> -> <4 x int>
     // <4 x char> -> <2 x int> : <2 x char> -> <1 x int>
-    auto NewInEC  = NewInVecType->getNumElements();
+    auto NewInEC = NewInVecType->getNumElements();
     auto OldOutEC = OldOutVecType->getNumElements();
-    auto OldInEC  = OldInVecType->getNumElements();
+    auto OldInEC = OldInVecType->getNumElements();
     auto NewOutEC = OldOutEC * NewInEC / OldInEC;
     // <4 x char> -> <2 x int> : <5 x char> -> ? forbidden
     IGC_ASSERT_MESSAGE((OldOutEC * NewInEC) % OldInEC == 0,
                        "Error: wrong combination of input/output");
     // element count changed, scalar type as previous
-    NewOutType = IGCLLVM::FixedVectorType::get(
-        OldOutVecType->getElementType(), NewOutEC);
+    NewOutType = IGCLLVM::FixedVectorType::get(OldOutVecType->getElementType(),
+                                               NewOutEC);
   }
 
   IGC_ASSERT(NewOutType);

@@ -13,18 +13,16 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/User.h"
 
-namespace IGCLLVM
-{
-    inline bool isDroppable(llvm::User* U)
-    {
+namespace IGCLLVM {
+inline bool isDroppable(llvm::User *U) {
 #if LLVM_VERSION_MAJOR >= 11
-        return U->isDroppable();
+  return U->isDroppable();
 #else // For earlier versions, simply copy LLVM 11's implementation
-        if (const auto* Intr = llvm::dyn_cast<llvm::IntrinsicInst>(U))
-            return Intr->getIntrinsicID() == llvm::Intrinsic::assume;
-        return false;
+  if (const auto *Intr = llvm::dyn_cast<llvm::IntrinsicInst>(U))
+    return Intr->getIntrinsicID() == llvm::Intrinsic::assume;
+  return false;
 #endif
-    }
 }
+} // namespace IGCLLVM
 
 #endif // IGCLLVM_IR_USER_H

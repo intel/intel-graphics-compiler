@@ -220,7 +220,7 @@ Value *GenXGEPLowering::visitGetElementPtrInst(GetElementPtrInst &GEP) {
         Field = CE->getUniqueInteger().getSExtValue();
         uint64_t Offset = DL->getStructLayout(StTy)->getElementOffset(Field);
         Value *OffsetVal = Constant::getIntegerValue(
-          PointerValue->getType(), APInt(PtrMathSizeInBits, Offset));
+            PointerValue->getType(), APInt(PtrMathSizeInBits, Offset));
         PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
       }
     } else {

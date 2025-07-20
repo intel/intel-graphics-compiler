@@ -22,7 +22,6 @@ namespace genx {
 // GotoJoin : class containing goto/join related utility functions
 class GotoJoin {
 public:
-
   // isEMValue : detect whether a value is an EM (execution mask)
   static bool isEMValue(Value *V);
 
@@ -43,23 +42,27 @@ public:
                                             bool SkipCriticalEdgeSplitter);
 
   // isJoinLabel : see if the block is a join label
-  static bool isJoinLabel(BasicBlock *BB, bool SkipCriticalEdgeSplitter = false);
+  static bool isJoinLabel(BasicBlock *BB,
+                          bool SkipCriticalEdgeSplitter = false);
 
-  // isGotoBlock : see if a basic block is a goto block (hence branching), returning the goto if so
+  // isGotoBlock : see if a basic block is a goto block (hence branching),
+  // returning the goto if so
   static CallInst *isGotoBlock(BasicBlock *BB);
 
   // isBranchingJoinBlock : see if a basic block is a branching join block
   static CallInst *isBranchingJoinBlock(BasicBlock *BB);
 
-  // isBranchingGotoJoinBlock : see if a basic block is a branching goto/join block
+  // isBranchingGotoJoinBlock : see if a basic block is a branching goto/join
+  // block
   static CallInst *isBranchingGotoJoinBlock(BasicBlock *BB);
 
-  // getLegalInsertionPoint : ensure an insertion point is legal in the presence of SIMD CF
-  static Instruction *getLegalInsertionPoint(Instruction *InsertBefore, DominatorTree *DomTree);
-
+  // getLegalInsertionPoint : ensure an insertion point is legal in the presence
+  // of SIMD CF
+  static Instruction *getLegalInsertionPoint(Instruction *InsertBefore,
+                                             DominatorTree *DomTree);
 };
 
-} // End genx namespace
-} // End llvm namespace
+} // namespace genx
+} // namespace llvm
 
 #endif

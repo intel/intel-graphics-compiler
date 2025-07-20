@@ -21,16 +21,13 @@ SPDX-License-Identifier: MIT
 namespace IGC {
 
 CIF_DECLARE_INTERFACE_PIMPL(Platform) : CIF::PimplBase {
-  OCL_API_CALL CIF_PIMPL_DECLARE_CONSTRUCTOR()
-  {
-      memset(&p, 0, sizeof(p));
-  }
+  OCL_API_CALL CIF_PIMPL_DECLARE_CONSTRUCTOR() { memset(&p, 0, sizeof(p)); }
 
   PLATFORM p;
 };
 
 CIF_DEFINE_INTERFACE_TO_PIMPL_FORWARDING_CTOR_DTOR(Platform);
 
-}
+} // namespace IGC
 
 #include "cif/macros/disable.h"

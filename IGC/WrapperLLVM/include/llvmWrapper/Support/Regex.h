@@ -15,13 +15,12 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR < 10
-    inline bool isValid(const llvm::Regex &R)
-    {
-        std::string Error;
-        return R.isValid(Error);
-    }
+inline bool isValid(const llvm::Regex &R) {
+  std::string Error;
+  return R.isValid(Error);
+}
 #else
-    inline bool isValid(const llvm::Regex &R) { return R.isValid(); }
+inline bool isValid(const llvm::Regex &R) { return R.isValid(); }
 #endif
 
 } // namespace IGCLLVM
