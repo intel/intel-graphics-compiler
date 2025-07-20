@@ -23173,33 +23173,6 @@ bool EmitPass::tryOverrideCacheOpts(
   return l1l3CacheVal != 0;
 }
 
-static bool isVolatileInst(Instruction *inst) {
-  if (!inst)
-    return false;
-
-  // TODO: Instead of this helper function inst can be casted to either
-  // ALoadInst/AStoreInst class or AbstractLoadInst/AbstractStoreInst
-  // to call inst->isVolatile() only once, after they're refactored.
-  if (auto *GII = dyn_cast<GenIntrinsicInst>(inst)) {
-    switch (GII->getIntrinsicID()) {
-    default:
-      return false;
-    case GenISAIntrinsic::GenISA_ldraw_indexed:
-    case GenISAIntrinsic::GenISA_ldrawvector_indexed:
-      return cast<LdRawIntrinsic>(inst)->isVolatile();
-    case GenISAIntrinsic::GenISA_storeraw_indexed:
-    case GenISAIntrinsic::GenISA_storerawvector_indexed:
-      return cast<StoreRawIntrinsic>(inst)->isVolatile();
-    case GenISAIntrinsic::GenISA_PredicatedLoad:
-      return cast<PredicatedLoadIntrinsic>(inst)->isVolatile();
-    case GenISAIntrinsic::GenISA_PredicatedStore:
-      return cast<PredicatedStoreIntrinsic>(inst)->isVolatile();
-    }
-  }
-
-  return inst->isVolatile();
-}
-
 LSC_CACHE_OPTS
 EmitPass::translateLSCCacheControlsFromMetadata(Instruction *inst, bool isLoad,
                                                 bool isTGM) const {
@@ -23288,7 +23261,7 @@ EmitPass::translateLSCCacheControlsFromMetadata(Instruction *inst, bool isLoad,
     return translateLSCCacheControlsFromValue(MD->getValue(), isLoad);
   }
   node = inst ? inst->getMetadata(LLVMContext::MD_nontemporal) : nullptr;
-  if (node || isVolatileInst(inst)) {
+  if (node) {
     return {LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED};
   }
 
