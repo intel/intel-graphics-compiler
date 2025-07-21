@@ -439,6 +439,7 @@ public:
                       uint32_t SrcSubRegOffset = 0, bool allowLargerSIMDSize = false, CVariable *predicate = nullptr);
   void emitConstantVector(CVariable *Dst, uint64_t value = 0);
   void emitCopyAll(CVariable *Dst, CVariable *Src, llvm::Type *Ty);
+  void emitCopyAllInstances(CVariable *Dst, CVariable *Src, llvm::Type *Ty);
 
   void emitPredicatedVectorCopy(CVariable *Dst, CVariable *Src, CVariable *pred);
   void emitPredicatedVectorSelect(CVariable *Dst, CVariable *Src0, CVariable *Src1, CVariable *pred);
