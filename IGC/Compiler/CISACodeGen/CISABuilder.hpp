@@ -49,17 +49,32 @@ struct SModifier {
 struct SAlias {
   CVariable *m_rootVar;
   VISA_Type m_type;
-  SAlias(CVariable *var, VISA_Type type) : m_rootVar(var), m_type(type) {}
+  // If m_aliasVar != null, visa GenVar's alias offset must be set to
+  // m_aliasVar->aliasOffset, not zero.
+  CVariable *m_aliasVar;
+  SAlias(CVariable *var, VISA_Type type, CVariable *aliasVar = nullptr)
+      : m_rootVar(var), m_type(type), m_aliasVar(aliasVar) {}
 };
 
 struct SAliasMapInfo {
-  static inline SAlias getEmptyKey() { return SAlias(nullptr, ISA_TYPE_UD); }
-  static inline SAlias getTombstoneKey() { return SAlias(nullptr, ISA_TYPE_D); }
+  static inline SAlias getEmptyKey() { return SAlias(nullptr, ISA_TYPE_UD, nullptr); }
+  static inline SAlias getTombstoneKey() { return SAlias(nullptr, ISA_TYPE_D, nullptr); }
   static unsigned getHashValue(const SAlias &Val) {
-    return llvm::DenseMapInfo<CVariable *>::getHashValue(Val.m_rootVar) ^ Val.m_type;
+    unsigned ty = (unsigned)Val.m_type;
+    if (Val.m_aliasVar)
+      ty += 0x011000;
+    return llvm::DenseMapInfo<CVariable *>::getHashValue(Val.m_rootVar) ^ ty;
   }
   static bool isEqual(const SAlias &LHS, const SAlias &RHS) {
-    return LHS.m_rootVar == RHS.m_rootVar && LHS.m_type == RHS.m_type;
+    if (!LHS.m_aliasVar && !RHS.m_aliasVar) {
+      // common case
+      return LHS.m_rootVar == RHS.m_rootVar && LHS.m_type == RHS.m_type;
+    } else if (LHS.m_aliasVar && RHS.m_aliasVar) {
+      // inline asm only
+      return LHS.m_rootVar == RHS.m_rootVar && LHS.m_type == RHS.m_type &&
+             LHS.m_aliasVar->GetAliasOffset() == RHS.m_aliasVar->GetAliasOffset();
+    }
+    return false;
   }
 };
 
@@ -121,7 +136,7 @@ public:
   void SetExternFunctionFlag();
 
   void GetVISAPredefinedVar(CVariable *pVar, PreDefined_Vars var);
-  void CreateVISAVar(CVariable *var);
+  void CreateVISAVar(CVariable *var, bool UseAliasOffset = false);
   void DeclareInput(CVariable *var, uint offset, uint instance);
   void DeclarePred(CVariable *var, uint offset);
   void MarkAsOutput(CVariable *var);

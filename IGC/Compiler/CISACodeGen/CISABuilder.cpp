@@ -4774,11 +4774,45 @@ void CEncoder::GetVISAPredefinedVar(CVariable *pVar, PreDefined_Vars var) {
   pVar->visaGenVariable[0] = pAliasGenVar;
 }
 
-void CEncoder::CreateVISAVar(CVariable *var) {
+// UseAliasOffset is valid for alias var only. It is true only for
+// inline asm and this function will creates a GenVar with non-zero
+// alias offset.
+void CEncoder::CreateVISAVar(CVariable *var, bool UseAliasOffset) {
   IGC_ASSERT(nullptr != var);
 
   if (var->GetAlias() != NULL) {
     var->ResolveAlias();
+
+    // If UseAliasOffset = false, an alias CVariable reuses its root's
+    // genVar unless their types are different. When their types are
+    // different, a new genVar is needed for the alias, but the alias
+    // offset of the new genVar is always set to zero (as its alias
+    // offset has been converted into regno/subregno already in code
+    // emit).
+    //
+    // If UseAliasOffset = true, it is used for inline asm only. As an
+    // alias offset isn't converted into regno/subregno as regno/subregno
+    // are provided by users in inline asm string. We use an alias genVar
+    // with non-zero alias offset. (See EmitPass::EmitInlineAsm())
+    if (UseAliasOffset && var->GetAliasOffset() > 0) {
+      SAlias alias(var->GetAlias(), var->GetType(), var);
+      auto aliasPair = m_aliasesMap.insert(std::pair<SAlias, CVariable *>(alias, var));
+      if (aliasPair.second == false) {
+        for (uint i = 0; i < var->GetNumberInstance(); i++)
+          var->visaGenVariable[i] = aliasPair.first->second->visaGenVariable[i];
+      } else {
+        IGC_ASSERT_MESSAGE(var->GetType() != ISA_TYPE_BOOL, "boolean cannot have alias");
+        IGC_ASSERT((var->GetSize() + var->GetAliasOffset()) <= var->GetAlias()->GetSize());
+        uint16_t nbElement = var->GetNumberElement();
+        for (uint i = 0; i < var->GetNumberInstance(); i++) {
+          V(vKernel->CreateVISAGenVar(var->visaGenVariable[i], var->getVisaCString(), nbElement, var->GetType(),
+                                      GetVISAAlign(var->GetAlias()), var->GetAlias()->visaGenVariable[i],
+                                      var->GetAliasOffset()));
+        }
+      }
+      return;
+    }
+
     // In case the alias is an exact copy or just a sub variable just re-use the
     // variable
     if (var->GetAlias()->GetType() == var->GetType()) {

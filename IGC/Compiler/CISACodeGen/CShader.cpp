@@ -3363,6 +3363,21 @@ CVariable *CShader::GetNewAlias(CVariable *var, uint16_t numInstances) {
   return alias;
 }
 
+CVariable *CShader::GetNewAliasWithAliasOffset(CVariable *var) {
+  IGC_ASSERT_MESSAGE(false == var->IsImmediate(), "Trying to create an alias of an immediate");
+  CVariable *rootVar = var->GetAlias();
+  uint32_t offset = var->GetAliasOffset();
+  IGC_ASSERT(rootVar && offset > 0);
+  uint32_t rootSize = rootVar->GetSize();
+  uint32_t eltSize = var->GetElemSize();
+  uint32_t varSize = (rootSize > offset) ? rootSize - offset : 0;
+  uint16_t nelts = varSize / eltSize;
+  IGC_ASSERT_MESSAGE(nelts > 0, "Error: CVar has zero size!");
+  CVariable *alias = new (Allocator) CVariable(rootVar, var->GetType(), offset, nelts, var->IsUniform());
+  encoder.CreateVISAVar(alias, true);
+  return alias;
+}
+
 // createAliasIfNeeded() returns the Var that is either BaseVar or
 // its alias of the same size.
 //

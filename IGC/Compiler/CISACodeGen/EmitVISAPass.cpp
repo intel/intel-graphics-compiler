@@ -9201,22 +9201,23 @@ void EmitPass::EmitInlineAsm(llvm::CallInst *inst) {
       m_encoder->Push();
       opnds[i] = tempMov;
     }
-    // WA: If the operand is an alias of another variable but gets mapped to the
-    // same variable name, we have to copy the alias into another register. This
-    // is because regioning info is determined by the user, and two variables
-    // that share the base register but reference different regions are not
-    // distinguishable to the inline asm string parser. Thus, a variable
-    // pointing to a subregion needs to be copied first before being used as an
-    // inline asm input.
-    // TODO: To avoid the extra move, we need to be able to explicity define an
-    // alias variable with offset instead of a region within the base value.
-    else if (opVar->GetAlias() && opVar->GetAliasOffset() > 0 &&
-             m_encoder->GetVariableName(opVar) == m_encoder->GetVariableName(opVar->GetAlias())) {
-      CVariable *tempMov =
-          m_currShader->GetNewVariable(opVar->GetNumberElement(), opVar->GetType(), EALIGN_GRF, opVar->IsUniform(), "");
-      m_encoder->Copy(tempMov, opVar);
-      m_encoder->Push();
-      opnds[i] = tempMov;
+    // Handle an aliase var with non-zero alias offset
+    // For example,
+    //     d0 = call asm "mov (N1_NM, 16) %0<0,1)<2> %1(0,0)<4;1,0>", s0
+    //   where d0 and s0 are aliases to d and s, respectively. Assume their
+    //   offsets are at 32 and 64, so d0 = alias<d,32>, s0 = alias<s,64>.
+    //   It is converted to the following:
+    //     .decl d0 ...., alias<d, 32>
+    //     .decl s0 ...., alias<s, 64>
+    //      d0 = call asm "...", s0
+    // By default (non-inline-asm operands), alias vars do not generate
+    // .decl with non-zero alias offset as shown above, because IGC emit will
+    // translate alias offsets into regno/subregno for each operands. Here,
+    // operands in inline-asm are not changed, thus .decl with non-zero alias
+    // offset must be used.
+    else if (opVar->GetAlias() && opVar->GetAliasOffset() > 0) {
+      CVariable *aliasVar = m_currShader->GetNewAliasWithAliasOffset(opVar);
+      opnds[i] = aliasVar;
     }
   }
 
