@@ -5128,21 +5128,7 @@ void CEncoder::CreateGlobalHostAccessTable(SOpenCLProgramInfo::ZEBinGlobalHostAc
     globalHostAccessTable.push_back(vISA::ZEHostAccessEntry{I.device_name, I.host_name});
 }
 
-void CEncoder::CreateRelocationTable(VISAKernel *pMainKernel, void *&buffer, unsigned &bufferSize,
-                                     unsigned &tableEntries) {
-  // for patch-token-based binary format
-  buffer = nullptr;
-  bufferSize = 0;
-  tableEntries = 0;
-
-  // vISA will directly return the buffer with GenRelocEntry layout
-  IGC_ASSERT(nullptr != pMainKernel);
-  V(pMainKernel->GetGenRelocEntryBuffer(buffer, bufferSize, tableEntries));
-  IGC_ASSERT((sizeof(vISA::GenRelocEntry) * tableEntries) == bufferSize);
-}
-
 void CEncoder::CreateRelocationTable(VISAKernel *pMainKernel, SProgramOutput::RelocListTy &relocations) {
-  // for ZEBinary format
   IGC_ASSERT(nullptr != pMainKernel);
   V(pMainKernel->GetRelocations(relocations));
 }
@@ -5750,25 +5736,20 @@ uint32_t CEncoder::getSpillMemSizeWithFG(const llvm::Function &curFunc, uint32_t
 void CEncoder::createRelocationTables(VISAKernel &pMainKernel) {
   CodeGenContext *context = m_program->GetContext();
   SProgramOutput *pOutput = m_program->ProgramOutput();
-  bool ZEBinEnabled = context->enableZEBinary();
-  if (ZEBinEnabled) {
-    CreateRelocationTable(&pMainKernel, pOutput->m_relocs);
+  CreateRelocationTable(&pMainKernel, pOutput->m_relocs);
+  if (context->type == ShaderType::OPENCL_SHADER) {
     for (const auto &reloc : pOutput->m_relocs) {
       if (reloc.r_symbol == vISA::CROSS_THREAD_OFF_R0_RELOCATION_NAME) {
-        IGC_ASSERT(context->type == ShaderType::OPENCL_SHADER);
         auto cl_context = static_cast<OpenCLProgramContext *>(context);
         cl_context->m_programInfo.m_hasCrossThreadOffsetRelocations = true;
       } else if (reloc.r_symbol == vISA::PER_THREAD_OFF_RELOCATION_NAME) {
-        IGC_ASSERT(context->type == ShaderType::OPENCL_SHADER);
         auto cl_context = static_cast<OpenCLProgramContext *>(context);
         cl_context->m_programInfo.m_hasPerThreadOffsetRelocations = true;
       }
     }
-  } else {
-    CreateRelocationTable(&pMainKernel, pOutput->m_funcRelocationTable, pOutput->m_funcRelocationTableSize,
-                          pOutput->m_funcRelocationTableEntries);
   }
 }
+
 const vISA::KernelCostInfo *CEncoder::createKernelCostInfo(VISAKernel &pMainKernel) {
   CodeGenContext *context = m_program->GetContext();
   IGC_ASSERT(context->enableZEBinary());

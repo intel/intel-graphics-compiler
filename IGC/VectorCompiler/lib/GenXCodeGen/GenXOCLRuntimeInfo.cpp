@@ -917,11 +917,6 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   auto DebugData = getDebugInformation(DBG, KernelFunction);
 
   Info.Func.Relocations = TextSection.Relocations;
-  // Still have to duplicate function relocations because they are constructed
-  // inside Finalizer.
-  CISA_CALL(VK->GetGenRelocEntryBuffer(Info.LegacyFuncRelocations.Buffer,
-                                       Info.LegacyFuncRelocations.Size,
-                                       Info.LegacyFuncRelocations.Entries));
   Info.Func.Symbols =
       constructFunctionSymbols(TextSection.Data, /*HasKernel=*/true);
 
