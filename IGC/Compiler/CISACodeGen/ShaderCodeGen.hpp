@@ -264,7 +264,7 @@ public:
   void CreateConstantBufferOutput(SKernelProgram *pKernelProgram) {
     m_State.CreateConstantBufferOutput(pKernelProgram);
   }
-  CVariable *CreateFunctionSymbol(llvm::Function *pFunc);
+  CVariable *CreateFunctionSymbol(llvm::Function *pFunc, StringRef symbolName = "");
   CVariable *CreateGlobalSymbol(llvm::GlobalVariable *pGlobal);
 
   CVariable *GetStructVariable(llvm::Value *v);

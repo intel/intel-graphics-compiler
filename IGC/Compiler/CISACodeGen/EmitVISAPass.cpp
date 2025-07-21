@@ -8991,9 +8991,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     emitPredicatedStore(inst);
     break;
   default:
-    // we assume that some of gen-intrinsic should always be pattern-matched
-    // away, therefore we do not handle them in visa-emission. let us know if
-    // you see a case that hits this assertion by those intrinsics
+    // we assume that some of gen-intrinsic should always be pattern-matched away,
+    // therefore we do not handle them in visa-emission.
+    // let us know if you see a case that hits this assertion by those intrinsics
     inst->print(IGC::Debug::ods());
     IGC_ASSERT_MESSAGE(0, "unknown intrinsic");
     break;

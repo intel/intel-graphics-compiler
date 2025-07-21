@@ -11094,6 +11094,10 @@ intrinsics:
                 name: Arg0
                 type_definition: *p0_i8_
                 comment: ""
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i32
+                comment: "continuation index"
         attributes:
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
