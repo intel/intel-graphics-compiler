@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 struct RetryState {
+  bool allowCodeScheduling;
   bool allowAddrArithCloning;
   bool allowLICM;
   bool allowCodeSinking;
@@ -39,9 +40,9 @@ struct RetryState {
 };
 
 static const RetryState RetryTable[] = {
-    // adrCl  licm   codSk AdrSk  Slice  PrivM  VISAP  URBWr  Coals  GRF    loadSk, SyncRT, compactspills
-    {false, true, true, false, false, true, true, true, true, false, false, false, true, 1},
-    {true, false, true, true, true, false, false, false, false, true, true, true, false, 500}};
+    // sched adrCl  licm codSk AdrSk  Slice  PrivM  VISAP  URBWr Coals  GRF loadSk, SyncRT, compactspills
+    {false, false, true, true, false, false, true, true, true, true, false, false, false, true, 1},
+    {true, true, false, true, true, true, false, false, false, false, true, true, true, false, 500}};
 
 static constexpr size_t RetryTableSize = sizeof(RetryTable) / sizeof(RetryState);
 
@@ -109,6 +110,12 @@ bool RetryManager::AllowCloneAddressArithmetic(Function *F) const {
   unsigned id = GetPerFuncRetryStateId(F);
   IGC_ASSERT(id < RetryTableSize);
   return RetryTable[id].allowAddrArithCloning;
+}
+
+bool RetryManager::AllowCodeScheduling(Function *F) const {
+  unsigned id = GetPerFuncRetryStateId(F);
+  IGC_ASSERT(id < RetryTableSize);
+  return RetryTable[id].allowCodeScheduling;
 }
 
 bool RetryManager::AllowSimd32Slicing(Function *F) const {

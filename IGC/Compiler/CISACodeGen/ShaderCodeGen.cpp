@@ -245,7 +245,9 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
       mpm.add(new CodeLoopSinking());
     }
     if (IGC_IS_FLAG_DISABLED(DisableCodeScheduling) && (ctx.type == ShaderType::OPENCL_SHADER)) {
-      mpm.add(new CodeScheduling());
+      if (IGC_IS_FLAG_DISABLED(CodeSchedulingOnlyRecompilation) || ctx.m_retryManager.AllowCodeScheduling()) {
+        mpm.add(new CodeScheduling());
+      }
     }
   }
 

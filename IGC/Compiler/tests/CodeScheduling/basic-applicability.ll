@@ -8,7 +8,8 @@
 
 ; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --regkey DisableCodeScheduling=0 --regkey EnableCodeSchedulingIfNoSpills=1 \
-; RUN:         --regkey PrintToConsole=1 --regkey DumpCodeScheduling=1 --igc-code-scheduling -S %s 2>&1 | FileCheck %s
+; RUN:         --regkey PrintToConsole=1 --regkey DumpCodeScheduling=1 --igc-code-scheduling \
+; RUN:         --regkey CodeSchedulingRPThreshold=-512 -S %s 2>&1 | FileCheck %s
 
 
 
@@ -53,17 +54,17 @@ define spir_kernel void @multi_dpas(ptr addrspace(1) %A) {
 ; CHECK:       entry:
 ; CHECK:         br label [[BB1:%.*]]
 ; CHECK:       bb1:
+; CHECK:         [[DPAS1:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> undef, <8 x i32> undef, i32 1, i32 1, i32 1, i32 1, i1 false)
 ; CHECK:         [[B:%.*]] = add i32 3, 4
 ; CHECK:         [[C:%.*]] = add i32 [[B]], 5
 ; CHECK:         [[A:%.*]] = add i32 1, 2
-; CHECK:         [[DPAS1:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> undef, <8 x i32> undef, i32 1, i32 1, i32 1, i32 1, i1 false)
 ; CHECK:         br label [[BB2:%.*]]
 ; CHECK:       bb2:
+; CHECK:         [[DPAS2:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> undef, <8 x i32> undef, i32 1, i32 1, i32 1, i32 1, i1 false)
 ; CHECK:         [[B1:%.*]] = add i32 8, 9
 ; CHECK:         [[C1:%.*]] = add i32 [[B1]], 10
 ; CHECK:         [[D:%.*]] = add i32 [[C]], [[C1]]
 ; CHECK:         [[A1:%.*]] = add i32 6, 7
-; CHECK:         [[DPAS2:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> undef, <8 x i32> undef, i32 1, i32 1, i32 1, i32 1, i1 false)
 ; CHECK:         ret void
 ;
 entry:

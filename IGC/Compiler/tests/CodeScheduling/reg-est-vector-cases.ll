@@ -8,7 +8,8 @@
 
 ; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --regkey DisableCodeScheduling=0 --regkey EnableCodeSchedulingIfNoSpills=1 \
-; RUN:         --regkey PrintToConsole=1 --regkey DumpCodeScheduling=1 --igc-code-scheduling -S %s 2>&1 | FileCheck %s
+; RUN:         --regkey PrintToConsole=1 --regkey DumpCodeScheduling=1 --igc-code-scheduling \
+; RUN:         --regkey CodeSchedulingRPThreshold=-512 -S %s 2>&1 | FileCheck %s
 
 
 ; Checks that the register pressure is estimated correctly for the special cases related to vector shuffles.
@@ -113,8 +114,8 @@ define spir_kernel void @vector_shuffle(ptr addrspace(1) %A) {
 ; CHECK: {{([0-9]+,[ ]*[0-9]+[ ]*).*[ ]*}}        [[BASE_ADDR:%.*]] = ptrtoint ptr addrspace(1) [[A:%.*]] to i64
 
 ;  (6, 512     ) MW:         Node #1, MW: 3000        %load2d = call <16 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v16i16(i64 %base_addr, i32 127, i32 1023, i32 127, i32 0, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
-;                      adds 512 bytes
-; CHECK: {{([0-9]+,[ ]*512[ ]*).*[ ]*}}        [[LOAD2D:%.*]] = call <16 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v16i16(i64 [[BASE_ADDR]], i32 127, i32 1023, i32 127, i32 0, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
+;                      adds 512 bytes, but we also estimate the regpressure burst from the shuffles, so use 2x (1024 bytes) when making the decision
+; CHECK: {{([0-9]+,[ ]*1024[ ]*).*[ ]*}}        [[LOAD2D:%.*]] = call <16 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v16i16(i64 [[BASE_ADDR]], i32 127, i32 1023, i32 127, i32 0, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
 
 
 ;                      the EE and IE instructions are marked as VS. IEs add regpressure. The last IE kills the original vector
@@ -209,20 +210,20 @@ define spir_kernel void @coalesced_scalars(ptr addrspace(1) %0) {
 ;               then the last usage of the scalar (fadd) kills the hanging values
 
 ; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP17:%.*]] = fmul fast float [[TMP9:%.*]], [[TMP1:%.*]]
-; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP18:%.*]] = fmul fast float [[TMP10:%.*]], [[TMP2:%.*]]
 ; CHECK: {{([0-9]+,[ ]*512[ ]*).*SCA.*[ ]*}}            [[TMP19:%.*]] = insertelement <8 x float> zeroinitializer, float [[TMP17]], i64 0
-; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP20:%.*]] = fmul fast float [[TMP11:%.*]], [[TMP3:%.*]]
+; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP18:%.*]] = fmul fast float [[TMP10:%.*]], [[TMP2:%.*]]
 ; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*SCA.*[ ]*}}        [[TMP21:%.*]] = insertelement <8 x float> [[TMP19]], float [[TMP18]], i64 1
-; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP22:%.*]] = fmul fast float [[TMP12:%.*]], [[TMP4:%.*]]
+; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP20:%.*]] = fmul fast float [[TMP11:%.*]], [[TMP3:%.*]]
 ; CHECK: {{([0-9]+,[ ]*0[ ]*).*SCA.*[ ]*}}              [[TMP23:%.*]] = insertelement <8 x float> [[TMP21]], float [[TMP20]], i64 2
-; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP24:%.*]] = fmul fast float [[TMP13:%.*]], [[TMP5:%.*]]
+; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP22:%.*]] = fmul fast float [[TMP12:%.*]], [[TMP4:%.*]]
 ; CHECK: {{([0-9]+,[ ]*0[ ]*).*SCA.*[ ]*}}              [[TMP25:%.*]] = insertelement <8 x float> [[TMP23]], float [[TMP22]], i64 3
-; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP26:%.*]] = fmul fast float [[TMP14:%.*]], [[TMP6:%.*]]
+; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP24:%.*]] = fmul fast float [[TMP13:%.*]], [[TMP5:%.*]]
 ; CHECK: {{([0-9]+,[ ]*0[ ]*).*SCA.*[ ]*}}              [[TMP27:%.*]] = insertelement <8 x float> [[TMP25]], float [[TMP24]], i64 4
-; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP28:%.*]] = fmul fast float [[TMP15:%.*]], [[TMP7:%.*]]
+; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP26:%.*]] = fmul fast float [[TMP14:%.*]], [[TMP6:%.*]]
 ; CHECK: {{([0-9]+,[ ]*0[ ]*).*SCA.*[ ]*}}              [[TMP29:%.*]] = insertelement <8 x float> [[TMP27]], float [[TMP26]], i64 5
-; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP30:%.*]] = fmul fast float [[TMP16:%.*]], [[TMP8:%.*]]
+; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP28:%.*]] = fmul fast float [[TMP15:%.*]], [[TMP7:%.*]]
 ; CHECK: {{([0-9]+,[ ]*0[ ]*).*SCA.*[ ]*}}              [[TMP31:%.*]] = insertelement <8 x float> [[TMP29]], float [[TMP28]], i64 6
+; CHECK: {{([0-9]+,[ ]*[0-9-]+[ ]*).*[ ]*}}             [[TMP30:%.*]] = fmul fast float [[TMP16:%.*]], [[TMP8:%.*]]
 ; CHECK: {{([0-9]+,[ ]*0[ ]*).*SCA.*[ ]*}}              [[TMP32:%.*]] = insertelement <8 x float> [[TMP31]], float [[TMP30]], i64 7
 
 ;            dpas don't add any regpressure, they reuse the registers of the created vector

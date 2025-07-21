@@ -9,6 +9,7 @@
 ; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --regkey DisableCodeScheduling=0 --regkey EnableCodeSchedulingIfNoSpills=1 \
 ; RUN:         --regkey PrintToConsole=1 --regkey DumpCodeScheduling=1 --regkey CodeSchedulingForceMWOnly=1 \
+; RUN:         --regkey CodeSchedulingRPThreshold=-512 \
 ; RUN:         --igc-code-scheduling -S %s 2>&1 | FileCheck %s
 
 

@@ -675,6 +675,7 @@ public:
   bool AllowCodeSinking(llvm::Function *F = nullptr) const;
   bool AllowAddressArithmeticSinking(llvm::Function *F = nullptr) const;
   bool AllowCloneAddressArithmetic(llvm::Function *F = nullptr) const;
+  bool AllowCodeScheduling(llvm::Function *F = nullptr) const;
   bool AllowSimd32Slicing(llvm::Function *F = nullptr) const;
   bool AllowLargeURBWrite(llvm::Function *F = nullptr) const;
   bool AllowConstantCoalescing(llvm::Function *F = nullptr) const;

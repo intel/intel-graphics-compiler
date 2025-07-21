@@ -280,13 +280,22 @@ DECLARE_IGC_REGKEY(DWORD, LS_splitThresholdDelta_GRF, 2,
 
 // Code Scheduling
 DECLARE_IGC_REGKEY(bool, DisableCodeScheduling, true, "Disable local code scheduling", true)
+DECLARE_IGC_REGKEY(bool, CodeSchedulingOnlyRecompilation, false, "Enable code scheduling only on 2nd try", true)
 
 DECLARE_IGC_REGKEY(bool, EnableCodeSchedulingIfNoSpills, false, "Try rescheduling also when there are no spills", true)
 DECLARE_IGC_REGKEY(bool, CodeSchedulingForceMWOnly, false, "Force scheduling to consider only latency", true)
 DECLARE_IGC_REGKEY(bool, CodeSchedulingForceRPOnly, false, "Force scheduling to consider only register pressure", true)
-DECLARE_IGC_REGKEY(DWORD, CodeSchedulingAttemptsLimit, 5, "Limit the number of scheduling attempts", true)
-DECLARE_IGC_REGKEY(DWORD, CodeSchedulingRPMargin, 20,
+DECLARE_IGC_REGKEY(DWORD, CodeSchedulingAttemptsLimit, 10, "Limit the number of scheduling attempts", true)
+DECLARE_IGC_REGKEY(DWORD, CodeSchedulingRPMargin, 15,
                    "Schedule so that the register pressure is less than #grf - margin", true)
+DECLARE_IGC_REGKEY(bool, CodeSchedulingCommitGreedyRP, true,
+                   "Commit greedy regpressure scheduling in case better "
+                   "scheduling has not succeed",
+                   true)
+DECLARE_IGC_REGKEY(DWORD, CodeSchedulingRPThreshold, 0,
+                   "Do scheduling only if the original register pressure is "
+                   "higher than #GRF - margin + threshold",
+                   true)
 
 DECLARE_IGC_REGKEY(bool, DumpCodeScheduling, false, "Dump code scheduling", true)
 DECLARE_IGC_REGKEY(DWORD, CodeSchedulingDumpLevel, 1, "Code scheduling dump verbosity level", true)
