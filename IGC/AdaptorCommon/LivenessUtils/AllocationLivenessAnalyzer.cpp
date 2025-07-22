@@ -391,7 +391,7 @@ bool tryFindPointerOrigin(Value *ptr, SmallVectorImpl<Instruction *> &origins) {
   DenseSet<Value *> cache;
   bool found = tryFindPointerOriginImpl(ptr, origins, cache);
 
-  IGC_ASSERT_MESSAGE(found && !origins.empty(), "Origin reported as found but no origins were added!");
+  IGC_ASSERT_MESSAGE(!(found && origins.empty()), "Origin reported as found but no origins were added!");
 
   return found;
 }
