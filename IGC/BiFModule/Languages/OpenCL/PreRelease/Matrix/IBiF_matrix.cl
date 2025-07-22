@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -660,6 +660,7 @@ DEFINE_STORE(PackedB_PackedB,     , char, int, 8, 32, ROW_MAJOR, , 8, false)
 /* PackedB store i8 SG16 */
 DEFINE_STORE(PackedB_ColumnMajor, _SG16, char, int, 8, 64, COL_MAJOR, , 8, false)
 DEFINE_STORE_AND_CHECKED(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR, , 8, false)
+DEFINE_STORE_AND_CHECKED(PackedB_RowMajor, _SG16, char, int, 8, 64, ROW_MAJOR, , 8, false)
 
 /* PackedB store i8 SG16 for subgroup 32*/
 DEFINE_STORE(PackedB_ColumnMajor, _SG16, char, int, 8, 64, COL_MAJOR, , 4, false)
@@ -734,6 +735,11 @@ DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 1, tr
 // sub group size 32 for big combinations is not optimized yet
 DEFINE_STORE(PackedA_RowMajor,     _SG16, short, short, 16, 16, ROW_MAJOR, , 8, false)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int,   int,   16, 16, ROW_MAJOR, , 8, false)
+
+/* Accumulator i16 - SG16 */
+DEFINE_STORE_AND_CHECKED(Accumulator_RowMajor, _SG16, short, short, 16, 16, ROW_MAJOR, , 16, false)
+DEFINE_STORE_AND_CHECKED(Accumulator_RowMajor, _SG16, short, short,  8, 16, ROW_MAJOR, , 8, false)
+DEFINE_STORE_AND_CHECKED(Accumulator_RowMajor, _SG16, short, short, 1, 16, ROW_MAJOR, , 1, false)
 
 /* get_coord() support: */
 
@@ -832,32 +838,132 @@ DEFINE_GET_COORD(Accumulator, , 32, 32, 8, 8, 1)
 
 // MAD:
 
-#define DEFINE_MAD_LARGE_SLICE_16bit_AB_IMPL(a_type, b_type, a_suffix, b_suffix) \
-INLINE void __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type##_##b_type##_fp32(__private char *a_ptr, __private char *b_ptr, __private char *raw_c_ptr, __private char *result) { \
-    short16 a   = *(short16 *)a_ptr; \
-    int8 b      = *(int8 *)b_ptr; \
-    int16 raw_c = *(int16 *)raw_c_ptr; \
+#define DEFINE_MAD_LARGE_SLICE(a_type_short, b_type_short, c_type_short, d_type_short, a_suffix, b_suffix, c_suffix, d_suffix, c_type, d_type) \
+INLINE void __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type_short##_##b_type_short##_##c_type_short##_##d_type_short(__private char *a_ptr, __private char *b_ptr, __private char *raw_c_ptr, __private char *result) { \
+    short16 a     = *( short16 *)a_ptr; \
+    int8 b           = *( int8 *)b_ptr; \
+    c_type##16 raw_c = *( c_type##16 *)raw_c_ptr; \
 \
-    short8 a0 = (short8)(a.s0, a.s1, a.s2, a.s3, a.s4, a.s5, a.s6, a.s7); \
-    short8 a1 = (short8)(a.s8, a.s9, a.sa, a.sb, a.sc, a.sd, a.se, a.sf); \
+    short8 a0 = ( short8 )(a.s0, a.s1, a.s2, a.s3, a.s4, a.s5, a.s6, a.s7); \
+    short8 a1 = ( short8 )(a.s8, a.s9, a.sa, a.sb, a.sc, a.sd, a.se, a.sf); \
 \
-    float16 c = *(float16 *)&raw_c; \
+    c_type##16 c = *( c_type##16 *)&raw_c; \
 \
-    float8 c0 = (float8)(c.s0, c.s1, c.s2, c.s3, c.s4, c.s5, c.s6, c.s7); \
-    float8 c1 = (float8)(c.s8, c.s9, c.sa, c.sb, c.sc, c.sd, c.se, c.sf); \
+    c_type##8 c0 = ( c_type##8 )(c.s0, c.s1, c.s2, c.s3, c.s4, c.s5, c.s6, c.s7); \
+    c_type##8 c1 = ( c_type##8 )(c.s8, c.s9, c.sa, c.sb, c.sc, c.sd, c.se, c.sf); \
 \
-    float8 fres0 = __builtin_IB_sub_group16_fdpas_f_f_##a_suffix##_##b_suffix##_8_8(c0, a0, b); \
-    float8 fres1 = __builtin_IB_sub_group16_fdpas_f_f_##a_suffix##_##b_suffix##_8_8(c1, a1, b); \
+    d_type##8 fres0 = __builtin_IB_sub_group16_fdpas_##d_suffix##_##c_suffix##_##a_suffix##_##b_suffix##_8_8(c0, a0, b); \
+    d_type##8 fres1 = __builtin_IB_sub_group16_fdpas_##d_suffix##_##c_suffix##_##a_suffix##_##b_suffix##_8_8(c1, a1, b); \
 \
-    int8 res0 = *(int8 *)&fres0; \
-    int8 res1 = *(int8 *)&fres1; \
+    d_type##8 res0 = *( d_type##8 *)&fres0; \
+    d_type##8 res1 = *( d_type##8 *)&fres1; \
 \
-    __private int16 *dst = (__private int16 *)result; \
-    *dst = (int16)(res0.s0, res0.s1, res0.s2, res0.s3, res0.s4, res0.s5, res0.s6, res0.s7, \
+    __private d_type##16 *dst = (__private d_type##16 *)result; \
+    *dst = ( d_type##16 )(res0.s0, res0.s1, res0.s2, res0.s3, res0.s4, res0.s5, res0.s6, res0.s7, \
                    res1.s0, res1.s1, res1.s2, res1.s3, res1.s4, res1.s5, res1.s6, res1.s7); \
 } \
 \
-INLINE void __builtin_spriv_OpJointMatrixMadINTEL_32x32x16_##a_type##_##b_type##_fp32(__private char *a_ptr, __private char *b_ptr, __private char *c_ptr, __private char *d_ptr) { \
+INLINE void __builtin_spriv_OpJointMatrixMadINTEL_1x64x16_##a_type_short##_##b_type_short##_##c_type_short##_##d_type_short(__private char *a_ptr, __private char *b_ptr, __private char *c_ptr, __private char *d_ptr) { \
+    short a = *(short *) a_ptr; \
+\
+    int8 b0 = *(int8 *) b_ptr; \
+    int8 b1 = *(int8 *)(b_ptr + 1 * 16 * (sizeof (short))); \
+    int8 b2 = *(int8 *)(b_ptr + 2 * 16 * (sizeof (short))); \
+    int8 b3 = *(int8 *)(b_ptr + 3 * 16 * (sizeof (short))); \
+\
+    c_type c0 = *(c_type *)  c_ptr; \
+    c_type c1 = *(c_type *) (c_ptr + 1 * (sizeof (c_type))); \
+    c_type c2 = *(c_type *) (c_ptr + 2 * (sizeof (c_type))); \
+    c_type c3 = *(c_type *) (c_ptr + 3 * (sizeof (c_type))); \
+\
+    d_type d0 = __builtin_IB_sub_group16_fdpas_##d_suffix##_##c_suffix##_##a_suffix##_##b_suffix##_8_1(c0, a, b0); \
+    d_type d1 = __builtin_IB_sub_group16_fdpas_##d_suffix##_##c_suffix##_##a_suffix##_##b_suffix##_8_1(c1, a, b1); \
+    d_type d2 = __builtin_IB_sub_group16_fdpas_##d_suffix##_##c_suffix##_##a_suffix##_##b_suffix##_8_1(c2, a, b2); \
+    d_type d3 = __builtin_IB_sub_group16_fdpas_##d_suffix##_##c_suffix##_##a_suffix##_##b_suffix##_8_1(c3, a, b3); \
+\
+    __private d_type##4 *dst = (__private d_type##4 *)d_ptr; \
+    *dst = (d_type##4 )(as_##d_type(d0), as_##d_type(d1), as_##d_type(d2), as_##d_type(d3)); \
+} \
+\
+INLINE void __builtin_spriv_OpJointMatrixMadINTEL_32x64x16_##a_type_short##_##b_type_short##_##c_type_short##_##d_type_short(__private char *a_ptr, __private char *b_ptr, __private char *c_ptr, __private char *d_ptr) { \
+    __private char *a0 = a_ptr; \
+    __private char *a1 = a_ptr + 16 * (sizeof (short)); \
+\
+    __private char *b0 = b_ptr; \
+    __private char *b1 = b_ptr + 1 * 16 * (sizeof (short)); \
+    __private char *b2 = b_ptr + 2 * 16 * (sizeof (short)); \
+    __private char *b3 = b_ptr + 3 * 16 * (sizeof (short)); \
+\
+    __private char *c0 = c_ptr + 0 * 16 * (sizeof (c_type)); \
+    __private char *c1 = c_ptr + 2 * 16 * (sizeof (c_type)); \
+    __private char *c2 = c_ptr + 4 * 16 * (sizeof (c_type)); \
+    __private char *c3 = c_ptr + 6 * 16 * (sizeof (c_type)); \
+    __private char *c4 = c_ptr + 1 * 16 * (sizeof (c_type)); \
+    __private char *c5 = c_ptr + 3 * 16 * (sizeof (c_type)); \
+    __private char *c6 = c_ptr + 5 * 16 * (sizeof (c_type)); \
+    __private char *c7 = c_ptr + 7 * 16 * (sizeof (c_type)); \
+\
+    __private char *d0 = d_ptr + 0 * 16 * (sizeof (d_type)); \
+    __private char *d1 = d_ptr + 2 * 16 * (sizeof (d_type)); \
+    __private char *d2 = d_ptr + 4 * 16 * (sizeof (d_type)); \
+    __private char *d3 = d_ptr + 6 * 16 * (sizeof (d_type)); \
+    __private char *d4 = d_ptr + 1 * 16 * (sizeof (d_type)); \
+    __private char *d5 = d_ptr + 3 * 16 * (sizeof (d_type)); \
+    __private char *d6 = d_ptr + 5 * 16 * (sizeof (d_type)); \
+    __private char *d7 = d_ptr + 7 * 16 * (sizeof (d_type)); \
+\
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type_short##_##b_type_short##_##c_type_short##_##d_type_short(a0, b0, c0, d0); \
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type_short##_##b_type_short##_##c_type_short##_##d_type_short(a0, b1, c1, d1); \
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type_short##_##b_type_short##_##c_type_short##_##d_type_short(a0, b2, c2, d2); \
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type_short##_##b_type_short##_##c_type_short##_##d_type_short(a0, b3, c3, d3); \
+\
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type_short##_##b_type_short##_##c_type_short##_##d_type_short(a1, b0, c4, d4); \
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type_short##_##b_type_short##_##c_type_short##_##d_type_short(a1, b1, c5, d5); \
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type_short##_##b_type_short##_##c_type_short##_##d_type_short(a1, b2, c6, d6); \
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type_short##_##b_type_short##_##c_type_short##_##d_type_short(a1, b3, c7, d7); \
+} \
+\
+INLINE void __builtin_spriv_OpJointMatrixMadINTEL_32x64x32_##a_type_short##_##b_type_short##_##c_type_short##_##d_type_short(__private char *a_ptr, __private char *b_ptr, __private char *c_ptr, __private char *d_ptr) { \
+    short8 a[8]; \
+    int8 b[8]; \
+    for (int i = 0; i < 8; i++) { \
+        a[i] = *(short8 *)(a_ptr + i * 8 * (sizeof (short))); \
+        b[i] = *(int8 *)(b_ptr + i * 8 * (sizeof (int))); \
+    } \
+\
+    c_type##8 c[16]; \
+    for (int i = 0; i < 16; i++) \
+        c[i] = *( c_type##8 *)(c_ptr + i * 8 * (sizeof (c_type))); \
+\
+_Pragma("unroll") /* TODO: investigate, why not unrolling the loop causes wrong code generated*/ \
+    for (int i = 0; i < 4; i++) { \
+        for (int j = 0; j < 4; j++) { \
+            c_type##8 d = __builtin_IB_sub_group16_fdpas_##c_suffix##_##c_suffix##_##a_suffix##_##b_suffix##_8_8(c[i + 4*j], a[i], b[2*j]); \
+            *( d_type##8 *)(d_ptr + (i + 4*j) * 8 * (sizeof (d_type))) = __builtin_IB_sub_group16_fdpas_##d_suffix##_##c_suffix##_##a_suffix##_##b_suffix##_8_8(d, a[i + 4], b[2*j + 1]); \
+        } \
+    } \
+} \
+\
+INLINE void __builtin_spriv_OpJointMatrixMadINTEL_1x64x32_##a_type_short##_##b_type_short##_##c_type_short##_##d_type_short(__private char *a_ptr, __private char *b_ptr, __private char *c_ptr, __private char *d_ptr) { \
+    short a0 = *(short *)(a_ptr + 0 * (sizeof (short))); \
+    short a1 = *(short *)(a_ptr + 1 * (sizeof (short))); \
+\
+    int8 b[8]; \
+    for (int i = 0; i < 8; i++) \
+        b[i] = *(int8 *)(b_ptr + i * 8 * (sizeof (int))); \
+\
+    c_type c[4]; \
+    for (int i = 0; i < 4; i++) \
+        c[i] = *(c_type *)(c_ptr + i * (sizeof (c_type))); \
+\
+    for (int i = 0; i < 4; i++) { \
+        d_type d = __builtin_IB_sub_group16_fdpas_##d_suffix##_##c_suffix##_##a_suffix##_##b_suffix##_8_1(c[i], a0, b[2 * i]); \
+        *(d_type *)(d_ptr + i * (sizeof (d_type))) = __builtin_IB_sub_group16_fdpas_##d_suffix##_##d_suffix##_##a_suffix##_##b_suffix##_8_1(d, a1, b[2 * i + 1]); \
+    } \
+}
+
+#define DEFINE_MAD_LARGE_SLICE_32x32x16(a_type_short, b_type_short, a_suffix, b_suffix) \
+INLINE void __builtin_spriv_OpJointMatrixMadINTEL_32x32x16_##a_type_short##_##b_type_short##_fp32_fp32(__private char *a_ptr, __private char *b_ptr, __private char *c_ptr, __private char *d_ptr) { \
     int8 a0 = *(int8 *)a_ptr; \
     int8 a1 = *(int8 *) (a_ptr + 1 * 16 * (sizeof (short))); \
     int8 a2 = *(int8 *) (a_ptr + 2 * 16 * (sizeof (short))); \
@@ -868,142 +974,53 @@ INLINE void __builtin_spriv_OpJointMatrixMadINTEL_32x32x16_##a_type##_##b_type##
     int8 b2 = *(int8 *) (b_ptr + 2 * 16 * (sizeof (short))); \
     int8 b3 = *(int8 *) (b_ptr + 3 * 16 * (sizeof (short))); \
 \
-    float8 c0 = *(float8 *) (c_ptr + 0 * 8 * (sizeof (int))); \
-    float8 c1 = *(float8 *) (c_ptr + 4 * 8 * (sizeof (int))); \
-    float8 c2 = *(float8 *) (c_ptr + 8 * 8 * (sizeof (int))); \
-    float8 c3 = *(float8 *) (c_ptr + 12 * 8 * (sizeof (int))); \
-    float8 c4 = *(float8 *) (c_ptr + 1 * 8 * (sizeof (int))); \
-    float8 c5 = *(float8 *) (c_ptr + 5 * 8 * (sizeof (int))); \
-    float8 c6 = *(float8 *) (c_ptr + 9 * 8 * (sizeof (int))); \
-    float8 c7 = *(float8 *) (c_ptr + 13 * 8 * (sizeof (int))); \
-    float8 c8 = *(float8 *) (c_ptr + 2 * 8 * (sizeof (int))); \
-    float8 c9 = *(float8 *) (c_ptr + 6 * 8 * (sizeof (int))); \
-    float8 c10 = *(float8 *) (c_ptr + 10 * 8 * (sizeof (int))); \
-    float8 c11 = *(float8 *) (c_ptr + 14 * 8 * (sizeof (int))); \
-    float8 c12 = *(float8 *) (c_ptr + 3 * 8 * (sizeof (int))); \
-    float8 c13 = *(float8 *) (c_ptr + 7 * 8 * (sizeof (int))); \
-    float8 c14 = *(float8 *) (c_ptr + 11 * 8 * (sizeof (int))); \
-    float8 c15 = *(float8 *) (c_ptr + 15 * 8 * (sizeof (int))); \
+    float8 c0 = *( float8 *) (c_ptr + 0 * 8 * (sizeof (int))); \
+    float8 c1 = *( float8 *) (c_ptr + 4 * 8 * (sizeof (int))); \
+    float8 c2 = *( float8 *) (c_ptr + 8 * 8 * (sizeof (int))); \
+    float8 c3 = *( float8 *) (c_ptr + 12 * 8 * (sizeof (int))); \
+    float8 c4 = *( float8 *) (c_ptr + 1 * 8 * (sizeof (int))); \
+    float8 c5 = *( float8 *) (c_ptr + 5 * 8 * (sizeof (int))); \
+    float8 c6 = *( float8 *) (c_ptr + 9 * 8 * (sizeof (int))); \
+    float8 c7 = *( float8 *) (c_ptr + 13 * 8 * (sizeof (int))); \
+    float8 c8 = *( float8 *) (c_ptr + 2 * 8 * (sizeof (int))); \
+    float8 c9 = *( float8 *) (c_ptr + 6 * 8 * (sizeof (int))); \
+    float8 c10 = *( float8 *) (c_ptr + 10 * 8 * (sizeof (int))); \
+    float8 c11 = *( float8 *) (c_ptr + 14 * 8 * (sizeof (int))); \
+    float8 c12 = *( float8 *) (c_ptr + 3 * 8 * (sizeof (int))); \
+    float8 c13 = *( float8 *) (c_ptr + 7 * 8 * (sizeof (int))); \
+    float8 c14 = *( float8 *) (c_ptr + 11 * 8 * (sizeof (int))); \
+    float8 c15 = *( float8 *) (c_ptr + 15 * 8 * (sizeof (int))); \
 \
-    *(float8 *) (d_ptr + 0 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c0, a0, b0); \
-    *(float8 *) (d_ptr + 4 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c1, a0, b1); \
-    *(float8 *) (d_ptr + 8 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c2, a0, b2); \
-    *(float8 *) (d_ptr + 12 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c3, a0, b3); \
-    *(float8 *) (d_ptr + 1 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c4, a1, b0); \
-    *(float8 *) (d_ptr + 5 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c5, a1, b1); \
-    *(float8 *) (d_ptr + 9 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c6, a1, b2); \
-    *(float8 *) (d_ptr + 13 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c7, a1, b3); \
-    *(float8 *) (d_ptr + 2 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c8, a2, b0); \
-    *(float8 *) (d_ptr + 6 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c9, a2, b1); \
-    *(float8 *) (d_ptr + 10 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c10, a2, b2); \
-    *(float8 *) (d_ptr + 14 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c11, a2, b3); \
-    *(float8 *) (d_ptr + 3 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c12, a3, b0); \
-    *(float8 *) (d_ptr + 7 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c13, a3, b1); \
-    *(float8 *) (d_ptr + 11 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c14, a3, b2); \
-    *(float8 *) (d_ptr + 15 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c15, a3, b3); \
-} \
-\
-INLINE void __builtin_spriv_OpJointMatrixMadINTEL_1x64x16_##a_type##_##b_type##_fp32(__private char *a_ptr, __private char *b_ptr, __private char *c_ptr, __private char *d_ptr) { \
-    short a = *(short *) a_ptr; \
-\
-    int8 b0 = *(int8 *) b_ptr; \
-    int8 b1 = *(int8 *)(b_ptr + 1 * 16 * (sizeof (short))); \
-    int8 b2 = *(int8 *)(b_ptr + 2 * 16 * (sizeof (short))); \
-    int8 b3 = *(int8 *)(b_ptr + 3 * 16 * (sizeof (short))); \
-\
-    float c0 = *(float *)  c_ptr; \
-    float c1 = *(float *) (c_ptr + 1 * (sizeof (int))); \
-    float c2 = *(float *) (c_ptr + 2 * (sizeof (int))); \
-    float c3 = *(float *) (c_ptr + 3 * (sizeof (int))); \
-\
-    float d0 = __builtin_IB_sub_group16_fdpas_f_f_##a_suffix##_##b_suffix##_8_1(c0, a, b0); \
-    float d1 = __builtin_IB_sub_group16_fdpas_f_f_##a_suffix##_##b_suffix##_8_1(c1, a, b1); \
-    float d2 = __builtin_IB_sub_group16_fdpas_f_f_##a_suffix##_##b_suffix##_8_1(c2, a, b2); \
-    float d3 = __builtin_IB_sub_group16_fdpas_f_f_##a_suffix##_##b_suffix##_8_1(c3, a, b3); \
-\
-    __private int4 *dst = (__private int4 *)d_ptr; \
-    *dst = (int4)(as_int(d0), as_int(d1), as_int(d2), as_int(d3)); \
-} \
-\
-INLINE void __builtin_spriv_OpJointMatrixMadINTEL_32x64x16_##a_type##_##b_type##_fp32(__private char *a_ptr, __private char *b_ptr, __private char *c_ptr, __private char *d_ptr) { \
-    __private char *a0 = a_ptr; \
-    __private char *a1 = a_ptr + 16 * (sizeof (short)); \
-\
-    __private char *b0 = b_ptr; \
-    __private char *b1 = b_ptr + 1 * 16 * (sizeof (short)); \
-    __private char *b2 = b_ptr + 2 * 16 * (sizeof (short)); \
-    __private char *b3 = b_ptr + 3 * 16 * (sizeof (short)); \
-\
-    __private char *c0 = c_ptr + 0 * 16 * (sizeof (int)); \
-    __private char *c1 = c_ptr + 2 * 16 * (sizeof (int)); \
-    __private char *c2 = c_ptr + 4 * 16 * (sizeof (int)); \
-    __private char *c3 = c_ptr + 6 * 16 * (sizeof (int)); \
-    __private char *c4 = c_ptr + 1 * 16 * (sizeof (int)); \
-    __private char *c5 = c_ptr + 3 * 16 * (sizeof (int)); \
-    __private char *c6 = c_ptr + 5 * 16 * (sizeof (int)); \
-    __private char *c7 = c_ptr + 7 * 16 * (sizeof (int)); \
-\
-    __private char *d0 = d_ptr + 0 * 16 * (sizeof (int)); \
-    __private char *d1 = d_ptr + 2 * 16 * (sizeof (int)); \
-    __private char *d2 = d_ptr + 4 * 16 * (sizeof (int)); \
-    __private char *d3 = d_ptr + 6 * 16 * (sizeof (int)); \
-    __private char *d4 = d_ptr + 1 * 16 * (sizeof (int)); \
-    __private char *d5 = d_ptr + 3 * 16 * (sizeof (int)); \
-    __private char *d6 = d_ptr + 5 * 16 * (sizeof (int)); \
-    __private char *d7 = d_ptr + 7 * 16 * (sizeof (int)); \
-\
-    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type##_##b_type##_fp32(a0, b0, c0, d0); \
-    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type##_##b_type##_fp32(a0, b1, c1, d1); \
-    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type##_##b_type##_fp32(a0, b2, c2, d2); \
-    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type##_##b_type##_fp32(a0, b3, c3, d3); \
-\
-    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type##_##b_type##_fp32(a1, b0, c4, d4); \
-    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type##_##b_type##_fp32(a1, b1, c5, d5); \
-    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type##_##b_type##_fp32(a1, b2, c6, d6); \
-    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_##a_type##_##b_type##_fp32(a1, b3, c7, d7); \
-} \
-\
-INLINE void __builtin_spriv_OpJointMatrixMadINTEL_32x64x32_##a_type##_##b_type##_fp32(__private char *a_ptr, __private char *b_ptr, __private char *c_ptr, __private char *d_ptr) { \
-    short8 a[8]; \
-    int8 b[8]; \
-    for (int i = 0; i < 8; i++) { \
-        a[i] = *(short8 *)(a_ptr + i * 8 * (sizeof (short))); \
-        b[i] = *(int8 *)(b_ptr + i * 8 * (sizeof (int))); \
-    } \
-\
-    float8 c[16]; \
-    for (int i = 0; i < 16; i++) \
-        c[i] = *(float8 *)(c_ptr + i * 8 * (sizeof (int))); \
-\
-_Pragma("unroll") /* TODO: investigate, why not unrolling the loop causes wrong code generated*/ \
-    for (int i = 0; i < 4; i++) { \
-        for (int j = 0; j < 4; j++) { \
-            float8 d = __builtin_IB_sub_group16_fdpas_f_f_##a_suffix##_##b_suffix##_8_8(c[i + 4*j], a[i], b[2*j]); \
-            *(float8 *)(d_ptr + (i + 4*j) * 8 * (sizeof (float))) = __builtin_IB_sub_group16_fdpas_f_f_##a_suffix##_##b_suffix##_8_8(d, a[i + 4], b[2*j + 1]); \
-        } \
-    } \
-} \
-\
-INLINE void __builtin_spriv_OpJointMatrixMadINTEL_1x64x32_##a_type##_##b_type##_fp32(__private char *a_ptr, __private char *b_ptr, __private char *c_ptr, __private char *d_ptr) { \
-    short a0 = *(short *)(a_ptr + 0 * (sizeof (short))); \
-    short a1 = *(short *)(a_ptr + 1 * (sizeof (short))); \
-\
-    int8 b[8]; \
-    for (int i = 0; i < 8; i++) \
-        b[i] = *(int8 *)(b_ptr + i * 8 * (sizeof (int))); \
-\
-    float c[4]; \
-    for (int i = 0; i < 4; i++) \
-        c[i] = *(float *)(c_ptr + i * (sizeof (int))); \
-\
-    for (int i = 0; i < 4; i++) { \
-        float d = __builtin_IB_sub_group16_fdpas_f_f_##a_suffix##_##b_suffix##_8_1(c[i], a0, b[2 * i]); \
-        *(float *)(d_ptr + i * (sizeof (float))) = __builtin_IB_sub_group16_fdpas_f_f_##a_suffix##_##b_suffix##_8_1(d, a1, b[2 * i + 1]); \
-    } \
+    *( float8 *) (d_ptr + 0 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c0, a0, b0); \
+    *( float8 *) (d_ptr + 4 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c1, a0, b1); \
+    *( float8 *) (d_ptr + 8 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c2, a0, b2); \
+    *( float8 *) (d_ptr + 12 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c3, a0, b3); \
+    *( float8 *) (d_ptr + 1 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c4, a1, b0); \
+    *( float8 *) (d_ptr + 5 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c5, a1, b1); \
+    *( float8 *) (d_ptr + 9 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c6, a1, b2); \
+    *( float8 *) (d_ptr + 13 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c7, a1, b3); \
+    *( float8 *) (d_ptr + 2 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c8, a2, b0); \
+    *( float8 *) (d_ptr + 6 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c9, a2, b1); \
+    *( float8 *) (d_ptr + 10 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c10, a2, b2); \
+    *( float8 *) (d_ptr + 14 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c11, a2, b3); \
+    *( float8 *) (d_ptr + 3 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c12, a3, b0); \
+    *( float8 *) (d_ptr + 7 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c13, a3, b1); \
+    *( float8 *) (d_ptr + 11 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c14, a3, b2); \
+    *( float8 *) (d_ptr + 15 * 8 * (sizeof (float))) = __builtin_IB_sub_group_fdpas_##a_suffix##_##b_suffix##_8_8(c15, a3, b3); \
 }
 
-DEFINE_MAD_LARGE_SLICE_16bit_AB_IMPL(bf16, bf16, bf, bf)
-DEFINE_MAD_LARGE_SLICE_16bit_AB_IMPL(fp16, fp16, hf, hf)
+// bfloat16
+DEFINE_MAD_LARGE_SLICE(bf16, bf16, fp32, fp32, bf, bf, f, f, float, float)
+DEFINE_MAD_LARGE_SLICE(bf16, bf16, fp32, bf16, bf, bf, f, bf, float, short)
+DEFINE_MAD_LARGE_SLICE(bf16, bf16, bf16, fp32, bf, bf, bf, f, short, float)
+DEFINE_MAD_LARGE_SLICE(bf16, bf16, bf16, bf16, bf, bf, bf, bf, short, short)
+DEFINE_MAD_LARGE_SLICE_32x32x16(bf16, bf16, bf, bf)
+// half
+DEFINE_MAD_LARGE_SLICE(fp16, fp16, fp32, fp32, hf, hf, f, f, float, float)
+DEFINE_MAD_LARGE_SLICE(fp16, fp16, fp32, fp16, hf, hf, f, hf, float, half)
+DEFINE_MAD_LARGE_SLICE(fp16, fp16, fp16, fp32, hf, hf, hf, f, half, float)
+DEFINE_MAD_LARGE_SLICE(fp16, fp16, fp16, fp16, hf, hf, hf, hf, half, half)
+DEFINE_MAD_LARGE_SLICE_32x32x16(fp16, fp16, hf, hf)
 
 #define DEFINE_STORE_LARGE_IMPL_2_OPT_VEC_CONT_IMPL(layout, elem_type, contrib_type, R, address_space) \
   /* Not applicable, fallthrough */
@@ -1030,12 +1047,21 @@ DEFINE_MAD_LARGE_SLICE_16bit_AB_IMPL(fp16, fp16, hf, hf)
         BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) > VECTOR_CONT_IMPL && _##layout == _PackedB_RowMajor) { \
       if (_##layout == _Accumulator_RowMajor || _##layout == _PackedB_PackedB) { \
         for (int i = 0; i < R; i++) { \
-            uint src0 = *((uint*)(src +  i          * sizeof(contrib_type))); \
-            uint src1 = *((uint*)(src + (i + R)     * sizeof(contrib_type))); \
-            uint src2 = *((uint*)(src + (i + R * 2) * sizeof(contrib_type))); \
-            uint src3 = *((uint*)(src + (i + R * 3) * sizeof(contrib_type))); \
-            uint4 row = (uint4)(src0, src1, src2, src3); \
-            intel_sub_group_block_write4((__##address_space uint *)(mem + i * stride * sizeof(elem_type)), row); \
+            if (sizeof(contrib_type) == 4) { \
+                uint src0 = *((uint*)(src +  i          * sizeof(contrib_type))); \
+                uint src1 = *((uint*)(src + (i + R)     * sizeof(contrib_type))); \
+                uint src2 = *((uint*)(src + (i + R * 2) * sizeof(contrib_type))); \
+                uint src3 = *((uint*)(src + (i + R * 3) * sizeof(contrib_type))); \
+                uint4 row = (uint4)(src0, src1, src2, src3); \
+                intel_sub_group_block_write4((__##address_space uint *)(mem + i * stride * sizeof(elem_type)), row); \
+            } else if (sizeof(contrib_type) == 2) { \
+                ushort src0 = *((ushort*)(src +  i          * sizeof(contrib_type))); \
+                ushort src1 = *((ushort*)(src + (i + R)     * sizeof(contrib_type))); \
+                ushort src2 = *((ushort*)(src + (i + R * 2) * sizeof(contrib_type))); \
+                ushort src3 = *((ushort*)(src + (i + R * 3) * sizeof(contrib_type))); \
+                ushort4 row = (ushort4)(src0, src1, src2, src3); \
+                intel_sub_group_block_write_us4((__##address_space uint *)(mem + i * stride * sizeof(elem_type)), row); \
+            } \
         } \
         return; \
       } \
@@ -1154,22 +1180,22 @@ DEFINE_MAD_LARGE_SLICE_16bit_AB_IMPL(fp16, fp16, hf, hf)
     char *mem14 = mem + 3 * column_stride * (sizeof (element_type)) + 2 * row_stride * stride * (sizeof (element_type)); \
     char *mem15 = mem + 3 * column_stride * (sizeof (element_type)) + 3 * row_stride * stride * (sizeof (element_type)); \
 \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem0, c0, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem1, c1, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem2, c2, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem3, c3, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem4, c4, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem5, c5, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem6, c6, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem7, c7, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem8, c8, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem9, c9, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem10, c10, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem11, c11, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem12, c12, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem13, c13, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem14, c14, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i32_8_##address_space##_pi64_v8i8(mem15, c15, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem0, c0, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem1, c1, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem2, c2, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem3, c3, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem4, c4, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem5, c5, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem6, c6, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem7, c7, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem8, c8, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem9, c9, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem10, c10, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem11, c11, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem12, c12, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem13, c13, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem14, c14, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor##sg##_##store_shape##_i##elem_bitwidth##_8_##address_space##_pi64_v8i8(mem15, c15, stride, cacheOpt); \
     return;
 
 // _2 suffix in the name indicates that the function is using 2 2d block stores
@@ -1331,93 +1357,121 @@ DEFINE_STORE_LARGE(Accumulator_RowMajor, ,   int,   int,  32, 32, 128) // 16 sto
 DEFINE_STORE_AND_CHECKED_LARGE(Accumulator_RowMajor,  _SG16, int,   int,   16, 16,  16) // 2 stores in default impl, no 1d optimization possible
 DEFINE_STORE_AND_CHECKED_LARGE(Accumulator_RowMajor,  _SG16, int,   int,   32, 64, 128) // 16 stores in default impl, 1d optimized with 4 stores at one op
 
+/* Accumulator i16 SG16*/
+DEFINE_STORE_AND_CHECKED_LARGE(Accumulator_RowMajor, _SG16, short, short, 32, 64, 128)
 
-#define DEFINE_STORE_LARGE_BLOCK2D_IMPL_1() \
+#define DEFINE_STORE_LARGE_BLOCK2D_IMPL_1(element_type, bitwidth, wi_rows) \
     if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL) { \
       long offset = as_long(mem); \
       long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
-      int width = sizeof(int) * 16 - 1; /* in bytes, load 1x64 as 4x16 to use one load instead of 4 */ \
+      int width; \
+      int height; \
+      if (bitwidth == 32) { \
+        width = sizeof(element_type) * 16 - 1; /* in bytes, load 1x64 as 4x16 to use one load instead of 4 */ \
+        height = 4 - 1; /* row count */ \
+      } \
+      else if (bitwidth == 16) { \
+        width = sizeof(element_type) * 32 - 1; /* in bytes, load 1x64 as 2x32 to use one load instead of 4 */ \
+        height = 2 - 1; /* row count */ \
+      } \
       int pitch = width; /* JointMatrices are expected to be contiguous in memory, without padding at the end of a row */ \
-      int height = 4 - 1; /* row count */ \
-      long x = (offset - baseoffset) / sizeof(int); /* in elements */ \
+      long x = (offset - baseoffset) / sizeof(element_type); /* in elements */ \
       int2 coords = (int2)(x, 0); \
-      uint4 val = *(uint4 *)src; \
-      void __builtin_IB_subgroup_block_write_flat_u32_wi4_m4k16v1(long, int, int, int, int2, uint4, int); \
-      __builtin_IB_subgroup_block_write_flat_u32_wi4_m4k16v1(baseoffset, width, height, pitch, coords, val, cacheOpt); \
+      u##element_type##4 val = *(u##element_type##4 *)src; \
+    if (bitwidth == 32) { \
+        void __builtin_IB_subgroup_block_write_flat_u##bitwidth##_wi##wi_rows##_m4k16v1(long, int, int, int, int2, u##element_type##4, int); \
+        __builtin_IB_subgroup_block_write_flat_u##bitwidth##_wi##wi_rows##_m4k16v1(baseoffset, width, height, pitch, coords, val, cacheOpt); \
+      } \
+      else if (bitwidth == 16) { \
+        void __builtin_IB_subgroup_block_write_flat_u##bitwidth##_wi##wi_rows##_m2k32v1(long, int, int, int, int2, u##element_type##4, int); \
+      __builtin_IB_subgroup_block_write_flat_u##bitwidth##_wi##wi_rows##_m2k32v1(baseoffset, width, height, pitch, coords, val, cacheOpt); \
+      } \
       return; \
     }
 
-#define DEFINE_STORE_LARGE_VECTORS_IMPL_1(address_space) \
+#define DEFINE_STORE_LARGE_VECTORS_IMPL_1(address_space, element_type, bitwidth) \
     if(BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL) { \
-        uint4 c = *(uint4 *) src; \
-        intel_sub_group_block_write4((__##address_space uint *)mem, c); \
+        if(bitwidth == 32) { \
+            uint4 c = *(uint4 *) src; \
+            intel_sub_group_block_write4((__##address_space uint *)mem, c); \
+        } else if (bitwidth == 16) { \
+            ushort4 c = *(ushort4 *) src; \
+            intel_sub_group_block_write_us4((__##address_space ushort *)mem, c); \
+        } \
         return; \
     } \
     if(BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_IMPL) { \
-        __##address_space uint *ptr = (__##address_space uint *)mem; \
-        for (int i = 0; i < 4; i++) \
-            intel_sub_group_block_write(ptr + i * 16, ((__private uint *)src)[i]); \
+        __##address_space u##element_type *ptr = (__##address_space u##element_type *)mem; \
+        for (int i = 0; i < 4; i++) { \
+            if(bitwidth == 32) { \
+                intel_sub_group_block_write(ptr + i * 16, ((__private uint *)src)[i]); \
+            } else if (bitwidth == 16) { \
+                intel_sub_group_block_write_us(ptr + i * 16, ((__private ushort *)src)[i]); \
+            } \
+        } \
         return; \
     }
 
-#define DEFINE_STORE_LARGE_SCALAR_IMPL_1() \
-    int *ptr = (int *)mem; \
+#define DEFINE_STORE_LARGE_SCALAR_IMPL_1(element_type) \
+    element_type *ptr = (element_type *)mem; \
     int slid = get_sub_group_local_id(); \
-    __private int *slice = (__private int *)src; \
+    __private element_type *slice = (__private element_type *)src; \
     for (int i = 0; i < 4; i++) \
       ptr[i*16 + slid] = slice[i];
 
-#define DEFINE_STORE_CHECKED_LARGE_BLOCK2D_IMPL_1() \
+#define DEFINE_STORE_CHECKED_LARGE_BLOCK2D_IMPL_1(element_type, bitwidth, wi_rows) \
     /* store 1x64 as 4 stores 1x16 */ \
-    __private char *c0 = src + 0 * 1 * (sizeof (int)); \
-    __private char *c1 = src + 1 * 1 * (sizeof (int)); \
-    __private char *c2 = src + 2 * 1 * (sizeof (int)); \
-    __private char *c3 = src + 3 * 1 * (sizeof (int)); \
-    __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i32_1_pi64_v8i8(mem, c0, y, x + 0 * 16, height, width, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i32_1_pi64_v8i8(mem, c1, y, x + 1 * 16, height, width, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i32_1_pi64_v8i8(mem, c2, y, x + 2 * 16, height, width, stride, cacheOpt); \
-    __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i32_1_pi64_v8i8(mem, c3, y, x + 3 * 16, height, width, stride, cacheOpt);
+    __private char *c0 = src + 0 * 1 * sizeof(element_type); \
+    __private char *c1 = src + 1 * 1 * sizeof(element_type); \
+    __private char *c2 = src + 2 * 1 * sizeof(element_type); \
+    __private char *c3 = src + 3 * 1 * sizeof(element_type); \
+    __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i##bitwidth##_1_pi64_v8i8(mem, c0, y, x + 0 * 16, height, width, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i##bitwidth##_1_pi64_v8i8(mem, c1, y, x + 1 * 16, height, width, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i##bitwidth##_1_pi64_v8i8(mem, c2, y, x + 2 * 16, height, width, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i##bitwidth##_1_pi64_v8i8(mem, c3, y, x + 3 * 16, height, width, stride, cacheOpt);
 
-#define DEFINE_STORE_LARGE_1_IMPL_AS_GENERIC() \
-    INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_generic_pi64_v8i8(char *mem, __private char *src, long stride, int cacheOpt) { \
+#define DEFINE_STORE_LARGE_1_IMPL_AS_GENERIC(element_type, bitwidth, wi_rows) \
+    INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i##bitwidth##_##wi_rows##_generic_pi64_v8i8(char *mem, __private char *src, long stride, int cacheOpt) { \
         __builtin_assume((__global char*)mem != 0); \
         int memIsGlobal = (0 != SPIRV_BUILTIN(GenericCastToPtrExplicit, _p1i8_p4i8_i32, _ToGlobal)(__builtin_astype((mem), __generic char*), StorageWorkgroup)); \
         if (memIsGlobal) { \
-            DEFINE_STORE_LARGE_BLOCK2D_IMPL_1() \
-            DEFINE_STORE_LARGE_VECTORS_IMPL_1(global) \
+            DEFINE_STORE_LARGE_BLOCK2D_IMPL_1(element_type, bitwidth, wi_rows) \
+            DEFINE_STORE_LARGE_VECTORS_IMPL_1(global, element_type, bitwidth) \
         } else { \
-            DEFINE_STORE_LARGE_VECTORS_IMPL_1(local) \
+            DEFINE_STORE_LARGE_VECTORS_IMPL_1(local, element_type, bitwidth) \
         } \
-        DEFINE_STORE_LARGE_SCALAR_IMPL_1() \
+        DEFINE_STORE_LARGE_SCALAR_IMPL_1(element_type) \
     }
-#define DEFINE_STORE_LARGE_1_IMPL_AS_LOCAL() \
-    INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_local_pi64_v8i8(char *mem, __private char *src, long stride, int cacheOpt) { \
-        DEFINE_STORE_LARGE_VECTORS_IMPL_1(local) \
-        DEFINE_STORE_LARGE_SCALAR_IMPL_1() \
+#define DEFINE_STORE_LARGE_1_IMPL_AS_LOCAL(element_type, bitwidth, wi_rows) \
+    INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i##bitwidth##_##wi_rows##_local_pi64_v8i8(char *mem, __private char *src, long stride, int cacheOpt) { \
+        DEFINE_STORE_LARGE_VECTORS_IMPL_1(local, element_type, bitwidth) \
+        DEFINE_STORE_LARGE_SCALAR_IMPL_1(element_type) \
     }
-#define DEFINE_STORE_LARGE_1_IMPL_AS_GLOBAL() \
-    INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_global_pi64_v8i8(char *mem, __private char *src, long stride, int cacheOpt) { \
-        DEFINE_STORE_LARGE_BLOCK2D_IMPL_1() \
-        DEFINE_STORE_LARGE_VECTORS_IMPL_1(global) \
-        DEFINE_STORE_LARGE_SCALAR_IMPL_1() \
-    }
-
-#define DEFINE_STORE_CHECKED_LARGE_1_IMPL() \
-    INLINE void __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_pi64_v8i8(char *mem, __private char *src, int y, int x, int height, int width, long stride, int cacheOpt) { \
-        DEFINE_STORE_CHECKED_LARGE_BLOCK2D_IMPL_1() \
+#define DEFINE_STORE_LARGE_1_IMPL_AS_GLOBAL(element_type, bitwidth, wi_rows) \
+    INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i##bitwidth##_##wi_rows##_global_pi64_v8i8(char *mem, __private char *src, long stride, int cacheOpt) { \
+        DEFINE_STORE_LARGE_BLOCK2D_IMPL_1(element_type, bitwidth, wi_rows) \
+        DEFINE_STORE_LARGE_VECTORS_IMPL_1(global, element_type, bitwidth) \
+        DEFINE_STORE_LARGE_SCALAR_IMPL_1(element_type) \
     }
 
-#define DEFINE_STORE_LARGE_1(layout, M, K) \
-    DEFINE_STORE_LARGE_1_IMPL_AS_GENERIC() \
-    DEFINE_STORE_LARGE_1_IMPL_AS_LOCAL() \
-    DEFINE_STORE_LARGE_1_IMPL_AS_GLOBAL()
+#define DEFINE_STORE_CHECKED_LARGE_1_IMPL(element_type, bitwidth, wi_rows) \
+    INLINE void __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x64_i##bitwidth##_##wi_rows##_pi64_v8i8(char *mem, __private char *src, int y, int x, int height, int width, long stride, int cacheOpt) { \
+        DEFINE_STORE_CHECKED_LARGE_BLOCK2D_IMPL_1(element_type, bitwidth, wi_rows) \
+    }
 
-#define DEFINE_STORE_CHECKED_LARGE_1(layout, M, K) \
-    DEFINE_STORE_CHECKED_LARGE_1_IMPL()
+#define DEFINE_STORE_LARGE_1(layout, element_type, M, K, bitwidth, wi_rows) \
+    DEFINE_STORE_LARGE_1_IMPL_AS_GENERIC(element_type, bitwidth, wi_rows) \
+    DEFINE_STORE_LARGE_1_IMPL_AS_LOCAL(element_type, bitwidth, wi_rows) \
+    DEFINE_STORE_LARGE_1_IMPL_AS_GLOBAL(element_type, bitwidth, wi_rows)
 
-DEFINE_STORE_LARGE_1(Accumulator_RowMajor, 1, 64)
+#define DEFINE_STORE_CHECKED_LARGE_1(layout, element_type, M, K, bitwidth, wi_rows) \
+    DEFINE_STORE_CHECKED_LARGE_1_IMPL(element_type, bitwidth, wi_rows)
 
-DEFINE_STORE_CHECKED_LARGE_1(Accumulator_RowMajor, 1, 64)
+DEFINE_STORE_LARGE_1(Accumulator_RowMajor, int, 1, 64, 32, 4)
+DEFINE_STORE_LARGE_1(Accumulator_RowMajor, short, 1, 64, 16, 4)
+
+DEFINE_STORE_CHECKED_LARGE_1(Accumulator_RowMajor, int, 1, 64, 32, 4)
+DEFINE_STORE_CHECKED_LARGE_1(Accumulator_RowMajor, short, 1, 64, 16, 4)
 
 // FillChecked implementation
 

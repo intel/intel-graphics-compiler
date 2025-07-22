@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -59,8 +59,9 @@ private:
   llvm::Value *ResolveFill(llvm::CallInst *CI);
   llvm::Instruction *ResolveFillChecked(llvm::CallInst *CI);
   llvm::Value *ResolveWILength(llvm::CallInst *CI);
-  llvm::Value *getAcc2x64xFloatElementPtr(llvm::CallInst *CI, llvm::Value *matrix, llvm::Value *index,
-                                          llvm::IRBuilder<> *builder, llvm::Value **MatPtr);
+  llvm::Value *getAcc2x64ElementPtr(llvm::CallInst *CI, llvm::Value *matrix, llvm::Value *index,
+                                    llvm::IRBuilder<> *builder, llvm::Value **MatPtr,
+                                    const JointMatrixTypeDescription &desc);
   llvm::Value *ResolveSliceInsert(llvm::CallInst *CI);
   llvm::Value *ResolveSliceExtract(llvm::CallInst *CI);
   llvm::Instruction *ResolveGetCoord(llvm::CallInst *CI);
@@ -84,7 +85,7 @@ private:
 #endif
 
   llvm::StringRef GetMatrixTypeName(llvm::Type *opaqueType);
-  bool SetLayoutFromUse(unsigned int use, IGC::JointMatrixTypeDescription *outDescription);
+  bool SetLayoutFromUse(IGC::JointMatrixTypeDescription *outDescription);
   unsigned GetUseFromLegacyLayout(unsigned int legacyLayout);
 
   unsigned getNumRowsPerWI(const JointMatrixTypeDescription *desc);

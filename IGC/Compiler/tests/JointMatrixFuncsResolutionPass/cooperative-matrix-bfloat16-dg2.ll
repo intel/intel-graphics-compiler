@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -22,8 +22,7 @@ define spir_kernel void @mad_builtin_bfloat16_32x32x16(ptr %src, i64 %stride, pt
 ; CHECK-NEXT:    store <32 x i32> <i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537, i32 65537>, ptr [[TMP2]], align 128
 ; CHECK-NEXT:    store <32 x i32> <i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1>, ptr [[TMP3]], align 128
 ; CHECK-NEXT:    store { <64 x float>, <64 x float> } zeroinitializer, ptr [[TMP4]], align 256
-
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_32x32x16_bf16_bf16_fp32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_32x32x16_bf16_bf16_fp32_fp32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = load { <64 x float>, <64 x float> }, ptr [[TMP5]], align 256
 ; CHECK-NEXT:    store { <64 x float>, <64 x float> } [[TMP10]], ptr [[TMP1]], align 256
 ; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_32x32_i32_128_generic_pi64_v8i8(ptr [[DST:%.*]], ptr [[TMP1]], i64 [[STRIDE:%.*]], i32 0)

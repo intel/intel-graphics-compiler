@@ -18,10 +18,10 @@
 ; CHECK:   [[ALLOCA2:%.*]]  = alloca <3 x float>, align 16
 ; CHECK:   [[ALLOCA3:%.*]]  = alloca <8 x i32>, align 32
 ; CHECK:   [[ALLOCA4:%.*]]  = alloca <3 x i32>, align 16
-; CHECK:   [[ALLOCA5:%.*]]  = alloca <3 x i32>, align 16
+; CHECK:   [[ALLOCA5:%.*]]  = alloca <6 x i16>, align 16
 ; CHECK:   [[ALLOCA6:%.*]]  = alloca <3 x i32>, align 16
 ; CHECK:   [[ALLOCA7:%.*]]  = alloca <8 x float>, align 32
-; CHECK:   [[ALLOCA8:%.*]]  = alloca <8 x i32>, align 32
+; CHECK:   [[ALLOCA8:%.*]]  = alloca <16 x half>, align 32
 ; CHECK:   [[ALLOCA9:%.*]]  = alloca <8 x i32>, align 32
 ; CHECK:   [[ALLOCA10:%.*]]  = alloca <8 x i32>, align 32
 ; CHECK:   [[ALLOCA11:%.*]]  = alloca <8 x i32>, align 32
@@ -36,8 +36,8 @@
 ; CHECK:        store <8 x i32> {{.*}}, ptr [[ALLOCA9]], align 32
 ; CHECK-NEXT:   call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_8x8_i32_8_generic_pi64_v8i8(ptr %dst, ptr [[ALLOCA9]], i64 64, i32 0)
 
-; CHECK:        store <8 x i32> {{.*}}, ptr [[ALLOCA8]], align 32
-; CHECK-NEXT:   call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x16_i16_8_generic_pi64_v8i8(ptr %dst, ptr [[ALLOCA8]], i64 64, i32 0)
+; CHECK:        store <16 x half> {{.*}}, ptr [[ALLOCA8]], align 32
+; CHECK-NEXT:   call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_8x16_i16_16_generic_pi64_v8i8(ptr %dst, ptr [[ALLOCA8]], i64 64, i32 0)
 
 ; CHECK:        store <8 x float> {{.*}}, ptr [[ALLOCA7]], align 32
 ; CHECK-NEXT:   call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_8x8_i32_8_generic_pi64_v8i8(ptr %dst, ptr [[ALLOCA7]], i64 64, i32 0)
@@ -45,8 +45,8 @@
 ; CHECK:        store <3 x i32> {{.*}}, ptr [[ALLOCA6]], align 16
 ; CHECK-NEXT:   call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_3x32_i8_3_generic_pi64_v8i8(ptr %dst, ptr [[ALLOCA6]], i64 64, i32 0)
 
-; CHECK:        store <3 x i32> {{.*}}, ptr [[ALLOCA5]], align 16
-; CHECK-NEXT:   call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_3x16_i16_3_generic_pi64_v8i8(ptr %dst, ptr [[ALLOCA5]], i64 64, i32 0)
+; CHECK:        store <6 x i16> {{.*}}, ptr [[ALLOCA5]], align 16
+; CHECK-NEXT:   call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_3x16_i16_6_generic_pi64_v8i8(ptr %dst, ptr [[ALLOCA5]], i64 64, i32 0)
 
 ; CHECK:        store <3 x i32> {{.*}}, ptr [[ALLOCA4]], align 16
 ; CHECK-NEXT:   call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_3x8_i32_3_generic_pi64_v8i8(ptr %dst, ptr [[ALLOCA4]], i64 64, i32 0)
@@ -63,9 +63,9 @@
 ; CHECK:      declare void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x32_i8_8_generic_pi64_v8i8(ptr, ptr, i64, i32)
 ; CHECK:      declare void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedB_RowMajor_16x8_i16_8_generic_pi64_v8i8(ptr, ptr, i64, i32)
 ; CHECK:      declare void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_8x8_i32_8_generic_pi64_v8i8(ptr, ptr, i64, i32)
-; CHECK:      declare void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x16_i16_8_generic_pi64_v8i8(ptr, ptr, i64, i32)
+; CHECK:      declare void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_8x16_i16_16_generic_pi64_v8i8(ptr, ptr, i64, i32)
 ; CHECK:      declare void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_3x32_i8_3_generic_pi64_v8i8(ptr, ptr, i64, i32)
-; CHECK:      declare void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_3x16_i16_3_generic_pi64_v8i8(ptr, ptr, i64, i32)
+; CHECK:      declare void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_3x16_i16_6_generic_pi64_v8i8(ptr, ptr, i64, i32)
 ; CHECK:      declare void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_3x8_i32_3_generic_pi64_v8i8(ptr, ptr, i64, i32)
 ; CHECK:      declare void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_3x8_i32_3_generic_pi64_v8i8(ptr, ptr, i64, i32)
 
@@ -87,8 +87,8 @@ define void @test(ptr %a, ptr %dst) {
 
 
 
-    %6 = call spir_func target("spirv.JointMatrixINTEL", i8, 3, 32, 0, 0) @_Z26__spirv_CompositeConstructf_6(i8 14)
-    call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1iPU3AS140__spirv_JointMatrixINTEL__i8_3_32_0_0liii_6(ptr %dst, target("spirv.JointMatrixINTEL", i8, 3, 32, 0, 0) %6, i64 64, i32 0, i32 0, i32 0)
+    %6 = call spir_func target("spirv.JointMatrixINTEL", i8, 3, 32, 2, 0) @_Z26__spirv_CompositeConstructf_6(i8 14)
+    call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1iPU3AS140__spirv_JointMatrixINTEL__i8_3_32_0_0liii_6(ptr %dst, target("spirv.JointMatrixINTEL", i8, 3, 32, 2, 0) %6, i64 64, i32 0, i32 0, i32 0)
 
     %7 = call spir_func target("spirv.JointMatrixINTEL", i16, 3, 16, 1, 1) @_Z26__spirv_CompositeConstructf_7(i16 125)
     call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1iPU3AS140__spirv_JointMatrixINTEL__i16_3_16_1_1liii_7(ptr %dst, target("spirv.JointMatrixINTEL", i16, 3, 16, 1, 1) %7, i64 64, i32 0, i32 0, i32 0)
@@ -128,8 +128,8 @@ declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1iPU3AS140__spirv_
 
 
 
-declare spir_func target("spirv.JointMatrixINTEL", i8, 3, 32, 0, 0) @_Z26__spirv_CompositeConstructf_6(i8)
-declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1iPU3AS140__spirv_JointMatrixINTEL__i8_3_32_0_0liii_6(ptr, target("spirv.JointMatrixINTEL", i8, 3, 32, 0, 0), i64, i32, i32, i32)
+declare spir_func target("spirv.JointMatrixINTEL", i8, 3, 32, 2, 0) @_Z26__spirv_CompositeConstructf_6(i8)
+declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1iPU3AS140__spirv_JointMatrixINTEL__i8_3_32_0_0liii_6(ptr, target("spirv.JointMatrixINTEL", i8, 3, 32, 2, 0), i64, i32, i32, i32)
 
 declare spir_func target("spirv.JointMatrixINTEL", i16, 3, 16, 1, 1) @_Z26__spirv_CompositeConstructf_7(i16)
 declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1iPU3AS140__spirv_JointMatrixINTEL__i16_3_16_1_1liii_7(ptr, target("spirv.JointMatrixINTEL", i16, 3, 16, 1, 1), i64, i32, i32, i32)

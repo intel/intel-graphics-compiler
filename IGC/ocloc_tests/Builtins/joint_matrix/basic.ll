@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -86,7 +86,7 @@ entry:
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(12,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.1536 V{{[0-9]+}}.0 V{{[0-9]+}}(12,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(12,0)
-  call void @__builtin_spriv_OpJointMatrixMadINTEL_32x64x32_bf16_bf16_fp32(i8* %a, i8* %b, i8* %c, i8* %d)
+  call void @__builtin_spriv_OpJointMatrixMadINTEL_32x64x32_bf16_bf16_fp32_fp32(i8* %a, i8* %b, i8* %c, i8* %d)
 
 ; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[V{{[0-9]+}},0xFF,0x7,0xFF,V{{[0-9]+}},0x0]  {{[A-z0-9_]*}}:d32.16x8nn
 ; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[V{{[0-9]+}},0xFF,0x7,0xFF,V{{[0-9]+}},0x0]  {{[A-z0-9_]*}}:d32.16x8nn
@@ -123,7 +123,7 @@ entry:
 ; CHECK-VISAASM: dpas.bf.bf.8.1 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(0,
 ; CHECK-VISAASM: dpas.bf.bf.8.1 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.192 V{{[0-9]+}}.0 V{{[0-9]+}}(0,
 ; CHECK-VISAASM: dpas.bf.bf.8.1 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(0,
-  call void @__builtin_spriv_OpJointMatrixMadINTEL_1x64x32_bf16_bf16_fp32(i8* %a1, i8* %b, i8* %c1, i8* %d1)
+  call void @__builtin_spriv_OpJointMatrixMadINTEL_1x64x32_bf16_bf16_fp32_fp32(i8* %a1, i8* %b, i8* %c1, i8* %d1)
 
 ; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[V{{[0-9]+}},0x3F,0x3,0x3F,V{{[0-9]+}},0x0]  V{{[0-9]+}}:d32.16x4nn
   call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_global_pi64_v8i8(float addrspace(1)* %src_c, i8* %d1, i64 64, i32 0)
@@ -215,8 +215,8 @@ declare void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedB_ColumnMajor_SG16_32
 declare void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_global_v8i8_pi32_i32(i8*, float addrspace(1)*, i64, i32)
 declare void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_global_v8i8_pi32_i32(i8*, float addrspace(1)*, i64, i32)
 
-declare spir_func void @__builtin_spriv_OpJointMatrixMadINTEL_1x64x32_bf16_bf16_fp32(i8*, i8*, i8*, i8*)
-declare spir_func void @__builtin_spriv_OpJointMatrixMadINTEL_32x64x32_bf16_bf16_fp32(i8*, i8*, i8*, i8*)
+declare spir_func void @__builtin_spriv_OpJointMatrixMadINTEL_1x64x32_bf16_bf16_fp32_fp32(i8*, i8*, i8*, i8*)
+declare spir_func void @__builtin_spriv_OpJointMatrixMadINTEL_32x64x32_bf16_bf16_fp32_fp32(i8*, i8*, i8*, i8*)
 
 declare void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_SG16_1x32_i16_2_global_pi64_v8i8(i8 addrspace(1)*, i8*, i64, i32)
 declare void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_SG16_32x32_i16_64_global_pi64_v8i8(i8 addrspace(1)*, i8*, i64, i32)

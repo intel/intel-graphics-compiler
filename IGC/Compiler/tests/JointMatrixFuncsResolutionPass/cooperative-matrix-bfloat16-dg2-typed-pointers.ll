@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -29,7 +29,7 @@ define spir_kernel void @mad_builtin_bfloat16_32x32x16(i8 addrspace(1)* %src, i6
 ; CHECK-NEXT:    [[TMP7:%.*]] = bitcast <32 x i32>* [[TMP3]] to i8*
 ; CHECK-NEXT:    [[TMP8:%.*]] = bitcast { <64 x float>, <64 x float> }* [[TMP4]] to i8*
 ; CHECK-NEXT:    [[TMP9:%.*]] = bitcast { <64 x float>, <64 x float> }* [[TMP5]] to i8*
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_32x32x16_bf16_bf16_fp32(i8* [[TMP6]], i8* [[TMP7]], i8* [[TMP8]], i8* [[TMP9]])
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_32x32x16_bf16_bf16_fp32_fp32(i8* [[TMP6]], i8* [[TMP7]], i8* [[TMP8]], i8* [[TMP9]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = load { <64 x float>, <64 x float> }, { <64 x float>, <64 x float> }* [[TMP5]], align 256
 ; CHECK-NEXT:    store { <64 x float>, <64 x float> } [[TMP10]], { <64 x float>, <64 x float> }* [[TMP1]], align 256
 ; CHECK-NEXT:    [[TMP11:%.*]] = bitcast { <64 x float>, <64 x float> }* [[TMP1]] to i8*

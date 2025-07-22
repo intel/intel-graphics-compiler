@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -80,10 +80,10 @@ entry:
 ; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{[_A-Za-z0-9]+}},0x7,0x2,0x9,0x31,0x9]  V{{[0-9]+}}.512:d32.16x8nn
   call void @__builtin_spriv_OpJointMatrixStoreCheckedINTEL_PackedB_PackedB_SG16_32x64_i16_64_pi64_v8i8(i8 addrspace(1)* %src_b, i8* %b, i32 1, i32 2, i32 3, i32 4, i64 5, i32 0)
 
-; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{[_A-Za-z0-9]+}},0xF,0x2,0x13,0x2,0x1]  V{{[0-9]+}}:d32.16x1nn
-; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{[_A-Za-z0-9]+}},0xF,0x2,0x13,0x12,0x1]  V{{[0-9]+}}:d32.16x1nn
-; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{[_A-Za-z0-9]+}},0xF,0x2,0x13,0x22,0x1]  V{{[0-9]+}}:d32.16x1nn
-; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{[_A-Za-z0-9]+}},0xF,0x2,0x13,0x32,0x1]  V{{[0-9]+}}:d32.16x1nn
+; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{[_A-Za-z0-9]+}},0xF,0x2,0x13,0x2,0x1]  {{[_A-Za-z0-9]+}}:d32.16x1nn
+; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{[_A-Za-z0-9]+}},0xF,0x2,0x13,0x12,0x1]  {{[_A-Za-z0-9]+}}:d32.16x1nn
+; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{[_A-Za-z0-9]+}},0xF,0x2,0x13,0x22,0x1]  {{[_A-Za-z0-9]+}}:d32.16x1nn
+; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{[_A-Za-z0-9]+}},0xF,0x2,0x13,0x32,0x1]  {{[_A-Za-z0-9]+}}:d32.16x1nn
   call void @__builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_pi64_v8i8(float addrspace(1)* %src_c, i8* %c1, i32 1, i32 2, i32 3, i32 4, i64 5, i32 0)
 
 ; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{[_A-Za-z0-9]+}},0xF,0x2,0x13,0x2,0x1]  V{{[0-9]+}}:d32.16x8nn

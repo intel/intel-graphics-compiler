@@ -20645,6 +20645,15 @@ void EmitPass::emitDpas(GenIntrinsicInst *GII, const SSource *Sources, const Dst
     if (input->GetType() == ISA_TYPE_UW || input->GetType() == ISA_TYPE_W) {
       input = m_currShader->GetNewAlias(input, ISA_TYPE_BF, 0, 0);
     }
+    // For matrix C shape 1x64 i16 data types data is not
+    // properly aligned by default so we have to do a copy.
+    if (RC == 1 && (input->GetType() == ISA_TYPE_BF || input->GetType() == ISA_TYPE_HF)) {
+      CVariable *input_tmp = m_currShader->GetNewVariable(input->GetNumberElement(), input->GetType(), EALIGN_GRF,
+                                                          false /*uniform*/, "input_realign");
+      m_encoder->Copy(input_tmp, input);
+      input = input_tmp;
+      m_encoder->Push();
+    }
   }
   if (dst->GetType() == ISA_TYPE_UW || dst->GetType() == ISA_TYPE_W) {
     dst = m_currShader->GetNewAlias(dst, ISA_TYPE_BF, 0, 0);

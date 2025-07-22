@@ -224,6 +224,11 @@ struct MatrixSpec
             if (Layout == Layout_PackedA_RowMajor && SubGroupSize == SUB_GROUP_16 &&
                 Cols == 32 && BitWidth == BITS_16)
                 ContribBitWidth = BITS_16;
+            // Special case - when bitwidth is 16 and layout is accumulator, the contribBitWidth is also 16
+            if ((Layout == Layout_Accumulator_RowMajor ||
+                 Layout == Layout_Accumulator_ColumnMajor) &&
+                BitWidth == BITS_16)
+                ContribBitWidth = BITS_16;
 
             if (Order == Order_Vnni) assert(ContribBitWidth == BITS_32);
         }
@@ -473,8 +478,8 @@ static string ImplementSmallLoad2DBlock(MatrixSpec spec, bool isChecked)
         s += "long offset = as_long(mem);\n";
         s += "int pack_factor = " + to_string(blockBitWidth / spec.BitWidth) + ";\n";
         s += "int2 coords = (int2)(x / pack_factor, y);\n";
-        s += "int width_bytes = " + to_string(Bytes(spec.BitWidth)) + " * width - 1;\n";
-        s += "int pitch_bytes = " + to_string(Bytes(spec.BitWidth)) + " * stride - 1;\n";
+        s += "int width_bytes = ElemBytes * width - 1;\n";
+        s += "int pitch_bytes = ElemBytes * stride - 1;\n";
         s += "int height_minus_one = height - 1;\n";
         s += "ResultType BlockFunc(long, int, int, int, int2, int);\n";
         s += "ResultType res = BlockFunc(offset, width_bytes, height_minus_one, "
@@ -489,7 +494,7 @@ static string ImplementSmallLoad2DBlock(MatrixSpec spec, bool isChecked)
         s +=
             "long x = (offset - baseoffset) / " + to_string(Bytes(blockBitWidth)) + ";\n";
         s += "int2 coords = (int2)(x, 0);\n";
-        s += "int width_bytes = " + to_string(Bytes(spec.BitWidth)) + " * stride - 1;\n";
+        s += "int width_bytes = ElemBytes * stride - 1;\n";
         s += "int pitch_bytes = width_bytes;\n";
         s += "int height_minus_one = " + to_string(blockHeight) + " - 1;\n";
         s += "ResultType BlockFunc(long, int, int, int, int2, int);\n";
@@ -526,6 +531,7 @@ static string ImplementSmallLoad2DBlock(MatrixSpec spec, bool isChecked)
     s = Replace(s, "SubGroupSize", to_string(spec.SubGroupSize));
     s = Replace(s, "ResultType", resultType);
     s = Replace(s, "BlockFunc", blockFunc);
+    s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
     return s;
 }
 
@@ -908,6 +914,7 @@ ImplementLargeLoadVectorContinuous(MatrixSpec spec, AddrSpace addr, int numLoads
     s = Replace(s, "AddrSpace", "__" + ToString(addr));
     s = Replace(s, "ElemByteWidth", to_string(Bytes(spec.BitWidth)));
     s = Replace(s, "ContribByteWidth", to_string(Bytes(spec.ContribBitWidth)));
+    s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
     return s;
 }
 
@@ -1087,7 +1094,8 @@ ImplementLargeLoadBase(MatrixSpec spec, AddrSpace addr, int numLoads, bool isChe
 
     s = Replace(s, "LoadFunc", loadFunc);
     s = Replace(s, "AddrSpace", "__" + ToString(addr));
-    s = Replace(s, "ElemByteWidth", to_string(Bytes(spec.BitWidth)));
+    s = Replace(s, "ElemByteWidth", "ElemBytes");
+    s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
     s = Replace(s, "ContribByteWidth", to_string(Bytes(spec.ContribBitWidth)));
     s = Replace(s, "WiRowsPerLoad", to_string(wiRowsPerLoad));
     s = Replace(s, "NumLoads", to_string(numLoads));
@@ -1176,37 +1184,35 @@ static string DefineSpecialLarge1x64AddrSpace(MatrixSpec spec, AddrSpace addr)
     string implBlock2D =
         "if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL) {\n"
         "  long offset = as_long(mem);\n" // align to 64-byte
-        "  long baseoffset = offset & (~0x3f);\n" // load 1x64 as 4x16, hence, width is 16 int in bytes
-        "  int width_bytes = sizeof(int) * 16 - 1;\n" // load 1x64 as 4x16, hence, width is 16 int in bytes
-        "  int height_minus_one = 4 - 1;\n"  // row count
+        "  long baseoffset = offset & (~0x3f);\n" // load 1x64 as 4x16(32bit) or 2x32(16bit), hence, width is 16 int in bytes
+        "  int width_bytes = ElemBytes * Width_1x64 - 1;\n" // load 1x64 as 4x16(32bit) or 2x32(16bit), hence, width is 16 int in bytes
+        "  int height_minus_one = Height_1x64 - 1;\n" // row count
         "  int pitch_bytes = width_bytes;\n" // JointMatrices are expected to be contiguous in memory, without padding at the end of a row
-        "  long x = (offset - baseoffset) / sizeof(int);\n" // in elements
+        "  long x = (offset - baseoffset) / ElemBytes;\n" // in elements
         "  int2 coords = (int2)(x, 0);\n"
-        "  uint4 __builtin_IB_subgroup_block_read_flat_u32_wi4_m4k16v1(long, int, int, "
-        "int, int2, int);\n"
-        "  uint4 res = __builtin_IB_subgroup_block_read_flat_u32_wi4_m4k16v1(baseoffset, "
-        "width_bytes, height_minus_one, pitch_bytes, coords, cacheOpt);\n"
-        "  *(__private uint4 *)dst = res;\n"
+        "  ElemType4 BlockLoadFunc(long, int, int, int, int2, int);\n"
+        "  ElemType4 res = BlockLoadFunc(baseoffset, width_bytes, height_minus_one, "
+        "pitch_bytes, coords, cacheOpt);\n"
+        "  *(__private ElemType4 *)dst = res;\n"
         "  return;\n"
         "}\n";
 
     string implVectors =
-        "if(BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL) {\n"
-        "  *(__private uint4 *)dst = intel_sub_group_block_read4((AddrSpace uint "
-        "*)mem);\n"
-        "  return;\n"
-        "}\n"
+        "if(BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL) { \n"
+        "       *(__private ElemType4 *) dst = VecFunc4((AddrSpace ElemType *)mem); \n"
+        "   return; \n"
+        "} \n"
         "if(BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_IMPL) {\n"
-        "  __private uint *wi_contrib = (__private uint *)dst;\n"
+        "  __private ElemType *wi_contrib = (__private ElemType *)dst;\n"
         "  for (int i = 0; i < 4; i++)\n"
-        "    wi_contrib[i] = intel_sub_group_block_read((__global uint *)mem + i*16);\n"
+        "    wi_contrib[i] = VecFunc((__global ElemType *)mem + i*16);\n"
         "  return;\n"
         "}\n";
 
     string implScalar =
-        "AddrSpace int *ptr = (AddrSpace uint *)mem;\n"
+        "AddrSpace ElemType *ptr = (AddrSpace ElemType *)mem;\n"
         "int slid = get_sub_group_local_id();\n"
-        "__private uint *wi_contrib = (__private uint *)dst;\n"
+        "__private ElemType *wi_contrib = (__private ElemType *)dst;\n"
         "for (int i = 0; i < 4; i++)\n"
         "  wi_contrib[i] = ptr[i*16 + slid];\n";
 
@@ -1244,8 +1250,34 @@ static string DefineSpecialLarge1x64AddrSpace(MatrixSpec spec, AddrSpace addr)
     }
 
     s += "}\n\n";
-
+    string vecFunc4 = "intel_sub_group_block_read" +
+                      GetVectorLoadSuffix(spec.ContribBitWidth) +
+                      ToStringAbove1(spec.WiRows);
+    string vecFunc =
+        "intel_sub_group_block_read" + GetVectorLoadSuffix(spec.ContribBitWidth);
+    if (spec.BitWidth == 32)
+    {
+        string blockLoadFunc =
+            "__builtin_IB_subgroup_block_read_flat_uElemBits_wiWiRows_m4k16v1";
+        s = Replace(s, "BlockLoadFunc", blockLoadFunc);
+        s = Replace(s, "Width_1x64", string("16"));
+        s = Replace(s, "Height_1x64", string("4"));
+    }
+    else
+    {
+        string blockLoadFunc =
+            "__builtin_IB_subgroup_block_read_flat_uElemBits_wiWiRows_m2k32v1";
+        s = Replace(s, "BlockLoadFunc", blockLoadFunc);
+        s = Replace(s, "Width_1x64", string("32"));
+        s = Replace(s, "Height_1x64", string("2"));
+    }
+    s = Replace(s, "ElemBits", to_string(spec.BitWidth));
+    s = Replace(s, "VecFunc4", vecFunc4);
+    s = Replace(s, "VecFunc", vecFunc);
     s = Replace(s, "AddrSpace", "__" + ToString(addr));
+    s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
+    s = Replace(s, "ElemType", GetUnsignedType(spec.BitWidth));
+    s = Replace(s, "WiRows", to_string(spec.WiRows));
     return s;
 }
 
@@ -1284,7 +1316,8 @@ static string DefineSpecialLarge1x64(MatrixSpec spec)
             s += "}\n\n";
         }
     }
-
+    s = Replace(s, "ElemBits", to_string(spec.BitWidth));
+    s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
     return s;
 }
 
@@ -1380,6 +1413,10 @@ static string DefineAllSmallLoads()
         MatrixSpec(SUB_GROUP_32, Layout_PackedB_RowMajor, 8, 16, BITS_32));
 
 
+    // Acumulator, i16
+    s += DefineSmallLoadPermuteRows(
+        MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 8, 16, BITS_16));
+
     // Accumulator, i32:
     /* Load accumulator is a special case of load packed A, both are row major: */
     s += DefineSmallLoadPermuteRows(
@@ -1416,6 +1453,12 @@ static string DefineAllSmallLoads()
         MatrixSpec(SUB_GROUP_16, Layout_PackedB_RowMajor, 16, 32, BITS_16));
     s += DefineSmallLoad(
         MatrixSpec(SUB_GROUP_16, Layout_PackedB_PackedB, 16, 32, BITS_16));
+
+    // Accumulator, i16
+    s += DefineSmallLoad(
+        MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 16, 16, BITS_16));
+    s += DefineSmallLoad(
+        MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 32, 32, BITS_16));
 
     // Accumulator, i32:
     s += DefineSmallLoad(
@@ -1463,6 +1506,10 @@ static string DefineAllLargeLoads()
     s += DefineLargeLoad(
         MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 32, 64, BITS_32));
 
+    // Accumulator, i16:
+    s += DefineLargeLoad(
+        MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 32, 64, BITS_16));
+
     //
     // Special large loads
     //
@@ -1470,6 +1517,10 @@ static string DefineAllLargeLoads()
     // Accumulator, i32 - 1x64
     s += DefineSpecialLarge1x64(
         MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 1, 64, BITS_32));
+
+    // Accumulator, i16 - 1x64
+    s += DefineSpecialLarge1x64(
+        MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 1, 64, BITS_16));
     return s;
 }
 

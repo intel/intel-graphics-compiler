@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -22,7 +22,7 @@ define spir_kernel void @mad_builtin_bfloat16_1x64x16(ptr %src, i64 %stride, ptr
 ; CHECK-NEXT:    store i16 1, ptr [[TMP2]]
 ; CHECK-NEXT:    store <32 x i32> <i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1>, ptr [[TMP3]]
 ; CHECK-NEXT:    store <4 x float> zeroinitializer, ptr [[TMP4]]
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_1x64x16_bf16_bf16_fp32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_1x64x16_bf16_bf16_fp32_fp32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = load <4 x float>, ptr [[TMP5]]
 ; CHECK-NEXT:    store <4 x float> [[TMP10]], ptr [[TMP1]]
 ; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_generic_pi64_v8i8(ptr [[DST:%.*]], ptr [[TMP1]], i64 [[STRIDE:%.*]], i32 0)
@@ -52,7 +52,7 @@ define spir_kernel void @mad_builtin_bfloat16_1x64x32(ptr %src, i64 %stride, ptr
 ; CHECK-NEXT:    store <2 x i16> <i16 1, i16 1>, ptr [[TMP2]]
 ; CHECK-NEXT:    store <64 x i32> <i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1>, ptr [[TMP3]]
 ; CHECK-NEXT:    store <4 x float> zeroinitializer, ptr [[TMP4]]
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_1x64x32_bf16_bf16_fp32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_1x64x32_bf16_bf16_fp32_fp32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = load <4 x float>, ptr [[TMP5]]
 ; CHECK-NEXT:    store <4 x float> [[TMP10]], ptr [[TMP1]]
 ; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_generic_pi64_v8i8(ptr [[DST:%.*]], ptr [[TMP1]], i64 [[STRIDE:%.*]], i32 0)
@@ -81,7 +81,7 @@ define spir_kernel void @mad_builtin_bfloat16(ptr %src, i64 %stride, ptr %dst) {
 ; CHECK-NEXT:    store <16 x i16> <i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1>, ptr [[TMP2]]
 ; CHECK-NEXT:    store <8 x i32> <i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1>, ptr [[TMP3]]
 ; CHECK-NEXT:    store <16 x float> zeroinitializer, ptr [[TMP4]]
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32_fp32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = load <16 x float>, ptr [[TMP5]]
 ; CHECK-NEXT:    store <16 x float> [[TMP10]], ptr [[TMP1]]
 ; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_generic_pi64_v8i8(ptr [[DST:%.*]], ptr [[TMP1]], i64 [[STRIDE:%.*]], i32 0)
@@ -111,7 +111,7 @@ define spir_kernel void @mad_builtin_bfloat16_32x64x16(ptr %src, i64 %stride, pt
 ; CHECK-NEXT:    store <32 x i16> <i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1>, ptr [[TMP2]]
 ; CHECK-NEXT:    store <32 x i32> <i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1>, ptr [[TMP3]]
 ; CHECK-NEXT:    store { <64 x float>, <64 x float> } zeroinitializer, ptr [[TMP4]]
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_32x64x16_bf16_bf16_fp32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_32x64x16_bf16_bf16_fp32_fp32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = load { <64 x float>, <64 x float> }, ptr [[TMP5]]
 ; CHECK-NEXT:    store { <64 x float>, <64 x float> } [[TMP10]], ptr [[TMP1]]
 ; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_generic_pi64_v8i8(ptr [[DST:%.*]], ptr [[TMP1]], i64 [[STRIDE:%.*]], i32 0)
@@ -140,7 +140,7 @@ define spir_kernel void @mad_builtin_bfloat16_32x64x32(ptr %src, i64 %stride, pt
 ; CHECK-NEXT:    store <64 x i16> <i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1>, ptr [[TMP2]]
 ; CHECK-NEXT:    store <64 x i32> <i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1>, ptr [[TMP3]]
 ; CHECK-NEXT:    store { <64 x float>, <64 x float> } zeroinitializer, ptr [[TMP4]]
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_32x64x32_bf16_bf16_fp32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_32x64x32_bf16_bf16_fp32_fp32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = load { <64 x float>, <64 x float> }, ptr [[TMP5]]
 ; CHECK-NEXT:    store { <64 x float>, <64 x float> } [[TMP10]], ptr [[TMP1]]
 ; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_generic_pi64_v8i8(ptr [[DST:%.*]], ptr [[TMP1]], i64 [[STRIDE:%.*]], i32 0)

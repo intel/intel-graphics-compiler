@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -21,7 +21,7 @@
 ; CHECK-NEXT:    store <8 x i16>{{.*}} ptr [[TMP2]]
 ; CHECK-NEXT:    store <4 x i32>{{.*}} ptr [[TMP3]]
 ; CHECK-NEXT:    store <16 x i32> zeroinitializer, ptr [[TMP4]]
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_s8_s8_i32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_s8_s8_i32_i32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = load <16 x i32>, ptr [[TMP5]]
 ; CHECK-NEXT:    store <16 x i32> [[TMP10]], ptr [[TMP1]]
 ; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_generic_pi64_v8i8(ptr [[DST:%.*]], ptr [[TMP1]], i64 [[STRIDE:%.*]])
@@ -46,7 +46,7 @@ define spir_kernel void @mad_builtin_signed(ptr %src, i64 %stride, ptr %dst) {
 ; CHECK-NEXT:    store <8 x i16>{{.*}} ptr [[TMP2]]
 ; CHECK-NEXT:    store <4 x i32>{{.*}} ptr [[TMP3]]
 ; CHECK-NEXT:    store <16 x i32> zeroinitializer, ptr [[TMP4]]
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_u8_u8_i32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_u8_u8_i32_i32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = load <16 x i32>, ptr [[TMP5]]
 ; CHECK-NEXT:    store <16 x i32> [[TMP10]], ptr [[TMP1]]
 ; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_generic_pi64_v8i8(ptr [[DST:%.*]], ptr [[TMP1]], i64 [[STRIDE:%.*]])
@@ -71,7 +71,7 @@ define spir_kernel void @mad_builtin_unsigned(ptr %src, i64 %stride, ptr %dst) {
 ; CHECK-NEXT:    store <8 x i16>{{.*}} ptr [[TMP2]]
 ; CHECK-NEXT:    store <4 x i32>{{.*}} ptr [[TMP3]]
 ; CHECK-NEXT:    store <16 x i32> zeroinitializer, ptr [[TMP4]]
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_u8_u8_i32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_u8_u8_i32_i32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = load <16 x i32>, ptr [[TMP5]]
 ; CHECK-NEXT:    store <16 x i32> [[TMP10]], ptr [[TMP1]]
 ; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_generic_pi64_v8i8(ptr [[DST:%.*]], ptr [[TMP1]], i64 [[STRIDE:%.*]])
@@ -96,7 +96,7 @@ define spir_kernel void @mad_builtin_unsigned_2(ptr %src, i64 %stride, ptr %dst)
 ; CHECK-NEXT:    store <8 x i16>{{.*}} ptr [[TMP2]]
 ; CHECK-NEXT:    store <4 x i32>{{.*}} ptr [[TMP3]]
 ; CHECK-NEXT:    store <16 x i32> zeroinitializer, ptr [[TMP4]]
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_u8_s8_i32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_u8_s8_i32_i32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = load <16 x i32>, ptr [[TMP5]]
 ; CHECK-NEXT:    store <16 x i32> [[TMP10]], ptr [[TMP1]]
 ; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_generic_pi64_v8i8(ptr [[DST:%.*]], ptr [[TMP1]], i64 [[STRIDE:%.*]])
@@ -121,7 +121,7 @@ define spir_kernel void @mad_builtin_unsigned_signed(ptr %src, i64 %stride, ptr 
 ; CHECK-NEXT:    store <8 x i16>{{.*}} ptr [[TMP2]]
 ; CHECK-NEXT:    store <4 x i32>{{.*}} ptr [[TMP3]]
 ; CHECK-NEXT:    store <16 x i32> zeroinitializer, ptr [[TMP4]]
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_s8_u8_i32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_s8_u8_i32_i32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = load <16 x i32>, ptr [[TMP5]]
 ; CHECK-NEXT:    store <16 x i32> [[TMP10]], ptr [[TMP1]]
 ; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_generic_pi64_v8i8(ptr [[DST:%.*]], ptr [[TMP1]], i64 [[STRIDE:%.*]])

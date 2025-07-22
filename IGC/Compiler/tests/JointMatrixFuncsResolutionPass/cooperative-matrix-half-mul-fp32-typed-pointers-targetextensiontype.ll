@@ -25,7 +25,7 @@
 ; CHECK-NEXT:    [[TMP7:%.*]] = bitcast <8 x i32>* [[TMP3]] to i8*
 ; CHECK-NEXT:    [[TMP8:%.*]] = bitcast <16 x float>* [[TMP4]] to i8*
 ; CHECK-NEXT:    [[TMP9:%.*]] = bitcast <16 x float>* [[TMP5]] to i8*
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_i32_fp16_fp32(i8* [[TMP6]], i8* [[TMP7]], i8* [[TMP8]], i8* [[TMP9]])
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_i32_fp16_fp32_fp32(i8* [[TMP6]], i8* [[TMP7]], i8* [[TMP8]], i8* [[TMP9]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = load <16 x float>, <16 x float>* [[TMP5]]
 ; CHECK-NEXT:    store <16 x float> [[TMP10]], <16 x float>* [[TMP1]]
 ; CHECK-NEXT:    [[TMP11:%.*]] = bitcast <16 x float>* [[TMP1]] to i8*
