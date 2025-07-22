@@ -614,10 +614,13 @@ void CShader::AllocateNOSConstants(uint &offset) {
   offset += m_State.m_NOSBufferSize;
 }
 
-CVariable *CShader::CreateFunctionSymbol(llvm::Function *pFunc) {
+CVariable *CShader::CreateFunctionSymbol(llvm::Function *pFunc, StringRef symbolName) {
   // Functions with uses in this module requires relocation
   CVariable *funcAddr = GetSymbol(pFunc);
   std::string funcName = pFunc->getName().str();
+  if (!symbolName.empty()) {
+    funcName = symbolName.str();
+  }
   encoder.AddVISASymbol(funcName, funcAddr);
   encoder.Push();
 
