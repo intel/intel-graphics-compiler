@@ -5658,10 +5658,9 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
       }
     }
 
-    if (dbgSize > 0) {
-      dbgInfo = IGC::aligned_malloc(dbgSize, sizeof(void *));
-      memcpy_s(dbgInfo, dbgSize, genxdbgInfo, dbgSize);
-    }
+    dbgInfo = IGC::aligned_malloc(dbgSize, sizeof(void *));
+
+    memcpy_s(dbgInfo, dbgSize, genxdbgInfo, dbgSize);
 
     freeBlock(genxdbgInfo);
   }

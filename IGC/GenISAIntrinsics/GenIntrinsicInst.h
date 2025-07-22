@@ -1753,7 +1753,6 @@ public:
   static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
 
   Function *getContinuationFn() const { return cast<Function>(getOperand(0)->stripPointerCasts()); }
-  uint32_t getContinuationID() const { return (uint32_t)cast<ConstantInt>(getOperand(1))->getZExtValue(); }
 };
 
 class PayloadPtrIntrinsic : public GenIntrinsicInst {

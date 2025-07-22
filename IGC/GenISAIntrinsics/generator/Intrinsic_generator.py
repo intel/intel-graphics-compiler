@@ -139,13 +139,13 @@ class IntrinsicFormatter:
     @classmethod
     def get_comment(cls ,comment):
         if cls.use_comments:
-            output = '"{}"'.format(comment.strip())
+            output = '"{}"'.format(comment)
             return output
         return '""'
 
     @staticmethod
     def get_argument_comment(comment, is_last):
-        output = IntrinsicFormatter.get_comment(comment.strip())
+        output = IntrinsicFormatter.get_comment(comment)
         if not is_last:
             output = "{},".format(output)
         return output
