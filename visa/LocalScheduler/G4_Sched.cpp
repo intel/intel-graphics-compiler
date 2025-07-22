@@ -1672,8 +1672,8 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
       return false;
 
     // UpperBoundGRF == 0 means we are scheduling for the fixed number of GRF
-    unsigned LatencyPressureThreshold = getLatencyHidingThreshold(kernel, nr);
-    if (UpperBoundGRF == 0 && MaxPressure >= LatencyPressureThreshold)
+    if (UpperBoundGRF == 0 &&
+        MaxPressure >= getLatencyHidingThreshold(kernel, nr))
       return false;
 
     // simple ROI check.
@@ -1685,15 +1685,8 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
           NumOfHighLatencyInsts++;
       }
     }
-    if (kernel.fg.builder->hasFiveALUPipes()) {
-      // For latest platform, do scheduling for kernels with low register
-      // pressure to improve ILP. Currently, half pressure threshold is used.
-      // Maybe tuned in future.
-      return (NumOfHighLatencyInsts >= 2) ||
-             (MaxPressure < (LatencyPressureThreshold / 2));
-    } else {
-      return (NumOfHighLatencyInsts >= 2);
-    }
+
+    return NumOfHighLatencyInsts >= 2;
   };
 
   unsigned NumGrfs =
