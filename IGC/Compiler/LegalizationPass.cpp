@@ -280,7 +280,10 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator &I) {
           break;
         }
         // check select i1 with I not used as condition
-        if (isa<SelectInst>(*U) && U->getOperand(0) != &I) {
+       if (isa<SelectInst>(*U) &&
+           (U->getOperand(0) != &I ||
+            U->getOperand(1) == &I ||
+            U->getOperand(2) == &I)) {
           flippable = false;
           break;
         }
@@ -297,20 +300,25 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator &I) {
         if (invert) {
           invert->setDebugLoc(I.getDebugLoc());
         }
-        while (!I.user_empty()) {
-          auto U = I.user_begin();
-          if (SelectInst *s = dyn_cast<SelectInst>(*U)) {
+        // Collect users before modifying them
+        std::vector<User *> users(I.user_begin(), I.user_end());
+        for (auto U : users) {
+          if (SelectInst *s = dyn_cast<SelectInst>(U)) {
             Value *trueValue = s->getTrueValue();
             Value *falseValue = s->getFalseValue();
             s->setOperand(1, falseValue);
             s->setOperand(2, trueValue);
             s->setOperand(0, invert);
-          } else if (BranchInst *br = dyn_cast<BranchInst>(*U)) {
+          } else if (BranchInst *br = dyn_cast<BranchInst>(U)) {
             IGC_ASSERT(br->isConditional());
             br->swapSuccessors();
             br->setCondition(invert);
           }
         }
+        IGC_ASSERT(
+            I.user_empty() &&
+            "Instruction should have no remaining uses after transformation"
+        );
         I.eraseFromParent();
         cast<llvm::Instruction>(src0)->eraseFromParent();
         cast<llvm::Instruction>(src1)->eraseFromParent();
