@@ -578,6 +578,7 @@ intrinsics:
                 type_definition: *ref_0_
                 comment: "coordinates x"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -595,6 +596,7 @@ intrinsics:
                 type_definition: *ref_0_
                 comment: "coordinates x"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -612,6 +614,7 @@ intrinsics:
                 type_definition: *ref_0_
                 comment: "coordinates y"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -629,6 +632,7 @@ intrinsics:
                 type_definition: *ref_0_
                 comment: "coordinates y"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
