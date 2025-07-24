@@ -366,6 +366,10 @@ void ProgramScopeConstantAnalysis::addData(Constant *initializer,
   if (PointerType *ptrType = dyn_cast<PointerType>(initializer->getType())) {
     int64_t offset = 0;
     const unsigned int pointerSize = int_cast<unsigned int>(m_DL->getTypeAllocSize(ptrType));
+
+    bool isFuncPtr = !IGCLLVM::isOpaquePointerTy(ptrType) && isa<FunctionType>(IGCLLVM::getNonOpaquePtrEltTy(ptrType));
+    bool isFunc = isFuncPtr || isa<Function>(initializer);
+
     // This case is the most common: here, we look for a pointer that can be decomposed into
     // a base + offset with the base itself being another global variable previously defined.
     if (GlobalVariable *ptrBase =
@@ -398,7 +402,7 @@ void ProgramScopeConstantAnalysis::addData(Constant *initializer,
       }
     } else if (isa<ConstantPointerNull>(initializer) || isa<UndefValue>(initializer)) {
       inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
-    } else if (isa<FunctionType>(IGCLLVM::getNonOpaquePtrEltTy(ptrType))) {
+    } else if (isFunc) {
       // Save patch info for function pointer to be patched later by runtime
       // The initializer value must be a function pointer and has the "referenced-indirectly" attribute
       Function *F = dyn_cast<Function>(initializer);
