@@ -14,8 +14,9 @@
 
 ; RUN: llvm-as %s -o %t
 ; RUN: ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'"
-; RUN: oneapi-readelf --debug-dump %t_OCL_simd32_foo.elf | FileCheck %s
+; RUN: oneapi-readelf --debug-dump %t_OCL_simd32__ZTSZZ4mainENKUlRN4sycl3_V17handlerEE_clES2_E13simple_kernel.elf | FileCheck %s
 
+; CHECK  DW_AT_name        : typeinfo name for main::'lambda'(sycl::_V1::handler&)::operator()(sycl::_V1::handler&) const::simple_kernel
 ; CHECK: DW_TAG_enumeration_type
 ; CHECK:   DW_AT_type        : {{.*}}
 ; CHECK:   DW_AT_name        : {{.*}}
@@ -24,7 +25,7 @@
 @a = addrspace(1) global i64 0, align 8, !dbg !0
 
 ; Function Attrs: nounwind
-define spir_kernel void @foo() #0 !dbg !17 {
+define spir_kernel void @_ZTSZZ4mainENKUlRN4sycl3_V17handlerEE_clES2_E13simple_kernel() #0 !dbg !17 {
 entry:
   %b = alloca i32, align 4
   call void @llvm.dbg.value(metadata i32* %b, metadata !20, metadata !22), !dbg !23
@@ -58,7 +59,7 @@ attributes #1 = { nounwind readnone }
 !14 = !{!0}
 !15 = !{i32 2, !"Dwarf Version", i32 4}
 !16 = !{i32 1, !"Debug Info Version", i32 3}
-!17 = distinct !DISubprogram(name: "foo", scope: !2, file: !2, line: 3, type: !18, flags: DIFlagPrototyped, unit: !8, retainedNodes: !13)
+!17 = distinct !DISubprogram(name: "_ZTSZZ4mainENKUlRN4sycl3_V17handlerEE_clES2_E13simple_kernel", scope: !2, file: !2, line: 3, type: !18, flags: DIFlagPrototyped, unit: !8, retainedNodes: !13)
 !18 = !DISubroutineType(types: !19)
 !19 = !{null}
 !20 = !DILocalVariable(name: "b", scope: !17, file: !2, line: 4, type: !21)

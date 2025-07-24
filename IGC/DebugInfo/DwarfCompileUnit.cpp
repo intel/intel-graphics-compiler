@@ -26,6 +26,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Demangle/Demangle.h"
 #if LLVM_VERSION_MAJOR >= 11
 #include "llvm/CodeGen/DIE.h"
 #endif
@@ -1576,8 +1577,11 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DICompositeType *CTy) {
   }
 
   // Add name if not anonymous or intermediate type.
-  if (!Name.empty())
-    addString(&Buffer, dwarf::DW_AT_name, Name);
+  if (!Name.empty()) {
+    // llvm::demangle returns passed string if name is not mangled.
+    std::string DemangledName = llvm::demangle(Name.str());
+    addString(&Buffer, dwarf::DW_AT_name, DemangledName);
+  }
 
   if (Tag == dwarf::DW_TAG_enumeration_type || Tag == dwarf::DW_TAG_class_type || Tag == dwarf::DW_TAG_structure_type ||
       Tag == dwarf::DW_TAG_union_type) {
@@ -1764,7 +1768,9 @@ IGC::DIE *CompileUnit::getOrCreateSubprogramDIE(DISubprogram *SP) {
 
   // Constructors and operators for anonymous aggregates do not have names.
   if (!SP->getName().empty()) {
-    addString(SPDie, dwarf::DW_AT_name, SP->getName());
+    // llvm::demangle returns passed string if name is not mangled.
+    std::string DemangledName = llvm::demangle(SP->getName().str());
+    addString(SPDie, dwarf::DW_AT_name, DemangledName);
   }
 
   addSourceLine(SPDie, SP);
