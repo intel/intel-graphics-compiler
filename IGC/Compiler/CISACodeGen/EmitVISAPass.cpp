@@ -7062,19 +7062,6 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction *inst) {
   CVariable *pTempDest = m_currShader->GetNewVariable(blockRegSize, m_destination->GetType(),
                                                       m_currShader->getGRFAlignment(), CName::NONE);
 
-  bool needsTempDst = numPasses_axisX > 1;
-
-  // Block2d load's return size per block is multiple of GRFs. If the actual
-  // returned data per block is not multiple of GRFs, its size is rounded up
-  // to the next whole GRF with unused GRF storage filled with zero.
-  // Make sure dst is whole GRF.
-  if (numPasses_axisX == 1 && m_destination->GetSize() % m_currShader->getGRFSize() != 0) {
-    needsTempDst = true;
-    uint16_t nGRF = (m_destination->GetSize() / m_currShader->getGRFSize()) + 1;
-    pTempDest = m_currShader->GetNewVariable(nGRF * m_currShader->getGRFSize() / m_destination->GetElemSize(),
-                                             m_destination->GetType(), m_currShader->getGRFAlignment(), CName::NONE);
-  }
-
   CVariable *xVar = GetSymbol(xOffset);
   CVariable *yVar = GetSymbol(yOffset);
 
@@ -7189,7 +7176,7 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction *inst) {
 
       m_encoder->SetDstSubVar(dstSubReg);
 
-      CVariable *dstVar = !needsTempDst ? m_destination : pTempDest;
+      CVariable *dstVar = numPasses_axisX == 1 ? m_destination : pTempDest;
 
       auto surfaceType = isBindless ? ESURFACE_BINDLESS : ESURFACE_NORMAL;
       if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_HPG_CORE)) {
@@ -7204,7 +7191,7 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction *inst) {
     }
   }
 
-  if (needsTempDst) {
+  if (numPasses_axisX > 1) {
     dstSubReg = 0;
 
     uint32_t srcSubReg = 0;
