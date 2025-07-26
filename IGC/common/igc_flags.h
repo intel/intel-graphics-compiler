@@ -279,8 +279,8 @@ DECLARE_IGC_REGKEY(DWORD, LS_splitThresholdDelta_GRF, 2,
                    "Register pressure must exceed total GRFs by this much for the load splitting to fire up.", false)
 
 // Code Scheduling
-DECLARE_IGC_REGKEY(bool, DisableCodeScheduling, false, "Disable local code scheduling", true)
-DECLARE_IGC_REGKEY(bool, CodeSchedulingOnlyRecompilation, true, "Enable code scheduling only on 2nd try", true)
+DECLARE_IGC_REGKEY(bool, DisableCodeScheduling, true, "Disable local code scheduling", true)
+DECLARE_IGC_REGKEY(bool, CodeSchedulingOnlyRecompilation, false, "Enable code scheduling only on 2nd try", true)
 
 DECLARE_IGC_REGKEY(bool, EnableCodeSchedulingIfNoSpills, false, "Try rescheduling also when there are no spills", true)
 DECLARE_IGC_REGKEY(bool, CodeSchedulingForceMWOnly, false, "Force scheduling to consider only latency", true)
