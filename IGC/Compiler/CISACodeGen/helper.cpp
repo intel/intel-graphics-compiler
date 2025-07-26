@@ -1687,7 +1687,6 @@ bool ComputesGradient(llvm::Instruction *inst) {
 uint getImmValueU32(const llvm::Value *value) {
   const llvm::ConstantInt *cval = llvm::cast<llvm::ConstantInt>(value);
   IGC_ASSERT(nullptr != cval);
-  IGC_ASSERT(cval->getBitWidth() == 32);
 
   uint ival = int_cast<uint>(cval->getZExtValue());
   return ival;
