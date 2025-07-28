@@ -8046,7 +8046,8 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic *inst) {
   bool feedbackEnable = (m_destination->GetNumberElement() / numLanes(m_currShader->m_SIMDSize) == 5) ? true : false;
   uint label = 0;
   CVariable *flag = nullptr;
-  bool needLoop = ResourceLoopHeader(dst, resource, sampler, flag, label);
+  CVariable *dest = dst ? dst : m_destination;
+  bool needLoop = ResourceLoopHeader(dest, resource, sampler, flag, label);
   ResourceLoopSubIteration(resource, sampler, flag, label);
   m_encoder->SetPredicate(flag);
   m_encoder->Gather4Inst(opCode, offset, resource, pairedResource, sampler, numSources, dst, payload, channel,
@@ -14585,7 +14586,8 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
       }
       uint label = 0;
       CVariable *flag = nullptr;
-      bool needLoop = ResourceLoopHeader(pDst, resource, flag, label);
+      CVariable *dest = pDst ? pDst : m_destination;
+      bool needLoop = ResourceLoopHeader(dest, resource, flag, label);
       ResourceLoopSubIteration(resource, flag, label);
       if (shouldGenerateLSC(pInst)) {
         auto cacheOpts = LSC_DEFAULT_CACHING;
