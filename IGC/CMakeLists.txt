@@ -2197,6 +2197,8 @@ if(UNIX)
   endif()
   install(FILES ${IGC_BUILD__VISA_DIR}/include/RelocationInfo.h DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/visa COMPONENT igc-opencl-devel)
   install(DIRECTORY ${IGC_BUILD__VISA_DIR}/iga/IGALibrary/api/ DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/iga COMPONENT igc-core-devel FILES_MATCHING PATTERN "*.h*")
+  install(FILES ${ZEBIN_INCLUDE_PATH}/../ZEELF.h DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc/zebin COMPONENT igc-core-devel)
+
 elseif (WIN32)
   install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
           RUNTIME DESTINATION Release/bin          CONFIGURATIONS Release)
