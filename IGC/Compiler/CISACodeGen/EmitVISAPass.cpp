@@ -19246,7 +19246,12 @@ void IGC::EmitPass::emitCanonicalize(llvm::Instruction *inst, const DstModifier 
 }
 
 void IGC::EmitPass::emitStaticConstantPatchValue(llvm::StaticConstantPatchIntrinsic *staticConstantPatch32) {
-  std::string patchName = staticConstantPatch32->getPatchName().str();
+  llvm::StringRef nameRef = staticConstantPatch32->getPatchName();
+  // Drop null-terminator if present, it shouldn't be included in std::strings.
+  if (!nameRef.empty() && nameRef.back() == '\0') {
+    nameRef = nameRef.drop_back();
+  }
+  std::string patchName = nameRef.str();
   m_encoder->AddVISASymbol(patchName, m_destination);
 }
 

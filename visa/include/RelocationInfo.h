@@ -62,6 +62,7 @@ enum GenRelocType {
 };
 
 /// GenRelocEntry - An relocation table entry
+/// Deprecated, use ZERelocEntry instead
 typedef struct {
   uint32_t r_type;   // The relocation's type
   uint32_t r_offset; // The binary offset of the relocated target

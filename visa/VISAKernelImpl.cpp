@@ -8754,50 +8754,9 @@ int VISAKernelImpl::GetRelocations(RelocListType &relocs) {
         static_cast<uint32_t>(genOffset + reloc.getTargetOffset(*m_builder));
     relocs.emplace_back(reloc.getType(), offset, reloc.getSymbolName());
 
-    vASSERT((genOffset != UNDEFINED_GEN_OFFSET) && (offset > genOffset) &&
-           (offset < genOffset + BYTES_PER_INST));
+    vASSERT((genOffset != UNDEFINED_GEN_OFFSET) && (offset >= genOffset) &&
+            (offset < genOffset + BYTES_PER_INST));
   }
-  return VISA_SUCCESS;
-}
-
-int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer,
-                                           unsigned int &byteSize,
-                                           unsigned int &numEntries) {
-  G4_Kernel::RelocationTableTy &reloc_table = m_kernel->getRelocationTable();
-  numEntries = reloc_table.size();
-  byteSize = sizeof(GenRelocEntry) * numEntries;
-
-  if (reloc_table.empty())
-    return VISA_SUCCESS;
-
-  // allocate the buffer for relocation table
-  buffer = allocCodeBlock(byteSize);
-
-  if (buffer == nullptr)
-    return VISA_FAILURE;
-
-  GenRelocEntry *buffer_p = (GenRelocEntry *)buffer;
-  for (const auto &reloc : reloc_table) {
-    auto inst = reloc.getInst();
-    buffer_p->r_type = reloc.getType();
-    buffer_p->r_offset = static_cast<uint32_t>(inst->getGenOffset()) +
-                         reloc.getTargetOffset(*m_builder);
-
-    vISA_ASSERT((buffer_p->r_offset >= inst->getGenOffset()) &&
-           (buffer_p->r_offset < inst->getGenOffset() + BYTES_PER_INST),
-            "Invalid relocation offset returned, offset must be within"
-            "the ISA instruction");
-
-    vISA_ASSERT(reloc.getSymbolName().size() <= MAX_SYMBOL_NAME_LENGTH,
-        "Relocation symbol name longer than MAX_SYMBOL_NAME_LENGTH");
-
-    // clean the buffer first
-    memset(buffer_p->r_symbol, 0, MAX_SYMBOL_NAME_LENGTH);
-    strcpy_s(buffer_p->r_symbol, MAX_SYMBOL_NAME_LENGTH,
-             reloc.getSymbolName().c_str());
-    ++buffer_p;
-  }
-
   return VISA_SUCCESS;
 }
 

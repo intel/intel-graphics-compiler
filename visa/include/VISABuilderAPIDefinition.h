@@ -1202,15 +1202,7 @@ public:
   VISA_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer,
                                                 unsigned int &size) const = 0;
 
-  /// GetGenRelocEntryBuffer -- allocate and return a buffer of all
-  /// GenRelocEntry that are created by vISA
-  VISA_BUILDER_API virtual int
-  GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize,
-                         unsigned int &numEntries) = 0;
-
   /// GetRelocations -- add vISA created relocations into given relocation list
-  /// This get the same information as GetGenRelocEntryBuffer, but in different
-  /// foramt
   typedef std::vector<vISA::ZERelocEntry> RelocListType;
   VISA_BUILDER_API virtual int GetRelocations(RelocListType &relocs) = 0;
 

@@ -1032,14 +1032,7 @@ public:
   VISA_BUILDER_API int GetErrorMessage(const char *&errorMsg) const override;
   VISA_BUILDER_API virtual int
   GetGenxDebugInfo(void *&buffer, unsigned int &size) const override;
-  /// GetGenRelocEntryBuffer -- allocate and return a buffer of all
-  /// GenRelocEntry that are created by vISA
-  VISA_BUILDER_API int
-  GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize,
-                         unsigned int &numEntries) override;
   /// GetRelocations -- add vISA created relocations into given relocation list
-  /// This get the same information as GetGenRelocEntryBuffer, but in different
-  /// foramt
   VISA_BUILDER_API int GetRelocations(RelocListType &relocs) override;
   VISA_BUILDER_API int GetGTPinBuffer(void *&buffer, unsigned int &size,
                                       unsigned int scratchOffset) override;
