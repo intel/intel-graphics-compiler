@@ -2415,6 +2415,19 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
   return simdStatus == SIMDStatus::SIMD_PASS;
 }
 
+static bool shouldDropToSIMD16(uint32_t maxPressure, SIMDMode simdMode, CodeGenContext *pCtx, MetaDataUtils *pMdUtils,
+                               llvm::Function *F) {
+  if (simdMode != SIMDMode::SIMD32 || !isEntryFunc(pMdUtils, F)) {
+    return false;
+  }
+  if (!pCtx->isAutoGRFSelectionEnabled() || pCtx->getNumGRFPerThread(false) != 0) {
+    return false;
+  }
+  auto threshold = IGC_GET_FLAG_VALUE(EarlySIMD16DropForXE3Threshold);
+  bool shouldDrop = maxPressure > threshold;
+  return shouldDrop;
+}
+
 SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitPass &EP, llvm::Function &F,
                                                         bool hasSyncRTCalls) {
   if (simdMode == SIMDMode::SIMD8) {
@@ -2519,6 +2532,14 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
     }
 
     if (simdMode == SIMDMode::SIMD32 && hasSubGroupForce) {
+      pCtx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+      return SIMDStatus::SIMD_FUNC_FAIL;
+    }
+  }
+
+  if (EP.m_canAbortOnSpill && pCtx->platform.isCoreXE3() && IGC_IS_FLAG_ENABLED(AllowEarlySIMD16DropForXE3)) {
+    bool shouldDrop = shouldDropToSIMD16(maxPressure, simdMode, pCtx, pMdUtils, &F);
+    if (shouldDrop) {
       pCtx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
       return SIMDStatus::SIMD_FUNC_FAIL;
     }
