@@ -363,6 +363,10 @@ void CMKernel::RecomputeBTLayout(int numUAVs, int numResources) {
 
 static void setFuncSectionInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
                                IGC::SProgramOutput &KernelProgram) {
+  KernelProgram.m_funcRelocationTable = Info.LegacyFuncRelocations.Buffer;
+  KernelProgram.m_funcRelocationTableSize = Info.LegacyFuncRelocations.Size;
+  KernelProgram.m_funcRelocationTableEntries =
+      Info.LegacyFuncRelocations.Entries;
   KernelProgram.m_relocs = Info.Func.Relocations;
 
   vc::validateFunctionSymbolTable(Info.Func.Symbols);

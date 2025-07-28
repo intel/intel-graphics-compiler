@@ -121,7 +121,13 @@ public:
     }
   };
 
-  // Symbols and relocations are collected in zebin format. Later symbols are
+  struct TableInfo {
+    void *Buffer = nullptr;
+    unsigned Size = 0;
+    unsigned Entries = 0;
+  };
+
+  // Symbols and reloacations are collected in zebin format. Later they are
   // translated into legacy format for patch token generation.
   using SymbolSeq = std::vector<vISA::ZESymEntry>;
   using RelocationSeq = std::vector<vISA::ZERelocEntry>;
@@ -198,6 +204,9 @@ public:
   // but still required for runtime.
   struct KernelInfo {
     SectionInfo Func;
+    // Duplicates Func.Relocations. Cannot unify it on VC side since the
+    // duplication happens on Finalizer side.
+    TableInfo LegacyFuncRelocations;
 
     // Keeps in the first element name of the FG's head and VISA asm for this FG
     // in the second element.

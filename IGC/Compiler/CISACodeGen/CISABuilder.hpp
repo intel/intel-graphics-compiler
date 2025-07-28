@@ -522,9 +522,10 @@ private:
   // save compile time by avoiding retry if the amount of spill is (very) small
   bool AvoidRetryOnSmallSpill() const;
 
-  // CreateSymbolTable will create symbols in two formats. One in given buffer that will be
-  // later parsed as patch token based format, another as struct type that will be parsed
-  // as ZE binary format
+  // CreateSymbolTable, CreateRelocationTable and CreateFuncAttributeTable will
+  // create symbols, relococations and FuncAttributes in two formats. One in
+  // given buffer that will be later parsed as patch token based format, another
+  // as struct type that will be parsed as ZE binary format
 
   // CreateSymbolTable
   // Note that this function should be called only once even if there are
@@ -542,6 +543,10 @@ private:
   void CreateLocalSymbol(const std::string &kernelName, vISA::GenSymType type, unsigned offset, unsigned size,
                          SProgramOutput::ZEBinFuncSymbolTable &symbols);
 
+  // CreateRelocationTable
+  // input/output: buffer, bufferSize, tableEntries: for patch-token-based
+  // format.
+  void CreateRelocationTable(VISAKernel *pMainKernel, void *&buffer, unsigned &bufferSize, unsigned &tableEntries);
   // input/output: relocations: for ZEBinary foramt
   void CreateRelocationTable(VISAKernel *pMainKernel, SProgramOutput::RelocListTy &relocations);
 

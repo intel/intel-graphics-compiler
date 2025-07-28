@@ -137,7 +137,10 @@ public:
   unsigned int m_funcSymbolTableSize = 0;
   unsigned int m_funcSymbolTableEntries = 0;
   ZEBinFuncSymbolTable m_symbols; // duplicated information of m_funcSymbolTable, for zebin
-  RelocListTy m_relocs;
+  void *m_funcRelocationTable = nullptr;
+  unsigned int m_funcRelocationTableSize = 0;
+  unsigned int m_funcRelocationTableEntries = 0;
+  RelocListTy m_relocs; // duplicated information of m_funcRelocationTable, for zebin
   FuncAttrListTy m_funcAttrs;
   void *m_globalHostAccessTable = nullptr;
   unsigned int m_globalHostAccessTableSize = 0;
@@ -178,6 +181,9 @@ public:
     }
     if (m_funcSymbolTable) {
       free(m_funcSymbolTable);
+    }
+    if (m_funcRelocationTable) {
+      free(m_funcRelocationTable);
     }
     if (m_globalHostAccessTable) {
       free(m_globalHostAccessTable);
