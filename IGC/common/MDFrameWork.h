@@ -33,7 +33,8 @@ namespace llvm
     class Value;
     class GlobalVariable;
     class StructType;
-}
+    class Type;
+    }
 
 const unsigned int INPUT_RESOURCE_SLOT_COUNT = 128;
 const unsigned int NUM_SHADER_RESOURCE_VIEW_SIZE = (INPUT_RESOURCE_SLOT_COUNT + 1) / 64;
