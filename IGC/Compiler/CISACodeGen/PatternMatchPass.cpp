@@ -4948,31 +4948,7 @@ bool CodeGenPatternMatch::MatchWaveShuffleIndex(llvm::GenIntrinsicInst &I) {
 }
 
 bool CodeGenPatternMatch::MatchWaveInstruction(llvm::GenIntrinsicInst &I) {
-  unsigned int helperLaneIndex = 0;
-  switch (I.getIntrinsicID()) {
-  case GenISAIntrinsic::GenISA_WaveAll:
-  case GenISAIntrinsic::GenISA_WaveClusteredBallot:
-    helperLaneIndex = 2;
-    break;
-  case GenISAIntrinsic::GenISA_WaveBallot:
-  case GenISAIntrinsic::GenISA_WaveInverseBallot:
-    helperLaneIndex = 1;
-    break;
-  case GenISAIntrinsic::GenISA_WaveInterleave:
-  case GenISAIntrinsic::GenISA_WaveClustered:
-  case GenISAIntrinsic::GenISA_WaveClusteredPrefix:
-    helperLaneIndex = 3;
-    break;
-  case GenISAIntrinsic::GenISA_WavePrefix:
-  case GenISAIntrinsic::GenISA_WaveClusteredInterleave:
-    helperLaneIndex = 4;
-    break;
-  default:
-    IGC_ASSERT(false);
-    break;
-  }
-  auto helperLaneMode = cast<ConstantInt>(I.getArgOperand(helperLaneIndex));
-  if (int_cast<int>(helperLaneMode->getSExtValue()) == 1) {
+  if (subgroupIntrinsicHasHelperLanes(I)) {
     m_NeedVMask = true;
   }
   return MatchSingleInstruction(I);

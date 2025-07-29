@@ -1336,6 +1336,40 @@ bool isSubGroupShuffleVariant(const llvm::Instruction *I) {
   }
 }
 
+bool subgroupIntrinsicHasHelperLanes(const Instruction &I) {
+  const GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(&I);
+  if (!GII)
+    return false;
+
+  unsigned int helperLaneIndex = 0;
+  switch (GII->getIntrinsicID()) {
+  case GenISAIntrinsic::GenISA_WaveAll:
+  case GenISAIntrinsic::GenISA_WaveClusteredBallot:
+  case GenISAIntrinsic::GenISA_WaveBroadcast:
+  case GenISAIntrinsic::GenISA_WaveShuffleIndex:
+    helperLaneIndex = 2;
+    break;
+  case GenISAIntrinsic::GenISA_WaveBallot:
+  case GenISAIntrinsic::GenISA_WaveInverseBallot:
+    helperLaneIndex = 1;
+    break;
+  case GenISAIntrinsic::GenISA_WaveInterleave:
+  case GenISAIntrinsic::GenISA_WaveClustered:
+  case GenISAIntrinsic::GenISA_WaveClusteredPrefix:
+  case GenISAIntrinsic::GenISA_WaveClusteredBroadcast:
+    helperLaneIndex = 3;
+    break;
+  case GenISAIntrinsic::GenISA_WavePrefix:
+  case GenISAIntrinsic::GenISA_WaveClusteredInterleave:
+    helperLaneIndex = 4;
+    break;
+  default:
+    return false;
+  }
+  auto helperLaneMode = cast<ConstantInt>(GII->getArgOperand(helperLaneIndex));
+  return (int_cast<int>(helperLaneMode->getSExtValue()) == 1);
+}
+
 bool hasSubGroupIntrinsicPVC(llvm::Function &F) {
   for (auto &BB : F) {
     for (auto &I : BB) {
