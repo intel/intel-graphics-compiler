@@ -87,39 +87,38 @@ IGC_INITIALIZE_PASS_BEGIN(IGCVectorizer, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(IGCVectorizer, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 
-#define OutputLogStreamM OutputLogStream
 #define DEBUG IGC_IS_FLAG_ENABLED(VectorizerLog)
 #define PRINT_LOG(Str)                                                                                                 \
   if (DEBUG) {                                                                                                         \
-    OutputLogStreamM << Str;                                                                                           \
+    OutputLogStream << Str;                                                                                            \
     writeLog();                                                                                                        \
   }
 #define PRINT_LOG_NL(Str)                                                                                              \
   if (DEBUG) {                                                                                                         \
-    OutputLogStreamM << Str << "\n";                                                                                   \
+    OutputLogStream << Str << "\n";                                                                                    \
     writeLog();                                                                                                        \
   }
 #define PRINT_INST(I)                                                                                                  \
   if (DEBUG) {                                                                                                         \
-    I->print(OutputLogStreamM, false);                                                                                 \
+    I->print(OutputLogStream, false);                                                                                  \
   }
 #define PRINT_INST_NL(I)                                                                                               \
   if (DEBUG) {                                                                                                         \
     if (I) {                                                                                                           \
-      I->print(OutputLogStreamM, false);                                                                               \
+      I->print(OutputLogStream, false);                                                                                \
     } else {                                                                                                           \
       PRINT_LOG("NULL");                                                                                               \
     }                                                                                                                  \
-    OutputLogStreamM << "\n";                                                                                          \
+    OutputLogStream << "\n";                                                                                           \
   }
 #define PRINT_DECL_NL(I)                                                                                               \
   if (DEBUG) {                                                                                                         \
     if (I) {                                                                                                           \
-      I->print(OutputLogStreamM);                                                                                      \
+      I->print(OutputLogStream);                                                                                       \
     } else {                                                                                                           \
       PRINT_LOG("NULL");                                                                                               \
     }                                                                                                                  \
-    OutputLogStreamM << "\n";                                                                                          \
+    OutputLogStream << "\n";                                                                                           \
   }
 #define PRINT_DS(Str, DS)                                                                                              \
   if (DEBUG) {                                                                                                         \
@@ -136,8 +135,12 @@ IGC_INITIALIZE_PASS_END(IGCVectorizer, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_O
 IGCVectorizer::IGCVectorizer() : FunctionPass(ID) { initializeIGCVectorizerPass(*PassRegistry::getPassRegistry()); };
 
 void IGCVectorizer::writeLog() {
-  if (IGC_IS_FLAG_ENABLED(VectorizerLog) && OutputLogFile->is_open())
+
+  if (IGC_IS_FLAG_ENABLED(VectorizerLog) && IGC_IS_FLAG_DISABLED(VectorizerLogToErr) && OutputLogFile->is_open())
     *OutputLogFile << OutputLogStream.str();
+
+  if (IGC_IS_FLAG_ENABLED(VectorizerLog) && IGC_IS_FLAG_ENABLED(VectorizerLogToErr))
+    llvm::errs() << OutputLogStream.str();
 
   OutputLogStream.str().clear();
 }
@@ -184,11 +187,12 @@ void IGCVectorizer::findInsertElementsInDataFlow(llvm::Instruction *I, VecArr &C
       bool IsConstant = llvm::isa<llvm::Constant>(Op);
       bool IsExplored = Explored.count(Op);
       bool IsInsertElement = llvm::isa<InsertElementInst>(Op);
+      bool IsVectorTyped = Op->getType()->isVectorTy();
 
       if (IsInsertElement)
         Chain.push_back(Op);
 
-      bool Skip = IsConstant || IsExplored || IsInsertElement;
+      bool Skip = IsConstant || IsExplored || IsInsertElement || !IsVectorTyped;
       if (Skip)
         continue;
 
@@ -275,14 +279,17 @@ bool isIntrinsicSafe(Instruction *I) {
 
 bool isSafeToVectorize(Instruction *I) {
 
+  bool IsInsertOrExtract = llvm::isa<ExtractElementInst>(I) || llvm::isa<InsertElementInst>(I);
+  // the only typed instructions we add to slices => Insert or Extract elements
+  bool IsVectorTyped = I->getType()->isVectorTy() && !IsInsertOrExtract;
   bool isFloat = isFloatTyped(I);
 
   // this is a very limited approach for vectorizing but it's safe
-  bool Result = isPHISafe(I) || llvm::isa<ExtractElementInst>(I) || llvm::isa<InsertElementInst>(I) ||
+  bool Result = isPHISafe(I) || IsInsertOrExtract ||
                 (llvm::isa<FPTruncInst>(I) && IGC_GET_FLAG_VALUE(VectorizerAllowFPTRUNC)) || isBinarySafe(I) ||
                 isIntrinsicSafe(I);
 
-  return Result && isFloat;
+  return Result && isFloat && !IsVectorTyped;
 }
 
 bool IGCVectorizer::handlePHI(VecArr &Slice) {
@@ -414,10 +421,13 @@ InsertElementInst *IGCVectorizer::createVector(VecArr &Slice, Instruction *Inser
     PRINT_LOG_NL("insertPoint moved to FirstNonPHI");
   }
 
+  InsertElementInst *CreatedInsert = nullptr;
   llvm::Type *elementType = Slice[0]->getType();
+  if (elementType->isVectorTy())
+    return CreatedInsert;
+
   llvm::VectorType *vectorType = llvm::FixedVectorType::get(elementType, Slice.size());
   llvm::Value *UndefVector = llvm::UndefValue::get(vectorType);
-  InsertElementInst *CreatedInsert = nullptr;
 
   for (size_t i = 0; i < Slice.size(); i++) {
     llvm::Value *index = llvm::ConstantInt::get(llvm::Type::getInt32Ty(M->getContext()), i);
@@ -1075,6 +1085,11 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
       }
       InSt.Final = elFinal;
       clusterInsertElement(InSt);
+
+      if (getVectorSize(InSt.Final) == 1) {
+        PRINT_LOG_NL("degenerate insert of the type <1 x float> -> rejected");
+        continue;
+      }
 
       if (InSt.Vec.size() != getVectorSize(InSt.Final)) {
         PRINT_LOG_NL("partial insert -> rejected");

@@ -1536,6 +1536,7 @@ DECLARE_IGC_REGKEY(bool, DumpRegPressureEstimate, false, "Dump RegPressureEstima
 DECLARE_IGC_REGKEY(debugString, DumpRegPressureEstimateFilter, 0,
                    "Only dump RegPressureEstimate for functions matching the given regex", false)
 DECLARE_IGC_REGKEY(bool, VectorizerLog, false, "Dump Vectorizer Log, usefull for analyzing vectorization issues", true)
+DECLARE_IGC_REGKEY(bool, VectorizerLogToErr, false, "Dump Vectorizer Log to stdErr", true)
 DECLARE_IGC_REGKEY(bool, EnableReusingXYZWStoreConstPayload, true, "Enable reusing XYZW stores const payload", false)
 DECLARE_IGC_REGKEY(bool, EnableReusingLSCStoreConstPayload, false, "Enable reusing LSC stores const payload", false)
 DECLARE_IGC_REGKEY(bool, AllowSIMD16DropForXE2, true, "Controls the switch for XE2 simd16 drop", false)
