@@ -522,27 +522,22 @@ private:
   // save compile time by avoiding retry if the amount of spill is (very) small
   bool AvoidRetryOnSmallSpill() const;
 
-  // CreateSymbolTable will create symbols in two formats. One in given buffer that will be
-  // later parsed as patch token based format, another as struct type that will be parsed
-  // as ZE binary format
-
   // CreateSymbolTable
   // Note that this function should be called only once even if there are
   // multiple kernels in a program. Current IGC flow will create all symbols in
   // the first kernel and all the other kernels won't contain symbols
-  typedef std::vector<std::pair<llvm::Value *, vISA::GenSymEntry>> ValueToSymbolList;
+  typedef std::vector<std::pair<llvm::Value *, vISA::ZESymEntry>> ValueToSymbolList;
   void CreateSymbolTable(ValueToSymbolList &symbolTableList);
-  // input/output: buffer, bufferSize, tableEntries: for patch-token-based
-  // format.
-  void CreateSymbolTable(void *&buffer, unsigned &bufferSize, unsigned &tableEntries);
-  // input/output: symbols: for ZEBinary foramt
-  void CreateSymbolTable(SProgramOutput::ZEBinFuncSymbolTable &funcSyms,
-                         SOpenCLProgramInfo::ZEBinProgramSymbolTable &programSyms);
-  // Create local symbols for kernels. This is ZEBinary format only.
+  // Create function symbols
+  void CreateFunctionSymbolTable(ValueToSymbolList &symbolTableList, SProgramOutput::ZEBinFuncSymbolTable &funcSyms);
+  // Create program symbols
+  void CreateProgramSymbolTable(ValueToSymbolList &symbolTableList,
+                                SOpenCLProgramInfo::ZEBinProgramSymbolTable &programSyms);
+  // Create local symbols for kernels
   void CreateLocalSymbol(const std::string &kernelName, vISA::GenSymType type, unsigned offset, unsigned size,
                          SProgramOutput::ZEBinFuncSymbolTable &symbols);
 
-  // input/output: relocations: for ZEBinary foramt
+  // input/output: relocations
   void CreateRelocationTable(VISAKernel *pMainKernel, SProgramOutput::RelocListTy &relocations);
 
   // CreateFuncAttributeTable
@@ -550,10 +545,8 @@ private:
 
   // CreateGlobalHostAccessTable
   typedef std::vector<vISA::HostAccessEntry> HostAccessList;
-  void CreateGlobalHostAccessTable(void *&buffer, unsigned &bufferSize, unsigned &tableEntries);
-  // input/output: hostAccessMap: for patch-token-based format.
   void CreateGlobalHostAccessTable(HostAccessList &hostAccessMap);
-  // input/output: global host access names: for ZEBinary format
+  // input/output: global host access names
   void CreateGlobalHostAccessTable(SOpenCLProgramInfo::ZEBinGlobalHostAccessTable &globalHostAccessTable);
 
   uint32_t getGRFSize() const;
@@ -622,11 +615,10 @@ private:
   // setup m_retryManager according to jitinfo and other factors
   void SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO *jitInfo, GenXFunctionGroupAnalysis *&pFGA);
 
-  /// create symbol tables and GlobalHostAccessTable according to if it's zebin
-  /// or patch-token formats
+  /// create symbol tables and GlobalHostAccessTable
   void createSymbolAndGlobalHostAccessTables(bool hasSymbolTable, VISAKernel &pMainKernel, unsigned int scratchOffset);
 
-  /// create relocation according to if it's zebin or patch-token formats
+  /// create relocation tables according
   void createRelocationTables(VISAKernel &pMainKernel);
 
   /// Estimate vISA stack size according to FunctionGroup information.

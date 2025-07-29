@@ -475,10 +475,7 @@ bool EmitPass::isSymbolTableRequired(llvm::Function *F) {
         pGlobal->removeDeadConstantUsers();
 
         // Check if relocation is required by checking uses
-
-        // FIXME: Ideally we should emit symtab for the global if
-        // there's an user in both ZEBIN and PT.
-        if (m_pCtx->enableZEBinary() && !pGlobal->user_empty())
+        if (!pGlobal->user_empty())
           return true;
 
         for (auto user : pGlobal->users()) {

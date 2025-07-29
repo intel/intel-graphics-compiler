@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Path.h>
 
 #include "AdaptorOCL/OCL/sp/spp_g8.h"
-#include "LegacyInfoGeneration.h"
 #include "RT_Jitter_Interface.h"
 #include "common/secure_mem.h"
 #include "common/secure_string.h"
@@ -365,10 +364,16 @@ static void setFuncSectionInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
                                IGC::SProgramOutput &KernelProgram) {
   KernelProgram.m_relocs = Info.Func.Relocations;
 
-  vc::validateFunctionSymbolTable(Info.Func.Symbols);
-  std::tie(KernelProgram.m_funcSymbolTable, KernelProgram.m_funcSymbolTableSize,
-           KernelProgram.m_funcSymbolTableEntries) =
-      vc::emitLegacyFunctionSymbolTable(Info.Func.Symbols);
+  // Validate function symbols
+  auto IsKernel = [](const vISA::ZESymEntry &Entry) {
+    return Entry.s_type == vISA::GenSymType::S_KERNEL;
+  };
+  IGC_ASSERT_MESSAGE(std::count_if(Info.Func.Symbols.begin(),
+                                   Info.Func.Symbols.end(), IsKernel) < 2u,
+                     "There can be only one or no kernel symbols");
+  IGC_ASSERT_MESSAGE(std::is_partitioned(Info.Func.Symbols.begin(),
+                                         Info.Func.Symbols.end(), IsKernel),
+                     "Kernel symbols should be partitioned");
 
   // Points to the first function symbol and also one past last kernel symbol.
   const auto FirstFuncIt =

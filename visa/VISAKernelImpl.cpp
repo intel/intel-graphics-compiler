@@ -9140,30 +9140,32 @@ int VISAKernelImpl::getDeclarationID(VISA_SurfaceVar *decl) const {
 
 int64_t VISAKernelImpl::getGenOffset() const {
   vASSERT(false == m_kernel->fg.empty());
-  auto &entryBB = *(*m_kernel->fg.begin());
+  int64_t entryPointOffset = UNDEFINED_GEN_OFFSET;
 
   // the offset of the first gen inst in this kernel/function
-  vASSERT(false == entryBB.empty());
-  auto inst = entryBB.begin();
-  while ((UNDEFINED_GEN_OFFSET == (*inst)->getGenOffset()) &&
-         (entryBB.end() != inst)) {
-    vASSERT((*inst)->isLabel());
-    ++inst;
+  for (auto *BB : m_kernel->fg) {
+    for (auto *inst : BB->getInstList()) {
+      if (inst->isLabel())
+        continue;
+      entryPointOffset = inst->getGenOffset();
+      break;
+    }
+    if (entryPointOffset != UNDEFINED_GEN_OFFSET)
+      break;
   }
- vASSERT(inst != entryBB.end());
+  vASSERT(UNDEFINED_GEN_OFFSET != entryPointOffset);
 
-  auto entryPointOffset = (*inst)->getGenOffset();
   return entryPointOffset;
 }
 
 int64_t VISAKernelImpl::getGenSize() const {
- vASSERT(false == m_kernel->fg.empty());
+  vASSERT(false == m_kernel->fg.empty());
   auto &lastBB = *(*m_kernel->fg.rbegin());
 
   // the offset of the last gen inst in this kernel/function
- vASSERT(false == lastBB.empty());
+  vASSERT(false == lastBB.empty());
   auto inst = lastBB.rbegin();
- vASSERT(UNDEFINED_GEN_OFFSET !=
+  vASSERT(UNDEFINED_GEN_OFFSET !=
          (*inst)->getGenOffset()); // expecting terminator
 
   auto size = (*inst)->getGenOffset();

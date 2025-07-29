@@ -133,15 +133,9 @@ public:
   void *m_gtpinBuffer = nullptr; // Will be populated by VISA only when special switch is passed by gtpin
   unsigned int m_gtpinBufferSize = 0;
   FuncGTPinInfoListTy m_FuncGTPinInfoList;
-  void *m_funcSymbolTable = nullptr;
-  unsigned int m_funcSymbolTableSize = 0;
-  unsigned int m_funcSymbolTableEntries = 0;
-  ZEBinFuncSymbolTable m_symbols; // duplicated information of m_funcSymbolTable, for zebin
+  ZEBinFuncSymbolTable m_symbols;
   RelocListTy m_relocs;
   FuncAttrListTy m_funcAttrs;
-  void *m_globalHostAccessTable = nullptr;
-  unsigned int m_globalHostAccessTableSize = 0;
-  unsigned int m_globalHostAccessTableEntries = 0;
   unsigned int m_offsetToSkipPerThreadDataLoad = 0;
   uint32_t m_offsetToSkipSetFFIDGP = 0;
   bool m_roundPower2KBytes = false;
@@ -175,12 +169,6 @@ public:
     }
     if (m_debugDataGenISA) {
       IGC::aligned_free(m_debugDataGenISA);
-    }
-    if (m_funcSymbolTable) {
-      free(m_funcSymbolTable);
-    }
-    if (m_globalHostAccessTable) {
-      free(m_globalHostAccessTable);
     }
   }
 
