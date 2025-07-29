@@ -564,12 +564,12 @@ bool SWSBAnalyzer::clearSBIDDependence(InstList::iterator insertPoint,
                                        Instruction *lastInst, Block *bb) {
 
   auto clearSBID = [&](const SBID& in) {
-    m_freeSBIDList[in.sbid].reset();
     assert(m_IdToDepSetMap.find(in.sbid) != m_IdToDepSetMap.end());
     assert(m_IdToDepSetMap[in.sbid].first->getDepClass() ==
         DEP_CLASS::OUT_OF_ORDER);
     clearDepBuckets(*m_IdToDepSetMap[in.sbid].first);
     clearDepBuckets(*m_IdToDepSetMap[in.sbid].second);
+    m_freeSBIDList[in.sbid].reset();
   };
 
   bool sbidInUse = false;
