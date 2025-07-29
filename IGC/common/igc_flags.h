@@ -432,8 +432,19 @@ DECLARE_IGC_REGKEY(
 DECLARE_IGC_REGKEY(DWORD, SetLoopUnrollThreshold, 0,
                    "Set the loop unroll threshold. Value 0 will use the default threshold.", false)
 DECLARE_IGC_REGKEY(
-    DWORD, SetLoopUnrollThresholdForHighRegPressure, 0,
-    "Set the loop unroll threshold for shaders with high reg pressure. Value 0 will use the default threshold.", false)
+    DWORD, SetLoopUnrollThresholdForHighRegPressure, 200,
+    "Set the loop unroll threshold for shaders with high reg pressure.", false)
+DECLARE_IGC_REGKEY(DWORD, SetLoopUnrollMaxPercentThresholdBoostForHighRegPressure, 100,
+                   "Set the loop unroll max allowed threshold boost in percentage for shaders with high reg pressure. "
+                   "The LLVM internal value is 400. Setting 100 here because the cost model is currently based on "
+                   "latency instead of code size where the latter is what we need.",
+                   false)
+DECLARE_IGC_REGKEY(
+    bool, EnablePromoteLoopUnrollwithAlloca, true,
+    "Loop cost estimation assumes Load/Store who accesses Alloca with index deductible to loop count having 0 cost. "
+    "Disable this flag makes them always cost something as well as disables dynamic threshold increase based on the "
+    "size of alloca and number of GEP to the alloca in the loop, leading to the loop less likely to be unrolled.",
+    false)
 DECLARE_IGC_REGKEY(DWORD, SetRegisterPressureThresholdForLoopUnroll, 96,
                    "Set the register pressure threshold for limiting the loop unroll to smaller loops", false)
 DECLARE_IGC_REGKEY(DWORD, SetBranchSwapThreshold, 400, "Set the branch swaping threshold.", false)

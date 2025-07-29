@@ -29,6 +29,8 @@ class GenIntrinsicsTTIImpl : public IGCLLVM::TTIImplCRTPBase<GenIntrinsicsTTIImp
 public:
   GenIntrinsicsTTIImpl(IGC::CodeGenContext *pCtx) : BaseT(pCtx->getModule()->getDataLayout()), ctx(pCtx) {}
 
+  DenseMap<Value *, bool> isGEPLoopInduction;
+
   bool shouldBuildLookupTables();
 
   bool isLoweredToCall(const Function *F);
@@ -39,6 +41,8 @@ public:
   // PrivateMemoryToSLM pass to propagate ADDRESS_SPACE_PRIVATE
   // from variables to memory operations.
   unsigned getFlatAddressSpace();
+
+  bool isGEPLoopConstDerived(GetElementPtrInst *GEP, const Loop *L, ScalarEvolution &SE);
 
   void getUnrollingPreferences(Loop *L, ScalarEvolution &SE, TTI::UnrollingPreferences &UP,
                                OptimizationRemarkEmitter *ORE);
