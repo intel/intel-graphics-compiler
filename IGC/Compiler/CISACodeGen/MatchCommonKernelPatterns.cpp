@@ -37,7 +37,7 @@ bool MatchCommonKernelPatterns::runOnFunction(Function &F) {
   Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
   // Check if F is part of interpreter pattern.
-  if (IGC_IS_FLAG_ENABLED(EnableInterpreterPatternMatching))
+  if (IGC_IS_FLAG_ENABLED(EnableInterpreterPatternMatching) && !Ctx->platform.isCoreXE3())
     if (isInterpreterPattern(F))
       Ctx->m_kernelsWithForcedRetry.push_back(&F);
 
