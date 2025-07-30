@@ -7,13 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys, pvc-supported, llvm-16-plus
-
-; LLVM with opaque pointers:
-; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
-; RUN: ocloc -device pvc -llvm_input -options "-vc-codegen -igc_opts 'EnableOpaquePointersBackend=1, ShaderDumpEnable=1, PrintToConsole=1'" -file %t.bc 2>&1 | FileCheck %s
-
-; LLVM with typed pointers:
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-as %s -o %t.bc
 ; RUN: ocloc -device pvc -llvm_input -options "-vc-codegen -igc_opts 'ShaderDumpEnable=1, PrintToConsole=1'" -file %t.bc 2>&1 | FileCheck %s
 
 ; CHECK: _after_ir_adaptors.ll
