@@ -6,9 +6,14 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys,pvc-supported
+; REQUIRES: regkeys, pvc-supported, llvm-14-plus
 
-; RUN: llvm-as %s -o %t.bc
+; LLVM with opaque pointers:
+; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options " -ze-exp-register-file-size=64 -igc_opts 'EnableOpaquePointersBackend=1,TotalGRFNum=256,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK
+
+; LLVM with typed pointers:
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options " -ze-exp-register-file-size=64 -igc_opts 'TotalGRFNum=256,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK
 
 ; Check that IGC_TotalGRFNum flag takes precedence over the value passed with -ze-exp-register-file-size api option.
