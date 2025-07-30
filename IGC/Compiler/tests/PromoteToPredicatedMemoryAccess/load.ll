@@ -197,3 +197,20 @@ exit:
   %res = phi i32 [ %load, %st ], [ %data, %entry ]
   ret i32 %res
 }
+
+; Test pass does nothing, if nothing to convert
+; CHECK-LABEL: @test10(
+define i32 @test10(i1 %pred) {
+entry:
+; CHECK: br i1 %pred, label %st, label %exit
+  br i1 %pred, label %st, label %exit
+
+st:
+; CHECK: %a = add i32 3, 8
+  %a = add i32 3, 8
+  br label %exit
+
+exit:
+; CHECK: ret i32 42
+  ret i32 42
+}

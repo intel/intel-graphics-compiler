@@ -67,6 +67,27 @@ merge:
   ret i32 %phi
 }
 
+; CHECK-LABEL: @test_no_hoist_not_inst
+; CHECK: %conv1 = fptosi float %a to i32
+; CHECK: %phi = phi i32
+; CHECK: ret i32 %phi
+
+define i32 @test_no_hoist_not_inst(float %a, i1 %cond) {
+entry:
+  br i1 %cond, label %then, label %else
+
+then:
+  %conv1 = fptosi float %a to i32
+  br label %merge
+
+else:
+  br label %merge
+
+merge:
+  %phi = phi i32 [%conv1, %then], [0, %else]
+  ret i32 %phi
+}
+
 ; CHECK-LABEL: @test_no_hoist_different_src
 ; CHECK: %conv1 = fptosi float %a to i32
 ; CHECK: %conv2 = fptosi float %b to i32
@@ -124,5 +145,34 @@ else:
   br label %merge
 merge:
   %phi = phi i32 [%conv1, %then2], [%conv2, %else2], [%conv3, %else]
+  ret i32 %phi
+}
+
+; CHECK-LABEL: @test_no_hoist_remove_phi
+; CHECK: entry:
+; CHECK:   %conv1 = fptosi float %a to i32
+; CHECK:   %use1 = add i32 %conv1, 1
+; CHECK:   br i1 %cond, label %then, label %else
+; CHECK: then:
+; CHECK:   br label %merge
+; CHECK: else:
+; CHECK:   %use2 = add i32 %conv1, 1
+; CHECK:   br label %merge
+; CHECK: merge:
+; CHECK:   ret i32 %conv1
+
+define i32 @test_no_hoist_remove_phi(float %a, i1 %cond) {
+entry:
+  %conv1 = fptosi float %a to i32
+  %use1 = add i32 %conv1, 1
+  br i1 %cond, label %then, label %else
+then:
+  br label %merge
+else:
+  %conv2 = fptosi float %a to i32
+  %use2 = add i32 %conv2, 1
+  br label %merge
+merge:
+  %phi = phi i32 [%conv1, %then], [%conv2, %else]
   ret i32 %phi
 }

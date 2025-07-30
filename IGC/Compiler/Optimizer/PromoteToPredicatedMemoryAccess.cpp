@@ -48,7 +48,7 @@ PromoteToPredicatedMemoryAccess::PromoteToPredicatedMemoryAccess() : FunctionPas
 }
 
 bool PromoteToPredicatedMemoryAccess::runOnFunction(Function &F) {
-  CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
   bool isStatlessToBindlessEnabled =
       (pCtx->type == ShaderType::OPENCL_SHADER &&
@@ -83,8 +83,6 @@ bool PromoteToPredicatedMemoryAccess::runOnFunction(Function &F) {
   for (auto &[BI, Inverse] : WorkList) {
     auto *TrueBB = BI->getSuccessor(0);
     auto *FalseBB = BI->getSuccessor(1);
-
-    auto *SplitBB = BI->getParent();
     auto *TargetBB = Inverse ? FalseBB : TrueBB;
     auto *JoinBB = Inverse ? TrueBB : FalseBB;
 
@@ -96,13 +94,13 @@ bool PromoteToPredicatedMemoryAccess::runOnFunction(Function &F) {
 
     // Remove the phi nodes in the target block
     for (auto &Phi : make_early_inc_range(JoinBB->phis()))
-      fixPhiNode(Phi, *TargetBB, *SplitBB);
+      fixPhiNode(Phi, *TargetBB);
   }
 
   return !WorkList.empty();
 }
 
-void PromoteToPredicatedMemoryAccess::fixPhiNode(PHINode &Phi, BasicBlock &Predecessor, BasicBlock &CondBlock) {
+void PromoteToPredicatedMemoryAccess::fixPhiNode(PHINode &Phi, BasicBlock &Predecessor) {
   auto *IncomingV = Phi.getIncomingValueForBlock(&Predecessor);
   Phi.replaceAllUsesWith(IncomingV);
   Phi.eraseFromParent();
@@ -116,6 +114,8 @@ bool IsTypeLegal(Type *Ty) {
   unsigned Width = Ty->getScalarSizeInBits();
   return TypeLegalizer::isLegalInteger(Width) || Width == 1;
 }
+
+bool IsLoadOkToConv(LoadInst *LI) { return LI->isSimple() && IsTypeLegal(LI->getType()); }
 } // namespace
 
 bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlock &BranchBB, BasicBlock &ConvBB,
@@ -165,7 +165,7 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
       return false;
 
     if (auto *LI = dyn_cast<LoadInst>(Inst)) {
-      if (!LI->isSimple() || !IsTypeLegal(Inst->getType()))
+      if (!IsLoadOkToConv(LI))
         return false;
 
       SimpleInsts[Inst] = Phi.getIncomingValueForBlock(&BranchBB);
@@ -190,7 +190,7 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
         return false;
 
       auto *Load = dyn_cast<LoadInst>(EE->getVectorOperand());
-      if (!Load || !Load->isSimple() || !IsTypeLegal(Load->getType()))
+      if (!Load || !IsLoadOkToConv(Load))
         return false;
       if (Load->getParent() != &ConvBB)
         return false;
@@ -203,9 +203,11 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
       }
       unsigned Idx = cast<ConstantInt>(EE->getIndexOperand())->getZExtValue();
       if (Idx >= MergeVector.size()) {
-        LLVM_DEBUG(dbgs() << "Skip block, index " << Idx << " is more than vector size " << MergeVector.size() << "\n"
+        std::string msg =
+            "Index " + std::to_string(Idx) + " is >= vector size " + std::to_string(MergeVector.size());
+        pCtx->EmitWarning(msg.c_str(), EE);
+        LLVM_DEBUG(dbgs() << "Skip block. " << msg << "\n"
                           << "For ConvBB: " << ConvBB << "\n");
-        IGC_ASSERT_MESSAGE(0, "Index is more than vector size");
         return false;
       }
       MergeVector[Idx] = Phi.getIncomingValueForBlock(&BranchBB);

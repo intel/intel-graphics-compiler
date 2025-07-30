@@ -76,3 +76,19 @@ st:
 exit:
   ret void
 }
+
+; basic test with phi in store block
+; CHECK-LABEL: @test5(
+; CHECK: br label %st
+; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1v64i32.v64i32(<64 x i32> addrspace(1)* %dst, <64 x i32> %phi, i64 4, i1 %pred)
+;
+define void @test5(<64 x i32> addrspace(1)* %dst, i1 %pred, <64 x i32> %data) {
+entry:
+  br i1 %pred, label %st, label %exit
+st:
+  %phi = phi <64 x i32> [ %data, %entry ]
+  store <64 x i32> %phi, <64 x i32> addrspace(1)* %dst, align 4
+  br label %exit
+exit:
+  ret void
+}

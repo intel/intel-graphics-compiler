@@ -60,9 +60,9 @@ public:
 private:
   bool trySingleBlockIfConv(llvm::Value &Cond, llvm::BasicBlock &BranchBB, llvm::BasicBlock &ConvBB,
                             llvm::BasicBlock &SuccBB, bool Inverse = false);
-
   void convertMemoryAccesses(llvm::Instruction *Mem, llvm::Value *MergeV, llvm::Value *Cond, bool Inverse);
+  void fixPhiNode(llvm::PHINode &Phi, llvm::BasicBlock &Predecessor);
 
-  void fixPhiNode(llvm::PHINode &Phi, llvm::BasicBlock &Predecessor, llvm::BasicBlock &CondBlock);
+  CodeGenContext *pCtx = nullptr;
 };
 } // namespace IGC

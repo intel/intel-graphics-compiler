@@ -80,15 +80,23 @@ bool HoistConvOpToDom::runOnFunction(Function &F) {
       }
       if (!AllSame)
         continue;
-      if (ToUpdate.empty())
-        continue;
 
-      auto *CommonDominator = findNearestCommonDominator(PHI);
-      if (!CommonDominator) {
-        IGC_ASSERT_MESSAGE(0, "Common dominator not found");
+      // Corner case: PHI with incoming values equal to the same first cast.
+      // examples:
+      // %phi = phi i32 [%conv1, %then]
+      // %phi = phi i32 [%conv1, %then], [%conv1, %else]
+      // etc...
+      // just replace %phi with %conv1 and continue
+      if (ToUpdate.empty()) {
+        PHI.replaceAllUsesWith(FirstCast);
+        PHI.eraseFromParent();
+        Changed = true;
         continue;
       }
-      FirstCast->moveBefore(CommonDominator->getTerminator());
+
+      auto *CommonDominator = findNearestCommonDominator(PHI);
+      if(FirstCast->getParent() != CommonDominator)
+        FirstCast->moveBefore(CommonDominator->getTerminator());
 
       for (auto *I : ToUpdate) {
         LLVM_DEBUG(dbgs() << "HoistConvOpToDom: Replacing " << *I << " with " << *FirstCast << "\n");
