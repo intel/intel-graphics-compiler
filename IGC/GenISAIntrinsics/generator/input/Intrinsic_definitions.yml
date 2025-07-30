@@ -3794,6 +3794,7 @@ intrinsics:
                 type_definition: *i32
                 comment: "immediate offset w"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -3856,6 +3857,7 @@ intrinsics:
                 type_definition: *i32
                 comment: "immediate offset w"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -3921,6 +3923,7 @@ intrinsics:
                 type_definition: *i32
                 comment: "immediate offset w"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -4063,6 +4066,7 @@ intrinsics:
                 type_definition: *i32
                 comment: "immediate offset w"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -4120,6 +4124,7 @@ intrinsics:
                 type_definition: *i32
                 comment: "immediate offset w"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -4230,6 +4235,7 @@ intrinsics:
                 type_definition: *i32
                 comment: "immediate offset w"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -6767,6 +6773,7 @@ intrinsics:
                 type_definition: *p_any_
                 comment: "sampler"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -7169,6 +7176,7 @@ intrinsics:
                 type_definition: *i32
                 comment: "immediate offset w"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -7230,6 +7238,7 @@ intrinsics:
                 type_definition: *i32
                 comment: "immediate offset w"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -7291,6 +7300,7 @@ intrinsics:
                 type_definition: *i32
                 comment: "immediate offset w"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -7498,6 +7508,7 @@ intrinsics:
                 type_definition: *i32
                 comment: "immediate offset w"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
@@ -7690,6 +7701,7 @@ intrinsics:
                 type_definition: *i32
                 comment: "immediate offset w"
         attributes:
+            - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
