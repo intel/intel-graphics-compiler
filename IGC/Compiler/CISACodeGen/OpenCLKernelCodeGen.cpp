@@ -771,19 +771,20 @@ bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg *kernelArg, uint pay
   case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_ARRAY:
   case KernelArg::ArgType::IMAGE_CUBE_DEPTH_ARRAY:
   case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH_ARRAY: {
-    // the image arg is either bindless or stateful. check from "kernelArg->needsAllocation()"
+    // the image arg is either bindless or stateful.
     // For stateful image argument, the arg has 0 offset and 0 size
-    zebin::PreDefinedAttrGetter::ArgAddrMode arg_addrmode = zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
+    zebin::PreDefinedAttrGetter::ArgAddrMode arg_addrmode = m_ModuleMetadata->UseBindlessImage
+                                                                ? zebin::PreDefinedAttrGetter::ArgAddrMode::bindless
+                                                                : zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
     uint arg_off = 0;
     uint arg_size = 0;
 
     int arg_idx = kernelArg->getAssociatedArgNo();
     if (kernelArg->needsAllocation()) {
-      // set to bindless
-      arg_addrmode = zebin::PreDefinedAttrGetter::ArgAddrMode::bindless;
+      // bindless
       arg_off = payloadPosition;
       arg_size = kernelArg->getSize();
-    } else {
+    } else if (arg_addrmode == zebin::PreDefinedAttrGetter::ArgAddrMode::stateful) {
       // add bti index for this arg if it's stateful
       SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(arg_idx);
       zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs, getBTI(resInfo), arg_idx);
@@ -904,15 +905,16 @@ bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg *kernelArg, uint pay
   // sampler
   case KernelArg::ArgType::SAMPLER:
   case KernelArg::ArgType::BINDLESS_SAMPLER: {
-    // the sampler arg is either bindless or stateful. check from "kernelArg->needsAllocation()"
+    // the sampler arg is either bindless or stateful.
     // For stateful image argument, the arg has 0 offset and 0 size
     // NOTE: we only have stateful sampler now
-    zebin::PreDefinedAttrGetter::ArgAddrMode arg_addrmode = zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
+    zebin::PreDefinedAttrGetter::ArgAddrMode arg_addrmode = m_ModuleMetadata->UseBindlessImage
+                                                                ? zebin::PreDefinedAttrGetter::ArgAddrMode::bindless
+                                                                : zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
     uint arg_off = 0;
     uint arg_size = 0;
     if (kernelArg->needsAllocation()) {
-      // set to bindless
-      arg_addrmode = zebin::PreDefinedAttrGetter::ArgAddrMode::bindless;
+      // bindless
       arg_off = payloadPosition;
       arg_size = kernelArg->getSize();
     }
