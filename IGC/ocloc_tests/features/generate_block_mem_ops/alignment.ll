@@ -1,14 +1,19 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys,pvc-supported
+; REQUIRES: regkeys, pvc-supported, llvm-14-plus
 
-; RUN: llvm-as %s -o %t.bc
+; LLVM with opaque pointers:
+; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-igc_opts 'EnableOpaquePointersBackend=1, DisableRecompilation=1 DumpASMToConsole=1''" 2>&1 | FileCheck %s --check-prefixes=CHECK
+
+; LLVM with typed pointers:
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-igc_opts 'DisableRecompilation=1 DumpASMToConsole=1''" 2>&1 | FileCheck %s --check-prefixes=CHECK
 
 ; CHECK: (W)     load.ugm.d32x32t.a64 (1|M0)

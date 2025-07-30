@@ -1,14 +1,20 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys,pvc-supported
+; REQUIRES: regkeys, pvc-supported, llvm-14-plus
 
-; RUN: llvm-as %s -o %t.bc
+; LLVM with opaque pointers:
+; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options " -ze-opt-large-register-file -igc_opts 'EnableOpaquePointersBackend=1,DisableOCLScalarizer=1,EnableVectorizer=0,PrintToConsole=1,PrintAfter=EmitPass'" 2>&1 | FileCheck %s --check-prefixes=CHECK
+; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options " -ze-opt-large-register-file -igc_opts 'EnableOpaquePointersBackend=1,DisablePHIScalarization=1,EnableVectorizer=0,PrintToConsole=1,PrintAfter=EmitPass'" 2>&1 | FileCheck %s --check-prefixes=CHECK
+
+; LLVM with typed pointers:
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options " -ze-opt-large-register-file -igc_opts 'DisableOCLScalarizer=1,EnableVectorizer=0,PrintToConsole=1,PrintAfter=EmitPass'" 2>&1 | FileCheck %s --check-prefixes=CHECK
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options " -ze-opt-large-register-file -igc_opts 'DisablePHIScalarization=1,EnableVectorizer=0,PrintToConsole=1,PrintAfter=EmitPass'" 2>&1 | FileCheck %s --check-prefixes=CHECK
 

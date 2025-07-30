@@ -8,7 +8,7 @@
 
 ; REQUIRES: regkeys,llvm-16-plus
 ;
-; RUN: igc_opt --ocl --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=1 -S %s | FileCheck %s
+; RUN: igc_opt --ocl --igc-private-mem-resolution --regkey "EnablePrivMemNewSOATranspose=1,EnableOpaquePointersBackend=1" -S %s | FileCheck %s
 ;
 ; In JointMatrix SYCL test
 ; https://github.com/intel/llvm/blob/sycl/sycl/test-e2e/Matrix/joint_matrix_bf16_fill_k_cache_unroll.cpp

@@ -8,7 +8,7 @@
 
 ; REQUIRES: regkeys, pvc-supported, llvm-16-plus
 ; RUN: llvm-as %s -o %t.bc
-; RUN: ocloc -device pvc -llvm_input -options "-vc-codegen -igc_opts 'EnableOpaquePointersBackend=1 ShaderDumpEnable=1, PrintToConsole=1'" -file %t.bc 2>&1 | FileCheck %s
+; RUN: ocloc -device pvc -llvm_input -options "-vc-codegen -igc_opts 'EnableOpaquePointersBackend=1, ShaderDumpEnable=1, PrintToConsole=1'" -file %t.bc 2>&1 | FileCheck %s
 
 ; CHECK: _after_ir_adaptors.ll
 ; CHECK:  call spir_func i32 @_Z18__spirv_ocl_printfPU3AS2c(

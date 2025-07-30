@@ -6,12 +6,18 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys,pvc-supported
+; REQUIRES: regkeys, pvc-supported, llvm-14-plus
 
 ; Check that functions called once from kernel are inlined in it even if they are called multiple times from other kernels.
 
-; RUN: llvm-as %s -o %t.bc
+; LLVM with opaque pointers:
+; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: ocloc compile -llvm_input -file %t.bc -options "-igc_opts 'EnableOpaquePointersBackend=1, DisableRecompilation=1, SubroutineThreshold=50, SubroutineInlinerThreshold=10, KernelTotalSizeThreshold=50, PrintToConsole=1, PrintBefore=EmitPass'" -device pvc 2>&1 | FileCheck %s
+
+; LLVM with typed pointers:
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -options "-igc_opts 'DisableRecompilation=1, SubroutineThreshold=50, SubroutineInlinerThreshold=10, KernelTotalSizeThreshold=50, PrintToConsole=1, PrintBefore=EmitPass'" -device pvc 2>&1 | FileCheck %s
+
 ; CHECK-LABEL: @_ZTS28Kernel_A_Supposed_2B_Inlined(
 ; CHECK-NOT: call spir_func void @testInlineFn
 ; CHECK: ret void

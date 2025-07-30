@@ -1,6 +1,12 @@
-; REQUIRES: regkeys,mtl-supported
-; RUN: llvm-as %s -o %t.bc
+; REQUIRES: regkeys, mtl-supported, llvm-16-plus
 
+; LLVM with opaque pointers:
+; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: ocloc compile -llvm_input -file %t.bc -device mtl -options "-igc_opts 'EnableOpaquePointersBackend=1,DisableCodeScheduling=1,VISAOptions=-asmToConsole'" &> %t_output.ll
+; RUN: FileCheck --input-file %t_output.ll %s
+
+; LLVM with typed pointers:
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device mtl -options "-igc_opts 'DisableCodeScheduling=1,VISAOptions=-asmToConsole'" &> %t_output.ll
 ; RUN: FileCheck --input-file %t_output.ll %s
 
