@@ -95,7 +95,7 @@ void OpenCLPrintfAnalysis::addPrintfBufferArgs(Function &F) {
   ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
 }
 
-bool isPrintfOnlyStringConstantImpl(const llvm::Value *v, std::set<const llvm::User *> &visited) {
+bool isPrintfStringConstantImpl(const llvm::Value *v, std::set<const llvm::User *> &visited) {
   // Recursively check the users of the value until reaching the top level
   // user or a call.
 
@@ -114,7 +114,6 @@ bool isPrintfOnlyStringConstantImpl(const llvm::Value *v, std::set<const llvm::U
       continue;
     visited.insert(user);
 
-    bool res = false;
     if (const llvm::CallInst *call = llvm::dyn_cast<llvm::CallInst>(user)) {
       // Stop when reaching a call and check if it is an opencl/oneapi
       // printf call.
@@ -124,30 +123,25 @@ bool isPrintfOnlyStringConstantImpl(const llvm::Value *v, std::set<const llvm::U
                              OpenCLPrintfAnalysis::isBuiltinPrintf(target);
 
       if (isStringLiteral) {
-        res = true;
+        return true;
       } else {
         unsigned int opIndex = call->getDataOperandNo(&use);
-        res = isPrintfOnlyStringConstantImpl(target->arg_begin() + opIndex, visited);
+        return isPrintfStringConstantImpl(target->arg_begin() + opIndex, visited);
       }
     } else if (llvm::dyn_cast<llvm::CastInst>(user) || llvm::dyn_cast<llvm::SelectInst>(user) ||
                llvm::dyn_cast<llvm::PHINode>(user)) {
-      res = isPrintfOnlyStringConstantImpl(user, visited);
+      return isPrintfStringConstantImpl(user, visited);
     } else if (const llvm::GetElementPtrInst *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(user)) {
       if (gep->hasAllZeroIndices())
-        res = isPrintfOnlyStringConstantImpl(user, visited);
+        return isPrintfStringConstantImpl(user, visited);
     }
-
-    if (!res)
-      return false;
   }
-
-  // Return true as every top level user is a printf call.
-  return true;
+  return false;
 }
 
-// Check paths from a string literal to printf calls and return true if every
+// Check paths from a string literal to printf calls and return true if any
 // path lead to a printf call.
-bool OpenCLPrintfAnalysis::isPrintfOnlyStringConstant(const llvm::GlobalVariable *GV) {
+bool OpenCLPrintfAnalysis::isPrintfStringConstant(const llvm::GlobalVariable *GV) {
   const llvm::Constant *Initializer = GV->getInitializer();
   if (!Initializer) {
     return false;
@@ -166,7 +160,7 @@ bool OpenCLPrintfAnalysis::isPrintfOnlyStringConstant(const llvm::GlobalVariable
 
   if (IsNullTerminatedString || IsZeroInitCharArray) {
     std::set<const llvm::User *> Visited;
-    return isPrintfOnlyStringConstantImpl(GV, Visited);
+    return isPrintfStringConstantImpl(GV, Visited);
   }
 
   return false;

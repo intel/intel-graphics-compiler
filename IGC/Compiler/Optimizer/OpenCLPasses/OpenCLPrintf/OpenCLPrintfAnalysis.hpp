@@ -52,7 +52,7 @@ public:
   // Return true if every top level user of a string literal is a printf
   // call. Note that the function is expected to work only before printf
   // expansion.
-  static bool isPrintfOnlyStringConstant(const llvm::GlobalVariable *GV);
+  static bool isPrintfStringConstant(const llvm::GlobalVariable *GV);
 
 private:
   /// @brief  Adds an implicit argument for address of printf output buffer

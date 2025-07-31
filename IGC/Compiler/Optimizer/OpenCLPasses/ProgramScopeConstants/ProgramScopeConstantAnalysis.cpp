@@ -118,8 +118,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M) {
     InlineProgramScopeBufferType inlineProgramScopeBufferType = {};
 
     // Constant variables that are string literals
-    // used only by printf will be stored in the second constant buffer.
-    bool isZebinPrintfStringConst = OpenCLPrintfAnalysis::isPrintfOnlyStringConstant(globalVar);
+    // used by printf will be stored in the second constant buffer.
+    bool isZebinPrintfStringConst = OpenCLPrintfAnalysis::isPrintfStringConstant(globalVar);
     // Here we follow SPV_EXT_relaxed_printf_string_address_space to relax
     // the address space requirement of printf strings and accept
     // non-constant address space printf strings. However, we expect it is
