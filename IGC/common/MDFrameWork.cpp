@@ -58,6 +58,7 @@ template <typename T, size_t s> void readNode(std::array<T, s> &arr, MDNode *nod
 template <typename T> void readNode(std::optional<T> &option, MDNode *node);
 void readNode(Function *&funcPtr, MDNode *node);
 void readNode(GlobalVariable *&globalVar, MDNode *node);
+void readNode(Type *&Ty, MDNode *node);
 void readNode(StructType *&Ty, MDNode *node);
 
 template <typename Key, typename Value> void readNode(std::map<Key, Value> &funcMD, MDNode *node);
@@ -360,6 +361,12 @@ void readNode(GlobalVariable *&globalVar, MDNode *node) {
   ValueAsMetadata *pVal = cast<ValueAsMetadata>(node->getOperand(1));
   Value *v = pVal->getValue();
   globalVar = cast<GlobalVariable>(v);
+}
+
+void readNode(Type *&Ty, MDNode *node) {
+  ValueAsMetadata *pVal = cast<ValueAsMetadata>(node->getOperand(1));
+  Value *v = pVal->getValue();
+  Ty = cast<Type>(v->getType());
 }
 
 void readNode(StructType *&Ty, MDNode *node) {
