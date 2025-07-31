@@ -226,6 +226,23 @@ Imported_Intrinsics = {
                       "memory_effects":
                         { "access": "ModRef" }, },
 
+## ``llvm.vc.internal.add.uus.sat`` : add instruction with saturation
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: first input, any scalar/vector integer type, even i64 : unsigned
+## * arg1: second input, same type as arg0 : signed
+##
+## * Return value: result of addition, same type as arg0 : unsigned, saturated
+##
+## This intrinsic is used to implement the addition of unsigned and signed
+## integers with saturation.
+##
+    "add_uus_sat" : { "result": "anyint",
+                      "arguments": [ 0, 0 ],
+                      "attributes": "None",
+                      "memory_effects":
+                        { "access": "ModRef" }, },
+
 ## ``llvm.vc.internal.rsqrtm`` : computes component-wise reciprocal square root
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##

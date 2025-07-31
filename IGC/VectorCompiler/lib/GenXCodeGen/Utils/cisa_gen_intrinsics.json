@@ -151,6 +151,15 @@
       "src0": [ "GENERAL", 1 ],
       "src1": [ "GENERAL", 2 ]
     },
+    "vc::InternalIntrinsic::add_uus_sat": {
+      "opc": "ISA_ADD",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
     "vc::InternalIntrinsic::cast_from_bf16": {
       "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],

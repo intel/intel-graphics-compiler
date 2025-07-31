@@ -94,7 +94,7 @@ define i32 @test_usub_sat(i32 %a, i32 %b)
   %res = tail call i32 @llvm.usub.sat.i32(i32 %a, i32 %b)
 ; COM: this one is in terms on uuadd.sat
 ; CHECK: [[NOTVAL:%[^ ]+]] = sub i32 0, %b
-; CHECK: call i32 @llvm.genx.usadd.sat.i32.i32(i32 %a, i32 [[NOTVAL]])
+; CHECK: call i32 @llvm.vc.internal.add.uus.sat.i32.i32(i32 %a, i32 [[NOTVAL]])
   ret i32 %res
 }
 
