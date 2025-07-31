@@ -960,8 +960,15 @@ static void addKernelAttrsFromMetadata(VISAKernel &Kernel,
   // Set by compile option.
   if (BC->isAutoLargeGRFMode())
     NumGRF = 0;
-  if (BC->getGRFSize())
+  if (BC->getGRFSize()) {
     NumGRF = BC->getGRFSize();
+    if (!Subtarget->isValidGRFSize(NumGRF)) {
+      // looking for closest largest value
+      const auto GrfSizes = Subtarget->getSupportedGRFSizes();
+      auto It = std::upper_bound(GrfSizes.begin(), GrfSizes.end(), NumGRF);
+      NumGRF = It != GrfSizes.end() ? *It : *(It - 1);
+    }
+  }
   // Set by kernel metadata.
   if (KM.getGRFSize()) {
     unsigned NumGRFPerKernel = *KM.getGRFSize();
