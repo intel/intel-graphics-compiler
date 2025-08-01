@@ -967,20 +967,8 @@ void IR_Builder::materializeGlobalImm(G4_BB *entryBB) {
     G4_INST *inst = createMov(G4_ExecSize((unsigned)immVal.numElt),
                               createDstRegRegion(dcl, 1), immVal.imm,
                               InstOpt_WriteEnable, false);
-
-    // Check if entryBB has instruction with SSO
-    // and set insertion point after this instruction
-    G4_INST* instSSO = getSSOInst();
-    INST_LIST_ITER iter;
-    if (instSSO) {
-      iter = std::find_if(entryBB->begin(), entryBB->end(),
-                          [&instSSO](G4_INST* inst) { return inst == instSSO; });
-      iter++;
-    } else {
-      iter = std::find_if(entryBB->begin(), entryBB->end(),
-                          [](G4_INST *inst) { return !inst->isLabel(); });
-    }
-
+    auto iter = std::find_if(entryBB->begin(), entryBB->end(),
+                             [](G4_INST *inst) { return !inst->isLabel(); });
     INST_LIST_ITER newMov = entryBB->insertBefore(iter, inst);
     instSplitter.splitInstruction(newMov, entryBB->getInstList());
   }

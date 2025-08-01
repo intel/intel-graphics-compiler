@@ -377,8 +377,6 @@ private:
   // FDE spill inst is first spill instruction that writes frame
   // descriptor to stack.
   G4_INST *FDSpillInst = nullptr;
-  // Instruction with ScratchSurfaceOffset
-  G4_INST* instSSO = nullptr;
   G4_Declare *tmpFCRet = nullptr;
   // Used to store implicit arg, local id buffer ptrs for stackcall
   G4_Declare *implArgBufferPtr = nullptr;
@@ -547,10 +545,6 @@ public:
 
   G4_INST *getFDSpillInst() const { return FDSpillInst; }
   void setFDSpillInst(G4_INST *i) { FDSpillInst = i; }
-
-  // Getter/settter for instruction with ScratchSurfaceOffset
-  G4_INST* getSSOInst() const { return instSSO; }
-  void setSSOInst(G4_INST* inst) { instSSO = inst; }
 
   G4_Declare *getStackCallArg() const {
     return preDefVars.getPreDefinedVar(PreDefinedVarsInternal::ARG);
