@@ -141,7 +141,6 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction *inst,
 }
 
 void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function &F) const {
-  CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
   MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   ImplicitArgs implicitArgs(F, pMdUtils);
@@ -151,8 +150,6 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function &F) 
 
   FunctionMetaData *funcMD = &modMD->FuncMD[&F];
   ResourceAllocMD *resourceAlloc = &funcMD->resAllocMD;
-
-  bool supportDynamicBTIsAllocation = ctx->platform.supportDynamicBTIsAllocation() && ctx->enableZEBinary();
 
   for (auto &iter : m_SrcPtrToAccessMap) {
     Argument *srcPtr = cast<Argument>(iter.first);
@@ -176,10 +173,8 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function &F) 
         continue;
     }
 
-    if (supportDynamicBTIsAllocation) {
-      argInfo->indexType = resourceAlloc->uavsNumType +
-                           (unsigned)std::distance(m_SrcPtrToAccessMap.begin(), m_SrcPtrToAccessMap.find(srcPtr));
-    }
+    argInfo->indexType = resourceAlloc->uavsNumType +
+                         (unsigned)std::distance(m_SrcPtrToAccessMap.begin(), m_SrcPtrToAccessMap.find(srcPtr));
 
     // Loop through all access instructions for srcPtr
     for (auto &insts : iter.second) {
@@ -238,6 +233,5 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function &F) 
     }
   }
 
-  if (supportDynamicBTIsAllocation)
-    resourceAlloc->uavsNumType += m_SrcPtrToAccessMap.size();
+  resourceAlloc->uavsNumType += m_SrcPtrToAccessMap.size();
 }

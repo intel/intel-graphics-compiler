@@ -554,13 +554,6 @@ public:
     return m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE && IGC_IS_FLAG_ENABLED(EnableQWRotateInstructions);
   }
 
-  // Some workloads use handcrafted ISA kernels and generate patch tokens for them by compiling a
-  // dummy kernel. They depend on static BTIs allocation in IGC, that's why dynamic allocation
-  // can't be enabled by default for all platforms. That is not an issue when ZEBin is enabled by
-  // default since a workload can generate ZEBin sections by itself, without depending on a dummy kernel
-  // compilation by IGC.
-  bool supportDynamicBTIsAllocation() const { return supportsZEBin(); }
-
   bool supportsZEBin() const {
     switch (m_platformInfo.eProductFamily) {
     default:

@@ -887,7 +887,6 @@ void StatelessToStateful::promote() {
   if (m_promotionMap.empty())
     return;
 
-  CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
   FunctionMetaData *funcMD = &modMD->FuncMD[m_F];
   ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
@@ -905,15 +904,8 @@ void StatelessToStateful::promote() {
       setModuleUsesBindless();
     } else {
       ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[baseArgIndex];
-
-      // If the support for dynamic BTIs allocation is disabled, then BTIs are pre-assigned
-      // in ResourceAllocator pass for all resources independently whether they are
-      // accessed through stateful addressing model or not.
-      if (ctx->platform.supportDynamicBTIsAllocation()) {
-        argAlloc->type = ResourceTypeEnum::UAVResourceType;
-        argAlloc->indexType = resAllocMD->uavsNumType + bufferPos;
-      }
-
+      argAlloc->type = ResourceTypeEnum::UAVResourceType;
+      argAlloc->indexType = resAllocMD->uavsNumType + bufferPos;
       statefullAddrspace = encodeBindfulAddrspace(argAlloc->indexType);
     }
 
