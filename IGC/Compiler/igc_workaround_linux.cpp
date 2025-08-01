@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "igc_workaround.h"
 #include <string.h>
 #include <stdlib.h>
-#include "Probe/Assertion.h"
 
 namespace IGC {
 
@@ -152,7 +151,8 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE *pSkuFeatureTable, CPlatform *platform
     its no longer based on platform */
     break;
   default:
-    IGC_ASSERT(0);
+    fprintf(stderr, "ERROR! Trying to select a workaround table for an unknown architecture. Aborting.\n");
+    exit(1);
     break;
   }
   if (GFX_GET_CURRENT_PRODUCT(platform->getPlatformInfo()) >= IGFX_METEORLAKE) {
@@ -187,7 +187,8 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE *pSkuFeatureTable, CPlatform *platform
         InitGt_20_04HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
         break;
       default:
-        IGC_ASSERT(0);
+        fprintf(stderr, "ERROR! Trying to select a workaround table for an unknown architecture. Aborting.\n");
+        exit(1);
         break;
       }
       break;
@@ -205,7 +206,8 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE *pSkuFeatureTable, CPlatform *platform
         InitGt_30_03HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
         break;
       default:
-        IGC_ASSERT_MESSAGE(0, "unknown IP");
+        fprintf(stderr, "ERROR! Trying to select a workaround table for an unknown architecture. Aborting.\n");
+        exit(1);
         break;
       }
       stWaInitParam.usWaIpShift = WA_BIT_GT;
