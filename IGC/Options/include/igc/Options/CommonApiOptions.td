@@ -26,13 +26,15 @@ defm gtpin_scratch_area_size : CommonSeparate<"gtpin-scratch-area-size">,
 defm : CommonJoined<"gtpin-scratch-area-size=">, Alias<gtpin_scratch_area_size_common>,
   HelpText<"Alias for -ze-gtpin-scratch-area-size">;
 
-defm gtpin_indir_ref : CommonFlag<"gtpin-indir-ref">;
+defm gtpin_indir_ref : CommonFlag<"gtpin-indir-ref">,
+ HelpText<"Ask finalizer to provide list of registers used by indirect operand per %ip">;
 
 defm skip_fde : CommonFlag<"skip-fde">;
 
 defm no_fusedCallWA : CommonFlag<"no-fusedCallWA">;
 
-defm disable_compaction : CommonFlag<"disable-compaction">;
+defm disable_compaction : CommonFlag<"disable-compaction">,
+  HelpText<"Disable compaction pass in finalizer. This pass is used to decide whether to use a compacted, i.e. shorter encoding of machine instructions wherever ISA allows.">;
 
 def emit_debug : PlainFlag<"g">,
   HelpText<"Enable generation of debug information and enables kernel debug">;
@@ -44,8 +46,10 @@ defm opt_disable : CommonFlag<"opt-disable">,
 defm library_compilation : CommonFlag<"library-compilation">;
 
 // -library-compile-simd=[8|16|32]
-defm library_compile_simd : CommonSeparate<"library-compile-simd">;
-defm : CommonJoined<"library-compile-simd=">, Alias<library_compile_simd_common>;
+defm library_compile_simd : CommonSeparate<"library-compile-simd">,
+  HelpText<"Select SIMD size for library compilations [8|16|32]">;
+defm : CommonJoined<"library-compile-simd=">, Alias<library_compile_simd_common>,
+  HelpText<"Select SIMD size for library compilations [8|16|32]">;
 
 defm exp_register_file_size : CommonSeparate<"exp-register-file-size">,
   HelpText<"Set amount of registers used by regalloc">;
