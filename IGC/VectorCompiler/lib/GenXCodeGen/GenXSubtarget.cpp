@@ -27,7 +27,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "common/StringMacros.hpp"
 
-#include <algorithm>
+#include <unordered_set>
 
 using namespace llvm;
 
@@ -296,7 +296,7 @@ bool GenXSubtarget::isInternalIntrinsicSupported(unsigned ID) const {
   return true;
 }
 
-ArrayRef<unsigned> GenXSubtarget::getSupportedGRFSizes() const {
+bool GenXSubtarget::isValidGRFSize(unsigned Size) const {
   switch (TargetId) {
   case GenXSubtarget::XeHP:
   case GenXSubtarget::XeHPG:
@@ -304,22 +304,14 @@ ArrayRef<unsigned> GenXSubtarget::getSupportedGRFSizes() const {
   case GenXSubtarget::XeLPGPlus:
   case GenXSubtarget::XeHPC:
   case GenXSubtarget::XeHPCVG:
-  case GenXSubtarget::Xe2: {
-    static const unsigned Supported[] = {128, 256};
-    return Supported;
-  }
+  case GenXSubtarget::Xe2:
+    return Size == 128 || Size == 256;
   case GenXSubtarget::Xe3: {
-    static const unsigned Supported[] = {32, 64, 96, 128, 160, 192, 256};
-    return Supported;
+    static const std::unordered_set<unsigned> Supported = {32,  64,  96, 128,
+                                                           160, 192, 256};
+    return Supported.count(Size);
   }
-  default: {
-    static const unsigned Supported[] = {128}; // platforms <= TGL
-    return Supported;
+  default:
+    return Size == 128; // platforms <= TGL
   }
-  }
-}
-
-bool GenXSubtarget::isValidGRFSize(unsigned Size) const {
-  const auto GrfSizes = getSupportedGRFSizes();
-  return std::binary_search(GrfSizes.begin(), GrfSizes.end(), Size);
 }

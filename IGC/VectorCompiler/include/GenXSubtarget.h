@@ -463,8 +463,6 @@ public:
   PreDefined_Surface stackSurface() const { return StackSurf; }
 
   bool isIntrinsicSupported(unsigned ID) const;
-
-  ArrayRef<unsigned> getSupportedGRFSizes() const;
   bool isValidGRFSize(unsigned Size) const;
 };
 
