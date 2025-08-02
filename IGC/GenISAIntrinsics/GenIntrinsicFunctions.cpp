@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "common/igc_regkeys.hpp"
 #include "GenIntrinsicFunctions.h"
 #include "GenIntrinsicDefinition.h"
 #include "GenIntrinsicLookup.h"
@@ -197,7 +198,8 @@ private:
   static llvm::AttributeList GetAttributeList(llvm::LLVMContext &ctx,
                                               const llvm::ArrayRef<llvm::Type *> &overloadedPointeeTys) {
     // 1. Instantiate regular attributes for the given intrinsic
-    constexpr auto &attributeKinds = IntrinsicDefinitionT::scAttributeKinds;
+    llvm::ArrayRef<llvm::Attribute::AttrKind> attributeKinds = IntrinsicDefinitionT::scAttributeKinds;
+
     auto mainAttrList = llvm::AttributeList::get(ctx, llvm::AttributeList::FunctionIndex, attributeKinds);
     // 2. Gather the memory attribute(s) in a separate routine
     auto memoryAB = IntrinsicDefinitionT::scMemoryEffects.getAsAttrBuilder(ctx);

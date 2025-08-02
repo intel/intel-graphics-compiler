@@ -6,7 +6,7 @@
 #
 # =========================== end_copyright_notice =============================
 
-from typing import List, Set, Optional
+from typing import List, Set, Optional, Union
 from enum import Enum
 import yaml
 
@@ -593,6 +593,9 @@ class IntrinsicDefinition(SafeYAMLObject):
 
     yaml_tag = u'IntrinsicDefinition'
 
+    AttributeSet = Set[Union[AttributeID
+    ]]
+
     @classmethod
     def from_yaml(cls, loader, node):
         arg_dict = loader.construct_mapping(node, deep=True)
@@ -600,13 +603,16 @@ class IntrinsicDefinition(SafeYAMLObject):
         return res
 
     def __init__(self, name : str, comment : str, return_definition : ReturnDefinition,
-                 arguments : List[ArgumentDefinition], attributes : Set[AttributeID],
+                 arguments : List[ArgumentDefinition], attributes : AttributeSet,
                  memory_effects : List[MemoryRestriction] = [ MemoryRestriction() ]):
         self.name = QuotedString(name)
         self.comment = QuotedString(comment)
         self.return_definition = return_definition
         self.arguments = arguments
-        self.attributes = sorted(list(attributes), key=lambda x: x.__str__())
+
+        self.attributes = [attr for attr in attributes if isinstance(attr, AttributeID)]
+        self.attributes = sorted(self.attributes, key=lambda x: x.__str__())
+
         if len(memory_effects) > 1:
             # TODO: To support LLVM 16-style memory effects per multiple locations,
             # we'll need to gather multiple MemoryRestriction entries into a
@@ -616,9 +622,13 @@ class IntrinsicDefinition(SafeYAMLObject):
         self.memory_effects = memory_effects
 
     def __repr__(self):
-        return "%s(name=%r, comment=%r, return_definition=%r, arguments=%r, attributes=%r, memory_effects=%r)" % (
+        fmt_string = "%s(name=%r, comment=%r, return_definition=%r, arguments=%r, attributes=%r"
+        fmt_string += ", memory_effects=%r)"
+        return fmt_string % (
             self.__class__.__name__, self.name, self.comment, self.return_definition,
-            self.arguments, self.attributes, self.memory_effects)
+            self.arguments,
+            self.attributes,
+            self.memory_effects)
 
     def to_dict(self):
         res = {
@@ -643,7 +653,9 @@ class IntrinsicDefinition(SafeYAMLObject):
                               if memory_effects_entry else []
                          )
         return IntrinsicDefinition(json_dct['name'], json_dct['comment'], return_definition,
-                                   arguments, attributes, memory_effects)
+                                   arguments,
+                                   attributes
+                                   , memory_effects)
 
 class PrimitiveArgumentDefinition(SafeYAMLObject):
 
