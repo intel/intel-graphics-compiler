@@ -23,6 +23,7 @@ add_subdirectory(DpasFuncs)
 add_subdirectory(BfloatFuncs)
 add_subdirectory(ErrorCheckPass)
 add_subdirectory(ExtensionFuncs)
+add_subdirectory(GenericCastToPtrOpt)
 add_subdirectory(GEPLoopStrengthReduction)
 add_subdirectory(GenericAddressResolution)
 add_subdirectory(HandleDevicelibAssert)
@@ -82,6 +83,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_BfloatFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_ErrorCheckPass}
     ${IGC_BUILD__SRC__OpenCLPasses_ExtensionFuncs}
+    ${IGC_BUILD__SRC__OpenCLPasses_GenericCastToPtrOpt}
     ${IGC_BUILD__SRC__OpenCLPasses_GEPLoopStrengthReduction}
     ${IGC_BUILD__SRC__OpenCLPasses_GenericAddressResolution}
     ${IGC_BUILD__SRC__OpenCLPasses_HandleDevicelibAssert}
@@ -145,6 +147,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_BfloatFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_ErrorCheckPass}
     ${IGC_BUILD__HDR__OpenCLPasses_ExtensionFuncs}
+    ${IGC_BUILD__HDR__OpenCLPasses_GenericCastToPtrOpt}
     ${IGC_BUILD__HDR__OpenCLPasses_GEPLoopStrengthReduction}
     ${IGC_BUILD__HDR__OpenCLPasses_GenericAddressResolution}
     ${IGC_BUILD__HDR__OpenCLPasses_HandleDevicelibAssert}
@@ -209,6 +212,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_BfloatFuncs
     Compiler__OpenCLPasses_ErrorCheckPass
     Compiler__OpenCLPasses_ExtensionFuncs
+    Compiler__OpenCLPasses_GenericCastToPtrOpt
     Compiler__OpenCLPasses_GEPLoopStrengthReduction
     Compiler__OpenCLPasses_GenericAddressResolution
     Compiler__OpenCLPasses_GenericAddressSpaceStaticResolution
