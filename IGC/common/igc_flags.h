@@ -974,9 +974,6 @@ DECLARE_IGC_REGKEY(bool, EnablePreRARematFlag, true, "Enable PreRA Rematerializa
 DECLARE_IGC_REGKEY(bool, EnableGASResolver, true, "Enable GAS Resolver", false)
 DECLARE_IGC_REGKEY(bool, EnableLowerGPCallArg, true, "Enable pass to lower generic pointers in function arguments",
                    false)
-DECLARE_IGC_REGKEY(
-    bool, EnableGenericCastToPtrOpt, true,
-    "Enable simplification of GenericCastToPtrExplicit_ToGlobal calls", false)
 DECLARE_IGC_REGKEY(bool, DisableRecompilation, false, "Disable recompilation, skip retry stage", true)
 DECLARE_IGC_REGKEY(bool, SampleMultiversioning, false,
                    "Create branches aroung samplers which can be redundant with some values", false)
