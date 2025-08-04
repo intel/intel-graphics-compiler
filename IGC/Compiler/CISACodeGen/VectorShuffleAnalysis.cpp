@@ -124,11 +124,18 @@ VectorShuffleAnalysis::tryCreatingDestVectorForVectorization(llvm::InsertElement
       return nullptr;
 
     llvm::Value *Scalar = CurrentIE->getOperand(1);
-    if (isa<ExtractElementInst>(Scalar))
-      return nullptr;
 
     if (!Scalar->getType()->isSingleValueType())
       return nullptr;
+
+    if (Instruction *EE = dyn_cast<ExtractElementInst>(Scalar)) {
+      // allow only vector of 1 element
+      Type *EEVectorType = EE->getOperand(0)->getType();
+      auto EEVectorTypeVec = dyn_cast<IGCLLVM::FixedVectorType>(EEVectorType);
+      IGC_ASSERT(EEVectorTypeVec);
+      if (EEVectorTypeVec->getNumElements() != 1)
+        return nullptr;
+    }
 
     ShuffleMask[IdxVal] = IdxVal;
     IEs.push_back(CurrentIE);

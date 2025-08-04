@@ -113,6 +113,7 @@ static std::string getName(Value *V) {
 IGC_INITIALIZE_PASS_BEGIN(CodeScheduling, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(VectorShuffleAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(RematChainsAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(IGCFunctionExternalRegPressureAnalysis)
 IGC_INITIALIZE_PASS_END(CodeScheduling, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
@@ -206,9 +207,9 @@ public:
 class RegisterPressureTracker {
 public:
   RegisterPressureTracker(BasicBlock *BB, IGCLivenessAnalysis *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
-                          VectorShuffleAnalysis *VSA, WIAnalysisRunner *WI, CodeGenContext *CTX,
+                          VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, WIAnalysisRunner *WI, CodeGenContext *CTX,
                           SchedulingConfig *Config, llvm::raw_ostream *LogStream)
-      : BB(BB), RPE(RPE), FRPE(FRPE), VSA(VSA), WI(WI), CTX(CTX), C(Config), LogStream(LogStream) {
+      : BB(BB), RPE(RPE), FRPE(FRPE), VSA(VSA), RCA(RCA), WI(WI), CTX(CTX), C(Config), LogStream(LogStream) {
     F = BB->getParent();
     SIMD = C->get(SchedulingConfig::Option::ForceSIMDSize) > 0 ? C->get(SchedulingConfig::Option::ForceSIMDSize)
                                                                : numLanes(RPE->bestGuessSIMDSize(F));
@@ -223,6 +224,7 @@ public:
     RPE = RPT.RPE;
     FRPE = RPT.FRPE;
     VSA = RPT.VSA;
+    RCA = RPT.RCA;
     WI = RPT.WI;
     CTX = RPT.CTX;
     C = RPT.C;
@@ -469,6 +471,7 @@ private:
   IGCLivenessAnalysis *RPE;
   IGCFunctionExternalRegPressureAnalysis *FRPE;
   VectorShuffleAnalysis *VSA;
+  RematChainsAnalysis *RCA;
   WIAnalysisRunner *WI;
   CodeGenContext *CTX;
   const DataLayout *DL;
@@ -555,6 +558,16 @@ private:
       if (Update)
         PrintDumpLevel(VerbosityLevel::High, "NoOp instruction: " << getName(I) << "\n");
       return 0;
+    }
+
+    // Check for remat chain patterns
+    if (RCA && !Update) {
+      RematChainPattern *RCP = RCA->getRematChainPattern(I);
+      if (RCP && (RCP->getFirstInst() == I)) {
+        // if it's a remat chain we are going to use the remat target instruction (usually load or store)
+        Instruction *TargetInst = RCP->getRematTargetInst();
+        return estimateOrUpdateImpl(TargetInst, false);
+      }
     }
 
     if (Update)
@@ -940,8 +953,8 @@ public:
   typedef std::vector<InstructionNode *> InstNodePtrList;
 
   BBScheduler(BasicBlock *BB, IGCLivenessAnalysis *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE, AAResults *AA,
-              VectorShuffleAnalysis *VSA, CodeGenContext *CTX, SchedulingConfig *Config, llvm::raw_ostream *LogStream)
-      : BB(BB), RPE(RPE), FRPE(FRPE), AA(AA), VSA(VSA), CTX(CTX), C(*Config), LogStream(LogStream) {
+              VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, CodeGenContext *CTX, SchedulingConfig *Config, llvm::raw_ostream *LogStream)
+      : BB(BB), RPE(RPE), FRPE(FRPE), AA(AA), VSA(VSA), RCA(RCA), CTX(CTX), C(*Config), LogStream(LogStream) {
     F = BB->getParent();
     WI = &FRPE->getWIAnalysis(F);
   }
@@ -959,7 +972,7 @@ public:
     // Check if the original schedule can have spills
     // Do nothing if the original schedule can not have spills and rescheduling is not forced
 
-    RegisterPressureTracker RPT(BB, RPE, FRPE, VSA, WI, CTX, &C, LogStream);
+    RegisterPressureTracker RPT(BB, RPE, FRPE, VSA, RCA, WI, CTX, &C, LogStream);
 
     int32_t MaxOriginalRegpressure = 0;
     bool OriginalScheduleCanHaveSpills = false;
@@ -993,7 +1006,7 @@ public:
 
     std::vector<std::unique_ptr<Schedule>> Schedules;
 
-    std::unique_ptr<Schedule> DefaultSchedule = std::make_unique<Schedule>(BB, RPE, FRPE, VSA, WI, CTX, &C, LogStream);
+    std::unique_ptr<Schedule> DefaultSchedule = std::make_unique<Schedule>(BB, RPE, FRPE, VSA, RCA, WI, CTX, &C, LogStream);
 
     // First try if "GreedyMW" scheduling can be applied
     // This approach prioritizes scheduling by the edge weights
@@ -1007,6 +1020,7 @@ public:
     if (!IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly)) {
       std::vector<std::unique_ptr<Schedule>> NewSchedules;
       PrintDump("Greedy MW attempt\n");
+
       while (!GreedyMWSchedule->isComplete()) {
         std::unique_ptr<Schedule> Checkpoint = GreedyMWSchedule->scheduleNextInstruction();
         if (Checkpoint) {
@@ -1016,6 +1030,15 @@ public:
 
       if (IGC_IS_FLAG_ENABLED(CodeSchedulingForceMWOnly) || !GreedyMWSchedule->canEverHaveSpills()) {
         PrintDump("Greedy MW schedule is forced or has no spills.\n");
+        if (((GreedyMWSchedule->getMaxRegpressure() > MaxOriginalRegpressure)) &&
+          IGC_IS_FLAG_DISABLED(CodeSchedulingMWOptimizedHigherRPCommit))
+        {
+          PrintDump("Greedy MW schedule has higher regpressure that the original (" <<
+                    GreedyMWSchedule->getMaxRegpressure() << " > " << MaxOriginalRegpressure <<
+                    "), skipping commit\n");
+          PrintDump("Schedule is not changed" << "\n");
+          return false;
+        }
         GreedyMWSchedule->commit();
         return true;
       }
@@ -1031,12 +1054,19 @@ public:
     // Schedule only for the pressure minimization
     // If it still has spills or is forced, we will commit it
 
-    std::unique_ptr<Schedule> GreedyRPSchedule = std::make_unique<Schedule>(*DefaultSchedule);
-    GreedyRPSchedule->setGreedyRP(true);
-    PrintDump("Greedy RP attempt\n");
+    std::unique_ptr<Schedule> GreedyRPSchedule = nullptr;
+
+    if(!IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly) && GreedyMWSchedule->isComplete() && GreedyMWSchedule->isEqualGreedyRP()) {
+      PrintDump("Greedy MW schedule is equal to Greedy RP schedule, skipping Greedy RP attempt\n");
+      GreedyRPSchedule = std::make_unique<Schedule>(*GreedyMWSchedule);
+    } else {
+      PrintDump("Greedy RP attempt\n");
+      GreedyRPSchedule = std::make_unique<Schedule>(*DefaultSchedule);
+      GreedyRPSchedule->setGreedyRP(true);
+    }
 
     // PrintDump("DepGraph dump\n");
-    // DepGraph G(BB, RPE, FRPE, VSA, WI, CTX, C, LogStream);
+    // DepGraph G(BB, RPE, FRPE, VSA, RCA, WI, CTX, C, LogStream);
     // G.print(*LogStream);
 
     while (!GreedyRPSchedule->isComplete()) {
@@ -1046,7 +1076,16 @@ public:
     bool CanCompileWithNoSpills = !GreedyRPSchedule->canEverHaveSpills();
 
     if (IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly)) {
-      PrintDump("Greedy RP schedule is forced, commiting it and stopping.\n");
+      PrintDump("Greedy RP schedule is forced\n");
+      if (((GreedyRPSchedule->getMaxRegpressure() > MaxOriginalRegpressure)) &&
+          IGC_IS_FLAG_DISABLED(CodeSchedulingGreedyRPHigherRPCommit)) {
+        PrintDump("Greedy RP schedule has higher regpressure that the original (" <<
+                  GreedyRPSchedule->getMaxRegpressure() << " > " << MaxOriginalRegpressure <<
+                  "), skipping commit\n");
+        PrintDump("Schedule is not changed" << "\n");
+        return false;
+      }
+      PrintDump("Commiting RP schedule and stopping.\n")
       PrintDump("Schedule is changed" << "\n");
       GreedyRPSchedule->commit();
       return true;
@@ -1081,6 +1120,14 @@ public:
       bool Success = S->isComplete() && !S->canEverHaveSpills();
       if (Success) {
         PrintDump("Schedule is complete\n");
+        if (((S->getMaxRegpressure() > MaxOriginalRegpressure)) &&
+            IGC_IS_FLAG_DISABLED(CodeSchedulingMWOptimizedHigherRPCommit)) {
+          PrintDump("Completed schedule on attempt #" << Attempt << " has higher regpressure that the original (" <<
+                    S->getMaxRegpressure() << " > " << MaxOriginalRegpressure <<
+                    "), skipping commit\n");
+          PrintDump("Schedule is not changed" << "\n");
+          return false;
+        }
         S->commit();
         Changed = true;
         break;
@@ -1105,7 +1152,16 @@ public:
     };
 
     if (!Changed && IGC_IS_FLAG_ENABLED(CodeSchedulingCommitGreedyRP) && OriginalScheduleCanHaveSpills) {
-      PrintDump("No schedule is complete, so GreedyRP schedule is commited.\n");
+      PrintDump("No schedule is complete, so GreedyRP schedule is the best.\n");
+      if (((GreedyRPSchedule->getMaxRegpressure() > MaxOriginalRegpressure)) &&
+          IGC_IS_FLAG_DISABLED(CodeSchedulingGreedyRPHigherRPCommit)) {
+        PrintDump("Greedy RP schedule has higher regpressure that the original (" <<
+                  GreedyRPSchedule->getMaxRegpressure() << " > " << MaxOriginalRegpressure <<
+                  "), skipping commit\n");
+        PrintDump("Schedule is not changed" << "\n");
+        return false;
+      }
+      PrintDump("Commiting Greedy RP schedule as the best one.\n");
       PrintDump("Schedule is changed" << "\n");
       GreedyRPSchedule->commit();
       Changed = true;
@@ -1125,6 +1181,7 @@ private:
   AAResults *AA;
   VectorShuffleAnalysis *VSA;
   CodeGenContext *CTX;
+  RematChainsAnalysis *RCA;
   SchedulingConfig &C;
   llvm::raw_ostream *LogStream;
 
@@ -1213,7 +1270,7 @@ private:
     DepGraph &operator=(const DepGraph &) = delete;
 
     DepGraph(BasicBlock *BB, IGCLivenessAnalysis *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
-             VectorShuffleAnalysis *VSA, WIAnalysisRunner *WI, CodeGenContext *CTX, SchedulingConfig &C,
+             VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, WIAnalysisRunner *WI, CodeGenContext *CTX, SchedulingConfig &C,
              llvm::raw_ostream *LogStream) {
       InstNodes.reserve(BB->size() * sizeof(InstructionNode));
       InstToNode.reserve(BB->size() * sizeof(InstToNodeMap));
@@ -1247,6 +1304,17 @@ private:
           InstToNode[Src]->Succs.insert(DepEdges.back().get());
           InstToNode[Dst]->Preds.insert(DepEdges.back().get());
         }
+      };
+
+      auto isNoOpSingleElementVectorEE = [&](Instruction *I) -> bool {
+        if (auto *EE = dyn_cast<ExtractElementInst>(I)) {
+          if (auto *VectorType = dyn_cast<IGCLLVM::FixedVectorType>(EE->getVectorOperand()->getType())) {
+            if (VectorType->getNumElements() == 1 && VectorType->getElementType()->isSingleValueType()) {
+              return true;
+            }
+          }
+        }
+        return false;
       };
 
       std::vector<Instruction *> UnknownStores;
@@ -1341,6 +1409,13 @@ private:
               }
             }
 
+            RematChainPattern *RCP = RCA->getRematChainPattern(Src);
+            if (RCP) {
+              if (RCP->isRematInst(Dst) || (RCP->getRematTargetInst() == Dst)) {
+                ForceSubsequent = true;
+              }
+            }
+
             // Edge from some instruction TO the no-op or vector shuffle
             // Weight is 0 and it makes sense to place it right after the source
 
@@ -1353,7 +1428,7 @@ private:
             VectorToScalarsPattern *V2SP = VSA->getVectorToScalarsPattern(Dst);
             if (IGCLLVM::isDebugOrPseudoInst(*Dst) || Dst->isLifetimeStartOrEnd() || isNoOpInst(Dst, CTX) ||
                 (DstDV && (DstDV->isNoOp())) || (DstDV && (DstDV->isVectorShuffle()) && !DstDV->isNoOp()) ||
-                (DstDV && !DstDV->isVectorShuffle()) || V2SP) {
+                (DstDV && !DstDV->isVectorShuffle()) || V2SP || isNoOpSingleElementVectorEE(Dst)) {
               Weight = 0;
               WeightHighRP = 0;
               ForceSubsequent = true;
@@ -1536,11 +1611,11 @@ private:
   class Schedule {
   public:
     Schedule(BasicBlock *BB, IGCLivenessAnalysis *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
-             VectorShuffleAnalysis *VSA, WIAnalysisRunner *WI, CodeGenContext *CTX, SchedulingConfig *C,
+             VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, WIAnalysisRunner *WI, CodeGenContext *CTX, SchedulingConfig *C,
              llvm::raw_ostream *LogStream)
-        : BB(BB), C(*C), CTX(CTX), VSA(VSA), LogStream(LogStream),
-          G(DepGraph(BB, RPE, FRPE, VSA, WI, CTX, *C, LogStream)),
-          RT(RegisterPressureTracker(BB, RPE, FRPE, VSA, WI, CTX, C, LogStream)) {
+        : BB(BB), C(*C), CTX(CTX), VSA(VSA), RCA(RCA), LogStream(LogStream),
+          G(DepGraph(BB, RPE, FRPE, VSA, RCA, WI, CTX, *C, LogStream)),
+          RT(RegisterPressureTracker(BB, RPE, FRPE, VSA, RCA, WI, CTX, C, LogStream)) {
       // init ready list
       for (auto &Node : G.InstNodes) {
         if (Node.Preds.empty()) {
@@ -1557,7 +1632,7 @@ private:
     // Copy constructor for Schedule
     Schedule(const Schedule &S)
         : LogStream(S.LogStream), RT(S.RT), // RT is copyable
-          BB(S.BB), C(S.C), CTX(S.CTX), VSA(S.VSA), Handicapped(S.Handicapped), GreedyRP(S.GreedyRP),
+          BB(S.BB), C(S.C), CTX(S.CTX), VSA(S.VSA), RCA(S.RCA), Handicapped(S.Handicapped), GreedyRP(S.GreedyRP),
           GreedyMW(S.GreedyMW), RegpressureWasCritical(S.RegpressureWasCritical), RefLiveIntervals(S.RefLiveIntervals) {
       G.InstNodes.reserve(S.G.InstNodes.size());
       G.DepEdges.reserve(S.G.DepEdges.size());
@@ -1618,6 +1693,7 @@ private:
 
       ScheduledList.push_back(Node);
       RT.update(Node->I);
+      MaxRegpressure = std::max(MaxRegpressure, RT.getCurrentPressure());
       if (RT.isRegpressureCritical()) {
         RegpressureWasCritical = true;
       }
@@ -1635,20 +1711,6 @@ private:
         }
       }
 
-#ifdef _DEBUG
-      for (auto &Node : G.InstNodes) {
-        if (Node.Preds.empty()) {
-          bool IsInReadyList = std::find(ReadyList.begin(), ReadyList.end(), &Node) != ReadyList.end();
-          bool IsInImmediateReadyList =
-              std::find(ImmediateReadyList.begin(), ImmediateReadyList.end(), &Node) != ImmediateReadyList.end();
-          if (!IsInReadyList && !IsInImmediateReadyList) {
-            IGC_ASSERT(std::find(ScheduledList.begin(), ScheduledList.end(), &Node) != ScheduledList.end());
-          }
-        }
-      }
-
-      IGC_ASSERT(ReadyList.size() + ImmediateReadyList.size() > 0 || ScheduledList.size() == G.InstNodes.size());
-#endif
 
       return std::move(Checkpoint);
     }
@@ -1658,6 +1720,10 @@ private:
     bool canHaveSpills() { return RT.isRegpressureCritical(); }
 
     bool canEverHaveSpills() { return RegpressureWasCritical; }
+
+    int32_t getMaxRegpressure() { return MaxRegpressure; }
+
+    bool isEqualGreedyRP() { return GreedyRP || AllInstructionsScheduledByRP; }
 
     void setGreedyRP(bool Greedy) { GreedyRP = Greedy; }
 
@@ -1735,6 +1801,7 @@ private:
     BasicBlock *BB;
     SchedulingConfig &C;
     VectorShuffleAnalysis *VSA;
+    RematChainsAnalysis *RCA;
     CodeGenContext *CTX;
 
     InstNodePtrList ScheduledList;
@@ -1748,6 +1815,8 @@ private:
     bool GreedyRP = false;
     bool GreedyMW = false;
     bool RegpressureWasCritical = false;
+    bool AllInstructionsScheduledByRP = true;
+    int32_t MaxRegpressure = 0;
 
     DenseMap<Instruction *, int32_t> RefLiveIntervals;
 
@@ -1948,6 +2017,39 @@ private:
         return false;
       };
 
+      auto filterOutNotReadyRematInstructions = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
+        InstNodePtrList NonFilteredNodes;
+        for (InstructionNode *Node : Nodes) {
+          auto *RCP = RCA->getRematChainPattern(Node->I);
+          if (!RCP || (RCP->getLastInst() == Node->I)) {
+            NonFilteredNodes.push_back(Node);
+          } else {
+            // if the target instruction is not ready, we need to filter out the first remated instruction
+            bool IsReady = true;
+            Instruction *TargetInst = RCP->getRematTargetInst();
+            InstructionNode *TargetNode = G.InstToNode[TargetInst];
+            for (const auto &PN : TargetNode->Preds) {
+              IGC_ASSERT(!PN->Deleted);
+              if (PN->Src->I == RCP->getLastInst()) {
+                continue;
+              }
+              IsReady = false;
+              break;
+            }
+            if (IsReady) {
+              NonFilteredNodes.push_back(Node);
+            } else {
+              PrintDumpLevel(VerbosityLevel::High, "Filtering out not ready remat instruction: ");
+              PrintInstructionDumpLevel(VerbosityLevel::High, Node->I);
+            }
+          }
+        }
+        if (NonFilteredNodes.size() > 0) {
+          Nodes = std::move(NonFilteredNodes);
+        }
+        return Nodes;
+      };
+
       // ===                                                          ===
       // === Choosing if we have instructions to schedule immediately ===
       // ===                                                          ===
@@ -2022,7 +2124,11 @@ private:
         Info.resize(20, ' ');
 
         auto *V2SP = VSA->getVectorToScalarsPattern(Node->I);
+        auto *RCP = RCA->getRematChainPattern(Node->I);
 
+        if (RCP) {
+          VS_String = "REM";
+        }
         if (DT && DT->isVectorShuffle()) {
           VS_String = "VS ";
         }
@@ -2066,6 +2172,8 @@ private:
           FilteredReadyList = ReadyList;
           CanClone = false;
         }
+
+        FilteredReadyList = filterOutNotReadyRematInstructions(FilteredReadyList);
 
         IGC_ASSERT(FilteredReadyList.size() > 0);
 
@@ -2121,8 +2229,15 @@ private:
           // Don't clone if we are choosing by RP
           CanClone = false;
         }
+
+#ifdef _DEBUG
         IGC_ASSERT(std::find(ReadyList.begin(), ReadyList.end(), Node) != ReadyList.end());
+#endif
         IGC_ASSERT(Node != nullptr);
+
+        if (!ChooseByRP) {
+          AllInstructionsScheduledByRP = false;
+        }
 
         // Dump the info
         std::string Info = std::to_string(RT.getCurrentPressure()) + ", " + std::to_string(RT.estimate(Node->I));
@@ -2211,6 +2326,7 @@ bool CodeScheduling::runOnFunction(Function &F) {
   // AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   AA = nullptr; // using alias information is not supported yet
   VSA = &getAnalysis<VectorShuffleAnalysis>();
+  RCA = &getAnalysis<RematChainsAnalysis>();
   RPE = &getAnalysis<IGCLivenessAnalysis>();
   FRPE = &getAnalysis<IGCFunctionExternalRegPressureAnalysis>();
   WI = &FRPE->getWIAnalysis(&F);
@@ -2221,7 +2337,7 @@ bool CodeScheduling::runOnFunction(Function &F) {
     if (!std::any_of(BB.begin(), BB.end(), [](Instruction &I) { return isDPAS(&I); }))
       continue;
 
-    BBScheduler Scheduler(&BB, RPE, FRPE, AA, VSA, CTX, &Config, LogStream);
+    BBScheduler Scheduler(&BB, RPE, FRPE, AA, VSA, RCA, CTX, &Config, LogStream);
     Changed |= Scheduler.schedule();
   }
 

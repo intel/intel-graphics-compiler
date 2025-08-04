@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CISACodeGen/VectorShuffleAnalysis.hpp"
+#include "Compiler/CISACodeGen/RematChainsAnalysis.hpp"
 #include "Compiler/CISACodeGen/TranslationTable.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
@@ -28,6 +29,7 @@ class CodeScheduling : public llvm::FunctionPass {
   // llvm::LoopInfo* LI = nullptr;
   llvm::AliasAnalysis *AA = nullptr;
   VectorShuffleAnalysis *VSA = nullptr;
+  RematChainsAnalysis *RCA = nullptr;
   WIAnalysisRunner *WI = nullptr;
   // IGCMD::MetaDataUtils* MDUtils = nullptr;
   IGCLivenessAnalysis *RPE = nullptr;
@@ -51,6 +53,7 @@ public:
     AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<VectorShuffleAnalysis>();
+    AU.addRequired<RematChainsAnalysis>();
 
     // AU.addPreserved<llvm::DominatorTreeWrapperPass>();
     // AU.addPreserved<llvm::LoopInfoWrapperPass>();
@@ -58,6 +61,7 @@ public:
     AU.addPreserved<IGCLivenessAnalysis>();
     AU.addPreserved<IGCFunctionExternalRegPressureAnalysis>();
     AU.addPreserved<VectorShuffleAnalysis>();
+    AU.addPreserved<RematChainsAnalysis>();
   }
 
 private:

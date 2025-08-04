@@ -283,6 +283,10 @@ DECLARE_IGC_REGKEY(bool, DisableCodeScheduling, true, "Disable local code schedu
 DECLARE_IGC_REGKEY(bool, CodeSchedulingOnlyRecompilation, false, "Enable code scheduling only on 2nd try", true)
 
 DECLARE_IGC_REGKEY(bool, EnableCodeSchedulingIfNoSpills, false, "Try rescheduling also when there are no spills", true)
+DECLARE_IGC_REGKEY(bool, CodeSchedulingGreedyRPHigherRPCommit, false, "If GreedyRP was chosen, commit it also if the estimated RP "
+                   "is higher than the original schedule RP", true)
+DECLARE_IGC_REGKEY(bool, CodeSchedulingMWOptimizedHigherRPCommit, true, "If the new schedule is expected to have better latency hiding, "
+                   "commit it also if the estimated RP is higher than the original schedule RP", true)
 DECLARE_IGC_REGKEY(bool, CodeSchedulingForceMWOnly, false, "Force scheduling to consider only latency", true)
 DECLARE_IGC_REGKEY(bool, CodeSchedulingForceRPOnly, false, "Force scheduling to consider only register pressure", true)
 DECLARE_IGC_REGKEY(DWORD, CodeSchedulingAttemptsLimit, 10, "Limit the number of scheduling attempts", true)

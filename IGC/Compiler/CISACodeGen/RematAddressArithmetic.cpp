@@ -371,6 +371,8 @@ void CloneAddressArithmetic::rematWholeChain(llvm::Instruction *I, RematChain &C
         Clone->setOperand(i, OldToNew[OldOp]);
     }
 
+    MDNode *Node = MDNode::get(I->getContext(), MDString::get(I->getContext(), "remat"));
+    Clone->setMetadata("remat", Node);
     Clone->setName("remat");
     Clone->insertBefore(I);
   }
@@ -441,6 +443,8 @@ bool CloneAddressArithmetic::rematerialize(RematSet &ToProcess, unsigned int Flo
       PRINT_LOG(" --> ");
 
       auto Clone = El->clone();
+      MDNode *Node = MDNode::get(El->getContext(), MDString::get(El->getContext(), "remat"));
+      Clone->setMetadata("remat", Node);
       Clone->setName("cloned_" + El->getName());
       Clone->insertBefore(UserInst);
       *Use = Clone;
