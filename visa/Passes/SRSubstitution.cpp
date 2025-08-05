@@ -669,36 +669,25 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
       return (G4_INST *)nullptr;
     };
 
-    // The source opndNum of send instruction which was defined
-    Gen4_Operand_Number opndNum = (*I).second;
-    unsigned srcStartGRF = inst->getOperand(opndNum)->getLinearizedStart() /
-                           builder.getGRFSize();
     //if opndNum + offset is defined multiple times, cannobe be removed
     G4_Operand *dst = movInst->getDst();
-    unsigned startOffset =
-        (dst->getLinearizedStart() / builder.getGRFSize()) - srcStartGRF;
-    unsigned dstSize = (dst->getLinearizedEnd() - dst->getLinearizedStart() +
-                        builder.getGRFSize() - 1) /
-                       builder.getGRFSize();
+    unsigned offset = dst->getLeftBound() / builder.getGRFSize();
+    // The source opndNum of send instruction which was defined
+    Gen4_Operand_Number opndNum = (*I).second;
 
     if (isRemoveAble(movInst)) {
       auto iter = std::find_if(
           dstSrcRegs.dstSrcMap.begin(), dstSrcRegs.dstSrcMap.end(),
-          [opndNum, dst](regMapBRA regmap) {
-                         return regmap.opndNum == opndNum &&
-                                !((regmap.inst->getDst()->getLinearizedStart() >
-                                     dst->getLinearizedEnd()) ||
-                                 (dst->getLinearizedStart() >
-                                     regmap.inst->getDst()->getLinearizedEnd()));
-          });
+                            [opndNum, offset](regMapBRA regmap) {
+                              return regmap.opndNum == opndNum &&
+                                     regmap.offset == offset;
+                            });
       // if multiple defined, cannot be removed
       if (iter != dstSrcRegs.dstSrcMap.end()) {
-        for (unsigned offset = startOffset; offset < dstSize; offset++) {
-          notRemoveableMap.push_back(std::make_pair(opndNum, offset));
-        }
+        notRemoveableMap.push_back(std::make_pair(opndNum, offset));
       } else {
         G4_Operand *src = movInst->getSrc(0);
-        regMapBRA regPair(movInst, opndNum, startOffset, src); // mov source
+        regMapBRA regPair(movInst, opndNum, offset, src);//mov source
         dstSrcRegs.dstSrcMap.push_back(regPair);
         firstDefID = std::min(firstDefID, def.first->getLocalId());
         movInstNum++;
@@ -713,7 +702,7 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
           // The offset is the offset of original dst, which is used to identify
           // the original register used in send.
           // The opndNum is the opndNum of send.
-          regMapBRA regPair(movInst, opndNum, startOffset,
+          regMapBRA regPair(movInst, opndNum, offset,
                             lvnMov->getDst()); // the lvn mov dst can be reused
           dstSrcRegs.dstSrcMap.push_back(regPair);
           firstDefID = std::min(firstDefID, def.first->getLocalId());
@@ -721,9 +710,7 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
           continue;
         }
       }
-      for (unsigned offset = startOffset; offset < dstSize; offset++) {
-        notRemoveableMap.push_back(std::make_pair(opndNum, offset));
-      }
+      notRemoveableMap.push_back(std::make_pair(opndNum, offset));
     }
   }
 
@@ -789,10 +776,9 @@ bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
     bool replaced = false;
     if (j < (int)dstSrcRegs.dstSrcMap.size() &&
         dstSrcRegs.dstSrcMap[j].opndNum == Opnd_src0) {
-      int opndSize =
-          (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
-           dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + GRFSize - 1) /
-          GRFSize;
+      int opndSize = (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
+                      dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + 1) /
+                     GRFSize;
       int srcOffset = src0->getLeftBound() / GRFSize + i;
       int opndOffset = dstSrcRegs.dstSrcMap[j].offset;
 
@@ -833,10 +819,9 @@ bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
       bool replaced = false;
       if (j < (int)dstSrcRegs.dstSrcMap.size() &&
           dstSrcRegs.dstSrcMap[j].opndNum == Opnd_src1) {
-        int opndSize =
-            (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
-             dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + GRFSize - 1) /
-            GRFSize;
+        int opndSize = (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
+             dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + 1) /
+                       GRFSize;
         int srcOffset = src1->getLeftBound() / GRFSize + i;
         int opndOffset = dstSrcRegs.dstSrcMap[j].offset;
 
