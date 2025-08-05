@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "common/igc_regkeys.hpp"
 #include "GenIntrinsicFunctions.h"
 #include "GenIntrinsicDefinition.h"
 #include "GenIntrinsicLookup.h"
@@ -128,7 +127,7 @@ private:
     llvm::LLVMContext &ctx = module.getContext();
     std::string funcName = GetName(overloadedTypes, overloadedPointeeTys);
     llvm::FunctionType *pFuncType = GetType(ctx, overloadedTypes);
-    llvm::AttributeList attribs = GetAttributeList(ctx, overloadedPointeeTys);
+    llvm::AttributeList attribs = GetAttributeList(module, overloadedPointeeTys);
     // There can never be multiple globals with the same name of different types,
     // because intrinsics must be a specific type.
     IGCLLVM::Module &M = static_cast<IGCLLVM::Module &>(module);
@@ -195,8 +194,9 @@ private:
     return llvm::FunctionType::get(resultTy, argTys, false);
   }
 
-  static llvm::AttributeList GetAttributeList(llvm::LLVMContext &ctx,
+  static llvm::AttributeList GetAttributeList(llvm::Module &M,
                                               const llvm::ArrayRef<llvm::Type *> &overloadedPointeeTys) {
+    auto &ctx = M.getContext();
     // 1. Instantiate regular attributes for the given intrinsic
     llvm::ArrayRef<llvm::Attribute::AttrKind> attributeKinds = IntrinsicDefinitionT::scAttributeKinds;
 

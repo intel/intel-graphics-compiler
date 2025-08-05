@@ -2374,6 +2374,9 @@ void appendToUsed(llvm::Module &M, ArrayRef<GlobalValue *> Values) {
   GV->setSection("llvm.metadata");
 }
 
+void setupTriple(CodeGenContext &Ctx, StringRef OS) {
+}
+
 bool safeScheduleUp(llvm::BasicBlock *BB, llvm::Value *V, llvm::Instruction *&InsertPos,
                     llvm::DenseSet<llvm::Instruction *> Scheduled) {
   llvm::Instruction *I = llvm::dyn_cast<llvm::Instruction>(V);

@@ -474,6 +474,8 @@ inline float GetThreadOccupancyPerSubslice(SIMDMode simdMode, unsigned threadGro
 // Global can now be any pointer type that uses addrspace
 void appendToUsed(llvm::Module &M, llvm::ArrayRef<llvm::GlobalValue *> Values);
 
+void setupTriple(CodeGenContext &Ctx, llvm::StringRef OS = "");
+
 bool safeScheduleUp(llvm::BasicBlock *BB, llvm::Value *V, llvm::Instruction *&InsertPos,
                     llvm::DenseSet<llvm::Instruction *> Scheduled);
 
