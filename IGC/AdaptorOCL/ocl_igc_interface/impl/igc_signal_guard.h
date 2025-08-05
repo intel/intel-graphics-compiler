@@ -16,14 +16,19 @@ class SignalGuard {
 public:
   SignalGuard(int Signal, void (*Handler)(int, siginfo_t *, void *)) : Signal(Signal) {
     sigaction(Signal, nullptr, &SAOld);
-    struct sigaction SA{};
-    sigemptyset(&SA.sa_mask);
-    SA.sa_sigaction = Handler;
-    SA.sa_flags = 0;
-    sigaction(Signal, &SA, nullptr);
+    if (SAOld.sa_handler == SIG_DFL) {
+      struct sigaction SA;
+      sigemptyset(&SA.sa_mask);
+      SA.sa_sigaction = Handler;
+      SA.sa_flags = 0;
+      sigaction(Signal, &SA, nullptr);
+    }
   }
 
-  ~SignalGuard() { sigaction(Signal, &SAOld, nullptr); }
+  ~SignalGuard() {
+    if (SAOld.sa_handler == SIG_DFL)
+      sigaction(Signal, &SAOld, nullptr);
+  }
 
   SignalGuard(const SignalGuard &) = delete;
   SignalGuard &operator=(const SignalGuard &) = delete;
