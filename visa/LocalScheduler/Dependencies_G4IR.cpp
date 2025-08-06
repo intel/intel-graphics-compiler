@@ -189,6 +189,15 @@ DepType vISA::getDepScratchSend(G4_INST *curInst, G4_INST *liveInst) {
   return NODEP;
 }
 
+bool vISA::isNotLatencyBarrier (DepType type) {
+  if (type == CONTROL_FLOW_BARRIER ||
+      type == OPT_BARRIER ||
+      type == SEND_BARRIER ||
+      type == MSG_BARRIER)
+    return true;
+  return false;
+}
+
 DepType vISA::CheckBarrier(G4_INST *inst) {
   if (inst->isOptBarrier() || inst->isAtomicInst() || inst->opcode() == G4_madm) {
     return OPT_BARRIER;

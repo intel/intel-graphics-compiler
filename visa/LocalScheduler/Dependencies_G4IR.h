@@ -38,6 +38,8 @@ DepType getDepSend(G4_INST *curInst, G4_INST *liveInst, bool BTIIsRestrict);
 
 DepType getDepScratchSend(G4_INST *curInst, G4_INST *liveInst);
 
+bool isNotLatencyBarrier(DepType type);
+
 DepType CheckBarrier(G4_INST *inst);
 
 DepType getDepForOpnd(Gen4_Operand_Number cur, Gen4_Operand_Number liv);
