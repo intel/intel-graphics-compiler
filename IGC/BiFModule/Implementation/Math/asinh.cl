@@ -21,20 +21,25 @@ INLINE float __intel_asinh_f32( float x, bool doFast )
 
     if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)) && doFast)
     {
+        float abs_x = SPIRV_OCL_BUILTIN(fabs, _f32, )(x);
         // Implemented as log(x + sqrt(x*x + 1)).
         // Conformance test checks for this "overflow" case, but
         // I don't think we should have to handle it.
-        if( x > 1500.0f )
+        if( abs_x > 1500.0f )
         {
-            result = SPIRV_OCL_BUILTIN(log, _f32, )(x) + M_LN2_F;
+            result = SPIRV_OCL_BUILTIN(log, _f32, )(abs_x) + M_LN2_F;
+        }
+        else if (abs_x < 0x1.0p-12) {
+            result = abs_x;
         }
         else
         {
-            result = x * x + 1.0f;
+            result = abs_x * abs_x + 1.0f;
             result = SPIRV_OCL_BUILTIN(sqrt, _f32, )( result );
-            result = x + result;
+            result = abs_x + result;
             result = SPIRV_OCL_BUILTIN(log, _f32, )( result );
         }
+        result = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(result, x);
     }
     else
     {
