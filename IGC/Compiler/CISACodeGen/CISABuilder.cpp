@@ -5634,8 +5634,7 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
 
   createSymbolAndGlobalHostAccessTables(hasSymbolTable, *pMainKernel, pOutput->m_scratchSpaceUsedBySpills);
   createRelocationTables(*pMainKernel);
-  if (context->enableZEBinary())
-    CreateFuncAttributeTable(pMainKernel, pFGA);
+  CreateFuncAttributeTable(pMainKernel, pFGA);
 
   pOutput->m_numGRFSpillFill = jitInfo->stats.numGRFSpillFillWeighted;
 
@@ -5652,7 +5651,7 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
 
   pOutput->m_perThreadArgumentStackSize = m_argumentStackSize;
 
-  if (context->enableZEBinary() && context->type == ShaderType::OPENCL_SHADER &&
+  if (context->type == ShaderType::OPENCL_SHADER &&
       IGC_IS_FLAG_ENABLED(EnableKernelCostInfo)) {
     kci = createKernelCostInfo(*pMainKernel);
   }
@@ -5710,8 +5709,6 @@ void CEncoder::createRelocationTables(VISAKernel &pMainKernel) {
 }
 
 const vISA::KernelCostInfo *CEncoder::createKernelCostInfo(VISAKernel &pMainKernel) {
-  CodeGenContext *context = m_program->GetContext();
-  IGC_ASSERT(context->enableZEBinary());
   const vISA::KernelCostInfo *KCI = nullptr;
   pMainKernel.getKernelCostInfo(KCI);
   if (!KCI) {

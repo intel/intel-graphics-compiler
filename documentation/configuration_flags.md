@@ -250,7 +250,7 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableSplitIndirectEEtoSel` | Enable the split indirect extractelement to icmp+sel pass | - |
 | `EnableSplitUnalignedVector` | Enable Splitting of unaligned vectors for loads and stores | - |
 | `EnableStatefulAtomic` | Enable promoting stateless atomic to stateful atomic. | - |
-| `EnableStatefulToken` | Enable generating patch token to indicate a ptr argument is fully converted to stateful (temporary) | - |
+| `EnableStatefulToken` | Enable to indicate ptr arguments are fully converted to stateful (temporary) | - |
 | `EnableStatelessToStateful` | Enable Stateless To Stateful transformation for global and constant address space in OpenCL kernels | - |
 | `EnableSumFractions` | Enable SumFractions optimization in CustomUnsafeOptPass. | - |
 | `EnableTextureLoadCoalescing` | Enable merging non-uniform loads from bindless textures | - |

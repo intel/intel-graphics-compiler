@@ -65,7 +65,6 @@ public:
 
   }
 
-  bool enableZEBinary() const override { return true; }
   bool isSPIRV() const;
   void setAsSPIRV();
   float getProfilingTimerResolution();

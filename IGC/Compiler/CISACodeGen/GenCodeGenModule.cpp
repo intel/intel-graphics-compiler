@@ -459,13 +459,12 @@ bool GenXCodeGenModule::runOnModule(Module &M) {
   // compiled once and runtime must relocate its address for each caller.
   m_FunctionCloningThreshold = 0;
   if (IGC_IS_FLAG_ENABLED(EnableFunctionCloningControl)) {
-    if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->enableZEBinary()) {
-      // Avoid cloning by default on zebin
-      m_FunctionCloningThreshold = 1;
-    }
     if (IGC_GET_FLAG_VALUE(FunctionCloningThreshold) != 0) {
       // Overwrite with debug flag
       m_FunctionCloningThreshold = IGC_GET_FLAG_VALUE(FunctionCloningThreshold);
+    } else {
+      // Avoid cloning by default on zebin
+      m_FunctionCloningThreshold = 1;
     }
   }
 

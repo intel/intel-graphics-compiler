@@ -699,8 +699,6 @@ int32_t CodeGenContext::getNumThreadsPerEU() const { return -1; }
 
 uint32_t CodeGenContext::getExpGRFSize() const { return 0; }
 
-bool CodeGenContext::enableZEBinary() const { return false; }
-
 /// parameter "returnDefault" controls what to return when
 /// there is no user-forced setting
 uint32_t CodeGenContext::getNumGRFPerThread(bool returnDefault) {

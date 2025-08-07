@@ -1033,7 +1033,6 @@ public:
   virtual int16_t getVectorCoalescingControl() const;
   virtual uint32_t getPrivateMemoryMinimalSizePerThread() const;
   virtual uint32_t getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const;
-  virtual bool enableZEBinary() const;
   bool isPOSH() const;
   virtual bool isBufferBoundsChecking() const;
   virtual uint64_t getMinimumValidAddress() const;

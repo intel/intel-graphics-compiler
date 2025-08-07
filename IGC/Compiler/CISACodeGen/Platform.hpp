@@ -556,19 +556,6 @@ public:
     return m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE && IGC_IS_FLAG_ENABLED(EnableQWRotateInstructions);
   }
 
-  bool supportsZEBin() const {
-    switch (m_platformInfo.eProductFamily) {
-    default:
-      return true;
-    case IGFX_BROADWELL:
-    case IGFX_BROXTON:
-    case IGFX_GEMINILAKE:
-    case IGFX_LAKEFIELD:
-    case IGFX_ELKHARTLAKE:
-      return false;
-    }
-  }
-
   bool isIntegratedGraphics() const {
     switch (m_platformInfo.eProductFamily) {
     case IGFX_DG1:

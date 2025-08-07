@@ -292,7 +292,6 @@ using namespace TC;
 //
 // Assumptions:
 // 1. ZEBinary output format is used in SPMD+ESIMD case.
-// TODO: error out if patch token output format is used.
 bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs, TC::STB_TranslateOutputArgs *pOutputArgs,
                                 TC::TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &IGCPlatform,
                                 float profilingTimerResolution, const ShaderHash &inputShHash,

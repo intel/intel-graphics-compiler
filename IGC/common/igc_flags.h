@@ -540,7 +540,7 @@ DECLARE_IGC_REGKEY(
     "Enable Stateless To Stateful transformation for global and constant address space in OpenCL kernels", false)
 DECLARE_IGC_REGKEY(
     bool, EnableStatefulToken, true,
-    "Enable generating patch token to indicate a ptr argument is fully converted to stateful (temporary)", false)
+    "Enable to indicate ptr arguments are fully converted to stateful (temporary)", false)
 DECLARE_IGC_REGKEY(bool, DisableConstBaseGlobalBaseArg, false,
                    "Do no generate kernel implicit arguments: constBase and globalBase", false)
 DECLARE_IGC_REGKEY(bool, EnableGenUpdateCB, false, "Enable derived constant optimization.", false)
