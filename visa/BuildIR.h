@@ -281,8 +281,8 @@ private:
     };
     static const int MAX_POOL_SIZE =
         8; // reg pressure control, for now just do naive first-come first-serve
-    std::array<ImmVal, MAX_POOL_SIZE> immArray;
-    std::array<G4_Declare *, MAX_POOL_SIZE> dclArray;
+    std::array<ImmVal, MAX_POOL_SIZE> immArray = {};
+    std::array<G4_Declare *, MAX_POOL_SIZE> dclArray = {};
     int curSize = 0;
     IR_Builder &builder;
 

@@ -582,10 +582,6 @@ void FlowGraph::normalizeFlowGraph() {
   for (BB_LIST_ITER it = BBs.begin(); it != BBs.end(); it++) {
     G4_BB *bb = *it;
 
-    if (bb->getBBType() & G4_BB_INIT_TYPE) {
-      bb->getFuncInfo();
-    }
-
     if (bb->isEndWithFCall()) {
       G4_BB *retBB = bb->Succs.front();
       if (retBB->Preds.size() > 1) {
