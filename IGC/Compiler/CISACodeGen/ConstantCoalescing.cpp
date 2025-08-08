@@ -1767,7 +1767,6 @@ void ConstantCoalescing::ScatterToSampler(Instruction *load, Value *bufIdxV, uin
   IGC_ASSERT((!load->getType()->isVectorTy()) ||
              (cast<IGCLLVM::FixedVectorType>(load->getType())->getNumElements() <= 4));
 
-  const bool useByteAddress = m_ctx->m_DriverInfo.UsesTypedConstantBuffersWithByteAddress();
 
   // Code below doesn't support crossing 4 DWORD boundary i.e. mapping a
   // single input load to multiple sampler loads.
@@ -1780,33 +1779,28 @@ void ConstantCoalescing::ScatterToSampler(Instruction *load, Value *bufIdxV, uin
     irBuilder->SetInsertPoint(baseInBytes);
 
     WIAnalysis::WIDependancy baseInBytesDep = wiAns->whichDepend(baseInBytes);
+    Value *baseAddressInOwords = GetSamplerAlignedAddress(baseInBytes);
+    IGC_ASSERT(baseAddressInOwords);
 
-    // Data address for sampler load, either in OWORDs or in bytes
-    Value *chunkBaseAddress = baseInBytes;
-    if (!useByteAddress) {
-      // base address is in OWORDs
-      Value *baseAddressInOwords = GetSamplerAlignedAddress(baseInBytes);
-      IGC_ASSERT(baseAddressInOwords);
-
-      // it is possible that baseInBytes is uniform, yet load is non-uniform due to the use location of load
-      if (baseAddressInOwords != baseInBytes->getOperand(0)) {
-        Value *newVal = irBuilder->CreateShl(baseAddressInOwords, ConstantInt::get(baseAddressInOwords->getType(), 4));
-        wiAns->incUpdateDepend(newVal, baseInBytesDep);
-        baseInBytes->replaceAllUsesWith(newVal);
-      } else if (wiAns->whichDepend(baseAddressInOwords) != baseInBytesDep) {
-        // quick fix for a special case: baseAddressInOwords is uniform and baseInBytes is not uniform.
-        // If we use baseInBytes-src0 (elementIndx) directly at cf-join point by this transform,
-        // we can change the uniformness of baseAddressInOwords
-        baseAddressInOwords =
-            irBuilder->CreateShl(baseAddressInOwords, ConstantInt::get(baseAddressInOwords->getType(), 0));
-        wiAns->incUpdateDepend(baseAddressInOwords, baseInBytesDep);
-        Value *newVal = irBuilder->CreateShl(baseAddressInOwords, ConstantInt::get(baseAddressInOwords->getType(), 4));
-        wiAns->incUpdateDepend(newVal, baseInBytesDep);
-        baseInBytes->replaceAllUsesWith(newVal);
-      }
-
-      chunkBaseAddress = baseAddressInOwords;
+    // it is possible that baseInBytes is uniform, yet load is non-uniform due to the use location of load
+    if (baseAddressInOwords != baseInBytes->getOperand(0)) {
+      Value *newVal = irBuilder->CreateShl(baseAddressInOwords, ConstantInt::get(baseAddressInOwords->getType(), 4));
+      wiAns->incUpdateDepend(newVal, baseInBytesDep);
+      baseInBytes->replaceAllUsesWith(newVal);
+    } else if (wiAns->whichDepend(baseAddressInOwords) != baseInBytesDep) {
+      // quick fix for a special case: baseAddressInOwords is uniform and baseInBytes is not uniform.
+      // If we use baseInBytes-src0 (elementIndx) directly at cf-join point by this transform,
+      // we can change the uniformness of baseAddressInOwords
+      baseAddressInOwords =
+          irBuilder->CreateShl(baseAddressInOwords, ConstantInt::get(baseAddressInOwords->getType(), 0));
+      wiAns->incUpdateDepend(baseAddressInOwords, baseInBytesDep);
+      Value *newVal = irBuilder->CreateShl(baseAddressInOwords, ConstantInt::get(baseAddressInOwords->getType(), 4));
+      wiAns->incUpdateDepend(newVal, baseInBytesDep);
+      baseInBytes->replaceAllUsesWith(newVal);
     }
+
+    Value *chunkBaseAddress = baseAddressInOwords;
+
     BufChunk *cov_chunk = nullptr;
     for (std::vector<BufChunk *>::reverse_iterator rit = chunk_vec.rbegin(), rie = chunk_vec.rend(); rit != rie;
          ++rit) {
@@ -1836,12 +1830,11 @@ void ConstantCoalescing::ScatterToSampler(Instruction *load, Value *bufIdxV, uin
 
       Value *dataAddress = chunkBaseAddress;
       if (offsetInBytes >= samplerLoadSizeInBytes) {
-        const uint32_t chunkOffset = (useByteAddress) ? (cov_chunk->chunkStart * cov_chunk->elementSize) : // in bytes
-                                         (offsetInBytes / samplerLoadSizeInBytes);                         // in OWORDs
+        const uint32_t chunkOffset = offsetInBytes / samplerLoadSizeInBytes;
         dataAddress = irBuilder->CreateAdd(dataAddress, ConstantInt::get(dataAddress->getType(), chunkOffset));
         wiAns->incUpdateDepend(dataAddress, WIAnalysis::RANDOM);
       }
-      if (dataAddress->getType()->getIntegerBitWidth() >= 32 && !useByteAddress) {
+      if (dataAddress->getType()->getIntegerBitWidth() >= 32) {
         dataAddress = irBuilder->CreateAnd(dataAddress, ConstantInt::get(dataAddress->getType(), 0x0FFFFFFF));
         wiAns->incUpdateDepend(dataAddress, WIAnalysis::RANDOM);
       }

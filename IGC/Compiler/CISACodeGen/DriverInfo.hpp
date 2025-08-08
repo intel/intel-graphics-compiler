@@ -76,9 +76,6 @@ public:
   /// The driver uses typed or untyped constant buffers (for ld_raw vs sampler)
   virtual bool UsesTypedConstantBuffers3D() const { return true; }
 
-  /// The driver uses typed constant buffers requiring byte address access.
-  virtual bool UsesTypedConstantBuffersWithByteAddress() const { return false; }
-
   /// The driver uses typed or untyped constant buffers (for ld_raw vs sampler)
   virtual bool UsesTypedConstantBuffersGPGPU() const { return true; }
 
