@@ -365,14 +365,13 @@ createTargetMachine(const vc::CompileOptions &Opts,
 static void optimizeIR(const vc::CompileOptions &Opts,
                        const vc::ExternalData &ExtData, TargetMachine &TM,
                        Module &M) {
-
+#if LLVM_VERSION_MAJOR < 16
   unsigned OptLevel;
   if (Opts.IROptLevel == vc::OptimizerLevel::None)
     OptLevel = 0;
   else
     OptLevel = 2;
 
-#if LLVM_VERSION_MAJOR < 16
   vc::PassManager PerModulePasses;
   auto *BC = new GenXBackendConfig{
       createBackendOptions(Opts),
@@ -450,9 +449,23 @@ static void optimizeIR(const vc::CompileOptions &Opts,
   PB.registerLoopAnalyses(LAM);
   PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
-  llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(
-      OptLevel == 2 ? llvm::OptimizationLevel::O2
-                    : llvm::OptimizationLevel::O0);
+  llvm::OptimizationLevel OptLevel;
+  if (Opts.IROptLevel == vc::OptimizerLevel::None)
+    OptLevel = llvm::OptimizationLevel::O0;
+  else
+    OptLevel = llvm::OptimizationLevel::O2;
+
+#if LLVM_VERSION_MAJOR < 17
+  // On llvm-16 a separate method must be used to build default O0 pipeline,
+  // otherwise it hits an assertion.
+  llvm::ModulePassManager MPM;
+  if (OptLevel == llvm::OptimizationLevel::O0)
+    MPM = PB.buildO0DefaultPipeline(OptLevel);
+  else
+    MPM = PB.buildPerModuleDefaultPipeline(OptLevel);
+#else // LLVM_VERSION_MAJOR < 17
+  llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(OptLevel);
+#endif // LLVM_VERSION_MAJOR < 17
 
   MPM.run(M, MAM);
 #endif // LLVM_VERSION_MAJOR < 16
