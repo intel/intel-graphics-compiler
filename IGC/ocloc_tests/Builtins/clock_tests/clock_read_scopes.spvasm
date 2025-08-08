@@ -1,0 +1,60 @@
+
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2025 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; REQUIRES: spirv-as, regkeys, pvc-supported
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'PrintToConsole=1 PrintAfter=BuiltinsConverterFunction'" 2>&1 | FileCheck %s
+; CHECK: @llvm.genx.GenISA.cycleCounter()
+
+; Test case for ReadClockKHR with different scopes (subgroup, device, workgroup)
+               OpCapability Addresses
+               OpCapability Linkage
+               OpCapability Kernel
+               OpCapability Int64
+               OpCapability ShaderClockKHR
+               OpExtension "SPV_KHR_shader_clock"
+               OpMemoryModel Physical64 OpenCL
+               OpEntryPoint Kernel %clock_scopes_test "clock_read_scopes_test"
+               OpDecorate %buf Alignment 4
+      %ulong = OpTypeInt 64 0
+       %uint = OpTypeInt 32 0
+     %uint_0 = OpConstant %uint 0
+     %uint_1 = OpConstant %uint 1
+     %uint_2 = OpConstant %uint 2
+     %uint_3 = OpConstant %uint 3
+    %ulong_1 = OpConstant %ulong 1
+    %ulong_2 = OpConstant %ulong 2
+    %ulong_3 = OpConstant %ulong 3
+%scope_subgroup = OpConstant %uint 3
+%scope_workgroup = OpConstant %uint 2
+%scope_device = OpConstant %uint 1
+       %void = OpTypeVoid
+%_ptr_CrossWorkgroup_uint = OpTypePointer CrossWorkgroup %uint
+   %functype = OpTypeFunction %void %_ptr_CrossWorkgroup_uint
+%clock_scopes_test = OpFunction %void None %functype
+        %buf = OpFunctionParameter %_ptr_CrossWorkgroup_uint
+  %funcstart = OpLabel
+      %buf_1 = OpInBoundsPtrAccessChain %_ptr_CrossWorkgroup_uint %buf %ulong_1
+      %buf_2 = OpInBoundsPtrAccessChain %_ptr_CrossWorkgroup_uint %buf %ulong_2
+      %buf_3 = OpInBoundsPtrAccessChain %_ptr_CrossWorkgroup_uint %buf %ulong_3
+      ; Test device scope
+    %clock_device = OpReadClockKHR %ulong %scope_device
+    %device_low = OpUConvert %uint %clock_device
+               OpStore %buf %device_low Volatile|Aligned 4
+      ; Test workgroup scope
+    %clock_workgroup = OpReadClockKHR %ulong %scope_workgroup
+    %workgroup_low = OpUConvert %uint %clock_workgroup
+               OpStore %buf_1 %workgroup_low Volatile|Aligned 4
+      ; Test subgroup scope
+    %clock_subgroup = OpReadClockKHR %ulong %scope_subgroup
+    %subgroup_low = OpUConvert %uint %clock_subgroup
+               OpStore %buf_2 %subgroup_low Volatile|Aligned 4
+               OpStore %buf_3 %uint_1 Volatile|Aligned 4
+               OpReturn
+               OpFunctionEnd

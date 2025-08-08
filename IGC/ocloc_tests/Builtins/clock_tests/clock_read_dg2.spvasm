@@ -1,0 +1,54 @@
+
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2025 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; REQUIRES: spirv-as, regkeys
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'PrintToConsole=1 PrintAfter=BuiltinsConverterFunction'" 2>&1 | FileCheck %s
+; CHECK: @llvm.genx.GenISA.cycleCounter()
+
+; Test case for ReadClockKHR on DG2 device (different from PVC)
+               OpCapability Addresses
+               OpCapability Linkage
+               OpCapability Kernel
+               OpCapability Int64
+               OpCapability ShaderClockKHR
+               OpExtension "SPV_KHR_shader_clock"
+               OpMemoryModel Physical64 OpenCL
+               OpEntryPoint Kernel %clock_dg2_test "clock_read_dg2_test"
+               OpDecorate %buf Alignment 4
+      %ulong = OpTypeInt 64 0
+       %uint = OpTypeInt 32 0
+      %uint2 = OpTypeVector %uint 2
+     %uint_0 = OpConstant %uint 0
+     %uint_1 = OpConstant %uint 1
+    %ulong_1 = OpConstant %ulong 1
+    %ulong_2 = OpConstant %ulong 2
+    %ulong_3 = OpConstant %ulong 3
+%scope_device = OpConstant %uint 1
+       %void = OpTypeVoid
+%_ptr_CrossWorkgroup_uint = OpTypePointer CrossWorkgroup %uint
+   %functype = OpTypeFunction %void %_ptr_CrossWorkgroup_uint
+%clock_dg2_test = OpFunction %void None %functype
+        %buf = OpFunctionParameter %_ptr_CrossWorkgroup_uint
+  %funcstart = OpLabel
+      %buf_1 = OpInBoundsPtrAccessChain %_ptr_CrossWorkgroup_uint %buf %ulong_1
+      %buf_2 = OpInBoundsPtrAccessChain %_ptr_CrossWorkgroup_uint %buf %ulong_2
+      %buf_3 = OpInBoundsPtrAccessChain %_ptr_CrossWorkgroup_uint %buf %ulong_3
+      ; Test both variants on DG2
+    %clock_ulong = OpReadClockKHR %ulong %scope_device
+    %clock_uint2 = OpReadClockKHR %uint2 %scope_device
+   %ulong_part = OpUConvert %uint %clock_ulong
+    %uint2_x = OpCompositeExtract %uint %clock_uint2 0
+    %uint2_y = OpCompositeExtract %uint %clock_uint2 1
+               OpStore %buf %ulong_part Volatile|Aligned 4
+               OpStore %buf_1 %uint2_x Volatile|Aligned 4
+               OpStore %buf_2 %uint2_y Volatile|Aligned 4
+               OpStore %buf_3 %uint_1 Volatile|Aligned 4
+               OpReturn
+               OpFunctionEnd
