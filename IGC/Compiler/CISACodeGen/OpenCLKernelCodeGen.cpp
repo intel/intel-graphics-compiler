@@ -2457,9 +2457,9 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
   uint32_t requiredSimdSize = getReqdSubGroupSize(F, pMdUtils);
 
   // there is a requirement for specific compilation size, we can't abort on simd32
-  if (requiredSimdSize != 0 && !(requiredSimdSize < 32 && SIMDMode::SIMD32 == simdMode)) {
+  if (requiredSimdSize != 0)
     EP.m_canAbortOnSpill = false;
-  }
+
   bool hasSubGroupForce = hasSubGroupIntrinsicPVC(F);
   uint32_t maxPressure = getMaxPressure(F, pMdUtils);
 
