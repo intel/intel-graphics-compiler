@@ -2292,7 +2292,7 @@ int IR_Builder::translateVISAInvmRsqtmInst(
 
   G4_Declare *tdst = nullptr;
   if (!noDstMove) {
-    tdst = createTempVarWithNoSpill(element_size, Ty, Any);
+    tdst = createTempVarWithNoSpill(element_size, Ty, getGRFAlign());
     createPseudoKills({tdst}, PseudoKillType::Src);
   }
 
@@ -2307,7 +2307,8 @@ int IR_Builder::translateVISAInvmRsqtmInst(
        (src0RR->getModifier() != Mod_src_undef ||
         (!src0RR->isScalar() && !tryToAlignOperand(src0RR, getGRFSize())));
   if (needsSrc0Move) {
-    G4_Declare *tsrc0 = createTempVarWithNoSpill(element_size, Ty, Any);
+    G4_Declare *tsrc0 =
+        createTempVarWithNoSpill(element_size, Ty, getGRFAlign());
     createPseudoKills({tsrc0}, PseudoKillType::Src);
 
     G4_DstRegRegion *tSrc0 = createDst(tsrc0->getRegVar(), 0, 0, 1, Ty);
@@ -2320,7 +2321,8 @@ int IR_Builder::translateVISAInvmRsqtmInst(
        (src1RR->getModifier() != Mod_src_undef ||
         (!src1RR->isScalar() && !tryToAlignOperand(src1RR, getGRFSize()))));
   if (needsSrc1Move) {
-    G4_Declare *tsrc1 = createTempVarWithNoSpill(element_size, Ty, Any);
+    G4_Declare *tsrc1 =
+        createTempVarWithNoSpill(element_size, Ty, getGRFAlign());
     createPseudoKills({tsrc1}, PseudoKillType::Src);
 
     G4_DstRegRegion *tSrc1 = createDst(tsrc1->getRegVar(), 0, 0, 1, Ty);
