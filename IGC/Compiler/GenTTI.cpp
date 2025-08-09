@@ -520,7 +520,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
                         (instCount + sendMessage * 4 > unrollLimitInstCount);
 
   // if the loop doesn't have sample, skip the unrolling parameter change
-  if (!sendMessage && !AllocaFound) {
+  if (!sendMessage) {
     // if the estimated unrolled instruction count is larger than the unrolling threshold, limit unrolling.
     if (limitUnrolling) {
       UP.Count = MIN(unrollLimitInstCount / (instCount + sendMessage * 4), 4);
@@ -534,7 +534,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
 
   // if the TripCount is known, and the estimated unrolled count exceed LoopUnrollThreshold, set the unrolling count to
   // 4
-  if (limitUnrolling && !AllocaFound) {
+  if (limitUnrolling) {
     UP.Count = MIN(TripCount, 4);
     UP.MaxCount = UP.Count;
   }
@@ -550,13 +550,13 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
     }
   }
 
-  /*** TESTING for removal
-  UP.Runtime = true;
-  UP.Count = 4;
-  UP.MaxCount = UP.Count;
-  // The following is only available and required from LLVM 3.7+.
-  UP.AllowExpensiveTripCount = true;
-  ***/
+  if (!limitUnrolling) {
+    UP.Runtime = true;
+    UP.Count = 4;
+    UP.MaxCount = UP.Count;
+    // The following is only available and required from LLVM 3.7+.
+    UP.AllowExpensiveTripCount = true;
+  }
 
   if (MDNode *LoopID = L->getLoopID()) {
     const llvm::StringRef maxIterMetadataNames = "spv.loop.iterations.max";
