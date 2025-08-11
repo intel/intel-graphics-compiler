@@ -1,21 +1,26 @@
-; REQUIRES: regkeys, llvm-15-or-older
-; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowEXP2=0 --regkey=VectorizerEnablePartialVectorization=1 < %s 2>&1 | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerEnablePartialVectorization=0 < %s 2>&1 | FileCheck %s
 
-; CHECK: %vectorized_phi
-; CHECK: [[vec_insert0:%vector.*]] = insertelement <8 x float> undef,
-; CHECK: [[vec_insert1:%vector.*]] = insertelement <8 x float> [[vec_insert0]]
-; CHECK: [[vec_insert2:%vector.*]] = insertelement <8 x float> [[vec_insert1]]
-; CHECK: [[vec_insert3:%vector.*]] = insertelement <8 x float> [[vec_insert2]]
-; CHECK: [[vec_insert4:%vector.*]] = insertelement <8 x float> [[vec_insert3]]
-; CHECK: [[vec_insert5:%vector.*]] = insertelement <8 x float> [[vec_insert4]]
-; CHECK: [[vec_insert6:%vector.*]] = insertelement <8 x float> [[vec_insert5]]
-; CHECK: [[vec_insert7:%vector.*]] = insertelement <8 x float> [[vec_insert6]]
-; CHECK: %vectorized_binary = fmul fast <8 x float> [[vec_insert7]], %vectorized_phi
-; CHECK: %vector_extract15 = extractelement <8 x float> %vectorized_binary, i32 0
-; CHECK: %vector_extract16 = extractelement <8 x float> %vectorized_binary, i32 1
-; CHECK: call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %vectorized_binary
-; CHECK: store float %vector_extract15, float* null, align 4
-; CHECK: store float %vector_extract16, float* null, align 4
+; CHECK: [[start:%.*]] = fmul fast float
+; CHECK: [[mul_0:%.*]] = fmul fast float [[start]]
+; CHECK: [[mul_1:%.*]] = fmul fast float [[mul_0]]
+; CHECK: [[mul_2:%.*]] = fmul fast float [[mul_1]]
+; CHECK: [[mul_3:%.*]] = fmul fast float [[mul_2]]
+; CHECK: [[mul_4:%.*]] = fmul fast float [[mul_3]]
+; CHECK: [[mul_5:%.*]] = fmul fast float [[mul_4]]
+; CHECK: [[mul_6:%.*]] = fmul fast float [[mul_5]]
+; CHECK: [[mul_7:%.*]] = fmul fast float [[mul_6]]
+
+; CHECK: [[vec_insert0:%.*]] = insertelement <8 x float> zeroinitializer, float [[mul_0]]
+; CHECK: [[vec_insert1:%.*]] = insertelement <8 x float> [[vec_insert0]], float [[mul_1]]
+; CHECK: [[vec_insert2:%.*]] = insertelement <8 x float> [[vec_insert1]], float [[mul_2]]
+; CHECK: [[vec_insert3:%.*]] = insertelement <8 x float> [[vec_insert2]], float [[mul_3]]
+; CHECK: [[vec_insert4:%.*]] = insertelement <8 x float> [[vec_insert3]], float [[mul_4]]
+; CHECK: [[vec_insert5:%.*]] = insertelement <8 x float> [[vec_insert4]], float [[mul_5]]
+; CHECK: [[vec_insert6:%.*]] = insertelement <8 x float> [[vec_insert5]], float [[mul_6]]
+; CHECK: [[vec_insert7:%.*]] = insertelement <8 x float> [[vec_insert6]], float [[mul_7]]
+
+; CHECK: call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> [[vec_insert7]]
 
 ; ModuleID = 'reduced.ll'
 source_filename = "initial_test.ll"
@@ -36,21 +41,28 @@ define spir_kernel void @quux() {
   %7 = phi float [ 0.000000e+00, %0 ], [ %41, %._crit_edge ]
   %8 = phi float [ 0.000000e+00, %0 ], [ %42, %._crit_edge ]
   %9 = call float @llvm.exp2.f32(float 0.000000e+00)
-  %10 = call float @llvm.exp2.f32(float 0.000000e+00)
-  %11 = call float @llvm.exp2.f32(float 0.000000e+00)
-  %12 = call float @llvm.exp2.f32(float 0.000000e+00)
-  %13 = call float @llvm.exp2.f32(float 0.000000e+00)
-  %14 = call float @llvm.exp2.f32(float 0.000000e+00)
-  %15 = call float @llvm.exp2.f32(float 0.000000e+00)
-  %16 = call float @llvm.exp2.f32(float 0.000000e+00)
-  %17 = fmul fast float %9, %1
-  %18 = fmul fast float %10, %2
-  %19 = fmul fast float %11, %3
-  %20 = fmul fast float %12, %4
-  %21 = fmul fast float %13, %5
-  %22 = fmul fast float %14, %6
-  %23 = fmul fast float %15, %7
-  %24 = fmul fast float %16, %8
+  %10 = call float @llvm.exp2.f32(float 1.000000e+00)
+  %11 = call float @llvm.exp2.f32(float 2.000000e+00)
+  %12 = call float @llvm.exp2.f32(float 3.000000e+00)
+  %13 = call float @llvm.exp2.f32(float 4.000000e+00)
+  %14 = call float @llvm.exp2.f32(float 5.000000e+00)
+  %15 = call float @llvm.exp2.f32(float 6.000000e+00)
+  %16 = call float @llvm.exp2.f32(float 7.000000e+00)
+
+  %a0 = fmul fast float %9, %1
+
+  ; this series of fmul are interdependent we don't want to vectorize them
+  %17 = fmul fast float %a0, %1
+  %18 = fmul fast float %17, %2
+  %19 = fmul fast float %18, %3
+  %20 = fmul fast float %19, %4
+  %21 = fmul fast float %20, %5
+  %22 = fmul fast float %21, %6
+  %23 = fmul fast float %22, %7
+  %24 = fmul fast float %23, %8
+
+
+
   %25 = insertelement <8 x float> zeroinitializer, float %17, i64 0
   %26 = insertelement <8 x float> %25, float %18, i64 1
   %27 = insertelement <8 x float> %26, float %19, i64 2
@@ -69,8 +81,6 @@ define spir_kernel void @quux() {
   %40 = extractelement <8 x float> %34, i64 5
   %41 = extractelement <8 x float> %34, i64 6
   %42 = extractelement <8 x float> %34, i64 7
-  store float %17, float* null
-  store float %18, float* null
   br label %._crit_edge
 }
 

@@ -57,8 +57,10 @@ class IGCVectorizer : public llvm::FunctionPass {
   // basically every element inside scalarSlice should point to the same
   // vectorized element which contains all of them
   std::unordered_map<Value *, Value *> ScalarToVector;
-  std::unordered_map<Value *, Value *> ReplacedDictionary;
-  InstructionToSliceMap InstructionToSlice;
+
+  // contains information about instruction position inside BB
+  // with relation to other instrucitons
+  std::unordered_map<Value *, unsigned> PositionMap;
   // all vector instructions that were produced for chain will be stored
   // in this array, used for clean up if we bail
   VecArr CreatedVectorInstructions;
@@ -79,14 +81,25 @@ class IGCVectorizer : public llvm::FunctionPass {
   void collectInstructionToProcess(VecArr &ToProcess, Function &F);
   void buildTree(VecArr &V, VecOfSlices &Chain);
   void printSlice(Slice *S);
+  bool checkDependencyAndTryToEliminate(VecArr &Slice);
+
+  unsigned getPositionInsideBB(llvm::Instruction *Inst);
+  void collectPositionInsideBB(llvm::Instruction *Inst);
+
+  Instruction *getMaxPoint(VecArr &Slice);
+  Instruction *getMinPoint(VecArr &Slice);
+  Instruction *getInsertPointForVector(VecArr &Arr);
+  Instruction *getInsertPointForCreatedInstruction(VecVal &Arr, VecArr &Slice);
 
   bool checkPHI(Instruction *Compare, VecArr &Slice);
+  bool handleStub(VecArr &Slice);
   bool handlePHI(VecArr &Slice);
   bool checkInsertElement(Instruction *First, VecArr &Slice);
   bool handleInsertElement(VecArr &Slice, Instruction *Final);
   bool checkExtractElement(Instruction *Compare, VecArr &Slice);
   bool handleExtractElement(VecArr &Slice);
   bool handleCastInstruction(VecArr &Slice);
+  bool handleSelectInstruction(VecArr &Slice);
   bool handleBinaryInstruction(VecArr &Slice);
   bool handleIntrinsic(VecArr &Slice);
   bool checkBinaryOperator(VecArr &Slice);

@@ -951,6 +951,8 @@ DECLARE_IGC_REGKEY(bool, EnableScalarTypedAtomics, true, "Enable the Scalar Type
 DECLARE_IGC_REGKEY(bool, EnableScalarPhisMerger, true,
                    "enable optimization that merges scalar phi nodes into vector ones", true)
 DECLARE_IGC_REGKEY(bool, EnableVectorizer, true, "Enable IGCVectorizer pass", true)
+DECLARE_IGC_REGKEY(DWORD, VectorizerDepWindowMultiplier, 2,
+                   "Multiplier for the slice size to account for vectorizer dependency check window", true)
 DECLARE_IGC_REGKEY(bool, VectorizerCheckScalarizer, false, "Add scalariser after vectorizer to check performance", true)
 DECLARE_IGC_REGKEY(DWORD, VectorizerList, -1, "Vectorize only one seed instruction with the provided number", true)
 DECLARE_IGC_REGKEY(bool, EnableVectorEmitter, true, "Enable Vector Emission for a vectorizer", true)
@@ -961,6 +963,9 @@ DECLARE_IGC_REGKEY(bool, VectorizerAllowFADD, true, "Allow FADD instructions ins
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFSUB, true, "Allow FSUB instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowEXP2, true, "Allow EXP2 instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowMAXNUM, true, "Allow MAXNUM instructions inside vectorizer", true)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowWAVEALL, false, "Allow WAVEALL instructions inside vectorizer", true)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowCMP, false, "Allow CMP instructions inside vectorizer", true)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowSelect, false, "Allow Select instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFMADMatching, true,
                    "Allow FADD and FMUL instructions to be matched later in the pattern match pass", true)
 DECLARE_IGC_REGKEY(bool, VectorizerUniformValueVectorizationEnabled, true,

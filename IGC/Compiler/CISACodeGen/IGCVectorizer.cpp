@@ -73,9 +73,8 @@ SPDX-License-Identifier: MIT
 // -->   %tmp116 = extractelement <8 x float> %tmp113, i64 2
 // -->   %tmp117 = extractelement <8 x float> %tmp113, i64 3
 //
-// if you have to make sense of what is happening I RECOMMEND YOU
-// to check the logs: IGC_DumpToCustomDir=Dump IGC_ShaderDumpEnable=1 IGC_VectorizerLog=1
-// they will be present inside the Dump folder
+// to better make sense what is happening please
+// to check the logs: IGC_DumpToCustomDir=Dump IGC_VectorizerLog=1
 
 char IGCVectorizer::ID = 0;
 
@@ -123,12 +122,8 @@ IGC_INITIALIZE_PASS_END(IGCVectorizer, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_O
 #define PRINT_DS(Str, DS)                                                                                              \
   if (DEBUG) {                                                                                                         \
     for (auto DS_EL : DS) {                                                                                            \
-      {                                                                                                                \
-        PRINT_LOG(Str);                                                                                                \
-      }                                                                                                                \
-      {                                                                                                                \
-        PRINT_INST_NL(DS_EL);                                                                                          \
-      }                                                                                                                \
+      PRINT_LOG(Str);                                                                                                  \
+      PRINT_INST_NL(DS_EL);                                                                                            \
     }                                                                                                                  \
   }
 
@@ -155,8 +150,7 @@ void IGCVectorizer::initializeLogFile(Function &F) {
     FName.resize(128);
 
   std::stringstream ss;
-  ss << FName << "_"
-     << "Vectorizer";
+  ss << FName << "_" << "Vectorizer";
   auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
                   .Hash(CGCtx->hash)
                   .Type(CGCtx->type)
@@ -277,19 +271,53 @@ bool isIntrinsicSafe(Instruction *I) {
   return Result;
 }
 
+bool isGenIntrinsicSafe(Instruction *I) {
+  auto *IntrinsicI = llvm::dyn_cast<GenIntrinsicInst>(I);
+  if (!IntrinsicI)
+    return false;
+
+  auto GenIntrinsicID = IntrinsicI->getIntrinsicID();
+  bool Result = (GenIntrinsicID == llvm::GenISAIntrinsic::GenISA_WaveAll) && IGC_GET_FLAG_VALUE(VectorizerAllowWAVEALL);
+  return Result;
+}
+
+bool isAllowedStub(Instruction *I) {
+  bool Result = false;
+  Result |= (llvm::isa<ICmpInst>(I) && IGC_GET_FLAG_VALUE(VectorizerAllowCMP));
+  Result |= (llvm::isa<SelectInst>(I) && IGC_GET_FLAG_VALUE(VectorizerAllowSelect));
+  Result |= isGenIntrinsicSafe(I);
+  return Result;
+}
+
 bool isSafeToVectorize(Instruction *I) {
 
-  bool IsInsertOrExtract = llvm::isa<ExtractElementInst>(I) || llvm::isa<InsertElementInst>(I);
-  // the only typed instructions we add to slices => Insert or Extract elements
-  bool IsVectorTyped = I->getType()->isVectorTy() && !IsInsertOrExtract;
-  bool isFloat = isFloatTyped(I);
+  bool IsExtract = llvm::isa<ExtractElementInst>(I);
+  bool IsInsert = llvm::isa<InsertElementInst>(I);
+  bool IsFpTrunc = llvm::isa<FPTruncInst>(I) && IGC_GET_FLAG_VALUE(VectorizerAllowFPTRUNC);
 
-  // this is a very limited approach for vectorizing but it's safe
-  bool Result = isPHISafe(I) || IsInsertOrExtract ||
-                (llvm::isa<FPTruncInst>(I) && IGC_GET_FLAG_VALUE(VectorizerAllowFPTRUNC)) || isBinarySafe(I) ||
-                isIntrinsicSafe(I);
+  // the only typed instructions we add to slices => Insert elements
+  bool IsVectorTyped = I->getType()->isVectorTy();
+  bool IsFloat = isFloatTyped(I);
 
-  return Result && isFloat && !IsVectorTyped;
+  bool Result =
+      isPHISafe(I) || IsExtract ||
+      isBinarySafe(I) || isIntrinsicSafe(I) || isAllowedStub(I);
+
+  // all allowed instructions that are float typed and not vectors
+  Result = (Result && IsFloat && !IsVectorTyped);
+  // always allowed
+  Result |= IsFpTrunc;
+  // only Float insert elements are allowed
+  Result |= IsInsert;
+  return Result;
+}
+
+bool IGCVectorizer::handleStub(VecArr &Slice) {
+  PRINT_LOG("stub vectorization: ");
+  PRINT_INST_NL(Slice.front());
+  if (isAllowedStub(Slice.front()))
+    return true;
+  return false;
 }
 
 bool IGCVectorizer::handlePHI(VecArr &Slice) {
@@ -347,6 +375,8 @@ bool IGCVectorizer::handlePHI(VecArr &Slice) {
       if (IsInstOperand) {
         ForVector.push_back(Inst);
         IsVectorized &= ScalarToVector.count(Inst) && (ScalarToVector[Inst] == ScalarToVector[InstCmp]);
+      } else {
+        IsVectorized = false;
       }
     }
 
@@ -361,7 +391,12 @@ bool IGCVectorizer::handlePHI(VecArr &Slice) {
       Operands.push_back(Vectorized);
     } else if (IsInstOperand) {
       PRINT_LOG_NL("Created Vector: ");
-      auto CreatedVec = createVector(ForVector, ForVector.back()->getNextNonDebugInstruction());
+      Instruction *InsertPoint = BB->getTerminator();
+      if (ScalarPhi->getParent() == BB) {
+        InsertPoint = getInsertPointForVector(ForVector)->getNextNonDebugInstruction();
+        if (!InsertPoint) return false;
+      }
+      auto CreatedVec = createVector(ForVector, InsertPoint);
       PRINT_INST_NL(CreatedVec);
       Operands.push_back(CreatedVec);
     } else {
@@ -414,17 +449,73 @@ bool IGCVectorizer::handleInsertElement(VecArr &Slice, Instruction *Final) {
   return true;
 }
 
-InsertElementInst *IGCVectorizer::createVector(VecArr &Slice, Instruction *InsertPoint) {
+Instruction *IGCVectorizer::getInsertPointForVector(VecArr &Arr) {
 
-  if (llvm::isa<PHINode>(InsertPoint)) {
-    InsertPoint = InsertPoint->getParent()->getFirstNonPHI();
-    PRINT_LOG_NL("insertPoint moved to FirstNonPHI");
+  Instruction* Cmp = Arr.front();
+  for (auto &El : Arr)
+    if (El->getParent() != Cmp->getParent())
+        return nullptr;
+
+  Instruction* InsertPoint = getMaxPoint(Arr);
+  // if insert point is PHI, shift it to the first nonPHI to be safe
+  if (llvm::isa<llvm::PHINode>(InsertPoint))
+      InsertPoint = InsertPoint->getParent()->getFirstNonPHI();
+
+  return InsertPoint;
+}
+
+Instruction* IGCVectorizer::getInsertPointForCreatedInstruction(VecVal &Operands, VecArr& Slice) {
+
+    VecArr InstOperands;
+    for (auto &El : Operands) {
+        auto Inst = llvm::dyn_cast<Instruction>(El);
+        if (!Inst) continue;
+        if (Inst->getParent() == Slice.front()->getParent())
+            InstOperands.push_back(Inst);
+    }
+
+    Instruction* InsertPoint = Slice.front()->getParent()->getFirstNonPHI();
+    if (InstOperands.size() != 0) {
+        InsertPoint = getMaxPoint(InstOperands)->getNextNonDebugInstruction();
+        // if insert point is PHI, shift it to the first nonPHI to be safe
+        if (llvm::isa<llvm::PHINode>(InsertPoint))
+            InsertPoint = InsertPoint->getParent()->getFirstNonPHI();
+    }
+
+    return InsertPoint;
+}
+
+Instruction *IGCVectorizer::getMaxPoint(VecArr &Slice) {
+  unsigned MaxPos = 0;
+  Instruction *MaxPoint = Slice.front();
+  for (auto &El : Slice) {
+    unsigned NewPos = getPositionInsideBB(El);
+    if (NewPos > MaxPos) {
+      MaxPos = NewPos;
+      MaxPoint = El;
+    }
   }
+  return MaxPoint;
+}
 
+Instruction *IGCVectorizer::getMinPoint(VecArr &Slice) {
+  unsigned MinPos = UINT32_MAX;
+  Instruction *MinPoint = Slice.front();
+  for (auto &El : Slice) {
+    unsigned NewPos = getPositionInsideBB(El);
+    if (NewPos < MinPos) {
+      MinPos = NewPos;
+      MinPoint = El;
+    }
+  }
+  return MinPoint;
+}
+
+InsertElementInst *IGCVectorizer::createVector(VecArr &Slice, Instruction *InsertPoint) {
   InsertElementInst *CreatedInsert = nullptr;
   llvm::Type *elementType = Slice[0]->getType();
   if (elementType->isVectorTy())
-    return CreatedInsert;
+    return nullptr;
 
   llvm::VectorType *vectorType = llvm::FixedVectorType::get(elementType, Slice.size());
   llvm::Value *UndefVector = llvm::UndefValue::get(vectorType);
@@ -456,6 +547,9 @@ void IGCVectorizer::replaceSliceInstructionsWithExtract(VecArr &Slice, Instructi
   PRINT_LOG(" Extracted from: ");
   PRINT_INST_NL(CreatedInst);
 
+  Instruction *InsertPoint = (llvm::isa<PHINode>(Slice.front())) ? CreatedInst->getParent()->getFirstNonPHI()
+                                                                 : CreatedInst->getNextNonDebugInstruction();
+
   for (size_t i = 0; i < Slice.size(); i++) {
 
     llvm::Value *index = llvm::ConstantInt::get(llvm::Type::getInt32Ty(M->getContext()), i);
@@ -464,11 +558,7 @@ void IGCVectorizer::replaceSliceInstructionsWithExtract(VecArr &Slice, Instructi
 
     CreatedExtract->setName("vector_extract");
     CreatedExtract->setDebugLoc(Slice[i]->getDebugLoc());
-
-    if (llvm::isa<PHINode>(CreatedInst))
-      CreatedExtract->insertBefore(CreatedInst->getParent()->getFirstNonPHI());
-    else
-      CreatedExtract->insertAfter(CreatedInst);
+    CreatedExtract->insertBefore(InsertPoint);
     CreatedVectorInstructions.push_back(CreatedExtract);
 
     PRINT_INST_NL(CreatedExtract);
@@ -508,14 +598,14 @@ bool IGCVectorizer::handleBinaryInstruction(VecArr &Slice) {
   }
 
   PRINT_DS("Operands: ", Operands);
+  Instruction *InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);
 
   auto BinaryOpcode = llvm::cast<BinaryOperator>(First)->getOpcode();
 
   auto *CreatedInst = BinaryOperator::CreateWithCopiedFlags(BinaryOpcode, Operands[0], Operands[1], First);
   CreatedInst->setName("vectorized_binary");
-
   CreatedInst->setDebugLoc(First->getDebugLoc());
-  CreatedInst->insertAfter(Slice.back());
+  CreatedInst->insertBefore(InsertPoint);
   CreatedVectorInstructions.push_back(CreatedInst);
 
   PRINT_LOG("Binary instruction created: ");
@@ -554,6 +644,10 @@ bool IGCVectorizer::handleCastInstruction(VecArr &Slice) {
   Value *Vectorized = checkOperandsToBeVectorized(First, OperNum, Slice);
   if (!Vectorized)
     Vectorized = vectorizeSlice(Slice, OperNum);
+  if (!Vectorized) {
+    PRINT_LOG_NL("Couldn't vectorizer slice");
+    return false;
+  }
 
   auto VectorSize = getVectorSize((Instruction *)Vectorized);
   auto Type = IGCLLVM::FixedVectorType::get(First->getType(), VectorSize);
@@ -606,20 +700,19 @@ bool IGCVectorizer::handleIntrinsic(VecArr &Slice) {
     }
   }
 
+  PRINT_DS("Operands: ", Operands);
+  Instruction *InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);
+
   llvm::VectorType *VectorType = llvm::FixedVectorType::get(First->getType(), Slice.size());
 
   auto IntrinsicID = llvm::cast<IntrinsicInst>(First)->getIntrinsicID();
   auto *Decl = Intrinsic::getDeclaration(M, IntrinsicID, {VectorType});
-
-  PRINT_DS("operands: ", Operands);
-  auto *CreatedInst = llvm::CallInst::Create(Decl, Operands);
-
   PRINT_DECL_NL(Decl);
 
+  auto *CreatedInst = llvm::CallInst::Create(Decl, Operands);
   CreatedInst->setName("vectorized_intrinsic");
-
   CreatedInst->setDebugLoc(First->getDebugLoc());
-  CreatedInst->insertAfter(Slice.back());
+  CreatedInst->insertAfter(InsertPoint);
   CreatedVectorInstructions.push_back(CreatedInst);
 
   PRINT_LOG("Intrinsic instruction created: ");
@@ -677,6 +770,9 @@ bool IGCVectorizer::processChain(InsertStruct &InSt) {
     } else if (llvm::isa<CastInst>(First)) {
       if (!handleCastInstruction(Slice))
         return false;
+    } else if (isAllowedStub(First)) {
+      if (!handleStub(Slice))
+        return false;
     } else if (llvm::isa<BinaryOperator>(First)) {
       if (!handleBinaryInstruction(Slice))
         return false;
@@ -708,8 +804,7 @@ void IGCVectorizer::clusterInsertElement(InsertStruct &InSt) {
       break;
   }
 
-  // purely convenience feature I want first insert to be at 0 index in
-  // array
+  // purely convenience feature want first insert to be at 0 index in array
   std::reverse(InSt.Vec.begin(), InSt.Vec.end());
 
   PRINT_LOG("fin: ");
@@ -854,7 +949,12 @@ Value *IGCVectorizer::vectorizeSlice(VecArr &Slice, unsigned int OperNum) {
   }
 
   if (NotVectorizedInstruction.size() == Slice.size()) {
-    NewVector = createVector(NotVectorizedInstruction, NotVectorizedInstruction.back()->getNextNonDebugInstruction());
+    Instruction *InsertPoint = getInsertPointForVector(NotVectorizedInstruction);
+    if (!InsertPoint) {
+        PRINT_LOG_NL("Couldn't find insert point");
+        return nullptr;
+    }
+    NewVector = createVector(NotVectorizedInstruction, InsertPoint->getNextNonDebugInstruction());
     PRINT_LOG("New vector created: ");
     PRINT_INST_NL(NewVector);
   }
@@ -935,6 +1035,114 @@ bool IGCVectorizer::checkExtractElement(Instruction *Compare, VecArr &Slice) {
   return true;
 }
 
+unsigned IGCVectorizer::getPositionInsideBB(Instruction *Inst) {
+  if (!PositionMap.count(Inst))
+    collectPositionInsideBB(Inst);
+  return PositionMap[Inst];
+}
+
+void IGCVectorizer::collectPositionInsideBB(Instruction *Inst) {
+  unsigned Counter = 0;
+  for (auto &I : *Inst->getParent()) {
+    PositionMap[&I] = Counter++;
+  }
+}
+
+bool IGCVectorizer::checkDependencyAndTryToEliminate(VecArr &Slice) {
+  // this set will contain all results our slice produces
+  // need to check that they are completely independent
+  // from each other, meaning that results from one part of the slice
+  // are not used as operand in another part
+  // %17 = fmul fast float %a0, %1
+  // %18 = fmul fast float %17, %2
+  // like in this case
+  std::unordered_set<Value *> Poisoned;
+  std::unordered_set<Value *> SliceSet;
+
+  bool IsInsertEl = llvm::isa<InsertElementInst>(Slice.front());
+  // #TODO: put a pin on that
+  // insert element is OKAY, it's interdependent by design
+  if (IsInsertEl)
+    return false;
+
+  // SLICE is always located in the same BB
+  Instruction *MinPoint = getMinPoint(Slice);
+  Instruction *MaxPoint = getMaxPoint(Slice);
+  VecArr SliceScope;
+
+  Instruction *SearchPoint = MinPoint;
+  SliceScope.push_back(SearchPoint);
+  while (SearchPoint != MaxPoint) {
+    SearchPoint = SearchPoint->getNextNonDebugInstruction();
+    SliceScope.push_back(SearchPoint);
+  }
+
+  PRINT_INST_NL(MinPoint);
+  PRINT_INST_NL(MaxPoint);
+  PRINT_DS("Slice Scope: ", SliceScope);
+
+  unsigned DependencyWindowCoefficient = IGC_GET_FLAG_VALUE(VectorizerDepWindowMultiplier);
+  // limit the window of potential rescheduling
+  // best case when all slice instrucitons are
+  // consecutive
+  unsigned WindowSize = Slice.size() * DependencyWindowCoefficient;
+  if (SliceScope.size() > WindowSize) {
+    PRINT_LOG_NL("Slice scope is too big -> bail");
+    return true;
+  }
+
+  for (auto El : Slice) {
+    Poisoned.insert(El);
+    SliceSet.insert(El);
+  }
+
+  // this is a small implementation of a wavefront algorithm
+  // that searches through operands and detects dependency
+  // on slice values
+  for (auto El : SliceScope) {
+    // we check all operands inside the slice scope
+    // and check that they are not interdependent on results
+    for (Value *Operand : El->operands()) {
+      // if this data point is dependent on slice value
+      // it's poisoned
+      if (!Poisoned.count(Operand))
+        continue;
+      Poisoned.insert(El);
+      break;
+    }
+  }
+
+  for (auto El : Slice) {
+    for (Value *Operand : El->operands()) {
+      if (!Poisoned.count(Operand))
+        continue;
+      PRINT_INST(Operand);
+      PRINT_LOG_NL("  <-- operands inside the slice depend on slice results");
+      return true;
+    }
+  }
+
+  Instruction *AfterInsertPoint = MaxPoint->getNextNonDebugInstruction();
+  // scheduling part
+  // everything that doesn't depend on slice values goes before
+  // everything that DEPENDS on slice-value goes after
+  for (auto El : SliceScope) {
+    if (!Poisoned.count(El)) {
+      PRINT_LOG("Before minpoint: ");
+      PRINT_INST_NL(El);
+      El->moveBefore(MinPoint);
+    } else if (SliceSet.count(El))
+      continue;
+    else {
+      PRINT_LOG("After maxpoint: ");
+      PRINT_INST_NL(El);
+      El->moveBefore(AfterInsertPoint);
+    }
+  }
+
+  return false;
+}
+
 bool IGCVectorizer::checkSlice(VecArr &Slice, InsertStruct &InSt) {
   if (Slice.size() != getVectorSize(InSt.Final)) {
     PRINT_LOG_NL("vector size isn't equal to the width of the vector tree");
@@ -959,6 +1167,8 @@ bool IGCVectorizer::checkSlice(VecArr &Slice, InsertStruct &InSt) {
     }
   }
 
+  if (checkDependencyAndTryToEliminate(Slice))
+    return false;
   return true;
 }
 
