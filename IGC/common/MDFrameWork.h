@@ -437,6 +437,7 @@ enum class ShaderTypeMD
         bool BufferOffsetArgOptional                    = true;
         bool replaceGlobalOffsetsByZero                 = false;
         unsigned forcePixelShaderSIMDMode               = 0;
+        unsigned int forceTotalGRFNum = 0; // 0 means not forced
         bool pixelShaderDoNotAbortOnSpill               = false;
         bool UniformWGS                                 = false;
         bool disableVertexComponentPacking              = false;
