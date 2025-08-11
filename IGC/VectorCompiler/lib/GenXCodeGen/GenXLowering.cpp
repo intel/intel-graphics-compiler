@@ -4847,6 +4847,7 @@ bool GenXLowering::lowerHardwareThreadID(CallInst *CI) {
 static Value *extractBitfields(IRBuilder<> &IRB, Value *To, Value *From,
                                ArrayRef<std::pair<int, int>> Fields,
                                int &InsertTo) {
+  IGC_ASSERT_EXIT(!Fields.empty());
   auto *Ty = From->getType();
   for (auto &[Offset, Width] : Fields) {
     auto Mask = ((1 << Width) - 1) << Offset;
