@@ -175,7 +175,8 @@ public:
   bool MatchFloor(llvm::BinaryOperator &I);
   bool MatchPredAdd(llvm::BinaryOperator &I);
   bool MatchSimpleAdd(llvm::BinaryOperator &I);
-  bool MatchMad(llvm::BinaryOperator &I);
+  bool MatchFMad(llvm::BinaryOperator &I);
+  bool MatchIMad(llvm::BinaryOperator &I);
   bool MatchLrp(llvm::BinaryOperator &I);
   bool MatchCmpSext(llvm::Instruction &I);
   bool MatchUnpack4i8(llvm::Instruction &I);
@@ -316,6 +317,7 @@ private:
   // The set of boolean values stored as predicates of a single element.
   // Otherwise, they are expanded to the SIMD size.
   llvm::DenseSet<const llvm::Value *> UniformBools;
+  llvm::DenseMap<const llvm::BinaryOperator *, bool> NecessaryMulCandidates;
 
   // Find bool values that will be emitted as uniform variables.
   // Otherwise they will be expanded to the SIMD size, by default.
@@ -323,6 +325,10 @@ private:
 
   // Return true if it is dbg related instruction
   bool IsDbgInst(llvm::Instruction &inst) const;
+
+  bool CanMatchIMad(llvm::BinaryOperator &I) const;
+
+  bool IsMulCandidateForIMad(llvm::BinaryOperator *Mul);
 };
 
 // helper

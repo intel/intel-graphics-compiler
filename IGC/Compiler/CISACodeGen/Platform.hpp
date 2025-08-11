@@ -352,6 +352,10 @@ public:
            IGC_IS_FLAG_ENABLED(EnableIntegerMad);
   }
 
+  bool supportsSourceModifierForMixedIntMad() const {
+    return false;
+  }
+
   bool isDG1() const { return m_platformInfo.eProductFamily == IGFX_DG1; }
 
   bool simplePushIsFasterThanGather() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE; }
