@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -824,6 +824,25 @@ std::pair<unsigned int, Type *> TransposeHelper::getArrSizeAndEltType(Type *T) {
   return std::make_pair(arr_sz, retTy);
 }
 
+Type *TransposeHelper::getFirstNonScalarSourceElementType(const GetElementPtrInst &GEP) {
+  Type *currTy = GEP.getSourceElementType();
+  if (getArrSizeAndEltType(currTy).first > 1)
+    return currTy;
+
+  const Value *base = GEP.getPointerOperand()->stripPointerCasts();
+
+  if (const auto *AI = dyn_cast<AllocaInst>(base))
+    return AI->getAllocatedType();
+  if (const auto *GV = dyn_cast<GlobalVariable>(base))
+    return GV->getValueType();
+  if (const auto *LI = dyn_cast<LoadInst>(base))
+    return LI->getType();
+  if (const auto *SI = dyn_cast<StoreInst>(base))
+    return SI->getValueOperand()->getType();
+
+  return currTy;
+}
+
 void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *idx) {
   // TODO: Add support for GEP attributes: nsw, nuw, inbounds. Currently, neigher the old nor the new algorithm handles
   // them.
@@ -841,13 +860,38 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *
     return;
   }
 
+  IRBuilder<> IRB(pGEP);
+  Value *pScalarizedIdx = IRB.getInt32(0);
+
+  // If the GEP is on i8, its index is a byte offset and must be converted to an element index of the underlying base
+  // type.
+  if (pGEP->getSourceElementType()->isIntegerTy(8)) {
+    // Get the non-scalar/aggregate GEP source element type.
+    Type *baseAggregateTy = getFirstNonScalarSourceElementType(*pGEP);
+    // Find the scalar element type at the bottom of the aggregate.
+    Type *elementTy = baseAggregateTy;
+    while (elementTy->isStructTy() || elementTy->isArrayTy() || elementTy->isVectorTy()) {
+      elementTy = getArrSizeAndEltType(elementTy).second;
+    }
+    elementTy = elementTy->getScalarType();
+    uint32_t elementBytes = (uint32_t)m_DL.getTypeAllocSize(elementTy);
+
+    // The 1st operand is the byte offset, convert bytes to element count.
+    Value *byteIndex = IRB.CreateZExtOrTrunc(pGEP->getOperand(1), IRB.getInt32Ty());
+    if (elementBytes > 1)
+      byteIndex = IRB.CreateUDiv(byteIndex, IRB.getInt32(elementBytes));
+
+    pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, byteIndex);
+    pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, idx);
+    HandleAllocaSources(pGEP, pScalarizedIdx);
+    return;
+  }
+
   // Given %p = getelementptr [4 x [3 x <2 x float>]]* %v, i64 0, i64 %1, i64 %2
   // compute the scalarized index with an auxiliary array [4, 3, 2]:
   //
   // Formula: index = (%1 x 3 + %2) x 2
   //
-  IRBuilder<> IRB(pGEP);
-  Value *pScalarizedIdx = IRB.getInt32(0);
   Type *T = pGEP->getSourceElementType();
   for (unsigned i = 0, e = pGEP->getNumIndices(); i < e; ++i) {
     // If T is VectorType we should be at the last loop iteration. This will break things only if m_vectorIndex == true.
