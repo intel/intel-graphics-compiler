@@ -125,7 +125,7 @@ class KernelCost;
 // Handles information for GRF selection
 class GRFMode {
 public:
-  GRFMode(const TARGET_PLATFORM platform, Options *op);
+  GRFMode(const TARGET_PLATFORM platform, unsigned regSize, Options *op);
 
   void setModeByNumGRFs(unsigned grfs) {
     unsigned size = configs.size();
@@ -268,6 +268,7 @@ private:
   unsigned upperBoundGRF;
   unsigned GRFModeUpValue;
   const TARGET_PLATFORM platform;
+  unsigned grfSize;
   Options *options;
 };
 

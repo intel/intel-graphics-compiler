@@ -12,9 +12,9 @@ SPDX-License-Identifier: MIT
 #include "Common_ISA_framework.h"
 #include "DebugInfo.h"
 #include "G4_BB.hpp"
+#include "KernelCost.hpp"
 #include "VISAKernel.h"
 #include "VarSplit.h"
-#include "KernelCost.hpp"
 #include "iga/IGALibrary/Models/Models.hpp"
 #include "iga/IGALibrary/api/kv.hpp"
 #include "visa_wa.h"
@@ -102,12 +102,12 @@ void *gtPinData::getFreeGRFInfo(unsigned &size) {
 
 void gtPinData::setGTPinInit(void *buffer) {
   vISA_ASSERT(sizeof(gtpin::igc::igc_init_t) <= 200,
-               "Check size of igc_init_t");
+              "Check size of igc_init_t");
   gtpin_init = (gtpin::igc::igc_init_t *)buffer;
 
   // reRA pass is no longer supported.
   // FIXME: should we assert here?
-  //if (gtpin_init->re_ra)
+  // if (gtpin_init->re_ra)
   if (gtpin_init->grf_info)
     kernel.getOptions()->setOption(vISA_GetFreeGRFInfo, true);
 }
@@ -139,7 +139,7 @@ void *gtPinData::getIndirRefs(unsigned int &size) {
 
           // verify truncation is still legal
           vISA_ASSERT(inst->getGenOffset() == (uint32_t)inst->getGenOffset(),
-                       "%ip out of bounds");
+                      "%ip out of bounds");
 
           if (startIp > 0)
             break;
@@ -464,7 +464,7 @@ G4_Kernel::G4_Kernel(const PlatformInfo &pInfo, INST_LIST_NODE_ALLOCATOR &alloc,
     : platformInfo(pInfo), m_options(options), m_kernelAttrs(anAttr),
       m_function_id(funcId), RAType(RA_Type::UNKNOWN_RA), asmInstCount(0),
       kernelID(0), fg(alloc, this, m), major_version(major),
-      minor_version(minor), grfMode(pInfo.platform, options) {
+      minor_version(minor), grfMode(pInfo.platform, pInfo.grfSize, options) {
   vISA_ASSERT(major < COMMON_ISA_MAJOR_VER || (major == COMMON_ISA_MAJOR_VER &&
                                                minor <= COMMON_ISA_MINOR_VER),
               "CISA version not supported by this JIT-compiler");
@@ -591,7 +591,8 @@ void G4_Kernel::calculateSimdSize() {
       (unsigned)m_kernelAttrs->getInt32KernelAttr(Attributes::ATTR_SimdSize));
   if (simdSize != g4::SIMD8 && simdSize != g4::SIMD16 &&
       simdSize != g4::SIMD32) {
-    vISA_ASSERT(simdSize.value == 0, "vISA: wrong value for SimdSize attribute");
+    vISA_ASSERT(simdSize.value == 0,
+                "vISA: wrong value for SimdSize attribute");
     // pvc+: simd16; simd8 otherwise
     simdSize = fg.builder->getNativeExecSize();
 
@@ -644,7 +645,8 @@ void G4_Kernel::updateKernelByRegPressure(unsigned regPressure,
     largestInputReg = std::max(largestInputReg, maxRegPayloadDispatch);
   }
 
-  unsigned newGRF = grfMode.setModeByRegPressure(regPressure, largestInputReg, forceGRFModeUp);
+  unsigned newGRF = grfMode.setModeByRegPressure(regPressure, largestInputReg,
+                                                 forceGRFModeUp);
 
   if (newGRF == numRegTotal)
     return;
@@ -704,9 +706,8 @@ void G4_Kernel::evalAddrExp() {
   }
 }
 
-[[maybe_unused]]
-static std::vector<std::string> split(const std::string &str,
-                                      const char *delimiter) {
+[[maybe_unused]] static std::vector<std::string> split(const std::string &str,
+                                                       const char *delimiter) {
   std::vector<std::string> v;
   std::string::size_type start = 0;
 
@@ -768,7 +769,7 @@ static iga_gen_t getIGAPlatform(TARGET_PLATFORM genPlatform) {
   return platform;
 }
 
-KernelDebugInfo* G4_Kernel::getKernelDebugInfo() {
+KernelDebugInfo *G4_Kernel::getKernelDebugInfo() {
   if (kernelDbgInfo == nullptr) {
     kernelDbgInfo = std::make_shared<KernelDebugInfo>();
   }
@@ -888,8 +889,7 @@ uint32_t StackCallABI::numReservedABIGRF() const {
     if (kernel->getOption(vISA_PreserveR0InR0))
       return 2;
     return 3;
-  }
-  else {
+  } else {
     // for ABI version > 2
     return 1;
   }
@@ -1077,12 +1077,11 @@ std::vector<ArgLayout> G4_Kernel::getArgumentLayout() {
   const uint32_t inputsStart = startGRF * getGRFSize();
   const uint32_t inputCount = fg.builder->getInputCount();
 
-  const int PTIS =
-      AlignUp(getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize),
-              getGRFSize());
+  const int PTIS = AlignUp(
+      getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize), getGRFSize());
 
   // Checks if input_info is cross-thread-input
-  auto isInCrossThreadData = [&](const input_info_t * input_info) {
+  auto isInCrossThreadData = [&](const input_info_t *input_info) {
     return (uint32_t)input_info->offset >= inputsStart + PTIS;
   };
 
@@ -1100,7 +1099,7 @@ std::vector<ArgLayout> G4_Kernel::getArgumentLayout() {
 
   const uint32_t startGrfAddr =
       getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg) *
-        getGRFSize();
+      getGRFSize();
 
   std::vector<ArgLayout> args;
   for (unsigned ix = 0; ix < inputCount; ix++) {
@@ -1131,7 +1130,7 @@ std::vector<ArgLayout> G4_Kernel::getArgumentLayout() {
     args.emplace_back(input->dcl, dstGrfAddr, memSrc, memOff, input->size);
   }
   std::sort(args.begin(), args.end(),
-            [&](const ArgLayout &a1,const ArgLayout &a2) {
+            [&](const ArgLayout &a1, const ArgLayout &a2) {
               return a1.dstGrfAddr < a2.dstGrfAddr;
             });
   return args;
@@ -1148,25 +1147,20 @@ void G4_Kernel::dumpToFile(const std::string &suffixIn, bool forceG4Dump) {
 
   // todo: remove else branch as it is not reached at all.
   std::stringstream ss;
-  const char* prefix = nullptr;
+  const char *prefix = nullptr;
   getOptions()->getOption(VISA_AsmFileName, prefix);
   if (prefix != nullptr) {
     // Use AsmFileName as prefix for g4/dot dumps
     if (fg.builder->getIsKernel()) {
       // entry
-      ss << prefix
-        << "." << std::setfill('0') << std::setw(3)
-        << nextDumpIndex++ << "." << suffixIn;
-    }
-    else {
+      ss << prefix << "." << std::setfill('0') << std::setw(3)
+         << nextDumpIndex++ << "." << suffixIn;
+    } else {
       // callee
-      ss << prefix
-        << "_f" << getFunctionId()
-        << "." << std::setfill('0') << std::setw(3)
-        << nextDumpIndex++ << "." << suffixIn;
+      ss << prefix << "_f" << getFunctionId() << "." << std::setfill('0')
+         << std::setw(3) << nextDumpIndex++ << "." << suffixIn;
     }
-  }
-  else {
+  } else {
     // calls to this will produce a sequence of dumps
     // [kernel-name].000.[suffix].{dot,g4}
     // [kernel-name].001.[suffix].{dot,g4}
@@ -1177,16 +1171,14 @@ void G4_Kernel::dumpToFile(const std::string &suffixIn, bool forceG4Dump) {
     if (m_options->getOption(vISA_DumpUseInternalName) || name == nullptr) {
       if (fg.builder->getIsKernel()) {
         ss << "k" << getKernelID();
-      }
-      else {
+      } else {
         ss << "f" << getFunctionId();
       }
-    }
-    else {
+    } else {
       ss << name;
     }
     ss << "." << std::setfill('0') << std::setw(3) << nextDumpIndex++ << "."
-      << suffixIn;
+       << suffixIn;
   }
   std::string baseName = sanitizePathString(ss.str());
 
@@ -1197,9 +1189,7 @@ void G4_Kernel::dumpToFile(const std::string &suffixIn, bool forceG4Dump) {
     dumpG4Internal(baseName);
 }
 
-void G4_Kernel::dumpToConsole() {
-  dumpG4InternalTo(std::cout);
-}
+void G4_Kernel::dumpToConsole() { dumpG4InternalTo(std::cout); }
 
 void G4_Kernel::emitDeviceAsm(std::ostream &os, const void *binary,
                               uint32_t binarySize) {
@@ -1530,7 +1520,8 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
     }
     if (jitInfo->stats.numGRFSpillFillWeighted > 0) {
       os << "\n"
-         << "//.spill GRF est. ref count " << jitInfo->stats.numGRFSpillFillWeighted;
+         << "//.spill GRF est. ref count "
+         << jitInfo->stats.numGRFSpillFillWeighted;
     }
     if (jitInfo->stats.numFlagSpillStore > 0) {
       os << "\n//.spill flag store " << jitInfo->stats.numFlagSpillStore;
@@ -1682,8 +1673,7 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
     os << " | " << std::right << std::setw(COLW_SIZE) << fmtHex(a.size);
 
     // location
-    unsigned reg = a.dstGrfAddr / grfSize,
-             subRegBytes = a.dstGrfAddr % grfSize;
+    unsigned reg = a.dstGrfAddr / grfSize, subRegBytes = a.dstGrfAddr % grfSize;
     std::stringstream ssloc;
     ssloc << "r" << reg;
     if (subRegBytes != 0)
@@ -1693,10 +1683,18 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
     // from
     std::string from;
     switch (a.memSource) {
-    case ArgLayout::MemSrc::CTI: from = "cti"; break;
-    case ArgLayout::MemSrc::PTI: from = "pti[tid]"; break;
-    case ArgLayout::MemSrc::INLINE: from = "inline"; break;
-    default: from = fmtHex(int(a.memSource)) + "?"; break;
+    case ArgLayout::MemSrc::CTI:
+      from = "cti";
+      break;
+    case ArgLayout::MemSrc::PTI:
+      from = "pti[tid]";
+      break;
+    case ArgLayout::MemSrc::INLINE:
+      from = "inline";
+      break;
+    default:
+      from = fmtHex(int(a.memSource)) + "?";
+      break;
     }
     std::stringstream ssf;
     ssf << from;
@@ -1742,14 +1740,14 @@ static BlockOffsets precomputeBlockOffsets(std::ostream &os, G4_Kernel &g4k,
 
         G4_INST *inst = (*itInst);
 
-        // For HW WA.
-        // In which, vISA may ask IGA to emit some additional instructions.
-        // For example, sync is used to make instruction aligned, and nop is
-        // used to support stepping in debugger.
-        // However, due to compaction, we might not know the exact location of
-        // the instruction, the sync instruction insertion has to happen during
-        // encoding, which is unknown for the instruction size of kernel in the
-        // decoding. That's the issue we have to make these changes.
+       // For HW WA.
+       // In which, vISA may ask IGA to emit some additional instructions.
+       // For example, sync is used to make instruction aligned, and nop is
+       // used to support stepping in debugger.
+       // However, due to compaction, we might not know the exact location of
+       // the instruction, the sync instruction insertion has to happen during
+       // encoding, which is unknown for the instruction size of kernel in the
+       // decoding. That's the issue we have to make these changes.
         if (inst->isCachelineAligned()) {
           iga::Op opcode = kv.getOpcode(currPc);
           // There could be multiple sync.nop instructions emitted by IGA to
@@ -1893,7 +1891,7 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
   // tryPrintLable - check if the given label is already printed with the given
   // pc. Print it if not, and skip it if yes.
   auto tryPrintLabel = [&os, &printedLabels](int32_t label_pc,
-                                             const std::string& label_name) {
+                                             const std::string &label_name) {
     auto label_pair = std::make_pair(label_pc, label_name);
     // skip if the same label in the set
     if (printedLabels.find(label_pair) != printedLabels.end())
@@ -1958,8 +1956,8 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
         (*itBB)->emitInstructionSourceLineMapping(os, itInst);
       }
 
-      uint32_t fmtOpts = IGA_FORMATTING_OPTS_DEFAULT |
-                         IGA_FORMATTING_OPT_PRINT_BFNEXPRS;
+      uint32_t fmtOpts =
+          IGA_FORMATTING_OPTS_DEFAULT | IGA_FORMATTING_OPT_PRINT_BFNEXPRS;
       if (getOption(vISA_PrintHexFloatInAsm))
         fmtOpts |= IGA_FORMATTING_OPT_PRINT_HEX_FLOATS;
       if (!getOption(vISA_noLdStAsmSyntax))
@@ -2012,7 +2010,8 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
 
       formatToInstToStream(pc, os);
 
-      (*itBB)->emitBasicInstructionComment(os, itInst, suppressRegs, lastRegs, pc);
+      (*itBB)->emitBasicInstructionComment(os, itInst, suppressRegs, lastRegs,
+                                           pc);
       os << "\n";
 
       pc += kv.getInstSize(pc);
@@ -2122,8 +2121,8 @@ unsigned G4_Kernel::getSRFInWords() {
 
 // GRF modes supported by HW
 // There must be at least one Config that is VRTEnable for each platform
-GRFMode::GRFMode(const TARGET_PLATFORM plat, Options *op)
-    : platform(plat), options(op) {
+GRFMode::GRFMode(const TARGET_PLATFORM plat, unsigned regSize, Options *op)
+    : platform(plat), grfSize(regSize), options(op) {
   switch (platform) {
   case Xe_XeHPSDV:
   case Xe_DG2:
@@ -2168,12 +2167,14 @@ GRFMode::GRFMode(const TARGET_PLATFORM plat, Options *op)
   // Set lower bound GRF
   unsigned minGRF = op->getuInt32Option(vISA_MinGRFNum);
   lowerBoundGRF = minGRF > 0 ? minGRF : configs.front().numGRF;
-  vISA_ASSERT(isValidNumGRFs(lowerBoundGRF), "Invalid lower bound for GRF number");
+  vISA_ASSERT(isValidNumGRFs(lowerBoundGRF),
+              "Invalid lower bound for GRF number");
 
   // Set upper bound GRF
   unsigned maxGRF = op->getuInt32Option(vISA_MaxGRFNum);
   upperBoundGRF = maxGRF > 0 ? maxGRF : configs.back().numGRF;
-  vISA_ASSERT(isValidNumGRFs(upperBoundGRF), "Invalid upper bound for GRF number");
+  vISA_ASSERT(isValidNumGRFs(upperBoundGRF),
+              "Invalid upper bound for GRF number");
 
   // Select higher GRF
   GRFModeUpValue = op->getuInt32Option(vISA_ForceGRFModeUp);
@@ -2185,6 +2186,7 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
                                        bool forceGRFModeUp) {
   unsigned size = configs.size(), i = 0;
   bool spillAllowed = getSpillThreshold() > 0;
+  unsigned spillThresholdInRegs = getSpillThreshold() / grfSize;
   // find appropiate GRF based on reg pressure
   for (; i < size; i++) {
     if (configs[i].VRTEnable && configs[i].numGRF >= lowerBoundGRF &&
@@ -2217,6 +2219,10 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
               lowerGRFNum >= lowerBoundGRF)
             setModeByNumGRFs(lowerGRFNum);
         }
+        return configs[currentMode].numGRF;
+      } else if (spillAllowed &&
+                 maxRP <= configs[i].numGRF + spillThresholdInRegs &&
+                 (largestInputReg + 8) <= configs[i].numGRF) {
         return configs[currentMode].numGRF;
       }
     }

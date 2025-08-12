@@ -4495,7 +4495,7 @@ void vISAVerifier::verifyKernelHeader() {
     }
   }
 
-  GRFMode GRFInfo(irBuilder->getPlatform(), options);
+  GRFMode GRFInfo(irBuilder->getPlatform(), irBuilder->getGRFSize(), options);
   unsigned GRFNumber = GRFInfo.getMaxGRF();
 
   // [Begin, end) is an interval for each input. We check two things
