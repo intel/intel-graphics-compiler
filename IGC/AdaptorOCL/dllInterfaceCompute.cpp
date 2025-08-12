@@ -611,6 +611,15 @@ bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs 
       return false;
     }
 
+#if defined(IGC_VC_ENABLED)
+    bool hasVCCodegenOpt = false;
+    if (InputArgs.pOptions) {
+      std::string options(InputArgs.pOptions, InputArgs.OptionsSize);
+      hasVCCodegenOpt = (options.find("-vc-codegen") != std::string::npos);
+    }
+    hasVISALinking &= !hasVCCodegenOpt;
+#endif
+
     if (!hasVISALinking) {
       for (auto &SpvPair : SPIRVToLink) {
         llvm::Module *pKernelModule = nullptr;

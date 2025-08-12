@@ -300,6 +300,20 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs, TC
 
   IGC_ASSERT(inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V);
 
+#if defined(IGC_VC_ENABLED)
+  // Check if -vc-codegen option is present - if so, use VC backend directly
+  bool hasVCCodegenOpt = false;
+  if (pInputArgs->pOptions) {
+    std::string options(pInputArgs->pOptions, pInputArgs->OptionsSize);
+    hasVCCodegenOpt = (options.find("-vc-codegen") != std::string::npos);
+  }
+
+  if (hasVCCodegenOpt) {
+    return TranslateBuildVC(pInputArgs, pOutputArgs, inputDataFormatTemp, IGCPlatform, profilingTimerResolution,
+                            inputShHash);
+  }
+#endif
+
   // Split ESIMD and SPMD code.
   auto spmd_esimd_programs_or_err = VLD::SplitSPMDAndESIMD(pInputArgs->pInput, pInputArgs->InputSize);
 
