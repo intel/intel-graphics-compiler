@@ -51,6 +51,9 @@ protected:
 
   ELF_CALL ~CElfReader();
 
+  CElfReader(const CElfReader &) = delete;
+  CElfReader &operator=(const CElfReader &) = delete;
+
   SElfHeader *m_pElfHeader; // pointer to the ELF header
   const char *m_pBinary;    // portable ELF binary
   char *m_pNameTable;       // pointer to the string table

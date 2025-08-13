@@ -55,6 +55,9 @@ public:
 
   virtual ~EmitPass();
 
+  EmitPass(const EmitPass &) = delete;
+  EmitPass &operator=(const EmitPass &) = delete;
+
   // Note:  all analysis passes should be function passes. If a module analysis pass
   //        is used, it would invalidate function analysis passes and therefore cause
   //        those analysis passes to be invoked twice, which increases compiling time.

@@ -17,6 +17,9 @@ public:
   BinaryStream();
   ~BinaryStream();
 
+  BinaryStream(const BinaryStream &) = delete;
+  BinaryStream &operator=(const BinaryStream &) = delete;
+
   bool Write(const char *s, std::streamsize n);
 
   bool Write(const BinaryStream &in);

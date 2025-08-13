@@ -40,6 +40,10 @@ public:
   static char ID;
   GenXCodeGenModule();
   ~GenXCodeGenModule();
+
+  GenXCodeGenModule(const GenXCodeGenModule &) = delete;
+  GenXCodeGenModule &operator=(const GenXCodeGenModule &) = delete;
+
   virtual llvm::StringRef getPassName() const override { return "GenX CodeGen module"; }
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
   bool runOnModule(llvm::Module &M) override;

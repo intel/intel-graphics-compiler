@@ -34,6 +34,10 @@ public:
   DebugInfoPass(CShaderProgram::KernelShaderMap &);
   virtual llvm::StringRef getPassName() const override { return "DebugInfoPass"; }
   virtual ~DebugInfoPass();
+
+  DebugInfoPass(const DebugInfoPass &) = delete;
+  DebugInfoPass &operator=(const DebugInfoPass &) = delete;
+
   static char ID;
 
 private:
@@ -57,6 +61,10 @@ class CatchAllLineNumber : public llvm::FunctionPass {
 public:
   CatchAllLineNumber();
   virtual ~CatchAllLineNumber();
+
+  CatchAllLineNumber(const CatchAllLineNumber &) = delete;
+  CatchAllLineNumber &operator=(const CatchAllLineNumber &) = delete;
+
   static char ID;
 
   llvm::StringRef getPassName() const override { return "CatchAllLineNumber"; }

@@ -22,8 +22,6 @@ public:
 
   UndefinedReferencesPass();
 
-  ~UndefinedReferencesPass() {}
-
   virtual llvm::StringRef getPassName() const override { return "UndefinedReferencesPass"; }
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
 

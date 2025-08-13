@@ -35,6 +35,9 @@ public:
   CollectBuiltinsPass(TFunctionsVec &neededBuiltinsFunc, const std::function<bool(llvm::Function *)> &predicate);
   ~CollectBuiltinsPass();
 
+  CollectBuiltinsPass(const CollectBuiltinsPass &) = delete;
+  CollectBuiltinsPass &operator=(const CollectBuiltinsPass &) = delete;
+
   void visitCallInst(llvm::CallInst &callInst);
 };
 
@@ -59,6 +62,9 @@ class BiFManagerCommon {
 public:
   BiFManagerCommon(llvm::LLVMContext &Context);
   ~BiFManagerCommon();
+
+  BiFManagerCommon(const BiFManagerCommon &) = delete;
+  BiFManagerCommon &operator=(const BiFManagerCommon &) = delete;
 
   static size_t getHash(const std::string &FlagName);
 

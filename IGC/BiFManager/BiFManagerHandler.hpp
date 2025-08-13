@@ -32,6 +32,9 @@ public:
   BiFManagerHandler(llvm::LLVMContext &Context);
   ~BiFManagerHandler();
 
+  BiFManagerHandler(const BiFManagerHandler &) = delete;
+  BiFManagerHandler &operator=(const BiFManagerHandler &) = delete;
+
   // Indicator if we have pointer size 32 in user module
   bool isPtrSizeInBits32;
 
