@@ -6206,11 +6206,12 @@ void InsertBranchOpt::ThreeWayLoadSpiltOpt(Function &F) {
 
 void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
   enum Mode {
-    Disable = 0x0,          // Disabled IGC\EnableAtomicBranch = 0x0
-    ZeroAdd = BIT(0),       // Enabled IGC\EnableAtomicBranch = 0x1
-    UMax = BIT(1),          // Enabled IGC\EnableAtomicBranch = 0x2
-    UMin = BIT(2),          // Enabled IGC\EnableAtomicBranch = 0x4
-    UntypedUgmLoad = BIT(3) // Enabled IGC\EnableAtomicBranch = 0x8
+    Disable         = 0x0,    // Disabled IGC\EnableAtomicBranch = 0x0
+    ZeroAdd         = BIT(0), // Enabled IGC\EnableAtomicBranch = 0x1
+    UMax            = BIT(1), // Enabled IGC\EnableAtomicBranch = 0x2
+    UMin            = BIT(2), // Enabled IGC\EnableAtomicBranch = 0x4
+    UntypedUgmLoad  = BIT(3), // Enabled IGC\EnableAtomicBranch = 0x8
+    StatelessAtomic = BIT(4)  // Enabled IGC\EnableAtomicBranch = 0x10
   };
 
   // Allow several modes to be applied
@@ -6218,6 +6219,7 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
   const bool umaxMode = ((mode & UMax) == UMax);
   const bool uminMode = ((mode & UMin) == UMin);
   const bool untypedUgmLoadMode = ((mode & UntypedUgmLoad) == UntypedUgmLoad);
+  const bool statelessMode = ((mode & StatelessAtomic ) == StatelessAtomic);
 
   auto createReadFromAtomic = [=](IRBuilder<> &builder, Instruction *inst, bool isTyped) {
     Constant *zero = ConstantInt::get(inst->getType(), 0);
@@ -6234,7 +6236,15 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
       ld_FunctionArgList[3] = inst->getOperand(3);
       ld_FunctionArgList[4] = zero;
       NewInst = builder.CreateCall(pLdIntrinsic, ld_FunctionArgList);
-    } else {
+    }
+    // Stateless atomic
+    else if ( (dyn_cast<GenIntrinsicInst>(inst))->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicrawA64 )
+    {
+      NewInst = builder.CreateLoad( inst->getType(), inst->getOperand( 0 ) );
+      return NewInst;
+    }
+    else
+    {
       std::vector<Type *> types;
       std::vector<Value *> ld_FunctionArgList;
       Function *pLdIntrinsic;
@@ -6306,7 +6316,9 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
         if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomictyped) {
           src = dyn_cast<Instruction>(inst->getOperand(4));
           op = dyn_cast<ConstantInt>(inst->getOperand(5));
-        } else if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicraw) {
+        } else if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicraw ||
+                   (statelessMode && (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicrawA64)
+                                  && (inst->getOperand(0) == inst->getOperand(1)))) {
           src = dyn_cast<Instruction>(inst->getOperand(2));
           op = dyn_cast<ConstantInt>(inst->getOperand(3));
         }
