@@ -1887,16 +1887,9 @@ void DDD::collectRoots() {
 void DDD::setPriority(Node *pred, const Edge &edge) {
   // Calculate PRED's priority (pred->priority), based on SUCC's priority
   Node *succ = edge.getNode();
-  DepType type = edge.getType();
   vISA_ASSERT(succ->priority != Node::PRIORITY_UNINIT,
          "succ node has no priority?");
-  int newPriority = succ->priority;
-  // Note that, node->isBarrier cannot be used here. Because there may be
-  // non-barrier dep.
-  if (isNotLatencyBarrier(type))
-    newPriority += pred->getOccupancy();
-  else
-    newPriority += edge.getLatency();
+  int newPriority = succ->priority + edge.getLatency();
   pred->priority =
       (newPriority > pred->priority) ? newPriority : pred->priority;
 }
