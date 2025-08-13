@@ -332,8 +332,6 @@ private:
     }
     explicit VISAOptionsDB(Options *opt)
         : options(opt), optionsMap(static_cast<int>(vISA_NUM_OPTIONS)) {}
-
-    ~VISAOptionsDB() {}
   };
 
   VISAOptionsDB m_vISAOptions;

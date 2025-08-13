@@ -436,6 +436,8 @@ public:
   SparseBitSet(const SparseBitSet &&Other)
       : Segments(std::move(Other.Segments)), MaxBits(Other.MaxBits) {}
 
+  ~SparseBitSet() = default;
+
   unsigned getSize() const { return MaxBits; }
 
   void clear() { Segments.clear(); }

@@ -22,13 +22,13 @@ public:
   MemManager(size_t defaultArenaSize);
   ~MemManager();
 
+  MemManager(const MemManager &) = delete;
+  MemManager &operator=(const MemManager &) = delete;
+
   void *alloc(size_t size) { return _arenaManager.AllocDataSpace(size); }
 
 private:
   ArenaManager _arenaManager;
-
-  MemManager(const MemManager &) = delete;
-  MemManager &operator=(const MemManager &) = delete;
 };
 } // namespace iga
 #endif

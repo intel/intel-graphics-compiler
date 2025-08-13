@@ -22,6 +22,9 @@ public:
   Mem_Manager(size_t defaultArenaSize);
   ~Mem_Manager();
 
+  Mem_Manager(const Mem_Manager &) = delete;
+  Mem_Manager &operator=(const Mem_Manager &) = delete;
+
   void *alloc(size_t size) {
     return _arenaManager.AllocDataSpace(size, ArenaHeader::defaultAlign);
   }

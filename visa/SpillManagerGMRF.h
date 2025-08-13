@@ -253,8 +253,6 @@ public:
                   const LivenessAnalysis *lvInfo, LSLR_LIST *spilledLSLRs,
                   bool enableSpillSpaceCompression, bool useScratchMsg);
 
-  ~SpillManagerGRF() {}
-
   bool insertSpillFillCode(G4_Kernel *kernel,
                            PointsToAnalysis &pointsToAnalysis);
 

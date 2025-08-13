@@ -1312,7 +1312,6 @@ public:
     forbiddenVec[(size_t)forbiddenKind::FBD_SCALAR].resize(
         getForbiddenVectorSize(G4_SCALAR));
   };
-  ~ForbiddenRegs(){};
 
   unsigned getForbiddenVectorSize(G4_RegFileKind regKind) const;
   void generateReservedGRFForbidden(unsigned reserveSpillSize);

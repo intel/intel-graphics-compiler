@@ -59,7 +59,6 @@ public:
   void sortBasedOnFreq(std::vector<LiveRange *> &lrs);
   bool hasFreqMetaData(G4_INST *i);
   void deriveRefFreq(G4_BB *bb);
-  ~FrequencyInfo() {}
   void dump() const {}
   void initForRegAlloc(LivenessAnalysis *l);
   void initGRFSpillFillFreq() {

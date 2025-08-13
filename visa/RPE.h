@@ -18,8 +18,6 @@ public:
   RPE(const GlobalRA &, const LivenessAnalysis *,
       DECLARE_LIST *spills = nullptr);
 
-  ~RPE() {}
-
   void run();
   void runBB(G4_BB *);
   unsigned int getRegisterPressure(G4_INST *inst) {
