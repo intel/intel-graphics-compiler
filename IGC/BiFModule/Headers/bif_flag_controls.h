@@ -38,5 +38,6 @@ BIF_FLAG_CONTROL(int, MaxHWThreadIDPerSubDevice)
 BIF_FLAG_CONTROL(bool, UseAssumeInGetGlobalId)
 BIF_FLAG_CONTROL(int, JointMatrixLoadStoreOpt)
 BIF_FLAG_CONTROL(bool, UseOOBChecks)
+BIF_FLAG_CONTROL(bool, IsRayQueryReturnOptimizationEnabled)
 BIF_FLAG_CONTROL(bool, UseBindlessImage)
 #endif // __BIF_FLAG_CONTROL_H__
