@@ -1824,7 +1824,7 @@ DECLARE_IGC_REGKEY(
 DECLARE_IGC_REGKEY(bool, EnableRTPrintf, false, "Enable printf for ray tracing.", true)
 DECLARE_IGC_REGKEY(DWORD, PrintfBufferSize, 0, "Set printf buffer size. Unit: KB.", true)
 DECLARE_IGC_REGKEY(bool, DisableRayQueryReturnOptimization, false, "RayQuery Return Optimization", true)
-DECLARE_IGC_REGKEY_BITMASK(UseNewInlineRaytracing, 12, "Use the new rayquery implementation for particular case",
+DECLARE_IGC_REGKEY_BITMASK(UseNewInlineRaytracing, 4, "Use the new rayquery implementation for particular case",
                            NEW_INLINE_RAYTRACING_MASK, true)
 DECLARE_IGC_REGKEY(DWORD, AddDummySlotsForNewInlineRaytracing, 0,
                    "Add dummy rayquery slots when doing new inline raytracing", true)
