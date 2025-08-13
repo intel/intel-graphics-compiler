@@ -308,7 +308,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   //       It can potentially do some global cost estimations.
   // TODO: Having compilation retry enables loop unrolling for this case and determines if unrolling actually helps
   //       reduce register pressure.
-  const unsigned UnrollMaxCountForAlloca = 64; // May need to be higher for OpenCL
+  const unsigned UnrollMaxCountForAlloca = IGC_GET_FLAG_VALUE(PromoteLoopUnrollwithAllocaCountThreshold);
   bool AllocaFound = false;
   if (MaxTripCount && MaxTripCount <= UnrollMaxCountForAlloca &&
       IGC_IS_FLAG_ENABLED(EnablePromoteLoopUnrollwithAlloca)) {
@@ -332,12 +332,16 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
 
         if (!AI)
           continue;
-
-        Type *Ty = AI->getAllocatedType();
-        unsigned AllocaSize = Ty->isSized() ? DL.getTypeAllocSize(Ty) : 0;
-        if (AllocaSize > 1024 || AllocaSize == 0)
+        // Not fixed size or not in entry block
+        // TODO: Can a alloca with a fixed size not reside in the entry block?
+        if (!AI->isStaticAlloca())
+          continue;
+        // Assume every iteration consumes 1 alloca element.
+        if (cast<ConstantInt>(AI->getArraySize())->getZExtValue() > UnrollMaxCountForAlloca)
           continue;
 
+        // Using alloca size in bytes as the threshold boost seems a bit tricky.
+        unsigned AllocaSize = *(AI->getAllocationSizeInBits(DL)) / 8;
         ThresholdBoost += AllocaSize;
         if (GEP)
           isGEPLoopInduction[GEP] = true;
@@ -348,7 +352,6 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
       // LLVM default only to 10, boost to UnrollMaxCountForAlloca
       UP.MaxIterationsCountToAnalyze = UnrollMaxCountForAlloca;
       UP.Threshold += ThresholdBoost;
-      UP.Runtime = true;
       UP.UpperBound = true;
       UP.Force = true;
 

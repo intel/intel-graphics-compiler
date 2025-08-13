@@ -9,14 +9,15 @@ SPDX-License-Identifier: MIT
 
 // windows unsupported due to issues on 32bit build, to be debugged.
 // UNSUPPORTED: system-windows
+// Disable loop unroll so that the private memory is not optimized out.
 
 // checking the asm dump file
-// RUN: ocloc compile -file %s -options " -g -igc_opts 'VISAOptions=-asmToConsole'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-ASM
+// RUN: ocloc compile -file %s -options " -g -igc_opts 'DisableLoopUnroll=1 VISAOptions=-asmToConsole'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-ASM
 // checking the llvm-IR after EmitVISAPass
-// RUN: ocloc compile -file %s -options " -g -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=EmitPass'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM
-// RUN: ocloc compile -file %s -options " -g -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=EmitPass'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM2
-// RUN: ocloc compile -file %s -options " -g -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=EmitPass'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM3
-// RUN: ocloc compile -file %s -options " -g -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=EmitPass'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM4
+// RUN: ocloc compile -file %s -options " -g -igc_opts 'DisableLoopUnroll=1 PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=EmitPass'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM
+// RUN: ocloc compile -file %s -options " -g -igc_opts 'DisableLoopUnroll=1 PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=EmitPass'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM2
+// RUN: ocloc compile -file %s -options " -g -igc_opts 'DisableLoopUnroll=1 PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=EmitPass'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM3
+// RUN: ocloc compile -file %s -options " -g -igc_opts 'DisableLoopUnroll=1 PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=EmitPass'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM4
 
 // Looking for the comment which informs about the amount of spill size
 // CHECK-ASM: //.private memory size

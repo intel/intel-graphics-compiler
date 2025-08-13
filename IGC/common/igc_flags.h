@@ -449,6 +449,10 @@ DECLARE_IGC_REGKEY(
     "Disable this flag makes them always cost something as well as disables dynamic threshold increase based on the "
     "size of alloca and number of GEP to the alloca in the loop, leading to the loop less likely to be unrolled.",
     false)
+DECLARE_IGC_REGKEY(DWORD, PromoteLoopUnrollwithAllocaCountThreshold, 256,
+                   "The loop trip count OR number of alloca elements cutoff to stop regkey "
+                   "EnablePromoteLoopUnrollwithAlloca (Check regkey description).",
+                   false)
 DECLARE_IGC_REGKEY(DWORD, SetRegisterPressureThresholdForLoopUnroll, 96,
                    "Set the register pressure threshold for limiting the loop unroll to smaller loops", false)
 DECLARE_IGC_REGKEY(DWORD, SetBranchSwapThreshold, 400, "Set the branch swaping threshold.", false)
