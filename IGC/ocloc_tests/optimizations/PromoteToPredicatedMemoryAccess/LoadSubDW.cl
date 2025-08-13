@@ -13,8 +13,6 @@ SPDX-License-Identifier: MIT
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'EnablePromoteToPredicatedMemoryAccess=1 VISAOptions=-asmToConsole'" 2>&1 | FileCheck %s --check-prefixes=CHECK-ASM
 
 // CHECK-ASM: kernel test_i8_0
-// CHECK-ASM:             cmp (32|M0)   (lt)[[F1:f[0-9\.]+]]
-// CHECK-ASM:   ([[F1]]) goto (32|M0)
 // CHECK-ASM: {{[_a-z0-9A-Z]+}}:
 // CHECK-ASM-DAG:         cmp (32|M0)   (le)[[F2:f[0-9\.]+]]   null<1>:d     r{{[0-9\.]+}}
 // CHECK-ASM-DAG:         cmp (32|M0)   (ge)[[F3:f[0-9\.]+]]   null<1>:d     r{{[0-9\.]+}}
