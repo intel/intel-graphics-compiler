@@ -3032,9 +3032,6 @@ bool AllowShortImplicitPayloadHeader(const CodeGenContext *ctx) {
       return false;
   }
 
-  if (ctx->platform.getPlatformInfo().eProductFamily == IGFX_PVC)
-    return false;
-
   return ctx->platform.isCoreChildOf(IGFX_XE_HP_CORE);
 }
 
