@@ -9081,7 +9081,7 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst *inst, SmallVector<St
     } else if (str.getAsInteger(10, matchVal) == 0) {
       // Also allows matching input reg to output reg
       return true;
-    } else if (str.equals("i")) {
+    } else if (str.equals("i") || str.equals("P")) {
       return cv && cv->IsImmediate();
     } else if (str.equals("rw.u")) {
       return cv && cv->IsUniform();
@@ -9205,7 +9205,7 @@ void EmitPass::EmitInlineAsm(llvm::CallInst *inst) {
     }
     // Special handling if LLVM replaces a variable with an immediate, we need
     // to insert an extra move
-    else if (opVar->IsImmediate() && !constraint.equals("i")) {
+    else if (opVar->IsImmediate() && !constraint.equals("i") && !constraint.equals("P")) {
       CVariable *tempMov = m_currShader->GetNewVariable(1, opVar->GetType(), EALIGN_GRF, true, opVar->getName());
       m_encoder->Copy(tempMov, opVar);
       m_encoder->Push();
@@ -9271,7 +9271,13 @@ void EmitPass::EmitInlineAsm(llvm::CallInst *inst) {
       IGC_ASSERT_MESSAGE(0, "Invalid operand index");
       return;
     }
-    string varName = opnds[val] ? m_encoder->GetVariableName(opnds[val]) : "null";
+    string varName;
+    if (constraints[val].equals("P"))
+      varName = std::to_string(opnds[val]->GetImmediateValue());
+    else if (opnds[val])
+      varName = m_encoder->GetVariableName(opnds[val]);
+    else
+      varName = "null";
     asmStr.replace(varPos, (idEnd - idStart + 1), varName);
 
     startPos = varPos + varName.size();
