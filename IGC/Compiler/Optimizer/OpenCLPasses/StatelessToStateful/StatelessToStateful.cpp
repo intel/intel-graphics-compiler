@@ -522,7 +522,7 @@ bool StatelessToStateful::pointerIsFromKernelArgument(Value &ptr) {
 
 static alignment_t determinePointerAlignment(Value *Ptr, const DataLayout &DL, AssumptionCache *AC,
                                              Instruction *InsertionPt) {
-  alignment_t BestAlign = 0;
+  alignment_t BestAlign = 1;
 
   // 1) Examine uses: look for loads/stores (which may carry explicit
   //    alignment) or a GEP that reveals an ABI alignment from its element
