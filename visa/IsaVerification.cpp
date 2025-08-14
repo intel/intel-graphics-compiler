@@ -661,6 +661,8 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
             (exec_sz - 1) * h_stride_val * VN_size + VN_size - 1;
       }
 
+      unsigned grfSize = irBuilder->getGRFSize();
+
       // Check if the operand may touch more than 2 GRFs due to bad alignment
       // So far vISA is able to handle the splitting of:
       // moves, logic, cmp and arithmetic instructions
@@ -669,19 +671,19 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
           ISA_Inst_Table[opcode].type != ISA_Inst_Compare &&
           ISA_Inst_Table[opcode].type != ISA_Inst_Arith) {
         REPORT_INSTRUCTION(
-            options, (irBuilder->getGRFSize() * 2u) > last_region_elt_byte,
+            options, (grfSize * 2u) > last_region_elt_byte,
             "CISA operand region access out of 2 GRF boundary (within %d "
             "bytes): %d",
-            (irBuilder->getGRFSize() * 2), last_region_elt_byte);
+            (grfSize * 2), last_region_elt_byte);
 
         // check if the operand may touch more than 2 GRFs due to bad alignment
         unsigned startByte =
             getStartByteOffset(header, var, numPreDefinedVars) +
-            row_offset * irBuilder->getGRFSize() +
+            row_offset * grfSize +
             col_offset * CISATypeTable[var->getType()].typeSize;
         unsigned endByte = startByte + last_region_elt_byte;
-        unsigned startGRF = startByte / irBuilder->getGRFSize();
-        unsigned endGRF = endByte / irBuilder->getGRFSize();
+        unsigned startGRF = startByte / grfSize;
+        unsigned endGRF = endByte / grfSize;
         REPORT_INSTRUCTION(
             options, endGRF == startGRF || endGRF == (startGRF + 1),
             "CISA operand accesses more than 2 GRF due to mis-alignment: start "
@@ -689,14 +691,22 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
             startByte, endByte);
       }
 
-      unsigned firstElementIndex =
-          row_offset * irBuilder->getGRFSize() + col_offset * VN_size;
+      unsigned firstElementIndex = row_offset * grfSize + col_offset * VN_size;
 
       for (int i = 0; i < exec_sz / width_val; i++) {
         for (int j = 0; j < width_val; j++) {
           unsigned region_offset =
               firstElementIndex +
               (((i * v_stride_val) + (j * h_stride_val)) * VN_size);
+
+          // Madw instruction has both low and high results. So, need to check
+          // the offset of high result.
+          unsigned hiOffset = 0;
+          if (inst->opcode == ISA_MADW) {
+            hiOffset = (region_offset - firstElementIndex + 1 + grfSize - 1) &
+                       (~(grfSize - 1));  // GRF-aligned
+            region_offset += hiOffset;
+          }
 
           if (region_offset >= var_size) {
 #ifndef DLL_MODE
@@ -709,15 +719,28 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
             std::cout << "  The access fails the following check to determine "
                          "correct bounds (see CISA manual section 5.1 "
                          "Region-based Addressing):\n";
-            std::cout << "  (row_offset * GRF_SIZE + col_offset * type_size) + "
-                         "(((i * v_stride) + (j * h_stride)) * type_size) < "
-                         "type_size * num_elements:\n";
-            std::cout << "(" << (int)row_offset << " * "
-                      << (int)irBuilder->getGRFSize() << " + "
-                      << (int)col_offset << " * " << VN_size << ") + (((" << i
-                      << " * " << v_stride_val << ") + (" << j << " * "
-                      << h_stride_val << ")) * " << VN_size << ") < " << VN_size
-                      << " * " << num_elements << "\n";
+            if (inst->opcode == ISA_MADW) {
+              std::cout
+                  << "(row_offset * GRF_SIZE + col_offset * type_size) + "
+                     "(((i * v_stride) + (j * h_stride)) * type_size) + "
+                     "high_offset < type_size * num_elements:\n";
+              std::cout << "(" << (int)row_offset << " * " << grfSize << " + "
+                        << (int)col_offset << " * " << VN_size << ") + (((" << i
+                        << " * " << v_stride_val << ") + (" << j << " * "
+                        << h_stride_val << ")) * " << VN_size << ") + "
+                        << hiOffset << " < " << VN_size << " * "
+                        << num_elements << "\n";
+            } else {
+              std::cout
+                  << "  (row_offset * GRF_SIZE + col_offset * type_size) + "
+                     "(((i * v_stride) + (j * h_stride)) * type_size) < "
+                     "type_size * num_elements:\n";
+              std::cout << "(" << (int)row_offset << " * " << grfSize << " + "
+                        << (int)col_offset << " * " << VN_size << ") + (((" << i
+                        << " * " << v_stride_val << ") + (" << j << " * "
+                        << h_stride_val << ")) * " << VN_size << ") < "
+                        << VN_size << " * " << num_elements << "\n";
+            }
             std::cout << "Violating Instruction: "
                       << header->printInstruction(inst, options)
                       << "\n";
