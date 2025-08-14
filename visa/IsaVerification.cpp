@@ -510,6 +510,7 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
   Common_ISA_Operand_Class operand_class = vect.getOperandClass();
 
   unsigned dstIndex = getDstIndex(inst);
+  bool isDst = (i == dstIndex);
 
   unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
 
@@ -565,7 +566,7 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
     REPORT_INSTRUCTION(options, false, "Invalid execution size");
   }
 
-  if (i == dstIndex) {
+  if (isDst) {
     REPORT_INSTRUCTION(
         options, 0 != h_stride_val,
         "Horizontal Stride should not be 0 for a destination operand.");
@@ -632,7 +633,7 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
                          "Legal CISA region vertical stride parameter values: "
                          "{0, 1, 2, 4, 8, 16, 32}.");
     }
-  } else if (dstIndex != i) {
+  } else if (!isDst) {
     // check for out-of-bound addresses for VxH operand
     int numAddr = exec_sz / width_val;
     REPORT_INSTRUCTION(options, numAddr <= (int)irBuilder->getNumAddrRegisters(),
@@ -699,13 +700,14 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
               firstElementIndex +
               (((i * v_stride_val) + (j * h_stride_val)) * VN_size);
 
-          // Madw instruction has both low and high results. So, need to check
-          // the offset of high result.
-          unsigned hiOffset = 0;
-          if (inst->opcode == ISA_MADW) {
-            hiOffset = (region_offset - firstElementIndex + 1 + grfSize - 1) &
+          // Madw instruction has both low and high results in dst. So, need
+          // to check the offset of high result.
+          unsigned dstHiOffset = 0;
+          if (inst->opcode == ISA_MADW && isDst) {
+            dstHiOffset =
+                (region_offset - firstElementIndex + 1 + grfSize - 1) &
                        (~(grfSize - 1));  // GRF-aligned
-            region_offset += hiOffset;
+            region_offset += dstHiOffset;
           }
 
           if (region_offset >= var_size) {
@@ -719,16 +721,16 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
             std::cout << "  The access fails the following check to determine "
                          "correct bounds (see CISA manual section 5.1 "
                          "Region-based Addressing):\n";
-            if (inst->opcode == ISA_MADW) {
+            if (inst->opcode == ISA_MADW && isDst) {
               std::cout
                   << "(row_offset * GRF_SIZE + col_offset * type_size) + "
                      "(((i * v_stride) + (j * h_stride)) * type_size) + "
-                     "high_offset < type_size * num_elements:\n";
+                     "dstHiOffset < type_size * num_elements:\n";
               std::cout << "(" << (int)row_offset << " * " << grfSize << " + "
                         << (int)col_offset << " * " << VN_size << ") + (((" << i
                         << " * " << v_stride_val << ") + (" << j << " * "
                         << h_stride_val << ")) * " << VN_size << ") + "
-                        << hiOffset << " < " << VN_size << " * "
+                        << dstHiOffset << " < " << VN_size << " * "
                         << num_elements << "\n";
             } else {
               std::cout
