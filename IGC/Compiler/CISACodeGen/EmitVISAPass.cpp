@@ -5488,18 +5488,30 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
     if (defaultConditions || forcePreventOOB) {
       uint maskOfValidLanes = numLanes(m_currShader->m_State.m_dispatchSize) - 1;
 
-      // To support conversion to movi we need to make all calculations
-      // (shl, addr_add) of address NoMask. to avoid random data from
-      // previous execution in divergent CF.
+      // To support conversion to movi we need to make all calculations (shl, addr_add) of address NoMask.
+      // to avoid random data from previous execution in divergent CF.
       if (forcePreventOOB) {
         m_encoder->SetNoMask();
       }
-      CVariable *tempCopy = m_currShader->GetNewVariable(simdChannel, "SanitizedIndexShuffleTmp");
 
-      m_encoder->And(tempCopy, simdChannel, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
+      bool bAllowLVNMatchingForAnd = true;
+      if (isSimd32 && data->GetType() == ISA_TYPE_F) {
+        if (auto *prevInst = dyn_cast<llvm::Instruction>(inst->getPrevNode()))
+          if (GetOpCode(prevInst) == EOPCODE::llvm_fadd)
+            bAllowLVNMatchingForAnd = false;
+      }
+
+      if (bAllowLVNMatchingForAnd) {
+        CVariable *tempCopy = m_currShader->GetNewVariable(simdChannel, "SanitizedIndexShuffleTmp");
+        m_encoder->And(tempCopy, simdChannel, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
+        simdChannelUW = m_currShader->BitCast(tempCopy, ISA_TYPE_UW);
+      }
+      else {
+        m_encoder->SetSrcRegion(0, 2, 1, 0);
+        m_encoder->SetDstRegion(2);
+        m_encoder->And(simdChannelUW, simdChannelUW, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
+      }
       m_encoder->Push();
-
-      simdChannelUW = m_currShader->BitCast(tempCopy, ISA_TYPE_UW);
     }
     CVariable *pSrcElm = m_currShader->GetNewVariable(simdChannel->GetNumberElement(), ISA_TYPE_UW, EALIGN_GRF,
                                                       channelUniform, simdChannel->GetNumberInstance(), "ShuffleTmp");
