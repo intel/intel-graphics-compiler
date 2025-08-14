@@ -61,4 +61,6 @@ private:
                                               TTI::TargetCostKind CostKind);
 };
 
+unsigned getLoopSize(const Loop *L, const TargetTransformInfo &TTI);
+
 } // namespace llvm

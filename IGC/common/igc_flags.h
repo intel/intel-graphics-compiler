@@ -433,6 +433,10 @@ DECLARE_IGC_REGKEY(
     "The mask is casted to IGC::SyncInstMask and informs which synchronization objects should not be coalesced. Note "
     "that synchronization objects classified in multiple types are not disabled if any bit describing them is off.",
     true)
+DECLARE_IGC_REGKEY(bool, UnrollLoopForCodeSizeOnly, false,
+                   "Only unroll the loop if it can reduce program size/register pressure. Ignore all other threshold "
+                   "setting but still enable EnablePromoteLoopUnrollwithAlloca due to high likelyhood to reduce size.",
+                   true)
 DECLARE_IGC_REGKEY(DWORD, SetLoopUnrollThreshold, 0,
                    "Set the loop unroll threshold. Value 0 will use the default threshold.", false)
 DECLARE_IGC_REGKEY(

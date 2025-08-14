@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include <utility>
 #include "Compiler/GenTTI.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
@@ -18,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/CodeMetrics.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Support/InstructionCost.h"
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "common/LLVMWarningsPop.hpp"
 
@@ -173,6 +175,8 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   }
 
   unsigned LoopUnrollThreshold = ctx->m_DriverInfo.GetLoopUnrollThreshold();
+  bool UnrollLoopForCodeSizeOnly =
+      IGC_IS_FLAG_ENABLED(UnrollLoopForCodeSizeOnly) || (!ctx->m_retryManager.IsFirstTry());
 
   // override the LoopUnrollThreshold if the registry key is set
   if (IGC_GET_FLAG_VALUE(SetLoopUnrollThreshold) != 0) {
@@ -274,6 +278,12 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
     UP.Force = true;
   }
 
+  if (UnrollLoopForCodeSizeOnly) {
+    UP.Threshold = getLoopSize(L, *this) + 1;
+    UP.MaxPercentThresholdBoost = 100;
+    UP.Partial = false;
+  }
+
   // For all the load/store who (having a GEP to),
   // 1. Accessing a fixed size Alloca
   // 2. Having an loop-iteration-inducted-only index
@@ -306,8 +316,6 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   //
   // TODO: Having an analysis pass to link alloca with loops globally so that they are either unrolled together or not.
   //       It can potentially do some global cost estimations.
-  // TODO: Having compilation retry enables loop unrolling for this case and determines if unrolling actually helps
-  //       reduce register pressure.
   const unsigned UnrollMaxCountForAlloca = IGC_GET_FLAG_VALUE(PromoteLoopUnrollwithAllocaCountThreshold);
   bool AllocaFound = false;
   if (MaxTripCount && MaxTripCount <= UnrollMaxCountForAlloca &&
@@ -353,7 +361,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
       UP.MaxIterationsCountToAnalyze = UnrollMaxCountForAlloca;
       UP.Threshold += ThresholdBoost;
       UP.UpperBound = true;
-      UP.Force = true;
+      UP.Force = UnrollLoopForCodeSizeOnly ? false : true;
 
       LLVM_DEBUG(dbgs() << "Increasing L:" << L->getName() << " threshold to " << UP.Threshold
                         << " due to Alloca accessed by:");
@@ -362,6 +370,9 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
       LLVM_DEBUG(dbgs() << " \n");
     }
   }
+
+  if (IGC_IS_FLAG_ENABLED(UnrollLoopForCodeSizeOnly))
+    return;
 
   unsigned sendMessage = 0;
   unsigned TripCount = 0;
@@ -679,4 +690,20 @@ llvm::InstructionCost GenIntrinsicsTTIImpl::internalCalculateCost(const User *U,
 
   return BaseT::getInstructionCost(U, Operands, CostKind);
 }
+
+// Strip from LLVM::LoopUnrollPass::ApproximateLoopSize
+unsigned getLoopSize(const Loop *L, const TargetTransformInfo &TTI) {
+  SmallPtrSet<const Value *, 32> EphValues;
+
+  CodeMetrics Metrics;
+  for (BasicBlock *BB : L->blocks())
+    Metrics.analyzeBasicBlock(BB, TTI, EphValues);
+
+  InstructionCost LoopSize;
+  LoopSize = Metrics.NumInsts;
+
+  LoopSize = (LoopSize > 3/*BEInsns + 1*/) ? LoopSize : 3;
+  return *LoopSize.getValue();
+}
+
 } // namespace llvm
