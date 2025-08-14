@@ -24,7 +24,11 @@
 ; CHECK: cmp.eq (M1, 32) [[F_LOC_IDX_MATCH:.*]] [[LOCAL_IDX]](0,0)<1;1,0> loc_idx(0,0)<0;1,0>
 ; CHECK: and (M1, 32) [[F_LOC_IDX_MATCH]] [[F_LOC_IDX_MATCH]] [[F_LOC_IDYZ]]
 ; CHECK: mov (M1_NM, 1) [[FVAR:.*]](0,0)<1> [[F_LOC_IDX_MATCH]]
-; CHECK: fbl (M1_NM, 1) [[OFFSET_ALIAS]](0,0)<1> [[FVAR]](0,0)<0;1,0>
+; CHECK: setp (M1_NM, 32) [[F_EMASK:.*]] 0x0:ud
+; CHECK: cmp.eq (M1, 32) [[F_EMASK]] [[DUMMY:.*]](0,0)<0;1,0> [[DUMMY]](0,0)<0;1,0>
+; CHECK: mov (M1_NM, 1) [[VAR_EMASK:.*]](0,0)<1> [[F_EMASK]]
+; CHECK: and (M1_NM, 1) [[VAR_EMASK]](0,0)<1> [[VAR_EMASK]](0,0)<0;1,0> [[FVAR]](0,0)<0;1,0>
+; CHECK: fbl (M1_NM, 1) [[OFFSET_ALIAS]](0,0)<1> [[VAR_EMASK]](0,0)<0;1,0>
 ; CHECK: shl (M1_NM, 1) [[OFFSET_ALIAS]](0,0)<1> [[OFFSET_ALIAS]](0,0)<0;1,0> 0x1:w
 ; CHECK: addr_add (M1_NM, 1) [[ADDR:.*]](0)<1> &{{.*}} [[OFFSET]](0,0)<0;1,0>
 ; CHECK: mov (M1_NM, 1) [[DATA_ALIAS]](0,0)<1> r[[[ADDR]](0),0]<0;1,0>:hf

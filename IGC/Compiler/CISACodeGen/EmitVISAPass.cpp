@@ -12368,11 +12368,16 @@ CVariable *EmitPass::UniformCopy(CVariable *var, bool doSub) {
 
 /// Uniform copy allowing to reuse the off calculated by a previous call
 /// This allow avoiding redundant code
-CVariable *EmitPass::UniformCopy(CVariable *var, CVariable *&off, CVariable *eMask, bool doSub, bool safeGuard) {
+CVariable *EmitPass::UniformCopy(CVariable *var, CVariable *&off, CVariable *eMask, bool doSub, bool safeGuard,
+                                 CVariable *predicate) {
   IGC_ASSERT_MESSAGE(!var->IsUniform(), "Expect non-uniform source!");
 
   if (eMask == nullptr) {
     eMask = GetExecutionMask();
+  }
+  if (predicate != nullptr) {
+    m_encoder->And(eMask, eMask, predicate);
+    m_encoder->Push();
   }
   if (off == nullptr) {
     // Get offset to any 1s. For simplicity, use 'fbl' to find the lowest 1s.
@@ -17762,8 +17767,8 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, R
     if (!srcUniform) {
       if (predicate) {
         CVariable *offset = nullptr;
-        CVariable *eMask = CastFlagToVariable(predicateVar);
-        stVar = UniformCopy(stVar, offset, eMask);
+        CVariable *pMask = CastFlagToVariable(predicateVar);
+        stVar = UniformCopy(stVar, offset, nullptr, false, false, pMask);
       } else {
         stVar = UniformCopy(stVar);
       }
