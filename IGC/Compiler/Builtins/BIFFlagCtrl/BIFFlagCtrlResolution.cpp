@@ -97,7 +97,6 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   }
 
   BIF_FLAG_CTRL_SET(UseOOBChecks, PtrCGC->platform.needsOutOfBoundsBuiltinChecks());
-  BIF_FLAG_CTRL_SET(IsRayQueryReturnOptimizationEnabled, PtrCGC->platform.isRayQueryReturnOptimizationEnabled());
 
   // NOTE: No need to check for UseLegacyBindlessMode,
   //       as it's unrelated to images.
