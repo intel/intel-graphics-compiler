@@ -970,34 +970,149 @@ void TransposeHelper::handleGEPInstNew(llvm::GetElementPtrInst *pGEP, llvm::Valu
   HandleAllocaSources(pGEP, linearOffset);
 }
 
-// Load N elements from a vector alloca, Idx, ... Idx + N - 1. Return a scalar
-// or a vector value depending on N.
+// Load a value scalar/vector <N * DstScalarTy> out of a private alloca that has been promoted to a flat vector <M *
+// SrcScalarTy>. This assumes the GEP lowering has already produced a linear lane index pScalarizedIdx into that
+// promoted vector.
+//
+// The implementation supports two scenarios:
+// 1. Simple path (SrcBits == DstBits). In this case the destination element width matches the promoted lane width, so
+// only need to extract N consecutive lanes and legalize type differences.
+// 2. General path (SrcBits != DstBits). In this case, the destination element width differs from the promoted lane
+// width. So read K = ceil(N * DstBits / SrcBits) promoted lanes, pack them into a big integer of K*SrcBits bits, trim
+// to exactly NeedBits = N * DstBits, then expand to either a scalar or <N * DstScalarType>.
+//
+// Note, "lane" here means one element of the promoted vecotr <M * SrcScalarTy>.
 static Value *loadEltsFromVecAlloca(unsigned N, AllocaInst *pVecAlloca, Value *pScalarizedIdx,
-                                    IGCLLVM::IRBuilder<> &IRB, Type *scalarType) {
-  Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca->getAllocatedType(), pVecAlloca);
+                                    IGCLLVM::IRBuilder<> &IRB, Type *DstScalarTy) {
+  IGC_ASSERT(pVecAlloca && pScalarizedIdx && DstScalarTy);
+  IGC_ASSERT(N >= 1);
+
+  // Promoted vector type and its scalar element type (destination lanes are of this type).
+  auto *PromotedVecTy = cast<IGCLLVM::FixedVectorType>(pVecAlloca->getAllocatedType());
+  Type *SrcScalarTy = PromotedVecTy->getElementType();
+  const DataLayout &DL = pVecAlloca->getModule()->getDataLayout();
+
+  const uint64_t SrcBits = DL.getTypeStoreSizeInBits(SrcScalarTy);
+  const uint64_t DstBits = DL.getTypeStoreSizeInBits(DstScalarTy);
+  const uint64_t NeedBits = DstBits * (uint64_t)N;
+
+  IGC_ASSERT_MESSAGE(SrcBits > 0 && DstBits > 0, "Unexpected zero-sized scalar type");
+
+  // Load the entire promoted vector only once, all reads will extract from this value.
+  Value *Whole = IRB.CreateLoad(PromotedVecTy, pVecAlloca);
+
+  // Helper for casting a sinlge scalar to an integer with exactly Bits width.
+  auto toIntOfWidth = [&](Value *V, uint64_t Bits) -> Value * {
+    Type *Ty = V->getType();
+    Type *IntTy = IRB.getIntNTy((unsigned)Bits);
+    if (Ty->isPointerTy())
+      return IRB.CreatePtrToInt(V, IntTy);
+    if (Ty->isIntegerTy((unsigned)Bits))
+      return V;
+    return IRB.CreateBitCast(V, IntTy);
+  };
+
+  // Helper for casting an integer back to the requested destination scalar type.
+  auto intToDstScalar = [&](Value *VInt) -> Value * {
+    if (DstScalarTy->isPointerTy())
+      return IRB.CreateIntToPtr(VInt, DstScalarTy);
+    if (DstScalarTy->isIntegerTy((unsigned)DstBits))
+      return VInt;
+    return IRB.CreateBitCast(VInt, DstScalarTy);
+  };
+
+  // 1. Fast path
+  if (SrcBits == DstBits) {
+    if (N == 1) {
+      // This is scalar read: extract one lane, legalize type, and return.
+      Value *Elem = IRB.CreateExtractElement(Whole, pScalarizedIdx);
+      Type *Ty = Elem->getType();
+      if (Ty == DstScalarTy)
+        return Elem;
+      if (Ty->isPointerTy() && DstScalarTy->isIntegerTy((unsigned)DstBits))
+        return IRB.CreatePtrToInt(Elem, DstScalarTy);
+      if (Ty->isIntegerTy((unsigned)SrcBits) && DstScalarTy->isPointerTy())
+        return IRB.CreateIntToPtr(Elem, DstScalarTy);
+      return IRB.CreateBitCast(Elem, DstScalarTy);
+    }
+
+    // This is vector read: extract N lanes, legalize per lane type, build <N * DstScalarTy>.
+    Type *RetVecTy = IGCLLVM::FixedVectorType::get(DstScalarTy, N);
+    Value *Result = PoisonValue::get(RetVecTy);
+    for (unsigned i = 0; i < N; ++i) {
+      Value *Off = ConstantInt::get(pScalarizedIdx->getType(), i);
+      Value *Idx = IRB.CreateAdd(pScalarizedIdx, Off);
+      Value *Elem = IRB.CreateExtractElement(Whole, Idx);
+      if (Elem->getType() != DstScalarTy) {
+        if (Elem->getType()->isPointerTy() && DstScalarTy->isIntegerTy((unsigned)DstBits))
+          Elem = IRB.CreatePtrToInt(Elem, DstScalarTy);
+        else if (Elem->getType()->isIntegerTy((unsigned)SrcBits) && DstScalarTy->isPointerTy())
+          Elem = IRB.CreateIntToPtr(Elem, DstScalarTy);
+        else
+          Elem = IRB.CreateBitCast(Elem, DstScalarTy);
+      }
+      Result = IRB.CreateInsertElement(Result, Elem, Off);
+    }
+    return Result;
+  }
+
+  // 2. General path
+  //
+  // Algorithm:
+  // 1. Determine how many promoted lanes are needed, K = ceil(NeedBits / SrcBits).
+  // 2. Extract those K lanes as integers i{SrcBits} and pack into a <K * iSrcBits>.
+  // 3. Bitcast <K * iSrcBits> to a single i{K*SrcBits} integer.
+  // 4. Truncate to exactly NeedBits.
+  // 5. Expand to the requested result type: For scalars, intToDstScalar(i{DstBits}). For vectors, bitcast to <N *
+  // iDstBits>, then per lane inttoptr if pointer elements, otherwise just bitcast to <N * DstScalarTy>.
+  const uint64_t K = (NeedBits + SrcBits - 1) / SrcBits; // ceil
+
+  // Build <K * iSrcBits> by extracting K consecutive promoted lanes starting at pScalarizedIdx.
+  Type *IntSrcTy = IRB.getIntNTy((unsigned)SrcBits);
+  IGCLLVM::FixedVectorType *PackVecIntTy = IGCLLVM::FixedVectorType::get(IntSrcTy, (unsigned)K);
+  Value *PackVecInt = PoisonValue::get(PackVecIntTy);
+
+  for (uint64_t i = 0; i < K; ++i) {
+    Value *Off = ConstantInt::get(pScalarizedIdx->getType(), (uint64_t)i);
+    Value *Idx = IRB.CreateAdd(pScalarizedIdx, Off);
+    Value *SrcElem = IRB.CreateExtractElement(Whole, Idx);
+    Value *SrcElemInt = toIntOfWidth(SrcElem, SrcBits);
+    PackVecInt = IRB.CreateInsertElement(PackVecInt, SrcElemInt, Off);
+  }
+
+  // Concatenate the K integers into a single i{K*SrcBits} by bitcasting the vector.
+  Type *BigIntTy = IRB.getIntNTy((unsigned)(K * SrcBits));
+  Value *BigInt = IRB.CreateBitCast(PackVecInt, BigIntTy);
+
+  // Trim to the requested width.
+  Value *NeedInt = (NeedBits == K * SrcBits) ? BigInt : IRB.CreateTrunc(BigInt, IRB.getIntNTy((unsigned)NeedBits));
+
+  // Expand to the user-visible return type.
   if (N == 1) {
-    return IRB.CreateBitCast(IRB.CreateExtractElement(pLoadVecAlloca, pScalarizedIdx), scalarType);
+    // For scalars, i{DstBits} into DstScalarTy.
+    return intToDstScalar(NeedInt);
   }
 
-  // A vector load
-  // %v = load <2 x float>* %ptr
-  // becomes
-  // %w = load <32 x float>* %ptr1
-  // %v0 = extractelement <32 x float> %w, i32 %idx
-  // %v1 = extractelement <32 x float> %w, i32 %idx+1
-  // replace all uses of %v with <%v0, %v1>
-  IGC_ASSERT_MESSAGE((N > 1), "out of sync");
-  Type *Ty = IGCLLVM::FixedVectorType::get(scalarType, N);
-  Value *Result = UndefValue::get(Ty);
+  // For vectors, bitcast to <N * iDstBits>, then change element type if needed.
+  IGCLLVM::FixedVectorType *VecIntTy = IGCLLVM::FixedVectorType::get(IRB.getIntNTy((unsigned)DstBits), N);
+  Value *AsIntVec = (NeedBits == (uint64_t)DL.getTypeStoreSizeInBits(VecIntTy)) ? IRB.CreateBitCast(NeedInt, VecIntTy)
+                                                                                : (Value *)nullptr;
 
+  if (!DstScalarTy->isPointerTy()) {
+    if (DstScalarTy->isIntegerTy((unsigned)DstBits))
+      return AsIntVec;
+    return IRB.CreateBitCast(AsIntVec, IGCLLVM::FixedVectorType::get(DstScalarTy, N));
+  }
+
+  IGCLLVM::FixedVectorType *RetVecTy = IGCLLVM::FixedVectorType::get(DstScalarTy, N);
+  Value *Ret = PoisonValue::get(RetVecTy);
   for (unsigned i = 0; i < N; ++i) {
-    Value *VectorIdx = ConstantInt::get(pScalarizedIdx->getType(), i);
-    auto Idx = IRB.CreateAdd(pScalarizedIdx, VectorIdx);
-    auto Val = IRB.CreateExtractElement(pLoadVecAlloca, Idx);
-    Val = IRB.CreateBitCast(Val, scalarType);
-    Result = IRB.CreateInsertElement(Result, Val, VectorIdx);
+    Value *LaneIdx = ConstantInt::get(IRB.getInt32Ty(), i);
+    Value *LaneInt = IRB.CreateExtractElement(AsIntVec, LaneIdx);
+    Value *LanePtr = IRB.CreateIntToPtr(LaneInt, DstScalarTy);
+    Ret = IRB.CreateInsertElement(Ret, LanePtr, LaneIdx);
   }
-  return Result;
+  return Ret;
 }
 
 void TransposeHelperPromote::handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx) {
@@ -1012,40 +1127,110 @@ void TransposeHelperPromote::handleLoadInst(LoadInst *pLoad, Value *pScalarizedI
   pLoad->eraseFromParent();
 }
 
-void TransposeHelperPromote::handleStoreInst(llvm::StoreInst *pStore, llvm::Value *pScalarizedIdx) {
-  // Add Store instruction to remove list
-  IGC_ASSERT(nullptr != pStore);
-  IGC_ASSERT(pStore->isSimple());
+// Store a scalar/vector value into a promoted private alloca that is represented as a flat vector.
+//
+// The implementation is built on the following assumptions:
+// - The promoted destination is a vector <M * SrcScalarTy> where SrcScalarTy is the element type chosen for the
+// promoted alloca.
+// - The source to store (StoreVal) is either a) a scalar of arbitrary type/width or b) a vector <N * DstScalarTy> of
+// arbitrary lane type/width.
+// - The GEP lowering has already produced a linear element index pScalarizedIdx into the promoted vector. This
+// implementation writes the source bytes begining at that index but can possibly span multiple lanes.
+//
+// Overview of the algorithm:
+// 1. Normalize the source scalar/vector into a single integer of NeedBits (the exact size of the payload to store)
+// 2. Split the integer into K parts, where each chunk has the bit-width of a promoted lane (SrcBits).
+// 3. Bitcast/convert through inttoptr each chunk back to SrcScalarTy (if needed) and insert the chunks into consecutive
+// promoted lanes.
+// 4. Store the promoted vector back to the alloca.
+static void storeEltsToVecAlloca(Value *StoreVal, AllocaInst *pVecAlloca, Value *pScalarizedIdx,
+                                 IGCLLVM::IRBuilder<> &IRB) {
+  IGC_ASSERT(StoreVal && pVecAlloca && pScalarizedIdx);
 
-  IGCLLVM::IRBuilder<> IRB(pStore);
-  llvm::Value *pStoreVal = pStore->getValueOperand();
-  llvm::Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca->getAllocatedType(), pVecAlloca);
-  llvm::Value *pIns = pLoadVecAlloca;
-  IGC_ASSERT(nullptr != pStoreVal);
-  IGC_ASSERT(nullptr != pStoreVal->getType());
-  if (pStoreVal->getType()->isVectorTy()) {
-    // A vector store
-    // store <2 x float> %v, <2 x float>* %ptr
-    // becomes
-    // %w = load <32 x float> *%ptr1
-    // %v0 = extractelement <2 x float> %v, i32 0
-    // %w0 = insertelement <32 x float> %w, float %v0, i32 %idx
-    // %v1 = extractelement <2 x float> %v, i32 1
-    // %w1 = insertelement <32 x float> %w0, float %v1, i32 %idx+1
-    // store <32 x float> %w1, <32 x float>* %ptr1
-    for (unsigned i = 0, e = (unsigned)cast<IGCLLVM::FixedVectorType>(pStoreVal->getType())->getNumElements(); i < e;
-         ++i) {
-      Value *VectorIdx = ConstantInt::get(pScalarizedIdx->getType(), i);
-      auto Val = IRB.CreateExtractElement(pStoreVal, VectorIdx);
-      Val = IRB.CreateBitCast(Val, pLoadVecAlloca->getType()->getScalarType());
-      auto Idx = IRB.CreateAdd(pScalarizedIdx, VectorIdx);
-      pIns = IRB.CreateInsertElement(pIns, Val, Idx);
-    }
+  // Destination (the promoted private is a vector <M * SrcScalarTy>)
+  auto *PromotedVecTy = cast<IGCLLVM::FixedVectorType>(pVecAlloca->getAllocatedType());
+  Type *SrcScalarTy = PromotedVecTy->getElementType();
+  const DataLayout &DL = pVecAlloca->getModule()->getDataLayout();
+
+  // Calculate lane count (N) and lane scalar type from the store source value.
+  Type *ValTy = StoreVal->getType();
+  const unsigned N = ValTy->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(ValTy)->getNumElements() : 1;
+  Type *DstScalarTy = ValTy->isVectorTy() ? cast<VectorType>(ValTy)->getElementType() : ValTy;
+
+  // Calculate sizes of the source promoted lane, destination lane, and the total payload to store.
+  const uint64_t SrcBits = DL.getTypeStoreSizeInBits(SrcScalarTy);
+  const uint64_t DstBits = DL.getTypeStoreSizeInBits(DstScalarTy);
+  const uint64_t NeedBits = DstBits * (uint64_t)N;
+
+  // Convert a lane value of arbitrary-type to an integer of the exact bit width (DstBits).
+  auto toIntOfWidth = [&](Value *V, uint64_t Bits) -> Value * {
+    Type *IntTy = IRB.getIntNTy((unsigned)Bits);
+    Type *Ty = V->getType();
+    if (Ty->isPointerTy())
+      return IRB.CreatePtrToInt(V, IntTy);
+    if (Ty->isIntegerTy((unsigned)Bits))
+      return V;
+    return IRB.CreateBitCast(V, IntTy); // float-like
+  };
+
+  // Convert an integer chunk of SrcBits back to the promoted lane scalar type (SrcScalarTy).
+  auto intToSrcScalar = [&](Value *VInt) -> Value * {
+    if (SrcScalarTy->isPointerTy())
+      return IRB.CreateIntToPtr(VInt, SrcScalarTy);
+    if (SrcScalarTy->isIntegerTy((unsigned)SrcBits))
+      return VInt;
+    return IRB.CreateBitCast(VInt, SrcScalarTy); // float-like
+  };
+
+  // Pack the entire store payload into a single integer of NeedBits.
+  // If N == 1, just normalize the scalar. If N > 1, create a vector of lane-sized integers and then bitcast it into one
+  // bit integer.
+  Value *NeedInt = nullptr;
+  if (N == 1) {
+    NeedInt = toIntOfWidth(StoreVal, DstBits);
   } else {
-    pStoreVal = IRB.CreateBitCast(pStoreVal, pLoadVecAlloca->getType()->getScalarType());
-    pIns = IRB.CreateInsertElement(pLoadVecAlloca, pStoreVal, pScalarizedIdx);
+    Type *LaneIntTy = IRB.getIntNTy((unsigned)DstBits);
+    auto *VecIntTy = IGCLLVM::FixedVectorType::get(LaneIntTy, N);
+    Value *AsIntVec = PoisonValue::get(VecIntTy);
+    for (unsigned i = 0; i < N; ++i) {
+      Value *Lane = IRB.CreateExtractElement(StoreVal, IRB.getInt32(i));
+      Value *LaneInt = toIntOfWidth(Lane, DstBits);
+      AsIntVec = IRB.CreateInsertElement(AsIntVec, LaneInt, IRB.getInt32(i));
+    }
+    NeedInt = IRB.CreateBitCast(AsIntVec, IRB.getIntNTy((unsigned)NeedBits));
   }
-  IRB.CreateStore(pIns, pVecAlloca);
+
+  // Calculate how many promoted lanes (K) are needed to hold NeedBits. BigBits is the total bits occupied by those
+  // lanes.
+  const uint64_t K = (NeedBits + SrcBits - 1) / SrcBits;
+  const uint64_t BigBits = K * SrcBits;
+
+  // If the store payload does not fill the last lane, zero-extend to K * SrcBits.
+  if (NeedBits < BigBits)
+    NeedInt = IRB.CreateZExt(NeedInt, IRB.getIntNTy((unsigned)BigBits));
+
+  // Bitcast i(BigBits) into <K x iSrcBits> or in other words split into K chunks.
+  auto *IntSrcTy = IRB.getIntNTy((unsigned)SrcBits);
+  auto *PackVecIntTy = IGCLLVM::FixedVectorType::get(IntSrcTy, (unsigned)K);
+  Value *PackVecInt = IRB.CreateBitCast(NeedInt, PackVecIntTy);
+
+  // Load the current promoted vector, overwrite K consecutive lanes atarting at Idx, and then store the updated vector
+  // back.
+  Value *Whole = IRB.CreateLoad(PromotedVecTy, pVecAlloca);
+  for (unsigned i = 0; i < K; ++i) {
+    Value *LaneInt = IRB.CreateExtractElement(PackVecInt, IRB.getInt32(i));
+    Value *LaneVal = intToSrcScalar(LaneInt);
+    Value *Off = ConstantInt::get(pScalarizedIdx->getType(), i);
+    Value *Idx = IRB.CreateAdd(pScalarizedIdx, Off);
+    Whole = IRB.CreateInsertElement(Whole, LaneVal, Idx);
+  }
+  IRB.CreateStore(Whole, pVecAlloca);
+}
+
+void TransposeHelperPromote::handleStoreInst(llvm::StoreInst *pStore, llvm::Value *pScalarizedIdx) {
+  IGC_ASSERT(pStore && pStore->isSimple());
+  IGCLLVM::IRBuilder<> IRB(pStore);
+  storeEltsToVecAlloca(pStore->getValueOperand(), pVecAlloca, pScalarizedIdx, IRB);
   pStore->eraseFromParent();
 }
 

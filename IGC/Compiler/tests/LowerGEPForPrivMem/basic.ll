@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2024 Intel Corporation
+; Copyright (C) 2022-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -33,7 +33,7 @@ define void @test(<4 x i32> %a, ptr %b) {
 ; CHECK:    store <4 x i32> [[TMP10]], ptr [[TMP1]]
 ; CHECK:    [[TMP11:%.*]] = load <4 x i32>, ptr [[TMP1]]
 ; CHECK:    [[TMP12:%.*]] = extractelement <4 x i32> [[TMP11]], i32 0
-; CHECK:    [[TMP13:%.*]] = insertelement <4 x i32> undef, i32 [[TMP12]], i32 0
+; CHECK:    [[TMP13:%.*]] = insertelement <4 x i32> poison, i32 [[TMP12]], i32 0
 ; CHECK:    [[TMP14:%.*]] = extractelement <4 x i32> [[TMP11]], i32 1
 ; CHECK:    [[TMP15:%.*]] = insertelement <4 x i32> [[TMP13]], i32 [[TMP14]], i32 1
 ; CHECK:    [[TMP16:%.*]] = extractelement <4 x i32> [[TMP11]], i32 2
