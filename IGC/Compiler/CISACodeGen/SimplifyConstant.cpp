@@ -146,6 +146,14 @@ void ConstantLoader::analyze() {
   matchSplat(CDA) || matchOddEven(CDA) || matchLadder2(CDA);
 }
 
+// Returns the dynamic element index of a GEP addressing a flat (unnested) aggregate. This is the last GEP index operand
+// which addresses array elements. Earlier index operands (if present) select the indexed array itself. However, the
+// number of index operands is variable and depends on the type.
+static Value *getGEPElementIndex(GetElementPtrInst *GEP) {
+  IGC_ASSERT(GEP && GEP->getNumIndices() >= 1);
+  return GEP->getOperand(1 + (GEP->getNumIndices() - 1));
+}
+
 void ConstantLoader::simplify() {
   if (Kind == CK_Unknown)
     return;
@@ -174,8 +182,8 @@ void ConstantLoader::simplify() {
       LoadInst *LI = dyn_cast<LoadInst>(*I++);
       if (!LI)
         continue;
-      IGC_ASSERT(GEP->getNumIndices() == 2);
-      Value *Index = GEP->getOperand(2);
+
+      Value *Index = getGEPElementIndex(GEP);
       Value *Val = V0;
       IRBuilder<> Builder(LI);
       if (Kind == CK_Ladder2) {
@@ -500,10 +508,8 @@ static void promote(GlobalVariable *GV, IGCLLVM::FixedVectorType *AllocaType, bo
     // might be Constant user in llvm.used
     if (!GEP || GEP->getParent()->getParent() != F)
       continue;
-    IGC_ASSERT(GEP->getNumIndices() == 2);
-    // This is the index to address the array, and the first index is to address
-    // the global variable itself.
-    Value *Index = GEP->getOperand(2);
+
+    Value *Index = getGEPElementIndex(GEP);
     // Demote the index type to int32 to avoid 64 multiplications during vISA
     // emission, e.g. it is illegal to emit Q x W.
     if (Index->getType()->getPrimitiveSizeInBits() > 32) {
@@ -570,10 +576,7 @@ static bool rewriteAsCmpSel(GlobalVariable *GV, Function &F) {
     if (!GEP || GEP->getParent()->getParent() != &F)
       continue;
 
-    // This is the index to address the array, and the first index is to
-    // address the global variable itself.
-    IGC_ASSERT(GEP->getNumIndices() == 2);
-    Value *Index = GEP->getOperand(2);
+    Value *Index = getGEPElementIndex(GEP);
     if (Index->getType()->getPrimitiveSizeInBits() > 32) {
       IRBuilder<> Builder(GEP);
       Index = Builder.CreateTrunc(Index, Builder.getInt32Ty());
