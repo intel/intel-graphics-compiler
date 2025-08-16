@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2024 Intel Corporation
+Copyright (C) 2019-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -148,15 +148,14 @@ namespace {
 // a considered element in a considered vector.
 struct GenericVectorIndex {
   Value *Index;
-  int ElementSizeInBits;
-  bool NeedAdjust = false;
+  unsigned ElementSizeInBits;
 
-  int getElementSizeInBytes() const {
+  unsigned getElementSizeInBytes() const {
     return ElementSizeInBits / genx::ByteBits;
   }
 
   template <typename FolderT = ConstantFolder>
-  void adjustIndex(Type *Ty, IRBuilder<FolderT> &IRB);
+  void adjust(Type *Ty, IRBuilder<FolderT> &IRB);
 };
 
 class TransposeHelper {
@@ -228,25 +227,35 @@ Type *getBaseType(Type *Ty, Type *BaseTy) {
 }
 
 template <typename FolderT>
-void GenericVectorIndex::adjustIndex(Type *Ty, IRBuilder<FolderT> &IRB) {
-  if (!NeedAdjust)
-    return;
+void GenericVectorIndex::adjust(Type *Ty, IRBuilder<FolderT> &IRB) {
   auto *BaseTy = getBaseType(Ty, nullptr);
   IGC_ASSERT_EXIT(BaseTy);
-  if (BaseTy->getScalarSizeInBits() == ElementSizeInBits ||
+  unsigned NewElementSizeInBits = BaseTy->getScalarSizeInBits();
+  if (NewElementSizeInBits == ElementSizeInBits ||
       vc::isFunctionPointerType(BaseTy))
     return;
-  IGC_ASSERT_EXIT(BaseTy->getScalarSizeInBits() == 8);
-  Constant *Scale =
-      IRB.getInt32(ElementSizeInBits / BaseTy->getScalarSizeInBits());
-  if (Index->getType()->isVectorTy()) {
-    auto Width =
-        cast<IGCLLVM::FixedVectorType>(Index->getType())->getNumElements();
-    Scale = ConstantVector::getSplat(IGCLLVM::getElementCount(Width), Scale);
+  if (NewElementSizeInBits < ElementSizeInBits) {
+    IGC_ASSERT_MESSAGE(ElementSizeInBits % NewElementSizeInBits == 0,
+                       "New element size is not a divisor of the current one");
+    Constant *Scale = IRB.getInt32(ElementSizeInBits / NewElementSizeInBits);
+    if (Index->getType()->isVectorTy()) {
+      auto Width =
+          cast<IGCLLVM::FixedVectorType>(Index->getType())->getNumElements();
+      Scale = ConstantVector::getSplat(IGCLLVM::getElementCount(Width), Scale);
+    }
+    Index = IRB.CreateMul(Index, Scale);
+  } else {
+    IGC_ASSERT_MESSAGE(NewElementSizeInBits % ElementSizeInBits == 0,
+                       "New element size is not a multiple of the current one");
+    Constant *Scale = IRB.getInt32(NewElementSizeInBits / ElementSizeInBits);
+    if (Index->getType()->isVectorTy()) {
+      auto Width =
+          cast<IGCLLVM::FixedVectorType>(Index->getType())->getNumElements();
+      Scale = ConstantVector::getSplat(IGCLLVM::getElementCount(Width), Scale);
+    }
+    Index = IRB.CreateUDiv(Index, Scale);
   }
-  Index = IRB.CreateMul(Index, Scale);
-  ElementSizeInBits = BaseTy->getScalarSizeInBits();
-  NeedAdjust = false;
+  ElementSizeInBits = NewElementSizeInBits;
 }
 
 template <typename FolderT>
@@ -291,7 +300,6 @@ void TransposeHelper::EraseDeadCode() {
 }
 
 void TransposeHelper::handleBCInst(BitCastInst &BC, GenericVectorIndex Idx) {
-  Idx.NeedAdjust = true;
   ToBeRemoved.push_back(&BC);
   handleAllocaSources(BC, Idx);
 }
@@ -375,7 +383,7 @@ void TransposeHelper::handleGEPInst(GetElementPtrInst *GEP,
                                     GenericVectorIndex Idx) {
   ToBeRemoved.push_back(GEP);
   IRBuilder<> IRB(GEP);
-  Idx.adjustIndex(GEP->getSourceElementType(), IRB);
+  Idx.adjust(GEP->getSourceElementType(), IRB);
   Value *PtrOp = GEP->getPointerOperand();
   PointerType *PtrTy = dyn_cast<PointerType>(PtrOp->getType());
   IGC_ASSERT_MESSAGE(PtrTy, "Only accept scalar pointer!");
@@ -499,7 +507,7 @@ void TransposeHelper::handlePHINode(PHINode *Phi, GenericVectorIndex Idx,
 void TransposeHelper::handleLoadInst(LoadInst *Load, GenericVectorIndex Idx) {
   IGC_ASSERT(Load->isSimple());
   IRBuilder<> IRB(Load);
-  Idx.adjustIndex(Load->getType(), IRB);
+  Idx.adjust(Load->getType(), IRB);
   auto *ScalarizedIdx =
       IRB.CreateMul(Idx.Index, ConstantInt::get(Idx.Index->getType(),
                                                 Idx.getElementSizeInBytes()));
@@ -559,7 +567,7 @@ void TransposeHelper::handleStoreInst(StoreInst *Store,
   IGC_ASSERT(Store->isSimple());
   IRBuilder<> IRB(Store);
   Value *StoreVal = Store->getValueOperand();
-  Idx.adjustIndex(StoreVal->getType(), IRB);
+  Idx.adjust(StoreVal->getType(), IRB);
   auto *ScalarizedIdx =
       IRB.CreateMul(Idx.Index, ConstantInt::get(Idx.Index->getType(),
                                                 Idx.getElementSizeInBytes()));
@@ -626,7 +634,7 @@ void TransposeHelper::handleStoreInst(StoreInst *Store,
 void TransposeHelper::handleGather(IntrinsicInst *Inst, GenericVectorIndex Idx,
                                    unsigned MaskIndex, unsigned ValueIndex) {
   IRBuilder<> IRB(Inst);
-  Idx.adjustIndex(Inst->getType(), IRB);
+  Idx.adjust(Type::getInt8Ty(Inst->getContext()), IRB);
   auto *ScalarizedIdx =
       IRB.CreateMul(Idx.Index, ConstantInt::get(Idx.Index->getType(),
                                                 Idx.getElementSizeInBytes()));
@@ -666,8 +674,8 @@ void TransposeHelper::handleGather(IntrinsicInst *Inst, GenericVectorIndex Idx,
 void TransposeHelper::handleScatter(IntrinsicInst *Inst, GenericVectorIndex Idx,
                                     unsigned MaskIndex, unsigned ValueIndex) {
   IRBuilder<> IRB(Inst);
+  Idx.adjust(Type::getInt8Ty(Inst->getContext()), IRB);
   auto *StoreVal = Inst->getArgOperand(ValueIndex);
-  Idx.adjustIndex(StoreVal->getType(), IRB);
   auto *ScalarizedIdx =
       IRB.CreateMul(Idx.Index, ConstantInt::get(Idx.Index->getType(),
                                                 Idx.getElementSizeInBytes()));
@@ -1122,8 +1130,8 @@ void GenXPromoteArray::handleAllocaInst(AllocaInst *Alloca) {
     return;
 
   IRBuilder<> IRB(VecAlloca);
-  GenericVectorIndex StartIdx{IRB.getInt32(0),
-                              static_cast<int>(DL->getTypeSizeInBits(BaseTy))};
+  GenericVectorIndex StartIdx{
+      IRB.getInt32(0), static_cast<unsigned>(DL->getTypeSizeInBits(BaseTy))};
   TransposeHelper Helper(VecAlloca, DL);
   Helper.handleAllocaSources(*Alloca, StartIdx);
   Helper.EraseDeadCode();
