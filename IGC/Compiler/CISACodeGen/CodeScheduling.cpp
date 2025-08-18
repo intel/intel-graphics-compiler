@@ -465,6 +465,21 @@ public:
     return V;
   }
 
+  DenseSet<Instruction *> getHangingS2VInstructions() {
+    // return all the vectors that are created of scalars, but not fully populated yet
+    DenseSet<Instruction *> HangingInstructions;
+    for (const auto &HangingLiveVar : HangingLiveVarsVec) {
+      if (HangingLiveVar->Type == HangingLiveVarsType::HANGING_SCALARS_TO_VECTOR) {
+        for (auto *V : HangingLiveVar->LiveVars) {
+          if (Instruction *I = dyn_cast<Instruction>(V)) {
+            HangingInstructions.insert(I);
+          }
+        }
+      }
+    }
+    return HangingInstructions;
+  }
+
 private:
   BasicBlock *BB;
   Function *F;
@@ -492,7 +507,7 @@ private:
   llvm::DenseMap<Value *, DenseSet<Value *>> RealUsesCache;
   llvm::DenseMap<std::pair<Value *, int32_t>, int32_t> ValueSizeCache;
 
-  typedef enum { HANGING_SCALARS, HANGING_VECTORS, HANGING_NOOP_VECTORS } HangingLiveVarsType;
+  typedef enum { HANGING_SCALARS_TO_VECTOR, HANGING_VECTOR_TO_SCALARS, HANGING_VECTORS, HANGING_NOOP_VECTORS } HangingLiveVarsType;
 
   // POD structure to keep information about hanging values
   struct HangingLiveVarsInfo {
@@ -564,7 +579,7 @@ private:
     if (RCA && !Update) {
       RematChainPattern *RCP = RCA->getRematChainPattern(I);
       if (RCP && (RCP->getFirstInst() == I)) {
-        // if it's a remat chain we are going to use the remat target instruction (usually load or store)
+        // if it's a remat chain we are going to use the remat target instruction (if it's load or store)
         Instruction *TargetInst = RCP->getRematTargetInst();
         return estimateOrUpdateImpl(TargetInst, false);
       }
@@ -707,7 +722,7 @@ private:
         auto *FirstIE = DTI->getFirstIE();
         auto *FirstScalar = FirstIE->getOperand(1);
         if (!HangingLiveVars.count(FirstScalar)) {
-          HangingLiveVarsVec.emplace_back(std::make_unique<HangingLiveVarsInfo>(0, HANGING_SCALARS));
+          HangingLiveVarsVec.emplace_back(std::make_unique<HangingLiveVarsInfo>(0, HANGING_SCALARS_TO_VECTOR));
           auto *HLV = HangingLiveVarsVec.back().get();
 
           for (Value *V : DTI->getSourceScalars()) {
@@ -749,7 +764,7 @@ private:
         if (!HangingLiveVars.count(I)) {
           IGC_ASSERT(V2SP->getSourceVec() == EE->getVectorOperand());
           HangingLiveVarsVec.emplace_back(std::make_unique<HangingLiveVarsInfo>(
-              computeSizeInBytes(V2SP->getSourceVec(), SIMD, WI, *DL), HANGING_SCALARS));
+              computeSizeInBytes(V2SP->getSourceVec(), SIMD, WI, *DL), HANGING_VECTOR_TO_SCALARS));
           auto *HLV = HangingLiveVarsVec.back().get();
           for (Value *V : V2SP->getEEs()) {
             IGC_ASSERT(!HLV->LiveVars.count(V));
@@ -851,7 +866,8 @@ private:
           {
             if (Update)
               PrintDumpLevel(VerbosityLevel::High, " (hanging vector dies)");
-            if (HLV->Type == HANGING_SCALARS) {
+            if (HLV->Type == HANGING_SCALARS_TO_VECTOR ||
+                HLV->Type == HANGING_VECTOR_TO_SCALARS) {
               // only scalars die
               RPDecrease = HLV->Size;
             } else {
@@ -864,7 +880,8 @@ private:
                              " (hanging vector, left vars: "
                                  << (HLV->LiveVars.count(RealOp) ? HLV->LiveVars.size() - 1 : HLV->LiveVars.size())
                                  << ")");
-            if (HLV->Type == HANGING_SCALARS) {
+            if (HLV->Type == HANGING_SCALARS_TO_VECTOR ||
+                HLV->Type == HANGING_VECTOR_TO_SCALARS) {
               RPDecrease = 0; // We don't decrease pressure, because the vector is still alive
             }
           }
@@ -1356,7 +1373,7 @@ private:
                    AdditionalWeight;
           }
           case GenISAIntrinsic::GenISA_WaveAll:
-            return C[Option::WeightWaveAllDstDep];
+            return HighRP ? C[Option::WeightWaveAllDstDepHighRP] : C[Option::WeightWaveAllDstDep];
           default:
             break;
           }
@@ -1830,10 +1847,15 @@ private:
         // Sort in ascending order using RT->estimate(Node->I) as a key
         std::sort(Nodes.begin(), Nodes.end(),
                   [&](InstructionNode *A, InstructionNode *B) { return RT.estimate(A->I) < RT.estimate(B->I); });
-        auto LowestRP = RT.estimate(Nodes.front()->I);
+        int32_t LowestRP = RT.estimate(Nodes.front()->I);
         InstNodePtrList LowestRPNodes;
+        if (C[Option::AllowLargerRPWindowRPThreshold] > 0 &&
+            LowestRP >= static_cast<int32_t>(C[Option::AllowLargerRPWindowRPThreshold])) {
+            // If the lowest RP is larger than the threshold, we can allow larger RP window
+            LowestRP += static_cast<int32_t>(C[Option::AllowLargerRPWindowSize]);
+        }
         for (InstructionNode *Node : Nodes) {
-          if (RT.estimate(Node->I) == LowestRP) {
+          if (RT.estimate(Node->I) <= LowestRP) {
             LowestRPNodes.push_back(Node);
           } else {
             break;
@@ -1899,41 +1921,66 @@ private:
         return Nodes;
       };
 
-      auto getLoadsThatUnlockDPASes = [&](InstNodePtrList &Nodes, uint MaxLoadSize) -> InstNodePtrList & {
-        std::function<llvm::DenseSet<Value *>(Instruction *)> getRealUsesThroughVS;
-        getRealUsesThroughVS = [&](Instruction *I) -> llvm::DenseSet<Value *> {
-          llvm::DenseSet<Value *> Uses;
-
-          std::function<void(Value *)> collectUses = [&](Value *V) {
-            for (auto *U : RT.getRealUses(V)) {
-              auto *DV = VSA->getDestVector(U);
-              if (DV && DV->isVectorShuffle()) {
-                collectUses(DV->getLastIE());
-              } else {
-                Uses.insert(U);
-              }
-            }
-          };
-
-          collectUses(I);
-          return Uses;
-        };
-
-        auto getRealOpThroughVS = [&](Instruction *I) -> Instruction * {
-          Instruction *OpI = dyn_cast<Instruction>(RT.getRealOp(I));
-          if (!OpI) {
+      auto getRealOpThroughVS = [&](Instruction *I) -> Instruction * {
+        Instruction *OpI = dyn_cast<Instruction>(RT.getRealOp(I));
+        if (!OpI) {
+          return nullptr;
+        }
+        auto *DV = VSA->getDestVector(OpI);
+        if (DV && DV->isVectorShuffle()) {
+          auto *SourceVec = dyn_cast<Instruction>(DV->getSourceVec());
+          if (!SourceVec) {
             return nullptr;
           }
-          auto *DV = VSA->getDestVector(OpI);
-          if (DV && DV->isVectorShuffle()) {
-            auto *SourceVec = dyn_cast<Instruction>(DV->getSourceVec());
-            if (!SourceVec) {
-              return nullptr;
+          return dyn_cast<Instruction>(RT.getRealOp(SourceVec));
+        }
+        return OpI;
+      };
+
+      std::function<llvm::DenseSet<Value *>(Instruction *)> getRealUsesThroughVS;
+      getRealUsesThroughVS = [&](Instruction *I) -> llvm::DenseSet<Value *> {
+        llvm::DenseSet<Value *> Uses;
+
+        std::function<void(Value *)> collectUses = [&](Value *V) {
+          for (auto *U : RT.getRealUses(V)) {
+            auto *DV = VSA->getDestVector(U);
+            if (DV && DV->isVectorShuffle()) {
+              collectUses(DV->getLastIE());
+            } else {
+              Uses.insert(U);
             }
-            return dyn_cast<Instruction>(RT.getRealOp(SourceVec));
           }
-          return OpI;
         };
+
+        collectUses(I);
+        return Uses;
+      };
+
+      std::function<llvm::DenseSet<Value *>(Instruction *)> getRealUsesThroughRematChains;
+      getRealUsesThroughRematChains = [&](Instruction *I) -> llvm::DenseSet<Value *> {
+        llvm::DenseSet<Value *> Uses;
+
+        std::function<void(Value *)> collectUses = [&](Value *V) {
+          for (auto *U : RT.getRealUses(V)) {
+            auto *RematChainPattern = RCA->getRematChainPattern(U);
+            if (RematChainPattern) {
+              // If the use is a remat chain, collect the last instruction in the chain
+              Uses.insert(RematChainPattern->getRematTargetInst());
+            } else {
+              Uses.insert(U);
+            }
+          }
+        };
+
+        collectUses(I);
+        return Uses;
+      };
+
+      auto getLoadsThatUnlockDPASes = [&](InstNodePtrList &Nodes, uint MaxLoadSize) -> InstNodePtrList & {
+        // We first prioritize the DPASes that don't increase regpressure
+        // if there are loads that unlock these DPASes - filter out all ther instructions
+        // But if there are no DPASes that don't increase regpressure
+        // - we can also consider the ones that do increase
 
         auto getLoadWidth = [&](Instruction *I) -> uint {
           if (GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(I)) {
@@ -1949,6 +1996,8 @@ private:
         };
 
         InstNodePtrList LoadsThatUnlockDPASes;
+        InstNodePtrList LoadsThatUnlockDPASesNoRPIncreasing;
+
         for (InstructionNode *Node : Nodes) {
           if (!is2dBlockRead(Node->I) || getLoadWidth(Node->I) > MaxLoadSize) {
             continue;
@@ -1962,6 +2011,13 @@ private:
             if (isDPAS(I)) {
 
               bool OneOpIsDPAS = false;
+              bool FirstOpIsZero = false;
+
+              auto *FirstOp = dyn_cast<Constant>(I->getOperand(0));
+              if (FirstOp && (isa<UndefValue>(FirstOp) || FirstOp->isNullValue())) {
+                FirstOpIsZero = true;
+              }
+
               int NumOps = static_cast<int>(I->getNumOperands());
               for (auto &Op : I->operands()) {
                 Instruction *OpI = dyn_cast<Instruction>(Op.get());
@@ -1980,12 +2036,18 @@ private:
               }
               if (NumOps == 0) {
                 LoadsThatUnlockDPASes.push_back(Node);
+                if (!FirstOpIsZero) {
+                  LoadsThatUnlockDPASesNoRPIncreasing.push_back(Node);
+                }
                 break;
               }
             }
           }
         }
-        if (LoadsThatUnlockDPASes.size() > 0) {
+
+        if (LoadsThatUnlockDPASesNoRPIncreasing.size() > 0) {
+          Nodes = std::move(LoadsThatUnlockDPASesNoRPIncreasing);
+        } else if (LoadsThatUnlockDPASes.size() > 0) {
           Nodes = std::move(LoadsThatUnlockDPASes);
         }
         return Nodes;
@@ -2041,6 +2103,161 @@ private:
             } else {
               PrintDumpLevel(VerbosityLevel::High, "Filtering out not ready remat instruction: ");
               PrintInstructionDumpLevel(VerbosityLevel::High, Node->I);
+            }
+          }
+        }
+        if (NonFilteredNodes.size() > 0) {
+          Nodes = std::move(NonFilteredNodes);
+        }
+        return Nodes;
+      };
+
+      auto filterOutNotReadyIcmp = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
+        // Heuristic in order not to put ICMP that is used by a select too early.
+        // Schedule it only when the select is ready
+
+        InstNodePtrList NonFilteredNodes;
+        for (InstructionNode *Node : Nodes) {
+          if (isa<ICmpInst>(Node->I)) {
+            bool IsReady = true;
+            User *U = IGCLLVM::getUniqueUndroppableUser(Node->I);
+            if (!U) {
+              NonFilteredNodes.push_back(Node);
+              continue;
+            }
+            SelectInst *SI = dyn_cast<SelectInst>(U);
+            if (!SI) {
+              NonFilteredNodes.push_back(Node);
+              continue;
+            }
+            // If the select instruction is not ready, we need to filter out the icmp instruction
+            InstructionNode *SelectNode = G.InstToNode[SI];
+            for (const auto &PN : SelectNode->Preds) {
+              if (PN->Src->I == Node->I) {
+                continue;
+              }
+              if (isa<Constant>(PN->Src->I) || isa<PHINode>(PN->Src->I)) {
+                continue;
+              }
+              Instruction *OpI = dyn_cast<Instruction>(PN->Src->I);
+              if (!OpI) {
+                continue;
+              }
+
+              if (!RT.inBBCurrent(OpI)) {
+                // if the instruction is in BBCurrent, then it is ready
+                IsReady = false;
+                break;
+              }
+            }
+            if (IsReady) {
+              NonFilteredNodes.push_back(Node);
+            }
+            // else it's filtered out, until the operand of the select is ready
+          }
+          else {
+            NonFilteredNodes.push_back(Node);
+          }
+        }
+        if (NonFilteredNodes.size() > 0) {
+          Nodes = std::move(NonFilteredNodes);
+        }
+        return Nodes;
+      };
+
+      auto focusLoadsOnOneDPAS = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
+        // If all Nodes are 2d block loads, choose the dpas user with the lowest initial number and filter out
+        // all the remaining loads. This is needed to avoid a situation when we schedule a lot of small loads first,
+        // but all the DPASes wait for some load that is in the end
+        if (Nodes.size() == 1) {
+          return Nodes;
+        }
+
+        InstNodePtrList NonFilteredNodes;
+        if (std::all_of(Nodes.begin(), Nodes.end(),
+                        [&](InstructionNode *Node) { return is2dBlockRead(Node->I); })) {
+
+          // Get the first DPAS user
+          InstructionNode *FirstDPASUser = nullptr;
+          for (InstructionNode *Node : Nodes) {
+            for (auto *U : getRealUsesThroughVS(Node->I)) {
+              auto *I = dyn_cast<Instruction>(U);
+              if (!I) {
+                continue;
+              }
+
+              if (isDPAS(I)) {
+                if (!FirstDPASUser || (G.InstToNode[I]->OriginalPosition < FirstDPASUser->OriginalPosition)) {
+                  FirstDPASUser = G.InstToNode[I];
+
+                  NonFilteredNodes = {Node};
+                } else if (G.InstToNode[I] == FirstDPASUser) {
+                  NonFilteredNodes.push_back(Node);
+                }
+              }
+            }
+          }
+
+          if (NonFilteredNodes.size() > 0) {
+            Nodes = std::move(NonFilteredNodes);
+          }
+        }
+
+        return Nodes;
+      };
+
+      auto filterOutNotUnblockingExistingVectorInst = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
+        // If some values are currently hanging because of creating a vector instruction out of scalars
+        // we prioritize the candidates that unblock the other elements of the vector
+
+        // This helps to resolve the issue when we schedule several IEs to the 0th element of different vectors
+        // increasing the regpressure, because the GRF space for the other elements is immediately reserved
+        // but the vectors are not fully populated and we can't use them
+
+        DenseSet<Instruction *> HangingElements = RT.getHangingS2VInstructions();
+        if (HangingElements.empty()) {
+          // If there are no hanging elements, we don't need to filter out anything
+          return Nodes;
+        }
+
+        InstNodePtrList NonFilteredNodes;
+        for (InstructionNode *Node : Nodes) {
+          if (HangingElements.count(Node->I) > 0) {
+            // If the instruction is already hanging, we don't need to filter it out
+            NonFilteredNodes.push_back(Node);
+            continue;
+          }
+          for (Value *V : getRealUsesThroughRematChains(Node->I)) {
+            if (Instruction *I = dyn_cast<Instruction>(V)) {
+              if (HangingElements.count(I) > 0) {
+                NonFilteredNodes.push_back(Node);
+                break; // No need to check other uses, we already found a use that unblocks the vector
+              }
+            }
+          }
+        }
+        if (NonFilteredNodes.size() > 0) {
+          Nodes = std::move(NonFilteredNodes);
+        }
+        return Nodes;
+      };
+
+      auto getMaxNumWaveAll = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
+        // Experimental heuristic: Add only maxnum (llvm.maxnum) and waveall instructions to the list
+        // The idea is that maxnum->waveall(max) is a common pattern
+        // that usually leads to decreasing the register pressure
+        // because all the lanes converge to the same value
+
+        InstNodePtrList NonFilteredNodes;
+        for (InstructionNode *Node : Nodes) {
+          if (GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(Node->I)) {
+            if (Intr->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveAll) {
+              NonFilteredNodes.push_back(Node);
+            }
+          }
+          else if (IntrinsicInst *Intr = llvm::dyn_cast<IntrinsicInst>(Node->I)) {
+            if (Intr->getIntrinsicID() == Intrinsic::maxnum) {
+              NonFilteredNodes.push_back(Node);
             }
           }
         }
@@ -2155,6 +2372,11 @@ private:
 
         IGC_ASSERT(ReadyList.size() > 0);
 
+        PrintDumpLevel(VerbosityLevel::Medium, "Choosing from the ready list:\n");
+        for (InstructionNode *N : ReadyList) {
+          PrintInstructionDumpLevel(VerbosityLevel::Medium, N->I);
+        }
+
         // Filter ReadyList so that only if the instruction is Handicapped
         // It will remain only if the current regpressure is lower that the Handicapped value
         InstNodePtrList FilteredReadyList;
@@ -2174,6 +2396,7 @@ private:
         }
 
         FilteredReadyList = filterOutNotReadyRematInstructions(FilteredReadyList);
+        FilteredReadyList = filterOutNotReadyIcmp(FilteredReadyList);
 
         IGC_ASSERT(FilteredReadyList.size() > 0);
 
@@ -2189,6 +2412,9 @@ private:
           // regpressure, if several, choose the one with the least OriginalPosition
           FilteredReadyList = getMaxWeightNodes(FilteredReadyList);
           FilteredReadyList = getLowestRegpressureNodes(FilteredReadyList);
+          if (C[Option::FocusLoadsOnOneDPAS]) {
+            FilteredReadyList = focusLoadsOnOneDPAS(FilteredReadyList);
+          }
           Node = getFirstNode(FilteredReadyList);
           bool IsRegpressureCritical = RT.isRegpressureCritical(Node->I);
           CanClone = RT.isRegpressureHigh(Node->I) || isLargeLoad(Node->I);
@@ -2208,6 +2434,9 @@ private:
             FilteredReadyList = getLargeBlockLoadsIfExist(FilteredReadyList);
           }
 
+          if (C[Option::PrioritizeMaxnumWaveallHighRP]) {
+            FilteredReadyList = getMaxNumWaveAll(FilteredReadyList);
+          }
           if (C[Option::PrioritizeDPASHighRP]) {
             // Experimental heuristic: prioritize DPAS and the instructions that make it possible to
             // schedule DPAS earlier
@@ -2219,8 +2448,16 @@ private:
             FilteredReadyList = getLoadsThatUnlockDPASes(FilteredReadyList,
                                                          C[Option::PrioritizeLoadsThatUnlockDPASesHighRP_MaxLoadSize]);
           }
+          if (C[Option::PrioritizePopulatingOneVectorHighRP]) {
+            FilteredReadyList = filterOutNotUnblockingExistingVectorInst(FilteredReadyList);
+          }
 
           FilteredReadyList = getLowestRegpressureNodes(FilteredReadyList);
+
+          if (C[Option::FocusLoadsOnOneDPAS]) {
+            FilteredReadyList = focusLoadsOnOneDPAS(FilteredReadyList);
+          }
+
           // If we have several nodes with the same regpressure, choose the one with the highest MaxWeight
           FilteredReadyList = getMaxWeightNodes(FilteredReadyList, C[Option::UseHighRPWeight] == 1);
 

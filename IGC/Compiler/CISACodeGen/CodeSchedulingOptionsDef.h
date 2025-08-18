@@ -32,6 +32,8 @@ DECLARE_SCHEDULING_OPTION(WeightDPASDstDepHighRP, 6000,
                           "Edge weight for DPAS destination dependency under high register pressure")
 DECLARE_SCHEDULING_OPTION(WeightExtendedMathDstDep, 200, "Edge weight for extended math destination dependency")
 DECLARE_SCHEDULING_OPTION(WeightWaveAllDstDep, 10, "Edge weight for wave all destination dependency")
+DECLARE_SCHEDULING_OPTION(WeightWaveAllDstDepHighRP, 20, "Edge weight for wave all destination dependency under high "
+                          "register pressure")
 DECLARE_SCHEDULING_OPTION(WeightUnknownMemoryReadDstDep, 500,
                           "Edge weight for unknown memory read destination dependency")
 DECLARE_SCHEDULING_OPTION(WeightUnknownVectorShuffleDstDep, 50,
@@ -64,6 +66,22 @@ DECLARE_SCHEDULING_OPTION(PrioritizeLoadsThatUnlockDPASesHighRP, 1,
 DECLARE_SCHEDULING_OPTION(PrioritizeLoadsThatUnlockDPASesHighRP_MaxLoadSize, 32,
                           "Heuristic: Maximum load size (in number of elements) to consider for "
                           "prioritizing loads that unlock DPAS instructions")
+DECLARE_SCHEDULING_OPTION(FocusLoadsOnOneDPAS, 1,
+                          "Heuristic: Focus loads on one DPAS instruction in case we have to choose from "
+                          "many loads")
+DECLARE_SCHEDULING_OPTION(AllowLargerRPWindowRPThreshold, 200,
+                          "Heuristic: Allow larger register pressure window if register pressure is higher than "
+                          "a threshold, so allow also the instructions that have not lowest but similar register "
+                          "pressure, the threshold in bytes")
+DECLARE_SCHEDULING_OPTION(AllowLargerRPWindowSize, 64,
+                          "Heuristic: Allow larger register pressure window if register pressure is higher than "
+                          "a threshold, so allow also the instructions that have not lowest but similar register "
+                          "pressure, the size of the window in bytes")
+DECLARE_SCHEDULING_OPTION(PrioritizeMaxnumWaveallHighRP, 0,
+                          "Heuristic: Maxnum and Waveall instructions are prioritized when register pressure is "
+                          "high")
+DECLARE_SCHEDULING_OPTION(PrioritizePopulatingOneVectorHighRP, 1,
+                          "Heuristic: Prioritize populating one vector when register pressure is high")
 
 // RP management control options
 DECLARE_SCHEDULING_OPTION(GreedyRPThresholdDelta, 20, "Threshold delta for greedy register pressure scheduling")
