@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include <vector>
 #include <string>
 #include <utility>
+#include <chrono>
 #include <fstream>
 #include <sstream>
 #include <iostream>

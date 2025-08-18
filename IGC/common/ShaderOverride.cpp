@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include <iostream>
 #include <fstream>
 #include <iostream>
+#include <chrono>
 #include "Compiler/CodeGenPublic.h"
 #include "visaBuilder_interface.h"
 #include "common/secure_mem.h"
