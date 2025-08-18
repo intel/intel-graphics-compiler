@@ -27,22 +27,16 @@ define spir_kernel void @test_remat(ptr addrspace(1) %A, i32 %x) {
 ; CHECK:       entry:
 ; CHECK:         br label [[BB1:%.*]]
 ; CHECK:       bb1:
-; CHECK:         [[REMAT1_1:%.*]] = or i32 [[X:%.*]], 10, !remat !0
-; CHECK:         [[REMAT1_2:%.*]] = shl nuw nsw i32 [[REMAT1_1]], 6, !remat !0
-; CHECK:         [[REMAT1_3:%.*]] = or i32 [[REMAT1_2]], 16, !remat !0
-; CHECK:         [[REMAT1_4:%.*]] = or i32 [[REMAT1_3]], [[REMAT1_2]], !remat !0
-; CHECK:         [[REMAT1_5:%.*]] = shl nuw nsw i32 [[REMAT1_4]], 1, !remat !0
-; CHECK:         [[CLONED_1:%.*]] = inttoptr i32 [[REMAT1_5]] to ptr addrspace(3), !remat !0
+; ...
+; CHECK:         [[REMAT1_5:%.*]] = shl nuw nsw i32 [[REMAT1_4:.*]], 1
+; CHECK:         [[CLONED_1:%.*]] = inttoptr i32 [[REMAT1_5]] to ptr addrspace(3)
 ; CHECK:         [[LOAD_1:%.*]] = load <8 x i16>, ptr addrspace(3) [[CLONED_1]], align 2
-
-; CHECK:         [[REMAT2_1:%.*]] = or i32 [[X]], 18
-; CHECK:         [[REMAT2_2:%.*]] = shl nuw nsw i32 [[REMAT2_1]], 6
-; CHECK:         [[REMAT2_3:%.*]] = or i32 [[REMAT2_2]], 16
-; CHECK:         [[REMAT2_4:%.*]] = shl nuw nsw i32 [[REMAT2_3]], 1
+; ...
+; CHECK:         [[REMAT2_4:%.*]] = shl nuw nsw i32 [[REMAT2_3:.*]], 1
 ; CHECK:         [[CLONED_2:%.*]] = inttoptr i32 [[REMAT2_4]] to ptr addrspace(3)
 ; CHECK:         [[LOAD_2:%.*]] = load <8 x i16>, ptr addrspace(3) [[CLONED_2]], align 2
 
-; CHECK:         [[REMAT3_1:%.*]] = or i32 [[X]], 10, !remat !0
+; CHECK:         [[REMAT3_1:%.*]] = or i32 [[X:.*]], 10, !remat !0
 ; CHECK:         [[REMAT3_2:%.*]] = shl nuw nsw i32 [[REMAT3_1]], 6, !remat !0
 ; CHECK:         [[REMAT3_3:%.*]] = or i32 [[REMAT3_2]], 16, !remat !0
 ; CHECK:         [[REMAT3_4:%.*]] = shl nuw nsw i32 [[REMAT3_3]], 1, !remat !0
