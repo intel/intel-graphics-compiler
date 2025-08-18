@@ -709,6 +709,10 @@ uint32_t CodeGenContext::getNumGRFPerThread(bool returnDefault) {
     m_NumGRFPerThread = IGC_GET_FLAG_VALUE(TotalGRFNum);
     return m_NumGRFPerThread;
   }
+  if (getModuleMetaData()->csInfo.forceTotalGRFNum != 0) {
+    m_NumGRFPerThread = getModuleMetaData()->csInfo.forceTotalGRFNum;
+    return m_NumGRFPerThread;
+  }
 
   if (hasSyncRTCalls()) {
     // read value from CompOptions first
@@ -725,16 +729,6 @@ uint32_t CodeGenContext::getNumGRFPerThread(bool returnDefault) {
     m_NumGRFPerThread = IGC_GET_FLAG_VALUE(TotalGRFNum4CS);
     return m_NumGRFPerThread;
   }
-  // AIL check after reg check
-  if (getModuleMetaData()->csInfo.forceTotalGRFNum != 0) {
-    m_NumGRFPerThread = getModuleMetaData()->csInfo.forceTotalGRFNum;
-    return m_NumGRFPerThread;
-  }
-  if (getModuleMetaData()->compOpt.forceTotalGRFNum != 0) {
-    m_NumGRFPerThread = getModuleMetaData()->compOpt.forceTotalGRFNum;
-    return m_NumGRFPerThread;
-  }
-
   return (returnDefault ? DEFAULT_TOTAL_GRF_NUM : 0);
 }
 
