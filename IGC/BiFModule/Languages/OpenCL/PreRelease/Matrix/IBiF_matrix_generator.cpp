@@ -1058,7 +1058,12 @@ ImplementLargeLoadBase(MatrixSpec spec, AddrSpace addr, int numLoads, bool isChe
             s += "__private char *dst1 = dst + WiRowsPerLoad * ContribByteWidth;\n";
             // Prepare mem (source) pointers
             s += "char *mem0 = mem;\n";
-            s += "char *mem1 = mem + 16 * ElemByteWidth;\n";
+            // 32bit Accumulator 32x64 is sliced into 4* 32x16
+            // 16bit Accumulator 32x64 is sliced into 2* 32x32
+            if (spec.BitWidth == 16 && spec.Layout == Layout_Accumulator_RowMajor)
+                s += "char *mem1 = mem + 32 * ElemByteWidth;\n";
+            else
+                s += "char *mem1 = mem + 16 * ElemByteWidth;\n";
             // Call load sub-functions
             s += "LoadFunc(dst0, mem0, stride, cacheOpt);\n";
             s += "LoadFunc(dst1, mem1, stride, cacheOpt);\n";
