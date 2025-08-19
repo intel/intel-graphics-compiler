@@ -375,6 +375,23 @@ intel_float4x3 intel_get_hit_object_to_world(
 intel_candidate_type_t
 intel_get_hit_candidate(intel_ray_query_t rayquery, intel_hit_type_t hit_type)
 {
+    if (BIF_FLAG_CTRL_GET(IsRayQueryReturnOptimizationEnabled))
+    {
+        rtfence_t fence = __builtin_IB_intel_query_rt_fence(rayquery);
+        uintptr_t fenceInt = (uintptr_t)fence;
+
+        intel_candidate_type_t committedStatus = (fenceInt >> 1) & 0x3;
+        intel_candidate_type_t candidateType = (fenceInt>> 3) & 0x1;
+
+        if (hit_type == intel_hit_type_committed_hit)
+        {
+            return committedStatus - 1;
+        }
+        else if (hit_type == intel_hit_type_potential_hit)
+        {
+            return candidateType;
+        }
+    }
     return MemHit_getLeafType(get_query_hit(rayquery, hit_type)) == NODE_TYPE_QUAD
                ? intel_candidate_type_triangle
                : intel_candidate_type_procedural;
@@ -446,6 +463,16 @@ int intel_get_ray_mask(intel_ray_query_t rayquery, uint bvh_level)
 // a procedural leaf or a non-opaque triangle leaf, and requires shader processing.
 bool intel_is_traversal_done(intel_ray_query_t rayquery)
 {
+    if (BIF_FLAG_CTRL_GET(IsRayQueryReturnOptimizationEnabled))
+    {
+        rtfence_t fence = __builtin_IB_intel_query_rt_fence(rayquery);
+        uintptr_t fenceInt = (uintptr_t)fence;
+
+        bool proceedFurther = (fenceInt & 0x1) != 0;
+
+
+        return !proceedFurther;
+    }
     bool isTraversalDone = MemHit_getDone(get_query_hit(rayquery, intel_hit_type_potential_hit));
     return isTraversalDone;
 }
