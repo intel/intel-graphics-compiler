@@ -2278,6 +2278,13 @@ Function *getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM, IGC::ModuleMetaData
   return entryFunc;
 }
 
+int getSIMDSize(const IGCMD::MetaDataUtils *M, llvm::Function *F) {
+  if (M->findFunctionsInfoItem(F) != M->end_FunctionsInfo()) {
+    return M->getFunctionsInfoItem(F)->getSubGroupSize()->getSIMDSize();
+  }
+  return 0;
+}
+
 // If true, the codegen will likely not emit instruction for this instruction.
 bool isNoOpInst(Instruction *I, CodeGenContext *Ctx) {
   if (isa<BitCastInst>(I) || isa<IntToPtrInst>(I) || isa<PtrToIntInst>(I)) {

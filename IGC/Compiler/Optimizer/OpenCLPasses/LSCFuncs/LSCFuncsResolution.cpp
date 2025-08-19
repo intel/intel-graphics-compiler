@@ -1015,6 +1015,13 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst &
         numBlocksV = 4;
       }
 
+      // In sub-group size = 32, block dimensions are the same as sub-group size = 16.
+      // __builtin_IB_subgroup_block_read_cacheopts_transform_u8_k32_sg32
+      // __builtin_IB_subgroup_block_read_cacheopts_transform_u8_k32n16v2_sg32
+      if (funcName.consume_front("_sg32")) {
+        tileWidth = 16;
+      }
+
       // __builtin_IB_subgroup_block_read_flat_transform_u8_k32
       tileHeight = 32;
     } else {
@@ -1040,6 +1047,13 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst &
       // __builtin_IB_subgroup_block_read_flat_transform_u16_k32v2
       if (funcName.consume_front("v2")) {
         numBlocksV = 2;
+      }
+
+      // In sub-group size = 32, block imensions are the same as sub-group size = 16.
+      // __builtin_IB_subgroup_block_read_cacheopts_transform_u16_k16_sg32
+      // __builtin_IB_subgroup_block_read_cacheopts_transform_u16_k32n16v1_sg32
+      if (funcName.consume_front("_sg32")) {
+        tileWidth = 16;
       }
     }
   } else {

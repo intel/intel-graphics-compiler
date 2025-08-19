@@ -175,7 +175,11 @@ template <typename CCT> void Spv2dBlockIOResolution::visit2DBlockSPVCallInst(Cal
     return;
   }
 
-  newFuncName << elemSize << "b_" << tileHeight << "r" << tileWidth << "x" << numBlocksV << "c_cache_controls";
+  int simdSize = IGC::getSIMDSize(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), CI.getParent()->getParent());
+  bool isSimd32Op = simdSize == 32 && op != Prefetch;
+
+  newFuncName << elemSize << "b_" << tileHeight << "r" << tileWidth << "x" << numBlocksV << "c"
+              << (isSimd32Op ? "_sg32" : "") << "_cache_controls";
   auto newFunction = m_Module->getOrInsertFunction(newFuncName.str(), FT);
 
   auto newCall = CallInst::Create(newFunction, args, "", &CI);

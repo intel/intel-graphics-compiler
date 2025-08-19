@@ -377,6 +377,10 @@ inline bool isNonEntryMultirateShader(const llvm::Function *CF) {
 // All subsequent calls to this function will get the entry set by the first call.
 llvm::Function *getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM, IGC::ModuleMetaData *pModMD);
 
+// Returns a SIMD size for given function from metadata.
+// Returns 0 if function is not in metadata or function has not defined SIMD size.
+int getSIMDSize(const IGCMD::MetaDataUtils *M, llvm::Function *F);
+
 template <typename T> inline bool RTWriteHasSource0Alpha(const T *rtWrite, ModuleMetaData *md) {
   return (nullptr != rtWrite->getSource0Alpha()) && !llvm::isa<llvm::UndefValue>(rtWrite->getSource0Alpha());
 }

@@ -1016,7 +1016,7 @@ DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LSC_CACHEOPTS(intel_subgroup_block_write_cacheo
 // To support new SPV_INTEL_2d_block_io only without matching cl_intel_subgroup_2d_block_io built-in, use
 // DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_ macros
 
-#define DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(FUNC_NAME, INTERNAL_DST_TYPE, INTERNAL_FUNC)                                              \
+#define DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ_CACHE_CONTROLS(FUNC_NAME, INTERNAL_DST_TYPE, INTERNAL_FUNC)                               \
 INLINE void __internal_##FUNC_NAME##_cache_controls(__global void* base_address, int width, int height, int pitch, int2 coord, __private void* destination, enum LSC_LDCC cache_controls) \
 {                                                                                                                                             \
     long baseoffset = as_long(base_address);                                                                                                  \
@@ -1027,11 +1027,21 @@ INLINE void __internal_##FUNC_NAME##_cache_controls(__global void* base_address,
     *(__private INTERNAL_DST_TYPE*)destination = ret;                                                                                         \
 }
 
+#define DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(FUNC_NAME, INTERNAL_DST_TYPE, INTERNAL_FUNC)                                              \
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ_CACHE_CONTROLS(FUNC_NAME,        INTERNAL_DST_TYPE,             INTERNAL_FUNC)                    \
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ_CACHE_CONTROLS(FUNC_NAME##_sg32, HALVE_TYPE(INTERNAL_DST_TYPE), INTERNAL_FUNC##_sg32)
+
+// The same 2D block dimensions use different data type per work item
+// depending on the subgroup size. Define unique functions for each variant.
 #define  DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(FUNC_NAME, DST_PTR_TYPE, INTERNAL_DST_TYPE, INTERNAL_FUNC)                                        \
 DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(FUNC_NAME, INTERNAL_DST_TYPE, INTERNAL_FUNC)                                                      \
 INLINE void OVERLOADABLE FUNC_NAME(__global void* base_address, int width, int height, int pitch, int2 coord, __private DST_PTR_TYPE* destination) \
 {                                                                                                                                             \
     __internal_##FUNC_NAME##_cache_controls(base_address, width, height, pitch, coord, (__private void *)destination, LSC_LDCC_DEFAULT);      \
+}                                                                                                                                             \
+INLINE void OVERLOADABLE FUNC_NAME##_sg32(__global void* base_address, int width, int height, int pitch, int2 coord, __private DST_PTR_TYPE* destination) \
+{                                                                                                                                             \
+    __internal_##FUNC_NAME##_sg32_cache_controls(base_address, width, height, pitch, coord, (__private void *)destination, LSC_LDCC_DEFAULT); \
 }
 
 // type d8, block width 16, array length 1
@@ -1237,7 +1247,7 @@ DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetch_32b_32r
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetch_8b_32r16x2c,   __builtin_IB_subgroup_block_read_prefetch_u8_m32k16v2)
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetch_8b_32r16x4c,   __builtin_IB_subgroup_block_read_prefetch_u8_m32k16v4)
 
-#define  DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_WRITE(FUNC_NAME, INTERNAL_DST_TYPE, INTERNAL_FUNC)                      \
+#define  DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_WRITE_CACHE_CONTROLS(FUNC_NAME, INTERNAL_DST_TYPE, INTERNAL_FUNC)       \
 INLINE void __internal_##FUNC_NAME##_cache_controls(__global void* base_address, int width, int height, int pitch, int2 coord, private void* val, enum LSC_LDCC cache_controls) \
 {                                                                                                                       \
     long baseoffset = as_long(base_address);                                                                            \
@@ -1247,11 +1257,21 @@ INLINE void __internal_##FUNC_NAME##_cache_controls(__global void* base_address,
     INTERNAL_FUNC(baseoffset, width_minus_one, height_minus_one, pitch_minus_one, coord, *(private INTERNAL_DST_TYPE*)val, cache_controls); \
 }
 
+#define DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_WRITE(FUNC_NAME, INTERNAL_DST_TYPE, INTERNAL_FUNC)                                  \
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_WRITE_CACHE_CONTROLS(FUNC_NAME,        INTERNAL_DST_TYPE,             INTERNAL_FUNC)        \
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_WRITE_CACHE_CONTROLS(FUNC_NAME##_sg32, HALVE_TYPE(INTERNAL_DST_TYPE), INTERNAL_FUNC##_sg32)
+
+// The same 2D block dimensions use different data type per work item
+// depending on the subgroup size. Define unique functions for each variant.
 #define  DEFN_INTEL_SUB_GROUP_2D_BLOCK_WRITE(FUNC_NAME, DST_PTR_TYPE, INTERNAL_DST_TYPE, INTERNAL_FUNC)                 \
 DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_WRITE(FUNC_NAME, INTERNAL_DST_TYPE, INTERNAL_FUNC)                               \
 INLINE void OVERLOADABLE FUNC_NAME(__global void* base_address, int width, int height, int pitch, int2 coord, private DST_PTR_TYPE* val) \
 {                                                                                                                       \
     __internal_##FUNC_NAME##_cache_controls(base_address, width, height, pitch, coord, (private void*) val, LSC_LDCC_DEFAULT); \
+}                                                                                                                       \
+INLINE void OVERLOADABLE FUNC_NAME##_sg32(__global void* base_address, int width, int height, int pitch, int2 coord, private DST_PTR_TYPE* val) \
+{                                                                                                                                               \
+    __internal_##FUNC_NAME##_sg32_cache_controls(base_address, width, height, pitch, coord, (private void*) val, LSC_LDCC_DEFAULT);             \
 }
 
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_WRITE(intel_sub_group_2d_block_write_8b_1r32x1c,   ushort, ushort,  __builtin_IB_subgroup_block_write_cacheopts_u8_m1k32v1)
