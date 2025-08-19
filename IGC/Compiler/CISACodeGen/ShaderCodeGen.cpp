@@ -1353,6 +1353,10 @@ void OptimizeIR(CodeGenContext *const pContext) {
         }
 
 
+        // Can be completely repalced by LoopUnrollForCodeSizeOnly in GenTTI, Consider completely remove this pass
+        if (!pContext->m_retryManager.IsFirstTry() && pContext->m_retryManager.IsLastTry()) {
+          mpm.add(new DisableLoopUnrollOnRetry());
+        }
 
 
         mpm.add(createIGCInstructionCombiningPass());
