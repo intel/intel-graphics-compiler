@@ -1353,8 +1353,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
         }
 
 
-        // Can be completely repalced by LoopUnrollForCodeSizeOnly in GenTTI, Consider completely remove this pass
-        if (!pContext->m_retryManager.IsFirstTry() && pContext->m_retryManager.IsLastTry()) {
+        if (!pContext->m_retryManager.IsFirstTry() && pContext->type == ShaderType::OPENCL_SHADER) {
           mpm.add(new DisableLoopUnrollOnRetry());
         }
 
