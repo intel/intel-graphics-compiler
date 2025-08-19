@@ -361,6 +361,8 @@ enum class ShaderTypeMD
         bool globalIDPresent = false;
         // This is true if the function has any sync raytracing functionality
         bool hasSyncRTCalls = false;
+        bool hasPrintfCalls = false;
+        bool hasIndirectCalls = false;
 
         // Analysis result of if there are non-kernel-argument ld/st in the kernel
         bool hasNonKernelArgLoad = false;

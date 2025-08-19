@@ -33,7 +33,9 @@ public:
   /// @brief  Provides name of pass
   virtual llvm::StringRef getPassName() const override { return "OpenCLPrintfAnalysis"; }
 
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
 
   /// @brief  Main entry point.
   /// @param  M The destination module.
@@ -62,6 +64,7 @@ private:
 
   std::unordered_set<llvm::Function *> m_hasPrintfs;
 
+  ModuleMetaData *m_modMD = nullptr;
   /// @brief  MetaData utils used to generate LLVM metadata
   IGCMD::MetaDataUtils *m_pMDUtils = nullptr;
 };

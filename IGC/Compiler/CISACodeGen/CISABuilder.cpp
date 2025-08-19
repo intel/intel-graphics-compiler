@@ -5138,9 +5138,11 @@ void CEncoder::CreateFuncAttributeTable(VISAKernel *pMainKernel, GenXFunctionGro
     uint32_t spillMemPerThread =
         getSpillMemSizeWithFG(*F, jitInfo->stats.spillMemUsed, pFga, jitInfo->numBytesScratchGtpin);
     uint8_t hasRTCalls = (uint8_t)modMD->FuncMD[F].hasSyncRTCalls;
+    uint8_t hasPrintfCalls = (uint8_t)modMD->FuncMD[F].hasPrintfCalls;
+    uint8_t hasIndirectCalls = (uint8_t)modMD->FuncMD[F].hasIndirectCalls;
 
     attrs.emplace_back((uint8_t)isKernel, isExternal, barrierCount, privateMemPerThread, spillMemPerThread,
-                       F->getName().str(), hasRTCalls);
+                       F->getName().str(), hasRTCalls, hasPrintfCalls, hasIndirectCalls);
   }
 }
 

@@ -65,6 +65,11 @@ bool OpenCLPrintfAnalysis::runOnModule(Module &M) {
       if (!func.isDeclaration() && m_hasPrintfs.find(&func) != m_hasPrintfs.end()) {
         addPrintfBufferArgs(func);
         changed = true;
+
+        if (m_modMD == nullptr) {
+          m_modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        }
+        m_modMD->FuncMD[&func].hasPrintfCalls = true;
       }
     }
   }
@@ -76,9 +81,16 @@ bool OpenCLPrintfAnalysis::runOnModule(Module &M) {
   return m_hasPrintfs.size();
 }
 
-void OpenCLPrintfAnalysis::visitCallInst(llvm::CallInst &callInst) {
+void OpenCLPrintfAnalysis::visitCallInst(CallInst &callInst) {
   Function *pF = callInst.getParent()->getParent();
   if (!callInst.getCalledFunction() || m_hasPrintfs.find(pF) != m_hasPrintfs.end()) {
+
+    if( callInst.isIndirectCall()) {
+      if (m_modMD == nullptr) {
+        m_modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+      }
+      m_modMD->FuncMD[pF].hasIndirectCalls = true;
+    }
     return;
   }
 

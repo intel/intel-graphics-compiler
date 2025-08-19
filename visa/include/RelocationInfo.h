@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #ifndef RELOCATION_INFO_H
 #define RELOCATION_INFO_H
 
+#include <cstdint>
 #include <string>
 
 namespace vISA {
@@ -121,14 +122,19 @@ struct ZEFuncAttribEntry {
                                   // for this function
   std::string f_name;             // The function's name
   uint8_t f_hasRTCalls;
+  uint8_t f_hasPrintfCalls;
+  uint8_t f_hasIndirectCalls;
 
   ZEFuncAttribEntry(uint8_t isKernel, uint8_t isExternal, uint32_t barrierCount,
                     uint32_t privateMemPerThread, uint32_t spillMemPerThread,
-                    std::string funcName, uint8_t hasRTCalls)
+                    std::string funcName, uint8_t hasRTCalls,
+                    uint8_t hasPrintfCalls, uint8_t hasIndirectCalls)
       : f_isKernel(isKernel), f_isExternal(isExternal),
         f_BarrierCount(barrierCount),
         f_privateMemPerThread(privateMemPerThread),
-        f_spillMemPerThread(spillMemPerThread), f_name(std::move(funcName)), f_hasRTCalls(hasRTCalls) {}
+        f_spillMemPerThread(spillMemPerThread), f_name(std::move(funcName)),
+        f_hasRTCalls(hasRTCalls), f_hasPrintfCalls(hasPrintfCalls),
+        f_hasIndirectCalls(hasIndirectCalls) {}
 };
 
 /// ZEHostAccessEntry - A host access entry that will later be transformed to ZE

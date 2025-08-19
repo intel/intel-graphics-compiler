@@ -127,6 +127,8 @@ If an attribute is **Required**, it must be present in execution_env. If it's **
 | has_multi_scratch_spaces | bool | Optional | false | |
 | has_no_stateless_write | bool | Optional | false | |
 | has_stack_calls | bool | Optional | false | When this value is true, it indicates that program uses stack calls. The implicit_arg_buffer is allocated accordingly.  |
+| has_printf_calls | bool | Optional | false | When this value is true, it indicates that the kernel itself uses printf calls in its body. |
+| has_indirect_calls | bool | Optional | false | When this value is true, it indicates that the kernel itself uses indirect calls in its body. |
 | require_disable_eufusion | bool | Optional | false | When this value is true, it indicates that program requires EU fusion disable |
 | indirect_stateless_count | int32 | Optional | 0 | |
 | inline_data_payload_size | int32 | Optional | 0 | Size of inline data in cross-thread-payload in byte. The value is 0 when inline data is disabled (default). |

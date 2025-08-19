@@ -90,6 +90,8 @@ struct ExecutionEnvironment {
   DWORD StatelessWritesCount = 0;
   DWORD IndirectStatelessCount = 0;
   DWORD numThreads = 0;
+  bool HasPrintfCalls = false;
+  bool HasIndirectCalls = false;
   bool HasStackCalls = false;
   bool RequireDisableEUFusion = false;
   DWORD PerThreadSpillMemoryUsage = 0;
