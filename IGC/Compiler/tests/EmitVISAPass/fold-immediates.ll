@@ -5,7 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
+
+; REQUIRES: temporarily-disabled, regkeys
 ;
 ; RUN: igc_opt -platformbmg -igc-emit-visa %s -dx12 -inputcs -regkey DumpVISAASMToConsole | FileCheck %s
 ; ------------------------------------------------

@@ -2418,6 +2418,9 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
 
     llvm::Value *varOffset = isConstant0 ? addSubInst->getOperand(1) : addSubInst->getOperand(0);
 
+    if (!isA64AddressingModel && m_ctx->type != ShaderType::OPENCL_SHADER && IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 2)
+      return false;
+
     // HW does an early bounds check on varOffset for A32 messages. Thus, if varOffset
     // is negative, then the bounds check fails early even though the immediate offset
     // would bring the final calculation to a positive number.
