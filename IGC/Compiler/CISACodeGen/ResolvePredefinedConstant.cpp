@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Pass.h>
+#include <llvm/Analysis/ConstantFolding.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -39,7 +40,7 @@ ModulePass *IGC::createResolvePredefinedConstantPass() { return new PredefinedCo
 char PredefinedConstantResolving::ID = 0;
 
 #define PASS_FLAG "igc-predefined-constant-resolve"
-#define PASS_DESC "Resolve compiler predefeind constants"
+#define PASS_DESC "Resolve compiler predefined constants"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 namespace IGC {
@@ -49,23 +50,24 @@ IGC_INITIALIZE_PASS_END(PredefinedConstantResolving, PASS_FLAG, PASS_DESC, PASS_
 
 bool PredefinedConstantResolving::runOnModule(Module &M) {
   bool Changed = false;
+  const DataLayout &DL = M.getDataLayout();
+
   for (auto &GV : M.globals()) {
-    if (!GV.isConstant())
+    if (!GV.isConstant() || !GV.hasUniqueInitializer())
       continue;
-    if (!GV.hasUniqueInitializer())
-      continue;
-    // We don't use fancy data structure to reduce the lookup overhead due to
-    // the current limited size of compiler pre-defined constants.
 
     Constant *C = GV.getInitializer();
     for (auto I = GV.user_begin(); I != GV.user_end(); /* empty */) {
-      // Ensure we understand how the predefined constant is used.
       LoadInst *LI = dyn_cast<LoadInst>(*I++);
       if (!LI)
         continue;
-      LI->replaceAllUsesWith(C);
-      LI->eraseFromParent();
-      Changed = true;
+
+      if (Constant *Folded = ConstantFoldLoadFromConst(C, LI->getType(), DL)) {
+        LI->replaceAllUsesWith(Folded);
+        LI->eraseFromParent();
+        Changed = true;
+      }
+
     }
   }
   return Changed;
