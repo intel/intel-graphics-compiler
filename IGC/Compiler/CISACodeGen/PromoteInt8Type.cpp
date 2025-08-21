@@ -619,12 +619,10 @@ void PromoteInt8Type::promoteInstructions() {
           newVal = m_builder->CreateInsertElement(getSI16Value(v0), getSI16Value(v1), getUI16Value(v2), "b2s");
           break;
         }
-#if LLVM_VERSION_MAJOR >= 10
         case Instruction::Freeze: {
           newVal = m_builder->CreateFreeze(getSI16Value(v0), "b2s");
           break;
         }
-#endif
         default:
           IGC_ASSERT_MESSAGE(0, "Unexpected inst of i8");
         } // Switch

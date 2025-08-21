@@ -658,18 +658,6 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   if (!isOptDisabled && ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt) &&
       !ctx.getModuleMetaData()->disableMemOptforNegativeOffsetLoads) {
 
-#if LLVM_VERSION_MAJOR <= 10
-    if (ctx.type == ShaderType::OPENCL_SHADER) {
-      // Some LLVM passes may produce load/store instructions without alignment set,
-      // for example SROA. LLVM API has been changed to ensure that alignment is never
-      // missing, it has been changed in LLVM11: https://reviews.llvm.org/D77454.
-      // Merging loads/stores without alignment set results in producing loads/stores
-      // that operate on a bigger types, hence loosing an information about actual alignment.
-      // AlignmentAnalysis restores alignments based on data-flow analysis, so that MemOpt
-      // can propagate the correct alignment to the merged instructions.
-      mpm.add(new AlignmentAnalysis());
-    }
-#endif
 
     if ((ctx.type == ShaderType::RAYTRACING_SHADER || ctx.hasSyncRTCalls()) &&
         IGC_IS_FLAG_DISABLED(DisablePrepareLoadsStores)) {
@@ -736,20 +724,9 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
     const bool allowIPConstProp = !ctx.m_hasStackCalls && IGC_IS_FLAG_DISABLED(DisableIPConstantPropagation);
 
-#if LLVM_VERSION_MAJOR >= 12
     if (allowIPConstProp) {
       mpm.add(createIPSCCPPass());
     }
-    // Note / todo: LLVM < 12 also runs simple constant propagation pass regardless
-    // of IPSCCP in this case.
-    // This pass is not available on >= 12 version, but maybe SCCP pass would
-    // be suitable here.
-#else
-    if (allowIPConstProp) {
-      mpm.add(createIPConstantPropagationPass());
-    }
-    mpm.add(createConstantPropagationPass());
-#endif
 
     mpm.add(createDeadCodeEliminationPass());
     mpm.add(createCFGSimplificationPass());
@@ -1189,19 +1166,12 @@ void OptimizeIR(CodeGenContext *const pContext) {
       // Don't run IPConstantProp if there are stackcalls
       const bool allowIPConstProp = !pContext->m_hasStackCalls && IGC_IS_FLAG_DISABLED(DisableIPConstantPropagation);
 
-#if LLVM_VERSION_MAJOR >= 12
       if (allowIPConstProp) {
         mpm.add(createIPSCCPPass());
       }
       // Note / todo: LLVM < 12 also runs simple constant propagation pass
       // regardless of IPSCCP in this case. This pass is not available on
       // >= 12 version, but maybe SCCP pass would be suitable here.
-#else
-      mpm.add(createConstantPropagationPass());
-      if (allowIPConstProp) {
-        mpm.add(createIPConstantPropagationPass());
-      }
-#endif
     }
     if (IGC_IS_FLAG_ENABLED(MSAA16BitPayloadEnable) && pContext->platform.support16bitMSAAPayload()) {
       mpm.add(new ConvertMSAAPayloadTo16Bit());
@@ -1224,11 +1194,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       mpm.add(new HoistCongruentPHI());
       mpm.add(new CodeSinking());
     }
-#if LLVM_VERSION_MAJOR >= 12
     mpm.add(llvm::createCFGSimplificationPass(SimplifyCFGOptions().hoistCommonInsts(true)));
-#else
-    mpm.add(llvm::createCFGSimplificationPass());
-#endif
 
     mpm.add(llvm::createBasicAAWrapperPass());
     mpm.add(createAddressSpaceAAWrapperPass());
@@ -1461,7 +1427,6 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
       mpm.add(new BreakConstantExpr());
       mpm.add(new IGCConstProp(IGC_IS_FLAG_ENABLED(EnableSimplifyGEP)));
-#if LLVM_VERSION_MAJOR >= 14
       // Now that constant propagation is largely complete, perform
       // initial evaluation of freeze instructions. We need this to make
       // life easier for subsequent LLVM passes, as passes like
@@ -1471,7 +1436,6 @@ void OptimizeIR(CodeGenContext *const pContext) {
       // TODO: Check if LLVM 15+ provides improvements in that regard,
       // alleviating the need for early freeze evaluation.
       mpm.add(createEvaluateFreezePass());
-#endif // LLVM_VERSION_MAJOR
 
       if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt)) {
         // If we have ICBs, need to emit clamp code so OOB access doesn't occur
@@ -1506,7 +1470,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
         // We need to increase default duplication threshold since JumpThreading pass cost estimation does
         // not consider that not all instructions need to be duplicated.
         int BBDuplicateThreshold = (pContext->type == ShaderType::OPENCL_SHADER) ? 9 : -1;
-#if LLVM_VERSION_MAJOR >= 15 || LLVM_VERSION_MAJOR < 12
+#if LLVM_VERSION_MAJOR >= 15
         // In LLVM-12.x an extra parameter InsertFreezeWhenUnfoldingSelect = false was added
         // to JumpThreading pass, but since LLVM-15.x it was removed again.
         mpm.add(llvm::createJumpThreadingPass(BBDuplicateThreshold));

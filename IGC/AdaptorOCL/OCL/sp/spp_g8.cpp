@@ -388,10 +388,10 @@ bool CGen8OpenCLProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary, uns
           }
         } else {
           linkErr.str(); // Flush contents to the associated string
-#if LLVM_VERSION_MAJOR >= 10
+
           linkOut.str(); // Flush contents to the associated string
           linkErrStr.append(linkOutStr);
-#endif // LLVM_VERSION_MAJOR
+
           if (!linkErrStr.empty()) {
             if (ctx) {
               ctx->EmitError(linkErrStr.c_str(), nullptr);

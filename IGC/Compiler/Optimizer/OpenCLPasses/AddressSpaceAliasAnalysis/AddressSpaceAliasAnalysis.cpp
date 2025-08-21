@@ -156,9 +156,7 @@ public:
 
   bool doInitialization(Module &M) override {
     if (M.size() > 0) {
-#if LLVM_VERSION_MAJOR >= 10
       auto &F = *M.begin(); // see llvmWrapper/Analysis/TargetLibraryInfo.h
-#endif
       Result.reset(new AddressSpaceAAResult(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(),
                                             *getAnalysis<CodeGenContextWrapper>().getCodeGenContext()));
     }

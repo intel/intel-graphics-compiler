@@ -23,10 +23,8 @@ using namespace IGC::Legalizer;
 
 // By default, capture all missing instructions!
 LegalizeAction InstLegalChecker::visitInstruction(Instruction &I) {
-#if LLVM_VERSION_MAJOR >= 10
   if (isa<FreezeInst>(I))
     return Legal;
-#endif // LLVM_VERSION_MAJOR >= 10
 
   LLVM_DEBUG(dbgs() << "LEGAL-CHECK: " << I << '\n');
   IGC_ASSERT_UNREACHABLE(); // UNKNOWN INSTRUCTION IS BEING LEGAL-CHECKED!
@@ -281,6 +279,4 @@ LegalizeAction InstLegalChecker::visitLandingPadInst(LandingPadInst &) {
   return Legal;
 }
 
-#if LLVM_VERSION_MAJOR >= 10
 LegalizeAction InstLegalChecker::visitFNeg(llvm::UnaryOperator &I) { return Legal; }
-#endif

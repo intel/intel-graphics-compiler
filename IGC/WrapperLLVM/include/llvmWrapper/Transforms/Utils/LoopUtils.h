@@ -15,11 +15,7 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM {
 inline bool isInnermost(llvm::Loop *L) {
-#if LLVM_VERSION_MAJOR >= 12
   return L->isInnermost();
-#else
-  return L->empty();
-#endif
 }
 } // namespace IGCLLVM
 

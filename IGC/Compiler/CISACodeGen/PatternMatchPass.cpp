@@ -1293,11 +1293,9 @@ void CodeGenPatternMatch::visitUnaryInstruction(llvm::UnaryInstruction &I) {
   case Instruction::Load:
     match = MatchSingleInstruction(I);
     break;
-#if LLVM_VERSION_MAJOR >= 10
   case Instruction::FNeg:
     match = MatchAbsNeg(I);
     break;
-#endif
   }
   IGC_ASSERT(match);
 }
@@ -1322,9 +1320,7 @@ void CodeGenPatternMatch::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   case Intrinsic::exp2:
     match = MatchPow(I) || MatchModifier(I);
     break;
-#if LLVM_VERSION_MAJOR >= 12
   case Intrinsic::abs:
-#endif
   case Intrinsic::fabs:
     match = MatchAbsNeg(I);
     break;
@@ -5256,13 +5252,11 @@ bool isAbs(llvm::Value *abs, e_modifier &mod, llvm::Value *&source) {
       mod = EMOD_ABS;
       return true;
     }
-#if LLVM_VERSION_MAJOR >= 12
     if (intrinsicInst->getIntrinsicID() == Intrinsic::abs) {
       source = intrinsicInst->getOperand(0);
       mod = EMOD_ABS;
       return true;
     }
-#endif
   }
 
   llvm::SelectInst *select = llvm::dyn_cast<llvm::SelectInst>(abs);
@@ -5363,13 +5357,11 @@ bool IsNegate(llvm::Instruction *inst, llvm::Value *&negateSource) {
       return true;
     }
   }
-#if LLVM_VERSION_MAJOR >= 10
   UnaryOperator *unop = dyn_cast<UnaryOperator>(inst);
   if (unop && inst->getOpcode() == Instruction::FNeg) {
     negateSource = inst->getOperand(0);
     return true;
   }
-#endif
   return false;
 }
 

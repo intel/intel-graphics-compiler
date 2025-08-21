@@ -75,7 +75,7 @@ void FastMathConstantHandling::visitInstruction(Instruction &I) {
       I.setHasNoSignedZeros(false);
   }
 }
-#if LLVM_VERSION_MAJOR >= 10
+
 void FastMathConstantHandling::visitFNeg(Instruction &I) {
   auto *fp_val = dyn_cast<llvm::ConstantFP>(I.getOperand(0));
   if (fp_val && fp_val->getValueAPF().isZero()) {
@@ -85,7 +85,6 @@ void FastMathConstantHandling::visitFNeg(Instruction &I) {
     }
   }
 }
-#endif
 
 void FastMathConstantHandling::visitFDiv(Instruction &I) {
   if (auto *fp_val = dyn_cast<llvm::ConstantFP>(I.getOperand(1)); fp_val && fp_val->getValueAPF().isZero()) {

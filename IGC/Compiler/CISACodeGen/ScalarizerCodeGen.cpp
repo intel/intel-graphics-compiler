@@ -143,7 +143,6 @@ void ScalarizerCodeGen::visitCastInst(llvm::CastInst &I) {
   }
 }
 
-#if LLVM_VERSION_MAJOR >= 10
 void ScalarizerCodeGen::visitFNeg(llvm::UnaryOperator &I) {
   if (I.getType()->isVectorTy()) {
     IGCLLVM::FixedVectorType *InstType = cast<IGCLLVM::FixedVectorType>(I.getType());
@@ -164,4 +163,3 @@ void ScalarizerCodeGen::visitFNeg(llvm::UnaryOperator &I) {
     I.eraseFromParent();
   }
 }
-#endif

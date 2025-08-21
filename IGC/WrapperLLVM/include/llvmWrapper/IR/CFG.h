@@ -13,11 +13,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/CFG.h"
 
 namespace IGCLLVM {
-#if LLVM_VERSION_MAJOR >= 11
 using llvm::const_succ_iterator;
-#else
-using const_succ_iterator = llvm::succ_const_iterator;
-#endif
 } // namespace IGCLLVM
 
 #endif

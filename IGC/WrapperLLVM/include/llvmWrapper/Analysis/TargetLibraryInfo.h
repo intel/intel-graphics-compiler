@@ -12,8 +12,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 
-#if LLVM_VERSION_MAJOR >= 10
 #define getTLI() getTLI(F)
-#endif
 
 #endif

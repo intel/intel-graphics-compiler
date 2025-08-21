@@ -543,7 +543,6 @@ WaveOps SubGroupReductionPattern::getWaveOp(Instruction *Op) {
 
   if (IntrinsicInst *I = llvm::dyn_cast<IntrinsicInst>(Op)) {
     switch (I->getIntrinsicID()) {
-#if LLVM_VERSION_MAJOR >= 12
     case Intrinsic::umin:
       return WaveOps::UMIN;
     case Intrinsic::umax:
@@ -552,7 +551,6 @@ WaveOps SubGroupReductionPattern::getWaveOp(Instruction *Op) {
       return WaveOps::IMIN;
     case Intrinsic::smax:
       return WaveOps::IMAX;
-#endif
     case Intrinsic::minnum:
       return WaveOps::FMIN;
     case Intrinsic::maxnum:

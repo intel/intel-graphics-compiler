@@ -27,9 +27,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/Instruction.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Demangle/Demangle.h"
-#if LLVM_VERSION_MAJOR >= 11
 #include "llvm/CodeGen/DIE.h"
-#endif
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/MC/MCSection.h"
 #include "llvm/MC/MCSymbol.h"
@@ -652,10 +650,8 @@ IGC::DIE *CompileUnit::getOrCreateTypeDIE(const MDNode *TyNode) {
 
   if (isa<DIBasicType>(Ty))
     constructTypeDIE(*TyDIE, cast<DIBasicType>(Ty));
-#if LLVM_VERSION_MAJOR >= 12
   else if (isa<DIStringType>(Ty))
     constructTypeDIE(*TyDIE, cast<DIStringType>(Ty));
-#endif
   else if (isa<DICompositeType>(Ty))
     constructTypeDIE(*TyDIE, cast<DICompositeType>(Ty));
   else if (isa<DISubroutineType>(Ty))
@@ -1305,27 +1301,6 @@ std::string CompileUnit::getParentContextString(DIScope *Context) const {
   return CS;
 }
 
-// Decode line number, file name and location from a string, where a line no.,
-// file name and directory are separated by '?' character:
-// lineNumber?fileName?directory There is a workaround for DIModule creation in
-// earlier LLVM versions, where a line and a file parameters are not supported
-// in DIBuilder.
-void CompileUnit::decodeLineAndFileForISysRoot(StringRef &lineAndFile, unsigned int *line, std::string *file,
-                                               std::string *directory) {
-#if LLVM_VERSION_MAJOR < 11
-  SmallVector<StringRef, 8> splitStr;
-  lineAndFile.split(splitStr,
-                    "?"); //   substr(0, posOfLineAndDirSeparator).str().copy()
-  unsigned int posOfFirstQ = lineAndFile.find_first_of('?', 0);
-  std::string lineStr = "";
-  lineStr.append(splitStr[0].str().c_str(), posOfFirstQ);
-  unsigned int posOfSecondQ = lineAndFile.find_first_of('?', posOfFirstQ + 1);
-
-  directory->append(splitStr[1].str().c_str(), posOfSecondQ - posOfFirstQ);
-  file->append(splitStr[2].str().c_str(), splitStr[2].size());
-  *line = (unsigned int)std::atoi(splitStr[0].data());
-#endif // LLVM_VERSION_MAJOR < 11
-}
 
 /// constructTypeDIE - Construct basic type die from DIBasicType.
 void CompileUnit::constructTypeDIE(DIE &Buffer, DIBasicType *BTy) {
@@ -1346,7 +1321,6 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIBasicType *BTy) {
   addUInt(&Buffer, dwarf::DW_AT_byte_size, std::nullopt, Size);
 }
 
-#if LLVM_VERSION_MAJOR >= 12
 /// constructTypeDIE - Construct basic type die from DIStringType.
 void CompileUnit::constructTypeDIE(DIE &Buffer, DIStringType *STy) {
   // Get core information.
@@ -1380,7 +1354,6 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIStringType *STy) {
     addUInt(&Buffer, dwarf::DW_AT_encoding, dwarf::DW_FORM_data1, STy->getEncoding());
   }
 }
-#endif
 
 /// constructTypeDIE - Construct derived type die from DIDerivedType.
 void CompileUnit::constructTypeDIE(DIE &Buffer, DIDerivedType *DTy) {
@@ -1860,39 +1833,11 @@ IGC::DIE *CompileUnit::getOrCreateModuleDIE(DIModule *MD) {
     addString(MDDie, dwarf::DW_AT_name, MD->getName());
   }
 
-#if LLVM_VERSION_MAJOR < 11
-#if LLVM_VERSION_MAJOR < 10
-  StringRef iSysRoot = MD->getISysRoot();
-#else  // LLVM_VERSION_MAJOR == 10
-  StringRef iSysRoot = MD->getSysRoot();
-#endif // LLVM_VERSION_MAJOR == 10
-  unsigned int line;
-  std::string file = "";
-  std::string directory = "";
-
-  decodeLineAndFileForISysRoot(iSysRoot, &line, &file, &directory);
-
-  // Emit a line number and a file only if line number is significant
-  if (line > 0)
-    addUInt(MDDie, dwarf::DW_AT_decl_line, std::nullopt, line);
-  // Emit a file if not empty name
-  if (!file.empty() || !directory.empty()) {
-    StringRef fileRef(file);
-    StringRef dirRef(directory);
-    unsigned FileID = DD->getOrCreateSourceID(fileRef, dirRef, getUniqueID());
-    addUInt(MDDie, dwarf::DW_AT_decl_file, std::nullopt, FileID);
-  }
-#else // LLVM_VERSION_MAJOR >= 11
-#if LLVM_VERSION_MAJOR == 11
-  addSourceLine(MDDie, MD, MD->getLineNo());
-#elif LLVM_VERSION_MAJOR >= 12
   if (!MD->getIsDecl()) {
     addSourceLine(MDDie, MD, MD->getLineNo());
   } else {
     addFlag(MDDie, dwarf::DW_AT_declaration);
   }
-#endif // LLVM_VERSION_MAJOR >= 12
-#endif // LLVM_VERSION_MAJOR >= 11.
 
   return MDDie;
 }
@@ -1927,7 +1872,6 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR, DIE *IndexTy
   // DW_AT_lower_bound and DW_AT_count attributes.
   int64_t DefaultLowerBound = getDefaultLowerBound();
 
-#if LLVM_VERSION_MAJOR >= 13
   auto AddBoundTypeEntry = [&](dwarf::Attribute Attr, DISubrange::BoundType Bound) {
     if (auto *BV = Bound.dyn_cast<DIVariable *>()) {
       if (auto *VarDIE = getDIE(BV))
@@ -1955,23 +1899,6 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR, DIE *IndexTy
 
   AddBoundTypeEntry(dwarf::DW_AT_byte_stride, SR->getStride());
 
-#elif LLVM_VERSION_MAJOR <= 10
-  int64_t LowerBound = SR->getLowerBound();
-  auto *CI = SR->getCount().dyn_cast<ConstantInt *>();
-
-  if (DefaultLowerBound == -1 || LowerBound != DefaultLowerBound) {
-    addUInt(DW_Subrange, dwarf::DW_AT_lower_bound, std::nullopt, LowerBound);
-  }
-
-  if (CI) {
-    int64_t Count = CI->getSExtValue();
-    if (Count != -1 && Count != 0) {
-      // FIXME: An unbounded array should reference the expression that defines
-      // the array.
-      addUInt(DW_Subrange, dwarf::DW_AT_upper_bound, std::nullopt, LowerBound + Count - 1);
-    }
-  }
-#endif
 }
 
 /// constructArrayTypeDIE - Construct array type DIE from DICompositeType.
@@ -1979,7 +1906,6 @@ void CompileUnit::constructArrayTypeDIE(DIE &Buffer, DICompositeType *CTy) {
   if (CTy->isVector()) {
     addFlag(&Buffer, dwarf::DW_AT_GNU_vector);
   }
-#if LLVM_VERSION_MAJOR >= 12
   // Add DW_AT_data_location attr to DWARF. Dynamic arrays are represented by
   // descriptor and allocated space. DW_AT_data_location is used to denote
   // allocated space.
@@ -2007,7 +1933,6 @@ void CompileUnit::constructArrayTypeDIE(DIE &Buffer, DICompositeType *CTy) {
     DwarfExpr.addExpression(Expr);
     addBlock(&Buffer, dwarf::DW_AT_associated, DwarfExpr.finalize());
   }
-#endif
   // Emit the element type.
   addType(&Buffer, resolve(CTy->getBaseType()));
 
@@ -2045,11 +1970,7 @@ void CompileUnit::constructEnumTypeDIE(DIE &Buffer, DICompositeType *CTy) {
       DIE *Enumerator = createAndAddDIE(dwarf::DW_TAG_enumerator, Buffer);
       StringRef Name = Enum->getName();
       addString(Enumerator, dwarf::DW_AT_name, Name);
-      int64_t Value = Enum->getValue()
-#if LLVM_VERSION_MAJOR >= 11
-                          .getZExtValue()
-#endif
-          ;
+      int64_t Value = Enum->getValue().getZExtValue();
       addSInt(Enumerator, dwarf::DW_AT_const_value, dwarf::DW_FORM_sdata, Value);
     }
   }

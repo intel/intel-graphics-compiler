@@ -432,21 +432,13 @@ bool GASPropagator::visitCallInst(CallInst &I) {
 
 bool GASPropagator::visitDbgDeclareInst(DbgDeclareInst &I) {
   MetadataAsValue *MAV = MetadataAsValue::get(TheVal->getContext(), ValueAsMetadata::get(TheVal));
-#if LLVM_VERSION_MAJOR >= 13
   I.replaceVariableLocationOp(I.getVariableLocationOp(0), MAV);
-#else
-  I.setArgOperand(0, MAV);
-#endif
   return true;
 }
 
 bool GASPropagator::visitDbgValueInst(DbgValueInst &I) {
   MetadataAsValue *MAV = MetadataAsValue::get(TheVal->getContext(), ValueAsMetadata::get(TheVal));
-#if LLVM_VERSION_MAJOR >= 13
   I.replaceVariableLocationOp(I.getVariableLocationOp(0), MAV);
-#else
-  I.setArgOperand(0, MAV);
-#endif
   return true;
 }
 

@@ -397,7 +397,6 @@ bool PreCompiledFuncImport::preProcessDouble() {
         handleInstrTypeChange(IEI, newInsertInst);
         toBeDeleted.push_back(IEI);
       }
-#if LLVM_VERSION_MAJOR >= 10
       else if (Inst->getOpcode() == Instruction::FNeg) {
         // check if Inst is double instruction or vector of double instructions
         Type *instType = Inst->getType();
@@ -423,7 +422,6 @@ bool PreCompiledFuncImport::preProcessDouble() {
           toBeDeleted.push_back(Inst);
         }
       }
-#endif
     }
   }
 

@@ -49,46 +49,20 @@ public:
                                llvm::DIFile *File = nullptr, unsigned LineNo = 0, bool IsDecl = false,
                                llvm::StringRef SysRoot = {}) {
 
-#if LLVM_VERSION_MAJOR >= 12
     // Simply proxy the call
 
     return llvm::DIBuilder::createModule(Scope, Name, ConfigurationMacros, IncludePath, APINotesFile, File, LineNo,
                                          IsDecl);
-
-#elif LLVM_VERSION_MAJOR == 11
-    // LLVM 12 introduced IsDecl argument.
-    //
-    //     Differential Revision: https://reviews.llvm.org/D93462
-
-    return llvm::DIBuilder::createModule(Scope, Name, ConfigurationMacros, IncludePath, APINotesFile, File, LineNo);
-
-#elif LLVM_VERSION_MAJOR <= 10
-    // LLVM 11 introduced major changes in arguments for Fortran support.
-    // Deleted SysRoot argument had moved to DICompileUnit
-    //
-    //     Differential Revision #1: https://reviews.llvm.org/D79484
-    //     Differential Revision #2: https://reviews.llvm.org/D71732
-
-    return llvm::DIBuilder::createModule(Scope, Name, ConfigurationMacros, IncludePath, SysRoot);
-#endif
   }
 
   inline llvm::DITemplateTypeParameter *createTemplateTypeParameter(llvm::DIScope *Scope, llvm::StringRef Name,
                                                                     llvm::DIType *Ty) {
-#if LLVM_VERSION_MAJOR <= 10
-    return llvm::DIBuilder::createTemplateTypeParameter(Scope, Name, Ty);
-#else
     return llvm::DIBuilder::createTemplateTypeParameter(Scope, Name, Ty, true);
-#endif
   }
 
   inline llvm::DITemplateValueParameter *createTemplateValueParameter(llvm::DIScope *Scope, llvm::StringRef Name,
                                                                       llvm::DIType *Ty, llvm::Constant *Val) {
-#if LLVM_VERSION_MAJOR <= 10
-    return llvm::DIBuilder::createTemplateValueParameter(Scope, Name, Ty, Val);
-#else
     return llvm::DIBuilder::createTemplateValueParameter(Scope, Name, Ty, true, Val);
-#endif
   }
 };
 } // namespace IGCLLVM

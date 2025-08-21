@@ -19,15 +19,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/PatternMatch.h>
 #include <llvm/Analysis/ScalarEvolution.h>
-#if LLVM_VERSION_MAJOR < 11
-#include <llvm/Analysis/ScalarEvolutionExpander.h>
-#endif
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/Analysis/TargetFolder.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
-#if LLVM_VERSION_MAJOR >= 11
 #include <llvm/Transforms/Utils/ScalarEvolutionExpander.h>
-#endif
 #include <llvm/Transforms/Utils/Local.h>
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"

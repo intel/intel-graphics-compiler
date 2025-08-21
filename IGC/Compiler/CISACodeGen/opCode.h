@@ -171,13 +171,11 @@ DECLARE_OPCODE(Alloca, Instruction, llvm_alloca, false, false, false, false, fal
 DECLARE_OPCODE(FPExt, Instruction, llvm_fpext, true, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_f32tof16_rtz, GenISAIntrinsic, llvm_f32tof16_rtz, true, false, false, false, true, false, false)
 DECLARE_OPCODE(fabs, Intrinsic, llvm_fabs, false, false, true, false, true, false, false)
-#if LLVM_VERSION_MAJOR >= 12
 DECLARE_OPCODE(abs, Intrinsic, llvm_abs, false, false, true, false, true, false, false)
 DECLARE_OPCODE(smin, Intrinsic, llvm_smin, false, false, true, false, true, false, false)
 DECLARE_OPCODE(smax, Intrinsic, llvm_smax, false, false, true, false, true, false, false)
 DECLARE_OPCODE(umin, Intrinsic, llvm_umin, false, false, true, false, true, false, false)
 DECLARE_OPCODE(umax, Intrinsic, llvm_umax, false, false, true, false, true, false, false)
-#endif
 DECLARE_OPCODE(GenISA_fsat, GenISAIntrinsic, llvm_fsat, true, false, true, true, true, false, false)
 DECLARE_OPCODE(canonicalize, Intrinsic, llvm_canonicalize, true, true, true, true, false, false, false)
 DECLARE_OPCODE(GenISA_dp4a_ss, GenISAIntrinsic, llvm_dp4a_ss, false, true, true, true, false, false, false)

@@ -574,28 +574,18 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
 
   if (MDNode *LoopID = L->getLoopID()) {
     const llvm::StringRef maxIterMetadataNames = "spv.loop.iterations.max";
-#if LLVM_VERSION_MAJOR < 11
-    const llvm::StringRef peelCountMetadataNames = "spv.loop.peel.count";
-#endif
     for (unsigned i = 0; i < LoopID->getNumOperands(); ++i) {
       if (MDNode *MD = llvm::dyn_cast<MDNode>(LoopID->getOperand(i))) {
         if (MDString *S = llvm::dyn_cast<MDString>(MD->getOperand(0))) {
           if (maxIterMetadataNames.equals(S->getString())) {
             UP.MaxCount = static_cast<unsigned>(mdconst::extract<ConstantInt>(MD->getOperand(1))->getZExtValue());
           }
-#if LLVM_VERSION_MAJOR < 11
-          else if (peelCountMetadataNames.equals(S->getString())) {
-            UP.AllowPeeling = true;
-            UP.PeelCount = static_cast<unsigned>(mdconst::extract<ConstantInt>(MD->getOperand(1))->getZExtValue());
-          }
-#endif
         }
       }
     }
   }
 }
 
-#if LLVM_VERSION_MAJOR >= 11
 // [LLVM-UPGRADE] Peeling information was separated
 // https://github.com/llvm/llvm-project/commit/e541e1b757237172c247904b670c9894d6b3759d
 
@@ -616,7 +606,6 @@ void GenIntrinsicsTTIImpl::getPeelingPreferences(Loop *L, ScalarEvolution &SE,
     }
   }
 }
-#endif
 
 bool GenIntrinsicsTTIImpl::isProfitableToHoist(Instruction *I) {
   if (auto *CI = dyn_cast<CallInst>(I)) {
