@@ -4078,7 +4078,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_Src1Src2OverlapWA, true);
   }
 
-  if (IGC_IS_FLAG_ENABLED(UseLinearScanRA)) {
+  if (!IGC_IS_FLAG_SET(UseLinearScanRA) && context->getModuleMetaData()->compOpt.UseLinearScanRA || IGC_IS_FLAG_ENABLED(UseLinearScanRA)) {
     SaveOption(vISA_LinearScan, true);
   }
 

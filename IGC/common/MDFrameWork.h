@@ -506,7 +506,8 @@ enum class ShaderTypeMD
         bool DisableLoopUnroll                          = false;
         unsigned ForcePushConstantMode                  = 0;
         bool UseInstructionHoistingOptimization         = false;
-        bool DisableResourceLoopDestLifeTimeStart = false;
+        bool DisableResourceLoopDestLifeTimeStart       = false;
+        bool UseLinearScanRA                            = false;
     };
 
     enum class ThreadIDLayout
