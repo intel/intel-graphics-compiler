@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1582,6 +1582,16 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
   unsigned PlainTyIdx = FindIt - GottenTypeArr.begin();
 
   if (PlainTyIdx == Size) {
+    Type *PrevType = IdxPath.getTyAt(Size - 1);
+    // In case of opaque pointers, GEP's leading zero indices can be omitted and
+    // in this case previous type is not a structure type
+    if (!isa<StructType>(PrevType)) {
+      Type *PlainType = getBaseTy(GottenTypeArr[Size - 1]);
+      Instruction *ToInsert =
+          generateNewGEPs(GEPI, *PlainType, IdxPath, NewInstr, Size - 1);
+      InstToInst.emplace_back(cast<Instruction>(&GEPI), ToInsert);
+      return true;
+    }
     // Case of FE1
     auto InstUses = getInstUses(GEPI);
     if (!InstUses)
@@ -1590,7 +1600,6 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
 
     // That means that we are getting split struct so we need to create GEPs.
     // STyToBeSplit is the result of the instruction.
-    Type *PrevType = IdxPath.getTyAt(Size - 1);
     unsigned Idx = IdxPath.getIdxAt(Size - 1);
     StructType *STyToBeSplit = cast<StructType>(PrevType);
     const ListOfSplitElements &ListOfPossibleTypes =
@@ -1621,14 +1630,18 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
         return false;
   } else {
     Type *PrevType = IdxPath.getTyAt(PlainTyIdx);
-    unsigned Idx = IdxPath.getIdxAt(PlainTyIdx);
-    StructType *STyToBeSplit = cast<StructType>(PrevType);
-    IGC_ASSERT_MESSAGE(
-        Graph.getElementsListOfSTyAtIdx(*STyToBeSplit, Idx).size() == 1,
-        "Access to element of Struct does not get unsplit type.");
     Type *PlainType = getBaseTy(GottenTypeArr[PlainTyIdx]);
+    // In case of opaque pointers, GEP's leading zero indices can be omitted and
+    // in this case previous type is not a structure type
+    if (auto *STyToBeSplit = dyn_cast<StructType>(PrevType)) {
+      unsigned Idx = IdxPath.getIdxAt(PlainTyIdx);
+      IGC_ASSERT_MESSAGE(
+          Graph.getElementsListOfSTyAtIdx(*STyToBeSplit, Idx).size() == 1,
+          "Access to element of Struct does not get unsplit type.");
+      PlainTyIdx += 1;
+    }
     Instruction *ToInsert =
-        generateNewGEPs(GEPI, *PlainType, IdxPath, NewInstr, PlainTyIdx + 1);
+        generateNewGEPs(GEPI, *PlainType, IdxPath, NewInstr, PlainTyIdx);
     InstToInst.emplace_back(cast<Instruction>(&GEPI), ToInsert);
   }
   return true;
