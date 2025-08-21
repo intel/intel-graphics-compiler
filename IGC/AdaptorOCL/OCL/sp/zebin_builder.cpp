@@ -471,8 +471,8 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo &annotations, zeI
       CPlatform(mPlatform).hasScratchSurface() && IGC_IS_FLAG_ENABLED(SeparateSpillPvtScratchSpace);
   env.has_no_stateless_write = (annotations.m_executionEnvironment.StatelessWritesCount == 0);
   env.has_stack_calls = annotations.m_executionEnvironment.HasStackCalls;
-  // env.has_printf_calls = annotations.m_executionEnvironment.HasPrintfCalls;
-  // env.has_indirect_calls = annotations.m_executionEnvironment.HasIndirectCalls;
+  env.has_printf_calls = annotations.m_executionEnvironment.HasPrintfCalls;
+  env.has_indirect_calls = annotations.m_executionEnvironment.HasIndirectCalls;
   env.require_disable_eufusion = annotations.m_executionEnvironment.RequireDisableEUFusion;
   env.indirect_stateless_count = annotations.m_executionEnvironment.IndirectStatelessCount;
   env.inline_data_payload_size = annotations.m_threadPayload.PassInlineDataSize;
@@ -516,8 +516,8 @@ void ZEBinaryBuilder::addFunctionExecEnv(const SOpenCLKernelInfo &annotations,
   env.simd_size = annotations.m_executionEnvironment.CompiledSIMDSize;
   env.barrier_count = zeFuncAttr.f_BarrierCount;
   env.has_rtcalls = zeFuncAttr.f_hasRTCalls;
-  // env.has_printf_calls = zeFuncAttr.f_hasPrintfCalls;
-  // env.has_indirect_calls = zeFuncAttr.f_hasIndirectCalls;
+  env.has_printf_calls = zeFuncAttr.f_hasPrintfCalls;
+  env.has_indirect_calls = zeFuncAttr.f_hasIndirectCalls;
 }
 
 void ZEBinaryBuilder::addLocalIds(uint32_t simdSize, uint32_t grfSize, bool has_local_id_x, bool has_local_id_y,
