@@ -287,6 +287,7 @@ intrinsics:
                 comment: "owordAttributeIndex"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -303,6 +304,7 @@ intrinsics:
                 comment: "owordAttributeIndex"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -993,6 +995,7 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -1808,6 +1811,7 @@ intrinsics:
                 comment: "render target slot"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -1828,6 +1832,7 @@ intrinsics:
                 comment: "sample index"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -2096,6 +2101,7 @@ intrinsics:
                 comment: "urb offset"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -7847,6 +7853,7 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -7868,6 +7875,7 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -8011,6 +8019,7 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -10061,6 +10070,7 @@ intrinsics:
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -10089,6 +10099,7 @@ intrinsics:
                 comment: "value to use if predicate is false"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -10151,6 +10162,7 @@ intrinsics:
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -10183,6 +10195,7 @@ intrinsics:
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -10701,6 +10714,7 @@ intrinsics:
                 comment: "primitiveIndex"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -10721,6 +10735,7 @@ intrinsics:
                 comment: "primitiveIndex : ignored for PrimitiveCount"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -10791,6 +10806,7 @@ intrinsics:
                 comment: "vertexIndex"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -10848,6 +10864,7 @@ intrinsics:
                 comment: "owordOffset"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -11390,6 +11407,7 @@ intrinsics:
                 comment: "Unused, added for parity with GenISA_RayInfo"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
