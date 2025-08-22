@@ -344,12 +344,13 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
         // TODO: Can a alloca with a fixed size not reside in the entry block?
         if (!AI->isStaticAlloca())
           continue;
-        // Assume every iteration consumes 1 alloca element.
-        if (cast<ConstantInt>(AI->getArraySize())->getZExtValue() > UnrollMaxCountForAlloca)
-          continue;
 
         // Using alloca size in bytes as the threshold boost seems a bit tricky.
         unsigned AllocaSize = *(AI->getAllocationSizeInBits(DL)) / 8;
+        // Assume every iteration consumes 1 DW (64 bytes).
+        if (AllocaSize/8 > UnrollMaxCountForAlloca)
+          continue;
+
         ThresholdBoost += AllocaSize;
         if (GEP)
           isGEPLoopInduction[GEP] = true;
