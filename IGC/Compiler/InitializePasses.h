@@ -232,7 +232,6 @@ void initializeLoopAllocaUpperboundPass(llvm::PassRegistry &);
 void initializeLoopHoistConstantPass(llvm::PassRegistry &);
 void initializeSpecialCasesDisableLICMPass(llvm::PassRegistry &);
 void initializeMemOptPass(llvm::PassRegistry &);
-void initializeMergeUniformStoresPass(llvm::PassRegistry &);
 void initializeLdStCombinePass(llvm::PassRegistry &);
 void initializeBIFTransformsPass(llvm::PassRegistry &);
 void initializeThreadCombiningPass(llvm::PassRegistry &);
