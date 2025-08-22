@@ -34,6 +34,12 @@ using namespace llvm;
 
 namespace IGC {
 
+enum ExtensionKind {
+  EK_NotExtended,
+  EK_SignExt,
+  EK_ZeroExt,
+};
+
 struct BufChunk {
   llvm::Value *bufIdxV;       // buffer index when it is indirect
   llvm::Value *baseIdxV;      // base-address index when it is indirect
@@ -43,6 +49,7 @@ struct BufChunk {
   uint chunkSize;             // chunk size in elements
   llvm::Instruction *chunkIO; // coalesced load
   uint loadOrder;             // direct CB used order.
+  ExtensionKind extensionKind;
 };
 
 class ConstantCoalescing : public llvm::FunctionPass {
@@ -70,11 +77,6 @@ public:
   virtual StringRef getPassName() const override { return IGCOpts::ConstantCoalescingPass; }
 
 private:
-  enum ExtensionKind {
-    EK_NotExtended,
-    EK_SignExt,
-    EK_ZeroExt,
-  };
 
   class IRBuilderWrapper : protected llvm::IGCIRBuilder<> {
 

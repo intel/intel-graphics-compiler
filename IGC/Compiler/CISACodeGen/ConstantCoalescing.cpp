@@ -845,7 +845,8 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
   auto shouldMerge = [&](const BufChunk *cur_chunk) {
     if (CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
         cur_chunk->baseIdxV == eltIdxV && cur_chunk->chunkIO->getType()->getScalarType() == loadEltTy &&
-        CompareMetadata(cur_chunk->chunkIO, load) && !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load)) {
+        CompareMetadata(cur_chunk->chunkIO, load) && !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load) &&
+        cur_chunk->extensionKind == Extension) {
       uint lb = std::min(eltid, cur_chunk->chunkStart);
       uint ub = std::max(eltid + maxEltPlus, cur_chunk->chunkStart + cur_chunk->chunkSize);
       if (profitableChunkSize(ub, lb, scalarSizeInBytes) && (isDwordAligned || eltid >= cur_chunk->chunkStart)) {
@@ -893,6 +894,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
       cov_chunk->elementSize = scalarSizeInBytes;
       cov_chunk->chunkStart = eltid;
       cov_chunk->chunkSize = RoundChunkSize(maxEltPlus);
+      cov_chunk->extensionKind = Extension;
       const alignment_t chunkAlignment = std::max<alignment_t>(alignment, 4);
       cov_chunk->chunkIO = CreateChunkLoad(load, cov_chunk, eltid, chunkAlignment, Extension);
       chunk_vec.push_back(cov_chunk);
