@@ -272,7 +272,7 @@ int SpvSubgroupMMAResolution::getElemCount(const Type *Ty) const {
 }
 
 bool SpvSubgroupMMAResolution::validateElemCounts(int M, int AElemCount, int BElemCount, uint32_t Operands,
-                                                  const CallInst &CI) {
+                                                  CallInst &CI) {
   if (M != 1 && M != 2 && M != 4 && M != 8) {
     emitError(
         "__spirv_SubgroupMatrixMultiplyAccumulateINTEL: M dimension must be 1, 2, 4 or 8 for targeted HW. Actual: " +
@@ -295,14 +295,25 @@ bool SpvSubgroupMMAResolution::validateElemCounts(int M, int AElemCount, int BEl
               CI);
     return false;
   }
-  if (BElemCount != 8) {
-    emitError("__spirv_SubgroupMatrixMultiplyAccumulateINTEL: Matrix B argument must have 8 components for targeted "
-              "HW. Actual: " +
-                  std::to_string(BElemCount),
+  const int expectedBCount = isDoubleSubgroup(CI) ? 4 : 8;
+  if (BElemCount != expectedBCount) {
+    emitError("__spirv_SubgroupMatrixMultiplyAccumulateINTEL: Matrix B argument must have " +
+                  std::to_string(expectedBCount) +
+                  " components for targeted  HW. Actual: " + std::to_string(BElemCount),
               CI);
     return false;
   }
   return true;
+}
+
+// Dimension N is platform specific and is directly correlated to minimum subgroup-size for
+// given platform. If DPAS with the same M, N, K dimensions is executed within a subgroup
+// twice the size of minimum subgroup-size, each work item must contain half of the data
+// compared to the minimum subgroup-size.
+bool SpvSubgroupMMAResolution::isDoubleSubgroup(CallInst &CI) {
+  if (!m_Ctx->platform.hasExecSize16DPAS())
+    return false;
+  return IGC::getSIMDSize(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), CI.getParent()->getParent()) == 32;
 }
 
 SpvSubgroupMMAResolution::SupportedTable *SpvSubgroupMMAResolution::getSupportedTable() {
@@ -480,9 +491,16 @@ void SpvSubgroupMMAResolution::visitCallInst(CallInst &CI) {
   SmallVector<Type *, 3> argTypes({c->getType(), a->getType(), b->getType()});
   FunctionType *FT = FunctionType::get(CI.getType(), argTypes, false);
 
+  std::string subgroupSize;
+  if (isDoubleSubgroup(CI)) {
+    subgroupSize = "32n16";
+    M *= 2;
+  } else {
+    subgroupSize = m_Ctx->platform.hasExecSize16DPAS() ? "16" : "";
+  }
+
   std::stringstream newFuncName;
-  newFuncName << "__builtin_IB_sub_group";
-  newFuncName << (m_Ctx->platform.hasExecSize16DPAS() ? "16" : "");
+  newFuncName << "__builtin_IB_sub_group" << subgroupSize;
   newFuncName << "_" << (ResultElemTy == I32 ? "i" : "f");
   newFuncName << "dpas_" << OperandsIt->second.str() << "8_" << M;
 

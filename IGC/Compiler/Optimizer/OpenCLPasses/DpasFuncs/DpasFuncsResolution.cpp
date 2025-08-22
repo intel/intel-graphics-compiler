@@ -107,6 +107,8 @@ private:
        ///
   static const StringRef SG_PREFIX_IDPAS16;
   static const StringRef SG_PREFIX_FDPAS16;
+  static const StringRef SG_PREFIX_IDPAS32N16;
+  static const StringRef SG_PREFIX_FDPAS32N16;
   // PVC+: pure hf/bf dpas builtins
   static const StringRef WI_PREFIX_HFDPAS;
   static const StringRef WI_PREFIX_BFDPAS;
@@ -200,6 +202,8 @@ const StringRef DpasFuncsResolution::WI_PREFIX_IDPAS = "__builtin_IB_idpas";
 const StringRef DpasFuncsResolution::WI_PREFIX_FDPAS = "__builtin_IB_fdpas";
 const StringRef DpasFuncsResolution::SG_PREFIX_IDPAS16 = "__builtin_IB_sub_group16_idpas";
 const StringRef DpasFuncsResolution::SG_PREFIX_FDPAS16 = "__builtin_IB_sub_group16_fdpas";
+const StringRef DpasFuncsResolution::SG_PREFIX_IDPAS32N16 = "__builtin_IB_sub_group32n16_idpas";
+const StringRef DpasFuncsResolution::SG_PREFIX_FDPAS32N16 = "__builtin_IB_sub_group32n16_fdpas";
 // PVC+: pure hf/bf dpas builtins
 const StringRef DpasFuncsResolution::WI_PREFIX_HFDPAS = "__builtin_IB_hfdpas";
 const StringRef DpasFuncsResolution::WI_PREFIX_BFDPAS = "__builtin_IB_bfdpas";
@@ -263,6 +267,11 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
 
   bool IsDpasw = false;
   bool IsIDpas = false;
+  // Dimension N is platform specific and is directly correlated to minimum subgroup-size for
+  // given platform. If DPAS with the same M, N, K dimensions is executed within a subgroup
+  // twice the size of minimum subgroup-size, each work item must contain half of the data
+  // compared to the minimum subgroup-size.
+  bool IsDoubleSubgroup = false;
   int DstTy, AccTy, PA, PB, SD, RC;
   GenISAIntrinsic::ID iid = GenISAIntrinsic::no_intrinsic;
   bool doVerify = false;
@@ -277,9 +286,23 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
       if (!demangleSuffix(funcName, SG_PREFIX_LEN, false, IsIDpas, DstTy, AccTy, PA, PB, SD, RC, nullptr))
         return;
       iid = GenISAIntrinsic::GenISA_sub_group_dpas;
+    } else if (funcName.startswith(DpasFuncsResolution::SG_PREFIX_IDPAS32N16)) {
+      const int SG_PREFIX_LEN = DpasFuncsResolution::SG_PREFIX_IDPAS32N16.size();
+      IsIDpas = true;
+      IsDoubleSubgroup = true;
+      if (!demangleSuffix(funcName, SG_PREFIX_LEN, false, IsIDpas, DstTy, AccTy, PA, PB, SD, RC, nullptr))
+        return;
+      iid = GenISAIntrinsic::GenISA_sub_group_dpas;
     } else if (funcName.startswith(DpasFuncsResolution::SG_PREFIX_FDPAS16)) {
       const int SG_PREFIX_LEN = DpasFuncsResolution::SG_PREFIX_FDPAS16.size();
       IsIDpas = false;
+      if (!demangleSuffix(funcName, SG_PREFIX_LEN, true, IsIDpas, DstTy, AccTy, PA, PB, SD, RC, nullptr))
+        return;
+      iid = GenISAIntrinsic::GenISA_sub_group_dpas;
+    } else if (funcName.startswith(DpasFuncsResolution::SG_PREFIX_FDPAS32N16)) {
+      const int SG_PREFIX_LEN = DpasFuncsResolution::SG_PREFIX_FDPAS32N16.size();
+      IsIDpas = false;
+      IsDoubleSubgroup = true;
       if (!demangleSuffix(funcName, SG_PREFIX_LEN, true, IsIDpas, DstTy, AccTy, PA, PB, SD, RC, nullptr))
         return;
       iid = GenISAIntrinsic::GenISA_sub_group_dpas;
@@ -362,6 +385,14 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
     Type *ACC_BaseTy = ACCTy->getScalarType();
     Type *A_BaseTy = ATy->getScalarType();
     Type *B_BaseTy = BTy->getScalarType();
+
+    if (IsDoubleSubgroup) {
+      IGC_ASSERT_MESSAGE(RC >= 2, "ICE: repeat count of DPAS for double subgroup-size must be >= 2!");
+      D_nelts *= 2;
+      ACC_nelts *= 2;
+      A_nelts *= 2;
+      B_nelts *= 2;
+    }
 
     if (IsIDpas) {
       uint32_t Abits = getPrecisionInBits((PrecisionType)PA);

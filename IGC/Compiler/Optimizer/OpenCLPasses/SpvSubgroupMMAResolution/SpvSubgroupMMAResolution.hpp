@@ -72,7 +72,7 @@ private:
   bool validateI32Constant(const llvm::Value *V, const llvm::Twine &ParamName, const llvm::CallInst &CI);
   bool validateCType(const llvm::Type *ResultTy, const llvm::Type *CType, const llvm::CallInst &CI);
   bool validateElementType(const ElType ElemTy, llvm::StringRef ParamName, const llvm::CallInst &CI);
-  bool validateElemCounts(int M, int AElemCount, int BElemCount, uint32_t Operands, const llvm::CallInst &CI);
+  bool validateElemCounts(int M, int AElemCount, int BElemCount, uint32_t Operands, llvm::CallInst &CI);
 
   template <typename T>
   bool validateKDimInTable(const T KIt, int K, const SupportedTable *table, const llvm::CallInst &CI);
@@ -88,6 +88,8 @@ private:
   template <typename T>
   bool validateOperands(const T OpIt, int K, ElType ResultElemTy, ElType AElemTy, ElType BElemTy, uint32_t Operands,
                         const OperandsTable &operandMap, const llvm::CallInst &CI);
+
+  bool isDoubleSubgroup(llvm::CallInst &CI);
 
   llvm::DenseSet<llvm::Function *> m_BuiltinsToRemove;
   bool m_Changed = false;

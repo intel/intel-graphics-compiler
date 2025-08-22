@@ -10,7 +10,8 @@
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_subgroup_matrix_multiply_accumulate -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'PrintToConsole=1 PrintAfter=ArithmeticFuncsTranslation'" 2>&1 | FileCheck %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'PrintToConsole=1 PrintAfter=ArithmeticFuncsTranslation'" 2>&1 | FileCheck %s --check-prefix=CHECK-GENISA
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'"                                 2>&1 | FileCheck %s --check-prefix=CHECK-VISAASM
 
 target triple = "spir64-unknown-unknown"
 
@@ -45,15 +46,41 @@ define spir_kernel void @test_v1(i32* %res1I32, <2 x i32>* %res2I32, <4 x i32>* 
                                  <8 x i32> %b,
                                  i32 %c1I32, <2 x i32> %c2I32, <4 x i32> %c4I32, <8 x i32> %c8I32) !intel_reqd_sub_group_size !100 {
 entry:
-; CHECK-LABEL: @test_v1(
-; CHECK:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 4, i32 4, i32 8, i32 1, i1 false)
-; CHECK:  store i32 [[DPAS]], i32* %res1I32
-; CHECK:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 4, i32 4, i32 8, i32 2, i1 false)
-; CHECK:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
-; CHECK:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 4, i32 4, i32 8, i32 4, i1 false)
-; CHECK:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
-; CHECK:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 4, i32 4, i32 8, i32 8, i1 false)
-; CHECK:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+; CHECK-GENISA-LABEL: @test_v1(
+; CHECK-GENISA:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 4, i32 4, i32 8, i32 1, i1 false)
+; CHECK-GENISA:  store i32 [[DPAS]], i32* %res1I32
+; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 4, i32 4, i32 8, i32 2, i1 false)
+; CHECK-GENISA:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
+; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 4, i32 4, i32 8, i32 4, i1 false)
+; CHECK-GENISA:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
+; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 4, i32 4, i32 8, i32 8, i1 false)
+; CHECK-GENISA:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+
+; CHECK-VISAASM-LABEL: .kernel "test_v1"
+; CHECK-VISAASM-DAG: dpas.s8.s8.8.1 (M1, 16) [[D1:[A-z0-9_]*]].0 [[C1:[A-z0-9_]*]].0 [[B1:[A-z0-9_]*]].0 [[A1:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[C1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[B1]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A1]] v_type=G type=ud num_elts=8 align=wordx32 alias=<[[A1_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A1_ALIAS]] v_type=G type=w num_elts=16
+; CHECK-VISAASM-DAG: dpas.s8.s8.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[C2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[B2]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A2]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A2_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A2_ALIAS]] v_type=G type=w num_elts=32
+; CHECK-VISAASM-DAG: dpas.s8.s8.8.4 (M1, 16) [[D4:[A-z0-9_]*]].0 [[C4:[A-z0-9_]*]].0 [[B4:[A-z0-9_]*]].0 [[A4:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[C4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[B4]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A4]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[A4_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A4_ALIAS]] v_type=G type=w num_elts=64
+; CHECK-VISAASM-DAG: dpas.s8.s8.8.8 (M1, 16) [[D8:[A-z0-9_]*]].0 [[C8:[A-z0-9_]*]].0 [[B8:[A-z0-9_]*]].0 [[A8:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[C8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[B8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A8]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[A8_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A8_ALIAS]] v_type=G type=w num_elts=128
 
   %call0 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTELisDv8_iii(i32 32, i16 %a1, <8 x i32> %b, i32 %c1I32, i32 51)
   store i32 %call0, i32* %res1I32
@@ -72,15 +99,41 @@ define spir_kernel void @test_v2(i32* %res1I32, <2 x i32>* %res2I32, <4 x i32>* 
                                  <8 x i32> %b,
                                  i32 %c1I32, <2 x i32> %c2I32, <4 x i32> %c4I32, <8 x i32> %c8I32) !intel_reqd_sub_group_size !100 {
 entry:
-; CHECK-LABEL: @test_v2(
-; CHECK:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 4, i32 1, i32 8, i32 1, i1 false)
-; CHECK:  store i32 [[DPAS]], i32* %res1I32
-; CHECK:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 4, i32 1, i32 8, i32 2, i1 false)
-; CHECK:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
-; CHECK:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 4, i32 1, i32 8, i32 4, i1 false)
-; CHECK:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
-; CHECK:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 4, i32 1, i32 8, i32 8, i1 false)
-; CHECK:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+; CHECK-GENISA-LABEL: @test_v2(
+; CHECK-GENISA:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 4, i32 1, i32 8, i32 1, i1 false)
+; CHECK-GENISA:  store i32 [[DPAS]], i32* %res1I32
+; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 4, i32 1, i32 8, i32 2, i1 false)
+; CHECK-GENISA:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
+; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 4, i32 1, i32 8, i32 4, i1 false)
+; CHECK-GENISA:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
+; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 4, i32 1, i32 8, i32 8, i1 false)
+; CHECK-GENISA:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+
+; CHECK-VISAASM-LABEL: .kernel "test_v2"
+; CHECK-VISAASM-DAG: dpas.u8.s8.8.1 (M1, 16) [[D1:[A-z0-9_]*]].0 [[C1:[A-z0-9_]*]].0 [[B1:[A-z0-9_]*]].0 [[A1:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[C1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[B1]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A1]] v_type=G type=ud num_elts=8 align=wordx32 alias=<[[A1_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A1_ALIAS]] v_type=G type=w num_elts=16
+; CHECK-VISAASM-DAG: dpas.u8.s8.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[C2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[B2]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A2]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A2_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A2_ALIAS]] v_type=G type=w num_elts=32
+; CHECK-VISAASM-DAG: dpas.u8.s8.8.4 (M1, 16) [[D4:[A-z0-9_]*]].0 [[C4:[A-z0-9_]*]].0 [[B4:[A-z0-9_]*]].0 [[A4:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[C4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[B4]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A4]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[A4_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A4_ALIAS]] v_type=G type=w num_elts=64
+; CHECK-VISAASM-DAG: dpas.u8.s8.8.8 (M1, 16) [[D8:[A-z0-9_]*]].0 [[C8:[A-z0-9_]*]].0 [[B8:[A-z0-9_]*]].0 [[A8:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[C8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[B8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A8]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[A8_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A8_ALIAS]] v_type=G type=w num_elts=128
 
   %call4 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTELisDv8_iii(i32 32, i16 %a1, <8 x i32> %b, i32 %c1I32, i32 49)
   store i32 %call4, i32* %res1I32
@@ -99,15 +152,41 @@ define spir_kernel void @test_v3(i32* %res1I32, <2 x i32>* %res2I32, <4 x i32>* 
                                  <8 x i32> %b,
                                  i32 %c1I32, <2 x i32> %c2I32, <4 x i32> %c4I32, <8 x i32> %c8I32) !intel_reqd_sub_group_size !100 {
 entry:
-; CHECK-LABEL: @test_v3(
-; CHECK:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 1, i32 4, i32 8, i32 1, i1 false)
-; CHECK:  store i32 [[DPAS]], i32* %res1I32
-; CHECK:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 1, i32 4, i32 8, i32 2, i1 false)
-; CHECK:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
-; CHECK:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 1, i32 4, i32 8, i32 4, i1 false)
-; CHECK:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
-; CHECK:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 1, i32 4, i32 8, i32 8, i1 false)
-; CHECK:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+; CHECK-GENISA-LABEL: @test_v3(
+; CHECK-GENISA:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 1, i32 4, i32 8, i32 1, i1 false)
+; CHECK-GENISA:  store i32 [[DPAS]], i32* %res1I32
+; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 1, i32 4, i32 8, i32 2, i1 false)
+; CHECK-GENISA:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
+; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 1, i32 4, i32 8, i32 4, i1 false)
+; CHECK-GENISA:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
+; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 1, i32 4, i32 8, i32 8, i1 false)
+; CHECK-GENISA:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+
+; CHECK-VISAASM-LABEL: .kernel "test_v3"
+; CHECK-VISAASM-DAG: dpas.s8.u8.8.1 (M1, 16) [[D1:[A-z0-9_]*]].0 [[C1:[A-z0-9_]*]].0 [[B1:[A-z0-9_]*]].0 [[A1:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[C1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[B1]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A1]] v_type=G type=ud num_elts=8 align=wordx32 alias=<[[A1_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A1_ALIAS]] v_type=G type=w num_elts=16
+; CHECK-VISAASM-DAG: dpas.s8.u8.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[C2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[B2]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A2]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A2_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A2_ALIAS]] v_type=G type=w num_elts=32
+; CHECK-VISAASM-DAG: dpas.s8.u8.8.4 (M1, 16) [[D4:[A-z0-9_]*]].0 [[C4:[A-z0-9_]*]].0 [[B4:[A-z0-9_]*]].0 [[A4:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[C4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[B4]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A4]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[A4_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A4_ALIAS]] v_type=G type=w num_elts=64
+; CHECK-VISAASM-DAG: dpas.s8.u8.8.8 (M1, 16) [[D8:[A-z0-9_]*]].0 [[C8:[A-z0-9_]*]].0 [[B8:[A-z0-9_]*]].0 [[A8:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[C8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[B8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A8]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[A8_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A8_ALIAS]] v_type=G type=w num_elts=128
 
   %call8 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTELisDv8_iii(i32 32, i16 %a1, <8 x i32> %b, i32 %c1I32, i32 50)
   store i32 %call8, i32* %res1I32
@@ -126,15 +205,41 @@ define spir_kernel void @test_v4(i32* %res1I32, <2 x i32>* %res2I32, <4 x i32>* 
                                  <8 x i32> %b,
                                  i32 %c1I32, <2 x i32> %c2I32, <4 x i32> %c4I32, <8 x i32> %c8I32) !intel_reqd_sub_group_size !100 {
 entry:
-; CHECK-LABEL: @test_v4(
-; CHECK:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 1, i32 1, i32 8, i32 1, i1 false)
-; CHECK:  store i32 [[DPAS]], i32* %res1I32
-; CHECK:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 1, i32 1, i32 8, i32 2, i1 false)
-; CHECK:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
-; CHECK:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 1, i32 1, i32 8, i32 4, i1 false)
-; CHECK:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
-; CHECK:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 1, i32 1, i32 8, i32 8, i1 false)
-; CHECK:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+; CHECK-GENISA-LABEL: @test_v4(
+; CHECK-GENISA:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 1, i32 1, i32 8, i32 1, i1 false)
+; CHECK-GENISA:  store i32 [[DPAS]], i32* %res1I32
+; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 1, i32 1, i32 8, i32 2, i1 false)
+; CHECK-GENISA:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
+; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 1, i32 1, i32 8, i32 4, i1 false)
+; CHECK-GENISA:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
+; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 1, i32 1, i32 8, i32 8, i1 false)
+; CHECK-GENISA:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+
+; CHECK-VISAASM-LABEL: .kernel "test_v4"
+; CHECK-VISAASM-DAG: dpas.u8.u8.8.1 (M1, 16) [[D1:[A-z0-9_]*]].0 [[C1:[A-z0-9_]*]].0 [[B1:[A-z0-9_]*]].0 [[A1:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[C1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[B1]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A1]] v_type=G type=ud num_elts=8 align=wordx32 alias=<[[A1_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A1_ALIAS]] v_type=G type=w num_elts=16
+; CHECK-VISAASM-DAG: dpas.u8.u8.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[C2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[B2]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A2]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A2_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A2_ALIAS]] v_type=G type=w num_elts=32
+; CHECK-VISAASM-DAG: dpas.u8.u8.8.4 (M1, 16) [[D4:[A-z0-9_]*]].0 [[C4:[A-z0-9_]*]].0 [[B4:[A-z0-9_]*]].0 [[A4:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[C4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[B4]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A4]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[A4_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A4_ALIAS]] v_type=G type=w num_elts=64
+; CHECK-VISAASM-DAG: dpas.u8.u8.8.8 (M1, 16) [[D8:[A-z0-9_]*]].0 [[C8:[A-z0-9_]*]].0 [[B8:[A-z0-9_]*]].0 [[A8:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[C8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[B8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A8]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[A8_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A8_ALIAS]] v_type=G type=w num_elts=128
 
   %call12 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTELisDv8_iii(i32 32, i16 %a1, <8 x i32> %b, i32 %c1I32, i32 48)
   store i32 %call12, i32* %res1I32
@@ -154,15 +259,41 @@ define spir_kernel void @test_v5(i32* %res1I32, <2 x i32>* %res2I32, <4 x i32>* 
                                  <8 x i32> %b,
                                  i32 %c1I32, <2 x i32> %c2I32, <4 x i32> %c4I32, <8 x i32> %c8I32) !intel_reqd_sub_group_size !100 {
 entry:
-; CHECK-LABEL: @test_v5(
-; CHECK:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 5, i32 5, i32 8, i32 1, i1 false)
-; CHECK:  store i32 [[DPAS]], i32* %res1I32
-; CHECK:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 5, i32 5, i32 8, i32 2, i1 false)
-; CHECK:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
-; CHECK:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 5, i32 5, i32 8, i32 4, i1 false)
-; CHECK:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
-; CHECK:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 5, i32 5, i32 8, i32 8, i1 false)
-; CHECK:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+; CHECK-GENISA-LABEL: @test_v5(
+; CHECK-GENISA:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 5, i32 5, i32 8, i32 1, i1 false)
+; CHECK-GENISA:  store i32 [[DPAS]], i32* %res1I32
+; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 5, i32 5, i32 8, i32 2, i1 false)
+; CHECK-GENISA:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
+; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 5, i32 5, i32 8, i32 4, i1 false)
+; CHECK-GENISA:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
+; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 5, i32 5, i32 8, i32 8, i1 false)
+; CHECK-GENISA:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+
+; CHECK-VISAASM-LABEL: .kernel "test_v5"
+; CHECK-VISAASM-DAG: dpas.s4.s4.8.1 (M1, 16) [[D1:[A-z0-9_]*]].0 [[C1:[A-z0-9_]*]].0 [[B1:[A-z0-9_]*]].0 [[A1:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[C1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[B1]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A1]] v_type=G type=ud num_elts=8 align=wordx32 alias=<[[A1_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A1_ALIAS]] v_type=G type=w num_elts=16
+; CHECK-VISAASM-DAG: dpas.s4.s4.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[C2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[B2]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A2]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A2_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A2_ALIAS]] v_type=G type=w num_elts=32
+; CHECK-VISAASM-DAG: dpas.s4.s4.8.4 (M1, 16) [[D4:[A-z0-9_]*]].0 [[C4:[A-z0-9_]*]].0 [[B4:[A-z0-9_]*]].0 [[A4:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[C4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[B4]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A4]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[A4_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A4_ALIAS]] v_type=G type=w num_elts=64
+; CHECK-VISAASM-DAG: dpas.s4.s4.8.8 (M1, 16) [[D8:[A-z0-9_]*]].0 [[C8:[A-z0-9_]*]].0 [[B8:[A-z0-9_]*]].0 [[A8:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[C8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[B8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A8]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[A8_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A8_ALIAS]] v_type=G type=w num_elts=128
 
   %call16 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTELisDv8_iii(i32 64, i16 %a1, <8 x i32> %b, i32 %c1I32, i32 195)
   store i32 %call16, i32* %res1I32
@@ -181,15 +312,41 @@ define spir_kernel void @test_v6(i32* %res1I32, <2 x i32>* %res2I32, <4 x i32>* 
                                  <8 x i32> %b,
                                  i32 %c1I32, <2 x i32> %c2I32, <4 x i32> %c4I32, <8 x i32> %c8I32) !intel_reqd_sub_group_size !100 {
 entry:
-; CHECK-LABEL: @test_v6(
-; CHECK:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 5, i32 2, i32 8, i32 1, i1 false)
-; CHECK:  store i32 [[DPAS]], i32* %res1I32
-; CHECK:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 5, i32 2, i32 8, i32 2, i1 false)
-; CHECK:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
-; CHECK:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 5, i32 2, i32 8, i32 4, i1 false)
-; CHECK:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
-; CHECK:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 5, i32 2, i32 8, i32 8, i1 false)
-; CHECK:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+; CHECK-GENISA-LABEL: @test_v6(
+; CHECK-GENISA:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 5, i32 2, i32 8, i32 1, i1 false)
+; CHECK-GENISA:  store i32 [[DPAS]], i32* %res1I32
+; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 5, i32 2, i32 8, i32 2, i1 false)
+; CHECK-GENISA:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
+; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 5, i32 2, i32 8, i32 4, i1 false)
+; CHECK-GENISA:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
+; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 5, i32 2, i32 8, i32 8, i1 false)
+; CHECK-GENISA:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+
+; CHECK-VISAASM-LABEL: .kernel "test_v6"
+; CHECK-VISAASM-DAG: dpas.u4.s4.8.1 (M1, 16) [[D1:[A-z0-9_]*]].0 [[C1:[A-z0-9_]*]].0 [[B1:[A-z0-9_]*]].0 [[A1:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[C1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[B1]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A1]] v_type=G type=ud num_elts=8 align=wordx32 alias=<[[A1_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A1_ALIAS]] v_type=G type=w num_elts=16
+; CHECK-VISAASM-DAG: dpas.u4.s4.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[C2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[B2]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A2]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A2_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A2_ALIAS]] v_type=G type=w num_elts=32
+; CHECK-VISAASM-DAG: dpas.u4.s4.8.4 (M1, 16) [[D4:[A-z0-9_]*]].0 [[C4:[A-z0-9_]*]].0 [[B4:[A-z0-9_]*]].0 [[A4:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[C4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[B4]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A4]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[A4_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A4_ALIAS]] v_type=G type=w num_elts=64
+; CHECK-VISAASM-DAG: dpas.u4.s4.8.8 (M1, 16) [[D8:[A-z0-9_]*]].0 [[C8:[A-z0-9_]*]].0 [[B8:[A-z0-9_]*]].0 [[A8:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[C8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[B8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A8]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[A8_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A8_ALIAS]] v_type=G type=w num_elts=128
 
   %call20 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTELisDv8_iii(i32 64, i16 %a1, <8 x i32> %b, i32 %c1I32, i32 193)
   store i32 %call20, i32* %res1I32
@@ -208,15 +365,41 @@ define spir_kernel void @test_v7(i32* %res1I32, <2 x i32>* %res2I32, <4 x i32>* 
                                  <8 x i32> %b,
                                  i32 %c1I32, <2 x i32> %c2I32, <4 x i32> %c4I32, <8 x i32> %c8I32) !intel_reqd_sub_group_size !100 {
 entry:
-; CHECK-LABEL: @test_v7(
-; CHECK:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 2, i32 5, i32 8, i32 1, i1 false)
-; CHECK:  store i32 [[DPAS]], i32* %res1I32
-; CHECK:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 2, i32 5, i32 8, i32 2, i1 false)
-; CHECK:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
-; CHECK:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 2, i32 5, i32 8, i32 4, i1 false)
-; CHECK:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
-; CHECK:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 2, i32 5, i32 8, i32 8, i1 false)
-; CHECK:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+; CHECK-GENISA-LABEL: @test_v7(
+; CHECK-GENISA:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 2, i32 5, i32 8, i32 1, i1 false)
+; CHECK-GENISA:  store i32 [[DPAS]], i32* %res1I32
+; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 2, i32 5, i32 8, i32 2, i1 false)
+; CHECK-GENISA:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
+; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 2, i32 5, i32 8, i32 4, i1 false)
+; CHECK-GENISA:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
+; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 2, i32 5, i32 8, i32 8, i1 false)
+; CHECK-GENISA:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+
+; CHECK-VISAASM-LABEL: .kernel "test_v7"
+; CHECK-VISAASM-DAG: dpas.s4.u4.8.1 (M1, 16) [[D1:[A-z0-9_]*]].0 [[C1:[A-z0-9_]*]].0 [[B1:[A-z0-9_]*]].0 [[A1:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[C1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[B1]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A1]] v_type=G type=ud num_elts=8 align=wordx32 alias=<[[A1_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A1_ALIAS]] v_type=G type=w num_elts=16
+; CHECK-VISAASM-DAG: dpas.s4.u4.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[C2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[B2]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A2]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A2_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A2_ALIAS]] v_type=G type=w num_elts=32
+; CHECK-VISAASM-DAG: dpas.s4.u4.8.4 (M1, 16) [[D4:[A-z0-9_]*]].0 [[C4:[A-z0-9_]*]].0 [[B4:[A-z0-9_]*]].0 [[A4:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[C4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[B4]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A4]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[A4_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A4_ALIAS]] v_type=G type=w num_elts=64
+; CHECK-VISAASM-DAG: dpas.s4.u4.8.8 (M1, 16) [[D8:[A-z0-9_]*]].0 [[C8:[A-z0-9_]*]].0 [[B8:[A-z0-9_]*]].0 [[A8:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[C8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[B8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A8]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[A8_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A8_ALIAS]] v_type=G type=w num_elts=128
 
   %call24 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTELisDv8_iii(i32 64, i16 %a1, <8 x i32> %b, i32 %c1I32, i32 194)
   store i32 %call24, i32* %res1I32
@@ -230,20 +413,47 @@ entry:
   ret void
 }
 
+; int4 matrix sources, fp32 accumulator:
 define spir_kernel void @test_v8(i32* %res1I32, <2 x i32>* %res2I32, <4 x i32>* %res4I32, <8 x i32>* %res8I32,
                                  i16 %a1, <2 x i16> %a2, <4 x i16> %a4, <8 x i16> %a8,
                                  <8 x i32> %b,
                                  i32 %c1I32, <2 x i32> %c2I32, <4 x i32> %c4I32, <8 x i32> %c8I32) !intel_reqd_sub_group_size !100 {
 entry:
-; CHECK-LABEL: @test_v8(
-; CHECK:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 2, i32 2, i32 8, i32 1, i1 false)
-; CHECK:  store i32 [[DPAS]], i32* %res1I32
-; CHECK:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 2, i32 2, i32 8, i32 2, i1 false)
-; CHECK:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
-; CHECK:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 2, i32 2, i32 8, i32 4, i1 false)
-; CHECK:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
-; CHECK:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 2, i32 2, i32 8, i32 8, i1 false)
-; CHECK:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+; CHECK-GENISA-LABEL: @test_v8(
+; CHECK-GENISA:  [[DPAS:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v8i32(i32 %c1I32, i16 %a1, <8 x i32> %b, i32 2, i32 2, i32 8, i32 1, i1 false)
+; CHECK-GENISA:  store i32 [[DPAS]], i32* %res1I32
+; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v8i32(<2 x i32> %c2I32, <2 x i16> %a2, <8 x i32> %b, i32 2, i32 2, i32 8, i32 2, i1 false)
+; CHECK-GENISA:  store <2 x i32> [[DPAS1]], <2 x i32>* %res2I32
+; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v8i32(<4 x i32> %c4I32, <4 x i16> %a4, <8 x i32> %b, i32 2, i32 2, i32 8, i32 4, i1 false)
+; CHECK-GENISA:  store <4 x i32> [[DPAS2]], <4 x i32>* %res4I32
+; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8i32.v8i32.v8i16.v8i32(<8 x i32> %c8I32, <8 x i16> %a8, <8 x i32> %b, i32 2, i32 2, i32 8, i32 8, i1 false)
+; CHECK-GENISA:  store <8 x i32> [[DPAS3]], <8 x i32>* %res8I32
+
+; CHECK-VISAASM-LABEL: .kernel "test_v8"
+; CHECK-VISAASM-DAG: dpas.u4.u4.8.1 (M1, 16) [[D1:[A-z0-9_]*]].0 [[C1:[A-z0-9_]*]].0 [[B1:[A-z0-9_]*]].0 [[A1:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[C1]] v_type=G type=d num_elts=16
+; CHECK-VISAASM-DAG: .decl [[B1]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A1]] v_type=G type=ud num_elts=8 align=wordx32 alias=<[[A1_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A1_ALIAS]] v_type=G type=w num_elts=16
+; CHECK-VISAASM-DAG: dpas.u4.u4.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[C2]] v_type=G type=d num_elts=32
+; CHECK-VISAASM-DAG: .decl [[B2]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A2]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A2_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A2_ALIAS]] v_type=G type=w num_elts=32
+; CHECK-VISAASM-DAG: dpas.u4.u4.8.4 (M1, 16) [[D4:[A-z0-9_]*]].0 [[C4:[A-z0-9_]*]].0 [[B4:[A-z0-9_]*]].0 [[A4:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[C4]] v_type=G type=d num_elts=64
+; CHECK-VISAASM-DAG: .decl [[B4]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A4]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[A4_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A4_ALIAS]] v_type=G type=w num_elts=64
+; CHECK-VISAASM-DAG: dpas.u4.u4.8.8 (M1, 16) [[D8:[A-z0-9_]*]].0 [[C8:[A-z0-9_]*]].0 [[B8:[A-z0-9_]*]].0 [[A8:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[C8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[B8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A8]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[A8_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A8_ALIAS]] v_type=G type=w num_elts=128
 
   %call28 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTELisDv8_iii(i32 64, i16 %a1, <8 x i32> %b, i32 %c1I32, i32 192)
   store i32 %call28, i32* %res1I32
@@ -263,15 +473,41 @@ define spir_kernel void @test_v9(float* %resF,  <2 x float>* %res2, <4 x float>*
                                  <8 x i32> %b,
                                  float %cF,  <2 x float> %c2F, <4 x float> %c4F, <8 x float> %c8F) !intel_reqd_sub_group_size !100 {
 entry:
-; CHECK-LABEL: @test_v9(
-; CHECK:  [[DPAS:%[A-z0-9]*]] = call float @llvm.genx.GenISA.sub.group.dpas.f32.f32.i16.v8i32(float %cF, i16 %a1, <8 x i32> %b, i32 12, i32 12, i32 8, i32 1, i1 false)
-; CHECK:  store float [[DPAS]], float* %resF
-; CHECK:  [[DPAS1:%[A-z0-9]*]] = call <2 x float> @llvm.genx.GenISA.sub.group.dpas.v2f32.v2f32.v2i16.v8i32(<2 x float> %c2F, <2 x i16> %a2, <8 x i32> %b, i32 12, i32 12, i32 8, i32 2, i1 false)
-; CHECK:  store <2 x float> [[DPAS1]], <2 x float>* %res2
-; CHECK:  [[DPAS2:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sub.group.dpas.v4f32.v4f32.v4i16.v8i32(<4 x float> %c4F, <4 x i16> %a4, <8 x i32> %b, i32 12, i32 12, i32 8, i32 4, i1 false)
-; CHECK:  store <4 x float> [[DPAS2]], <4 x float>* %res4
-; CHECK:  [[DPAS3:%[A-z0-9]*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %c8F, <8 x i16> %a8, <8 x i32> %b, i32 12, i32 12, i32 8, i32 8, i1 false)
-; CHECK:  store <8 x float> [[DPAS3]], <8 x float>* %res8
+; CHECK-GENISA-LABEL: @test_v9(
+; CHECK-GENISA:  [[DPAS:%[A-z0-9]*]] = call float @llvm.genx.GenISA.sub.group.dpas.f32.f32.i16.v8i32(float %cF, i16 %a1, <8 x i32> %b, i32 12, i32 12, i32 8, i32 1, i1 false)
+; CHECK-GENISA:  store float [[DPAS]], float* %resF
+; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call <2 x float> @llvm.genx.GenISA.sub.group.dpas.v2f32.v2f32.v2i16.v8i32(<2 x float> %c2F, <2 x i16> %a2, <8 x i32> %b, i32 12, i32 12, i32 8, i32 2, i1 false)
+; CHECK-GENISA:  store <2 x float> [[DPAS1]], <2 x float>* %res2
+; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sub.group.dpas.v4f32.v4f32.v4i16.v8i32(<4 x float> %c4F, <4 x i16> %a4, <8 x i32> %b, i32 12, i32 12, i32 8, i32 4, i1 false)
+; CHECK-GENISA:  store <4 x float> [[DPAS2]], <4 x float>* %res4
+; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %c8F, <8 x i16> %a8, <8 x i32> %b, i32 12, i32 12, i32 8, i32 8, i1 false)
+; CHECK-GENISA:  store <8 x float> [[DPAS3]], <8 x float>* %res8
+
+; CHECK-VISAASM-LABEL: .kernel "test_v9"
+; CHECK-VISAASM-DAG: dpas.hf.hf.8.1 (M1, 16) [[D1:[A-z0-9_]*]].0 [[C1:[A-z0-9_]*]].0 [[B1:[A-z0-9_]*]].0 [[A1:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D1]] v_type=G type=f num_elts=16
+; CHECK-VISAASM-DAG: .decl [[C1]] v_type=G type=f num_elts=16
+; CHECK-VISAASM-DAG: .decl [[B1]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A1]] v_type=G type=ud num_elts=8 align=wordx32 alias=<[[A1_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A1_ALIAS]] v_type=G type=w num_elts=16
+; CHECK-VISAASM-DAG: dpas.hf.hf.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=f num_elts=32
+; CHECK-VISAASM-DAG: .decl [[C2]] v_type=G type=f num_elts=32
+; CHECK-VISAASM-DAG: .decl [[B2]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A2]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A2_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A2_ALIAS]] v_type=G type=w num_elts=32
+; CHECK-VISAASM-DAG: dpas.hf.hf.8.4 (M1, 16) [[D4:[A-z0-9_]*]].0 [[C4:[A-z0-9_]*]].0 [[B4:[A-z0-9_]*]].0 [[A4:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D4]] v_type=G type=f num_elts=64
+; CHECK-VISAASM-DAG: .decl [[C4]] v_type=G type=f num_elts=64
+; CHECK-VISAASM-DAG: .decl [[B4]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A4]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[A4_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A4_ALIAS]] v_type=G type=w num_elts=64
+; CHECK-VISAASM-DAG: dpas.hf.hf.8.8 (M1, 16) [[D8:[A-z0-9_]*]].0 [[C8:[A-z0-9_]*]].0 [[B8:[A-z0-9_]*]].0 [[A8:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D8]] v_type=G type=f num_elts=128
+; CHECK-VISAASM-DAG: .decl [[C8]] v_type=G type=f num_elts=128
+; CHECK-VISAASM-DAG: .decl [[B8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A8]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[A8_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A8_ALIAS]] v_type=G type=w num_elts=128
 
   %call32 = call spir_func float @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTELisDv8_ifi(i32 16, i16 %a1, <8 x i32> %b, float %cF, i32 3072)
   store float %call32, float* %resF
@@ -291,15 +527,41 @@ define spir_kernel void @test_v10(float* %resF,  <2 x float>* %res2, <4 x float>
                                  <8 x i32> %b,
                                  float %cF,  <2 x float> %c2F, <4 x float> %c4F, <8 x float> %c8F) !intel_reqd_sub_group_size !100 {
 entry:
-; CHECK-LABEL: @test_v10(
-; CHECK:  [[DPAS:%[A-z0-9]*]] = call float @llvm.genx.GenISA.sub.group.dpas.f32.f32.i16.v8i32(float %cF, i16 %a1, <8 x i32> %b, i32 11, i32 11, i32 8, i32 1, i1 false)
-; CHECK:  store float [[DPAS]], float* %resF
-; CHECK:  [[DPAS1:%[A-z0-9]*]] = call <2 x float> @llvm.genx.GenISA.sub.group.dpas.v2f32.v2f32.v2i16.v8i32(<2 x float> %c2F, <2 x i16> %a2, <8 x i32> %b, i32 11, i32 11, i32 8, i32 2, i1 false)
-; CHECK:  store <2 x float> [[DPAS1]], <2 x float>* %res2
-; CHECK:  [[DPAS2:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sub.group.dpas.v4f32.v4f32.v4i16.v8i32(<4 x float> %c4F, <4 x i16> %a4, <8 x i32> %b, i32 11, i32 11, i32 8, i32 4, i1 false)
-; CHECK:  store <4 x float> [[DPAS2]], <4 x float>* %res4
-; CHECK:  [[DPAS3:%[A-z0-9]*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %c8F, <8 x i16> %a8, <8 x i32> %b, i32 11, i32 11, i32 8, i32 8, i1 false)
-; CHECK:  store <8 x float> [[DPAS3]], <8 x float>* %res8
+; CHECK-GENISA-LABEL: @test_v10(
+; CHECK-GENISA:  [[DPAS:%[A-z0-9]*]] = call float @llvm.genx.GenISA.sub.group.dpas.f32.f32.i16.v8i32(float %cF, i16 %a1, <8 x i32> %b, i32 11, i32 11, i32 8, i32 1, i1 false)
+; CHECK-GENISA:  store float [[DPAS]], float* %resF
+; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call <2 x float> @llvm.genx.GenISA.sub.group.dpas.v2f32.v2f32.v2i16.v8i32(<2 x float> %c2F, <2 x i16> %a2, <8 x i32> %b, i32 11, i32 11, i32 8, i32 2, i1 false)
+; CHECK-GENISA:  store <2 x float> [[DPAS1]], <2 x float>* %res2
+; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sub.group.dpas.v4f32.v4f32.v4i16.v8i32(<4 x float> %c4F, <4 x i16> %a4, <8 x i32> %b, i32 11, i32 11, i32 8, i32 4, i1 false)
+; CHECK-GENISA:  store <4 x float> [[DPAS2]], <4 x float>* %res4
+; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %c8F, <8 x i16> %a8, <8 x i32> %b, i32 11, i32 11, i32 8, i32 8, i1 false)
+; CHECK-GENISA:  store <8 x float> [[DPAS3]], <8 x float>* %res8
+
+; CHECK-VISAASM-LABEL: .kernel "test_v10"
+; CHECK-VISAASM-DAG: dpas.bf.bf.8.1 (M1, 16) [[D1:[A-z0-9_]*]].0 [[C1:[A-z0-9_]*]].0 [[B1:[A-z0-9_]*]].0 [[A1:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D1]] v_type=G type=f num_elts=16
+; CHECK-VISAASM-DAG: .decl [[C1]] v_type=G type=f num_elts=16
+; CHECK-VISAASM-DAG: .decl [[B1]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A1]] v_type=G type=ud num_elts=8 align=wordx32 alias=<[[A1_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A1_ALIAS]] v_type=G type=w num_elts=16
+; CHECK-VISAASM-DAG: dpas.bf.bf.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=f num_elts=32
+; CHECK-VISAASM-DAG: .decl [[C2]] v_type=G type=f num_elts=32
+; CHECK-VISAASM-DAG: .decl [[B2]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A2]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A2_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A2_ALIAS]] v_type=G type=w num_elts=32
+; CHECK-VISAASM-DAG: dpas.bf.bf.8.4 (M1, 16) [[D4:[A-z0-9_]*]].0 [[C4:[A-z0-9_]*]].0 [[B4:[A-z0-9_]*]].0 [[A4:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D4]] v_type=G type=f num_elts=64
+; CHECK-VISAASM-DAG: .decl [[C4]] v_type=G type=f num_elts=64
+; CHECK-VISAASM-DAG: .decl [[B4]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A4]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[A4_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A4_ALIAS]] v_type=G type=w num_elts=64
+; CHECK-VISAASM-DAG: dpas.bf.bf.8.8 (M1, 16) [[D8:[A-z0-9_]*]].0 [[C8:[A-z0-9_]*]].0 [[B8:[A-z0-9_]*]].0 [[A8:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D8]] v_type=G type=f num_elts=128
+; CHECK-VISAASM-DAG: .decl [[C8]] v_type=G type=f num_elts=128
+; CHECK-VISAASM-DAG: .decl [[B8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A8]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[A8_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A8_ALIAS]] v_type=G type=w num_elts=128
 
   %call36 = call spir_func float @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTELisDv8_ifi(i32 16, i16 %a1, <8 x i32> %b, float %cF, i32 12288)
   store float %call36, float* %resF
@@ -319,15 +581,41 @@ define spir_kernel void @test_v11(half* %res,  <2 x half>* %res2, <4 x half>* %r
                                  <8 x i32> %b,
                                  half %c,  <2 x half> %c2, <4 x half> %c4, <8 x half> %c8) !intel_reqd_sub_group_size !100 {
 entry:
-; CHECK-LABEL: @test_v11(
-; CHECK:  [[DPAS:%[A-z0-9]*]] = call half @llvm.genx.GenISA.sub.group.dpas.f16.f16.i16.v8i32(half %c, i16 %a1, <8 x i32> %b, i32 12, i32 12, i32 8, i32 1, i1 false)
-; CHECK:  store half [[DPAS]], half* %res
-; CHECK:  [[DPAS1:%[A-z0-9]*]] = call <2 x half> @llvm.genx.GenISA.sub.group.dpas.v2f16.v2f16.v2i16.v8i32(<2 x half> %c2, <2 x i16> %a2, <8 x i32> %b, i32 12, i32 12, i32 8, i32 2, i1 false)
-; CHECK:  store <2 x half> [[DPAS1]], <2 x half>* %res2
-; CHECK:  [[DPAS2:%[A-z0-9]*]] = call <4 x half> @llvm.genx.GenISA.sub.group.dpas.v4f16.v4f16.v4i16.v8i32(<4 x half> %c4, <4 x i16> %a4, <8 x i32> %b, i32 12, i32 12, i32 8, i32 4, i1 false)
-; CHECK:  store <4 x half> [[DPAS2]], <4 x half>* %res4
-; CHECK:  [[DPAS3:%[A-z0-9]*]] = call <8 x half> @llvm.genx.GenISA.sub.group.dpas.v8f16.v8f16.v8i16.v8i32(<8 x half> %c8, <8 x i16> %a8, <8 x i32> %b, i32 12, i32 12, i32 8, i32 8, i1 false)
-; CHECK:  store <8 x half> [[DPAS3]], <8 x half>* %res8
+; CHECK-GENISA-LABEL: @test_v11(
+; CHECK-GENISA:  [[DPAS:%[A-z0-9]*]] = call half @llvm.genx.GenISA.sub.group.dpas.f16.f16.i16.v8i32(half %c, i16 %a1, <8 x i32> %b, i32 12, i32 12, i32 8, i32 1, i1 false)
+; CHECK-GENISA:  store half [[DPAS]], half* %res
+; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call <2 x half> @llvm.genx.GenISA.sub.group.dpas.v2f16.v2f16.v2i16.v8i32(<2 x half> %c2, <2 x i16> %a2, <8 x i32> %b, i32 12, i32 12, i32 8, i32 2, i1 false)
+; CHECK-GENISA:  store <2 x half> [[DPAS1]], <2 x half>* %res2
+; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <4 x half> @llvm.genx.GenISA.sub.group.dpas.v4f16.v4f16.v4i16.v8i32(<4 x half> %c4, <4 x i16> %a4, <8 x i32> %b, i32 12, i32 12, i32 8, i32 4, i1 false)
+; CHECK-GENISA:  store <4 x half> [[DPAS2]], <4 x half>* %res4
+; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <8 x half> @llvm.genx.GenISA.sub.group.dpas.v8f16.v8f16.v8i16.v8i32(<8 x half> %c8, <8 x i16> %a8, <8 x i32> %b, i32 12, i32 12, i32 8, i32 8, i1 false)
+; CHECK-GENISA:  store <8 x half> [[DPAS3]], <8 x half>* %res8
+
+; CHECK-VISAASM-LABEL: .kernel "test_v11"
+; CHECK-VISAASM-DAG: dpas.hf.hf.8.1 (M1, 16) [[D1:[A-z0-9_]*]].0 [[C1:[A-z0-9_]*]].0 [[B1:[A-z0-9_]*]].0 [[A1:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D1]] v_type=G type=hf num_elts=16
+; CHECK-VISAASM-DAG: .decl [[C1]] v_type=G type=hf num_elts=16
+; CHECK-VISAASM-DAG: .decl [[B1]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A1]] v_type=G type=ud num_elts=8 align=wordx32 alias=<[[A1_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A1_ALIAS]] v_type=G type=w num_elts=16
+; CHECK-VISAASM-DAG: dpas.hf.hf.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=hf num_elts=32
+; CHECK-VISAASM-DAG: .decl [[C2]] v_type=G type=hf num_elts=32
+; CHECK-VISAASM-DAG: .decl [[B2]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A2]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A2_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A2_ALIAS]] v_type=G type=w num_elts=32
+; CHECK-VISAASM-DAG: dpas.hf.hf.8.4 (M1, 16) [[D4:[A-z0-9_]*]].0 [[C4:[A-z0-9_]*]].0 [[B4:[A-z0-9_]*]].0 [[A4:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D4]] v_type=G type=hf num_elts=64
+; CHECK-VISAASM-DAG: .decl [[C4]] v_type=G type=hf num_elts=64
+; CHECK-VISAASM-DAG: .decl [[B4]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A4]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[A4_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A4_ALIAS]] v_type=G type=w num_elts=64
+; CHECK-VISAASM-DAG: dpas.hf.hf.8.8 (M1, 16) [[D8:[A-z0-9_]*]].0 [[C8:[A-z0-9_]*]].0 [[B8:[A-z0-9_]*]].0 [[A8:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D8]] v_type=G type=hf num_elts=128
+; CHECK-VISAASM-DAG: .decl [[C8]] v_type=G type=hf num_elts=128
+; CHECK-VISAASM-DAG: .decl [[B8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A8]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[A8_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A8_ALIAS]] v_type=G type=w num_elts=128
 
   %call32 = call spir_func half @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTELisDv8_iDhi(i32 16, i16 %a1, <8 x i32> %b, half %c, i32 3072)
   store half %call32, half* %res
@@ -347,15 +635,41 @@ define spir_kernel void @test_v12(i16* %res, <2 x i16>* %res2, <4 x i16>* %res4,
                                  <8 x i32> %b,
                                  i16 %cF,  <2 x i16> %c2F, <4 x i16> %c4F, <8 x i16> %c8F) !intel_reqd_sub_group_size !100 {
 entry:
-; CHECK-LABEL: @test_v12(
-; CHECK:  [[DPAS:%[A-z0-9]*]] = call i16 @llvm.genx.GenISA.sub.group.dpas.i16.i16.i16.v8i32(i16 %cF, i16 %a1, <8 x i32> %b, i32 11, i32 11, i32 8, i32 1, i1 false)
-; CHECK:  store i16 [[DPAS]], i16* %res
-; CHECK:  [[DPAS1:%[A-z0-9]*]] = call <2 x i16> @llvm.genx.GenISA.sub.group.dpas.v2i16.v2i16.v2i16.v8i32(<2 x i16> %c2F, <2 x i16> %a2, <8 x i32> %b, i32 11, i32 11, i32 8, i32 2, i1 false)
-; CHECK:  store <2 x i16> [[DPAS1]], <2 x i16>* %res2
-; CHECK:  [[DPAS2:%[A-z0-9]*]] = call <4 x i16> @llvm.genx.GenISA.sub.group.dpas.v4i16.v4i16.v4i16.v8i32(<4 x i16> %c4F, <4 x i16> %a4, <8 x i32> %b, i32 11, i32 11, i32 8, i32 4, i1 false)
-; CHECK:  store <4 x i16> [[DPAS2]], <4 x i16>* %res4
-; CHECK:  [[DPAS3:%[A-z0-9]*]] = call <8 x i16> @llvm.genx.GenISA.sub.group.dpas.v8i16.v8i16.v8i16.v8i32(<8 x i16> %c8F, <8 x i16> %a8, <8 x i32> %b, i32 11, i32 11, i32 8, i32 8, i1 false)
-; CHECK:  store <8 x i16> [[DPAS3]], <8 x i16>* %res8
+; CHECK-GENISA-LABEL: @test_v12(
+; CHECK-GENISA:  [[DPAS:%[A-z0-9]*]] = call i16 @llvm.genx.GenISA.sub.group.dpas.i16.i16.i16.v8i32(i16 %cF, i16 %a1, <8 x i32> %b, i32 11, i32 11, i32 8, i32 1, i1 false)
+; CHECK-GENISA:  store i16 [[DPAS]], i16* %res
+; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call <2 x i16> @llvm.genx.GenISA.sub.group.dpas.v2i16.v2i16.v2i16.v8i32(<2 x i16> %c2F, <2 x i16> %a2, <8 x i32> %b, i32 11, i32 11, i32 8, i32 2, i1 false)
+; CHECK-GENISA:  store <2 x i16> [[DPAS1]], <2 x i16>* %res2
+; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <4 x i16> @llvm.genx.GenISA.sub.group.dpas.v4i16.v4i16.v4i16.v8i32(<4 x i16> %c4F, <4 x i16> %a4, <8 x i32> %b, i32 11, i32 11, i32 8, i32 4, i1 false)
+; CHECK-GENISA:  store <4 x i16> [[DPAS2]], <4 x i16>* %res4
+; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <8 x i16> @llvm.genx.GenISA.sub.group.dpas.v8i16.v8i16.v8i16.v8i32(<8 x i16> %c8F, <8 x i16> %a8, <8 x i32> %b, i32 11, i32 11, i32 8, i32 8, i1 false)
+; CHECK-GENISA:  store <8 x i16> [[DPAS3]], <8 x i16>* %res8
+
+; CHECK-VISAASM-LABEL: .kernel "test_v12"
+; CHECK-VISAASM-DAG: dpas.bf.bf.8.1 (M1, 16) [[D1:[A-z0-9_]*]].0 [[C1:[A-z0-9_]*]].0 [[B1:[A-z0-9_]*]].0 [[A1:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D1]] v_type=G type=bf num_elts=16
+; CHECK-VISAASM-DAG: .decl [[C1]] v_type=G type=bf num_elts=16
+; CHECK-VISAASM-DAG: .decl [[B1]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A1]] v_type=G type=ud num_elts=8 align=wordx32 alias=<[[A1_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A1_ALIAS]] v_type=G type=w num_elts=16
+; CHECK-VISAASM-DAG: dpas.bf.bf.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=bf num_elts=32
+; CHECK-VISAASM-DAG: .decl [[C2]] v_type=G type=bf num_elts=32
+; CHECK-VISAASM-DAG: .decl [[B2]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A2]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A2_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A2_ALIAS]] v_type=G type=w num_elts=32
+; CHECK-VISAASM-DAG: dpas.bf.bf.8.4 (M1, 16) [[D4:[A-z0-9_]*]].0 [[C4:[A-z0-9_]*]].0 [[B4:[A-z0-9_]*]].0 [[A4:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D4]] v_type=G type=bf num_elts=64
+; CHECK-VISAASM-DAG: .decl [[C4]] v_type=G type=bf num_elts=64
+; CHECK-VISAASM-DAG: .decl [[B4]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A4]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[A4_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A4_ALIAS]] v_type=G type=w num_elts=64
+; CHECK-VISAASM-DAG: dpas.bf.bf.8.8 (M1, 16) [[D8:[A-z0-9_]*]].0 [[C8:[A-z0-9_]*]].0 [[B8:[A-z0-9_]*]].0 [[A8:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D8]] v_type=G type=bf num_elts=128
+; CHECK-VISAASM-DAG: .decl [[C8]] v_type=G type=bf num_elts=128
+; CHECK-VISAASM-DAG: .decl [[B8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A8]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[A8_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A8_ALIAS]] v_type=G type=w num_elts=128
 
   %call36 = call spir_func i16 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTELisDv8_isi(i32 16, i16 %a1, <8 x i32> %b, i16 %cF, i32 12300)
   store i16 %call36, i16* %res
@@ -375,15 +689,41 @@ define spir_kernel void @test_v13(float* %resF,  <2 x float>* %res2, <4 x float>
                                  <8 x float> %b,
                                  float %cF,  <2 x float> %c2F, <4 x float> %c4F, <8 x float> %c8F) !intel_reqd_sub_group_size !100 {
 entry:
-; CHECK-LABEL: @test_v13(
-; CHECK:  [[DPAS:%[A-z0-9]*]] = call float @llvm.genx.GenISA.sub.group.dpas.f32.f32.f32.v8i32(float %cF, float %a1, <8 x i32> %{{.*}}, i32 10, i32 10, i32 8, i32 1, i1 false)
-; CHECK:  store float [[DPAS]], float* %resF
-; CHECK:  [[DPAS1:%[A-z0-9]*]] = call <2 x float> @llvm.genx.GenISA.sub.group.dpas.v2f32.v2f32.f32.v8i32(<2 x float> %c2F, float %a2, <8 x i32> %{{.*}}, i32 10, i32 10, i32 8, i32 2, i1 false)
-; CHECK:  store <2 x float> [[DPAS1]], <2 x float>* %res2
-; CHECK:  [[DPAS2:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sub.group.dpas.v4f32.v4f32.v2f32.v8i32(<4 x float> %c4F, <2 x float> %a4, <8 x i32> %{{.*}}, i32 10, i32 10, i32 8, i32 4, i1 false)
-; CHECK:  store <4 x float> [[DPAS2]], <4 x float>* %res4
-; CHECK:  [[DPAS3:%[A-z0-9]*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v4f32.v8i32(<8 x float> %c8F, <4 x float> %a8, <8 x i32> %{{.*}}, i32 10, i32 10, i32 8, i32 8, i1 false)
-; CHECK:  store <8 x float> [[DPAS3]], <8 x float>* %res8
+; CHECK-GENISA-LABEL: @test_v13(
+; CHECK-GENISA:  [[DPAS:%[A-z0-9]*]] = call float @llvm.genx.GenISA.sub.group.dpas.f32.f32.f32.v8i32(float %cF, float %a1, <8 x i32> %{{.*}}, i32 10, i32 10, i32 8, i32 1, i1 false)
+; CHECK-GENISA:  store float [[DPAS]], float* %resF
+; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call <2 x float> @llvm.genx.GenISA.sub.group.dpas.v2f32.v2f32.f32.v8i32(<2 x float> %c2F, float %a2, <8 x i32> %{{.*}}, i32 10, i32 10, i32 8, i32 2, i1 false)
+; CHECK-GENISA:  store <2 x float> [[DPAS1]], <2 x float>* %res2
+; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sub.group.dpas.v4f32.v4f32.v2f32.v8i32(<4 x float> %c4F, <2 x float> %a4, <8 x i32> %{{.*}}, i32 10, i32 10, i32 8, i32 4, i1 false)
+; CHECK-GENISA:  store <4 x float> [[DPAS2]], <4 x float>* %res4
+; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v4f32.v8i32(<8 x float> %c8F, <4 x float> %a8, <8 x i32> %{{.*}}, i32 10, i32 10, i32 8, i32 8, i1 false)
+; CHECK-GENISA:  store <8 x float> [[DPAS3]], <8 x float>* %res8
+
+; CHECK-VISAASM-LABEL: .kernel "test_v13"
+; CHECK-VISAASM-DAG: dpas.tf32.tf32.8.1 (M1, 16) [[D1:[A-z0-9_]*]].0 [[C1:[A-z0-9_]*]].0 [[B1:[A-z0-9_]*]].0 [[A1:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D1]] v_type=G type=f num_elts=16
+; CHECK-VISAASM-DAG: .decl [[C1]] v_type=G type=f num_elts=16
+; CHECK-VISAASM-DAG: .decl [[B1]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A1]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A1_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A1_ALIAS]] v_type=G type=f num_elts=16
+; CHECK-VISAASM-DAG: dpas.tf32.tf32.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=f num_elts=32
+; CHECK-VISAASM-DAG: .decl [[C2]] v_type=G type=f num_elts=32
+; CHECK-VISAASM-DAG: .decl [[B2]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A2]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[A2_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A2_ALIAS]] v_type=G type=f num_elts=16
+; CHECK-VISAASM-DAG: dpas.tf32.tf32.8.4 (M1, 16) [[D4:[A-z0-9_]*]].0 [[C4:[A-z0-9_]*]].0 [[B4:[A-z0-9_]*]].0 [[A4:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D4]] v_type=G type=f num_elts=64
+; CHECK-VISAASM-DAG: .decl [[C4]] v_type=G type=f num_elts=64
+; CHECK-VISAASM-DAG: .decl [[B4]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A4]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[A4_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A4_ALIAS]] v_type=G type=f num_elts=32
+; CHECK-VISAASM-DAG: dpas.tf32.tf32.8.8 (M1, 16) [[D8:[A-z0-9_]*]].0 [[C8:[A-z0-9_]*]].0 [[B8:[A-z0-9_]*]].0 [[A8:[A-z0-9_]*]](0,0)
+; CHECK-VISAASM-DAG: .decl [[D8]] v_type=G type=f num_elts=128
+; CHECK-VISAASM-DAG: .decl [[C8]] v_type=G type=f num_elts=128
+; CHECK-VISAASM-DAG: .decl [[B8]] v_type=G type=d num_elts=128
+; CHECK-VISAASM-DAG: .decl [[A8]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[A8_ALIAS:[A-z0-9_]*]], 0>
+; CHECK-VISAASM-DAG: .decl [[A8_ALIAS]] v_type=G type=f num_elts=64
 
   %call32 = call spir_func float @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTELifDv8_ffi(i32 8, float %a1, <8 x float> %b, float %cF, i32 768)
   store float %call32, float* %resF
