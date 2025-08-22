@@ -43,7 +43,7 @@ static bool hasRematMetadata(llvm::Value *V) {
   return false;
 }
 
-Value *getAddressOperand(llvm::Instruction *I) {
+Value *getRematedOperand(llvm::Instruction *I) {
   if (!I) return nullptr;
 
   // Check if the instruction is a Load or Store and return the address operand
@@ -51,6 +51,9 @@ Value *getAddressOperand(llvm::Instruction *I) {
     return LI->getPointerOperand();
   } else if (auto *SI = dyn_cast<StoreInst>(I)) {
     return SI->getPointerOperand();
+  } else if (auto *SelI = dyn_cast<SelectInst>(I)) {
+    // For SelectInst, return the condition operand
+    return SelI->getCondition();
   }
 
   // If it's not a Load or Store, return nullptr
@@ -69,7 +72,7 @@ RematChainSet getRematChain(Value *V, Instruction *User) {
 
   if (!isa<IntToPtrInst>(I) && !isa<AddrSpaceCastInst>(I)
       && !isa<BitCastInst>(I) && !isa<GetElementPtrInst>(I)
-      && !isa<BinaryOperator>(I) && !isa<UnaryOperator>(I)) {
+      && !isa<BinaryOperator>(I) && !isa<UnaryOperator>(I) && !isa<CmpInst>(I)) {
     return {};
   }
 
@@ -96,15 +99,15 @@ RematChainSet getRematChain(Value *V, Instruction *User) {
 bool RematChainsAnalysis::runOnFunction(llvm::Function &F) {
   for (auto &BB : F) {
     for (Instruction &I : BB) {
-      Value *AddrOperand = getAddressOperand(&I);
-      if (!AddrOperand)
+      Value *Operand = getRematedOperand(&I);
+      if (!Operand)
         continue;
 
-      Instruction *AI = dyn_cast<Instruction>(AddrOperand);
+      Instruction *AI = dyn_cast<Instruction>(Operand);
       if (!AI)
         continue;
 
-      RematChainSet Chain = getRematChain(AddrOperand, &I);
+      RematChainSet Chain = getRematChain(Operand, &I);
 
       if (!Chain.empty()) {
         RematChainPatterns.push_back(std::make_unique<RematChainPattern>(Chain, AI, &I));

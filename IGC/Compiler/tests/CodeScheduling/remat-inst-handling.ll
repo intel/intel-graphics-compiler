@@ -102,6 +102,33 @@ bb1:
   ret void
 }
 
+
+define spir_kernel void @test_remat_select(ptr addrspace(1) %A, i32 %x, i32 %z) {
+; CHECK-LABEL: @test_remat_select(
+; CHECK:       bb1:
+; CHECK:         [[DPAS2:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> undef, <8 x i32> undef, i32 1, i32 1, i32 1, i32 1, i1 false)
+; CHECK:         [[REMAT_OR:%.*]] = or i32 [[X:%.*]], 10, !remat !0
+; CHECK:         [[REMAT_ICMP:%.*]] = icmp eq i32 [[REMAT_OR]], 15, !remat !0
+; CHECK:         [[SEL:%.*]] = select i1 [[REMAT_ICMP]], i32 [[X]], i32 [[Z:%.*]]
+; CHECK:         [[ADD:%.*]] = add i32 [[REMAT_OR]], 2000
+; CHECK:         ret void
+;
+entry:
+  br label %bb1
+
+bb1:
+  %remat_or = or i32 %x, 10, !remat !0
+  %remat_icmp = icmp eq i32 %remat_or, 15, !remat !0
+  %sel = select i1 %remat_icmp, i32 %x, i32 %z
+  %add = add i32 %remat_or, 2000
+
+
+  %dpas2 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(
+  <8 x float> zeroinitializer, <8 x i16> undef, <8 x i32> undef,
+  i32 1, i32 1, i32 1, i32 1, i1 false)
+  ret void
+}
+
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(
   <8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1)
 
