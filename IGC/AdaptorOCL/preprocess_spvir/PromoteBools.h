@@ -45,9 +45,14 @@ public:
 private:
   bool changed;
 
+  llvm::Value *convertI1ToI8(llvm::Value *argument, llvm::IRBuilder<>& builder);
   llvm::Value *convertI1ToI8(llvm::Value *argument, llvm::Instruction *insertBefore);
+  llvm::Value *convertI8ToI1(llvm::Value *argument, llvm::IRBuilder<>& builder);
   llvm::Value *convertI8ToI1(llvm::Value *argument, llvm::Instruction *insertBefore);
+  llvm::Value *castTo(llvm::Value *value, llvm::Type *desiredType, llvm::IRBuilder<>& builder);
   llvm::Value *castTo(llvm::Value *value, llvm::Type *desiredType, llvm::Instruction *insertBefore);
+  llvm::Value *castAggregate(llvm::Value *value, llvm::Type *desiredType, llvm::IRBuilder<>& builder);
+
   void cleanUp(llvm::Module &module);
 
   // Checking if type needs promotion

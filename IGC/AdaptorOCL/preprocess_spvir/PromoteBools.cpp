@@ -9,10 +9,7 @@ SPDX-License-Identifier: MIT
 #include "PromoteBools.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Type.h"
-#include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include <llvm/IR/Module.h>
@@ -102,7 +99,17 @@ bool PromoteBools::runOnModule(Module &module) {
   return changed;
 }
 
+Value *PromoteBools::convertI8ToI1(Value *value, Instruction *insertBefore) {
+  IRBuilder<> builder(insertBefore);
+  return convertI8ToI1(value, builder);
+}
+
 Value *PromoteBools::convertI1ToI8(Value *value, Instruction *insertBefore) {
+  IRBuilder<> builder(insertBefore);
+  return convertI1ToI8(value, builder);
+}
+
+Value *PromoteBools::convertI1ToI8(Value *value, IRBuilder<> &builder) {
   if (!isIntegerTy(value, 1)) {
     return value;
   }
@@ -112,7 +119,6 @@ Value *PromoteBools::convertI1ToI8(Value *value, Instruction *insertBefore) {
     return trunc->getOperand(0);
   }
 
-  IRBuilder<> builder(insertBefore);
   auto zext = builder.CreateZExt(value, getOrCreatePromotedType(value->getType()));
   if (isa<Instruction>(zext) && isa<Instruction>(value)) {
     dyn_cast<Instruction>(zext)->setDebugLoc(dyn_cast<Instruction>(value)->getDebugLoc());
@@ -120,7 +126,7 @@ Value *PromoteBools::convertI1ToI8(Value *value, Instruction *insertBefore) {
   return zext;
 }
 
-Value *PromoteBools::convertI8ToI1(Value *value, Instruction *insertBefore) {
+Value *PromoteBools::convertI8ToI1(Value *value, IRBuilder<> &builder) {
   if (!isIntegerTy(value, 8)) {
     return value;
   }
@@ -130,7 +136,6 @@ Value *PromoteBools::convertI8ToI1(Value *value, Instruction *insertBefore) {
     return zext->getOperand(0);
   }
 
-  IRBuilder<> builder(insertBefore);
   auto trunc = builder.CreateTrunc(value, createDemotedType(value->getType()));
   if (isa<Instruction>(trunc) && isa<Instruction>(value)) {
     dyn_cast<Instruction>(trunc)->setDebugLoc(dyn_cast<Instruction>(value)->getDebugLoc());
@@ -138,18 +143,68 @@ Value *PromoteBools::convertI8ToI1(Value *value, Instruction *insertBefore) {
   return trunc;
 }
 
+Value *PromoteBools::castAggregate(Value *value, Type *desiredType, IRBuilder<> &builder) {
+
+  if (auto *srcST = dyn_cast<StructType>(value->getType())) {
+    auto *dstST = dyn_cast<StructType>(desiredType);
+
+    IGC_ASSERT(srcST && dstST);
+    IGC_ASSERT(srcST->getNumElements() == dstST->getNumElements());
+
+    Value *Accum = PoisonValue::get(dstST);
+
+    for (unsigned i = 0; i < srcST->getNumElements(); i++) {
+      auto *dstElType = dstST->getElementType(i);
+      auto *srcElType = srcST->getElementType(i);
+
+      Value *ExtVal = builder.CreateExtractValue(value, i);
+      Value *ExtValOrCast = (srcElType == dstElType) ? ExtVal : castTo(ExtVal, dstElType, builder);
+      Accum = builder.CreateInsertValue(Accum, ExtValOrCast, i);
+    }
+    return Accum;
+  }
+
+  if (auto *srcAT = dyn_cast<ArrayType>(value->getType())) {
+    auto *dstAT = dyn_cast<ArrayType>(desiredType);
+
+    IGC_ASSERT(srcAT && dstAT);
+    IGC_ASSERT(srcAT->getNumElements() == dstAT->getNumElements());
+
+    auto *dstElType = dstAT->getElementType();
+    auto *srcElType = srcAT->getElementType();
+    Value *Accum = PoisonValue::get(dstAT);
+
+    for (unsigned i = 0; i < srcAT->getNumElements(); i++) {
+      Value *ExtVal = builder.CreateExtractValue(value, i);
+      Value *ExtValOrCast = (srcElType == dstElType) ? ExtVal : castTo(ExtVal, dstElType, builder);
+      Accum = builder.CreateInsertValue(Accum, ExtValOrCast, i);
+    }
+
+    return Accum;
+  }
+
+  return nullptr;
+}
+
 Value *PromoteBools::castTo(Value *value, Type *desiredType, Instruction *insertBefore) {
+  IRBuilder<> builder(insertBefore);
+  return castTo(value, desiredType, builder);
+}
+Value *PromoteBools::castTo(Value *value, Type *desiredType, IRBuilder<> &builder) {
+
   if (value->getType() == desiredType) {
     return value;
   }
 
+  if (desiredType->isAggregateType())
+    return castAggregate(value, desiredType, builder);
+
   if (isIntegerTy(value, 8) && desiredType->isIntegerTy(1)) {
-    return convertI8ToI1(value, insertBefore);
+    return convertI8ToI1(value, builder);
   } else if (isIntegerTy(value, 1) && desiredType->isIntegerTy(8)) {
-    return convertI1ToI8(value, insertBefore);
+    return convertI1ToI8(value, builder);
   }
 
-  IRBuilder<> builder(insertBefore);
   return builder.CreateBitCast(value, desiredType);
 }
 
