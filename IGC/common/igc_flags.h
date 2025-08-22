@@ -442,10 +442,9 @@ DECLARE_IGC_REGKEY(DWORD, SetLoopUnrollThreshold, 0,
 DECLARE_IGC_REGKEY(
     DWORD, SetLoopUnrollThresholdForHighRegPressure, 200,
     "Set the loop unroll threshold for shaders with high reg pressure.", false)
-DECLARE_IGC_REGKEY(DWORD, SetLoopUnrollMaxPercentThresholdBoostForHighRegPressure, 100,
+DECLARE_IGC_REGKEY(DWORD, SetLoopUnrollMaxPercentThresholdBoostForHighRegPressure, 400,
                    "Set the loop unroll max allowed threshold boost in percentage for shaders with high reg pressure. "
-                   "The LLVM internal value is 400. Setting 100 here because the cost model is currently based on "
-                   "latency instead of code size where the latter is what we need.",
+                   "The LLVM internal value is 400.",
                    false)
 DECLARE_IGC_REGKEY(
     bool, EnablePromoteLoopUnrollwithAlloca, true,
