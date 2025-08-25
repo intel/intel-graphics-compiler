@@ -1545,6 +1545,7 @@ DECLARE_IGC_REGKEY(
     "Confine rematerialization only to variables within the same BB, we won't pull down values from predeccors", false)
 DECLARE_IGC_REGKEY(bool, RematRespectUniformity, false, "Cutoff computation chain on uniform values", false)
 DECLARE_IGC_REGKEY(bool, RematAllowExtractElement, true, "Allow Extract Element to computation chain", false)
+DECLARE_IGC_REGKEY(bool, RematDataAllowCMP, true, "Allow rematerialization of cmp instructions", true)
 DECLARE_IGC_REGKEY(bool, RematReassocBefore, false,
                    "Enable short sequence of passes before clone address arithmetic pass to potentially decrese amount "
                    "of operations that will be rematerialized",

@@ -408,7 +408,7 @@ bool CloneAddressArithmetic::rematerialize(RematSet &ToProcess, unsigned int Flo
   for (auto El : ToProcess) {
 
     PRINT_LOG("rematerialize: ");
-    PRINT_INST(El);
+    PRINT_INST_NL(El);
 
     Value *V = El;
     llvm::SmallVector<llvm::Use *, 8> VectorOfUses;
@@ -560,9 +560,14 @@ void CloneAddressArithmetic::collectInstToProcess(RematSet &ToProcess, Function 
       bool IsLoad = llvm::isa<LoadInst>(I);
       bool IsStore = llvm::isa<StoreInst>(I);
       bool IsCall = llvm::isa<CallInst>(I);
+      bool IsCmp = llvm::isa<CmpInst>(I);
 
-      if (!IsLoad && !IsStore && !IsCall)
+      if (!IsLoad && !IsStore && !IsCall && !IsCmp)
         continue;
+      if (IsCmp && IGC_IS_FLAG_ENABLED(RematDataAllowCMP)) {
+          ToProcess.insert(static_cast<Instruction *>(&I));
+          continue;
+      }
 
       llvm::Value *V =
           IsLoad ? static_cast<LoadInst *>(&I)->getPointerOperand() : static_cast<StoreInst *>(&I)->getPointerOperand();
