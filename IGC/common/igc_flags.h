@@ -280,7 +280,7 @@ DECLARE_IGC_REGKEY(DWORD, LS_splitThresholdDelta_GRF, 2,
 
 // Code Scheduling
 DECLARE_IGC_REGKEY(bool, DisableCodeScheduling, false, "Disable local code scheduling", true)
-DECLARE_IGC_REGKEY(bool, CodeSchedulingOnlyRecompilation, true, "Enable code scheduling only on 2nd try", true)
+DECLARE_IGC_REGKEY(bool, CodeSchedulingOnlyRecompilation, false, "Enable code scheduling only on 2nd try", true)
 
 DECLARE_IGC_REGKEY(bool, EnableCodeSchedulingIfNoSpills, false, "Try rescheduling also when there are no spills", true)
 DECLARE_IGC_REGKEY(bool, CodeSchedulingGreedyRPHigherRPCommit, false, "If GreedyRP was chosen, commit it also if the estimated RP "
