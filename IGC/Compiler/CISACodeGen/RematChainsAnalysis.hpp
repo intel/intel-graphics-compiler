@@ -25,7 +25,7 @@ typedef llvm::SmallSet<llvm::Instruction *, 8> RematChainSet;
 
 class RematChainPattern {
 public:
-  RematChainPattern(RematChainSet RematChain, llvm::Instruction *LastInst, llvm::Instruction *RematChainUser)
+  RematChainPattern(const RematChainSet& RematChain, llvm::Instruction *LastInst, llvm::Instruction *RematChainUser)
       : RematChain(RematChain), LastInstruction(LastInst), RematChainUser(RematChainUser) {
         IGC_ASSERT(!RematChain.empty() && "Remat chain cannot be empty");
         IGC_ASSERT(RematChainUser && "Remat chain user cannot be null");
@@ -61,9 +61,9 @@ public:
 
 private:
   RematChainSet RematChain;
-  llvm::Instruction *LastInstruction;
-  llvm::Instruction *FirstInstruction;
-  llvm::Instruction *RematChainUser;
+  llvm::Instruction *LastInstruction = nullptr;
+  llvm::Instruction *FirstInstruction = nullptr;
+  llvm::Instruction *RematChainUser = nullptr;
 };
 
 class RematChainsAnalysis : public llvm::FunctionPass {
