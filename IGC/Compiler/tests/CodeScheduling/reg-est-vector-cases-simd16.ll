@@ -9,7 +9,9 @@
 ; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --regkey DisableCodeScheduling=0 --regkey EnableCodeSchedulingIfNoSpills=1 \
 ; RUN:         --regkey PrintToConsole=1 --regkey DumpCodeScheduling=1 --igc-code-scheduling \
-; RUN:         --regkey CodeSchedulingRPThreshold=-512 -S %s 2>&1 | FileCheck %s
+; RUN:         --regkey CodeSchedulingRPThreshold=-512 \
+; RUN:         --regkey "CodeSchedulingConfig=10;1;0;30000;100;0;100000;1000;6000;200;10;20;500;50;0;1;1;0;1;1;8;1;32;1;200;64;0;1;20;200;200;5;16;16;34;200;1;0;128;256" \
+; RUN:         --regkey ForceOCLSIMDWidth=16 -S %s 2>&1 | FileCheck %s
 
 
 ; Checks that the register pressure is estimated correctly for the special cases related to vector shuffles.
