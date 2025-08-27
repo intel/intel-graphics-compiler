@@ -71,7 +71,7 @@ static Constant *constantFoldRdRegion(Type *RetTy,
     return UndefValue::get(RetTy);
   // Parse the region parameters.
   unsigned WholeNumElements =
-      dyn_cast<IGCLLVM::FixedVectorType>(Input->getType())->getNumElements();
+    cast<IGCLLVM::FixedVectorType>(Input->getType())->getNumElements();
   auto OffsetC = dyn_cast<Constant>(
       Operands[GenXIntrinsic::GenXRegion::RdIndexOperandNum]);
   if (!OffsetC)
