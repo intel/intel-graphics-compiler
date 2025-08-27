@@ -15,8 +15,10 @@ declare <4 x float> @get_vec4float()
 declare <2 x float> @get_vec2float()
 declare <4 x float> @update_vec4float(<4 x float>)
 declare <2 x float> @update_vec2float(<2 x float>)
+declare void @use_vec4float(<4 x float>)
 declare void @use_4scalars(float, float, float, float)
 declare void @use_2scalars(float, float, float, float)
+declare void @use_float(float)
 
 ; Basic example when MergeScalarPhisPass should be applied.
 
@@ -452,7 +454,249 @@ BB4:
   ret void
 }
 
-!igc.functions = !{!0, !3, !5, !7, !9, !11, !13, !15}
+; Check that the optimization merges scalar phis with zero incoming values.
+; Check that redundant phi nodes are removed.
+
+; CHECK-LABEL: define void @f9
+; CHECK: entry:
+; CHECK: br label %BB1
+; ...
+; CHECK: BB1:
+; CHECK-NOT: %inc_vec = phi <4 x float> [ zeroinitializer, %entry ], [ %vec1, %BB2 ]
+; CHECK: [[MERGED_PHI:%.*]] = phi <4 x float> [ zeroinitializer, %entry ], [ %vec1, %BB2 ]
+; CHECK: [[NEW_EEI1:%.*]] = extractelement <4 x float> [[MERGED_PHI]], i64 0
+; CHECK: [[NEW_EEI2:%.*]] = extractelement <4 x float> [[MERGED_PHI]], i64 1
+; CHECK: [[NEW_EEI3:%.*]] = extractelement <4 x float> [[MERGED_PHI]], i64 2
+; CHECK: [[NEW_EEI4:%.*]] = extractelement <4 x float> [[MERGED_PHI]], i64 3
+; CHECK: call void @use_4scalars(float [[NEW_EEI1]], float [[NEW_EEI2]], float [[NEW_EEI3]], float [[NEW_EEI4]])
+; ...
+; CHECK BB2:
+; CHECK: br i1 %cond2, label %BB1, label %BBEXIT
+; CHECK: BBEXIT:
+; CHECK: ret void
+
+define void @f9(i1 %cond1, i1 %cond2) {
+entry:
+  br label %BB1
+BB1:
+  %inc_vec = phi <4 x float> [ zeroinitializer, %entry ], [ %vec1, %BB2 ]
+  %phi1 = phi float [ 0.0, %entry ], [ %eei_1_1, %BB2 ]
+  %phi2 = phi float [ 0.0, %entry ], [ %eei_1_2, %BB2 ]
+  %phi3 = phi float [ 0.0, %entry ], [ %eei_1_3, %BB2 ]
+  %phi4 = phi float [ 0.0, %entry ], [ %eei_1_4, %BB2 ]
+  call void @use_4scalars(float %phi1, float %phi2, float %phi3, float %phi4)
+  %vec1 = call <4 x float> @update_vec4float(<4 x float> %inc_vec)
+  br i1 %cond1, label %BB2, label %BBEXIT
+BB2:
+  %eei_1_1 = extractelement <4 x float> %vec1, i64 0
+  %eei_1_2 = extractelement <4 x float> %vec1, i64 1
+  %eei_1_3 = extractelement <4 x float> %vec1, i64 2
+  %eei_1_4 = extractelement <4 x float> %vec1, i64 3
+  br i1 %cond2, label %BB1, label %BBEXIT
+BBEXIT:
+  ret void
+}
+
+
+; Check that the optimization merges scalar phis with zero incoming values.
+; Check that redundant phi nodes are removed.
+
+; CHECK-LABEL: define void @f10
+; CHECK: entry:
+; CHECK: br label %BB1
+; ...
+; CHECK: BB1:
+; CHECK-NOT: %inc_vec = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+; CHECK: [[MERGED_PHI:%.*]] = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+; CHECK: [[NEW_EEI1:%.*]] = extractelement <4 x float> [[MERGED_PHI]], i64 0
+; CHECK: [[NEW_EEI2:%.*]] = extractelement <4 x float> [[MERGED_PHI]], i64 1
+; CHECK: [[NEW_EEI3:%.*]] = extractelement <4 x float> [[MERGED_PHI]], i64 2
+; CHECK: [[NEW_EEI4:%.*]] = extractelement <4 x float> [[MERGED_PHI]], i64 3
+; CHECK: call void @use_4scalars(float [[NEW_EEI1]], float [[NEW_EEI2]], float [[NEW_EEI3]], float [[NEW_EEI4]])
+; ...
+; CHECK BB2:
+; CHECK: br i1 %cond2, label %BB1, label %BBEXIT
+; CHECK: BBEXIT:
+; CHECK: ret void
+
+define void @f10(i1 %cond1, i1 %cond2) {
+entry:
+  br label %BB1
+BB1:
+  %inc_vec = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+  %phi1 = phi float [ %eei_1_1, %BB2 ], [ 0.0, %entry ]
+  %phi2 = phi float [ %eei_1_2, %BB2 ], [ 0.0, %entry ]
+  %phi3 = phi float [ %eei_1_3, %BB2 ], [ 0.0, %entry ]
+  %phi4 = phi float [ %eei_1_4, %BB2 ], [ 0.0, %entry ]
+  call void @use_4scalars(float %phi1, float %phi2, float %phi3, float %phi4)
+  %vec1 = call <4 x float> @update_vec4float(<4 x float> %inc_vec)
+  br i1 %cond1, label %BB2, label %BBEXIT
+BB2:
+  %eei_1_1 = extractelement <4 x float> %vec1, i64 0
+  %eei_1_2 = extractelement <4 x float> %vec1, i64 1
+  %eei_1_3 = extractelement <4 x float> %vec1, i64 2
+  %eei_1_4 = extractelement <4 x float> %vec1, i64 3
+  br i1 %cond2, label %BB1, label %BBEXIT
+BBEXIT:
+  ret void
+}
+
+; Check that the optimization is not applied when one of incoming values is not zero.
+; CHECK-LABEL: define void @f11
+; CHECK: entry:
+; CHECK: br label %BB1
+; ...
+; CHECK: BB1:
+; ...
+; CHECK: call void @use_4scalars(float %phi1, float %phi2, float %phi3, float %phi4)
+; CHECK: %vec1 = call <4 x float> @update_vec4float(<4 x float> %inc_vec)
+; ...
+; CHECK BB2:
+; CHECK: %eei_1_1 = extractelement <4 x float> %vec1, i64 0
+; CHECK: %eei_1_2 = extractelement <4 x float> %vec1, i64 1
+; CHECK: %eei_1_3 = extractelement <4 x float> %vec1, i64 2
+; CHECK: %eei_1_4 = extractelement <4 x float> %vec1, i64 3
+; CHECK: br i1 %cond2, label %BB1, label %BBEXIT
+; CHECK: BBEXIT:
+; CHECK: ret void
+
+define void @f11(i1 %cond1, i1 %cond2, float %val) {
+entry:
+  br label %BB1
+BB1:
+  %inc_vec = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+  %phi1 = phi float [ %eei_1_1, %BB2 ], [ 0.0, %entry ]
+  %phi2 = phi float [ %eei_1_2, %BB2 ], [ %val, %entry ]
+  %phi3 = phi float [ %eei_1_3, %BB2 ], [ 0.0, %entry ]
+  %phi4 = phi float [ %eei_1_4, %BB2 ], [ 0.0, %entry ]
+  call void @use_4scalars(float %phi1, float %phi2, float %phi3, float %phi4)
+  %vec1 = call <4 x float> @update_vec4float(<4 x float> %inc_vec)
+  br i1 %cond1, label %BB2, label %BBEXIT
+BB2:
+  %eei_1_1 = extractelement <4 x float> %vec1, i64 0
+  %eei_1_2 = extractelement <4 x float> %vec1, i64 1
+  %eei_1_3 = extractelement <4 x float> %vec1, i64 2
+  %eei_1_4 = extractelement <4 x float> %vec1, i64 3
+  br i1 %cond2, label %BB1, label %BBEXIT
+BBEXIT:
+  ret void
+}
+
+; Check that the optimization is applied when extractelement have several users.
+
+; CHECK-LABEL: define void @f12
+; CHECK: entry:
+; CHECK: br label %BB1
+; ...
+; CHECK: BB1:
+; CHECK-NOT: %inc_vec = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+; CHECK: [[MERGED_PHI:%.*]] = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+; CHECK: [[NEW_EEI1:%.*]] = extractelement <4 x float> [[MERGED_PHI]], i64 0
+; CHECK: [[NEW_EEI2:%.*]] = extractelement <4 x float> [[MERGED_PHI]], i64 1
+; CHECK: [[NEW_EEI3:%.*]] = extractelement <4 x float> [[MERGED_PHI]], i64 2
+; CHECK: [[NEW_EEI4:%.*]] = extractelement <4 x float> [[MERGED_PHI]], i64 3
+; CHECK: call void @use_4scalars(float [[NEW_EEI1]], float [[NEW_EEI2]], float [[NEW_EEI3]], float [[NEW_EEI4]])
+; CHECK: %vec1 = call <4 x float> @update_vec4float(<4 x float> %inc_vec)
+; CHECK: br i1 %cond1, label %BB2, label %BBEXIT
+; ...
+; CHECK BB2:
+; CHECK-NOT: %eei_1_1 = extractelement <4 x float> %vec1, i64 0
+; CHECK: %eei_1_2 = extractelement <4 x float> %vec1, i64 1
+; CHECK: call void @use_float(float %eei_1_2)
+; CHECK-NOT: %eei_1_3 = extractelement <4 x float> %vec1, i64 2
+; CHECK-NOT: %eei_1_4 = extractelement <4 x float> %vec1, i64 3
+; CHECK: br i1 %cond2, label %BB1, label %BBEXIT
+; CHECK: BBEXIT:
+; CHECK: ret void
+define void @f12(i1 %cond1, i1 %cond2) {
+entry:
+  br label %BB1
+BB1:
+  %inc_vec = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+  %phi1 = phi float [ %eei_1_1, %BB2 ], [ 0.0, %entry ]
+  %phi2 = phi float [ %eei_1_2, %BB2 ], [ 0.0, %entry ]
+  %phi3 = phi float [ %eei_1_3, %BB2 ], [ 0.0, %entry ]
+  %phi4 = phi float [ %eei_1_4, %BB2 ], [ 0.0, %entry ]
+  call void @use_4scalars(float %phi1, float %phi2, float %phi3, float %phi4)
+  %vec1 = call <4 x float> @update_vec4float(<4 x float> %inc_vec)
+  br i1 %cond1, label %BB2, label %BBEXIT
+BB2:
+  %eei_1_1 = extractelement <4 x float> %vec1, i64 0
+  %eei_1_2 = extractelement <4 x float> %vec1, i64 1
+  call void @use_float(float %eei_1_2)
+  %eei_1_3 = extractelement <4 x float> %vec1, i64 2
+  %eei_1_4 = extractelement <4 x float> %vec1, i64 3
+  br i1 %cond2, label %BB1, label %BBEXIT
+BBEXIT:
+  ret void
+}
+
+; Check redundant phi nodes removal.
+; CHECK-LABEL: define void @f13
+; CHECK: entry:
+; CHECK: br label %BB1
+; CHECK: BB1:
+; CHECK-NOT: %inc_vec2 = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+; CHECK-NOT: %inc_vec3 = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+; CHECK-NOT: %inc_vec4 = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+
+define void @f13(i1 %cond1, i1 %cond2) {
+entry:
+  br label %BB1
+BB1:
+  %inc_vec1 = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+  %inc_vec2 = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+  %inc_vec3 = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+  %inc_vec4 = phi <4 x float> [ %vec1, %BB2 ], [ zeroinitializer, %entry ]
+  %phi1_1 = phi float [ %eei_1_1, %BB2 ], [ 0.0, %entry ]
+  %phi1_2 = phi float [ %eei_1_2, %BB2 ], [ 0.0, %entry ]
+  %phi1_3 = phi float [ %eei_1_3, %BB2 ], [ 0.0, %entry ]
+  %phi1_4 = phi float [ %eei_1_4, %BB2 ], [ 0.0, %entry ]
+  %phi2_1 = phi float [ %eei_2_1, %BB2 ], [ 0.0, %entry ]
+  %phi2_2 = phi float [ %eei_2_2, %BB2 ], [ 0.0, %entry ]
+  %phi2_3 = phi float [ %eei_2_3, %BB2 ], [ 0.0, %entry ]
+  %phi2_4 = phi float [ %eei_2_4, %BB2 ], [ 0.0, %entry ]
+  %phi3_1 = phi float [ %eei_3_1, %BB2 ], [ 0.0, %entry ]
+  %phi3_2 = phi float [ %eei_3_2, %BB2 ], [ 0.0, %entry ]
+  %phi3_3 = phi float [ %eei_3_3, %BB2 ], [ 0.0, %entry ]
+  %phi3_4 = phi float [ %eei_3_4, %BB2 ], [ 0.0, %entry ]
+  %phi4_1 = phi float [ %eei_4_1, %BB2 ], [ 0.0, %entry ]
+  %phi4_2 = phi float [ %eei_4_2, %BB2 ], [ 0.0, %entry ]
+  %phi4_3 = phi float [ %eei_4_3, %BB2 ], [ 0.0, %entry ]
+  %phi4_4 = phi float [ %eei_4_4, %BB2 ], [ 0.0, %entry ]
+  call void @use_4scalars(float %phi1_1, float %phi1_2, float %phi1_3, float %phi1_4)
+  call void @use_4scalars(float %phi2_1, float %phi2_2, float %phi2_3, float %phi2_4)
+  call void @use_4scalars(float %phi3_1, float %phi3_2, float %phi3_3, float %phi3_4)
+  call void @use_4scalars(float %phi4_1, float %phi4_2, float %phi4_3, float %phi4_4)
+  call void @use_vec4float(<4 x float> %inc_vec1)
+  call void @use_vec4float(<4 x float> %inc_vec2)
+  call void @use_vec4float(<4 x float> %inc_vec3)
+  call void @use_vec4float(<4 x float> %inc_vec4)
+  %vec1 = call <4 x float> @get_vec4float()
+  br i1 %cond1, label %BB2, label %BBEXIT
+BB2:
+  %eei_1_1 = extractelement <4 x float> %inc_vec1, i64 0
+  %eei_1_2 = extractelement <4 x float> %inc_vec1, i64 1
+  %eei_1_3 = extractelement <4 x float> %inc_vec1, i64 2
+  %eei_1_4 = extractelement <4 x float> %inc_vec1, i64 3
+  %eei_2_1 = extractelement <4 x float> %inc_vec2, i64 0
+  %eei_2_2 = extractelement <4 x float> %inc_vec2, i64 1
+  %eei_2_3 = extractelement <4 x float> %inc_vec2, i64 2
+  %eei_2_4 = extractelement <4 x float> %inc_vec2, i64 3
+  %eei_3_1 = extractelement <4 x float> %inc_vec3, i64 0
+  %eei_3_2 = extractelement <4 x float> %inc_vec3, i64 1
+  %eei_3_3 = extractelement <4 x float> %inc_vec3, i64 2
+  %eei_3_4 = extractelement <4 x float> %inc_vec3, i64 3
+  %eei_4_1 = extractelement <4 x float> %inc_vec4, i64 0
+  %eei_4_2 = extractelement <4 x float> %inc_vec4, i64 1
+  %eei_4_3 = extractelement <4 x float> %inc_vec4, i64 2
+  %eei_4_4 = extractelement <4 x float> %inc_vec4, i64 3
+  br i1 %cond2, label %BB1, label %BBEXIT
+BBEXIT:
+  ret void
+}
+
+!igc.functions = !{!0, !3, !5, !7, !9, !11, !13, !15, !17, !19, !21, !23, !25, !27}
 
 !0 = !{void (i1, i1)* @f0, !1}
 !3 = !{void (i1, i1)* @f1, !1}
@@ -462,7 +706,12 @@ BB4:
 !11 = !{void (i1, i1)* @f5, !1}
 !13 = !{void (i1, i1)* @f6, !1}
 !15 = !{void ()* @f7, !1}
-!17 = !{void ()* @f8, !1}
+!17 = !{void (i1, i1)* @f8, !1}
+!19 = !{void (i1, i1)* @f9, !1}
+!21 = !{void (i1, i1)* @f10, !1}
+!23 = !{void (i1, i1, float)* @f11, !1}
+!25 = !{void (i1, i1)* @f12, !1}
+!27 = !{void (i1, i1)* @f13, !1}
 
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}

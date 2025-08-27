@@ -31,8 +31,15 @@ public:
 private:
   void collectPhiNodes(llvm::Function &F);
   void clearContainers();
-  void cleanUpIR();
-  bool makeChanges();
+  void cleanUpIR(llvm::Function *F);
+  void filterOutUnexpectedIncomingConstants();
+  void filterOutUnvectorizedPhis();
+  bool makeChanges(llvm::Function *F);
+
+  llvm::SmallVector<llvm::PHINode*, 8> getDuplicates(llvm::PHINode *PN, llvm::SmallVector<llvm::PHINode *, 8>& PhiNodesToErase);
+  bool isIncomingValueZero(llvm::PHINode *pPN, unsigned IncomingIndex);
+  llvm::Value *getVectorOperandForPhiNode(llvm::PHINode *PN, unsigned IncomingIndex);
+  llvm::ExtractElementInst *getEEIFromPhi(llvm::PHINode *PN, unsigned IncomingIndex);
 
   llvm::MapVector<llvm::Value *, llvm::SmallVector<llvm::PHINode *, 4>> VectorToPhiNodesMap;
   llvm::SmallSet<llvm::PHINode *, 16> PhiNodesToRemove;
