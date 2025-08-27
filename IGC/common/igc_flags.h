@@ -963,6 +963,7 @@ DECLARE_IGC_REGKEY(DWORD, VectorizerDepWindowMultiplier, 2,
 DECLARE_IGC_REGKEY(bool, VectorizerCheckScalarizer, false, "Add scalariser after vectorizer to check performance", true)
 DECLARE_IGC_REGKEY(DWORD, VectorizerList, -1, "Vectorize only one seed instruction with the provided number", true)
 DECLARE_IGC_REGKEY(bool, EnableVectorEmitter, true, "Enable Vector Emission for a vectorizer", true)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowI32, true, "Allow I32 versions of instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFPTRUNC, true, "Allow FPTRUNC instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFDIV, true, "Allow FDIV instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFMUL, true, "Allow FMUL instructions inside vectorizer", true)

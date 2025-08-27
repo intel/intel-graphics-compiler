@@ -1,0 +1,90 @@
+; RUN: igc_opt --igc-vectorizer -S -dce < %s 2>&1 | FileCheck %s
+
+define spir_kernel void @quux() {
+; CHECK-LABEL: @quux(
+; CHECK-NEXT:  bb43:
+; CHECK-NEXT:    br label [[BB123:%.*]]
+; CHECK:       bb60:
+; CHECK-NEXT:    br label [[BB88:%.*]]
+; CHECK:       bb88:
+; CHECK-NEXT:    [[VECTORIZED_PHI:%.*]] = phi <8 x i32> [ zeroinitializer, [[BB60:%.*]] ], [ [[TMP113:%.*]], [[BB88]] ]
+; CHECK-NEXT:    [[TMP112:%.*]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x i32> [[VECTORIZED_PHI]], <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+; CHECK-NEXT:    [[TMP113]] = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x i32> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+; CHECK-NEXT:    br i1 false, label [[BB88]], label [[BB123]]
+; CHECK:       bb123:
+; CHECK-NEXT:    [[VECTORIZED_PHI1:%.*]] = phi <8 x i32> [ zeroinitializer, [[BB43:%.*]] ], [ [[TMP113]], [[BB88]] ]
+; CHECK-NEXT:    [[TMP151:%.*]] = bitcast <8 x i32> [[VECTORIZED_PHI1]] to <8 x i32>
+; CHECK-NEXT:    call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0, <8 x i32> [[TMP151]])
+; CHECK-NEXT:    ret void
+;
+bb43:
+  br label %bb123
+
+bb60:                                             ; No predecessors!
+  br label %bb88
+
+bb88:                                             ; preds = %bb88, %bb60
+  %tmp90 = phi i32 [ 0, %bb60 ], [ %tmp114, %bb88 ]
+  %tmp91 = phi i32 [ 0, %bb60 ], [ %tmp115, %bb88 ]
+  %tmp92 = phi i32 [ 0, %bb60 ], [ %tmp116, %bb88 ]
+  %tmp93 = phi i32 [ 0, %bb60 ], [ %tmp117, %bb88 ]
+  %tmp94 = phi i32 [ 0, %bb60 ], [ %tmp118, %bb88 ]
+  %tmp95 = phi i32 [ 0, %bb60 ], [ %tmp119, %bb88 ]
+  %tmp96 = phi i32 [ 0, %bb60 ], [ %tmp120, %bb88 ]
+  %tmp97 = phi i32 [ 0, %bb60 ], [ %tmp121, %bb88 ]
+  %tmp104 = insertelement <8 x i32> zeroinitializer, i32 %tmp90, i64 0
+  %tmp105 = insertelement <8 x i32> %tmp104, i32 %tmp91, i64 1
+  %tmp106 = insertelement <8 x i32> %tmp105, i32 %tmp92, i64 2
+  %tmp107 = insertelement <8 x i32> %tmp106, i32 %tmp93, i64 3
+  %tmp108 = insertelement <8 x i32> %tmp107, i32 %tmp94, i64 4
+  %tmp109 = insertelement <8 x i32> %tmp108, i32 %tmp95, i64 5
+  %tmp110 = insertelement <8 x i32> %tmp109, i32 %tmp96, i64 6
+  %tmp111 = insertelement <8 x i32> %tmp110, i32 %tmp97, i64 7
+  %tmp112 = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x i32> %tmp111, <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+  %tmp113 = call <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x i32> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+  %tmp114 = extractelement <8 x i32> %tmp113, i64 0
+  %tmp115 = extractelement <8 x i32> %tmp113, i64 1
+  %tmp116 = extractelement <8 x i32> %tmp113, i64 2
+  %tmp117 = extractelement <8 x i32> %tmp113, i64 3
+  %tmp118 = extractelement <8 x i32> %tmp113, i64 4
+  %tmp119 = extractelement <8 x i32> %tmp113, i64 5
+  %tmp120 = extractelement <8 x i32> %tmp113, i64 6
+  %tmp121 = extractelement <8 x i32> %tmp113, i64 7
+  br i1 false, label %bb88, label %bb123
+
+bb123:                                            ; preds = %bb88, %bb43
+  %tmp133 = phi i32 [ 0, %bb43 ], [ %tmp114, %bb88 ]
+  %tmp134 = phi i32 [ 0, %bb43 ], [ %tmp115, %bb88 ]
+  %tmp135 = phi i32 [ 0, %bb43 ], [ %tmp116, %bb88 ]
+  %tmp136 = phi i32 [ 0, %bb43 ], [ %tmp117, %bb88 ]
+  %tmp137 = phi i32 [ 0, %bb43 ], [ %tmp118, %bb88 ]
+  %tmp138 = phi i32 [ 0, %bb43 ], [ %tmp119, %bb88 ]
+  %tmp139 = phi i32 [ 0, %bb43 ], [ %tmp120, %bb88 ]
+  %tmp140 = phi i32 [ 0, %bb43 ], [ %tmp121, %bb88 ]
+  %tmp143 = insertelement <8 x i32> zeroinitializer, i32 %tmp133, i64 0
+  %tmp144 = insertelement <8 x i32> %tmp143, i32 %tmp134, i64 1
+  %tmp145 = insertelement <8 x i32> %tmp144, i32 %tmp135, i64 2
+  %tmp146 = insertelement <8 x i32> %tmp145, i32 %tmp136, i64 3
+  %tmp147 = insertelement <8 x i32> %tmp146, i32 %tmp137, i64 4
+  %tmp148 = insertelement <8 x i32> %tmp147, i32 %tmp138, i64 5
+  %tmp149 = insertelement <8 x i32> %tmp148, i32 %tmp139, i64 6
+  %tmp150 = insertelement <8 x i32> %tmp149, i32 %tmp140, i64 7
+  %tmp151 = bitcast <8 x i32> %tmp150 to <8 x i32>
+  call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0, <8 x i32> %tmp151)
+  ret void
+}
+
+declare <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x i32>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1)
+
+declare <8 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v8i16(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)
+
+declare <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)
+
+declare void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32, <8 x i32>)
+
+!igc.functions = !{!0}
+!0 = !{void ()* @quux, !1}
+!1 = !{!2, !3}
+!2 = !{!"function_type", i32 0}
+!3 = !{!"sub_group_size", i32 16}
+

@@ -259,6 +259,11 @@ bool isFloatTyped(Instruction *I) {
   return I->getType()->isFloatTy();
 }
 
+bool isAllowedType(Instruction *I) {
+    return isFloatTyped(I) ||
+        (IGC_GET_FLAG_VALUE(VectorizerAllowI32) && I->getType()->isIntegerTy(32));
+}
+
 bool isIntrinsicSafe(Instruction *I) {
   bool Result = false;
   IntrinsicInst *IntrinsicI = llvm::dyn_cast<IntrinsicInst>(I);
@@ -297,14 +302,14 @@ bool isSafeToVectorize(Instruction *I) {
 
   // the only typed instructions we add to slices => Insert elements
   bool IsVectorTyped = I->getType()->isVectorTy();
-  bool IsFloat = isFloatTyped(I);
+  bool IsAllowedType = isAllowedType(I);
 
   bool Result =
       isPHISafe(I) || IsExtract ||
       isBinarySafe(I) || isIntrinsicSafe(I) || isAllowedStub(I);
 
   // all allowed instructions that are float typed and not vectors
-  Result = (Result && IsFloat && !IsVectorTyped);
+  Result = (Result && IsAllowedType && !IsVectorTyped);
   // always allowed
   Result |= IsFpTrunc;
   // only Float insert elements are allowed
