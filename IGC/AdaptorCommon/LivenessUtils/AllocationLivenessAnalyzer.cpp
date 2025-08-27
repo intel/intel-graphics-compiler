@@ -401,12 +401,22 @@ static bool tryFindPointerOrigin(GetElementPtrInst *Ptr, SmallVectorImpl<Instruc
   return tryFindPointerOriginImpl(Ptr->getPointerOperand(), origins, cache);
 }
 
+static bool tryFindPointerOrigin(SelectInst *Ptr, SmallVectorImpl<Instruction *> &origins,
+                                 DenseSet<Value *> &cache) {
+  return tryFindPointerOriginImpl(Ptr->getTrueValue(), origins, cache) &&
+         tryFindPointerOriginImpl(Ptr->getFalseValue(), origins, cache);
+}
+
 static bool tryFindPointerOriginImpl(Value *ptr, SmallVectorImpl<Instruction *> &origins, DenseSet<Value *> &cache) {
   if (!cache.insert(ptr).second)
     return true;
 
   if (auto *GEP = dyn_cast<GetElementPtrInst>(ptr)) {
     return tryFindPointerOrigin(GEP, origins, cache);
+  }
+
+  if (auto *select = dyn_cast<SelectInst>(ptr)) {
+    return tryFindPointerOrigin(select, origins, cache);
   }
 
   if (auto *allocaI = dyn_cast<AllocaInst>(ptr)) {
