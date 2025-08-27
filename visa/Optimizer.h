@@ -168,7 +168,7 @@ class Optimizer {
       Sched.run(KernelPressure);
     }
     // Update Jit info for max register pressure
-    kernel.fg.builder->getJitInfo()->stats.maxGRFPressure = KernelPressure;
+    kernel.fg.builder->getJitInfo()->stats.maxGRFPressurePreRA = KernelPressure;
   }
   void localSchedule() {
     LocalScheduler lSched(kernel.fg);

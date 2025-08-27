@@ -23,6 +23,7 @@ llvm::json::Value toJSON(const PERF_STATS &p) {
     {"numGRFSpillFill", p.numGRFSpillFillWeighted},
     {"GRFSpillSize", p.spillMemUsed},
     {"numCycles", p.numCycles},
+    {"maxGRFPressurePreRA", p.maxGRFPressurePreRA},
     {"maxGRFPressure", p.maxGRFPressure}
   };
 }

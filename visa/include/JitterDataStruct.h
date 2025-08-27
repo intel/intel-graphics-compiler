@@ -69,6 +69,9 @@ public:
   // Unweighted cycles count estimated by the scheduler.
   uint32_t numCycles = 0;
 
+  // Max register pressure before RA, used for GRF selection
+  uint32_t maxGRFPressurePreRA = 0;
+  // Final max register pressure
   uint32_t maxGRFPressure = 0;
 
   // These fields are currently used by IGC.
