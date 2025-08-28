@@ -697,15 +697,25 @@ bool IGCPassManager::isPrintAfter(Pass *P) {
   return false;
 }
 
+inline static std::string cleanPassName(const std::string &passName) {
+  // Remove non-alphanumeric characters from pass name
+  std::string newName = passName;
+  newName.erase(
+      remove_if(newName.begin(), newName.end(), [](char c) { return !isalnum(static_cast<unsigned char>(c)); }),
+      newName.end());
+  return newName;
+}
+
 void IGCPassManager::addPrintPass(Pass *P, bool isBefore) {
-  std::string passName = m_name + (isBefore ? "_before_" : "_after_") +
-                         (P->getPassName().startswith("Unnamed pass") ? "UnnamedPass" : std::string{P->getPassName()});
+  auto passName = P->getPassName();
+  std::string fullPassName = m_name + (isBefore ? "_before_" : "_after_") +
+                             (passName.startswith("Unnamed pass") ? "UnnamedPass" : cleanPassName(passName.str()));
 
   auto name = IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
                   .ShaderName(m_pContext->shaderName)
                   .Type(m_pContext->type)
                   .Hash(m_pContext->hash)
-                  .Pass(passName, std::optional<uint32_t>(m_pContext->m_numPasses++))
+                  .Pass(fullPassName, std::optional<uint32_t>(m_pContext->m_numPasses++))
                   .StagedInfo(m_pContext)
                   .Extension("ll");
 
