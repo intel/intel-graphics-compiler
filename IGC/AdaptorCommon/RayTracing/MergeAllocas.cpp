@@ -57,7 +57,8 @@ static AllocaInfo GetAllocaInfo(AllocaInst *alloca,
             allocationSize,
             static_cast<size_t>(
                 DL->getPrefTypeAlign(alloca->getAllocatedType()).value()),
-            0};
+            0,
+            alloca->getMetadata("uniform") != nullptr};
 }
 
 static size_t GetStartingOffset(size_t startOffset, size_t alignment) {
@@ -70,6 +71,9 @@ static size_t GetStartingOffset(size_t startOffset, size_t alignment) {
 
 static bool AddNonOverlappingAlloca(AllocaInfo *MergableAlloca,
                              AllocaInfo *NewAlloca) {
+    if (MergableAlloca->isUniform != NewAlloca->isUniform) {
+        return false;
+    }
     if (MergableAlloca->addressSpace != NewAlloca->addressSpace) {
         return false;
     }

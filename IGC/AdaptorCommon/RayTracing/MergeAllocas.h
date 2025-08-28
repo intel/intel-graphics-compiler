@@ -93,6 +93,7 @@ namespace IGC
         std::size_t alignment;
         // start offset of this alloca in top level alloca (if any)
         std::size_t offset;
+        bool isUniform;
     };
 
     class MergeAllocas : public llvm::FunctionPass
