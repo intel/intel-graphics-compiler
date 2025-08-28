@@ -1837,6 +1837,8 @@ DECLARE_IGC_REGKEY_BITMASK(UseNewInlineRaytracing, 4, "Use the new rayquery impl
                            NEW_INLINE_RAYTRACING_MASK, true)
 DECLARE_IGC_REGKEY(DWORD, AddDummySlotsForNewInlineRaytracing, 0,
                    "Add dummy rayquery slots when doing new inline raytracing", true)
+DECLARE_IGC_REGKEY(bool, UseCrossBlockLoadVectorizationForInlineRaytracing, false,
+                   "If enabled, will try to vectorize loads that are not adjacent to each other. May increase GRF pressure", true)
 DECLARE_IGC_REGKEY(bool, OverrideRayQueryThrottling, false,
                    "Force rayquery throttling (dynamic ray management) to be enabled or disabled. Default value of "
                    "this key is ignored",

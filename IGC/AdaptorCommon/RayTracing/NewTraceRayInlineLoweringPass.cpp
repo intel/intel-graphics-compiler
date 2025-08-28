@@ -522,6 +522,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       RQI->replaceAllUsesWith(getPackedData(IRB, rqObject).CandidateType);
       break;
     case GenISAIntrinsic::GenISA_TraceRayInlineRayInfo: {
+
       auto *I = cast<RayQueryInfoIntrinsic>(RQI);
       auto data = getPackedData(IRB, rqObject);
       auto *loadCommittedFromPotential = IRB.CreateICmpEQ(data.CommittedDataLocation, IRB.getInt32(PotentialHit),
@@ -532,7 +533,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
 
       switch (I->getInfoKind()) {
       default:
-        I->replaceAllUsesWith(IRB.lowerRayInfo(getStackPtr(IRB, rqObject), I, shaderTy, std::nullopt));
+        I->replaceAllUsesWith(IRB.lowerRayInfo(getStackPtr(IRB, rqObject, true), I, shaderTy, std::nullopt));
         break;
         // leave this in for now, until we prove we don't need the hack anymore
       case GEOMETRY_INDEX: {
@@ -541,9 +542,9 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
           specialPattern = forceShortCurcuitingOR_CommittedGeomIdx(IRB, I);
         }
 
-        Value *leafType = IRB.getLeafType(getStackPtr(IRB, rqObject), IRB.getInt1(I->isCommitted()));
+        Value *leafType = IRB.getLeafType(getStackPtr(IRB, rqObject, true), IRB.getInt1(I->isCommitted()));
         Value *geoIndex = IRB.getGeometryIndex(
-            getStackPtr(IRB, rqObject), I, leafType,
+            getStackPtr(IRB, rqObject, true), I, leafType,
             IRB.getInt32(I->isCommitted() ? CallableShaderTypeMD::ClosestHit : CallableShaderTypeMD::AnyHit),
             !specialPattern);
         IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(), "Invalid geometryIndex type!");

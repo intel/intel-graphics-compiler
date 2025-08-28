@@ -38,6 +38,7 @@ private:
   CodeGenContext *m_pCGCtx = nullptr;
   llvm::StructType *m_RQObjectType = nullptr;
   uint32_t m_numSlotsUsed = 0;
+  llvm::DenseMap<std::pair<llvm::BasicBlock *, llvm::Value *>, llvm::AllocaInst *> m_CrossBlockVectorizationStacks;
 
   void LowerIntrinsics(llvm::Function &F);
   bool LowerAllocations(llvm::Function &F);
@@ -142,7 +143,37 @@ private:
     IRB.CreateStore(packedData, getAtIndexFromRayQueryObject(IRB, rqObject, 1));
   }
 
-  llvm::RTBuilder::SyncStackPointerVal *getStackPtr(llvm::RTBuilder &IRB, llvm::Value *rqObject) {
+  llvm::RTBuilder::SyncStackPointerVal *getStackPtr(llvm::RTBuilder &IRB, llvm::Value *rqObject,
+                                                    bool allowXBlockVectorize = false) {
+
+    bool doXBlockVectorize =
+        allowXBlockVectorize && IGC_IS_FLAG_ENABLED(UseCrossBlockLoadVectorizationForInlineRaytracing);
+
+    // scan the basic block for continuation intrinsics. we don't want to contribute to raytracing swstack
+    if (doXBlockVectorize) {
+      for (auto &I : *IRB.GetInsertBlock())
+        if (llvm::isa<llvm::ContinuationHLIntrinsic>(&I))
+          doXBlockVectorize = false;
+    }
+
+    if (doXBlockVectorize) {
+      auto key = std::make_pair(IRB.GetInsertBlock(), rqObject);
+      if (m_CrossBlockVectorizationStacks.find(key) == m_CrossBlockVectorizationStacks.end()) {
+
+        llvm::RTBuilder::InsertPointGuard g(IRB);
+        IRB.SetInsertPoint(key.first->getParent()->getEntryBlock().getFirstNonPHI());
+        auto *SMStack =
+            IRB.CreateAlloca(IRB.getRTStack2Ty(), nullptr,
+                             VALUE_NAME("CrossBlockLoadSMStackForBlock"));
+        IRB.SetInsertPoint(key.first->getFirstNonPHI());
+        IRB.CreateMemCpy(SMStack, getStackPtr(IRB, rqObject), IRB.getSyncRTStackSize(),
+                         RayDispatchGlobalData::StackChunkSize);
+        m_CrossBlockVectorizationStacks[key] = SMStack;
+      }
+
+      return static_cast<llvm::RTBuilder::SyncStackPointerVal *>(llvm::cast<llvm::Value>(m_CrossBlockVectorizationStacks[key]));
+    }
+
     return static_cast<llvm::RTBuilder::SyncStackPointerVal *>(
         llvm::cast<llvm::Value>(IRB.CreateCall(m_Functions[GET_STACK_POINTER_FROM_RQ_OBJECT], rqObject)));
   }
