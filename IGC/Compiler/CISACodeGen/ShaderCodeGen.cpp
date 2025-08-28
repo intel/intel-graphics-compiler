@@ -1411,9 +1411,6 @@ void OptimizeIR(CodeGenContext *const pContext) {
       if (IGC_IS_FLAG_ENABLED(OCLEnableReassociate) && pContext->type == ShaderType::OPENCL_SHADER) {
         mpm.add(createReassociatePass());
       }
-      if (pContext->type == ShaderType::COMPUTE_SHADER) {
-        mpm.add(llvm::createReassociatePass());
-      }
 
       mpm.add(createPromoteConstantStructsPass());
 
