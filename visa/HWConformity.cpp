@@ -4220,7 +4220,10 @@ bool HWConformity::generateAlign1Mad(G4_BB *bb, INST_LIST_ITER iter) {
                src1->isSrcRegRegion() && src1->asSrcRegRegion()->isScalar()) {
       // Swap src0 and src1 if src1 is scalar but src0 is not, as src2 regioning
       // support is quite limited.
-      inst->swapSrc(0, 1);
+      // But don't swap if the swapping causes invalid datatype combination,
+      // e.g. src0(:w) * src1(:d) ->  src0(:d) * src1(:w)
+      if (IS_DTYPE(src0->getType()) || !IS_DTYPE(src1->getType()))
+        inst->swapSrc(0, 1);
     } else if (isLowPrecisionFloatTy(src0->getType()) &&
                src1->getType() == Type_F) {
       inst->swapSrc(0, 1);
