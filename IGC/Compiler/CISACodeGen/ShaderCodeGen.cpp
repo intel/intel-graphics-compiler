@@ -244,7 +244,8 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
         ctx.m_instrTypes.numInsts >= IGC_GET_FLAG_VALUE(CodeLoopSinkingMinSize)) {
       mpm.add(new CodeLoopSinking());
     }
-    if (IGC_IS_FLAG_DISABLED(DisableCodeScheduling) && (ctx.type == ShaderType::OPENCL_SHADER)) {
+    if (IGC_IS_FLAG_DISABLED(DisableCodeScheduling) && (ctx.type == ShaderType::OPENCL_SHADER) &&
+        (ctx.platform.isCoreChildOf(IGFX_XE_HPC_CORE) || ctx.platform.isCoreChildOf(IGFX_XE2_HPG_CORE))) {
       if (IGC_IS_FLAG_DISABLED(CodeSchedulingOnlyRecompilation) || ctx.m_retryManager.AllowCodeScheduling()) {
         mpm.add(new CodeScheduling());
       }
