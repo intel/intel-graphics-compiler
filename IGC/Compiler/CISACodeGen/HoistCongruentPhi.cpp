@@ -301,9 +301,14 @@ bool HoistCongruentPHI::hoistCongruentPhi(PHINode *phi) {
           // below to not invalidate the `insertPos` that may also
           // be in the `instMap`
         }
+        std::set<Instruction *> removed;
         for (auto &insts : instMap) {
-          insts.first->eraseFromParent();
-          insts.second->eraseFromParent();
+          if (removed.insert(insts.first).second) {
+            insts.first->eraseFromParent();
+          }
+          if (removed.insert(insts.second).second) {
+            insts.second->eraseFromParent();
+          }
         }
         changed = true;
       }
