@@ -1312,12 +1312,12 @@ Type *JointMatrixFuncsResolutionPass::TryFindTargetExtensionTypeOfOpaquePtr(Valu
       auto aiTy = ai->getAllocatedType();
       if (IGCLLVM::isTargetExtTy(aiTy))
         return aiTy;
-    } else if (auto *ci = dyn_cast<CallInst>(use)) {
-      auto funcReturnType = ci->getFunction()->getReturnType();
-      if (IGCLLVM::isTargetExtTy(funcReturnType))
-        return funcReturnType;
-    } else if (auto *spaceCast = dyn_cast<AddrSpaceCastInst>(use)) {
-      return TryFindTargetExtensionTypeOfOpaquePtr(spaceCast->getPointerOperand());
+    } else if (auto *cast = dyn_cast<CastInst>(use)) {
+      return TryFindTargetExtensionTypeOfOpaquePtr(cast->getOperand(0));
+    } else if (auto *gep = dyn_cast<GetElementPtrInst>(use)) {
+      auto gepTy = gep->getResultElementType();
+      if (IGCLLVM::isTargetExtTy(gepTy))
+        return gepTy;
     }
   }
 
@@ -1334,11 +1334,8 @@ Type *JointMatrixFuncsResolutionPass::TryFindTypeOfOpaquePtr(Value *V) {
     if (auto *ai = dyn_cast<AllocaInst>(use)) {
       auto aiTy = ai->getAllocatedType();
       return aiTy;
-    } else if (auto *ci = dyn_cast<CallInst>(use)) {
-      auto funcReturnType = ci->getFunction()->getReturnType();
-      return funcReturnType;
-    } else if (auto *spaceCast = dyn_cast<AddrSpaceCastInst>(use)) {
-      return TryFindTypeOfOpaquePtr(spaceCast->getPointerOperand());
+    } else if (auto *cast = dyn_cast<CastInst>(use)) {
+      return TryFindTypeOfOpaquePtr(cast->getOperand(0));
     } else if (auto *gep = dyn_cast<GetElementPtrInst>(use)) {
       return gep->getResultElementType();
     } else if (auto *bitcast = dyn_cast<BitCastInst>(use)) {
@@ -1470,7 +1467,10 @@ Instruction *JointMatrixFuncsResolutionPass::ResolvePrefetch(CallInst *CI) {
     ptrElemType = IGCLLVM::getNonOpaquePtrEltTy(ptrType);
   }
 
-  IGC_ASSERT_MESSAGE(ptrElemType, "Pointer type not found");
+  if (!ptrElemType) {
+    m_Ctx->EmitError("Pointer type not found when resolving prefetch", ptrVal);
+    return nullptr;
+  }
 
   if (StructType *structTy = dyn_cast<StructType>(ptrElemType)) {
     if (structTy->getNumElements() == 1) {
@@ -2288,8 +2288,11 @@ bool JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
 #if LLVM_VERSION_MAJOR >= 16
     if (IGCLLVM::isOpaquePointerTy(operand0->getType())) {
       chainBaseTy = TryFindTargetExtensionTypeOfOpaquePtr(operand0);
-      IGC_ASSERT_MESSAGE(chainBaseTy, "__spirv_AccessChain call 1st argument must be "
-                                      "pointer to target extension type.");
+
+      if (!chainBaseTy) {
+        m_Ctx->EmitError("__spirv_AccessChain call 1st argument must be pointer to target extension type", operand0);
+        continue;
+      }
     } else
 #endif
     {
