@@ -326,6 +326,14 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForPrefetch(llvm::Cal
   // explicit element size as arg.
   PointerType *PTy = dyn_cast<PointerType>(I.getArgOperand(0)->getType());
   IGC_ASSERT(PTy);
+
+  // As of today there's no "OpUntypedPrefetch" which as previous comments mentions,
+  // is needed to implement this prefetch correctly on opaque pointers.
+  // It will of course result in performance penalty and needs to be changed once
+  // "OpUntypedPrefetch" is ready.
+  if (IGCLLVM::isOpaquePointerTy(PTy))
+    return;
+
   args.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()),
                                   IGCLLVM::getNonOpaquePtrEltTy(PTy)->getPrimitiveSizeInBits() / 8));
 
