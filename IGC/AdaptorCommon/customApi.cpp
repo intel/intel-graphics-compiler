@@ -27,7 +27,6 @@ SPDX-License-Identifier: MIT
 #include "3d/common/iStdLib/File.h"
 #endif
 
-
 namespace {
 
 #ifndef DRIVER_BUILD_ID

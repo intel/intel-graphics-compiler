@@ -54,7 +54,7 @@ static const char *timerNames[static_cast<int>(TimerID::NUM_TIMERS)] = {
 
 #define CLOCK_TYPE CLOCK_MONOTONIC
 
-#if   !defined(_WIN32)
+#if !defined(_WIN32)
 bool QueryPerformanceFrequency(LARGE_INTEGER *lpFrequency) {
   struct timespec Res;
   int iRet;
