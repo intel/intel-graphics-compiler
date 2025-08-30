@@ -8575,8 +8575,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_source_value: {
     m_encoder->Copy(m_currShader->GetNULL(), GetSymbol(inst->getOperand(0)));
     m_encoder->Push();
-    m_encoder->Fence(false, false, false, false, false, false, false, true);
-    m_encoder->Push();
     break;
   }
   case GenISAIntrinsic::GenISA_movcr: {

@@ -17,8 +17,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "SynchronizationObjectCoalescing.hpp"
 #include "visa_igc_common_header.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/Analysis/CFG.h"
 #include <utility>
 #include <map>
 
@@ -288,9 +286,6 @@ private:
                                            WriteSyncAtomic | ReadSyncAtomic | ReadSyncWrite | AtomicSyncAtomic);
 
   ////////////////////////////////////////////////////////////////////////
-  void CreateSourceValueInst(std::vector<llvm::Instruction *> &pAtomicInstToBeSourced, llvm::Instruction *pFenceInst);
-
-  ////////////////////////////////////////////////////////////////////////
   void EraseRedundantInst(llvm::Instruction *pInst);
 
   ////////////////////////////////////////////////////////////////////////
@@ -332,7 +327,6 @@ private:
 
   ////////////////////////////////////////////////////////////////////////
   bool IsRequiredForAtomicOperationsOrdering(const llvm::Instruction *pSourceInst,
-                                             std::vector<llvm::Instruction *> &pAtomicInstToBeSourced,
                                              bool onlyGlobalAtomics = false) const;
 
   ////////////////////////////////////////////////////////////////////////
@@ -446,7 +440,6 @@ private:
   std::vector<llvm::Instruction *> m_LscMemoryFences;
   std::vector<llvm::Instruction *> m_UntypedMemoryFences;
   std::vector<llvm::Instruction *> m_ThreadGroupBarriers;
-  std::unordered_set<llvm::Instruction *> m_SourcedAtomicInstructions;
 
   // this variable holds a mapping from a basic block to its memory instructions ordered by their occurrences in it
   // (the initial index of line of this basic block - the number of instructions preceding an instruction it its basic
@@ -543,107 +536,6 @@ bool SynchronizationObjectCoalescing::ProcessFunction() {
   InvalidateMembers();
   GatherInstructions();
   return FindRedundancies();
-}
-
-// Referenced from MemoryModelPass
-inline PHINode *FindDominatingPhi(DominatorTree &DT, Instruction *def, BasicBlock *postDominator) {
-  IGC_ASSERT(def->getParent() != postDominator);
-  IGC_ASSERT(!DT.dominates(def, postDominator));
-  SmallPtrSet<PHINode *, 8> seen;
-  SmallVector<User *, 8> worklist(def->users());
-  while (!worklist.empty()) {
-    PHINode *phi = dyn_cast<PHINode>(worklist.pop_back_val());
-    if (phi == nullptr || seen.count(phi) > 0) {
-      continue;
-    }
-    if (phi->getParent() == postDominator || DT.dominates(phi, postDominator)) {
-      return phi;
-    }
-    seen.insert(phi);
-  }
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////
-/// @brief Fence Instruction responsible for only ordering of atomic Instructions
-/// can be replaced with Source Value Intrinsic which will still maintain
-/// the order of Instructions
-void SynchronizationObjectCoalescing::CreateSourceValueInst(std::vector<llvm::Instruction *> &pAtomicInstToBeSourced,
-                                                            llvm::Instruction *pFenceInst) {
-  IGC_ASSERT(pAtomicInstToBeSourced.size() > 0);
-  // reversing the list to source the atomic instructions in the order
-  reverse(pAtomicInstToBeSourced.begin(), pAtomicInstToBeSourced.end());
-  Function *funcPtr = GenISAIntrinsic::getDeclaration(pFenceInst->getModule(), GenISAIntrinsic::GenISA_source_value);
-  BasicBlock *fenceBB = pFenceInst->getParent();
-
-  Function *F = pAtomicInstToBeSourced[0]->getFunction();
-  DominatorTree DT(*F);
-  PostDominatorTree PDT(*F);
-  LoopInfo LI(DT);
-
-  for (llvm::Instruction *atomicInst : pAtomicInstToBeSourced) {
-    // Making sure that the Fence Inst is potentially reachable from the atomic Instruction.
-    if (!isPotentiallyReachable(atomicInst, pFenceInst, nullptr, &DT, &LI)) {
-      continue;
-    }
-
-    BasicBlock *atomicBB = atomicInst->getParent();
-    BasicBlock *fenceDominator = fenceBB;
-    Instruction *insertPoint = atomicBB->getTerminator();
-    Value *sourceVal = cast<GenIntrinsicInst>(atomicInst);
-
-    // TODO: Determining Insert point can be improved which can postpone the source value intrinsic as long as possible.
-    // Similar analysis is done in FindOptimalInsertPoints() in ApplyCacheControls.cpp
-
-    // Check if fence Instruction BB post dominates atomic Instruction BB
-    // Else find the BB that is a predecessor of fence BB and post dominates atomic BB.
-    // If we don't find one, then the insert point is near the terminator of atomic BB
-    while (fenceDominator && fenceDominator != atomicBB) {
-      if (PDT.dominates(fenceDominator, atomicBB)) {
-        // If fence instruction is in same BB, then use fence as insert point
-        // Else use the terminator of fenceDominator as insert point
-        insertPoint = fenceBB == fenceDominator ? pFenceInst : fenceDominator->getTerminator();
-        // It's possible that the atomic instruction does not dominate
-        // the post-dominator, find a PHI user of the atomic instruction
-        // that dominates the post-dominator.
-        if (!DT.dominates(atomicBB, fenceDominator)) {
-          PHINode *phi = FindDominatingPhi(DT, atomicInst, fenceDominator);
-          if (phi) {
-            sourceVal = phi;
-          } else {
-            // Fallback to inserting the source value in the basic
-            // block with the atomic instruction.
-            insertPoint = atomicBB->getTerminator();
-          }
-        }
-        break;
-      }
-      fenceDominator = fenceDominator->getSinglePredecessor();
-    }
-    // If Fence is present in same BB as atomic, then insert at Fence Instruction
-    if (fenceBB == atomicBB) {
-      insertPoint = pFenceInst;
-    }
-
-    IRBuilder<> builder(insertPoint);
-    Type *sourceValType = sourceVal->getType();
-
-    // Source value intrinsic accepts only i32.
-    if (sourceValType->isIntegerTy()) {
-      sourceVal = builder.CreateZExtOrTrunc(sourceVal, builder.getInt32Ty());
-    } else if (sourceValType->isFloatingPointTy()) {
-      if (sourceValType->isFloatTy()) {
-        sourceVal = builder.CreateBitCast(sourceVal, builder.getInt32Ty());
-      } else {
-        sourceVal = builder.CreateFPToUI(sourceVal, builder.getInt32Ty());
-      }
-    } else {
-      IGC_ASSERT_MESSAGE(0, "Unexpected type");
-    }
-
-    builder.CreateCall(funcPtr, {sourceVal});
-    m_SourcedAtomicInstructions.insert(atomicInst);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -848,13 +740,7 @@ bool SynchronizationObjectCoalescing::FindRedundancies() {
           }
           SynchronizationCaseMask referenceSyncCaseMask = GetStrictSynchronizationMask(pInst);
           bool isObligatory = (syncCaseMask & referenceSyncCaseMask) != 0;
-
-          std::vector<llvm::Instruction *> atomicInstToBeSourced;
-          if (!isObligatory) {
-            isObligatory =
-                IsRequiredForAtomicOperationsOrdering(pInst, atomicInstToBeSourced, true /*onlyGlobalAtomics*/);
-          }
-
+          isObligatory |= IsRequiredForAtomicOperationsOrdering(pInst, true /*onlyGlobalAtomics*/);
           bool verifyUnsynchronizedInstructions = IsFenceOperation(pInst);
           verifyUnsynchronizedInstructions &= (!isObligatory || syncCaseMask == ReadSyncWrite);
 
@@ -881,9 +767,6 @@ bool SynchronizationObjectCoalescing::FindRedundancies() {
 #if _DEBUG
             RegisterRedundancyExplanation(pInst, ExplanationEntry::GlobalMemoryRedundancy);
 #endif // _DEBUG
-            if (IGC_IS_FLAG_ENABLED(ReplaceAtomicFenceWithSourceValue) && atomicInstToBeSourced.size() > 0) {
-              CreateSourceValueInst(atomicInstToBeSourced, const_cast<Instruction *>(pInst));
-            }
             EraseRedundantGlobalScope(pInst);
             isModified = true;
             SetLocalMemoryInstructionMask();
@@ -948,12 +831,7 @@ bool SynchronizationObjectCoalescing::FindRedundancies() {
           GetSynchronizationMaskForAllResources(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask);
       SynchronizationCaseMask referenceSyncCaseMask = GetStrictSynchronizationMask(pInst);
       bool isObligatory = (syncCaseMask & referenceSyncCaseMask) != 0;
-
-      std::vector<llvm::Instruction *> atomicInstToBeSourced;
-      if (!isObligatory) {
-        isObligatory = IsRequiredForAtomicOperationsOrdering(pInst, atomicInstToBeSourced);
-      }
-
+      isObligatory |= IsRequiredForAtomicOperationsOrdering(pInst);
       bool verifyUnsynchronizedInstructions = IsFenceOperation(pInst);
       verifyUnsynchronizedInstructions &= (!isObligatory || syncCaseMask == ReadSyncWrite);
 
@@ -969,9 +847,6 @@ bool SynchronizationObjectCoalescing::FindRedundancies() {
 #if _DEBUG
         RegisterRedundancyExplanation(pInst, ExplanationEntry::StrictRedundancy);
 #endif // _DEBUG
-        if (IGC_IS_FLAG_ENABLED(ReplaceAtomicFenceWithSourceValue) && atomicInstToBeSourced.size() > 0) {
-          CreateSourceValueInst(atomicInstToBeSourced, const_cast<Instruction *>(pInst));
-        }
         EraseRedundantInst(pInst);
         isModified = true;
       }
@@ -1856,9 +1731,8 @@ SynchronizationObjectCoalescing::GetUnsynchronizedForwardInstructionMask(const l
 /// operations present before the fence (in program order)
 /// @param pSourceInst the source synchronization instruction
 /// @param onlyGlobalAtomics check only TGM and UGM atomic operations
-bool SynchronizationObjectCoalescing::IsRequiredForAtomicOperationsOrdering(
-    const llvm::Instruction *pSourceInst, std::vector<llvm::Instruction *> &pAtomicInstToBeSourced,
-    bool onlyGlobalAtomics /*= false*/) const {
+bool SynchronizationObjectCoalescing::IsRequiredForAtomicOperationsOrdering(const llvm::Instruction *pSourceInst,
+                                                                            bool onlyGlobalAtomics /*= false*/) const {
   if (!IsFenceOperation(pSourceInst)) {
     // Not a fence, nothing to check
     return false;
@@ -1908,10 +1782,6 @@ bool SynchronizationObjectCoalescing::IsRequiredForAtomicOperationsOrdering(
     {
       isPotentiallyUnsynchronizedAtomic = false;
       // Lambda that checks if a fence operation synchronizes the atomic operation.
-      // This can be improved to detect the users of atomic instruction and end the search for fences once we find the
-      // user. This user is essentially same as Source Value Intrinsic, however it can be reordered in visa affecting
-      // the execution order of atomic instructions. If we can find a way to treat this user as a special instruction
-      // and avoid reordering, we can skip creating new source value instruction.
       std::function<bool(const llvm::Instruction *)> IsBoundaryInst = [this, &atomicPointerMemoryInstructionMask,
                                                                        &isPotentiallyUnsynchronizedAtomic,
                                                                        pSourceInst](const llvm::Instruction *pInst) {
@@ -1970,22 +1840,7 @@ bool SynchronizationObjectCoalescing::IsRequiredForAtomicOperationsOrdering(
       if (!substituteFenceFound) {
         // Found an atomic operation that requires the source fence
         // instruction for correct memory ordering.
-
-        // If ReplaceAtomicFenceWithSourceValue is true, we can replace this fence with GenISA_source_value.
-        // This will source the atomic instruction and still maintains the order of atomic instructions.
-        // Else return true marking the fence instruction as Obligatory.
-
-        if (IGC_IS_FLAG_ENABLED(ReplaceAtomicFenceWithSourceValue)) {
-          // If a previous fence was replaced with source value intrinsic, GetVisibleMemoryInstructions will add the
-          // same atomic instruction again for the next fence resulting in multiple source value intrinsics but we need
-          // it to be sourced only once. Hence we check if it was already sourced previously. Continues to check all
-          // valid atomic Instructions to be sourced.
-          if (m_SourcedAtomicInstructions.find(const_cast<Instruction *>(pInst)) == m_SourcedAtomicInstructions.end()) {
-            pAtomicInstToBeSourced.push_back(const_cast<Instruction *>(pInst));
-          }
-        } else {
-          return true;
-        }
+        return true;
       }
     }
   }
@@ -2147,7 +2002,6 @@ void SynchronizationObjectCoalescing::InvalidateMembers() {
   m_OrderedFenceInstructionsInBasicBlockCache.clear();
   m_OrderedBarrierInstructionsInBasicBlockCache.clear();
   m_BasicBlockMemoryInstructionMaskCache.clear();
-  m_SourcedAtomicInstructions.clear();
 #if _DEBUG
   m_ExplanationEntries.clear();
 #endif // _DEBUG
