@@ -131,8 +131,8 @@ struct SVecInsEltInfo {
   llvm::InsertElementInst *IEI;
   llvm::Value *Elt;
 
-  // EEI, if not nullptr, is used as scalar operand of IEI and is the same as
-  // (FromVec, FromVec_eltIx).
+  // If Elt is null, EEI must not be null. EEI is used as scalar operand
+  // in IEI and is the same as (FromVec, FromVec_eltIx).
   llvm::ExtractElementInst *EEI;
   llvm::Value *FromVec;
   int FromVec_eltIx;

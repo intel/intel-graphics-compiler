@@ -887,16 +887,16 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(InsertElementInst *FirstIEI
     IGC_ASSERT_MESSAGE(IEI_ix < nelts, "ICE: IEI's index out of bound!");
     SVecInsEltInfo &InsEltInfo = AllIEIs[IEI_ix];
     if (InsEltInfo.IEI) {
-      // This element is inserted more than once, skip.
+      // One element is inserted more than once, skip.
       return false;
     }
     InsEltInfo.IEI = I;
     InsEltInfo.Elt = E;
     InsEltInfo.FromVec = V;
     InsEltInfo.FromVec_eltIx = V_ix;
-
-    // So far, E is never nullptr (could be in the future)
-    InsEltInfo.EEI = dyn_cast_or_null<ExtractElementInst>(E);
+    if (E) {
+      InsEltInfo.EEI = dyn_cast<ExtractElementInst>(E);
+    }
 
     if (!I->hasOneUse()) {
       break;
@@ -923,24 +923,19 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(InsertElementInst *FirstIEI
     if (tV == nullptr)
       return false;
 
-    // Expect all IEIs are in the same DeSSA CC (DeSSA special-handles IEIs)
+    // Expect node values for all IEIs are identical. In general, if they
+    // are in the same DeSSA CC, that would be fine.
     Value *tV_nv = m_DeSSA->getNodeValue(tV);
     if (V_root != getRootValue(tV_nv))
       return false;
 
     Value *E = AllIEIs[i].Elt;
-    if (!E || isa<Constant>(E)) {
-      // constant is okay for either non-uniform or uniform.
-      continue;
-    }
     Value *FromVec = AllIEIs[i].FromVec;
-    if (FromVec) {
-      Value *FromVec_nv = m_DeSSA->getNodeValue(FromVec);
-      // check if FromVec has been coalesced with IEI already by DeSSA.
-      // (Wouldn't happen under current DeSSA, but might happen in future)
-      if (V_root == getRootValue(FromVec_nv))
-        return false;
-    }
+    Value *FromVec_nv = m_DeSSA->getNodeValue(FromVec);
+    // check if FromVec has been coalesced with IEI already by DeSSA.
+    // (Wouldn't happen under current DeSSA, but might happen in future)
+    if (V_root == getRootValue(FromVec_nv))
+      return false;
 
     // Make sure FromVec or E have the same uniformness as V.
     if ((E && V_dep != m_WIA->whichDepend(E)) || (FromVec && V_dep != m_WIA->whichDepend(FromVec)))
@@ -974,13 +969,17 @@ Value *VariableReuseAnalysis::traceAliasValue(Value *V) {
 }
 
 //
-// Returns true if there is the following pattern; otherwise return false.
+// Returns true if the following is true
 //     IEI = insertElement  <vectorType> Vec,  S,  <constant IEI_ix>
-//   1. S is from another vector V.
-//      S = extractElement <vectorType> V, <constant V_ix>
-//      In this case, S is the element denoted by (V, V_ix)
-//   2. otherwise, V=nullptr, V_ix=0.
-//      S is a candidate and could be alias to the vector.
+// Return false, otherwise.
+//
+// When the above condition is true, V and V_ix are used for the
+// following cases:
+//     1. S is from another vector V.
+//        S = extractElement <vectorType> V, <constant V_ix>
+//        S is the element denoted by (V, V_ix)
+//     2. otherwise, V=nullptr, V_ix=0.
+//        S is a candidate inserted and could be alias to the vector.
 //
 //  Input: IEI
 //  Output: IEI_ix, S, V, V_ix
@@ -1000,9 +999,9 @@ bool VariableReuseAnalysis::getElementValue(InsertElementInst *IEI, int &IEI_ix,
   IEI_ix = (int)CI->getZExtValue();
 
   Value *elem0 = IEI->getOperand(1);
-  if (hasBeenPayloadCoalesced(elem0) || isOrCoalescedWithArg(elem0)) {
-    // If elem0 has been payload-coalesced or it has been aliased to
-    // an argument, skip it.
+  if (hasBeenPayloadCoalesced(elem0) || isa<Constant>(elem0) || isOrCoalescedWithArg(elem0)) {
+    // If elem0 has been payload-coalesced, is constant,
+    // or it has been aliased to an argument, skip it.
     return false;
   }
 
@@ -1047,10 +1046,11 @@ void VariableReuseAnalysis::InsertElementAliasing(Function *F) {
 
   // IGC Key VectorAlias controls vectorAlias optimiation.
   //
-  // VectorAlias (also from m_pCtx->getVectorCoalescingControl())
-  //   0x0: disable vector aliasing
-  //   0x1: subvec aliasing for isolated values (getRootValue()=null)
-  //   0x2: subvec aliasing for both isolated and non-isolated value)
+  // Do it if VectorAlias != 0.
+  // VectorAlias=0x1: subvec aliasing for isolated values
+  // (getRootValue()=null)
+  //            =0x2: subvec aliasing for both isolated and non-isolated
+  //            value)
   const auto control = (m_pCtx->getVectorCoalescingControl() & 0x3);
   // To avoid increasing GRF pressure, skip if F is too large or not an entry
   const int32_t NumBBThreshold = IGC_GET_FLAG_VALUE(VectorAliasBBThreshold);
@@ -1253,7 +1253,6 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &All
       isSubCandidate = false;
     }
 
-    // So far, Elt is never nullptr (could be in the future)
     if (Elt && Sub == nullptr && skipScalarAliaser(BB, Elt)) {
       // Skip scalar coalescing
       isSubCandidate = false;
@@ -1434,11 +1433,8 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateUse(Value 
       }
     } else if (StoreInst *SI = dyn_cast<StoreInst>(Val)) {
       retSt = AState::TARGET;
-    } else if (CallInst *CallI = dyn_cast<CallInst>(Val)) {
-      if (CallI->isInlineAsm())
-        retSt = AState::TARGET;
-      else
-        return AState::SKIP;
+    } else if (isa<CallInst>(Val)) {
+      return AState::SKIP;
     }
   }
   return retSt;
@@ -1464,9 +1460,7 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateDef(Value 
     }
   } else if (LoadInst *SI = dyn_cast<LoadInst>(Val)) {
     return AState::TARGET;
-  } else if (CallInst *CallI = dyn_cast<CallInst>(Val)) {
-    if (CallI->isInlineAsm())
-      return AState::TARGET;
+  } else if (isa<CallInst>(Val)) {
     return AState::SKIP;
   }
   return AState::OK;
@@ -1474,7 +1468,7 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateDef(Value 
 
 // Vector alias disables extractMask optimization. This function
 // checks if extractMask optim can be applied. And the caller
-// will decide whether to favor extractMask optimization or not.
+// will decide whether to favor extractMask optimization.
 bool VariableReuseAnalysis::isExtractMaskCandidate(Value *V) const {
   auto BIT = [](int n) { return (uint32_t)(1 << n); };
 
