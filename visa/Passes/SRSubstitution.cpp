@@ -772,18 +772,20 @@ unsigned short SRSubPassAfterRA::allocateS0(unsigned short UQNum) {
       if (!UsedS0SubReg.isSet(freeSRSub) &&
           !UsedS0SubReg.isSet(freeSRSub + 1)) {
         find = true;
-        S0Index += 2;
+        S0Index = freeSRSub + 2;
         break;
       }
     } else if ((UQNum == 1) && !UsedS0SubReg.isSet(freeSRSub)) {
       find = true;
-      S0Index++;
+      S0Index = freeSRSub + 1;
       break;
     }
-    S0Index++;
   }
 
   if (find) {
+    if (S0Index >= S0SubRegNum) {
+      S0Index = 0;
+    }
     return freeSRSub;
   }
 
@@ -792,15 +794,14 @@ unsigned short SRSubPassAfterRA::allocateS0(unsigned short UQNum) {
       if (!UsedS0SubReg.isSet(freeSRSub) &&
           !UsedS0SubReg.isSet(freeSRSub + 1)) {
         find = true;
-        S0Index += 2;
+        S0Index = freeSRSub + 2;
         break;
       }
     } else if ((UQNum == 1) && !UsedS0SubReg.isSet(freeSRSub)) {
       find = true;
-      S0Index++;
+      S0Index = freeSRSub + 1;
       break;
     }
-    S0Index++;
   }
 
   if (S0Index >= S0SubRegNum) {
