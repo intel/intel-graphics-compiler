@@ -65,6 +65,9 @@ public:
   bool EnableLSCForLdRawAndStoreRawOnDG2() const override { return true; }
 
   bool supportLscSamplerRouting() const override { return false; }
+
+  bool EnableShaderDebugHashCodeInKernel() const override { return true; }
+
 };
 
 // In case some cpas are specific to NEO
