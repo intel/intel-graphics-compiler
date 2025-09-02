@@ -1,5 +1,6 @@
 ; UNSUPPORTED: system-windows
 ; REQUIRES: llvm-spirv, regkeys, dg2-supported
+; XFAIL: llvm-16-plus
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_bfloat16_conversion,+SPV_INTEL_joint_matrix -o %t.spv

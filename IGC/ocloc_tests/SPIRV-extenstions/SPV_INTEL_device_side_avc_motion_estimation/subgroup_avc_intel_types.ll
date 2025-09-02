@@ -20,66 +20,54 @@
 ; }
 
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys, dg2-supported
+; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-16-plus
 
-; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_device_side_avc_motion_estimation -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
+; LLVM with opaque pointers:
+; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_device_side_avc_motion_estimation -o %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
-; CHECK-LLVM: %spirv.AvcMcePayloadINTEL = type opaque
-; CHECK-LLVM: %spirv.AvcImePayloadINTEL = type opaque
-; CHECK-LLVM: %spirv.AvcRefPayloadINTEL = type opaque
-; CHECK-LLVM: %spirv.AvcSicPayloadINTEL = type opaque
-; CHECK-LLVM: %spirv.AvcMceResultINTEL = type opaque
-; CHECK-LLVM: %spirv.AvcImeResultINTEL = type opaque
-; CHECK-LLVM: %spirv.AvcRefResultINTEL = type opaque
-; CHECK-LLVM: %spirv.AvcSicResultINTEL = type opaque
-; CHECK-LLVM: %spirv.AvcImeResultSingleReferenceStreamoutINTEL = type opaque
-; CHECK-LLVM: %spirv.AvcImeResultDualReferenceStreamoutINTEL = type opaque
-; CHECK-LLVM: %spirv.AvcImeSingleReferenceStreaminINTEL = type opaque
-; CHECK-LLVM: %spirv.AvcImeDualReferenceStreaminINTEL = type opaque
+; CHECK-LLVM: spirv.AvcMcePayloadINTEL
+; CHECK-LLVM: spirv.AvcImePayloadINTEL
+; CHECK-LLVM: spirv.AvcRefPayloadINTEL
+; CHECK-LLVM: spirv.AvcSicPayloadINTEL
+; CHECK-LLVM: spirv.AvcMceResultINTEL
+; CHECK-LLVM: spirv.AvcImeResultINTEL
+; CHECK-LLVM: spirv.AvcRefResultINTEL
+; CHECK-LLVM: spirv.AvcSicResultINTEL
+; CHECK-LLVM: spirv.AvcImeResultSingleReferenceStreamoutINTEL
+; CHECK-LLVM: spirv.AvcImeResultDualReferenceStreamoutINTEL
+; CHECK-LLVM: spirv.AvcImeSingleReferenceStreaminINTEL
+; CHECK-LLVM: spirv.AvcImeDualReferenceStreaminINTEL
 
 target datalayout = "e-p:32:32-i64:64-v16:16-v24:32-v32:32-v48:64-v96:128-v192:256-v256:256-v512:512-v1024:1024"
 target triple = "spir"
 
-%opencl.intel_sub_group_avc_mce_payload_t = type opaque
-%opencl.intel_sub_group_avc_ime_payload_t = type opaque
-%opencl.intel_sub_group_avc_ref_payload_t = type opaque
-%opencl.intel_sub_group_avc_sic_payload_t = type opaque
-%opencl.intel_sub_group_avc_mce_result_t = type opaque
-%opencl.intel_sub_group_avc_ime_result_t = type opaque
-%opencl.intel_sub_group_avc_ref_result_t = type opaque
-%opencl.intel_sub_group_avc_sic_result_t = type opaque
-%opencl.intel_sub_group_avc_ime_result_single_reference_streamout_t = type opaque
-%opencl.intel_sub_group_avc_ime_result_dual_reference_streamout_t = type opaque
-%opencl.intel_sub_group_avc_ime_single_reference_streamin_t = type opaque
-%opencl.intel_sub_group_avc_ime_dual_reference_streamin_t = type opaque
-
 ; Function Attrs: noinline nounwind optnone
 define spir_func void @foo() #0 {
 entry:
-  %payload_mce = alloca %opencl.intel_sub_group_avc_mce_payload_t*, align 4
-  %payload_ime = alloca %opencl.intel_sub_group_avc_ime_payload_t*, align 4
-  %payload_ref = alloca %opencl.intel_sub_group_avc_ref_payload_t*, align 4
-  %payload_sic = alloca %opencl.intel_sub_group_avc_sic_payload_t*, align 4
-  %result_mce = alloca %opencl.intel_sub_group_avc_mce_result_t*, align 4
-  %result_ime = alloca %opencl.intel_sub_group_avc_ime_result_t*, align 4
-  %result_ref = alloca %opencl.intel_sub_group_avc_ref_result_t*, align 4
-  %result_sic = alloca %opencl.intel_sub_group_avc_sic_result_t*, align 4
-  %sstreamout = alloca %opencl.intel_sub_group_avc_ime_result_single_reference_streamout_t*, align 4
-  %dstreamout = alloca %opencl.intel_sub_group_avc_ime_result_dual_reference_streamout_t*, align 4
-  %sstreamin = alloca %opencl.intel_sub_group_avc_ime_single_reference_streamin_t*, align 4
-  %dstreamin = alloca %opencl.intel_sub_group_avc_ime_dual_reference_streamin_t*, align 4
-  store %opencl.intel_sub_group_avc_ime_payload_t* null, %opencl.intel_sub_group_avc_ime_payload_t** %payload_ime, align 4
-  store %opencl.intel_sub_group_avc_ref_payload_t* null, %opencl.intel_sub_group_avc_ref_payload_t** %payload_ref, align 4
-  store %opencl.intel_sub_group_avc_sic_payload_t* null, %opencl.intel_sub_group_avc_sic_payload_t** %payload_sic, align 4
-  store %opencl.intel_sub_group_avc_ime_result_t* null, %opencl.intel_sub_group_avc_ime_result_t** %result_ime, align 4
-  store %opencl.intel_sub_group_avc_ref_result_t* null, %opencl.intel_sub_group_avc_ref_result_t** %result_ref, align 4
-  store %opencl.intel_sub_group_avc_sic_result_t* null, %opencl.intel_sub_group_avc_sic_result_t** %result_sic, align 4
-  store %opencl.intel_sub_group_avc_ime_result_single_reference_streamout_t* null, %opencl.intel_sub_group_avc_ime_result_single_reference_streamout_t** %sstreamout, align 4
-  store %opencl.intel_sub_group_avc_ime_result_dual_reference_streamout_t* null, %opencl.intel_sub_group_avc_ime_result_dual_reference_streamout_t** %dstreamout, align 4
-  store %opencl.intel_sub_group_avc_ime_single_reference_streamin_t* null, %opencl.intel_sub_group_avc_ime_single_reference_streamin_t** %sstreamin, align 4
-  store %opencl.intel_sub_group_avc_ime_dual_reference_streamin_t* null, %opencl.intel_sub_group_avc_ime_dual_reference_streamin_t** %dstreamin, align 4
+  %payload_mce = alloca target("spirv.AvcMcePayloadINTEL"), align 4
+  %payload_ime = alloca target("spirv.AvcImePayloadINTEL"), align 4
+  %payload_ref = alloca target("spirv.AvcRefPayloadINTEL"), align 4
+  %payload_sic = alloca target("spirv.AvcSicPayloadINTEL"), align 4
+  %result_mce = alloca target("spirv.AvcMceResultINTEL"), align 4
+  %result_ime = alloca target("spirv.AvcImeResultINTEL"), align 4
+  %result_ref = alloca target("spirv.AvcRefResultINTEL"), align 4
+  %result_sic = alloca target("spirv.AvcSicResultINTEL"), align 4
+  %sstreamout = alloca target("spirv.AvcImeResultSingleReferenceStreamoutINTEL"), align 4
+  %dstreamout = alloca target("spirv.AvcImeResultDualReferenceStreamoutINTEL"), align 4
+  %sstreamin = alloca target("spirv.AvcImeSingleReferenceStreaminINTEL"), align 4
+  %dstreamin = alloca target("spirv.AvcImeDualReferenceStreaminINTEL"), align 4
+  store target("spirv.AvcImePayloadINTEL") zeroinitializer, ptr %payload_ime, align 4
+  store target("spirv.AvcRefPayloadINTEL") zeroinitializer, ptr %payload_ref, align 4
+  store target("spirv.AvcSicPayloadINTEL") zeroinitializer, ptr %payload_sic, align 4
+  store target("spirv.AvcImeResultINTEL") zeroinitializer, ptr %result_ime, align 4
+  store target("spirv.AvcRefResultINTEL") zeroinitializer, ptr %result_ref, align 4
+  store target("spirv.AvcSicResultINTEL") zeroinitializer, ptr %result_sic, align 4
+  store target("spirv.AvcImeResultSingleReferenceStreamoutINTEL") zeroinitializer, ptr %sstreamout, align 4
+  store target("spirv.AvcImeResultDualReferenceStreamoutINTEL") zeroinitializer, ptr %dstreamout, align 4
+  store target("spirv.AvcImeSingleReferenceStreaminINTEL") zeroinitializer, ptr %sstreamin, align 4
+  store target("spirv.AvcImeDualReferenceStreaminINTEL") zeroinitializer, ptr %dstreamin, align 4
   ret void
 }
 

@@ -8,9 +8,9 @@
 ; Khronos translator emits memcpy as-it, which is later optimized to memset by compiler.
 ; Test if in both cases AlignmentAnalysis pass assigns correct allignment to pointer.
 
-; REQUIRES: regkeys, spirv-as, pvc-supported, llvm-16-plus
+; REQUIRES: regkeys, spirv-as, pvc-supported, llvm-15-or-older
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
-; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1 PrintToConsole=1 PrintAfter=AlignmentAnalysisPass'" 2>&1 | FileCheck %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'PrintToConsole=1 PrintAfter=AlignmentAnalysisPass'" 2>&1 | FileCheck %s
 
                OpCapability Addresses
                OpCapability Kernel
@@ -55,5 +55,7 @@
 ; CHECK-LABEL: @test(
 ; CHECK-NOT:     call void @llvm.memcpy
 ; CHECK:         [[ALLOCA:%.*]] = alloca %struct.complex
-; CHECK:         call void @llvm.memcpy.p0.p2.i64(ptr align 8 [[ALLOCA]], ptr addrspace(2) align 1 @{{.*}}, i64 16, i1 false)
+; CHECK:         [[DST:%.*]] = bitcast %struct.complex* [[ALLOCA]] to i8*
+; CHECK:         [[SRC:%.*]] = getelementptr inbounds [16 x i8], [16 x i8] addrspace(2)* @{{.*}}, i32 0, i32 0
+; CHECK:         call void @llvm.memcpy.p0i8.p2i8.i64(i8* align 8 [[DST]], i8 {{.*}}[[SRC]], i64 16, i1 false)
 ; CHECK:         ret void

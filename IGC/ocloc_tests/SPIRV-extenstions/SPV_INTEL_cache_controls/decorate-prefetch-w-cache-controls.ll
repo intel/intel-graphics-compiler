@@ -1,8 +1,15 @@
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys, dg2-supported, spirv-promote
+; REQUIRES: llvm-spirv, regkeys, dg2-supported, spirv-promote, llvm-14-plus
 
-; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
+; LLVM with typed pointers/default pointer typing:
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; TODO: Currently llvm-spirv fails with this test when run with -opaque-pointers=1. Change once fixed.
+; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
+
+; LLVM with typed pointers/default pointer typing:
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
 target datalayout = "e-i64:64-v16:16-v24:32-v32:32-v48:64-v96:128-v192:256-v256:256-v512:512-v1024:1024-n8:16:32:64"
@@ -24,15 +31,15 @@ $_ZTSZ4mainEUlvE_ = comdat any
 ; Check that the appropriate !spirv.Decorations are preserved after reverse
 ; translation
 
-; CHECK-LLVM: %[[CALL1:.*]] = call spir_func i8 addrspace(1)* @_Z41__spirv_GenericCastToPtrExplicit_ToGlobal{{.*}}
-; CHECK-LLVM: %[[CALL1P4:.*]] = addrspacecast i8 addrspace(1)* %[[CALL1]] to i8 addrspace(4)*, !spirv.Decorations ![[MD:.*]]
-; CHECK-LLVM: call spir_func void @_Z20__spirv_ocl_prefetch{{.*}}(i8 addrspace(4)* %[[CALL1P4]], i64 1)
-; CHECK-LLVM: %[[CALL2:.*]] = call spir_func i8 addrspace(1)* @_Z41__spirv_GenericCastToPtrExplicit_ToGlobal{{.*}}
-; CHECK-LLVM: %[[CALL2P4:.*]] = addrspacecast i8 addrspace(1)* %[[CALL2]] to i8 addrspace(4)*, !spirv.Decorations ![[MD]]
-; CHECK-LLVM: call spir_func void @_Z20__spirv_ocl_prefetch{{.*}}(i8 addrspace(4)* %[[CALL2P4]], i64 1)
-; CHECK-LLVM: %[[CALL3:.*]] = call spir_func i8 addrspace(1)* @_Z41__spirv_GenericCastToPtrExplicit_ToGlobal{{.*}}
-; CHECK-LLVM: %[[CALL3P4:.*]] = addrspacecast i8 addrspace(1)* %[[CALL3]] to i8 addrspace(4)*, !spirv.Decorations ![[MD]]
-; CHECK-LLVM: call spir_func void @_Z20__spirv_ocl_prefetch{{.*}}(i8 addrspace(4)* %[[CALL3P4]], i64 2)
+; CHECK-LLVM: %[[CALL1:.*]] = call spir_func {{i8|ptr}} addrspace(1){{.*}} @_Z41__spirv_GenericCastToPtrExplicit_ToGlobal{{.*}}
+; CHECK-LLVM: %[[CALL1P4:.*]] = addrspacecast {{i8|ptr}} addrspace(1){{.*}} %[[CALL1]] to {{i8|ptr}} addrspace(4){{.*}}, !spirv.Decorations ![[MD:.*]]
+; CHECK-LLVM: call spir_func void @_Z20__spirv_ocl_prefetch{{.*}}({{i8|ptr}} addrspace(4){{.*}} %[[CALL1P4]], i64 1)
+; CHECK-LLVM: %[[CALL2:.*]] = call spir_func {{i8|ptr}} addrspace(1){{.*}} @_Z41__spirv_GenericCastToPtrExplicit_ToGlobal{{.*}}
+; CHECK-LLVM: %[[CALL2P4:.*]] = addrspacecast {{i8|ptr}} addrspace(1){{.*}} %[[CALL2]] to {{i8|ptr}} addrspace(4){{.*}}, !spirv.Decorations ![[MD]]
+; CHECK-LLVM: call spir_func void @_Z20__spirv_ocl_prefetch{{.*}}({{i8|ptr}} addrspace(4){{.*}} %[[CALL2P4]], i64 1)
+; CHECK-LLVM: %[[CALL3:.*]] = call spir_func {{i8|ptr}} addrspace(1){{.*}} @_Z41__spirv_GenericCastToPtrExplicit_ToGlobal{{.*}}
+; CHECK-LLVM: %[[CALL3P4:.*]] = addrspacecast {{i8|ptr}} addrspace(1){{.*}} %[[CALL3]] to {{i8|ptr}} addrspace(4){{.*}}, !spirv.Decorations ![[MD]]
+; CHECK-LLVM: call spir_func void @_Z20__spirv_ocl_prefetch{{.*}}({{i8|ptr}} addrspace(4){{.*}} %[[CALL3P4]], i64 2)
 
 
 ; Function Attrs: convergent norecurse nounwind

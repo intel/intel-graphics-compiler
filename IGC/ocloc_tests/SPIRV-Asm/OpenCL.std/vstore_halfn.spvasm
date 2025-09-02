@@ -1,77 +1,51 @@
-; REQUIRES: regkeys, spirv-as, dg2-supported
+; REQUIRES: regkeys, spirv-as, dg2-supported, llvm-15-plus
+
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+
+; LLVM with opaque pointers:
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1, ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
+; LLVM with typed pointers/default pointer typing:
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
-; LLVM15PLUS expects -emit-opaque-pointers to be passed
 
 ; CHECK-LABEL: spir_kernel void @test
 
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfnDv2_fiPU3AS1Dh(<2 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}})
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfnDv3_fiPU3AS1Dh(<3 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}})
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfnDv4_fiPU3AS1Dh(<4 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}})
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfnDv8_fiPU3AS1Dh(<8 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}})
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfnDv16_fiPU3AS1Dh(<16 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}})
-
-; CHECK-LLVM15PLUS: call spir_func void @_Z12vstore_half2Dv2_fjPU3AS1Dh(<2 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z12vstore_half3Dv3_fjPU3AS1Dh(<3 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z12vstore_half4Dv4_fjPU3AS1Dh(<4 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z12vstore_half8Dv8_fjPU3AS1Dh(<8 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z13vstore_half16Dv16_fjPU3AS1Dh(<16 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfnDv2_fiPU3AS1Dh(<2 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}})
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfnDv3_fiPU3AS1Dh(<3 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}})
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfnDv4_fiPU3AS1Dh(<4 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}})
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfnDv8_fiPU3AS1Dh(<8 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}})
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfnDv16_fiPU3AS1Dh(<16 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}})
 
 ; CHECK-LABEL: spir_kernel void @testRTE
 
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv2_fiPU3AS1Dhi(<2 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 0)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv3_fiPU3AS1Dhi(<3 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 0)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv4_fiPU3AS1Dhi(<4 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 0)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv8_fiPU3AS1Dhi(<8 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 0)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv16_fiPU3AS1Dhi(<16 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 0)
-
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half2_rteDv2_fjPU3AS1Dh(<2 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half3_rteDv3_fjPU3AS1Dh(<3 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half4_rteDv4_fjPU3AS1Dh(<4 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half8_rteDv8_fjPU3AS1Dh(<8 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z17vstore_half16_rteDv16_fjPU3AS1Dh(<16 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv2_fiPU3AS1Dhi(<2 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 0)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv3_fiPU3AS1Dhi(<3 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 0)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv4_fiPU3AS1Dhi(<4 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 0)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv8_fiPU3AS1Dhi(<8 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 0)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv16_fiPU3AS1Dhi(<16 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 0)
 
 ; CHECK-LABEL: spir_kernel void @testRTZ
 
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv2_fiPU3AS1Dhi(<2 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 1)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv3_fiPU3AS1Dhi(<3 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 1)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv4_fiPU3AS1Dhi(<4 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 1)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv8_fiPU3AS1Dhi(<8 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 1)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv16_fiPU3AS1Dhi(<16 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 1)
-
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half2_rtzDv2_fjPU3AS1Dh(<2 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half3_rtzDv3_fjPU3AS1Dh(<3 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half4_rtzDv4_fjPU3AS1Dh(<4 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half8_rtzDv8_fjPU3AS1Dh(<8 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z17vstore_half16_rtzDv16_fjPU3AS1Dh(<16 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv2_fiPU3AS1Dhi(<2 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 1)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv3_fiPU3AS1Dhi(<3 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 1)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv4_fiPU3AS1Dhi(<4 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 1)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv8_fiPU3AS1Dhi(<8 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 1)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv16_fiPU3AS1Dhi(<16 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 1)
 
 ; CHECK-LABEL: spir_kernel void @testRTP
 
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv2_fiPU3AS1Dhi(<2 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 2)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv3_fiPU3AS1Dhi(<3 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 2)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv4_fiPU3AS1Dhi(<4 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 2)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv8_fiPU3AS1Dhi(<8 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 2)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv16_fiPU3AS1Dhi(<16 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 2)
-
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half2_rtpDv2_fjPU3AS1Dh(<2 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half3_rtpDv3_fjPU3AS1Dh(<3 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half4_rtpDv4_fjPU3AS1Dh(<4 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half8_rtpDv8_fjPU3AS1Dh(<8 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z17vstore_half16_rtpDv16_fjPU3AS1Dh(<16 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv2_fiPU3AS1Dhi(<2 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 2)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv3_fiPU3AS1Dhi(<3 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 2)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv4_fiPU3AS1Dhi(<4 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 2)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv8_fiPU3AS1Dhi(<8 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 2)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv16_fiPU3AS1Dhi(<16 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 2)
 
 ; CHECK-LABEL: spir_kernel void @testRTN
 
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv2_fiPU3AS1Dhi(<2 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 3)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv3_fiPU3AS1Dhi(<3 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 3)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv4_fiPU3AS1Dhi(<4 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 3)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv8_fiPU3AS1Dhi(<8 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 3)
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv16_fiPU3AS1Dhi(<16 x float> {{.*}}, i32 0, half addrspace(1)* {{.*}}, i32 3)
-
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half2_rtnDv2_fjPU3AS1Dh(<2 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half3_rtnDv3_fjPU3AS1Dh(<3 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half4_rtnDv4_fjPU3AS1Dh(<4 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z16vstore_half8_rtnDv8_fjPU3AS1Dh(<8 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func void @_Z17vstore_half16_rtnDv16_fjPU3AS1Dh(<16 x float> {{.*}}, i32 0, ptr addrspace(1) {{.*}})
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv2_fiPU3AS1Dhi(<2 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 3)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv3_fiPU3AS1Dhi(<3 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 3)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv4_fiPU3AS1Dhi(<4 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 3)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv8_fiPU3AS1Dhi(<8 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 3)
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstore_halfn_rDv16_fiPU3AS1Dhi(<16 x float> {{.*}}, i32 0, {{half|ptr}} addrspace(1){{.*}}, i32 3)
 
                OpCapability Addresses
                OpCapability Kernel

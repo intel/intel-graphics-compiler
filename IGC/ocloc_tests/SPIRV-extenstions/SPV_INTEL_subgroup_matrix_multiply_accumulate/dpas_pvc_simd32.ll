@@ -6,8 +6,15 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-spirv, pvc-supported
+; REQUIRES: llvm-spirv, pvc-supported, llvm-15-plus
 
+; LLVM with opaque pointers:
+; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_subgroup_matrix_multiply_accumulate -o %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1 PrintToConsole=1 PrintAfter=ArithmeticFuncsTranslation'" 2>&1 | FileCheck %s --check-prefix=CHECK-GENISA
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1 DumpVISAASMToConsole=1'"                                 2>&1 | FileCheck %s --check-prefix=CHECK-VISAASM
+
+; LLVM with typed pointers/default pointer typing:
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_subgroup_matrix_multiply_accumulate -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'PrintToConsole=1 PrintAfter=ArithmeticFuncsTranslation'" 2>&1 | FileCheck %s --check-prefix=CHECK-GENISA
@@ -49,11 +56,11 @@ define spir_kernel void @test_v1(i32* %res1I32, i32* %res2I32, <2 x i32>* %res4I
 entry:
 ; CHECK-GENISA-LABEL: @test_v1(
 ; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v4i32(i32 %c2I32, i16 %a2, <4 x i32> %b, i32 4, i32 4, i32 8, i32 2, i1 false)
-; CHECK-GENISA:  store i32 [[DPAS1]], i32* %res2I32
+; CHECK-GENISA:  store i32 [[DPAS1]], {{i32\*|ptr}} %res2I32
 ; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v4i32(<2 x i32> %c4I32, <2 x i16> %a4, <4 x i32> %b, i32 4, i32 4, i32 8, i32 4, i1 false)
-; CHECK-GENISA:  store <2 x i32> [[DPAS2]], <2 x i32>* %res4I32
+; CHECK-GENISA:  store <2 x i32> [[DPAS2]], {{<2 x i32>\*|ptr}} %res4I32
 ; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v4i32(<4 x i32> %c8I32, <4 x i16> %a8, <4 x i32> %b, i32 4, i32 4, i32 8, i32 8, i1 false)
-; CHECK-GENISA:  store <4 x i32> [[DPAS3]], <4 x i32>* %res8I32
+; CHECK-GENISA:  store <4 x i32> [[DPAS3]], {{<4 x i32>\*|ptr}} %res8I32
 
 ; CHECK-VISAASM-LABEL: .kernel "test_v1"
 ; CHECK-VISAASM-DAG: dpas.s8.s8.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
@@ -92,11 +99,11 @@ define spir_kernel void @test_v2(i32* %res1I32, i32* %res2I32, <2 x i32>* %res4I
 entry:
 ; CHECK-GENISA-LABEL: @test_v2(
 ; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v4i32(i32 %c2I32, i16 %a2, <4 x i32> %b, i32 4, i32 1, i32 8, i32 2, i1 false)
-; CHECK-GENISA:  store i32 [[DPAS1]], i32* %res2I32
+; CHECK-GENISA:  store i32 [[DPAS1]], {{i32\*|ptr}} %res2I32
 ; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v4i32(<2 x i32> %c4I32, <2 x i16> %a4, <4 x i32> %b, i32 4, i32 1, i32 8, i32 4, i1 false)
-; CHECK-GENISA:  store <2 x i32> [[DPAS2]], <2 x i32>* %res4I32
+; CHECK-GENISA:  store <2 x i32> [[DPAS2]], {{<2 x i32>\*|ptr}} %res4I32
 ; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v4i32(<4 x i32> %c8I32, <4 x i16> %a8, <4 x i32> %b, i32 4, i32 1, i32 8, i32 8, i1 false)
-; CHECK-GENISA:  store <4 x i32> [[DPAS3]], <4 x i32>* %res8I32
+; CHECK-GENISA:  store <4 x i32> [[DPAS3]], {{<4 x i32>\*|ptr}} %res8I32
 
 ; CHECK-VISAASM-LABEL: .kernel "test_v2"
 ; CHECK-VISAASM-DAG: dpas.u8.s8.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
@@ -135,11 +142,11 @@ define spir_kernel void @test_v3(i32* %res1I32, i32* %res2I32, <2 x i32>* %res4I
 entry:
 ; CHECK-GENISA-LABEL: @test_v3(
 ; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v4i32(i32 %c2I32, i16 %a2, <4 x i32> %b, i32 1, i32 4, i32 8, i32 2, i1 false)
-; CHECK-GENISA:  store i32 [[DPAS1]], i32* %res2I32
+; CHECK-GENISA:  store i32 [[DPAS1]], {{i32\*|ptr}} %res2I32
 ; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v4i32(<2 x i32> %c4I32, <2 x i16> %a4, <4 x i32> %b, i32 1, i32 4, i32 8, i32 4, i1 false)
-; CHECK-GENISA:  store <2 x i32> [[DPAS2]], <2 x i32>* %res4I32
+; CHECK-GENISA:  store <2 x i32> [[DPAS2]], {{<2 x i32>\*|ptr}} %res4I32
 ; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v4i32(<4 x i32> %c8I32, <4 x i16> %a8, <4 x i32> %b, i32 1, i32 4, i32 8, i32 8, i1 false)
-; CHECK-GENISA:  store <4 x i32> [[DPAS3]], <4 x i32>* %res8I32
+; CHECK-GENISA:  store <4 x i32> [[DPAS3]], {{<4 x i32>\*|ptr}} %res8I32
 
 ; CHECK-VISAASM-DAG: dpas.s8.u8.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
 ; CHECK-VISAASM-DAG: .decl [[D2]] v_type=G type=d num_elts=32
@@ -177,11 +184,11 @@ define spir_kernel void @test_v4(i32* %res1I32, i32* %res2I32, <2 x i32>* %res4I
 entry:
 ; CHECK-GENISA-LABEL: @test_v4(
 ; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v4i32(i32 %c2I32, i16 %a2, <4 x i32> %b, i32 1, i32 1, i32 8, i32 2, i1 false)
-; CHECK-GENISA:  store i32 [[DPAS1]], i32* %res2I32
+; CHECK-GENISA:  store i32 [[DPAS1]], {{i32\*|ptr}} %res2I32
 ; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v4i32(<2 x i32> %c4I32, <2 x i16> %a4, <4 x i32> %b, i32 1, i32 1, i32 8, i32 4, i1 false)
-; CHECK-GENISA:  store <2 x i32> [[DPAS2]], <2 x i32>* %res4I32
+; CHECK-GENISA:  store <2 x i32> [[DPAS2]], {{<2 x i32>\*|ptr}} %res4I32
 ; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v4i32(<4 x i32> %c8I32, <4 x i16> %a8, <4 x i32> %b, i32 1, i32 1, i32 8, i32 8, i1 false)
-; CHECK-GENISA:  store <4 x i32> [[DPAS3]], <4 x i32>* %res8I32
+; CHECK-GENISA:  store <4 x i32> [[DPAS3]], {{<4 x i32>\*|ptr}} %res8I32
 
 ; CHECK-VISAASM-LABEL: .kernel "test_v4"
 ; CHECK-VISAASM-DAG: dpas.u8.u8.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
@@ -221,11 +228,11 @@ define spir_kernel void @test_v5(i32* %res1I32, i32* %res2I32, <2 x i32>* %res4I
 entry:
 ; CHECK-GENISA-LABEL: @test_v5(
 ; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v4i32(i32 %c2I32, i16 %a2, <4 x i32> %b, i32 5, i32 5, i32 8, i32 2, i1 false)
-; CHECK-GENISA:  store i32 [[DPAS1]], i32* %res2I32
+; CHECK-GENISA:  store i32 [[DPAS1]], {{i32\*|ptr}} %res2I32
 ; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v4i32(<2 x i32> %c4I32, <2 x i16> %a4, <4 x i32> %b, i32 5, i32 5, i32 8, i32 4, i1 false)
-; CHECK-GENISA:  store <2 x i32> [[DPAS2]], <2 x i32>* %res4I32
+; CHECK-GENISA:  store <2 x i32> [[DPAS2]], {{<2 x i32>\*|ptr}} %res4I32
 ; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v4i32(<4 x i32> %c8I32, <4 x i16> %a8, <4 x i32> %b, i32 5, i32 5, i32 8, i32 8, i1 false)
-; CHECK-GENISA:  store <4 x i32> [[DPAS3]], <4 x i32>* %res8I32
+; CHECK-GENISA:  store <4 x i32> [[DPAS3]], {{<4 x i32>\*|ptr}} %res8I32
 
 ; CHECK-VISAASM-LABEL: .kernel "test_v5"
 ; CHECK-VISAASM-DAG: dpas.s4.s4.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
@@ -264,11 +271,11 @@ define spir_kernel void @test_v6(i32* %res1I32, i32* %res2I32, <2 x i32>* %res4I
 entry:
 ; CHECK-GENISA-LABEL: @test_v6(
 ; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v4i32(i32 %c2I32, i16 %a2, <4 x i32> %b, i32 5, i32 2, i32 8, i32 2, i1 false)
-; CHECK-GENISA:  store i32 [[DPAS1]], i32* %res2I32
+; CHECK-GENISA:  store i32 [[DPAS1]], {{i32\*|ptr}} %res2I32
 ; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v4i32(<2 x i32> %c4I32, <2 x i16> %a4, <4 x i32> %b, i32 5, i32 2, i32 8, i32 4, i1 false)
-; CHECK-GENISA:  store <2 x i32> [[DPAS2]], <2 x i32>* %res4I32
+; CHECK-GENISA:  store <2 x i32> [[DPAS2]], {{<2 x i32>\*|ptr}} %res4I32
 ; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v4i32(<4 x i32> %c8I32, <4 x i16> %a8, <4 x i32> %b, i32 5, i32 2, i32 8, i32 8, i1 false)
-; CHECK-GENISA:  store <4 x i32> [[DPAS3]], <4 x i32>* %res8I32
+; CHECK-GENISA:  store <4 x i32> [[DPAS3]], {{<4 x i32>\*|ptr}} %res8I32
 
 ; CHECK-VISAASM-LABEL: .kernel "test_v6"
 ; CHECK-VISAASM-DAG: dpas.u4.s4.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
@@ -307,11 +314,11 @@ define spir_kernel void @test_v7(i32* %res1I32, i32* %res2I32, <2 x i32>* %res4I
 entry:
 ; CHECK-GENISA-LABEL: @test_v7(
 ; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v4i32(i32 %c2I32, i16 %a2, <4 x i32> %b, i32 2, i32 5, i32 8, i32 2, i1 false)
-; CHECK-GENISA:  store i32 [[DPAS1]], i32* %res2I32
+; CHECK-GENISA:  store i32 [[DPAS1]], {{i32\*|ptr}} %res2I32
 ; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v4i32(<2 x i32> %c4I32, <2 x i16> %a4, <4 x i32> %b, i32 2, i32 5, i32 8, i32 4, i1 false)
-; CHECK-GENISA:  store <2 x i32> [[DPAS2]], <2 x i32>* %res4I32
+; CHECK-GENISA:  store <2 x i32> [[DPAS2]], {{<2 x i32>\*|ptr}} %res4I32
 ; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v4i32(<4 x i32> %c8I32, <4 x i16> %a8, <4 x i32> %b, i32 2, i32 5, i32 8, i32 8, i1 false)
-; CHECK-GENISA:  store <4 x i32> [[DPAS3]], <4 x i32>* %res8I32
+; CHECK-GENISA:  store <4 x i32> [[DPAS3]], {{<4 x i32>\*|ptr}} %res8I32
 
 ; CHECK-VISAASM-LABEL: .kernel "test_v7"
 ; CHECK-VISAASM-DAG: dpas.s4.u4.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
@@ -351,11 +358,11 @@ define spir_kernel void @test_v8(i32* %res1I32, i32* %res2I32, <2 x i32>* %res4I
 entry:
 ; CHECK-GENISA-LABEL: @test_v8(
 ; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.sub.group.dpas.i32.i32.i16.v4i32(i32 %c2I32, i16 %a2, <4 x i32> %b, i32 2, i32 2, i32 8, i32 2, i1 false)
-; CHECK-GENISA:  store i32 [[DPAS1]], i32* %res2I32
+; CHECK-GENISA:  store i32 [[DPAS1]], {{i32\*|ptr}} %res2I32
 ; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <2 x i32> @llvm.genx.GenISA.sub.group.dpas.v2i32.v2i32.v2i16.v4i32(<2 x i32> %c4I32, <2 x i16> %a4, <4 x i32> %b, i32 2, i32 2, i32 8, i32 4, i1 false)
-; CHECK-GENISA:  store <2 x i32> [[DPAS2]], <2 x i32>* %res4I32
+; CHECK-GENISA:  store <2 x i32> [[DPAS2]], {{<2 x i32>\*|ptr}} %res4I32
 ; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <4 x i32> @llvm.genx.GenISA.sub.group.dpas.v4i32.v4i32.v4i16.v4i32(<4 x i32> %c8I32, <4 x i16> %a8, <4 x i32> %b, i32 2, i32 2, i32 8, i32 8, i1 false)
-; CHECK-GENISA:  store <4 x i32> [[DPAS3]], <4 x i32>* %res8I32
+; CHECK-GENISA:  store <4 x i32> [[DPAS3]], {{<4 x i32>\*|ptr}} %res8I32
 
 ; CHECK-VISAASM-LABEL: .kernel "test_v8"
 ; CHECK-VISAASM-DAG: dpas.u4.u4.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
@@ -395,11 +402,11 @@ define spir_kernel void @test_v9(float* %resF,  float* %res2, <2 x float>* %res4
 entry:
 ; CHECK-GENISA-LABEL: @test_v9(
 ; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call float @llvm.genx.GenISA.sub.group.dpas.f32.f32.i16.v4i32(float %c2F, i16 %a2, <4 x i32> %b, i32 12, i32 12, i32 8, i32 2, i1 false)
-; CHECK-GENISA:  store float [[DPAS1]], float* %res2
+; CHECK-GENISA:  store float [[DPAS1]], {{float\*|ptr}} %res2
 ; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <2 x float> @llvm.genx.GenISA.sub.group.dpas.v2f32.v2f32.v2i16.v4i32(<2 x float> %c4F, <2 x i16> %a4, <4 x i32> %b, i32 12, i32 12, i32 8, i32 4, i1 false)
-; CHECK-GENISA:  store <2 x float> [[DPAS2]], <2 x float>* %res4
+; CHECK-GENISA:  store <2 x float> [[DPAS2]], {{<2 x float>\*|ptr}} %res4
 ; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sub.group.dpas.v4f32.v4f32.v4i16.v4i32(<4 x float> %c8F, <4 x i16> %a8, <4 x i32> %b, i32 12, i32 12, i32 8, i32 8, i1 false)
-; CHECK-GENISA:  store <4 x float> [[DPAS3]], <4 x float>* %res8
+; CHECK-GENISA:  store <4 x float> [[DPAS3]], {{<4 x float>\*|ptr}} %res8
 
 ; CHECK-VISAASM-LABEL: .kernel "test_v9"
 ; CHECK-VISAASM-DAG: dpas.hf.hf.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
@@ -439,11 +446,11 @@ define spir_kernel void @test_v10(float* %resF,  float* %res2, <2 x float>* %res
 entry:
 ; CHECK-GENISA-LABEL: @test_v10(
 ; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call float @llvm.genx.GenISA.sub.group.dpas.f32.f32.i16.v4i32(float %c2F, i16 %a2, <4 x i32> %b, i32 11, i32 11, i32 8, i32 2, i1 false)
-; CHECK-GENISA:  store float [[DPAS1]], float* %res2
+; CHECK-GENISA:  store float [[DPAS1]], {{float\*|ptr}} %res2
 ; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <2 x float> @llvm.genx.GenISA.sub.group.dpas.v2f32.v2f32.v2i16.v4i32(<2 x float> %c4F, <2 x i16> %a4, <4 x i32> %b, i32 11, i32 11, i32 8, i32 4, i1 false)
-; CHECK-GENISA:  store <2 x float> [[DPAS2]], <2 x float>* %res4
+; CHECK-GENISA:  store <2 x float> [[DPAS2]], {{<2 x float>\*|ptr}} %res4
 ; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sub.group.dpas.v4f32.v4f32.v4i16.v4i32(<4 x float> %c8F, <4 x i16> %a8, <4 x i32> %b, i32 11, i32 11, i32 8, i32 8, i1 false)
-; CHECK-GENISA:  store <4 x float> [[DPAS3]], <4 x float>* %res8
+; CHECK-GENISA:  store <4 x float> [[DPAS3]], {{<4 x float>\*|ptr}} %res8
 
 ; CHECK-VISAASM-LABEL: .kernel "test_v10"
 ; CHECK-VISAASM-DAG: dpas.bf.bf.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
@@ -483,11 +490,11 @@ define spir_kernel void @test_v11(half* %res,  half* %res2, <2 x half>* %res4, <
 entry:
 ; CHECK-GENISA-LABEL: @test_v11(
 ; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call half @llvm.genx.GenISA.sub.group.dpas.f16.f16.i16.v4i32(half %c2, i16 %a2, <4 x i32> %b, i32 12, i32 12, i32 8, i32 2, i1 false)
-; CHECK-GENISA:  store half [[DPAS1]], half* %res2
+; CHECK-GENISA:  store half [[DPAS1]], {{half\*|ptr}} %res2
 ; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <2 x half> @llvm.genx.GenISA.sub.group.dpas.v2f16.v2f16.v2i16.v4i32(<2 x half> %c4, <2 x i16> %a4, <4 x i32> %b, i32 12, i32 12, i32 8, i32 4, i1 false)
-; CHECK-GENISA:  store <2 x half> [[DPAS2]], <2 x half>* %res4
+; CHECK-GENISA:  store <2 x half> [[DPAS2]], {{<2 x half>\*|ptr}} %res4
 ; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <4 x half> @llvm.genx.GenISA.sub.group.dpas.v4f16.v4f16.v4i16.v4i32(<4 x half> %c8, <4 x i16> %a8, <4 x i32> %b, i32 12, i32 12, i32 8, i32 8, i1 false)
-; CHECK-GENISA:  store <4 x half> [[DPAS3]], <4 x half>* %res8
+; CHECK-GENISA:  store <4 x half> [[DPAS3]], {{<4 x half>\*|ptr}} %res8
 
 ; CHECK-VISAASM-LABEL: .kernel "test_v11"
 ; CHECK-VISAASM-DAG: dpas.hf.hf.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
@@ -527,11 +534,11 @@ define spir_kernel void @test_v12(i16* %res, i16* %res2, <2 x i16>* %res4, <4 x 
 entry:
 ; CHECK-GENISA-LABEL: @test_v12(
 ; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call i16 @llvm.genx.GenISA.sub.group.dpas.i16.i16.i16.v4i32(i16 %c2F, i16 %a2, <4 x i32> %b, i32 11, i32 11, i32 8, i32 2, i1 false)
-; CHECK-GENISA:  store i16 [[DPAS1]], i16* %res2
+; CHECK-GENISA:  store i16 [[DPAS1]], {{i16\*|ptr}} %res2
 ; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <2 x i16> @llvm.genx.GenISA.sub.group.dpas.v2i16.v2i16.v2i16.v4i32(<2 x i16> %c4F, <2 x i16> %a4, <4 x i32> %b, i32 11, i32 11, i32 8, i32 4, i1 false)
-; CHECK-GENISA:  store <2 x i16> [[DPAS2]], <2 x i16>* %res4
+; CHECK-GENISA:  store <2 x i16> [[DPAS2]], {{<2 x i16>\*|ptr}} %res4
 ; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <4 x i16> @llvm.genx.GenISA.sub.group.dpas.v4i16.v4i16.v4i16.v4i32(<4 x i16> %c8F, <4 x i16> %a8, <4 x i32> %b, i32 11, i32 11, i32 8, i32 8, i1 false)
-; CHECK-GENISA:  store <4 x i16> [[DPAS3]], <4 x i16>* %res8
+; CHECK-GENISA:  store <4 x i16> [[DPAS3]], {{<4 x i16>\*|ptr}} %res8
 
 ; CHECK-VISAASM-LABEL: .kernel "test_v12"
 ; CHECK-VISAASM-DAG: dpas.bf.bf.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)
@@ -571,11 +578,11 @@ define spir_kernel void @test_v13(float* %resF,  float* %res2, <2 x float>* %res
 entry:
 ; CHECK-GENISA-LABEL: @test_v13(
 ; CHECK-GENISA:  [[DPAS1:%[A-z0-9]*]] = call float @llvm.genx.GenISA.sub.group.dpas.f32.f32.f32.v4i32(float %c2F, float %a2, <4 x i32> %{{.*}}, i32 10, i32 10, i32 8, i32 2, i1 false)
-; CHECK-GENISA:  store float [[DPAS1]], float* %res2
+; CHECK-GENISA:  store float [[DPAS1]], {{float\*|ptr}} %res2
 ; CHECK-GENISA:  [[DPAS2:%[A-z0-9]*]] = call <2 x float> @llvm.genx.GenISA.sub.group.dpas.v2f32.v2f32.f32.v4i32(<2 x float> %c4F, float %a4, <4 x i32> %{{.*}}, i32 10, i32 10, i32 8, i32 4, i1 false)
-; CHECK-GENISA:  store <2 x float> [[DPAS2]], <2 x float>* %res4
+; CHECK-GENISA:  store <2 x float> [[DPAS2]], {{<2 x float>\*|ptr}} %res4
 ; CHECK-GENISA:  [[DPAS3:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sub.group.dpas.v4f32.v4f32.v2f32.v4i32(<4 x float> %c8F, <2 x float> %a8, <4 x i32> %{{.*}}, i32 10, i32 10, i32 8, i32 8, i1 false)
-; CHECK-GENISA:  store <4 x float> [[DPAS3]], <4 x float>* %res8
+; CHECK-GENISA:  store <4 x float> [[DPAS3]], {{<4 x float>\*|ptr}} %res8
 
 ; CHECK-VISAASM-LABEL: .kernel "test_v13"
 ; CHECK-VISAASM-DAG: dpas.tf32.tf32.8.2 (M1, 16) [[D2:[A-z0-9_]*]].0 [[C2:[A-z0-9_]*]].0 [[B2:[A-z0-9_]*]].0 [[A2:[A-z0-9_]*]](0,0)

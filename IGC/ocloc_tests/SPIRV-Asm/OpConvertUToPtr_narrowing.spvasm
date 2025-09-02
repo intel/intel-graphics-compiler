@@ -1,6 +1,12 @@
-; REQUIRES: regkeys, spirv-as, dg2-supported
+; REQUIRES: regkeys, spirv-as, dg2-supported, llvm-16-plus
+
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+
+; LLVM with opaque pointers:
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
+; LLVM with typed pointers/default pointer typing:
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
+
                OpCapability Addresses
                OpCapability Kernel
                OpCapability Int64
@@ -22,8 +28,4 @@
                OpReturn
                OpFunctionEnd
 
-; Original test expects llvm15 or higher and pass -emit-opaque-pointers flag
-; following is original self-check:
-; inttoptr i64 %a to ptr addrspace(1)
-
-; CHECK: inttoptr i64 %a to i32 addrspace(1)*
+; CHECK: inttoptr i64 %a to {{ptr|i32}} addrspace(1)

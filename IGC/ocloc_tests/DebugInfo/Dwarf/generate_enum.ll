@@ -10,14 +10,14 @@
 
 ; UNSUPPORTED: sys32
 
-; REQUIRES: regkeys, oneapi-readelf, llvm-16-plus
+; REQUIRES: regkeys, oneapi-readelf, llvm-15-plus
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as -opaque-pointers=1 %s -o %t
 ; RUN: ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'EnableOpaquePointersBackend=1, ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'"
 ; RUN: oneapi-readelf --debug-dump %t_OCL_simd32_foo.elf | FileCheck %s
 
-; LLVM with typed pointers:
+; LLVM with typed pointers/default pointer typing:
 ; RUN: llvm-as -opaque-pointers=0 %s -o %t
 ; RUN: ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'"
 ; RUN: oneapi-readelf --debug-dump %t_OCL_simd32_foo.elf | FileCheck %s

@@ -55,6 +55,9 @@ if llvm_version >= 14:
 if llvm_version <= 15:
   config.available_features.add('llvm-15-or-older')
 
+if llvm_version >= 15:
+  config.available_features.add('llvm-15-plus')
+
 if llvm_version >= 16:
   config.available_features.add('llvm-16-plus')
 

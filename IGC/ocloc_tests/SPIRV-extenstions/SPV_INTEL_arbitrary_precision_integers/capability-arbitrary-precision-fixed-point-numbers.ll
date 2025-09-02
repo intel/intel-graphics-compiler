@@ -93,10 +93,16 @@
 ; }
 
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys, dg2-supported
+; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-14-plus
 
-; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_arbitrary_precision_integers,+SPV_INTEL_arbitrary_precision_fixed_point -o %t.spv
+; LLVM with opaque pointers:
+; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_arbitrary_precision_integers,+SPV_INTEL_arbitrary_precision_fixed_point -o %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
+
+; LLVM with typed pointers/default pointer typing:
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_arbitrary_precision_integers,+SPV_INTEL_arbitrary_precision_fixed_point -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
 ; CHECK-LLVM: call i5 @intel_arbitrary_fixed_sqrt.i5.i13(i13 %[[#]], i1 false, i32 2, i32 2, i32 0, i32 0)
@@ -112,8 +118,8 @@
 ; CHECK-LLVM: call i10 @intel_arbitrary_fixed_sincospi.i10.i13(i13 %[[#]], i1 false, i32 2, i32 2, i32 0, i32 0)
 ; CHECK-LLVM: call i44 @intel_arbitrary_fixed_log.i44.i64(i64 %[[#]], i1 true, i32 24, i32 22, i32 0, i32 0)
 ; CHECK-LLVM: call i34 @intel_arbitrary_fixed_exp.i34.i44(i44 %[[#]], i1 false, i32 20, i32 20, i32 0, i32 0)
-; CHECK-LLVM: call void @intel_arbitrary_fixed_sincos.i66.i34(i66 addrspace(4)* sret(i66) %[[#]], i34 %[[#]], i1 true, i32 3, i32 2, i32 0, i32 0)
-; CHECK-LLVM: call void @intel_arbitrary_fixed_exp.i68.i68(i68 addrspace(4)* sret(i68) %[[#]], i68 %[[#]], i1 false, i32 20, i32 20, i32 0, i32 0)
+; CHECK-LLVM: call void @intel_arbitrary_fixed_sincos.i66.i34({{i66|ptr}} addrspace(4){{.*}} sret(i66) %[[#]], i34 %[[#]], i1 true, i32 3, i32 2, i32 0, i32 0)
+; CHECK-LLVM: call void @intel_arbitrary_fixed_exp.i68.i68({{i68|ptr}} addrspace(4){{.*}} sret(i68) %[[#]], i68 %[[#]], i1 false, i32 20, i32 20, i32 0, i32 0)
 
 ; ModuleID = 'ap_fixed.cpp'
 source_filename = "ap_fixed.cpp"

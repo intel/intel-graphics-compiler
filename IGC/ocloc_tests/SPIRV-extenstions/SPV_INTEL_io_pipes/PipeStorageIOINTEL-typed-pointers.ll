@@ -1,19 +1,19 @@
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-16-plus
+; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-15-or-older
 
-; LLVM with opaque pointers:
-; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
-; RUN: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_fpga_reg -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
+; RUN: llvm-as %s -o %t.bc
+; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_fpga_reg -o %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
-; CHECK-DAG: %spirv.ConstantPipeStorage = type { i32, i32, i32 }
-; CHECK-DAG: %"[[CL_PIPE_STORAGE_NAME:[^"]+]]" = type { ptr addrspace(1) }
-; CHECK-DAG: [[CREATOR_NAME:[^ ]+]] = linkonce_odr addrspace(1) global %spirv.ConstantPipeStorage { i32 16, i32 16, i32 1 }, align 4
-; CHECK-DAG: @mygpipe = addrspace(1) global %"[[CL_PIPE_STORAGE_NAME]]" { ptr addrspace(1) [[CREATOR_NAME]] }, align 4, !spirv.Decorations ![[IO_MD:[0-9]+]]
+; CHECK-LLVM-DAG: %spirv.ConstantPipeStorage = type { i32, i32, i32 }
+; CHECK-LLVM-DAG: %"[[CL_PIPE_STORAGE_NAME:[^"]+]]" = type { %spirv.PipeStorage addrspace(1)* }
+; CHECK-LLVM-DAG: %spirv.PipeStorage = type opaque
+; CHECK-LLVM-DAG: [[CREATOR_NAME:[^ ]+]] = linkonce_odr addrspace(1) global %spirv.ConstantPipeStorage { i32 16, i32 16, i32 1 }, align 4
+; CHECK-LLVM-DAG: @mygpipe = addrspace(1) global %"[[CL_PIPE_STORAGE_NAME]]" { %spirv.PipeStorage addrspace(1)* bitcast (%spirv.ConstantPipeStorage addrspace(1)* [[CREATOR_NAME]] to %spirv.PipeStorage addrspace(1)*) }, align 4, !spirv.Decorations ![[IO_MD:[0-9]+]]
 
-; CHECK: ![[IO_MD]] = !{![[IO_MD1:[0-9]+]], ![[IO_MD2:[0-9]+]]}
-; CHECK: ![[IO_MD1]] = !{i32 41, !"mygpipe", i32 0}
-; CHECK: ![[IO_MD2]] = !{i32 44, i32 4}
+; CHECK-LLVM: ![[IO_MD]] = !{![[IO_MD1:[0-9]+]], ![[IO_MD2:[0-9]+]]}
+; CHECK-LLVM: ![[IO_MD1]] = !{i32 41, !"mygpipe", i32 0}
+; CHECK-LLVM: ![[IO_MD2]] = !{i32 44, i32 4}
 
 target datalayout = "e-p:32:32-i64:64-v16:16-v24:32-v32:32-v48:64-v96:128-v192:256-v256:256-v512:512-v1024:1024"
 target triple = "spir-unknown-unknown"

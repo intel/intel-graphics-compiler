@@ -406,10 +406,16 @@
 ; clang -I llvm/include/sycl -S -emit-llvm -fno-sycl-early-optimizations -fsycl-device-only capability-arbitrary-precision-floating-point.cpp
 
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys, dg2-supported
+; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-14-plus
 
-; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_arbitrary_precision_integers,+SPV_INTEL_arbitrary_precision_floating_point -o %t.spv
+; LLVM with opaque pointers:
+; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_arbitrary_precision_integers,+SPV_INTEL_arbitrary_precision_floating_point -o %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
+
+; LLVM with typed pointers/default pointer typing:
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_arbitrary_precision_integers,+SPV_INTEL_arbitrary_precision_floating_point -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
 target datalayout = "e-i64:64-v16:16-v24:32-v32:32-v48:64-v96:128-v192:256-v256:256-v512:512-v1024:1024-n8:16:32:64"
@@ -1416,7 +1422,7 @@ define linkonce_odr dso_local spir_func void @_Z15ap_float_sincosILi8ELi18ELi10E
   call void @llvm.lifetime.start.p0i8(i64 16, i8* %6)
   %7 = load i34, i34 addrspace(4)* %2, align 8
   call spir_func void @_Z33__spirv_ArbitraryFloatSinCosINTELILi34ELi66EEU7_ExtIntIXmlLi2ET0_EEiU7_ExtIntIXT_EEiiiiii(i66 addrspace(4)* sret(i66) align 8 %4, i34 %7, i32 18, i32 20, i32 0, i32 2, i32 1) #5
-; CHECK-LLVM: call void @intel_arbitrary_float_sincos.i66.i34(i66 addrspace(4)* sret(i66) %[[#]], i34 %[[#]], i32 18, i32 20, i32 0, i32 2, i32 1)
+; CHECK-LLVM: call void @intel_arbitrary_float_sincos.i66.i34({{i66|ptr}} addrspace(4){{.*}} sret(i66) %[[#]], i34 %[[#]], i32 18, i32 20, i32 0, i32 2, i32 1)
   %8 = load i66, i66 addrspace(4)* %4, align 8
   store i66 %8, i66 addrspace(4)* %4, align 8
   %9 = bitcast i34* %1 to i8*
@@ -1441,7 +1447,7 @@ define linkonce_odr dso_local spir_func void @_Z14ap_float_atan2ILi7ELi16ELi7ELi
   %8 = load i24, i24* %1, align 4, !tbaa !91
   %9 = load i25, i25* %2, align 4, !tbaa !13
   call spir_func void @_Z32__spirv_ArbitraryFloatATan2INTELILi24ELi25ELi66EEU7_ExtIntIXT1_EEiU7_ExtIntIXT_EEiiU7_ExtIntIXT0_EEiiiiii(i66 addrspace(4)* sret(i66) align 8 %4, i24 signext %8, i32 16, i25 signext %9, i32 17, i32 18, i32 0, i32 2, i32 1) #5
-; CHECK-LLVM: call void @intel_arbitrary_float_atan2.i66.i24.i25(i66 addrspace(4)* sret(i66) %[[#]], i24 %[[#]], i32 16, i25 %[[#]], i32 17, i32 18, i32 0, i32 2, i32 1)
+; CHECK-LLVM: call void @intel_arbitrary_float_atan2.i66.i24.i25({{i66|ptr}} addrspace(4){{.*}} sret(i66) %[[#]], i24 %[[#]], i32 16, i25 %[[#]], i32 17, i32 18, i32 0, i32 2, i32 1)
   %10 = load i66, i66 addrspace(4)* %4, align 8
   store i66 %10, i66 addrspace(4)* %4, align 8
   %11 = bitcast i66* %3 to i8*

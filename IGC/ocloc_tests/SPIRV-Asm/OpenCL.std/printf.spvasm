@@ -1,18 +1,18 @@
-; REQUIRES: regkeys, spirv-as, dg2-supported
+; REQUIRES: regkeys, spirv-as, dg2-supported, llvm-15-plus
+
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+
+; LLVM with opaque pointers:
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
+; LLVM with typed pointers/default pointer typing:
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
-; LLVM15PLUS expects -emit-opaque-pointers to be passed
 
 ; CHECK-LABEL: define spir_kernel void @test
 
-; CHECK: call spir_func i32 @[[TMP1:[0-9A-z_]+]]printfPU3AS2c(i8 addrspace(2)* {{.*}})
-; CHECK: call spir_func i32 @[[TMP2:[0-9A-z_]+]]printfPU3AS2ci(i8 addrspace(2)*  {{.*}}, i32 1)
-; CHECK: declare spir_func i32 @[[TMP1]]printfPU3AS2c(i8 addrspace(2)*
-; CHECK: declare spir_func i32 @[[TMP2]]printfPU3AS2ci(i8 addrspace(2)*{{.*}}, i32
-
-; CHECK-LLVM15PLUS: call spir_func i32 (ptr addrspace(2), ...) @printf(ptr addrspace(2) {{.*}})
-; CHECK-LLVM15PLUS: call spir_func i32 (ptr addrspace(2), ...) @printf(ptr addrspace(2) {{.*}}, i32 1)
-; CHECK-LLVM15PLUS: declare spir_func i32 @printf(ptr addrspace(2), ...)
+; CHECK: call spir_func i32 @[[TMP1:[0-9A-z_]+]]printfPU3AS2c({{i8|ptr}} addrspace(2){{.*}})
+; CHECK: call spir_func i32 @[[TMP2:[0-9A-z_]+]]printfPU3AS2ci({{i8|ptr}} addrspace(2){{.*}}, i32 1)
+; CHECK: declare spir_func i32 @[[TMP1]]printfPU3AS2c({{i8|ptr}} addrspace(2)
+; CHECK: declare spir_func i32 @[[TMP2]]printfPU3AS2ci({{i8|ptr}} addrspace(2){{.*}}, i32
 
                OpCapability Addresses
                OpCapability Kernel

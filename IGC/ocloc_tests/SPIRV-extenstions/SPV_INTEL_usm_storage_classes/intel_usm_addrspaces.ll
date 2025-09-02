@@ -1,11 +1,21 @@
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys, dg2-supported
+; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-14-plus
 
-; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_usm_storage_classes -o %t.spv
+; LLVM with opaque pointers:
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; TODO: Currently llvm-spirv fails with this test when run with -opaque-pointers=1. Change once fixed.
+; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_usm_storage_classes -o %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
+
+; RUN: llvm-spirv %t.bc -opaque-pointers=0 -o %t.no_usm.spv
+; RUN: ocloc compile -spirv_input -file %t.no_usm.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM-NO-USM
+
+; LLVM with typed pointers/default pointer typing:
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_usm_storage_classes -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
-; RUN: llvm-spirv %t.bc -o %t.no_usm.spv
+; RUN: llvm-spirv %t.bc -opaque-pointers=0 -o %t.no_usm.spv
 ; RUN: ocloc compile -spirv_input -file %t.no_usm.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM-NO-USM
 
 ; ModuleID = 'intel_usm_addrspaces.cpp'
@@ -46,49 +56,38 @@ declare void @llvm.lifetime.end.p0i8(i64 immarg, i8* nocapture) #1
 ; Function Attrs: norecurse nounwind
 define spir_func void @_Z6usagesv() #3 {
 entry:
-; CHECK-LLVM: %DEVICE = alloca i32 addrspace(5)*, align 8
-; CHECK-LLVM-NO-USM: %DEVICE = alloca i32 addrspace(1)*, align 8
+; CHECK-LLVM: %DEVICE = alloca {{.*}} addrspace(5){{.*}}, align 8
+; CHECK-LLVM-NO-USM: %DEVICE = alloca {{.*}} addrspace(1){{.*}}, align 8
   %DEVICE = alloca i32 addrspace(5)*, align 8
 
-; CHECK-LLVM: %HOST = alloca i32 addrspace(6)*, align 8
-; CHECK-LLVM-NO-USM: %HOST = alloca i32 addrspace(1)*, align 8
+; CHECK-LLVM: %HOST = alloca {{.*}} addrspace(6){{.*}}, align 8
+; CHECK-LLVM-NO-USM: %HOST = alloca {{.*}} addrspace(1){{.*}}, align 8
   %HOST = alloca i32 addrspace(6)*, align 8
 
-; CHECK-LLVM: bitcast i32 addrspace(5)** %DEVICE to i8*
-; CHECK-LLVM-NO-USM: bitcast i32 addrspace(1)** %DEVICE to i8*
   %0 = bitcast i32 addrspace(5)** %DEVICE to i8*
   call void @llvm.lifetime.start.p0i8(i64 8, i8* %0) #4
-
-; CHECK-LLVM: bitcast i32 addrspace(6)** %HOST to i8*
-; CHECK-LLVM-NO-USM: bitcast i32 addrspace(1)** %HOST to i8*
   %1 = bitcast i32 addrspace(6)** %HOST to i8*
   call void @llvm.lifetime.start.p0i8(i64 8, i8* %1) #4
 
-; CHECK-LLVM: %[[DLOAD_E:[0-9]+]] = load i32 addrspace(5)*, i32 addrspace(5)** %DEVICE, align 8
-; CHECK-LLVM-NO-USM: %[[DLOAD_NE:[0-9]+]] = load i32 addrspace(1)*, i32 addrspace(1)** %DEVICE, align 8
+; CHECK-LLVM: %[[DLOAD_E:[0-9]+]] = load {{.*}}addrspace(5){{.*}}, {{.*}}{{addrspace\(5\)|ptr}}{{.*}} %DEVICE, align 8
+; CHECK-LLVM-NO-USM: %[[DLOAD_NE:[0-9]+]] = load {{.*}}addrspace(1){{.*}}, {{.*}}{{addrspace\(1\)|ptr}}{{.*}} %DEVICE, align 8
   %2 = load i32 addrspace(5)*, i32 addrspace(5)** %DEVICE, align 8, !tbaa !5
 
-; CHECK-LLVM: addrspacecast i32 addrspace(5)* %[[DLOAD_E]] to i32 addrspace(4)*
-; CHECK-LLVM-NO-USM: addrspacecast i32 addrspace(1)* %[[DLOAD_NE]] to i32 addrspace(4)*
+; CHECK-LLVM: addrspacecast {{.*}} addrspace(5){{.*}} %[[DLOAD_E]] to {{.*}} addrspace(4){{.*}}
+; CHECK-LLVM-NO-USM: addrspacecast {{.*}} addrspace(1){{.*}} %[[DLOAD_NE]] to {{.*}} addrspace(4){{.*}}
   %3 = addrspacecast i32 addrspace(5)* %2 to i32 addrspace(4)*
   call spir_func void @_Z3fooPi(i32 addrspace(4)* %3)
 
-; CHECK-LLVM: %[[HLOAD_E:[0-9]+]] = load i32 addrspace(6)*, i32 addrspace(6)** %HOST, align 8
-; CHECK-LLVM-NO-USM: %[[HLOAD_NE:[0-9]+]] = load i32 addrspace(1)*, i32 addrspace(1)** %HOST, align 8
+; CHECK-LLVM: %[[HLOAD_E:[0-9]+]] = load {{.*}} addrspace(6){{.*}}, {{.*}}{{addrspace\(6\)|ptr}}{{.*}} %HOST, align 8
+; CHECK-LLVM-NO-USM: %[[HLOAD_NE:[0-9]+]] = load {{.*}}addrspace(1){{.*}}, {{.*}}{{addrspace\(1\)|ptr}}{{.*}} %HOST, align 8
   %4 = load i32 addrspace(6)*, i32 addrspace(6)** %HOST, align 8, !tbaa !5
 
-; CHECK-LLVM: addrspacecast i32 addrspace(6)* %[[HLOAD_E]] to i32 addrspace(4)*
-; CHECK-LLVM-NO-USM: addrspacecast i32 addrspace(1)* %[[HLOAD_NE]] to i32 addrspace(4)*
+; CHECK-LLVM: addrspacecast {{.*}} addrspace(6){{.*}} %[[HLOAD_E]] to {{.*}} addrspace(4){{.*}}
+; CHECK-LLVM-NO-USM: addrspacecast {{.*}} addrspace(1){{.*}} %[[HLOAD_NE]] to {{.*}} addrspace(4){{.*}}
   %5 = addrspacecast i32 addrspace(6)* %4 to i32 addrspace(4)*
   call spir_func void @_Z3fooPi(i32 addrspace(4)* %5)
-
-; CHECK-LLVM: bitcast i32 addrspace(6)** %HOST to i8*
-; CHECK-LLVM-NO-USM: bitcast i32 addrspace(1)** %HOST to i8*
   %6 = bitcast i32 addrspace(6)** %HOST to i8*
   call void @llvm.lifetime.end.p0i8(i64 8, i8* %6) #4
-
-; CHECK-LLVM: bitcast i32 addrspace(5)** %DEVICE to i8*
-; CHECK-LLVM-NO-USM: bitcast i32 addrspace(1)** %DEVICE to i8*
   %7 = bitcast i32 addrspace(5)** %DEVICE to i8*
   call void @llvm.lifetime.end.p0i8(i64 8, i8* %7) #4
 
@@ -111,8 +110,8 @@ entry:
   store i32 addrspace(1)* %arg_glob, i32 addrspace(1)** %arg_glob.addr, align 4
   store i32 addrspace(5)* %arg_dev, i32 addrspace(5)** %arg_dev.addr, align 4
   %0 = load i32 addrspace(1)*, i32 addrspace(1)** %arg_glob.addr, align 4
-; CHECK-LLVM: addrspacecast i32 addrspace(1)* %{{[0-9]+}} to i32 addrspace(5)*
-; CHECK-LLVM-NO-USM-NOT: addrspacecast i32 addrspace(1)* %{{[0-9]+}} to i32 addrspace(5)*
+; CHECK-LLVM: addrspacecast {{.*}} addrspace(1){{.*}} %{{[0-9]+}} to {{.*}} addrspace(5){{.*}}
+; CHECK-LLVM-NO-USM-NOT: addrspacecast {{.*}} addrspace(1){{.*}} %{{[0-9]+}} to {{.*}} addrspace(5){{.*}}
   %1 = addrspacecast i32 addrspace(1)* %0 to i32 addrspace(5)*
   store i32 addrspace(5)* %1, i32 addrspace(5)** %arg_dev.addr, align 4
   ret void
@@ -126,8 +125,8 @@ entry:
   store i32 addrspace(1)* %arg_glob, i32 addrspace(1)** %arg_glob.addr, align 4
   store i32 addrspace(6)* %arg_host, i32 addrspace(6)** %arg_host.addr, align 4
   %0 = load i32 addrspace(1)*, i32 addrspace(1)** %arg_glob.addr, align 4
-; CHECK-LLVM: addrspacecast i32 addrspace(1)* %{{[0-9]+}} to i32 addrspace(6)*
-; CHECK-LLVM-NO-USM-NOT: addrspacecast i32 addrspace(1)* %{{[0-9]+}} to i32 addrspace(6)*
+; CHECK-LLVM: addrspacecast {{.*}} addrspace(1){{.*}} %{{[0-9]+}} to {{.*}} addrspace(6){{.*}}
+; CHECK-LLVM-NO-USM-NOT: addrspacecast {{.*}} addrspace(1){{.*}} %{{[0-9]+}} to {{.*}} addrspace(6){{.*}}
   %1 = addrspacecast i32 addrspace(1)* %0 to i32 addrspace(6)*
   store i32 addrspace(6)* %1, i32 addrspace(6)** %arg_host.addr, align 4
   ret void
@@ -141,8 +140,8 @@ entry:
   store i32 addrspace(1)* %arg_glob, i32 addrspace(1)** %arg_glob.addr, align 4
   store i32 addrspace(5)* %arg_dev, i32 addrspace(5)** %arg_dev.addr, align 4
   %0 = load i32 addrspace(5)*, i32 addrspace(5)** %arg_dev.addr, align 4
-; CHECK-LLVM: addrspacecast i32 addrspace(5)* %{{[0-9]+}} to i32 addrspace(1)*
-; CHECK-LLVM-NO-USM-NOT: addrspacecast i32 addrspace(5)* %{{[0-9]+}} to i32 addrspace(1)*
+; CHECK-LLVM: addrspacecast {{.*}} addrspace(5){{.*}} %{{[0-9]+}} to {{.*}} addrspace(1){{.*}}
+; CHECK-LLVM-NO-USM-NOT: addrspacecast {{.*}} addrspace(5){{.*}} %{{[0-9]+}} to {{.*}} addrspace(1){{.*}}
   %1 = addrspacecast i32 addrspace(5)* %0 to i32 addrspace(1)*
   store i32 addrspace(1)* %1, i32 addrspace(1)** %arg_glob.addr, align 4
   ret void
@@ -156,8 +155,8 @@ entry:
   store i32 addrspace(1)* %arg_glob, i32 addrspace(1)** %arg_glob.addr, align 4
   store i32 addrspace(6)* %arg_host, i32 addrspace(6)** %arg_host.addr, align 4
   %0 = load i32 addrspace(6)*, i32 addrspace(6)** %arg_host.addr, align 4
-; CHECK-LLVM: addrspacecast i32 addrspace(6)* %{{[0-9]+}} to i32 addrspace(1)*
-; CHECK-LLVM-NO-USM-NOT: addrspacecast i32 addrspace(6)* %{{[0-9]+}} to i32 addrspace(1)*
+; CHECK-LLVM: addrspacecast {{.*}} addrspace(6){{.*}} %{{[0-9]+}} to {{.*}} addrspace(1){{.*}}
+; CHECK-LLVM-NO-USM-NOT: addrspacecast {{.*}} addrspace(6){{.*}} %{{[0-9]+}} to {{.*}} addrspace(1){{.*}}
   %1 = addrspacecast i32 addrspace(6)* %0 to i32 addrspace(1)*
   store i32 addrspace(1)* %1, i32 addrspace(1)** %arg_glob.addr, align 4
   ret void
