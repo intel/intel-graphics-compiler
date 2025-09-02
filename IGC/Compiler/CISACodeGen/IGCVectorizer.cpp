@@ -460,6 +460,8 @@ Instruction *IGCVectorizer::getInsertPointForVector(VecArr &Arr) {
   // if insert point is PHI, shift it to the first nonPHI to be safe
   if (llvm::isa<llvm::PHINode>(InsertPoint))
       InsertPoint = InsertPoint->getParent()->getFirstNonPHI();
+  if (InsertPoint->isTerminator())
+      InsertPoint = InsertPoint->getPrevNonDebugInstruction();
 
   return InsertPoint;
 }
