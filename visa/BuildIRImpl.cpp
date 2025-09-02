@@ -1908,24 +1908,6 @@ G4_INST *IR_Builder::createInternalBfnInst(
   return ii;
 }
 
-bool IR_Builder::isBuiltinSendIndirectS0(G4_Operand *op) const
-{
-  const G4_Declare *d = op->getTopDcl();
-  if (d == nullptr || d->getRegFile() != G4_SCALAR)
-    return false;
-  unsigned rightBound = 0;
-  if (op->isDstRegRegion()) {
-    G4_DstRegRegion *dst = op->asDstRegRegion();
-    rightBound = dst->getRightBound();
-  } else if (op->isSrcRegRegion()) {
-    G4_SrcRegRegion *dst = op->asSrcRegRegion();
-    rightBound = dst->getRightBound();
-  } else {
-    return false;
-  }
-  return rightBound < 8 * FIRST_SURFACE_S0_QW;
-}
-
 // scratch surfaces, write the content of T251 to extended message descriptor
 // exdesc holds the value of the extended message descriptor for bit [0:11]
 // add (1) a0.2<1>:ud T251<1>:ud exDesc:ud {NoMask}

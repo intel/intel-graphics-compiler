@@ -94,6 +94,9 @@ public:
 class SRSubPassAfterRA {
   IR_Builder &builder;
   G4_Kernel &kernel;
+  BitSet UsedS0SubReg;
+  unsigned short S0SubRegNum = 0;
+  unsigned short S0Index = 0;
   unsigned candidateID = 0;
 
 public:
@@ -110,6 +113,7 @@ public:
     }
   }
   bool isSRCandidateAfterRA(G4_INST *inst, regCandidatesBRA &dstSrcRegs);
+  unsigned short allocateS0(unsigned short UQNum);
   bool replaceWithSendiAfterRA(G4_BB *bb, INST_LIST_ITER instIter,
                                regCandidatesBRA &dstSrcRegs);
   void SRSubAfterRA(G4_BB *bb);

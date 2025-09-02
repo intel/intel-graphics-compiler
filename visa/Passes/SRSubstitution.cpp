@@ -39,7 +39,8 @@ static bool regSortCompareAfterRA(regMapBRA map1, regMapBRA map2) {
   return false;
 }
 
-void changeToIndirectSend(G4_INST *inst, G4_Declare *s0Var, int totalRegs,
+void changeToIndirectSend(G4_INST *inst, G4_Declare *s0Var,
+                          unsigned short S0Sub, int totalRegs,
                           IR_Builder &builder, bool isLargeGRF) {
   // Change the send instruction to sendi
   G4_InstSend *Send = inst->asSendInst();
@@ -56,7 +57,7 @@ void changeToIndirectSend(G4_INST *inst, G4_Declare *s0Var, int totalRegs,
   // Replace source 0 with scalar register
   G4_SrcRegRegion *headerOpnd =
       builder.createSrcRegRegion(Mod_src_undef, IndirGRF, s0Var->getRegVar(), 0,
-                                 0, builder.getRegionScalar(), Type_UB);
+                                 S0Sub * 8, builder.getRegionScalar(), Type_UB);
   // Replace source 1 with null.
   G4_SrcRegRegion *payloadToUse = builder.createNullSrc(Type_UD);
 
@@ -286,7 +287,7 @@ bool SRSubPass::replaceWithSendi(G4_BB *bb, INST_LIST_ITER instIter,
     bb->insertBefore(instIter, movInst);
   }
 
-  changeToIndirectSend(inst, s0Var, totalRegs, builder, false);
+  changeToIndirectSend(inst, s0Var, 0, totalRegs, builder, false);
 
   return true;
 }
@@ -762,6 +763,54 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
 }
 
 
+unsigned short SRSubPassAfterRA::allocateS0(unsigned short UQNum) {
+  unsigned short freeSRSub = S0Index;
+  bool find = false;
+  for (; freeSRSub < S0SubRegNum;
+       freeSRSub++) {
+    if (UQNum > 1 && (freeSRSub + 1) < S0SubRegNum) {
+      if (!UsedS0SubReg.isSet(freeSRSub) &&
+          !UsedS0SubReg.isSet(freeSRSub + 1)) {
+        find = true;
+        S0Index += 2;
+        break;
+      }
+    } else if ((UQNum == 1) && !UsedS0SubReg.isSet(freeSRSub)) {
+      find = true;
+      S0Index++;
+      break;
+    }
+    S0Index++;
+  }
+
+  if (find) {
+    return freeSRSub;
+  }
+
+  for (freeSRSub = 0; freeSRSub < S0Index; freeSRSub++) {
+    if (UQNum > 1 && (freeSRSub + 1) < S0SubRegNum) {
+      if (!UsedS0SubReg.isSet(freeSRSub) &&
+          !UsedS0SubReg.isSet(freeSRSub + 1)) {
+        find = true;
+        S0Index += 2;
+        break;
+      }
+    } else if ((UQNum == 1) && !UsedS0SubReg.isSet(freeSRSub)) {
+      find = true;
+      S0Index++;
+      break;
+    }
+    S0Index++;
+  }
+
+  if (S0Index >= S0SubRegNum) {
+    S0Index = 0;
+  }
+  // At most 2 Qwords required, since we reserved two QWords, should always find
+  assert(find);
+  return freeSRSub;
+}
+
 // Replace the send instruction with the payload of
 // Insert the scalar register intialization mov instructions.
 bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
@@ -873,10 +922,11 @@ bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
   if (dstSrcRegs.isLargeGRF) {
     UQNum = totalRegs > (TypeSize(Type_UQ) / TypeSize(Type_UW)) ? 2 : 1;
   }
+  unsigned short S0Sub = allocateS0(UQNum);
   G4_Declare *s0Var = builder.createTempScalar(UQNum, "S0_");
   s0Var->getRegVar()->setPhyReg(builder.phyregpool.getScalarReg(), 0);
   G4_DstRegRegion *dst =
-      builder.createDst(s0Var->getRegVar(), 0, 0, 1, Type_UQ);
+      builder.createDst(s0Var->getRegVar(), 0, S0Sub, 1, Type_UQ);
   G4_INST *movInst = nullptr;
   if (!dstSrcRegs.isLargeGRF) {
     movInst = builder.createIntrinsicAddrMovInst(
@@ -891,7 +941,7 @@ bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
 
   if (UQNum > 1) {
     G4_DstRegRegion *dst1 =
-        builder.createDst(s0Var->getRegVar(), 0, 1, 1, Type_UQ);
+        builder.createDst(s0Var->getRegVar(), 0, S0Sub + 1, 1, Type_UQ);
     G4_INST *movInst1 = nullptr;
     if (!dstSrcRegs.isLargeGRF) {
       movInst1 = builder.createIntrinsicAddrMovInst(
@@ -916,7 +966,8 @@ bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
     }
   }
 
-  changeToIndirectSend(inst, s0Var, totalRegs, builder, dstSrcRegs.isLargeGRF);
+  changeToIndirectSend(inst, s0Var, S0Sub, totalRegs, builder,
+                       dstSrcRegs.isLargeGRF);
 
   return true;
 }
@@ -933,12 +984,15 @@ void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
   std::map<G4_INST *, regCandidatesBRA> candidates;
   std::map<G4_INST *, regCandidatesBRA>::iterator candidatesIt;
 
+  S0SubRegNum = builder.getScalarRegisterSizeInBytes() / 8;
+  UsedS0SubReg.resize(S0SubRegNum);
+  S0Index = 0;
+
   INST_LIST_ITER ii = bb->begin(), iend(bb->end());
   unsigned candidateStart = builder.getuint32Option(vISA_IndirectInstStart);
   unsigned candidateEnd = builder.getuint32Option(vISA_IndirectInstEnd);
   while (ii != iend) {
     G4_INST *inst = *ii;
-
     regCandidatesBRA dstSrcRegs;
     if (!isSRCandidateAfterRA(inst, dstSrcRegs)) {
       ii++;
