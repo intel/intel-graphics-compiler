@@ -7,23 +7,25 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
-#include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CISACodeGen/DeSSA.hpp"
+#include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/InlineAsm.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instruction.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/PatternMatch.h>
+#include "llvm/Support/KnownBits.h"
 #include <llvmWrapper/IR/Instructions.h>
 #include "llvmWrapper/Support/Alignment.h"
-#include <llvm/IR/IntrinsicInst.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/InitializePasses.h"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -1055,18 +1057,18 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I) {
   bool match = false;
   switch (I.getOpcode()) {
   case Instruction::FSub:
-    match = MatchFloor(I) || MatchFrc(I) || MatchLrp(I) || MatchPredAdd(I) || MatchMad(I) || MatchAbsNeg(I) ||
+    match = MatchFloor(I) || MatchFrc(I) || MatchLrp(I) || MatchPredAdd(I) || MatchFMad(I) || MatchAbsNeg(I) ||
             MatchModifier(I);
     break;
   case Instruction::Sub:
-    match = MatchMad(I) || MatchAdd3(I) || MatchAbsNeg(I) || MatchMulAdd16(I) || MatchModifier(I);
+    match = MatchIMad(I) || MatchAdd3(I) || MatchAbsNeg(I) || MatchMulAdd16(I) || MatchModifier(I);
     break;
   case Instruction::Mul:
     match = MatchFullMul32(I) ||
             MatchMulAdd16(I) || MatchModifier(I);
     break;
   case Instruction::Add:
-    match = MatchMad(I) || MatchAdd3(I) || MatchMulAdd16(I) || MatchModifier(I);
+    match = MatchIMad(I) || MatchAdd3(I) || MatchMulAdd16(I) || MatchModifier(I);
     break;
   case Instruction::UDiv:
   case Instruction::SDiv:
@@ -1093,7 +1095,7 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I) {
     match = MatchRsqrt(I) || MatchModifier(I);
     break;
   case Instruction::FAdd:
-    match = MatchLrp(I) || MatchPredAdd(I) || MatchMad(I) || MatchSimpleAdd(I) || MatchModifier(I);
+    match = MatchLrp(I) || MatchPredAdd(I) || MatchFMad(I) || MatchSimpleAdd(I) || MatchModifier(I);
     break;
   case Instruction::And:
     match = MatchBfn(I) || MatchBoolOp(I) || MatchLogicAlu(I);
@@ -2054,8 +2056,59 @@ bool CodeGenPatternMatch::MatchSimpleAdd(llvm::BinaryOperator &I) {
   return true;
 }
 
-bool CodeGenPatternMatch::MatchMad(llvm::BinaryOperator &I) {
-  struct MadPattern : Pattern {
+bool CodeGenPatternMatch::CanMatchMad(llvm::BinaryOperator &I) const {
+  IGC_ASSERT(I.getOpcode() == Instruction::Add || I.getOpcode() == Instruction::Sub ||
+             I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
+
+  // General restrictions
+  if (IGC_IS_FLAG_ENABLED(DisableMatchMad)) {
+    return false;
+  }
+
+  if (m_ctx->type == ShaderType::VERTEX_SHADER && m_ctx->m_DriverInfo.DisableMatchMad()) {
+    return false;
+  }
+
+  if (m_ctx->type == ShaderType::COMPUTE_SHADER && m_ctx->getModuleMetaData()->disableMatchMadOptimizationForCS) {
+    return false;
+  }
+
+  // Instruction specific restrictions
+  bool isFpMad = I.getType()->isFloatingPointTy() ||
+                 (I.getType()->isVectorTy() && I.getType()->getScalarType()->isFloatingPointTy() &&
+                  IGC_IS_FLAG_ENABLED(VectorizerAllowFMADMatching));
+
+  if (I.getOperand(0) == I.getOperand(1)) {
+    // requirement, cannot match mad instruction if both ops of add/sub are the same, but can just do shl or mul by 2
+    return false;
+  }
+
+  if (isFpMad &&
+      (m_ctx->getModuleMetaData()->isPrecise || m_ctx->getModuleMetaData()->compOpt.disableMathRefactoring)) {
+    return false;
+  }
+
+  if (I.getType()->isIntOrIntVectorTy() && !(m_Platform.doIntegerMad() && m_ctx->m_DriverInfo.EnableIntegerMad())) {
+    return false;
+  }
+
+  if (m_ctx->type == ShaderType::VERTEX_SHADER && m_ctx->m_DriverInfo.PreventZFighting() &&
+      !(m_ctx->getModuleMetaData()->allowMatchMadOptimizationforVS ||
+        IGC_IS_FLAG_ENABLED(WaAllowMatchMadOptimizationforVS))) {
+    if (m_PosDep->PositionDependsOnInst(&I)) {
+      return false;
+    }
+  }
+
+  if (isFpMad && !ContractionAllowed(I)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool CodeGenPatternMatch::MatchFMad(llvm::BinaryOperator &I) {
+  struct FMadPattern : Pattern {
     SSource sources[3];
     virtual void Emit(EmitPass *pass, const DstModifier &modifier) {
       if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy() &&
@@ -2066,156 +2119,69 @@ bool CodeGenPatternMatch::MatchMad(llvm::BinaryOperator &I) {
     }
   };
 
-  auto isFpMad = [](const Instruction &I) {
-    auto vecType = llvm::dyn_cast<FixedVectorType>(I.getType());
-    if (!vecType)
-      return I.getType()->isFloatingPointTy();
-
-    bool isFPType = vecType->getElementType()->isFloatingPointTy() && IGC_IS_FLAG_ENABLED(VectorizerAllowFMADMatching);
-    return isFPType;
-  };
-
-  if (isFpMad(I) &&
-      (m_ctx->getModuleMetaData()->isPrecise || m_ctx->getModuleMetaData()->compOpt.disableMathRefactoring)) {
+  if (!CanMatchMad(I))
     return false;
-  }
-  if (m_ctx->type == ShaderType::VERTEX_SHADER && m_ctx->m_DriverInfo.DisabeMatchMad()) {
-    return false;
-  }
-
-  if (bool allow = m_ctx->getModuleMetaData()->allowMatchMadOptimizationforVS ||
-                   IGC_IS_FLAG_ENABLED(WaAllowMatchMadOptimizationforVS);
-      m_ctx->type == ShaderType::VERTEX_SHADER && m_ctx->m_DriverInfo.PreventZFighting() && !allow) {
-    if (m_PosDep->PositionDependsOnInst(&I)) {
-      return false;
-    }
-  }
-
-  if (m_ctx->type == ShaderType::COMPUTE_SHADER && m_ctx->getModuleMetaData()->disableMatchMadOptimizationForCS) {
-    return false;
-  }
-
-  if (IGC_IS_FLAG_ENABLED(DisableMatchMad)) {
-    return false;
-  }
-
-  bool isFpMadWithContractionOverride = false;
-  if (isFpMad(I) && m_AllowContractions == false) {
-    if (I.hasAllowContract() && m_ctx->m_DriverInfo.RespectPerInstructionContractFlag()) {
-      isFpMadWithContractionOverride = true;
-    } else {
-      return false;
-    }
-  }
-  if (!isFpMad(I) && !(m_Platform.doIntegerMad() && m_ctx->m_DriverInfo.EnableIntegerMad())) {
-    return false;
-  }
 
   bool found = false;
   llvm::Value *sources[3];
   e_modifier src_mod[3];
 
-  IGC_ASSERT(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub ||
-             I.getOpcode() == Instruction::Add || I.getOpcode() == Instruction::Sub);
-  if (I.getOperand(0) != I.getOperand(1)) {
-    for (uint i = 0; i < 2; i++) {
-      Value *src = SkipCanonicalize(I.getOperand(i));
-      if (FPExtInst *fpextInst = llvm::dyn_cast<llvm::FPExtInst>(src)) {
-        if (!m_Platform.supportMixMode() && fpextInst->getSrcTy()->getTypeID() == llvm::Type::HalfTyID) {
-          // no mix mode instructions
-        } else if (fpextInst->getSrcTy()->getTypeID() != llvm::Type::DoubleTyID &&
-                   fpextInst->getDestTy()->getTypeID() != llvm::Type::DoubleTyID) {
-          src = fpextInst->getOperand(0);
-        }
+  IGC_ASSERT(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
+  for (uint i = 0; i < 2; i++) {
+    Value *src = SkipCanonicalize(I.getOperand(i));
+    if (FPExtInst *fpextInst = llvm::dyn_cast<llvm::FPExtInst>(src)) {
+      if (!m_Platform.supportMixMode() && fpextInst->getSrcTy()->getTypeID() == llvm::Type::HalfTyID) {
+        // no mix mode instructions
+      } else if (fpextInst->getSrcTy()->getTypeID() != llvm::Type::DoubleTyID &&
+                 fpextInst->getDestTy()->getTypeID() != llvm::Type::DoubleTyID) {
+        src = fpextInst->getOperand(0);
       }
-      llvm::BinaryOperator *mul = llvm::dyn_cast<llvm::BinaryOperator>(src);
+    }
+    llvm::BinaryOperator *mul = llvm::dyn_cast<llvm::BinaryOperator>(src);
 
-      if (mul && (mul->getOpcode() == Instruction::FMul || mul->getOpcode() == Instruction::Mul)) {
-        // in case we know we won't be able to remove the mul we don't merge it
-        if (!m_PosDep->PositionDependsOnInst(mul) && NeedInstruction(*mul))
-          continue;
+    if (mul && mul->getOpcode() == Instruction::FMul) {
+      // in case we know we won't be able to remove the mul we don't merge it
+      if (!m_PosDep->PositionDependsOnInst(mul) && NeedInstruction(*mul))
+        continue;
 
-        if (isFpMadWithContractionOverride && !mul->hasAllowContract())
-          continue;
+      // Check either contraction allowed globally or fmul has allow contract flag (at this point fadd/fsub already has
+      // contract flag if disabled at global level)
+      if (!ContractionAllowed(*mul))
+        continue;
 
-        sources[2] = SkipCanonicalize(I.getOperand(1 - i));
-        sources[1] = SkipCanonicalize(mul->getOperand(0));
-        sources[0] = SkipCanonicalize(mul->getOperand(1));
+      sources[2] = SkipCanonicalize(I.getOperand(1 - i));
+      sources[1] = SkipCanonicalize(mul->getOperand(0));
+      sources[0] = SkipCanonicalize(mul->getOperand(1));
 
-        GetModifier(*sources[0], src_mod[0], sources[0]);
-        GetModifier(*sources[1], src_mod[1], sources[1]);
-        GetModifier(*sources[2], src_mod[2], sources[2]);
+      GetModifier(*sources[0], src_mod[0], sources[0]);
+      GetModifier(*sources[1], src_mod[1], sources[1]);
+      GetModifier(*sources[2], src_mod[2], sources[2]);
 
-        sources[0] = SkipCanonicalize(sources[0]);
-        sources[1] = SkipCanonicalize(sources[1]);
-        sources[2] = SkipCanonicalize(sources[2]);
-        if (I.getOpcode() == Instruction::FSub || I.getOpcode() == Instruction::Sub) {
-          if (i == 0) {
-            src_mod[2] = CombineModifier(EMOD_NEG, src_mod[2]);
+      sources[0] = SkipCanonicalize(sources[0]);
+      sources[1] = SkipCanonicalize(sources[1]);
+      sources[2] = SkipCanonicalize(sources[2]);
+      if (I.getOpcode() == Instruction::FSub) {
+        if (i == 0) {
+          src_mod[2] = CombineModifier(EMOD_NEG, src_mod[2]);
+        } else {
+          if (llvm::isa<llvm::Constant>(sources[0])) {
+            src_mod[1] = CombineModifier(EMOD_NEG, src_mod[1]);
           } else {
-            if (llvm::isa<llvm::Constant>(sources[0])) {
-              src_mod[1] = CombineModifier(EMOD_NEG, src_mod[1]);
-            } else {
-              src_mod[0] = CombineModifier(EMOD_NEG, src_mod[0]);
-            }
+            src_mod[0] = CombineModifier(EMOD_NEG, src_mod[0]);
           }
         }
-        found = true;
-        break;
       }
+      found = true;
+      break;
     }
-  }
-
-  // Check integer mad profitability.
-  if (found && !isFpMad(I)) {
-    uint8_t numConstant = 0;
-    for (int i = 0; i < 3; i++) {
-      if (isa<Constant>(sources[i]))
-        numConstant++;
-
-      // Only one immediate is supported
-      if (numConstant > 1)
-        return false;
-    }
-
-    auto isByteOrWordValue = [](Value *V) {
-      if (isa<ConstantInt>(V)) {
-        // only 16-bit int immediate is supported
-        APInt val = cast<ConstantInt>(V)->getValue();
-        return val.sge(SHRT_MIN) && val.sle(SHRT_MAX);
-      }
-      // Trace the def-use chain and return the first non up-cast related value.
-      while (isa<ZExtInst>(V) || isa<SExtInst>(V) || isa<BitCastInst>(V))
-        V = cast<Instruction>(V)->getOperand(0);
-      const unsigned DWordSizeInBits = 32;
-      return V->getType()->getScalarSizeInBits() < DWordSizeInBits;
-    };
-
-    // One multiplicant should be *W or *B.
-    if (!isByteOrWordValue(sources[0]) &&
-        !isByteOrWordValue(sources[1])
-    )
-      return false;
-
-    auto isQWordValue = [](Value *V) {
-      while (isa<ZExtInst>(V) || isa<SExtInst>(V) || isa<BitCastInst>(V))
-        V = cast<Instruction>(V)->getOperand(0);
-      Type *T = V->getType();
-      return (T->isIntegerTy() && T->getScalarSizeInBits() == 64);
-    };
-
-    // Mad instruction doesn't support QW type
-    if (isQWordValue(sources[0]) || isQWordValue(sources[1]))
-      return false;
   }
 
   if (found) {
-    MadPattern *pattern = new (m_allocator) MadPattern();
+    FMadPattern *pattern = new (m_allocator) FMadPattern();
     for (int i = 0; i < 3; i++) {
       pattern->sources[i] = GetSource(sources[i], src_mod[i], false, IsSourceOfSample(&I));
-      if (isa<Constant>(sources[i]) &&
-          (!m_Platform.support16BitImmSrcForMad() ||
-           (!sources[i]->getType()->isHalfTy() && !sources[i]->getType()->isIntegerTy()) || i == 1)) {
+      if (isa<ConstantFP>(sources[i]) &&
+          (!m_Platform.support16BitImmSrcForMad() || !sources[i]->getType()->isHalfTy() || i == 1)) {
         // CNL+ mad instruction allows 16 bit immediate for src0 and src2
         AddToConstantPool(I.getParent(), sources[i]);
         pattern->sources[i].fromConstantPool = true;
@@ -2224,6 +2190,305 @@ bool CodeGenPatternMatch::MatchMad(llvm::BinaryOperator &I) {
     AddPattern(pattern);
   }
   return found;
+}
+
+bool CodeGenPatternMatch::IsMulCandidateForIMad(llvm::BinaryOperator *Mul, llvm::BinaryOperator *I) {
+  IGC_ASSERT(Mul->getOpcode() == Instruction::Mul);
+  IGC_ASSERT(I->getOpcode() == Instruction::Add || I->getOpcode() == Instruction::Sub);
+
+  // in case we know we won't be able to remove the mul we don't merge it
+  if (!m_PosDep->PositionDependsOnInst(Mul) && NeedInstruction(*Mul))
+    return false;
+
+
+  auto isValueNumBitsWide = [](Value *V, unsigned bitWidth) {
+    // Look through casts because LLVM cannot represent mixed type mul and add that may match a mad instruction
+    // i.e.
+    // i64 = i32 * i32 + i64
+    // is represented as either:
+    // temp = mul i32 a, b
+    // zext_temp = zext i32 temp to i64
+    // res = add i64 zext_temp, c
+    // or:
+    // a64 = zext i32 a to i64
+    // b64 = zext i32 b to i64
+    // temp = mul i64 a64, b64
+    // res = add i64 temp, c
+    while (isa<ZExtInst>(V) || isa<SExtInst>(V) || isa<BitCastInst>(V))
+      V = cast<Instruction>(V)->getOperand(0);
+    Type *T = V->getType();
+    return (T->isIntegerTy() && T->getPrimitiveSizeInBits() == bitWidth);
+  };
+
+  auto *src0 = SkipCanonicalize(Mul->getOperand(1));
+  auto *src1 = SkipCanonicalize(Mul->getOperand(0));
+
+  // Mad instruction doesn't support QW type for mul operands
+  if (isValueNumBitsWide(src0, 64) || isValueNumBitsWide(src1, 64))
+    return false;
+
+  if (IsConstOrSimdConstExpr(src0) && IsConstOrSimdConstExpr(src1)) {
+    // If both Mul operands are constants or simdSize intrinsic, do not match MAD, just match ADD/ADD3 with folded
+    // constant.
+    return false;
+  }
+
+  // If Mul is not in the same block as I, may increase reg pressure.
+  // Lifetime of Mul may get extended, try matching something else like add3 instead which may reduce reg pressure.
+  if (IGC_IS_FLAG_DISABLED(AllowCrossBlockMatchMad) && Mul->getParent() != I->getParent()) {
+    return false;
+  }
+
+  auto* otherOp = (I->getOperand(0) == Mul) ? I->getOperand(1) : I->getOperand(0);
+  // Mad instruction does not support qword type for add/sub operand
+  if (isValueNumBitsWide(otherOp, 64)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I) {
+  struct IMadPattern : Pattern {
+    SSource sources[3];
+    virtual void Emit(EmitPass *pass, const DstModifier &modifier) { pass->Mad(sources, modifier); }
+  };
+
+  if (!CanMatchMad(I)) {
+    return false;
+  }
+
+  if (!I.getType()->isIntegerTy()) {
+    // TEMP, TODO: Support vector IMad
+    return false;
+  }
+
+  for (int i = 0; i < 2; i++) {
+    Value *src = SkipCanonicalize(I.getOperand(i));
+    auto *mul = llvm::dyn_cast<llvm::BinaryOperator>(src);
+
+    if (mul && mul->getOpcode() == Instruction::Mul) {
+      if (!IsMulCandidateForIMad(mul, &I)) {
+        continue;
+      }
+
+      struct {
+        Value *src = nullptr;
+        e_modifier mod = EMOD_NONE;
+        bool isCandidate = false;
+        bool useLower = false;
+        bool isSigned = false;
+      } oprdInfo[3];
+
+      oprdInfo[2].src = SkipCanonicalize(I.getOperand(1 - i));
+      oprdInfo[1].src = SkipCanonicalize(mul->getOperand(0));
+      oprdInfo[0].src = SkipCanonicalize(mul->getOperand(1)); // usually const LLVM operand will be 2nd op at this point
+
+      // Check whether we can replace some/all of 32-bit MUL+ADD operands with partial 16-bit MAD operands
+      // TODO: Can this also extend to replacing 16-bit operands with 8 bits? Need to be careful for byte regioning,
+      // seems like there are more restrictions in vISA for matching 8-bit MAD
+      if (IGC_IS_FLAG_ENABLED(EnableMixIntOperands) && I.getType()->isIntegerTy(32)) {
+        using namespace llvm::PatternMatch;
+        for (int opI = 0; opI < 3; ++opI) {
+          Value *L = nullptr;
+          if (IsConstOrSimdConstExpr(oprdInfo[opI].src)) {
+            if (auto *CI = dyn_cast<ConstantInt>(oprdInfo[opI].src)) {
+              int64_t val = CI->isNegative() ? CI->getSExtValue() : CI->getZExtValue();
+              // If source[2] needs to be negated, need to check if the
+              // negated src fits into W/UW.
+              if (I.getOpcode() == Instruction::Sub && i == 0 && opI == 2) {
+                val = -val;
+              }
+              if (INT16_MIN <= val && val <= INT16_MAX) {
+                oprdInfo[opI].useLower = true;
+                oprdInfo[opI].isSigned = true;
+                oprdInfo[opI].isCandidate = true;
+              } else if (0 <= val && val <= UINT16_MAX) {
+                oprdInfo[opI].useLower = true;
+                oprdInfo[opI].isCandidate = true;
+              }
+            } else {
+              // If the source is a derivative of simdSize intrinsic, compute the known bits
+              // Not guaranteed to fit in 16 or 8 bits, because of intermediate operations modifying var range
+              KnownBits knownBits = computeKnownBits(oprdInfo[opI].src, I.getModule()->getDataLayout());
+              if (knownBits.getBitWidth() <= 16) {
+                oprdInfo[opI].useLower = true;
+                if (knownBits.isNegative()) {
+                  oprdInfo[opI].isSigned = true;
+                }
+                oprdInfo[opI].isCandidate = true;
+              }
+            }
+          } else if (match(oprdInfo[opI].src, m_And(m_Value(L), m_SpecificInt(0xFFFF)))) {
+            oprdInfo[opI].src = L;
+            oprdInfo[opI].useLower = true;
+            oprdInfo[opI].isCandidate = true;
+          } else if (match(oprdInfo[opI].src, m_LShr(m_Value(L), m_SpecificInt(16)))) {
+            oprdInfo[opI].src = L;
+            oprdInfo[opI].isCandidate = true;
+          } else if (match(oprdInfo[opI].src, m_AShr(m_Shl(m_Value(L), m_SpecificInt(16)), m_SpecificInt(16)))) {
+            oprdInfo[opI].src = L;
+            oprdInfo[opI].useLower = true;
+            oprdInfo[opI].isSigned = true;
+            oprdInfo[opI].isCandidate = true;
+          } else if (PatternMatch::match(oprdInfo[opI].src, m_AShr(m_Value(L), m_SpecificInt(16)))) {
+            oprdInfo[opI].src = L;
+            oprdInfo[opI].isSigned = true;
+            oprdInfo[opI].isCandidate = true;
+
+          }
+          // TODO: Handle ZExt/SExt?
+        }
+      }
+
+      // Preemptive swapping of mul operands to try to get better candidates for src0 and src1 of mad
+      if (oprdInfo[1].isCandidate && !oprdInfo[0].isCandidate) {
+        // put the wider operand in src1
+        std::swap(oprdInfo[0], oprdInfo[1]);
+      } else {
+        // put the constant in src0
+        if (IsConstOrSimdConstExpr(oprdInfo[1].src)) {
+          std::swap(oprdInfo[0], oprdInfo[1]);
+        } else {
+          if (isUniform(oprdInfo[1].src) && !isUniform(oprdInfo[0].src) &&
+              (!oprdInfo[1].isCandidate || !oprdInfo[1].useLower)) {
+            // put non-uniform value in src1, since src0 (src2 in gen) has regioning restrictions, but only if new value
+            // in src0 will still be GRF aligned
+            std::swap(oprdInfo[0], oprdInfo[1]);
+          }
+        }
+      }
+
+      // Get source modifiers for all operands
+      // Source modifier not supported on src1 for DW and lower precision integer multiply
+      bool skipModifierSrc1 = false;
+      if (m_Platform.supportsSourceModifierForMixedIntMad() || (mul->getType()->isIntegerTy(32) &&
+          !(oprdInfo[0].isCandidate ^ oprdInfo[1].isCandidate))) {
+        GetModifier(*oprdInfo[1].src, oprdInfo[1].mod, oprdInfo[1].src);
+      } else {
+        skipModifierSrc1 = true;
+      }
+      GetModifier(*oprdInfo[0].src, oprdInfo[0].mod, oprdInfo[0].src);
+      GetModifier(*oprdInfo[2].src, oprdInfo[2].mod, oprdInfo[2].src);
+
+      if (I.getOpcode() == Instruction::Sub) {
+        if (i == 0) {
+          oprdInfo[2].mod = CombineModifier(EMOD_NEG, oprdInfo[2].mod);
+        } else {
+          // try to apply neg to src0 if possible
+          if (auto *constMulOp0 = dyn_cast<ConstantInt>(oprdInfo[0].src)) {
+            auto negConstMulOp0 = -constMulOp0->getSExtValue();
+            // if src0 is a constant, need to make sure to negate it properly
+            if (constMulOp0->isNegative()) {
+              // can flip to positive, no need to check whether it is still candidate, just change isSigned
+              oprdInfo[0].src = ConstantInt::get(constMulOp0->getType(), negConstMulOp0);
+              oprdInfo[0].isSigned = false;
+            } else {
+              // can flip to negative, need to recheck 16-bit candidacy
+              if (negConstMulOp0 < INT16_MIN) {
+                if (skipModifierSrc1) {
+                  // must put modifier on src0
+                  oprdInfo[0].src = ConstantInt::get(constMulOp0->getType(), negConstMulOp0);
+                  oprdInfo[0].isSigned = true;
+                  oprdInfo[0].isCandidate = false;
+                } else {
+                  // not restriced, can put modifier on src1 instead without making src0 non-16-bit candidate
+                  oprdInfo[1].mod = CombineModifier(EMOD_NEG, oprdInfo[1].mod);
+                }
+              } else {
+                // negative constant fits in 16 bits
+                oprdInfo[0].src = ConstantInt::get(constMulOp0->getType(), negConstMulOp0);
+                oprdInfo[0].isSigned = true;
+                oprdInfo[0].isCandidate = true; // In case constMulOp0 is INT16_MAX + 1
+              }
+            }
+          } else {
+            oprdInfo[0].mod = CombineModifier(EMOD_NEG, oprdInfo[0].mod);
+          }
+        }
+      }
+
+      // Need GRF-aligned src0 (in vISA, src2 in gen) for mad. Since preemptive swapping happened earlier, if conditions
+      // don't pass just don't match mad. Alignment and regioning are limited for src0
+      if (oprdInfo[0].isCandidate && !oprdInfo[0].useLower
+      ) {
+        continue;
+      }
+
+      oprdInfo[0].src = SkipCanonicalize(oprdInfo[0].src);
+      oprdInfo[1].src = SkipCanonicalize(oprdInfo[1].src);
+      oprdInfo[2].src = SkipCanonicalize(oprdInfo[2].src);
+
+      // Mad instruction does not support dword * dword, no operands were able to get reduced.
+      if (mul->getType()->isIntegerTy(32) && !oprdInfo[0].isCandidate &&
+          !oprdInfo[1].isCandidate
+      ) {
+        return false;
+      }
+
+      auto isValueConstantInt16Bit = [&](Value *V) {
+        if (auto *CI = dyn_cast<ConstantInt>(V)) {
+          return CI->getValue().isNegative() ? CI->getValue().sge(INT16_MIN) && CI->getValue().sle(INT16_MAX)
+                                             : CI->getValue().uge(0) && CI->getValue().ule(UINT16_MAX);
+        } else if (isa<Instruction>(V) && SIMDConstExpr(cast<Instruction>(V))) {
+          KnownBits knownBits = computeKnownBits(V, I.getModule()->getDataLayout());
+          return knownBits.getBitWidth() <= 16;
+        }
+        return false;
+      };
+
+      unsigned numConst = 0;
+      unsigned num16BitImm = 0;
+      // At this point check whether constants can be immediate or they need to be in constant pool
+      for (int i = 0; i < 3; ++i) {
+        if (IsConstOrSimdConstExpr(oprdInfo[i].src)) {
+          numConst++;
+          if (m_Platform.support16BitImmSrcForMad() && isValueConstantInt16Bit(oprdInfo[i].src)) {
+            num16BitImm++;
+          }
+        }
+      }
+
+      if ((numConst - num16BitImm) > 1) {
+        // need two movs for constants, end up with mov + mov + mad vs mul + add, not worth it
+        continue;
+      }
+
+      IMadPattern *pattern = new (m_allocator) IMadPattern();
+
+      for (int i = 0; i < 3; ++i) {
+        pattern->sources[i] = GetSource(oprdInfo[i].src, oprdInfo[i].mod, false, IsSourceOfSample(&I));
+        if (oprdInfo[i].isCandidate) {
+          SSource &thisSrc = pattern->sources[i];
+
+          // for now, Use W/UW only if region_set is false or the src is scalar
+          if (!thisSrc.region_set || (thisSrc.region[0] == 0 && thisSrc.region[1] == 1 && thisSrc.region[2] == 0)) {
+            // Note that SSource's type, if set by GetSource(), should be 32bit type. It's safe to override it with
+            // either UW or W. But for SSource's offset, need to re-calculate in term of 16bit, not 32bit.
+            thisSrc.type = oprdInfo[i].isSigned ? ISA_TYPE_W : ISA_TYPE_UW;
+            thisSrc.elementOffset = (2 * thisSrc.elementOffset) + (oprdInfo[i].useLower ? 0 : 1);
+          }
+          if (!isUniform(oprdInfo[i].src)) {
+            thisSrc.region_set = true;
+            thisSrc.region[0] = 16;
+            thisSrc.region[1] = 8;
+            thisSrc.region[2] = 2;
+          }
+        }
+
+        if (isa<ConstantInt>(oprdInfo[i].src) &&
+            (!m_Platform.support16BitImmSrcForMad() || !isValueConstantInt16Bit(oprdInfo[i].src))) {
+          // Add all constants that are unable to fit in 16-bits to constant pool.
+          AddToConstantPool(I.getParent(), oprdInfo[i].src);
+          pattern->sources[i].fromConstantPool = true;
+        }
+      }
+      AddPattern(pattern);
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // match simdblockRead/Write with preceding inttoptr if possible
