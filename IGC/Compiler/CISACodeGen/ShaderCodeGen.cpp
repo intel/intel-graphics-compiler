@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "AdaptorOCL/MergeAllocasOCL.h"
 #include "Compiler/Legalizer/PeepholeTypeLegalizer.hpp"
+#include "Compiler/CISACodeGen/DropTargetBBs.hpp"
 #include "Compiler/CISACodeGen/layout.hpp"
 #include "Compiler/CISACodeGen/DeSSA.hpp"
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
@@ -366,6 +367,9 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     mpm.add(new IGCRegisterPressurePrinter("final"));
   // Let Layout be the last pass before Emit Pass
   mpm.add(new Layout());
+  if(IGC_IS_FLAG_ENABLED(EnableDropTargetBBs)) {
+    mpm.add(new DropTargetBBs());
+  }
 
 
   mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Analysis, STATS_COUNTER_END));

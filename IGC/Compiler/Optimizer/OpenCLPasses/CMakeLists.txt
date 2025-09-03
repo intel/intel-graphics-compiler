@@ -61,6 +61,8 @@ add_subdirectory(MergeScalarPhisPass)
 add_subdirectory(SubGroupFuncs)
 add_subdirectory(SubGroupReductionPattern)
 add_subdirectory(TransformUnmaskedFunctionsPass)
+add_subdirectory(DisableInlining)
+add_subdirectory(DropTargetFunctions)
 add_subdirectory(UndefinedReferences)
 add_subdirectory(UnreachableHandling)
 add_subdirectory(WGFuncs)
@@ -120,6 +122,8 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_SubGroupFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_SubGroupReductionPattern}
     ${IGC_BUILD__SRC__OpenCLPasses_TransformUnmaskedFunctionsPass}
+    ${IGC_BUILD__SRC__OpenCLPasses_DisableInliningPass}
+    ${IGC_BUILD__SRC__OpenCLPasses_DropTargetFunctionsPass}
     ${IGC_BUILD__SRC__OpenCLPasses_UndefinedReferences}
     ${IGC_BUILD__SRC__OpenCLPasses_UnreachableHandling}
     ${IGC_BUILD__SRC__OpenCLPasses_WGFuncs}
@@ -184,6 +188,8 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_SubGroupFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_SubGroupReductionPattern}
     ${IGC_BUILD__HDR__OpenCLPasses_TransformUnmaskedFunctionsPass}
+    ${IGC_BUILD__HDR__OpenCLPasses_DisableInliningPass}
+    ${IGC_BUILD__HDR__OpenCLPasses_DropTargetFunctionsPass}
     ${IGC_BUILD__HDR__OpenCLPasses_UndefinedReferences}
     ${IGC_BUILD__HDR__OpenCLPasses_UnreachableHandling}
     ${IGC_BUILD__HDR__OpenCLPasses_WGFuncs}
@@ -247,6 +253,8 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_SubGroupFuncs
     Compiler__OpenCLPasses_SubGroupReductionPattern
     Compiler__OpenCLPasses_TransformUnmaskedFunctionsPass
+    Compiler__OpenCLPasses_DisableInliningPass
+    Compiler__OpenCLPasses_DropTargetFunctionsPass
     Compiler__OpenCLPasses_UndefinedReferences
     Compiler__OpenCLPasses_UnreachableHandling
     Compiler__OpenCLPasses_WGFuncs

@@ -1736,6 +1736,11 @@ if(UNIX)
 
 endif()
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
+    CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+    link_libraries(stdc++fs)
+endif()
+
 if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
   target_link_libraries("${IGC_BUILD__PROJ__igc_dll}" PRIVATE LLVMSPIRVLib)
 endif()
