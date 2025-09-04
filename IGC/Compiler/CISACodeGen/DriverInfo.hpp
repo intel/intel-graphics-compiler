@@ -226,7 +226,7 @@ public:
   virtual bool NeedWAToTransformA32MessagesToA64() const { return false; }
 
   /// disable mad in Vertex shader to avoid ZFigthing issues
-  virtual bool DisableMatchMad() const { return false; }
+  virtual bool DisabeMatchMad() const { return false; }
 
   /// Some FE sends SLM pointers in DWORD units
   virtual bool WASLMPointersDwordUnit() const { return false; }

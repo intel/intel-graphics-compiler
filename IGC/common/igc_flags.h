@@ -1714,10 +1714,6 @@ DECLARE_IGC_REGKEY_ENUM(RemoveUnusedIdImplicitArguments, -1,
                         " 0 - force disabled"
                         " 1 - force enabled",
                         TRIBOOL_OPTIONS, true)
-DECLARE_IGC_REGKEY(bool, AllowCrossBlockMatchMad, false,
-                   "Enable cross basic block matching of mad instructions. This may lead to increased register "
-                   "pressure, but in exchange, may reduce instruction count ",
-                   false)
 
 DECLARE_IGC_GROUP("Generating precompiled headers")
 DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true,
