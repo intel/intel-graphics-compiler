@@ -360,15 +360,17 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
     if (AllocaFound) {
       // LLVM default only to 10, boost to UnrollMaxCountForAlloca
       UP.MaxIterationsCountToAnalyze = UnrollMaxCountForAlloca;
-      UP.Threshold += ThresholdBoost;
       UP.UpperBound = true;
       UP.Force = UnrollLoopForCodeSizeOnly ? false : true;
 
-      LLVM_DEBUG(dbgs() << "Increasing L:" << L->getName() << " threshold to " << UP.Threshold
-                        << " due to Alloca accessed by:");
-      for (const auto &pair : isGEPLoopInduction)
-        LLVM_DEBUG(dbgs() << " " << pair.first->getName());
-      LLVM_DEBUG(dbgs() << " \n");
+      if (ctx->type != ShaderType::OPENCL_SHADER) {
+        UP.Threshold += ThresholdBoost;
+        LLVM_DEBUG(dbgs() << "Increasing L:" << L->getName() << " threshold to " << UP.Threshold
+                          << " due to Alloca accessed by:");
+        for (const auto &pair : isGEPLoopInduction)
+          LLVM_DEBUG(dbgs() << " " << pair.first->getName());
+        LLVM_DEBUG(dbgs() << " \n");
+      }
     }
   }
 
