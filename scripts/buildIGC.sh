@@ -49,7 +49,7 @@ else
 fi
 
 apt-get update
-apt-get install -y flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip file lsb-release python3-mako libc6 libstdc++6
+apt-get install -y flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip file lsb-release python3-mako libc6 libstdc++6 libzstd-dev
 echo "[Build Status] flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip file INSTALLED"
 
 if [ "$UBUNTU_VERSION" = "20.04" ]; then

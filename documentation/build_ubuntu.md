@@ -10,10 +10,10 @@ SPDX-License-Identifier: MIT
 
 ### 1. Prepare workspace
 
-Building IGC needs flex, bison, libz and cmake version at least 3.13.4. You can install required packages on Ubuntu using this command:
+Building IGC needs flex, bison, libz, libzstd-dev and cmake version at least 3.13.4. You can install required packages on Ubuntu using this command:
 
 ```shell
-sudo apt-get install flex bison libz-dev cmake libc6 libstdc++6 python3-pip
+sudo apt-get install flex bison libz-dev cmake libc6 libstdc++6 libzstd-dev python3-pip
 sudo python3 -m pip install mako
 ```
 
