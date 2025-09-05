@@ -29,9 +29,7 @@ inline void setOpaquePointers(llvm::LLVMContext *Ctx, const bool Enable) {
 namespace IGC {
 inline bool canOverwriteLLVMCtxPtrMode(llvm::LLVMContext *Ctx) {
   IGC_ASSERT_MESSAGE(Ctx, "Null LLVMContext pointer!");
-#if LLVM_VERSION_MAJOR < 14
-  return false;
-#elif LLVM_VERSION_MAJOR == 14
+#if LLVM_VERSION_MAJOR == 14
   // With LLVM 14, we invoke a proper check for the -opaque-pointers CL
   // option. Regardless of whether it's false by LLVM 14's default, or
   // through an explicit setting, we deem it acceptable for IGC to

@@ -20,24 +20,13 @@ inline llvm::Argument *getArg(const llvm::Function &F, unsigned ArgNo) {
   IGC_ASSERT(F.arg_size() > ArgNo);
   llvm::Argument *Arg = nullptr;
 
-#if LLVM_VERSION_MAJOR < 10
-  // similar to lvm::Function::getArg implementation
-  auto ArgIt = F.arg_begin();
-  std::advance(ArgIt, ArgNo);
-  Arg = const_cast<llvm::Argument *>(&*ArgIt);
-#else
   Arg = F.getArg(ArgNo);
-#endif
 
   return Arg;
 }
 
 inline bool onlyWritesMemory(llvm::Function *F) {
-#if LLVM_VERSION_MAJOR < 14
-  return F->doesNotReadMemory();
-#else
   return F->onlyWritesMemory();
-#endif
 }
 
 inline void pushBackBasicBlock(llvm::Function *F, llvm::BasicBlock *BB) {

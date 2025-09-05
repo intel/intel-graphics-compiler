@@ -13,11 +13,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Intrinsics.h"
 
 namespace IGCLLVM {
-#if LLVM_VERSION_MAJOR < 10
-using Intrinsic = llvm::Intrinsic::ID;
-#else
 using Intrinsic = llvm::Intrinsic::IndependentIntrinsics;
-#endif
 } // namespace IGCLLVM
 
 #endif

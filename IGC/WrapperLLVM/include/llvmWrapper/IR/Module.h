@@ -32,21 +32,13 @@ public:
 
   // TODO: Refactor to use the LLVM 12+ signature at call sites
   inline llvm::StructType *getTypeByName(llvm::StringRef Name) {
-#if LLVM_VERSION_MAJOR < 12
-    return llvm::Module::getTypeByName(Name);
-#else
     return llvm::StructType::getTypeByName(llvm::Module::getContext(), Name);
-#endif
   }
 };
 
 // TODO: Refactor to use the LLVM 12+ signature at call sites
 inline llvm::StructType *getTypeByName(llvm::Module &M, llvm::StringRef Name) {
-#if LLVM_VERSION_MAJOR < 12
-  return M.getTypeByName(Name);
-#else
   return llvm::StructType::getTypeByName(M.getContext(), Name);
-#endif
 }
 } // namespace IGCLLVM
 

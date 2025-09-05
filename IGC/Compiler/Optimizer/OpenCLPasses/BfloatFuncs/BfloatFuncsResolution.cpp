@@ -66,14 +66,6 @@ void BfloatFuncsResolution::visitCallInst(CallInst &CI) {
   if (!DName.startswith("__builtin_bf16"))
     return;
 
-#if LLVM_VERSION_MAJOR < 14
-  m_ctx->EmitError("__builtin_bf16* function was used with unsupported IGC "
-                   "version (LLVM version < 14)",
-                   &CI);
-  return;
-}
-#else
-
   m_builder->SetInsertPoint(&CI);
 
   m_changed = true;
@@ -309,7 +301,6 @@ void BfloatFuncsResolution::handleMath(llvm::CallInst &CI, llvm::Intrinsic::ID O
   CI.replaceAllUsesWith(Res);
   m_instructionsToRemove.push_back(&CI);
 }
-#endif // LLVM_VERSION_MAJOR < 14
 /*
 Supported functions list:
 

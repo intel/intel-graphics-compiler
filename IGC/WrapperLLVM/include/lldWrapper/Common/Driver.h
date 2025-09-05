@@ -14,24 +14,15 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/raw_ostream.h"
 
 #include "lld/Common/Driver.h"
-#if LLVM_VERSION_MAJOR >= 14
 #include "lld/Common/CommonLinkerContext.h"
-#endif
 
 namespace IGCLLD {
 namespace elf {
 inline bool link(llvm::ArrayRef<const char *> Args, bool CanExitEarly, llvm::raw_ostream &stdoutOS,
                  llvm::raw_ostream &stderrOS) {
-#if LLVM_VERSION_MAJOR >= 14
   bool r = lld::elf::link(Args, stdoutOS, stderrOS, CanExitEarly, false);
   lld::CommonLinkerContext::destroy();
   return r;
-#elif LLVM_VERSION_MAJOR >= 10
-  return lld::elf::link(Args, CanExitEarly, stdoutOS, stderrOS);
-#else
-  (void)stdoutOS;
-  return lld::elf::link(Args, CanExitEarly, stderrOS);
-#endif
 }
 } // namespace elf
 } // namespace IGCLLD

@@ -15,11 +15,7 @@ SPDX-License-Identifier: MIT
 namespace IGCLLVM {
 namespace codegen {
 llvm::TargetOptions InitTargetOptionsFromCodeGenFlags(const llvm::Triple &TheTriple) {
-#if LLVM_VERSION_MAJOR <= 11
-  return llvm::codegen::InitTargetOptionsFromCodeGenFlags();
-#else
   return llvm::codegen::InitTargetOptionsFromCodeGenFlags(TheTriple);
-#endif
 }
 } // namespace codegen
 } // namespace IGCLLVM

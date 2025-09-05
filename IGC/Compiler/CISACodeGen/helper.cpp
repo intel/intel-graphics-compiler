@@ -2948,11 +2948,7 @@ void RecursivelyDeleteDeadInstructions(Instruction *I, const TargetLibraryInfo *
 void RecursivelyDeleteDeadInstructions(const SmallVectorImpl<Instruction *> &DeadInsts, const TargetLibraryInfo *TLI,
                                        MemorySSAUpdater *MSSAU,
                                        const std::function<void(Value *)> &AboutToDeleteCallback) {
-#if LLVM_VERSION_MAJOR < 11
-  SmallVector<Instruction *, 16> trivialDeadInsts;
-#else
   SmallVector<WeakTrackingVH, 16> trivialDeadInsts;
-#endif
   for (auto II : DeadInsts) {
     Instruction &I = *II;
     IGC_ASSERT(I.use_empty() && "Instructions with uses are not dead.");
@@ -2983,11 +2979,7 @@ void RecursivelyDeleteDeadInstructions(const SmallVectorImpl<Instruction *> &Dea
   }
 
   if (!trivialDeadInsts.empty()) {
-#if LLVM_VERSION_MAJOR < 13
-    RecursivelyDeleteTriviallyDeadInstructions(trivialDeadInsts, TLI, MSSAU);
-#else
     RecursivelyDeleteTriviallyDeadInstructions(trivialDeadInsts, TLI, MSSAU, AboutToDeleteCallback);
-#endif
   }
 }
 

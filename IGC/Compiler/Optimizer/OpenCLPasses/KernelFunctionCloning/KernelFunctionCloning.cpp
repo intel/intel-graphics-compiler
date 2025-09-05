@@ -144,12 +144,7 @@ bool KernelFunctionCloning::runOnModule(Module &M) {
         continue;
       }
       IGCLLVM::CallSite *call = nullptr;
-#if LLVM_VERSION_MAJOR < 11
-      IGCLLVM::CallSite callSite(U);
-      call = &callSite;
-#else
       call = dyn_cast<IGCLLVM::CallSite>(U);
-#endif
       if (!call)
         continue;
       KernelsToClone.push_back(&F);
@@ -180,12 +175,7 @@ bool KernelFunctionCloning::runOnModule(Module &M) {
     // function clone at the callsites.
     for (auto &U : originalKernelFunctionUsers) {
       IGCLLVM::CallSite *call = nullptr;
-#if LLVM_VERSION_MAJOR < 11
-      IGCLLVM::CallSite callSite(U);
-      call = &callSite;
-#else
       call = dyn_cast<IGCLLVM::CallSite>(U);
-#endif
       if (!call)
         continue;
 

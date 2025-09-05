@@ -13,9 +13,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/MC/MCObjectFileInfo.h"
 
 namespace IGCLLVM {
-#if LLVM_VERSION_MAJOR <= 12
-using llvm::MCObjectFileInfo;
-#else
 class MCObjectFileInfo : public llvm::MCObjectFileInfo {
 public:
   inline void InitMCObjectFileInfo(const llvm::Triple &TT, bool PIC, llvm::MCContext &ctx,
@@ -23,7 +20,6 @@ public:
     this->initMCObjectFileInfo(ctx, PIC, LargeCodeModel);
   }
 };
-#endif
 } // namespace IGCLLVM
 
 #endif

@@ -305,20 +305,7 @@ public:
     return false;
   }
 
-#if LLVM_VERSION_MAJOR <= 10
-  void relaxInstruction(const MCInst &inst, const MCSubtargetInfo &STI, MCInst &res) const override {
-    // TODO: implement this
-    IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
-  }
-#endif
-
-#if LLVM_VERSION_MAJOR < 14
-  bool writeNopData(raw_ostream &OS, uint64_t Count) const override { return writeNopData(OS, Count, nullptr); }
-
-  bool writeNopData(raw_ostream &OS, uint64_t Count, const MCSubtargetInfo *STI) const {
-#else
   bool writeNopData(raw_ostream &OS, uint64_t Count, const MCSubtargetInfo *STI) const override {
-#endif
       const char nop = (char)0x90;
   for (uint64_t i = 0; i < Count; ++i) {
     OS.write(&nop, 1);
@@ -472,28 +459,16 @@ unsigned StreamEmitter::GetDwarfCompileUnitID() const { return m_pContext->getDw
 void StreamEmitter::SetDwarfCompileUnitID(unsigned cuIndex) const { m_pContext->setDwarfCompileUnitID(cuIndex); }
 
 void StreamEmitter::EmitBytes(StringRef data, unsigned addrSpace) const {
-#if LLVM_VERSION_MAJOR <= 10
-  m_pMCStreamer->EmitBytes(data);
-#else
   m_pMCStreamer->emitBytes(data);
-#endif
 }
 
 void StreamEmitter::EmitValue(const MCExpr *value, unsigned size, unsigned addrSpace) const {
 
-#if LLVM_VERSION_MAJOR <= 10
-  m_pMCStreamer->EmitValue(value, size);
-#else
   m_pMCStreamer->emitValue(value, size);
-#endif
 }
 
 void StreamEmitter::EmitIntValue(uint64_t value, unsigned size, unsigned addrSpace) const {
-#if LLVM_VERSION_MAJOR <= 10
-  m_pMCStreamer->EmitIntValue(value, size);
-#else
   m_pMCStreamer->emitIntValue(value, size);
-#endif
 }
 
 void StreamEmitter::EmitInt8(int value) const { EmitIntValue(value, 1); }
@@ -503,27 +478,15 @@ void StreamEmitter::EmitInt16(int value) const { EmitIntValue(value, 2); }
 void StreamEmitter::EmitInt32(int value) const { EmitIntValue(value, 4); }
 
 void StreamEmitter::EmitSLEB128(int64_t value, const char * /*desc*/) const {
-#if LLVM_VERSION_MAJOR <= 10
-  m_pMCStreamer->EmitSLEB128IntValue(value);
-#else
   m_pMCStreamer->emitSLEB128IntValue(value);
-#endif
 }
 
 void StreamEmitter::EmitULEB128(uint64_t value, llvm::StringRef /*desc*/, unsigned padTo) const {
-#if LLVM_VERSION_MAJOR <= 10
-  m_pMCStreamer->EmitULEB128IntValue(value);
-#else
   m_pMCStreamer->emitULEB128IntValue(value);
-#endif
 }
 
 void StreamEmitter::EmitLabel(MCSymbol *pLabel) const {
-#if LLVM_VERSION_MAJOR <= 10
-  m_pMCStreamer->EmitLabel(pLabel);
-#else
   m_pMCStreamer->emitLabel(pLabel);
-#endif
 }
 
 void StreamEmitter::EmitLabelDifference(const MCSymbol *pHi, const MCSymbol *pLo, unsigned size) const {
@@ -534,28 +497,16 @@ void StreamEmitter::EmitLabelDifference(const MCSymbol *pHi, const MCSymbol *pLo
   const MCExpr *pDiff = MCBinaryExpr::createSub(hiExpr, loExpr, *m_pContext);
 
   if (!m_pAsmInfo->doesSetDirectiveSuppressReloc()) {
-#if LLVM_VERSION_MAJOR <= 10
-    m_pMCStreamer->EmitValue(pDiff, size);
-#else
     m_pMCStreamer->emitValue(pDiff, size);
-#endif
     return;
   }
 
   // Otherwise, emit with .set (aka assignment).
   MCSymbol *pSetLabel = GetTempSymbol("set", m_setCounter++);
 
-#if LLVM_VERSION_MAJOR <= 10
-  m_pMCStreamer->EmitAssignment(pSetLabel, pDiff);
-#else
   m_pMCStreamer->emitAssignment(pSetLabel, pDiff);
-#endif
 
-#if LLVM_VERSION_MAJOR <= 10
-  m_pMCStreamer->EmitSymbolValue(pSetLabel, size);
-#else
   m_pMCStreamer->emitSymbolValue(pSetLabel, size);
-#endif
 }
 
 void StreamEmitter::EmitLabelOffsetDifference(const MCSymbol *pHi, uint64_t Offset, const MCSymbol *pLo,
@@ -572,27 +523,15 @@ void StreamEmitter::EmitLabelOffsetDifference(const MCSymbol *pHi, uint64_t Offs
   const MCExpr *pDiff = MCBinaryExpr::createSub(pPlus, pLoExpr, *m_pContext);
 
   if (!m_pAsmInfo->doesSetDirectiveSuppressReloc()) {
-#if LLVM_VERSION_MAJOR <= 10
-    m_pMCStreamer->EmitValue(pDiff, size);
-#else
     m_pMCStreamer->emitValue(pDiff, size);
-#endif
     return;
   }
   // Otherwise, emit with .set (aka assignment).
   MCSymbol *pSetLabel = GetTempSymbol("set", m_setCounter++);
 
-#if LLVM_VERSION_MAJOR <= 10
-  m_pMCStreamer->EmitAssignment(pSetLabel, pDiff);
-#else
   m_pMCStreamer->emitAssignment(pSetLabel, pDiff);
-#endif
 
-#if LLVM_VERSION_MAJOR <= 10
-  m_pMCStreamer->EmitSymbolValue(pSetLabel, size);
-#else
   m_pMCStreamer->emitSymbolValue(pSetLabel, size);
-#endif
 }
 
 void StreamEmitter::EmitLabelPlusOffset(const MCSymbol *pLabel, uint64_t Offset, unsigned size,
@@ -603,11 +542,7 @@ void StreamEmitter::EmitLabelPlusOffset(const MCSymbol *pLabel, uint64_t Offset,
 
   const MCExpr *pExpr = (Offset) ? MCBinaryExpr::createAdd(pLabelExpr, pOffsetExpr, *m_pContext) : pLabelExpr;
 
-#if LLVM_VERSION_MAJOR <= 10
-  m_pMCStreamer->EmitValue(pExpr, size);
-#else
   m_pMCStreamer->emitValue(pExpr, size);
-#endif
 }
 
 void StreamEmitter::EmitLabelReference(const MCSymbol *pLabel, unsigned size, bool isSectionRelative) const {
@@ -625,11 +560,7 @@ void StreamEmitter::EmitELFDiffSize(MCSymbol *pLabel, const MCSymbol *pHi, const
 }
 
 void StreamEmitter::EmitSymbolValue(const MCSymbol *pSym, unsigned size, unsigned addrSpace) const {
-#if LLVM_VERSION_MAJOR <= 10
-  m_pMCStreamer->EmitSymbolValue(pSym, size);
-#else
   m_pMCStreamer->emitSymbolValue(pSym, size);
-#endif
 }
 
 void StreamEmitter::EmitSectionOffset(const MCSymbol *pLabel, const MCSymbol *pSectionLabel) const {
@@ -685,11 +616,7 @@ bool StreamEmitter::EmitDwarfFileDirective(unsigned fileNo, StringRef directory,
 
 void StreamEmitter::EmitDwarfLocDirective(unsigned fileNo, unsigned line, unsigned column, unsigned flags, unsigned isa,
                                           unsigned discriminator, StringRef fileName) const {
-#if LLVM_VERSION_MAJOR <= 10
-  m_pMCStreamer->EmitDwarfLocDirective(fileNo, line, column, flags, isa, discriminator, fileName);
-#else
   m_pMCStreamer->emitDwarfLocDirective(fileNo, line, column, flags, isa, discriminator, fileName);
-#endif
 }
 
 void StreamEmitter::SetMCLineTableSymbol(MCSymbol *pSym, unsigned id) const {

@@ -24,24 +24,12 @@ using GenericOptTable =
 
 inline void printHelp(const llvm::opt::OptTable &Options, llvm::raw_ostream &OS, const char *Usage, const char *Title,
                       unsigned FlagsToInclude, unsigned FlagsToExclude, bool ShowAllAliases) {
-  Options.
-#if LLVM_VERSION_MAJOR <= 12
-      PrintHelp
-#else
-      printHelp
-#endif
-      (OS, Usage, Title, FlagsToInclude, FlagsToExclude, ShowAllAliases);
+  Options.printHelp(OS, Usage, Title, FlagsToInclude, FlagsToExclude, ShowAllAliases);
 }
 
 inline void printHelp(const llvm::opt::OptTable &Options, llvm::raw_ostream &OS, const char *Usage, const char *Title,
                       bool ShowHidden = false, bool ShowAllAliases = false) {
-  Options.
-#if LLVM_VERSION_MAJOR <= 12
-      PrintHelp
-#else
-      printHelp
-#endif
-      (OS, Usage, Title, ShowHidden, ShowAllAliases);
+  Options.printHelp(OS, Usage, Title, ShowHidden, ShowAllAliases);
 }
 } // namespace IGCLLVM
 

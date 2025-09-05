@@ -31,19 +31,7 @@ inline uint64_t getPointerDereferenceableBytes(const llvm::Value *Ptr, const llv
 }
 
 inline llvm::User *getUniqueUndroppableUser(llvm::Value *V) {
-#if LLVM_VERSION_MAJOR >= 14
   return V->getUniqueUndroppableUser();
-#else // For earlier versions, simply copy LLVM 14's implementation
-  llvm::User *Result = nullptr;
-  for (auto *U : V->users()) {
-    if (IGCLLVM::isDroppable(U)) {
-      if (Result && Result != U)
-        return nullptr;
-      Result = U;
-    }
-  }
-  return Result;
-#endif
 }
 } // namespace IGCLLVM
 

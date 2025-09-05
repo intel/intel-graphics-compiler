@@ -11,12 +11,8 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR <= 13
-#include "llvm/Transforms/InstCombine/InstCombineWorklist.h"
-#else
 #define DEBUG_TYPE "instcombine"
 #include "llvm/Transforms/Utils/InstructionWorklist.h"
 #undef DEBUG_TYPE
 using InstCombineWorklist = llvm::InstructionWorklist;
-#endif
 #endif

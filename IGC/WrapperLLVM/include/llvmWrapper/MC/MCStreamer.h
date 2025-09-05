@@ -14,11 +14,7 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM {
 inline void initSections(llvm::MCStreamer *streamer, bool NoExecStack, const llvm::MCContext *Context) {
-#if LLVM_VERSION_MAJOR >= 14
   streamer->initSections(NoExecStack, *(Context->getSubtargetInfo()));
-#else
-  streamer->InitSections(NoExecStack);
-#endif
 }
 
 inline void switchSection(llvm::MCStreamer *streamer, llvm::MCSection *Section,

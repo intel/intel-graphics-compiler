@@ -19,27 +19,15 @@ namespace IGCLLVM {
 // latest relevant LLVM revision to simplify migration. In this instance,
 // a shorthand is chosen primarily for formatting reasons.
 inline llvm::Type *getNonOpaquePtrEltTy(const llvm::Type *PtrTy) {
-#if LLVM_VERSION_MAJOR < 14
-  return PtrTy->getPointerElementType();
-#else
   return PtrTy->getNonOpaquePointerElementType();
-#endif
 }
 
 inline bool isOpaquePointerTy(const llvm::Type *PtrTy) {
-#if LLVM_VERSION_MAJOR < 14
-  return false;
-#else
   return PtrTy->isOpaquePointerTy();
-#endif
 }
 
 inline bool isBFloatTy(llvm::Type *type) {
-#if LLVM_VERSION_MAJOR < 14
-  return false;
-#else
   return type->getTypeID() == llvm::Type::TypeID::BFloatTyID;
-#endif
 }
 
 inline bool isTargetExtTy(const llvm::Type *PtrTy) {

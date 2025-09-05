@@ -11,10 +11,6 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR < 14
-#include "llvm/Support/TargetRegistry.h"
-#else
 #include "llvm/MC/TargetRegistry.h"
-#endif
 
 #endif

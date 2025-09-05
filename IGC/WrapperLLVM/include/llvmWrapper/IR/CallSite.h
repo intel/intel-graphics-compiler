@@ -10,20 +10,11 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_IR_CALLSITE_H
 
 #include "llvm/Config/llvm-config.h"
-#if LLVM_VERSION_MAJOR <= 10
-#include "llvm/IR/CallSite.h"
-#else
 #include "llvm/IR/InstrTypes.h"
-#endif
 
 namespace IGCLLVM {
-#if LLVM_VERSION_MAJOR <= 10
-using llvm::CallSite;
-using CallSiteRef = IGCLLVM::CallSite;
-#else
 using CallSite = llvm::CallBase;
 using CallSiteRef = IGCLLVM::CallSite &;
-#endif
 } // namespace IGCLLVM
 
 #endif

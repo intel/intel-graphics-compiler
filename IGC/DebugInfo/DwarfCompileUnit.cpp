@@ -1301,7 +1301,6 @@ std::string CompileUnit::getParentContextString(DIScope *Context) const {
   return CS;
 }
 
-
 /// constructTypeDIE - Construct basic type die from DIBasicType.
 void CompileUnit::constructTypeDIE(DIE &Buffer, DIBasicType *BTy) {
   // Get core information.
@@ -1898,7 +1897,6 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR, DIE *IndexTy
   AddBoundTypeEntry(dwarf::DW_AT_upper_bound, SR->getUpperBound());
 
   AddBoundTypeEntry(dwarf::DW_AT_byte_stride, SR->getStride());
-
 }
 
 /// constructArrayTypeDIE - Construct array type DIE from DICompositeType.

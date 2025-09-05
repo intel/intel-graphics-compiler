@@ -20,9 +20,7 @@ SPDX-License-Identifier: MIT
 namespace IGCLLVM {
 inline bool isKillLocation(const llvm::DbgVariableIntrinsic *DbgInst) {
   IGC_ASSERT(DbgInst);
-#if LLVM_VERSION_MAJOR <= 12
-  return llvm::dyn_cast<llvm::UndefValue>(DbgInst->getVariableLocation());
-#elif LLVM_VERSION_MAJOR <= 15
+#if LLVM_VERSION_MAJOR <= 15
   return DbgInst->isUndef();
 #else // LLVM_VERSION_MAJOR >= 16
   return DbgInst->isKillLocation();
@@ -31,25 +29,15 @@ inline bool isKillLocation(const llvm::DbgVariableIntrinsic *DbgInst) {
 
 inline llvm::Value *getVariableLocation(const llvm::DbgVariableIntrinsic *DbgInst) {
   IGC_ASSERT(DbgInst);
-#if LLVM_VERSION_MAJOR <= 12
-  return DbgInst->getVariableLocation();
-#else
   IGC_ASSERT_MESSAGE((DbgInst->getNumVariableLocationOps() == 1) || isKillLocation(DbgInst),
                      "unsupported number of location ops");
   return DbgInst->getVariableLocationOp(0);
-#endif
 }
 
 inline void setKillLocation(llvm::DbgVariableIntrinsic *DbgInst) {
   IGC_ASSERT(DbgInst);
 
-#if LLVM_VERSION_MAJOR <= 12
-  auto *OP = DbgInst->getVariableLocation();
-  IGC_ASSERT_MESSAGE(OP != nullptr, "Empty dbg var not supported");
-
-  auto *Undef = llvm::UndefValue::get(OP->getType());
-  DbgInst->setOperand(0, llvm::MetadataAsValue::get(DbgInst->getContext(), llvm::ValueAsMetadata::get(Undef)));
-#elif LLVM_VERSION_MAJOR <= 15
+#if LLVM_VERSION_MAJOR <= 15
   DbgInst->setUndef();
 #else // LLVM_VERSION_MAJOR >= 16
   DbgInst->setKillLocation();
@@ -58,11 +46,7 @@ inline void setKillLocation(llvm::DbgVariableIntrinsic *DbgInst) {
 
 inline void setExpression(llvm::DbgVariableIntrinsic *DbgInst, llvm::DIExpression *NewExpr) {
   IGC_ASSERT(DbgInst);
-#if LLVM_VERSION_MAJOR <= 12
-  DbgInst->setArgOperand(2, llvm::MetadataAsValue::get(DbgInst->getContext(), NewExpr));
-#else
   DbgInst->setExpression(NewExpr);
-#endif
 }
 } // namespace IGCLLVM
 

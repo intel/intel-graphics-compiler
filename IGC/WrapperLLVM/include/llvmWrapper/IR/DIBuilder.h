@@ -48,7 +48,6 @@ public:
                                llvm::StringRef IncludePath, llvm::StringRef APINotesFile = {},
                                llvm::DIFile *File = nullptr, unsigned LineNo = 0, bool IsDecl = false,
                                llvm::StringRef SysRoot = {}) {
-
     // Simply proxy the call
 
     return llvm::DIBuilder::createModule(Scope, Name, ConfigurationMacros, IncludePath, APINotesFile, File, LineNo,

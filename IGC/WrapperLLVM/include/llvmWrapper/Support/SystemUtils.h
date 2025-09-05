@@ -13,11 +13,7 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM {
 bool CheckBitcodeOutputToConsole(llvm::raw_ostream &stream_to_check, bool print_warning = true) {
-#if LLVM_VERSION_MAJOR < 11
-  return llvm::CheckBitcodeOutputToConsole(stream_to_check, print_warning);
-#else
   return llvm::CheckBitcodeOutputToConsole(stream_to_check);
-#endif
 }
 } // namespace IGCLLVM
 

@@ -331,14 +331,6 @@ public:
   // emit expression to extract sub-reg value
   void extractSubRegValue(IGC::DIEBlock *Block, unsigned char Sz);
 
-  // Decode line number, file name and location from a string, where a line no.
-  // and file name (including directory) are separated by '-' character:
-  // lineNumber-fileNameIncludingDirectory There is a workaround for DIModule
-  // creation in earlier LLVM versions, where a line and a file parameters are
-  // not supported in DIBuilder.
-  void decodeLineAndFileForISysRoot(llvm::StringRef &lineAndFile, unsigned int *line, std::string *file,
-                                    std::string *directory);
-
   /// Construct import_module DIE.
   IGC::DIE *constructImportedEntityDIE(llvm::DIImportedEntity *Module);
 

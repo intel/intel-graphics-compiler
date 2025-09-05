@@ -41,13 +41,7 @@ llvm::Expected<object::ELF64LEFile> getElfFile(llvm::StringRef ZeBinary) {
   auto ElfOrErr = object::ObjectFile::createELFObjectFile(inputRef);
   if (!ElfOrErr)
     return ElfOrErr.takeError();
-#if LLVM_VERSION_MAJOR < 12
-  auto ElfFilePointer = cast<object::ELF64LEObjectFile>(*ElfOrErr.get()).getELFFile();
-  IGC_ASSERT(ElfFilePointer);
-  auto ElfFile = *ElfFilePointer;
-#else
   auto ElfFile = cast<object::ELF64LEObjectFile>(*ElfOrErr.get()).getELFFile();
-#endif
 
   return ElfFile;
 }
@@ -68,11 +62,7 @@ llvm::Expected<std::vector<llvm::StringRef>> getZeBinSectionsData(llvm::StringRe
 
   for (auto &Sect : *ElfSections) {
     if (Sect.sh_type == SectionType) {
-#if LLVM_VERSION_MAJOR < 12
-      auto SectionDataOrErr = ElfFile.getSectionContents(&Sect);
-#else
       auto SectionDataOrErr = ElfFile.getSectionContents(Sect);
-#endif
       if (!SectionDataOrErr)
         return SectionDataOrErr.takeError();
       StringRef Data(reinterpret_cast<const char *>((*SectionDataOrErr).data()), (size_t)Sect.sh_size);

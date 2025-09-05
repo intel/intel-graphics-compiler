@@ -14,12 +14,8 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM {
 inline llvm::Value *getUnderlyingObject(llvm::Value *V, const llvm::DataLayout &DL) {
-#if LLVM_VERSION_MAJOR < 12
-  return llvm::GetUnderlyingObject(V, DL);
-#else
   (void)DL;
   return llvm::getUnderlyingObject(V);
-#endif
 }
 } // namespace IGCLLVM
 

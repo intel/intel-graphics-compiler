@@ -449,11 +449,7 @@ void InlineLocalsResolution::computeOffsetList(Module &M, llvm::MapVector<Functi
     for (auto G : I.second) {
       auto itr = sizeMap.find(F);
       unsigned int offset = itr == sizeMap.end() ? 0 : itr->second;
-#if LLVM_VERSION_MAJOR < 11
-      offset = iSTD::Align(offset, DL.getPreferredAlignment(G));
-#else
       offset = iSTD::Align(offset, (unsigned)DL.getPreferredAlign(G).value());
-#endif
       // Save the offset of the current local
       // (set the high bits to be non-0 here too)
       offsetMap[F][G] = (offset & LOW_BITS_MASK);

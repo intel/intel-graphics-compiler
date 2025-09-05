@@ -242,11 +242,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
       // okay so those passes wouldn't optimize away null pointer
       // dereferences because they would have otherwise been undefined
       // behavior.
-#if LLVM_VERSION_MAJOR <= 10
-      F.addFnAttr("null-pointer-is-valid", "true");
-#else
       F.addFnAttr(llvm::Attribute::NullPointerIsValid);
-#endif
     }
     // Resolve collected alloca instructions for current function
     changed |= resolveAllocaInstructions(hasStackCall || hasVLA || isIndirectGroup);

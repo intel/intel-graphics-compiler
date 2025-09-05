@@ -11,8 +11,4 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Support/YAMLParser.h"
 
-#if LLVM_VERSION_MAJOR < 10
-LLVM_YAML_IS_SEQUENCE_VECTOR(llvm::yaml::Hex64)
-#endif
-
 #endif // IGCLLVM_SUPPORT_YAMLPARSER_H

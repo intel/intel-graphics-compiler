@@ -2861,11 +2861,7 @@ DIType *getOrCreateType(Type *T, Module *M) {
   if (T->isPointerTy()) {
 
     uint align = 0;
-#if LLVM_VERSION_MAJOR < 10
-    align = IGCLLVM::getPrefTypeAlign(Layout, T);
-#else
     align = IGCLLVM::getPrefTypeAlign(Layout, T).value();
-#endif
 
     std::optional<unsigned int> opt(std::nullopt);
     diType = Builder.createPointerType(nullptr, Layout.getPointerTypeSizeInBits(T), align * CHAR_BIT,

@@ -12,14 +12,4 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 
-#if LLVM_VERSION_MAJOR < 13
-
-// LLVM 13 changed name of RF_MoveDistinctMDs to RF_ReuseAndMutateDistinctMDs
-//
-//     Commit link:
-//     https://github.com/llvm/llvm-project/commit/fa35c1f80f0ea080a7cbc581416929b0a654f25c
-#define RF_ReuseAndMutateDistinctMDs RF_MoveDistinctMDs
-
-#endif // LLVM_VERSION_MAJOR < 13
-
 #endif

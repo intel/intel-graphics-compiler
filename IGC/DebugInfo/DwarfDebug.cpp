@@ -71,15 +71,10 @@ const char *beginSymbol = ".begin";
 const char *endSymbol = ".end";
 
 bool DbgVariable::isBlockByrefVariable() const {
-#if LLVM_VERSION_MAJOR < 10
-  IGC_ASSERT_MESSAGE(Var, "Invalid complex DbgVariable!");
-  return Var->getType()->isBlockByrefStruct();
-#else
   // isBlockByrefStruct is no more support by LLVM10 IR - more info in this
   // commit below:
   // https://github.com/llvm/llvm-project/commit/0779dffbd4a927d7bf9523482481248c51796907
   return false;
-#endif
 }
 
 static bool IsDebugInst(const llvm::Instruction *Inst) {

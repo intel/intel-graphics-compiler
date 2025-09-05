@@ -21,11 +21,7 @@ namespace IGCLLVM {
  * was used, which returned unsigned.
  */
 inline unsigned getPreferredAlignValue(llvm::DataLayout *DL, const llvm::GlobalVariable *GV) {
-#if LLVM_VERSION_MAJOR <= 10
-  return DL->getPreferredAlignment(GV);
-#else
   return (unsigned)DL->getPreferredAlign(GV).value();
-#endif
 }
 
 } // namespace IGCLLVM

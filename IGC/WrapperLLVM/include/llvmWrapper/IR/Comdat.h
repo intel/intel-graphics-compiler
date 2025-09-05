@@ -12,10 +12,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Comdat.h"
 
-#if LLVM_VERSION_MAJOR < 13
-#define IGCLLVM_NoDuplicates NoDeduplicate
-#else
 #define IGCLLVM_NoDuplicates NoDuplicates
-#endif
 
 #endif

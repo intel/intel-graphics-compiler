@@ -1191,12 +1191,6 @@ bool RegisterPressureTracker::fitsPressureThreshold(ReductionCandidateGroup &C) 
 
 void RegisterPressureTracker::updatePressure(ReductionCandidateGroup &C, SCEVExpander &E) {
 
-#if LLVM_VERSION_MAJOR < 14
-  BBsToUpdate.clear();
-  Function *F = C.getLoop()->getLoopPreheader()->getParent();
-  RPE.rerunLivenessAnalysis(*F);
-  return;
-#else
 
   // Refresh all BBs in loop.
   BBsToUpdate.insert(C.getLoop()->getBlocks().begin(), C.getLoop()->getBlocks().end());
@@ -1254,7 +1248,6 @@ void RegisterPressureTracker::updatePressure(ReductionCandidateGroup &C, SCEVExp
     RPE.rerunLivenessAnalysis(*F, &BBsToUpdate);
     BBsToUpdate.clear();
   }
-#endif // LLVM_VERSION_MAJOR
 }
 
 bool Reducer::reduce(SmallVectorImpl<ReductionCandidateGroup> &Candidates) {
@@ -1319,12 +1312,8 @@ void Reducer::cleanup(ReductionCandidateGroup &C) {
   // Delete GEP instructions together with index calculations. Inform Register
   // Pressure Estimator about removed instructions.
   for (auto *GEP : C.getReduced()) {
-#if LLVM_VERSION_MAJOR < 14
-    RecursivelyDeleteTriviallyDeadInstructions(GEP);
-#else
     RecursivelyDeleteTriviallyDeadInstructions(GEP, nullptr, nullptr,
                                                [&](Value *V) { RPT.trackDeletedInstruction(V); });
-#endif
   }
 }
 

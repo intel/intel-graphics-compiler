@@ -659,7 +659,6 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   if (!isOptDisabled && ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt) &&
       !ctx.getModuleMetaData()->disableMemOptforNegativeOffsetLoads) {
 
-
     if ((ctx.type == ShaderType::RAYTRACING_SHADER || ctx.hasSyncRTCalls()) &&
         IGC_IS_FLAG_DISABLED(DisablePrepareLoadsStores)) {
       mpm.add(createPrepareLoadsStoresPass());
@@ -728,7 +727,6 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     if (allowIPConstProp) {
       mpm.add(createIPSCCPPass());
     }
-
     mpm.add(createDeadCodeEliminationPass());
     mpm.add(createCFGSimplificationPass());
   }

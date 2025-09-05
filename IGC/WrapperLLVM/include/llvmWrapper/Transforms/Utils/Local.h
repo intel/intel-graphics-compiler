@@ -23,19 +23,7 @@ inline void RecursivelyDeleteTriviallyDeadInstructions(llvm::SmallVectorImpl<llv
                                                        llvm::MemorySSAUpdater *MSSAU = nullptr) {
   using namespace llvm;
 
-#if LLVM_VERSION_MAJOR < 11
-  SmallVector<Instruction *, 8> instPtrsVector = SmallVector<Instruction *, 8>();
-
-  // Unpack items of type 'WeakTrackingVH' to 'Instruction*'
-  for (unsigned i = 0; i < DeadInsts.size(); i++) {
-    Value *tmpVecItem = DeadInsts[i]; // Using 'WeakTrackingVH::operator Value*()'
-    instPtrsVector.push_back(cast<Instruction>(tmpVecItem));
-  }
-
-  llvm::RecursivelyDeleteTriviallyDeadInstructions(instPtrsVector, TLI, MSSAU);
-#else
   llvm::RecursivelyDeleteTriviallyDeadInstructions(DeadInsts, TLI, MSSAU);
-#endif
 }
 } // namespace IGCLLVM
 #endif

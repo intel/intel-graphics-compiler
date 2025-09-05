@@ -10,11 +10,7 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_TRANSFORMS_UTILS_SCALAREVOLUTIONEXPANDER_H
 
 #include "llvm/Config/llvm-config.h"
-#if LLVM_VERSION_MAJOR < 11
-#include <llvm/Analysis/ScalarEvolutionExpander.h>
-#else
 #include <llvm/Transforms/Utils/ScalarEvolutionExpander.h>
-#endif
 
 #include "Probe/Assertion.h"
 

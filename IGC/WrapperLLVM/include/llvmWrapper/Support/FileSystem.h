@@ -12,10 +12,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/FileSystem.h"
 
-#if LLVM_VERSION_MAJOR < 13
-#define IGCLLVM_OF_None F_None
-#else
 #define IGCLLVM_OF_None OF_None
-#endif
 
 #endif

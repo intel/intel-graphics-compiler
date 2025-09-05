@@ -17,24 +17,14 @@ SPDX-License-Identifier: MIT
 namespace IGCLLVM {
 
 inline bool hasByRefAttr(const llvm::Argument *arg) {
-#if LLVM_VERSION_MAJOR > 11
   return arg->hasByRefAttr();
-#else
-  return false;
-#endif
 }
 
 inline llvm::Type *getParamByRefType(const llvm::Argument *arg) {
-#if LLVM_VERSION_MAJOR > 11
   return arg->getParamByRefType();
-#else
-  return nullptr;
-#endif
 }
 inline void setParamByRefType([[maybe_unused]] llvm::Argument *arg, [[maybe_unused]] llvm::Type *param) {
-#if LLVM_VERSION_MAJOR > 11
   arg->addAttr(llvm::Attribute::get(arg->getParent()->getContext(), llvm::Attribute::ByRef, param));
-#endif
 }
 
 inline llvm::Type *getArgAttrEltTy(const llvm::Argument *Arg) {

@@ -388,10 +388,8 @@ bool CGen8OpenCLProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary, uns
           }
         } else {
           linkErr.str(); // Flush contents to the associated string
-
           linkOut.str(); // Flush contents to the associated string
           linkErrStr.append(linkOutStr);
-
           if (!linkErrStr.empty()) {
             if (ctx) {
               ctx->EmitError(linkErrStr.c_str(), nullptr);

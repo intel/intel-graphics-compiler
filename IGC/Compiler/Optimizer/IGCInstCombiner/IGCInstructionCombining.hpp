@@ -17,11 +17,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 
 namespace IGC {
-#if LLVM_VERSION_MAJOR <= 10
-inline llvm::FunctionPass *createIGCInstructionCombiningPass() { return llvm::createInstructionCombiningPass(false); }
-#else
 inline llvm::FunctionPass *createIGCInstructionCombiningPass() { return llvm::createInstructionCombiningPass(); }
-#endif
 } // namespace IGC
 
 #endif // IGC_INSTCOMBINE_INSTCOMBINE_H

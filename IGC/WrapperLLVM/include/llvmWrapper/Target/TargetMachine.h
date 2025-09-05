@@ -21,9 +21,6 @@ SPDX-License-Identifier: MIT
 #endif // LLVM_VERSION_MAJOR
 
 namespace IGCLLVM {
-#if LLVM_VERSION_MAJOR < 10
-using TargetMachine = llvm::TargetMachine;
-#else
 class TargetMachine : public llvm::TargetMachine {
 public:
   using CodeGenFileType = llvm::CodeGenFileType;
@@ -49,11 +46,7 @@ public:
     return true;
   }
 };
-#endif
 
-#if LLVM_VERSION_MAJOR < 10
-using LLVMTargetMachine = llvm::LLVMTargetMachine;
-#else
 class LLVMTargetMachine : public llvm::LLVMTargetMachine {
 public:
   using CodeGenFileType = llvm::CodeGenFileType;
@@ -80,7 +73,6 @@ public:
     return true;
   }
 };
-#endif
 } // namespace IGCLLVM
 
 #endif

@@ -57,18 +57,9 @@ public:
   }
 };
 
-#if LLVM_VERSION_MAJOR < 13
-using AliasResultEnum = llvm::AliasResult;
-#else
 using AliasResultEnum = llvm::AliasResult::Kind;
-#endif
 
-using SimpleAAQueryInfo =
-#if LLVM_VERSION_MAJOR < 14
-    llvm::AAQueryInfo;
-#else
-    llvm::SimpleAAQueryInfo;
-#endif
+using SimpleAAQueryInfo = llvm::SimpleAAQueryInfo;
 
 #if LLVM_VERSION_MAJOR >= 16
 inline SimpleAAQueryInfo createSimpleAAQueryInfo(llvm::AAResults &AAResults) { return SimpleAAQueryInfo(AAResults); }
