@@ -794,7 +794,7 @@ The storage in memory will be: 0 0 1 1 2 2 ... 7 7
 // R - number of rows
 // C - number of columns
 // VF - VNNI Factor
-#define DEFINE_GET_COORD_ROWPACKED(layout, sg, elem_bitwidth, contrib_bitwidth, R, C, VF) \
+#define DEFINE_GET_COORD(layout, sg, elem_bitwidth, contrib_bitwidth, R, C, VF) \
   INLINE int2 MANGLE_GETCOORD_NAME(layout, sg, elem_bitwidth, R, C) (int index) { \
     int sg_size = get_sub_group_size(); \
     int wi_id = get_sub_group_local_id(); \
@@ -807,67 +807,32 @@ The storage in memory will be: 0 0 1 1 2 2 ... 7 7
     return result; \
   }
 
-#define DEFINE_GET_COORD(layout, sg, elem_bitwidth, R, C, slices) \
-  INLINE int2 MANGLE_GETCOORD_NAME(layout, sg, elem_bitwidth, R, C) (int index) { \
-    int sg_size = get_sub_group_size(); \
-    int wi_id = get_sub_group_local_id(); \
-    int elems_per_slice = (R * C / sg_size) / slices; \
-    int slice_cols = (C / slices); \
-    int sg_cols_per_wi = slice_cols / sg_size; \
-    int row = (index % elems_per_slice) / sg_cols_per_wi; \
-    int col = wi_id + ((index % elems_per_slice) % sg_cols_per_wi) * sg_size + (index / elems_per_slice * slice_cols); \
-    int2 result = (int2)(row, col); \
-    return result; \
-  }
-
 // ------ PVC -------
-// DEFINE_GET_COORD_ROWPACKED(layout, sg, elem_bitwidth, contrib_bitwidth, R, C, VF)
-// DEFINE_GET_COORD(layout, sg, elem_bitwidth, R, C, slices)
-// int8
-DEFINE_GET_COORD_ROWPACKED(PackedA, _SG16, 8, 16, 8, 32, 1)
-DEFINE_GET_COORD(PackedB, _SG16, 8, 32, 16, 1)
+// layout, sg, elem_bitwidth, contrib_bitwidth, R, C, VF
+//int8
+DEFINE_GET_COORD(PackedA, _SG16, 8, 16, 8, 32, 1)
+DEFINE_GET_COORD(PackedB, _SG16, 8, 32, 32, 16, 4)
 
-// 16bit A
-DEFINE_GET_COORD(PackedA, _SG16, 16, 1, 16, 1)
-DEFINE_GET_COORD(PackedA, _SG16, 16, 8, 16, 1)
-DEFINE_GET_COORD(PackedA, _SG16, 16, 16, 16, 1)
-DEFINE_GET_COORD(PackedA, _SG16, 16, 1, 32, 1)
-DEFINE_GET_COORD(PackedA, _SG16, 16, 32, 16, 1)
-DEFINE_GET_COORD(PackedA, _SG16, 16, 32, 32, 2)
-
-// 16bit PackedB
-DEFINE_GET_COORD(PackedB, _SG16, 16, 16, 16, 1)
-DEFINE_GET_COORD(PackedB, _SG16, 16, 16, 64, 4)
-DEFINE_GET_COORD(PackedB, _SG16, 16, 32, 64, 4)
-
-// 16bit Row_major B
-DEFINE_GET_COORD(PackedB_RowMajor, _SG16, 16, 16, 16, 1)
-DEFINE_GET_COORD(PackedB_RowMajor, _SG16, 16, 16, 64, 4)
-DEFINE_GET_COORD(PackedB_RowMajor, _SG16, 16, 32, 64, 4)
+//bfloat16
+DEFINE_GET_COORD(PackedA, _SG16, 16, 16, 8, 16, 1)
+DEFINE_GET_COORD(PackedA, _SG16, 16, 16, 16, 16, 1)
+DEFINE_GET_COORD(PackedB, _SG16, 16, 32, 16, 16, 2)
 
 // Accumulator
-DEFINE_GET_COORD(Accumulator, _SG16, 32, 8, 16, 1)
-DEFINE_GET_COORD(Accumulator, _SG16, 32, 16, 16, 1)
-DEFINE_GET_COORD(Accumulator, _SG16, 32, 32, 64, 4)
-DEFINE_GET_COORD(Accumulator, _SG16, 32, 1, 64, 4)
-
-// Accumulator 16bit
-DEFINE_GET_COORD(Accumulator, _SG16, 16, 8, 16, 1)
-DEFINE_GET_COORD(Accumulator, _SG16, 16, 16, 16, 1)
-DEFINE_GET_COORD(Accumulator, _SG16, 16, 32, 64, 2)
-DEFINE_GET_COORD(Accumulator, _SG16, 16, 1, 64, 4)
+DEFINE_GET_COORD(Accumulator, _SG16, 32, 32, 8, 16, 1)
+DEFINE_GET_COORD(Accumulator, _SG16, 32, 32, 16, 16, 1)
 
 // --------- XMX8 ------------
 //int8
-DEFINE_GET_COORD_ROWPACKED(PackedA, , 8, 32, 8, 32, 1)
-DEFINE_GET_COORD_ROWPACKED(PackedB, , 8, 32, 32, 8, 4)
+DEFINE_GET_COORD(PackedA, , 8, 32, 8, 32, 1)
+DEFINE_GET_COORD(PackedB, , 8, 32, 32, 8, 4)
 
 //bfloat16
-DEFINE_GET_COORD_ROWPACKED(PackedA, , 16, 32, 8, 16, 1)
-DEFINE_GET_COORD_ROWPACKED(PackedB, , 16, 32, 16, 8, 2)
+DEFINE_GET_COORD(PackedA, , 16, 32, 8, 16, 1)
+DEFINE_GET_COORD(PackedB, , 16, 32, 16, 8, 2)
 
 // Accumulator
-DEFINE_GET_COORD_ROWPACKED(Accumulator, , 32, 32, 8, 8, 1)
+DEFINE_GET_COORD(Accumulator, , 32, 32, 8, 8, 1)
 
 /* experimental large slice support: */
 
