@@ -11,14 +11,21 @@ SPDX-License-Identifier: MIT
 
 using namespace std;
 namespace IGC {
+// clang-format off
 static constexpr MaxGRFEntry XE3_GRF[] = {
-    {128, SIMDMode::SIMD16, HWLocalId::EITHER, 1024}, {128, SIMDMode::SIMD32, HWLocalId::VALUE1, 1024},
-    {128, SIMDMode::SIMD32, HWLocalId::VALUE0, 2048}, {160, SIMDMode::SIMD16, HWLocalId::EITHER, 768},
-    {160, SIMDMode::SIMD32, HWLocalId::VALUE1, 1024}, {160, SIMDMode::SIMD32, HWLocalId::VALUE0, 1536},
-    {192, SIMDMode::SIMD16, HWLocalId::EITHER, 640},  {192, SIMDMode::SIMD32, HWLocalId::VALUE1, 1024},
-    {192, SIMDMode::SIMD32, HWLocalId::VALUE0, 1280}, {256, SIMDMode::SIMD16, HWLocalId::EITHER, 512},
-    {256, SIMDMode::SIMD32, HWLocalId::EITHER, 1024}};
+  {128, SIMDMode::SIMD16, HWLocalId::EITHER, 1024},
+  {128, SIMDMode::SIMD32, HWLocalId::VALUE1, 1024},
+  {128, SIMDMode::SIMD32, HWLocalId::VALUE0, 2048},
+  {160, SIMDMode::SIMD16, HWLocalId::EITHER, 768},
+  {160, SIMDMode::SIMD32, HWLocalId::VALUE1, 1024},
+  {160, SIMDMode::SIMD32, HWLocalId::VALUE0, 1536},
+  {192, SIMDMode::SIMD16, HWLocalId::EITHER, 640},
+  {192, SIMDMode::SIMD32, HWLocalId::VALUE1, 1024},
+  {192, SIMDMode::SIMD32, HWLocalId::VALUE0, 1280},
+  {256, SIMDMode::SIMD16, HWLocalId::EITHER, 512},
+  {256, SIMDMode::SIMD32, HWLocalId::EITHER, 1024}};
 
+// clang-format on
 
 bool MaxGRFTable::MatchHWLocalID(HWLocalId fromTable, HWLocalId target) {
   // If target = '0', table entries with '0 or 1' and '0' are matched
