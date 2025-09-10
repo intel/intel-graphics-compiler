@@ -2193,9 +2193,10 @@ private:
     }
     return instNum;
   }
-  // pair of abort, updated GRFSpillFillCount
-  std::pair<bool, unsigned int> abortOnSpill(unsigned int GRFSpillFillCount,
-                                             GraphColor &coloring);
+  // tuple of abort, updated GRFSpillFillCount, updated spillSize
+  std::tuple<bool, unsigned int, unsigned int>
+  abortOnSpill(unsigned int GRFSpillFillCount, unsigned int spillSize,
+               GraphColor &coloring);
   void verifyNoInfCostSpill(GraphColor &coloring, bool reserveSpillReg);
   void setupA0Dot2OnSpill(bool hasStackCall, unsigned int nextSpillOffset,
                           int globalScratchOffset);
