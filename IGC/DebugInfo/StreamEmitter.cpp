@@ -33,6 +33,7 @@ See LICENSE.TXT for details.
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/MCValue.h"
 #include "llvm/Support/SourceMgr.h"
+#include "llvm/Support/MD5.h"
 #include "llvmWrapper/ADT/Optional.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -315,7 +316,8 @@ public:
 
 /// createObjectWriter - Create a new MCObjectWriter instance for use by the
 /// assembler backend to emit the final object file.
-std::unique_ptr<MCObjectWriter> createObjectWriter(llvm::raw_pwrite_stream &os) const {
+std::unique_ptr<MCObjectWriter>
+createObjectWriter(llvm::raw_pwrite_stream &os) const {
   Triple triple(m_targetTriple);
   uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
   uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
@@ -457,6 +459,8 @@ MCSymbol *StreamEmitter::CreateTempSymbol() const { return m_pContext->createTem
 unsigned StreamEmitter::GetDwarfCompileUnitID() const { return m_pContext->getDwarfCompileUnitID(); }
 
 void StreamEmitter::SetDwarfCompileUnitID(unsigned cuIndex) const { m_pContext->setDwarfCompileUnitID(cuIndex); }
+
+void StreamEmitter::SetDwarfVersion(unsigned DwarfVersion) const { m_pContext->setDwarfVersion(DwarfVersion); }
 
 void StreamEmitter::EmitBytes(StringRef data, unsigned addrSpace) const {
   m_pMCStreamer->emitBytes(data);
@@ -608,10 +612,17 @@ void StreamEmitter::EmitDwarfRegOp(unsigned reg, unsigned offset, bool indirect)
   }
 }
 
-bool StreamEmitter::EmitDwarfFileDirective(unsigned fileNo, StringRef directory, StringRef filename,
-                                           unsigned cuID) const {
-  auto result = m_pMCStreamer->emitDwarfFileDirective(fileNo, directory, filename, {}, {}, cuID) != 0;
+bool StreamEmitter::EmitDwarfFileDirective(unsigned fileNo, llvm::StringRef directory, llvm::StringRef filename,
+                                           IGCLLVM::optional<llvm::MD5::MD5Result> checksum,
+                                           IGCLLVM::optional<llvm::StringRef> source, unsigned cuID) const {
+  auto result = m_pMCStreamer->emitDwarfFileDirective(fileNo, directory, filename, checksum, source, cuID) != 0;
   return result;
+}
+
+void StreamEmitter::EmitDwarfFile0Directive(unsigned fileNo, StringRef directory, StringRef filename,
+                                            IGCLLVM::optional<llvm::MD5::MD5Result> checksum,
+                                            IGCLLVM::optional<llvm::StringRef> source, unsigned cuID) const {
+  m_pMCStreamer->emitDwarfFile0Directive(directory, filename, checksum, source, cuID);
 }
 
 void StreamEmitter::EmitDwarfLocDirective(unsigned fileNo, unsigned line, unsigned column, unsigned flags, unsigned isa,
@@ -681,8 +692,7 @@ void StreamEmitter::verifyRegisterLocationExpr(const DbgVariable &DV, const Dwar
   DiagnosticBuff Diag;
   if (!DV.currentLocationIsImplicit() && !DV.currentLocationIsSimpleIndirectValue()) {
     if (DbgInst->getExpression()->isComplex()) {
-      Diag.out() << "ValidationFailure [UnexpectedComlexExpression]"
-                 << " for a simple register location\n";
+      Diag.out() << "ValidationFailure [UnexpectedComlexExpression]" << " for a simple register location\n";
     }
   }
   verificationReport(DV, Diag);

@@ -20,10 +20,12 @@ See LICENSE.TXT for details.
 #include "llvm/Config/llvm-config.h"
 #include "llvmWrapper/MC/MCContext.h"
 #include "llvmWrapper/MC/MCObjectFileInfo.h"
+#include "llvmWrapper/ADT/Optional.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/MC/MCSection.h"
 #include "llvm/Support/DataTypes.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/MD5.h"
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
@@ -111,6 +113,9 @@ public:
   unsigned GetDwarfCompileUnitID() const;
   void SetDwarfCompileUnitID(unsigned cuIndex) const;
 
+  /// @brief Update the maximum version of dwarf that LLVM should emit
+  void SetDwarfVersion(unsigned DwarfVersion) const;
+
   //===------------------------------------------------------------------===//
   // Dwarf Emission Helper Routines
   //===------------------------------------------------------------------===//
@@ -186,7 +191,13 @@ public:
   /// @brief Associate a filename with a specified logical file number.
   ///        This implements the DWARF2 '.file 4 "foo.c"' assembler directive.
   bool EmitDwarfFileDirective(unsigned fileNo, llvm::StringRef directory, llvm::StringRef filename,
-                              unsigned cuID = 0) const;
+                              IGCLLVM::optional<llvm::MD5::MD5Result> Checksum,
+                              IGCLLVM::optional<llvm::StringRef> Source, unsigned cuID) const;
+
+  /// @brief Specify the "root" file of the compilation, using the ".file 0" extension.
+  void EmitDwarfFile0Directive(unsigned fileNo, llvm::StringRef directory, llvm::StringRef filename,
+                               IGCLLVM::optional<llvm::MD5::MD5Result> Checksum,
+                               IGCLLVM::optional<llvm::StringRef> Source, unsigned cuID = 0) const;
 
   /// @brief This implements the DWARF2 '.loc fileno lineno ...' assembler
   /// directive.

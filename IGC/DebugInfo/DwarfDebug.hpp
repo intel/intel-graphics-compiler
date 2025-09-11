@@ -29,11 +29,13 @@ See LICENSE.TXT for details.
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/Support/Allocator.h"
+#include "llvm/Support/MD5.h"
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
 // TODO: remove wrapper since we don't need LLVM 7 support
 #include "llvmWrapper/IR/IntrinsicInst.h"
+#include <llvmWrapper/ADT/Optional.h>
 
 #include "DIE.hpp"
 #include "LexicalScopes.hpp"
@@ -43,6 +45,7 @@ See LICENSE.TXT for details.
 
 #include "Probe/Assertion.h"
 #include <set>
+#include <variant>
 
 namespace llvm {
 class MCSection;
@@ -399,12 +402,18 @@ class DwarfDebug {
   // Section Symbols: these are assembler temporary labels that are emitted at
   // the beginning of each supported llvm::dwarf section.  These are used to
   // form section offsets and are created by EmitSectionLabels.
-  llvm::MCSymbol *DwarfInfoSectionSym, *DwarfAbbrevSectionSym;
-  llvm::MCSymbol *DwarfStrSectionSym, *TextSectionSym, *DwarfDebugRangeSectionSym;
-  llvm::MCSymbol *DwarfDebugLocSectionSym, *DwarfLineSectionSym;
-  llvm::MCSymbol *FunctionBeginSym, *FunctionEndSym;
-  llvm::MCSymbol *ModuleBeginSym, *ModuleEndSym;
-  llvm::MCSymbol *DwarfFrameSectionSym;
+  llvm::MCSymbol *DwarfInfoSectionSym = nullptr;
+  llvm::MCSymbol *DwarfAbbrevSectionSym = nullptr;
+  llvm::MCSymbol *DwarfStrSectionSym = nullptr;
+  llvm::MCSymbol *TextSectionSym = nullptr;
+  llvm::MCSymbol *DwarfDebugRangeSectionSym = nullptr;
+  llvm::MCSymbol *DwarfDebugLocSectionSym = nullptr;
+  llvm::MCSymbol *DwarfLineSectionSym = nullptr;
+  llvm::MCSymbol *DwarfFrameSectionSym = nullptr;
+  llvm::MCSymbol *FunctionBeginSym = nullptr;
+  llvm::MCSymbol *FunctionEndSym = nullptr;
+  llvm::MCSymbol *ModuleBeginSym = nullptr;
+  llvm::MCSymbol *ModuleEndSym = nullptr;
 
   // As an optimization, there is no need to emit an entry in the directory
   // table for the same directory as DW_AT_comp_dir.
@@ -422,6 +431,8 @@ class DwarfDebug {
   // Version of llvm::dwarf we're emitting.
   unsigned DwarfVersion;
 
+  // Target pointer size in bytes.
+  unsigned PointerSize = 0;
   // A pointer to all units in the section.
   llvm::SmallVector<CompileUnit *, 1> CUs;
 
@@ -610,7 +621,12 @@ public:
   /// \brief Look up the source id with the given directory and source file
   /// names. If none currently exists, create a new id and insert it in the
   /// SourceIds map.
-  unsigned getOrCreateSourceID(llvm::StringRef DirName, llvm::StringRef FullName, unsigned CUID);
+  /// \param Checksum - optional MD5 checksum of the source file (DWARF v5)
+  /// \param Source - optional source code of the file (DWARF v5)
+  /// \param SetRootFile - true when file is primary source file (DWARF v5)
+  unsigned getOrCreateSourceID(llvm::StringRef FileName, llvm::StringRef DirName,
+                               IGCLLVM::optional<llvm::MD5::MD5Result> Checksum,
+                               IGCLLVM::optional<llvm::StringRef> Source, unsigned CUID, bool SetRootFile);
 
   /// Returns the Dwarf Version.
   unsigned getDwarfVersion() const { return DwarfVersion; }
@@ -635,6 +651,10 @@ public:
 
   /// Construct imported_module or imported_declaration DIE.
   void constructThenAddImportedEntityDIE(CompileUnit *TheCU, llvm::DIImportedEntity *IE);
+
+  /// If the \p File has an MD5 checksum, return it as an MD5Result
+  /// allocated in the MCContext.
+  IGCLLVM::optional<llvm::MD5::MD5Result> getMD5AsBytes(const llvm::DIFile *File) const;
 
 private:
   // DISubprograms used by the currently processed shader
@@ -705,8 +725,9 @@ public:
 
   void setVisaDbgInfo(const IGC::VISAObjectDebugInfo &VDI) { VisaDbgInfo = &VDI; }
 
+  // Wrapper functions for CopyDebugLoc to provide type-safe access
   llvm::MCSymbol *CopyDebugLoc(unsigned int offset);
-  unsigned int CopyDebugLocNoReloc(unsigned int o);
+  unsigned int CopyDebugLocNoReloc(unsigned int offset);
 
   const VISAModule *GetVISAModule() const { return m_pModule; }
 
@@ -744,6 +765,9 @@ public:
   }
 
 private:
+  // Internal implementation function that returns a variant
+  std::variant<unsigned int, llvm::MCSymbol *> CopyDebugLoc(unsigned int offset, bool relocationEnabled);
+
   void encodeRange(CompileUnit *TheCU, DIE *ScopeDIE, const llvm::SmallVectorImpl<InsnRange> *Ranges);
   void encodeScratchAddrSpace(std::vector<uint8_t> &data);
   uint32_t writeSubroutineCIE();

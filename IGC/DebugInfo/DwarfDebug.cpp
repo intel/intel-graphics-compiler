@@ -39,9 +39,11 @@ See LICENSE.TXT for details.
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/LEB128.h"
+#include "llvm/Support/MD5.h"
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
+#include <llvmWrapper/ADT/Optional.h>
 #include "DwarfDebug.hpp"
 #include "DIE.hpp"
 #include "DwarfCompileUnit.hpp"
@@ -330,21 +332,11 @@ DwarfDebug::DwarfDebug(StreamEmitter *A, VISAModule *M)
       SourceIdMap(DIEValueAllocator), PrevLabel(nullptr), GlobalCUIndexCount(0), StringPool(DIEValueAllocator),
       NextStringPoolNumber(0), StringPref("info_string") {
 
-  DwarfInfoSectionSym = nullptr;
-  DwarfAbbrevSectionSym = nullptr;
-  DwarfLineSectionSym = nullptr;
-  DwarfStrSectionSym = nullptr;
-  DwarfDebugRangeSectionSym = nullptr;
-  DwarfDebugLocSectionSym = nullptr;
-  TextSectionSym = nullptr;
-  DwarfFrameSectionSym = nullptr;
-
-  FunctionBeginSym = FunctionEndSym = nullptr;
-  ;
-  ModuleBeginSym = ModuleEndSym = nullptr;
-  ;
-
   DwarfVersion = getDwarfVersionFromModule(M->GetModule());
+  PointerSize = Asm->GetPointerSize();
+  // Currently the maximum version of dwarf that LLVM should emit is 4
+  if (DwarfVersion > 4)
+    Asm->SetDwarfVersion(DwarfVersion);
 }
 
 MCSymbol *DwarfDebug::getStringPoolSym() { return Asm->GetTempSymbol(StringPref); }
@@ -624,7 +616,7 @@ void DwarfDebug::encodeRange(CompileUnit *TheCU, DIE *ScopeDIE, const llvm::Smal
       };
 
       TheCU->addUInt(ScopeDIE, dwarf::DW_AT_ranges, dwarf::DW_FORM_sec_offset,
-                     GetDebugRangeSize() * Asm->GetPointerSize());
+                     GetDebugRangeSize() * PointerSize);
     }
 
     llvm::SmallVector<unsigned int, 8> Data;
@@ -666,7 +658,8 @@ DIE *DwarfDebug::constructInlinedScopeDIE(CompileUnit *TheCU, LexicalScope *Scop
 
   // Add the call site information to the DIE.
   DILocation *DL = cast<DILocation>(const_cast<MDNode *>(Scope->getInlinedAt()));
-  unsigned int fileId = getOrCreateSourceID(DL->getFilename(), DL->getDirectory(), TheCU->getUniqueID());
+  unsigned int fileId = getOrCreateSourceID(DL->getFilename(), DL->getDirectory(), getMD5AsBytes(DL->getFile()),
+                                            DL->getSource(), TheCU->getUniqueID(), false);
   TheCU->addUInt(ScopeDIE, dwarf::DW_AT_call_file, std::nullopt, fileId);
   TheCU->addUInt(ScopeDIE, dwarf::DW_AT_call_line, std::nullopt, DL->getLine());
 
@@ -800,22 +793,23 @@ DIE *DwarfDebug::constructScopeDIE(CompileUnit *TheCU, LexicalScope *Scope) {
 // If none currently exists, create a new id and insert it in the
 // SourceIds map. This can update DirectoryNames and SourceFileNames maps
 // as well.
-unsigned DwarfDebug::getOrCreateSourceID(StringRef FileName, StringRef DirName, unsigned CUID) {
+unsigned DwarfDebug::getOrCreateSourceID(llvm::StringRef FileName, llvm::StringRef DirName,
+                                         IGCLLVM::optional<llvm::MD5::MD5Result> Checksum,
+                                         IGCLLVM::optional<llvm::StringRef> Source, unsigned CUID, bool SetRootFile) {
   // If we use .loc in assembly, we can't separate .file entries according to
   // compile units. Thus all files will belong to the default compile unit.
 
   // If FE did not provide a file name, then assume stdin.
   if (FileName.empty()) {
-    return getOrCreateSourceID("<stdin>", StringRef(), CUID);
+    return getOrCreateSourceID("<stdin>", StringRef(), Checksum, Source, CUID, false);
   }
 
-  // TODO: this might not belong here. See if we can factor this better.
-  if (DirName == CompilationDir) {
+  if (DwarfVersion <= 4 && !CompilationDir.empty() && DirName == CompilationDir)
     DirName = "";
-  }
 
   // FileIDCUMap stores the current ID for the given compile unit.
-  unsigned SrcId = FileIDCUMap[CUID] + 1;
+  // DWARF v5: the root file is represented as file entry #0
+  unsigned SrcId = SetRootFile ? 0 : FileIDCUMap[CUID] + 1;
 
   // We look up the CUID/file/dir by concatenating them with a zero byte.
   SmallString<128> NamePair;
@@ -831,8 +825,16 @@ unsigned DwarfDebug::getOrCreateSourceID(StringRef FileName, StringRef DirName, 
   }
 
   FileIDCUMap[CUID] = SrcId;
-  // Print out a .file directive to specify files for .loc directives.
-  Asm->EmitDwarfFileDirective(SrcId, DirName, FileName, CUID);
+
+  // DWARF v5: the primary source file of the CU is the root file, represented as file entry #0. There is no such
+  // distinction for earlier DWARF versions.
+  // Therefore, in DWARF v5, we emit .file 0 directive for the primary source file and .file directive for the other
+  // files. In older versions, we emit .file directive for all files.
+  // The emission itself is needed to specify files for .loc directives.
+  if (SetRootFile)
+    Asm->EmitDwarfFile0Directive(SrcId, DirName, FileName, Checksum, Source, CUID);
+  else
+    Asm->EmitDwarfFileDirective(SrcId, DirName, FileName, Checksum, Source, CUID);
 
   return SrcId;
 }
@@ -842,14 +844,16 @@ unsigned DwarfDebug::getOrCreateSourceID(StringRef FileName, StringRef DirName, 
 CompileUnit *DwarfDebug::constructCompileUnit(DICompileUnit *DIUnit) {
   StringRef FN = DIUnit->getFilename();
   CompilationDir = DIUnit->getDirectory();
+  bool SetRootFile = DwarfVersion >= 5;
 
   DIE *Die = new DIE(dwarf::DW_TAG_compile_unit);
   CompileUnit *NewCU = new CompileUnit(GlobalCUIndexCount++, Die, DIUnit, Asm, this);
 
   FileIDCUMap[NewCU->getUniqueID()] = 0;
-  // Call this to emit a .file directive if it wasn't emitted for the source
+  // Call this to emit a .file / .file 0 directive if it wasn't emitted for the source
   // file this CU comes from yet.
-  getOrCreateSourceID(FN, CompilationDir, NewCU->getUniqueID());
+  getOrCreateSourceID(FN, CompilationDir, getMD5AsBytes(DIUnit->getFile()), DIUnit->getSource(), NewCU->getUniqueID(),
+  SetRootFile);
 
   auto producer = DIUnit->getProducer();
   auto strProducer = producer.str();
@@ -1044,6 +1048,24 @@ void DwarfDebug::discoverDISPNodes() {
     DwarfDISubprogramCache TemporaryCache;
     discoverDISPNodes(TemporaryCache);
   }
+}
+
+IGCLLVM::optional<llvm::MD5::MD5Result> DwarfDebug::getMD5AsBytes(const llvm::DIFile *File) const {
+  IGC_ASSERT(File);
+
+  IGCLLVM::optional<llvm::DIFile::ChecksumInfo<StringRef>> Checksum = File->getChecksum();
+
+  if (!Checksum || Checksum->Kind != llvm::DIFile::CSK_MD5)
+    return IGCLLVM::optional<llvm::MD5::MD5Result>();
+
+  // Convert the string checksum to an MD5Result for the streamer.
+  // The verifier validates the checksum so we assume it's okay.
+  // An MD5 checksum is 16 bytes.
+  std::string ChecksumString = fromHex(Checksum->Value);
+  llvm::MD5::MD5Result CKMem;
+  const size_t MD5NumBytes = 16;
+  std::memcpy(&CKMem, ChecksumString.data(), MD5NumBytes);
+  return CKMem;
 }
 
 // Emit all Dwarf sections that should come prior to the content. Create
@@ -1630,8 +1652,7 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
 
         auto CurLoc = m_pModule->GetVariableLocation(pInst);
 
-        LLVM_DEBUG(dbgs() << "  Processing Location at IP Range: [0x"; dbgs().write_hex(startIp) << "; "
-                                                                                                 << "0x";
+        LLVM_DEBUG(dbgs() << "  Processing Location at IP Range: [0x"; dbgs().write_hex(startIp) << "; " << "0x";
                    dbgs().write_hex(endIp) << "]\n"; CurLoc.print(dbgs()););
 
         DotDebugLocEntry dotLoc(startIp, endIp, pInst, DV);
@@ -1724,8 +1745,7 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
             }
             p.pInst = pInst;
 
-            LLVM_DEBUG(dbgs() << "  Fix IP Range to: [0x"; dbgs().write_hex(p.start) << "; "
-                                                                                     << "0x";
+            LLVM_DEBUG(dbgs() << "  Fix IP Range to: [0x"; dbgs().write_hex(p.start) << "; " << "0x";
                        dbgs().write_hex(p.end) << ")\n";);
           }
         }
@@ -1760,16 +1780,20 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
   }
 }
 
-llvm::MCSymbol *DwarfDebug::CopyDebugLoc(unsigned int o) {
+// Returns either the offset (unsigned int) in the .debug_loc section or a relocation label (llvm::MCSymbol*)
+// depending on whether relocation is enabled. Copies debug location entries from temporary storage to the final list.
+std::variant<unsigned int, llvm::MCSymbol *> DwarfDebug::CopyDebugLoc(unsigned int o, bool relocationEnabled) {
   // TempDotLocEntries has all entries discovered in collectVariableInfo.
   // But some of those entries may not get emitted. This function
   // is invoked when writing out DIE. At this time, it can be decided
   // whether debug_range for a variable will be emitted to debug_ranges.
-  // If yes, it is copied over to DotDebugLocEntries and new offset is
-  // returned.
+  // If yes, it is copied over to DotDebugLocEntries and new offset or
+  // label is returned.
   unsigned int offset = 0, index = 0;
   bool found = false, done = false;
   unsigned int pointerSize = m_pModule->getPointerSize();
+  llvm::MCSymbol *Label = nullptr;
+  std::variant<unsigned int, llvm::MCSymbol *> offsetOrLabel;
 
   // Compute offset in DotDebugLocEntries
   for (auto &item : DotDebugLocEntries) {
@@ -1779,10 +1803,14 @@ llvm::MCSymbol *DwarfDebug::CopyDebugLoc(unsigned int o) {
       offset += item.loc.size();
   }
 
-  auto Label = Asm->GetTempSymbol("debug_loc", offset);
-  auto RetLabel = Label;
+  if (relocationEnabled) {
+    Label = Asm->GetTempSymbol("debug_loc", offset);
+    offsetOrLabel = Label;
+  } else {
+    offsetOrLabel = offset;
+  }
 
-  while (!done) {
+  while (!done && index < TempDotDebugLocEntries.size()) {
     if (!found && TempDotDebugLocEntries[index].getOffset() == o) {
       found = true;
     } else if (!found) {
@@ -1793,8 +1821,12 @@ llvm::MCSymbol *DwarfDebug::CopyDebugLoc(unsigned int o) {
     if (found) {
       // Append data to DotLocEntries
       auto &Entry = TempDotDebugLocEntries[index];
-      Entry.setSymbol(Label);
-      Label = nullptr;
+
+      if (relocationEnabled) {
+        Entry.setSymbol(Label);
+        Label = nullptr;
+      }
+
       DotDebugLocEntries.push_back(Entry);
       if (TempDotDebugLocEntries[index].isEmpty()) {
         done = true;
@@ -1803,47 +1835,15 @@ llvm::MCSymbol *DwarfDebug::CopyDebugLoc(unsigned int o) {
     index++;
   }
 
-  return RetLabel;
+  return offsetOrLabel;
 }
 
-unsigned int DwarfDebug::CopyDebugLocNoReloc(unsigned int o) {
-  // TempDotLocEntries has all entries discovered in collectVariableInfo.
-  // But some of those entries may not get emitted. This function
-  // is invoked when writing out DIE. At this time, it can be decided
-  // whether debug_range for a variable will be emitted to debug_ranges.
-  // If yes, it is copied over to DotDebugLocEntries and new offset is
-  // returned.
-  unsigned int offset = 0, index = 0;
-  bool found = false, done = false;
-  unsigned int pointerSize = m_pModule->getPointerSize();
+llvm::MCSymbol *DwarfDebug::CopyDebugLoc(unsigned int offset) {
+  return std::get<llvm::MCSymbol *>(CopyDebugLoc(offset, true));
+}
 
-  // Compute offset in DotDebugLocEntries
-  for (auto &item : DotDebugLocEntries) {
-    if (item.isEmpty())
-      offset += pointerSize * 2;
-    else
-      offset += item.loc.size();
-  }
-
-  while (!done) {
-    if (!found && TempDotDebugLocEntries[index].getOffset() == o) {
-      found = true;
-    } else if (!found) {
-      index++;
-      continue;
-    }
-
-    if (found) {
-      // Append data to DotLocEntries
-      DotDebugLocEntries.push_back(TempDotDebugLocEntries[index]);
-      if (TempDotDebugLocEntries[index].isEmpty()) {
-        done = true;
-      }
-    }
-    index++;
-  }
-
-  return offset;
+unsigned int DwarfDebug::CopyDebugLocNoReloc(unsigned int offset) {
+  return std::get<unsigned int>(CopyDebugLoc(offset, false));
 }
 
 // Process beginning of an instruction.
@@ -2210,37 +2210,49 @@ void DwarfDebug::endFunction(const Function *MF) {
 // Register a source line with debug info. Returns the  unique label that was
 // emitted and which provides correspondence to the source line list.
 void DwarfDebug::recordSourceLine(unsigned Line, unsigned Col, const MDNode *S, unsigned Flags) {
+  unsigned FNo = 1;
   StringRef Fn;
   StringRef Dir;
-  unsigned Src = 1;
+  IGCLLVM::optional<llvm::MD5::MD5Result> Chs;
+  IGCLLVM::optional<llvm::StringRef> Src;
   if (S) {
     if (isa<DICompileUnit>(S)) {
       const DICompileUnit *CU = cast<DICompileUnit>(S);
       Fn = CU->getFilename();
       Dir = CU->getDirectory();
+      Chs = getMD5AsBytes(CU->getFile());
+      Src = CU->getSource();
     } else if (isa<DIFile>(S)) {
       const DIFile *F = cast<DIFile>(S);
       Fn = F->getFilename();
       Dir = F->getDirectory();
+      Chs = getMD5AsBytes(F);
+      Src = F->getSource();
     } else if (isa<DISubprogram>(S)) {
       const DISubprogram *SP = cast<DISubprogram>(S);
       Fn = SP->getFilename();
       Dir = SP->getDirectory();
+      Chs = getMD5AsBytes(SP->getFile());
+      Src = SP->getSource();
     } else if (isa<DILexicalBlockFile>(S)) {
       const DILexicalBlockFile *DBF = cast<DILexicalBlockFile>(S);
       Fn = DBF->getFilename();
       Dir = DBF->getDirectory();
+      Chs = getMD5AsBytes(DBF->getFile());
+      Src = DBF->getSource();
     } else if (isa<DILexicalBlock>(S)) {
       const DILexicalBlock *DB = cast<DILexicalBlock>(S);
       Fn = DB->getFilename();
       Dir = DB->getDirectory();
+      Chs = getMD5AsBytes(DB->getFile());
+      Src = DB->getSource();
     } else {
       IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected scope info");
     }
 
-    Src = getOrCreateSourceID(Fn, Dir, Asm->GetDwarfCompileUnitID());
+    FNo = getOrCreateSourceID(Fn, Dir, Chs, Src, Asm->GetDwarfCompileUnitID(), false);
   }
-  Asm->EmitDwarfLocDirective(Src, Line, Col, Flags, 0, 0, Fn);
+  Asm->EmitDwarfLocDirective(FNo, Line, Col, Flags, 0, 0, Fn);
 }
 
 //===----------------------------------------------------------------------===//
@@ -2512,8 +2524,6 @@ void DwarfDebug::emitDebugLoc() {
   if (DotDebugLocEntries.empty())
     return;
 
-// TODO: remove deprecated code
-#if 1
   Asm->SwitchSection(Asm->GetDwarfLocSection());
   unsigned int size = Asm->GetPointerSize();
 
@@ -2533,75 +2543,6 @@ void DwarfDebug::emitDebugLoc() {
   }
 
   DotDebugLocEntries.clear();
-
-#else
-  for (SmallVectorImpl<DotDebugLocEntry>::iterator I = DotDebugLocEntries.begin(), E = DotDebugLocEntries.end(); I != E;
-       ++I) {
-    DotDebugLocEntry &Entry = *I;
-    if (I + 1 != DotDebugLocEntries.end())
-      Entry.Merge(I + 1);
-  }
-
-  // Start the dwarf loc section.
-  Asm->SwitchSection(Asm->GetDwarfLocSection());
-  unsigned int size = Asm->GetPointerSize();
-  Asm->EmitLabel(Asm->GetTempSymbol("debug_loc", 0));
-  unsigned index = 1;
-  for (SmallVectorImpl<DotDebugLocEntry>::iterator I = DotDebugLocEntries.begin(), E = DotDebugLocEntries.end(); I != E;
-       ++I, ++index) {
-    DotDebugLocEntry &Entry = *I;
-    if (Entry.isMerged())
-      continue;
-    if (Entry.isEmpty()) {
-      Asm->EmitIntValue(0, size);
-      Asm->EmitIntValue(0, size);
-      Asm->EmitLabel(Asm->GetTempSymbol("debug_loc", index));
-    } else {
-      Asm->EmitSymbolValue(Entry.getBeginSym(), size);
-      Asm->EmitSymbolValue(Entry.getEndSym(), size);
-      // const DIVariable* DV = cast<DIVariable>(Entry.getVariable());
-      // Emit ("Loc expr size");
-      MCSymbol *begin = Asm->CreateTempSymbol();
-      MCSymbol *end = Asm->CreateTempSymbol();
-      Asm->EmitLabelDifference(end, begin, 2);
-      Asm->EmitLabel(begin);
-
-      const Instruction *pDbgInst = Entry.getDbgInst();
-      VISAVariableLocation Loc = m_pModule->GetVariableLocation(pDbgInst);
-
-      // Variable can be immdeiate or in a location (but not both)
-      if (Loc.IsImmediate()) {
-        const Constant *pConstVal = Loc.GetImmediate();
-        VISAModule::DataVector rawData;
-        m_pModule->GetConstantData(pConstVal, rawData);
-        const unsigned char *pData8 = rawData.data();
-        int NumBytes = rawData.size();
-        Asm->EmitInt8(dwarf::DW_OP_implicit_value);
-        Asm->EmitULEB128(rawData.size());
-        bool LittleEndian = Asm->IsLittleEndian();
-
-        // Output the constant to DWARF one byte at a time.
-        for (int i = 0; i < NumBytes; i++) {
-          uint8_t c = (LittleEndian) ? pData8[i] : pData8[(NumBytes - 1 - i)];
-
-          Asm->EmitInt8(c);
-        }
-      } else {
-        // Variable which is not immediate can have location or nothing.
-        IGC_ASSERT_MESSAGE(!Loc.HasSurface(), "Variable with surface should not change location");
-
-        if (Loc.HasLocation()) {
-          IGC_ASSERT_MESSAGE(Loc.IsRegister(), "Changable location can be an offset! Handle this case");
-          // InstCombine optimization may produce case where In Memory variable
-          // changes location Thus, In Memory variable indecator is passed as
-          // indirect location flag.
-          Asm->EmitDwarfRegOp(Loc.GetRegister(), Loc.GetOffset(), Loc.IsInMemory());
-        }
-      }
-      Asm->EmitLabel(end);
-    }
-  }
-#endif
 }
 
 // Emit visible names into a debug ranges section.
@@ -2651,15 +2592,14 @@ uint32_t DwarfDebug::writeSubroutineCIE() {
   };
 
   // Emit CIE
-  auto ptrSize = Asm->GetPointerSize();
   // The size of the length field plus the value of length must be an integral
   // multiple of the address size.
-  uint8_t lenSize = ptrSize;
-  if (ptrSize == 8)
+  uint8_t lenSize = PointerSize;
+  if (PointerSize == 8)
     lenSize = 12;
 
   // Write CIE_id
-  write(data, ptrSize == 4 ? (uint32_t)0xffffffff : (uint64_t)0xffffffffffffffff);
+  write(data, PointerSize == 4 ? (uint32_t)0xffffffff : (uint64_t)0xffffffffffffffff);
 
   // version - ubyte
   write(data, (uint8_t)4);
@@ -2668,7 +2608,7 @@ uint32_t DwarfDebug::writeSubroutineCIE() {
   write(data, (uint8_t)0);
 
   // address size - ubyte
-  write(data, (uint8_t)ptrSize);
+  write(data, (uint8_t)PointerSize);
 
   // segment size - ubyte
   write(data, (uint8_t)0);
@@ -2690,7 +2630,7 @@ uint32_t DwarfDebug::writeSubroutineCIE() {
     writeSameValue(data, GetEncodedRegNum<RegisterNumbering::GRFBase>(grf));
   }
 
-  while ((lenSize + data.size()) % ptrSize != 0)
+  while ((lenSize + data.size()) % PointerSize != 0)
     // Insert DW_CFA_nop
     write(data, (uint8_t)llvm::dwarf::DW_CFA_nop);
 
@@ -2707,12 +2647,12 @@ uint32_t DwarfDebug::writeSubroutineCIE() {
   //  (which must be less than 0xfffffff0)
 
   uint32_t bytesWritten = 0;
-  if (ptrSize == 8) {
+  if (PointerSize == 8) {
     Asm->EmitInt32(0xffffffff);
     bytesWritten = 4;
   }
-  Asm->EmitIntValue(data.size(), ptrSize);
-  bytesWritten += ptrSize;
+  Asm->EmitIntValue(data.size(), PointerSize);
+  bytesWritten += PointerSize;
 
   for (auto &byte : data)
     Asm->EmitInt8(byte);
@@ -2742,15 +2682,14 @@ uint32_t DwarfDebug::writeStackcallCIE() {
   };
 
   // Emit CIE
-  auto ptrSize = Asm->GetPointerSize();
   // The size of the length field plus the value of length must be an integral
   // multiple of the address size.
-  uint8_t lenSize = ptrSize;
-  if (ptrSize == 8)
+  uint8_t lenSize = PointerSize;
+  if (PointerSize == 8)
     lenSize = 12;
 
   // Write CIE_id
-  write(data, ptrSize == 4 ? (uint32_t)0xffffffff : (uint64_t)0xffffffffffffffff);
+  write(data, PointerSize == 4 ? (uint32_t)0xffffffff : (uint64_t)0xffffffffffffffff);
 
   // version - ubyte
   write(data, (uint8_t)4);
@@ -2759,7 +2698,7 @@ uint32_t DwarfDebug::writeStackcallCIE() {
   write(data, (uint8_t)0);
 
   // address size - ubyte
-  write(data, (uint8_t)ptrSize);
+  write(data, (uint8_t)PointerSize);
 
   // segment size - ubyte
   write(data, (uint8_t)0);
@@ -2835,7 +2774,7 @@ uint32_t DwarfDebug::writeStackcallCIE() {
     write(data, (uint8_t)llvm::dwarf::DW_OP_plus);
   }
 
-  while ((lenSize + data.size()) % ptrSize != 0)
+  while ((lenSize + data.size()) % PointerSize != 0)
     // Insert DW_CFA_nop
     write(data, (uint8_t)llvm::dwarf::DW_CFA_nop);
 
@@ -2852,12 +2791,12 @@ uint32_t DwarfDebug::writeStackcallCIE() {
   //  (which must be less than 0xfffffff0)
 
   uint32_t bytesWritten = 0;
-  if (ptrSize == 8) {
+  if (PointerSize == 8) {
     Asm->EmitInt32(0xffffffff);
     bytesWritten = 4;
   }
-  Asm->EmitIntValue(data.size(), ptrSize);
-  bytesWritten += ptrSize;
+  Asm->EmitIntValue(data.size(), PointerSize);
+  bytesWritten += PointerSize;
 
   for (auto &byte : data)
     Asm->EmitInt8(byte);
@@ -2886,13 +2825,12 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
     return;
 
   // Emit CIE
-  auto ptrSize = Asm->GetPointerSize();
   uint8_t lenSize = 4;
-  if (ptrSize == 8)
+  if (PointerSize == 8)
     lenSize = 12;
 
   // CIE_ptr (4/8 bytes)
-  write(data, ptrSize == 4 ? (uint32_t)offsetCIESubroutine : (uint64_t)offsetCIESubroutine);
+  write(data, PointerSize == 4 ? (uint32_t)offsetCIESubroutine : (uint64_t)offsetCIESubroutine);
 
   // TODO: move this to VisaDebugObjectInfo
   // initial location
@@ -2925,13 +2863,13 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
   // Code later uses this to insert label for relocation.
   LabelOffset = data.size();
   if (EmitSettings.EnableRelocation) {
-    write(data, ptrSize == 4 ? (uint32_t)0xfefefefe : (uint64_t)0xfefefefefefefefe);
+    write(data, PointerSize == 4 ? (uint32_t)0xfefefefe : (uint64_t)0xfefefefefefefefe);
   } else {
-    write(data, ptrSize == 4 ? (uint32_t)genOffStart : (uint64_t)genOffStart);
+    write(data, PointerSize == 4 ? (uint32_t)genOffStart : (uint64_t)genOffStart);
   }
 
   // address range
-  write(data, ptrSize == 4 ? (uint32_t)(genOffEnd - genOffStart) : (uint64_t)(genOffEnd - genOffStart));
+  write(data, PointerSize == 4 ? (uint32_t)(genOffEnd - genOffStart) : (uint64_t)(genOffEnd - genOffStart));
 
   // instruction - ubyte
   write(data, (uint8_t)llvm::dwarf::DW_CFA_val_expression);
@@ -2975,14 +2913,14 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
   for (auto item : data1)
     write(data, (uint8_t)item);
 
-  while ((lenSize + data.size()) % ptrSize != 0)
+  while ((lenSize + data.size()) % PointerSize != 0)
     // Insert DW_CFA_nop
     write(data, (uint8_t)llvm::dwarf::DW_CFA_nop);
 
   // Emit length with marker 0xffffffff for 8-byte ptr
-  if (ptrSize == 8)
+  if (PointerSize == 8)
     Asm->EmitInt32(0xffffffff);
-  Asm->EmitIntValue(data.size(), ptrSize);
+  Asm->EmitIntValue(data.size(), PointerSize);
 
   if (EmitSettings.EnableRelocation) {
     uint32_t ByteOffset = 0;
@@ -2991,9 +2929,9 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
       auto byte = *it;
       if (ByteOffset++ == (uint32_t)LabelOffset) {
         auto Label = GetLabelBeforeIp(genOffStart);
-        Asm->EmitLabelReference(Label, ptrSize, false);
-        // Now skip ptrSize number of bytes from data
-        std::advance(it, ptrSize);
+        Asm->EmitLabelReference(Label, PointerSize, false);
+        // Now skip PointerSize number of bytes from data
+        std::advance(it, PointerSize);
         byte = *it;
       }
       Asm->EmitInt8(byte);
@@ -3106,15 +3044,14 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
       write(data, (uint8_t)item);
   };
 
-  auto ptrSize = Asm->GetPointerSize();
   const auto &CFI = DbgInfo.getCFI();
   // Emit CIE
   uint8_t lenSize = 4;
-  if (ptrSize == 8)
+  if (PointerSize == 8)
     lenSize = 12;
 
   // CIE_ptr (4/8 bytes)
-  write(data, ptrSize == 4 ? (uint32_t)offsetCIEStackCall : (uint64_t)offsetCIEStackCall);
+  write(data, PointerSize == 4 ? (uint32_t)offsetCIEStackCall : (uint64_t)offsetCIEStackCall);
 
   // initial location
   auto genOffStart = DbgInfo.getRelocOffset();
@@ -3124,13 +3061,13 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   // Code later uses this to insert label for relocation.
   LabelOffset = data.size();
   if (EmitSettings.EnableRelocation) {
-    write(data, ptrSize == 4 ? (uint32_t)0xfefefefe : (uint64_t)0xfefefefefefefefe);
+    write(data, PointerSize == 4 ? (uint32_t)0xfefefefe : (uint64_t)0xfefefefefefefefe);
   } else {
-    write(data, ptrSize == 4 ? (uint32_t)genOffStart : (uint64_t)genOffStart);
+    write(data, PointerSize == 4 ? (uint32_t)genOffStart : (uint64_t)genOffStart);
   }
 
   // address range
-  write(data, ptrSize == 4 ? (uint32_t)(genOffEnd - genOffStart) : (uint64_t)(genOffEnd - genOffStart));
+  write(data, PointerSize == 4 ? (uint32_t)(genOffEnd - genOffStart) : (uint64_t)(genOffEnd - genOffStart));
 
   const unsigned int MovGenInstSizeInBytes = 16;
 
@@ -3269,14 +3206,14 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   }
 
   // initial instructions (array of ubyte)
-  while ((lenSize + data.size()) % ptrSize != 0)
+  while ((lenSize + data.size()) % PointerSize != 0)
     // Insert DW_CFA_nop
     write(data, (uint8_t)llvm::dwarf::DW_CFA_nop);
 
   // Emit length with marker 0xffffffff for 8-byte ptr
-  if (ptrSize == 8)
+  if (PointerSize == 8)
     Asm->EmitInt32(0xffffffff);
-  Asm->EmitIntValue(data.size(), ptrSize);
+  Asm->EmitIntValue(data.size(), PointerSize);
 
   if (EmitSettings.EnableRelocation) {
     uint32_t ByteOffset = 0;
@@ -3285,9 +3222,9 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
       auto byte = *it;
       if (ByteOffset++ == (uint32_t)LabelOffset) {
         auto Label = GetLabelBeforeIp(genOffStart);
-        Asm->EmitLabelReference(Label, ptrSize, false);
-        // Now skip ptrSize number of bytes from data
-        std::advance(it, ptrSize);
+        Asm->EmitLabelReference(Label, PointerSize, false);
+        // Now skip PointerSize number of bytes from data
+        std::advance(it, PointerSize);
         byte = *it;
       }
       Asm->EmitInt8(byte);
@@ -3375,8 +3312,7 @@ void DbgVariable::print(raw_ostream &O, bool NestedAbstract) const {
     } else
       O << Prefix << "ValInst: " << *m_pDbgInst << "\n";
   } else
-    O << Prefix << "ValInst: "
-      << "none;\n";
+    O << Prefix << "ValInst: " << "none;\n";
 
   O << makePrefix(NestedAbstract ? 4 : 0, "") << "}\n";
 }

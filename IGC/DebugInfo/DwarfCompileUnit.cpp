@@ -50,6 +50,7 @@ See LICENSE.TXT for details.
 
 #include "Probe/Assertion.h"
 #include <cmath>
+#include <variant>
 #define DEBUG_TYPE "dwarfdebug"
 
 using namespace llvm;
@@ -388,8 +389,10 @@ void CompileUnit::addSourceLine(DIE *Die, DIScope *S, unsigned Line) {
   if (Line == 0)
     return;
 
-  unsigned FileID = DD->getOrCreateSourceID(S->getFilename(), S->getDirectory(), getUniqueID());
-  IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
+  unsigned FileID = DD->getOrCreateSourceID(S->getFilename(), S->getDirectory(), DD->getMD5AsBytes(S->getFile()),
+                                            S->getSource(), getUniqueID(), false);
+  if (DD->getDwarfVersion() <= 4)
+    IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
   addUInt(Die, dwarf::DW_AT_decl_file, std::nullopt, FileID);
   addUInt(Die, dwarf::DW_AT_decl_line, std::nullopt, Line);
 }
@@ -401,8 +404,12 @@ void CompileUnit::addSourceLine(DIE *Die, DIImportedEntity *IE, unsigned Line) {
   if (Line == 0)
     return;
 
-  unsigned FileID = DD->getOrCreateSourceID(IE->getFile()->getFilename(), IE->getFile()->getDirectory(), getUniqueID());
-  IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
+  llvm::DIFile *File = IE->getFile();
+
+  unsigned FileID = DD->getOrCreateSourceID(File->getFilename(), File->getDirectory(), DD->getMD5AsBytes(File),
+                              File->getSource(), getUniqueID(), false);
+  if (DD->getDwarfVersion() <= 4)
+    IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
   addUInt(Die, dwarf::DW_AT_decl_file, std::nullopt, FileID);
   addUInt(Die, dwarf::DW_AT_decl_line, std::nullopt, Line);
 }
@@ -728,8 +735,7 @@ void CompileUnit::addBindlessOrStatelessLocation(IGC::DIEBlock *Block, const VIS
 
     const auto *VarInfo = VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNum);
     if (!VarInfo) {
-      LLVM_DEBUG(dbgs() << "warning: register is not available "
-                        << "for bindless surface offset of a V" << regNum);
+      LLVM_DEBUG(dbgs() << "warning: register is not available " << "for bindless surface offset of a V" << regNum);
       return;
     }
 
@@ -838,8 +844,7 @@ void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock *Block, const VISAVar
 
     const auto *VarInfo = VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNum);
     if (!VarInfo) {
-      LLVM_DEBUG(dbgs() << "warning: register is not available "
-                        << "for bindless surface offset of a V" << regNum);
+      LLVM_DEBUG(dbgs() << "warning: register is not available " << "for bindless surface offset of a V" << regNum);
       return;
     }
 
@@ -1255,8 +1260,8 @@ void CompileUnit::addSimdLaneScalar(IGC::DIEBlock *Block, const DbgVariable &DV,
   // Direct vector value in registers. We want to emit pieces.
   if (DV.currentLocationIsVector()) {
     PieceBuilder pieceBuilder(regNum, numGRFs, registerSizeInBits, varSizeInBits, offsetInBits);
-    LLVM_DEBUG(dbgs() << "  emitBitPiecesForRegVal("
-                      << "varSizeInBits: " << varSizeInBits << ", offsetInBits: " << offsetInBits << ")\n");
+    LLVM_DEBUG(dbgs() << "  emitBitPiecesForRegVal(" << "varSizeInBits: " << varSizeInBits
+                      << ", offsetInBits: " << offsetInBits << ")\n");
     emitBitPiecesForRegVal(Block, pieceBuilder);
     return;
   }
