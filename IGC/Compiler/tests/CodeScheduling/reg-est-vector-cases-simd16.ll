@@ -113,8 +113,6 @@ entry:
 
 define spir_kernel void @vector_shuffle(ptr addrspace(1) %A) {
 ; CHECK: Function vector_shuffle
-; CHECK: Greedy MW attempt
-
 ; CHECK: {{([0-9]+,[ ]*[0-9]+[ ]*).*[ ]*}}        [[BASE_ADDR:%.*]] = ptrtoint ptr addrspace(1) [[A:%.*]] to i64
 
 ;  (6, 512     ) MW:         Node #1, MW: 3000        %load2d = call <16 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v16i16(i64 %base_addr, i32 127, i32 1023, i32 127, i32 0, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
@@ -209,7 +207,6 @@ entry:
 
 define spir_kernel void @coalesced_scalars(ptr addrspace(1) %0) {
 ; CHECK: Function coalesced_scalars
-; CHECK: Greedy MW attempt
 
 ;               the IE instructions are marked as SCA. First IE adds regpressure
 ;               then the last usage of the scalar (fadd) kills the hanging values
@@ -306,7 +303,6 @@ define spir_kernel void @coalesced_scalars(ptr addrspace(1) %0) {
 
 define spir_kernel void @vector_to_scalars_pattern(ptr addrspace(1) %A) {
 ; CHECK: Function vector_to_scalars_pattern
-; CHECK: Greedy MW attempt
 
 ;           DPAS increases regpressure
 ; CHECK: {{([0-9]+,[ ]*512[ ]*).*[ ]*}}           [[DPAS:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> undef, <8 x i32> zeroinitializer, i32 1, i32 1, i32 1, i32 1, i1 false)

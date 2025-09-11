@@ -459,9 +459,7 @@ public:
     if (!I)
       return V;
 
-    bool IsAddrSpaceCast = isa<AddrSpaceCastInst>(I);
-
-    if (isNoOpInst(I, CTX) || IsAddrSpaceCast) {
+    if (isNoOpInst(I, CTX)) {
       return getRealOp(I->getOperand(0));
     }
     return V;
@@ -570,10 +568,7 @@ private:
   }
 
   int32_t estimateOrUpdateImpl(Instruction *I, bool Update) {
-    auto *Intr = dyn_cast<GenIntrinsicInst>(I);
-    bool IsNoOpIntr = Intr && (Intr->getIntrinsicID() == GenISAIntrinsic::GenISA_ptr_to_pair);
-
-    if (IGCLLVM::isDebugOrPseudoInst(*I) || I->isLifetimeStartOrEnd() || isNoOpInst(I, CTX) || IsNoOpIntr) {
+    if (IGCLLVM::isDebugOrPseudoInst(*I) || I->isLifetimeStartOrEnd() || isNoOpInst(I, CTX)) {
       // NoOp instructions do not change register pressure
       if (Update)
         PrintDumpLevel(VerbosityLevel::High, "NoOp instruction: " << getName(I) << "\n");
@@ -998,20 +993,8 @@ public:
 
     int32_t MaxOriginalRegpressure = 0;
     bool OriginalScheduleCanHaveSpills = false;
-
-    PrintDump("Original schedule: " << BBName << "\n");
     for (auto &I : *BB) {
-      std::string Info;
-      if (isa<PHINode>(&I)) {
-        // PHIs are already included in the initial regpressure
-        Info = formatDebugInfo(RPT.getCurrentPressure(), 0, "Phi", getVectorShuffleString(&I, VSA, RCA));
-      } else {
-        int32_t Estimate = RPT.update(&I);
-        Info = formatDebugInfo(RPT.getCurrentPressure(), Estimate, "OG", getVectorShuffleString(&I, VSA, RCA));
-      }
-      PrintDump(Info);
-      PrintInstructionDump(&I);
-
+      RPT.update(&I);
       MaxOriginalRegpressure = std::max(MaxOriginalRegpressure, RPT.getCurrentPressure());
       if (RPT.isRegpressureCritical()) {
         OriginalScheduleCanHaveSpills = true;
@@ -1219,45 +1202,6 @@ private:
   SchedulingConfig &C;
   llvm::raw_ostream *LogStream;
 
-  // Helper function to format debug information string
-  static std::string formatDebugInfo(int32_t CurrentPressure, int32_t Estimate, const std::string Type,
-                                     const std::string AddString = "") {
-    const int ESTIMATION_NUMBERS_WIDTH = 12;
-    const int INFO_WIDTH = 20;
-    std::string Info = std::to_string(CurrentPressure) + ", " + std::to_string(Estimate);
-    Info.resize(ESTIMATION_NUMBERS_WIDTH, ' ');
-    Info = "(" + Info + ") " + Type + ": ";
-    Info.resize(INFO_WIDTH, ' ');
-
-    if (!AddString.empty()) {
-      Info += AddString;
-    }
-
-    return Info;
-  }
-
-  // Helper function to get vector shuffle string
-  static std::string getVectorShuffleString(Instruction *I, VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA) {
-    auto *DT = VSA->getDestVector(I);
-    auto *V2SP = VSA->getVectorToScalarsPattern(I);
-    auto *RCP = RCA->getRematChainPattern(I);
-
-    std::string VS_String = "    ";
-    if (RCP) {
-      VS_String = "REM ";
-    } else if (DT && DT->isNoOp()) {
-      VS_String = "NOP ";
-    } else if (DT && DT->isVectorShuffle()) {
-      VS_String = "VS  ";
-    } else if (DT && !DT->isVectorShuffle()) {
-      VS_String = "SCA ";
-    } else if (V2SP) {
-      VS_String = "V2S ";
-    }
-
-    return VS_String;
-  }
-
   class InstructionNode {
   public:
     InstructionNode(Instruction *I, uint32_t N) : I(I), OriginalPosition(N) {
@@ -1278,9 +1222,8 @@ private:
 
     void print(llvm::raw_ostream &LogStream) {
       if (IGC_IS_FLAG_ENABLED(DumpCodeScheduling)) {
-        const int INFO_WIDTH = 16;
-        std::string Info = "#" + std::to_string(OriginalPosition) + ", MW: " + std::to_string(MaxWeight) + " ";
-        Info.resize(INFO_WIDTH, ' ');
+        std::string Info = "Node #" + std::to_string(OriginalPosition) + ", MW: " + std::to_string(MaxWeight) + " ";
+        Info.resize(23, ' ');
         LogStream << Info;
         I->print(LogStream);
         LogStream << "\n";
@@ -2392,8 +2335,31 @@ private:
           }
         }
 
-        std::string Info = formatDebugInfo(
-          RT.getCurrentPressure(), RT.estimate(Node->I), "Im", getVectorShuffleString(Node->I, VSA, RCA));
+        std::string Info = std::to_string(RT.getCurrentPressure()) + ", " + std::to_string(RT.estimate(Node->I));
+        Info.resize(11, ' ');
+        Info = "(" + Info + ") Im: ";
+        Info.resize(20, ' ');
+
+        auto *V2SP = VSA->getVectorToScalarsPattern(Node->I);
+        auto *RCP = RCA->getRematChainPattern(Node->I);
+
+        if (RCP) {
+          VS_String = "REM";
+        }
+        if (DT && DT->isVectorShuffle()) {
+          VS_String = "VS ";
+        }
+        if (DT && !DT->isVectorShuffle()) {
+          VS_String = "SCA";
+        }
+        if (DT && DT->isNoOp()) {
+          VS_String = "NOP";
+        }
+        if (V2SP) {
+          VS_String = "V2S";
+        }
+
+        Info += VS_String + "   ";
 
         PrintDump(Info);
         Node->print(*LogStream);
@@ -2510,11 +2476,27 @@ private:
           AllInstructionsScheduledByRP = false;
         }
 
-        std::string ChoosingMode = ChooseByRP ? "RP" : "MW";
-        ChoosingMode += CanClone ? "*" : "";
-        std::string Info = formatDebugInfo(RT.getCurrentPressure(), RT.estimate(Node->I),
-                           ChoosingMode,
-                           getVectorShuffleString(Node->I, VSA, RCA));
+        // Dump the info
+        std::string Info = std::to_string(RT.getCurrentPressure()) + ", " + std::to_string(RT.estimate(Node->I));
+        Info.resize(11, ' ');
+        Info = "(" + Info + ") " + (ChooseByRP ? "RP" : "MW") + ": ";
+        Info.resize(20, ' ');
+
+        auto *DT = VSA->getDestVector(Node->I);
+
+        std::string VS_String = "   ";
+        if (DT && DT->isVectorShuffle()) {
+          VS_String = "VS ";
+        }
+        if (DT && !DT->isVectorShuffle()) {
+          VS_String = "SCA";
+        }
+        if (DT && DT->isNoOp()) {
+          VS_String = "NOP";
+        }
+
+        Info += VS_String + (CanClone ? " * " : "   ");
+
         PrintDump(Info);
         Node->print(*LogStream);
 
