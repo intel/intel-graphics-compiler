@@ -99,9 +99,9 @@ private:
   llvm::Value *prepareBarrierIDPoolPtr(llvm::Instruction *pInsertBefore);
   llvm::Value *getBarriersDataPoolPtr(llvm::Instruction *pCallInst);
   llvm::Value *getBarrierIDPoolPtr(llvm::Instruction *pCallInst);
-  void markID(llvm::Value *IDPool, llvm::Value *IDBarrier, llvm::Instruction *pInsertBefore);
+  void markID(llvm::Value *IDPool, llvm::Value *currentIDPoolState, llvm::Value *IDBarrier, llvm::Instruction *pInsertBefore);
   void releaseID(llvm::Value *IDPool, llvm::Value *IDBarrier, llvm::Instruction *pInsertBefore);
-  llvm::Value *getFreeID(llvm::Value *IDPool, llvm::Instruction *pInsertBefore);
+  llvm::Value *getFreeID(llvm::Value *currentIDPoolState, llvm::Instruction *pInsertBefore);
 
   void clearData();
 

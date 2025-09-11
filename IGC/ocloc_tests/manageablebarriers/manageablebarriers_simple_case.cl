@@ -29,13 +29,6 @@
 // CHECK: [[MB_DATA_OFFSET_IntPTR:%[0-9]+]] = add i32 [[BarrierIDPool_FirstFreeID_Offset]], [[MB_DATA_GetIntPTR]]
 // CHECK: [[MB_DATA_OFFSET_PTR:%[0-9]+]] = inttoptr i32 [[MB_DATA_OFFSET_IntPTR]] to ptr addrspace(3)
 
-//// Mark the FreeID in the ManageableBarriers ID Pool (that this ID is busy)
-// CHECK: [[FreeID_InBit:%[0-9]+]] = shl i32 1, [[BarrierIDPool_FirstFreeID]]
-// CHECK: [[FreeID_InBitNeg:%[0-9]+]] = xor i32 [[FreeID_InBit]], -1
-// CHECK: [[BarrierIDPool_Load2:%[0-9]+]] = load i32, ptr addrspace(3) [[BarrierIDPool_Ptr]], align 4
-// CHECK: [[BarrierIDPool_UpdateBits:%[0-9]+]] = and i32 [[FreeID_InBitNeg]], [[BarrierIDPool_Load2]]
-// CHECK: store i32 [[BarrierIDPool_UpdateBits]], ptr addrspace(3) [[BarrierIDPool_Ptr]], align 4
-
 //// Fill with data for the ManageBarrier struct in SLM (for the particular single ManageableBarrier)
 //// Fill the FreeID in the ManageableBarriers Data ID offset
 // CHECK: [[MB_DATA_OFFSET_ID_GetIntPTR:%[0-9]+]] = ptrtoint ptr addrspace(3) [[MB_DATA_OFFSET_PTR]] to i32
@@ -64,6 +57,12 @@
 //// Setup workgroup barrier
 // CHECK: call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i32 0)
 // CHECK: call void @llvm.genx.GenISA.threadgroupbarrier()
+
+//// Mark the FreeID in the ManageableBarriers ID Pool (that this ID is busy)
+// CHECK: [[FreeID_InBit:%[0-9]+]] = shl i32 1, [[BarrierIDPool_FirstFreeID]]
+// CHECK: [[FreeID_InBitNeg:%[0-9]+]] = xor i32 [[FreeID_InBit]], -1
+// CHECK: [[BarrierIDPool_UpdateBits:%[0-9]+]] = and i32 [[FreeID_InBitNeg]], [[BarrierIDPool_Load]]
+// CHECK: store i32 [[BarrierIDPool_UpdateBits]], ptr addrspace(3) [[BarrierIDPool_Ptr]], align 4
 
 /////////////////////////////////////////////
 //// ManageableBarriersArriveINTEL resolution

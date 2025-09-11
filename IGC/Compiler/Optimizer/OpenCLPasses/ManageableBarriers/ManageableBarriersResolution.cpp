@@ -201,13 +201,12 @@ Value *ManageableBarriersResolution::prepareBarrierIDPoolPtr(Instruction *pInser
 // Binary form of IDPool 00000000 00000000 00000000 00010000
 // first free ID is 5
 
-void ManageableBarriersResolution::markID(Value *IDPool, Value *IDBarrier, Instruction *pInsertBefore) {
+void ManageableBarriersResolution::markID(Value *IDPool, Value *currentIDPoolState, Value *IDBarrier, Instruction *pInsertBefore) {
   IGCIRBuilder<> builder(pInsertBefore);
 
   Value *maskID = builder.CreateShl(builder.getInt32(1), IDBarrier);
   Value *notBit_maskID = builder.CreateXor(maskID, builder.getInt32(-1));
 
-  Value *currentIDPoolState = builder.CreateLoad(builder.getInt32Ty(), IDPool);
   Value *currentIDPoolStateUpdated = builder.CreateAnd(notBit_maskID, currentIDPoolState);
 
   builder.CreateStore(currentIDPoolStateUpdated, IDPool);
@@ -220,9 +219,8 @@ void ManageableBarriersResolution::releaseID(Value *IDPool, Value *IDBarrier, In
   ResolveOCLAtomics::CallAtomicSingleLane(AtomicOp::EATOMIC_OR, IDPool, maskID, pInsertBefore);
 }
 
-Value *ManageableBarriersResolution::getFreeID(Value *IDPool, Instruction *pInsertBefore) {
+Value *ManageableBarriersResolution::getFreeID(Value *currentIDPoolState, Instruction *pInsertBefore) {
   IGCIRBuilder<> builder(pInsertBefore);
-  Value *currentIDPoolState = builder.CreateLoad(builder.getInt32Ty(), IDPool);
 
   Function *func_llvm_GenISA_firstbitLo = GenISAIntrinsic::getDeclaration(mModule, GenISAIntrinsic::GenISA_firstbitLo);
   Value *freeIDNumber = builder.CreateCall(func_llvm_GenISA_firstbitLo, {currentIDPoolState});
@@ -270,13 +268,12 @@ void ManageableBarriersResolution::emitInit(CallInst *pInsertPoint) {
     // Get current free ID for named barrier
     Value *barrierIDPoolPtr = getBarrierIDPoolPtr(pInsertPoint);
 
-    Value *getFirstFreeID = getFreeID(barrierIDPoolPtr, chekForSingleLane);
+    LoadInst *currentIDPoolState = new LoadInst(builder.getInt32Ty(), barrierIDPoolPtr, "", chekForSingleLane);
+    Value *getFirstFreeID = getFreeID(currentIDPoolState, chekForSingleLane);
     Value *ptrToBarrierSlot = getManageableBarrierstructDataPtr(pInsertPoint, getFirstFreeID, chekForSingleLane);
 
     // Fill the basic block section for the Init function of barriers
     Instruction *instrJump = BranchInst::Create(bbAfter, bbInitSection);
-
-    markID(barrierIDPoolPtr, getFirstFreeID, instrJump);
 
     storeManageableBarrierstructData(ptrToBarrierSlot, MBDynamicStructFields::BarrierID, getFirstFreeID, instrJump);
 
@@ -296,6 +293,10 @@ void ManageableBarriersResolution::emitInit(CallInst *pInsertPoint) {
     // Add workgroup barrier
     GenIntrinsicInst::Create(GenISAIntrinsic::getDeclaration(mModule, GenISAIntrinsic::GenISA_threadgroupbarrier), {},
                              "", pInsertPoint);
+
+    // Move the markID after the barrier and fence on workgroup scope to ensure that all of the threads will
+    // read correct value from IDPool, before the threadID:0 will update it.
+    markID(barrierIDPoolPtr, currentIDPoolState, getFirstFreeID, pInsertPoint);
 
     pInsertPoint->replaceAllUsesWith(ptrToBarrierSlot);
   }
