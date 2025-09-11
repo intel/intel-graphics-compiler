@@ -115,6 +115,7 @@ set(IGC_BUILD__HDR__DriverInterface
     )
   set(IGC_BUILD__HDR__RAYTRACING_API__ADT
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/API/ADT/Array.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/API/ADT/UnorderedMap.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/API/ADT/Optional.h"
     )
 

@@ -390,7 +390,7 @@ public:
   virtual bool supportsVRT() const { return true; }
 
   virtual bool supportsUniformPrivateMemorySpace() const { return false; }
-  virtual uint32_t maxNumCoherenceHintBitsForReorderThread() const { return 0; }
+
 
   virtual bool UseNewTraceRayInlineLoweringInRaytracingShaders() const {
     return (IGC_GET_FLAG_VALUE(UseNewInlineRaytracing) & static_cast<uint32_t>(NewInlineRaytracingMask::RTShaders)) !=

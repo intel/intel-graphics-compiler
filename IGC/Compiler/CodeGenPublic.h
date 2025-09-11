@@ -487,6 +487,10 @@ struct SBindlessProgram : SKernelProgram {
   // a collection of other names that they go by.
   std::vector<std::string> Aliases;
 
+  // if the shader was created by cloning another shader
+  // this will contain the name of the original shader
+  std::string OriginatingShaderName;
+
   // We maintain this information to provide to GTPin. These are all
   // offsets in bytes from the base of GRF.
   uint32_t GlobalPtrOffset = 0; // pointer to RTGlobals
