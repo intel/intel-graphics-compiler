@@ -508,6 +508,7 @@ DECLARE_IGC_REGKEY(bool, RemoveUnusedSLM, true, "Remove SLM that are not used", 
 DECLARE_IGC_REGKEY(bool, RemoveUnusedTGMFence, false, "Remove TGM Fences that are not used/read", false)
 DECLARE_IGC_REGKEY(bool, EnableCustomLoopVersioning, true, "Enable IGC to do custom loop versioning", false)
 DECLARE_IGC_REGKEY(bool, DisableMCSOpt, false, "Disable IGC to run MCS optimization", false)
+DECLARE_IGC_REGKEY(bool, MCSOptTwoStagesMode, false, "MCSOptimization gather all candidates than process", false)
 DECLARE_IGC_REGKEY(bool, DisableGatingSimilarSamples, false, "Disable Gating of similar sample instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableSoftwareStencil, false, "Enable software stencil for PS.", false)
 DECLARE_IGC_REGKEY(bool, EnableInterpreterPatternMatching, false,
@@ -717,6 +718,7 @@ DECLARE_IGC_REGKEY(DWORD, RouteByLodHint, 0, "An integer offset addon to route t
 DECLARE_IGC_REGKEY(bool, EnableTrivialEmulateSinCos, false, "Enable Emulation for Sine and Cosine instructions", false)
 DECLARE_IGC_REGKEY(DWORD, ld2dmsInstsClubbingThreshold, 3,
                    "Do not club more than these ld2dms insts into the new BB during MCSOpt", false)
+DECLARE_IGC_REGKEY(bool, Splitld2dmsAfterFirst, false, "Instead of splitting after second ld2dms message, split after first to avoid waiting", false)
 DECLARE_IGC_REGKEY(DWORD, ForcePerThreadPrivateMemorySize, 0,
                    "Useful for ensuring a certain amount of private memory when doing a shader override.", true)
 DECLARE_IGC_REGKEY(DWORD, RetryManagerFirstStateId, 0,

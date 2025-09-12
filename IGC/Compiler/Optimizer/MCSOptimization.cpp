@@ -30,12 +30,20 @@ This transformation is not safe in general. It can be applied only in those case
 -We need to know that we don't access out of bound sample index
 ************************************************************************/
 class MCSOptimization : public FunctionPass, public InstVisitor<MCSOptimization> {
+private:
+  struct LdmcsWork {
+    LdmcsInstrinsic *ldMcs;
+    LdmsInstrinsic *firstUse;
+    llvm::SmallVector<LdmsInstrinsic *, 8> ldmsInstsToMove;
+  };
+
 public:
   MCSOptimization() : FunctionPass(ID) {}
   bool runOnFunction(Function &F);
   void visitCallInst(llvm::CallInst &I);
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const { AU.addRequired<CodeGenContextWrapper>(); }
   virtual llvm::StringRef getPassName() const { return "MCSOptimization"; }
+  void ProcessLdmcsAndUsersInstrinsic(LdmcsWork &);
 
   static char ID;
   bool m_changed = false;
@@ -50,6 +58,7 @@ private:
     }
     return false;
   }
+  llvm::SmallVector<LdmcsWork> m_candidates;
 
 protected:
 };
@@ -63,6 +72,9 @@ bool MCSOptimization::runOnFunction(Function &F) {
   }
   m_changed = false;
   visit(F);
+  for (auto &workItem : m_candidates) {
+    ProcessLdmcsAndUsersInstrinsic(workItem);
+  }
   return m_changed;
 }
 
@@ -94,6 +106,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I) {
       const unsigned long long resourceViewMcsMaskElement =
           ctx->getModuleMetaData()->m_ShaderResourceViewMcsMask[shaderResourceViewMcsMaskIndex];
       const unsigned int resourceViewMaskTextureBit = textureIndex % BITS_PER_QWORD;
+
       IGC_ASSERT_MESSAGE(textureIndex <= 127, "Texture index is incorrectly extracted from ld_mcs");
 
       unsigned long long resultBit = resourceViewMcsMaskElement >> resourceViewMaskTextureBit;
@@ -114,8 +127,9 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I) {
     }
 
     if (EEI != nullptr) {
-      if (EEI->hasOneUse())
+      if (EEI->hasOneUse()) {
         return; // only one use of EEI -- noOptimization
+      }
 
       LdmsInstrinsic *firstUse = nullptr;
 
@@ -129,8 +143,9 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I) {
         }
       }
 
-      if (!firstUse)
+      if (!firstUse) {
         return;
+      }
 
       // collect all blocks where this EEI insts is getting used
       std::set<BasicBlock *> useBlocks;
@@ -148,77 +163,94 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I) {
       // iterate over useBlocks.
       // For each useBlock, collect all the ldms insts present within the use block corresponding to this EEI
       for (auto BB : useBlocks) {
-        std::vector<LdmsInstrinsic *> ldmsInstsToMove;
-        std::vector<LdmsInstrinsic *> ldmsInstsToClub;
+        llvm::SmallVector<LdmsInstrinsic *, 8> ldmsInstsToMove;
         for (auto inst = BB->begin(); inst != BB->end(); inst++) {
           if (LdmsInstrinsic *ldmsIntr = dyn_cast<LdmsInstrinsic>(inst)) {
             if (ldmsIntr->getOperand(1) == dyn_cast<Value>(EEI)) {
-              if (ldmsIntr == firstUse)
+              if (ldmsIntr == firstUse) {
                 continue; // don't move the first use into the then block , need it for phi Node
+              }
               ldmsInstsToMove.push_back(ldmsIntr);
             }
           }
         }
 
-        // this is added because clubbing all ld2dms into a single then block
-        // increases register pressure and causes spilling
-        int instClubThreshold =
-            IGC_GET_FLAG_VALUE(ld2dmsInstsClubbingThreshold); // # ld2dms insts that can be moved into the then block
-        // int instClubThreshold = 2;
-        bool allInstsWillBeMoved = false;
+        LdmcsWork work = {ldMcs, firstUse, ldmsInstsToMove};
+        if (IGC_IS_FLAG_ENABLED(MCSOptTwoStagesMode)) {
+          m_candidates.emplace_back(work);
+          continue;
+        }
+        ProcessLdmcsAndUsersInstrinsic(work);
+      }
+    }
+  }
+}
 
-        while (!allInstsWillBeMoved) {
-          ldmsInstsToClub.clear();
-          // Threshold is more than # of insts that are to be moved. So move all.
-          if (instClubThreshold >= static_cast<int>(ldmsInstsToMove.size())) {
-            ldmsInstsToClub = ldmsInstsToMove;
-            allInstsWillBeMoved = true;
-          } else {
-            // pick the first 0-threshold # of insts and move them only
-            for (int i = 0; i < instClubThreshold; i++) {
-              ldmsInstsToClub.push_back(ldmsInstsToMove[i]);
-            }
-            ldmsInstsToMove.erase(ldmsInstsToMove.begin(), ldmsInstsToMove.begin() + instClubThreshold);
-          }
+void MCSOptimization::ProcessLdmcsAndUsersInstrinsic(LdmcsWork &work) {
+  auto *ldMcs = work.ldMcs;
+  auto *firstUse = work.firstUse;
+  auto &ldmsInstsToMove = work.ldmsInstsToMove;
+  Function *F = ldMcs->getParent()->getParent();
+  IGCIRBuilder<> IRB(F->getContext());
+  // this is added because clubbing all ld2dms into a single then block
+  // increases register pressure and causes spilling
+  int instClubThreshold =
+      IGC_GET_FLAG_VALUE(ld2dmsInstsClubbingThreshold); // # ld2dms insts that can be moved into the then block
+  // int instClubThreshold = 2;
+  bool allInstsWillBeMoved = false;
 
-          // split the block into a new then block
-          BasicBlock *ldmsUseBB = nullptr; // second entry to the phi node
-          BasicBlock *thenBlock = nullptr;
-          IGCLLVM::TerminatorInst *thenBlockTerminator = nullptr;
-          if (ldmsInstsToClub.size() != 0) {
-            LdmsInstrinsic *ldmsUse = ldmsInstsToClub[0];
-            ldmsUseBB = ldmsUse->getParent();
-            IRB.SetInsertPoint(ldmsUse);
-            Value *ValueisMCSNotZero = nullptr;
-            for (unsigned int i = 0; i < ldmsUse->getNumMcsOperands(); i++) {
-              Value *mcs = firstUse->getMcsOperand(i);
-              Value *cnd1 = IRB.CreateICmpNE(mcs, ConstantInt::get(mcs->getType(), 0));
-              if (ValueisMCSNotZero == nullptr) {
-                ValueisMCSNotZero = cnd1;
-              } else {
-                ValueisMCSNotZero = IRB.CreateOr(ValueisMCSNotZero, cnd1);
-              }
-            }
-            thenBlockTerminator = SplitBlockAndInsertIfThen(ValueisMCSNotZero, ldmsUse, false);
-            thenBlock = thenBlockTerminator->getParent();
-          }
+  bool splitAfterFirstUse = IGC_GET_FLAG_VALUE(Splitld2dmsAfterFirst);
 
-          // Move the collected ldms insts into the then block and insert their phi nodes in the successor of the then
-          // block
-          if (thenBlockTerminator) {
-            for (auto instToMove : ldmsInstsToClub) {
-              instToMove->moveBefore(thenBlockTerminator);
-              IRB.SetInsertPoint(&*(thenBlockTerminator->getSuccessor(0)->begin()));
-              PHINode *PN = IRB.CreatePHI(instToMove->getType(), 2);
-              instToMove->replaceAllUsesWith(PN);
-              PN->addIncoming(instToMove, thenBlock);
-              PN->addIncoming(firstUse, ldmsUseBB);
-              m_changed = true;
-            }
-          }
+  llvm::SmallVector<LdmsInstrinsic *, 8> ldmsInstsToClub;
+  while (!allInstsWillBeMoved) {
+    ldmsInstsToClub.clear();
+    // Threshold is more than # of insts that are to be moved. So move all.
+    if (instClubThreshold >= static_cast<int>(ldmsInstsToMove.size())) {
+      ldmsInstsToClub = ldmsInstsToMove;
+      allInstsWillBeMoved = true;
+    } else {
+      // pick the first 0-threshold # of insts and move them only
+      for (int i = 0; i < instClubThreshold; i++) {
+        ldmsInstsToClub.push_back(ldmsInstsToMove[i]);
+      }
+      ldmsInstsToMove.erase(ldmsInstsToMove.begin(), ldmsInstsToMove.begin() + instClubThreshold);
+    }
+
+    // split the block into a new then block
+    BasicBlock *ldmsUseBB = nullptr; // second entry to the phi node
+    BasicBlock *thenBlock = nullptr;
+    IGCLLVM::TerminatorInst *thenBlockTerminator = nullptr;
+    if (ldmsInstsToClub.size() != 0) {
+      LdmsInstrinsic *ldmsUse = splitAfterFirstUse ? firstUse : ldmsInstsToClub[0];
+      Instruction *splitInsertPoint = splitAfterFirstUse ? ldmsUse->getNextNode() : ldmsUse;
+      ldmsUseBB = splitInsertPoint->getParent();
+      IRB.SetInsertPoint(splitInsertPoint);
+      Value *ValueisMCSNotZero = nullptr;
+      for (unsigned int i = 0; i < ldmsUse->getNumMcsOperands(); i++) {
+        Value *mcs = firstUse->getMcsOperand(i);
+        Value *cnd1 = IRB.CreateICmpNE(mcs, ConstantInt::get(mcs->getType(), 0));
+        if (ValueisMCSNotZero == nullptr) {
+          ValueisMCSNotZero = cnd1;
+        } else {
+          ValueisMCSNotZero = IRB.CreateOr(ValueisMCSNotZero, cnd1);
         }
       }
-      m_changed = true;
+      thenBlockTerminator = SplitBlockAndInsertIfThen(ValueisMCSNotZero, splitInsertPoint, false);
+      thenBlock = thenBlockTerminator->getParent();
+    }
+
+    // Move the collected ldms insts into the then block and insert their phi nodes in the successor of the then
+    // block
+    if (thenBlockTerminator) {
+      for (auto instToMove : ldmsInstsToClub) {
+        instToMove->moveBefore(thenBlockTerminator);
+        IRB.SetInsertPoint(&*(thenBlockTerminator->getSuccessor(0)->begin()));
+        PHINode *PN = IRB.CreatePHI(instToMove->getType(), 2);
+        instToMove->replaceAllUsesWith(PN);
+        PN->addIncoming(instToMove, thenBlock);
+        PN->addIncoming(firstUse, ldmsUseBB);
+        m_changed = true;
+      }
     }
   }
 }
