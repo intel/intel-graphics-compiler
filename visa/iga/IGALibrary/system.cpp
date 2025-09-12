@@ -215,6 +215,10 @@ unsigned iga::LastError() {
 #endif // _WIN32
 }
 
+[[maybe_unused]]
+static void add_strerror_r_to_error(char *errMsg, int strerror_r_return_value) {
+}
+
 static void add_strerror_r_to_error(char *errMsg,
                                     char *strerror_r_return_value) {
   errMsg = strerror_r_return_value;
