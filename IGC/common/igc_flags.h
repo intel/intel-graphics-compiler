@@ -716,6 +716,8 @@ DECLARE_IGC_REGKEY(bool, ForceCSLeastSIMD, false, "Force computer shader to the 
 DECLARE_IGC_REGKEY(bool, ForceRecompilation, false, "Force RetryManager to make recompilation", false)
 DECLARE_IGC_REGKEY(DWORD, RouteByLodHint, 0, "An integer offset addon to route the resource to HDC on DG2", false)
 DECLARE_IGC_REGKEY(bool, EnableTrivialEmulateSinCos, false, "Enable Emulation for Sine and Cosine instructions", false)
+DECLARE_IGC_REGKEY(bool, HandlePhiNodeInChannelPrune, false,
+                   "During channel prune don't stop at phinode but look at it's users.", false)
 DECLARE_IGC_REGKEY(DWORD, ld2dmsInstsClubbingThreshold, 3,
                    "Do not club more than these ld2dms insts into the new BB during MCSOpt", false)
 DECLARE_IGC_REGKEY(bool, Splitld2dmsAfterFirst, false, "Instead of splitting after second ld2dms message, split after first to avoid waiting", false)

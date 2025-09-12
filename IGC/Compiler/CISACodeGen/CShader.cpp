@@ -1149,30 +1149,40 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value *val, uint32_t &mask) {
       uint nbExtract = 0, maxIndex = 0;
       uint8_t maskExtract = 0;
       bool allExtract = true;
+      // Traverse all users of the instruction, and if any are PHI nodes, check their users as well.
+      llvm::SmallPtrSet<llvm::Value *, 2> visited;
+      llvm::SmallVector<llvm::Value *> stack;
+      stack.push_back(inst);
 
-      for (auto I = inst->user_begin(), E = inst->user_end(); I != E; ++I) {
-        ExtractElementInst *extract = llvm::dyn_cast<ExtractElementInst>(*I);
-        if (extract != nullptr) {
-          llvm::ConstantInt *indexVal;
-          indexVal = llvm::dyn_cast<ConstantInt>(extract->getIndexOperand());
-          if (indexVal != nullptr) {
+      bool handlePhi = IGC_GET_FLAG_VALUE(HandlePhiNodeInChannelPrune);
+      bool abort = false;
+      while (!stack.empty() && !abort) {
+        llvm::Value *val = stack.back();
+        stack.pop_back();
+
+        // Avoid revisiting nodes (cycle protection)
+        if (!visited.insert(val).second) {
+          continue;
+        }
+
+        for (auto *user : val->users()) {
+          auto *extract = llvm::dyn_cast<llvm::ExtractElementInst>(user);
+          if (extract && llvm::isa<llvm::ConstantInt>(extract->getIndexOperand())) {
+            auto *indexVal = llvm::cast<llvm::ConstantInt>(extract->getIndexOperand());
             uint index = static_cast<uint>(indexVal->getZExtValue());
             maxIndex = std::max(maxIndex, index + 1);
-
             maskExtract |= (1 << index);
             nbExtract++;
+          } else if (handlePhi && llvm::isa<llvm::PHINode>(user)) {
+            // Push PHINode onto stack for further processing of it's users
+            stack.push_back(user);
           } else {
-            // if extractlement with dynamic index
+            // Non-prunable user (like dynamic index EEI): cannot prune
             maxIndex = nbElement;
             allExtract = false;
+            abort = true;
             break;
           }
-        } else {
-          // if the vector is accessed by anything else than direct Extract we
-          // cannot prune it
-          maxIndex = nbElement;
-          allExtract = false;
-          break;
         }
       }
 
