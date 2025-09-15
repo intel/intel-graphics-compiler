@@ -318,8 +318,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   //       It can potentially do some global cost estimations.
   const unsigned UnrollMaxCountForAlloca = IGC_GET_FLAG_VALUE(PromoteLoopUnrollwithAllocaCountThreshold);
   bool AllocaFound = false;
-  if (MaxTripCount && MaxTripCount <= UnrollMaxCountForAlloca &&
-      IGC_IS_FLAG_ENABLED(EnablePromoteLoopUnrollwithAlloca)) {
+  if (MaxTripCount && MaxTripCount <= UnrollMaxCountForAlloca ) {
     unsigned int ThresholdBoost = 0;
     for (auto BB : L->blocks()) {
       for (auto &I : *BB) {
@@ -363,7 +362,8 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
       UP.UpperBound = true;
       UP.Force = UnrollLoopForCodeSizeOnly ? false : true;
 
-      if (ctx->type != ShaderType::OPENCL_SHADER) {
+      if (IGC_IS_FLAG_ENABLED(EnablePromoteLoopUnrollwithAlloca) &&
+          ctx->type != ShaderType::OPENCL_SHADER) {
         UP.Threshold += ThresholdBoost;
         LLVM_DEBUG(dbgs() << "Increasing L:" << L->getName() << " threshold to " << UP.Threshold
                           << " due to Alloca accessed by:");
