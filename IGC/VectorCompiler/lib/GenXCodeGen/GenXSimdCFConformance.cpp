@@ -2088,8 +2088,8 @@ void GenXSimdCFConformance::lowerUnsuitableGetEMs() {
     }
 
     // Constants and non-EM values should be used directly
-    if (dyn_cast<Constant>(GetEMPred) ||
-        !getEMProducer(dyn_cast<Instruction>(GetEMPred), Visited)) {
+    if (auto *Inst = dyn_cast<Instruction>(GetEMPred);
+        isa<Constant>(GetEMPred) || Inst && !getEMProducer(Inst, Visited)) {
       GetEM->replaceAllUsesWith(GetEM->getOperand(0));
       ToDelete.push_back(GetEM);
     }
