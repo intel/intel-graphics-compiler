@@ -2147,7 +2147,7 @@ bool GlobalRA::canIncreaseGRF(unsigned spillSize, bool infCostSpilled) {
   //  - #GRFs selected and next larger one has same number of threads, or
   //  - Spill size is above threshold
   if ((infCostSpilled || kernel.grfMode.hasLargerGRFSameThreads() ||
-       spillSize >= kernel.grfMode.getSpillThreshold()) &&
+       spillSize > kernel.grfMode.getSpillThreshold()) &&
       !didGRFIncrease) {
     if (kernel.updateKernelToLargerGRF()) {
       // GRF successfully increased
