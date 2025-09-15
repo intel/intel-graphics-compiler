@@ -2842,26 +2842,21 @@ bool CodeGenPatternMatch::MatchPack4i8(Instruction &I) {
     }
     return false;
   };
-  // Lambda matches clamp(x, MIN, MAX) pattern.
+  // Lambda matches clamp(x, 0, 127) pattern.
   // If the pattern is found `x` is returned in the `clampedVal` reference.
-  auto MatchClampWithImm = [&MatchMinMaxWithImm](Value *v, Value *&clampedVal, uint32_t minVal, uint32_t maxVal) -> bool {
+  auto MatchClamp0_127 = [&MatchMinMaxWithImm](Value *v, Value *&clampedVal) -> bool {
     bool matchMin = true;
     bool matchMax = false;
     Value *src[2];
     // Match either of:
-    // v = min(max(x, MIN), MAX)
-    // v = max(min(x, MIN), MAX)
-    if ((MatchMinMaxWithImm(v, maxVal, matchMin, src[0]) && MatchMinMaxWithImm(src[0], minVal, matchMax, src[1])) ||
-        (MatchMinMaxWithImm(v, minVal, matchMax, src[0]) && MatchMinMaxWithImm(src[0], maxVal, matchMin, src[1]))) {
+    // v = min(max(x, 0), 127)
+    // v = max(min(x, 127), 0)
+    if ((MatchMinMaxWithImm(v, 127, matchMin, src[0]) && MatchMinMaxWithImm(src[0], 0, matchMax, src[1])) ||
+        (MatchMinMaxWithImm(v, 0, matchMax, src[0]) && MatchMinMaxWithImm(src[0], 127, matchMin, src[1]))) {
       clampedVal = src[1];
       return true;
     }
     return false;
-  };
-  // Lambda matches clamp(x, 0, 127) pattern.
-  // If the pattern is found `x` is returned in the `clampedVal` reference.
-  auto MatchClamp0_127 = [&MatchClampWithImm](Value *v, Value *&clampedVal) -> bool {
-    return MatchClampWithImm(v, clampedVal, 0, 127);
   };
 
   EOPCODE opcodes[4] = {};
@@ -2907,22 +2902,15 @@ bool CodeGenPatternMatch::MatchPack4i8(Instruction &I) {
     }
     if (elemsFound == 4) {
       // Match pattern 2
+      // Match clamping of values to 0..127 range, e.g.:
+      //  %x1 = max i32 %x0, 0
+      //  %x2 = min i32 %x1, 127
       for (uint32_t i = 0; i < 4; ++i) {
         Value *srcToSat;
-        // Match clamping of values to 0..127 range, e.g.:
-        //  %x1 = max i32 %x0, 0
-        //  %x2 = min i32 %x1, 127
         if (MatchClamp0_127(sources0[i], srcToSat)) {
           opcodes[i] = llvm_max;
           sources0[i] = srcToSat;
           sources1[i] = ConstantInt::get(srcToSat->getType(), 0);
-          isSat[i] = true;
-        // Match clamping of values to -128..127 range, e.g.:
-        //  %x1 = max i32 %x0, -128
-        //  %x2 = min i32 %x1, 127
-        } else if (MatchClampWithImm(sources0[i], srcToSat, -128, 127)) {
-          opcodes[i] = llvm_fptosi;
-          sources0[i] = srcToSat;
           isSat[i] = true;
         }
       }

@@ -21,9 +21,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/Analysis/TargetFolder.h>
-#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
-#include <llvm/Support/KnownBits.h>
 #include <llvm/Transforms/Utils/ScalarEvolutionExpander.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "llvmWrapper/IR/Intrinsics.h"
@@ -65,7 +63,6 @@ private:
 
   bool combineFMaxFMin(CallInst *GII, BasicBlock::iterator &BBI) const;
   bool combineSelectInst(SelectInst *Sel, BasicBlock::iterator &BBI) const;
-  bool combinePack4i8Or2i16(Instruction *inst, uint64_t numBits) const;
 
   bool constantFoldFMaxFMin(CallInst *GII, BasicBlock::iterator &BBI) const;
 };
@@ -363,15 +360,6 @@ bool GenIRLowering::runOnFunction(Function &F) {
         // Enable the pattern match only when NaNs can be ignored.
         if (modMD->compOpt.NoNaNs || modMD->compOpt.FiniteMathOnly) {
           Changed |= combineSelectInst(cast<SelectInst>(Inst), BI);
-        }
-        break;
-      case Instruction::Or:
-        if (Inst->getType()->isIntegerTy(32)) {
-          // Detect packing of 4 i8 values and convert to a pattern that is
-          // matched CodeGenPatternMatch::MatchPack4i8
-          Changed |= combinePack4i8Or2i16(Inst, 8 /*numBits*/);
-          // TODO: also detect <2 x i16> packing once PatternMatch is updated
-          // to packing of 16-bit values.
         }
         break;
       }
@@ -1010,162 +998,6 @@ bool GenIRLowering::combineSelectInst(SelectInst *Sel, BasicBlock::iterator &BBI
   Sel->eraseFromParent();
 
   return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Detect complex patterns that pack 2 16-bit or 4 8-bit integers into a 32-bit
-// value. Generate equivalent sequence of instructions that is later matched in
-// the CodeGenPatternMatch::MatchPack4i8().
-// Pattern example for <4 x i8> packing:
-//   %x1 = and i32 %x, 127
-//   %x2 = lshr i32 %x, 24
-//   %x3 = and i32 %x2, 128
-//   %x4 = or i32 %x3, %x1
-//   %y1 = and i32 %y, 127
-//   %y2 = lshr i32 %y, 24
-//   %y3 = and i32 %y2, 128
-//   %y4 = or i32 %y3, %y1
-//   %y5 = shl nuw nsw i32 %y4, 8
-//   %xy = or i32 %x4, %y5
-//   %z1 = and i32 %z, 127
-//   %z2 = lshr i32 %z, 24
-//   %z3 = and i32 %z2, 128
-//   %z4 = or i32 %z3, %z1
-//   %z5 = shl nuw nsw i32 %z4, 16
-//   %xyz = or i32 %xy, %z5
-//   %w1 = shl nsw i32 %w, 24
-//   %w2 = and i32 %w1, 2130706432
-//   %w3 = and i32 %w, -2147483648
-//   %w4 = or i32 %w2, %w3
-//   %xyzw = or i32 %xyz, %w4
-// and generate:
-//   %0 = trunc i32 %x to i8
-//   %1 = insertelement <4 x i8> poison, i8 %0, i32 0
-//   %2 = trunc i32 %y to i8
-//   %3 = insertelement <4 x i8> %1, i8 %2, i32 1
-//   %4 = trunc i32 %z to i8
-//   %5 = insertelement <4 x i8> %3, i8 %4, i32 2
-//   %6 = trunc i32 %w to i8
-//   %7 = insertelement <4 x i8> %5, i8 %6, i32 3
-//   %8 = bitcast <4 x i8> %7 to i32
-bool GenIRLowering::combinePack4i8Or2i16(Instruction *inst, uint64_t numBits) const {
-  using namespace llvm::PatternMatch;
-
-  const DataLayout &DL = inst->getModule()->getDataLayout();
-  // Vector of 4 or 2 values that will be packed into a single 32-bit value.
-  SmallVector<Value *, 4> toPack;
-  IGC_ASSERT(numBits == 8 || numBits == 16);
-  uint64_t packedVecSize = 32 / numBits;
-  toPack.resize(packedVecSize);
-  uint64_t cSignMask = QWBIT(numBits - 1);
-  uint64_t cMagnMask = BITMASK(numBits - 1);
-  SmallVector<std::pair<Value *, uint64_t>, 4> args;
-  args.push_back({isa<BitCastInst>(inst) ? inst->getOperand(0) : inst, 0});
-  // In the first step traverse the chain of `or` and `shl` instructions
-  // and find all elements of the packed vector.
-  while (!args.empty()) {
-    auto [v, prevShlBits] = args.pop_back_val();
-    Value *lOp = nullptr;
-    Value *rOp = nullptr;
-
-    // Detect left shift by multiple of `numBits`. The `shl` operation sets the
-    // `index` argument in the corresponding InsertElement instruction in the
-    // final packing sequence. This operation can also be viewed as repacking
-    // of already packed vector into another packed vector.
-    uint64_t shlBits = 0;
-    if (match(v, m_Shl(m_Value(lOp), m_ConstantInt(shlBits))) && (shlBits % numBits) == 0) {
-      args.push_back({lOp, shlBits + prevShlBits});
-      continue;
-    }
-    // Detect values that fit into `numBits` bits - a single element of
-    // the packed vector.
-    KnownBits kb = computeKnownBits(v, DL);
-    uint32_t nonZeroBits = ~(static_cast<uint32_t>(kb.Zero.getZExtValue()));
-    uint32_t lsb = findFirstSet(nonZeroBits);
-    uint32_t msb = findLastSet(nonZeroBits);
-    if (msb != lsb && (msb / numBits) == (lsb / numBits)) {
-      uint32_t idx = (prevShlBits / numBits) + (lsb / numBits);
-      if (idx < packedVecSize && toPack[idx] == nullptr) {
-        toPack[idx] = v;
-        continue;
-      }
-    }
-    // Detect packing of two disjoint values. This `or` operation corresponds
-    // to an InsertElement instruction in the final packing sequence.
-    if (match(v, m_Or(m_Value(lOp), m_Value(rOp)))) {
-      KnownBits kbL = computeKnownBits(lOp, DL);
-      KnownBits kbR = computeKnownBits(rOp, DL);
-      uint32_t nonZeroBitsL = ~(static_cast<uint32_t>(kbL.Zero.getZExtValue()));
-      uint32_t nonZeroBitsR = ~(static_cast<uint32_t>(kbR.Zero.getZExtValue()));
-      if ((nonZeroBitsL & nonZeroBitsR) == 0) {
-        args.push_back({lOp, prevShlBits});
-        args.push_back({rOp, prevShlBits});
-      }
-      continue;
-    }
-    if (std::all_of(toPack.begin(), toPack.end(), [](const Value *c) { return c != nullptr; })) {
-      break;
-    }
-    // Unsupported pattern.
-    return false;
-  }
-  if (std::any_of(toPack.begin(), toPack.end(), [](const Value *c) { return c == nullptr; })) {
-    return false;
-  }
-  // In the second step match the pattern that packs sign and magnitude parts
-  // and simple masking with `and` instruction.
-  for (uint32_t i = 0; i < packedVecSize; ++i) {
-    Value *v = toPack[i];
-    Value *lOp = nullptr;
-    Value *rOp = nullptr;
-    uint64_t lMask = 0;
-    uint64_t rMask = 0;
-    // Match patterns that pack the sign and magnitude parts.
-    if (match(v, m_Or(m_And(m_Value(lOp), m_ConstantInt(lMask)), m_And(m_Value(rOp), m_ConstantInt(rMask)))) &&
-      (countPopulation(rMask) == 1 || countPopulation(lMask) == 1)) {
-      Value *signOp = countPopulation(rMask) == 1 ? rOp : lOp;
-      Value *magnOp = countPopulation(rMask) == 1 ? lOp : rOp;
-      uint64_t signMask = countPopulation(rMask) == 1 ? rMask : lMask;
-      uint64_t magnMask = countPopulation(rMask) == 1 ? lMask : rMask;
-      uint64_t shlBits = 0;
-      uint64_t shrBits = 0;
-      // %b = shl nsw i32 %a, 24
-      // %c = and i32 %b, 2130706432
-      // %sign = and i32 %a, -2147483648
-      // %e = or i32 %sign, %c
-      if (match(magnOp, m_Shl(m_Value(v), m_ConstantInt(shlBits))) && v == signOp && (shlBits % numBits) == 0 &&
-          shlBits == (i * numBits) && (cSignMask << shlBits) == signMask && (cMagnMask << shlBits) == magnMask) {
-        toPack[i] = v;
-        continue;
-      }
-      // %b = and i32 %a, 127
-      // %c = lshr i32 %a, 24
-      // %sign = and i32 %c, 128
-      // %e = or i32 %sign, %b
-      if (match(signOp, m_LShr(m_Value(v), m_ConstantInt(shrBits))) && v == magnOp && shrBits == (32 - numBits) &&
-          cSignMask == signMask && cMagnMask == magnMask) {
-        toPack[i] = v;
-        continue;
-      }
-    }
-    uint64_t andMask = 0;
-    if (match(v, m_And(m_Value(lOp), m_ConstantInt(andMask))) && (andMask & BITMASK(numBits)) == andMask) {
-      toPack[i] = lOp;
-      continue;
-    }
-  }
-
-  // Create the packing sequence that is matched in the PatternMatch later.
-  Type *elemTy = Builder->getIntNTy(numBits);
-  Value *packed = PoisonValue::get(IGCLLVM::FixedVectorType::get(elemTy, packedVecSize));
-  for (uint32_t i = 0; i < packedVecSize; ++i) {
-    Value *elem = Builder->CreateTrunc(toPack[i], elemTy);
-    packed = Builder->CreateInsertElement(packed, elem, Builder->getInt32(i));
-  }
-  packed = Builder->CreateBitCast(packed, inst->getType());
-  inst->replaceAllUsesWith(packed);
-  inst->eraseFromParent();
-  return true;
 }
 
 FunctionPass *IGC::createGenIRLowerPass() { return new GenIRLowering(); }
