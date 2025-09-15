@@ -18,6 +18,8 @@ set(IGC_BUILD__PROJ_VC_LIBS_TO_LINK VCIGCDeps PARENT_SCOPE)
 
 set(IGC_BUILD__PROJ_LABEL__VectorCompiler "${IGC_BUILD__PROJ__VectorCompiler}")
 
+set(LLVM_ENABLE_EH ON)
+
 message(STATUS "+++ Source/IGC/VectorCompiler +++")
 message(STATUS "[VC] Build proj: ${IGC_BUILD__PROJ__VectorCompiler}")
 

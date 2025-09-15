@@ -9,23 +9,23 @@
 #============================ end_copyright_notice =============================
 
 set -e
-# UBUNTU_VERSION   supported value [ 20, 22 ]                                                default 20
-# LLVM_VERSION     supported value [ 10, 11, 12, 13, 14, 15]                                 default 11
+# UBUNTU_VERSION   supported value [ 20.04, 22.04, 24.04 ]                                   default 24.04
+# LLVM_VERSION     supported value [ 14, 15, 16 ]                                            default 16
 # COMPILER         supported value [ gcc, clang ]                                            default gcc
 # OWN_CMAKE_FLAGS  not suported but can be use as WA (each flag should be with -D prefix)    default empty
-# example run:     UBUNTU_VERSION=ubuntu2004 LLVM_VERSION=11 COMPILER=gcc sh /home/buildIGC.sh
+# example run:     UBUNTU_VERSION=24.04 LLVM_VERSION=16 COMPILER=gcc sh /home/buildIGC.sh
 
 echo "====================BUILD IGC========================="
 echo "[Build Status] build script started"
 if [ -z ${UBUNTU_VERSION+x} ]; then
-    echo "[Build Status] UBUNTU_VERSION is unset, use default 20";
-    UBUNTU_VERSION="20.04"
+    echo "[Build Status] UBUNTU_VERSION is unset, use default 24.04";
+    UBUNTU_VERSION="24.04"
 else
     echo "[Build Status] UBUNTU_VERSION = ${UBUNTU_VERSION}"
 fi
 if [ -z ${LLVM_VERSION+x} ]; then
-    echo "[Build Status] LLVM_VERSION is unset, use default 14";
-    LLVM_VERSION="14"
+    echo "[Build Status] LLVM_VERSION is unset, use default 16";
+    LLVM_VERSION="16"
 else
     echo "[Build Status] LLVM_VERSION = ${LLVM_VERSION}"
 fi
@@ -43,7 +43,7 @@ else
 fi
 if [ -z ${IGC_SHA+x} ]; then
     echo "[Build Status] IGC_SHA is unset, use default master";
-    OWN_CMAKE_FLAGS="master"
+    IGC_SHA="master"
 else
     echo "[Build Status] IGC_SHA = ${IGC_SHA}"
 fi
