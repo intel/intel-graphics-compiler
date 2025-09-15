@@ -120,8 +120,10 @@ bool InstPromoter::visitICmpInst(ICmpInst &I) {
   unsigned finalWidth = LHS->getType()->getIntegerBitWidth();
 
   if (!isSigned) {
-    LHS = IRB->CreateAnd(LHS, (1 << initialWidth) - 1);
-    RHS = IRB->CreateAnd(RHS, (1 << initialWidth) - 1);
+    APInt M = APInt::getLowBitsSet(finalWidth, initialWidth);
+    auto *MaskC = ConstantInt::get(LHS->getType(), M);
+    LHS = IRB->CreateAnd(LHS, MaskC);
+    RHS = IRB->CreateAnd(RHS, MaskC);
   } else {
     IGC_ASSERT(finalWidth >= initialWidth);
 
