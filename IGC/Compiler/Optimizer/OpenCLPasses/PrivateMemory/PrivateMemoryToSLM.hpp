@@ -34,7 +34,6 @@ public:
 
   PrivateMemoryToSLM(bool enableOptReport = false);
   PrivateMemoryToSLM(std::string forcedBuffers, bool enableOptReport);
-  ~PrivateMemoryToSLM() {}
 
   virtual StringRef getPassName() const override { return "PrivateMemoryToSLMPass"; }
 

@@ -89,7 +89,7 @@ void BiFManagerTool::writeHashMap(llvm::raw_fd_ostream &fileDataHeader, BiFDicti
   std::map<size_t, std::vector<std::string>> sortBySizeNameFunc;
 
   for (auto rec_i = ListOfFunctions->begin(); rec_i != ListOfFunctions->end(); ++rec_i) {
-    auto record_inst = *rec_i;
+    const auto &record_inst = *rec_i;
     const std::string &funcName =
         record_inst.first;
 

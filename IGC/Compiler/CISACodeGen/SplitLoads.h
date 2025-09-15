@@ -84,6 +84,8 @@ struct Config {
 
   Config(const Config &) = delete;
   Config(Config &&) = delete;
+  Config operator=(const Config &) = delete;
+  Config operator=(Config &&) = delete;
 
   /// Value of `SIMD` as reported by metadata.
   unsigned SIMD() const { return actualSimd ? actualSimd : defaultSimd; }

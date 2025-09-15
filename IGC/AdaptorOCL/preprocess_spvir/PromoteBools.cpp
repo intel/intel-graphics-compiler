@@ -325,7 +325,7 @@ Type *PromoteBools::getOrCreatePromotedType(Type *type) {
     // types do not have this problem.
     if (typeNeedsPromotion(structType)) {
       // Create an opaque type to handle recursive types
-      auto name = structType->hasName() ? structType->getName().str() : "";
+      const auto &name = structType->hasName() ? structType->getName().str() : "";
       structType->setName(name + ".unpromoted");
 
       auto newStructType = StructType::create(type->getContext(), name);

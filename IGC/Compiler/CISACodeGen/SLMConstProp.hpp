@@ -38,8 +38,8 @@ class SymProd {
 public:
   llvm::SmallVector<const llvm::Value *, 2> Prod;
 
-  SymProd() {}
-  SymProd(const SymProd &P) : Prod(P.Prod) {}
+  SymProd() = default;
+  SymProd(const SymProd &P) = default;
 
   SymProd &operator=(const SymProd &P) = delete;
 };

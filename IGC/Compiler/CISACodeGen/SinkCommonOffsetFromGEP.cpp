@@ -349,7 +349,7 @@ static bool sinkCommonOffsetForGroup(const CommonBaseGroup &Group) {
     BasicBlock *BB = IT.first;
     Type *PtrOperandTy = IT.second.first.first;
     Value *PtrOperand = IT.second.first.second;
-    auto BaseIndices = IT.second.second;
+    const auto &BaseIndices = IT.second.second;
 
     Value *NewPointer = PtrOperand;
     if (NewPointer == nullptr)

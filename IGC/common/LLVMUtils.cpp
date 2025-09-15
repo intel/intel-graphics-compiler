@@ -179,7 +179,7 @@ static bool tryParsePassNumber(PassDisableConfig &pdc, const std::string &Token)
     std::cerr << "You want to skip pass ID " << Token << std::endl;
     unsigned int passNumber = std::stoi(Token);
     auto localSkipComand = SkipCommand(passNumber);
-    pdc.skipCommands.push_back(localSkipComand);
+    pdc.skipCommands.push_back(std::move(localSkipComand));
     // move to next Token
     return true;
   }
@@ -249,7 +249,7 @@ static bool tryParsePassRange(PassDisableConfig &pdc, const std::string &Token) 
     } else {
       auto localSkipComand =
           SkipCommand("", skippingFrom, std::numeric_limits<unsigned int>::max(), TokenSkipCase::OpenRange);
-      pdc.skipCommands.push_back(localSkipComand);
+      pdc.skipCommands.push_back(std::move(localSkipComand));
     }
     break;
   }
@@ -277,7 +277,7 @@ static bool tryParsePassNameSpecificOccurrence(PassDisableConfig &pdc, const std
   unsigned int passOccurrence = std::stoi(occurrenceOfPass);
   auto localSkipComand =
       SkipCommand(nameOfPassToSkip, passOccurrence, passOccurrence, TokenSkipCase::SpecificPassOccurrence);
-  pdc.skipCommands.push_back(localSkipComand);
+  pdc.skipCommands.push_back(std::move(localSkipComand));
   // move to next Token
   return true;
 }
@@ -332,7 +332,7 @@ static bool tryParsePassNameOccurrenceRange(PassDisableConfig &pdc, const std::s
     } else {
       auto localSkipComand = SkipCommand(nameOfPassToSkip, skippingFrom, std::numeric_limits<unsigned int>::max(),
                                          TokenSkipCase::SpecificPassOccurrenceOpenRange);
-      pdc.skipCommands.push_back(localSkipComand);
+      pdc.skipCommands.push_back(std::move(localSkipComand));
     }
     break;
   }
@@ -377,7 +377,7 @@ static bool tryParsePassNames(PassDisableConfig &pdc, const std::string &Token) 
     const std::string &nameOfPassToSkip = vectorOfSubTokens[0];
     std::cerr << "You want to skip all occurrence of " << nameOfPassToSkip << std::endl;
     auto localSkipComand = SkipCommand(nameOfPassToSkip);
-    pdc.skipCommands.push_back(localSkipComand);
+    pdc.skipCommands.push_back(std::move(localSkipComand));
     // move to next Token
     return true;
   }

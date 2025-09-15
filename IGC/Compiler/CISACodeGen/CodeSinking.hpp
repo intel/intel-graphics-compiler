@@ -150,9 +150,7 @@ private:
               llvm::Instruction *UndoPos)
         : Instructions(InstrVec{Instruction}), TgtBB(TgtBB), Worthiness(Worthiness), UndoPos(UndoPos) {}
 
-    Candidate(const Candidate &Other)
-        : Instructions(Other.Instructions), TgtBB(Other.TgtBB), Worthiness(Other.Worthiness), UndoPos(Other.UndoPos) {}
-
+    Candidate(const Candidate &Other) = delete;
     Candidate &operator=(const Candidate &) = delete;
 
     InstrVec Instructions;
@@ -200,10 +198,10 @@ private:
     }
   };
 
-  using CandidateVec = llvm::SmallVector<std::unique_ptr<Candidate>, 64>;
-  using CandidatePtrVec = llvm::SmallVector<Candidate *, 64>;
-  using CandidatePtrSet = llvm::DenseSet<Candidate *>;
-  using InstToCandidateMap = llvm::MapVector<Instruction *, Candidate *>;
+  using CandidateVec = llvm::SmallVector<std::shared_ptr<Candidate>, 64>;
+  using CandidatePtrVec = llvm::SmallVector<std::shared_ptr<Candidate>, 64>;
+  using CandidatePtrSet = llvm::SmallSet<std::shared_ptr<Candidate>, 32>;
+  using InstToCandidateMap = llvm::MapVector<Instruction *, std::shared_ptr<Candidate>>;
 
   /// sinking
   bool loopSink(llvm::Function &F);

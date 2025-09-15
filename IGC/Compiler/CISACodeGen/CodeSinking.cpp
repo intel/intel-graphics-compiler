@@ -1065,9 +1065,9 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
   auto getLeafInstToCandidateMap = [&](BasicBlock *TgtBB, CandidatePtrVec &Candidates,
                                        InstToCandidateMap &InstToCandidate) {
     InstToCandidateMap LeafInstToCandidate;
-    SmallSet<Candidate *, 32> NotLeafCandidates;
+    CandidatePtrSet NotLeafCandidates;
 
-    for (Candidate *C : Candidates) {
+    for (const auto &C : Candidates) {
       PrintDump(VerbosityLevel::High, "Finding leaf candidates... Checking:\n");
       for (Instruction *I : *C) {
         PrintInstructionDump(VerbosityLevel::High, I);
@@ -1081,7 +1081,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
             continue;
 
           if (InstToCandidate.count(Op)) {
-            Candidate *OpCandidate = InstToCandidate[Op];
+            const auto &OpCandidate = InstToCandidate[Op];
             if (OpCandidate != C) {
               PrintDump(VerbosityLevel::High, "Operand uses the current candidate, so is not a leaf:\n");
               PrintInstructionDump(VerbosityLevel::High, Op);
@@ -1091,7 +1091,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
         }
       }
     }
-    for (Candidate *C : Candidates) {
+    for (const auto &C : Candidates) {
       if (NotLeafCandidates.count(C))
         continue;
 
@@ -1111,8 +1111,8 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
     bool Changed = false;
 
     CandidatePtrVec SinkedCandidatesPtrs;
-    for (auto CI = SinkedCandidates.begin(), CE = SinkedCandidates.end(); CI != CE; CI++) {
-      Candidate *C = CI->get();
+    for (auto *CI = SinkedCandidates.begin(), *CE = SinkedCandidates.end(); CI != CE; CI++) {
+      const auto &C = *CI;
       if (C->TgtBB == BB)
         SinkedCandidatesPtrs.push_back(C);
     }
@@ -1187,7 +1187,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
           continue;
 
         Changed = true;
-        SinkCandidates.push_back(std::make_unique<Candidate>(I, TgtBB, Worthiness, I->getNextNode()));
+        SinkCandidates.push_back(std::make_shared<Candidate>(I, TgtBB, Worthiness, I->getNextNode()));
         continue;
       }
 
@@ -1209,15 +1209,16 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
   InstToCandidateMap CurrentInstToCandidate;
 
   // Candidate ownership:
-  // Unique pointers are created in CurrentSinkCandidates on every iteration.
-  // Then they are moved to ToSink collection to be sinked (done in refineLoopSinkCandidates).
-  // Then they are moved to SinkedCandidates within iteration if they are actually sinked.
-  // The actually sinked Candidates have therefore live time until the end ot loopSink function.
+  // Shared pointers are created in CurrentSinkCandidates on every iteration.
+  // Then they are put in ToSink collection to be sinked (done in refineLoopSinkCandidates).
+  // Then they are put in SinkedCandidates within iteration if they are actually sinked.
+  // The actually sinked Candidates have therefore lifetime until the end ot loopSink function.
+  //
+  // CurrentInstToCandidate and InstToCandidate are maps Instruction->std::shared_ptr<Candidate>
+  //
+  // It's assumed that using std::shared_ptr we will successfully ensure only needed Candidates
+  // will remain.
 
-  // CurrentInstToCandidate and InstToCandidate are maps Instruction->Candidate *
-
-  // It's assumed the pointers are never invalidated, because the Candidate object is created
-  // via make_unique and is not relocated and destroyed until the end of the function
 
   InstSet SkipInstructions;
 
@@ -1270,7 +1271,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
               PrintInstructionDump(VerbosityLevel::Medium, I);
 
               CurrentSinkCandidates.push_back(
-                  std::make_unique<Candidate>(I, I->getParent(), LoopSinkWorthiness::IntraLoopSink, I->getNextNode()));
+                  std::make_shared<Candidate>(I, I->getParent(), LoopSinkWorthiness::IntraLoopSink, I->getNextNode()));
               Found2dBlockReads = true;
             }
 
@@ -1317,19 +1318,18 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
         if (C->Worthiness == LoopSinkWorthiness::Sink || C->Worthiness == LoopSinkWorthiness::IntraLoopSink) {
           IGC_ASSERT(C->size() > 0);
 
-          SinkedCandidates.push_back(std::move(C));
-          Candidate *SC = SinkedCandidates.back().get();
+          SinkedCandidates.push_back(C);
 
-          bool SinkFromPH = SC->Worthiness == LoopSinkWorthiness::Sink;
-          Instruction *InsertPoint = SinkFromPH ? &*SC->TgtBB->getFirstInsertionPt() : SC->first()->getNextNode();
+          bool SinkFromPH = C->Worthiness == LoopSinkWorthiness::Sink;
+          Instruction *InsertPoint = SinkFromPH ? &*(C->TgtBB->getFirstInsertionPt()) : C->first()->getNextNode();
 
-          for (Instruction *I : *SC) {
+          for (Instruction *I : *C) {
             PrintDump(VerbosityLevel::Medium,
                       (SinkFromPH ? "Sinking instruction:\n" : "Scheduling instruction for local sink:\n"));
             PrintInstructionDump(VerbosityLevel::Medium, I);
 
-            CurrentInstToCandidate[I] = SC;
-            InstToCandidate[I] = SC;
+            CurrentInstToCandidate[I] = C;
+            InstToCandidate[I] = C;
 
             I->moveBefore(InsertPoint);
             InsertPoint = I;
@@ -1340,8 +1340,8 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
             }
           }
 
-          UndoBlkSet.insert(SC->UndoPos->getParent());
-          LocalBlkSet.insert(SC->TgtBB);
+          UndoBlkSet.insert(C->UndoPos->getParent());
+          LocalBlkSet.insert(C->TgtBB);
 
           PrintDump(VerbosityLevel::Medium, "\n");
           IterChanged = true;
@@ -1503,7 +1503,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
   // We decided we don't rollback, change the names of the instructions in IR
   for (auto &Pair : InstToCandidate) {
     Instruction *I = Pair.first;
-    Candidate *C = Pair.second;
+    const auto &C = Pair.second;
     if (I->getType()->isVoidTy())
       continue;
     std::string Prefix = C->Worthiness == LoopSinkWorthiness::IntraLoopSink ? "sched" : "sink";
@@ -1775,7 +1775,7 @@ bool CodeLoopSinking::tryCreate2dBlockReadGroupSinkingCandidate(Instruction *I, 
       if (IGC_IS_FLAG_ENABLED(LoopSinkCoarserLoadsRescheduling)) {
         if (allUsesAreDominatedByRemainingUses(CurrentCandidateInsts, RemainingCandidateInsts)) {
           NCandidates++;
-          SinkCandidates.push_back(std::make_unique<Candidate>(CurrentCandidateInsts, TgtBB, Worthiness,
+          SinkCandidates.push_back(std::make_shared<Candidate>(CurrentCandidateInsts, TgtBB, Worthiness,
                                                                CurrentCandidateInsts[0]->getNextNode()));
           CurrentCandidateInsts.clear();
         }
@@ -1823,7 +1823,7 @@ bool CodeLoopSinking::tryCreate2dBlockReadGroupSinkingCandidate(Instruction *I, 
 
         assertOneLoad(CurrentCandidateInsts);
         NCandidates++;
-        SinkCandidates.push_back(std::make_unique<Candidate>(CurrentCandidateInsts, TgtBB, Worthiness,
+        SinkCandidates.push_back(std::make_shared<Candidate>(CurrentCandidateInsts, TgtBB, Worthiness,
                                                              CurrentCandidateInsts[0]->getNextNode()));
         CurrentCandidateInsts.clear();
       }
@@ -1839,7 +1839,7 @@ bool CodeLoopSinking::tryCreate2dBlockReadGroupSinkingCandidate(Instruction *I, 
     }
     NCandidates++;
     SinkCandidates.push_back(
-        std::make_unique<Candidate>(CurrentCandidateInsts, TgtBB, Worthiness, CurrentCandidateInsts[0]->getNextNode()));
+        std::make_shared<Candidate>(CurrentCandidateInsts, TgtBB, Worthiness, CurrentCandidateInsts[0]->getNextNode()));
   }
 
   PrintDump(VerbosityLevel::Medium, "Successfully created " << NCandidates << " candidates.\n");
@@ -1983,8 +1983,7 @@ bool CodeLoopSinking::tryCreateShufflePatternCandidates(BasicBlock *BB, Loop *L,
   }
 
   DenseMap<InsertElementInst *, InstSet> DestVecToShuffleInst;
-  CandidateVec ShuffleCandidates;
-  DenseMap<Instruction *, Candidate *> ShuffleInstToCandidate;
+  InstToCandidateMap ShuffleInstToCandidate;
 
   for (auto &VecIEs : SourceVectors) {
     DestVecToShuffleInst.clear();
@@ -2028,12 +2027,12 @@ bool CodeLoopSinking::tryCreateShufflePatternCandidates(BasicBlock *BB, Loop *L,
         PrintDump(VerbosityLevel::Medium, "DestVector used in the loop:\n");
         PrintInstructionDump(VerbosityLevel::Medium, DestVec);
 
-        ShuffleCandidates.push_back(std::make_unique<Candidate>(
-            InstrVec{}, TgtBB, SinkFromPH ? LoopSinkWorthiness::Sink : LoopSinkWorthiness::IntraLoopSink, nullptr));
+        auto C = std::make_shared<Candidate>(
+            InstrVec{}, TgtBB, SinkFromPH ? LoopSinkWorthiness::Sink : LoopSinkWorthiness::IntraLoopSink, nullptr);
         Changed = true;
 
         for (Instruction *I : ShuffleInst) {
-          ShuffleInstToCandidate[I] = ShuffleCandidates.back().get();
+          ShuffleInstToCandidate[I] = C;
         }
       }
     }
@@ -2047,7 +2046,7 @@ bool CodeLoopSinking::tryCreateShufflePatternCandidates(BasicBlock *BB, Loop *L,
     Instruction *I = &*IB;
 
     if (ShuffleInstToCandidate.count(I)) {
-      Candidate *C = ShuffleInstToCandidate[I];
+      auto &C = ShuffleInstToCandidate[I];
       if (C->size() == 0) {
         C->UndoPos = I->getNextNode();
         ShuffleCandidatesOrdered.push_back(C);
@@ -2058,8 +2057,8 @@ bool CodeLoopSinking::tryCreateShufflePatternCandidates(BasicBlock *BB, Loop *L,
   }
 
   // Add the candidates to the main list
-  for (auto *C : ShuffleCandidatesOrdered) {
-    SinkCandidates.push_back(std::make_unique<Candidate>(*C));
+  for (const auto &C : ShuffleCandidatesOrdered) {
+    SinkCandidates.push_back(C);
   }
   return Changed;
 }
@@ -2276,7 +2275,7 @@ CodeLoopSinking::CandidateVec CodeLoopSinking::refineLoopSinkCandidates(Candidat
                                                                         InstSet &LoadChains, Loop *L) {
   struct OperandUseGroup {
     SmallPtrSet<Value *, 4> Operands;
-    SmallVector<std::unique_ptr<Candidate> *, 16> Users;
+    SmallVector<std::shared_ptr<Candidate>, 16> Users;
 
     void print(raw_ostream &OS) {
       OS << "OUG " << Operands.size() << " -> " << Users.size() << "\n";
@@ -2289,7 +2288,7 @@ CodeLoopSinking::CandidateVec CodeLoopSinking::refineLoopSinkCandidates(Candidat
       OS << "    Users:\n";
       for (auto &C : Users) {
         OS << "  ";
-        (*C)->print(OS);
+        C->print(OS);
         OS << "\n";
       }
     }
@@ -2358,8 +2357,8 @@ CodeLoopSinking::CandidateVec CodeLoopSinking::refineLoopSinkCandidates(Candidat
     };
 
     auto allUsersAreLoadChains = [&](OperandUseGroup &OUG) {
-      return std::all_of(OUG.Users.begin(), OUG.Users.end(), [&](std::unique_ptr<Candidate> *C) {
-        return std::all_of((*C)->begin(), (*C)->end(), [&](Instruction *I) { return isLoadChain(I, LoadChains); });
+      return std::all_of(OUG.Users.begin(), OUG.Users.end(), [&](std::shared_ptr<Candidate> C) {
+        return std::all_of(C->begin(), C->end(), [&](Instruction *I) { return isLoadChain(I, LoadChains); });
       });
     };
 
@@ -2378,8 +2377,8 @@ CodeLoopSinking::CandidateVec CodeLoopSinking::refineLoopSinkCandidates(Candidat
     }
 
     bool AllUsersAreUniform = true;
-    for (auto &C : OUG.Users) {
-      for (Value *V : **C) {
+    for (const auto &C : OUG.Users) {
+      for (Value *V : *C) {
         if (!V->hasNUsesOrMore(1))
           continue;
         if (!isUsedOnlyInLoop(V, L))
@@ -2449,9 +2448,9 @@ CodeLoopSinking::CandidateVec CodeLoopSinking::refineLoopSinkCandidates(Candidat
 
   CandidateVec ToSink;
 
-  for (auto &C : SinkCandidates) {
+  for (const auto &C : SinkCandidates) {
     if (C->Worthiness == LoopSinkWorthiness::Sink || C->Worthiness == LoopSinkWorthiness::IntraLoopSink) {
-      ToSink.push_back(std::move(C));
+      ToSink.push_back(C);
       continue;
     }
 
@@ -2465,9 +2464,9 @@ CodeLoopSinking::CandidateVec CodeLoopSinking::refineLoopSinkCandidates(Candidat
     });
 
     if (it != InstUseInfo.end())
-      it->Users.push_back(&C);
+      it->Users.push_back(C);
     else
-      InstUseInfo.push_back(OperandUseGroup{CandidateOperands, {&C}});
+      InstUseInfo.push_back(OperandUseGroup{CandidateOperands, {C}});
   }
 
   // Check if it's beneficial to sink every OUG
@@ -2480,8 +2479,8 @@ CodeLoopSinking::CandidateVec CodeLoopSinking::refineLoopSinkCandidates(Candidat
       continue;
     PrintDump(VerbosityLevel::Medium, ">> Beneficial to sink.\n\n");
     for (auto &C : OUG.Users) {
-      (*C)->Worthiness = LoopSinkWorthiness::Sink;
-      ToSink.push_back(std::move(*C));
+      C->Worthiness = LoopSinkWorthiness::Sink;
+      ToSink.push_back(C);
     }
   }
 
@@ -2635,7 +2634,7 @@ bool CodeLoopSinking::localSink(BasicBlock *BB, InstToCandidateMap &InstToCandid
       PrintDump(VerbosityLevel::Medium, "Found candidate to local sink:\n");
       PrintInstructionDump(VerbosityLevel::Medium, Def);
 
-      Candidate *C = Cit->second;
+      const auto &C = Cit->second;
 
       IGC_ASSERT(C->size() > 0);
       Instruction *MainInst = C->first();

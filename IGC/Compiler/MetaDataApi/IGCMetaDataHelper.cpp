@@ -65,7 +65,6 @@ void IGCMetaDataHelper::removeFunction(MetaDataUtils &mdUtils, ModuleMetaData &M
   auto &FuncMD = MD.FuncMD;
   auto loc = FuncMD.find(Func);
   if (loc != FuncMD.end()) {
-    auto funcInfo = loc->second;
     FuncMD.erase(Func);
   }
 }

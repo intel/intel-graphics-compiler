@@ -1784,6 +1784,9 @@ public:
 };
 
 class OrOperator : public ConcreteOperator<BinaryOperator, Instruction::Or> {
+  OrOperator() = delete;
+  OrOperator(const OrOperator &) = delete;
+  OrOperator operator=(const OrOperator &) = delete;
   ~OrOperator() = delete;
 };
 class BitCastOperator : public ConcreteOperator<Operator, Instruction::BitCast> {

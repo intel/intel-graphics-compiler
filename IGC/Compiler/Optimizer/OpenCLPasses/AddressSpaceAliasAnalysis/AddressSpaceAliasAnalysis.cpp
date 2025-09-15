@@ -30,8 +30,8 @@ class AddressSpaceAAResult : public IGCLLVM::AAResultBaseWrapper<AddressSpaceAAR
 public:
   explicit AddressSpaceAAResult(const TargetLibraryInfo &TLI, const CodeGenContext &ctx)
       : BaseT(), TLI(TLI), CGC(ctx) {}
-  AddressSpaceAAResult(AddressSpaceAAResult &&Arg) : BaseT(std::move(Arg)), TLI(Arg.TLI), CGC(Arg.CGC) {}
 
+  AddressSpaceAAResult(AddressSpaceAAResult &&Arg) = delete;
   AddressSpaceAAResult(const AddressSpaceAAResult &) = delete;
   AddressSpaceAAResult &operator=(const AddressSpaceAAResult &) = delete;
   AddressSpaceAAResult &operator=(AddressSpaceAAResult &&) = delete;

@@ -54,7 +54,7 @@ llvm::Expected<std::vector<llvm::StringRef>> getZeBinSectionsData(llvm::StringRe
   auto ElfFileOrErr = getElfFile(ZeBinary);
   if (!ElfFileOrErr)
     return ElfFileOrErr.takeError();
-  auto ElfFile = ElfFileOrErr.get();
+  const auto &ElfFile = ElfFileOrErr.get();
 
   auto ElfSections = ElfFile.sections();
   if (!ElfSections)

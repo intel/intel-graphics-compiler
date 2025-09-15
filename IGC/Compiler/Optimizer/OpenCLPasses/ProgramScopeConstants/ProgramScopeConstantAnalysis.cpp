@@ -381,7 +381,7 @@ void ProgramScopeConstantAnalysis::addData(Constant *initializer,
         ginfo.BufferOffset = inlineProgramScopeBuffer.size();
         ginfo.PointerSize = pointerSize;
         ginfo.Symbol = ptrBase->getName().str();
-        relocInfo->push_back(ginfo);
+        relocInfo->push_back(std::move(ginfo));
 
         // Here, we write the offset relative to the start of the base global var.
         // Runtime will add the base global's absolute address to the offset.
@@ -408,7 +408,7 @@ void ProgramScopeConstantAnalysis::addData(Constant *initializer,
         finfo.BufferOffset = inlineProgramScopeBuffer.size();
         finfo.PointerSize = pointerSize;
         finfo.Symbol = F->getName().str();
-        relocInfo->push_back(finfo);
+        relocInfo->push_back(std::move(finfo));
       }
       inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
     } else if (ConstantExpr *ce = dyn_cast<ConstantExpr>(initializer)) {

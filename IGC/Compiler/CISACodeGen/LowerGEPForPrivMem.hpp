@@ -73,7 +73,8 @@ public:
   SOALayoutChecker(llvm::AllocaInst &allocaToCheck, bool isOCL, bool mismatchedWidthsSupport=false);
   SOALayoutChecker() = delete;
   ~SOALayoutChecker() = default;
-  SOALayoutChecker(SOALayoutChecker &) = delete;
+  SOALayoutChecker(const SOALayoutChecker &) = delete;
+  SOALayoutChecker operator=(const SOALayoutChecker &) = delete;
 
   SOALayoutInfo getOrGatherInfo();
 
