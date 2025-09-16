@@ -15,11 +15,9 @@ SPDX-License-Identifier: MIT
 
 namespace llvm {
 class BasicBlock;
-class CallInst;
 class DominatorTree;
 class Instruction;
 class LoopInfo;
-class Use;
 } // namespace llvm
 
 namespace IGC {
@@ -51,15 +49,10 @@ public:
   AllocationLivenessAnalyzer(char &pid) : llvm::FunctionPass(pid) {}
 
 protected:
-  LivenessData ProcessInstruction(llvm::Instruction *I, llvm::DominatorTree &DT, llvm::LoopInfo &LI,
-                                  bool includeOrigin = false);
+  LivenessData ProcessInstruction(llvm::Instruction *I, llvm::DominatorTree &DT, llvm::LoopInfo &LI);
 
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
   virtual void getAdditionalAnalysisUsage(llvm::AnalysisUsage &AU) const = 0;
-  virtual void implementCallSpecificBehavior(llvm::CallInst *I, llvm::Use *use,
-                                             llvm::SmallVector<llvm::Use *> &worklist,
-                                             llvm::SetVector<llvm::Instruction *> &allUsers,
-                                             llvm::SetVector<llvm::Instruction *> &lifetimeLeakingUsers);
 };
 
 namespace Provenance {
