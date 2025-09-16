@@ -58,6 +58,7 @@ public:
   void visitMulH(llvm::CallInst *inst, bool isSigned);
   void visitFPToUIInst(llvm::FPToUIInst &FPUII);
   void visitFPTruncInst(llvm::FPTruncInst &I);
+  void visitInsertElementInst(llvm::InsertElementInst &I);
   void visitExtractElementInst(llvm::ExtractElementInst &I);
   void visitLdptr(llvm::SamplerLoadIntrinsic *inst);
   void visitLdRawVec(llvm::CallInst *inst);

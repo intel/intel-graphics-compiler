@@ -2160,6 +2160,53 @@ void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst &I) {
     addI[2]->replaceAllUsesWith(builder.CreateNeg(sel3));
 }
 
+// Check if a new vector is constructed, and if so, replace operand in first insert to undef. This optimization is
+// similar to LLVM instcombine pass (InstCombinerImpl::SimplifyDemandedVectorElts). LLVM optimization is limited to
+// short vectors, where IGC must support larger vectors (16, 32 elements).
+void CustomSafeOptPass::visitInsertElementInst(llvm::InsertElementInst &I) {
+  using namespace llvm::PatternMatch;
+
+  auto *VType = dyn_cast<IGCLLVM::FixedVectorType>(I.getType());
+  if (!VType)
+    return;
+
+  auto VWidth = VType->getNumElements();
+  auto ElSize = VType->getElementType()->getPrimitiveSizeInBits();
+
+  // Optimize only vectors typical for DPAS src.
+  bool ValidVector = iSTD::IsPowerOfTwo(VWidth) &&
+                     ((ElSize == 8 && VWidth <= 32) || (ElSize == 16 && VWidth <= 16) || (ElSize == 32 && VWidth <= 8));
+  if (!ValidVector)
+    return;
+
+  // Pattern is matched bottom-up, starting from last IE in chain. Instructions are visited top-down, exit early if this
+  // is not the last IE in chain.
+  if (I.hasOneUse() && isa<InsertElementInst>(I.use_begin()->getUser()))
+    return;
+
+  Instruction *CurrentInst = &I, *NextInst = nullptr;
+  uint64_t Index = 0;
+  APInt VisitedMask(APInt::getZero(VWidth));
+
+  while (true) {
+
+    if (!match(CurrentInst, m_InsertElt(m_Instruction(NextInst), m_Value(), m_ConstantInt(Index))))
+      return;
+
+    VisitedMask.setBit(Index);
+
+    if (NextInst->hasOneUse() && NextInst->getOpcode() == Instruction::InsertElement) {
+      CurrentInst = NextInst;
+    } else {
+      if (VisitedMask.isAllOnesValue()) {
+        // All elements are inserted, so input vector is fully overwritten.
+        CurrentInst->setOperand(0, PoisonValue::get(VType));
+      }
+      return;
+    }
+  }
+}
+
 void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst &I) {
   // convert:
   // %1 = lshr i32 %0, 16,
