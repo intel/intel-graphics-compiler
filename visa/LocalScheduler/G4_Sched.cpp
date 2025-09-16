@@ -444,6 +444,7 @@ struct SchedConfig {
     MASK_SKIP_CLUSTER = 1U << 3,
     MASK_SKIP_HOLD = 1U << 4,
     MASK_NOT_ITERATE = 1U << 5,
+    MASK_TRY_SUBTREE_SCHEDULE = 1U << 6,
   };
   unsigned Dump : 1;
   unsigned UseLatency : 1;
@@ -451,6 +452,7 @@ struct SchedConfig {
   unsigned SkipClustering : 1; // default 0 i.e. try min-reg with clustering
   unsigned SkipHoldList : 1; // default 0 i.e. use hold list in latency-hiding
   unsigned DoNotIterate : 1; // default 0 i.e. iterative latency-scheduling
+  unsigned TrySubtreeSchedule : 1; // prefer sub-tree schedule heuristic
 
   explicit SchedConfig(unsigned Config)
       : Dump((Config & MASK_DUMP) != 0),
@@ -458,7 +460,8 @@ struct SchedConfig {
         UseMinReg((Config & MASK_MIN_REG) != 0),
         SkipClustering((Config & MASK_SKIP_CLUSTER) != 0),
         SkipHoldList((Config & MASK_SKIP_HOLD) != 0),
-        DoNotIterate((Config & MASK_NOT_ITERATE) != 0) {}
+        DoNotIterate((Config & MASK_NOT_ITERATE) != 0),
+        TrySubtreeSchedule((Config & MASK_TRY_SUBTREE_SCHEDULE) != 0) {}
 };
 
 #define SCHED_DUMP(X)                                                          \
@@ -512,7 +515,8 @@ public:
   // UpperBoundGRF is the measure max reg-pressure of this kernel before scheduling
   bool scheduleBlockForLatency(unsigned &MaxPressure, bool ReassignID,
                                unsigned UpperBoundGRF);
-  void SethiUllmanScheduling(bool DoClustering);
+  void SethiUllmanScheduling(bool DoClustering,
+                             bool UseSubtreeHeuristic = false);
 
 private:
   void LatencyScheduling(unsigned GroupingThreshold);
@@ -823,9 +827,15 @@ class SethiUllmanQueue : public QueueBase {
   // the max time-stamp among node uses
   std::vector<unsigned> LiveTS;
 
+  std::vector<G4_INST *> &schedule;
+
+  bool UseSubtreeHeuristic = false;
+
 public:
-  SethiUllmanQueue(preDDD &ddd, RegisterPressure &rp, SchedConfig config)
-      : QueueBase(ddd, rp, config) {
+  SethiUllmanQueue(preDDD &ddd, RegisterPressure &rp, SchedConfig config,
+                   std::vector<G4_INST *> &s, bool SubtreeHeuristic)
+      : QueueBase(ddd, rp, config), schedule(s) {
+    UseSubtreeHeuristic = SubtreeHeuristic;
     init();
   }
 
@@ -839,7 +849,7 @@ public:
 
   bool empty() const { return Q.empty(); }
 
-  friend void BB_Scheduler::SethiUllmanScheduling(bool);
+  friend void BB_Scheduler::SethiUllmanScheduling(bool, bool);
 
 private:
   // Initialize Sethi-Ullman numbers.
@@ -972,6 +982,36 @@ bool SethiUllmanQueue::compare(preNode *N1, preNode *N2) {
 
   if (SU1 > SU2)
     return true;
+
+  if (UseSubtreeHeuristic && !schedule.empty()) {
+    // Select next node from queue that's a predecessor of last scheduled node.
+    // This can retire registers early, but it can worsen latency.
+    //
+    // If SU1 is immediate parent of last scheduled node then select it.
+    // If SU2 is immediate parent of last scheduled node then select it.
+    G4_INST *LastScheduled = nullptr;
+    for (auto RI = schedule.rbegin(); RI != schedule.rend(); ++RI) {
+      auto *Inst = (*RI);
+      if (Inst->isPseudoKill())
+        continue;
+      LastScheduled = Inst;
+      break;
+    }
+    if (LastScheduled) {
+      auto &SuccS1 = N1->Succs;
+      auto &SuccS2 = N2->Succs;
+      for (auto &EdgeS1 : SuccS1) {
+        auto *SuccS1 = EdgeS1.getNode();
+        if (SuccS1->getInst() == LastScheduled)
+          return false;
+      }
+      for (auto &EdgeS2 : SuccS2) {
+        auto *SuccS2 = EdgeS2.getNode();
+        if (SuccS2->getInst() == LastScheduled)
+          return true;
+      }
+    }
+  }
 
   // Otherwise, break tie with their IDs. Smaller ID means higher priority.
   return N1->getID() > N2->getID();
@@ -1153,8 +1193,21 @@ bool BB_Scheduler::scheduleBlockForPressure(unsigned &MaxPressure,
       // try clustering first
       SethiUllmanScheduling(true);
       if (commitIfBeneficial(MaxPressure)) {
+        // If MaxPressure is still > 2x Threshold, attempt subtree scheduling
+        // heuristic. This costs compile time, so run it only if pressure is
+        // very high.
+        bool SubtreeHeuristicChosen = false;
+        if (MaxPressure > (2 * Threshold) && config.TrySubtreeSchedule) {
+          ddd.reset(false);
+          SethiUllmanScheduling(false, true);
+          if (commitIfBeneficial(MaxPressure)) {
+            SCHED_DUMP(std::cerr << "Chose subtree heuristic\n");
+            SubtreeHeuristicChosen = true;
+          }
+        }
+        if (!SubtreeHeuristicChosen)
+          kernel.fg.builder->getJitInfo()->statsVerbose.minRegClusterCount++;
         SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for presssure, "));
-        kernel.fg.builder->getJitInfo()->statsVerbose.minRegClusterCount++;
         Changed = true;
       } else {
         ddd.reset(false);
@@ -1164,9 +1217,25 @@ bool BB_Scheduler::scheduleBlockForPressure(unsigned &MaxPressure,
       // try not-clustering
       SethiUllmanScheduling(false);
       if (commitIfBeneficial(MaxPressure)) {
+        if (MaxPressure > (2 * Threshold) && config.TrySubtreeSchedule) {
+          SethiUllmanScheduling(false, true);
+          commitIfBeneficial(MaxPressure);
+        }
         SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for presssure, "));
         kernel.fg.builder->getJitInfo()->statsVerbose.minRegSUCount++;
         Changed = true;
+      } else if (config.TrySubtreeSchedule) {
+        ddd.reset(false);
+      }
+    }
+
+    if (!Changed) {
+      if (MaxPressure > (2 * Threshold) && config.TrySubtreeSchedule) {
+        SethiUllmanScheduling(false, true);
+        if (commitIfBeneficial(MaxPressure)) {
+          SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for presssure, "));
+          Changed = true;
+        }
       }
     }
   }
@@ -1175,9 +1244,10 @@ bool BB_Scheduler::scheduleBlockForPressure(unsigned &MaxPressure,
   return Changed;
 }
 
-void BB_Scheduler::SethiUllmanScheduling(bool DoClustering) {
+void BB_Scheduler::SethiUllmanScheduling(bool DoClustering,
+                                         bool UseSubtreeHeuristic) {
   schedule.clear();
-  SethiUllmanQueue Q(ddd, rp, config);
+  SethiUllmanQueue Q(ddd, rp, config, schedule, UseSubtreeHeuristic);
   Q.push(ddd.getExitNode());
 
   while (!Q.empty()) {
