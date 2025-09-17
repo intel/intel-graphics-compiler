@@ -94,19 +94,24 @@ public:
     if (idx < Keys.size()) {
       Values[idx] = std::move(value);
     } else {
-      // Grow arrays by 1
-      Array<KeyT> newKeys(Keys.size() + 1);
-      Array<ValueT> newValues(Values.size() + 1);
-      for (size_t i = 0; i < Keys.size(); ++i) {
-        newKeys[i] = Keys[i];
-        newValues[i] = std::move(Values[i]);
+      uint32_t currSize = Keys.size();
+
+      Array<KeyT> oldKeys = std::move(Keys);
+      Array<ValueT> oldValues = std::move(Values);
+
+      Keys = Array<KeyT>(currSize + 1);
+      Values = Array<ValueT>(currSize + 1);
+
+      for (uint32_t i = 0; i < currSize; ++i) {
+        Keys[i] = std::move(oldKeys[i]);
+        Values[i] = std::move(oldValues[i]);
       }
-      newKeys[Keys.size()] = key;
-      newValues[Values.size()] = std::move(value);
-      Keys.destroy();
-      Values.destroy();
-      Keys = std::move(newKeys);
-      Values = std::move(newValues);
+
+      Keys[currSize] = key;
+      Values[currSize] = std::move(value);
+
+      oldKeys.destroy();
+      oldValues.destroy();
     }
   }
 

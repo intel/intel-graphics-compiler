@@ -114,7 +114,7 @@ public:
     End = Start + NumElts;
 
     for (uint32_t i = 0; i < NumElts; i++)
-      Start[i] = typename iterator::value_type();
+      new (&Start[i]) typename iterator::value_type;
   }
 
   Array &operator=(const Array &) = delete;
