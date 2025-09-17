@@ -30,8 +30,9 @@ target triple = "spir64-unknown-unknown"
 ; CHECK-LABEL: define spir_kernel void @test(
 ; CHECK-SAME: i64 [[OFFSET:%.*]], ptr [[PTR:%.*]], ptr [[PTR1:%.*]]) {
 define spir_kernel void @test(i64 %offset, ptr %ptr, ptr %ptr1) {
+entry:
 
-; CHECK-NEXT:    [[TC_I1:%.*]] = alloca [4 x [4 x %"struct::joint_matrix::C.resolved"]], align 8
+; CHECK:         [[TC_I1:%.*]] = alloca [4 x [4 x %"struct::joint_matrix::C.resolved"]], align 8
 ; CHECK-NEXT:    [[TA_I3:%.*]] = alloca [4 x [2 x %"struct::joint_matrix::A.resolved"]], align 8
 ; CHECK-NEXT:    [[TB_I5:%.*]] = alloca [4 x [2 x %"struct::joint_matrix::B.resolved"]], align 8
 ; CHECK-NEXT:    [[TI_I:%.*]] = alloca [4 x [4 x %"struct::almost_joint_matrix"]], align 8
@@ -50,10 +51,10 @@ define spir_kernel void @test(i64 %offset, ptr %ptr, ptr %ptr1) {
   call void @llvm.lifetime.start.p0i8(i64 64, ptr %tA.i)
   call void @llvm.lifetime.start.p0i8(i64 64, ptr %tB.i)
 
-; Update GEP offsets
-; CHECK-NEXT:    [[I1:%.*]] = getelementptr inbounds i8, ptr [[TC_I1]], i64 128
-; CHECK-NEXT:    [[I2:%.*]] = getelementptr inbounds i8, ptr [[TA_I3]], i64 64
-; CHECK-NEXT:    [[I3:%.*]] = getelementptr inbounds i8, ptr [[TB_I5]], i64 64
+; Update GEP offsets coming from alloca directly
+; CHECK-NEXT:    [[I1:%.*]] = getelementptr inbounds i8, ptr [[TC_I1]], i64 512
+; CHECK-NEXT:    [[I2:%.*]] = getelementptr inbounds i8, ptr [[TA_I3]], i64 128
+; CHECK-NEXT:    [[I3:%.*]] = getelementptr inbounds i8, ptr [[TB_I5]], i64 256
   %i1 = getelementptr inbounds i8, ptr %tC.i, i64 128
   %i2 = getelementptr inbounds i8, ptr %tA.i, i64 64
   %i3 = getelementptr inbounds i8, ptr %tB.i, i64 64
@@ -62,20 +63,33 @@ define spir_kernel void @test(i64 %offset, ptr %ptr, ptr %ptr1) {
 ; CHECK-NEXT:    [[I4:%.*]] = getelementptr inbounds i8, ptr [[TC_I1]], i64 [[OFFSET]]
   %i4 = getelementptr inbounds i8, ptr %tC.i, i64 %offset
 
-; no change: GEP operand is not a result of bitcast
+; no change: GEP operand is comming from kernel argument - not from matrix type
 ; CHECK-NEXT:    [[I5:%.*]] = getelementptr inbounds i8, ptr [[PTR1]], i64 128
   %i5 = getelementptr inbounds i8, ptr %ptr1, i64 128
 
-; Do not touch if bitcast is not for matrix type
+; no change: GEP doesn't come from matrix type
 ; CHECK-NEXT:    [[I6:%.*]] = getelementptr inbounds i8, ptr [[TI_I]], i64 128
   %i6 = getelementptr inbounds i8, ptr %tI.i, i64 128
 
 ; no change - GEP is not based on i8
 ; CHECK-NEXT:    [[ARRAYCTOR_END_I:%.*]] = getelementptr inbounds i16, ptr [[TC_I1]], i64 128
   %arrayctor.end.i = getelementptr inbounds i16, ptr  %tC.i, i64 128
+  br label %loop_header
 
+; Test going through phi value + check that we aren't doing ininite recursion
+loop_header:
+  %loop_cond = phi i1 [1, %entry], [0, %loop_header]
+  %loop_matrix = phi ptr [%tC.i, %entry], [%loop_matrix, %loop_header]
+
+; Update GEP offsets coming from phi value
+; CHECK:         [[I7:%.*]] = getelementptr inbounds i8, ptr {{.*}}, i64 128
+  %i7 = getelementptr inbounds i8, ptr %loop_matrix, i64 32
+
+  br i1 %loop_cond, label %loop_header, label %after_loop
+
+after_loop:
 ; Life time end size update
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 256, ptr [[TB_I5]])
+; CHECK:         call void @llvm.lifetime.end.p0(i64 256, ptr [[TB_I5]])
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 128, ptr [[TA_I3]])
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 512, ptr [[TC_I1]])
   call void @llvm.lifetime.end.p0i8(i64 64, ptr %tB.i)

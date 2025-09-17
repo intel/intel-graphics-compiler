@@ -32,8 +32,9 @@ target triple = "spir64-unknown-unknown"
 ; CHECK-LABEL: define spir_kernel void @test(
 ; CHECK-SAME: i64 [[OFFSET:%.*]], i8 addrspace(1)* [[PTR:%.*]], i8* [[PTR1:%.*]]) {
 define spir_kernel void @test(i64 %offset, i8 addrspace(1)* %ptr, i8* %ptr1) {
+entry:
 
-; CHECK-NEXT:    [[TC_I1:%.*]] = alloca [4 x [4 x %"struct::joint_matrix::C.resolved"]], align 8
+; CHECK:         [[TC_I1:%.*]] = alloca [4 x [4 x %"struct::joint_matrix::C.resolved"]], align 8
 ; CHECK-NEXT:    [[TA_I3:%.*]] = alloca [4 x [2 x %"struct::joint_matrix::A.resolved"]], align 8
 ; CHECK-NEXT:    [[TB_I5:%.*]] = alloca [4 x [2 x %"struct::joint_matrix::B.resolved"]], align 8
 ; CHECK-NEXT:    [[TI_I:%.*]] = alloca [4 x [4 x %"struct::almost_joint_matrix"]], align 8
@@ -51,74 +52,89 @@ define spir_kernel void @test(i64 %offset, i8 addrspace(1)* %ptr, i8* %ptr1) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p0i8(i64 128, i8* [[TMP2]])
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast [4 x [2 x %"struct::joint_matrix::B.resolved"]]* [[TB_I5]] to i8*
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p0i8(i64 256, i8* [[TMP3]])
-  %1 = bitcast [4 x [4 x %"struct::joint_matrix::C"]]* %tC.i to i8*
-  call void @llvm.lifetime.start.p0i8(i64 128, i8* %1)
-  %2 = bitcast [4 x [2 x %"struct::joint_matrix::A"]]* %tA.i to i8*
-  call void @llvm.lifetime.start.p0i8(i64 64, i8* %2)
-  %3 = bitcast [4 x [2 x %"struct::joint_matrix::B"]]* %tB.i to i8*
-  call void @llvm.lifetime.start.p0i8(i64 64, i8* %3)
+  %b1 = bitcast [4 x [4 x %"struct::joint_matrix::C"]]* %tC.i to i8*
+  call void @llvm.lifetime.start.p0i8(i64 128, i8* %b1)
+  %b2 = bitcast [4 x [2 x %"struct::joint_matrix::A"]]* %tA.i to i8*
+  call void @llvm.lifetime.start.p0i8(i64 64, i8* %b2)
+  %b3 = bitcast [4 x [2 x %"struct::joint_matrix::B"]]* %tB.i to i8*
+  call void @llvm.lifetime.start.p0i8(i64 64, i8* %b3)
 
-; Update GEP offsets
+; Update GEP offsets coming from alloca directly
 ; CHECK-NEXT:    [[TMP4:%.*]] = bitcast [4 x [4 x %"struct::joint_matrix::C.resolved"]]* [[TC_I1]] to i8*
 ; CHECK-NEXT:    [[I1:%.*]] = getelementptr inbounds i8, i8* [[TMP4]], i64 512
 ; CHECK-NEXT:    [[TMP5:%.*]] = bitcast [4 x [2 x %"struct::joint_matrix::A.resolved"]]* [[TA_I3]] to i8*
 ; CHECK-NEXT:    [[I2:%.*]] = getelementptr inbounds i8, i8* [[TMP5]], i64 128
 ; CHECK-NEXT:    [[TMP6:%.*]] = bitcast [4 x [2 x %"struct::joint_matrix::B.resolved"]]* [[TB_I5]] to i8*
 ; CHECK-NEXT:    [[I3:%.*]] = getelementptr inbounds i8, i8* [[TMP6]], i64 256
-  %4 = bitcast [4 x [4 x %"struct::joint_matrix::C"]]* %tC.i to i8*
-  %i1 = getelementptr inbounds i8, i8* %4, i64 128
-  %5 = bitcast [4 x [2 x %"struct::joint_matrix::A"]]* %tA.i to i8*
-  %i2 = getelementptr inbounds i8, i8* %5, i64 64
-  %6 = bitcast [4 x [2 x %"struct::joint_matrix::B"]]* %tB.i to i8*
-  %i3 = getelementptr inbounds i8, i8* %6, i64 64
+  %b4 = bitcast [4 x [4 x %"struct::joint_matrix::C"]]* %tC.i to i8*
+  %i1 = getelementptr inbounds i8, i8* %b4, i64 128
+  %b5 = bitcast [4 x [2 x %"struct::joint_matrix::A"]]* %tA.i to i8*
+  %i2 = getelementptr inbounds i8, i8* %b5, i64 64
+  %b6 = bitcast [4 x [2 x %"struct::joint_matrix::B"]]* %tB.i to i8*
+  %i3 = getelementptr inbounds i8, i8* %b6, i64 64
 
 ; Do not touch if offest is not a constant
 ; CHECK-NEXT:    [[TMP7:%.*]] = bitcast [4 x [4 x %"struct::joint_matrix::C.resolved"]]* [[TC_I1]] to i8*
 ; CHECK-NEXT:    [[I4:%.*]] = getelementptr inbounds i8, i8* [[TMP7]], i64 [[OFFSET]]
-  %7 = bitcast [4 x [4 x %"struct::joint_matrix::C"]]* %tC.i to i8*
-  %i4 = getelementptr inbounds i8, i8* %7, i64 %offset
+  %b7 = bitcast [4 x [4 x %"struct::joint_matrix::C"]]* %tC.i to i8*
+  %i4 = getelementptr inbounds i8, i8* %b7, i64 %offset
 
-; no change: GEP operand is not a result of bitcast
+; no change: GEP operand is comming from kernel argument - not from matrix type
 ; CHECK-NEXT:    [[I5:%.*]] = getelementptr inbounds i8, i8* [[PTR1]], i64 128
   %i5 = getelementptr inbounds i8, i8* %ptr1, i64 128
 
-; Do not touch if bitcast is not for matrix type
+; no change: GEP comes from bitcast that doesn't come from matrix type
 ; CHECK-NEXT:    [[TMP8:%.*]] = bitcast [4 x [4 x %"struct::almost_joint_matrix"]]* [[TI_I]] to i8*
 ; CHECK-NEXT:    [[I6:%.*]] = getelementptr inbounds i8, i8* [[TMP8]], i64 128
-  %8 = bitcast [4 x [4 x %"struct::almost_joint_matrix"]]* %tI.i to i8*
-  %i6 = getelementptr inbounds i8, i8* %8, i64 128
+  %b8 = bitcast [4 x [4 x %"struct::almost_joint_matrix"]]* %tI.i to i8*
+  %i6 = getelementptr inbounds i8, i8* %b8, i64 128
 
 ; no change - GEP is not based on i8
 ; CHECK-NEXT:    [[TMP9:%.*]] = bitcast [4 x [4 x %"struct::joint_matrix::C.resolved"]]* [[TC_I1]] to i16*
 ; CHECK-NEXT:    [[ARRAYCTOR_END_I:%.*]] = getelementptr inbounds i16, i16* [[TMP9]], i64 128
-  %9 = bitcast [4 x [4 x %"struct::joint_matrix::C"]]* %tC.i to i16*
-  %arrayctor.end.i = getelementptr inbounds i16, i16* %9, i64 128
+  %b9 = bitcast [4 x [4 x %"struct::joint_matrix::C"]]* %tC.i to i16*
+  %arrayctor.end.i = getelementptr inbounds i16, i16* %b9, i64 128
+  br label %loop_header
 
+; Test going through phi value + check that we aren't doing ininite recursion
+loop_header:
+  %loop_cond = phi i1 [1, %entry], [0, %loop_header]
+  %loop_matrix = phi [4 x [4 x %"struct::joint_matrix::C"]]* [%tC.i, %entry], [%loop_matrix, %loop_header]
+
+; Update GEP offsets coming from phi value
+; CHECK:         [[TMP10:%.*]] = bitcast [4 x [4 x %"struct::joint_matrix::C.resolved"]]* {{.*}} to i8*
+; CHECK-NEXT:    {{.*}} = getelementptr inbounds i8, i8* [[TMP10]], i64 128
+  %b10 = bitcast [4 x [4 x %"struct::joint_matrix::C"]]* %tC.i to i8*
+  %i7 = getelementptr inbounds i8, i8* %b10, i64 32
+
+  br i1 %loop_cond, label %loop_header, label %after_loop
+
+after_loop:
 ; Life time end size update
-; CHECK-NEXT:    [[TMP10:%.*]] = bitcast [4 x [2 x %"struct::joint_matrix::B.resolved"]]* [[TB_I5]] to i8*
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0i8(i64 256, i8* [[TMP10]])
-; CHECK-NEXT:    [[TMP11:%.*]] = bitcast [4 x [2 x %"struct::joint_matrix::A.resolved"]]* [[TA_I3]] to i8*
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0i8(i64 128, i8* [[TMP11]])
-; CHECK-NEXT:    [[TMP12:%.*]] = bitcast [4 x [4 x %"struct::joint_matrix::C.resolved"]]* [[TC_I1]] to i8*
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0i8(i64 512, i8* [[TMP12]])
-  %10 = bitcast [4 x [2 x %"struct::joint_matrix::B"]]* %tB.i to i8*
-  call void @llvm.lifetime.end.p0i8(i64 64, i8* %10)
-  %11 = bitcast [4 x [2 x %"struct::joint_matrix::A"]]* %tA.i to i8*
-  call void @llvm.lifetime.end.p0i8(i64 64, i8* %11)
-  %12 = bitcast [4 x [4 x %"struct::joint_matrix::C"]]* %tC.i to i8*
-  call void @llvm.lifetime.end.p0i8(i64 128, i8* %12)
+; CHECK:         [[TMP11:%.*]] = bitcast [4 x [2 x %"struct::joint_matrix::B.resolved"]]* [[TB_I5]] to i8*
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0i8(i64 256, i8* [[TMP11]])
+; CHECK-NEXT:    [[TMP12:%.*]] = bitcast [4 x [2 x %"struct::joint_matrix::A.resolved"]]* [[TA_I3]] to i8*
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0i8(i64 128, i8* [[TMP12]])
+; CHECK-NEXT:    [[TMP13:%.*]] = bitcast [4 x [4 x %"struct::joint_matrix::C.resolved"]]* [[TC_I1]] to i8*
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0i8(i64 512, i8* [[TMP13]])
+  %b11 = bitcast [4 x [2 x %"struct::joint_matrix::B"]]* %tB.i to i8*
+  call void @llvm.lifetime.end.p0i8(i64 64, i8* %b11)
+  %b12 = bitcast [4 x [2 x %"struct::joint_matrix::A"]]* %tA.i to i8*
+  call void @llvm.lifetime.end.p0i8(i64 64, i8* %b12)
+  %b13 = bitcast [4 x [4 x %"struct::joint_matrix::C"]]* %tC.i to i8*
+  call void @llvm.lifetime.end.p0i8(i64 128, i8* %b13)
 
 ; do not touch life time intrinsics if not for Joint Matrix types
 ; CHECK-NEXT:    [[GROUPID_ASCAST:%.*]] = addrspacecast [3 x i64]* [[GROUPID]] to [3 x i64] addrspace(4)*
-; CHECK-NEXT:    [[TMP13:%.*]] = bitcast [3 x i64]* [[GROUPID]] to i8*
-; CHECK-NEXT:    call void @llvm.lifetime.start.p0i8(i64 24, i8* [[TMP13]])
 ; CHECK-NEXT:    [[TMP14:%.*]] = bitcast [3 x i64]* [[GROUPID]] to i8*
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0i8(i64 24, i8* [[TMP14]])
+; CHECK-NEXT:    call void @llvm.lifetime.start.p0i8(i64 24, i8* [[TMP14]])
+; CHECK-NEXT:    [[TMP15:%.*]] = bitcast [3 x i64]* [[GROUPID]] to i8*
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0i8(i64 24, i8* [[TMP15]])
   %GroupID.ascast = addrspacecast [3 x i64]* %GroupID to [3 x i64] addrspace(4)*
-  %13 = bitcast [3 x i64]* %GroupID to i8*
-  call void @llvm.lifetime.start.p0i8(i64 24, i8* %13)
-  %14 = bitcast [3 x i64]* %GroupID to i8*
-  call void @llvm.lifetime.end.p0i8(i64 24, i8* %14)
+  %b14 = bitcast [3 x i64]* %GroupID to i8*
+  call void @llvm.lifetime.start.p0i8(i64 24, i8* %b14)
+  %b15 = bitcast [3 x i64]* %GroupID to i8*
+  call void @llvm.lifetime.end.p0i8(i64 24, i8* %b15)
 
 ; CHECK-NEXT:    ret void
   ret void

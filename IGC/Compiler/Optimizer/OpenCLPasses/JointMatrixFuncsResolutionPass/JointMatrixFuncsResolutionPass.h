@@ -84,6 +84,9 @@ private:
                                          IGC::JointMatrixTypeDescription *outDescription);
 #endif
 
+  void RecursiveSearchAndFixCanonicalizdGEPandLifetime(std::unordered_set<llvm::Value *> &visited,
+                                                       const llvm::DataLayout &DL, llvm::Value *rootValue,
+                                                       uint64_t matrixTypeAllocSize, uint64_t totalAllocationSize);
   llvm::StringRef GetMatrixTypeName(llvm::Type *opaqueType);
   bool SetLayoutFromUse(IGC::JointMatrixTypeDescription *outDescription);
   unsigned GetUseFromLegacyLayout(unsigned int legacyLayout);

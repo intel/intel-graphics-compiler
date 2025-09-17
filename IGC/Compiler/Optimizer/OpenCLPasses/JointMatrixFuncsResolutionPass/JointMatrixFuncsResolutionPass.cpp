@@ -2764,36 +2764,6 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst &CI) {
     return;
   }
 
-  // Update size of allocated element in llvm.lifetime.start/end intrincics
-  if (auto II = dyn_cast<IntrinsicInst>(&CI)) {
-    if (II->getIntrinsicID() == Intrinsic::lifetime_start || II->getIntrinsicID() == Intrinsic::lifetime_end) {
-
-      // track pointer operand to alloca instr
-      auto &DL = CI.getModule()->getDataLayout();
-      Value *obj = IGCLLVM::getUnderlyingObject(II->getOperand(1), DL);
-
-      if (AllocaInst *AI = dyn_cast_or_null<AllocaInst>(obj)) {
-        // if alloca requires resolving, resolve alloca, otherwise do not touch intrinsic
-        // as it is not related to Joint Matrix type
-        if (!isOrContainsMatrixType(AI->getAllocatedType()))
-          return;
-
-        ResolveSIMDSize(CI.getParent()->getParent());
-        AllocaInst *NAI = cast<AllocaInst>(Resolve(AI));
-        auto allocaSizeInBits = IGCLLVM::makeOptional(NAI->getAllocationSizeInBits(DL));
-        if (!allocaSizeInBits.has_value())
-          return;
-        uint64_t newSize = (uint64_t)(allocaSizeInBits.value() / 8);
-
-        // update first argument, if it is constant int
-        if (auto *ConstInt = dyn_cast<ConstantInt>(CI.getOperand(0))) {
-          CI.setOperand(0, ConstantInt::get(ConstInt->getType(), newSize));
-          LLVM_DEBUG(dbgs() << "   -- UPDATED CALL: " << CI << "\n");
-        }
-      }
-    }
-  }
-
   if (isAnyFunctionArgMatrixType(func))
     ResolveCallFuncWithMatrixArgs(ResolvedFuncSignatures[func], &CI);
 }
@@ -2879,6 +2849,50 @@ DIType *getOrCreateType(Type *T, Module *M) {
   return diType;
 }
 
+void JointMatrixFuncsResolutionPass::RecursiveSearchAndFixCanonicalizdGEPandLifetime(
+    std::unordered_set<llvm::Value *> &visited, const DataLayout &DL, Value *root, uint64_t matrixTypeAllocSize,
+    uint64_t totalAllocationSize) {
+  auto insertToVisited = visited.insert(root);
+  if (!insertToVisited.second) // root was already visited
+    return;
+
+  // Depth first recursive traversal of root users
+  for (auto U : root->users()) {
+    // Only traverse children nodes if current node is a cast or a PHI node.
+    if (isa<CastInst>(U) || isa<PHINode>(U)) {
+      LLVM_DEBUG(dbgs() << "DFS: visiting users of " << *U << '\n');
+      RecursiveSearchAndFixCanonicalizdGEPandLifetime(visited, DL, U, matrixTypeAllocSize, totalAllocationSize);
+      continue;
+    }
+
+    if (auto GEP = dyn_cast<GetElementPtrInst>(U)) {
+      // Update canonicalized i8 GEP:
+      //   getelementptr i8, ptr %x, i64 <const>
+      if (GEP->getSourceElementType()->isIntegerTy(8) && GEP->hasAllConstantIndices() && GEP->getNumIndices() == 1) {
+        LLVM_DEBUG(dbgs() << "Found canonicalized i8 GEP: " << *GEP << "\n");
+        auto offset = cast<ConstantInt>(GEP->getOperand(1));
+        uint64_t pointerSize = DL.getPointerSizeInBits(GEP->getPointerAddressSpace()) / 8;
+        uint64_t offsetInElements = offset->getZExtValue() / pointerSize;
+        uint64_t correctOffset = offsetInElements * matrixTypeAllocSize;
+        ConstantInt *newOffsetConstant = ConstantInt::get(offset->getType(), correctOffset);
+        GEP->setOperand(1, newOffsetConstant);
+        LLVM_DEBUG(dbgs().indent(2) << "Fixed index: " << *GEP << "\n");
+      }
+    } else if (auto II = dyn_cast<IntrinsicInst>(U)) {
+      // Update size for lifetime intrinsics
+      if (II->getIntrinsicID() == Intrinsic::lifetime_start || II->getIntrinsicID() == Intrinsic::lifetime_end) {
+        if (auto constInt = dyn_cast<ConstantInt>(II->getOperand(0))) {
+          LLVM_DEBUG(dbgs() << "Found lifetime intrinsic for joint matrix array allocation" << *II << '\n');
+          II->setOperand(0, ConstantInt::get(constInt->getType(), totalAllocationSize));
+          LLVM_DEBUG(dbgs().indent(2) << "Fixed size: " << *II << "\n");
+        }
+      }
+    } else {
+      LLVM_DEBUG(dbgs() << "Skipping joint matrix array alloca user: " << *U << '\n');
+    }
+  }
+}
+
 void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I) {
   LLVM_DEBUG(dbgs() << " - VISIT: " << I << "\n");
 
@@ -2890,9 +2904,10 @@ void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I) {
 
   ResolveSIMDSize(I.getParent()->getParent());
 
-  Value *newInst = ResolveGeneric(&I);
+  AllocaInst *newInst = cast<AllocaInst>(ResolveGeneric(&I));
 
-  if (newInst) {
+  // update debug info
+  {
     TinyPtrVector<DbgDeclareInst *> DDIs;
     for (DbgVariableIntrinsic *DVI : FindDbgAddrUses(&I))
       if (auto *DDI = dyn_cast<DbgDeclareInst>(DVI))
@@ -2912,6 +2927,20 @@ void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I) {
       builder.insertDbgValueIntrinsic(newInst, created, builder.createExpression(), loc, ddi);
       ddi->eraseFromParent();
     }
+  }
+
+  // update GEPs and lifetime intrinsics
+  {
+    Type *unresolvedMatrixType = getContainedMatrixType(I.getAllocatedType());
+    Type *resolvedMatrixType = ResolveTypes(unresolvedMatrixType);
+
+    const DataLayout &DL = newInst->getModule()->getDataLayout();
+    uint64_t matrixTypeSize = DL.getTypeAllocSize(resolvedMatrixType);
+    uint64_t totalAllocSize =
+        IGCLLVM::makeOptional(newInst->getAllocationSizeInBits(DL)).value_or(TypeSize(0, false)) / 8;
+    // We have to use old alloca instruction I because its uses weren't replaced by newInst yet.
+    std::unordered_set<Value *> visited;
+    RecursiveSearchAndFixCanonicalizdGEPandLifetime(visited, DL, &I, matrixTypeSize, totalAllocSize);
   }
 }
 
@@ -2969,46 +2998,6 @@ void JointMatrixFuncsResolutionPass::visitGetElementPtrInst(GetElementPtrInst &G
     return;
 
   Type *GEPEltType = GEP.getSourceElementType();
-
-  // After constant GEPs are canonicalized to i8 types, we may get patterns like below:
-  //
-  // %8 = bitcast [4 x [4 x %"struct.sycl::_V1::ext::oneapi::experimental::matrix::joint_matrix"]]* %tC.i to i8*
-  // %arrayctor.end.i = getelementptr inbounds i8, i8* %8, i64 128
-  //
-  // It is not correct, because
-  // original offset was 16 elements of matrix type. Matrix type before resolution is represented as pointer
-  // Pointer is typically 8 bytes, hence offset of 128 bytes is calculated as 16 x 8 = 128
-  // The real offset would be 16 matrix types after resolution, not pointer types.
-  // So to fix the offset, we need calculate the offset in matrix type, taking into account pointer type size
-  // Then we need calculate real matrix type size after resolution in bytes
-  // Then real offset in bytes will be multiplicaiton of offset in matrix types and size of matrix type in bytes
-  //
-  // For example, if matrix type was resolved like that:
-  // %"struct.sycl::_V1::ext::oneapi::experimental::matrix::joint_matrix.resolved" = type { <8 x float> }
-  // offset will be 16 * (8 * 4) = 512:
-  //
-  // %arrayctor.end.i = getelementptr inbounds i8, i8* %8, i64 512
-  BitCastInst *BC = dyn_cast<BitCastInst>(GEP.getOperand(0));
-
-  if (GEPEltType->isIntegerTy(8) && BC && (GEP.getNumIndices() == 1) && GEP.hasAllConstantIndices()) {
-    if (Type *BCSrcTy = BC->getSrcTy(); BCSrcTy->isPointerTy()) {
-      if (Type *unresolvedMatTy = getContainedMatrixType(BCSrcTy)) {
-
-        // Calculate offset based on matrix type
-        ConstantInt *index = cast<ConstantInt>(GEP.getOperand(1));
-        auto &DL = GEP.getModule()->getDataLayout();
-        uint64_t pointerSizeInBytes = DL.getPointerSizeInBits(GEP.getPointerAddressSpace()) / 8;
-        uint64_t offsetInElements = index->getZExtValue() / pointerSizeInBytes;
-
-        // Calculate correct offset in bytes and update GEP
-        uint64_t elementSize = (uint64_t)DL.getTypeAllocSize(ResolveTypes(unresolvedMatTy));
-        uint64_t correctOffset = offsetInElements * elementSize;
-        GEP.idx_begin()->set(ConstantInt::get(index->getType(), correctOffset));
-        return;
-      }
-    }
-  }
-
   if (!isOrContainsMatrixType(GEPEltType))
     return;
 
