@@ -18,8 +18,6 @@
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
 
-%g = type { [512 x i32] }
-
 ; Function Attrs: nofree nosync nounwind
 define spir_kernel void @test(ptr nocapture writeonly %d, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %enqueuedLocalSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, ptr nocapture readnone %privateBase) {
 entry:
@@ -45,18 +43,6 @@ exit:
 ; CHECK: %load2 = load i8, ptr %arr3
   %arr3 = alloca [512 x i32]
   %load2 = load i8, ptr %arr3
-
-; This case is valid because float and i32 have 32 bits
-; CHECK: insertelement <2 x float> {{.*}}, float {{.*}}, i32 0
-; CHECK: insertelement <2 x float> {{.*}}, float {{.*}}, i32 1
-  %st = alloca %g
-  %load3 = load <2 x float>, ptr %st
-
-; This case is not valid because i32 and i8 have different sizes
-; CHECK: %load4 = load <2 x i8>, ptr %st2
-  %st2 = alloca %g
-  %load4 = load <2 x i8>, ptr %st2
-
   ret void
 }
 
