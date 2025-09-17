@@ -256,12 +256,14 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase {
 
         std::size_t foundFirstSingleQuote = optionsWithFlags.find('\'', found);
         std::size_t foundSecondSingleQuote = optionsWithFlags.find('\'', foundFirstSingleQuote + 1);
-        if (foundFirstSingleQuote != std::string::npos && foundSecondSingleQuote) {
-          RegKeysFlagsFromOptions +=
-              optionsWithFlags.substr(foundFirstSingleQuote + 1, (foundSecondSingleQuote - foundFirstSingleQuote - 1));
-          RegKeysFlagsFromOptions = RegKeysFlagsFromOptions + ',';
-          optionsWithFlags = optionsWithFlags.substr(foundSecondSingleQuote + 1, optionsWithFlags.length());
+        if (foundFirstSingleQuote == std::string::npos || foundSecondSingleQuote == std::string::npos) {
+          outputInterface->GetImpl()->SetError(TranslationErrorType::Unused, "Missing single quotes for -igc_opts");
+          return outputInterface.release();
         }
+        RegKeysFlagsFromOptions +=
+            optionsWithFlags.substr(foundFirstSingleQuote + 1, (foundSecondSingleQuote - foundFirstSingleQuote - 1));
+        RegKeysFlagsFromOptions = RegKeysFlagsFromOptions + ',';
+        optionsWithFlags = optionsWithFlags.substr(foundSecondSingleQuote + 1, optionsWithFlags.length());
       }
     }
     bool RegFlagNameError = 0;
