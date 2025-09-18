@@ -1037,6 +1037,10 @@ bool Interference::dumpIntf(const char *s) const {
         if (interfereBetween(i, j)) {
           std::cout << "\t";
           lrs[j]->getVar()->emit(std::cout);
+          if (lrs[j]->getPhyReg()) {
+            std::cout << "(r" << lrs[j]->getPhyReg()->asGreg()->getRegNum()
+                      << ")\n";
+          }
         }
       }
       std::cout << "\n";
