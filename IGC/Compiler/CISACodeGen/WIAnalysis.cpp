@@ -1232,6 +1232,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       intrinsic_name == llvm_waveClusteredInterleave || intrinsic_name == llvm_ld_ptr ||
       intrinsic_name == llvm_ldlptr ||
       (IGC_IS_FLAG_DISABLED(DisableUniformTypedAccess) && intrinsic_name == llvm_typed_read) ||
+      (IGC_IS_FLAG_DISABLED(DisableUniformTypedAccess) && intrinsic_name == llvm_typed_load_status) ||
       intrinsic_name == llvm_add_pair || intrinsic_name == llvm_sub_pair || intrinsic_name == llvm_mul_pair ||
       intrinsic_name == llvm_ptr_to_pair || intrinsic_name == llvm_pair_to_ptr || intrinsic_name == llvm_fma ||
       intrinsic_name == llvm_canonicalize || GII_id == GenISAIntrinsic::GenISA_uitof_rtz ||
