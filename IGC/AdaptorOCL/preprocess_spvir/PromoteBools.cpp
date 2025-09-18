@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2024 Intel Corporation
+Copyright (C) 2022-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -440,8 +440,18 @@ Value *PromoteBools::getOrCreatePromotedValue(Value *value) {
 
   if (newValue != value) {
     promotedValuesCache[value] = newValue;
-    auto ty = value->getType();
-    if (!IGCLLVM::isOpaquePointerTy(ty) && ty == newValue->getType()) {
+
+    bool promotionChangedType = false;
+    auto oldGV = dyn_cast<GlobalValue>(value);
+    auto newGV = dyn_cast<GlobalValue>(newValue);
+
+    if (oldGV && newGV) {
+      promotionChangedType = oldGV->getValueType() != newGV->getValueType();
+    }
+
+    bool typesMatch = (value->getType() == newValue->getType());
+
+    if (!promotionChangedType && typesMatch) {
       value->replaceAllUsesWith(newValue);
     } else {
       for (const auto &user : value->users()) {
