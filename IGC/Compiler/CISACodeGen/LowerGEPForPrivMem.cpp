@@ -282,7 +282,7 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *
 
       allowedAllocaSizeInBytes = (allowedAllocaSizeInBytes * 8) / SIMDSize;
     }
-  SOALayoutChecker checker(*pAlloca, m_ctx->type == ShaderType::OPENCL_SHADER);
+  SOALayoutChecker checker(*pAlloca, m_ctx->type == ShaderType::OPENCL_SHADER, true);
   SOALayoutInfo SOAInfo = checker.getOrGatherInfo();
   if (!SOAInfo.canUseSOALayout) {
     return StatusPrivArr2Reg::CannotUseSOALayout;
@@ -357,7 +357,7 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *
   return StatusPrivArr2Reg::OK;
 }
 
-SOALayoutChecker::SOALayoutChecker(AllocaInst &allocaToCheck, bool isOCL) : allocaRef(allocaToCheck) {
+SOALayoutChecker::SOALayoutChecker(AllocaInst &allocaToCheck, bool isOCL, bool mismatchedWidthsSupport) : allocaRef(allocaToCheck), mismatchedWidthsSupport(mismatchedWidthsSupport) {
   auto F = allocaToCheck.getParent()->getParent();
   pDL = &F->getParent()->getDataLayout();
   newAlgoControl = IGC_GET_FLAG_VALUE(EnablePrivMemNewSOATranspose);
@@ -571,9 +571,12 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
     return false;
 
   Type *allocaTy = allocaRef.getAllocatedType();
-  bool allocaIsVecOrArr = allocaTy->isVectorTy() || allocaTy->isArrayTy();
+  bool allocaIsVecOrArrOrStruct = allocaTy->isVectorTy() || allocaTy->isArrayTy() || allocaTy->isStructTy();
 
-  if (!allocaIsVecOrArr)
+  if (!allocaIsVecOrArrOrStruct)
+    return false;
+
+  if(mismatchedWidthsSupport)
     return false;
 
   auto DL = I.getParent()->getParent()->getParent()->getDataLayout();
@@ -590,15 +593,26 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
       allocaTy = arrTy->getElementType();
     } else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(allocaTy)) {
       allocaTy = vec->getElementType();
+    } else if (auto *strct = dyn_cast<StructType>(allocaTy)){
+      if (auto *arrTy = dyn_cast<ArrayType>(strct->getStructElementType(0))) {
+        allocaTy = arrTy->getElementType();
+      } else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(strct->getStructElementType(0))){
+        allocaTy = vec->getElementType();
+      }
     }
 
     if (auto *arrTy = dyn_cast<ArrayType>(pUserTy)) {
       pUserTy = arrTy->getElementType();
     } else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(pUserTy)) {
       pUserTy = vec->getElementType();
+    } else if (auto *strct = dyn_cast<StructType>(pUserTy)){
+      if (auto *arrTy = dyn_cast<ArrayType>(strct->getStructElementType(0))) {
+        pUserTy = arrTy->getElementType();
+      } else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(strct->getStructElementType(0))){
+        pUserTy = vec->getElementType();
+      }
     }
   }
-
   auto allocaSize = DL.getTypeAllocSize(allocaTy);
   auto vecTySize = DL.getTypeAllocSize(pUserTy);
 
