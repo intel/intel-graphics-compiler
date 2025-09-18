@@ -1542,7 +1542,7 @@ bool DeSSA::isAliasee(Value *V) const {
 //      c = 2
 //      ...
 //   L:   = a
-//        = b
+//        = c
 //
 //  In this case, if a is aliased to b, a would get 2 at L, but the correct
 //  value should be 1. In order to find out if a can be aliased to b, it

@@ -581,7 +581,7 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst &I) {
   // Valid vec alias and add it into alias map
   addVecAlias(EEI_nv, vec_nv, vecVal, iIdx);
 
-  // Mark this inst as noop inst
+  // Mark this inst as no-op inst
   m_HasBecomeNoopInsts[EEI] = 1;
 }
 
@@ -657,9 +657,13 @@ void VariableReuseAnalysis::printAlias(raw_ostream &OS, const Function *F) const
     for (auto VI : BV->Aliasers) {
       SSubVecDesc *aSV = VI;
       Value *aliaser = aSV->Aliaser;
+      bool HasBeenNoop = false;
+      if (Instruction *AliaserInst = dyn_cast<Instruction>(aliaser))
+        HasBeenNoop = (m_HasBecomeNoopInsts.count(AliaserInst) > 0);
       bool isSinglVal = m_DeSSA ? m_DeSSA->isSingleValued(aliaser) : true;
+      const char *Noop = HasBeenNoop ? " [no-op]" : " ";
       const char *inCC = !isSinglVal ? ".inDessaCC" : "";
-      OS << "    " << *aliaser << "  [" << aSV->StartElementOffset << "]" << inCC << "\n";
+      OS << "    " << *aliaser << "  [" << aSV->StartElementOffset << "]" << inCC << Noop << "\n";
     }
     OS << "\n";
   }
@@ -887,16 +891,16 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(InsertElementInst *FirstIEI
     IGC_ASSERT_MESSAGE(IEI_ix < nelts, "ICE: IEI's index out of bound!");
     SVecInsEltInfo &InsEltInfo = AllIEIs[IEI_ix];
     if (InsEltInfo.IEI) {
-      // One element is inserted more than once, skip.
+      // This element is inserted more than once, skip.
       return false;
     }
     InsEltInfo.IEI = I;
     InsEltInfo.Elt = E;
     InsEltInfo.FromVec = V;
     InsEltInfo.FromVec_eltIx = V_ix;
-    if (E) {
-      InsEltInfo.EEI = dyn_cast<ExtractElementInst>(E);
-    }
+
+    // So far, E is never nullptr (could be in the future)
+    InsEltInfo.EEI = dyn_cast_or_null<ExtractElementInst>(E);
 
     if (!I->hasOneUse()) {
       break;
@@ -923,19 +927,26 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(InsertElementInst *FirstIEI
     if (tV == nullptr)
       return false;
 
-    // Expect node values for all IEIs are identical. In general, if they
-    // are in the same DeSSA CC, that would be fine.
+    // Expect all IEIs are in the same DeSSA CC (DeSSA special-handles IEIs)
     Value *tV_nv = m_DeSSA->getNodeValue(tV);
     if (V_root != getRootValue(tV_nv))
       return false;
 
     Value *E = AllIEIs[i].Elt;
+    if (!E || isa<Constant>(E)) {
+      // constant is okay for either non-uniform or uniform.
+      // (Note: if any E is constant, this chain of IEI cannot be
+      //  a sub-vector of another larger vector).
+      continue;
+    }
     Value *FromVec = AllIEIs[i].FromVec;
-    Value *FromVec_nv = m_DeSSA->getNodeValue(FromVec);
-    // check if FromVec has been coalesced with IEI already by DeSSA.
-    // (Wouldn't happen under current DeSSA, but might happen in future)
-    if (V_root == getRootValue(FromVec_nv))
-      return false;
+    if (FromVec) {
+      Value *FromVec_nv = m_DeSSA->getNodeValue(FromVec);
+      // check if FromVec has been coalesced with IEI already by DeSSA.
+      // (Wouldn't happen under current DeSSA, but might happen in future)
+      if (V_root == getRootValue(FromVec_nv))
+        return false;
+    }
 
     // Make sure FromVec or E have the same uniformness as V.
     if ((E && V_dep != m_WIA->whichDepend(E)) || (FromVec && V_dep != m_WIA->whichDepend(FromVec)))
@@ -946,7 +957,7 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(InsertElementInst *FirstIEI
 
 Value *VariableReuseAnalysis::traceAliasValue(Value *V) {
   if (CastInst *CastI = dyn_cast_or_null<CastInst>(V)) {
-    // Only handle Noop cast inst. For example,
+    // Only handle no-op cast inst. For example,
     //    dst = bitcast <3 x i32> src to <3 x float>,
     // it is okay, but the following isn't.
     //    dst = bitcast <3 x i64> src to <6 x i32>
@@ -969,17 +980,13 @@ Value *VariableReuseAnalysis::traceAliasValue(Value *V) {
 }
 
 //
-// Returns true if the following is true
+// Returns true if there is the following pattern; otherwise return false.
 //     IEI = insertElement  <vectorType> Vec,  S,  <constant IEI_ix>
-// Return false, otherwise.
-//
-// When the above condition is true, V and V_ix are used for the
-// following cases:
-//     1. S is from another vector V.
-//        S = extractElement <vectorType> V, <constant V_ix>
-//        S is the element denoted by (V, V_ix)
-//     2. otherwise, V=nullptr, V_ix=0.
-//        S is a candidate inserted and could be alias to the vector.
+//   1. S is from another vector V.
+//      S = extractElement <vectorType> V, <constant V_ix>
+//      In this case, S is the element denoted by (V, V_ix)
+//   2. otherwise, V=nullptr, V_ix=0.
+//      S is some value other than a vector element.
 //
 //  Input: IEI
 //  Output: IEI_ix, S, V, V_ix
@@ -999,9 +1006,9 @@ bool VariableReuseAnalysis::getElementValue(InsertElementInst *IEI, int &IEI_ix,
   IEI_ix = (int)CI->getZExtValue();
 
   Value *elem0 = IEI->getOperand(1);
-  if (hasBeenPayloadCoalesced(elem0) || isa<Constant>(elem0) || isOrCoalescedWithArg(elem0)) {
-    // If elem0 has been payload-coalesced, is constant,
-    // or it has been aliased to an argument, skip it.
+  if (hasBeenPayloadCoalesced(elem0) || isOrCoalescedWithArg(elem0)) {
+    // If elem0 has been payload-coalesced or it has been aliased to
+    // an argument, skip it.
     return false;
   }
 
@@ -1046,11 +1053,10 @@ void VariableReuseAnalysis::InsertElementAliasing(Function *F) {
 
   // IGC Key VectorAlias controls vectorAlias optimiation.
   //
-  // Do it if VectorAlias != 0.
-  // VectorAlias=0x1: subvec aliasing for isolated values
-  // (getRootValue()=null)
-  //            =0x2: subvec aliasing for both isolated and non-isolated
-  //            value)
+  // VectorAlias (also from m_pCtx->getVectorCoalescingControl())
+  //   0x0: disable vector aliasing
+  //   0x1: subvec aliasing for isolated values (getRootValue()=null)
+  //   0x2: subvec aliasing for both isolated and non-isolated value)
   const auto control = (m_pCtx->getVectorCoalescingControl() & 0x3);
   // To avoid increasing GRF pressure, skip if F is too large or not an entry
   const int32_t NumBBThreshold = IGC_GET_FLAG_VALUE(VectorAliasBBThreshold);
@@ -1078,9 +1084,9 @@ void VariableReuseAnalysis::InsertElementAliasing(Function *F) {
       //      In this case, 's' becomes a part of 'b'. In LLVM IR,
       //      there are a chain of extElt and insElt instructions for
       //      doing so.
-      //   2. insertTo: sub-vector is used to create a base vector.
+      //   2. insertTo: small vector is used to create a larger base vector.
       //      For example:
-      //         given sub-vector int4 s0, s1;  int8 vector b is created like:
+      //         given small vector int4 s0, s1;  int8 vector b is created like:
       //           b = (int8) (s0, s1)
       //      In this case,  both s0 and s1 become part of b.
 
@@ -1095,12 +1101,12 @@ void VariableReuseAnalysis::InsertElementAliasing(Function *F) {
         continue;
       }
 
-      // Check if this is an extractFrom pattern, if so, add alias.
+      // Case 1: check if this is an extractFrom pattern, if so, add alias.
       if (processExtractFrom(AllIEIs)) {
         continue;
       }
 
-      // Check if this is an insertTo pattern, if so add alias.
+      // Case 2: check if this is an insertTo pattern, if so add alias.
       if (processInsertTo(BB, AllIEIs)) {
         continue;
       }
@@ -1123,6 +1129,8 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy &AllIEIs) {
   }
 
   for (int i = 1; i < nelts; ++i) {
+    // If any of AllIEIs[i] has a constant element (IEI's opeand 1), this check
+    // will be true, thus AllIEIs cannot be a sub-vector
     if (AllIEIs[i].FromVec != BaseVec || AllIEIs[i].FromVec_eltIx != (BaseStartIx + i))
       return false;
   }
@@ -1187,9 +1195,9 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy &AllIEIs) {
   // add alias
   addVecAlias(Sub_nv, Base_nv, BaseVec, BaseStartIx, BaseAlign);
 
-  // Make sure noop insts are in the map so they won't be emitted later.
+  // Make sure no-op insts are in the map so they won't be emitted later.
   for (int i = 0, sz = nelts; i < sz; ++i) {
-    // IEI chain is coalesced by DeSSA, so it's safe to mark it as noop
+    // IEI chain is coalesced by DeSSA, so it's safe to mark it as no-op
     InsertElementInst *IEI = AllIEIs[i].IEI;
     if (!m_DeSSA->isNoopAliaser(IEI)) {
       m_HasBecomeNoopInsts[IEI] = 1;
@@ -1198,7 +1206,7 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy &AllIEIs) {
     ExtractElementInst *EEI = AllIEIs[i].EEI;
     IGC_ASSERT(EEI);
     if (!m_DeSSA->isNoopAliaser(EEI)) {
-      // Set EEI as an aliser, thus it become noop.
+      // Set EEI as an aliser, thus it become no-op.
       Value *EEI_nv = m_DeSSA->getNodeValue(EEI);
       addVecAlias(EEI_nv, Base_nv, BaseVec, AllIEIs[i].FromVec_eltIx, EALIGN_AUTO);
       m_HasBecomeNoopInsts[EEI] = 1;
@@ -1253,9 +1261,22 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &All
       isSubCandidate = false;
     }
 
-    if (Elt && Sub == nullptr && skipScalarAliaser(BB, Elt)) {
-      // Skip scalar coalescing
-      isSubCandidate = false;
+    // Check scalar
+    if (isSubCandidate && Elt && Sub == nullptr) {
+      if (isa<Constant>(Elt)) {
+        // Skip as alias is b/w two variables
+        isSubCandidate = false;
+      } else if (Instruction *TmpInst = dyn_cast<Instruction>(Elt)) {
+        // This is to skip inst such as @llvm.genx.GenISA.simdSize(),
+        // which is specially handled during EmitCodeGen
+        if (m_PatternMatch->SIMDConstExpr(TmpInst))
+          isSubCandidate = false;
+      }
+
+      if (isSubCandidate && skipScalarAliaser(BB, Elt)) {
+        // Skip scalar coalescing
+        isSubCandidate = false;
+      }
     }
 
     // If Sub == nullptr or NextSub != Sub, this is the last element
@@ -1329,9 +1350,9 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &All
 
     int V_sz = getNumElts(V);
     if (V_sz > 1) {
-      // set up Noop inst map to skip emitting them later.
+      // set up No-op inst map to skip emitting them later.
       for (int j = V_ix, sz = V_ix + V_sz; j < sz; ++j) {
-        // Safe to mark IEI as noop as IEI chain's coalesced by DeSSA
+        // Safe to mark IEI as no-op as its aliaser will set it
         InsertElementInst *IEI = AllIEIs[j].IEI;
         if (!m_DeSSA->isNoopAliaser(IEI)) {
           m_HasBecomeNoopInsts[IEI] = 1;
@@ -1341,7 +1362,7 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &All
         IGC_ASSERT(EEI);
         // Sub-vector
         if (!m_DeSSA->isNoopAliaser(EEI)) {
-          // EEI should be in alias map so it can be marked as noop
+          // Safe to set EEI to no-op
           Value *EEI_nv = m_DeSSA->getNodeValue(EEI);
           addVecAlias(EEI_nv, Base_nv, FirstIEI, j);
           m_HasBecomeNoopInsts[EEI] = 1;
@@ -1349,7 +1370,7 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &All
       }
     } else {
       // scalar
-      // Safe to mark IEI as noop as IEI chain's coalesced by DeSSA
+      // Safe to mark IEI as no-op
       InsertElementInst *IEI = AllIEIs[V_ix].IEI;
       if (m_DeSSA->isNoopAliaser(IEI))
         continue;
@@ -1433,8 +1454,11 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateUse(Value 
       }
     } else if (StoreInst *SI = dyn_cast<StoreInst>(Val)) {
       retSt = AState::TARGET;
-    } else if (isa<CallInst>(Val)) {
-      return AState::SKIP;
+    } else if (CallInst *CallI = dyn_cast<CallInst>(Val)) {
+      if (CallI->isInlineAsm())
+        retSt = AState::TARGET;
+      else
+        return AState::SKIP;
     }
   }
   return retSt;
@@ -1460,7 +1484,9 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateDef(Value 
     }
   } else if (LoadInst *SI = dyn_cast<LoadInst>(Val)) {
     return AState::TARGET;
-  } else if (isa<CallInst>(Val)) {
+  } else if (CallInst *CallI = dyn_cast<CallInst>(Val)) {
+    if (CallI->isInlineAsm())
+      return AState::TARGET;
     return AState::SKIP;
   }
   return AState::OK;
@@ -1468,7 +1494,7 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateDef(Value 
 
 // Vector alias disables extractMask optimization. This function
 // checks if extractMask optim can be applied. And the caller
-// will decide whether to favor extractMask optimization.
+// will decide whether to favor extractMask optimization or not.
 bool VariableReuseAnalysis::isExtractMaskCandidate(Value *V) const {
   auto BIT = [](int n) { return (uint32_t)(1 << n); };
 
