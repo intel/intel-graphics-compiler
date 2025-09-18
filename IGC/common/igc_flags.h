@@ -900,7 +900,7 @@ DECLARE_IGC_REGKEY(bool, UseVMaskPredicate, false, "Use VMask as predicate for s
 DECLARE_IGC_REGKEY(bool, UseVMaskPredicateForLoads, true, "Use VMask as predicate for subspan usage (loads only)", true)
 DECLARE_IGC_REGKEY(bool, UseVMaskPredicateForIndirectMove, true,
                    "Use VMask as predicate for subspan usage (indirect mov only)", true)
-DECLARE_IGC_REGKEY(bool, StackOverflowDetection, false, "Inserts checks for stack overflow when stack calls are used.",
+DECLARE_IGC_REGKEY(bool, StackOverflowDetection, false, "Inserts checks for stack overflow when stack calls or VLAs are used. See documentation: documentation/igc/StackOverflowDetection/StackOverflowDetection.md",
                    true)
 DECLARE_IGC_REGKEY(bool, BufferBoundsChecking, false, "Setting this to 1 (true) enables buffer bounds checking", true)
 DECLARE_IGC_REGKEY(DWORD, MinimumValidAddress, 0,
