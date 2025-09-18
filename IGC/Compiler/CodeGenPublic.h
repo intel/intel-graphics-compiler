@@ -768,6 +768,11 @@ public:
   llvm::SmallVector<llvm::StructType *, 16> m_allLayoutStructTypes;
   void AddRef();
   void Release();
+
+  // TODO: Remove after switch to LLVM 16 opque pointers.
+  // In order to get rid of `Reapply_hasSetOpaquePointersValue.patch` patch, we're implementing
+  // check if pointer type was set in IGC.
+  bool IGC_IsPointerModeAlreadySet = false;
 };
 
 struct RoutingIndex {
