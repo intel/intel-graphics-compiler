@@ -312,11 +312,22 @@ LLVMContextWrapper::LLVMContextWrapper(bool createResourceDimTypes) : m_UserAddr
   // perform automatic conversion of builtin types which should be represented using TargetExtTy.
   // TODO: For transition purposes, consider introducing an IGC internal option to tweak typed/opaque pointers
   // with a precedence over the environment flag.
-  if (IGC::canOverwriteLLVMCtxPtrMode(basePtr)) {
-    bool enableOpaquePointers = AreOpaquePointersEnabled();
 
-    IGCLLVM::setOpaquePointers(basePtr, enableOpaquePointers);
+  // TODO: Remove/Re-evaluate once fully moved to the LLVM 16 opaque ptrs.
+  // This WA_OpaquePointersCL flag is related to the same flag in LLVM itself
+  // We're using it here to have consistent behaviour.
+  // https://github.com/llvm/llvm-project/blob/release/16.x/llvm/lib/IR/LLVMContextImpl.cpp#L50
+  auto WA_OpaquePointersCL = cl::getRegisteredOptions()["opaque-pointers"];
+  if (WA_OpaquePointersCL && WA_OpaquePointersCL->getNumOccurrences() > 0) {
+    IGC_IsPointerModeAlreadySet = true;
   }
+  
+  if (IGC::canOverwriteLLVMCtxPtrMode(basePtr, IGC_IsPointerModeAlreadySet)) {
+    bool enableOpaquePointers = AreOpaquePointersEnabled();
+    IGCLLVM::setOpaquePointers(basePtr, enableOpaquePointers);
+    IGC_IsPointerModeAlreadySet = true;
+  }
+  // TODO: end
 }
 
 void LLVMContextWrapper::AddRef() { refCount++; }
