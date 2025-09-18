@@ -10,13 +10,14 @@
 ;
 ; RUN: igc_opt --ocl --igc-private-mem-resolution --regkey "EnablePrivMemNewSOATranspose=1,EnableOpaquePointersBackend=1" -S %s | FileCheck %s
 ;
-; In JointMatrix SYCL test
-; https://github.com/intel/llvm/blob/sycl/sycl/test-e2e/Matrix/joint_matrix_bf16_fill_k_cache_unroll.cpp
-; I've found that such assert was failing info: error, assertion failed: bits == elementSize
-; The purpose of this test is to validate whether alloca->gep->load is not crashing
+; This test is testing "MismatchDetected" algorithm in LowerGEPForPrivMem.cpp
+; The purpose of this test is to validate whether various combinations of allocas/geps/load/stores
+; are not mismatched and then failing due to asserts or causing miscalculations at runtime.
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
+
+%"struct.ispc::vec_t" = type { i32, i32, i32 }
 
 ; Function Attrs: nofree nosync nounwind
 define spir_kernel void @test(ptr nocapture writeonly %d, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %enqueuedLocalSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, ptr nocapture readnone %privateBase) {
@@ -43,6 +44,18 @@ exit:
 ; CHECK: %load2 = load i8, ptr %arr3
   %arr3 = alloca [512 x i32]
   %load2 = load i8, ptr %arr3
+
+; Case Alloca->Store->Gep->Store: This case is not valid due to different sizes
+
+; CHECK:    store <4 x i32> zeroinitializer, ptr %offset.i.i.i.i.privateBufferPTR
+; CHECK:    %offset_gep = getelementptr i8, ptr %offset.i.i.i.i.privateBufferPTR, i32 16
+; CHECK:    store i32 0, ptr %offset_gep, align 4
+
+  %offset.i.i.i.i = alloca [8 x %"struct.ispc::vec_t"], align 4
+  store <4 x i32> zeroinitializer, ptr %offset.i.i.i.i, align 4
+  %offset_gep = getelementptr i8, ptr %offset.i.i.i.i, i32 16
+  store i32 0, ptr %offset_gep, align 4
+
   ret void
 }
 

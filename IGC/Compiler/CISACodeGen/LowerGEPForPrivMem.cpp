@@ -576,40 +576,37 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   if (!allocaIsVecOrArr)
     return false;
 
-  bool useOldAlgorithm = !useNewAlgo(pInfo->baseType);
+  auto DL = I.getParent()->getParent()->getParent()->getDataLayout();
 
-  if (useOldAlgorithm) {
-    auto DL = I.getParent()->getParent()->getParent()->getDataLayout();
+  Type *pUserTy = I.getType();
 
-    Type *pUserTy = I.getType();
+  if (auto *storeInst = dyn_cast<StoreInst>(&I))
+    pUserTy = storeInst->getValueOperand()->getType();
 
-    if (auto *storeInst = dyn_cast<StoreInst>(&I))
-      pUserTy = storeInst->getValueOperand()->getType();
-
-    if (auto *pgep = dyn_cast<GetElementPtrInst>(parentLevelInst)) {
-      allocaTy = pgep->getResultElementType();
-    } else {
-      if (auto *arrTy = dyn_cast<ArrayType>(allocaTy)) {
-        allocaTy = arrTy->getElementType();
-      } else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(allocaTy)) {
-        allocaTy = vec->getElementType();
-      }
-
-      if (auto *arrTy = dyn_cast<ArrayType>(pUserTy)) {
-        pUserTy = arrTy->getElementType();
-      } else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(pUserTy)) {
-        pUserTy = vec->getElementType();
-      }
+  if (auto *pgep = dyn_cast<GetElementPtrInst>(parentLevelInst)) {
+    allocaTy = pgep->getResultElementType();
+  } else {
+    if (auto *arrTy = dyn_cast<ArrayType>(allocaTy)) {
+      allocaTy = arrTy->getElementType();
+    } else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(allocaTy)) {
+      allocaTy = vec->getElementType();
     }
 
-    auto allocaSize = DL.getTypeAllocSize(allocaTy);
-    auto vecTySize = DL.getTypeAllocSize(pUserTy);
-
-    if (vecTySize != allocaSize) {
-      pInfo->canUseSOALayout = false;
-      return true;
+    if (auto *arrTy = dyn_cast<ArrayType>(pUserTy)) {
+      pUserTy = arrTy->getElementType();
+    } else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(pUserTy)) {
+      pUserTy = vec->getElementType();
     }
   }
+
+  auto allocaSize = DL.getTypeAllocSize(allocaTy);
+  auto vecTySize = DL.getTypeAllocSize(pUserTy);
+
+  if (vecTySize != allocaSize) {
+    pInfo->canUseSOALayout = false;
+    return true;
+  }
+
   return false;
 }
 
