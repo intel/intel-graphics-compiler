@@ -188,7 +188,7 @@ void IGC::overrideWalkOrderKeysInPass(bool is_pow2_x, bool is_pow2_y, bool is_po
   }
 
   if (IGC_IS_FLAG_ENABLED(OverrideCsTileLayoutEnable)) {
-    threadIDLayout = (ThreadIDLayout)IGC_IS_FLAG_ENABLED(OverrideCsTileLayout);
+    threadIDLayout = (ThreadIDLayout)IGC_GET_FLAG_VALUE(OverrideCsTileLayout);
   }
 
   const IGC::TriboolFlag overrideHWGenerateLID = static_cast<TriboolFlag>(IGC_GET_FLAG_VALUE(OverrideHWGenerateLID));

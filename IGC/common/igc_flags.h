@@ -1670,7 +1670,7 @@ DECLARE_IGC_REGKEY(DWORD, EnableScalarPipe, 0,
 DECLARE_IGC_REGKEY(bool, OverrideCsWalkOrderEnable, false, "Enable overriding compute walker walk order", true)
 DECLARE_IGC_REGKEY(int, OverrideCsWalkOrder, 0, "Override compute walker walk order", true)
 DECLARE_IGC_REGKEY(bool, OverrideCsTileLayoutEnable, false, "Enable overriding compute walker tile layout", true)
-DECLARE_IGC_REGKEY(bool, OverrideCsTileLayout, 0, "Override compute walker tile layout. False is linear. True is TileY",
+DECLARE_IGC_REGKEY(int, OverrideCsTileLayout, 0, "Override compute walker tile layout enum class ThreadIDLayout",
                    true)
 DECLARE_IGC_REGKEY_ENUM(OverrideHWGenerateLID, -1,
                         "Override HW Generate Local ID setting"
