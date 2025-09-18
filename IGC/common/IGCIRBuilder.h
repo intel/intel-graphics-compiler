@@ -175,13 +175,20 @@ public:
 
     if (V->getType()->isPointerTy()) {
       V = this->CreatePtrToInt(V, this->getInt64Ty());
-      this->CreateCall(fn, this->CreateTrunc(V, this->getInt32Ty()), Name);
-      this->CreateCall(fn, this->CreateTrunc(this->CreateLShr(V, 32), this->getInt32Ty()), Name);
+    }
+
+    auto &DL = M->getDataLayout();
+    uint64_t size = DL.getTypeAllocSize(V->getType());
+    if (size == 4) {
+      this->CreateCall(fn, this->CreateBitOrPointerCast(V, this->getInt32Ty()), Name);
       return;
     }
 
-    if (V->getType()->getPrimitiveSizeInBits() == 32) {
-      this->CreateCall(fn, this->CreateBitCast(V, this->getInt32Ty()), Name);
+    if (size % 4 == 0) {
+      auto numElements = size / 4;
+      V = this->CreateBitCast(V, VectorType::get(this->getInt32Ty(), static_cast<uint32_t>(numElements), false));
+      for (uint32_t i = 0; i < numElements; i++)
+        this->CreateCall(fn, this->CreateExtractElement(V, numElements - i - 1u), Name);
       return;
     }
 
