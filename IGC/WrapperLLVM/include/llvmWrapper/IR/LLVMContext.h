@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -27,7 +27,7 @@ inline void setOpaquePointers(llvm::LLVMContext *Ctx, const bool Enable) {
 } // end namespace IGCLLVM
 
 namespace IGC {
-inline bool canOverwriteLLVMCtxPtrMode(llvm::LLVMContext *Ctx) {
+inline bool canOverwriteLLVMCtxPtrMode(llvm::LLVMContext *Ctx, bool IGC_IsPointerModeAlreadySet) {
   IGC_ASSERT_MESSAGE(Ctx, "Null LLVMContext pointer!");
 #if LLVM_VERSION_MAJOR == 14
   // With LLVM 14, we invoke a proper check for the -opaque-pointers CL
@@ -36,11 +36,16 @@ inline bool canOverwriteLLVMCtxPtrMode(llvm::LLVMContext *Ctx) {
   // override this when opaque pointers are force-enabled in experimental
   // mode.
   return Ctx->supportsTypedPointers();
-#elif LLVM_VERSION_MAJOR >= 15
+#elif LLVM_VERSION_MAJOR == 15
   // With LLVM 15-16, we should not trigger CL option evaluation, as the
   // OPs mode will then get set as a permanent default. The only
   // alternative is to use an API below, non-native for LLVM 16.
   return !Ctx->hasSetOpaquePointersValue();
+#elif LLVM_VERSION_MAJOR >= 16
+  // LLVM 16: we start removing switching between typed/opaque ptrs mode
+  // In order to prepare for full move to the opaque pointers.
+  // The first step is to get rid of .patches related to opaque pointers mode.
+  return !IGC_IsPointerModeAlreadySet;
 #endif // LLVM_VERSION_MAJOR
 }
 } // end namespace IGC
