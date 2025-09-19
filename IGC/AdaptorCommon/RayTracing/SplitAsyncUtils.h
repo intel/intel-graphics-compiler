@@ -24,7 +24,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/ValueHandle.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
 #include "common/LLVMWarningsPop.hpp"
-
+#include <llvm/Support/raw_ostream.h>
 #include <optional>
 
 namespace IGC {
@@ -52,6 +52,11 @@ enum class RematStage { MID, LATE };
 class RematChecker {
 public:
   RematChecker(CodeGenContext &Ctx, RematStage Stage);
+
+#if defined(_DEBUG) || defined(_INTERNAL)
+  RematChecker(CodeGenContext &Ctx, RematStage Stage, llvm::raw_ostream *Stream);
+#endif
+
   std::optional<std::vector<llvm::Instruction *>> canFullyRemat(llvm::Instruction *I, uint32_t Threshold,
                                                                 llvm::ValueToValueMapTy *VM = nullptr) const;
 
@@ -64,6 +69,9 @@ private:
 
   CodeGenContext &Ctx;
   RematStage Stage;
+#if defined(_DEBUG) || defined(_INTERNAL)
+  llvm::raw_ostream *m_pStream;
+#endif
 };
 
 } // namespace IGC

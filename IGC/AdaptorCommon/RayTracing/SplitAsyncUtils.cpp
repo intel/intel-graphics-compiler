@@ -29,6 +29,15 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
+#if defined(_DEBUG) || defined(_INTERNAL)
+#define REMAT_DIAG(X)                                                 \
+  if (m_pStream) {                                                    \
+    X;                                                                \
+  }
+#else
+#define REMAT_DIAG(X)
+#endif
+
 static void rewritePHIs(BasicBlock &BB) {
   // For every incoming edge we will create a block holding all
   // incoming values in a single PHI nodes.
@@ -181,7 +190,16 @@ void rewriteMaterializableInstructions(const SmallVector<Spill, 8> &Spills) {
   }
 }
 
-RematChecker::RematChecker(CodeGenContext &Ctx, RematStage Stage) : Ctx(Ctx), Stage(Stage) {}
+RematChecker::RematChecker(CodeGenContext &Ctx, RematStage Stage) : Ctx(Ctx), Stage(Stage) {
+#if defined(_DEBUG) || defined(_INTERNAL)
+    m_pStream = nullptr;
+#endif
+}
+
+#if defined(_DEBUG) || defined(_INTERNAL)
+RematChecker::RematChecker(CodeGenContext &Ctx, RematStage Stage, llvm::raw_ostream *Stream)
+    : Ctx(Ctx), Stage(Stage), m_pStream(Stream) {}
+#endif
 
 bool RematChecker::isReadOnly(const Value *Ptr) const {
   uint32_t Addrspace = Ptr->getType()->getPointerAddressSpace();
@@ -191,13 +209,22 @@ bool RematChecker::isReadOnly(const Value *Ptr) const {
 }
 
 bool RematChecker::materializable(const Instruction &I) const {
+  REMAT_DIAG(*m_pStream << "Query materializable: ");
+  REMAT_DIAG(I.print(*m_pStream));
+  REMAT_DIAG(*m_pStream << "\n");
+
   if (isa<CastInst>(&I) || isa<GetElementPtrInst>(&I) || isa<BinaryOperator>(&I) || isa<CmpInst>(&I) ||
       isa<SelectInst>(&I) || isa<ExtractElementInst>(&I)) {
+    REMAT_DIAG(*m_pStream << "true: [one of: castinst, gep, binaryoperator, cmpinst, selectinst, eei]\n");
     return true;
   }
 
-  if (auto *LI = dyn_cast<LoadInst>(&I))
+  if (auto *LI = dyn_cast<LoadInst>(&I)) {
+    REMAT_DIAG(*m_pStream << ((LI->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT) ?
+                              "true: [LOAD with constant address space]\n" :
+                              "false: [LOAD address space not satisfying]\n"));
     return (LI->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT);
+  }
 
   if (auto *GII = dyn_cast<GenIntrinsicInst>(&I)) {
     switch (GII->getIntrinsicID()) {
@@ -207,14 +234,20 @@ bool RematChecker::materializable(const Instruction &I) const {
     case GenISAIntrinsic::GenISA_DispatchDimensions:
     case GenISAIntrinsic::GenISA_frc:
     case GenISAIntrinsic::GenISA_ROUNDNE:
+      REMAT_DIAG(*m_pStream << "true: [one of: accepted GenISA_* intrinsics]\n");
       return true;
     case GenISAIntrinsic::GenISA_ldraw_indexed:
     case GenISAIntrinsic::GenISA_ldrawvector_indexed:
+      REMAT_DIAG(*m_pStream << (isReadOnly(cast<LdRawIntrinsic>(GII)->getResourceValue()) ?
+                                "true: [ldraw with read-only buffer]\n" :
+                                "false: [ldraw not read-only]\n"));
       return isReadOnly(cast<LdRawIntrinsic>(GII)->getResourceValue());
     case GenISAIntrinsic::GenISA_ldptr:
     case GenISAIntrinsic::GenISA_ldlptr:
+      REMAT_DIAG(*m_pStream << "true: [ldptr or ldlptr]\n");
       return true;
     default:
+      REMAT_DIAG(*m_pStream << "false: [non-supported GenISA intrinsic - missed opportunity?]\n");
       return false;
     }
   }
@@ -228,24 +261,38 @@ bool RematChecker::materializable(const Instruction &I) const {
     case Intrinsic::sqrt:
       return true;
     default:
+      REMAT_DIAG(*m_pStream << "false: [non-satisfying LLVM intrinsic]\n");
       return false;
     }
   }
 
+  REMAT_DIAG(*m_pStream << "false: [non-supported case: missed opportunity?]\n");
   return false;
 }
 
 bool RematChecker::canFullyRemat(Instruction *I, std::vector<Instruction *> &Insts,
                                  std::unordered_set<Instruction *> &Visited, unsigned StartDepth, unsigned Depth,
                                  ValueToValueMapTy *VM) const {
+  REMAT_DIAG(*m_pStream << "\n" << std::string(StartDepth - Depth, ' ') << "canFullyRemat: ");
+  REMAT_DIAG(I->print(*m_pStream));
+  REMAT_DIAG(*m_pStream << "\n"
+                        << std::string(StartDepth - Depth, ' ') << "|sd: " << StartDepth << ", depth: " << Depth
+                        << "|  ");
+
   if (!Visited.insert(I).second)
     return true;
 
   if (StartDepth != Depth && VM && VM->count(I) != 0)
     return true;
 
-  if (Depth == 0 || !materializable(*I))
+  if (Depth == 0 || !materializable(*I)) {
+    REMAT_DIAG(*m_pStream << "\n"
+                          << std::string(StartDepth - Depth, ' ')
+                          << (Depth == 0 ? "Depth exhausted." :
+                                           "materializable false"));
+
     return false;
+  }
 
   for (auto &Op : I->operands()) {
     if (isa<Constant>(Op))
