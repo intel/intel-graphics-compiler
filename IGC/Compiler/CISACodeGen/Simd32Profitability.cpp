@@ -547,7 +547,6 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx) {
     BasicBlock *BB = &*FI;
     programSize += BB->size();
   }
-  ctx->metrics.CollectInstructionCnt(F, programSize, programSizeLimit);
   if (programSize > programSizeLimit) {
     return false;
   }
@@ -563,9 +562,6 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx) {
     int tgSizeCal = tgSize->getXDim() * tgSize->getYDim() * tgSize->getZDim();
     int tgSizeHintCal = tgSizeHint->getXDim() * tgSizeHint->getYDim() * tgSizeHint->getZDim();
 
-    ctx->metrics.CollectThreadGroupSize(F, tgSizeCal, tgSizeLimit);
-    ctx->metrics.CollectThreadGroupSizeHint(F, tgSizeHintCal, tgSizeLimit);
-
     if (ctx->getModuleMetaData()->csInfo.maxWorkGroupSize &&
         ctx->getModuleMetaData()->csInfo.maxWorkGroupSize <= tgSizeLimit)
       return false;
@@ -577,7 +573,6 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx) {
 
   // WORKAROUND - Skip SIMD32 if subgroup functions are present.
   bool hasSubGrFunc = hasSubGroupFunc(*F);
-  ctx->metrics.CollectIsSubGroupFuncIn(F, hasSubGrFunc);
   if (hasSubGrFunc) {
     return false;
   }
@@ -590,14 +585,12 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx) {
     // FALL THROUGH
   case IGFX_GEN10_CORE:
     if (hasIEEESqrtOrDivFunc(*F)) {
-      ctx->metrics.CollectGen9Gen10WithIEEESqrtDivFunc(F, true);
       return false;
     }
     break;
   default:
     break;
   }
-  ctx->metrics.CollectGen9Gen10WithIEEESqrtDivFunc(F, false);
   // END OF WORKAROUND
 
   // Ok, that's not the case.
@@ -665,14 +658,12 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx) {
       switch (estLoopCnt) {
       case LOOPCOUNT_LIKELY_LARGE:
       case LOOPCOUNT_UNKNOWN:
-        ctx->metrics.CollectNonUniformLoop(F, estLoopCnt, loop);
         return false;
       case LOOPCOUNT_LIKELY_SMALL:
         break;
       }
     }
   }
-  ctx->metrics.CollectNonUniformLoop(F, LOOPCOUNT_LIKELY_SMALL, nullptr);
 
   return true;
 }
@@ -852,8 +843,6 @@ bool Simd32ProfitabilityAnalysis::checkSimd16Profitable(CodeGenContext *ctx) {
   if ((IGC_GET_FLAG_VALUE(OCLSIMD16SelectionMask) & 0x1)) {
     int loopCyclomaticComplexity = getLoopCyclomaticComplexity();
 
-    ctx->metrics.CollectLoopCyclomaticComplexity(F, loopCyclomaticComplexity, CYCLOMATIC_COMPLEXITY_THRESHOLD);
-
     if (loopCyclomaticComplexity >= CYCLOMATIC_COMPLEXITY_THRESHOLD) {
       return false;
     }
@@ -861,9 +850,6 @@ bool Simd32ProfitabilityAnalysis::checkSimd16Profitable(CodeGenContext *ctx) {
 
   if (IGC_GET_FLAG_VALUE(OCLSIMD16SelectionMask) & 0x2) {
     float nestedLoopsWithMultipleExits = NestedLoopsWithMultipleExitsRatio(F, LI, WI);
-
-    ctx->metrics.CollectNestedLoopsWithMultipleExits(F, nestedLoopsWithMultipleExits,
-                                                     NestedLoopsWithMultipleExits_THRESHOLD);
 
     if (nestedLoopsWithMultipleExits >= NestedLoopsWithMultipleExits_THRESHOLD) {
       return false;
@@ -873,9 +859,6 @@ bool Simd32ProfitabilityAnalysis::checkSimd16Profitable(CodeGenContext *ctx) {
   // If there's wider vector load/store in a loop, skip SIMD16.
   if (IGC_GET_FLAG_VALUE(OCLSIMD16SelectionMask) & 0x4) {
     LdStInLoop ldStInLoop = LongStridedLdStInLoop(F, LI, WI);
-
-    ctx->metrics.CollectLongStridedLdStInLoop(F, ldStInLoop.pProblematicLoop, ldStInLoop.LDs, ldStInLoop.STs,
-                                              LongStridedLdStInLoop_THRESHOLD);
 
     if (ldStInLoop.pProblematicLoop != nullptr) {
       return false;
@@ -897,10 +880,7 @@ bool Simd32ProfitabilityAnalysis::checkSimd16Profitable(CodeGenContext *ctx) {
   const CPlatform *platform = &ctx->platform;
   if (platform->GetPlatformFamily() == IGFX_GEN9_CORE &&
       platform->getPlatformInfo().eProductFamily == IGFX_GEMINILAKE && hasDouble(*F)) {
-    ctx->metrics.CollectIsGeminiLakeWithDoubles(F, false);
     return false;
-  } else {
-    ctx->metrics.CollectIsGeminiLakeWithDoubles(F, true);
   }
 
   return true;

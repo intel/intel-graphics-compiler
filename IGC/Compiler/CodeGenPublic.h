@@ -54,7 +54,6 @@ SPDX-License-Identifier: MIT
 #include <unordered_set>
 #include "Probe/Assertion.h"
 #include <optional>
-#include <Metrics/IGCMetric.h>
 #include "llvmWrapper/IR/Module.h"
 #include "Compiler/UserAddrSpaceMD.hpp"
 
@@ -839,8 +838,6 @@ public:
   llvm::AssemblyAnnotationWriter *annotater = nullptr;
 
   RetryManager m_retryManager;
-
-  IGCMetrics::IGCMetric metrics;
 
   // Used scratch space for private variables
   llvm::DenseMap<llvm::Function *, uint64_t> m_ScratchSpaceUsage;

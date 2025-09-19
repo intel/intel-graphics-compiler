@@ -1262,11 +1262,6 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I) {
   } else {
     Function *Callee = I.getCalledFunction();
 
-    if (IGCMetrics::IGCMetric::isMetricFuncCall(&I)) {
-      // dont do anything with metrics calls
-      return;
-    }
-
     // Match inline asm
     if (I.isInlineAsm()) {
       if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_DriverInfo.SupportInlineAssembly()) {

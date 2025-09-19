@@ -1533,9 +1533,6 @@ igc_sg_define(IGC__common)
 igc_sg_define(IGC__Common_CLElfLib)
 
 
-# Add protobuf
-include(igc_find_protobuf)
-
 set(IGC_BUILD__SPIRV_TOOLS_ENABLED ON)
 
 if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
@@ -1635,9 +1632,6 @@ if(MSVC)
     ${IGC_BUILD__RES__IGC__igc_dll}
   )
 endif()
-
-#Metrcis
-include(Metrics/protobuf_metrics.cmake)
 
 # Sources/headers for main libraries.
 set(IGC_BUILD__SRC__IGC__igc_common
@@ -1902,10 +1896,6 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
     )
   endif()
 
-  #Metrics
-  list(APPEND _targetLinkLineCommon
-      igc_metric
-  )
 
 list(APPEND _targetLinkLineCommon zebinlib)
 list(APPEND _targetLinkLineCommon IGCOptions)

@@ -71,6 +71,7 @@ cmp+sel to avoid expensive VxH mov.
 #include <llvm/ADT/SetVector.h>
 #include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/Analysis/InstructionSimplify.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/BinaryFormat/Dwarf.h>
 #include <llvm/IR/Constants.h>
 #include "llvm/IR/DebugInfo.h"

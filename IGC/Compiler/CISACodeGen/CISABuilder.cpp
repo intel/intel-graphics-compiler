@@ -3655,11 +3655,6 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_GenerateDebugInfo, true);
   }
 
-  if (context->metrics.Enable()) {
-    SaveOption(vISA_GenerateKernelInfo, true);
-    SaveOption(vISA_EmitLocation, true);
-  }
-
   if (canAbortOnSpill) {
     SaveOption(vISA_AbortOnSpill, true);
   }
@@ -5405,9 +5400,6 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
 
   KERNEL_INFO *vISAstats;
   pMainKernel->GetKernelInfo(vISAstats);
-  // Collect metrics from vISA
-  context->metrics.CollectRegStats(vISAstats, m_program->entry);
-
   // Depend on vISA information about barriers presence to make sure that it's
   // always set properly, even if a barrier is used as a part of Inline vISA
   // code only.

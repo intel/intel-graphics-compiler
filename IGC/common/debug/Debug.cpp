@@ -46,10 +46,6 @@ using namespace llvm;
 // #if defined( _DEBUG )
 #include "psapi.h"
 
-#ifdef IGC_METRICS__PROTOBUF_ATTACHED
-#include <google/protobuf/message_lite.h>
-#endif
-
 int CatchAssert(int reportType, char *userMessage, int *retVal) {
   if (IsDebuggerPresent()) {
     *retVal = 1; // Break into the debugger or print a stack
@@ -74,11 +70,6 @@ BOOL WINAPI DllMain(_In_ HINSTANCE hinstDLL, _In_ DWORD fdwReason, _In_ LPVOID l
   switch (fdwReason) {
   case DLL_PROCESS_DETACH:
     llvm_shutdown();
-
-#ifdef IGC_METRICS__PROTOBUF_ATTACHED
-    // Optional:  Delete all global objects allocated by libprotobuf.
-    google::protobuf::ShutdownProtobufLibrary();
-#endif
     break;
 
   case DLL_PROCESS_ATTACH:

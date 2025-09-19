@@ -995,7 +995,6 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack) {
           }
         }
       }
-      Ctx.metrics.UpdateVariable(pAI, privateBuffer);
       // Replace all uses of original alloca with the bitcast
       pAI->replaceAllUsesWith(privateBuffer);
       pAI->eraseFromParent();
@@ -1149,14 +1148,12 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack) {
       // Replace all uses of original alloca with the bitcast
       Value *privateBuffer =
           builder.CreatePointerCast(privateBufferPTR, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
-      Ctx.metrics.UpdateVariable(pAI, privateBuffer);
       pAI->replaceAllUsesWith(privateBuffer);
       pAI->eraseFromParent();
 
       if (scratchMemoryAddressSpace == ADDRESS_SPACE_GLOBAL) {
         // Fix address space in uses of privateBufferPTR, ADDRESS_SPACE_PRIVATE => ADDRESS_SPACE_GLOBAL
         FixAddressSpaceInAllUses(privateBufferPTR, ADDRESS_SPACE_GLOBAL, ADDRESS_SPACE_PRIVATE);
-        Ctx.metrics.UpdateVariable(privateBuffer, privateBufferPTR);
         privateBuffer->replaceAllUsesWith(privateBufferPTR);
         if (Instruction *inst = dyn_cast<Instruction>(privateBuffer)) {
           inst->eraseFromParent();
@@ -1294,7 +1291,6 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack) {
     }
 
     // Replace all uses of original alloca with the bitcast
-    Ctx.metrics.UpdateVariable(pAI, privateBuffer);
     pAI->replaceAllUsesWith(privateBuffer);
     pAI->eraseFromParent();
   }

@@ -724,9 +724,6 @@ void LowerGEPForPrivMem::visitAllocaInst(AllocaInst &I) {
   IGC_ASSERT(I.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE);
 
   StatusPrivArr2Reg status = CheckIfAllocaPromotable(&I);
-  if (I.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE) {
-    m_ctx->metrics.CollectMem2Reg(&I, status);
-  }
   if (status != StatusPrivArr2Reg::OK) {
     MarkNotPromtedAllocas(I, status);
     // alloca size extends remain per-lane-reg space

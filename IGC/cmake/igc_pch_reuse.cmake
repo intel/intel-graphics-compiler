@@ -12,7 +12,6 @@ message(STATUS "Using precompiled headers")
     PCH             #0
     Compiler        #1
     AdaptorOCL      #2
-    igc_metric      #6
     zebinlib        #7
     VISALinkerDriver#8
     BiFMangler      #9
@@ -34,7 +33,7 @@ message(STATUS "Using precompiled headers")
 
   #setting reuse indexs
   set(index 0)
-  set(reuse_ind 1 2 3 4 5 6 7 8 9 10 14 16)
+  set(reuse_ind 1 2 3 4 5 6 7 8 9 13 15)
   #collecting options and definitions pools
   set(opt_list  "")
   set(def_list  "")

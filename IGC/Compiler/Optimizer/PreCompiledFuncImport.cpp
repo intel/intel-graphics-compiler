@@ -1091,7 +1091,6 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator &inst, Int32Emulat
 
 // 64 bit emulation for divide
 void PreCompiledFuncImport::processDivide(BinaryOperator &inst, EmulatedFunctions function) {
-  m_pCtx->metrics.StatBeginEmuFunc(&inst);
   unsigned int numElements = 1;
   unsigned int elementIndex = 0;
 
@@ -1158,7 +1157,6 @@ void PreCompiledFuncImport::processDivide(BinaryOperator &inst, EmulatedFunction
 
   m_libModuleToBeImported[module] = true;
   m_changed = true;
-  m_pCtx->metrics.StatEndEmuFunc(funcCall);
 }
 
 // Select correct module and function for int64 div/rem emulation.
@@ -1196,7 +1194,6 @@ void PreCompiledFuncImport::getInt64DivideEmuType(EmulatedFunctions function, un
 }
 
 void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst &inst) {
-  m_pCtx->metrics.StatBeginEmuFunc(&inst);
   if ((isRTEFP64toFP16() || isDPEmu() || isDPConvEmu()) && inst.getDestTy()->isHalfTy() &&
       inst.getSrcTy()->isDoubleTy()) {
     if (inst.getDestTy()->isVectorTy()) {
@@ -1229,7 +1226,6 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst &inst) {
 
     m_libModuleToBeImported[LIBMOD_INT_DIV_REM] = true;
     m_changed = true;
-    m_pCtx->metrics.StatEndEmuFunc(funcCall);
     return;
   }
 
@@ -1253,7 +1249,6 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst &inst) {
     inst.eraseFromParent();
 
     m_changed = true;
-    m_pCtx->metrics.StatEndEmuFunc(funcCall);
     return;
   }
 }
@@ -1534,7 +1529,6 @@ Value *PreCompiledFuncImport::createFlagValue(Function *F) {
 void PreCompiledFuncImport::visitFPExtInst(llvm::FPExtInst &I) {
   if ((isDPEmu() || isDPConvEmu()) && I.getDestTy()->isDoubleTy() &&
       (I.getSrcTy()->isFloatTy() || I.getSrcTy()->isHalfTy())) {
-    m_pCtx->metrics.StatBeginEmuFunc(&I);
     Function *newFunc = getOrCreateFunction(FUNCTION_SP_TO_DP);
     Type *intTy = Type::getInt32Ty(m_pModule->getContext());
     Function *CurrFunc = I.getParent()->getParent();
@@ -1555,13 +1549,11 @@ void PreCompiledFuncImport::visitFPExtInst(llvm::FPExtInst &I) {
 
     I.replaceAllUsesWith(funcCall);
     I.eraseFromParent();
-    m_pCtx->metrics.StatEndEmuFunc(funcCall);
     m_changed = true;
   }
 }
 
 void PreCompiledFuncImport::visitCastInst(llvm::CastInst &I) {
-  m_pCtx->metrics.StatBeginEmuFunc(&I);
   if (!isDPEmu() && !isDPConvEmu()) {
     return;
   }
@@ -1651,7 +1643,6 @@ void PreCompiledFuncImport::visitCastInst(llvm::CastInst &I) {
 
   I.replaceAllUsesWith(newVal);
   I.eraseFromParent();
-  m_pCtx->metrics.StatEndEmuFunc(newVal);
   m_changed = true;
   return;
 }
@@ -1726,7 +1717,6 @@ uint32_t PreCompiledFuncImport::getFCmpMask(CmpInst::Predicate Pred) {
 }
 
 void PreCompiledFuncImport::visitFCmpInst(FCmpInst &I) {
-  m_pCtx->metrics.StatBeginEmuFunc(&I);
   if ((!isDPEmu() && !isDPConvEmu()) || !I.getOperand(0)->getType()->isDoubleTy()) {
     return;
   }
@@ -1768,12 +1758,10 @@ void PreCompiledFuncImport::visitFCmpInst(FCmpInst &I) {
 
   I.replaceAllUsesWith(intcmp);
   I.eraseFromParent();
-  m_pCtx->metrics.StatEndEmuFunc(funcCall);
   m_changed = true;
 }
 
 void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
-  m_pCtx->metrics.StatBeginEmuFunc(&I);
   if (IGC_IS_FLAG_ENABLED(EnableTestIGCBuiltin)) {
     // This is to test if an emulated function is the same
     // as the hardware instruction. It requires the platform
@@ -1894,7 +1882,6 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
         eraseCallInst(&I);
         I.replaceAllUsesWith(InstCompare);
         I.eraseFromParent();
-        m_pCtx->metrics.StatEndEmuFunc(InstCompare);
         m_changed = true;
         return;
       }
@@ -1928,7 +1915,6 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
 
     I.replaceAllUsesWith(newVal);
     I.eraseFromParent();
-    m_pCtx->metrics.StatEndEmuFunc(newVal);
     m_changed = true;
     return;
   }
@@ -1952,7 +1938,6 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
 
     I.replaceAllUsesWith(newVal);
     I.eraseFromParent();
-    m_pCtx->metrics.StatEndEmuFunc(newVal);
     m_changed = true;
     return;
   }
@@ -1992,7 +1977,6 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
 
     I.replaceAllUsesWith(newVal);
     I.eraseFromParent();
-    m_pCtx->metrics.StatEndEmuFunc(newVal);
     m_changed = true;
     return;
   }
@@ -2029,7 +2013,6 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
 
     m_libModuleToBeImported[LIBMOD_INT_DIV_REM] = true;
     m_changed = true;
-    m_pCtx->metrics.StatEndEmuFunc(funcCall);
     return;
   }
 
@@ -2050,7 +2033,6 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
 
     I.replaceAllUsesWith(fabsVal);
     I.eraseFromParent();
-    m_pCtx->metrics.StatEndEmuFunc(fabsVal);
     m_changed = true;
     return;
   }

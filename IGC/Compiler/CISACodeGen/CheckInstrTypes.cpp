@@ -89,8 +89,6 @@ bool CheckInstrTypes::runOnFunction(Function &F) {
   context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-  if (g_metrics)
-    context->metrics.CollectLoops(LI);
 
   // check if module has debug info
   g_InstrTypes.hasDebugInfo = F.getParent()->getNamedMetadata("llvm.dbg.cu") != nullptr;

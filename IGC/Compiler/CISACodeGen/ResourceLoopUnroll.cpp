@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/PassInfo.h"
 #include "llvm/PassRegistry.h"
+#include "llvm/IR/InstVisitor.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "IGC/Compiler/CodeGenPublic.h"

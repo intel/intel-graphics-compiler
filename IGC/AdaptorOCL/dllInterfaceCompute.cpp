@@ -135,8 +135,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/SourceMgr.h>
 #include "common/LLVMWarningsPop.hpp"
 
-#include "IGC/Metrics/IGCMetric.h"
-
 using namespace IGC::IGCMD;
 using namespace IGC::Debug;
 using namespace IGC;
@@ -1157,7 +1155,6 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
     compOpt->FloatDenormModeBFTF = FLOAT_DENORM_RETAIN;
   }
 
-  unsigned PtrSzInBits = pKernelModule->getDataLayout().getPointerSizeInBits();
   // TODO: Again, this should not happen on each compilation
 
   bool doSplitModule = oclContext.m_InternalOptions.CompileOneKernelAtTime || IGC_IS_FLAG_ENABLED(CompileOneAtTime);
@@ -1312,16 +1309,10 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
     SetOutputMessage(oclContext.GetWarning(), *pOutputArgs);
   }
 
-  // Prepare and set program binary
-  unsigned int pointerSizeInBytes = (PtrSzInBits == 64) ? 8 : 4;
-
   // FIXME: zebin currently only support program output itself, will add debug info
   // into it
   size_t binarySize = 0;
   char *binaryOutput = nullptr;
-
-  oclContext.metrics.FinalizeStats();
-  oclContext.metrics.OutputMetrics();
 
   llvm::SmallVector<char, 64> buf;
   llvm::raw_svector_ostream llvm_os(buf);
@@ -1334,12 +1325,14 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
     spv_size = pInputArgs->InputSize;
   }
 
-  // IGC metrics
-  size_t metricDataSize = oclContext.metrics.getMetricDataSize();
-  auto metricData = reinterpret_cast<const char *>(oclContext.metrics.getMetricData());
+  // IGC metrics are empty
+  auto metricData = "n\a";
+  size_t metricDataSize = sizeof(metricData);
 
+  unsigned PtrSzInBits = pKernelModule->getDataLayout().getPointerSizeInBits();
+  unsigned int pointerSizeInBytes = (PtrSzInBits == 64) ? 8 : 4;
   oclContext.m_programOutput.GetZEBinary(llvm_os, pointerSizeInBytes, spv_data, spv_size, metricData, metricDataSize,
-                                         pInputArgs->pOptions, pInputArgs->OptionsSize);
+    pInputArgs->pOptions, pInputArgs->OptionsSize);
 
   // FIXME: try to avoid memory copy here
   binarySize = buf.size();

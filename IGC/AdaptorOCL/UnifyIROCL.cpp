@@ -136,8 +136,6 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 
-#include <Metrics/IGCMetric.h>
-
 using namespace llvm;
 using namespace IGC::IGCMD;
 using namespace IGC::Debug;
@@ -184,9 +182,6 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
   COMPILER_TIME_START(pContext, TIME_UnificationPasses);
 
   setupTriple(*pContext);
-
-  pContext->metrics.Init(&pContext->hash, pContext->getModule()->getNamedMetadata("llvm.dbg.cu") != nullptr);
-  pContext->metrics.CollectFunctions(pContext->getModule());
 
   unify_opt_PreProcess(pContext);
   pContext->m_checkFastFlagPerInstructionInCustomUnsafeOptPass = true;

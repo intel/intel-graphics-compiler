@@ -14,8 +14,10 @@ SPDX-License-Identifier: MIT
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include "Probe/Assertion.h"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/Analysis/LoopInfo.h>
 #include "llvm/PassInfo.h"
 #include "llvm/PassRegistry.h"
+#include "llvm/IR/InstVisitor.h"
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "common/LLVMWarningsPop.hpp"
 
