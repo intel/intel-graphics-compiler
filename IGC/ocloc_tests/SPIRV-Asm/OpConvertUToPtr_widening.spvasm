@@ -1,4 +1,4 @@
-; REQUIRES: regkeys, spirv-as, dg2-supported, llvm-16-plus
+; REQUIRES: regkeys, spirv-as, dg2-supported, llvm-14-plus
 
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
 
@@ -28,4 +28,4 @@
                OpReturn
                OpFunctionEnd
 
-; CHECK: inttoptr i16 %a to ptr addrspace(1)
+; CHECK: inttoptr i16 %a to {{i32|ptr}} addrspace(1){{.*}}

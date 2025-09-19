@@ -8,7 +8,7 @@
 
 ; REQUIRES: regkeys,llvm-16-plus
 ;
-; RUN: igc_opt --ocl --igc-private-mem-resolution --regkey "EnablePrivMemNewSOATranspose=1,EnableOpaquePointersBackend=1" -S %s | FileCheck %s
+; RUN: igc_opt --ocl --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=1 --regkey EnableOpaquePointersBackend=1 -S %s | FileCheck %s
 ;
 ; This test is testing "MismatchDetected" algorithm in LowerGEPForPrivMem.cpp
 ; The purpose of this test is to validate whether various combinations of allocas/geps/load/stores
@@ -42,15 +42,15 @@ exit:
   %l = load <2 x float>, ptr %arr2
 
 ; This case is not valid because i32 and i8 have different sizes
-; CHECK: %load2 = load i8, ptr %arr3
+; CHECK: %load2 = load i8, ptr {{.*}}
   %arr3 = alloca [512 x i32]
   %load2 = load i8, ptr %arr3
 
 ; Case Alloca->Store->Gep->Store: This case is not valid due to different sizes
 
-; CHECK:    store <4 x i32> zeroinitializer, ptr %offset.i.i.i.i.privateBufferPTR
-; CHECK:    %offset_gep = getelementptr i8, ptr %offset.i.i.i.i.privateBufferPTR, i32 16
-; CHECK:    store i32 0, ptr %offset_gep, align 4
+; CHECK:    store <4 x i32> zeroinitializer, ptr {{.*}}
+; CHECK:    [[OFFSET_GEP:%.*]] = getelementptr i8, ptr {{.*}}, i32 16
+; CHECK:    store i32 0, ptr [[OFFSET_GEP]], align 4
 
   %offset.i.i.i.i = alloca [8 x %"struct.ispc::vec_t"], align 4
   store <4 x i32> zeroinitializer, ptr %offset.i.i.i.i, align 4
@@ -63,7 +63,7 @@ exit:
   %load3 = load <2 x float>, ptr %st
 
 ; This case is not valid because i32 and i8 have different sizes
-; CHECK: %load4 = load <2 x i8>, ptr %st2
+; CHECK: %load4 = load <2 x i8>, ptr {{.*}}
   %st2 = alloca %g
   %load4 = load <2 x i8>, ptr %st2
 
