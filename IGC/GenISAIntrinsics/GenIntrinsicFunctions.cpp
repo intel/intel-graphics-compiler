@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/Operator.h>
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/CodeGen/ValueTypes.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -131,7 +132,14 @@ private:
     // There can never be multiple globals with the same name of different types,
     // because intrinsics must be a specific type.
     IGCLLVM::Module &M = static_cast<IGCLLVM::Module &>(module);
-    llvm::Function *pFunc = llvm::cast<llvm::Function>(M.getOrInsertFunction(funcName, pFuncType, attribs));
+    llvm::Value *func = M.getOrInsertFunction(funcName, pFuncType, attribs);
+    llvm::Function *pFunc = nullptr;
+    if (llvm::isa<llvm::Function>(func))
+        pFunc = llvm::cast<llvm::Function>(func);
+    else if (llvm::isa<llvm::BitCastOperator>(func)) {
+        llvm::BitCastOperator *bco = llvm::cast<llvm::BitCastOperator>(func);
+        pFunc = llvm::cast<llvm::Function>(bco->getOperand(0));
+    }
 
     IGC_ASSERT_MESSAGE(pFunc, "getOrInsertFunction probably returned constant expression!");
     // Since Function::isIntrinsic() will return true due to llvm.* prefix,
