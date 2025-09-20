@@ -153,7 +153,7 @@ public:
   }
 };
 
-template <bool preserveNames = true, typename T = llvm::ConstantFolder,
+template <typename T = llvm::ConstantFolder,
           typename InserterTy = llvm::IRBuilderDefaultInserter>
 class LLVM3DBuilder : public llvm::IGCIRBuilder<T, InserterTy> {
 public:
