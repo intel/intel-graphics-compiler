@@ -1293,10 +1293,6 @@ void OptimizeIR(CodeGenContext *const pContext) {
     }
     mpm.add(new BlockMemOpAddrScalarizationPass());
 
-    if (IGC_IS_FLAG_ENABLED(EnableGVN)) {
-      mpm.add(llvm::createGVNPass());
-    }
-
     if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT) {
       if (pContext->m_instrTypes.numOfLoop) {
         bool allowLICM = IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM();
