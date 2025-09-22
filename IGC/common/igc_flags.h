@@ -1157,7 +1157,12 @@ DECLARE_IGC_REGKEY(
 DECLARE_IGC_REGKEY(bool, DisableCorrectlyRoundedMacros, false,
                    "Tmp flag to disable correcly rounded macros for BMG+. This flag will be removed in the future.",
                    false)
-DECLARE_IGC_REGKEY(bool, EnableLscSamplerRouting, true, "Enables conversion of LD to LD_L instructions.", false)
+DECLARE_IGC_REGKEY_ENUM(EnableLscSamplerRouting, -1,
+                        "Enables conversion of LD to LD_L instructions. Xe2+"
+                        "-1 - Platform default"
+                        " 0 - Force disable conversion to LD_L. Allow loads via LSC"
+                        " 1 - Force enable conversion to LD_L. Disallow loads via LSC",
+                        TRIBOOL_OPTIONS, false)
 DECLARE_IGC_REGKEY(bool, EnableSIMD16ForXe2, false, "Enable CS SIMD16 for Xe2", false)
 DECLARE_IGC_REGKEY(bool, EnableSIMD16ForNonWaveXe2, true, "Enable CS SIMD16 for Xe2 if the shader doesn't have wave",
                    false)

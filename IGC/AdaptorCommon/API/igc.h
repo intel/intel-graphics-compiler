@@ -51,6 +51,12 @@ enum {
   BIT_CG_DO_SIMD16 = 0b0000000100000000,
 };
 
+enum {
+  LOADS_VIA_LSC_DEFAULT = 0,    // Default based on platform
+  LOADS_VIA_LSC_ENABLE  = 1,    // Force enable loads via LSC (covert to LD_L)
+  LOADS_VIA_LSC_DISABLE = 2,    // Force disable loads via LSC (do not covert to LD_L)
+};
+
 typedef unsigned short CG_CTX_STATS_t;
 
 // shader stat for opt customization

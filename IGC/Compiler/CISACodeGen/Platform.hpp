@@ -1345,5 +1345,9 @@ public:
   }
 
   bool allowsMoviForType(VISA_Type type) const { return (type == ISA_TYPE_UD || type == ISA_TYPE_D); }
+
+  bool enableLscSamplerRouting() const {
+      return isCoreChildOf(IGFX_XE3_CORE);
+  }
 };
 } // namespace IGC
