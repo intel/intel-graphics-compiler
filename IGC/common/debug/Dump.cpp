@@ -222,14 +222,14 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const {
   if (m_hash.has_value()) {
 
     if (m_type.has_value() && IGC_IS_FLAG_ENABLED(EnableShaderNumbering)) {
+      hashMapLock.lock();
       bool increment = shaderHashMap.insert({m_hash->asmHash, shaderNum}).second;
       // Need to serialize access to the shaderNum counter in case different threads need to dump the same shader at
       // once.
-      hashMapLock.lock();
       if (increment)
         shaderNum++;
-      hashMapLock.unlock();
       ss << "_" << shaderHashMap[m_hash->asmHash] << "_";
+      hashMapLock.unlock();
     }
 
     if (m_hash->asmHash != 0) {

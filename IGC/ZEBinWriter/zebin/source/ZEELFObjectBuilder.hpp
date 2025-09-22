@@ -318,7 +318,7 @@ private:
 
   class RelocSection : public Section {
   public:
-    RelocSection(SectionID myID, SectionID targetID, std::string sectName, bool isRelFormat)
+    RelocSection(SectionID myID, SectionID targetID, const std::string &sectName, bool isRelFormat)
         : Section(myID), m_TargetID(targetID), m_sectName(sectName), m_isRelFormat(isRelFormat) {}
 
     Kind getKind() const { return RELOC; }

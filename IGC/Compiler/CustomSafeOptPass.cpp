@@ -396,7 +396,7 @@ void CustomSafeOptPass::mergeDotAddToDp4a(llvm::CallInst *I) {
   };
 
   // found %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %305, i32 %345)
-  GenIntrinsicInst *instr = dyn_cast<GenIntrinsicInst>(I);
+  GenIntrinsicInst *instr = cast<GenIntrinsicInst>(I);
 
   if (ConstantInt *CI = dyn_cast<ConstantInt>(instr->getOperand(0))) {
     // make sure operand(0) value is (i32 0)
@@ -6286,7 +6286,7 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
       NewInst = builder.CreateCall(pLdIntrinsic, ld_FunctionArgList);
     }
     // Stateless atomic
-    else if ( (dyn_cast<GenIntrinsicInst>(inst))->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicrawA64 )
+    else if ( (cast<GenIntrinsicInst>(inst))->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicrawA64 )
     {
       NewInst = builder.CreateLoad( inst->getType(), inst->getOperand( 0 ) );
       return NewInst;
@@ -6393,7 +6393,7 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
     }
 
     IRBuilder<> builder(inst);
-    Instruction *src = dyn_cast<Instruction>(inst->getOperand(srcID));
+    Instruction *src = cast<Instruction>(inst->getOperand(srcID));
     Instruction *readI = nullptr;
     Instruction *ThenTerm = nullptr;
     Instruction *ElseTerm = nullptr;
@@ -6408,7 +6408,7 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
       //    use the original atomic add/sub/umax inst
       // else
       //    use typedread or load
-      Instruction *condInst = dyn_cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_NE, src, builder.getInt32(0)));
+      Instruction *condInst = cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_NE, src, builder.getInt32(0)));
       splitBBAndName(condInst, inst, &ThenTerm, &ElseTerm, MergeBlock);
       inst->moveBefore(ThenTerm);
 
@@ -6423,7 +6423,7 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
       //    use the original atomic umax/umin inst src
       readI = createReadFromAtomic(builder, inst, isTyped);
       CmpInst::Predicate predicate = (op == AtomicOp::EATOMIC_UMAX) ? ICmpInst::ICMP_UGT : ICmpInst::ICMP_ULT;
-      Instruction *condInst = dyn_cast<Instruction>(builder.CreateICmp(predicate, src, readI));
+      Instruction *condInst = cast<Instruction>(builder.CreateICmp(predicate, src, readI));
 
       splitBBAndName(condInst, inst, &ThenTerm, nullptr, MergeBlock);
       inst->moveBefore(ThenTerm);
