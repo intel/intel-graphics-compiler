@@ -468,9 +468,19 @@ private:
 
 public:
   DbgDecoder(const char *f, TARGET_PLATFORM platform) : filename(f) {
+    dbgFile = fopen(filename, "rb");
     platInfo = PlatformInfo::LookupPlatformInfo(platform);
     vISA_ASSERT(platInfo != nullptr, "failed to look up platform");
   }
+
+  ~DbgDecoder() {
+    if (dbgFile)
+      fclose(dbgFile);
+  }
+
+  DbgDecoder() = delete;
+  DbgDecoder(const DbgDecoder &) = delete;
+  DbgDecoder operator=(const DbgDecoder &) = delete;
 
   int ddDbg();
 };

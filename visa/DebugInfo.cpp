@@ -237,8 +237,6 @@ void DbgDecoder::ddCalleeCallerSave(uint32_t relocOffset, CallerCallee callCase)
 }
 
 int DbgDecoder::ddDbg() {
-  dbgFile = fopen(filename, "rb");
-
   if (!dbgFile) {
     std::cerr << "Error opening and creating debug file: " << filename << "\n";
     vISA_ASSERT(false, "Unable to write debug file to disk.");
@@ -259,8 +257,6 @@ int DbgDecoder::ddDbg() {
               << "0x" << std::hex << DEBUG_MAGIC_NUMBER << std::dec
               << " *************"
               << "\n";
-
-    fclose(dbgFile);
 
     return -1;
   }
@@ -452,8 +448,6 @@ int DbgDecoder::ddDbg() {
   }
 
   std::cout << "=== End of Debug Dump ===\n";
-
-  fclose(dbgFile);
 
   return 0;
 }

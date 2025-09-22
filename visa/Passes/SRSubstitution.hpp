@@ -32,12 +32,9 @@ struct regMap {
   unsigned short dstReg;
   unsigned short srcReg;
 
-  regMap() : localID(-1), dstReg(-1), srcReg(-1) { ; }
+  regMap() : localID(-1), dstReg(-1), srcReg(-1) {}
   regMap(unsigned int id, unsigned short dst, unsigned src)
-      : localID(id), dstReg(dst), srcReg(src) {
-    ;
-  }
-  ~regMap() {}
+      : localID(id), dstReg(dst), srcReg(src) {}
 };
 
 struct regMapBRA {
@@ -46,14 +43,9 @@ struct regMapBRA {
   unsigned int offset = 0;
   G4_Operand *opnd = nullptr;
 
-  regMapBRA() {}
-
   regMapBRA(G4_INST *i, Gen4_Operand_Number n, unsigned int off,
             G4_Operand *src)
-      : inst(i), opndNum(n), offset(off), opnd(src) {
-    ;
-  }
-  ~regMapBRA() {}
+      : inst(i), opndNum(n), offset(off), opnd(src) {}
 };
 
 struct regCandidates {
@@ -83,8 +75,6 @@ public:
   }
   SRSubPassAfterRA(const SRSubPassAfterRA &) = delete;
   SRSubPassAfterRA& operator=(const SRSubPassAfterRA&) = delete;
-  ~SRSubPassAfterRA() {
-  };
 
   void run() {
     for (auto bb : kernel.fg) {
