@@ -293,11 +293,8 @@ bool SpillManagerGRF::shouldSpillRegister(G4_RegVar *regVar) const {
           : regVar;
   if (actualRegVar->getId() == UNDEFINED_VAL)
     return false;
-  else if (regVar->isRegVarTransient() || regVar->isRegVarTmp()) {
-    if (!failSafeSpill_)
-      return false;
-    return true;
-  }
+  else if (regVar->isRegVarTransient() || regVar->isRegVarTmp())
+    return false;
 #ifndef ADDRESS_SENSITIVE_SPILLS_IMPLEMENTED
   else if (lvInfo_->isAddressSensitive(regVar->getId()))
     return false;

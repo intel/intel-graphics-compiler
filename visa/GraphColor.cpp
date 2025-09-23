@@ -6566,16 +6566,7 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
               lrs[i]->getVar()->isSpilled() == false) ||
              dcl == gra.getOldFPDcl() ||
              (!builder.canReadR0() && dcl == builder.getBuiltinR0())) {
-      if (failSafeIter) {
-        // Allow spills to again spill in fail safe iteration in order to
-        // guarantee compilation succeeds.
-        if (lrs[i]->getVar()->isRegVarTransient() == true ||
-            lrs[i]->getVar()->isRegVarTmp() == true) {
-          lrs[i]->setSpillCost(0.99f * MAXSPILLCOST);
-        } else
-          lrs[i]->setSpillCost(MAXSPILLCOST);
-      } else
-        lrs[i]->setSpillCost(MAXSPILLCOST);
+      lrs[i]->setSpillCost(MAXSPILLCOST);
     } else if (dcl->isDoNotSpill()) {
       lrs[i]->setSpillCost(MAXSPILLCOST);
     }
@@ -6772,7 +6763,7 @@ void GraphColor::removeConstrained() {
 void GraphColor::determineColorOrdering() {
   numColor = 0;
   if (liveAnalysis.livenessClass(G4_GRF))
-    numColor = totalGRFRegCount;
+    numColor = totalGRFRegCount - reserveSpillGRFCount;
   else if (liveAnalysis.livenessClass(G4_ADDRESS))
     numColor = builder.getNumAddrRegisters();
   else if (liveAnalysis.livenessClass(G4_FLAG))
@@ -11210,7 +11201,6 @@ bool GlobalRA::setupFailSafeIfNeeded(bool fastCompile, bool hasStackCall,
       }
     }
   }
-
   return reserveSpillReg;
 }
 

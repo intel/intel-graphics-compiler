@@ -393,7 +393,10 @@ class G4_RegVarTmp : public G4_RegVar {
 
 public:
   G4_RegVarTmp(G4_Declare *d, G4_RegVar *base)
-      : G4_RegVar(d, RegVarType::GRFSpillTmp), baseRegVar(base) {}
+      : G4_RegVar(d, RegVarType::GRFSpillTmp), baseRegVar(base) {
+    vASSERT(base->isRegVarTransient() == false);
+    vASSERT(base == base->getBaseRegVar());
+  }
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
   G4_RegVar *getBaseRegVar() { return baseRegVar; }
