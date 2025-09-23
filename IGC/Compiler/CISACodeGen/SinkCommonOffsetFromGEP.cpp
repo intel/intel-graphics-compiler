@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -241,6 +241,20 @@ bool DivergentPointersGroups::isBelongedToGroup(const CommonBaseGroup &Group, co
     if (CurGroupFactor[BB].second != Indices)
       return false;
   }
+
+  // Check if types are consistent across all group factors
+  for (auto &GF : Group.GroupFactor) {
+    auto groupPtrOperandTy = GF.second.first.first;
+    if (!groupPtrOperandTy)
+      continue;
+
+    for (const auto &Entry : DP.Geps) {
+      GetElementPtrInst *GEP = Entry.second.GEP;
+      if (GEP->getSourceElementType() != groupPtrOperandTy)
+        return false;
+    }
+  }
+
   return true;
 }
 
