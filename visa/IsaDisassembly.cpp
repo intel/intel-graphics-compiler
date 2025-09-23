@@ -3435,34 +3435,7 @@ std::string VISAKernel_format_provider::printKernelHeader(bool printVersion) {
   }
   sstr << "\n";
 
-  // emit var decls
-  //.decl  V<#> name=<name> type=<type> num_elts=<num_elements> [align=<align>]
-  //[alias=(<alias_index>,<alias_offset>)]
-  for (unsigned i = 0; i < getVarCount(); i++) {
-    sstr << "\n" << printVariableDecl(this, i, options);
-  }
-  // address decls
-  for (unsigned i = 0; i < getAddrCount(); i++) {
-    sstr << "\n" << printAddressDecl(this, i);
-  }
-  // pred decls
-  for (unsigned i = 0; i < getPredCount(); i++) {
-    // P0 is reserved; starting from P1 if there is predicate decl
-    sstr << "\n" << printPredicateDecl(this, i);
-  }
-  // sampler
-  for (unsigned i = 0; i < getSamplerCount(); i++) {
-    sstr << "\n" << printSamplerDecl(this, i);
-  }
-  // surface
-  unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
-  for (unsigned i = 0; i < getSurfaceCount(); i++) {
-    sstr << "\n" << printSurfaceDecl(this, i, numPreDefinedSurfs);
-  }
-  // inputs to kernel
-  for (unsigned i = 0; i < getInputCount(); i++) {
-    sstr << "\n" << printFuncInput(this, i, options);
-  }
+  sstr << printDeclSection(false);
 
   bool isTargetSet = false;
   for (unsigned i = 0; i < getAttrCount(); i++) {
@@ -3497,6 +3470,46 @@ std::string VISAKernel_format_provider::printKernelHeader(bool printVersion) {
     }
   }
 
+  return sstr.str();
+}
+
+std::string VISAKernel_format_provider::printDeclSection(bool printAsComment) {
+  // printAsComment adds "// " at the beginning of each line
+  // This is used for adding duplicated decl section at the end
+  // of the dump when vISA_AddISAASMDeclarationsToEnd is enabled.
+
+  std::stringstream sstr;
+  const Options *options = m_kernel->getOptions();
+  const char *newLine = printAsComment ? "\n// " : "\n";
+
+  // emit var decls
+  //.decl  V<#> name=<name> type=<type> num_elts=<num_elements> [align=<align>]
+  //[alias=(<alias_index>,<alias_offset>)]
+  for (unsigned i = 0; i < getVarCount(); i++) {
+    sstr << newLine << printVariableDecl(this, i, options);
+  }
+  // address decls
+  for (unsigned i = 0; i < getAddrCount(); i++) {
+    sstr << newLine << printAddressDecl(this, i);
+  }
+  // pred decls
+  for (unsigned i = 0; i < getPredCount(); i++) {
+    // P0 is reserved; starting from P1 if there is predicate decl
+    sstr << newLine << printPredicateDecl(this, i);
+  }
+  // sampler
+  for (unsigned i = 0; i < getSamplerCount(); i++) {
+    sstr << newLine << printSamplerDecl(this, i);
+  }
+  // surface
+  unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
+  for (unsigned i = 0; i < getSurfaceCount(); i++) {
+    sstr << newLine << printSurfaceDecl(this, i, numPreDefinedSurfs);
+  }
+  // inputs to kernel
+  for (unsigned i = 0; i < getInputCount(); i++) {
+    sstr << newLine << printFuncInput(this, i, options);
+  }
   return sstr.str();
 }
 

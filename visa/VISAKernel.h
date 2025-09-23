@@ -1503,6 +1503,7 @@ public:
   uint32_t getInputCount() const { return m_kernel->m_input_count; }
 
   std::string printKernelHeader(bool printVersion);
+  std::string printDeclSection(bool printAsComment);
 
   std::string printInstruction(const CISA_INST *instruction,
                                const Options *opt) const;

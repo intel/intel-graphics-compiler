@@ -3819,6 +3819,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   if (IGC_IS_FLAG_ENABLED(DumpASMToConsole)) {
     SaveOption(vISA_asmToConsole, true);
   }
+  if (IGC_IS_FLAG_ENABLED(AddVISADumpDeclarationsToEnd)) {
+    SaveOption(vISA_AddISAASMDeclarationsToEnd, true);
+  }
   if (IGC_IS_FLAG_ENABLED(AddExtraIntfInfo)) {
     SaveOption(vISA_AddExtraIntfInfo, true);
   }

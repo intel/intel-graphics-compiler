@@ -152,7 +152,8 @@ bool allowDump(const Options &options, const std::string &fullPath) {
 // repKernel has the actual shader body.
 std::string CISA_IR_Builder::isaDump(const VISAKernelImpl *kernel,
                                      const VISAKernelImpl *repKernel,
-                                     bool printVersion) const {
+                                     bool printVersion,
+                                     bool addDeclCommentAtEnd) const {
   std::stringstream sstr;
   VISAKernel_format_provider header(repKernel);
 
@@ -168,6 +169,12 @@ std::string CISA_IR_Builder::isaDump(const VISAKernelImpl *kernel,
     // different kernel. Have we verified that .visaasm dump works correctly for
     // PS code patching?
     sstr << header.printInstruction(inst, kernel->getOptions()) << "\n";
+  }
+
+  if (addDeclCommentAtEnd) {
+    // This path is enabled vISA_AddISAASMDeclarationsToEnd
+    // and is used in tests to verify the .decl section.
+    sstr << header.printDeclSection(true) << "\n";
   }
 
 #ifdef DLL_MODE
@@ -189,6 +196,7 @@ int CISA_IR_Builder::isaDump(const char *combinedIsaasmName) const {
   return VISA_SUCCESS;
 #else
   const bool isaasmToConsole = m_options.getOption(vISA_ISAASMToConsole);
+  const bool isaasmaddDeclAtEnd = m_options.getOption(vISA_AddISAASMDeclarationsToEnd);
   const bool genIsaasm = m_options.getOption(vISA_GenerateISAASM);
   const bool allowIsaasmDump = combinedIsaasmName && combinedIsaasmName[0] != '\0' &&
       CisaFramework::allowDump(m_options, combinedIsaasmName);
@@ -239,7 +247,7 @@ int CISA_IR_Builder::isaDump(const char *combinedIsaasmName) const {
     }
     if (genIsaasm) {
       if (isaasmToConsole) {
-        std::cout << isaDump(kTemp, repKernel);
+        std::cout << isaDump(kTemp, repKernel, true, isaasmaddDeclAtEnd);
       } else {
         std::ofstream out(asmFileName);
         out << isaDump(kTemp, repKernel);

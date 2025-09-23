@@ -622,6 +622,8 @@ DEF_VISA_OPTION(vISA_GenerateCombinedISAASM, ET_BOOL, "-dumpcombinedcisa",
 DEF_VISA_OPTION(vISA_ISAASMToConsole, ET_BOOL, "-isaasmToConsole",
                 "The option can be used with -dumpcommonisa to make finalizer"
                 "emit isaasm to stdout instead of file and do early exit", false)
+DEF_VISA_OPTION(vISA_AddISAASMDeclarationsToEnd, ET_BOOL, "-isaasmAddDeclarationsAtEnd",
+                "Add a comment with .decl section to the end of isaasm console dump. Used in tests.", false)
 DEF_VISA_OPTION(vISA_DumpIsaVarNames, ET_BOOL, "-dumpisavarnames", UNUSED, true)
 DEF_VISA_OPTION(vISA_UniqueLabels, ET_BOOL, "-uniqueLabel", UNUSED, false)
 DEF_VISA_OPTION(vISA_ShaderDumpRegexFilter, ET_CSTR, "-shaderDumpRegexFilter",

@@ -127,7 +127,8 @@ public:
 
   std::string isaDump(const VISAKernelImpl *kernel,
                       const VISAKernelImpl *mainKernel,
-                      bool printVersion = true) const;
+                      bool printVersion = true,
+                      bool addDeclCommentAtEnd = false) const;
 
   static void cat(std::stringstream &ss) {}
   template <typename T, typename... Ts>
