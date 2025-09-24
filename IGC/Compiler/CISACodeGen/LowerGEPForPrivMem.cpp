@@ -554,16 +554,29 @@ bool SOALayoutChecker::visitIntrinsicInst(IntrinsicInst &II) {
   return IID == llvm::Intrinsic::lifetime_start || IID == llvm::Intrinsic::lifetime_end;
 }
 
-// Detection of mismatch between type sizes of
-// alloca -> load / store
-// or
-// alloca -> gep -> load / store
+// Detect size mismatches between an alloca's element and the corresponding load/store element (directly or via a GEP).
+// Return true to disable SOA promotion.
 bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
 
   if (!isa<LoadInst>(I) && !isa<StoreInst>(I))
     return false;
 
-  // Only detect mismatch if are have opaque pointers (LLVM>=16)
+  // Skip when we see an i8-based GEP with a non-constant (dynamic) byte offset. The legacy (old) algorithm assumes byte
+  // offsets map exactly to whole promoted elements (e.g. multiples of the lane size) and cannot safely reconstruct
+  // sub‑element (inter-lane or unaligned) accesses. Using it would risk incorrect indexing. The new byte-precise
+  // algorithm could handle this, but while it is disabled we treat such dynamic i8 GEPs as a mismatch and leave them
+  // untouched.
+  for (User *U : allocaRef.users()) {
+    if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
+      if (GEP->getSourceElementType()->isIntegerTy(8) && GEP->getNumOperands() > 1 &&
+          !isa<ConstantInt>(GEP->getOperand(1))) {
+        pInfo->canUseSOALayout = false;
+        return true;
+      }
+    }
+  }
+
+  // Apply the following mismatch checks only with opaque pointers.
   if (!IGC::AreOpaquePointersEnabled())
     return false;
 
