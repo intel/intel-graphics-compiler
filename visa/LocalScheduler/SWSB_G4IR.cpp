@@ -275,6 +275,15 @@ static bool isDclExclusiveLoad(const G4_Declare *declare1,
   return declare1->isExclusiveLoad();
 }
 
+static void checkAndRemoveDpasNode(SBNode *curLiveNode,
+                                   std::vector<SBNode *> &liveDPASNodes) {
+  auto dpasIt =
+      std::find(liveDPASNodes.begin(), liveDPASNodes.end(), curLiveNode);
+  if (dpasIt != liveDPASNodes.end()) {
+    liveDPASNodes.erase(dpasIt);
+  }
+}
+
 bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint,
                              unsigned short &internalOffset) const {
   for (const SBFootprint *curFootprintPtr = this; curFootprintPtr;
@@ -6796,6 +6805,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
   mathID = indexes->mathIndex;
   first_DPASID = indexes->DPASIndex;
   SBNode *lastDpasNode = nullptr;
+  std::vector<SBNode *> liveDPASNodes; // Recording local live dpas nodes
 
   for (int i = 0; i < PIPE_DPAS; i++) {
     latestDepALUID[i] = indexes->latestDepALUID[i];
@@ -7089,6 +7099,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
       node->setDPASID(DPASID);
       DPASID += node->getDPASSize();
       lastDpasNode = node;
+      liveDPASNodes.push_back(node);
     }
 
     // Get buckets for all GRF registers which are used in curInst
@@ -7141,6 +7152,13 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
           vISA_ASSERT(curInst->hasNoPipe(),
                       "Unexpected instruction found in distance ");
         }
+      }
+
+      if (node->hasDistOneAreg()) {
+        for (auto dpasNode : liveDPASNodes) {
+          createAddGRFEdge(dpasNode, node, RAW, DEP_EXPLICT);
+        }
+        liveDPASNodes.clear();
       }
 
       if (BDvec.empty() && node->distDep.empty()) {
@@ -7275,6 +7293,9 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
                    tokenAfterDPASCycle)) {
                 LB->killOperand(bn_it);
                 createAddGRFEdge(liveNode, node, dep, DEP_EXPLICT);
+                if (liveNode->getLastInstruction()->isDpas()) {
+                  checkAndRemoveDpasNode(liveNode, liveDPASNodes);
+                }
                 liveNode->setInstKilled(true); // Instruction level kill
                 instKill = true;
                 continue;
@@ -7286,6 +7307,9 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
             } else {
               LB->killOperand(bn_it);
               createAddGRFEdge(liveNode, node, dep, DEP_EXPLICT);
+              if (liveNode->getLastInstruction()->isDpas()) {
+                checkAndRemoveDpasNode(liveNode, liveDPASNodes);
+              }
               liveNode->setInstKilled(true); // Instruction level kill
               instKill = true;
               continue;
@@ -8100,10 +8124,14 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
     //    the order of the operands are scanned is not an issue anymore.
     //    i.e explicit RAW and WAW can cover all other dependences.
     // Only S0 and GRF regsiters can introduce global SBID dependence
+    std::vector<SBNode *> liveDPASNodes; // Record live in dpas nodes
     LiveGRFBuckets send_use_kills(globalRegisterNum);
     for (unsigned i : send_kill.dst) {
       for (SBBucketNode *sBucketNode : globalDstSBSendNodes[i]) {
         SBNode *sNode = sBucketNode->node;
+        if (sNode->getLastInstruction()->isDpas()) {
+          liveDPASNodes.push_back(sNode);
+        }
         sb_bb->getLiveBucketsFromFootprint(sNode->getFirstFootprint(Opnd_dst),
                                            sBucketNode, &send_use_kills);
         sNode->setInstKilled(false);
@@ -8114,6 +8142,9 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
     for (unsigned i : send_kill.src) {
       for (SBBucketNode *sBucketNode : globalSrcSBSendNodes[i]) {
         SBNode *sNode = sBucketNode->node;
+        if (sNode->getLastInstruction()->isDpas()) {
+          liveDPASNodes.push_back(sNode);
+        }
         sb_bb->getLiveBucketsFromFootprint(
             sNode->getFirstFootprint(sBucketNode->opndNum), sBucketNode,
             &send_use_kills);
@@ -8127,6 +8158,13 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
     for (int j = sb_bb->first_node; j <= sb_bb->last_node; j++) {
       SBNode *node = SBNodes[j];
       G4_INST *curInst = node->getLastInstruction();
+
+      if (node->hasDistOneAreg()) {
+        for (auto dpasNode : liveDPASNodes) {
+          sb_bb->createAddGRFEdge(dpasNode, node, RAW, DEP_EXPLICT);
+        }
+        liveDPASNodes.clear();
+      }
 
       BDvec.clear();
       sb_bb->getGRFBucketDescs(node, BDvec, true);
@@ -8228,6 +8266,9 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
                         send_use_kills.killOperand(bn_it);
                         sb_bb->createAddGRFEdge(curLiveNode, node, dep,
                                                 DEP_EXPLICT);
+                        if (curLiveNode->getLastInstruction()->isDpas()) {
+                          checkAndRemoveDpasNode(curLiveNode, liveDPASNodes);
+                        }
                         curLiveNode->setInstKilled(true); // Instruction level
                                                           // kill
                         instKill = true;
@@ -8239,6 +8280,9 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
                       send_use_kills.killOperand(bn_it);
                       sb_bb->createAddGRFEdge(curLiveNode, node, dep,
                                               DEP_EXPLICT);
+                      if (curLiveNode->getLastInstruction()->isDpas()) {
+                        checkAndRemoveDpasNode(curLiveNode, liveDPASNodes);
+                      }
                       curLiveNode->setInstKilled(true); // Instruction level
                                                         // kill
                       instKill = true;
@@ -8267,6 +8311,9 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
                         send_use_kills.killOperand(bn_it);
                         sb_bb->createAddGRFEdge(curLiveNode, node, dep,
                                                 DEP_EXPLICT);
+                        if (curLiveNode->getLastInstruction()->isDpas()) {
+                          checkAndRemoveDpasNode(curLiveNode, liveDPASNodes);
+                        }
                         curLiveNode->setInstKilled(
                             true); // Instruction level kill
                         instKill = true;
@@ -8279,6 +8326,9 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
                       send_use_kills.killOperand(bn_it);
                       sb_bb->createAddGRFEdge(curLiveNode, node, dep,
                                               DEP_EXPLICT);
+                      if (curLiveNode->getLastInstruction()->isDpas()) {
+                        checkAndRemoveDpasNode(curLiveNode, liveDPASNodes);
+                      }
                       curLiveNode->setInstKilled(true);
                       instKill = true;
                       continue;
@@ -8287,6 +8337,9 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
                 } else {
                   send_use_kills.killOperand(bn_it);
                   sb_bb->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
+                  if (curLiveNode->getLastInstruction()->isDpas()) {
+                    checkAndRemoveDpasNode(curLiveNode, liveDPASNodes);
+                  }
                   curLiveNode->setInstKilled(true); // Instruction level kill
                   instKill = true;
                   continue;
