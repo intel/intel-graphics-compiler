@@ -18,7 +18,6 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 target triple = "spir64-unknown-unknown"
 
 %"struct.ispc::vec_t" = type { i32, i32, i32 }
-%g = type { [512 x i32] }
 
 ; Function Attrs: nofree nosync nounwind
 define spir_kernel void @test(ptr nocapture writeonly %d, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %enqueuedLocalSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, ptr nocapture readnone %privateBase) {
@@ -56,16 +55,6 @@ exit:
   store <4 x i32> zeroinitializer, ptr %offset.i.i.i.i, align 4
   %offset_gep = getelementptr i8, ptr %offset.i.i.i.i, i32 16
   store i32 0, ptr %offset_gep, align 4
-; This case is valid because float and i32 have 32 bits
-; CHECK: insertelement <2 x float> {{.*}}, float {{.*}}, i32 0
-; CHECK: insertelement <2 x float> {{.*}}, float {{.*}}, i32 1
-  %st = alloca %g
-  %load3 = load <2 x float>, ptr %st
-
-; This case is not valid because i32 and i8 have different sizes
-; CHECK: %load4 = load <2 x i8>, ptr {{.*}}
-  %st2 = alloca %g
-  %load4 = load <2 x i8>, ptr %st2
 
   ret void
 }

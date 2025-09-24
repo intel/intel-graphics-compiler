@@ -70,7 +70,7 @@ public:
   friend llvm::InstVisitor<SOALayoutChecker, bool>;
 
   // isOCL is for testing, it will be removed once testing is done.
-  SOALayoutChecker(llvm::AllocaInst &allocaToCheck, bool isOCL, bool mismatchedWidthsSupport=false);
+  SOALayoutChecker(llvm::AllocaInst &allocaToCheck, bool isOCL);
   SOALayoutChecker() = delete;
   ~SOALayoutChecker() = default;
   SOALayoutChecker(const SOALayoutChecker &) = delete;
@@ -87,10 +87,6 @@ private:
   llvm::AllocaInst &allocaRef;
   const llvm::DataLayout *pDL;
   std::unique_ptr<SOALayoutInfo> pInfo;
-
-  // If mismatched widths reach PrivateMemoryResolution, it should turn off optimization
-  // But if they reach LowerGEPForPrivMemPass they get resolved properly
-  bool mismatchedWidthsSupport;
 
   // ===== fields for new algo =====
   // todo: combine the new and old together
