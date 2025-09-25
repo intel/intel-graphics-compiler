@@ -13,14 +13,14 @@
 
 ; CHECK: .decl vectorized_phi v_type=G type=f num_elts=128 align=wordx32
 
-; CHECK: mad (M1, 16) vectorized_phi(0,0)<1> vectorized_phi(0,0)<1;1,0> V0034(0,0)<0;1,0> vectorized_phi(0,0)<1;1,0>
-; CHECK: mad (M1, 16) vectorized_phi(1,0)<1> vectorized_phi(1,0)<1;1,0> V0034(0,1)<0;1,0> vectorized_phi(1,0)<1;1,0>
-; CHECK: mad (M1, 16) vectorized_phi(2,0)<1> vectorized_phi(2,0)<1;1,0> V0034(0,2)<0;1,0> vectorized_phi(2,0)<1;1,0>
-; CHECK: mad (M1, 16) vectorized_phi(3,0)<1> vectorized_phi(3,0)<1;1,0> V0034(0,3)<0;1,0> vectorized_phi(3,0)<1;1,0>
-; CHECK: mad (M1, 16) vectorized_phi(4,0)<1> vectorized_phi(4,0)<1;1,0> V0034(0,4)<0;1,0> vectorized_phi(4,0)<1;1,0>
-; CHECK: mad (M1, 16) vectorized_phi(5,0)<1> vectorized_phi(5,0)<1;1,0> V0034(0,5)<0;1,0> vectorized_phi(5,0)<1;1,0>
-; CHECK: mad (M1, 16) vectorized_phi(6,0)<1> vectorized_phi(6,0)<1;1,0> V0034(0,6)<0;1,0> vectorized_phi(6,0)<1;1,0>
-; CHECK: mad (M1, 16) vectorized_phi(7,0)<1> vectorized_phi(7,0)<1;1,0> V0034(0,7)<0;1,0> vectorized_phi(7,0)<1;1,0>
+; CHECK: mad (M1, 16) vectorized_phi(0,0)<1> vectorized_phi(0,0)<1;1,0> [[REG:V[0-9]+]](0,0)<0;1,0> vectorized_phi(0,0)<1;1,0>
+; CHECK: mad (M1, 16) vectorized_phi(1,0)<1> vectorized_phi(1,0)<1;1,0> [[REG]](0,1)<0;1,0> vectorized_phi(1,0)<1;1,0>
+; CHECK: mad (M1, 16) vectorized_phi(2,0)<1> vectorized_phi(2,0)<1;1,0> [[REG]](0,2)<0;1,0> vectorized_phi(2,0)<1;1,0>
+; CHECK: mad (M1, 16) vectorized_phi(3,0)<1> vectorized_phi(3,0)<1;1,0> [[REG]](0,3)<0;1,0> vectorized_phi(3,0)<1;1,0>
+; CHECK: mad (M1, 16) vectorized_phi(4,0)<1> vectorized_phi(4,0)<1;1,0> [[REG]](0,4)<0;1,0> vectorized_phi(4,0)<1;1,0>
+; CHECK: mad (M1, 16) vectorized_phi(5,0)<1> vectorized_phi(5,0)<1;1,0> [[REG]](0,5)<0;1,0> vectorized_phi(5,0)<1;1,0>
+; CHECK: mad (M1, 16) vectorized_phi(6,0)<1> vectorized_phi(6,0)<1;1,0> [[REG]](0,6)<0;1,0> vectorized_phi(6,0)<1;1,0>
+; CHECK: mad (M1, 16) vectorized_phi(7,0)<1> vectorized_phi(7,0)<1;1,0> [[REG]](0,7)<0;1,0> vectorized_phi(7,0)<1;1,0>
 
 ; ModuleID = 'vectorizer-vector-emission-fmad.ll'
 source_filename = "vectorizer-vector-emission-fmad.ll"
