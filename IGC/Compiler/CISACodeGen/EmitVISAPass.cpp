@@ -2426,7 +2426,6 @@ void EmitPass::EmitPack4i8(const std::array<EOPCODE, 4> &opcodes, const std::arr
     CVariable *src0 = GetSrcVariable(sources0[i]);
     switch (opcodes[i]) {
     case llvm_bitcast:
-    case llvm_fptosi:
       m_encoder->Cast(dst, src0);
       break;
     case llvm_min:
