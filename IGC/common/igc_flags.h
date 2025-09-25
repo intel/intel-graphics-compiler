@@ -1716,22 +1716,6 @@ DECLARE_IGC_REGKEY_ENUM(RemoveUnusedIdImplicitArguments, -1,
                         " 0 - force disabled"
                         " 1 - force enabled",
                         TRIBOOL_OPTIONS, true)
-DECLARE_IGC_REGKEY(bool, AllowCrossBlockMatchMad, false,
-                   "Enable cross basic block matching of mad instructions. This may lead to increased register "
-                   "pressure, but in exchange, may reduce instruction count",
-                   false)
-DECLARE_IGC_REGKEY(
-    bool, AllowMultipleMulUsesMatchMad, false,
-    "Enable a multiply instruction with multiple uses to be matched to a mad instruction. This essentially forces the "
-    "recalculation of the intermediate multiply result for every potential mad instruction, which will have "
-    "performance impacts but may reduce instruction count and register pressure in case both mul operands need to be "
-    "live past the add/sub but the intermediate mul result does not.",
-    false)
-DECLARE_IGC_REGKEY(bool, AllowConstMadOpMovToReg, false,
-                   "Enable matching of mad instruction if constant greater than 16-bits. This will generate a mov in "
-                   "vISA for the constant operand due to it not fitting as an imm16 operand. At this point, the "
-                   "generated asm likely will fall back onto mul+add for the main case where src1 is the constant",
-                   false)
 
 DECLARE_IGC_GROUP("Generating precompiled headers")
 DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true,
