@@ -339,7 +339,7 @@ private:
   InstructionMask GetDefaultMemoryInstructionMask(const llvm::Instruction *pSourceInst) const;
 
   ////////////////////////////////////////////////////////////////////////
-  bool IsSubsituteInstruction(const llvm::Instruction *pEvaluatedInst, const llvm::Instruction *pReferenceInst) const;
+  bool IsSubstituteInstruction(const llvm::Instruction *pEvaluatedInst, const llvm::Instruction *pReferenceInst) const;
 
   ////////////////////////////////////////////////////////////////////////
   InstructionMask GetInstructionMask(const llvm::Instruction *pInst) const;
@@ -1394,7 +1394,7 @@ void SynchronizationObjectCoalescing::GetVisibleMemoryInstructions(
 
   std::function<bool(const llvm::Instruction *)> IsBoundaryInst =
       [this, pSourceInst](const llvm::Instruction *pEvaluatedInst) {
-        return IsSubsituteInstruction(pEvaluatedInst, pSourceInst);
+        return IsSubstituteInstruction(pEvaluatedInst, pSourceInst);
       };
 
   std::function<bool(const llvm::Instruction *)> IsMemoryInst =
@@ -1443,7 +1443,7 @@ void SynchronizationObjectCoalescing::GetAllUnsynchronizedMemoryInstructions(
     std::vector<const llvm::Instruction *> &memoryInstructions) const {
   std::function<bool(const llvm::Instruction *)> IsBoundaryInst =
       [this, pSourceInst](const llvm::Instruction *pEvaluatedInst) {
-        return IsSubsituteInstruction(pEvaluatedInst, pSourceInst);
+        return IsSubstituteInstruction(pEvaluatedInst, pSourceInst);
       };
   auto GetBoundaries =
       GetBoundaryFunc(m_OrderedFenceInstructionsInBasicBlockCache, m_InstIdxLookupTable, IsBoundaryInst);
@@ -1510,7 +1510,7 @@ InstructionMask SynchronizationObjectCoalescing::GetInstructionMask(const llvm::
   llvm::DenseSet<const llvm::BasicBlock *> visitedBasicBlocks;
   std::function<bool(const llvm::Instruction *)> IsBoundaryInst =
       [this, pSourceInst](const llvm::Instruction *pEvaluatedInst) {
-        return IsSubsituteInstruction(pEvaluatedInst, pSourceInst);
+        return IsSubstituteInstruction(pEvaluatedInst, pSourceInst);
       };
   auto GetBoundaries = GetBoundaryFunc(IsFenceOperation(pSourceInst) ? m_OrderedFenceInstructionsInBasicBlockCache
                                                                      : m_OrderedBarrierInstructionsInBasicBlockCache,
@@ -1832,7 +1832,7 @@ bool SynchronizationObjectCoalescing::IsRequiredForAtomicOperationsOrdering(cons
       for (llvm::BasicBlock::const_iterator it = ++pSourceInst->getIterator(); it != pSourceInst->getParent()->end();
            ++it) {
         const llvm::Instruction *pCurrInst = &(*it);
-        if (IsFenceOperation(pCurrInst) && IsSubsituteInstruction(pCurrInst, pSourceInst)) {
+        if (IsFenceOperation(pCurrInst) && IsSubstituteInstruction(pCurrInst, pSourceInst)) {
           substituteFenceFound = true;
           break;
         }
@@ -1864,7 +1864,7 @@ SynchronizationObjectCoalescing::GetInstructionMask(const std::vector<const llvm
 /// @param pEvaluatedInst the instruction which is evaluated if it can replace the reference one
 /// @param pReferenceInst represents the reference instruction which is an object of the replacement
 /// and it means that this instruction must be equal or weaker than the evaluated one.
-bool SynchronizationObjectCoalescing::IsSubsituteInstruction(const llvm::Instruction *pEvaluatedInst,
+bool SynchronizationObjectCoalescing::IsSubstituteInstruction(const llvm::Instruction *pEvaluatedInst,
                                                              const llvm::Instruction *pReferenceInst) const {
   if (IsUntypedMemoryFenceOperation(pEvaluatedInst) && IsUntypedMemoryFenceOperation(pReferenceInst)) {
     const uint32_t commitEnableArg = 0;
