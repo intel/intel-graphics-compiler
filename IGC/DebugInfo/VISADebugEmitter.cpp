@@ -442,7 +442,9 @@ void DebugEmitter::prepareElfForZeBinary(bool is64Bit, char *pElfBuffer, size_t 
       }
     }
   } else {
-    IGC_ASSERT_MESSAGE(is64Bit, "64-bit ELF file only supported");
+    auto ST = m_pVISAModule->getShaderType();
+    if (ST && (ST == ShaderType::COMPUTE_SHADER || ST == ShaderType::OPENCL_SHADER))
+      IGC_ASSERT_MESSAGE(is64Bit, "64-bit ELF file only supported");
   }
 }
 

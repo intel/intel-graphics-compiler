@@ -98,6 +98,12 @@ public:
 
   bool usesSlot1ScratchSpill() const override;
 
+  virtual std::optional<enum ShaderType> getShaderType() const override {
+    if (!m_pShader)
+      return std::nullopt;
+    return m_pShader->GetShaderType();
+  }
+
 private:
   /// @brief Constructor.
   /// @param m_pShader holds the Shader object that provides information

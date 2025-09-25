@@ -20,8 +20,10 @@ SPDX-License-Identifier: MIT
 
 #include "LexicalScopes.hpp"
 #include "VISAIDebugEmitter.hpp"
+#include "IGC/common/Types.hpp"
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -541,6 +543,8 @@ public:
   virtual bool IsIntelSymbolTableVoidProgram() const { return false; }
 
   virtual llvm::StringRef GetVISAFuncName() const = 0;
+
+  virtual std::optional<enum ShaderType> getShaderType() const { return std::nullopt; }
 
   const InstInfoMap *GetInstInfoMap() { return &m_instInfoMap; }
 
