@@ -72,8 +72,6 @@ public:
   void visitSelectInst(llvm::SelectInst &S);
   void mergeDotAddToDp4a(llvm::CallInst *I);
   void visitTruncInst(llvm::TruncInst &I);
-  void visitIntAtomicTyped(llvm::CallInst *I);
-  void visitIntAtomicRawOrRawA64(llvm::CallInst *I);
 
   //
   // IEEE Floating point arithmetic is not associative.  Any pattern

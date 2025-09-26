@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -472,66 +472,6 @@ static bool isTruncInvariant(unsigned Opcode) {
   }
 }
 
-// clang-format off
-// In AtomicTyped, convert EATOMIC_IADD(0) to EATOMIC_INC(2) and EATOMIC_DEC(3) when value of 1 is used as increment or -1 as decrement
-// From:
-// %7 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 1, i32 0)
-// %8 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 -1, i32 0)
-// To:
-// %7 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 1, i32 2)
-// %8 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 -1, i32 3)
-// clang-format on
-void CustomSafeOptPass::visitIntAtomicTyped(CallInst *I) {
-  GenIntrinsicInst *instr = dyn_cast<GenIntrinsicInst>(I);
-
-  // for immediate 1 or -1
-  if (auto *constInt1 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(4))) {
-    // for atomic_iadd
-    if (auto *constInt2 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(5))) {
-      if (AtomicOp::EATOMIC_IADD == constInt2->getZExtValue()) {
-        if (constInt1->getSExtValue() == 1) {
-          instr->setOperand(5, llvm::ConstantInt::get(instr->getOperand(5)->getType(), AtomicOp::EATOMIC_INC));
-        } else if (constInt1->getSExtValue() == -1) {
-          instr->setOperand(5, llvm::ConstantInt::get(instr->getOperand(5)->getType(), AtomicOp::EATOMIC_DEC));
-        }
-      }
-    }
-  }
-}
-
-// clang-format off
-// In AtomicRaw or AtomicRawA64, convert EATOMIC_IADD(0) to EATOMIC_INC(2) and EATOMIC_DEC(3) when value of 1 is used as increment or -1 as decrement
-// From:
-// %10 = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369v4f32(<4 x float> addrspace(2490369)* %u0, i32 %9, i32 1, i32 0)
-// %11 = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369v4f32(<4 x float> addrspace(2490369)* %u0, i32 %9, i32 -1, i32 0)
-// or
-// %13 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 1, i32 0)
-// %14 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 -1, i32 0)
-// To:
-// %10 = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369v4f32(<4 x float> addrspace(2490369)* %u0, i32 %9, i32 1, i32 2)
-// %11 = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369v4f32(<4 x float> addrspace(2490369)* %u0, i32 %9, i32 -1, i32 3)
-// or
-// %13 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 1, i32 2)
-// %14 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 -1, i32 3)
-// clang-format on
-void CustomSafeOptPass::visitIntAtomicRawOrRawA64(CallInst *I) {
-  GenIntrinsicInst *instr = dyn_cast<GenIntrinsicInst>(I);
-
-  // for immediate 1 or -1
-  if (auto *constInt1 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(2))) {
-    // for atomic_iadd
-    if (auto *constInt2 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(3))) {
-      if (AtomicOp::EATOMIC_IADD == constInt2->getZExtValue()) {
-        if (constInt1->getSExtValue() == 1) {
-          instr->setOperand(3, llvm::ConstantInt::get(instr->getOperand(3)->getType(), AtomicOp::EATOMIC_INC));
-        } else if (constInt1->getSExtValue() == -1) {
-          instr->setOperand(3, llvm::ConstantInt::get(instr->getOperand(3)->getType(), AtomicOp::EATOMIC_DEC));
-        }
-      }
-    }
-  }
-}
-
 //  Searches for following pattern:
 //    %mul = mul i64 %conv, %conv2
 //    %conv3 = and i64 %mul, 0xFFFFFFFF
@@ -895,17 +835,6 @@ void CustomSafeOptPass::visitCallInst(CallInst &C) {
 
     case GenISAIntrinsic::GenISA_LSC2DBlockPrefetch: {
       visitLSC2DBlockPrefetch(inst);
-      break;
-    }
-
-    case GenISAIntrinsic::GenISA_intatomictyped: {
-      visitIntAtomicTyped(inst);
-      break;
-    }
-
-    case GenISAIntrinsic::GenISA_intatomicraw:
-    case GenISAIntrinsic::GenISA_intatomicrawA64: {
-      visitIntAtomicRawOrRawA64(inst);
       break;
     }
 
