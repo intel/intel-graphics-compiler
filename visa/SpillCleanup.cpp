@@ -1070,7 +1070,8 @@ void CoalesceSpillFills::spills() {
           spillsToCoalesce.clear();
         }
 
-        if (isGRFAssigned(inst->asSpillIntrinsic()->getPayload())) {
+        if (isGRFAssigned(inst->asSpillIntrinsic()->getPayload()) ||
+            inst->asSpillIntrinsic()->getPayload()->getTopDcl()->isAddrSpillFill()) {
           if (spillsToCoalesce.size() == 0) {
             ++instIter;
             continue;
