@@ -219,7 +219,7 @@ void retypeOpenCLTargetExtTyArgs(Module *M) {
                    [&](Function *A, Function *B) { return idxOf(A) < idxOf(B); });
 
   for (Function *NewF : RetypedFuncs) {
-    StringRef OriginalName = NewF->getName().drop_back(TempSuffix.size());
+    std::string OriginalName = NewF->getName().drop_back(TempSuffix.size()).str();
     Function *OldF = M->getFunction(OriginalName);
 
     replaceFunctionAtCallsites(*OldF, *NewF);
