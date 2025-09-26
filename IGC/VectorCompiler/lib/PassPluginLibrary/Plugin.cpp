@@ -55,7 +55,7 @@ void registerPluginPasses(PassBuilder &PB) {
     MAM.registerPass([&] { return GenXBackendConfigPass(); });
   });
 
-  auto *BC = new GenXBackendConfig;
+  auto BC = std::make_shared<GenXBackendConfig>();
 
   const TargetOptions Options;
   auto TheTriple = Triple("genx64-unknown-unknown");
@@ -64,7 +64,7 @@ void registerPluginPasses(PassBuilder &PB) {
   std::string FeaturesStr = "";
 
   llvm::TargetMachine *TM =
-      GetTargetMachine(TheTriple, CPUStr, FeaturesStr, Options);
+      GetTargetMachine(std::move(TheTriple), CPUStr, FeaturesStr, Options);
 
   auto *GTM = static_cast<GenXTargetMachine *>(TM);
 
