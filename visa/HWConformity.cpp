@@ -5363,15 +5363,15 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
     return;
   }
 
+  unsigned grfSize = builder.getGRFSize();
   G4_Declare *dstDcl = dst->getTopDcl();
   if (dstDcl) {
     G4_DstRegRegion *dstRgn = dst;
     bool dstCrossGRF =
-        (dstRgn->getSubRegOff() * dstRgn->getTypeSize() +
-        (dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) + 1) >
-         kernel.numEltPerGRF<Type_UB>();
-    int dstFirstHalf =
-        dst->getLinearizedStart() / kernel.numEltPerGRF<Type_UB>();
+        ((dstRgn->getSubRegOff() * dstRgn->getTypeSize()) % grfSize +
+         (dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) + 1) >
+        grfSize;
+    int dstFirstHalf = dst->getLinearizedStart() / grfSize;
 
     bool srcOverlap = false;
     for (int i = 0, nSrcs = inst->getNumSrc(); i < nSrcs; i++) {
@@ -5387,9 +5387,9 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
         if (srcDcl == dstDcl && srcRgn->getRegAccess() == Direct &&
             srcRgn->getBase()->isRegVar()) {
           bool srcCrossGRF =
-              (srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
+              ((srcRgn->getSubRegOff() * srcRgn->getTypeSize()) % grfSize +
                (srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) +
-               1) > kernel.numEltPerGRF<Type_UB>();
+               1) > grfSize;
           // The half define in region rule "second half of a source operand
           // must not point to the same register as the first half of
           // destination operand in a compressed instruction" is exactly size
@@ -5404,7 +5404,7 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
                              ((srcRgn->getLinearizedEnd() -
                                srcRgn->getLinearizedStart() + 1) /
                               2)) /
-                            kernel.numEltPerGRF<Type_UB>();
+                            grfSize;
           } else { // For non-congtiguous region, there are holes in the region,
                    // the start of second half elements need be calcauted in
                    // stride and elemement sizes at same time.
@@ -5427,15 +5427,14 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
                      numElePerRow = rowSize / execTypeSize,
                      numExecEmePerRow =
                          regionDesc->horzStride == 0 ? 1 : regionDesc->width;
-            uint16_t totalNumEle =
-                (regionDesc->vertStride >= numElePerRow)
-                    ? (numRows * numExecEmePerRow)
-                    : (srcRgn->getRightBound() - srcRgn->getLeftBound() + 1) /
-                          execTypeSize;
+            uint16_t totalNumEle = (regionDesc->vertStride >= numElePerRow)
+                                       ? (numRows * numExecEmePerRow)
+                                       : (srcRgn->getLinearizedEnd() -
+                                          srcRgn->getLinearizedStart() + 1) /
+                                             execTypeSize;
             srcSecondHalf =
-                (srcRgn->getLeftBound() % builder.numEltPerGRF<Type_UB>() +
-                 (totalNumEle / 2) * vertSize) /
-                            builder.numEltPerGRF<Type_UB>();
+                (srcRgn->getLinearizedStart() + (totalNumEle / 2) * vertSize) /
+                grfSize;
           }
 
           if (dstCrossGRF || srcCrossGRF) {
