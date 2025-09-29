@@ -698,28 +698,31 @@ void CompileUnit::extractSubRegValue(IGC::DIEBlock *Block, unsigned char Sz) {
   addUInt(Block, dwarf::DW_FORM_data1, Sz);
 }
 
-// addBindlessOrStatelessLocation - add a sequence of attributes to calculate
-// stateless or bindless location of variable. baseAddr is one of the following
-// base addreses:
+// addBindlessOrStatelessLocation - add a sequence of attributes to calculate stateless or
+// bindless location of variable. baseAddr is one of the following base addresses:
 // - General State Base Address when variable located in stateless surface
-// - Bindless Surface State Base Address when variable located in bindless
-// surface
-// - Bindless Sampler State Base Addres when variable located in bindless
-// sampler Note: Scratch space location is not handled here.
+// - Bindless Surface State Base Address when variable located in bindless surface
+// - Bindless Sampler State Base Address when variable located in bindless sampler
+// Note: Scratch space location is not handled here.
 void CompileUnit::addBindlessOrStatelessLocation(IGC::DIEBlock *Block, const VISAVariableLocation &Loc,
                                                  uint32_t baseAddrEncoded) {
   IGC_ASSERT_MESSAGE(Loc.IsInGlobalAddrSpace(), "Neither bindless nor stateless");
   if (Loc.IsRegister()) {
-    // Stateless surface or bindless surface or bindless sampler with offset not
-    // available as literal. For example, if offset were available in register
-    // r0 and we assume the DWARF number of r0 to be 16, the following
-    // expression can be generated for stateless surface: 1 DW_OP_breg7 0 ,
-    // breg7 stands for General State Base Address 2 DW_OP_breg16 0 3 DW_OP_plus
+    // Stateless surface or bindless surface or bindless sampler with offset not available as literal.
+    // For example, if offset were available in register r0 and we assume the
+    // DWARF number of r0 to be 16, the following expression can be generated
+    // for stateless surface:
+    // 1 DW_OP_breg7 0            , breg7 stands for General State Base Address
+    // 2 DW_OP_breg16 0
+    // 3 DW_OP_plus
     // or for bindless surface:
-    // 1 DW_OP_breg9 0            , breg9 stands for Bindless Surface State Base
-    // Address 2 DW_OP_breg16 0 3 DW_OP_plus or for bindless sampler: 1
-    // DW_OP_breg10 0           , breg10 stands for Bindless Sampler State Base
-    // Address 2 DW_OP_breg16 0 3 DW_OP_plus
+    // 1 DW_OP_breg9 0            , breg9 stands for Bindless Surface State Base Address
+    // 2 DW_OP_breg16 0
+    // 3 DW_OP_plus
+    // or for bindless sampler:
+    // 1 DW_OP_breg10 0           , breg10 stands for Bindless Sampler State Base Address
+    // 2 DW_OP_breg16 0
+    // 3 DW_OP_plus
     uint32_t regNum = Loc.GetRegister();
     const auto *VISAMod = Loc.GetVISAModule();
 
@@ -749,13 +752,14 @@ void CompileUnit::addBindlessOrStatelessLocation(IGC::DIEBlock *Block, const VIS
   }
   if (Loc.HasLocation()) // Is offset available as literal?
   {
-    // Stateless (BTI 255 or 253) addressing using surface offset available as
-    // literal 1 DW_OP_breg7 <offset>    , breg7 stands for General State Base
-    // Address or Bindless Surface addressing using surface offset available as
-    // literal 1 DW_OP_breg9 <offset>   , breg9 stands for Bindless Surface
-    // State Base Address or Bindless Sampler addressing using surface offset
-    // available as literal 1 DW_OP_breg10 <offset>   , breg10 stands for
-    // Bindless Sampler State Base Address
+    // Stateless (BTI 255 or 253) addressing using surface offset available as literal
+    // 1 DW_OP_breg7 <offset>    , breg7 stands for General State Base Address
+    // or
+    // Bindless Surface addressing using surface offset available as literal
+    // 1 DW_OP_breg9 <offset>   , breg9 stands for Bindless Surface State Base Address
+    // or
+    // Bindless Sampler addressing using surface offset available as literal
+    // 1 DW_OP_breg10 <offset>   , breg10 stands for Bindless Sampler State Base Address
     uint32_t offset = Loc.GetOffset();
 
     addUInt(Block, dwarf::DW_FORM_data1,
@@ -785,13 +789,21 @@ void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock *Block, const VISAVar
 
   IGC_ASSERT_MESSAGE(Loc.HasSurface(), "Missing surface for variable location");
 
-  // Bindless Surface addressing using bindless offset stored in a register (for
-  // example) r0, while offset is literal: 1 DW_OP_reg16 2 DW_OP_const1u
-  // <bit-offset to reg0> 3 DW_OP_const1u 32 4 DW_OP_push_bit_piece_stack 5
-  // DW_OP_breg9 32 6 DW_OP_plus 7 DW_OP_deref 8 DW_OP_plus_uconst <offset> or
-  // Bindless Surface addressing using bindless offset and surface offset both
-  // stored in a register (for example) r0 contains bindless offset while r1
-  // contains surface offset. 1 DW_OP_reg16 2 DW_OP_const1u <bit-offset to reg0>
+  // Bindless Surface addressing using bindless offset stored in a register (for example) r0,
+  // while offset is literal:
+  // 1 DW_OP_reg16
+  // 2 DW_OP_const1u <bit-offset to reg0>
+  // 3 DW_OP_const1u 32
+  // 4 DW_OP_push_bit_piece_stack
+  // 5 DW_OP_breg9 32
+  // 6 DW_OP_plus
+  // 7 DW_OP_deref
+  // 8 DW_OP_plus_uconst <offset>
+  // or
+  // Bindless Surface addressing using bindless offset and surface offset both stored in a register
+  // (for example) r0 contains bindless offset while r1 contains surface offset.
+  // 1 DW_OP_reg16
+  // 2 DW_OP_const1u <bit-offset to reg0>
   // 3 DW_OP_const1u 32
   // 4 DW_OP_push_bit_piece_stack
   // 5 DW_OP_breg9 32
@@ -860,8 +872,8 @@ void CompileUnit::addBindlessScratchSpaceLocation(IGC::DIEBlock *Block, const VI
 
   IGC_ASSERT_MESSAGE(Loc.HasSurface(), "Missing surface for variable location");
 
-  // Note: Bindless scratch space offset aka Scratch Space Pointer is located in
-  // preserved r0 GRF register, on bits 31:10 of r0.5 subregister.
+  // Note: Bindless scratch space offset aka Scratch Space Pointer is located in preserved r0 GRF register,
+  // on bits 31:10 of r0.5 subregister.
   //
   // Bindless Surface addressing using bindless offset stored in a register r0,
   // while surface offset is literal:
@@ -871,17 +883,26 @@ void CompileUnit::addBindlessScratchSpaceLocation(IGC::DIEBlock *Block, const VI
   // 4 DW_OP_const4u 0xffffffc0    , which is 1K-byte aligned
   // 5 DW_OP_and
   // 6 DW_OP_push_bit_piece_stack
-  // 7 DW_OP_breg8 32              , we add the surface state base address plus
-  // the field offset 8 DW_OP_plus                  , to fetch the surface base
-  // address inside the RENDER_SURFACE_STATE object 9 DW_OP_deref 10
-  // DW_OP_plus_uconst <offset> or Bindless Surface addressing using bindless
-  // offset (r0.5 [31:10]) and surface offset both stored in a register while r1
-  // (for example) contains surface offset. 1 DW_OP_reg16 2 DW_OP_const1u 5*32
-  // , Offset in bits to r0.5 3 DW_OP_const1u 32            , 32-bit long
-  // bindless offset 4 DW_OP_const4u 0xffffffc0    , which is 1K-byte aligned 5
-  // DW_OP_and 6 DW_OP_push_bit_piece_stack 7 DW_OP_breg8 32 8 DW_OP_plus 9
-  // DW_OP_deref 10 DW_OP_reg17 11 DW_OP_const1u <bit-offset to reg1> 12
-  // DW_OP_const1u 32 13 DW_OP_push_bit_piece_stack
+  // 7 DW_OP_breg8 32              , we add the surface state base address plus the field offset
+  // 8 DW_OP_plus                  , to fetch the surface base address inside the RENDER_SURFACE_STATE object
+  // 9 DW_OP_deref
+  // 10 DW_OP_plus_uconst <offset>
+  // or
+  // Bindless Surface addressing using bindless offset (r0.5 [31:10]) and surface offset both stored in a register
+  // while r1 (for example) contains surface offset.
+  // 1 DW_OP_reg16
+  // 2 DW_OP_const1u 5*32          , Offset in bits to r0.5
+  // 3 DW_OP_const1u 32            , 32-bit long bindless offset
+  // 4 DW_OP_const4u 0xffffffc0    , which is 1K-byte aligned
+  // 5 DW_OP_and
+  // 6 DW_OP_push_bit_piece_stack
+  // 7 DW_OP_breg8 32
+  // 8 DW_OP_plus
+  // 9 DW_OP_deref
+  // 10 DW_OP_reg17
+  // 11 DW_OP_const1u <bit-offset to reg1>
+  // 12 DW_OP_const1u 32
+  // 13 DW_OP_push_bit_piece_stack
 
   uint16_t regNumWithBindlessOffset = 0; // TBD Bindless offset in GRF
 
@@ -990,16 +1011,19 @@ void CompileUnit::addScratchLocation(IGC::DIEBlock *Block, uint32_t memoryOffset
   addSInt(Block, dwarf::DW_FORM_sdata, offset); // Offset to base address
 }
 
-// addSimdLane - add a sequence of attributes to calculate location of
-// vectorized variable among SIMD lanes, e.g. a GRF subregister.
+// addSimdLane - add a sequence of attributes to calculate location of vectorized variable
+// among SIMD lanes, e.g. a GRF subregister.
 //
-// CASE 1: Example of expression generated for 64-bit (or 32-bit) pointer to a
-// variable, which is located in scratch: (note: DW_OP_const8u address is
-// generated earlier) DW_OP_INTEL_push_simd_lane DW_OP_lit3 (or lit2 for 32-bit
-// ptr) DW_OP_shl DW_OP_plus DW_OP_deref
+// CASE 1: Example of expression generated for 64-bit (or 32-bit) pointer to a variable,
+// which is located in scratch: (note: DW_OP_const8u address is generated earlier)
+// DW_OP_INTEL_push_simd_lane
+// DW_OP_lit3 (or lit2 for 32-bit ptr)
+// DW_OP_shl
+// DW_OP_plus
+// DW_OP_deref
 //
-// CASE 2: Example of expressions generated for 64-bit ptr addresses in SIMD8 or
-// SIMD16: 1 DW_OP_INTEL_push_simd_lane
+// CASE 2: Example of expressions generated for 64-bit ptr addresses in SIMD8 or SIMD16:
+// 1 DW_OP_INTEL_push_simd_lane
 //   DW_OP_lit16 <--
 //   DW_OP_minus <-- Emitted only for second half of SIMD32 kernels
 // 2 DW_OP_lit2
@@ -1040,9 +1064,12 @@ void CompileUnit::addScratchLocation(IGC::DIEBlock *Block, uint32_t memoryOffset
 // 4 DW_OP_plus_uconst(<n> +16)
 // 5 DW_OP_INTEL_regs
 // 6 DW_OP_INTEL_push_simd_lane
-// 7 DW_OP_lit3 or lit7 or lit15 or lit31 respectively for 64/32/16/8 bit
-// variable 8 DW_OP_and 9 DW_OP_const1u 64 or 32 or 16 or 8 10 DW_OP_mul 11
-// DW_OP_const1u 64 or 32 or 16 or 8 12 DW_OP_INTEL_bit_piece_stack
+// 7 DW_OP_lit3 or lit7 or lit15 or lit31 respectively for 64/32/16/8 bit variable
+// 8 DW_OP_and
+// 9 DW_OP_const1u 64 or 32 or 16 or 8
+// 10 DW_OP_mul
+// 11 DW_OP_const1u 64 or 32 or 16 or 8
+// 12 DW_OP_INTEL_bit_piece_stack
 //
 // CASE 5: Example of expression generated for 16-bit or 8-bit variable unpacked
 // in SIMD8 or SIMD16:
@@ -1085,10 +1112,14 @@ void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV, const
   IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Variable's size not aligned to byte");
 
   if (lr->isSpill()) {
-    // CASE 1: Example of expression generated for 64-bit or 32-bit ptr to a
-    // variable, which is located in scratch: (note: DW_OP_const8u address is
-    // generated earlier) DW_OP_INTEL_push_simd_lane DW_OP_lit3 (or DW_OP_lit2
-    // for 32-bit ptr) DW_OP_shl DW_OP_plus DW_OP_deref
+    // CASE 1: Example of expression generated for 64-bit or 32-bit ptr to a variable,
+    // which is located in scratch:
+    // (note: DW_OP_const8u address is generated earlier)
+    // DW_OP_INTEL_push_simd_lane
+    // DW_OP_lit3 (or DW_OP_lit2 for 32-bit ptr)
+    // DW_OP_shl
+    // DW_OP_plus
+    // DW_OP_deref
 
     EmitPushSimdLane(Block, isSecondHalf);
     // *8 if 64-bit ptr or *4 if 32-bit ptr.
@@ -1112,8 +1143,8 @@ void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV, const
     // This case handles the case where a source variable is held in
     // GRF or a ptr to it is held in GRF.
 
-    // CASE 2 and CASE 3: Expressions generated for 64-bit (or 32-bit) bit ptr
-    // addresses in SIMD8 or SIMD16: 1 DW_OP_INTEL_push_simd_lane
+    // CASE 2 and CASE 3: Expressions generated for 64-bit (or 32-bit) bit ptr addresses in SIMD8 or SIMD16:
+    // 1 DW_OP_INTEL_push_simd_lane
     //   DW_OP_lit16 <--
     //   DW_OP_minus <-- Emitted only for second half of SIMD32 kernels
     // 2 DW_OP_lit2 (CASE 3: lit3)
@@ -1133,15 +1164,21 @@ void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV, const
     // 1 DW_OP_INTEL_push_simd_lane
     //   DW_OP_lit16 <--
     //   DW_OP_minus <-- Emitted only for second half of SIMD32 kernels
-    // 2 DW_OP_lit2 or lit3 or lit4 or lit5 respectively for 64/32/16/8 bit
-    // variable 3 DW_OP_shr 4 DW_OP_plus_uconst(<n> +16) 5 DW_OP_INTEL_regs 6
-    // DW_OP_INTEL_push_simd_lane 7 DW_OP_lit3 or lit7 or lit15 or lit31
-    // respectively for 64/32/16/8 bit variable 8 DW_OP_and 9 DW_OP_const1u 64
-    // or 32 or 16 or 8 10 DW_OP_mul 11 DW_OP_const1u 64 or 32 or 16 or 8 12
-    // DW_OP_INTEL_bit_piece_stack
+    // 2 DW_OP_lit2 or lit3 or lit4 or lit5 respectively for 64/32/16/8 bit variable
+    // 3 DW_OP_shr
+    // 4 DW_OP_plus_uconst(<n> +16)
+    // 5 DW_OP_INTEL_regs
+    // 6 DW_OP_INTEL_push_simd_lane
+    // 7 DW_OP_lit3 or lit7 or lit15 or lit31 respectively for 64/32/16/8 bit variable
+    // 8 DW_OP_and
+    // 9 DW_OP_const1u 64 or 32 or 16 or 8
+    // 10 DW_OP_mul
+    // 11 DW_OP_const1u 64 or 32 or 16 or 8
+    // 12 DW_OP_INTEL_bit_piece_stack
     //
-    // CASE 5: Example of expression generated for 16-bit or 8-bit variable
-    // unpacked in SIMD8 or SIMD16: 1 DW_OP_INTEL_push_simd_lane
+    // CASE 5: Example of expression generated for 16-bit or 8-bit variable unpacked
+    // in SIMD8 or SIMD16:
+    // 1 DW_OP_INTEL_push_simd_lane
     //   DW_OP_lit16 <--
     //   DW_OP_minus <-- Emitted only for second half of SIMD32 kernels
     // 2 DW_OP_lit3
@@ -1156,8 +1193,7 @@ void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV, const
     // 11 DW_OP_const1u 16 or 8
     // 12 DW_OP_INTEL_piece_stack
 
-    // If unpacked then small variable takes up 32 bits else when packed fits
-    // its exact size
+    // If unpacked then small variable takes up 32 bits else when packed fits its exact size
     uint32_t bitsUsedByVar = (isPacked || varSizeInBits > 32) ? (uint32_t)varSizeInBits : 32;
     uint32_t variablesInSingleGRF = (VISAMod->getGRFSizeInBits()) / bitsUsedByVar;
     uint32_t valForSubRegLit = variablesInSingleGRF > 0 ? (uint32_t)std::log2(variablesInSingleGRF) : 0;
@@ -2184,17 +2220,22 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var, IGC::DIEBlock
   // %Y = privateBase (%X)
   //                + (%perThreadOffset + (simdSize * <variable offset>)
   //                + (simdLaneId * <variable size>))
-  // CASE with Private Base and Per Thread Offset in GRF registers (both not
-  // spilled) 1 DW_OP_regx <Private Base reg encoded> 2 DW_OP_const1u/2u
-  // <bit-offset to Private Base reg> 3 DW_OP_const1u 64  , i.e. size on bits 4
-  // DW_OP_INTEL_push_bit_piece_stack 5 DW_OP_constu <Per Thread reg encoded> 6
-  // DW_OP_INTEL_regs     , i.e. Per Thread Offset 7 DW_OP_const1u <bit-offset
-  // to Per Thread Offset> 8 DW_OP_const1u 32  , i.e. size in bits 9
-  // DW_OP_INTEL_push_bit_piece_stack 10 DW_OP_plus , i.e. add Private Base to
-  // Per Thread Offset 11 DW_OP_plus_uconst offset , i.e. simdSize * <variable
-  // offset> 12 DW_OP_INTEL_push_simd_lane 13 DW_OP_const1u/2u/4u/8u
-  // <variableSize>  , i.e. size in bytes 14 DW_OP_mul 15 DW_OP_plus
-  // 16 remaining opcodes from DIExpression
+  // CASE with Private Base and Per Thread Offset in GRF registers (both not spilled)
+  // 1 DW_OP_regx <Private Base reg encoded>
+  // 2 DW_OP_const1u/2u <bit-offset to Private Base reg>
+  // 3 DW_OP_const1u 64  , i.e. size on bits
+  // 4 DW_OP_INTEL_push_bit_piece_stack
+  // 5 DW_OP_constu <Per Thread reg encoded>
+  // 6 DW_OP_INTEL_regs     , i.e. Per Thread Offset
+  // 7 DW_OP_const1u <bit-offset to Per Thread Offset>
+  // 8 DW_OP_const1u 32  , i.e. size in bits
+  // 9 DW_OP_INTEL_push_bit_piece_stack
+  // 10 DW_OP_plus , i.e. add Private Base to Per Thread Offset
+  // 11 DW_OP_plus_uconst offset , i.e. simdSize * <variable offset>
+  // 12 DW_OP_INTEL_push_simd_lane
+  // 13 DW_OP_const1u/2u/4u/8u <variableSize>  , i.e. size in bytes
+  // 14 DW_OP_mul
+  // 15 DW_OP_plus
   auto simdSize = VISAMod->GetSIMDSize();
 
   // Rely on getVarInfo result here.
@@ -2321,12 +2362,14 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block, 
   // 2 DW_OP_const1u <bit-offset to Frame Pointer reg>
   // 3 DW_OP_const1u 64  , i.e. size in bits
   // 4 DW_OP_INTEL_push_bit_piece_stack
-  // 5 DW_OP_plus_uconst  SIZE_OWORD         // i.e. 0x10 taken from
-  // getFPOffset(); same as emitted in EmitPass::emitStackAlloca() 6
-  // DW_OP_push_simd_lane 7 DW_OP_const1u/2u/4u/8u  storageSize   // MD:
-  // StorageSize; the size of the variable 8 DW_OP_mul 9 DW_OP_plus 10
-  // DW_OP_plus_uconst storageOffset      // MD: StorageOffset; the offset where
-  // each variable is stored in the current stack frame
+  // 5 DW_OP_plus_uconst  SIZE_OWORD         -- i.e. 0x10 taken from getFPOffset();
+  //                                            same as emitted in EmitPass::emitStackAlloca()
+  // 6 DW_OP_push_simd_lane
+  // 7 DW_OP_const1u/2u/4u/8u  storageSize   -- MD: StorageSize; the size of the variable
+  // 8 DW_OP_mul
+  // 9 DW_OP_plus
+  // 10 DW_OP_plus_uconst storageOffset      -- MD: StorageOffset; the offset where each
+  //                                            variable is stored in the current stack frame
 
   auto regNumFP = VISAMod->getFPReg();
 
