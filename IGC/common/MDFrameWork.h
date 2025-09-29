@@ -324,10 +324,6 @@ enum class ShaderTypeMD
 
         // for continuations used in ReorderThread, this field indicates the maximum value of the coherence hint
         uint32_t NumCoherenceHintBits = 0;
-
-        // if the function was created by cloning another function
-        // this will contain the name of the original shader
-        std::string OriginatingShaderName;
     };
 
     struct ConstantAddress

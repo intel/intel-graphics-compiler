@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include "common/EmUtils.h"
 
 #include "ADT/Array.h"
-#include "ADT/UnorderedMap.h"
 #include "ADT/Optional.h"
 
 #include "BVHInfo.h"
