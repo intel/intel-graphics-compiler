@@ -29,7 +29,7 @@ entry:
   %dst = alloca [64 x i32], align 4
   br label %for.body
 
-for.body:                                        ; preds = %entry, %for.body
+for.body:
   %idx = phi i64 [ 0, %entry ], [ %idx.next, %for.body ]
   %src.gep = getelementptr i8, ptr %src, i64 %idx
   %dst.gep = getelementptr i8, ptr %dst, i64 %idx

@@ -762,7 +762,15 @@ public:
   AllocaInst *pVecAlloca;
   // location of lifetime starts
   llvm::SmallPtrSet<Instruction *, 4> pStartPoints;
-  TransposeHelperPromote(AllocaInst *pAI, const DataLayout &DL) : TransposeHelper(DL, false) { pVecAlloca = pAI; }
+  TransposeHelperPromote(AllocaInst *pAI, const DataLayout &DL) : TransposeHelper(DL, false) {
+    pVecAlloca = pAI;
+    // Determine promoted lane scalar type and record its size in bytes so that
+    // GEP indexing through reinterpreted vectors can advance the scalarized
+    // index in units of promoted lanes rather than the smaller vector elements.
+    llvm::Type *AllocTy = pAI->getAllocatedType();
+    llvm::Type *LaneTy = AllocTy->isVectorTy() ? cast<IGCLLVM::FixedVectorType>(AllocTy)->getElementType() : AllocTy;
+    m_promotedLaneBytes = (uint32_t)DL.getTypeAllocSize(LaneTy);
+  }
 };
 
 void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst *pAlloca) {
@@ -821,7 +829,15 @@ std::pair<unsigned int, Type *> TransposeHelper::getArrSizeAndEltType(Type *T) {
       auto *vTy = cast<IGCLLVM::FixedVectorType>(T);
       unsigned int vector_size_in_bytes = int_cast<unsigned int>(m_DL.getTypeAllocSize(T));
       unsigned int elt_size_in_bytes = int_cast<unsigned int>(m_DL.getTypeAllocSize(vTy->getElementType()));
-      arr_sz = vector_size_in_bytes / elt_size_in_bytes;
+      // If the vector is a reinterpret of the promoted storage (its element size
+      // differs from the promoted lane size), advance the scalarized index in
+      // units of promoted lanes, not in units of the smaller vector elements.
+      if (m_promotedLaneBytes != 0 && m_promotedLaneBytes != elt_size_in_bytes &&
+          (vector_size_in_bytes % m_promotedLaneBytes) == 0) {
+        arr_sz = vector_size_in_bytes / m_promotedLaneBytes;
+      } else {
+        arr_sz = vector_size_in_bytes / elt_size_in_bytes;
+      }
     }
     retTy = cast<VectorType>(T)->getElementType();
   } else {
