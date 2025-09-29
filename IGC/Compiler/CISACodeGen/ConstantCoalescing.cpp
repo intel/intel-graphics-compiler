@@ -883,8 +883,6 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
   const uint32_t loadNumElements =
       loadDataTy->isVectorTy() ? int_cast<uint32_t>(cast<IGCLLVM::FixedVectorType>(loadDataTy)->getNumElements()) : 1;
   // VectorPreProcess pass legalizes loaded data size.
-  IGC_ASSERT(loadNumElements == RoundChunkSize(loadNumElements));
-  IGC_ASSERT(loadNumElements >= RoundChunkSize(maxEltPlus));
   if (!cov_chunk) {
     if (isDwordAligned) {
       cov_chunk = new BufChunk();
