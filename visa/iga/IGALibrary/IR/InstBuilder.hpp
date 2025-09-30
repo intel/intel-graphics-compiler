@@ -411,7 +411,7 @@ public:
           inst->setLabelSource(opIx, 0, src.type);
           UnresolvedLabel u{src.loc, src.immLabel, inst->getSource(opIx),
                             *inst};
-          m_unresolvedLabels.push_back(u);
+          m_unresolvedLabels.push_back(std::move(u));
         }
       } else if (src.kind == Operand::Kind::IMMEDIATE) {
         inst->setImmediateSource(opIx, src.immValue, src.type);

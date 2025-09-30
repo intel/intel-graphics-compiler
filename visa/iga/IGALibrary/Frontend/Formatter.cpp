@@ -1383,7 +1383,7 @@ bool Formatter::formatLoadStoreSyntax(const Instruction &i) {
 
   formatMaskAndPredication(i);
 
-  const auto syntax = di.syntax;
+  const auto &syntax = di.syntax;
   startColumn(cols.opCodeExecInfo + 12);
   emit(' ');
   emit(ANSI_MNEMONIC);

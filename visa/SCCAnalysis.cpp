@@ -93,7 +93,7 @@ void SCCAnalysis::findSCC(SCCNode *node) {
       bodyNode->isOnStack = false;
       newSCC.addBB(bodyNode->bb);
     } while (bodyNode != node);
-    SCCs.push_back(newSCC);
+    SCCs.push_back(std::move(newSCC));
   }
 } // findSCC
 

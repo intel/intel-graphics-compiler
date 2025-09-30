@@ -2044,8 +2044,7 @@ INST_LIST KernelDebugInfo::getDeltaInstructions(G4_BB *bb) {
 
 void SaveRestoreManager::addInst(G4_INST *inst) {
   const IR_Builder &builder = inst->getBuilder();
-  SaveRestoreInfo newSVInfo = {};
-  srInfo.push_back(newSVInfo);
+  srInfo.emplace_back();
   if (srInfo.size() > 1) {
     // Copy over from previous
     // so emitted data is
