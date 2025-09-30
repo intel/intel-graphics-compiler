@@ -33,7 +33,7 @@ message(STATUS "Using precompiled headers")
 
   #setting reuse indexs
   set(index 0)
-  set(reuse_ind 1 2 3 4 5 6 7 8 9 13 15)
+  set(reuse_ind 1 2 3 4 5 6 7 8 12 14)
   #collecting options and definitions pools
   set(opt_list  "")
   set(def_list  "")
