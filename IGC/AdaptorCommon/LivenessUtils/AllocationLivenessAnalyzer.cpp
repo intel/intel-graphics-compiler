@@ -33,7 +33,7 @@ using namespace llvm;
 using namespace IGC;
 
 AllocationLivenessAnalyzer::LivenessData
-AllocationLivenessAnalyzer::ProcessInstruction(Instruction *I, DominatorTree &DT, LoopInfo &LI, bool includeOrigin) {
+AllocationLivenessAnalyzer::ProcessInstruction(Instruction *I, DominatorTree &DT, LoopInfo &LI) {
   // static allocas are usually going to be in the entry block
   // that's a practice, but we only care about the last block that dominates all uses
   BasicBlock *commonDominator = nullptr;
@@ -93,9 +93,14 @@ AllocationLivenessAnalyzer::ProcessInstruction(Instruction *I, DominatorTree &DT
         }
       }
     } break;
-    case Instruction::Call:
-      implementCallSpecificBehavior(cast<CallInst>(II), use, worklist, allUsers, lifetimeLeakingUsers);
-      break;
+    case Instruction::Call: {
+      auto *callI = cast<CallInst>(II);
+      if (!callI->doesNotCapture(use->getOperandNo()))
+        lifetimeLeakingUsers.insert(II);
+
+      if (II->getType()->isPointerTy())
+        addUsesFn(II->uses());
+    } break;
     case Instruction::Load:
       if (II->getType()->isPointerTy())
         addUsesFn(II->uses());
@@ -106,9 +111,6 @@ AllocationLivenessAnalyzer::ProcessInstruction(Instruction *I, DominatorTree &DT
     }
   }
 
-  if (includeOrigin)
-    allUsers.insert(I);
-
   return LivenessData(I, std::move(allUsers), LI, DT, commonDominator, std::move(lifetimeLeakingUsers));
 }
 
@@ -116,20 +118,6 @@ void AllocationLivenessAnalyzer::getAnalysisUsage(llvm::AnalysisUsage &AU) const
   AU.addRequired<DominatorTreeWrapperPass>();
   AU.addRequired<LoopInfoWrapperPass>();
   getAdditionalAnalysisUsage(AU);
-}
-
-void AllocationLivenessAnalyzer::implementCallSpecificBehavior(CallInst *callI, Use* use, SmallVector<Use *> &worklist,
-                                                               SetVector<Instruction *> &allUsers,
-                                                               SetVector<Instruction *> &lifetimeLeakingUsers) {
-
-  if (!callI->doesNotCapture(use->getOperandNo()))
-    lifetimeLeakingUsers.insert(callI);
-
-  if (callI->getType()->isPointerTy()) {
-
-    for (auto &use : callI->uses())
-      worklist.push_back(&use);
-  }
 }
 
 template <typename range>
