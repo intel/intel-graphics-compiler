@@ -558,9 +558,6 @@ bool SOALayoutChecker::visitIntrinsicInst(IntrinsicInst &II) {
 // Return true to disable SOA promotion.
 bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
 
-  if (!isa<LoadInst>(I) && !isa<StoreInst>(I))
-    return false;
-
   // Skip when we see an i8-based GEP with a non-constant (dynamic) byte offset. The legacy (old) algorithm assumes byte
   // offsets map exactly to whole promoted elements (e.g. multiples of the lane size) and cannot safely reconstruct
   // sub‑element (inter-lane or unaligned) accesses. Using it would risk incorrect indexing. The new byte-precise
@@ -576,44 +573,28 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
     }
   }
 
-  // Apply the following mismatch checks only with opaque pointers.
-  if (!IGC::AreOpaquePointersEnabled())
-    return false;
-
-  if (!pInfo->baseType)
-    return false;
-
   Type *allocaTy = allocaRef.getAllocatedType();
   bool allocaIsVecOrArr = allocaTy->isVectorTy() || allocaTy->isArrayTy();
-
   if (!allocaIsVecOrArr)
     return false;
 
-  auto DL = I.getParent()->getParent()->getParent()->getDataLayout();
+  if (auto *pgep = dyn_cast<GetElementPtrInst>(parentLevelInst))
+    allocaTy = pgep->getResultElementType();
+  if (auto *arrTy = dyn_cast<ArrayType>(allocaTy))
+    allocaTy = arrTy->getElementType();
+  if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(allocaTy))
+    allocaTy = vec->getElementType();
 
-  Type *pUserTy = I.getType();
-
+  Type *pUserTy = nullptr;
   if (auto *storeInst = dyn_cast<StoreInst>(&I))
     pUserTy = storeInst->getValueOperand()->getType();
+  else if (auto *loadInst = dyn_cast<LoadInst>(&I))
+    pUserTy = loadInst->getType();
+  else
+    return false;
 
-  if (auto *pgep = dyn_cast<GetElementPtrInst>(parentLevelInst)) {
-    allocaTy = pgep->getResultElementType();
-  } else {
-    if (auto *arrTy = dyn_cast<ArrayType>(allocaTy)) {
-      allocaTy = arrTy->getElementType();
-    } else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(allocaTy)) {
-      allocaTy = vec->getElementType();
-    }
-
-    if (auto *arrTy = dyn_cast<ArrayType>(pUserTy)) {
-      pUserTy = arrTy->getElementType();
-    } else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(pUserTy)) {
-      pUserTy = vec->getElementType();
-    }
-  }
-
-  auto allocaSize = DL.getTypeAllocSize(allocaTy);
-  auto vecTySize = DL.getTypeAllocSize(pUserTy);
+  auto allocaSize = allocaTy->getScalarSizeInBits();
+  auto vecTySize = pUserTy->getScalarSizeInBits();
 
   if (vecTySize != allocaSize) {
     pInfo->canUseSOALayout = false;

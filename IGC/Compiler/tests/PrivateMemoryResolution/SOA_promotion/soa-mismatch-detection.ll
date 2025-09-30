@@ -45,6 +45,12 @@ exit:
   %arr3 = alloca [512 x i32]
   %load2 = load i8, ptr %arr3
 
+; This case tests whether load the size of allocas scalar type isn't marked as possible SOA layout
+; CHECK:    [[LOAD:%.*]] = load <2 x i32>, ptr {{.*}}, align 4
+  %arr4 = alloca [2 x double], align 8
+  %gep4 = getelementptr inbounds [2 x double], ptr %arr4, i64 0, i64 0
+  %load3 = load <2 x i32>, ptr %gep4, align 4
+
 ; Case Alloca->Store->Gep->Store: This case is not valid due to different sizes
 
 ; CHECK:    store <4 x i32> zeroinitializer, ptr {{.*}}
