@@ -193,8 +193,9 @@ void PrivateMemoryResolution::expandPrivateMemoryForVla(uint32_t &maxPrivateMem)
       "You can change this size by setting environmental variable IGC_ForcePerThreadPrivateMemorySize to a value in "
       "range [1024:20480]. "
       "Greater values can affect performance, and lower ones may lead to incorrect results of your program.\n"
-      "To make sure your program runs correctly you can use IGC_StackOverflowDetection feature. See documentation:\n"
-      "https://github.com/intel/intel-graphics-compiler/tree/master/documentation/igc/StackOverflowDetection/StackOverflowDetection.md";
+      "To make sure your program runs correctly you can set environmental variable IGC_StackOverflowDetection=1. "
+      "This flag will print \"Stack overflow detected!\" if insufficient memory value has led to stack overflow. "
+      "It should be used for debugging only as it affects performance.";
 
   getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(fullWarningMessage.c_str());
 }
@@ -368,17 +369,6 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
       if (FG->hasStackCall()) {
         // Analyze call depth for stack memory required
         maxPrivateMem = AnalyzeCGPrivateMemUsage(pKernel);
-        std::string maxPrivateMemValue = std::to_string(maxPrivateMem);
-        std::string fullWarningMessage =
-          "Stack call has been detected, the private memory size is set to " + maxPrivateMemValue +
-          "B. "
-          "You can change this size by setting environmental variable IGC_ForcePerThreadPrivateMemorySize to a value in "
-          "range [1024:20480]. "
-          "Greater values can affect performance, and lower ones may lead to incorrect results of your program.\n"
-          "To make sure your program runs correctly you can use StackOverflowDetection feature. See documentation:\n"
-          "https://github.com/intel/intel-graphics-compiler/tree/master/documentation/igc/StackOverflowDetection/StackOverflowDetection.md";
-
-        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(fullWarningMessage.c_str());
       }
       if (((FG->hasIndirectCall() && FG->hasPartialCallGraph()) || FG->hasRecursion()) &&
           Ctx.type != ShaderType::RAYTRACING_SHADER) {
