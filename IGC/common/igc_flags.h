@@ -449,7 +449,7 @@ DECLARE_IGC_REGKEY(DWORD, SetLoopUnrollMaxPercentThresholdBoostForHighRegPressur
                    "The LLVM internal value is 400.",
                    false)
 DECLARE_IGC_REGKEY(
-    bool, EnablePromoteLoopUnrollwithAlloca, true,
+    bool, EnablePromoteLoopUnrollwithAlloca, false,
     "Loop cost estimation assumes Load/Store who accesses Alloca with index deductible to loop count having 0 cost. "
     "Disable this flag makes them always cost something as well as disables dynamic threshold increase based on the "
     "size of alloca and number of GEP to the alloca in the loop, leading to the loop less likely to be unrolled.",
