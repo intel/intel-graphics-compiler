@@ -1165,6 +1165,7 @@ class GraphColor {
                          unsigned execSize);
 
   void gatherScatterForbiddenWA();
+  void preAssignSpillHeader();
 
 public:
   void getExtraInterferenceInfo();

@@ -6763,7 +6763,7 @@ void GraphColor::removeConstrained() {
 void GraphColor::determineColorOrdering() {
   numColor = 0;
   if (liveAnalysis.livenessClass(G4_GRF))
-    numColor = totalGRFRegCount - reserveSpillGRFCount;
+    numColor = totalGRFRegCount;
   else if (liveAnalysis.livenessClass(G4_ADDRESS))
     numColor = builder.getNumAddrRegisters();
   else if (liveAnalysis.livenessClass(G4_FLAG))
@@ -7627,6 +7627,10 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
   //
   intf.init();
   intf.computeInterference();
+
+  if (reserveSpillGRFCount) {
+    preAssignSpillHeader();
+  }
 
   builder.getFreqInfoManager().initForRegAlloc(&liveAnalysis);
 
@@ -10915,6 +10919,49 @@ std::pair<unsigned, unsigned> GlobalRA::reserveGRFSpillReg(GraphColor &coloring)
                 "Invalid reserveSpillSize in fail-safe RA!");
   coloring.setReserveSpillGRFCount(spillRegSize + indrSpillRegSize);
   return std::make_pair(spillRegSize, indrSpillRegSize);
+}
+
+void GraphColor::preAssignSpillHeader() {
+  // If spill header is used for spill/fill offset, it must have infinite spill
+  // cost. When running fail safe RA, if we assign this range to middle of free
+  // GRF space, it could cause fragmentation and other spilled ranges may not
+  // get an allocation. So, we pre-assign this variable at first candidate GRF
+  // to avoid fragmentation. This is relevant only in fail safe RA iteration.
+  if (!builder.hasValidSpillFillHeader())
+    return;
+
+  std::vector<bool> FreeGRFs(kernel.getNumRegTotal(), true);
+  auto *spillHeader = builder.getSpillFillHeader();
+  if (spillHeader->getRegVar()->getPhyReg())
+    return;
+  unsigned spillHeaderId = spillHeader->getRootDeclare()->getRegVar()->getId();
+  // Compute free GRFs
+  const auto *intf = getIntf();
+  for (auto neighbor : intf->getSparseIntfForVar(spillHeaderId)) {
+    auto *neighborLR = getLiveRanges()[neighbor];
+    auto *neighborGRF = neighborLR->getPhyReg();
+    if (!neighborGRF)
+      continue;
+    unsigned int neighborGRFStart = neighborGRF->asGreg()->getRegNum();
+    unsigned int neighborLastGRF =
+        neighborGRFStart + neighborLR->getNumRegNeeded();
+    for (unsigned int i = neighborGRFStart; i != neighborLastGRF; ++i) {
+      FreeGRFs[i] = false;
+    }
+  }
+
+  // Find a GRF r1 onwards that can be pre-assigned to spillHeader.
+  // r0 is usually reserved.
+  for (unsigned int i = 1; i != FreeGRFs.size(); ++i) {
+    if (FreeGRFs[i]) {
+      // Attach assignment to temp LR and to G4_RegVar
+      getLiveRanges()[spillHeaderId]->setPhyReg(regPool.getGreg(i), 0);
+      spillHeader->getRegVar()->setPhyReg(regPool.getGreg(i), 0);
+      // Decrement counter as this is used later in determineColorOrdering
+      liveAnalysis.reduceNumUnassignedVar();
+      break;
+    }
+  }
 }
 
 // pre-allocate the bits for forbidden registers which will not be used in
