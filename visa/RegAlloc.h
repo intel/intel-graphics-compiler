@@ -152,6 +152,7 @@ public:
   unsigned getNumSplitVar() const { return numSplitVar; }
   unsigned getNumSplitStartID() const { return numSplitStartID; }
   unsigned getNumUnassignedVar() const { return numUnassignedVarId; }
+  void reduceNumUnassignedVar() { --numUnassignedVarId; }
   void dump() const;
   void dumpBB(G4_BB *bb) const;
   void dumpLive(BitSet &live) const;
