@@ -143,11 +143,15 @@ private:
     IRB.CreateStore(packedData, getAtIndexFromRayQueryObject(IRB, rqObject, 1));
   }
 
+  bool allowCrossBlockLoadVectorization() {
+
+    return IGC_IS_FLAG_ENABLED(UseCrossBlockLoadVectorizationForInlineRaytracing) && m_pCGCtx->m_retryManager.IsFirstTry();
+  }
+
   llvm::RTBuilder::SyncStackPointerVal *getStackPtr(llvm::RTBuilder &IRB, llvm::Value *rqObject,
                                                     bool allowXBlockVectorize = false) {
 
-    bool doXBlockVectorize =
-        allowXBlockVectorize && IGC_IS_FLAG_ENABLED(UseCrossBlockLoadVectorizationForInlineRaytracing);
+    bool doXBlockVectorize = allowCrossBlockLoadVectorization() && allowXBlockVectorize;
 
     // scan the basic block for continuation intrinsics. we don't want to contribute to raytracing swstack
     if (doXBlockVectorize) {

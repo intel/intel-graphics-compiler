@@ -324,6 +324,7 @@ void InlineRaytracing::EmitPreTraceRayFence(RTBuilder &IRB, Value *rqObject) {
 
 void InlineRaytracing::LowerIntrinsics(Function &F) {
   SmallVector<RayQueryIntrinsicBase *> RQInstructions;
+  SmallVector<RayQueryInfoIntrinsic *> RQInfoInstructions;
 
   for (auto &I : instructions(F)) {
     if (isa<RayQueryIntrinsicBase>(&I))
@@ -366,6 +367,11 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       data.CommittedDataLocation = IRB.getInt32(CommittedHit);
 
       setPackedData(IRB, rqObject, data);
+
+      // for the cross-block optimization purposes, split basic block to avoid using stale shadow stack
+      if (allowCrossBlockLoadVectorization())
+        IRB.createTriangleFlow(IRB.getFalse(), RQI);
+
       break;
     }
     case GenISAIntrinsic::GenISA_TraceRaySyncProceedHL: {
@@ -497,6 +503,10 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       setPackedData(IRB, rqObject, data);
 
 
+      // for the cross-block optimization purposes, split basic block to avoid using stale shadow stack
+      if (allowCrossBlockLoadVectorization())
+        IRB.createTriangleFlow(IRB.getFalse(), RQI);
+
       RQI->replaceAllUsesWith(result);
       break;
     }
@@ -521,39 +531,9 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
     case GenISAIntrinsic::GenISA_TraceRayInlineCandidateType:
       RQI->replaceAllUsesWith(getPackedData(IRB, rqObject).CandidateType);
       break;
-    case GenISAIntrinsic::GenISA_TraceRayInlineRayInfo: {
-
-      auto *I = cast<RayQueryInfoIntrinsic>(RQI);
-      auto data = getPackedData(IRB, rqObject);
-      auto *loadCommittedFromPotential = IRB.CreateICmpEQ(data.CommittedDataLocation, IRB.getInt32(PotentialHit),
-                                                          VALUE_NAME("loadCommittedInfoFromPotentialHit"));
-
-      auto *shaderTy = IRB.CreateSelect(loadCommittedFromPotential, IRB.getInt32(AnyHit),
-                                        IRB.getInt32(I->isCommitted() ? ClosestHit : AnyHit));
-
-      switch (I->getInfoKind()) {
-      default:
-        I->replaceAllUsesWith(IRB.lowerRayInfo(getStackPtr(IRB, rqObject, true), I, shaderTy, std::nullopt));
-        break;
-        // leave this in for now, until we prove we don't need the hack anymore
-      case GEOMETRY_INDEX: {
-        bool specialPattern = false;
-        if (I->isCommitted() && IGC_GET_FLAG_VALUE(ForceRTShortCircuitingOR)) {
-          specialPattern = forceShortCurcuitingOR_CommittedGeomIdx(IRB, I);
-        }
-
-        Value *leafType = IRB.getLeafType(getStackPtr(IRB, rqObject, true), IRB.getInt1(I->isCommitted()));
-        Value *geoIndex = IRB.getGeometryIndex(
-            getStackPtr(IRB, rqObject, true), I, leafType,
-            IRB.getInt32(I->isCommitted() ? CallableShaderTypeMD::ClosestHit : CallableShaderTypeMD::AnyHit),
-            !specialPattern);
-        IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(), "Invalid geometryIndex type!");
-        I->replaceAllUsesWith(geoIndex);
-        break;
-      }
-      }
+    case GenISAIntrinsic::GenISA_TraceRayInlineRayInfo:
+      RQInfoInstructions.push_back(cast<RayQueryInfoIntrinsic>(RQI));
       break;
-    }
     case GenISAIntrinsic::GenISA_TraceRayInlineCommitNonOpaqueTriangleHit: {
       auto data = getPackedData(IRB, rqObject);
       auto *notDone = IRB.CreateAnd({IRB.CreateICmpEQ(data.HasAcceptHitAndEndSearchFlag, IRB.getInt32(0)),
@@ -584,11 +564,65 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       data.CommittedStatus = IRB.getInt32(RTStackFormat::COMMITTED_STATUS::COMMITTED_PROCEDURAL_PRIMITIVE_HIT);
 
       setPackedData(IRB, rqObject, data);
+
+      // for the cross-block optimization purposes, split basic block to avoid using stale shadow stack
+      if (allowCrossBlockLoadVectorization())
+        IRB.createTriangleFlow(IRB.getFalse(), RQI);
+
       break;
     }
     default:
       IGC_ASSERT_MESSAGE(0, "Missed an intrinsic?");
       break;
+    }
+  }
+
+  // first map every rayinfo instruction to a stack pointer
+  // we do it this way because rayinfo lowering itself will produce blocks
+  // so a 2-pass method will yield better results
+  MapVector<RayQueryInfoIntrinsic *, RTBuilder::SyncStackPointerVal *> RQInfoStackMap;
+
+  for (auto *I : RQInfoInstructions) {
+
+    auto *convertRQHandleFromRQObject = cast<Instruction>(I->getQueryObjIndex());
+    auto *rqObject = convertRQHandleFromRQObject->getOperand(0);
+    IRB.SetInsertPoint(I);
+    RQInfoStackMap.insert(std::make_pair(I, getStackPtr(IRB, rqObject, true)));
+  }
+
+  // now we can actually lower rayinfo instructions
+  for (const auto& [I, stackPtr] : RQInfoStackMap) {
+
+    IRB.SetInsertPoint(I);
+    auto *convertRQHandleFromRQObject = cast<Instruction>(I->getQueryObjIndex());
+    auto *rqObject = convertRQHandleFromRQObject->getOperand(0);
+    auto data = getPackedData(IRB, rqObject);
+    auto *loadCommittedFromPotential = IRB.CreateICmpEQ(data.CommittedDataLocation, IRB.getInt32(PotentialHit),
+                                                        VALUE_NAME("loadCommittedInfoFromPotentialHit"));
+
+    auto *shaderTy = IRB.CreateSelect(loadCommittedFromPotential, IRB.getInt32(AnyHit),
+                                      IRB.getInt32(I->isCommitted() ? ClosestHit : AnyHit));
+
+    switch (I->getInfoKind()) {
+    default:
+      I->replaceAllUsesWith(IRB.lowerRayInfo(stackPtr, I, shaderTy, std::nullopt));
+      break;
+      // leave this in for now, until we prove we don't need the hack anymore
+    case GEOMETRY_INDEX: {
+      bool specialPattern = false;
+      if (I->isCommitted() && IGC_GET_FLAG_VALUE(ForceRTShortCircuitingOR)) {
+        specialPattern = forceShortCurcuitingOR_CommittedGeomIdx(IRB, I);
+      }
+
+      Value *leafType = IRB.getLeafType(stackPtr, IRB.getInt1(I->isCommitted()));
+      Value *geoIndex = IRB.getGeometryIndex(
+          stackPtr, I, leafType,
+          IRB.getInt32(I->isCommitted() ? CallableShaderTypeMD::ClosestHit : CallableShaderTypeMD::AnyHit),
+          !specialPattern);
+      IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(), "Invalid geometryIndex type!");
+      I->replaceAllUsesWith(geoIndex);
+      break;
+    }
     }
   }
 
