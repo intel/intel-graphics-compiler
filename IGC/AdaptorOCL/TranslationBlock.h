@@ -8,9 +8,15 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
+#include "CommonMacros.h"
+
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/SmallVector.h>
+#include "common/LLVMWarningsPop.hpp"
+
 #include <stdint.h>
 #include <stddef.h>
-#include "CommonMacros.h"
+#include <string>
 
 #if defined(_WIN32)
 // INSIDE_PLUGIN must be defined in the pre-processor definitions of the
@@ -204,22 +210,11 @@ Description:
     Structure used to hold data returned from the translation block
 
 \******************************************************************************/
+typedef llvm::SmallVector<char, 0> OutBufferType;
 struct STB_TranslateOutputArgs {
-  char *pOutput;            // pointer to translated data buffer
-  uint32_t OutputSize;      // translated data buffer size (bytes)
-  char *pErrorString;       // string to print if translate fails
-  uint32_t ErrorStringSize; // size of error string
-  char *pDebugData;         // pointer to translated debug data buffer
-  uint32_t DebugDataSize;   // translated debug data data size (bytes)
-
-  STB_TranslateOutputArgs() {
-    pOutput = NULL;
-    OutputSize = 0;
-    pErrorString = NULL;
-    ErrorStringSize = 0;
-    pDebugData = NULL;
-    DebugDataSize = 0;
-  }
+  OutBufferType Output;    // translated data buffer
+  std::string ErrorString; // string to print if translate fails
+  OutBufferType DebugData; // translated debug data buffer
 };
 
 struct TranslationBlockVersion {
@@ -238,8 +233,6 @@ Description:
 class CTranslationBlock {
 public:
   virtual bool Translate(const STB_TranslateInputArgs *pInput, STB_TranslateOutputArgs *pOutput) = 0;
-
-  virtual bool FreeAllocations(STB_TranslateOutputArgs *pOutput) = 0;
 
   virtual bool GetOpcodes(void *pOpcodes, uint32_t pOpcodesSize) {
     IGC_UNUSED(pOpcodes);

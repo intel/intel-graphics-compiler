@@ -425,13 +425,13 @@ char *NormalizeString(char *input, uint32_t size) {
 void FillOutputArgs(IOCLFEBinaryResult *pFEBinaryResult, STB_TranslateOutputArgs *pOutputArgs,
                     std::string &exceptString) {
   // fill the result structure
-  pOutputArgs->ErrorStringSize = (uint32_t)std::string(pFEBinaryResult->GetErrorLog()).length();
-  if (pOutputArgs->ErrorStringSize > 0) {
+  uint32_t ErrorStringSize = (uint32_t)std::string(pFEBinaryResult->GetErrorLog()).length();
+  if (ErrorStringSize > 0) {
     TC::CClangTranslationBlock::SetErrorString(pFEBinaryResult->GetErrorLog(), pOutputArgs);
   } else {
-    pOutputArgs->pErrorString = NULL;
+    pOutputArgs->ErrorString.clear();
   }
-  pOutputArgs->OutputSize = (uint32_t)pFEBinaryResult->GetIRSize();
+  uint32_t OutputSize = (uint32_t)pFEBinaryResult->GetIRSize();
 
   // we have to copy the result due to unfortunate design of STB_TranslateOutputArg interface
   // the better design would be for TranslateXXX calls to be responsible to allocate the outputArgs
@@ -439,17 +439,12 @@ void FillOutputArgs(IOCLFEBinaryResult *pFEBinaryResult, STB_TranslateOutputArgs
   // This way the implementation of TranslateXXX could be free to return inherited from outputArgs
   // class which could glue the outputArgs with other internal interfaces (like the one returned from
   // ::Compile method for example) without any buffer copy
-  if (pOutputArgs->OutputSize > 0) {
-    pOutputArgs->pOutput = (char *)malloc(pFEBinaryResult->GetIRSize());
+  if (OutputSize > 0) {
+    pOutputArgs->Output.resize(OutputSize);
+    char *IRBegin = (char *)pFEBinaryResult->GetIR();
+    char *IREnd = (char *)pFEBinaryResult->GetIR() + OutputSize;
 
-    if (!pOutputArgs->pOutput) {
-      // throw std::bad_alloc();
-      exceptString = "bad_alloc";
-      return;
-    }
-
-    memcpy_s(pOutputArgs->pOutput, pFEBinaryResult->GetIRSize(), pFEBinaryResult->GetIR(),
-             pFEBinaryResult->GetIRSize());
+    pOutputArgs->Output.assign(IRBegin, IREnd);
   }
 }
 } // namespace Utils
@@ -580,11 +575,7 @@ Output:
 void CClangTranslationBlock::SetErrorString(const char *pErrorString, STB_TranslateOutputArgs *pOutputArgs) {
   IGC_ASSERT(pErrorString != NULL);
   IGC_ASSERT(pOutputArgs != NULL);
-  size_t strSize = std::string(pErrorString).length() + 1;
-  pOutputArgs->ErrorStringSize = (uint32_t)strSize;
-  pOutputArgs->pErrorString = (char *)malloc(strSize);
-  memcpy_s(pOutputArgs->pErrorString, strSize - 1, pErrorString, strSize - 1);
-  pOutputArgs->pErrorString[strSize - 1] = '\0';
+  pOutputArgs->ErrorString = pErrorString;
 }
 
 /*****************************************************************************\
@@ -1429,7 +1420,7 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
       // dump the archive
       FILE *file = fopen(dumpFileName.c_str(), "wb");
       if (file != NULL) {
-        fwrite(pOutputArgs->pOutput, pOutputArgs->OutputSize, 1, file);
+        fwrite(pOutputArgs->Output.data(), pOutputArgs->Output.size(), 1, file);
         fclose(file);
       }
     } else {
@@ -1459,10 +1450,8 @@ bool CClangTranslationBlock::ReturnSuppliedIR(const STB_TranslateInputArgs *pInp
                                               STB_TranslateOutputArgs *pOutputArgs) {
   bool success = true;
 
-  pOutputArgs->ErrorStringSize = 0;
-  pOutputArgs->pErrorString = NULL;
-  pOutputArgs->OutputSize = 0;
-  pOutputArgs->pOutput = NULL;
+  pOutputArgs->ErrorString.clear();
+  pOutputArgs->Output.clear();
 
   CElfReader *pElfReader = CElfReader::Create(pInputArgs->pInput, pInputArgs->InputSize);
   RAIIElf ElfObj(pElfReader);
@@ -1488,7 +1477,7 @@ bool CClangTranslationBlock::ReturnSuppliedIR(const STB_TranslateInputArgs *pInp
       size_t dataSize = 0;
       const unsigned char *pBufStart;
 
-      if (pOutputArgs->pOutput != NULL) {
+      if (!pOutputArgs->Output.empty()) {
         SetErrorString("Multiple inputs passed to library", pOutputArgs);
         success = false;
         break;
@@ -1498,16 +1487,8 @@ bool CClangTranslationBlock::ReturnSuppliedIR(const STB_TranslateInputArgs *pInp
       pBufStart = (const unsigned char *)pData;
 
       if (llvm::isBitcode(pBufStart, pBufStart + pHeader->ElfHeaderSize)) {
-        pOutputArgs->OutputSize = dataSize;
-        pOutputArgs->pOutput = (char *)malloc(dataSize);
-
-        if (pOutputArgs->pOutput == NULL) {
-          SetErrorString("Error allocating memory", pOutputArgs);
-          success = false;
-          break;
-        }
-
-        memcpy_s(pOutputArgs->pOutput, dataSize, pBufStart, dataSize);
+        pOutputArgs->Output.resize(dataSize);
+        memcpy_s(pOutputArgs->Output.data(), dataSize, pBufStart, dataSize);
       } else {
         SetErrorString("Invalid input/output passed to library", pOutputArgs);
         success = false;
@@ -1623,23 +1604,18 @@ bool CClangTranslationBlock::Translate(const STB_TranslateInputArgs *pInputArgs,
       const char *pBuffer = pInputArgs->pInput;
       UINT bufferSize = pInputArgs->InputSize;
 
-      if (FCL_IGC_IS_FLAG_ENABLED(EnableKernelNamesBasedHash))
-      // The spirv parser cannot be used here - we would have to include it in the Makefile
-      // which is simply not worth it. Without it there's no good and reliable way to get
-      // the kernel names for the hash generation, so the warning is to be emitted instead.
-      {
-        std::string errorString("");
-        if (pOutputArgs->pErrorString)
-          errorString = pOutputArgs->pErrorString;
-        errorString.append("warning: EnableKernelNamesBasedHash flag doesn't affect .cl dump's hash\n");
-        SetErrorString(errorString.c_str(), pOutputArgs);
+      if (FCL_IGC_IS_FLAG_ENABLED(EnableKernelNamesBasedHash)) {
+        // The spirv parser cannot be used here - we would have to include it in the Makefile
+        // which is simply not worth it. Without it there's no good and reliable way to get
+        // the kernel names for the hash generation, so the warning is to be emitted instead.
+        pOutputArgs->ErrorString.append("warning: EnableKernelNamesBasedHash flag doesn't affect .cl dump's hash\n");
       }
 
       // Create hash based on cclang binary output (currently llvm binary; later also spirv).
       // Hash computed in fcl needs to be same as the one computed in igc.
       // This is to ensure easy matching .cl files dumped in fcl with .ll/.dat/.asm/... files dumped in igc.
-      QWORD hash =
-          iSTD::Hash(reinterpret_cast<const DWORD *>(pOutputArgs->pOutput), (DWORD)(pOutputArgs->OutputSize) / 4);
+      QWORD hash = iSTD::Hash(reinterpret_cast<const DWORD *>(pOutputArgs->Output.data()),
+                              (DWORD)(pOutputArgs->Output.size()) / 4);
 
       ss << pOutputFolder;
       ss << "OCL_"
@@ -1687,34 +1663,6 @@ bool CClangTranslationBlock::Translate(const STB_TranslateInputArgs *pInputArgs,
       return false;
     }
   }
-}
-
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock::FreeAllocations
-
-Description:
-
-Input:
-
-Output:
-
-\*****************************************************************************/
-bool CClangTranslationBlock::FreeAllocations(STB_TranslateOutputArgs *pOutputArgs) {
-  pOutputArgs->ErrorStringSize = 0;
-  if (pOutputArgs->pErrorString != NULL) {
-    free(pOutputArgs->pErrorString);
-    pOutputArgs->pErrorString = NULL;
-  }
-
-  pOutputArgs->OutputSize = 0;
-  if (pOutputArgs->pOutput != NULL) {
-    free(pOutputArgs->pOutput);
-    pOutputArgs->pOutput = NULL;
-  }
-
-  return true;
 }
 
 /*****************************************************************************\

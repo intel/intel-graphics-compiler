@@ -34,25 +34,20 @@ SPDX-License-Identifier: MIT
 namespace TC {
 
 // Taken from dllInterfaceCompute
-extern bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs &OutputArgs,
-                            IGC::OpenCLProgramContext &Context, PLATFORM &platform, const TB_DATA_FORMAT &outType,
-                            float profilingTimerResolution);
+bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs &OutputArgs,
+                     IGC::OpenCLProgramContext &Context, PLATFORM &platform, const TB_DATA_FORMAT &outType,
+                     float profilingTimerResolution);
 
-extern bool ParseInput(llvm::Module *&pKernelModule, const STB_TranslateInputArgs *pInputArgs,
-                       STB_TranslateOutputArgs *pOutputArgs, IGC::OpenCLProgramContext &oclContext,
-                       TB_DATA_FORMAT inputDataFormatTemp);
+bool TranslateBuild(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
+                    TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &platform, float profilingTimerResolution);
 
-OCL_API_CALL bool TranslateBuild(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
-                                 TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &platform,
-                                 float profilingTimerResolution);
+bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
+                        TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &platform,
+                        float profilingTimerResolution, const ShaderHash &inputShHash);
 
-OCL_API_CALL bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
-                                     TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &platform,
-                                     float profilingTimerResolution, const ShaderHash &inputShHash);
-
-OCL_API_CALL bool TranslateBuildVC(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
-                                   TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &platform,
-                                   float profilingTimerResolution, const ShaderHash &inputShHash);
+bool TranslateBuildVC(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
+                      TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &platform,
+                      float profilingTimerResolution, const ShaderHash &inputShHash);
 
 OCL_API_CALL void RebuildGlobalAnnotations(IGC::OpenCLProgramContext &oclContext, llvm::Module *pKernelModule);
 
@@ -241,9 +236,6 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase {
     USC::SShaderStageBTLayout zeroLayout = USC::g_cZeroShaderStageBTLayout;
     IGC::COCLBTILayout oclLayout(&zeroLayout);
 
-    TC::STB_TranslateOutputArgs output;
-    CIF::SafeZeroOut(output);
-
     std::string RegKeysFlagsFromOptions;
     if (inputArgs.pOptions != nullptr) {
       std::string_view optionsWithFlags = inputArgs.pOptions;
@@ -298,6 +290,8 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase {
       inputArgs.InternalOptionsSize = combinedInternalOptions.size();
     }
 
+    TC::STB_TranslateOutputArgs output{};
+
     bool success = false;
     try {
       if (this->inType == CodeType::elf) {
@@ -325,31 +319,28 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase {
       }
     } catch (std::exception &e) {
       success = false;
-      if (output.ErrorStringSize == 0 && output.pErrorString == nullptr) {
+      if (output.ErrorString.empty()) {
         std::string msg = "IGC: ";
         msg += e.what();
         outputInterface->GetImpl()->SetError(TranslationErrorType::FailedCompilation, msg.c_str());
       }
     } catch (...) {
       success = false;
-      if (output.ErrorStringSize == 0 && output.pErrorString == nullptr) {
+      if (output.ErrorString.empty()) {
         outputInterface->GetImpl()->SetError(TranslationErrorType::FailedCompilation, "IGC: Internal Compiler Error");
       }
     }
 
-    auto outputData = std::unique_ptr<char[]>(output.pOutput);
-    auto errorString = std::unique_ptr<char[]>(output.pErrorString);
-    auto debugData = std::unique_ptr<char[]>(output.pDebugData);
-
     bool dataCopiedSuccessfuly = true;
     if (success) {
-      dataCopiedSuccessfuly &= outputInterface->GetImpl()->AddWarning(output.pErrorString, output.ErrorStringSize);
-      dataCopiedSuccessfuly &= outputInterface->GetImpl()->CloneDebugData(output.pDebugData, output.DebugDataSize);
+      dataCopiedSuccessfuly &= outputInterface->GetImpl()->AddWarning(output.ErrorString);
       dataCopiedSuccessfuly &=
-          outputInterface->GetImpl()->SetSuccessfulAndCloneOutput(output.pOutput, output.OutputSize);
+          outputInterface->GetImpl()->CloneDebugData(output.DebugData.data(), output.DebugData.size());
+      dataCopiedSuccessfuly &=
+          outputInterface->GetImpl()->SetSuccessfulAndCloneOutput(output.Output.data(), output.Output.size());
     } else {
       dataCopiedSuccessfuly &=
-          outputInterface->GetImpl()->SetError(TranslationErrorType::FailedCompilation, output.pErrorString);
+          outputInterface->GetImpl()->SetError(TranslationErrorType::FailedCompilation, output.ErrorString.c_str());
     }
 
     if (dataCopiedSuccessfuly == false) {

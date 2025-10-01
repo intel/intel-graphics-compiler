@@ -441,11 +441,7 @@ bool TranslateBuildSPMDAndESIMD(llvm::ArrayRef<SPVTranslationPair> InputModules,
 
     auto &InputArgs = InputArgsPair.second;
 
-    TC::STB_TranslateOutputArgs NewOutputArgs;
-    CIF::SafeZeroOut(NewOutputArgs);
-    auto outputData = std::unique_ptr<char[]>(NewOutputArgs.pOutput);
-    auto errorString = std::unique_ptr<char[]>(NewOutputArgs.pErrorString);
-    auto debugData = std::unique_ptr<char[]>(NewOutputArgs.pDebugData);
+    TC::STB_TranslateOutputArgs NewOutputArgs{};
 
     STB_TranslateInputArgs NewInputArgs = InputArgs;
     std::string NewInternalOptions{InputArgs.pInternalOptions ? InputArgs.pInternalOptions : ""};
@@ -504,9 +500,9 @@ bool TranslateBuildSPMDAndESIMD(llvm::ArrayRef<SPVTranslationPair> InputModules,
     }
 
     if (!success) {
-      if (errorMessage.empty() && NewOutputArgs.pErrorString) {
+      if (errorMessage.empty() && !NewOutputArgs.ErrorString.empty()) {
         errorMessage = "VLD: Failed to compile SPIR-V with following error: \n";
-        errorMessage += NewOutputArgs.pErrorString;
+        errorMessage += NewOutputArgs.ErrorString;
       }
       return false;
     }
@@ -518,7 +514,7 @@ bool TranslateBuildSPMDAndESIMD(llvm::ArrayRef<SPVTranslationPair> InputModules,
       break;
     }
 
-    llvm::StringRef ZeBinary(NewOutputArgs.pOutput, NewOutputArgs.OutputSize);
+    llvm::StringRef ZeBinary(NewOutputArgs.Output.data(), NewOutputArgs.Output.size());
 
     // Check if the output has ZEINFO section. If not, it can mean that the
     // module didn't contain any exported functions.

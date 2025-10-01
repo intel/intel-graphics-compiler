@@ -116,22 +116,18 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase {
     bool dataCopiedSuccessfuly = true;
     if (success) {
       dataCopiedSuccessfuly &=
-          outputInterface->GetImpl()->AddWarning(outputArgs.pErrorString, outputArgs.ErrorStringSize);
+          outputInterface->GetImpl()->AddWarning(outputArgs.ErrorString.data(), outputArgs.ErrorString.size());
       dataCopiedSuccessfuly &=
-          outputInterface->GetImpl()->CloneDebugData(outputArgs.pDebugData, outputArgs.DebugDataSize);
+          outputInterface->GetImpl()->CloneDebugData(outputArgs.DebugData.data(), outputArgs.DebugData.size());
       dataCopiedSuccessfuly &=
-          outputInterface->GetImpl()->SetSuccessfulAndCloneOutput(outputArgs.pOutput, outputArgs.OutputSize);
+          outputInterface->GetImpl()->SetSuccessfulAndCloneOutput(outputArgs.Output.data(), outputArgs.Output.size());
     } else {
       dataCopiedSuccessfuly &=
-          outputInterface->GetImpl()->SetError(TranslationErrorType::FailedCompilation, outputArgs.pErrorString);
+          outputInterface->GetImpl()->SetError(TranslationErrorType::FailedCompilation, outputArgs.ErrorString.data());
     }
 
-    if (dataCopiedSuccessfuly == false) {
-      legacyInterface->FreeAllocations(&outputArgs);
-      return nullptr; // OOM
-    }
-
-    legacyInterface->FreeAllocations(&outputArgs);
+    if (!dataCopiedSuccessfuly)
+      return nullptr;
 
     return outputInterface.release();
   }
@@ -176,8 +172,8 @@ protected:
     bool success;
     success = TC::CClangTranslationBlock::Create(&createArgs, &outputArgs, legacyInterface);
     if (!success && err != nullptr) {
-      const char *pErrorMsg = outputArgs.pErrorString;
-      uint32_t pErrorMsgSize = outputArgs.ErrorStringSize;
+      const char *pErrorMsg = outputArgs.ErrorString.data();
+      uint32_t pErrorMsgSize = outputArgs.ErrorString.size();
       err->PushBackRawBytes(pErrorMsg, pErrorMsgSize);
     }
     if (legacyInterface == nullptr) {

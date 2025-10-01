@@ -84,8 +84,6 @@ public:
 
   virtual bool Translate(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs);
 
-  virtual bool FreeAllocations(STB_TranslateOutputArgs *pOutputArgs);
-
   void SetOclApiVersion(unsigned int oclVersion) { m_OCL_Ver = std::to_string(oclVersion); }
 
   static void SetErrorString(const char *pErrorString, STB_TranslateOutputArgs *pOutputArgs);

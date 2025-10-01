@@ -362,28 +362,8 @@ static void adjustOptions(const IGC::CPlatform &IGCPlatform,
 }
 
 static void setErrorMessage(llvm::StringRef ErrorMessage,
-                            TC::STB_TranslateOutputArgs &pOutputArgs) {
-  pOutputArgs.pErrorString = new char[ErrorMessage.size() + 1];
-  memcpy_s(pOutputArgs.pErrorString, ErrorMessage.size(), ErrorMessage.data(),
-           ErrorMessage.size());
-  pOutputArgs.pErrorString[ErrorMessage.size()] = '\0';
-  pOutputArgs.ErrorStringSize = ErrorMessage.size() + 1;
-}
-
-static void outputBinary(llvm::StringRef Binary, llvm::StringRef DebugInfo,
-                         TC::STB_TranslateOutputArgs *OutputArgs) {
-  size_t BinarySize = Binary.size();
-  char *BinaryOutput = new char[BinarySize];
-  memcpy_s(BinaryOutput, BinarySize, Binary.data(), BinarySize);
-  OutputArgs->OutputSize = static_cast<uint32_t>(BinarySize);
-  OutputArgs->pOutput = BinaryOutput;
-  if (DebugInfo.size()) {
-    char *DebugInfoOutput = new char[DebugInfo.size()];
-    memcpy_s(DebugInfoOutput, DebugInfo.size(), DebugInfo.data(),
-             DebugInfo.size());
-    OutputArgs->pDebugData = DebugInfoOutput;
-    OutputArgs->DebugDataSize = DebugInfo.size();
-  }
+                            TC::STB_TranslateOutputArgs &OutputArgs) {
+  OutputArgs.ErrorString = ErrorMessage.str();
 }
 
 // Similar to ShaderHashOCL though reinterpretation is hidden inside
@@ -601,7 +581,7 @@ translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   vc::createBinary(CMProgram, CompileResult);
 
   if (Opts.Binary == vc::BinaryKind::ZE) {
-    llvm::SmallVector<char, 0> ProgramBinary;
+    auto &ProgramBinary = OutputArgs->Output;
     llvm::raw_svector_ostream ProgramBinaryOS{ProgramBinary};
     CMProgram.GetZEBinary(ProgramBinaryOS, CompileResult.PointerSizeInBytes);
 
@@ -610,9 +590,6 @@ translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
       Opts.Dumper->dumpBinary(ProgramBinary, "", "progbin");
-
-    llvm::StringRef BinaryRef{ProgramBinary.data(), ProgramBinary.size()};
-    outputBinary(BinaryRef, {}, OutputArgs);
   } else {
     IGC_ASSERT_EXIT_MESSAGE(0, "Unknown binary format");
   }
@@ -630,7 +607,7 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
 
   auto R = ::translateBuild(InputArgs, OutputArgs, InputDataFormatTemp,
                             IGCPlatform, ProfilingTimerResolution, BuildLogOut);
-  IGC_ASSERT(OutputArgs->pErrorString == nullptr);
+  IGC_ASSERT(OutputArgs->ErrorString.empty());
 
   std::error_code Status;
   if (!R)

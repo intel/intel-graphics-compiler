@@ -145,13 +145,9 @@ static std::mutex llvm_mutex;
 
 void UnlockMutex() { llvm_mutex.unlock(); }
 
-extern bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs &OutputArgs,
-                            IGC::OpenCLProgramContext &Context, PLATFORM &platform, const TB_DATA_FORMAT &outType,
-                            float profilingTimerResolution);
-
-extern bool ParseInput(llvm::Module *&pKernelModule, const STB_TranslateInputArgs *pInputArgs,
-                       STB_TranslateOutputArgs *pOutputArgs, IGC::OpenCLProgramContext &oclContext,
-                       TB_DATA_FORMAT inputDataFormatTemp);
+bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs &OutputArgs,
+                     IGC::OpenCLProgramContext &Context, PLATFORM &platform, const TB_DATA_FORMAT &outType,
+                     float profilingTimerResolution);
 
 bool TranslateBuild(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
                     TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &IGCPlatform,
@@ -162,18 +158,16 @@ bool CIGCTranslationBlock::ProcessElfInput(STB_TranslateInputArgs &InputArgs, ST
   return TC::ProcessElfInput(InputArgs, OutputArgs, Context, m_Platform, m_DataFormatOutput, ProfilingTimerResolution);
 }
 
-static void SetOutputMessage(const std::string &OutputMessage, STB_TranslateOutputArgs &pOutputArgs) {
-  pOutputArgs.ErrorStringSize = OutputMessage.size() + 1;
-  pOutputArgs.pErrorString = new char[pOutputArgs.ErrorStringSize];
-  memcpy_s(pOutputArgs.pErrorString, pOutputArgs.ErrorStringSize, OutputMessage.c_str(), pOutputArgs.ErrorStringSize);
+static void SetOutputMessage(const std::string &OutputMessage, STB_TranslateOutputArgs &OutputArgs) {
+  OutputArgs.ErrorString = OutputMessage;
 }
 
-static void SetWarningMessage(const std::string &OutputMessage, STB_TranslateOutputArgs &pOutputArgs) {
-  SetOutputMessage("warning: " + OutputMessage, pOutputArgs);
+static void SetWarningMessage(const std::string &OutputMessage, STB_TranslateOutputArgs &OutputArgs) {
+  SetOutputMessage("warning: " + OutputMessage, OutputArgs);
 }
 
-static void SetErrorMessage(const std::string &OutputMessage, STB_TranslateOutputArgs &pOutputArgs) {
-  SetOutputMessage("error: " + OutputMessage, pOutputArgs);
+static void SetErrorMessage(const std::string &OutputMessage, STB_TranslateOutputArgs &OutputArgs) {
+  SetOutputMessage("error: " + OutputMessage, OutputArgs);
 }
 
 static bool IsDeviceBinaryFormat(const TB_DATA_FORMAT &format) {
@@ -208,12 +202,9 @@ bool CIGCTranslationBlock::Translate(const STB_TranslateInputArgs *pInputArgs, S
   IGC::SetWorkaroundTable(&m_SkuTable, &IGCPlatform);
   IGC::SetCompilerCaps(&m_SkuTable, &IGCPlatform);
 
-  pOutputArgs->pOutput = nullptr;
-  pOutputArgs->OutputSize = 0;
-  pOutputArgs->pErrorString = nullptr;
-  pOutputArgs->ErrorStringSize = 0;
-  pOutputArgs->pDebugData = nullptr;
-  pOutputArgs->DebugDataSize = 0;
+  pOutputArgs->Output.clear();
+  pOutputArgs->ErrorString.clear();
+  pOutputArgs->DebugData.clear();
 
   try {
     if (m_DataFormatInput == TB_DATA_FORMAT_ELF) {
@@ -243,12 +234,12 @@ bool CIGCTranslationBlock::Translate(const STB_TranslateInputArgs *pInputArgs, S
       return false;
     }
   } catch (std::exception &e) {
-    if (pOutputArgs->ErrorStringSize == 0 && pOutputArgs->pErrorString == nullptr) {
+    if (pOutputArgs->ErrorString.empty()) {
       SetErrorMessage(std::string("IGC: ") + e.what(), *pOutputArgs);
     }
     return false;
   } catch (...) {
-    if (pOutputArgs->ErrorStringSize == 0 && pOutputArgs->pErrorString == nullptr) {
+    if (pOutputArgs->ErrorString.empty()) {
       SetErrorMessage("IGC: Internal Compiler Error", *pOutputArgs);
     }
     return false;
@@ -654,11 +645,10 @@ bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs 
     if (success == true) {
       // Now that the output modules are linked the resulting module needs to be
       // serialized out
-      std::string OutputString;
-      llvm::raw_string_ostream OStream(OutputString);
+      IGC_ASSERT(OutputArgs.Output.empty()); // Make sure we're not overwriting anything here.
+      llvm::raw_svector_ostream OStream(OutputArgs.Output);
       if (OutputModule.get()) {
         llvm::WriteBitcodeToFile(*OutputModule.get(), OStream);
-        OStream.flush();
       } else {
         // OutputModule can be null only if we use visa linking.
         IGC_ASSERT(hasVISALinking);
@@ -666,15 +656,7 @@ bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs 
 
       if (outType == TB_DATA_FORMAT_LLVM_BINARY) {
         // Create a copy of the string to return to the caller.
-        char *pBufResult = static_cast<char *>(operator new(OutputString.size(), std::nothrow));
-        if (pBufResult != NULL) {
-          memcpy_s(pBufResult, OutputString.size(), OutputString.data(), OutputString.size());
-          // The buffer is returned to the runtime. When the buffer is not
-          // needed anymore the runtime ir responsible to call the module for
-          // destroying it
-          OutputArgs.OutputSize = OutputString.size();
-          OutputArgs.pOutput = pBufResult;
-
+        if (!OutputArgs.Output.empty()) {
 #if defined(IGC_SPIRV_ENABLED)
           if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
             // This part renames the previously dumped SPIR-V files
@@ -686,7 +668,8 @@ bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs 
             oss1 << std::hex << std::setfill('0') << std::setw(sizeof(prevAsmHash) * CHAR_BIT / 4) << prevAsmHash;
             const std::string prevHashString = oss1.str();
 
-            QWORD newAsmHash = ShaderHashOCL((const UINT *)OutputArgs.pOutput, OutputArgs.OutputSize / 4).getAsmHash();
+            QWORD newAsmHash =
+                ShaderHashOCL((const UINT *)OutputArgs.Output.data(), OutputArgs.Output.size() / 4).getAsmHash();
             std::ostringstream oss2(std::ostringstream::ate);
             oss2 << std::hex << std::setfill('0') << std::setw(sizeof(newAsmHash) * CHAR_BIT / 4) << newAsmHash;
             const std::string newHashString = oss2.str();
@@ -723,7 +706,7 @@ bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs 
               // dump the buffer
               FILE *file = fopen(dumpFileName.c_str(), "wb");
               if (file != NULL) {
-                fwrite(pBufResult, OutputString.size(), 1, file);
+                fwrite(OutputArgs.Output.data(), OutputArgs.Output.size(), 1, file);
                 fclose(file);
               }
             } else {
@@ -750,8 +733,10 @@ bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs 
             return false;
           }
         } else {
-          InputArgs.pInput = OutputString.data();
-          InputArgs.InputSize = OutputString.size();
+          auto OutputIsTheNewInput = std::move(OutputArgs.Output);
+          InputArgs.pInput = OutputIsTheNewInput.data();
+          InputArgs.InputSize = OutputIsTheNewInput.size();
+          OutputArgs.Output = OutBufferType(); // Reinitialize pOutput after moving it to InputArgs as pInput.
           success = TC::TranslateBuild(&InputArgs, &OutputArgs, TB_DATA_FORMAT_LLVM_BINARY, Context.platform,
                                        profilingTimerResolution);
           InputArgs.pInput = nullptr;
@@ -767,9 +752,8 @@ bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs 
   return success;
 }
 
-bool ParseInput(llvm::Module *&pKernelModule, const STB_TranslateInputArgs *pInputArgs,
-                STB_TranslateOutputArgs *pOutputArgs, llvm::LLVMContext &oclContext, TB_DATA_FORMAT inputDataFormatTemp,
-                const IGC::CPlatform &IGCPlatform) {
+bool ParseInput(llvm::Module *&pKernelModule, const STB_TranslateInputArgs *pInputArgs, std::string &errorString,
+                llvm::LLVMContext &oclContext, TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &IGCPlatform) {
   pKernelModule = nullptr;
 
   // Parse the module we want to compile
@@ -796,7 +780,7 @@ bool ParseInput(llvm::Module *&pKernelModule, const STB_TranslateInputArgs *pInp
     }
 
     if (isLLVM27IR || isLLVM30IR) {
-      SetErrorMessage("Old LLVM IR (possibly from legacy binary) :  not supported!", *pOutputArgs);
+      errorString = "Old LLVM IR (possibly from legacy binary) :  not supported!";
       return false;
     }
   }
@@ -815,15 +799,13 @@ bool ParseInput(llvm::Module *&pKernelModule, const STB_TranslateInputArgs *pInp
   } else if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V) {
 #if defined(IGC_SPIRV_ENABLED)
     // convert SPIR-V binary to LLVM module
-    std::string stringErrMsg;
     bool success =
-        TranslateSPIRVToLLVM(*pInputArgs, oclContext, strInput, pKernelModule, stringErrMsg, (PLATFORM &)IGCPlatform);
+        TranslateSPIRVToLLVM(*pInputArgs, oclContext, strInput, pKernelModule, errorString, (PLATFORM &)IGCPlatform);
 #else
     std::string stringErrMsg{"SPIRV consumption not enabled for the TARGET."};
     bool success = false;
 #endif
     if (!success) {
-      SetErrorMessage(stringErrMsg, *pOutputArgs);
       return false;
     }
   } else {
@@ -836,9 +818,7 @@ bool ParseInput(llvm::Module *&pKernelModule, const STB_TranslateInputArgs *pInp
   if (pKernelModule == nullptr) {
     err.print(nullptr, llvm::errs(), false);
     IGC_ASSERT_MESSAGE(0, "Parsing module failed!");
-  }
-  if (pKernelModule == nullptr) {
-    SetErrorMessage("Parsing llvm module failed!", *pOutputArgs);
+    errorString = "Parsing llvm module failed!";
     return false;
   }
 
@@ -900,7 +880,7 @@ bool ReadSpecConstantsFromSPIRV(std::istream &IS, std::vector<std::pair<uint32_t
 }
 #endif
 
-void overrideOCLProgramBinary(OpenCLProgramContext &Ctx, char *&binaryOutput, size_t &binarySize) {
+void overrideOCLProgramBinary(OpenCLProgramContext &Ctx, OutBufferType &binaryOutput) {
   auto name =
       DumpName(IGC::Debug::GetShaderOutputName()).Hash(Ctx.hash).Type(ShaderType::OPENCL_SHADER).Extension("progbin");
 
@@ -916,14 +896,10 @@ void overrideOCLProgramBinary(OpenCLProgramContext &Ctx, char *&binaryOutput, si
   size_t newBinarySize = (size_t)f.tellg();
   f.seekg(0, f.beg);
 
-  char *newBinaryOutput = new char[newBinarySize];
-  f.read(newBinaryOutput, newBinarySize);
+  binaryOutput.resize(newBinarySize);
+  f.read(binaryOutput.data(), newBinarySize);
 
   IGC_ASSERT_MESSAGE(f.good(), "Not fully read!");
-
-  delete[] binaryOutput;
-  binaryOutput = newBinaryOutput;
-  binarySize = newBinarySize;
 }
 
 void dumpOCLProgramBinary(const char *fileName, const char *binaryOutput, size_t binarySize) {
@@ -1103,7 +1079,8 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
     DumpShaderFile(pOutputFolder, outputstr.str().c_str(), outputstr.str().size(), hash, "_cmd.txt");
   }
 
-  if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *llvmContext, inputDataFormatTemp, IGCPlatform)) {
+  if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs->ErrorString, *llvmContext, inputDataFormatTemp,
+                  IGCPlatform)) {
     return false;
   }
   CDriverInfoOCLNEO driverInfoOCL;
@@ -1232,7 +1209,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
         SetOutputMessage("IGC: Out Of Memory", *pOutputArgs);
         return false;
       } catch (std::exception &e) {
-        if (pOutputArgs->ErrorStringSize == 0 && pOutputArgs->pErrorString == nullptr) {
+        if (pOutputArgs->ErrorString.empty()) {
           std::string message = "IGC: ";
           message += oclContext.GetErrorAndWarning();
           message += '\n';
@@ -1255,8 +1232,8 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
 
         IGC::Debug::RegisterComputeErrHandlers(*oclContext.getLLVMContext());
 
-        if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *oclContext.getLLVMContext(), inputDataFormatTemp,
-                        IGCPlatform)) {
+        if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs->ErrorString, *oclContext.getLLVMContext(),
+                        inputDataFormatTemp, IGCPlatform)) {
           return false;
         }
         oclContext.setModule(pKernelModule);
@@ -1311,11 +1288,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
 
   // FIXME: zebin currently only support program output itself, will add debug info
   // into it
-  size_t binarySize = 0;
-  char *binaryOutput = nullptr;
-
-  llvm::SmallVector<char, 64> buf;
-  llvm::raw_svector_ostream llvm_os(buf);
+  llvm::raw_svector_ostream llvm_os(pOutputArgs->Output);
   const bool excludeIRFromZEBinary =
       IGC_IS_FLAG_ENABLED(ExcludeIRFromZEBinary) || oclContext.getModuleMetaData()->compOpt.ExcludeIRFromZEBinary;
   const char *spv_data = nullptr;
@@ -1332,24 +1305,16 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
   unsigned PtrSzInBits = pKernelModule->getDataLayout().getPointerSizeInBits();
   unsigned int pointerSizeInBytes = (PtrSzInBits == 64) ? 8 : 4;
   oclContext.m_programOutput.GetZEBinary(llvm_os, pointerSizeInBytes, spv_data, spv_size, metricData, metricDataSize,
-    pInputArgs->pOptions, pInputArgs->OptionsSize);
-
-  // FIXME: try to avoid memory copy here
-  binarySize = buf.size();
-  binaryOutput = new char[binarySize];
-  memcpy_s(binaryOutput, binarySize, buf.data(), buf.size());
+                                         pInputArgs->pOptions, pInputArgs->OptionsSize);
 
   if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-    dumpOCLProgramBinary(oclContext, binaryOutput, binarySize);
+    dumpOCLProgramBinary(oclContext, pOutputArgs->Output.data(), pOutputArgs->Output.size());
 
   if (const char *progbinCustomFN = IGC_GET_REGKEYSTRING(ProgbinDumpFileName))
-    dumpOCLProgramBinary(progbinCustomFN, binaryOutput, binarySize);
+    dumpOCLProgramBinary(progbinCustomFN, pOutputArgs->Output.data(), pOutputArgs->Output.size());
 
   if (IGC_IS_FLAG_ENABLED(ShaderOverride))
-    overrideOCLProgramBinary(oclContext, binaryOutput, binarySize);
-
-  pOutputArgs->OutputSize = binarySize;
-  pOutputArgs->pOutput = binaryOutput;
+    overrideOCLProgramBinary(oclContext, pOutputArgs->Output);
 
   COMPILER_TIME_END(&oclContext, TIME_TOTAL);
 
@@ -1433,12 +1398,6 @@ bool TranslateBuild(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutpu
     SetErrorMessage(errorMessage, *pOutputArgs);
   }
   return ret;
-}
-
-bool CIGCTranslationBlock::FreeAllocations(STB_TranslateOutputArgs *pOutputArgs) {
-  IGC_ASSERT(pOutputArgs);
-  delete[] pOutputArgs->pOutput;
-  return true;
 }
 
 bool CIGCTranslationBlock::Initialize(const STB_CreateArgs *pCreateArgs) {

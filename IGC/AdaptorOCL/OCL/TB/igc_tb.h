@@ -22,8 +22,6 @@ public:
 
   virtual bool Translate(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs);
 
-  virtual bool FreeAllocations(STB_TranslateOutputArgs *pOutputArgs);
-
 protected:
   CIGCTranslationBlock() = default;
 

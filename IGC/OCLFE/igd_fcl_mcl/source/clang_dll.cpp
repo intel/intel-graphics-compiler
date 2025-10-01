@@ -32,7 +32,7 @@ TRANSLATION_BLOCK_API void Register(STB_RegisterArgs *pRegisterArgs) {
 
 TRANSLATION_BLOCK_API CTranslationBlock *Create(STB_CreateArgs *pCreateArgs) {
   CClangTranslationBlock *pClangTranslationBlock;
-  STB_TranslateOutputArgs pOutputArgs;
+  STB_TranslateOutputArgs pOutputArgs{};
 
   CClangTranslationBlock::Create(pCreateArgs, &pOutputArgs, pClangTranslationBlock);
 
