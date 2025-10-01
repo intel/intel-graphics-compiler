@@ -93,6 +93,9 @@ public:
   void Lrp(const SSource sources[3], const DstModifier &modifier);
   void Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], const DstModifier &modifier,
            uint8_t clearTagMask = 0);
+  void VectorCMP(llvm::CmpInst::Predicate pred, const SSource sources[2], const DstModifier &modifier,
+           uint8_t clearTagMask = 0);
+
   void Sub(const SSource[2], const DstModifier &mofidier);
   void Xor(const SSource[2], const DstModifier &modifier);
   void FDiv(const SSource[2], const DstModifier &modifier);
@@ -100,6 +103,8 @@ public:
   void Pow(const SSource sources[2], const DstModifier &modifier);
   void Avg(const SSource sources[2], const DstModifier &modifier);
   void Rsqrt(const SSource &source, const DstModifier &modifier);
+
+  void VectorSelect(const SSource sources[3], const DstModifier &modifier);
   void Select(const SSource sources[3], const DstModifier &modifier);
   void PredAdd(const SSource &pred, bool invert, const SSource sources[2], const DstModifier &modifier);
   void Mul(const SSource[2], const DstModifier &modifier);

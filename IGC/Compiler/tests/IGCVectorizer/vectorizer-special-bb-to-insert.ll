@@ -66,5 +66,6 @@ declare void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64, i32, i32, i32, i32, i3
 !igc.functions = !{!0}
 
 !0 = distinct !{void ()* @barney, !1}
-!1 = distinct !{!2}
+!1 = distinct !{!2, !3}
 !2 = distinct !{!"sub_group_size", i32 16}
+!3 = !{!"function_type", i32 0}

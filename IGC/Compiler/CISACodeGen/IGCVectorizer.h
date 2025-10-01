@@ -51,6 +51,7 @@ class IGCVectorizer : public llvm::FunctionPass {
 
   CodeGenContext *CGCtx = nullptr;
   IGCMD::MetaDataUtils *MDUtils = nullptr;
+  WIAnalysis *WI = nullptr;
 
   // when we vectorize, we build a new vector chain,
   // this map contains associations between scalar and vector
@@ -101,6 +102,7 @@ class IGCVectorizer : public llvm::FunctionPass {
   bool handleCastInstruction(VecArr &Slice);
   bool handleSelectInstruction(VecArr &Slice);
   bool handleBinaryInstruction(VecArr &Slice);
+  bool handleCMPInstruction(VecArr &Slice);
   bool handleIntrinsic(VecArr &Slice);
   bool checkBinaryOperator(VecArr &Slice);
   bool handleIntrinsicInstruction(VecArr &Slice);
@@ -121,6 +123,7 @@ public:
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<WIAnalysis>();
   }
   IGCVectorizer();
   IGCVectorizer(const std::string &FileName);

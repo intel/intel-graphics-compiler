@@ -41,5 +41,6 @@ attributes #2 = { nocallback nofree nosync nounwind readnone speculatable willre
 !igc.functions = !{!0}
 
 !0 = distinct !{void ()* @widget, !1}
-!1 = distinct !{!2}
+!1 = distinct !{!2, !3}
 !2 = distinct !{!"sub_group_size", i32 16}
+!3 = !{!"function_type", i32 0}

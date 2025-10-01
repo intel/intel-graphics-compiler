@@ -529,5 +529,6 @@ attributes #6 = { nounwind willreturn }
 !igc.functions = !{!0}
 
 !0 = distinct !{void (i8 addrspace(1)*, i8 addrspace(1)*, i8 addrspace(1)*, i8 addrspace(1)*, i8 addrspace(1)*, <8 x i32>, <3 x i32>, i8*, i32, i32, i32, i32, i32)* bitcast (void ()* @matmul_kernel_with_block_pointers to void (i8 addrspace(1)*, i8 addrspace(1)*, i8 addrspace(1)*, i8 addrspace(1)*, i8 addrspace(1)*, <8 x i32>, <3 x i32>, i8*, i32, i32, i32, i32, i32)*), !1}
-!1 = distinct !{!2}
+!1 = distinct !{!2, !3}
 !2 = distinct !{!"sub_group_size", i32 16}
+!3 = !{!"function_type", i32 0}

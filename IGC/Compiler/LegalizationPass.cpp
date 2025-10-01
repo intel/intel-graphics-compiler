@@ -790,6 +790,13 @@ void Legalization::visitBitCastInst(llvm::BitCastInst &I) {
   }();
 }
 
+static bool isVectorTypeAllowed(Value *I) {
+  IGCLLVM::FixedVectorType *VecType = llvm::dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
+  if (!VecType) return false;
+  auto ElType = VecType->getElementType();
+  return ElType->isIntegerTy(32) || ElType->isFloatTy();
+}
+
 void Legalization::visitSelectInst(SelectInst &I) {
   m_ctx->m_instrTypes.numInsts++;
   if (I.getType()->isIntegerTy(1)) {
@@ -836,7 +843,8 @@ void Legalization::visitSelectInst(SelectInst &I) {
 
     I.replaceAllUsesWith(newVal);
     I.eraseFromParent();
-  } else if (I.getType()->isVectorTy()) {
+    // do not scalarize vector select instruction of a specific type
+  } else if (I.getType()->isVectorTy() && (IGC_IS_FLAG_ENABLED(LegalizerScalarizeSelectInstructions) || !isVectorTypeAllowed(&I))) {
     unsigned int vecSize = (unsigned)cast<IGCLLVM::FixedVectorType>(I.getType())->getNumElements();
     Value *newVec = UndefValue::get(I.getType());
     m_builder->SetInsertPoint(&I);

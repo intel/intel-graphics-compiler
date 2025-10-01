@@ -4763,11 +4763,72 @@ void EmitPass::Xor(const SSource sources[2], const DstModifier &modifier) {
   }
 }
 
+void EmitPass::VectorCMP(llvm::CmpInst::Predicate pred, const SSource sources[2], const DstModifier &modifier,
+                   uint8_t clearTagMask) {
+
+  e_predicate predicate = GetPredicate(pred);
+
+  CVariable *src[2];
+  for (int i = 0; i < 2; ++i)
+    src[i] = GetSrcVariable(sources[i], sources[i].fromConstantPool);
+
+  if (IsUnsignedCmp(pred)) {
+    src[0] = m_currShader->BitCast(src[0], GetUnsignedType(src[0]->GetType()));
+    src[1] = m_currShader->BitCast(src[1], GetUnsignedType(src[1]->GetType()));
+  } else if (IsSignedCmp(pred)) {
+    src[0] = m_currShader->BitCast(src[0], GetSignedType(src[0]->GetType()));
+    src[1] = m_currShader->BitCast(src[1], GetSignedType(src[1]->GetType()));
+  }
+
+  unsigned SIMDSize = numLanes(m_currShader->m_SIMDSize);
+
+  CVariable *dst = m_destination;
+  if (m_destination->GetType() != ISA_TYPE_BOOL && dst->GetType() != src[0]->GetType()) {
+    IGC_ASSERT_MESSAGE(CEncoder::GetCISADataTypeSize(dst->GetType()) == CEncoder::GetCISADataTypeSize(src[0]->GetType()),
+                       "Cmp to GRF must have the same size for source and destination");
+    dst = m_currShader->BitCast(m_destination, src[0]->GetType());
+  }
+
+  IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
+          "As of now Vector Emission is only supported for SIMD16");
+  unsigned VectorSize = getVectorSize(sources[0].value);
+
+    bool AllUniform = src[0]->IsUniform() && src[1]->IsUniform() && m_destination->IsUniform();
+    // cannot emit 16 SIMD if SIMD SIZE is set to 8, but can emit 4
+    // simple ALU instructions has the same possible width as SIMD, "math"
+    // pipeline instructions has reduced width
+    bool CanEmitThisSize = VectorSize <= SIMDSize;
+
+    if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
+
+      m_encoder->SetSrcRegion(0, 1, 1, 0);
+      m_encoder->SetSrcRegion(1, 1, 1, 0);
+      m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
+      m_encoder->SetSimdSize(lanesToSIMDMode(VectorSize));
+      m_encoder->Cmp(predicate, dst, src[0], src[1]);
+      m_encoder->Push();
+      return;
+    }
+
+    IGC_ASSERT_EXIT_MESSAGE(false,
+            "all vector cmp's must be uniform, else we won't fit in 32 pred mask size");
+    IGC_ASSERT_UNREACHABLE();
+    return;
+}
+
+
 void EmitPass::Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], const DstModifier &modifier,
                    uint8_t clearTagMask) {
   IGC_ASSERT(modifier.sat == false);
   IGC_ASSERT(modifier.flag == nullptr);
   IGC_ASSERT(nullptr != m_destination);
+
+  if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy() &&
+      sources[1].value->getType()->isVectorTy()) {
+
+      VectorCMP(pred, sources, modifier, clearTagMask);
+      return;
+  }
 
   e_predicate predicate = GetPredicate(pred);
 
@@ -4913,9 +4974,84 @@ void EmitPass::CmpBfn(llvm::CmpInst::Predicate predicate, const SSource cmpSourc
   m_encoder->Push();
 }
 
+
+void EmitPass::VectorSelect(const SSource sources[3], const DstModifier &modifier) {
+
+  IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
+            "As of now Vector Emission is only supported for SIMD16");
+
+  unsigned SIMDSize = numLanes(m_currShader->m_SIMDSize);
+  CVariable *dst = m_destination;
+  unsigned VectorSize = getVectorSize(sources[1].value);
+
+  CVariable *src[3];
+  CVariable *flag = GetSrcVariable(sources[0]);
+  for (int i = 1; i < 3; ++i)
+    src[i] = GetSrcVariable(sources[i], sources[i].fromConstantPool);
+
+  bool AllUniform = src[1]->IsUniform() && src[2]->IsUniform() && m_destination->IsUniform();
+  // cannot emit 16 SIMD if SIMD SIZE is set to 8, but can emit 4
+  // simple ALU instructions has the same possible width as SIMD, "math"
+  // pipeline instructions has reduced width
+  bool CanEmitThisSize = VectorSize <= SIMDSize;
+
+  m_encoder->SetDstModifier(modifier);
+  if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
+
+      SetSourceModifiers(0, sources[1]);
+      SetSourceModifiers(1, sources[2]);
+
+      //m_encoder->SetDstModifier(modifier);
+      m_encoder->SetSrcRegion(0, 1, 1, 0);
+      m_encoder->SetSrcRegion(1, 1, 1, 0);
+      m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
+      m_encoder->SetSimdSize(lanesToSIMDMode(VectorSize));
+      m_encoder->Select(flag, dst, src[1], src[2]);
+      m_encoder->Push();
+      return;
+  }
+
+  bool PredicateLengthIsCorrect = flag->GetNumberElement() == 1 || flag->GetNumberElement() == SIMDSize;
+  IGC_ASSERT_EXIT_MESSAGE(PredicateLengthIsCorrect,
+          "we can only emit non-uniform selects with matching predicate");
+
+  for (unsigned i = 0; i < VectorSize; ++i) {
+
+    SetSourceModifiers(0, sources[1]);
+    SetSourceModifiers(1, sources[2]);
+
+    if (src[1]->IsUniform())
+      m_encoder->SetSrcSubReg(0, i);
+    else
+      m_encoder->SetSrcSubVar(0, i);
+    if (src[2]->IsUniform())
+      m_encoder->SetSrcSubReg(1, i);
+    else
+      m_encoder->SetSrcSubVar(1, i);
+
+    if (AllUniform)
+      m_encoder->SetDstSubReg(i);
+    else
+      m_encoder->SetDstSubVar(i);
+
+    m_encoder->Select(flag, dst, src[1], src[2]);
+    m_encoder->Push();
+  }
+
+  return;
+}
+
 void EmitPass::Select(const SSource sources[3], const DstModifier &modifier) {
   IGC_ASSERT(modifier.flag == nullptr);
   IGC_ASSERT(sources[0].mod == EMOD_NONE);
+
+
+  if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[1].value->getType()->isVectorTy() &&
+      sources[2].value->getType()->isVectorTy()) {
+
+      VectorSelect(sources, modifier);
+      return;
+  }
 
   CVariable *flag = GetSrcVariable(sources[0]);
 
