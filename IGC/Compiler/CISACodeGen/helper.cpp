@@ -1415,6 +1415,10 @@ bool isUserFunctionCall(const llvm::Instruction *I) {
   if (callInst->getCalledFunction()->isIntrinsic() || callInst->getCalledFunction()->isDeclaration())
     return false;
 
+  // one of the known functions
+  if (callInst->hasFnAttr(llvm::Attribute::Builtin))
+    return false;
+
   // is a call instruction, not an intrinsic and not a declaration - user function call
   return true;
 }
