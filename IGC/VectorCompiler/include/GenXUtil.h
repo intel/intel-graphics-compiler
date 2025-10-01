@@ -59,6 +59,7 @@ template <typename T> inline int log2(T Val) {
   if (Val <= 0)
     return -1;
   unsigned CLZ = llvm::countLeadingZeros<uint32_t>(Val);
+  IGC_ASSERT_EXIT(CLZ < 32);
   return 31 - CLZ;
 }
 

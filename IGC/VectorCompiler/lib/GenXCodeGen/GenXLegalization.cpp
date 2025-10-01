@@ -1216,6 +1216,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
     //   * this legalization pass does not have access to FGs
     ExecSizeAllowedBits &= 0x1f;
 
+  IGC_ASSERT_EXIT(ExecSizeAllowedBits > 0);
   unsigned MainInstMinWidth = 1
                               << llvm::countTrailingZeros(ExecSizeAllowedBits);
   // Determine the vector width that we need to split into.

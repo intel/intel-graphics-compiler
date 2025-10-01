@@ -271,7 +271,7 @@ std::pair<AllocaInst *, GetElementPtrInst *>
 GenXDetectPointerArg::findAllocaWithOffset(Value *Ptr) {
   // Only support pointer to alloca
   if (auto *PTy = dyn_cast<PointerType>(Ptr->getType());
-      PTy->getAddressSpace() != vc::AddrSpace::Private)
+      PTy && PTy->getAddressSpace() != vc::AddrSpace::Private)
     return {};
 
   AllocaInst *AI = nullptr;

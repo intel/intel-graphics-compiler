@@ -669,7 +669,7 @@ NodeType *CMABIBase<CallGraphImpl>::TransformKernel(Function *F) {
       Type *Ty = IntegerType::get(F->getContext(), 8);
       if (ArgTy->isVectorTy())
         ArgTys.push_back(IGCLLVM::FixedVectorType::get(
-            Ty, dyn_cast<IGCLLVM::FixedVectorType>(ArgTy)->getNumElements()));
+            Ty, cast<IGCLLVM::FixedVectorType>(ArgTy)->getNumElements()));
       else
         ArgTys.push_back(Ty);
     } else {
@@ -1051,9 +1051,9 @@ void CMABIBase<CallGraphImpl>::diagnoseOverlappingArgs(CallInst *CI) {
             Entry->clear();
             Entry->insert(Entry->begin(), OpndEntry->begin(), OpndEntry->end());
             // Then copy the "new value" elements according to the region.
-            TempVector.resize(dyn_cast<IGCLLVM::FixedVectorType>(CI->getType())
-                                  ->getNumElements(),
-                              0);
+            TempVector.resize(
+                cast<IGCLLVM::FixedVectorType>(CI->getType())->getNumElements(),
+                0);
             int VStride =
                 cast<ConstantInt>(
                     CI->getOperand(

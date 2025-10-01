@@ -240,11 +240,8 @@ Type &getTypeFromBuiltinOperand(CallInst &BiCall, int OpIdx) {
       auto *OpInst = BiCall.getArgOperand(OpIdx);
       while (auto *Inst = dyn_cast<CastInst>(OpInst))
         OpInst = Inst->getOperand(0);
-      auto *Alloc = dyn_cast<AllocaInst>(OpInst);
-      assert(Alloc);
-      auto *RetVTy =
-          dyn_cast<IGCLLVM::FixedVectorType>(Alloc->getAllocatedType());
-      assert(RetVTy);
+      auto *Alloc = cast<AllocaInst>(OpInst);
+      auto *RetVTy = cast<IGCLLVM::FixedVectorType>(Alloc->getAllocatedType());
       IRBuilder<> IRB(Alloc);
       RetVTy = IGCLLVM::FixedVectorType::get(IRB.getInt1Ty(),
                                              RetVTy->getNumElements());
@@ -575,7 +572,7 @@ static inline Value &createInvmRsqrtm(const std::vector<Value *> &Operands,
   auto *Mask = IRB.CreateExtractValue(CI, 1, Suffix + ".mask");
 
   // Cast from i1-mask to i8 to store result
-  auto *ResTy = dyn_cast<IGCLLVM::FixedVectorType>(Res->getType());
+  auto *ResTy = cast<IGCLLVM::FixedVectorType>(Res->getType());
   auto *RetI8Ty =
       IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(), ResTy->getNumElements());
   auto *ExtMask = IRB.CreateZExt(Mask, RetI8Ty);

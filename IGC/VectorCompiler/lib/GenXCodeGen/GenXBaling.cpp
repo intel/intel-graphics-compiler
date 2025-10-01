@@ -780,7 +780,7 @@ void GenXBaling::processStore(StoreInst *Inst) {
                << __FUNCTION__ << " setting operand #" << OperandNum
                << " to bale in instruction " << *Inst << "\n");
     setOperandBaled(Inst, OperandNum, &BI);
-  } else if (isa<CallInst>(V) && cast<CallInst>(V)->isInlineAsm()) {
+  } else if (V && isa<CallInst>(V) && cast<CallInst>(V)->isInlineAsm()) {
     LLVM_DEBUG(llvm::dbgs()
                << __FUNCTION__ << " setting operand #" << OperandNum
                << " to bale in instruction " << *Inst << "\n");
@@ -1778,7 +1778,7 @@ void GenXBaling::processTwoAddrSend(CallInst *CI) {
       if (Liveness)
         Liveness->eraseLiveRange(Wr);
       Wr->eraseFromParent();
-      IGC_ASSERT(Rd);
+      IGC_ASSERT_EXIT(Rd);
       if (Rd->use_empty()) {
         if (Liveness)
           Liveness->eraseLiveRange(Rd);

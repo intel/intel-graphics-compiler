@@ -1678,7 +1678,7 @@ Value *GenXPacketize::packetizeInstruction(Instruction *Inst) {
     // Copy any metadata to new instruction
     if (Result != Inst && isa<Instruction>(Result)) {
       cast<Instruction>(Result)->copyMetadata(*Inst);
-      vectorizeRangeMetadata(Inst, dyn_cast<Instruction>(Result));
+      vectorizeRangeMetadata(Inst, cast<Instruction>(Result));
     }
   }
   return Result;

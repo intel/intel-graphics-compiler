@@ -294,7 +294,7 @@ Value *GenXLegacyToLscTranslator::translateOWordLoadStore(CallInst &CI) const {
     IGC_ASSERT_EXIT(Data);
     OrigVTy = dyn_cast<IGCLLVM::FixedVectorType>(Data->getType());
   }
-  IGC_ASSERT(OrigVTy);
+  IGC_ASSERT_EXIT(OrigVTy);
 
   auto SizeBits = OrigVTy->getScalarSizeInBits() * OrigVTy->getNumElements();
   auto NumDWords = SizeBits / DWordBits;

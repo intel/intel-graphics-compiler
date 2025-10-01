@@ -2957,7 +2957,7 @@ Value *GenXKernelBuilder::getPredicateOperand(Instruction *Inst,
   Value *Mask = Inst->getOperand(OperandNum);
   // Check for baled in all/any/notp/rdpredregion.
   while (BI.isOperandBaled(OperandNum)) {
-    Instruction *Inst = dyn_cast<Instruction>(Mask);
+    Instruction *Inst = cast<Instruction>(Mask);
     if (isNot(Inst)) {
       if (Control != PRED_CTRL_NON) {
         // switch any<->all as well as invert bit

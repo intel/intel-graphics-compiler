@@ -883,6 +883,7 @@ void DependencyGraph::remakeParent(Node &SNode, Node &SNodeToChange,
                                        Index + ExpandIndicies++);
       }
       // The Index will be inc, so there is no need of extra offset.
+      IGC_ASSERT_EXIT(ExpandIndicies > 0);
       --ExpandIndicies;
     } else {
       // If element of structure is not changed, then just copies info about it
