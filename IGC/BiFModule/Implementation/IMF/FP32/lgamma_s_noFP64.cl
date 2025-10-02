@@ -290,31 +290,31 @@ inline float __slgamma_nofp64_own_log_fp32 (float a)
 
     sPoly[7] = as_float (own_log_fp32_data.sPoly[7]);
     sPoly[6] = as_float (own_log_fp32_data.sPoly[6]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) ((sPoly[7]), (sR), (sPoly[6]));
+    sP = __spirv_ocl_fma((sPoly[7]),(sR),(sPoly[6]));
 
     sPoly[5] = as_float (own_log_fp32_data.sPoly[5]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) ((sP), (sR), (sPoly[5]));
+    sP = __spirv_ocl_fma((sP),(sR),(sPoly[5]));
 
     sPoly[4] = as_float (own_log_fp32_data.sPoly[4]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) ((sP), (sR), (sPoly[4]));
+    sP = __spirv_ocl_fma((sP),(sR),(sPoly[4]));
 
     sPoly[3] = as_float (own_log_fp32_data.sPoly[3]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) ((sP), (sR), (sPoly[3]));
+    sP = __spirv_ocl_fma((sP),(sR),(sPoly[3]));
 
     sPoly[2] = as_float (own_log_fp32_data.sPoly[2]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) ((sP), (sR), (sPoly[2]));
+    sP = __spirv_ocl_fma((sP),(sR),(sPoly[2]));
 
     sPoly[1] = as_float (own_log_fp32_data.sPoly[1]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) ((sP), (sR), (sPoly[1]));
+    sP = __spirv_ocl_fma((sP),(sR),(sPoly[1]));
 
     sPoly[0] = as_float (own_log_fp32_data.sPoly[0]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) ((sP), (sR), (sPoly[0]));
+    sP = __spirv_ocl_fma((sP),(sR),(sPoly[0]));
 
     sP = (sP * sR);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) ((sP), (sR), (sR));
+    sP = __spirv_ocl_fma((sP),(sR),(sR));
 
     sLn2 = as_float (own_log_fp32_data.sLn2);
-    vr1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) ((sN), (sLn2), (sP));
+    vr1 = __spirv_ocl_fma((sN),(sLn2),(sP));
 
     r = vr1;
 
@@ -402,8 +402,8 @@ inline float __slgamma_nofp64_own_lgamma_fast_fp32 (float arg)
 {
 
     unsigned int __slgamma_nofp64_own_log2pif = 0x3feb3f8eu;
-    float result = 0.5f * ((*(float *) &(__slgamma_nofp64_own_log2pif)) - SPIRV_OCL_BUILTIN(log, _f32, ) (arg));
-    result = result + (arg * (SPIRV_OCL_BUILTIN(log, _f32, ) (arg + (1.0f / ((12.0f * arg) - (1.0f / (10.0f * arg))))) - 1.0f));
+    float result = 0.5f * ((*(float *) &(__slgamma_nofp64_own_log2pif)) - __spirv_ocl_log(arg));
+    result = result + (arg * (__spirv_ocl_log(arg + (1.0f / ((12.0f * arg) - (1.0f / (10.0f * arg))))) - 1.0f));
     return result;
 }   // static inline float _VSTATIC(own_lgamma_fast_fp32) (float arg)
 
@@ -472,7 +472,7 @@ inline float __slgamma_nofp64_own_lgamma_pos_fp32 (float arg)
         else if (arg > 0.5)
         {
             rr = arg - 1.0f;
-            c0 = -SPIRV_OCL_BUILTIN(log, _f32, ) (arg);
+            c0 = -__spirv_ocl_log(arg);
             _p = _p2;
             _q = _q2;
             rrr = rr;
@@ -480,7 +480,7 @@ inline float __slgamma_nofp64_own_lgamma_pos_fp32 (float arg)
         else if (arg > xsmall)
         {
             rr = arg;
-            c0 = -SPIRV_OCL_BUILTIN(log, _f32, ) (arg);
+            c0 = -__spirv_ocl_log(arg);
             _p = _p1;
             _q = _q1;
             rrr = rr;
@@ -488,7 +488,7 @@ inline float __slgamma_nofp64_own_lgamma_pos_fp32 (float arg)
         else    // arg <= xsmall
         {
             rr = 0.0;
-            c0 = -SPIRV_OCL_BUILTIN(log, _f32, ) (arg);
+            c0 = -__spirv_ocl_log(arg);
             _p = _p1;
             _q = _q1;
             rrr = rr;
@@ -589,8 +589,8 @@ inline int __internal_slgamma_nofp64_cout (float *a, float *r)
                 y = y + 1.0f;
             }
 
-            p = SPIRV_OCL_BUILTIN(fabs, _f32, ) (p);
-            p = SPIRV_OCL_BUILTIN(log, _f32, ) (p);
+            p = __spirv_ocl_fabs(p);
+            p = __spirv_ocl_log(p);
             result = __slgamma_nofp64_own_lgamma_pos_fp32 (y);
             result = result - p;
             (*r) = result;
@@ -612,7 +612,7 @@ inline int __internal_slgamma_nofp64_cout (float *a, float *r)
             r1 = ldx - r1;
             r2 = r1 * r1;
 
-            result = SPIRV_OCL_BUILTIN(log, _f32, ) (-x);
+            result = __spirv_ocl_log(-x);
             result = -result;
             y = __slgamma_nofp64_own_lgamma_pos_fp32 (ldx);
             result = result - y;
@@ -621,8 +621,8 @@ inline int __internal_slgamma_nofp64_cout (float *a, float *r)
 
             result = result - p;
 
-            r1 = SPIRV_OCL_BUILTIN(fabs, _f32, ) (r1);
-            y = SPIRV_OCL_BUILTIN(log, _f32, ) (r1);
+            r1 = __spirv_ocl_fabs(r1);
+            y = __spirv_ocl_log(r1);
             result = result - y;
             (*r) = result;
         }
@@ -640,7 +640,7 @@ inline int __internal_slgamma_nofp64_cout (float *a, float *r)
             ldx = x;
             t1 = ldx - 0.5f;
             t2 = -ldx;
-            t2 = SPIRV_OCL_BUILTIN(log, _f32, ) (-x);
+            t2 = __spirv_ocl_log(-x);
             t1 = t1 * t2;
             result = t1 - result;
 
@@ -658,8 +658,8 @@ inline int __internal_slgamma_nofp64_cout (float *a, float *r)
 
             result = result - p;
 
-            r1 = SPIRV_OCL_BUILTIN(fabs, _f32, ) (r1);
-            y = SPIRV_OCL_BUILTIN(log, _f32, ) (r1);
+            r1 = __spirv_ocl_fabs(r1);
+            y = __spirv_ocl_log(r1);
             result = result - y;
             (*r) = result;
         }

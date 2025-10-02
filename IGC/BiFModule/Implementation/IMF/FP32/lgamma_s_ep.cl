@@ -103,10 +103,10 @@ SPDX-License-Identifier: MIT
 */
 
 // SPIRV intrinsics
-// double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fabs, _f64, ) (double);
-// float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log, _f32, ) (float);
-// float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (float, float, float);
-// double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (double, double, double);
+// double __attribute__((overloadable)) __spirv_ocl_fabs(double);
+// float __attribute__((overloadable)) __spirv_ocl_log(float);
+// float __attribute__((overloadable)) __spirv_ocl_fma(float,float,float);
+// double __attribute__((overloadable)) __spirv_ocl_fma(double,double,double);
 
 //
 // Static data section:
@@ -1005,8 +1005,8 @@ static inline float __slgamma_ep_own_lgamma_fast_fp32 (float arg)
 {
 
     unsigned int __slgamma_ep_own_log2pif = 0x3feb3f8eu;
-    float result = 0.5f * ((*(float *) &(__slgamma_ep_own_log2pif)) - SPIRV_OCL_BUILTIN(log, _f32, ) (arg));
-    result = result + (arg * (SPIRV_OCL_BUILTIN(log, _f32, ) (arg + (1.0f / ((12.0f * arg) - (1.0f / (10.0f * arg))))) - 1.0f));
+    float result = 0.5f * ((*(float *) &(__slgamma_ep_own_log2pif)) - __spirv_ocl_log(arg));
+    result = result + (arg * (__spirv_ocl_log(arg + (1.0f / ((12.0f * arg) - (1.0f / (10.0f * arg))))) - 1.0f));
     return result;
 }   // static inline float _VSTATIC(own_lgamma_fast_fp32) (float arg)
 
@@ -1278,8 +1278,8 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
                     y = y + 1.0;
                 }
 
-                p = SPIRV_OCL_BUILTIN(fabs, _f64, ) (p);
-                p = __slgamma_ep_own_log_lut_fp64 ((double) p);
+                p = __spirv_ocl_fabs(p);
+                p = __slgamma_ep_own_log_lut_fp64((double) p);
                 result = __slgamma_ep_own_lgamma_pos_fp64 (y);
                 result = result - p;
                 (*r) = (float) result;
@@ -1332,7 +1332,7 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
                         p = p * y;
                         y = y + 1.0;
                     }
-                    p = SPIRV_OCL_BUILTIN(fabs, _f64, ) (p);
+                    p = __spirv_ocl_fabs(p);
                     p = __slgamma_ep_own_log_lut_fp64 ((double) p);
                     result = __slgamma_ep_own_lgamma_pos_fp64 (y);
                     result = result - p;
@@ -1351,7 +1351,7 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
                     y = y + 1.0;
                 }
 
-                p = SPIRV_OCL_BUILTIN(fabs, _f64, ) (p);
+                p = __spirv_ocl_fabs(p);
                 p = __slgamma_ep_own_log_lut_fp64 ((double) p);
                 result = __slgamma_ep_own_lgamma_pos_fp64 (y);
                 result = result - p;
@@ -1393,7 +1393,7 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
 
                 result = result - p;
 
-                r1 = SPIRV_OCL_BUILTIN(fabs, _f64, ) (r1);
+                r1 = __spirv_ocl_fabs(r1);
                 y = __slgamma_ep_own_log_lut_fp64 ((double) r1);
                 result = result - y;
                 (*r) = (float) result;
@@ -1436,7 +1436,7 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
 
                 result = result - p;
 
-                r1 = SPIRV_OCL_BUILTIN(fabs, _f64, ) (r1);
+                r1 = __spirv_ocl_fabs(r1);
                 y = __slgamma_ep_own_log_lut_fp64 ((double) r1);
                 result = result - y;
                 (*r) = (float) result;

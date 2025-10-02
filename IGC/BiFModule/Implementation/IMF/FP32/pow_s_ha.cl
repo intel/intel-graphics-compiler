@@ -885,11 +885,11 @@ __ocl_svml_internal_spow_ha(float *pxin, float *pyin, float *pres) {
   expon_x = (float)(iexpon_x);
   rcp.f = 1.0f / (mant_x.f);
   // round to rcp to 1+5 mantissa bits
-  rcp.f = SPIRV_OCL_BUILTIN(rint, _f32, )(rcp.f);
+  rcp.f = __spirv_ocl_rint(rcp.f);
   // table index
   index = ((rcp.w >> (23 - 8 - 1)) + 0x200) & 0x3fe;
   // reduced argument
-  R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(rcp.f, mant_x.f, (-1.0f));
+  R = __spirv_ocl_fma(rcp.f, mant_x.f, (-1.0f));
   // expon_x + Th, exact
   Th.w = __spow_ha_log_tbl[index].w;
   Th.f += expon_x;
@@ -897,50 +897,50 @@ __ocl_svml_internal_spow_ha(float *pxin, float *pyin, float *pres) {
   Tl.w = __spow_ha_log_tbl[index + 1].w;
   // polynomial + Tl
   poly =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__spow_ha_c4.f, R, __spow_ha_c3.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __spow_ha_c2.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __spow_ha_c1.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, Tl.f);
+      __spirv_ocl_fma(__spow_ha_c4.f, R, __spow_ha_c3.f);
+  poly = __spirv_ocl_fma(poly, R, __spow_ha_c2.f);
+  poly = __spirv_ocl_fma(poly, R, __spow_ha_c1.f);
+  poly = __spirv_ocl_fma(poly, R, Tl.f);
   // (Th+expon) + (c1h*R)_high
-  High = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__spow_ha_c1h.f, R, Th.f);
+  High = __spirv_ocl_fma(__spow_ha_c1h.f, R, Th.f);
   // (c1h*R)_high
   c1hR_h = High - Th.f;
   // (c1h*R)_low
   c1hR_l =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__spow_ha_c1h.f, R, (-c1hR_h));
+      __spirv_ocl_fma(__spow_ha_c1h.f, R, (-c1hR_h));
   High2 = poly + High;
   poly_h = High2 - High;
   poly = poly - poly_h;
   Low = poly + c1hR_l;
   // y*log2(x)
-  iylx.f = ylx_h = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(y.f, High2, 0.0f);
-  ylx_l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(y.f, High2, (-ylx_h));
-  ylx_l += SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(y.f, Low, 0.0f);
+  iylx.f = ylx_h = __spirv_ocl_fma(y.f, High2, 0.0f);
+  ylx_l = __spirv_ocl_fma(y.f, High2, (-ylx_h));
+  ylx_l += __spirv_ocl_fma(y.f, Low, 0.0f);
   // redirect special cases
   iexpon_x--;
   iylx.w &= 0x7fffffffu;
   if ((iexpon_x >= 0xfe) || (iylx.w >= 0x42FB8000))
     goto POWF_SPECIAL;
   // exp2 computation
-  fN = SPIRV_OCL_BUILTIN(rint, _f32, )(ylx_h);
+  fN = __spirv_ocl_rint(ylx_h);
   Re = ylx_h - fN;
   Re = Re + ylx_l;
   sN = (int)fN;
   // exponent
   N = sN;
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__spow_ha_ec6.f, Re,
+  poly = __spirv_ocl_fma(__spow_ha_ec6.f, Re,
                                                 __spow_ha_ec5.f);
   // 1+0.5*Re
-  High = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Re, 0.5f, 1.0f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, Re, __spow_ha_ec4.f);
+  High = __spirv_ocl_fma(Re, 0.5f, 1.0f);
+  poly = __spirv_ocl_fma(poly, Re, __spow_ha_ec4.f);
   // (0.5*R)_high
   Rh = High - 1.0f;
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, Re, __spow_ha_ec3.f);
+  poly = __spirv_ocl_fma(poly, Re, __spow_ha_ec3.f);
   // (0.5*R)_low
-  Rl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Re, 0.5f, (-Rh));
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, Re, __spow_ha_ec2.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, Re, __spow_ha_ec1.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, Re, Rl);
+  Rl = __spirv_ocl_fma(Re, 0.5f, (-Rh));
+  poly = __spirv_ocl_fma(poly, Re, __spow_ha_ec2.f);
+  poly = __spirv_ocl_fma(poly, Re, __spow_ha_ec1.f);
+  poly = __spirv_ocl_fma(poly, Re, Rl);
   res.f = High + poly;
   res.w += (N << 23);
   *pres = res.f;

@@ -56,15 +56,15 @@ __ocl_svml_internal_stanh_ep(float *a, float *r) {
   xa.w = x0.w & 0x7fffffff;
   sgn_x = xa.w ^ x0.w;
   R2.f = xa.f * xa.f;
-  npoly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2.f, __stanh_ep_nc2.f,
+  npoly.f = __spirv_ocl_fma(R2.f, __stanh_ep_nc2.f,
                                                    __stanh_ep_nc1.f);
-  dpoly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2.f, __stanh_ep_dc2.f,
+  dpoly.f = __spirv_ocl_fma(R2.f, __stanh_ep_dc2.f,
                                                    __stanh_ep_dc1.f);
   npoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(npoly.f, R2.f, __stanh_ep_nc0.f);
+      __spirv_ocl_fma(npoly.f, R2.f, __stanh_ep_nc0.f);
   dpoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dpoly.f, R2.f, __stanh_ep_dc0.f);
-  dpoly.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(dpoly.f, xa.f, xa.f);
+      __spirv_ocl_fma(dpoly.f, R2.f, __stanh_ep_dc0.f);
+  dpoly.f = __spirv_ocl_fma(dpoly.f, xa.f, xa.f);
   // 1.0/npoly
   y.f = 1.0f / (npoly.f);
   // dpoly/npoly

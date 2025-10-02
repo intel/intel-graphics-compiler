@@ -98,7 +98,7 @@ __ocl_svml_internal_satan_ha(float *pxin, float *pres) {
     lcorr.w = smask & 0x333BBD2E;
     sgn_r = sgn_x ^ (smask & 0x80000000u);
     // reciprocal relative error
-    eps.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-xa.f), ya.f, 1.0f);
+    eps.f = __spirv_ocl_fma((-xa.f), ya.f, 1.0f);
     // fixup for eps=NaN
     eps.w &= 0xbfffffffu;
     // reduced argument
@@ -111,28 +111,28 @@ __ocl_svml_internal_satan_ha(float *pxin, float *pres) {
     R1.f = R0.f - 0.5f;
     // add correction
     R = R1.f + Rcorr.f;
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__satan_ha_c11.f, R,
+    poly = __spirv_ocl_fma(__satan_ha_c11.f, R,
                                                   __satan_ha_c10.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan_ha_c9.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan_ha_c8.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan_ha_c7.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan_ha_c6.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan_ha_c5.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan_ha_c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan_ha_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan_ha_c2.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ha_c9.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ha_c8.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ha_c7.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ha_c6.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ha_c5.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ha_c4.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ha_c3.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ha_c2.f);
     // _VSTATIC(c1l) can be used to reduce ulp error
     // poly = SP_FMA(poly, R, _VSTATIC(c1l).f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan_ha_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan_ha_c0.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ha_c1.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ha_c0.f);
     // used here when _VSTATIC(c1l) is used in poly evaluation
     // poly = SP_FMA(_VSTATIC(c1).f, R, poly);
     // Rcorr + Rcorr*poly
-    sres.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, Rcorr.f, Rcorr.f);
+    sres.f = __spirv_ocl_fma(poly, Rcorr.f, Rcorr.f);
     // (R+ R*poly)+lcorr
     sres.f = sres.f + lcorr.f;
     // ((R+ R*poly)+lcorr)+R0*poly
-    sres.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(R0.f, poly, sres.f);
+    sres.f = __spirv_ocl_fma(R0.f, poly, sres.f);
     // ((R+ R*poly)+lcorr)+R0*poly + R0
     sres.f = sres.f + R0.f;
     // ((R+ R*poly)+lcorr)+Q0*poly + Q0 + hcorr

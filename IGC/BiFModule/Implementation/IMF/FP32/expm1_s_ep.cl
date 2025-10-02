@@ -71,29 +71,29 @@ __ocl_svml_internal_sexpm1_ep(float *a, float *pres) {
   float R, poly, Th;
   xf.f = xin;
   xL2E.f =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(xf.f, __sexpm1_ep_fL2E.f, 0.0f);
-  fN.f = SPIRV_OCL_BUILTIN(trunc, _f32, )(xL2E.f);
+      __spirv_ocl_fma(xf.f, __sexpm1_ep_fL2E.f, 0.0f);
+  fN.f = __spirv_ocl_trunc(xL2E.f);
   fS.f = __sexpm1_ep_fShifter.f + fN.f;
   // reduced argument
-  R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fN.f, __sexpm1_ep_NL2H.f, xf.f);
+  R = __spirv_ocl_fma(fN.f, __sexpm1_ep_NL2H.f, xf.f);
   // R = SP_FMA(fN.f, _VSTATIC(NL2L).f, R);
   //  2^N
   T.w = fS.w << 23;
   // e^R - 1
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__sexpm1_ep_c4.f, R,
+  poly = __spirv_ocl_fma(__sexpm1_ep_c4.f, R,
                                                 __sexpm1_ep_c3.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sexpm1_ep_c2.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sexpm1_ep_c1.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sexpm1_ep_c0.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, R);
+  poly = __spirv_ocl_fma(poly, R, __sexpm1_ep_c2.f);
+  poly = __spirv_ocl_fma(poly, R, __sexpm1_ep_c1.f);
+  poly = __spirv_ocl_fma(poly, R, __sexpm1_ep_c0.f);
+  poly = __spirv_ocl_fma(poly, R, R);
   // maxabs(T,-1), minabs(T,-1)
   Th = T.f - 1.0f;
   // 2^N*poly + 2^N - 1
-  res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(T.f, poly, Th);
+  res.f = __spirv_ocl_fma(T.f, poly, Th);
   // ensure expm1(-0)=-0
-  xa.f = SPIRV_OCL_BUILTIN(fabs, _f32, )(xf.f);
+  xa.f = __spirv_ocl_fabs(xf.f);
   res.w |= (xf.w ^ xa.w);
-  if (SPIRV_OCL_BUILTIN(fabs, _f32, )(xf.f) <= 87.0f) {
+  if (__spirv_ocl_fabs(xf.f) <= 87.0f) {
     *pres = res.f;
     return nRet;
   }
@@ -122,7 +122,7 @@ __ocl_svml_internal_sexpm1_ep(float *a, float *pres) {
   // at or near overflow
   // 2^(N-64), N=(int)dN
   T.w = (fS.w - 64) << 23;
-  res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(T.f, poly, T.f);
+  res.f = __spirv_ocl_fma(T.f, poly, T.f);
   // final scaling
   sc.w = 0x5f800000u;
   res.f *= sc.f;

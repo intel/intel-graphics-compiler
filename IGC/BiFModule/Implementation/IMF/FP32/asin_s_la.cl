@@ -69,27 +69,27 @@ inline int __internal_sasin_la_cout (float *pxin, float *pres)
 
         sgn_x = x.w ^ xa.w;
 
-        y.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(0.5f), xa.f, 0.5f);
+        y.f = __spirv_ocl_fma(-(0.5f),xa.f,0.5f);
 
         R = xin * xin;
-        R = SPIRV_OCL_BUILTIN(fmin, _f32_f32, ) (R, y.f);
+        R = __spirv_ocl_fmin(R, y.f);
 
-        RS.f = 1.0f / SPIRV_OCL_BUILTIN(sqrt, _f32, ) (y.f + __sasin_la_small_float.f);
+        RS.f = 1.0f / __spirv_ocl_sqrt(y.f + __sasin_la_small_float.f);
 
         Sh.f = (y.f * RS.f);
         Sh.f *= -2.0f;
 
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__sasin_la_c5.f, R, __sasin_la_c4.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sasin_la_c3.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sasin_la_c2.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sasin_la_c1.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sasin_la_c0.f);
+        poly = __spirv_ocl_fma(__sasin_la_c5.f,R,__sasin_la_c4.f);
+        poly = __spirv_ocl_fma(poly,R,__sasin_la_c3.f);
+        poly = __spirv_ocl_fma(poly,R,__sasin_la_c2.f);
+        poly = __spirv_ocl_fma(poly,R,__sasin_la_c1.f);
+        poly = __spirv_ocl_fma(poly,R,__sasin_la_c0.f);
 
         R0.f = (xa.f <= 0.5f) ? xa.f : Sh.f;
 
         High.f = (xa.f <= 0.5f) ? 0 : __sasin_la_pi2h.f;
 
-        res.f = (SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R0.f, High.f));
+        res.f = (__spirv_ocl_fma(poly,R0.f,High.f));
 
         res.w |= sgn_x;
 

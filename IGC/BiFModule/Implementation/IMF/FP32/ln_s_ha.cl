@@ -491,30 +491,30 @@ float __ocl_svml_logf_ha(float x) {
     sPoly[8] = as_float(__ocl_svml_internal_sln_ha_data.sPoly[8]);
     sPoly[7] = as_float(__ocl_svml_internal_sln_ha_data.sPoly[7]);
     /* polynomial evaluation starts here */
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sPoly[8], sR, sPoly[7]);
+    sP = __spirv_ocl_fma(sPoly[8], sR, sPoly[7]);
     sPoly[6] = as_float(__ocl_svml_internal_sln_ha_data.sPoly[6]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[6]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[6]);
     sPoly[5] = as_float(__ocl_svml_internal_sln_ha_data.sPoly[5]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[5]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[5]);
     sPoly[4] = as_float(__ocl_svml_internal_sln_ha_data.sPoly[4]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[4]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[4]);
     sPoly[3] = as_float(__ocl_svml_internal_sln_ha_data.sPoly[3]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[3]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[3]);
     sPoly[2] = as_float(__ocl_svml_internal_sln_ha_data.sPoly[2]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[2]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[2]);
     sPoly[1] = as_float(__ocl_svml_internal_sln_ha_data.sPoly[1]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[1]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[1]);
     sPoly[0] = as_float(__ocl_svml_internal_sln_ha_data.sPoly[0]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[0]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[0]);
     sP = (sP * sR);
     /* polynomial evaluation end */
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sR);
+    sP = __spirv_ocl_fma(sP, sR, sR);
     sLn2Hi = as_float(__ocl_svml_internal_sln_ha_data.sLn2Hi);
     sLn2Lo = as_float(__ocl_svml_internal_sln_ha_data.sLn2Lo);
     /* final reconstruction: */
     /* add exponent_value*(log2_hi + log2_lo) to polynomial result */
-    vr1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sN, sLn2Lo, sP);
-    vr1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sN, sLn2Hi, vr1);
+    vr1 = __spirv_ocl_fma(sN, sLn2Lo, sP);
+    vr1 = __spirv_ocl_fma(sN, sLn2Hi, vr1);
   }
   if (__builtin_expect((vm) != 0, 0)) {
     float __cout_a1;

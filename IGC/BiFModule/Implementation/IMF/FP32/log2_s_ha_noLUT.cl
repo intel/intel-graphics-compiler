@@ -84,19 +84,19 @@ LOG2F_MAIN:
   R = mant.f - 1.0f;
   expon = (double)iexpon;
   // polynomial
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__slog2_ha_nolut_c10.f, R,
+  poly = __spirv_ocl_fma(__slog2_ha_nolut_c10.f, R,
                                                 __slog2_ha_nolut_c9.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog2_ha_nolut_c8.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog2_ha_nolut_c7.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog2_ha_nolut_c6.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog2_ha_nolut_c5.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog2_ha_nolut_c4.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog2_ha_nolut_c3.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog2_ha_nolut_c2h.f);
+  poly = __spirv_ocl_fma(poly, R, __slog2_ha_nolut_c8.f);
+  poly = __spirv_ocl_fma(poly, R, __slog2_ha_nolut_c7.f);
+  poly = __spirv_ocl_fma(poly, R, __slog2_ha_nolut_c6.f);
+  poly = __spirv_ocl_fma(poly, R, __slog2_ha_nolut_c5.f);
+  poly = __spirv_ocl_fma(poly, R, __slog2_ha_nolut_c4.f);
+  poly = __spirv_ocl_fma(poly, R, __slog2_ha_nolut_c3.f);
+  poly = __spirv_ocl_fma(poly, R, __slog2_ha_nolut_c2h.f);
   dR = (double)R;
   dpoly = (double)poly;
-  dpoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dpoly, dR, __slog2_ha_nolut_dc1.f);
-  dpoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dpoly, dR, expon);
+  dpoly = __spirv_ocl_fma(dpoly, dR, __slog2_ha_nolut_dc1.f);
+  dpoly = __spirv_ocl_fma(dpoly, dR, expon);
   poly = (float)dpoly;
   *r = poly;
   return nRet;

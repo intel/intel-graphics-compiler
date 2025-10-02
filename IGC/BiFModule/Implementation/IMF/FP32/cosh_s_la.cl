@@ -161,7 +161,7 @@ __attribute__((always_inline))
 inline int __internal_scosh_la_cout (float *a, float *r)
 {
     int nRet = 0;
-    float x = SPIRV_OCL_BUILTIN(fabs, _f32, ) (*a);
+    float x = __spirv_ocl_fabs(*a);
     union
     {
         unsigned int w;
@@ -170,11 +170,11 @@ inline int __internal_scosh_la_cout (float *a, float *r)
     float N, R, poly;
     int index_mask;
 
-    S.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (x, __scosh_la_L2E.f, __scosh_la_Shifter.f);
+    S.f = __spirv_ocl_fma(x,__scosh_la_L2E.f,__scosh_la_Shifter.f);
     N = S.f - __scosh_la_Shifter.f;
 
-    R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-N, __scosh_la_L2H.f, x);
-    R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-N, __scosh_la_L2L.f, R);
+    R = __spirv_ocl_fma(-N,__scosh_la_L2H.f,x);
+    R = __spirv_ocl_fma(-N,__scosh_la_L2L.f,R);
 
     Th.w = S.w << 22;
 
@@ -184,11 +184,11 @@ inline int __internal_scosh_la_cout (float *a, float *r)
 
     Tlr.w = index_mask & 0x329302AEu;
 
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, __scosh_la_c5.f, __scosh_la_c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, __scosh_la_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, __scosh_la_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, __scosh_la_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, Tlr.f);
+    poly = __spirv_ocl_fma(R,__scosh_la_c5.f,__scosh_la_c4.f);
+    poly = __spirv_ocl_fma(R,poly,__scosh_la_c3.f);
+    poly = __spirv_ocl_fma(R,poly,__scosh_la_c2.f);
+    poly = __spirv_ocl_fma(R,poly,__scosh_la_c1.f);
+    poly = __spirv_ocl_fma(R,poly,Tlr.f);
 
     xin.f = x;
     xa.w = xin.w & 0x7fffffffu;
@@ -196,7 +196,7 @@ inline int __internal_scosh_la_cout (float *a, float *r)
     if (xa.w > 0x42AEAC4Fu)
         goto COSHF_SPECIAL;
 
-    res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, Th.f, Th.f);
+    res.f = __spirv_ocl_fma(poly,Th.f,Th.f);
 
     *r = 0.5f * res.f;
     return nRet;
@@ -226,7 +226,7 @@ inline int __internal_scosh_la_cout (float *a, float *r)
 
     Th.w ^= (index_mask & 0x7504F3u);
 
-    res.f = 0.5f * SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, Th.f, Th.f);
+    res.f = 0.5f * __spirv_ocl_fma(poly,Th.f,Th.f);
     res.f *= Th2.f;
 
     *r = res.f;
@@ -283,7 +283,7 @@ float __ocl_svml_coshf (float a)
 
         sAbsX = as_float ((~(as_uint (sXSign)) & as_uint (va1)));
 
-        sM = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sAbsX, sInvLn2, sShifter);
+        sM = __spirv_ocl_fma(sAbsX,sInvLn2,sShifter);
 
         iAbsX = as_uint (sAbsX);
 
@@ -293,9 +293,9 @@ float __ocl_svml_coshf (float a)
 
         sN = (sM - sShifter);
         sOut = as_float (__internal_scosh_la_data._sLn2hi);
-        sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sOut), sN, sAbsX);
+        sR = __spirv_ocl_fma(-(sOut),sN,sAbsX);
         sOut = as_float (__internal_scosh_la_data._sLn2lo);
-        sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sOut), sN, sR);
+        sR = __spirv_ocl_fma(-(sOut),sN,sR);
 
         iM = as_uint (sM);
         iM = ((unsigned int) (iM) << (23));
@@ -309,15 +309,15 @@ float __ocl_svml_coshf (float a)
         sG1 = (sG1 - sG2);
         sG2 = (sM + sG2);
 
-        sSinh_r = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPC[4], sR2, sPC[2]);
+        sSinh_r = __spirv_ocl_fma(sPC[4],sR2,sPC[2]);
         sSinh_r = (sSinh_r * sR2);
-        sSinh_r = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sSinh_r, sR, sR);
+        sSinh_r = __spirv_ocl_fma(sSinh_r,sR,sR);
 
-        sOut = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPC[5], sR2, sPC[3]);
-        sOut = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sOut, sR2, sPC[1]);
+        sOut = __spirv_ocl_fma(sPC[5],sR2,sPC[3]);
+        sOut = __spirv_ocl_fma(sOut,sR2,sPC[1]);
         sOut = (sOut * sR2);
         sOut = (sOut * sG2);
-        sOut = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sG1, sSinh_r, sOut);
+        sOut = __spirv_ocl_fma(sG1,sSinh_r,sOut);
         vr1 = (sOut + sG2);
     }
 

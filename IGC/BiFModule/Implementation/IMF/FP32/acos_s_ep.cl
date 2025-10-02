@@ -430,15 +430,15 @@ __ocl_svml_internal_sacos_ep(float *pxin, float *pres) {
     // input sign
     sgn_x = x.w ^ xa.w;
     // (1-|x|)/2
-    y.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-xa.f), 0.5f, 0.5f);
+    y.f = __spirv_ocl_fma((-xa.f), 0.5f, 0.5f);
     // prepare polynomial argument
     R = xin * xin;
-    R = SPIRV_OCL_BUILTIN(fmin, _f64_f64, )(R, y.f);
+    R = __spirv_ocl_fmin(R, y.f);
     High.f = sgn_x ? __sacos_ep_pih.f : 0.0f;
     High.f = (xa.f <= 0.5f) ? __sacos_ep_pi2h.f : High.f;
     // rsqrt((1-|x|)/2)
     RS.f = 1.0f /
-           SPIRV_OCL_BUILTIN(sqrt, _f32, )((y.f + __sacos_ep_small_float.f));
+           __spirv_ocl_sqrt((y.f + __sacos_ep_small_float.f));
     // set sign for later computation
     RS.w |= sgn_x;
     // Sh ~ sqrt((1-|x|)/2)
@@ -446,13 +446,13 @@ __ocl_svml_internal_sacos_ep(float *pxin, float *pres) {
     //  Shh2 = (-2*Sh)_high
     Shh2.f = -2.0f * Sh;
     // polynomial
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__sacos_ep_c2.f, R,
+    poly = __spirv_ocl_fma(__sacos_ep_c2.f, R,
                                                   __sacos_ep_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sacos_ep_c0.f);
+    poly = __spirv_ocl_fma(poly, R, __sacos_ep_c0.f);
     // R0 = sel_mask? xa.f : Shh2.w
     R0.f = (xa.f <= 0.5f) ? x.f : Shh2.f;
     // High - poly*R0
-    res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-poly), R0.f, High.f);
+    res.f = __spirv_ocl_fma((-poly), R0.f, High.f);
   }
   *pres = res.f;
   nRet = (y.f >= 0.0f) ? 0 : 1;

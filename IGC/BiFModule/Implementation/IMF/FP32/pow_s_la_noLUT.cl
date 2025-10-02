@@ -446,39 +446,39 @@ inline int __internal_spow_nolut_cout (float *pxin, float *pyin, float *pres)
     iSmallX = (fLogMant < __spow_la_slog_m181o256.f);
     fLogMant = (iSmallX) ? (2.0f * fLogMant) : fLogMant;
     iExpX = (iSmallX) ? (iExpX - 1) : iExpX;
-    fLogV1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogMant, 1.0f, 1.0f);
-    fLogMant = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogMant, 1.0f, -1.0f);
+    fLogV1 = __spirv_ocl_fma(fLogMant,1.0f,1.0f);
+    fLogMant = __spirv_ocl_fma(fLogMant,1.0f,-1.0f);
     fLogR = 1.0f / fLogV1;
-    fLogFHi = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogMant, fLogR, 0.0f);
-    fLogV2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogFHi, -__spow_la_slog_two.f, fLogMant);
-    fLogV3 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogFHi, -fLogMant, fLogV2);
-    fLogFLo = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogR, fLogV3, 0.0f);
+    fLogFHi = __spirv_ocl_fma(fLogMant,fLogR,0.0f);
+    fLogV2 = __spirv_ocl_fma(fLogFHi,-__spow_la_slog_two.f,fLogMant);
+    fLogV3 = __spirv_ocl_fma(fLogFHi,-fLogMant,fLogV2);
+    fLogFLo = __spirv_ocl_fma(fLogR,fLogV3,0.0f);
     fLogV3 = fLogFHi * fLogFHi;
-    fLogR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__spow_la_slog_c4.f, fLogV3, __spow_la_slog_c3.f);
-    fLogR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogR, fLogV3, __spow_la_slog_c2.f);
-    fLogR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogR, fLogV3, __spow_la_slog_c1.f);
-    fLogV2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogFHi, fLogFLo + fLogFLo, SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogFHi, fLogFHi, -fLogV3));
-    fLogV1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogV3, fLogFHi, 0.0f);
+    fLogR = __spirv_ocl_fma(__spow_la_slog_c4.f,fLogV3,__spow_la_slog_c3.f);
+    fLogR = __spirv_ocl_fma(fLogR,fLogV3,__spow_la_slog_c2.f);
+    fLogR = __spirv_ocl_fma(fLogR,fLogV3,__spow_la_slog_c1.f);
+    fLogV2 = __spirv_ocl_fma(fLogFHi,fLogFLo+fLogFLo,__spirv_ocl_fma(fLogFHi,fLogFHi,-fLogV3));
+    fLogV1 = __spirv_ocl_fma(fLogV3,fLogFHi,0.0f);
     fLogV2 =
-        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogV3, fLogFLo,
-                                                SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogV2, fLogFHi,
-                                                                                        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogV3, fLogFHi,
+        __spirv_ocl_fma(fLogV3, fLogFLo,
+                                                __spirv_ocl_fma(fLogV2, fLogFHi,
+                                                                                        __spirv_ocl_fma(fLogV3, fLogFHi,
                                                                                                                                 -fLogV1)));
-    fLogV3 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogR, fLogV1, SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogR, fLogV2, fLogFLo));
+    fLogV3 = __spirv_ocl_fma(fLogR,fLogV1,__spirv_ocl_fma(fLogR,fLogV2,fLogFLo));
     fLogExp = (float) iExpX;
     fLogV2 =
-        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__spow_la_slog_half.f, __spow_la_slog_log2hi.f, 0.0f),
+        __spirv_ocl_fma(__spirv_ocl_fma (__spow_la_slog_half.f, __spow_la_slog_log2hi.f, 0.0f),
                                                 fLogExp, fLogFHi);
     fLogV1 =
-        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__spow_la_slog_half.f, -__spow_la_slog_log2hi.f, 0.0f),
+        __spirv_ocl_fma(__spirv_ocl_fma (__spow_la_slog_half.f, -__spow_la_slog_log2hi.f, 0.0f),
                                                 fLogExp, fLogV2);
-    fLogV3 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogFHi, 1.0f, -fLogV1), 1.0f, fLogV3);
-    fLogV3 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__spow_la_slog_log2lo.f * __spow_la_slog_half.f, fLogExp, fLogV3);
-    fLogR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogV2, 1.0f, fLogV2);
-    fLogResHi = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__spow_la_slog_two.f, fLogV3, fLogR);
+    fLogV3 = __spirv_ocl_fma(__spirv_ocl_fma(fLogFHi,1.0f,-fLogV1),1.0f,fLogV3);
+    fLogV3 = __spirv_ocl_fma(__spow_la_slog_log2lo.f*__spow_la_slog_half.f,fLogExp,fLogV3);
+    fLogR = __spirv_ocl_fma(fLogV2,1.0f,fLogV2);
+    fLogResHi = __spirv_ocl_fma(__spow_la_slog_two.f,fLogV3,fLogR);
     fLogResLo =
-        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__spow_la_slog_two.f, fLogV3, SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogR, 1.0f, -fLogResHi));
-    fLogTHi = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogResHi, fY, 0.0f);
+        __spirv_ocl_fma(__spow_la_slog_two.f,fLogV3,__spirv_ocl_fma(fLogR,1.0f,-fLogResHi));
+    fLogTHi = __spirv_ocl_fma(fLogResHi,fY,0.0f);
     fwYLogX.f = (float) (fLogTHi);
     uExpX = fwX.w >> 23;
     uExpX--;
@@ -487,24 +487,24 @@ inline int __internal_spow_nolut_cout (float *pxin, float *pyin, float *pres)
     {
         goto SPOW_MAIN_SPECIAL;
     }
-    fLogTLo = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogResHi, fY, -fLogTHi);
-    fLogTLo = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogResLo, fY, +fLogTLo);
-    fLogPolyHi = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogTHi, 1.0f, fLogTLo);
-    fLogPolyLo = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fLogTHi, 1.0f, -fLogPolyHi), 1.0f, +fLogTLo);
+    fLogTLo = __spirv_ocl_fma(fLogResHi,fY,-fLogTHi);
+    fLogTLo = __spirv_ocl_fma(fLogResLo,fY,+fLogTLo);
+    fLogPolyHi = __spirv_ocl_fma(fLogTHi,1.0f,fLogTLo);
+    fLogPolyLo = __spirv_ocl_fma(__spirv_ocl_fma(fLogTHi,1.0f,-fLogPolyHi),1.0f,+fLogTLo);
     fExpArgHi = fLogPolyHi;
     fExpArgLo = fLogPolyLo;
-    fwS.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fExpArgHi, __spow_la_sexp_l2e.f, __spow_la_sexp_shft.f);
+    fwS.f = __spirv_ocl_fma(fExpArgHi,__spow_la_sexp_l2e.f,__spow_la_sexp_shft.f);
     fN = fwS.f - __spow_la_sexp_shft.f;
-    fR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) ((-fN), __spow_la_sexp_l2h.f, fExpArgHi);
-    fR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) ((-fN), __spow_la_sexp_l2l.f, fR);
+    fR = __spirv_ocl_fma((-fN),__spow_la_sexp_l2h.f,fExpArgHi);
+    fR = __spirv_ocl_fma((-fN),__spow_la_sexp_l2l.f,fR);
     fR += fExpArgLo;
     fwTh.w = fwS.w << 22;
     iIdxMask = 0 - (fwS.w & 1);
     fwTh.w ^= (iIdxMask & 0x7504F3u);
-    fPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fR, __spow_la_sexp_c5.f, __spow_la_sexp_c4.f);
-    fPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fR, fPoly, __spow_la_sexp_c3.f);
-    fPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fR, fPoly, __spow_la_sexp_c2.f);
-    fPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fR, fPoly, __spow_la_sexp_c1.f);
+    fPoly = __spirv_ocl_fma(fR,__spow_la_sexp_c5.f,__spow_la_sexp_c4.f);
+    fPoly = __spirv_ocl_fma(fR,fPoly,__spow_la_sexp_c3.f);
+    fPoly = __spirv_ocl_fma(fR,fPoly,__spow_la_sexp_c2.f);
+    fPoly = __spirv_ocl_fma(fR,fPoly,__spow_la_sexp_c1.f);
     fPoly = fR * fPoly;
     if (uAbsYLogX > 0x42AEAC4Fu)
     {
@@ -514,12 +514,12 @@ inline int __internal_spow_nolut_cout (float *pxin, float *pyin, float *pres)
         fwTh2.w <<= 23;
         fwTh.w = fwS.w << 22;
         fwTh.w ^= (iIdxMask & 0x7504F3u);
-        fwRes.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fPoly, fwTh.f, fwTh.f);
+        fwRes.f = __spirv_ocl_fma(fPoly,fwTh.f,fwTh.f);
         fwRes.f *= fwTh2.f;
     }
     else
     {
-        fwRes.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fPoly, fwTh.f, fwTh.f);
+        fwRes.f = __spirv_ocl_fma(fPoly,fwTh.f,fwTh.f);
     }
     *pres = fwRes.f;
     return nRet;

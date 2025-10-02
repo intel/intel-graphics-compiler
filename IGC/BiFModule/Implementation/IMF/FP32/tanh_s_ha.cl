@@ -508,16 +508,16 @@ float __ocl_svml_tanhf_ha(float x) {
     sP[7] = as_float(((unsigned int *)((
         float *)(&__ocl_svml_internal_stanh_ha_data._sP7)))[iIndex >> 2]);
     // Compute polynomial
-    sPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP[7], sAbsX, sP[6]);
-    sPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sPoly, sAbsX, sP[5]);
-    sPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sPoly, sAbsX, sP[4]);
-    sPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sPoly, sAbsX, sP[3]);
+    sPoly = __spirv_ocl_fma(sP[7], sAbsX, sP[6]);
+    sPoly = __spirv_ocl_fma(sPoly, sAbsX, sP[5]);
+    sPoly = __spirv_ocl_fma(sPoly, sAbsX, sP[4]);
+    sPoly = __spirv_ocl_fma(sPoly, sAbsX, sP[3]);
     /* sP[1] is the lower part of constant term sP[0] */
     sP[1] = as_float(((unsigned int *)((
         float *)(&__ocl_svml_internal_stanh_ha_data._sP1)))[iIndex >> 2]);
     sPoly = (sPoly * sAbsX);
-    sPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sPoly, sAbsX, sP[1]);
-    sPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sAbsX, sP[2], sPoly);
+    sPoly = __spirv_ocl_fma(sPoly, sAbsX, sP[1]);
+    sPoly = __spirv_ocl_fma(sAbsX, sP[2], sPoly);
     sPoly = (sPoly + sP[0]);
     // Set result sign
     vr1 = as_float((as_uint(sPoly) | as_uint(sSignX)));

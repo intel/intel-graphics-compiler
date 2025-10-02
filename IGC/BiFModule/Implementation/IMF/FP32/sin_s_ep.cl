@@ -745,21 +745,21 @@ __ocl_svml_internal_ssin_ep(float *a, float *pres) {
   Rh.f = (float)ip_h;
   // adjust scale
   scale.w = (0x7f - 31 - shift) << 23;
-  Rh.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rh.f, scale.f, 0.0f);
+  Rh.f = __spirv_ocl_fma(Rh.f, scale.f, 0.0f);
   // (Rh)^2
-  R2h = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rh.f, Rh.f, 0.0f);
+  R2h = __spirv_ocl_fma(Rh.f, Rh.f, 0.0f);
   poly_h = __ssin_ep___c5.f;
   poly_h =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, R2h, __ssin_ep___c4.f);
+      __spirv_ocl_fma(poly_h, R2h, __ssin_ep___c4.f);
   poly_h =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, R2h, __ssin_ep___c3.f);
+      __spirv_ocl_fma(poly_h, R2h, __ssin_ep___c3.f);
   poly_h =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, R2h, __ssin_ep___c2.f);
+      __spirv_ocl_fma(poly_h, R2h, __ssin_ep___c2.f);
   poly_h =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, R2h, __ssin_ep___c1.f);
+      __spirv_ocl_fma(poly_h, R2h, __ssin_ep___c1.f);
   poly_h =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, R2h, __ssin_ep___c0.f);
-  res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, Rh.f, 0.0f);
+      __spirv_ocl_fma(poly_h, R2h, __ssin_ep___c0.f);
+  res.f = __spirv_ocl_fma(poly_h, Rh.f, 0.0f);
   res.w ^= sgn_x;
   *pres = res.f;
   return nRet;
@@ -807,7 +807,7 @@ float __ocl_svml_sinf_ep(float x) {
       sRShifter = as_float(__ocl_svml_internal_ssin_ep_data._sRShifter);
       //    c) Getting octant Y by 1/Pi multiplication
       //    d) Add "Right Shifter" value
-      sN = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sAbsX, sInvPI, sRShifter);
+      sN = __spirv_ocl_fma(sAbsX, sInvPI, sRShifter);
       //    e) Treat obtained value as integer for destination sign setting.
       //       Shift first bit of this value to the last (sign) position
       sSign = as_float(((unsigned int)as_uint(sN) << (31)));
@@ -816,9 +816,9 @@ float __ocl_svml_sinf_ep(float x) {
       sPI1 = as_float(__ocl_svml_internal_ssin_ep_data._sPI1_FMA);
       //    h) Subtract Y*PI from X argument, where PI divided to 4 parts:
       //       X = X - Y*PI1 - Y*PI2 - Y*PI3;
-      sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-(sN), sPI1, sAbsX);
+      sR = __spirv_ocl_fma(-(sN), sPI1, sAbsX);
       sPI2 = as_float(__ocl_svml_internal_ssin_ep_data._sPI2_FMA);
-      sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-(sN), sPI2, sR);
+      sR = __spirv_ocl_fma(-(sN), sPI2, sR);
       // 2) Polynomial (minimax for sin within [-Pi/2; +Pi/2] interval)
       //    a) Calculate X^2 = X * X
       //    b) Calculate polynomial:
@@ -832,9 +832,9 @@ float __ocl_svml_sinf_ep(float x) {
       sSRA1 = (sR * sA1);
       sA3 = as_float(__ocl_svml_internal_ssin_ep_data._sA3);
       sA5 = as_float(__ocl_svml_internal_ssin_ep_data._sA5);
-      sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sA5, sR2, sA3);
+      sP = __spirv_ocl_fma(sA5, sR2, sA3);
       sP = (sP * sR2);
-      vr1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sSRA1);
+      vr1 = __spirv_ocl_fma(sP, sR, sSRA1);
       // 3) Destination sign setting
       //    a) Set shifted destination sign using XOR operation:
       //       R = XOR( R, S );

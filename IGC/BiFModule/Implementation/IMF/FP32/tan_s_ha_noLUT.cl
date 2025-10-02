@@ -256,7 +256,7 @@ inline int __ocl_svml_internal_stan_ha_noLUT (float *a, float *pres)
         float f;
     } res;
     x0.f = xin;
-    x.f = SPIRV_OCL_BUILTIN (fabs, _f32,) (xin);
+    x.f = __spirv_ocl_fabs(xin);
     sgn_x = x0.w ^ x.w;
     // convert to DP
     xd = (double) x.f;
@@ -264,28 +264,28 @@ inline int __ocl_svml_internal_stan_ha_noLUT (float *a, float *pres)
     {
         // main path: expon < 23
         // Shifter + (int)(x*2/pi)
-        fS.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (x.f, __stan_ha_invpi_s.f, __stan_ha_fShifter.f);
+        fS.f = __spirv_ocl_fma(x.f,__stan_ha_invpi_s.f,__stan_ha_fShifter.f);
         // (int)(x*2/pi)
         fN.f = fS.f - __stan_ha_fShifter.f;
         dN = (double) fN.f;
         // reduced argument
-        dR = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dN, __stan_ha_NPI2_h.f, xd);
-        dR = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dN, __stan_ha_NPI2_l.f, dR);
+        dR = __spirv_ocl_fma(dN,__stan_ha_NPI2_h.f,xd);
+        dR = __spirv_ocl_fma(dN,__stan_ha_NPI2_l.f,dR);
         R_sgn = fS.w << 31;
         dR2 = dR * dR;
-        poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dR2, (__stan_ha_dc4).f, (__stan_ha_dc3).f);
-        poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dR2, poly.f, (__stan_ha_dc2).f);
-        poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dR2, poly.f, (__stan_ha_dc1).f);
-        poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dR2, poly.f, (__stan_ha_dc0).f);
+        poly.f = __spirv_ocl_fma(dR2,(__stan_ha_dc4).f,(__stan_ha_dc3).f);
+        poly.f = __spirv_ocl_fma(dR2,poly.f,(__stan_ha_dc2).f);
+        poly.f = __spirv_ocl_fma(dR2,poly.f,(__stan_ha_dc1).f);
+        poly.f = __spirv_ocl_fma(dR2,poly.f,(__stan_ha_dc0).f);
         dA.f = R_sgn ? poly.f : dR;
         dB = R_sgn ? dR : poly.f;
         fB = (float) dB;
         fRcp = 1.0f / fB;
         dRcp = (double) fRcp;
         // refine dRcp ~ 1/fB
-        eps = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dRcp, -dB, 1.0);
-        dRcp = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dRcp, eps, dRcp);
-        dA.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dA.f, dRcp, 0.0);
+        eps = __spirv_ocl_fma(dRcp,-dB,1.0);
+        dRcp = __spirv_ocl_fma(dRcp,eps,dRcp);
+        dA.f = __spirv_ocl_fma(dA.f,dRcp,0.0);
         res.f = (float) dA.f;
         res.w ^= (R_sgn ^ sgn_x);
     }
@@ -311,33 +311,33 @@ inline int __ocl_svml_internal_stan_ha_noLUT (float *a, float *pres)
         k = (expon - (23 - 8 + 0x7f)) >> 3;
         k += k;
         //k += 2;
-        dRh = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (xd, __stan_ha_reduction_tbl[k].f, 0.0);
-        dRl = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (xd, __stan_ha_reduction_tbl[k].f, (-dRh));
+        dRh = __spirv_ocl_fma(xd,__stan_ha_reduction_tbl[k].f,0.0);
+        dRl = __spirv_ocl_fma(xd,__stan_ha_reduction_tbl[k].f,(-dRh));
         // low part of (int)(x*1/pi)
         S.f = __stan_ha_Shifter.f + dRh;
         dN = S.f - __stan_ha_Shifter.f;
         // reduced argument
         dR = dRh - dN;
         dR = dR + dRl;
-        dR = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (xd, __stan_ha_reduction_tbl[k + 1].f, dR);
+        dR = __spirv_ocl_fma(xd,__stan_ha_reduction_tbl[k+1].f,dR);
         R_sgn = (S.w32[0]) << 31;
-        poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dR, __stan_ha_c8.f, __stan_ha_c7.f);
-        poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dR, poly.f, __stan_ha_c6.f);
-        poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dR, poly.f, __stan_ha_c5.f);
-        poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dR, poly.f, __stan_ha_c4.f);
-        poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dR, poly.f, __stan_ha_c3.f);
-        poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dR, poly.f, __stan_ha_c2.f);
-        poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dR, poly.f, __stan_ha_c1.f);
-        poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dR, poly.f, __stan_ha_c0.f);
+        poly.f = __spirv_ocl_fma(dR,__stan_ha_c8.f,__stan_ha_c7.f);
+        poly.f = __spirv_ocl_fma(dR,poly.f,__stan_ha_c6.f);
+        poly.f = __spirv_ocl_fma(dR,poly.f,__stan_ha_c5.f);
+        poly.f = __spirv_ocl_fma(dR,poly.f,__stan_ha_c4.f);
+        poly.f = __spirv_ocl_fma(dR,poly.f,__stan_ha_c3.f);
+        poly.f = __spirv_ocl_fma(dR,poly.f,__stan_ha_c2.f);
+        poly.f = __spirv_ocl_fma(dR,poly.f,__stan_ha_c1.f);
+        poly.f = __spirv_ocl_fma(dR,poly.f,__stan_ha_c0.f);
         dA.f = R_sgn ? poly.f : dR;
         dB = R_sgn ? dR : poly.f;
         fB = (float) dB;
         fRcp = 1.0f / fB;
         dRcp = (double) fRcp;
-        dQ = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dA.f, dRcp, 0.0);
+        dQ = __spirv_ocl_fma(dA.f,dRcp,0.0);
         // refine quotient
-        eps = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dQ, -dB, dA.f);
-        res.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (dRcp, eps, dQ);
+        eps = __spirv_ocl_fma(dQ,-dB,dA.f);
+        res.f = __spirv_ocl_fma(dRcp,eps,dQ);
         res.w ^= (R_sgn ^ sgn_x);
     }
     *pres = res.f;

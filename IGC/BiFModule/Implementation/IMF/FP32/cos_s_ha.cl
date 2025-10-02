@@ -164,61 +164,61 @@ __ocl_svml_internal_scos_ha(float *a, float *pres) {
   Rl.f = (float)ip_h;
   // adjust scale
   scale.w = (0x7f - 31 - shift) << 23;
-  Rh.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rh.f, scale.f, 0.0f);
-  Rl.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rl.f, scale.f, 0.0f);
+  Rh.f = __spirv_ocl_fma(Rh.f, scale.f, 0.0f);
+  Rl.f = __spirv_ocl_fma(Rl.f, scale.f, 0.0f);
   // (Rh+Rl)^2
   {
-    R2h = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rh.f, Rh.f, 0.0f);
-    R2l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rh.f, Rh.f, -R2h);
-    R2l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rl.f, Rh.f, R2l);
-    R2l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rh.f, Rl.f, R2l);
+    R2h = __spirv_ocl_fma(Rh.f, Rh.f, 0.0f);
+    R2l = __spirv_ocl_fma(Rh.f, Rh.f, -R2h);
+    R2l = __spirv_ocl_fma(Rl.f, Rh.f, R2l);
+    R2l = __spirv_ocl_fma(Rh.f, Rl.f, R2l);
   };
   poly_h = __scos_ha___c5.f;
   poly_h =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, R2h, __scos_ha___c4.f);
+      __spirv_ocl_fma(poly_h, R2h, __scos_ha___c4.f);
   poly_h =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, R2h, __scos_ha___c3.f);
+      __spirv_ocl_fma(poly_h, R2h, __scos_ha___c3.f);
   poly_h =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, R2h, __scos_ha___c2.f);
+      __spirv_ocl_fma(poly_h, R2h, __scos_ha___c2.f);
   poly_l = 0;
   {
     float __ph, __phl;
-    __ph = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, R2h, 0.0f);
-    __phl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, R2h, -__ph);
-    poly_l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_l, R2h, __phl);
+    __ph = __spirv_ocl_fma(poly_h, R2h, 0.0f);
+    __phl = __spirv_ocl_fma(poly_h, R2h, -__ph);
+    poly_l = __spirv_ocl_fma(poly_l, R2h, __phl);
     poly_h = __ph;
   };
   {
     float __ph, __ahl, __ahh;
     __ph =
-        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, 1.0f, __scos_ha___c1.f);
+        __spirv_ocl_fma(poly_h, 1.0f, __scos_ha___c1.f);
     __ahh =
-        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__ph, 1.0f, -__scos_ha___c1.f);
-    __ahl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, 1.0f, -__ahh);
+        __spirv_ocl_fma(__ph, 1.0f, -__scos_ha___c1.f);
+    __ahl = __spirv_ocl_fma(poly_h, 1.0f, -__ahh);
     poly_l = (poly_l + __scos_ha___c1l.f) + __ahl;
     poly_h = __ph;
   };
   {
     float __ph, __phl;
-    __ph = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, R2h, 0.0f);
-    __phl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, R2h, -__ph);
-    poly_l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_l, R2h, __phl);
-    poly_l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, R2l, poly_l);
+    __ph = __spirv_ocl_fma(poly_h, R2h, 0.0f);
+    __phl = __spirv_ocl_fma(poly_h, R2h, -__ph);
+    poly_l = __spirv_ocl_fma(poly_l, R2h, __phl);
+    poly_l = __spirv_ocl_fma(poly_h, R2l, poly_l);
     poly_h = __ph;
   };
   {
     float __ph, __ahl, __ahh;
     __ph =
-        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, 1.0f, __scos_ha___c0.f);
+        __spirv_ocl_fma(poly_h, 1.0f, __scos_ha___c0.f);
     __ahh =
-        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__ph, 1.0f, -__scos_ha___c0.f);
-    __ahl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, 1.0f, -__ahh);
+        __spirv_ocl_fma(__ph, 1.0f, -__scos_ha___c0.f);
+    __ahl = __spirv_ocl_fma(poly_h, 1.0f, -__ahh);
     poly_l = (poly_l + __scos_ha___c0l.f) + __ahl;
     poly_h = __ph;
   };
-  Low = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, Rl.f, 0.0f);
-  Low = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_l, Rh.f, Low);
-  res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_h, Rh.f, Low);
+  Low = __spirv_ocl_fma(poly_h, Rl.f, 0.0f);
+  Low = __spirv_ocl_fma(poly_l, Rh.f, Low);
+  res.f = __spirv_ocl_fma(poly_h, Rh.f, Low);
   res.w ^= sgn_x;
   *pres = res.f;
   return nRet;

@@ -127,25 +127,25 @@ inline int __internal_sexp2_la_cout (float *a, float *r)
         float f;
     } T, T2, xi, res;
 
-    fN = SPIRV_OCL_BUILTIN(rint, _f32, ) (x);
+    fN = __spirv_ocl_rint(x);
     R = x - fN;
 
     sN = (int) fN;
 
     N = sN;
 
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__sexp2_la_c6.f, R, __sexp2_la_c5.f);
+    poly = __spirv_ocl_fma(__sexp2_la_c6.f,R,__sexp2_la_c5.f);
 
-    High = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, 0.5f, 1.0f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sexp2_la_c4.f);
+    High = __spirv_ocl_fma(R,0.5f,1.0f);
+    poly = __spirv_ocl_fma(poly,R,__sexp2_la_c4.f);
 
     Rh = High - 1.0f;
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sexp2_la_c3.f);
+    poly = __spirv_ocl_fma(poly,R,__sexp2_la_c3.f);
 
-    Rl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, 0.5f, -Rh);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sexp2_la_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sexp2_la_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, Rl);
+    Rl = __spirv_ocl_fma(R,0.5f,-Rh);
+    poly = __spirv_ocl_fma(poly,R,__sexp2_la_c2.f);
+    poly = __spirv_ocl_fma(poly,R,__sexp2_la_c1.f);
+    poly = __spirv_ocl_fma(poly,R,Rl);
     res.f = High + poly;
 
     if (((unsigned int) (N + 0x7f - 2)) > 124 + 0x7f)
@@ -171,9 +171,9 @@ inline int __internal_sexp2_la_cout (float *a, float *r)
         }
     }
 
-    x = SPIRV_OCL_BUILTIN(fmin, _f32_f32, ) (x, 192.0f);
-    x = SPIRV_OCL_BUILTIN(fmax, _f32_f32, ) (x, -192.0f);
-    fN = SPIRV_OCL_BUILTIN(rint, _f32, ) (x);
+    x = __spirv_ocl_fmin(x, 192.0f);
+    x = __spirv_ocl_fmax(x, -192.0f);
+    fN = __spirv_ocl_rint(x);
     sN = (int) fN;
 
     sN2 = sN >> 1;

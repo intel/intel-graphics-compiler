@@ -64,11 +64,11 @@ __ocl_svml_internal_sexp10_ha(float *a, float *r) {
   } S, Th, Tlr, Th2, xin, xa, res;
   float N, R, poly;
   int index_mask;
-  S.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(x, __sexp10_ha_L2_10.f,
+  S.f = __spirv_ocl_fma(x, __sexp10_ha_L2_10.f,
                                                __sexp10_ha_Shifter.f);
   N = S.f - __sexp10_ha_Shifter.f;
-  R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-N), __sexp10_ha_L2H.f, x);
-  R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-N), __sexp10_ha_L2L.f, R);
+  R = __spirv_ocl_fma((-N), __sexp10_ha_L2H.f, x);
+  R = __spirv_ocl_fma((-N), __sexp10_ha_L2L.f, R);
   // set exponent in place
   Th.w = S.w << 22;
   // index_mask is based on last bit of S.w
@@ -78,18 +78,18 @@ __ocl_svml_internal_sexp10_ha(float *a, float *r) {
   // set Tl/Th value
   Tlr.w = index_mask & 0x329302AEu;
   // polynomial
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(R, __sexp10_ha_c5.f,
+  poly = __spirv_ocl_fma(R, __sexp10_ha_c5.f,
                                                 __sexp10_ha_c4.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(R, poly, __sexp10_ha_c3.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(R, poly, __sexp10_ha_c2.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(R, poly, __sexp10_ha_c1.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(R, poly, Tlr.f);
+  poly = __spirv_ocl_fma(R, poly, __sexp10_ha_c3.f);
+  poly = __spirv_ocl_fma(R, poly, __sexp10_ha_c2.f);
+  poly = __spirv_ocl_fma(R, poly, __sexp10_ha_c1.f);
+  poly = __spirv_ocl_fma(R, poly, Tlr.f);
   xin.f = x;
   xa.w = xin.w & 0x7fffffffu;
   // redirect special cases
   if (xa.w > 0x4217B818u)
     goto EXPF_SPECIAL;
-  res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, Th.f, Th.f);
+  res.f = __spirv_ocl_fma(poly, Th.f, Th.f);
   *r = res.f;
   return nRet;
 EXPF_SPECIAL:
@@ -116,7 +116,7 @@ EXPF_SPECIAL:
   Th.w = S.w << 22;
   // set Th mantissa
   Th.w ^= (index_mask & 0x7504F3u);
-  res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, Th.f, Th.f);
+  res.f = __spirv_ocl_fma(poly, Th.f, Th.f);
   res.f *= Th2.f;
   *r = res.f;
   return nRet;

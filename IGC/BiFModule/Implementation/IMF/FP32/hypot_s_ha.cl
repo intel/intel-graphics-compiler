@@ -41,40 +41,40 @@ __ocl_svml_internal_shypot_ha(float *pa, float *pb, float *pres) {
     return nRet;
   }
   // Order inputs based on absolute value
-  h12 = SPIRV_OCL_BUILTIN(fmax, _f32_f32, )(ax.f, ay.f);
-  l12 = SPIRV_OCL_BUILTIN(fmin, _f32_f32, )(ax.f, ay.f);
+  h12 = __spirv_ocl_fmax(ax.f, ay.f);
+  l12 = __spirv_ocl_fmin(ax.f, ay.f);
   // scale inputs
   expon0.f = h12;
   expon0.w &= 0x7f800000;
   // 2^(-expon_t0+ ((t0>=2)?1:(-1)))
   expon0.w = 0x7e800000 + ((expon0.w & 0x40000000) >> 6) - expon0.w;
-  t0 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(h12, expon0.f, 0.0f);
-  t1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(l12, expon0.f, 0.0f);
+  t0 = __spirv_ocl_fma(h12, expon0.f, 0.0f);
+  t1 = __spirv_ocl_fma(l12, expon0.f, 0.0f);
   // high parts of squares
-  p1h = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(t1, t1, 0.0f);
-  p0h = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(t0, t0, 0.0f);
+  p1h = __spirv_ocl_fma(t1, t1, 0.0f);
+  p0h = __spirv_ocl_fma(t0, t0, 0.0f);
   // low parts of squares
-  p1l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(t1, t1, -p1h);
-  p0l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(t0, t0, -p0h);
+  p1l = __spirv_ocl_fma(t1, t1, -p1h);
+  p0l = __spirv_ocl_fma(t0, t0, -p0h);
   // compute sum in high-low parts
   sum_l = p1l + p0l;
   // p1h + p0h
-  sum = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(p1h, 1.0f, p0h);
-  p1hh = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sum, 1.0f, -p0h);
-  p1hl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(p1h, 1.0f, -p1hh);
+  sum = __spirv_ocl_fma(p1h, 1.0f, p0h);
+  p1hh = __spirv_ocl_fma(sum, 1.0f, -p0h);
+  p1hl = __spirv_ocl_fma(p1h, 1.0f, -p1hh);
   sum_l += p1hl;
-  RS = 1.0f / SPIRV_OCL_BUILTIN(sqrt, _f32, )(sum);
+  RS = 1.0f / __spirv_ocl_sqrt(sum);
   // Sh ~ sqrt(sum)
-  Sh = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sum, RS, 0.0f);
-  RS2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(RS, 0.5f, 0.0f);
+  Sh = __spirv_ocl_fma(sum, RS, 0.0f);
+  RS2 = __spirv_ocl_fma(RS, 0.5f, 0.0f);
   // sum - Sh^2
-  eps = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Sh, -Sh, sum);
+  eps = __spirv_ocl_fma(Sh, -Sh, sum);
   eps += sum_l;
   // sqrt(sum) ~ Sh + eps*RS2
-  res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(RS2, eps, Sh);
+  res.f = __spirv_ocl_fma(RS2, eps, Sh);
   // 2^(-expon0)
   expon0.w = 0x7f000000 - expon0.w;
-  res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(res.f, expon0.f, 0.0f);
+  res.f = __spirv_ocl_fma(res.f, expon0.f, 0.0f);
   res.w = (sum != 0.0f) ? res.w : 0;
   *pres = res.f;
   return nRet;

@@ -162,53 +162,53 @@ __ocl_svml_internal_ssincos_ha(float *pa, float *psin, float *pcos) {
   Rl.f = (float)ip_h;
   // adjust scale
   scale.w = (0x7f - 31 - shift) << 23;
-  Rh.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rh.f, scale.f, 0.0f);
-  Rl.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rl.f, scale.f, 0.0f);
+  Rh.f = __spirv_ocl_fma(Rh.f, scale.f, 0.0f);
+  Rl.f = __spirv_ocl_fma(Rl.f, scale.f, 0.0f);
   // (Rh+Rl)^2
   {
-    R2h = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rh.f, Rh.f, 0.0f);
-    R2l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rh.f, Rh.f, -R2h);
-    R2l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rl.f, Rh.f, R2l);
-    R2l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rh.f, Rl.f, R2l);
+    R2h = __spirv_ocl_fma(Rh.f, Rh.f, 0.0f);
+    R2l = __spirv_ocl_fma(Rh.f, Rh.f, -R2h);
+    R2l = __spirv_ocl_fma(Rl.f, Rh.f, R2l);
+    R2l = __spirv_ocl_fma(Rh.f, Rl.f, R2l);
   };
-  cpoly.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__ssincos_ha___cc4.f, R2h,
+  cpoly.f = __spirv_ocl_fma(__ssincos_ha___cc4.f, R2h,
                                                    __ssincos_ha___cc3.f);
-  spoly.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__ssincos_ha___cs3.f, R2h,
+  spoly.f = __spirv_ocl_fma(__ssincos_ha___cs3.f, R2h,
                                                    __ssincos_ha___cs2.f);
-  cpoly.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(cpoly.f, R2h,
+  cpoly.f = __spirv_ocl_fma(cpoly.f, R2h,
                                                    __ssincos_ha___cc2.f);
   cpoly_l.f =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(R2l, __ssincos_ha___cc1.f, 0.0f);
-  spoly.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(spoly.f, R2h,
+      __spirv_ocl_fma(R2l, __ssincos_ha___cc1.f, 0.0f);
+  spoly.f = __spirv_ocl_fma(spoly.f, R2h,
                                                    __ssincos_ha___cs1.f);
-  cpoly.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(cpoly.f, R2h,
+  cpoly.f = __spirv_ocl_fma(cpoly.f, R2h,
                                                    __ssincos_ha___cc1l.f);
-  spoly.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(spoly.f, R2h,
+  spoly.f = __spirv_ocl_fma(spoly.f, R2h,
                                                    __ssincos_ha___cs0l.f);
   // cc0 + cc1*R2h
-  Ph = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(R2h, __ssincos_ha___cc1.f, 0.0f);
-  Pl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(R2h, __ssincos_ha___cc1.f, -Ph);
+  Ph = __spirv_ocl_fma(R2h, __ssincos_ha___cc1.f, 0.0f);
+  Pl = __spirv_ocl_fma(R2h, __ssincos_ha___cc1.f, -Ph);
   {
     float __ph, __ahl, __ahh;
     __ph =
-        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Ph, 1.0f, __ssincos_ha___cc0.f);
-    __ahh = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__ph, 1.0f,
+        __spirv_ocl_fma(Ph, 1.0f, __ssincos_ha___cc0.f);
+    __ahh = __spirv_ocl_fma(__ph, 1.0f,
                                                    -__ssincos_ha___cc0.f);
-    __ahl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Ph, 1.0f, -__ahh);
+    __ahl = __spirv_ocl_fma(Ph, 1.0f, -__ahh);
     Pl = Pl + __ahl;
     Ph = __ph;
   };
-  cpoly_l.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(cpoly_l.f, 1.0f, Pl);
-  cpoly.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(cpoly.f, R2h, cpoly_l.f);
-  cpoly.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(cpoly.f, 1.0f, Ph);
+  cpoly_l.f = __spirv_ocl_fma(cpoly_l.f, 1.0f, Pl);
+  cpoly.f = __spirv_ocl_fma(cpoly.f, R2h, cpoly_l.f);
+  cpoly.f = __spirv_ocl_fma(cpoly.f, 1.0f, Ph);
   sgn_p = sgn_xp & 0x80000000;
   High =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rh.f, __ssincos_ha___cs0.f, 0.0f);
+      __spirv_ocl_fma(Rh.f, __ssincos_ha___cs0.f, 0.0f);
   Low =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rh.f, __ssincos_ha___cs0.f, -High);
-  Low = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rl.f, __ssincos_ha___cs0.f, Low);
-  Low = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rh.f, spoly.f, Low);
-  spoly.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(High, 1.0f, Low);
+      __spirv_ocl_fma(Rh.f, __ssincos_ha___cs0.f, -High);
+  Low = __spirv_ocl_fma(Rl.f, __ssincos_ha___cs0.f, Low);
+  Low = __spirv_ocl_fma(Rh.f, spoly.f, Low);
+  spoly.f = __spirv_ocl_fma(High, 1.0f, Low);
   // adjust sign
   cpoly.w ^= sgn_p;
   spoly.w ^= sgn_p ^ (sgn_xp << 1);

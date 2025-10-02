@@ -59,13 +59,13 @@ __ocl_svml_internal_satan_ep(float *pxin, float *pres) {
     // reduced argument
     R0.w = xa.w + (diff & smask);
     R = R0.f;
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__satan_ep_c4.f, R,
+    poly = __spirv_ocl_fma(__satan_ep_c4.f, R,
                                                   __satan_ep_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan_ep_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan_ep_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan_ep_c0.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ep_c2.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ep_c1.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ep_c0.f);
     //  R0*poly + hcorr
-    sres.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R0.f, hcorr.f);
+    sres.f = __spirv_ocl_fma(poly, R0.f, hcorr.f);
     sres.w = sres.w ^ sgn_r;
     *pres = sres.f;
   }

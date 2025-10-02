@@ -609,14 +609,14 @@ float __ocl_svml_log2f_ep(float x) {
     sR = (sR - One);
     sPoly[4] = as_float(__ocl_svml_internal_slog2_ep_data.ep_Poly[0]);
     sPoly[3] = as_float(__ocl_svml_internal_slog2_ep_data.ep_Poly[1]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sPoly[4], sR, sPoly[3]);
+    sP = __spirv_ocl_fma(sPoly[4], sR, sPoly[3]);
     sPoly[2] = as_float(__ocl_svml_internal_slog2_ep_data.ep_Poly[2]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[2]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[2]);
     sPoly[1] = as_float(__ocl_svml_internal_slog2_ep_data.ep_Poly[3]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[1]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[1]);
     sPoly[0] = as_float(__ocl_svml_internal_slog2_ep_data.ep_Poly[4]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[0]);
-    vr1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, FpExpon);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[0]);
+    vr1 = __spirv_ocl_fma(sP, sR, FpExpon);
   }
   if (__builtin_expect((vm) != 0, 0)) {
     float __cout_a1;

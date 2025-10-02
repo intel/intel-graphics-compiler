@@ -664,7 +664,7 @@ float __ocl_svml_log1pf_ha(float x) {
     BrMask1 = as_float(((unsigned int)(-(signed int)(va1 < MinLog1p))));
     BrMask2 = as_float(((unsigned int)(-(signed int)(!(va1 <= MaxLog1p)))));
     /* round reciprocal to nearest integer, will have 1+7 mantissa bits */
-    DblRcp = SPIRV_OCL_BUILTIN(rint, _f32, )(DblRcp);
+    DblRcp = __spirv_ocl_rint(DblRcp);
     /* scale DblRcp */
     FpExpX = as_float(ExpX);
     DblRcp1 = (FpExpX * DblRcp);
@@ -676,10 +676,10 @@ float __ocl_svml_log1pf_ha(float x) {
     vm = 0;
     vm = BrMask;
     /* argument reduction */
-    Rh = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(X, DblRcp1, -(One));
-    R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Xl, DblRcp1, Rh);
+    Rh = __spirv_ocl_fma(X, DblRcp1, -(One));
+    R = __spirv_ocl_fma(Xl, DblRcp1, Rh);
     Rlh = (R - Rh);
-    Rl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Xl, DblRcp1, -(Rlh));
+    Rl = __spirv_ocl_fma(Xl, DblRcp1, -(Rlh));
     /* prepare table index */
     Index = as_uint(DblRcp);
     /* table lookup */
@@ -697,8 +697,8 @@ float __ocl_svml_log1pf_ha(float x) {
     /* exponent*log(2.0) */
     L2H = as_float(__ocl_svml_internal_slog1p_ha_data.L2H);
     L2L = as_float(__ocl_svml_internal_slog1p_ha_data.L2L);
-    Kh = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(FpExpon, L2H, THL[0]);
-    Kl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(FpExpon, L2L, THL[1]);
+    Kh = __spirv_ocl_fma(FpExpon, L2H, THL[0]);
+    Kl = __spirv_ocl_fma(FpExpon, L2L, THL[1]);
     /* polynomial */
     // VLOAD_CONST( S, poly_coeff[2], TAB.ha_poly_coeff[0] );
     poly_coeff[1] =
@@ -707,9 +707,9 @@ float __ocl_svml_log1pf_ha(float x) {
         as_float(__ocl_svml_internal_slog1p_ha_data.ha_poly_coeff[1]);
     // VQFMA( S, dP, poly_coeff[2], R, poly_coeff[1] );
     dP =
-        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_coeff[1], R, poly_coeff[0]);
+        __spirv_ocl_fma(poly_coeff[1], R, poly_coeff[0]);
     dR2 = (R * R);
-    dP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(dP, dR2, Rl);
+    dP = __spirv_ocl_fma(dP, dR2, Rl);
     /* reconstruction */
     THL[0] = (Kh + R);
     Rh = (THL[0] - Kh);

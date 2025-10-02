@@ -109,7 +109,7 @@ inline int __ocl_svml_internal_scbrt_noLUT (float *a, float *pres)
     scale.w = (xa.w < 0x00800000) ? 0x62000000u : 0x3f800000u;
     // final exponent correction
     ecorr = (xa.w < 0x00800000) ? 85 - 23 : 85;
-    xa.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (xa.f, scale.f, 0.0f);
+    xa.f = __spirv_ocl_fma(xa.f,scale.f,0.0f);
     // input exponent (expon = 3*k+j); will subtract 1 from bias (so it is divisible by 3)
     expon = (xa.w + 0xffc00000) >> 23;
     // (2^32+2)/3  * exponent
@@ -124,15 +124,15 @@ inline int __ocl_svml_internal_scbrt_noLUT (float *a, float *pres)
     // reduced argument, range [-0.25,0.5]
     dR = mant.f - 1.0f;
     // polynomial evaluation
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (__scbrt_la___c9.f, dR, __scbrt_la___c8.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (poly.f, dR, __scbrt_la___c7.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (poly.f, dR, __scbrt_la___c6.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (poly.f, dR, __scbrt_la___c5.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (poly.f, dR, __scbrt_la___c4.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (poly.f, dR, __scbrt_la___c3.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (poly.f, dR, __scbrt_la___c2.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (poly.f, dR, __scbrt_la___c1.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (poly.f, dR, __scbrt_la___c0.f);
+    poly.f = __spirv_ocl_fma(__scbrt_la___c9.f,dR,__scbrt_la___c8.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__scbrt_la___c7.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__scbrt_la___c6.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__scbrt_la___c5.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__scbrt_la___c4.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__scbrt_la___c3.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__scbrt_la___c2.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__scbrt_la___c1.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__scbrt_la___c0.f);
     // 2^j
     two_j.w = (!j) ? 0x3f800000u : 0x3FA14518u;
     two_j.w = (j <= 1) ? two_j.w : 0x3FCB2FF5u;
@@ -140,10 +140,10 @@ inline int __ocl_svml_internal_scbrt_noLUT (float *a, float *pres)
     two_jl.w = (!j) ? 0x0uL : 0xB223C16Cu;
     two_jl.w = (j <= 1) ? two_jl.w : 0x31D34318u;
     // attach exponent
-    two_j.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (two_j.f, r_expon.f, 0.0f);
-    pl.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (two_jl.f, poly.f, two_jl.f);
+    two_j.f = __spirv_ocl_fma(two_j.f,r_expon.f,0.0f);
+    pl.f = __spirv_ocl_fma(two_jl.f,poly.f,two_jl.f);
     poly.f = poly.f + pl.f;
-    res.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (two_j.f, poly.f, two_j.f);
+    res.f = __spirv_ocl_fma(two_j.f,poly.f,two_j.f);
     // fixup for Inf/NaN
     res.f = (xa.f <= __scbrt_la___maxnum.f) ? res.f : (xa.f + xa.f);
     // set sign

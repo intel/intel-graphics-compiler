@@ -417,10 +417,10 @@ float __ocl_svml_erfcf_ha(float x) {
     // Start polynomial evaluation
     _poly1_0 = as_float(__ocl_svml_internal_serfc_ha_data._poly1_0);
     _poly1_1 = as_float(__ocl_svml_internal_serfc_ha_data._poly1_1);
-    P1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(_poly1_0, T, _poly1_1);
+    P1 = __spirv_ocl_fma(_poly1_0, T, _poly1_1);
     _poly3_0 = as_float(__ocl_svml_internal_serfc_ha_data._poly3_0);
     _poly3_1 = as_float(__ocl_svml_internal_serfc_ha_data._poly3_1);
-    P3 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(_poly3_0, T, _poly3_1);
+    P3 = __spirv_ocl_fma(_poly3_0, T, _poly3_1);
     // vector gather: erfc_h(x0), (erfc_l(x0), 2/sqrt(pi)*exp(-x0^2))
 
     THL[0] =
@@ -433,9 +433,9 @@ float __ocl_svml_erfcf_ha(float x) {
                                    0x40000000))[(Index >> 2) + 1]);
 
     _poly1_2 = as_float(__ocl_svml_internal_serfc_ha_data._poly1_2);
-    P1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(P1, T, _poly1_2);
+    P1 = __spirv_ocl_fma(P1, T, _poly1_2);
     _poly3_2 = as_float(__ocl_svml_internal_serfc_ha_data._poly3_2);
-    P3 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(P3, T, _poly3_2);
+    P3 = __spirv_ocl_fma(P3, T, _poly3_2);
     // Diff^2
     D2 = (Diff * Diff);
     // Form Erfc_L = erfc_low(x0)/(2/sqrt(pi)*exp(-x0^2))
@@ -448,7 +448,7 @@ float __ocl_svml_erfcf_ha(float x) {
       Erfc_L = (Erfc_L - _TwoM6);
     };
     _poly1_3 = as_float(__ocl_svml_internal_serfc_ha_data._poly1_3);
-    P1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(P1, T, _poly1_3);
+    P1 = __spirv_ocl_fma(P1, T, _poly1_3);
     // P3*D
     P3 = (P3 * Diff);
     // form EXP_X0H = 2/sqrt(pi)*exp(-x0^2);
@@ -464,25 +464,25 @@ float __ocl_svml_erfcf_ha(float x) {
     // T^2
     T2 = (T * T);
     // get high part of erfc_high(x0)-Diff*Exp_X0H
-    HighRes = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-(Diff), Exp_X0H, THL[0]);
+    HighRes = __spirv_ocl_fma(-(Diff), Exp_X0H, THL[0]);
     ;
     // P3*D3 - Erfc_L
-    P3 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(P3, Diff, -(Erfc_L));
+    P3 = __spirv_ocl_fma(P3, Diff, -(Erfc_L));
     // Phh
     Phh = (THL[0] - HighRes);
     // P1 = P1*T2 - T
-    P1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(P1, T2, -(T));
+    P1 = __spirv_ocl_fma(P1, T2, -(T));
     // Ph = Diff*Exp_X0H - Phh
-    Ph = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Diff, Exp_X0H, -(Phh));
+    Ph = __spirv_ocl_fma(Diff, Exp_X0H, -(Phh));
     ;
     // P1 = Diff*P1 + P3
-    P1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(P1, Diff, P3);
+    P1 = __spirv_ocl_fma(P1, Diff, P3);
     // low part of result
-    LowRes = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(P1, Exp_X0H, Ph);
+    LowRes = __spirv_ocl_fma(P1, Exp_X0H, Ph);
     ;
     HighRes = (HighRes - LowRes);
     vm = 0;
-    vr1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(HighRes, _TwoM64, NegConst);
+    vr1 = __spirv_ocl_fma(HighRes, _TwoM64, NegConst);
     NanMask =
         as_float(((unsigned int)(-(signed int)((va1 != va1) | (va1 != va1)))));
     NanMask = as_float((as_uint(NanMask) & as_uint(va1)));

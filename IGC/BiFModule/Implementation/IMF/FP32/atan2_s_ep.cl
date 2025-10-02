@@ -102,14 +102,14 @@ __ocl_svml_internal_satan2_ep(float *pa, float *pb, float *pres) {
     Q00.f = fy.f * frcp_x;
     // reduced argument
     R = Q00.f;
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__satan2_ep_c5.f, R,
+    poly = __spirv_ocl_fma(__satan2_ep_c5.f, R,
                                                   __satan2_ep_c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ep_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ep_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ep_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ep_c0.f);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ep_c3.f);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ep_c2.f);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ep_c1.f);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ep_c0.f);
     //  Q0*poly + hcorr
-    sres.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, Q00.f, hcorr.f);
+    sres.f = __spirv_ocl_fma(poly, Q00.f, hcorr.f);
     sres.w = sres.w ^ sgn_r;
     *pres = sres.f;
     return nRet;

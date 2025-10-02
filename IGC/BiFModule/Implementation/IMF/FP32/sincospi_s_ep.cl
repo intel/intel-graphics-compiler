@@ -71,11 +71,11 @@ void __ocl_svml_sincospif_ep (float a,  __private float *b, __private float *c)
 
         AbsMask = as_float (__internal_ssincospi_ep_data._AbsMask);
 
-        fN = SPIRV_OCL_BUILTIN(rint, _f32, ) (va1);
+        fN = __spirv_ocl_rint(va1);
 
         Rs = (va1 - fN);
 
-        iN = ((int) ((-SPIRV_OCL_BUILTIN(fabs, _f64, ) (fN))));
+        iN = ((int) ((-__spirv_ocl_fabs(fN))));
 
         Half = as_float (__internal_ssincospi_ep_data._Half);
         aRs = as_float ((as_uint (Rs) & as_uint (AbsMask)));
@@ -89,8 +89,8 @@ void __ocl_svml_sincospif_ep (float a,  __private float *b, __private float *c)
         c3 = as_float (__internal_ssincospi_ep_data._c3);
         c2 = as_float (__internal_ssincospi_ep_data._c2);
 
-        spoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (c3, Rs2, c2);
-        cpoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (c3, Rc2, c2);
+        spoly = __spirv_ocl_fma(c3,Rs2,c2);
+        cpoly = __spirv_ocl_fma(c3,Rc2,c2);
 
         zero = as_float (__internal_ssincospi_ep_data._zero);
         SgnMask = as_float (__internal_ssincospi_ep_data._SgnMask);
@@ -104,10 +104,10 @@ void __ocl_svml_sincospif_ep (float a,  __private float *b, __private float *c)
         c1 = as_float (__internal_ssincospi_ep_data._c1);
         c0 = as_float (__internal_ssincospi_ep_data._c0);
 
-        spoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (spoly, Rs2, c1);
-        cpoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (cpoly, Rc2, c1);
-        spoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (spoly, Rs2, c0);
-        cpoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (cpoly, Rc2, c0);
+        spoly = __spirv_ocl_fma(spoly,Rs2,c1);
+        cpoly = __spirv_ocl_fma(cpoly,Rc2,c1);
+        spoly = __spirv_ocl_fma(spoly,Rs2,c0);
+        cpoly = __spirv_ocl_fma(cpoly,Rc2,c0);
 
         Rs = as_float ((as_uint (Rs) ^ as_uint (sgn_s)));
         Rc = as_float ((as_uint (Rc) ^ as_uint (sgn_c)));

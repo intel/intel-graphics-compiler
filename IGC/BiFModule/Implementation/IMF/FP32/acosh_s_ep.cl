@@ -379,7 +379,7 @@ float __ocl_svml_acoshf_ep(float x) {
         as_float(((unsigned int)(-(signed int)(va1 < sBigThreshold))));
     // sU is needed later on
     sU = (va1 - One);
-    sTmp5 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(va1, va1, -(One));
+    sTmp5 = __spirv_ocl_fma(va1, va1, -(One));
     // Finally, express Y + W = U * V accurately where Y has <= 8 bits
     sTopMask8 = as_float(__ocl_svml_internal_sacosh_ep_data.sTopMask8);
     sY = as_float((as_uint(sTmp5) & as_uint(sTopMask8)));
@@ -387,7 +387,7 @@ float __ocl_svml_acoshf_ep(float x) {
     // Compute R = 1/sqrt(Y + W) * (1 + d)
     // Force R to <= 8 significant bits.
     // This means that R * Y and R^2 * Y are exactly representable.
-    sZ = (1.0f / SPIRV_OCL_BUILTIN(sqrt, _f32, )(sY));
+    sZ = (1.0f / __spirv_ocl_sqrt(sY));
     sR = as_float((as_uint(sZ) & as_uint(sTopMask8)));
     // Compute S = (Y/sqrt(Y + W)) * (1 + d)
     //     and T = (W/sqrt(Y + W)) * (1 + d)
@@ -399,8 +399,8 @@ float __ocl_svml_acoshf_ep(float x) {
     // Compute e = -(2 * d + d^2)
     // The first FMR is exact, and the rounding error in the other is acceptable
     // since d and e are ~ 2^-8
-    sE = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-(sS), sR, One);
-    sE = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-(sT), sR, sE);
+    sE = __spirv_ocl_fma(-(sS), sR, One);
+    sE = __spirv_ocl_fma(-(sT), sR, sE);
     // Now       1 / (1 + d)
     //         = 1 / (1 + (sqrt(1 - e) - 1))
     //         = 1 / sqrt(1 - e)
@@ -417,7 +417,7 @@ float __ocl_svml_acoshf_ep(float x) {
     // For low-accuracy versions, the computation can be done
     // just as U + ((S + T) + (S + T) * Corr)
     sTmpf1 = (sS + sT);
-    sTmpf2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sTmpf1, sCorr, sTmpf1);
+    sTmpf2 = __spirv_ocl_fma(sTmpf1, sCorr, sTmpf1);
     sH = (sU + sTmpf2);
     // Now we feed into the log1p code, using H in place of _VARG1 and
     // also adding L into Xl.
@@ -454,15 +454,15 @@ float __ocl_svml_acoshf_ep(float x) {
     sR = (Rh + Rl);
     sPoly[3] = as_float(__ocl_svml_internal_sacosh_ep_data.sPoly[3]);
     sPoly[2] = as_float(__ocl_svml_internal_sacosh_ep_data.sPoly[2]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sPoly[3], sR, sPoly[2]);
+    sP = __spirv_ocl_fma(sPoly[3], sR, sPoly[2]);
     sPoly[1] = as_float(__ocl_svml_internal_sacosh_ep_data.sPoly[1]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[1]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[1]);
     sPoly[0] = as_float(__ocl_svml_internal_sacosh_ep_data.sPoly[0]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[0]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[0]);
     // P = P*R
     sP = (sP * sR);
     // P = P*R + R
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sR);
+    sP = __spirv_ocl_fma(sP, sR, sR);
     // Add 31 to the exponent in the "large" case to get log(2 * input)
     sThirtyOne = as_float(__ocl_svml_internal_sacosh_ep_data.sThirtyOne);
     FpExponPlus = (sN + sThirtyOne);
@@ -471,7 +471,7 @@ float __ocl_svml_acoshf_ep(float x) {
     /* final reconstruction */
     sLn2 = as_float(__ocl_svml_internal_sacosh_ep_data.sLn2);
     // Result = N*log(2) + P
-    vr1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sN, sLn2, sP);
+    vr1 = __spirv_ocl_fma(sN, sLn2, sP);
   }
   if (__builtin_expect((vm) != 0, 0)) {
     float __cout_a1;

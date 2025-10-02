@@ -79,11 +79,11 @@ inline int __internal_satan_ep_nolut_cout (float *pxin, float *pres)
         sgn_r = sgn_x ^ (smask & 0x80000000u);
         R0.w = xa.w + (diff & smask);
         R = R0.f;
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__satan_ep_nolut_c4.f, R, __satan_ep_nolut_c3.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan_ep_nolut_c2.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan_ep_nolut_c1.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan_ep_nolut_c0.f);
-        sres.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R0.f, hcorr.f);
+        poly = __spirv_ocl_fma(__satan_ep_nolut_c4.f,R,__satan_ep_nolut_c3.f);
+        poly = __spirv_ocl_fma(poly,R,__satan_ep_nolut_c2.f);
+        poly = __spirv_ocl_fma(poly,R,__satan_ep_nolut_c1.f);
+        poly = __spirv_ocl_fma(poly,R,__satan_ep_nolut_c0.f);
+        sres.f = __spirv_ocl_fma(poly,R0.f,hcorr.f);
         sres.w = sres.w ^ sgn_r;
         *pres = sres.f;
     }

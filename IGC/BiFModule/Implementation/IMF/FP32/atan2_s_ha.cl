@@ -147,7 +147,7 @@ __ocl_svml_internal_satan2_ha(float *pa, float *pb, float *pres) {
     // reciprocal: rcp_x ~ 1/x
     frcp_x = 1.0f / (fx.f);
     // refine reciprocal
-    f_eps = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-frcp_x), fx.f, 1.0f);
+    f_eps = __spirv_ocl_fma((-frcp_x), fx.f, 1.0f);
     // quotient estimate
     Q00.f = fQ0 = fy.f * frcp_x;
     // redirect special inputs:  NaN/Inf/zero, |x|>2^126
@@ -157,30 +157,30 @@ __ocl_svml_internal_satan2_ha(float *pa, float *pb, float *pres) {
       goto SPECIAL_ATAN2F;
   ATAN2F_MAIN:
     // low part of quotient
-    fQl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fy.f, frcp_x, (-fQ0));
-    fQl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fQ0, f_eps, fQl);
+    fQl = __spirv_ocl_fma(fy.f, frcp_x, (-fQ0));
+    fQl = __spirv_ocl_fma(fQ0, f_eps, fQl);
     // reduced argument
     R = fQ0 - 0.5f;
     R = R + fQl;
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__satan2_ha_c11.f, R,
+    poly = __spirv_ocl_fma(__satan2_ha_c11.f, R,
                                                   __satan2_ha_c10.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ha_c9.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ha_c8.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ha_c7.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ha_c6.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ha_c5.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ha_c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ha_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ha_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ha_c1l.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __satan2_ha_c0.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__satan2_ha_c1.f, R, poly);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ha_c9.f);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ha_c8.f);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ha_c7.f);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ha_c6.f);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ha_c5.f);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ha_c4.f);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ha_c3.f);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ha_c2.f);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ha_c1l.f);
+    poly = __spirv_ocl_fma(poly, R, __satan2_ha_c0.f);
+    poly = __spirv_ocl_fma(__satan2_ha_c1.f, R, poly);
     // fQl + fQl*poly
-    sres.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, fQl, fQl);
+    sres.f = __spirv_ocl_fma(poly, fQl, fQl);
     // (R+ R*poly)+lcorr
     sres.f = sres.f + lcorr.f;
     // ((R+ R*poly)+lcorr)+Q0*poly
-    sres.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fQ0, poly, sres.f);
+    sres.f = __spirv_ocl_fma(fQ0, poly, sres.f);
     // ((R+ R*poly)+lcorr)+Q0*poly + Q0
     sres.f = sres.f + fQ0;
     // ((R+ R*poly)+lcorr)+Q0*poly + Q0 + hcorr
@@ -236,7 +236,7 @@ __ocl_svml_internal_satan2_ha(float *pa, float *pb, float *pres) {
     // reciprocal: rcp_x ~ 1/x
     frcp_x = 1.0f / (fx.f);
     // refine reciprocal
-    f_eps = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-frcp_x), fx.f, 1.0f);
+    f_eps = __spirv_ocl_fma((-frcp_x), fx.f, 1.0f);
     // quotient estimate
     Q00.f = fQ0 = fy.f * frcp_x;
     if (Q00.w < 0x0d800000) {
@@ -244,14 +244,14 @@ __ocl_svml_internal_satan2_ha(float *pa, float *pb, float *pres) {
       // reciprocal: rcp_x ~ 1/x
       frcp_x = 1.0f / (fx.f);
       // refine reciprocal
-      f_eps = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-frcp_x), fx.f, 1.0f);
+      f_eps = __spirv_ocl_fma((-frcp_x), fx.f, 1.0f);
       // quotient estimate
       fQ0 = fy.f * frcp_x;
       // low part of quotient
-      fQl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fy.f, frcp_x, (-fQ0));
-      fQl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fQ0, f_eps, fQl);
+      fQl = __spirv_ocl_fma(fy.f, frcp_x, (-fQ0));
+      fQl = __spirv_ocl_fma(fQ0, f_eps, fQl);
       sres.f = fQ0 + fQl;
-      sres.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(
+      sres.f = __spirv_ocl_fma(
           sres.f, __satan2_ha_twom64.f, hcorr.f);
       sres.w = sres.w ^ sgn_r;
       *pres = sres.f;

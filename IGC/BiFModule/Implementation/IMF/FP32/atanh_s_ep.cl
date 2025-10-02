@@ -371,7 +371,7 @@ float __ocl_svml_atanhf_ep(float x) {
     vm = iSpecialMask;
     sTinyRange = as_float(__ocl_svml_internal_satanh_ep_data.TinyRange);
     sTinyMask = as_float(((unsigned int)(-(signed int)(sInput < sTinyRange))));
-    sTinyRes = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(va1, va1, va1);
+    sTinyRes = __spirv_ocl_fma(va1, va1, va1);
     // Record the sign for eventual reincorporation.
     sSign = as_float(__ocl_svml_internal_satanh_ep_data.sSign);
     sSign = as_float((as_uint(va1) & as_uint(sSign)));
@@ -388,8 +388,8 @@ float __ocl_svml_atanhf_ep(float x) {
     sZ = (1.0f / (sU));
     sR = as_float((as_uint(sZ) & as_uint(sTopMask12)));
     // No need to split sU when FMA is available
-    sE = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-(sR), sU, One);
-    sE = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-(sR), sUTmp, sE);
+    sE = __spirv_ocl_fma(-(sR), sU, One);
+    sE = __spirv_ocl_fma(-(sR), sUTmp, sE);
     // Split V as well into upper 12 bits and lower part, so that we can get
     // a preliminary quotient estimate without rounding error.
     sVHi = as_float((as_uint(sV) & as_uint(sTopMask12)));
@@ -398,12 +398,12 @@ float __ocl_svml_atanhf_ep(float x) {
     sQHi = (sR * sVHi);
     sQLo = (sR * sVLo);
     // Compute D = E + E^2
-    sD = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sE, sE, sE);
+    sD = __spirv_ocl_fma(sE, sE, sE);
     // Compute R * (VHi + VLo) * (1 + E + E^2)
     //       = R *  (VHi + VLo) * (1 + D)
     //       = QHi + (QHi * D + QLo + QLo * D)
     sTmp1 = (sD * sQHi);
-    sTmp2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sD, sQLo, sQLo);
+    sTmp2 = __spirv_ocl_fma(sD, sQLo, sQLo);
     sTmp3 = (sTmp1 + sTmp2);
     // Now finally accumulate the high and low parts of the
     // argument to log1p, H + L, with a final compensated summation.
@@ -439,17 +439,17 @@ float __ocl_svml_atanhf_ep(float x) {
     sR = (Rh + Rl);
     sPoly[3] = as_float(__ocl_svml_internal_satanh_ep_data.sPoly[3]);
     sPoly[2] = as_float(__ocl_svml_internal_satanh_ep_data.sPoly[2]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sPoly[3], sR, sPoly[2]);
+    sP = __spirv_ocl_fma(sPoly[3], sR, sPoly[2]);
     sPoly[1] = as_float(__ocl_svml_internal_satanh_ep_data.sPoly[1]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[1]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[1]);
     sPoly[0] = as_float(__ocl_svml_internal_satanh_ep_data.sPoly[0]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[0]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[0]);
     sP = (sP * sR);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sR);
+    sP = __spirv_ocl_fma(sP, sR, sR);
     /* final reconstruction */
     sLn2 = as_float(__ocl_svml_internal_satanh_ep_data.sLn2);
     // Result = N*Log(2) + P
-    sResult = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sN, sLn2, sP);
+    sResult = __spirv_ocl_fma(sN, sLn2, sP);
     // Finally, halve the result and reincorporate the sign:
     sHalf = as_float(__ocl_svml_internal_satanh_ep_data.sHalf);
     // Half = Half^Sign

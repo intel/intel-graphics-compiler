@@ -401,7 +401,7 @@ float __ocl_svml_atanhf_ha(float x) {
     vm = iSpecialMask;
     sTinyRange = as_float(__ocl_svml_internal_satanh_ha_data.TinyRange);
     sTinyMask = as_float(((unsigned int)(-(signed int)(sInput < sTinyRange))));
-    sTinyRes = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(va1, va1, va1);
+    sTinyRes = __spirv_ocl_fma(va1, va1, va1);
     // Record the sign for eventual reincorporation.
     sSign = as_float(__ocl_svml_internal_satanh_ha_data.sSign);
     sSign = as_float((as_uint(va1) & as_uint(sSign)));
@@ -418,8 +418,8 @@ float __ocl_svml_atanhf_ha(float x) {
     sZ = (1.0f / (sU));
     sR = as_float((as_uint(sZ) & as_uint(sTopMask12)));
     // No need to split sU when FMA is available
-    sE = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-(sR), sU, One);
-    sE = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-(sR), sUTmp, sE);
+    sE = __spirv_ocl_fma(-(sR), sU, One);
+    sE = __spirv_ocl_fma(-(sR), sUTmp, sE);
     // Split V as well into upper 12 bits and lower part, so that we can get
     // a preliminary quotient estimate without rounding error.
     sVHi = as_float((as_uint(sV) & as_uint(sTopMask12)));
@@ -428,12 +428,12 @@ float __ocl_svml_atanhf_ha(float x) {
     sQHi = (sR * sVHi);
     sQLo = (sR * sVLo);
     // Compute D = E + E^2
-    sD = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sE, sE, sE);
+    sD = __spirv_ocl_fma(sE, sE, sE);
     // Compute R * (VHi + VLo) * (1 + E + E^2)
     //       = R *  (VHi + VLo) * (1 + D)
     //       = QHi + (QHi * D + QLo + QLo * D)
     sTmp1 = (sD * sQHi);
-    sTmp2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sD, sQLo, sQLo);
+    sTmp2 = __spirv_ocl_fma(sD, sQLo, sQLo);
     sTmp3 = (sTmp1 + sTmp2);
     // Now finally accumulate the high and low parts of the
     // argument to log1p, H + L, with a final compensated summation.
@@ -472,19 +472,19 @@ float __ocl_svml_atanhf_ha(float x) {
     IExpon = as_uint(X);
     IExpon = ((unsigned int)(IExpon) >> (23));
     /* round reciprocal to nearest integer, will have 1+7 mantissa bits */
-    DblRcp = SPIRV_OCL_BUILTIN(rint, _f32, )(DblRcp);
+    DblRcp = __spirv_ocl_rint(DblRcp);
     /* scale DblRcp */
     FpExpX = as_float(ExpX);
     DblRcp1 = (FpExpX * DblRcp);
     /* biased exponent in DP format */
     FpExpon = ((float)((int)(IExpon)));
     /* argument reduction */
-    Rh = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(X, DblRcp1, -(One));
+    Rh = __spirv_ocl_fma(X, DblRcp1, -(One));
     Rl = (Xl * DblRcp1);
     R = (Rh + Rl);
     Rlh = (R - Rh);
     Rl = (Rl - Rlh);
-    Rl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sL, DblRcp1, Rl);
+    Rl = __spirv_ocl_fma(sL, DblRcp1, Rl);
     /* prepare table index */
     Index = as_uint(DblRcp);
     /* table lookup */
@@ -502,8 +502,8 @@ float __ocl_svml_atanhf_ha(float x) {
     /* exponent*log(2.0) */
     L2H = as_float(__ocl_svml_internal_satanh_ha_data.L2H);
     L2L = as_float(__ocl_svml_internal_satanh_ha_data.L2L);
-    Kh = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(FpExpon, L2H, THL[0]);
-    Kl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(FpExpon, L2L, THL[1]);
+    Kh = __spirv_ocl_fma(FpExpon, L2H, THL[0]);
+    Kl = __spirv_ocl_fma(FpExpon, L2L, THL[1]);
     /* polynomial */
     // VLOAD_CONST( S, poly_coeff[2], TAB.ha_poly_coeff[0] );
     poly_coeff[1] =
@@ -512,9 +512,9 @@ float __ocl_svml_atanhf_ha(float x) {
         as_float(__ocl_svml_internal_satanh_ha_data.ha_poly_coeff[1]);
     // VQFMA( S, P12, poly_coeff[2], dR, poly_coeff[1] );
     dP =
-        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly_coeff[1], R, poly_coeff[0]);
+        __spirv_ocl_fma(poly_coeff[1], R, poly_coeff[0]);
     dR2 = (R * R);
-    dP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(dP, dR2, Rl);
+    dP = __spirv_ocl_fma(dP, dR2, Rl);
     /* reconstruction */
     THL[0] = (Kh + R);
     Rh = (THL[0] - Kh);

@@ -446,33 +446,33 @@ __ocl_svml_internal_sasin_ha(float *pxin, float *pres) {
     // input sign
     sgn_x = x.w ^ xa.w;
     // (1-|x|)/2
-    y.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-0.5f), xa.f, 0.5f);
+    y.f = __spirv_ocl_fma((-0.5f), xa.f, 0.5f);
     // prepare polynomial argument
     R = xin * xin;
-    R = SPIRV_OCL_BUILTIN(fmin, _f32_f32, )(R, y.f);
+    R = __spirv_ocl_fmin(R, y.f);
     // rsqrt((1-|x|)/2)
     RS.f = 1.0f /
-           SPIRV_OCL_BUILTIN(sqrt, _f32, )((y.f + __sasin_ha_small_float.f));
+           __spirv_ocl_sqrt((y.f + __sasin_ha_small_float.f));
     // Sh ~ sqrt((1-|x|)/2)
     Sh = y.f * RS.f;
     // pi/2_high - 2*Sh
-    High.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-Sh), __sasin_ha_two.f,
+    High.f = __spirv_ocl_fma((-Sh), __sasin_ha_two.f,
                                                     __sasin_ha_pi2h.f);
     //  Shh2 = (-2*Sh)_high
     Shh2.f = High.f - __sasin_ha_pi2h.f;
     Shh = 0.5f * Shh2.f;
     // y.f - Sh*Sh
-    E = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-Shh), Shh, y.f);
+    E = __spirv_ocl_fma((-Shh), Shh, y.f);
     // Low = (pi/2)_low - low part of 2*sqrt((1-|x|)/2)
     Low.f =
-        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-E), RS.f, __sasin_ha_pi2l.f);
+        __spirv_ocl_fma((-E), RS.f, __sasin_ha_pi2l.f);
     // polynomial
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__sasin_ha_c5.f, R,
+    poly = __spirv_ocl_fma(__sasin_ha_c5.f, R,
                                                   __sasin_ha_c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sasin_ha_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sasin_ha_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sasin_ha_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sasin_ha_c0.f);
+    poly = __spirv_ocl_fma(poly, R, __sasin_ha_c3.f);
+    poly = __spirv_ocl_fma(poly, R, __sasin_ha_c2.f);
+    poly = __spirv_ocl_fma(poly, R, __sasin_ha_c1.f);
+    poly = __spirv_ocl_fma(poly, R, __sasin_ha_c0.f);
     // R0 = sel_mask? Shh2 : xa.f
     R0.f = (xa.f <= 0.5f) ? xa.f : Shh2.f;
     // High = sel_mask ? High : xa.w
@@ -480,7 +480,7 @@ __ocl_svml_internal_sasin_ha(float *pxin, float *pres) {
     // Low = 0 for sel-mask=0
     Low.f = (xa.f <= 0.5f) ? 0 : Low.f;
     // poly*R + Low
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R0.f, Low.f);
+    poly = __spirv_ocl_fma(poly, R0.f, Low.f);
     // High + (poly*R + Low)
     res.f = High.f + poly;
     res.w |= sgn_x;

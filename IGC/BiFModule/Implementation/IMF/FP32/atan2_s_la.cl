@@ -114,19 +114,19 @@ inline int __internal_satan2_la_cout (float *pyin, float *pxin, float *pres)
 
         Q00.f = (fy.f * frcp_x);
 
-        R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fy.f, frcp_x, -0.5f);
+        R = __spirv_ocl_fma(fy.f,frcp_x,-0.5f);
 
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__satan2_la_c9.f, R, __satan2_la_c8.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan2_la_c7.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan2_la_c6.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan2_la_c5.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan2_la_c4.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan2_la_c3.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan2_la_c2.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan2_la_c1.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan2_la_c0.f);
+        poly = __spirv_ocl_fma(__satan2_la_c9.f,R,__satan2_la_c8.f);
+        poly = __spirv_ocl_fma(poly,R,__satan2_la_c7.f);
+        poly = __spirv_ocl_fma(poly,R,__satan2_la_c6.f);
+        poly = __spirv_ocl_fma(poly,R,__satan2_la_c5.f);
+        poly = __spirv_ocl_fma(poly,R,__satan2_la_c4.f);
+        poly = __spirv_ocl_fma(poly,R,__satan2_la_c3.f);
+        poly = __spirv_ocl_fma(poly,R,__satan2_la_c2.f);
+        poly = __spirv_ocl_fma(poly,R,__satan2_la_c1.f);
+        poly = __spirv_ocl_fma(poly,R,__satan2_la_c0.f);
 
-        sres.f = (SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, Q00.f, Q00.f));
+        sres.f = (__spirv_ocl_fma(poly,Q00.f,Q00.f));
         sres.f += hcorr.f;
         sres.w = sres.w ^ sgn_r;
         *pres = sres.f;

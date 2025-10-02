@@ -88,25 +88,25 @@ __ocl_svml_internal_sexpm1_ha(float *a, float *pres) {
   float H1, H2, Rhh2, Rhl2, poly0;
   xf.f = xin;
   xL2E.f =
-      SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(xf.f, __sexpm1_ha_fL2E.f, 0.0f);
-  fN.f = SPIRV_OCL_BUILTIN(trunc, _f32, )(xL2E.f);
+      __spirv_ocl_fma(xf.f, __sexpm1_ha_fL2E.f, 0.0f);
+  fN.f = __spirv_ocl_trunc(xL2E.f);
   fS.f = __sexpm1_ha_fShifter.f + fN.f;
   // reduced argument
-  Rh = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fN.f, __sexpm1_ha_NL2H.f, xf.f);
-  Rl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fN.f, __sexpm1_ha_NL2L.f, 0.0f);
+  Rh = __spirv_ocl_fma(fN.f, __sexpm1_ha_NL2H.f, xf.f);
+  Rl = __spirv_ocl_fma(fN.f, __sexpm1_ha_NL2L.f, 0.0f);
   R = Rh + Rl;
   // 2^N
   T.w = fS.w << 23;
   // e^R - 1
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__sexpm1_ha_c7.f, R,
+  poly = __spirv_ocl_fma(__sexpm1_ha_c7.f, R,
                                                 __sexpm1_ha_c6.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sexpm1_ha_c5.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sexpm1_ha_c4.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sexpm1_ha_c3.f);
-  poly0 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sexpm1_ha_c2.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly0, R, __sexpm1_ha_c1.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sexpm1_ha_c0.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, Rl);
+  poly = __spirv_ocl_fma(poly, R, __sexpm1_ha_c5.f);
+  poly = __spirv_ocl_fma(poly, R, __sexpm1_ha_c4.f);
+  poly = __spirv_ocl_fma(poly, R, __sexpm1_ha_c3.f);
+  poly0 = __spirv_ocl_fma(poly, R, __sexpm1_ha_c2.f);
+  poly = __spirv_ocl_fma(poly0, R, __sexpm1_ha_c1.f);
+  poly = __spirv_ocl_fma(poly, R, __sexpm1_ha_c0.f);
+  poly = __spirv_ocl_fma(poly, R, Rl);
   // maxabs(T,-1), minabs(T,-1)
   A = (xin >= 0.0f) ? T.f : -1.0f;
   B = (xin >= 0.0f) ? -1.0f : T.f;
@@ -114,8 +114,8 @@ __ocl_svml_internal_sexpm1_ha(float *a, float *pres) {
   Bh = Th - A;
   Tl = B - Bh;
   // T*Rh
-  ThRh = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(T.f, Rh, 0.0f);
-  ThRh_l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(T.f, Rh, -ThRh);
+  ThRh = __spirv_ocl_fma(T.f, Rh, 0.0f);
+  ThRh_l = __spirv_ocl_fma(T.f, Rh, -ThRh);
   // Th + Th*Rh
   H = ThRh + Th;
   // 2*H
@@ -126,21 +126,21 @@ __ocl_svml_internal_sexpm1_ha(float *a, float *pres) {
   Rhl = ThRh - Rhh;
   Tl = Tl + Rhl + ThRh_l;
   // H+H+Rh*Rh
-  H2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(ThRh, Rh, H1);
+  H2 = __spirv_ocl_fma(ThRh, Rh, H1);
   // Rh^2_high
   Rhh2 = H2 - H1;
   // Rh^2_low
-  Rhl2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(ThRh, Rh, -Rhh2);
+  Rhl2 = __spirv_ocl_fma(ThRh, Rh, -Rhh2);
   // Tl += 0.5*Rhl2 + Rh*Rl
-  Tl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(ThRh, Rl, Tl);
-  Tl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(Rhl2, 0.5f, Tl);
+  Tl = __spirv_ocl_fma(ThRh, Rl, Tl);
+  Tl = __spirv_ocl_fma(Rhl2, 0.5f, Tl);
   // 2^N*poly + Tl
-  res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(T.f, poly, Tl);
-  res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(H2, 0.5f, res.f);
+  res.f = __spirv_ocl_fma(T.f, poly, Tl);
+  res.f = __spirv_ocl_fma(H2, 0.5f, res.f);
   // ensure expm1(-0)=-0
-  xa.f = SPIRV_OCL_BUILTIN(fabs, _f32, )(xf.f);
+  xa.f = __spirv_ocl_fabs(xf.f);
   res.w |= (xf.w ^ xa.w);
-  if (SPIRV_OCL_BUILTIN(fabs, _f32, )(xf.f) <= 87.0f) {
+  if (__spirv_ocl_fabs(xf.f) <= 87.0f) {
     *pres = res.f;
     return nRet;
   }
@@ -169,11 +169,11 @@ __ocl_svml_internal_sexpm1_ha(float *a, float *pres) {
   // at or near overflow
   // 2^(N-64), N=(int)dN
   T.w = (fS.w - 64) << 23;
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly0, R, 0.5f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sexpm1_ha_c1.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, Rl);
+  poly = __spirv_ocl_fma(poly0, R, 0.5f);
+  poly = __spirv_ocl_fma(poly, R, __sexpm1_ha_c1.f);
+  poly = __spirv_ocl_fma(poly, R, Rl);
   poly += Rh;
-  res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(T.f, poly, T.f);
+  res.f = __spirv_ocl_fma(T.f, poly, T.f);
   // final scaling
   sc.w = 0x5f800000u;
   res.f *= sc.f;

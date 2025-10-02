@@ -49,24 +49,24 @@ __ocl_svml_internal_sexp2_ha(float *a, float *r) {
     float f;
     int i;
   } T, T2, xi, res;
-  fN = SPIRV_OCL_BUILTIN(rint, _f32, )(x);
+  fN = __spirv_ocl_rint(x);
   R = x - fN;
   sN = (int)fN;
   // exponent
   N = sN;
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__sexp2_ha_c6.f, R,
+  poly = __spirv_ocl_fma(__sexp2_ha_c6.f, R,
                                                 __sexp2_ha_c5.f);
   // 1+0.5*R
-  High = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(R, 0.5f, 1.0f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sexp2_ha_c4.f);
+  High = __spirv_ocl_fma(R, 0.5f, 1.0f);
+  poly = __spirv_ocl_fma(poly, R, __sexp2_ha_c4.f);
   // (0.5*R)_high
   Rh = High - 1.0f;
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sexp2_ha_c3.f);
+  poly = __spirv_ocl_fma(poly, R, __sexp2_ha_c3.f);
   // (0.5*R)_low
-  Rl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(R, 0.5f, (-Rh));
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sexp2_ha_c2.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sexp2_ha_c1.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, Rl);
+  Rl = __spirv_ocl_fma(R, 0.5f, (-Rh));
+  poly = __spirv_ocl_fma(poly, R, __sexp2_ha_c2.f);
+  poly = __spirv_ocl_fma(poly, R, __sexp2_ha_c1.f);
+  poly = __spirv_ocl_fma(poly, R, Rl);
   res.f = High + poly;
   if (((unsigned int)(N + 0x7f - 2)) > 124 + 0x7f)
     goto EXP2F_SPECIAL;
@@ -84,9 +84,9 @@ EXP2F_SPECIAL:
       return nRet; // NaN or +Inf
     }
   }
-  x = SPIRV_OCL_BUILTIN(fmin, _f32_f32, )(x, 192.0f);
-  x = SPIRV_OCL_BUILTIN(fmax, _f32_f32, )(x, -192.0f);
-  fN = SPIRV_OCL_BUILTIN(rint, _f32, )(x);
+  x = __spirv_ocl_fmin(x, 192.0f);
+  x = __spirv_ocl_fmax(x, -192.0f);
+  fN = __spirv_ocl_rint(x);
   sN = (int)fN;
   // split the scaling coefficients
   sN2 = sN >> 1;

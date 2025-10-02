@@ -515,44 +515,44 @@ inline int __ocl_svml_internal_spown_noLUT (float *pxin, int *pyin, float *pres)
     fLogMant = (iSmallX) ? (2.0f * fLogMant) : fLogMant;
     iExpX = (iSmallX) ? (iExpX - 1) : iExpX;
     // Fraction f = (fLogMant-1)/(fLogMant+1)
-    fLogV1 = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogMant, 1.0f, 1.0f);
-    fLogMant = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogMant, 1.0f, -1.0f);
+    fLogV1 = __spirv_ocl_fma(fLogMant,1.0f,1.0f);
+    fLogMant = __spirv_ocl_fma(fLogMant,1.0f,-1.0f);
     fLogR = 1.0f / fLogV1;
-    fLogFHi = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogMant, fLogR, 0.0f);
-    fLogV2 = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogFHi, -__spown_la_slog_two.f, fLogMant);
-    fLogV3 = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogFHi, -fLogMant, fLogV2);
-    fLogFLo = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogR, fLogV3, 0.0f);
+    fLogFHi = __spirv_ocl_fma(fLogMant,fLogR,0.0f);
+    fLogV2 = __spirv_ocl_fma(fLogFHi,-__spown_la_slog_two.f,fLogMant);
+    fLogV3 = __spirv_ocl_fma(fLogFHi,-fLogMant,fLogV2);
+    fLogFLo = __spirv_ocl_fma(fLogR,fLogV3,0.0f);
     // atanh(f) approximation
     fLogV3 = fLogFHi * fLogFHi;
-    fLogR = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (__spown_la_slog_c4.f, fLogV3, __spown_la_slog_c3.f);
-    fLogR = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogR, fLogV3, __spown_la_slog_c2.f);
-    fLogR = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogR, fLogV3, __spown_la_slog_c1.f);
-    fLogV2 = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogFHi, fLogFLo + fLogFLo, SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogFHi, fLogFHi, -fLogV3));
-    fLogV1 = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogV3, fLogFHi, 0.0f);
+    fLogR = __spirv_ocl_fma(__spown_la_slog_c4.f,fLogV3,__spown_la_slog_c3.f);
+    fLogR = __spirv_ocl_fma(fLogR,fLogV3,__spown_la_slog_c2.f);
+    fLogR = __spirv_ocl_fma(fLogR,fLogV3,__spown_la_slog_c1.f);
+    fLogV2 = __spirv_ocl_fma(fLogFHi,fLogFLo+fLogFLo,__spirv_ocl_fma(fLogFHi,fLogFHi,-fLogV3));
+    fLogV1 = __spirv_ocl_fma(fLogV3,fLogFHi,0.0f);
     fLogV2 =
-        SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogV3, fLogFLo,
-                                                SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogV2, fLogFHi,
-                                                                                        SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogV3, fLogFHi,
+        __spirv_ocl_fma(fLogV3, fLogFLo,
+                                                __spirv_ocl_fma(fLogV2, fLogFHi,
+                                                                                        __spirv_ocl_fma(fLogV3, fLogFHi,
                                                                                                                                 -fLogV1)));
-    fLogV3 = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogR, fLogV1, SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogR, fLogV2, fLogFLo));
+    fLogV3 = __spirv_ocl_fma(fLogR,fLogV1,__spirv_ocl_fma(fLogR,fLogV2,fLogFLo));
     // Log exponent as floating point
     fLogExp = (float) iExpX;
     // log = 2 * atanh(f) + fLogExp * log(2)
     fLogV2 =
-        SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (__spown_la_slog_half.f, __spown_la_slog_log2hi.f, 0.0f),
+        __spirv_ocl_fma(__spirv_ocl_fma(__spown_la_slog_half.f, __spown_la_slog_log2hi.f, 0.0f),
                                                 fLogExp, fLogFHi);
     fLogV1 =
-        SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (__spown_la_slog_half.f, -__spown_la_slog_log2hi.f, 0.0f),
+        __spirv_ocl_fma(__spirv_ocl_fma(__spown_la_slog_half.f, -__spown_la_slog_log2hi.f, 0.0f),
                                                 fLogExp, fLogV2);
-    fLogV3 = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogFHi, 1.0f, -fLogV1), 1.0f, fLogV3);
-    fLogV3 = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (__spown_la_slog_log2lo.f * __spown_la_slog_half.f, fLogExp, fLogV3);
-    fLogR = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogV2, 1.0f, fLogV2);
+    fLogV3 = __spirv_ocl_fma(__spirv_ocl_fma(fLogFHi,1.0f,-fLogV1),1.0f,fLogV3);
+    fLogV3 = __spirv_ocl_fma(__spown_la_slog_log2lo.f*__spown_la_slog_half.f,fLogExp,fLogV3);
+    fLogR = __spirv_ocl_fma(fLogV2,1.0f,fLogV2);
     // log result in high and low parts
-    fLogResHi = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (__spown_la_slog_two.f, fLogV3, fLogR);
+    fLogResHi = __spirv_ocl_fma(__spown_la_slog_two.f,fLogV3,fLogR);
     fLogResLo =
-        SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (__spown_la_slog_two.f, fLogV3, SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogR, 1.0f, -fLogResHi));
+        __spirv_ocl_fma(__spown_la_slog_two.f,fLogV3,__spirv_ocl_fma(fLogR,1.0f,-fLogResHi));
     // Multiply  y * log(x)
-    fLogTHi = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogResHi, fY, 0.0f);
+    fLogTHi = __spirv_ocl_fma(fLogResHi,fY,0.0f);
     // Check for special args processing branch
     fwYLogX.f = (float) (fLogTHi);
     uExpX = fwX.w >> 23;
@@ -563,17 +563,17 @@ inline int __ocl_svml_internal_spown_noLUT (float *pxin, int *pyin, float *pres)
         goto SPOWN_MAIN_SPECIAL;
     }
     // Rest of multi-precision  y * log(x)
-    fLogTLo = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogResHi, fY, -fLogTHi);
-    fLogTLo = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogResLo, fY, +fLogTLo);
-    fLogPolyHi = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogTHi, 1.0f, fLogTLo);
-    fLogPolyLo = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fLogTHi, 1.0f, -fLogPolyHi), 1.0f, +fLogTLo);
+    fLogTLo = __spirv_ocl_fma(fLogResHi,fY,-fLogTHi);
+    fLogTLo = __spirv_ocl_fma(fLogResLo,fY,+fLogTLo);
+    fLogPolyHi = __spirv_ocl_fma(fLogTHi,1.0f,fLogTLo);
+    fLogPolyLo = __spirv_ocl_fma(__spirv_ocl_fma(fLogTHi,1.0f,-fLogPolyHi),1.0f,+fLogTLo);
     fExpArgHi = fLogPolyHi;
     fExpArgLo = fLogPolyLo;
     // Exp part computation
-    fwS.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fExpArgHi, __spown_la_sexp_l2e.f, __spown_la_sexp_shft.f);
+    fwS.f = __spirv_ocl_fma(fExpArgHi,__spown_la_sexp_l2e.f,__spown_la_sexp_shft.f);
     fN = fwS.f - __spown_la_sexp_shft.f;
-    fR = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) ((-fN), __spown_la_sexp_l2h.f, fExpArgHi);
-    fR = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) ((-fN), __spown_la_sexp_l2l.f, fR);
+    fR = __spirv_ocl_fma((-fN),__spown_la_sexp_l2h.f,fExpArgHi);
+    fR = __spirv_ocl_fma((-fN),__spown_la_sexp_l2l.f,fR);
     fR += fExpArgLo;
     // Set exponent in place
     fwTh.w = fwS.w << 22;
@@ -582,10 +582,10 @@ inline int __ocl_svml_internal_spown_noLUT (float *pxin, int *pyin, float *pres)
     // Set fwTh mantissa
     fwTh.w ^= (iIdxMask & 0x7504F3u);
     // Exp polynomial
-    fPoly = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fR, __spown_la_sexp_c5.f, __spown_la_sexp_c4.f);
-    fPoly = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fR, fPoly, __spown_la_sexp_c3.f);
-    fPoly = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fR, fPoly, __spown_la_sexp_c2.f);
-    fPoly = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fR, fPoly, __spown_la_sexp_c1.f);
+    fPoly = __spirv_ocl_fma(fR,__spown_la_sexp_c5.f,__spown_la_sexp_c4.f);
+    fPoly = __spirv_ocl_fma(fR,fPoly,__spown_la_sexp_c3.f);
+    fPoly = __spirv_ocl_fma(fR,fPoly,__spown_la_sexp_c2.f);
+    fPoly = __spirv_ocl_fma(fR,fPoly,__spown_la_sexp_c1.f);
     fPoly = fR * fPoly;
     // Big abs exp arg branch
     if (uAbsYLogX > 0x42AEAC4Fu)
@@ -596,12 +596,12 @@ inline int __ocl_svml_internal_spown_noLUT (float *pxin, int *pyin, float *pres)
         fwTh2.w <<= 23;
         fwTh.w = fwS.w << 22;
         fwTh.w ^= (iIdxMask & 0x7504F3u);
-        fwRes.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fPoly, fwTh.f, fwTh.f);
+        fwRes.f = __spirv_ocl_fma(fPoly,fwTh.f,fwTh.f);
         fwRes.f *= fwTh2.f;
     }
     else
     {
-        fwRes.f = SPIRV_OCL_BUILTIN (fma, _f32_f32_f32,) (fPoly, fwTh.f, fwTh.f);
+        fwRes.f = __spirv_ocl_fma(fPoly,fwTh.f,fwTh.f);
     }
     *pres = fwRes.f;
     return nRet;

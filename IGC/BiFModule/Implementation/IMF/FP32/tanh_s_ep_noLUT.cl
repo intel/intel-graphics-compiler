@@ -82,11 +82,11 @@ inline int __internal_stanh_ep_nolut_cout (float *a, float *r)
     xa.w = x0.w & 0x7fffffff;
     sgn_x = xa.w ^ x0.w;
     R2.f = xa.f * xa.f;
-    npoly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2.f, __stanh_ep_nolut_nc2.f, __stanh_ep_nolut_nc1.f);
-    dpoly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2.f, __stanh_ep_nolut_dc2.f, __stanh_ep_nolut_dc1.f);
-    npoly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (npoly.f, R2.f, __stanh_ep_nolut_nc0.f);
-    dpoly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dpoly.f, R2.f, __stanh_ep_nolut_dc0.f);
-    dpoly.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (dpoly.f, xa.f, xa.f);
+    npoly.f = __spirv_ocl_fma(R2.f,__stanh_ep_nolut_nc2.f,__stanh_ep_nolut_nc1.f);
+    dpoly.f = __spirv_ocl_fma(R2.f,__stanh_ep_nolut_dc2.f,__stanh_ep_nolut_dc1.f);
+    npoly.f = __spirv_ocl_fma(npoly.f,R2.f,__stanh_ep_nolut_nc0.f);
+    dpoly.f = __spirv_ocl_fma(dpoly.f,R2.f,__stanh_ep_nolut_dc0.f);
+    dpoly.f = __spirv_ocl_fma(dpoly.f,xa.f,xa.f);
     y.f = 1.0f / (npoly.f);
     y.f = y.f * dpoly.f;
     y.f = (xa.f >= 5.0f) ? 1.0f : y.f;

@@ -92,50 +92,50 @@ LOG10F_MAIN:
   // reduced argument
   R = mant.f - 1.0f;
   // polynomial
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__slog10_ha_c10.f, R,
+  poly = __spirv_ocl_fma(__slog10_ha_c10.f, R,
                                                 __slog10_ha_c9.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c8.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c7.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c6.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c5.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c4.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c3.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c2h.f);
-  fpolyh = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, 0.0f);
-  fpolyl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, -fpolyh);
+  poly = __spirv_ocl_fma(poly, R, __slog10_ha_c8.f);
+  poly = __spirv_ocl_fma(poly, R, __slog10_ha_c7.f);
+  poly = __spirv_ocl_fma(poly, R, __slog10_ha_c6.f);
+  poly = __spirv_ocl_fma(poly, R, __slog10_ha_c5.f);
+  poly = __spirv_ocl_fma(poly, R, __slog10_ha_c4.f);
+  poly = __spirv_ocl_fma(poly, R, __slog10_ha_c3.f);
+  poly = __spirv_ocl_fma(poly, R, __slog10_ha_c2h.f);
+  fpolyh = __spirv_ocl_fma(poly, R, 0.0f);
+  fpolyl = __spirv_ocl_fma(poly, R, -fpolyh);
   fexpon = (float)iexpon;
   fresh = __slog10_ha_fl10[0];
   fresl = __slog10_ha_fl10[1];
   // Multi-precision computationsl part
   {
     float __ph, __phl;
-    __ph = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fresh, fexpon, 0.0f);
-    __phl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fresh, fexpon, -__ph);
-    fresl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fresl, fexpon, __phl);
+    __ph = __spirv_ocl_fma(fresh, fexpon, 0.0f);
+    __phl = __spirv_ocl_fma(fresh, fexpon, -__ph);
+    fresl = __spirv_ocl_fma(fresl, fexpon, __phl);
     fresh = __ph;
   };
   {
     float __ph, __ahl, __ahh;
-    __ph = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fpolyh, 1.0f,
+    __ph = __spirv_ocl_fma(fpolyh, 1.0f,
                                                   __slog10_ha_fc1[0]);
     __ahh =
-        SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__ph, 1.0f, -__slog10_ha_fc1[0]);
-    __ahl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fpolyh, 1.0f, -__ahh);
+        __spirv_ocl_fma(__ph, 1.0f, -__slog10_ha_fc1[0]);
+    __ahl = __spirv_ocl_fma(fpolyh, 1.0f, -__ahh);
     fpolyl = (fpolyl + __slog10_ha_fc1[1]) + __ahl;
     fpolyh = __ph;
   };
   {
     float __ph, __phl;
-    __ph = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fpolyh, R, 0.0f);
-    __phl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fpolyh, R, -__ph);
-    fpolyl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fpolyl, R, __phl);
+    __ph = __spirv_ocl_fma(fpolyh, R, 0.0f);
+    __phl = __spirv_ocl_fma(fpolyh, R, -__ph);
+    fpolyl = __spirv_ocl_fma(fpolyl, R, __phl);
     fpolyh = __ph;
   };
   {
     float __ph, __ahl, __ahh;
-    __ph = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fpolyh, 1.0f, fresh);
-    __ahh = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__ph, 1.0f, -fresh);
-    __ahl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(fpolyh, 1.0f, -__ahh);
+    __ph = __spirv_ocl_fma(fpolyh, 1.0f, fresh);
+    __ahh = __spirv_ocl_fma(__ph, 1.0f, -fresh);
+    __ahl = __spirv_ocl_fma(fpolyh, 1.0f, -__ahh);
     fpolyl = (fpolyl + fresl) + __ahl;
     fpolyh = __ph;
   };

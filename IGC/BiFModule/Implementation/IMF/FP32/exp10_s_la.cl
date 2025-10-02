@@ -188,11 +188,11 @@ inline int __internal_sexp10_la_cout (float *a, float *r)
     float N, R, poly;
     int index_mask;
 
-    S.f = (SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (x, __sexp10_la_L2_10.f, __sexp10_la_Shifter.f));
+    S.f = (__spirv_ocl_fma(x,__sexp10_la_L2_10.f,__sexp10_la_Shifter.f));
     N = (S.f - __sexp10_la_Shifter.f);
 
-    R = (SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-N, __sexp10_la_L2H.f, x));
-    R = (SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-N, __sexp10_la_L2L.f, R));
+    R = (__spirv_ocl_fma(-N,__sexp10_la_L2H.f,x));
+    R = (__spirv_ocl_fma(-N,__sexp10_la_L2L.f,R));
 
     Th.w = S.w << 22;
 
@@ -202,11 +202,11 @@ inline int __internal_sexp10_la_cout (float *a, float *r)
 
     Tlr.w = index_mask & 0x329302AEu;
 
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, __sexp10_la_c5.f, __sexp10_la_c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, __sexp10_la_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, __sexp10_la_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, __sexp10_la_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, Tlr.f);
+    poly = __spirv_ocl_fma(R,__sexp10_la_c5.f,__sexp10_la_c4.f);
+    poly = __spirv_ocl_fma(R,poly,__sexp10_la_c3.f);
+    poly = __spirv_ocl_fma(R,poly,__sexp10_la_c2.f);
+    poly = __spirv_ocl_fma(R,poly,__sexp10_la_c1.f);
+    poly = __spirv_ocl_fma(R,poly,Tlr.f);
 
     xin.f = x;
     xa.w = xin.w & 0x7fffffffu;
@@ -214,7 +214,7 @@ inline int __internal_sexp10_la_cout (float *a, float *r)
     if (xa.w > 0x4217B818u)
         goto EXPF_SPECIAL;
 
-    res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, Th.f, Th.f);
+    res.f = __spirv_ocl_fma(poly,Th.f,Th.f);
 
     *r = res.f;
     return nRet;
@@ -250,7 +250,7 @@ inline int __internal_sexp10_la_cout (float *a, float *r)
 
     Th.w ^= (index_mask & 0x7504F3u);
 
-    res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, Th.f, Th.f);
+    res.f = __spirv_ocl_fma(poly,Th.f,Th.f);
     res.f *= Th2.f;
 
     *r = res.f;

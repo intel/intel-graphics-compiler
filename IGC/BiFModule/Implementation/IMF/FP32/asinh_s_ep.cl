@@ -72,10 +72,10 @@ __ocl_svml_internal_sasinh_ep(float *a, float *r) {
     int i;
   } Yh, res, xin, sgn, xa, two_expon;
   int expon, e23, iexpon_corr;
-  z2h = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(x, x, 1.0f);
-  RS = 1.0f / SPIRV_OCL_BUILTIN(sqrt, _f32, )(z2h);
-  Sh = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(z2h, RS, 0.0f);
-  xa.f = SPIRV_OCL_BUILTIN(fabs, _f32, )(x);
+  z2h = __spirv_ocl_fma(x, x, 1.0f);
+  RS = 1.0f / __spirv_ocl_sqrt(z2h);
+  Sh = __spirv_ocl_fma(z2h, RS, 0.0f);
+  xa.f = __spirv_ocl_fabs(x);
   // |x| + Sh + Sl
   Yh.f = xa.f + Sh;
   // set Yh, Yl for large |x|
@@ -94,15 +94,15 @@ __ocl_svml_internal_sasinh_ep(float *a, float *r) {
   // add exponent correction
   expon += iexpon_corr;
   // polynomial
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__sasinh_ep_c4.f, R,
+  poly = __spirv_ocl_fma(__sasinh_ep_c4.f, R,
                                                 __sasinh_ep_c3.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sasinh_ep_c2.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sasinh_ep_c1.f);
+  poly = __spirv_ocl_fma(poly, R, __sasinh_ep_c2.f);
+  poly = __spirv_ocl_fma(poly, R, __sasinh_ep_c1.f);
   xin.f = x;
   sgn.w = xin.w ^ xa.w;
   poly *= R;
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, R);
-  res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(((float)expon),
+  poly = __spirv_ocl_fma(poly, R, R);
+  res.f = __spirv_ocl_fma(((float)expon),
                                                  __sasinh_ep_ln2.f, poly);
   res.w ^= sgn.w;
   // fixup for small or Inf/NaN

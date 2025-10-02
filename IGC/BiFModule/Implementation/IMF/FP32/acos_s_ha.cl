@@ -450,10 +450,10 @@ __ocl_svml_internal_sacos_ha(float *pxin, float *pres) {
     // input sign
     sgn_x = x.w ^ xa.w;
     // (1-|x|)/2
-    y.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-xa.f), 0.5f, 0.5f);
+    y.f = __spirv_ocl_fma((-xa.f), 0.5f, 0.5f);
     // prepare polynomial argument
     R = xin * xin;
-    R = SPIRV_OCL_BUILTIN(fmin, _f32_f32, )(R, y.f);
+    R = __spirv_ocl_fmin(R, y.f);
     High.f = sgn_x ? __sacos_ha_pih.f : 0.0f;
     Low.f = sgn_x ? __sacos_ha_pil.f : 0.0f;
     High.f = (xa.f <= 0.5f) ? __sacos_ha_pi2h.f : High.f;
@@ -464,7 +464,7 @@ __ocl_svml_internal_sacos_ha(float *pxin, float *pres) {
     yf = y.f + fcorr.f; // SP_FMA(fcorr.f, _VSTATIC(small_float).f, yf);
     // fixup for y.f==0
     yf += __sacos_ha_small_float.f;
-    RS.f = 1.0f / SPIRV_OCL_BUILTIN(sqrt, _f32, )(yf);
+    RS.f = 1.0f / __spirv_ocl_sqrt(yf);
     // set sign for later computation
     RS.w |= sgn_x;
     // Sh ~ sqrt((1-|x|)/2)
@@ -472,20 +472,20 @@ __ocl_svml_internal_sacos_ha(float *pxin, float *pres) {
     //  Shh2 = (-2*Sh)_high
     Shh2.f = -2.0f * Sh;
     // y.f - Sh*Sh
-    E = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-Sh), Sh, y.f);
+    E = __spirv_ocl_fma((-Sh), Sh, y.f);
     // Low = (pi/2)_low + low part of 2*sqrt((1-|x|)/2)
-    Low.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(E, RS.f, Low.f);
+    Low.f = __spirv_ocl_fma(E, RS.f, Low.f);
     // polynomial
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__sacos_ha_c5.f, R,
+    poly = __spirv_ocl_fma(__sacos_ha_c5.f, R,
                                                   __sacos_ha_c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sacos_ha_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sacos_ha_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sacos_ha_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __sacos_ha_c0.f);
+    poly = __spirv_ocl_fma(poly, R, __sacos_ha_c3.f);
+    poly = __spirv_ocl_fma(poly, R, __sacos_ha_c2.f);
+    poly = __spirv_ocl_fma(poly, R, __sacos_ha_c1.f);
+    poly = __spirv_ocl_fma(poly, R, __sacos_ha_c0.f);
     // R0 = sel_mask? xa.f : Shh2.w
     R0.f = (xa.f <= 0.5f) ? x.f : Shh2.f;
     // -poly*R0 + Low
-    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )((-poly), R0.f, Low.f);
+    poly = __spirv_ocl_fma((-poly), R0.f, Low.f);
     // High + R0 + (poly*R0 + Low)
     res.f = poly - R0.f;
     res.f = High.f + res.f;

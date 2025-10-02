@@ -1607,22 +1607,22 @@ float __ocl_svml_powf_ep(float x, float y) {
     sPoly[5] = as_float(__ocl_svml_internal_spow_ep_data.sPoly[5]);
     sPoly[4] = as_float(__ocl_svml_internal_spow_ep_data.sPoly[4]);
     /* polynomial evaluation starts here*/
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sPoly[6], sR, sPoly[5]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[4]);
+    sP = __spirv_ocl_fma(sPoly[6], sR, sPoly[5]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[4]);
     sPoly[3] = as_float(__ocl_svml_internal_spow_ep_data.sPoly[3]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[3]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[3]);
     sPoly[2] = as_float(__ocl_svml_internal_spow_ep_data.sPoly[2]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[2]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[2]);
     sPoly[1] = as_float(__ocl_svml_internal_spow_ep_data.sPoly[1]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[1]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[1]);
     sPoly[0] = as_float(__ocl_svml_internal_spow_ep_data.sPoly[0]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPoly[0]);
+    sP = __spirv_ocl_fma(sP, sR, sPoly[0]);
     sP = (sP * sR);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sR);
+    sP = __spirv_ocl_fma(sP, sR, sR);
     sLn2Hi = as_float(__ocl_svml_internal_spow_ep_data.sLn2Hi);
     sLn2Lo = as_float(__ocl_svml_internal_spow_ep_data.sLn2Lo);
-    sLnResLo = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sN, sLn2Lo, sP);
-    sLnResHi = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sN, sLn2Hi, sLnResLo);
+    sLnResLo = __spirv_ocl_fma(sN, sLn2Lo, sP);
+    sLnResHi = __spirv_ocl_fma(sN, sLn2Hi, sLnResLo);
     sLnResHi = (sLnResHi * va2);
     /* Check for overflow\underflow */
     iAbsZ = as_uint(sLnResHi);
@@ -1635,22 +1635,22 @@ float __ocl_svml_powf_ep(float x, float y) {
     vm = iRangeMask;
     sInvLn2 = as_float(__ocl_svml_internal_spow_ep_data._sInvLn2);
     sShifter = as_float(__ocl_svml_internal_spow_ep_data._sShifter);
-    sM = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sLnResHi, sInvLn2, sShifter);
+    sM = __spirv_ocl_fma(sLnResHi, sInvLn2, sShifter);
     sN = (sM - sShifter);
     iM = as_uint(sM);
     /* 2^N */
     iM = ((unsigned int)(iM) << (23));
     sLn2hi = as_float(__ocl_svml_internal_spow_ep_data._sLn2hi);
     /* R = LnResHi - N*Ln2Hi*/
-    sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-(sN), sLn2hi, sLnResHi);
+    sR = __spirv_ocl_fma(-(sN), sLn2hi, sLnResHi);
     /* Polynomial */
     sPC[0] = as_float(__ocl_svml_internal_spow_ep_data._sPC0);
     sPC[1] = as_float(__ocl_svml_internal_spow_ep_data._sPC1);
     sPC[2] = as_float(__ocl_svml_internal_spow_ep_data._sPC2);
     sPC[3] = as_float(__ocl_svml_internal_spow_ep_data._sPC3);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sPC[3], sR, sPC[2]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPC[1]);
-    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sP, sR, sPC[0]);
+    sP = __spirv_ocl_fma(sPC[3], sR, sPC[2]);
+    sP = __spirv_ocl_fma(sP, sR, sPC[1]);
+    sP = __spirv_ocl_fma(sP, sR, sPC[0]);
     /* Final reconstruction */
     iP = as_uint(sP);
     iRes = (iM + iP);
