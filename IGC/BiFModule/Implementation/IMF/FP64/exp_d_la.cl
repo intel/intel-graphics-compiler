@@ -1280,7 +1280,7 @@ inline int __internal_dexp_la_cout (double *a, double *r)
 
     xf = (float) x;
 
-    idx.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (xf, __dexp_la_p_L2Ef.f, __dexp_la_p_Shifterf.f);
+    idx.f = __spirv_ocl_fma(xf,__dexp_la_p_L2Ef.f,__dexp_la_p_Shifterf.f);
 
     fN = idx.f - __dexp_la_p_Shifterf.f;
     N = (double) fN;
@@ -1288,20 +1288,20 @@ inline int __internal_dexp_la_cout (double *a, double *r)
     T.w = __dexp_la_Tbl_exp[idx.w & 31].w;
     T.w32[1] ^= (idx.w << (20 - 5));
 
-    R0 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (__dexp_la_p_NL2H.f, N, x);
+    R0 = __spirv_ocl_fma(__dexp_la_p_NL2H.f,N,x);
 
-    R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (__dexp_la_p_NL2L.f, N, R0);
+    R = __spirv_ocl_fma(__dexp_la_p_NL2L.f,N,R0);
 
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (__dexp_la_c5.f, R0, __dexp_la_c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R0, __dexp_la_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R0, __dexp_la_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_la_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_la_c0.f);
+    poly = __spirv_ocl_fma(__dexp_la_c5.f,R0,__dexp_la_c4.f);
+    poly = __spirv_ocl_fma(poly,R0,__dexp_la_c3.f);
+    poly = __spirv_ocl_fma(poly,R0,__dexp_la_c2.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp_la_c1.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp_la_c0.f);
 
-    if (SPIRV_OCL_BUILTIN(fabs, _f32, ) (xf) > __dexp_la_p_fthres.f)
+    if (__spirv_ocl_fabs (xf) > __dexp_la_p_fthres.f)
         goto EXP_SPECIAL_PATH;
 
-    res = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (T.f, poly, T.f);
+    res = __spirv_ocl_fma(T.f,poly,T.f);
     *r = res;
     return nRet;
 
@@ -1318,7 +1318,7 @@ inline int __internal_dexp_la_cout (double *a, double *r)
 
         T.w32[1] += expon_corr;
 
-        res = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (T.f, poly, T.f);
+        res = __spirv_ocl_fma(T.f,poly,T.f);
 
         res *= scale.f;
     }

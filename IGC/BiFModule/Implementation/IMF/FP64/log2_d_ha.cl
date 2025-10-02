@@ -1826,7 +1826,7 @@ double __ocl_svml_log2_ha(double x) {
     CLH = as_double(__ocl_svml_internal_dlog2_ha_data.CLH);
     DblRcp = (DblRcp * CLH);
     /* round reciprocal to nearest integer, will have 1+9 mantissa bits */
-    DblRcp = SPIRV_OCL_BUILTIN(rint, _f64, )(DblRcp);
+    DblRcp = __spirv_ocl_rint(DblRcp);
     /* biased exponent in DP format */
     FpExpon = ((double)((int)(IExpon)));
     BrMask1 = as_double((as_ulong(BrMask1) | as_ulong(BrMask2)));
@@ -1837,7 +1837,7 @@ double __ocl_svml_log2_ha(double x) {
     /* argument reduction */
     HalfMask = as_double(__ocl_svml_internal_dlog2_ha_data.HalfMask);
     __dlog2_ha___libm_rcp_table_256 =
-        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Mantissa, DblRcp, -(CLH));
+        __spirv_ocl_fma(Mantissa, DblRcp, -(CLH));
     ;
     /* prepare table index */
     Index = as_ulong(DblRcp);
@@ -1868,17 +1868,17 @@ double __ocl_svml_log2_ha(double x) {
         as_double(__ocl_svml_internal_dlog2_ha_data.ha_poly_coeff[4]);
     poly_coeff[1] =
         as_double(__ocl_svml_internal_dlog2_ha_data.ha_poly_coeff[5]);
-    P56 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+    P56 = __spirv_ocl_fma(
         poly_coeff[6], __dlog2_ha___libm_rcp_table_256, poly_coeff[5]);
-    P34 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+    P34 = __spirv_ocl_fma(
         poly_coeff[4], __dlog2_ha___libm_rcp_table_256, poly_coeff[3]);
     R2 = (__dlog2_ha___libm_rcp_table_256 * __dlog2_ha___libm_rcp_table_256);
-    P12 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+    P12 = __spirv_ocl_fma(
         poly_coeff[2], __dlog2_ha___libm_rcp_table_256, poly_coeff[1]);
     dS = (Kh + __dlog2_ha___libm_rcp_table_256);
-    dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(P56, R2, P34);
+    dP = __spirv_ocl_fma(P56, R2, P34);
     Rh = (dS - Kh);
-    dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP, R2, P12);
+    dP = __spirv_ocl_fma(dP, R2, P12);
     dP = (dP * __dlog2_ha___libm_rcp_table_256);
     /* Reconstruction */
     Rl = (__dlog2_ha___libm_rcp_table_256 - Rh);

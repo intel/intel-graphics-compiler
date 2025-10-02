@@ -743,24 +743,24 @@ double __ocl_svml_atan_ha(double x) {
     dCYHi = as_double((as_ulong(dC) & as_ulong(dAY)));
     dAHi = (dCYHi - dBase);
     dCXHi = as_double((as_ulong(dC) & as_ulong(dONE)));
-    dBHi = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dBase, dAY, dCXHi);
+    dBHi = __spirv_ocl_fma(dBase, dAY, dCXHi);
     // Divide r:=a*(1/b),    where a==AHi+ALo, b==BHi+BLo, 1/b~=InvHi+InvLo
     // Get r0~=1/BHi
     dR0 = ((double)(1.0f / ((float)(dBHi))));
     // Now refine r0 by several iterations (hidden in polynomial)
     // e = 1-Bhi*r0
-    dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dBHi), dR0, dONE);
+    dE = __spirv_ocl_fma(-(dBHi), dR0, dONE);
     // dR0 ~= 1/B*(1-e)(e*e+e+1) = 1/B(1-e^3)
-    dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dE, dE, dE);
-    dR0 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dR0, dE, dR0);
+    dE = __spirv_ocl_fma(dE, dE, dE);
+    dR0 = __spirv_ocl_fma(dR0, dE, dR0);
     // e' = 1-Bhi*r0 = e^3
-    dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dBHi), dR0, dONE);
+    dE = __spirv_ocl_fma(-(dBHi), dR0, dONE);
     // dR0 ~= 1/B*(1-e')(1+e') = 1/B(1-e'^2)
-    dR0 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dR0, dE, dR0);
+    dR0 = __spirv_ocl_fma(dR0, dE, dR0);
     // Now 1/B ~= R0 + InvLo
     // Get r:=a*(1/b),    where a==AHi+ALo, 1/b~=InvHi(R0)+InvLo
     dR = (dR0 * dAHi);
-    dInvLo = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dBHi), dR, dAHi);
+    dInvLo = __spirv_ocl_fma(-(dBHi), dR, dAHi);
     dRLo = (dInvLo * dR0);
     // Atan polynomial approximation
     dR2 = (dR * dR);
@@ -769,31 +769,31 @@ double __ocl_svml_atan_ha(double x) {
     dPC[10] = as_double(__ocl_svml_internal_datan_ha_data._dPC10);
     dPC[9] = as_double(__ocl_svml_internal_datan_ha_data._dPC9);
     dPC[8] = as_double(__ocl_svml_internal_datan_ha_data._dPC8);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPC[11], dR4, dPC[9]);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPC[10], dR4, dPC[8]);
+    dP1 = __spirv_ocl_fma(dPC[11], dR4, dPC[9]);
+    dP2 = __spirv_ocl_fma(dPC[10], dR4, dPC[8]);
     dPC[7] = as_double(__ocl_svml_internal_datan_ha_data._dPC7);
     dPC[6] = as_double(__ocl_svml_internal_datan_ha_data._dPC6);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR4, dPC[7]);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP2, dR4, dPC[6]);
+    dP1 = __spirv_ocl_fma(dP1, dR4, dPC[7]);
+    dP2 = __spirv_ocl_fma(dP2, dR4, dPC[6]);
     dPC[5] = as_double(__ocl_svml_internal_datan_ha_data._dPC5);
     dPC[4] = as_double(__ocl_svml_internal_datan_ha_data._dPC4);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR4, dPC[5]);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP2, dR4, dPC[4]);
+    dP1 = __spirv_ocl_fma(dP1, dR4, dPC[5]);
+    dP2 = __spirv_ocl_fma(dP2, dR4, dPC[4]);
     dPC[3] = as_double(__ocl_svml_internal_datan_ha_data._dPC3);
     dPC[2] = as_double(__ocl_svml_internal_datan_ha_data._dPC2);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR4, dPC[3]);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP2, dR4, dPC[2]);
+    dP1 = __spirv_ocl_fma(dP1, dR4, dPC[3]);
+    dP2 = __spirv_ocl_fma(dP2, dR4, dPC[2]);
     dPC[1] = as_double(__ocl_svml_internal_datan_ha_data._dPC1);
     dPC[0] = as_double(__ocl_svml_internal_datan_ha_data._dPC0);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR4, dPC[1]);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP2, dR4, dPC[0]);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR2, dP2);
+    dP1 = __spirv_ocl_fma(dP1, dR4, dPC[1]);
+    dP2 = __spirv_ocl_fma(dP2, dR4, dPC[0]);
+    dP1 = __spirv_ocl_fma(dP1, dR2, dP2);
     dP1 = (dP1 * dR2);
     //  Res = ( (RLo + AtanBaseLo + PiOrZero*sx + Poly(R^2)*R^3 + RHi +
     //  AtanBaseHi) * sx + PiOrZeroHi) * sy Res = (RLo + AtanBaseLo +
     //  Poly(R^2)*R^3 + RHi + AtanBaseHi) * sy
     dRLo = (dRLo + dAtanBaseLo);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR,
+    dP1 = __spirv_ocl_fma(dP1, dR,
                                                  dRLo); // P1 = P1 * R + RLo
     dP1 = (dR + dP1);
     dP1 = (dP1 + dAtanBaseHi);

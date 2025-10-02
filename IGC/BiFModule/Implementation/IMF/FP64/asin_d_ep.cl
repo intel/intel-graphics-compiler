@@ -456,43 +456,43 @@ __ocl_svml_internal_dasin_ep(double *pxin, double *pres) {
     x.f = xin;
     // absolute values
     // xa.w32[1] = x.w32[1] & 0x7fffffff;  xa.w32[0] = x.w32[0];
-    xa.f = SPIRV_OCL_BUILTIN(fabs, _f64, )(x.f);
+    xa.f = __spirv_ocl_fabs(x.f);
     // input sign
     sgn_x = x.w ^ xa.w;
     // (1-|x|)/2
-    y.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((-0.5), xa.f, 0.5);
+    y.f = __spirv_ocl_fma((-0.5), xa.f, 0.5);
     // prepare polynomial argument
     R = xin * xin;
-    R = SPIRV_OCL_BUILTIN(fmin, _f64_f64, )(R, y.f);
+    R = __spirv_ocl_fmin(R, y.f);
     // rsqrt((1-|x|)/2), ~23 bits
     yf = (float)y.f;
     yf += __dasin_ep_small_float.f;
-    yf = 1.0f / SPIRV_OCL_BUILTIN(sqrt, _f32, )(yf);
+    yf = 1.0f / __spirv_ocl_sqrt(yf);
     RS.f = (double)(yf);
     // Sh ~ sqrt((1-|x|)/2)
     Sh = y.f * RS.f;
     // -2* Sh
     Shh2.f = -2.0 * Sh;
     // E = 2*(0.5 - 0.5*RS.f*RS.f*y.f)
-    E = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((-RS.f), Sh, 1.0);
+    E = __spirv_ocl_fma((-RS.f), Sh, 1.0);
     // E*(c1+c2*E)
-    R0.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(0.375, E, 0.5);
+    R0.f = __spirv_ocl_fma(0.375, E, 0.5);
     R0.f *= E;
     // Shh2 + Shh2*E*(c1+c2*E)
-    R0.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R0.f, Shh2.f, Shh2.f);
+    R0.f = __spirv_ocl_fma(R0.f, Shh2.f, Shh2.f);
     // polynomial
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(__dasin_ep_c5.f, R,
+    poly = __spirv_ocl_fma(__dasin_ep_c5.f, R,
                                                   __dasin_ep_c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ep_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ep_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ep_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ep_c0.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ep_c3.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ep_c2.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ep_c1.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ep_c0.f);
     // R0 = sel_mask? Shh2 : xa.f
     R0.f = (xa.f <= 0.5) ? x.f : R0.f; //((x.w - R0.w) & sel_mask) + R0.w;
     // High = sel_mask ? High : xa.w
     High.f = (xa.f <= 0.5) ? 0.0 : __dasin_ep_pi2h.f;
     // poly*R0 + High
-    res.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R0.f, High.f);
+    res.f = __spirv_ocl_fma(poly, R0.f, High.f);
     res.w |= sgn_x;
   }
   *pres = res.f;

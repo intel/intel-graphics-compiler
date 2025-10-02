@@ -497,55 +497,55 @@ __ocl_svml_internal_dasin_ha(double *pxin, double *pres) {
     float yf;
     x.f = xin;
     // absolute values
-    xa.f = SPIRV_OCL_BUILTIN(fabs, _f64, )(xin);
+    xa.f = __spirv_ocl_fabs(xin);
     // input sign
     sgn_x = x.w ^ xa.w;
     // (1-|x|)/2
-    y.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((-0.5), xa.f, 0.5);
+    y.f = __spirv_ocl_fma((-0.5), xa.f, 0.5);
     // prepare polynomial argument
     R = xin * xin;
-    R = SPIRV_OCL_BUILTIN(fmin, _f64_f64, )(R, y.f);
+    R = __spirv_ocl_fmin(R, y.f);
     // rsqrt((1-|x|)/2), ~23 bits
     yf = (float)y.f;
     // fixup for y.f==0
     yf += __dasin_ha_small_float.f;
-    yf = 1.0f / SPIRV_OCL_BUILTIN(sqrt, _f32, )(yf);
+    yf = 1.0f / __spirv_ocl_sqrt(yf);
     RS.f = (double)yf;
     // Sh ~ sqrt((1-|x|)/2)
     Sh = y.f * RS.f;
     // -0.5*RS
     RS2.f = -0.5 * RS.f;
     // E = 0.5 - 0.5*RS.f*RS.f*y.f
-    E = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(RS2.f, Sh, 0.5);
+    E = __spirv_ocl_fma(RS2.f, Sh, 0.5);
     // Sh+Sh*E accurate to ~46 bits
-    Sh = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Sh, E, Sh);
+    Sh = __spirv_ocl_fma(Sh, E, Sh);
     // pi/2_high - 2*Sh
-    High.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((-Sh), __dasin_ha_two.f,
+    High.f = __spirv_ocl_fma((-Sh), __dasin_ha_two.f,
                                                     __dasin_ha_pi2h.f);
     //  Shh2 = (-2*Sh)_high
     Shh2.f = High.f - __dasin_ha_pi2h.f;
     Shh = 0.5 * Shh2.f;
     // y.f - Sh*Sh
-    E = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((-Shh), Shh, y.f);
+    E = __spirv_ocl_fma((-Shh), Shh, y.f);
     // Low = (pi/2)_low - low part of 2*sqrt((1-|x|)/2)
     Low.f =
-        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((-E), RS.f, __dasin_ha_pi2l.f);
+        __spirv_ocl_fma((-E), RS.f, __dasin_ha_pi2l.f);
     // Shh2 = Shh2 - E*RS.f ~ -2*sqrt((1-|x|)/2)
-    Shh2.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((-E), RS.f, Shh2.f);
+    Shh2.f = __spirv_ocl_fma((-E), RS.f, Shh2.f);
     // polynomial
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(__dasin_ha_c12.f, R,
+    poly = __spirv_ocl_fma(__dasin_ha_c12.f, R,
                                                   __dasin_ha_c11.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ha_c10.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ha_c9.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ha_c8.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ha_c7.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ha_c6.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ha_c5.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ha_c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ha_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ha_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ha_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dasin_ha_c0.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ha_c10.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ha_c9.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ha_c8.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ha_c7.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ha_c6.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ha_c5.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ha_c4.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ha_c3.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ha_c2.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ha_c1.f);
+    poly = __spirv_ocl_fma(poly, R, __dasin_ha_c0.f);
     // R0 = sel_mask? Shh2 : xa.f
     // R0.w = ((Shh2.w - xa.w) & sel_mask) + xa.w;
     R0.f = (xa.f <= 0.5) ? xa.f : Shh2.f;
@@ -556,7 +556,7 @@ __ocl_svml_internal_dasin_ha(double *pxin, double *pres) {
     // Low.w &= sel_mask;
     Low.f = (xa.f <= 0.5) ? 0 : Low.f;
     // poly*R + Low
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R0.f, Low.f);
+    poly = __spirv_ocl_fma(poly, R0.f, Low.f);
     // High + (poly*R + Low)
     res.f = High.f + poly;
     res.w |= sgn_x;

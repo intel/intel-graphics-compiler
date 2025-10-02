@@ -454,15 +454,14 @@ __ocl_svml_internal_dacos_ep(double *pxin, double *pres) {
     } fcorr;
     x.f = xin;
     // absolute value
-    xa.f = SPIRV_OCL_BUILTIN(fabs,
-                             _f64, )(x.f); // xa.w = x.w & 0x7fffffffffffffffuL;
+    xa.f = __spirv_ocl_fabs(x.f); // xa.w = x.w & 0x7fffffffffffffffuL;
     // input sign
     sgn_x = x.w ^ xa.w;
     // (1-|x|)/2
-    y.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((-0.5), xa.f, 0.5);
+    y.f = __spirv_ocl_fma((-0.5), xa.f, 0.5);
     // prepare polynomial argument
     R = xin * xin;
-    R = SPIRV_OCL_BUILTIN(fmin, _f64_f64, )(R, y.f);
+    R = __spirv_ocl_fmin(R, y.f);
     High.f = sgn_x ? __dacos_ep_pih.f : 0;
     High.f = (xa.f <= 0.5) ? __dacos_ep_pi2h.f : High.f;
     // rsqrt((1-|x|)/2), ~23 bits
@@ -470,7 +469,7 @@ __ocl_svml_internal_dacos_ep(double *pxin, double *pres) {
     // fixup for |x|<=0.5 (set RS=0)
     // fixup for y.f==0
     yf += __dacos_ep_small_float.f;
-    yf = 1.0f / SPIRV_OCL_BUILTIN(sqrt, _f32, )(yf);
+    yf = 1.0f / __spirv_ocl_sqrt(yf);
     RS.f = (double)(yf);
     // set sign for later computation
     RS.w |= sgn_x;
@@ -479,23 +478,23 @@ __ocl_svml_internal_dacos_ep(double *pxin, double *pres) {
     // -2* Sh
     Shh2.f = -2.0 * Sh;
     // E = 2*(0.5 - 0.5*RS.f*RS.f*y.f)
-    E = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((-RS.f), Sh, 1.0);
+    E = __spirv_ocl_fma((-RS.f), Sh, 1.0);
     // E*(c1+c2*E)
-    R0.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(0.375, E, 0.5);
+    R0.f = __spirv_ocl_fma(0.375, E, 0.5);
     R0.f *= E;
     // Shh2 + Shh2*E*(c1+c2*E)
-    R0.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R0.f, Shh2.f, Shh2.f);
+    R0.f = __spirv_ocl_fma(R0.f, Shh2.f, Shh2.f);
     // polynomial
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(__dacos_ep_c5.f, R,
+    poly = __spirv_ocl_fma(__dacos_ep_c5.f, R,
                                                   __dacos_ep_c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dacos_ep_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dacos_ep_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dacos_ep_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dacos_ep_c0.f);
+    poly = __spirv_ocl_fma(poly, R, __dacos_ep_c3.f);
+    poly = __spirv_ocl_fma(poly, R, __dacos_ep_c2.f);
+    poly = __spirv_ocl_fma(poly, R, __dacos_ep_c1.f);
+    poly = __spirv_ocl_fma(poly, R, __dacos_ep_c0.f);
     // R0 = sel_mask? xa.f : Shh2.w
     R0.f = (xa.f <= 0.5) ? x.f : R0.f; //((x.w - R0.w) & sel_mask) + R0.w;
     // -poly*R0 + High
-    res.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((-poly), R0.f, High.f);
+    res.f = __spirv_ocl_fma((-poly), R0.f, High.f);
   }
   *pres = res.f;
   nRet = (y.f >= 0) ? 0 : 1;

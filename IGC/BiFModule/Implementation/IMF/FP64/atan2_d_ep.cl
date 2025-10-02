@@ -1099,10 +1099,10 @@ double __ocl_svml_atan2_ep(double x, double y) {
     // Now refine r0 by several iterations (hidden in polynomial)
     // e = B*r0-1
     dONE = as_double(__ocl_svml_internal_datan2_ep_data.dONE);
-    dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dB, dR0, -(dONE));
-    dInv = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dE, dE, -(dE));
+    dE = __spirv_ocl_fma(dB, dR0, -(dONE));
+    dInv = __spirv_ocl_fma(dE, dE, -(dE));
     // dR0 ~= 1/B*(1+e)(e*e-e+1) = 1/B(1+e^3)
-    dR0 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dInv, dR0, dR0);
+    dR0 = __spirv_ocl_fma(dInv, dR0, dR0);
     dR = (dA * dR0);
     // Check if y and x are on main path.
     lAX = as_ulong(dAX);
@@ -1142,17 +1142,17 @@ double __ocl_svml_atan2_ep(double x, double y) {
     dA02 = as_double(__ocl_svml_internal_datan2_ep_data.dA02);
     dA01 = as_double(__ocl_svml_internal_datan2_ep_data.dA01);
     dA00 = as_double(__ocl_svml_internal_datan2_ep_data.dA00);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dA09, dR4, dA07);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dA08, dR4, dA06);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP2, dR4, dA05);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR4, dA04);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP2, dR4, dA03);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR4, dA02);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP2, dR4, dA01);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR4, dA00);
-    dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP2, dR2, dP1);
+    dP2 = __spirv_ocl_fma(dA09, dR4, dA07);
+    dP1 = __spirv_ocl_fma(dA08, dR4, dA06);
+    dP2 = __spirv_ocl_fma(dP2, dR4, dA05);
+    dP1 = __spirv_ocl_fma(dP1, dR4, dA04);
+    dP2 = __spirv_ocl_fma(dP2, dR4, dA03);
+    dP1 = __spirv_ocl_fma(dP1, dR4, dA02);
+    dP2 = __spirv_ocl_fma(dP2, dR4, dA01);
+    dP1 = __spirv_ocl_fma(dP1, dR4, dA00);
+    dP = __spirv_ocl_fma(dP2, dR2, dP1);
     // Reconstruction
-    dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP, dR, dPIO2);
+    dP = __spirv_ocl_fma(dP, dR, dPIO2);
     dP = as_double((as_ulong(dP) | as_ulong(dSX)));
     dP = (dP + dPI);
     vr1 = as_double((as_ulong(dP) | as_ulong(dSY)));

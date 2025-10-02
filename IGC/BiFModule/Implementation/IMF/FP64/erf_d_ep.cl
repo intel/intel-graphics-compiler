@@ -203,70 +203,70 @@ __ocl_svml_internal_derf_ep(double *a, double *pres) {
   xa.w ^= sgn_x;
   // limit |x| range to [0,6]
   dR = (6.0 < xa.f) ? 6.0 : xa.f;
-  dR2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dR, dR, 0.0);
+  dR2 = __spirv_ocl_fma(dR, dR, 0.0);
   // fixup for NaNs
   dR = (xa.w > 0x7ff0000000000000uL) ? xa.f : dR;
   // polynomial evaluation
-  bpoly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(__derf_ep___b13.f, dR2,
+  bpoly.f = __spirv_ocl_fma(__derf_ep___b13.f, dR2,
                                                    __derf_ep___b12.f);
-  apoly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(__derf_ep___a13.f, dR2,
+  apoly.f = __spirv_ocl_fma(__derf_ep___a13.f, dR2,
                                                    __derf_ep___a12.f);
   bpoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(bpoly.f, dR2, __derf_ep___b11.f);
+      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b11.f);
   apoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(apoly.f, dR2, __derf_ep___a11.f);
+      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a11.f);
   bpoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(bpoly.f, dR2, __derf_ep___b10.f);
+      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b10.f);
   apoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(apoly.f, dR2, __derf_ep___a10.f);
+      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a10.f);
   bpoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(bpoly.f, dR2, __derf_ep___b9.f);
+      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b9.f);
   apoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(apoly.f, dR2, __derf_ep___a9.f);
+      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a9.f);
   bpoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(bpoly.f, dR2, __derf_ep___b8.f);
+      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b8.f);
   apoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(apoly.f, dR2, __derf_ep___a8.f);
+      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a8.f);
   bpoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(bpoly.f, dR2, __derf_ep___b7.f);
+      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b7.f);
   apoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(apoly.f, dR2, __derf_ep___a7.f);
+      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a7.f);
   bpoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(bpoly.f, dR2, __derf_ep___b6.f);
+      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b6.f);
   apoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(apoly.f, dR2, __derf_ep___a6.f);
+      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a6.f);
   bpoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(bpoly.f, dR2, __derf_ep___b5.f);
+      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b5.f);
   apoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(apoly.f, dR2, __derf_ep___a5.f);
+      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a5.f);
   bpoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(bpoly.f, dR2, __derf_ep___b4.f);
+      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b4.f);
   apoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(apoly.f, dR2, __derf_ep___a4.f);
+      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a4.f);
   bpoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(bpoly.f, dR2, __derf_ep___b3.f);
+      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b3.f);
   apoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(apoly.f, dR2, __derf_ep___a3.f);
+      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a3.f);
   bpoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(bpoly.f, dR2, __derf_ep___b2.f);
+      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b2.f);
   apoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(apoly.f, dR2, __derf_ep___a2.f);
+      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a2.f);
   bpoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(bpoly.f, dR2, __derf_ep___b1.f);
+      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b1.f);
   apoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(apoly.f, dR2, __derf_ep___a1.f);
+      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a1.f);
   bpoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(bpoly.f, dR2, __derf_ep___b0.f);
+      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b0.f);
   apoly.f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(apoly.f, dR2, __derf_ep___a0.f);
+      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a0.f);
   fa = (float)apoly.f;
   fy = 1.0f / fa;
   Y.f = (double)fy;
-  eps = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-Y.f, apoly.f, 1.0);
-  eps = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(eps, eps, eps);
-  Y.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Y.f, eps, Y.f);
-  Y.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Y.f, bpoly.f, 0.0);
-  res.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Y.f, dR, 0.0);
+  eps = __spirv_ocl_fma(-Y.f, apoly.f, 1.0);
+  eps = __spirv_ocl_fma(eps, eps, eps);
+  Y.f = __spirv_ocl_fma(Y.f, eps, Y.f);
+  Y.f = __spirv_ocl_fma(Y.f, bpoly.f, 0.0);
+  res.f = __spirv_ocl_fma(Y.f, dR, 0.0);
   //    res.f = (res.f > 1.0) ? 1.0 : res.f;
   res.w ^= sgn_x;
   *pres = res.f;

@@ -531,9 +531,9 @@ double __ocl_svml_atan_ep_noLUT (double a)
         vm = lRangeMask;
         dY = va1;
         dRcp = ((double) (1.0f / ((float) (dY))));
-        dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dY), dRcp, dONE);
-        dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dE, dE, dE);
-        dRcp = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dE, dRcp, dRcp);
+        dE = __spirv_ocl_fma(-(dY),dRcp,dONE);
+        dE = __spirv_ocl_fma(dE,dE,dE);
+        dRcp = __spirv_ocl_fma(dE,dRcp,dRcp);
         dRcp = as_double ((as_ulong (dSIGN_MASK) ^ as_ulong (dRcp)));
         dR = as_double ((((~as_ulong (dM)) & as_ulong (dRcp)) | (as_ulong (dM) & as_ulong (dY))));
         dPC[9] = as_double (__internal_datan_ep_data._dPC9);
@@ -548,16 +548,16 @@ double __ocl_svml_atan_ep_noLUT (double a)
         dPC[0] = as_double (__internal_datan_ep_data._dPC0);
         dR2 = (dR * dR);
         dR4 = (dR2 * dR2);
-        dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPC[9], dR4, dPC[7]);
-        dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPC[8], dR4, dPC[6]);
-        dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP2, dR4, dPC[5]);
-        dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP1, dR4, dPC[4]);
-        dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP2, dR4, dPC[3]);
-        dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP1, dR4, dPC[2]);
-        dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP2, dR4, dPC[1]);
-        dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP1, dR4, dPC[0]);
-        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP2, dR2, dP1);
-        vr1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP, dR, dPIO2);
+        dP2 = __spirv_ocl_fma(dPC[9],dR4,dPC[7]);
+        dP1 = __spirv_ocl_fma(dPC[8],dR4,dPC[6]);
+        dP2 = __spirv_ocl_fma(dP2,dR4,dPC[5]);
+        dP1 = __spirv_ocl_fma(dP1,dR4,dPC[4]);
+        dP2 = __spirv_ocl_fma(dP2,dR4,dPC[3]);
+        dP1 = __spirv_ocl_fma(dP1,dR4,dPC[2]);
+        dP2 = __spirv_ocl_fma(dP2,dR4,dPC[1]);
+        dP1 = __spirv_ocl_fma(dP1,dR4,dPC[0]);
+        dP = __spirv_ocl_fma(dP2,dR2,dP1);
+        vr1 = __spirv_ocl_fma(dP,dR,dPIO2);
     }
     if ((vm) != 0)
     {

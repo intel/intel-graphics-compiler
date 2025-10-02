@@ -602,7 +602,7 @@ double __ocl_svml_log1p_ha(double x) {
     //
     One = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.One);
     q = (One - ss);
-    r = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(ss, va1, -(q));
+    r = __spirv_ocl_fma(ss, va1, -(q));
     // We have -0.25 <= r <= 0.5
     //
     // We compute
@@ -627,7 +627,7 @@ double __ocl_svml_log1p_ha(double x) {
     // z = -round(r * m + b)
     //
     b = (m - r);
-    nz = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r, m, b);
+    nz = __spirv_ocl_fma(r, m, b);
     z = (-(nz));
     // We will need m + z = r * (1 - m) later.
     //
@@ -639,8 +639,8 @@ double __ocl_svml_log1p_ha(double x) {
     // cases to test).
     //
     a = (One - m);
-    mpzhi = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r, a, 0.0);
-    mpzlo = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r, a, -(mpzhi));
+    mpzhi = __spirv_ocl_fma(r, a, 0.0);
+    mpzlo = __spirv_ocl_fma(r, a, -(mpzhi));
     // It can be shown that -114/1000 <= z <= 78/1000
     //
     // We have (in the absence of rounding errors)
@@ -667,13 +667,13 @@ double __ocl_svml_log1p_ha(double x) {
     dg = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.CoeffD6);
     cdu = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.CoeffD5);
     cdg = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.CoeffD4);
-    du = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, du, cdu);
-    dg = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, dg, cdg);
+    du = __spirv_ocl_fma(v, du, cdu);
+    dg = __spirv_ocl_fma(v, dg, cdg);
     cdu = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.CoeffD3);
     cdg = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.CoeffD2);
-    du = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, du, cdu);
-    dg = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, dg, cdg);
-    dd = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(m, du, dg);
+    du = __spirv_ocl_fma(v, du, cdu);
+    dg = __spirv_ocl_fma(v, dg, cdg);
+    dd = __spirv_ocl_fma(m, du, dg);
     // Polynomial evaluation of p(z) = z + w * pp(z)
     //
     pgg = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.CoeffP12);
@@ -684,19 +684,19 @@ double __ocl_svml_log1p_ha(double x) {
     cpuu = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.CoeffP7);
     cpug = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.CoeffP6);
     cpgu = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.CoeffP5);
-    pgg = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(ww, pgg, cpgg);
-    puu = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(ww, puu, cpuu);
-    pug = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(ww, pug, cpug);
-    pgu = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(ww, pgu, cpgu);
+    pgg = __spirv_ocl_fma(ww, pgg, cpgg);
+    puu = __spirv_ocl_fma(ww, puu, cpuu);
+    pug = __spirv_ocl_fma(ww, pug, cpug);
+    pgu = __spirv_ocl_fma(ww, pgu, cpgu);
     cpgg = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.CoeffP4);
     cpuu = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.CoeffP3);
     cpug = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.CoeffP2);
-    pgg = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(ww, pgg, cpgg);
-    puu = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(ww, puu, cpuu);
-    pug = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(ww, pug, cpug);
-    pg = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(w, pgg, pug);
-    pu = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(w, pgu, puu);
-    pp = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(z, pu, pg);
+    pgg = __spirv_ocl_fma(ww, pgg, cpgg);
+    puu = __spirv_ocl_fma(ww, puu, cpuu);
+    pug = __spirv_ocl_fma(ww, pug, cpug);
+    pg = __spirv_ocl_fma(w, pgg, pug);
+    pu = __spirv_ocl_fma(w, pgu, puu);
+    pp = __spirv_ocl_fma(z, pu, pg);
     // Multiplication of LogTwoHi + LogTwoLo with k
     //
     // k holds on 12 bits. The two constants have trailing
@@ -719,8 +719,8 @@ double __ocl_svml_log1p_ha(double x) {
     tts = (yhi - lkhi);
     tlo = (mpzhi - tts);
     // Lower parts
-    ttlo = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(pp, w, lklo);
-    tttlo = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dd, v, mpzlo);
+    ttlo = __spirv_ocl_fma(pp, w, lklo);
+    tttlo = __spirv_ocl_fma(dd, v, mpzlo);
     ttttlo = (ttlo + tttlo);
     ylo = (tlo + ttttlo);
     // Final summation

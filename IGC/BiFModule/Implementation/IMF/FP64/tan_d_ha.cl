@@ -8603,23 +8603,23 @@ double __ocl_svml_tan_ha(double x) {
       dInvPI = as_double(__ocl_svml_internal_dtan_ha_data._dInvPI_uisa);
       dRShifter = as_double(__ocl_svml_internal_dtan_ha_data._dRShift);
       // Y = x + BIG_VALUE
-      dY = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(va1, dInvPI, dRShifter);
+      dY = __spirv_ocl_fma(va1, dInvPI, dRShifter);
       // N = y - BIG_VALUE
       dN = (dY - dRShifter);
       dPI1 = as_double(__ocl_svml_internal_dtan_ha_data._dPI1_uisa);
       dPI2 = as_double(__ocl_svml_internal_dtan_ha_data._dPI2_ha_uisa);
       dPI3 = as_double(__ocl_svml_internal_dtan_ha_data._dPI3_ha_uisa);
       // Rh = x - N*Pi1
-      dRh = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dN), dPI1, va1);
+      dRh = __spirv_ocl_fma(-(dN), dPI1, va1);
       // Rm = Rh - N*Pi2
-      dRm = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dN), dPI2, dRh);
+      dRm = __spirv_ocl_fma(-(dN), dPI2, dRh);
       // R = Rm - N*Pi3
-      dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dN), dPI3, dRm);
+      dR = __spirv_ocl_fma(-(dN), dPI3, dRm);
       // Calculate the lower part dRl
       dNP2 = (dRh - dRm);
       dNP3 = (dR - dRm);
-      dRl = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dN), dPI2, dNP2);
-      dRl3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dPI3, dNP3);
+      dRl = __spirv_ocl_fma(-(dN), dPI2, dNP2);
+      dRl3 = __spirv_ocl_fma(dN, dPI3, dNP3);
       dRl = (dRl - dRl3);
     }
     if (__builtin_expect((mReductionRangeMask) != 0, 0)) {
@@ -8884,11 +8884,11 @@ double __ocl_svml_tan_ha(double x) {
         d2pi_trail = as_double(0x3cb1a62633145c07uL);
         dRedHi = (dRHi * d2pi_lead);
         dRedLo =
-            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dRHi, d2pi_lead, -(dRedHi));
+            __spirv_ocl_fma(dRHi, d2pi_lead, -(dRedHi));
         dRedLo =
-            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dRHi, d2pi_trail, dRedLo);
+            __spirv_ocl_fma(dRHi, d2pi_trail, dRedLo);
         dRedLo =
-            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dRLo, d2pi_lead, dRedLo);
+            __spirv_ocl_fma(dRLo, d2pi_lead, dRedLo);
         // If the magnitude of the input is <= 2^-20, then
         // just pass through the input, since no reduction will be needed and
         // the main path will only work accurately if the reduced argument is
@@ -8926,10 +8926,10 @@ double __ocl_svml_tan_ha(double x) {
       dN = ((double)((int)(iIndex)));
       dPI1 = as_double(0x3f8921fb54442d18uL);
       dPI2 = as_double(0x3c21a62633145c07uL);
-      dRLarge = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dPI1, dZ);
-      dRlLarge = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dN), dPI1, dRLarge);
+      dRLarge = __spirv_ocl_fma(dN, dPI1, dZ);
+      dRlLarge = __spirv_ocl_fma(-(dN), dPI1, dRLarge);
       dRlLarge = (dZ - dRlLarge);
-      dRlLarge = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dPI2, dRlLarge);
+      dRlLarge = __spirv_ocl_fma(dN, dPI2, dRlLarge);
       dRlLarge = (dRlLarge + dE);
       /* Merge results from main and large paths: */
       dY = as_double((((~as_ulong(dReductionRangeMask)) & as_ulong(dY)) |
@@ -8958,15 +8958,15 @@ double __ocl_svml_tan_ha(double x) {
     dPC[4] = as_double(__ocl_svml_internal_dtan_ha_data._dPC11_uisa);
     dPC[3] = as_double(__ocl_svml_internal_dtan_ha_data._dPC9_uisa);
     // Start polynomial computation
-    dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPC[4], dR2, dPC[3]);
+    dPoly = __spirv_ocl_fma(dPC[4], dR2, dPC[3]);
     dPC[2] = as_double(__ocl_svml_internal_dtan_ha_data._dPC7_uisa);
-    dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPoly, dR2, dPC[2]);
+    dPoly = __spirv_ocl_fma(dPoly, dR2, dPC[2]);
     dPC[1] = as_double(__ocl_svml_internal_dtan_ha_data._dPC5_uisa);
-    dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPoly, dR2, dPC[1]);
+    dPoly = __spirv_ocl_fma(dPoly, dR2, dPC[1]);
     dPC[0] = as_double(__ocl_svml_internal_dtan_ha_data._dPC3_uisa);
-    dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPoly, dR2, dPC[0]);
+    dPoly = __spirv_ocl_fma(dPoly, dR2, dPC[0]);
     dPoly = (dPoly * dR);
-    dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dPoly), dR2, -(dRl));
+    dPoly = __spirv_ocl_fma(-(dPoly), dR2, -(dRl));
     dP = (dR - dPoly);
     dPlow = (dR - dP);
     dPlow = (dPlow - dPoly);
@@ -8980,11 +8980,11 @@ double __ocl_svml_tan_ha(double x) {
     // Computer Denominator:
     // dDenominator - dDlow ~= 1-(dTh+dTl)*(dP+dPlow)
     dOne = as_double(__ocl_svml_internal_dtan_ha_data._dOne_uisa);
-    dDenominator = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dTh), dP, dOne);
+    dDenominator = __spirv_ocl_fma(-(dTh), dP, dOne);
     dDlow = (dDenominator - dOne);
-    dDlow = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dTh, dP, dDlow);
-    dDlow = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dTh, dPlow, dDlow);
-    dDlow = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dTl, dP, dDlow);
+    dDlow = __spirv_ocl_fma(dTh, dP, dDlow);
+    dDlow = __spirv_ocl_fma(dTh, dPlow, dDlow);
+    dDlow = __spirv_ocl_fma(dTl, dP, dDlow);
     // Now computes (dNumerator + dNlow)/(dDenominator - dDlow)
     // Choose NR iteration instead of hardware division
     double dMant;
@@ -9018,16 +9018,16 @@ double __ocl_svml_tan_ha(double x) {
     // Multiply exponent by mantissa
     dRcp = (dRcp_Exp * dRcp_Mant);
     // One NR iteration to refine dRcp
-    dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dRcp), dDenominator, dOne);
-    dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dRcp, dDlow, dE);
-    dRcp = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dRcp, dE, dRcp);
+    dE = __spirv_ocl_fma(-(dRcp), dDenominator, dOne);
+    dE = __spirv_ocl_fma(dRcp, dDlow, dE);
+    dRcp = __spirv_ocl_fma(dRcp, dE, dRcp);
     dQuotient = (dRcp * dNumerator);
     // One NR iteration to refine dQuotient
-    dAE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dDenominator, dQuotient,
+    dAE = __spirv_ocl_fma(dDenominator, dQuotient,
                                                  -(dNumerator));
-    dAE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dDlow), dQuotient, dAE);
+    dAE = __spirv_ocl_fma(-(dDlow), dQuotient, dAE);
     dAE = (dAE - dNlow);
-    vr1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dAE), dRcp, dQuotient);
+    vr1 = __spirv_ocl_fma(-(dAE), dRcp, dQuotient);
   }
   if (__builtin_expect((vm) != 0, 0)) {
     double __cout_a1;

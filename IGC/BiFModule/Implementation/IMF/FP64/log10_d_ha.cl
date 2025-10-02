@@ -895,7 +895,7 @@ double __ocl_svml_log10_ha(double x) {
     CLH = as_double(__ocl_svml_internal_dlog10_ha_data.CLH);
     DblRcp = (DblRcp * CLH);
     /* round reciprocal to nearest integer, will have 1+9 mantissa bits */
-    DblRcp = SPIRV_OCL_BUILTIN(rint, _f64, )(DblRcp);
+    DblRcp = __spirv_ocl_rint(DblRcp);
     /* biased exponent in DP format */
     FpExpon = ((double)((int)(IExpon)));
     /* check if argument is in [MinNorm, MaxNorm] */
@@ -906,7 +906,7 @@ double __ocl_svml_log10_ha(double x) {
     vm = BrMask;
     /* argument reduction */
     HalfMask = as_double(__ocl_svml_internal_dlog10_ha_data.HalfMask);
-    dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Mantissa, DblRcp, -(CLH));
+    dR = __spirv_ocl_fma(Mantissa, DblRcp, -(CLH));
     ;
     /* prepare lookup index */
     Index = as_ulong(DblRcp);
@@ -925,8 +925,8 @@ double __ocl_svml_log10_ha(double x) {
     /* compute K = exponent*log(2.0) */
     L2H = as_double(__ocl_svml_internal_dlog10_ha_data.L2H);
     L2L = as_double(__ocl_svml_internal_dlog10_ha_data.L2L);
-    Kh = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(FpExpon, L2H, THL[0]);
-    Kl = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(FpExpon, L2L, THL[1]);
+    Kh = __spirv_ocl_fma(FpExpon, L2H, THL[0]);
+    Kl = __spirv_ocl_fma(FpExpon, L2L, THL[1]);
     /* compute polynomial */
     poly_coeff[6] =
         as_double(__ocl_svml_internal_dlog10_ha_data.ha_poly_coeff[0]);
@@ -940,17 +940,17 @@ double __ocl_svml_log10_ha(double x) {
         as_double(__ocl_svml_internal_dlog10_ha_data.ha_poly_coeff[4]);
     poly_coeff[1] =
         as_double(__ocl_svml_internal_dlog10_ha_data.ha_poly_coeff[5]);
-    P56 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly_coeff[6], dR,
+    P56 = __spirv_ocl_fma(poly_coeff[6], dR,
                                                  poly_coeff[5]);
-    P34 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly_coeff[4], dR,
+    P34 = __spirv_ocl_fma(poly_coeff[4], dR,
                                                  poly_coeff[3]);
     R2 = (dR * dR);
-    P12 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly_coeff[2], dR,
+    P12 = __spirv_ocl_fma(poly_coeff[2], dR,
                                                  poly_coeff[1]);
     dS = (Kh + dR);
-    dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(P56, R2, P34);
+    dP = __spirv_ocl_fma(P56, R2, P34);
     Rh = (dS - Kh);
-    dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP, R2, P12);
+    dP = __spirv_ocl_fma(dP, R2, P12);
     dP = (dP * dR);
     /* reconstruction */
     Rl = (dR - Rh);

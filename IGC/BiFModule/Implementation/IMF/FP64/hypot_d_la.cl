@@ -659,12 +659,12 @@ __ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
              (((_iml_uint32_t)((unscale + 1023)) & 0x7FF) << 20));
         a1 *= dbl_scale;
         a2 *= dbl_scale;
-        v1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+        v1 = __spirv_ocl_fma(
             (a1), (((__constant double *)__dhypot_la__vmldHypotHATab)[516]),
             0.0);
-        v2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((v1), 1.0, -(a1));
-        v1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((v1), 1.0, -(v2));
-        v2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((a1), 1.0, -(v1));
+        v2 = __spirv_ocl_fma((v1), 1.0, -(a1));
+        v1 = __spirv_ocl_fma((v1), 1.0, -(v2));
+        v2 = __spirv_ocl_fma((a1), 1.0, -(v1));
         a1Hi = v1;
         a1Lo = v2;
         ;
@@ -674,12 +674,12 @@ __ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
           a2Hi = ((__constant double *)__dhypot_la__vmldHypotHATab)[512];
           a2Lo = a2;
         } else {
-          v1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+          v1 = __spirv_ocl_fma(
               (a2), (((__constant double *)__dhypot_la__vmldHypotHATab)[516]),
               0.0);
-          v2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((v1), 1.0, -(a2));
-          v1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((v1), 1.0, -(v2));
-          v2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((a2), 1.0, -(v1));
+          v2 = __spirv_ocl_fma((v1), 1.0, -(a2));
+          v1 = __spirv_ocl_fma((v1), 1.0, -(v2));
+          v2 = __spirv_ocl_fma((a2), 1.0, -(v1));
           a2Hi = v1;
           a2Lo = v2;
           ;
@@ -745,12 +745,12 @@ __ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
         s = s + (d * s);
         /* Calculating d := y - (sHi + sLo) * (sHi + sLo) */
         /* Split s into sHi + sLo */
-        v1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+        v1 = __spirv_ocl_fma(
             (s), (((__constant double *)__dhypot_la__vmldHypotHATab)[516]),
             0.0);
-        v2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((v1), 1.0, -(s));
-        v1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((v1), 1.0, -(v2));
-        v2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((s), 1.0, -(v1));
+        v2 = __spirv_ocl_fma((v1), 1.0, -(s));
+        v1 = __spirv_ocl_fma((v1), 1.0, -(v2));
+        v2 = __spirv_ocl_fma((s), 1.0, -(v1));
         sHi = v1;
         sLo = v2;
         ;
@@ -859,7 +859,7 @@ double __ocl_svml_hypot_la(double x, double y) {
     /* Multiprecision branch for _HA_ only */
     /* _z = _VARG1 * _VARG1 + _VARG2 * _VARG2                              */
     _z = (va1 * va1);
-    _z = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(va2, va2, _z);
+    _z = __spirv_ocl_fma(va2, va2, _z);
     {
       unsigned long _zl;
       double _zd;
@@ -886,22 +886,22 @@ double __ocl_svml_hypot_la(double x, double y) {
     }
     /* _s  ~ 1.0/sqrt(_z)                       */
     /* _s2 ~ 1.0/(sqrt(_z)*sqrt(_z)) ~ 1.0/_z   */
-    _s = ((double)(1.0f / SPIRV_OCL_BUILTIN(sqrt, _f64, )((float)(_z))));
+    _s = ((double)(1.0f / __spirv_ocl_sqrt((float)(_z))));
     _s2 = (_s * _s);
     /* _e[rror]  ~  (1.0/_z + O) * _z - 1.0     */
-    _e = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(_z, _s2, -(_one));
+    _e = __spirv_ocl_fma(_z, _s2, -(_one));
     /* calculate fixing part _p                         */
     /* _p = (((_POLY_C5*_e + _POLY_C4)*_e +_POLY_C3)*_e +_POLY_C2)*_e + _POLY_C1
      */
     /* some parts of polynom are skipped for lower flav */
-    _p = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(_POLY_C4, _e, _POLY_C3);
-    _p = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(_p, _e, _POLY_C2);
-    _p = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(_p, _e, _POLY_C1);
+    _p = __spirv_ocl_fma(_POLY_C4, _e, _POLY_C3);
+    _p = __spirv_ocl_fma(_p, _e, _POLY_C2);
+    _p = __spirv_ocl_fma(_p, _e, _POLY_C1);
     /* result = _z * (1.0/sqrt(_z) + O) + _p * _e[rror] * _z    */
     _p = (_p * _e);
     _p = (_p * _s);
     _p = (_p * _z);
-    vr1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(_z, _s, _p);
+    vr1 = __spirv_ocl_fma(_z, _s, _p);
     /* -------------- The end of implementation ---------------- */
   }
   if (__builtin_expect((vm) != 0, 0)) {

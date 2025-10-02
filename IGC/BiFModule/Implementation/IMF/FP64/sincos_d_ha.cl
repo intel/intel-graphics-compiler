@@ -288,7 +288,7 @@ __ocl_svml_internal_dsincos_ha(double *pa, double *psin, double *pcos) {
   if (cond)
     goto SINCOS_SPECIAL;
   // _VSTATIC(SHIFTER) + x*(1/pi)
-  dS.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x.f, (__dsincos_ha_INV_PI64).f,
+  dS.f = __spirv_ocl_fma(x.f, (__dsincos_ha_INV_PI64).f,
                                                 (__dsincos_ha_SHIFTER).f);
   // N ~ x*(1/pi)
   dN = dS.f - (__dsincos_ha_SHIFTER).f;
@@ -296,7 +296,7 @@ __ocl_svml_internal_dsincos_ha(double *pa, double *psin, double *pcos) {
   R_sgn = ((dS).w >> 1) << 63;
   index = dS.w & 1;
   // Rh = x - N*PI1
-  Rh = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((-dN), (__dsincos_ha_PI1_BITS).f,
+  Rh = __spirv_ocl_fma((-dN), (__dsincos_ha_PI1_BITS).f,
                                               x.f);
   // N*PI2
   dNP2 = dN * (__dsincos_ha_PI2_BITS).f;
@@ -325,41 +325,41 @@ SINCOS_MAIN_PATH:
   // Rl = FENCE(Rl + xlow);
   // R*Rl
   R_Rl = R * Rl;
-  c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+  c_poly = __spirv_ocl_fma(
       R2, (__dsincos_ha_c_coeff[7]).f, (__dsincos_ha_c_coeff[6]).f);
-  s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+  s_poly = __spirv_ocl_fma(
       R2, (__dsincos_ha_s_coeff[7]).f, (__dsincos_ha_s_coeff[6]).f);
-  c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, c_poly,
+  c_poly = __spirv_ocl_fma(R2, c_poly,
                                                   (__dsincos_ha_c_coeff[5]).f);
-  s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, s_poly,
+  s_poly = __spirv_ocl_fma(R2, s_poly,
                                                   (__dsincos_ha_s_coeff[5]).f);
-  c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, c_poly,
+  c_poly = __spirv_ocl_fma(R2, c_poly,
                                                   (__dsincos_ha_c_coeff[4]).f);
-  s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, s_poly,
+  s_poly = __spirv_ocl_fma(R2, s_poly,
                                                   (__dsincos_ha_s_coeff[4]).f);
-  c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, c_poly,
+  c_poly = __spirv_ocl_fma(R2, c_poly,
                                                   (__dsincos_ha_c_coeff[3]).f);
-  s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, s_poly,
+  s_poly = __spirv_ocl_fma(R2, s_poly,
                                                   (__dsincos_ha_s_coeff[3]).f);
-  c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, c_poly,
+  c_poly = __spirv_ocl_fma(R2, c_poly,
                                                   (__dsincos_ha_c_coeff[2]).f) *
            R2;
-  s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, s_poly,
+  s_poly = __spirv_ocl_fma(R2, s_poly,
                                                   (__dsincos_ha_s_coeff[2]).f);
   // 2.0 - R^2
-  Ch = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((-R), R, (__dsincos_ha_two).f);
+  Ch = __spirv_ocl_fma((-R), R, (__dsincos_ha_two).f);
   // (-R^2)_high
   R2h = Ch - (__dsincos_ha_two).f;
   // (R^2)_low
-  R2l = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R, R, R2h);
+  R2l = __spirv_ocl_fma(R, R, R2h);
   // 0.5*R2l+ R*Rl
   R2l =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2l, (__dsincos_ha_half).f, R_Rl);
-  c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, c_poly, (-R2l));
+      __spirv_ocl_fma(R2l, (__dsincos_ha_half).f, R_Rl);
+  c_poly = __spirv_ocl_fma(R2, c_poly, (-R2l));
   res[1].f =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Ch, (__dsincos_ha_half).f, c_poly);
+      __spirv_ocl_fma(Ch, (__dsincos_ha_half).f, c_poly);
   (res[1]).w ^= R_sgn;
-  s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R3, s_poly, Rl);
+  s_poly = __spirv_ocl_fma(R3, s_poly, Rl);
   res[0].f = s_poly + R;
   (res[0]).w ^= R_sgn;
   if (index == 0) {

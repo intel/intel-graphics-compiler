@@ -284,7 +284,7 @@ __ocl_svml_internal_dsincos_ep(double *pa, double *psin, double *pcos) {
   if (cond)
     goto SINCOS_SPECIAL;
   // _VSTATIC(SHIFTER) + x*(1/pi)
-  dS.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x.f, (__dsincos_ep_INV_PI64).f,
+  dS.f = __spirv_ocl_fma(x.f, (__dsincos_ep_INV_PI64).f,
                                                 (__dsincos_ep_SHIFTER).f);
   // N ~ x*(1/pi)
   dN = dS.f - (__dsincos_ep_SHIFTER).f;
@@ -292,27 +292,27 @@ __ocl_svml_internal_dsincos_ep(double *pa, double *psin, double *pcos) {
   R_sgn = ((dS).w >> 1) << 63;
   index = dS.w & 1;
   // Rh = x - N*PI1
-  R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-dN, (__dsincos_ep_PI1_BITS).f,
+  R = __spirv_ocl_fma(-dN, (__dsincos_ep_PI1_BITS).f,
                                              x.f);
   // Rm = Rh - N*PI2
-  R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-dN, (__dsincos_ep_PI2_BITS).f, R);
-  R2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R, R, 0.0);
+  R = __spirv_ocl_fma(-dN, (__dsincos_ep_PI2_BITS).f, R);
+  R2 = __spirv_ocl_fma(R, R, 0.0);
 SINCOS_MAIN_PATH:
-  c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+  c_poly = __spirv_ocl_fma(
       R2, (__dsincos_ep_c_coeff[4]).f, (__dsincos_ep_c_coeff[3]).f);
-  s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+  s_poly = __spirv_ocl_fma(
       R2, (__dsincos_ep_s_coeff[3]).f, (__dsincos_ep_s_coeff[2]).f);
-  c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, c_poly,
+  c_poly = __spirv_ocl_fma(R2, c_poly,
                                                   (__dsincos_ep_c_coeff[2]).f);
-  c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, c_poly,
+  c_poly = __spirv_ocl_fma(R2, c_poly,
                                                   (__dsincos_ep_c_coeff[1]).f);
-  s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, s_poly,
+  s_poly = __spirv_ocl_fma(R2, s_poly,
                                                   (__dsincos_ep_s_coeff[1]).f);
-  c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, c_poly,
+  c_poly = __spirv_ocl_fma(R2, c_poly,
                                                   (__dsincos_ep_c_coeff[0]).f);
-  s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R2, s_poly,
+  s_poly = __spirv_ocl_fma(R2, s_poly,
                                                   (__dsincos_ep_s_coeff[0]).f);
-  s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(R, s_poly, R);
+  s_poly = __spirv_ocl_fma(R, s_poly, R);
   sin_res.f = (index == 0) ? s_poly : c_poly;
   cos_res.f = (index == 0) ? c_poly : s_poly;
   sin_res.w ^= (sgn_x ^ R_sgn);

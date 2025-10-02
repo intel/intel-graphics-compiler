@@ -1030,7 +1030,7 @@ double __ocl_svml_log_ha(double x) {
     BrMask2 = as_double(
         (unsigned long)(((!(va1 <= MaxNorm)) ? 0xffffffffffffffff : 0x0)));
     /* round reciprocal to nearest integer, will have 1+9 mantissa bits */
-    SglRcp = SPIRV_OCL_BUILTIN(rint, _f32, )(SglRcp);
+    SglRcp = __spirv_ocl_rint(SglRcp);
     DblRcp = ((double)(SglRcp));
     /* convert biased exponent to DP format */
     FpExpon = ((double)((int)(IExpon)));
@@ -1040,7 +1040,7 @@ double __ocl_svml_log_ha(double x) {
     vm = 0;
     vm = BrMask;
     One = as_double(__ocl_svml_internal_dln_ha_data.One);
-    R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Mantissa, DblRcp, -(One));
+    R = __spirv_ocl_fma(Mantissa, DblRcp, -(One));
     Index = as_ulong(DblRcp);
     /* calculate index for table lookup */
     Index = ((unsigned long)(Index) >> (52 - 9 - 4));
@@ -1065,11 +1065,11 @@ double __ocl_svml_log_ha(double x) {
     poly_coeff[1] = as_double(__ocl_svml_internal_dln_ha_data.poly_coeff[3]);
     /* polynomial computation */
     P34 =
-        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly_coeff[4], R, poly_coeff[3]);
+        __spirv_ocl_fma(poly_coeff[4], R, poly_coeff[3]);
     P12 =
-        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly_coeff[2], R, poly_coeff[1]);
+        __spirv_ocl_fma(poly_coeff[2], R, poly_coeff[1]);
     R2 = (R * R);
-    P = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(P34, R2, P12);
+    P = __spirv_ocl_fma(P34, R2, P12);
     P = (P * R2);
     /* reconstruction: */
     /* (exponent*log(2)) + table_value, in hi/lo parts */

@@ -6081,7 +6081,7 @@ double __ocl_svml_cos_ep(double x) {
     dInvPI = as_double(__ocl_svml_internal_dcos_ep_data._dInvPI);
     dRShifter = as_double(__ocl_svml_internal_dcos_ep_data._dRShifter);
     /* Y = X'*InvPi + RS : right shifter add */
-    dY = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dXAddHalfPi, dInvPI, dRShifter);
+    dY = __spirv_ocl_fma(dXAddHalfPi, dInvPI, dRShifter);
     /* N = Y - RS : right shifter sub */
     dN = (dY - dRShifter);
     dOneHalf = as_double(__ocl_svml_internal_dcos_ep_data._dOneHalf);
@@ -6091,10 +6091,10 @@ double __ocl_svml_cos_ep(double x) {
     dSignRes = as_double(((unsigned long)as_ulong(dY) << (63)));
     dPI1 = as_double(__ocl_svml_internal_dcos_ep_data._dPI1_FMA);
     /* R = X - N*Pi1 */
-    dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dPI1, -(dX0));
+    dR = __spirv_ocl_fma(dN, dPI1, -(dX0));
     dPI2 = as_double(__ocl_svml_internal_dcos_ep_data._dPI2_FMA);
     /* R = R - N*Pi2 */
-    dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dPI2, dR);
+    dR = __spirv_ocl_fma(dN, dPI2, dR);
     /* POLYNOMIAL APPROXIMATION: */
     /* R2 = R*R */
     dRp2 = (dR * dR);
@@ -6103,14 +6103,14 @@ double __ocl_svml_cos_ep(double x) {
     dC4 = as_double(__ocl_svml_internal_dcos_ep_data._dC4);
     dC3 = as_double(__ocl_svml_internal_dcos_ep_data._dC3);
     /* Poly = C3+R2*C4 */
-    dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dC4, dRp2, dC3);
+    dPoly = __spirv_ocl_fma(dC4, dRp2, dC3);
     /* Poly = R+R*(R2*(C1+R2*(C2+R2*Poly))) */
     dC2 = as_double(__ocl_svml_internal_dcos_ep_data._dC2);
-    dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPoly, dRp2, dC2);
+    dPoly = __spirv_ocl_fma(dPoly, dRp2, dC2);
     dC1 = as_double(__ocl_svml_internal_dcos_ep_data._dC1);
-    dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPoly, dRp2, dC1);
+    dPoly = __spirv_ocl_fma(dPoly, dRp2, dC1);
     dR3 = (dRp2 * dR);
-    vr1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPoly, dR3, dR);
+    vr1 = __spirv_ocl_fma(dPoly, dR3, dR);
     /* RECONSTRUCTION: */
     // result=1.0 if arg. near 0
     dOne = as_double(__ocl_svml_internal_dcos_ep_data._dOne);

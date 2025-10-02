@@ -732,12 +732,12 @@ double __ocl_svml_log10_v2 (double a)
         poly_coeff[3] = as_double (__internal_dlog10_la_data.poly_coeff[2]);
         poly_coeff[2] = as_double (__internal_dlog10_la_data.poly_coeff[3]);
         poly_coeff[1] = as_double (__internal_dlog10_la_data.poly_coeff[4]);
-        P45 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly_coeff[5], dR, poly_coeff[4]);
-        P23 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly_coeff[3], dR, poly_coeff[2]);
+        P45 = __spirv_ocl_fma(poly_coeff[5],dR,poly_coeff[4]);
+        P23 = __spirv_ocl_fma(poly_coeff[3],dR,poly_coeff[2]);
         R2 = (dR * dR);
         P1 = (dR * poly_coeff[1]);
-        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P45, R2, P23);
-        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP, R2, P1);
+        dP = __spirv_ocl_fma(P45,R2,P23);
+        dP = __spirv_ocl_fma(dP,R2,P1);
         dR = (dP + dT);
         vr1 = (dR + dK);
     }

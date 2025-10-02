@@ -1241,9 +1241,9 @@ double __ocl_svml_atan2_ha(double x, double y) {
                                .ATAN_TBL))[(((0 + iIndex) * (4 * 8)) >> (3)) +
                                            3]);
     dCYHi = as_double((as_ulong(dC) & as_ulong(dAY)));
-    dAHi = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dBase), dAX, dCYHi);
+    dAHi = __spirv_ocl_fma(-(dBase), dAX, dCYHi);
     dCXHi = as_double((as_ulong(dC) & as_ulong(dAX)));
-    dBHi = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dBase, dAY, dCXHi);
+    dBHi = __spirv_ocl_fma(dBase, dAY, dCXHi);
     // Divide r:=a*(1/b), where a==AHi+ALo, b==BHi+BLo, 1/b~=InvHi+InvLo
     // Get r0~=1/BHi
     {
@@ -1290,19 +1290,19 @@ double __ocl_svml_atan2_ha(double x, double y) {
     };
     // Now refine r0 by several iterations (hidden in polynomial)
     // e = 1-Bhi*r0
-    dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dBHi), dR0, dONE);
+    dE = __spirv_ocl_fma(-(dBHi), dR0, dONE);
     // e + e^2
-    dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dE, dE, dE);
+    dE = __spirv_ocl_fma(dE, dE, dE);
     // r0 ~= 1/Bhi*(1-e)(1+e) or 1/Bhi*(1-e)(1+e+e^2)
-    dR0 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dR0, dE, dR0);
+    dR0 = __spirv_ocl_fma(dR0, dE, dR0);
     // e' = 1-Bhi*r0
-    dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dBHi), dR0, dONE);
+    dE = __spirv_ocl_fma(-(dBHi), dR0, dONE);
     // r0 ~= 1/Bhi*(1-e')(1+e') = 1/Bhi(1-e'^2)
-    dR0 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dR0, dE, dR0);
+    dR0 = __spirv_ocl_fma(dR0, dE, dR0);
     // Now 1/B ~= R0 + InvLo
     // Get r:=a*(1/b), where a==AHi+ALo, 1/b~=InvHi+InvLo
-    dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dR0, dAHi, dZERO);
-    dInvLo = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dBHi), dR, dAHi);
+    dR = __spirv_ocl_fma(dR0, dAHi, dZERO);
+    dInvLo = __spirv_ocl_fma(-(dBHi), dR, dAHi);
     dRLo = (dInvLo * dR0);
     // Atan polynomial approximation
     dATAN_A11 = as_double(__ocl_svml_internal_datan2_ha_data.dATAN_A11);
@@ -1319,17 +1319,17 @@ double __ocl_svml_atan2_ha(double x, double y) {
     dATAN_A00 = as_double(__ocl_svml_internal_datan2_ha_data.dATAN_A00);
     dR2 = (dR * dR);
     dR4 = (dR2 * dR2);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dATAN_A11, dR4, dATAN_A09);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dATAN_A10, dR4, dATAN_A08);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR4, dATAN_A07);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP2, dR4, dATAN_A06);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR4, dATAN_A05);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP2, dR4, dATAN_A04);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR4, dATAN_A03);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP2, dR4, dATAN_A02);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR4, dATAN_A01);
-    dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP2, dR4, dATAN_A00);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR2, dP2);
+    dP1 = __spirv_ocl_fma(dATAN_A11, dR4, dATAN_A09);
+    dP2 = __spirv_ocl_fma(dATAN_A10, dR4, dATAN_A08);
+    dP1 = __spirv_ocl_fma(dP1, dR4, dATAN_A07);
+    dP2 = __spirv_ocl_fma(dP2, dR4, dATAN_A06);
+    dP1 = __spirv_ocl_fma(dP1, dR4, dATAN_A05);
+    dP2 = __spirv_ocl_fma(dP2, dR4, dATAN_A04);
+    dP1 = __spirv_ocl_fma(dP1, dR4, dATAN_A03);
+    dP2 = __spirv_ocl_fma(dP2, dR4, dATAN_A02);
+    dP1 = __spirv_ocl_fma(dP1, dR4, dATAN_A01);
+    dP2 = __spirv_ocl_fma(dP2, dR4, dATAN_A00);
+    dP1 = __spirv_ocl_fma(dP1, dR2, dP2);
     dP1 = (dP1 * dR2);
     //  Res = ( (RLo + AtanBaseLo + PiOrZeroLo*sx + Poly(R^2)*R^3 + RHi +
     //  AtanBaseHi) * sx + PiOrZeroHi) * sy
@@ -1337,7 +1337,7 @@ double __ocl_svml_atan2_ha(double x, double y) {
     dPiLO = as_double((as_ulong(dPiLO) ^ as_ulong(dSignX)));
     dRLo = (dRLo + dAtanBaseLo);
     dRLo = (dRLo + dPiLO);
-    dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dP1, dR, dRLo);
+    dP1 = __spirv_ocl_fma(dP1, dR, dRLo);
     dP1 = (dR + dP1);
     dP1 = (dP1 + dAtanBaseHi);
     dP1 = as_double((as_ulong(dP1) ^ as_ulong(dSignX)));

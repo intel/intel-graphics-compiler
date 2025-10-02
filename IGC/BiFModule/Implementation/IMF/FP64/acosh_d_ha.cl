@@ -893,7 +893,7 @@ double __ocl_svml_acosh_ha(double x) {
     // dTmp5-dTmp6=rounded(x^2)-1, dTmp4=x^2-rounded(x^2)
     // dTmp5 + (dTmp4-dTmp6) = x^2-1
     dTmp1 = (va1 * va1);
-    dTmp4 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(va1, va1, -(dTmp1));
+    dTmp4 = __spirv_ocl_fma(va1, va1, -(dTmp1));
     dTmp5 = (dTmp1 - One);
     dTmp6 = (dTmp5 - dTmp1);
     dTmp6 = (dTmp6 + One);
@@ -907,7 +907,7 @@ double __ocl_svml_acosh_ha(double x) {
     // Compute R = 1/sqrt(Y + W) * (1 + d)
     // Force R to <= 12 significant bits in case it isn't already
     // This means that R * Y and R^2 * Y are exactly representable.
-    dZ = ((double)(1.0f / SPIRV_OCL_BUILTIN(sqrt, _f64, )((float)(dY))));
+    dZ = ((double)(1.0f / __spirv_ocl_sqrt((float)(dY))));
     dTopMask12 = as_double(__ocl_svml_internal_dacosh_ha_data.dTopMask12);
     dR = as_double((as_ulong(dZ) & as_ulong(dTopMask12)));
     // Compute S = (Y/sqrt(Y + W)) * (1 + d)
@@ -920,8 +920,8 @@ double __ocl_svml_acosh_ha(double x) {
     // Compute e = -(2 * d + d^2)
     // The first FMR is exact, and the rounding error in the other is acceptable
     // since d and e are ~ 2^-12
-    dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dS), dR, One);
-    dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dT), dR, dE);
+    dE = __spirv_ocl_fma(-(dS), dR, One);
+    dE = __spirv_ocl_fma(-(dT), dR, dE);
     // Now       1 / (1 + d)
     //         = 1 / (1 + (sqrt(1 - e) - 1))
     //         = 1 / sqrt(1 - e)
@@ -938,13 +938,13 @@ double __ocl_svml_acosh_ha(double x) {
     // C5 = 63/256
     dC5 = as_double(__ocl_svml_internal_dacosh_ha_data.dC5);
     dC4 = as_double(__ocl_svml_internal_dacosh_ha_data.dC4);
-    dPol4 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dC5, dE, dC4);
+    dPol4 = __spirv_ocl_fma(dC5, dE, dC4);
     dC3 = as_double(__ocl_svml_internal_dacosh_ha_data.dC3);
-    dPol3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPol4, dE, dC3);
+    dPol3 = __spirv_ocl_fma(dPol4, dE, dC3);
     dC2 = as_double(__ocl_svml_internal_dacosh_ha_data.dC2);
-    dPol2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPol3, dE, dC2);
+    dPol2 = __spirv_ocl_fma(dPol3, dE, dC2);
     dC1 = as_double(__ocl_svml_internal_dacosh_ha_data.dC1);
-    dPol1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPol2, dE, dC1);
+    dPol1 = __spirv_ocl_fma(dPol2, dE, dC1);
     dCorr = (dPol1 * dE);
     // Now get the final argument to the log1p function:
     //
@@ -956,7 +956,7 @@ double __ocl_svml_acosh_ha(double x) {
     //
     // The bottom part is computed directly as dTmpf2:
     dTmpf1 = (dS + dT);
-    dTmpf2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dTmpf1, dCorr, dT);
+    dTmpf2 = __spirv_ocl_fma(dTmpf1, dCorr, dT);
     // The top part uses a compensated summation dTmpf3 + dTmpf5. Note that
     //
     // U / S =~= (X - 1) / sqrt(X^2 - 1) = sqrt[(X - 1) / (X + 1)]
@@ -1016,7 +1016,7 @@ double __ocl_svml_acosh_ha(double x) {
     Expon = ((unsigned long)(Expon) >> (52 - 32));
     IExpon = ((unsigned int)((unsigned long)Expon >> 32));
     /* round reciprocal to nearest integer, will have 1+9 mantissa bits */
-    DblRcp = SPIRV_OCL_BUILTIN(rint, _f64, )(DblRcp);
+    DblRcp = __spirv_ocl_rint(DblRcp);
     /* scale DblRcp */
     FpExpX = as_double(ExpX);
     DblRcp1 = (FpExpX * DblRcp);
@@ -1044,15 +1044,15 @@ double __ocl_svml_acosh_ha(double x) {
     /* K = exponent*log(2.0) */
     L2H = as_double(__ocl_svml_internal_dacosh_ha_data.L2H);
     L2L = as_double(__ocl_svml_internal_dacosh_ha_data.L2L);
-    Kh = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(FpExpon, L2H, THL[0]);
-    Kl = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(FpExpon, L2L, THL[1]);
+    Kh = __spirv_ocl_fma(FpExpon, L2H, THL[0]);
+    Kl = __spirv_ocl_fma(FpExpon, L2L, THL[1]);
     /* argument reduction */
-    Rh = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(X, DblRcp1, -(One));
+    Rh = __spirv_ocl_fma(X, DblRcp1, -(One));
     Rl = (Xl * DblRcp1);
     R = (Rh + Rl);
     Rlh = (R - Rh);
     Rl = (Rl - Rlh);
-    Rl = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dL, DblRcp1, Rl);
+    Rl = __spirv_ocl_fma(dL, DblRcp1, Rl);
     /* polynomial: */
     poly_coeff[4] = as_double(__ocl_svml_internal_dacosh_ha_data.poly_coeff[0]);
     poly_coeff[3] = as_double(__ocl_svml_internal_dacosh_ha_data.poly_coeff[1]);
@@ -1060,16 +1060,16 @@ double __ocl_svml_acosh_ha(double x) {
     poly_coeff[1] = as_double(__ocl_svml_internal_dacosh_ha_data.poly_coeff[3]);
     // P34 = C4*R + C3
     P34 =
-        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly_coeff[4], R, poly_coeff[3]);
+        __spirv_ocl_fma(poly_coeff[4], R, poly_coeff[3]);
     // P12 = C2*R + C1
     P12 =
-        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly_coeff[2], R, poly_coeff[1]);
+        __spirv_ocl_fma(poly_coeff[2], R, poly_coeff[1]);
     // R2 = R*R
     R2 = (R * R);
     // P = P34*R2 + P12
-    P = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(P34, R2, P12);
+    P = __spirv_ocl_fma(P34, R2, P12);
     /* reconstruction */
-    P = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(P, R2, Rl);
+    P = __spirv_ocl_fma(P, R2, Rl);
     THL[0] = (Kh + R);
     Rh = (THL[0] - Kh);
     Rl = (R - Rh);

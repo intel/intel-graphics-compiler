@@ -125,7 +125,7 @@ __ocl_svml_internal_dexp_ha(double *a, double *r) {
   int expon32, mask32, mask_h;
   unsigned int xa32, sgn_x, expon_corr;
   // x*log2(e) + Shifter
-  idx.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x, __dexp_ha_p_L2E.f,
+  idx.f = __spirv_ocl_fma(x, __dexp_ha_p_L2E.f,
                                                  __dexp_ha_p_Shifter.f);
   // x*log2(e), rounded to 1 fractional bit
   N = idx.f - __dexp_ha_p_Shifter.f;
@@ -134,38 +134,38 @@ __ocl_svml_internal_dexp_ha(double *a, double *r) {
   // prepare exponent
   expon32 = idx.w32[0] << (20 + 31 - 32);
   // initial reduced argument
-  R0 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(__dexp_ha_p_NL2H.f, N, x);
+  R0 = __spirv_ocl_fma(__dexp_ha_p_NL2H.f, N, x);
   // reduced argument
-  R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(__dexp_ha_p_NL2L.f, N, R0);
+  R = __spirv_ocl_fma(__dexp_ha_p_NL2L.f, N, R0);
   // start polynomial computation
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(__dexp_ha_p_c7.f, R,
+  poly = __spirv_ocl_fma(__dexp_ha_p_c7.f, R,
                                                 __dexp_ha_p_c6.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexp_ha_p_c5.f);
+  poly = __spirv_ocl_fma(poly, R, __dexp_ha_p_c5.f);
   // bit mask to select "table" value
   mask32 = mask32 >> 31;
   // polynomial
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexp_ha_p_c4.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexp_ha_p_c3.f);
+  poly = __spirv_ocl_fma(poly, R, __dexp_ha_p_c4.f);
+  poly = __spirv_ocl_fma(poly, R, __dexp_ha_p_c3.f);
   // "table" correction
   // mask.w &= 0x000EA09E667F3BCDuL;
   mask_h = mask32 & 0x000EA09E;
   // polynomial
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexp_ha_p_c2.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexp_ha_p_c1.f);
+  poly = __spirv_ocl_fma(poly, R, __dexp_ha_p_c2.f);
+  poly = __spirv_ocl_fma(poly, R, __dexp_ha_p_c1.f);
   // combine exponent, "table" value
   T.w32[1] = expon32 ^ mask_h;
   T.w32[0] = mask32 & 0x667F3BCD;
   Tlr.w32[1] = 0x3C6E51C5 ^ (mask32 & (0xBC8FD36E ^ 0x3C6E51C5)); // 0xBC93B3EF;
   Tlr.w32[0] = 0;
   // polynomial
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexp_ha_p_c0.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexp_ha_p_one.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, Tlr.f);
+  poly = __spirv_ocl_fma(poly, R, __dexp_ha_p_c0.f);
+  poly = __spirv_ocl_fma(poly, R, __dexp_ha_p_one.f);
+  poly = __spirv_ocl_fma(poly, R, Tlr.f);
   // if (xa32 > 0x4086232Au)
-  if (SPIRV_OCL_BUILTIN(fabs, _f64, )(x) >= __dexp_ha_thres.f)
+  if (__spirv_ocl_fabs(x) >= __dexp_ha_thres.f)
     goto EXP_SPECIAL_PATH;
   // result
-  res = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(T.f, poly, T.f);
+  res = __spirv_ocl_fma(T.f, poly, T.f);
   *r = res;
   return nRet;
 EXP_SPECIAL_PATH:
@@ -179,7 +179,7 @@ EXP_SPECIAL_PATH:
     // apply correction (+/-128) to exponent embedded in T
     T.w32[1] += expon_corr;
     // result
-    res = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(T.f, poly, T.f);
+    res = __spirv_ocl_fma(T.f, poly, T.f);
     // final scaling
     res *= scale.f;
   } else {

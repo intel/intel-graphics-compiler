@@ -135,53 +135,53 @@ static inline int __ocl_svml_internal_dtanh(double *px, double *pres)
   xa.f = ((xa.f > 20.0) && (xa.w <= 0x7ff0000000000000uL)) ? 20.0 : xa.f;
   // exp(2*xa.f)
   // Shifter + xa*log2e
-  S.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(xa.f, __dtanh_la___L2E.f,
+  S.f = __spirv_ocl_fma(xa.f, __dtanh_la___L2E.f,
                                                __dtanh_la___Shifter.f);
   dN =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(S.f, 1.0, -__dtanh_la___Shifter.f);
+      __spirv_ocl_fma(S.f, 1.0, -__dtanh_la___Shifter.f);
   // Rh ~ N*log(2) + xa
-  Rh = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, __dtanh_la___mL2.f, xa.f);
-  Rh = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, __dtanh_la___mL2L.f, Rh);
+  Rh = __spirv_ocl_fma(dN, __dtanh_la___mL2.f, xa.f);
+  Rh = __spirv_ocl_fma(dN, __dtanh_la___mL2L.f, Rh);
   // T = 2^(rint(2*xa*log2e))
   S.w <<= 52;
   // e^(2*Rh)
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Rh, __dtanh_la___c12.f,
+  poly = __spirv_ocl_fma(Rh, __dtanh_la___c12.f,
                                                 __dtanh_la___c11.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, Rh, __dtanh_la___c10.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, Rh, __dtanh_la___c9.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, Rh, __dtanh_la___c8.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, Rh, __dtanh_la___c7.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, Rh, __dtanh_la___c6.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, Rh, __dtanh_la___c5.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, Rh, __dtanh_la___c4.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, Rh, __dtanh_la___c3.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, Rh, __dtanh_la___c2.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, Rh, __dtanh_la___c1.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, Rh, 0.0);
+  poly = __spirv_ocl_fma(poly, Rh, __dtanh_la___c10.f);
+  poly = __spirv_ocl_fma(poly, Rh, __dtanh_la___c9.f);
+  poly = __spirv_ocl_fma(poly, Rh, __dtanh_la___c8.f);
+  poly = __spirv_ocl_fma(poly, Rh, __dtanh_la___c7.f);
+  poly = __spirv_ocl_fma(poly, Rh, __dtanh_la___c6.f);
+  poly = __spirv_ocl_fma(poly, Rh, __dtanh_la___c5.f);
+  poly = __spirv_ocl_fma(poly, Rh, __dtanh_la___c4.f);
+  poly = __spirv_ocl_fma(poly, Rh, __dtanh_la___c3.f);
+  poly = __spirv_ocl_fma(poly, Rh, __dtanh_la___c2.f);
+  poly = __spirv_ocl_fma(poly, Rh, __dtanh_la___c1.f);
+  poly = __spirv_ocl_fma(poly, Rh, 0.0);
   // dividend
-  AX = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(S.f, 1.0, -1.0);
-  Ah = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(S.f, poly, AX);
-  Al = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Ah, 1.0, -AX);
-  Al = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(S.f, poly, -Al);
+  AX = __spirv_ocl_fma(S.f, 1.0, -1.0);
+  Ah = __spirv_ocl_fma(S.f, poly, AX);
+  Al = __spirv_ocl_fma(Ah, 1.0, -AX);
+  Al = __spirv_ocl_fma(S.f, poly, -Al);
   // divisor
-  BX = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(S.f, 1.0, 1.0);
-  Bh = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(S.f, poly, BX);
-  Bl = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Bh, 1.0, -BX);
-  Bl = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(S.f, poly, -Bl);
+  BX = __spirv_ocl_fma(S.f, 1.0, 1.0);
+  Bh = __spirv_ocl_fma(S.f, poly, BX);
+  Bl = __spirv_ocl_fma(Bh, 1.0, -BX);
+  Bl = __spirv_ocl_fma(S.f, poly, -Bl);
   // R ~ 1/B
   bf = (float)Bh;
   R = (double)1.0f / (bf);
-  eps = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Bh, -R, 1.0);
-  eps = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Bl, -R, eps);
+  eps = __spirv_ocl_fma(Bh, -R, 1.0);
+  eps = __spirv_ocl_fma(Bl, -R, eps);
   // eps + eps^2
-  eps = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(eps, eps, eps);
+  eps = __spirv_ocl_fma(eps, eps, eps);
   // A*R high, low
-  Qh = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Ah, R, 0.0);
-  Ql = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Ah, R, -Qh);
-  Ql = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Al, R, Ql);
+  Qh = __spirv_ocl_fma(Ah, R, 0.0);
+  Ql = __spirv_ocl_fma(Ah, R, -Qh);
+  Ql = __spirv_ocl_fma(Al, R, Ql);
   // result
-  Ql = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Qh, eps, Ql);
-  res.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Qh, 1.0, Ql);
+  Ql = __spirv_ocl_fma(Qh, eps, Ql);
+  res.f = __spirv_ocl_fma(Qh, 1.0, Ql);
   res.w ^= sgn_x;
   *pres = res.f;
   return nRet;

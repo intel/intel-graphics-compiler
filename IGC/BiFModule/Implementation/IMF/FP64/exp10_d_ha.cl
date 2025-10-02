@@ -561,7 +561,7 @@ double __ocl_svml_exp10_ha(double x) {
     iAbsMask = (__ocl_svml_internal_dexp10_ha_data._iAbsMask);
     iDomainRange = (__ocl_svml_internal_dexp10_ha_data._iDomainRange);
     /* ............... Load arument ............................ */
-    dM = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(va1, dbLg2_10, dbShifter);
+    dM = __spirv_ocl_fma(va1, dbLg2_10, dbShifter);
     dN = (dM - dbShifter);
     /* ...............Check for overflow\underflow ............. */
     lX = as_ulong(va1);
@@ -584,19 +584,19 @@ double __ocl_svml_exp10_ha(double x) {
     lM = ((unsigned long)(lM) << ((52 - 7)));
     lM = (lM & lExpMask); // lM==EXP(2^N)
     /* ................... R ................................... */
-    dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dN), dbInvLg2_10hi, va1);
-    dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dN), dbInvLg2_10lo, dR);
+    dR = __spirv_ocl_fma(-(dN), dbInvLg2_10hi, va1);
+    dR = __spirv_ocl_fma(-(dN), dbInvLg2_10lo, dR);
     /* ................... Polynomial .......................... */
     // poly(dN) = a1*dR+...+a5*dR^5
-    dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPC[4], dR, dPC[3]);
-    dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dR, dPC[2]);
-    dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dR, dPC[1]);
-    dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dR,
+    dN = __spirv_ocl_fma(dPC[4], dR, dPC[3]);
+    dN = __spirv_ocl_fma(dN, dR, dPC[2]);
+    dN = __spirv_ocl_fma(dN, dR, dPC[1]);
+    dN = __spirv_ocl_fma(dN, dR,
                                                 dPC[0]); // a1+...+a5*dR^4 !
     dN = (dN * dR);                                      // a1*dR+...+a5*dR^5
     /* ................... Reconstruction ...................... */
     // exp2 = {2^N later}*(Tj_h+Tj_l+Tj_h*poly)
-    dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dTj[0],
+    dN = __spirv_ocl_fma(dN, dTj[0],
                                                 dTj[1]); // Tj_l+Tj_h*poly
     dN = (dN + dTj[0]);
     /* ..................quick 2^N............................... */

@@ -110,33 +110,33 @@ __ocl_svml_internal_dexpm1_ep(double *pxin, double *pres) {
   } x0f, fS, fN;
   x0f.f = (float)xin;
   // 2^52*1.5 + x*log2(e)
-  fS.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(x0f.f, __dexpm1_ep_fL2E.f,
+  fS.f = __spirv_ocl_fma(x0f.f, __dexpm1_ep_fL2E.f,
                                                 __dexpm1_ep_fShifter.f);
   // dN = rint(x*log2(e))
   fN.f = fS.f - __dexpm1_ep_fShifter.f;
   // reduced argument
   dN = (double)fN.f;
   // reduced argument
-  R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, __dexpm1_ep_p_NL2H.f, xin);
+  R = __spirv_ocl_fma(dN, __dexpm1_ep_p_NL2H.f, xin);
   // R = DP_FMA(dN, _VSTATIC(p_NL2L).f, R);
   //  2^N, N=(int)dN
   T.w32[1] = fS.w << 20;
   T.w32[0] = 0;
   // e^R - 1
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(__dexpm1_ep_dc7.f, R,
+  poly = __spirv_ocl_fma(__dexpm1_ep_dc7.f, R,
                                                 __dexpm1_ep_dc6.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexpm1_ep_dc5.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexpm1_ep_dc4.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexpm1_ep_dc3.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexpm1_ep_dc2.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexpm1_ep_dc1.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexpm1_ep_dc0.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, R);
+  poly = __spirv_ocl_fma(poly, R, __dexpm1_ep_dc5.f);
+  poly = __spirv_ocl_fma(poly, R, __dexpm1_ep_dc4.f);
+  poly = __spirv_ocl_fma(poly, R, __dexpm1_ep_dc3.f);
+  poly = __spirv_ocl_fma(poly, R, __dexpm1_ep_dc2.f);
+  poly = __spirv_ocl_fma(poly, R, __dexpm1_ep_dc1.f);
+  poly = __spirv_ocl_fma(poly, R, __dexpm1_ep_dc0.f);
+  poly = __spirv_ocl_fma(poly, R, R);
   // maxabs(T,-1), minabs(T,-1)
   Th = T.f - 1.0;
   // 2^N*poly + Tl
-  res.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(T.f, poly, Th);
-  if (SPIRV_OCL_BUILTIN(fabs, _f32, )(x0f.f) <= 708.0f) {
+  res.f = __spirv_ocl_fma(T.f, poly, Th);
+  if (__spirv_ocl_fabs(x0f.f) <= 708.0f) {
     *pres = res.f;
     return nRet;
   }
@@ -166,7 +166,7 @@ __ocl_svml_internal_dexpm1_ep(double *pxin, double *pres) {
   // 2^(N-512), N=(int)dN
   T.w32[1] = (fS.w - 512) << 20;
   T.w32[0] = 0;
-  res.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(T.f, poly, T.f);
+  res.f = __spirv_ocl_fma(T.f, poly, T.f);
   // final scaling
   sc.w = 0x5ff0000000000000uL;
   res.f *= sc.f;

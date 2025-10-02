@@ -161,21 +161,21 @@ inline int __internal_dexp_ep_nolut_cout (double *a, double *r)
     } idx;
     float fN, xf;
     xf = (float) x;
-    idx.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (xf, __dexp_ep_nolut_p_L2Ef.f, __dexp_ep_nolut_p_Shifterf0.f);
+    idx.f = __spirv_ocl_fma(xf,__dexp_ep_nolut_p_L2Ef.f,__dexp_ep_nolut_p_Shifterf0.f);
     fN = idx.f - __dexp_ep_nolut_p_Shifterf0.f;
     N = (double) fN;
     T.w32[1] = idx.w << 20;
     T.w32[0] = 0;
-    R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (__dexp_ep_nolut_p_NL2H.f, N, x);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (__dexp_ep_nolut_c6.f, R, __dexp_ep_nolut_c5.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_nolut_c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_nolut_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_nolut_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_nolut_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_nolut_c0.f);
-    if (SPIRV_OCL_BUILTIN(fabs, _f32, ) (xf) > __dexp_ep_nolut_p_fthres.f)
+    R = __spirv_ocl_fma(__dexp_ep_nolut_p_NL2H.f,N,x);
+    poly = __spirv_ocl_fma(__dexp_ep_nolut_c6.f,R,__dexp_ep_nolut_c5.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp_ep_nolut_c4.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp_ep_nolut_c3.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp_ep_nolut_c2.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp_ep_nolut_c1.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp_ep_nolut_c0.f);
+    if (__spirv_ocl_fabs (xf) > __dexp_ep_nolut_p_fthres.f)
         goto EXP_SPECIAL_PATH;
-    res = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (T.f, poly, T.f);
+    res = __spirv_ocl_fma(T.f,poly,T.f);
     *r = res;
     return nRet;
   EXP_SPECIAL_PATH:
@@ -187,7 +187,7 @@ inline int __internal_dexp_ep_nolut_cout (double *a, double *r)
         expon_corr = sgn_x ? 0x08000000u : 0xF8000000u;
         scale.w = sgn_x ? 0x37f0000000000000UL : 0x47f0000000000000UL;
         T.w32[1] += expon_corr;
-        res = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (T.f, poly, T.f);
+        res = __spirv_ocl_fma(T.f,poly,T.f);
         res *= scale.f;
     }
     else

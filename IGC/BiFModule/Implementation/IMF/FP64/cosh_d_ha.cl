@@ -606,7 +606,7 @@ double __ocl_svml_cosh_ha(double x) {
     /* ............... Abs argument ............................ */
     dAbsX = as_double((~(as_ulong(dXSign)) & as_ulong(va1)));
     /* ............... Load argument ........................... */
-    dM = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+    dM = __spirv_ocl_fma(
         dAbsX, dbInvLn2, dbShifter); // dM = x*2^K/log(2) + RShifter
     /* ...............Check for overflow\underflow ............. */
     lX = as_ulong(dAbsX);                              // lX = x
@@ -630,9 +630,9 @@ double __ocl_svml_cosh_ha(double x) {
                                ._dbT))[(((0 + iIndex) * (3 * 8)) >> (3)) + 2]);
     /* ................... R ................................... */
     dN = (dM - dbShifter); // dN = dM - RShifter
-    dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+    dR = __spirv_ocl_fma(
         -(dbLn2[0]), dN, dAbsX); // dR = dX - dN*Log2_hi/2^K
-    dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dbLn2[1]), dN,
+    dR = __spirv_ocl_fma(-(dbLn2[1]), dN,
                                                 dR); // dR = dX - dN*Log2_hi/2^K
     // VMuL( D, dOut[0], /*=*/ dbLn2[0], dN );
     // VMuL( D, dOut[1], /*=*/ dbLn2[1], dN );
@@ -655,18 +655,18 @@ double __ocl_svml_cosh_ha(double x) {
     dR2 = (dR * dR);
     /* poly(r) = Gmjp(1 + a2*r^2 + a4*r^4) + Gmjn*(r+ a3*r^3 +a5*r^5)       = */
     /*   = Gmjp_h +Gmjp_l+ Gmjp*r^2*(a2 + a4*r^2) + Gmjn*(r+ r^3*(a3 +a5*r^2) */
-    dM = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPC[4], dR2,
+    dM = __spirv_ocl_fma(dPC[4], dR2,
                                                 dPC[2]); // dM=(a3 +a5*r^2)
-    dOut = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPC[3], dR2,
+    dOut = __spirv_ocl_fma(dPC[3], dR2,
                                                   dPC[1]); // dOut=(a2 + a4*r^2)
     dM = (dM * dR2);     // dM=r^2*(a3 +a5*r^2)
     dOut = (dOut * dR2); // dOut=r^2*(a2 + a4*r^2)
     // test VMuL( D, dOut, /*=*/ dOut, dGmjp );//error gets big
-    dOut = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+    dOut = __spirv_ocl_fma(
         dOut, dGmjp, dTp[1]); // dOut=Gmjp*r^2*(a2 + a4*r^2)+Gmjp_l(1)
-    dM = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dM, dR,
+    dM = __spirv_ocl_fma(dM, dR,
                                                 dR); // dM= r + r^3*(a3 +a5*r^2)
-    dOut = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+    dOut = __spirv_ocl_fma(
         dM, dGmjn, dOut); // dOut=Gmjp*r^2*(a2 + a4*r^2)+Gmjp_l(1) + Gmjn*(r+
                           // r^3*(a3 +a5*r^2)
     dOut = (dOut + dTn); // dOut=Gmjp*r^2*(a2 + a4*r^2)+Gmjp_l(1) + Gmjn*(r+

@@ -117,7 +117,7 @@ __ocl_svml_internal_dexp_ep(double *a, double *r) {
   float fN, xf;
   xf = (float)x;
   // x*log2(e) + Shifter
-  idx.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(xf, __dexp_ep_p_L2Ef.f,
+  idx.f = __spirv_ocl_fma(xf, __dexp_ep_p_L2Ef.f,
                                                  __dexp_ep_p_Shifterf0.f);
   // x*log2(e), rounded to integral
   fN = idx.f - __dexp_ep_p_Shifterf0.f;
@@ -126,19 +126,19 @@ __ocl_svml_internal_dexp_ep(double *a, double *r) {
   T.w32[1] = idx.w << 20;
   T.w32[0] = 0;
   // reduced argument
-  R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(__dexp_ep_p_NL2H.f, N, x);
+  R = __spirv_ocl_fma(__dexp_ep_p_NL2H.f, N, x);
   // start polynomial computation
   poly =
-      SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(__dexp_ep_c6.f, R, __dexp_ep_c5.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexp_ep_c4.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexp_ep_c3.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexp_ep_c2.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexp_ep_c1.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dexp_ep_c0.f);
-  if (SPIRV_OCL_BUILTIN(fabs, _f32, )(xf) > __dexp_ep_p_fthres.f)
+      __spirv_ocl_fma(__dexp_ep_c6.f, R, __dexp_ep_c5.f);
+  poly = __spirv_ocl_fma(poly, R, __dexp_ep_c4.f);
+  poly = __spirv_ocl_fma(poly, R, __dexp_ep_c3.f);
+  poly = __spirv_ocl_fma(poly, R, __dexp_ep_c2.f);
+  poly = __spirv_ocl_fma(poly, R, __dexp_ep_c1.f);
+  poly = __spirv_ocl_fma(poly, R, __dexp_ep_c0.f);
+  if (__spirv_ocl_fabs(xf) > __dexp_ep_p_fthres.f)
     goto EXP_SPECIAL_PATH;
   // result
-  res = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(T.f, poly, T.f);
+  res = __spirv_ocl_fma(T.f, poly, T.f);
   *r = res;
   return nRet;
 EXP_SPECIAL_PATH:
@@ -152,7 +152,7 @@ EXP_SPECIAL_PATH:
     // apply correction (+/-128) to exponent embedded in T
     T.w32[1] += expon_corr;
     // result
-    res = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(T.f, poly, T.f);
+    res = __spirv_ocl_fma(T.f, poly, T.f);
     // final scaling
     res *= scale.f;
   } else {

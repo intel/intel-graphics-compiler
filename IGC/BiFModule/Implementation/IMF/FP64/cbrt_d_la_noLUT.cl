@@ -202,7 +202,7 @@ inline int __ocl_svml_internal_dcbrt_noLUT (double *a, double *pres)
     scale.w = (xa.w < 0x0010000000000000uL) ? 0x4440000000000000uL : 0x3ff0000000000000uL;
     // final exponent correction
     ecorr = (xa.w < 0x0010000000000000uL) ? 0x2aa - 23 : 0x2aa;
-    xa.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (xa.f, scale.f, 0.0);
+    xa.f = __spirv_ocl_fma(xa.f,scale.f,0.0);
     // input exponent (expon = 3*k+j)
     expon = (xa.w + 0x0008000000000000uL) >> 52;
     // (2^32+2)/3  * exponent
@@ -217,30 +217,30 @@ inline int __ocl_svml_internal_dcbrt_noLUT (double *a, double *pres)
     // reduced argument
     dR = mant.f - 1;
     // polynomial evaluation
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (__dcbrt_la___c18.f, dR, __dcbrt_la___c17.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c16.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c15.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c14.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c13.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c12.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c11.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c10.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c9.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c8.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c7.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c6.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c5.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c4.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c3.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c2.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c1.f);
-    poly.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly.f, dR, __dcbrt_la___c0.f);
+    poly.f = __spirv_ocl_fma(__dcbrt_la___c18.f,dR,__dcbrt_la___c17.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c16.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c15.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c14.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c13.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c12.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c11.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c10.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c9.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c8.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c7.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c6.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c5.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c4.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c3.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c2.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c1.f);
+    poly.f = __spirv_ocl_fma(poly.f,dR,__dcbrt_la___c0.f);
     // 2^j
     two_j.w = (!j) ? 0x3ff0000000000000uL : 0x3ff428A2F98D728BuL;
     two_j.w = (j <= 1) ? two_j.w : 0x3ff965FEA53D6E3DuL;
     // attach exponent
-    two_j.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (two_j.f, r_expon.f, 0.0);
-    res.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (two_j.f, poly.f, two_j.f);
+    two_j.f = __spirv_ocl_fma(two_j.f,r_expon.f,0.0);
+    res.f = __spirv_ocl_fma(two_j.f,poly.f,two_j.f);
     // fixup for Inf/NaN
     res.f = (xa.f <= __dcbrt_la___maxnum.f) ? res.f : (xa.f + xa.f);
     // set sign

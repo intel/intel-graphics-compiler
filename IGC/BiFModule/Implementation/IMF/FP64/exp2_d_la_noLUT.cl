@@ -156,19 +156,19 @@ inline int __ocl_svml_internal_dexp2_noLUT (double *a, double *r)
     dS.f = x + __dexp2_la_Shifter.f;
     dN = dS.f - __dexp2_la_Shifter.f;
     R = x - dN;
-    poly = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (__dexp2_la_c11.f, R, __dexp2_la_c10.f);
-    poly = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly, R, __dexp2_la_c9.f);
-    poly = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly, R, __dexp2_la_c8.f);
-    poly = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly, R, __dexp2_la_c7.f);
-    poly = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly, R, __dexp2_la_c6.f);
-    poly = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly, R, __dexp2_la_c5.f);
-    High = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (R, 0.5, 1.0);
-    poly = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly, R, __dexp2_la_c4.f);
-    poly = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly, R, __dexp2_la_c3.f);
-    poly = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly, R, __dexp2_la_c2.f);
-    poly = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly, R, __dexp2_la_c1.f);
-    res.f = SPIRV_OCL_BUILTIN (fma, _f64_f64_f64,) (poly, R, High);
-    if (SPIRV_OCL_BUILTIN (fabs, _f64,) (x) >= __dexp2_la_thres.f)
+    poly = __spirv_ocl_fma(__dexp2_la_c11.f,R,__dexp2_la_c10.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp2_la_c9.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp2_la_c8.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp2_la_c7.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp2_la_c6.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp2_la_c5.f);
+    High = __spirv_ocl_fma(R,0.5,1.0);
+    poly = __spirv_ocl_fma(poly,R,__dexp2_la_c4.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp2_la_c3.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp2_la_c2.f);
+    poly = __spirv_ocl_fma(poly,R,__dexp2_la_c1.f);
+    res.f = __spirv_ocl_fma(poly,R,High);
+    if (__spirv_ocl_fabs (x) >= __dexp2_la_thres.f)
         goto EXP2_SPECIAL;
     // final scaling
     //res.w32[1] += (dS.w32[0] << 20);
@@ -192,13 +192,13 @@ inline int __ocl_svml_internal_dexp2_noLUT (double *a, double *r)
             return nRet;
         }
     }
-    x = SPIRV_OCL_BUILTIN (fmin, _f64_f64,) (x, 1536.0);
-    x = SPIRV_OCL_BUILTIN (fmax, _f64_f64,) (x, -1536.0);
+    x = __spirv_ocl_fmin (x, 1536.0);
+    x = __spirv_ocl_fmax (x, -1536.0);
     dS.f = x + __dexp2_la_Shifter0.f;
     sN = dS.w32[0];
     // fix res.f for very large |x|
-    res.f = SPIRV_OCL_BUILTIN (fmin, _f64_f64,) (res.f, 2.0);
-    res.f = SPIRV_OCL_BUILTIN (fmax, _f64_f64,) (res.f, 0.5);
+    res.f = __spirv_ocl_fmin (res.f, 2.0);
+    res.f = __spirv_ocl_fmax (res.f, 0.5);
     // split the scaling coefficients
     sN2 = sN >> 1;
     sN -= sN2;

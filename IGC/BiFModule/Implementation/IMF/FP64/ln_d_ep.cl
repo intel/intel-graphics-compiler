@@ -137,26 +137,26 @@ __ocl_svml_internal_dln_ep(double *a, double *r) {
   // reduced argument:  reduced_mantissa - 1.0
   R = x.f - one.f;
   // polynomial
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(__dln_ep___c9.f, R,
+  poly = __spirv_ocl_fma(__dln_ep___c9.f, R,
                                                 __dln_ep___c8.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dln_ep___c7.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dln_ep___c6.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dln_ep___c5.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dln_ep___c4.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dln_ep___c3.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dln_ep___c2.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dln_ep___c1.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, __dln_ep___c0.f);
+  poly = __spirv_ocl_fma(poly, R, __dln_ep___c7.f);
+  poly = __spirv_ocl_fma(poly, R, __dln_ep___c6.f);
+  poly = __spirv_ocl_fma(poly, R, __dln_ep___c5.f);
+  poly = __spirv_ocl_fma(poly, R, __dln_ep___c4.f);
+  poly = __spirv_ocl_fma(poly, R, __dln_ep___c3.f);
+  poly = __spirv_ocl_fma(poly, R, __dln_ep___c2.f);
+  poly = __spirv_ocl_fma(poly, R, __dln_ep___c1.f);
+  poly = __spirv_ocl_fma(poly, R, __dln_ep___c0.f);
   // prepare exponent
   // scale back denormals
   expon.s32[0] -= denorm_scale_exp;
   // exponent
   d_expon = (double)expon.s32[0];
   // full polynomial = log(1+R)
-  poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(poly, R, R);
+  poly = __spirv_ocl_fma(poly, R, R);
   // result:  reduced_exponent*log(2)+log(1+R)
   l2.w = 0x3FE62E42FEFA39EFull;
-  res = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(d_expon, l2.f, poly);
+  res = __spirv_ocl_fma(d_expon, l2.f, poly);
   *r = res;
   return nRet;
 }

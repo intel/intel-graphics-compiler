@@ -1913,7 +1913,7 @@ double __ocl_svml_sinh_ha(double x) {
     dXSign = as_double((as_ulong(dSign) & as_ulong(va1)));
     dAbsX = as_double((as_ulong(dXSign) ^ as_ulong(va1)));
     // dM = x*2^K/log(2) + RShifter
-    dM = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dAbsX, dbInvLn2, dbShifter);
+    dM = __spirv_ocl_fma(dAbsX, dbInvLn2, dbShifter);
     // Check for overflow\underflow
     lX = as_ulong(dAbsX);
     iAbsX = ((unsigned int)((unsigned long)lX >> 32));
@@ -1954,10 +1954,10 @@ double __ocl_svml_sinh_ha(double x) {
     dN = (dM - dbShifter);
     dbLn2[0] = as_double(__ocl_svml_internal_dsinh_ha_data._dbLn2hi);
     // dR = dX - dN*Log2_hi/2^K
-    dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dbLn2[0]), dN, dAbsX);
+    dR = __spirv_ocl_fma(-(dbLn2[0]), dN, dAbsX);
     dbLn2[1] = as_double(__ocl_svml_internal_dsinh_ha_data._dbLn2lo);
     // dR = (dX - dN*Log2_hi/2^K) - dN*Log2_lo/2^K
-    dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dbLn2[1]), dN, dR);
+    dR = __spirv_ocl_fma(-(dbLn2[1]), dN, dR);
     // dR2 = dR^2
     dR2 = (dR * dR);
     // G1,G2,G3: dTdif,dTn * 2^N,2^(-N):
@@ -1992,16 +1992,16 @@ double __ocl_svml_sinh_ha(double x) {
     dG2_low = (dTpl - dH3);
     dG2_low = (dG2_low - dTnl);
     // poly(r) = G1(1 + a2*r^2 + a4*r^4) + G2*(r+ a3*r^3 +a5*r^5)
-    dM = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPC[6], dR2, dPC[4]);
-    dOut = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPC[7], dR2, dPC[5]);
-    dM = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dM, dR2, dPC[2]);
-    dOut = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dOut, dR2, dPC[3]);
-    dOut = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dOut, dR2, dPC[1]);
+    dM = __spirv_ocl_fma(dPC[6], dR2, dPC[4]);
+    dOut = __spirv_ocl_fma(dPC[7], dR2, dPC[5]);
+    dM = __spirv_ocl_fma(dM, dR2, dPC[2]);
+    dOut = __spirv_ocl_fma(dOut, dR2, dPC[3]);
+    dOut = __spirv_ocl_fma(dOut, dR2, dPC[1]);
     dM = (dM * dR2);
     dOut = (dOut * dR2);
-    dM = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dM, dR, dR);
-    dOut = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dOut, dG2, dG2_low);
-    dOut = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dM, dG1, dOut);
+    dM = __spirv_ocl_fma(dM, dR, dR);
+    dOut = __spirv_ocl_fma(dOut, dG2, dG2_low);
+    dOut = __spirv_ocl_fma(dM, dG1, dOut);
     dOut = (dOut + dG2);
     // Set result sign
     vr1 = as_double((as_ulong(dXSign) | as_ulong(dOut)));

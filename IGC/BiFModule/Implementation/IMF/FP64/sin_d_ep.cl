@@ -6073,17 +6073,17 @@ double __ocl_svml_sin_ep(double x) {
     dInvPI = as_double(__ocl_svml_internal_dsin_ep_data._dInvPI);
     dRShifter = as_double(__ocl_svml_internal_dsin_ep_data._dRShifter);
     /* Y = X'*InvPi + RS : right shifter add */
-    dY = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dAbsX, dInvPI, dRShifter);
+    dY = __spirv_ocl_fma(dAbsX, dInvPI, dRShifter);
     /* N = Y - RS : right shifter sub */
     dN = (dY - dRShifter);
     /* SignRes = Y<<63 : shift LSB to MSB place for result sign */
     dSignRes = as_double(((unsigned long)as_ulong(dY) << (63)));
     dPI1 = as_double(__ocl_svml_internal_dsin_ep_data._dPI1_FMA);
     /* R = X' - N*Pi1 */
-    dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dN), dPI1, dAbsX);
+    dR = __spirv_ocl_fma(-(dN), dPI1, dAbsX);
     dPI2 = as_double(__ocl_svml_internal_dsin_ep_data._dPI2_FMA);
     /* R = R - N*Pi2 */
-    dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-(dN), dPI2, dR);
+    dR = __spirv_ocl_fma(-(dN), dPI2, dR);
     /* POLYNOMIAL APPROXIMATION: */
     /* R2 = R*R */
     dRp2 = (dR * dR);
@@ -6092,17 +6092,17 @@ double __ocl_svml_sin_ep(double x) {
     dC4 = as_double(__ocl_svml_internal_dsin_ep_data._dC4);
     dC3 = as_double(__ocl_svml_internal_dsin_ep_data._dC3);
     /* Poly = C3+R2*C4 */
-    dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dC4, dRp2, dC3);
+    dPoly = __spirv_ocl_fma(dC4, dRp2, dC3);
     /* SignX - sign bit of X */
     dSignX = as_double((~(as_ulong(dAbsMask)) & as_ulong(va1)));
     /* Poly = R2*(C1+R2*(C2+R2*Poly)) */
     dC2 = as_double(__ocl_svml_internal_dsin_ep_data._dC2);
-    dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPoly, dRp2, dC2);
+    dPoly = __spirv_ocl_fma(dPoly, dRp2, dC2);
     dC1 = as_double(__ocl_svml_internal_dsin_ep_data._dC1);
-    dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPoly, dRp2, dC1);
+    dPoly = __spirv_ocl_fma(dPoly, dRp2, dC1);
     dPoly = (dPoly * dRp2);
     /* Poly = Poly*R + R */
-    dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dPoly, dR, dR);
+    dPoly = __spirv_ocl_fma(dPoly, dR, dR);
     /* RECONSTRUCTION: */
     /* Final sign setting: Res = Poly^SignX */
     vr1 = as_double((as_ulong(dPoly) ^ as_ulong(dSignX)));

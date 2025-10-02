@@ -418,9 +418,9 @@ double __ocl_svml_exp10_ep(double x) {
     iAbsMask = (__ocl_svml_internal_dexp10_ep_data._iAbsMask);
     iDomainRange = (__ocl_svml_internal_dexp10_ep_data._iDomainRange);
     /* ...............Reduction + R............. */
-    dM = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(va1, dLg2_10, dbShifter);
+    dM = __spirv_ocl_fma(va1, dLg2_10, dbShifter);
     dN = (dM - dbShifter);
-    dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(va1, dLg2_10, -(dN));
+    dR = __spirv_ocl_fma(va1, dLg2_10, -(dN));
     /* ...............Check for overflow\underflow ............. */
     lX = as_ulong(va1); // lX = *(longlong*)&_VARG1
     iAbsX = ((unsigned int)((unsigned long)lX >>
@@ -436,17 +436,17 @@ double __ocl_svml_exp10_ep(double x) {
     lM = as_ulong(dM);                  // lM = *(longlong*)&dM
     lM = ((unsigned long)(lM) << (52)); // lM = lM<<(52-K)
     /* ................... Polynomial .......................... */
-    dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(
+    dN = __spirv_ocl_fma(
         dPC[6], dR, dPC[5]); // dN = dPC[5]+dR*dPC[6]
-    dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dR,
+    dN = __spirv_ocl_fma(dN, dR,
                                                 dPC[4]); // dN = dPC[4]+dR*(...)
-    dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dR,
+    dN = __spirv_ocl_fma(dN, dR,
                                                 dPC[3]); // dN = dPC[3]+dR*(...)
-    dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dR,
+    dN = __spirv_ocl_fma(dN, dR,
                                                 dPC[2]); // dN = dPC[2]+dR*(...)
-    dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dR,
+    dN = __spirv_ocl_fma(dN, dR,
                                                 dPC[1]); // dN = dPC[1]+dR*(...)
-    dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dN, dR,
+    dN = __spirv_ocl_fma(dN, dR,
                                                 dPC[0]); // dN = dPC[0]+dR*(...)
     /* ..................quick 2^N............................... */
     lX = as_ulong(dN);
