@@ -14,6 +14,8 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/STLExtras.h>
+#include <llvm/ADT/DenseMapInfo.h>
+#include <llvm/ADT/Hashing.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/InstIterator.h>
@@ -24,6 +26,29 @@ SPDX-License-Identifier: MIT
 
 using namespace IGC;
 using namespace llvm;
+
+namespace llvm {
+template<>
+struct DenseMapInfo<IGC::AllocationLivenessAnalyzer::LivenessData::Edge> {
+  using Edge = IGC::AllocationLivenessAnalyzer::LivenessData::Edge;
+
+  static inline Edge getEmptyKey() {
+    return Edge{ DenseMapInfo<BasicBlock *>::getEmptyKey(), DenseMapInfo<BasicBlock *>::getEmptyKey() };
+  }
+
+  static inline Edge getTombstoneKey() {
+    return Edge{ DenseMapInfo<BasicBlock *>::getTombstoneKey(), DenseMapInfo<BasicBlock *>::getTombstoneKey() };
+  }
+
+  static unsigned getHashValue(const Edge &E) {
+    return (unsigned)hash_combine(E.from, E.to);
+  }
+
+  static bool isEqual(const Edge &LHS, const Edge &RHS) {
+    return LHS == RHS;
+  }
+};
+} // namespace llvm
 
 void InlineRaytracing::getAdditionalAnalysisUsage(AnalysisUsage &AU) const { AU.addRequired<CodeGenContextWrapper>(); }
 
@@ -771,8 +796,7 @@ void InlineRaytracing::StopAndStartRayquery(RTBuilder &IRB, Instruction *I, Valu
   }
 }
 
-void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessDataMap &livenessDataMap,
-                                                    DominatorTree &DT, LoopInfo &LI) {
+void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessDataMap &livenessDataMap) {
   RTBuilder IRB(&*F.getEntryBlock().begin(), *m_pCGCtx);
 
   SmallVector<Instruction *> continuationInstructions;
@@ -800,108 +824,122 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
       m_pCGCtx->platform.enableRayQueryThrottling(m_pCGCtx->getModuleMetaData()->compOpt.EnableDynamicRQManagement) &&
       m_numSlotsUsed == 1;
 
+  MapVector<Instruction *, SmallVector<std::function<void(RTBuilder &)>>> instructionClosures;
+  MapVector<LivenessData::Edge, SmallVector<std::function<void(RTBuilder &)>>> edgeClosures;
+
   for (auto &entry : livenessDataMap) {
-    bool cfgChanged = false;
 
     auto *rqObject = entry.first;
     auto *LD = &entry.second;
 
     // process the allocation acquire point
     // handle rayquery check
-    if (doRQCheckRelease) {
-      // check before the allocation is acquired
-      IRB.SetInsertPoint(LD->lifetimeStart);
-      IRB.CreateRayQueryCheckIntrinsic();
-    }
+    instructionClosures[LD->lifetimeStart].push_back([this, doRQCheckRelease](RTBuilder &IRB) {
+
+      if (doRQCheckRelease)
+        IRB.CreateRayQueryCheckIntrinsic();
+    });
 
     // process the allocation release points
     for (auto *I : LD->lifetimeEndInstructions) {
-      IRB.SetInsertPoint(isa<ReturnInst>(I) ? I : I->getNextNode());
 
-      auto *stackPtr = getStackPtr(IRB, IRB.Insert(rqObject->clone()));
+      instructionClosures[isa<ReturnInst>(I) ? I : I->getNextNode()].push_back(
+          [this, rqObject, doRQCheckRelease](RTBuilder &IRB) {
 
-      // handle cache control
-      InsertCacheControl(IRB, stackPtr);
+            auto *stackPtr = getStackPtr(IRB, IRB.Insert(rqObject->clone()));
 
-      // handle rayquery release
-      if (doRQCheckRelease)
-        IRB.CreateRayQueryReleaseIntrinsic();
+            // handle cache control
+            InsertCacheControl(IRB, stackPtr);
 
-      IGC_ASSERT(DT.dominates(LD->lifetimeStart, I));
+            // handle rayquery release
+            if (doRQCheckRelease)
+              IRB.CreateRayQueryReleaseIntrinsic();
+          });
     }
 
-    for (const auto &[from, to] : LD->lifetimeEndEdges) {
-      auto *succ = to;
-      // to avoid multiple executions of rayquery release instructions,
-      // we need to ensure that the "to" block has a single predecessor
-      if (!to->getSinglePredecessor()) {
-        succ = SplitEdge(from, succ);
+    for (const auto &edge : LD->lifetimeEndEdges) {
 
-        // we invalidated other the liveness data for other instructions
-        cfgChanged = true;
-      }
+      edgeClosures[edge].push_back([this, rqObject, doRQCheckRelease](RTBuilder &IRB) {
 
-      IRB.SetInsertPoint(succ->getFirstNonPHI());
+        auto *stackPtr = getStackPtr(IRB, IRB.Insert(rqObject->clone()));
 
-      auto *stackPtr = getStackPtr(IRB, IRB.Insert(rqObject->clone()));
+        // handle cache control
+        InsertCacheControl(IRB, stackPtr);
 
-      // handle cache control
-      InsertCacheControl(IRB, stackPtr);
-
-      // handle rayquery release
-      if (doRQCheckRelease)
-        IRB.CreateRayQueryReleaseIntrinsic();
-
-      IGC_ASSERT(DT.dominates(LD->lifetimeStart, succ));
+        // handle rayquery release
+        if (doRQCheckRelease)
+          IRB.CreateRayQueryReleaseIntrinsic();
+      });
     }
 
     // handle continuation instructions
     for (auto *I : continuationInstructions) {
+
       if (!LD->ContainsInstruction(*I))
         continue;
 
-      IRB.SetInsertPoint(I);
-        StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), true, doRQCheckRelease);
+      instructionClosures[I].push_back([this, rqObject, doRQCheckRelease, I](RTBuilder &IRB) {
+
+          StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), true, doRQCheckRelease);
+      });
     }
 
     // handle indirect calls
     for (auto *I : indirectCallInstructions) {
+
       if (!LD->ContainsInstruction(*I))
         continue;
 
-      IRB.SetInsertPoint(I);
-      StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), true, doRQCheckRelease);
+      instructionClosures[I].push_back([this, rqObject, doRQCheckRelease, I](RTBuilder &IRB) {
+
+        StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), true, doRQCheckRelease);
+      });
     }
 
     // handle hidden control flow instructions
     for (auto *I : hiddenCFInstructions) {
+
       if (!LD->ContainsInstruction(*I))
         continue;
 
-      IRB.SetInsertPoint(I);
-      StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), true, doRQCheckRelease);
+      instructionClosures[I].push_back([this, rqObject, doRQCheckRelease, I](RTBuilder &IRB) {
+
+        StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), true, doRQCheckRelease);
+      });
     }
 
     // handle barriers
     for (auto *I : barrierInstructions) {
+
       if (!LD->ContainsInstruction(*I))
         continue;
 
-      IRB.SetInsertPoint(I);
-      StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), false, doRQCheckRelease);
+      instructionClosures[I].push_back([this, rqObject, doRQCheckRelease, I](RTBuilder &IRB) {
+
+        StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), false, doRQCheckRelease);
+      });
     }
+  }
 
-    if (cfgChanged) {
-      auto nextentry = livenessDataMap.find(rqObject);
+  for (const auto [I, closures] : instructionClosures) {
 
-      // TODO: can we incrementally update LoopInfo and DomTree?
-      DT.recalculate(F);
+    IRB.SetInsertPoint(I);
+    for (const auto c : closures)
+      c(IRB);
+  }
 
-      getAnalysis<LoopInfoWrapperPass>().releaseMemory();
-      getAnalysis<LoopInfoWrapperPass>().runOnFunction(F);
-      while (++nextentry != livenessDataMap.end())
-        nextentry->second = ProcessInstruction(nextentry->first, DT, getAnalysis<LoopInfoWrapperPass>().getLoopInfo());
-    }
+  for (const auto [edge, closures] : edgeClosures) {
+
+    auto *succ = edge.to;
+    // to avoid multiple executions of rayquery release instructions,
+    // we need to ensure that the "to" block has a single predecessor
+    if (!edge.to->getSinglePredecessor())
+      succ = SplitEdge(edge.from, succ);
+
+    IRB.SetInsertPoint(succ->getFirstNonPHI());
+
+    for (const auto c : closures)
+      c(IRB);
   }
 }
 
@@ -971,7 +1009,7 @@ bool InlineRaytracing::runOnFunction(Function &F) {
 
   auto livenessData = AnalyzeLiveness(F, DT, LI);
   AssignSlots(F, livenessData);
-  HandleOptimizationsAndSpills(F, livenessData, DT, LI);
+  HandleOptimizationsAndSpills(F, livenessData);
   LowerSlotAssignments(F);
   LowerStackPtrs(F);
 

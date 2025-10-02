@@ -30,6 +30,9 @@ public:
     struct Edge {
       llvm::BasicBlock *from;
       llvm::BasicBlock *to;
+
+      bool operator==(const Edge &other) const { return from == other.from && to == other.to; }
+      bool operator!=(const Edge &other) const { return !(other == *this); }
     };
 
     llvm::SmallVector<Edge> lifetimeEndEdges;

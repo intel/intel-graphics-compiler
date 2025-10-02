@@ -44,8 +44,7 @@ private:
   bool LowerAllocations(llvm::Function &F);
   LivenessDataMap AnalyzeLiveness(llvm::Function &F, llvm::DominatorTree &DT, llvm::LoopInfo &LI);
   void AssignSlots(llvm::Function &F, const LivenessDataMap &livenessDataMap);
-  void HandleOptimizationsAndSpills(llvm::Function &F, LivenessDataMap &livenessDataMap, llvm::DominatorTree &DT,
-                                    llvm::LoopInfo &LI);
+  void HandleOptimizationsAndSpills(llvm::Function &F, LivenessDataMap &livenessDataMap);
   void LowerSlotAssignments(llvm::Function &F);
   void LowerStackPtrs(llvm::Function &F);
 
