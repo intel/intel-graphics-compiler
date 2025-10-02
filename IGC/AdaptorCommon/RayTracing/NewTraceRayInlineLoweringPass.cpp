@@ -142,7 +142,7 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
         switch (II->getOpcode()) {
         case Instruction::Store: {
           auto *storeI = cast<StoreInst>(II);
-          if (storeI->getValueOperand() == use->get()) {
+          if (storeI->getValueOperand() == use->get() && v2vMap.count(storeI->getPointerOperand()) == 0) {
             SmallVector<Instruction *> origins;
             auto hasOrigins = Provenance::tryFindPointerOrigin(storeI->getPointerOperand(), origins);
 
@@ -157,7 +157,8 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
                                         cast<ArrayType>(array->getAllocatedType())->getNumElements());
 
               IRB.SetInsertPoint(array);
-              auto *newArray = IRB.CreateAlloca(ty, nullptr, array->getName(), array->getAddressSpace());
+              auto *newArray = IRB.CreateAlloca(ty, nullptr, VALUE_NAME("RQObjectArrayAlloca_") + array->getName(),
+                                                array->getAddressSpace());
               v2vMap[array] = newArray;
 
               llvm::for_each(array->uses(), [&worklist](Use &U) { worklist.push_back(&U); });
@@ -180,12 +181,14 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
           SmallVector<Value *> indices(cast<GetElementPtrInst>(II)->indices());
 
           IRB.SetInsertPoint(II);
-          v2vMap[II] = IRB.CreateInBoundsGEP(array->getAllocatedType(), array, indices, II->getName());
+          v2vMap[II] = IRB.CreateInBoundsGEP(array->getAllocatedType(), array, indices,
+                                             VALUE_NAME("RQObjectGEP_") + II->getName());
           llvm::for_each(II->uses(), [&worklist](Use &U) { worklist.push_back(&U); });
         } break;
         case Instruction::Load:
           IRB.SetInsertPoint(II);
-          v2vMap[II] = IRB.CreateLoad(m_RQObjectType->getPointerTo(), v2vMap[II->getOperand(0)], II->getName());
+          v2vMap[II] = IRB.CreateLoad(m_RQObjectType->getPointerTo(), v2vMap[II->getOperand(0)],
+                                      VALUE_NAME("RQObjectLoad_") + II->getName());
           llvm::for_each(II->uses(), [&worklist](Use &U) { worklist.push_back(&U); });
           break;
         case Instruction::Select:
@@ -194,8 +197,8 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
             continue;
 
           IRB.SetInsertPoint(II);
-          v2vMap[II] =
-              IRB.CreateSelect(II->getOperand(0), v2vMap[II->getOperand(1)], v2vMap[II->getOperand(2)], II->getName());
+          v2vMap[II] = IRB.CreateSelect(II->getOperand(0), v2vMap[II->getOperand(1)], v2vMap[II->getOperand(2)],
+                                        VALUE_NAME("RQObjectSelect_") + II->getName());
           llvm::for_each(II->uses(), [&worklist](Use &U) { worklist.push_back(&U); });
           break;
         default:
@@ -207,6 +210,40 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
   }
 
   RemapFunction(F, v2vMap, RF_IgnoreMissingLocals | RF_ReuseAndMutateDistinctMDs);
+
+  DenseSet<Instruction *> canBeDeleted;
+
+  // try to remove as many of unused instructions as possible
+  for (auto [from, _] : v2vMap) {
+
+    if (auto *I = dyn_cast<Instruction>(const_cast<Value *>(from))) {
+
+      if (I->getType()->isVoidTy())
+        continue;
+
+      if (isa<CallBase>(I))
+        continue;
+
+      canBeDeleted.insert(I);
+    }
+  }
+
+  while (!canBeDeleted.empty()) {
+
+    bool changed = false;
+    for (auto *V : canBeDeleted) {
+
+      if (V->use_empty()) {
+
+        canBeDeleted.erase(V);
+        cast<Instruction>(V)->eraseFromParent();
+        changed = true;
+        break;
+      }
+    }
+    if (!changed) // no progress has been done
+      break;
+  }
 
   return true;
 }
