@@ -2303,9 +2303,8 @@ int IR_Builder::translateVISAInvmRsqtmInst(
     src1RR = operandToDirectSrcRegRegion(
         *this, src1Opnd, G4_ExecSize(element_size), instExecSize);
 
-  bool needsSrc0Move =
-       (src0RR->getModifier() != Mod_src_undef ||
-        (!src0RR->isScalar() && !tryToAlignOperand(src0RR, getGRFSize())));
+  bool needsSrc0Move = (src0RR->getModifier() != Mod_src_undef ||
+                        !tryToAlignOperand(src0RR, getGRFSize()));
   if (needsSrc0Move) {
     G4_Declare *tsrc0 =
         createTempVarWithNoSpill(element_size, Ty, getGRFAlign());
@@ -2316,10 +2315,8 @@ int IR_Builder::translateVISAInvmRsqtmInst(
     src0RR = createSrcRegRegion(tsrc0, element_size == 1 ? getRegionScalar()
                                                          : getRegionStride1());
   }
-  bool needsSrc1Move =
-      (src1RR &&
-       (src1RR->getModifier() != Mod_src_undef ||
-        (!src1RR->isScalar() && !tryToAlignOperand(src1RR, getGRFSize()))));
+  bool needsSrc1Move = (src1RR && (src1RR->getModifier() != Mod_src_undef ||
+                                   !tryToAlignOperand(src1RR, getGRFSize())));
   if (needsSrc1Move) {
     G4_Declare *tsrc1 =
         createTempVarWithNoSpill(element_size, Ty, getGRFAlign());
