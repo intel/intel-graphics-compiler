@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE cospi( float x )
 {
-    return SPIRV_OCL_BUILTIN(cospi, _f32, )( x );
+    return __spirv_ocl_cospi( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cospi, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cospi, float, float )
 
 INLINE double OVERLOADABLE cospi( double x )
 {
-    return SPIRV_OCL_BUILTIN(cospi, _f64, )( x );
+    return __spirv_ocl_cospi( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cospi, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cospi, double, double )
 
 INLINE half OVERLOADABLE cospi( half x )
 {
-    return SPIRV_OCL_BUILTIN(cospi, _f16, )( x );
+    return __spirv_ocl_cospi( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cospi, half, half )

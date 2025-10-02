@@ -21,13 +21,13 @@ uint __intel_get_local_linear_id( void );
 #define DEFN_WORK_GROUP_REDUCE_UNSIGNED_ADD(type, abbr_type)                                               \
 INLINE u##type OVERLOADABLE work_group_reduce_add(u##type x)                                               \
 {                                                                                                          \
-    return SPIRV_BUILTIN(GroupIAdd, _i32_i32_##abbr_type, )(Workgroup,GroupOperationReduce, as_##type(x)); \
+    return __spirv_GroupIAdd(Workgroup,GroupOperationReduce, as_##type(x)); \
 }
 
 #define DEFN_WORK_GROUP_REDUCE(type, op_name, new_name, abbr_type)                           \
 INLINE type OVERLOADABLE work_group_reduce_##op_name(type x)                                 \
 {                                                                                            \
-    return SPIRV_BUILTIN(new_name, _i32_i32_##abbr_type, )(Workgroup,GroupOperationReduce,x);\
+    return __spirv_##new_name(Workgroup,GroupOperationReduce,x);\
 }
 
 DEFN_WORK_GROUP_REDUCE(int,    max, GroupSMax, i32)
@@ -59,13 +59,13 @@ DEFN_WORK_GROUP_REDUCE(double, min, GroupFMin, f64)
 #define DEFN_WORK_GROUP_SCAN_INCL_UNSIGNED_ADD(type, abbr_type)                                                    \
 INLINE u##type OVERLOADABLE work_group_scan_inclusive_add(u##type x)                                               \
 {                                                                                                                  \
-    return SPIRV_BUILTIN(GroupIAdd, _i32_i32_##abbr_type, )(Workgroup,GroupOperationInclusiveScan, as_##type(x));  \
+    return __spirv_GroupIAdd(Workgroup,GroupOperationInclusiveScan, as_##type(x));  \
 }
 
 #define DEFN_WORK_GROUP_SCAN_INCL(type, op_name, new_name, abbr_type)                                 \
 INLINE type OVERLOADABLE work_group_scan_inclusive_##op_name(type x)                                  \
 {                                                                                                     \
-    return SPIRV_BUILTIN(new_name, _i32_i32_##abbr_type, )(Workgroup,GroupOperationInclusiveScan,x);  \
+    return __spirv_##new_name(Workgroup,GroupOperationInclusiveScan,x);  \
 }
 
 DEFN_WORK_GROUP_SCAN_INCL(int,    max, GroupSMax, i32)
@@ -97,13 +97,13 @@ DEFN_WORK_GROUP_SCAN_INCL(double, min, GroupFMin, f64)
 #define DEFN_WORK_GROUP_SCAN_EXCL_UNSIGNED_ADD(type, abbr_type)                                 \
 INLINE u##type OVERLOADABLE work_group_scan_exclusive_add(u##type x)                            \
 {                                                                                               \
-    return SPIRV_BUILTIN(GroupIAdd, _i32_i32_##abbr_type, )(Workgroup,GroupOperationExclusiveScan, as_##type(x));\
+    return __spirv_GroupIAdd(Workgroup,GroupOperationExclusiveScan, as_##type(x));\
 }
 
 #define DEFN_WORK_GROUP_SCAN_EXCL(type, op_name, new_name, abbr_type)                           \
 INLINE type OVERLOADABLE work_group_scan_exclusive_##op_name(type x)                            \
 {                                                                                               \
-    return SPIRV_BUILTIN(new_name, _i32_i32_##abbr_type, )(Workgroup,GroupOperationExclusiveScan,x);\
+    return __spirv_##new_name(Workgroup,GroupOperationExclusiveScan,x);\
 }
 
 DEFN_WORK_GROUP_SCAN_EXCL(int,    max, GroupSMax, i32)
@@ -135,25 +135,25 @@ DEFN_WORK_GROUP_SCAN_EXCL(double, min, GroupFMin, f64)
 #define DEFN_SUB_GROUP_REDUCE_UNSIGNED_ADD(type, abbr_type)                                                \
 INLINE u##type OVERLOADABLE sub_group_reduce_add(u##type x)                                                \
 {                                                                                                          \
-    return SPIRV_BUILTIN(GroupIAdd, _i32_i32_##abbr_type, )(Subgroup,GroupOperationReduce, as_##type(x));  \
+    return __spirv_GroupIAdd(Subgroup,GroupOperationReduce, as_##type(x));  \
 }
 
 #define DEFN_SUB_GROUP_REDUCE(type, op_name, new_name, abbr_type)                             \
 INLINE type OVERLOADABLE sub_group_reduce_##op_name(type x)                                   \
 {                                                                                             \
-    return SPIRV_BUILTIN(new_name, _i32_i32_##abbr_type, )(Subgroup,GroupOperationReduce,x);  \
+    return __spirv_##new_name(Subgroup,GroupOperationReduce,x);  \
 }
 
 #define DEFN_INTEL_SUB_GROUP_REDUCE_UNSIGNED_ADD(type, abbr_type)                                          \
 INLINE u##type OVERLOADABLE intel_sub_group_reduce_add(u##type x)                                          \
 {                                                                                                          \
-    return SPIRV_BUILTIN(GroupIAdd, _i32_i32_##abbr_type, )(Subgroup,GroupOperationReduce, as_##type(x));  \
+    return __spirv_GroupIAdd(Subgroup,GroupOperationReduce, as_##type(x));  \
 }
 
 #define DEFN_INTEL_SUB_GROUP_REDUCE(type, op_name, new_name, abbr_type)                       \
 INLINE type OVERLOADABLE intel_sub_group_reduce_##op_name(type x)                             \
 {                                                                                             \
-    return SPIRV_BUILTIN(new_name, _i32_i32_##abbr_type, )(Subgroup,GroupOperationReduce,x);  \
+    return __spirv_##new_name(Subgroup,GroupOperationReduce,x);  \
 }
 
 // 8bit
@@ -222,25 +222,25 @@ DEFN_SUB_GROUP_REDUCE(double, min, GroupFMin, f64)
 #define DEFN_SUB_GROUP_SCAN_INCL_UNSIGNED_ADD(type, abbr_type)                                                    \
 INLINE u##type OVERLOADABLE sub_group_scan_inclusive_add(u##type x)                                               \
 {                                                                                                                 \
-    return SPIRV_BUILTIN(GroupIAdd, _i32_i32_##abbr_type, )(Subgroup,GroupOperationInclusiveScan, as_##type(x));  \
+    return __spirv_GroupIAdd(Subgroup,GroupOperationInclusiveScan, as_##type(x));  \
 }
 
 #define DEFN_SUB_GROUP_SCAN_INCL(type, op_name, new_name, abbr_type)                                 \
 INLINE type OVERLOADABLE sub_group_scan_inclusive_##op_name(type x)                                  \
 {                                                                                                    \
-    return SPIRV_BUILTIN(new_name, _i32_i32_##abbr_type, )(Subgroup,GroupOperationInclusiveScan,x);  \
+    return __spirv_##new_name(Subgroup,GroupOperationInclusiveScan,x);  \
 }
 
 #define DEFN_INTEL_SUB_GROUP_SCAN_INCL_UNSIGNED_ADD(type, abbr_type)                                              \
 INLINE u##type OVERLOADABLE intel_sub_group_scan_inclusive_add(u##type x)                                         \
 {                                                                                                                 \
-    return SPIRV_BUILTIN(GroupIAdd, _i32_i32_##abbr_type, )(Subgroup,GroupOperationInclusiveScan, as_##type(x));  \
+    return __spirv_GroupIAdd(Subgroup,GroupOperationInclusiveScan, as_##type(x));  \
 }
 
 #define DEFN_INTEL_SUB_GROUP_SCAN_INCL(type, op_name, new_name, abbr_type)                           \
 INLINE type OVERLOADABLE intel_sub_group_scan_inclusive_##op_name(type x)                            \
 {                                                                                                    \
-    return SPIRV_BUILTIN(new_name, _i32_i32_##abbr_type, )(Subgroup,GroupOperationInclusiveScan,x);  \
+    return __spirv_##new_name(Subgroup,GroupOperationInclusiveScan,x);  \
 }
 
 // 8bit
@@ -310,25 +310,25 @@ DEFN_SUB_GROUP_SCAN_INCL(double, min, GroupFMin, f64)
 #define DEFN_SUB_GROUP_SCAN_EXCL_UNSIGNED_ADD(type, abbr_type)                                                    \
 INLINE u##type OVERLOADABLE sub_group_scan_exclusive_add(u##type x)                                               \
 {                                                                                                                 \
-    return SPIRV_BUILTIN(GroupIAdd, _i32_i32_##abbr_type, )(Subgroup,GroupOperationExclusiveScan, as_##type(x));  \
+    return __spirv_GroupIAdd(Subgroup,GroupOperationExclusiveScan, as_##type(x));  \
 }
 
 #define DEFN_SUB_GROUP_SCAN_EXCL(type, op_name, new_name, abbr_type)                                 \
 INLINE type OVERLOADABLE sub_group_scan_exclusive_##op_name(type x)                                  \
 {                                                                                                    \
-    return SPIRV_BUILTIN(new_name, _i32_i32_##abbr_type, )(Subgroup,GroupOperationExclusiveScan,x);  \
+    return __spirv_##new_name(Subgroup,GroupOperationExclusiveScan,x);  \
 }
 
 #define DEFN_INTEL_SUB_GROUP_SCAN_EXCL_UNSIGNED_ADD(type, abbr_type)                                              \
 INLINE u##type OVERLOADABLE intel_sub_group_scan_exclusive_add(u##type x)                                         \
 {                                                                                                                 \
-    return SPIRV_BUILTIN(GroupIAdd, _i32_i32_##abbr_type, )(Subgroup,GroupOperationExclusiveScan, as_##type(x));  \
+    return __spirv_GroupIAdd(Subgroup,GroupOperationExclusiveScan, as_##type(x));  \
 }
 
 #define DEFN_INTEL_SUB_GROUP_SCAN_EXCL(type, op_name, new_name, abbr_type)                           \
 INLINE type OVERLOADABLE intel_sub_group_scan_exclusive_##op_name(type x)                            \
 {                                                                                                    \
-    return SPIRV_BUILTIN(new_name, _i32_i32_##abbr_type, )(Subgroup,GroupOperationExclusiveScan,x);  \
+    return __spirv_##new_name(Subgroup,GroupOperationExclusiveScan,x);  \
 }
 
 // 8bit
@@ -402,7 +402,7 @@ DEFN_SUB_GROUP_SCAN_EXCL(double, min, GroupFMin, f64)
 #define DEFN_SUB_GROUP_NON_UNIFORM_OPERATION(type, spv_type, operation, spv_operation, abbr_type, group_type, spv_group_type)   \
 INLINE type OVERLOADABLE sub_group_non_uniform_##group_type##_##operation(type x)                                               \
 {                                                                                                                               \
-    return SPIRV_BUILTIN(GroupNonUniform##spv_operation, _i32_i32_##abbr_type, )(Subgroup,spv_group_type,as_##spv_type(x));     \
+    return __spirv_GroupNonUniform##spv_operation(Subgroup,spv_group_type,as_##spv_type(x));     \
 }
 #endif // defined(cl_khr_subgroup_non_uniform_arithmetic)
 
@@ -410,7 +410,7 @@ INLINE type OVERLOADABLE sub_group_non_uniform_##group_type##_##operation(type x
 #define DEFN_SUB_GROUP_NON_UNIFORM_CLUSTERED_OPERATION(type, spv_type, operation, spv_operation, abbr_type, group_type, spv_group_type)          \
 INLINE type OVERLOADABLE sub_group_clustered_##group_type##_##operation(type x, uint clustersize)                                                \
 {                                                                                                                                                \
-    return SPIRV_BUILTIN(GroupNonUniform##spv_operation, _i32_i32_##abbr_type##_i32, )(Subgroup, spv_group_type, as_##spv_type(x), clustersize); \
+    return __spirv_GroupNonUniform##spv_operation(Subgroup, spv_group_type, as_##spv_type(x), clustersize); \
 }
 #endif // defined(cl_khr_subgroup_clustered_reduce)
 

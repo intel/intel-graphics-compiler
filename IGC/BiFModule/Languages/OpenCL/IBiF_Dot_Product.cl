@@ -25,23 +25,23 @@ SPDX-License-Identifier: MIT
 #define DEFN_INTEL_DOT_PRODUCT(TYPE_RET, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW)     \
 INLINE TYPE_RET OVERLOADABLE dot(TYPE_ARG1 a, TYPE_ARG2 b)                                                  \
 {                                                                                                           \
-    return SPIRV_BUILTIN(TYPE_SUFFIX##DotKHR, MANGLING_OLD, MANGLING_NEW)(a, b);                            \
+    return __spirv_##TYPE_SUFFIX##DotKHR##MANGLING_NEW(a, b);                            \
 }
 
 #define DEFN_INTEL_DOT_PRODUCT_SAT(TYPE_RET, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW)     \
 INLINE TYPE_RET OVERLOADABLE dot_acc_sat(TYPE_ARG1 a, TYPE_ARG2 b, TYPE_RET acc)                                \
 {                                                                                                               \
-    return SPIRV_BUILTIN(TYPE_SUFFIX##DotAccSatKHR, MANGLING_OLD, MANGLING_NEW)(a, b, acc);                     \
+    return __spirv_##TYPE_SUFFIX##DotAccSatKHR##MANGLING_NEW(a, b, acc);                     \
 }
 
 #define DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(TYPE_RET, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW, TYPE_SUFFIX_IB)     \
-TYPE_RET SPIRV_OVERLOADABLE SPIRV_BUILTIN(TYPE_SUFFIX##DotKHR, MANGLING_OLD, MANGLING_NEW)(TYPE_ARG1 a, TYPE_ARG2 b)                      \
+TYPE_RET __attribute__((overloadable)) __spirv_##TYPE_SUFFIX##DotKHR##MANGLING_NEW(TYPE_ARG1 a, TYPE_ARG2 b)                      \
 {                                                                                                                                         \
     return __builtin_IB_dp4a_##TYPE_SUFFIX_IB(0, as_int(a), as_int(b), false);                                                            \
 }
 
 #define DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(TYPE_RET, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW, TYPE_SUFFIX_IB) \
-TYPE_RET SPIRV_OVERLOADABLE SPIRV_BUILTIN(TYPE_SUFFIX##DotAccSatKHR, MANGLING_OLD, MANGLING_NEW)(TYPE_ARG1 a, TYPE_ARG2 b, TYPE_RET acc)  \
+TYPE_RET __attribute__((overloadable)) __spirv_##TYPE_SUFFIX##DotAccSatKHR##MANGLING_NEW(TYPE_ARG1 a, TYPE_ARG2 b, TYPE_RET acc)  \
 {                                                                                                                                         \
     return __builtin_IB_dp4a_##TYPE_SUFFIX_IB(acc, as_int(a), as_int(b), true);                                                           \
 }
@@ -49,23 +49,23 @@ TYPE_RET SPIRV_OVERLOADABLE SPIRV_BUILTIN(TYPE_SUFFIX##DotAccSatKHR, MANGLING_OL
 #define DEFN_INTEL_DOT_PRODUCT_US(TYPE_RET, TYPE_ARG, MANGLING_OLD, MANGLING_NEW)     \
 INLINE TYPE_RET OVERLOADABLE dot(u##TYPE_ARG a, TYPE_ARG b)                           \
 {                                                                                     \
-    return SPIRV_BUILTIN(SUDotKHR, MANGLING_OLD, MANGLING_NEW)(b, a);                 \
+    return __spirv_##SUDotKHR##MANGLING_NEW(b, a);                 \
 }
 
 #define DEFN_INTEL_DOT_PRODUCT_SAT_US(TYPE_RET, TYPE_ARG, MANGLING_OLD, MANGLING_NEW)        \
 INLINE TYPE_RET OVERLOADABLE dot_acc_sat(u##TYPE_ARG a, TYPE_ARG b, TYPE_RET acc)            \
 {                                                                                            \
-    return SPIRV_BUILTIN(SUDotAccSatKHR, MANGLING_OLD, MANGLING_NEW)(b, a, acc);             \
+    return __spirv_##SUDotAccSatKHR##MANGLING_NEW(b, a, acc);             \
 }
 
 #define DEFN_INTEL_DOT_PRODUCT_PACKED_BUILTIN_SPIRV(TYPE_RET, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW, TYPE_SUFFIX_IB)     \
-TYPE_RET SPIRV_OVERLOADABLE SPIRV_BUILTIN(TYPE_SUFFIX##DotKHR, MANGLING_OLD, MANGLING_NEW)(TYPE_ARG1 a, TYPE_ARG2 b, TYPE_ARG1 packed)           \
+TYPE_RET __attribute__((overloadable)) __spirv_##TYPE_SUFFIX##DotKHR##MANGLING_NEW(TYPE_ARG1 a, TYPE_ARG2 b, TYPE_ARG1 packed)           \
 {                                                                                                                                                \
     return __builtin_IB_dp4a_##TYPE_SUFFIX_IB(0, as_int(a), as_int(b), false);                                                                   \
 }
 
 #define DEFN_INTEL_DOT_PRODUCT_SAT_PACKED_BUILTIN_SPIRV(TYPE_RET, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW, TYPE_SUFFIX_IB)           \
-TYPE_RET SPIRV_OVERLOADABLE SPIRV_BUILTIN(TYPE_SUFFIX##DotAccSatKHR, MANGLING_OLD, MANGLING_NEW)(TYPE_ARG1 a, TYPE_ARG2 b, TYPE_RET acc, TYPE_ARG1 packed) \
+TYPE_RET __attribute__((overloadable)) __spirv_##TYPE_SUFFIX##DotAccSatKHR##MANGLING_NEW(TYPE_ARG1 a, TYPE_ARG2 b, TYPE_RET acc, TYPE_ARG1 packed) \
 {                                                                                                                                                          \
     return __builtin_IB_dp4a_##TYPE_SUFFIX_IB(acc, as_int(a), as_int(b), true);                                                                              \
 }
@@ -73,25 +73,25 @@ TYPE_RET SPIRV_OVERLOADABLE SPIRV_BUILTIN(TYPE_SUFFIX##DotAccSatKHR, MANGLING_OL
 #define DEFN_INTEL_DOT_PRODUCT_PACKED(TYPE_RET, ARG_TYPES, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW)     \
 INLINE TYPE_RET OVERLOADABLE dot_4x8packed_##ARG_TYPES##_##TYPE_RET(uint a, uint b)                     \
 {                                                                                                       \
-    return SPIRV_BUILTIN(TYPE_SUFFIX##DotKHR, MANGLING_OLD, MANGLING_NEW)(a, b, 0);                     \
+    return __spirv_##TYPE_SUFFIX##DotKHR##MANGLING_NEW(a, b, 0);                     \
 }
 
 #define DEFN_INTEL_DOT_PRODUCT_SAT_PACKED(TYPE_RET, TYPE_SUFFIX, ARG_TYPES, MANGLING_OLD, MANGLING_NEW)        \
 INLINE TYPE_RET OVERLOADABLE dot_acc_sat_4x8_packed_##ARG_TYPES##_##TYPE_RET(uint a, uint b, TYPE_RET acc)     \
 {                                                                                                              \
-    return SPIRV_BUILTIN(TYPE_SUFFIX##DotAccSatKHR, MANGLING_OLD, MANGLING_NEW)(a, b, acc, 0);                 \
+    return __spirv_##TYPE_SUFFIX##DotAccSatKHR##MANGLING_NEW(a, b, acc, 0);                 \
 }
 
 #define DEFN_INTEL_DOT_PRODUCT_PACKED_US                              \
 INLINE int OVERLOADABLE dot_4x8packed_us_int(uint a, uint b)          \
 {                                                                     \
-    return SPIRV_BUILTIN(SUDotKHR, _i32_i32_i32, _Rint)(b, a, 0);     \
+    return __spirv_##SUDotKHR##_Rint(b, a, 0);     \
 }
 
 #define DEFN_INTEL_DOT_PRODUCT_SAT_PACKED_US                                         \
 INLINE int OVERLOADABLE dot_acc_sat_4x8packed_us_int(uint a, uint b, int acc)        \
 {                                                                                    \
-    return SPIRV_BUILTIN(SUDotAccSatKHR, _i32_i32_i32_i32, _Rint)(b, a, acc, 0);     \
+    return __spirv_##SUDotAccSatKHR##_Rint(b, a, acc, 0);     \
 }
 
 DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(uint, uchar4, uchar4, U, _v4i8_v4i8, _Ruint, uu)

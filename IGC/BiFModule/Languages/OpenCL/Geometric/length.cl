@@ -11,48 +11,48 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE length( float p )
 {
-    return SPIRV_OCL_BUILTIN(length, _f32, )( p );
+    return __spirv_ocl_length( p );
 }
 
 // Note: This function is slightly different than hypot().
 // It has fewer checks for NaNs.
 float OVERLOADABLE length( float2 p )
 {
-    return SPIRV_OCL_BUILTIN(length, _v2f32, )( p );
+    return __spirv_ocl_length( p );
 }
 
 float OVERLOADABLE length( float3 p )
 {
-    return SPIRV_OCL_BUILTIN(length, _v3f32, )( p );
+    return __spirv_ocl_length( p );
 }
 
 float OVERLOADABLE length( float4 p )
 {
-    return SPIRV_OCL_BUILTIN(length, _v4f32, )( p );
+    return __spirv_ocl_length( p );
 }
 
 #if defined(cl_khr_fp64)
 
 INLINE double OVERLOADABLE length( double p )
 {
-    return SPIRV_OCL_BUILTIN(length, _f64, )( p );
+    return __spirv_ocl_length( p );
 }
 
 // Note: This function is slightly different than hypot().
 // It has fewer checks for NaNs.
 double OVERLOADABLE length( double2 p )
 {
-    return SPIRV_OCL_BUILTIN(length, _v2f64, )( p );
+    return __spirv_ocl_length( p );
 }
 
 double OVERLOADABLE length( double3 p )
 {
-    return SPIRV_OCL_BUILTIN(length, _v3f64, )( p );
+    return __spirv_ocl_length( p );
 }
 
 double OVERLOADABLE length( double4 p )
 {
-    return SPIRV_OCL_BUILTIN(length, _v4f64, )( p );
+    return __spirv_ocl_length( p );
 }
 
 #endif // defined(cl_khr_fp64)
@@ -61,24 +61,24 @@ double OVERLOADABLE length( double4 p )
 
 INLINE half OVERLOADABLE length( half p )
 {
-    return SPIRV_OCL_BUILTIN(length, _f16, )( p );
+    return __spirv_ocl_length( p );
 }
 
 // Note: This function is slightly different than hypot().
 // It has fewer checks for NaNs.
 half OVERLOADABLE length( half2 p )
 {
-    return SPIRV_OCL_BUILTIN(length, _v2f16, )( p );
+    return __spirv_ocl_length( p );
 }
 
 half OVERLOADABLE length( half3 p )
 {
-    return SPIRV_OCL_BUILTIN(length, _v3f16, )( p );
+    return __spirv_ocl_length( p );
 }
 
 half OVERLOADABLE length( half4 p )
 {
-    return SPIRV_OCL_BUILTIN(length, _v4f16, )( p );
+    return __spirv_ocl_length( p );
 }
 
 #endif // defined(cl_khr_fp16)

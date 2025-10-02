@@ -65,13 +65,13 @@ INLINE uint OVERLOADABLE get_sub_group_local_id( void )
 
 INLINE void OVERLOADABLE sub_group_barrier( cl_mem_fence_flags flags )
 {
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )( Subgroup, 0, AcquireRelease );
+    __spirv_ControlBarrier( Subgroup, 0, AcquireRelease );
 }
 
 #if(__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 INLINE void OVERLOADABLE sub_group_barrier( cl_mem_fence_flags flags, memory_scope scope )
 {
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )( Subgroup, 0, AcquireRelease );
+    __spirv_ControlBarrier( Subgroup, 0, AcquireRelease );
 }
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
@@ -83,7 +83,7 @@ INLINE void OVERLOADABLE sub_group_barrier( cl_mem_fence_flags flags, memory_sco
 #define DEFN_INTEL_SUB_GROUP_SHUFFLE(TYPE, SPIRV_TYPE, TYPE_ABBR)                               \
 INLINE TYPE OVERLOADABLE intel_sub_group_shuffle( TYPE x, uint c )                              \
 {                                                                                               \
-    return SPIRV_BUILTIN(SubgroupShuffleINTEL, _##TYPE_ABBR##_i32, )( as_##SPIRV_TYPE(x), c );  \
+    return __spirv_SubgroupShuffleINTEL( as_##SPIRV_TYPE(x), c );  \
 }
 
 #ifdef cl_intel_subgroups_char
@@ -124,7 +124,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, float,  float,  uin
 #define DEFN_INTEL_SUB_GROUP_SHUFFLE_DOWN(TYPE, SPIRV_TYPE, TYPE_ABBR)                                                                   \
 INLINE TYPE OVERLOADABLE intel_sub_group_shuffle_down(TYPE cur, TYPE next, uint c)                                                       \
 {                                                                                                                                        \
-    return SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _##TYPE_ABBR##_##TYPE_ABBR##_i32, )(as_##SPIRV_TYPE(cur), as_##SPIRV_TYPE(next), c);  \
+    return __spirv_SubgroupShuffleDownINTEL(as_##SPIRV_TYPE(cur), as_##SPIRV_TYPE(next), c);  \
 }
 
 #ifdef cl_intel_subgroups_char
@@ -159,7 +159,7 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, float,  float
 #define DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(TYPE, SPIRV_TYPE, TYPE_ABBR)                                                                   \
 INLINE TYPE OVERLOADABLE  intel_sub_group_shuffle_up( TYPE prev, TYPE cur, uint c )                                                    \
 {                                                                                                                                      \
-    return SPIRV_BUILTIN(SubgroupShuffleUpINTEL, _##TYPE_ABBR##_##TYPE_ABBR##_i32, )( as_##SPIRV_TYPE(prev), as_##SPIRV_TYPE(cur), c); \
+    return __spirv_SubgroupShuffleUpINTEL( as_##SPIRV_TYPE(prev), as_##SPIRV_TYPE(cur), c); \
 }
 
 #ifdef cl_intel_subgroups_char
@@ -194,7 +194,7 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, float,  float, 
 #define DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(TYPE, SPIRV_TYPE, TYPE_ABBR)                             \
 INLINE TYPE OVERLOADABLE  intel_sub_group_shuffle_xor( TYPE x, uint c )                           \
 {                                                                                                 \
-    return SPIRV_BUILTIN(SubgroupShuffleXorINTEL, _##TYPE_ABBR##_i32, )( as_##SPIRV_TYPE(x), c ); \
+    return __spirv_SubgroupShuffleXorINTEL( as_##SPIRV_TYPE(x), c ); \
 }
 
 #ifdef cl_intel_subgroups_char
@@ -299,14 +299,14 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, uchar, uchar, uint 
 INLINE TYPE OVERLOADABLE  sub_group_broadcast( TYPE x, uint sub_group_local_id )                                     \
 {                                                                                                                    \
     int3 local_id = (int3)(sub_group_local_id,0,0);                                                                  \
-    return as_##TYPE(SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_v3i32, )(Subgroup,as_##SPV_TYPE(x),local_id)); \
+    return as_##TYPE(__spirv_GroupBroadcast(Subgroup,as_##SPV_TYPE(x),local_id)); \
 }
 
 #define  DEFN_INTEL_SUB_GROUP_BROADCAST(TYPE, SPV_TYPE, TYPE_ABBR)                                        \
 INLINE TYPE OVERLOADABLE  intel_sub_group_broadcast( TYPE x, uint sub_group_local_id )                    \
 {                                                                                                         \
     int3 local_id = (int3)(sub_group_local_id,0,0);                                                       \
-    return SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_v3i32, )(Subgroup,as_##SPV_TYPE(x),local_id); \
+    return __spirv_GroupBroadcast(Subgroup,as_##SPV_TYPE(x),local_id); \
 }
 
 DEFN_SUB_GROUP_BROADCAST(int,   int,  i32)
@@ -363,34 +363,34 @@ DEFN_INTEL_SUB_GROUP_BROADCAST(uchar, char, i8)
 
 INLINE int OVERLOADABLE sub_group_all( int predicate )
 {
-    return SPIRV_BUILTIN(GroupAll, _i32_i1, )(Subgroup, predicate);
+    return __spirv_GroupAll(Subgroup, predicate);
 }
 
 INLINE int OVERLOADABLE sub_group_any( int predicate )
 {
-    return SPIRV_BUILTIN(GroupAny, _i32_i1, )(Subgroup, predicate);
+    return __spirv_GroupAny(Subgroup, predicate);
 }
 
 #if defined(cl_khr_subgroup_non_uniform_vote)
 INLINE int OVERLOADABLE sub_group_elect()
 {
-    return SPIRV_BUILTIN(GroupNonUniformElect, _i32, )(Subgroup);
+    return __spirv_GroupNonUniformElect(Subgroup);
 }
 
 INLINE int OVERLOADABLE sub_group_non_uniform_all(int predicate)
 {
-    return SPIRV_BUILTIN(GroupNonUniformAll, _i32_i1, )(Subgroup, predicate);
+    return __spirv_GroupNonUniformAll(Subgroup, predicate);
 }
 
 INLINE int OVERLOADABLE sub_group_non_uniform_any(int predicate)
 {
-    return SPIRV_BUILTIN(GroupNonUniformAny, _i32_i1, )(Subgroup, predicate);
+    return __spirv_GroupNonUniformAny(Subgroup, predicate);
 }
 
 #define DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(TYPE, SPV_TYPE, TYPE_ABBR)                                \
 INLINE int OVERLOADABLE sub_group_non_uniform_all_equal(TYPE value)                                    \
 {                                                                                                      \
-    return SPIRV_BUILTIN(GroupNonUniformAllEqual, _i32_##TYPE_ABBR, )(Subgroup, as_##SPV_TYPE(value)); \
+    return __spirv_GroupNonUniformAllEqual(Subgroup, as_##SPV_TYPE(value)); \
 }
 
 DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(char,   char, i8)
@@ -415,11 +415,11 @@ DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(half,   half, f16)
 #define DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE, SPV_TYPE, TYPE_ABBR)                                                              \
 INLINE TYPE OVERLOADABLE sub_group_non_uniform_broadcast(TYPE value, uint index)                                                \
 {                                                                                                                               \
-    return as_##TYPE(SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_##TYPE_ABBR##_i32, )(Subgroup, as_##SPV_TYPE(value), index)); \
+    return as_##TYPE(__spirv_GroupNonUniformBroadcast(Subgroup, as_##SPV_TYPE(value), index)); \
 }                                                                                                                               \
 INLINE TYPE OVERLOADABLE sub_group_broadcast_first(TYPE value)                                                                  \
 {                                                                                                                               \
-    return as_##TYPE(SPIRV_BUILTIN(GroupNonUniformBroadcastFirst, _i32_##TYPE_ABBR, )(Subgroup, as_##SPV_TYPE(value)));         \
+    return as_##TYPE(__spirv_GroupNonUniformBroadcastFirst(Subgroup, as_##SPV_TYPE(value)));         \
 }
 
 #define DEFN_NON_UNIFORM_BROADCAST(TYPE, SPV_TYPE, TYPE_ABBR)            \
@@ -448,67 +448,67 @@ DEFN_NON_UNIFORM_BROADCAST(half,   half,   f16)
 
 INLINE uint4 OVERLOADABLE sub_group_ballot(int predicate)
 {
-    return SPIRV_BUILTIN(GroupNonUniformBallot, _i32_i1, )(Subgroup, predicate);
+    return __spirv_GroupNonUniformBallot(Subgroup, predicate);
 }
 
 INLINE int OVERLOADABLE sub_group_inverse_ballot(uint4 value)
 {
-    return SPIRV_BUILTIN(GroupNonUniformInverseBallot, _i32_v4i32, )(Subgroup, value);
+    return __spirv_GroupNonUniformInverseBallot(Subgroup, value);
 }
 
 INLINE int OVERLOADABLE sub_group_ballot_bit_extract(uint4 value, uint index)
 {
-    return SPIRV_BUILTIN(GroupNonUniformBallotBitExtract, _i32_v4i32_i32, )(Subgroup, value, index);
+    return __spirv_GroupNonUniformBallotBitExtract(Subgroup, value, index);
 }
 
 INLINE uint OVERLOADABLE sub_group_ballot_bit_count(uint4 value)
 {
-    return SPIRV_BUILTIN(GroupNonUniformBallotBitCount, _i32_i32_v4i32, )(Subgroup, GroupOperationReduce, value);
+    return __spirv_GroupNonUniformBallotBitCount(Subgroup, GroupOperationReduce, value);
 }
 
 INLINE uint OVERLOADABLE sub_group_ballot_inclusive_scan(uint4 value)
 {
-    return SPIRV_BUILTIN(GroupNonUniformBallotBitCount, _i32_i32_v4i32, )(Subgroup, GroupOperationInclusiveScan, value);
+    return __spirv_GroupNonUniformBallotBitCount(Subgroup, GroupOperationInclusiveScan, value);
 }
 
 INLINE uint OVERLOADABLE sub_group_ballot_exclusive_scan(uint4 value)
 {
-    return SPIRV_BUILTIN(GroupNonUniformBallotBitCount, _i32_i32_v4i32, )(Subgroup, GroupOperationExclusiveScan, value);
+    return __spirv_GroupNonUniformBallotBitCount(Subgroup, GroupOperationExclusiveScan, value);
 }
 
 INLINE uint OVERLOADABLE sub_group_ballot_find_lsb(uint4 value)
 {
-    return SPIRV_BUILTIN(GroupNonUniformBallotFindLSB, _i32_v4i32, )(Subgroup, value);
+    return __spirv_GroupNonUniformBallotFindLSB(Subgroup, value);
 }
 
 INLINE uint OVERLOADABLE sub_group_ballot_find_msb(uint4 value)
 {
-    return SPIRV_BUILTIN(GroupNonUniformBallotFindMSB, _i32_v4i32, )(Subgroup, value);
+    return __spirv_GroupNonUniformBallotFindMSB(Subgroup, value);
 }
 
 INLINE uint4 OVERLOADABLE get_sub_group_eq_mask()
 {
-    return as_uint4(SPIRV_BUILTIN_NO_OP(BuiltInSubgroupEqMask, , )());
+    return as_uint4(__spirv_BuiltInSubgroupEqMask());
 }
 
 INLINE uint4 OVERLOADABLE get_sub_group_ge_mask()
 {
-    return as_uint4(SPIRV_BUILTIN_NO_OP(BuiltInSubgroupGeMask, , )());
+    return as_uint4(__spirv_BuiltInSubgroupGeMask());
 }
 
 INLINE uint4 OVERLOADABLE get_sub_group_gt_mask()
 {
-    return as_uint4(SPIRV_BUILTIN_NO_OP(BuiltInSubgroupGtMask, , )());
+    return as_uint4(__spirv_BuiltInSubgroupGtMask());
 }
 
 INLINE uint4 OVERLOADABLE get_sub_group_le_mask()
 {
-    return as_uint4(SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLeMask, , )());
+    return as_uint4(__spirv_BuiltInSubgroupLeMask());
 }
 
 INLINE uint4 OVERLOADABLE get_sub_group_lt_mask()
 {
-    return as_uint4(SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLtMask, , )());
+    return as_uint4(__spirv_BuiltInSubgroupLtMask());
 }
 
 #endif // defined(cl_khr_subgroup_ballot)
@@ -794,7 +794,7 @@ DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_ul8, ulong8,
 #define DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(FUNC_POSTFIX, PTR_TYPE, PTR_TYPE_MANGLING, NUM_BYTES) \
 void OVERLOADABLE intel_sub_group_block_prefetch_##FUNC_POSTFIX(const global PTR_TYPE* p)         \
 {                                                                                                 \
-    SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1##PTR_TYPE_MANGLING, )(p, NUM_BYTES);            \
+    __spirv_SubgroupBlockPrefetchINTEL(p, NUM_BYTES);            \
 }
 
 DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(uc,   uchar,  i8, 1)
@@ -1302,11 +1302,11 @@ DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetc
 #define DEFN_SUB_GROUP_SHUFFLE(TYPE, SPV_TYPE, TYPE_ABBR)                                                             \
 INLINE TYPE OVERLOADABLE sub_group_shuffle(TYPE value, uint index)                                                    \
 {                                                                                                                     \
-    return SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_##TYPE_ABBR##_i32, )(Subgroup, as_##SPV_TYPE(value), index);    \
+    return __spirv_GroupNonUniformShuffle(Subgroup, as_##SPV_TYPE(value), index);    \
 }                                                                                                                     \
 INLINE TYPE OVERLOADABLE sub_group_shuffle_xor(TYPE value, uint mask)                                                 \
 {                                                                                                                     \
-    return SPIRV_BUILTIN(GroupNonUniformShuffleXor, _i32_##TYPE_ABBR##_i32, )(Subgroup, as_##SPV_TYPE(value), mask);  \
+    return __spirv_GroupNonUniformShuffleXor(Subgroup, as_##SPV_TYPE(value), mask);  \
 }
 
 DEFN_SUB_GROUP_SHUFFLE(char,   char,   i8)
@@ -1330,11 +1330,11 @@ DEFN_SUB_GROUP_SHUFFLE(half,   half,   f16)
 #define DEFN_SUB_GROUP_SHUFFLE_RELATIVE(TYPE, SPV_TYPE, TYPE_ABBR)                                                      \
 INLINE TYPE OVERLOADABLE sub_group_shuffle_up(TYPE value, uint delta)                                                   \
 {                                                                                                                       \
-    return SPIRV_BUILTIN(GroupNonUniformShuffleUp, _i32_##TYPE_ABBR##_i32, )(Subgroup, as_##SPV_TYPE(value), delta);    \
+    return __spirv_GroupNonUniformShuffleUp(Subgroup, as_##SPV_TYPE(value), delta);    \
 }                                                                                                                       \
 INLINE TYPE OVERLOADABLE sub_group_shuffle_down(TYPE value, uint delta)                                                 \
 {                                                                                                                       \
-    return SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_##TYPE_ABBR##_i32, )(Subgroup, as_##SPV_TYPE(value), delta);  \
+    return __spirv_GroupNonUniformShuffleDown(Subgroup, as_##SPV_TYPE(value), delta);  \
 }
 
 DEFN_SUB_GROUP_SHUFFLE_RELATIVE(char,   char,   i8)

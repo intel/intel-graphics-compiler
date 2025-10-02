@@ -400,37 +400,37 @@ INLINE int OVERLOADABLE IGIL_AcquireQueueSpace( queue_t q, uint numBytes )
 
 INLINE void OVERLOADABLE retain_event(clk_event_t event)
 {
-    SPIRV_BUILTIN(RetainEvent, _i64, )(to_spirv_event(event));
+    __spirv_RetainEvent(to_spirv_event(event));
 }
 
 INLINE void OVERLOADABLE release_event( clk_event_t event )
 {
-    SPIRV_BUILTIN(ReleaseEvent, _i64, )(to_spirv_event(event));
+    __spirv_ReleaseEvent(to_spirv_event(event));
 }
 
 INLINE clk_event_t OVERLOADABLE create_user_event()
 {
-    return to_ocl_event(SPIRV_BUILTIN(CreateUserEvent, , )());
+    return to_ocl_event(__spirv_CreateUserEvent());
 }
 
 INLINE void OVERLOADABLE set_user_event_status( clk_event_t e, int state )
 {
-    SPIRV_BUILTIN(SetUserEventStatus, _i64_i32, )(to_spirv_event(e), state);
+    __spirv_SetUserEventStatus(to_spirv_event(e), state);
 }
 
 INLINE void OVERLOADABLE capture_event_profiling_info(clk_event_t e, clk_profiling_info name, __global void* value)
 {
-    SPIRV_BUILTIN(CaptureEventProfilingInfo, _i64_i32_p1i8, )(to_spirv_event(e), name, value);
+    __spirv_CaptureEventProfilingInfo(to_spirv_event(e), name, value);
 }
 
 INLINE bool OVERLOADABLE is_valid_event (clk_event_t event)
 {
-    return SPIRV_BUILTIN(IsValidEvent, _i64, )(to_spirv_event(event));
+    return __spirv_IsValidEvent(to_spirv_event(event));
 }
 
 INLINE OVERLOADABLE queue_t get_default_queue()
 {
-    return __builtin_astype(SPIRV_BUILTIN(GetDefaultQueue, , )(), queue_t);
+    return __builtin_astype(__spirv_GetDefaultQueue(), queue_t);
 }
 
 #undef exec_offsetof

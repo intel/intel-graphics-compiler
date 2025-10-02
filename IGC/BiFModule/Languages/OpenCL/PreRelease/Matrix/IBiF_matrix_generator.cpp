@@ -776,8 +776,8 @@ static string DefineSmallLoadForAddressSpace(MatrixSpec spec, AddrSpace addr)
     if (addr == AddrSpace_Generic)
     {
         s += "__builtin_assume((__global char*)mem != 0);\n";
-        s += "int memIsGlobal = (0 != SPIRV_BUILTIN(GenericCastToPtrExplicit, "
-             "_p1i8_p4i8_i32, _ToGlobal)(__builtin_astype((mem), __generic char*), "
+        s += "int memIsGlobal = (0 != __spirv_GenericCastToPtrExplicit_ToGlobal("
+             "__builtin_astype((mem), __generic char*), "
              "StorageWorkgroup));\n";
 
         s += "if (memIsGlobal) {\n";
@@ -1122,8 +1122,8 @@ DefineLargeLoadForAddressSpace(MatrixSpec spec, AddrSpace addr, int numLoads)
     if (addr == AddrSpace_Generic)
     {
         s += "__builtin_assume((__global char*)mem != 0);\n";
-        s += "int memIsGlobal = (0 != SPIRV_BUILTIN(GenericCastToPtrExplicit, "
-             "_p1i8_p4i8_i32, _ToGlobal)(__builtin_astype((mem), __generic char*), "
+        s += "int memIsGlobal = (0 != __spirv_GenericCastToPtrExplicit_ToGlobal("
+             "__builtin_astype((mem), __generic char*), "
              "StorageWorkgroup));\n";
 
         s += "if (memIsGlobal) {\n";
@@ -1223,8 +1223,8 @@ static string DefineSpecialLarge1x64AddrSpace(MatrixSpec spec, AddrSpace addr)
     if (addr == AddrSpace_Generic)
     {
         s += "__builtin_assume((__global char*)mem != 0);\n";
-        s += "int memIsGlobal = (0 != SPIRV_BUILTIN(GenericCastToPtrExplicit, "
-             "_p1i8_p4i8_i32, _ToGlobal)(__builtin_astype((mem), __generic char*), "
+        s += "int memIsGlobal = (0 != __spirv_GenericCastToPtrExplicit_ToGlobal"
+             "(__builtin_astype((mem), __generic char*), "
              "StorageWorkgroup));\n";
         s += "if (memIsGlobal) {\n";
         s += implBlock2D;

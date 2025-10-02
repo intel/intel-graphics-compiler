@@ -15,7 +15,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( native_tan, float, float )
 
 INLINE double OVERLOADABLE native_tan( double x )
 {
-    return SPIRV_OCL_BUILTIN(native_tan, _f64, )( x );
+    return __spirv_ocl_native_tan( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( native_tan, double, double )

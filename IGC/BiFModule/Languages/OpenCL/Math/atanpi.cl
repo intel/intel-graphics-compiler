@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE atanpi( float x )
 {
-    return SPIRV_OCL_BUILTIN(atanpi, _f32, )( x );
+    return __spirv_ocl_atanpi( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( atanpi, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( atanpi, float, float )
 
 INLINE double OVERLOADABLE atanpi( double x )
 {
-    return SPIRV_OCL_BUILTIN(atanpi, _f64, )( x );
+    return __spirv_ocl_atanpi( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( atanpi, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( atanpi, double, double )
 
 INLINE half OVERLOADABLE atanpi( half x )
 {
-    return SPIRV_OCL_BUILTIN(atanpi, _f16, )( x );
+    return __spirv_ocl_atanpi( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( atanpi, half, half )

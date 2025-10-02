@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 float OVERLOADABLE degrees( float r )
 {
-    return SPIRV_OCL_BUILTIN(degrees, _f32, )( r );
+    return __spirv_ocl_degrees( r );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( degrees, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( degrees, float, float )
 
 double OVERLOADABLE degrees( double r )
 {
-    return SPIRV_OCL_BUILTIN(degrees, _f64, )( r );
+    return __spirv_ocl_degrees( r );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( degrees, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( degrees, double, double )
 
 half OVERLOADABLE degrees( half r )
 {
-    return SPIRV_OCL_BUILTIN(degrees, _f16, )( r );
+    return __spirv_ocl_degrees( r );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( degrees, half, half )

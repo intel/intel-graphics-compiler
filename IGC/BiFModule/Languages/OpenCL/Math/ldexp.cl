@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 float OVERLOADABLE ldexp( float x, int n )
 {
-    return SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )( x, n );
+    return __spirv_ocl_ldexp( x, n );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV( ldexp, float, float, int )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV( ldexp, float, float, int )
 
 double OVERLOADABLE ldexp( double x, int n )
 {
-    return SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )( x, n );
+    return __spirv_ocl_ldexp( x, n );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV( ldexp, double, double, int )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV( ldexp, double, double, int )
 
 half OVERLOADABLE ldexp( half x, int n )
 {
-    return SPIRV_OCL_BUILTIN(ldexp, _f16_i32, )( x, n );
+    return __spirv_ocl_ldexp( x, n );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV( ldexp, half, half, int )

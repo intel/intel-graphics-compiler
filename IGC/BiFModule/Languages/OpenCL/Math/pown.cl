@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE pown( float x, int y )
 {
-    return SPIRV_OCL_BUILTIN(pown, _f32_i32, )( x, y );
+    return __spirv_ocl_pown( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pown, float, float, int )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pown, float, float, int )
 
 INLINE double OVERLOADABLE pown( double x, int y )
 {
-    return SPIRV_OCL_BUILTIN(pown, _f64_i32, )( x, y );
+    return __spirv_ocl_pown( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pown, double, double, int )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pown, double, double, int )
 
 INLINE half OVERLOADABLE pown( half x, int y )
 {
-    return SPIRV_OCL_BUILTIN(pown, _f16_i32, )( x, y );
+    return __spirv_ocl_pown( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pown, half, half, int )

@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 float OVERLOADABLE erfc( float x )
 {
-    return SPIRV_OCL_BUILTIN(erfc, _f32, )( x );
+    return __spirv_ocl_erfc( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( erfc, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( erfc, float, float )
 
 INLINE double OVERLOADABLE erfc( double x )
 {
-    return SPIRV_OCL_BUILTIN(erfc, _f64, )( x );
+    return __spirv_ocl_erfc( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( erfc, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( erfc, double, double )
 
 INLINE half OVERLOADABLE erfc( half x )
 {
-    return SPIRV_OCL_BUILTIN(erfc, _f16, )( x );
+    return __spirv_ocl_erfc( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( erfc, half, half )

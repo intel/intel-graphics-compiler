@@ -15,7 +15,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( native_exp2, float, float )
 
 INLINE double OVERLOADABLE native_exp2( double x )
 {
-    return SPIRV_OCL_BUILTIN(native_exp2, _f64, )( x );
+    return __spirv_ocl_native_exp2( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( native_exp2, double, double )

@@ -46,11 +46,11 @@ SPDX-License-Identifier: MIT
 INLINE type OVERLOADABLE work_group_broadcast(type a, size_t local_id) {                                    \
     if (sizeof(local_id) == 32) {                                                                           \
         int3 LocalID = (int3)(local_id,0,0);                                                                \
-        return SPIRV_BUILTIN(GroupBroadcast, _i32_##abbr##_v3i32, )(Workgroup, as_##spv_type(a),LocalID);   \
+        return __spirv_GroupBroadcast(Workgroup, as_##spv_type(a),LocalID);   \
     }                                                                                                       \
     else{                                                                                                   \
         long3 LocalID = (long3)(local_id,0,0);                                                              \
-        return SPIRV_BUILTIN(GroupBroadcast, _i32_##abbr##_v3i64, )(Workgroup, as_##spv_type(a),LocalID);   \
+        return __spirv_GroupBroadcast(Workgroup, as_##spv_type(a),LocalID);   \
     }                                                                                                       \
 }
 
@@ -58,11 +58,11 @@ INLINE type OVERLOADABLE work_group_broadcast(type a, size_t local_id) {        
 INLINE type OVERLOADABLE work_group_broadcast(type a, size_t x, size_t y) {                                 \
     if (sizeof(x) == 32) {                                                                                  \
         int3 LocalID = (int3)(x,y,0);                                                                       \
-        return SPIRV_BUILTIN(GroupBroadcast, _i32_##abbr##_v3i32, )(Workgroup, as_##spv_type(a),LocalID);   \
+        return __spirv_GroupBroadcast(Workgroup, as_##spv_type(a),LocalID);   \
     }                                                                                                       \
     else{                                                                                                   \
         long3 LocalID = (long3)(x,y,0);                                                                     \
-        return SPIRV_BUILTIN(GroupBroadcast, _i32_##abbr##_v3i64, )(Workgroup, as_##spv_type(a),LocalID);   \
+        return __spirv_GroupBroadcast(Workgroup, as_##spv_type(a),LocalID);   \
     }                                                                                                       \
 }
 
@@ -70,11 +70,11 @@ INLINE type OVERLOADABLE work_group_broadcast(type a, size_t x, size_t y) {     
 INLINE type OVERLOADABLE work_group_broadcast(type a, size_t x, size_t y, size_t z) {                       \
     if (sizeof(x) == 32) {                                                                                  \
         int3 LocalID = (int3)(x,y,z);                                                                       \
-        return SPIRV_BUILTIN(GroupBroadcast, _i32_##abbr##_v3i32, )(Workgroup, as_##spv_type(a),LocalID);   \
+        return __spirv_GroupBroadcast(Workgroup, as_##spv_type(a),LocalID);   \
     }                                                                                                       \
     else{                                                                                                   \
         long3 LocalID = (long3)(x,y,z);                                                                     \
-        return SPIRV_BUILTIN(GroupBroadcast, _i32_##abbr##_v3i64, )(Workgroup, as_##spv_type(a),LocalID);   \
+        return __spirv_GroupBroadcast(Workgroup, as_##spv_type(a),LocalID);   \
     }                                                                                                       \
 }
 
@@ -105,17 +105,17 @@ WG_BROADCAST_ALL_DEFN(double, double, f64)
 #define ASYNC_COPY(dst, src, num_elements, evt, mangle_string)                  \
 {                                                                               \
   if (sizeof(num_elements) == 32)                                               \
-    return to_ocl_event(SPIRV_BUILTIN(GroupAsyncCopy, _i32##mangle_string##_i32_i32_i64, )(Workgroup,dst,src,(int)num_elements,(int)0,to_spirv_event(evt)));\
+    return to_ocl_event(__spirv_GroupAsyncCopy(Workgroup,dst,src,(int)num_elements,(int)0,to_spirv_event(evt)));\
   else                                                                          \
-    return to_ocl_event(SPIRV_BUILTIN(GroupAsyncCopy, _i32##mangle_string##_i64_i64_i64, )(Workgroup,dst,src,(long)num_elements,(long)0,to_spirv_event(evt)));\
+    return to_ocl_event(__spirv_GroupAsyncCopy(Workgroup,dst,src,(long)num_elements,(long)0,to_spirv_event(evt)));\
 }
 
 #define ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, mangle_string)    \
 {                                                                               \
   if (sizeof(num_elements) == 32)                                               \
-    return to_ocl_event(SPIRV_BUILTIN(GroupAsyncCopy, _i32##mangle_string##_i32_i32_i64, )(Workgroup,dst,src,(int)num_elements,(int)src_stride,to_spirv_event(evt)));\
+    return to_ocl_event(__spirv_GroupAsyncCopy(Workgroup,dst,src,(int)num_elements,(int)src_stride,to_spirv_event(evt)));\
   else                                                                          \
-    return to_ocl_event(SPIRV_BUILTIN(GroupAsyncCopy, _i32##mangle_string##_i64_i64_i64, )(Workgroup,dst,src,(long)num_elements,(long)src_stride,to_spirv_event(evt)));\
+    return to_ocl_event(__spirv_GroupAsyncCopy(Workgroup,dst,src,(long)num_elements,(long)src_stride,to_spirv_event(evt)));\
 }
 
 // ************************  Global to local.*********************************

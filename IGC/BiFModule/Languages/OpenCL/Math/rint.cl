@@ -15,7 +15,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( rint, float, float )
 
 INLINE double OVERLOADABLE rint( double x )
 {
-    return SPIRV_OCL_BUILTIN(rint, _f64, )( x );
+    return __spirv_ocl_rint( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( rint, double, double )

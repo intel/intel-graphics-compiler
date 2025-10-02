@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE int OVERLOADABLE isinf( float x )
 {
-    return SPIRV_BUILTIN(IsInf, _f32, )( x );
+    return __spirv_IsInf( x );
 }
 
 static INLINE int OVERLOADABLE __intel_vector_isinf_helper( float x )
@@ -25,7 +25,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_EXPLICIT( isinf, __intel_vector_isinf_helper, int
 
 INLINE int OVERLOADABLE isinf( double x )
 {
-    return SPIRV_BUILTIN(IsInf, _f64, )( x );
+    return __spirv_IsInf( x );
 }
 
 static INLINE long OVERLOADABLE __intel_vector_isinf_helper( double x )
@@ -41,7 +41,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_EXPLICIT( isinf, __intel_vector_isinf_helper, lon
 
 INLINE int OVERLOADABLE isinf( half x )
 {
-    return SPIRV_BUILTIN(IsInf, _f16, )( x );
+    return __spirv_IsInf( x );
 }
 
 static INLINE short OVERLOADABLE __intel_vector_isinf_helper( half x )

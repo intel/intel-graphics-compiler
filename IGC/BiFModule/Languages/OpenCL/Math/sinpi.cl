@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE sinpi( float x )
 {
-    return SPIRV_OCL_BUILTIN(sinpi, _f32, )( x );
+    return __spirv_ocl_sinpi( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sinpi, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sinpi, float, float )
 
 INLINE double OVERLOADABLE sinpi( double x )
 {
-    return SPIRV_OCL_BUILTIN(sinpi, _f64, )( x );
+    return __spirv_ocl_sinpi( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sinpi, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sinpi, double, double )
 
 INLINE half OVERLOADABLE sinpi( half x )
 {
-    return SPIRV_OCL_BUILTIN(sinpi, _f16, )( x );
+    return __spirv_ocl_sinpi( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sinpi, half, half )

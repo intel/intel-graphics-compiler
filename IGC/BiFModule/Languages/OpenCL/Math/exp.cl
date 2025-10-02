@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 float OVERLOADABLE exp(float x)
 {
-    return SPIRV_OCL_BUILTIN(exp, _f32, )( x );
+    return __spirv_ocl_exp( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( exp, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( exp, float, float )
 
 INLINE double OVERLOADABLE exp( double x )
 {
-    return SPIRV_OCL_BUILTIN(exp, _f64, )( x );
+    return __spirv_ocl_exp( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( exp, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( exp, double, double )
 
 INLINE half OVERLOADABLE exp( half x )
 {
-    return SPIRV_OCL_BUILTIN(exp, _f16, )( x );
+    return __spirv_ocl_exp( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( exp, half, half )

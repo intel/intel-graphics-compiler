@@ -92,6 +92,6 @@ ulong __setBits64(ulong value, ulong slot, uint startBit, uint width)
 global void* __getImplicitDispatchGlobals()
 {
     global char* globalBuffer = __builtin_IB_intel_get_rt_global_buffer();
-    int subDeviceID = SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )();
+    int subDeviceID = __spirv_BuiltInSubDeviceIDINTEL();
     return globalBuffer + subDeviceID * DISPATCH_GLOBALS_STRIDE;
 }
