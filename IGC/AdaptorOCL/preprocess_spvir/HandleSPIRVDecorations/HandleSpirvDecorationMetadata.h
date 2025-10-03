@@ -70,5 +70,7 @@ private:
   void handleCacheControlINTELFor1DBlockIO(llvm::CallInst &I, llvm::SmallPtrSetImpl<llvm::MDNode *> &MDNodes);
   void handleCacheControlINTELForOCL1DBlockPrefetch(llvm::CallInst &I, llvm::SmallPtrSetImpl<llvm::MDNode *> &MDNodes,
                                                     llvm::SmallVectorImpl<llvm::StringRef> &Matches);
+
+  llvm::Type *getArgumentType(std::string demangledName, size_t argNo, llvm::LLVMContext &ctx);
 };
 } // namespace IGC

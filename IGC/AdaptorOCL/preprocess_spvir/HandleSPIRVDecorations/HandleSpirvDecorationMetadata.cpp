@@ -22,6 +22,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Regex.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include <regex>
+
 using namespace llvm;
 using namespace IGC;
 
@@ -38,6 +40,46 @@ char HandleSpirvDecorationMetadata::ID = 0;
 
 HandleSpirvDecorationMetadata::HandleSpirvDecorationMetadata() : ModulePass(ID) {
   initializeHandleSpirvDecorationMetadataPass(*PassRegistry::getPassRegistry());
+}
+
+// Get type from demangled name for both typed and opaque pointers
+// For opaque pointers, we cannot deduce type from ptr
+Type *HandleSpirvDecorationMetadata::getArgumentType(std::string demangledName, size_t argNo, llvm::LLVMContext &ctx) {
+  auto open = demangledName.find('('), close = demangledName.find(')', open);
+  if (open == std::string::npos || close == std::string::npos || close <= open + 1) {
+    IGC_ASSERT_MESSAGE(0, "Unexpected demangled name!");
+    return nullptr;
+  }
+
+  std::stringstream ss(demangledName.substr(open + 1, close - open - 1));
+  std::string arg;
+  std::vector<std::string> args;
+
+  while (std::getline(ss, arg, ',')) {
+    arg.erase(0, arg.find_first_not_of(" \t"));
+    arg.erase(arg.find_last_not_of(" \t") + 1);
+    args.push_back(arg);
+  }
+
+  if (argNo >= args.size()) {
+    IGC_ASSERT_MESSAGE(0, "Provided arg number is greater than or equal to arg.size()!");
+    return nullptr;
+  }
+
+  const auto &a = args[argNo];
+
+  if (std::regex_search(a, std::regex("\\bchar\\b")))
+    return llvm::Type::getInt8Ty(ctx);
+  else if (std::regex_search(a, std::regex("\\bshort\\b")))
+    return llvm::Type::getInt16Ty(ctx);
+  else if (std::regex_search(a, std::regex("\\bint\\b")))
+    return llvm::Type::getInt32Ty(ctx);
+  else if (std::regex_search(a, std::regex("\\blong\\b")))
+    return llvm::Type::getInt64Ty(ctx);
+  else
+    IGC_ASSERT_MESSAGE(0, "Unexpected type!");
+
+  return nullptr;
 }
 
 bool HandleSpirvDecorationMetadata::runOnModule(Module &module) {
@@ -388,7 +430,7 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELFor1DBlockIO(CallInst
   std::string funcName;
   if constexpr (std::is_same_v<T, LoadCacheControl>) {
     if (auto isPrefetch = I.getType()->isVoidTy()) {
-      operationType = IGCLLVM::getNonOpaquePtrEltTy(I.getArgOperand(0)->getType());
+      operationType = getArgumentType(llvm::demangle(F->getName().str()), 0, F->getContext());
       funcName = "SubgroupBlockPrefetchINTEL";
     } else {
       operationType = I.getType();
