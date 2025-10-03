@@ -321,7 +321,7 @@ LLVMContextWrapper::LLVMContextWrapper(bool createResourceDimTypes) : m_UserAddr
   if (WA_OpaquePointersCL && WA_OpaquePointersCL->getNumOccurrences() > 0) {
     IGC_IsPointerModeAlreadySet = true;
   }
-  
+
   if (IGC::canOverwriteLLVMCtxPtrMode(basePtr, IGC_IsPointerModeAlreadySet)) {
     bool enableOpaquePointers = AreOpaquePointersEnabled();
     IGCLLVM::setOpaquePointers(basePtr, enableOpaquePointers);
@@ -389,6 +389,9 @@ void CodeGenContext::print(llvm::raw_ostream &stream) const {
 }
 
 void CodeGenContext::initLLVMContextWrapper(bool createResourceDimTypes) {
+  if (llvmCtxWrapper)
+    llvmCtxWrapper->Release();
+
   llvmCtxWrapper = new LLVMContextWrapper(createResourceDimTypes);
   llvmCtxWrapper->AddRef();
 }
@@ -704,7 +707,11 @@ void CodeGenContext::EmitWarning(const char *warningstr, const llvm::Value *cont
 
 CompOptions &CodeGenContext::getCompilerOption() { return getModuleMetaData()->compOpt; }
 
-void CodeGenContext::resetOnRetry() { m_tempCount = 0; }
+void CodeGenContext::resetOnRetry() {
+  m_tempCount = 0;
+  clear();
+  initLLVMContextWrapper();
+}
 
 int32_t CodeGenContext::getNumThreadsPerEU() const { return -1; }
 
