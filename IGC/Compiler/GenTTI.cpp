@@ -42,6 +42,24 @@ bool GenIntrinsicsTTIImpl::isLoweredToCall(const Function *F) {
 // instructions. Set this to false unless IGC legalization can fix them.
 bool GenIntrinsicsTTIImpl::shouldBuildLookupTables() { return false; }
 
+bool GenIntrinsicsTTIImpl::enablePromoteLoopUnrollwithAlloca() {
+  const IGC::TriboolFlag RK_PromoteLoopUnrollwithAlloca =
+      static_cast<TriboolFlag>(IGC_GET_FLAG_VALUE(ForcePromoteLoopUnrollwithAlloca));
+  switch (RK_PromoteLoopUnrollwithAlloca) {
+  case TriboolFlag::Enabled:
+    return true;
+  case TriboolFlag::Disabled:
+    return false;
+  default:
+    if (ctx->type == ShaderType::OPENCL_SHADER)
+      return false;
+    if (!ctx->platform.isCoreChildOf(IGFX_XE2_HPG_CORE))
+      return false;
+
+    return true;
+  }
+}
+
 void *GenIntrinsicsTTIImpl::getAdjustedAnalysisPointer(const void *ID) {
   if (ID == &TargetTransformInfoWrapperPass::ID)
     return (TargetTransformInfo *)this;
@@ -318,7 +336,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   //       It can potentially do some global cost estimations.
   const unsigned UnrollMaxCountForAlloca = IGC_GET_FLAG_VALUE(PromoteLoopUnrollwithAllocaCountThreshold);
   bool AllocaFound = false;
-  if (MaxTripCount && MaxTripCount <= UnrollMaxCountForAlloca ) {
+  if (MaxTripCount && MaxTripCount <= UnrollMaxCountForAlloca) {
     unsigned int ThresholdBoost = 0;
     for (auto BB : L->blocks()) {
       for (auto &I : *BB) {
@@ -357,13 +375,12 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
       }
     }
     if (AllocaFound) {
-      // LLVM default only to 10, boost to UnrollMaxCountForAlloca
-      UP.MaxIterationsCountToAnalyze = UnrollMaxCountForAlloca;
       UP.UpperBound = true;
       UP.Force = UnrollLoopForCodeSizeOnly ? false : true;
 
-      if (IGC_IS_FLAG_ENABLED(EnablePromoteLoopUnrollwithAlloca) &&
-          ctx->type != ShaderType::OPENCL_SHADER) {
+      if (enablePromoteLoopUnrollwithAlloca()){
+        // LLVM default only to 10, boost to UnrollMaxCountForAlloca
+        UP.MaxIterationsCountToAnalyze = UnrollMaxCountForAlloca;
         UP.Threshold += ThresholdBoost;
         LLVM_DEBUG(dbgs() << "Increasing L:" << L->getName() << " threshold to " << UP.Threshold
                           << " due to Alloca accessed by:");
@@ -648,7 +665,7 @@ llvm::InstructionCost GenIntrinsicsTTIImpl::internalCalculateCost(const User *U,
     }
   }
 
-  if (IGC_IS_FLAG_ENABLED(EnablePromoteLoopUnrollwithAlloca)) {
+  if (enablePromoteLoopUnrollwithAlloca()) {
     const GetElementPtrInst *GEP = nullptr;
     if (Operator::getOpcode(U) == Instruction::Load)
       GEP = dyn_cast<GetElementPtrInst>(cast<LoadInst>(U)->getPointerOperand());

@@ -32,6 +32,7 @@ public:
   DenseMap<Value *, bool> isGEPLoopInduction;
 
   bool shouldBuildLookupTables();
+  bool enablePromoteLoopUnrollwithAlloca();
 
   bool isLoweredToCall(const Function *F);
 

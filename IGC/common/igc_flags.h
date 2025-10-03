@@ -437,7 +437,7 @@ DECLARE_IGC_REGKEY(
     true)
 DECLARE_IGC_REGKEY(bool, UnrollLoopForCodeSizeOnly, false,
                    "Only unroll the loop if it can reduce program size/register pressure. Ignore all other threshold "
-                   "setting but still enable EnablePromoteLoopUnrollwithAlloca due to high likelyhood to reduce size.",
+                   "setting but still enable PromoteLoopUnrollwithAlloca due to high likelyhood to reduce size.",
                    true)
 DECLARE_IGC_REGKEY(DWORD, SetLoopUnrollThreshold, 0,
                    "Set the loop unroll threshold. Value 0 will use the default threshold.", false)
@@ -448,12 +448,14 @@ DECLARE_IGC_REGKEY(DWORD, SetLoopUnrollMaxPercentThresholdBoostForHighRegPressur
                    "Set the loop unroll max allowed threshold boost in percentage for shaders with high reg pressure. "
                    "The LLVM internal value is 400.",
                    false)
-DECLARE_IGC_REGKEY(
-    bool, EnablePromoteLoopUnrollwithAlloca, false,
+DECLARE_IGC_REGKEY_ENUM(ForcePromoteLoopUnrollwithAlloca, -1,
     "Loop cost estimation assumes Load/Store who accesses Alloca with index deductible to loop count having 0 cost. "
     "Disable this flag makes them always cost something as well as disables dynamic threshold increase based on the "
-    "size of alloca and number of GEP to the alloca in the loop, leading to the loop less likely to be unrolled.",
-    false)
+    "size of alloca and number of GEP to the alloca in the loop, leading to the loop less likely to be unrolled."
+    "-1 - default behavior, decided by platforms"
+    " 0 - force disabled"
+    " 1 - force enabled",
+    TRIBOOL_OPTIONS, false)
 DECLARE_IGC_REGKEY(DWORD, PromoteLoopUnrollwithAllocaCountThreshold, 256,
                    "The loop trip count OR number of alloca elements cutoff to stop regkey "
                    "EnablePromoteLoopUnrollwithAlloca (Check regkey description).",
