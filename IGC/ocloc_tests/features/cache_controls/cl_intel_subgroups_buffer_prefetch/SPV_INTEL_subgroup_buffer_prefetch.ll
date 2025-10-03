@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-spirv, regkeys, pvc-supported, llvm-15-or-older
+; REQUIRES: llvm-spirv, regkeys, pvc-supported
 ; UNSUPPORTED: sys32
 
 ; LLVM with opaque pointers:
@@ -20,6 +20,7 @@
 ; COM: Replace SPV_INTEL_subgroups with SPV_INTEL_subgroup_buffer_prefetch once support for prefetches is implemented in the KHR Translator
 ; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_subgroups,+SPV_INTEL_cache_controls -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s
+
 
 target triple = "spir64-unknown-unknown"
 

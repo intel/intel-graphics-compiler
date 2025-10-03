@@ -7,15 +7,12 @@
 ;============================ end_copyright_notice =============================
 
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys, pvc-supported, llvm-15-or-older
-
-; TODO: This test fails on LLVM 16 with opaque pointers, but passes with typed pointers. Once the necessary fixes are made, remove llvm-15-or-older from the list above. llvm-15-or-older was added to the list above to prevent non-zero return from llvm-lit on LLVM 16 build with typed pointers forced.
-; XFAIL: llvm-16-plus
+; REQUIRES: llvm-spirv, regkeys, pvc-supported
 
 ; LLVM with opaque pointers:
-; TODO: llvm-as -opaque-pointers=1 %s -o %t.bc
-; TODO: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_cache_controls,+SPV_INTEL_joint_matrix -o %t.spv
-; TODO: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s
+; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_cache_controls,+SPV_INTEL_joint_matrix -o %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1, DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s
 
 ; LLVM with typed pointers/default pointer typing:
 ; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
@@ -45,7 +42,8 @@ declare spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4diiiil(d
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_1x8(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 1, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 1, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -55,7 +53,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_1x8(i8 addrspace(1)* %src) {
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_1x16(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 1, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 1, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -65,7 +64,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_1x16(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_1x32(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 1, i32 32, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 1, i32 32, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -75,7 +75,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_1x32(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_1x64(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 1, i32 64, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 1, i32 64, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -85,7 +86,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_1x64(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_2x8(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 2, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 2, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -95,7 +97,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_2x8(i8 addrspace(1)* %src) {
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_2x16(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 2, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 2, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -105,7 +108,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_2x16(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_2x32(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 2, i32 32, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 2, i32 32, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -115,7 +119,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_2x32(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_2x64(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 2, i32 64, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 2, i32 64, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -125,7 +130,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_2x64(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_4x8(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 4, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 4, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -135,7 +141,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_4x8(i8 addrspace(1)* %src) {
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_4x16(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 4, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 4, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -145,7 +152,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_4x16(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_4x32(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 4, i32 32, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 4, i32 32, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -155,7 +163,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_4x32(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_4x64(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 4, i32 64, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 4, i32 64, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -165,7 +174,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_4x64(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_8x8(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 8, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 8, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -175,7 +185,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_8x8(i8 addrspace(1)* %src) {
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_8x16(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 8, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 8, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -185,7 +196,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_8x16(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_8x32(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 8, i32 32, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 8, i32 32, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -195,7 +207,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_8x32(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_8x64(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 8, i32 64, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 8, i32 64, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -205,7 +218,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_8x64(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_16x8(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 16, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 16, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -215,7 +229,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_16x8(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_16x16(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 16, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 16, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -225,7 +240,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_16x16(i8 addrspace(1)* %src)
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_16x32(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 16, i32 32, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 16, i32 32, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -235,7 +251,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_16x32(i8 addrspace(1)* %src)
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_16x64(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 16, i32 64, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 16, i32 64, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -245,7 +262,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_16x64(i8 addrspace(1)* %src)
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_32x8(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 32, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 32, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -255,7 +273,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_32x8(i8 addrspace(1)* %src) 
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_32x16(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 32, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 32, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -265,7 +284,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_32x16(i8 addrspace(1)* %src)
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_32x32(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 32, i32 32, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 32, i32 32, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -275,7 +295,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_32x32(i8 addrspace(1)* %src)
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize1B_32x64(i8 addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %src, i32 32, i32 64, i32 1, i32 0, i64 64)
+  %gep = getelementptr i8, i8 addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4ciiiil(i8 addrspace(1)* %gep, i32 32, i32 64, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -285,7 +306,8 @@ define spir_kernel void @TestPrefetch_ElementSize1B_32x64(i8 addrspace(1)* %src)
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_1x8(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 1, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 1, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -295,7 +317,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_1x8(%"class.sycl::_V1::ext::
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_1x16(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 1, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 1, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -305,7 +328,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_1x16(%"class.sycl::_V1::ext:
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_1x32(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 1, i32 32, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 1, i32 32, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -315,7 +339,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_1x32(%"class.sycl::_V1::ext:
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_2x8(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 2, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 2, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -325,7 +350,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_2x8(%"class.sycl::_V1::ext::
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_2x16(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 2, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 2, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -335,7 +361,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_2x16(%"class.sycl::_V1::ext:
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_2x32(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 2, i32 32, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 2, i32 32, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -345,7 +372,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_2x32(%"class.sycl::_V1::ext:
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_4x8(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 4, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 4, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -355,7 +383,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_4x8(%"class.sycl::_V1::ext::
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_4x16(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 4, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 4, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -365,7 +394,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_4x16(%"class.sycl::_V1::ext:
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_4x32(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 4, i32 32, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 4, i32 32, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -375,7 +405,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_4x32(%"class.sycl::_V1::ext:
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_8x8(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 8, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 8, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -385,7 +416,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_8x8(%"class.sycl::_V1::ext::
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_8x16(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 8, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 8, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -395,7 +427,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_8x16(%"class.sycl::_V1::ext:
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_8x32(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 8, i32 32, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 8, i32 32, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -405,7 +438,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_8x32(%"class.sycl::_V1::ext:
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_16x8(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 16, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 16, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -415,7 +449,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_16x8(%"class.sycl::_V1::ext:
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_16x16(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 16, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 16, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -425,7 +460,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_16x16(%"class.sycl::_V1::ext
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_16x32(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 16, i32 32, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 16, i32 32, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -435,7 +471,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_16x32(%"class.sycl::_V1::ext
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_32x8(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 32, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 32, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -445,7 +482,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_32x8(%"class.sycl::_V1::ext:
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_32x16(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 32, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 32, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -455,7 +493,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_32x16(%"class.sycl::_V1::ext
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize2B_32x32(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) {
   entry:
-  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i32 32, i32 32, i32 1, i32 0, i64 64)
+  %gep = getelementptr %"class.sycl::_V1::ext::oneapi::bfloat16", %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src, i64 0
+  call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %gep, i32 32, i32 32, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -465,7 +504,8 @@ define spir_kernel void @TestPrefetch_ElementSize2B_32x32(%"class.sycl::_V1::ext
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize4B_1x8(float addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %src, i32 1, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr float, float addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %gep, i32 1, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -475,7 +515,8 @@ define spir_kernel void @TestPrefetch_ElementSize4B_1x8(float addrspace(1)* %src
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize4B_1x16(float addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %src, i32 1, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr float, float addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %gep, i32 1, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -485,7 +526,8 @@ define spir_kernel void @TestPrefetch_ElementSize4B_1x16(float addrspace(1)* %sr
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize4B_2x8(float addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %src, i32 2, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr float, float addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %gep, i32 2, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -495,7 +537,8 @@ define spir_kernel void @TestPrefetch_ElementSize4B_2x8(float addrspace(1)* %src
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize4B_2x16(float addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %src, i32 2, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr float, float addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %gep, i32 2, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -505,7 +548,8 @@ define spir_kernel void @TestPrefetch_ElementSize4B_2x16(float addrspace(1)* %sr
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize4B_4x8(float addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %src, i32 4, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr float, float addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %gep, i32 4, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -515,7 +559,8 @@ define spir_kernel void @TestPrefetch_ElementSize4B_4x8(float addrspace(1)* %src
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize4B_4x16(float addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %src, i32 4, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr float, float addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %gep, i32 4, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -525,7 +570,8 @@ define spir_kernel void @TestPrefetch_ElementSize4B_4x16(float addrspace(1)* %sr
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize4B_8x8(float addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %src, i32 8, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr float, float addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %gep, i32 8, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -535,7 +581,8 @@ define spir_kernel void @TestPrefetch_ElementSize4B_8x8(float addrspace(1)* %src
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize4B_8x16(float addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %src, i32 8, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr float, float addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %gep, i32 8, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -545,7 +592,8 @@ define spir_kernel void @TestPrefetch_ElementSize4B_8x16(float addrspace(1)* %sr
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize4B_16x8(float addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %src, i32 16, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr float, float addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %gep, i32 16, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -555,7 +603,8 @@ define spir_kernel void @TestPrefetch_ElementSize4B_16x8(float addrspace(1)* %sr
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize4B_16x16(float addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %src, i32 16, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr float, float addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %gep, i32 16, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -565,7 +614,8 @@ define spir_kernel void @TestPrefetch_ElementSize4B_16x16(float addrspace(1)* %s
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize4B_32x8(float addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %src, i32 32, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr float, float addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %gep, i32 32, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -575,7 +625,8 @@ define spir_kernel void @TestPrefetch_ElementSize4B_32x8(float addrspace(1)* %sr
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize4B_32x16(float addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %src, i32 32, i32 16, i32 1, i32 0, i64 64)
+  %gep = getelementptr float, float addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4fiiiil(float addrspace(1)* %gep, i32 32, i32 16, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -585,7 +636,8 @@ define spir_kernel void @TestPrefetch_ElementSize4B_32x16(float addrspace(1)* %s
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize8B_1x8(double addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4diiiil(double addrspace(1)* %src, i32 1, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr double, double addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4diiiil(double addrspace(1)* %gep, i32 1, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -595,7 +647,8 @@ define spir_kernel void @TestPrefetch_ElementSize8B_1x8(double addrspace(1)* %sr
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize8B_2x8(double addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4diiiil(double addrspace(1)* %src, i32 2, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr double, double addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4diiiil(double addrspace(1)* %gep, i32 2, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -605,7 +658,8 @@ define spir_kernel void @TestPrefetch_ElementSize8B_2x8(double addrspace(1)* %sr
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize8B_4x8(double addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4diiiil(double addrspace(1)* %src, i32 4, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr double, double addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4diiiil(double addrspace(1)* %gep, i32 4, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -615,7 +669,8 @@ define spir_kernel void @TestPrefetch_ElementSize8B_4x8(double addrspace(1)* %sr
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize8B_8x8(double addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4diiiil(double addrspace(1)* %src, i32 8, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr double, double addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4diiiil(double addrspace(1)* %gep, i32 8, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -625,7 +680,8 @@ define spir_kernel void @TestPrefetch_ElementSize8B_8x8(double addrspace(1)* %sr
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize8B_16x8(double addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4diiiil(double addrspace(1)* %src, i32 16, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr double, double addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4diiiil(double addrspace(1)* %gep, i32 16, i32 8, i32 1, i32 0, i64 64)
   ret void
 }
 
@@ -635,6 +691,7 @@ define spir_kernel void @TestPrefetch_ElementSize8B_16x8(double addrspace(1)* %s
 ; CHECK: lsc_load_block2d.ugm.ca.ca (M1, 1)  %null
 define spir_kernel void @TestPrefetch_ElementSize8B_32x8(double addrspace(1)* %src) {
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4diiiil(double addrspace(1)* %src, i32 32, i32 8, i32 1, i32 0, i64 64)
+  %gep = getelementptr double, double addrspace(1)* %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4diiiil(double addrspace(1)* %gep, i32 32, i32 8, i32 1, i32 0, i64 64)
   ret void
 }

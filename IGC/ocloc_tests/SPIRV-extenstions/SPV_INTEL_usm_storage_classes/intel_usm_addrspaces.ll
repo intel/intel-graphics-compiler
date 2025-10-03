@@ -2,12 +2,11 @@
 ; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-14-plus
 
 ; LLVM with opaque pointers:
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
-; TODO: Currently llvm-spirv fails with this test when run with -opaque-pointers=1. Change once fixed.
-; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_usm_storage_classes -o %t.spv
+; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_usm_storage_classes -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
-; RUN: llvm-spirv %t.bc -opaque-pointers=0 -o %t.no_usm.spv
+; RUN: llvm-spirv %t.bc -opaque-pointers=1 -o %t.no_usm.spv
 ; RUN: ocloc compile -spirv_input -file %t.no_usm.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM-NO-USM
 
 ; LLVM with typed pointers/default pointer typing:

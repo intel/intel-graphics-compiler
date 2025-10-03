@@ -1,10 +1,12 @@
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys, dg2-supported
-; XFAIL: llvm-16-plus
+; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-15-or-older
 
-; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_bfloat16_conversion,+SPV_INTEL_joint_matrix -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
+; TODO: This test should be adjusted to run with opaque pointers
+
+; LLVM with typed pointers:
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_bfloat16_conversion,+SPV_INTEL_joint_matrix -o %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=0, ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
 ; CHECK-LLVM: %spirv.JointMatrixINTEL._short_8_16_0_3
 ; CHECK-LLVM: %[[GEP1:.*]] = getelementptr inbounds %"class.cl::sycl::ext::intel::experimental::bfloat16", %"class.cl::sycl::ext::intel::experimental::bfloat16" addrspace(4)* %{{.*}}, i64 0, i32 0

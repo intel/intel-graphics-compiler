@@ -6,20 +6,17 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-spirv, regkeys, pvc-supported, llvm-15-or-older
-
-; TODO: This test fails on LLVM 16 with opaque pointers, but passes with typed pointers. Once the necessary fixes are made, remove llvm-15-or-older from the list above. llvm-15-or-older was added to the list above to prevent non-zero return from llvm-lit on LLVM 16 build with typed pointers forced.
-; XFAIL: llvm-16-plus
-
-; LLVM with opaque pointers:
-; TODO: llvm-as -opaque-pointers=1 %s -o %t.bc
-; TODO: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
-; TODO: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1 PrintToConsole=1 PrintAfter=Layout'" 2>&1 | FileCheck %s
+; REQUIRES: llvm-spirv, regkeys, pvc-supported, llvm-16-plus
 
 ; LLVM with typed pointers/default pointer typing:
-; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'PrintToConsole=1 PrintAfter=Layout'" 2>&1 | FileCheck %s
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'PrintToConsole=1, PrintAfter=Layout'" 2>&1 | FileCheck %s
+
+; LLVM with opaque pointers:
+; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1, PrintToConsole=1, PrintAfter=Layout'" 2>&1 | FileCheck %s
 
 ; LSC prefetch args:
 ;   1. anyptr: memory address
@@ -45,7 +42,7 @@ declare spir_func void @_Z20__spirv_ocl_prefetchPU3AS1fl(float addrspace(1)*, i6
 define spir_kernel void @test_i8_uncached_cached(i8 addrspace(1)* %input) !intel_reqd_sub_group_size !100 {
 entry:
 ; CHECK-LABEL: @test_i8_uncached_cached(
-; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.p1i8(i8 addrspace(1)* %{{[0-9]+}}, i32 0, i32 5, i32 1, i32 2)
+; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.{{p1i8|p1}}({{i8|ptr}} addrspace(1){{.*}} %{{[0-9]+}}, i32 0, i32 5, i32 1, i32 2)
   %i = call spir_func i64 @_Z12get_local_idj(i32 0)
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i64 %i, !spirv.Decorations !3
   call spir_func void @_Z20__spirv_ocl_prefetchPU3AS1cl(i8 addrspace(1)* %decorated_ptr, i64 1)
@@ -56,8 +53,8 @@ define spir_kernel void @test_i8v16_uncached_cached(i8 addrspace(1)* %input) !in
 entry:
 ; COM: i8 type can be unaligned, vector data type can't be used, i8v16 is broken into two i64 messages.
 ; CHECK-LABEL: @test_i8v16_uncached_cached(
-; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.p1i64(i64 addrspace(1)* %{{[0-9]+}}, i32 0, i32 4, i32 1, i32 2)
-; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.p1i64(i64 addrspace(1)* %{{[0-9]+}}, i32 0, i32 4, i32 1, i32 2)
+; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.{{p1i64|p1}}({{i64|ptr}} addrspace(1){{.*}} %{{[0-9]+}}, i32 0, i32 4, i32 1, i32 2)
+; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.{{p1i64|p1}}({{i64|ptr}} addrspace(1){{.*}} %{{[0-9]+}}, i32 0, i32 4, i32 1, i32 2)
   %i = call spir_func i64 @_Z12get_local_idj(i32 0)
   %decorated_ptr = getelementptr inbounds i8, i8 addrspace(1)* %input, i64 %i, !spirv.Decorations !3
   call spir_func void @_Z20__spirv_ocl_prefetchPU3AS1cl(i8 addrspace(1)* %decorated_ptr, i64 16)
@@ -67,7 +64,7 @@ entry:
 define spir_kernel void @test_float_uncached_uncached(float addrspace(1)* %input) !intel_reqd_sub_group_size !100 {
 entry:
 ; CHECK-LABEL: @test_float_uncached_uncached(
-; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.p1i32(i32 addrspace(1)* %{{[0-9]+}}, i32 0, i32 3, i32 1, i32 1)
+; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.{{p1i32|p1}}({{i32|ptr}} addrspace(1){{.*}} %{{[0-9]+}}, i32 0, i32 3, i32 1, i32 {{1|2}})
   %i = call spir_func i64 @_Z12get_local_idj(i32 0)
   %decorated_ptr = getelementptr inbounds float, float addrspace(1)* %input, i64 %i, !spirv.Decorations !0
   call spir_func void @_Z20__spirv_ocl_prefetchPU3AS1fl(float addrspace(1)* %decorated_ptr, i64 1)
@@ -77,7 +74,7 @@ entry:
 define spir_kernel void @test_float_uncached_cached(float addrspace(1)* %input) !intel_reqd_sub_group_size !100 {
 entry:
 ; CHECK-LABEL: @test_float_uncached_cached(
-; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.p1i32(i32 addrspace(1)* %{{[0-9]+}}, i32 0, i32 3, i32 1, i32 2)
+; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.{{p1i32|p1}}({{i32|ptr}} addrspace(1){{.*}} %{{[0-9]+}}, i32 0, i32 3, i32 1, i32 2)
   %i = call spir_func i64 @_Z12get_local_idj(i32 0)
   %decorated_ptr = getelementptr inbounds float, float addrspace(1)* %input, i64 %i, !spirv.Decorations !3
   call spir_func void @_Z20__spirv_ocl_prefetchPU3AS1fl(float addrspace(1)* %decorated_ptr, i64 1)
@@ -88,7 +85,7 @@ define spir_kernel void @test_float_cached_uncached(float addrspace(1)* %input) 
 entry:
 ; COM: Cache to L1 unsupported, ignore L1 cache control options.
 ; CHECK-LABEL: @test_float_cached_uncached(
-; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.p1i32(i32 addrspace(1)* %{{[0-9]+}}, i32 0, i32 3, i32 1, i32 1)
+; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.{{p1i32|p1}}({{i32|ptr}} addrspace(1){{.*}} %{{[0-9]+}}, i32 0, i32 3, i32 1, i32 {{1|2}})
   %i = call spir_func i64 @_Z12get_local_idj(i32 0)
   %decorated_ptr = getelementptr inbounds float, float addrspace(1)* %input, i64 %i, !spirv.Decorations !6
   call spir_func void @_Z20__spirv_ocl_prefetchPU3AS1fl(float addrspace(1)* %decorated_ptr, i64 1)
@@ -99,7 +96,7 @@ define spir_kernel void @test_float_cached_cached(float addrspace(1)* %input) !i
 entry:
 ; COM: Cache to L1 unsupported, ignore L1 cache control options.
 ; CHECK-LABEL: @test_float_cached_cached(
-; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.p1i32(i32 addrspace(1)* %{{[0-9]+}}, i32 0, i32 3, i32 1, i32 2)
+; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.{{p1i32|p1}}({{i32|ptr}} addrspace(1){{.*}} %{{[0-9]+}}, i32 0, i32 3, i32 1, i32 2)
   %i = call spir_func i64 @_Z12get_local_idj(i32 0)
   %decorated_ptr = getelementptr inbounds float, float addrspace(1)* %input, i64 %i, !spirv.Decorations !9
   call spir_func void @_Z20__spirv_ocl_prefetchPU3AS1fl(float addrspace(1)* %decorated_ptr, i64 1)
@@ -110,7 +107,7 @@ define spir_kernel void @test_floatv8_uncached_cached(float addrspace(1)* %input
 entry:
 ; COM: Float type is aligned, vector data type can be used.
 ; CHECK-LABEL: @test_floatv8_uncached_cached(
-; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.p1v8i32(<8 x i32> addrspace(1)* %{{[0-9]+}}, i32 0, i32 3, i32 5, i32 2)
+; CHECK:         call void @llvm.genx.GenISA.LSCPrefetch.{{p1v8i32|p1}}({{<8 x i32>|ptr}} addrspace(1){{.*}} %{{[0-9]+}}, i32 0, i32 3, i32 5, i32 2)
   %i = call spir_func i64 @_Z12get_local_idj(i32 0)
   %decorated_ptr = getelementptr inbounds float, float addrspace(1)* %input, i64 %i, !spirv.Decorations !3
   call spir_func void @_Z20__spirv_ocl_prefetchPU3AS1fl(float addrspace(1)* %decorated_ptr, i64 8)

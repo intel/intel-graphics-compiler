@@ -1,15 +1,14 @@
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-14-plus
-; XFAIL: llvm-16-plus
+; REQUIRES: llvm-spirv, regkeys, dg2-supported
 
 ; LLVM with opaque pointers:
-; TODO: llvm-as -opaque-pointers=1 %s -o %t.bc
-; TODO: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_masked_gather_scatter -o %t.spv
-; TODO: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
+; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_masked_gather_scatter -o %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1, ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
 ; LLVM with typed pointers/default pointer typing:
-; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_masked_gather_scatter -o %t.spv
+; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_masked_gather_scatter -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
 ; CHECK-LLVM: %[[#VECGATHER:]] = load <4 x {{i32|ptr}} addrspace(4){{.*}}>, {{<4 x i32 addrspace\(4\)\*>\*|ptr}}
