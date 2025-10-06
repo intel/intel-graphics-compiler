@@ -9133,7 +9133,7 @@ void EmitPass::EmitInlineAsm(llvm::CallInst *inst) {
     return;
 
   if (!validateInlineAsmConstraints(inst, constraints)) {
-    IGC_ASSERT_MESSAGE(0, "Constraints for inline assembly cannot be validated");
+    m_pCtx->EmitError("Constraints for inline assembly cannot be validated", inst);
     return;
   }
 
