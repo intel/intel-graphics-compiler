@@ -2043,7 +2043,6 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
       // packed unsigned int with no extra scaling or adjustment.
       PackedIntScale = 1;
       PackedIntAdjust = 0;
-      PackedIntMax = Max;
       return;
     }
     if (Min >= ImmIntVec::MinSInt && Max <= ImmIntVec::MaxSInt) {
@@ -2051,14 +2050,12 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
       // packed unsigned int with no extra scaling or adjustment.
       PackedIntScale = 1;
       PackedIntAdjust = -8;
-      PackedIntMax = Max + 8;
       return;
     }
     // Values all in the range [Min..Min+MaxUInt]. We can do this
     // with a packed int with an adjustment.
     PackedIntScale = 1;
     PackedIntAdjust = Min;
-    PackedIntMax = Max - Min;
     return;
   }
   // Get unique absolute differences, so we can detect if we have a valid
@@ -2097,7 +2094,6 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
       return; // range of values too big
   }
   PackedIntScale = CurScale;
-  PackedIntMax = ImmIntVec::MaxUInt;
   // Special case adjust of 0 or -8 as then we can save doing an adjust at all
   // by using unsigned or signed packed vector respectively.
   if (!(Min % CurScale)) {
@@ -2115,7 +2111,6 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
              CurScale, static_cast<int64_t>(ImmIntVec::MaxSInt), ResArith) &&
          Max <= ResArith)) {
       PackedIntAdjust = Min;
-      PackedIntMax = ImmIntVec::MaxSInt;
       return;
     }
     // Special case all pre-scaled values being in [-15,0] as we can do that

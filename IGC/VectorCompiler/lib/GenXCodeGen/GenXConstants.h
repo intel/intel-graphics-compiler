@@ -46,9 +46,6 @@ class ConstantLoader {
   int64_t PackedIntScale = 0;  // amount to scale packed int vector by
   int64_t PackedIntAdjust = 0; // amount to adjust by, special casing 0 or -8
                                //  when PackedIntScale is 1
-  unsigned PackedIntMax = 0;   // max value in packed vector, used when scale is
-                             //  1 and adjust is 0 to tell whether it would fit
-                             //  in 0..7
   bool PackedFloat = false;
 
 public:
