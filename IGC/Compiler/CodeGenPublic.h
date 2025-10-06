@@ -1021,7 +1021,7 @@ public:
   inline const std::string GetErrorAndWarning() { return GetWarning() + GetError(); }
 
   CompOptions &getCompilerOption();
-  virtual void resetOnRetry();
+  virtual void resetOnRetry(bool isSubmodule = false);
   virtual int32_t getNumThreadsPerEU() const;
   virtual uint32_t getExpGRFSize() const;
   virtual uint32_t getNumGRFPerThread(bool returnDefault = true);
