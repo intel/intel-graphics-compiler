@@ -478,8 +478,11 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module &M) {
 
     // Now that all instructions are transferred to the new func, delete the old func
     pFunc->removeDeadConstantUsers();
-    pFunc->dropAllReferences();
-    pFunc->removeFromParent();
+    // There may be cases where the old function was referenced by just metadata.
+    // If we've cleaned up all "real" uses, then we can just update the metadata
+    // with poison so we can delete the function.
+    pFunc->replaceAllUsesWith(PoisonValue::get(pFunc->getType()));
+    pFunc->eraseFromParent();
   }
 }
 
