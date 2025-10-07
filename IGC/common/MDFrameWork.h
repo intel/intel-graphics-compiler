@@ -513,6 +513,7 @@ enum class ShaderTypeMD
         bool UseInstructionHoistingOptimization         = false;
         bool DisableResourceLoopDestLifeTimeStart       = false;
         bool UseLinearScanRA                            = false;
+        bool DisableConvertingAtomicIAddToIncDec        = false;
     };
 
     enum class ThreadIDLayout

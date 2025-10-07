@@ -472,6 +472,15 @@ static bool isTruncInvariant(unsigned Opcode) {
   }
 }
 
+// Check and convert atomic_iadd with immediate 1/-1 to atomic_inc/dec
+void CustomSafeOptPass::visitIntAtomicIAddToIncOrDec(CallInst *I) {
+
+  if (m_modMD->compOpt.DisableConvertingAtomicIAddToIncDec)
+    return;
+
+  GenIntrinsicInst *instr = dyn_cast<GenIntrinsicInst>(I);
+  GenISAIntrinsic::ID id = instr->getIntrinsicID();
+
 // clang-format off
 // In AtomicTyped, convert EATOMIC_IADD(0) to EATOMIC_INC(2) and EATOMIC_DEC(3) when value of 1 is used as increment or -1 as decrement
 // From:
@@ -481,26 +490,24 @@ static bool isTruncInvariant(unsigned Opcode) {
 // %7 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 poison, i32 2)
 // %8 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 poison, i32 3)
 // clang-format on
-void CustomSafeOptPass::visitIntAtomicTyped(CallInst *I) {
-
-  GenIntrinsicInst *instr = dyn_cast<GenIntrinsicInst>(I);
-
-  // for immediate 1 or -1
-  if (auto *constInt1 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(4))) {
-    // for atomic_iadd
-    if (auto *constInt2 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(5))) {
-      if (AtomicOp::EATOMIC_IADD == constInt2->getZExtValue()) {
-        if (constInt1->getSExtValue() == 1) {
-          instr->setOperand(5, llvm::ConstantInt::get(instr->getOperand(5)->getType(), AtomicOp::EATOMIC_INC));
-          instr->setOperand(4, PoisonValue::get(constInt1->getType()));
-        } else if (constInt1->getSExtValue() == -1) {
-          instr->setOperand(5, llvm::ConstantInt::get(instr->getOperand(5)->getType(), AtomicOp::EATOMIC_DEC));
-          instr->setOperand(4, PoisonValue::get(constInt1->getType()));
+  if (id == GenISAIntrinsic::GenISA_intatomictyped) {
+    // for immediate 1 or -1
+    if (auto *constInt1 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(4))) {
+      // for atomic_iadd
+      if (auto *constInt2 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(5))) {
+        if (AtomicOp::EATOMIC_IADD == constInt2->getZExtValue()) {
+          if (constInt1->getSExtValue() == 1) {
+            instr->setOperand(5, llvm::ConstantInt::get(instr->getOperand(5)->getType(), AtomicOp::EATOMIC_INC));
+            instr->setOperand(4, PoisonValue::get(constInt1->getType()));
+          } else if (constInt1->getSExtValue() == -1) {
+            instr->setOperand(5, llvm::ConstantInt::get(instr->getOperand(5)->getType(), AtomicOp::EATOMIC_DEC));
+            instr->setOperand(4, PoisonValue::get(constInt1->getType()));
+          }
         }
       }
     }
+    return;
   }
-}
 
 // clang-format off
 // In AtomicRaw or AtomicRawA64, convert EATOMIC_IADD(0) to EATOMIC_INC(2) and EATOMIC_DEC(3) when value of 1 is used as increment or -1 as decrement
@@ -516,28 +523,27 @@ void CustomSafeOptPass::visitIntAtomicTyped(CallInst *I) {
 // or
 // %13 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 poison, i32 2)
 // %14 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 poison, i32 3)
-// clang-format on
-void CustomSafeOptPass::visitIntAtomicRawOrRawA64(CallInst *I) {
+  // clang-format on
+  if (id == GenISAIntrinsic::GenISA_intatomicraw || id == GenISAIntrinsic::GenISA_intatomicrawA64) {
+    if (instr->getOperand(0)->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
+      return;
 
-  GenIntrinsicInst *instr = dyn_cast<GenIntrinsicInst>(I);
-
-  if (instr->getOperand(0)->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
-    return;
-
-  // for immediate 1 or -1
-  if (auto *constInt1 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(2))) {
-    // for atomic_iadd
-    if (auto *constInt2 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(3))) {
-      if (AtomicOp::EATOMIC_IADD == constInt2->getZExtValue()) {
-        if (constInt1->getSExtValue() == 1) {
-          instr->setOperand(3, llvm::ConstantInt::get(instr->getOperand(3)->getType(), AtomicOp::EATOMIC_INC));
-          instr->setOperand(2, PoisonValue::get(constInt1->getType()));
-        } else if (constInt1->getSExtValue() == -1) {
-          instr->setOperand(3, llvm::ConstantInt::get(instr->getOperand(3)->getType(), AtomicOp::EATOMIC_DEC));
-          instr->setOperand(2, PoisonValue::get(constInt1->getType()));
+    // for immediate 1 or -1
+    if (auto *constInt1 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(2))) {
+      // for atomic_iadd
+      if (auto *constInt2 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(3))) {
+        if (AtomicOp::EATOMIC_IADD == constInt2->getZExtValue()) {
+          if (constInt1->getSExtValue() == 1) {
+            instr->setOperand(3, llvm::ConstantInt::get(instr->getOperand(3)->getType(), AtomicOp::EATOMIC_INC));
+            instr->setOperand(2, PoisonValue::get(constInt1->getType()));
+          } else if (constInt1->getSExtValue() == -1) {
+            instr->setOperand(3, llvm::ConstantInt::get(instr->getOperand(3)->getType(), AtomicOp::EATOMIC_DEC));
+            instr->setOperand(2, PoisonValue::get(constInt1->getType()));
+          }
         }
       }
     }
+    return;
   }
 }
 
@@ -907,14 +913,10 @@ void CustomSafeOptPass::visitCallInst(CallInst &C) {
       break;
     }
 
-    case GenISAIntrinsic::GenISA_intatomictyped: {
-      visitIntAtomicTyped(inst);
-      break;
-    }
-
+    case GenISAIntrinsic::GenISA_intatomictyped:
     case GenISAIntrinsic::GenISA_intatomicraw:
     case GenISAIntrinsic::GenISA_intatomicrawA64: {
-      visitIntAtomicRawOrRawA64(inst);
+      visitIntAtomicIAddToIncOrDec(inst);
       break;
     }
 
