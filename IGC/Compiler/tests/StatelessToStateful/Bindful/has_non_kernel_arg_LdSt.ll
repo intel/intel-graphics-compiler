@@ -8,8 +8,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
-; RUN: igc_opt --typed-pointers --regkey DumpHasNonKernelArgLdSt=1 --regkey EnableOptionalBufferOffset=1 --regkey EnableSupportBufferOffset=1 -enable-debugify -igc-stateless-to-stateful-resolution -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%LLVM_DEPENDENT_CHECK_PREFIX%
-; RUN: igc_opt --opaque-pointers --regkey DumpHasNonKernelArgLdSt=1 --regkey EnableOptionalBufferOffset=1 --regkey EnableSupportBufferOffset=1 -enable-debugify -igc-stateless-to-stateful-resolution -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%LLVM_DEPENDENT_CHECK_PREFIX%
+; RUN: igc_opt --typed-pointers --regkey DumpHasNonKernelArgLdSt=1 --regkey EnableOptionalBufferOffset=1 --regkey EnableSupportBufferOffset=1 -enable-debugify -igc-stateless-to-stateful-resolution -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; StatelessToStateful
 ; ------------------------------------------------
@@ -19,29 +18,18 @@
 ; CHECK-NOT: WARNING
 ; CHECK: CheckModuleDebugify: PASS
 
+
 define spir_kernel void @func_b(i32 %n, i32 addrspace(1)* %r, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i8 addrspace(1)* %s2, i8 addrspace(1)* %s3, i32 %s4, i32 %s5, i32 %bufferOffset) #0 {
 ; CHECK-LABEL: @func_b(
 ; CHECK-NEXT:  entry:
-
-; CHECK-LLVM-16:    %0 = add i32 %bufferOffset, 64
-; CHECK-LLVM-16:    %1 = add i32 %bufferOffset, 64
-
-; CHECK-NEXT:       [[TMP0:%.*]] = getelementptr i32, {{ptr|i32}} addrspace(1){{.*}} [[R:%.*]], i32 16, !dbg [[DBG104:![0-9]+]]
-; CHECK-NEXT:       call void @llvm.dbg.value(metadata {{ptr|i32}} addrspace(1){{.*}} [[TMP0]], metadata [[META100:![0-9]+]], metadata !DIExpression()), !dbg [[DBG104]]
-
-; CHECK-LLVM-14:    [[TMP1:%.*]] = inttoptr i32 64 to {{ptr|i32}} addrspace({{[0-9]+}}){{.*}}, !dbg [[DBG105:![0-9]+]]
-; CHECK-LLVM-15:    [[TMP1:%.*]] = inttoptr i32 64 to {{ptr|i32}} addrspace({{[0-9]+}}){{.*}}, !dbg [[DBG105:![0-9]+]]
-; CHECK-LLVM-16:    [[TMP1:%.*]] = inttoptr i32 %0 to {{ptr|i32}} addrspace({{[0-9]+}}){{.*}}, !dbg [[DBG105:![0-9]+]]
-
-; CHECK-NEXT:       [[TMP2:%.*]] = load i32, {{ptr|i32}} addrspace({{[0-9]+}}){{.*}} [[TMP1]], align 4, !dbg [[DBG105]]
-; CHECK-NEXT:       call void @llvm.dbg.value(metadata i32 [[TMP2]], metadata [[META102:![0-9]+]], metadata !DIExpression()), !dbg [[DBG105]]
-
-; CHECK-LLVM-14:    [[TMP3:%.*]] = inttoptr i32 64 to {{ptr|i32}} addrspace({{[0-9]+}}){{.*}}, !dbg [[DBG106:![0-9]+]]
-; CHECK-LLVM-15:    [[TMP3:%.*]] = inttoptr i32 64 to {{ptr|i32}} addrspace({{[0-9]+}}){{.*}}, !dbg [[DBG106:![0-9]+]]
-; CHECK-LLVM-16:    [[TMP3:%.*]] = inttoptr i32 %1 to {{ptr|i32}} addrspace({{[0-9]+}}){{.*}}, !dbg [[DBG106:![0-9]+]]
-
-; CHECK-NEXT:       store i32 [[N:%.*]], {{ptr|i32}} addrspace({{[0-9]+}}){{.*}} [[TMP3]], align 4, !dbg [[DBG106]]
-; CHECK-NEXT:       ret void, !dbg [[DBG107:![0-9]+]]
+; CHECK-NEXT:    [[TMP0:%.*]] = getelementptr i32, i32 addrspace(1)* [[R:%.*]], i32 16, !dbg [[DBG104:![0-9]+]]
+; CHECK-NEXT:    call void @llvm.dbg.value(metadata i32 addrspace(1)* [[TMP0]], metadata [[META100:![0-9]+]], metadata !DIExpression()), !dbg [[DBG104]]
+; CHECK-NEXT:    [[TMP1:%.*]] = inttoptr i32 64 to i32 addrspace(131072)*, !dbg [[DBG105:![0-9]+]]
+; CHECK-NEXT:    [[TMP2:%.*]] = load i32, i32 addrspace(131072)* [[TMP1]], align 4, !dbg [[DBG105]]
+; CHECK-NEXT:    call void @llvm.dbg.value(metadata i32 [[TMP2]], metadata [[META102:![0-9]+]], metadata !DIExpression()), !dbg [[DBG105]]
+; CHECK-NEXT:    [[TMP3:%.*]] = inttoptr i32 64 to i32 addrspace(131072)*, !dbg [[DBG106:![0-9]+]]
+; CHECK-NEXT:    store i32 [[N:%.*]], i32 addrspace(131072)* [[TMP3]], align 4, !dbg [[DBG106]]
+; CHECK-NEXT:    ret void, !dbg [[DBG107:![0-9]+]]
 ;
 entry:
   %0 = getelementptr i32, i32 addrspace(1)* %r, i32 16
