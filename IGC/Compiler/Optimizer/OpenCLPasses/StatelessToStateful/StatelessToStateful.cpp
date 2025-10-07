@@ -527,35 +527,15 @@ static alignment_t determinePointerAlignment(Value *Ptr, const DataLayout &DL, A
   // 1) Examine uses: look for loads/stores (which may carry explicit
   //    alignment) or a GEP that reveals an ABI alignment from its element
   //    type.
-
-  // We're saving users into the queue
-  // in order to track bitcasts
-  std::queue<Instruction *> queue;
-
   for (User *U : Ptr->users()) {
-    if (auto *I = dyn_cast<Instruction>(U)) {
-      queue.push(I);
-    }
-  }
-
-  while (queue.size() > 0) {
-    auto U = queue.front();
-    queue.pop();
-
     if (auto *LI = dyn_cast<LoadInst>(U)) {
       // Load has an explicit alignment.
       alignment_t LdAlign = LI->getAlign().value();
       if (LdAlign > BestAlign)
         BestAlign = LdAlign;
-    } else if (auto *cast = dyn_cast<BitCastInst>(U)) {
-      for (User *U : cast->users()) {
-        if (auto *I = dyn_cast<Instruction>(U)) {
-          queue.push(I);
-        }
-      }
     } else if (auto *SI = dyn_cast<StoreInst>(U)) {
       // Store sets alignment only if the pointer we store into is Ptr.
-      if (SI->getPointerOperand()->stripPointerCasts() == Ptr) {
+      if (SI->getPointerOperand() == Ptr) {
         alignment_t StAlign = SI->getAlign().value();
         if (StAlign > BestAlign)
           BestAlign = StAlign;
@@ -1119,12 +1099,6 @@ void StatelessToStateful::finalizeArgInitialValue(Function *F) {
   if (!m_hasOptionalBufferOffsetArg) {
     return;
   }
-
-#if LLVM_VERSION_MAJOR >= 16
-  // Disabling this transformation/optimization because the assumption about BufferOffset being 0 doesn't seem to be true
-  // More details in PR / blame.
-  return;
-#endif
 
   Module *M = F->getParent();
   Type *int32Ty = Type::getInt32Ty(M->getContext());
