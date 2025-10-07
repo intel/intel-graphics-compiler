@@ -1093,8 +1093,9 @@ void DwarfDebug::beginModule() {
     constructThenAddImportedEntityDIE(CU, IE);
 
   [[maybe_unused]] auto NumDebugCUs = std::distance(M->debug_compile_units_begin(), M->debug_compile_units_end());
-  IGC_ASSERT_MESSAGE(NumDebugCUs == 1, "only Modules with one CU are supported at the moment");
-
+  if (NumDebugCUs != 1) {
+    LLVM_DEBUG(dbgs() << "Warning: Module contains " << NumDebugCUs << " debug compile units. Only modules with one CU are supported currently.\n");
+  }
   // Prime section data.
   SectionMap[Asm->GetTextSection()];
 
@@ -1569,8 +1570,9 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
         }
       }
 
-      IGC_ASSERT_MESSAGE(!(History.size() > 1 && isa<DbgDeclareInst>(pInst)),
-                         "We don't expect many llvm.dbg.declare calls for a single variable");
+      if (History.size() > 1 && isa<DbgDeclareInst>(pInst)) {
+        LLVM_DEBUG(dbgs() << "Warning: We don't expect many llvm.dbg.declare calls for a single variable.\n");
+      }
 
       const Instruction *start = (*HI);
       const Instruction *end = start;
