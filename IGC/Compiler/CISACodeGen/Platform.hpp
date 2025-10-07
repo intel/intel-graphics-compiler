@@ -1283,8 +1283,6 @@ public:
     return 2;
   }
 
-  bool supportsLoadStatusMessages() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
-
   bool supportsNonDefaultLSCCacheSetting() const {
     return isCoreChildOf(IGFX_XE2_HPG_CORE);
   }

@@ -10232,38 +10232,6 @@ intrinsics:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
-        name: "GenISA_LSCTypedLoadStatus"
-        comment: "LSC load-status of address"
-        return_definition: !<ReturnDefinition>
-            type_definition: *i32
-            comment: "dest data payload is one register with the status bits"
-        arguments:
-            - !<ArgumentDefinition>
-                name: Arg0
-                type_definition: *p_any_
-                comment: "Src Buffer"
-            - !<ArgumentDefinition>
-                name: Arg1
-                type_definition: *i32
-                comment: "coordinates u"
-            - !<ArgumentDefinition>
-                name: Arg2
-                type_definition: *i32
-                comment: "coordinates v"
-            - !<ArgumentDefinition>
-                name: Arg3
-                type_definition: *i32
-                comment: "coordinates r"
-            - !<ArgumentDefinition>
-                name: Arg4
-                type_definition: *i32
-                comment: "LOD"
-        attributes:
-            - !AttributeID "NoUnwind"
-        memory_effects:
-            - !<MemoryRestriction>
-                memory_location: !MemoryLocation ArgMem
-    - !<IntrinsicDefinition>
         name: "GenISA_LSCPrefetch"
         comment: "LSC prefetch (loads to cache)"
         return_definition: !<ReturnDefinition>

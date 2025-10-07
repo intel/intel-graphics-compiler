@@ -8931,7 +8931,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_LSCStoreCmask:
   case GenISAIntrinsic::GenISA_LSCLoadCmask:
   case GenISAIntrinsic::GenISA_LSCLoadStatus:
-  case GenISAIntrinsic::GenISA_LSCTypedLoadStatus:
   case GenISAIntrinsic::GenISA_LSCPrefetch:
   case GenISAIntrinsic::GenISA_LSCSimdBlockPrefetch:
   case GenISAIntrinsic::GenISA_LSCFence:
@@ -12608,19 +12607,6 @@ CVariable *EmitPass::ReAlignUniformVariable(CVariable *pVar, e_alignment align) 
   m_encoder->Push();
 
   return NewVar;
-}
-
-CVariable *EmitPass::ReAlignOrBroadcastUniformVarIfNotNull(bool destIsUniform, CVariable *pVar, e_alignment align,
-                                                           bool nomask) {
-  if (pVar == nullptr) {
-    return nullptr;
-  }
-
-  if (destIsUniform) {
-    return ReAlignUniformVariable(pVar, align);
-  } else {
-    return BroadcastIfUniform(pVar, nomask);
-  }
 }
 
 CVariable *EmitPass::BroadcastAndTruncPointer(CVariable *pVar) {
@@ -21657,90 +21643,6 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst *inst) {
   }
 }
 
-void EmitPass::emitLscIntrinsicTypedLoadStatus(llvm::GenIntrinsicInst *inst) {
-  // Intrinsic format:
-  //  destination - status register, one bit per SIMT lane
-  //  Operand 0 - Src Buffer
-  //  Operand 1 - coordinates u (an int)
-  //  Operand 2 - coordinates v (an int)
-  //  Operand 3 - coordinates r (an int)
-  //  Operand 4 - LOD (an int)
-
-  const CShader::ExtractMaskWrapper writeMask(m_currShader, inst);
-  IGC_ASSERT_MESSAGE(writeMask.hasEM() && writeMask.getEM() != 0, "Wrong write mask");
-
-  llvm::Value *pllSrcBuffer = inst->getOperand(0);
-  llvm::Value *pllU = inst->getOperand(1);
-  llvm::Value *pllV = inst->getOperand(2);
-  llvm::Value *pllR = inst->getOperand(3);
-  llvm::Value *pllLODorSampleIdx = getOperandIfExist(inst, 4);
-
-  CVariable *pLODorSampleIdx = isUndefOrConstInt0(pllLODorSampleIdx) ? nullptr : GetSymbol(pllLODorSampleIdx);
-  CVariable *pR = (pLODorSampleIdx == nullptr && isUndefOrConstInt0(pllR)) ? nullptr : GetSymbol(pllR);
-  CVariable *pV = (pR == nullptr && isUndefOrConstInt0(pllV)) ? nullptr : GetSymbol(pllV);
-  CVariable *pU = GetSymbol(pllU);
-
-  const bool destIsUniform = m_currShader->GetIsUniform(inst);
-  pU = ReAlignOrBroadcastUniformVarIfNotNull(destIsUniform, pU, EALIGN_GRF);
-  pV = ReAlignOrBroadcastUniformVarIfNotNull(destIsUniform, pV, EALIGN_GRF);
-  pR = ReAlignOrBroadcastUniformVarIfNotNull(destIsUniform, pR, EALIGN_GRF);
-  pLODorSampleIdx = ReAlignOrBroadcastUniformVarIfNotNull(destIsUniform, pLODorSampleIdx, EALIGN_GRF);
-
-  ResourceDescriptor resource = GetResourceVariable(pllSrcBuffer);
-  LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, true, true);
-
-  const unsigned int eltBitSize = 32;
-  const unsigned int numElements = 1; // The dest data payload is one register with the status bits.
-  LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
-  if (destIsUniform) {
-    m_encoder->SetSimdSize(SIMDMode::SIMD1);
-    m_encoder->SetPredicate(nullptr);
-    m_encoder->SetNoMask();
-    m_encoder->LSC_TypedReadWrite(LSC_LOAD_STATUS, &resource, pU, pV, pR, pLODorSampleIdx, m_destination, eltBitSize,
-                                  numElements, addrSize, writeMask.getEM(), cacheOpts);
-    m_encoder->Push();
-  } else {
-    uint label = 0;
-    CVariable *flag = nullptr;
-    CVariable *newDst = m_currShader->GetNewVariable(numElements, ISA_TYPE_D, EALIGN_DWORD, "typedLoadStatusResult");
-    CVariable *initVal = m_currShader->ImmToVariable(0, ISA_TYPE_D);
-    m_encoder->SetSimdSize(SIMDMode::SIMD1);
-    m_encoder->SetNoMask();
-    m_encoder->Copy(newDst, initVal);
-    m_encoder->Push();
-    bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
-    ResourceLoopSubIteration(resource, flag, label);
-    m_encoder->SetPredicate(flag);
-    m_encoder->LSC_TypedReadWrite(LSC_LOAD_STATUS, &resource, pU, pV, pR, pLODorSampleIdx, m_destination, eltBitSize,
-                                  numElements, addrSize, writeMask.getEM(), cacheOpts);
-    m_encoder->Push();
-    m_encoder->SetSimdSize(SIMDMode::SIMD1);
-    m_encoder->SetNoMask();
-    m_encoder->Or(newDst, newDst, m_destination);
-    m_encoder->Push();
-    ResourceLoopBackEdge(needLoop, flag, label);
-
-    // Extract per-lane status from the packed status register.
-    // The hardware returns a single dw register with one status bit per lane.
-    // We need to broadcast the bit result into per-lane values.
-
-    // Copy the send result to a statusFlag register -> sF[i] = src0 & (1 << i)
-    SIMDMode simdSize = m_currShader->m_SIMDSize;
-    CVariable *statusFlag = m_currShader->GetNewVariable(numLanes(simdSize), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
-    m_encoder->SetSrcRegion(0, 0, 1, 0);
-    m_encoder->SetNoMask();
-    m_encoder->SetP(statusFlag, newDst);
-    m_encoder->Push();
-
-    // Prepare the result -> dst[i] = sF[i] ? INT_MAX : 0;
-    CVariable *pred = m_currShader->ImmToVariable(0xFFFFFFFF, newDst->GetType());
-    CVariable *zero = m_currShader->ImmToVariable(0x0, newDst->GetType());
-    m_encoder->Select(statusFlag, m_destination, pred, zero);
-    m_encoder->Push();
-  }
-  m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
-}
-
 void EmitPass::emitLscSimdBlockPrefetch(llvm::GenIntrinsicInst *inst) {
   // SIMD Block Prefetch is just block read with null dst, so it can be handled
   // with the same function as simdBlockRead.
@@ -22399,9 +22301,6 @@ void EmitPass::emitLSCIntrinsic(llvm::GenIntrinsicInst *GII) {
   case GenISAIntrinsic::GenISA_LSCPrefetch:
   case GenISAIntrinsic::GenISA_LSCLoadStatus:
     emitLscIntrinsicPrefetch(GII);
-    break;
-  case GenISAIntrinsic::GenISA_LSCTypedLoadStatus:
-    emitLscIntrinsicTypedLoadStatus(GII);
     break;
     //
   case GenISAIntrinsic::GenISA_LSCSimdBlockPrefetch:
