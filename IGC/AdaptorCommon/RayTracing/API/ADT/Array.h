@@ -198,6 +198,9 @@ private:
   inline typename iterator::pointer allocate(size_t NumElts) {
     return static_cast<typename iterator::pointer>(::operator new(NumElts * sizeof(typename iterator::value_type)));
   }
+
+  template <typename A, typename B> friend class UnorderedMap;
 };
+
 
 } // namespace Interface

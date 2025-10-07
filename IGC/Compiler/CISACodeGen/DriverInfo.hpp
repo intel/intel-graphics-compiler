@@ -391,6 +391,7 @@ public:
 
   virtual bool supportsUniformPrivateMemorySpace() const { return false; }
 
+
   virtual bool UseNewTraceRayInlineLoweringInRaytracingShaders() const {
     return (IGC_GET_FLAG_VALUE(UseNewInlineRaytracing) & static_cast<uint32_t>(NewInlineRaytracingMask::RTShaders)) !=
            0;
