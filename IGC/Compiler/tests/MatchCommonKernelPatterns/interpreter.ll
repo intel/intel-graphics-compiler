@@ -7,11 +7,11 @@
 ;============================ end_copyright_notice =============================
 ;
 
-; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --match-common-kernel-patterns --print-codegencontext --platformdg2 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-V1
+; REQUIRES: llvm-14-plus, regkeys
+; RUN: igc_opt --opaque-pointers --match-common-kernel-patterns --regkey EnableInterpreterPatternMatching=1 --print-codegencontext --platformdg2 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-V1
 ; CHECK-V1: Kernel with forced retry: kernel_interpreter_v1
 
-; RUN: igc_opt --opaque-pointers --match-common-kernel-patterns --print-codegencontext --platformdg2 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-V2
+; RUN: igc_opt --opaque-pointers --match-common-kernel-patterns --regkey EnableInterpreterPatternMatching=1 --print-codegencontext --platformdg2 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-V2
 ; CHECK-V2: Kernel with forced retry: kernel_interpreter_v2
 
 define spir_kernel void @kernel_interpreter_v1(ptr addrspace(4) align 4 %addr1, i32 %op1, <8 x i32> %r0, <8 x i32> %payloadHeader) #0 {

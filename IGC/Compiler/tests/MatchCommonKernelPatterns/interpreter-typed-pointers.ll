@@ -5,12 +5,12 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
 
-; RUN: igc_opt --match-common-kernel-patterns --print-codegencontext --platformdg2 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-V1
+; REQUIRES: regkeys
+; RUN: igc_opt --match-common-kernel-patterns --regkey EnableInterpreterPatternMatching=1 --print-codegencontext --platformdg2 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-V1
 ; CHECK-V1: Kernel with forced retry: kernel_interpreter_v1
 
-; RUN: igc_opt --match-common-kernel-patterns --print-codegencontext --platformdg2 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-V2
+; RUN: igc_opt --match-common-kernel-patterns --regkey EnableInterpreterPatternMatching=1 --print-codegencontext --platformdg2 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-V2
 ; CHECK-V2: Kernel with forced retry: kernel_interpreter_v2
 
 define spir_kernel void @kernel_interpreter_v1(i32 addrspace(4)* align 4 %addr1, i32 %op1, <8 x i32> %r0, <8 x i32> %payloadHeader) #0 {
