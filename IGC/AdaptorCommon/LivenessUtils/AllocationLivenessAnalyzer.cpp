@@ -122,7 +122,7 @@ void AllocationLivenessAnalyzer::getAnalysisUsage(llvm::AnalysisUsage &AU) const
   getAdditionalAnalysisUsage(AU);
 }
 
-void AllocationLivenessAnalyzer::implementCallSpecificBehavior(CallInst *callI, Use* use, SmallVector<Use *> &worklist,
+void AllocationLivenessAnalyzer::implementCallSpecificBehavior(CallInst *callI, Use *use, SmallVector<Use *> &worklist,
                                                                SetVector<Instruction *> &allUsers,
                                                                SetVector<Instruction *> &lifetimeLeakingUsers) {
 
@@ -137,8 +137,8 @@ void AllocationLivenessAnalyzer::implementCallSpecificBehavior(CallInst *callI, 
 }
 
 template <typename range>
-static inline void doWorkLoop(SmallVector<BasicBlock *> &worklist, DenseSet<BasicBlock *> &bbSet1,
-                              DenseSet<BasicBlock *> &bbSet2, std::function<range(BasicBlock *)> iterate,
+static inline void doWorkLoop(SmallVectorImpl<BasicBlock *> &worklist, SetVector<BasicBlock *> &bbSet1,
+                              SetVector<BasicBlock *> &bbSet2, std::function<range(BasicBlock *)> iterate,
                               std::function<bool(BasicBlock *)> continueCondition) {
   // perform data flow analysis
   while (!worklist.empty()) {
@@ -152,7 +152,7 @@ static inline void doWorkLoop(SmallVector<BasicBlock *> &worklist, DenseSet<Basi
     for (auto *pbb : iterate(currbb)) {
       addToSet1 = true;
 
-      bool inserted = bbSet2.insert(pbb).second;
+      bool inserted = bbSet2.insert(pbb);
 
       if (inserted)
         worklist.push_back(pbb);
@@ -211,13 +211,13 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
 
     // add terminators to users, so we can later add them to our lifetimeEnd vector
     auto leakingbbOnlyIn = leakingbbIn;
-    set_subtract(leakingbbOnlyIn, leakingbbOut);
+    leakingbbOnlyIn.set_subtract(leakingbbOut);
 
     for (auto *bb : leakingbbOnlyIn)
       usersOfAllocation.insert(bb->getTerminator());
 
-    set_union(bbIn, leakingbbIn);
-    set_union(bbOut, leakingbbOut);
+    bbIn.set_union(leakingbbIn);
+    bbOut.set_union(leakingbbOut);
   }
 
   // if the lifetime escapes any loop, we should make sure all the loops blocks are included
@@ -260,7 +260,7 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
   // substract the inflow blocks from the outflow blocks to find the block which starts the lifetime - there should be
   // only one!
   auto bbOutOnly = bbOut;
-  set_subtract(bbOutOnly, bbIn);
+  bbOutOnly.set_subtract(bbIn);
 
   IGC_ASSERT_MESSAGE(bbOutOnly.size() == 1, "Multiple lifetime start blocks?");
 
@@ -287,7 +287,7 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
   } else {
     // find all blocks where lifetime flows in, but doesnt flow out
     auto bbOnlyIn = bbIn;
-    set_subtract(bbOnlyIn, bbOut);
+    bbOnlyIn.set_subtract(bbOut);
 
     for (auto *bb : bbOnlyIn) {
       for (auto &I : llvm::reverse(*bb)) {
@@ -316,11 +316,19 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
 }
 
 bool AllocationLivenessAnalyzer::LivenessData::OverlapsWith(const LivenessData &LD) const {
+
+  // SetVector doesn't support set_intersect...
+  // set_intersect(overlapIn, LD.bbIn);
+  // so we emulate it via formula A ^ B = A - (A - B)
   auto overlapIn = bbIn;
-  set_intersect(overlapIn, LD.bbIn);
+  auto AminusBIn = bbIn;
+  AminusBIn.set_subtract(LD.bbIn);
+  overlapIn.set_subtract(AminusBIn);
 
   auto overlapOut = bbOut;
-  set_intersect(overlapOut, LD.bbOut);
+  auto AminusBOut = bbOut;
+  AminusBOut.set_subtract(LD.bbOut);
+  overlapOut.set_subtract(AminusBOut);
 
   // check if both lifetimes flow out or in the same block, this means overlap
   if (!overlapIn.empty() || !overlapOut.empty())
@@ -364,7 +372,10 @@ bool AllocationLivenessAnalyzer::LivenessData::OverlapsWith(const LivenessData &
 }
 
 bool AllocationLivenessAnalyzer::LivenessData::ContainsInstruction(const llvm::Instruction &I) const {
-  auto *bb = I.getParent();
+
+  // SetVector::contains seems to have underimplemented const-correctness
+  // the const_cast is not needed for DenseSet based implementation, but then we introduce nondetereministic behavior when iterating
+  auto *bb = const_cast<BasicBlock *>(I.getParent());
 
   // if the LD is contained in a single block, bbIn and bbOut are going to be empty.
   // TODO: maybe LivenessData deserves a flag to mark livenesses contained in a single block?
@@ -417,8 +428,7 @@ static bool tryFindPointerOrigin(GetElementPtrInst *Ptr, SmallVectorImpl<Instruc
   return tryFindPointerOriginImpl(Ptr->getPointerOperand(), origins, cache);
 }
 
-static bool tryFindPointerOrigin(SelectInst *Ptr, SmallVectorImpl<Instruction *> &origins,
-                                 DenseSet<Value *> &cache) {
+static bool tryFindPointerOrigin(SelectInst *Ptr, SmallVectorImpl<Instruction *> &origins, DenseSet<Value *> &cache) {
   return tryFindPointerOriginImpl(Ptr->getTrueValue(), origins, cache) &&
          tryFindPointerOriginImpl(Ptr->getFalseValue(), origins, cache);
 }
