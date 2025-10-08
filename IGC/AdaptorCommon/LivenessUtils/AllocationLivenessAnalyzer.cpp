@@ -170,6 +170,15 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
   if (!userDominatorBlock)
     userDominatorBlock = allocationInstruction->getParent();
 
+  if (usersOfAllocation.empty()) {
+
+    // a pathological case of no-uses allocation instruction
+    IGC_ASSERT_MESSAGE(lifetimeLeakingUsers.empty(), "What?");
+    lifetimeStart = allocationInstruction;
+    lifetimeEndInstructions.push_back(allocationInstruction);
+    return;
+  }
+
   bbOut.insert(userDominatorBlock);
 
   SmallVector<BasicBlock *> worklist;
@@ -336,36 +345,13 @@ bool AllocationLivenessAnalyzer::LivenessData::OverlapsWith(const LivenessData &
 
   // check lifetime boundaries
   for (auto &[LD1, LD2] : {std::make_pair(this, &LD), std::make_pair(&LD, this)}) {
-    // TODO: replace the whole logic with ContainsInstruction checks
+    // If either the start or any end of LD1 lies within LD2, lifetimes overlap
+    if (LD2->ContainsInstruction(*LD1->lifetimeStart))
+      return true;
+
     for (auto *I : LD1->lifetimeEndInstructions) {
-      // what if LD1 is contained in a single block
-      if (I->getParent() == LD1->lifetimeStart->getParent()) {
-        auto *bb = I->getParent();
-        bool inflow = LD2->bbIn.contains(bb);
-        bool outflow = LD2->bbOut.contains(bb);
-        bool lifetimeStart = LD2->lifetimeStart->getParent() == bb && LD2->lifetimeStart->comesBefore(I);
-
-        auto *LD1_lifetimeStart = LD1->lifetimeStart; // we have to copy LD1.lifetimeStart to avoid clang complaining
-                                                      // about LD1 being captured by the lambda
-        bool lifetimeEnd = any_of(LD2->lifetimeEndInstructions, [&](auto *lifetimeEnd) {
-          return lifetimeEnd->getParent() == bb && LD1_lifetimeStart->comesBefore(lifetimeEnd);
-        });
-
-        if (inflow && outflow)
-          return true;
-
-        if (inflow && lifetimeEnd)
-          return true;
-
-        if (outflow && lifetimeStart)
-          return true;
-
-        if (lifetimeEnd && lifetimeStart)
-          return true;
-      } else if (I->getParent() == LD2->lifetimeStart->getParent()) {
-        if (LD2->lifetimeStart->comesBefore(I))
-          return true;
-      }
+      if (LD2->ContainsInstruction(*I))
+        return true;
     }
   }
   return false;
