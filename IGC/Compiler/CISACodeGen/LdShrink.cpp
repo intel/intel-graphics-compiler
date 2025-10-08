@@ -106,6 +106,10 @@ bool LdShrink::runOnFunction(Function &F) {
       // Skip non-simple load.
       if (!LI->isSimple())
         continue;
+      // Skip for loads that are already doing 32-bit or smaller accesses.
+      if (DL->getTypeSizeInBits(LI->getType()) <= 32)
+        continue;
+
       // Replace it with scalar load or narrow vector load.
       unsigned Mask = getExtractIndexMask(LI);
       if (!Mask)
