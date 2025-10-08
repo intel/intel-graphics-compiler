@@ -678,10 +678,8 @@ public:
   void Enable(ShaderType ty = ShaderType::UNKNOWN);
   void Disable(bool DisablePerKernel = false);
 
-  void SetSpillSize(unsigned int spillSize) { lastSpillSize = spillSize; }
-  unsigned int GetLastSpillSize() const { return lastSpillSize;}
-  void SetSpillCost(float spillCost) { lastSpillCost = spillCost; }
-  float GetLastSpillCost() const { return lastSpillCost; }
+  void SetSpillSize(unsigned int spillSize);
+  unsigned int GetLastSpillSize() const;
 
   unsigned int numInstructions = 0;
   // For OCL the retry manager will work on per-kernel basis, that means
@@ -732,7 +730,6 @@ private:
   ShaderType shaderType;
 
   unsigned lastSpillSize = 0;
-  float lastSpillCost = 0;
 
   // cache the compiled kernel during retry
   struct CacheEntry {

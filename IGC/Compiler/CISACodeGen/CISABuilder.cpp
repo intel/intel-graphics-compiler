@@ -5415,10 +5415,9 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
   }
 
   if (jitInfo->stats.numGRFSpillFillWeighted) {
+    context->m_retryManager.SetSpillSize(jitInfo->stats.numGRFSpillFillWeighted);
     m_program->m_spillSize = jitInfo->stats.numGRFSpillFillWeighted;
     m_program->m_spillCost = float(jitInfo->stats.numGRFSpillFillWeighted) / jitInfo->stats.numAsmCountUnweighted;
-    context->m_retryManager.SetSpillSize(m_program->m_spillSize);
-    context->m_retryManager.SetSpillCost(m_program->m_spillCost);
 
     context->m_retryManager.numInstructions = jitInfo->stats.numAsmCountUnweighted;
   }

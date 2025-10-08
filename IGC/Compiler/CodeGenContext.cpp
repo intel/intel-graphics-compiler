@@ -193,6 +193,10 @@ void RetryManager::Disable(bool DisablePerKernel) {
   }
 }
 
+void RetryManager::SetSpillSize(unsigned int spillSize) { lastSpillSize = spillSize; }
+
+unsigned int RetryManager::GetLastSpillSize() const { return lastSpillSize; }
+
 void RetryManager::ClearSpillParams() {
   lastSpillSize = 0;
   numInstructions = 0;
