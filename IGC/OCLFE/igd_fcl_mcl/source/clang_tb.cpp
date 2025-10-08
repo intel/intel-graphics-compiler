@@ -905,6 +905,22 @@ std::string GetCDefinesFromInternalOptions(const char *pInternalOptions) {
   return internalDefines;
 }
 
+std::string GetFeatureMacrosForExtension(llvm::StringRef ext) {
+  std::string featureMacros;
+
+  // Enable cl_khr_integer_dot_product extension for OpenCL C < 3.0
+  // See: https://github.com/KhronosGroup/OpenCL-Docs/issues/1328
+  // cl_khr_integer_dot_product extension specification doesn't say anything about
+  // an OpenCL C 3.0 requirement.
+  if (ext.equals("cl_khr_integer_dot_product")) {
+    featureMacros += " -D__opencl_c_integer_dot_product_input_4x8bit_packed";
+    featureMacros += " -D__opencl_c_integer_dot_product_input_4x8bit";
+  }
+  // Add more extension-to-feature mappings as needed
+
+  return featureMacros;
+}
+
 // The expected extensions input string is in a form:
 // -cl-ext=-all,+supported_ext_name,+second_supported_ext_name
 // -cl-feature=+__opencl_c_3d_image_writes,+__opencl_c_atomic_order_acq_rel
@@ -937,6 +953,16 @@ std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int
           continue;
       }
       definesStr.append(" -D").append(ext.str());
+
+      // For OpenCL C versions older than 3.0, manually enable feature macros for specific extensions.
+      // This is required because some extensions (like cl_khr_integer_dot_product) were implemented
+      // in Clang to require both the extension define AND corresponding feature macros to be enabled.
+      // In OpenCL C 3.0, the runtime automatically handles feature macros, but for older versions,
+      // the runtime (NEO UMD) doesn't pass these feature macros, so IGC must enable them manually
+      // when the corresponding extension is enabled.
+      if (oclStd < 300) {
+        definesStr += GetFeatureMacrosForExtension(ext);
+      }
     }
   }
 
@@ -1339,6 +1365,18 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
 
   unsigned int oclStd =
       GetOclCVersionFromOptions(pInputArgs->options.data(), nullptr, pInputArgs->oclVersion, exceptString);
+
+  // Undefine Clang's SPIR/SPIRV macros to prevent automatic extension enablement.
+  // According to the March 20th OpenCL tooling meeting, Clang's automatic extension
+  // handling "is trying to do the right thing on a best effort basis, but should not
+  // be treated as a reference solution, and in its current state appears to be broken
+  // and doing more harm than good." The recommended solution is to handle all extension
+  // and feature macro definitions manually.
+  // By undefining __SPIR__ and __SPIRV__, we prevent Clang from automatically enabling extensions,
+  // allowing us to explicitly control which extensions are enabled through manual defines.
+  optionsEx += " -U__SPIR__";
+  optionsEx += " -U__SPIRV__";
+
   // get additional -D flags from internal options
   optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
   optionsEx += " " + GetCDefinesForEnableList(extensions, oclStd, "-cl-ext=-all,");
