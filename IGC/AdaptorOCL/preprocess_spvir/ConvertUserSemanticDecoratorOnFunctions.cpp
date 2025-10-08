@@ -80,8 +80,20 @@ bool ConvertUserSemanticDecoratorOnFunctions::runOnModule(Module &M) {
   auto annotations_array = cast<ConstantArray>(annotations_gv->getOperand(0));
   for (const auto &op : annotations_array->operands()) {
     auto annotation_struct = cast<ConstantStruct>(op.get());
-    auto annotated_function = cast<Function>(annotation_struct->getOperand(0)->getOperand(0));
-    auto annotation_gv = cast<GlobalVariable>(annotation_struct->getOperand(1)->getOperand(0));
+
+    llvm::Function *annotated_function;
+    llvm::GlobalVariable *annotation_gv;
+
+    // For opaque pointers we can call only single getOperand() on annotation_struct,
+    // beacause we don't need to use e.g. bitcast instruction like for typed pointers
+    if (annotation_struct->getOperand(0)->getType()->isOpaquePointerTy()) {
+      annotated_function = cast<Function>(annotation_struct->getOperand(0));
+      annotation_gv = cast<GlobalVariable>(annotation_struct->getOperand(1));
+    } else {
+      annotated_function = cast<Function>(annotation_struct->getOperand(0)->getOperand(0));
+      annotation_gv = cast<GlobalVariable>(annotation_struct->getOperand(1)->getOperand(0));
+    }
+
     auto annotation = cast<ConstantDataArray>(annotation_gv->getInitializer())->getAsCString();
 
     auto &funcInfo = MD->FuncMD[annotated_function];
