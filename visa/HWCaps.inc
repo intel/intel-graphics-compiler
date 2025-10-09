@@ -757,6 +757,10 @@ bool hasWriteCombine() const {
   return getPlatform() >= Xe2;
 }
 
+bool needWriteCombineWA() const {
+  return hasWriteCombine() && getPlatform() <= Xe3;
+}
+
 bool hasA0WARHWissue() {
   return getPlatform() >= Xe_XeHPSDV && getPlatform() < Xe2;
 }

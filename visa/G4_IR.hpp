@@ -977,6 +977,14 @@ public:
            op == G4_math);
   }
 
+  bool isWriteCombineBlockCandidate() const {
+    return (op == G4_mov && IS_BTYPE(getDst()->getType()) &&
+            (IS_BTYPE(getSrc(0)->getType()) || IS_WTYPE(getSrc(0)->getType()) ||
+             IS_DTYPE(getSrc(0)->getType()) ||
+             getSrc(0)->getType() == Type_F) &&
+            getPredicate() == nullptr);
+  }
+
   virtual bool requireNopAfter() const { return false; }
 private:
   // use inheritDIFrom() instead

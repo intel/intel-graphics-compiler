@@ -3947,6 +3947,21 @@ void Optimizer::HWWorkaround() {
               LSC_FENCE_OP_NONE)
         bb->insertBefore(ii, inst->cloneInst());
 
+      // WA: Add dummy mov before the atomic write combined instruction if it is
+      // the first instruction of kernel.
+      // FIXME: repalce builder.needWriteCombineWA() with WA ID
+      bool isFirstInst = !builder.getOption(vISA_loadThreadPayload) &&
+                         builder.getIsKernel() &&
+                         kernel.fg.getEntryBB()->getFirstInst() == inst;
+      if (builder.needWriteCombineWA() &&
+          inst->isWriteCombineBlockCandidate() && inst->isAtomicInst() &&
+          isFirstInst) {
+        G4_INST *dummyMov = fg.builder->createMov(
+            g4::SIMD1, fg.builder->createNullDst(Type_UD),
+            builder.createImm(0x1, Type_UD), InstOpt_WriteEnable, false);
+        bb->insertBefore(ii, dummyMov);
+      }
+
       ii++;
     }
   }

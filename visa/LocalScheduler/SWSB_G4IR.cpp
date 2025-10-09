@@ -6929,18 +6929,9 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     // Treat block instructions as one in distance calculation.
     // The write combine in the local scheduling guarantee that all instructions
     // in the block belong to same instruction pipeline.
-    auto isWriteCombineBlockCandidate = [&](G4_INST *inst) {
-      return (inst->opcode() == G4_mov && IS_BTYPE(inst->getDst()->getType()) &&
-              (IS_BTYPE(inst->getSrc(0)->getType()) ||
-               IS_WTYPE(inst->getSrc(0)->getType()) ||
-               IS_DTYPE(inst->getSrc(0)->getType()) ||
-               inst->getSrc(0)->getType() == Type_F) &&
-              inst->getPredicate() == nullptr);
-    };
-
     if (builder.getOption(vISA_writeCombine) &&
-        isWriteCombineBlockCandidate(curInst) && curInst->isAtomicInst()) {
-      while (nextInst && isWriteCombineBlockCandidate(nextInst)) {
+        curInst->isWriteCombineBlockCandidate() && curInst->isAtomicInst()) {
+      while (nextInst && nextInst->isWriteCombineBlockCandidate()) {
         SBNode nextNode = SBNode(nodeID, ALUID, bb->getId(), nextInst);
         getGRFFootPrint(&nextNode, p);
         footprintMerge(node, &nextNode);
@@ -6957,9 +6948,9 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
       }
 
       // check last instruction in the block is correct or not
-      vISA_ASSERT(curInst && isWriteCombineBlockCandidate(curInst) &&
-             !curInst->isAtomicInst(),
-             "the last instruction in the write combine block is wrong");
+      vISA_ASSERT(curInst && curInst->isWriteCombineBlockCandidate() &&
+                      !curInst->isAtomicInst(),
+                  "the last instruction in the write combine block is wrong");
     }
 
     // Support for DPAS
