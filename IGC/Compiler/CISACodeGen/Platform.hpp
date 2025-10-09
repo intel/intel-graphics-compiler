@@ -1143,7 +1143,9 @@ public:
   }
 
   bool isSWSubTriangleOpacityCullingEmulationEnabled() const {
-    return (isCoreChildOf(IGFX_XE3_CORE) && IGC_IS_FLAG_DISABLED(DisableSWSubTriangleOpacityCullingEmulation));
+    return (isCoreChildOf(IGFX_XE3_CORE) &&
+            IGC_IS_FLAG_DISABLED(DisableSWSubTriangleOpacityCullingEmulation)
+    );
   }
 
   bool isRayQueryReturnOptimizationEnabled() const {
