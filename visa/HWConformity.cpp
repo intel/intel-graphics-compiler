@@ -6972,11 +6972,7 @@ void HWConformity::fixSrcRegion(G4_INST *inst) {
         if (numEle < wd || (wd >= vs && numEle % wd != 0)) {
 
           wd = 1;
-          if (hs == 0) {
-            vs = 1;
-          } else {
-            vs = hs;
-          }
+          vs = hs;
           hs = 0;
         }
       }
