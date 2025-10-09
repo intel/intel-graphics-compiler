@@ -62,10 +62,10 @@ define spir_kernel void @foo() #1 {
 ; CHECK-NEXT: call void @consume_large(%struct._st_foo_large [[A_VAL]])
 
     %b = call %struct._st_foo_small @bar_1()
-; CHECK-NEXT: %b = call %struct._st_foo_small @bar_1()
+; CHECK-NEXT: [[B:%.*]] = call %struct._st_foo_small @bar_1()
 
     call void @consume_small(%struct._st_foo_small %b)
-; CHECK-NEXT: call void @consume_small(%struct._st_foo_small %b)
+; CHECK-NEXT: call void @consume_small(%struct._st_foo_small [[B]])
 
     %c = call %struct._st_foo_complex @bar_2()
 ; CHECK-NEXT: [[C_ALLOCA:%.*]] = alloca %struct._st_foo_complex, align 8

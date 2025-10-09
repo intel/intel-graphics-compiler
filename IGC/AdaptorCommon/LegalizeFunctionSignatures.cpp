@@ -62,9 +62,10 @@ LegalizeFunctionSignatures::LegalizeFunctionSignatures() : ModulePass(ID) {
 //         pass-by-value so that they can be passed on GRF instead of spilling to stack memory.
 //
 // 4. The "sret" struct argument smaller than 64-bits are transformed to return value
-//   Note: Similar to the previous point, SPIRV FE converts struct return values to pass-by-refernce
+//   Note: Similar to the previous point, MOST SPIRV FE converts struct return values to pass-by-refernce
 //         through the "sret" argument. For small structs that fit into the return GRF, we can undo
-//         this transformation to pass them by value instead.
+//         this transformation to pass them by value instead. Be aware that returing structs by value
+//         is allowed in SPIR-V calling convention thus most front ends don't do that.
 //
 // See IGC StackCall ABI for details on stackcall calling conventions.
 
@@ -74,7 +75,7 @@ static const unsigned int MAX_RETVAL_SIZE_IN_BITS = 64;
 static const unsigned int MAX_STRUCT_SIZE_IN_BITS = 128;
 static const unsigned int MAX_SUBROUTINE_STRUCT_SIZE_IN_BITS = 512;
 
-enum ReturnOpt { RETURN_DEFAULT = 0, RETURN_BY_REF, RETURN_STRUCT, RETURN_LEGAL_INT };
+enum ReturnOpt { RETURN_DEFAULT = 0, RETURN_BY_REF, RETURN_STRUCT_PROMOTED, RETURN_LEGAL_INT, RETURN_STRUCT };
 
 bool LegalizeFunctionSignatures::runOnModule(Module &M) {
   auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -178,6 +179,16 @@ inline bool FunctionHasPromotableSRetArg(const Module &M, const Function *F) {
   return false;
 }
 
+inline bool FunctionReturnsStructByVal(const Module &M, const Function *F) {
+  if (F) {
+    auto returnType = F->getReturnType();
+    if (returnType->isStructTy()) {
+      return isLegalStructType(M, cast<StructType>(returnType), MAX_STRUCT_SIZE_IN_BITS);
+    }
+  }
+  return false;
+}
+
 // Promotes struct pointer to struct type
 inline StructType *PromotedStructValueType(const Module &M, const Argument *arg) {
   if (arg->getType()->isPointerTy()) {
@@ -189,6 +200,13 @@ inline StructType *PromotedStructValueType(const Module &M, const Argument *arg)
   }
   IGC_ASSERT_MESSAGE(0, "Not implemented case");
   return nullptr;
+}
+
+inline StructType *GetReturnedStructValueType(const Module &M, const Function *F) {
+  if (FunctionReturnsStructByVal(M, F)) {
+    return dyn_cast<StructType> (F->getReturnType());
+  }
+  return PromotedStructValueType(M, F->arg_begin());
 }
 
 inline StructType *StructTypeFromCallInstArg(const CallInst *callInst, unsigned argNo) {
@@ -269,10 +287,13 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module &M) {
     auto ei = pFunc->arg_end();
 
     bool functionHasPromotableSRetArg = FunctionHasPromotableSRetArg(M, pFunc);
+    bool functionReturnsAggregateByVal = FunctionReturnsStructByVal(M, pFunc);
     // Create the new function signature by replacing the illegal types
     if (functionHasPromotableSRetArg) {
-      retTypeOption = ReturnOpt::RETURN_STRUCT;
+      retTypeOption = ReturnOpt::RETURN_STRUCT_PROMOTED;
       ai++; // Skip adding the first arg
+    } else if (functionReturnsAggregateByVal && !pFunc->isDeclaration()) {
+      retTypeOption = ReturnOpt::RETURN_STRUCT;
     } else if (!isLegalSignatureType(M, pFunc->getReturnType(), isStackCall)) {
       retTypeOption = ReturnOpt::RETURN_BY_REF;
       argTypes.push_back(PointerType::get(pFunc->getReturnType(), 0));
@@ -309,7 +330,7 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module &M) {
     if (retTypeOption != ReturnOpt::RETURN_DEFAULT || fixArgType) {
       // Clone function with new signature
       Type *returnType = retTypeOption == ReturnOpt::RETURN_BY_REF   ? Type::getVoidTy(M.getContext())
-                         : retTypeOption == ReturnOpt::RETURN_STRUCT ? PromotedStructValueType(M, pFunc->arg_begin())
+                         : retTypeOption == ReturnOpt::RETURN_STRUCT_PROMOTED ? GetReturnedStructValueType(M, pFunc)
                          : retTypeOption == ReturnOpt::RETURN_LEGAL_INT
                              ? LegalizedIntVectorType(M, pFunc->getReturnType())
                              : pFunc->getReturnType();
@@ -380,6 +401,8 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module &M) {
       llvm::SmallVector<llvm::Argument *, 8> ArgByVal;
 
       if (FunctionHasPromotableSRetArg(M, pFunc)) {
+        retTypeOption = ReturnOpt::RETURN_STRUCT_PROMOTED;
+      } else if (FunctionReturnsStructByVal(M, pFunc)) {
         retTypeOption = ReturnOpt::RETURN_STRUCT;
       } else if (!isLegalSignatureType(M, pFunc->getReturnType(), isStackCall)) {
         retTypeOption = ReturnOpt::RETURN_BY_REF;
@@ -392,7 +415,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module &M) {
       BasicBlock *EntryBB = BasicBlock::Create(M.getContext(), "", pNewFunc);
       IGCLLVM::IRBuilder<> builder(EntryBB);
       for (; OldArgIt != pFunc->arg_end(); ++OldArgIt) {
-        if (OldArgIt == pFunc->arg_begin() && retTypeOption == ReturnOpt::RETURN_STRUCT) {
+        if (OldArgIt == pFunc->arg_begin() && retTypeOption == ReturnOpt::RETURN_STRUCT_PROMOTED) {
           // Create a temp alloca to map the old argument. This will be removed later by SROA.
           tempAllocaForSRetPointerTy = PromotedStructValueType(M, OldArgIt);
           tempAllocaForSRetPointer = builder.CreateAlloca(tempAllocaForSRetPointerTy);
@@ -455,13 +478,30 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module &M) {
           builder.CreateRetVoid();
           RetInst->eraseFromParent();
         }
-      } else if (retTypeOption == ReturnOpt::RETURN_STRUCT) {
+      } else if (retTypeOption == ReturnOpt::RETURN_STRUCT_PROMOTED) {
         // For "sret" returns, we load from the temp alloca created earlier and return the loaded value instead
         for (auto RetInst : Returns) {
           IGCLLVM::IRBuilder<> builder(RetInst);
           Value *retVal = LoadFromStruct(builder, tempAllocaForSRetPointer, tempAllocaForSRetPointerTy);
           builder.CreateRet(retVal);
           RetInst->eraseFromParent();
+        }
+      } else if (retTypeOption == ReturnOpt::RETURN_STRUCT) {
+        for (auto &v: pNewFunc->getEntryBlock()) {
+          AllocaInst *alloca = dyn_cast<AllocaInst> (&v);
+          if (alloca && alloca->getAllocatedType() == pNewFunc->getReturnType()) {
+            tempAllocaForSRetPointer = alloca;
+            tempAllocaForSRetPointerTy = pNewFunc->getReturnType();
+            break;
+          }
+        }
+        if (tempAllocaForSRetPointer) {
+          for (auto RetInst : Returns) {
+            IGCLLVM::IRBuilder<> builder(RetInst);
+            Value *retVal = LoadFromStruct(builder, tempAllocaForSRetPointer, tempAllocaForSRetPointerTy);
+            builder.CreateRet(retVal);
+            RetInst->eraseFromParent();
+          }
         }
       } else if (retTypeOption == ReturnOpt::RETURN_LEGAL_INT) {
         // Extend illegal int returns to legal type
@@ -545,7 +585,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module &M, CallInst *callIns
       callInst->paramHasAttr(0, llvm::Attribute::StructRet) &&
       isPromotableStructType(M, callInst->getParamAttr(0, llvm::Attribute::StructRet).getValueAsType(), isStackCall)) {
     opNum++; // Skip the first call operand
-    retTypeOption = ReturnOpt::RETURN_STRUCT;
+    retTypeOption = ReturnOpt::RETURN_STRUCT_PROMOTED;
   } else if (!isLegalSignatureType(M, callInst->getType(), isStackCall)) {
     // Create an alloca for the return type
     IGCLLVM::IRBuilder<> builder(callInst);
@@ -559,6 +599,8 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module &M, CallInst *callIns
     retTypeOption = ReturnOpt::RETURN_BY_REF;
   } else if (!isLegalIntVectorType(M, callInst->getType())) {
     retTypeOption = ReturnOpt::RETURN_LEGAL_INT;
+  } else if (FunctionReturnsStructByVal(M, callInst->getCalledFunction())) {
+    retTypeOption = ReturnOpt::RETURN_STRUCT;
   }
 
   // Check call operands if it needs to be replaced
@@ -607,7 +649,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module &M, CallInst *callIns
         argTypes.push_back(arg->getType());
       }
       Type *retType = retTypeOption == ReturnOpt::RETURN_BY_REF      ? Type::getVoidTy(callInst->getContext())
-                      : retTypeOption == ReturnOpt::RETURN_STRUCT    ? StructTypeFromCallInstArg(callInst, 0)
+                      : retTypeOption == ReturnOpt::RETURN_STRUCT_PROMOTED    ? StructTypeFromCallInstArg(callInst, 0)
                       : retTypeOption == ReturnOpt::RETURN_LEGAL_INT ? LegalizedIntVectorType(M, callInst->getType())
                                                                      : callInst->getType();
       newFnTy = FunctionType::get(retType, argTypes, false);
@@ -631,7 +673,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module &M, CallInst *callIns
       IGC_ASSERT(returnPtr);
       Value *load = builder.CreateLoad(cast<AllocaInst>(returnPtr)->getAllocatedType(), returnPtr);
       callInst->replaceAllUsesWith(load);
-    } else if (retTypeOption == ReturnOpt::RETURN_STRUCT) {
+    } else if (retTypeOption == ReturnOpt::RETURN_STRUCT_PROMOTED) {
       // Store the struct value into the orginal pointer operand
       StoreToStruct(builder, newCallInst, callInst->getArgOperand(0));
     } else if (retTypeOption == ReturnOpt::RETURN_LEGAL_INT) {
