@@ -589,19 +589,12 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
   BitSet<> allSrcBits(m_dsBuilder.getGRF_LEN());
   BitSet<> allDstNoLastBits(m_dsBuilder.getGRF_LEN());
   BitSet<> allSrcNoLastBits(m_dsBuilder.getGRF_LEN());
-  SuppressBlockPtrTy bptr =
-      getSuppressionBlockCandidate(startIt, srcIdx, allDstBits, allSrcBits,
-                                   allDstNoLastBits, allSrcNoLastBits);
-  if (!bptr)
-    return 0;
+
+  SuppressBlock bptr(
+      getNumberOfSuppresionGroups(srcIdx), srcIdx == 1 ? 8 : 4);
 
   size_t numSuppressed = 0;
   InstListIterator it = startIt;
-  // advance inst iterator to the next instruction following the block
-  // Note that this instruction must be a macro candidate, otherwise the
-  // suppression block won't formed
-  std::advance(it, bptr->size());
-  assert(it != m_instList.end());
 
 
   // find until the last instruction that can be suppressed
@@ -622,10 +615,6 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
     if (srcOp.getDirRegName() != RegName::GRF_R)
       break;
 
-    // found the first instruction that can't be suppressed. Stop looking.
-    if (!bptr->contains(srcOp.getDirRegRef().regNum))
-      break;
-
     bool skipSetLastBits = false;
     if (hasProducerConsumerDep(dst_range, src_range, allDstBits)) {
         break;
@@ -633,7 +622,7 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
 
     // at this point, we can add this DPAS into the macro
     ++numSuppressed;
-    bptr->addRegRanges(src_range, src_extra_range, dst_range);
+    bptr.addRegRanges(src_range, src_extra_range, dst_range);
     if (!skipSetLastBits) {
       allSrcNoLastBits = allSrcBits;
       allDstNoLastBits = allDstBits;
@@ -650,74 +639,13 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
   if (numSuppressed) {
     // at least one instruction can be suppressed, the candidate block can be in
     // the macro udpate register footprint into DepSet
-    updateRegFootprintsToDepSets(bptr->allSrcRange, bptr->allExtraSrcRange,
-                                 bptr->allDstRange);
+    updateRegFootprintsToDepSets(bptr.allSrcRange, bptr.allExtraSrcRange,
+                                 bptr.allDstRange);
 
     // return the total instructions found can be in the macro
-    return bptr->size() + numSuppressed;
+    return bptr.size() + numSuppressed;
   }
   return 0;
-}
-
-DepSetBuilder::DpasMacroBuilder::SuppressBlockPtrTy
-DepSetBuilder::DpasMacroBuilder::getSuppressionBlockCandidate(
-    InstListIterator startIt, uint32_t srcIdx, BitSet<> &allDstBits,
-    BitSet<> &allSrcBits, BitSet<> &allDstNoLastBits,
-    BitSet<> &allSrcNoLastBits, int forceGroupNum) const {
-  assert(srcIdx == 1 || srcIdx == 2);
-  size_t maxGroupNum =
-      forceGroupNum < 0 ? getNumberOfSuppresionGroups(srcIdx) : forceGroupNum;
-  // return null if the given src can't be suppressed
-  if (!maxGroupNum)
-    return nullptr;
-
-  SuppressBlockPtrTy sb(new SuppressBlock(maxGroupNum, srcIdx == 1 ? 8 : 4));
-  // try from the startIt to see if there are dpas sequence that can form the
-  // suppression block check number of maxGroupSize to find the first one block
-  // those can potentially be suppressed
-  InstListIterator it = startIt;
-  for (size_t i = 0; i < maxGroupNum; ++i) {
-    InstListIterator nextIt = it;
-    ++nextIt;
-    // if next instruction is not a suppression candidate, there's no chance to
-    // form a suppression block, return nullptr directly
-    if (nextIt == m_instList.end())
-      return nullptr;
-    if (nextIsNotMacroCandidate(**it, **nextIt))
-      return nullptr;
-    if (!srcIsSuppressCandidate(**it, srcIdx))
-      return nullptr;
-    SrcRegRangeType src_range, src_extra_range;
-    DstRegRangeType dst_range;
-    m_inps.getDpasSrcDependency(**it, src_range, src_extra_range, m_model);
-    m_inps.getDpasDstDependency(**it, dst_range);
-    if (hasInternalDep(**it, dst_range, src_range,
-                       GetDpasSystolicDepth((*it)->getDpasFc()) == 8))
-      return nullptr;
-
-    bool skipSetLastBits = false;
-    if (hasProducerConsumerDep(dst_range, src_range, allDstBits)) {
-        return nullptr;
-    }
-    uint16_t reg = (*it)->getSource(srcIdx).getDirRegRef().regNum;
-    if (sb->partialOverlapped(reg))
-      return nullptr;
-
-    // found the first duplicated register, the block is formed
-    if (sb->contains(reg))
-      break;
-    sb->addRegs(reg);
-    sb->addRegRanges(src_range, src_extra_range, dst_range);
-    if (!skipSetLastBits) {
-      allSrcNoLastBits = allSrcBits;
-      allDstNoLastBits = allDstBits;
-    }
-    setDstSrcBits(src_range, dst_range, allSrcBits, allDstBits);
-    ++it;
-  }
-
-  assert(sb->size());
-  return sb;
 }
 
 bool DepSetBuilder::DpasMacroBuilder::srcIsSuppressCandidate(
