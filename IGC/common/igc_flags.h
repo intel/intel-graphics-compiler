@@ -1589,6 +1589,8 @@ DECLARE_IGC_REGKEY(bool, RematAllowLoads, false,
 DECLARE_IGC_REGKEY(bool, DumpRegPressureEstimate, false, "Dump RegPressureEstimate to a file", false)
 DECLARE_IGC_REGKEY(debugString, DumpRegPressureEstimateFilter, 0,
                    "Only dump RegPressureEstimate for functions matching the given regex", false)
+DECLARE_IGC_REGKEY(bool, AddressSpacePhiPropagation, true,
+                   "Lower loads from PHI nodes into incoming nodes in case they cause extra address space casts.", false)
 DECLARE_IGC_REGKEY(bool, VectorizerLog, false, "Dump Vectorizer Log, usefull for analyzing vectorization issues", true)
 DECLARE_IGC_REGKEY(bool, VectorizerLogToErr, false, "Dump Vectorizer Log to stdErr", true)
 DECLARE_IGC_REGKEY(bool, EnableReusingXYZWStoreConstPayload, true, "Enable reusing XYZW stores const payload", false)
