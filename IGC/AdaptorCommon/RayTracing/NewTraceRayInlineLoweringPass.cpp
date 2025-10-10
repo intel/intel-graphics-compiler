@@ -924,7 +924,7 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
   for (const auto [I, closures] : instructionClosures) {
 
     IRB.SetInsertPoint(I);
-    for (const auto c : closures)
+    for (const auto &c : closures)
       c(IRB);
   }
 
@@ -938,7 +938,7 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
 
     IRB.SetInsertPoint(succ->getFirstNonPHI());
 
-    for (const auto c : closures)
+    for (const auto &c : closures)
       c(IRB);
   }
 }

@@ -478,7 +478,7 @@ void CustomSafeOptPass::visitIntAtomicIAddToIncOrDec(CallInst *I) {
   if (m_modMD->compOpt.DisableConvertingAtomicIAddToIncDec)
     return;
 
-  GenIntrinsicInst *instr = dyn_cast<GenIntrinsicInst>(I);
+  GenIntrinsicInst *instr = cast<GenIntrinsicInst>(I);
   GenISAIntrinsic::ID id = instr->getIntrinsicID();
 
 // clang-format off

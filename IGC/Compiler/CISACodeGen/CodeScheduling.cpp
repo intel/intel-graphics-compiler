@@ -1220,8 +1220,8 @@ private:
   llvm::raw_ostream *LogStream;
 
   // Helper function to format debug information string
-  static std::string formatDebugInfo(int32_t CurrentPressure, int32_t Estimate, const std::string Type,
-                                     const std::string AddString = "") {
+  static std::string formatDebugInfo(int32_t CurrentPressure, int32_t Estimate, const std::string &Type,
+                                     const std::string &AddString = "") {
     const int ESTIMATION_NUMBERS_WIDTH = 12;
     const int INFO_WIDTH = 20;
     std::string Info = std::to_string(CurrentPressure) + ", " + std::to_string(Estimate);

@@ -120,7 +120,7 @@ void MetadataDumpRA::addKernelMD(G4_Kernel* kernel) {
     }
 
     // add this kernel metadata to the total metadata
-    kernelMetadatas.push_back(kernelMD);
+    kernelMetadatas.push_back(std::move(kernelMD));
     numKernels += 1;
     return;
 

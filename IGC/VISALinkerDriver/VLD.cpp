@@ -510,7 +510,7 @@ bool TranslateBuildSPMDAndESIMD(llvm::ArrayRef<SPVTranslationPair> InputModules,
     // If this is the last SPIR-V to compile, stop here. The rest of the code
     // handles extracting information for further compilations.
     if (IsLast) {
-      *pOutputArgs = NewOutputArgs;
+      *pOutputArgs = std::move(NewOutputArgs);
       break;
     }
 

@@ -178,8 +178,7 @@ static bool tryParsePassNumber(PassDisableConfig &pdc, const std::string &Token)
   if (std::all_of(tempTokenWithoutSpaces.cbegin(), tempTokenWithoutSpaces.cend(), ::isdigit)) {
     std::cerr << "You want to skip pass ID " << Token << std::endl;
     unsigned int passNumber = std::stoi(Token);
-    auto localSkipComand = SkipCommand(passNumber);
-    pdc.skipCommands.push_back(std::move(localSkipComand));
+    pdc.skipCommands.emplace_back(passNumber);
     // move to next Token
     return true;
   }
@@ -234,8 +233,7 @@ static bool tryParsePassRange(PassDisableConfig &pdc, const std::string &Token) 
     unsigned int skippingTo = std::stoi(vectorOfSubTokens[1]);
     if (checkSkipCommandBounds(skippingFrom, skippingTo)) {
       std::cerr << "You want to skip passes from " << skippingFrom << " to " << skippingTo << std::endl;
-      auto localSkipComand = SkipCommand(skippingFrom, skippingTo);
-      pdc.skipCommands.push_back(localSkipComand);
+      pdc.skipCommands.emplace_back(skippingFrom, skippingTo);
     }
     break;
   }
@@ -247,9 +245,8 @@ static bool tryParsePassRange(PassDisableConfig &pdc, const std::string &Token) 
     if (SkipCommand *sc = getFirstCommand(pdc, TokenSkipCase::OpenRange)) {
       sc->start = std::min(sc->start, skippingFrom);
     } else {
-      auto localSkipComand =
-          SkipCommand("", skippingFrom, std::numeric_limits<unsigned int>::max(), TokenSkipCase::OpenRange);
-      pdc.skipCommands.push_back(std::move(localSkipComand));
+      pdc.skipCommands.emplace_back("", skippingFrom, std::numeric_limits<unsigned int>::max(),
+                                    TokenSkipCase::OpenRange);
     }
     break;
   }
@@ -275,9 +272,7 @@ static bool tryParsePassNameSpecificOccurrence(PassDisableConfig &pdc, const std
   }
   std::cerr << "You want to skip pass " << nameOfPassToSkip << " occurrence " << occurrenceOfPass << std::endl;
   unsigned int passOccurrence = std::stoi(occurrenceOfPass);
-  auto localSkipComand =
-      SkipCommand(nameOfPassToSkip, passOccurrence, passOccurrence, TokenSkipCase::SpecificPassOccurrence);
-  pdc.skipCommands.push_back(std::move(localSkipComand));
+  pdc.skipCommands.emplace_back(nameOfPassToSkip, passOccurrence, passOccurrence, TokenSkipCase::SpecificPassOccurrence);
   // move to next Token
   return true;
 }
@@ -315,9 +310,7 @@ static bool tryParsePassNameOccurrenceRange(PassDisableConfig &pdc, const std::s
     if (checkSkipCommandBounds(skippingFrom, skippingTo)) {
       std::cerr << "You want to skip pass " << nameOfPassToSkip << " from occurrence " << skippingFrom
                 << " to occurrence " << skippingTo << std::endl;
-      auto localSkipComand =
-          SkipCommand(nameOfPassToSkip, skippingFrom, skippingTo, TokenSkipCase::SpecificPassOccurrenceRange);
-      pdc.skipCommands.push_back(localSkipComand);
+      pdc.skipCommands.emplace_back(nameOfPassToSkip, skippingFrom, skippingTo, TokenSkipCase::SpecificPassOccurrenceRange);
     }
     break;
   }
@@ -330,9 +323,8 @@ static bool tryParsePassNameOccurrenceRange(PassDisableConfig &pdc, const std::s
     if (SkipCommand *sc = getFirstCommand(pdc, TokenSkipCase::SpecificPassOccurrenceOpenRange, nameOfPassToSkip)) {
       sc->start = std::min(sc->start, skippingFrom);
     } else {
-      auto localSkipComand = SkipCommand(nameOfPassToSkip, skippingFrom, std::numeric_limits<unsigned int>::max(),
+      pdc.skipCommands.emplace_back(nameOfPassToSkip, skippingFrom, std::numeric_limits<unsigned int>::max(),
                                          TokenSkipCase::SpecificPassOccurrenceOpenRange);
-      pdc.skipCommands.push_back(std::move(localSkipComand));
     }
     break;
   }
@@ -376,8 +368,7 @@ static bool tryParsePassNames(PassDisableConfig &pdc, const std::string &Token) 
   case 1: {
     const std::string &nameOfPassToSkip = vectorOfSubTokens[0];
     std::cerr << "You want to skip all occurrence of " << nameOfPassToSkip << std::endl;
-    auto localSkipComand = SkipCommand(nameOfPassToSkip);
-    pdc.skipCommands.push_back(std::move(localSkipComand));
+    pdc.skipCommands.emplace_back(nameOfPassToSkip);
     // move to next Token
     return true;
   }
@@ -405,7 +396,7 @@ static void parseShaderPassDisableFlag(PassDisableConfig &pdc) {
     debugOutputStream << "Your input to ShaderPassDisable: " << passToSkip << '\n';
     debugOutputStream << "You want to skip pass ID " << passToSkip << '\n';
 
-    pdc.skipCommands.push_back(SkipCommand(passToSkip));
+    pdc.skipCommands.emplace_back(passToSkip);
   }
   // Treat it as a string otherwise
   else {
