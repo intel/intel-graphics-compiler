@@ -896,6 +896,60 @@ std::string GetCDefinesFromInternalOptions(const char *pInternalOptions) {
   return internalDefines;
 }
 
+// Tracks extensions that require manual feature macro generation for OpenCL C < 3.0.
+// These specific extensions were implemented in Clang differently than other extensions -
+// they require both the extension define AND corresponding feature macros to be enabled.
+// For OpenCL C 3.0, the runtime automatically handles feature macros, but for older versions,
+// IGC must manually enable the corresponding feature macros when these extensions are enabled.
+struct ExtensionsRequiringManualFeatureMacros {
+  // Extensions that generate their own feature macros
+  bool integerDotProduct = false; // cl_khr_integer_dot_product
+  bool extFloatAtomics = false;   // cl_ext_float_atomics
+
+  // Dependency flags - control which macros are enabled
+  bool fp16 = false; // cl_khr_fp16 (dependency for atomic macros)
+  bool fp64 = false; // cl_khr_fp64 (dependency for atomic macros)
+};
+
+std::string GetFeatureMacrosForExtensions(const ExtensionsRequiringManualFeatureMacros &enabledExtensions,
+                                          unsigned int oclStd) {
+  // For OpenCL C versions older than 3.0, manually enable feature macros for specific extensions
+  std::string featureMacros;
+
+  IGC_ASSERT_MESSAGE(oclStd < 300, "This function should only be called for OpenCL C versions older than 3.0");
+
+  // Integer dot product macros (OpenCL C 1.2+)
+  if (enabledExtensions.integerDotProduct && oclStd >= 120) {
+    featureMacros += " -D__opencl_c_integer_dot_product_input_4x8bit_packed";
+    featureMacros += " -D__opencl_c_integer_dot_product_input_4x8bit";
+  }
+
+  // Float atomics macros (OpenCL C 2.0+)
+  if (enabledExtensions.extFloatAtomics && oclStd >= 200) {
+    if (enabledExtensions.fp16) {
+      featureMacros += " -D__opencl_c_ext_fp16_global_atomic_load_store";
+      featureMacros += " -D__opencl_c_ext_fp16_local_atomic_load_store";
+      featureMacros += " -D__opencl_c_ext_fp16_global_atomic_add";
+      featureMacros += " -D__opencl_c_ext_fp16_local_atomic_add";
+      featureMacros += " -D__opencl_c_ext_fp16_global_atomic_min_max";
+      featureMacros += " -D__opencl_c_ext_fp16_local_atomic_min_max";
+    }
+    if (enabledExtensions.fp64) {
+      featureMacros += " -D__opencl_c_ext_fp64_global_atomic_add";
+      featureMacros += " -D__opencl_c_ext_fp64_local_atomic_add";
+      featureMacros += " -D__opencl_c_ext_fp64_global_atomic_min_max";
+      featureMacros += " -D__opencl_c_ext_fp64_local_atomic_min_max";
+    }
+    // FP32 atomics (always available with cl_ext_float_atomics)
+    featureMacros += " -D__opencl_c_ext_fp32_global_atomic_add";
+    featureMacros += " -D__opencl_c_ext_fp32_local_atomic_add";
+    featureMacros += " -D__opencl_c_ext_fp32_global_atomic_min_max";
+    featureMacros += " -D__opencl_c_ext_fp32_local_atomic_min_max";
+  }
+
+  return featureMacros;
+}
+
 // The expected extensions input string is in a form:
 // -cl-ext=-all,+supported_ext_name,+second_supported_ext_name
 // -cl-feature=+__opencl_c_3d_image_writes,+__opencl_c_atomic_order_acq_rel
@@ -919,6 +973,7 @@ std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int
   llvm::SmallVector<StringRef, 0> v;
   enableListStr.split(v, ',');
 
+  ExtensionsRequiringManualFeatureMacros enabledExtensions;
   for (auto ext : v) {
     if (ext.consume_front("+")) {
       if (ext.equals("cl_intel_device_side_avc_motion_estimation")) {
@@ -927,8 +982,30 @@ std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int
         if (!(oclStd >= 120 || oclStd == 0))
           continue;
       }
+
+      // Only collect extensions needed for manual feature macro generation
+      if (ext.equals("cl_khr_integer_dot_product")) {
+        enabledExtensions.integerDotProduct = true;
+      } else if (ext.equals("cl_ext_float_atomics")) {
+        enabledExtensions.extFloatAtomics = true;
+      } else if (ext.equals("cl_khr_fp16")) {
+        enabledExtensions.fp16 = true;
+      } else if (ext.equals("cl_khr_fp64")) {
+        enabledExtensions.fp64 = true;
+      }
+
       definesStr.append(" -D").append(ext.str());
     }
+  }
+
+  // For OpenCL C versions older than 3.0, manually enable feature macros for specific extensions.
+  // This is required because some extensions (like cl_khr_integer_dot_product) were implemented
+  // in Clang to require both the extension define AND corresponding feature macros to be enabled.
+  // In OpenCL C 3.0, the runtime automatically handles feature macros, but for older versions,
+  // the runtime (NEO UMD) doesn't pass these feature macros, so IGC must enable them manually
+  // when the corresponding extension is enabled.
+  if (oclStd < 300) {
+    definesStr += GetFeatureMacrosForExtensions(enabledExtensions, oclStd);
   }
 
   return definesStr;
@@ -1330,6 +1407,18 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
 
   unsigned int oclStd =
       GetOclCVersionFromOptions(pInputArgs->options.data(), nullptr, pInputArgs->oclVersion, exceptString);
+
+  // Undefine Clang's SPIR/SPIRV macros to prevent automatic extension enablement.
+  // According to the March 20th OpenCL tooling meeting, Clang's automatic extension
+  // handling "is trying to do the right thing on a best effort basis, but should not
+  // be treated as a reference solution, and in its current state appears to be broken
+  // and doing more harm than good." The recommended solution is to handle all extension
+  // and feature macro definitions manually.
+  // By undefining __SPIR__ and __SPIRV__, we prevent Clang from automatically enabling extensions,
+  // allowing us to explicitly control which extensions are enabled through manual defines.
+  optionsEx += " -U__SPIR__";
+  optionsEx += " -U__SPIRV__";
+
   // get additional -D flags from internal options
   optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
   optionsEx += " " + GetCDefinesForEnableList(extensions, oclStd, "-cl-ext=-all,");
