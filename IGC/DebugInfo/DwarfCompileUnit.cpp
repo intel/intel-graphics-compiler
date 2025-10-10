@@ -2034,11 +2034,18 @@ void CompileUnit::constructContainingTypeDIEs() {
   }
 }
 
-IGC::DIE *CompileUnit::constructVariableDIE(DbgVariable &DV, bool isScopeAbstract) {
+IGC::DIE *CompileUnit::constructVariableDIE(DbgVariable &DV) {
   StringRef Name = DV.getName();
   LLVM_DEBUG(dbgs() << "[DwarfDebug] constructing DIE for variable <" << Name << ">\n");
   // Define variable debug information entry.
   DIE *VariableDie = new DIE(DV.getTag());
+  insertDIE(const_cast<DILocalVariable *>(DV.getVariable()), VariableDie);
+  return VariableDie;
+}
+
+void CompileUnit::applyVariableAttributes(DbgVariable &DV, DIE *VariableDie, bool isScopeAbstract) {
+  StringRef Name = DV.getName();
+  LLVM_DEBUG(dbgs() << "[DwarfDebug] applying attributes for DIE variable <" << Name << ">\n");
   DbgVariable *AbsVar = DV.getAbstractVariable();
   DIE *AbsDIE = AbsVar ? AbsVar->getDIE() : NULL;
   if (AbsDIE) {
@@ -2058,7 +2065,7 @@ IGC::DIE *CompileUnit::constructVariableDIE(DbgVariable &DV, bool isScopeAbstrac
   if (isScopeAbstract) {
     DV.setDIE(VariableDie);
     LLVM_DEBUG(dbgs() << "  done. Variable is scope-abstract\n");
-    return VariableDie;
+    return;
   }
 
   // Add variable address.
@@ -2079,7 +2086,7 @@ IGC::DIE *CompileUnit::constructVariableDIE(DbgVariable &DV, bool isScopeAbstrac
 
     DV.setDIE(VariableDie);
     LLVM_DEBUG(dbgs() << "  done. Location is taken from .debug_loc\n");
-    return VariableDie;
+    return;
   }
 
   // Check if variable is described by a DBG_VALUE instruction.
@@ -2087,13 +2094,12 @@ IGC::DIE *CompileUnit::constructVariableDIE(DbgVariable &DV, bool isScopeAbstrac
   if (!pDbgInst || !DV.currentLocationIsInlined()) {
     DV.setDIE(VariableDie);
     LLVM_DEBUG(dbgs() << " done. No dbg.inst assotiated\n");
-    return VariableDie;
+    return;
   }
 
   buildLocation(pDbgInst, DV, VariableDie);
 
   LLVM_DEBUG(dbgs() << " done. Location is emitted directly in DIE\n");
-  return VariableDie;
 }
 
 void CompileUnit::buildLocation(const llvm::Instruction *pDbgInst, DbgVariable &DV, IGC::DIE *VariableDie) {
