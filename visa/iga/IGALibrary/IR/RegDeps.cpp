@@ -583,15 +583,14 @@ size_t DepSetBuilder::DpasMacroBuilder::getNumberOfSuppresionGroups(
 }
 
 size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
-    InstListIterator startIt, uint32_t srcIdx) {
+    InstListIterator startIt) {
   // get the candidate block
   BitSet<> allDstBits(m_dsBuilder.getGRF_LEN());
   BitSet<> allSrcBits(m_dsBuilder.getGRF_LEN());
   BitSet<> allDstNoLastBits(m_dsBuilder.getGRF_LEN());
   BitSet<> allSrcNoLastBits(m_dsBuilder.getGRF_LEN());
 
-  SuppressBlock bptr(
-      getNumberOfSuppresionGroups(srcIdx), srcIdx == 1 ? 8 : 4);
+  SuppressBlock bptr;
 
   size_t numSuppressed = 0;
   InstListIterator it = startIt;
@@ -599,20 +598,12 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
 
   // find until the last instruction that can be suppressed
   while (it != m_instList.end()) {
-    if (!srcIsSuppressCandidate(**it, srcIdx))
-      break;
-
     SrcRegRangeType src_range, src_extra_range;
     DstRegRangeType dst_range;
     m_inps.getDpasSrcDependency(**it, src_range, src_extra_range, m_model);
     m_inps.getDpasDstDependency(**it, dst_range);
     if (hasInternalDep(**it, dst_range, src_range,
                        GetDpasSystolicDepth((*it)->getDpasFc()) == 8))
-      break;
-
-    Operand &srcOp = (*it)->getSource(srcIdx);
-    // TODO: to simplify the implementation, stop looking if the src is null
-    if (srcOp.getDirRegName() != RegName::GRF_R)
       break;
 
     bool skipSetLastBits = false;
@@ -643,26 +634,9 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
                                  bptr.allDstRange);
 
     // return the total instructions found can be in the macro
-    return bptr.size() + numSuppressed;
+    return numSuppressed;
   }
   return 0;
-}
-
-bool DepSetBuilder::DpasMacroBuilder::srcIsSuppressCandidate(
-    const Instruction &inst, uint32_t srcIdx) const {
-  // src1 always can be the candidate since all dpas depth must be the same
-  // within the same macro
-  if (srcIdx == 1)
-    return true;
-  if (srcIdx == 2) {
-    // DP dpas must have rep count 4
-    if (inst.isDF())
-      return GetDpasRepeatCount(inst.getDpasFc()) == 4;
-
-    // allow only rep count 8 for non-DP dpase
-    return GetDpasRepeatCount(inst.getDpasFc()) == 8;
-  }
-  return false;
 }
 
 bool DepSetBuilder::DpasMacroBuilder::hasProducerConsumerDep(
@@ -714,9 +688,7 @@ Instruction &DepSetBuilder::DpasMacroBuilder::formMacro(size_t &dpasCnt) {
   }
 
 
-
-  dpasCnt = std::max(dpasCnt, formSrcSuppressionBlock(m_firstDpasIt, 1));
-  dpasCnt = std::max(dpasCnt, formSrcSuppressionBlock(m_firstDpasIt, 2));
+  dpasCnt = std::max(dpasCnt, formSrcSuppressionBlock(m_firstDpasIt));
 
   if (dpasCnt == 1) {
     updateRegFootprintsToDepSets(src_range, src_extra_range, dst_range);

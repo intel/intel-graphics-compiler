@@ -533,15 +533,6 @@ private:
   private:
     struct SuppressBlock {
     public:
-      // Maximum number of groups allowed. This dpeneds on platform and the src
-      // index
-      const size_t maxNumGroup;
-      const size_t groupSize;
-
-      // Groups in this block: each group is represented by the first register
-      // of the group
-      std::vector<uint16_t> groups;
-
       // Keep tarck of the src and dst register footprints of all instructions
       // those are in this suppressBlcok. This will be used to set to DepSet
       // when the block is decided to be added into the macro, for avoiding
@@ -550,41 +541,7 @@ private:
       RegRangeListType allDstRange;
 
     public:
-      SuppressBlock(size_t maxNumGroup, size_t groupSize)
-          : maxNumGroup(maxNumGroup), groupSize(groupSize) {}
-
-      bool isFull() const { return groups.size() >= maxNumGroup; }
-
-      bool contains(uint16_t startRegNum) const {
-        return std::find(groups.begin(), groups.end(), startRegNum) !=
-               groups.end();
-      }
-
-      // check if the given register range has partially overlapped with existed
-      // ones return true when there is partially overlapped retur false if
-      // there is completely overlapped or no overlapped
-      bool partialOverlapped(uint16_t startRegNum) const {
-        if (contains(startRegNum))
-          return false;
-        for (auto &group : groups) {
-          // number of registers in a group must be all the same across the
-          // groups in the same block
-          uint16_t diff =
-              startRegNum > group ? startRegNum - group : group - startRegNum;
-          if (diff < groupSize)
-            return true;
-        }
-        return false;
-      }
-
-      size_t size() const { return groups.size(); }
-
-      // add the registers into this blcok,
-      void addRegs(uint16_t startRegNum) {
-        assert(!isFull());
-        assert(!contains(startRegNum));
-        groups.push_back(startRegNum);
-      }
+      SuppressBlock() {}
 
       void addRegRanges(SrcRegRangeType &srcRange,
                         SrcRegRangeType &extraSrcRange,
@@ -598,14 +555,12 @@ private:
     }; // SuppressionBlock
 
     // get the max number of suppression groups according to srcIdx and platform
+    [[maybe_unused]]
     size_t getNumberOfSuppresionGroups(uint32_t srcIdx) const;
 
     // check from startIt, find the number of consecutive dpas those can be
-    // grouped in a macro due to srcIdx suppression. Return number of
-    // instructions found
-    size_t formSrcSuppressionBlock(InstListIterator startIt, uint32_t srcIdx);
-
-    bool srcIsSuppressCandidate(const Instruction &inst, uint32_t srcIdx) const;
+    // grouped in a macro. Return number of instructions found
+    size_t formSrcSuppressionBlock(InstListIterator startIt);
 
   private:
     const DepSetBuilder &m_dsBuilder;
