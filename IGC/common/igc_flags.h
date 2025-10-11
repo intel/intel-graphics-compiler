@@ -435,9 +435,6 @@ DECLARE_IGC_REGKEY(
     "The mask is casted to IGC::SyncInstMask and informs which synchronization objects should not be coalesced. Note "
     "that synchronization objects classified in multiple types are not disabled if any bit describing them is off.",
     true)
-DECLARE_IGC_REGKEY(bool, ReplaceAtomicFenceWithSourceValue, true,
-    "Fences are required to maintain the order of atomic memory instructions. This flag will replace the fence with "
-    "GenISA_source_value intrinsic which sources the result of atomic operation and still maintains the order.", true)
 DECLARE_IGC_REGKEY(bool, UnrollLoopForCodeSizeOnly, false,
                    "Only unroll the loop if it can reduce program size/register pressure. Ignore all other threshold "
                    "setting but still enable PromoteLoopUnrollwithAlloca due to high likelyhood to reduce size.",
