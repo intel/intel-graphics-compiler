@@ -365,6 +365,12 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
   mpm.add(createCleanPHINodePass());
   if (IGC_IS_FLAG_SET(DumpRegPressureEstimate))
     mpm.add(new IGCRegisterPressurePrinter("final"));
+
+  // save RPE results in metadata
+  if (ctx.type == ShaderType::OPENCL_SHADER) {
+    mpm.add(new IGCRegisterPressurePublisher());
+  }
+
   // Let Layout be the last pass before Emit Pass
   mpm.add(new Layout());
   if(IGC_IS_FLAG_ENABLED(EnableDropTargetBBs)) {

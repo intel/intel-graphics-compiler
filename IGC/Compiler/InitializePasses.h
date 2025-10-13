@@ -270,6 +270,7 @@ void initializeRematChainsAnalysisPass(llvm::PassRegistry &);
 void initializeVectorShuffleAnalysisPass(llvm::PassRegistry &);
 void initializeIGCLivenessAnalysisPass(llvm::PassRegistry &);
 void initializeIGCRegisterPressurePrinterPass(llvm::PassRegistry &);
+void initializeIGCRegisterPressurePublisherPass(llvm::PassRegistry &);
 void initializeIGCVectorizerPass(llvm::PassRegistry &);
 void initializeIGCFunctionExternalRegPressureAnalysisPass(llvm::PassRegistry &);
 void initializePromoteConstantStructsPass(llvm::PassRegistry &);

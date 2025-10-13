@@ -572,3 +572,41 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
 
   return false;
 }
+
+
+char IGCRegisterPressurePublisher::ID = 0;
+// Register pass to igc-opt
+#define PASS_FLAG3 "igc-pressure-publisher"
+#define PASS_DESCRIPTION3 "puts metadata with register pressure estimation"
+#define PASS_CFG_ONLY1 false
+#define PASS_ANALYSIS1 false
+IGC_INITIALIZE_PASS_BEGIN(IGCRegisterPressurePublisher, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ONLY1, PASS_ANALYSIS1)
+IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(IGCFunctionExternalRegPressureAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
+IGC_INITIALIZE_PASS_END(IGCRegisterPressurePublisher, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ONLY1, PASS_ANALYSIS1)
+
+IGCRegisterPressurePublisher::IGCRegisterPressurePublisher() : FunctionPass(ID) {
+  initializeIGCRegisterPressurePublisherPass(*PassRegistry::getPassRegistry());
+};
+
+bool IGCRegisterPressurePublisher::runOnFunction(llvm::Function &F) {
+
+  ExternalPressure = getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressureForFunction(&F);
+  RPE = &getAnalysis<IGCLivenessAnalysis>();
+  WI = &getAnalysis<WIAnalysis>();
+  CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  MaxPressureInFunction = 0;
+
+  unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F));
+
+  // if we have some published metadata already don't do anything
+  bool NotPublishedAlready = RPE->checkPublishRegPressureMetadata(F) == 0;
+
+  if (NotPublishedAlready) {
+    MaxPressureInFunction = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
+    RPE->publishRegPressureMetadata(F, MaxPressureInFunction + ExternalPressure);
+  }
+  return true;
+}

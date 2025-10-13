@@ -4042,7 +4042,13 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   if (IGC_IS_FLAG_ENABLED(EnableBCR)) {
     SaveOption(vISA_enableBCR, true);
   }
-  if (context->type == ShaderType::OPENCL_SHADER && m_program->m_Platform->limitedBCR()) {
+
+  auto funcInfoMD = context->getMetaDataUtils()->getFunctionsInfoItem(m_program->entry);
+  uint32_t MaxRegPressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
+  uint32_t RegPressureThreshold = (uint32_t) (context->getNumGRFPerThread(true) * 0.6);
+
+  if (context->type == ShaderType::OPENCL_SHADER &&
+      (m_program->m_Platform->limitedBCR() || MaxRegPressure < RegPressureThreshold)) {
     SaveOption(vISA_enableBCR, true);
   }
   if (context->type == ShaderType::OPENCL_SHADER && m_program->m_Platform->supportDpasInstruction()) {

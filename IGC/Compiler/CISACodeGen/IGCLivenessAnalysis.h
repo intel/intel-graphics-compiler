@@ -88,7 +88,17 @@ public:
     if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
       IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
       funcInfoMD->getMaxRegPressure()->setMaxPressure(MaxPressure);
+      MDUtils->save(F.getContext());
     }
+  }
+
+  unsigned checkPublishRegPressureMetadata(llvm::Function &F) {
+    unsigned Result = 0;
+    if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
+      IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
+      Result = funcInfoMD->getMaxRegPressure()->getMaxPressure();
+    }
+    return Result;
   }
 
   unsigned int getMaxRegCountForBB(llvm::BasicBlock &BB, unsigned int SIMD, WIAnalysisRunner *WI = nullptr) {
@@ -269,6 +279,7 @@ public:
   virtual bool runOnFunction(llvm::Function &F) override;
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     AU.setPreservesAll();
+    AU.addRequired<MetaDataUtilsWrapper>();
     AU.addRequired<IGCLivenessAnalysis>();
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<WIAnalysis>();
@@ -276,6 +287,32 @@ public:
   }
   IGCRegisterPressurePrinter();
   IGCRegisterPressurePrinter(const std::string &FileName);
+  static char ID;
+};
+
+
+class IGCRegisterPressurePublisher : public llvm::FunctionPass {
+
+  IGCLivenessAnalysis *RPE = nullptr;
+  WIAnalysis *WI = nullptr;
+  CodeGenContext *CGCtx = nullptr;
+
+  unsigned int ExternalPressure = 0;
+  unsigned int MaxPressureInFunction = 0;
+
+public:
+  llvm::StringRef getPassName() const override { return "IGCRegPressurePublisher"; }
+  virtual ~IGCRegisterPressurePublisher() {}
+  virtual bool runOnFunction(llvm::Function &F) override;
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesAll();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<IGCLivenessAnalysis>();
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<WIAnalysis>();
+    AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
+  }
+  IGCRegisterPressurePublisher();
   static char ID;
 };
 
