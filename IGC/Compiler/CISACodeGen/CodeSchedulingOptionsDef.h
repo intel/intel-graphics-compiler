@@ -65,7 +65,8 @@ DECLARE_SCHEDULING_OPTION(PrioritizeLoadsThatUnlockDPASesHighRP, 1,
                           "instructions under high register pressure")
 DECLARE_SCHEDULING_OPTION(PrioritizeLoadsThatUnlockDPASesHighRP_MaxLoadSize, 32,
                           "Heuristic: Maximum load size (in number of elements) to consider for "
-                          "prioritizing loads that unlock DPAS instructions")
+                          "prioritizing loads that unlock DPAS instructions. "
+                          "The value is for SIMD16, for SIMD32 it will be divided by 2")
 DECLARE_SCHEDULING_OPTION(FocusLoadsOnOneDPAS, 1,
                           "Heuristic: Focus loads on one DPAS instruction in case we have to choose from "
                           "many loads")
@@ -89,10 +90,12 @@ DECLARE_SCHEDULING_OPTION(LowRPThresholdDelta, 200, "Unused: Threshold delta for
 DECLARE_SCHEDULING_OPTION(MinLiveIntervalForCloning, 200, "Minimum live interval for cloning instructions")
 DECLARE_SCHEDULING_OPTION(ReservedRegisters, 5, "Number of always reserved registers")
 DECLARE_SCHEDULING_OPTION(LargeBlockLoadSize, 16,
-                          "Size of large load to always make a checkpoint, in number of elements")
+                          "Size of large load to always make a checkpoint, in number of elements. "
+                          "The value is for SIMD16, for SIMD32 it will be divided by 2")
 DECLARE_SCHEDULING_OPTION(LargeLoadSizeForFragmentationAdjustment, 16,
                           "Size of large load to consider for fragmentation "
-                          "adjustment, in number of elements")
+                          "adjustment, in number of elements, the value is for SIMD16, "
+                          "for SIMD32 it will be divided by 2")
 DECLARE_SCHEDULING_OPTION(RPMarginIncreaseForFragmentationAdjustment, 34,
                           "Increase register pressure margin for fragmentation adjustment")
 DECLARE_SCHEDULING_OPTION(FragmentationAdjustmentsMinGRF, 200,
@@ -102,7 +105,7 @@ DECLARE_SCHEDULING_OPTION(IgnoreFragmentationForLastLoad, 1,
                           "register pressure margin for it")
 
 // Other
-DECLARE_SCHEDULING_OPTION(ForceSIMDSize, 16,
+DECLARE_SCHEDULING_OPTION(ForceSIMDSize, 0,
                           "Force SIMD mode for scheduling, 0 is no force, 8 is "
                           "SIMD8, 16 is SIMD16, etc.")
 DECLARE_SCHEDULING_OPTION(DefaultNumGRF, 128,

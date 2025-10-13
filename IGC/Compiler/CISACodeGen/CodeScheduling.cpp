@@ -389,7 +389,7 @@ public:
         auto *VectorType = dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
         if (VectorType) {
           if (static_cast<int>(VectorType->getNumElements()) >=
-              C->get(SchedulingConfig::Option::LargeLoadSizeForFragmentationAdjustment)) {
+              adjustElementsFromSIMDSize(C->get(SchedulingConfig::Option::LargeLoadSizeForFragmentationAdjustment))) {
             AdjustmentForFragmentation = C->get(SchedulingConfig::Option::RPMarginIncreaseForFragmentationAdjustment);
           }
         }
@@ -480,6 +480,16 @@ public:
       }
     }
     return HangingInstructions;
+  }
+
+  // Element number heuristics are defined for SIMD16
+  // Adjust the value for SIMD32
+  int adjustElementsFromSIMDSize(int Value) {
+    if (Value == 0)
+      return 0;
+    if (SIMD == 32)
+      return (Value) / 2;
+    return Value;
   }
 
 private:
@@ -2129,7 +2139,8 @@ private:
               Intr->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload) {
             auto VectorType = dyn_cast<IGCLLVM::FixedVectorType>(Intr->getType());
             if (VectorType) {
-              return static_cast<int>(VectorType->getNumElements()) >= static_cast<int>(C[Option::LargeBlockLoadSize]);
+              return static_cast<int>(VectorType->getNumElements()) >=
+                RT.adjustElementsFromSIMDSize(static_cast<int>(C[Option::LargeBlockLoadSize]));
             }
           }
         }
@@ -2480,7 +2491,8 @@ private:
             // Experimental heuristic: prioritize loads that unlock
             // DPASes
             FilteredReadyList = getLoadsThatUnlockDPASes(FilteredReadyList,
-                                                         C[Option::PrioritizeLoadsThatUnlockDPASesHighRP_MaxLoadSize]);
+                                                         RT.adjustElementsFromSIMDSize(
+                                                          C[Option::PrioritizeLoadsThatUnlockDPASesHighRP_MaxLoadSize]));
           }
           if (C[Option::PrioritizePopulatingOneVectorHighRP]) {
             FilteredReadyList = filterOutNotUnblockingExistingVectorInst(FilteredReadyList);
