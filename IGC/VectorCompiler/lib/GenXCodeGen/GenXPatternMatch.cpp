@@ -335,7 +335,7 @@ private:
   void setMInst(Instruction *I) { MInst = I; }
 
   // Checks whether 'MInst' is an integer shift, which could be turned back to
-  // an integer muliplication.
+  // an integer multiplication.
   bool isLShift() const { return MInst->getOpcode() == Instruction::Shl; }
 
   std::tuple<Value *, bool> getNarrowI16Vector(IRBuilder<> &, Instruction *,
@@ -1624,7 +1624,7 @@ bool MadMatcher::isProfitable() const {
     // multiplicative operands.
     return false;
 
-  // Do not match unless both of multiplicants are of type *B/*W
+  // Do not match unless both of multiplicands are of type *B/*W
   bool IsProfitable = true;
 
   auto Checker = [](Value *V) {
@@ -1782,7 +1782,7 @@ bool MadMatcher::match() {
   Value *Ops[2] = {AInst->getOperand(0), AInst->getOperand(1)};
 
   /* Multiply-add operation on 32-bit d-word argument with SAT cannot
-     be replacd with mad instruction */
+     be replaced with mad instruction */
   auto *Ty = AInst->getType();
   if (Ty->isIntOrIntVectorTy(32)) {
     for (auto &U : AInst->uses()) {
@@ -2129,7 +2129,7 @@ Value *SplatValueIfNecessary(Value *V, IGCLLVM::FixedVectorType *VTy,
   IGC_ASSERT_MESSAGE(V->getType()->isIntOrIntVectorTy() &&
                          VTy->isIntOrIntVectorTy(),
                      "Error: expect integer types");
-  // currenty zext is after add, so types should be the same
+  // currently zext is after add, so types should be the same
   IGC_ASSERT_MESSAGE(V->getType()->getScalarType() == VTy->getScalarType(),
                      "Error: not corresponding types");
   if (V->getType()->isVectorTy())
@@ -2852,7 +2852,7 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
         cast<IGCLLVM::FixedVectorType>(NewVTy)->getNumElements() > 1)
       return false;
     // Do not rewrite if input is another region read, as two region reads
-    // cannot be groupped into a single bale.
+    // cannot be grouped into a single bale.
     if (GenXIntrinsic::isRdRegion(NewV))
       return false;
     for (auto U : Inst->users()) {
