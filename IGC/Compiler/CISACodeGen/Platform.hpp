@@ -1356,5 +1356,9 @@ public:
   bool enableLscSamplerRouting() const {
       return isCoreChildOf(IGFX_XE3_CORE);
   }
+
+  bool enableReplaceAtomicFenceWithSourceValue() const {
+    return IGC_IS_FLAG_ENABLED(ReplaceAtomicFenceWithSourceValue);
+  }
 };
 } // namespace IGC
