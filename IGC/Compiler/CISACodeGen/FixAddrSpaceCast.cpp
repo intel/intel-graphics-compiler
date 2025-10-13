@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -13,10 +13,6 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
-#include <llvm/ADT/SmallSet.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/ADT/STLExtras.h>
-#include <llvm/IR/BasicBlock.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -58,115 +54,11 @@ IGC_INITIALIZE_PASS_BEGIN(AddrSpaceCastFixing, PASS_FLAG, PASS_DESC, PASS_CFG_ON
 IGC_INITIALIZE_PASS_END(AddrSpaceCastFixing, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 } // namespace IGC
 
-static bool isPhiUsingDifferentAddrSpaces(PHINode *PHI) {
-  SmallSet<unsigned, 4> AddrSpaces;
-  for (auto &Incoming : PHI->incoming_values()) {
-    if (auto *AddrSpaceCast = dyn_cast<AddrSpaceCastInst>(Incoming)) {
-      AddrSpaces.insert(AddrSpaceCast->getSrcAddressSpace());
-    } else if (auto *GetElementPtr = dyn_cast<GetElementPtrInst>(Incoming)) {
-      AddrSpaces.insert(GetElementPtr->getPointerAddressSpace());
-    }
-  }
-  return AddrSpaces.size() > 1;
-}
-
-static bool isPhiUseLowerable(PHINode *PHI) {
-  if (!PHI->hasOneUse()) {
-    return false;
-  }
-  if (isa<LoadInst>(*(PHI->user_begin()))) {
-    return true;
-  }
-  return isa<BitCastInst>(*(PHI->user_begin())) && PHI->user_begin()->hasOneUse() &&
-         isa<LoadInst>(*(PHI->user_begin()->user_begin()));
-}
-
-static void lowerLoadsfromPHI(PHINode *PHI) {
-  SmallVector<Instruction *, 8> ToErase;
-  SmallVector<Instruction *, 2> InsertChain;
-  LoadInst *PHILoad = nullptr;
-  if (isa<LoadInst>(*(PHI->user_begin()))) {
-    InsertChain.push_back(cast<Instruction>(*PHI->user_begin()));
-    PHILoad = cast<LoadInst>(*PHI->user_begin());
-  } else {
-    InsertChain.push_back(cast<Instruction>(*PHI->user_begin()));
-    InsertChain.push_back(cast<Instruction>(*PHI->user_begin()->user_begin()));
-    PHILoad = cast<LoadInst>(*PHI->user_begin()->user_begin());
-  }
-  IGC_ASSERT_MESSAGE(PHILoad != nullptr, "Expecting a load instruction");
-  llvm::append_range(ToErase, llvm::reverse(InsertChain));
-  ToErase.push_back(cast<Instruction>(PHI));
-
-  SmallVector<Instruction *, 8> NewLoads;
-  for (auto &Incoming : PHI->incoming_values()) {
-    auto *LoadSource = cast<Instruction>(Incoming);
-    auto *AddrSpaceCast = dyn_cast<AddrSpaceCastInst>(Incoming);
-
-    for (auto *I : InsertChain) {
-
-      if (AddrSpaceCast) {
-        IRBuilder<> Builder(LoadSource);
-        if (isa<BitCastInst>(I)) {
-          auto *NewBitcast = Builder.CreateBitCast(
-              AddrSpaceCast->getOperand(0), PointerType::get(PHILoad->getType(), AddrSpaceCast->getSrcAddressSpace()));
-          LoadSource = cast<Instruction>(NewBitcast);
-        } else if (isa<LoadInst>(I)) {
-          auto *NewLoad = Builder.CreateLoad(PHILoad->getType(), AddrSpaceCast->getOperand(0));
-          NewLoad->copyMetadata(*I);
-          LoadSource = NewLoad;
-          NewLoads.push_back(NewLoad);
-        }
-        ToErase.push_back(AddrSpaceCast);
-        AddrSpaceCast = nullptr;
-        continue;
-      }
-
-      Instruction *NewInst = I->clone();
-      NewInst->setOperand(0, LoadSource);
-      NewInst->insertAfter(LoadSource);
-      LoadSource = NewInst;
-      if (isa<LoadInst>(NewInst)) {
-        NewLoads.push_back(NewInst);
-      }
-    }
-  }
-  IRBuilder<> Builder(PHI->getParent(), PHI->getParent()->begin());
-  auto *NewPHI = Builder.CreatePHI(PHILoad->getType(), NewLoads.size());
-
-  for_each(NewLoads, [&NewPHI](Instruction *I) { NewPHI->addIncoming(I, I->getParent()); });
-  PHILoad->replaceAllUsesWith(NewPHI);
-
-  for_each(ToErase, [](Instruction *I) { I->eraseFromParent(); });
-}
-
-static bool removeAddrSpaceCastsFromPhiIncomingBBs(Function &F) {
-  bool Changed = false;
-
-  SmallVector<PHINode *, 8> PhisToModify;
-  for (auto &I : instructions(F)) {
-    if (auto *PHI = dyn_cast<PHINode>(&I)) {
-      if (isPhiUsingDifferentAddrSpaces(PHI) && isPhiUseLowerable(PHI)) {
-        PhisToModify.push_back(PHI);
-      }
-    }
-  }
-
-  for (auto *PHI : PhisToModify) {
-    lowerLoadsfromPHI(PHI);
-    Changed = true;
-  }
-
-  return Changed;
-}
-
 bool AddrSpaceCastFixing::runOnFunction(Function &F) {
   bool Changed = false;
-  for (auto &BB : F) {
+  for (auto &BB : F)
     Changed |= fixOnBasicBlock(&BB);
-  }
-  if (IGC_IS_FLAG_ENABLED(AddressSpacePhiPropagation)) {
-    Changed |= removeAddrSpaceCastsFromPhiIncomingBBs(F);
-  }
+
   return Changed;
 }
 
