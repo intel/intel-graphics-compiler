@@ -367,7 +367,7 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     mpm.add(new IGCRegisterPressurePrinter("final"));
   // Let Layout be the last pass before Emit Pass
   mpm.add(new Layout());
-  if(IGC_IS_FLAG_ENABLED(EnableDropTargetBBs)) {
+  if (IGC_IS_FLAG_ENABLED(EnableDropTargetBBs)) {
     mpm.add(new DropTargetBBs());
   }
 
@@ -567,6 +567,10 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     // Promotes indirect resource access to direct
     mpm.add(new BreakConstantExpr());
     mpm.add(new PromoteResourceToDirectAS());
+  }
+
+  if (!isOptDisabled) {
+    mpm.add(createPruneUnusedArgumentsPass());
   }
 
   if (ctx.m_instrTypes.hasReadOnlyArray) {
