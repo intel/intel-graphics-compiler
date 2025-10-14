@@ -596,7 +596,6 @@ private:
       }
 
     }; // SuppressionBlock
-    typedef std::unique_ptr<SuppressBlock> SuppressBlockPtrTy;
 
     // get the max number of suppression groups according to srcIdx and platform
     size_t getNumberOfSuppresionGroups(uint32_t srcIdx) const;
@@ -605,25 +604,6 @@ private:
     // grouped in a macro due to srcIdx suppression. Return number of
     // instructions found
     size_t formSrcSuppressionBlock(InstListIterator startIt, uint32_t srcIdx);
-
-    // return the candidate SuppressBlock that is found fulfilling read
-    // suppression requirement of given src index, start from the give
-    // instruction. This block is the first candidate block of instructions
-    // register those can be suppressed. Will need to check if the following
-    // instructions having the same registers so that they can actually being
-    // suppressed.
-    // * return nullptr if there is no chance to suppress the given src
-    // * allDstBits, allSrcBits - all used grf bits in the return suppressBlock
-    // * allDstNoLastBits, allSrcNoLastBits - all used grf in the return
-    // suppressBlock except the
-    //   last instruction's
-    // * forceGroupNum - force to use the given value as maximum number of
-    // suppression groups instead of
-    //   getting it from getNumberOfSuppresionGroups
-    SuppressBlockPtrTy getSuppressionBlockCandidate(
-        InstListIterator startIt, uint32_t srcIdx, BitSet<> &allDstBits,
-        BitSet<> &allSrcBits, BitSet<> &allDstNoLastBits,
-        BitSet<> &allSrcNoLastBits, int forceGroupNum = -1) const;
 
     bool srcIsSuppressCandidate(const Instruction &inst, uint32_t srcIdx) const;
 
