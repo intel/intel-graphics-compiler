@@ -7336,6 +7336,24 @@ bool G4_INST::canDstBeAcc() const {
   }
 }
 
+bool G4_INST::relaxAccInSrc2 () const {
+  if (getNumSrc() != 3)
+    return false;
+
+  if (builder.canUseAccInSrc2ForFloat3SourcesInst()) {
+    if ((getDst() && !IS_FTYPE(getDst()->getType())) ||
+        (getSrc(2) && !IS_FTYPE(getSrc(2)->getType())) ||
+        (getSrc(0) && !IS_FTYPE(getSrc(0)->getType())) ||
+        (getSrc(1) && !IS_FTYPE(getSrc(1)->getType()))) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // returns true if src0/1/2 may be replaced by an explicit acc
 // in addition to opcode-specific checks, we require
 // -- contiguous regions
@@ -7348,7 +7366,8 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
 
   if (!builder.relaxedACCRestrictions3() &&
       !builder.removedAccRestrictionsAsGRF() && srcId == 2) {
-    return false;
+    if (!relaxAccInSrc2())
+      return false;
   }
 
   if (getSrc(srcId) == nullptr || !getSrc(srcId)->isSrcRegRegion()) {

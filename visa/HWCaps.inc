@@ -810,6 +810,11 @@ bool removedAccRestrictionsAsGRF() const {
   return false;
 }
 
+// when all source and dst are float data type, Src2 can be accumulator
+bool canUseAccInSrc2ForFloat3SourcesInst() const {
+  return getPlatform() >= Xe2;
+}
+
 
 bool needBothAcc(G4_Operand *opnd) const {
   switch (opnd->getType()) {
