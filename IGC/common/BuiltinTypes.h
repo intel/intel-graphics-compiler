@@ -19,7 +19,7 @@ bool isTargetExtTy(const llvm::Type *Ty);
 bool isImageBuiltinType(const llvm::Type *BuiltinTy);
 
 #if LLVM_VERSION_MAJOR >= 16
-void retypeOpenCLTargetExtTyArgs(llvm::Module *M);
+void retypeOpenCLTargetExtTyAsPointers(llvm::Module *M);
 #endif
 
 } // namespace IGC
