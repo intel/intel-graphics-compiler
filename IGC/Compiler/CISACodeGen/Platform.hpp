@@ -835,8 +835,7 @@ public:
   }
 
   bool supportDualSimd8PS() const {
-    return IGC_IS_FLAG_ENABLED(EnableDualSIMD8) && (m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE) &&
-           !isCoreChildOf(IGFX_XE2_HPG_CORE);
+    return IGC_IS_FLAG_ENABLED(EnableDualSIMD8) && (m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE);
   }
 
   bool hasDualSimd8Payload() const {

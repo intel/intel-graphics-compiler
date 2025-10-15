@@ -736,6 +736,12 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
            m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_ARROWLAKE)) {
         m_encoder->SetIsCodePatchCandidate(false);
       }
+
+      if (m_pCtx->platform.supportDualSimd8PS() &&
+          m_pCtx->platform.isCoreChildOf(IGFX_XE2_HPG_CORE) &&
+          m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER ) {
+        m_encoder->SetIsCodePatchCandidate(false);
+      }
     } else {
       m_encoder->SetIsCodePatchCandidate(false);
     }
