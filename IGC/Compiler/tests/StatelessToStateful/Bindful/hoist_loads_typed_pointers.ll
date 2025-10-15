@@ -9,7 +9,7 @@
 
 ; RUN: igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution | FileCheck %s
 
-define spir_kernel void @func_with_phinode_1(i1 %n, i32 addrspace(1)* %r, <4 x i32> addrspace(1)* %otp, i64 %idx1, i64 %idx2, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i8 addrspace(1)* %s2, i8 addrspace(1)* %s3, i32 %s4, i32 %s5, i32 %bufferOffset) #0 {
+define spir_kernel void @func_with_phinode_1(i1 %n, i32 addrspace(1)* align 4 %r, <4 x i32> addrspace(1)* %otp, i64 %idx1, i64 %idx2, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i8 addrspace(1)* %s2, i8 addrspace(1)* %s3, i32 %s4, i32 %s5, i32 %bufferOffset) #0 {
 bb1:
   %add.ptr1 = getelementptr inbounds i32, i32 addrspace(1)* %r, i64 16
   %add.ptr2 = getelementptr inbounds i32, i32 addrspace(1)* %r, i64 128
