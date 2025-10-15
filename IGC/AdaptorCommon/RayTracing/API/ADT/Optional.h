@@ -18,11 +18,12 @@ SPDX-License-Identifier: MIT
 
 #include <type_traits>
 #include <assert.h>
+#include "AdaptorCommon/API/igc.h"
 
 namespace Interface {
 
 template <typename T> class Optional {
-  static_assert(std::is_arithmetic_v<T>, "simple types for now!");
+  static_assert(std::is_arithmetic_v<T> || std::is_enum_v<T>, "simple types for now!");
 
   T Val;
   bool Valid = false;
@@ -58,5 +59,9 @@ public:
 
   void reset() { Valid = false; }
 };
+
+template <typename T> inline bool operator==(const Optional<T> &, const Optional<T> &) {
+  return true;
+}
 
 } // namespace Interface
