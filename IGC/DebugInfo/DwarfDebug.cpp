@@ -675,6 +675,7 @@ DIE *DwarfDebug::createScopeChildrenDIE(CompileUnit *TheCU, LexicalScope *Scope,
   DIE *ObjectPointer = NULL;
 
   SmallVector<DbgVariable *, 8> dbgVariables;
+
   // Collect arguments for current function.
   if (LScopes.isCurrentFunctionScope(Scope)) {
     std::copy(CurrentFnArguments.begin(), CurrentFnArguments.end(), std::back_inserter(dbgVariables));
@@ -686,23 +687,15 @@ DIE *DwarfDebug::createScopeChildrenDIE(CompileUnit *TheCU, LexicalScope *Scope,
     std::copy(Variables.begin(), Variables.end(), std::back_inserter(dbgVariables));
   }
 
-  // Create and collect all argument/variable children
+  // Collect all argument/variable children
   for (DbgVariable *ArgDV : dbgVariables) {
     if (!ArgDV)
       continue;
-    DIE *Arg = TheCU->constructVariableDIE(*ArgDV);
-    Children.push_back(Arg);
-    if (ArgDV->isObjectPointer())
-      ObjectPointer = Arg;
-  }
-
-  // Apply attributes to each created DIE. It needs to be done after creating all
-  // subprogram DIEs, beacuse we might need reference to them in addType() function.
-  for (DbgVariable *ArgDV : dbgVariables) {
-    if (!ArgDV)
-      continue;
-    DIE *VarDIE = TheCU->getDIE(const_cast<DILocalVariable*>(ArgDV->getVariable()));
-    TheCU->applyVariableAttributes(*ArgDV, VarDIE, Scope->isAbstractScope());
+    if (DIE *Arg = TheCU->constructVariableDIE(*ArgDV, Scope->isAbstractScope())) {
+      Children.push_back(Arg);
+      if (ArgDV->isObjectPointer())
+        ObjectPointer = Arg;
+    }
   }
 
   // There is no need to emit empty lexical block DIE.
@@ -1164,9 +1157,9 @@ void DwarfDebug::collectDeadVariables() {
         if (!isa<DILocalVariable>(DV))
           continue;
         DbgVariable NewVar(cast<DILocalVariable>(DV));
-        DIE *VariableDIE = SPCU->constructVariableDIE(NewVar);
-        SPCU->applyVariableAttributes(NewVar, VariableDIE, false);
-        SPDIE->addChild(VariableDIE);
+        if (DIE *VariableDIE = SPCU->constructVariableDIE(NewVar, false)) {
+          SPDIE->addChild(VariableDIE);
+        }
       }
     }
 
