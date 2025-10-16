@@ -3661,8 +3661,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
 
   SetAbortOnSpillThreshold(canAbortOnSpill, AllowSpill);
 
-  if (context->type == ShaderType::COMPUTE_SHADER ||
-      (context->type == ShaderType::OPENCL_SHADER && !(context->getModuleMetaData()->NBarrierCnt > 0))) {
+  if (context->allowATOB()) {
     SaveOption(vISA_ActiveThreadsOnlyBarrier, true);
   }
 
@@ -5407,7 +5406,8 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
   // always set properly, even if a barrier is used as a part of Inline vISA
   // code only.
   if (jitInfo->numBarriers != 0 && !m_program->m_State.GetHasBarrier()) {
-    if (context->getModuleMetaData()->NBarrierCnt > 0 || additionalVISAAsmToLink) {
+    if (context->getModuleMetaData()->NBarrierCnt > 0 || additionalVISAAsmToLink ||
+      jitInfo->numBarriers > 1) {
       m_program->m_State.SetBarrierNumber(NamedBarriersResolution::AlignNBCnt2BarrierNumber(jitInfo->numBarriers));
     } else {
       m_program->m_State.SetHasBarrier();
