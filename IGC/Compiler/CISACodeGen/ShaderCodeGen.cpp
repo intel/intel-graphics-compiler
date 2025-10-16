@@ -777,6 +777,9 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     // Last instruction combining pass needs to be before Legalization pass, as it can produce illegal instructions.
     mpm.add(new RemoveCodeAssumptions());
     mpm.add(createIGCInstructionCombiningPass());
+    if (ctx.platform.doIntegerMad() && ctx.m_DriverInfo.EnableIntegerMad()) {
+      mpm.add(createCanonicalizeMulAddPass());
+    }
     mpm.add(new GenSpecificPattern());
     // Cases with DPDivSqrtEmu grow significantly.
     // We can disable EarlyCSE when m_hasDPDivSqrtEmu is true,
