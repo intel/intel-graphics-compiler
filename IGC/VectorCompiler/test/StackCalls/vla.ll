@@ -35,7 +35,7 @@ entry:
 ; CHECK-NEXT:  [[A3_9:[^ ]+]] = call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 [[A3_8]])
 ; CHECK-NEXT: [[A3_10:[^ ]+]] = call <1 x i64> @llvm.genx.read.predef.reg.v1i64.i64(i32 10, i64 undef)
 ; CHECK-NEXT: [[A3_11:[^ ]+]] = call i64 @llvm.genx.rdregioni.i64.v1i64.i16(<1 x i64> [[A3_10]], i32 0, i32 1, i32 1, i16 0, i32 undef)
-; CHECK-NEXT: [[A3_12:[^ ]+]] = and i64 [[A3_11]], 4294967264
+; CHECK-NEXT: [[A3_12:[^ ]+]] = and i64 [[A3_11]], -32
 ; CHECK-NEXT: [[A3_13:[^ ]+]] = call i64 @llvm.genx.wrregioni.i64.i64.i16.i1(i64 undef, i64 [[A3_12]], i32 0, i32 1, i32 1, i16 0, i32 undef, i1 true)
 ; CHECK-NEXT: [[A3_14:[^ ]+]] = call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 [[A3_13]])
 ; CHECK-NEXT:  [[A2_0:[^ ]+]] = call <1 x i64> @llvm.genx.read.predef.reg.v1i64.i64(i32 10, i64 undef)
@@ -47,7 +47,7 @@ entry:
 ; CHECK-NEXT:  [[A2_6:[^ ]+]] = call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 [[A2_5]])
 ; CHECK-NEXT:  [[A2_7:[^ ]+]] = call <1 x i64> @llvm.genx.read.predef.reg.v1i64.i64(i32 10, i64 undef)
 ; CHECK-NEXT:  [[A2_8:[^ ]+]] = call i64 @llvm.genx.rdregioni.i64.v1i64.i16(<1 x i64> [[A2_7]], i32 0, i32 1, i32 1, i16 0, i32 undef)
-; CHECK-NEXT:  [[A2_9:[^ ]+]] = and i64 [[A2_8]], 4294967288
+; CHECK-NEXT:  [[A2_9:[^ ]+]] = and i64 [[A2_8]], -8
 ; CHECK-NEXT: [[A2_10:[^ ]+]] = call i64 @llvm.genx.wrregioni.i64.i64.i16.i1(i64 undef, i64 [[A2_9]], i32 0, i32 1, i32 1, i16 0, i32 undef, i1 true)
 ; CHECK-NEXT: [[A2_11:[^ ]+]] = call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 [[A2_10]])
 ; CHECK-NEXT:  [[A1_0:[^ ]+]] = zext i32 %n1 to i64
@@ -62,7 +62,7 @@ entry:
 ; CHECK-NEXT:  [[A1_9:[^ ]+]] = call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 [[A1_8]])
 ; CHECK-NEXT: [[A1_10:[^ ]+]] = call <1 x i64> @llvm.genx.read.predef.reg.v1i64.i64(i32 10, i64 undef)
 ; CHECK-NEXT: [[A1_11:[^ ]+]] = call i64 @llvm.genx.rdregioni.i64.v1i64.i16(<1 x i64> [[A1_10]], i32 0, i32 1, i32 1, i16 0, i32 undef)
-; CHECK-NEXT: [[A1_12:[^ ]+]] = and i64 [[A1_11]], 4294967280
+; CHECK-NEXT: [[A1_12:[^ ]+]] = and i64 [[A1_11]], -16
 ; CHECK-NEXT: [[A1_13:[^ ]+]] = call i64 @llvm.genx.wrregioni.i64.i64.i16.i1(i64 undef, i64 [[A1_12]], i32 0, i32 1, i32 1, i16 0, i32 undef, i1 true)
 ; CHECK-NEXT: [[A1_14:[^ ]+]] = call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 [[A1_13]])
 
@@ -91,7 +91,7 @@ loop:
 ; CHECK-NEXT:  [[A4_4:[^ ]+]] = call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 [[A4_3]])
 ; CHECK-NEXT:  [[A4_5:[^ ]+]] = call <1 x i64> @llvm.genx.read.predef.reg.v1i64.i64(i32 10, i64 undef)
 ; CHECK-NEXT:  [[A4_6:[^ ]+]] = call i64 @llvm.genx.rdregioni.i64.v1i64.i16(<1 x i64> [[A4_5]], i32 0, i32 1, i32 1, i16 0, i32 undef)
-; CHECK-NEXT:  [[A4_7:[^ ]+]] = and i64 [[A4_6]], 4294967292
+; CHECK-NEXT:  [[A4_7:[^ ]+]] = and i64 [[A4_6]], -4
 ; CHECK-NEXT:  [[A4_8:[^ ]+]] = call i64 @llvm.genx.wrregioni.i64.i64.i16.i1(i64 undef, i64 [[A4_7]], i32 0, i32 1, i32 1, i16 0, i32 undef, i1 true)
 ; CHECK-NEXT:  [[A4_9:[^ ]+]] = call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 [[A4_8]])
 ; CHECK-NEXT: [[A4_10:[^ ]+]] = zext i32 %n4 to i64
@@ -113,7 +113,7 @@ loop:
 ; CHECK-NEXT:  [[A5_4:[^ ]+]] = call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 [[A5_3]])
 ; CHECK-NEXT:  [[A5_5:[^ ]+]] = call <1 x i64> @llvm.genx.read.predef.reg.v1i64.i64(i32 10, i64 undef)
 ; CHECK-NEXT:  [[A5_6:[^ ]+]] = call i64 @llvm.genx.rdregioni.i64.v1i64.i16(<1 x i64> [[A5_5]], i32 0, i32 1, i32 1, i16 0, i32 undef)
-; CHECK-NEXT:  [[A5_7:[^ ]+]] = and i64 [[A5_6]], 4294967264
+; CHECK-NEXT:  [[A5_7:[^ ]+]] = and i64 [[A5_6]], -32
 ; CHECK-NEXT:  [[A5_8:[^ ]+]] = call i64 @llvm.genx.wrregioni.i64.i64.i16.i1(i64 undef, i64 [[A5_7]], i32 0, i32 1, i32 1, i16 0, i32 undef, i1 true)
 ; CHECK-NEXT:  [[A5_9:[^ ]+]] = call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 [[A5_8]])
 ; CHECK-NEXT: [[A5_10:[^ ]+]] = call <1 x i64> @llvm.genx.read.predef.reg.v1i64.i64(i32 10, i64 undef)

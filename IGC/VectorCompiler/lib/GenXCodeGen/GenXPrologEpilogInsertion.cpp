@@ -661,7 +661,8 @@ void GenXPrologEpilogInsertion::visitAllocaInst(AllocaInst &AI) {
     createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
                          Instruction::Add, Alignment - 1);
     createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
-                         Instruction::And, ~(Alignment - 1));
+                         Instruction::And,
+                         ~(static_cast<uint64_t>(Alignment - 1)));
     Value *AllocaSize = nullptr;
     if (isa<ConstantInt>(AI.getArraySize())) {
       AllocaSize = IRB.getInt64(
@@ -705,7 +706,8 @@ void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
     createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
                          Instruction::Add, LargestAlignment - 1, false);
     createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
-                         Instruction::And, ~(LargestAlignment - 1), false);
+                         Instruction::And,
+                         ~(static_cast<uint64_t>(LargestAlignment - 1)), false);
   }
 
   std::vector<unsigned> NextAlignment;
@@ -741,7 +743,8 @@ void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
             IRB.CreateAdd(AllocaSize, IRB.getInt64(Alignment - 1)), true);
       }
       createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
-                           Instruction::And, ~(Alignment - 1));
+                           Instruction::And,
+                           ~(static_cast<uint64_t>(Alignment - 1)));
     } else {
       unsigned AllocaSize =
           llvm::divideCeil(*AI->getAllocationSizeInBits(*DL), genx::ByteBits);
