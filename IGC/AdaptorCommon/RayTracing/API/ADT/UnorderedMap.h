@@ -34,8 +34,6 @@ public:
   using const_reference_type = std::pair<const key_type &, const mapped_type &>;
 
   UnorderedMap() = default;
-  UnorderedMap(Array<KeyT> &&keys, Array<ValueT> &&values)
-      : Keys(std::move(keys)), Values(std::move(values)) {}
 
   void destroy() {
     Keys.destroy();
