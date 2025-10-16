@@ -878,8 +878,6 @@ public:
 
   bool canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const;
 
-  bool relaxAccInSrc2() const;
-
   bool canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const;
 
   TARGET_PLATFORM getPlatform() const;

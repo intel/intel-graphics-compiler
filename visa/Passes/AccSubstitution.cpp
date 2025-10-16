@@ -508,9 +508,6 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
       threeSrcUses.push_back(useInst);
       switch (opndNum) {
       case Opnd_src2:
-        if (inst->relaxAccInSrc2()) { // No need to swap
-          break;
-        }
         if (!kernel.fg.builder->relaxedACCRestrictions3() &&
             !kernel.fg.builder->removedAccRestrictionsAsGRF()) {
           // If swapAccSub is disabled, skip further checking on src2.
@@ -572,15 +569,13 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
         if (!kernel.fg.builder->relaxedACCRestrictions3() &&
             !kernel.fg.builder->removedAccRestrictionsAsGRF() && SwappableUses &&
             isCommutativeOnSrc12(useInst)) {
-          if (!useInst->relaxAccInSrc2()) {
-            // As src2 cannot use acc, acc substitution is only
-            // feasible if src1 and src2 are different.
-            auto *def2 = useInst->getSingleDef(Opnd_src2);
-            // If the single-def on src2 is the same as this use-inst,
-            // the acc substitution is infeasible.
-            if (def2 && def2 == inst)
-              return false;
-          }
+          // As src2 cannot use acc, acc substitution is only
+          // feasible if src1 and src2 are different.
+          auto *def2 = useInst->getSingleDef(Opnd_src2);
+          // If the single-def on src2 is the same as this use-inst,
+          // the acc substitution is infeasible.
+          if (def2 && def2 == inst)
+            return false;
           // CHECK: source modifier on itself & src2 on TGLLP.
           if (builder.getPlatform() == GENX_TGLLP) {
             switch (useInst->getSrc(1)->asSrcRegRegion()->getModifier()) {
@@ -690,8 +685,7 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
     // ternary instruction, says 'mad'.
     if (SwappableUses) {
       if (isCommutativeOnSrc12(useInst) && useInst->getNumSrc() == 3 &&
-          (opndNum == Opnd_src1 || opndNum == Opnd_src2) &&
-          !useInst->relaxAccInSrc2()) {
+          (opndNum == Opnd_src1 || opndNum == Opnd_src2)) {
         SwappableUses->push_back(use);
       }
     }
