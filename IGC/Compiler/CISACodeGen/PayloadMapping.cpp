@@ -395,13 +395,11 @@ uint PayloadMapping::GetNonAdjustedNumPayloadElements_Sample(const SampleIntrins
 
   // temp solution to send valid sources but having 0 as their values.
   EOPCODE opCode = GetOpCode(inst);
-  llvm::Type *cubeTextureType = GetResourceDimensionType(*inst->getModule(), RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE);
-  llvm::Type *cubeArrayTextureType =
-      GetResourceDimensionType(*inst->getModule(), RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE);
   // TODO: Remove the following shader type check once all adapters support
   // opaque pointers.
-  llvm::Type *textureType = m_CodeGenContext->type == ShaderType::OPENCL_SHADER ? nullptr : inst->getTexturePtrEltTy();
-  bool isCube = (textureType == cubeTextureType || textureType == cubeArrayTextureType);
+  RESOURCE_DIMENSION_TYPE textureType = inst->getTextureDimType();
+  bool isCube = (textureType == RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE ||
+                 textureType == RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE);
   ValidateNumberofSources(opCode, isCube, numSources);
 
   if (IsZeroLOD(inst)) {

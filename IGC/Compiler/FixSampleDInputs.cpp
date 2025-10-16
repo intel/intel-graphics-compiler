@@ -45,17 +45,21 @@ IGC_INITIALIZE_PASS_END(FixSampleDInputsPass, PASS_FLAG, PASS_DESCRIPTION, PASS_
 
 bool FixSampleDInputsPass::runOnFunction(Function &F) {
   bool changed = false;
-  Module *M = F.getParent();
-  Type *volumeTextureType = GetResourceDimensionType(*M, RESOURCE_DIMENSION_TYPE::DIM_3D_TYPE);
-  Type *cubeTextureType = GetResourceDimensionType(*M, RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE);
-  Type *cubeArrayTextureType = GetResourceDimensionType(*M, RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE);
   for (BasicBlock &BB : F) {
     for (Instruction &inst : BB) {
       SampleIntrinsic *sampleInst = dyn_cast<SampleIntrinsic>(&inst);
-      Type *textureType = sampleInst ? sampleInst->getTexturePtrEltTy() : nullptr;
+      RESOURCE_DIMENSION_TYPE textureType = RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES;
+      if (sampleInst != nullptr) {
+        Value *textureValue = sampleInst->getTextureValue();
+        if (textureValue != nullptr) {
+          textureType = DecodeAS4GFXResourceType(textureValue->getType()->getPointerAddressSpace());
+        }
+      }
       // 3D/Cube/CubeArray access is emulated in CodeGen, see EmitPass::emulateSampleD()
       if (sampleInst &&
-          (textureType != volumeTextureType && textureType != cubeTextureType && textureType != cubeArrayTextureType)) {
+          (textureType != RESOURCE_DIMENSION_TYPE::DIM_3D_TYPE &&
+           textureType != RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE &&
+           textureType != RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE)) {
         Value *zero = ConstantFP::get(sampleInst->getArgOperand(0)->getType(), 0.0);
         if (sampleInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleDptr) {
           // (1) Message format with 3D/Cube/CubeArray support
@@ -83,9 +87,7 @@ bool FixSampleDInputsPass::runOnFunction(Function &F) {
           uint mlod_rParamIndex = 7;
           uint mlodParamIndex = 11;
           Value *mlod_r = sampleInst->getArgOperand(mlodParamIndex); // MLOD
-          Type *type2DArray = GetResourceDimensionType(*M, RESOURCE_DIMENSION_TYPE::DIM_2D_ARRAY_TYPE);
-          Type *typeTex = sampleInst->getTexturePtrEltTy();
-          if (typeTex == type2DArray) {
+          if (textureType == RESOURCE_DIMENSION_TYPE::DIM_2D_ARRAY_TYPE) {
             // combine MLOD and R
             uint numBits = 12; // number of bits to use to encode AI into MLOD
             IRBuilder<> builder(sampleInst);

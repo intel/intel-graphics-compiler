@@ -40,7 +40,9 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CodeGenPublicEnums.h"
 #include "common/EmUtils.h"
+#include "common/igc_resourceDimTypes.h"
 #include "common/Types.hpp"
+#include "common/ResourceAddrSpace.h"
 #include "GenIntrinsics.h"
 #include "Probe/Assertion.h"
 
@@ -366,6 +368,15 @@ public:
   inline Value *getPairedTextureValue() const { return getOperand(getPairedTextureIndex()); }
   inline Value *getSamplerValue() const { return getOperand(getSamplerIndex()); }
 
+  inline IGC::RESOURCE_DIMENSION_TYPE getTextureDimType() const {
+    IGC::RESOURCE_DIMENSION_TYPE textureType = IGC::RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES;
+    Value *textureValue = getTextureValue();
+    if (textureValue != nullptr) {
+      textureType = IGC::DecodeAS4GFXResourceType(textureValue->getType()->getPointerAddressSpace());
+    }
+    return textureType;
+  }
+
   static inline bool classof(const GenIntrinsicInst *I) {
     switch (I->getIntrinsicID()) {
     case GenISAIntrinsic::GenISA_gather4ptr:
@@ -433,6 +444,14 @@ public:
   inline Value *getPairedTextureValue() const {
     return hasPairedTextureArg() ? getOperand(getPairedTextureIndex()) : nullptr;
   }
+  inline IGC::RESOURCE_DIMENSION_TYPE getTextureDimType() const {
+    IGC::RESOURCE_DIMENSION_TYPE textureType = IGC::RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES;
+    Value *textureValue = getTextureValue();
+    if (textureValue != nullptr) {
+      textureType = IGC::DecodeAS4GFXResourceType(textureValue->getType()->getPointerAddressSpace());
+    }
+    return textureType;
+  }
   inline Value *getCoordinateValue(unsigned int i) const { return getOperand(getCoordinateIndex(i)); }
   inline void setCoordinateValue(unsigned int i, Value *val) { setOperand(getCoordinateIndex(i), val); }
 
@@ -467,11 +486,6 @@ public:
     default:
       return false;
     }
-  }
-
-  Type *getTexturePtrEltTy() const {
-    Value *textureVal = this->getTextureValue();
-    return textureVal ? IGCLLVM::getNonOpaquePtrEltTy(textureVal->getType()) : nullptr;
   }
 };
 
@@ -643,6 +657,15 @@ public:
     return getOperand(index);
   }
 
+  inline IGC::RESOURCE_DIMENSION_TYPE getTextureDimType() const {
+    IGC::RESOURCE_DIMENSION_TYPE textureType = IGC::RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES;
+    Value *textureValue = getTextureValue();
+    if (textureValue != nullptr) {
+      textureType = IGC::DecodeAS4GFXResourceType(textureValue->getType()->getPointerAddressSpace());
+    }
+    return textureType;
+  }
+
   inline unsigned int getTextureIndex() const {
     unsigned int index = getNumOperands() - 6;
     if (IsLODInst()) {
@@ -758,11 +781,6 @@ public:
       break;
     }
     return false;
-  }
-
-  Type *getTexturePtrEltTy() const {
-    Value *textureVal = this->getTextureValue();
-    return textureVal ? IGCLLVM::getNonOpaquePtrEltTy(textureVal->getType()) : nullptr;
   }
 };
 

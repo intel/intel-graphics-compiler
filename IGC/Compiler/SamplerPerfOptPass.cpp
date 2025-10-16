@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/igc_resourceDimTypes.h"
+#include "Compiler/CISACodeGen/helper.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -89,12 +90,9 @@ bool SamplerPerfOptPass::isSampleWithHalfType(SampleIntrinsic *sampleInst) {
 
 template <typename SampleOrGather4Intrinsic>
 bool SamplerPerfOptPass::isSamplingFromCubeSurface(SampleOrGather4Intrinsic *inst) {
-  llvm::Value *textureOp = inst->getTextureValue();
-  if (textureOp && (textureOp->getType()->getNumContainedTypes() != 0) &&
-      ((textureOp->getType()->getContainedType(0) ==
-        IGC::GetResourceDimensionType(*inst->getModule(), IGC::DIM_CUBE_ARRAY_TYPE)) ||
-       (textureOp->getType()->getContainedType(0) ==
-        IGC::GetResourceDimensionType(*inst->getModule(), IGC::DIM_CUBE_TYPE)))) {
+  RESOURCE_DIMENSION_TYPE textureType = inst->getTextureDimType();
+  if ((textureType == RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE) ||
+      (textureType == RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE)) {
     return true;
   }
   return false;

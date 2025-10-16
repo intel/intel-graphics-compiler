@@ -367,12 +367,10 @@ template <> struct TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_sampleCptr> {
 inline bool needsSampleDEmulation(const SampleIntrinsic *inst) {
   IGC_ASSERT(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleDptr);
 
-  const llvm::Module &M = *(inst->getModule());
-  Type *volumeTextureType = GetResourceDimensionType(M, RESOURCE_DIMENSION_TYPE::DIM_3D_TYPE);
-  Type *cubeTextureType = GetResourceDimensionType(M, RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE);
-  Type *cubeArrayTextureType = GetResourceDimensionType(M, RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE);
-  Type *textureType = inst->getTexturePtrEltTy();
-  if (textureType == cubeTextureType || textureType == cubeArrayTextureType || textureType == volumeTextureType) {
+  RESOURCE_DIMENSION_TYPE textureType = inst->getTextureDimType();
+  if (textureType == RESOURCE_DIMENSION_TYPE::DIM_3D_TYPE ||
+      textureType == RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE ||
+      textureType == RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE) {
     return true;
   }
   return false;

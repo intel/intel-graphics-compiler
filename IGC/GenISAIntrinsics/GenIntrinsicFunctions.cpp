@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "GenIntrinsicDefinition.h"
 #include "GenIntrinsicLookup.h"
 #include "Probe/Assertion.h"
+#include "Compiler/CISACodeGen/helper.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/IR/Module.h"
@@ -43,7 +44,13 @@ std::string getMangledTypeStr(llvm::Type *Ty) {
   std::string Result;
   if (llvm::PointerType *PTyp = llvm::dyn_cast<llvm::PointerType>(Ty)) {
     Result += "p" + llvm::utostr(PTyp->getAddressSpace());
-    if (!IGCLLVM::isOpaquePointerTy(PTyp)) {
+
+    // backward compatibility
+    IGC::RESOURCE_DIMENSION_TYPE resDimTypeId = IGC::DecodeAS4GFXResourceType(PTyp->getAddressSpace());
+    if (resDimTypeId != IGC::RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES) {
+      Result += IGC::ResourceDimensionTypeName[resDimTypeId];
+    }
+    else if (!IGCLLVM::isOpaquePointerTy(PTyp)) {
       Result += getMangledTypeStr(IGCLLVM::getNonOpaquePtrEltTy(PTyp)); // Legacy code: getNonOpaquePtrEltTy
     }
   } else if (llvm::ArrayType *ATyp = llvm::dyn_cast<llvm::ArrayType>(Ty)) {

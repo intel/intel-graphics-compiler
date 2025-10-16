@@ -36,9 +36,11 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/MDFrameWork.h"
 #include "common/Types.hpp"
+#include "common/igc_resourceDimTypes.h"
 #include "LLVM3DBuilder/MetadataBuilder.h"
 #include "Probe/Assertion.h"
 #include <functional>
+#include "common/ResourceAddrSpace.h"
 
 typedef unsigned int uint;
 
@@ -48,7 +50,6 @@ typedef unsigned int uint;
 #define SIZE_YWORD 32
 
 namespace IGC {
-
 class CodeGenContext;
 struct SProgramOutput;
 
@@ -100,8 +101,6 @@ bool IsSubGroupIntrinsicWithSimd32Implementation(EOPCODE opcode);
 bool UsesTypedConstantBuffer(const CodeGenContext *pContext, const BufferType bufType);
 
 bool ComputesGradient(llvm::Instruction *inst);
-
-BufferType GetBufferType(uint addrSpace);
 
 uint getImmValueU32(const llvm::Value *value);
 bool getImmValueBool(const llvm::Value *value);
@@ -194,21 +193,12 @@ bool isURBWriteIntrinsic(const llvm::Instruction *inst);
 
 llvm::Instruction *AdjustSystemValueCall(llvm::GenIntrinsicInst *inst);
 
-unsigned EncodeAS4GFXResource(const llvm::Value &bufIdx, BufferType bufType,
-                              unsigned uniqueIndAS = IGC::DefaultIndirectIdx, bool isNonDefaultCacheCtrl = false);
-
-unsigned SetBufferAsBindless(unsigned addressSpaceOfPtr, BufferType bufferType);
-bool isStatefulAddrSpace(unsigned AS);
-
-BufferType DecodeAS4GFXResource(unsigned addrSpace, bool &directIdx, unsigned &bufId);
-BufferType DecodeBufferType(unsigned addrSpace);
 int getConstantBufferLoadOffset(llvm::LoadInst *ld);
 
 unsigned getNumberOfExitBlocks(llvm::Function &function);
 
 bool isDummyBasicBlock(llvm::BasicBlock *BB);
 
-bool IsDirectIdx(unsigned addrSpace);
 bool isNaNCheck(llvm::FCmpInst &FC);
 
 inline bool IsBindfull(BufferType t) { return t == UAV || t == CONSTANT_BUFFER || t == RESOURCE; }

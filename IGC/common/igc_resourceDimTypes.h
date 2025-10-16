@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
+#include <optional>
 
 namespace IGC {
 enum RESOURCE_DIMENSION_TYPE {
@@ -26,6 +27,8 @@ enum RESOURCE_DIMENSION_TYPE {
   DIM_CUBE_ARRAY_TYPE,
   NUM_RESOURCE_DIMENSION_TYPES
 };
+
+using ResourceDimType = std::optional<IGC::RESOURCE_DIMENSION_TYPE>;
 
 const char *const ResourceDimensionTypeName[RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES] = {
     "__Buffer_Typed_DIM_Resource", "__1D_DIM_Resource", "__1D_ARRAY_DIM_Resource", "__2D_DIM_Resource",

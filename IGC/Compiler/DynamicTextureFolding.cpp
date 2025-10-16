@@ -31,16 +31,17 @@ DynamicTextureFolding::DynamicTextureFolding() : FunctionPass(ID) {
 
 void DynamicTextureFolding::FoldSingleTextureValue(CallInst &I) {
   ModuleMetaData *modMD = m_context->getModuleMetaData();
-  Type *type1DArray = GetResourceDimensionType(*m_module, RESOURCE_DIMENSION_TYPE::DIM_1D_ARRAY_TYPE);
-  Type *type2DArray = GetResourceDimensionType(*m_module, RESOURCE_DIMENSION_TYPE::DIM_2D_ARRAY_TYPE);
-  Type *typeCubeArray = GetResourceDimensionType(*m_module, RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE);
   bool skipBoundaryCheck = 1;
 
   unsigned addrSpace = 0;
   if (SamplerLoadIntrinsic *lInst = dyn_cast<SamplerLoadIntrinsic>(&I)) {
     addrSpace = lInst->getTextureValue()->getType()->getPointerAddressSpace();
-    Type *textureType = lInst->getTexturePtrEltTy();
-    if (textureType == type1DArray || textureType == type2DArray || textureType == typeCubeArray) {
+    RESOURCE_DIMENSION_TYPE textureType = RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES;
+    textureType = DecodeAS4GFXResourceType(addrSpace);
+
+    if (textureType == RESOURCE_DIMENSION_TYPE::DIM_1D_ARRAY_TYPE ||
+        textureType == RESOURCE_DIMENSION_TYPE::DIM_2D_ARRAY_TYPE ||
+        textureType == RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE) {
       skipBoundaryCheck = 0;
     }
   } else {
