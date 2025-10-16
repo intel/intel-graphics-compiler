@@ -296,7 +296,7 @@ endif()
 
 
 set(IGC_OPTION__IST_IGCC_ONLY ON CACHE BOOL
-    "Only building igcc part of IST (IGCStandalone).")
+    "Only building igcc part of IGCStandalone.")
 
 if(NOT DEFINED IGC_OPTION__BUILD_IGC_OPT)
     set(IGC_OPTION__BUILD_IGC_OPT OFF)
