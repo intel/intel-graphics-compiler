@@ -868,7 +868,7 @@ LoopSinkMode CodeLoopSinking::needLoopSink(Loop *L) {
     PrintDump(VerbosityLevel::Low, "Checking loop with unnamed empty preheader.");
   }
 
-  if (IGC_IS_FLAG_ENABLED(LoopSinkEnableLoadsRescheduling)) {
+  if (!CTX->platform.isCoreChildOf(IGFX_XE3_CORE) && IGC_IS_FLAG_ENABLED(LoopSinkEnableLoadsRescheduling)) {
     for (auto &BB : L->getBlocks()) {
       for (auto &I : *BB) {
         if (is2dBlockRead(&I)) {
@@ -1134,7 +1134,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
     return Changed;
   };
 
-  bool ReschedulingIteration = IGC_IS_FLAG_ENABLED(LoopSinkEnableLoadsRescheduling);
+  bool ReschedulingIteration = !CTX->platform.isCoreChildOf(IGFX_XE3_CORE) && IGC_IS_FLAG_ENABLED(LoopSinkEnableLoadsRescheduling);
   bool LateReschedulingIteration = false;
 
   auto createSimpleCandidates = [&](InstSet &SkipInstructions, CandidateVec &SinkCandidates) {
