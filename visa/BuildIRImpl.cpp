@@ -165,63 +165,6 @@ void IR_Builder::bindInputDecl(
   }
 }
 
-bool IR_Builder::isGRFDstAligned(G4_Operand* opnd, int alignByte) const
-{
-  bool isAligned = true;
-  unsigned short offset = 0;
-  int type_size = opnd->getTypeSize();
-  G4_Declare *dcl = NULL;
-
-  dcl = opnd->getBase()->asRegVar()->getDeclare();
-  while (dcl && dcl->getAliasDeclare()) {
-    if (dcl->getSubRegAlign() != Any &&
-        (((dcl->getSubRegAlign() * 2) >= alignByte &&
-          (dcl->getSubRegAlign() * 2) % alignByte != 0) ||
-         ((dcl->getSubRegAlign() * 2) < alignByte &&
-          alignByte % (dcl->getSubRegAlign() * 2) != 0))) {
-      isAligned = false;
-      break;
-    }
-    offset += (unsigned short)dcl->getAliasOffset();
-    dcl = dcl->getAliasDeclare();
-  }
-
-  if (dcl && dcl->getRegVar() && dcl->getRegVar()->isPhyRegAssigned()) {
-    offset += static_cast<unsigned short>(dcl->getRegVar()->getByteAddr(*this));
-  }
-
-  if (!isAligned) {
-    return false;
-  }
-
-  if (opnd->isDstRegRegion()) {
-    if (opnd->asDstRegRegion()->getRegAccess() != Direct) {
-      isAligned = false;
-    }
-    offset += opnd->asDstRegRegion()->getRegOff() * numEltPerGRF<Type_UB>() +
-              opnd->asDstRegRegion()->getSubRegOff() * type_size;
-  }
-
-  if (offset % alignByte != 0) {
-    return false;
-  }
-
-  if (dcl && dcl->getRegFile() == G4_GRF) {
-    if (dcl->getSubRegAlign() == Any ||
-        ((dcl->getSubRegAlign() * 2) < alignByte &&
-         alignByte % (dcl->getSubRegAlign() * 2) == 0)) {
-      isAligned = false;
-    } else if ((dcl->getSubRegAlign() * 2) < alignByte ||
-               (dcl->getSubRegAlign() * 2) % alignByte != 0) {
-      isAligned = false;
-    }
-  } else {
-    isAligned = false;
-  }
-
-  return isAligned;
-}
-
 // check if an operand is aligned to <alignByte>
 bool IR_Builder::tryToAlignOperand(G4_Operand *opnd, unsigned short &offset,
                                    int alignByte) const {
