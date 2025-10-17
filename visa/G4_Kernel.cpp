@@ -2249,16 +2249,28 @@ bool GRFMode::hasSmallerGRFSameThreads() const {
 
 // Get spill threshold for current GRF mode
 unsigned GRFMode::getSpillThreshold() const {
+  const auto &config = configs[currentMode];
+  uint32_t numGRF = config.numGRF;
+
+  // Platforms pre Xe3 do not support spill threshold
   if (platform < Xe3)
     return 0;
-  // FIXME: currently spill thresholds for <96GRF are
-  // causing some performance regressions. We need more
-  // study to define proper thresholds for this range.
-  if (configs[currentMode].numGRF < 96)
-    return 0;
-  if (configs[currentMode].numGRF == 256 &&
-      options->getuInt32Option(vISA_SpillAllowed256GRF) > 0)
-    return options->getuInt32Option(vISA_SpillAllowed256GRF);
 
+  // Xe3 supports spill threshold only if GRF >= 128
+  if (platform == Xe3 && numGRF < 128)
+    return 0;
+
+  // Platforms after Xe3 support spilling only if GRF >= 96
+  if (platform > Xe3 && numGRF < 96)
+    return 0;
+
+  // Special case: 256 GRF with specific spill option
+  if (numGRF == 256) {
+    uint32_t spill256Option = options->getuInt32Option(vISA_SpillAllowed256GRF);
+    if (spill256Option > 0)
+      return spill256Option;
+  }
+
+  // Default spill threshold
   return options->getuInt32Option(vISA_SpillAllowed);
 }
