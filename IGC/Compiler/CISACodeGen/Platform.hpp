@@ -1337,6 +1337,7 @@ public:
   }
 
   bool preferLSCCache() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
+  bool canCachePartialWrites() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
 
   bool usesDynamicPolyPackingPolicies() const {
     return isCoreChildOf(IGFX_XE3_CORE) && IGC_IS_FLAG_DISABLED(DisableDynamicPolyPackingPolicies);
