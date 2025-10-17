@@ -507,6 +507,7 @@ void ModuleAllocaAnalysis::FunctionAllocaInfo::AssignAlloca(llvm::AllocaInst *AI
                                                             bool SupportsUniformPrivateMemory) {
   // Dynamic allocas are handled by stack-related instructions
   if (!isa<ConstantInt>(AI->getArraySize())) {
+    AI->getParent()->getParent()->addFnAttr("hasVLA");
     return;
   }
   bool isUniform = AI->getMetadata("uniform") != nullptr;
