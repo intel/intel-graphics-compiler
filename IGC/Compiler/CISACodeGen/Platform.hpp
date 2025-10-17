@@ -480,6 +480,7 @@ public:
 
   bool supportDpasInstruction() const {
     return isProductChildOf(IGFX_XE_HP_SDV) && m_platformInfo.eProductFamily != IGFX_METEORLAKE &&
+           !GFX_IS_ARL_S(m_platformInfo.usDeviceID) &&
            !(m_platformInfo.eProductFamily == IGFX_PVC && GFX_IS_VG_CONFIG(m_platformInfo.usDeviceID));
   }
 

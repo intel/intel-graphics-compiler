@@ -306,7 +306,7 @@ FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode *pNode, bool hasId
       m_ThreadGroupSize(new ThreadGroupSizeMetaData(getNamedNode(pNode, "thread_group_size"), true)),
       m_ThreadGroupSizeHint(new ThreadGroupSizeMetaData(getNamedNode(pNode, "thread_group_size_hint"), true)),
       m_SubGroupSize(new SubGroupSizeMetaData(getNamedNode(pNode, "sub_group_size"), true)),
-      m_MaxRegPressure(new MaxRegPressureMetaData(getNamedNode(pNode, "max_reg_pressure"), true)),
+      m_MaxRegPressure(new MaxRegPressureMetaDataHandle::ObjectType("max_reg_pressure")),
       m_OpenCLVectorTypeHint(new VectorTypeHintMetaData(getNamedNode(pNode, "opencl_vec_type_hint"), true)),
       m_pNode(pNode) {}
 
