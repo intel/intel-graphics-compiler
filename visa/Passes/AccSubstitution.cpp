@@ -753,38 +753,22 @@ bool AccSubPass::replaceDstWithAcc(G4_INST *inst, int accNum) {
       // mul/mac can't have both sources be acc
       // Note that we only need to check for explicit mac here since we will not
       // change mad to mac
-      if (useInst->opcode() == G4_mac) {
+      if (!builder.relaxedACCRestrictions3() &&
+          !builder.removedAccRestrictionsAsGRF() &&
+          (useInst->opcode() == G4_mul || useInst->opcode() == G4_mac)) {
         if (useInst->getSrc(0)->isAccReg() || useInst->getSrc(1)->isAccReg() ||
             useInst->getSrc(0)->compareOperand(useInst->getSrc(1), builder) ==
                 G4_CmpRelation::Rel_eq) {
           return false;
         }
-      }
-
-      if (useInst->opcode() == G4_mul) {
-        if (!builder.relaxedACCRestrictions3() &&
-            !builder.removedAccRestrictionsAsGRF()) {
-          if (useInst->getSrc(0)->isAccReg() ||
-              useInst->getSrc(1)->isAccReg() ||
-              useInst->getSrc(0)->compareOperand(useInst->getSrc(1), builder) ==
-                  G4_CmpRelation::Rel_eq) {
-            return false;
-          }
-        } else if (builder.relaxedACCRestrictions3() &&
-                   !builder.removedAccRestrictionsAsGRF()) {
-          if (!useInst->getDst() || !useInst->getSrc(0) || !useInst->getSrc(1))
-            return false;
-          if (useInst->getDst()->isNullReg() ||
-              useInst->getSrc(0)->isNullReg() ||
-              useInst->getSrc(1)->isNullReg())
-            return false;
-          if (!IS_FTYPE(useInst->getDst()->getType()) ||
-              !IS_FTYPE(useInst->getSrc(0)->getType()) ||
-              !IS_FTYPE(useInst->getSrc(1)->getType())) {
-            return false;
-          }
-        } // else if (builder.removedAccRestrictionsAsGRF())
-      }
+      } else if (builder.relaxedACCRestrictions3() &&
+                 useInst->opcode() == G4_mul) {
+        if (!IS_TYPE_FLOAT_FOR_ACC(useInst->getDst()->getType()) ||
+            !IS_TYPE_FLOAT_FOR_ACC(useInst->getSrc(0)->getType()) ||
+            !IS_TYPE_FLOAT_FOR_ACC(useInst->getSrc(1)->getType())) {
+          return false;
+        }
+      }// else if (builder.removedAccRestrictionsAsGRF())
     } else {
       // do not allow an inst to have multiple acc source operands
       if (useInst->getNumSrc() == 3) {

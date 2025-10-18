@@ -957,7 +957,7 @@ int Optimizer::optimization() {
     runPass(PI_ACCSchedule);
   }
 
-  if (builder.enableACCBeforRA()) {
+  if (builder.enableACCBeforRA() && !builder.enablePreSchedACC()) {
     runPass(PI_accSubBeforeRA);
   }
 

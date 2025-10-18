@@ -36,7 +36,6 @@ static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
 static const unsigned PRESSURE_LATENCY_HIDING_THRESHOLD = 104;
 static const unsigned PRESSURE_HIGH_THRESHOLD = 128;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
-static const double   ACC_SCHEDUEL_THRESHOLD = 0.95;
 
 namespace {
 
@@ -285,8 +284,6 @@ public:
     }
   };
 
-  unsigned getACCCandidateNum() { return ACCCandidateNum; }
-
 private:
   // Keep live nodes while scanning the block.
   // Each declare is associated with a list of live nodes.
@@ -300,9 +297,6 @@ private:
 
   // The most recent scheduling barrier.
   preNode *prevBarrier = nullptr;
-
-  // The number of acc candidate instructions.
-  unsigned ACCCandidateNum = 0;
 
   // The core function for building the DAG.
   // This adds node to the DAG and adds any required edges
@@ -318,6 +312,7 @@ private:
       succ->Preds.emplace_back(pred, D);
     }
   }
+
   void processBarrier(preNode *curNode, DepType Dep);
   void processSend(preNode *curNode);
   void addSrcOpndDep(preNode *curNode, G4_Declare *dcl,
@@ -2976,16 +2971,10 @@ class SethiUllmanACCQueue {
   // Sethi-Ullman numbers.
   std::vector<unsigned> Numbers;
 
-  std::vector<preNode *> &schedule;
-
   std::vector<preNode *> Q;
 
-  int AccNum;
-
 public:
-  SethiUllmanACCQueue(preDDD &ddd, G4_Kernel *kernel,
-                      std::vector<preNode *> &s, int NumOfAcc)
-      : ddd(ddd), schedule(s), AccNum(NumOfAcc) {
+  SethiUllmanACCQueue(preDDD &ddd, G4_Kernel *kernel) : ddd(ddd) {
     init(kernel);
   }
 
@@ -3024,7 +3013,7 @@ class BB_ACC_Scheduler {
   preDDD &ddd;
 
   // The schedule result.
-  std::vector<preNode *> schedule;
+  std::vector<G4_INST *> schedule;
 
 public:
   BB_ACC_Scheduler(G4_Kernel &kernel, preDDD &ddd) : kernel(kernel), ddd(ddd) {}
@@ -3050,7 +3039,7 @@ private:
 //
 void BB_ACC_Scheduler::SethiUllmanACCScheduling() {
   schedule.clear();
-  SethiUllmanACCQueue Q(ddd, &kernel, schedule, kernel.getNumAcc());
+  SethiUllmanACCQueue Q(ddd, &kernel);
   Q.push(ddd.getExitNode());
 
   while (!Q.empty()) {
@@ -3061,7 +3050,7 @@ void BB_ACC_Scheduler::SethiUllmanACCScheduling() {
         std::cerr << "SU[" << Q.getNumber(N->getID()) << "]:";
         N->dump();
       });
-      schedule.push_back(N);
+      schedule.push_back(N->getInst());
       N->isScheduled = true;
     }
 
@@ -3083,7 +3072,7 @@ void BB_ACC_Scheduler::commit() {
 
   // move the scheduled instruction to the instruction list.
   for (auto Inst : schedule) {
-    CurInsts.push_front(Inst->getInst());
+    CurInsts.push_front(Inst);
   }
 
   return;
@@ -3099,7 +3088,7 @@ void BB_ACC_Scheduler::commit() {
   }
 
   for (auto Inst : schedule) {
-    if (Insts.count(Inst->getInst()) != 1) {
+    if (Insts.count(Inst) != 1) {
       Inst->dump();
       return false;
     }
@@ -3114,6 +3103,8 @@ preRA_ACC_Scheduler::preRA_ACC_Scheduler(G4_Kernel &k)
 preRA_ACC_Scheduler::~preRA_ACC_Scheduler() {}
 
 bool preRA_ACC_Scheduler::run() {
+  AccSubPass accSub(*kernel.fg.builder, kernel);
+
   for (auto bb : kernel.fg) {
     if (bb->size() < SMALL_BLOCK_SIZE || bb->size() > LARGE_BLOCK_SIZE) {
       // Skip small and large blocks.
@@ -3125,11 +3116,9 @@ bool preRA_ACC_Scheduler::run() {
     BB_ACC_Scheduler S(kernel, ddd);
 
     ddd.buildGraphForACC();
-    if (((double)ddd.getACCCandidateNum() / ddd.getNodes().size()) >
-        ACC_SCHEDUEL_THRESHOLD) {
-      S.scheduleBlockForACC();
-      S.commit();
-    }
+    S.scheduleBlockForACC();
+    S.commit();
+    accSub.doAccSub(bb);
   }
 
   return true;
@@ -3239,43 +3228,10 @@ bool SethiUllmanACCQueue::compare(preNode *N1, preNode *N2) {
 preNode *SethiUllmanACCQueue::select() {
   vASSERT(!Q.empty());
   auto TopIter = Q.end();
-  auto latestACCDistanceNode = Q.end();
-  int largestDistance = 0;
   for (auto I = Q.begin(), E = Q.end(); I != E; ++I) {
-    preNode *currentNode = (*I);
-
-    if (currentNode->isACCCandidate() && !schedule.empty()) {
-      int i = 1; //Adjacent instructions distance is 1
-      bool foundDep = false;
-      for (auto RI = schedule.rbegin(); RI != schedule.rend() && i < AccNum; ++RI, i++) {
-        preNode *scheduledNode = (*RI);
-        for (auto &EdgeS1 : currentNode->Succs) {
-          auto *SuccS1 = EdgeS1.getNode();
-          if (SuccS1 == scheduledNode) {
-            foundDep = true;
-            break;
-          }
-        }
-        if (foundDep)
-          break;
-      }
-
-      if (foundDep) {
-        if (i >= largestDistance) {
-          largestDistance = i;
-          latestACCDistanceNode = I;
-        }
-      } else { // No dependence in AccNum distance, it's a good candidate
-        if (TopIter == Q.end() || compare(*TopIter, *I))
-          TopIter = I;
-      }
-    } else {
-      if (TopIter == Q.end() || compare(*TopIter, *I))
-        TopIter = I;
-    }
+    if (TopIter == Q.end() || compare(*TopIter, *I))
+      TopIter = I;
   }
-  if (TopIter == Q.end())
-    TopIter = latestACCDistanceNode;
 
   vASSERT(TopIter != Q.end());
   preNode *Top = *TopIter;
@@ -3306,7 +3262,6 @@ void preDDD::buildGraphForACC() {
     addNodeToGraph(N);
     if ((*I)->canInstBeAcc(&kernel.fg.globalOpndHT)) {
       N->setACCCandidate();
-      ACCCandidateNum++;
     }
   }
 

@@ -874,8 +874,6 @@ public:
   virtual bool isDoNotDelete() const { return doNotDelete; }
   void markDoNotDelete() { doNotDelete = true; }
 
-  bool canUseAccInSrc2() const;
-
   bool canSrcBeFlagForPropagation(Gen4_Operand_Number opndNum) const;
 
   bool canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const;

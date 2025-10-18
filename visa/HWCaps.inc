@@ -543,7 +543,8 @@ bool hasTwoGRFMathMacro() const { return getPlatform() >= Xe_PVC; }
 // 1. Support both sources as ACC for FP MUL
 // 2. Support Src2 as ACC for FP MAD
 bool relaxedACCRestrictions3() const {
-  return (getPlatform() >= Xe2) && !getOption(vISA_disableSrc2AccSub);
+  return ((getPlatform() == Xe_ARL || getPlatform() >= Xe2) &&
+          !getOption(vISA_disableSrc2AccSub));
 }
 
 bool relaxedACCRestrictions4() const {
