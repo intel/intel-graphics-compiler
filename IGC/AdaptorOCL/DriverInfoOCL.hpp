@@ -68,6 +68,7 @@ public:
 
   bool EnableShaderDebugHashCodeInKernel() const override { return true; }
 
+  bool supportsAtomicIaddToIncDec() const override { return false; }
 };
 
 // In case some cpas are specific to NEO

@@ -400,6 +400,7 @@ public:
     return (IGC_GET_FLAG_VALUE(UseNewInlineRaytracing) &
             static_cast<uint32_t>(NewInlineRaytracingMask::NonRTShaders)) != 0;
   }
+  virtual bool supportsAtomicIaddToIncDec() const { return true; }
 
 protected:
   bool autoGRFSelection = false;

@@ -523,7 +523,7 @@ void CustomSafeOptPass::visitIntAtomicIAddToIncOrDec(CallInst *I) {
 // or
 // %13 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 poison, i32 2)
 // %14 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 poison, i32 3)
-  // clang-format on
+// clang-format on
   if (id == GenISAIntrinsic::GenISA_intatomicraw || id == GenISAIntrinsic::GenISA_intatomicrawA64) {
     if (instr->getOperand(0)->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
       return;
@@ -916,7 +916,9 @@ void CustomSafeOptPass::visitCallInst(CallInst &C) {
     case GenISAIntrinsic::GenISA_intatomictyped:
     case GenISAIntrinsic::GenISA_intatomicraw:
     case GenISAIntrinsic::GenISA_intatomicrawA64: {
-      visitIntAtomicIAddToIncOrDec(inst);
+      if (pContext->m_DriverInfo.supportsAtomicIaddToIncDec()) {
+        visitIntAtomicIAddToIncOrDec(inst);
+      }
       break;
     }
 
