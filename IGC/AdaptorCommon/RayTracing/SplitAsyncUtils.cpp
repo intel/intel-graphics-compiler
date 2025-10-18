@@ -228,7 +228,6 @@ bool RematChecker::materializable(const Instruction &I) const {
 
   if (auto *GII = dyn_cast<GenIntrinsicInst>(&I)) {
     switch (GII->getIntrinsicID()) {
-    case GenISAIntrinsic::GenISA_RuntimeValue:
     case GenISAIntrinsic::GenISA_GlobalRootSignatureValue:
     case GenISAIntrinsic::GenISA_GlobalBufferPointer:
     case GenISAIntrinsic::GenISA_DispatchRayIndex:
