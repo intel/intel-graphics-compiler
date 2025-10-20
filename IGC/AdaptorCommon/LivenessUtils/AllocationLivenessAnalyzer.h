@@ -39,8 +39,8 @@ public:
 
     llvm::SmallVector<Edge> lifetimeEndEdges;
 
-    llvm::SetVector<llvm::BasicBlock *> bbIn;
-    llvm::SetVector<llvm::BasicBlock *> bbOut;
+    llvm::SmallSetVector<llvm::BasicBlock *, 16> bbIn;
+    llvm::SmallSetVector<llvm::BasicBlock *, 16> bbOut;
 
     LivenessData(llvm::Instruction *allocationInstruction, llvm::SetVector<llvm::Instruction *> &&usersOfAllocation,
                  const llvm::LoopInfo &LI, const llvm::DominatorTree &DT,
