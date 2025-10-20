@@ -437,9 +437,15 @@ public:
       return UINT_MAX;
     }
   }
-  inline unsigned int getTextureIndex() const { return getNumOperands() - 5; }
+  inline unsigned int getNumNormalOperands() const {
+    switch (getIntrinsicID()) {
+    default:
+      return getNumOperands();
+    }
+  }
+  inline unsigned int getTextureIndex() const { return getNumNormalOperands() - 5; }
   inline unsigned int getImmediateOffsetsIndex() const { return 6; }
-  inline unsigned int getPairedTextureIndex() const { return hasPairedTextureArg() ? getNumOperands() - 6 : UINT_MAX; }
+  inline unsigned int getPairedTextureIndex() const { return hasPairedTextureArg() ? getNumNormalOperands() - 6 : UINT_MAX; }
   inline Value *getTextureValue() const { return getOperand(getTextureIndex()); }
   inline Value *getPairedTextureValue() const {
     return hasPairedTextureArg() ? getOperand(getPairedTextureIndex()) : nullptr;
@@ -491,10 +497,16 @@ public:
 
 class LdMSIntrinsic : public SamplerLoadIntrinsic {
 public:
-  inline Value *getImmOffset(unsigned int i) { return getOperand(arg_size() - 3 + i); }
-  inline void setImmOffset(unsigned int i, Value *val) { return setOperand(arg_size() - 3 + i, val); }
-  inline Value *getCoordinate(unsigned int i) { return getOperand(arg_size() - 8 + i); }
-  inline void setCoordinate(unsigned int i, Value *val) { return setOperand(arg_size() - 8 + i, val); }
+  inline unsigned int getRegularArgsSize() const {
+    switch (getIntrinsicID()) {
+    default:
+      return arg_size();
+    }
+  }
+  inline Value *getImmOffset(unsigned int i) { return getOperand(getRegularArgsSize() - 3 + i); }
+  inline void setImmOffset(unsigned int i, Value *val) { return setOperand(getRegularArgsSize() - 3 + i, val); }
+  inline Value *getCoordinate(unsigned int i) { return getOperand(getRegularArgsSize() - 8 + i); }
+  inline void setCoordinate(unsigned int i, Value *val) { return setOperand(getRegularArgsSize() - 8 + i, val); }
   static inline bool classof(const GenIntrinsicInst *I) {
     switch (I->getIntrinsicID()) {
     case GenISAIntrinsic::GenISA_ldmsptr:

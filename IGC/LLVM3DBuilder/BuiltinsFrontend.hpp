@@ -154,8 +154,7 @@ public:
   }
 };
 
-template <typename T = llvm::ConstantFolder,
-          typename InserterTy = llvm::IRBuilderDefaultInserter>
+template <typename T = llvm::ConstantFolder, typename InserterTy = llvm::IRBuilderDefaultInserter>
 class LLVM3DBuilder : public llvm::IGCIRBuilder<T, InserterTy> {
 public:
   LLVM3DBuilder(llvm::LLVMContext &pCtx, const PLATFORM &pPlatform)
@@ -617,7 +616,12 @@ public:
                                       llvm::Value *helperLaneMode = nullptr);
   llvm::Value *create_waveMultiPrefixBitCount(llvm::Instruction *I, llvm::Value *Val, llvm::Value *Mask,
                                               llvm::Value *helperLaneMode = nullptr);
+  llvm::Value *create_waveClusteredAll(llvm::Value *src, llvm::Value *reductionType, llvm::Value *clusterSize,
+                                       llvm::Value *helperLaneMode = nullptr);
+  llvm::Value *create_waveClusteredBroadcast(llvm::Value *src, llvm::Value *clusterLane, llvm::Value *clusterSize,
+                                             llvm::Value *helperLaneMode = nullptr);
   llvm::Value *create_quadPrefix(llvm::Value *src, llvm::Value *type, bool inclusive = false);
+  llvm::Value *get16BitLaneID();
   llvm::Value *get32BitLaneID();
   llvm::Value *getSimdSize();
   llvm::Value *getFirstLaneID(llvm::Value *helperLaneMode = nullptr);

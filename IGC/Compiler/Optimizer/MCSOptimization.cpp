@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "common/IGCIRBuilder.h"
 #include "common/igc_regkeys.hpp"
 #include "Probe/Assertion.h"
+#include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 
 using namespace llvm;
 using namespace IGC;
@@ -67,10 +68,11 @@ char MCSOptimization::ID = 0;
 
 bool MCSOptimization::runOnFunction(Function &F) {
 
-  if (IGC_IS_FLAG_ENABLED(DisableMCSOpt)) {
-    return false;
-  }
   m_changed = false;
+  if (IGC_IS_FLAG_ENABLED(DisableMCSOpt)) {
+    return m_changed;
+  }
+
   visit(F);
   for (auto &workItem : m_candidates) {
     ProcessLdmcsAndUsersInstrinsic(workItem);

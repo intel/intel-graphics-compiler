@@ -8270,6 +8270,8 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic *inst) {
 
 void EmitPass::emitLdmsInstruction(llvm::Instruction *inst) {
   uint numOperands = inst->getNumOperands();
+  CVariable *flag = nullptr;
+
   EOPCODE opCode = GetOpCode(inst);
   m_currShader->m_State.SetHasLoadInst();
   // Subtract the offsets, and texture resource, lod to get
@@ -8316,7 +8318,6 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction *inst) {
 
   bool feedbackEnable = writeMask.isSet(4);
   uint label = 0;
-  CVariable *flag = nullptr;
   bool needLoop = ResourceLoopHeader(dst, resource, flag, label);
   ResourceLoopSubIteration(resource, flag, label);
   m_encoder->SetPredicate(flag);
@@ -20576,10 +20577,18 @@ void EmitPass::emitWaveAll(llvm::GenIntrinsicInst *inst) {
 }
 
 void EmitPass::emitWaveClustered(llvm::GenIntrinsicInst *inst) {
-  bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(inst->getArgOperand(3))->getSExtValue()) == 2;
+  int helperLaneVal = int_cast<int>(cast<ConstantInt>(inst->getArgOperand(3))->getSExtValue());
+  bool disableHelperLanes = (helperLaneVal == 2) || (helperLaneVal == 3);
+  bool needAllLanesReduction = (helperLaneVal == 3);
   if (disableHelperLanes) {
     ForceDMask();
   }
+
+  if (needAllLanesReduction) {
+    // special mode to keep all lanes active, not only the active lanes
+    m_encoder->BeginForcedNoMaskRegion();
+  }
+
   CVariable *src = GetSymbol(inst->getOperand(0));
   const WaveOps op = static_cast<WaveOps>(cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue());
   const unsigned int clusterSize = int_cast<uint32_t>(cast<llvm::ConstantInt>(inst->getOperand(2))->getZExtValue());
@@ -20590,6 +20599,9 @@ void EmitPass::emitWaveClustered(llvm::GenIntrinsicInst *inst) {
   CVariable *dst = m_destination;
   m_encoder->SetSubSpanDestination(false);
   emitReductionClustered(opCode, identity, type, false, clusterSize, src, dst);
+  if (needAllLanesReduction) {
+    m_encoder->EndForcedNoMaskRegion();
+  }
   if (disableHelperLanes) {
     ResetVMask();
   }

@@ -3289,6 +3289,26 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveMultiPrefixBitCount(
 }
 
 template <typename T, typename Inserter>
+inline llvm::Value *
+LLVM3DBuilder<T, Inserter>::create_waveClusteredAll(llvm::Value *src, llvm::Value *reductionType,
+                                                                llvm::Value *clusterSize, llvm::Value *helperLaneMode) {
+  llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
+  llvm::Function *pFunc =
+      llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_WaveClustered, src->getType());
+  return this->CreateCall4(pFunc, src, reductionType, clusterSize, helperLaneMode ? helperLaneMode : this->getInt32(0));
+}
+
+template <typename T, typename Inserter>
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveClusteredBroadcast(
+    llvm::Value *src, llvm::Value *clusterLane, llvm::Value *clusterSize, llvm::Value *helperLaneMode) {
+  llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
+  llvm::Function *pFunc = llvm::GenISAIntrinsic::getDeclaration(
+      module, llvm::GenISAIntrinsic::GenISA_WaveClusteredBroadcast, src->getType());
+  // If helperLaneMode is nullptr, use 0
+  llvm::Value *hlm = helperLaneMode ? helperLaneMode : this->getInt32(0);
+  return this->CreateCall4(pFunc, src, clusterSize, clusterLane, hlm);
+}
+template <typename T, typename Inserter>
 inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_quadPrefix(llvm::Value *src, llvm::Value *type,
                                                                                  bool inclusive) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
@@ -3298,11 +3318,16 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_quadPrefix(llvm::Value *s
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::get32BitLaneID() {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::get16BitLaneID() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc = llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_simdLaneId);
   llvm::Value *int16LaneId = this->CreateCall(pFunc);
-  return this->CreateZExt(int16LaneId, this->getInt32Ty());
+  return int16LaneId;
+}
+
+template <typename T, typename Inserter>
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::get32BitLaneID() {
+  return this->CreateZExt(get16BitLaneID(), this->getInt32Ty());
 }
 
 template <typename T, typename Inserter>
