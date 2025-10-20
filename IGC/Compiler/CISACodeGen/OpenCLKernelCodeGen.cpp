@@ -2284,8 +2284,8 @@ void CodeGen(OpenCLProgramContext *ctx) {
             IGC_SET_FLAG_VALUE(ForceSIMDRPELimit, 0);
             ctx->m_retryManager.kernelSet.insert(shader->entry->getName().str());
             ctx->EmitWarning("we couldn't compile without exceeding max permitted PTSS, drop SIMD \n", nullptr);
+            ctx->m_retryManager.DecreaseState();
           } else {
-
             std::string errorMsg = "total scratch space exceeds HW "
                                    "supported limit for kernel " +
                                    shader->entry->getName().str() + ": " + std::to_string(getScratchUse(shader, ctx)) +

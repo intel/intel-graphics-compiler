@@ -64,6 +64,11 @@ bool RetryManager::AdvanceState() {
   return (stateId < RetryTableSize);
 }
 
+void RetryManager::DecreaseState() {
+  IGC_ASSERT(stateId < RetryTableSize);
+  stateId = prevStateId;
+}
+
 unsigned RetryManager::GetPerFuncRetryStateId(Function *F) const {
   if (IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 2 && F != nullptr && prevStateId < RetryTableSize &&
       !PerFuncRetrySet.empty()) {
@@ -321,7 +326,6 @@ LLVMContextWrapper::LLVMContextWrapper(bool createResourceDimTypes) : m_UserAddr
   if (WA_OpaquePointersCL && WA_OpaquePointersCL->getNumOccurrences() > 0) {
     IGC_IsPointerModeAlreadySet = true;
   }
-
   if (IGC::canOverwriteLLVMCtxPtrMode(basePtr, IGC_IsPointerModeAlreadySet)) {
     bool enableOpaquePointers = AreOpaquePointersEnabled();
     IGCLLVM::setOpaquePointers(basePtr, enableOpaquePointers);

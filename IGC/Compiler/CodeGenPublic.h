@@ -656,6 +656,7 @@ public:
   RetryManager &operator=(const RetryManager &) = delete;
 
   bool AdvanceState();
+  void DecreaseState();
   bool AllowLICM(llvm::Function *F = nullptr) const;
   bool AllowPromotePrivateMemory(llvm::Function *F = nullptr) const;
   bool AllowVISAPreRAScheduler(llvm::Function *F = nullptr) const;
