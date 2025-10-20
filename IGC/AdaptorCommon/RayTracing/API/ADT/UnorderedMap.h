@@ -20,8 +20,7 @@ SPDX-License-Identifier: MIT
 
 namespace Interface {
 
-template <typename KeyT, typename ValueT>
-class UnorderedMap {
+template <typename KeyT, typename ValueT> class UnorderedMap {
 private:
   Array<KeyT> Keys;
   Array<ValueT> Values;
@@ -34,6 +33,7 @@ public:
   using const_reference_type = std::pair<const key_type &, const mapped_type &>;
 
   UnorderedMap() = default;
+  UnorderedMap(Array<KeyT> &&keys, Array<ValueT> &&values) : Keys(std::move(keys)), Values(std::move(values)) {}
 
   void destroy() {
     Keys.destroy();
@@ -44,7 +44,7 @@ public:
   bool empty() const { return Keys.empty(); }
 
   // Find index of key, or size() if not found
-  size_t findIndex(const key_type& key) const {
+  size_t findIndex(const key_type &key) const {
     for (size_t i = 0; i < Keys.size(); ++i) {
       if (Keys[i] == key)
         return i;
@@ -53,13 +53,13 @@ public:
   }
 
   // Returns pointer to value if found, nullptr otherwise
-  mapped_type* find(const key_type& key) {
+  mapped_type *find(const key_type &key) {
     size_t idx = findIndex(key);
     if (idx < Values.size())
       return &Values[idx];
     return nullptr;
   }
-  const mapped_type* find(const key_type& key) const {
+  const mapped_type *find(const key_type &key) const {
     size_t idx = findIndex(key);
     if (idx < Values.size())
       return &Values[idx];
@@ -67,7 +67,7 @@ public:
   }
 
   // Insert or assign
-  void insert(const key_type& key, const mapped_type& value) {
+  void insert(const key_type &key, const mapped_type &value) {
     size_t idx = findIndex(key);
     if (idx < Keys.size()) {
       Values[idx] = value;
@@ -89,7 +89,7 @@ public:
   }
 
   // Insert or assign
-  void insert(const key_type& key, mapped_type&& value) {
+  void insert(const key_type &key, mapped_type &&value) {
     size_t idx = findIndex(key);
     if (idx < Keys.size()) {
       Values[idx] = std::move(value);
@@ -116,7 +116,7 @@ public:
   }
 
   // operator[]
-  mapped_type& operator[](const key_type& key) {
+  mapped_type &operator[](const key_type &key) {
     size_t idx = findIndex(key);
     if (idx < Values.size())
       return Values[idx];
@@ -135,7 +135,6 @@ public:
     ValueIt m_v;
 
   public:
-
     iterator(keyIt k, ValueIt v) : m_k(k), m_v(v) {}
     reference_type operator*() const { return reference_type(*m_k, *m_v); }
     iterator &operator++() {
