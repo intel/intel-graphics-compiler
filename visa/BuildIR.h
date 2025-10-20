@@ -610,6 +610,8 @@ public:
     return kernel.getBoolKernelAttr(Attributes::ATTR_LTOInvokeOptTarget);
   }
 
+  bool isGRFDstAligned(G4_Operand *dst, int alignByte) const;
+
   //
   // Check if opnd is or can be made "alignByte"-byte aligned.
   // These functions will change the underlying variable's alignment
