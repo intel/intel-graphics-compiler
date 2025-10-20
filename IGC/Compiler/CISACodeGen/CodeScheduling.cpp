@@ -1866,6 +1866,9 @@ private:
           if (!UI) {
             continue;
           }
+          if (UI->getParent() != BB) {
+            continue;
+          }
           InstructionNode *UNode = G.InstToNode[UI];
           if (!UNode) {
             continue;
@@ -2029,7 +2032,11 @@ private:
 
         std::function<void(Value *)> collectUses = [&](Value *V) {
           for (auto *U : RT.getRealUses(V)) {
-            auto *RematChainPattern = RCA->getRematChainPattern(U);
+            auto *UI = dyn_cast<Instruction>(U);
+            if (!UI || UI->getParent() != BB) {
+              continue;
+            }
+            auto *RematChainPattern = RCA->getRematChainPattern(UI);
             if (RematChainPattern) {
               // If the use is a remat chain, collect the last instruction in the chain
               Uses.insert(RematChainPattern->getRematTargetInst());
@@ -2072,6 +2079,9 @@ private:
           for (auto *U : getRealUsesThroughVS(Node->I)) {
             auto *I = dyn_cast<Instruction>(U);
             if (!I) {
+              continue;
+            }
+            if (I->getParent() != BB) {
               continue;
             }
 
@@ -2157,7 +2167,15 @@ private:
             // if the target instruction is not ready, we need to filter out the first remated instruction
             bool IsReady = true;
             Instruction *TargetInst = RCP->getRematTargetInst();
+            if (TargetInst->getParent() != BB) {
+              NonFilteredNodes.push_back(Node);
+              continue;
+            }
             InstructionNode *TargetNode = G.InstToNode[TargetInst];
+            if (!TargetNode) {
+              NonFilteredNodes.push_back(Node);
+              continue;
+            }
             for (const auto &PN : TargetNode->Preds) {
               IGC_ASSERT(!PN->Deleted);
               if (PN->Src->I == RCP->getLastInst()) {
@@ -2198,8 +2216,16 @@ private:
               NonFilteredNodes.push_back(Node);
               continue;
             }
+            if (SI->getParent() != BB) {
+              NonFilteredNodes.push_back(Node);
+              continue;
+            }
             // If the select instruction is not ready, we need to filter out the icmp instruction
             InstructionNode *SelectNode = G.InstToNode[SI];
+            if (!SelectNode) {
+              NonFilteredNodes.push_back(Node);
+              continue;
+            }
             for (const auto &PN : SelectNode->Preds) {
               if (PN->Src->I == Node->I) {
                 continue;
@@ -2255,11 +2281,20 @@ private:
               }
 
               if (isDPAS(I)) {
-                if (!FirstDPASUser || (G.InstToNode[I]->OriginalPosition < FirstDPASUser->OriginalPosition)) {
-                  FirstDPASUser = G.InstToNode[I];
+                if (I->getParent() != BB) {
+                  continue;
+                }
+
+                auto *DPASNode = G.InstToNode[I];
+                if (!DPASNode) {
+                  continue;
+                }
+
+                if (!FirstDPASUser || (DPASNode->OriginalPosition < FirstDPASUser->OriginalPosition)) {
+                  FirstDPASUser = DPASNode;
 
                   NonFilteredNodes = {Node};
-                } else if (G.InstToNode[I] == FirstDPASUser) {
+                } else if (DPASNode == FirstDPASUser) {
                   NonFilteredNodes.push_back(Node);
                 }
               }

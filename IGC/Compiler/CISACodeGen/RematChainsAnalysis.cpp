@@ -98,13 +98,21 @@ RematChainSet getRematChain(Value *V, Instruction *User) {
 
 bool RematChainsAnalysis::runOnFunction(llvm::Function &F) {
   for (auto &BB : F) {
-    for (Instruction &I : BB) {
+    for (auto IIt = BB.rbegin(), IE = BB.rend(); IIt != IE; ++IIt) {
+      Instruction &I = *IIt;
+
       Value *Operand = getRematedOperand(&I);
       if (!Operand)
         continue;
 
       Instruction *AI = dyn_cast<Instruction>(Operand);
       if (!AI)
+        continue;
+
+      if (AI->getParent() != &BB)
+        continue;
+
+      if (ValueToRematChainMap.find(AI) != ValueToRematChainMap.end())
         continue;
 
       RematChainSet Chain = getRematChain(Operand, &I);
