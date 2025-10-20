@@ -174,6 +174,8 @@ bool IR_Builder::isGRFDstAligned(G4_Operand* opnd, int alignByte) const
 
   dcl = opnd->getBase()->asRegVar()->getDeclare();
   while (dcl && dcl->getAliasDeclare()) {
+    // If the variable has sub register alignment requirement.
+    // The sub alignment is in the word unit.
     if (dcl->getSubRegAlign() != Any &&
         (((dcl->getSubRegAlign() * 2) >= alignByte &&
           (dcl->getSubRegAlign() * 2) % alignByte != 0) ||
@@ -187,7 +189,9 @@ bool IR_Builder::isGRFDstAligned(G4_Operand* opnd, int alignByte) const
   }
 
   if (dcl && dcl->getRegVar() && dcl->getRegVar()->isPhyRegAssigned()) {
-    offset += static_cast<unsigned short>(dcl->getRegVar()->getByteAddr(*this));
+    // For preRA ACC sub, if the variable is assigned with register already,
+    // don't put it in the candidate of ACC.
+    return false;
   }
 
   if (!isAligned) {
