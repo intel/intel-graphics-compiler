@@ -137,8 +137,8 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
   };
 
   // Exception to allow to span 2 GRFs:
-  // When ExecSize = 32 and Dtatype = DF or *Q, then dst/src operands cannot
-  // span more than 4 ajacent GRF registers. This requires that the operand must
+  // When ExecSize = 32 and Datatype = DF or *Q, then dst/src operands cannot
+  // span more than 4 adjacent GRF registers. This requires that the operand must
   // be GRF-aligned and have contiguous regions.
   auto AllowCross2GRF = [&](G4_Operand *opnd) {
     if (!m_builder->supportNativeSIMD32())
@@ -189,10 +189,21 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
     //   mov (16|M16)  r50.0<1>:q    r13.0<1;1,0>:d
     // If dst is :df datatype, wouldn't split here as it's in long pipeline and
     // will be fixed in HWConformity.
-    if ((isDstCross2GRF && !IS_DFTYPE(inst->getDst()->getType()) &&
-         src->getTypeSize() != 8 &&
-         !src->isScalarSrc()) ||
-        (cross2GRF(src) && !AllowCross2GRF(src))) {
+    if (isDstCross2GRF && !IS_DFTYPE(inst->getDst()->getType()) &&
+        !src->isScalarSrc()) {
+      if (src->getTypeSize() != 8) {
+        doSplit = true;
+        break;
+      }
+      // Check alignment requirements of src when dst crosses 2 grf
+      if (src->asSrcRegRegion()->getRegAccess() == Direct &&
+          !src->asSrcRegRegion()->getRegion()->isContiguous(
+              inst->getExecSize())) {
+        doSplit = true;
+        break;
+      }
+    }
+    if (cross2GRF(src) && !AllowCross2GRF(src)) {
       doSplit = true;
       break;
     }
