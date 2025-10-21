@@ -517,9 +517,12 @@ bool SOALayoutChecker::checkUsers(Instruction &I) {
 }
 
 bool SOALayoutChecker::visitBitCastInst(BitCastInst &BI) {
-  // no sense in comparing pointer base types on opaque pointers
-  if (BI.use_empty() || IsBitCastForLifetimeMark(&BI) || AreOpaquePointersEnabled()) {
+  if (BI.use_empty() || IsBitCastForLifetimeMark(&BI)) {
     return true;
+  }
+  // no sense in comparing pointer base types on opaque pointers, just check users
+  if (AreOpaquePointersEnabled()) {
+    return checkUsers(BI);
   }
   // FIXME: remove this once we only support opaque pointers
   Type *baseT = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(BI.getType()), true);
