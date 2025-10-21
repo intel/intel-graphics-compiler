@@ -39,6 +39,7 @@ public:
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<PostDominatorTreeWrapperPass>();
+    AU.addRequired<LoopInfoWrapperPass>();
   }
 
   StringRef getPassName() const override { return "RayTracingShaderLowering"; }
@@ -49,6 +50,7 @@ private:
   void injectFence(RTBuilder &RTB, GenIntrinsicInst *GII, bool rtFenceWAofBkMode, bool extraTGM) const;
   void simplifyCast(CastInst &CI);
   CodeGenContext *CGCtx = nullptr;
+  LoopInfo *m_LI = nullptr;
 };
 
 char RayTracingShaderLowering::ID = 0;
@@ -116,11 +118,67 @@ void RayTracingShaderLowering::simplifyCast(CastInst &CI) {
   }
 }
 
+static void WalkBackAndFindInterestingInstructions(Instruction *I, DenseSet<BasicBlock *> &Visited,
+                                                   SmallVectorImpl<Instruction *> &Instructions) {
+
+  auto *currbb = I->getParent();
+
+  if (Visited.insert(currbb).second == false)
+    return;
+
+  while ((I = I->getPrevNode())) {
+
+    if (!I->mayWriteToMemory())
+      continue;
+
+    // every rt shader disables preemption, not interesting for the scope of the feature
+    if (isa<GenIntrinsicInst>(I) &&
+        cast<GenIntrinsicInst>(I)->getIntrinsicID() == GenISAIntrinsic::GenISA_PreemptionDisable)
+      continue;
+
+    Instructions.push_back(I);
+    return;
+  }
+
+  for (auto *bb : predecessors(currbb)) {
+    WalkBackAndFindInterestingInstructions(&bb->back(), Visited, Instructions);
+  }
+}
+
+static SmallVector<Instruction *> WalkBackAndFindInterestingInstructions(Instruction *I) {
+
+  SmallVector<Instruction *> Instructions;
+  DenseSet<BasicBlock *> Visited;
+  WalkBackAndFindInterestingInstructions(I, Visited, Instructions);
+  return Instructions;
+}
+
 void RayTracingShaderLowering::injectFence(RTBuilder &RTB, GenIntrinsicInst *GII, bool rtFenceWAofBkMode,
                                            bool extraTGM) const {
+
+  auto instructions = WalkBackAndFindInterestingInstructions(GII);
+  if (instructions.empty())
+    return; // No stores before this call, no fence needed.
+
+  // if we have found a single path with a store, insert the fence just after the store
+  // if there are multiple paths with stores, insert the fence just before GII to avoid having fences in multiple paths
+  if (instructions.size() != 1) {
+
+    RTB.SetInsertPoint(GII);
+  } else {
+
+    auto *IP = instructions[0]->getNextNode();
+
+    // make sure we don't fence in a loop if GII is not in one
+    // TODO: when walking back, we could check for loops as we go and fence an exit block if appropriate
+    if (m_LI->getLoopFor(IP->getParent()) == m_LI->getLoopFor(GII->getParent()))
+      RTB.SetInsertPoint(IP);
+    else
+      RTB.SetInsertPoint(GII);
+  }
+
   LSC_FENCE_OP FenceOp = LSC_FENCE_OP_NONE;
   LSC_SCOPE Scope = LSC_SCOPE_LOCAL;
-  RTB.SetInsertPoint(GII);
   if (rtFenceWAofBkMode) {
     RTB.CreateLSCFence(LSC_TGM, Scope, FenceOp);
   } else {
@@ -140,6 +198,7 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
   for (auto &F : M) {
     if (F.isDeclaration())
       continue;
+    m_LI = &getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
     Value *EntryPreemptionVal = nullptr;
     auto checkPreemption = [&](Function &F) {
       if (EntryPreemptionVal)
@@ -261,6 +320,7 @@ IGC_INITIALIZE_PASS_BEGIN(RayTracingShaderLowering, PASS_FLAG, PASS_DESCRIPTION,
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_END(RayTracingShaderLowering, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 ModulePass *CreateRayTracingShaderLowering() { return new RayTracingShaderLowering(); }
