@@ -792,17 +792,28 @@ void VectorDecomposer::removeDeadCode() {
   // that is used in another of our newly added instructions that happens to
   // have already been seen as used. It doesn't matter either way that this
   // happens.)
-  for (auto i = NewInsts.begin(), e = NewInsts.end(); i != e; ++i) {
-    Instruction *Inst = *i;
-    bool IsUsed = false;
-    for (auto ui = Inst->use_begin(), ue = Inst->use_end(); ui != ue; ++ui) {
-      auto user = cast<Instruction>(ui->getUser());
-      if (Unused.find(user) == Unused.end())
-        IsUsed = true;
-    }
-    if (IsUsed) {
-      Stack.push_back(Inst);
-      Unused.erase(Inst);
+  // Repeat until no more changes occur (no more instructions are marked as
+  // used).
+  bool Changed = true;
+  while (Changed) {
+    Changed = false;
+    for (auto i = NewInsts.begin(), e = NewInsts.end(); i != e; ++i) {
+      Instruction *Inst = *i;
+      // Skip if already marked as used
+      if (Unused.find(Inst) == Unused.end()) {
+        continue;
+      }
+      bool IsUsed = false;
+      for (auto ui = Inst->use_begin(), ue = Inst->use_end(); ui != ue; ++ui) {
+        auto user = cast<Instruction>(ui->getUser());
+        if (Unused.find(user) == Unused.end())
+          IsUsed = true;
+      }
+      if (IsUsed) {
+        Stack.push_back(Inst);
+        Unused.erase(Inst);
+        Changed = true;
+      }
     }
   }
   // Process each entry on the stack.
