@@ -70,6 +70,11 @@ DECLARE_IGC_REGKEY(
     bool, ForceVISAStructurizer, false,
     "Force VISA structurizer for testing. Used on platforms in which we turns off SCF and use UCF by default", false)
 DECLARE_IGC_REGKEY(bool, EnableVISABoundsChecking, true, "Enable VISA bounds checking.", false)
+DECLARE_IGC_REGKEY(DWORD, MaxPerThreadScratchSpaceOverride, 0,
+                   "Override the maximum per-thread scratch space limit for testing purposes. This setting simulates "
+                   "hardware with constrained scratch memory and is propagated to both IGC and vISA. Note: vISA has "
+                   "its own PTSS query function that will also respect this override",
+                   true)
 DECLARE_IGC_REGKEY(bool, NoMaskWA, true, "Enable NoMask WA by using software-computed emask flag", false)
 DECLARE_IGC_REGKEY(bool, ForceNoMaskWA, false, "[tmp, testing] Force NoMaskWA on any platforms", false)
 DECLARE_IGC_REGKEY(bool, EnableCallUniform, true, "[tmp, testing] Ignore indirect call's uniform", true)

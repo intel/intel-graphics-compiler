@@ -1795,6 +1795,12 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
           continue;
         } else {
           stopTimer(TimerID::TOTAL);
+          // In case non-kernel function spills, we need to propagate
+          // spillMemUsed to the kernel, because summarizeFunctionInfo() is not
+          // called due to early return.
+          if (status == VISA_SPILL && !kernel->getIsKernel())
+            mainKernel->getIRBuilder()->getJitInfo()->stats.spillMemUsed =
+                kernel->getIRBuilder()->getJitInfo()->stats.spillMemUsed;
           return status;
         }
       }

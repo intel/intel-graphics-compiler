@@ -3161,6 +3161,12 @@ void CEncoder::InitBuildParams(
     params.push_back(param_uptr("-debug", literal_deleter));
   }
 
+  if(IGC_IS_FLAG_ENABLED(MaxPerThreadScratchSpaceOverride)) {
+    std::string flagValue = std::to_string(IGC_GET_FLAG_VALUE(MaxPerThreadScratchSpaceOverride));
+    params.push_back(param_uptr("-maxPTSSOverride", literal_deleter));
+    params.push_back(param_uptr(_strdup(flagValue.c_str()), dup_deleter));
+  }
+
   if (context->getModuleMetaData()->compOpt.FastVISACompile) {
     params.push_back(param_uptr("-fasterRA", literal_deleter));
     params.push_back(param_uptr("-noLocalSplit", literal_deleter));

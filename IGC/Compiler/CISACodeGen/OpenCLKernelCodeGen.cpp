@@ -2272,12 +2272,14 @@ void CodeGen(OpenCLProgramContext *ctx) {
 
         IGC_ASSERT(shader);
 
-        if (!ctx->m_retryManager.IsLastTry()) {
+        if (!ctx->m_retryManager.IsLastTry() && !ctx->getModuleMetaData()->compOpt.OptDisable) {
           // If this is not the last try, force retry on this kernel to potentially avoid
           // OOB access on the next try by reducing spill size and thus SS usage.
           ctx->m_retryManager.kernelSet.insert(shader->entry->getName().str());
         } else {
-          if (IGC_GET_FLAG_VALUE(ForceSIMDRPELimit) != 0) {
+          auto funcInfoMD = ctx->getMetaDataUtils()->getFunctionsInfoItem(pFunc);
+          int reqdSubGroupSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
+          if (IGC_GET_FLAG_VALUE(ForceSIMDRPELimit) != 0 && !reqdSubGroupSize) {
             IGC_SET_FLAG_VALUE(ForceSIMDRPELimit, 0);
             ctx->m_retryManager.kernelSet.insert(shader->entry->getName().str());
             ctx->EmitWarning("we couldn't compile without exceeding max permitted PTSS, drop SIMD \n", nullptr);

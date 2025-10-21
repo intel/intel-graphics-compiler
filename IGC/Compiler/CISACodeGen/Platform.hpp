@@ -922,6 +922,9 @@ public:
   //   TGLLP and below are for each FFTID: 2M.
   uint32_t maxPerThreadScratchSpace(
   ) const {
+    if(IGC_IS_FLAG_ENABLED(MaxPerThreadScratchSpaceOverride)){
+      return IGC_GET_FLAG_VALUE(MaxPerThreadScratchSpaceOverride);
+    }
 
     return hasScratchSurface() ? 0x40000 : 0x200000;
   }

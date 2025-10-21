@@ -781,6 +781,10 @@ bool enableSendIndirect() const {
 }
 
 unsigned int getMaxPTSS() const {
+  if (getuint32Option(vISA_maxPTSSOverride)) {
+    return getuint32Option(vISA_maxPTSSOverride);
+  }
+
   if (hasScratchSurface()) {
     // Max PTSS supported is 256kb
     return 256 * 1024;
