@@ -44,6 +44,7 @@ add_subdirectory(OpenCLPrintf)
 add_subdirectory(PoisonFP64KernelsPass)
 add_subdirectory(PrepareInlineSamplerForBindless)
 add_subdirectory(PrivateMemory)
+add_subdirectory(ProcessBICodeAssumption)
 add_subdirectory(ProgramScopeConstants)
 add_subdirectory(RayTracing)
 add_subdirectory(ReplaceUnsupportedIntrinsics)
@@ -103,6 +104,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_PoisonFP64KernelsPass}
     ${IGC_BUILD__SRC__OpenCLPasses_PrepareInlineSamplerForBindless}
     ${IGC_BUILD__SRC__OpenCLPasses_PrivateMemory}
+    ${IGC_BUILD__SRC__OpenCLPasses_ProcessBICodeAssumption}
     ${IGC_BUILD__SRC__OpenCLPasses_ProgramScopeConstants}
     ${IGC_BUILD__SRC__OpenCLPasses_Raytracing}
     ${IGC_BUILD__SRC__OpenCLPasses_ReplaceUnsupportedIntrinsics}
@@ -167,6 +169,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_OpenCLPrintf}
     ${IGC_BUILD__HDR__OpenCLPasses_PrepareInlineSamplerForBindless}
     ${IGC_BUILD__HDR__OpenCLPasses_PrivateMemory}
+    ${IGC_BUILD__HDR__OpenCLPasses_ProcessBICodeAssumption}
     ${IGC_BUILD__HDR__OpenCLPasses_ProgramScopeConstants}
     ${IGC_BUILD__HDR__OpenCLPasses_Raytracing}
     ${IGC_BUILD__HDR__OpenCLPasses_ReplaceUnsupportedIntrinsics}
@@ -233,6 +236,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_PoisonFP64KernelsPass
     Compiler__OpenCLPasses_PrepareInlineSamplerForBindless
     Compiler__OpenCLPasses_PrivateMemory
+    Compiler__OpenCLPasses_ProcessBICodeAssumption
     Compiler__OpenCLPasses_ProgramScopeConstants
     Compiler__OpenCLPasses_Raytracing
     Compiler__OpenCLPasses_ReplaceUnsupportedIntrinsics
