@@ -20,6 +20,17 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
+namespace IGC {
+enum REMAT_OPTIONS : uint8_t {
+#define REMAT_FLAG(Name, Val, Description) Name = Val,
+#include "igc_regkeys_enums_defs.h"
+  REMAT_MASK
+#undef REMAT_FLAG
+#undef REMAT_MASK
+      REMAT_ALL = 255
+};
+} // namespace IGC
+
 static Value *getPrivateMemoryValue(Function &F);
 
 namespace {
@@ -47,15 +58,27 @@ private:
 };
 
 class CloneAddressArithmetic : public FunctionPass {
-
 public:
   static char ID;
   WIAnalysis *WI = nullptr;
 
   ~CloneAddressArithmetic() { Uses.clear(); }
-  CloneAddressArithmetic() : FunctionPass(ID) {
+  CloneAddressArithmetic() : FunctionPass(ID), m_rematFlags(REMAT_ALL) {
+
+    if (IGC_IS_FLAG_DISABLED(RematDataAllowCMP))
+      m_rematFlags = static_cast<IGC::REMAT_OPTIONS>(m_rematFlags & ~REMAT_COMPARISONS);
+
+    if (IGC_IS_FLAG_DISABLED(RematCollectCallArgs))
+      m_rematFlags = static_cast<IGC::REMAT_OPTIONS>(m_rematFlags & ~REMAT_ARGS);
+
     initializeCloneAddressArithmeticPass(*PassRegistry::getPassRegistry());
   }
+
+  CloneAddressArithmetic(IGC::REMAT_OPTIONS options) : FunctionPass(ID), m_rematFlags(options) {
+
+    initializeCloneAddressArithmeticPass(*PassRegistry::getPassRegistry());
+  }
+
   CloneAddressArithmetic(const CloneAddressArithmetic &) = delete;            // Delete copy-constructor
   CloneAddressArithmetic &operator=(const CloneAddressArithmetic &) = delete; // Delete assignment operator
 
@@ -86,6 +109,7 @@ public:
   IGCLivenessAnalysis *RPE = nullptr;
 
 private:
+  IGC::REMAT_OPTIONS m_rematFlags = REMAT_NONE;
   bool greedyRemat(Function &F);
   bool rematerialize(RematSet &ToProcess, unsigned int FlowThreshold);
   bool isRegPressureLow(Function &F);
@@ -108,6 +132,9 @@ private:
 } // end namespace
 
 FunctionPass *IGC::createCloneAddressArithmeticPass() { return new CloneAddressArithmetic(); }
+FunctionPass *IGC::createCloneAddressArithmeticPassWithFlags(IGC::REMAT_OPTIONS options) {
+  return new CloneAddressArithmetic(options);
+}
 
 char CloneAddressArithmetic::ID = 0;
 
@@ -557,16 +584,27 @@ void CloneAddressArithmetic::collectInstToProcess(RematSet &ToProcess, Function 
   for (BasicBlock &BB : F) {
     for (auto &I : BB) {
 
-      bool IsLoad = llvm::isa<LoadInst>(I);
-      bool IsStore = llvm::isa<StoreInst>(I);
-      bool IsCall = llvm::isa<CallInst>(I);
-      bool IsCmp = llvm::isa<CmpInst>(I);
+      bool IsLoad = llvm::isa<LoadInst>(I) && m_rematFlags & REMAT_LOADS;
+      bool IsStore = llvm::isa<StoreInst>(I) && m_rematFlags & REMAT_STORES;
+      bool IsCall = llvm::isa<CallInst>(I) && m_rematFlags & REMAT_ARGS;
+      bool IsCmp = llvm::isa<CmpInst>(I) && m_rematFlags & REMAT_COMPARISONS;
 
       if (!IsLoad && !IsStore && !IsCall && !IsCmp)
         continue;
-      if (IsCmp && IGC_IS_FLAG_ENABLED(RematDataAllowCMP)) {
-          ToProcess.insert(static_cast<Instruction *>(&I));
-          continue;
+
+      if (IsCmp) {
+        ToProcess.insert(static_cast<Instruction *>(&I));
+        continue;
+      }
+
+      if (IsCall) {
+        for (auto &Arg : cast<CallInst>(I).args()) {
+          if (isRematInstruction(Arg)) {
+            ToProcess.insert(cast<Instruction>(&Arg));
+          }
+        }
+
+        continue;
       }
 
       llvm::Value *V =
@@ -575,13 +613,6 @@ void CloneAddressArithmetic::collectInstToProcess(RematSet &ToProcess, Function 
       if (isRematInstruction(V))
         ToProcess.insert(static_cast<Instruction *>(V));
 
-      if (IsCall && IGC_IS_FLAG_ENABLED(RematCollectCallArgs)) {
-        for (auto &Arg : cast<CallInst>(I).args()) {
-          if (isRematInstruction(Arg)) {
-            ToProcess.insert(cast<Instruction>(&Arg));
-          }
-        }
-      }
     }
   }
 }
@@ -664,6 +695,9 @@ void CloneAddressArithmetic::initializeLogFile(Function &F) {
 
 bool CloneAddressArithmetic::runOnFunction(Function &F) {
   if (skipFunction(F))
+    return false;
+
+  if (m_rematFlags == REMAT_NONE)
     return false;
 
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();

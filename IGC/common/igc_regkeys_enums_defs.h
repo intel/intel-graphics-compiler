@@ -110,6 +110,15 @@ SPDX-License-Identifier: MIT
   NEW_INLINE_RAYTRACING_FLAG(RTShaders, 0x02, "Enable for all raytracing shaders")
 #endif // NEW_INLINE_RAYTRACING_FLAG
 
+#ifdef REMAT_FLAG
+#define REMAT_MASK                                                   \
+  REMAT_FLAG(REMAT_NONE, 0x0, "Disable remat entirely")              \
+  REMAT_FLAG(REMAT_LOADS, 0x01, "Remat loads")                       \
+  REMAT_FLAG(REMAT_STORES, 0x02, "Remat stores")                     \
+  REMAT_FLAG(REMAT_ARGS, 0x04, "Remat call arguments")               \
+  REMAT_FLAG(REMAT_COMPARISONS, 0x08, "Remat comparison instructions")
+#endif // REMAT_FLAG
+
 #ifdef INJECT_PRINTF_OPTION
 #define INJECT_PRINTF_OPTIONS                                                                                          \
   INJECT_PRINTF_OPTION(InjectPrintfNone, 0)                                                                            \

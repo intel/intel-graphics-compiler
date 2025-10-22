@@ -868,6 +868,34 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     mpm.add(createDeadCodeEliminationPass());
     if (IGC_IS_FLAG_SET(DumpRegPressureEstimate))
       mpm.add(new IGCRegisterPressurePrinter("after_remat"));
+  } else if (ctx.m_retryManager.AllowCloneAddressArithmetic() && IGC_GET_FLAG_VALUE(RematOptionsForRetry) ||
+             ctx.platform.supportsVRT() && IGC_GET_FLAG_VALUE(RematOptionsForVRT)) {
+
+    if (IGC_GET_FLAG_VALUE(RematInstCombineBefore))
+      mpm.add(createIGCInstructionCombiningPass());
+
+    // see comment above
+    if (IGC_GET_FLAG_VALUE(RematReassocBefore)) {
+      mpm.add(llvm::createReassociatePass());
+      mpm.add(llvm::createEarlyCSEPass());
+      mpm.add(llvm::createReassociatePass());
+      mpm.add(llvm::createEarlyCSEPass());
+      mpm.add(llvm::createReassociatePass());
+      mpm.add(llvm::createEarlyCSEPass());
+    }
+
+    // if both retry and VRT checks go through, retry is more important
+    auto rematOptions = ctx.m_retryManager.AllowCloneAddressArithmetic() && IGC_GET_FLAG_VALUE(RematOptionsForRetry)
+                            ? static_cast<IGC::REMAT_OPTIONS>(IGC_GET_FLAG_VALUE(RematOptionsForRetry))
+                            : static_cast<IGC::REMAT_OPTIONS>(IGC_GET_FLAG_VALUE(RematOptionsForVRT));
+
+    mpm.add(createCloneAddressArithmeticPassWithFlags(rematOptions));
+
+    // cloneAddressArithmetic leaves old instructions unnecessary
+    // dce pass helps to clean that up
+    mpm.add(createDeadCodeEliminationPass());
+    if (IGC_IS_FLAG_SET(DumpRegPressureEstimate))
+      mpm.add(new IGCRegisterPressurePrinter("after_remat"));
   }
 
   mpm.add(createRematAddressArithmeticPass());

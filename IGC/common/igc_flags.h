@@ -1598,6 +1598,12 @@ DECLARE_IGC_REGKEY(bool, RematAllowOneUseLoad, false,
                    "Remat allow to move loads that have one use and it's inside the chain", false)
 DECLARE_IGC_REGKEY(bool, RematAllowLoads, false,
                    "Remat allow to move loads, no checks, exclusively for testing purposes", false)
+DECLARE_IGC_REGKEY_BITMASK(RematOptionsForRetry, 0,
+                           "Options for CloneAddressArithmetic pass when recompiling shader. Valid for non-OpenCL only",
+                           REMAT_MASK, false)
+DECLARE_IGC_REGKEY_BITMASK(RematOptionsForVRT, 0,
+                           "Options for CloneAddressArithmetic pass when compiling shader. Valid for non-OpenCL only",
+                           REMAT_MASK, false)
 DECLARE_IGC_REGKEY(bool, DumpRegPressureEstimate, false, "Dump RegPressureEstimate to a file", false)
 DECLARE_IGC_REGKEY(debugString, DumpRegPressureEstimateFilter, 0,
                    "Only dump RegPressureEstimate for functions matching the given regex", false)
