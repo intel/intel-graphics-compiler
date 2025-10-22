@@ -27,6 +27,8 @@ SPDX-License-Identifier: MIT
 // (x * M_LOG2E_F) multiplication, preventing reordering optimization (visitBinaryOperatorFmulFaddPropagation)
 // in CustomUnsafeOptPass.cpp.
 
+// CHECK-ASM-LABEL: test_exp
+
 // CHECK-ASM: mul {{\(.*\)}} [[REG:(r[0-9]+|acc[0-9]+)]].{{.*}}:f {{.*}}:f 0x3FB8AA3B:f
 // CHECK-ASM: math.exp {{\(.*\)}} {{.*}}:f [[REG]].{{.*}}:f
 
@@ -37,4 +39,18 @@ __kernel void test_exp(__global const float *A,__global const float2 *B, __globa
     float a = A[gid];
     float2 b = B[gid];
     out[gid] = exp(a * -b);
+}
+
+// CHECK-ASM-LABEL: test_native_exp
+
+// CHECK-ASM: mul {{\(.*\)}} [[REG:(r[0-9]+|acc[0-9]+)]].{{.*}}:f {{.*}}:f 0x3FB8AA3B:f
+// CHECK-ASM: math.exp {{\(.*\)}} {{.*}}:f [[REG]].{{.*}}:f
+
+__attribute__((intel_reqd_sub_group_size(16)))
+__kernel void test_native_exp(__global const float *A,__global const float2 *B, __global float2 *out)
+{
+    size_t gid = get_global_id(0);
+    float a = A[gid];
+    float2 b = B[gid];
+    out[gid] = native_exp(a * -b);
 }

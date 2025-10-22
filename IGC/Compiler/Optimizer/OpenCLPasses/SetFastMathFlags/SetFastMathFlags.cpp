@@ -103,7 +103,8 @@ bool SetFastMathFlags::setFlags(Function &F, FastMathFlags fmfs) {
   }
 
   StringRef fName = F.getName();
-  if (fName.equals("__ocl_svml_cos") || fName.equals("__ocl_svml_sin") || fName.contains("__spirv_ocl_exp")) {
+  if (fName.equals("__ocl_svml_cos") || fName.equals("__ocl_svml_sin") || fName.contains("__spirv_ocl_exp") ||
+      fName.contains("__spirv_ocl_native_exp")) {
     return false;
   }
 
