@@ -722,28 +722,6 @@ int32_t CodeGenContext::getNumThreadsPerEU() const { return -1; }
 
 uint32_t CodeGenContext::getExpGRFSize() const { return 0; }
 
-bool CodeGenContext::allowATOB()
-{
-  bool allow = type == ShaderType::COMPUTE_SHADER ||
-    (type == ShaderType::OPENCL_SHADER &&
-      !(getModuleMetaData()->NBarrierCnt > 0));
-
-  if (m_instrTypes.hasSplitBarrier &&
-    m_instrTypes.hasWorkgroupBarrier)
-  {
-    // The regular and split barrier cannnot share the
-    // same ID, because we could have such scenario:
-    // splitbarrier.signal();
-    // workgroupbarrier();
-    // splitbarrier.wait();
-    // and this will cause a hang.
-    // The split barrier will use the ID 1
-    // so, we cannot setup ATOB for this case
-    allow = false;
-  }
-  return allow;
-}
-
 /// parameter "returnDefault" controls what to return when
 /// there is no user-forced setting
 uint32_t CodeGenContext::getNumGRFPerThread(bool returnDefault) {

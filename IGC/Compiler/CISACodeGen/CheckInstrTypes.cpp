@@ -296,11 +296,7 @@ void CheckInstrTypes::visitCallInst(CallInst &C) {
       g_InstrTypes.numWaveIntrinsics++;
       break;
     case GenISAIntrinsic::GenISA_threadgroupbarrier:
-      g_InstrTypes.hasWorkgroupBarrier = true;
       g_InstrTypes.numBarrier++;
-      break;
-    case GenISAIntrinsic::GenISA_threadgroupbarrier_signal:
-      g_InstrTypes.hasSplitBarrier = true;
       break;
     case GenISAIntrinsic::GenISA_is_uniform:
       g_InstrTypes.hasUniformAssumptions = true;
