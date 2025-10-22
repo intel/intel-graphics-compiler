@@ -417,14 +417,12 @@ void CustomSafeOptPass::mergeDotAddToDp4a(llvm::CallInst *I) {
           }
 
           // if a valid acc is found
-          if (accVal) {
-            for (auto user : instr->users()) {
-              // replace i32 0 with %id113-
-              instr->setOperand(0, accVal);
-              user->replaceAllUsesWith(instr);
-              // %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %id113-, i32 %305, i32 %345)
-              break;
-            }
+          if (accVal && !instr->users().empty()) {
+            auto *user = *instr->users().begin();
+            // replace i32 0 with %id113-
+            instr->setOperand(0, accVal);
+            user->replaceAllUsesWith(instr);
+            // %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %id113-, i32 %305, i32 %345)
           }
         }
       }
