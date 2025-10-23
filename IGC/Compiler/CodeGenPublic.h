@@ -296,6 +296,8 @@ struct SInstrTypes {
   bool hasDynamicGenericLoadStore{};
   bool hasUnmaskedRegion{};
   bool hasSLM{};
+  bool hasWorkgroupBarrier{};
+  bool hasSplitBarrier{};
   unsigned int numCall{};
   unsigned int numBarrier{};
   unsigned int numLoadStore{};
@@ -1042,6 +1044,8 @@ public:
   bool isPOSH() const;
   virtual bool isBufferBoundsChecking() const;
   virtual uint64_t getMinimumValidAddress() const;
+
+  bool allowATOB();
 
   UserAddrSpaceMD &getUserAddrSpaceMD() {
     IGC_ASSERT(llvmCtxWrapper);

@@ -726,7 +726,7 @@ public:
     // are set.
     return maxId + 1;
   }
-  void updateBarrier();
+
   void updateNamedBarrier(G4_Operand *barrierId);
 
   G4_Declare *cloneDeclare(std::map<G4_Declare *, G4_Declare *> &dclMap,
@@ -2342,9 +2342,9 @@ public:
 
   ////////////////////////////////////////////////////////////////////////
   // default barrier functions
-  void generateSingleBarrier(G4_Predicate *prd);
-  void generateBarrierSend(G4_Predicate *prd);
-  void generateBarrierWait(G4_Predicate *prd);
+  void generateSingleBarrier(G4_Predicate *prd, uint32_t id);
+  void generateBarrierSend(G4_Predicate *prd, uint32_t id);
+  void generateBarrierWait(G4_Predicate *prd, uint32_t id);
   int translateVISASplitBarrierInst(G4_Predicate *prd, bool isSignal);
 
   ////////////////////////////////////////////////////////////////////////

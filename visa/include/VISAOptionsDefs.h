@@ -791,6 +791,11 @@ DEF_VISA_OPTION(vISA_ActiveThreadsOnlyBarrier, ET_BOOL,
                 "This enables the active-only bit in workgroup barriers. "
                 "With this option exited threads are not counted in expected "
                 "arrival count total and will not cause hangs.", false)
+DEF_VISA_OPTION(vISA_SplitBarrierID1, ET_BOOL,
+                "-splitbarrierid1",
+                "This flag switch ID of the split barrier to 1. "
+                "After that change, the workgroupbarrier and splitbarrer"
+                "can work togheter and will not cause hangs.", false)
 DEF_VISA_OPTION(vISA_RestrictSrc1ByteSwizzle, ET_BOOL,
                 "-restrictSrc1ByteSwizzle",
                 "Enable the WA to restrict src1 byte swizzle case", false)

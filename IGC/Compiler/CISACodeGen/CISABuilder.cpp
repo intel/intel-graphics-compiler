@@ -3667,9 +3667,22 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
 
   SetAbortOnSpillThreshold(canAbortOnSpill, AllowSpill);
 
-  if (context->type == ShaderType::COMPUTE_SHADER ||
-      (context->type == ShaderType::OPENCL_SHADER && !(context->getModuleMetaData()->NBarrierCnt > 0))) {
+  if (context->allowATOB()) {
     SaveOption(vISA_ActiveThreadsOnlyBarrier, true);
+  }
+
+  if (context->m_instrTypes.hasSplitBarrier &&
+    context->m_instrTypes.hasWorkgroupBarrier)
+  {
+    // The regular and split barrier cannnot share the
+    // same ID, because we could have such scenario:
+    // splitbarrier.signal();
+    // workgroupbarrier();
+    // splitbarrier.wait();
+    // and this will cause a hang.
+    // The split barrier will use the ID 1
+    // so, we cannot setup ATOB for this case
+    SaveOption(vISA_SplitBarrierID1, true);
   }
 
   if (m_program->m_Platform->isCoreChildOf(IGFX_XE3_CORE)) {
@@ -5413,7 +5426,8 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
   // always set properly, even if a barrier is used as a part of Inline vISA
   // code only.
   if (jitInfo->numBarriers != 0 && !m_program->m_State.GetHasBarrier()) {
-    if (context->getModuleMetaData()->NBarrierCnt > 0 || additionalVISAAsmToLink) {
+    if (context->getModuleMetaData()->NBarrierCnt > 0 || additionalVISAAsmToLink ||
+      jitInfo->numBarriers > 1) {
       m_program->m_State.SetBarrierNumber(NamedBarriersResolution::AlignNBCnt2BarrierNumber(jitInfo->numBarriers));
     } else {
       m_program->m_State.SetHasBarrier();
