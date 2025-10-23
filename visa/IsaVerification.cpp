@@ -1076,6 +1076,10 @@ void vISAVerifier::verifyInstructionMove(const CISA_INST *inst) {
     VISA_Type dstType = getVectorOperandType(header, dst);
     VISA_Type src0Type = getVectorOperandType(header, src0);
 
+    if (dstType == ISA_TYPE_B || src0Type == ISA_TYPE_B) {
+      REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= Xe3,
+                         "HF8 fcvt is not supported on the selected platform");
+    }
 
     if (dstType == ISA_TYPE_UB) {
       REPORT_INSTRUCTION(options, src0Type == ISA_TYPE_HF,
