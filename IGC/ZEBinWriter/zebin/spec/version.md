@@ -16,6 +16,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.61**: Add execution env require_assert_buffer and require_sync_buffer.
 - **Version 1.60**: Internal feature.
 - **Version 1.59**: Add execution env has_printf_calls and has_indirect_calls.
 - **Version 1.58**: Add new enum value NT_INTELGT_INDIRECT_ACCESS_BUFFER_VERSION

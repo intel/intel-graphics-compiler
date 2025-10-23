@@ -1740,6 +1740,8 @@ void COpenCLKernel::FillKernel(SIMDMode simdMode) {
 
     m_kernelInfo.m_executionEnvironment.HasRTCalls = funcMD.hasSyncRTCalls;
     m_kernelInfo.m_executionEnvironment.HasPrintfCalls = funcMD.hasPrintfCalls;
+    m_kernelInfo.m_executionEnvironment.RequireAssertBuffer = funcMD.requireAssertBuffer;
+    m_kernelInfo.m_executionEnvironment.RequireSyncBuffer = funcMD.requireSyncBuffer;
     m_kernelInfo.m_executionEnvironment.HasIndirectCalls = funcMD.hasIndirectCalls;
   }
 

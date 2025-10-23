@@ -127,7 +127,9 @@ If an attribute is **Required**, it must be present in execution_env. If it's **
 | has_multi_scratch_spaces | bool | Optional | false | |
 | has_no_stateless_write | bool | Optional | false | |
 | has_stack_calls | bool | Optional | false | When this value is true, it indicates that program uses stack calls. The implicit_arg_buffer is allocated accordingly.  |
-| has_printf_calls | bool | Optional | false | When this value is true, it indicates that the kernel itself uses printf calls in its body. |
+| has_printf_calls | bool | Optional | false | When this value is true, it indicates that the kernel/function itself uses printf calls in its body. |
+| require_assert_buffer | bool | Optional | false | When this value is true, it indicates that the kernel/function itself uses assert buffer in its body. |
+| require_sync_buffer | bool | Optional | false | When this value is true, it indicates that the kernel/function itself uses sync buffer in its body. |
 | has_indirect_calls | bool | Optional | false | When this value is true, it indicates that the kernel itself uses indirect calls in its body. |
 | require_disable_eufusion | bool | Optional | false | When this value is true, it indicates that program requires EU fusion disable |
 | indirect_stateless_count | int32 | Optional | 0 | |

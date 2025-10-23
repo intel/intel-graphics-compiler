@@ -91,6 +91,8 @@ struct ExecutionEnvironment {
   DWORD IndirectStatelessCount = 0;
   DWORD numThreads = 0;
   bool HasPrintfCalls = false;
+  bool RequireAssertBuffer = false;
+  bool RequireSyncBuffer = false;
   bool HasIndirectCalls = false;
   bool HasStackCalls = false;
   bool RequireDisableEUFusion = false;
