@@ -20,13 +20,13 @@ static OVERLOADABLE half __intel_spirv_float2half(float f, RoundingMode_t r)
     switch (r)
     {
     case rte:
-        return SPIRV_BUILTIN(FConvert, _RTE_f16_f32, _Rhalf_rte)(f);
+        return __spirv_FConvert_Rhalf_rte(f);
     case rtz:
-        return SPIRV_BUILTIN(FConvert, _RTZ_f16_f32, _Rhalf_rtz)(f);
+        return __spirv_FConvert_Rhalf_rtz(f);
     case rtp:
-        return SPIRV_BUILTIN(FConvert, _RTP_f16_f32, _Rhalf_rtp)(f);
+        return __spirv_FConvert_Rhalf_rtp(f);
     case rtn:
-        return SPIRV_BUILTIN(FConvert, _RTN_f16_f32, _Rhalf_rtn)(f);
+        return __spirv_FConvert_Rhalf_rtn(f);
     }
 }
 
@@ -39,13 +39,13 @@ static OVERLOADABLE half __intel_spirv_double2half(double d, RoundingMode_t r)
     switch (r)
     {
     case rte:
-        return SPIRV_BUILTIN(FConvert, _RTE_f16_f64, _Rhalf_rte)(d);
+        return __spirv_FConvert_Rhalf_rte(d);
     case rtz:
-        return SPIRV_BUILTIN(FConvert, _RTZ_f16_f64, _Rhalf_rtz)(d);
+        return __spirv_FConvert_Rhalf_rtz(d);
     case rtp:
-        return SPIRV_BUILTIN(FConvert, _RTP_f16_f64, _Rhalf_rtp)(d);
+        return __spirv_FConvert_Rhalf_rtp(d);
     case rtn:
-        return SPIRV_BUILTIN(FConvert, _RTN_f16_f64, _Rhalf_rtn)(d);
+        return __spirv_FConvert_Rhalf_rtn(d);
     }
 }
 
@@ -60,7 +60,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VS_NO_MANG(__intel_spirv_double2half, half, doub
 //*****************************************************************************/
 
 #define VSTOREN_DEF(addressSpace, scalarType, numElements, offsetType, mangle)                              \
-INLINE void SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vstore, numElements##_##mangle, n)(                        \
+INLINE void __attribute__((overloadable)) __spirv_ocl_vstoren(                        \
     scalarType##numElements data, offsetType offset, addressSpace scalarType *p) {                          \
     addressSpace scalarType *pOffset = p + offset * numElements;                                            \
     scalarType##numElements ret = data;                                                                     \
@@ -113,14 +113,14 @@ VSTOREN_TYPE(double, f64)
 //*****************************************************************************/
 
 #define VSTORE_HALF_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, MANGSRC, srcType)                               \
-INLINE void SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vstore_half, _##MANGSRC##_##MANGSIZE##_p##ASNUM##f16, )(        \
+INLINE void __attribute__((overloadable)) __spirv_ocl_vstore_half(        \
     srcType data, SIZETYPE offset, addressSpace half * p) {                                                      \
     addressSpace half *pHalf = (addressSpace half *)(p + offset);                                                \
     *pHalf = __intel_spirv_##srcType##2half(data, rte);                                                          \
 }
 
 #define VSTORE_HALF_R_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, MANGSRC, srcType)                             \
-INLINE void SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vstore_half_r, _##MANGSRC##_##MANGSIZE##_p##ASNUM##f16_i32, )(  \
+INLINE void __attribute__((overloadable)) __spirv_ocl_vstore_half_r(  \
     srcType data, SIZETYPE offset, addressSpace half * p, RoundingMode_t r) {                                    \
     addressSpace half *pHalf = (addressSpace half *)(p + offset);                                                \
     *pHalf = __intel_spirv_##srcType##2half(data, r);                                                            \
@@ -159,18 +159,16 @@ VSTORE_HALF_ALL_TYPES(generic, 4)
 //*****************************************************************************/
 
 #define VSTORE_HALFN_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, MANGSRC, srcType, numElements)              \
-INLINE void SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(                                                             \
-    vstore_half, numElements##_v##numElements##MANGSRC##_##MANGSIZE##_p##ASNUM##f16,                          \
-    n)(srcType##numElements data, SIZETYPE offset, addressSpace half * p) {                                   \
-    SPIRV_OCL_BUILTIN(vstore, numElements##_v##numElements##f16##_##MANGSIZE##_p##ASNUM##f16, n)              \
+INLINE void __attribute__((overloadable)) __spirv_ocl_vstore_halfn                                            \
+    (srcType##numElements data, SIZETYPE offset, addressSpace half * p) {                                     \
+    __spirv_ocl_vstoren                                                                                       \
     (__intel_spirv_##srcType##2half(data, rte), offset, p);                                                   \
 }
 
 #define VSTORE_HALFN_R_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, MANGSRC, srcType, numElements)            \
-INLINE void SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(                                                             \
-    vstore_half, numElements##_r_v##numElements##MANGSRC##_##MANGSIZE##_p##ASNUM##f16_i32,                    \
-    n_r)(srcType##numElements data, SIZETYPE offset, addressSpace half * p, RoundingMode_t r) {               \
-    SPIRV_OCL_BUILTIN(vstore, numElements##_v##numElements##f16##_##MANGSIZE##_p##ASNUM##f16, n)              \
+INLINE void __attribute__((overloadable)) __spirv_ocl_vstore_halfn_r                                          \
+    (srcType##numElements data, SIZETYPE offset, addressSpace half * p, RoundingMode_t r) {                   \
+    __spirv_ocl_vstoren                                                                                       \
     (__intel_spirv_##srcType##2half(data, r), offset, p);                                                     \
 }
 
@@ -232,17 +230,15 @@ VSTORE_HALFN_ALL_TYPES(generic, 4)
 //*****************************************************************************/
 
 #define VSTOREA_HALFN_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, MANGSRC, srcType, step, numElements)       \
-INLINE void SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(                                                             \
-    vstorea_half, numElements##_v##numElements##MANGSRC##_##MANGSIZE##_p##ASNUM##f16,                         \
-    n)(srcType##numElements data, SIZETYPE offset, addressSpace half * p) {                                   \
+INLINE void __attribute__((overloadable)) __spirv_ocl_vstorea_halfn                                           \
+    (srcType##numElements data, SIZETYPE offset, addressSpace half * p) {                                     \
     addressSpace half##numElements *pHalf = (addressSpace half##numElements *)(p + offset * step);            \
     *pHalf = __intel_spirv_##srcType##2half(data, rte);                                                       \
 }
 
 #define VSTOREA_HALFN_R_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, MANGSRC, srcType, step, numElements)     \
-INLINE void SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(                                                             \
-    vstorea_half, numElements##_r_v##numElements##MANGSRC##_##MANGSIZE##_p##ASNUM##f16_i32,                   \
-    n_r)(srcType##numElements data, SIZETYPE offset, addressSpace half * p, RoundingMode_t r) {               \
+INLINE void __attribute__((overloadable)) __spirv_vstorea_halfn_r                                             \
+    (srcType##numElements data, SIZETYPE offset, addressSpace half * p, RoundingMode_t r) {                   \
     addressSpace half##numElements *pHalf = (addressSpace half##numElements *)(p + offset * step);            \
     *pHalf = __intel_spirv_##srcType##2half(data, r);                                                         \
 }

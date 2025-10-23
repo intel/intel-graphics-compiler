@@ -14,11 +14,11 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/exp_d_la_noLUT.cl"
 #endif // defined(cl_khr_fp64)
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f32, )(float x)
+float __attribute__((overloadable)) __spirv_ocl_exp(float x)
 {
     if (BIF_FLAG_CTRL_GET(FastRelaxedMath))
     {
-        return SPIRV_OCL_BUILTIN(native_exp, _f32, )(x);
+        return __spirv_ocl_native_exp(x);
     }
     else
     {
@@ -28,7 +28,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f32, )(float x)
 
         // Compute the whole part of x * log2(e)
         // This part is easy!
-        float w = SPIRV_OCL_BUILTIN(trunc, _f32, )( x * M_LOG2E_F );
+        float w = __spirv_ocl_trunc( x * M_LOG2E_F );
 
         // Compute the fractional part of x * log2(e)
         // We have to do this carefully, so we don't lose precision.
@@ -39,12 +39,12 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f32, )(float x)
         const float C1 = as_float( 0x3F317200 );    // 0.693145751953125
         const float C2 = as_float( 0x35BFBE8E );    // 0.000001428606765330187
         float f = x;
-        f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( w, -C1, f );
-        f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( w, -C2, f );
+        f = __spirv_ocl_fma( w, -C1, f );
+        f = __spirv_ocl_fma( w, -C2, f );
         f = f * M_LOG2E_F;
 
-        w = SPIRV_OCL_BUILTIN(native_exp2, _f32, )( w );   // this should be exact
-        f = SPIRV_OCL_BUILTIN(native_exp2, _f32, )( f );   // this should be close enough
+        w = __spirv_ocl_native_exp2( w );   // this should be exact
+        f = __spirv_ocl_native_exp2( f );   // this should be close enough
 
         float res = w * f;
         res = ( x < as_float( 0xC2D20000 ) ) ? as_float( 0x00000000 ) : res;
@@ -58,7 +58,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( exp, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f64, )( double x )
+INLINE double __attribute__((overloadable)) __spirv_ocl_exp( double x )
 {
     double result;
     if (BIF_FLAG_CTRL_GET(UseHighAccuracyMath)) {
@@ -75,9 +75,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( exp, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f16, )( half x )
+INLINE half __attribute__((overloadable)) __spirv_ocl_exp( half x )
 {
-    return SPIRV_OCL_BUILTIN(exp, _f32, )((float)x);
+    return __spirv_ocl_exp((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( exp, half, half, f16 )

@@ -203,15 +203,15 @@ double sun_pow(double x, double y)
         if(hy==0x40000000) return x*x; /* y is  2 */
         if(hy==0x3fe00000) {    /* y is  0.5 */
         if(hx>=0)    /* x >= +0 */
-        return SPIRV_OCL_BUILTIN(sqrt, _f64, )(x);
+        return __spirv_ocl_sqrt(x);
         }
     }
 
-    ax   = SPIRV_OCL_BUILTIN(fabs, _f64, )(x);
+    ax   = __spirv_ocl_fabs(x);
     /* special value of x */
     if(lx==0) {
         if(ix==0x7ff00000||ix==0||ix==0x3ff00000){
-        if(SPIRV_BUILTIN(SignBitSet, _f64, )(ax)) ax = -ax;
+        if(__spirv_SignBitSet(ax)) ax = -ax;
         z = ax;            /*x is +-0,+-inf,+-1*/
         if(hy<0) z = one/z;    /* z = (1/|x|) */
         if(hx<0) {

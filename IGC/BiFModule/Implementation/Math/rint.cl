@@ -13,7 +13,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rint, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rint, _f64, )( double x )
+INLINE double __attribute__((overloadable)) __spirv_ocl_rint( double x )
 {
   double absolute_x;
   double rounded_int;
@@ -25,7 +25,7 @@ INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rint, _f64, )( double x )
   // round to nearest int if mantissa contains fractional parts
   exp_ = as_ulong(absolute_x) >> DOUBLE_MANTISSA_BITS;
   double nearest_int = 0.5 * (double)((exp_ < DOUBLE_MANTISSA_BITS + DOUBLE_BIAS) & 1);
-  rounded_int = SPIRV_OCL_BUILTIN(trunc, _f64, )(absolute_x + nearest_int);
+  rounded_int = __spirv_ocl_trunc(absolute_x + nearest_int);
 
   // get the parity bit; does src has a fraction equal to 0.5?
   uint parity = ((ulong)rounded_int) & 0x1;

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i8_v2i8, )(char2 v, char2 m) {
+INLINE char2 __attribute__((overloadable)) __spirv_ocl_shuffle(char2 v, char2 m) {
   char2 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -17,7 +17,7 @@ INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i8_v2i8, )(char2 v
   return ret;
 }
 
-INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i8_v2i8, )(char4 v, char2 m) {
+INLINE char2 __attribute__((overloadable)) __spirv_ocl_shuffle(char4 v, char2 m) {
   char2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -32,7 +32,7 @@ INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i8_v2i8, )(char4 v
   return ret;
 }
 
-INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i8_v2i8, )(char8 v, char2 m) {
+INLINE char2 __attribute__((overloadable)) __spirv_ocl_shuffle(char8 v, char2 m) {
   char2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -55,7 +55,7 @@ INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i8_v2i8, )(char8 v
   return ret;
 }
 
-INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i8_v2i8, )(char16 v, char2 m) {
+INLINE char2 __attribute__((overloadable)) __spirv_ocl_shuffle(char16 v, char2 m) {
   char2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -94,7 +94,7 @@ INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i8_v2i8, )(char16
   return ret;
 }
 
-INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i8_v4i8, )(char2 v, char4 m) {
+INLINE char4 __attribute__((overloadable)) __spirv_ocl_shuffle(char2 v, char4 m) {
   char4 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -111,7 +111,7 @@ INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i8_v4i8, )(char2 v
   return ret;
 }
 
-INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i8_v4i8, )(char4 v, char4 m) {
+INLINE char4 __attribute__((overloadable)) __spirv_ocl_shuffle(char4 v, char4 m) {
   char4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -136,7 +136,7 @@ INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i8_v4i8, )(char4 v
   return ret;
 }
 
-INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i8_v4i8, )(char8 v, char4 m) {
+INLINE char4 __attribute__((overloadable)) __spirv_ocl_shuffle(char8 v, char4 m) {
   char4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -177,7 +177,7 @@ INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i8_v4i8, )(char8 v
   return ret;
 }
 
-INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i8_v4i8, )(char16 v, char4 m) {
+INLINE char4 __attribute__((overloadable)) __spirv_ocl_shuffle(char16 v, char4 m) {
   char4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -250,7 +250,7 @@ INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i8_v4i8, )(char16
   return ret;
 }
 
-INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i8_v8i8, )(char2 v, char8 m) {
+INLINE char8 __attribute__((overloadable)) __spirv_ocl_shuffle(char2 v, char8 m) {
   char8 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -279,7 +279,7 @@ INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i8_v8i8, )(char2 v
   return ret;
 }
 
-INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i8_v8i8, )(char4 v, char8 m) {
+INLINE char8 __attribute__((overloadable)) __spirv_ocl_shuffle(char4 v, char8 m) {
   char8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -324,7 +324,7 @@ INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i8_v8i8, )(char4 v
   return ret;
 }
 
-INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i8_v8i8, )(char8 v, char8 m) {
+INLINE char8 __attribute__((overloadable)) __spirv_ocl_shuffle(char8 v, char8 m) {
   char8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -401,7 +401,7 @@ INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i8_v8i8, )(char8 v
   return ret;
 }
 
-INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i8_v8i8, )(char16 v, char8 m) {
+INLINE char8 __attribute__((overloadable)) __spirv_ocl_shuffle(char16 v, char8 m) {
   char8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -542,7 +542,7 @@ INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i8_v8i8, )(char16
   return ret;
 }
 
-INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i8_v16i8, )(char2 v, char16 m) {
+INLINE char16 __attribute__((overloadable)) __spirv_ocl_shuffle(char2 v, char16 m) {
   char16 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -595,7 +595,7 @@ INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i8_v16i8, )(char2
   return ret;
 }
 
-INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i8_v16i8, )(char4 v, char16 m) {
+INLINE char16 __attribute__((overloadable)) __spirv_ocl_shuffle(char4 v, char16 m) {
   char16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -680,7 +680,7 @@ INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i8_v16i8, )(char4
   return ret;
 }
 
-INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i8_v16i8, )(char8 v, char16 m) {
+INLINE char16 __attribute__((overloadable)) __spirv_ocl_shuffle(char8 v, char16 m) {
   char16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -829,7 +829,7 @@ INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i8_v16i8, )(char8
   return ret;
 }
 
-INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i8_v16i8, )(char16 v, char16 m) {
+INLINE char16 __attribute__((overloadable)) __spirv_ocl_shuffle(char16 v, char16 m) {
   char16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -1107,7 +1107,7 @@ INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i8_v16i8, )(char
 }
 
 
-INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i16_v2i16, )(short2 v, short2 m) {
+INLINE short2 __attribute__((overloadable)) __spirv_ocl_shuffle(short2 v, short2 m) {
   short2 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -1118,7 +1118,7 @@ INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i16_v2i16, )(shor
   return ret;
 }
 
-INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i16_v2i16, )(short4 v, short2 m) {
+INLINE short2 __attribute__((overloadable)) __spirv_ocl_shuffle(short4 v, short2 m) {
   short2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -1133,7 +1133,7 @@ INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i16_v2i16, )(shor
   return ret;
 }
 
-INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i16_v2i16, )(short8 v, short2 m) {
+INLINE short2 __attribute__((overloadable)) __spirv_ocl_shuffle(short8 v, short2 m) {
   short2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -1156,7 +1156,7 @@ INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i16_v2i16, )(shor
   return ret;
 }
 
-INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i16_v2i16, )(short16 v, short2 m) {
+INLINE short2 __attribute__((overloadable)) __spirv_ocl_shuffle(short16 v, short2 m) {
   short2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -1195,7 +1195,7 @@ INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i16_v2i16, )(sho
   return ret;
 }
 
-INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i16_v4i16, )(short2 v, short4 m) {
+INLINE short4 __attribute__((overloadable)) __spirv_ocl_shuffle(short2 v, short4 m) {
   short4 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -1212,7 +1212,7 @@ INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i16_v4i16, )(shor
   return ret;
 }
 
-INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i16_v4i16, )(short4 v, short4 m) {
+INLINE short4 __attribute__((overloadable)) __spirv_ocl_shuffle(short4 v, short4 m) {
   short4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -1237,7 +1237,7 @@ INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i16_v4i16, )(shor
   return ret;
 }
 
-INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i16_v4i16, )(short8 v, short4 m) {
+INLINE short4 __attribute__((overloadable)) __spirv_ocl_shuffle(short8 v, short4 m) {
   short4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -1278,7 +1278,7 @@ INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i16_v4i16, )(shor
   return ret;
 }
 
-INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i16_v4i16, )(short16 v, short4 m) {
+INLINE short4 __attribute__((overloadable)) __spirv_ocl_shuffle(short16 v, short4 m) {
   short4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -1351,7 +1351,7 @@ INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i16_v4i16, )(sho
   return ret;
 }
 
-INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i16_v8i16, )(short2 v, short8 m) {
+INLINE short8 __attribute__((overloadable)) __spirv_ocl_shuffle(short2 v, short8 m) {
   short8 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -1380,7 +1380,7 @@ INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i16_v8i16, )(shor
   return ret;
 }
 
-INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i16_v8i16, )(short4 v, short8 m) {
+INLINE short8 __attribute__((overloadable)) __spirv_ocl_shuffle(short4 v, short8 m) {
   short8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -1425,7 +1425,7 @@ INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i16_v8i16, )(shor
   return ret;
 }
 
-INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i16_v8i16, )(short8 v, short8 m) {
+INLINE short8 __attribute__((overloadable)) __spirv_ocl_shuffle(short8 v, short8 m) {
   short8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -1502,7 +1502,7 @@ INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i16_v8i16, )(shor
   return ret;
 }
 
-INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i16_v8i16, )(short16 v, short8 m) {
+INLINE short8 __attribute__((overloadable)) __spirv_ocl_shuffle(short16 v, short8 m) {
   short8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -1643,7 +1643,7 @@ INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i16_v8i16, )(sho
   return ret;
 }
 
-INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i16_v16i16, )(short2 v, short16 m) {
+INLINE short16 __attribute__((overloadable)) __spirv_ocl_shuffle(short2 v, short16 m) {
   short16 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -1696,7 +1696,7 @@ INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i16_v16i16, )(sh
   return ret;
 }
 
-INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i16_v16i16, )(short4 v, short16 m) {
+INLINE short16 __attribute__((overloadable)) __spirv_ocl_shuffle(short4 v, short16 m) {
   short16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -1781,7 +1781,7 @@ INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i16_v16i16, )(sh
   return ret;
 }
 
-INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i16_v16i16, )(short8 v, short16 m) {
+INLINE short16 __attribute__((overloadable)) __spirv_ocl_shuffle(short8 v, short16 m) {
   short16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -1930,7 +1930,7 @@ INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i16_v16i16, )(sh
   return ret;
 }
 
-INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i16_v16i16, )(short16 v, short16 m) {
+INLINE short16 __attribute__((overloadable)) __spirv_ocl_shuffle(short16 v, short16 m) {
   short16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -2207,7 +2207,7 @@ INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i16_v16i16, )(s
   return ret;
 }
 
-INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i32_v2i32, )(int2 v, int2 m) {
+INLINE int2 __attribute__((overloadable)) __spirv_ocl_shuffle(int2 v, int2 m) {
   int2 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -2218,7 +2218,7 @@ INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i32_v2i32, )(int2 v
   return ret;
 }
 
-INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i32_v2i32, )(int4 v, int2 m) {
+INLINE int2 __attribute__((overloadable)) __spirv_ocl_shuffle(int4 v, int2 m) {
   int2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -2233,7 +2233,7 @@ INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i32_v2i32, )(int4 v
   return ret;
 }
 
-INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i32_v2i32, )(int8 v, int2 m) {
+INLINE int2 __attribute__((overloadable)) __spirv_ocl_shuffle(int8 v, int2 m) {
   int2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -2256,7 +2256,7 @@ INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i32_v2i32, )(int8 v
   return ret;
 }
 
-INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i32_v2i32, )(int16 v, int2 m) {
+INLINE int2 __attribute__((overloadable)) __spirv_ocl_shuffle(int16 v, int2 m) {
   int2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -2295,7 +2295,7 @@ INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i32_v2i32, )(int16
   return ret;
 }
 
-INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i32_v4i32, )(int2 v, int4 m) {
+INLINE int4 __attribute__((overloadable)) __spirv_ocl_shuffle(int2 v, int4 m) {
   int4 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -2312,7 +2312,7 @@ INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i32_v4i32, )(int2 v
   return ret;
 }
 
-INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i32_v4i32, )(int4 v, int4 m) {
+INLINE int4 __attribute__((overloadable)) __spirv_ocl_shuffle(int4 v, int4 m) {
   int4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -2337,7 +2337,7 @@ INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i32_v4i32, )(int4 v
   return ret;
 }
 
-INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i32_v4i32, )(int8 v, int4 m) {
+INLINE int4 __attribute__((overloadable)) __spirv_ocl_shuffle(int8 v, int4 m) {
   int4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -2378,7 +2378,7 @@ INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i32_v4i32, )(int8 v
   return ret;
 }
 
-INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i32_v4i32, )(int16 v, int4 m) {
+INLINE int4 __attribute__((overloadable)) __spirv_ocl_shuffle(int16 v, int4 m) {
   int4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -2451,7 +2451,7 @@ INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i32_v4i32, )(int16
   return ret;
 }
 
-INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i32_v8i32, )(int2 v, int8 m) {
+INLINE int8 __attribute__((overloadable)) __spirv_ocl_shuffle(int2 v, int8 m) {
   int8 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -2480,7 +2480,7 @@ INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i32_v8i32, )(int2 v
   return ret;
 }
 
-INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i32_v8i32, )(int4 v, int8 m) {
+INLINE int8 __attribute__((overloadable)) __spirv_ocl_shuffle(int4 v, int8 m) {
   int8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -2525,7 +2525,7 @@ INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i32_v8i32, )(int4 v
   return ret;
 }
 
-INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i32_v8i32, )(int8 v, int8 m) {
+INLINE int8 __attribute__((overloadable)) __spirv_ocl_shuffle(int8 v, int8 m) {
   int8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -2602,7 +2602,7 @@ INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i32_v8i32, )(int8 v
   return ret;
 }
 
-INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i32_v8i32, )(int16 v, int8 m) {
+INLINE int8 __attribute__((overloadable)) __spirv_ocl_shuffle(int16 v, int8 m) {
   int8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -2743,7 +2743,7 @@ INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i32_v8i32, )(int16
   return ret;
 }
 
-INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i32_v16i32, )(int2 v, int16 m) {
+INLINE int16 __attribute__((overloadable)) __spirv_ocl_shuffle(int2 v, int16 m) {
   int16 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -2796,7 +2796,7 @@ INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i32_v16i32, )(int2
   return ret;
 }
 
-INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i32_v16i32, )(int4 v, int16 m) {
+INLINE int16 __attribute__((overloadable)) __spirv_ocl_shuffle(int4 v, int16 m) {
   int16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -2881,7 +2881,7 @@ INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i32_v16i32, )(int4
   return ret;
 }
 
-INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i32_v16i32, )(int8 v, int16 m) {
+INLINE int16 __attribute__((overloadable)) __spirv_ocl_shuffle(int8 v, int16 m) {
   int16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -3030,7 +3030,7 @@ INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i32_v16i32, )(int8
   return ret;
 }
 
-INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i32_v16i32, )(int16 v, int16 m) {
+INLINE int16 __attribute__((overloadable)) __spirv_ocl_shuffle(int16 v, int16 m) {
   int16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -3307,7 +3307,7 @@ INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i32_v16i32, )(int
   return ret;
 }
 
-INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i64_v2i64, )(long2 v, long2 m) {
+INLINE long2 __attribute__((overloadable)) __spirv_ocl_shuffle(long2 v, long2 m) {
   long2 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -3318,7 +3318,7 @@ INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i64_v2i64, )(long2
   return ret;
 }
 
-INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i64_v2i64, )(long4 v, long2 m) {
+INLINE long2 __attribute__((overloadable)) __spirv_ocl_shuffle(long4 v, long2 m) {
   long2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -3333,7 +3333,7 @@ INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i64_v2i64, )(long4
   return ret;
 }
 
-INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i64_v2i64, )(long8 v, long2 m) {
+INLINE long2 __attribute__((overloadable)) __spirv_ocl_shuffle(long8 v, long2 m) {
   long2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -3356,7 +3356,7 @@ INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i64_v2i64, )(long8
   return ret;
 }
 
-INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i64_v2i64, )(long16 v, long2 m) {
+INLINE long2 __attribute__((overloadable)) __spirv_ocl_shuffle(long16 v, long2 m) {
   long2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -3395,7 +3395,7 @@ INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i64_v2i64, )(long
   return ret;
 }
 
-INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i64_v4i64, )(long2 v, long4 m) {
+INLINE long4 __attribute__((overloadable)) __spirv_ocl_shuffle(long2 v, long4 m) {
   long4 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -3412,7 +3412,7 @@ INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i64_v4i64, )(long2
   return ret;
 }
 
-INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i64_v4i64, )(long4 v, long4 m) {
+INLINE long4 __attribute__((overloadable)) __spirv_ocl_shuffle(long4 v, long4 m) {
   long4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -3437,7 +3437,7 @@ INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i64_v4i64, )(long4
   return ret;
 }
 
-INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i64_v4i64, )(long8 v, long4 m) {
+INLINE long4 __attribute__((overloadable)) __spirv_ocl_shuffle(long8 v, long4 m) {
   long4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -3478,7 +3478,7 @@ INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i64_v4i64, )(long8
   return ret;
 }
 
-INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i64_v4i64, )(long16 v, long4 m) {
+INLINE long4 __attribute__((overloadable)) __spirv_ocl_shuffle(long16 v, long4 m) {
   long4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -3551,7 +3551,7 @@ INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i64_v4i64, )(long
   return ret;
 }
 
-INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i64_v8i64, )(long2 v, long8 m) {
+INLINE long8 __attribute__((overloadable)) __spirv_ocl_shuffle(long2 v, long8 m) {
   long8 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -3580,7 +3580,7 @@ INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i64_v8i64, )(long2
   return ret;
 }
 
-INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i64_v8i64, )(long4 v, long8 m) {
+INLINE long8 __attribute__((overloadable)) __spirv_ocl_shuffle(long4 v, long8 m) {
   long8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -3625,7 +3625,7 @@ INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i64_v8i64, )(long4
   return ret;
 }
 
-INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i64_v8i64, )(long8 v, long8 m) {
+INLINE long8 __attribute__((overloadable)) __spirv_ocl_shuffle(long8 v, long8 m) {
   long8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -3702,7 +3702,7 @@ INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i64_v8i64, )(long8
   return ret;
 }
 
-INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i64_v8i64, )(long16 v, long8 m) {
+INLINE long8 __attribute__((overloadable)) __spirv_ocl_shuffle(long16 v, long8 m) {
   long8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -3843,7 +3843,7 @@ INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i64_v8i64, )(long
   return ret;
 }
 
-INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i64_v16i64, )(long2 v, long16 m) {
+INLINE long16 __attribute__((overloadable)) __spirv_ocl_shuffle(long2 v, long16 m) {
   long16 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -3896,7 +3896,7 @@ INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2i64_v16i64, )(lon
   return ret;
 }
 
-INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i64_v16i64, )(long4 v, long16 m) {
+INLINE long16 __attribute__((overloadable)) __spirv_ocl_shuffle(long4 v, long16 m) {
   long16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -3981,7 +3981,7 @@ INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4i64_v16i64, )(lon
   return ret;
 }
 
-INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i64_v16i64, )(long8 v, long16 m) {
+INLINE long16 __attribute__((overloadable)) __spirv_ocl_shuffle(long8 v, long16 m) {
   long16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -4130,7 +4130,7 @@ INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8i64_v16i64, )(lon
   return ret;
 }
 
-INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i64_v16i64, )(long16 v, long16 m) {
+INLINE long16 __attribute__((overloadable)) __spirv_ocl_shuffle(long16 v, long16 m) {
   long16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -4407,7 +4407,7 @@ INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16i64_v16i64, )(lo
   return ret;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f32_v2i32, )(float2 v, int2 m) {
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_shuffle(float2 v, int2 m) {
   float2 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -4418,7 +4418,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f32_v2i32, )(floa
   return ret;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f32_v2i32, )(float4 v, int2 m) {
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_shuffle(float4 v, int2 m) {
   float2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -4433,7 +4433,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f32_v2i32, )(floa
   return ret;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f32_v2i32, )(float8 v, int2 m) {
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_shuffle(float8 v, int2 m) {
   float2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -4456,7 +4456,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f32_v2i32, )(floa
   return ret;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f32_v2i32, )(float16 v, int2 m) {
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_shuffle(float16 v, int2 m) {
   float2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -4495,7 +4495,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f32_v2i32, )(flo
   return ret;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f32_v4i32, )(float2 v, int4 m) {
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_shuffle(float2 v, int4 m) {
   float4 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -4512,7 +4512,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f32_v4i32, )(floa
   return ret;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f32_v4i32, )(float4 v, int4 m) {
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_shuffle(float4 v, int4 m) {
   float4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -4537,7 +4537,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f32_v4i32, )(floa
   return ret;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f32_v4i32, )(float8 v, int4 m) {
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_shuffle(float8 v, int4 m) {
   float4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -4578,7 +4578,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f32_v4i32, )(floa
   return ret;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f32_v4i32, )(float16 v, int4 m) {
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_shuffle(float16 v, int4 m) {
   float4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -4651,7 +4651,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f32_v4i32, )(flo
   return ret;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f32_v8i32, )(float2 v, int8 m) {
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_shuffle(float2 v, int8 m) {
   float8 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -4680,7 +4680,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f32_v8i32, )(floa
   return ret;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f32_v8i32, )(float4 v, int8 m) {
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_shuffle(float4 v, int8 m) {
   float8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -4725,7 +4725,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f32_v8i32, )(floa
   return ret;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f32_v8i32, )(float8 v, int8 m) {
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_shuffle(float8 v, int8 m) {
   float8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -4802,7 +4802,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f32_v8i32, )(floa
   return ret;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f32_v8i32, )(float16 v, int8 m) {
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_shuffle(float16 v, int8 m) {
   float8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -4943,7 +4943,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f32_v8i32, )(flo
   return ret;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f32_v16i32, )(float2 v, int16 m) {
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_shuffle(float2 v, int16 m) {
   float16 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -4996,7 +4996,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f32_v16i32, )(fl
   return ret;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f32_v16i32, )(float4 v, int16 m) {
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_shuffle(float4 v, int16 m) {
   float16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -5081,7 +5081,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f32_v16i32, )(fl
   return ret;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f32_v16i32, )(float8 v, int16 m) {
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_shuffle(float8 v, int16 m) {
   float16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -5230,7 +5230,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f32_v16i32, )(fl
   return ret;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f32_v16i32, )(float16 v, int16 m) {
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_shuffle(float16 v, int16 m) {
   float16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -5507,7 +5507,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f32_v16i32, )(f
   return ret;
 }
 
-INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i8_v2i8_v2i8, )(char2 v0, char2 v1, char2 m) {
+INLINE char2 __attribute__((overloadable)) __spirv_ocl_shuffle2(char2 v0, char2 v1, char2 m) {
   char2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -5522,7 +5522,7 @@ INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i8_v2i8_v2i8, )(c
   return ret;
 }
 
-INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i8_v4i8_v2i8, )(char4 v0, char4 v1, char2 m) {
+INLINE char2 __attribute__((overloadable)) __spirv_ocl_shuffle2(char4 v0, char4 v1, char2 m) {
   char2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -5545,7 +5545,7 @@ INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i8_v4i8_v2i8, )(c
   return ret;
 }
 
-INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i8_v8i8_v2i8, )(char8 v0, char8 v1, char2 m) {
+INLINE char2 __attribute__((overloadable)) __spirv_ocl_shuffle2(char8 v0, char8 v1, char2 m) {
   char2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -5584,7 +5584,7 @@ INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i8_v8i8_v2i8, )(c
   return ret;
 }
 
-INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i8_v16i8_v2i8, )(char16 v0, char16 v1, char2 m) {
+INLINE char2 __attribute__((overloadable)) __spirv_ocl_shuffle2(char16 v0, char16 v1, char2 m) {
   char2 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -5655,7 +5655,7 @@ INLINE char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i8_v16i8_v2i8, )
   return ret;
 }
 
-INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i8_v2i8_v4i8, )(char2 v0, char2 v1, char4 m) {
+INLINE char4 __attribute__((overloadable)) __spirv_ocl_shuffle2(char2 v0, char2 v1, char4 m) {
   char4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -5680,7 +5680,7 @@ INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i8_v2i8_v4i8, )(c
   return ret;
 }
 
-INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i8_v4i8_v4i8, )(char4 v0, char4 v1, char4 m) {
+INLINE char4 __attribute__((overloadable)) __spirv_ocl_shuffle2(char4 v0, char4 v1, char4 m) {
   char4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -5721,7 +5721,7 @@ INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i8_v4i8_v4i8, )(c
   return ret;
 }
 
-INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i8_v8i8_v4i8, )(char8 v0, char8 v1, char4 m) {
+INLINE char4 __attribute__((overloadable)) __spirv_ocl_shuffle2(char8 v0, char8 v1, char4 m) {
   char4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -5794,7 +5794,7 @@ INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i8_v8i8_v4i8, )(c
   return ret;
 }
 
-INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i8_v16i8_v4i8, )(char16 v0, char16 v1, char4 m) {
+INLINE char4 __attribute__((overloadable)) __spirv_ocl_shuffle2(char16 v0, char16 v1, char4 m) {
   char4 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -5931,7 +5931,7 @@ INLINE char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i8_v16i8_v4i8, )
   return ret;
 }
 
-INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i8_v2i8_v8i8, )(char2 v0, char2 v1, char8 m) {
+INLINE char8 __attribute__((overloadable)) __spirv_ocl_shuffle2(char2 v0, char2 v1, char8 m) {
   char8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -5976,7 +5976,7 @@ INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i8_v2i8_v8i8, )(c
   return ret;
 }
 
-INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i8_v4i8_v8i8, )(char4 v0, char4 v1, char8 m) {
+INLINE char8 __attribute__((overloadable)) __spirv_ocl_shuffle2(char4 v0, char4 v1, char8 m) {
   char8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -6053,7 +6053,7 @@ INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i8_v4i8_v8i8, )(c
   return ret;
 }
 
-INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i8_v8i8_v8i8, )(char8 v0, char8 v1, char8 m) {
+INLINE char8 __attribute__((overloadable)) __spirv_ocl_shuffle2(char8 v0, char8 v1, char8 m) {
   char8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -6194,7 +6194,7 @@ INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i8_v8i8_v8i8, )(c
   return ret;
 }
 
-INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i8_v16i8_v8i8, )(char16 v0, char16 v1, char8 m) {
+INLINE char8 __attribute__((overloadable)) __spirv_ocl_shuffle2(char16 v0, char16 v1, char8 m) {
   char8 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -6463,7 +6463,7 @@ INLINE char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i8_v16i8_v8i8, )
   return ret;
 }
 
-INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i8_v2i8_v16i8, )(char2 v0, char2 v1, char16 m) {
+INLINE char16 __attribute__((overloadable)) __spirv_ocl_shuffle2(char2 v0, char2 v1, char16 m) {
   char16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -6548,7 +6548,7 @@ INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i8_v2i8_v16i8, )
   return ret;
 }
 
-INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i8_v4i8_v16i8, )(char4 v0, char4 v1, char16 m) {
+INLINE char16 __attribute__((overloadable)) __spirv_ocl_shuffle2(char4 v0, char4 v1, char16 m) {
   char16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -6697,7 +6697,7 @@ INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i8_v4i8_v16i8, )
   return ret;
 }
 
-INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i8_v8i8_v16i8, )(char8 v0, char8 v1, char16 m) {
+INLINE char16 __attribute__((overloadable)) __spirv_ocl_shuffle2(char8 v0, char8 v1, char16 m) {
   char16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -6974,7 +6974,7 @@ INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i8_v8i8_v16i8, )
   return ret;
 }
 
-INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i8_v16i8_v16i8, )(char16 v0, char16 v1, char16 m) {
+INLINE char16 __attribute__((overloadable)) __spirv_ocl_shuffle2(char16 v0, char16 v1, char16 m) {
   char16 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -7507,7 +7507,7 @@ INLINE char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i8_v16i8_v16i8,
   return ret;
 }
 
-INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i16_v2i16_v2i16, )(short2 v0, short2 v1, short2 m) {
+INLINE short2 __attribute__((overloadable)) __spirv_ocl_shuffle2(short2 v0, short2 v1, short2 m) {
   short2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -7522,7 +7522,7 @@ INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i16_v2i16_v2i16,
   return ret;
 }
 
-INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i16_v4i16_v2i16, )(short4 v0, short4 v1, short2 m) {
+INLINE short2 __attribute__((overloadable)) __spirv_ocl_shuffle2(short4 v0, short4 v1, short2 m) {
   short2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -7545,7 +7545,7 @@ INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i16_v4i16_v2i16,
   return ret;
 }
 
-INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i16_v8i16_v2i16, )(short8 v0, short8 v1, short2 m) {
+INLINE short2 __attribute__((overloadable)) __spirv_ocl_shuffle2(short8 v0, short8 v1, short2 m) {
   short2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -7584,7 +7584,7 @@ INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i16_v8i16_v2i16,
   return ret;
 }
 
-INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i16_v16i16_v2i16, )(short16 v0, short16 v1, short2 m) {
+INLINE short2 __attribute__((overloadable)) __spirv_ocl_shuffle2(short16 v0, short16 v1, short2 m) {
   short2 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -7655,7 +7655,7 @@ INLINE short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i16_v16i16_v2i1
   return ret;
 }
 
-INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i16_v2i16_v4i16, )(short2 v0, short2 v1, short4 m) {
+INLINE short4 __attribute__((overloadable)) __spirv_ocl_shuffle2(short2 v0, short2 v1, short4 m) {
   short4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -7680,7 +7680,7 @@ INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i16_v2i16_v4i16,
   return ret;
 }
 
-INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i16_v4i16_v4i16, )(short4 v0, short4 v1, short4 m) {
+INLINE short4 __attribute__((overloadable)) __spirv_ocl_shuffle2(short4 v0, short4 v1, short4 m) {
   short4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -7721,7 +7721,7 @@ INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i16_v4i16_v4i16,
   return ret;
 }
 
-INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i16_v8i16_v4i16, )(short8 v0, short8 v1, short4 m) {
+INLINE short4 __attribute__((overloadable)) __spirv_ocl_shuffle2(short8 v0, short8 v1, short4 m) {
   short4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -7794,7 +7794,7 @@ INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i16_v8i16_v4i16,
   return ret;
 }
 
-INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i16_v16i16_v4i16, )(short16 v0, short16 v1, short4 m) {
+INLINE short4 __attribute__((overloadable)) __spirv_ocl_shuffle2(short16 v0, short16 v1, short4 m) {
   short4 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -7931,7 +7931,7 @@ INLINE short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i16_v16i16_v4i1
   return ret;
 }
 
-INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i16_v2i16_v8i16, )(short2 v0, short2 v1, short8 m) {
+INLINE short8 __attribute__((overloadable)) __spirv_ocl_shuffle2(short2 v0, short2 v1, short8 m) {
   short8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -7976,7 +7976,7 @@ INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i16_v2i16_v8i16,
   return ret;
 }
 
-INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i16_v4i16_v8i16, )(short4 v0, short4 v1, short8 m) {
+INLINE short8 __attribute__((overloadable)) __spirv_ocl_shuffle2(short4 v0, short4 v1, short8 m) {
   short8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -8053,7 +8053,7 @@ INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i16_v4i16_v8i16,
   return ret;
 }
 
-INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i16_v8i16_v8i16, )(short8 v0, short8 v1, short8 m) {
+INLINE short8 __attribute__((overloadable)) __spirv_ocl_shuffle2(short8 v0, short8 v1, short8 m) {
   short8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -8194,7 +8194,7 @@ INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i16_v8i16_v8i16,
   return ret;
 }
 
-INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i16_v16i16_v8i16, )(short16 v0, short16 v1, short8 m) {
+INLINE short8 __attribute__((overloadable)) __spirv_ocl_shuffle2(short16 v0, short16 v1, short8 m) {
   short8 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -8463,7 +8463,7 @@ INLINE short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i16_v16i16_v8i1
   return ret;
 }
 
-INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i16_v2i16_v16i16, )(short2 v0, short2 v1, short16 m) {
+INLINE short16 __attribute__((overloadable)) __spirv_ocl_shuffle2(short2 v0, short2 v1, short16 m) {
   short16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -8548,7 +8548,7 @@ INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i16_v2i16_v16i1
   return ret;
 }
 
-INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i16_v4i16_v16i16, )(short4 v0, short4 v1, short16 m) {
+INLINE short16 __attribute__((overloadable)) __spirv_ocl_shuffle2(short4 v0, short4 v1, short16 m) {
   short16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -8697,7 +8697,7 @@ INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i16_v4i16_v16i1
   return ret;
 }
 
-INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i16_v8i16_v16i16, )(short8 v0, short8 v1, short16 m) {
+INLINE short16 __attribute__((overloadable)) __spirv_ocl_shuffle2(short8 v0, short8 v1, short16 m) {
   short16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -8974,7 +8974,7 @@ INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i16_v8i16_v16i1
   return ret;
 }
 
-INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i16_v16i16_v16i16, )(short16 v0, short16 v1, short16 m) {
+INLINE short16 __attribute__((overloadable)) __spirv_ocl_shuffle2(short16 v0, short16 v1, short16 m) {
   short16 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -9507,7 +9507,7 @@ INLINE short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i16_v16i16_v16
   return ret;
 }
 
-INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i32_v2i32_v2i32, )(int2 v0, int2 v1, int2 m) {
+INLINE int2 __attribute__((overloadable)) __spirv_ocl_shuffle2(int2 v0, int2 v1, int2 m) {
   int2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -9522,7 +9522,7 @@ INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i32_v2i32_v2i32, )
   return ret;
 }
 
-INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i32_v4i32_v2i32, )(int4 v0, int4 v1, int2 m) {
+INLINE int2 __attribute__((overloadable)) __spirv_ocl_shuffle2(int4 v0, int4 v1, int2 m) {
   int2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -9545,7 +9545,7 @@ INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i32_v4i32_v2i32, )
   return ret;
 }
 
-INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i32_v8i32_v2i32, )(int8 v0, int8 v1, int2 m) {
+INLINE int2 __attribute__((overloadable)) __spirv_ocl_shuffle2(int8 v0, int8 v1, int2 m) {
   int2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -9584,7 +9584,7 @@ INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i32_v8i32_v2i32, )
   return ret;
 }
 
-INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i32_v16i32_v2i32, )(int16 v0, int16 v1, int2 m) {
+INLINE int2 __attribute__((overloadable)) __spirv_ocl_shuffle2(int16 v0, int16 v1, int2 m) {
   int2 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -9655,7 +9655,7 @@ INLINE int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i32_v16i32_v2i32,
   return ret;
 }
 
-INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i32_v2i32_v4i32, )(int2 v0, int2 v1, int4 m) {
+INLINE int4 __attribute__((overloadable)) __spirv_ocl_shuffle2(int2 v0, int2 v1, int4 m) {
   int4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -9680,7 +9680,7 @@ INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i32_v2i32_v4i32, )
   return ret;
 }
 
-INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i32_v4i32_v4i32, )(int4 v0, int4 v1, int4 m) {
+INLINE int4 __attribute__((overloadable)) __spirv_ocl_shuffle2(int4 v0, int4 v1, int4 m) {
   int4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -9721,7 +9721,7 @@ INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i32_v4i32_v4i32, )
   return ret;
 }
 
-INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i32_v8i32_v4i32, )(int8 v0, int8 v1, int4 m) {
+INLINE int4 __attribute__((overloadable)) __spirv_ocl_shuffle2(int8 v0, int8 v1, int4 m) {
   int4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -9794,7 +9794,7 @@ INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i32_v8i32_v4i32, )
   return ret;
 }
 
-INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i32_v16i32_v4i32, )(int16 v0, int16 v1, int4 m) {
+INLINE int4 __attribute__((overloadable)) __spirv_ocl_shuffle2(int16 v0, int16 v1, int4 m) {
   int4 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -9931,7 +9931,7 @@ INLINE int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i32_v16i32_v4i32,
   return ret;
 }
 
-INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i32_v2i32_v8i32, )(int2 v0, int2 v1, int8 m) {
+INLINE int8 __attribute__((overloadable)) __spirv_ocl_shuffle2(int2 v0, int2 v1, int8 m) {
   int8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -9976,7 +9976,7 @@ INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i32_v2i32_v8i32, )
   return ret;
 }
 
-INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i32_v4i32_v8i32, )(int4 v0, int4 v1, int8 m) {
+INLINE int8 __attribute__((overloadable)) __spirv_ocl_shuffle2(int4 v0, int4 v1, int8 m) {
   int8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -10053,7 +10053,7 @@ INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i32_v4i32_v8i32, )
   return ret;
 }
 
-INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i32_v8i32_v8i32, )(int8 v0, int8 v1, int8 m) {
+INLINE int8 __attribute__((overloadable)) __spirv_ocl_shuffle2(int8 v0, int8 v1, int8 m) {
   int8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -10194,7 +10194,7 @@ INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i32_v8i32_v8i32, )
   return ret;
 }
 
-INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i32_v16i32_v8i32, )(int16 v0, int16 v1, int8 m) {
+INLINE int8 __attribute__((overloadable)) __spirv_ocl_shuffle2(int16 v0, int16 v1, int8 m) {
   int8 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -10463,7 +10463,7 @@ INLINE int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i32_v16i32_v8i32,
   return ret;
 }
 
-INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i32_v2i32_v16i32, )(int2 v0, int2 v1, int16 m) {
+INLINE int16 __attribute__((overloadable)) __spirv_ocl_shuffle2(int2 v0, int2 v1, int16 m) {
   int16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -10548,7 +10548,7 @@ INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i32_v2i32_v16i32,
   return ret;
 }
 
-INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i32_v4i32_v16i32, )(int4 v0, int4 v1, int16 m) {
+INLINE int16 __attribute__((overloadable)) __spirv_ocl_shuffle2(int4 v0, int4 v1, int16 m) {
   int16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -10697,7 +10697,7 @@ INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i32_v4i32_v16i32,
   return ret;
 }
 
-INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i32_v8i32_v16i32, )(int8 v0, int8 v1, int16 m) {
+INLINE int16 __attribute__((overloadable)) __spirv_ocl_shuffle2(int8 v0, int8 v1, int16 m) {
   int16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -10974,7 +10974,7 @@ INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i32_v8i32_v16i32,
   return ret;
 }
 
-INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i32_v16i32_v16i32, )(int16 v0, int16 v1, int16 m) {
+INLINE int16 __attribute__((overloadable)) __spirv_ocl_shuffle2(int16 v0, int16 v1, int16 m) {
   int16 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -11507,7 +11507,7 @@ INLINE int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i32_v16i32_v16i3
   return ret;
 }
 
-INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i64_v2i64_v2i64, )(long2 v0, long2 v1, long2 m) {
+INLINE long2 __attribute__((overloadable)) __spirv_ocl_shuffle2(long2 v0, long2 v1, long2 m) {
   long2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -11522,7 +11522,7 @@ INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i64_v2i64_v2i64, 
   return ret;
 }
 
-INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i64_v4i64_v2i64, )(long4 v0, long4 v1, long2 m) {
+INLINE long2 __attribute__((overloadable)) __spirv_ocl_shuffle2(long4 v0, long4 v1, long2 m) {
   long2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -11545,7 +11545,7 @@ INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i64_v4i64_v2i64, 
   return ret;
 }
 
-INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i64_v8i64_v2i64, )(long8 v0, long8 v1, long2 m) {
+INLINE long2 __attribute__((overloadable)) __spirv_ocl_shuffle2(long8 v0, long8 v1, long2 m) {
   long2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -11584,7 +11584,7 @@ INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i64_v8i64_v2i64, 
   return ret;
 }
 
-INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i64_v16i64_v2i64, )(long16 v0, long16 v1, long2 m) {
+INLINE long2 __attribute__((overloadable)) __spirv_ocl_shuffle2(long16 v0, long16 v1, long2 m) {
   long2 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -11655,7 +11655,7 @@ INLINE long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i64_v16i64_v2i64
   return ret;
 }
 
-INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i64_v2i64_v4i64, )(long2 v0, long2 v1, long4 m) {
+INLINE long4 __attribute__((overloadable)) __spirv_ocl_shuffle2(long2 v0, long2 v1, long4 m) {
   long4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -11680,7 +11680,7 @@ INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i64_v2i64_v4i64, 
   return ret;
 }
 
-INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i64_v4i64_v4i64, )(long4 v0, long4 v1, long4 m) {
+INLINE long4 __attribute__((overloadable)) __spirv_ocl_shuffle2(long4 v0, long4 v1, long4 m) {
   long4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -11721,7 +11721,7 @@ INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i64_v4i64_v4i64, 
   return ret;
 }
 
-INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i64_v8i64_v4i64, )(long8 v0, long8 v1, long4 m) {
+INLINE long4 __attribute__((overloadable)) __spirv_ocl_shuffle2(long8 v0, long8 v1, long4 m) {
   long4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -11794,7 +11794,7 @@ INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i64_v8i64_v4i64, 
   return ret;
 }
 
-INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i64_v16i64_v4i64, )(long16 v0, long16 v1, long4 m) {
+INLINE long4 __attribute__((overloadable)) __spirv_ocl_shuffle2(long16 v0, long16 v1, long4 m) {
   long4 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -11931,7 +11931,7 @@ INLINE long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i64_v16i64_v4i64
   return ret;
 }
 
-INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i64_v2i64_v8i64, )(long2 v0, long2 v1, long8 m) {
+INLINE long8 __attribute__((overloadable)) __spirv_ocl_shuffle2(long2 v0, long2 v1, long8 m) {
   long8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -11976,7 +11976,7 @@ INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i64_v2i64_v8i64, 
   return ret;
 }
 
-INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i64_v4i64_v8i64, )(long4 v0, long4 v1, long8 m) {
+INLINE long8 __attribute__((overloadable)) __spirv_ocl_shuffle2(long4 v0, long4 v1, long8 m) {
   long8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -12053,7 +12053,7 @@ INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i64_v4i64_v8i64, 
   return ret;
 }
 
-INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i64_v8i64_v8i64, )(long8 v0, long8 v1, long8 m) {
+INLINE long8 __attribute__((overloadable)) __spirv_ocl_shuffle2(long8 v0, long8 v1, long8 m) {
   long8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -12194,7 +12194,7 @@ INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i64_v8i64_v8i64, 
   return ret;
 }
 
-INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i64_v16i64_v8i64, )(long16 v0, long16 v1, long8 m) {
+INLINE long8 __attribute__((overloadable)) __spirv_ocl_shuffle2(long16 v0, long16 v1, long8 m) {
   long8 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -12463,7 +12463,7 @@ INLINE long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i64_v16i64_v8i64
   return ret;
 }
 
-INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i64_v2i64_v16i64, )(long2 v0, long2 v1, long16 m) {
+INLINE long16 __attribute__((overloadable)) __spirv_ocl_shuffle2(long2 v0, long2 v1, long16 m) {
   long16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -12548,7 +12548,7 @@ INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2i64_v2i64_v16i64
   return ret;
 }
 
-INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i64_v4i64_v16i64, )(long4 v0, long4 v1, long16 m) {
+INLINE long16 __attribute__((overloadable)) __spirv_ocl_shuffle2(long4 v0, long4 v1, long16 m) {
   long16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -12697,7 +12697,7 @@ INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4i64_v4i64_v16i64
   return ret;
 }
 
-INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i64_v8i64_v16i64, )(long8 v0, long8 v1, long16 m) {
+INLINE long16 __attribute__((overloadable)) __spirv_ocl_shuffle2(long8 v0, long8 v1, long16 m) {
   long16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -12974,7 +12974,7 @@ INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8i64_v8i64_v16i64
   return ret;
 }
 
-INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i64_v16i64_v16i64, )(long16 v0, long16 v1, long16 m) {
+INLINE long16 __attribute__((overloadable)) __spirv_ocl_shuffle2(long16 v0, long16 v1, long16 m) {
   long16 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -13507,7 +13507,7 @@ INLINE long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16i64_v16i64_v16i
   return ret;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f32_v2f32_v2i32, )(float2 v0, float2 v1, int2 m) {
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_shuffle2(float2 v0, float2 v1, int2 m) {
   float2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -13522,7 +13522,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f32_v2f32_v2i32,
   return ret;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f32_v4f32_v2i32, )(float4 v0, float4 v1, int2 m) {
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_shuffle2(float4 v0, float4 v1, int2 m) {
   float2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -13545,7 +13545,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f32_v4f32_v2i32,
   return ret;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f32_v8f32_v2i32, )(float8 v0, float8 v1, int2 m) {
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_shuffle2(float8 v0, float8 v1, int2 m) {
   float2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -13584,7 +13584,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f32_v8f32_v2i32,
   return ret;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f32_v16f32_v2i32, )(float16 v0, float16 v1, int2 m) {
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_shuffle2(float16 v0, float16 v1, int2 m) {
   float2 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -13655,7 +13655,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f32_v16f32_v2i3
   return ret;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f32_v2f32_v4i32, )(float2 v0, float2 v1, int4 m) {
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_shuffle2(float2 v0, float2 v1, int4 m) {
   float4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -13680,7 +13680,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f32_v2f32_v4i32,
   return ret;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f32_v4f32_v4i32, )(float4 v0, float4 v1, int4 m) {
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_shuffle2(float4 v0, float4 v1, int4 m) {
   float4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -13721,7 +13721,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f32_v4f32_v4i32,
   return ret;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f32_v8f32_v4i32, )(float8 v0, float8 v1, int4 m) {
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_shuffle2(float8 v0, float8 v1, int4 m) {
   float4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -13794,7 +13794,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f32_v8f32_v4i32,
   return ret;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f32_v16f32_v4i32, )(float16 v0, float16 v1, int4 m) {
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_shuffle2(float16 v0, float16 v1, int4 m) {
   float4 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -13931,7 +13931,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f32_v16f32_v4i3
   return ret;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f32_v2f32_v8i32, )(float2 v0, float2 v1, int8 m) {
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_shuffle2(float2 v0, float2 v1, int8 m) {
   float8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -13976,7 +13976,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f32_v2f32_v8i32,
   return ret;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f32_v4f32_v8i32, )(float4 v0, float4 v1, int8 m) {
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_shuffle2(float4 v0, float4 v1, int8 m) {
   float8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -14053,7 +14053,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f32_v4f32_v8i32,
   return ret;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f32_v8f32_v8i32, )(float8 v0, float8 v1, int8 m) {
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_shuffle2(float8 v0, float8 v1, int8 m) {
   float8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -14194,7 +14194,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f32_v8f32_v8i32,
   return ret;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f32_v16f32_v8i32, )(float16 v0, float16 v1, int8 m) {
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_shuffle2(float16 v0, float16 v1, int8 m) {
   float8 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -14463,7 +14463,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f32_v16f32_v8i3
   return ret;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f32_v2f32_v16i32, )(float2 v0, float2 v1, int16 m) {
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_shuffle2(float2 v0, float2 v1, int16 m) {
   float16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -14548,7 +14548,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f32_v2f32_v16i3
   return ret;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f32_v4f32_v16i32, )(float4 v0, float4 v1, int16 m) {
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_shuffle2(float4 v0, float4 v1, int16 m) {
   float16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -14697,7 +14697,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f32_v4f32_v16i3
   return ret;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f32_v8f32_v16i32, )(float8 v0, float8 v1, int16 m) {
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_shuffle2(float8 v0, float8 v1, int16 m) {
   float16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -14974,7 +14974,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f32_v8f32_v16i3
   return ret;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f32_v16f32_v16i32, )(float16 v0, float16 v1, int16 m) {
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_shuffle2(float16 v0, float16 v1, int16 m) {
   float16 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -15510,7 +15510,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f32_v16f32_v16
 #if defined(cl_khr_fp16)
 
 /// Half Shuffle functions
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f16_v2i16, )(half2 v, short2 m) {
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_shuffle(half2 v, short2 m) {
   half2 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -15521,7 +15521,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f16_v2i16, )(half2
   return ret;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f16_v2i16, )(half4 v, short2 m) {
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_shuffle(half4 v, short2 m) {
   half2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -15536,7 +15536,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f16_v2i16, )(half4
   return ret;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f16_v2i16, )(half8 v, short2 m) {
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_shuffle(half8 v, short2 m) {
   half2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -15559,7 +15559,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f16_v2i16, )(half8
   return ret;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f16_v2i16, )(half16 v, short2 m) {
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_shuffle(half16 v, short2 m) {
   half2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -15598,7 +15598,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f16_v2i16, )(half
   return ret;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f16_v4i16, )(half2 v, short4 m) {
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_shuffle(half2 v, short4 m) {
   half4 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -15615,7 +15615,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f16_v4i16, )(half2
   return ret;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f16_v4i16, )(half4 v, short4 m) {
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_shuffle(half4 v, short4 m) {
   half4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -15640,7 +15640,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f16_v4i16, )(half4
   return ret;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f16_v4i16, )(half8 v, short4 m) {
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_shuffle(half8 v, short4 m) {
   half4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -15681,7 +15681,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f16_v4i16, )(half8
   return ret;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f16_v4i16, )(half16 v, short4 m) {
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_shuffle(half16 v, short4 m) {
   half4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -15754,7 +15754,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f16_v4i16, )(half
   return ret;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f16_v8i16, )(half2 v, short8 m) {
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_shuffle(half2 v, short8 m) {
   half8 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -15783,7 +15783,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f16_v8i16, )(half2
   return ret;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f16_v8i16, )(half4 v, short8 m) {
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_shuffle(half4 v, short8 m) {
   half8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -15828,7 +15828,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f16_v8i16, )(half4
   return ret;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f16_v8i16, )(half8 v, short8 m) {
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_shuffle(half8 v, short8 m) {
   half8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -15905,7 +15905,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f16_v8i16, )(half8
   return ret;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f16_v8i16, )(half16 v, short8 m) {
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_shuffle(half16 v, short8 m) {
   half8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -16046,7 +16046,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f16_v8i16, )(half
   return ret;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f16_v16i16, )(half2 v, short16 m) {
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_shuffle(half2 v, short16 m) {
   half16 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -16099,7 +16099,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f16_v16i16, )(hal
   return ret;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f16_v16i16, )(half4 v, short16 m) {
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_shuffle(half4 v, short16 m) {
   half16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -16184,7 +16184,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f16_v16i16, )(hal
   return ret;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f16_v16i16, )(half8 v, short16 m) {
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_shuffle(half8 v, short16 m) {
   half16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -16333,7 +16333,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f16_v16i16, )(hal
   return ret;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f16_v16i16, )(half16 v, short16 m) {
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_shuffle(half16 v, short16 m) {
   half16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -16611,7 +16611,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f16_v16i16, )(ha
 }
 
 // Shuffle2
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f16_v2f16_v2i16, )(half2 v0, half2 v1, short2 m) {
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_shuffle2(half2 v0, half2 v1, short2 m) {
   half2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -16626,7 +16626,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f16_v2f16_v2i16, 
   return ret;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f16_v4f16_v2i16, )(half4 v0, half4 v1, short2 m) {
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_shuffle2(half4 v0, half4 v1, short2 m) {
   half2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -16649,7 +16649,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f16_v4f16_v2i16, 
   return ret;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f16_v8f16_v2i16, )(half8 v0, half8 v1, short2 m) {
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_shuffle2(half8 v0, half8 v1, short2 m) {
   half2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -16688,7 +16688,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f16_v8f16_v2i16, 
   return ret;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f16_v16f16_v2i16, )(half16 v0, half16 v1, short2 m) {
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_shuffle2(half16 v0, half16 v1, short2 m) {
   half2 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -16759,7 +16759,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f16_v16f16_v2i16
   return ret;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f16_v2f16_v4i16, )(half2 v0, half2 v1, short4 m) {
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_shuffle2(half2 v0, half2 v1, short4 m) {
   half4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -16784,7 +16784,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f16_v2f16_v4i16, 
   return ret;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f16_v4f16_v4i16, )(half4 v0, half4 v1, short4 m) {
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_shuffle2(half4 v0, half4 v1, short4 m) {
   half4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -16825,7 +16825,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f16_v4f16_v4i16, 
   return ret;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f16_v8f16_v4i16, )(half8 v0, half8 v1, short4 m) {
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_shuffle2(half8 v0, half8 v1, short4 m) {
   half4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -16898,7 +16898,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f16_v8f16_v4i16, 
   return ret;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f16_v16f16_v4i16, )(half16 v0, half16 v1, short4 m) {
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_shuffle2(half16 v0, half16 v1, short4 m) {
   half4 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -17035,7 +17035,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f16_v16f16_v4i16
   return ret;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f16_v2f16_v8i16, )(half2 v0, half2 v1, short8 m) {
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_shuffle2(half2 v0, half2 v1, short8 m) {
   half8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -17080,7 +17080,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f16_v2f16_v8i16, 
   return ret;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f16_v4f16_v8i16, )(half4 v0, half4 v1, short8 m) {
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_shuffle2(half4 v0, half4 v1, short8 m) {
   half8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -17157,7 +17157,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f16_v4f16_v8i16, 
   return ret;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f16_v8f16_v8i16, )(half8 v0, half8 v1, short8 m) {
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_shuffle2(half8 v0, half8 v1, short8 m) {
   half8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -17298,7 +17298,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f16_v8f16_v8i16, 
   return ret;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f16_v16f16_v8i16, )(half16 v0, half16 v1, short8 m) {
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_shuffle2(half16 v0, half16 v1, short8 m) {
   half8 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -17567,7 +17567,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f16_v16f16_v8i16
   return ret;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f16_v2f16_v16i16, )(half2 v0, half2 v1, short16 m) {
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_shuffle2(half2 v0, half2 v1, short16 m) {
   half16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -17652,7 +17652,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f16_v2f16_v16i16
   return ret;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f16_v4f16_v16i16, )(half4 v0, half4 v1, short16 m) {
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_shuffle2(half4 v0, half4 v1, short16 m) {
   half16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -17801,7 +17801,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f16_v4f16_v16i16
   return ret;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f16_v8f16_v16i16, )(half8 v0, half8 v1, short16 m) {
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_shuffle2(half8 v0, half8 v1, short16 m) {
   half16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -18078,7 +18078,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f16_v8f16_v16i16
   return ret;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f16_v16f16_v16i16, )(half16 v0, half16 v1, short16 m) {
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_shuffle2(half16 v0, half16 v1, short16 m) {
   half16 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -18616,7 +18616,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f16_v16f16_v16i
 #if defined(cl_khr_fp64)
 
 /// Double Shuffle functions
-INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f64_v2i64, )(double2 v, long2 m) {
+INLINE double2 __attribute__((overloadable)) __spirv_ocl_shuffle(double2 v, long2 m) {
   double2 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -18627,7 +18627,7 @@ INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f64_v2i64, )(dou
   return ret;
 }
 
-INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f64_v2i64, )(double4 v, long2 m) {
+INLINE double2 __attribute__((overloadable)) __spirv_ocl_shuffle(double4 v, long2 m) {
   double2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -18642,7 +18642,7 @@ INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f64_v2i64, )(dou
   return ret;
 }
 
-INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f64_v2i64, )(double8 v, long2 m) {
+INLINE double2 __attribute__((overloadable)) __spirv_ocl_shuffle(double8 v, long2 m) {
   double2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -18665,7 +18665,7 @@ INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f64_v2i64, )(dou
   return ret;
 }
 
-INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f64_v2i64, )(double16 v, long2 m) {
+INLINE double2 __attribute__((overloadable)) __spirv_ocl_shuffle(double16 v, long2 m) {
   double2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -18704,7 +18704,7 @@ INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f64_v2i64, )(do
   return ret;
 }
 
-INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f64_v4i64, )(double2 v, long4 m) {
+INLINE double4 __attribute__((overloadable)) __spirv_ocl_shuffle(double2 v, long4 m) {
   double4 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -18721,7 +18721,7 @@ INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f64_v4i64, )(dou
   return ret;
 }
 
-INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f64_v4i64, )(double4 v, long4 m) {
+INLINE double4 __attribute__((overloadable)) __spirv_ocl_shuffle(double4 v, long4 m) {
   double4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -18746,7 +18746,7 @@ INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f64_v4i64, )(dou
   return ret;
 }
 
-INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f64_v4i64, )(double8 v, long4 m) {
+INLINE double4 __attribute__((overloadable)) __spirv_ocl_shuffle(double8 v, long4 m) {
   double4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -18787,7 +18787,7 @@ INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f64_v4i64, )(dou
   return ret;
 }
 
-INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f64_v4i64, )(double16 v, long4 m) {
+INLINE double4 __attribute__((overloadable)) __spirv_ocl_shuffle(double16 v, long4 m) {
   double4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -18860,7 +18860,7 @@ INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f64_v4i64, )(do
   return ret;
 }
 
-INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f64_v8i64, )(double2 v, long8 m) {
+INLINE double8 __attribute__((overloadable)) __spirv_ocl_shuffle(double2 v, long8 m) {
   double8 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -18889,7 +18889,7 @@ INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f64_v8i64, )(dou
   return ret;
 }
 
-INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f64_v8i64, )(double4 v, long8 m) {
+INLINE double8 __attribute__((overloadable)) __spirv_ocl_shuffle(double4 v, long8 m) {
   double8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -18934,7 +18934,7 @@ INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f64_v8i64, )(dou
   return ret;
 }
 
-INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f64_v8i64, )(double8 v, long8 m) {
+INLINE double8 __attribute__((overloadable)) __spirv_ocl_shuffle(double8 v, long8 m) {
   double8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -19011,7 +19011,7 @@ INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f64_v8i64, )(dou
   return ret;
 }
 
-INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f64_v8i64, )(double16 v, long8 m) {
+INLINE double8 __attribute__((overloadable)) __spirv_ocl_shuffle(double16 v, long8 m) {
   double8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -19152,7 +19152,7 @@ INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f64_v8i64, )(do
   return ret;
 }
 
-INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f64_v16i64, )(double2 v, long16 m) {
+INLINE double16 __attribute__((overloadable)) __spirv_ocl_shuffle(double2 v, long16 m) {
   double16 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1) == 0x1) ? v.s1 : ret.s0;
@@ -19205,7 +19205,7 @@ INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v2f64_v16i64, )(d
   return ret;
 }
 
-INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f64_v16i64, )(double4 v, long16 m) {
+INLINE double16 __attribute__((overloadable)) __spirv_ocl_shuffle(double4 v, long16 m) {
   double16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v.s1 : ret.s0;
@@ -19290,7 +19290,7 @@ INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v4f64_v16i64, )(d
   return ret;
 }
 
-INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f64_v16i64, )(double8 v, long16 m) {
+INLINE double16 __attribute__((overloadable)) __spirv_ocl_shuffle(double8 v, long16 m) {
   double16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v.s1 : ret.s0;
@@ -19439,7 +19439,7 @@ INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v8f64_v16i64, )(d
   return ret;
 }
 
-INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f64_v16i64, )(double16 v, long16 m) {
+INLINE double16 __attribute__((overloadable)) __spirv_ocl_shuffle(double16 v, long16 m) {
   double16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v.s1 : ret.s0;
@@ -19717,7 +19717,7 @@ INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle, _v16f64_v16i64, )(
 }
 
 // Shuffle2
-INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f64_v2f64_v2i64, )(double2 v0, double2 v1, long2 m) {
+INLINE double2 __attribute__((overloadable)) __spirv_ocl_shuffle2(double2 v0, double2 v1, long2 m) {
   double2 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -19732,7 +19732,7 @@ INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f64_v2f64_v2i64
   return ret;
 }
 
-INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f64_v4f64_v2i64, )(double4 v0, double4 v1, long2 m) {
+INLINE double2 __attribute__((overloadable)) __spirv_ocl_shuffle2(double4 v0, double4 v1, long2 m) {
   double2 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -19755,7 +19755,7 @@ INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f64_v4f64_v2i64
   return ret;
 }
 
-INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f64_v8f64_v2i64, )(double8 v0, double8 v1, long2 m) {
+INLINE double2 __attribute__((overloadable)) __spirv_ocl_shuffle2(double8 v0, double8 v1, long2 m) {
   double2 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -19794,7 +19794,7 @@ INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f64_v8f64_v2i64
   return ret;
 }
 
-INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f64_v16f64_v2i64, )(double16 v0, double16 v1, long2 m) {
+INLINE double2 __attribute__((overloadable)) __spirv_ocl_shuffle2(double16 v0, double16 v1, long2 m) {
   double2 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -19865,7 +19865,7 @@ INLINE double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f64_v16f64_v2i
   return ret;
 }
 
-INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f64_v2f64_v4i64, )(double2 v0, double2 v1, long4 m) {
+INLINE double4 __attribute__((overloadable)) __spirv_ocl_shuffle2(double2 v0, double2 v1, long4 m) {
   double4 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -19890,7 +19890,7 @@ INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f64_v2f64_v4i64
   return ret;
 }
 
-INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f64_v4f64_v4i64, )(double4 v0, double4 v1, long4 m) {
+INLINE double4 __attribute__((overloadable)) __spirv_ocl_shuffle2(double4 v0, double4 v1, long4 m) {
   double4 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -19931,7 +19931,7 @@ INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f64_v4f64_v4i64
   return ret;
 }
 
-INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f64_v8f64_v4i64, )(double8 v0, double8 v1, long4 m) {
+INLINE double4 __attribute__((overloadable)) __spirv_ocl_shuffle2(double8 v0, double8 v1, long4 m) {
   double4 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -20004,7 +20004,7 @@ INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f64_v8f64_v4i64
   return ret;
 }
 
-INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f64_v16f64_v4i64, )(double16 v0, double16 v1, long4 m) {
+INLINE double4 __attribute__((overloadable)) __spirv_ocl_shuffle2(double16 v0, double16 v1, long4 m) {
   double4 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -20141,7 +20141,7 @@ INLINE double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f64_v16f64_v4i
   return ret;
 }
 
-INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f64_v2f64_v8i64, )(double2 v0, double2 v1, long8 m) {
+INLINE double8 __attribute__((overloadable)) __spirv_ocl_shuffle2(double2 v0, double2 v1, long8 m) {
   double8 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -20186,7 +20186,7 @@ INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f64_v2f64_v8i64
   return ret;
 }
 
-INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f64_v4f64_v8i64, )(double4 v0, double4 v1, long8 m) {
+INLINE double8 __attribute__((overloadable)) __spirv_ocl_shuffle2(double4 v0, double4 v1, long8 m) {
   double8 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -20263,7 +20263,7 @@ INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f64_v4f64_v8i64
   return ret;
 }
 
-INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f64_v8f64_v8i64, )(double8 v0, double8 v1, long8 m) {
+INLINE double8 __attribute__((overloadable)) __spirv_ocl_shuffle2(double8 v0, double8 v1, long8 m) {
   double8 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -20404,7 +20404,7 @@ INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f64_v8f64_v8i64
   return ret;
 }
 
-INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f64_v16f64_v8i64, )(double16 v0, double16 v1, long8 m) {
+INLINE double8 __attribute__((overloadable)) __spirv_ocl_shuffle2(double16 v0, double16 v1, long8 m) {
   double8 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;
@@ -20673,7 +20673,7 @@ INLINE double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f64_v16f64_v8i
   return ret;
 }
 
-INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f64_v2f64_v16i64, )(double2 v0, double2 v1, long16 m) {
+INLINE double16 __attribute__((overloadable)) __spirv_ocl_shuffle2(double2 v0, double2 v1, long16 m) {
   double16 ret = 0;
   ret.s0 = ((m.s0 & 0x3) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x3) == 0x1) ? v0.s1 : ret.s0;
@@ -20758,7 +20758,7 @@ INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v2f64_v2f64_v16i
   return ret;
 }
 
-INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f64_v4f64_v16i64, )(double4 v0, double4 v1, long16 m) {
+INLINE double16 __attribute__((overloadable)) __spirv_ocl_shuffle2(double4 v0, double4 v1, long16 m) {
   double16 ret = 0;
   ret.s0 = ((m.s0 & 0x7) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x7) == 0x1) ? v0.s1 : ret.s0;
@@ -20907,7 +20907,7 @@ INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v4f64_v4f64_v16i
   return ret;
 }
 
-INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f64_v8f64_v16i64, )(double8 v0, double8 v1, long16 m) {
+INLINE double16 __attribute__((overloadable)) __spirv_ocl_shuffle2(double8 v0, double8 v1, long16 m) {
   double16 ret = 0;
   ret.s0 = ((m.s0 & 0xf) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0xf) == 0x1) ? v0.s1 : ret.s0;
@@ -21184,7 +21184,7 @@ INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v8f64_v8f64_v16i
   return ret;
 }
 
-INLINE double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(shuffle2, _v16f64_v16f64_v16i64, )(double16 v0, double16 v1, long16 m) {
+INLINE double16 __attribute__((overloadable)) __spirv_ocl_shuffle2(double16 v0, double16 v1, long16 m) {
   double16 ret = 0;
   ret.s0 = ((m.s0 & 0x1f) == 0x0) ? v0.s0 : ret.s0;
   ret.s0 = ((m.s0 & 0x1f) == 0x1) ? v0.s1 : ret.s0;

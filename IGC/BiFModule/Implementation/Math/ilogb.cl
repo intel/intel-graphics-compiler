@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ilogb, _f32, )( float x )
+int __attribute__((overloadable)) __spirv_ocl_ilogb( float x )
 {
     int result = 0;
 
@@ -39,15 +39,15 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( ilogb, int, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ilogb, _f64, )( double x )
+int __attribute__((overloadable)) __spirv_ocl_ilogb( double x )
 {
     int result = 0;
 
-    if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
+    if( __spirv_IsNormal( x ) )
     {
         result = ( (as_long(x) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS) - DOUBLE_BIAS;
     }
-    else if( SPIRV_BUILTIN(IsNan, _f64, )( x ) | SPIRV_BUILTIN(IsInf, _f64, )( x ) )
+    else if( __spirv_IsNan( x ) | __spirv_IsInf( x ) )
     {
         result = FP_ILOGBNAN;
     }
@@ -70,9 +70,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( ilogb, int, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ilogb, _f16, )( half x )
+INLINE int __attribute__((overloadable)) __spirv_ocl_ilogb( half x )
 {
-    return SPIRV_OCL_BUILTIN(ilogb, _f32, )((float)x);
+    return __spirv_ocl_ilogb((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( ilogb, int, half, f16 )

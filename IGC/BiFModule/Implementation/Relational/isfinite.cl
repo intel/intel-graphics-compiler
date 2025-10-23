@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 int OVERLOADABLE __intel_relaxed_isfinite( float x )
 {
-    int result = SPIRV_BUILTIN(IsFinite, _f32, )(x);
+    int result = __spirv_IsFinite(x);
     // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
     return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 1 : result;
 }
@@ -19,7 +19,7 @@ int OVERLOADABLE __intel_relaxed_isfinite( float x )
 #if defined(cl_khr_fp64)
 int OVERLOADABLE __intel_relaxed_isfinite( double x )
 {
-    int result = SPIRV_BUILTIN(IsFinite, _f64, )(x);
+    int result = __spirv_IsFinite(x);
     // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
     return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 1 : result;
 }
@@ -27,7 +27,7 @@ int OVERLOADABLE __intel_relaxed_isfinite( double x )
 
 int OVERLOADABLE __intel_relaxed_isfinite( half x )
 {
-    int result = SPIRV_BUILTIN(IsFinite, _f16, )(x);
+    int result = __spirv_IsFinite(x);
     // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
     return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 1 : result;
 }

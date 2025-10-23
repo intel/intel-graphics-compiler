@@ -10,10 +10,10 @@ SPDX-License-Identifier: MIT
 #include "../../Headers/spirv.h"
 
 
-INLINE long SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(popcount, _i64, )( long x )
+INLINE long __attribute__((overloadable)) __spirv_ocl_popcount( long x )
 {
     int2 v = as_int2( x );
-    return SPIRV_OCL_BUILTIN(popcount, _i32, )( v.x ) + SPIRV_OCL_BUILTIN(popcount, _i32, )( v.y );
+    return __spirv_ocl_popcount( v.x ) + __spirv_ocl_popcount( v.y );
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( popcount, char,  char,  i8 )

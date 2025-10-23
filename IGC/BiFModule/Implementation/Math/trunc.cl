@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 #if defined(cl_khr_fp64)
 
 INLINE
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(trunc, _f64, )(double x )
+double __attribute__((overloadable)) __spirv_ocl_trunc(double x )
 {
     //Algorithm performs rounding towards zero by truncating bits in the fractional part
     // of the number.This is done by finding out the position of the fractional bits of

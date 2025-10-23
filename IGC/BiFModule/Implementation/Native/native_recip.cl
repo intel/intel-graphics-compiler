@@ -13,9 +13,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_recip, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(native_recip, _f64, )( double x )
+INLINE double __attribute__((overloadable)) __spirv_ocl_native_recip( double x )
 {
-    return SPIRV_OCL_BUILTIN(native_recip, _f32, )((float)x);
+    return __spirv_ocl_native_recip((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_recip, double, double, f64 )

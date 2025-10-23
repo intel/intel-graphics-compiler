@@ -30,10 +30,10 @@ INLINE float __intel_convert_float_rtp_rtn(double a, uint direction);
 static TO __clamp_sat_##TO##_##FROM(FROM _T)                                  \
 {                                                                             \
   /* Produce 0 for NaN values */                                              \
-  FROM NaNClamp = SPIRV_BUILTIN(IsNan, _##FROM_MNGL, )(_T) ? 0 : _T;          \
-  FROM MinClamp = SPIRV_OCL_BUILTIN(fmax, _##FROM_MNGL##_##FROM_MNGL, )(      \
+  FROM NaNClamp = __spirv_IsNan(_T) ? 0 : _T;          \
+  FROM MinClamp = __spirv_ocl_fmax(      \
                                         NaNClamp, (FROM)TONAME##_MIN);        \
-  return (TO)SPIRV_OCL_BUILTIN(fmin, _##FROM_MNGL##_##FROM_MNGL, )(           \
+  return (TO)__spirv_ocl_fmin(           \
                                         MinClamp, (FROM)TONAME##_MAX);        \
 }
 // We would love to use fmin/fmax clamping logic for all cases, as it yields
@@ -46,8 +46,8 @@ static TO __clamp_sat_##TO##_##FROM(FROM _T)                                  \
 #define SAT_CLAMP_INEXACT_MAX(TO, TONAME, FROM, FROM_MNGL)                    \
 static TO __clamp_sat_##TO##_##FROM(FROM _T)                                  \
 {                                                                             \
-  FROM NaNClamp = SPIRV_BUILTIN(IsNan, _##FROM_MNGL, )(_T) ? 0 : _T;          \
-  FROM MinClamp = SPIRV_OCL_BUILTIN(fmax, _##FROM_MNGL##_##FROM_MNGL, )(      \
+  FROM NaNClamp = __spirv_IsNan(_T) ? 0 : _T;          \
+  FROM MinClamp = __spirv_ocl_fmax(      \
                                         NaNClamp, (FROM)TONAME##_MIN);        \
   return MinClamp >= (FROM)TONAME##_MAX ? TONAME##_MAX : (TO)MinClamp;        \
 }
@@ -64,17 +64,16 @@ static TO __clamp_sat_##TO##_##FROM(FROM _T)                                  \
 #define SAT_CLAMP_INF_ONLY_SIGNED(TO, TONAME, FROM, FROM_MNGL)                \
 static TO __clamp_sat_##TO##_##FROM(FROM _T)                                  \
 {                                                                             \
-  FROM NaNClamp = SPIRV_BUILTIN(IsNan, _##FROM_MNGL, )(_T) ? 0 : _T;          \
+  FROM NaNClamp = __spirv_IsNan(_T) ? 0 : _T;          \
   TO MinClamp = _T == (FROM)-INFINITY ? TONAME##_MIN : (TO)NaNClamp;          \
   return _T == (FROM)INFINITY ? TONAME##_MAX : MinClamp;                      \
 }
 #define SAT_CLAMP_INF_ONLY_UNSIGNED(TO, TONAME, FROM, FROM_MNGL)              \
 static TO __clamp_sat_##TO##_##FROM(FROM _T)                                  \
 {                                                                             \
-  FROM NaNClamp = SPIRV_BUILTIN(IsNan, _##FROM_MNGL, )(_T) ? 0 : _T;          \
+  FROM NaNClamp = __spirv_IsNan(_T) ? 0 : _T;          \
   /* For unsigned, we still need a regular check of lower limit*/             \
-  TO MinClamp = (TO)SPIRV_OCL_BUILTIN(                                        \
-                    fmax, _##FROM_MNGL##_##FROM_MNGL, )(NaNClamp, 0);         \
+  TO MinClamp = (TO)__spirv_ocl_fmax(NaNClamp, 0);         \
   return _T == (FROM)INFINITY ? TONAME##_MAX : MinClamp;                      \
 }
 
@@ -118,47 +117,47 @@ static float convertSItoFP32(long value, char roundingMode);
 
  // Conversion Instructions
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _i8_f16, _Ruchar)(half FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar(half FloatValue)
 {
     return FloatValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _i16_f16, _Rushort)(half FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort(half FloatValue)
 {
     return FloatValue;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _i32_f16, _Ruint)(half FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint(half FloatValue)
 {
     return FloatValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _i64_f16, _Rulong)(half FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong(half FloatValue)
 {
     return FloatValue;
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _i8_f32, _Ruchar)(float FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar(float FloatValue)
 {
     return (uchar)FloatValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _i16_f32, _Rushort)(float FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort(float FloatValue)
 {
     return (ushort)FloatValue;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _i32_f32, _Ruint)(float FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint(float FloatValue)
 {
     return (uint)FloatValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _i64_f32, _Rulong)(float FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong(float FloatValue)
 {
-    float FC0 = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(1.0f, -32);
-    float FC1 = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(-1.0f, 32);
-    float HiF = SPIRV_OCL_BUILTIN(trunc, _f32, )(FloatValue * FC0);
-    float LoF = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(HiF, FC1, FloatValue);
+    float FC0 = __spirv_ocl_ldexp(1.0f, -32);
+    float FC1 = __spirv_ocl_ldexp(-1.0f, 32);
+    float HiF = __spirv_ocl_trunc(FloatValue * FC0);
+    float LoF = __spirv_ocl_fma(HiF, FC1, FloatValue);
     ulong answer = 0;
     answer = (((uint)HiF | answer) << 32) | ((uint)LoF | answer);
     return answer;
@@ -166,75 +165,75 @@ ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _i64_f32, _Rulong)(float Fl
 
 #if defined(cl_khr_fp64)
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _i8_f64, _Ruchar)(double FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar(double FloatValue)
 {
     return FloatValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _i16_f64, _Rushort)(double FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort(double FloatValue)
 {
     return FloatValue;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _i32_f64, _Ruint)(double FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint(double FloatValue)
 {
     return FloatValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _i64_f64, _Rulong)(double FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong(double FloatValue)
 {
     return FloatValue;
 }
 
 #endif //defined(cl_khr_fp64)
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _i8_f16, _Rchar)(half FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar(half FloatValue)
 {
     return FloatValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _i16_f16, _Rshort)(half FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort(half FloatValue)
 {
     return FloatValue;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(half FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint(half FloatValue)
 {
     return FloatValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _i64_f16, _Rlong)(half FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong(half FloatValue)
 {
     return FloatValue;
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _i8_f32, _Rchar)(float FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar(float FloatValue)
 {
     return (char)FloatValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _i16_f32, _Rshort)(float FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort(float FloatValue)
 {
     return (short)FloatValue;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(float FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint(float FloatValue)
 {
     return (int)FloatValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _i64_f32, _Rlong)(float FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong(float FloatValue)
 {
-    float abs_value = SPIRV_OCL_BUILTIN(fabs, _f32, )(FloatValue);
+    float abs_value = __spirv_ocl_fabs(FloatValue);
     if (abs_value < 1.0f) //for small numbers and denormals
     {
         return (long)0;
     }
     uint sign = as_uint(as_int(FloatValue) >> 31);
-    float FC0 = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(1.0f, -32);
-    float FC1 = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(-1.0f, 32);
-    float HiF = SPIRV_OCL_BUILTIN(trunc, _f32, )(abs_value * FC0);
-    float LoF = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(HiF, FC1, abs_value);
+    float FC0 = __spirv_ocl_ldexp(1.0f, -32);
+    float FC1 = __spirv_ocl_ldexp(-1.0f, 32);
+    float HiF = __spirv_ocl_trunc(abs_value * FC0);
+    float LoF = __spirv_ocl_fma(HiF, FC1, abs_value);
     uint Hi = (uint)HiF ^ sign;
     uint Lo = (uint)LoF ^ sign;
     uint Lo_new = Lo - sign;
@@ -247,155 +246,155 @@ long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _i64_f32, _Rlong)(float Floa
 
 #if defined(cl_khr_fp64)
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _i8_f64, _Rchar)(double FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar(double FloatValue)
 {
     return FloatValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _i16_f64, _Rshort)(double FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort(double FloatValue)
 {
     return FloatValue;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _i32_f64, _Rint)(double FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint(double FloatValue)
 {
     return FloatValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _i64_f64, _Rlong)(double FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong(double FloatValue)
 {
     return FloatValue;
 }
 
 #endif //defined(cl_khr_fp64)
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _f16_i8, _Rhalf)(char SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf(char SignedValue)
 {
     return SignedValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _f32_i8, _Rfloat)(char SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat(char SignedValue)
 {
     return (float)SignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _f16_i16, _Rhalf)(short SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf(short SignedValue)
 {
     return SignedValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _f32_i16, _Rfloat)(short SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat(short SignedValue)
 {
     return (float)SignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _f16_i32, _Rhalf)(int SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf(int SignedValue)
 {
     return SignedValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _f32_i32, _Rfloat)(int SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat(int SignedValue)
 {
     return (float)SignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _f16_i64, _Rhalf)(long SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf(long SignedValue)
 {
     return SignedValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _f32_i64, _Rfloat)(long SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat(long SignedValue)
 {
     return convertSItoFP32(SignedValue, 0);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f16_i8, _Rhalf)(uchar UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf(uchar UnsignedValue)
 {
     return UnsignedValue;
 }
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f32_i1, _Rfloat)(bool BoolValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat(bool BoolValue)
 {
     return BoolValue ? 1.0 : 0.0;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f32_i8, _Rfloat)(uchar UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat(uchar UnsignedValue)
 {
     return (float)UnsignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f16_i16, _Rhalf)(ushort UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf(ushort UnsignedValue)
 {
     return UnsignedValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f32_i16, _Rfloat)(ushort UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat(ushort UnsignedValue)
 {
     return (float)UnsignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f16_i32, _Rhalf)(uint UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf(uint UnsignedValue)
 {
     return UnsignedValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f32_i32, _Rfloat)(uint UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat(uint UnsignedValue)
 {
     return (float)UnsignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f16_i64, _Rhalf)(ulong UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf(ulong UnsignedValue)
 {
     return UnsignedValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f32_i64, _Rfloat)(ulong UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat(ulong UnsignedValue)
 {
     return convertUItoFP32(UnsignedValue, 0, false);
 }
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _f64_i8, _Rdouble)(char SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble(char SignedValue)
 {
     return SignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _f64_i16, _Rdouble)(short SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble(short SignedValue)
 {
     return SignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _f64_i32, _Rdouble)(int SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble(int SignedValue)
 {
     return SignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _f64_i64, _Rdouble)(long SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble(long SignedValue)
 {
     return SignedValue;
 }
 
-double  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f64_i1, _Rdouble)(bool BoolValue)
+double  __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble(bool BoolValue)
 {
     return BoolValue ? 1.0 : 0.0;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f64_i8, _Rdouble)(uchar UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble(uchar UnsignedValue)
 {
     return UnsignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f64_i16, _Rdouble)(ushort UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble(ushort UnsignedValue)
 {
     return UnsignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f64_i32, _Rdouble)(uint UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble(uint UnsignedValue)
 {
     return UnsignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f64_i64, _Rdouble)(ulong UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble(ulong UnsignedValue)
 {
     return UnsignedValue;
 }
@@ -403,199 +402,199 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _f64_i64, _Rdouble)(ulong U
 #endif // defined(cl_khr_fp64)
 
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i8_i8, _Ruchar)(uchar UnsignedValue)
+uchar  __attribute__((overloadable)) __spirv_UConvert_Ruchar(uchar UnsignedValue)
 {
     return UnsignedValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i16_i8, _Rushort)(uchar UnsignedValue)
+ushort __attribute__((overloadable)) __spirv_UConvert_Rushort(uchar UnsignedValue)
 {
     return (ushort)UnsignedValue;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i32_i8, _Ruint)(uchar UnsignedValue)
+uint   __attribute__((overloadable)) __spirv_UConvert_Ruint(uchar UnsignedValue)
 {
     return (uint)UnsignedValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i64_i8, _Rulong)(uchar UnsignedValue)
+ulong  __attribute__((overloadable)) __spirv_UConvert_Rulong(uchar UnsignedValue)
 {
     return (ulong)UnsignedValue;
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i8_i16, _Ruchar)(ushort UnsignedValue)
+uchar  __attribute__((overloadable)) __spirv_UConvert_Ruchar(ushort UnsignedValue)
 {
     return (uchar)UnsignedValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i16_i16, _Rushort)(ushort UnsignedValue)
+ushort __attribute__((overloadable)) __spirv_UConvert_Rushort(ushort UnsignedValue)
 {
     return UnsignedValue;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i32_i16, _Ruint)(ushort UnsignedValue)
+uint   __attribute__((overloadable)) __spirv_UConvert_Ruint(ushort UnsignedValue)
 {
     return (uint)UnsignedValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i64_i16, _Rulong)(ushort UnsignedValue)
+ulong  __attribute__((overloadable)) __spirv_UConvert_Rulong(ushort UnsignedValue)
 {
     return (ulong)UnsignedValue;
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i8_i32, _Ruchar)(uint UnsignedValue)
+uchar  __attribute__((overloadable)) __spirv_UConvert_Ruchar(uint UnsignedValue)
 {
     return (uchar)UnsignedValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i16_i32, _Rushort)(uint UnsignedValue)
+ushort __attribute__((overloadable)) __spirv_UConvert_Rushort(uint UnsignedValue)
 {
     return (ushort)UnsignedValue;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i32_i32, _Ruint)(uint UnsignedValue)
+uint   __attribute__((overloadable)) __spirv_UConvert_Ruint(uint UnsignedValue)
 {
     return UnsignedValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i64_i32, _Rulong)(uint UnsignedValue)
+ulong  __attribute__((overloadable)) __spirv_UConvert_Rulong(uint UnsignedValue)
 {
     return (ulong)UnsignedValue;
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i8_i64, _Ruchar)(ulong UnsignedValue)
+uchar  __attribute__((overloadable)) __spirv_UConvert_Ruchar(ulong UnsignedValue)
 {
     return (uchar)UnsignedValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i16_i64, _Rushort)(ulong UnsignedValue)
+ushort __attribute__((overloadable)) __spirv_UConvert_Rushort(ulong UnsignedValue)
 {
     return (ushort)UnsignedValue;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i32_i64, _Ruint)(ulong UnsignedValue)
+uint   __attribute__((overloadable)) __spirv_UConvert_Ruint(ulong UnsignedValue)
 {
     return (uint)UnsignedValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _i64_i64, _Rulong)(ulong UnsignedValue)
+ulong  __attribute__((overloadable)) __spirv_UConvert_Rulong(ulong UnsignedValue)
 {
     return UnsignedValue;
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i8_i8, _Rchar)(char SignedValue)
+char  __attribute__((overloadable)) __spirv_SConvert_Rchar(char SignedValue)
 {
     return SignedValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i16_i8, _Rshort)(char SignedValue)
+short __attribute__((overloadable)) __spirv_SConvert_Rshort(char SignedValue)
 {
     return (short)SignedValue;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i32_i8, _Rint)(char SignedValue)
+int   __attribute__((overloadable)) __spirv_SConvert_Rint(char SignedValue)
 {
     return (int)SignedValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i64_i8, _Rlong)(char SignedValue)
+long  __attribute__((overloadable)) __spirv_SConvert_Rlong(char SignedValue)
 {
     return (long)SignedValue;
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i8_i16, _Rchar)(short SignedValue)
+char  __attribute__((overloadable)) __spirv_SConvert_Rchar(short SignedValue)
 {
     return (char)SignedValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i16_i16, _Rshort)(short SignedValue)
+short __attribute__((overloadable)) __spirv_SConvert_Rshort(short SignedValue)
 {
     return SignedValue;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i32_i16, _Rint)(short SignedValue)
+int   __attribute__((overloadable)) __spirv_SConvert_Rint(short SignedValue)
 {
     return (int)SignedValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i64_i16, _Rlong)(short SignedValue)
+long  __attribute__((overloadable)) __spirv_SConvert_Rlong(short SignedValue)
 {
     return (long)SignedValue;
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i8_i32, _Rchar)(int SignedValue)
+char  __attribute__((overloadable)) __spirv_SConvert_Rchar(int SignedValue)
 {
     return (char)SignedValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i16_i32, _Rshort)(int SignedValue)
+short __attribute__((overloadable)) __spirv_SConvert_Rshort(int SignedValue)
 {
     return (short)SignedValue;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i32_i32, _Rint)(int SignedValue)
+int   __attribute__((overloadable)) __spirv_SConvert_Rint(int SignedValue)
 {
     return SignedValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i64_i32, _Rlong)(int SignedValue)
+long  __attribute__((overloadable)) __spirv_SConvert_Rlong(int SignedValue)
 {
     return (long)SignedValue;
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i8_i64, _Rchar)(long SignedValue)
+char  __attribute__((overloadable)) __spirv_SConvert_Rchar(long SignedValue)
 {
     return (char)SignedValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i16_i64, _Rshort)(long SignedValue)
+short __attribute__((overloadable)) __spirv_SConvert_Rshort(long SignedValue)
 {
     return (short)SignedValue;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i32_i64, _Rint)(long SignedValue)
+int   __attribute__((overloadable)) __spirv_SConvert_Rint(long SignedValue)
 {
     return (int)SignedValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _i64_i64, _Rlong)(long SignedValue)
+long  __attribute__((overloadable)) __spirv_SConvert_Rlong(long SignedValue)
 {
     return SignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _f16_f16, _Rhalf)(half FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf(half FloatValue)
 {
     return FloatValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(half FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat(half FloatValue)
 {
     return FloatValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(float FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf(float FloatValue)
 {
     return FloatValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _f32_f32, _Rfloat)(float FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat(float FloatValue)
 {
     return FloatValue;
 }
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _f64_f16, _Rdouble)(half FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble(half FloatValue)
 {
     return FloatValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _f64_f32, _Rdouble)(float FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble(float FloatValue)
 {
     return FloatValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _f16_f64, _Rhalf)(double FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf(double FloatValue)
 {
   double a = FloatValue;
   ushort hp = (as_ulong(a) >> (DOUBLE_BITS - HALF_BITS)) & HALF_SIGN_MASK;
@@ -641,12 +640,12 @@ half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _f16_f64, _Rhalf)(double Float
   return as_half(hp);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _f32_f64, _Rfloat)(double FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat(double FloatValue)
 {
     return FloatValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _f64_f64, _Rdouble)(double FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble(double FloatValue)
 {
     return FloatValue;
 }
@@ -655,7 +654,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _f64_f64, _Rdouble)(double Flo
 
 // OpConvertPtrToU -> ptrtoint, no need.
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i8_i8, _Ruchar)(char SignedValue)
+uchar  __attribute__((overloadable)) __spirv_SatConvertSToU_Ruchar(char SignedValue)
 {
       //return __builtin_IB_ctouc_sat((char)SignedValue);
       if (SignedValue <= 0)
@@ -665,7 +664,7 @@ uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i8_i8, _Ruchar)(char Si
       return (uchar)SignedValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i16_i8, _Rushort)(char SignedValue)
+ushort __attribute__((overloadable)) __spirv_SatConvertSToU_Rushort(char SignedValue)
 {
       //return __builtin_IB_ctous_sat((char)SignedValue);
       if( SignedValue <= 0)
@@ -675,23 +674,23 @@ ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i16_i8, _Rushort)(char 
       return (ushort)SignedValue;
 }
 
-uint  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i32_i8, _Ruint)(char SignedValue)
+uint  __attribute__((overloadable)) __spirv_SatConvertSToU_Ruint(char SignedValue)
 {
       //return __builtin_IB_ctoui_sat((char)SignedValue);
       return (SignedValue <= 0) ? 0 : (uint)SignedValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i64_i8, _Rulong)(char SignedValue)
+ulong  __attribute__((overloadable)) __spirv_SatConvertSToU_Rulong(char SignedValue)
 {
     return (SignedValue <= 0) ? 0 : (ulong)SignedValue;
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i8_i16, _Ruchar)(short SignedValue)
+uchar  __attribute__((overloadable)) __spirv_SatConvertSToU_Ruchar(short SignedValue)
 {
   return (uchar)clamp(SignedValue, (short)0, (short)UCHAR_MAX);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i16_i16, _Rushort)(short SignedValue)
+ushort __attribute__((overloadable)) __spirv_SatConvertSToU_Rushort(short SignedValue)
 {
       //return __builtin_IB_stous_sat((short)SignedValue);
       if( SignedValue <= 0)
@@ -701,41 +700,41 @@ ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i16_i16, _Rushort)(shor
       return (ushort)SignedValue;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i32_i16, _Ruint)(short SignedValue)
+uint   __attribute__((overloadable)) __spirv_SatConvertSToU_Ruint(short SignedValue)
 {
       //return __builtin_IB_stoui_sat((short)SignedValue);
       return (SignedValue <= 0) ? 0 : (uint)SignedValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i64_i16, _Rulong)(short SignedValue)
+ulong  __attribute__((overloadable)) __spirv_SatConvertSToU_Rulong(short SignedValue)
 {
     return (SignedValue <= 0) ? 0 : (ulong)SignedValue;
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i8_i32, _Ruchar)(int SignedValue)
+uchar  __attribute__((overloadable)) __spirv_SatConvertSToU_Ruchar(int SignedValue)
 {
   return (uchar)clamp(SignedValue, 0, (int)UCHAR_MAX);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i16_i32, _Rushort)(int SignedValue)
+ushort __attribute__((overloadable)) __spirv_SatConvertSToU_Rushort(int SignedValue)
 {
       //return __builtin_IB_itous_sat((int)SignedValue);
-      int res = SPIRV_OCL_BUILTIN(s_clamp, _i32_i32_i32, )(SignedValue, 0, (int)USHRT_MAX);
+      int res = __spirv_ocl_s_clamp(SignedValue, 0, (int)USHRT_MAX);
       return (ushort)res;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i32_i32, _Ruint)(int SignedValue)
+uint   __attribute__((overloadable)) __spirv_SatConvertSToU_Ruint(int SignedValue)
 {
       //return __builtin_IB_itoui_sat((int)SignedValue);
       return (SignedValue <= 0) ? 0 : (uint)SignedValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i64_i32, _Rulong)(int SignedValue)
+ulong  __attribute__((overloadable)) __spirv_SatConvertSToU_Rulong(int SignedValue)
 {
     return (SignedValue <= 0) ? 0 : (ulong)SignedValue;
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i8_i64, _Ruchar)(long SignedValue)
+uchar  __attribute__((overloadable)) __spirv_SatConvertSToU_Ruchar(long SignedValue)
 {
     if (SignedValue <= 0)
       {
@@ -748,7 +747,7 @@ uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i8_i64, _Ruchar)(long S
       return (uchar)SignedValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i16_i64, _Rushort)(long SignedValue)
+ushort __attribute__((overloadable)) __spirv_SatConvertSToU_Rushort(long SignedValue)
 {
     if (SignedValue <= 0) {
         return 0;
@@ -759,7 +758,7 @@ ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i16_i64, _Rushort)(long
       return (ushort)SignedValue;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i32_i64, _Ruint)(long SignedValue)
+uint   __attribute__((overloadable)) __spirv_SatConvertSToU_Ruint(long SignedValue)
 {
     if (SignedValue <= 0) {
         return 0;
@@ -770,184 +769,184 @@ uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i32_i64, _Ruint)(long S
       return (uint)SignedValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i64_i64, _Rulong)(long SignedValue)
+ulong  __attribute__((overloadable)) __spirv_SatConvertSToU_Rulong(long SignedValue)
 {
     return (SignedValue <= 0) ? 0 : (ulong)SignedValue;
 }
 
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i8_i8, _Rchar)(uchar UnsignedValue)
+char  __attribute__((overloadable)) __spirv_SatConvertUToS_Rchar(uchar UnsignedValue)
 {
       //return __builtin_IB_uctoc_sat((uchar)UnsignedValue);
       return (UnsignedValue > CHAR_MAX) ? CHAR_MAX : (char)UnsignedValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i16_i8, _Rshort)(uchar UnsignedValue)
+short __attribute__((overloadable)) __spirv_SatConvertUToS_Rshort(uchar UnsignedValue)
 {
     return (short)UnsignedValue;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i32_i8, _Rint)(uchar UnsignedValue)
+int   __attribute__((overloadable)) __spirv_SatConvertUToS_Rint(uchar UnsignedValue)
 {
     return (int)UnsignedValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i64_i8, _Rlong)(uchar UnsignedValue)
+long  __attribute__((overloadable)) __spirv_SatConvertUToS_Rlong(uchar UnsignedValue)
 {
     return (long)UnsignedValue;
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i8_i16, _Rchar)(ushort UnsignedValue)
+char  __attribute__((overloadable)) __spirv_SatConvertUToS_Rchar(ushort UnsignedValue)
 {
       //return __builtin_IB_ustoc_sat((ushort)UnsignedValue);
       return (UnsignedValue > CHAR_MAX) ? CHAR_MAX : (char)UnsignedValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i16_i16, _Rshort)(ushort UnsignedValue)
+short __attribute__((overloadable)) __spirv_SatConvertUToS_Rshort(ushort UnsignedValue)
 {
       //return __builtin_IB_ustos_sat((ushort)UnsignedValue);
       return (UnsignedValue >= SHRT_MAX) ? SHRT_MAX : (ushort)UnsignedValue;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i32_i16, _Rint)(ushort UnsignedValue)
+int   __attribute__((overloadable)) __spirv_SatConvertUToS_Rint(ushort UnsignedValue)
 {
     return (int)UnsignedValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i64_i16, _Rlong)(ushort UnsignedValue)
+long  __attribute__((overloadable)) __spirv_SatConvertUToS_Rlong(ushort UnsignedValue)
 {
     return (long)UnsignedValue;
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i8_i32, _Rchar)(uint UnsignedValue)
+char  __attribute__((overloadable)) __spirv_SatConvertUToS_Rchar(uint UnsignedValue)
 {
       //return __builtin_IB_uitoc_sat((uint)UnsignedValue);
       return (UnsignedValue > CHAR_MAX) ? CHAR_MAX : (char)UnsignedValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i16_i32, _Rshort)(uint UnsignedValue)
+short __attribute__((overloadable)) __spirv_SatConvertUToS_Rshort(uint UnsignedValue)
 {
       //return __builtin_IB_uitos_sat((uint)UnsignedValue);
       return (UnsignedValue >= SHRT_MAX) ? SHRT_MAX : (short)UnsignedValue;
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i32_i32, _Rint)(uint UnsignedValue)
+int __attribute__((overloadable)) __spirv_SatConvertUToS_Rint(uint UnsignedValue)
 {
       //return __builtin_IB_uitoi_sat((uint)UnsignedValue);
       return (UnsignedValue >= INT_MAX) ? INT_MAX : (int)UnsignedValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i64_i32, _Rlong)(uint UnsignedValue)
+long  __attribute__((overloadable)) __spirv_SatConvertUToS_Rlong(uint UnsignedValue)
 {
     return (long)UnsignedValue;
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i8_i64, _Rchar)(ulong UnsignedValue)
+char  __attribute__((overloadable)) __spirv_SatConvertUToS_Rchar(ulong UnsignedValue)
 {
     return (UnsignedValue >= CHAR_MAX) ? CHAR_MAX : (char)UnsignedValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i16_i64, _Rshort)(ulong UnsignedValue)
+short __attribute__((overloadable)) __spirv_SatConvertUToS_Rshort(ulong UnsignedValue)
 {
     return (UnsignedValue >= SHRT_MAX) ? SHRT_MAX : (short)UnsignedValue;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i32_i64, _Rint)(ulong UnsignedValue)
+int   __attribute__((overloadable)) __spirv_SatConvertUToS_Rint(ulong UnsignedValue)
 {
     return (UnsignedValue >= INT_MAX) ? INT_MAX : (int)UnsignedValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i64_i64, _Rlong)(ulong UnsignedValue)
+long  __attribute__((overloadable)) __spirv_SatConvertUToS_Rlong(ulong UnsignedValue)
 {
-    return (UnsignedValue >= LONG_MAX) ? LONG_MAX : SPIRV_BUILTIN(SConvert, _i64_i64, _Rlong)((long)UnsignedValue);
+    return (UnsignedValue >= LONG_MAX) ? LONG_MAX : __spirv_SConvert_Rlong((long)UnsignedValue);
 }
 
-short  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _f32, )(float Value)
+short  __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float Value)
 {
   return __builtin_IB_ftobf_1(Value);
 }
 
-short2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v2f32, )(float2 Value)
+short2  __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float2 Value)
 {
   return __builtin_IB_ftobf_2(Value);
 }
 
-short3  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v3f32, )(float3 Value)
+short3  __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float3 Value)
 {
   return __builtin_IB_ftobf_3(Value);
 }
 
-short4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v4f32, )(float4 Value)
+short4  __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float4 Value)
 {
   return __builtin_IB_ftobf_4(Value);
 }
 
-short8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v8f32, )(float8 Value)
+short8  __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float8 Value)
 {
   return __builtin_IB_ftobf_8(Value);
 }
 
-short16  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v16f32, )(float16 Value)
+short16  __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float16 Value)
 {
   return __builtin_IB_ftobf_16(Value);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _i16, )(short Value)
+float  __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short Value)
 {
   return __builtin_IB_bftof_1(Value);
 }
 
-float2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v2i16, )(short2 Value)
+float2  __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short2 Value)
 {
   return __builtin_IB_bftof_2(Value);
 }
 
-float3  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v3i16, )(short3 Value)
+float3  __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short3 Value)
 {
   return __builtin_IB_bftof_3(Value);
 }
 
-float4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v4i16, )(short4 Value)
+float4  __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short4 Value)
 {
   return __builtin_IB_bftof_4(Value);
 }
 
-float8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v8i16, )(short8 Value)
+float8  __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short8 Value)
 {
   return __builtin_IB_bftof_8(Value);
 }
 
-float16  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v16i16, )(short16 Value)
+float16  __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short16 Value)
 {
   return __builtin_IB_bftof_16(Value);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _f32, )(float Value)
+float  __attribute__((overloadable)) __spirv_RoundFToTF32INTEL(float Value)
 {
   return __builtin_IB_ftotf32_1(Value);
 }
 
-float2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v2f32, )(float2 Value)
+float2  __attribute__((overloadable)) __spirv_RoundFToTF32INTEL(float2 Value)
 {
   return __builtin_IB_ftotf32_2(Value);
 }
 
-float3  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v3f32, )(float3 Value)
+float3  __attribute__((overloadable)) __spirv_RoundFToTF32INTEL(float3 Value)
 {
   return __builtin_IB_ftotf32_3(Value);
 }
 
-float4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v4f32, )(float4 Value)
+float4  __attribute__((overloadable)) __spirv_RoundFToTF32INTEL(float4 Value)
 {
   return __builtin_IB_ftotf32_4(Value);
 }
 
-float8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v8f32, )(float8 Value)
+float8  __attribute__((overloadable)) __spirv_RoundFToTF32INTEL(float8 Value)
 {
   return __builtin_IB_ftotf32_8(Value);
 }
 
-float16  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v16f32, )(float16 Value)
+float16  __attribute__((overloadable)) __spirv_RoundFToTF32INTEL(float16 Value)
 {
   return __builtin_IB_ftotf32_16(Value);
 }
@@ -960,217 +959,217 @@ float16  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v16f32, )(float16 
 //
 */
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTE_i8_f16, _Ruchar_rte)(half FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i8_f16, _Ruchar)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Ruchar(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i8_f16, _Ruchar_rtz)(half FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _i8_f16, _Ruchar)(FloatValue);
+  return __spirv_ConvertFToU_Ruchar(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTP_i8_f16, _Ruchar_rtp)(half FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i8_f16, _Ruchar)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Ruchar(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i8_f16, _Ruchar_rtn)(half FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i8_f16, _Ruchar)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Ruchar(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f16, _Ruchar_sat)(half FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat(half FloatValue)
 {
   return __clamp_sat_uchar_half(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i8_f16, _Ruchar_sat_rte)(half FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f16, _Ruchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Ruchar_sat(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i8_f16, _Ruchar_sat_rtz)(half FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f16, _Ruchar_sat)(FloatValue);
+  return __spirv_ConvertFToU_Ruchar_sat(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i8_f16, _Ruchar_sat_rtp)(half FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f16, _Ruchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Ruchar_sat(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTN_i8_f16, _Ruchar_sat_rtn)(half FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f16, _Ruchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Ruchar_sat(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTE_i16_f16, _Rushort_rte)(half FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i16_f16, _Rushort)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Rushort(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i16_f16, _Rushort_rtz)(half FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _i16_f16, _Rushort)(FloatValue);
+  return __spirv_ConvertFToU_Rushort(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTP_i16_f16, _Rushort_rtp)(half FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i16_f16, _Rushort)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Rushort(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i16_f16, _Rushort_rtn)(half FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i16_f16, _Rushort)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Rushort(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f16, _Rushort_sat)(half FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat(half FloatValue)
 {
   return __clamp_sat_ushort_half(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i16_f16, _Rushort_sat_rte)(half FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f16, _Rushort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Rushort_sat(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i16_f16, _Rushort_sat_rtz)(half FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f16, _Rushort_sat)(FloatValue);
+  return __spirv_ConvertFToU_Rushort_sat(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i16_f16, _Rushort_sat_rtp)(half FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f16, _Rushort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Rushort_sat(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTN_i16_f16, _Rushort_sat_rtn)(half FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f16, _Rushort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Rushort_sat(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTE_i32_f16, _Ruint_rte)(half FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f16, _Ruint)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Ruint(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i32_f16, _Ruint_rtz)(half FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f16, _Ruint)(FloatValue);
+  return __spirv_ConvertFToU_Ruint(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTP_i32_f16, _Ruint_rtp)(half FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f16, _Ruint)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Ruint(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i32_f16, _Ruint_rtn)(half FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f16, _Ruint)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Ruint(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f16, _Ruint_sat)(half FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat(half FloatValue)
 {
   return __clamp_sat_uint_half(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i32_f16, _Ruint_sat_rte)(half FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f16, _Ruint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Ruint_sat(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i32_f16, _Ruint_sat_rtz)(half FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f16, _Ruint_sat)(FloatValue);
+  return __spirv_ConvertFToU_Ruint_sat(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i32_f16, _Ruint_sat_rtp)(half FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f16, _Ruint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Ruint_sat(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTN_i32_f16, _Ruint_sat_rtn)(half FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f16, _Ruint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Ruint_sat(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTE_i64_f16, _Rulong_rte)(half FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i64_f16, _Rulong)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Rulong(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i64_f16, _Rulong_rtz)(half FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _i64_f16, _Rulong)(FloatValue);
+  return __spirv_ConvertFToU_Rulong(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTP_i64_f16, _Rulong_rtp)(half FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i64_f16, _Rulong)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Rulong(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i64_f16, _Rulong_rtn)(half FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i64_f16, _Rulong)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Rulong(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f16, _Rulong_sat)(half FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat(half FloatValue)
 {
   return __clamp_sat_ulong_half(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i64_f16, _Rulong_sat_rte)(half FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f16, _Rulong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Rulong_sat(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i64_f16, _Rulong_sat_rtz)(half FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f16, _Rulong_sat)(FloatValue);
+  return __spirv_ConvertFToU_Rulong_sat(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i64_f16, _Rulong_sat_rtp)(half FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f16, _Rulong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Rulong_sat(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTN_i64_f16, _Rulong_sat_rtn)(half FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f16, _Rulong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Rulong_sat(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTE_i8_f32, _Ruchar_rte)(float FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _i8_f32, _Ruchar)(FloatValue);
+  FloatValue = __spirv_ocl_rint( FloatValue );
+  return __spirv_ConvertFToU_Ruchar(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i8_f32, _Ruchar_rtz)(float FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_rtz(float FloatValue)
 {
   if (FloatValue <= 0)
   {
@@ -1183,53 +1182,53 @@ uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i8_f32, _Ruchar_rtz)(f
   return (uchar)FloatValue;
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTP_i8_f32, _Ruchar_rtp)(float FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _i8_f32, _Ruchar)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToU_Ruchar(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i8_f32, _Ruchar_rtn)(float FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _i8_f32, _Ruchar)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToU_Ruchar(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f32, _Ruchar_sat)(float FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat(float FloatValue)
 {
   return __clamp_sat_uchar_float(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i8_f32, _Ruchar_sat_rte)(float FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f32, _Ruchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Ruchar_sat(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i8_f32, _Ruchar_sat_rtz)(float FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat_rtz(float FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f32, _Ruchar_sat)(FloatValue);
+  return __spirv_ConvertFToU_Ruchar_sat(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i8_f32, _Ruchar_sat_rtp)(float FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f32, _Ruchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToU_Ruchar_sat(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTN_i8_f32, _Ruchar_sat_rtn)(float FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f32, _Ruchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToU_Ruchar_sat(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTE_i16_f32, _Rushort_rte)(float FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i16_f32, _Rushort)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Rushort(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i16_f32, _Rushort_rtz)(float FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_rtz(float FloatValue)
 {
   if (FloatValue <= 0) {
     return 0;
@@ -1239,582 +1238,582 @@ ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i16_f32, _Rushort_rtz)
   return (ushort)FloatValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTP_i16_f32, _Rushort_rtp)(float FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _i16_f32, _Rushort)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToU_Rushort(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i16_f32, _Rushort_rtn)(float FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _i16_f32, _Rushort)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToU_Rushort(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f32, _Rushort_sat)(float FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat(float FloatValue)
 {
   return __clamp_sat_ushort_float(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i16_f32, _Rushort_sat_rte)(float FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f32, _Rushort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Rushort_sat(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i16_f32, _Rushort_sat_rtz)(float FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat_rtz(float FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f32, _Rushort_sat)(FloatValue);
+  return __spirv_ConvertFToU_Rushort_sat(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i16_f32, _Rushort_sat_rtp)(float FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f32, _Rushort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToU_Rushort_sat(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTN_i16_f32, _Rushort_sat_rtn)(float FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f32, _Rushort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToU_Rushort_sat(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTE_i32_f32, _Ruint_rte)(float FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f32, _Ruint)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Ruint(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i32_f32, _Ruint_rtz)(float FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_rtz(float FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f32, _Ruint)(FloatValue);
+  return __spirv_ConvertFToU_Ruint(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTP_i32_f32, _Ruint_rtp)(float FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f32, _Ruint)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToU_Ruint(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i32_f32, _Ruint_rtn)(float FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f32, _Ruint)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToU_Ruint(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f32, _Ruint_sat)(float FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat(float FloatValue)
 {
   return __clamp_sat_uint_float(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i32_f32, _Ruint_sat_rte)(float FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f32, _Ruint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Ruint_sat(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i32_f32, _Ruint_sat_rtz)(float FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat_rtz(float FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f32, _Ruint_sat)(FloatValue);
+  return __spirv_ConvertFToU_Ruint_sat(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i32_f32, _Ruint_sat_rtp)(float FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f32, _Ruint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToU_Ruint_sat(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTN_i32_f32, _Ruint_sat_rtn)(float FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f32, _Ruint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToU_Ruint_sat(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTE_i64_f32, _Rulong_rte)(float FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i64_f32, _Rulong)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Rulong(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i64_f32, _Rulong_rtz)(float FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_rtz(float FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _i64_f32, _Rulong)(FloatValue);
+  return __spirv_ConvertFToU_Rulong(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTP_i64_f32, _Rulong_rtp)(float FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _i64_f32, _Rulong)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToU_Rulong(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i64_f32, _Rulong_rtn)(float FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _i64_f32, _Rulong)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToU_Rulong(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f32, _Rulong_sat)(float FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat(float FloatValue)
 {
   return __clamp_sat_ulong_float(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i64_f32, _Rulong_sat_rte)(float FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f32, _Rulong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Rulong_sat(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i64_f32, _Rulong_sat_rtz)(float FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat_rtz(float FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f32, _Rulong_sat)(FloatValue);
+  return __spirv_ConvertFToU_Rulong_sat(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i64_f32, _Rulong_sat_rtp)(float FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f32, _Rulong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToU_Rulong_sat(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTN_i64_f32, _Rulong_sat_rtn)(float FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f32, _Rulong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToU_Rulong_sat(FloatValue);
 }
 
 #if defined(cl_khr_fp64)
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTE_i8_f64, _Ruchar_rte)(double FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i8_f64, _Ruchar)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Ruchar(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i8_f64, _Ruchar_rtz)(double FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _i8_f64, _Ruchar)(FloatValue);
+  return __spirv_ConvertFToU_Ruchar(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTP_i8_f64, _Ruchar_rtp)(double FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i8_f64, _Ruchar)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Ruchar(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i8_f64, _Ruchar_rtn)(double FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i8_f64, _Ruchar)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Ruchar(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f64, _Ruchar_sat)(double FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat(double FloatValue)
 {
   return __clamp_sat_uchar_double(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f64, _Rushort_sat)(double FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat(double FloatValue)
 {
   return __clamp_sat_ushort_double(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f64, _Ruint_sat)(double FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat(double FloatValue)
 {
   return __clamp_sat_uint_double(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f64, _Rchar_sat)(double FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat(double FloatValue)
 {
   return __clamp_sat_char_double(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f64, _Rshort_sat)(double FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat(double FloatValue)
 {
   return __clamp_sat_short_double(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f64, _Rint_sat)(double FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat(double FloatValue)
 {
   return __clamp_sat_int_double(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i8_f64, _Ruchar_sat_rte)(double FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f64, _Ruchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Ruchar_sat(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i8_f64, _Ruchar_sat_rtz)(double FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f64, _Ruchar_sat)(FloatValue);
+  return __spirv_ConvertFToU_Ruchar_sat(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i8_f64, _Ruchar_sat_rtp)(double FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f64, _Ruchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Ruchar_sat(FloatValue);
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTN_i8_f64, _Ruchar_sat_rtn)(double FloatValue)
+uchar  __attribute__((overloadable)) __spirv_ConvertFToU_Ruchar_sat_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f64, _Ruchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Ruchar_sat(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTE_i16_f64, _Rushort_rte)(double FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i16_f64, _Rushort)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Rushort(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i16_f64, _Rushort_rtz)(double FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _i16_f64, _Rushort)(FloatValue);
+  return __spirv_ConvertFToU_Rushort(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTP_i16_f64, _Rushort_rtp)(double FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i16_f64, _Rushort)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Rushort(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i16_f64, _Rushort_rtn)(double FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i16_f64, _Rushort)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Rushort(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i16_f64, _Rushort_sat_rte)(double FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f64, _Rushort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Rushort_sat(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i16_f64, _Rushort_sat_rtz)(double FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f64, _Rushort_sat)(FloatValue);
+  return __spirv_ConvertFToU_Rushort_sat(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i16_f64, _Rushort_sat_rtp)(double FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f64, _Rushort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Rushort_sat(FloatValue);
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTN_i16_f64, _Rushort_sat_rtn)(double FloatValue)
+ushort __attribute__((overloadable)) __spirv_ConvertFToU_Rushort_sat_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f64, _Rushort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Rushort_sat(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTE_i32_f64, _Ruint_rte)(double FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f64, _Ruint)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Ruint(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i32_f64, _Ruint_rtz)(double FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f64, _Ruint)(FloatValue);
+  return __spirv_ConvertFToU_Ruint(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTP_i32_f64, _Ruint_rtp)(double FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f64, _Ruint)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Ruint(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i32_f64, _Ruint_rtn)(double FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f64, _Ruint)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Ruint(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i32_f64, _Ruint_sat_rte)(double FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f64, _Ruint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Ruint_sat(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i32_f64, _Ruint_sat_rtz)(double FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f64, _Ruint_sat)(FloatValue);
+  return __spirv_ConvertFToU_Ruint_sat(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i32_f64, _Ruint_sat_rtp)(double FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f64, _Ruint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Ruint_sat(FloatValue);
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTN_i32_f64, _Ruint_sat_rtn)(double FloatValue)
+uint   __attribute__((overloadable)) __spirv_ConvertFToU_Ruint_sat_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f64, _Ruint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Ruint_sat(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTE_i64_f64, _Rulong_rte)(double FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i64_f64, _Rulong)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Rulong(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTZ_i64_f64, _Rulong_rtz)(double FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _i64_f64, _Rulong)(FloatValue);
+  return __spirv_ConvertFToU_Rulong(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTP_i64_f64, _Rulong_rtp)(double FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i64_f64, _Rulong)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Rulong(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i64_f64, _Rulong_rtn)(double FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _i64_f64, _Rulong)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Rulong(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f64, _Rulong_sat)(double FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat(double FloatValue)
 {
   return __clamp_sat_ulong_double(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i64_f64, _Rulong_sat_rte)(double FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f64, _Rulong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToU_Rulong_sat(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i64_f64, _Rulong_sat_rtz)(double FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f64, _Rulong_sat)(FloatValue);
+  return __spirv_ConvertFToU_Rulong_sat(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i64_f64, _Rulong_sat_rtp)(double FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f64, _Rulong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToU_Rulong_sat(FloatValue);
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTN_i64_f64, _Rulong_sat_rtn)(double FloatValue)
+ulong  __attribute__((overloadable)) __spirv_ConvertFToU_Rulong_sat_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f64, _Rulong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToU_Rulong_sat(FloatValue);
 }
 
 #endif // defined(cl_khr_fp64)
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTE_i8_f16, _Rchar_rte)(half FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i8_f16, _Rchar)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rchar(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i8_f16, _Rchar_rtz)(half FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _i8_f16, _Rchar)(FloatValue);
+  return __spirv_ConvertFToS_Rchar(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTP_i8_f16, _Rchar_rtp)(half FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i8_f16, _Rchar)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rchar(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i8_f16, _Rchar_rtn)(half FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i8_f16, _Rchar)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rchar(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f16, _Rchar_sat)(half FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat(half FloatValue)
 {
   return __clamp_sat_char_half(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i8_f16, _Rchar_sat_rte)(half FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f16, _Rchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rchar_sat(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i8_f16, _Rchar_sat_rtz)(half FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f16, _Rchar_sat)(FloatValue);
+  return __spirv_ConvertFToS_Rchar_sat(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTP_i8_f16, _Rchar_sat_rtp)(half FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f16, _Rchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rchar_sat(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTN_i8_f16, _Rchar_sat_rtn)(half FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f16, _Rchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rchar_sat(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTE_i16_f16, _Rshort_rte)(half FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i16_f16, _Rshort)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rshort(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i16_f16, _Rshort_rtz)(half FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _i16_f16, _Rshort)(FloatValue);
+  return __spirv_ConvertFToS_Rshort(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTP_i16_f16, _Rshort_rtp)(half FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i16_f16, _Rshort)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rshort(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i16_f16, _Rshort_rtn)(half FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i16_f16, _Rshort)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rshort(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f16, _Rshort_sat)(half FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat(half FloatValue)
 {
   return __clamp_sat_short_half(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i16_f16, _Rshort_sat_rte)(half FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f16, _Rshort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rshort_sat(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i16_f16, _Rshort_sat_rtz)(half FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f16, _Rshort_sat)(FloatValue);
+  return __spirv_ConvertFToS_Rshort_sat(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTP_i16_f16, _Rshort_sat_rtp)(half FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f16, _Rshort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rshort_sat(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTN_i16_f16, _Rshort_sat_rtn)(half FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f16, _Rshort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rshort_sat(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTE_i32_f16, _Rint_rte)(half FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rint(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i32_f16, _Rint_rtz)(half FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(FloatValue);
+  return __spirv_ConvertFToS_Rint(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTP_i32_f16, _Rint_rtp)(half FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rint(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i32_f16, _Rint_rtn)(half FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rint(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f16, _Rint_sat)(half FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat(half FloatValue)
 {
   return __clamp_sat_int_half(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i32_f16, _Rint_sat_rte)(half FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f16, _Rint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rint_sat(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i32_f16, _Rint_sat_rtz)(half FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f16, _Rint_sat)(FloatValue);
+  return __spirv_ConvertFToS_Rint_sat(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTP_i32_f16, _Rint_sat_rtp)(half FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f16, _Rint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rint_sat(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTN_i32_f16, _Rint_sat_rtn)(half FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f16, _Rint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rint_sat(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTE_i64_f16, _Rlong_rte)(half FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i64_f16, _Rlong)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rlong(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i64_f16, _Rlong_rtz)(half FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _i64_f16, _Rlong)(FloatValue);
+  return __spirv_ConvertFToS_Rlong(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTP_i64_f16, _Rlong_rtp)(half FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i64_f16, _Rlong)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rlong(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i64_f16, _Rlong_rtn)(half FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i64_f16, _Rlong)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rlong(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f16, _Rlong_sat)(half FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat(half FloatValue)
 {
   return __clamp_sat_long_half(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i64_f16, _Rlong_sat_rte)(half FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat_rte(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f16, _Rlong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rlong_sat(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i64_f16, _Rlong_sat_rtz)(half FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat_rtz(half FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f16, _Rlong_sat)(FloatValue);
+  return __spirv_ConvertFToS_Rlong_sat(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTP_i64_f16, _Rlong_sat_rtp)(half FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat_rtp(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f16, _Rlong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rlong_sat(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTN_i64_f16, _Rlong_sat_rtn)(half FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat_rtn(half FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f16, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f16, _Rlong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rlong_sat(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTE_i8_f32, _Rchar_rte)(float FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i8_f32, _Rchar)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rchar(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i8_f32, _Rchar_rtz)(float FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_rtz(float FloatValue)
 {
   if (FloatValue <= CHAR_MIN)
   {
@@ -1827,53 +1826,53 @@ char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i8_f32, _Rchar_rtz)(flo
   return (char)FloatValue;
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTP_i8_f32, _Rchar_rtp)(float FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _i8_f32, _Rchar)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToS_Rchar(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i8_f32, _Rchar_rtn)(float FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _i8_f32, _Rchar)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToS_Rchar(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f32, _Rchar_sat)(float FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat(float FloatValue)
 {
   return __clamp_sat_char_float(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i8_f32, _Rchar_sat_rte)(float FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f32, _Rchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rchar_sat(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i8_f32, _Rchar_sat_rtz)(float FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat_rtz(float FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f32, _Rchar_sat)(FloatValue);
+  return __spirv_ConvertFToS_Rchar_sat(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTP_i8_f32, _Rchar_sat_rtp)(float FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f32, _Rchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToS_Rchar_sat(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTN_i8_f32, _Rchar_sat_rtn)(float FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f32, _Rchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToS_Rchar_sat(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTE_i16_f32, _Rshort_rte)(float FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i16_f32, _Rshort)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rshort(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i16_f32, _Rshort_rtz)(float FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_rtz(float FloatValue)
 {
   if (FloatValue <= SHRT_MIN) {
     return SHRT_MIN;
@@ -1883,590 +1882,590 @@ short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i16_f32, _Rshort_rtz)(f
   return (short)FloatValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTP_i16_f32, _Rshort_rtp)(float FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _i16_f32, _Rshort)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToS_Rshort(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i16_f32, _Rshort_rtn)(float FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _i16_f32, _Rshort)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToS_Rshort(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f32, _Rshort_sat)(float FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat(float FloatValue)
 {
   return __clamp_sat_short_float(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i16_f32, _Rshort_sat_rte)(float FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f32, _Rshort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rshort_sat(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i16_f32, _Rshort_sat_rtz)(float FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat_rtz(float FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f32, _Rshort_sat)(FloatValue);
+  return __spirv_ConvertFToS_Rshort_sat(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTP_i16_f32, _Rshort_sat_rtp)(float FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f32, _Rshort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToS_Rshort_sat(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTN_i16_f32, _Rshort_sat_rtn)(float FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f32, _Rshort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToS_Rshort_sat(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTE_i32_f32, _Rint_rte)(float FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rint(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i32_f32, _Rint_rtz)(float FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_rtz(float FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(FloatValue);
+  return __spirv_ConvertFToS_Rint(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTP_i32_f32, _Rint_rtp)(float FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToS_Rint(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i32_f32, _Rint_rtn)(float FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToS_Rint(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f32, _Rint_sat)(float FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat(float FloatValue)
 {
   return __clamp_sat_int_float(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i32_f32, _Rint_sat_rte)(float FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f32, _Rint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rint_sat(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i32_f32, _Rint_sat_rtz)(float FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat_rtz(float FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f32, _Rint_sat)(FloatValue);
+  return __spirv_ConvertFToS_Rint_sat(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTP_i32_f32, _Rint_sat_rtp)(float FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f32, _Rint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToS_Rint_sat(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTN_i32_f32, _Rint_sat_rtn)(float FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f32, _Rint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToS_Rint_sat(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTE_i64_f32, _Rlong_rte)(float FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i64_f32, _Rlong)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rlong(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i64_f32, _Rlong_rtz)(float FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_rtz(float FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _i64_f32, _Rlong)(FloatValue);
+  return __spirv_ConvertFToS_Rlong(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTP_i64_f32, _Rlong_rtp)(float FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _i64_f32, _Rlong)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToS_Rlong(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i64_f32, _Rlong_rtn)(float FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _i64_f32, _Rlong)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToS_Rlong(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f32, _Rlong_sat)(float FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat(float FloatValue)
 {
   return __clamp_sat_long_float(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i64_f32, _Rlong_sat_rte)(float FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat_rte(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f32, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f32, _Rlong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rlong_sat(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i64_f32, _Rlong_sat_rtz)(float FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat_rtz(float FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f32, _Rlong_sat)(FloatValue);
+  return __spirv_ConvertFToS_Rlong_sat(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTP_i64_f32, _Rlong_sat_rtp)(float FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat_rtp(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f32, _Rlong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil( FloatValue );
+  return __spirv_ConvertFToS_Rlong_sat(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTN_i64_f32, _Rlong_sat_rtn)(float FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat_rtn(float FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f32, )( FloatValue );
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f32, _Rlong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor( FloatValue );
+  return __spirv_ConvertFToS_Rlong_sat(FloatValue);
 }
 
 #if defined(cl_khr_fp64)
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTE_i8_f64, _Rchar_rte)(double FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i8_f64, _Rchar)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rchar(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i8_f64, _Rchar_rtz)(double FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _i8_f64, _Rchar)(FloatValue);
+  return __spirv_ConvertFToS_Rchar(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTP_i8_f64, _Rchar_rtp)(double FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i8_f64, _Rchar)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rchar(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i8_f64, _Rchar_rtn)(double FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i8_f64, _Rchar)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rchar(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i8_f64, _Rchar_sat_rte)(double FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f64, _Rchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rchar_sat(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i8_f64, _Rchar_sat_rtz)(double FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f64, _Rchar_sat)(FloatValue);
+  return __spirv_ConvertFToS_Rchar_sat(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTP_i8_f64, _Rchar_sat_rtp)(double FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f64, _Rchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rchar_sat(FloatValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTN_i8_f64, _Rchar_sat_rtn)(double FloatValue)
+char  __attribute__((overloadable)) __spirv_ConvertFToS_Rchar_sat_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f64, _Rchar_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rchar_sat(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTE_i16_f64, _Rshort_rte)(double FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i16_f64, _Rshort)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rshort(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i16_f64, _Rshort_rtz)(double FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _i16_f64, _Rshort)(FloatValue);
+  return __spirv_ConvertFToS_Rshort(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTP_i16_f64, _Rshort_rtp)(double FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i16_f64, _Rshort)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rshort(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i16_f64, _Rshort_rtn)(double FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i16_f64, _Rshort)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rshort(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i16_f64, _Rshort_sat_rte)(double FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f64, _Rshort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rshort_sat(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i16_f64, _Rshort_sat_rtz)(double FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f64, _Rshort_sat)(FloatValue);
+  return __spirv_ConvertFToS_Rshort_sat(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTP_i16_f64, _Rshort_sat_rtp)(double FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f64, _Rshort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rshort_sat(FloatValue);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTN_i16_f64, _Rshort_sat_rtn)(double FloatValue)
+short __attribute__((overloadable)) __spirv_ConvertFToS_Rshort_sat_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f64, _Rshort_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rshort_sat(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTE_i32_f64, _Rint_rte)(double FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i32_f64, _Rint)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rint(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i32_f64, _Rint_rtz)(double FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _i32_f64, _Rint)(FloatValue);
+  return __spirv_ConvertFToS_Rint(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTP_i32_f64, _Rint_rtp)(double FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i32_f64, _Rint)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rint(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i32_f64, _Rint_rtn)(double FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i32_f64, _Rint)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rint(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i32_f64, _Rint_sat_rte)(double FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f64, _Rint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rint_sat(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i32_f64, _Rint_sat_rtz)(double FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f64, _Rint_sat)(FloatValue);
+  return __spirv_ConvertFToS_Rint_sat(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTP_i32_f64, _Rint_sat_rtp)(double FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f64, _Rint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rint_sat(FloatValue);
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTN_i32_f64, _Rint_sat_rtn)(double FloatValue)
+int   __attribute__((overloadable)) __spirv_ConvertFToS_Rint_sat_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f64, _Rint_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rint_sat(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTE_i64_f64, _Rlong_rte)(double FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i64_f64, _Rlong)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rlong(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTZ_i64_f64, _Rlong_rtz)(double FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _i64_f64, _Rlong)(FloatValue);
+  return __spirv_ConvertFToS_Rlong(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTP_i64_f64, _Rlong_rtp)(double FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i64_f64, _Rlong)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rlong(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i64_f64, _Rlong_rtn)(double FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _i64_f64, _Rlong)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rlong(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f64, _Rlong_sat)(double FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat(double FloatValue)
 {
   return __clamp_sat_long_double(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i64_f64, _Rlong_sat_rte)(double FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat_rte(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(rint, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f64, _Rlong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_rint(FloatValue);
+  return __spirv_ConvertFToS_Rlong_sat(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i64_f64, _Rlong_sat_rtz)(double FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat_rtz(double FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f64, _Rlong_sat)(FloatValue);
+  return __spirv_ConvertFToS_Rlong_sat(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTP_i64_f64, _Rlong_sat_rtp)(double FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat_rtp(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(ceil, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f64, _Rlong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_ceil(FloatValue);
+  return __spirv_ConvertFToS_Rlong_sat(FloatValue);
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTN_i64_f64, _Rlong_sat_rtn)(double FloatValue)
+long  __attribute__((overloadable)) __spirv_ConvertFToS_Rlong_sat_rtn(double FloatValue)
 {
-  FloatValue = SPIRV_OCL_BUILTIN(floor, _f64, )(FloatValue);
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f64, _Rlong_sat)(FloatValue);
+  FloatValue = __spirv_ocl_floor(FloatValue);
+  return __spirv_ConvertFToS_Rlong_sat(FloatValue);
 }
 
 #endif  // defined(cl_khr_fp64)
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f16_i8, _Rhalf_rte)(char SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rte(char SignedValue)
 {
   return SignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f16_i8, _Rhalf_rtz)(char SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rtz(char SignedValue)
 {
   return SignedValue;    // A half can represent a char exactly.
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f16_i8, _Rhalf_rtp)(char SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rtp(char SignedValue)
 {
   return SignedValue;    // A half can represent a char exactly.
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f16_i8, _Rhalf_rtn)(char SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rtn(char SignedValue)
 {
   return SignedValue;    // A half can represent a char exactly.
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f32_i8, _Rfloat_rte)(char SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rte(char SignedValue)
 {
-  return SPIRV_BUILTIN(ConvertSToF, _f32_i8, _Rfloat)(SignedValue);
+  return __spirv_ConvertSToF_Rfloat(SignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f32_i8, _Rfloat_rtz)(char SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rtz(char SignedValue)
 {
-  return SPIRV_BUILTIN(ConvertSToF, _f32_i8, _Rfloat)(SignedValue);
+  return __spirv_ConvertSToF_Rfloat(SignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f32_i8, _Rfloat_rtp)(char SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rtp(char SignedValue)
 {
-  return SPIRV_BUILTIN(ConvertSToF, _f32_i8, _Rfloat)(SignedValue);
+  return __spirv_ConvertSToF_Rfloat(SignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f32_i8, _Rfloat_rtn)(char SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rtn(char SignedValue)
 {
-  return SPIRV_BUILTIN(ConvertSToF, _f32_i8, _Rfloat)(SignedValue);
+  return __spirv_ConvertSToF_Rfloat(SignedValue);
 }
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f64_i8, _Rdouble_rte)(char SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rte(char SignedValue)
 {
   return SignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f64_i8, _Rdouble_rtz)(char SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rtz(char SignedValue)
 {
   return SignedValue;    // A double can represent a char exactly.
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f64_i8, _Rdouble_rtp)(char SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rtp(char SignedValue)
 {
   return SignedValue;    // A double can represent a char exactly.
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f64_i8, _Rdouble_rtn)(char SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rtn(char SignedValue)
 {
   return SignedValue;    // A double can represent a char exactly.
 }
 
 #endif //defined(cl_khr_fp64)
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f16_i16, _Rhalf_rte)(short SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rte(short SignedValue)
 {
   return SignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f16_i16, _Rhalf_rtz)(short SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rtz(short SignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertSToF, _f32_i16, _Rfloat)(SignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTZ_f16_f32, _Rhalf_rtz)(f);
+  float f = __spirv_ConvertSToF_Rfloat(SignedValue);
+  return __spirv_FConvert_Rhalf_rtz(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f16_i16, _Rhalf_rtp)(short SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rtp(short SignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertSToF, _f32_i16, _Rfloat)(SignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTP_f16_f32, _Rhalf_rtp)(f);
+  float f = __spirv_ConvertSToF_Rfloat(SignedValue);
+  return __spirv_FConvert_Rhalf_rtp(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f16_i16, _Rhalf_rtn)(short SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rtn(short SignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertSToF, _f32_i16, _Rfloat)(SignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTN_f16_f32, _Rhalf_rtn)(f);
+  float f = __spirv_ConvertSToF_Rfloat(SignedValue);
+  return __spirv_FConvert_Rhalf_rtn(f);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f32_i16, _Rfloat_rte)(short SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rte(short SignedValue)
 {
-  return SPIRV_BUILTIN(ConvertSToF, _f32_i16, _Rfloat)(SignedValue);
+  return __spirv_ConvertSToF_Rfloat(SignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f32_i16, _Rfloat_rtz)(short SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rtz(short SignedValue)
 {
-  return SPIRV_BUILTIN(ConvertSToF, _f32_i16, _Rfloat)(SignedValue);
+  return __spirv_ConvertSToF_Rfloat(SignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f32_i16, _Rfloat_rtp)(short SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rtp(short SignedValue)
 {
-  return SPIRV_BUILTIN(ConvertSToF, _f32_i16, _Rfloat)(SignedValue);
+  return __spirv_ConvertSToF_Rfloat(SignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f32_i16, _Rfloat_rtn)(short SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rtn(short SignedValue)
 {
-  return SPIRV_BUILTIN(ConvertSToF, _f32_i16, _Rfloat)(SignedValue);
+  return __spirv_ConvertSToF_Rfloat(SignedValue);
 }
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f64_i16, _Rdouble_rte)(short SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rte(short SignedValue)
 {
   return SignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f64_i16, _Rdouble_rtz)(short SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rtz(short SignedValue)
 {
   return SignedValue;    // A double can represent a short exactly.
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f64_i16, _Rdouble_rtp)(short SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rtp(short SignedValue)
 {
   return SignedValue;    // A double can represent a short exactly.
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f64_i16, _Rdouble_rtn)(short SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rtn(short SignedValue)
 {
   return SignedValue;    // A double can represent a short exactly.
 }
 
 #endif  // defined(cl_khr_fp64)
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f16_i32, _Rhalf_rte)(int SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rte(int SignedValue)
 {
   return SignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f16_i32, _Rhalf_rtz)(int SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rtz(int SignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertSToF, _f32_i32, _Rfloat)(SignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTZ_f16_f32, _Rhalf_rtz)(f);
+  float f = __spirv_ConvertSToF_Rfloat(SignedValue);
+  return __spirv_FConvert_Rhalf_rtz(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f16_i32, _Rhalf_rtp)(int SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rtp(int SignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertSToF, _f32_i32, _Rfloat)(SignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTP_f16_f32, _Rhalf_rtp)(f);
+  float f = __spirv_ConvertSToF_Rfloat(SignedValue);
+  return __spirv_FConvert_Rhalf_rtp(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f16_i32, _Rhalf_rtn)(int SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rtn(int SignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertSToF, _f32_i32, _Rfloat)(SignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTN_f16_f32, _Rhalf_rtn)(f);
+  float f = __spirv_ConvertSToF_Rfloat(SignedValue);
+  return __spirv_FConvert_Rhalf_rtn(f);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f32_i32, _Rfloat_rte)(int SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rte(int SignedValue)
 {
-  return SPIRV_BUILTIN(ConvertSToF, _f32_i32, _Rfloat)(SignedValue);
+  return __spirv_ConvertSToF_Rfloat(SignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f32_i32, _Rfloat_rtz)(int SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rtz(int SignedValue)
 {
   return __builtin_IB_itof_rtz(SignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f32_i32, _Rfloat_rtp)(int SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rtp(int SignedValue)
 {
   return __builtin_IB_itof_rtp(SignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f32_i32, _Rfloat_rtn)(int SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rtn(int SignedValue)
 {
   return __builtin_IB_itof_rtn(SignedValue);
 }
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f64_i32, _Rdouble_rte)(int SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rte(int SignedValue)
 {
   return SignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f64_i32, _Rdouble_rtz)(int SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rtz(int SignedValue)
 {
   return SignedValue;    // A double can represent an int exactly.
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f64_i32, _Rdouble_rtp)(int SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rtp(int SignedValue)
 {
   return SignedValue;    // A double can represent an int exactly.
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f64_i32, _Rdouble_rtn)(int SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rtn(int SignedValue)
 {
   return SignedValue;    // A double can represent an int exactly.
 }
 
 #endif  // defined(cl_khr_fp64)
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f16_i64, _Rhalf_rte)(long SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rte(long SignedValue)
 {
   return SignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f16_i64, _Rhalf_rtz)(long SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rtz(long SignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertSToF, _f32_i64, _Rfloat)(SignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTZ_f16_f32, _Rhalf_rtz)(f);
+  float f = __spirv_ConvertSToF_Rfloat(SignedValue);
+  return __spirv_FConvert_Rhalf_rtz(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f16_i64, _Rhalf_rtp)(long SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rtp(long SignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertSToF, _f32_i64, _Rfloat)(SignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTP_f16_f32, _Rhalf_rtp)(f);
+  float f = __spirv_ConvertSToF_Rfloat(SignedValue);
+  return __spirv_FConvert_Rhalf_rtp(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f16_i64, _Rhalf_rtn)(long SignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertSToF_Rhalf_rtn(long SignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertSToF, _f32_i64, _Rfloat)(SignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTN_f16_f32, _Rhalf_rtn)(f);
+  float f = __spirv_ConvertSToF_Rfloat(SignedValue);
+  return __spirv_FConvert_Rhalf_rtn(f);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f32_i64, _Rfloat_rte)(long SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rte(long SignedValue)
 {
-  return SPIRV_BUILTIN(ConvertSToF, _f32_i64, _Rfloat)(SignedValue);
+  return __spirv_ConvertSToF_Rfloat(SignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f32_i64, _Rfloat_rtz)(long SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rtz(long SignedValue)
 {
   return convertSItoFP32(SignedValue, 3);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f32_i64, _Rfloat_rtp)(long SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rtp(long SignedValue)
 {
   return convertSItoFP32(SignedValue, 1);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f32_i64, _Rfloat_rtn)(long SignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertSToF_Rfloat_rtn(long SignedValue)
 {
   return convertSItoFP32(SignedValue, 2);
 }
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f64_i64, _Rdouble_rte)(long SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rte(long SignedValue)
 {
   return SignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f64_i64, _Rdouble_rtz)(long SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rtz(long SignedValue)
 {
   if(BIF_FLAG_CTRL_GET(UseNative64BitIntBuiltin))
   {
@@ -2486,7 +2485,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f64_i64, _Rdouble_rtz)
   }
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f64_i64, _Rdouble_rtp)(long SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rtp(long SignedValue)
 {
   if(BIF_FLAG_CTRL_GET(UseNative64BitIntBuiltin))
   {
@@ -2506,7 +2505,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f64_i64, _Rdouble_rtp)
   }
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f64_i64, _Rdouble_rtn)(long SignedValue)
+double __attribute__((overloadable)) __spirv_ConvertSToF_Rdouble_rtn(long SignedValue)
 {
   if(BIF_FLAG_CTRL_GET(UseNative64BitIntBuiltin))
   {
@@ -2528,255 +2527,255 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f64_i64, _Rdouble_rtn)
 
 #endif  // defined(cl_khr_fp64)
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f16_i8, _Rhalf_rte)(uchar UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rte(uchar UnsignedValue)
 {
   return UnsignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f16_i8, _Rhalf_rtz)(uchar UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rtz(uchar UnsignedValue)
 {
   return UnsignedValue;    // A half can represent a uchar exactly.
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f16_i8, _Rhalf_rtp)(uchar UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rtp(uchar UnsignedValue)
 {
   return UnsignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f16_i8, _Rhalf_rtn)(uchar UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rtn(uchar UnsignedValue)
 {
   return UnsignedValue;    // A half can represent a uchar exactly.
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f32_i8, _Rfloat_rte)(uchar UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rte(uchar UnsignedValue)
 {
-  return SPIRV_BUILTIN(ConvertUToF, _f32_i8, _Rfloat)(UnsignedValue);
+  return __spirv_ConvertUToF_Rfloat(UnsignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f32_i8, _Rfloat_rtz)(uchar UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rtz(uchar UnsignedValue)
 {
-  return SPIRV_BUILTIN(ConvertUToF, _f32_i8, _Rfloat)(UnsignedValue);
+  return __spirv_ConvertUToF_Rfloat(UnsignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f32_i8, _Rfloat_rtp)(uchar UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rtp(uchar UnsignedValue)
 {
-  return SPIRV_BUILTIN(ConvertUToF, _f32_i8, _Rfloat)(UnsignedValue);
+  return __spirv_ConvertUToF_Rfloat(UnsignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f32_i8, _Rfloat_rtn)(uchar UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rtn(uchar UnsignedValue)
 {
-  return SPIRV_BUILTIN(ConvertUToF, _f32_i8, _Rfloat)(UnsignedValue);
+  return __spirv_ConvertUToF_Rfloat(UnsignedValue);
 }
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f64_i8, _Rdouble_rte)(uchar UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rte(uchar UnsignedValue)
 {
   return UnsignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f64_i8, _Rdouble_rtz)(uchar UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rtz(uchar UnsignedValue)
 {
   return UnsignedValue;    // A double can represent a uchar exactly.
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f64_i8, _Rdouble_rtp)(uchar UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rtp(uchar UnsignedValue)
 {
   return UnsignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f64_i8, _Rdouble_rtn)(uchar UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rtn(uchar UnsignedValue)
 {
   return UnsignedValue;    // A double can represent a uchar exactly.
 }
 
 #endif  // defined(cl_khr_fp64)
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f16_i16, _Rhalf_rte)(ushort UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rte(ushort UnsignedValue)
 {
   return UnsignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f16_i16, _Rhalf_rtz)(ushort UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rtz(ushort UnsignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertUToF, _f32_i16, _Rfloat)(UnsignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTZ_f16_f32, _Rhalf_rtz)(f);
+  float f = __spirv_ConvertUToF_Rfloat(UnsignedValue);
+  return __spirv_FConvert_Rhalf_rtz(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f16_i16, _Rhalf_rtp)(ushort UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rtp(ushort UnsignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertUToF, _f32_i16, _Rfloat)(UnsignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTP_f16_f32, _Rhalf_rtp)(f);
+  float f = __spirv_ConvertUToF_Rfloat(UnsignedValue);
+  return __spirv_FConvert_Rhalf_rtp(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f16_i16, _Rhalf_rtn)(ushort UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rtn(ushort UnsignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertUToF, _f32_i16, _Rfloat)(UnsignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTN_f16_f32, _Rhalf_rtn)(f);
+  float f = __spirv_ConvertUToF_Rfloat(UnsignedValue);
+  return __spirv_FConvert_Rhalf_rtn(f);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f32_i16, _Rfloat_rte)(ushort UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rte(ushort UnsignedValue)
 {
-  return SPIRV_BUILTIN(ConvertUToF, _f32_i16, _Rfloat)(UnsignedValue);
+  return __spirv_ConvertUToF_Rfloat(UnsignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f32_i16, _Rfloat_rtz)(ushort UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rtz(ushort UnsignedValue)
 {
-  return SPIRV_BUILTIN(ConvertUToF, _f32_i16, _Rfloat)(UnsignedValue);
+  return __spirv_ConvertUToF_Rfloat(UnsignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f32_i16, _Rfloat_rtp)(ushort UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rtp(ushort UnsignedValue)
 {
-  return SPIRV_BUILTIN(ConvertUToF, _f32_i16, _Rfloat)(UnsignedValue);
+  return __spirv_ConvertUToF_Rfloat(UnsignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f32_i16, _Rfloat_rtn)(ushort UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rtn(ushort UnsignedValue)
 {
-  return SPIRV_BUILTIN(ConvertUToF, _f32_i16, _Rfloat)(UnsignedValue);
+  return __spirv_ConvertUToF_Rfloat(UnsignedValue);
 }
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f64_i16, _Rdouble_rte)(ushort UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rte(ushort UnsignedValue)
 {
   return UnsignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f64_i16, _Rdouble_rtz)(ushort UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rtz(ushort UnsignedValue)
 {
   return UnsignedValue;    // A double can represent a ushort exactly.
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f64_i16, _Rdouble_rtp)(ushort UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rtp(ushort UnsignedValue)
 {
   return UnsignedValue;    // A double can represent a ushort exactly.
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f64_i16, _Rdouble_rtn)(ushort UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rtn(ushort UnsignedValue)
 {
   return UnsignedValue;    // A double can represent a ushort exactly.
 }
 
 #endif  // defined(cl_khr_fp64)
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f16_i32, _Rhalf_rte)(uint UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rte(uint UnsignedValue)
 {
   return UnsignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f16_i32, _Rhalf_rtz)(uint UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rtz(uint UnsignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertUToF, _f32_i32, _Rfloat)(UnsignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTZ_f16_f32, _Rhalf_rtz)(f);
+  float f = __spirv_ConvertUToF_Rfloat(UnsignedValue);
+  return __spirv_FConvert_Rhalf_rtz(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f16_i32, _Rhalf_rtp)(uint UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rtp(uint UnsignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertUToF, _f32_i32, _Rfloat)(UnsignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTP_f16_f32, _Rhalf_rtp)(f);
+  float f = __spirv_ConvertUToF_Rfloat(UnsignedValue);
+  return __spirv_FConvert_Rhalf_rtp(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f16_i32, _Rhalf_rtn)(uint UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rtn(uint UnsignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertUToF, _f32_i32, _Rfloat)(UnsignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTN_f16_f32, _Rhalf_rtn)(f);
+  float f = __spirv_ConvertUToF_Rfloat(UnsignedValue);
+  return __spirv_FConvert_Rhalf_rtn(f);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f32_i32, _Rfloat_rte)(uint UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rte(uint UnsignedValue)
 {
-  return SPIRV_BUILTIN(ConvertUToF, _f32_i32, _Rfloat)(UnsignedValue);
+  return __spirv_ConvertUToF_Rfloat(UnsignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f32_i32, _Rfloat_rtz)(uint UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rtz(uint UnsignedValue)
 {
   return __builtin_IB_uitof_rtz(UnsignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f32_i32, _Rfloat_rtp)(uint UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rtp(uint UnsignedValue)
 {
   return __builtin_IB_uitof_rtp(UnsignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f32_i32, _Rfloat_rtn)(uint UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rtn(uint UnsignedValue)
 {
   return __builtin_IB_uitof_rtn(UnsignedValue);
 }
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f64_i32, _Rdouble_rte)(uint UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rte(uint UnsignedValue)
 {
   return UnsignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f64_i32, _Rdouble_rtz)(uint UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rtz(uint UnsignedValue)
 {
   return UnsignedValue;    // A double can represent a uint exactly.
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f64_i32, _Rdouble_rtp)(uint UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rtp(uint UnsignedValue)
 {
   return UnsignedValue;    // A double can represent a uint exactly.
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f64_i32, _Rdouble_rtn)(uint UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rtn(uint UnsignedValue)
 {
   return UnsignedValue;    // A double can represent a uint exactly.
 }
 
 #endif  // defined(cl_khr_fp64)
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f16_i64, _Rhalf_rte)(ulong UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rte(ulong UnsignedValue)
 {
   return UnsignedValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f16_i64, _Rhalf_rtz)(ulong UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rtz(ulong UnsignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertUToF, _f32_i64, _Rfloat)(UnsignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTZ_f16_f32, _Rhalf_rtz)(f);
+  float f = __spirv_ConvertUToF_Rfloat(UnsignedValue);
+  return __spirv_FConvert_Rhalf_rtz(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f16_i64, _Rhalf_rtp)(ulong UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rtp(ulong UnsignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertUToF, _f32_i64, _Rfloat)(UnsignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTP_f16_f32, _Rhalf_rtp)(f);
+  float f = __spirv_ConvertUToF_Rfloat(UnsignedValue);
+  return __spirv_FConvert_Rhalf_rtp(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f16_i64, _Rhalf_rtn)(ulong UnsignedValue)
+half   __attribute__((overloadable)) __spirv_ConvertUToF_Rhalf_rtn(ulong UnsignedValue)
 {
-  float f = SPIRV_BUILTIN(ConvertUToF, _f32_i64, _Rfloat)(UnsignedValue);
-  return SPIRV_BUILTIN(FConvert, _RTN_f16_f32, _Rhalf_rtn)(f);
+  float f = __spirv_ConvertUToF_Rfloat(UnsignedValue);
+  return __spirv_FConvert_Rhalf_rtn(f);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f32_i64, _Rfloat_rte)(ulong UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rte(ulong UnsignedValue)
 {
-  return SPIRV_BUILTIN(ConvertUToF, _f32_i64, _Rfloat)(UnsignedValue);
+  return __spirv_ConvertUToF_Rfloat(UnsignedValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f32_i64, _Rfloat_rtz)(ulong UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rtz(ulong UnsignedValue)
 {
   return convertUItoFP32(UnsignedValue, 3, false);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f32_i64, _Rfloat_rtp)(ulong UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rtp(ulong UnsignedValue)
 {
   return convertUItoFP32(UnsignedValue, 1, false);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f32_i64, _Rfloat_rtn)(ulong UnsignedValue)
+float  __attribute__((overloadable)) __spirv_ConvertUToF_Rfloat_rtn(ulong UnsignedValue)
 {
   return convertUItoFP32(UnsignedValue, 2, false);
 }
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f64_i64, _Rdouble_rte)(ulong UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rte(ulong UnsignedValue)
 {
   return UnsignedValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f64_i64, _Rdouble_rtz)(ulong UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rtz(ulong UnsignedValue)
 {
   if(BIF_FLAG_CTRL_GET(UseNative64BitIntBuiltin))
   {
@@ -2796,7 +2795,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f64_i64, _Rdouble_rtz)
   }
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f64_i64, _Rdouble_rtp)(ulong UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rtp(ulong UnsignedValue)
 {
   if(BIF_FLAG_CTRL_GET(UseNative64BitIntBuiltin))
   {
@@ -2816,7 +2815,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f64_i64, _Rdouble_rtp)
   }
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f64_i64, _Rdouble_rtn)(ulong UnsignedValue)
+double __attribute__((overloadable)) __spirv_ConvertUToF_Rdouble_rtn(ulong UnsignedValue)
 {
   if(BIF_FLAG_CTRL_GET(UseNative64BitIntBuiltin))
   {
@@ -2838,27 +2837,27 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f64_i64, _Rdouble_rtn)
 
 #endif  // defined(cl_khr_fp64)
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i8_i8, _Ruchar_sat)(uchar UnsignedValue)
+uchar  __attribute__((overloadable)) __spirv_UConvert_Ruchar_sat(uchar UnsignedValue)
 {
   return UnsignedValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i16_i8, _Rushort_sat)(uchar UnsignedValue)
+ushort __attribute__((overloadable)) __spirv_UConvert_Rushort_sat(uchar UnsignedValue)
 {
   return UnsignedValue;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i32_i8, _Ruint_sat)(uchar UnsignedValue)
+uint   __attribute__((overloadable)) __spirv_UConvert_Ruint_sat(uchar UnsignedValue)
 {
   return (uint)UnsignedValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i64_i8, _Rulong_sat)(uchar UnsignedValue)
+ulong  __attribute__((overloadable)) __spirv_UConvert_Rulong_sat(uchar UnsignedValue)
 {
   return (ulong)UnsignedValue;
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i8_i16, _Ruchar_sat)(ushort UnsignedValue)
+uchar  __attribute__((overloadable)) __spirv_UConvert_Ruchar_sat(ushort UnsignedValue)
 {
       //return __builtin_IB_ustouc_sat((ushort)UnsignedValue);
       if (UnsignedValue > (uchar)0xff)
@@ -2868,22 +2867,22 @@ uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i8_i16, _Ruchar_sat)(usho
       return (uchar)UnsignedValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i16_i16, _Rushort_sat)(ushort UnsignedValue)
+ushort __attribute__((overloadable)) __spirv_UConvert_Rushort_sat(ushort UnsignedValue)
 {
   return UnsignedValue;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i32_i16, _Ruint_sat)(ushort UnsignedValue)
+uint   __attribute__((overloadable)) __spirv_UConvert_Ruint_sat(ushort UnsignedValue)
 {
   return (uint)UnsignedValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i64_i16, _Rulong_sat)(ushort UnsignedValue)
+ulong  __attribute__((overloadable)) __spirv_UConvert_Rulong_sat(ushort UnsignedValue)
 {
   return (ulong)UnsignedValue;
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i8_i32, _Ruchar_sat)(uint UnsignedValue)
+uchar  __attribute__((overloadable)) __spirv_UConvert_Ruchar_sat(uint UnsignedValue)
 {
       //return __builtin_IB_uitouc_sat((uint)UnsignedValue);
       if (UnsignedValue > UCHAR_MAX)
@@ -2893,7 +2892,7 @@ uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i8_i32, _Ruchar_sat)(uint
       return (uchar)UnsignedValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i16_i32, _Rushort_sat)(uint UnsignedValue)
+ushort __attribute__((overloadable)) __spirv_UConvert_Rushort_sat(uint UnsignedValue)
 {
       if (UnsignedValue > (ushort)0xffff) {
         return (ushort)0xffff;
@@ -2901,103 +2900,103 @@ ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i16_i32, _Rushort_sat)(ui
       return (ushort)UnsignedValue;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i32_i32, _Ruint_sat)(uint UnsignedValue)
+uint   __attribute__((overloadable)) __spirv_UConvert_Ruint_sat(uint UnsignedValue)
 {
   return UnsignedValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i64_i32, _Rulong_sat)(uint UnsignedValue)
+ulong  __attribute__((overloadable)) __spirv_UConvert_Rulong_sat(uint UnsignedValue)
 {
   return (ulong)UnsignedValue;
 }
 
-uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i8_i64, _Ruchar_sat)(ulong UnsignedValue)
+uchar  __attribute__((overloadable)) __spirv_UConvert_Ruchar_sat(ulong UnsignedValue)
 {
   return (UnsignedValue >= UCHAR_MAX) ? UCHAR_MAX : (uchar)UnsignedValue;
 }
 
-ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i16_i64, _Rushort_sat)(ulong UnsignedValue)
+ushort __attribute__((overloadable)) __spirv_UConvert_Rushort_sat(ulong UnsignedValue)
 {
   return (UnsignedValue >= USHRT_MAX) ? USHRT_MAX : (ushort)UnsignedValue;
 }
 
-uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i32_i64, _Ruint_sat)(ulong UnsignedValue)
+uint   __attribute__((overloadable)) __spirv_UConvert_Ruint_sat(ulong UnsignedValue)
 {
   return (UnsignedValue >= UINT_MAX) ? UINT_MAX : (uint)UnsignedValue;
 }
 
-ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(UConvert, _Sat_i64_i64, _Rulong_sat)(ulong UnsignedValue)
+ulong  __attribute__((overloadable)) __spirv_UConvert_Rulong_sat(ulong UnsignedValue)
 {
   return UnsignedValue;
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i8_i8, _Rchar_sat)(char SignedValue)
+char  __attribute__((overloadable)) __spirv_SConvert_Rchar_sat(char SignedValue)
 {
   return SignedValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i16_i8, _Rshort_sat)(char SignedValue)
+short __attribute__((overloadable)) __spirv_SConvert_Rshort_sat(char SignedValue)
 {
   return (short)SignedValue;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i32_i8, _Rint_sat)(char SignedValue)
+int   __attribute__((overloadable)) __spirv_SConvert_Rint_sat(char SignedValue)
 {
   return (int)SignedValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i64_i8, _Rlong_sat)(char SignedValue)
+long  __attribute__((overloadable)) __spirv_SConvert_Rlong_sat(char SignedValue)
 {
-  return SPIRV_BUILTIN(SConvert, _i64_i8, _Rlong)(SignedValue);
+  return __spirv_SConvert_Rlong(SignedValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i8_i16, _Rchar_sat)(short SignedValue)
+char  __attribute__((overloadable)) __spirv_SConvert_Rchar_sat(short SignedValue)
 {
       //return __builtin_IB_stoc_sat((short)SignedValue);
-      short res = SPIRV_OCL_BUILTIN(s_clamp, _i16_i16_i16, )(SignedValue, (short)CHAR_MIN, (short)CHAR_MAX);
+      short res = __spirv_ocl_s_clamp(SignedValue, (short)CHAR_MIN, (short)CHAR_MAX);
       return (char)res;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i16_i16, _Rshort_sat)(short SignedValue)
+short __attribute__((overloadable)) __spirv_SConvert_Rshort_sat(short SignedValue)
 {
   return SignedValue;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i32_i16, _Rint_sat)(short SignedValue)
+int   __attribute__((overloadable)) __spirv_SConvert_Rint_sat(short SignedValue)
 {
   return (int)SignedValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i64_i16, _Rlong_sat)(short SignedValue)
+long  __attribute__((overloadable)) __spirv_SConvert_Rlong_sat(short SignedValue)
 {
-  return SPIRV_BUILTIN(SConvert, _i64_i16, _Rlong)(SignedValue);
+  return __spirv_SConvert_Rlong(SignedValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i8_i32, _Rchar_sat)(int SignedValue)
+char  __attribute__((overloadable)) __spirv_SConvert_Rchar_sat(int SignedValue)
 {
       //return __builtin_IB_itoc_sat((int)SignedValue);
-      int res = SPIRV_OCL_BUILTIN(s_clamp, _i32_i32_i32, )(SignedValue, (int)CHAR_MIN, (int)CHAR_MAX);
+      int res = __spirv_ocl_s_clamp(SignedValue, (int)CHAR_MIN, (int)CHAR_MAX);
       return (char)res;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i16_i32, _Rshort_sat)(int SignedValue)
+short __attribute__((overloadable)) __spirv_SConvert_Rshort_sat(int SignedValue)
 {
       //return __builtin_IB_itos_sat((int)SignedValue);
-      int res = SPIRV_OCL_BUILTIN(s_clamp, _i32_i32_i32, )(SignedValue, (int)SHRT_MIN, (int)SHRT_MAX);
+      int res = __spirv_ocl_s_clamp(SignedValue, (int)SHRT_MIN, (int)SHRT_MAX);
       return (short)res;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i32_i32, _Rint_sat)(int SignedValue)
+int   __attribute__((overloadable)) __spirv_SConvert_Rint_sat(int SignedValue)
 {
   return SignedValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i64_i32, _Rlong_sat)(int SignedValue)
+long  __attribute__((overloadable)) __spirv_SConvert_Rlong_sat(int SignedValue)
 {
-  return SPIRV_BUILTIN(SConvert, _i64_i32, _Rlong)(SignedValue);
+  return __spirv_SConvert_Rlong(SignedValue);
 }
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i8_i64, _Rchar_sat)(long SignedValue)
+char  __attribute__((overloadable)) __spirv_SConvert_Rchar_sat(long SignedValue)
 {
     if (SignedValue <= CHAR_MIN)
     {
@@ -3010,7 +3009,7 @@ char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i8_i64, _Rchar_sat)(long S
     return (char)SignedValue;
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i16_i64, _Rshort_sat)(long SignedValue)
+short __attribute__((overloadable)) __spirv_SConvert_Rshort_sat(long SignedValue)
 {
     if (SignedValue <= SHRT_MIN)
     {
@@ -3023,7 +3022,7 @@ short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i16_i64, _Rshort_sat)(long
     return (short)SignedValue;
 }
 
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i32_i64, _Rint_sat)(long SignedValue)
+int   __attribute__((overloadable)) __spirv_SConvert_Rint_sat(long SignedValue)
 {
     if (SignedValue <= INT_MIN)
     {
@@ -3036,166 +3035,166 @@ int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i32_i64, _Rint_sat)(long S
     return (int)SignedValue;
 }
 
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i64_i64, _Rlong_sat)(long SignedValue)
+long  __attribute__((overloadable)) __spirv_SConvert_Rlong_sat(long SignedValue)
 {
-  return SPIRV_BUILTIN(SConvert, _i64_i64, _Rlong)(SignedValue);
+  return __spirv_SConvert_Rlong(SignedValue);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTE_f16_f16, _Rhalf_rte)(half FloatValue)
-{
-  return FloatValue;
-}
-
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTZ_f16_f16, _Rhalf_rtz)(half FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf_rte(half FloatValue)
 {
   return FloatValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTP_f16_f16, _Rhalf_rtp)(half FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf_rtz(half FloatValue)
 {
   return FloatValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTN_f16_f16, _Rhalf_rtn)(half FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf_rtp(half FloatValue)
 {
   return FloatValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTE_f32_f16, _Rfloat_rte)(half FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf_rtn(half FloatValue)
 {
   return FloatValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTZ_f32_f16, _Rfloat_rtz)(half FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat_rte(half FloatValue)
 {
   return FloatValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTP_f32_f16, _Rfloat_rtp)(half FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat_rtz(half FloatValue)
 {
   return FloatValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTN_f32_f16, _Rfloat_rtn)(half FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat_rtp(half FloatValue)
+{
+  return FloatValue;
+}
+
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat_rtn(half FloatValue)
 {
   return FloatValue;
 }
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTE_f64_f16, _Rdouble_rte)(half FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble_rte(half FloatValue)
 {
   return FloatValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTZ_f64_f16, _Rdouble_rtz)(half FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble_rtz(half FloatValue)
 {
   return FloatValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTP_f64_f16, _Rdouble_rtp)(half FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble_rtp(half FloatValue)
 {
   return FloatValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTN_f64_f16, _Rdouble_rtn)(half FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble_rtn(half FloatValue)
 {
   return FloatValue;
 }
 
 #endif // defined(cl_khr_fp64)
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTE_f16_f32, _Rhalf_rte)(float FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf_rte(float FloatValue)
 {
   return FloatValue;
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTZ_f16_f32, _Rhalf_rtz)(float FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf_rtz(float FloatValue)
 {
   return __builtin_IB_ftoh_rtz(FloatValue);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTP_f16_f32, _Rhalf_rtp)(float FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf_rtp(float FloatValue)
 {
   return __builtin_IB_ftoh_rtp(FloatValue);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTN_f16_f32, _Rhalf_rtn)(float FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf_rtn(float FloatValue)
 {
   return __builtin_IB_ftoh_rtn(FloatValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTE_f32_f32, _Rfloat_rte)(float FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat_rte(float FloatValue)
 {
-  return SPIRV_BUILTIN(FConvert, _f32_f32, _Rfloat)(FloatValue);
+  return __spirv_FConvert_Rfloat(FloatValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTZ_f32_f32, _Rfloat_rtz)(float FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat_rtz(float FloatValue)
 {
-  return SPIRV_BUILTIN(FConvert, _f32_f32, _Rfloat)(FloatValue);
+  return __spirv_FConvert_Rfloat(FloatValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTP_f32_f32, _Rfloat_rtp)(float FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat_rtp(float FloatValue)
 {
-  return SPIRV_BUILTIN(FConvert, _f32_f32, _Rfloat)(FloatValue);
+  return __spirv_FConvert_Rfloat(FloatValue);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTN_f32_f32, _Rfloat_rtn)(float FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat_rtn(float FloatValue)
 {
-  return SPIRV_BUILTIN(FConvert, _f32_f32, _Rfloat)(FloatValue);
+  return __spirv_FConvert_Rfloat(FloatValue);
 }
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTE_f64_f32, _Rdouble_rte)(float FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble_rte(float FloatValue)
 {
   return FloatValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTZ_f64_f32, _Rdouble_rtz)(float FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble_rtz(float FloatValue)
 {
   return FloatValue;    // A double can represent a float exactly.
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTP_f64_f32, _Rdouble_rtp)(float FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble_rtp(float FloatValue)
 {
   return FloatValue;    // A double can represent a float exactly.
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTN_f64_f32, _Rdouble_rtn)(float FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble_rtn(float FloatValue)
 {
   return FloatValue;    // A double can represent a float exactly.
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTE_f16_f64, _Rhalf_rte)(double FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf_rte(double FloatValue)
 {
-  return SPIRV_BUILTIN(FConvert, _f16_f64, _Rhalf)(FloatValue);
+  return __spirv_FConvert_Rhalf(FloatValue);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTZ_f16_f64, _Rhalf_rtz)(double FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf_rtz(double FloatValue)
 {
-  float f = SPIRV_BUILTIN(FConvert, _RTZ_f32_f64, _Rfloat_rtz)(FloatValue);
-  return SPIRV_BUILTIN(FConvert, _RTZ_f16_f32, _Rhalf_rtz)(f);
+  float f = __spirv_FConvert_Rfloat_rtz(FloatValue);
+  return __spirv_FConvert_Rhalf_rtz(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTP_f16_f64, _Rhalf_rtp)(double FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf_rtp(double FloatValue)
 {
-  float f = SPIRV_BUILTIN(FConvert, _RTP_f32_f64, _Rfloat_rtp)(FloatValue);
-  return SPIRV_BUILTIN(FConvert, _RTP_f16_f32, _Rhalf_rtp)(f);
+  float f = __spirv_FConvert_Rfloat_rtp(FloatValue);
+  return __spirv_FConvert_Rhalf_rtp(f);
 }
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTN_f16_f64, _Rhalf_rtn)(double FloatValue)
+half   __attribute__((overloadable)) __spirv_FConvert_Rhalf_rtn(double FloatValue)
 {
-  float f = SPIRV_BUILTIN(FConvert, _RTN_f32_f64, _Rfloat_rtn)(FloatValue);
-  return SPIRV_BUILTIN(FConvert, _RTN_f16_f32, _Rhalf_rtn)(f);
+  float f = __spirv_FConvert_Rfloat_rtn(FloatValue);
+  return __spirv_FConvert_Rhalf_rtn(f);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTE_f32_f64, _Rfloat_rte)(double FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat_rte(double FloatValue)
 {
   return FloatValue;
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTZ_f32_f64, _Rfloat_rtz)(double FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat_rtz(double FloatValue)
 {
   double a = FloatValue;
   uint fp = (as_ulong(a) >> (DOUBLE_BITS - FLOAT_BITS)) & FLOAT_SIGN_MASK;  // sign bit
@@ -3243,32 +3242,32 @@ float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTZ_f32_f64, _Rfloat_rtz)(dou
   return as_float(fp);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTP_f32_f64, _Rfloat_rtp)(double FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat_rtp(double FloatValue)
 {
   return __intel_convert_float_rtp_rtn(FloatValue, RT_POS);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTN_f32_f64, _Rfloat_rtn)(double FloatValue)
+float  __attribute__((overloadable)) __spirv_FConvert_Rfloat_rtn(double FloatValue)
 {
   return __intel_convert_float_rtp_rtn(FloatValue, RT_NEG);
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTE_f64_f64, _Rdouble_rte)(double FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble_rte(double FloatValue)
 {
   return FloatValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTZ_f64_f64, _Rdouble_rtz)(double FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble_rtz(double FloatValue)
 {
   return FloatValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTP_f64_f64, _Rdouble_rtp)(double FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble_rtp(double FloatValue)
 {
   return FloatValue;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(FConvert, _RTN_f64_f64, _Rdouble_rtn)(double FloatValue)
+double __attribute__((overloadable)) __spirv_FConvert_Rdouble_rtn(double FloatValue)
 {
   return FloatValue;
 }
@@ -3409,7 +3408,7 @@ float convertUItoFP32(ulong value, char roundingMode, bool s)
     uint Lo = (uint)(value & 0x00000000FFFFFFFF);
     float Res_Rounded;
     float NewValue;
-    uint ShiftAmount = SPIRV_OCL_BUILTIN(clz, _i32, )((int)Hi);
+    uint ShiftAmount = __spirv_ocl_clz((int)Hi);
 
     //For rtn and rtp we need to switch the rounding mode if
     //the sign bit is negative in order get the correct magnitude
@@ -3443,13 +3442,13 @@ float convertUItoFP32(ulong value, char roundingMode, bool s)
                 break;
             case 1: //rtp
                 if (InnerResLo != 0)
-                    Res_Rounded = SPIRV_BUILTIN(ConvertUToF, _RTP_f32_i32, _Rfloat_rtp)(InnerResHi | 1);
+                    Res_Rounded = __spirv_ConvertUToF_Rfloat_rtp(InnerResHi | 1);
                 else
-                    Res_Rounded = SPIRV_BUILTIN(ConvertUToF, _RTP_f32_i32, _Rfloat_rtp)(InnerResHi);
+                    Res_Rounded = __spirv_ConvertUToF_Rfloat_rtp(InnerResHi);
                 break;
             case 2: //rtn
             case 3: //rtz
-                Res_Rounded = SPIRV_BUILTIN(ConvertUToF, _RTZ_f32_i32, _Rfloat_rtz)(InnerResHi);
+                Res_Rounded = __spirv_ConvertUToF_Rfloat_rtz(InnerResHi);
                 break;
             default:
                 Res_Rounded = InnerResLo ? (float)(InnerResHi | 1) : (float)InnerResHi;
@@ -3458,9 +3457,9 @@ float convertUItoFP32(ulong value, char roundingMode, bool s)
     else
     {
         if (roundingMode == 1) //rtp
-            Res_Rounded = SPIRV_BUILTIN(ConvertUToF, _RTP_f32_i32, _Rfloat_rtp)(Lo);
+            Res_Rounded = __spirv_ConvertUToF_Rfloat_rtp(Lo);
         else if (roundingMode > 1)  //rtn and rtz
-            Res_Rounded = SPIRV_BUILTIN(ConvertUToF, _RTZ_f32_i32, _Rfloat_rtz)(Lo);
+            Res_Rounded = __spirv_ConvertUToF_Rfloat_rtz(Lo);
         else
             Res_Rounded = (float)Lo;
     }
@@ -3500,20 +3499,20 @@ float convertSItoFP32(long value, char roundingMode)
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-INLINE private void* SPIRV_OVERLOADABLE SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(generic char *Pointer, int Storage)
+INLINE private void* __attribute__((overloadable)) __spirv_GenericCastToPtrExplicit_ToPrivate(generic char *Pointer, int Storage)
 {
     return __builtin_IB_to_private(Pointer);
 }
 
-INLINE local   void* SPIRV_OVERLOADABLE SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(generic char *Pointer, int Storage)
+INLINE local   void* __attribute__((overloadable)) __spirv_GenericCastToPtrExplicit_ToLocal(generic char *Pointer, int Storage)
 {
     return __builtin_IB_to_local(Pointer);
 }
 
-INLINE global  void* SPIRV_OVERLOADABLE SPIRV_BUILTIN(GenericCastToPtrExplicit, _p1i8_p4i8_i32, _ToGlobal)(generic char *Pointer, int Storage)
+INLINE global  void* __attribute__((overloadable)) __spirv_GenericCastToPtrExplicit_ToGlobal(generic char *Pointer, int Storage)
 {
-    if((SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(Pointer, Storage) == NULL) &
-       (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(Pointer, Storage) == NULL))
+    if((__spirv_GenericCastToPtrExplicit_ToLocal(Pointer, Storage) == NULL) &
+       (__spirv_GenericCastToPtrExplicit_ToPrivate(Pointer, Storage) == NULL))
     {
         return (global void*)(Pointer);
     }
@@ -3521,9 +3520,9 @@ INLINE global  void* SPIRV_OVERLOADABLE SPIRV_BUILTIN(GenericCastToPtrExplicit, 
     return NULL;
 }
 
-INLINE uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GenericPtrMemSemantics, _p4i8, )(generic char *Pointer)
+INLINE uint __attribute__((overloadable)) __spirv_GenericPtrMemSemantics(generic char *Pointer)
 {
-    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(Pointer, StorageWorkgroup) != NULL)
+    if (__spirv_GenericCastToPtrExplicit_ToLocal(Pointer, StorageWorkgroup) != NULL)
     {
         return (uint)WorkgroupMemory;
     }

@@ -28,11 +28,11 @@ SPDX-License-Identifier: MIT
   while(!done) { \
        if(BIF_FLAG_CTRL_GET(HasThreadPauseSupport)) \
             __builtin_IB_eu_thread_pause(32); \
-       if(SPIRV_BUILTIN(AtomicCompareExchange, _p3i32_i32_i32_i32_i32_i32, )(__builtin_IB_get_local_lock(), Device, Relaxed, Relaxed, 1, 0) == 0) {
+       if(__spirv_AtomicCompareExchange(__builtin_IB_get_local_lock(), Device, Relaxed, Relaxed, 1, 0) == 0) {
 
 #define LOCAL_SPINLOCK_END() \
             done = true; \
-            SPIRV_BUILTIN(AtomicStore, _p3i32_i32_i32_i32, )(__builtin_IB_get_local_lock(), Device, SequentiallyConsistent | WorkgroupMemory, 0); \
+            __spirv_AtomicStore(__builtin_IB_get_local_lock(), Device, SequentiallyConsistent | WorkgroupMemory, 0); \
   }}}
 
 #define GLOBAL_SPINLOCK_START() \
@@ -40,11 +40,11 @@ SPDX-License-Identifier: MIT
   volatile bool done = false; \
   while(!done) { \
        __builtin_IB_eu_thread_pause(32); \
-       if(SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(__builtin_IB_get_global_lock(), Device, Relaxed, Relaxed, 1, 0) == 0) {
+       if(__spirv_AtomicCompareExchange(__builtin_IB_get_global_lock(), Device, Relaxed, Relaxed, 1, 0) == 0) {
 
 #define GLOBAL_SPINLOCK_END() \
             done = true; \
-            SPIRV_BUILTIN(AtomicStore, _p1i32_i32_i32_i32, )(__builtin_IB_get_global_lock(), Device, SequentiallyConsistent | CrossWorkgroupMemory, 0); \
+            __spirv_AtomicStore(__builtin_IB_get_global_lock(), Device, SequentiallyConsistent | CrossWorkgroupMemory, 0); \
   }}}
 
 #define FENCE_PRE_OP(Scope, Semantics, isGlobal)                                      \
@@ -137,106 +137,106 @@ SPDX-License-Identifier: MIT
 // an atomic load since it does not modify the in memory value and returns the 'old' value. atomic store
 // can be implemented with an atomic_exchance with the return value ignored.
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p0i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics )
+int __attribute__((overloadable)) __spirv_AtomicLoad( __private int *Pointer, int Scope, int Semantics )
 {
     return *Pointer;
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p1i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics )
+int __attribute__((overloadable)) __spirv_AtomicLoad( __global int *Pointer, int Scope, int Semantics )
 {
-    return SPIRV_BUILTIN(AtomicOr, _p1i32_i32_i32_i32, )( Pointer, Scope, Semantics, 0 );
+    return __spirv_AtomicOr( Pointer, Scope, Semantics, 0 );
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p3i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics )
+int __attribute__((overloadable)) __spirv_AtomicLoad( __local int *Pointer, int Scope, int Semantics )
 {
-    return SPIRV_BUILTIN(AtomicOr, _p3i32_i32_i32_i32, )( Pointer, Scope, Semantics, 0 );
+    return __spirv_AtomicOr( Pointer, Scope, Semantics, 0 );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p4i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics )
+int __attribute__((overloadable)) __spirv_AtomicLoad( __generic int *Pointer, int Scope, int Semantics )
 {
-    return SPIRV_BUILTIN(AtomicOr, _p4i32_i32_i32_i32, )( Pointer, Scope, Semantics, 0 );
+    return __spirv_AtomicOr( Pointer, Scope, Semantics, 0 );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #if defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p0i64_i32_i32, )( __private long *Pointer, int Scope, int Semantics )
+long __attribute__((overloadable)) __spirv_AtomicLoad( __private long *Pointer, int Scope, int Semantics )
 {
     return *Pointer;
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p1i64_i32_i32, )( __global long *Pointer, int Scope, int Semantics )
+long __attribute__((overloadable)) __spirv_AtomicLoad( __global long *Pointer, int Scope, int Semantics )
 {
-    return SPIRV_BUILTIN(AtomicOr, _p1i64_i32_i32_i64, )( Pointer, Scope, Semantics, 0 );
+    return __spirv_AtomicOr( Pointer, Scope, Semantics, 0 );
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p3i64_i32_i32, )( __local long *Pointer, int Scope, int Semantics )
+long __attribute__((overloadable)) __spirv_AtomicLoad( __local long *Pointer, int Scope, int Semantics )
 {
-    return SPIRV_BUILTIN(AtomicOr, _p3i64_i32_i32_i64, )( Pointer, Scope, Semantics, 0 );
+    return __spirv_AtomicOr( Pointer, Scope, Semantics, 0 );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p4i64_i32_i32, )( __generic long *Pointer, int Scope, int Semantics )
+long __attribute__((overloadable)) __spirv_AtomicLoad( __generic long *Pointer, int Scope, int Semantics )
 {
-    return SPIRV_BUILTIN(AtomicOr, _p4i64_i32_i32_i64, )( Pointer, Scope, Semantics, 0 );
+    return __spirv_AtomicOr( Pointer, Scope, Semantics, 0 );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #endif // defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p0f32_i32_i32, )( __private float *Pointer, int Scope, int Semantics )
+float __attribute__((overloadable)) __spirv_AtomicLoad( __private float *Pointer, int Scope, int Semantics )
 {
     return *Pointer;
 }
 
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p1f32_i32_i32, )( __global float *Pointer, int Scope, int Semantics )
+float __attribute__((overloadable)) __spirv_AtomicLoad( __global float *Pointer, int Scope, int Semantics )
 {
-    return as_float( SPIRV_BUILTIN(AtomicOr, _p1i32_i32_i32_i32, )( (__global int*)Pointer, Scope, Semantics, 0 ) );
+    return as_float( __spirv_AtomicOr( (__global int*)Pointer, Scope, Semantics, 0 ) );
 }
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p3f32_i32_i32, )( __local float *Pointer, int Scope, int Semantics )
+float __attribute__((overloadable)) __spirv_AtomicLoad( __local float *Pointer, int Scope, int Semantics )
 {
-    return as_float( SPIRV_BUILTIN(AtomicOr, _p3i32_i32_i32_i32, )( (__local int*)Pointer, Scope, Semantics, 0 ) );
+    return as_float( __spirv_AtomicOr( (__local int*)Pointer, Scope, Semantics, 0 ) );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p4f32_i32_i32, )( __generic float *Pointer, int Scope, int Semantics )
+float __attribute__((overloadable)) __spirv_AtomicLoad( __generic float *Pointer, int Scope, int Semantics )
 {
-    return as_float( SPIRV_BUILTIN(AtomicOr, _p4i32_i32_i32_i32, )( (volatile __generic int*)Pointer, Scope, Semantics, 0 ) );
+    return as_float( __spirv_AtomicOr( (volatile __generic int*)Pointer, Scope, Semantics, 0 ) );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #if defined(cl_khr_fp64)
 #if defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p0f64_i32_i32, )( __private double *Pointer, int Scope, int Semantics )
+double __attribute__((overloadable)) __spirv_AtomicLoad( __private double *Pointer, int Scope, int Semantics )
 {
     return *Pointer;
 }
 
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p1f64_i32_i32, )( __global double *Pointer, int Scope, int Semantics )
+double __attribute__((overloadable)) __spirv_AtomicLoad( __global double *Pointer, int Scope, int Semantics )
 {
-    return as_double( SPIRV_BUILTIN(AtomicOr, _p1i64_i32_i32_i64, )( (__global long*)Pointer, Scope, Semantics, 0 ) );
+    return as_double( __spirv_AtomicOr( (__global long*)Pointer, Scope, Semantics, 0 ) );
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p3f64_i32_i32, )( __local double *Pointer, int Scope, int Semantics )
+double __attribute__((overloadable)) __spirv_AtomicLoad( __local double *Pointer, int Scope, int Semantics )
 {
-    return as_double( SPIRV_BUILTIN(AtomicOr, _p3i64_i32_i32_i64, )( (__local long*)Pointer, Scope, Semantics, 0 ) );
+    return as_double( __spirv_AtomicOr( (__local long*)Pointer, Scope, Semantics, 0 ) );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p4f64_i32_i32, )( __generic double *Pointer, int Scope, int Semantics )
+double __attribute__((overloadable)) __spirv_AtomicLoad( __generic double *Pointer, int Scope, int Semantics )
 {
-    return as_double( SPIRV_BUILTIN(AtomicOr, _p4i64_i32_i32_i64, )( (__generic long*)Pointer, Scope, Semantics, 0 ) );
+    return as_double( __spirv_AtomicOr( (__generic long*)Pointer, Scope, Semantics, 0 ) );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -244,37 +244,37 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p4f64_i32_i32, )( __generic
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p0f16_i32_i32, )(__private half* Pointer, int Scope, int Semantics)
+half __attribute__((overloadable)) __spirv_AtomicLoad(__private half* Pointer, int Scope, int Semantics)
 {
     return *Pointer;
 }
 
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p1f16_i32_i32, )(__global half* Pointer, int Scope, int Semantics)
+half __attribute__((overloadable)) __spirv_AtomicLoad(__global half* Pointer, int Scope, int Semantics)
 {
     atomic_operation_1op_as_half(__builtin_IB_atomic_or_global_i16, half, (__global short*)Pointer, Scope, Semantics, 0, true);
 }
 
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p3f16_i32_i32, )(__local half* Pointer, int Scope, int Semantics)
+half __attribute__((overloadable)) __spirv_AtomicLoad(__local half* Pointer, int Scope, int Semantics)
 {
     atomic_operation_1op_as_half(__builtin_IB_atomic_or_local_i16, half, (__local short*)Pointer, Scope, Semantics, 0, false);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p4f16_i32_i32, )(__generic half* Pointer, int Scope, int Semantics)
+half __attribute__((overloadable)) __spirv_AtomicLoad(__generic half* Pointer, int Scope, int Semantics)
 {
     __builtin_assume((__local half*)Pointer != 0);
-    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicLoad, _p3f16_i32_i32, )((__local half*)Pointer, Scope, Semantics);
+        return __spirv_AtomicLoad((__local half*)Pointer, Scope, Semantics);
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicLoad, _p0f16_i32_i32, )((__private int*)Pointer, Scope, Semantics);
+        return __spirv_AtomicLoad((__private int*)Pointer, Scope, Semantics);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicLoad, _p1f16_i32_i32, )((__global half*)Pointer, Scope, Semantics);
+        return __spirv_AtomicLoad((__global half*)Pointer, Scope, Semantics);
     }
 }
 
@@ -284,28 +284,28 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p4f16_i32_i32, )(__generic ha
 // Atomic Stores
 
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p0i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics, int Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __private int *Pointer, int Scope, int Semantics, int Value )
 {
     *Pointer = Value;
 }
 
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p1i32_i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics, int Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __global int *Pointer, int Scope, int Semantics, int Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p1i32_i32_i32_i32, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p3i32_i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics, int Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __local int *Pointer, int Scope, int Semantics, int Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p3i32_i32_i32_i32, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4i32_i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics, int Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __generic int *Pointer, int Scope, int Semantics, int Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p4i32_i32_i32_i32, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -313,28 +313,28 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4i32_i32_i32_i32, )( __gene
 
 #if defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p0i64_i32_i32_i64, )( __private long *Pointer, int Scope, int Semantics, long Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __private long *Pointer, int Scope, int Semantics, long Value )
 {
     *Pointer = Value;
 }
 
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p1i64_i32_i32_i64, )( __global long *Pointer, int Scope, int Semantics, long Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __global long *Pointer, int Scope, int Semantics, long Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p1i64_i32_i32_i64, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p3i64_i32_i32_i64, )( __local long *Pointer, int Scope, int Semantics, long Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __local long *Pointer, int Scope, int Semantics, long Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p3i64_i32_i32_i64, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4i64_i32_i32_i64, )( __generic long *Pointer, int Scope, int Semantics, long Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __generic long *Pointer, int Scope, int Semantics, long Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p4i64_i32_i32_i64, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -342,28 +342,28 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4i64_i32_i32_i64, )( __gene
 #endif // defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
 
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p0f32_i32_i32_f32, )( __private float *Pointer, int Scope, int Semantics, float Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __private float *Pointer, int Scope, int Semantics, float Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p0f32_i32_i32_f32, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p1f32_i32_i32_f32, )( __global float *Pointer, int Scope, int Semantics, float Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __global float *Pointer, int Scope, int Semantics, float Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p1f32_i32_i32_f32, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p3f32_i32_i32_f32, )( __local float *Pointer, int Scope, int Semantics, float Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __local float *Pointer, int Scope, int Semantics, float Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p3f32_i32_i32_f32, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4f32_i32_i32_f32, )( __generic float *Pointer, int Scope, int Semantics, float Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __generic float *Pointer, int Scope, int Semantics, float Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p4f32_i32_i32_f32, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -371,28 +371,28 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4f32_i32_i32_f32, )( __gene
 #if defined(cl_khr_fp64)
 #if defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p0f64_i32_i32_f64, )( __private double *Pointer, int Scope, int Semantics, double Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __private double *Pointer, int Scope, int Semantics, double Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p0f64_i32_i32_f64, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p1f64_i32_i32_f64, )( __global double *Pointer, int Scope, int Semantics, double Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __global double *Pointer, int Scope, int Semantics, double Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p1f64_i32_i32_f64, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p3f64_i32_i32_f64, )( __local double *Pointer, int Scope, int Semantics, double Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __local double *Pointer, int Scope, int Semantics, double Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p3f64_i32_i32_f64, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4f64_i32_i32_f64, )( __generic double *Pointer, int Scope, int Semantics, double Value )
+void __attribute__((overloadable)) __spirv_AtomicStore( __generic double *Pointer, int Scope, int Semantics, double Value )
 {
-    SPIRV_BUILTIN(AtomicExchange, _p4f64_i32_i32_f64, )( Pointer, Scope, Semantics, Value );
+    __spirv_AtomicExchange( Pointer, Scope, Semantics, Value );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -401,26 +401,26 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4f64_i32_i32_f64, )( __gene
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p0f16_i32_i32_f16, )(__private half* Pointer, int Scope, int Semantics, half Value)
+void __attribute__((overloadable)) __spirv_AtomicStore(__private half* Pointer, int Scope, int Semantics, half Value)
 {
-    SPIRV_BUILTIN(AtomicExchange, _p0f16_i32_i32_f16, )(Pointer, Scope, Semantics, Value);
+    __spirv_AtomicExchange(Pointer, Scope, Semantics, Value);
 }
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p1f16_i32_i32_f16, )(__global half* Pointer, int Scope, int Semantics, half Value)
+void __attribute__((overloadable)) __spirv_AtomicStore(__global half* Pointer, int Scope, int Semantics, half Value)
 {
-    SPIRV_BUILTIN(AtomicExchange, _p1f16_i32_i32_f16, )(Pointer, Scope, Semantics, Value);
+    __spirv_AtomicExchange(Pointer, Scope, Semantics, Value);
 }
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p3f16_i32_i32_f16, )(__local half* Pointer, int Scope, int Semantics, half Value)
+void __attribute__((overloadable)) __spirv_AtomicStore(__local half* Pointer, int Scope, int Semantics, half Value)
 {
-    SPIRV_BUILTIN(AtomicExchange, _p3f16_i32_i32_f16, )(Pointer, Scope, Semantics, Value);
+    __spirv_AtomicExchange(Pointer, Scope, Semantics, Value);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4f16_i32_i32_f16, )(__generic half* Pointer, int Scope, int Semantics, half Value)
+void __attribute__((overloadable)) __spirv_AtomicStore(__generic half* Pointer, int Scope, int Semantics, half Value)
 {
-    SPIRV_BUILTIN(AtomicExchange, _p4f16_i32_i32_f16, )(Pointer, Scope, Semantics, Value);
+    __spirv_AtomicExchange(Pointer, Scope, Semantics, Value);
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -429,7 +429,7 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4f16_i32_i32_f16, )(__gener
 // Atomic Exchange
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicExchange( __private int *Pointer, int Scope, int Semantics, int Value )
 {
     uint orig = *Pointer;
     *Pointer = Value;
@@ -437,29 +437,29 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0i32_i32_i32_i32, )( __pr
 }
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p1i32_i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicExchange( __global int *Pointer, int Scope, int Semantics, int Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_xchg_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p3i32_i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicExchange( __local int *Pointer, int Scope, int Semantics, int Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_xchg_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4i32_i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicExchange( __generic int *Pointer, int Scope, int Semantics, int Value )
 {
     __builtin_assume((__local int*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_xchg_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicExchange, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicExchange((__private int*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -471,7 +471,7 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4i32_i32_i32_i32, )( __ge
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #if defined(cl_khr_int64_base_atomics)
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0i64_i32_i32_i64, )( __private long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicExchange( __private long *Pointer, int Scope, int Semantics, long Value )
 {
     ulong orig = *Pointer;
     *Pointer = Value;
@@ -479,7 +479,7 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0i64_i32_i32_i64, )( __p
 }
 
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p1i64_i32_i32_i64, )( __global long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicExchange( __global long *Pointer, int Scope, int Semantics, long Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_xchg_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value, true );
 }
@@ -611,7 +611,7 @@ ulong OVERLOADABLE __intel_atomic_unary( bool isInc, volatile __local ulong *Poi
     return orig;
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p3i64_i32_i32_i64, )( __local long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicExchange( __local long *Pointer, int Scope, int Semantics, long Value )
 {
     return __intel_atomic_binary(ATOMIC_XCHG64, Pointer, Scope, Semantics, Value);
 }
@@ -619,20 +619,20 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p3i64_i32_i32_i64, )( __l
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4i64_i32_i32_i64, )( __generic long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicExchange( __generic long *Pointer, int Scope, int Semantics, long Value )
 {
     __builtin_assume((__local long*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicExchange, _p3i64_i32_i32_i64, )((__local long*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicExchange((__local long*)Pointer, Scope, Semantics, Value);
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicExchange, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicExchange((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicExchange, _p1i64_i32_i32_i64, )((__global long*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicExchange((__global long*)Pointer, Scope, Semantics, Value);
     }
 }
 
@@ -640,7 +640,7 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4i64_i32_i32_i64, )( __g
 
 #endif // defined(cl_khr_int64_base_atomics)
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0f32_i32_i32_f32, )( __private float *Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicExchange( __private float *Pointer, int Scope, int Semantics, float Value)
 {
     float orig = *Pointer;
 
@@ -649,29 +649,29 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0f32_i32_i32_f32, )( __
     return orig;
 }
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p1f32_i32_i32_f32, )( __global float *Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicExchange( __global float *Pointer, int Scope, int Semantics, float Value)
 {
     atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_global_i32, float, (global int*)Pointer, Scope, Semantics, as_int(Value), true );
 }
 
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p3f32_i32_i32_f32, )( __local float *Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicExchange( __local float *Pointer, int Scope, int Semantics, float Value)
 {
     atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_local_i32, float, (local int*)Pointer, Scope, Semantics, as_int(Value), false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4f32_i32_i32_f32, )( __generic float *Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicExchange( __generic float *Pointer, int Scope, int Semantics, float Value)
 {
     __builtin_assume((__local float*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_local_i32, float, (local int*)Pointer, Scope, Semantics, as_int(Value), false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicExchange, _p0f32_i32_i32_f32, )((__private int*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicExchange((__private int*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -684,38 +684,38 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4f32_i32_i32_f32, )( __
 #if defined(cl_khr_fp64)
 #if defined(cl_khr_int64_base_atomics)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0f64_i32_i32_f64, )( __private double *Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicExchange( __private double *Pointer, int Scope, int Semantics, double Value)
 {
-    return as_double(SPIRV_BUILTIN(AtomicExchange, _p0i64_i32_i32_i64, )((__private long*) Pointer, Scope, Semantics, as_long(Value)));
+    return as_double(__spirv_AtomicExchange((__private long*) Pointer, Scope, Semantics, as_long(Value)));
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p1f64_i32_i32_f64, )( __global double *Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicExchange( __global double *Pointer, int Scope, int Semantics, double Value)
 {
-    return as_double(SPIRV_BUILTIN(AtomicExchange, _p1i64_i32_i32_i64, )((__global long*) Pointer, Scope, Semantics, as_long(Value)));
+    return as_double(__spirv_AtomicExchange((__global long*) Pointer, Scope, Semantics, as_long(Value)));
 }
 
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p3f64_i32_i32_f64, )( __local double *Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicExchange( __local double *Pointer, int Scope, int Semantics, double Value)
 {
-    return as_double(SPIRV_BUILTIN(AtomicExchange, _p3i64_i32_i32_i64, )((__local long*) Pointer, Scope, Semantics, as_long(Value)));
+    return as_double(__spirv_AtomicExchange((__local long*) Pointer, Scope, Semantics, as_long(Value)));
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4f64_i32_i32_f64, )( __generic double *Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicExchange( __generic double *Pointer, int Scope, int Semantics, double Value)
 {
     __builtin_assume((__local double*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicExchange, _p3f64_i32_i32_f64, )((__local double*) Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicExchange((__local double*) Pointer, Scope, Semantics, Value);
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicExchange, _p0f64_i32_i32_f64, )((__private double*) Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicExchange((__private double*) Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicExchange, _p1f64_i32_i32_f64, )((__global double*) Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicExchange((__global double*) Pointer, Scope, Semantics, Value);
     }
 }
 
@@ -725,7 +725,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4f64_i32_i32_f64, )( _
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0f16_i32_i32_f16, )(__private half* Pointer, int Scope, int Semantics, half Value)
+half __attribute__((overloadable)) __spirv_AtomicExchange(__private half* Pointer, int Scope, int Semantics, half Value)
 {
     half orig = *Pointer;
 
@@ -734,32 +734,32 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0f16_i32_i32_f16, )(__pr
     return orig;
 }
 
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p1f16_i32_i32_f16, )(__global half* Pointer, int Scope, int Semantics, half Value)
+half __attribute__((overloadable)) __spirv_AtomicExchange(__global half* Pointer, int Scope, int Semantics, half Value)
 {
     atomic_operation_1op_as_half(__builtin_IB_atomic_xchg_global_i16, half, (__global short*)Pointer, Scope, Semantics, as_short(Value), true);
 }
 
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p3f16_i32_i32_f16, )(__local half* Pointer, int Scope, int Semantics, half Value)
+half __attribute__((overloadable)) __spirv_AtomicExchange(__local half* Pointer, int Scope, int Semantics, half Value)
 {
     atomic_operation_1op_as_half(__builtin_IB_atomic_xchg_local_i16, half, (__local short*)Pointer, Scope, Semantics, as_short(Value), false);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4f16_i32_i32_f16, )(__generic half* Pointer, int Scope, int Semantics, half Value)
+half __attribute__((overloadable)) __spirv_AtomicExchange(__generic half* Pointer, int Scope, int Semantics, half Value)
 {
     __builtin_assume((__local half*)Pointer != 0);
-    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicExchange, _p3f16_i32_i32_f16, )((__local half*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicExchange((__local half*)Pointer, Scope, Semantics, Value);
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicExchange, _p0f16_i32_i32_f16, )((__private half*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicExchange((__private half*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicExchange, _p1f16_i32_i32_f16, )((__global half*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicExchange((__global half*)Pointer, Scope, Semantics, Value);
     }
 }
 
@@ -769,7 +769,7 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4f16_i32_i32_f16, )(__ge
 // Atomic Compare Exchange
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p0i32_i32_i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
+int __attribute__((overloadable)) __spirv_AtomicCompareExchange( __private int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
 {
     uint orig = *Pointer;
     if( orig == Comparator )
@@ -780,29 +780,29 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p0i32_i32_i32_i32_i
 }
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )( __global int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
+int __attribute__((overloadable)) __spirv_AtomicCompareExchange( __global int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
 {
     atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_i32, uint, (global int*)Pointer, Scope, Equal, Value, Comparator, true );
 }
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p3i32_i32_i32_i32_i32_i32, )( __local int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
+int __attribute__((overloadable)) __spirv_AtomicCompareExchange( __local int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
 {
     atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_local_i32, uint, (local int*)Pointer, Scope, Equal, Value, Comparator, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p4i32_i32_i32_i32_i32_i32, )( __generic int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
+int __attribute__((overloadable)) __spirv_AtomicCompareExchange( __generic int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
 {
     __builtin_assume((__local int*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_local_i32, uint, (__local int*)Pointer, Scope, Equal, Value, Comparator, false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicCompareExchange, _p0i32_i32_i32_i32_i32_i32, )((__private int*)Pointer, Scope, Equal, Unequal, Value, Comparator);
+        return __spirv_AtomicCompareExchange((__private int*)Pointer, Scope, Equal, Unequal, Value, Comparator);
     }
     else
     {
@@ -814,7 +814,7 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p4i32_i32_i32_i32_i
 
 
 #if defined(cl_khr_int64_base_atomics)
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p0i64_i32_i32_i32_i64_i64, )( __private long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
+long __attribute__((overloadable)) __spirv_AtomicCompareExchange( __private long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
 {
     ulong orig = *Pointer;
     if( orig == Comparator )
@@ -825,13 +825,13 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p0i64_i32_i32_i32_
 }
 
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p1i64_i32_i32_i32_i64_i64, )( __global long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
+long __attribute__((overloadable)) __spirv_AtomicCompareExchange( __global long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
 {
     atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_i64, ulong, (global long*)Pointer, Scope, Equal, Value, Comparator, true );
 }
 
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p3i64_i32_i32_i32_i64_i64, )( __local long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
+long __attribute__((overloadable)) __spirv_AtomicCompareExchange( __local long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
 {
     if (BIF_FLAG_CTRL_GET(HasInt64SLMAtomicCAS))
     {
@@ -852,20 +852,20 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p3i64_i32_i32_i32_
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p4i64_i32_i32_i32_i64_i64, )( __generic long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
+long __attribute__((overloadable)) __spirv_AtomicCompareExchange( __generic long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
 {
     __builtin_assume((__local long*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicCompareExchange, _p3i64_i32_i32_i32_i64_i64, )( (__local long*)Pointer, Scope, Equal, Unequal, Value, Comparator );
+        return __spirv_AtomicCompareExchange( (__local long*)Pointer, Scope, Equal, Unequal, Value, Comparator );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicCompareExchange, _p0i64_i32_i32_i32_i64_i64, )((__private long*)Pointer, Scope, Equal, Unequal, Value, Comparator);
+        return __spirv_AtomicCompareExchange((__private long*)Pointer, Scope, Equal, Unequal, Value, Comparator);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicCompareExchange, _p1i64_i32_i32_i32_i64_i64, )( (__global long*)Pointer, Scope, Equal, Unequal, Value, Comparator );
+        return __spirv_AtomicCompareExchange( (__global long*)Pointer, Scope, Equal, Unequal, Value, Comparator );
     }
 }
 
@@ -874,55 +874,55 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p4i64_i32_i32_i32_
 #endif // defined(cl_khr_int64_base_atomics)
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchangeWeak, _p0i32_i32_i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
+int __attribute__((overloadable)) __spirv_AtomicCompareExchangeWeak( __private int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
 {
-    return SPIRV_BUILTIN(AtomicCompareExchange, _p0i32_i32_i32_i32_i32_i32, )( Pointer, Scope, Equal, Unequal, Value, Comparator );
+    return __spirv_AtomicCompareExchange( Pointer, Scope, Equal, Unequal, Value, Comparator );
 }
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchangeWeak, _p1i32_i32_i32_i32_i32_i32, )( __global int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
+int __attribute__((overloadable)) __spirv_AtomicCompareExchangeWeak( __global int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
 {
-    return SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )( Pointer, Scope, Equal, Unequal, Value, Comparator );
+    return __spirv_AtomicCompareExchange( Pointer, Scope, Equal, Unequal, Value, Comparator );
 }
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchangeWeak, _p3i32_i32_i32_i32_i32_i32, )( __local int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
+int __attribute__((overloadable)) __spirv_AtomicCompareExchangeWeak( __local int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
 {
-    return SPIRV_BUILTIN(AtomicCompareExchange, _p3i32_i32_i32_i32_i32_i32, )( Pointer, Scope, Equal, Unequal, Value, Comparator );
+    return __spirv_AtomicCompareExchange( Pointer, Scope, Equal, Unequal, Value, Comparator );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchangeWeak, _p4i32_i32_i32_i32_i32_i32, )( __generic int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
+int __attribute__((overloadable)) __spirv_AtomicCompareExchangeWeak( __generic int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
 {
-    return SPIRV_BUILTIN(AtomicCompareExchange, _p4i32_i32_i32_i32_i32_i32, )( Pointer, Scope, Equal, Unequal, Value, Comparator );
+    return __spirv_AtomicCompareExchange( Pointer, Scope, Equal, Unequal, Value, Comparator );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #if defined(cl_khr_int64_base_atomics)
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchangeWeak, _p0i64_i32_i32_i32_i64_i64, )( __private long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
+long __attribute__((overloadable)) __spirv_AtomicCompareExchangeWeak( __private long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
 {
-    return SPIRV_BUILTIN(AtomicCompareExchange, _p0i64_i32_i32_i32_i64_i64, )( Pointer, Scope, Equal, Unequal, Value, Comparator );
+    return __spirv_AtomicCompareExchange( Pointer, Scope, Equal, Unequal, Value, Comparator );
 }
 
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchangeWeak, _p1i64_i32_i32_i32_i64_i64, )( __global long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
+long __attribute__((overloadable)) __spirv_AtomicCompareExchangeWeak( __global long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
 {
-    return SPIRV_BUILTIN(AtomicCompareExchange, _p1i64_i32_i32_i32_i64_i64, )( Pointer, Scope, Equal, Unequal, Value, Comparator );
+    return __spirv_AtomicCompareExchange( Pointer, Scope, Equal, Unequal, Value, Comparator );
 }
 
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchangeWeak, _p3i64_i32_i32_i32_i64_i64, )( __local long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
+long __attribute__((overloadable)) __spirv_AtomicCompareExchangeWeak( __local long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
 {
-    return SPIRV_BUILTIN(AtomicCompareExchange, _p3i64_i32_i32_i32_i64_i64, )( Pointer, Scope, Equal, Unequal, Value, Comparator );
+    return __spirv_AtomicCompareExchange( Pointer, Scope, Equal, Unequal, Value, Comparator );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchangeWeak, _p4i64_i32_i32_i32_i64_i64, )( __generic long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
+long __attribute__((overloadable)) __spirv_AtomicCompareExchangeWeak( __generic long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
 {
-    return SPIRV_BUILTIN(AtomicCompareExchange, _p4i64_i32_i32_i32_i64_i64, )( Pointer, Scope, Equal, Unequal, Value, Comparator );
+    return __spirv_AtomicCompareExchange( Pointer, Scope, Equal, Unequal, Value, Comparator );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -931,7 +931,7 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchangeWeak, _p4i64_i32_i32_
 // Atomic Increment
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p0i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics )
+int __attribute__((overloadable)) __spirv_AtomicIIncrement( __private int *Pointer, int Scope, int Semantics )
 {
     uint orig = *Pointer;
     *Pointer += 1;
@@ -939,29 +939,29 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p0i32_i32_i32, )( __priv
 }
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p1i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics )
+int __attribute__((overloadable)) __spirv_AtomicIIncrement( __global int *Pointer, int Scope, int Semantics )
 {
     atomic_operation_0op( __builtin_IB_atomic_inc_global_i32, uint, (global int*)Pointer, Scope, Semantics, true );
 }
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p3i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics )
+int __attribute__((overloadable)) __spirv_AtomicIIncrement( __local int *Pointer, int Scope, int Semantics )
 {
     atomic_operation_0op( __builtin_IB_atomic_inc_local_i32, uint, (local int*)Pointer, Scope, Semantics, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p4i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics )
+int __attribute__((overloadable)) __spirv_AtomicIIncrement( __generic int *Pointer, int Scope, int Semantics )
 {
     __builtin_assume((__local int*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_operation_0op( __builtin_IB_atomic_inc_local_i32, uint, (__local int*)Pointer, Scope, Semantics, false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicIIncrement, _p0i32_i32_i32, )((__private int*)Pointer, Scope, Semantics);
+        return __spirv_AtomicIIncrement((__private int*)Pointer, Scope, Semantics);
     }
     else
     {
@@ -972,7 +972,7 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p4i32_i32_i32, )( __gene
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #if defined(cl_khr_int64_base_atomics)
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p0i64_i32_i32, )( __private long *Pointer, int Scope, int Semantics )
+long __attribute__((overloadable)) __spirv_AtomicIIncrement( __private long *Pointer, int Scope, int Semantics )
 {
     ulong orig = *Pointer;
     *Pointer += 1;
@@ -980,33 +980,33 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p0i64_i32_i32, )( __pri
 }
 
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p1i64_i32_i32, )( __global long *Pointer, int Scope, int Semantics )
+long __attribute__((overloadable)) __spirv_AtomicIIncrement( __global long *Pointer, int Scope, int Semantics )
 {
     atomic_operation_0op( __builtin_IB_atomic_inc_global_i64, ulong, (global int*)Pointer, Scope, Semantics, true );
 }
 
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p3i64_i32_i32, )( __local long *Pointer, int Scope, int Semantics )
+long __attribute__((overloadable)) __spirv_AtomicIIncrement( __local long *Pointer, int Scope, int Semantics )
 {
     return __intel_atomic_unary(true, Pointer, Scope, Semantics);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p4i64_i32_i32, )( __generic long *Pointer, int Scope, int Semantics )
+long __attribute__((overloadable)) __spirv_AtomicIIncrement( __generic long *Pointer, int Scope, int Semantics )
 {
     __builtin_assume((__local long*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicIIncrement, _p3i64_i32_i32, )((__local long*)Pointer, Scope, Semantics );
+        return __spirv_AtomicIIncrement((__local long*)Pointer, Scope, Semantics );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicIIncrement, _p0i64_i32_i32, )((__private long*)Pointer, Scope, Semantics);
+        return __spirv_AtomicIIncrement((__private long*)Pointer, Scope, Semantics);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicIIncrement, _p1i64_i32_i32, )((__global long*)Pointer, Scope, Semantics );
+        return __spirv_AtomicIIncrement((__global long*)Pointer, Scope, Semantics );
     }
 }
 
@@ -1016,7 +1016,7 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p4i64_i32_i32, )( __gen
 // Atomic Decrement
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIDecrement, _p0i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics )
+int __attribute__((overloadable)) __spirv_AtomicIDecrement( __private int *Pointer, int Scope, int Semantics )
 {
     uint orig = *Pointer;
 
@@ -1025,28 +1025,28 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIDecrement, _p0i32_i32_i32, )( __priv
     return orig;
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIDecrement, _p1i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics )
+int __attribute__((overloadable)) __spirv_AtomicIDecrement( __global int *Pointer, int Scope, int Semantics )
 {
     atomic_operation_0op( __builtin_IB_atomic_dec_global_i32, uint, (global int*)Pointer, Scope, Semantics, true );
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIDecrement, _p3i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics )
+int __attribute__((overloadable)) __spirv_AtomicIDecrement( __local int *Pointer, int Scope, int Semantics )
 {
     atomic_operation_0op( __builtin_IB_atomic_dec_local_i32, uint, (local int*)Pointer, Scope, Semantics, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIDecrement, _p4i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics )
+int __attribute__((overloadable)) __spirv_AtomicIDecrement( __generic int *Pointer, int Scope, int Semantics )
 {
     __builtin_assume((__local int*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_operation_0op( __builtin_IB_atomic_dec_local_i32, uint, (__local int*)Pointer, Scope, Semantics, false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicIDecrement, _p0i32_i32_i32, )((__private int*)Pointer, Scope, Semantics);
+        return __spirv_AtomicIDecrement((__private int*)Pointer, Scope, Semantics);
     }
     else
     {
@@ -1057,39 +1057,39 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIDecrement, _p4i32_i32_i32, )( __gene
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #if defined(cl_khr_int64_base_atomics)
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIDecrement, _p0i64_i32_i32, )( __private long *Pointer, int Scope, int Semantics )
+long __attribute__((overloadable)) __spirv_AtomicIDecrement( __private long *Pointer, int Scope, int Semantics )
 {
     ulong orig = *Pointer;
     *Pointer -= 1;
     return orig;
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIDecrement, _p1i64_i32_i32, )( __global long *Pointer, int Scope, int Semantics )
+long __attribute__((overloadable)) __spirv_AtomicIDecrement( __global long *Pointer, int Scope, int Semantics )
 {
     atomic_operation_0op( __builtin_IB_atomic_dec_global_i64, ulong, (global long*)Pointer, Scope, Semantics, true );
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIDecrement, _p3i64_i32_i32, )( __local long *Pointer, int Scope, int Semantics )
+long __attribute__((overloadable)) __spirv_AtomicIDecrement( __local long *Pointer, int Scope, int Semantics )
 {
     return __intel_atomic_unary(false, Pointer, Scope, Semantics);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIDecrement, _p4i64_i32_i32, )( __generic long *Pointer, int Scope, int Semantics )
+long __attribute__((overloadable)) __spirv_AtomicIDecrement( __generic long *Pointer, int Scope, int Semantics )
 {
     __builtin_assume((__local long*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicIDecrement, _p3i64_i32_i32, )( (__local long*)Pointer, Scope, Semantics );
+        return __spirv_AtomicIDecrement( (__local long*)Pointer, Scope, Semantics );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicIDecrement, _p0i64_i32_i32, )((__private long*)Pointer, Scope, Semantics);
+        return __spirv_AtomicIDecrement((__private long*)Pointer, Scope, Semantics);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicIDecrement, _p1i64_i32_i32, )( (__global long*)Pointer, Scope, Semantics );
+        return __spirv_AtomicIDecrement( (__global long*)Pointer, Scope, Semantics );
     }
 }
 
@@ -1100,7 +1100,7 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIDecrement, _p4i64_i32_i32, )( __gen
 // Atomic IAdd
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIAdd, _p0i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicIAdd( __private int *Pointer, int Scope, int Semantics, int Value )
 {
     uint orig = *Pointer;
 
@@ -1110,28 +1110,28 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIAdd, _p0i32_i32_i32_i32, )( __privat
 }
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIAdd, _p1i32_i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicIAdd( __global int *Pointer, int Scope, int Semantics, int Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_add_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIAdd, _p3i32_i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicIAdd( __local int *Pointer, int Scope, int Semantics, int Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_add_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIAdd, _p4i32_i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicIAdd( __generic int *Pointer, int Scope, int Semantics, int Value )
 {
     __builtin_assume((__local int*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_add_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicIAdd, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicIAdd((__private int*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1140,38 +1140,38 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIAdd, _p4i32_i32_i32_i32, )( __generi
 }
 
 #if defined(cl_khr_int64_base_atomics)
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIAdd, _p0i64_i32_i32_i64, )( __private long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicIAdd( __private long *Pointer, int Scope, int Semantics, long Value )
 {
     ulong orig = *Pointer;
     *Pointer += Value;
     return orig;
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIAdd, _p1i64_i32_i32_i64, )( __global long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicIAdd( __global long *Pointer, int Scope, int Semantics, long Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_add_global_i64, ulong, (__global ulong*)Pointer, Scope, Semantics, Value, true );
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIAdd, _p3i64_i32_i32_i64, )( __local long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicIAdd( __local long *Pointer, int Scope, int Semantics, long Value )
 {
     return __intel_atomic_binary(ATOMIC_IADD64, Pointer, Scope, Semantics, Value);
 }
 
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIAdd, _p4i64_i32_i32_i64, )( __generic long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicIAdd( __generic long *Pointer, int Scope, int Semantics, long Value )
 {
     __builtin_assume((__local long*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicIAdd, _p3i64_i32_i32_i64, )((__local long*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicIAdd((__local long*)Pointer, Scope, Semantics, Value);
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicIAdd, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicIAdd((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicIAdd, _p1i64_i32_i32_i64, )((__global long*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicIAdd((__global long*)Pointer, Scope, Semantics, Value);
     }
 }
 
@@ -1180,7 +1180,7 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIAdd, _p4i64_i32_i32_i64, )( __gener
 
 // Atomic ISub
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p0i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicISub( __private int *Pointer, int Scope, int Semantics, int Value )
 {
     uint orig = *Pointer;
 
@@ -1190,28 +1190,28 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p0i32_i32_i32_i32, )( __privat
 }
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p1i32_i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicISub( __global int *Pointer, int Scope, int Semantics, int Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_sub_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p3i32_i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicISub( __local int *Pointer, int Scope, int Semantics, int Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_sub_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p4i32_i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicISub( __generic int *Pointer, int Scope, int Semantics, int Value )
 {
     __builtin_assume((__local int*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_sub_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicISub, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicISub((__private int*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1222,7 +1222,7 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p4i32_i32_i32_i32, )( __generi
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #if defined(cl_khr_int64_base_atomics)
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p0i64_i32_i32_i64, )( __private long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicISub( __private long *Pointer, int Scope, int Semantics, long Value )
 {
     ulong orig = *Pointer;
     *Pointer -= Value;
@@ -1230,33 +1230,33 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p0i64_i32_i32_i64, )( __priva
 }
 
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p1i64_i32_i32_i64, )( __global long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicISub( __global long *Pointer, int Scope, int Semantics, long Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_sub_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value, true );
 }
 
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p3i64_i32_i32_i64, )( __local long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicISub( __local long *Pointer, int Scope, int Semantics, long Value )
 {
     return __intel_atomic_binary(ATOMIC_SUB64, Pointer, Scope, Semantics, Value);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p4i64_i32_i32_i64, )( __generic long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicISub( __generic long *Pointer, int Scope, int Semantics, long Value )
 {
     __builtin_assume((__local long*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicISub, _p3i64_i32_i32_i64, )((__local long*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicISub((__local long*)Pointer, Scope, Semantics, Value );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicISub, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicISub((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicISub, _p1i64_i32_i32_i64, )((__global long*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicISub((__global long*)Pointer, Scope, Semantics, Value );
     }
 }
 
@@ -1268,35 +1268,35 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p4i64_i32_i32_i64, )( __gener
 // Atomic SMin
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMin, _p0i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics, int Value)
+int __attribute__((overloadable)) __spirv_AtomicSMin( __private int *Pointer, int Scope, int Semantics, int Value)
 {
     int orig = *Pointer;
     *Pointer = ( orig < Value ) ? orig : Value;
     return orig;
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMin, _p1i32_i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics, int Value)
+int __attribute__((overloadable)) __spirv_AtomicSMin( __global int *Pointer, int Scope, int Semantics, int Value)
 {
     atomic_operation_1op( __builtin_IB_atomic_min_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMin, _p3i32_i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics, int Value)
+int __attribute__((overloadable)) __spirv_AtomicSMin( __local int *Pointer, int Scope, int Semantics, int Value)
 {
     atomic_operation_1op( __builtin_IB_atomic_min_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMin, _p4i32_i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics, int Value)
+int __attribute__((overloadable)) __spirv_AtomicSMin( __generic int *Pointer, int Scope, int Semantics, int Value)
 {
     __builtin_assume((__local int*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_min_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicSMin, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicSMin((__private int*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1308,39 +1308,39 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMin, _p4i32_i32_i32_i32, )( __generi
 
 #if defined(cl_khr_int64_extended_atomics)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMin, _p0i64_i32_i32_i64, )( __private long *Pointer, int Scope, int Semantics, long Value)
+long __attribute__((overloadable)) __spirv_AtomicSMin( __private long *Pointer, int Scope, int Semantics, long Value)
 {
     long orig = *Pointer;
     *Pointer = ( orig < Value ) ? orig : Value;
     return orig;
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMin, _p1i64_i32_i32_i64, )( __global long *Pointer, int Scope, int Semantics, long Value)
+long __attribute__((overloadable)) __spirv_AtomicSMin( __global long *Pointer, int Scope, int Semantics, long Value)
 {
     atomic_operation_1op( __builtin_IB_atomic_min_global_i64, ulong, (__global long*)Pointer, Scope, Semantics, Value, true );
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMin, _p3i64_i32_i32_i64, )( __local long *Pointer, int Scope, int Semantics, long Value)
+long __attribute__((overloadable)) __spirv_AtomicSMin( __local long *Pointer, int Scope, int Semantics, long Value)
 {
     return __intel_atomic_binary(ATOMIC_IMIN64, (volatile __local long *)Pointer, Scope, Semantics, Value);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMin, _p4i64_i32_i32_i64, )( __generic long *Pointer, int Scope, int Semantics, long Value)
+long __attribute__((overloadable)) __spirv_AtomicSMin( __generic long *Pointer, int Scope, int Semantics, long Value)
 {
     __builtin_assume((__local long*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicSMin, _p3i64_i32_i32_i64, )((__local long*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicSMin((__local long*)Pointer, Scope, Semantics, Value );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicSMin, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicSMin((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicSMin, _p1i64_i32_i32_i64, )((__global long*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicSMin((__global long*)Pointer, Scope, Semantics, Value );
     }
 }
 
@@ -1348,7 +1348,7 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMin, _p4i64_i32_i32_i64, )( __gener
 
 #endif // defined(cl_khr_int64_extended_atomics)
 
-uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMin, _p0i32_i32_i32_i32, )( __private uint *Pointer, int Scope, int Semantics, uint Value )
+uint __attribute__((overloadable)) __spirv_AtomicUMin( __private uint *Pointer, int Scope, int Semantics, uint Value )
 {
     uint orig = *Pointer;
 
@@ -1357,28 +1357,28 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMin, _p0i32_i32_i32_i32, )( __priva
     return orig;
 }
 
-uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMin, _p1i32_i32_i32_i32, )( __global uint *Pointer, int Scope, int Semantics, uint Value )
+uint __attribute__((overloadable)) __spirv_AtomicUMin( __global uint *Pointer, int Scope, int Semantics, uint Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_min_global_u32, uint, Pointer, Scope, Semantics, Value, true );
 }
 
-uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMin, _p3i32_i32_i32_i32, )( __local uint *Pointer, int Scope, int Semantics, uint Value )
+uint __attribute__((overloadable)) __spirv_AtomicUMin( __local uint *Pointer, int Scope, int Semantics, uint Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_min_local_u32, uint, Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMin, _p4i32_i32_i32_i32, )( __generic uint *Pointer, int Scope, int Semantics, uint Value )
+uint __attribute__((overloadable)) __spirv_AtomicUMin( __generic uint *Pointer, int Scope, int Semantics, uint Value )
 {
     __builtin_assume((__local uint*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_min_local_u32, uint, (__local uint*)Pointer, Scope, Semantics, Value, false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicUMin, _p0i32_i32_i32_i32, )((__private uint*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicUMin((__private uint*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1390,39 +1390,39 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMin, _p4i32_i32_i32_i32, )( __gener
 
 #if defined(cl_khr_int64_extended_atomics)
 
-ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMin, _p0i64_i32_i32_i64, )( __private ulong *Pointer, int Scope, int Semantics, ulong Value )
+ulong __attribute__((overloadable)) __spirv_AtomicUMin( __private ulong *Pointer, int Scope, int Semantics, ulong Value )
 {
     ulong orig = *Pointer;
     *Pointer = ( orig < Value ) ? orig : Value;
     return orig;
 }
 
-ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMin, _p1i64_i32_i32_i64, )( __global ulong *Pointer, int Scope, int Semantics, ulong Value )
+ulong __attribute__((overloadable)) __spirv_AtomicUMin( __global ulong *Pointer, int Scope, int Semantics, ulong Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_min_global_u64, ulong, Pointer, Scope, Semantics, Value, true );
 }
 
-ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMin, _p3i64_i32_i32_i64, )( __local ulong *Pointer, int Scope, int Semantics, ulong Value )
+ulong __attribute__((overloadable)) __spirv_AtomicUMin( __local ulong *Pointer, int Scope, int Semantics, ulong Value )
 {
     return __intel_atomic_binary(ATOMIC_UMIN64, Pointer, Scope, Semantics, Value);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMin, _p4i64_i32_i32_i64, )( __generic ulong *Pointer, int Scope, int Semantics, ulong Value )
+ulong __attribute__((overloadable)) __spirv_AtomicUMin( __generic ulong *Pointer, int Scope, int Semantics, ulong Value )
 {
     __builtin_assume((__local ulong*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicUMin, _p3i64_i32_i32_i64, )( (__local ulong*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicUMin( (__local ulong*)Pointer, Scope, Semantics, Value );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicUMin, _p0i64_i32_i32_i64, )((__private ulong*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicUMin((__private ulong*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicUMin, _p1i64_i32_i32_i64, )( (__global ulong*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicUMin( (__global ulong*)Pointer, Scope, Semantics, Value );
     }
 }
 
@@ -1433,35 +1433,35 @@ ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMin, _p4i64_i32_i32_i64, )( __gene
 // Atomic SMax
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMax, _p0i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics, int Value)
+int __attribute__((overloadable)) __spirv_AtomicSMax( __private int *Pointer, int Scope, int Semantics, int Value)
 {
     int orig = *Pointer;
     *Pointer = ( orig > Value ) ? orig : Value;
     return orig;
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMax, _p1i32_i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics, int Value)
+int __attribute__((overloadable)) __spirv_AtomicSMax( __global int *Pointer, int Scope, int Semantics, int Value)
 {
     atomic_operation_1op( __builtin_IB_atomic_max_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMax, _p3i32_i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics, int Value)
+int __attribute__((overloadable)) __spirv_AtomicSMax( __local int *Pointer, int Scope, int Semantics, int Value)
 {
     atomic_operation_1op( __builtin_IB_atomic_max_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMax, _p4i32_i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics, int Value)
+int __attribute__((overloadable)) __spirv_AtomicSMax( __generic int *Pointer, int Scope, int Semantics, int Value)
 {
     __builtin_assume((__local int*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_max_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicSMax, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicSMax((__private int*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1473,39 +1473,39 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMax, _p4i32_i32_i32_i32, )( __generi
 
 #if defined(cl_khr_int64_extended_atomics)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMax, _p0i64_i32_i32_i64, )( __private long *Pointer, int Scope, int Semantics, long Value)
+long __attribute__((overloadable)) __spirv_AtomicSMax( __private long *Pointer, int Scope, int Semantics, long Value)
 {
     long orig = *Pointer;
     *Pointer = ( orig > Value ) ? orig : Value;
     return orig;
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMax, _p1i64_i32_i32_i64, )( __global long *Pointer, int Scope, int Semantics, long Value)
+long __attribute__((overloadable)) __spirv_AtomicSMax( __global long *Pointer, int Scope, int Semantics, long Value)
 {
     atomic_operation_1op( __builtin_IB_atomic_max_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value, true );
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMax, _p3i64_i32_i32_i64, )( __local long *Pointer, int Scope, int Semantics, long Value)
+long __attribute__((overloadable)) __spirv_AtomicSMax( __local long *Pointer, int Scope, int Semantics, long Value)
 {
     return __intel_atomic_binary(ATOMIC_IMAX64, (volatile __local long *)Pointer, Scope, Semantics, Value);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMax, _p4i64_i32_i32_i64, )( __generic long *Pointer, int Scope, int Semantics, long Value)
+long __attribute__((overloadable)) __spirv_AtomicSMax( __generic long *Pointer, int Scope, int Semantics, long Value)
 {
     __builtin_assume((__local long*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicSMax, _p3i64_i32_i32_i64, )( (__local long*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicSMax( (__local long*)Pointer, Scope, Semantics, Value );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicSMax, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicSMax((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicSMax, _p1i64_i32_i32_i64, )( (__global long*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicSMax( (__global long*)Pointer, Scope, Semantics, Value );
     }
 }
 
@@ -1516,7 +1516,7 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMax, _p4i64_i32_i32_i64, )( __gener
 // Atomic UMax
 
 
-uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMax, _p0i32_i32_i32_i32, )( __private uint *Pointer, int Scope, int Semantics, uint Value )
+uint __attribute__((overloadable)) __spirv_AtomicUMax( __private uint *Pointer, int Scope, int Semantics, uint Value )
 {
     uint orig = *Pointer;
 
@@ -1525,28 +1525,28 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMax, _p0i32_i32_i32_i32, )( __priva
     return orig;
 }
 
-uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMax, _p1i32_i32_i32_i32, )( __global uint *Pointer, int Scope, int Semantics, uint Value )
+uint __attribute__((overloadable)) __spirv_AtomicUMax( __global uint *Pointer, int Scope, int Semantics, uint Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_max_global_u32, uint, Pointer, Scope, Semantics, Value, true );
 }
 
-uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMax, _p3i32_i32_i32_i32, )( __local uint *Pointer, int Scope, int Semantics, uint Value )
+uint __attribute__((overloadable)) __spirv_AtomicUMax( __local uint *Pointer, int Scope, int Semantics, uint Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_max_local_u32, uint, Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMax, _p4i32_i32_i32_i32, )( __generic uint *Pointer, int Scope, int Semantics, uint Value )
+uint __attribute__((overloadable)) __spirv_AtomicUMax( __generic uint *Pointer, int Scope, int Semantics, uint Value )
 {
     __builtin_assume((__local uint*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_max_local_u32, uint, (__local uint*)Pointer, Scope, Semantics, Value, false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicUMax, _p0i32_i32_i32_i32, )((__private uint*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicUMax((__private uint*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1558,39 +1558,39 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMax, _p4i32_i32_i32_i32, )( __gener
 
 #if defined(cl_khr_int64_extended_atomics)
 
-ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMax, _p0i64_i32_i32_i64, )( __private ulong *Pointer, int Scope, int Semantics, ulong Value )
+ulong __attribute__((overloadable)) __spirv_AtomicUMax( __private ulong *Pointer, int Scope, int Semantics, ulong Value )
 {
     ulong orig = *Pointer;
     *Pointer = ( orig > Value ) ? orig : Value;
     return orig;
 }
 
-ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMax, _p1i64_i32_i32_i64, )( __global ulong *Pointer, int Scope, int Semantics, ulong Value )
+ulong __attribute__((overloadable)) __spirv_AtomicUMax( __global ulong *Pointer, int Scope, int Semantics, ulong Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_max_global_u64, ulong, Pointer, Scope, Semantics, Value, true );
 }
 
-ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMax, _p3i64_i32_i32_i64, )( __local ulong *Pointer, int Scope, int Semantics, ulong Value )
+ulong __attribute__((overloadable)) __spirv_AtomicUMax( __local ulong *Pointer, int Scope, int Semantics, ulong Value )
 {
     return __intel_atomic_binary(ATOMIC_UMAX64, Pointer, Scope, Semantics, Value);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMax, _p4i64_i32_i32_i64, )( __generic ulong *Pointer, int Scope, int Semantics, ulong Value )
+ulong __attribute__((overloadable)) __spirv_AtomicUMax( __generic ulong *Pointer, int Scope, int Semantics, ulong Value )
 {
     __builtin_assume((__local ulong*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicUMax, _p3i64_i32_i32_i64, )( (__local ulong*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicUMax( (__local ulong*)Pointer, Scope, Semantics, Value );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicUMax, _p0i64_i32_i32_i64, )((__private ulong*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicUMax((__private ulong*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicUMax, _p1i64_i32_i32_i64, )( (__global ulong*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicUMax( (__global ulong*)Pointer, Scope, Semantics, Value );
     }
 }
 
@@ -1601,35 +1601,35 @@ ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMax, _p4i64_i32_i32_i64, )( __gene
 // Atomic And
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicAnd, _p0i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicAnd( __private int *Pointer, int Scope, int Semantics, int Value )
 {
     uint orig = *Pointer;
     *Pointer &= Value;
     return orig;
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicAnd, _p1i32_i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicAnd( __global int *Pointer, int Scope, int Semantics, int Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_and_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicAnd, _p3i32_i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicAnd( __local int *Pointer, int Scope, int Semantics, int Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_and_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicAnd, _p4i32_i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicAnd( __generic int *Pointer, int Scope, int Semantics, int Value )
 {
     __builtin_assume((__local int*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_and_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicAnd, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicAnd((__private int*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1641,39 +1641,39 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicAnd, _p4i32_i32_i32_i32, )( __generic
 
 #if defined(cl_khr_int64_extended_atomics)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicAnd, _p0i64_i32_i32_i64, )( __private long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicAnd( __private long *Pointer, int Scope, int Semantics, long Value )
 {
     ulong orig = *Pointer;
     *Pointer &= Value;
     return orig;
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicAnd, _p1i64_i32_i32_i64, )( __global long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicAnd( __global long *Pointer, int Scope, int Semantics, long Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_and_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value, true );
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicAnd, _p3i64_i32_i32_i64, )( __local long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicAnd( __local long *Pointer, int Scope, int Semantics, long Value )
 {
     return __intel_atomic_binary(ATOMIC_AND64, Pointer, Scope, Semantics, Value);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicAnd, _p4i64_i32_i32_i64, )( __generic long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicAnd( __generic long *Pointer, int Scope, int Semantics, long Value )
 {
     __builtin_assume((__local long*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicAnd, _p3i64_i32_i32_i64, )( (__local long*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicAnd( (__local long*)Pointer, Scope, Semantics, Value );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicAnd, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicAnd((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicAnd, _p1i64_i32_i32_i64, )( (__global long*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicAnd( (__global long*)Pointer, Scope, Semantics, Value );
     }
 }
 
@@ -1684,35 +1684,35 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicAnd, _p4i64_i32_i32_i64, )( __generi
 // Atomic OR
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicOr, _p0i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicOr( __private int *Pointer, int Scope, int Semantics, int Value )
 {
     uint orig = *Pointer;
     *Pointer |= Value;
     return orig;
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicOr, _p1i32_i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicOr( __global int *Pointer, int Scope, int Semantics, int Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_or_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicOr, _p3i32_i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicOr( __local int *Pointer, int Scope, int Semantics, int Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_or_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicOr, _p4i32_i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicOr( __generic int *Pointer, int Scope, int Semantics, int Value )
 {
     __builtin_assume((__local int*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_or_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicOr, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicOr((__private int*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1724,39 +1724,39 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicOr, _p4i32_i32_i32_i32, )( __generic 
 
 #if defined(cl_khr_int64_extended_atomics)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicOr, _p0i64_i32_i32_i64, )( __private long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicOr( __private long *Pointer, int Scope, int Semantics, long Value )
 {
     ulong orig = *Pointer;
     *Pointer |= Value;
     return orig;
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicOr, _p1i64_i32_i32_i64, )( __global long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicOr( __global long *Pointer, int Scope, int Semantics, long Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_or_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value, true );
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicOr, _p3i64_i32_i32_i64, )( __local long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicOr( __local long *Pointer, int Scope, int Semantics, long Value )
 {
     return __intel_atomic_binary(ATOMIC_OR64, Pointer, Scope, Semantics, Value);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicOr, _p4i64_i32_i32_i64, )( __generic long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicOr( __generic long *Pointer, int Scope, int Semantics, long Value )
 {
     __builtin_assume((__local long*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-      return SPIRV_BUILTIN(AtomicOr, _p3i64_i32_i32_i64, )( (__local long*)Pointer, Scope, Semantics, Value );
+      return __spirv_AtomicOr( (__local long*)Pointer, Scope, Semantics, Value );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicOr, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicOr((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-      return SPIRV_BUILTIN(AtomicOr, _p1i64_i32_i32_i64, )( (__global long*)Pointer, Scope, Semantics, Value );
+      return __spirv_AtomicOr( (__global long*)Pointer, Scope, Semantics, Value );
     }
 }
 
@@ -1767,35 +1767,35 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicOr, _p4i64_i32_i32_i64, )( __generic
 // Atomic Xor
 
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicXor, _p0i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicXor( __private int *Pointer, int Scope, int Semantics, int Value )
 {
     uint orig = *Pointer;
     *Pointer ^= Value;
     return orig;
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicXor, _p1i32_i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicXor( __global int *Pointer, int Scope, int Semantics, int Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_xor_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicXor, _p3i32_i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicXor( __local int *Pointer, int Scope, int Semantics, int Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_xor_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicXor, _p4i32_i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics, int Value )
+int __attribute__((overloadable)) __spirv_AtomicXor( __generic int *Pointer, int Scope, int Semantics, int Value )
 {
     __builtin_assume((__local int*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_xor_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicXor, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicXor((__private int*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1807,39 +1807,39 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicXor, _p4i32_i32_i32_i32, )( __generic
 
 #if defined(cl_khr_int64_extended_atomics)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicXor, _p0i64_i32_i32_i64, )( __private long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicXor( __private long *Pointer, int Scope, int Semantics, long Value )
 {
     ulong orig = *Pointer;
     *Pointer ^= Value;
     return orig;
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicXor, _p1i64_i32_i32_i64, )( __global long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicXor( __global long *Pointer, int Scope, int Semantics, long Value )
 {
     atomic_operation_1op( __builtin_IB_atomic_xor_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value, true );
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicXor, _p3i64_i32_i32_i64, )( __local long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicXor( __local long *Pointer, int Scope, int Semantics, long Value )
 {
     return __intel_atomic_binary(ATOMIC_XOR64, Pointer, Scope, Semantics, Value);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicXor, _p4i64_i32_i32_i64, )( __generic long *Pointer, int Scope, int Semantics, long Value )
+long __attribute__((overloadable)) __spirv_AtomicXor( __generic long *Pointer, int Scope, int Semantics, long Value )
 {
     __builtin_assume((__local long*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicXor, _p3i64_i32_i32_i64, )( (__local long*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicXor( (__local long*)Pointer, Scope, Semantics, Value );
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicXor, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicXor((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicXor, _p1i64_i32_i32_i64, )( (__global long*)Pointer, Scope, Semantics, Value );
+        return __spirv_AtomicXor( (__global long*)Pointer, Scope, Semantics, Value );
     }
 }
 
@@ -1850,26 +1850,26 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicXor, _p4i64_i32_i32_i64, )( __generi
 // Atomic FlagTestAndSet
 
 
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFlagTestAndSet, _p0i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics )
+bool __attribute__((overloadable)) __spirv_AtomicFlagTestAndSet( __private int *Pointer, int Scope, int Semantics )
 {
-    return (bool)SPIRV_BUILTIN(AtomicExchange, _p0i32_i32_i32_i32, )( Pointer, Scope, Semantics, ATOMIC_FLAG_TRUE );
+    return (bool)__spirv_AtomicExchange( Pointer, Scope, Semantics, ATOMIC_FLAG_TRUE );
 }
 
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFlagTestAndSet, _p1i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics )
+bool __attribute__((overloadable)) __spirv_AtomicFlagTestAndSet( __global int *Pointer, int Scope, int Semantics )
 {
-    return (bool)SPIRV_BUILTIN(AtomicExchange, _p1i32_i32_i32_i32, )( Pointer, Scope, Semantics, ATOMIC_FLAG_TRUE );
+    return (bool)__spirv_AtomicExchange( Pointer, Scope, Semantics, ATOMIC_FLAG_TRUE );
 }
 
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFlagTestAndSet, _p3i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics )
+bool __attribute__((overloadable)) __spirv_AtomicFlagTestAndSet( __local int *Pointer, int Scope, int Semantics )
 {
-    return (bool)SPIRV_BUILTIN(AtomicExchange, _p3i32_i32_i32_i32, )( Pointer, Scope, Semantics, ATOMIC_FLAG_TRUE );
+    return (bool)__spirv_AtomicExchange( Pointer, Scope, Semantics, ATOMIC_FLAG_TRUE );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFlagTestAndSet, _p4i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics )
+bool __attribute__((overloadable)) __spirv_AtomicFlagTestAndSet( __generic int *Pointer, int Scope, int Semantics )
 {
-    return (bool)SPIRV_BUILTIN(AtomicExchange, _p4i32_i32_i32_i32, )( Pointer, Scope, Semantics, ATOMIC_FLAG_TRUE );
+    return (bool)__spirv_AtomicExchange( Pointer, Scope, Semantics, ATOMIC_FLAG_TRUE );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1878,38 +1878,38 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFlagTestAndSet, _p4i32_i32_i32, )( _
 // Atomic FlagClear
 
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFlagClear, _p0i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics )
+void __attribute__((overloadable)) __spirv_AtomicFlagClear( __private int *Pointer, int Scope, int Semantics )
 {
-    SPIRV_BUILTIN(AtomicStore, _p0i32_i32_i32_i32, )( Pointer, Scope, Semantics, ATOMIC_FLAG_FALSE );
+    __spirv_AtomicStore( Pointer, Scope, Semantics, ATOMIC_FLAG_FALSE );
 }
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFlagClear, _p1i32_i32_i32, )( __global int *Pointer, int Scope, int Semantics )
+void __attribute__((overloadable)) __spirv_AtomicFlagClear( __global int *Pointer, int Scope, int Semantics )
 {
-    SPIRV_BUILTIN(AtomicStore, _p1i32_i32_i32_i32, )( Pointer, Scope, Semantics, ATOMIC_FLAG_FALSE );
+    __spirv_AtomicStore( Pointer, Scope, Semantics, ATOMIC_FLAG_FALSE );
 }
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFlagClear, _p3i32_i32_i32, )( __local int *Pointer, int Scope, int Semantics )
+void __attribute__((overloadable)) __spirv_AtomicFlagClear( __local int *Pointer, int Scope, int Semantics )
 {
-    SPIRV_BUILTIN(AtomicStore, _p3i32_i32_i32_i32, )( Pointer, Scope, Semantics, ATOMIC_FLAG_FALSE );
+    __spirv_AtomicStore( Pointer, Scope, Semantics, ATOMIC_FLAG_FALSE );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFlagClear, _p4i32_i32_i32, )( __generic int *Pointer, int Scope, int Semantics )
+void __attribute__((overloadable)) __spirv_AtomicFlagClear( __generic int *Pointer, int Scope, int Semantics )
 {
-    SPIRV_BUILTIN(AtomicStore, _p4i32_i32_i32_i32, )( Pointer, Scope, Semantics, ATOMIC_FLAG_FALSE );
+    __spirv_AtomicStore( Pointer, Scope, Semantics, ATOMIC_FLAG_FALSE );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p0f32_i32_i32_f32, )( __private float *Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFAddEXT( __private float *Pointer, int Scope, int Semantics, float Value)
 {
     float orig = *Pointer;
     *Pointer += Value;
     return orig;
 }
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f32_i32_i32_f32, )( __global float *Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFAddEXT( __global float *Pointer, int Scope, int Semantics, float Value)
 {
     if(BIF_FLAG_CTRL_GET(UseNativeFP32GlobalAtomicAdd))
     {
@@ -1919,23 +1919,23 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f32_i32_i32_f32, )( __g
     float orig;
     float desired;
     do {
-        orig = as_float(SPIRV_BUILTIN(AtomicLoad, _p1i32_i32_i32, )((__global int*)Pointer, Scope, Semantics));
+        orig = as_float(__spirv_AtomicLoad((__global int*)Pointer, Scope, Semantics));
         desired = orig + Value;
-    } while(as_int(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
+    } while(as_int(orig) != __spirv_AtomicCompareExchange(
                                 (__global int*)Pointer, Scope, Semantics, Semantics,
                                 as_int(desired), as_int(orig)));
     return orig;
 }
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p3f32_i32_i32_f32, )( __local float *Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFAddEXT( __local float *Pointer, int Scope, int Semantics, float Value)
 {
     // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
     float orig;
     float desired;
     do {
-        orig = as_float(SPIRV_BUILTIN(AtomicLoad, _p3i32_i32_i32, )((__local int*)Pointer, Scope, Semantics));
+        orig = as_float(__spirv_AtomicLoad((__local int*)Pointer, Scope, Semantics));
         desired = orig + Value;
-    } while(as_int(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p3i32_i32_i32_i32_i32_i32, )(
+    } while(as_int(orig) != __spirv_AtomicCompareExchange(
                                 (__local int*)Pointer, Scope, Semantics, Semantics,
                                 as_int(desired), as_int(orig)));
     return orig;
@@ -1944,32 +1944,32 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p3f32_i32_i32_f32, )( __l
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 //The atomic emulation pattern is used later in AtomicOptPass.
 //If you change the pattern, you need to make the appropriate changes to AtomicOptPass.
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p4f32_i32_i32_f32, )( __generic float *Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFAddEXT( __generic float *Pointer, int Scope, int Semantics, float Value)
 {
     __builtin_assume((__local float*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFAddEXT, _p3f32_i32_i32_f32, )((local float*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFAddEXT((local float*)Pointer, Scope, Semantics, Value);
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFAddEXT, _p0f32_i32_i32_f32, )((__private float*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFAddEXT((__private float*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicFAddEXT, _p1f32_i32_i32_f32, )((global float*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFAddEXT((global float*)Pointer, Scope, Semantics, Value);
     }
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p0f64_i32_i32_f64, )( __private double *Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicFAddEXT( __private double *Pointer, int Scope, int Semantics, double Value)
 {
     double orig = *Pointer;
     *Pointer += Value;
     return orig;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f64_i32_i32_f64, )( __global double *Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicFAddEXT( __global double *Pointer, int Scope, int Semantics, double Value)
 {
     // We don't use __builtin_IB_eu_thread_pause() for platforms which don't support it
     if (BIF_FLAG_CTRL_GET(UseNativeFP64GlobalAtomicAdd) || !BIF_FLAG_CTRL_GET(HasThreadPauseSupport))
@@ -1986,24 +1986,24 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f64_i32_i32_f64, )( __
     double orig;
     double desired;
     do {
-        orig = as_double(SPIRV_BUILTIN(AtomicLoad, _p1i64_i32_i32, )((__global long*)Pointer, Scope, Semantics));
+        orig = as_double(__spirv_AtomicLoad((__global long*)Pointer, Scope, Semantics));
         desired = orig + Value;
-    } while(as_long(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p1i64_i32_i32_i32_i64_i64, )(
+    } while(as_long(orig) != __spirv_AtomicCompareExchange(
                                 (__global long*)Pointer, Scope, Semantics, Semantics,
                                 as_long(desired), as_long(orig)));
     return orig;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p3f64_i32_i32_f64, )( __local double *Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicFAddEXT( __local double *Pointer, int Scope, int Semantics, double Value)
 {
     if(BIF_FLAG_CTRL_GET(PlatformType) == IGFX_PVC)
     {
         double orig;
         double desired;
         do {
-            orig = as_double(SPIRV_BUILTIN(AtomicLoad, _p3i64_i32_i32, )((__local long*)Pointer, Scope, Semantics));
+            orig = as_double(__spirv_AtomicLoad((__local long*)Pointer, Scope, Semantics));
             desired = orig + Value;
-        } while(as_long(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p3i64_i32_i32_i32_i64_i64, )(
+        } while(as_long(orig) != __spirv_AtomicCompareExchange(
                                 (__local long*)Pointer, Scope, Semantics, Semantics,
                                 as_long(desired), as_long(orig)));
         return orig;
@@ -2022,32 +2022,32 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p3f64_i32_i32_f64, )( __
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p4f64_i32_i32_f64, )( __generic double *Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicFAddEXT( __generic double *Pointer, int Scope, int Semantics, double Value)
 {
     __builtin_assume((__local double*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFAddEXT, _p3f64_i32_i32_f64, )((local double*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFAddEXT((local double*)Pointer, Scope, Semantics, Value);
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFAddEXT, _p0f64_i32_i32_f64, )((__private double*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFAddEXT((__private double*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicFAddEXT, _p1f64_i32_i32_f64, )((global double*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFAddEXT((global double*)Pointer, Scope, Semantics, Value);
     }
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p0f16_i32_i32_f16, )( private half* Pointer, int Scope, int Semantics, half Value)
+half __attribute__((overloadable)) __spirv_AtomicFMinEXT( private half* Pointer, int Scope, int Semantics, half Value)
 {
     half orig = *Pointer;
     *Pointer = (orig < Value) ? orig : Value;
     return orig;
 }
 
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p1f16_i32_i32_f16, )( global half* Pointer, int Scope, int Semantics, half Value)
+half __attribute__((overloadable)) __spirv_AtomicFMinEXT( global half* Pointer, int Scope, int Semantics, half Value)
 {
     if(BIF_FLAG_CTRL_GET(UseNativeFP16AtomicMinMax))
     {
@@ -2063,7 +2063,7 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p1f16_i32_i32_f16, )( glob
     return orig;
 }
 
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p3f16_i32_i32_f16, )( local half* Pointer, int Scope, int Semantics, half Value)
+half __attribute__((overloadable)) __spirv_AtomicFMinEXT( local half* Pointer, int Scope, int Semantics, half Value)
 {
     if(BIF_FLAG_CTRL_GET(UseNativeFP16AtomicMinMax))
     {
@@ -2080,68 +2080,68 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p3f16_i32_i32_f16, )( loca
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p4f16_i32_i32_f16, )( generic half* Pointer, int Scope, int Semantics, half Value)
+half __attribute__((overloadable)) __spirv_AtomicFMinEXT( generic half* Pointer, int Scope, int Semantics, half Value)
 {
     __builtin_assume((__local half*)Pointer != 0);
-    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFMinEXT, _p3f16_i32_i32_f16, )((__local half*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMinEXT((__local half*)Pointer, Scope, Semantics, Value);
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFMinEXT, _p0f16_i32_i32_f16, )((__private half*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMinEXT((__private half*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicFMinEXT, _p1f16_i32_i32_f16, )((__global half*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMinEXT((__global half*)Pointer, Scope, Semantics, Value);
     }
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p0f32_i32_i32_f32, )( private float* Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFMinEXT( private float* Pointer, int Scope, int Semantics, float Value)
 {
     float orig = *Pointer;
     *Pointer = (orig < Value) ? orig : Value;
     return orig;
 }
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p1f32_i32_i32_f32, )( global float* Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFMinEXT( global float* Pointer, int Scope, int Semantics, float Value)
 {
     atomic_operation_1op_as_float(__builtin_IB_atomic_min_global_f32, float, Pointer, Scope, Semantics, Value, true);
 }
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p3f32_i32_i32_f32, )( local float* Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFMinEXT( local float* Pointer, int Scope, int Semantics, float Value)
 {
     atomic_operation_1op_as_float(__builtin_IB_atomic_min_local_f32, float, Pointer, Scope, Semantics, Value, false);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p4f32_i32_i32_f32, )( generic float* Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFMinEXT( generic float* Pointer, int Scope, int Semantics, float Value)
 {
     __builtin_assume((__local float*)Pointer != 0);
-    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFMinEXT, _p3f32_i32_i32_f32, )((__local float*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMinEXT((__local float*)Pointer, Scope, Semantics, Value);
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFMinEXT, _p0f32_i32_i32_f32, )((__private float*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMinEXT((__private float*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicFMinEXT, _p1f32_i32_i32_f32, )((__global float*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMinEXT((__global float*)Pointer, Scope, Semantics, Value);
     }
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p0f64_i32_i32_f64, )( private double* Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicFMinEXT( private double* Pointer, int Scope, int Semantics, double Value)
 {
     double orig = *Pointer;
     *Pointer = (orig < Value) ? orig : Value;
     return orig;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p1f64_i32_i32_f64, )( global double* Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicFMinEXT( global double* Pointer, int Scope, int Semantics, double Value)
 {
     // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
     // Another important reason of using do-while loop emulation is to avoid HW Bug on XeHP SDV:
@@ -2153,54 +2153,54 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p1f64_i32_i32_f64, )( gl
     double orig;
     double desired;
     do {
-        orig = as_double(SPIRV_BUILTIN(AtomicLoad, _p1i64_i32_i32, )((__global long*)Pointer, Scope, Semantics));
+        orig = as_double(__spirv_AtomicLoad((__global long*)Pointer, Scope, Semantics));
         desired = ( orig < Value ) ? orig : Value;
-    } while(as_long(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p1i64_i32_i32_i32_i64_i64, )(
+    } while(as_long(orig) != __spirv_AtomicCompareExchange(
                                 (__global long*)Pointer, Scope, Semantics, Semantics,
                                 as_long(desired), as_long(orig)));
     return orig;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p3f64_i32_i32_f64, )( local double* Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicFMinEXT( local double* Pointer, int Scope, int Semantics, double Value)
 {
     double orig;
     double desired;
     do {
-        orig = as_double(SPIRV_BUILTIN(AtomicLoad, _p3i64_i32_i32, )((__local long*)Pointer, Scope, Semantics));
+        orig = as_double(__spirv_AtomicLoad((__local long*)Pointer, Scope, Semantics));
         desired = ( orig < Value ) ? orig : Value;
-    } while(as_long(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p3i64_i32_i32_i32_i64_i64, )(
+    } while(as_long(orig) != __spirv_AtomicCompareExchange(
                                 (__local long*)Pointer, Scope, Semantics, Semantics,
                                 as_long(desired), as_long(orig)));
     return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p4f64_i32_i32_f64, )( generic double* Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicFMinEXT( generic double* Pointer, int Scope, int Semantics, double Value)
 {
     __builtin_assume((__local double*)Pointer != 0);
-    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFMinEXT, _p3f64_i32_i32_f64, )((__local double*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMinEXT((__local double*)Pointer, Scope, Semantics, Value);
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFMinEXT, _p0f64_i32_i32_f64, )((__private double*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMinEXT((__private double*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicFMinEXT, _p1f64_i32_i32_f64, )((__global double*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMinEXT((__global double*)Pointer, Scope, Semantics, Value);
     }
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p0f16_i32_i32_f16, )( private half* Pointer, int Scope, int Semantics, half Value)
+half __attribute__((overloadable)) __spirv_AtomicFMaxEXT( private half* Pointer, int Scope, int Semantics, half Value)
 {
     half orig = *Pointer;
     *Pointer = (orig > Value) ? orig : Value;
     return orig;
 }
 
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p1f16_i32_i32_f16, )( global half* Pointer, int Scope, int Semantics, half Value)
+half __attribute__((overloadable)) __spirv_AtomicFMaxEXT( global half* Pointer, int Scope, int Semantics, half Value)
 {
     if(BIF_FLAG_CTRL_GET(UseNativeFP16AtomicMinMax))
     {
@@ -2216,7 +2216,7 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p1f16_i32_i32_f16, )( glob
     return orig;
 }
 
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p3f16_i32_i32_f16, )( local half* Pointer, int Scope, int Semantics, half Value)
+half __attribute__((overloadable)) __spirv_AtomicFMaxEXT( local half* Pointer, int Scope, int Semantics, half Value)
 {
     if(BIF_FLAG_CTRL_GET(UseNativeFP16AtomicMinMax))
     {
@@ -2233,68 +2233,68 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p3f16_i32_i32_f16, )( loca
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p4f16_i32_i32_f16, )( generic half* Pointer, int Scope, int Semantics, half Value)
+half __attribute__((overloadable)) __spirv_AtomicFMaxEXT( generic half* Pointer, int Scope, int Semantics, half Value)
 {
     __builtin_assume((__local half*)Pointer != 0);
-    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFMaxEXT, _p3f16_i32_i32_f16, )((__local half*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMaxEXT((__local half*)Pointer, Scope, Semantics, Value);
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFMaxEXT, _p0f16_i32_i32_f16, )((__private half*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMaxEXT((__private half*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicFMaxEXT, _p1f16_i32_i32_f16, )((__global half*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMaxEXT((__global half*)Pointer, Scope, Semantics, Value);
     }
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p0f32_i32_i32_f32, )( private float* Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFMaxEXT( private float* Pointer, int Scope, int Semantics, float Value)
 {
     float orig = *Pointer;
     *Pointer = (orig > Value) ? orig : Value;
     return orig;
 }
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p1f32_i32_i32_f32, )( global float* Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFMaxEXT( global float* Pointer, int Scope, int Semantics, float Value)
 {
     atomic_operation_1op_as_float(__builtin_IB_atomic_max_global_f32, float, Pointer, Scope, Semantics, Value, true);
 }
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p3f32_i32_i32_f32, )( local float* Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFMaxEXT( local float* Pointer, int Scope, int Semantics, float Value)
 {
     atomic_operation_1op_as_float(__builtin_IB_atomic_max_local_f32, float, Pointer, Scope, Semantics, Value, false);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p4f32_i32_i32_f32, )( generic float* Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFMaxEXT( generic float* Pointer, int Scope, int Semantics, float Value)
 {
     __builtin_assume((__local float*)Pointer != 0);
-    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFMaxEXT, _p3f32_i32_i32_f32, )((__local float*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMaxEXT((__local float*)Pointer, Scope, Semantics, Value);
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFMaxEXT, _p0f32_i32_i32_f32, )((__private float*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMaxEXT((__private float*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicFMaxEXT, _p1f32_i32_i32_f32, )((__global float*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMaxEXT((__global float*)Pointer, Scope, Semantics, Value);
     }
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p0f64_i32_i32_f64, )( private double* Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicFMaxEXT( private double* Pointer, int Scope, int Semantics, double Value)
 {
     double orig = *Pointer;
     *Pointer = (orig > Value) ? orig : Value;
     return orig;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p1f64_i32_i32_f64, )( global double* Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicFMaxEXT( global double* Pointer, int Scope, int Semantics, double Value)
 {
     // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
     // Another important reason of using do-while loop emulation is to avoid HW Bug on XeHP SDV:
@@ -2306,53 +2306,53 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p1f64_i32_i32_f64, )( gl
     double orig;
     double desired;
     do {
-        orig = as_double(SPIRV_BUILTIN(AtomicLoad, _p1i64_i32_i32, )((__global long*)Pointer, Scope, Semantics));
+        orig = as_double(__spirv_AtomicLoad((__global long*)Pointer, Scope, Semantics));
         desired = ( orig > Value ) ? orig : Value;
-    } while(as_long(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p1i64_i32_i32_i32_i64_i64, )(
+    } while(as_long(orig) != __spirv_AtomicCompareExchange(
                                 (__global long*)Pointer, Scope, Semantics, Semantics,
                                 as_long(desired), as_long(orig)));
     return orig;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p3f64_i32_i32_f64, )( local double* Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicFMaxEXT( local double* Pointer, int Scope, int Semantics, double Value)
 {
     double orig;
     double desired;
     do {
-        orig = as_double(SPIRV_BUILTIN(AtomicLoad, _p3i64_i32_i32, )((__local long*)Pointer, Scope, Semantics));
+        orig = as_double(__spirv_AtomicLoad((__local long*)Pointer, Scope, Semantics));
         desired = ( orig > Value ) ? orig : Value;
-    } while(as_long(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p3i64_i32_i32_i32_i64_i64, )(
+    } while(as_long(orig) != __spirv_AtomicCompareExchange(
                                 (__local long*)Pointer, Scope, Semantics, Semantics,
                                 as_long(desired), as_long(orig)));
     return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p4f64_i32_i32_f64, )( generic double* Pointer, int Scope, int Semantics, double Value)
+double __attribute__((overloadable)) __spirv_AtomicFMaxEXT( generic double* Pointer, int Scope, int Semantics, double Value)
 {
     __builtin_assume((__local double*)Pointer != 0);
-    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFMaxEXT, _p3f64_i32_i32_f64, )((__local double*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMaxEXT((__local double*)Pointer, Scope, Semantics, Value);
     }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicFMaxEXT, _p0f64_i32_i32_f64, )((__private double*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMaxEXT((__private double*)Pointer, Scope, Semantics, Value);
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicFMaxEXT, _p1f64_i32_i32_f64, )((__global double*)Pointer, Scope, Semantics, Value);
+        return __spirv_AtomicFMaxEXT((__global double*)Pointer, Scope, Semantics, Value);
     }
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAdd, _p1f32_i32_i32_f32, )( __global float *Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFAdd( __global float *Pointer, int Scope, int Semantics, float Value)
 {
     atomic_operation_1op_as_float( __builtin_IB_atomic_add_global_f32, float, Pointer, Scope, Semantics, Value, true );
 }
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFSub, _p1f32_i32_i32_f32, )( __global float *Pointer, int Scope, int Semantics, float Value)
+float __attribute__((overloadable)) __spirv_AtomicFSub( __global float *Pointer, int Scope, int Semantics, float Value)
 {
     atomic_operation_1op_as_float( __builtin_IB_atomic_sub_global_f32, float, Pointer, Scope, Semantics, Value, true );
 }

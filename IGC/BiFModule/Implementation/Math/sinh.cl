@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/sinh_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sinh, _f32, )( float x )
+float __attribute__((overloadable)) __spirv_ocl_sinh( float x )
 {
     float result;
 
@@ -22,14 +22,14 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sinh, _f32, )( float x )
     {
         // For most inputs, we'll use the expansion
         //  sinh(x) = 0.5f * ( e^x - e^-x ):
-        float pexp = SPIRV_OCL_BUILTIN(exp, _f32, )(  x );
-        float nexp = SPIRV_OCL_BUILTIN(exp, _f32, )( -x );
+        float pexp = __spirv_ocl_exp(  x );
+        float nexp = __spirv_ocl_exp( -x );
         result = 0.5f * ( pexp - nexp );
 
         // For x close to zero, we'll simply use x.
         // We use 2^-10 as our cutoff value for
         // "close to zero".
-        float px = SPIRV_OCL_BUILTIN(fabs, _f32, )( x );
+        float px = __spirv_ocl_fabs( x );
         result = ( px > as_float(0x3A800000) ) ? result : x;
     }
     else
@@ -44,7 +44,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sinh, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sinh, _f64, )( double x )
+INLINE double __attribute__((overloadable)) __spirv_ocl_sinh( double x )
 {
     return __ocl_svml_sinh(x);
 }
@@ -55,9 +55,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sinh, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sinh, _f16, )( half x )
+INLINE half __attribute__((overloadable)) __spirv_ocl_sinh( half x )
 {
-    return SPIRV_OCL_BUILTIN(sinh, _f32, )((float)x);
+    return __spirv_ocl_sinh((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sinh, half, half, f16 )

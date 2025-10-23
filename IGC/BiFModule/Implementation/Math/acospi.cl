@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/acospi_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(acospi, _f32, )( float x )
+INLINE float __attribute__((overloadable)) __spirv_ocl_acospi( float x )
 {
     return __ocl_svml_acospif(x);
 }
@@ -23,7 +23,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( acospi, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(acospi, _f64, )( double x )
+INLINE double __attribute__((overloadable)) __spirv_ocl_acospi( double x )
 {
     return __ocl_svml_acospi(x);
 }
@@ -34,9 +34,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( acospi, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(acospi, _f16, )( half x )
+INLINE half __attribute__((overloadable)) __spirv_ocl_acospi( half x )
 {
-    return M_1_PI_H * SPIRV_OCL_BUILTIN(acos, _f16, )(x);
+    return M_1_PI_H * __spirv_ocl_acos(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( acospi, half, half, f16 )

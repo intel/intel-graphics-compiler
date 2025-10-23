@@ -51,18 +51,18 @@ INLINE double __clc_exp_helper(double x, double x_min, double x_max, double r, i
     int m = n >> 6;
 
     // 6 term tail of Taylor expansion of e^r
-    double z2 = r * SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                    SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                    SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                    SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r, 0x1.6c16c16c16c17p-10, 0x1.1111111111111p-7),
+    double z2 = r * __spirv_ocl_fma(r,
+                    __spirv_ocl_fma(r,
+                    __spirv_ocl_fma(r,
+                    __spirv_ocl_fma(r,
+                        __spirv_ocl_fma(r, 0x1.6c16c16c16c17p-10, 0x1.1111111111111p-7),
                         0x1.5555555555555p-5),
                     0x1.5555555555555p-3),
                     0x1.0000000000000p-1),
                 1.0);
 
     double2 tv = USE_TABLE(two_to_jby64_ep_tbl, j);
-    z2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(tv.s0 + tv.s1, z2, tv.s1) + tv.s0;
+    z2 = __spirv_ocl_fma(tv.s0 + tv.s1, z2, tv.s1) + tv.s0;
 
     int small_value = (m < -1022) || ((m == -1022) && (z2 < 1.0));
 
@@ -71,7 +71,7 @@ INLINE double __clc_exp_helper(double x, double x_min, double x_max, double r, i
     double z3= z2 * as_double(((long)n1 + 1023) << 52);
     z3 *= as_double(((long)n2 + 1023) << 52);
 
-    z2 = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )(z2, m);
+    z2 = __spirv_ocl_ldexp(z2, m);
     z2 = small_value ? z3: z2;
 
     z2 = __intel_relaxed_isnan(x) ? x : z2;
@@ -122,7 +122,7 @@ void __clc_ep_log(double x, int *xexp, double *r1, double *r2)
 
     double f1 = index * 0x1.0p-7;
     double f2 = f - f1;
-    double u2 = MATH_DIVIDE(f2, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(0.5, f2, f1));
+    double u2 = MATH_DIVIDE(f2, __spirv_ocl_fma(0.5, f2, f1));
 
     double2 tv = USE_TABLE(ln_tbl, (index - 64));
     double z1 = tv.s0;
@@ -135,10 +135,10 @@ void __clc_ep_log(double x, int *xexp, double *r1, double *r2)
 
     double cc = near_one ? ru1 : u2;
 
-    double z21 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, LN3, LN2), LN1), LN0);
-    double z22 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, LF2, LF1), LF0);
+    double z21 = __spirv_ocl_fma(v, __spirv_ocl_fma(v, __spirv_ocl_fma(v, LN3, LN2), LN1), LN0);
+    double z22 = __spirv_ocl_fma(v, __spirv_ocl_fma(v, LF2, LF1), LF0);
     double z2 = near_one ? z21 : z22;
-    z2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(u*v, z2, cc) + q;
+    z2 = __spirv_ocl_fma(u*v, z2, cc) + q;
 
     *r1 = z1;
     *r2 = z2;
@@ -148,7 +148,7 @@ void __clc_ep_log(double x, int *xexp, double *r1, double *r2)
 void __clc_remainder_piby2_medium(double x, double *r, double *rr, int *regn) {
     // How many pi/2 is x a multiple of?
     const double two_by_pi = 0x1.45f306dc9c883p-1;
-    double dnpi2 = SPIRV_OCL_BUILTIN(trunc, _f64, )(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x, two_by_pi, 0.5));
+    double dnpi2 = __spirv_ocl_trunc(__spirv_ocl_fma(x, two_by_pi, 0.5));
 
     const double piby2_h = -7074237752028440.0 / 0x1.0p+52;
     const double piby2_m = -2483878800010755.0 / 0x1.0p+105;
@@ -156,11 +156,11 @@ void __clc_remainder_piby2_medium(double x, double *r, double *rr, int *regn) {
 
     // Compute product of npi2 with 159 bits of 2/pi
     double p_hh = piby2_h * dnpi2;
-    double p_ht = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(piby2_h, dnpi2, -p_hh);
+    double p_ht = __spirv_ocl_fma(piby2_h, dnpi2, -p_hh);
     double p_mh = piby2_m * dnpi2;
-    double p_mt = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(piby2_m, dnpi2, -p_mh);
+    double p_mt = __spirv_ocl_fma(piby2_m, dnpi2, -p_mh);
     double p_th = piby2_t * dnpi2;
-    double p_tt = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(piby2_t, dnpi2, -p_th);
+    double p_tt = __spirv_ocl_fma(piby2_t, dnpi2, -p_th);
 
     // Reduce to 159 bits
     double ph = p_hh;
@@ -189,7 +189,7 @@ void __clc_remainder_piby2_large(double x, double *r, double *rr, int *regn) {
 
     long ux = as_long(x);
     int e = (int)(ux >> 52) -  1023;
-    int i = SPIRV_OCL_BUILTIN(s_max, _i32_i32, )(23, (e >> 3) + 17);
+    int i = __spirv_ocl_s_max(23, (e >> 3) + 17);
     int j = 150 - i;
     int j16 = j & ~0xf;
     double fract_temp;
@@ -260,13 +260,13 @@ void __clc_remainder_piby2_large(double x, double *r, double *rr, int *regn) {
 
     // Exact multiply
     double f0h = p0 * x;
-    double f0l = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(p0, x, -f0h);
+    double f0l = __spirv_ocl_fma(p0, x, -f0h);
     double f1h = p1 * x;
-    double f1l = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(p1, x, -f1h);
+    double f1l = __spirv_ocl_fma(p1, x, -f1h);
     double f2h = p2 * x;
-    double f2l = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(p2, x, -f2h);
+    double f2l = __spirv_ocl_fma(p2, x, -f2h);
     double f3h = p3 * x;
-    double f3l = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(p3, x, -f3h);
+    double f3l = __spirv_ocl_fma(p3, x, -f3h);
 
     // Accumulate product into 4 doubles
     double s, t;
@@ -288,12 +288,12 @@ void __clc_remainder_piby2_large(double x, double *r, double *rr, int *regn) {
     double f0 = s + f0l;
 
     // Strip off unwanted large integer bits
-    f3 = 0x1.0p+10 * SPIRV_OCL_BUILTIN(fract, _f64_p0f64, )(f3 * 0x1.0p-10, &fract_temp);
+    f3 = 0x1.0p+10 * __spirv_ocl_fract(f3 * 0x1.0p-10, &fract_temp);
     f3 += f3 + f2 < 0.0 ? 0x1.0p+10 : 0.0;
 
     // Compute least significant integer bits
     t = f3 + f2;
-    double di = t - SPIRV_OCL_BUILTIN(fract, _f64_p0f64, )(t, &fract_temp);
+    double di = t - __spirv_ocl_fract(t, &fract_temp);
     i = (float)di;
 
     // Shift out remaining integer part
@@ -315,7 +315,7 @@ void __clc_remainder_piby2_large(double x, double *r, double *rr, int *regn) {
     const double p2t = 4967757600021510.0 / 0x1.0p+106;
 
     double rhi = f3 * p2h;
-    double rlo = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(f2, p2h, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(f3, p2t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(f3, p2h, -rhi)));
+    double rlo = __spirv_ocl_fma(f2, p2h, __spirv_ocl_fma(f3, p2t, __spirv_ocl_fma(f3, p2h, -rhi)));
 
     *r = rhi + rlo;
     *rr = rlo - (*r - rhi);
@@ -363,13 +363,13 @@ double2 __clc_sincos_piby4(double x, double xx) {
     double r = 0.5 * x2;
     double t = 1.0 - r;
 
-    double sp = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(sc6, x2, sc5), x2, sc4), x2, sc3), x2, sc2);
+    double sp = __spirv_ocl_fma(__spirv_ocl_fma(__spirv_ocl_fma(__spirv_ocl_fma(sc6, x2, sc5), x2, sc4), x2, sc3), x2, sc2);
 
-    double cp = t + SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(cc6, x2, cc5), x2, cc4), x2, cc3), x2, cc2), x2, cc1),
-                        x2*x2, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x, xx, (1.0 - t) - r));
+    double cp = t + __spirv_ocl_fma(__spirv_ocl_fma(__spirv_ocl_fma(__spirv_ocl_fma(__spirv_ocl_fma(__spirv_ocl_fma(cc6, x2, cc5), x2, cc4), x2, cc3), x2, cc2), x2, cc1),
+                        x2*x2, __spirv_ocl_fma(x, xx, (1.0 - t) - r));
 
     double2 ret;
-    ret.lo = x - SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-x3, sc1, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-x3, sp, 0.5*xx), x2, -xx));
+    ret.lo = x - __spirv_ocl_fma(-x3, sc1, __spirv_ocl_fma(__spirv_ocl_fma(-x3, sp, 0.5*xx), x2, -xx));
     ret.hi = cp;
 
     return ret;
@@ -379,9 +379,9 @@ double2 __clc_sincos_piby4(double x, double xx) {
 
 INLINE double libclc_acos_f64(double x) {
   return (
-      2.0 * SPIRV_OCL_BUILTIN(atan2, _f64_f64, )(
-      SPIRV_OCL_BUILTIN(sqrt, _f64, )(1.0 - x),
-      SPIRV_OCL_BUILTIN(sqrt, _f64, )(1.0 + x)
+      2.0 * __spirv_ocl_atan2(
+      __spirv_ocl_sqrt(1.0 - x),
+      __spirv_ocl_sqrt(1.0 + x)
     )
   );
 }
@@ -389,14 +389,14 @@ INLINE double libclc_acos_f64(double x) {
 /*################################# libclc_acosh_f64 ##############################################*/
 
 INLINE double libclc_acosh_f64(double x) {
-    const double recrteps = 0x1.6a09e667f3bcdp+26;    // 1/SPIRV_OCL_BUILTIN(sqrt, _f64, )(eps) = 9.49062656242515593767e+07
+    const double recrteps = 0x1.6a09e667f3bcdp+26;    // 1/__spirv_ocl_sqrt(eps) = 9.49062656242515593767e+07
     //log2_lead and log2_tail sum to an extra-precise version of log(2)
     const double log2_lead = 0x1.62e42ep-1;
     const double log2_tail = 0x1.efa39ef35793cp-25;
 
     // Handle x >= 128 here
     int xlarge = x > recrteps;
-    double r = x + SPIRV_OCL_BUILTIN(sqrt, _f64, )(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x, x, -1.0));
+    double r = x + __spirv_ocl_sqrt(__spirv_ocl_fma(x, x, -1.0));
     r = xlarge ? x : r;
 
     int xexp;
@@ -404,21 +404,21 @@ INLINE double libclc_acosh_f64(double x) {
     __clc_ep_log(r, &xexp, &r1, &r2);
 
     double dxexp = xexp + xlarge;
-    r1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dxexp, log2_lead, r1);
-    r2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dxexp, log2_tail, r2);
+    r1 = __spirv_ocl_fma(dxexp, log2_lead, r1);
+    r2 = __spirv_ocl_fma(dxexp, log2_tail, r2);
 
     double ret1 = r1 + r2;
 
     // Handle 1 < x < 128 here
     // We compute the value
-    // t = x - 1.0 + SPIRV_OCL_BUILTIN(sqrt, _f64, )(2.0*(x - 1.0) + (x - 1.0)*(x - 1.0))
+    // t = x - 1.0 + __spirv_ocl_sqrt(2.0*(x - 1.0) + (x - 1.0)*(x - 1.0))
     // using simulated quad precision.
     double t = x - 1.0;
     double u1 = t * 2.0;
 
     // (t,0) * (t,0) -> (v1, v2)
     double v1 = t * t;
-    double v2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, t, -v1);
+    double v2 = __spirv_ocl_fma(t, t, -v1);
 
     // (u1,0) + (v1,v2) -> (w1,w2)
     r = u1 + v1;
@@ -426,10 +426,10 @@ INLINE double libclc_acosh_f64(double x) {
     double w1 = r + s;
     double w2 = (r - w1) + s;
 
-    // SPIRV_OCL_BUILTIN(sqrt, _f64, )(w1,w2) -> (u1,u2)
-    double p1 = SPIRV_OCL_BUILTIN(sqrt, _f64, )(w1);
+    // __spirv_ocl_sqrt(w1,w2) -> (u1,u2)
+    double p1 = __spirv_ocl_sqrt(w1);
     double a1 = p1*p1;
-    double a2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(p1, p1, -a1);
+    double a2 = __spirv_ocl_fma(p1, p1, -a1);
     double temp = (((w1 - a1) - a2) + w2);
     double p2 = MATH_DIVIDE(temp * 0.5, p1);
     u1 = p1 + p2;
@@ -444,7 +444,7 @@ INLINE double libclc_acosh_f64(double x) {
     t = r + s;
 
     // For arguments 1.13 <= x <= 1.5 the log1p function is good enough
-    double ret2 = SPIRV_OCL_BUILTIN(log1p, _f64, )(t);
+    double ret2 = __spirv_ocl_log1p(t);
 
     ulong ux = as_ulong(x);
     double ret = x >= 128.0 ? ret1 : ret2;
@@ -467,19 +467,19 @@ INLINE double libclc_acospi_f64(double x) {
     // arguments arccos(x) = pi/2 to machine accuracy.
     // Remaining argument ranges are handled as follows.
     // For abs(x) <= 0.5 use
-    // arccos(x) = pi/2 - arcSPIRV_OCL_BUILTIN(sin, _f64, )(x)
+    // arccos(x) = pi/2 - arc__spirv_ocl_sin(x)
     // = pi/2 - (x + x^3*R(x^2))
     // where R(x^2) is a rational minimax approximation to
-    // (arcSPIRV_OCL_BUILTIN(sin, _f64, )(x) - x)/x^3.
+    // (arc__spirv_ocl_sin(x) - x)/x^3.
     // For abs(x) > 0.5 exploit the identity:
-    // arccos(x) = pi - 2*sin(SPIRV_OCL_BUILTIN(sqrt, _f64, )(1-x)/2)
+    // arccos(x) = pi - 2*sin(__spirv_ocl_sqrt(1-x)/2)
     // together with the above rational approximation, and
     // reconstruct the terms carefully.
 
     const double pi = 0x1.921fb54442d18p+1;
     const double piby2_tail = 6.12323399573676603587e-17;        /* 0x3c91a62633145c07 */
 
-    double y = SPIRV_OCL_BUILTIN(fabs, _f64, )(x);
+    double y = __spirv_ocl_fabs(x);
     int xneg = as_int2(x).hi < 0;
     int xexp = (as_int2(y).hi >> 20) - EXPBIAS_DP64;
 
@@ -488,27 +488,27 @@ INLINE double libclc_acospi_f64(double x) {
 
     // Transform y into the range [0,0.5)
     double r1 = 0.5 * (1.0 - y);
-    double s = SPIRV_OCL_BUILTIN(sqrt, _f64, )(r1);
+    double s = __spirv_ocl_sqrt(r1);
     double r = y * y;
     r = transform ? r1 : r;
     y = transform ? s : y;
 
     // Use a rational approximation for [0.0, 0.5]
-    double un = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                    SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                                SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r, 0.0000482901920344786991880522822991,
+    double un = __spirv_ocl_fma(r,
+                    __spirv_ocl_fma(r,
+                        __spirv_ocl_fma(r,
+                            __spirv_ocl_fma(r,
+                                __spirv_ocl_fma(r, 0.0000482901920344786991880522822991,
                                        0.00109242697235074662306043804220),
                                 -0.0549989809235685841612020091328),
                             0.275558175256937652532686256258),
                         -0.445017216867635649900123110649),
                     0.227485835556935010735943483075);
 
-    double ud = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                    SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r, 0.105869422087204370341222318533,
+    double ud = __spirv_ocl_fma(r,
+                    __spirv_ocl_fma(r,
+                        __spirv_ocl_fma(r,
+                            __spirv_ocl_fma(r, 0.105869422087204370341222318533,
                                    -0.943639137032492685763471240072),
                             2.76568859157270989520376345954),
                         -3.28431505720958658909889444194),
@@ -517,12 +517,12 @@ INLINE double libclc_acospi_f64(double x) {
     double u = r * MATH_DIVIDE(un, ud);
 
     // Reconstruct acos carefully in transformed region
-    double res1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-2.0, MATH_DIVIDE(s + SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y, u, -piby2_tail), pi), 1.0);
+    double res1 = __spirv_ocl_fma(-2.0, MATH_DIVIDE(s + __spirv_ocl_fma(y, u, -piby2_tail), pi), 1.0);
     double s1 = as_double(as_ulong(s) & 0xffffffff00000000UL);
-    double c = MATH_DIVIDE(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-s1, s1, r), s + s1);
-    double res2 = MATH_DIVIDE(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(2.0, s1, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(2.0, c, 2.0 * y * u)), pi);
+    double c = MATH_DIVIDE(__spirv_ocl_fma(-s1, s1, r), s + s1);
+    double res2 = MATH_DIVIDE(__spirv_ocl_fma(2.0, s1, __spirv_ocl_fma(2.0, c, 2.0 * y * u)), pi);
     res1 = xneg ? res1 : res2;
-    res2 = 0.5 - SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x, u, x) / pi;
+    res2 = 0.5 - __spirv_ocl_fma(x, u, x) / pi;
     res1 = transform ? res1 : res2;
 
     const double qnan = as_double(QNANBITPATT_DP64);
@@ -539,7 +539,7 @@ INLINE double libclc_acospi_f64(double x) {
 /*################################# libclc_asin_f64 ###############################################*/
 
 INLINE double libclc_asin_f64(double x) {
-  return SPIRV_OCL_BUILTIN(atan2, _f64_f64, )(x, SPIRV_OCL_BUILTIN(sqrt, _f64, )( 1.0 - (x*x)));
+  return __spirv_ocl_atan2(x, __spirv_ocl_sqrt( 1.0 - (x*x)));
 }
 
 /*################################# libclc_asinh_f64 ###############################################*/
@@ -674,57 +674,57 @@ INLINE double libclc_asinh_f64(double x) {
     // This also uses fewer registers
 
     // |x| >= 8
-    pn = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, NI3, NI2), NI1), NI0);
-    pd = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, DI3, DI2), DI1), DI0);
+    pn = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, NI3, NI2), NI1), NI0);
+    pd = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, DI3, DI2), DI1), DI0);
 
-    tn = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, NH4, NH3), NH2), NH1), NH0);
-    td = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, DH3, DH2), DH1), DH0);
+    tn = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, NH4, NH3), NH2), NH1), NH0);
+    td = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, DH3, DH2), DH1), DH0);
     pn = absx < 8.0 ? tn : pn;
     pd = absx < 8.0 ? td : pd;
 
-    tn = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, NG5, NG4), NG3), NG2), NG1), NG0);
-    td = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, DG4, DG3), DG2), DG1), DG0);
+    tn = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, NG5, NG4), NG3), NG2), NG1), NG0);
+    td = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, DG4, DG3), DG2), DG1), DG0);
     pn = absx < 4.0 ? tn : pn;
     pd = absx < 4.0 ? td : pd;
 
-    tn = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, NF5, NF4), NF3), NF2), NF1), NF0);
-    td = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, DF4, DF3), DF2), DF1), DF0);
+    tn = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, NF5, NF4), NF3), NF2), NF1), NF0);
+    td = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, DF4, DF3), DF2), DF1), DF0);
     pn = absx < 2.0 ? tn : pn;
     pd = absx < 2.0 ? td : pd;
 
-    tn = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, NE5, NE4), NE3), NE2), NE1), NE0);
-    td = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, DE5, DE4), DE3), DE2), DE1), DE0);
+    tn = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, NE5, NE4), NE3), NE2), NE1), NE0);
+    td = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, DE5, DE4), DE3), DE2), DE1), DE0);
     pn = absx < 1.5 ? tn : pn;
     pd = absx < 1.5 ? td : pd;
 
-    tn = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, ND5, ND4), ND3), ND2), ND1), ND0);
-    td = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, DD4, DD3), DD2), DD1), DD0);
+    tn = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, ND5, ND4), ND3), ND2), ND1), ND0);
+    td = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, DD4, DD3), DD2), DD1), DD0);
     pn = absx <= 1.0 ? tn : pn;
     pd = absx <= 1.0 ? td : pd;
 
-    tn = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, NC4, NC3), NC2), NC1), NC0);
-    td = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, DC4, DC3), DC2), DC1), DC0);
+    tn = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, NC4, NC3), NC2), NC1), NC0);
+    td = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, DC4, DC3), DC2), DC1), DC0);
     pn = absx < 0.75 ? tn : pn;
     pd = absx < 0.75 ? td : pd;
 
-    tn = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, NB4, NB3), NB2), NB1), NB0);
-    td = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, DB4, DB3), DB2), DB1), DB0);
+    tn = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, NB4, NB3), NB2), NB1), NB0);
+    td = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, DB4, DB3), DB2), DB1), DB0);
     pn = absx < 0.5 ? tn : pn;
     pd = absx < 0.5 ? td : pd;
 
-    tn = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, NA4, NA3), NA2), NA1), NA0);
-    td = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, DA4, DA3), DA2), DA1), DA0);
+    tn = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, NA4, NA3), NA2), NA1), NA0);
+    td = __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, __spirv_ocl_fma(t, DA4, DA3), DA2), DA1), DA0);
     pn = absx < 0.25 ? tn : pn;
     pd = absx < 0.25 ? td : pd;
 
     double pq = MATH_DIVIDE(pn, pd);
 
     // |x| <= 1
-    double result1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(absx*t, pq, absx);
+    double result1 = __spirv_ocl_fma(absx*t, pq, absx);
 
     // Other ranges
     int xout = absx <= 32.0 | absx > recrteps;
-    double y = absx + SPIRV_OCL_BUILTIN(sqrt, _f64, )(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(absx, absx, 1.0));
+    double y = absx + __spirv_ocl_sqrt(__spirv_ocl_fma(absx, absx, 1.0));
     y = xout ? absx : y;
 
     double r1, r2;
@@ -732,8 +732,8 @@ INLINE double libclc_asinh_f64(double x) {
     __clc_ep_log(y, &xexp, &r1, &r2);
 
     double dxexp = (double)(xexp + xout);
-    r1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dxexp, log2_lead, r1);
-    r2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dxexp, log2_tail, r2);
+    r1 = __spirv_ocl_fma(dxexp, log2_lead, r1);
+    r2 = __spirv_ocl_fma(dxexp, log2_tail, r2);
 
     // 1 < x <= 32
     double v2 = (pq + 0.25) / t;
@@ -760,17 +760,17 @@ INLINE double libclc_asinh_f64(double x) {
 /*################################# libclc_asinpi_f64 #############################################*/
 
 INLINE double libclc_asinpi_f64(double x) {
-    // Computes arcSPIRV_OCL_BUILTIN(sin, _f64, )(x).
-    // The argument is first reduced by noting that arcSPIRV_OCL_BUILTIN(sin, _f64, )(x)
-    // is invalid for abs(x) > 1 and arcSPIRV_OCL_BUILTIN(sin, _f64, )(-x) = -arcSPIRV_OCL_BUILTIN(sin, _f64, )(x).
-    // For denormal and small arguments arcSPIRV_OCL_BUILTIN(sin, _f64, )(x) = x to machine
+    // Computes arc__spirv_ocl_sin(x).
+    // The argument is first reduced by noting that arc__spirv_ocl_sin(x)
+    // is invalid for abs(x) > 1 and arc__spirv_ocl_sin(-x) = -arc__spirv_ocl_sin(x).
+    // For denormal and small arguments arc__spirv_ocl_sin(x) = x to machine
     // accuracy. Remaining argument ranges are handled as follows.
     // For abs(x) <= 0.5 use
-    // arcSPIRV_OCL_BUILTIN(sin, _f64, )(x) = x + x^3*R(x^2)
+    // arc__spirv_ocl_sin(x) = x + x^3*R(x^2)
     // where R(x^2) is a rational minimax approximation to
-    // (arcSPIRV_OCL_BUILTIN(sin, _f64, )(x) - x)/x^3.
+    // (arc__spirv_ocl_sin(x) - x)/x^3.
     // For abs(x) > 0.5 exploit the identity:
-    // arcSPIRV_OCL_BUILTIN(sin, _f64, )(x) = pi/2 - 2*arcSPIRV_OCL_BUILTIN(sin, _f64, )(SPIRV_OCL_BUILTIN(sqrt, _f64, )(1-x)/2)
+    // arc__spirv_ocl_sin(x) = pi/2 - 2*arc__spirv_ocl_sin(__spirv_ocl_sqrt(1-x)/2)
     // together with the above rational approximation, and
     // reconstruct the terms carefully.
 
@@ -778,7 +778,7 @@ INLINE double libclc_asinpi_f64(double x) {
     const double piby2_tail = 6.1232339957367660e-17;    /* 0x3c91a62633145c07 */
     const double hpiby2_head = 7.8539816339744831e-01;    /* 0x3fe921fb54442d18 */
 
-    double y = SPIRV_OCL_BUILTIN(fabs, _f64, )(x);
+    double y = __spirv_ocl_fabs(x);
     int xneg = as_int2(x).hi < 0;
     int xexp = (as_int2(y).hi >> 20) - EXPBIAS_DP64;
 
@@ -790,21 +790,21 @@ INLINE double libclc_asinpi_f64(double x) {
     double r = transform ? rt : y2;
 
     // Use a rational approximation for [0.0, 0.5]
-    double un = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                    SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                                SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r, 0.0000482901920344786991880522822991,
+    double un = __spirv_ocl_fma(r,
+                    __spirv_ocl_fma(r,
+                        __spirv_ocl_fma(r,
+                            __spirv_ocl_fma(r,
+                                __spirv_ocl_fma(r, 0.0000482901920344786991880522822991,
                                        0.00109242697235074662306043804220),
                                 -0.0549989809235685841612020091328),
                             0.275558175256937652532686256258),
                         -0.445017216867635649900123110649),
                     0.227485835556935010735943483075);
 
-    double ud = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                    SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r, 0.105869422087204370341222318533,
+    double ud = __spirv_ocl_fma(r,
+                    __spirv_ocl_fma(r,
+                        __spirv_ocl_fma(r,
+                            __spirv_ocl_fma(r, 0.105869422087204370341222318533,
                                    -0.943639137032492685763471240072),
                             2.76568859157270989520376345954),
                         -3.28431505720958658909889444194),
@@ -814,13 +814,13 @@ INLINE double libclc_asinpi_f64(double x) {
 
 
     // Reconstruct asin carefully in transformed region
-    double s = SPIRV_OCL_BUILTIN(sqrt, _f64, )(r);
+    double s = __spirv_ocl_sqrt(r);
     double sh = as_double(as_ulong(s) & 0xffffffff00000000UL);
-    double c = MATH_DIVIDE(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-sh, sh, r), s + sh);
-    double p = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(2.0*s, u, -SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-2.0, c, piby2_tail));
-    double q = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-2.0, sh, hpiby2_head);
+    double c = MATH_DIVIDE(__spirv_ocl_fma(-sh, sh, r), s + sh);
+    double p = __spirv_ocl_fma(2.0*s, u, -__spirv_ocl_fma(-2.0, c, piby2_tail));
+    double q = __spirv_ocl_fma(-2.0, sh, hpiby2_head);
     double vt = hpiby2_head - (p - q);
-    double v = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y, u, y);
+    double v = __spirv_ocl_fma(y, u, y);
     v = transform ? vt : v;
 
     v = xexp < -28 ? y : v;
@@ -839,7 +839,7 @@ INLINE double libclc_atan_f64(double x)
 {
     const double piby2 = 1.5707963267948966e+00; // 0x3ff921fb54442d18
 
-    double v = SPIRV_OCL_BUILTIN(fabs, _f64, )(x);
+    double v = __spirv_ocl_fabs(x);
 
     // 2^56 > v > 39/16
     double a = -1.0;
@@ -884,19 +884,19 @@ INLINE double libclc_atan_f64(double x)
     // Core approximation: Remez(4,4) on [-7/16,7/16]
     double r = a / b;
     double s = r * r;
-    double qn = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s,
-                    SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s,
-                        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s,
-                            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s, 0.142316903342317766e-3,
+    double qn = __spirv_ocl_fma(s,
+                    __spirv_ocl_fma(s,
+                        __spirv_ocl_fma(s,
+                            __spirv_ocl_fma(s, 0.142316903342317766e-3,
                                    0.304455919504853031e-1),
                             0.220638780716667420e0),
                         0.447677206805497472e0),
                     0.268297920532545909e0);
 
-    double qd = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s,
-                SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s,
-            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s,
-                SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s, 0.389525873944742195e-1,
+    double qd = __spirv_ocl_fma(s,
+                __spirv_ocl_fma(s,
+            __spirv_ocl_fma(s,
+                __spirv_ocl_fma(s, 0.389525873944742195e-1,
                    0.424602594203847109e0),
                             0.141254259931958921e1),
                         0.182596787737507063e1),
@@ -940,9 +940,9 @@ INLINE double libclc_atan2_f64_f64(double y, double x)
     int diffexp = yexp - xexp;
 
     // Scale up both x and y if they are both below 1/4
-    double x1 = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )(x, 1024);
+    double x1 = __spirv_ocl_ldexp(x, 1024);
     int xexp1 = (as_int2(x1).hi >> 20) & 0x7ff;
-    double y1 = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )(y, 1024);
+    double y1 = __spirv_ocl_ldexp(y, 1024);
     int yexp1 = (as_int2(y1).hi >> 20) & 0x7ff;
     int diffexp1 = yexp1 - xexp1;
 
@@ -951,8 +951,8 @@ INLINE double libclc_atan2_f64_f64(double y, double x)
     y = cond2 ? y1 : y;
 
     // General case: take absolute values of arguments
-    double u = SPIRV_OCL_BUILTIN(fabs, _f64, )(x);
-    double v = SPIRV_OCL_BUILTIN(fabs, _f64, )(y);
+    double u = __spirv_ocl_fabs(x);
+    double v = __spirv_ocl_fabs(y);
 
     // Swap u and v if necessary to obtain 0 < v < u. Compute v/u.
     int swap_vu = u < v;
@@ -967,7 +967,7 @@ INLINE double libclc_atan2_f64_f64(double y, double x)
 
     {
         double val = vbyu > 0.0625 ? vbyu : 0.063;
-        int index = (int)(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(256.0, val, 0.5));
+        int index = (int)(__spirv_ocl_fma(256.0, val, 0.5));
     double2 tv = USE_TABLE(atan_jby256_tbl, index - 16);
     q1 = tv.s0;
     q2 = tv.s1;
@@ -978,18 +978,18 @@ INLINE double libclc_atan2_f64_f64(double y, double x)
         int m = -((int)(as_ulong(u) >> EXPSHIFTBITS_DP64) - EXPBIAS_DP64);
     //double um = __amdil_ldexp_f64(u, m);
     //double vm = __amdil_ldexp_f64(v, m);
-    double um = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )(u, m);
-    double vm = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )(v, m);
+    double um = __spirv_ocl_ldexp(u, m);
+    double vm = __spirv_ocl_ldexp(v, m);
 
         // 26 leading bits of u
         double u1 = as_double(as_ulong(um) & 0xfffffffff8000000UL);
         double u2 = um - u1;
 
-        double r = MATH_DIVIDE(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-c, u2, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-c, u1, vm)), SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(c, vm, um));
+        double r = MATH_DIVIDE(__spirv_ocl_fma(-c, u2, __spirv_ocl_fma(-c, u1, vm)), __spirv_ocl_fma(c, vm, um));
 
         // Polynomial approximation to atan(r)
         double s = r * r;
-        q2 = q2 + SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )((s * SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-s, 0.19999918038989143496, 0.33333333333224095522)), -r, r);
+        q2 = q2 + __spirv_ocl_fma((s * __spirv_ocl_fma(-s, 0.19999918038989143496, 0.33333333333224095522)), -r, r);
     }
 
 
@@ -1008,16 +1008,16 @@ INLINE double libclc_atan2_f64_f64(double y, double x)
 
         q5 = 0.0;
         double s = vbyu * vbyu;
-        q6 = vbyu + SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-vbyu * s,
-                        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-s,
-                            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-s,
-                                SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-s,
-                                    SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-s, 0.90029810285449784439E-01,
+        q6 = vbyu + __spirv_ocl_fma(-vbyu * s,
+                        __spirv_ocl_fma(-s,
+                            __spirv_ocl_fma(-s,
+                                __spirv_ocl_fma(-s,
+                                    __spirv_ocl_fma(-s, 0.90029810285449784439E-01,
                                         0.11110736283514525407),
                                     0.14285713561807169030),
                                 0.19999999999393223405),
                             0.33333333333333170500),
-             MATH_DIVIDE(SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-u, vu2, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-u2, vu1, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-u1, vu1, v))), u));
+             MATH_DIVIDE(__spirv_ocl_fma(-u, vu2, __spirv_ocl_fma(-u2, vu1, __spirv_ocl_fma(-u1, vu1, v))), u));
     }
 
 
@@ -1068,15 +1068,15 @@ INLINE double libclc_atan2_f64_f64(double y, double x)
 /*################################## libclc_atanh_f64 ##############################################*/
 
 INLINE double libclc_atanh_f64(double x) {
-    double absx = SPIRV_OCL_BUILTIN(fabs, _f64, )(x);
+    double absx = __spirv_ocl_fabs(x);
 
     double ret = absx == 1.0 ? as_double(PINFBITPATT_DP64) : as_double(QNANBITPATT_DP64);
 
     // |x| >= 0.5
     // Note that atanh(x) = 0.5 * ln((1+x)/(1-x))
     // For greater accuracy we use
-    // ln((1+x)/(1-x)) = ln(1 + 2x/(1-x)) = SPIRV_OCL_BUILTIN(log1p, _f64, )(2x/(1-x)).
-    double r = 0.5 * SPIRV_OCL_BUILTIN(log1p, _f64, )(2.0 * absx / (1.0 - absx));
+    // ln((1+x)/(1-x)) = ln(1 + 2x/(1-x)) = __spirv_ocl_log1p(2x/(1-x)).
+    double r = 0.5 * __spirv_ocl_log1p(2.0 * absx / (1.0 - absx));
     ret = absx < 1.0 ? r : ret;
 
     r = -ret;
@@ -1086,27 +1086,27 @@ INLINE double libclc_atanh_f64(double x) {
     // approximated by a [5,5] minimax polynomial
     double t = x * x;
 
-    double pn = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t,
-                    SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t,
-                        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t,
-                            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t,
-                                SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, -0.10468158892753136958e-3, 0.28728638600548514553e-1),
+    double pn = __spirv_ocl_fma(t,
+                    __spirv_ocl_fma(t,
+                        __spirv_ocl_fma(t,
+                            __spirv_ocl_fma(t,
+                                __spirv_ocl_fma(t, -0.10468158892753136958e-3, 0.28728638600548514553e-1),
                                 -0.28180210961780814148e0),
                             0.88468142536501647470e0),
                         -0.11028356797846341457e1),
                     0.47482573589747356373e0);
 
-    double pd = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t,
-                    SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t,
-                        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t,
-                            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t,
-                                SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, -0.35861554370169537512e-1, 0.49561196555503101989e0),
+    double pd = __spirv_ocl_fma(t,
+                    __spirv_ocl_fma(t,
+                        __spirv_ocl_fma(t,
+                            __spirv_ocl_fma(t,
+                                __spirv_ocl_fma(t, -0.35861554370169537512e-1, 0.49561196555503101989e0),
                                 -0.22608883748988489342e1),
                             0.45414700626084508355e1),
                         -0.41631933639693546274e1),
                     0.14244772076924206909e1);
 
-    r = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x*t, pn/pd, x);
+    r = __spirv_ocl_fma(x*t, pn/pd, x);
     ret = absx < 0.5 ? r : ret;
 
     return ret;
@@ -1118,7 +1118,7 @@ INLINE double libclc_atanh_f64(double x) {
 INLINE double libclc_atanpi_f64(double x) {
     const double pi = 0x1.921fb54442d18p+1;
 
-    double v = SPIRV_OCL_BUILTIN(fabs, _f64, )(x);
+    double v = __spirv_ocl_fabs(x);
 
     // 2^56 > v > 39/16
     double a = -1.0;
@@ -1163,19 +1163,19 @@ INLINE double libclc_atanpi_f64(double x) {
     // Core approximation: Remez(4,4) on [-7/16,7/16]
     double r = a / b;
     double s = r * r;
-    double qn = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s,
-                    SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s,
-                        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s,
-                            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s, 0.142316903342317766e-3,
+    double qn = __spirv_ocl_fma(s,
+                    __spirv_ocl_fma(s,
+                        __spirv_ocl_fma(s,
+                            __spirv_ocl_fma(s, 0.142316903342317766e-3,
                                    0.304455919504853031e-1),
                             0.220638780716667420e0),
                         0.447677206805497472e0),
                     0.268297920532545909e0);
 
-    double qd = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s,
-                SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s,
-            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s,
-                SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(s, 0.389525873944742195e-1,
+    double qd = __spirv_ocl_fma(s,
+                __spirv_ocl_fma(s,
+            __spirv_ocl_fma(s,
+                __spirv_ocl_fma(s, 0.389525873944742195e-1,
                    0.424602594203847109e0),
                             0.141254259931958921e1),
                         0.182596787737507063e1),
@@ -1196,7 +1196,7 @@ INLINE double libclc_atanpi_f64(double x) {
 INLINE double libclc_cbrt_f64(double x) {
 
     int return_x = __intel_relaxed_isinf(x) | __intel_relaxed_isnan(x) | x == 0.0;
-    ulong ux = as_ulong(SPIRV_OCL_BUILTIN(fabs, _f64, )(x));
+    ulong ux = as_ulong(__spirv_ocl_fabs(x));
     int m = (as_int2(ux).hi >> 20) - 1023;
 
     // Treat subnormals
@@ -1223,11 +1223,11 @@ INLINE double libclc_cbrt_f64(double x) {
     double f = Y - F;
     double r = f * USE_TABLE(cbrt_inv_tbl, index-256);
 
-    double z = r * SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                       SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                           SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                               SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-                                   SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r, -0x1.8090d6221a247p-6, 0x1.ee7113506ac13p-6),
+    double z = r * __spirv_ocl_fma(r,
+                       __spirv_ocl_fma(r,
+                           __spirv_ocl_fma(r,
+                               __spirv_ocl_fma(r,
+                                   __spirv_ocl_fma(r, -0x1.8090d6221a247p-6, 0x1.ee7113506ac13p-6),
                                    -0x1.511e8d2b3183bp-5),
                                0x1.f9add3c0ca458p-5),
                            -0x1.c71c71c71c71cp-4),
@@ -1242,10 +1242,10 @@ INLINE double libclc_cbrt_f64(double x) {
     double F_t = tv.s1;
 
     double b_h = F_h * Rem_h;
-    double b_t = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(Rem_t, F_h, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(F_t, Rem_h, F_t*Rem_t));
+    double b_t = __spirv_ocl_fma(Rem_t, F_h, __spirv_ocl_fma(F_t, Rem_h, F_t*Rem_t));
 
-    double ans = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(z, b_h, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(z, b_t, b_t)) + b_h;
-    ans = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(ans*mf, x);
+    double ans = __spirv_ocl_fma(z, b_h, __spirv_ocl_fma(z, b_t, b_t)) + b_h;
+    ans = __spirv_ocl_copysign(ans*mf, x);
     return return_x ? x : ans;
 }
 
@@ -1253,7 +1253,7 @@ INLINE double libclc_cbrt_f64(double x) {
 /*########################################## libclc_cos_f64 ##############################################*/
 
 INLINE double libclc_cos_f64(double x) {
-    x = SPIRV_OCL_BUILTIN(fabs, _f64, )(x);
+    x = __spirv_ocl_fabs(x);
 
     double r, rr;
     int regn;
@@ -1269,7 +1269,7 @@ INLINE double libclc_cos_f64(double x) {
     int2 c = as_int2(regn & 1 ? sc.lo : sc.hi);
     c.hi ^= (regn > 1) << 31;
 
-    return SPIRV_BUILTIN(IsNan, _f64, )(x) | SPIRV_BUILTIN(IsInf, _f64, )(x) ? as_double(QNANBITPATT_DP64) : as_double(c);
+    return __spirv_IsNan(x) | __spirv_IsInf(x) ? as_double(QNANBITPATT_DP64) : as_double(c);
 }
 
 /*################################## libclc_cosh_f64 ##############################################*/
@@ -1283,20 +1283,20 @@ INLINE double libclc_cosh_f64(double x) {
     // cosh(x) = sign(x)*Inf
     //
     // abs(x) >= small_threshold:
-    // cosh(x) = sign(x)*SPIRV_OCL_BUILTIN(exp, _f64, )(abs(x))/2 computed using the
+    // cosh(x) = sign(x)*__spirv_ocl_exp(abs(x))/2 computed using the
     // splitexp and scaleDouble functions as for exp_amd().
     //
     // abs(x) < small_threshold:
-    // compute p = SPIRV_OCL_BUILTIN(exp, _f64, )(y) - 1 and then z = 0.5*(p+(p/(p+1.0)))
+    // compute p = __spirv_ocl_exp(y) - 1 and then z = 0.5*(p+(p/(p+1.0)))
     // cosh(x) is then sign(x)*z.
 
     // This is ln(2^1025)
     const double max_cosh_arg = 7.10475860073943977113e+02;      // 0x408633ce8fb9f87e
 
-    // This is where SPIRV_OCL_BUILTIN(exp, _f64, )(-x) is insignificant compared to SPIRV_OCL_BUILTIN(exp, _f64, )(x) = ln(2^27)
+    // This is where __spirv_ocl_exp(-x) is insignificant compared to __spirv_ocl_exp(x) = ln(2^27)
     const double small_threshold = 0x1.2b708872320e2p+4;
 
-    double y = SPIRV_OCL_BUILTIN(fabs, _f64, )(x);
+    double y = __spirv_ocl_fabs(x);
 
     // In this range we find the integer part y0 of y
     // and the increment dy = y - y0. We then compute
@@ -1308,24 +1308,24 @@ INLINE double libclc_cosh_f64(double x) {
     double dy2 = dy * dy;
 
     double sdy = dy * dy2 *
-             SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dy2,
-             SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dy2,
-             SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dy2,
-                 SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dy2,
-                 SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dy2,
-                     SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dy2, 0.7746188980094184251527126e-12, 0.160576793121939886190847e-9),
+             __spirv_ocl_fma(dy2,
+             __spirv_ocl_fma(dy2,
+             __spirv_ocl_fma(dy2,
+                 __spirv_ocl_fma(dy2,
+                 __spirv_ocl_fma(dy2,
+                     __spirv_ocl_fma(dy2, 0.7746188980094184251527126e-12, 0.160576793121939886190847e-9),
                      0.250521176994133472333666e-7),
                  0.275573191913636406057211e-5),
                  0.198412698413242405162014e-3),
              0.833333333333329931873097e-2),
              0.166666666666666667013899e0);
 
-    double cdy = dy2 * SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dy2,
-                       SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dy2,
-                   SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dy2,
-                   SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dy2,
-                       SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dy2,
-                       SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dy2, 0.1163921388172173692062032e-10, 0.208744349831471353536305e-8),
+    double cdy = dy2 * __spirv_ocl_fma(dy2,
+                       __spirv_ocl_fma(dy2,
+                   __spirv_ocl_fma(dy2,
+                   __spirv_ocl_fma(dy2,
+                       __spirv_ocl_fma(dy2,
+                       __spirv_ocl_fma(dy2, 0.1163921388172173692062032e-10, 0.208744349831471353536305e-8),
                        0.275573350756016588011357e-6),
                        0.248015872460622433115785e-4),
                    0.138888888889814854814536e-2),
@@ -1341,13 +1341,13 @@ INLINE double libclc_cosh_f64(double x) {
     double sl = tv.s0;
     double st = tv.s1;
 
-    double z = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(sl, dy, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(sl, sdy, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(cl, cdy, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(st, dy, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(st, sdy, ct*cdy)) + ct))) + cl;
+    double z = __spirv_ocl_fma(sl, dy, __spirv_ocl_fma(sl, sdy, __spirv_ocl_fma(cl, cdy, __spirv_ocl_fma(st, dy, __spirv_ocl_fma(st, sdy, ct*cdy)) + ct))) + cl;
 
     // Other cases
     z = y < 0x1.0p-28 ? 1.0 : z;
 
-    double t = SPIRV_OCL_BUILTIN(exp, _f64, )(y - 0x1.62e42fefa3800p-1);
-    t =  SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(t, -0x1.ef35793c76641p-45, t);
+    double t = __spirv_ocl_exp(y - 0x1.62e42fefa3800p-1);
+    t =  __spirv_ocl_fma(t, -0x1.ef35793c76641p-45, t);
     z = y >= small_threshold ? t : z;
 
     z = y >= max_cosh_arg ? as_double(PINFBITPATT_DP64) : z;
@@ -1420,7 +1420,7 @@ INLINE double libclc_exp_f64(double x) {
     const double R_LOG2_BY_64_TL = 0x1.cf79abc9e3b39p-46; // tail ln(2)/64
 
     int n = (int)(x * R_64_BY_LOG2);
-    double r = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-R_LOG2_BY_64_TL, (double)n, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-R_LOG2_BY_64_LD, (double)n, x));
+    double r = __spirv_ocl_fma(-R_LOG2_BY_64_TL, (double)n, __spirv_ocl_fma(-R_LOG2_BY_64_LD, (double)n, x));
     return __clc_exp_helper(x, X_MIN, X_MAX, r, n);
 }
 
@@ -1431,15 +1431,15 @@ INLINE double libclc_exp2_f64(double x) {
     const double R_1_BY_64 = 1.0 / 64.0;
 
     int n = (int)(x * 64.0);
-    double r = R_LN2 * SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(-R_1_BY_64, (double)n, x);
+    double r = R_LN2 * __spirv_ocl_fma(-R_1_BY_64, (double)n, x);
     return __clc_exp_helper(x, -1074.0, 1024.0, r, n);
 }
 
 /*################################## libclc_exp10_f64 ##############################################*/
 
 INLINE double libclc_exp10_f64(double val) {
-    // exp10(x) = SPIRV_OCL_BUILTIN(exp2, _f64, )(x * SPIRV_OCL_BUILTIN(log2, _f64, )(10))
-    return SPIRV_OCL_BUILTIN(exp2, _f64, )(val * SPIRV_OCL_BUILTIN(log2, _f64, )(10.0));
+    // exp10(x) = __spirv_ocl_exp2(x * __spirv_ocl_log2(10))
+    return __spirv_ocl_exp2(val * __spirv_ocl_log2(10.0));
 }
 
 /*################################## libclc_expm1_f64 ##############################################*/
@@ -1459,14 +1459,14 @@ INLINE double libclc_expm1_f64(double x) {
     double y = u * u * 0.5;
     double z = v * (x + u) * 0.5;
 
-    double q = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x,
-               SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x,
-               SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x,
-               SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x,
-                   SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x,
-                   SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x,
-                       SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x,
-                       SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(x,2.4360682937111612e-8, 2.7582184028154370e-7),
+    double q = __spirv_ocl_fma(x,
+               __spirv_ocl_fma(x,
+               __spirv_ocl_fma(x,
+               __spirv_ocl_fma(x,
+                   __spirv_ocl_fma(x,
+                   __spirv_ocl_fma(x,
+                       __spirv_ocl_fma(x,
+                       __spirv_ocl_fma(x,2.4360682937111612e-8, 2.7582184028154370e-7),
                        2.7558212415361945e-6),
                        2.4801576918453420e-5),
                    1.9841269447671544e-4),
@@ -1491,16 +1491,16 @@ INLINE double libclc_expm1_f64(double x) {
     double f = f1 + f2;
 
     double dn = -n;
-    double r = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dn, lnof2_by_64_tail, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dn, lnof2_by_64_head, x));
+    double r = __spirv_ocl_fma(dn, lnof2_by_64_tail, __spirv_ocl_fma(dn, lnof2_by_64_head, x));
 
-    q = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-        SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r,
-            SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r, 1.38889490863777199667e-03, 8.33336798434219616221e-03),
+    q = __spirv_ocl_fma(r,
+        __spirv_ocl_fma(r,
+        __spirv_ocl_fma(r,
+            __spirv_ocl_fma(r, 1.38889490863777199667e-03, 8.33336798434219616221e-03),
             4.16666666662260795726e-02),
         1.66666666665260878863e-01),
          5.00000000000000008883e-01);
-    q = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(r*r, q, r);
+    q = __spirv_ocl_fma(r*r, q, r);
 
     double twopm = as_double((long)(m + EXPBIAS_DP64) << EXPSHIFTBITS_DP64);
     double twopmm = as_double((long)(EXPBIAS_DP64 - m) << EXPSHIFTBITS_DP64);
@@ -1512,14 +1512,14 @@ INLINE double libclc_expm1_f64(double x) {
     double zme1024 = as_double(((long)e << EXPSHIFTBITS_DP64) | (uval & MANTBITS_DP64));
     zme1024 = e == 2047 ? as_double(PINFBITPATT_DP64) : zme1024;
 
-    double zmg52 = twopm * (f1 + SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(f, q, f2 - twopmm));
+    double zmg52 = twopm * (f1 + __spirv_ocl_fma(f, q, f2 - twopmm));
     zmg52 = m == 1024 ? zme1024 : zmg52;
 
     // For m < 53
-    double zml53 = twopm * ((f1 - twopmm) + SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(f1, q, f2*(1.0 + q)));
+    double zml53 = twopm * ((f1 - twopmm) + __spirv_ocl_fma(f1, q, f2*(1.0 + q)));
 
     // For m < -7
-    double zmln7 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(twopm,  f1 + SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(f, q, f2), -1.0);
+    double zmln7 = __spirv_ocl_fma(twopm,  f1 + __spirv_ocl_fma(f, q, f2), -1.0);
 
     z = m < 53 ? zml53 : zmg52;
     z = m < -7 ? zmln7 : z;
@@ -1558,7 +1558,7 @@ INLINE double libclc_log_f64(double x)
     const double ca_3 = 2.23213998791944806202e-03; /* 0x3f62492307f1519f */
     const double ca_4 = 4.34887777707614552256e-04; /* 0x3f3c8034c85dfff0 */
 
-    double r2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(u*v, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, ca_4, ca_3), ca_2), ca_1), -correction);
+    double r2 = __spirv_ocl_fma(u*v, __spirv_ocl_fma(v, __spirv_ocl_fma(v, __spirv_ocl_fma(v, ca_4, ca_3), ca_2), ca_1), -correction);
 
     double ret_near = r1 + r2;
 
@@ -1582,25 +1582,25 @@ INLINE double libclc_log_f64(double x)
 
     double f1 = index * 0x1.0p-7;
     double f2 = f - f1;
-    u = f2 / SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(f2, 0.5, f1);
+    u = f2 / __spirv_ocl_fma(f2, 0.5, f1);
     v = u * u;
 
     const double cb_1 = 8.33333333333333593622e-02; /* 0x3fb5555555555557 */
     const double cb_2 = 1.24999999978138668903e-02; /* 0x3f89999999865ede */
     const double cb_3 = 2.23219810758559851206e-03; /* 0x3f6249423bd94741 */
 
-    double poly = v * SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, cb_3, cb_2), cb_1);
-    double z2 = q + SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(u, poly, u);
+    double poly = v * __spirv_ocl_fma(v, __spirv_ocl_fma(v, cb_3, cb_2), cb_1);
+    double z2 = q + __spirv_ocl_fma(u, poly, u);
 
     double dxexp = (double)xexp;
 
-    r1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dxexp, log2_lead, z1);
-    r2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dxexp, log2_tail, z2);
+    r1 = __spirv_ocl_fma(dxexp, log2_lead, z1);
+    r2 = __spirv_ocl_fma(dxexp, log2_tail, z2);
     double ret_far = r1 + r2;
     double ret = is_near ? ret_near : ret_far;
 
-    ret = SPIRV_BUILTIN(IsInf, _f64, )(x) ? as_double(PINFBITPATT_DP64) : ret;
-    ret = SPIRV_BUILTIN(IsNan, _f64, )(x) | (x < 0.0) ? as_double(QNANBITPATT_DP64) : ret;
+    ret = __spirv_IsInf(x) ? as_double(PINFBITPATT_DP64) : ret;
+    ret = __spirv_IsNan(x) | (x < 0.0) ? as_double(QNANBITPATT_DP64) : ret;
     ret = x == 0.0 ? as_double(NINFBITPATT_DP64) : ret;
     return ret;
 }
@@ -1631,8 +1631,8 @@ INLINE double libclc_log1p_f64(double x)
 
     double f2temp = f - f1;
     double m2 = as_double(convert_ulong(0x3ff - xexp) << EXPSHIFTBITS_DP64);
-    double f2l = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(m2, x, m2 - f1);
-    double f2g = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(m2, x, -f1) + m2;
+    double f2l = __spirv_ocl_fma(m2, x, m2 - f1);
+    double f2g = __spirv_ocl_fma(m2, x, -f1) + m2;
     double f2 = xexp <= MANTLENGTH_DP64-1 ? f2l : f2g;
     f2 = (xexp <= -2) | (xexp >= MANTLENGTH_DP64+8) ? f2temp : f2;
 
@@ -1640,21 +1640,21 @@ INLINE double libclc_log1p_f64(double x)
     double z1 = tv.s0;
     double q = tv.s1;
 
-    double u = MATH_DIVIDE(f2, SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(0.5, f2, f1));
+    double u = MATH_DIVIDE(f2, __spirv_ocl_fma(0.5, f2, f1));
     double v = u * u;
 
-    double poly = v * SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v,
-                          SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, 2.23219810758559851206e-03, 1.24999999978138668903e-02),
+    double poly = v * __spirv_ocl_fma(v,
+                          __spirv_ocl_fma(v, 2.23219810758559851206e-03, 1.24999999978138668903e-02),
                           8.33333333333333593622e-02);
 
     // log2_lead and log2_tail sum to an extra-precise version of log(2)
     const double log2_lead = 6.93147122859954833984e-01; /* 0x3fe62e42e0000000 */
     const double log2_tail = 5.76999904754328540596e-08; /* 0x3e6efa39ef35793c */
 
-    double z2 = q + SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(u, poly, u);
+    double z2 = q + __spirv_ocl_fma(u, poly, u);
     double dxexp = (double)xexp;
-    double r1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dxexp, log2_lead, z1);
-    double r2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dxexp, log2_tail, z2);
+    double r1 = __spirv_ocl_fma(dxexp, log2_lead, z1);
+    double r2 = __spirv_ocl_fma(dxexp, log2_tail, z2);
     double result1 = r1 + r2;
 
     // Process Outside the threshold now
@@ -1665,15 +1665,15 @@ INLINE double libclc_log1p_f64(double x)
     v = u * u;
     r1 = r;
 
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v,
-               SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v,
-                   SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(v, 4.34887777707614552256e-04, 2.23213998791944806202e-03),
+    poly = __spirv_ocl_fma(v,
+               __spirv_ocl_fma(v,
+                   __spirv_ocl_fma(v, 4.34887777707614552256e-04, 2.23213998791944806202e-03),
                    1.25000000037717509602e-02),
                8.33333333333317923934e-02);
 
-    r2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(u*v, poly, -correction);
+    r2 = __spirv_ocl_fma(u*v, poly, -correction);
 
-    // The values SPIRV_OCL_BUILTIN(exp, _f64, )(-1/16)-1 and SPIRV_OCL_BUILTIN(exp, _f64, )(1/16)-1
+    // The values __spirv_ocl_exp(-1/16)-1 and __spirv_ocl_exp(1/16)-1
     const double log1p_thresh1 = -0x1.f0540438fd5c3p-5;
     const double log1p_thresh2 =  0x1.082b577d34ed8p-4;
     double result2 = r1 + r2;
@@ -1688,7 +1688,7 @@ INLINE double libclc_log1p_f64(double x)
 /*################################## libclc_sin_f64 #####################################################*/
 
 INLINE double libclc_sin_f64(double x) {
-    double y = SPIRV_OCL_BUILTIN(fabs, _f64, )(x);
+    double y = __spirv_ocl_fabs(x);
 
     double r, rr;
     int regn;
@@ -1703,7 +1703,7 @@ INLINE double libclc_sin_f64(double x) {
     int2 s = as_int2(regn & 1 ? sc.hi : sc.lo);
     s.hi ^= ((regn > 1) << 31) ^ ((x < 0.0) << 31);
 
-    return  SPIRV_BUILTIN(IsNan, _f64, )( x ) | SPIRV_BUILTIN(IsInf, _f64, )( x ) ? as_double(QNANBITPATT_DP64) : as_double(s);
+    return  __spirv_IsNan( x ) | __spirv_IsInf( x ) ? as_double(QNANBITPATT_DP64) : as_double(s);
 }
 
 /*################################## libclc_sinpi_f64 #####################################################*/
@@ -1759,8 +1759,8 @@ INLINE double libclc_sinpi_f64(double x)
 /*################################## libclc_tan_f64 ##############################################*/
 
 INLINE double libclc_tan_f64(double x) {
-  double sinx = SPIRV_OCL_BUILTIN(sin, _f64, )(x);
-  return sinx / SPIRV_OCL_BUILTIN(sqrt, _f64, )( 1.0 - (sinx*sinx) );
+  double sinx = __spirv_ocl_sin(x);
+  return sinx / __spirv_ocl_sqrt( 1.0 - (sinx*sinx) );
 }
 
 /*################################## libclc_tanh_f64 ##############################################*/
@@ -1769,9 +1769,9 @@ INLINE double libclc_tanh_f64(double x)
 {
     // The definition of tanh(x) is sinh(x)/cosh(x), which is also equivalent
     // to the following three formulae:
-    // 1.  (SPIRV_OCL_BUILTIN(exp, _f64, )(x) - SPIRV_OCL_BUILTIN(exp, _f64, )(-x))/(SPIRV_OCL_BUILTIN(exp, _f64, )(x) + SPIRV_OCL_BUILTIN(exp, _f64, )(-x))
-    // 2.  (1 - (2/(SPIRV_OCL_BUILTIN(exp, _f64, )(2*x) + 1 )))
-    // 3.  (SPIRV_OCL_BUILTIN(exp, _f64, )(2*x) - 1)/(SPIRV_OCL_BUILTIN(exp, _f64, )(2*x) + 1)
+    // 1.  (__spirv_ocl_exp(x) - __spirv_ocl_exp(-x))/(__spirv_ocl_exp(x) + __spirv_ocl_exp(-x))
+    // 2.  (1 - (2/(__spirv_ocl_exp(2*x) + 1 )))
+    // 3.  (__spirv_ocl_exp(2*x) - 1)/(__spirv_ocl_exp(2*x) + 1)
     // but computationally, some formulae are better on some ranges.
 
     // The point at which e^-x is insignificant compared to e^x = ln(2^27)
@@ -1784,28 +1784,28 @@ INLINE double libclc_tanh_f64(double x)
     double y2 = y * y;
 
     // y < 0.9
-    double znl = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y2,
-                     SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y2,
-                         SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y2, -0.142077926378834722618091e-7, -0.200047621071909498730453e-3),
+    double znl = __spirv_ocl_fma(y2,
+                     __spirv_ocl_fma(y2,
+                         __spirv_ocl_fma(y2, -0.142077926378834722618091e-7, -0.200047621071909498730453e-3),
                          -0.176016349003044679402273e-1),
                      -0.274030424656179760118928e0);
 
-    double zdl = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y2,
-                     SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y2,
-                         SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y2, 0.2091140262529164482568557e-3, 0.201562166026937652780575e-1),
+    double zdl = __spirv_ocl_fma(y2,
+                     __spirv_ocl_fma(y2,
+                         __spirv_ocl_fma(y2, 0.2091140262529164482568557e-3, 0.201562166026937652780575e-1),
                          0.381641414288328849317962e0),
                      0.822091273968539282568011e0);
 
     // 0.9 <= y <= 1
-    double znm = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y2,
-                     SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y2,
-                         SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y2, -0.115475878996143396378318e-7, -0.165597043903549960486816e-3),
+    double znm = __spirv_ocl_fma(y2,
+                     __spirv_ocl_fma(y2,
+                         __spirv_ocl_fma(y2, -0.115475878996143396378318e-7, -0.165597043903549960486816e-3),
                          -0.146173047288731678404066e-1),
                      -0.227793870659088295252442e0);
 
-    double zdm = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y2,
-                     SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y2,
-                         SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(y2, 0.173076050126225961768710e-3, 0.167358775461896562588695e-1),
+    double zdm = __spirv_ocl_fma(y2,
+                     __spirv_ocl_fma(y2,
+                         __spirv_ocl_fma(y2, 0.173076050126225961768710e-3, 0.167358775461896562588695e-1),
                          0.317204558977294374244770e0),
                      0.683381611977295894959554e0);
 
@@ -1815,7 +1815,7 @@ INLINE double libclc_tanh_f64(double x)
     double z = y + y*y2 * MATH_DIVIDE(zn, zd);
 
     // y > 1
-    double p = SPIRV_OCL_BUILTIN(exp, _f64, )(2.0 * y) + 1.0;
+    double p = __spirv_ocl_exp(2.0 * y) + 1.0;
     double zg = 1.0 - 2.0 / p;
 
     z = y > 1.0 ? zg : z;

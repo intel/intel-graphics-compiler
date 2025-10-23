@@ -19,15 +19,12 @@ SPDX-License-Identifier: MIT
 // CHECK-BASE-NOT: i64 @llvm.genx.GenISA.icmpxchgatomicraw.i64.p3.i32
 // CHECK-PVC-NOT: @spinlock = addrspace(3) global i32 0, section "localSLM"
 
-#define SPIRV_OVERLOADABLE __attribute__((overloadable))
-#define SPIRV_BUILTIN(opcode, old_mangling, new_mangling) \
-    __spirv_##opcode##new_mangling
 
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p3f64_i32_i32_f64, )(local double *Pointer, int Scope, int Semantics, double Value);
+double __attribute__((overloadable)) __spirv_AtomicFAddEXT(local double *Pointer, int Scope, int Semantics, double Value);
 
 double test_atomic(__local double* array)
 {
-    return SPIRV_BUILTIN(AtomicFAddEXT, _p3f64_i32_i32_f64, )(array, 1, 0, 123.0L);
+    return __spirv_AtomicFAddEXT(array, 1, 0, 123.0L);
 }
 
 kernel void test(__global double* out)

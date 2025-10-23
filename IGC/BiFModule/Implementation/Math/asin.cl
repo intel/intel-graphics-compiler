@@ -17,7 +17,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( asin, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(asin, _f64, )( double x )
+INLINE double __attribute__((overloadable)) __spirv_ocl_asin( double x )
 {
     return __ocl_svml_asin(x);
 }
