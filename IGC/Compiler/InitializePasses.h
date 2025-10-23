@@ -72,6 +72,7 @@ void initializeLowerGPCallArgPass(llvm::PassRegistry &);
 void initializeGenerateBlockMemOpsPassPass(llvm::PassRegistry &);
 void initializeGenericAddressAnalysisPass(llvm::PassRegistry &);
 void initializeGenericAddressDynamicResolutionPass(llvm::PassRegistry &);
+void initializeGenericNullPtrPropagationPass(llvm::PassRegistry &);
 void initializeGenFDIVEmulationPass(llvm::PassRegistry &);
 void initializeGenIRLoweringPass(llvm::PassRegistry &);
 void initializeGEPLoopStrengthReductionPass(llvm::PassRegistry &);

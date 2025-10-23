@@ -16,6 +16,7 @@ set(IGC_BUILD__SRC__GenericAddressResolution
     "${CMAKE_CURRENT_SOURCE_DIR}/StaticGASResolution.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LowerGPCallArg.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/GASPropagator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/GenericNullPtrPropagation.cpp"
   )
 set(IGC_BUILD__SRC__OpenCLPasses_GenericAddressResolution
     ${IGC_BUILD__SRC__GenericAddressResolution}
@@ -30,6 +31,7 @@ set(IGC_BUILD__HDR__GenericAddressResolution
     "${CMAKE_CURRENT_SOURCE_DIR}/StaticGASResolution.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/LowerGPCallArg.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/GASPropagator.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/GenericNullPtrPropagation.hpp"
   )
 set(IGC_BUILD__HDR__OpenCLPasses_GenericAddressResolution
     ${IGC_BUILD__HDR__GenericAddressResolution}

@@ -79,6 +79,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/MergeScalarPhisPass/MergeScalarPhisPass.hpp"
 #include "Compiler/Legalizer/AddRequiredMemoryFences.h"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericNullPtrPropagation.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryToSLM.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantResolution.hpp"
@@ -585,6 +586,8 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
       mpm.add(createResolveGASPass());
     }
     mpm.add(createGenericAddressDynamicResolutionPass());
+    mpm.add(createDeadCodeEliminationPass());
+    mpm.add(createGenericNullPtrPropagationPass());
   }
 
   // Resolve the Private memory to register pass
