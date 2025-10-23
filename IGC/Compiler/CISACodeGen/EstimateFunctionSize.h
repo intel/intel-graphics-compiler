@@ -63,6 +63,8 @@ public:
 
   bool isStackCallAssigned(llvm::Function *F);
 
+  bool isLargeKernelThresholdExceeded() const;
+
 private:
   void analyze();
   void checkSubroutine();
@@ -92,7 +94,8 @@ private:
                              bool ignoreStackCallBoundary);
   uint32_t getMaxUnitSize();
   void getFunctionsToTrim(llvm::Function *root, llvm::SmallVector<void *, 64> &trimming_pool,
-                          bool ignoreStackCallBoundary, uint32_t &func_cnt);
+                          llvm::SmallVector<void *, 64> &tiny_fn_trimming_pool, bool ignoreStackCallBoundary,
+                          uint32_t &func_cnt);
   void updateStaticFuncFreq();
   void estimateTotalLoopIteration(llvm::Function &F, llvm::LoopInfo *LI);
 
@@ -162,12 +165,13 @@ private:
   bool PartitionUnit;
   bool StaticProfileGuidedPartitioning;
 
-  // Flags for implcit arguments and external functions
+  // Flags for implicit arguments and external functions
   bool ForceInlineExternalFunctions;
   bool ForceInlineStackCallWithImplArg;
   bool ControlInlineImplicitArgs;
   unsigned SubroutineThreshold;
   unsigned KernelTotalSizeThreshold;
+  unsigned LargeKernelThresholdMultiplier;
   unsigned ExpandedUnitSizeThreshold;
 };
 

@@ -96,6 +96,7 @@ EstimateFunctionSize::EstimateFunctionSize(AnalysisLevel AL, bool EnableStaticPr
   ForceInlineStackCallWithImplArg = IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg);
   ControlInlineImplicitArgs = IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs);
   SubroutineThreshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
+  LargeKernelThresholdMultiplier = IGC_GET_FLAG_VALUE(LargeKernelThresholdMultiplier);
   KernelTotalSizeThreshold = IGC_GET_FLAG_VALUE(KernelTotalSizeThreshold);
   ExpandedUnitSizeThreshold = IGC_GET_FLAG_VALUE(ExpandedUnitSizeThreshold);
   if (EnableStaticProfileGuidedTrimming) {
@@ -1132,6 +1133,16 @@ void EstimateFunctionSize::reduceKernelSize() {
 
 bool EstimateFunctionSize::isTrimmedFunction(llvm::Function *F) { return get<FunctionNode>(F)->isTrimmed(); }
 
+bool EstimateFunctionSize::isLargeKernelThresholdExceeded() const {
+  for (auto *node : kernelEntries) {
+    auto *kernelNode = (FunctionNode *)node;
+    if (kernelNode->ExpandedSize > KernelTotalSizeThreshold * LargeKernelThresholdMultiplier) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Initialize data structures for topological traversal: FunctionsInKernel and BottomUpQueue.
 // FunctionsInKernel is a map data structure where the key is FunctionNode and value is the number of edges to callee
 // nodes. FunctionsInKernel is primarily used for topological traversal and also used to check whether a function is in
@@ -1469,6 +1480,7 @@ void EstimateFunctionSize::reduceCompilationUnitSize() {
 
 // Top down traverse to find and retrieve functions that meet trimming criteria
 void EstimateFunctionSize::getFunctionsToTrim(llvm::Function *root, llvm::SmallVector<void *, 64> &trimming_pool,
+                                              llvm::SmallVector<void *, 64> &tiny_fn_trimming_pool,
                                               bool ignoreStackCallBoundary, uint32_t &func_cnt) {
   FunctionNode *unitHead = get<FunctionNode>(root);
   std::unordered_set<void *> visit;
@@ -1529,6 +1541,8 @@ void EstimateFunctionSize::getFunctionsToTrim(llvm::Function *root, llvm::SmallV
       Node->dumpFuncInfo(0x4, "Good to trim (Big enough > " + std::to_string(tinySizeThreshold) + ")");
       break;
     case FT_TOO_TINY:
+      // Small functions will be trimmed in special case if kernel still far exceeds threshold
+      tiny_fn_trimming_pool.push_back(Node);
       Node->dumpFuncInfo(0x4, "Can't trim (Too tiny < " + std::to_string(tinySizeThreshold) + ")");
       break;
     case FT_HIGHER_WEIGHT:
@@ -1601,9 +1615,9 @@ void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void *, 64> &un
 
         SmallVector<void *, 64>
             trimming_pool;
-
+    SmallVector<void *, 64> tiny_fn_trimming_pool;
     uint32_t func_cnt = 0;
-    getFunctionsToTrim(unit->F, trimming_pool, ignoreStackCallBoundary, func_cnt);
+    getFunctionsToTrim(unit->F, trimming_pool, tiny_fn_trimming_pool, ignoreStackCallBoundary, func_cnt);
     PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << " has " << trimming_pool.size()
                                         << " functions for trimming out of " << func_cnt) if (trimming_pool.empty()) {
       PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << " size " << unit->ExpandedSize
@@ -1614,13 +1628,18 @@ void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void *, 64> &un
       performGreedyTrimming(unit->F, trimming_pool, threshold, ignoreStackCallBoundary);
     } else {
       performTrimming(unit->F, trimming_pool, threshold, ignoreStackCallBoundary);
+      if (ignoreStackCallBoundary && unit->ExpandedSize > threshold * LargeKernelThresholdMultiplier) {
+        PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << ": Size: " << unit->ExpandedSize
+                                            << " is much larger than threshold, trimming small functions as well.")
+            performTrimming(unit->F, tiny_fn_trimming_pool, threshold, ignoreStackCallBoundary);
+      }
     }
     if (unit->ExpandedSize < threshold) {
       PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << ": The size becomes below threshold")
     } else {
       PrintTrimUnit(0x2, "Kernel / Unit "
                              << unit->F->getName().str()
-                             << ": The size is still above threhosld even though all candidates are trimmed")
+                             << ": The size is still above threshold even though all candidates are trimmed")
     }
 
     PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << " final size " << unit->ExpandedSize
@@ -1712,6 +1731,7 @@ void EstimateFunctionSize::performGreedyTrimming(Function *head, llvm::SmallVect
   PrintTrimUnit(0x8, "In total, " << total_trim_cnt << " function(s) are trimmed out of " << functions_to_trim.size());
   return;
 }
+
 void EstimateFunctionSize::performTrimming(Function *head, llvm::SmallVector<void *, 64> &functions_to_trim,
                                            uint32_t threshold, bool ignoreStackCallBoundary) {
   FunctionNode *unitHead = get<FunctionNode>(head);
@@ -1745,7 +1765,7 @@ void EstimateFunctionSize::performTrimming(Function *head, llvm::SmallVector<voi
       functionToTrim->setTrimmed();
     }
     total_trim_cnt += 1;
-    // After trimming, update exapnded size
+    // After trimming, update expanded size
     updateExpandedUnitSize(head, ignoreStackCallBoundary);
     PrintTrimUnit(0x8, "The kernel size is reduced after trimming from " << original_expandedSize << " to "
                                                                          << unitHead->ExpandedSize);

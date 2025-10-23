@@ -752,7 +752,7 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
         if (shouldAlwaysInline) {
           if ((IGC_IS_FLAG_ENABLED(ControlKernelTotalSize) || IGC_IS_FLAG_ENABLED(ControlUnitSize)) &&
               efs.shouldEnableSubroutine() && efs.isTrimmedFunction(F)) {
-            if (IGC_IS_FLAG_ENABLED(AddNoInlineToTrimmedFunctions)) {
+            if (IGC_IS_FLAG_ENABLED(AddNoInlineToTrimmedFunctions) || efs.isLargeKernelThresholdExceeded()) {
               SetNoInline(F);
             }
           } else {
