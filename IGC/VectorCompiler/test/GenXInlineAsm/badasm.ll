@@ -1,11 +1,11 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-
+; UNSUPPORTED: llvm_16_or_greater
 ; RUN: not llc %s -march=genx64 -mcpu=Gen9 -o /dev/null 2>&1 | FileCheck %s
 
 define dllexport spir_kernel void @test(i64 %privBase) #0 {
