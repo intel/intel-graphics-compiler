@@ -994,6 +994,9 @@ DECLARE_IGC_REGKEY(bool, VectorizerAllowCMP, true, "Allow CMP instructions insid
 DECLARE_IGC_REGKEY(bool, VectorizerAllowSelect, true, "Allow Select instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFMADMatching, true,
                    "Allow FADD and FMUL instructions to be matched later in the pattern match pass", true)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowMUL, false, "Allow MUL instructions inside vectorizer", true)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowADD, false, "Allow ADD instructions inside vectorizer", true)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowSUB, false, "Allow SUB instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerUniformValueVectorizationEnabled, true,
                    "Vector Emitter emits vectorized instruction for uniform values", true)
 DECLARE_IGC_REGKEY(

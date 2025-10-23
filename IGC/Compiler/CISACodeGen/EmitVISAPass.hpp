@@ -84,6 +84,9 @@ public:
 
   void CreateKernelShaderMap(CodeGenContext *ctx, IGC::IGCMD::MetaDataUtils *pMdUtils, llvm::Function &F);
 
+
+  bool isVectorEmissionPossible(const SSource sources[2], CVariable *src[2]);
+
   void Frc(const SSource &source, const DstModifier &modifier);
   void Floor(const SSource &source, const DstModifier &modifier);
   void Mad(const SSource sources[3], const DstModifier &modifier);
