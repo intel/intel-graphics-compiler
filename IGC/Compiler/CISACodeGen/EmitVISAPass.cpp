@@ -4026,11 +4026,12 @@ void EmitPass::BinaryUnary(llvm::Instruction *inst, const SSource source[2], con
     Xor(source, modifier);
     break;
   case Instruction::Mul:
+    Mul(source, modifier);
+    break;
   case Instruction::FMul:
     Mul(source, modifier);
     break;
   case Instruction::FAdd:
-  case Instruction::Add:
     Add(source, modifier);
     break;
   case Instruction::Call:

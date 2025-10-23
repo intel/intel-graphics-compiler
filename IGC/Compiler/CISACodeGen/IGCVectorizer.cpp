@@ -237,9 +237,6 @@ bool isBinarySafe(Instruction *I) {
   Result |= (OpCode == Instruction::FMul && IGC_GET_FLAG_VALUE(VectorizerAllowFMUL));
   Result |= (OpCode == Instruction::FAdd && IGC_GET_FLAG_VALUE(VectorizerAllowFADD));
   Result |= (OpCode == Instruction::FSub && IGC_GET_FLAG_VALUE(VectorizerAllowFSUB));
-  Result |= (OpCode == Instruction::Mul && IGC_GET_FLAG_VALUE(VectorizerAllowMUL));
-  Result |= (OpCode == Instruction::Add && IGC_GET_FLAG_VALUE(VectorizerAllowADD));
-  Result |= (OpCode == Instruction::Sub && IGC_GET_FLAG_VALUE(VectorizerAllowSUB));
   Result |= isFDivSafe(I);
   return Result;
 }
