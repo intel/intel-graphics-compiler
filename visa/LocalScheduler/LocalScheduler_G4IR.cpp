@@ -2602,7 +2602,11 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     // Append the scheduled node to the end of the schedule.
     schedule->scheduledNodes.push_back(scheduled);
     lastScheduled = scheduled;
-
+    if (scheduled->getInstructions()->front()->isDpas()) {
+      schedule->preDPASNodeVec.push_back(scheduled);
+    } else {
+      schedule->preDPASNodeVec.clear();
+    }
     if (getOptions()->getOption(vISA_SendQueueSched) &&
         scheduled->getInstructions()->front()->isSend()) {
       // Set the cycle at which this node is scheduled.
@@ -2674,7 +2678,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     return (!readyList.empty() || !preReadyQueue.empty()) && lastScheduled &&
            kernel->fg.builder->hasDPAS() &&
            getOptions()->getOption(vISA_scheduleforDPASMacro) &&
-           (lastScheduled->getInstructions()->front()->isDpas());
+           schedule->preDPASNodeVec.size();
   };
 
   // Check if depends on just scheduled previous DPAS intruction
@@ -2712,18 +2716,6 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     if (!inst->isDpas())
       return nullptr;
 
-    // Collect the dpas which are just scheduled, stop when meet a none-dpas
-    // instruction.
-    std::vector<Node *> preDPASNodeVec;
-    for (int i = schedule->scheduledNodes.size() - 1; i >= 0; i--) {
-      Node *scheduledNode = schedule->scheduledNodes[i];
-      G4_INST *scheduledInst = scheduledNode->getInstructions()->front();
-      // Dpas only
-      if (!scheduledInst->isDpas())
-        break;
-      preDPASNodeVec.push_back(scheduledNode);
-    }
-
     Node *macroCandidate = nullptr;
     bool hasDep = false;
     // Check if current scheduled is the macro candidate
@@ -2731,7 +2723,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     if ((scheduled->getInstructions()->size() == 1) &&
         scheduledInst->isDpas() &&
         inst->asDpasInst()->checksMacroTypes(*scheduledInst->asDpasInst())) {
-      hasDep = hasDepOnPreDpas(scheduled, preDPASNodeVec);
+      hasDep = hasDepOnPreDpas(scheduled, schedule->preDPASNodeVec);
       if (!hasDep && hasDpasReadSuppression(inst, scheduledInst)) {
         return scheduled; // It's good candidate already, don't return nullptr
                           // which may be changed by other heuritics
@@ -2765,7 +2757,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
       // Not candidate, push back to original queue
       if ((node->getInstructions()->size() != 1) || !nodeInst->isDpas() ||
           !inst->asDpasInst()->checksMacroTypes(*nodeInst->asDpasInst()) ||
-          hasDepOnPreDpas(node, preDPASNodeVec)) {
+          hasDepOnPreDpas(node, schedule->preDPASNodeVec)) {
         addBackReadyList(i, readyListSize, node);
         i++;
         continue;
@@ -2796,8 +2788,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     }
 
     // No read suppresion candidate, and reschedule happened
-    if (!hasSuppressoinCandidate && macroCandidate &&
-        macroCandidate != scheduled) {
+    if (!hasSuppressoinCandidate && macroCandidate) {
       reScheduled = macroCandidate;
     }
 
@@ -2807,7 +2798,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     }
 
     // If rescheduled, push the scheduled to readyList
-    if (reScheduled) {
+    if (reScheduled && reScheduled != scheduled) {
       readyList.push(scheduled);
     }
 
@@ -3129,6 +3120,11 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     // Scheduling for DPAS instructions
     if (!heuCandidate && scheduleForDpas()) {
       heuCandidate = applyDpasHeuristic(scheduled, lastScheduled);
+      if (heuCandidate) {
+        schedule->preDPASNodeVec.push_back(heuCandidate);
+      } else {
+        schedule->preDPASNodeVec.clear();
+      }
     }
 
     if (!heuCandidate && scheduleForSuppression()) {

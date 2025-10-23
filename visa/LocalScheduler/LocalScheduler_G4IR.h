@@ -376,6 +376,7 @@ class G4_BB_Schedule {
 
 public:
   std::vector<Node *> scheduledNodes;
+  std::vector<Node *> preDPASNodeVec;
   unsigned lastCycle = 0;
   unsigned sendStallCycle = 0;
   unsigned sequentialCycle = 0;
