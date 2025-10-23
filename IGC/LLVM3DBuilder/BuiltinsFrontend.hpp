@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "skuwa/iacm_g10_rev_id.h"
 #include "skuwa/iacm_g11_rev_id.h"
 #include "skuwa/iacm_g12_rev_id.h"
+#include "IGC/common/ResourceAddrSpace.h"
 
 namespace llvm {
 class GenIntrinsicInst;
@@ -172,7 +173,8 @@ public:
   LLVM3DBuilder(const LLVM3DBuilder &) = delete;
   LLVM3DBuilder &operator=(const LLVM3DBuilder &) = delete;
 
-  static unsigned EncodeASForGFXResource(const llvm::Value &bufIdx, IGC::BufferType bufType, unsigned uniqueIndAS);
+  static unsigned EncodeASForGFXResource(const llvm::Value &bufIdx, IGC::BufferType bufType, unsigned uniqueIndAS,
+                                         IGC::ResourceDimType resourceDimTypeId = std::nullopt);
 
   llvm::Value *CreateFAbs(llvm::Value *V);
   llvm::Value *CreateFSat(llvm::Value *V);

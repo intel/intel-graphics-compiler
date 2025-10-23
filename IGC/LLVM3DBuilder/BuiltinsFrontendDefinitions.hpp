@@ -20,16 +20,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 #include "visa/include/visa_igc_common_header.h"
-
-typedef union _gfxResourceAddressSpace {
-  struct _bits {
-    unsigned int bufId : 16;
-    unsigned int bufType : 5;
-    unsigned int indirect : 1; // bool
-    unsigned int reserved : 10;
-  } bits;
-  unsigned int u32Val;
-} GFXResourceAddressSpace;
+#include "IGC/common/ResourceAddrSpace.h"
 
 enum class ADDRESS_SPACE_TYPE : unsigned int {
   ADDRESS_SPACE_PRIVATE = 0,
@@ -42,29 +33,12 @@ enum class ADDRESS_SPACE_TYPE : unsigned int {
 
 template <typename T, typename Inserter>
 unsigned LLVM3DBuilder<T, Inserter>::EncodeASForGFXResource(const llvm::Value &bufIdx,
-                                                             IGC::BufferType bufType,
-                                                             unsigned uniqueIndAS) {
-  GFXResourceAddressSpace temp = {};
-
-  static_assert(sizeof(temp) == 4, "Code below may need and update.");
-
-  temp.u32Val = 0;
-  IGC_ASSERT((bufType + 1) < IGC::BUFFER_TYPE_UNKNOWN + 1);
-  temp.bits.bufType = bufType + 1;
-  if (bufType == IGC::BufferType::SLM) {
-    return static_cast<unsigned int>(
-        ADDRESS_SPACE_TYPE::ADDRESS_SPACE_LOCAL); // OCL uses addrspace 3 for SLM. We should use the same thing.
-  } else if (llvm::isa<llvm::ConstantInt>(&bufIdx)) {
-    const unsigned bufId = (unsigned)(llvm::cast<llvm::ConstantInt>(&bufIdx)->getZExtValue());
-    IGC_ASSERT(bufId < (1 << 16));
-    temp.bits.bufId = bufId;
-    return temp.u32Val;
-  }
-
-  // if it is indirect-buf, it is front-end's job to give a proper(unique) address-space per access
-  temp.bits.bufId = uniqueIndAS;
-  temp.bits.indirect = 1;
-  return temp.u32Val;
+                                                            IGC::BufferType bufType,
+                                                            unsigned uniqueIndAS,
+                                                            IGC::ResourceDimType resourceDimTypeId) {
+  return IGC::EncodeAS4GFXResource(
+      bufIdx, bufType, uniqueIndAS, false,
+      resourceDimTypeId.value_or(IGC::RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES));
 }
 
 template <typename T, typename Inserter>

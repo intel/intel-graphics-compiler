@@ -81,7 +81,10 @@ void FixResourcePtr::RemoveGetBufferPtr(GenIntrinsicInst *bufPtr, Value *bufIdx)
   uint outAS = bufPtr->getType()->getPointerAddressSpace();
   uint origAS = outAS;
   BufferType bufType = (BufferType)(cast<ConstantInt>(bufPtr->getOperand(1))->getZExtValue());
-  uint encodeAS = EncodeAS4GFXResource(*bufIdx, bufType);
+  // address space contains texture dimension information
+  // it has to be saved for further use
+  auto resourceDimType = DecodeAS4GFXResourceType(outAS);
+  uint encodeAS = EncodeAS4GFXResource(*bufIdx, bufType, 0, false, resourceDimType);
   if (outAS != encodeAS && (bufType == CONSTANT_BUFFER || bufType == RESOURCE || bufType == UAV)) {
     // happens to OGL, need to fix if address-space encoding is wrong
     outAS = encodeAS;
