@@ -21882,6 +21882,10 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst *inst) {
 
   bool emu_read = (isRead && isTranspose && (elemSizeInBits == 8 || elemSizeInBits == 16));
   if (!emu_read) {
+    uint blockSize = ((elemSizeInBits * blockWidth * blockHeight) / 8);
+    bool need_movs = (blockSize < m_currShader->m_Platform->getGRFSize()) && (numBlocksV > 1);
+
+    if (!need_movs) {
     m_encoder->LSC_2DBlockMessage(isRead ? LSC_LOAD_BLOCK2D : LSC_STORE_BLOCK2D, nullptr, destination,
                                   nullptr, // pImgBTI - not needed for read
                                   pXOffset, pYOffset,
@@ -21889,6 +21893,36 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst *inst) {
                                   blockHeight, elemSizeInBits, numBlocksV, isTranspose, isVnni, pFlatImageBaseoffset,
                                   pFlatImageWidth, pFlatImageHeight, pFlatImagePitch, cacheOpts);
     m_encoder->Push();
+    return;
+    }
+    // For load, when block size is less than GRF size and there are many blocks
+    // we need to move data to pack it continously in GRF registers. Hardware
+    // will read each block to one GRF, zero-padding remaining space.
+    CVariable *tmpDest = m_currShader->GetNewVariable(destination);
+    m_encoder->LSC_2DBlockMessage(LSC_LOAD_BLOCK2D, nullptr, tmpDest,
+                                  nullptr,
+                                  pXOffset, pYOffset,
+                                  blockWidth,
+                                  blockHeight, elemSizeInBits, numBlocksV, isTranspose, isVnni, pFlatImageBaseoffset,
+                                  pFlatImageWidth, pFlatImageHeight, pFlatImagePitch, cacheOpts);
+    m_encoder->Push();
+
+    CVariable *tmpDestDW = m_currShader->GetNewAlias(tmpDest, ISA_TYPE_D, 0, 0);
+    CVariable *destDW = m_currShader->GetNewAlias(destination, ISA_TYPE_D, 0, 0);
+    uint width = blockSize >> 2;
+    uint numMovs = numBlocksV == 2 ? 1 : 2;
+
+    // Moving data from 2 GRFs to one (dst) at the time.
+    for (uint i = 0; i < numMovs; ++i) {
+        m_encoder->SetDstRegion(1);
+        m_encoder->SetDstSubReg(i * (2 * width));
+        m_encoder->SetSrcRegion(0, 16, width, 1);
+        m_encoder->SetSrcSubReg(0, i * 32);
+        m_encoder->SetSimdSize(lanesToSIMDMode(2 * width));
+        m_encoder->SetNoMask();
+        m_encoder->Copy(destDW, tmpDestDW);
+        m_encoder->Push();
+    }
     return;
   }
 
