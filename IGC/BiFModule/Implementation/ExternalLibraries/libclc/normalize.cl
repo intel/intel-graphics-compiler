@@ -112,138 +112,138 @@ static short16 INLINE OVERLOADABLE __convert_short16(__bool16 b)
     return (short16)(__convert_short8(b.lo), __convert_short8(b.hi));
 }
 
-float __attribute__((overloadable)) __spirv_ocl_normalize(float p) {
-  return __spirv_ocl_sign(p);
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _f32, )(float p) {
+  return SPIRV_OCL_BUILTIN(sign, _f32, )(p);
 }
 
-float2 __attribute__((overloadable)) __spirv_ocl_normalize(float2 p) {
+float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v2f32, )(float2 p) {
   if (all(p == (float2)0.0F))
     return p;
 
-  float l2 = __spirv_Dot(p, p);
+  float l2 = SPIRV_BUILTIN(Dot, _v2f32_v2f32, )(p, p);
 
   /*Currently we are not optimizing away the
     underflow case when fast-relaxed-math is enabled*/
   if (l2 < FLT_MIN) {
     p *= 0x1.0p+86F;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v2f32_v2f32, )(p, p);
   } else if (__intel_relaxed_isinf(l2)) {
     p *= 0x1.0p-65f;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v2f32_v2f32, )(p, p);
     if (l2 == INFINITY) {
-      p = __spirv_ocl_copysign(__spirv_ocl_select((float2)0.0F, (float2)1.0F, __convert_int2(__spirv_IsInf(p))), p);
-      l2 = __spirv_Dot(p, p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v2f32_v2f32, )(SPIRV_OCL_BUILTIN(select, _v2f32_v2f32_v2i32, )((float2)0.0F, (float2)1.0F, __convert_int2(SPIRV_BUILTIN(IsInf, _v2f32, )(p))), p);
+      l2 = SPIRV_BUILTIN(Dot, _v2f32_v2f32, )(p, p);
     }
   }
-  return p * __spirv_ocl_rsqrt(l2);
+  return p * SPIRV_OCL_BUILTIN(rsqrt, _f32, )(l2);
 }
 
-float3 __attribute__((overloadable)) __spirv_ocl_normalize(float3 p) {
+float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v3f32, )(float3 p) {
   if (all(p == (float3)0.0F))
     return p;
 
-  float l2 = __spirv_Dot(p, p);
+  float l2 = SPIRV_BUILTIN(Dot, _v3f32_v3f32, )(p, p);
 
   if (l2 < FLT_MIN) {
     p *= 0x1.0p+86F;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v3f32_v3f32, )(p, p);
   } else if (__intel_relaxed_isinf(l2)) {
     p *= 0x1.0p-66f;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v3f32_v3f32, )(p, p);
     if (l2 == INFINITY) {
-      p = __spirv_ocl_copysign(__spirv_ocl_select((float3)0.0F, (float3)1.0F, __convert_int3(__spirv_IsInf(p))), p);
-      l2 = __spirv_Dot(p, p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v3f32_v3f32, )(SPIRV_OCL_BUILTIN(select, _v3f32_v3f32_v3i32, )((float3)0.0F, (float3)1.0F, __convert_int3(SPIRV_BUILTIN(IsInf, _v3f32, )(p))), p);
+      l2 = SPIRV_BUILTIN(Dot, _v3f32_v3f32, )(p, p);
     }
   }
-  return p * __spirv_ocl_rsqrt(l2);
+  return p * SPIRV_OCL_BUILTIN(rsqrt, _f32, )(l2);
 }
 
-float4 __attribute__((overloadable)) __spirv_ocl_normalize(float4 p) {
+float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v4f32, )(float4 p) {
   if (all(p == (float4)0.0F))
     return p;
 
-  float l2 = __spirv_Dot(p, p);
+  float l2 = SPIRV_BUILTIN(Dot, _v4f32_v4f32, )(p, p);
 
   if (l2 < FLT_MIN) {
     p *= 0x1.0p+86F;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v4f32_v4f32, )(p, p);
   } else if (__intel_relaxed_isinf(l2)) {
     p *= 0x1.0p-66f;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v4f32_v4f32, )(p, p);
     if (l2 == INFINITY) {
-      p = __spirv_ocl_copysign(__spirv_ocl_select((float4)0.0F, (float4)1.0F, __convert_int4(__spirv_IsInf(p))), p);
-      l2 = __spirv_Dot(p, p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v4f32_v4f32, )(SPIRV_OCL_BUILTIN(select, _v4f32_v4f32_v4i32, )((float4)0.0F, (float4)1.0F, __convert_int4(SPIRV_BUILTIN(IsInf, _v4f32, )(p))), p);
+      l2 = SPIRV_BUILTIN(Dot, _v4f32_v4f32, )(p, p);
     }
   }
-  return p * __spirv_ocl_rsqrt(l2);
+  return p * SPIRV_OCL_BUILTIN(rsqrt, _f32, )(l2);
 }
 
 #ifdef cl_khr_fp64
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
-double __attribute__((overloadable)) __spirv_ocl_normalize(double p) {
-  return __spirv_ocl_sign(p);
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _f64, )(double p) {
+  return SPIRV_OCL_BUILTIN(sign, _f64, )(p);
 }
 
-double2 __attribute__((overloadable)) __spirv_ocl_normalize(double2 p) {
+double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v2f64, )(double2 p) {
   if (all(p == (double2)0.0))
     return p;
 
-  double l2 = __spirv_Dot(p, p);
+  double l2 = SPIRV_BUILTIN(Dot, _v2f64_v2f64, )(p, p);
 
   if (l2 < DBL_MIN) {
     p *= 0x1.0p+563;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v2f64_v2f64, )(p, p);
   } else if (__intel_relaxed_isinf(l2)) {
     p *= 0x1.0p-513;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v2f64_v2f64, )(p, p);
     if (l2 == INFINITY) {
-      p = __spirv_ocl_copysign(__spirv_ocl_select((double2)0.0, (double2)1.0, __convert_long2(__spirv_IsInf(p))), p);
-      l2 = __spirv_Dot(p, p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v2f64_v2f64, )(SPIRV_OCL_BUILTIN(select, _v2f64_v2f64_v2i64, )((double2)0.0, (double2)1.0, __convert_long2(SPIRV_BUILTIN(IsInf, _v2f64, )(p))), p);
+      l2 = SPIRV_BUILTIN(Dot, _v2f64_v2f64, )(p, p);
     }
   }
-  return p * __spirv_ocl_rsqrt(l2);
+  return p * SPIRV_OCL_BUILTIN(rsqrt, _f64, )(l2);
 }
 
-double3 __attribute__((overloadable)) __spirv_ocl_normalize(double3 p) {
+double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v3f64, )(double3 p) {
   if (all(p == (double3)0.0))
     return p;
 
-  double l2 = __spirv_Dot(p, p);
+  double l2 = SPIRV_BUILTIN(Dot, _v3f64_v3f64, )(p, p);
 
   if (l2 < DBL_MIN) {
     p *= 0x1.0p+563;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v3f64_v3f64, )(p, p);
   } else if (__intel_relaxed_isinf(l2)) {
     p *= 0x1.0p-514;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v3f64_v3f64, )(p, p);
     if (l2 == INFINITY) {
-      p = __spirv_ocl_copysign(__spirv_ocl_select((double3)0.0, (double3)1.0, __convert_long3(__spirv_IsInf(p))), p);
-      l2 = __spirv_Dot(p, p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v3f64_v3f64, )(SPIRV_OCL_BUILTIN(select, _v3f64_v3f64_v3i64, )((double3)0.0, (double3)1.0, __convert_long3(SPIRV_BUILTIN(IsInf, _v3f64, )(p))), p);
+      l2 = SPIRV_BUILTIN(Dot, _v3f64_v3f64, )(p, p);
     }
   }
-  return p * __spirv_ocl_rsqrt(l2);
+  return p * SPIRV_OCL_BUILTIN(rsqrt, _f64, )(l2);
 }
 
-double4 __attribute__((overloadable)) __spirv_ocl_normalize(double4 p) {
+double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v4f64, )(double4 p) {
   if (all(p == (double4)0.0))
     return p;
 
-  double l2 = __spirv_Dot(p, p);
+  double l2 = SPIRV_BUILTIN(Dot, _v4f64_v4f64, )(p, p);
 
   if (l2 < DBL_MIN) {
     p *= 0x1.0p+563;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v4f64_v4f64, )(p, p);
   } else if (__intel_relaxed_isinf(l2)) {
     p *= 0x1.0p-514;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v4f64_v4f64, )(p, p);
     if (l2 == INFINITY) {
-      p = __spirv_ocl_copysign(__spirv_ocl_select((double4)0.0, (double4)1.0, __convert_long4(__spirv_IsInf(p))), p);
-      l2 = __spirv_Dot(p, p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v4f64_v4f64, )(SPIRV_OCL_BUILTIN(select, _v4f64_v4f64_v4i64, )((double4)0.0, (double4)1.0, __convert_long4(SPIRV_BUILTIN(IsInf, _v4f64, )(p))), p);
+      l2 = SPIRV_BUILTIN(Dot, _v4f64_v4f64, )(p, p);
     }
   }
-  return p * __spirv_ocl_rsqrt(l2);
+  return p * SPIRV_OCL_BUILTIN(rsqrt, _f64, )(l2);
 }
 
 #endif
@@ -251,68 +251,68 @@ double4 __attribute__((overloadable)) __spirv_ocl_normalize(double4 p) {
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_normalize(half p ){
-    return __spirv_ocl_sign(p);
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _f16, )(half p ){
+    return SPIRV_OCL_BUILTIN(sign, _f16, )(p);
 }
 
-half2 __attribute__((overloadable)) __spirv_ocl_normalize(half2 p ){
+half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v2f16, )(half2 p ){
     if (all(p == (half2)0.0F))
     return p;
 
-  half l2 = __spirv_Dot(p, p);
+  half l2 = SPIRV_BUILTIN(Dot, _v2f16_v2f16, )(p, p);
 
   if (l2 < HALF_MIN) {
     p *= HALF_MAX_SQRT;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v2f16_v2f16, )(p, p);
   } else if (__intel_relaxed_isinf(l2)) {
     p *= HALF_MIN_SQRT;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v2f16_v2f16, )(p, p);
     if (l2 == INFINITY) {
-      p = __spirv_ocl_copysign(__spirv_ocl_select((half2)0.0F, (half2)1.0F, __convert_short2(__spirv_IsInf(p))), p);
-      l2 = __spirv_Dot(p, p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v2f16_v2f16, )(SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )((half2)0.0F, (half2)1.0F, __convert_short2(SPIRV_BUILTIN(IsInf, _v2f16, )(p))), p);
+      l2 = SPIRV_BUILTIN(Dot, _v2f16_v2f16, )(p, p);
     }
   }
-  return p * __spirv_ocl_rsqrt(l2);
+  return p * SPIRV_OCL_BUILTIN(rsqrt, _f16, )(l2);
 }
 
-half3 __attribute__((overloadable)) __spirv_ocl_normalize(half3 p ){
+half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v3f16, )(half3 p ){
     if (all(p == (half3)0.0F))
     return p;
 
-  half l2 = __spirv_Dot(p, p);
+  half l2 = SPIRV_BUILTIN(Dot, _v3f16_v3f16, )(p, p);
 
   if (l2 < HALF_MIN) {
     p *= HALF_MAX_SQRT;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v3f16_v3f16, )(p, p);
   } else if (__intel_relaxed_isinf(l2)) {
     p *= HALF_MIN_SQRT;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v3f16_v3f16, )(p, p);
     if (l2 == INFINITY) {
-      p = __spirv_ocl_copysign(__spirv_ocl_select((half3)0.0F, (half3)1.0F, __convert_short3(__spirv_IsInf(p))), p);
-      l2 = __spirv_Dot(p, p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v3f16_v3f16, )(SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )((half3)0.0F, (half3)1.0F, __convert_short3(SPIRV_BUILTIN(IsInf, _v3f16, )(p))), p);
+      l2 = SPIRV_BUILTIN(Dot, _v3f16_v3f16, )(p, p);
     }
   }
-  return p * __spirv_ocl_rsqrt(l2);
+  return p * SPIRV_OCL_BUILTIN(rsqrt, _f16, )(l2);
 }
 
-half4 __attribute__((overloadable)) __spirv_ocl_normalize(half4 p ){
+half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v4f16, )(half4 p ){
     if (all(p == (half4)0.0F))
     return p;
 
-  half l2 = __spirv_Dot(p, p);
+  half l2 = SPIRV_BUILTIN(Dot, _v4f16_v4f16, )(p, p);
 
   if (l2 < HALF_MIN) {
     p *= HALF_MAX_SQRT;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v4f16_v4f16, )(p, p);
   } else if (__intel_relaxed_isinf(l2)) {
     p *= HALF_MIN_SQRT;
-    l2 = __spirv_Dot(p, p);
+    l2 = SPIRV_BUILTIN(Dot, _v4f16_v4f16, )(p, p);
     if (l2 == INFINITY) {
-      p = __spirv_ocl_copysign(__spirv_ocl_select((half4)0.0F, (half4)1.0F, __convert_short4(__spirv_IsInf(p))), p);
-      l2 = __spirv_Dot(p, p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v4f16_v4f16, )(SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )((half4)0.0F, (half4)1.0F, __convert_short4(SPIRV_BUILTIN(IsInf, _v4f16, )(p))), p);
+      l2 = SPIRV_BUILTIN(Dot, _v4f16_v4f16, )(p, p);
     }
   }
-  return p * __spirv_ocl_rsqrt(l2);
+  return p * SPIRV_OCL_BUILTIN(rsqrt, _f16, )(l2);
 }
 
 #endif // defined(cl_khr_fp16)

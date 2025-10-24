@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-float __attribute__((overloadable)) __spirv_ocl_ldexp( float x, int n )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )( float x, int n )
 {
     int delta = 0;
     float m0 = 1.0f;
@@ -40,7 +40,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV( ldexp, float, float, int, f32, i32
 
 #if defined(cl_khr_fp64)
 
-double __attribute__((overloadable)) __spirv_ocl_ldexp( double x, int n )
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )( double x, int n )
 {
     int delta = 0;
     double m0 = 1.0;
@@ -73,7 +73,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV( ldexp, double, double, int, f64, i
 
 #if defined(cl_khr_fp16)
 
-half __attribute__((overloadable)) __spirv_ocl_ldexp( half x, int n )
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ldexp, _f16_i32, )( half x, int n )
 {
     float mn = as_float( ( n + FLOAT_BIAS ) << FLOAT_MANTISSA_BITS );
     mn = ( n == 0 ) ? 1.0f : mn;

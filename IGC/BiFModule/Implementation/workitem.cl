@@ -198,9 +198,9 @@ size_t OVERLOADABLE __spirv_BuiltInGlobalOffset(int dimindx)
     return __builtin_IB_get_global_offset(dimindx);
 }
 
-size_t __attribute__((overloadable)) __spirv_BuiltInGlobalLinearId()
+size_t SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInGlobalLinearId, , )()
 {
-  uint dim = __spirv_BuiltInWorkDim();
+  uint dim = SPIRV_BUILTIN_NO_OP(BuiltInWorkDim, , )();
   size_t result = 0;
 
   switch (dim) {
@@ -244,12 +244,12 @@ size_t __attribute__((overloadable)) __spirv_BuiltInGlobalLinearId()
   return result;
 }
 
-size_t __attribute__((overloadable)) __spirv_BuiltInLocalInvocationIndex()
+size_t SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )()
 {
     return __intel_LocalInvocationIndex();
 }
 
-uint __attribute__((overloadable)) __spirv_BuiltInWorkDim()
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInWorkDim, , )()
 {
     uint dim = __builtin_IB_get_work_dim();
 
@@ -261,7 +261,7 @@ uint __attribute__((overloadable)) __spirv_BuiltInWorkDim()
     return dim;
 }
 
-uint __attribute__((overloadable)) __spirv_BuiltInSubgroupMaxSize()
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )()
 {
     uint v = __builtin_IB_get_simd_size();
 
@@ -273,43 +273,43 @@ uint __attribute__((overloadable)) __spirv_BuiltInSubgroupMaxSize()
     return v;
 }
 
-uint __attribute__((overloadable)) __spirv_BuiltInSubgroupId()
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )()
 {
     if(BIF_FLAG_CTRL_GET(hasHWLocalThreadID))
     {
         return __builtin_IB_get_local_thread_id();
     }
 
-    uint v = (uint)__spirv_BuiltInLocalInvocationIndex() / __spirv_BuiltInSubgroupMaxSize();
+    uint v = (uint)SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )() / SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();
 
     BuiltinAssumeGE0(v);
     return v;
 }
 
-uint __attribute__((overloadable)) __spirv_BuiltInNumSubgroups()
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )()
 {
-    uint totalWorkGroupSize = __intel_WorkgroupSize() + __spirv_BuiltInSubgroupMaxSize() - 1;
-    return totalWorkGroupSize / __spirv_BuiltInSubgroupMaxSize();
+    uint totalWorkGroupSize = __intel_WorkgroupSize() + SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1;
+    return totalWorkGroupSize / SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();
 }
 
-uint __attribute__((overloadable)) __spirv_BuiltInSubgroupSize()
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )()
 {
     uint    remainder =
-                __intel_WorkgroupSize() & ( __spirv_BuiltInSubgroupMaxSize() - 1 );
+                __intel_WorkgroupSize() & ( SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1 );
     bool    fullSubGroup =
                 ( remainder == 0 ) ||
-                ( __spirv_BuiltInSubgroupId() < __spirv_BuiltInNumSubgroups() - 1 );
+                ( SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )() < SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )() - 1 );
 
-    return fullSubGroup ? __spirv_BuiltInSubgroupMaxSize() : remainder;
+    return fullSubGroup ? SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() : remainder;
 }
 
-uint __attribute__((overloadable)) __spirv_BuiltInNumEnqueuedSubgroups()
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInNumEnqueuedSubgroups, , )()
 {
-    uint totalEnqueuedWorkGroupSize = __intel_EnqueuedWorkgroupSize() + __spirv_BuiltInSubgroupMaxSize() - 1;
-    return totalEnqueuedWorkGroupSize / __spirv_BuiltInSubgroupMaxSize();
+    uint totalEnqueuedWorkGroupSize = __intel_EnqueuedWorkgroupSize() + SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1;
+    return totalEnqueuedWorkGroupSize / SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();
 }
 
-uint __attribute__((overloadable)) __spirv_BuiltInSubgroupLocalInvocationId()
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )()
 {
     uint simd_id = __builtin_IB_get_simd_id();
 

@@ -15,23 +15,23 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/tanh_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-float __attribute__((overloadable)) __spirv_ocl_tanh( float x )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tanh, _f32, )( float x )
 {
     float result;
 
     if( __intel_relaxed_isnan(x) )
     {
-        result = __spirv_ocl_nan(0);
+        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
     }
     else if(BIF_FLAG_CTRL_GET(UseHighAccuracyMath))
     {
         result = __ocl_svml_tanhf_noLUT(x);
     }
-    else if(__spirv_ocl_fabs(x) < as_float(0x3A71E7A0))     // 0.00092279352247715
+    else if(SPIRV_OCL_BUILTIN(fabs, _f32, )(x) < as_float(0x3A71E7A0))     // 0.00092279352247715
     {
         result = x;
     }
-    else if( __spirv_ocl_fabs(x) < as_float(0x3EACB527) )   // 0.33731958270072937
+    else if( SPIRV_OCL_BUILTIN(fabs, _f32, )(x) < as_float(0x3EACB527) )   // 0.33731958270072937
     {
         float sinhx, coshx;
         {
@@ -47,7 +47,7 @@ float __attribute__((overloadable)) __spirv_ocl_tanh( float x )
         }
         result = sinhx / coshx;
     }
-    else if (__spirv_ocl_fabs(x) < as_float(0x41987E0C))    // 19.061546325683594
+    else if (SPIRV_OCL_BUILTIN(fabs, _f32, )(x) < as_float(0x41987E0C))    // 19.061546325683594
     {
         float exp2x = __intel_exp_for_hyper(2 * x, 0.0f);
         result = (exp2x - 1) / (exp2x + 1);
@@ -64,7 +64,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_tanh( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tanh, _f64, )( double x )
 {
     return __ocl_svml_tanh(x);
 }
@@ -75,9 +75,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_tanh( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tanh, _f16, )( half x )
 {
-    return __spirv_ocl_tanh((float)x);
+    return SPIRV_OCL_BUILTIN(tanh, _f32, )((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, half, half, f16 )

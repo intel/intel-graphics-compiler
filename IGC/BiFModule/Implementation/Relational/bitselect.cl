@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
 // This maps to boolean function 0xD8.
 
 INLINE
-char __attribute__((overloadable)) __spirv_ocl_bitselect( char a, char b, char c )
+char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _i8_i8_i8, )( char a, char b, char c )
 {
     if (BIF_FLAG_CTRL_GET(UseBfn))
     {
@@ -32,7 +32,7 @@ char __attribute__((overloadable)) __spirv_ocl_bitselect( char a, char b, char c
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, char, char, i8 )
 
 INLINE
-short __attribute__((overloadable)) __spirv_ocl_bitselect( short a, short b, short c )
+short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _i16_i16_i16, )( short a, short b, short c )
 {
     if (BIF_FLAG_CTRL_GET(UseBfn))
     {
@@ -49,7 +49,7 @@ short __attribute__((overloadable)) __spirv_ocl_bitselect( short a, short b, sho
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, short, short, i16 )
 
 INLINE
-int __attribute__((overloadable)) __spirv_ocl_bitselect( int a, int b, int c )
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _i32_i32_i32, )( int a, int b, int c )
 {
     if (BIF_FLAG_CTRL_GET(UseBfn))
     {
@@ -66,7 +66,7 @@ int __attribute__((overloadable)) __spirv_ocl_bitselect( int a, int b, int c )
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, int, int, i32 )
 
 INLINE
-long __attribute__((overloadable)) __spirv_ocl_bitselect( long a, long b, long c )
+long SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _i64_i64_i64, )( long a, long b, long c )
 {
     if (BIF_FLAG_CTRL_GET(UseBfn))
     {
@@ -89,9 +89,9 @@ long __attribute__((overloadable)) __spirv_ocl_bitselect( long a, long b, long c
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, long, long, i64 )
 
 INLINE
-float __attribute__((overloadable)) __spirv_ocl_bitselect( float a, float b, float c )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _f32_f32_f32, )( float a, float b, float c )
 {
-    return as_float( __spirv_ocl_bitselect(as_int(a), as_int(b), as_int(c)) );
+    return as_float( SPIRV_OCL_BUILTIN(bitselect, _i32_i32_i32, )(as_int(a), as_int(b), as_int(c)) );
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, float, float, f32 )
@@ -99,9 +99,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, float, float, f32 )
 #if defined(cl_khr_fp64)
 
 INLINE
-double __attribute__((overloadable)) __spirv_ocl_bitselect( double a, double b, double c )
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _f64_f64_f64, )( double a, double b, double c )
 {
-    return as_double( __spirv_ocl_bitselect(as_long(a), as_long(b), as_long(c)) );
+    return as_double( SPIRV_OCL_BUILTIN(bitselect, _i64_i64_i64, )(as_long(a), as_long(b), as_long(c)) );
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, double, double, f64 )
@@ -111,9 +111,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, double, double, f64 )
 #ifdef cl_khr_fp16
 
 INLINE
-half __attribute__((overloadable)) __spirv_ocl_bitselect( half a, half b, half c )
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _f16_f16_f16, )( half a, half b, half c )
 {
-    return as_half( __spirv_ocl_bitselect(as_short(a), as_short(b), as_short(c)) );
+    return as_half( SPIRV_OCL_BUILTIN(bitselect, _i16_i16_i16, )(as_short(a), as_short(b), as_short(c)) );
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, half, half, f16 )

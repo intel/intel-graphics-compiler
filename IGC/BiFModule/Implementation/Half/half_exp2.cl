@@ -9,26 +9,26 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE float __attribute__((overloadable)) __spirv_ocl_half_exp2(float x ){
-    return __spirv_ocl_native_exp2(x);
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(half_exp2, _f32, )(float x ){
+    return SPIRV_OCL_BUILTIN(native_exp2, _f32, )(x);
 }
 
-INLINE float2 __attribute__((overloadable)) __spirv_ocl_half_exp2(float2 x ){
-    return __spirv_ocl_native_exp2(x);
+INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(half_exp2, _v2f32, )(float2 x ){
+    return SPIRV_OCL_BUILTIN(native_exp2, _v2f32, )(x);
 }
 
-INLINE float3 __attribute__((overloadable)) __spirv_ocl_half_exp2(float3 x ){
-    return __spirv_ocl_native_exp2(x);
+INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(half_exp2, _v3f32, )(float3 x ){
+    return SPIRV_OCL_BUILTIN(native_exp2, _v3f32, )(x);
 }
 
-INLINE float4 __attribute__((overloadable)) __spirv_ocl_half_exp2(float4 x ){
-    return __spirv_ocl_native_exp2(x);
+INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(half_exp2, _v4f32, )(float4 x ){
+    return SPIRV_OCL_BUILTIN(native_exp2, _v4f32, )(x);
 }
 
-INLINE float8 __attribute__((overloadable)) __spirv_ocl_half_exp2(float8 x ){
-    return __spirv_ocl_native_exp2(x);
+INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(half_exp2, _v8f32, )(float8 x ){
+    return SPIRV_OCL_BUILTIN(native_exp2, _v8f32, )(x);
 }
 
-INLINE float16 __attribute__((overloadable)) __spirv_ocl_half_exp2(float16 x ){
-    return __spirv_ocl_native_exp2(x);
+INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(half_exp2, _v16f32, )(float16 x ){
+    return SPIRV_OCL_BUILTIN(native_exp2, _v16f32, )(x);
 }

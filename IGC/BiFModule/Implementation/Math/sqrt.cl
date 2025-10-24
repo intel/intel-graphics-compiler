@@ -9,18 +9,18 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE float __attribute__((overloadable)) __spirv_ocl_sqrt( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt, _f32, )( float x )
 {
-    return __spirv_ocl_native_sqrt(x);
+    return SPIRV_OCL_BUILTIN(native_sqrt, _f32, )(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sqrt, float, float, f32 )
 
 #ifdef cl_fp64_basic_ops
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_sqrt( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt, _f64, )( double x )
 {
-    return __spirv_ocl_native_sqrt(x);
+    return SPIRV_OCL_BUILTIN(native_sqrt, _f64, )(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sqrt, double, double, f64 )
@@ -29,9 +29,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sqrt, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_sqrt( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt, _f16, )( half x )
 {
-    return __spirv_ocl_native_sqrt((float)x);
+    return SPIRV_OCL_BUILTIN(native_sqrt, _f32, )((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sqrt, half, half, f16 )

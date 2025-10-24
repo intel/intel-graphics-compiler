@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE char __attribute__((overloadable)) __spirv_ocl_select( char a, char b, char c )
+INLINE char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(select, _i8_i8_i8, )( char a, char b, char c )
 {
     return c ? b : a;
 }
@@ -21,7 +21,7 @@ static INLINE OVERLOADABLE char __intel_vector_select_helper( char a, char b, ch
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __intel_vector_select_helper, char, char, i8, i8 )
 
-INLINE short __attribute__((overloadable)) __spirv_ocl_select( short a, short b, short c )
+INLINE short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(select, _i16_i16_i16, )( short a, short b, short c )
 {
     return c ? b : a;
 }
@@ -33,7 +33,7 @@ static INLINE OVERLOADABLE short __intel_vector_select_helper( short a, short b,
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __intel_vector_select_helper, short, short, i16, i16 )
 
-INLINE int __attribute__((overloadable)) __spirv_ocl_select( int a, int b, int c )
+INLINE int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )( int a, int b, int c )
 {
     return c ? b : a;
 }
@@ -45,7 +45,7 @@ static INLINE OVERLOADABLE int __intel_vector_select_helper( int a, int b, int c
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __intel_vector_select_helper, int, int, i32, i32 )
 
-INLINE long __attribute__((overloadable)) __spirv_ocl_select( long a, long b, long c )
+INLINE long SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(select, _i64_i64_i64, )( long a, long b, long c )
 {
     return c ? b : a;
 }
@@ -57,7 +57,7 @@ static INLINE OVERLOADABLE long __intel_vector_select_helper( long a, long b, lo
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __intel_vector_select_helper, long, long, i64, i64 )
 
-INLINE float __attribute__((overloadable)) __spirv_ocl_select( float a, float b, int c )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( float a, float b, int c )
 {
     return c ? b : a;
 }
@@ -71,7 +71,7 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __intel_vector_select_helper, float, int
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_select( double a, double b, long c )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( double a, double b, long c )
 {
     return c ? b : a;
 }
@@ -87,7 +87,7 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __intel_vector_select_helper, double, lo
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_select( half a, half b, short c )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( half a, half b, short c )
 {
     return c ? b : a;
 }

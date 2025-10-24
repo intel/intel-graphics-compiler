@@ -110,11 +110,11 @@ INLINE static uint extract_index( __spirv_ReserveId rid )
 
 INLINE static bool intel_lock_pipe_read( __global pipe_control_intel_t* p )
 {
-    int lock = __spirv_AtomicLoad( ( global int* )&p->lock, Device, Relaxed );
+    int lock = SPIRV_BUILTIN(AtomicLoad, _p1i32_i32_i32, )( ( global int* )&p->lock, Device, Relaxed );
     while( lock <= 0 )
     {
         int newLock = lock - 1;
-        if (__spirv_AtomicCompareExchange(
+        if (SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
                 ( global int* ) &p->lock,
                 Device,
                 SequentiallyConsistent,
@@ -134,7 +134,7 @@ INLINE static bool intel_lock_pipe_read( __global pipe_control_intel_t* p )
 
 static void intel_unlock_pipe_read( __global pipe_control_intel_t* p )
 {
-    __spirv_AtomicIIncrement(
+    SPIRV_BUILTIN(AtomicIIncrement, _p1i32_i32_i32, )(
             ( global int* ) &p->lock,
             Device,
             SequentiallyConsistent );
@@ -143,12 +143,12 @@ static void intel_unlock_pipe_read( __global pipe_control_intel_t* p )
 
 static bool intel_lock_pipe_write( __global  pipe_control_intel_t* p )
 {
-    int lock = __spirv_AtomicLoad( ( global int* )&p->lock, Device, Relaxed );
+    int lock = SPIRV_BUILTIN(AtomicLoad, _p1i32_i32_i32, )( ( global int* )&p->lock, Device, Relaxed );
 
     while( lock >= 0 )
     {
         int newLock = lock + 1;
-        if( __spirv_AtomicCompareExchange(
+        if( SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
                     ( global int* ) &p->lock,
                     Device,
                     SequentiallyConsistent,
@@ -168,7 +168,7 @@ static bool intel_lock_pipe_write( __global  pipe_control_intel_t* p )
 
 static void intel_unlock_pipe_write( __global pipe_control_intel_t* p )
 {
-    __spirv_AtomicIDecrement(
+    SPIRV_BUILTIN(AtomicIDecrement, _p1i32_i32_i32, )(
             ( global int* ) &p->lock,
             Device,
             SequentiallyConsistent );
@@ -177,7 +177,7 @@ static void intel_unlock_pipe_write( __global pipe_control_intel_t* p )
 
 static uint read_head( __global pipe_control_intel_t* p )
 {
-    int head = __spirv_AtomicLoad(
+    int head = SPIRV_BUILTIN(AtomicLoad, _p1i32_i32_i32, )(
             ( global int* )&p->head,
             Device,
             SequentiallyConsistent );
@@ -187,7 +187,7 @@ static uint read_head( __global pipe_control_intel_t* p )
 
 static uint read_tail( __global pipe_control_intel_t* p )
 {
-    int tail = __spirv_AtomicLoad(
+    int tail = SPIRV_BUILTIN(AtomicLoad, _p1i32_i32_i32, )(
             ( global int* )&p->tail,
             Device,
             SequentiallyConsistent );
@@ -201,7 +201,7 @@ bool __intel_is_first_work_group_item( void );
 // END - Pipe Helper Functions (static)
 /////////////////////////////////////////////////////////////////////
 
-int __attribute__((overloadable)) __spirv_ReadPipe( __spirv_Pipe_ro Pipe, generic char *Pointer, int PacketSize/*, int PacketAlignment */)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReadPipe, _Pipe_ro_p4i8_i32, )( __spirv_Pipe_ro Pipe, generic char *Pointer, int PacketSize/*, int PacketAlignment */)
 {
     __global pipe_control_intel_t* p = (__global pipe_control_intel_t*)(Pipe);
 #if defined(_DEBUG)
@@ -239,7 +239,7 @@ int __attribute__((overloadable)) __spirv_ReadPipe( __spirv_Pipe_ro Pipe, generi
                 break;
             }
 
-            if( __spirv_AtomicCompareExchange(
+            if( SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
                         ( global int* ) &p->head,
                         Device,
                         SequentiallyConsistent,
@@ -270,7 +270,7 @@ int __attribute__((overloadable)) __spirv_ReadPipe( __spirv_Pipe_ro Pipe, generi
 }
 
 
-int __attribute__((overloadable)) __spirv_WritePipe( __spirv_Pipe_wo Pipe, generic char *Pointer, int PacketSize/*, int PacketAlignment */)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(WritePipe, _Pipe_wo_p4i8_i32, )( __spirv_Pipe_wo Pipe, generic char *Pointer, int PacketSize/*, int PacketAlignment */)
 {
 #if defined(_DEBUG)
     printf( "ENTER: write_pipe\n" );
@@ -307,7 +307,7 @@ int __attribute__((overloadable)) __spirv_WritePipe( __spirv_Pipe_wo Pipe, gener
                 break;
             }
 
-            if( __spirv_AtomicCompareExchange(
+            if( SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
                         ( global int* ) &p->tail,
                         Device,
                         SequentiallyConsistent,
@@ -337,7 +337,7 @@ int __attribute__((overloadable)) __spirv_WritePipe( __spirv_Pipe_wo Pipe, gener
     return retVal;
 }
 
-int __attribute__((overloadable)) __spirv_ReservedReadPipe( __spirv_Pipe_ro Pipe, __spirv_ReserveId ReserveId, int Index, generic char *Pointer, int PacketSize/*, int PacketAlignment */)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReservedReadPipe, _Pipe_ro_ReserveId_i32_p4i8_i32, )( __spirv_Pipe_ro Pipe, __spirv_ReserveId ReserveId, int Index, generic char *Pointer, int PacketSize/*, int PacketAlignment */)
 {
 #if defined(_DEBUG)
   printf( "ENTER: read_pipe( reserve_id = %08X, index = %d)\n", rtos(ReserveId), Index );
@@ -345,7 +345,7 @@ int __attribute__((overloadable)) __spirv_ReservedReadPipe( __spirv_Pipe_ro Pipe
   __global pipe_control_intel_t* p = (__global pipe_control_intel_t*)Pipe;
   int retVal = -1;
 
-  if( __spirv_IsValidReserveId( ReserveId ) )
+  if( SPIRV_BUILTIN(IsValidReserveId, _ReserveId, )( ReserveId ) )
   {
     const uint base_idx = extract_index(ReserveId);
     generic const void * src = p->base + PacketSize * advance(p, base_idx, Index);
@@ -360,7 +360,7 @@ int __attribute__((overloadable)) __spirv_ReservedReadPipe( __spirv_Pipe_ro Pipe
 }
 
 // write_pipe with 4 explicit arguments
-int __attribute__((overloadable)) __spirv_ReservedWritePipe( __spirv_Pipe_wo Pipe, __spirv_ReserveId ReserveId, int Index, generic char *Pointer, int PacketSize/*, int PacketAlignment */)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReservedWritePipe, _Pipe_wo_ReserveId_i32_p4i8_i32, )( __spirv_Pipe_wo Pipe, __spirv_ReserveId ReserveId, int Index, generic char *Pointer, int PacketSize/*, int PacketAlignment */)
 {
 #if defined(_DEBUG)
   printf( "ENTER: write_pipe( reserve_id = %08X, index = %d)\n", rtos(ReserveId), Index );
@@ -368,7 +368,7 @@ int __attribute__((overloadable)) __spirv_ReservedWritePipe( __spirv_Pipe_wo Pip
   __global pipe_control_intel_t* p = (__global pipe_control_intel_t*)Pipe;
   int retVal = -1;
 
-  if(__spirv_IsValidReserveId(ReserveId))
+  if( SPIRV_BUILTIN(IsValidReserveId,_ReserveId, )( ReserveId ) )
   {
     const uint base_idx = extract_index(ReserveId);
     generic void * dst = p->base + PacketSize * advance(p, base_idx, Index);
@@ -382,7 +382,7 @@ int __attribute__((overloadable)) __spirv_ReservedWritePipe( __spirv_Pipe_wo Pip
   return retVal;
 }
 
-__spirv_ReserveId __attribute__((overloadable)) __spirv_ReserveReadPipePackets( __spirv_Pipe_ro Pipe, int NumPackets, int PacketSize/*, int PacketAlignment */)
+__spirv_ReserveId SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReserveReadPipePackets, _Pipe_ro_i32_i32, )( __spirv_Pipe_ro Pipe, int NumPackets, int PacketSize/*, int PacketAlignment */)
 {
 #if defined(_DEBUG)
     printf( "ENTER: reserve_read_pipe( num_packets = %d)\n", NumPackets );
@@ -428,7 +428,7 @@ __spirv_ReserveId __attribute__((overloadable)) __spirv_ReserveReadPipePackets( 
                 break;
             }
 
-            if( __spirv_AtomicCompareExchange(
+            if( SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
                         ( global int* ) &p->head,
                         Device,
                         SequentiallyConsistent,
@@ -449,7 +449,7 @@ __spirv_ReserveId __attribute__((overloadable)) __spirv_ReserveReadPipePackets( 
             }
         }
 
-        if( !__spirv_IsValidReserveId( retVal ) )
+        if( !SPIRV_BUILTIN(IsValidReserveId, _ReserveId, )( retVal ) )
         {
             intel_unlock_pipe_read( p );
         }
@@ -464,7 +464,7 @@ __spirv_ReserveId __attribute__((overloadable)) __spirv_ReserveReadPipePackets( 
 }
 
 
-__spirv_ReserveId __attribute__((overloadable)) __spirv_ReserveWritePipePackets(__spirv_Pipe_wo Pipe, int NumPackets, int PacketSize/*, int PacketAlignment */)
+__spirv_ReserveId SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReserveWritePipePackets, _Pipe_wo_i32_i32, )(__spirv_Pipe_wo Pipe, int NumPackets, int PacketSize/*, int PacketAlignment */)
 {
 #if defined(_DEBUG)
     printf( "ENTER: reserve_write_pipe( num_packets = %d)\n", NumPackets );
@@ -508,7 +508,7 @@ __spirv_ReserveId __attribute__((overloadable)) __spirv_ReserveWritePipePackets(
                 break;
             }
 
-            if( __spirv_AtomicCompareExchange(
+            if( SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
                         ( global int* ) &p->tail,
                         Device,
                         SequentiallyConsistent,
@@ -529,7 +529,7 @@ __spirv_ReserveId __attribute__((overloadable)) __spirv_ReserveWritePipePackets(
             }
         }
 
-        if(!__spirv_IsValidReserveId(retVal) )
+        if( !SPIRV_BUILTIN(IsValidReserveId,_ReserveId, )( retVal ) )
         {
             intel_unlock_pipe_write( p );
         }
@@ -544,7 +544,7 @@ __spirv_ReserveId __attribute__((overloadable)) __spirv_ReserveWritePipePackets(
 }
 
 
-void __attribute__((overloadable)) __spirv_CommitReadPipe( __spirv_Pipe_ro Pipe, __spirv_ReserveId ReserveId, int PacketSize/*, int PacketAlignment */)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(CommitReadPipe, _Pipe_ro_ReserveId_i32, )( __spirv_Pipe_ro Pipe, __spirv_ReserveId ReserveId, int PacketSize/*, int PacketAlignment */)
 {
 #if defined(_DEBUG)
     printf( "ENTER: commit_read_pipe( reserve_id = %08X)\n", ReserveId );
@@ -558,7 +558,7 @@ void __attribute__((overloadable)) __spirv_CommitReadPipe( __spirv_Pipe_ro Pipe,
 }
 
 
-void __attribute__((overloadable)) __spirv_CommitWritePipe( __spirv_Pipe_wo Pipe, __spirv_ReserveId ReserveId, int PacketSize/*, int PacketAlignment */)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(CommitWritePipe, _Pipe_wo_ReserveId_i32, )( __spirv_Pipe_wo Pipe, __spirv_ReserveId ReserveId, int PacketSize/*, int PacketAlignment */)
 {
 #if defined(_DEBUG)
     printf( "ENTER: commit_write_pipe( reserve_id = %08X)\n", rtos(ReserveId) );
@@ -572,12 +572,12 @@ void __attribute__((overloadable)) __spirv_CommitWritePipe( __spirv_Pipe_wo Pipe
 }
 
 
-bool __attribute__((overloadable)) __spirv_IsValidReserveId( __spirv_ReserveId  ReserveId )
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsValidReserveId, _ReserveId, )( __spirv_ReserveId  ReserveId )
 {
     return ( rtos(ReserveId) & INTEL_PIPE_RESERVE_ID_VALID_BIT ) != 0;
 }
 
-uint __attribute__((overloadable)) __spirv_GetNumPipePackets( __spirv_Pipe_ro Pipe, int PacketSize/*, int PacketAlignment */)
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetNumPipePackets, _Pipe_ro_i32, )( __spirv_Pipe_ro Pipe, int PacketSize/*, int PacketAlignment */)
 {
   __global pipe_control_intel_t* p = (__global pipe_control_intel_t*)Pipe;
 
@@ -588,7 +588,7 @@ uint __attribute__((overloadable)) __spirv_GetNumPipePackets( __spirv_Pipe_ro Pi
   return (head <= tail) ? (tail - head) : (p->pipe_max_packets - head + tail);
 }
 
-uint __attribute__((overloadable)) __spirv_GetNumPipePackets( __spirv_Pipe_wo Pipe, int PacketSize/*, int PacketAlignment */)
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetNumPipePackets, _Pipe_wo_i32, )( __spirv_Pipe_wo Pipe, int PacketSize/*, int PacketAlignment */)
 {
   __global pipe_control_intel_t* p = (__global pipe_control_intel_t*)Pipe;
 
@@ -599,13 +599,13 @@ uint __attribute__((overloadable)) __spirv_GetNumPipePackets( __spirv_Pipe_wo Pi
   return (head <= tail) ? (tail - head) : (p->pipe_max_packets - head + tail);
 }
 
-uint __attribute__((overloadable)) __spirv_GetMaxPipePackets( __spirv_Pipe_ro Pipe, int PacketSize/*, int PacketAlignment */)
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetMaxPipePackets, _Pipe_ro_i32, )( __spirv_Pipe_ro Pipe, int PacketSize/*, int PacketAlignment */)
 {
   __global pipe_control_intel_t* p = (__global pipe_control_intel_t*)Pipe;
   return p->pipe_max_packets - 1;
 }
 
-uint __attribute__((overloadable)) __spirv_GetMaxPipePackets( __spirv_Pipe_wo Pipe, int PacketSize/*, int PacketAlignment */)
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetMaxPipePackets, _Pipe_wo_i32, )( __spirv_Pipe_wo Pipe, int PacketSize/*, int PacketAlignment */)
 {
   __global pipe_control_intel_t* p = (__global pipe_control_intel_t*)Pipe;
   return p->pipe_max_packets - 1;
@@ -613,28 +613,28 @@ uint __attribute__((overloadable)) __spirv_GetMaxPipePackets( __spirv_Pipe_wo Pi
 
 static uint __intel_pipe_broadcast(uint val)
 {
-  return __spirv_GroupBroadcast(Workgroup, as_int(val), 0);
+  return SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i32, )(Workgroup, as_int(val), 0);
 }
 
-__spirv_ReserveId __attribute__((overloadable)) __spirv_GroupReserveReadPipePackets( int Execution, __spirv_Pipe_ro Pipe, int NumPackets, int PacketSize/*, int PacketAlignment */)
+__spirv_ReserveId SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupReserveReadPipePackets, _i32_Pipe_ro_i32_i32, )( int Execution, __spirv_Pipe_ro Pipe, int NumPackets, int PacketSize/*, int PacketAlignment */)
 {
     __spirv_ReserveId rid = SetInvalidRid();
 
     if( Execution == Subgroup )
     {
-        if( __spirv_BuiltInSubgroupLocalInvocationId() == 0 )
+        if( SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )() == 0 )
         {
-            rid = __spirv_ReserveReadPipePackets( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
+            rid = SPIRV_BUILTIN(ReserveReadPipePackets, _Pipe_ro_i32_i32, )( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
         }
 
-        __spirv_ReserveId result = stor(__spirv_GroupBroadcast(Subgroup, as_int(rtos(rid)), 0));
+        __spirv_ReserveId result = stor(SPIRV_BUILTIN(GroupBroadcast, _i32_i32_i32, )(Subgroup, as_int(rtos(rid)), 0));
         return result;
     }
     else
     {
         if( __intel_is_first_work_group_item() )
         {
-            rid = __spirv_ReserveReadPipePackets( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
+            rid = SPIRV_BUILTIN(ReserveReadPipePackets, _Pipe_ro_i32_i32, )( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
         }
 
         __spirv_ReserveId result = stor(__intel_pipe_broadcast(rtos(rid)));
@@ -643,25 +643,25 @@ __spirv_ReserveId __attribute__((overloadable)) __spirv_GroupReserveReadPipePack
 }
 
 
-__spirv_ReserveId __attribute__((overloadable)) __spirv_GroupReserveWritePipePackets( int Execution, __spirv_Pipe_wo Pipe, int NumPackets, int PacketSize/*, int PacketAlignment */)
+__spirv_ReserveId SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupReserveWritePipePackets, _i32_Pipe_wo_i32_i32, )( int Execution, __spirv_Pipe_wo Pipe, int NumPackets, int PacketSize/*, int PacketAlignment */)
 {
     __spirv_ReserveId rid = SetInvalidRid();
 
     if( Execution == Subgroup )
     {
-        if( __spirv_BuiltInSubgroupLocalInvocationId() == 0 )
+        if( SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )() == 0 )
         {
-            rid = __spirv_ReserveWritePipePackets( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
+            rid = SPIRV_BUILTIN(ReserveWritePipePackets, _Pipe_wo_i32_i32, )( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
         }
 
-        __spirv_ReserveId result = stor(__spirv_GroupBroadcast(Subgroup, as_int(rtos(rid)), 0));
+        __spirv_ReserveId result = stor(SPIRV_BUILTIN(GroupBroadcast, _i32_i32_i32, )(Subgroup, as_int(rtos(rid)), 0));
         return result;
     }
     else
     {
         if( __intel_is_first_work_group_item() )
         {
-            rid = __spirv_ReserveWritePipePackets( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
+            rid = SPIRV_BUILTIN(ReserveWritePipePackets, _Pipe_wo_i32_i32, )( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
         }
 
         __spirv_ReserveId result = stor(__intel_pipe_broadcast(rtos(rid)));
@@ -670,123 +670,123 @@ __spirv_ReserveId __attribute__((overloadable)) __spirv_GroupReserveWritePipePac
 }
 
 
-void __attribute__((overloadable)) __spirv_GroupCommitReadPipe( int Execution, __spirv_Pipe_ro Pipe, __spirv_ReserveId ReserveId, int PacketSize/*, int PacketAlignment */)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupCommitReadPipe, _i32_Pipe_ro_ReserveId_i32, )( int Execution, __spirv_Pipe_ro Pipe, __spirv_ReserveId ReserveId, int PacketSize/*, int PacketAlignment */)
 {
     if( Execution == Subgroup )
     {
-        if (__spirv_BuiltInSubgroupLocalInvocationId() == 0)
+        if (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )() == 0)
         {
-            __spirv_CommitReadPipe( Pipe, ReserveId, PacketSize/*, PacketAlignment */);
+            SPIRV_BUILTIN(CommitReadPipe, _Pipe_ro_ReserveId_i32, )( Pipe, ReserveId, PacketSize/*, PacketAlignment */);
         }
     }
     else
     {
         if( __intel_is_first_work_group_item() )
         {
-            __spirv_CommitReadPipe( Pipe, ReserveId, PacketSize/*, PacketAlignment */);
+            SPIRV_BUILTIN(CommitReadPipe, _Pipe_ro_ReserveId_i32, )( Pipe, ReserveId, PacketSize/*, PacketAlignment */);
         }
     }
 
-    __spirv_ControlBarrier( Execution, Execution, Relaxed );
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )( Execution, Execution, Relaxed );
 }
 
-void __attribute__((overloadable)) __spirv_GroupCommitWritePipe(int Execution, __spirv_Pipe_wo Pipe, __spirv_ReserveId ReserveId, int PacketSize/*, int PacketAlignment*/)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupCommitWritePipe, _i32_Pipe_wo_ReserveId_i32, )(int Execution, __spirv_Pipe_wo Pipe, __spirv_ReserveId ReserveId, int PacketSize/*, int PacketAlignment*/)
 {
     if( Execution == Subgroup )
     {
-        if (__spirv_BuiltInSubgroupLocalInvocationId() == 0)
+        if (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )() == 0)
         {
-            __spirv_CommitWritePipe( Pipe, ReserveId, PacketSize/*, PacketAlignment */);
+            SPIRV_BUILTIN(CommitWritePipe, _Pipe_wo_ReserveId_i32, )( Pipe, ReserveId, PacketSize/*, PacketAlignment */);
         }
     }
     else
     {
         if( __intel_is_first_work_group_item() )
         {
-            __spirv_CommitWritePipe( Pipe, ReserveId, PacketSize/*, PacketAlignment */);
+            SPIRV_BUILTIN(CommitWritePipe, _Pipe_wo_ReserveId_i32, )( Pipe, ReserveId, PacketSize/*, PacketAlignment */);
         }
     }
 
-    __spirv_ControlBarrier( Execution, Execution, Relaxed );
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )( Execution, Execution, Relaxed );
 }
 
-int __attribute__((overloadable)) __spirv_ReadPipe( __spirv_Pipe_ro Pipe, generic char *Pointer, int PacketSize, int PacketAlignment )
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReadPipe, _Pipe_ro_p4i8_i32_i32, )( __spirv_Pipe_ro Pipe, generic char *Pointer, int PacketSize, int PacketAlignment )
 {
-  return __spirv_ReadPipe( Pipe, Pointer, PacketSize );
+  return SPIRV_BUILTIN(ReadPipe, _Pipe_ro_p4i8_i32, )( Pipe, Pointer, PacketSize );
 }
 
-int __attribute__((overloadable)) __spirv_WritePipe( __spirv_Pipe_wo Pipe, generic char *Pointer, int PacketSize, int PacketAlignment )
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(WritePipe, _Pipe_wo_p4i8_i32_i32, )( __spirv_Pipe_wo Pipe, generic char *Pointer, int PacketSize, int PacketAlignment )
 {
-  return __spirv_WritePipe( Pipe, Pointer, PacketSize );
+  return SPIRV_BUILTIN(WritePipe, _Pipe_wo_p4i8_i32, )( Pipe, Pointer, PacketSize );
 }
 
-int __attribute__((overloadable)) __spirv_ReservedReadPipe( __spirv_Pipe_ro Pipe, __spirv_ReserveId ReserveId, int Index, generic char *Pointer, int PacketSize, int PacketAlignment )
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReservedReadPipe, _Pipe_ro_ReserveId_i32_p4i8_i32_i32, )( __spirv_Pipe_ro Pipe, __spirv_ReserveId ReserveId, int Index, generic char *Pointer, int PacketSize, int PacketAlignment )
 {
-  return __spirv_ReservedReadPipe( Pipe, ReserveId, Index, Pointer, PacketSize );
+  return SPIRV_BUILTIN(ReservedReadPipe, _Pipe_ro_ReserveId_i32_p4i8_i32, )( Pipe, ReserveId, Index, Pointer, PacketSize );
 }
 
-int __attribute__((overloadable)) __spirv_ReservedWritePipe( __spirv_Pipe_wo Pipe, __spirv_ReserveId ReserveId, int Index, generic char *Pointer, int PacketSize, int PacketAlignment )
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReservedWritePipe, _Pipe_wo_ReserveId_i32_p4i8_i32_i32, )( __spirv_Pipe_wo Pipe, __spirv_ReserveId ReserveId, int Index, generic char *Pointer, int PacketSize, int PacketAlignment )
 {
-  return __spirv_ReservedWritePipe( Pipe, ReserveId, Index, Pointer, PacketSize );
+  return SPIRV_BUILTIN(ReservedWritePipe, _Pipe_wo_ReserveId_i32_p4i8_i32, )( Pipe, ReserveId, Index, Pointer, PacketSize );
 }
 
-__spirv_ReserveId __attribute__((overloadable)) __spirv_ReserveReadPipePackets( __spirv_Pipe_ro Pipe, int NumPackets, int PacketSize, int PacketAlignment )
+__spirv_ReserveId SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReserveReadPipePackets, _Pipe_ro_i32_i32_i32, )( __spirv_Pipe_ro Pipe, int NumPackets, int PacketSize, int PacketAlignment )
 {
-  return __spirv_ReserveReadPipePackets( Pipe, NumPackets, PacketSize );
+  return SPIRV_BUILTIN(ReserveReadPipePackets, _Pipe_ro_i32_i32, )( Pipe, NumPackets, PacketSize );
 }
 
-__spirv_ReserveId __attribute__((overloadable)) __spirv_ReserveWritePipePackets( __spirv_Pipe_wo Pipe, int NumPackets, int PacketSize, int PacketAlignment )
+__spirv_ReserveId SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReserveWritePipePackets, _Pipe_wo_i32_i32_i32, )( __spirv_Pipe_wo Pipe, int NumPackets, int PacketSize, int PacketAlignment )
 {
-  return __spirv_ReserveWritePipePackets( Pipe, NumPackets, PacketSize );
+  return SPIRV_BUILTIN(ReserveWritePipePackets, _Pipe_wo_i32_i32, )( Pipe, NumPackets, PacketSize );
 }
 
-void __attribute__((overloadable)) __spirv_CommitReadPipe( __spirv_Pipe_ro Pipe, __spirv_ReserveId ReserveId, int PacketSize, int PacketAlignment )
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(CommitReadPipe, _Pipe_ro_ReserveId_i32_i32, )( __spirv_Pipe_ro Pipe, __spirv_ReserveId ReserveId, int PacketSize, int PacketAlignment )
 {
-  __spirv_CommitReadPipe( Pipe, ReserveId, PacketSize );
+  SPIRV_BUILTIN(CommitReadPipe, _Pipe_ro_ReserveId_i32, )( Pipe, ReserveId, PacketSize );
 }
 
-void __attribute__((overloadable)) __spirv_CommitWritePipe( __spirv_Pipe_wo Pipe, __spirv_ReserveId ReserveId, int PacketSize, int PacketAlignment )
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(CommitWritePipe, _Pipe_wo_ReserveId_i32_i32, )( __spirv_Pipe_wo Pipe, __spirv_ReserveId ReserveId, int PacketSize, int PacketAlignment )
 {
-  __spirv_CommitWritePipe( Pipe, ReserveId, PacketSize );
+  SPIRV_BUILTIN(CommitWritePipe, _Pipe_wo_ReserveId_i32, )( Pipe, ReserveId, PacketSize );
 }
 
-uint __attribute__((overloadable)) __spirv_GetNumPipePackets( __spirv_Pipe_ro Pipe, int PacketSize, int PacketAlignment )
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetNumPipePackets, _Pipe_ro_i32_i32, )( __spirv_Pipe_ro Pipe, int PacketSize, int PacketAlignment )
 {
-  return __spirv_GetNumPipePackets( Pipe, PacketSize );
+  return SPIRV_BUILTIN(GetNumPipePackets, _Pipe_ro_i32, )( Pipe, PacketSize );
 }
 
-uint __attribute__((overloadable)) __spirv_GetNumPipePackets( __spirv_Pipe_wo Pipe, int PacketSize, int PacketAlignment )
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetNumPipePackets, _Pipe_wo_i32_i32, )( __spirv_Pipe_wo Pipe, int PacketSize, int PacketAlignment )
 {
-  return __spirv_GetNumPipePackets( Pipe, PacketSize );
+  return SPIRV_BUILTIN(GetNumPipePackets, _Pipe_wo_i32, )( Pipe, PacketSize );
 }
 
-uint __attribute__((overloadable)) __spirv_GetMaxPipePackets( __spirv_Pipe_ro Pipe, int PacketSize, int PacketAlignment )
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetMaxPipePackets, _Pipe_ro_i32_i32, )( __spirv_Pipe_ro Pipe, int PacketSize, int PacketAlignment )
 {
-  return __spirv_GetMaxPipePackets( Pipe, PacketSize );
+  return SPIRV_BUILTIN(GetMaxPipePackets, _Pipe_ro_i32, )( Pipe, PacketSize );
 }
 
-uint __attribute__((overloadable)) __spirv_GetMaxPipePackets( __spirv_Pipe_wo Pipe, int PacketSize, int PacketAlignment )
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetMaxPipePackets, _Pipe_wo_i32_i32, )( __spirv_Pipe_wo Pipe, int PacketSize, int PacketAlignment )
 {
-  return __spirv_GetMaxPipePackets( Pipe, PacketSize );
+  return SPIRV_BUILTIN(GetMaxPipePackets, _Pipe_wo_i32, )( Pipe, PacketSize );
 }
 
-__spirv_ReserveId __attribute__((overloadable)) __spirv_GroupReserveReadPipePackets( int Execution, __spirv_Pipe_ro Pipe, int NumPackets, int PacketSize, int PacketAlignment )
+__spirv_ReserveId SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupReserveReadPipePackets, _i32_Pipe_ro_i32_i32_i32, )( int Execution, __spirv_Pipe_ro Pipe, int NumPackets, int PacketSize, int PacketAlignment )
 {
-  return __spirv_GroupReserveReadPipePackets( Execution, Pipe, NumPackets, PacketSize );
+  return SPIRV_BUILTIN(GroupReserveReadPipePackets, _i32_Pipe_ro_i32_i32, )( Execution, Pipe, NumPackets, PacketSize );
 }
 
-__spirv_ReserveId __attribute__((overloadable)) __spirv_GroupReserveWritePipePackets( int Execution, __spirv_Pipe_wo Pipe, int NumPackets, int PacketSize, int PacketAlignment )
+__spirv_ReserveId SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupReserveWritePipePackets, _i32_Pipe_wo_i32_i32_i32, )( int Execution, __spirv_Pipe_wo Pipe, int NumPackets, int PacketSize, int PacketAlignment )
 {
-  return __spirv_GroupReserveWritePipePackets( Execution, Pipe, NumPackets, PacketSize );
+  return SPIRV_BUILTIN(GroupReserveWritePipePackets, _i32_Pipe_wo_i32_i32, )( Execution, Pipe, NumPackets, PacketSize );
 }
 
-void __attribute__((overloadable)) __spirv_GroupCommitReadPipe( int Execution, __spirv_Pipe_ro Pipe, __spirv_ReserveId ReserveId, int PacketSize, int PacketAlignment )
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupCommitReadPipe, _i32_Pipe_ro_ReserveId_i32_i32, )( int Execution, __spirv_Pipe_ro Pipe, __spirv_ReserveId ReserveId, int PacketSize, int PacketAlignment )
 {
-  __spirv_GroupCommitReadPipe( Execution, Pipe, ReserveId, PacketSize );
+  SPIRV_BUILTIN(GroupCommitReadPipe, _i32_Pipe_ro_ReserveId_i32, )( Execution, Pipe, ReserveId, PacketSize );
 }
 
-void __attribute__((overloadable)) __spirv_GroupCommitWritePipe( int Execution, __spirv_Pipe_wo Pipe, __spirv_ReserveId ReserveId, int PacketSize, int PacketAlignment )
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupCommitWritePipe, _i32_Pipe_wo_ReserveId_i32_i32, )( int Execution, __spirv_Pipe_wo Pipe, __spirv_ReserveId ReserveId, int PacketSize, int PacketAlignment )
 {
-  __spirv_GroupCommitWritePipe( Execution, Pipe, ReserveId, PacketSize );
+  SPIRV_BUILTIN(GroupCommitWritePipe, _i32_Pipe_wo_ReserveId_i32, )( Execution, Pipe, ReserveId, PacketSize );
 }
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0

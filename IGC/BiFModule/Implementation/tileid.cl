@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 extern int __SubDeviceID;
 
-int __attribute__((overloadable)) __spirv_BuiltInSubDeviceIDINTEL(void) {
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )(void) {
 
     // When __SubDeviceID is declared as an extern int,
     // it is lowered to LLVM-IR like:
@@ -25,7 +25,7 @@ int __attribute__((overloadable)) __spirv_BuiltInSubDeviceIDINTEL(void) {
     return *p;
 }
 
-int __attribute__((overloadable)) __spirv_GlobalHWThreadIDINTEL(void) {
-    int subDeviceId = __spirv_BuiltInSubDeviceIDINTEL();
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(GlobalHWThreadIDINTEL, , )(void) {
+    int subDeviceId = SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )();
     return __builtin_IB_hw_thread_id() + subDeviceId * BIF_FLAG_CTRL_GET(MaxHWThreadIDPerSubDevice);
 }

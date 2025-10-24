@@ -24,14 +24,14 @@ void __builtin_IB_copyNDRangeTondrange(ndrange_t* out, Ndrange_t* in)
 }
 
 #define DEF_BUILD_NDRANGE_1D(TYPE, MANGLING)                                                                                                \
-Ndrange_t __attribute__((overloadable)) __spirv_BuildNDRange_1D(TYPE GlobalWorkSize, TYPE LocalWorkSize, TYPE GlobalWorkOffset)     \
+Ndrange_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(BuildNDRange, MANGLING, _1D)(TYPE GlobalWorkSize, TYPE LocalWorkSize, TYPE GlobalWorkOffset)     \
 {                                                                                                                                           \
   Ndrange_t range = { 1, {GlobalWorkOffset, 0, 0}, {GlobalWorkSize, 1, 1}, {LocalWorkSize, 0, 0} };                                         \
   return range;                                                                                                                             \
 }
 
 #define DEF_BUILD_NDRANGE_2D(TYPE, MANGLING)                                                                                                      \
-Ndrange_t __attribute__((overloadable)) __spirv_BuildNDRange_2D(TYPE GlobalWorkSize[2], TYPE LocalWorkSize[2], TYPE GlobalWorkOffset[2])  \
+Ndrange_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(BuildNDRange, MANGLING, _2D)(TYPE GlobalWorkSize[2], TYPE LocalWorkSize[2], TYPE GlobalWorkOffset[2])  \
 {                                                                                                                                                 \
   Ndrange_t range = {                                                                                                                             \
     2,                                                                                                                                            \
@@ -43,7 +43,7 @@ Ndrange_t __attribute__((overloadable)) __spirv_BuildNDRange_2D(TYPE GlobalWorkS
 }
 
 #define DEF_BUILD_NDRANGE_3D(TYPE, MANGLING)                                                                                                      \
-Ndrange_t __attribute__((overloadable)) __spirv_BuildNDRange_3D(TYPE GlobalWorkSize[3], TYPE LocalWorkSize[3], TYPE GlobalWorkOffset[3])  \
+Ndrange_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(BuildNDRange, MANGLING, _3D)(TYPE GlobalWorkSize[3], TYPE LocalWorkSize[3], TYPE GlobalWorkOffset[3])  \
 {                                                                                                                                                 \
   Ndrange_t range = {                                                                                                                             \
     3,                                                                                                                                            \

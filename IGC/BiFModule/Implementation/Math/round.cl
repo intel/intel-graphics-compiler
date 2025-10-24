@@ -9,26 +9,26 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE INLINE float __attribute__((overloadable)) __spirv_ocl_round( float x )
+INLINE INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(round, _f32, )( float x )
 {
     float delta = as_float(0x3EFFFFFF); // one bit less than 0.5f
     float nd = x - delta;
     float pd = x + delta;
     x = ( x < 0 ) ? nd : pd;
-    return __spirv_ocl_trunc(x);
+    return SPIRV_OCL_BUILTIN(trunc, _f32, )(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( round, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE INLINE double __attribute__((overloadable)) __spirv_ocl_round( double x )
+INLINE INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(round, _f64, )( double x )
 {
     double delta = as_double(0x3FDFFFFFFFFFFFFFl);   // one bit less than 0.5
     double nd = x - delta;
     double pd = x + delta;
     x = ( x < 0 ) ? nd : pd;
-    return __spirv_ocl_trunc(x);
+    return SPIRV_OCL_BUILTIN(trunc, _f64, )(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( round, double, double, f64 )
@@ -37,9 +37,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( round, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE INLINE half __attribute__((overloadable)) __spirv_ocl_round( half x )
+INLINE INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(round, _f16, )( half x )
 {
-    return __spirv_ocl_round((float)x);
+    return SPIRV_OCL_BUILTIN(round, _f32, )((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( round, half, half, f16 )

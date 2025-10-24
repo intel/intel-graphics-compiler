@@ -13,10 +13,10 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_cos, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_native_cos( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(native_cos, _f64, )( double x )
 {
     float f = (float)x;
-    return __spirv_ocl_native_cos(f);
+    return SPIRV_OCL_BUILTIN(native_cos, _f32, )(f);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_cos, double, double, f64 )

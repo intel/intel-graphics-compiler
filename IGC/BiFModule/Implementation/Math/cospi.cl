@@ -15,13 +15,13 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/cospi_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-INLINE float __attribute__((overloadable)) __spirv_ocl_cospi( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cospi, _f32, )( float x )
 {
     bool useNative = BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS));
 
     if(useNative)
     {
-        return __spirv_ocl_cos( x * M_PI_F );
+        return SPIRV_OCL_BUILTIN(cos, _f32, )( x * M_PI_F );
     }
     else
     {
@@ -40,7 +40,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( cospi, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_cospi( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cospi, _f64, )( double x )
 {
     return __ocl_svml_cospi(x);
 }
@@ -51,9 +51,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( cospi, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_cospi( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cospi, _f16, )( half x )
 {
-    return __spirv_ocl_cospi((float)x);
+    return SPIRV_OCL_BUILTIN(cospi, _f32, )((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( cospi, half, half, f16 )

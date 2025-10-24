@@ -33,7 +33,7 @@ float __intel_exp_for_hyper(float x, float scale)
     // Compute the whole part of x * log2(e)
     // This part is easy!
     // Note: floor rounds to negative infinity.
-    float w = __spirv_ocl_floor( x * M_LOG2E_F + 0.5f );
+    float w = SPIRV_OCL_BUILTIN(floor, _f32, )( x * M_LOG2E_F + 0.5f );
 
     // Compute the fractional part of x * log2(e)
     // We have to do this carefully, so we don't lose precision.
@@ -44,8 +44,8 @@ float __intel_exp_for_hyper(float x, float scale)
     const float C1 = as_float( 0x3F317200 );    // 0.693145751953125
     const float C2 = as_float( 0x35BFBE8E );    // 0.000001428606765330187
     float f = x;
-    f = __spirv_ocl_fma( w, -C1, f );
-    f = __spirv_ocl_fma( w, -C2, f );
+    f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( w, -C1, f );
+    f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( w, -C2, f );
 
     // Do a polynomial approximation for 2^fractional.
     float f2 = f * f;
@@ -60,7 +60,7 @@ float __intel_exp_for_hyper(float x, float scale)
 
     // By doing this computation as 2^(w - 2) * 2^2 we can avoid an
     // overflow case for very large values of w.
-    w = __spirv_ocl_native_exp2( w + scale );   // this should be exact
+    w = SPIRV_OCL_BUILTIN(native_exp2, _f32, )( w + scale );   // this should be exact
 
     float res = w * f;
     res = ( x < as_float( 0xC2D20000 ) ) ? as_float( 0x00000000 ) : res;
@@ -71,7 +71,7 @@ float __intel_exp_for_hyper(float x, float scale)
 
 float __intel_exp_for_tanh(float x, float scale)
 {
-    float px = __spirv_ocl_fabs(x);
+    float px = SPIRV_OCL_BUILTIN(fabs, _f32, )(x);
 
     // e^x = 2^(log2(e^x)) = 2^(x * log2(e))
     // We'll compute 2^(x * log2(e)) by splitting x * log2(e)
@@ -80,7 +80,7 @@ float __intel_exp_for_tanh(float x, float scale)
     // Compute the whole part of x * log2(e)
     // This part is easy!
     // Note: floor rounds to negative infinity.
-    float w = __spirv_ocl_floor( px * M_LOG2E_F + 0.5f );
+    float w = SPIRV_OCL_BUILTIN(floor, _f32, )( px * M_LOG2E_F + 0.5f );
 
     // Compute the fractional part of x * log2(e)
     // We have to do this carefully, so we don't lose precision.
@@ -92,8 +92,8 @@ float __intel_exp_for_tanh(float x, float scale)
     const float C1 = as_float( 0x3F317200 );    // 0.693145751953125
     const float C2 = as_float( 0x35BFBE8E );    // 0.000001428606765330187
     float f = px;
-    f = __spirv_ocl_fma( w, -C1, f );
-    f = __spirv_ocl_fma( w, -C2, f );
+    f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( w, -C1, f );
+    f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( w, -C2, f );
 
     // Do a polynomial approximation for 2^fractional.
     float tf =
@@ -108,13 +108,13 @@ float __intel_exp_for_tanh(float x, float scale)
 
     float ns = -scale;
     scale = ( x >= 0.0f ) ? scale : ns;
-    w = __spirv_ocl_native_exp2( w + scale );  // this should be exact
+    w = SPIRV_OCL_BUILTIN(native_exp2, _f32, )( w + scale );  // this should be exact
 
     float res = w * tf;
     res = ( px < as_float( 0xC2D20000 ) ) ? as_float( 0x00000000 ) : res;
     res = ( px > as_float( 0x42D20000 ) ) ? as_float( 0x7F800000 ) : res;
 
-    float rx = __spirv_ocl_native_recip( res );
+    float rx = SPIRV_OCL_BUILTIN(native_recip, _f32, )( res );
     res = ( x >= 0.0f ) ? res : rx;
 
     return res;

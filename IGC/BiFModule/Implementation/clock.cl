@@ -7,12 +7,12 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 /* Shader clock extension */
-ulong __attribute__((overloadable)) __spirv_ReadClockKHR_Rulong(int scope) {
+ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReadClockKHR, _i64_i32, _Rulong)(int scope) {
   (void) scope;
   return __builtin_IB_read_cycle_counter();
 }
 
-uint2 __attribute__((overloadable)) __spirv_ReadClockKHR_Ruint2(int scope) {
+uint2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReadClockKHR, _v2i32_i32, _Ruint2)(int scope) {
   (void) scope;
   return as_uint2(__builtin_IB_read_cycle_counter());
 }

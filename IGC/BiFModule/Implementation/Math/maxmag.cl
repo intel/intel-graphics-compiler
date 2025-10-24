@@ -9,11 +9,11 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE float __attribute__((overloadable)) __spirv_ocl_maxmag( float x, float y )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(maxmag, _f32_f32, )( float x, float y )
 {
-    float fx = __spirv_ocl_fabs(x);
-    float fy = __spirv_ocl_fabs(y);
-    float m = __spirv_ocl_fmax(x, y);
+    float fx = SPIRV_OCL_BUILTIN(fabs, _f32, )(x);
+    float fy = SPIRV_OCL_BUILTIN(fabs, _f32, )(y);
+    float m = SPIRV_OCL_BUILTIN(fmax, _f32_f32, )(x, y);
     return fx > fy ? x
         : fx < fy ? y
         : m;
@@ -23,11 +23,11 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( maxmag, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_maxmag( double x, double y )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(maxmag, _f64_f64, )( double x, double y )
 {
-    double fx = __spirv_ocl_fabs(x);
-    double fy = __spirv_ocl_fabs(y);
-    double m = __spirv_ocl_fmax(x, y);
+    double fx = SPIRV_OCL_BUILTIN(fabs, _f64, )(x);
+    double fy = SPIRV_OCL_BUILTIN(fabs, _f64, )(y);
+    double m = SPIRV_OCL_BUILTIN(fmax, _f64_f64, )(x, y);
     return fx > fy ? x
         : fx < fy ? y
         : m;
@@ -39,11 +39,11 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( maxmag, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_maxmag( half x, half y )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(maxmag, _f16_f16, )( half x, half y )
 {
-    half fx = __spirv_ocl_fabs(x);
-    half fy = __spirv_ocl_fabs(y);
-    half m = __spirv_ocl_fmax(x, y);
+    half fx = SPIRV_OCL_BUILTIN(fabs, _f16, )(x);
+    half fy = SPIRV_OCL_BUILTIN(fabs, _f16, )(y);
+    half m = SPIRV_OCL_BUILTIN(fmax, _f16_f16, )(x, y);
     return fx > fy ? x
         : fx < fy ? y
         : m;

@@ -9,10 +9,10 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE float __attribute__((overloadable)) __spirv_ocl_fdim( float x, float y )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fdim, _f32_f32, )( float x, float y )
 {
     float r = x - y;
-    float n = __spirv_ocl_nan(0);
+    float n = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
     int i = __intel_relaxed_isnan(x) | __intel_relaxed_isnan(y);
     r = x > y ? r : 0.0f;
     r = i ? n : r;
@@ -23,10 +23,10 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( fdim, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_fdim( double x, double y )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fdim, _f64_f64, )( double x, double y )
 {
     double r = x - y;
-    double n = __spirv_ocl_nan(0);
+    double n = SPIRV_OCL_BUILTIN(nan, _i64, )(0);
     int i = __intel_relaxed_isnan(x) | __intel_relaxed_isnan(y);
     r = x > y ? r : 0.0f;
     r = i ? n : r;
@@ -39,10 +39,10 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( fdim, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_fdim( half x, half y )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fdim, _f16_f16, )( half x, half y )
 {
     half r = x - y;
-    half n = __spirv_ocl_nan(0);
+    half n = SPIRV_OCL_BUILTIN(nan, _i16, )(0);
     int i = __intel_relaxed_isnan(x) | __intel_relaxed_isnan(y);
     r = x > y ? r : 0.0f;
     r = i ? n : r;

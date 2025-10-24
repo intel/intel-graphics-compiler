@@ -40,17 +40,17 @@ static float __intel_gamma(float z)
     x += p6 / (z + 6);
 
     float t = z + g + 0.5f;
-    return SQRT_2PI * __spirv_ocl_pow(t, z + 0.5f) * __spirv_ocl_exp(-t) * x;
+    return SQRT_2PI * SPIRV_OCL_BUILTIN(pow, _f32_f32, )(t, z + 0.5f) * SPIRV_OCL_BUILTIN(exp, _f32, )(-t) * x;
 }
 
-float __attribute__((overloadable)) __spirv_ocl_tgamma( float x )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tgamma, _f32, )( float x )
 {
 #if USE_IMF_TGAMMA_IMPL
     return __ocl_svml_tgammaf(x);
 #else // USE_IMF_TGAMMA_IMPL
     float ret;
-    if ( (x < 0.0f) & (x == __spirv_ocl_floor(x))) {
-        ret = __spirv_ocl_nan(0)
+    if ( (x < 0.0f) & (x == SPIRV_OCL_BUILTIN(floor, _f32, )(x))) {
+        ret = SPIRV_OCL_BUILTIN(nan, _i32, )(0)
     } else {
         float y = 1.0f - x;
         float z = ( x < 0.5f ) ? y : x;
@@ -58,7 +58,7 @@ float __attribute__((overloadable)) __spirv_ocl_tgamma( float x )
         float g = __intel_gamma(z);
 
         ret = ( x < 0.5f ) ?
-            M_PI_F / ( __spirv_ocl_sinpi(x) * g ) :
+            M_PI_F / ( SPIRV_OCL_BUILTIN(sinpi, _f32, )(x) * g ) :
             g;
 
         // Special handling for -0.0f.
@@ -75,7 +75,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tgamma, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_tgamma( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tgamma, _f64, )( double x )
 {
     return libclc_tgamma_f64(x);
 }
@@ -86,9 +86,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tgamma, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_tgamma( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tgamma, _f16, )( half x )
 {
-    return __spirv_ocl_tgamma((float)x);
+    return SPIRV_OCL_BUILTIN(tgamma, _f32, )((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tgamma, half, half, f16 )

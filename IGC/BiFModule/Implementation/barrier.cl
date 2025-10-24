@@ -143,7 +143,7 @@ void __intel_workgroup_barrier(int Memory, int Semantics)
     __builtin_IB_thread_group_barrier();
 }
 
-void __attribute__((overloadable)) __spirv_ControlBarrier(int Execution, int Memory, int Semantics)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(int Execution, int Memory, int Semantics)
 {
     if (Execution == Device)
     {
@@ -160,7 +160,7 @@ void __attribute__((overloadable)) __spirv_ControlBarrier(int Execution, int Mem
     }
 }
 
-void __attribute__((overloadable)) __spirv_ControlBarrierArriveINTEL(int Execution, int Memory, int Semantics)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ControlBarrierArriveINTEL, _i32_i32_i32, )(int Execution, int Memory, int Semantics)
 {
     if( Execution == Workgroup )
     {
@@ -169,7 +169,7 @@ void __attribute__((overloadable)) __spirv_ControlBarrierArriveINTEL(int Executi
     }
 }
 
-void __attribute__((overloadable)) __spirv_ControlBarrierWaitINTEL(int Execution, int Memory, int Semantics)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ControlBarrierWaitINTEL, _i32_i32_i32, )(int Execution, int Memory, int Semantics)
 {
     if( Execution == Workgroup )
     {
@@ -178,7 +178,7 @@ void __attribute__((overloadable)) __spirv_ControlBarrierWaitINTEL(int Execution
     }
 }
 
-void __attribute__((overloadable)) __spirv_MemoryBarrier(int Memory, int Semantics)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(MemoryBarrier, _i32_i32, )(int Memory, int Semantics)
 {
     __intel_atomic_work_item_fence( Memory, Semantics );
 }
@@ -189,7 +189,7 @@ void __attribute__((overloadable)) __spirv_MemoryBarrier(int Memory, int Semanti
 void __intel_getInitializedNamedBarrierArray(local uint* id)
 {
     *id = 0;
-    __spirv_ControlBarrier( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
 }
 
 bool __intel_is_first_work_group_item( void );
@@ -200,12 +200,12 @@ local __namedBarrier* __builtin_spirv_OpNamedBarrierInitialize_i32_p3__namedBarr
     NB->count = SubGroupCount;
     NB->orig_count = SubGroupCount;
     NB->inc = 0;
-    __spirv_ControlBarrier( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
     if (__intel_is_first_work_group_item())
     {
         (*id)++;
     }
-    __spirv_ControlBarrier( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
     return NB;
 }
 
@@ -213,37 +213,37 @@ local __namedBarrier* __builtin_spirv_OpNamedBarrierInitialize_i32_p3__namedBarr
 static INLINE OVERLOADABLE
 uint AtomicCompareExchange(local uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator)
 {
-    return __spirv_AtomicCompareExchange((local int*)Pointer, Scope, Equal, Unequal, Value, Comparator);
+    return SPIRV_BUILTIN(AtomicCompareExchange, _p3i32_i32_i32_i32_i32_i32, )((local int*)Pointer, Scope, Equal, Unequal, Value, Comparator);
 }
 
 static INLINE
 uint SubgroupLocalId()
 {
-    return __spirv_BuiltInSubgroupLocalInvocationId();
+    return SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();
 }
 
 static INLINE OVERLOADABLE
 uint AtomicLoad(local uint *Pointer, uint Scope, uint Semantics)
 {
-    return __spirv_AtomicLoad((local int*)Pointer, Scope, Semantics);
+    return SPIRV_BUILTIN(AtomicLoad, _p3i32_i32_i32, )((local int*)Pointer, Scope, Semantics);
 }
 
 static INLINE OVERLOADABLE
 void AtomicStore(local uint *Pointer, uint Scope, uint Semantics, uint Value)
 {
-    __spirv_AtomicStore((local int*)Pointer, Scope, Semantics, Value);
+    SPIRV_BUILTIN(AtomicStore, _p3i32_i32_i32_i32, )((local int*)Pointer, Scope, Semantics, Value);
 }
 
 static INLINE OVERLOADABLE
 uint AtomicInc(local uint *Pointer, uint Scope, uint Semantics)
 {
-    return __spirv_AtomicIIncrement((local int*)Pointer, Scope, Semantics);
+    return SPIRV_BUILTIN(AtomicIIncrement, _p3i32_i32_i32, )((local int*)Pointer, Scope, Semantics);
 }
 
 static INLINE
 uint Broadcast(uint Execution, uint Value, uint3 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution, as_int(Value), as_int3(LocalId));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i32, )(Execution, as_int(Value), as_int3(LocalId));
 }
 
 static INLINE OVERLOADABLE
@@ -268,7 +268,7 @@ uint SubgroupAtomicInc(local uint *Pointer, uint Scope, uint Semantics)
 
 static void MemoryBarrier(Scope_t Memory, uint Semantics)
 {
-    __spirv_MemoryBarrier(Memory, Semantics);
+    SPIRV_BUILTIN(MemoryBarrier, _i32_i32, )(Memory, Semantics);
 }
 
 void __builtin_spirv_OpMemoryNamedBarrier_p3__namedBarrier_i32_i32(local __namedBarrier* NB,Scope_t Memory, uint Semantics)

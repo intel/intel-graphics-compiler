@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/erf_d_la_noLUT.cl"
 #endif // defined(cl_khr_fp64)
 
-INLINE float __attribute__((overloadable)) __spirv_ocl_erf( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(erf, _f32, )( float x )
 {
     float result;
     if (BIF_FLAG_CTRL_GET(UseHighAccuracyMath)) {
@@ -31,7 +31,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( erf, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_erf( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(erf, _f64, )( double x )
 {
     double result;
     if (BIF_FLAG_CTRL_GET(UseHighAccuracyMath)) {
@@ -48,9 +48,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( erf, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_erf( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(erf, _f16, )( half x )
 {
-    return __spirv_ocl_erf((float)x);
+    return SPIRV_OCL_BUILTIN(erf, _f32, )((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( erf, half, half, f16 )

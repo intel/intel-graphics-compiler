@@ -19,7 +19,7 @@ static INLINE float __intel_tan_f32( float x, bool doFast )
     float result;
     if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)) && doFast)
     {
-        result = __spirv_ocl_native_tan(x);
+        result = SPIRV_OCL_BUILTIN(native_tan, _f32, )(x);
     }
     else
     {
@@ -39,7 +39,7 @@ static INLINE float __intel_tan_f32( float x, bool doFast )
     return result;
 }
 
-INLINE float __attribute__((overloadable)) __spirv_ocl_tan( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tan, _f32, )( float x )
 {
     return __intel_tan_f32(x, true);
 }
@@ -48,7 +48,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tan, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_tan( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tan, _f64, )( double x )
 {
     return __ocl_svml_tan(x);
 }
@@ -59,9 +59,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tan, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_tan( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tan, _f16, )( half x )
 {
-    return __spirv_ocl_tan((float)x);
+    return SPIRV_OCL_BUILTIN(tan, _f32, )((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tan, half, half, f16 )

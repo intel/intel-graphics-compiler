@@ -64,428 +64,428 @@ double OVERLOADABLE intel_sub_group_shuffle_up( double identity, double X, uint 
 
 //L2G
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global char *Destination, local char *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i8_p3i8_i64_i64_i64, )(int Execution, global char *Destination, local char *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global char *Destination, local char *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i8_p3i8_i32_i32_i64, )(int Execution, global char *Destination, local char *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global short *Destination, local short *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i16_p3i16_i64_i64_i64, )(int Execution, global short *Destination, local short *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global short *Destination, local short *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i16_p3i16_i32_i32_i64, )(int Execution, global short *Destination, local short *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global int *Destination, local int *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i32_p3i32_i64_i64_i64, )(int Execution, global int *Destination, local int *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global int *Destination, local int *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i32_p3i32_i32_i32_i64, )(int Execution, global int *Destination, local int *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global long *Destination, local long *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i64_p3i64_i64_i64_i64, )(int Execution, global long *Destination, local long *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global long *Destination, local long *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i64_p3i64_i32_i32_i64, )(int Execution, global long *Destination, local long *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global half *Destination, local half *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f16_p3f16_i64_i64_i64, )(int Execution, global half *Destination, local half *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global half *Destination, local half *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f16_p3f16_i32_i32_i64, )(int Execution, global half *Destination, local half *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global float *Destination, local float *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f32_p3f32_i64_i64_i64, )(int Execution, global float *Destination, local float *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global float *Destination, local float *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f32_p3f32_i32_i32_i64, )(int Execution, global float *Destination, local float *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
 #if defined(cl_khr_fp64)
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global double *Destination, local double *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f64_p3f64_i64_i64_i64, )(int Execution, global double *Destination, local double *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global double *Destination, local double *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f64_p3f64_i32_i32_i64, )(int Execution, global double *Destination, local double *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
 #endif
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global char2 *Destination, local char2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i8_p3v2i8_i64_i64_i64, )(int Execution, global char2 *Destination, local char2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global char2 *Destination, local char2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i8_p3v2i8_i32_i32_i64, )(int Execution, global char2 *Destination, local char2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global char3 *Destination, local char3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i8_p3v3i8_i64_i64_i64, )(int Execution, global char3 *Destination, local char3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global char3 *Destination, local char3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i8_p3v3i8_i32_i32_i64, )(int Execution, global char3 *Destination, local char3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global char4 *Destination, local char4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i8_p3v4i8_i64_i64_i64, )(int Execution, global char4 *Destination, local char4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global char4 *Destination, local char4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i8_p3v4i8_i32_i32_i64, )(int Execution, global char4 *Destination, local char4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global char8 *Destination, local char8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i8_p3v8i8_i64_i64_i64, )(int Execution, global char8 *Destination, local char8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global char8 *Destination, local char8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i8_p3v8i8_i32_i32_i64, )(int Execution, global char8 *Destination, local char8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global char16 *Destination, local char16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i8_p3v16i8_i64_i64_i64, )(int Execution, global char16 *Destination, local char16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global char16 *Destination, local char16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i8_p3v16i8_i32_i32_i64, )(int Execution, global char16 *Destination, local char16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global short2 *Destination, local short2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i16_p3v2i16_i64_i64_i64, )(int Execution, global short2 *Destination, local short2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global short2 *Destination, local short2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i16_p3v2i16_i32_i32_i64, )(int Execution, global short2 *Destination, local short2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global short3 *Destination, local short3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i16_p3v3i16_i64_i64_i64, )(int Execution, global short3 *Destination, local short3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global short3 *Destination, local short3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i16_p3v3i16_i32_i32_i64, )(int Execution, global short3 *Destination, local short3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global short4 *Destination, local short4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i16_p3v4i16_i64_i64_i64, )(int Execution, global short4 *Destination, local short4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global short4 *Destination, local short4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i16_p3v4i16_i32_i32_i64, )(int Execution, global short4 *Destination, local short4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global short8 *Destination, local short8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i16_p3v8i16_i64_i64_i64, )(int Execution, global short8 *Destination, local short8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global short8 *Destination, local short8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i16_p3v8i16_i32_i32_i64, )(int Execution, global short8 *Destination, local short8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global short16 *Destination, local short16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i16_p3v16i16_i64_i64_i64, )(int Execution, global short16 *Destination, local short16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global short16 *Destination, local short16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i16_p3v16i16_i32_i32_i64, )(int Execution, global short16 *Destination, local short16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global int2 *Destination, local int2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i32_p3v2i32_i64_i64_i64, )(int Execution, global int2 *Destination, local int2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global int2 *Destination, local int2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i32_p3v2i32_i32_i32_i64, )(int Execution, global int2 *Destination, local int2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global int3 *Destination, local int3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i32_p3v3i32_i64_i64_i64, )(int Execution, global int3 *Destination, local int3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global int3 *Destination, local int3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i32_p3v3i32_i32_i32_i64, )(int Execution, global int3 *Destination, local int3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global int4 *Destination, local int4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i32_p3v4i32_i64_i64_i64, )(int Execution, global int4 *Destination, local int4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global int4 *Destination, local int4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i32_p3v4i32_i32_i32_i64, )(int Execution, global int4 *Destination, local int4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global int8 *Destination, local int8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i32_p3v8i32_i64_i64_i64, )(int Execution, global int8 *Destination, local int8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global int8 *Destination, local int8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i32_p3v8i32_i32_i32_i64, )(int Execution, global int8 *Destination, local int8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global int16 *Destination, local int16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i32_p3v16i32_i64_i64_i64, )(int Execution, global int16 *Destination, local int16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global int16 *Destination, local int16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i32_p3v16i32_i32_i32_i64, )(int Execution, global int16 *Destination, local int16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global long2 *Destination, local long2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i64_p3v2i64_i64_i64_i64, )(int Execution, global long2 *Destination, local long2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global long2 *Destination, local long2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i64_p3v2i64_i32_i32_i64, )(int Execution, global long2 *Destination, local long2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global long3 *Destination, local long3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i64_p3v3i64_i64_i64_i64, )(int Execution, global long3 *Destination, local long3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global long3 *Destination, local long3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i64_p3v3i64_i32_i32_i64, )(int Execution, global long3 *Destination, local long3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global long4 *Destination, local long4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i64_p3v4i64_i64_i64_i64, )(int Execution, global long4 *Destination, local long4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global long4 *Destination, local long4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i64_p3v4i64_i32_i32_i64, )(int Execution, global long4 *Destination, local long4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global long8 *Destination, local long8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i64_p3v8i64_i64_i64_i64, )(int Execution, global long8 *Destination, local long8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global long8 *Destination, local long8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i64_p3v8i64_i32_i32_i64, )(int Execution, global long8 *Destination, local long8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global long16 *Destination, local long16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i64_p3v16i64_i64_i64_i64, )(int Execution, global long16 *Destination, local long16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global long16 *Destination, local long16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i64_p3v16i64_i32_i32_i64, )(int Execution, global long16 *Destination, local long16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global half2 *Destination, local half2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f16_p3v2f16_i64_i64_i64, )(int Execution, global half2 *Destination, local half2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global half2 *Destination, local half2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f16_p3v2f16_i32_i32_i64, )(int Execution, global half2 *Destination, local half2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global half3 *Destination, local half3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f16_p3v3f16_i64_i64_i64, )(int Execution, global half3 *Destination, local half3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global half3 *Destination, local half3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f16_p3v3f16_i32_i32_i64, )(int Execution, global half3 *Destination, local half3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global half4 *Destination, local half4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f16_p3v4f16_i64_i64_i64, )(int Execution, global half4 *Destination, local half4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global half4 *Destination, local half4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f16_p3v4f16_i32_i32_i64, )(int Execution, global half4 *Destination, local half4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global half8 *Destination, local half8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f16_p3v8f16_i64_i64_i64, )(int Execution, global half8 *Destination, local half8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global half8 *Destination, local half8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f16_p3v8f16_i32_i32_i64, )(int Execution, global half8 *Destination, local half8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global half16 *Destination, local half16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f16_p3v16f16_i64_i64_i64, )(int Execution, global half16 *Destination, local half16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global half16 *Destination, local half16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f16_p3v16f16_i32_i32_i64, )(int Execution, global half16 *Destination, local half16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global float2 *Destination, local float2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f32_p3v2f32_i64_i64_i64, )(int Execution, global float2 *Destination, local float2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global float2 *Destination, local float2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f32_p3v2f32_i32_i32_i64, )(int Execution, global float2 *Destination, local float2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global float3 *Destination, local float3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f32_p3v3f32_i64_i64_i64, )(int Execution, global float3 *Destination, local float3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global float3 *Destination, local float3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f32_p3v3f32_i32_i32_i64, )(int Execution, global float3 *Destination, local float3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global float4 *Destination, local float4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f32_p3v4f32_i64_i64_i64, )(int Execution, global float4 *Destination, local float4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global float4 *Destination, local float4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f32_p3v4f32_i32_i32_i64, )(int Execution, global float4 *Destination, local float4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global float8 *Destination, local float8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f32_p3v8f32_i64_i64_i64, )(int Execution, global float8 *Destination, local float8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global float8 *Destination, local float8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f32_p3v8f32_i32_i32_i64, )(int Execution, global float8 *Destination, local float8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global float16 *Destination, local float16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f32_p3v16f32_i64_i64_i64, )(int Execution, global float16 *Destination, local float16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global float16 *Destination, local float16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f32_p3v16f32_i32_i32_i64, )(int Execution, global float16 *Destination, local float16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
 #if defined(cl_khr_fp64)
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global double2 *Destination, local double2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f64_p3v2f64_i64_i64_i64, )(int Execution, global double2 *Destination, local double2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global double2 *Destination, local double2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f64_p3v2f64_i32_i32_i64, )(int Execution, global double2 *Destination, local double2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global double3 *Destination, local double3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f64_p3v3f64_i64_i64_i64, )(int Execution, global double3 *Destination, local double3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global double3 *Destination, local double3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f64_p3v3f64_i32_i32_i64, )(int Execution, global double3 *Destination, local double3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global double4 *Destination, local double4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f64_p3v4f64_i64_i64_i64, )(int Execution, global double4 *Destination, local double4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global double4 *Destination, local double4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f64_p3v4f64_i32_i32_i64, )(int Execution, global double4 *Destination, local double4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global double8 *Destination, local double8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f64_p3v8f64_i64_i64_i64, )(int Execution, global double8 *Destination, local double8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global double8 *Destination, local double8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f64_p3v8f64_i32_i32_i64, )(int Execution, global double8 *Destination, local double8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global double16 *Destination, local double16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f64_p3v16f64_i64_i64_i64, )(int Execution, global double16 *Destination, local double16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, global double16 *Destination, local double16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f64_p3v16f64_i32_i32_i64, )(int Execution, global double16 *Destination, local double16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
@@ -495,428 +495,428 @@ __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution
 //G2L
 
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local char *Destination, global char *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i8_p1i8_i64_i64_i64, )(int Execution, local char *Destination, global char *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local char *Destination, global char *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i8_p1i8_i32_i32_i64, )(int Execution, local char *Destination, global char *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local short *Destination, global short *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i16_p1i16_i64_i64_i64, )(int Execution, local short *Destination, global short *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local short *Destination, global short *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i16_p1i16_i32_i32_i64, )(int Execution, local short *Destination, global short *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local int *Destination, global int *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i32_p1i32_i64_i64_i64, )(int Execution, local int *Destination, global int *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local int *Destination, global int *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i32_p1i32_i32_i32_i64, )(int Execution, local int *Destination, global int *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local long *Destination, global long *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i64_p1i64_i64_i64_i64, )(int Execution, local long *Destination, global long *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local long *Destination, global long *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i64_p1i64_i32_i32_i64, )(int Execution, local long *Destination, global long *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local half *Destination, global half *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f16_p1f16_i64_i64_i64, )(int Execution, local half *Destination, global half *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local half *Destination, global half *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f16_p1f16_i32_i32_i64, )(int Execution, local half *Destination, global half *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local float *Destination, global float *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f32_p1f32_i64_i64_i64, )(int Execution, local float *Destination, global float *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local float *Destination, global float *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f32_p1f32_i32_i32_i64, )(int Execution, local float *Destination, global float *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
 #if defined(cl_khr_fp64)
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local double *Destination, global double *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f64_p1f64_i64_i64_i64, )(int Execution, local double *Destination, global double *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local double *Destination, global double *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f64_p1f64_i32_i32_i64, )(int Execution, local double *Destination, global double *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
 #endif
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local char2 *Destination, global char2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i8_p1v2i8_i64_i64_i64, )(int Execution, local char2 *Destination, global char2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local char2 *Destination, global char2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i8_p1v2i8_i32_i32_i64, )(int Execution, local char2 *Destination, global char2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local char3 *Destination, global char3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i8_p1v3i8_i64_i64_i64, )(int Execution, local char3 *Destination, global char3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local char3 *Destination, global char3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i8_p1v3i8_i32_i32_i64, )(int Execution, local char3 *Destination, global char3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local char4 *Destination, global char4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i8_p1v4i8_i64_i64_i64, )(int Execution, local char4 *Destination, global char4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local char4 *Destination, global char4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i8_p1v4i8_i32_i32_i64, )(int Execution, local char4 *Destination, global char4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local char8 *Destination, global char8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i8_p1v8i8_i64_i64_i64, )(int Execution, local char8 *Destination, global char8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local char8 *Destination, global char8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i8_p1v8i8_i32_i32_i64, )(int Execution, local char8 *Destination, global char8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local char16 *Destination, global char16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i8_p1v16i8_i64_i64_i64, )(int Execution, local char16 *Destination, global char16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local char16 *Destination, global char16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i8_p1v16i8_i32_i32_i64, )(int Execution, local char16 *Destination, global char16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local short2 *Destination, global short2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i16_p1v2i16_i64_i64_i64, )(int Execution, local short2 *Destination, global short2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local short2 *Destination, global short2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i16_p1v2i16_i32_i32_i64, )(int Execution, local short2 *Destination, global short2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local short3 *Destination, global short3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i16_p1v3i16_i64_i64_i64, )(int Execution, local short3 *Destination, global short3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local short3 *Destination, global short3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i16_p1v3i16_i32_i32_i64, )(int Execution, local short3 *Destination, global short3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local short4 *Destination, global short4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i16_p1v4i16_i64_i64_i64, )(int Execution, local short4 *Destination, global short4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local short4 *Destination, global short4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i16_p1v4i16_i32_i32_i64, )(int Execution, local short4 *Destination, global short4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local short8 *Destination, global short8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i16_p1v8i16_i64_i64_i64, )(int Execution, local short8 *Destination, global short8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local short8 *Destination, global short8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i16_p1v8i16_i32_i32_i64, )(int Execution, local short8 *Destination, global short8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local short16 *Destination, global short16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i16_p1v16i16_i64_i64_i64, )(int Execution, local short16 *Destination, global short16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local short16 *Destination, global short16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i16_p1v16i16_i32_i32_i64, )(int Execution, local short16 *Destination, global short16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local int2 *Destination, global int2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i32_p1v2i32_i64_i64_i64, )(int Execution, local int2 *Destination, global int2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local int2 *Destination, global int2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i32_p1v2i32_i32_i32_i64, )(int Execution, local int2 *Destination, global int2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local int3 *Destination, global int3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i32_p1v3i32_i64_i64_i64, )(int Execution, local int3 *Destination, global int3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local int3 *Destination, global int3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i32_p1v3i32_i32_i32_i64, )(int Execution, local int3 *Destination, global int3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local int4 *Destination, global int4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i32_p1v4i32_i64_i64_i64, )(int Execution, local int4 *Destination, global int4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local int4 *Destination, global int4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i32_p1v4i32_i32_i32_i64, )(int Execution, local int4 *Destination, global int4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local int8 *Destination, global int8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i32_p1v8i32_i64_i64_i64, )(int Execution, local int8 *Destination, global int8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local int8 *Destination, global int8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i32_p1v8i32_i32_i32_i64, )(int Execution, local int8 *Destination, global int8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local int16 *Destination, global int16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i32_p1v16i32_i64_i64_i64, )(int Execution, local int16 *Destination, global int16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local int16 *Destination, global int16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i32_p1v16i32_i32_i32_i64, )(int Execution, local int16 *Destination, global int16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local long2 *Destination, global long2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i64_p1v2i64_i64_i64_i64, )(int Execution, local long2 *Destination, global long2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local long2 *Destination, global long2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i64_p1v2i64_i32_i32_i64, )(int Execution, local long2 *Destination, global long2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local long3 *Destination, global long3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i64_p1v3i64_i64_i64_i64, )(int Execution, local long3 *Destination, global long3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local long3 *Destination, global long3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i64_p1v3i64_i32_i32_i64, )(int Execution, local long3 *Destination, global long3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local long4 *Destination, global long4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i64_p1v4i64_i64_i64_i64, )(int Execution, local long4 *Destination, global long4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local long4 *Destination, global long4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i64_p1v4i64_i32_i32_i64, )(int Execution, local long4 *Destination, global long4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local long8 *Destination, global long8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i64_p1v8i64_i64_i64_i64, )(int Execution, local long8 *Destination, global long8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local long8 *Destination, global long8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i64_p1v8i64_i32_i32_i64, )(int Execution, local long8 *Destination, global long8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local long16 *Destination, global long16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i64_p1v16i64_i64_i64_i64, )(int Execution, local long16 *Destination, global long16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local long16 *Destination, global long16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i64_p1v16i64_i32_i32_i64, )(int Execution, local long16 *Destination, global long16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local half2 *Destination, global half2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f16_p1v2f16_i64_i64_i64, )(int Execution, local half2 *Destination, global half2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local half2 *Destination, global half2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f16_p1v2f16_i32_i32_i64, )(int Execution, local half2 *Destination, global half2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local half3 *Destination, global half3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f16_p1v3f16_i64_i64_i64, )(int Execution, local half3 *Destination, global half3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local half3 *Destination, global half3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f16_p1v3f16_i32_i32_i64, )(int Execution, local half3 *Destination, global half3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local half4 *Destination, global half4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f16_p1v4f16_i64_i64_i64, )(int Execution, local half4 *Destination, global half4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local half4 *Destination, global half4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f16_p1v4f16_i32_i32_i64, )(int Execution, local half4 *Destination, global half4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local half8 *Destination, global half8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f16_p1v8f16_i64_i64_i64, )(int Execution, local half8 *Destination, global half8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local half8 *Destination, global half8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f16_p1v8f16_i32_i32_i64, )(int Execution, local half8 *Destination, global half8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local half16 *Destination, global half16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f16_p1v16f16_i64_i64_i64, )(int Execution, local half16 *Destination, global half16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local half16 *Destination, global half16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f16_p1v16f16_i32_i32_i64, )(int Execution, local half16 *Destination, global half16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local float2 *Destination, global float2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f32_p1v2f32_i64_i64_i64, )(int Execution, local float2 *Destination, global float2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local float2 *Destination, global float2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f32_p1v2f32_i32_i32_i64, )(int Execution, local float2 *Destination, global float2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local float3 *Destination, global float3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f32_p1v3f32_i64_i64_i64, )(int Execution, local float3 *Destination, global float3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local float3 *Destination, global float3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f32_p1v3f32_i32_i32_i64, )(int Execution, local float3 *Destination, global float3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local float4 *Destination, global float4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f32_p1v4f32_i64_i64_i64, )(int Execution, local float4 *Destination, global float4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local float4 *Destination, global float4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f32_p1v4f32_i32_i32_i64, )(int Execution, local float4 *Destination, global float4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local float8 *Destination, global float8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f32_p1v8f32_i64_i64_i64, )(int Execution, local float8 *Destination, global float8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local float8 *Destination, global float8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f32_p1v8f32_i32_i32_i64, )(int Execution, local float8 *Destination, global float8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local float16 *Destination, global float16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f32_p1v16f32_i64_i64_i64, )(int Execution, local float16 *Destination, global float16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local float16 *Destination, global float16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f32_p1v16f32_i32_i32_i64, )(int Execution, local float16 *Destination, global float16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
 #if defined(cl_khr_fp64)
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local double2 *Destination, global double2 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f64_p1v2f64_i64_i64_i64, )(int Execution, local double2 *Destination, global double2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local double2 *Destination, global double2 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f64_p1v2f64_i32_i32_i64, )(int Execution, local double2 *Destination, global double2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local double3 *Destination, global double3 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f64_p1v3f64_i64_i64_i64, )(int Execution, local double3 *Destination, global double3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local double3 *Destination, global double3 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f64_p1v3f64_i32_i32_i64, )(int Execution, local double3 *Destination, global double3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local double4 *Destination, global double4 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f64_p1v4f64_i64_i64_i64, )(int Execution, local double4 *Destination, global double4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local double4 *Destination, global double4 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f64_p1v4f64_i32_i32_i64, )(int Execution, local double4 *Destination, global double4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local double8 *Destination, global double8 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f64_p1v8f64_i64_i64_i64, )(int Execution, local double8 *Destination, global double8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local double8 *Destination, global double8 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f64_p1v8f64_i32_i32_i64, )(int Execution, local double8 *Destination, global double8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local double16 *Destination, global double16 *Source, long NumElements, long Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f64_p1v16f64_i64_i64_i64, )(int Execution, local double16 *Destination, global double16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution, local double16 *Destination, global double16 *Source, int NumElements, int Stride, __spirv_Event Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f64_p1v16f64_i32_i32_i64, )(int Execution, local double16 *Destination, global double16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
@@ -924,12 +924,12 @@ __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(int Execution
 #endif // defined(cl_khr_fp64)
 
 
-void __attribute__((overloadable)) __spirv_GroupWaitEvents(int Execution, int NumEvents, private __spirv_Event *EventsList)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupWaitEvents, _i32_i32_p0i64, )(int Execution, int NumEvents, private __spirv_Event *EventsList)
 {
     if (Execution == Workgroup)
     {
-        __spirv_ControlBarrier(Execution,0, AcquireRelease | CrossWorkgroupMemory);
-        __spirv_ControlBarrier(Execution,0, AcquireRelease | WorkgroupMemory );
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution,0, AcquireRelease | CrossWorkgroupMemory);
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution,0, AcquireRelease | WorkgroupMemory );
     }
     else if (Execution == Subgroup)
     {
@@ -939,12 +939,12 @@ void __attribute__((overloadable)) __spirv_GroupWaitEvents(int Execution, int Nu
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-void __attribute__((overloadable)) __spirv_GroupWaitEvents(int Execution, int NumEvents, generic __spirv_Event *EventsList)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupWaitEvents, _i32_i32_p4i64, )(int Execution, int NumEvents, generic __spirv_Event *EventsList)
 {
     if (Execution == Workgroup)
     {
-        __spirv_ControlBarrier(Execution,0, AcquireRelease | CrossWorkgroupMemory);
-        __spirv_ControlBarrier(Execution,0, AcquireRelease | WorkgroupMemory);
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution,0, AcquireRelease | CrossWorkgroupMemory);
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution,0, AcquireRelease | WorkgroupMemory);
     }
     else if (Execution == Subgroup)
     {
@@ -953,57 +953,57 @@ void __attribute__((overloadable)) __spirv_GroupWaitEvents(int Execution, int Nu
 }
 #endif __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
-bool __attribute__((overloadable)) __spirv_GroupAll(int Execution, bool Predicate)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAll, _i32_i1, )(int Execution, bool Predicate)
 {
     if (Execution == Workgroup)
     {
         // if wg-size is equal to sg-size, don't bother SLM, just do it using subgroups
-        if(__spirv_BuiltInNumSubgroups() == 1)
-            return __spirv_GroupUMin(Subgroup, GroupOperationReduce, (uint)(Predicate) );
+        if(SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )() == 1)
+            return SPIRV_BUILTIN(GroupUMin, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)(Predicate) );
 
         GET_SAFE_MEMPOOL_PTR(tmp, int, false, 1)
         *tmp = 1;
-        __spirv_ControlBarrier(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         if(Predicate == 0)
             *tmp = 0; // intentional data race here, as we do not care for the value itself, rather than the fact it was overriden
-        __spirv_ControlBarrier(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for threads
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for threads
         return *tmp; // Return true if none of them failed the test
     }
     else
     {
-        return __spirv_GroupUMin(Subgroup, GroupOperationReduce, (uint)Predicate );
+        return SPIRV_BUILTIN(GroupUMin, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)Predicate );
     }
 }
 
-bool __attribute__((overloadable)) __spirv_GroupAny(int Execution, bool Predicate)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAny, _i32_i1, )(int Execution, bool Predicate)
 {
     if (Execution == Workgroup)
     {
         // if wg-size is equal to sg-size, don't bother SLM, just do it using subgroups
-        if(__spirv_BuiltInNumSubgroups() == 1)
-            return __spirv_GroupUMax(Subgroup, GroupOperationReduce, (uint)Predicate );
+        if(SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )() == 1)
+            return SPIRV_BUILTIN(GroupUMax, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)Predicate );
 
         GET_SAFE_MEMPOOL_PTR(tmp, int, false, 1)
         *tmp = 0;
-        __spirv_ControlBarrier(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         if(Predicate == 1)
             *tmp = 1; // intentional data race here, as we do not care for the value itself, rather than the fact it was overriden
-        __spirv_ControlBarrier(Execution, 0, AcquireRelease | WorkgroupMemory);
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory);
         return *tmp; // Return true if any of them passed the test
     }
     else
     {
-        return __spirv_GroupUMax(Subgroup, GroupOperationReduce, (uint)Predicate );
+        return SPIRV_BUILTIN(GroupUMax, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)Predicate );
     }
 }
 
 #if defined(cl_khr_subgroup_non_uniform_vote)
-bool __attribute__((overloadable)) __spirv_GroupNonUniformElect(int Execution)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformElect, _i32, )(int Execution)
 {
     if (Execution == Subgroup)
     {
         uint activeChannels = __builtin_IB_WaveBallot(true);
-        uint firstActive = __spirv_ocl_ctz(as_int(activeChannels));
+        uint firstActive = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));
         if (__builtin_IB_get_simd_id() == firstActive)
             return true;
         else
@@ -1015,34 +1015,34 @@ bool __attribute__((overloadable)) __spirv_GroupNonUniformElect(int Execution)
     }
 }
 
-bool __attribute__((overloadable)) __spirv_GroupNonUniformAll(int Execution, bool Predicate)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformAll, _i32_i1, )(int Execution, bool Predicate)
 {
     if(Execution == Subgroup)
-        return __spirv_GroupAll(Execution, Predicate);
+        return SPIRV_BUILTIN(GroupAll, _i32_i1, )(Execution, Predicate);
     else
         return false;
 }
 
-bool __attribute__((overloadable)) __spirv_GroupNonUniformAny(int Execution, bool Predicate)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformAny, _i32_i1, )(int Execution, bool Predicate)
 {
     if (Execution == Subgroup)
-        return __spirv_GroupAny(Execution, Predicate);
+        return SPIRV_BUILTIN(GroupAny, _i32_i1, )(Execution, Predicate);
     else
         return false;
 }
 
 #define DEFN_NON_UNIFORM_ALL_EQUAL(TYPE, TYPE_ABBR)                                                                           \
-bool __attribute__((overloadable)) __spirv_GroupNonUniformAllEqual(int Execution, TYPE Value)                 \
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformAllEqual, _i32_##TYPE_ABBR, )(int Execution, TYPE Value)                 \
 {                                                                                                                             \
     if (Execution == Subgroup)                                                                                                \
     {                                                                                                                         \
         uint activeChannels = __builtin_IB_WaveBallot(true);                                                                  \
-        uint firstActive = __spirv_ocl_ctz(as_int(activeChannels));                                            \
+        uint firstActive = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                                            \
                                                                                                                               \
-        TYPE firstLaneValue = __spirv_GroupBroadcast(Execution, Value, as_int(firstActive)); \
+        TYPE firstLaneValue = SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_i32, )(Execution, Value, as_int(firstActive)); \
         bool isSame = firstLaneValue == Value;                                                                                \
                                                                                                                               \
-        uint4 equalChannels = __spirv_GroupNonUniformBallot(Execution, isSame);                             \
+        uint4 equalChannels = SPIRV_BUILTIN(GroupNonUniformBallot, _i32_i1, )(Execution, isSame);                             \
                                                                                                                               \
         if (equalChannels.x == activeChannels)                                                                                \
             return true;                                                                                                      \
@@ -1081,7 +1081,7 @@ DEFN_NON_UNIFORM_ALL_EQUAL(half,   f16)
     {                                                                                   \
         *tmp = Value;                                                                   \
     }                                                                                   \
-    __spirv_ControlBarrier(Execution, 0, AcquireRelease | WorkgroupMemory);        \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory);        \
     type ret = *tmp;                                                                    \
     return ret;                                                                         \
 }
@@ -1094,7 +1094,7 @@ GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupBroadcast, __vargtype, int, __var
 GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupBroadcast, __vargtype, int, __vargtype, int, i32, __abbrvargtype, i32)       \
 GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupBroadcast, __vargtype, int, __vargtype, long, i32, __abbrvargtype, i64)
 
-bool __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, bool Value, int3 LocalId)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i1_v3i32, )(int Execution, bool Value, int3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1110,7 +1110,7 @@ bool __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, bool Va
     }
 }
 
-bool __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, bool Value, long3 LocalId)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i1_v3i64, )(int Execution, bool Value, long3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1126,7 +1126,7 @@ bool __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, bool Va
     }
 }
 
-char __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, char Value, int3 LocalId)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i8_v3i32, )(int Execution, char Value, int3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1142,7 +1142,7 @@ char __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, char Va
     }
 }
 
-char __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, char Value, long3 LocalId)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i8_v3i64, )(int Execution, char Value, long3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1158,7 +1158,7 @@ char __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, char Va
     }
 }
 
-short __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, short Value, int3 LocalId)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i16_v3i32, )(int Execution, short Value, int3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1174,7 +1174,7 @@ short __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, short 
     }
 }
 
-short __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, short Value, long3 LocalId)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i16_v3i64, )(int Execution, short Value, long3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1190,7 +1190,7 @@ short __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, short 
     }
 }
 
-int __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, int Value, int3 LocalId)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i32, )(int Execution, int Value, int3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1206,7 +1206,7 @@ int __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, int Valu
     }
 }
 
-int __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, int Value, long3 LocalId)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i64, )(int Execution, int Value, long3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1222,7 +1222,7 @@ int __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, int Valu
     }
 }
 
-long __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, long Value, int3 LocalId)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i64_v3i32, )(int Execution, long Value, int3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1238,7 +1238,7 @@ long __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, long Va
     }
 }
 
-long __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, long Value, long3 LocalId)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i64_v3i64, )(int Execution, long Value, long3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1254,7 +1254,7 @@ long __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, long Va
     }
 }
 
-half __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, half Value, int3 LocalId)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f16_v3i32, )(int Execution, half Value, int3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1270,7 +1270,7 @@ half __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, half Va
     }
 }
 
-half __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, half Value, long3 LocalId)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f16_v3i64, )(int Execution, half Value, long3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1286,7 +1286,7 @@ half __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, half Va
     }
 }
 
-float __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, float Value, int3 LocalId)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f32_v3i32, )(int Execution, float Value, int3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1302,7 +1302,7 @@ float __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, float 
     }
 }
 
-float __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, float Value, long3 LocalId)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f32_v3i64, )(int Execution, float Value, long3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1320,7 +1320,7 @@ float __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, float 
 
 #if defined(cl_khr_fp64)
 
-double __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, double Value, int3 LocalId)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f64_v3i32, )(int Execution, double Value, int3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1337,7 +1337,7 @@ double __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, doubl
 }
 
 
-double __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, double Value, long3 LocalId)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f64_v3i64, )(int Execution, double Value, long3 LocalId)
 {
     if (Execution == Workgroup)
     {
@@ -1355,170 +1355,170 @@ double __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, doubl
 
 #endif // defined(cl_khr_fp64)
 
-bool __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, bool Value, int2 LocalId)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i1_v2i32, )(int Execution, bool Value, int2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution, Value, (int3)(LocalId.s0, LocalId.s1, 0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i1_v3i32, )(Execution, Value, (int3)(LocalId.s0, LocalId.s1, 0));
 }
 
-bool __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, bool Value, long2 LocalId)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i1_v2i64, )(int Execution, bool Value, long2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution, Value, (long3)(LocalId.s0, LocalId.s1, 0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i1_v3i64, )(Execution, Value, (long3)(LocalId.s0, LocalId.s1, 0));
 }
 
-char __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, char Value, int2 LocalId)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i8_v2i32, )(int Execution, char Value, int2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i8_v3i32, )(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
 }
 
-char __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, char Value, long2 LocalId)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i8_v2i64, )(int Execution, char Value, long2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i8_v3i64, )(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
 }
 
-short __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, short Value, int2 LocalId)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i16_v2i32, )(int Execution, short Value, int2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i16_v3i32, )(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
 }
 
-short __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, short Value, long2 LocalId)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i16_v2i64, )(int Execution, short Value, long2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i16_v3i64, )(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
 }
 
-int __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, int Value, int2 LocalId)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v2i32, )(int Execution, int Value, int2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i32, )(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
 }
 
-int __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, int Value, long2 LocalId)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v2i64, )(int Execution, int Value, long2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i64, )(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
 }
 
-long __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, long Value, int2 LocalId)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i64_v2i32, )(int Execution, long Value, int2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i64_v3i32, )(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
 }
 
-long __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, long Value, long2 LocalId)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i64_v2i64, )(int Execution, long Value, long2 LocalId)
 {
-   return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
+   return SPIRV_BUILTIN(GroupBroadcast, _i32_i64_v3i64, )(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
 }
 
-half __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, half Value, int2 LocalId)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f16_v2i32, )(int Execution, half Value, int2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_f16_v3i32, )(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
 }
 
-half __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, half Value, long2 LocalId)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f16_v2i64, )(int Execution, half Value, long2 LocalId)
 {
-   return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
+   return SPIRV_BUILTIN(GroupBroadcast, _i32_f16_v3i64, )(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
 }
 
-float __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, float Value, int2 LocalId)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f32_v2i32, )(int Execution, float Value, int2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_f32_v3i32, )(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
 }
 
-float __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, float Value, long2 LocalId)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f32_v2i64, )(int Execution, float Value, long2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_f32_v3i64, )(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
 }
 
 #if defined(cl_khr_fp64)
 
-double __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, double Value, int2 LocalId)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f64_v2i32, )(int Execution, double Value, int2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_f64_v3i32, )(Execution,Value,(int3)(LocalId.s0,LocalId.s1,0));
 }
 
-double __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, double Value, long2 LocalId)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f64_v2i64, )(int Execution, double Value, long2 LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_f64_v3i64, )(Execution,Value,(long3)(LocalId.s0,LocalId.s1,0));
 }
 
 #endif
 
-bool __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, bool Value, int LocalId)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i1_i32, )(int Execution, bool Value, int LocalId)
 {
-    return __spirv_GroupBroadcast(Execution, Value, (int3)(LocalId, 0, 0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i1_v3i32, )(Execution, Value, (int3)(LocalId, 0, 0));
 }
 
-bool __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, bool Value, long LocalId)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i1_i64, )(int Execution, bool Value, long LocalId)
 {
-    return __spirv_GroupBroadcast(Execution, Value, (long3)(LocalId, 0, 0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i1_v3i64, )(Execution, Value, (long3)(LocalId, 0, 0));
 }
 
-char __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, char Value, int LocalId)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i8_i32, )(int Execution, char Value, int LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId,0,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i8_v3i32, )(Execution,Value,(int3)(LocalId,0,0));
 }
 
-char __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, char Value, long LocalId)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i8_i64, )(int Execution, char Value, long LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId,0,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i8_v3i64, )(Execution,Value,(long3)(LocalId,0,0));
 }
 
-short __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, short Value, int LocalId)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i16_i32, )(int Execution, short Value, int LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId,0,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i16_v3i32, )(Execution,Value,(int3)(LocalId,0,0));
 }
 
-short __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, short Value, long LocalId)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i16_i64, )(int Execution, short Value, long LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId,0,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i16_v3i64, )(Execution,Value,(long3)(LocalId,0,0));
 }
 
-int __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, int Value, int LocalId)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i32_i32, )(int Execution, int Value, int LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId,0,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i32, )(Execution,Value,(int3)(LocalId,0,0));
 }
 
-int __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, int Value, long LocalId)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i32_i64, )(int Execution, int Value, long LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId,0,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i64, )(Execution,Value,(long3)(LocalId,0,0));
 }
 
-long __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, long Value, int LocalId)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i64_i32, )(int Execution, long Value, int LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId,0,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i64_v3i32, )(Execution,Value,(int3)(LocalId,0,0));
 }
 
-long __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, long Value, long LocalId)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i64_i64, )(int Execution, long Value, long LocalId)
 {
-   return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId,0,0));
+   return SPIRV_BUILTIN(GroupBroadcast, _i32_i64_v3i64, )(Execution,Value,(long3)(LocalId,0,0));
 }
 
-half __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, half Value, int LocalId)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f16_i32, )(int Execution, half Value, int LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId,0,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_f16_v3i32, )(Execution,Value,(int3)(LocalId,0,0));
 }
 
-half __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, half Value, long LocalId)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f16_i64, )(int Execution, half Value, long LocalId)
 {
-   return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId,0,0));
+   return SPIRV_BUILTIN(GroupBroadcast, _i32_f16_v3i64, )(Execution,Value,(long3)(LocalId,0,0));
 }
 
-float __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, float Value, int LocalId)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f32_i32, )(int Execution, float Value, int LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId,0,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_f32_v3i32, )(Execution,Value,(int3)(LocalId,0,0));
 }
 
-float __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, float Value, long LocalId)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f32_i64, )(int Execution, float Value, long LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId,0,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_f32_v3i64, )(Execution,Value,(long3)(LocalId,0,0));
 }
 
 #if defined(cl_khr_fp64)
 
-double __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, double Value, int LocalId)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f64_i32, )(int Execution, double Value, int LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(int3)(LocalId,0,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_f64_v3i32, )(Execution,Value,(int3)(LocalId,0,0));
 }
 
-double __attribute__((overloadable)) __spirv_GroupBroadcast(int Execution, double Value, long LocalId)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f64_i64, )(int Execution, double Value, long LocalId)
 {
-    return __spirv_GroupBroadcast(Execution,Value,(long3)(LocalId,0,0));
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_f64_v3i64, )(Execution,Value,(long3)(LocalId,0,0));
 }
 
 #endif
@@ -1539,68 +1539,68 @@ DEFN_SUB_GROUP_BROADCAST_VEC(double, f64)
 //
 // Allows data to be arbitrarily transferred between invocations in a subgroup.
 // The data that is returned for this invocation is the value of 'Data' for the invocation identified by 'InvocationId'.
-char __attribute__((overloadable)) __spirv_SubgroupShuffleINTEL(char Data, uint InvocationId)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i8_i32, )(char Data, uint InvocationId)
 {
     if(BIF_FLAG_CTRL_GET(UseOOBChecks))
     {
-        InvocationId = InvocationId & (__spirv_BuiltInSubgroupMaxSize() - 1);
+        InvocationId = InvocationId & (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1);
     }
     return __builtin_IB_simd_shuffle_c(Data, InvocationId);
 }
 
-short __attribute__((overloadable)) __spirv_SubgroupShuffleINTEL(short Data, uint InvocationId)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i16_i32, )(short Data, uint InvocationId)
 {
     if(BIF_FLAG_CTRL_GET(UseOOBChecks))
     {
-        InvocationId = InvocationId & (__spirv_BuiltInSubgroupMaxSize() - 1);
+        InvocationId = InvocationId & (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1);
     }
     return __builtin_IB_simd_shuffle_us(as_ushort(Data), InvocationId);
 }
 
-int __attribute__((overloadable)) __spirv_SubgroupShuffleINTEL(int Data, uint InvocationId)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i32_i32, )(int Data, uint InvocationId)
 {
     if(BIF_FLAG_CTRL_GET(UseOOBChecks))
     {
-        InvocationId = InvocationId & (__spirv_BuiltInSubgroupMaxSize() - 1);
+        InvocationId = InvocationId & (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1);
     }
     return __builtin_IB_simd_shuffle(as_uint(Data), InvocationId);
 }
 
-long __attribute__((overloadable)) __spirv_SubgroupShuffleINTEL(long Data, uint InvocationId)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i64_i32, )(long Data, uint InvocationId)
 {
     int2 DataXY = as_int2(Data);
     int2 Result;
-    Result.s0 = __spirv_SubgroupShuffleINTEL(DataXY.s0, InvocationId);
-    Result.s1 = __spirv_SubgroupShuffleINTEL(DataXY.s1, InvocationId);
+    Result.s0 = SPIRV_BUILTIN(SubgroupShuffleINTEL, _i32_i32, )(DataXY.s0, InvocationId);
+    Result.s1 = SPIRV_BUILTIN(SubgroupShuffleINTEL, _i32_i32, )(DataXY.s1, InvocationId);
     return as_long(Result);
 }
 
 #ifdef cl_khr_fp16
-half __attribute__((overloadable)) __spirv_SubgroupShuffleINTEL(half Data, uint InvocationId)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _f16_i32, )(half Data, uint InvocationId)
 {
     if(BIF_FLAG_CTRL_GET(UseOOBChecks))
     {
-        InvocationId = InvocationId & (__spirv_BuiltInSubgroupMaxSize() - 1);
+        InvocationId = InvocationId & (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1);
     }
     return __builtin_IB_simd_shuffle_h(Data, InvocationId);
 }
 #endif // cl_khr_fp16
 
-float __attribute__((overloadable)) __spirv_SubgroupShuffleINTEL(float Data, uint InvocationId)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _f32_i32, )(float Data, uint InvocationId)
 {
     if(BIF_FLAG_CTRL_GET(UseOOBChecks))
     {
-        InvocationId = InvocationId & (__spirv_BuiltInSubgroupMaxSize() - 1);
+        InvocationId = InvocationId & (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1);
     }
     return __builtin_IB_simd_shuffle_f(Data, InvocationId);
 }
 
 #if defined(cl_khr_fp64)
-double __attribute__((overloadable)) __spirv_SubgroupShuffleINTEL(double Data, uint InvocationId)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _f64_i32, )(double Data, uint InvocationId)
 {
     if(BIF_FLAG_CTRL_GET(UseOOBChecks))
     {
-        InvocationId = InvocationId & (__spirv_BuiltInSubgroupMaxSize() - 1);
+        InvocationId = InvocationId & (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1);
     }
     return __builtin_IB_simd_shuffle_df(Data, InvocationId);
 }
@@ -1615,47 +1615,47 @@ GENERATE_SPIRV_VECTOR_FUNCTIONS_2ARGS_VS(SubgroupShuffleINTEL, float, float, uin
 //
 // Allows data to be transferred from an invocation in the subgroup with a higher SubgroupLocalInvocationId down to
 // a invocation in the subgroup with a lower SubgroupLocalInvocationId.
-char __attribute__((overloadable)) __spirv_SubgroupShuffleDownINTEL(char Current, char Next, uint Delta)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i8_i8_i32, )(char Current, char Next, uint Delta)
 {
     return __builtin_IB_simd_shuffle_down_uc(Current, Next, Delta);
 }
 
-short __attribute__((overloadable)) __spirv_SubgroupShuffleDownINTEL(short Current, short Next, uint Delta)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i16_i16_i32, )(short Current, short Next, uint Delta)
 {
     return __builtin_IB_simd_shuffle_down_us(Current, Next, Delta);
 }
 
-int __attribute__((overloadable)) __spirv_SubgroupShuffleDownINTEL(int Current, int Next, uint Delta)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i32_i32_i32, )(int Current, int Next, uint Delta)
 {
     return __builtin_IB_simd_shuffle_down(Current, Next, Delta);
 }
 
-long __attribute__((overloadable)) __spirv_SubgroupShuffleDownINTEL(long Current, long Next, uint Delta)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i64_i64_i32, )(long Current, long Next, uint Delta)
 {
     int2 CurrentXY = as_int2(Current);
     int2 NextXY = as_int2(Next);
     int2 Result;
-    Result.s0 = __spirv_SubgroupShuffleDownINTEL(CurrentXY.s0, NextXY.s0, Delta);
-    Result.s1 = __spirv_SubgroupShuffleDownINTEL(CurrentXY.s1, NextXY.s1, Delta);
+    Result.s0 = SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i32_i32_i32, )(CurrentXY.s0, NextXY.s0, Delta);
+    Result.s1 = SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i32_i32_i32, )(CurrentXY.s1, NextXY.s1, Delta);
     return as_long(Result);
 }
 
 #ifdef cl_khr_fp16
-half __attribute__((overloadable)) __spirv_SubgroupShuffleDownINTEL(half Current, half Next, uint Delta)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _f16_f16_i32, )(half Current, half Next, uint Delta)
 {
-    return as_half(__spirv_SubgroupShuffleDownINTEL(as_short(Current), as_short(Next), Delta));
+    return as_half(SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i16_i16_i32, )(as_short(Current), as_short(Next), Delta));
 }
 #endif // cl_khr_fp16
 
-float __attribute__((overloadable)) __spirv_SubgroupShuffleDownINTEL(float Current, float Next, uint Delta)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _f32_f32_i32, )(float Current, float Next, uint Delta)
 {
-    return as_float(__spirv_SubgroupShuffleDownINTEL(as_int(Current), as_int(Next), Delta));
+    return as_float(SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i32_i32_i32, )(as_int(Current), as_int(Next), Delta));
 }
 
 #ifdef cl_khr_fp64
-double __attribute__((overloadable)) __spirv_SubgroupShuffleDownINTEL(double Current, double Next, uint Delta)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _f64_f64_i32, )(double Current, double Next, uint Delta)
 {
-    return as_double(__spirv_SubgroupShuffleDownINTEL(as_long(Current), as_long(Next), Delta));
+    return as_double(SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i64_i64_i32, )(as_long(Current), as_long(Next), Delta));
 }
 #endif // cl_khr_fp64
 
@@ -1669,10 +1669,10 @@ GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_VVS(SubgroupShuffleDownINTEL, float, float
 // Allows data to be transferred from an invocation in the subgroup with a lower SubgroupLocalInvocationId up to
 // an invocation in the subgroup with a higher SubgroupLocalInvocationId.
 #define DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(TYPE, TYPE_ABBR)                                                                \
-TYPE __attribute__((overloadable)) __spirv_SubgroupShuffleUpINTEL(TYPE Previous, TYPE Current, uint Value)  \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleUpINTEL, _##TYPE_ABBR##_##TYPE_ABBR##_i32, )(TYPE Previous, TYPE Current, uint Value)  \
 {                                                                                                                       \
     Value = __builtin_IB_get_simd_size() - Value;                                                                       \
-    return __spirv_SubgroupShuffleDownINTEL(Previous, Current, Value);       \
+    return SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _##TYPE_ABBR##_##TYPE_ABBR##_i32, )(Previous, Current, Value);       \
 }
 
 DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(char,   i8)
@@ -1698,10 +1698,10 @@ GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_VVS(SubgroupShuffleUpINTEL, float, float, 
 // The data that is returned for this invocation is the value of 'Data' for the invocation with SubgroupLocalInvocationId equal
 // to this invocation's SubgroupLocalInvocationId XOR'd with the specified 'Value'.
 #define DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(TYPE, TYPE_ABBR)                                \
-TYPE __attribute__((overloadable)) __spirv_SubgroupShuffleXorINTEL(TYPE Data, uint Value)  \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleXorINTEL, _##TYPE_ABBR##_i32, )(TYPE Data, uint Value)  \
 {                                                                                        \
     Value = __builtin_IB_get_simd_id() ^ Value;                                          \
-    return __spirv_SubgroupShuffleINTEL(Data, Value);       \
+    return SPIRV_BUILTIN(SubgroupShuffleINTEL, _##TYPE_ABBR##_i32, )(Data, Value);       \
 }
 
 DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(char,   i8)
@@ -1727,7 +1727,7 @@ GENERATE_SPIRV_VECTOR_FUNCTIONS_2ARGS_VS(SubgroupShuffleXorINTEL, float, float, 
 // as a block operation.
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(TYPE, TYPE_ABBR, ELEM_TYPE, ELEM_TYPE_ABBR, INTERNAL_FUNC)                                  \
-TYPE __attribute__((overloadable)) __spirv_SubgroupBlockReadINTEL_R##TYPE(const global u##ELEM_TYPE* p)  \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockReadINTEL, _##TYPE_ABBR##_p1##ELEM_TYPE_ABBR, _R##TYPE)(const global u##ELEM_TYPE* p)  \
 {                                                                                                                                         \
     return as_##TYPE(__builtin_IB_##INTERNAL_FUNC((__global void*)p));                                                                    \
 }                                                                                                                                         \
@@ -1791,7 +1791,7 @@ void __internal_SubgroupBlockPrefetchINTEL_char_cache_controls(const global ucha
     }
 }
 
-void __attribute__((overloadable)) __spirv_SubgroupBlockPrefetchINTEL(const global uchar* ptr, uint num_bytes)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1i8, )(const global uchar* ptr, uint num_bytes)
 {
     __internal_SubgroupBlockPrefetchINTEL_char_cache_controls(ptr, num_bytes, LSC_LDCC_DEFAULT);
 }
@@ -1823,7 +1823,7 @@ void __internal_SubgroupBlockPrefetchINTEL_short_cache_controls(const global ush
     }
 }
 
-void __attribute__((overloadable)) __spirv_SubgroupBlockPrefetchINTEL(const global ushort* ptr, uint num_bytes)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1i16, )(const global ushort* ptr, uint num_bytes)
 {
     __internal_SubgroupBlockPrefetchINTEL_short_cache_controls(ptr, num_bytes, LSC_LDCC_DEFAULT);
 }
@@ -1851,7 +1851,7 @@ void __internal_SubgroupBlockPrefetchINTEL_int_cache_controls(const global uint*
     }
 }
 
-void __attribute__((overloadable)) __spirv_SubgroupBlockPrefetchINTEL(const global uint* ptr, uint num_bytes)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1i32, )(const global uint* ptr, uint num_bytes)
 {
     __internal_SubgroupBlockPrefetchINTEL_int_cache_controls(ptr, num_bytes, LSC_LDCC_DEFAULT);
 }
@@ -1879,7 +1879,7 @@ void __internal_SubgroupBlockPrefetchINTEL_long_cache_controls(const global ulon
     }
 }
 
-void __attribute__((overloadable)) __spirv_SubgroupBlockPrefetchINTEL(const global ulong* ptr, uint num_bytes)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1i64, )(const global ulong* ptr, uint num_bytes)
 {
     __internal_SubgroupBlockPrefetchINTEL_long_cache_controls(ptr, num_bytes, LSC_LDCC_DEFAULT);
 }
@@ -1888,7 +1888,7 @@ void __attribute__((overloadable)) __spirv_SubgroupBlockPrefetchINTEL(const glob
 #ifdef cl_intel_subgroup_local_block_io
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(TYPE, TYPE_ABBR, ELEM_TYPE, ELEM_TYPE_ABBR, INTERNAL_FUNC)   \
-TYPE __attribute__((overloadable)) __spirv_SubgroupBlockReadINTEL_R##TYPE(const local ELEM_TYPE * p)       \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockReadINTEL, _##TYPE_ABBR##_p3##ELEM_TYPE_ABBR, _R##TYPE)(const local ELEM_TYPE * p)       \
 {                                                                                                         \
     return as_##TYPE(INTERNAL_FUNC(p));                                                                   \
 }
@@ -1927,7 +1927,7 @@ DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(long8, v8i64, ulong, i64, __builtin_IB_simd
 // as a block operation.
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(TYPE, TYPE_ABBR, ELEM_TYPE, ELEM_TYPE_ABBR, INTERNAL_FUNC)                                    \
-void __attribute__((overloadable)) __spirv_SubgroupBlockWriteINTEL(__global u##ELEM_TYPE * p, u##TYPE data) \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockWriteINTEL, _p1##ELEM_TYPE_ABBR##_##TYPE_ABBR, )(__global u##ELEM_TYPE * p, u##TYPE data) \
 {                                                                                                                                            \
     __builtin_IB_##INTERNAL_FUNC(p, data);                                                                                                   \
 }                                                                                                                                            \
@@ -1965,7 +1965,7 @@ DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(long8,  v8i64,  long, i64, simd_block_wri
 #ifdef cl_intel_subgroup_local_block_io
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(TYPE, TYPE_ABBR, ELEM_TYPE, ELEM_TYPE_ABBR, INTERNAL_FUNC)             \
-void __attribute__((overloadable)) __spirv_SubgroupBlockWriteINTEL(__local ELEM_TYPE * p, TYPE data)    \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockWriteINTEL, _p3##ELEM_TYPE_ABBR##_##TYPE_ABBR, )(__local ELEM_TYPE * p, TYPE data)    \
 {                                                                                                                    \
     INTERNAL_FUNC(p, data);                                                                                          \
 }
@@ -2004,12 +2004,12 @@ DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ulong8, v8i64, ulong, i64, __builtin_IB_si
 // at the specified 'Coordinate' as a block operation.
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(TYPE, TYPE_ABBR, INTERNAL_FUNC)                                         \
-TYPE __attribute__((overloadable)) __spirv_SubgroupImageBlockReadINTEL_R##TYPE(global Img2d_ro* image, int2 coord)  \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _##TYPE_ABBR##_img2d_ro_v2i32, _R##TYPE)(global Img2d_ro* image, int2 coord)  \
 {                                                                                                                    \
     long id = (long)__builtin_astype(image, __global void*);                                                           \
     return as_##TYPE(INTERNAL_FUNC(id, coord));                                                                      \
 }                                                                                                                    \
-TYPE __attribute__((overloadable)) __spirv_SubgroupImageBlockReadINTEL_R##TYPE(global Img2d_rw* image, int2 coord)  \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _##TYPE_ABBR##_img2d_rw_v2i32, _R##TYPE)(global Img2d_rw* image, int2 coord)  \
 {                                                                                                                    \
     long id = (long)__builtin_astype(image, __global void*);                                                           \
     return as_##TYPE(INTERNAL_FUNC(id, coord));                                                                      \
@@ -2047,13 +2047,13 @@ DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(long8, v8i64, __builtin_IB_simd_media_block
 // at the specified 'Coordinate' as a block operation.
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(TYPE, TYPE_ABBR, INTERNAL_FUNC)      \
-void __attribute__((overloadable)) __spirv_SubgroupImageBlockWriteINTEL(    \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockWriteINTEL, _img2d_wo_v2i32_##TYPE_ABBR, )(    \
     global Img2d_wo* image, int2 coord, TYPE data)                                 \
 {                                                                                  \
     long id = (long)__builtin_astype(image, __global void*);                         \
     INTERNAL_FUNC((long)image, coord, data);                                        \
 }                                                                                  \
-void __attribute__((overloadable)) __spirv_SubgroupImageBlockWriteINTEL(    \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockWriteINTEL, _img2d_rw_v2i32_##TYPE_ABBR, )(    \
     global Img2d_rw* image, int2 coord, TYPE data)                                 \
 {                                                                                  \
     long id = (long)__builtin_astype(image, __global void*);                         \
@@ -2091,13 +2091,13 @@ DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ulong8, v8i64, __builtin_IB_simd_media_blo
 // Reads a block of data from a 2D region of the specified 'Image'.
 
 #define DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(TYPE, TYPE_ABBR)                                                         \
-TYPE __attribute__((overloadable)) __spirv_SubgroupImageMediaBlockReadINTEL_R##TYPE(   \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageMediaBlockReadINTEL, _##TYPE_ABBR##_img2d_ro_v2i32_i32_i32, _R##TYPE)(   \
     global Img2d_ro* image, int2 coord, int width, int height)                                                              \
 {                                                                                                                           \
     long id = (long)__builtin_astype(image, global void*);                                                                    \
     return as_##TYPE(__builtin_IB_media_block_read_u##TYPE(id, coord, width, height));                                      \
 }                                                                                                                           \
-TYPE __attribute__((overloadable)) __spirv_SubgroupImageMediaBlockReadINTEL_R##TYPE(   \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageMediaBlockReadINTEL, _##TYPE_ABBR##_img2d_rw_v2i32_i32_i32, _R##TYPE)(   \
     global Img2d_rw* image, int2 coord, int width, int height)                                                              \
 {                                                                                                                           \
     long id = (long)__builtin_astype(image, global void*);                                                                    \
@@ -2127,13 +2127,13 @@ DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(int8, v8i32)
 // Writes a block of data into a 2D region of the specified 'Image'.
 
 #define DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(TYPE, TYPE_ABBR)                                                \
-void __attribute__((overloadable)) __spirv_SubgroupImageMediaBlockWriteINTEL(    \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageMediaBlockWriteINTEL, _img2d_wo_v2i32_i32_i32_##TYPE_ABBR, )(    \
     global Img2d_wo* image, int2 coord, int width, int height, TYPE data)                                           \
 {                                                                                                                   \
     long id = (long)__builtin_astype(image, global void*);                                                            \
     __builtin_IB_media_block_write_u##TYPE(id, coord, width, height, as_u##TYPE(data));                             \
 }                                                                                                                   \
-void __attribute__((overloadable)) __spirv_SubgroupImageMediaBlockWriteINTEL(    \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageMediaBlockWriteINTEL, _img2d_rw_v2i32_i32_i32_##TYPE_ABBR, )(    \
     global Img2d_rw* image, int2 coord, int width, int height, TYPE data)                                           \
 {                                                                                                                   \
     long id = (long)__builtin_astype(image, global void*);                                                            \
@@ -2165,9 +2165,9 @@ uint intel_sub_group_ballot(bool p)
     return __builtin_IB_WaveBallot(p);
 }
 
-uint4 __attribute__((overloadable)) __spirv_BuiltInSubgroupEqMaskKHR(void)
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupEqMaskKHR, , )(void)
 {
-    uint id = __spirv_BuiltInSubgroupLocalInvocationId();
+    uint id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();
     uint4 v = 0;
 
     v.x = 1 << id;
@@ -2175,9 +2175,9 @@ uint4 __attribute__((overloadable)) __spirv_BuiltInSubgroupEqMaskKHR(void)
     return v;
 }
 
-uint4 __attribute__((overloadable)) __spirv_BuiltInSubgroupGeMaskKHR(void)
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupGeMaskKHR, , )(void)
 {
-    uint id = __spirv_BuiltInSubgroupLocalInvocationId();
+    uint id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();
     uint4 v = 0;
 
     v.x = as_uint(as_int(1 << 31) >> (31 - id));
@@ -2185,9 +2185,9 @@ uint4 __attribute__((overloadable)) __spirv_BuiltInSubgroupGeMaskKHR(void)
     return v;
 }
 
-uint4 __attribute__((overloadable)) __spirv_BuiltInSubgroupLeMaskKHR(void)
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLeMaskKHR, , )(void)
 {
-    uint id = __spirv_BuiltInSubgroupLocalInvocationId();
+    uint id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();
     uint4 v = 0;
 
     uint bitIdx = 1 << id;
@@ -2197,18 +2197,18 @@ uint4 __attribute__((overloadable)) __spirv_BuiltInSubgroupLeMaskKHR(void)
     return v;
 }
 
-uint4 __attribute__((overloadable)) __spirv_BuiltInSubgroupGtMaskKHR(void)
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupGtMaskKHR, , )(void)
 {
     uint4 v = 0;
 
-    v.x = ~__spirv_BuiltInSubgroupLeMaskKHR().x;
+    v.x = ~SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLeMaskKHR, , )().x;
 
     return v;
 }
 
-uint4 __attribute__((overloadable)) __spirv_BuiltInSubgroupLtMaskKHR(void)
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLtMaskKHR, , )(void)
 {
-    uint id = __spirv_BuiltInSubgroupLocalInvocationId();
+    uint id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();
     uint4 v = 0;
 
     v.x = (1 << id) - 1;
@@ -2226,9 +2226,9 @@ uint4 __builtin_spirv_OpSubgroupBallotKHR_i1(bool Predicate)
 uint __builtin_spirv_OpSubgroupFirstInvocationKHR_i32(uint Value)
 {
     uint chanEnable = __builtin_IB_WaveBallot(true);
-    uint firstActive = __spirv_ocl_ctz(as_int(chanEnable));
+    uint firstActive = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(chanEnable));
     int3 id = (int3)(firstActive, 0, 0);
-    return __spirv_GroupBroadcast(Subgroup, as_int(Value), id);
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i32, )(Subgroup, as_int(Value), id);
 }
 
 float __builtin_spirv_OpSubgroupFirstInvocationKHR_f32(float Value)
@@ -2237,7 +2237,7 @@ float __builtin_spirv_OpSubgroupFirstInvocationKHR_f32(float Value)
 }
 
 #if defined(cl_khr_subgroup_ballot)
-char __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Execution, char Value, uint Id)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_i8_i32, )(int Execution, char Value, uint Id)
 {
     if (Execution == Subgroup)
     {
@@ -2245,11 +2245,11 @@ char __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Executio
     }
     else
     {
-        return __spirv_GroupBroadcast(Execution, Value, as_int(Id));
+        return SPIRV_BUILTIN(GroupBroadcast, _i32_i8_i32, )(Execution, Value, as_int(Id));
     }
 }
 
-short __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Execution, short Value, uint Id)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_i16_i32, )(int Execution, short Value, uint Id)
 {
     if (Execution == Subgroup)
     {
@@ -2261,11 +2261,11 @@ short __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Executi
     }
     else
     {
-        return __spirv_GroupBroadcast(Execution, Value, as_int(Id));
+        return SPIRV_BUILTIN(GroupBroadcast, _i32_i16_i32, )(Execution, Value, as_int(Id));
     }
 }
 
-int __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Execution, int Value, uint Id)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_i32_i32, )(int Execution, int Value, uint Id)
 {
     if (Execution == Subgroup)
     {
@@ -2273,11 +2273,11 @@ int __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Execution
     }
     else
     {
-        return __spirv_GroupBroadcast(Execution, Value, as_int(Id));
+        return SPIRV_BUILTIN(GroupBroadcast, _i32_i32_i32, )(Execution, Value, as_int(Id));
     }
 }
 
-long __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Execution, long Value, uint Id)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_i64_i32, )(int Execution, long Value, uint Id)
 {
     if (Execution == Subgroup)
     {
@@ -2285,12 +2285,12 @@ long __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Executio
     }
     else
     {
-        return __spirv_GroupBroadcast(Execution, Value, as_int(Id));
+        return SPIRV_BUILTIN(GroupBroadcast, _i32_i64_i32, )(Execution, Value, as_int(Id));
     }
 }
 
 #if defined(cl_khr_fp16)
-half __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Execution, half Value, uint Id)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_f16_i32, )(int Execution, half Value, uint Id)
 {
     if (Execution == Subgroup)
     {
@@ -2298,12 +2298,12 @@ half __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Executio
     }
     else
     {
-        return __spirv_GroupBroadcast(Execution, Value, as_int(Id));
+        return SPIRV_BUILTIN(GroupBroadcast, _i32_f16_i32, )(Execution, Value, as_int(Id));
     }
 }
 #endif // defined(cl_khr_fp16)
 
-float __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Execution, float Value, uint Id)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_f32_i32, )(int Execution, float Value, uint Id)
 {
     if (Execution == Subgroup)
     {
@@ -2311,12 +2311,12 @@ float __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Executi
     }
     else
     {
-        return __spirv_GroupBroadcast(Execution, Value, as_int(Id));
+        return SPIRV_BUILTIN(GroupBroadcast, _i32_f32_i32, )(Execution, Value, as_int(Id));
     }
 }
 
 #if defined(cl_khr_fp64)
-double __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Execution, double Value, uint Id)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_f64_i32, )(int Execution, double Value, uint Id)
 {
     if (Execution == Subgroup)
     {
@@ -2328,7 +2328,7 @@ double __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Execut
     }
     else
     {
-        return __spirv_GroupBroadcast(Execution, Value, as_int(Id));
+        return SPIRV_BUILTIN(GroupBroadcast, _i32_f64_i32, )(Execution, Value, as_int(Id));
     }
 }
 #endif // defined(cl_khr_fp64)
@@ -2337,11 +2337,11 @@ double __attribute__((overloadable)) __spirv_GroupNonUniformBroadcast(int Execut
     GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformBroadcast, __vargtype, int, __vargtype, uint, i32, __abbrvargtype, i32)
 
 #define DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE, TYPE_ABBR)                                                                      \
-TYPE __attribute__((overloadable)) __spirv_GroupNonUniformBroadcastFirst(int Execution, TYPE Value)           \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcastFirst, _i32_##TYPE_ABBR, )(int Execution, TYPE Value)           \
 {                                                                                                                             \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                                                      \
-    int firstActive = __spirv_ocl_ctz(as_int(activeChannels));                                                 \
-    return __spirv_GroupNonUniformBroadcast(Execution, Value, as_uint(firstActive));         \
+    int firstActive = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                                                 \
+    return SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_##TYPE_ABBR##_i32, )(Execution, Value, as_uint(firstActive));         \
 }
 
 #define DEFN_NON_UNIFORM_BROADCAST(TYPE, TYPE_ABBR)             \
@@ -2365,7 +2365,7 @@ DEFN_NON_UNIFORM_BROADCAST(double, f64)
 DEFN_NON_UNIFORM_BROADCAST(half,   f16)
 #endif // defined(cl_khr_fp16)
 
-uint4 __attribute__((overloadable)) __spirv_GroupNonUniformBallot(int Execution, bool Predicate)
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallot, _i32_i1, )(int Execution, bool Predicate)
 {
     uint4 v = 0;
     if (Execution == Subgroup)
@@ -2375,7 +2375,7 @@ uint4 __attribute__((overloadable)) __spirv_GroupNonUniformBallot(int Execution,
     return v;
 }
 
-bool __attribute__((overloadable)) __spirv_GroupNonUniformInverseBallot(int Execution, uint4 Value)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformInverseBallot, _i32_v4i32, )(int Execution, uint4 Value)
 {
     if (Execution == Subgroup)
     {
@@ -2384,7 +2384,7 @@ bool __attribute__((overloadable)) __spirv_GroupNonUniformInverseBallot(int Exec
     return false;
 }
 
-bool __attribute__((overloadable)) __spirv_GroupNonUniformBallotBitExtract(int Execution, uint4 Value, uint Index)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallotBitExtract, _i32_v4i32_i32, )(int Execution, uint4 Value, uint Index)
 {
     if (Execution == Subgroup)
     {
@@ -2393,13 +2393,13 @@ bool __attribute__((overloadable)) __spirv_GroupNonUniformBallotBitExtract(int E
     return false;
 }
 
-uint __attribute__((overloadable)) __spirv_GroupNonUniformBallotBitCount(int Execution, int Operation, uint4 Value)
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallotBitCount, _i32_i32_v4i32, )(int Execution, int Operation, uint4 Value)
 {
     uint result = 0;
     if (Execution == Subgroup)
     {
-        uint sgsize = __spirv_BuiltInSubgroupMaxSize();
-        uint sglid = __spirv_BuiltInSubgroupLocalInvocationId();
+        uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();
+        uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();
         uint consideredBits = Value.x << (32 - sgsize);
         // intended fallthrough in the switch statement
         switch (Operation)
@@ -2409,56 +2409,56 @@ uint __attribute__((overloadable)) __spirv_GroupNonUniformBallotBitCount(int Exe
             case GroupOperationInclusiveScan:
                 consideredBits <<= ((sgsize - 1) - sglid);
             case GroupOperationReduce:
-                result = __spirv_ocl_popcount(as_int(consideredBits));
+                result = SPIRV_OCL_BUILTIN(popcount, _i32, )(as_int(consideredBits));
                 break;
         }
     }
     return result;
 }
 
-uint __attribute__((overloadable)) __spirv_GroupNonUniformBallotFindLSB(int Execution, uint4 Value)
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallotFindLSB, _i32_v4i32, )(int Execution, uint4 Value)
 {
     if (Execution == Subgroup)
     {
-        return __spirv_ocl_ctz(as_int(Value.x));
+        return SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(Value.x));
     }
     return 0;
 }
 
-uint __attribute__((overloadable)) __spirv_GroupNonUniformBallotFindMSB(int Execution, uint4 Value)
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallotFindMSB, _i32_v4i32, )(int Execution, uint4 Value)
 {
     if (Execution == Subgroup)
     {
-        uint sgsize = __spirv_BuiltInSubgroupMaxSize();
+        uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();
         uint consideredBits = Value.x << (32 - sgsize);
-        return (sgsize - 1) - __spirv_ocl_clz((int)consideredBits);
+        return (sgsize - 1) - SPIRV_OCL_BUILTIN(clz, _i32, )((int)consideredBits);
     }
     return 0;
 }
 
-uint4 __attribute__((overloadable)) __spirv_BuiltInSubgroupEqMask(void)
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupEqMask, , )(void)
 {
-    return __spirv_BuiltInSubgroupEqMaskKHR();
+    return SPIRV_BUILTIN_NO_OP(BuiltInSubgroupEqMaskKHR, , )();
 }
 
-uint4 __attribute__((overloadable)) __spirv_BuiltInSubgroupGeMask(void)
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupGeMask, , )(void)
 {
-    return __spirv_BuiltInSubgroupGeMaskKHR();
+    return SPIRV_BUILTIN_NO_OP(BuiltInSubgroupGeMaskKHR, , )();
 }
 
-uint4 __attribute__((overloadable)) __spirv_BuiltInSubgroupGtMask(void)
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupGtMask, , )(void)
 {
-    return __spirv_BuiltInSubgroupGtMaskKHR();
+    return SPIRV_BUILTIN_NO_OP(BuiltInSubgroupGtMaskKHR, , )();
 }
 
-uint4 __attribute__((overloadable)) __spirv_BuiltInSubgroupLeMask(void)
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLeMask, , )(void)
 {
-    return __spirv_BuiltInSubgroupLeMaskKHR();
+    return SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLeMaskKHR, , )();
 }
 
-uint4 __attribute__((overloadable)) __spirv_BuiltInSubgroupLtMask(void)
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLtMask, , )(void)
 {
-    return __spirv_BuiltInSubgroupLtMaskKHR();
+    return SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLtMaskKHR, , )();
 }
 #endif // defined(cl_khr_subgroup_ballot)
 
@@ -2497,9 +2497,9 @@ type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                  
 {                                                                                                                                           \
     if(BIF_FLAG_CTRL_GET(PlatformType) == IGFX_PVC)                                                                                         \
     {                                                                                                                                       \
-        type sg_x = __spirv_Group##func(Subgroup, GroupOperationReduce, X); /* 1 step */                     \
+        type sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, X); /* 1 step */                     \
         /* number of values to reduce */                                                                                                    \
-        uint values_num = __spirv_BuiltInNumSubgroups();                                                                   \
+        uint values_num = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                                                   \
                                                                                                                                             \
         /* In case we have only one small wg - return the ready value quick */                                                              \
         if(values_num == 1) {                                                                                                               \
@@ -2507,14 +2507,14 @@ type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                  
         }                                                                                                                                   \
         else {                                                                                                                              \
             GET_SAFE_MEMPOOL_PTR(scratch, type, true, 0)                                                                                    \
-            uint sg_id = __spirv_BuiltInSubgroupId();                                                                      \
-            uint sg_lid = __spirv_BuiltInSubgroupLocalInvocationId();                                                      \
-            uint sg_size = __spirv_BuiltInSubgroupMaxSize();                                                               \
+            uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                                      \
+            uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                                      \
+            uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();                                                               \
                                                                                                                                             \
             if (sg_lid == 0) {                                                                                                              \
                 scratch[sg_id] = sg_x;                                                                                                      \
             }                                                                                                                               \
-            __spirv_ControlBarrier(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                  \
+            SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                  \
                                                                                                                                             \
             if(sg_id == 0)                                                                                                                  \
             {                                                                                                                               \
@@ -2544,44 +2544,44 @@ type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                  
                 }                                                                                                                           \
                 /* SIMD8 is not available on PVC */                                                                                         \
                                                                                                                                             \
-                sg_x = __spirv_Group##func(Subgroup, GroupOperationReduce, reduce);                          \
+                sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, reduce);                          \
                 if (sg_lid == 0) {                                                                                                          \
                     scratch[0] = sg_x;                                                                                                      \
                 }                                                                                                                           \
             }                                                                                                                               \
-            __spirv_ControlBarrier(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                  \
+            SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                  \
             return scratch[0];                                                                                                              \
         }                                                                                                                                   \
     }                                                                                                                                       \
     else                                                                                                                                    \
     {                                                                                                                                       \
-        type sg_x = __spirv_Group##func(Subgroup, GroupOperationReduce, X);                                  \
+        type sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, X);                                  \
         GET_SAFE_MEMPOOL_PTR(scratch, type, true, 0)                                                                                        \
-        uint sg_id = __spirv_BuiltInSubgroupId();                                                                          \
-        uint num_sg = __spirv_BuiltInNumSubgroups();                                                                       \
-        uint sg_lid = __spirv_BuiltInSubgroupLocalInvocationId();                                                          \
-        uint sg_size = __spirv_BuiltInSubgroupSize();                                                                      \
-        uint sg_max_size = __spirv_BuiltInSubgroupMaxSize();                                                               \
+        uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                                          \
+        uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                                                       \
+        uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                                          \
+        uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                                                      \
+        uint sg_max_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();                                                               \
                                                                                                                                             \
         if (sg_lid == 0) {                                                                                                                  \
             scratch[sg_id] = sg_x;                                                                                                          \
         }                                                                                                                                   \
-        __spirv_ControlBarrier(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                      \
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                      \
                                                                                                                                             \
         uint global_id = sg_id * sg_max_size + sg_lid;                                                                                      \
         uint values_num = num_sg;                                                                                                           \
         while(values_num > sg_max_size) {                                                                                                   \
             uint max_id = ((values_num + sg_max_size - 1) / sg_max_size) * sg_max_size;                                                     \
             type value = global_id < values_num ? scratch[global_id] : identity;                                                            \
-            __spirv_ControlBarrier(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                  \
+            SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                  \
             if (global_id < max_id) {                                                                                                       \
-                sg_x = __spirv_Group##func(Subgroup, GroupOperationReduce, value);                           \
+                sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value);                           \
                 if (sg_lid == 0) {                                                                                                          \
                     scratch[sg_id] = sg_x;                                                                                                  \
                 }                                                                                                                           \
             }                                                                                                                               \
             values_num = max_id / sg_max_size;                                                                                              \
-            __spirv_ControlBarrier(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                  \
+            SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                  \
         }                                                                                                                                   \
                                                                                                                                             \
         type result;                                                                                                                        \
@@ -2593,7 +2593,7 @@ type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                  
             result = sg_aggregate;                                                                                                          \
         } else {                                                                                                                            \
             type value = sg_lid < values_num ? scratch[sg_lid] : identity;                                                                  \
-            result = __spirv_Group##func(Subgroup, GroupOperationReduce, value);                             \
+            result = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value);                             \
         }                                                                                                                                   \
         return result;                                                                                                                      \
     }                                                                                                                                       \
@@ -2603,18 +2603,18 @@ type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                  
 #define DEFN_WORK_GROUP_SCAN_INCL(func, type_abbr, type, op)                                                    \
 type __builtin_IB_WorkGroupScanInclusive_##func##_##type_abbr(type X)                                           \
 {                                                                                                               \
-    type sg_x = __spirv_Group##func(Subgroup, GroupOperationInclusiveScan, X);   \
+    type sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationInclusiveScan, X);   \
                                                                                                                 \
     GET_SAFE_MEMPOOL_PTR(scratch, type, true, 0)                                                                \
-    uint sg_id = __spirv_BuiltInSubgroupId();                                                  \
-    uint num_sg = __spirv_BuiltInNumSubgroups();                                               \
-    uint sg_lid = __spirv_BuiltInSubgroupLocalInvocationId();                                  \
-    uint sg_size = __spirv_BuiltInSubgroupSize();                                              \
+    uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                  \
+    uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                               \
+    uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                  \
+    uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                              \
                                                                                                                 \
     if (sg_lid == sg_size - 1) {                                                                                \
         scratch[sg_id] = sg_x;                                                                                  \
     }                                                                                                           \
-    __spirv_ControlBarrier(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
                                                                                                                 \
     type sg_prefix;                                                                                             \
     type sg_aggregate = scratch[0];                                                                             \
@@ -2639,13 +2639,13 @@ type __builtin_IB_WorkGroupScanInclusive_##func##_##type_abbr(type X)           
 #define DEFN_WORK_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                                          \
 type __builtin_IB_WorkGroupScanExclusive_##func##_##type_abbr(type X)                                           \
 {                                                                                                               \
-    type carry = __spirv_Group##func(Subgroup, GroupOperationInclusiveScan, X);  \
+    type carry = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationInclusiveScan, X);  \
                                                                                                                 \
     GET_SAFE_MEMPOOL_PTR(scratch, type, true, 0)                                                                \
-    uint sg_id = __spirv_BuiltInSubgroupId();                                                  \
-    uint num_sg = __spirv_BuiltInNumSubgroups();                                               \
-    uint sg_lid = __spirv_BuiltInSubgroupLocalInvocationId();                                  \
-    uint sg_size = __spirv_BuiltInSubgroupSize();                                              \
+    uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                  \
+    uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                               \
+    uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                  \
+    uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                              \
                                                                                                                 \
     type sg_x = intel_sub_group_shuffle_up((type)identity, carry, 1);                                           \
     if (sg_lid == 0) {                                                                                          \
@@ -2655,7 +2655,7 @@ type __builtin_IB_WorkGroupScanExclusive_##func##_##type_abbr(type X)           
     if (sg_lid == sg_size - 1) {                                                                                \
         scratch[sg_id] = carry;                                                                                 \
     }                                                                                                           \
-    __spirv_ControlBarrier(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
                                                                                                                 \
     type sg_prefix;                                                                                             \
     type sg_aggregate = scratch[0];                                                                             \
@@ -2679,7 +2679,7 @@ type __builtin_IB_WorkGroupScanExclusive_##func##_##type_abbr(type X)           
 #define DEFN_SUB_GROUP_REDUCE(func, type_abbr, type, op, identity, signed_cast)                         \
 type __builtin_IB_SubGroupReduce_##func##_##type_abbr(type X)                                           \
 {                                                                                                       \
-    uint sgsize = __spirv_BuiltInSubgroupSize();                                       \
+    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                       \
     if(sgsize == 8)                                                                                     \
     {                                                                                                   \
         X = op(intel_sub_group_shuffle( X, 0 ),                                                         \
@@ -2747,8 +2747,8 @@ type __builtin_IB_SubGroupReduce_##func##_##type_abbr(type X)                   
     }                                                                                                   \
     else                                                                                                \
     {                                                                                                   \
-        uint sglid = __spirv_BuiltInSubgroupLocalInvocationId();                       \
-        uint sgMaxSize = __spirv_BuiltInSubgroupMaxSize();                             \
+        uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                       \
+        uint sgMaxSize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();                             \
                                                                                                         \
         for (uint i = 1; i < sgMaxSize; i <<= 1) {                                                      \
             type shuffle = intel_sub_group_shuffle_up((type)identity, X, i);                            \
@@ -2759,13 +2759,13 @@ type __builtin_IB_SubGroupReduce_##func##_##type_abbr(type X)                   
     }                                                                                                   \
     int3 vec3;                                                                                          \
     vec3.s0 = 0;                                                                                        \
-    return __spirv_GroupBroadcast(Subgroup, signed_cast(X), vec3 );  \
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_##type_abbr##_v3i32, )(Subgroup, signed_cast(X), vec3 );  \
 }
 
 #define DEFN_SUB_GROUP_SCAN_INCL(func, type_abbr, type, op, identity)                    \
 type __builtin_IB_SubGroupScanInclusive_##func##_##type_abbr(type X)                     \
 {                                                                                        \
-    uint sgsize = __spirv_BuiltInSubgroupSize();                        \
+    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                        \
     uint offset = 1;                                                                     \
     while( offset < sgsize )                                                             \
     {                                                                                    \
@@ -2779,7 +2779,7 @@ type __builtin_IB_SubGroupScanInclusive_##func##_##type_abbr(type X)            
 #define DEFN_SUB_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                    \
 type __builtin_IB_SubGroupScanExclusive_##func##_##type_abbr(type X)                     \
 {                                                                                        \
-    uint sgsize = __spirv_BuiltInSubgroupSize();                        \
+    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                        \
     X = intel_sub_group_shuffle_up( (type)identity, X, 1 );                              \
     uint offset = 1;                                                                     \
     while( offset < sgsize )                                                             \
@@ -2801,7 +2801,7 @@ DEFN_WORK_GROUP_REDUCE(func, type_abbr, type, op, identity)                     
 DEFN_WORK_GROUP_SCAN_INCL(func, type_abbr, type, op)                                              \
 DEFN_WORK_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                                    \
                                                                                                   \
-type  __attribute__((overloadable)) __spirv_Group##func(int Execution, int Operation, type X) \
+type  SPIRV_OVERLOADABLE SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(int Execution, int Operation, type X) \
 {                                                                                                 \
     if (Execution == Workgroup)                                                                   \
     {                                                                                             \
@@ -2860,39 +2860,39 @@ type  __attribute__((overloadable)) __spirv_Group##func(int Execution, int Opera
                                                                                                            \
 type __builtin_IB_WorkGroupReduce_WI0_##func##_##type_abbr(type X)                                         \
 {                                                                                                          \
-    type sg_x = __spirv_Group##func(Subgroup, GroupOperationReduce, X);     \
+    type sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, X);     \
     GET_SAFE_MEMPOOL_PTR(scratch, type, true, 0)                                                           \
-    uint sg_id = __spirv_BuiltInSubgroupId();                                             \
-    uint num_sg = __spirv_BuiltInNumSubgroups();                                          \
-    uint sg_lid = __spirv_BuiltInSubgroupLocalInvocationId();                             \
-    uint sg_size = __spirv_BuiltInSubgroupSize();                                         \
-    uint sg_max_size = __spirv_BuiltInSubgroupMaxSize();                                  \
+    uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                             \
+    uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                          \
+    uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                             \
+    uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                         \
+    uint sg_max_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();                                  \
                                                                                                            \
     if (sg_lid == 0) {                                                                                     \
         scratch[sg_id] = sg_x;                                                                             \
     }                                                                                                      \
-    __spirv_ControlBarrier(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
                                                                                                            \
     uint global_id = sg_id * sg_max_size + sg_lid;                                                         \
     uint values_num = num_sg;                                                                              \
     while(values_num > sg_max_size) {                                                                      \
         uint max_id = ((values_num + sg_max_size - 1) / sg_max_size) * sg_max_size;                        \
         type value = global_id < values_num ? scratch[global_id] : identity;                               \
-        __spirv_ControlBarrier(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
         if (global_id < max_id) {                                                                          \
-            sg_x = __spirv_Group##func(Subgroup, GroupOperationReduce, value);\
+            sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value);\
             if (sg_lid == 0) {                                                                             \
                 scratch[sg_id] = sg_x;                                                                     \
             }                                                                                              \
         }                                                                                                  \
         values_num = max_id / sg_max_size;                                                                 \
-        __spirv_ControlBarrier(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
     }                                                                                                      \
                                                                                                            \
     type result;                                                                                           \
     if (sg_id == 0) {                                                                                      \
         type value = sg_lid < values_num ? scratch[sg_lid] : identity;                                     \
-        result = __spirv_Group##func(Subgroup, GroupOperationReduce, value); \
+        result = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value); \
     }                                                                                                      \
     return result;                                                                                         \
 }
@@ -2914,33 +2914,33 @@ DEFN_UNIFORM_GROUP_FUNC(FAdd, float,  Float, f32, __intel_add, 0)
 DEFN_UNIFORM_GROUP_FUNC(FAdd, double, Float, f64, __intel_add, 0)
 #endif
 // ---- Min ----
-DEFN_UNIFORM_GROUP_FUNC(FMin, half,   Float, f16, __spirv_ocl_fmin, INFINITY)
-DEFN_UNIFORM_GROUP_FUNC(FMin, float,  Float, f32, __spirv_ocl_fmin, INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMin, half,   Float, f16, SPIRV_OCL_BUILTIN(fmin, _f16_f16, ), INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMin, float,  Float, f32, SPIRV_OCL_BUILTIN(fmin, _f32_f32, ), INFINITY)
 #if defined(cl_khr_fp64)
-DEFN_UNIFORM_GROUP_FUNC(FMin, double, Float, f64, __spirv_ocl_fmin, INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMin, double, Float, f64, SPIRV_OCL_BUILTIN(fmin, _f64_f64, ), INFINITY)
 #endif
-DEFN_UNIFORM_GROUP_FUNC(SMin, char,   Int, i8,  __spirv_ocl_s_min,   CHAR_MAX)
-DEFN_UNIFORM_GROUP_FUNC(SMin, short,  Int, i16, __spirv_ocl_s_min, SHRT_MAX)
-DEFN_UNIFORM_GROUP_FUNC(SMin, int,    Int, i32, __spirv_ocl_s_min, INT_MAX)
-DEFN_UNIFORM_GROUP_FUNC(SMin, long,   Int, i64, __spirv_ocl_s_min, LONG_MAX)
-DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, char,  Int,  i8, __spirv_ocl_u_min,   UCHAR_MAX)
-DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, short, Int, i16, __spirv_ocl_u_min, USHRT_MAX)
-DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, int,   Int, i32, __spirv_ocl_u_min, UINT_MAX)
-DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, long,  Int, i64, __spirv_ocl_u_min, ULONG_MAX)
+DEFN_UNIFORM_GROUP_FUNC(SMin, char,   Int, i8,  SPIRV_OCL_BUILTIN(s_min, _i8_i8, ),   CHAR_MAX)
+DEFN_UNIFORM_GROUP_FUNC(SMin, short,  Int, i16, SPIRV_OCL_BUILTIN(s_min, _i16_i16, ), SHRT_MAX)
+DEFN_UNIFORM_GROUP_FUNC(SMin, int,    Int, i32, SPIRV_OCL_BUILTIN(s_min, _i32_i32, ), INT_MAX)
+DEFN_UNIFORM_GROUP_FUNC(SMin, long,   Int, i64, SPIRV_OCL_BUILTIN(s_min, _i64_i64, ), LONG_MAX)
+DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, char,  Int,  i8, SPIRV_OCL_BUILTIN(u_min, _i8_i8, ),   UCHAR_MAX)
+DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, short, Int, i16, SPIRV_OCL_BUILTIN(u_min, _i16_i16, ), USHRT_MAX)
+DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, int,   Int, i32, SPIRV_OCL_BUILTIN(u_min, _i32_i32, ), UINT_MAX)
+DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, long,  Int, i64, SPIRV_OCL_BUILTIN(u_min, _i64_i64, ), ULONG_MAX)
 // ---- Max ----
-DEFN_UNIFORM_GROUP_FUNC(FMax, half,   Float, f16, __spirv_ocl_fmax, -INFINITY)
-DEFN_UNIFORM_GROUP_FUNC(FMax, float,  Float, f32, __spirv_ocl_fmax, -INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMax, half,   Float, f16, SPIRV_OCL_BUILTIN(fmax, _f16_f16, ), -INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMax, float,  Float, f32, SPIRV_OCL_BUILTIN(fmax, _f32_f32, ), -INFINITY)
 #if defined(cl_khr_fp64)
-DEFN_UNIFORM_GROUP_FUNC(FMax, double, Float, f64, __spirv_ocl_fmax, -INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMax, double, Float, f64, SPIRV_OCL_BUILTIN(fmax, _f64_f64, ), -INFINITY)
 #endif
-DEFN_UNIFORM_GROUP_FUNC(SMax, char,  Int, i8,  __spirv_ocl_s_max,   CHAR_MIN)
-DEFN_UNIFORM_GROUP_FUNC(SMax, short, Int, i16, __spirv_ocl_s_max, SHRT_MIN)
-DEFN_UNIFORM_GROUP_FUNC(SMax, int,   Int, i32, __spirv_ocl_s_max, INT_MIN)
-DEFN_UNIFORM_GROUP_FUNC(SMax, long,  Int, i64, __spirv_ocl_s_max, LONG_MIN)
-DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, char,  Int, i8,  __spirv_ocl_u_max,   0)
-DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, short, Int, i16, __spirv_ocl_u_max, 0)
-DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, int,   Int, i32, __spirv_ocl_u_max, 0)
-DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, long,  Int, i64, __spirv_ocl_u_max, 0)
+DEFN_UNIFORM_GROUP_FUNC(SMax, char,  Int, i8,  SPIRV_OCL_BUILTIN(s_max, _i8_i8, ),   CHAR_MIN)
+DEFN_UNIFORM_GROUP_FUNC(SMax, short, Int, i16, SPIRV_OCL_BUILTIN(s_max, _i16_i16, ), SHRT_MIN)
+DEFN_UNIFORM_GROUP_FUNC(SMax, int,   Int, i32, SPIRV_OCL_BUILTIN(s_max, _i32_i32, ), INT_MIN)
+DEFN_UNIFORM_GROUP_FUNC(SMax, long,  Int, i64, SPIRV_OCL_BUILTIN(s_max, _i64_i64, ), LONG_MIN)
+DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, char,  Int, i8,  SPIRV_OCL_BUILTIN(u_max, _i8_i8, ),   0)
+DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, short, Int, i16, SPIRV_OCL_BUILTIN(u_max, _i16_i16, ), 0)
+DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, int,   Int, i32, SPIRV_OCL_BUILTIN(u_max, _i32_i32, ), 0)
+DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, long,  Int, i64, SPIRV_OCL_BUILTIN(u_max, _i64_i64, ), 0)
 // ---- Mul ----
 DEFN_UNIFORM_GROUP_FUNC(IMulKHR, char,   Int,   i8,  __intel_mul, 1)
 DEFN_UNIFORM_GROUP_FUNC(IMulKHR, short,  Int,   i16, __intel_mul, 1)
@@ -2976,12 +2976,12 @@ DEFN_UNIFORM_GROUP_FUNC(LogicalXorKHR, bool, Int, i1, __intel_xor, 0)
 #define DEFN_SUB_GROUP_REDUCE_NON_UNIFORM(type, type_abbr, op, identity, X, signed_cast)                 \
 {                                                                                                        \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                                 \
-    uint firstActive = __spirv_ocl_ctz(as_int(activeChannels));                           \
+    uint firstActive = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                           \
                                                                                                          \
     type result = identity;                                                                              \
     while (activeChannels)                                                                               \
     {                                                                                                    \
-        uint activeId = __spirv_ocl_ctz(as_int(activeChannels));                          \
+        uint activeId = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                          \
                                                                                                          \
         type value = intel_sub_group_shuffle(X, activeId);                                               \
         result = op(value, result);                                                                      \
@@ -2992,19 +2992,19 @@ DEFN_UNIFORM_GROUP_FUNC(LogicalXorKHR, bool, Int, i1, __intel_xor, 0)
                                                                                                          \
     int3 vec3;                                                                                           \
     vec3.s0 = firstActive;                                                                               \
-    X = __spirv_GroupBroadcast(Subgroup, signed_cast(result), vec3);  \
+    X = SPIRV_BUILTIN(GroupBroadcast, _i32_##type_abbr##_v3i32, )(Subgroup, signed_cast(result), vec3);  \
 }
 
 #define DEFN_SUB_GROUP_SCAN_INCL_NON_UNIFORM(type, type_abbr, op, identity, X)                      \
 {                                                                                                   \
-    uint sglid = __spirv_BuiltInSubgroupLocalInvocationId();                       \
+    uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                       \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                            \
-    uint activeId = __spirv_ocl_ctz(as_int(activeChannels));                         \
+    uint activeId = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                         \
     activeChannels ^= 1 << activeId;                                                                \
     while (activeChannels)                                                                          \
     {                                                                                               \
         type value = intel_sub_group_shuffle(X, activeId);                                          \
-        activeId = __spirv_ocl_ctz(as_int(activeChannels));                          \
+        activeId = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                          \
         if (sglid == activeId)                                                                      \
             X = op(value, X);                                                                       \
         activeChannels ^= 1 << activeId;                                                            \
@@ -3013,12 +3013,12 @@ DEFN_UNIFORM_GROUP_FUNC(LogicalXorKHR, bool, Int, i1, __intel_xor, 0)
 
 #define DEFN_SUB_GROUP_SCAN_EXCL_NON_UNIFORM(type, type_abbr, op, identity, X)                       \
 {                                                                                                    \
-    uint sglid = __spirv_BuiltInSubgroupLocalInvocationId();                        \
+    uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                        \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                             \
     type result = identity;                                                                          \
     while (activeChannels)                                                                           \
     {                                                                                                \
-        uint activeId = __spirv_ocl_ctz(as_int(activeChannels));                      \
+        uint activeId = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                      \
         if (sglid == activeId)                                                                       \
         {                                                                                            \
             type value = X;                                                                          \
@@ -3041,7 +3041,7 @@ DEFN_UNIFORM_GROUP_FUNC(LogicalXorKHR, bool, Int, i1, __intel_xor, 0)
             activeChannels &= activeChannels - 1;                                                         \
         }                                                                                                 \
         clusterBallot ^= activeChannels;                                                                  \
-        uint active = __spirv_GroupNonUniformInverseBallot(Subgroup, clusterBallot); \
+        uint active = SPIRV_BUILTIN(GroupNonUniformInverseBallot, _i32_v4i32, )(Subgroup, clusterBallot); \
         if (active)                                                                                       \
         {                                                                                                 \
             DEFN_SUB_GROUP_REDUCE_NON_UNIFORM(type, type_abbr, op, identity, X, signed_cast)              \
@@ -3072,7 +3072,7 @@ DEFN_UNIFORM_GROUP_FUNC(LogicalXorKHR, bool, Int, i1, __intel_xor, 0)
 
 // ClusterSize is an optional parameter
 #define DEFN_NON_UNIFORM_GROUP_FUNC_BASE(func, type, type_gen, type_abbr, op, identity, signed_cast)                                 \
-type  __attribute__((overloadable)) __spirv_GroupNonUniform##func(int Execution, int Operation, type X, uint ClusterSize) \
+type  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniform##func, _i32_i32_##type_abbr##_i32, )(int Execution, int Operation, type X, uint ClusterSize) \
 {                                                                                                                                    \
     if (Execution == Subgroup)                                                                                                       \
     {                                                                                                                                \
@@ -3106,9 +3106,9 @@ type  __attribute__((overloadable)) __spirv_GroupNonUniform##func(int Execution,
         return 0;                                                                                                                    \
     }                                                                                                                                \
 }                                                                                                                                    \
-type  __attribute__((overloadable)) __spirv_GroupNonUniform##func(int Execution, int Operation, type X)          \
+type  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniform##func, _i32_i32_##type_abbr, )(int Execution, int Operation, type X)          \
 {                                                                                                                                    \
-    return __spirv_GroupNonUniform##func(Execution, Operation, X, 0);                           \
+    return SPIRV_BUILTIN(GroupNonUniform##func, _i32_i32_##type_abbr##_i32, )(Execution, Operation, X, 0);                           \
 }
 
 #define DEFN_NON_UNIFORM_GROUP_FUNC(func, type, type_gen, type_abbr, op, identity) \
@@ -3131,37 +3131,37 @@ DEFN_NON_UNIFORM_GROUP_FUNC(FAdd, half,   Float, f16, __intel_add, 0)
 #endif // defined(cl_khr_fp16)
 
 // OpGroupNonUniformSMin, OpGroupNonUniformUMin, OpGroupNonUniformFMin
-DEFN_NON_UNIFORM_GROUP_FUNC(SMin, char,   Int,   i8,  __spirv_ocl_s_min,   CHAR_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMin, short,  Int,   i16, __spirv_ocl_s_min, SHRT_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMin, int,    Int,   i32, __spirv_ocl_s_min, INT_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMin, long,   Int,   i64, __spirv_ocl_s_min, LONG_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMin, float,  Float, f32, __spirv_ocl_fmin,  INFINITY)
-DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, char,  Int, i8,  __spirv_ocl_u_min,   UCHAR_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, short, Int, i16, __spirv_ocl_u_min, USHRT_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, int,   Int, i32, __spirv_ocl_u_min, UINT_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, long,  Int, i64, __spirv_ocl_u_min, ULONG_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMin, char,   Int,   i8,  SPIRV_OCL_BUILTIN(s_min, _i8_i8, ),   CHAR_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMin, short,  Int,   i16, SPIRV_OCL_BUILTIN(s_min, _i16_i16, ), SHRT_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMin, int,    Int,   i32, SPIRV_OCL_BUILTIN(s_min, _i32_i32, ), INT_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMin, long,   Int,   i64, SPIRV_OCL_BUILTIN(s_min, _i64_i64, ), LONG_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMin, float,  Float, f32, SPIRV_OCL_BUILTIN(fmin, _f32_f32, ),  INFINITY)
+DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, char,  Int, i8,  SPIRV_OCL_BUILTIN(u_min, _i8_i8, ),   UCHAR_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, short, Int, i16, SPIRV_OCL_BUILTIN(u_min, _i16_i16, ), USHRT_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, int,   Int, i32, SPIRV_OCL_BUILTIN(u_min, _i32_i32, ), UINT_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMin, long,  Int, i64, SPIRV_OCL_BUILTIN(u_min, _i64_i64, ), ULONG_MAX)
 #if defined(cl_khr_fp64)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMin, double, Float, f64, __spirv_ocl_fmin,  INFINITY)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMin, double, Float, f64, SPIRV_OCL_BUILTIN(fmin, _f64_f64, ),  INFINITY)
 #endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMin, half,   Float, f16, __spirv_ocl_fmin,  INFINITY)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMin, half,   Float, f16, SPIRV_OCL_BUILTIN(fmin, _f16_f16, ),  INFINITY)
 #endif // defined(cl_khr_fp16)
 
 // OpGroupNonUniformSMax, OpGroupNonUniformUMax, OpGroupNonUniformFMax
-DEFN_NON_UNIFORM_GROUP_FUNC(SMax, char,   Int,   i8,  __spirv_ocl_s_max,   CHAR_MIN)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMax, short,  Int,   i16, __spirv_ocl_s_max, SHRT_MIN)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMax, int,    Int,   i32, __spirv_ocl_s_max, INT_MIN)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMax, long,   Int,   i64, __spirv_ocl_s_max, LONG_MIN)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMax, float,  Float, f32, __spirv_ocl_fmax, -INFINITY)
-DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, char,  Int, i8,  __spirv_ocl_u_max,   0)
-DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, short, Int, i16, __spirv_ocl_u_max, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, int,   Int, i32, __spirv_ocl_u_max, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, long,  Int, i64, __spirv_ocl_u_max, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, char,   Int,   i8,  SPIRV_OCL_BUILTIN(s_max, _i8_i8, ),   CHAR_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, short,  Int,   i16, SPIRV_OCL_BUILTIN(s_max, _i16_i16, ), SHRT_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, int,    Int,   i32, SPIRV_OCL_BUILTIN(s_max, _i32_i32, ), INT_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, long,   Int,   i64, SPIRV_OCL_BUILTIN(s_max, _i64_i64, ), LONG_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMax, float,  Float, f32, SPIRV_OCL_BUILTIN(fmax, _f32_f32, ), -INFINITY)
+DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, char,  Int, i8,  SPIRV_OCL_BUILTIN(u_max, _i8_i8, ),   0)
+DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, short, Int, i16, SPIRV_OCL_BUILTIN(u_max, _i16_i16, ), 0)
+DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, int,   Int, i32, SPIRV_OCL_BUILTIN(u_max, _i32_i32, ), 0)
+DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, long,  Int, i64, SPIRV_OCL_BUILTIN(u_max, _i64_i64, ), 0)
 #if defined(cl_khr_fp64)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMax, double, Float, f64, __spirv_ocl_fmax, -INFINITY)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMax, double, Float, f64, SPIRV_OCL_BUILTIN(fmax, _f64_f64, ), -INFINITY)
 #endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMax, half,   Float, f16, __spirv_ocl_fmax, -INFINITY)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMax, half,   Float, f16, SPIRV_OCL_BUILTIN(fmax, _f16_f16, ), -INFINITY)
 #endif // defined(cl_khr_fp16)
 
 // OpGroupNonUniformIMul, OpGroupNonUniformFMul
@@ -3200,7 +3200,7 @@ DEFN_NON_UNIFORM_GROUP_FUNC(LogicalXor, bool, Int, i1, __intel_xor, 0)
 #endif // defined(cl_khr_subgroup_non_uniform_arithmetic) || defined(cl_khr_subgroup_clustered_reduce)
 
 #if defined(cl_khr_subgroup_shuffle)
-char __attribute__((overloadable)) __spirv_GroupNonUniformShuffle(int Execution, char x, uint c)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_i8_i32, )(int Execution, char x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3209,7 +3209,7 @@ char __attribute__((overloadable)) __spirv_GroupNonUniformShuffle(int Execution,
     return 0;
 }
 
-short __attribute__((overloadable)) __spirv_GroupNonUniformShuffle(int Execution, short x, uint c)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_i16_i32, )(int Execution, short x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3218,7 +3218,7 @@ short __attribute__((overloadable)) __spirv_GroupNonUniformShuffle(int Execution
     return 0;
 }
 
-int __attribute__((overloadable)) __spirv_GroupNonUniformShuffle(int Execution, int x, uint c)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_i32_i32, )(int Execution, int x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3227,7 +3227,7 @@ int __attribute__((overloadable)) __spirv_GroupNonUniformShuffle(int Execution, 
     return 0;
 }
 
-long __attribute__((overloadable)) __spirv_GroupNonUniformShuffle(int Execution, long x, uint c)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_i64_i32, )(int Execution, long x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3239,7 +3239,7 @@ long __attribute__((overloadable)) __spirv_GroupNonUniformShuffle(int Execution,
     return 0;
 }
 
-float __attribute__((overloadable)) __spirv_GroupNonUniformShuffle(int Execution, float x, uint c)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_f32_i32, )(int Execution, float x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3249,7 +3249,7 @@ float __attribute__((overloadable)) __spirv_GroupNonUniformShuffle(int Execution
 }
 
 #if defined(cl_khr_fp64)
-double __attribute__((overloadable)) __spirv_GroupNonUniformShuffle(int Execution, double x, uint c)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_f64_i32, )(int Execution, double x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3264,7 +3264,7 @@ double __attribute__((overloadable)) __spirv_GroupNonUniformShuffle(int Executio
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
-half __attribute__((overloadable)) __spirv_GroupNonUniformShuffle(int Execution, half x, uint c)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_f16_i32, )(int Execution, half x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3291,10 +3291,10 @@ GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffle, half,   int, h
 #endif // defined(cl_khr_fp16)
 
 #define DEFN_SUB_GROUP_SHUFFLE_XOR(TYPE, TYPE_ABBR)                                                             \
-TYPE __attribute__((overloadable)) __spirv_GroupNonUniformShuffleXor(int Execution, TYPE x, uint c)  \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleXor, _i32_##TYPE_ABBR##_i32, )(int Execution, TYPE x, uint c)  \
 {                                                                                                               \
     c = get_sub_group_local_id() ^ c;                                                                           \
-    return __spirv_GroupNonUniformShuffle(Execution, x, c);                    \
+    return SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_##TYPE_ABBR##_i32, )(Execution, x, c);                    \
 }                                                                                                               \
 GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffleXor, TYPE, int, TYPE, uint, i32, TYPE_ABBR, i32)
 
@@ -3314,7 +3314,7 @@ DEFN_SUB_GROUP_SHUFFLE_XOR(half,   f16)
 
 #if defined(cl_khr_subgroup_shuffle_relative)
 // Shuffle down functions
-char __attribute__((overloadable)) __spirv_GroupNonUniformShuffleDown(int Execution, char x, uint c)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_i8_i32, )(int Execution, char x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3327,7 +3327,7 @@ char __attribute__((overloadable)) __spirv_GroupNonUniformShuffleDown(int Execut
     return 0;
 }
 
-short __attribute__((overloadable)) __spirv_GroupNonUniformShuffleDown(int Execution, short x, uint c)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_i16_i32, )(int Execution, short x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3340,7 +3340,7 @@ short __attribute__((overloadable)) __spirv_GroupNonUniformShuffleDown(int Execu
     return 0;
 }
 
-int __attribute__((overloadable)) __spirv_GroupNonUniformShuffleDown(int Execution, int x, uint c)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_i32_i32, )(int Execution, int x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3353,7 +3353,7 @@ int __attribute__((overloadable)) __spirv_GroupNonUniformShuffleDown(int Executi
     return 0;
 }
 
-long __attribute__((overloadable)) __spirv_GroupNonUniformShuffleDown(int Execution, long x, uint c)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_i64_i32, )(int Execution, long x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3369,7 +3369,7 @@ long __attribute__((overloadable)) __spirv_GroupNonUniformShuffleDown(int Execut
     return 0;
 }
 
-float __attribute__((overloadable)) __spirv_GroupNonUniformShuffleDown(int Execution, float x, uint c)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_f32_i32, )(int Execution, float x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3383,7 +3383,7 @@ float __attribute__((overloadable)) __spirv_GroupNonUniformShuffleDown(int Execu
 }
 
 #if defined(cl_khr_fp64)
-double __attribute__((overloadable)) __spirv_GroupNonUniformShuffleDown(int Execution, double x, uint c)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_f64_i32, )(int Execution, double x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3401,7 +3401,7 @@ double __attribute__((overloadable)) __spirv_GroupNonUniformShuffleDown(int Exec
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
-half __attribute__((overloadable)) __spirv_GroupNonUniformShuffleDown(int Execution, half x, uint c)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_f16_i32, )(int Execution, half x, uint c)
 {
     if (Execution == Subgroup)
     {
@@ -3430,7 +3430,7 @@ GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_SVS(GroupNonUniformShuffleDown, half,   in
 
 // Shuffle up functions
 #define DEFN_NON_UNIFORM_SHUFFLE_UP(TYPE, TYPE_ABBR)                                                                        \
-TYPE __attribute__((overloadable)) __spirv_GroupNonUniformShuffleUp(int Execution, TYPE x, uint c)    \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleUp, _i32_##TYPE_ABBR##_i32, )(int Execution, TYPE x, uint c)    \
 {                                                                                                                           \
     if (Execution == Subgroup)                                                                                              \
     {                                                                                                                       \

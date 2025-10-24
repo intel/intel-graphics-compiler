@@ -21,7 +21,7 @@ static INLINE float __intel_sin_f32( float x, bool doFast )
 {
     if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)) && doFast)
     {
-        return __spirv_ocl_native_sin(x);
+        return SPIRV_OCL_BUILTIN(native_sin, _f32, )(x);
     }
     else
     {
@@ -31,7 +31,7 @@ static INLINE float __intel_sin_f32( float x, bool doFast )
         }
         else
         {
-            float abs_float = __spirv_ocl_fabs(x);
+            float abs_float = SPIRV_OCL_BUILTIN(fabs, _f32, )(x);
             if( abs_float > 10000.0f )
             {
                 return libclc_sin_f32(x);
@@ -44,7 +44,7 @@ static INLINE float __intel_sin_f32( float x, bool doFast )
     }
 }
 
-INLINE float __attribute__((overloadable)) __spirv_ocl_sin( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sin, _f32, )( float x )
 {
     return __intel_sin_f32(x, true);
 }
@@ -53,7 +53,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sin, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_sin( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sin, _f64, )( double x )
 {
     return __ocl_svml_sin(x);
 }
@@ -64,9 +64,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sin, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_sin( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sin, _f16, )( half x )
 {
-    return (half)__spirv_ocl_sin((float)x);
+    return (half)SPIRV_OCL_BUILTIN(sin, _f32, )((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sin, half, half, f16 )

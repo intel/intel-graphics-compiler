@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/log1p_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-INLINE float __attribute__((overloadable)) __spirv_ocl_log1p( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log1p, _f32, )( float x )
 {
     return __ocl_svml_log1pf(x);
 }
@@ -23,7 +23,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log1p, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_log1p( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log1p, _f64, )( double x )
 {
     return __ocl_svml_log1p(x);
 }
@@ -34,9 +34,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log1p, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_log1p( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log1p, _f16, )( half x )
 {
-    return __spirv_ocl_log1p((float)x);
+    return SPIRV_OCL_BUILTIN(log1p, _f32, )((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log1p, half, half, f16 )

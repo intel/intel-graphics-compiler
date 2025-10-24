@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 // instead.
 #define FLOAT_PI                (as_float(0x40490FDA)) // 3.1415926535897930f
 
-float __attribute__((overloadable)) __spirv_ocl_atan2( float y, float x )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(atan2, _f32_f32, )( float y, float x )
 {
     // atan2(y,x) =  atan(y/x)        if  any y, x > 0    atan_yx
     //            =  atan(y/x) + pi   if y >= 0, x < 0    atan_yx + pi
@@ -47,11 +47,11 @@ float __attribute__((overloadable)) __spirv_ocl_atan2( float y, float x )
         // y = -1, x = -0;    -1.570796370506287;    -1.5707963267948966;    2.78e-08
         // y =  1, x =  0;     1.570796370506287;     1.5707963267948966;    2.78e-08
         // y =  1, x = -0;     1.570796370506287;     1.5707963267948966;    2.78e-08
-        float px = __spirv_ocl_atan(y / x);
-        float c = (x >= 0.0f) ? 0.0f : __spirv_ocl_copysign(M_PI_F, x * px);
+        float px = SPIRV_OCL_BUILTIN(atan, _f32, )(y / x);
+        float c = (x >= 0.0f) ? 0.0f : SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(M_PI_F, x * px);
         result = px + c;
-        result = (0.0f == x) ? result = __spirv_ocl_copysign(result, y) : result;
-        result = (0.0f == y) ? result = __spirv_ocl_copysign(result, -x * y) : result;
+        result = (0.0f == x) ? result = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(result, y) : result;
+        result = (0.0f == y) ? result = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(result, -x * y) : result;
     }
     else
     {
@@ -60,14 +60,14 @@ float __attribute__((overloadable)) __spirv_ocl_atan2( float y, float x )
         if( __intel_relaxed_isnan(x) |
             __intel_relaxed_isnan(y) )
         {
-            result = __spirv_ocl_nan(0);
+            result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
         }
         else
         {
-            float signy = __spirv_ocl_copysign(1.0f, y);
+            float signy = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(1.0f, y);
             if( y == 0.0f )
             {
-                float signx = __spirv_ocl_copysign(1.0f, x);
+                float signx = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(1.0f, x);
                 float px = signy * 0.0f;
                 float nx = signy * FLOAT_PI;
                 // In this case, we need to compare signx against
@@ -88,8 +88,8 @@ float __attribute__((overloadable)) __spirv_ocl_atan2( float y, float x )
             }
             else
             {
-                float px = __spirv_ocl_atan( y / x );
-                float nx = __spirv_ocl_mad( signy, FLOAT_PI, px );
+                float px = SPIRV_OCL_BUILTIN(atan, _f32, )( y / x );
+                float nx = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )( signy, FLOAT_PI, px );
                 result = ( x > 0.0f ) ? px : nx;
             }
         }
@@ -102,7 +102,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, float, float, float, f
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_atan2( double y, double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(atan2, _f64_f64, )( double y, double x )
 {
     return __ocl_svml_atan2(y, x);
 }
@@ -113,21 +113,21 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, double, double, double
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_atan2( half y, half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(atan2, _f16_f16, )( half y, half x )
 {
     half result;
 
     if( __intel_relaxed_isnan((float)x) |
         __intel_relaxed_isnan((float)y) )
     {
-        result = __spirv_ocl_nan(0);
+        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
     }
     else
     {
-        half signy = __spirv_ocl_copysign((half)(1.0), y);
+        half signy = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )((half)(1.0), y);
         if( y == 0.0f )
         {
-            half signx = __spirv_ocl_copysign((half)(1.0), x);
+            half signx = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )((half)(1.0), x);
             half px = signy * 0.0f;
             half nx = signy * FLOAT_PI;
             // In this case, we need to compare signx against
@@ -148,8 +148,8 @@ INLINE half __attribute__((overloadable)) __spirv_ocl_atan2( half y, half x )
         }
         else
         {
-            half px = __spirv_ocl_atan( (float)y / (float)x );
-            half nx = __spirv_ocl_mad( (float)signy, FLOAT_PI, (float)px );
+            half px = SPIRV_OCL_BUILTIN(atan, _f32, )( (float)y / (float)x );
+            half nx = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )( (float)signy, FLOAT_PI, (float)px );
             result = ( x > 0.0f ) ? px : nx;
         }
     }

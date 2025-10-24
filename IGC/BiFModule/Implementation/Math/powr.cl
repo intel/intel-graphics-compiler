@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/powr_d_la_noLUT.cl"
 #endif // defined(cl_khr_fp64)
 
-INLINE float __attribute__((overloadable)) __spirv_ocl_powr( float x, float y )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(powr, _f32_f32, )( float x, float y )
 {
     if(BIF_FLAG_CTRL_GET(FastRelaxedMath))
     {
@@ -37,11 +37,11 @@ INLINE float __attribute__((overloadable)) __spirv_ocl_powr( float x, float y )
         // log-mul-exp into pow.  Additionally, there are some specific
         // LLVM optimizations for pow.  So, preferring pow for now.
 #if 0
-        pr = __spirv_ocl_log2( pr );
+        pr = SPIRV_OCL_BUILTIN(log2, _f32, )( pr );
         pr = y * pr;
-        pr = __spirv_ocl_exp2( pr );
+        pr = SPIRV_OCL_BUILTIN(exp2, _f32, )( pr );
 #else
-        pr = __spirv_ocl_native_powr( pr, y );
+        pr = SPIRV_OCL_BUILTIN(native_powr, _f32_f32, )( pr, y );
 #endif
 
         // For powr(), we're guaranteed that x >= 0, so no need for
@@ -59,7 +59,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( powr, float, float, float, f3
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_powr( double x, double y )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(powr, _f64_f64, )( double x, double y )
 {
     double result;
     if (BIF_FLAG_CTRL_GET(UseHighAccuracyMath)) {
@@ -76,9 +76,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( powr, double, double, double,
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_powr( half x, half y )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(powr, _f16_f16, )( half x, half y )
 {
-    return __spirv_ocl_powr((float)x, (float)y);
+    return SPIRV_OCL_BUILTIN(powr, _f32_f32, )((float)x, (float)y);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( powr, half, half, half, f16, f16 )

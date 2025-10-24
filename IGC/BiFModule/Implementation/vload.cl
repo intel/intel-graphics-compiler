@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 
 static OVERLOADABLE float __intel_spirv_half2float(short h)
 {
-    return __spirv_FConvert_Rfloat(as_half(h));
+    return SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(as_half(h));
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_NO_MANG(__intel_spirv_half2float, float, short)
@@ -27,8 +27,9 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_NO_MANG(__intel_spirv_half2float, float, short)
 //*****************************************************************************/
 
 #define VLOADN_DEF(addressSpace, scalarType, numElements, offsetType, mangle)                                \
-INLINE scalarType##numElements __attribute__((overloadable)) __spirv_ocl_vloadn_R##scalarType##numElements   \
-    (offsetType offset, addressSpace scalarType * p, int n) {                                                \
+INLINE scalarType##numElements SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(                                         \
+    vload, numElements##_##mangle##_i32, n_R##scalarType##numElements)(offsetType offset,                    \
+                                                                 addressSpace scalarType * p, int n) {       \
     const addressSpace scalarType *pOffset = p + offset * numElements;                                       \
     scalarType##numElements ret;                                                                             \
     __builtin_IB_memcpy_##addressSpace##_to_private((private uchar *)&ret, (addressSpace uchar *)pOffset,    \
@@ -75,7 +76,7 @@ VLOADN_TYPE(double, f64)
 
 // "When extended by the cl_khr_fp16 extension, the generic type gentypen is extended to include half"
 #define VLOADN_SCALAR_HALF_DEF(addressSpace, offsetType, mangle)                                 \
-INLINE half __attribute__((overloadable)) __spirv_ocl_vloadn_Rhalf(               \
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vload, _##mangle##_i32, n_Rhalf)(               \
     offsetType offset, addressSpace half * p, int n) {                                           \
   const addressSpace half *pOffset = p + offset;                                                 \
   half ret;                                                                                      \
@@ -102,11 +103,11 @@ VLOADN_SCALAR_HALF_AS(generic,  p4)
 //*****************************************************************************/
 
 #define VLOAD_HALF(addressSpace, ASNUM)                                                                                \
-INLINE float __attribute__((overloadable)) __spirv_ocl_vload_half_Rfloat(long offset,                \
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vload_half, _i64_p##ASNUM##f16, _Rfloat)(long offset,                \
                                                                                            addressSpace half *p) {     \
     return __intel_spirv_half2float(as_short(*(p + offset)));                                                          \
 }                                                                                                                      \
-INLINE float __attribute__((overloadable)) __spirv_ocl_vload_half_Rfloat(int offset,                 \
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vload_half, _i32_p##ASNUM##f16, _Rfloat)(int offset,                 \
                                                                                            addressSpace half *p) {     \
     return __intel_spirv_half2float(as_short(*(p + offset)));                                                          \
 }
@@ -126,9 +127,11 @@ VLOAD_HALF(__generic,  4)
 //*****************************************************************************/
 
 #define VLOAD_HALFX_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, numElements)                                                  \
-INLINE float##numElements __attribute__((overloadable)) __spirv_ocl_vload_halfn_Rfloat##numElements                            \
-    (SIZETYPE offset, addressSpace half * p, int n) {                                                                          \
-    return __intel_spirv_half2float(__spirv_ocl_vloadn_Rshort##numElements(offset, (addressSpace short *)p, numElements));     \
+INLINE float##numElements SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(                                                                \
+    vload_half, numElements##_##MANGSIZE##_p##ASNUM##f16_i32, n_Rfloat##numElements)(SIZETYPE offset,                          \
+                                                                                 addressSpace half * p, int n) {               \
+    return __intel_spirv_half2float(SPIRV_OCL_BUILTIN(vload, numElements##_##MANGSIZE##_p##ASNUM##i16_i32,                     \
+                                                      n_Rshort##numElements)(offset, (addressSpace short *)p, numElements));   \
 }
 
 #define VLOAD_HALFX_AS(addressSpace, ASNUM)           \
@@ -157,8 +160,9 @@ VLOAD_HALFX_AS(__generic,  4)
 //*****************************************************************************/
 
 #define VLOADA_HALFX_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, step, numElements)                              \
-INLINE float##numElements __attribute__((overloadable)) __spirv_vloada_halfn_Rfloat##numElements                  \
-    (SIZETYPE offset, addressSpace half * p, int n) {                                                             \
+INLINE float##numElements SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(                                                   \
+    vloada_half, numElements##_##MANGSIZE##_p##ASNUM##f16_i32, n_Rfloat##numElements)(SIZETYPE offset,            \
+                                                                                  addressSpace half * p, int n) { \
     const addressSpace short##numElements *pHalf = (const addressSpace short##numElements *)(p + offset * step);  \
     return __intel_spirv_half2float(*pHalf);                                                                      \
 }

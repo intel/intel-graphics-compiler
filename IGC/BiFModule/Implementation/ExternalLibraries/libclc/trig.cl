@@ -65,8 +65,8 @@ float2 __libclc__sincosf_piby4(float x)
     float x2 = x * x;
 
     float2 ret;
-    ret.x = __spirv_ocl_mad(x*x2, __spirv_ocl_mad(x2, __spirv_ocl_mad(x2, __spirv_ocl_mad(x2, sc4, sc3), sc2), sc1), x);
-    ret.y = __spirv_ocl_mad(x2*x2, __spirv_ocl_mad(x2, __spirv_ocl_mad(x2, __spirv_ocl_mad(x2, cc4, cc3), cc2), cc1), __spirv_ocl_mad(x2, -0.5f, 1.0f));
+    ret.x = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(x*x2, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(x2, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(x2, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(x2, sc4, sc3), sc2), sc1), x);
+    ret.y = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(x2*x2, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(x2, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(x2, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(x2, cc4, cc3), cc2), cc1), SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(x2, -0.5f, 1.0f));
     return ret;
 }
 
@@ -87,8 +87,8 @@ float __clc_sinf_piby4(float x, float y) {
 
     float z = x * x;
     float v = z * x;
-    float r = __spirv_ocl_mad(z, __spirv_ocl_mad(z, __spirv_ocl_mad(z, __spirv_ocl_mad(z, c6, c5), c4), c3), c2);
-    float ret = x - __spirv_ocl_mad(v, -c1, __spirv_ocl_mad(z, __spirv_ocl_mad(y, 0.5f, -v*r), -y));
+    float r = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(z, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(z, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(z, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(z, c6, c5), c4), c3), c2);
+    float ret = x - SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(v, -c1, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(z, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(y, 0.5f, -v*r), -y));
 
     return ret;
 }
@@ -108,7 +108,7 @@ float __clc_cosf_piby4(float x, float y) {
     const float c6 = -1.1359647598e-11f; // 0xad47d74e
 
     float z = x * x;
-    float r = z * __spirv_ocl_mad(z, __spirv_ocl_mad(z, __spirv_ocl_mad(z, __spirv_ocl_mad(z, __spirv_ocl_mad(z, c6,  c5), c4), c3), c2), c1);
+    float r = z * SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(z, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(z, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(z, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(z, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(z, c6,  c5), c4), c3), c2), c1);
 
     // if |x| < 0.3
     float qx = 0.0f;
@@ -122,9 +122,9 @@ float __clc_cosf_piby4(float x, float y) {
     // x > 0.78125
     qx = ix > 0x3f480000 ? 0.28125f : qx;
 
-    float hz = __spirv_ocl_mad(z, 0.5f, -qx);
+    float hz = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(z, 0.5f, -qx);
     float a = 1.0f - qx;
-    float ret = a - (hz - __spirv_ocl_mad(z, r, -x*y));
+    float ret = a - (hz - SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(z, r, -x*y));
     return ret;
 }
 
@@ -232,7 +232,7 @@ int __clc_argReductionLargeS(float *r, float *rr, float x)
     p5 = p5 ^ flip;
 
     // Find exponent and shift away leading zeroes and hidden bit
-    xe = __spirv_ocl_clz((int)p7) + 1;
+    xe = SPIRV_OCL_BUILTIN(clz, _i32, )((int)p7) + 1;
     shift = 32 - xe;
     p7 = bitalign(p7, p6, shift);
     p6 = bitalign(p6, p5, shift);
@@ -244,7 +244,7 @@ int __clc_argReductionLargeS(float *r, float *rr, float x)
     p7 = bitalign(p7, p6, 32-23);
 
     // Get 24 more bits of fraction in another float, there are not long strings of zeroes here
-    int xxe = __spirv_ocl_clz((int)p7) + 1;
+    int xxe = SPIRV_OCL_BUILTIN(clz, _i32, )((int)p7) + 1;
     p7 = bitalign(p7, p6, 32-xxe);
     float q0 = as_float(sign | ((127 - (xe + 23 + xxe)) << 23) | (p7 >> 9));
 
@@ -262,13 +262,13 @@ int __clc_argReductionLargeS(float *r, float *rr, float x)
 
     if (HAVE_HW_FMA32()) {
         rh = q1 * pio2h;
-        rt = __spirv_ocl_fma(q0, pio2h, __spirv_ocl_fma(q1, pio2t, __spirv_ocl_fma(q1, pio2h, -rh)));
+        rt = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(q0, pio2h, SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(q1, pio2t, SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(q1, pio2h, -rh)));
     } else {
         float q1h = as_float(as_uint(q1) & 0xfffff000);
         float q1t = q1 - q1h;
         rh = q1 * pio2h;
-        rt = __spirv_ocl_mad(q1t, pio2ht, __spirv_ocl_mad(q1t, pio2hh, __spirv_ocl_mad(q1h, pio2ht, __spirv_ocl_mad(q1h, pio2hh, -rh))));
-        rt = __spirv_ocl_mad(q0, pio2h, __spirv_ocl_mad(q1, pio2t, rt));
+        rt = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(q1t, pio2ht, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(q1t, pio2hh, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(q1h, pio2ht, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(q1h, pio2hh, -rh))));
+        rt = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(q0, pio2h, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(q1, pio2t, rt));
     }
 
     float t = rh + rt;
@@ -284,12 +284,12 @@ void __clc_fullMulS(float *hi, float *lo, float a, float b, float bh, float bt)
     if (HAVE_HW_FMA32()) {
         float ph = a * b;
         *hi = ph;
-        *lo = __spirv_ocl_fma(a, b, -ph);
+        *lo = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(a, b, -ph);
     } else {
         float ah = as_float(as_uint(a) & 0xfffff000U);
         float at = a - ah;
         float ph = a * b;
-        float pt = __spirv_ocl_mad(at, bt, __spirv_ocl_mad(at, bh, __spirv_ocl_mad(ah, bt, __spirv_ocl_mad(ah, bh, -ph))));
+        float pt = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(at, bt, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(at, bh, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(ah, bt, SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(ah, bh, -ph))));
         *hi = ph;
         *lo = pt;
     }
@@ -312,7 +312,7 @@ float __clc_removePi2S(float *hi, float *lo, float x)
 
     const float twobypi = 0x1.45f306p-1f;
 
-    float fnpi2 = __spirv_ocl_trunc(__spirv_ocl_mad(x, twobypi, 0.5f));
+    float fnpi2 = SPIRV_OCL_BUILTIN(trunc, _f32, )(SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(x, twobypi, 0.5f));
 
     // subtract n * pi/2 from x
     float rhead, rtail;
@@ -343,7 +343,7 @@ int __clc_argReductionSmallS(float *r, float *rr, float x)
 
 int __clc_argReductionS(float *r, float *rr, float x)
 {
-    float abs_float = __spirv_ocl_fabs(x);
+    float abs_float = SPIRV_OCL_BUILTIN(fabs, _f32, )(x);
     if (abs_float < 2.0f)
         return __clc_argReductionSmallS(r, rr, x);
     else
@@ -357,23 +357,23 @@ INLINE float libclc_asinh_f32(float x) {
 
     // |x| <= 2
     float t = x * x;
-    float a = __spirv_ocl_mad(t,
-                  __spirv_ocl_mad(t,
-              __spirv_ocl_mad(t,
-                  __spirv_ocl_mad(t, -1.177198915954942694e-4f, -4.162727710583425360e-2f),
+    float a = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(t,
+                  SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(t,
+              SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(t,
+                  SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(t, -1.177198915954942694e-4f, -4.162727710583425360e-2f),
                   -5.063201055468483248e-1f),
               -1.480204186473758321f),
               -1.152965835871758072f);
-    float b = __spirv_ocl_mad(t,
-              __spirv_ocl_mad(t,
-              __spirv_ocl_mad(t,
-              __spirv_ocl_mad(t, 6.284381367285534560e-2f, 1.260024978680227945f),
+    float b = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(t,
+              SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(t,
+              SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(t,
+              SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(t, 6.284381367285534560e-2f, 1.260024978680227945f),
               6.582362487198468066f),
               11.99423176003939087f),
           6.917795026025976739f);
 
     float q = a / b;
-    float z1 = __spirv_ocl_mad(x*t, q, x);
+    float z1 = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(x*t, q, x);
 
     // |x| > 2
 
@@ -385,9 +385,9 @@ INLINE float libclc_asinh_f32(float x) {
 
     float absx = as_float(ax);
     int hi = ax > 0x46000000U;
-    float y = __spirv_ocl_sqrt(absx * absx + 1.0f) + absx;
+    float y = SPIRV_OCL_BUILTIN(sqrt, _f32, )(absx * absx + 1.0f) + absx;
     y = hi ? absx : y;
-    float r = __spirv_ocl_log(y) + (hi ? 0x1.62e430p-1f : 0.0f);
+    float r = SPIRV_OCL_BUILTIN(log, _f32, )(y) + (hi ? 0x1.62e430p-1f : 0.0f);
     float z2 = as_float(xsgn | as_uint(r));
 
     float z = ax <= 0x40000000 ? z1 : z2;
