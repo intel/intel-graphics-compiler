@@ -16,7 +16,7 @@ namespace vISA {
 
 LoopVarSplit::LoopVarSplit(G4_Kernel &k, GraphColor *c,
                            const LivenessAnalysis *liveAnalysis)
-    : kernel(k), coloring(c), references(k) {
+    : kernel(k), coloring(c), references(k), liveness(liveAnalysis) {
   for (auto spill : coloring->getSpilledLiveRanges()) {
     spilledDclSet.insert(spill->getDcl());
   }
@@ -285,6 +285,19 @@ bool LoopVarSplit::split(G4_Declare *dcl, Loop &loop) {
     // in source goto instructions and fix (if) any data structures
     // in VISA that rely on those JIP/UIP.
     if (!loop.preHeader->dominates(loop.getLoopExits().front()))
+      return false;
+  }
+
+  // Split if:
+  // 1. Variable is live-in and live-out of the loop,
+  // 2. Variable is live-in and not live-out, but also not written in the loop.
+  auto *LH = loop.getHeader();
+  auto varId = dcl->getRegVar()->getId();
+  if (!liveness->isLiveAtEntry(LH, varId))
+    return false;
+  if (!dsts.empty()) {
+    auto *LE = loop.getLoopExits().front();
+    if (!liveness->isLiveAtEntry(LE, varId))
       return false;
   }
 

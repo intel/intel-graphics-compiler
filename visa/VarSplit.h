@@ -78,6 +78,7 @@ private:
   GraphColor *coloring = nullptr;
   RPE *rpe = nullptr;
   VarReferences references;
+  const LivenessAnalysis *liveness;
 
   // store set of dcls marked as spill in current RA iteration
   std::unordered_set<G4_Declare *> spilledDclSet;
