@@ -492,8 +492,9 @@ DECLARE_IGC_REGKEY(bool, DisableTypedWriteZeroStoreCheck, false,
                    "if-statement to guarantee a non-zero store)",
                    false)
 DECLARE_IGC_REGKEY(
-    bool, EnableSamplerChannelReturn, true,
-    "Setting this to 1/true adds a compiler switch to enable using header to return selective channels from sampler",
+    DWORD, EnableSamplerChannelReturn, 1,
+    "Setting this to 1/true adds a compiler switch to enable using header to return selective channels from sampler."
+    "Setting this to 2 makes it always use the selected channels, without heuristic.",
     false)
 DECLARE_IGC_REGKEY(bool, EnableThreadCombiningOpt, true,
                    "Enables the thread combining optimization which is used only for Compute Shaders for combining a "

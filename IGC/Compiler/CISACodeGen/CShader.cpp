@@ -1219,8 +1219,8 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value *val, uint32_t &mask) {
         };
         IGC_ASSERT(maskExtract != 0);
         IGC_ASSERT(maskExtract <= 0xf);
-
-        if (selectReturnChannels[maskExtract]) {
+        bool forceEnableSelectedChannels = (IGC_GET_FLAG_VALUE(EnableSamplerChannelReturn) == 2);
+        if (selectReturnChannels[maskExtract] || forceEnableSelectedChannels) {
           mask = maskExtract;
           nbElement = nbExtract;
         } else {
