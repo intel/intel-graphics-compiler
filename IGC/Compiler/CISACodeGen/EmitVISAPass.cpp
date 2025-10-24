@@ -5503,7 +5503,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
 
       bool bAllowLVNMatchingForAnd = true;
       if (isSimd32 && data->GetType() == ISA_TYPE_F) {
-        if (auto *prevInst = dyn_cast<llvm::Instruction>(inst->getPrevNode()))
+        if (auto *prevInst = dyn_cast_or_null<llvm::Instruction>(inst->getPrevNode()))
           if (GetOpCode(prevInst) == EOPCODE::llvm_fadd)
             bAllowLVNMatchingForAnd = false;
       }
