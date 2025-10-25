@@ -10,6 +10,10 @@ if((${LLVM_VERSION_MAJOR} LESS 16))
     return()
 endif()
 
+if (NOT IGC_BUILD__CMLIT_ENABLE)
+    return()
+endif()
+
 if (NOT LLVM_ON_UNIX)
     return()
 endif()
