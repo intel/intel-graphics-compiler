@@ -24,7 +24,7 @@ entry:
 ; CHECK:      mov (M1, 16) svn(0,0)<1> threadIdInGroupX(0,0)<1;1,0>
 
   %nonuniform = zext i16 %svn to i32
-; CHECK:      mov (M1, 16) nonuniform(0,0)<1> svn_0(0,0)<1;1,0>
+; CHECK:      mov (M1, 16) nonuniform(0,0)<1> svn{{.*}}(0,0)<1;1,0>
 
   %NonUniformResource = inttoptr i32 %nonuniform to <4 x float> addrspace(2621440)*
   %offset = add i32 %src1, 1

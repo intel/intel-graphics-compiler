@@ -48,31 +48,31 @@ define void @CSMain(i32 %runtime_value_0, i32 %runtime_value_1, i32 %runtime_val
 ; CHECK: mov (M1, 16) waveAllSrc0(4,0)<1> c(0,0)<1;1,0>
 ; CHECK: mov (M1, 16) waveAllSrc0(6,0)<1> d(0,0)<1;1,0>
 ; move operands (secondHalf) to consecutive GRF space (one-time use space for first reduction layer)
-; CHECK: mov (M5, 16) waveAllSrc0_0(0,0)<1> a_0(0,0)<1;1,0>
-; CHECK: mov (M5, 16) waveAllSrc0_0(2,0)<1> b_0(0,0)<1;1,0>
-; CHECK: mov (M5, 16) waveAllSrc0_0(4,0)<1> c_0(0,0)<1;1,0>
-; CHECK: mov (M5, 16) waveAllSrc0_0(6,0)<1> d_0(0,0)<1;1,0>
+; CHECK: mov (M5, 16) [[T:waveAllSrc0.*]](0,0)<1> a{{.*}}(0,0)<1;1,0>
+; CHECK: mov (M5, 16) [[T]](2,0)<1> b{{.*}}(0,0)<1;1,0>
+; CHECK: mov (M5, 16) [[T]](4,0)<1> c{{.*}}(0,0)<1;1,0>
+; CHECK: mov (M5, 16) [[T]](6,0)<1> d{{.*}}(0,0)<1;1,0>
 
 ; Identity operations + layer 0 (simd-16 reduction of a single variable across 32 lanes)
 ; CHECK: mov (M1_NM, 16) reduceSrc_waveAllSrc0(0,0)<1> 0x0:d
 ; CHECK-NEXT: mov (M1, 16) reduceSrc_waveAllSrc0(0,0)<1> waveAllSrc0(0,0)<1;1,0>
 ; CHECK-NEXT: mov (M5_NM, 16) reduceSrcSecondHalf_waveAllSrc0(0,0)<1> 0x0:d
-; CHECK-NEXT: mov (M5, 16) reduceSrcSecondHalf_waveAllSrc0(0,0)<1> waveAllSrc0_0(0,0)<1;1,0>
+; CHECK-NEXT: mov (M5, 16) reduceSrcSecondHalf_waveAllSrc0(0,0)<1> [[T]](0,0)<1;1,0>
 ; CHECK-NEXT: add (M1_NM, 16) reduceSrc_waveAllSrc0(0,0)<1> reduceSrc_waveAllSrc0(0,0)<1;1,0> reduceSrcSecondHalf_waveAllSrc0(0,0)<1;1,0>
 ; CHECK: mov (M1_NM, 16) reduceSrc_waveAllSrc0(2,0)<1> 0x0:d
 ; CHECK-NEXT: mov (M1, 16) reduceSrc_waveAllSrc0(2,0)<1> waveAllSrc0(2,0)<1;1,0>
 ; CHECK-NEXT: mov (M5_NM, 16) reduceSrcSecondHalf_waveAllSrc0(2,0)<1> 0x0:d
-; CHECK-NEXT: mov (M5, 16) reduceSrcSecondHalf_waveAllSrc0(2,0)<1> waveAllSrc0_0(2,0)<1;1,0>
+; CHECK-NEXT: mov (M5, 16) reduceSrcSecondHalf_waveAllSrc0(2,0)<1> [[T]](2,0)<1;1,0>
 ; CHECK-NEXT: add (M1_NM, 16) reduceSrc_waveAllSrc0(2,0)<1> reduceSrc_waveAllSrc0(2,0)<1;1,0> reduceSrcSecondHalf_waveAllSrc0(2,0)<1;1,0>
 ; CHECK: mov (M1_NM, 16) reduceSrc_waveAllSrc0(4,0)<1> 0x0:d
 ; CHECK-NEXT: mov (M1, 16) reduceSrc_waveAllSrc0(4,0)<1> waveAllSrc0(4,0)<1;1,0>
 ; CHECK-NEXT: mov (M5_NM, 16) reduceSrcSecondHalf_waveAllSrc0(4,0)<1> 0x0:d
-; CHECK-NEXT: mov (M5, 16) reduceSrcSecondHalf_waveAllSrc0(4,0)<1> waveAllSrc0_0(4,0)<1;1,0>
+; CHECK-NEXT: mov (M5, 16) reduceSrcSecondHalf_waveAllSrc0(4,0)<1> [[T]](4,0)<1;1,0>
 ; CHECK-NEXT: add (M1_NM, 16) reduceSrc_waveAllSrc0(4,0)<1> reduceSrc_waveAllSrc0(4,0)<1;1,0> reduceSrcSecondHalf_waveAllSrc0(4,0)<1;1,0>
 ; CHECK: mov (M1_NM, 16) reduceSrc_waveAllSrc0(6,0)<1> 0x0:d
 ; CHECK-NEXT: mov (M1, 16) reduceSrc_waveAllSrc0(6,0)<1> waveAllSrc0(6,0)<1;1,0>
 ; CHECK-NEXT: mov (M5_NM, 16) reduceSrcSecondHalf_waveAllSrc0(6,0)<1> 0x0:d
-; CHECK-NEXT: mov (M5, 16) reduceSrcSecondHalf_waveAllSrc0(6,0)<1> waveAllSrc0_0(6,0)<1;1,0>
+; CHECK-NEXT: mov (M5, 16) reduceSrcSecondHalf_waveAllSrc0(6,0)<1> [[T]](6,0)<1;1,0>
 ; CHECK-NEXT: add (M1_NM, 16) reduceSrc_waveAllSrc0(6,0)<1> reduceSrc_waveAllSrc0(6,0)<1;1,0> reduceSrcSecondHalf_waveAllSrc0(6,0)<1;1,0>
 
 ; Joint Reduction Tree

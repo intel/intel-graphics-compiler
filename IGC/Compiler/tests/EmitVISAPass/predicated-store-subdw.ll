@@ -18,7 +18,7 @@
 ; CHECK: .decl [[OFFSET:.*]] v_type=G type=uw num_elts=2 align=dword alias=<[[OFFSET_ALIAS:.*]], 0>
 ; CHECK: .decl [[DATA:.*]] v_type=G type=uw num_elts=1 align=word alias=<[[DATA_ALIAS:.*]], 0>
 ; CHECK: barrier
-; CHECK: mov (M1, 32) [[LOCAL_IDX:.*]](0,0)<1> localIdX_0(0,0)<1;1,0>
+; CHECK: mov (M1, 32) [[LOCAL_IDX:.*]](0,0)<1> localIdX{{.*}}(0,0)<1;1,0>
 ; CHECK: or (M1, 32) [[LOC_IDYZ:.*]](0,0)<1> localIdY(0,0)<1;1,0> localIdZ(0,0)<1;1,0>
 ; CHECK: cmp.eq (M1, 32) [[F_LOC_IDYZ:.*]] [[LOC_IDYZ]](0,0)<1;1,0> 0x0:w
 ; CHECK: cmp.eq (M1, 32) [[F_LOC_IDX_MATCH:.*]] [[LOCAL_IDX]](0,0)<1;1,0> loc_idx(0,0)<0;1,0>

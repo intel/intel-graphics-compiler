@@ -16,10 +16,10 @@ define spir_kernel void @test(<64 x i32> addrspace(1)* %src, <32 x i64> addrspac
 entry:
   %a = load <64 x i32>, <64 x i32> addrspace(1)* %src
   %b = bitcast <64 x i32> %a to <32 x i64>
-; CHECK: mov (M1_NM, 16) b_0(0,0)<1> a(0,0)<1;1,0>
-; CHECK: mov (M1_NM, 16) b_0(1,0)<1> a(1,0)<1;1,0>
-; CHECK: mov (M1_NM, 16) b_0(2,0)<1> a(2,0)<1;1,0>
-; CHECK: mov (M1_NM, 16) b_0(3,0)<1> a(3,0)<1;1,0>
+; CHECK: mov (M1_NM, 16) [[T:b.*]](0,0)<1> a(0,0)<1;1,0>
+; CHECK: mov (M1_NM, 16) [[T]](1,0)<1> a(1,0)<1;1,0>
+; CHECK: mov (M1_NM, 16) [[T]](2,0)<1> a(2,0)<1;1,0>
+; CHECK: mov (M1_NM, 16) [[T]](3,0)<1> a(3,0)<1;1,0>
   store <32 x i64> %b, <32 x i64> addrspace(2)* %dst
   ret void
 }

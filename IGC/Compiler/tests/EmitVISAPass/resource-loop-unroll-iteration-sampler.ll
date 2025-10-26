@@ -26,7 +26,7 @@ entry:
   %sampler = zext i16 %svn0 to i32
   %NonUniformSampler = inttoptr i32 %sampler to <4 x float> addrspace(2752518)*
 ; CHECK:    mov (M1, 16) svn0(0,0)<1> threadIdInGroupX(0,0)<1;1,0>
-; CHECK:    mov (M1, 16) sampler(0,0)<1> svn0_0(0,0)<1;1,0>
+; CHECK:    mov (M1, 16) sampler(0,0)<1> svn0{{.*}}(0,0)<1;1,0>
 
   %svn1 = extractelement <64 x i32> %src, i32 40
   %texture = add i32 %svn1, 1280
@@ -42,9 +42,9 @@ entry:
 ; CHECK:    mov (M1_NM, 1) V0036(0,0)<1> P7
 ; CHECK:    fbl (M1_NM, 1) V0037(0,0)<1> V0036(0,0)<0;1,0>
 ; CHECK:    shl (M1_NM, 1) V0037(0,0)<1> V0037(0,0)<0;1,0> 0x2:w
-; CHECK:    addr_add (M1_NM, 1) A0(0)<1> &sampler_0 V0038(0,0)<0;1,0>
+; CHECK:    addr_add (M1_NM, 1) A0(0)<1> &[[T:sampler.*]] V0038(0,0)<0;1,0>
 ; CHECK:    mov (M1_NM, 1) V0039(0,0)<1> r[A0(0),0]<0;1,0>:ud
-; CHECK:    cmp.eq (M1, 16) P6 V0039(0,0)<0;1,0> sampler_0(0,0)<1;1,0>
+; CHECK:    cmp.eq (M1, 16) P6 V0039(0,0)<0;1,0> [[T]](0,0)<1;1,0>
 ; CHECK:    movs (M1_NM, 1) S31(0) V0039(0,0)<0;1,0>
 ; CHECK:    movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
 ; CHEKC:    (P6) sample_lz.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0

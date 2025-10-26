@@ -38,9 +38,9 @@ entry:
   %2 = call i8 @llvm.genx.GenISA.ldraw.indexed.i8.p2490368i8(i8 addrspace(2490368)* %1, i32 %0, i32 2, i1 false)
   %3 = add i32 %bufferOffset1, 1
   %4 = inttoptr i32 %bindlessOffset2 to i8 addrspace(2490368)*
-; CHECK: movs (M1_NM, 1) %bss(0) bindlessOffset_0(0,0)<0;1,0>
+; CHECK: movs (M1_NM, 1) %bss(0) bindlessOffset{{.*}}(0,0)<0;1,0>
 ; CHECK: scatter_scaled.1 (M1, 16) %bss 0x0:ud {{.*}} {{.*}}
-; CHECK: movs (M1_NM, 1) %bss(0) bindlessOffset_0(0,0)<0;1,0>
+; CHECK: movs (M1_NM, 1) %bss(0) bindlessOffset{{.*}}(0,0)<0;1,0>
 ; CHECK: scatter_scaled.1 (M5, 16) %bss 0x0:ud {{.*}} {{.*}}
   call void @llvm.genx.GenISA.storeraw.indexed.p2490368i8.i8(i8 addrspace(2490368)* %4, i32 %3, i8 %2, i32 2, i1 false)
   ret void
