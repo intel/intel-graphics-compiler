@@ -2156,10 +2156,9 @@ static void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &
   }
 
   if (ctx->platform.getMinDispatchMode() == SIMDMode::SIMD16) {
-    bool abortOnSpills = IGC_GET_FLAG_VALUE(AllowSIMD16DropForXE2) && ctx->platform.isCoreXE2() &&
+    bool abortOnSpills = IGC_GET_FLAG_VALUE(AllowSIMD16DropForXE2Plus) &&
+                         (ctx->platform.isCoreXE2() || ctx->platform.isCoreXE3()) &&
                          (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32);
-    abortOnSpills |= IGC_GET_FLAG_VALUE(AllowSIMD16DropForXE3) && ctx->platform.isCoreXE3() &&
-                     (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32);
     AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, abortOnSpills);
     AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, false);
     ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);

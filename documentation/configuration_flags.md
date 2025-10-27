@@ -687,8 +687,7 @@ $ export IGC_ShaderDumpEnable=1
 | `AllowEarlySIMD16DropForXE3` | Controls the early drop to simd16 for XE3 | - |
 | `AllowMultipleMulUsesMatchMad` | Enable a multiply instruction with multiple uses to be matched to a mad instruction. This essentially forces the    recalculation of the intermediate multiply result for every potential mad instruction, which will have    performance impacts but may reduce instruction count and register pressure in case both mul operands need to be    live past the add/sub but the intermediate mul result does not. | - |
 | `AllowNonLoopConstantPromotion` | Allows promotion for constants not in loop (e.g. used once) | - |
-| `AllowSIMD16DropForXE2` | Controls the switch for XE2 simd16 drop | - |
-| `AllowSIMD16DropForXE3` | Controls the switch for XE3 simd16 drop | - |
+| `AllowSIMD16DropForXE2Plus` | Controls the switch for XE2 and XE3 simd16 drop | - |
 | `AllowStackCallRetry` | Enable/Disable retry when stack function spill. 0 - Don't allow, 1 - Allow retry on kernel group,                   2 - Allow retry per function | - |
 | `BlockFrequencySampling` | Use block frequencies to derive a distribution | Available |
 | `ByPassAllocaSizeHeuristic` | Force some Alloca to pass the pressure heuristic until the given size | Available |
