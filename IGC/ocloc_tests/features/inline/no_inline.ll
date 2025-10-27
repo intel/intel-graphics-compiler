@@ -35,7 +35,7 @@ define linkonce_odr spir_func void @testInlineFn2(i32 %d) {
 }
 
 define spir_kernel void @testKernel(i32 %a, i32 %b, i32 %c) {
-  call spir_func void @testInlineFn1(i32 %b)
+  call spir_func void @testInlineFn1(i32 %b) #0
   call spir_func void @testInlineFn2(i32 %c)
   ret void
 }

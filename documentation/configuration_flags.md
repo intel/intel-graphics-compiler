@@ -702,7 +702,6 @@ $ export IGC_ShaderDumpEnable=1
 | `ControlInlineTinySizeForSPGT` | Tiny function size for controlling kernel total size | Available |
 | `ControlKernelTotalSize` | Control kernel total size | Available |
 | `ControlUnitSize` | Control compilation unit size by unit trimming | Available |
-| `CrashOnDroppedBBAccess` | Enables crash on access to dropped BBs | Available |
 | `CrashOnDroppedFnAccess` | Enables crash on access to dropped functions | Available |
 | `DelayEmuInt64AddLimit` | Delay emulating Int64 Add operations in vISA | - |
 | `DetectCastToGAS` | Check if the module contains local/private to GAS (Gerneric Address Space) cast, it also check internal flags | Available |

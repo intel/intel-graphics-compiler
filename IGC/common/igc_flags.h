@@ -1330,19 +1330,17 @@ DECLARE_IGC_REGKEY(DWORD, ForceGroupSizeX, 8, "force group size along X", false)
 DECLARE_IGC_REGKEY(DWORD, ForceGroupSizeY, 8, "force group size along Y", false)
 DECLARE_IGC_REGKEY(bool, EnableThreadCombiningWithNoSLM, false, "Enable thread combining opt for shader without SLM",
                    false)
-DECLARE_IGC_REGKEY(bool, DisableInlining, false, "Disable inlining of all functions", true)
-DECLARE_IGC_REGKEY(bool, EnableDropTargetFunctions, false, "Enables pass for dropping targeted functions", true)
+DECLARE_IGC_REGKEY(bool, DisableInlining, false, "Disable inlining of all functions", false)
+DECLARE_IGC_REGKEY(bool, EnableDropTargetFunctions, false, "Enables pass for dropping targeted functions", false)
 DECLARE_IGC_REGKEY(bool, VerboseDropTargetFunctions, false, "Enables verbose logging for dropping targeted functions",
-                   true)
+                   false)
 DECLARE_IGC_REGKEY(bool, CrashOnDroppedFnAccess, false, "Enables crash on access to dropped functions",
                    true)
-DECLARE_IGC_REGKEY(debugString, DropTargetFnListPath, 0, "Path to folder with lists of functions to drop", true)
-DECLARE_IGC_REGKEY(bool, EnableDropTargetBBs, false, "Enables pass for dropping targeted BBs", true)
+DECLARE_IGC_REGKEY(debugString, DropTargetFnListPath, 0, "Path to folder with lists of functions to drop", false)
+DECLARE_IGC_REGKEY(bool, EnableDropTargetBBs, false, "Enables pass for dropping targeted BBs", false)
 DECLARE_IGC_REGKEY(bool, VerboseDropTargetBBs, false, "Enables verbose logging for dropping targeted BBs",
-                   true)
-DECLARE_IGC_REGKEY(bool, CrashOnDroppedBBAccess, false, "Enables crash on access to dropped BBs",
-                   true)
-DECLARE_IGC_REGKEY(debugString, DropTargetBBListPath, 0, "Path to folder with lists of BBs to drop", true)
+                   false)
+DECLARE_IGC_REGKEY(debugString, DropTargetBBListPath, 0, "Path to folder with lists of BBs to drop", false)
 DECLARE_IGC_REGKEY(DWORD, PrintFunctionSizeAnalysis, 0, "Print analysis data of function sizes", true)
 DECLARE_IGC_REGKEY(DWORD, SubroutineThreshold, 110000, "Minimal kernel size to enable subroutines", false)
 DECLARE_IGC_REGKEY(DWORD, SubroutineInlinerThreshold, 3000, "Subroutine inliner threshold", false)

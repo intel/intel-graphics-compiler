@@ -12,6 +12,8 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
+#include <llvm/IR/InstIterator.h>
+#include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -38,5 +40,14 @@ bool DisableInlining::runOnFunction(llvm::Function &F) {
     F.removeFnAttr(llvm::Attribute::AlwaysInline);
   }
   F.addFnAttr(llvm::Attribute::NoInline);
+
+  for (auto &I : llvm::instructions(F)) {
+    if (auto *CI = dyn_cast<CallInst>(&I)) {
+      if (CI->hasFnAttr(llvm::Attribute::AlwaysInline)) {
+        CI->removeFnAttr(llvm::Attribute::AlwaysInline);
+      }
+    }
+  }
+
   return true;
 }
