@@ -70,7 +70,8 @@ static bool hasPHIDifferentAddrSpacesOperands(PHINode *PHI) {
       return false;
     }
   }
-  return AddrSpaces.size() > 1;
+  // Limit to only those PHIs that have LOCAL and other address spaces.
+  return AddrSpaces.size() > 1 && AddrSpaces.contains(IGC::ADDRESS_SPACE_LOCAL);
 }
 
 static bool isPhiUseLowerable(PHINode *PHI) {
