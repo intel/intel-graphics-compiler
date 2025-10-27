@@ -9,18 +9,18 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rsqrt, _f32, )( float x )
+INLINE float __attribute__((overloadable)) __spirv_ocl_rsqrt( float x )
 {
-    return SPIRV_OCL_BUILTIN(native_rsqrt, _f32, )(x);
+    return __spirv_ocl_native_rsqrt(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rsqrt, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rsqrt, _f64, )( double x )
+INLINE double __attribute__((overloadable)) __spirv_ocl_rsqrt( double x )
 {
-    return SPIRV_OCL_BUILTIN(native_rsqrt, _f64, )(x);
+    return __spirv_ocl_native_rsqrt(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rsqrt, double, double, f64 )
@@ -29,9 +29,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rsqrt, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rsqrt, _f16, )( half x )
+INLINE half __attribute__((overloadable)) __spirv_ocl_rsqrt( half x )
 {
-    return SPIRV_OCL_BUILTIN(native_rsqrt, _f16, )(x);
+    return __spirv_ocl_native_rsqrt(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rsqrt, half, half, f16 )

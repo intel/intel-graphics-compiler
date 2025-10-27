@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(hypot, _f32_f32, )( float x, float y )
+float __attribute__((overloadable)) __spirv_ocl_hypot( float x, float y )
 {
     // Note: This isn't well specified, but apparently conformance
     // tests expect the following behavior:
@@ -28,12 +28,12 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(hypot, _f32_f32, )( float x, float y 
     else if( __intel_relaxed_isnan( x ) |
              __intel_relaxed_isnan( y ) )
     {
-        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
+        result = __spirv_ocl_nan(0);
     }
     else
     {
-        x = SPIRV_OCL_BUILTIN(fabs, _f32, )( x );
-        y = SPIRV_OCL_BUILTIN(fabs, _f32, )( y );
+        x = __spirv_ocl_fabs( x );
+        y = __spirv_ocl_fabs( y );
         float maxc = x > y ? x : y;
         float minc = x > y ? y : x;
         if( maxc == 0.0f )
@@ -48,7 +48,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(hypot, _f32_f32, )( float x, float y 
             // a vec2 normalize, we have it a bit easier, since we
             // know the other component is the min component.
             float s = minc / maxc;
-            float t = SPIRV_OCL_BUILTIN(sqrt, _f32, )( SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )( s, s, 1.0f ) );
+            float t = __spirv_ocl_sqrt( __spirv_ocl_mad( s, s, 1.0f ) );
             result = t * maxc;
         }
     }
@@ -60,7 +60,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( hypot, float, float, float, f
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(hypot, _f64_f64, )( double x, double y )
+double __attribute__((overloadable)) __spirv_ocl_hypot( double x, double y )
 {
     // Note: This isn't well specified, but apparently conformance
     // tests expect the following behavior:
@@ -71,19 +71,19 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(hypot, _f64_f64, )( double x, double
 
     // Find the biggest absolute component:
     double2 p = (double2)( x, y );
-    double2 a = SPIRV_OCL_BUILTIN(fabs, _v2f64, )( p );
+    double2 a = __spirv_ocl_fabs( p );
     double maxc = a.x > a.y ? a.x : a.y;
     double minc = a.x > a.y ? a.y : a.x;
 
     double result;
-    if( SPIRV_BUILTIN(IsInf, _f64, )(p.x) |
-        SPIRV_BUILTIN(IsInf, _f64, )(p.y) )
+    if( __spirv_IsInf(p.x) |
+        __spirv_IsInf(p.y) )
     {
         result = INFINITY;
     }
-    else if( SPIRV_BUILTIN(IsNan, _f64, )( minc ) )
+    else if( __spirv_IsNan( minc ) )
     {
-        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
+        result = __spirv_ocl_nan(0);
     }
     else
     {
@@ -91,7 +91,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(hypot, _f64_f64, )( double x, double
         // Compute the length of this scaled vector, then scale
         // back up to compute the actual length.
         double s = minc / maxc;
-        double t = SPIRV_OCL_BUILTIN(sqrt, _f64, )( SPIRV_OCL_BUILTIN(mad, _f64_f64_f64, )( s, s, 1.0 ) );
+        double t = __spirv_ocl_sqrt( __spirv_ocl_mad( s, s, 1.0 ) );
         result = t * maxc;
 
         result = ( maxc == 0.0 ) ? 0.0 : result;
@@ -106,9 +106,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( hypot, double, double, double
 
 #if defined(cl_khr_fp16)
 
-half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(hypot, _f16_f16, )( half x, half y )
+half __attribute__((overloadable)) __spirv_ocl_hypot( half x, half y )
 {
-    return (half)SPIRV_OCL_BUILTIN(hypot, _f32_f32, )((float)x, (float)y);
+    return (half)__spirv_ocl_hypot((float)x, (float)y);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( hypot, half, half, half, f16, f16 )

@@ -15,13 +15,13 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/log2_d_la_noLUT.cl"
 #endif // defined(cl_khr_fp64)
 
-INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log2, _f32, )( float x )
+INLINE float __attribute__((overloadable)) __spirv_ocl_log2( float x )
 {
     float result;
 
     if(BIF_FLAG_CTRL_GET(FastRelaxedMath))
     {
-        result = SPIRV_OCL_BUILTIN(native_log2, _f32, )(x);
+        result = __spirv_ocl_native_log2(x);
     }
     else
     {
@@ -37,7 +37,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log2, float, float, f32 )
 
 #define _M_LOG2_E_DBL   (as_double(0x3ff71547652b82fe)) // 1.4426950408889634073599246
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log2, _f64, )( double x )
+INLINE double __attribute__((overloadable)) __spirv_ocl_log2( double x )
 {
     double result;
     if (BIF_FLAG_CTRL_GET(UseHighAccuracyMath)) {
@@ -54,9 +54,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log2, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log2, _f16, )( half x )
+INLINE half __attribute__((overloadable)) __spirv_ocl_log2( half x )
 {
-    return SPIRV_OCL_BUILTIN(log2, _f32, )((float)x);
+    return __spirv_ocl_log2((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log2, half, half, f16 )

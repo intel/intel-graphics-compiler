@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE int OVERLOADABLE __intel_relaxed_isnan( float x )
 {
-    int result = SPIRV_BUILTIN(IsNan, _f32, )(x);
+    int result = __spirv_IsNan(x);
     // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
     return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 0 : result;
 }
@@ -19,7 +19,7 @@ INLINE int OVERLOADABLE __intel_relaxed_isnan( float x )
 #if defined(cl_khr_fp64)
 INLINE int OVERLOADABLE __intel_relaxed_isnan( double x )
 {
-    int result = SPIRV_BUILTIN(IsNan, _f64, )(x);
+    int result = __spirv_IsNan(x);
     // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
     return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 0 : result;
 }
@@ -27,7 +27,7 @@ INLINE int OVERLOADABLE __intel_relaxed_isnan( double x )
 
 INLINE int OVERLOADABLE __intel_relaxed_isnan( half x )
 {
-    int result = SPIRV_BUILTIN(IsNan, _f16, )(x);
+    int result = __spirv_IsNan(x);
     // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
     return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 0 : result;
 }

@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/pow_d_la_noLUT.cl"
 #endif // defined(cl_khr_fp64)
 
-INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(pow, _f32_f32, )( float x, float y )
+INLINE float __attribute__((overloadable)) __spirv_ocl_pow( float x, float y )
 {
     if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)))
     {
@@ -34,18 +34,18 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(pow, _f32_f32, )( float x, flo
         // in this case.  Since exp2( y * -inf ) is zero for finite y,
         // we'll end up with zero, hence the "correct" results.
 
-        float   pr = SPIRV_OCL_BUILTIN(fabs, _f32, )( x );
+        float   pr = __spirv_ocl_fabs( x );
 
         // TBD: Which is faster?
         // Note that USC has a pattern match optimization to turn
         // log-mul-exp into pow.  Additionally, there are some specific
         // LLVM optimizations for pow.  So, preferring pow for now.
 #if 0
-        pr = SPIRV_OCL_BUILTIN(log2, _f32, )( pr );
+        pr = __spirv_ocl_log2( pr );
         pr = y * pr;
-        pr = SPIRV_OCL_BUILTIN(exp2, _f32, )( pr );
+        pr = __spirv_ocl_exp2( pr );
 #else
-        pr = SPIRV_OCL_BUILTIN(native_powr, _f32_f32, )( pr, y );
+        pr = __spirv_ocl_native_powr( pr, y );
 #endif
 
         // Check for a positive x by checking the sign bit as an integer,
@@ -82,7 +82,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pow, float, float, float, f32
 
 #if defined(cl_khr_fp64)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(pow, _f64_f64, )( double x, double y )
+INLINE double __attribute__((overloadable)) __spirv_ocl_pow( double x, double y )
 {
     double result;
     if (BIF_FLAG_CTRL_GET(UseHighAccuracyMath)) {
@@ -99,9 +99,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pow, double, double, double, 
 
 #if defined(cl_khr_fp16)
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(pow, _f16_f16, )( half x, half y )
+INLINE half __attribute__((overloadable)) __spirv_ocl_pow( half x, half y )
 {
-    return SPIRV_OCL_BUILTIN(pow, _f32_f32, )((float)x, (float)y );
+    return __spirv_ocl_pow((float)x, (float)y );
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pow, half, half, half, f16, f16 )

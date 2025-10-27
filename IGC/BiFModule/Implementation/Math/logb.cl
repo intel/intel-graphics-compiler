@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(logb, _f32, )( float x )
+float __attribute__((overloadable)) __spirv_ocl_logb( float x )
 {
     float result = 0.0f;
 
@@ -19,7 +19,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(logb, _f32, )( float x )
     }
     else if( __intel_relaxed_isnan( x ) )
     {
-        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
+        result = __spirv_ocl_nan(0);
     }
     else if( __intel_relaxed_isinf( x ) )
     {
@@ -42,19 +42,19 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( logb, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(logb, _f64, )( double x )
+double __attribute__((overloadable)) __spirv_ocl_logb( double x )
 {
     double result = 0.0;
 
-    if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
+    if( __spirv_IsNormal( x ) )
     {
         result = ( (as_long(x) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS) - DOUBLE_BIAS;
     }
-    else if( SPIRV_BUILTIN(IsNan, _f64, )( x ) )
+    else if( __spirv_IsNan( x ) )
     {
-        result = SPIRV_OCL_BUILTIN(nan, _i64, )(0);
+        result = __spirv_ocl_nan(0);
     }
-    else if( SPIRV_BUILTIN(IsInf, _f64, )( x ) )
+    else if( __spirv_IsInf( x ) )
     {
         result = INFINITY;
     }
@@ -77,9 +77,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( logb, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(logb, _f16, )( half x )
+INLINE half __attribute__((overloadable)) __spirv_ocl_logb( half x )
 {
-    return (half)SPIRV_OCL_BUILTIN(logb, _f32, )((float)x);
+    return (half)__spirv_ocl_logb((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( logb, half, half, f16 )

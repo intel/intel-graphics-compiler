@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _f32, )(float r ){
+float __attribute__((overloadable)) __spirv_ocl_degrees(float r ){
     return ONE_EIGHTY_OVER_PI_FLT * r;
 }
 
@@ -17,7 +17,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( degrees, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _f64, )(double r ){
+double __attribute__((overloadable)) __spirv_ocl_degrees(double r ){
     return ONE_EIGHTY_OVER_PI_DBL * r;
 }
 
@@ -27,7 +27,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( degrees, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _f16, )(half r ){
+half __attribute__((overloadable)) __spirv_ocl_degrees(half r ){
     return ONE_EIGHTY_OVER_PI_HLF * r;
 }
 

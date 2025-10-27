@@ -9,44 +9,44 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_clamp, _i8_i8_i8, )( char x, char minval, char maxval )
+INLINE char __attribute__((overloadable)) __spirv_ocl_s_clamp( char x, char minval, char maxval )
 {
-    return SPIRV_OCL_BUILTIN(s_min, _i8_i8, )(SPIRV_OCL_BUILTIN(s_max, _i8_i8, )(x, minval), maxval);
+    return __spirv_ocl_s_min(__spirv_ocl_s_max(x, minval), maxval);
 }
 
-INLINE uchar SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_clamp, _i8_i8_i8, )( uchar x, uchar minval, uchar maxval )
+INLINE uchar __attribute__((overloadable)) __spirv_ocl_u_clamp( uchar x, uchar minval, uchar maxval )
 {
-    return SPIRV_OCL_BUILTIN(u_min, _i8_i8, )(SPIRV_OCL_BUILTIN(u_max, _i8_i8, )(x, minval), maxval);
+    return __spirv_ocl_u_min(__spirv_ocl_u_max(x, minval), maxval);
 }
 
-INLINE short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_clamp, _i16_i16_i16, )( short x, short minval, short maxval )
+INLINE short __attribute__((overloadable)) __spirv_ocl_s_clamp( short x, short minval, short maxval )
 {
-    return SPIRV_OCL_BUILTIN(s_min, _i16_i16, )(SPIRV_OCL_BUILTIN(s_max, _i16_i16, )(x, minval), maxval);
+    return __spirv_ocl_s_min(__spirv_ocl_s_max(x, minval), maxval);
 }
 
-INLINE ushort SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_clamp, _i16_i16_i16, )( ushort x, ushort minval, ushort maxval )
+INLINE ushort __attribute__((overloadable)) __spirv_ocl_u_clamp( ushort x, ushort minval, ushort maxval )
 {
-    return SPIRV_OCL_BUILTIN(u_min, _i16_i16, )(SPIRV_OCL_BUILTIN(u_max, _i16_i16, )(x, minval), maxval);
+    return __spirv_ocl_u_min(__spirv_ocl_u_max(x, minval), maxval);
 }
 
-INLINE int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_clamp, _i32_i32_i32, )( int x, int minval, int maxval )
+INLINE int __attribute__((overloadable)) __spirv_ocl_s_clamp( int x, int minval, int maxval )
 {
-    return SPIRV_OCL_BUILTIN(s_min, _i32_i32, )(SPIRV_OCL_BUILTIN(s_max, _i32_i32, )(x, minval), maxval);
+    return __spirv_ocl_s_min(__spirv_ocl_s_max(x, minval), maxval);
 }
 
-INLINE uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_clamp, _i32_i32_i32, )( uint x, uint minval, uint maxval )
+INLINE uint __attribute__((overloadable)) __spirv_ocl_u_clamp( uint x, uint minval, uint maxval )
 {
-    return SPIRV_OCL_BUILTIN(u_min, _i32_i32, )(SPIRV_OCL_BUILTIN(u_max, _i32_i32, )(x, minval), maxval);
+    return __spirv_ocl_u_min(__spirv_ocl_u_max(x, minval), maxval);
 }
 
-INLINE long SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_clamp, _i64_i64_i64, )( long x, long minval, long maxval )
+INLINE long __attribute__((overloadable)) __spirv_ocl_s_clamp( long x, long minval, long maxval )
 {
-    return SPIRV_OCL_BUILTIN(s_min, _i64_i64, )(SPIRV_OCL_BUILTIN(s_max, _i64_i64, )(x, minval), maxval);
+    return __spirv_ocl_s_min(__spirv_ocl_s_max(x, minval), maxval);
 }
 
-INLINE ulong SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_clamp, _i64_i64_i64, )( ulong x, ulong minval, ulong maxval )
+INLINE ulong __attribute__((overloadable)) __spirv_ocl_u_clamp( ulong x, ulong minval, ulong maxval )
 {
-    return SPIRV_OCL_BUILTIN(u_min, _i64_i64, )(SPIRV_OCL_BUILTIN(u_max, _i64_i64, )(x, minval), maxval);
+    return __spirv_ocl_u_min(__spirv_ocl_u_max(x, minval), maxval);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( s_clamp, char, char, i8 )

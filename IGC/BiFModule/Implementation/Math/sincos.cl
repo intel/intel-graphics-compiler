@@ -22,8 +22,8 @@ static INLINE float __intel_sincos_f32_p0f32( float x, __private float* cosval, 
     float   sin_x, cos_x;
     if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)) && doFast)
     {
-        sin_x = SPIRV_OCL_BUILTIN(native_sin, _f32, )(x);
-        cos_x = SPIRV_OCL_BUILTIN(native_cos, _f32, )(x);
+        sin_x = __spirv_ocl_native_sin(x);
+        cos_x = __spirv_ocl_native_cos(x);
     }
     else  if(BIF_FLAG_CTRL_GET(UseHighAccuracyMath))
     {
@@ -35,7 +35,7 @@ static INLINE float __intel_sincos_f32_p0f32( float x, __private float* cosval, 
     }
     else
     {
-        float abs_float = SPIRV_OCL_BUILTIN(fabs, _f32, )(x);
+        float abs_float = __spirv_ocl_fabs(x);
         if( abs_float > 10000.0f )
         {
             sin_x = libclc_sin_f32(x);
@@ -50,27 +50,27 @@ static INLINE float __intel_sincos_f32_p0f32( float x, __private float* cosval, 
     return sin_x;
 }
 
-INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f32_p0f32, )( float x, __private float* cosval )
+INLINE float __attribute__((overloadable)) __spirv_ocl_sincos( float x, __private float* cosval )
 {
     return __intel_sincos_f32_p0f32(x, cosval, true);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP( sincos, float, float, float, f32, f32 )
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f32_p1f32, )( float           x,
+float __attribute__((overloadable)) __spirv_ocl_sincos( float           x,
                                         __global float* cosval )
 {
     float   sin_x, cos_x;
-    sin_x = SPIRV_OCL_BUILTIN(sincos, _f32_p0f32, )( x, &cos_x );
+    sin_x = __spirv_ocl_sincos( x, &cos_x );
     cosval[0] = cos_x;
     return sin_x;
 }
 
-INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f32_p3f32, )( float          x,
+INLINE float __attribute__((overloadable)) __spirv_ocl_sincos( float          x,
                                         __local float* cosval )
 {
     float   sin_x, cos_x;
-    sin_x = SPIRV_OCL_BUILTIN(sincos, _f32_p0f32, )( x, &cos_x );
+    sin_x = __spirv_ocl_sincos( x, &cos_x );
     cosval[0] = cos_x;
     return sin_x;
 }
@@ -80,11 +80,11 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VALARG_1PTRARG( sincos, float, __local, flo
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f32_p4f32, )( float            x,
+INLINE float __attribute__((overloadable)) __spirv_ocl_sincos( float            x,
                                         __generic float* cosval )
 {
     float   sin_x, cos_x;
-    sin_x = SPIRV_OCL_BUILTIN(sincos, _f32_p0f32, )( x, &cos_x );
+    sin_x = __spirv_ocl_sincos( x, &cos_x );
     cosval[0] = cos_x;
     return sin_x;
 }
@@ -95,33 +95,33 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VALARG_1PTRARG( sincos, float, __generic, f
 
 #if defined(cl_khr_fp16)
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f16_p0f16, )( half            x,
+INLINE half __attribute__((overloadable)) __spirv_ocl_sincos( half            x,
                                        __private half* cosval )
 {
     float   sin_x, cos_x;
-    sin_x = SPIRV_OCL_BUILTIN(sincos, _f32_p0f32, )( SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x), &cos_x );
-    cosval[0] = SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(cos_x);
-    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(sin_x);
+    sin_x = __spirv_ocl_sincos( __spirv_FConvert_Rfloat(x), &cos_x );
+    cosval[0] = __spirv_FConvert_Rhalf(cos_x);
+    return __spirv_FConvert_Rhalf(sin_x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP( sincos, half, half, half, f16, f16 )
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f16_p1f16, )( half           x,
+INLINE half __attribute__((overloadable)) __spirv_ocl_sincos( half           x,
                                        __global half* cosval )
 {
     float   sin_x, cos_x;
-    sin_x = SPIRV_OCL_BUILTIN(sincos, _f32_p0f32, )( SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x), &cos_x );
-    cosval[0] = SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(cos_x);
-    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(sin_x);
+    sin_x = __spirv_ocl_sincos( __spirv_FConvert_Rfloat(x), &cos_x );
+    cosval[0] = __spirv_FConvert_Rhalf(cos_x);
+    return __spirv_FConvert_Rhalf(sin_x);
 }
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f16_p3f16, )( half          x,
+INLINE half __attribute__((overloadable)) __spirv_ocl_sincos( half          x,
                                        __local half* cosval )
 {
     float   sin_x, cos_x;
-    sin_x = SPIRV_OCL_BUILTIN(sincos, _f32_p0f32, )( SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x), &cos_x );
-    cosval[0] = SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(cos_x);
-    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(sin_x);
+    sin_x = __spirv_ocl_sincos( __spirv_FConvert_Rfloat(x), &cos_x );
+    cosval[0] = __spirv_FConvert_Rhalf(cos_x);
+    return __spirv_FConvert_Rhalf(sin_x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VALARG_1PTRARG( sincos, half, __global, half, f16, p1 )
@@ -129,13 +129,13 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VALARG_1PTRARG( sincos, half, __local, half
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f16_p4f16, )( half            x,
+INLINE half __attribute__((overloadable)) __spirv_ocl_sincos( half            x,
                                        __generic half* cosval )
 {
     float   sin_x, cos_x;
-    sin_x = SPIRV_OCL_BUILTIN(sincos, _f32_p0f32, )( SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x), &cos_x );
-    cosval[0] = SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(cos_x);
-    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(sin_x);
+    sin_x = __spirv_ocl_sincos( __spirv_FConvert_Rfloat(x), &cos_x );
+    cosval[0] = __spirv_FConvert_Rhalf(cos_x);
+    return __spirv_FConvert_Rhalf(sin_x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VALARG_1PTRARG( sincos, half, __generic, half, f16, p4 )
@@ -146,7 +146,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VALARG_1PTRARG( sincos, half, __generic, ha
 
 #if defined(cl_khr_fp64)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f64_p0f64, )( double            x,
+INLINE double __attribute__((overloadable)) __spirv_ocl_sincos( double            x,
                                          __private double* cosval )
 {
     double sin_x, cos_x;
@@ -163,20 +163,20 @@ INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f64_p0f64, )( double
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP( sincos, double, double, double, f64, f64 )
 
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f64_p3f64, )( double          x,
+double __attribute__((overloadable)) __spirv_ocl_sincos( double          x,
                                          __local double* cosval )
 {
     double   sin_x, cos_x;
-    sin_x = SPIRV_OCL_BUILTIN(sincos, _f64_p0f64, )( x, &cos_x );
+    sin_x = __spirv_ocl_sincos( x, &cos_x );
     cosval[0] = cos_x;
     return sin_x;
 }
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f64_p1f64, )( double           x,
+INLINE double __attribute__((overloadable)) __spirv_ocl_sincos( double           x,
                                          __global double* cosval )
 {
     double   sin_x, cos_x;
-    sin_x = SPIRV_OCL_BUILTIN(sincos, _f64_p0f64, )( x, &cos_x );
+    sin_x = __spirv_ocl_sincos( x, &cos_x );
     cosval[0] = cos_x;
     return sin_x;
 }
@@ -186,11 +186,11 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VALARG_1PTRARG( sincos, double, __local, do
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f64_p4f64, )( double          x,
+INLINE double __attribute__((overloadable)) __spirv_ocl_sincos( double          x,
                                          __generic double* cosval )
 {
     double   sin_x, cos_x;
-    sin_x = SPIRV_OCL_BUILTIN(sincos, _f64_p0f64, )( x, &cos_x );
+    sin_x = __spirv_ocl_sincos( x, &cos_x );
     cosval[0] = cos_x;
     return sin_x;
 }

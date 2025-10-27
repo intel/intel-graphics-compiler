@@ -15,13 +15,13 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/sinpi_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sinpi, _f32, )( float x )
+INLINE float __attribute__((overloadable)) __spirv_ocl_sinpi( float x )
 {
     bool useNative = BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS));
 
     if(useNative)
     {
-        return SPIRV_OCL_BUILTIN(sin, _f32, )(x * M_PI_F);
+        return __spirv_ocl_sin(x * M_PI_F);
     }
     else
     {
@@ -40,7 +40,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sinpi, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sinpi, _f64, )( double x )
+INLINE double __attribute__((overloadable)) __spirv_ocl_sinpi( double x )
 {
     return __ocl_svml_sinpi(x);
 }
@@ -51,9 +51,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sinpi, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sinpi, _f16, )( half x )
+INLINE half __attribute__((overloadable)) __spirv_ocl_sinpi( half x )
 {
-    return SPIRV_OCL_BUILTIN(sinpi, _f32, )((float)x);
+    return __spirv_ocl_sinpi((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sinpi, half, half, f16 )

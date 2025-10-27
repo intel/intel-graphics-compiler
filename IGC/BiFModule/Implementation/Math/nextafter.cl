@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(nextafter, _f32_f32, )( float x, float y )
+float __attribute__((overloadable)) __spirv_ocl_nextafter( float x, float y )
 {
     const int maxneg = FLOAT_SIGN_MASK;
 
@@ -51,7 +51,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(nextafter, _f32_f32, )( float x, floa
     result = (tcix == tciy) ? y : result;
 
     {
-        float n = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
+        float n = __spirv_ocl_nan(0);
         int test = __intel_relaxed_isnan(x) | __intel_relaxed_isnan(y);
         result = test ? n : result;
     }
@@ -63,7 +63,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( nextafter, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(nextafter, _f64_f64, )( double x, double y )
+double __attribute__((overloadable)) __spirv_ocl_nextafter( double x, double y )
 {
     const long maxneg = DOUBLE_SIGN_MASK;
 
@@ -85,8 +85,8 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(nextafter, _f64_f64, )( double x, do
     result = (tcix == tciy) ? y : result;
 
     {
-        double n = SPIRV_OCL_BUILTIN(nan, _i64, )(0);
-        int test = SPIRV_BUILTIN(IsNan, _f64, )(x) | SPIRV_BUILTIN(IsNan, _f64, )(y);
+        double n = __spirv_ocl_nan(0);
+        int test = __spirv_IsNan(x) | __spirv_IsNan(y);
         result = test ? n : result;
     }
 
@@ -99,7 +99,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( nextafter, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(nextafter, _f16_f16, )( half x, half y )
+half __attribute__((overloadable)) __spirv_ocl_nextafter( half x, half y )
 {
     const short maxneg = HALF_SIGN_MASK;
 
@@ -121,8 +121,8 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(nextafter, _f16_f16, )( half x, half y
     result = (tcix == tciy) ? y : result;
 
     {
-        half n = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
-        int test = SPIRV_BUILTIN(IsNan, _f16, )(x) | SPIRV_BUILTIN(IsNan, _f16, )(y);
+        half n = __spirv_ocl_nan(0);
+        int test = __spirv_IsNan(x) | __spirv_IsNan(y);
         result = test ? n : result;
     }
 

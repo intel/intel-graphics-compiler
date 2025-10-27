@@ -14,11 +14,11 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/exp10_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp10, _f32, )( float x )
+float __attribute__((overloadable)) __spirv_ocl_exp10( float x )
 {
     if(BIF_FLAG_CTRL_GET(FastRelaxedMath))
     {
-        return SPIRV_OCL_BUILTIN(native_exp10, _f32, )(x);
+        return __spirv_ocl_native_exp10(x);
     }
     else
     {
@@ -30,7 +30,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( exp10, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp10, _f64, )( double x )
+INLINE double __attribute__((overloadable)) __spirv_ocl_exp10( double x )
 {
     return __ocl_svml_exp10(x);
 }
@@ -41,9 +41,9 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( exp10, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp10, _f16, )( half x )
+INLINE half __attribute__((overloadable)) __spirv_ocl_exp10( half x )
 {
-    return SPIRV_OCL_BUILTIN(exp10, _f32, )((float)x);
+    return __spirv_ocl_exp10((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( exp10, half, half, f16 )

@@ -18,7 +18,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( acos, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(acos, _f64, )( double x )
+INLINE double __attribute__((overloadable)) __spirv_ocl_acos( double x )
 {
     return __ocl_svml_acos(x);
 }

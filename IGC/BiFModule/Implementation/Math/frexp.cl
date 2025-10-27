@@ -9,15 +9,15 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p1i32, )( float         x,
+float __attribute__((overloadable)) __spirv_ocl_frexp( float         x,
                                        __global int* exp )
 {
     float temp;
     if( __intel_relaxed_isnormal( x ) )
     {
         temp = as_float( (int)(( as_int( x ) & FLOAT_MANTISSA_MASK ) + FLOAT_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp, x );
+        temp = __spirv_ocl_select( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
+        temp = __spirv_ocl_copysign( temp, x );
 
         *exp = ( (as_int( x ) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS) - ( FLOAT_BIAS - (int)(1) );
     }
@@ -29,13 +29,13 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p1i32, )( float         x
     else
     {
         int m = as_int( x ) & FLOAT_MANTISSA_MASK;
-        int lz = SPIRV_OCL_BUILTIN(clz, _i32, )( m );
+        int lz = __spirv_ocl_clz( m );
         int non_mantissa_bits = FLOAT_BITS - FLOAT_MANTISSA_BITS;
         temp = as_float( (int)(( ( as_int( x ) << ( lz - (non_mantissa_bits - (int)(1)) ) ) & FLOAT_MANTISSA_MASK ))  );
         temp = as_float( (int)(( as_int( temp ) + FLOAT_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp,
+        temp = __spirv_ocl_select( temp,
                        (float)(0.5f), (int)(temp == (float)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp,
+        temp = __spirv_ocl_copysign( temp,
                          x );
 
         *exp = ( ( (as_int( x ) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS ) - ( FLOAT_BIAS - (int)(1) ) ) - ( lz - non_mantissa_bits );
@@ -43,7 +43,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p1i32, )( float         x
     return temp;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p1v2i32, )( float2         x,
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_frexp( float2         x,
                                             __global int2* exp )
 {
     float2 temp;
@@ -54,7 +54,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p1v2i32, )( flo
     in = x;
     for(uint i = 0; i < 2; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -63,7 +63,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p1v2i32, )( flo
     return temp;
 }
 
-INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p1v3i32, )( float3         x,
+INLINE float3 __attribute__((overloadable)) __spirv_ocl_frexp( float3         x,
                                             __global int3* exp )
 {
     float3 temp;
@@ -74,7 +74,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p1v3i32, )( flo
     in = x;
     for(uint i = 0; i < 3; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -83,7 +83,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p1v3i32, )( flo
     return temp;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p1v4i32, )( float4         x,
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_frexp( float4         x,
                                             __global int4* exp )
 {
     float4 temp;
@@ -94,7 +94,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p1v4i32, )( flo
     in = x;
     for(uint i = 0; i < 4; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -103,7 +103,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p1v4i32, )( flo
     return temp;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p1v8i32, )( float8         x,
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_frexp( float8         x,
                                             __global int8* exp )
 {
     float8 temp;
@@ -114,7 +114,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p1v8i32, )( flo
     in = x;
     for(uint i = 0; i < 8; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -123,7 +123,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p1v8i32, )( flo
     return temp;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p1v16i32, )( float16         x,
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_frexp( float16         x,
                                                __global int16* exp )
 {
     float16 temp;
@@ -134,7 +134,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p1v16i32, )( 
     in = x;
     for(uint i = 0; i < 16; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -143,15 +143,15 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p1v16i32, )( 
     return temp;
 }
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( float          x,
+float __attribute__((overloadable)) __spirv_ocl_frexp( float          x,
                                        __private int* exp )
 {
     float temp;
     if( __intel_relaxed_isnormal( x ) )
     {
         temp = as_float( (int)(( as_int( x ) & FLOAT_MANTISSA_MASK ) + FLOAT_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp, x );
+        temp = __spirv_ocl_select( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
+        temp = __spirv_ocl_copysign( temp, x );
 
         *exp = ( (as_int( x ) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS) - ( FLOAT_BIAS - (int)(1) );
     }
@@ -163,13 +163,13 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( float          
     else
     {
         int m = as_int( x ) & FLOAT_MANTISSA_MASK;
-        int lz = SPIRV_OCL_BUILTIN(clz, _i32, )( m );
+        int lz = __spirv_ocl_clz( m );
         int non_mantissa_bits = FLOAT_BITS - FLOAT_MANTISSA_BITS;
         temp = as_float( (int)(( ( as_int( x ) << ( lz - (non_mantissa_bits - (int)(1)) ) ) & FLOAT_MANTISSA_MASK ))  );
         temp = as_float( (int)(( as_int( temp ) + FLOAT_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp,
+        temp = __spirv_ocl_select( temp,
                        (float)(0.5f), (int)(temp == (float)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp,
+        temp = __spirv_ocl_copysign( temp,
                          x );
 
         *exp = ( ( (as_int( x ) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS ) - ( FLOAT_BIAS - (int)(1) ) ) - ( lz - non_mantissa_bits );
@@ -177,7 +177,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( float          
     return temp;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p0v2i32, )( float2          x,
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_frexp( float2          x,
                                             __private int2* exp )
 {
     float2 temp;
@@ -188,7 +188,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p0v2i32, )( flo
     in = x;
     for(uint i = 0; i < 2; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -197,7 +197,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p0v2i32, )( flo
     return temp;
 }
 
-INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p0v3i32, )( float3          x,
+INLINE float3 __attribute__((overloadable)) __spirv_ocl_frexp( float3          x,
                                             __private int3* exp )
 {
     float3 temp;
@@ -208,7 +208,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p0v3i32, )( flo
     in = x;
     for(uint i = 0; i < 3; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -217,7 +217,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p0v3i32, )( flo
     return temp;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p0v4i32, )( float4          x,
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_frexp( float4          x,
                                             __private int4* exp )
 {
     float4 temp;
@@ -228,7 +228,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p0v4i32, )( flo
     in = x;
     for(uint i = 0; i < 4; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -237,7 +237,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p0v4i32, )( flo
     return temp;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p0v8i32, )( float8          x,
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_frexp( float8          x,
                                             __private int8* exp )
 {
     float8 temp;
@@ -248,7 +248,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p0v8i32, )( flo
     in = x;
     for(uint i = 0; i < 8; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -257,7 +257,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p0v8i32, )( flo
     return temp;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p0v16i32, )( float16          x,
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_frexp( float16          x,
                                                __private int16* exp )
 {
     float16 temp;
@@ -268,7 +268,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p0v16i32, )( 
     in = x;
     for(uint i = 0; i < 16; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -277,15 +277,15 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p0v16i32, )( 
     return temp;
 }
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p3i32, )( float        x,
+float __attribute__((overloadable)) __spirv_ocl_frexp( float        x,
                                        __local int* exp )
 {
     float temp;
     if( __intel_relaxed_isnormal( x ) )
     {
         temp = as_float( (int)(( as_int( x ) & FLOAT_MANTISSA_MASK ) + FLOAT_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp, x );
+        temp = __spirv_ocl_select( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
+        temp = __spirv_ocl_copysign( temp, x );
 
         *exp = ( (as_int( x ) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS) - ( FLOAT_BIAS - (int)(1) );
     }
@@ -297,13 +297,13 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p3i32, )( float        x,
     else
     {
         int m = as_int( x ) & FLOAT_MANTISSA_MASK;
-        int lz = SPIRV_OCL_BUILTIN(clz, _i32, )( m );
+        int lz = __spirv_ocl_clz( m );
         int non_mantissa_bits = FLOAT_BITS - FLOAT_MANTISSA_BITS;
         temp = as_float( (int)(( ( as_int( x ) << ( lz - (non_mantissa_bits - (int)(1)) ) ) & FLOAT_MANTISSA_MASK ))  );
         temp = as_float( (int)(( as_int( temp ) + FLOAT_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp,
+        temp = __spirv_ocl_select( temp,
                        (float)(0.5f), (int)(temp == (float)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp,
+        temp = __spirv_ocl_copysign( temp,
                          x );
 
         *exp = ( ( (as_int( x ) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS ) - ( FLOAT_BIAS - (int)(1) ) ) - ( lz - non_mantissa_bits );
@@ -312,7 +312,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p3i32, )( float        x,
 }
 
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p3v2i32, )( float2        x,
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_frexp( float2        x,
                                             __local int2* exp )
 {
     float2 temp;
@@ -323,7 +323,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p3v2i32, )( flo
     in = x;
     for(uint i = 0; i < 2; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -332,7 +332,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p3v2i32, )( flo
     return temp;
 }
 
-INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p3v3i32, )( float3        x,
+INLINE float3 __attribute__((overloadable)) __spirv_ocl_frexp( float3        x,
                                             __local int3* exp )
 {
     float3 temp;
@@ -343,7 +343,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p3v3i32, )( flo
     in = x;
     for(uint i = 0; i < 3; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -352,7 +352,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p3v3i32, )( flo
     return temp;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p3v4i32, )( float4        x,
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_frexp( float4        x,
                                             __local int4* exp )
 {
     float4 temp;
@@ -363,7 +363,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p3v4i32, )( flo
     in = x;
     for(uint i = 0; i < 4; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -372,7 +372,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p3v4i32, )( flo
     return temp;
 }
 
-float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p3v8i32, )( float8        x,
+float8 __attribute__((overloadable)) __spirv_ocl_frexp( float8        x,
                                             __local int8* exp )
 {
     float8 temp;
@@ -383,7 +383,7 @@ float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p3v8i32, )( float8    
     in = x;
     for(uint i = 0; i < 8; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -392,7 +392,7 @@ float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p3v8i32, )( float8    
     return temp;
 }
 
-float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p3v16i32, )( float16        x,
+float16 __attribute__((overloadable)) __spirv_ocl_frexp( float16        x,
                                                __local int16* exp )
 {
     float16 temp;
@@ -403,7 +403,7 @@ float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p3v16i32, )( float16
     in = x;
     for(uint i = 0; i < 16; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -414,15 +414,15 @@ float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p3v16i32, )( float16
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( float          x,
+float __attribute__((overloadable)) __spirv_ocl_frexp( float          x,
                                        __generic int* exp )
 {
     float temp;
     if( __intel_relaxed_isnormal( x ) )
     {
         temp = as_float( (int)(( as_int( x ) & FLOAT_MANTISSA_MASK ) + FLOAT_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp, x );
+        temp = __spirv_ocl_select( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
+        temp = __spirv_ocl_copysign( temp, x );
 
         *exp = ( (as_int( x ) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS) - ( FLOAT_BIAS - (int)(1) );
     }
@@ -434,13 +434,13 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( float          
     else
     {
         int m = as_int( x ) & FLOAT_MANTISSA_MASK;
-        int lz = SPIRV_OCL_BUILTIN(clz, _i32, )( m );
+        int lz = __spirv_ocl_clz( m );
         int non_mantissa_bits = FLOAT_BITS - FLOAT_MANTISSA_BITS;
         temp = as_float( (int)(( ( as_int( x ) << ( lz - (non_mantissa_bits - (int)(1)) ) ) & FLOAT_MANTISSA_MASK ))  );
         temp = as_float( (int)(( as_int( temp ) + FLOAT_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp,
+        temp = __spirv_ocl_select( temp,
                        (float)(0.5f), (int)(temp == (float)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp,
+        temp = __spirv_ocl_copysign( temp,
                          x );
 
         *exp = ( ( (as_int( x ) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS ) - ( FLOAT_BIAS - (int)(1) ) ) - ( lz - non_mantissa_bits );
@@ -448,7 +448,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( float          
     return temp;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p4v2i32, )( float2          x,
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_frexp( float2          x,
                                             __generic int2* exp )
 {
     float2 temp;
@@ -459,7 +459,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p4v2i32, )( flo
     in = x;
     for(uint i = 0; i < 2; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -468,7 +468,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p4v2i32, )( flo
     return temp;
 }
 
-INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p4v3i32, )( float3          x,
+INLINE float3 __attribute__((overloadable)) __spirv_ocl_frexp( float3          x,
                                             __generic int3* exp )
 {
     float3 temp;
@@ -479,7 +479,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p4v3i32, )( flo
     in = x;
     for(uint i = 0; i < 3; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -488,7 +488,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p4v3i32, )( flo
     return temp;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p4v4i32, )( float4          x,
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_frexp( float4          x,
                                             __generic int4* exp )
 {
     float4 temp;
@@ -499,7 +499,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p4v4i32, )( flo
     in = x;
     for(uint i = 0; i < 4; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -508,7 +508,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p4v4i32, )( flo
     return temp;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p4v8i32, )( float8          x,
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_frexp( float8          x,
                                             __generic int8* exp )
 {
     float8 temp;
@@ -519,7 +519,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p4v8i32, )( flo
     in = x;
     for(uint i = 0; i < 8; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -528,7 +528,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p4v8i32, )( flo
     return temp;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p4v16i32, )( float16          x,
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_frexp( float16          x,
                                                __generic int16* exp )
 {
     float16 temp;
@@ -539,7 +539,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p4v16i32, )( 
     in = x;
     for(uint i = 0; i < 16; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -552,15 +552,15 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p4v16i32, )( 
 
 #ifdef cl_khr_fp16
 
-half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p1i32, )( half          x,
+half __attribute__((overloadable)) __spirv_ocl_frexp( half          x,
                                       __global int* exp )
 {
     half temp;
-    if( SPIRV_BUILTIN(IsNormal, _f16, )( x ) )
+    if( __spirv_IsNormal( x ) )
     {
         temp = as_half( (short)(( as_short( x ) & HALF_MANTISSA_MASK ) + HALF_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp, x );
+        temp = __spirv_ocl_select( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
+        temp = __spirv_ocl_copysign( temp, x );
 
         *exp = ( (as_short( x ) & HALF_EXPONENT_MASK ) >> HALF_MANTISSA_BITS) - ( HALF_BIAS - (short)(1) );
     }
@@ -572,13 +572,13 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p1i32, )( half          x,
     else
     {
         short m = as_short( x ) & HALF_MANTISSA_MASK;
-        short lz = SPIRV_OCL_BUILTIN(clz, _i16, )( m );
+        short lz = __spirv_ocl_clz( m );
         short non_mantissa_bits = HALF_BITS - HALF_MANTISSA_BITS;
         temp = as_half( (short)(( ( as_short( x ) << ( lz - (non_mantissa_bits - (short)(1)) ) ) & HALF_MANTISSA_MASK ))  );
         temp = as_half( (short)(( as_short( temp ) + HALF_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp,
+        temp = __spirv_ocl_select( temp,
                        (half)(0.5f), (short)(temp == (half)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp,
+        temp = __spirv_ocl_copysign( temp,
                          x );
 
         *exp = ( ( (as_short( x ) & HALF_EXPONENT_MASK ) >> HALF_MANTISSA_BITS ) - ( HALF_BIAS - (short)(1) ) ) - ( lz - non_mantissa_bits );
@@ -586,7 +586,7 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p1i32, )( half          x,
     return temp;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p1v2i32, )( half2          x,
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_frexp( half2          x,
                                            __global int2* exp )
 {
     half2 temp;
@@ -597,7 +597,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p1v2i32, )( half
     in = x;
     for(uint i = 0; i < 2; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -606,7 +606,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p1v2i32, )( half
     return temp;
 }
 
-INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p1v3i32, )( half3          x,
+INLINE half3 __attribute__((overloadable)) __spirv_ocl_frexp( half3          x,
                                            __global int3* exp )
 {
     half3 temp;
@@ -617,7 +617,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p1v3i32, )( half
     in = x;
     for(uint i = 0; i < 3; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -626,7 +626,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p1v3i32, )( half
     return temp;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p1v4i32, )( half4          x,
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_frexp( half4          x,
                                            __global int4* exp )
 {
     half4 temp;
@@ -637,7 +637,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p1v4i32, )( half
     in = x;
     for(uint i = 0; i < 4; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -646,7 +646,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p1v4i32, )( half
     return temp;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p1v8i32, )( half8          x,
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_frexp( half8          x,
                                            __global int8* exp )
 {
     half8 temp;
@@ -657,7 +657,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p1v8i32, )( half
     in = x;
     for(uint i = 0; i < 8; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -666,7 +666,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p1v8i32, )( half
     return temp;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p1v16i32, )( half16          x,
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_frexp( half16          x,
                                               __global int16* exp )
 {
     half16 temp;
@@ -677,7 +677,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p1v16i32, )( h
     in = x;
     for(uint i = 0; i < 16; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -686,15 +686,15 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p1v16i32, )( h
     return temp;
 }
 
-half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( half           x,
+half __attribute__((overloadable)) __spirv_ocl_frexp( half           x,
                                       __private int* exp )
 {
     half temp;
-    if( SPIRV_BUILTIN(IsNormal, _f16, )( x ) )
+    if( __spirv_IsNormal( x ) )
     {
         temp = as_half( (short)(( as_short( x ) & HALF_MANTISSA_MASK ) + HALF_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp, x );
+        temp = __spirv_ocl_select( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
+        temp = __spirv_ocl_copysign( temp, x );
 
         *exp = ( (as_short( x ) & HALF_EXPONENT_MASK ) >> HALF_MANTISSA_BITS) - ( HALF_BIAS - (short)(1) );
     }
@@ -706,13 +706,13 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( half           x
     else
     {
         short m = as_short( x ) & HALF_MANTISSA_MASK;
-        short lz = SPIRV_OCL_BUILTIN(clz, _i16, )( m );
+        short lz = __spirv_ocl_clz( m );
         short non_mantissa_bits = HALF_BITS - HALF_MANTISSA_BITS;
         temp = as_half( (short)(( ( as_short( x ) << ( lz - (non_mantissa_bits - (short)(1)) ) ) & HALF_MANTISSA_MASK ))  );
         temp = as_half( (short)(( as_short( temp ) + HALF_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp,
+        temp = __spirv_ocl_select( temp,
                        (half)(0.5f), (short)(temp == (half)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp,
+        temp = __spirv_ocl_copysign( temp,
                          x );
 
         *exp = ( ( (as_short( x ) & HALF_EXPONENT_MASK ) >> HALF_MANTISSA_BITS ) - ( HALF_BIAS - (short)(1) ) ) - ( lz - non_mantissa_bits );
@@ -720,7 +720,7 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( half           x
     return temp;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p0v2i32, )( half2           x,
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_frexp( half2           x,
                                            __private int2* exp )
 {
     half2 temp;
@@ -731,7 +731,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p0v2i32, )( half
     in = x;
     for(uint i = 0; i < 2; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -740,7 +740,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p0v2i32, )( half
     return temp;
 }
 
-INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p0v3i32, )( half3           x,
+INLINE half3 __attribute__((overloadable)) __spirv_ocl_frexp( half3           x,
                                            __private int3* exp )
 {
     half3 temp;
@@ -751,7 +751,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p0v3i32, )( half
     in = x;
     for(uint i = 0; i < 3; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -760,7 +760,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p0v3i32, )( half
     return temp;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p0v4i32, )( half4           x,
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_frexp( half4           x,
                                            __private int4* exp )
 {
     half4 temp;
@@ -771,7 +771,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p0v4i32, )( half
     in = x;
     for(uint i = 0; i < 4; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -780,7 +780,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p0v4i32, )( half
     return temp;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p0v8i32, )( half8           x,
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_frexp( half8           x,
                                            __private int8* exp )
 {
     half8 temp;
@@ -791,7 +791,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p0v8i32, )( half
     in = x;
     for(uint i = 0; i < 8; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -800,7 +800,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p0v8i32, )( half
     return temp;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p0v16i32, )( half16           x,
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_frexp( half16           x,
                                               __private int16* exp )
 {
     half16 temp;
@@ -811,7 +811,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p0v16i32, )( h
     in = x;
     for(uint i = 0; i < 16; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -820,15 +820,15 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p0v16i32, )( h
     return temp;
 }
 
-half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p3i32, )( half         x,
+half __attribute__((overloadable)) __spirv_ocl_frexp( half         x,
                                       __local int* exp )
 {
     half temp;
-    if( SPIRV_BUILTIN(IsNormal, _f16, )( x ) )
+    if( __spirv_IsNormal( x ) )
     {
         temp = as_half( (short)(( as_short( x ) & HALF_MANTISSA_MASK ) + HALF_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp, x );
+        temp = __spirv_ocl_select( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
+        temp = __spirv_ocl_copysign( temp, x );
 
         *exp = ( (as_short( x ) & HALF_EXPONENT_MASK ) >> HALF_MANTISSA_BITS) - ( HALF_BIAS - (short)(1) );
     }
@@ -840,13 +840,13 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p3i32, )( half         x,
     else
     {
         short m = as_short( x ) & HALF_MANTISSA_MASK;
-        short lz = SPIRV_OCL_BUILTIN(clz, _i16, )( m );
+        short lz = __spirv_ocl_clz( m );
         short non_mantissa_bits = HALF_BITS - HALF_MANTISSA_BITS;
         temp = as_half( (short)(( ( as_short( x ) << ( lz - (non_mantissa_bits - (short)(1)) ) ) & HALF_MANTISSA_MASK ))  );
         temp = as_half( (short)(( as_short( temp ) + HALF_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp,
+        temp = __spirv_ocl_select( temp,
                        (half)(0.5f), (short)(temp == (half)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp,
+        temp = __spirv_ocl_copysign( temp,
                          x );
 
         *exp = ( ( (as_short( x ) & HALF_EXPONENT_MASK ) >> HALF_MANTISSA_BITS ) - ( HALF_BIAS - (short)(1) ) ) - ( lz - non_mantissa_bits );
@@ -854,7 +854,7 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p3i32, )( half         x,
     return temp;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p3v2i32, )( half2         x,
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_frexp( half2         x,
                                            __local int2* exp )
 {
     half2 temp;
@@ -865,7 +865,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p3v2i32, )( half
     in = x;
     for(uint i = 0; i < 2; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -874,7 +874,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p3v2i32, )( half
     return temp;
 }
 
-INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p3v3i32, )( half3         x,
+INLINE half3 __attribute__((overloadable)) __spirv_ocl_frexp( half3         x,
                                            __local int3* exp )
 {
     half3 temp;
@@ -885,7 +885,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p3v3i32, )( half
     in = x;
     for(uint i = 0; i < 3; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -894,7 +894,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p3v3i32, )( half
     return temp;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p3v4i32, )( half4         x,
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_frexp( half4         x,
                                            __local int4* exp )
 {
     half4 temp;
@@ -905,7 +905,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p3v4i32, )( half
     in = x;
     for(uint i = 0; i < 4; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -914,7 +914,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p3v4i32, )( half
     return temp;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p3v8i32, )( half8         x,
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_frexp( half8         x,
                                            __local int8* exp )
 {
     half8 temp;
@@ -925,7 +925,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p3v8i32, )( half
     in = x;
     for(uint i = 0; i < 8; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -934,7 +934,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p3v8i32, )( half
     return temp;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p3v16i32, )( half16         x,
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_frexp( half16         x,
                                               __local int16* exp )
 {
     half16 temp;
@@ -945,7 +945,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p3v16i32, )( h
     in = x;
     for(uint i = 0; i < 16; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -958,15 +958,15 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p3v16i32, )( h
 
 #if defined(cl_khr_fp16) && (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( half           x,
+half __attribute__((overloadable)) __spirv_ocl_frexp( half           x,
                                       __generic int* exp )
 {
     half temp;
-    if( SPIRV_BUILTIN(IsNormal, _f16, )( x ) )
+    if( __spirv_IsNormal( x ) )
     {
         temp = as_half( (short)(( as_short( x ) & HALF_MANTISSA_MASK ) + HALF_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp, x );
+        temp = __spirv_ocl_select( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
+        temp = __spirv_ocl_copysign( temp, x );
 
         *exp = ( (as_short( x ) & HALF_EXPONENT_MASK ) >> HALF_MANTISSA_BITS) - ( HALF_BIAS - (short)(1) );
     }
@@ -978,13 +978,13 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( half           x
     else
     {
         short m = as_short( x ) & HALF_MANTISSA_MASK;
-        short lz = SPIRV_OCL_BUILTIN(clz, _i16, )( m );
+        short lz = __spirv_ocl_clz( m );
         short non_mantissa_bits = HALF_BITS - HALF_MANTISSA_BITS;
         temp = as_half( (short)(( ( as_short( x ) << ( lz - (non_mantissa_bits - (short)(1)) ) ) & HALF_MANTISSA_MASK ))  );
         temp = as_half( (short)(( as_short( temp ) + HALF_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp,
+        temp = __spirv_ocl_select( temp,
                        (half)(0.5f), (short)(temp == (half)(1.0f)) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp,
+        temp = __spirv_ocl_copysign( temp,
                          x );
 
         *exp = ( ( (as_short( x ) & HALF_EXPONENT_MASK ) >> HALF_MANTISSA_BITS ) - ( HALF_BIAS - (short)(1) ) ) - ( lz - non_mantissa_bits );
@@ -992,7 +992,7 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( half           x
     return temp;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p4v2i32, )( half2           x,
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_frexp( half2           x,
                                            __generic int2* exp )
 {
     half2 temp;
@@ -1003,7 +1003,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p4v2i32, )( half
     in = x;
     for(uint i = 0; i < 2; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1012,7 +1012,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p4v2i32, )( half
     return temp;
 }
 
-INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p4v3i32, )( half3           x,
+INLINE half3 __attribute__((overloadable)) __spirv_ocl_frexp( half3           x,
                                            __generic int3* exp )
 {
     half3 temp;
@@ -1023,7 +1023,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p4v3i32, )( half
     in = x;
     for(uint i = 0; i < 3; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1032,7 +1032,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p4v3i32, )( half
     return temp;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p4v4i32, )( half4           x,
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_frexp( half4           x,
                                            __generic int4* exp )
 {
     half4 temp;
@@ -1043,7 +1043,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p4v4i32, )( half
     in = x;
     for(uint i = 0; i < 4; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1052,7 +1052,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p4v4i32, )( half
     return temp;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p4v8i32, )( half8           x,
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_frexp( half8           x,
                                            __generic int8* exp )
 {
     half8 temp;
@@ -1063,7 +1063,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p4v8i32, )( half
     in = x;
     for(uint i = 0; i < 8; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1072,7 +1072,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p4v8i32, )( half
     return temp;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p4v16i32, )( half16           x,
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_frexp( half16           x,
                                               __generic int16* exp )
 {
     half16 temp;
@@ -1083,7 +1083,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p4v16i32, )( h
     in = x;
     for(uint i = 0; i < 16; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1096,15 +1096,15 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p4v16i32, )( h
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p1i32, )( double        x,
+double __attribute__((overloadable)) __spirv_ocl_frexp( double        x,
                                         __global int* exp )
 {
     double temp;
-    if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
+    if( __spirv_IsNormal( x ) )
     {
         temp = as_double( (long)(( as_long( x ) & DOUBLE_MANTISSA_MASK ) + DOUBLE_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp, 0.5, (long)(temp == 1.0) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp, x );
+        temp = __spirv_ocl_select( temp, 0.5, (long)(temp == 1.0) );
+        temp = __spirv_ocl_copysign( temp, x );
 
         *exp = ( (as_long( x ) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS) - ( DOUBLE_BIAS - (long)(1) );
     }
@@ -1116,13 +1116,13 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p1i32, )( double        
     else
     {
         long m = as_long( x ) & DOUBLE_MANTISSA_MASK;
-        long lz = SPIRV_OCL_BUILTIN(clz, _i64, )( m );
+        long lz = __spirv_ocl_clz( m );
         long non_mantissa_bits = DOUBLE_BITS - DOUBLE_MANTISSA_BITS;
         temp = as_double( (long)(( ( as_long( x ) << ( lz - (non_mantissa_bits - (long)(1)) ) ) & DOUBLE_MANTISSA_MASK ))  );
         temp = as_double( (long)(( as_long( temp ) + DOUBLE_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp,
+        temp = __spirv_ocl_select( temp,
                        0.5, (long)(temp == 1.0) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp,
+        temp = __spirv_ocl_copysign( temp,
                          x );
 
         *exp = ( ( (as_long( x ) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS ) - ( DOUBLE_BIAS - (long)(1) ) ) - ( lz - non_mantissa_bits );
@@ -1130,7 +1130,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p1i32, )( double        
     return temp;
 }
 
-double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p1v2i32, )( double2        x,
+double2 __attribute__((overloadable)) __spirv_ocl_frexp( double2        x,
                                              __global int2* exp )
 {
     double2 temp;
@@ -1141,7 +1141,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p1v2i32, )( double2  
     in = x;
     for(uint i = 0; i < 2; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1150,7 +1150,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p1v2i32, )( double2  
     return temp;
 }
 
-double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p1v3i32, )( double3        x,
+double3 __attribute__((overloadable)) __spirv_ocl_frexp( double3        x,
                                              __global int3* exp )
 {
     double3 temp;
@@ -1161,7 +1161,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p1v3i32, )( double3  
     in = x;
     for(uint i = 0; i < 3; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1170,7 +1170,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p1v3i32, )( double3  
     return temp;
 }
 
-double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p1v4i32, )( double4        x,
+double4 __attribute__((overloadable)) __spirv_ocl_frexp( double4        x,
                                              __global int4* exp )
 {
     double4 temp;
@@ -1181,7 +1181,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p1v4i32, )( double4  
     in = x;
     for(uint i = 0; i < 4; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1190,7 +1190,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p1v4i32, )( double4  
     return temp;
 }
 
-double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p1v8i32, )( double8        x,
+double8 __attribute__((overloadable)) __spirv_ocl_frexp( double8        x,
                                              __global int8* exp )
 {
     double8 temp;
@@ -1201,7 +1201,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p1v8i32, )( double8  
     in = x;
     for(uint i = 0; i < 8; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1210,7 +1210,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p1v8i32, )( double8  
     return temp;
 }
 
-double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p1v16i32, )( double16        x,
+double16 __attribute__((overloadable)) __spirv_ocl_frexp( double16        x,
                                                 __global int16* exp )
 {
     double16 temp;
@@ -1221,7 +1221,7 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p1v16i32, )( double
     in = x;
     for(uint i = 0; i < 16; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1230,15 +1230,15 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p1v16i32, )( double
     return temp;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( double         x,
+double __attribute__((overloadable)) __spirv_ocl_frexp( double         x,
                                         __private int* exp )
 {
     double temp;
-    if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
+    if( __spirv_IsNormal( x ) )
     {
         temp = as_double( (long)(( as_long( x ) & DOUBLE_MANTISSA_MASK ) + DOUBLE_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp, 0.5, (long)(temp == 1.0) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp, x );
+        temp = __spirv_ocl_select( temp, 0.5, (long)(temp == 1.0) );
+        temp = __spirv_ocl_copysign( temp, x );
 
         *exp = ( (as_long( x ) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS) - ( DOUBLE_BIAS - (long)(1) );
     }
@@ -1250,13 +1250,13 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( double        
     else
     {
         long m = as_long( x ) & DOUBLE_MANTISSA_MASK;
-        long lz = SPIRV_OCL_BUILTIN(clz, _i64, )( m );
+        long lz = __spirv_ocl_clz( m );
         long non_mantissa_bits = DOUBLE_BITS - DOUBLE_MANTISSA_BITS;
         temp = as_double( (long)(( ( as_long( x ) << ( lz - (non_mantissa_bits - (long)(1)) ) ) & DOUBLE_MANTISSA_MASK ))  );
         temp = as_double( (long)(( as_long( temp ) + DOUBLE_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp,
+        temp = __spirv_ocl_select( temp,
                        0.5, (long)(temp == 1.0) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp,
+        temp = __spirv_ocl_copysign( temp,
                          x );
 
         *exp = ( ( (as_long( x ) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS ) - ( DOUBLE_BIAS - (long)(1) ) ) - ( lz - non_mantissa_bits );
@@ -1264,7 +1264,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( double        
     return temp;
 }
 
-double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p0v2i32, )( double2         x,
+double2 __attribute__((overloadable)) __spirv_ocl_frexp( double2         x,
                                              __private int2* exp )
 {
     double2 temp;
@@ -1275,7 +1275,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p0v2i32, )( double2  
     in = x;
     for(uint i = 0; i < 2; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1284,7 +1284,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p0v2i32, )( double2  
     return temp;
 }
 
-double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p0v3i32, )( double3         x,
+double3 __attribute__((overloadable)) __spirv_ocl_frexp( double3         x,
                                              __private int3* exp )
 {
     double3 temp;
@@ -1295,7 +1295,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p0v3i32, )( double3  
     in = x;
     for(uint i = 0; i < 3; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1304,7 +1304,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p0v3i32, )( double3  
     return temp;
 }
 
-double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p0v4i32, )( double4         x,
+double4 __attribute__((overloadable)) __spirv_ocl_frexp( double4         x,
                                              __private int4* exp )
 {
     double4 temp;
@@ -1315,7 +1315,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p0v4i32, )( double4  
     in = x;
     for(uint i = 0; i < 4; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1324,7 +1324,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p0v4i32, )( double4  
     return temp;
 }
 
-double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p0v8i32, )( double8         x,
+double8 __attribute__((overloadable)) __spirv_ocl_frexp( double8         x,
                                              __private int8* exp )
 {
     double8 temp;
@@ -1335,7 +1335,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p0v8i32, )( double8  
     in = x;
     for(uint i = 0; i < 8; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1344,7 +1344,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p0v8i32, )( double8  
     return temp;
 }
 
-double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p0v16i32, )( double16         x,
+double16 __attribute__((overloadable)) __spirv_ocl_frexp( double16         x,
                                                 __private int16* exp )
 {
     double16 temp;
@@ -1355,7 +1355,7 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p0v16i32, )( double
     in = x;
     for(uint i = 0; i < 16; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1364,15 +1364,15 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p0v16i32, )( double
     return temp;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p3i32, )( double       x,
+double __attribute__((overloadable)) __spirv_ocl_frexp( double       x,
                                         __local int* exp )
 {
     double temp;
-    if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
+    if( __spirv_IsNormal( x ) )
     {
         temp = as_double( (long)(( as_long( x ) & DOUBLE_MANTISSA_MASK ) + DOUBLE_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp, 0.5, (long)(temp == 1.0) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp, x );
+        temp = __spirv_ocl_select( temp, 0.5, (long)(temp == 1.0) );
+        temp = __spirv_ocl_copysign( temp, x );
 
         *exp = ( (as_long( x ) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS) - ( DOUBLE_BIAS - (long)(1) );
     }
@@ -1384,13 +1384,13 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p3i32, )( double       x
     else
     {
         long m = as_long( x ) & DOUBLE_MANTISSA_MASK;
-        long lz = SPIRV_OCL_BUILTIN(clz, _i64, )( m );
+        long lz = __spirv_ocl_clz( m );
         long non_mantissa_bits = DOUBLE_BITS - DOUBLE_MANTISSA_BITS;
         temp = as_double( (long)(( ( as_long( x ) << ( lz - (non_mantissa_bits - (long)(1)) ) ) & DOUBLE_MANTISSA_MASK ))  );
         temp = as_double( (long)(( as_long( temp ) + DOUBLE_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp,
+        temp = __spirv_ocl_select( temp,
                        0.5, (long)(temp == 1.0) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp,
+        temp = __spirv_ocl_copysign( temp,
                          x );
 
         *exp = ( ( (as_long( x ) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS ) - ( DOUBLE_BIAS - (long)(1) ) ) - ( lz - non_mantissa_bits );
@@ -1398,7 +1398,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p3i32, )( double       x
     return temp;
 }
 
-double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p3v2i32, )( double2       x,
+double2 __attribute__((overloadable)) __spirv_ocl_frexp( double2       x,
                                              __local int2* exp )
 {
     double2 temp;
@@ -1409,7 +1409,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p3v2i32, )( double2  
     in = x;
     for(uint i = 0; i < 2; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1418,7 +1418,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p3v2i32, )( double2  
     return temp;
 }
 
-double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p3v3i32, )( double3       x,
+double3 __attribute__((overloadable)) __spirv_ocl_frexp( double3       x,
                                              __local int3* exp )
 {
     double3 temp;
@@ -1429,7 +1429,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p3v3i32, )( double3  
     in = x;
     for(uint i = 0; i < 3; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1438,7 +1438,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p3v3i32, )( double3  
     return temp;
 }
 
-double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p3v4i32, )( double4       x,
+double4 __attribute__((overloadable)) __spirv_ocl_frexp( double4       x,
                                              __local int4* exp )
 {
     double4 temp;
@@ -1449,7 +1449,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p3v4i32, )( double4  
     in = x;
     for(uint i = 0; i < 4; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1458,7 +1458,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p3v4i32, )( double4  
     return temp;
 }
 
-double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p3v8i32, )( double8       x,
+double8 __attribute__((overloadable)) __spirv_ocl_frexp( double8       x,
                                              __local int8* exp )
 {
     double8 temp;
@@ -1469,7 +1469,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p3v8i32, )( double8  
     in = x;
     for(uint i = 0; i < 8; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1478,7 +1478,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p3v8i32, )( double8  
     return temp;
 }
 
-double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p3v16i32, )( double16       x,
+double16 __attribute__((overloadable)) __spirv_ocl_frexp( double16       x,
                                                 __local int16* exp )
 {
     double16 temp;
@@ -1489,7 +1489,7 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p3v16i32, )( double
     in = x;
     for(uint i = 0; i < 16; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1500,15 +1500,15 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p3v16i32, )( double
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( double       x,
+double __attribute__((overloadable)) __spirv_ocl_frexp( double       x,
                                         __generic int* exp )
 {
     double temp;
-    if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
+    if( __spirv_IsNormal( x ) )
     {
         temp = as_double( (long)(( as_long( x ) & DOUBLE_MANTISSA_MASK ) + DOUBLE_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp, 0.5, (long)(temp == 1.0) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp, x );
+        temp = __spirv_ocl_select( temp, 0.5, (long)(temp == 1.0) );
+        temp = __spirv_ocl_copysign( temp, x );
 
         *exp = ( (as_long( x ) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS) - ( DOUBLE_BIAS - (long)(1) );
     }
@@ -1520,13 +1520,13 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( double       x
     else
     {
         long m = as_long( x ) & DOUBLE_MANTISSA_MASK;
-        long lz = SPIRV_OCL_BUILTIN(clz, _i64, )( m );
+        long lz = __spirv_ocl_clz( m );
         long non_mantissa_bits = DOUBLE_BITS - DOUBLE_MANTISSA_BITS;
         temp = as_double( (long)(( ( as_long( x ) << ( lz - (non_mantissa_bits - (long)(1)) ) ) & DOUBLE_MANTISSA_MASK ))  );
         temp = as_double( (long)(( as_long( temp ) + DOUBLE_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp,
+        temp = __spirv_ocl_select( temp,
                        0.5, (long)(temp == 1.0) );
-        temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp,
+        temp = __spirv_ocl_copysign( temp,
                          x );
 
         *exp = ( ( (as_long( x ) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS ) - ( DOUBLE_BIAS - (long)(1) ) ) - ( lz - non_mantissa_bits );
@@ -1534,7 +1534,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( double       x
     return temp;
 }
 
-double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p4v2i32, )( double2       x,
+double2 __attribute__((overloadable)) __spirv_ocl_frexp( double2       x,
                                              __generic int2* exp )
 {
     double2 temp;
@@ -1545,7 +1545,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p4v2i32, )( double2  
     in = x;
     for(uint i = 0; i < 2; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1554,7 +1554,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p4v2i32, )( double2  
     return temp;
 }
 
-double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p4v3i32, )( double3       x,
+double3 __attribute__((overloadable)) __spirv_ocl_frexp( double3       x,
                                              __generic int3* exp )
 {
     double3 temp;
@@ -1565,7 +1565,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p4v3i32, )( double3  
     in = x;
     for(uint i = 0; i < 3; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1574,7 +1574,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p4v3i32, )( double3  
     return temp;
 }
 
-double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p4v4i32, )( double4       x,
+double4 __attribute__((overloadable)) __spirv_ocl_frexp( double4       x,
                                              __generic int4* exp )
 {
     double4 temp;
@@ -1585,7 +1585,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p4v4i32, )( double4  
     in = x;
     for(uint i = 0; i < 4; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1594,7 +1594,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p4v4i32, )( double4  
     return temp;
 }
 
-double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p4v8i32, )( double8       x,
+double8 __attribute__((overloadable)) __spirv_ocl_frexp( double8       x,
                                              __generic int8* exp )
 {
     double8 temp;
@@ -1605,7 +1605,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p4v8i32, )( double8  
     in = x;
     for(uint i = 0; i < 8; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;
@@ -1614,7 +1614,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p4v8i32, )( double8  
     return temp;
 }
 
-double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p4v16i32, )( double16       x,
+double16 __attribute__((overloadable)) __spirv_ocl_frexp( double16       x,
                                                 __generic int16* exp )
 {
     double16 temp;
@@ -1625,7 +1625,7 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p4v16i32, )( double
     in = x;
     for(uint i = 0; i < 16; i++)
     {
-        out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( in[i], (__generic int*)&temp_ptr );
+        out1[i] = __spirv_ocl_frexp( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
     temp = out1;

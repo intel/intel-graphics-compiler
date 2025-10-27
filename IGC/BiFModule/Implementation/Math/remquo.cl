@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p1i32, )( float         xx,
+float __attribute__((overloadable)) __spirv_ocl_remquo( float         xx,
                                             float         yy,
                                             __global int* quo )
 {
@@ -21,35 +21,35 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p1i32, )( float     
         yy == 0.0f )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
+        result = __spirv_ocl_nan(0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0f) )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )(SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx), xx, __intel_relaxed_isinf(yy));
+        result = __spirv_ocl_select(__spirv_ocl_copysign(0.0f, xx), xx, __intel_relaxed_isinf(yy));
     }
-    else if( SPIRV_OCL_BUILTIN(fabs, _f32, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f32, )(yy) )
+    else if( __spirv_ocl_fabs(xx) == __spirv_ocl_fabs(yy) )
     {
         *quo = (xx == yy) ? 1 : -1;
-        result = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx);
+        result = __spirv_ocl_copysign(0.0f, xx);
     }
     else
     {
-        int signx = SPIRV_BUILTIN(SignBitSet, _f32, )( xx ) ? -1 : 1;
-        int signy = SPIRV_BUILTIN(SignBitSet, _f32, )( yy ) ? -1 : 1;
+        int signx = __spirv_SignBitSet( xx ) ? -1 : 1;
+        int signy = __spirv_SignBitSet( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
-        float x = SPIRV_OCL_BUILTIN(fabs, _f32, )(xx);
-        float y = SPIRV_OCL_BUILTIN(fabs, _f32, )(yy);
+        float x = __spirv_ocl_fabs(xx);
+        float y = __spirv_ocl_fabs(yy);
         int ex, ey;
-        ex = SPIRV_OCL_BUILTIN(ilogb, _f32, )( x );
-        ey = SPIRV_OCL_BUILTIN(ilogb, _f32, )( y );
+        ex = __spirv_ocl_ilogb( x );
+        ey = __spirv_ocl_ilogb( y );
         float xr = x;
         float yr = y;
         uint q = 0;
         if(ex-ey >= -1)
         {
-            yr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )( y, -ey );
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )( x, -ex );
+            yr = __spirv_ocl_ldexp( y, -ey );
+            xr = __spirv_ocl_ldexp( x, -ex );
             if(ex-ey >= 0)
             {
               int i;
@@ -72,7 +72,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p1i32, )( float     
           }
           else
           {
-              xr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(xr, ex - ey);
+              xr = __spirv_ocl_ldexp(xr, ex - ey);
           }
         }
         if( (yr < 2.0f*xr) | ( (yr == 2.0f*xr) & (q & 0x00000001) ) )
@@ -82,7 +82,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p1i32, )( float     
         }
         if (ex - ey >= -1)
         {
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(xr, ey);
+            xr = __spirv_ocl_ldexp(xr, ey);
         }
 
         int qout = q & 0x0000007f;
@@ -103,7 +103,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p1i32, )( float     
     return result;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f32_v2f32_p1v2i32, )( float2         xx,
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_remquo( float2         xx,
                                                    float2         yy,
                                                    __global int2* quo )
 {
@@ -116,7 +116,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f32_v2f32_p1v2i32,
     in2[1] = yy.s1;
     for(uint i = 0; i < 2; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -125,7 +125,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f32_v2f32_p1v2i32,
     return temp;
 }
 
-INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f32_v3f32_p1v3i32, )( float3         xx,
+INLINE float3 __attribute__((overloadable)) __spirv_ocl_remquo( float3         xx,
                                                    float3         yy,
                                                    __global int3* quo )
 {
@@ -140,7 +140,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f32_v3f32_p1v3i32,
     in2[2] = yy.s2;
     for(uint i = 0; i < 3; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -151,7 +151,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f32_v3f32_p1v3i32,
     return temp;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f32_v4f32_p1v4i32, )( float4         xx,
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_remquo( float4         xx,
                                                    float4         yy,
                                                    __global int4* quo )
 {
@@ -168,7 +168,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f32_v4f32_p1v4i32,
     in2[3] = yy.s3;
     for(uint i = 0; i < 4; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -181,7 +181,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f32_v4f32_p1v4i32,
     return temp;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f32_v8f32_p1v8i32, )( float8         xx,
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_remquo( float8         xx,
                                                    float8         yy,
                                                    __global int8* quo )
 {
@@ -206,7 +206,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f32_v8f32_p1v8i32,
     in2[7] = yy.s7;
     for(uint i = 0; i < 8; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -227,7 +227,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f32_v8f32_p1v8i32,
     return temp;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f32_v16f32_p1v16i32, )( float16         xx,
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_remquo( float16         xx,
                                                        float16         yy,
                                                        __global int16* quo )
 {
@@ -268,7 +268,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f32_v16f32_p1v16
     in2[15] = yy.sf;
     for(uint i = 0; i < 16; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -305,7 +305,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f32_v16f32_p1v16
     return temp;
 }
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )( float          xx,
+float __attribute__((overloadable)) __spirv_ocl_remquo( float          xx,
                                             float          yy,
                                             __private int* quo )
 {
@@ -317,35 +317,35 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )( float     
         yy == 0.0f )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
+        result = __spirv_ocl_nan(0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0f) )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )(SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx), xx, __intel_relaxed_isinf(yy));
+        result = __spirv_ocl_select(__spirv_ocl_copysign(0.0f, xx), xx, __intel_relaxed_isinf(yy));
     }
-    else if( SPIRV_OCL_BUILTIN(fabs, _f32, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f32, )(yy) )
+    else if( __spirv_ocl_fabs(xx) == __spirv_ocl_fabs(yy) )
     {
         *quo = (xx == yy) ? 1 : -1;
-        result = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx);
+        result = __spirv_ocl_copysign(0.0f, xx);
     }
     else
     {
-        int signx = SPIRV_BUILTIN(SignBitSet, _f32, )( xx ) ? -1 : 1;
-        int signy = SPIRV_BUILTIN(SignBitSet, _f32, )( yy ) ? -1 : 1;
+        int signx = __spirv_SignBitSet( xx ) ? -1 : 1;
+        int signy = __spirv_SignBitSet( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
-        float x = SPIRV_OCL_BUILTIN(fabs, _f32, )(xx);
-        float y = SPIRV_OCL_BUILTIN(fabs, _f32, )(yy);
+        float x = __spirv_ocl_fabs(xx);
+        float y = __spirv_ocl_fabs(yy);
         int ex, ey;
-        ex = SPIRV_OCL_BUILTIN(ilogb, _f32, )( x );
-        ey = SPIRV_OCL_BUILTIN(ilogb, _f32, )( y );
+        ex = __spirv_ocl_ilogb( x );
+        ey = __spirv_ocl_ilogb( y );
         float xr = x;
         float yr = y;
         uint q = 0;
         if(ex-ey >= -1)
         {
-            yr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )( y, -ey );
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )( x, -ex );
+            yr = __spirv_ocl_ldexp( y, -ey );
+            xr = __spirv_ocl_ldexp( x, -ex );
             if(ex-ey >= 0)
             {
               int i;
@@ -368,7 +368,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )( float     
           }
           else
           {
-              xr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(xr, ex - ey);
+              xr = __spirv_ocl_ldexp(xr, ex - ey);
           }
         }
         if( (yr < 2.0f*xr) | ( (yr == 2.0f*xr) && (q & 0x00000001) ) )
@@ -378,7 +378,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )( float     
         }
         if (ex - ey >= -1)
         {
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(xr, ey);
+            xr = __spirv_ocl_ldexp(xr, ey);
         }
 
         int qout = q & 0x0000007f;
@@ -399,7 +399,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )( float     
     return result;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f32_v2f32_p0v2i32, )( float2          xx,
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_remquo( float2          xx,
                                                    float2          yy,
                                                    __private int2* quo )
 {
@@ -412,7 +412,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f32_v2f32_p0v2i32,
     in2[1] = yy.s1;
     for(uint i = 0; i < 2; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -421,7 +421,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f32_v2f32_p0v2i32,
     return temp;
 }
 
-INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f32_v3f32_p0v3i32, )( float3          xx,
+INLINE float3 __attribute__((overloadable)) __spirv_ocl_remquo( float3          xx,
                                                    float3          yy,
                                                    __private int3* quo )
 {
@@ -436,7 +436,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f32_v3f32_p0v3i32,
     in2[2] = yy.s2;
     for(uint i = 0; i < 3; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -447,7 +447,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f32_v3f32_p0v3i32,
     return temp;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f32_v4f32_p0v4i32, )( float4          xx,
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_remquo( float4          xx,
                                                    float4          yy,
                                                    __private int4* quo )
 {
@@ -464,7 +464,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f32_v4f32_p0v4i32,
     in2[3] = yy.s3;
     for(uint i = 0; i < 4; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -477,7 +477,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f32_v4f32_p0v4i32,
     return temp;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f32_v8f32_p0v8i32, )( float8          xx,
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_remquo( float8          xx,
                                                    float8          yy,
                                                    __private int8* quo )
 {
@@ -502,7 +502,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f32_v8f32_p0v8i32,
     in2[7] = yy.s7;
     for(uint i = 0; i < 8; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -523,7 +523,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f32_v8f32_p0v8i32,
     return temp;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f32_v16f32_p0v16i32, )( float16          xx,
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_remquo( float16          xx,
                                                        float16          yy,
                                                        __private int16* quo )
 {
@@ -564,7 +564,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f32_v16f32_p0v16
     in2[15] = yy.sf;
     for(uint i = 0; i < 16; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -601,7 +601,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f32_v16f32_p0v16
     return temp;
 }
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p3i32, )( float        xx,
+float __attribute__((overloadable)) __spirv_ocl_remquo( float        xx,
                                             float        yy,
                                             __local int* quo )
 {
@@ -613,35 +613,35 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p3i32, )( float     
         yy == 0.0f )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
+        result = __spirv_ocl_nan(0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0f) )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )(SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx), xx, __intel_relaxed_isinf(yy));
+        result = __spirv_ocl_select(__spirv_ocl_copysign(0.0f, xx), xx, __intel_relaxed_isinf(yy));
     }
-    else if( SPIRV_OCL_BUILTIN(fabs, _f32, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f32, )(yy) )
+    else if( __spirv_ocl_fabs(xx) == __spirv_ocl_fabs(yy) )
     {
         *quo = (xx == yy) ? 1 : -1;
-        result = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx);
+        result = __spirv_ocl_copysign(0.0f, xx);
     }
     else
     {
-        int signx = SPIRV_BUILTIN(SignBitSet, _f32, )( xx ) ? -1 : 1;
-        int signy = SPIRV_BUILTIN(SignBitSet, _f32, )( yy ) ? -1 : 1;
+        int signx = __spirv_SignBitSet( xx ) ? -1 : 1;
+        int signy = __spirv_SignBitSet( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
-        float x = SPIRV_OCL_BUILTIN(fabs, _f32, )(xx);
-        float y = SPIRV_OCL_BUILTIN(fabs, _f32, )(yy);
+        float x = __spirv_ocl_fabs(xx);
+        float y = __spirv_ocl_fabs(yy);
         int ex, ey;
-        ex = SPIRV_OCL_BUILTIN(ilogb, _f32, )( x );
-        ey = SPIRV_OCL_BUILTIN(ilogb, _f32, )( y );
+        ex = __spirv_ocl_ilogb( x );
+        ey = __spirv_ocl_ilogb( y );
         float xr = x;
         float yr = y;
         uint q = 0;
         if(ex-ey >= -1)
         {
-            yr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )( y, -ey );
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )( x, -ex );
+            yr = __spirv_ocl_ldexp( y, -ey );
+            xr = __spirv_ocl_ldexp( x, -ex );
             if(ex-ey >= 0)
             {
               int i;
@@ -664,7 +664,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p3i32, )( float     
           }
           else
           {
-              xr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(xr, ex - ey);
+              xr = __spirv_ocl_ldexp(xr, ex - ey);
           }
         }
         if( (yr < 2.0f*xr) | ( (yr == 2.0f*xr) && (q & 0x00000001) ) )
@@ -674,7 +674,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p3i32, )( float     
         }
         if (ex - ey >= -1)
         {
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(xr, ey);
+            xr = __spirv_ocl_ldexp(xr, ey);
         }
 
         int qout = q & 0x0000007f;
@@ -695,7 +695,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p3i32, )( float     
     return result;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f32_v2f32_p3v2i32, )( float2        xx,
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_remquo( float2        xx,
                                                    float2        yy,
                                                    __local int2* quo )
 {
@@ -708,7 +708,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f32_v2f32_p3v2i32,
     in2[1] = yy.s1;
     for(uint i = 0; i < 2; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -717,7 +717,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f32_v2f32_p3v2i32,
     return temp;
 }
 
-INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f32_v3f32_p3v3i32, )( float3        xx,
+INLINE float3 __attribute__((overloadable)) __spirv_ocl_remquo( float3        xx,
                                                    float3        yy,
                                                    __local int3* quo )
 {
@@ -732,7 +732,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f32_v3f32_p3v3i32,
     in2[2] = yy.s2;
     for(uint i = 0; i < 3; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -743,7 +743,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f32_v3f32_p3v3i32,
     return temp;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f32_v4f32_p3v4i32, )( float4        xx,
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_remquo( float4        xx,
                                                    float4        yy,
                                                    __local int4* quo )
 {
@@ -760,7 +760,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f32_v4f32_p3v4i32,
     in2[3] = yy.s3;
     for(uint i = 0; i < 4; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -773,7 +773,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f32_v4f32_p3v4i32,
     return temp;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f32_v8f32_p3v8i32, )( float8        xx,
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_remquo( float8        xx,
                                                    float8        yy,
                                                    __local int8* quo )
 {
@@ -798,7 +798,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f32_v8f32_p3v8i32,
     in2[7] = yy.s7;
     for(uint i = 0; i < 8; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -819,7 +819,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f32_v8f32_p3v8i32,
     return temp;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f32_v16f32_p3v16i32, )( float16        xx,
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_remquo( float16        xx,
                                                        float16        yy,
                                                        __local int16* quo )
 {
@@ -860,7 +860,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f32_v16f32_p3v16
     in2[15] = yy.sf;
     for(uint i = 0; i < 16; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -899,7 +899,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f32_v16f32_p3v16
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p4i32, )( float          xx,
+INLINE float __attribute__((overloadable)) __spirv_ocl_remquo( float          xx,
                                             float          yy,
                                             __generic int* quo )
 {
@@ -911,35 +911,35 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p4i32, )( flo
         yy == 0.0f )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
+        result = __spirv_ocl_nan(0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0f) )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )(SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx), xx, __intel_relaxed_isinf(yy));
+        result = __spirv_ocl_select(__spirv_ocl_copysign(0.0f, xx), xx, __intel_relaxed_isinf(yy));
     }
-    else if( SPIRV_OCL_BUILTIN(fabs, _f32, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f32, )(yy) )
+    else if( __spirv_ocl_fabs(xx) == __spirv_ocl_fabs(yy) )
     {
         *quo = (xx == yy) ? 1 : -1;
-        result = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx);
+        result = __spirv_ocl_copysign(0.0f, xx);
     }
     else
     {
-        int signx = SPIRV_BUILTIN(SignBitSet, _f32, )( xx ) ? -1 : 1;
-        int signy = SPIRV_BUILTIN(SignBitSet, _f32, )( yy ) ? -1 : 1;
+        int signx = __spirv_SignBitSet( xx ) ? -1 : 1;
+        int signy = __spirv_SignBitSet( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
-        float x = SPIRV_OCL_BUILTIN(fabs, _f32, )(xx);
-        float y = SPIRV_OCL_BUILTIN(fabs, _f32, )(yy);
+        float x = __spirv_ocl_fabs(xx);
+        float y = __spirv_ocl_fabs(yy);
         int ex, ey;
-        ex = SPIRV_OCL_BUILTIN(ilogb, _f32, )( x );
-        ey = SPIRV_OCL_BUILTIN(ilogb, _f32, )( y );
+        ex = __spirv_ocl_ilogb( x );
+        ey = __spirv_ocl_ilogb( y );
         float xr = x;
         float yr = y;
         uint q = 0;
         if(ex-ey >= -1)
         {
-            yr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )( y, -ey );
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )( x, -ex );
+            yr = __spirv_ocl_ldexp( y, -ey );
+            xr = __spirv_ocl_ldexp( x, -ex );
             if(ex-ey >= 0)
             {
               int i;
@@ -962,7 +962,7 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p4i32, )( flo
           }
           else
           {
-              xr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(xr, ex - ey);
+              xr = __spirv_ocl_ldexp(xr, ex - ey);
           }
         }
         if( (yr < 2.0f*xr) | ( (yr == 2.0f*xr) && (q & 0x00000001) ) )
@@ -972,7 +972,7 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p4i32, )( flo
         }
         if (ex - ey >= -1)
         {
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(xr, ey);
+            xr = __spirv_ocl_ldexp(xr, ey);
         }
 
         int qout = q & 0x0000007f;
@@ -993,7 +993,7 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p4i32, )( flo
     return result;
 }
 
-INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f32_v2f32_p4v2i32, )( float2          xx,
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_remquo( float2          xx,
                                                    float2          yy,
                                                    __generic int2* quo )
 {
@@ -1006,7 +1006,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f32_v2f32_p4v2i32,
     in2[1] = yy.s1;
     for(uint i = 0; i < 2; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1015,7 +1015,7 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f32_v2f32_p4v2i32,
     return temp;
 }
 
-INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f32_v3f32_p4v3i32, )( float3          xx,
+INLINE float3 __attribute__((overloadable)) __spirv_ocl_remquo( float3          xx,
                                                    float3          yy,
                                                    __generic int3* quo )
 {
@@ -1030,7 +1030,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f32_v3f32_p4v3i32,
     in2[2] = yy.s2;
     for(uint i = 0; i < 3; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1041,7 +1041,7 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f32_v3f32_p4v3i32,
     return temp;
 }
 
-INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f32_v4f32_p4v4i32, )( float4          xx,
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_remquo( float4          xx,
                                                    float4          yy,
                                                    __generic int4* quo )
 {
@@ -1058,7 +1058,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f32_v4f32_p4v4i32,
     in2[3] = yy.s3;
     for(uint i = 0; i < 4; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1071,7 +1071,7 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f32_v4f32_p4v4i32,
     return temp;
 }
 
-INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f32_v8f32_p4v8i32, )( float8          xx,
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_remquo( float8          xx,
                                                    float8          yy,
                                                    __generic int8* quo )
 {
@@ -1096,7 +1096,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f32_v8f32_p4v8i32,
     in2[7] = yy.s7;
     for(uint i = 0; i < 8; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1117,7 +1117,7 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f32_v8f32_p4v8i32,
     return temp;
 }
 
-INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f32_v16f32_p4v16i32, )( float16          xx,
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_remquo( float16          xx,
                                                        float16          yy,
                                                        __generic int16* quo )
 {
@@ -1158,7 +1158,7 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f32_v16f32_p4v16
     in2[15] = yy.sf;
     for(uint i = 0; i < 16; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1198,18 +1198,18 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f32_v16f32_p4v16
 #endif //#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #ifdef cl_khr_fp16
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f16_f16_p1i32, )( half          xx,
+INLINE half __attribute__((overloadable)) __spirv_ocl_remquo( half          xx,
                                            half          yy,
                                            __global int* quo )
 {
     float result;
     int   quoVal;
-    result = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )((float)xx, (float)yy, (__private int*)&quoVal);
+    result = __spirv_ocl_remquo((float)xx, (float)yy, (__private int*)&quoVal);
     *quo = (half)quoVal;
     return (half)result;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f16_v2f16_p1v2i32, )( half2          xx,
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_remquo( half2          xx,
                                                   half2          yy,
                                                   __global int2* quo )
 {
@@ -1222,7 +1222,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f16_v2f16_p1v2i32, 
     in2[1] = yy.s1;
     for(uint i = 0; i < 2; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1231,7 +1231,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f16_v2f16_p1v2i32, 
     return temp;
 }
 
-INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f16_v3f16_p1v3i32, )( half3          xx,
+INLINE half3 __attribute__((overloadable)) __spirv_ocl_remquo( half3          xx,
                                                   half3          yy,
                                                   __global int3* quo )
 {
@@ -1246,7 +1246,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f16_v3f16_p1v3i32, 
     in2[2] = yy.s2;
     for(uint i = 0; i < 3; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1257,7 +1257,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f16_v3f16_p1v3i32, 
     return temp;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f16_v4f16_p1v4i32, )( half4          xx,
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_remquo( half4          xx,
                                                   half4          yy,
                                                   __global int4* quo )
 {
@@ -1274,7 +1274,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f16_v4f16_p1v4i32, 
     in2[3] = yy.s3;
     for(uint i = 0; i < 4; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1287,7 +1287,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f16_v4f16_p1v4i32, 
     return temp;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f16_v8f16_p1v8i32, )( half8          xx,
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_remquo( half8          xx,
                                                   half8          yy,
                                                   __global int8* quo )
 {
@@ -1312,7 +1312,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f16_v8f16_p1v8i32, 
     in2[7] = yy.s7;
     for(uint i = 0; i < 8; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1333,7 +1333,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f16_v8f16_p1v8i32, 
     return temp;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f16_v16f16_p1v16i32, )( half16          xx,
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_remquo( half16          xx,
                                                       half16          yy,
                                                       __global int16* quo )
 {
@@ -1374,7 +1374,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f16_v16f16_p1v16i
     in2[15] = yy.sf;
     for(uint i = 0; i < 16; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1411,18 +1411,18 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f16_v16f16_p1v16i
     return temp;
 }
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )( half           xx,
+INLINE half __attribute__((overloadable)) __spirv_ocl_remquo( half           xx,
                                            half           yy,
                                            __private int* quo )
 {
     float result;
     int   quoVal;
-    result = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )((float)xx, (float)yy, (__private int*)&quoVal);
+    result = __spirv_ocl_remquo((float)xx, (float)yy, (__private int*)&quoVal);
     *quo = (half)quoVal;
     return (half)result;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f16_v2f16_p0v2i32, )( half2           xx,
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_remquo( half2           xx,
                                                   half2           yy,
                                                   __private int2* quo )
 {
@@ -1435,7 +1435,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f16_v2f16_p0v2i32, 
     in2[1] = yy.s1;
     for(uint i = 0; i < 2; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1444,7 +1444,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f16_v2f16_p0v2i32, 
     return temp;
 }
 
-INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f16_v3f16_p0v3i32, )( half3           xx,
+INLINE half3 __attribute__((overloadable)) __spirv_ocl_remquo( half3           xx,
                                                   half3           yy,
                                                   __private int3* quo )
 {
@@ -1459,7 +1459,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f16_v3f16_p0v3i32, 
     in2[2] = yy.s2;
     for(uint i = 0; i < 3; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1470,7 +1470,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f16_v3f16_p0v3i32, 
     return temp;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f16_v4f16_p0v4i32, )( half4           xx,
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_remquo( half4           xx,
                                                   half4           yy,
                                                   __private int4* quo )
 {
@@ -1487,7 +1487,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f16_v4f16_p0v4i32, 
     in2[3] = yy.s3;
     for(uint i = 0; i < 4; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1500,7 +1500,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f16_v4f16_p0v4i32, 
     return temp;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f16_v8f16_p0v8i32, )( half8           xx,
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_remquo( half8           xx,
                                                   half8           yy,
                                                   __private int8* quo )
 {
@@ -1525,7 +1525,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f16_v8f16_p0v8i32, 
     in2[7] = yy.s7;
     for(uint i = 0; i < 8; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1546,7 +1546,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f16_v8f16_p0v8i32, 
     return temp;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f16_v16f16_p0v16i32, )( half16           xx,
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_remquo( half16           xx,
                                                       half16           yy,
                                                       __private int16* quo )
 {
@@ -1587,7 +1587,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f16_v16f16_p0v16i
     in2[15] = yy.sf;
     for(uint i = 0; i < 16; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1624,18 +1624,18 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f16_v16f16_p0v16i
     return temp;
 }
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f16_f16_p3i32, )( half         xx,
+INLINE half __attribute__((overloadable)) __spirv_ocl_remquo( half         xx,
                                            half         yy,
                                            __local int* quo )
 {
     float result;
     int   quoVal;
-    result = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )((float)xx, (float)yy, (__private int*)&quoVal);
+    result = __spirv_ocl_remquo((float)xx, (float)yy, (__private int*)&quoVal);
     *quo = (half)quoVal;
     return (half)result;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f16_v2f16_p3v2i32, )( half2         xx,
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_remquo( half2         xx,
                                                   half2         yy,
                                                   __local int2* quo )
 {
@@ -1648,7 +1648,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f16_v2f16_p3v2i32, 
     in2[1] = yy.s1;
     for(uint i = 0; i < 2; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1657,7 +1657,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f16_v2f16_p3v2i32, 
     return temp;
 }
 
-INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f16_v3f16_p3v3i32, )( half3         xx,
+INLINE half3 __attribute__((overloadable)) __spirv_ocl_remquo( half3         xx,
                                                   half3         yy,
                                                   __local int3* quo )
 {
@@ -1672,7 +1672,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f16_v3f16_p3v3i32, 
     in2[2] = yy.s2;
     for(uint i = 0; i < 3; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1683,7 +1683,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f16_v3f16_p3v3i32, 
     return temp;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f16_v4f16_p3v4i32, )( half4         xx,
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_remquo( half4         xx,
                                                   half4         yy,
                                                   __local int4* quo )
 {
@@ -1700,7 +1700,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f16_v4f16_p3v4i32, 
     in2[3] = yy.s3;
     for(uint i = 0; i < 4; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1713,7 +1713,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f16_v4f16_p3v4i32, 
     return temp;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f16_v8f16_p3v8i32, )( half8         xx,
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_remquo( half8         xx,
                                                   half8         yy,
                                                   __local int8* quo )
 {
@@ -1738,7 +1738,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f16_v8f16_p3v8i32, 
     in2[7] = yy.s7;
     for(uint i = 0; i < 8; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1759,7 +1759,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f16_v8f16_p3v8i32, 
     return temp;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f16_v16f16_p3v16i32, )( half16         xx,
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_remquo( half16         xx,
                                                       half16         yy,
                                                       __local int16* quo )
 {
@@ -1800,7 +1800,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f16_v16f16_p3v16i
     in2[15] = yy.sf;
     for(uint i = 0; i < 16; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1841,18 +1841,18 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f16_v16f16_p3v16i
 
 #if defined(cl_khr_fp16) && (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f16_f16_p4i32, )( half           xx,
+INLINE half __attribute__((overloadable)) __spirv_ocl_remquo( half           xx,
                                            half           yy,
                                            __generic int* quo )
 {
     float result;
     int   quoVal;
-    result = SPIRV_OCL_BUILTIN(remquo, _f32_f32_p4i32, )((float)xx, (float)yy, (__generic int*)&quoVal);
+    result = __spirv_ocl_remquo((float)xx, (float)yy, (__generic int*)&quoVal);
     *quo = (half)quoVal;
     return (half)result;
 }
 
-INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f16_v2f16_p4v2i32, )( half2           xx,
+INLINE half2 __attribute__((overloadable)) __spirv_ocl_remquo( half2           xx,
                                                   half2           yy,
                                                   __generic int2* quo )
 {
@@ -1865,7 +1865,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f16_v2f16_p4v2i32, 
     in2[1] = yy.s1;
     for(uint i = 0; i < 2; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1874,7 +1874,7 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f16_v2f16_p4v2i32, 
     return temp;
 }
 
-INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f16_v3f16_p4v3i32, )( half3           xx,
+INLINE half3 __attribute__((overloadable)) __spirv_ocl_remquo( half3           xx,
                                                   half3           yy,
                                                   __generic int3* quo )
 {
@@ -1889,7 +1889,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f16_v3f16_p4v3i32, 
     in2[2] = yy.s2;
     for(uint i = 0; i < 3; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1900,7 +1900,7 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f16_v3f16_p4v3i32, 
     return temp;
 }
 
-INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f16_v4f16_p4v4i32, )( half4           xx,
+INLINE half4 __attribute__((overloadable)) __spirv_ocl_remquo( half4           xx,
                                                   half4           yy,
                                                   __generic int4* quo )
 {
@@ -1917,7 +1917,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f16_v4f16_p4v4i32, 
     in2[3] = yy.s3;
     for(uint i = 0; i < 4; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1930,7 +1930,7 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f16_v4f16_p4v4i32, 
     return temp;
 }
 
-INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f16_v8f16_p4v8i32, )( half8           xx,
+INLINE half8 __attribute__((overloadable)) __spirv_ocl_remquo( half8           xx,
                                                   half8           yy,
                                                   __generic int8* quo )
 {
@@ -1955,7 +1955,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f16_v8f16_p4v8i32, 
     in2[7] = yy.s7;
     for(uint i = 0; i < 8; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -1976,7 +1976,7 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f16_v8f16_p4v8i32, 
     return temp;
 }
 
-INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f16_v16f16_p4v16i32, )( half16           xx,
+INLINE half16 __attribute__((overloadable)) __spirv_ocl_remquo( half16           xx,
                                                       half16           yy,
                                                       __generic int16* quo )
 {
@@ -2017,7 +2017,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f16_v16f16_p4v16i
     in2[15] = yy.sf;
     for(uint i = 0; i < 16; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f16_f16_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2057,7 +2057,7 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f16_v16f16_p4v16i
 
 #if defined(cl_khr_fp64)
 
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p1i32, )( double        xx,
+double __attribute__((overloadable)) __spirv_ocl_remquo( double        xx,
                                              double        yy,
                                              __global int* quo )
 {
@@ -2069,35 +2069,35 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p1i32, )( double   
         yy == 0.0 )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(nan, _i64, )(0);
+        result = __spirv_ocl_nan(0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0) )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )(SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
+        result = __spirv_ocl_select(__spirv_ocl_copysign(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
     }
-    else if( SPIRV_OCL_BUILTIN(fabs, _f64, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f64, )(yy) )
+    else if( __spirv_ocl_fabs(xx) == __spirv_ocl_fabs(yy) )
     {
         *quo = (xx == yy) ? 1 : -1;
-        result = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx);
+        result = __spirv_ocl_copysign(0.0, xx);
     }
     else
     {
-        int signx = SPIRV_BUILTIN(SignBitSet, _f64, )( xx ) ? -1 : 1;
-        int signy = SPIRV_BUILTIN(SignBitSet, _f64, )( yy ) ? -1 : 1;
+        int signx = __spirv_SignBitSet( xx ) ? -1 : 1;
+        int signy = __spirv_SignBitSet( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
-        double x = SPIRV_OCL_BUILTIN(fabs, _f64, )(xx);
-        double y = SPIRV_OCL_BUILTIN(fabs, _f64, )(yy);
+        double x = __spirv_ocl_fabs(xx);
+        double y = __spirv_ocl_fabs(yy);
         int ex, ey;
-        ex = SPIRV_OCL_BUILTIN(ilogb, _f64, )( x );
-        ey = SPIRV_OCL_BUILTIN(ilogb, _f64, )( y );
+        ex = __spirv_ocl_ilogb( x );
+        ey = __spirv_ocl_ilogb( y );
         double xr = x;
         double yr = y;
         uint q = 0;
         if(ex-ey >= -1)
         {
-            yr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )( y, -ey );
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )( x, -ex );
+            yr = __spirv_ocl_ldexp( y, -ey );
+            xr = __spirv_ocl_ldexp( x, -ex );
             if(ex-ey >= 0)
             {
               int i;
@@ -2120,7 +2120,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p1i32, )( double   
           }
           else
           {
-              xr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )(xr, ex - ey);
+              xr = __spirv_ocl_ldexp(xr, ex - ey);
           }
         }
         if( (yr < 2.0*xr) | ( (yr == 2.0*xr) & (q & 0x1) ) )
@@ -2130,7 +2130,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p1i32, )( double   
         }
         if (ex - ey >= -1)
         {
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )(xr, ey);
+            xr = __spirv_ocl_ldexp(xr, ey);
         }
 
         uint qout = q & 0x7f;
@@ -2151,7 +2151,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p1i32, )( double   
     return result;
 }
 
-double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f64_v2f64_p1v2i32, )( double2         xx,
+double2 __attribute__((overloadable)) __spirv_ocl_remquo( double2         xx,
                                                     double2         yy,
                                                     __global int2*  quo )
 {
@@ -2164,7 +2164,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f64_v2f64_p1v2i32, )( do
     in2[1] = yy.s1;
     for(uint i = 0; i < 2; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2173,7 +2173,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f64_v2f64_p1v2i32, )( do
     return temp;
 }
 
-double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f64_v3f64_p1v3i32, )( double3        xx,
+double3 __attribute__((overloadable)) __spirv_ocl_remquo( double3        xx,
                                                     double3        yy,
                                                     __global int3* quo )
 {
@@ -2188,7 +2188,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f64_v3f64_p1v3i32, )( do
     in2[2] = yy.s2;
     for(uint i = 0; i < 3; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2199,7 +2199,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f64_v3f64_p1v3i32, )( do
     return temp;
 }
 
-double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f64_v4f64_p1v4i32, )( double4        xx,
+double4 __attribute__((overloadable)) __spirv_ocl_remquo( double4        xx,
                                                     double4        yy,
                                                     __global int4* quo )
 {
@@ -2216,7 +2216,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f64_v4f64_p1v4i32, )( do
     in2[3] = yy.s3;
     for(uint i = 0; i < 4; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2229,7 +2229,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f64_v4f64_p1v4i32, )( do
     return temp;
 }
 
-double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f64_v8f64_p1v8i32, )( double8        xx,
+double8 __attribute__((overloadable)) __spirv_ocl_remquo( double8        xx,
                                                     double8        yy,
                                                     __global int8* quo )
 {
@@ -2254,7 +2254,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f64_v8f64_p1v8i32, )( do
     in2[7] = yy.s7;
     for(uint i = 0; i < 8; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2275,7 +2275,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f64_v8f64_p1v8i32, )( do
     return temp;
 }
 
-double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f64_v16f64_p1v16i32, )( double16        xx,
+double16 __attribute__((overloadable)) __spirv_ocl_remquo( double16        xx,
                                                         double16        yy,
                                                         __global int16* quo )
 {
@@ -2316,7 +2316,7 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f64_v16f64_p1v16i32, )
     in2[15] = yy.sf;
     for(uint i = 0; i < 16; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2353,7 +2353,7 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f64_v16f64_p1v16i32, )
     return temp;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )( double         xx,
+double __attribute__((overloadable)) __spirv_ocl_remquo( double         xx,
                                              double         yy,
                                              __private int* quo )
 {
@@ -2365,35 +2365,35 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )( double   
         yy == 0.0 )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(nan, _i64, )(0);
+        result = __spirv_ocl_nan(0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0) )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )(SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
+        result = __spirv_ocl_select(__spirv_ocl_copysign(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
     }
-    else if( SPIRV_OCL_BUILTIN(fabs, _f64, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f64, )(yy) )
+    else if( __spirv_ocl_fabs(xx) == __spirv_ocl_fabs(yy) )
     {
         *quo = (xx == yy) ? 1 : -1;
-        result = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx);
+        result = __spirv_ocl_copysign(0.0, xx);
     }
     else
     {
-        int signx = SPIRV_BUILTIN(SignBitSet, _f64, )( xx ) ? -1 : 1;
-        int signy = SPIRV_BUILTIN(SignBitSet, _f64, )( yy ) ? -1 : 1;
+        int signx = __spirv_SignBitSet( xx ) ? -1 : 1;
+        int signy = __spirv_SignBitSet( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
-        double x = SPIRV_OCL_BUILTIN(fabs, _f64, )(xx);
-        double y = SPIRV_OCL_BUILTIN(fabs, _f64, )(yy);
+        double x = __spirv_ocl_fabs(xx);
+        double y = __spirv_ocl_fabs(yy);
         int ex, ey;
-        ex = SPIRV_OCL_BUILTIN(ilogb, _f64, )( x );
-        ey = SPIRV_OCL_BUILTIN(ilogb, _f64, )( y );
+        ex = __spirv_ocl_ilogb( x );
+        ey = __spirv_ocl_ilogb( y );
         double xr = x;
         double yr = y;
         uint q = 0;
         if(ex-ey >= -1)
         {
-            yr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )( y, -ey );
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )( x, -ex );
+            yr = __spirv_ocl_ldexp( y, -ey );
+            xr = __spirv_ocl_ldexp( x, -ex );
             if(ex-ey >= 0)
             {
               int i;
@@ -2416,7 +2416,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )( double   
           }
           else
           {
-              xr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )(xr, ex - ey);
+              xr = __spirv_ocl_ldexp(xr, ex - ey);
           }
         }
         if( (yr < 2.0*xr) | ( (yr == 2.0*xr) && (q & 0x1) ) )
@@ -2426,7 +2426,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )( double   
         }
         if (ex - ey >= -1)
         {
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )(xr, ey);
+            xr = __spirv_ocl_ldexp(xr, ey);
         }
 
         int qout = q & 0x7f;
@@ -2447,7 +2447,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )( double   
     return result;
 }
 
-double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f64_v2f64_p0v2i32, )( double2         xx,
+double2 __attribute__((overloadable)) __spirv_ocl_remquo( double2         xx,
                                                     double2         yy,
                                                     __private int2* quo )
 {
@@ -2460,7 +2460,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f64_v2f64_p0v2i32, )( do
     in2[1] = yy.s1;
     for(uint i = 0; i < 2; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2469,7 +2469,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f64_v2f64_p0v2i32, )( do
     return temp;
 }
 
-double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f64_v3f64_p0v3i32, )( double3         xx,
+double3 __attribute__((overloadable)) __spirv_ocl_remquo( double3         xx,
                                                     double3         yy,
                                                     __private int3* quo )
 {
@@ -2484,7 +2484,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f64_v3f64_p0v3i32, )( do
     in2[2] = yy.s2;
     for(uint i = 0; i < 3; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2495,7 +2495,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f64_v3f64_p0v3i32, )( do
     return temp;
 }
 
-double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f64_v4f64_p0v4i32, )( double4         xx,
+double4 __attribute__((overloadable)) __spirv_ocl_remquo( double4         xx,
                                                     double4         yy,
                                                     __private int4* quo )
 {
@@ -2512,7 +2512,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f64_v4f64_p0v4i32, )( do
     in2[3] = yy.s3;
     for(uint i = 0; i < 4; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2525,7 +2525,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f64_v4f64_p0v4i32, )( do
     return temp;
 }
 
-double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f64_v8f64_p0v8i32, )( double8         xx,
+double8 __attribute__((overloadable)) __spirv_ocl_remquo( double8         xx,
                                                     double8         yy,
                                                     __private int8* quo )
 {
@@ -2550,7 +2550,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f64_v8f64_p0v8i32, )( do
     in2[7] = yy.s7;
     for(uint i = 0; i < 8; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2571,7 +2571,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f64_v8f64_p0v8i32, )( do
     return temp;
 }
 
-double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f64_v16f64_p0v16i32, )( double16         xx,
+double16 __attribute__((overloadable)) __spirv_ocl_remquo( double16         xx,
                                                         double16         yy,
                                                         __private int16* quo )
 {
@@ -2612,7 +2612,7 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f64_v16f64_p0v16i32, )
     in2[15] = yy.sf;
     for(uint i = 0; i < 16; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2649,7 +2649,7 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f64_v16f64_p0v16i32, )
     return temp;
 }
 
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p3i32, )( double       xx,
+double __attribute__((overloadable)) __spirv_ocl_remquo( double       xx,
                                              double       yy,
                                              __local int* quo )
 {
@@ -2661,35 +2661,35 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p3i32, )( double   
         yy == 0.0 )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
+        result = __spirv_ocl_nan(0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0) )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )(SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
+        result = __spirv_ocl_select(__spirv_ocl_copysign(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
     }
-    else if( SPIRV_OCL_BUILTIN(fabs, _f64, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f64, )(yy) )
+    else if( __spirv_ocl_fabs(xx) == __spirv_ocl_fabs(yy) )
     {
         *quo = (xx == yy) ? 1 : -1;
-        result = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx);
+        result = __spirv_ocl_copysign(0.0, xx);
     }
     else
     {
-        int signx = SPIRV_BUILTIN(SignBitSet, _f64, )( xx ) ? -1 : 1;
-        int signy = SPIRV_BUILTIN(SignBitSet, _f64, )( yy ) ? -1 : 1;
+        int signx = __spirv_SignBitSet( xx ) ? -1 : 1;
+        int signy = __spirv_SignBitSet( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
-        double x = SPIRV_OCL_BUILTIN(fabs, _f64, )(xx);
-        double y = SPIRV_OCL_BUILTIN(fabs, _f64, )(yy);
+        double x = __spirv_ocl_fabs(xx);
+        double y = __spirv_ocl_fabs(yy);
         int ex, ey;
-        ex = SPIRV_OCL_BUILTIN(ilogb, _f64, )( x );
-        ey = SPIRV_OCL_BUILTIN(ilogb, _f64, )( y );
+        ex = __spirv_ocl_ilogb( x );
+        ey = __spirv_ocl_ilogb( y );
         double xr = x;
         double yr = y;
         uint q = 0;
         if(ex-ey >= -1)
         {
-            yr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )( y, -ey );
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )( x, -ex );
+            yr = __spirv_ocl_ldexp( y, -ey );
+            xr = __spirv_ocl_ldexp( x, -ex );
             if(ex-ey >= 0)
             {
               int i;
@@ -2712,7 +2712,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p3i32, )( double   
           }
           else
           {
-              xr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )(xr, ex - ey);
+              xr = __spirv_ocl_ldexp(xr, ex - ey);
           }
         }
         if( (yr < 2.0*xr) | ( (yr == 2.0*xr) && (q & 0x1) ) )
@@ -2722,7 +2722,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p3i32, )( double   
         }
         if (ex - ey >= -1)
         {
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )(xr, ey);
+            xr = __spirv_ocl_ldexp(xr, ey);
         }
 
         int qout = q & 0x7f;
@@ -2743,7 +2743,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p3i32, )( double   
     return result;
 }
 
-double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f64_v2f64_p3v2i32, )( double2       xx,
+double2 __attribute__((overloadable)) __spirv_ocl_remquo( double2       xx,
                                                     double2       yy,
                                                     __local int2* quo )
 {
@@ -2756,7 +2756,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f64_v2f64_p3v2i32, )( do
     in2[1] = yy.s1;
     for(uint i = 0; i < 2; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2765,7 +2765,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f64_v2f64_p3v2i32, )( do
     return temp;
 }
 
-double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f64_v3f64_p3v3i32, )( double3       xx,
+double3 __attribute__((overloadable)) __spirv_ocl_remquo( double3       xx,
                                                     double3       yy,
                                                     __local int3* quo )
 {
@@ -2780,7 +2780,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f64_v3f64_p3v3i32, )( do
     in2[2] = yy.s2;
     for(uint i = 0; i < 3; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2791,7 +2791,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f64_v3f64_p3v3i32, )( do
     return temp;
 }
 
-double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f64_v4f64_p3v4i32, )( double4       xx,
+double4 __attribute__((overloadable)) __spirv_ocl_remquo( double4       xx,
                                                     double4       yy,
                                                     __local int4* quo )
 {
@@ -2808,7 +2808,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f64_v4f64_p3v4i32, )( do
     in2[3] = yy.s3;
     for(uint i = 0; i < 4; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2821,7 +2821,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f64_v4f64_p3v4i32, )( do
     return temp;
 }
 
-double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f64_v8f64_p3v8i32, )( double8       xx,
+double8 __attribute__((overloadable)) __spirv_ocl_remquo( double8       xx,
                                                     double8       yy,
                                                     __local int8* quo )
 {
@@ -2846,7 +2846,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f64_v8f64_p3v8i32, )( do
     in2[7] = yy.s7;
     for(uint i = 0; i < 8; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2867,7 +2867,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f64_v8f64_p3v8i32, )( do
     return temp;
 }
 
-double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f64_v16f64_p3v16i32, )( double16       xx,
+double16 __attribute__((overloadable)) __spirv_ocl_remquo( double16       xx,
                                                         double16       yy,
                                                         __local int16* quo )
 {
@@ -2908,7 +2908,7 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f64_v16f64_p3v16i32, )
     in2[15] = yy.sf;
     for(uint i = 0; i < 16; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )(in1[i], in2[i], (__private int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__private int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -2947,7 +2947,7 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f64_v16f64_p3v16i32, )
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p4i32, )( double         xx,
+double __attribute__((overloadable)) __spirv_ocl_remquo( double         xx,
                                              double         yy,
                                              __generic int* quo )
 {
@@ -2959,35 +2959,35 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p4i32, )( double   
         yy == 0.0 )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
+        result = __spirv_ocl_nan(0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0) )
     {
         *quo = 0;
-        result = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )(SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
+        result = __spirv_ocl_select(__spirv_ocl_copysign(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
     }
-    else if( SPIRV_OCL_BUILTIN(fabs, _f64, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f64, )(yy) )
+    else if( __spirv_ocl_fabs(xx) == __spirv_ocl_fabs(yy) )
     {
         *quo = (xx == yy) ? 1 : -1;
-        result = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx);
+        result = __spirv_ocl_copysign(0.0, xx);
     }
     else
     {
-        int signx = SPIRV_BUILTIN(SignBitSet, _f64, )( xx ) ? -1 : 1;
-        int signy = SPIRV_BUILTIN(SignBitSet, _f64, )( yy ) ? -1 : 1;
+        int signx = __spirv_SignBitSet( xx ) ? -1 : 1;
+        int signy = __spirv_SignBitSet( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
-        double x = SPIRV_OCL_BUILTIN(fabs, _f64, )(xx);
-        double y = SPIRV_OCL_BUILTIN(fabs, _f64, )(yy);
+        double x = __spirv_ocl_fabs(xx);
+        double y = __spirv_ocl_fabs(yy);
         int ex, ey;
-        ex = SPIRV_OCL_BUILTIN(ilogb, _f64, )( x );
-        ey = SPIRV_OCL_BUILTIN(ilogb, _f64, )( y );
+        ex = __spirv_ocl_ilogb( x );
+        ey = __spirv_ocl_ilogb( y );
         double xr = x;
         double yr = y;
         uint q = 0;
         if(ex-ey >= -1)
         {
-            yr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )( y, -ey );
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )( x, -ex );
+            yr = __spirv_ocl_ldexp( y, -ey );
+            xr = __spirv_ocl_ldexp( x, -ex );
             if(ex-ey >= 0)
             {
               int i;
@@ -3010,7 +3010,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p4i32, )( double   
           }
           else
           {
-              xr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )(xr, ex - ey);
+              xr = __spirv_ocl_ldexp(xr, ex - ey);
           }
         }
         if( (yr < 2.0*xr) | ( (yr == 2.0*xr) && (q & 0x1) ) )
@@ -3020,7 +3020,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p4i32, )( double   
         }
         if (ex - ey >= -1)
         {
-            xr = SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )(xr, ey);
+            xr = __spirv_ocl_ldexp(xr, ey);
         }
 
         int qout = q & 0x7f;
@@ -3041,7 +3041,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p4i32, )( double   
     return result;
 }
 
-double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f64_v2f64_p4v2i32, )( double2         xx,
+double2 __attribute__((overloadable)) __spirv_ocl_remquo( double2         xx,
                                                     double2         yy,
                                                     __generic int2* quo )
 {
@@ -3054,7 +3054,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f64_v2f64_p4v2i32, )( do
     in2[1] = yy.s1;
     for(uint i = 0; i < 2; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -3063,7 +3063,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v2f64_v2f64_p4v2i32, )( do
     return temp;
 }
 
-double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f64_v3f64_p4v3i32, )( double3         xx,
+double3 __attribute__((overloadable)) __spirv_ocl_remquo( double3         xx,
                                                     double3         yy,
                                                     __generic int3* quo )
 {
@@ -3078,7 +3078,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f64_v3f64_p4v3i32, )( do
     in2[2] = yy.s2;
     for(uint i = 0; i < 3; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -3089,7 +3089,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v3f64_v3f64_p4v3i32, )( do
     return temp;
 }
 
-double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f64_v4f64_p4v4i32, )( double4         xx,
+double4 __attribute__((overloadable)) __spirv_ocl_remquo( double4         xx,
                                                     double4         yy,
                                                     __generic int4* quo )
 {
@@ -3106,7 +3106,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f64_v4f64_p4v4i32, )( do
     in2[3] = yy.s3;
     for(uint i = 0; i < 4; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -3119,7 +3119,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v4f64_v4f64_p4v4i32, )( do
     return temp;
 }
 
-double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f64_v8f64_p4v8i32, )( double8         xx,
+double8 __attribute__((overloadable)) __spirv_ocl_remquo( double8         xx,
                                                     double8         yy,
                                                     __generic int8* quo )
 {
@@ -3144,7 +3144,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f64_v8f64_p4v8i32, )( do
     in2[7] = yy.s7;
     for(uint i = 0; i < 8; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];
@@ -3165,7 +3165,7 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v8f64_v8f64_p4v8i32, )( do
     return temp;
 }
 
-double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f64_v16f64_p4v16i32, )( double16         xx,
+double16 __attribute__((overloadable)) __spirv_ocl_remquo( double16         xx,
                                                         double16         yy,
                                                         __generic int16* quo )
 {
@@ -3206,7 +3206,7 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _v16f64_v16f64_p4v16i32, )
     in2[15] = yy.sf;
     for(uint i = 0; i < 16; i++)
     {
-        out[i] = SPIRV_OCL_BUILTIN(remquo, _f64_f64_p4i32, )(in1[i], in2[i], (__generic int*)&out2[i]);
+        out[i] = __spirv_ocl_remquo(in1[i], in2[i], (__generic int*)&out2[i]);
     }
     quo->s0 = out2[0];
     quo->s1 = out2[1];

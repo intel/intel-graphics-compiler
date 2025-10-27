@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax, _f32_f32, )( float x, float y )
+INLINE float __attribute__((overloadable)) __spirv_ocl_fmax( float x, float y )
 {
     return __builtin_IB_fmax(x, y);
 }
@@ -18,7 +18,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( fmax, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax, _f64_f64, )( double x, double y )
+INLINE double __attribute__((overloadable)) __spirv_ocl_fmax( double x, double y )
 {
     return __builtin_IB_dmax(x, y);
 }
@@ -29,7 +29,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( fmax, double, double, f64 )
 
 #if defined(cl_khr_fp16)
 
-INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax, _f16_f16, )( half x, half y )
+INLINE half __attribute__((overloadable)) __spirv_ocl_fmax( half x, half y )
 {
     return __builtin_IB_HMAX(x, y);
 }

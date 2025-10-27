@@ -14,16 +14,16 @@ extern __constant int __Native64Bit;
 #if defined(cl_khr_fp16)
 
 INLINE
-half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt_cr, _f16, )( half a )
+half __attribute__((overloadable)) __spirv_ocl_sqrt_cr( half a )
 {
-    return (half)SPIRV_OCL_BUILTIN(sqrt_cr, _f32, )((float)a);
+    return (half)__spirv_ocl_sqrt_cr((float)a);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sqrt_cr, half, half, f16 )
 
 #endif // define(cl_khr_fp16)
 
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt_cr, _f32, )( float a )
+float __attribute__((overloadable)) __spirv_ocl_sqrt_cr( float a )
 {
     if (!BIF_FLAG_CTRL_GET(CRMacros))
     {
@@ -63,7 +63,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt_cr, _f32, )( float a )
                 bool denorm = (aExp == 0);
 
                 if (denorm & !BIF_FLAG_CTRL_GET(FlushDenormals)) {
-                    fa.f = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(fa.f, 126);
+                    fa.f = __spirv_ocl_ldexp(fa.f, 126);
                 }
                 else {
                     // Scale a to [1/2, 2)
@@ -71,25 +71,25 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt_cr, _f32, )( float a )
                 }
 
                 // Initial approximation
-                y0.f = SPIRV_OCL_BUILTIN(rsqrt, _f32, )(fa.f);
+                y0.f = __spirv_ocl_rsqrt(fa.f);
                 onehalf.u = 0x3f000000;
                 // Step(1), H0 = 1/2y0
                 H0.f = onehalf.f * y0.f;
                 // Step(2), S0 = a*y0
                 S0.f = fa.f * y0.f;
                 // Step(3), d0 = 1/2 - S0*H0
-                d0.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-S0.f, H0.f, onehalf.f);
+                d0.f = __spirv_ocl_fma(-S0.f, H0.f, onehalf.f);
                 // Step(4), H1 = H0 + d0*H0
-                H1.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(d0.f, H0.f, H0.f);
+                H1.f = __spirv_ocl_fma(d0.f, H0.f, H0.f);
                 // Step(5), S1 = S0 + d0*S0
-                S1.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(d0.f, S0.f, S0.f);
+                S1.f = __spirv_ocl_fma(d0.f, S0.f, S0.f);
                 // Step(6), e0 = a - S1*S1
-                e0.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-S1.f, S1.f, fa.f);
+                e0.f = __spirv_ocl_fma(-S1.f, S1.f, fa.f);
                 // Step(7), S = S1 + e0*H1
-                S.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(e0.f, H1.f, S1.f);
+                S.f = __spirv_ocl_fma(e0.f, H1.f, S1.f);
 
                 if (denorm & !BIF_FLAG_CTRL_GET(FlushDenormals)) {
-                    S.f = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(S.f, -126/2);
+                    S.f = __spirv_ocl_ldexp(S.f, -126/2);
                 }
                 else {
                     // Adjust exponent
@@ -108,9 +108,9 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt_cr, _f32, )( float a )
 
 #ifdef cl_fp64_basic_ops
 
-INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt_cr, _f64, )( double x )
+INLINE double __attribute__((overloadable)) __spirv_ocl_sqrt_cr( double x )
 {
-        return SPIRV_OCL_BUILTIN(sqrt, _f64, )(x);
+        return __spirv_ocl_sqrt(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sqrt_cr, double, double, f64 )
