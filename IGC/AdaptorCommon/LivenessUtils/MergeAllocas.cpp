@@ -218,9 +218,6 @@ bool MergeAllocas::runOnFunction(Function &F) {
     // We check if the current alloca overlaps with any of the previously added.
     bool added = false;
     for (auto *MergableAlloca : MergableAllocas) {
-      if (AllocaInfo.livenessData->OverlapsWith(*MergableAlloca->livenessData)) {
-        continue;
-      }
       added = AddNonOverlappingAlloca(MergableAlloca, &AllocaInfo);
       if (added) {
         break;
