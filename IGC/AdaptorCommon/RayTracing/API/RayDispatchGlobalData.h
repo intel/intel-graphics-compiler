@@ -250,6 +250,7 @@ struct RayDispatchGlobalData {
         hitGroupBasePtr = umd.GetHitGroupTable();
         missShaderBasePtr = umd.GetMissShaderTable();
 
+
         common.populate(umd);
       }
 
@@ -281,6 +282,7 @@ struct RayDispatchGlobalData {
       uint32_t pad_mbz : 31;
       uint64_t hitGroupBasePtr;   // base pointer of hit group shader record array (16-bytes alignment)
       uint64_t missShaderBasePtr; // base pointer of miss shader record array (8-bytes alignment)
+
       uint32_t _align_mbz[4];     // pad hardware section to 64 bytes
 
       // HW doesn't read anything below this point.
