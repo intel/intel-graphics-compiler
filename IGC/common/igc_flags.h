@@ -1790,7 +1790,7 @@ DECLARE_IGC_REGKEY(bool, DisableCanonizationWA, false,
                    "WA for A0 to inject shifts to canonize global and local pointers", true)
 DECLARE_IGC_REGKEY(bool, DisableEarlyRemat, false, "Disable quick remats to avoid some spills", true)
 DECLARE_IGC_REGKEY(bool, DisableLateRemat, false, "Disable quick remats to avoid some spills", true)
-DECLARE_IGC_REGKEY(DWORD, RematThreshold, 6, "Tunes how aggresively we should remat values into continuations", true)
+DECLARE_IGC_REGKEY(DWORD, RematThreshold, 7, "Tunes how aggresively we should remat values into continuations", true)
 DECLARE_IGC_REGKEY(bool, DisableCompactifySpills, false, "Just emit spill/fill at the point of def/use", true)
 DECLARE_IGC_REGKEY(bool, AllowSpillCompactionOnRetry, false, "Allow spill compaction on retry - may increase spills",
                    true)
