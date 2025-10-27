@@ -984,16 +984,22 @@ std::string G4_Kernel::getDebugSrcLine(const std::string &fileName,
   return lines[srcLine - 1];
 }
 
+// Among all the input registers, get the largest one.
+// This accounts for input arguments as well as pseudo
+// input declarations.
 unsigned G4_Kernel::getLargestInputRegister() {
+  unsigned maxRegNum = 0;
   const unsigned inputCount = fg.builder->getInputCount();
-  unsigned regNum = 0;
-  if (inputCount) {
-    const input_info_t *ii = fg.builder->getInputArg(inputCount - 1);
-    regNum = (ii->offset + ii->dcl->getByteSize()) /
-             fg.builder->numEltPerGRF<Type_UB>();
+  // Iterate over all the inputs because they can be defined
+  // in any order by the programmer.
+  for (unsigned i = 0; i < inputCount; i++) {
+    const input_info_t *ii = fg.builder->getInputArg(i);
+    unsigned reg = (ii->offset + ii->dcl->getByteSize()) /
+                   fg.builder->numEltPerGRF<Type_UB>();
+    if (reg > maxRegNum)
+      maxRegNum = reg;
   }
-
-  return regNum;
+  return maxRegNum;
 }
 
 void G4_Kernel::setKernelParameters(unsigned newGRF) {
