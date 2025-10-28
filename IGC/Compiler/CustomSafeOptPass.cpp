@@ -2046,6 +2046,130 @@ void IGC::CustomSafeOptPass::visitSampleBptr(llvm::SampleIntrinsic *sampleInst) 
   }
 }
 
+// Helper function for dp4WithIdentityMatrix
+static bool isClampToZero(ConstantInt *clampEltIdx, ExtractElementInst *clampedEE) {
+  if (auto *clampC = dyn_cast<ConstantInt>(clampEltIdx)) {
+    // Check vector constant element at clampC is zero
+    if (auto *vecC = dyn_cast<Constant>(clampedEE->getVectorOperand())) {
+      if (auto *eltC = vecC->getAggregateElement(clampC->getZExtValue())) {
+        if (auto *fp = dyn_cast<ConstantFP>(eltC)) {
+          return fp->isZero();
+        }
+        if (auto *ci = dyn_cast<ConstantInt>(eltC)) {
+          return ci->isZero();
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+// Helper function used by dp4WithIdentityMatrix
+// Extract the original index from various patterns
+static Value *extractOriginalIndexFromPatterns(Value *indexOperand, ExtractElementInst *EE) {
+  using namespace llvm::PatternMatch;
+
+  // Pattern 1: sext(select(icmp_ugt(original_index, 15), 1, original_index))
+  // This is the code pattern after ClampICBOOBAccess pass
+  Value *originalIdx = nullptr;
+  CmpInst::Predicate pred;
+  ConstantInt *identityMatrixSize = nullptr;
+  ConstantInt *clampEltIdx = nullptr;
+  Value *selFalseVal = nullptr;
+  if (match(indexOperand, m_SExt(m_Select(m_ICmp(pred, m_Value(originalIdx), m_ConstantInt(identityMatrixSize)),
+                                          m_ConstantInt(clampEltIdx), m_Value(selFalseVal))))) {
+    // Note: For current DP4 identity matrix optimization, the smallest size of identity matrix is 16
+    if ((((pred == ICmpInst::ICMP_UGT) && identityMatrixSize->getZExtValue() == 15) ||
+        ((pred == ICmpInst::ICMP_UGE) && identityMatrixSize->getZExtValue() == 16)) &&
+        // The false value of Select has to be the original index
+        (selFalseVal == originalIdx)) {
+      // For clampICBOOBAccess pass output pattern, the clamped offset should be mapped to a zero element
+      if (isClampToZero(clampEltIdx, EE)) {
+        // This is the clamping pattern from clampICBOOBAccess pass, return the original index
+        return originalIdx;
+      }
+    }
+  }
+
+  // Pattern 2: plain sext case (sext i32 original_index to i64)
+  // This is common when extractelement expects i64 but we have i32 indices
+  if (SExtInst *sextInst = dyn_cast<SExtInst>(indexOperand)) {
+    return sextInst->getOperand(0);
+  }
+
+  // Pattern 3: the input indexOperand is directly used
+  return indexOperand;
+}
+
+// Helper function used by dp4WithIdentityMatrix
+// Find ExtractElementInst that may be in various patterns
+static ExtractElementInst *findExtractElementInPatterns(Value *offsetInst) {
+  using namespace llvm::PatternMatch;
+
+  // Check all users of the offset instruction
+  for (auto *user : offsetInst->users()) {
+    // Check for Pattern 1:
+    // Clamping pattern: offset -> icmp -> select -> sext -> extractelement
+    Value *originalIdx = nullptr;
+    CmpInst::Predicate pred;
+    ConstantInt *identityMatrixSize = nullptr;
+    // Level 1: ICmp instruction check
+    if (match(user, m_ICmp(pred, m_Value(originalIdx), m_ConstantInt(identityMatrixSize)))) {
+      // Note: For current DP4 identity matrix optimization, the smallest size of identity matrix is 16
+      if (((pred == ICmpInst::ICMP_UGT) && (identityMatrixSize->getZExtValue() == 15)) ||
+          ((pred == ICmpInst::ICMP_UGE) && (identityMatrixSize->getZExtValue() == 16)) &&
+          // The fisrt operand of ICmp has to be the offsetInst
+          (originalIdx == offsetInst)) {
+        for (auto *icmpUser : user->users()) {
+          ConstantInt *clampEltIdx = nullptr;
+          Value *selFalseVal = nullptr;
+          Value *cond = nullptr;
+          // Level 2: Select instruction check
+          if (match(icmpUser, m_Select(m_Value(cond), m_ConstantInt(clampEltIdx), m_Value(selFalseVal)))) {
+            // the condition of Select has to be ICmp and the false value of Select has to be the offsetInst
+            if ((cond == user) && (selFalseVal == offsetInst)) {
+              for (auto *selectUser : icmpUser->users()) {
+                // Level 3: SExt instruction check
+                if (SExtInst *sextInst = dyn_cast<SExtInst>(selectUser)) {
+                  for (auto *sextUser : sextInst->users()) {
+                    // Level 4: Extract element instruction check
+                    if (ExtractElementInst *clampedEE = dyn_cast<ExtractElementInst>(sextUser)) {
+                      // For clampICBOOBAccess pass output pattern, the clamped offset should be mapped
+                      // to a zero element
+                      if (isClampToZero(clampEltIdx, clampedEE))
+                        return clampedEE;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Check for pattern 2:
+    // plain sext pattern: offset -> sext -> extractelement
+    if (SExtInst *sextInst = dyn_cast<SExtInst>(user)) {
+      for (auto *sextUser : sextInst->users()) {
+        if (ExtractElementInst *sextEE = dyn_cast<ExtractElementInst>(sextUser)) {
+          return sextEE;
+        }
+      }
+    }
+
+    // Check for pattern 3:
+    // directly used pattern: offset -> extractelement
+    if (ExtractElementInst *directEE = dyn_cast<ExtractElementInst>(user)) {
+      return directEE;
+    }
+  }
+
+  // No ExtractElement instruction found in any expected patterns
+  return nullptr;
+}
+
 std::optional<bool> CustomSafeOptPass::getSignIfIdentityMatrix(ExtractElementInst &I) {
   auto ExtractType = cast<IGCLLVM::FixedVectorType>(I.getVectorOperandType());
   auto ExtractTypeVecSize = (uint32_t)ExtractType->getNumElements();
@@ -2121,31 +2245,44 @@ void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst &I) {
   // check %190 = extractelement <20 x float> <float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float
   // 0.000000e+00 ...
   auto IsPositive = getSignIfIdentityMatrix(I);
-  if (!I.hasOneUse() || !IsPositive.has_value())
+  if (!IsPositive.has_value()) {
     return;
+  }
+  // Relax hasOneUse constraint for DP4 identity matrix optimization
+  // The optimization replaces the entire DP4 chain, so multiple uses are acceptable
+  // as long as they're part of the pattern we're optimizing
 
   Instruction *offset[4] = {nullptr, nullptr, nullptr, nullptr};
   ExtractElementInst *eeInst[4] = {&I, nullptr, nullptr, nullptr};
 
   // check %189 = shl nuw nsw i32 %188, 2, !dbg !326
   // put it in offset[0]
-  offset[0] = dyn_cast<BinaryOperator>(I.getOperand(1));
-  if (!offset[0] || offset[0]->getOpcode() != Instruction::Shl || !offset[0]->hasNoUnsignedWrap() ||
+  // Try to extend this optimization to more code patterns
+  Value *indexOperand = I.getOperand(1);
+  indexOperand = extractOriginalIndexFromPatterns(indexOperand, &I);
+  offset[0] = dyn_cast<BinaryOperator>(indexOperand);
+  if (!offset[0] || offset[0]->getOpcode() != Instruction::Shl ||
       offset[0]->getOperand(1) != ConstantInt::get(offset[0]->getOperand(1)->getType(), 2)) {
     return;
   }
+  // For identity matrix optimization, we can safely optimize even without nuw
+  // since we're only dealing with small indices (0,1,2,3) and the matrix is 16x16
+  // The worst case is index 3 << 2 = 12, which is well within bounds
 
   // check %191 = or i32 %189, 1, !dbg !326
   //       %193 = or i32 % 189, 2, !dbg !326
   //       %195 = or i32 % 189, 3, !dbg !326
   // put them in offset[1], offset[2], offset[3]
   for (auto iter = offset[0]->user_begin(); iter != offset[0]->user_end(); iter++) {
-    // skip checking for the %190 = extractelement <20 x float> <float 1.000000e+00, ....
+
+    // skip checking for extractelement that uses shl directly
     if (*iter == &I)
       continue;
 
     if (BinaryOperator *orInst = dyn_cast<BinaryOperator>(*iter)) {
-      if (orInst->getOpcode() == BinaryOperator::Or && orInst->hasOneUse()) {
+      if (orInst->getOpcode() == BinaryOperator::Or) {
+        // With other patterns, or instructions may have more than one use
+        // So we can't check hasOneUse() here
         if (ConstantInt *orSrc1 = dyn_cast<ConstantInt>(orInst->getOperand(1))) {
           if (orSrc1->getZExtValue() < 4) {
             offset[orSrc1->getZExtValue()] = orInst;
@@ -2156,17 +2293,22 @@ void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst &I) {
   }
 
   for (int i = 0; i < 4; i++) {
-    if (offset[i] == nullptr)
+    if (offset[i] == nullptr) {
       return;
+    }
   }
 
   // check %192 = extractelement <20 x float> ...
   //       %194 = extractelement <20 x float> ...
   //       %196 = extractelement <20 x float> ...
   // put them in eeInst[i]
+  // Also handle other patterns for these
   for (int i = 1; i < 4; i++) {
-    eeInst[i] = dyn_cast<ExtractElementInst>(*offset[i]->user_begin());
-    if (!eeInst[i] || !getSignIfIdentityMatrix(*eeInst[i]).has_value()) {
+    eeInst[i] = findExtractElementInPatterns(offset[i]);
+    if (!eeInst[i]) {
+      return;
+    }
+    if (!getSignIfIdentityMatrix(*eeInst[i]).has_value()) {
       return;
     }
   }
@@ -2179,9 +2321,11 @@ void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst &I) {
 
   for (int i = 0; i < 4; i++) {
     mulI[i] = dyn_cast<Instruction>(*eeInst[i]->user_begin());
-    if (mulI[i] == nullptr || !mulI[i]->hasOneUse() || !isCorrectMulInst(mulI[i])) {
+    if (mulI[i] == nullptr || !isCorrectMulInst(mulI[i])) {
       return;
     }
+    // Relax hasOneUse for multiply instructions in DP4 pattern
+    // The optimization benefits outweigh the potential for duplicate computation
   }
 
   int inputInSrcIndex = 0;

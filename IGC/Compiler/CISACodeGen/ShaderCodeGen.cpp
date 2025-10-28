@@ -1495,6 +1495,9 @@ void OptimizeIR(CodeGenContext *const pContext) {
         // If we have ICBs, need to emit clamp code so OOB access doesn't occur
         if (pContext->getModuleMetaData()->immConstant.zeroIdxs.size()) {
           mpm.add(createClampICBOOBAccess());
+          // Run CustomSafeOptPass after ClampICBOOBAccess to re-enable dp4WithIdentityMatrix optimization
+          // that may have been broken by the clamping code insertion
+          mpm.add(new CustomSafeOptPass());
         }
         GFX_ONLY_PASS { mpm.add(createIGCIndirectICBPropagaionPass()); }
       }
@@ -1613,6 +1616,9 @@ void OptimizeIR(CodeGenContext *const pContext) {
         // doesn't occur
         if (pContext->getModuleMetaData()->immConstant.zeroIdxs.size()) {
           mpm.add(createClampICBOOBAccess());
+          // Run CustomSafeOptPass after ClampICBOOBAccess to re-enable dp4WithIdentityMatrix optimization
+          // that may have been broken by the clamping code insertion
+          mpm.add(new CustomSafeOptPass());
         }
 
         GFX_ONLY_PASS { mpm.add(createIGCIndirectICBPropagaionPass()); }
@@ -1629,6 +1635,9 @@ void OptimizeIR(CodeGenContext *const pContext) {
     // If we have ICBs, need to emit clamp code so OOB access doesn't occur
     if (pContext->getModuleMetaData()->immConstant.zeroIdxs.size() && IGC_IS_FLAG_ENABLED(DisableImmConstantOpt)) {
       mpm.add(createClampICBOOBAccess());
+      // Run CustomSafeOptPass after ClampICBOOBAccess to re-enable dp4WithIdentityMatrix optimization
+      // that may have been broken by the clamping code insertion
+      mpm.add(new CustomSafeOptPass());
     }
 
     if (pContext->m_instrTypes.hasRuntimeValueVector) {

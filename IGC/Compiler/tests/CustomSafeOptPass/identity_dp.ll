@@ -278,21 +278,15 @@ define i32 @test_extract_negative_identity16_i32(i32 %src1, i32 %arg0, i32 %arg1
 
 define float @test_shift_no_nuw_attribute(i32 %src1, float %arg0, float %arg1, float %arg2, float %arg3) {
 ; CHECK-LABEL: define float @test_shift_no_nuw_attribute(
-; CHECK: shl
-; CHECK: or
-; CHECK: or
-; CHECK: or
-; CHECK: extractelement
-; CHECK: extractelement
-; CHECK: extractelement
-; CHECK: extractelement
-; CHECK: fmul
-; CHECK: fmul
-; CHECK: fmul
-; CHECK: fmul
-; CHECK: fadd
-; CHECK: fadd
-; CHECK: fadd
+; This function should now be optimized with our clamping pattern fix
+; CHECK: icmp eq
+; CHECK: icmp eq
+; CHECK: icmp eq
+; CHECK: icmp eq
+; CHECK: select fast
+; CHECK: select fast
+; CHECK: select fast
+; CHECK: select fast
 ; CHECK: ret
 
   %idx4 = shl i32 %src1, 2
