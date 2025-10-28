@@ -1574,6 +1574,16 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
       IdxPath.size() == Size,
       "IdxPath and GottenTypeArr must be consistent with each other.");
 
+  // Zero size means the GEP has only the leading index.
+  // It is not indexing into a struct/array, so splitting is not applicable.
+  // TODO: Support usage of byte offsets:
+  //   %A = type { i32, float }
+  //   ...
+  //   %a = alloca %A
+  //   %gep = getelementptr i8, ptr %a, i32 4
+  if (Size == 0)
+    return false;
+
   // Finds the first index of plain type.
   // All indices after PlaintTyIdx can be copied.
   auto FindIt = llvm::find_if(GottenTypeArr, [this](Type *Ty) {
