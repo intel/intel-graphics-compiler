@@ -755,15 +755,18 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst *I) {
   // For typed pointers we can get a type from more complex type
   // like e.g. struct by using GetBaseType(), but for opaque pointers
   // we also need to be able to deduce this type, so we can get this
-  // from investigating GEP instruction and then using GetBaseType().
-  Type *RawDstType = nullptr;
+  // from investigating instructions and then using GetBaseType().
+  Type *RawDstType = Builder.getInt8Ty();
   if (IGCLLVM::isOpaquePointerTy(ptrTy)) {
-    if (GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(Dst))
+    if (auto *alloca = dyn_cast<AllocaInst>(Dst))
+      RawDstType = alloca->getAllocatedType();
+    else if (auto *gep = dyn_cast<GetElementPtrInst>(Dst))
       RawDstType = gep->getResultElementType();
+    else if (auto *gv = dyn_cast<GlobalVariable>(Dst))
+      RawDstType = gv->getValueType();
   } else {
     RawDstType = IGCLLVM::getNonOpaquePtrEltTy(ptrTy);
   }
-  IGC_ASSERT_MESSAGE(RawDstType, "Unexpected type for RawDstType!");
 
   if (Type *BaseType = GetBaseType(RawDstType))
     BaseSize = BaseType->getScalarSizeInBits();
