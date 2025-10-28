@@ -62,7 +62,7 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; COM: check predicate load and lifetime.start
 ; CHECK-VISAASM:  _main_0:
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) svn(0,0)<1> threadIdInGroupX(0,0)<1;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1, 16) nonuniform(0,0)<1> svn_0(0,0)<1;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1, 16) nonuniform(0,0)<1> svn_0v(0,0)<1;1,0>
 ; CHECK-VISAASM-NEXT:  add (M1, 16) offset(0,0)<1> src1(0,0)<0;1,0> nonuniform(0,0)<1;1,0>
 ; CHECK-VISAASM-NEXT:  lifetime.start V0032
 ;
@@ -73,9 +73,9 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0034(0,0)<1> V0036(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0038(0,0)<1> V0034(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp(0,0)<1> V0039(0,0)<0;1,0> 0x2:uw
-; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A0(0)<1> &nonuniform_0 ShuffleTmp(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A0(0)<1> &nonuniform_0v ShuffleTmp(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveRes6(0,0)<1> r[A0(0),0]<0;1,0>:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P2 nonuniform_0(0,0)<1;1,0> firstActiveRes6(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P2 nonuniform_0v(0,0)<1;1,0> firstActiveRes6(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  (P2) lsc_load.ugm.ca.ca (M1, 16)  V0032:d32x3  bss(firstActiveRes6)[offset]:a32
 ; CHECK-VISAASM-NEXT:  (P2) goto (M1, 16) _test1_006_unroll_merge
 ;
@@ -85,10 +85,10 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0043(0,0)<1> P3
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0041(0,0)<1> V0043(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0045(0,0)<1> V0041(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp_0(0,0)<1> V0046(0,0)<0;1,0> 0x2:uw
-; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A1(0)<1> &nonuniform_0 ShuffleTmp_0(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp_0v(0,0)<1> V0046(0,0)<0;1,0> 0x2:uw
+; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A1(0)<1> &nonuniform_0v ShuffleTmp_0v(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveRes4(0,0)<1> r[A1(0),0]<0;1,0>:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P4 nonuniform_0(0,0)<1;1,0> firstActiveRes4(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P4 nonuniform_0v(0,0)<1;1,0> firstActiveRes4(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  (P4) lsc_load.ugm.ca.ca (M1, 16)  V0032:d32x3  bss(firstActiveRes4)[offset]:a32
 ; CHECK-VISAASM-NEXT:  (P4) goto (M1, 16) _test1_006_unroll_merge
 ;
@@ -98,10 +98,10 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0050(0,0)<1> P5
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0048(0,0)<1> V0050(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0052(0,0)<1> V0048(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp_1(0,0)<1> V0053(0,0)<0;1,0> 0x2:uw
-; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A2(0)<1> &nonuniform_0 ShuffleTmp_1(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp_1v(0,0)<1> V0053(0,0)<0;1,0> 0x2:uw
+; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A2(0)<1> &nonuniform_0v ShuffleTmp_1v(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveRes2(0,0)<1> r[A2(0),0]<0;1,0>:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P6 nonuniform_0(0,0)<1;1,0> firstActiveRes2(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P6 nonuniform_0v(0,0)<1;1,0> firstActiveRes2(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  (P6) lsc_load.ugm.ca.ca (M1, 16)  V0032:d32x3  bss(firstActiveRes2)[offset]:a32
 ; CHECK-VISAASM-NEXT:  (P6) goto (M1, 16) _test1_006_unroll_merge
 ;
@@ -111,20 +111,20 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0057(0,0)<1> P7
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0055(0,0)<1> V0057(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0059(0,0)<1> V0055(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp_2(0,0)<1> V0060(0,0)<0;1,0> 0x2:uw
-; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A3(0)<1> &nonuniform_0 ShuffleTmp_2(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp_2v(0,0)<1> V0060(0,0)<0;1,0> 0x2:uw
+; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A3(0)<1> &nonuniform_0v ShuffleTmp_2v(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveRes(0,0)<1> r[A3(0),0]<0;1,0>:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P8 nonuniform_0(0,0)<1;1,0> firstActiveRes(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P8 nonuniform_0v(0,0)<1;1,0> firstActiveRes(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  (P8) lsc_load.ugm.ca.ca (M1, 16)  V0032:d32x3  bss(firstActiveRes)[offset]:a32
 ; CHECK-VISAASM-NEXT:  (!P8) goto (M1, 16) _test1_001_partial_check5
 ;
 ; CHECK-VISAASM:  _test1_006_unroll_merge:
-; CHECK-VISAASM-NEXT:  mul (M1_NM, 1) V0061(0,0)<1> val_0(0,0)<0;1,0> 0x40:uw
+; CHECK-VISAASM-NEXT:  mul (M1_NM, 1) V0061(0,0)<1> val_0v(0,0)<0;1,0> 0x40:uw
 ; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A4(0)<1> &V0032 V0061(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) out(0,0)<1> r[A4(0),0]<8;8,1>:d
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) dst_0(0,0)<1> dst(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1, 16) dstBroadcast_0(0,0)<2> dst_1(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1, 16) dstBroadcast_0(0,1)<2> dst_1(0,1)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) dst_0v(0,0)<1> dst(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1, 16) dstBroadcast_0v(0,0)<2> dst_1v(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1, 16) dstBroadcast_0v(0,1)<2> dst_1v(0,1)<0;1,0>
 ; CHECK-VISAASM-NEXT:  lsc_store.ugm.wb.wb (M1, 16)  flat[dstBroadcast]:a64  out:d32
 ; CHECK-VISAASM-NEXT:  ret (M1, 1)
 

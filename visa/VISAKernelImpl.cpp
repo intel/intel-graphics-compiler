@@ -866,8 +866,11 @@ void VISAKernelImpl::ensureVariableNameUnique(const char *&varName) {
   // 2.  "add.i.i" ==> "add_i_i"    (LLVM compound name)
   // 3.  "mul" ==> "mul_"           (vISA keyword)
   // 4.  suppose both variable "x" and "x0" exist
-  //       "x" ==> "x_1"            (since "x0" already used)
-  //       "x0" ==> "x0_1"          (it's a dumb suffixing strategy)
+  //       "x" ==> "x_1v"            (since "x" already used)
+  //       "x0" ==> "x0_1v"          (append suffx "_#v")
+  //      Suffix "_#v" is used to avoid treating a llvm name, such
+  //      as n.123, as visa-generated name. It is useful to fast-check
+  //      whether a name is visa-generated.
   std::stringstream escdName;
 
   // step 1
@@ -887,15 +890,61 @@ void VISAKernelImpl::ensureVariableNameUnique(const char *&varName) {
   while (isReservedName(escdName.str()))
     escdName << '_';
 
-  // case 4: if "x" already exists, then use "x_#" where # is 0,1,..
+  // case 4.1: if "x" already exists; or
+  // case 4.2: if "x" is in "y_#v" that has been auto-generated here
+  //           but not in map.
+  // In both cases,  use "x_#v" where # is 0,1,...
+  // (Note that suffix '#v' is for fast-checking visa-generated names.
+  //  The 'v' is arbitrary and is to mean visa.)
   std::string varNameS = escdName.str();
-  if (auto it = varNames.find(varNameS); it != varNames.end()) {
-    size_t instanceNumber = it->second;
-    varNames[varNameS] = instanceNumber + 1;
+  const size_t Len = varNameS.length();
+  // case 4.1
+  bool existing = (varNames.find(varNameS) != varNames.end());
+  // case 4.2, fast-check the last "#v" to see if it can collide with
+  //           visa-generated names.
+  if (!existing && Len > 2 && isdigit(varNameS.at(Len - 2)) &&
+      varNameS.at(Len - 1) == 'v') {
+    // case 4.2
+    size_t No;
+    size_t pos = varNameS.rfind('_');
+    if (pos != std::string::npos) {
+      std::string suffix = varNameS.substr(pos + 1);
+      No = 0;
+      bool allDigit = true;
+      // skip the last 'v'
+      for (int i = 0, e = suffix.length() - 1; i < e; ++i) {
+        char c = suffix.at(i);
+        if (!isdigit(c)) {
+          allDigit = false;
+          break;
+        }
+        No = No * 10 + (c - '0');
+      }
 
-    std::stringstream ss;
-    ss << escdName.str() << '_' << instanceNumber;
-    varNameS = ss.str();
+      if (allDigit) {
+        std::string prefix = varNameS.substr(0, pos);
+        if (auto it = varNames.find(prefix); it != varNames.end()) {
+          size_t instNo = it->second;
+          if (instNo > No) {
+            // Create entry for varNameS
+            varNames.emplace(varNameS, 0);
+            existing = true;
+          }
+        }
+      }
+    }
+  }
+  if (existing) {
+    size_t instanceNumber = varNames[varNameS];
+    std::string origVarNameS = varNameS;
+    // Make sure the new name does not exist yet.
+    do {
+      std::stringstream ss;
+      ss << escdName.str() << '_' << instanceNumber << 'v';
+      varNameS = ss.str();
+      ++instanceNumber;
+    } while (varNames.find(varNameS) != varNames.end());
+    varNames[origVarNameS] = instanceNumber;
   } else {
     varNames.emplace(varNameS, 0);
   }

@@ -30,7 +30,7 @@ kernel void test_intel_sub_group_shuffle_uniform_non_immediate_index_simd32(glob
     size_t gid = get_global_id(0);
     int x = in[gid];
 
-// CHECK: shl (M1_NM, 1) ShuffleTmp(0,0)<1> which_sub_group_local_id_0(0,0)<0;1,0> 0x2:uw
+// CHECK: shl (M1_NM, 1) ShuffleTmp(0,0)<1> which_sub_group_local_id{{.*}}(0,0)<0;1,0> 0x2:uw
 // CHECK-NEXT: addr_add (M1_NM, 1) A0(0)<1> &{{V[0-9]+}} ShuffleTmp(0,0)<0;1,0>
 // CHECK-NEXT: mov (M1_NM, 1) simdShuffle(0,0)<1> r[A0(0),0]<0;1,0>:d
 
