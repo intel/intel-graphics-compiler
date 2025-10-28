@@ -126,7 +126,9 @@ public:
   }
   virtual OctEltUnit GetTotalURBReadLength() const { return OctEltUnit(0); }
   virtual unsigned GetMaxRegForThreadDispatch() const {
-    return m_simdProgram.m_startReg + 8 * GetTotalURBReadLength().Count();
+    unsigned int startReg = m_VertexElementsStartOffset > 0 ? m_VertexElementsStartOffset / m_Platform->getGRFSize()
+                                                            : m_simdProgram.m_startReg;
+    return startReg + 8 * GetTotalURBReadLength().Count();
   }
 
   // if true, HW will pass one GRF NOS of inlinedata to payload, (compute only
@@ -628,6 +630,7 @@ protected:
   std::vector<CVariable *> perPrimitiveSetup;
 
   uint m_maxBlockId = 0;
+  uint m_VertexElementsStartOffset = 0;
 
   CVariable *m_R0 = nullptr;
   CVariable *m_NULL = nullptr;
