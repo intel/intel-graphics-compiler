@@ -75,5 +75,22 @@ finish:
   ret void
 }
 
+; Checks barrier control flow optimization scenario
+; before optimization( fence(slm, scope none and op none), group sync(threadgroupbarrier) )
+; after optimization ( fence(slm, scope none and op none), group sync(threadgroupbarrier) )
+define void @test_slm_group() {
+; CHECK-LABEL: @test_slm_group(
+; CHECK: call void @llvm.genx.GenISA.LSCFence(i32 3, i32 0, i32 0)
+; CHECK: call void @llvm.genx.GenISA.threadgroupbarrier()
+; CHECK-DAG: br
+; CHECK-NOT: call void @llvm.genx.GenISA.threadgroupbarrier()
+; CHECK-DAG: br
+; CHECK: ret void
+;
+  call void @llvm.genx.GenISA.LSCFence(i32 3, i32 0, i32 0)
+  call void @llvm.genx.GenISA.threadgroupbarrier()
+  ret void
+}
+
 declare void @llvm.genx.GenISA.LSCFence(i32, i32, i32)
 declare void @llvm.genx.GenISA.threadgroupbarrier()

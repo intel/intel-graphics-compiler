@@ -214,6 +214,9 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow() {
           IRB.SetInsertPoint(&(*br->getParent()->begin()));
         }
 
+        // flag to check if all the fences are SLM, no need to add the last barrier
+        bool needsLastBarrier = false;
+
         // create new lsc fence based on the fence mem
         for (auto *I : m_LscMemoryFences) {
           LSC_SFID lscMem = GetLscMem(I);
@@ -224,6 +227,9 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow() {
             Value *Args[] = {IRB.getInt32(lscMem), IRB.getInt32(LSC_SCOPE_GPU), IRB.getInt32(LSC_FENCE_OP_EVICT)};
 
             IRB.CreateCall(FenceFn, Args);
+
+            // mark that we need a last barrier
+            needsLastBarrier = true;
           }
         }
 
@@ -232,7 +238,7 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow() {
           IRB.SetInsertPoint(&(*br->getSuccessor(0)->begin()));
         }
 
-        if (m_ThreadGroupBarriers.size() > 0) {
+        if (needsLastBarrier && (m_ThreadGroupBarriers.size() > 0)) {
           Function *BarrierFn = GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_threadgroupbarrier);
 
           IRB.CreateCall(BarrierFn);
