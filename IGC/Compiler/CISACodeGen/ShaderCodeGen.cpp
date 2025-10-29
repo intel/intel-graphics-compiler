@@ -177,6 +177,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/TranslateToProgrammableOffsetsPass.hpp"
 #include "Compiler/CISACodeGen/RemoveLoopDependency.hpp"
 
+#include <filesystem>
+
 /***********************************************************************************
 This file contains the generic code generation functions for all the shaders
 The class CShader is inherited for each specific type of shaders to add specific
