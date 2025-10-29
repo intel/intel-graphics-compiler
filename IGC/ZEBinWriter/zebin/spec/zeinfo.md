@@ -32,6 +32,10 @@ All **literals** have one of the following types:
 - str: typedef std::string zeinfo_str_t
 - float: typedef float     zeinfo_float_t
 
+An **array of literals** type could be created by specifying `TypexN` as a type.
+For example, `int32x3` is used to describe `reqd_work_group_size`, and `int32xN`
+could be used to describe a dynamic sized int32 array.
+
 # Container
 | Attribute | Type | Required/Optional | Description |
 | ----- | ----- | ----- | ----- |
