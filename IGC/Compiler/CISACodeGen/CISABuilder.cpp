@@ -3622,6 +3622,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
 
     if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedExtraGRF)) {
       SaveOption(vISA_preRA_ScheduleExtraGRF, Val);
+    } else if (context->type == ShaderType::COMPUTE_SHADER &&
+               context->getModuleMetaData()->csInfo.VISAPreSchedScheduleExtraGRF > 0) {
+      SaveOption(vISA_preRA_ScheduleExtraGRF, context->getModuleMetaData()->csInfo.VISAPreSchedScheduleExtraGRF);
     }
 
     if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAScheduleStartBBID)) {

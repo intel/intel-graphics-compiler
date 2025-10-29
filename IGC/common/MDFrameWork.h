@@ -537,6 +537,7 @@ enum class ShaderTypeMD
         unsigned int forceTotalGRFNum = 0; // 0 means not forced
         unsigned int VISAPreSchedRPThreshold = 0; // 0 means use the default
         unsigned int VISAPreSchedCtrl = 0; // 0 means use the default
+        unsigned int VISAPreSchedScheduleExtraGRF = 0; // additional GRF for latency scheduling
         unsigned int SetLoopUnrollThreshold = 0; // 0 means use the default
         bool forceSpillCompression = false;
         bool allowLowerSimd = false;
