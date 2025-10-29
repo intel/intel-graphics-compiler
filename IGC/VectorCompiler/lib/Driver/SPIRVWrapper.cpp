@@ -98,6 +98,16 @@ void PrepareModuleStructs(Module &M) {
     Func->eraseFromParent();
 }
 
+void fixAlignmentAttributes(Module &M) {
+  for (auto &F : M.functions()) {
+    for (auto &Arg : F.args()) {
+      // Remove align attribute if the argument type is not a pointer
+      if (!Arg.getType()->isPointerTy())
+        F.removeParamAttr(Arg.getArgNo(), Attribute::Alignment);
+    }
+  }
+}
+
 int spirvReadVerify(
     const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
     const uint64_t *SpecConstVals, unsigned SpecConstSz, LLVMContext &Context,
@@ -128,6 +138,7 @@ int spirvReadVerify(
       return -1;
     }
     PrepareModuleStructs(*SpirM);
+    fixAlignmentAttributes(*SpirM);
     // Bool-value need to separate functionality and debug errors
     bool BrokenDebugInfo = false;
     Status = llvm::verifyModule(*SpirM, nullptr, &BrokenDebugInfo);
