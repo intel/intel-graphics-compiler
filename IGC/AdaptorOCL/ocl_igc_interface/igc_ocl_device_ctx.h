@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "ocl_igc_interface/ocl_gen_binary.h"
 #include "ocl_igc_interface/platform.h"
 #include "ocl_igc_interface/igc_builtins.h"
+#include "ocl_igc_interface/igc_options_and_capabilities.h"
 
 #include "cif/macros/enable.h"
 #include "OCLAPI/oclapi.h"
@@ -103,9 +104,23 @@ protected:
   OCL_API_CALL virtual IgcBuiltinsBase *GetIgcBuiltinsHandleImpl(CIF::Version_t ver);
 };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclDeviceCtx, 5, 4) {
+  CIF_INHERIT_CONSTRUCTOR();
+
+  template <typename IgcOptionsAndCapabilitiesInterface = IgcOptionsAndCapabilitiesLatest>
+  CIF::RAII::UPtr_t<IgcOptionsAndCapabilitiesInterface> GetIgcOptionsAndCapabilitiesHandle() {
+    return CIF::RAII::RetainAndPack<IgcOptionsAndCapabilitiesInterface>(
+        GetIgcOptionsAndCapabilitiesHandleImpl(IgcOptionsAndCapabilitiesInterface::GetVersion()));
+  }
+
+protected:
+  virtual IgcOptionsAndCapabilitiesBase *GetIgcOptionsAndCapabilitiesHandleImpl(CIF::Version_t ver);
+};
+
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(IgcOclDeviceCtx, IGC::Platform, IGC::GTSystemInfo,
                                                               IGC::OclGenBinary, IGC::IgcFeaturesAndWorkarounds,
-                                                              IGC::IgcOclTranslationCtx, IGC::IgcBuiltins);
+                                                              IGC::IgcOclTranslationCtx, IGC::IgcBuiltins,
+                                                              IGC::IgcOptionsAndCapabilities);
 CIF_MARK_LATEST_VERSION(IgcOclDeviceCtxLatest, IgcOclDeviceCtx);
 using IgcOclDeviceCtxTagOCL = IgcOclDeviceCtx<3>; // Note : can tag with different version for
                                                   //        transition periods

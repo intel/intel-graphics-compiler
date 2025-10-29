@@ -139,6 +139,7 @@ list(APPEND IGC_BUILD__SRC__DriverInterface
   "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/gt_system_info_impl.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/platform_impl.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/igc_builtins_impl.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/igc_options_and_capabilities_impl.cpp"
   ${CIF_SOURCES_EXPORT_ABSOLUTE_PATH}
   )
 

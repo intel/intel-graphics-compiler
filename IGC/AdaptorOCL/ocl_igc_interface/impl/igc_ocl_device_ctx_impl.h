@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "ocl_igc_interface/impl/igc_features_and_workarounds_impl.h"
 #include "ocl_igc_interface/impl/platform_impl.h"
 #include "ocl_igc_interface/impl/igc_builtins_impl.h"
+#include "ocl_igc_interface/impl/igc_options_and_capabilities_impl.h"
 
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "common/SystemThread.h"
@@ -39,6 +40,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase {
     gtSystemInfo.CreateImpl();
     igcFeaturesAndWorkarounds.CreateImpl();
     igcBuiltins.CreateImpl();
+    igcOptionsAndCapabilities.CreateImpl();
   }
 
   OCL_API_CALL CIF_PIMPL(Platform) * GetPlatformImpl() { return this->platform.GetImpl(); }
@@ -51,6 +53,10 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase {
 
   OCL_API_CALL IgcFeaturesAndWorkaroundsBase *GetIgcFeaturesAndWorkaroundsHandle(CIF::Version_t version) {
     return igcFeaturesAndWorkarounds.GetVersion(version);
+  }
+
+  OCL_API_CALL IgcOptionsAndCapabilitiesBase *GetIgcOptionsAndCapabilitiesHandle(CIF::Version_t version) {
+    return igcOptionsAndCapabilities.GetVersion(version);
   }
 
   OCL_API_CALL IgcBuiltinsBase *GetIgcBuiltinsHandle(CIF::Version_t version) { return igcBuiltins.GetVersion(version); }
@@ -142,6 +148,7 @@ protected:
   CIF::Multiversion<Platform> platform;
   CIF::Multiversion<GTSystemInfo> gtSystemInfo;
   CIF::Multiversion<IgcFeaturesAndWorkarounds> igcFeaturesAndWorkarounds;
+  CIF::Multiversion<IgcOptionsAndCapabilities> igcOptionsAndCapabilities;
   CIF::Multiversion<IgcBuiltins> igcBuiltins;
   std::unique_ptr<IGC::CPlatform> igcPlatform;
 };

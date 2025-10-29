@@ -45,6 +45,7 @@ list(APPEND IGC_BUILD__SRC__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/gt_system_info_impl.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/platform_impl.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_builtins_impl.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_options_and_capabilities_impl.cpp"
     ${CIF_SOURCES_EXPORT_ABSOLUTE_PATH})
   list(APPEND IGC_BUILD__HDR__IGC_AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_features_and_workarounds_impl.h"
@@ -55,6 +56,7 @@ list(APPEND IGC_BUILD__SRC__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/gt_system_info_impl.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/platform_impl.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_builtins_impl.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_options_and_capabilities_impl.h"
 
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/igc_features_and_workarounds.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/igc_ocl_device_ctx.h"
@@ -64,6 +66,7 @@ list(APPEND IGC_BUILD__SRC__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/gt_system_info.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/platform.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/igc_builtins.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/igc_options_and_capabilities.h"
     ${CIF_HEADERS_ABSOLUTE_PATH})
 
   set(IGC_BUILD__SRC__IGC_AdaptorOCL ${IGC_BUILD__SRC__IGC_AdaptorOCL} PARENT_SCOPE) # set directly
@@ -124,6 +127,9 @@ add_library("${IGC_BUILD__PROJ__AdaptorOCL}" STATIC
 set_target_properties("${IGC_BUILD__PROJ__AdaptorOCL}" PROPERTIES FOLDER "Libraries/Adaptors")
 
 add_dependencies("${IGC_BUILD__PROJ__AdaptorOCL}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
+if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
+  add_dependencies(${IGC_BUILD__PROJ__AdaptorOCL} IGCCSPIRVExtensionsYaml)
+endif()
 set_property(TARGET "${IGC_BUILD__PROJ__AdaptorOCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__AdaptorOCL}")
 
 if(IGC_BUILD__VC_ENABLED)

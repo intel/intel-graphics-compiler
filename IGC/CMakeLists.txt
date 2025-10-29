@@ -211,7 +211,6 @@ endif()
 add_subdirectory(MDAutogen ${IGC_CODEGEN_BASE_DIR}/MDAutogen)
 set_source_files_properties(${IGC_CODEGEN_DIR}/MDNodeFunctions.gen PROPERTIES GENERATED TRUE)
 
-
 # ============================================================================
 # ========== BUILD CONFIGURATIONS (part 2) ===================================
 # ============================================================================
@@ -421,6 +420,9 @@ if(NOT DEFINED IGC_BUILD__VC_ENABLED)
     set(IGC_BUILD__VC_ENABLED ON)
   endif()
 endif()
+
+
+set(USE_SPIRV_EXTENSIONS_YAML_GENERATOR TRUE)
 
 
 if(IGC_BUILD_LLVM_INTERIM AND IGC_BUILD__VC_ENABLED)
@@ -1440,6 +1442,10 @@ include_directories(
     "${CMAKE_CURRENT_BINARY_DIR}/Options/include"
     )
 
+if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
+  include_directories("${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/ocl_igc_interface/extensions")
+endif()
+
 
 include_directories(
   "${IGC_BUILD__COMMON_COMPILER_DIR}/common"
@@ -1478,6 +1484,12 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ZEBinWriter/zebin/source")
 set(ZEBIN_INCLUDE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/ZEBinWriter/zebin/source/autogen")
 include_directories("${ZEBIN_INCLUDE_PATH}")
 add_subdirectory(PCH)
+
+# ==================================== YamlAndDocsTblgen ================================================
+if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
+  add_subdirectory(AdaptorOCL/Utils/YamlAndDocsTblgen)
+endif()
+
 # ===================================== Projects and source groups =====================================
 
 # Suffixes of main projects.
@@ -1542,6 +1554,10 @@ if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
 endif()
 
 add_subdirectory(GenISAIntrinsics)
+
+if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
+  add_subdirectory(AdaptorOCL/ocl_igc_interface/extensions)
+endif()
 
 add_subdirectory(Options)
 
@@ -1851,6 +1867,10 @@ set_property(TARGET "GenX_IR" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__G
 foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${IGC_BUILD__PROJ__GenISAIntrinsics}")
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     MDAutogen)
+
+  if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
+    add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     IGCCSPIRVExtensionsYaml)
+  endif()
 
   if(MSVC AND IGC_OPTION__BIF_LINK_BC)
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFModule_OCL}")

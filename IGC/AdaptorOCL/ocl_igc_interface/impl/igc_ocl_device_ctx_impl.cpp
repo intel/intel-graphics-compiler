@@ -66,6 +66,11 @@ IgcBuiltinsBase *CIF_GET_INTERFACE_CLASS(IgcOclDeviceCtx, 4)::GetIgcBuiltinsHand
   return CIF_GET_PIMPL()->GetIgcBuiltinsHandle(ver);
 }
 
+IgcOptionsAndCapabilitiesBase *CIF_GET_INTERFACE_CLASS(IgcOclDeviceCtx,
+                                                       5)::GetIgcOptionsAndCapabilitiesHandleImpl(CIF::Version_t ver) {
+  return CIF_GET_PIMPL()->GetIgcOptionsAndCapabilitiesHandle(ver);
+}
+
 } // namespace IGC
 
 CIF_EXPORT_ENTRY_POINTS_STATIC(IGC::IgcOclDeviceCtx);
