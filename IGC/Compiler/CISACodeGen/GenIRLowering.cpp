@@ -335,6 +335,9 @@ bool GenIRLowering::runOnFunction(Function &F) {
       } else if (CallInst *CI = dyn_cast<CallInst>(Inst)) {
         CI->replaceUsesOfWith(V, NewBase);
         Changed = true;
+      } else if (CmpInst *CI = dyn_cast<CmpInst>(Inst)) {
+        CI->replaceUsesOfWith(V, NewBase);
+        Changed = true;
       }
     }
   }
