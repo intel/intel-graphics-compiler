@@ -5298,11 +5298,10 @@ Augmentation::RetValType Augmentation::computeRetValType(FuncInfo *func,
   const auto *uses = refs.getUses(retVal);
   if (uses) {
     for (const auto &use : *uses) {
-      auto *bb = std::get<1>(use);
-      auto *pred = bb->getPhysicalPred();
-      if (pred->isSpecialEmptyBB())
-        pred = pred->getPhysicalPred();
-      if (!pred->isEndWithCall() || pred->getCalleeInfo() != func)
+      auto *predBBC = &bbCache[std::get<1>(use)->getPhysicalPred()->getId()];
+      if (predBBC->bb->isSpecialEmptyBB())
+        predBBC = &bbCache[predBBC->bb->getPhysicalPred()->getId()];
+      if (!predBBC->endsWithCall || predBBC->calleeInfo != func)
         return Augmentation::RetValType::Unknown;
     }
   }
@@ -5346,25 +5345,25 @@ Augmentation::ArgType Augmentation::computeArgType(FuncInfo *func,
   }
 
   // Check if all defs are in same BB as call site
-  std::unordered_set<G4_BB *> funcCallSitesMatched;
-  for (auto bb : kernel.fg.getBBList()) {
-    if (!bb->isEndWithCall() || bb->getCalleeInfo() != func)
+  std::unordered_set<BBWrapper *> funcCallSitesMatched;
+  for (auto &cBB : bbCache) {
+    if (!cBB.endsWithCall || cBB.calleeInfo != func)
       continue;
-    funcCallSitesMatched.insert(bb);
+    funcCallSitesMatched.insert(&cBB);
   }
 
   bool killFound = false;
   for (const auto &def : *defs) {
-    auto *bb = std::get<1>(def);
-    if (bb->isEndWithCall() && bb->getCalleeInfo() == func) {
+    auto &cBB = bbCache[std::get<1>(def)->getId()];
+    if (cBB.endsWithCall && cBB.calleeInfo == func) {
       auto *inst = std::get<0>(def);
-      if (liveAnalysis.isLiveAtEntry(bb, arg->getRegVar()->getId())) {
+      if (liveAnalysis.isLiveAtEntry(cBB.bb, arg->getRegVar()->getId())) {
         return Augmentation::ArgType::Unknown;
       }
 
       if (inst->isPseudoKill() ||
-          liveAnalysis.writeWholeRegion(bb, inst, inst->getDst())) {
-        funcCallSitesMatched.erase(bb);
+          liveAnalysis.writeWholeRegion(cBB.bb, inst, inst->getDst())) {
+        funcCallSitesMatched.erase(&cBB);
         killFound = true;
       }
       continue;
@@ -5930,6 +5929,14 @@ void Augmentation::buildSummaryForCallees() {
   }
 }
 
+void Augmentation::populateBBCache() {
+  bbCache.resize(kernel.fg.getBBList().back()->getId() + 1);
+  for (auto *bb : kernel.fg) {
+    bbCache[bb->getId()] =
+        BBWrapper{bb, bb->isEndWithCall(), bb->getCalleeInfo()};
+  }
+}
+
 void Augmentation::augmentIntfGraph() {
   if (!(kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
         !liveAnalysis.livenessClass(G4_ADDRESS) && kernel.fg.size() > 2)) {
@@ -5953,6 +5960,7 @@ void Augmentation::augmentIntfGraph() {
         populateFuncMaps();
 
       populateHomeFunc();
+      populateBBCache();
 
       // Atleast one definition with non-default mask was found so
       // perform steps to augment intf graph with such defs

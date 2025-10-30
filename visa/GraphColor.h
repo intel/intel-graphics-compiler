@@ -428,11 +428,18 @@ private:
     // kernel and used in several subroutines.
     std::unordered_set<const FuncInfo *> subroutines;
   };
+  class BBWrapper {
+    public:
+      G4_BB *bb = nullptr;
+      bool endsWithCall = false;
+      FuncInfo *calleeInfo = nullptr;
+  };
   std::unordered_map<G4_Declare *, ArgRetValInfo> argsRetVal;
   std::unordered_map<FuncInfo*, std::unordered_set<G4_Declare*>> argsPerSub;
   std::unordered_map<FuncInfo *, std::unordered_set<G4_Declare *>> retValPerSub;
   std::unordered_map<G4_Declare *, std::unordered_set<FuncInfo *>> unknownArgRetvalRefs;
   std::unordered_map<G4_Declare *, std::unordered_set<FuncInfo *>> nonGRFRefs;
+  std::vector<BBWrapper> bbCache;
   // Store home function for given variable. Home function is defined as
   // function that contains explicit def or use of the variable. Each regular
   // variable has a unique home function. Arg/retval don't have a unique home
@@ -453,6 +460,7 @@ private:
   std::vector<FuncInfo *> instToFunc;
   const bool hasSubroutines = false;
 
+  void populateBBCache();
   void populateFuncMaps();
   void populateHomeFunc();
   bool isSubroutineArg(G4_Declare *dcl) const {
