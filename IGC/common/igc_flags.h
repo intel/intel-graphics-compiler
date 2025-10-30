@@ -441,7 +441,7 @@ DECLARE_IGC_REGKEY(
     "that synchronization objects classified in multiple types are not disabled if any bit describing them is off.",
     true)
 DECLARE_IGC_REGKEY(
-    bool, ReplaceAtomicFenceWithSourceValue, false,
+    bool, ReplaceAtomicFenceWithSourceValue, true,
     "Fences are required to maintain the order of atomic memory instructions. This flag will replace the fence with "
     "GenISA_source_value intrinsic which sources the result of atomic operation and still maintains the order.",
     true)
