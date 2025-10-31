@@ -4311,6 +4311,7 @@ namespace {
 class IGCIndirectICBPropagaion : public FunctionPass {
 public:
   static char ID;
+  uint32_t getMaxImmConstantSizePushed() const;
   IGCIndirectICBPropagaion() : FunctionPass(ID) {
     initializeIGCIndirectICBPropagaionPass(*PassRegistry::getPassRegistry());
   }
@@ -4327,13 +4328,18 @@ public:
 char IGCIndirectICBPropagaion::ID = 0;
 FunctionPass *IGC::createIGCIndirectICBPropagaionPass() { return new IGCIndirectICBPropagaion(); }
 
+/// Gets the maximum immediate constant size that can be pushed for the current target.
+/// @return Maximum size in bytes for immediate constants based on target configuration
+uint32_t IGCIndirectICBPropagaion::getMaxImmConstantSizePushed() const {
+  return IGC_GET_FLAG_VALUE(MaxImmConstantSizePushed);
+}
+
 bool IGCIndirectICBPropagaion::runOnFunction(Function &F) {
   CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   ModuleMetaData *modMD = ctx->getModuleMetaData();
+  auto maxImmConstantSizePushedLimit = getMaxImmConstantSizePushed();
 
-  // MaxImmConstantSizePushed = 256 by default. For float values, it will contains 64 numbers, and stored in 8 GRF
-  if (modMD && modMD->immConstant.data.size() &&
-      modMD->immConstant.data.size() <= IGC_GET_FLAG_VALUE(MaxImmConstantSizePushed)) {
+   if (modMD && modMD->immConstant.data.size() && modMD->immConstant.data.size() <= maxImmConstantSizePushedLimit) {
     IRBuilder<> m_builder(F.getContext());
 
     for (auto &BB : F) {
