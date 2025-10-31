@@ -30,7 +30,6 @@ void initializeBlockMemOpAddrScalarizationPassPass(llvm::PassRegistry &);
 void initializeBreakConstantExprPass(llvm::PassRegistry &);
 void initializeBuiltinCallGraphAnalysisPass(llvm::PassRegistry &);
 void initializeBuiltinsConverterPass(llvm::PassRegistry &);
-void initializeCanonicalizeMulAddPass(llvm::PassRegistry &);
 void initializeCastToGASAnalysisPass(llvm::PassRegistry &);
 void initializeCastToGASInfoPass(llvm::PassRegistry &);
 void initializeCastToGASInfoWrapperPass(llvm::PassRegistry &);
