@@ -1874,7 +1874,7 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
 
   if(MSVC AND IGC_OPTION__BIF_LINK_BC)
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFModule_OCL}")
-    add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFModuleCache_OCL}")
+  add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFModuleCache_OCL}")
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFManager}")
   endif()
 endforeach()
@@ -1916,7 +1916,6 @@ list(APPEND _targetLinkLineCommon zebinlib)
 list(APPEND _targetLinkLineCommon IGCOptions)
 
 list(APPEND _targetLinkLineCommon "${IGC_BUILD__PROJ__VISALinkerDriver}")
-
 
 
     list(APPEND _targetLinkLineCommon

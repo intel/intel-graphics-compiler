@@ -32,7 +32,7 @@ add_library("${IGC_BUILD__PROJ__BiFManager}"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/LoadBuffer.cpp"
 )
 
-add_dependencies("${IGC_BUILD__PROJ__BiFManager}" "${IGC_BUILD__PROJ__BiFManagerSplitTask}")
+add_dependencies("${IGC_BUILD__PROJ__BiFManager}" "${IGC_BUILD__PROJ__BiFModuleCache_OCL}")
 target_include_directories("${IGC_BUILD__PROJ__BiFManager}" PRIVATE ${IGC_BUILD__BIF_DIR})
 
 
