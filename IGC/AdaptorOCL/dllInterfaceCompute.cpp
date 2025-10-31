@@ -1180,6 +1180,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
   }
 
   oclContext.hash = inputShHash;
+  // FIXME: pKernelModule can become a dangling pointer in case of ShaderOverride.
   oclContext.setModule(pKernelModule);
   if (oclContext.isSPIRV()) {
     deserialize(*oclContext.getModuleMetaData(), pKernelModule);
@@ -1369,7 +1370,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
   auto metricData = "n\a";
   size_t metricDataSize = sizeof(metricData);
 
-  unsigned PtrSzInBits = pKernelModule->getDataLayout().getPointerSizeInBits();
+  unsigned PtrSzInBits = oclContext.getModule()->getDataLayout().getPointerSizeInBits();
   unsigned int pointerSizeInBytes = (PtrSzInBits == 64) ? 8 : 4;
   oclContext.m_programOutput.GetZEBinary(llvm_os, pointerSizeInBytes, spv_data, spv_size, metricData, metricDataSize,
                                          pInputArgs->pOptions, pInputArgs->OptionsSize);
