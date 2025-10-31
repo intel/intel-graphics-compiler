@@ -19,7 +19,7 @@
 ; CHECK: CheckModuleDebugify: PASS
 
 
-define spir_kernel void @func_b(i32 %n, i32 addrspace(1)* align 4 %r, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i8 addrspace(1)* %s2, i8 addrspace(1)* %s3, i32 %s4, i32 %s5, i32 %bufferOffset) #0 {
+define spir_kernel void @func_b(i32 %n, i32 addrspace(1)* %r, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i8 addrspace(1)* %s2, i8 addrspace(1)* %s3, i32 %s4, i32 %s5, i32 %bufferOffset) #0 {
 ; CHECK-LABEL: @func_b(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[TMP0:%.*]] = getelementptr i32, i32 addrspace(1)* [[R:%.*]], i32 16, !dbg [[DBG104:![0-9]+]]

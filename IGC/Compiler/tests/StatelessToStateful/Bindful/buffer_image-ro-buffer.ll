@@ -25,7 +25,7 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 
 %spirv.Image._void_1_0_0_0_0_0_0 = type opaque
 
-define spir_kernel void @test(i32 addrspace(1)* align 4 %srcA, %spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %img, i32 addrspace(1)* align 4 %dst) {
+define spir_kernel void @test(i32 addrspace(1)* %srcA, %spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %img, i32 addrspace(1)* %dst) {
 entry:
   ; BTI for image has been assigned by OCLBIConverter
   %color = call <4 x i32> @llvm.genx.GenISA.ldptr.v4i32.p196608f32.p196608f32(i32 0, i32 0, i32 0, i32 0, float addrspace(196608)* undef, float addrspace(196608)* null, i32 0, i32 0, i32 0)
