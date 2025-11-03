@@ -272,7 +272,8 @@ static bool tryParsePassNameSpecificOccurrence(PassDisableConfig &pdc, const std
   }
   std::cerr << "You want to skip pass " << nameOfPassToSkip << " occurrence " << occurrenceOfPass << std::endl;
   unsigned int passOccurrence = std::stoi(occurrenceOfPass);
-  pdc.skipCommands.emplace_back(nameOfPassToSkip, passOccurrence, passOccurrence, TokenSkipCase::SpecificPassOccurrence);
+  pdc.skipCommands.emplace_back(nameOfPassToSkip, passOccurrence, passOccurrence,
+                                TokenSkipCase::SpecificPassOccurrence);
   // move to next Token
   return true;
 }
@@ -310,7 +311,8 @@ static bool tryParsePassNameOccurrenceRange(PassDisableConfig &pdc, const std::s
     if (checkSkipCommandBounds(skippingFrom, skippingTo)) {
       std::cerr << "You want to skip pass " << nameOfPassToSkip << " from occurrence " << skippingFrom
                 << " to occurrence " << skippingTo << std::endl;
-      pdc.skipCommands.emplace_back(nameOfPassToSkip, skippingFrom, skippingTo, TokenSkipCase::SpecificPassOccurrenceRange);
+      pdc.skipCommands.emplace_back(nameOfPassToSkip, skippingFrom, skippingTo,
+                                    TokenSkipCase::SpecificPassOccurrenceRange);
     }
     break;
   }
@@ -324,7 +326,7 @@ static bool tryParsePassNameOccurrenceRange(PassDisableConfig &pdc, const std::s
       sc->start = std::min(sc->start, skippingFrom);
     } else {
       pdc.skipCommands.emplace_back(nameOfPassToSkip, skippingFrom, std::numeric_limits<unsigned int>::max(),
-                                         TokenSkipCase::SpecificPassOccurrenceOpenRange);
+                                    TokenSkipCase::SpecificPassOccurrenceOpenRange);
     }
     break;
   }
@@ -633,6 +635,15 @@ void IGCPassManager::add(Pass *P) {
   }
 }
 
+// should be an std::string_view, but StringRef doesn't implement implicit conversion unless __cplusplus > 201402L
+template <typename StringT> inline static std::string cleanPassName(const StringT &passName) {
+  // Remove non-alphanumeric characters from pass name
+  std::string newName;
+  std::copy_if(passName.begin(), passName.end(), std::back_inserter(newName),
+               [](unsigned char c) { return std::isalnum(c); });
+  return newName;
+}
+
 // List: a comma/semicolon-separated list of pass names.
 //    N: a pass name
 // return true if N is in List.
@@ -643,7 +654,7 @@ bool IGCPassManager::isInList(const StringRef &N, const StringRef &List) const {
     size_t endPos = List.find_first_of(Separators, startPos);
     size_t len = (endPos != StringRef::npos ? endPos - startPos : endPos);
     StringRef Name = List.substr(startPos, len);
-    if (IGCLLVM::equals_insensitive(Name, N)) {
+    if (IGCLLVM::equals_insensitive(cleanPassName(Name), cleanPassName(N))) {
       return true;
     }
     startPos = (endPos != StringRef::npos ? endPos + 1 : StringRef::npos);
@@ -686,15 +697,6 @@ bool IGCPassManager::isPrintAfter(Pass *P) {
     }
   }
   return false;
-}
-
-inline static std::string cleanPassName(const std::string &passName) {
-  // Remove non-alphanumeric characters from pass name
-  std::string newName = passName;
-  newName.erase(
-      remove_if(newName.begin(), newName.end(), [](char c) { return !isalnum(static_cast<unsigned char>(c)); }),
-      newName.end());
-  return newName;
 }
 
 void IGCPassManager::addPrintPass(Pass *P, bool isBefore) {
