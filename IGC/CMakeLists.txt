@@ -1487,7 +1487,7 @@ add_subdirectory(PCH)
 
 # ==================================== YamlAndDocsTblgen ================================================
 if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
-  add_subdirectory(AdaptorOCL/Utils/YamlAndDocsTblgen)
+  add_subdirectory(AdaptorOCL/Utils/IGCCSPIRVSupportTblGen)
 endif()
 
 # ===================================== Projects and source groups =====================================
@@ -1869,7 +1869,7 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     MDAutogen)
 
   if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
-    add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     IGCCSPIRVExtensionsYaml)
+    add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     SPIRVExtensionsSupportGen)
   endif()
 
   if(MSVC AND IGC_OPTION__BIF_LINK_BC)

@@ -9,18 +9,56 @@ SPDX-License-Identifier: MIT
 #include "ocl_igc_interface/impl/igc_options_and_capabilities_impl.h"
 #include "ocl_igc_interface/igc_options_and_capabilities.h"
 
+#include "ocl_igc_interface/platform.h"
+
 #include "cif/helpers/error.h"
 #include "cif/macros/enable.h"
 
-#if __has_include("IGCCSPIRVExtensionsYaml.inc")
-#include "IGCCSPIRVExtensionsYaml.inc"
+#if __has_include("SPIRVExtensionsSupport.h")
+#include "SPIRVExtensionsSupport.h"
 #else
-static const char SPIRVExtensionsYAML[] = "";
+namespace IGC {
+namespace SPIRVExtensionsSupport {
+struct SPIRVCapability {
+  std::string Name;
+};
+
+struct SPIRVExtension {
+  std::string Name;
+  std::string SpecURL;
+  std::vector<SPIRVCapability> Capabilities;
+};
+inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM Platform) { return {}; }
+} // namespace SPIRVExtensionsSupport
+} // namespace IGC
 #endif
 
 #include "Options/include/igc/Options/Options.h"
 
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/YAMLTraits.h>
+
+// YAML serialization support
+LLVM_YAML_IS_SEQUENCE_VECTOR(IGC::SPIRVExtensionsSupport::SPIRVExtension)
+LLVM_YAML_IS_SEQUENCE_VECTOR(IGC::SPIRVExtensionsSupport::SPIRVCapability)
+
+namespace llvm {
+namespace yaml {
+
+template <> struct MappingTraits<IGC::SPIRVExtensionsSupport::SPIRVCapability> {
+  static void mapping(IO &Io, IGC::SPIRVExtensionsSupport::SPIRVCapability &Cap) { Io.mapRequired("name", Cap.Name); }
+};
+
+template <> struct MappingTraits<IGC::SPIRVExtensionsSupport::SPIRVExtension> {
+  static void mapping(IO &io, IGC::SPIRVExtensionsSupport::SPIRVExtension &Ext) {
+    io.mapRequired("name", Ext.Name);
+    io.mapRequired("spec_url", Ext.SpecURL);
+    io.mapRequired("supported_capabilities", Ext.Capabilities);
+  }
+};
+
+} // namespace yaml
+} // namespace llvm
 
 namespace {
 // Helper function to fill BufferSimple with help string for given OptTable.
@@ -31,6 +69,18 @@ void fillHelpString(const llvm::opt::OptTable &OptTable, const char *Title, cons
   llvm::raw_string_ostream Outstr(Str);
   OptTable.printHelp(Outstr, Usage, Title, false, true);
   OutBuffer->PushBackRawBytes(Str.c_str(), Str.size());
+}
+
+// Helper function to generate YAML from extension info
+void generateSPIRVExtensionsYAML(const std::vector<IGC::SPIRVExtensionsSupport::SPIRVExtension> &extensions,
+                                 CIF::Builtins::BufferSimple *OutBuffer) {
+  std::string YamlString;
+  llvm::raw_string_ostream yamlStream(YamlString);
+
+  llvm::yaml::Output yout(yamlStream);
+  yout << const_cast<std::vector<IGC::SPIRVExtensionsSupport::SPIRVExtension> &>(extensions);
+
+  OutBuffer->PushBackRawBytes(YamlString.c_str(), YamlString.size());
 }
 } // namespace
 namespace IGC {
@@ -57,7 +107,12 @@ void CIF_GET_INTERFACE_CLASS(IgcOptionsAndCapabilities, 1)::GetCompilerSupported
   assert(OutSupportedSPIRVExtensionsYAML && OutSupportedSPIRVExtensionsYAML->GetSizeRaw() == 0 &&
          "GetCompilerSupportedSPIRVExtensionsYAML expects empty buffer");
 
-  OutSupportedSPIRVExtensionsYAML->PushBackRawBytes(SPIRVExtensionsYAML, sizeof(SPIRVExtensionsYAML));
+  auto *PlatformPtr = this->GetImpl()->GetPlatform();
+  auto *PlatformImpl = PlatformPtr->GetImpl();
+
+  std::vector<IGC::SPIRVExtensionsSupport::SPIRVExtension> supportedExtensions =
+      IGC::SPIRVExtensionsSupport::getSupportedExtensionInfo(PlatformImpl->p);
+  generateSPIRVExtensionsYAML(supportedExtensions, OutSupportedSPIRVExtensionsYAML);
 }
 
 } // namespace IGC

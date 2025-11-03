@@ -6,29 +6,59 @@
 #
 #============================ end_copyright_notice =============================
 
-# Generate the docs for the supported SPIR-V extensions
-set(DOC_FILENAME  "supported-spirv-extensions")
-set(OUT_DOC_FILE ${CMAKE_SOURCE_DIR}/IGC/AdaptorOCL/docs/autogen/${DOC_FILENAME}.md)
+set(IGCC_LIB_INTERFACES_TABLEGEN_EXE igcc-spirv-support-tblgen)
+
+# Default configuration for open source
+set(SPIRV_TD_INPUT_FILE "SPIRVExtensions.td")
+set(CPP_HEADER_FILENAME "SPIRVExtensionsSupport")
+
+
+#=============================================================================
+# Documentation Generation
+#=============================================================================
+
+set(DOC_FILENAME "supported-spirv-extensions")
+
+
+if(NOT DEFINED OUT_DOC_FILE)
+    set(OUT_DOC_FILE ${CMAKE_SOURCE_DIR}/documentation/igc/${DOC_FILENAME}.md)
+endif()
 
 set(LLVM_TARGET_DEFINITIONS SPIRVExtensions.td)
-set(IGCC_LIB_INTERFACES_DOCS_TABLEGEN_EXE igcc-yaml-docs-tblgen)
+set(IGCC_LIB_INTERFACES_DOCS_TABLEGEN_EXE igcc-spirv-support-tblgen)
 tablegen(IGCC_LIB_INTERFACES_DOCS ${DOC_FILENAME}.md -gen-igcc-spirv-extensions-docs)
 add_public_tablegen_target(IGCCSPIRVExtensionsDocs)
 
 add_custom_command(
-        OUTPUT ${OUT_DOC_FILE}
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_CURRENT_BINARY_DIR}/${DOC_FILENAME}.md
-                ${OUT_DOC_FILE}
-        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${DOC_FILENAME}.md)
+    OUTPUT ${OUT_DOC_FILE}
+    COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/${DOC_FILENAME}.md
+            ${OUT_DOC_FILE}
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${DOC_FILENAME}.md)
 
 add_custom_target(${DOC_FILENAME}DocGen DEPENDS ${OUT_DOC_FILE})
 add_dependencies(${DOC_FILENAME}DocGen IGCCSPIRVExtensionsDocs)
 
-# Generate the header with YAML descriptions of the supported SPIR-V extensions
-set(IGCC_LIB_INTERFACES_TABLEGEN_EXE igcc-yaml-docs-tblgen)
-set(LLVM_TARGET_DEFINITIONS SPIRVExtensions.td)
-tablegen(IGCC_LIB_INTERFACES IGCCSPIRVExtensionsYaml.inc -gen-igcc-spirv-extensions-yaml)
-add_public_tablegen_target(IGCCSPIRVExtensionsYaml)
-add_dependencies(IGCCSPIRVExtensionsYaml IGCCSPIRVExtensionsDocs)
-add_dependencies(IGCCSPIRVExtensionsYaml ${DOC_FILENAME}DocGen)
+
+# Create combined docs target
+add_custom_target(SPIRVExtensionsDocsGen)
+add_dependencies(SPIRVExtensionsDocsGen ${DOC_FILENAME}DocGen)
+
+
+#=============================================================================
+# CPP Headers Generation
+#=============================================================================
+
+# Generate C++ header for SPIR-V extensions
+set(LLVM_TARGET_DEFINITIONS ${SPIRV_TD_INPUT_FILE})
+set(IGCC_LIB_INTERFACES_CPP_TABLEGEN_EXE igcc-spirv-support-tblgen)
+tablegen(IGCC_LIB_INTERFACES_CPP ${CPP_HEADER_FILENAME}.h -gen-igcc-spirv-extension-support-header)
+add_public_tablegen_target(IGCCSPIRVExtensionsCpp)
+
+add_custom_target(${CPP_HEADER_FILENAME}Gen
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${CPP_HEADER_FILENAME}.h)
+add_dependencies(${CPP_HEADER_FILENAME}Gen IGCCSPIRVExtensionsCpp)
+
+# Make C++ generation depend on documentation generation
+# This ensures docs are always built when C++ headers are built
+add_dependencies(${CPP_HEADER_FILENAME}Gen SPIRVExtensionsDocsGen)

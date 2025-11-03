@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "IGC/common/StringMacros.hpp"
+#include "LLVMSPIRVOpts.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/ScaledNumber.h"
@@ -70,6 +71,25 @@ SPDX-License-Identifier: MIT
 #include "common/StringMacros.hpp"
 #include "VISALinkerDriver/VLD.hpp"
 #include "VISALinkerDriver/VLD_SPIRVSplitter.hpp"
+
+#if __has_include("SPIRVExtensionsSupport.h")
+#include "SPIRVExtensionsSupport.h"
+#else
+namespace IGC {
+namespace SPIRVExtensionsSupport {
+struct SPIRVCapability {
+  std::string Name;
+};
+
+struct SPIRVExtension {
+  std::string Name;
+  std::string SpecURL;
+  std::vector<SPIRVCapability> Capabilities;
+};
+inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM platform) { return {}; }
+} // namespace SPIRVExtensionsSupport
+} // namespace IGC
+#endif
 
 // In case of use GT_SYSTEM_INFO in GlobalData.h from inc/umKmInc/sharedata.h
 // We have to do this temporary defines
@@ -376,6 +396,18 @@ void GenerateSPIRVExtensionsMD(llvm::LLVMContext &C, llvm::Module &M, const std:
   SPIRVExtensionsMD->addOperand(llvm::MDNode::get(C, ExtensionsVec));
 }
 
+IGCLLVM::optional<SPIRV::ExtensionID> ToExtensionID(const std::string &Name) {
+  using E = SPIRV::ExtensionID;
+  static const std::unordered_map<std::string, E> ExtensionNameToIDMap = {
+#define EXT(X) {#X, E::X},
+#include "LLVMSPIRVExtensions.inc"
+#undef EXT
+  };
+  if (auto it = ExtensionNameToIDMap.find(Name); it != ExtensionNameToIDMap.end())
+    return it->second;
+  return IGCLLVM::optional<E>();
+}
+
 // Translate SPIR-V binary to LLVM Module
 bool TranslateSPIRVToLLVM(const STB_TranslateInputArgs &InputArgs, llvm::LLVMContext &Context,
                           llvm::StringRef SPIRVBinary, llvm::Module *&LLVMModule, std::string &stringErrMsg,
@@ -388,7 +420,17 @@ bool TranslateSPIRVToLLVM(const STB_TranslateInputArgs &InputArgs, llvm::LLVMCon
   // Set SPIRV-LLVM-Translator translation options
   SPIRV::TranslatorOpts Opts;
   Opts.enableGenArgNameMD();
-  Opts.enableAllExtensions();
+  if (IGC_IS_FLAG_ENABLED(ValidateSPIRVExtensionSupport)) {
+    std::vector<IGC::SPIRVExtensionsSupport::SPIRVExtension> SupportedExtensions =
+        IGC::SPIRVExtensionsSupport::getSupportedExtensionInfo(platform);
+    for (const auto &Ext : SupportedExtensions) {
+      if (auto id = ToExtensionID(Ext.Name))
+        Opts.setAllowedToUseExtension(*id);
+    }
+  } else {
+    Opts.enableAllExtensions();
+  }
+
   Opts.setDesiredBIsRepresentation(SPIRV::BIsRepresentation::SPIRVFriendlyIR);
 
   // This option has to be enabled since SPIRV-Translator for LLVM13 because of:

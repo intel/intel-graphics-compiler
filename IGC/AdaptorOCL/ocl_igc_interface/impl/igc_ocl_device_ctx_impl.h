@@ -56,7 +56,9 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase {
   }
 
   OCL_API_CALL IgcOptionsAndCapabilitiesBase *GetIgcOptionsAndCapabilitiesHandle(CIF::Version_t version) {
-    return igcOptionsAndCapabilities.GetVersion(version);
+    auto *handle = igcOptionsAndCapabilities.GetVersion(version);
+    handle->GetImpl()->SetPlatform(&this->platform);
+    return handle;
   }
 
   OCL_API_CALL IgcBuiltinsBase *GetIgcBuiltinsHandle(CIF::Version_t version) { return igcBuiltins.GetVersion(version); }

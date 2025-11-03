@@ -5,61 +5,82 @@ Copyright (C) 2025 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-//===- SPIRVExtensions.td - SPIR-V Extensions supported by igc-compute ----*- tablegen -*-===//
+
+// Include common definitions
+include "SPIRVExtensions_Common.td"
+
+//===----------------------------------------------------------------------===//
+//                     SPIR-V Extension Definitions
+//===----------------------------------------------------------------------===//
 //
-// This file declares a set of SPIR-V extensions supported by igc-compute.
+// For complete documentation about class structures, platform support types,
+// extension modes, validation rules, and usage examples, see SPIRVExtensions_Common.td
 //
-//===-------------------------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
 
-// Note! After editing this file, please run the build locally, to generate the documentation.
+// GPU Platforms
+def IGFX_TIGERLAKE_LP   : Platform<"IGFX_TIGERLAKE_LP">;
+def IGFX_ROCKETLAKE     : Platform<"IGFX_ROCKETLAKE">;
+def IGFX_ALDERLAKE_S    : Platform<"IGFX_ALDERLAKE_S">;
+def IGFX_ALDERLAKE_P    : Platform<"IGFX_ALDERLAKE_P">;
+def IGFX_ALDERLAKE_N    : Platform<"IGFX_ALDERLAKE_N">;
+def IGFX_DG1            : Platform<"IGFX_DG1">;
+def IGFX_XE_HP_SDV      : Platform<"IGFX_XE_HP_SDV">;
+def IGFX_DG2            : Platform<"IGFX_DG2">;
+def IGFX_PVC            : Platform<"IGFX_PVC">;
+def IGFX_METEORLAKE     : Platform<"IGFX_METEORLAKE">;
+def IGFX_ARROWLAKE      : Platform<"IGFX_ARROWLAKE">;
+def IGFX_BMG            : Platform<"IGFX_BMG">;
+def IGFX_LUNARLAKE      : Platform<"IGFX_LUNARLAKE">;
+def IGFX_PTL            : Platform<"IGFX_PTL">;
 
-// SPIRVExtension class accepts:
-//   1) The extension name
-//   2) A list of supported capabilities in this extension
-//   3) Specification URL
-class SPIRVExtension<
-    string ExtensionName,
-    list<string> Capabilities,
-    string SpecURL
-> {
-  string ExtName = ExtensionName;
-  list<string> ExtCapabilities = Capabilities;
-  string ExtSpecURL = SpecURL;
-}
+// Core Families
+def IGFX_GEN12_CORE     : CoreFamily<"IGFX_GEN12_CORE">;
+def IGFX_GEN12LP_CORE   : CoreFamily<"IGFX_GEN12LP_CORE">;
+def IGFX_XE_HP_CORE     : CoreFamily<"IGFX_XE_HP_CORE">;
+def IGFX_XE_HPG_CORE    : CoreFamily<"IGFX_XE_HPG_CORE">;
+def IGFX_XE_HPC_CORE    : CoreFamily<"IGFX_XE_HPC_CORE">;
+def IGFX_XE2_HPG_CORE   : CoreFamily<"IGFX_XE2_HPG_CORE">;
+def IGFX_XE3_CORE       : CoreFamily<"IGFX_XE3_CORE">;
 
-// Note: the list is incomplete. TODO: extend the list with all supported extensions.
+// Define Platform Groups for common use cases
+def CUSTOM_GROUP : PlatformGroup<[IGFX_DG2, IGFX_PVC]>;
 
-def SPV_INTEL_subgroups : SPIRVExtension<
+// NOTE: The list of extensions below is INCOMPLETE and will be expanded
+// incrementally in future commits. Current entries may have provisional or
+// incorrect PlatformSupport assignments; they are included now to demonstrate
+// intended usage and integration flow.
+
+def SPV_INTEL_subgroups : Extension<
   "SPV_INTEL_subgroups",
-  [ "SubgroupShuffleINTEL",
-    "SubgroupBufferBlockIOINTEL",
-    "SubgroupImageBlockIOINTEL" ],
+  [ Capability<"SubgroupShuffleINTEL">,
+    Capability<"SubgroupBufferBlockIOINTEL">,
+    Capability<"SubgroupImageBlockIOINTEL"> ],
   "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_subgroups.asciidoc"
 >;
 
-def SPV_INTEL_bfloat16_conversion : SPIRVExtension<
+def SPV_INTEL_bfloat16_conversion : Extension<
   "SPV_INTEL_bfloat16_conversion",
-  [ "BFloat16ConversionINTEL" ],
+  [ Capability<"BFloat16ConversionINTEL"> ],
   "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_bfloat16_conversion.asciidoc"
 >;
 
-def SPV_INTEL_2d_block_io : SPIRVExtension<
+def SPV_INTEL_2d_block_io : Extension<
   "SPV_INTEL_2d_block_io",
-  [ "Subgroup2DBlockIOINTEL",
-    "Subgroup2DBlockTransformINTEL",
-    "Subgroup2DBlockTransposeINTEL" ],
+  [ Capability<"Subgroup2DBlockIOINTEL">,
+    Capability<"Subgroup2DBlockTransformINTEL">,
+    Capability<"Subgroup2DBlockTransposeINTEL"> ],
   "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_2d_block_io.asciidoc"
 >;
 
-def SPV_INTEL_cache_controls : SPIRVExtension<
+def SPV_INTEL_cache_controls : Extension<
   "SPV_INTEL_cache_controls",
-  [ "CacheControlsINTEL" ],
+  [ Capability<"CacheControlsINTEL"> ],
   "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_cache_controls.asciidoc"
 >;
 
-def SPV_INTEL_fp_fast_math_mode : SPIRVExtension<
+def SPV_INTEL_fp_fast_math_mode : Extension<
   "SPV_INTEL_fp_fast_math_mode",
-  [ "FPFastMathModeINTEL" ],
+  [ Capability<"FPFastMathModeINTEL"> ],
   "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_fp_fast_math_mode.asciidoc"
 >;
-

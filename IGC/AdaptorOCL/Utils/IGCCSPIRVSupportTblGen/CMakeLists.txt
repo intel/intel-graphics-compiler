@@ -8,8 +8,8 @@
 
 include(TableGen)
 
-add_tablegen(igcc-yaml-docs-tblgen IGCC_YAML_DOCS_TBLGEN
-    IGCCOptionsAndCapabilitiesEmitter.cpp
+add_tablegen(igcc-spirv-support-tblgen IGCC_YAML_DOCS_TBLGEN
+    IGCCSPIRVSupportTblGen.cpp
 )
 
 set(LLVM_LINK_COMPONENTS
@@ -17,11 +17,11 @@ set(LLVM_LINK_COMPONENTS
   TableGen
 )
 
-llvm_update_compile_flags(igcc-yaml-docs-tblgen)
+llvm_update_compile_flags(igcc-spirv-support-tblgen)
 
 # Always link static TableGen explicitly — never rely on libLLVM.so here
 # TableGen is never part of libLLVM.so (ref: llvm-project/llvm/tools/llvm-shlib/CMakeLists.txt)
-target_link_libraries(igcc-yaml-docs-tblgen PRIVATE
+target_link_libraries(igcc-spirv-support-tblgen PRIVATE
   LLVMSupport
   LLVMTableGen
 )

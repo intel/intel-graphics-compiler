@@ -1275,6 +1275,11 @@ DECLARE_IGC_REGKEY(bool, DivergentBarrierUniformLoad, false,
 DECLARE_IGC_REGKEY(bool, ForcePrefetchToL1Cache, false, "Forces standard builtin prefetch to use L1 cache", true)
 DECLARE_IGC_REGKEY(bool, DisablePrefetchToL1Cache, false, "Disable prefetch to L1 cache", true)
 DECLARE_IGC_REGKEY(bool, ForceXYZworkGroupWalkOrder, true, "Force X/Y/Z WorkGroup walk order", true)
+DECLARE_IGC_REGKEY(
+    bool, ValidateSPIRVExtensionSupport, false,
+    "When enabled, validate each SPIR-V OpExtension against device support and fail compilation if any are "
+    "unsupported. Disabled by default until the supported extension list in SPIRVExtensions.td is complete.",
+    true)
 
 DECLARE_IGC_GROUP("Performance experiments")
 DECLARE_IGC_REGKEY(DWORD, ManageableBarriersMode, 0,
