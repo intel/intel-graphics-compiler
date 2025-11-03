@@ -758,7 +758,7 @@ bool hasWriteCombine() const {
 }
 
 bool needWriteCombineWA() const {
-  return hasWriteCombine() && getPlatform() <= Xe3;
+  return (VISA_WA_CHECK(getPWaTable(), Wa_18042479026));
 }
 
 bool hasA0WARHWissue() {
