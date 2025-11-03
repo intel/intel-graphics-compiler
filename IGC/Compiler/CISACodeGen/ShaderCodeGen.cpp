@@ -105,6 +105,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/BarrierControlFlowOptimization.hpp"
 #include "Compiler/Optimizer/RuntimeValueVectorExtractPass.h"
 #include "Compiler/Optimizer/WaveShuffleIndexSinking.hpp"
+#include "Compiler/Optimizer/SinkPointerConstAdd.h"
 #include "Compiler/Optimizer/WaveAllJointReduction.hpp"
 #include "Compiler/Optimizer/InstructionHoistingOptimization.hpp"
 #include "Compiler/Optimizer/WaveBallotCSE.hpp"
@@ -1199,6 +1200,10 @@ void OptimizeIR(CodeGenContext *const pContext) {
 #endif
     mpm.add(new llvm::TargetLibraryInfoWrapperPass(TLI));
     initializeWIAnalysisPass(*PassRegistry::getPassRegistry());
+
+    if (IGC_IS_FLAG_ENABLED(EnableSinkPointerConstAdd)) {
+      mpm.add(createSinkPointerConstAddPass());
+    }
 
        // Do inter-procedural constant propagation early.
     if (pContext->m_enableSubroutine) {
