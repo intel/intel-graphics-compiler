@@ -1,5 +1,5 @@
 ; REQUIRES: regkeys
-; RUN: igc_opt -S  --igc-vectorizer -dce  --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce  --regkey=VectorizerAllowADD=0 --regkey=VectorizerAllowMUL=0  --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
 
 ; CHECK: Start:   %25 = insertelement <8 x i32> zeroinitializer, i32 %17, i64 0
 ; CHECK: Operand [1]:  First:   %17 = mul i32 %9, %1
