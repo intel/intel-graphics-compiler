@@ -9,7 +9,9 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_ADT_OPTIONAL_H
 #define IGCLLVM_ADT_OPTIONAL_H
 
+#if LLVM_VERSION_MAJOR < 17
 #include <llvm/ADT/Optional.h>
+#endif
 #include <optional>
 
 namespace IGCLLVM {

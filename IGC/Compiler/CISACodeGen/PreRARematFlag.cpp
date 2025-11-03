@@ -55,7 +55,7 @@ template <> class po_iterator_storage<DominatedSubgraph, true> {
 public:
   po_iterator_storage(DominatedSubgraph &G) : DSG(G) {}
 
-  bool insertEdge(llvm::Optional<BasicBlock *> From, BasicBlock *To) {
+  bool insertEdge(IGCLLVM::optional<BasicBlock *> From, BasicBlock *To) {
     return DSG.preVisit(IGCLLVM::makeOptional(From), To);
   }
   void finishPostorder(BasicBlock *BB) { DSG.postVisit(BB); }

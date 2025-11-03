@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/Optional.h>
 #include "llvmWrapper/Analysis/TargetLibraryInfo.h"
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
+#include "llvmWrapper/ADT/Optional.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/MemOpt2.h"
@@ -241,7 +242,7 @@ class RegionSubgraph {
 public:
   RegionSubgraph(BasicBlock *E) : Exit(E) {}
 
-  bool preVisit(llvm::Optional<BasicBlock *> From, BasicBlock *To) {
+  bool preVisit(IGCLLVM::optional<BasicBlock *> From, BasicBlock *To) {
     if (To == Exit)
       return false;
     return Visited.insert(To).second;
@@ -256,7 +257,7 @@ template <> class po_iterator_storage<RegionSubgraph, true> {
 public:
   po_iterator_storage(RegionSubgraph &G) : RSG(G) {}
 
-  bool insertEdge(llvm::Optional<BasicBlock *> From, BasicBlock *To) { return RSG.preVisit(From, To); }
+  bool insertEdge(IGCLLVM::optional<BasicBlock *> From, BasicBlock *To) { return RSG.preVisit(From, To); }
   void finishPostorder(BasicBlock *) {}
 };
 } // namespace llvm

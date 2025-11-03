@@ -832,7 +832,7 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_exp_register_file_size_common)) {
     StringRef V = A->getValue();
-    auto MaybeGRFSize = StringSwitch<llvm::Optional<unsigned>>(V)
+    auto MaybeGRFSize = StringSwitch<IGCLLVM::optional<unsigned>>(V)
                             .Case("32", 32)
                             .Case("64", 64)
                             .Case("96", 96)
