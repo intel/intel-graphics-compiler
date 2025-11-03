@@ -914,6 +914,10 @@ bool supports4GRFAlign() const {
   return false;
 }
 
+bool onlyDoLocalVariableSplitWhenSpill() const {
+  return false;
+}
+
 bool needA0WAR() const {
   return (getPlatform() >= Xe2);
 }
