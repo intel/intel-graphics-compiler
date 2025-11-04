@@ -10070,7 +10070,7 @@ void VarSplit::globalSplit(IR_Builder &builder, G4_Kernel &kernel) {
   return;
 }
 
-int VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
+void VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
   class CmpRegVarId {
   public:
     bool operator()(G4_RegVar *first, G4_RegVar *second) const {
@@ -10091,7 +10091,7 @@ int VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
   bool hasSends = std::any_of(bb->begin(), bb->end(),
                               [](G4_INST *inst) { return inst->isSend(); });
   if (!hasSends)
-    return 0;
+    return;
 
   //
   // Iterate instruction in BB from back to front
@@ -10307,7 +10307,7 @@ int VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
     toDelete.pop();
   }
 
-  return splitid;
+  return;
 }
 
 void GlobalRA::addrRegAlloc() {
@@ -11190,17 +11190,15 @@ bool GlobalRA::globalSplit(VarSplit& splitPass, GraphColor& coloring) {
   return false;
 }
 
-int GlobalRA::localSplit(bool fastCompile, VarSplit& splitPass) {
+void GlobalRA::localSplit(bool fastCompile, VarSplit& splitPass) {
   // Do variable splitting in each iteration
   // Don't do when fast compile is required
-  int splitCount = 0;
   if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA) && !fastCompile) {
     RA_TRACE(std::cout << "\t--split local send--\n");
     for (auto bb : kernel.fg) {
-      splitCount += splitPass.localSplit(builder, bb);
+      splitPass.localSplit(builder, bb);
     }
   }
-  return splitCount;
 }
 
 std::pair<bool, bool> GlobalRA::bankConflict() {
@@ -11727,7 +11725,6 @@ int GlobalRA::coloringRegAlloc() {
   }
 
   bool rematDone = false, alignedScalarSplitDone = false;
-  bool loadSplitTryDone = false;
   bool reserveSpillReg = false;
   VarSplit splitPass(*this);
   DynPerfModel perfModel(kernel);
@@ -11759,15 +11756,7 @@ int GlobalRA::coloringRegAlloc() {
       spillAnalysis->Clear();
     }
 
-    // 1. For legacy, always do localSpllit for old platforms.
-    // 2. For new platforms:
-    //    a) Do localSplit when iteration 0 failed RA
-    //    b) Always do localSplit for spill iterations, which may generate local
-    //    split candidate.
-    if (iterationNo > 0 || loadSplitTryDone ||
-        !builder.onlyDoLocalVariableSplitWhenSpill()) {
-      localSplit(fastCompile, splitPass);
-    }
+    localSplit(fastCompile, splitPass);
 
     const auto [doBankConflictReduction, highInternalConflict] = bankConflict();
 
@@ -11851,15 +11840,6 @@ int GlobalRA::coloringRegAlloc() {
 
       if (rerunGRAIter(rerunGRA1 || rerunGRA2 || rerunGRA3))
         continue;
-
-      // For new platforms, check if there is local split space
-      if (!loadSplitTryDone && builder.onlyDoLocalVariableSplitWhenSpill()) {
-        if (localSplit(fastCompile, splitPass) > 0) {
-          loadSplitTryDone = true;
-          // Run one more iteration 0 for local split
-          continue;
-        }
-      }
 
       splitOnSpill(fastCompile, coloring, liveAnalysis);
 
