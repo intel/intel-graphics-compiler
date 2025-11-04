@@ -380,7 +380,8 @@ SOALayoutInfo SOALayoutChecker::getOrGatherInfo() {
   // Don't even look at non-array allocas.
   // (extractAllocaDim can not handle them anyway, causing a crash)
   llvm::Type *pType = allocaRef.getAllocatedType();
-  if (pType->isStructTy() && pType->getStructNumElements() == 1) {
+  // Unfold type wrappers
+  while (pType->isStructTy() && pType->getStructNumElements() == 1) {
     pType = pType->getStructElementType(0);
   }
   if ((!pType->isArrayTy() && !pType->isVectorTy()) || allocaRef.isArrayAllocation())
