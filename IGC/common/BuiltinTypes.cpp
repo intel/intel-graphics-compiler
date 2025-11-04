@@ -101,10 +101,14 @@ static bool isAnyArgOpenCLTargetExtTy(const Function &F) {
     if (checkIfNeedsRetyping(ArgTy))
       return true;
 
-    if (A.hasStructRetAttr()) {
-      if (checkIfNeedsRetyping(A.getParamStructRetType()))
-        return true;
-    }
+    if (A.hasStructRetAttr() && checkIfNeedsRetyping(A.getParamStructRetType()))
+      return true;
+
+    if (A.hasByValAttr() && checkIfNeedsRetyping(A.getParamByValType()))
+      return true;
+
+    if (A.hasByRefAttr() && checkIfNeedsRetyping(A.getParamByRefType()))
+      return true;
   }
 
   return false;
@@ -265,6 +269,14 @@ void retypeOpenCLTargetExtTyAsPointers(Module *M) {
               break;
             }
           }
+          if (auto *AI = dyn_cast<AllocaInst>(&I)) {
+            Type *AllocatedTy = AI->getAllocatedType();
+            if (checkIfNeedsRetyping(AllocatedTy)) {
+              UsesTargetExt = true;
+              break;
+            }
+          }
+
           if (UsesTargetExt)
             break;
         }
@@ -274,9 +286,8 @@ void retypeOpenCLTargetExtTyAsPointers(Module *M) {
     }
 
     // If neither args/return/instructions use OpenCL TargetExtTy, skip.
-    if (!UsesTargetExt) {
+    if (!UsesTargetExt)
       continue;
-    }
 
     OpenCLTargetExtTypeMapper Mapper(F, TETtoRetypedStructs);
     ValueToValueMapTy VM;
@@ -320,6 +331,28 @@ void retypeOpenCLTargetExtTyAsPointers(Module *M) {
             AttrBuilder AB(M->getContext(), Attrs);
             AB.removeAttribute(llvm::Attribute::StructRet);
             AB.addStructRetAttr(NewSRetTy);
+            Attrs = AttributeSet::get(M->getContext(), AB);
+            AttrsChanged = true;
+          }
+        }
+        if (Attrs.hasAttribute(llvm::Attribute::ByVal)) {
+          Type *OldByValTy = Arg.getParamByValType();
+          Type *NewByValTy = Mapper.remapType(OldByValTy);
+          if (NewByValTy != OldByValTy) {
+            AttrBuilder AB(M->getContext(), Attrs);
+            AB.removeAttribute(llvm::Attribute::ByVal);
+            AB.addByValAttr(NewByValTy);
+            Attrs = AttributeSet::get(M->getContext(), AB);
+            AttrsChanged = true;
+          }
+        }
+        if (Attrs.hasAttribute(llvm::Attribute::ByRef)) {
+          Type *OldByRefTy = Arg.getParamByRefType();
+          Type *NewByRefTy = Mapper.remapType(OldByRefTy);
+          if (NewByRefTy != OldByRefTy) {
+            AttrBuilder AB(M->getContext(), Attrs);
+            AB.removeAttribute(llvm::Attribute::ByRef);
+            AB.addByRefAttr(NewByRefTy);
             Attrs = AttributeSet::get(M->getContext(), AB);
             AttrsChanged = true;
           }
