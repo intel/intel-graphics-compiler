@@ -649,8 +649,6 @@ DECLARE_IGC_REGKEY(bool, EnableInstructionHoistingOptimization, false,
                    "Enable optimization for hoisting latency instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableResourceLoopDestLifeTimeStart, true,
                    "Enable lifetime_start set for destination in resource loop", false)
-DECLARE_IGC_REGKEY(bool, EnableSinkPointerConstAdd, true,
-                   "Enable sinking of pointer constant additions closer to their use", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0, false, " Copy a0 used for extended msg descriptor to dbg0 to help debug", false)
