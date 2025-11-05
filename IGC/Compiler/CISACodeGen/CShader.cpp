@@ -1201,8 +1201,8 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value *val, uint32_t &mask) {
         // return with addtional header
         static const bool selectReturnChannels[] = {
             false, // 0 0000 - should not happen
-            false, // 1 0001 - r
-            false, // 2 0010 -  g
+            true,  // 1 0001 - r
+            true,  // 2 0010 -  g
             false, // 3 0011 - rg
             true,  // 4 0100 -   b
             false, // 5 0101 - r b
