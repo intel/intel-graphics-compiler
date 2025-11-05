@@ -3262,7 +3262,8 @@ G4_Imm *IR_Builder::foldConstVal(G4_Imm *opnd, G4_INST *inst) {
 // helper function to fold BinOp with two immediate operands
 // supported opcodes are given below in doConsFolding
 // returns nullptr if the two constants may not be folded
-G4_Imm *IR_Builder::foldConstVal(G4_Imm *const1, G4_Imm *const2, G4_opcode op) {
+G4_Imm *IR_Builder::foldConstVal(G4_Imm *const1, G4_Imm *const2, G4_opcode op,
+                                 bool qwordMode) {
   bool isNonQInt = IS_TYPE_INT(const1->getType()) &&
                    IS_TYPE_INT(const2->getType()) &&
                    !IS_QTYPE(const1->getType()) && !IS_QTYPE(const2->getType());
@@ -3314,7 +3315,12 @@ G4_Imm *IR_Builder::foldConstVal(G4_Imm *const1, G4_Imm *const2, G4_opcode op) {
     }
     return createImmWithLowerType(res, resultType);
   } else {
-    uint32_t shift = const2->getInt() % 32;
+    // For shl/shr/asr instructions, in qword mode the shift count is taken from
+    // the low six bits of src1 regardless of the src1 type and treated as an
+    // unsigned integer in the range 0 to 63. Otherwise the shift count is taken
+    // from the low five bits of src1 regardless of the src1 type and treated as
+    // an unsigned integer in the range 0 to 31.
+    uint32_t shift = ((uint64_t)const2->getInt()) & (qwordMode? 0x3f : 0x1f);
 
     if (op == G4_shl || op == G4_shr) {
       uint32_t value = (uint32_t)const1->getInt();
@@ -3358,12 +3364,21 @@ void IR_Builder::doConsFolding(G4_INST *inst) {
     return op && op->isImm() && !op->isRelocImm();
   };
 
+  G4_opcode opcode = inst->opcode();
+
   if (inst->getNumSrc() == 2) {
     G4_Operand *src0 = inst->getSrc(0);
     G4_Operand *src1 = inst->getSrc(1);
     if (srcIsFoldableImm(src0) && srcIsFoldableImm(src1)) {
+      // For shr/shl/asr instructions, the operation uses QWord mode if src0 or
+      // dst has the Q or UQ type but not if src1 is the only operand with the
+      // Q or UQ type.
+      bool qwordMode =
+          (G4_shr == opcode || G4_shl == opcode || G4_asr == opcode) &&
+          (IS_QTYPE(inst->getDst()->getType()) ||
+           IS_QTYPE(inst->getSrc(0)->getType()));
       G4_Imm *foldedImm =
-          foldConstVal(src0->asImm(), src1->asImm(), inst->opcode());
+          foldConstVal(src0->asImm(), src1->asImm(), opcode, qwordMode);
       if (foldedImm) {
         // change instruction into a MOV
         inst->setOpcode(G4_mov);
@@ -3375,7 +3390,7 @@ void IR_Builder::doConsFolding(G4_INST *inst) {
     G4_Operand *src0 = inst->getSrc(0);
     G4_Operand *src1 = inst->getSrc(1);
     G4_Operand *src2 = inst->getSrc(2);
-    if (inst->opcode() == G4_add3) {
+    if (opcode == G4_add3) {
       // always fold the variable into src0
       G4_Imm *foldedImm = nullptr;
       G4_Operand *otherSrc = nullptr;
