@@ -4072,6 +4072,8 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   if (context->type == ShaderType::OPENCL_SHADER &&
       (m_program->m_Platform->limitedBCR() || (MaxRegPressure > 0 && MaxRegPressure < RegPressureThreshold))) {
     SaveOption(vISA_enableBCR, true);
+    if (m_program->GetParent()->getLLVMFunction()->size() == 1)
+        SaveOption(vISA_forceBCR, true);
   }
   if (context->type == ShaderType::OPENCL_SHADER && m_program->m_Platform->supportDpasInstruction()) {
     // 3: Enable bundle conflict reduction for all instructions.
