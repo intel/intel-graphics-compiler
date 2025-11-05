@@ -551,6 +551,10 @@ bool relaxedACCRestrictions4() const {
   return getPlatform() >= Xe2;
 }
 
+bool hasACCRestrictionsForCdyn() const {
+  return false;
+}
+
 bool enableACCBeforRA() const {
   return (getOption(vISA_accSubBeforeRA) && (getPlatform() >= Xe2));
 }

@@ -7191,7 +7191,8 @@ bool G4_INST::canDstBeAcc() const {
     return false;
   }
 
-  if (!builder.useAccForDF() && dst->getType() == Type_DF) {
+  if ((!builder.useAccForDF() || builder.hasACCRestrictionsForCdyn()) &&
+      dst->getType() == Type_DF) {
     return false;
   }
 
@@ -7327,10 +7328,11 @@ bool G4_INST::canDstBeAcc() const {
   case G4_cbit:
   case G4_fbl:
   case G4_fbh:
-  case G4_math:
   case G4_shl:
   case G4_fcvt:
     return builder.removedAccRestrictionsAsGRF();
+  case G4_math:
+    return builder.removedAccRestrictionsAsGRF() && !builder.hasACCRestrictionsForCdyn();
   default:
     return false;
   }
