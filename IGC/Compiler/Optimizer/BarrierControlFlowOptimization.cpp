@@ -69,6 +69,7 @@ private:
   std::vector<llvm::Instruction *> m_ThreadGroupBarriers;
   std::vector<llvm::Instruction *> m_OrderedFenceBarrierInstructions;
   std::vector<std::vector<llvm::Instruction *>> m_OrderedFenceBarrierInstructionsBlock;
+  std::vector<std::vector<llvm::Instruction *>> m_ChangedFenceBarrierInstructionsBlock;
 
   llvm::Function *m_CurrentFunction = nullptr;
 };
@@ -131,6 +132,8 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow() {
 
   bool bModified = false;
   Value *onThread = nullptr;
+  // flag to indicate whether a barrier is needed. Initially true to the very first barrier
+  bool needsBarrier = true;
 
   // Optimize barrier control flow
   for (auto &B : m_OrderedFenceBarrierInstructionsBlock) {
@@ -152,7 +155,7 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow() {
 
       // thread barrier could be not used, but lsc fence must exist
       // if so, found the pattern and stop the loop and return
-      if (m_LscMemoryFences.size() >= 1) {
+      if ((m_LscMemoryFences.size() > 0) && (m_ThreadGroupBarriers.size() > 0)) {
         IGCIRBuilder<> IRB(nextInst);
 
         llvm::Module *module = nextInst->getParent()->getParent()->getParent();
@@ -195,14 +198,18 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow() {
             Value *Args[] = {IRB.getInt32(LSC_SLM), IRB.getInt32(LSC_SCOPE_GROUP), IRB.getInt32(LSC_FENCE_OP_NONE)};
 
             IRB.CreateCall(FenceFn, Args);
+            // add a barrier after SLM fence
+            needsBarrier = true;
           }
         }
 
         // 2. All threads barrier (if in group?)
-        if (m_ThreadGroupBarriers.size() > 0) {
+        if (needsBarrier && (m_ThreadGroupBarriers.size() > 0)) {
           Function *BarrierFn = GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_threadgroupbarrier);
 
           IRB.CreateCall(BarrierFn);
+          // reset the flag
+          needsBarrier = false;
         }
 
         // 3. One thread designated to do a fence, scope=GPU, flush=evict
@@ -214,9 +221,6 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow() {
           IRB.SetInsertPoint(&(*br->getParent()->begin()));
         }
 
-        // flag to check if all the fences are SLM, no need to add the last barrier
-        bool needsLastBarrier = false;
-
         // create new lsc fence based on the fence mem
         for (auto *I : m_LscMemoryFences) {
           LSC_SFID lscMem = GetLscMem(I);
@@ -227,9 +231,8 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow() {
             Value *Args[] = {IRB.getInt32(lscMem), IRB.getInt32(LSC_SCOPE_GPU), IRB.getInt32(LSC_FENCE_OP_EVICT)};
 
             IRB.CreateCall(FenceFn, Args);
-
-            // mark that we need a last barrier
-            needsLastBarrier = true;
+            // need a barrier after flush
+            needsBarrier = true;
           }
         }
 
@@ -238,11 +241,16 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow() {
           IRB.SetInsertPoint(&(*br->getSuccessor(0)->begin()));
         }
 
-        if (needsLastBarrier && (m_ThreadGroupBarriers.size() > 0)) {
+        if (needsBarrier && (m_ThreadGroupBarriers.size() > 0)) {
           Function *BarrierFn = GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_threadgroupbarrier);
 
           IRB.CreateCall(BarrierFn);
+          // reset the flag, so the next BB won't add another barrier at the beginning when it's not needed
+          needsBarrier = false;
         }
+
+        // mark old instructions for deletion
+        m_ChangedFenceBarrierInstructionsBlock.push_back(B);
 
         bModified = true;
       }
@@ -253,7 +261,7 @@ bool BarrierControlFlowOptimization::OptimizeBarrierControlFlow() {
 }
 
 void BarrierControlFlowOptimization::EraseOldInstructions() {
-  for (auto &B : m_OrderedFenceBarrierInstructionsBlock) {
+  for (auto &B : m_ChangedFenceBarrierInstructionsBlock) {
     for (llvm::Instruction *I : B) {
       I->eraseFromParent();
     }
@@ -294,6 +302,7 @@ void BarrierControlFlowOptimization::InvalidateMembers() {
   m_LscMemoryFences.clear();
   m_OrderedFenceBarrierInstructions.clear();
   m_OrderedFenceBarrierInstructionsBlock.clear();
+  m_ChangedFenceBarrierInstructionsBlock.clear();
 }
 
 //////////////////////////////////////////////////////////////////////////
