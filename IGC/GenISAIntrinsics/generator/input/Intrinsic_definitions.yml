@@ -2036,7 +2036,7 @@ intrinsics:
             - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
-                memory_access: !MemoryAccessType NoModRef
+                memory_access: !MemoryAccessType ModRef
     - !<IntrinsicDefinition>
         name: "GenISA_UnmaskedRegionBegin"
         comment: ""

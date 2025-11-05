@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -24,6 +24,11 @@ entry:
   %1 = alloca i64, i64 %0, align 8
   ret void
 }
+
+; CHECK:  declare i8* @llvm.genx.GenISA.VLAStackAlloca(i32, i32) [[attrNum:#[0-9]*]]
+; CHECK-LLVM-14: attributes [[attrNum]] = { nounwind willreturn }
+; CHECK-LLVM-15: attributes [[attrNum]] = { nounwind willreturn }
+; CHECK-LLVM-16: attributes [[attrNum]] = { nounwind willreturn memory(readwrite) }
 
 attributes #0 = { convergent noinline nounwind "hasVLA" }
 
