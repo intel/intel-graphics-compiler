@@ -228,6 +228,29 @@ void Optimizer::regAlloc() {
   } else if (status != VISA_SUCCESS) {
     RAFail = true;
   }
+
+  if (status == VISA_SUCCESS && kernel.useAutoGRFSelection() &&
+      kernel.getNumRegTotal() != kernel.grfMode.getMinGRF()) {
+    // There might be cases where RA is able to allocate less register
+    // than the GRF selected in Pre-RA scheduler which is based on
+    // register pressure.
+    // If that's the case, update the GRF number based on the largest
+    // register assignment by RA.
+    int largestGRF = 0;
+    for (auto dcl : kernel.Declares) {
+      if (dcl->getRegVar()->isGreg()) {
+        int GRFStart = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+        int numRows = dcl->getNumRows();
+        int GRFEnd = GRFStart + numRows;
+        if (GRFEnd > largestGRF) {
+          largestGRF = GRFEnd;
+        }
+      }
+    }
+    int smallerGRF = kernel.grfMode.getSmallerGRF();
+    if (largestGRF <= smallerGRF)
+      kernel.updateKernelToSmallerGRF();
+  }
 }
 
 // HW debugging needs to zero certain ARF registers such as a0, acc, etc.

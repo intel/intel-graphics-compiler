@@ -621,6 +621,19 @@ void G4_Kernel::calculateSimdSize() {
 }
 
 //
+// Updates kernel's related structures to smaller GRF
+//
+bool G4_Kernel::updateKernelToSmallerGRF() {
+  if (numRegTotal == grfMode.getMinGRF())
+    return false;
+
+  // Scale number of GRFs, Acc, SWSB tokens.
+  setKernelParameters(grfMode.moveToSmallerGRF());
+  fg.builder->rebuildPhyRegPool(getNumRegTotal());
+  return true;
+}
+
+//
 // Updates kernel's related structures to large GRF
 //
 bool G4_Kernel::updateKernelToLargerGRF() {
