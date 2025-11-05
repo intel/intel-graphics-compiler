@@ -587,30 +587,10 @@ bool IGCVectorizer::handleBinaryInstruction(VecArr &Slice) {
 
   Value *PrevVectorization = nullptr;
   Instruction *First = Slice.front();
-  if (ScalarToVector.count(First)) {
-    auto Vectorized = ScalarToVector[First];
-    if (llvm::isa<InsertElementInst>(Vectorized)) {
-      PRINT_LOG_NL("Was sourced by other vector instruction, but wasn't vectorized");
-      PrevVectorization = Vectorized;
-    } else {
-      PRINT_LOG_NL("Already was vectorized by other slice");
-      return true;
-    }
-  }
+  if (checkPrevVectorization(Slice, PrevVectorization)) return true;
+
   VecVal Operands;
-  for (unsigned int OperNum = 0; OperNum < First->getNumOperands(); ++OperNum) {
-    Value *Vectorized = checkOperandsToBeVectorized(First, OperNum, Slice);
-    if (Vectorized)
-      Operands.push_back(Vectorized);
-    else {
-      Value *VectorizedOperand = vectorizeSlice(Slice, OperNum);
-      if (!VectorizedOperand) {
-        PRINT_LOG_NL("Couldn't vectorize Slice");
-        return false;
-      }
-      Operands.push_back(VectorizedOperand);
-    }
-  }
+  if (!collectOperandsForVectorization(0, First->getNumOperands(), First, Slice, Operands)) return false;
 
   PRINT_DS("Operands: ", Operands);
   Instruction *InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);
@@ -662,16 +642,7 @@ bool IGCVectorizer::handleSelectInstruction(VecArr& Slice){
 
   Value *PrevVectorization = nullptr;
   Instruction *First = Slice.front();
-  if (ScalarToVector.count(First)) {
-    auto Vectorized = ScalarToVector[First];
-    if (llvm::isa<InsertElementInst>(Vectorized)) {
-      PRINT_LOG_NL("Was sourced by other vector instruction, but wasn't vectorized");
-      PrevVectorization = Vectorized;
-    } else {
-      PRINT_LOG_NL("Already was vectorized by other slice");
-      return true;
-    }
-  }
+  if (checkPrevVectorization(Slice, PrevVectorization)) return true;
 
   auto Cmp = Slice.front()->getOperand(0);
   bool SamePredicate = true;
@@ -682,19 +653,7 @@ bool IGCVectorizer::handleSelectInstruction(VecArr& Slice){
   }
 
   VecVal Operands;
-  for (unsigned int OperNum = 0; OperNum < First->getNumOperands(); ++OperNum) {
-    Value *Vectorized = checkOperandsToBeVectorized(First, OperNum, Slice);
-    if (Vectorized)
-      Operands.push_back(Vectorized);
-    else {
-      Value *VectorizedOperand = vectorizeSlice(Slice, OperNum);
-      if (!VectorizedOperand) {
-        PRINT_LOG_NL("Couldn't vectorize Slice");
-        return false;
-      }
-      Operands.push_back(VectorizedOperand);
-    }
-  }
+  if (!collectOperandsForVectorization(0, First->getNumOperands(), First, Slice, Operands)) return false;
 
   if (SamePredicate) {
       PRINT_LOG("Same Predicate! \n");
@@ -765,6 +724,42 @@ bool IGCVectorizer::handleSelectInstruction(VecArr& Slice){
   return true;
 }
 
+bool IGCVectorizer::checkPrevVectorization(VecArr& Slice, Value*& OutPrevVectorization) {
+
+  Instruction *First = Slice.front();
+  if (!ScalarToVector.count(First)) return false;
+
+  auto Vectorized = ScalarToVector[First];
+  if (llvm::isa<InsertElementInst>(Vectorized)) {
+      PRINT_LOG_NL("Was sourced by other vector instruction, but wasn't vectorized");
+      OutPrevVectorization = Vectorized;
+  } else {
+      PRINT_LOG_NL("Already was vectorized by other slice");
+      return true;
+  }
+  return false;
+}
+
+
+bool IGCVectorizer::collectOperandsForVectorization(unsigned OperNumToStart, unsigned OperNumToStop, Instruction* First, VecArr& Slice, VecVal& Operands) {
+
+  for (unsigned int OperNum = OperNumToStart; OperNum < OperNumToStop; ++OperNum) {
+    Value *Vectorized = checkOperandsToBeVectorized(First, OperNum, Slice);
+    if (Vectorized)
+      Operands.push_back(Vectorized);
+    else {
+      Value *VectorizedOperand = vectorizeSlice(Slice, OperNum);
+      if (!VectorizedOperand) {
+        PRINT_LOG_NL("Couldn't vectorize Slice");
+        return false;
+      }
+      Operands.push_back(VectorizedOperand);
+    }
+  }
+  return true;
+}
+
+
 bool IGCVectorizer::handleCMPInstruction(VecArr& Slice){
 
     bool IsSliceUniform = true;
@@ -779,33 +774,12 @@ bool IGCVectorizer::handleCMPInstruction(VecArr& Slice){
     if (!IGC_GET_FLAG_VALUE(VectorizerAllowUniformCMP))
         return true;
 
-  Value *PrevVectorization = nullptr;
   Instruction *First = Slice.front();
-  if (ScalarToVector.count(First)) {
-    auto Vectorized = ScalarToVector[First];
-    if (llvm::isa<InsertElementInst>(Vectorized)) {
-      PRINT_LOG_NL("Was sourced by other vector instruction, but wasn't vectorized");
-      PrevVectorization = Vectorized;
-    } else {
-      PRINT_LOG_NL("Already was vectorized by other slice");
-      return true;
-    }
-  }
+  Value *PrevVectorization = nullptr;
+  if (checkPrevVectorization(Slice, PrevVectorization)) return true;
 
   VecVal Operands;
-  for (unsigned int OperNum = 0; OperNum < First->getNumOperands(); ++OperNum) {
-    Value *Vectorized = checkOperandsToBeVectorized(First, OperNum, Slice);
-    if (Vectorized)
-      Operands.push_back(Vectorized);
-    else {
-      Value *VectorizedOperand = vectorizeSlice(Slice, OperNum);
-      if (!VectorizedOperand) {
-        PRINT_LOG_NL("Couldn't vectorize Slice");
-        return false;
-      }
-      Operands.push_back(VectorizedOperand);
-    }
-  }
+  if (!collectOperandsForVectorization(0, First->getNumOperands(), First, Slice, Operands)) return false;
 
   PRINT_DS("Operands: ", Operands);
   Instruction *InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);
@@ -887,32 +861,11 @@ bool IGCVectorizer::handleIntrinsic(VecArr &Slice) {
 
   Value *PrevVectorization = nullptr;
   Instruction *First = Slice.front();
-  if (ScalarToVector.count(First)) {
-    auto Vectorized = ScalarToVector[First];
-    if (llvm::isa<InsertElementInst>(Vectorized)) {
-      PRINT_LOG_NL("Was sourced by other vector instruction, but wasn't vectorized");
-      PrevVectorization = Vectorized;
-    } else {
-      PRINT_LOG_NL("Already was vectorized by other slice");
-      return true;
-    }
-  }
+
+  if (checkPrevVectorization(Slice, PrevVectorization)) return true;
 
   VecVal Operands;
-  for (unsigned int OperNum = 0; OperNum < First->getNumOperands() - 1; ++OperNum) {
-
-    Value *Vectorized = checkOperandsToBeVectorized(First, OperNum, Slice);
-    if (Vectorized)
-      Operands.push_back(Vectorized);
-    else {
-      Value *VectorizedOperand = vectorizeSlice(Slice, OperNum);
-      if (!VectorizedOperand) {
-        PRINT_LOG_NL("Couldn't vectorize Slice");
-        return false;
-      }
-      Operands.push_back(VectorizedOperand);
-    }
-  }
+  if (!collectOperandsForVectorization(0, First->getNumOperands() - 1, First, Slice, Operands)) return false;
 
   PRINT_DS("Operands: ", Operands);
   Instruction *InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);

@@ -105,6 +105,8 @@ class IGCVectorizer : public llvm::FunctionPass {
   bool handleCMPInstruction(VecArr &Slice);
   bool handleIntrinsic(VecArr &Slice);
   bool checkBinaryOperator(VecArr &Slice);
+  bool checkPrevVectorization(VecArr& Slice, Value*& PrevVectorization);
+  bool collectOperandsForVectorization(unsigned OperNumToStart, unsigned OperNumToStop, Instruction* First, VecArr& Slice, VecVal& Operands);
   bool handleIntrinsicInstruction(VecArr &Slice);
 
   Value *checkOperandsToBeVectorized(Instruction *First, unsigned int OperNum, VecArr &Slice);

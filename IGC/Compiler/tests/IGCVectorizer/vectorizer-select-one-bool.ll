@@ -1,3 +1,11 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2025 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
 ; REQUIRES: llvm-16-plus, debug, regkeys
 ; RUN: igc_opt -S  --opaque-pointers --igc-vectorizer -dce --regkey=VectorizerAllowUniformSelect=1 --regkey=VectorizerAllowUniformCMP=1 --regkey=VectorizerDepWindowMultiplier=6 --regkey=VectorizerAllowSamePredSelect=1 < %s 2>&1 | FileCheck %s
 

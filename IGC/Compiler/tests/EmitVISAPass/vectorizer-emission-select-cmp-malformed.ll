@@ -1,3 +1,11 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2025 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
 ; REQUIRES: regkeys, llvm-16-plus, debug
 
 ; RUN: igc_opt -S %s --opaque-pointers -platformbmg -igc-emit-visa --regkey=DumpVISAASMToConsole=1 -simd-mode 16 &> %t_output.ll || true
