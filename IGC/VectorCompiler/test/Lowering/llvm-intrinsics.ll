@@ -128,11 +128,13 @@ define internal spir_func <8 x i64> @cttz_vec64(<8 x i64> %arg) {
 ; CHECK: [[HI_SPLIT:%.*]] =  call <8 x i32> @llvm.genx.rdregioni.v8i32.v16i32.i16(<16 x i32> [[CAST32]], i32 0, i32 8, i32 2, i16 4,
 ; CHECK: [[REV_LO:%.*]] = call <8 x i32> @llvm.genx.bfrev.v8i32(<8 x i32> [[LO_SPLIT]])
 ; CHECK: [[REV_HI:%.*]] = call <8 x i32> @llvm.genx.bfrev.v8i32(<8 x i32> [[HI_SPLIT]])
-; CHECK: [[JOIN1:%.*]] = call <16 x i32> @llvm.genx.wrregioni.v16i32.v8i32.i16.i1(<16 x i32> undef, <8 x i32> [[REV_LO]], i32 0, i32 8, i32 2, i16 0
-; CHECK: [[JOIN2:%.*]] = call <16 x i32> @llvm.genx.wrregioni.v16i32.v8i32.i16.i1(<16 x i32> [[JOIN1]], <8 x i32> [[REV_HI]], i32 0, i32 8, i32 2, i16 4
-; CHECK: [[CAST:%.*]] = bitcast <16 x i32> [[JOIN2]] to <8 x i64>
-; CHECK: [[RET:%.*]] = call <8 x i64> @llvm.ctlz.v8i64(<8 x i64> [[CAST]], i1 false)
-; CHECK: ret <8 x i64> [[RET]]
+; CHECK: [[CTLZ_LO:%.*]] = call <8 x i32> @llvm.ctlz.v8i32(<8 x i32> [[REV_LO]], i1 false)
+; CHECK: [[CTLZ_HI:%.*]] = call <8 x i32> @llvm.ctlz.v8i32(<8 x i32> [[REV_HI]], i1 false)
+; CHECK: [[CMP:%.*]] = icmp ult <8 x i32> [[CTLZ_LO]], <i32 32, i32 32, i32 32, i32 32, i32 32, i32 32, i32 32, i32 32>
+; CHECK: [[ADD:%.*]] = add <8 x i32> [[CTLZ_HI]], <i32 32, i32 32, i32 32, i32 32, i32 32, i32 32, i32 32, i32 32>
+; CHECK: [[SELECT:%.*]] = select <8 x i1> [[CMP]], <8 x i32> [[CTLZ_LO]], <8 x i32> [[ADD]]
+; CHECK: [[ZEXT:%.*]] = zext <8 x i32> [[SELECT]] to <8 x i64>
+; CHECK: ret <8 x i64> [[ZEXT]]
   %ret = call <8 x i64>  @llvm.cttz.v8i64(<8 x i64> %arg, i1 false)
   ret <8 x i64> %ret
 }
@@ -146,11 +148,13 @@ define internal spir_func i64 @cttz_64(i64 %arg) {
 ; CHECK: [[HI_SPLIT:%.*]] =  call <1 x i32> @llvm.genx.rdregioni.v1i32.v2i32.i16(<2 x i32> [[CAST32]], i32 0, i32 1, i32 2, i16 4
 ; CHECK: [[REV_LO:%.*]] = call <1 x i32> @llvm.genx.bfrev.v1i32(<1 x i32> [[LO_SPLIT]])
 ; CHECK: [[REV_HI:%.*]] = call <1 x i32> @llvm.genx.bfrev.v1i32(<1 x i32> [[HI_SPLIT]])
-; CHECK: [[JOIN1:%.*]] = call <2 x i32> @llvm.genx.wrregioni.v2i32.v1i32.i16.i1(<2 x i32> undef, <1 x i32> [[REV_LO]], i32 0, i32 1, i32 2, i16 0
-; CHECK: [[JOIN2:%.*]] = call <2 x i32> @llvm.genx.wrregioni.v2i32.v1i32.i16.i1(<2 x i32> [[JOIN1]], <1 x i32> [[REV_HI]], i32 0, i32 1, i32 2, i16 4
-; CHECK: [[CAST_V:%.*]] = bitcast <2 x i32> [[JOIN2]] to <1 x i64>
-; CHECK: [[CAST:%.*]] = bitcast <1 x i64> [[CAST_V]] to i64
-; CHECK: [[RET:%.*]] = call i64 @llvm.ctlz.i64(i64 [[CAST]], i1 false)
+; CHECK: [[CTLZ_LO:%.*]] = call <1 x i32> @llvm.ctlz.v1i32(<1 x i32> [[REV_LO]], i1 false)
+; CHECK: [[CTLZ_HI:%.*]] = call <1 x i32> @llvm.ctlz.v1i32(<1 x i32> [[REV_HI]], i1 false)
+; CHECK: [[CMP:%.*]] = icmp ult <1 x i32> [[CTLZ_LO]], <i32 32>
+; CHECK: [[ADD:%.*]] = add <1 x i32> [[CTLZ_HI]], <i32 32>
+; CHECK: [[SELECT:%.*]] = select <1 x i1> [[CMP]], <1 x i32> [[CTLZ_LO]], <1 x i32> [[ADD]]
+; CHECK: [[RDREG:%.*]] = call i32 @llvm.genx.rdregioni.i32.v1i32.i16(<1 x i32> [[SELECT]], i32 0, i32 1, i32 1, i16 0, i32 0)
+; CHECK: [[RET:%.*]] = zext i32 [[RDREG]] to i64
 ; CHECK: ret i64 [[RET]]
   %ret = call i64 @llvm.cttz.i64(i64 %arg, i1 false)
   ret i64 %ret
@@ -176,6 +180,58 @@ define internal spir_func void @cttz_ctlz_vi8(<3 x i8> %arg) {
 ; CHECK: call <3 x i8> @llvm.genx.rdregioni.v3i8.v12i8.i16(<12 x i8> [[CAST]], i32 12, i32 3, i32 4, i16 0, i32 undef)
   %2 = call <3 x i8>  @llvm.ctlz.v3i8(<3 x i8> %arg, i1 false)
   ret void
+}
+
+declare i32 @llvm.ctpop.i32(i32)
+declare <8 x i32> @llvm.ctpop.v8i32(<8 x i32>)
+
+; CHECK-LABEL: ctpop_i32
+define internal spir_func i32 @ctpop_i32(i32 %arg) {
+; CHECK: [[CBIT:%.*]] = call i32 @llvm.genx.cbit.i32.i32(i32 %arg)
+; CHECK: ret i32 [[CBIT]]
+  %ret = call i32 @llvm.ctpop.i32(i32 %arg)
+  ret i32 %ret
+}
+
+; CHECK-LABEL: ctpop_v8i32
+define internal spir_func <8 x i32> @ctpop_v8i32(<8 x i32> %arg) {
+; CHECK: [[CBIT:%.*]] = call <8 x i32> @llvm.genx.cbit.v8i32.v8i32(<8 x i32> %arg)
+; CHECK: ret <8 x i32> [[CBIT]]
+  %ret = call <8 x i32> @llvm.ctpop.v8i32(<8 x i32> %arg)
+  ret <8 x i32> %ret
+}
+
+declare i64 @llvm.ctpop.i64(i64)
+
+; CHECK-LABEL: ctpop_i64
+define internal spir_func i64 @ctpop_i64(i64 %arg) {
+; CHECK: [[CAST32:%.*]] = bitcast i64 %arg to <2 x i32>
+; CHECK: [[LO_SPLIT:%.*]] = call <1 x i32> @llvm.genx.rdregioni.v1i32.v2i32.i16(<2 x i32> [[CAST32]], i32 0, i32 1, i32 2, i16 0
+; CHECK: [[HI_SPLIT:%.*]] = call <1 x i32> @llvm.genx.rdregioni.v1i32.v2i32.i16(<2 x i32> [[CAST32]], i32 0, i32 1, i32 2, i16 4
+; CHECK: [[CBIT_LO:%.*]] = call <1 x i32> @llvm.genx.cbit.v1i32.v1i32(<1 x i32> [[LO_SPLIT]])
+; CHECK: [[CBIT_HI:%.*]] = call <1 x i32> @llvm.genx.cbit.v1i32.v1i32(<1 x i32> [[HI_SPLIT]])
+; CHECK: [[SUM:%.*]] = add <1 x i32> [[CBIT_LO]], [[CBIT_HI]]
+; CHECK: [[SCALAR:%.*]] = call i32 @llvm.genx.rdregioni.i32.v1i32.i16(<1 x i32> [[SUM]], i32 0, i32 1, i32 1, i16 0, i32 0)
+; CHECK: [[RET:%.*]] = zext i32 [[SCALAR]] to i64
+; CHECK: ret i64 [[RET]]
+  %ret = call i64 @llvm.ctpop.i64(i64 %arg)
+  ret i64 %ret
+}
+
+declare <8 x i64> @llvm.ctpop.v8i64(<8 x i64>)
+
+; CHECK-LABEL: ctpop_v8i64
+define internal spir_func <8 x i64> @ctpop_v8i64(<8 x i64> %arg) {
+; CHECK: [[CAST32:%.*]] = bitcast <8 x i64> %arg to <16 x i32>
+; CHECK: [[LO_SPLIT:%.*]] = call <8 x i32> @llvm.genx.rdregioni.v8i32.v16i32.i16(<16 x i32> [[CAST32]], i32 0, i32 8, i32 2, i16 0
+; CHECK: [[HI_SPLIT:%.*]] = call <8 x i32> @llvm.genx.rdregioni.v8i32.v16i32.i16(<16 x i32> [[CAST32]], i32 0, i32 8, i32 2, i16 4
+; CHECK: [[CBIT_LO:%.*]] = call <8 x i32> @llvm.genx.cbit.v8i32.v8i32(<8 x i32> [[LO_SPLIT]])
+; CHECK: [[CBIT_HI:%.*]] = call <8 x i32> @llvm.genx.cbit.v8i32.v8i32(<8 x i32> [[HI_SPLIT]])
+; CHECK: [[SUM:%.*]] = add <8 x i32> [[CBIT_LO]], [[CBIT_HI]]
+; CHECK: [[RET:%.*]] = zext <8 x i32> [[SUM]] to <8 x i64>
+; CHECK: ret <8 x i64> [[RET]]
+  %ret = call <8 x i64> @llvm.ctpop.v8i64(<8 x i64> %arg)
+  ret <8 x i64> %ret
 }
 
 declare i16 @llvm.cttz.i16(i16, i1)

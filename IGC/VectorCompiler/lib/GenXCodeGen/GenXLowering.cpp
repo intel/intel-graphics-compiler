@@ -3599,6 +3599,50 @@ bool GenXLowering::lowerCtpop(CallInst *CI) {
   Builder.SetCurrentDebugLocation(CI->getDebugLoc());
 
   Type *Int32Ty = IntegerType::getInt32Ty(CI->getContext());
+  Type *OperandTy = CI->getOperand(0)->getType();
+  Type *OperandScalarTy = OperandTy->getScalarType();
+
+  // Check if we need to split i64 operands
+  if (OperandScalarTy->isIntegerTy(64)) {
+    // Split i64 operand into two i32 parts
+    IVSplitter SplitBuilder(*CI);
+    auto Split = SplitBuilder.splitOperandLoHi(0);
+
+    Type *RetTy = nullptr;
+    if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Split.Lo->getType()))
+      RetTy = IGCLLVM::FixedVectorType::get(Int32Ty, VT->getNumElements());
+    else
+      RetTy = Int32Ty;
+
+    // Call genx_cbit for low part
+    auto *CBitDecl = GenXIntrinsic::getGenXDeclaration(
+        M, GenXIntrinsic::genx_cbit, {RetTy, Split.Lo->getType()});
+    Value *CBitLo =
+        Builder.CreateCall(CBitDecl, Split.Lo, CI->getName() + ".lo");
+
+    // Call genx_cbit for high part
+    Value *CBitHi =
+        Builder.CreateCall(CBitDecl, Split.Hi, CI->getName() + ".hi");
+
+    // Add the two results together
+    Value *CBitSum = Builder.CreateAdd(CBitLo, CBitHi, CI->getName() + ".sum");
+
+    // If the original type was scalar, extract scalar from <1 x i32>
+    // Otherwise keep as vector
+    bool IsScalar = OperandTy->isIntegerTy();
+    if (IsScalar && CBitSum->getType() != Int32Ty) {
+      CBitSum = Builder.CreateExtractElement(CBitSum, uint64_t(0));
+    }
+
+    // Extend to match result type (i32 -> i64 or <N x i32> -> <N x i64>)
+    Value *Result = Builder.CreateZExt(CBitSum, CI->getType());
+    CI->replaceAllUsesWith(Result);
+    ToErase.push_back(CI);
+
+    return true;
+  }
+
+  // For non-i64 types, use the original logic
   Type *RetTy = nullptr;
   if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType()))
     RetTy = IGCLLVM::FixedVectorType::get(Int32Ty, VT->getNumElements());
@@ -3697,7 +3741,62 @@ bool GenXLowering::lowerCttz(CallInst *CI) {
   // }
   IRBuilder<> Builder(CI);
   auto *ResTy = CI->getType();
+  auto *ScalarTy = ResTy->getScalarType();
 
+  // Check if we need special handling for i64
+  if (ScalarTy->isIntegerTy(64)) {
+    // For i64 cttz, we use the algorithm:
+    // cttz(i64) = cttz(i32_lo) if (i32_lo != 0)
+    //           = 32 + cttz(i32_hi) otherwise
+    //
+    // Since cttz = ctlz(bitreverse), we need:
+    // 1. Split i64 into Lo and Hi i32 parts
+    // 2. Reverse bits in each part
+    // 3. Count leading zeros in reversed parts
+    // 4. If Lo part has trailing zeros < 32, use that count
+    //    Otherwise, use (32 + trailing zeros in Hi part)
+
+    IVSplitter SplitBuilder(*CI);
+    auto Split = SplitBuilder.splitOperandLoHi(0);
+
+    Type *Int32Ty = Builder.getInt32Ty();
+    Type *PartTy = Split.Lo->getType();
+
+    // Reverse bits in each part to convert cttz to ctlz
+    Value *ReversedLo =
+        Builder.CreateIntrinsic(Intrinsic::bitreverse, {PartTy}, {Split.Lo});
+    Value *ReversedHi =
+        Builder.CreateIntrinsic(Intrinsic::bitreverse, {PartTy}, {Split.Hi});
+
+    // Count leading zeros in reversed parts
+    Value *CtlzReversedLo = Builder.CreateIntrinsic(
+        Intrinsic::ctlz, {PartTy}, {ReversedLo, CI->getArgOperand(1)});
+    Value *CtlzReversedHi = Builder.CreateIntrinsic(
+        Intrinsic::ctlz, {PartTy}, {ReversedHi, CI->getArgOperand(1)});
+
+    // If Lo part has all trailing zeros (ctlz(reversed_lo) == 32),
+    // then we need to add 32 + ctlz(reversed_hi)
+    // Otherwise, just use ctlz(reversed_lo)
+    Value *Cmp =
+        Builder.CreateICmpULT(CtlzReversedLo, ConstantInt::get(PartTy, 32));
+    Value *Add32 =
+        Builder.CreateAdd(CtlzReversedHi, ConstantInt::get(PartTy, 32));
+    Value *CttzResult = Builder.CreateSelect(Cmp, CtlzReversedLo, Add32);
+
+    // Handle scalar vs vector
+    bool IsScalar = ResTy->isIntegerTy();
+    if (IsScalar && CttzResult->getType() != Int32Ty) {
+      CttzResult = Builder.CreateExtractElement(CttzResult, uint64_t(0));
+    }
+
+    // Extend to i64
+    Value *Result = Builder.CreateZExt(CttzResult, ResTy);
+    CI->replaceAllUsesWith(Result);
+    ToErase.push_back(CI);
+    return true;
+  }
+
+  // For non-i64 types, use the original logic
   Value *Reverse = Builder.CreateIntrinsic(Intrinsic::bitreverse, {ResTy},
                                            {CI->getArgOperand(0)});
   Value *Result = Builder.CreateIntrinsic(Intrinsic::ctlz, {ResTy},
