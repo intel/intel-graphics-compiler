@@ -18522,6 +18522,23 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction *pInsn) {
       m_currShader->CopyVariable(pPayload, pSrc_W, 3 * numEltGRF);
     }
 
+    WIAnalysis *WI = &getAnalysis<WIAnalysis>();
+    // If the dstBuf and coordinates are all uniform,
+    // check if all data elements have been replaced with WaveShuffleIndex
+    if (WI->isUniform(pllDstBuffer) && WI->isUniform(pllU) && WI->isUniform(pllV) && WI->isUniform(pllR)) {
+      GenIntrinsicInst *genX = dyn_cast<GenIntrinsicInst>(pllSrc_X);
+      GenIntrinsicInst *genY = dyn_cast<GenIntrinsicInst>(pllSrc_Y);
+      GenIntrinsicInst *genZ = dyn_cast<GenIntrinsicInst>(pllSrc_Z);
+      GenIntrinsicInst *genW = dyn_cast<GenIntrinsicInst>(pllSrc_W);
+      if (genX && genX->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex &&
+        genY && genY->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex &&
+        genZ && genZ->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex &&
+        genW && genW->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex) {
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+      }
+    }
+
     m_encoder->SetPredicate(flag);
     m_encoder->LSC_TypedReadWrite(
         pGenInst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwriteMS ? LSC_STORE_QUAD_MSRT : LSC_STORE_QUAD,
