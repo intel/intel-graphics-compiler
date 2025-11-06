@@ -10078,7 +10078,7 @@ void VarSplit::globalSplit(IR_Builder &builder, G4_Kernel &kernel) {
   return;
 }
 
-void VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
+int VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
   class CmpRegVarId {
   public:
     bool operator()(G4_RegVar *first, G4_RegVar *second) const {
@@ -10099,7 +10099,7 @@ void VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
   bool hasSends = std::any_of(bb->begin(), bb->end(),
                               [](G4_INST *inst) { return inst->isSend(); });
   if (!hasSends)
-    return;
+    return 0;
 
   //
   // Iterate instruction in BB from back to front
@@ -10315,7 +10315,7 @@ void VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
     toDelete.pop();
   }
 
-  return;
+  return splitid;
 }
 
 void GlobalRA::addrRegAlloc() {
@@ -11198,15 +11198,17 @@ bool GlobalRA::globalSplit(VarSplit& splitPass, GraphColor& coloring) {
   return false;
 }
 
-void GlobalRA::localSplit(bool fastCompile, VarSplit& splitPass) {
+int GlobalRA::localSplit(bool fastCompile, VarSplit& splitPass) {
   // Do variable splitting in each iteration
   // Don't do when fast compile is required
+  int splitCount = 0;
   if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA) && !fastCompile) {
     RA_TRACE(std::cout << "\t--split local send--\n");
     for (auto bb : kernel.fg) {
-      splitPass.localSplit(builder, bb);
+      splitCount += splitPass.localSplit(builder, bb);
     }
   }
+  return splitCount;
 }
 
 std::pair<bool, bool> GlobalRA::bankConflict() {
@@ -11297,6 +11299,26 @@ bool GlobalRA::VRTIncreasedGRF(GraphColor &coloring) {
     if (canIncreaseGRF(computeSpillSize(coloring.getSpilledLiveRanges()),
                        infCostSpilled))
       return true;
+  }
+  return false;
+}
+
+bool GlobalRA::canVRTIncreasedGRF(GraphColor &coloring) {
+  if (kernel.useAutoGRFSelection()) {
+    bool infCostSpilled =
+        coloring.getSpilledLiveRanges().end() !=
+        std::find_if(coloring.getSpilledLiveRanges().begin(),
+                     coloring.getSpilledLiveRanges().end(),
+                     [](const LiveRange *spilledLR) {
+                       return spilledLR->getSpillCost() == MAXSPILLCOST;
+                     });
+    if ((infCostSpilled || kernel.grfMode.hasLargerGRFSameThreads() ||
+         computeSpillSize(coloring.getSpilledLiveRanges()) >
+             kernel.grfMode.getSpillThreshold())) {
+      if (kernel.canUpdateKernelToLargerGRF()) {
+        return true;
+      }
+    }
   }
   return false;
 }
@@ -11733,6 +11755,7 @@ int GlobalRA::coloringRegAlloc() {
   }
 
   bool rematDone = false, alignedScalarSplitDone = false;
+  bool loadSplitTryDone = false;
   bool reserveSpillReg = false;
   VarSplit splitPass(*this);
   DynPerfModel perfModel(kernel);
@@ -11764,7 +11787,15 @@ int GlobalRA::coloringRegAlloc() {
       spillAnalysis->Clear();
     }
 
-    localSplit(fastCompile, splitPass);
+    // 1. For legacy, always do localSpllit for old platforms.
+    // 2. For new platforms:
+    //    a) Do localSplit when iteration 0 failed RA
+    //    b) Always do localSplit for spill iterations, which may generate local
+    //    split candidate.
+    if (iterationNo > 0 || loadSplitTryDone ||
+        !builder.onlyDoLocalVariableSplitWhenSpill()) {
+      localSplit(fastCompile, splitPass);
+    }
 
     const auto [doBankConflictReduction, highInternalConflict] = bankConflict();
 
@@ -11823,6 +11854,19 @@ int GlobalRA::coloringRegAlloc() {
     bool isColoringGood =
         coloring.regAlloc(doBankConflictReduction, highInternalConflict, &rpe);
     if (!isColoringGood) {
+      // Retry with local variable splitting if there is potential chance for
+      // VRT bump up.
+      if (builder.onlyDoLocalVariableSplitWhenSpill()) {
+        if (!loadSplitTryDone && canVRTIncreasedGRF(coloring)) {
+          if (localSplit(fastCompile, splitPass) > 0) {
+            loadSplitTryDone = true;
+            // Run one more iteration 0 with local split to avoid unnecessary
+            // bump up
+            continue;
+          }
+        }
+      }
+
       // When there are spills and -abortonspill is set, vISA will bump up the
       // number of GRFs first and try to compile without spills under one of
       // the following conditions:
@@ -11848,6 +11892,15 @@ int GlobalRA::coloringRegAlloc() {
 
       if (rerunGRAIter(rerunGRA1 || rerunGRA2 || rerunGRA3))
         continue;
+
+      // For new platforms, check if there is local split space
+      if (!loadSplitTryDone && builder.onlyDoLocalVariableSplitWhenSpill()) {
+        if (localSplit(fastCompile, splitPass) > 0) {
+          loadSplitTryDone = true;
+          // Run one more iteration 0 for local split
+          continue;
+        }
+      }
 
       splitOnSpill(fastCompile, coloring, liveAnalysis);
 

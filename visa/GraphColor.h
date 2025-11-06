@@ -2178,7 +2178,7 @@ private:
                                                   bool alignedScalarSplitDone,
                                                   GraphColor &coloring);
   bool globalSplit(VarSplit &splitPass, GraphColor &coloring);
-  void localSplit(bool fastCompile, VarSplit &splitPass);
+  int localSplit(bool fastCompile, VarSplit &splitPass);
   // return <doBCReduction, highInternalConflict>
   std::pair<bool, bool> bankConflict();
   // return reserveSpillReg
@@ -2190,6 +2190,7 @@ private:
                                 FINALIZER_INFO *jitInfo);
   void writeVerboseRPEStats(RPE &rpe);
   bool VRTIncreasedGRF(GraphColor &coloring);
+  bool canVRTIncreasedGRF(GraphColor &coloring);
   void splitOnSpill(bool fastCompile, GraphColor &coloring,
                     LivenessAnalysis &livenessAnalysis);
   bool convertToFailSafe(bool reserveSpillReg, GraphColor &coloring,
@@ -2259,7 +2260,7 @@ public:
   bool didLocalSplit = false;
   bool didGlobalSplit = false;
 
-  void localSplit(IR_Builder &builder, G4_BB *bb);
+  int localSplit(IR_Builder &builder, G4_BB *bb);
   void globalSplit(IR_Builder &builder, G4_Kernel &kernel);
   bool canDoGlobalSplit(IR_Builder &builder, G4_Kernel &kernel,
                         uint32_t sendSpillRefCount);

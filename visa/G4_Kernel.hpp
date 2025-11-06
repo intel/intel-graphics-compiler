@@ -737,6 +737,7 @@ public:
   const char *getName() const { return name; }
 
   bool updateKernelToSmallerGRF();
+  bool canUpdateKernelToLargerGRF();
   bool updateKernelToLargerGRF();
   void updateKernelByRegPressure(unsigned regPressure,
                                  bool forceGRFModeUp = false);

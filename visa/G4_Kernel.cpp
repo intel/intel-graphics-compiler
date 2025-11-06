@@ -620,6 +620,13 @@ void G4_Kernel::calculateSimdSize() {
     computeChannelSlicing();
 }
 
+bool G4_Kernel::canUpdateKernelToLargerGRF() {
+  if (numRegTotal == grfMode.getMaxGRF())
+    return false;
+
+  return true;
+}
+
 //
 // Updates kernel's related structures to smaller GRF
 //
