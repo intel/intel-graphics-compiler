@@ -791,11 +791,12 @@ bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction *defi, BranchIn
     uint8_t operandNum;
   };
 
-  llvm::SmallVector<RegionOperand, MAX_DEPTH> operands;
-  operands.push_back({defi, 0});
+  std::array<RegionOperand, MAX_DEPTH> operands{};
+  int ind = 0;
+  operands[0] = {defi, 0};
 
-  while (!operands.empty()) {
-    auto &rop = operands.back();
+  while (ind >= 0) {
+    auto &rop = operands[ind];
     if (isa<PHINode>(rop.inst)) {
       return false;
     }
@@ -805,17 +806,18 @@ bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction *defi, BranchIn
       rop.operandNum++;
       auto *srci = dyn_cast<Instruction>(op);
       if (srci) {
-        if (!brInfo->influence_region.count(srci->getParent())) {
+        if (!brInfo->influence_region.contains(srci->getParent())) {
           // go on to check the next operand
           continue;
         }
-        if (operands.size() + 1 > MAX_DEPTH) {
+        if (ind + 2 > MAX_DEPTH) {
           return false;
         }
-        operands.push_back({srci, 0});
+        ind += 1;
+        operands[ind] = {srci, 0};
       }
     } else {
-      operands.pop_back();
+      ind -= 1;
     }
   }
   return true;
