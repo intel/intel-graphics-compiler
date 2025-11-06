@@ -880,7 +880,20 @@ void RebuildGlobalAnnotations(IGC::OpenCLProgramContext &oclContext, Module *pKe
   auto annotations_array = cast<ConstantArray>(globalAnnotations->getOperand(0));
   for (const auto &op : annotations_array->operands()) {
     auto annotation_struct = cast<ConstantStruct>(op.get());
-    auto annotated_function = cast<Function>(annotation_struct->getOperand(0)->getOperand(0));
+    auto operand0 = annotation_struct->getOperand(0);
+
+    Function *annotated_function = nullptr;
+
+    // On typed pointers it was: struct -> bitcast -> functionPointer
+    // On opaque pointer the bitcast is just "ptr", so it is: struct -> functionPointer
+    // Non-opaque pointers path should be removed after transition to opaque pointers.
+    if (IGCLLVM::isOpaquePointerTy(operand0->getType())) {
+      annotated_function = cast<Function>(operand0);
+    } else {
+      annotated_function = cast<Function>(operand0->getOperand(0));
+    }
+
+    IGC_ASSERT_MESSAGE(annotated_function, "Annotated function was not found!");
 
     if (requiresRecompilation(annotated_function)) {
       newGlobalAnnotations.push_back(annotation_struct);
