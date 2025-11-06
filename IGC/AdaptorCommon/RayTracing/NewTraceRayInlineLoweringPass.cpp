@@ -824,7 +824,7 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
       m_pCGCtx->platform.enableRayQueryThrottling(m_pCGCtx->getModuleMetaData()->compOpt.EnableDynamicRQManagement) &&
       m_numSlotsUsed == 1;
 
-  MapVector<Instruction *, SmallVector<std::function<void(RTBuilder &)>>> instructionClosures;
+  MapVector<const Instruction *, SmallVector<std::function<void(RTBuilder &)>>> instructionClosures;
   MapVector<LivenessData::Edge, SmallVector<std::function<void(RTBuilder &)>>> edgeClosures;
 
   for (auto &entry : livenessDataMap) {
@@ -834,15 +834,15 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
 
     // process the allocation acquire point
     // handle rayquery check
-    instructionClosures[LD->lifetimeStart].push_back([this, doRQCheckRelease](RTBuilder &IRB) {
+    instructionClosures[LD->lifetimeStart.inst].push_back([this, doRQCheckRelease](RTBuilder &IRB) {
 
       if (doRQCheckRelease)
         IRB.CreateRayQueryCheckIntrinsic();
     });
 
     // process the allocation release points
-    for (auto *I : LD->lifetimeEndInstructions) {
-
+    for (auto &LE : LD->lifetimeEndInstructions) {
+      auto *I = LE.inst;
       instructionClosures[isa<ReturnInst>(I) ? I : I->getNextNode()].push_back(
           [this, rqObject, doRQCheckRelease](RTBuilder &IRB) {
 
@@ -875,7 +875,7 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
     // handle continuation instructions
     for (auto *I : continuationInstructions) {
 
-      if (!LD->ContainsInstruction(*I))
+      if (!LD->ContainsInstruction(I))
         continue;
 
       instructionClosures[I].push_back([this, rqObject, doRQCheckRelease, I](RTBuilder &IRB) {
@@ -887,7 +887,7 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
     // handle indirect calls
     for (auto *I : indirectCallInstructions) {
 
-      if (!LD->ContainsInstruction(*I))
+      if (!LD->ContainsInstruction(I))
         continue;
 
       instructionClosures[I].push_back([this, rqObject, doRQCheckRelease, I](RTBuilder &IRB) {
@@ -899,7 +899,7 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
     // handle hidden control flow instructions
     for (auto *I : hiddenCFInstructions) {
 
-      if (!LD->ContainsInstruction(*I))
+      if (!LD->ContainsInstruction(I))
         continue;
 
       instructionClosures[I].push_back([this, rqObject, doRQCheckRelease, I](RTBuilder &IRB) {
@@ -911,7 +911,7 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
     // handle barriers
     for (auto *I : barrierInstructions) {
 
-      if (!LD->ContainsInstruction(*I))
+      if (!LD->ContainsInstruction(I))
         continue;
 
       instructionClosures[I].push_back([this, rqObject, doRQCheckRelease, I](RTBuilder &IRB) {
@@ -923,7 +923,7 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
 
   for (const auto [I, closures] : instructionClosures) {
 
-    IRB.SetInsertPoint(I);
+    IRB.SetInsertPoint(const_cast<Instruction *>(I));
     for (const auto &c : closures)
       c(IRB);
   }

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/SmallBitVector.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/DenseSet.h>
@@ -24,10 +25,27 @@ class Use;
 
 namespace IGC {
 class AllocationLivenessAnalyzer : public llvm::FunctionPass {
+  using BBToIndexMapT = llvm::DenseMap<llvm::BasicBlock *, size_t>;
+
 public:
+  struct LivenessInstruction {
+    const llvm::Instruction *inst = nullptr;
+    size_t instIndexInBB = 0;
+    size_t parentBBIndex = 0;
+
+    LivenessInstruction() = default;
+    LivenessInstruction(const llvm::Instruction *I)
+        : inst(I), instIndexInBB(getInstructionIndex(I)), parentBBIndex(getBBIndex(I->getParent())) {}
+    LivenessInstruction(const llvm::Instruction *I, const BBToIndexMapT &bbToIndexMap)
+        : inst(I), instIndexInBB(getInstructionIndex(I)), parentBBIndex(bbToIndexMap.lookup(I->getParent())) {}
+  };
+
   struct LivenessData {
-    llvm::Instruction *lifetimeStart = nullptr;
-    llvm::SmallVector<llvm::Instruction *> lifetimeEndInstructions;
+    LivenessInstruction lifetimeStart = {};
+    llvm::SmallVector<LivenessInstruction, 4> lifetimeEndInstructions;
+
+    llvm::SmallBitVector bbIn;
+    llvm::SmallBitVector bbOut;
 
     struct Edge {
       llvm::BasicBlock *from;
@@ -39,16 +57,13 @@ public:
 
     llvm::SmallVector<Edge> lifetimeEndEdges;
 
-    llvm::SmallSetVector<llvm::BasicBlock *, 16> bbIn;
-    llvm::SmallSetVector<llvm::BasicBlock *, 16> bbOut;
-
     LivenessData(llvm::Instruction *allocationInstruction, llvm::SetVector<llvm::Instruction *> &&usersOfAllocation,
-                 const llvm::LoopInfo &LI, const llvm::DominatorTree &DT,
+                 const llvm::LoopInfo &LI, const llvm::DominatorTree &DT, const BBToIndexMapT &bbToIndexMap,
                  llvm::BasicBlock *userDominatorBlock = nullptr,
                  llvm::SetVector<llvm::Instruction *> &&lifetimeLeakingUsers = {});
 
     bool OverlapsWith(const LivenessData &LD) const;
-    bool ContainsInstruction(const llvm::Instruction &I) const;
+    bool ContainsInstruction(const LivenessInstruction &LI) const;
   };
 
   AllocationLivenessAnalyzer(char &pid) : llvm::FunctionPass(pid) {}
@@ -63,6 +78,12 @@ protected:
                                              llvm::SmallVector<llvm::Use *> &worklist,
                                              llvm::SetVector<llvm::Instruction *> &allUsers,
                                              llvm::SetVector<llvm::Instruction *> &lifetimeLeakingUsers);
+  static unsigned getInstructionIndex(const llvm::Instruction *I);
+  static unsigned getBBIndex(const llvm::BasicBlock *BB);
+  void initBBtoIndexMap(llvm::Function &F);
+
+private:
+  llvm::DenseMap<llvm::Function *, BBToIndexMapT> PerFunctionBBToIndexMap;
 };
 
 namespace Provenance {

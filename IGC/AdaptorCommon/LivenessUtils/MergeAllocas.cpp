@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "debug/DebugMacros.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SetOperations.h>
 #include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/SmallSet.h>
@@ -218,9 +219,6 @@ bool MergeAllocas::runOnFunction(Function &F) {
     // We check if the current alloca overlaps with any of the previously added.
     bool added = false;
     for (auto *MergableAlloca : MergableAllocas) {
-      if (AllocaInfo.livenessData->OverlapsWith(*MergableAlloca->livenessData)) {
-        continue;
-      }
       added = AddNonOverlappingAlloca(MergableAlloca, &AllocaInfo);
       if (added) {
         break;

@@ -113,7 +113,11 @@ AllocationLivenessAnalyzer::ProcessInstruction(Instruction *I, DominatorTree &DT
   if (includeOrigin)
     allUsers.insert(I);
 
-  return LivenessData(I, std::move(allUsers), LI, DT, commonDominator, std::move(lifetimeLeakingUsers));
+  auto *F = I->getParent()->getParent();
+  if (PerFunctionBBToIndexMap.count(F) == 0) {
+    initBBtoIndexMap(*F);
+  }
+  return {I, std::move(allUsers), LI, DT, PerFunctionBBToIndexMap[F], commonDominator, std::move(lifetimeLeakingUsers)};
 }
 
 void AllocationLivenessAnalyzer::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
@@ -137,8 +141,8 @@ void AllocationLivenessAnalyzer::implementCallSpecificBehavior(CallInst *callI, 
 }
 
 template <typename range, typename SetT>
-static inline void doWorkLoop(SmallVectorImpl<BasicBlock *> &worklist, SetT &bbSet1,
-                              SetT &bbSet2, std::function<range(BasicBlock *)> iterate,
+static inline void doWorkLoop(SmallVectorImpl<BasicBlock *> &worklist, SetT &bbSet1, SetT &bbSet2,
+                              std::function<range(BasicBlock *)> iterate,
                               std::function<bool(BasicBlock *)> continueCondition) {
   // perform data flow analysis
   while (!worklist.empty()) {
@@ -165,8 +169,12 @@ static inline void doWorkLoop(SmallVectorImpl<BasicBlock *> &worklist, SetT &bbS
 
 AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationInstruction,
                                                        SetVector<Instruction *> &&usersOfAllocation, const LoopInfo &LI,
-                                                       const DominatorTree &DT, BasicBlock *userDominatorBlock,
+                                                       const DominatorTree &DT, const BBToIndexMapT &bbToIndexMap,
+                                                       llvm::BasicBlock *userDominatorBlock,
                                                        SetVector<Instruction *> &&lifetimeLeakingUsers) {
+  llvm::SmallSetVector<llvm::BasicBlock *, 16> bbInSet;
+  llvm::SmallSetVector<llvm::BasicBlock *, 16> bbOutSet;
+
   if (!userDominatorBlock)
     userDominatorBlock = allocationInstruction->getParent();
 
@@ -174,12 +182,12 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
 
     // a pathological case of no-uses allocation instruction
     IGC_ASSERT_MESSAGE(lifetimeLeakingUsers.empty(), "What?");
-    lifetimeStart = allocationInstruction;
-    lifetimeEndInstructions.push_back(allocationInstruction);
+    lifetimeStart = LivenessInstruction(allocationInstruction, bbToIndexMap);
+    lifetimeEndInstructions.push_back(lifetimeStart);
     return;
   }
 
-  bbOut.insert(userDominatorBlock);
+  bbOutSet.insert(userDominatorBlock);
 
   SmallVector<BasicBlock *> worklist;
 
@@ -200,16 +208,16 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
 
   // perform data flow analysis
   doWorkLoop<llvm::pred_range>(
-      worklist, bbIn, bbOut, [&](auto *currbb) { return llvm::predecessors(currbb); },
+      worklist, bbInSet, bbOutSet, [&](auto *currbb) { return llvm::predecessors(currbb); },
       [&](auto *currbb) {
-        return bbIn.contains(currbb) || currbb == userDominatorBlock || containedLoopHeaders.contains(currbb);
+        return bbInSet.contains(currbb) || currbb == userDominatorBlock || containedLoopHeaders.contains(currbb);
       });
 
   // handle infinite lifetime
   if (!lifetimeLeakingUsers.empty()) {
     // traverse all the successors until there are no left.
-    decltype(bbIn) leakingbbIn;
-    decltype(bbOut) leakingbbOut;
+    decltype(bbInSet) leakingbbIn;
+    decltype(bbOutSet) leakingbbOut;
 
     for (auto *I : lifetimeLeakingUsers)
       worklist.push_back(I->getParent());
@@ -225,8 +233,8 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
     for (auto *bb : leakingbbOnlyIn)
       usersOfAllocation.insert(bb->getTerminator());
 
-    bbIn.set_union(leakingbbIn);
-    bbOut.set_union(leakingbbOut);
+    bbInSet.set_union(leakingbbIn);
+    bbOutSet.set_union(leakingbbOut);
   }
 
   // if the lifetime escapes any loop, we should make sure all the loops blocks are included
@@ -234,14 +242,15 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
     SmallVector<std::pair<BasicBlock *, BasicBlock *>> exitEdges;
     loop->getExitEdges(exitEdges);
 
-    if (llvm::any_of(exitEdges, [&](auto edge) { return bbOut.contains(edge.first) && bbIn.contains(edge.second); })) {
+    if (llvm::any_of(exitEdges,
+                     [&](auto edge) { return bbOutSet.contains(edge.first) && bbInSet.contains(edge.second); })) {
       llvm::for_each(loop->blocks(), [&](auto *block) {
-        bbOut.insert(block);
-        bbIn.insert(block);
+        bbOutSet.insert(block);
+        bbInSet.insert(block);
       });
 
       if (loop->getLoopPreheader()) {
-        bbOut.insert(loop->getLoopPreheader());
+        bbOutSet.insert(loop->getLoopPreheader());
       } else {
         // if the header has multiple predecessors, we need to find the common dominator of all of these
         auto *commonDominator = loop->getHeader();
@@ -254,12 +263,12 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
         }
 
         // acknowledge lifetime flow out of the common dominator block
-        bbOut.insert(commonDominator);
+        bbOutSet.insert(commonDominator);
 
         // add all blocks inbetween
         doWorkLoop<llvm::pred_range>(
-            worklist, bbIn, bbOut, [&](auto *currbb) { return llvm::predecessors(currbb); },
-            [&](auto *currbb) { return bbOut.contains(currbb) || currbb == commonDominator; });
+            worklist, bbInSet, bbOutSet, [&](auto *currbb) { return llvm::predecessors(currbb); },
+            [&](auto *currbb) { return bbOutSet.contains(currbb) || currbb == commonDominator; });
       }
     }
   }
@@ -268,8 +277,8 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
 
   // substract the inflow blocks from the outflow blocks to find the block which starts the lifetime - there should be
   // only one!
-  auto bbOutOnly = bbOut;
-  bbOutOnly.set_subtract(bbIn);
+  auto bbOutOnly = bbOutSet;
+  bbOutOnly.set_subtract(bbInSet);
 
   IGC_ASSERT_MESSAGE(bbOutOnly.size() == 1, "Multiple lifetime start blocks?");
 
@@ -277,31 +286,31 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
 
   // fill out the lifetime start/ends instruction
   for (auto &I : *lifetimeStartBB) {
-    lifetimeStart = &I;
+    lifetimeStart = LivenessInstruction(&I, bbToIndexMap);
     if (usersOfAllocation.contains(&I))
       break;
   }
 
   // if bbIn is empty, the entire lifetime is contained within userDominatorBlock
-  if (bbIn.empty()) {
+  if (bbInSet.empty()) {
     for (auto &I : llvm::reverse(*userDominatorBlock)) {
       if (usersOfAllocation.contains(&I)) {
-        lifetimeEndInstructions.push_back(&I);
+        lifetimeEndInstructions.push_back(LivenessInstruction(&I, bbToIndexMap));
         break;
       }
     }
 
     // clear the bbOut to indicate lifetime does not leave any block;
-    bbOut.clear();
+    bbOutSet.clear();
   } else {
     // find all blocks where lifetime flows in, but doesnt flow out
-    auto bbOnlyIn = bbIn;
-    bbOnlyIn.set_subtract(bbOut);
+    auto bbOnlyIn = bbInSet;
+    bbOnlyIn.set_subtract(bbOutSet);
 
     for (auto *bb : bbOnlyIn) {
       for (auto &I : llvm::reverse(*bb)) {
         if (usersOfAllocation.contains(&I)) {
-          lifetimeEndInstructions.push_back(&I);
+          lifetimeEndInstructions.push_back(LivenessInstruction(&I, bbToIndexMap));
           break;
         }
       }
@@ -309,86 +318,109 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
   }
 
   // collect lifetime end edges (where outflow block has successors that aren't inflow blocks)
-  for (auto *bb : bbOut) {
+  for (auto *bb : bbOutSet) {
     // however, we can't just add successors
     // because then we can accidentally execute lifetime end instruction twice
     // which can end up causing issues similar to double-free
     // we need to make sure every successor has a single predecessor
     SmallVector<BasicBlock *> successors(llvm::successors(bb));
     for (auto *succ : successors) {
-      if (bbIn.contains(succ))
+      if (bbInSet.contains(succ))
         continue;
 
       lifetimeEndEdges.push_back({bb, succ});
     }
   }
+
+  auto &F = *allocationInstruction->getParent()->getParent();
+  // Fill bitvectors for faster overlap checks
+  bbIn.resize(F.size());
+  for (auto *bb : bbInSet) {
+    bbIn.set(bbToIndexMap.lookup(bb));
+  }
+  bbOut.resize(F.size());
+  for (auto *bb : bbOutSet) {
+    bbOut.set(bbToIndexMap.lookup(bb));
+  }
+}
+
+unsigned AllocationLivenessAnalyzer::getInstructionIndex(const llvm::Instruction *I) {
+  unsigned index = 0;
+  for (const auto &CurI : *I->getParent()) {
+    if (&CurI == I) {
+      return index;
+    }
+    ++index;
+  }
+  llvm_unreachable("Instruction not found in parent BasicBlock!");
+}
+
+unsigned AllocationLivenessAnalyzer::getBBIndex(const llvm::BasicBlock *BB) {
+  unsigned index = 0;
+  for (const auto &CurBB : *BB->getParent()) {
+    if (&CurBB == BB) {
+      return index;
+    }
+    ++index;
+  }
+  llvm_unreachable("BasicBlock not found in parent Function!");
+}
+
+void AllocationLivenessAnalyzer::initBBtoIndexMap(llvm::Function &F) {
+  size_t index = 0;
+  for (auto &BB : F) {
+    PerFunctionBBToIndexMap[&F][&BB] = index++;
+  }
 }
 
 bool AllocationLivenessAnalyzer::LivenessData::OverlapsWith(const LivenessData &LD) const {
 
-  // SetVector doesn't support set_intersect...
-  // set_intersect(overlapIn, LD.bbIn);
-  // so we emulate it via formula A ^ B = A - (A - B)
-  auto overlapIn = bbIn;
-  auto AminusBIn = bbIn;
-  AminusBIn.set_subtract(LD.bbIn);
-  overlapIn.set_subtract(AminusBIn);
-
-  auto overlapOut = bbOut;
-  auto AminusBOut = bbOut;
-  AminusBOut.set_subtract(LD.bbOut);
-  overlapOut.set_subtract(AminusBOut);
-
   // check if both lifetimes flow out or in the same block, this means overlap
-  if (!overlapIn.empty() || !overlapOut.empty())
+  if (this->bbIn.anyCommon(LD.bbIn) || this->bbOut.anyCommon(LD.bbOut))
     return true;
 
   // check lifetime boundaries
   for (auto &[LD1, LD2] : {std::make_pair(this, &LD), std::make_pair(&LD, this)}) {
     // If either the start or any end of LD1 lies within LD2, lifetimes overlap
-    if (LD2->ContainsInstruction(*LD1->lifetimeStart))
+    if (LD2->ContainsInstruction(LD1->lifetimeStart))
       return true;
 
-    for (auto *I : LD1->lifetimeEndInstructions) {
-      if (LD2->ContainsInstruction(*I))
+    for (auto &LI : LD1->lifetimeEndInstructions) {
+      if (LD2->ContainsInstruction(LI))
         return true;
     }
   }
   return false;
 }
 
-bool AllocationLivenessAnalyzer::LivenessData::ContainsInstruction(const llvm::Instruction &I) const {
-
-  // SetVector::contains seems to have underimplemented const-correctness
-  // the const_cast is not needed for DenseSet based implementation, but then we introduce nondetereministic behavior when iterating
-  auto *bb = const_cast<BasicBlock *>(I.getParent());
+bool AllocationLivenessAnalyzer::LivenessData::ContainsInstruction(const LivenessInstruction &LI) const {
 
   // if the LD is contained in a single block, bbIn and bbOut are going to be empty.
   // TODO: maybe LivenessData deserves a flag to mark livenesses contained in a single block?
-  if (bbIn.empty() && bbOut.empty()) {
-    if (bb != lifetimeStart->getParent())
+  if (bbIn.none() && bbOut.none()) {
+    if (LI.parentBBIndex != lifetimeStart.parentBBIndex)
       return false;
 
-    if (I.comesBefore(lifetimeStart))
+    if (LI.instIndexInBB < lifetimeStart.instIndexInBB)
       return false;
 
-    if (lifetimeEndInstructions[0]->comesBefore(&I))
+    if (lifetimeEndInstructions[0].instIndexInBB < LI.instIndexInBB)
       return false;
 
     return true;
   }
 
-  if (!bbIn.contains(bb) && !bbOut.contains(bb))
+  if (!bbIn.test(LI.parentBBIndex) && !bbOut.test(LI.parentBBIndex))
     return false;
 
-  if (bbIn.contains(bb) && bbOut.contains(bb))
+  if (bbIn.test(LI.parentBBIndex) && bbOut.test(LI.parentBBIndex))
     return true;
 
-  if (lifetimeStart->getParent() == bb && !I.comesBefore(lifetimeStart))
+  if (lifetimeStart.parentBBIndex == LI.parentBBIndex && !(LI.instIndexInBB < lifetimeStart.instIndexInBB))
     return true;
 
-  bool overlapsWithEnd = any_of(lifetimeEndInstructions, [&](auto *lifetimeEnd) {
-    return lifetimeEnd->getParent() == bb && !lifetimeEnd->comesBefore(&I);
+  bool overlapsWithEnd = any_of(lifetimeEndInstructions, [&](auto &lifetimeEnd) {
+    return lifetimeEnd.parentBBIndex == LI.parentBBIndex && !(lifetimeEnd.instIndexInBB < LI.instIndexInBB);
   });
 
   return overlapsWithEnd;
