@@ -479,7 +479,7 @@ void CustomSafeOptPass::visitIntAtomicIAddToIncOrDec(CallInst *I) {
   GenIntrinsicInst *instr = cast<GenIntrinsicInst>(I);
   GenISAIntrinsic::ID id = instr->getIntrinsicID();
 
-// clang-format off
+  // clang-format off
 // In AtomicTyped, convert EATOMIC_IADD(0) to EATOMIC_INC(2) and EATOMIC_DEC(3) when value of 1 is used as increment or -1 as decrement
 // From:
 // %7 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 1, i32 0)
@@ -487,7 +487,7 @@ void CustomSafeOptPass::visitIntAtomicIAddToIncOrDec(CallInst *I) {
 // To:
 // %7 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 poison, i32 2)
 // %8 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 poison, i32 3)
-// clang-format on
+  // clang-format on
   if (id == GenISAIntrinsic::GenISA_intatomictyped) {
     // for immediate 1 or -1
     if (auto *constInt1 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(4))) {
@@ -507,7 +507,7 @@ void CustomSafeOptPass::visitIntAtomicIAddToIncOrDec(CallInst *I) {
     return;
   }
 
-// clang-format off
+  // clang-format off
 // In AtomicRaw or AtomicRawA64, convert EATOMIC_IADD(0) to EATOMIC_INC(2) and EATOMIC_DEC(3) when value of 1 is used as increment or -1 as decrement
 // From:
 // %10 = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369v4f32(<4 x float> addrspace(2490369)* %u0, i32 %9, i32 1, i32 0)
@@ -521,7 +521,7 @@ void CustomSafeOptPass::visitIntAtomicIAddToIncOrDec(CallInst *I) {
 // or
 // %13 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 poison, i32 2)
 // %14 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 poison, i32 3)
-// clang-format on
+  // clang-format on
   if (id == GenISAIntrinsic::GenISA_intatomicraw || id == GenISAIntrinsic::GenISA_intatomicrawA64) {
     if (instr->getOperand(0)->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
       return;
@@ -6486,12 +6486,12 @@ void InsertBranchOpt::ThreeWayLoadSpiltOpt(Function &F) {
 
 void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
   enum Mode {
-    Disable         = 0x0,    // Disabled IGC\EnableAtomicBranch = 0x0
-    ZeroAdd         = BIT(0), // Enabled IGC\EnableAtomicBranch = 0x1
-    UMax            = BIT(1), // Enabled IGC\EnableAtomicBranch = 0x2
-    UMin            = BIT(2), // Enabled IGC\EnableAtomicBranch = 0x4
-    UntypedUgmLoad  = BIT(3), // Enabled IGC\EnableAtomicBranch = 0x8
-    StatelessAtomic = BIT(4)  // Enabled IGC\EnableAtomicBranch = 0x10
+    Disable = 0x0,           // Disabled IGC\EnableAtomicBranch = 0x0
+    ZeroAdd = BIT(0),        // Enabled IGC\EnableAtomicBranch = 0x1
+    UMax = BIT(1),           // Enabled IGC\EnableAtomicBranch = 0x2
+    UMin = BIT(2),           // Enabled IGC\EnableAtomicBranch = 0x4
+    UntypedUgmLoad = BIT(3), // Enabled IGC\EnableAtomicBranch = 0x8
+    StatelessAtomic = BIT(4) // Enabled IGC\EnableAtomicBranch = 0x10
   };
 
   // Allow several modes to be applied
@@ -6499,7 +6499,7 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
   const bool umaxMode = ((mode & UMax) == UMax);
   const bool uminMode = ((mode & UMin) == UMin);
   const bool untypedUgmLoadMode = ((mode & UntypedUgmLoad) == UntypedUgmLoad);
-  const bool statelessMode = ((mode & StatelessAtomic ) == StatelessAtomic);
+  const bool statelessMode = ((mode & StatelessAtomic) == StatelessAtomic);
 
   auto createReadFromAtomic = [=](IRBuilder<> &builder, Instruction *inst, bool isTyped) {
     Constant *zero = ConstantInt::get(inst->getType(), 0);
@@ -6518,13 +6518,10 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
       NewInst = builder.CreateCall(pLdIntrinsic, ld_FunctionArgList);
     }
     // Stateless atomic
-    else if ( (cast<GenIntrinsicInst>(inst))->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicrawA64 )
-    {
-      NewInst = builder.CreateLoad( inst->getType(), inst->getOperand( 0 ) );
+    else if ((cast<GenIntrinsicInst>(inst))->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicrawA64) {
+      NewInst = builder.CreateLoad(inst->getType(), inst->getOperand(0));
       return NewInst;
-    }
-    else
-    {
+    } else {
       std::vector<Type *> types;
       std::vector<Value *> ld_FunctionArgList;
       Function *pLdIntrinsic;
@@ -6597,8 +6594,8 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
           src = dyn_cast<Instruction>(inst->getOperand(4));
           op = dyn_cast<ConstantInt>(inst->getOperand(5));
         } else if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicraw ||
-                   (statelessMode && (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicrawA64)
-                                  && (inst->getOperand(0) == inst->getOperand(1)))) {
+                   (statelessMode && (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicrawA64) &&
+                    (inst->getOperand(0) == inst->getOperand(1)))) {
           src = dyn_cast<Instruction>(inst->getOperand(2));
           op = dyn_cast<ConstantInt>(inst->getOperand(3));
         }
@@ -6943,6 +6940,11 @@ void typedWriteZeroStoreCheck(Function &F, DominatorTree &DT, PostDominatorTree 
 
           breakOut = breakOut || fromBB == nullptr || !PDT.dominates(tyWrite->getParent(), fromBB);
 
+          // Check that all instructions in the non-phi fmul operand is rematerializable.
+          breakOut = breakOut || std::any_of(fmulInst, fmulInst + numActiveChannels, [&](Instruction *fmul) {
+                       return !isRematerializable(fmul->getOperand(0), fromBB->getTerminator(), DT);
+                     });
+
           if (breakOut) {
             continue;
           }
@@ -6978,6 +6980,7 @@ void typedWriteZeroStoreCheck(Function &F, DominatorTree &DT, PostDominatorTree 
                 fmulOp->setOperand(op, incomingNonZeroValues[i]);
               } else if (Instruction *instOp = dyn_cast<Instruction>(origOp)) {
                 Value *remat = rematerializeChainIterative(instOp, fmulOp, DT);
+                IGC_ASSERT(remat);
                 fmulOp->setOperand(op, remat);
               } else {
                 fmulOp->setOperand(op, origOp);
