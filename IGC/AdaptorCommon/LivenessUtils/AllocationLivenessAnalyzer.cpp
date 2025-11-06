@@ -36,7 +36,7 @@ AllocationLivenessAnalyzer::LivenessData
 AllocationLivenessAnalyzer::ProcessInstruction(Instruction *I, DominatorTree &DT, LoopInfo &LI, bool includeOrigin) {
   // static allocas are usually going to be in the entry block
   // that's a practice, but we only care about the last block that dominates all uses
-  BasicBlock *commonDominator = nullptr;
+  BasicBlock *commonDominator = includeOrigin ? I->getParent() : nullptr;
   SetVector<Instruction *> allUsers;
   SetVector<Instruction *> lifetimeLeakingUsers;
   SmallVector<Use *> worklist;
