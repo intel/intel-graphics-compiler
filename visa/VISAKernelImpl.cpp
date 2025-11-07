@@ -34,6 +34,9 @@ SPDX-License-Identifier: MIT
 #include "KernelCost.hpp"
 #include "include/RelocationInfo.h"
 #include "visa_igc_common_header.h"
+#ifdef _WIN32
+#include "inc/common/DriverStore.h"
+#endif
 
 #include <cctype>
 #include "common/LLVMWarningsPush.hpp"
@@ -467,6 +470,24 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
     finalizePerfStats(std::hash<std::string>{}(std::string((char*)binary, binarySize)));
     dumpPerfStatsInJson(m_asmName);
   }
+
+#ifdef _WIN32
+  if (m_options->getOption(vISA_ShaderStatsDumpless)) {
+      typedef void(__stdcall* PFNOPENWRAPPERDLL)(
+          void* buf, size_t buf_size, char* dump_stem, char* platform,
+          void* sendinfo, size_t sendinfo_size);
+      HMODULE handle = LoadDependency("WrapperLib.dll");
+      if (handle) {
+          auto OpenWrapper =
+              (PFNOPENWRAPPERDLL)GetProcAddress(handle, "process_buffer");
+          if (OpenWrapper) {
+              OpenWrapper(binary, binarySize, (char*)m_asmName.c_str(),
+                  (char*)m_kernel->getGenxPlatformString(),
+                  &m_jitInfo->sendInfo, sizeof(m_jitInfo->sendInfo));
+          }
+      }
+  }
+#endif
 
   return binary;
 }

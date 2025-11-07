@@ -4618,7 +4618,7 @@ void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInli
 
   std::string kernelName = std::string(m_program->entry->getName());
   std::string asmName;
-  if (m_enableVISAdump || context->m_instrTypes.hasDebugInfo) {
+  if (m_enableVISAdump || vbuilder->GetOption(vISA_ShaderStatsDumpless) || context->m_instrTypes.hasDebugInfo) {
     asmName = GetDumpFileName("asm");
   } else {
     asmName = "kernel.asm";

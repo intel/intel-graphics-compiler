@@ -43,6 +43,8 @@ DEF_VISA_OPTION(vISA_DumpPerfStatsVerbose, ET_BOOL, "-dumpVISAJsonStatsVerbose",
                 "dump the verbose stats to default json file name", false)
 DEF_VISA_OPTION(vISA_DumpSendInfoStats, ET_BOOL, "-dumpVISASendInfoStats",
                 "dumps the sendinfo stats with the stats.json file", false)
+DEF_VISA_OPTION(vISA_ShaderStatsDumpless, ET_BOOL, "-noDumpShaderStats",
+        "executes pathway for no dumping and running shader stats", false)
 DEF_VISA_OPTION(VISA_FullIRVerify, ET_BOOL, "-fullIRVerify", UNUSED, false)
 // dump each option while it is being set by setOption()
 DEF_VISA_OPTION(vISA_dumpVISAOptions, ET_BOOL, "-dumpVisaOptions", UNUSED,

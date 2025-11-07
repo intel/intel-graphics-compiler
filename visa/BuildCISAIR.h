@@ -78,6 +78,9 @@ public:
   VISA_BUILDER_API int GetuInt32Option(vISAOptions option) override {
       return m_options.getuInt32Option(option);
   }
+  VISA_BUILDER_API bool GetOption(vISAOptions option) override {
+      return m_options.getOption(option);
+  }
   VISA_BUILDER_API void SetOption(vISAOptions option, bool val) override {
     m_options.setOption(option, val);
   }
