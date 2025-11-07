@@ -8731,6 +8731,12 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_srnd_hftobf8:
     emitSrnd(inst);
     break;
+  case GenISAIntrinsic::GenISA_Int4VectorUnpack:
+    emitInt4VectorUnpack(inst);
+    break;
+  case GenISAIntrinsic::GenISA_Int4VectorPack:
+    emitInt4VectorPack(inst);
+    break;
   case GenISAIntrinsic::GenISA_uavSerializeAll:
   case GenISAIntrinsic::GenISA_uavSerializeOnResID:
     emitUAVSerialize();
@@ -21303,6 +21309,83 @@ void EmitPass::emitSrnd(llvm::GenIntrinsicInst *GII) {
       s1Off += (src1->IsUniform() ? 1 : nsimdsize);
     }
   }
+}
+
+void EmitPass::emitInt4VectorUnpack(llvm::GenIntrinsicInst *GII) {
+  Value *input = GII->getOperand(0);
+  CVariable *cinput = GetSymbol(input);
+
+  uint16_t inputNum = cinput->GetNumberElement();
+  uint16_t dstNum = m_destination->GetNumberElement();
+
+  IGC_ASSERT_MESSAGE(cinput->IsUniform() == m_destination->IsUniform(),
+                     "Int4VectorUnpack expects both input and destination to have the same IsUniform state.");
+  uint16_t execSize = cinput->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize);
+  m_encoder->SetSimdSize(lanesToSIMDMode(execSize));
+
+  // Round up to a multiple of inputNum.
+  uint16_t dstNumRoundedUp = ((dstNum + inputNum - 1) / inputNum) * inputNum;
+  if (inputNum * 2 != dstNumRoundedUp || cinput->GetElemSize() != 1 || m_destination->GetElemSize() != 1) {
+    IGC_ASSERT_MESSAGE(false, "Unexpected arguments in emitInt4VectorUnpack");
+    return;
+  }
+
+  CVariable *immFour = m_currShader->ImmToVariable(4, ISA_TYPE_UB);
+  CVariable *immMask4Bit = m_currShader->ImmToVariable(0b1111, ISA_TYPE_UB);
+
+  for (int rowOffset = 0; rowOffset < inputNum; rowOffset += execSize) {
+    CVariable *row = m_currShader->GetNewAlias(cinput, ISA_TYPE_UB, rowOffset, execSize);
+    CVariable *dst0 = m_currShader->GetNewAlias(m_destination, ISA_TYPE_UB, rowOffset * 2, execSize);
+    m_encoder->And(dst0, row, immMask4Bit);
+
+    if (rowOffset * 2 + execSize < dstNum) {
+      CVariable *dst1 = m_currShader->GetNewAlias(m_destination, ISA_TYPE_UB, rowOffset * 2 + execSize, execSize);
+      m_encoder->Shr(dst1, row, immFour);
+    }
+  }
+
+  m_encoder->Push();
+}
+
+void EmitPass::emitInt4VectorPack(llvm::GenIntrinsicInst *GII) {
+  Value *input = GII->getOperand(0);
+  CVariable *cinput = GetSymbol(input);
+
+  uint16_t inputNum = cinput->GetNumberElement();
+  uint16_t dstNum = m_destination->GetNumberElement();
+
+  IGC_ASSERT_MESSAGE(cinput->IsUniform() == m_destination->IsUniform(),
+                     "Int4VectorUnpack expects both input and destination to have the same IsUniform state.");
+  uint16_t execSize = m_destination->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize);
+  m_encoder->SetSimdSize(lanesToSIMDMode(execSize));
+
+  // Round up to a multiple of dstNum.
+  uint16_t inputNumRoundedUp = ((inputNum + dstNum - 1) / dstNum) * dstNum;
+  if (inputNumRoundedUp != dstNum * 2 || cinput->GetElemSize() != 1 || m_destination->GetElemSize() != 1) {
+    IGC_ASSERT_MESSAGE(false, "Unexpected arguments in Int4VectorPack");
+    return;
+  }
+
+  CVariable *immFour = m_currShader->ImmToVariable(4, ISA_TYPE_UB);
+
+  for (int rowOffset = 0; rowOffset < dstNum; rowOffset += execSize) {
+    CVariable *row0 = m_currShader->GetNewAlias(cinput, ISA_TYPE_UB, rowOffset * 2, execSize);
+    CVariable *dst = m_currShader->GetNewAlias(m_destination, ISA_TYPE_UB, rowOffset, execSize);
+
+    // There is an edge case where we pack <3 x i8> into <2 x i8>.
+    // The missing 4th i8 cannot be loaded.
+    if (rowOffset * 2 + execSize < cinput->GetNumberElement()) {
+      CVariable *row1 = m_currShader->GetNewAlias(cinput, ISA_TYPE_UB, rowOffset * 2 + execSize, execSize);
+      CVariable *shl4 = m_currShader->GetNewVariable(row1, "shl4");
+      m_encoder->Shl(shl4, row1, immFour);
+      m_encoder->Or(dst, row0, shl4);
+    } else {
+      // Due to missing last element pass row0 directly to dst.
+      m_encoder->Copy(dst, row0);
+    }
+  }
+
+  m_encoder->Push();
 }
 
 LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad,

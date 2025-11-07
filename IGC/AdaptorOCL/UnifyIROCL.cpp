@@ -115,7 +115,7 @@ SPDX-License-Identifier: MIT
 #include "MoveStaticAllocas.h"
 #include "preprocess_spvir/PreprocessSPVIR.h"
 #include "preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
-#include "preprocess_spvir/PromoteBools.h"
+#include "preprocess_spvir/PromoteSubByte.h"
 #include "preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.h"
 #include "LowerInvokeSIMD.hpp"
 #include "ResolveConstExprCalls.h"
@@ -276,7 +276,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
 
   IGCPassManager mpmSPIR(pContext, "Unify");
   mpmSPIR.add(new PreprocessSPVIR());
-  mpmSPIR.add(new PromoteBools());
+  mpmSPIR.add(new PromoteSubByte());
   mpmSPIR.add(new TypesLegalizationPass());
   mpmSPIR.add(new TargetLibraryInfoWrapperPass());
   mpmSPIR.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));

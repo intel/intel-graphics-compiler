@@ -82,6 +82,10 @@ types:
         ID: !TypeID "Vector"
         num_elements: 0
         element_type: *any
+    - &v_i8_ !<TypeDefinition>
+        ID: !TypeID "Vector"
+        num_elements: 0
+        element_type: *i8
     - &p_any_ !<TypeDefinition>
         ID: !TypeID "Pointer"
         address_space: !AddressSpace "Undefined"
@@ -12045,6 +12049,54 @@ intrinsics:
             - !AttributeID "NoDuplicate"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_Int4VectorUnpack"
+        comment: "Input: <N x i8> or <2*N-1 x i8> (interpreted as packed i4 vector). Output: <2*N x i8> \
+            \ Each i8 output element contains the unpacked i4 value zero-extended to i8. \
+            \ There is a special case support for outputs with smaller-by-one element counts <2*N-1 x i8>. \
+            \ Example 1 \
+            \ input  <2 x i8> = {a, b} \
+            \ output <4 x i8> = {a & 15, a >> 4, b & 15, b >> 4} \
+            \ Example 2 \
+            \ input  <2 x i8> = {a, b} \
+            \ output <3 x i8> = {a & 15, a >> 4, b & 15}"
+        return_definition: !<ReturnDefinition>
+            type_definition: *v_i8_
+            comment: "<2*N x i8> or <2*N-1 x i8>"
+        arguments:
+            - !<ArgumentDefinition>
+                name: PackedI8Vector
+                type_definition: *v_i8_
+                comment: "<N x i8>"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_Int4VectorPack"
+        comment: "Input: <2*N x i8> or <2*N-1 x i8>. Output: <N x i8> \
+            \ Each i8 output element contains concatenation two input i4 values shifted and ORed together. \
+            \ There is a special case support for input with smaller-by-one element counts <2*N-1 x i8>. \
+            \ Example 1 \
+            \ input  <4 x i8> = {a, b, c, d} \
+            \ output <2 x i8> = {a | (b << 4), c | (d << 4)} \
+            \ Example 2 \
+            \ input  <3 x i8> = {a, b, c} \
+            \ output <2 x i8> = {a | (b << 4), c}"
+        return_definition: !<ReturnDefinition>
+            type_definition: *v_i8_
+            comment: "<N x i8>"
+        arguments:
+            - !<ArgumentDefinition>
+                name: PackedI8Vector
+                type_definition: *v_i8_
+                comment: "<2*N x i8> or <2*N-1 x i8>"
+        attributes:
+            - !AttributeID "NoUnwind"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef

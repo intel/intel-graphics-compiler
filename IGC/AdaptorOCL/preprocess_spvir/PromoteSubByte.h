@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/Module.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
@@ -24,14 +24,14 @@ SPDX-License-Identifier: MIT
   }
 
 namespace IGC {
-class PromoteBools : public llvm::ModulePass, public llvm::InstVisitor<PromoteBools> {
+class PromoteSubByte : public llvm::ModulePass, public llvm::InstVisitor<PromoteSubByte> {
 public:
   static char ID;
 
-  PromoteBools();
-  ~PromoteBools() {}
+  PromoteSubByte();
+  ~PromoteSubByte() {}
 
-  virtual llvm::StringRef getPassName() const override { return "PromoteBools"; }
+  virtual llvm::StringRef getPassName() const override { return "PromoteSubByte"; }
 
   virtual bool runOnModule(llvm::Module &module) override;
 
@@ -44,14 +44,15 @@ public:
 
 private:
   bool changed;
+  llvm::Module *M = nullptr;
 
-  llvm::Value *convertI1ToI8(llvm::Value *argument, llvm::IRBuilder<>& builder);
+  llvm::Value *convertI1ToI8(llvm::Value *argument, llvm::IRBuilder<> &builder);
   llvm::Value *convertI1ToI8(llvm::Value *argument, llvm::Instruction *insertBefore);
-  llvm::Value *convertI8ToI1(llvm::Value *argument, llvm::IRBuilder<>& builder);
+  llvm::Value *convertI8ToI1(llvm::Value *argument, llvm::IRBuilder<> &builder);
   llvm::Value *convertI8ToI1(llvm::Value *argument, llvm::Instruction *insertBefore);
-  llvm::Value *castTo(llvm::Value *value, llvm::Type *desiredType, llvm::IRBuilder<>& builder);
+  llvm::Value *castTo(llvm::Value *value, llvm::Type *desiredType, llvm::IRBuilder<> &builder);
   llvm::Value *castTo(llvm::Value *value, llvm::Type *desiredType, llvm::Instruction *insertBefore);
-  llvm::Value *castAggregate(llvm::Value *value, llvm::Type *desiredType, llvm::IRBuilder<>& builder);
+  llvm::Value *castAggregate(llvm::Value *value, llvm::Type *desiredType, llvm::IRBuilder<> &builder);
 
   void cleanUp(llvm::Module &module);
 
@@ -92,7 +93,12 @@ private:
   llvm::StoreInst *promoteStore(llvm::StoreInst *store);
   llvm::IntToPtrInst *promoteIntToPtr(llvm::IntToPtrInst *inttoptr);
   llvm::ExtractElementInst *promoteExtractElement(llvm::ExtractElementInst *extractElement);
-  llvm::InsertElementInst *promoteInsertElement(llvm::InsertElementInst *insertElement);
+  llvm::Value *promoteInsertElement(llvm::InsertElementInst *insertElement);
+  llvm::Value *promoteShuffleVector(llvm::ShuffleVectorInst *shuffleVector);
+  llvm::Value *promoteAndUnpackInt4Vector(llvm::Value *unpromotedInput, llvm::IRBuilder<> &builder);
+  llvm::Value *packInt4Vector(llvm::Value *input, llvm::IRBuilder<> &builder);
+  llvm::Constant *unpackConstantInt4Vector(llvm::Value *input, IGCLLVM::FixedVectorType *outputTy);
+  llvm::Constant *packConstantInt4Vector(llvm::Value *input);
 
   // Promoting values - helping vars
   llvm::DenseSet<llvm::PHINode *> visitedPHINodes;
