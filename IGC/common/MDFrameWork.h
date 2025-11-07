@@ -424,7 +424,6 @@ enum class ShaderTypeMD
         unsigned VISAPreSchedRPThreshold                = 0;
         unsigned VISAPreSchedCtrl                       = 0;
         unsigned SetLoopUnrollThreshold                 = 0;
-        unsigned PushConstantGRFThreshold               = UINT32_MAX;
         bool UnsafeMathOptimizations                    = false;
         bool disableCustomUnsafeOpts                    = false;
         bool disableReducePow                           = false;

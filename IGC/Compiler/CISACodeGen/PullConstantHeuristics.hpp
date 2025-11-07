@@ -45,11 +45,6 @@ public:
     }
 
     DWORD pushConstantGRFThreshold = IGC_GET_FLAG_VALUE(BlockPushConstantGRFThreshold);
-    CompOptions compOpt;
-    // If the regkey is set (pushConstantGRFThreshold != 0xFFFFFFFF) then we should use the regkey value, use the compOptions otherwise
-    if ((pushConstantGRFThreshold == 0xFFFFFFFF) && (compOpt.PushConstantGRFThreshold != UINT32_MAX)) {
-      pushConstantGRFThreshold = compOpt.PushConstantGRFThreshold;
-    }
     if (pushConstantGRFThreshold != 0xFFFFFFFF) {
       return pushConstantGRFThreshold * ctx->platform.getGRFSize() /
              (ctx->platform.getMinPushConstantBufferAlignment() * sizeof(DWORD));
