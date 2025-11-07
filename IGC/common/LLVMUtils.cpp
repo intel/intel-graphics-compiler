@@ -798,6 +798,13 @@ void DumpLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName) {
     FILE *fp = fopen(fileName.c_str(), "r");
     if (fp != nullptr) {
       fclose(fp);
+      // Check if not trying to override dump that cause a crash
+      if (strcmp(dumpName, "codegen") == 0 || pContext->m_retryManager.GetRetryId() != 0) {
+        pContext->EmitWarning(std::string("Override shader attempt detected for an unsupported dump: " + fileName +
+                                          ". Skipping override.")
+                                  .c_str());
+        return;
+      }
       errs() << "Override shader: " << fileName << "\n";
       Module *mod = parseIRFile(fileName, Err, *pContext->getLLVMContext()).release();
       if (mod) {

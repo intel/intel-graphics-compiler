@@ -26,17 +26,17 @@ Shader dumps include (in order of creation):
 
 | Product | Description | Overridable |
 |-|-|-|
-| `*.cl` file | Original shader file. Passed to `clang` wrapped with `opencl-clang`. | Skip |
-| `*.spv` file | SPIR-V binary produced by `opencl-clang`. Passed to IGC's baked-in [SPIRVReader](https://github.com/intel/intel-graphics-compiler/blob/master/IGC/AdaptorOCL/SPIRV/SPIRVReader.cpp). | Skip |
-| `*.spvasm` file | Disassembled SPIR-V binary only for debugging purposes. | Skip |
+| `*.cl` file | Original shader file. Passed to `clang` wrapped with `opencl-clang`. | No |
+| `*.spv` file | SPIR-V binary produced by `opencl-clang`. Passed to IGC's baked-in [SPIRVReader](https://github.com/intel/intel-graphics-compiler/blob/master/IGC/AdaptorOCL/SPIRV/SPIRVReader.cpp). | No |
+| `*.spvasm` file | Disassembled SPIR-V binary only for debugging purposes. | No |
 | `*_beforeUnification.ll` file | Result of `*.spv` translation. Start of IGC compilation. | Yes |
 | `*_afterUnification.ll` file | Result of all unification passes. | Yes |
 | `*_optimized.ll` file | Result of all optimization passes. | Yes |
-| `*_codegen.ll` file | Result of all codegen passes. | Crash |
-| `*.visa.ll` files | Mappings between LLVM IR &LeftRightArrow; vISA. May not be legal LLVM IR representation. | Skip |
+| `*_codegen.ll` file | Result of all codegen passes. | Skip |
+| `*.visa.ll` files | Mappings between LLVM IR &LeftRightArrow; vISA. May not be legal LLVM IR representation. | No |
 | `*.visaasm` files | vISA assembly file. | Yes |
 | `*.asm` files | Kernels in assembly form. | Yes |
-| `*.isa` files | Kernels' binaries. | Skip |
+| `*.isa` files | Kernels' binaries. | No |
 
 There are also additional products that are not a part of compilation pipeline:
 
@@ -52,8 +52,8 @@ There are also additional products that are not a part of compilation pipeline:
     | Value | Meaning |
     | - | - |
     | Yes | The dump can be successfully overridden. |
-    | Crash | IGC detects the override attempt and tries to apply it, but **the process results in a crash**. |
-    | Skip | IGC **does not attempt to override** the product. Dumps with this status are ignored by the ShaderOverride mechanism. |
+    | Skip | Detects the override attempt and skips overriding the product. A warning is issued instead. |
+    | No | IGC **does not attempt to override** the product. Dumps with this status are ignored by the ShaderOverride mechanism. |
 4. Main dump products generated during recompilation are distinguished by an additional numeric identifier in the filename (for example: `*_1_beforeUnification.ll`). Hovever, individual compilation passes continue their numbering sequence (for example the first unification pass may start from `*_0321_Unify_after_PreprocessSPVIR.ll`).
 
 ### Additional options
@@ -169,7 +169,7 @@ export IGC_ShaderOverride=1
 
 1. **Main dump products** that can be overridden are explicitly marked in the reference table (see the *Overridable* column in [List of dump products](#list-of-dump-products)).
 2. Passes that occur between main dump products **cannot be overridden** (for example: `*_after_DeadCodeElimination.ll`).
-3. Among **recompilation outputs**, only `.visaasm` and `.asm` dumps **can be successfully overridden** without causing a crash. Rest of the products are going to cause a crash during overriding attempt.
+3. Among **recompilation outputs**, only `.visaasm` and `.asm` dumps **can be successfully overridden** without causing issues. Rest of the products are not supported and are skipped with a warning during an override attempt.
 
 ### Overriding dumps
 
