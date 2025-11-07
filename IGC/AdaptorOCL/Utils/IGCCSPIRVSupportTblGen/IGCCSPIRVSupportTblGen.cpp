@@ -50,7 +50,8 @@ class SPIRVSupportDocsEmitter {
   std::string formatPlatformSupport(const Record *Support);
   // Aggregates platform support from all capabilities for extensions using InheritFromCapabilities mode.
   std::string formatInheritFromCapabilitiesSupport(const ExtensionEntry &Ext);
-  void accumulatePlatformTokens(const Record *Support, SmallVectorImpl<std::string> &Tokens, bool &HasAll);
+  void accumulatePlatformTokens(const Record *Support, std::set<std::string> &Tokens, bool &HasAll);
+  std::string formatAggregatedTokens(const std::set<std::string> &Tokens, bool HasAll) const;
 
 public:
   SPIRVSupportDocsEmitter(const SPIRVExtensions &M) : Extensions(M) {}
@@ -105,37 +106,33 @@ std::string SPIRVSupportDocsEmitter::formatPlatformSupport(const Record *Support
     break; // aggregate below
   }
   bool HasAll = false;
-  SmallVector<std::string, 16> Tokens;
+  std::set<std::string> Tokens;
   accumulatePlatformTokens(Support, Tokens, HasAll);
-  if (HasAll || Tokens.empty())
-    return "All platforms";
-  std::string Out;
-  for (size_t I = 0; I < Tokens.size(); ++I) {
-    if (I)
-      Out += ", ";
-    Out += Tokens[I];
-  }
-  return Out;
+  return formatAggregatedTokens(Tokens, HasAll);
 }
 
 std::string SPIRVSupportDocsEmitter::formatInheritFromCapabilitiesSupport(const ExtensionEntry &Ext) {
   bool HasAll = false;
-  SmallVector<std::string, 16> Tokens;
+  std::set<std::string> Tokens;
   for (const auto &Cap : Ext.Capabilities) {
     accumulatePlatformTokens(Cap.EffectivePlatform, Tokens, HasAll);
   }
+  return formatAggregatedTokens(Tokens, HasAll);
+}
+
+std::string SPIRVSupportDocsEmitter::formatAggregatedTokens(const std::set<std::string> &Tokens, bool HasAll) const {
   if (HasAll || Tokens.empty())
     return "All platforms";
   std::string Out;
-  for (size_t I = 0; I < Tokens.size(); ++I) {
-    if (I)
+  for (const auto &Token : Tokens) {
+    if (!Out.empty())
       Out += ", ";
-    Out += Tokens[I];
+    Out += Token;
   }
   return Out;
 }
 
-void SPIRVSupportDocsEmitter::accumulatePlatformTokens(const Record *Support, SmallVectorImpl<std::string> &Tokens,
+void SPIRVSupportDocsEmitter::accumulatePlatformTokens(const Record *Support, std::set<std::string> &Tokens,
                                                        bool &HasAll) {
   switch (classifyPlatformSupport(Support)) {
   case PlatformSupportKind::All:
@@ -146,19 +143,23 @@ void SPIRVSupportDocsEmitter::accumulatePlatformTokens(const Record *Support, Sm
     return; // no contribution
   case PlatformSupportKind::CoreChildOf: {
     const Record *BaseCore = Support->getValueAsDef("BaseCore");
-    Tokens.push_back((BaseCore->getValueAsString("RenderCoreFamily") + StringRef(" and newer")).str());
+    std::string Token = (BaseCore->getValueAsString("RenderCoreFamily") + StringRef(" and newer")).str();
+    Tokens.insert(Token);
     return;
   }
   case PlatformSupportKind::ExactPlatform: {
     const Record *Plat = Support->getValueAsDef("TargetPlatform");
-    Tokens.push_back(Plat->getValueAsString("ProductFamily").str());
+    std::string Token = Plat->getValueAsString("ProductFamily").str();
+    Tokens.insert(Token);
     return;
   }
   case PlatformSupportKind::InGroup: {
     const Record *Group = Support->getValueAsDef("TargetGroup");
     auto Ps = Group->getValueAsListOfDefs("Platforms");
-    for (const Record *P : Ps)
-      Tokens.push_back(P->getValueAsString("ProductFamily").str());
+    for (const Record *P : Ps) {
+      std::string Token = P->getValueAsString("ProductFamily").str();
+      Tokens.insert(Token);
+    }
     return;
   }
   case PlatformSupportKind::AnyOf: {
