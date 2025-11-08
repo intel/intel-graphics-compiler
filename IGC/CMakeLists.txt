@@ -1453,6 +1453,10 @@ include_directories(
 include_directories(
   "${CIF_INCLUDE_DIR}"
 )
+# Include directory for auto-generated RT Stack reflection headers
+include_directories(
+  "${CMAKE_CURRENT_BINARY_DIR}/AdaptorCommon/RayTracing/RTStackReflectionIRBG"
+)
 
 if(LLVM_ON_WIN32)
   include_directories(
@@ -1612,6 +1616,7 @@ add_subdirectory(DebugInfo)
 add_subdirectory(DriverInterface)
 igc_sg_define(IGC__DriverInterface)
 igc_sg_define(IGC__LivenessUtils)
+add_subdirectory(AdaptorCommon)
 
 add_subdirectory(VISALinkerDriver)
 
@@ -1812,6 +1817,7 @@ if(IGC_OPTION__BUILD_IGC_OPT OR IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
     )
   set_target_properties("${IGC_BUILD__PROJ__igc_lib}" PROPERTIES FOLDER "Libraries")
 
+  add_dependencies(${IGC_BUILD__PROJ__igc_lib} RTStackReflectionIRBG)
   if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
     target_link_libraries("${IGC_BUILD__PROJ__igc_lib}" PRIVATE LLVMSPIRVLib)
   endif()
@@ -1867,6 +1873,7 @@ set_property(TARGET "GenX_IR" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__G
 foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${IGC_BUILD__PROJ__GenISAIntrinsics}")
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     MDAutogen)
+  add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     RTStackReflectionIRBG)
 
   if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     SPIRVExtensionsSupportGen)

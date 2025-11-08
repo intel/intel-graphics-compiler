@@ -362,9 +362,9 @@ private:
 
 
 private:
-#include "AutoGenRTStackAccessPrivateOS.h"
+#include "AutoGenRTStackAccessPrivate.h"
 public:
-#include "AutoGenRTStackAccessPublicOS.h"
+#include "AutoGenRTStackAccessPublic.h"
 public:
   Type *getSMStack2Ty() const;
   Type *getRTStack2Ty() const;

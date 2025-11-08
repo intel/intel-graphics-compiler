@@ -216,3 +216,4 @@ set_property(TARGET "${IGC_BUILD__PROJ__Compiler}" PROPERTY PROJECT_LABEL "${IGC
 target_link_libraries("${IGC_BUILD__PROJ__Compiler}" IGCOptions)
 
 add_dependencies("${IGC_BUILD__PROJ__Compiler}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
+add_dependencies("${IGC_BUILD__PROJ__Compiler}" RTStackReflectionIRBG)
