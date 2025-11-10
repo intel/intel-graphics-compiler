@@ -1670,6 +1670,7 @@ public:
                  "INTERNAL ERROR: subfunction expected");
     }
 
+
     if (LookingAt(DOT)) {
       // maybe an old condition modifier or saturation
       FlagModifier fm;
