@@ -762,17 +762,28 @@ bool IGCVectorizer::collectOperandsForVectorization(unsigned OperNumToStart, uns
 
 bool IGCVectorizer::handleCMPInstruction(VecArr& Slice){
 
-    bool IsSliceUniform = true;
-    for (auto El : Slice)
-        IsSliceUniform &= WI->isUniform(El);
+  bool IsSliceUniform = true;
+  for (auto El : Slice) {
+      IsSliceUniform &= WI->isUniform(El);
+      // we must process users as well
+      // because we do not support
+      // bit flag extraction from predicates
+      for (auto User : El->users()) {
+          bool UserIsUniform = WI->isUniform(User);
+          if (!UserIsUniform) {
+              PRINT_LOG("User is not uniform: "); PRINT_INST_NL(User);
+          }
+          IsSliceUniform &= UserIsUniform;
+      }
+  }
 
-    if (!IsSliceUniform) {
-        PRINT_LOG_NL("Select is stub vectorized, not uniform");
-        return true;
-    }
+  if (!IsSliceUniform) {
+      PRINT_LOG_NL("Select is stub vectorized, not uniform");
+      return true;
+  }
 
-    if (!IGC_GET_FLAG_VALUE(VectorizerAllowUniformCMP))
-        return true;
+  if (!IGC_GET_FLAG_VALUE(VectorizerAllowUniformCMP))
+      return true;
 
   Instruction *First = Slice.front();
   Value *PrevVectorization = nullptr;

@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-legalization -S -dce < %s | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt -igc-legalization -S -dce --regkey=LegalizerScalarizeSelectInstructions=1 < %s | FileCheck %s
 ; ------------------------------------------------
 ; Legalization: select vector
 ; ------------------------------------------------
