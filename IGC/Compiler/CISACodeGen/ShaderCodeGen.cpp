@@ -1693,7 +1693,8 @@ void OptimizeIR(CodeGenContext *const pContext) {
       mpm.add(createIntDivConstantReductionPass());
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableIntDivRemIncrementReduction)) {
+    if (IGC_IS_FLAG_ENABLED(EnableIntDivRemIncrementReduction) &&
+        !pContext->getModuleMetaData()->compOpt.DisableIntDivRemIncrementReduction) {
       mpm.add(createIntDivRemIncrementReductionPass());
     }
     GFX_ONLY_PASS { mpm.add(createMergeMemFromBranchOptPass()); }
