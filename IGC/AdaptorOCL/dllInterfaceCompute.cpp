@@ -995,6 +995,18 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
     args.push_back("igc");
     auto optionsMap = llvm::cl::getRegisteredOptions();
 
+    // The default value (8) for max of trip count upper bound that is considered
+    // in unrolling is not enough for some important compute workloads, so we set it to 16.
+    // When UnrollMaxUpperBound parameter will be available to set in UnrollingPreferences
+    // this code will be removed.
+    llvm::StringRef unrollMaxUpperBoundFlag = "-unroll-max-upperbound=16";
+    auto unrollMaxUpperBoundSwitch = optionsMap.find(unrollMaxUpperBoundFlag.trim("-=16"));
+    if (unrollMaxUpperBoundSwitch != optionsMap.end()) {
+      if (unrollMaxUpperBoundSwitch->getValue()->getNumOccurrences() == 0) {
+        args.push_back(unrollMaxUpperBoundFlag.data());
+      }
+    }
+
     // Disable code sinking in instruction combining.
     // This is a workaround for a performance issue caused by code sinking
     // that is being done in LLVM's instcombine pass.
