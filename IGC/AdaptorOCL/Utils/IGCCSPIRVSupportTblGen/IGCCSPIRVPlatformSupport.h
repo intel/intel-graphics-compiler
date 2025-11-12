@@ -15,6 +15,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/TableGen/Record.h"
 #include "llvm/TableGen/Error.h"
+#include "llvm/Support/SourceMgr.h"
+
+extern llvm::SourceMgr llvm::SrcMgr;
 
 namespace IGCCSPIRVPlatformSupport {
 // Selective LLVM symbols imported to avoid polluting including translation units.
@@ -49,6 +52,7 @@ struct ExtensionEntry {
   const Record *Root;                 // original extension record
   const Record *Platforms;            // extension support record (raw)
   bool IsInheritFromCapabilitiesMode; // true if extSupport == InheritFromCapabilities (aggregated capability mode)
+  bool IsPublished;                   // true if extension is published, false if unpublished
   SmallVector<CapabilityEntry, 8> Capabilities;
 };
 
@@ -112,6 +116,7 @@ static void validateExtensionPlatformSupport(const Record *Ext) {
   }
 }
 
+
 static SPIRVExtensions collectSPIRVExtensionSupport(const RecordKeeper &Records) {
   SPIRVExtensions Result;
   auto AllExtensions = Records.getAllDerivedDefinitions("SPIRVExtension");
@@ -124,6 +129,7 @@ static SPIRVExtensions collectSPIRVExtensionSupport(const RecordKeeper &Records)
     Entry.Root = Ext;
     Entry.Platforms = Ext->getValueAsDef("ExtSupport");
     Entry.IsInheritFromCapabilitiesMode = Entry.Platforms->getName() == "InheritFromCapabilities";
+    Entry.IsPublished = Ext->getValueAsBit("Published");
     auto Caps = Ext->getValueAsListOfDefs("ExtCapabilities");
     for (const Record *Cap : Caps) {
       CapabilityEntry CapEntry;

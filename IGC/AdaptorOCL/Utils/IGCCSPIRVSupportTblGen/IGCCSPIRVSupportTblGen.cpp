@@ -227,6 +227,7 @@ void SPIRVSupportQueriesEmitter::emitSPIRVExtensionStructures(raw_ostream &OS) {
   OS << "  std::string Name;\n";
   OS << "  std::string SpecURL;\n";
   OS << "  std::vector<SPIRVCapability> Capabilities;\n";
+  OS << "  bool IsPublished;\n";
   OS << "};\n\n";
 }
 
@@ -251,7 +252,8 @@ void SPIRVSupportQueriesEmitter::emitExtensionsVector(raw_ostream &OS) {
         OS << ",";
       OS << "\n";
     }
-    OS << "    }\n";
+    OS << "    },\n";
+    OS << "    " << (Ext.IsPublished ? "true" : "false") << "\n";
     OS << "  }" << (std::next(It) != Extensions.end() ? "," : "") << "\n";
   }
   OS << "};\n\n";
@@ -316,13 +318,17 @@ void SPIRVSupportQueriesEmitter::emitCapabilitySupportFn(raw_ostream &OS) {
 
 void SPIRVSupportQueriesEmitter::emitGetSupportedInfoFn(raw_ostream &OS) {
   OS << "// Get extension info with capabilities for a platform\n";
-  OS << "inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM Platform) {\n";
+  OS << "inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM Platform, bool includeUnpublished = false) {\n";
   OS << "  std::vector<SPIRVExtension> SupportedExtensions;\n";
   OS << "  for (const auto& Ext : AllExtensions) {\n";
+  OS << "    if (!includeUnpublished && !Ext.IsPublished) {\n";
+  OS << "      continue;\n";
+  OS << "    }\n";
   OS << "    if (isExtensionSupported(Ext.Name, Platform)) {\n";
   OS << "      SPIRVExtension SupportedExt;\n";
   OS << "      SupportedExt.Name = Ext.Name;\n";
   OS << "      SupportedExt.SpecURL = Ext.SpecURL;\n";
+  OS << "      SupportedExt.IsPublished = Ext.IsPublished;\n";
   OS << "      for (const auto& Cap : Ext.Capabilities) {\n";
   OS << "        if (isCapabilitySupported(Cap.Name, Platform)) {\n";
   OS << "          SupportedExt.Capabilities.push_back(Cap);\n";

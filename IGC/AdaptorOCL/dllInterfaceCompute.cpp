@@ -86,7 +86,7 @@ struct SPIRVExtension {
   std::string SpecURL;
   std::vector<SPIRVCapability> Capabilities;
 };
-inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM platform) { return {}; }
+inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM platform, bool includeUnpublished = false) { return {}; }
 } // namespace SPIRVExtensionsSupport
 } // namespace IGC
 #endif
@@ -422,7 +422,7 @@ bool TranslateSPIRVToLLVM(const STB_TranslateInputArgs &InputArgs, llvm::LLVMCon
   Opts.enableGenArgNameMD();
   if (IGC_IS_FLAG_ENABLED(ValidateSPIRVExtensionSupport)) {
     std::vector<IGC::SPIRVExtensionsSupport::SPIRVExtension> SupportedExtensions =
-        IGC::SPIRVExtensionsSupport::getSupportedExtensionInfo(platform);
+        IGC::SPIRVExtensionsSupport::getSupportedExtensionInfo(platform, true);
     for (const auto &Ext : SupportedExtensions) {
       if (auto id = ToExtensionID(Ext.Name))
         Opts.setAllowedToUseExtension(*id);
