@@ -442,7 +442,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
 // [6] load j
 // [7] bar(j)
 //
-static void sinkAllocas(SmallVectorImpl<AllocaInst *> &Allocas) {
+static void sinkAllocas(SmallVectorImpl<AllocaInst *> &Allocas, bool highAllocaRAPressure) {
   IGC_ASSERT(false == Allocas.empty());
   DominatorTree DT;
   llvm::LoopInfoBase<llvm::BasicBlock, llvm::Loop> LI;
@@ -499,9 +499,12 @@ static void sinkAllocas(SmallVectorImpl<AllocaInst *> &Allocas) {
     }
 
     // Find the nearest Denominator outside loops to prevent multiple allocations
-    BasicBlock *CurBB = AI->getParent();
-    while (DomBB && DomBB != CurBB && LI.getLoopFor(DomBB) != nullptr) {
-      DomBB = DT.getNode(DomBB)->getIDom()->getBlock();
+    // In case when we have too many allocas that increase RegPressure, skip this optimization
+    if (!highAllocaRAPressure) {
+      BasicBlock *CurBB = AI->getParent();
+      while (DomBB && DomBB != CurBB && LI.getLoopFor(DomBB) != nullptr) {
+        DomBB = DT.getNode(DomBB)->getIDom()->getBlock();
+      }
     }
 
     if (DomBB) {
@@ -861,7 +864,12 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack) {
   if (Ctx.m_instrTypes.numAllocaInsts > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold)) {
     sinkAllocaSingleUse(allocaInsts);
   }
-  sinkAllocas(allocaInsts);
+
+  // if we have privateOnStack, then address rematerialization will not work for allocas, in this case
+  // we need to sink aggressively, even into loops
+  // TODO: combine this and the upper heuristic into one independent from number of allocas, but from RegPressure
+  bool highAllocaRAPressure = allocaInsts.size() > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold) && privateOnStack;
+  sinkAllocas(allocaInsts, highAllocaRAPressure);
 
   // Each AllocaInst creates a buffer and all buffers are put together
   // sequentially like the following:
