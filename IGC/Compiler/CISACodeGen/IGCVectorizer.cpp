@@ -890,6 +890,85 @@ bool IGCVectorizer::handleCastInstruction(VecArr &Slice) {
   return true;
 }
 
+bool IGCVectorizer::handleWaveAll(VecArr &Slice) {
+
+  if (!isGenIntrinsicSafe(Slice.front()))
+    return false;
+
+  // if we do not issue waveall joints, we vectorize them as stubs
+  if (!IGC_GET_FLAG_VALUE(VectorizerAllowWAVEALLJoint))
+    return true;
+
+  auto *First = llvm::dyn_cast<WaveAllIntrinsic>(Slice.front());
+  if (!First)
+    return false;
+
+  for (auto El : Slice) {
+    auto *ElWave = llvm::dyn_cast<WaveAllIntrinsic>(El);
+    if (!ElWave)
+      return false;
+    bool SameType = First->getOpKind() == ElWave->getOpKind();
+    if (!SameType) {
+      PRINT_LOG_NL("Wavealls are not same type");
+      return false;
+    }
+  }
+
+  PRINT_DS("waveall: ", Slice);
+
+  Value *PrevVectorization = nullptr;
+  if (checkPrevVectorization(Slice, PrevVectorization))
+    return true;
+
+  VecVal Operands;
+  if (!collectOperandsForVectorization(0, 1, First, Slice, Operands))
+    return false;
+
+  // scalar operands
+  Operands.push_back(First->getOperand(1));
+  Operands.push_back(First->getOperand(2));
+
+  PRINT_DS("Operands: ", Operands);
+  Instruction *InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);
+
+  llvm::VectorType *VectorType = llvm::FixedVectorType::get(First->getType(), Slice.size());
+
+  auto IntrinsicID = llvm::cast<GenIntrinsicInst>(First)->getIntrinsicID();
+  auto *Decl = GenISAIntrinsic::getDeclaration(M, IntrinsicID, {VectorType});
+  PRINT_DECL_NL(Decl);
+  auto *CreatedInst = llvm::CallInst::Create(Decl, Operands);
+
+  CreatedInst->setName("vectorized_joint_waveall");
+  CreatedInst->setDebugLoc(First->getDebugLoc());
+  CreatedInst->insertAfter(InsertPoint);
+  CreatedVectorInstructions.push_back(CreatedInst);
+
+  PRINT_LOG("Intrinsic instruction created: ");
+  PRINT_INST_NL(CreatedInst);
+
+  replaceSliceInstructionsWithExtract(Slice, CreatedInst);
+
+  for (auto &el : Slice) {
+    if (ScalarToVector.count(el)) {
+      PRINT_LOG_NL("Vectorized version already present");
+      PRINT_INST(el);
+      PRINT_LOG(" --> ");
+      PRINT_INST_NL(ScalarToVector[el]);
+    }
+    ScalarToVector[el] = CreatedInst;
+  }
+
+  if (PrevVectorization) {
+    PRINT_LOG_NL("Replaced with proper vector version");
+    PrevVectorization->replaceAllUsesWith(CreatedInst);
+  }
+
+  for (auto El : Slice)
+    El->eraseFromParent();
+
+  return true;
+}
+
 bool IGCVectorizer::handleIntrinsic(VecArr &Slice) {
 
   Value *PrevVectorization = nullptr;
@@ -970,9 +1049,6 @@ bool IGCVectorizer::processChain(InsertStruct &InSt) {
     } else if (llvm::isa<CastInst>(First)) {
       if (!handleCastInstruction(Slice))
         return false;
-    } else if (isAllowedStub(First)) {
-      if (!handleStub(Slice))
-        return false;
     } else if (llvm::isa<BinaryOperator>(First)) {
       if (!handleBinaryInstruction(Slice))
         return false;
@@ -980,8 +1056,11 @@ bool IGCVectorizer::processChain(InsertStruct &InSt) {
       if (!handleCMPInstruction(Slice))
         return false;
     } else if (llvm::isa<SelectInst>(First)) {
-        if (!handleSelectInstruction(Slice))
-            return false;
+      if (!handleSelectInstruction(Slice))
+        return false;
+    } else if (llvm::isa<GenIntrinsicInst>(First)) {
+      if (!handleWaveAll(Slice))
+        return false;
     } else if (llvm::isa<IntrinsicInst>(First)) {
       if (!handleIntrinsic(Slice))
         return false;
@@ -990,6 +1069,9 @@ bool IGCVectorizer::processChain(InsertStruct &InSt) {
         return false;
     } else if (llvm::isa<InsertElementInst>(First)) {
       if (!handleInsertElement(Slice, InSt.Final))
+        return false;
+    } else if (isAllowedStub(First)) {
+      if (!handleStub(Slice))
         return false;
     } else {
       IGC_ASSERT("we should not be here");
@@ -1322,6 +1404,8 @@ bool IGCVectorizer::checkDependencyAndTryToEliminate(VecArr &Slice) {
       if (!Poisoned.count(Operand))
         continue;
       PRINT_INST(Operand);
+      PRINT_LOG(" --- ");
+      PRINT_INST(El);
       PRINT_LOG_NL("  <-- operands inside the slice depend on slice results");
       return true;
     }

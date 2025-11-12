@@ -1006,6 +1006,7 @@ DECLARE_IGC_REGKEY(bool, VectorizerAllowFSUB, true, "Allow FSUB instructions ins
 DECLARE_IGC_REGKEY(bool, VectorizerAllowEXP2, true, "Allow EXP2 instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowMAXNUM, true, "Allow MAXNUM instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowWAVEALL, true, "Allow WAVEALL instructions inside vectorizer", true)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowWAVEALLJoint, false, "Allow WAVEALL instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowCMP, true, "Allow CMP instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowUniformCMP, true, "Allow CMP instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowSelect, true, "Allow Select instructions inside vectorizer", true)
