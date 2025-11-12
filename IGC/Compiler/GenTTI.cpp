@@ -377,10 +377,10 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
     if (AllocaFound) {
       UP.UpperBound = true;
       UP.Force = UnrollLoopForCodeSizeOnly ? false : true;
+      // LLVM default only to 10, boost to UnrollMaxCountForAlloca
+      UP.MaxIterationsCountToAnalyze = UnrollMaxCountForAlloca;
 
-      if (enablePromoteLoopUnrollwithAlloca()){
-        // LLVM default only to 10, boost to UnrollMaxCountForAlloca
-        UP.MaxIterationsCountToAnalyze = UnrollMaxCountForAlloca;
+      if (enablePromoteLoopUnrollwithAlloca()) {
         UP.Threshold += ThresholdBoost;
         LLVM_DEBUG(dbgs() << "Increasing L:" << L->getName() << " threshold to " << UP.Threshold
                           << " due to Alloca accessed by:");
