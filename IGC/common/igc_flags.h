@@ -994,9 +994,9 @@ DECLARE_IGC_REGKEY(bool, VectorizerAllowEXP2, true, "Allow EXP2 instructions ins
 DECLARE_IGC_REGKEY(bool, VectorizerAllowMAXNUM, true, "Allow MAXNUM instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowWAVEALL, true, "Allow WAVEALL instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowCMP, true, "Allow CMP instructions inside vectorizer", true)
-DECLARE_IGC_REGKEY(bool, VectorizerAllowUniformCMP, true, "Allow CMP instructions inside vectorizer", true)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowUniformCMP, false, "Allow CMP instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowSelect, true, "Allow Select instructions inside vectorizer", true)
-DECLARE_IGC_REGKEY(bool, VectorizerAllowUniformSelect, true, "Allow Select instructions inside vectorizer", true)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowUniformSelect, false, "Allow Select instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowSamePredSelect, false, "Allow Select instructions with identical predicate inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFMADMatching, true,
                    "Allow FADD and FMUL instructions to be matched later in the pattern match pass", true)
@@ -1009,7 +1009,7 @@ DECLARE_IGC_REGKEY(
     bool, VectorizerEnablePartialVectorization, true,
     "Not fully tested option, allows to substitute scalar part with partially vectorized through extract elements",
     true)
-DECLARE_IGC_REGKEY(bool, LegalizerScalarizeSelectInstructions, false, "Ask legalizer to not scalarize vector typed selects", true)
+DECLARE_IGC_REGKEY(bool, LegalizerScalarizeSelectInstructions, true, "Ask legalizer to not scalarize vector typed selects", true)
 DECLARE_IGC_REGKEY(bool, DisableOCLScalarizer, false, "Disable ScalarizeFunction pass in OCL pipeline", true)
 DECLARE_IGC_REGKEY(bool, DisablePHIScalarization, false, "Disable scalarization of PHINode instructions", true)
 DECLARE_IGC_REGKEY(bool, EnableSelectiveScalarizer, false, "enable selective scalarizer on GPGPU path", true)

@@ -1,11 +1,3 @@
-;=========================== begin_copyright_notice ============================
-;
-; Copyright (C) 2025 Intel Corporation
-;
-; SPDX-License-Identifier: MIT
-;
-;============================ end_copyright_notice =============================
-
 ; REQUIRES: regkeys
 ; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowSelect=1 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerDepWindowMultiplier=4 < %s 2>&1 | FileCheck %s
 
@@ -21,29 +13,29 @@
 ; CHECK:   [[insrt_5:%.*]] = insertelement <8 x float> [[insrt_4]]
 ; CHECK:   [[insrt_6:%.*]] = insertelement <8 x float> [[insrt_5]], float [[fmul2]], i32 6
 ; CHECK:   [[insrt_7:%.*]] = insertelement <8 x float> [[insrt_6]]
-; CHECK:   %vectorized_binary = fmul <8 x float> [[insrt_7]], <float 1.250000e-01, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000>
-; CHECK:   [[extrct_0:%.*]] = extractelement <8 x float> %vectorized_binary, i32 0
-; CHECK:   [[extrct_1:%.*]] = extractelement <8 x float> %vectorized_binary, i32 1
-; CHECK:   [[extrct_2:%.*]] = extractelement <8 x float> %vectorized_binary, i32 2
-; CHECK:   [[extrct_3:%.*]] = extractelement <8 x float> %vectorized_binary, i32 3
-; CHECK:   [[extrct_4:%.*]] = extractelement <8 x float> %vectorized_binary, i32 4
-; CHECK:   [[extrct_5:%.*]] = extractelement <8 x float> %vectorized_binary, i32 5
-; CHECK:   [[extrct_6:%.*]] = extractelement <8 x float> %vectorized_binary, i32 6
-; CHECK:   [[extrct_7:%.*]] = extractelement <8 x float> %vectorized_binary, i32 7
+; CHECK:   %vectorized_binary = fmul <8 x float> %vector38, <float 1.250000e-01, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000>
+; CHECK:   %vector_extract39 = extractelement <8 x float> %vectorized_binary, i32 0
+; CHECK:   %vector_extract40 = extractelement <8 x float> %vectorized_binary, i32 1
+; CHECK:   %vector_extract41 = extractelement <8 x float> %vectorized_binary, i32 2
+; CHECK:   %vector_extract42 = extractelement <8 x float> %vectorized_binary, i32 3
+; CHECK:   %vector_extract43 = extractelement <8 x float> %vectorized_binary, i32 4
+; CHECK:   %vector_extract44 = extractelement <8 x float> %vectorized_binary, i32 5
+; CHECK:   %vector_extract45 = extractelement <8 x float> %vectorized_binary, i32 6
+; CHECK:   %vector_extract46 = extractelement <8 x float> %vectorized_binary, i32 7
 ; CHECK:   %19 = icmp slt i32 %2, 1
 ; CHECK:   %20 = icmp slt i32 1, %.pn1482
 ; CHECK:   %21 = icmp slt i32 %3, %.pn1482
 ; CHECK:   %22 = icmp slt i32 %4, 1
 ; CHECK:   %23 = icmp slt i32 %5, 1
 ; CHECK:   %24 = icmp slt i32 %6, %.pn1482
-; CHECK:   %25 = select i1 %19, float 0xFFF0000000000000, float [[extrct_0]]
-; CHECK:   %26 = select i1 %20, float 0xFFF0000000000000, float [[extrct_1]]
-; CHECK:   %27 = select i1 %21, float 0xFFF0000000000000, float [[extrct_2]]
-; CHECK:   %28 = select i1 %20, float 0xFFF0000000000000, float [[extrct_3]]
-; CHECK:   %29 = select i1 %22, float 0xFFF0000000000000, float [[extrct_4]]
-; CHECK:   %30 = select i1 %23, float 0xFFF0000000000000, float [[extrct_5]]
-; CHECK:   %31 = select i1 %24, float 0xFFF0000000000000, float [[extrct_6]]
-; CHECK:   %32 = select i1 %20, float 0xFFF0000000000000, float [[extrct_7]]
+; CHECK:   %25 = select i1 %19, float 0xFFF0000000000000, float %vector_extract39
+; CHECK:   %26 = select i1 %20, float 0xFFF0000000000000, float %vector_extract40
+; CHECK:   %27 = select i1 %21, float 0xFFF0000000000000, float %vector_extract41
+; CHECK:   %28 = select i1 %20, float 0xFFF0000000000000, float %vector_extract42
+; CHECK:   %29 = select i1 %22, float 0xFFF0000000000000, float %vector_extract43
+; CHECK:   %30 = select i1 %23, float 0xFFF0000000000000, float %vector_extract44
+; CHECK:   %31 = select i1 %24, float 0xFFF0000000000000, float %vector_extract45
+; CHECK:   %32 = select i1 %20, float 0xFFF0000000000000, float %vector_extract46
 
 
 ; ModuleID = 'reduced.ll'

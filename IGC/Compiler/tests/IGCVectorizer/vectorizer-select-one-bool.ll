@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-16-plus, regkeys
+; REQUIRES: llvm-16-plus, debug, regkeys
 ; RUN: igc_opt -S  --opaque-pointers --igc-vectorizer -dce --regkey=VectorizerAllowUniformSelect=1 --regkey=VectorizerAllowUniformCMP=1 --regkey=VectorizerDepWindowMultiplier=6 --regkey=VectorizerAllowSamePredSelect=1 < %s 2>&1 | FileCheck %s
 
 ; CHECK: %vectorized_select = select i1 false, <8 x float> {{.*}}, <8 x float> {{.*}}

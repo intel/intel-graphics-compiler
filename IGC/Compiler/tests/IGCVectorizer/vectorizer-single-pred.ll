@@ -1,12 +1,4 @@
-;=========================== begin_copyright_notice ============================
-;
-; Copyright (C) 2025 Intel Corporation
-;
-; SPDX-License-Identifier: MIT
-;
-;============================ end_copyright_notice =============================
-
-; REQUIRES: llvm-16-plus, regkeys
+; REQUIRES: llvm-16-plus, debug, regkeys
 ; RUN: igc_opt -S --opaque-pointers --igc-vectorizer --regkey=VectorizerAllowUniformSelect=1 --regkey=VectorizerAllowUniformCMP=1 -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
 
 ; CHECK: Slice:   %tmp18 = select i1 %tmpCMP, float 0.000000e+00, float %vector_extract

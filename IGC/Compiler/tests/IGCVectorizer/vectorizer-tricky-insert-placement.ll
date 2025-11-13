@@ -7,27 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowSelect=1 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
-
-; CHECK: Slice:   %37 = icmp slt i32 %3, %.pn1482
-; CHECK-NEXT: Slice:   %38 = icmp slt i32 %4, %.pn1482
-; CHECK-NEXT: Slice:   %39 = icmp slt i32 %5, %.pn1482
-; CHECK-NEXT: Slice:   %40 = icmp slt i32 %6, %.pn1482
-; CHECK-NEXT: Slice:   %41 = icmp slt i32 %7, %.pn1482
-; CHECK-NEXT: Slice:   %42 = icmp slt i32 %8, %.pn1482
-; CHECK-NEXT: Slice:   %43 = icmp slt i32 %9, %.pn1482
-; CHECK-NEXT: Slice:   %44 = icmp slt i32 %10, %.pn1482
-
-; CHECK: User is not uniform:       {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: Select is stub vectorized, not uniform
-
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowSelect=1 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 < %s 2>&1 | FileCheck %s
 
 ; CHECK-LABEL: ._crit_edge333:
 ; CHECK: [[VEC_BIN:%.*]] = fmul <8 x float> {{.*}}, <float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01>
