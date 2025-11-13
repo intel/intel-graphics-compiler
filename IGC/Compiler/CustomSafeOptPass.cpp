@@ -476,6 +476,9 @@ void CustomSafeOptPass::visitIntAtomicIAddToIncOrDec(CallInst *I) {
   if (m_modMD->compOpt.DisableConvertingAtomicIAddToIncDec)
     return;
 
+  if ((pContext->type == ShaderType::OPENCL_SHADER) && (pContext->platform.GetProductFamily() == IGFX_ARROWLAKE))
+    return;
+
   GenIntrinsicInst *instr = cast<GenIntrinsicInst>(I);
   GenISAIntrinsic::ID id = instr->getIntrinsicID();
 
@@ -914,9 +917,7 @@ void CustomSafeOptPass::visitCallInst(CallInst &C) {
     case GenISAIntrinsic::GenISA_intatomictyped:
     case GenISAIntrinsic::GenISA_intatomicraw:
     case GenISAIntrinsic::GenISA_intatomicrawA64: {
-      if (pContext->m_DriverInfo.supportsAtomicIaddToIncDec()) {
-        visitIntAtomicIAddToIncOrDec(inst);
-      }
+      visitIntAtomicIAddToIncOrDec(inst);
       break;
     }
 
