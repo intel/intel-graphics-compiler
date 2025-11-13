@@ -2060,7 +2060,7 @@
     },
     "genx_constantpred": {
       "opc": "ISA_SETP",
-      "exec_size": [ "EXECSIZE" ],
+      "exec_size": [ "EXECSIZE_NOMASK" ],
       "dst": [ "PREDICATE", 0 ],
       "src0": [ "CONSTVI1ASI32", 1 ]
     },

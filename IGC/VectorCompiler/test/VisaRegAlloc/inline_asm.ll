@@ -22,7 +22,7 @@ define spir_kernel void @test(i32 %_arg_VL, i8 addrspace(4)* %_arg_PA, i8 addrsp
   %3 = bitcast i8 addrspace(4)* %_arg_PB to <8 x i32> addrspace(4)*
   %4 = load <8 x i32>, <8 x i32> addrspace(4)* %3, align 4
   %5 = tail call <8 x i16> asm "mov (M1, 8) $0 0x1010101:v", "=r"()
-  %6 = tail call <8 x i32> asm "{\0A.decl P1 v_type=P num_elts=8\0Amov (M1, 8) $0 0x1:ud\0Asetp (M1, 8) P1 $3\0A(P1) add (M1, 8) $0 $1 $2\0A}", "=r,r,r,r"(<8 x i32> %2, <8 x i32> %4, <8 x i16> %5)
+  %6 = tail call <8 x i32> asm "{\0A.decl P1 v_type=P num_elts=8\0Amov (M1, 8) $0 0x1:ud\0Asetp (M1_NM, 8) P1 $3\0A(P1) add (M1_NM, 8) $0 $1 $2\0A}", "=r,r,r,r"(<8 x i32> %2, <8 x i32> %4, <8 x i16> %5)
   %7 = mul <8 x i32> %6, <i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2>
   %8 = bitcast i8 addrspace(4)* %_arg_PC to <8 x i32> addrspace(4)*
   store <8 x i32> %7, <8 x i32> addrspace(4)* %8, align 4
