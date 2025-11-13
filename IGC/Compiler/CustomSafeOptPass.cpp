@@ -4309,10 +4309,24 @@ bool ClampICBOOBAccess::runOnFunction(Function &F) {
 
 namespace {
 
+struct CompressionResult {
+  // Storage configuration
+  uint32_t uniqueDwords;              // Number of unique dword values found
+  uint32_t bitsPerIndex;              // Bits needed per index (1, 2, 4)
+  std::vector<uint32_t> uniqueValues; // The actual unique dword values
+};
+
 class IGCIndirectICBPropagaion : public FunctionPass {
 public:
   static char ID;
+  static constexpr unsigned ELT_SIZE = sizeof(uint32_t);
   uint32_t getMaxImmConstantSizePushed() const;
+  std::optional<uint32_t> getMaxStorageWhenStoringUniqueValues(const std::vector<char> &data,
+                                                               CompressionResult& compressionResult);
+  void replaceExtractElementsWithCompressedFetches(std::vector<ExtractElementInst *> &largeExtractElements,
+                                                   llvm::IRBuilder<> &builder, const std::vector<char> &fullData,
+                                                   const CompressionResult& compressionResult);
+
   IGCIndirectICBPropagaion() : FunctionPass(ID) {
     initializeIGCIndirectICBPropagaionPass(*PassRegistry::getPassRegistry());
   }
@@ -4335,12 +4349,179 @@ uint32_t IGCIndirectICBPropagaion::getMaxImmConstantSizePushed() const {
   return IGC_GET_FLAG_VALUE(MaxImmConstantSizePushed);
 }
 
+std::optional<uint32_t>
+IGCIndirectICBPropagaion::getMaxStorageWhenStoringUniqueValues(const std::vector<char> &data,
+                                                               CompressionResult& compressionResult) {
+  if (data.empty() || (data.size() % ELT_SIZE != 0)) {
+    return std::nullopt;
+  }
+
+  const uint32_t numValues = data.size() / ELT_SIZE;
+  if (numValues == 0) {
+    return std::nullopt;
+  }
+
+  // Extract unique 32-bit values
+  std::set<uint32_t> uniqueValues;
+  for (uint32_t i = 0; i < numValues; ++i) {
+    uint32_t value;
+    std::memcpy(&value, &data[i * ELT_SIZE], ELT_SIZE);
+    uniqueValues.insert(value);
+  }
+  uint32_t numUniqueValues = uniqueValues.size();
+  if (numUniqueValues == 0) {
+    return std::nullopt;
+  }
+  unsigned bitsPerIndex = 0;
+  // Only consider 1, 2, or 4 bits per index to avoid
+  // division etc when unpacking indices.
+  if (numUniqueValues <= 2) {
+    bitsPerIndex = 1;
+  } else if (numUniqueValues <= 4) {
+    bitsPerIndex = 2;
+  } else if (numUniqueValues <= 16) {
+    bitsPerIndex = 4;
+  } else
+    return std::nullopt; // Conservatively decide promotion benefits aren't attractive
+
+  // Preserve calculated information
+  compressionResult.uniqueDwords = numUniqueValues;
+  compressionResult.bitsPerIndex = bitsPerIndex;
+  compressionResult.uniqueValues.assign(uniqueValues.begin(), uniqueValues.end());
+
+  // Calculate storage needed for unique values + indices
+  uint32_t storageForUniqueValues = numUniqueValues * ELT_SIZE;
+  uint32_t totalBitsForIndices = numValues * bitsPerIndex;
+  uint32_t storageForIndices = divideCeil(totalBitsForIndices, 8); // Round up to nearest byte
+  uint32_t totalStorage = storageForUniqueValues + storageForIndices;
+  return totalStorage;
+}
+
+void IGCIndirectICBPropagaion::replaceExtractElementsWithCompressedFetches(std::vector<ExtractElementInst *> &largeExtractElements,
+                                                                           llvm::IRBuilder<> &builder,
+                                                                           const std::vector<char> &fullData,
+  const CompressionResult& compressionResult) {
+  if (largeExtractElements.empty()) {
+    return;
+  }
+
+  // 1. Create the unique values table as a constant vector
+  auto firstElt = largeExtractElements[0];
+
+  Type *valueType = firstElt->getType();
+  std::vector<Constant *> uniqueValueConstants;
+  for (uint32_t val : compressionResult.uniqueValues) {
+    if (valueType->isFloatTy()) {
+      float floatVal;
+      std::memcpy(&floatVal, &val, sizeof(float));
+      uniqueValueConstants.push_back(ConstantFP::get(valueType, floatVal));
+    } else {
+      uniqueValueConstants.push_back(ConstantInt::get(valueType, val));
+    }
+  }
+  Constant *uniqueValuesTable = ConstantVector::get(uniqueValueConstants);
+
+  // 2. Create the packed index table
+  unsigned bitsPerIndex = compressionResult.bitsPerIndex;
+  const uint32_t numValues = fullData.size() / ELT_SIZE;
+  std::vector<uint32_t> packedIndices;
+  uint32_t currentDWord = 0;
+  int bitsUsed = 0;
+
+  // Finding index for each value
+  std::map<uint32_t, uint32_t> valueToIndexMap;
+  for (uint32_t i = 0; i < compressionResult.uniqueValues.size(); ++i) {
+    valueToIndexMap[compressionResult.uniqueValues[i]] = i;
+  }
+
+  // Pack indices into dwords
+  for (uint32_t i = 0; i < numValues; ++i) {
+    uint32_t value;
+    std::memcpy(&value, &fullData[i * ELT_SIZE], ELT_SIZE);
+    uint32_t index = valueToIndexMap[value];
+
+    currentDWord |= (index << bitsUsed);
+    bitsUsed += bitsPerIndex;
+
+    if (bitsUsed == 32) {
+      packedIndices.push_back(currentDWord);
+      bitsUsed = 0;
+      currentDWord = 0;
+    } else if (bitsUsed > 32) {
+      // Should not happen as we only use 1, 2, or 4 bits per index
+      IGC_ASSERT_MESSAGE(false, "Packed index exceeded 32 bits: invalid bitsPerIndex value");
+    }
+  }
+  if (bitsUsed > 0) {
+    // Add the last partially filled dword
+    packedIndices.push_back(currentDWord);
+  }
+  Constant *packedIndicesTable = ConstantDataVector::get(builder.getContext(), packedIndices);
+
+  // 3. Process each extract element instruction
+  unsigned indicesPerDWord = 32 / bitsPerIndex;
+  bool useSingleDWord = (packedIndices.size() == 1);
+
+  for (ExtractElementInst *elt : largeExtractElements) {
+    builder.SetInsertPoint(elt);
+    Value *originalIndex = elt->getIndexOperand();
+    Type *originalIndexType = originalIndex->getType();
+
+    Value *finalIndex;
+    // The following invariants are guaranteed by getMaxStorageWhenStoringUniqueValues,
+    // which only sets bitsPerIndex to 1, 2, or 4. Thus, bitsPerIndex and indicesPerDWord
+    // are always powers of two here.
+    IGC_ASSERT_MESSAGE(iSTD::IsPowerOfTwo(bitsPerIndex), "bitsPerIndex must be power-of-two!");
+    IGC_ASSERT_MESSAGE(iSTD::IsPowerOfTwo(indicesPerDWord), "indicesPerDWord must be power-of-two!");
+
+    Value *packedDWord = nullptr;
+    Value *positionInDWord = nullptr;
+    if (useSingleDWord) {
+      // Extract from the single dword
+      packedDWord = builder.CreateExtractElement(packedIndicesTable, builder.getInt32(0));
+      positionInDWord = originalIndex;
+    } else {
+      // Find the dword and position within it
+      // dword = originalIndex / indicesPerDword (power-of-2)
+      unsigned dwordIndexShift = Log2_32(indicesPerDWord);
+      Value *dwordIndex =
+          builder.CreateLShr(originalIndex, builder.getIntN(originalIndexType->getIntegerBitWidth(), dwordIndexShift));
+      packedDWord = builder.CreateExtractElement(packedIndicesTable, dwordIndex);
+
+      // Find position in dword by doing originalIndex % indicesPerDword
+      positionInDWord = builder.CreateAnd(
+          originalIndex, builder.getIntN(originalIndexType->getIntegerBitWidth(), indicesPerDWord - 1));
+    }
+    Value *positionInDWord32 = positionInDWord;
+    if (positionInDWord->getType()->isIntegerTy(64)) {
+      positionInDWord32 = builder.CreateTrunc(positionInDWord, builder.getInt32Ty());
+    }
+    // ShiftAmount = positionInDWord * bitsPerIndex
+    unsigned bitsPerIndexShift = Log2_32(bitsPerIndex);
+    Value *shiftAmount =
+        builder.CreateShl(positionInDWord32, builder.getInt32(bitsPerIndexShift));
+    Value *shiftedValue = builder.CreateLShr(packedDWord, shiftAmount);
+    uint32_t mask = BITMASK(bitsPerIndex);
+    finalIndex = builder.CreateAnd(shiftedValue, builder.getInt32(mask));
+
+    // Use this to fetch from unique values table
+    Value *newValue = builder.CreateExtractElement(uniqueValuesTable, finalIndex);
+    elt->replaceAllUsesWith(newValue);
+    elt->eraseFromParent();
+  }
+}
+
 bool IGCIndirectICBPropagaion::runOnFunction(Function &F) {
   CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   ModuleMetaData *modMD = ctx->getModuleMetaData();
   auto maxImmConstantSizePushedLimit = getMaxImmConstantSizePushed();
+  auto storageNeeded = modMD->immConstant.data.size();
+  std::vector<ExtractElementInst *> largeExtractElements;
+  bool enableCompression = false;
+  CompressionResult compressionResult = {};
 
-   if (modMD && modMD->immConstant.data.size() && modMD->immConstant.data.size() <= maxImmConstantSizePushedLimit) {
+
+   if (modMD && modMD->immConstant.data.size() && storageNeeded <= maxImmConstantSizePushedLimit) {
     IRBuilder<> m_builder(F.getContext());
 
     for (auto &BB : F) {
@@ -4390,6 +4571,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F) {
               char *offset = &(modMD->immConstant.data[0]) + offsetIntoMergedBuffer;
               Value *ICBbuffer = UndefValue::get(
                   IGCLLVM::FixedVectorType::get(inst->getType(), maxImmConstantSizePushed / size_in_bytes));
+              Value *ICBvalue = nullptr;
               if (inst->getType()->isFloatTy()) {
                 float returnConstant = 0;
                 for (unsigned int i = 0; i < maxImmConstantSizePushed; i += size_in_bytes) {
@@ -4401,7 +4583,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F) {
                 if (eltPtr) {
                   eltIdx = m_builder.CreateLShr(eltPtr, m_builder.getInt32(2));
                 }
-                Value *ICBvalue = m_builder.CreateExtractElement(ICBbuffer, eltIdx);
+                ICBvalue = m_builder.CreateExtractElement(ICBbuffer, eltIdx);
                 inst->replaceAllUsesWith(ICBvalue);
               } else if (inst->getType()->isIntegerTy(32)) {
                 int returnConstant = 0;
@@ -4413,16 +4595,24 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F) {
                 if (eltPtr) {
                   eltIdx = m_builder.CreateLShr(eltPtr, m_builder.getInt32(2));
                 }
-                Value *ICBvalue = m_builder.CreateExtractElement(ICBbuffer, eltIdx);
+                ICBvalue = m_builder.CreateExtractElement(ICBbuffer, eltIdx);
                 inst->replaceAllUsesWith(ICBvalue);
+              }
+              IGC_ASSERT(ICBvalue);
+              if (enableCompression) {
+                if (auto *EEI = dyn_cast<ExtractElementInst>(ICBvalue)) {
+                  largeExtractElements.push_back(EEI);
+                }
               }
             }
           }
         }
       }
     }
+    if (enableCompression) {
+      replaceExtractElementsWithCompressedFetches(largeExtractElements, m_builder, modMD->immConstant.data, compressionResult);
+    }
   }
-
   return false;
 }
 
