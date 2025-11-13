@@ -94,6 +94,10 @@ class isCoreChildOf<CoreFamily baseCore> : PlatformSupport {
   CoreFamily BaseCore = baseCore;
 }
 
+class isProductChildOf<Platform basePlatform> : PlatformSupport {
+  Platform BasePlatform = basePlatform;
+}
+
 class ExactPlatform<Platform platform> : PlatformSupport {
   Platform TargetPlatform = platform;
 }

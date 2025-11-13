@@ -147,6 +147,12 @@ void SPIRVSupportDocsEmitter::accumulatePlatformTokens(const Record *Support, st
     Tokens.insert(Token);
     return;
   }
+  case PlatformSupportKind::ProductChildOf: {
+    const Record *BasePlatform = Support->getValueAsDef("BasePlatform");
+    std::string Token = (BasePlatform->getValueAsString("ProductFamily") + StringRef(" and newer")).str();
+    Tokens.insert(Token);
+    return;
+  }
   case PlatformSupportKind::ExactPlatform: {
     const Record *Plat = Support->getValueAsDef("TargetPlatform");
     std::string Token = Plat->getValueAsString("ProductFamily").str();
@@ -218,6 +224,10 @@ void SPIRVSupportQueriesEmitter::emitSPIRVExtensionStructures(raw_ostream &OS) {
   OS << "// Helper function for core family hierarchy checks\n";
   OS << "inline bool isCoreChildOf(PLATFORM Platform, GFXCORE_FAMILY Core) {\n";
   OS << "  return Platform.eRenderCoreFamily >= Core;\n";
+  OS << "}\n\n";
+  OS << "// Helper function for product family hierarchy checks\n";
+  OS << "inline bool isProductChildOf(PLATFORM Platform, PRODUCT_FAMILY Product) {\n";
+  OS << "  return Platform.eProductFamily >= Product;\n";
   OS << "}\n\n";
   OS << "// SPIR-V Extension and Capability structures\n";
   OS << "struct SPIRVCapability {\n";
@@ -359,6 +369,11 @@ std::string SPIRVSupportQueriesEmitter::buildPredicate(const Record *Support, St
     const Record *BaseCore = Support->getValueAsDef("BaseCore");
     StringRef BaseRenderCoreFamily = BaseCore->getValueAsString("RenderCoreFamily");
     return (Twine("isCoreChildOf(" + PlatformVar + ", ") + BaseRenderCoreFamily + ")").str();
+  }
+  case PlatformSupportKind::ProductChildOf: {
+    const Record *BasePlatform = Support->getValueAsDef("BasePlatform");
+    StringRef BaseProductFamily = BasePlatform->getValueAsString("ProductFamily");
+    return (Twine("isProductChildOf(" + PlatformVar + ", ") + BaseProductFamily + ")").str();
   }
   case PlatformSupportKind::ExactPlatform: {
     const Record *Platform = Support->getValueAsDef("TargetPlatform");

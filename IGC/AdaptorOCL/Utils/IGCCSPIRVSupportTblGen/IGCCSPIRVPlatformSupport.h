@@ -33,6 +33,7 @@ enum class PlatformSupportKind {
   NotSupported,
   InheritFromExtension,
   CoreChildOf,
+  ProductChildOf,
   ExactPlatform,
   InGroup,
   AnyOf,
@@ -69,6 +70,8 @@ inline PlatformSupportKind classifyPlatformSupport(const Record *R) {
     return PlatformSupportKind::InheritFromExtension;
   if (R->isSubClassOf("isCoreChildOf"))
     return PlatformSupportKind::CoreChildOf;
+  if (R->isSubClassOf("isProductChildOf"))
+    return PlatformSupportKind::ProductChildOf;
   if (R->isSubClassOf("ExactPlatform"))
     return PlatformSupportKind::ExactPlatform;
   if (R->isSubClassOf("isInGroup"))
