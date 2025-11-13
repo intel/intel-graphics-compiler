@@ -691,7 +691,8 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
           });
       // if multiple defined, cannot be removed
       if (iter != dstSrcRegs.dstSrcMap.end()) {
-        for (unsigned offset = startOffset; offset < dstSize; offset++) {
+        for (unsigned offset = startOffset; offset < (startOffset + dstSize);
+             offset++) {
           notRemoveableMap.push_back(std::make_pair(opndNum, offset));
         }
       } else {
@@ -719,7 +720,8 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
           continue;
         }
       }
-      for (unsigned offset = startOffset; offset < dstSize; offset++) {
+      for (unsigned offset = startOffset; offset < (startOffset + dstSize);
+           offset++) {
         notRemoveableMap.push_back(std::make_pair(opndNum, offset));
       }
     }
