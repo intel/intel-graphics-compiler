@@ -285,21 +285,9 @@ public:
   // sampler
   void addBindlessOrStatelessLocation(DIEBlock *Block, const VISAVariableLocation &Loc, uint32_t baseAddr);
 
-  // addStatelessLocation - add a sequence of attributes to calculate stateless
-  // surface location of variable
-  void addStatelessLocation(DIEBlock *Block, const VISAVariableLocation &Loc);
-
-  // addBindlessSurfaceLocation - add a sequence of attributes to calculate
-  // bindless surface location of variable
-  void addBindlessSurfaceLocation(DIEBlock *Block, const VISAVariableLocation &Loc);
-
   // addBindlessSamplerLocation - add a sequence of attributes to calculate
   // bindless sampler location of variable
   void addBindlessSamplerLocation(DIEBlock *Block, const VISAVariableLocation &Loc);
-
-  // addBindlessScratchSpaceLocation - add a sequence of attributes to calculate
-  // bindless scratch space location of variable
-  void addBindlessScratchSpaceLocation(DIEBlock *Block, const VISAVariableLocation &Loc);
 
   // addBE_FP - emits operations to add contents of BE_FP to current top of
   // dwarf stack
