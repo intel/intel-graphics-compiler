@@ -223,19 +223,8 @@ public:
   // Get the next smaller GRF available
   unsigned getSmallerGRF() const {
     for (auto i = static_cast<int>(currentMode) - 1; i >= 0 ; --i) {
-      if (configs[i].VRTEnable && configs[i].numGRF >= lowerBoundGRF)
+      if (configs[i].VRTEnable)
         return configs[i].numGRF;
-    }
-    return configs[currentMode].numGRF;
-  }
-
-  // Move GRF mode to the smaller GRF available and return the number
-  unsigned moveToSmallerGRF() {
-    for (auto i = static_cast<int>(currentMode) - 1; i >= 0; --i) {
-      if (configs[i].VRTEnable && configs[i].numGRF >= lowerBoundGRF) {
-        currentMode = i;
-        break;
-      }
     }
     return configs[currentMode].numGRF;
   }
