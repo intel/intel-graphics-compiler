@@ -23,7 +23,10 @@ define spir_kernel void @test(i8 addrspace(1)* %base_address, <2 x i32> addrspac
 entry:
   %0 = load <2 x i32>, <2 x i32> addrspace(1)* %coord_ptr
 
-; OpSubgroup2DBlockStoreINTEL Element size: 1, Block Width: 16, 32, Block Height: 1, 2, 4, 8, Block Count: 1
+; OpSubgroup2DBlockStoreINTEL Element size: 1, Block Width: 8, 16, 32, Block Height: 1, 2, 4, 8, Block Count: 1
+; CHECK-GENISA:  call void @llvm.genx.GenISA.LSC2DBlockWrite.v2i8(i64 %{{[0-9]+}}, i32 511, i32 45, i32 511, i32 %{{[0-9]+}}, i32 %{{[0-9]+}}, i32 8, i32 8, i32 8, i32 1, i1 false, i1 false, i32 0, <2 x i8> %{{[0-9]+}})
+; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]  {{.*}}:d8.8x8nn
+call spir_func void @_Z33__spirv_Subgroup2DBlockStoreINTELiiiiPKvPU3AS1viiiDv2_i(i32 1, i32 8, i32 8, i32 1, i8* %val_ptr, i8 addrspace(1)* %base_address, i32 512, i32 46, i32 512, <2 x i32> %0)
 ; CHECK-GENISA:  call void @llvm.genx.GenISA.LSC2DBlockWrite.i8(i64 %{{[0-9]+}}, i32 511, i32 45, i32 511, i32 %{{[0-9]+}}, i32 %{{[0-9]+}}, i32 8, i32 16, i32 1, i32 1, i1 false, i1 false, i32 0, i8 %{{[0-9]+}})
 ; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]  {{.*}}:d8.16x1nn
 call spir_func void @_Z33__spirv_Subgroup2DBlockStoreINTELiiiiPKvPU3AS1viiiDv2_i(i32 1, i32 16, i32 1, i32 1, i8* %val_ptr, i8 addrspace(1)* %base_address, i32 512, i32 46, i32 512, <2 x i32> %0)
@@ -49,7 +52,10 @@ call spir_func void @_Z33__spirv_Subgroup2DBlockStoreINTELiiiiPKvPU3AS1viiiDv2_i
 ; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]  {{.*}}:d8.32x8nn
 call spir_func void @_Z33__spirv_Subgroup2DBlockStoreINTELiiiiPKvPU3AS1viiiDv2_i(i32 1, i32 32, i32 8, i32 1, i8* %val_ptr, i8 addrspace(1)* %base_address, i32 512, i32 46, i32 512, <2 x i32> %0)
 
-; OpSubgroup2DBlockStoreINTEL Element size: 2, Block Width: 16, Block Height: 1, 2, 4, 8, Block Count: 1
+; OpSubgroup2DBlockStoreINTEL Element size: 2, Block Width: 8, 16, 32, Block Height: 1, 2, 4, 8, Block Count: 1
+; CHECK-GENISA:  call void @llvm.genx.GenISA.LSC2DBlockWrite.v2i16(i64 %{{[0-9]+}}, i32 511, i32 45, i32 511, i32 %{{[0-9]+}}, i32 %{{[0-9]+}}, i32 16, i32 8, i32 8, i32 1, i1 false, i1 false, i32 0, <2 x i16> %{{[0-9]+}})
+; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]  {{.*}}:d16.8x8nn
+call spir_func void @_Z33__spirv_Subgroup2DBlockStoreINTELiiiiPKvPU3AS1viiiDv2_i(i32 2, i32 8, i32 8, i32 1, i8* %val_ptr, i8 addrspace(1)* %base_address, i32 512, i32 46, i32 512, <2 x i32> %0)
 ; CHECK-GENISA:  call void @llvm.genx.GenISA.LSC2DBlockWrite.i16(i64 %{{[0-9]+}}, i32 511, i32 45, i32 511, i32 %{{[0-9]+}}, i32 %{{[0-9]+}}, i32 16, i32 16, i32 1, i32 1, i1 false, i1 false, i32 0, i16 %{{[0-9]+}})
 ; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]  {{.*}}:d16.16x1nn
 call spir_func void @_Z33__spirv_Subgroup2DBlockStoreINTELiiiiPKvPU3AS1viiiDv2_i(i32 2, i32 16, i32 1, i32 1, i8* %val_ptr, i8 addrspace(1)* %base_address, i32 512, i32 46, i32 512, <2 x i32> %0)
@@ -62,8 +68,20 @@ call spir_func void @_Z33__spirv_Subgroup2DBlockStoreINTELiiiiPKvPU3AS1viiiDv2_i
 ; CHECK-GENISA:  call void @llvm.genx.GenISA.LSC2DBlockWrite.v4i16(i64 %{{[0-9]+}}, i32 511, i32 45, i32 511, i32 %{{[0-9]+}}, i32 %{{[0-9]+}}, i32 16, i32 16, i32 8, i32 1, i1 false, i1 false, i32 0, <4 x i16> %{{[0-9]+}})
 ; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]  {{.*}}:d16.16x8nn
 call spir_func void @_Z33__spirv_Subgroup2DBlockStoreINTELiiiiPKvPU3AS1viiiDv2_i(i32 2, i32 16, i32 8, i32 1, i8* %val_ptr, i8 addrspace(1)* %base_address, i32 512, i32 46, i32 512, <2 x i32> %0)
+; CHECK-GENISA:  call void @llvm.genx.GenISA.LSC2DBlockWrite.i32(i64 %{{[0-9]+}}, i32 511, i32 45, i32 511, i32 %{{[0-9]+}}, i32 %{{[0-9]+}}, i32 16, i32 32, i32 1, i32 1, i1 false, i1 false, i32 0, i32 %{{[0-9]+}})
+; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]  {{.*}}:d16.32x1nn
+call spir_func void @_Z33__spirv_Subgroup2DBlockStoreINTELiiiiPKvPU3AS1viiiDv2_i(i32 2, i32 32, i32 1, i32 1, i8* %val_ptr, i8 addrspace(1)* %base_address, i32 512, i32 46, i32 512, <2 x i32> %0)
+; CHECK-GENISA:  call void @llvm.genx.GenISA.LSC2DBlockWrite.v4i32(i64 %{{[0-9]+}}, i32 511, i32 45, i32 511, i32 %{{[0-9]+}}, i32 %{{[0-9]+}}, i32 16, i32 32, i32 8, i32 1, i1 false, i1 false, i32 0, <4 x i32> %{{[0-9]+}})
+; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]  {{.*}}:d16.32x8nn
+call spir_func void @_Z33__spirv_Subgroup2DBlockStoreINTELiiiiPKvPU3AS1viiiDv2_i(i32 2, i32 32, i32 8, i32 1, i8* %val_ptr, i8 addrspace(1)* %base_address, i32 512, i32 46, i32 512, <2 x i32> %0)
 
-; OpSubgroup2DBlockStoreINTEL Element size: 4, Block Width: 16, Block Height: 1, 2, 4, 8, Block Count: 1
+; OpSubgroup2DBlockStoreINTEL Element size: 4, Block Width: 4, 8, 16, Block Height: 1, 2, 4, 8, Block Count: 1
+; CHECK-GENISA:  call void @llvm.genx.GenISA.LSC2DBlockWrite.i32(i64 %{{[0-9]+}}, i32 511, i32 45, i32 511, i32 %{{[0-9]+}}, i32 %{{[0-9]+}}, i32 32, i32 4, i32 8, i32 1, i1 false, i1 false, i32 0, i32 %{{[0-9]+}})
+; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]  {{.*}}:d32.4x8nn
+call spir_func void @_Z33__spirv_Subgroup2DBlockStoreINTELiiiiPKvPU3AS1viiiDv2_i(i32 4, i32 4, i32 8, i32 1, i8* %val_ptr, i8 addrspace(1)* %base_address, i32 512, i32 46, i32 512, <2 x i32> %0)
+; CHECK-GENISA:  call void @llvm.genx.GenISA.LSC2DBlockWrite.v2i32(i64 %{{[0-9]+}}, i32 511, i32 45, i32 511, i32 %{{[0-9]+}}, i32 %{{[0-9]+}}, i32 32, i32 8, i32 8, i32 1, i1 false, i1 false, i32 0, <2 x i32> %{{[0-9]+}})
+; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]  {{.*}}:d32.8x8nn
+call spir_func void @_Z33__spirv_Subgroup2DBlockStoreINTELiiiiPKvPU3AS1viiiDv2_i(i32 4, i32 8, i32 8, i32 1, i8* %val_ptr, i8 addrspace(1)* %base_address, i32 512, i32 46, i32 512, <2 x i32> %0)
 ; CHECK-GENISA:  call void @llvm.genx.GenISA.LSC2DBlockWrite.i32(i64 %{{[0-9]+}}, i32 511, i32 45, i32 511, i32 %{{[0-9]+}}, i32 %{{[0-9]+}}, i32 32, i32 16, i32 1, i32 1, i1 false, i1 false, i32 0, i32 %{{[0-9]+}})
 ; CHECK-VISAASM: lsc_store_block2d.ugm (M1, 1)  flat[{{.*}},0x1FF,0x2D,0x1FF,{{.*}},{{.*}}]  {{.*}}:d32.16x1nn
 call spir_func void @_Z33__spirv_Subgroup2DBlockStoreINTELiiiiPKvPU3AS1viiiDv2_i(i32 4, i32 16, i32 1, i32 1, i8* %val_ptr, i8 addrspace(1)* %base_address, i32 512, i32 46, i32 512, <2 x i32> %0)
