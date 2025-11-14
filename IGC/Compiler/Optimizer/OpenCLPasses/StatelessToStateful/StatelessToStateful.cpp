@@ -520,61 +520,9 @@ bool StatelessToStateful::pointerIsFromKernelArgument(Value &ptr) {
   return false;
 }
 
-static alignment_t determinePointerAlignment(Value *Ptr, const DataLayout &DL, AssumptionCache *AC,
-                                             Instruction *InsertionPt) {
-  alignment_t BestAlign = 1;
-
-  // 1) Examine uses: look for loads/stores (which may carry explicit
-  //    alignment) or a GEP that reveals an ABI alignment from its element
-  //    type.
-  for (User *U : Ptr->users()) {
-    if (auto *LI = dyn_cast<LoadInst>(U)) {
-      // Load has an explicit alignment.
-      alignment_t LdAlign = LI->getAlign().value();
-      if (LdAlign > BestAlign)
-        BestAlign = LdAlign;
-    } else if (auto *SI = dyn_cast<StoreInst>(U)) {
-      // Store sets alignment only if the pointer we store into is Ptr.
-      if (SI->getPointerOperand() == Ptr) {
-        alignment_t StAlign = SI->getAlign().value();
-        if (StAlign > BestAlign)
-          BestAlign = StAlign;
-      }
-    } else if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
-      // If the GEP's source element type is sized, we can guess an ABI
-      // alignment.
-      Type *BaseTy = GEP->getSourceElementType();
-      if (BaseTy && BaseTy->isSized()) {
-        alignment_t GEPAlign = DL.getABITypeAlign(BaseTy).value();
-        if (GEPAlign > BestAlign)
-          BestAlign = GEPAlign;
-      }
-    }
-  }
-
-  // 2) If this pointer is actually a function parameter, see if it has an
-  //    alignment attribute.
-  if (auto *Arg = dyn_cast<Argument>(Ptr)) {
-    if (Arg->hasAttribute(llvm::Attribute::Alignment)) {
-      if (MaybeAlign ArgAlign = Arg->getParamAlign()) {
-        alignment_t ArgAlignOrOne = ArgAlign.valueOrOne().value();
-        if (ArgAlignOrOne > BestAlign)
-          BestAlign = ArgAlignOrOne;
-      }
-    }
-  }
-
-  // 3) Fallback: use LLVM's built-in assumption-based alignment analysis
-  //    (based on a.o. llvm.assume intrinsics).
-  Align Known = getKnownAlignment(Ptr, DL, InsertionPt, AC);
-  if (Known > BestAlign)
-    BestAlign = Known.value();
-
-  return BestAlign;
-}
-
-bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(Function *F, Value *V, Value *&offset,
-                                                                    unsigned int &argNumber, bool ignoreSyncBuffer) {
+bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
+    Function *F, Value *V, Value *&offset, unsigned int &argNumber, bool ignoreSyncBuffer,
+    std::optional<llvm::Align> OriginalInstructionAlignment) {
   const DataLayout *DL = &F->getParent()->getDataLayout();
 
   AssumptionCache *AC = getAC(F);
@@ -624,9 +572,20 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(Function *F,
     // guarantted to be DW-aligned.)
     //
     // Note that implicit arg is always aligned.
-    bool isAlignedPointee = arg->isImplicitArg()
-                                ? true
-                                : determinePointerAlignment(base, *DL, AC, F->getEntryBlock().getFirstNonPHI()) >= 4;
+    bool isAlignedPointee = false;
+
+    if (arg->isImplicitArg()) {
+      isAlignedPointee = true;
+    } else {
+      auto knownAlignment = getKnownAlignment((Value *)arg->getArg(), *DL, F->getEntryBlock().getFirstNonPHI(), AC);
+
+      if (knownAlignment >= 4) {
+        isAlignedPointee = true;
+      } else if (OriginalInstructionAlignment.has_value() &&
+                 IGC::isStatefulAddrSpace(V->getType()->getPointerAddressSpace())) {
+        isAlignedPointee = OriginalInstructionAlignment.value() >= 4;
+      }
+    }
 
     // If m_hasBufferOffsetArg is true, the offset argument is added to
     // the final offset to make it definitely positive. Thus skip checking
@@ -655,6 +614,7 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(Function *F,
         updateArgInfo(arg, gepProducesPositivePointer);
       }
     }
+
     if ((m_hasBufferOffsetArg || (gepProducesPositivePointer && isAlignedPointee)) &&
         getOffsetFromGEP(F, GEPs, argNumber, arg->isImplicitArg(), offset)) {
       return true;
@@ -921,12 +881,14 @@ void StatelessToStateful::promote() {
   resAllocMD->uavsNumType += m_promotionMap.size();
 }
 
-void StatelessToStateful::addToPromotionMap(Instruction &I, Value *Ptr) {
+void StatelessToStateful::addToPromotionMap(Instruction &I, Value *Ptr,
+                                            std::optional<llvm::Align> OriginalInstructionAlignment = std::nullopt) {
   Value *offset = nullptr;
   unsigned baseArgNumber = 0;
 
-  bool isPromotable = m_promotionMap.size() < maxPromotionCount &&
-                      pointerIsPositiveOffsetFromKernelArgument(m_F, Ptr, offset, baseArgNumber, true);
+  bool isPromotable =
+      m_promotionMap.size() < maxPromotionCount &&
+      pointerIsPositiveOffsetFromKernelArgument(m_F, Ptr, offset, baseArgNumber, true, OriginalInstructionAlignment);
 
   if (isPromotable) {
     InstructionInfo II(&I, Ptr, offset);
@@ -1025,7 +987,7 @@ void StatelessToStateful::visitCallInst(CallInst &I) {
 
 void StatelessToStateful::visitLoadInst(LoadInst &I) {
   Value *ptr = I.getPointerOperand();
-  addToPromotionMap(I, ptr);
+  addToPromotionMap(I, ptr, I.getAlign());
 
   // check if there's non-kernel-arg load/store
   if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) && ptr != nullptr && !pointerIsFromKernelArgument(*ptr)) {
@@ -1037,7 +999,7 @@ void StatelessToStateful::visitLoadInst(LoadInst &I) {
 
 void StatelessToStateful::visitStoreInst(StoreInst &I) {
   Value *ptr = I.getPointerOperand();
-  addToPromotionMap(I, ptr);
+  addToPromotionMap(I, ptr, I.getAlign());
 
   if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) && ptr != nullptr && !pointerIsFromKernelArgument(*ptr)) {
     ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
