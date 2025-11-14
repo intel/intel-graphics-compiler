@@ -11613,6 +11613,17 @@ bool GlobalRA::rerunGRAIter(bool rerunGRA)
   return false;
 }
 
+bool GlobalRA::kernelUsesDpas() const {
+  // Return true if kernel uses dpas
+  for (auto *bb : kernel.fg) {
+    for (auto *inst : *bb) {
+      if (inst->isDpas())
+        return true;
+    }
+  }
+  return false;
+}
+
 //
 // graph coloring entry point.  returns nonzero if RA fails
 //
@@ -11748,6 +11759,14 @@ int GlobalRA::coloringRegAlloc() {
       (builder.getOption(vISA_FastSpill) || fastCompile)
           ? fastCompileIter
           : builder.getuint32Option(vISA_FailSafeRALimit);
+  if (kernelUsesDpas()) {
+    // Push out enabling fail safe by 2 iterations if kernel uses
+    // dpas. That's because with dpas, we need to reserve lots of
+    // GRFs and this causes us to generate significant spill/fill.
+    // It might be better to try few more iterations before
+    // finally enabling fail safe RA.
+    failSafeRAIteration = std::min(failSafeRAIteration + 2, maxRAIterations);
+  }
 
   if (failSafeRAIteration == 0) { // Fail safe RA directly in iteration 0, used
                                   // for hybrid RA with spill

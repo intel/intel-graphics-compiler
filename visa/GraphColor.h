@@ -2153,6 +2153,7 @@ public:
   unsigned computeSpillSize(std::list<LSLiveRange *> &spilledLRs);
   bool spillSpaceCompression(int spillSize,
                              const int globalScratchOffset);
+  bool kernelUsesDpas() const;
 
 public:
   // Store new variables created when inserting scalar imm
