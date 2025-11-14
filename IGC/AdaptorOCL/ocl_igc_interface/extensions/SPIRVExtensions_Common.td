@@ -18,6 +18,8 @@ SPDX-License-Identifier: MIT
 //    - ExactPlatform<Platform>: Supported only on the exact platform specified
 //    - isInGroup<PlatformGroup>: Supported on any platform in the group
 //    - AnyOf<[condition1, condition2, ...]>: Supported if ANY condition matches (OR logic)
+//    - AllOf<[condition1, condition2, ...]>: Supported if ALL conditions match (AND logic)
+//    - Not<condition>: Negates the given condition (NOT logic)
 //    - NotSupported: Capability/extension is not supported on any platform
 //    - InheritFromExtension: Implicit capability default (omit Support to inherit from extension; do NOT specify explicitly)
 //    - InheritFromCapabilities: Extension-level aggregation mode; extension platform support becomes the
@@ -68,7 +70,27 @@ SPDX-License-Identifier: MIT
 //          InheritFromCapabilities
 //        >; // Effective support is OR of CapC/CapD/CapE (CapF ignored).
 //
-// 3. RATIONALE:
+// 3. ADVANCED PLATFORM LOGIC:
+//
+//    Complex platform requirements can be expressed using AllOf, AnyOf, and Not:
+//
+//    Example 1: Extension supported on XE_HPG_CORE and newer, but NOT on IGFX_PVC:
+//        def AdvancedExtensionExample : Extension<
+//          "AdvancedExtensionExample",
+//          [ Capability<"CapX"> ],
+//          "https://example.com/spec/AdvancedExtensionExample",
+//          AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_PVC>>]>
+//        >;
+//
+//    Example 2: Using AnyOf combining a core family and an exact platform:
+//        def MixedCoreOrExactExtension : Extension<
+//          "MixedCoreOrExactExtension",
+//          [ Capability<"CapY"> ],
+//          "https://example.com/spec/MixedCoreOrExactExtension",
+//          AnyOf<[isCoreChildOf<IGFX_XE3_CORE>, ExactPlatform<IGFX_PVC>]>
+//        >; // Supported on IGFX_XE3_CORE and newer OR exactly IGFX_PVC
+//
+// 4. RATIONALE:
 //
 //    This design eliminates ambiguity and ensures consistency:
 //    - If you want uniform platform support → use regular extension with explicit platform
@@ -108,6 +130,14 @@ class isInGroup<PlatformGroup group> : PlatformSupport {
 
 class AnyOf<list<PlatformSupport> conditions> : PlatformSupport {
   list<PlatformSupport> Conditions = conditions;
+}
+
+class AllOf<list<PlatformSupport> conditions> : PlatformSupport {
+  list<PlatformSupport> Conditions = conditions;
+}
+
+class Not<PlatformSupport condition> : PlatformSupport {
+  PlatformSupport Condition = condition;
 }
 
 // Special cases

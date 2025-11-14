@@ -48,10 +48,9 @@ class SPIRVSupportDocsEmitter {
   const SPIRVExtensions &Extensions;
   bool shouldShowCapabilityPlatformSupport(const ExtensionEntry &Ext, const CapabilityEntry &Cap) const;
   std::string formatPlatformSupport(const Record *Support);
-  // Aggregates platform support from all capabilities for extensions using InheritFromCapabilities mode.
-  std::string formatInheritFromCapabilitiesSupport(const ExtensionEntry &Ext);
   void accumulatePlatformTokens(const Record *Support, std::set<std::string> &Tokens, bool &HasAll);
   std::string formatAggregatedTokens(const std::set<std::string> &Tokens, bool HasAll) const;
+  bool tryFormatAllOfExclusion(const Record *Support, std::set<std::string> &Tokens, bool &HasAll);
 
 public:
   SPIRVSupportDocsEmitter(const SPIRVExtensions &M) : Extensions(M) {}
@@ -64,10 +63,9 @@ void SPIRVSupportDocsEmitter::emit(raw_ostream &OS) {
   for (const auto &Ext : Extensions) {
     OS << "## " << Ext.Name << "\n\n";
     OS << "**Specification:** [" << Ext.SpecURL << "](" << Ext.SpecURL << ")\n\n";
-    OS << "**Extension Platform Support:** "
-       << (Ext.IsInheritFromCapabilitiesMode ? formatInheritFromCapabilitiesSupport(Ext)
-                                             : formatPlatformSupport(Ext.Platforms))
-       << "\n\n";
+    if (!Ext.IsInheritFromCapabilitiesMode) {
+      OS << "**Extension Platform Support:** " << formatPlatformSupport(Ext.Platforms) << "\n\n";
+    }
     OS << "**Capabilities:**\n\n";
     if (Ext.Capabilities.empty()) {
       OS << "- No capabilities defined\n";
@@ -105,18 +103,10 @@ std::string SPIRVSupportDocsEmitter::formatPlatformSupport(const Record *Support
   default:
     break; // aggregate below
   }
+
   bool HasAll = false;
   std::set<std::string> Tokens;
   accumulatePlatformTokens(Support, Tokens, HasAll);
-  return formatAggregatedTokens(Tokens, HasAll);
-}
-
-std::string SPIRVSupportDocsEmitter::formatInheritFromCapabilitiesSupport(const ExtensionEntry &Ext) {
-  bool HasAll = false;
-  std::set<std::string> Tokens;
-  for (const auto &Cap : Ext.Capabilities) {
-    accumulatePlatformTokens(Cap.EffectivePlatform, Tokens, HasAll);
-  }
   return formatAggregatedTokens(Tokens, HasAll);
 }
 
@@ -130,6 +120,51 @@ std::string SPIRVSupportDocsEmitter::formatAggregatedTokens(const std::set<std::
     Out += Token;
   }
   return Out;
+}
+
+bool SPIRVSupportDocsEmitter::tryFormatAllOfExclusion(const Record *Support, std::set<std::string> &Tokens,
+                                                      bool &HasAll) {
+  auto Conds = Support->getValueAsListOfDefs("Conditions");
+  if (Conds.size() < 2) // Need at least base + one exclusion
+    return false;
+
+  const Record *BaseCondition = nullptr;
+  std::vector<std::string> ExcludedPlatforms;
+  ExcludedPlatforms.reserve(Conds.size() - 1);
+
+  for (const Record *C : Conds) {
+    PlatformSupportKind CK = classifyPlatformSupport(C);
+    if (CK == PlatformSupportKind::Not) {
+      const Record *Inner = C->getValueAsDef("Condition");
+      if (classifyPlatformSupport(Inner) != PlatformSupportKind::ExactPlatform)
+        return false;
+      const Record *Plat = Inner->getValueAsDef("TargetPlatform");
+      ExcludedPlatforms.push_back(Plat->getValueAsString("ProductFamily").str());
+      continue;
+    }
+    // Non-Not condition
+    if (BaseCondition)
+      return false; // More than one positive condition
+    BaseCondition = C;
+  }
+
+  if (!BaseCondition || ExcludedPlatforms.empty() || Conds.size() != (1 + ExcludedPlatforms.size()))
+    return false;
+
+  std::set<std::string> BaseTokens;
+  bool BaseHasAll = false;
+  accumulatePlatformTokens(BaseCondition, BaseTokens, BaseHasAll);
+  const std::string ExcludedList = llvm::join(ExcludedPlatforms, ", ");
+  if (BaseHasAll) {
+    // When base is "All platforms", preserve the exclusion explicitly.
+    // This yields: "All platforms (excluding <plat1>, <plat2>, ...)".
+    Tokens.insert(std::string("All platforms (excluding ") + ExcludedList + ")");
+    return true;
+  }
+
+  for (const auto &BaseToken : BaseTokens)
+    Tokens.insert(BaseToken + " (excluding " + ExcludedList + ")");
+  return true;
 }
 
 void SPIRVSupportDocsEmitter::accumulatePlatformTokens(const Record *Support, std::set<std::string> &Tokens,
@@ -172,6 +207,50 @@ void SPIRVSupportDocsEmitter::accumulatePlatformTokens(const Record *Support, st
     auto Conds = Support->getValueAsListOfDefs("Conditions");
     for (const Record *C : Conds)
       accumulatePlatformTokens(C, Tokens, HasAll);
+    return;
+  }
+  case PlatformSupportKind::AllOf: {
+    // Try smart exclusion pattern first
+    if (tryFormatAllOfExclusion(Support, Tokens, HasAll))
+      return;
+
+    // Otherwise, standard AND formatting
+    auto Conds = Support->getValueAsListOfDefs("Conditions");
+    std::set<std::string> SubTokens;
+    bool SubHasAll = false;
+    for (const Record *C : Conds) {
+      accumulatePlatformTokens(C, SubTokens, SubHasAll);
+    }
+    if (SubHasAll) {
+      HasAll = true;
+      return;
+    }
+    if (!SubTokens.empty()) {
+      std::string CombinedToken = "(";
+      bool First = true;
+      for (const auto &T : SubTokens) {
+        if (!First)
+          CombinedToken += " AND ";
+        CombinedToken += T;
+        First = false;
+      }
+      CombinedToken += ")";
+      Tokens.insert(CombinedToken);
+    }
+    return;
+  }
+  case PlatformSupportKind::Not: {
+    const Record *InnerCond = Support->getValueAsDef("Condition");
+    std::set<std::string> SubTokens;
+    bool SubHasAll = false;
+    accumulatePlatformTokens(InnerCond, SubTokens, SubHasAll);
+    if (SubHasAll) {
+      // NOT(All) means nothing is supported
+      return;
+    }
+    for (const auto &T : SubTokens) {
+      Tokens.insert("NOT " + T);
+    }
     return;
   }
   case PlatformSupportKind::Unknown:
@@ -328,7 +407,8 @@ void SPIRVSupportQueriesEmitter::emitCapabilitySupportFn(raw_ostream &OS) {
 
 void SPIRVSupportQueriesEmitter::emitGetSupportedInfoFn(raw_ostream &OS) {
   OS << "// Get extension info with capabilities for a platform\n";
-  OS << "inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM Platform, bool includeUnpublished = false) {\n";
+  OS << "inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM Platform, bool includeUnpublished = "
+        "false) {\n";
   OS << "  std::vector<SPIRVExtension> SupportedExtensions;\n";
   OS << "  for (const auto& Ext : AllExtensions) {\n";
   OS << "    if (!includeUnpublished && !Ext.IsPublished) {\n";
@@ -407,6 +487,24 @@ std::string SPIRVSupportQueriesEmitter::buildPredicate(const Record *Support, St
     if (Expr.empty())
       Expr = "false /* Empty AnyOf */";
     return Expr;
+  }
+  case PlatformSupportKind::AllOf: {
+    auto Conditions = Support->getValueAsListOfDefs("Conditions");
+    std::string Expr;
+    bool First = true;
+    for (const Record *Cond : Conditions) {
+      if (!First)
+        Expr += " && ";
+      Expr += "(" + buildPredicate(Cond, PlatformVar) + ")";
+      First = false;
+    }
+    if (Expr.empty())
+      Expr = "true /* Empty AllOf */";
+    return Expr;
+  }
+  case PlatformSupportKind::Not: {
+    const Record *InnerCond = Support->getValueAsDef("Condition");
+    return "!(" + buildPredicate(InnerCond, PlatformVar) + ")";
   }
   case PlatformSupportKind::All:
     return "true /* Supported on all platforms */";

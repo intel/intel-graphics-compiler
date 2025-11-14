@@ -37,6 +37,8 @@ enum class PlatformSupportKind {
   ExactPlatform,
   InGroup,
   AnyOf,
+  AllOf,
+  Not,
   Unknown
 };
 
@@ -78,6 +80,10 @@ inline PlatformSupportKind classifyPlatformSupport(const Record *R) {
     return PlatformSupportKind::InGroup;
   if (R->isSubClassOf("AnyOf"))
     return PlatformSupportKind::AnyOf;
+  if (R->isSubClassOf("AllOf"))
+    return PlatformSupportKind::AllOf;
+  if (R->isSubClassOf("Not"))
+    return PlatformSupportKind::Not;
   return PlatformSupportKind::Unknown;
 }
 
