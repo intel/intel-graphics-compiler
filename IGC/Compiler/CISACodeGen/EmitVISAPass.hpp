@@ -540,6 +540,7 @@ public:
 
   void emitLscIntrinsicLoad(llvm::GenIntrinsicInst *GII);
   void emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst *GII);
+  void emitLscIntrinsicTypedLoadStatus(llvm::GenIntrinsicInst *GII);
   void emitLscSimdBlockPrefetch(llvm::GenIntrinsicInst *GII);
   void emitLscIntrinsicStore(llvm::GenIntrinsicInst *GII);
   void emitLscIntrinsicLoadCmask(llvm::GenIntrinsicInst *inst);
@@ -647,6 +648,8 @@ public:
   CVariable *BroadcastAndExtend(CVariable *pVar);
   CVariable *TruncatePointer(CVariable *pVar, bool TruncBothHalves = false);
   CVariable *ReAlignUniformVariable(CVariable *pVar, e_alignment align);
+  CVariable *ReAlignOrBroadcastUniformVarIfNotNull(bool destIsUniform, CVariable *pVar, e_alignment align,
+                                                   bool nomask = false);
   CVariable *BroadcastAndTruncPointer(CVariable *pVar);
   CVariable *IndexableResourceIndex(CVariable *indexVar, uint btiIndex);
   ResourceDescriptor GetResourceVariable(llvm::Value *resourcePtr, bool Check = false);
