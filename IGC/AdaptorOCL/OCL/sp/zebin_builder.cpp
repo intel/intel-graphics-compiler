@@ -472,8 +472,8 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo &annotations, zeI
   env.has_no_stateless_write = (annotations.m_executionEnvironment.StatelessWritesCount == 0);
   env.has_stack_calls = annotations.m_executionEnvironment.HasStackCalls;
   env.has_printf_calls = annotations.m_executionEnvironment.HasPrintfCalls;
-  // env.require_assert_buffer = annotations.m_executionEnvironment.RequireAssertBuffer;
-  // env.require_sync_buffer = annotations.m_executionEnvironment.RequireSyncBuffer;
+  env.require_assert_buffer = annotations.m_executionEnvironment.RequireAssertBuffer;
+  env.require_sync_buffer = annotations.m_executionEnvironment.RequireSyncBuffer;
   env.has_indirect_calls = annotations.m_executionEnvironment.HasIndirectCalls;
   env.require_disable_eufusion = annotations.m_executionEnvironment.RequireDisableEUFusion;
   env.indirect_stateless_count = annotations.m_executionEnvironment.IndirectStatelessCount;
@@ -519,8 +519,8 @@ void ZEBinaryBuilder::addFunctionExecEnv(const SOpenCLKernelInfo &annotations,
   env.barrier_count = zeFuncAttr.f_BarrierCount;
   env.has_rtcalls = zeFuncAttr.f_hasRTCalls;
   env.has_printf_calls = zeFuncAttr.f_hasPrintfCalls;
-  // env.require_assert_buffer = zeFuncAttr.f_requireAssertBuffer;
-  // env.require_sync_buffer = zeFuncAttr.f_requireSyncBuffer;
+  env.require_assert_buffer = zeFuncAttr.f_requireAssertBuffer;
+  env.require_sync_buffer = zeFuncAttr.f_requireSyncBuffer;
   env.has_indirect_calls = zeFuncAttr.f_hasIndirectCalls;
 }
 
