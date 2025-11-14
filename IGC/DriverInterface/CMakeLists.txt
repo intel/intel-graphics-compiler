@@ -96,6 +96,7 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/MemRegionAnalysis.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingAddressSpaceAliasAnalysis.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingMemoryStyle.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingMemoryStyleXe3Plus.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingPasses.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTArgs.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTBuilder.h"

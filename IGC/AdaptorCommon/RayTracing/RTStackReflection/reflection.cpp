@@ -495,10 +495,13 @@ template <typename GenT> IMPL uint32_t _getRayMask(RTSAS RTStack2<GenT> *__restr
 IMPL_ALL_1ARG(_getRayMask, StackPtr)
 
 
-CREATE_PRIVATE auto _getLeafNodeSubType_Xe3(RTSAS RTStack2<Xe3> *__restrict__ StackPtr, bool Committed) {
+
+template <typename RTStackT>
+IMPL auto _getLeafNodeSubType(RTSAS RTStack2<RTStackT> *__restrict__ StackPtr, bool Committed) {
   // memhit->leafNodeSubType
   return Committed ? StackPtr->committedHit.leafNodeSubType : StackPtr->potentialHit.leafNodeSubType;
 }
+IMPL_ALL_2ARG_XE3PLUS(_getLeafNodeSubType, StackPtr, Committed)
 
 
 template <typename GenT> IMPL bool _isValid(RTSAS RTStack2<GenT> *__restrict__ StackPtr, bool Committed) {
@@ -583,17 +586,18 @@ CREATE_PRIVATE void _writeBaryCentricToStorage_Xe(RTSAS RTStack2<Xe> *__restrict
 }
 
 template <typename RTStackT>
-IMPL void _writeBaryCentricToStorage(RTSAS RTStackT *__restrict__ StackPtr, SWStackAS float *Storage, bool Committed) {
+IMPL void _writeBaryCentricToStorageImpl(RTSAS RTStackT *__restrict__ StackPtr, SWStackAS float *Storage, bool Committed) {
 #pragma unroll
   for (uint32_t i = 0; i < 2; i++)
     Storage[i] = fetchBaryCentric(StackPtr, i, Committed);
 }
 
-CREATE_PRIVATE void _writeBaryCentricToStorage_Xe3(RTSAS RTStack2<Xe3> *__restrict__ StackPtr, SWStackAS float *Storage,
-                                                   bool Committed) {
-  return _writeBaryCentricToStorage(StackPtr, Storage, Committed);
+template <typename RTStackT>
+IMPL void _writeBaryCentricToStorage(RTSAS RTStack2<RTStackT> *__restrict__ StackPtr, SWStackAS float *Storage,
+                                         bool Committed) {
+  return _writeBaryCentricToStorageImpl(StackPtr, Storage, Committed);
 }
-
+IMPL_ALL_3ARG_XE3PLUS(_writeBaryCentricToStorage, StackPtr, Storage, Committed)
 
 template <typename GenT>
 IMPL float _TransformWorldToObject(RTSAS RTStack2<GenT> *__restrict__ StackPtr, uint32_t dim, bool isOrigin,
@@ -791,7 +795,8 @@ CREATE_PRIVATE void _createPotentialHit2CommittedHit_Xe(RTSAS RTStack2<Xe> *__re
   CH.hitGroupRecPtr1 = PH.hitGroupRecPtr1;
 }
 
-template <typename RTStackT> IMPL void _createPotentialHit2CommittedHit(RTSAS RTStackT *__restrict__ StackPtr) {
+template <typename RTStackT>
+IMPL void _createPotentialHit2CommittedHitImpl(RTSAS RTStackT *__restrict__ StackPtr) {
   // TODO: show that we can move the Xe specialization to this without any
   // losses.
   auto *CH = (RTSAS uint32_t *)&StackPtr->committedHit;
@@ -801,10 +806,11 @@ template <typename RTStackT> IMPL void _createPotentialHit2CommittedHit(RTSAS RT
     CH[i] = PH[i];
 }
 
-CREATE_PRIVATE void _createPotentialHit2CommittedHit_Xe3(RTSAS RTStack2<Xe3> *__restrict__ StackPtr) {
-  return _createPotentialHit2CommittedHit(StackPtr);
+template <typename RTStackT>
+IMPL void _createPotentialHit2CommittedHit(RTSAS RTStack2<RTStackT> *__restrict__ StackPtr) {
+  return _createPotentialHit2CommittedHitImpl(StackPtr);
 }
-
+IMPL_ALL_1ARG_XE3PLUS(_createPotentialHit2CommittedHit, StackPtr)
 
 CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe(RTSAS RTStack2<Xe> *__restrict__ StackPtr, _float8 RayInfo,
                                                      uint64_t RootNodePtr, uint32_t RayFlags,
@@ -960,7 +966,7 @@ CREATE_PRIVATE void _emitSingleRQMemRayWrite_Xe(RTSAS RTStack2<Xe> *__restrict__
 }
 
 template <typename RTStackT>
-IMPL void _emitSingleRQMemRayWrite(RTSAS RTStackT *__restrict__ HWStackPtr,
+IMPL void _emitSingleRQMemRayWriteImpl(RTSAS RTStackT *__restrict__ HWStackPtr,
                                    RTShadowAS RTStackT *__restrict__ SMStackPtr) {
   // copy ray info
   auto *Dst = &HWStackPtr->ray0.org[0];
@@ -985,15 +991,16 @@ IMPL void _emitSingleRQMemRayWrite(RTSAS RTStackT *__restrict__ HWStackPtr,
   *((RTSAS _uint8 *)&Dst[8]) = result;
 }
 
-CREATE_PRIVATE void _emitSingleRQMemRayWrite_Xe3(RTSAS RTStack2<Xe3> *__restrict__ HWStackPtr,
-                                                 RTShadowAS RTStack2<Xe3> *__restrict__ SMStackPtr) {
-  _emitSingleRQMemRayWrite(HWStackPtr, SMStackPtr);
+template <typename RTStackT>
+IMPL void _emitSingleRQMemRayWrite(RTSAS RTStack2<RTStackT> *__restrict__ HWStackPtr,
+                                   RTShadowAS RTStack2<RTStackT> *__restrict__ SMStackPtr) {
+  _emitSingleRQMemRayWriteImpl(HWStackPtr, SMStackPtr);
 }
+IMPL_ALL_2ARG_XE3PLUS(_emitSingleRQMemRayWrite, HWStackPtr, SMStackPtr)
 
-
-template <typename GenT>
-IMPL void _copyMemHitInProceed(RTSAS RTStack2<GenT> *__restrict__ HWStackPtr,
-                               RTShadowAS RTStack2<GenT> *__restrict__ SMStackPtr, bool singleRQProceed) {
+template <typename RTStackT>
+IMPL void _copyMemHitInProceedImpl(RTSAS RTStack2<RTStackT> *__restrict__ HWStackPtr,
+                                   RTShadowAS RTStack2<RTStackT> *__restrict__ SMStackPtr, bool singleRQProceed) {
   // copy first 16 bytes
   auto *SMCH = (RTShadowAS uint32_t *)&SMStackPtr->committedHit;
   _uint8 CHResult;
@@ -1037,21 +1044,17 @@ IMPL void _copyMemHitInProceed(RTSAS RTStack2<GenT> *__restrict__ HWStackPtr,
   }
   // HW will only reset the done bit to 0.  Prior to the sync trace ray,
   // we set the bit and HW will set it to 0 if there is more to do.
-  PHResult.s3 = SMPH[3] | (1 << (uint32_t)MemHit<GenT>::Offset::done);
+  PHResult.s3 = SMPH[3] | (1 << (uint32_t)MemHit<RTStackT>::Offset::done);
 
   *((RTSAS _uint8 *)&HWStackPtr->potentialHit) = PHResult;
 }
 
-CREATE_PRIVATE void _copyMemHitInProceed_Xe(RTSAS RTStack2<Xe> *__restrict__ HWStackPtr,
-                                            RTShadowAS RTStack2<Xe> *__restrict__ SMStackPtr, bool singleRQProceed) {
-  _copyMemHitInProceed(HWStackPtr, SMStackPtr, singleRQProceed);
+template <typename RTStackT>
+IMPL void _copyMemHitInProceed(RTSAS RTStack2<RTStackT> *__restrict__ HWStackPtr,
+                               RTShadowAS RTStack2<RTStackT> *__restrict__ SMStackPtr, bool singleRQProceed) {
+  _copyMemHitInProceedImpl(HWStackPtr, SMStackPtr, singleRQProceed);
 }
-
-CREATE_PRIVATE void _copyMemHitInProceed_Xe3(RTSAS RTStack2<Xe3> *__restrict__ HWStackPtr,
-                                             RTShadowAS RTStack2<Xe3> *__restrict__ SMStackPtr, bool singleRQProceed) {
-  _copyMemHitInProceed(HWStackPtr, SMStackPtr, singleRQProceed);
-}
-
+IMPL_ALL_3ARG(_copyMemHitInProceed, HWStackPtr, SMStackPtr, singleRQProceed)
 
 template <typename GenT>
 IMPL bool _syncStackToShadowMemory(RTSAS RTStack2<GenT> *__restrict__ HWStackPtr,
@@ -1180,7 +1183,7 @@ CREATE_PRIVATE void _commitProceduralPrimitiveHit_Xe(RTSAS RTStack2<Xe> *__restr
 }
 
 template <typename RTStackT>
-IMPL void _commitProceduralPrimitiveHit(RTSAS RTStackT *__restrict__ SMStackPtr, float THit) {
+IMPL void _commitProceduralPrimitiveHitImpl(RTSAS RTStackT *__restrict__ SMStackPtr, float THit) {
   auto &CH = SMStackPtr->committedHit;
   auto &PH = SMStackPtr->potentialHit;
 
@@ -1202,9 +1205,11 @@ IMPL void _commitProceduralPrimitiveHit(RTSAS RTStackT *__restrict__ SMStackPtr,
   CH.hitGroupIndex3 = 0;
 }
 
-CREATE_PRIVATE void _commitProceduralPrimitiveHit_Xe3(RTSAS RTStack2<Xe3> *__restrict__ SMStackPtr, float THit) {
-  return _commitProceduralPrimitiveHit(SMStackPtr, THit);
+template <typename RTStackT>
+IMPL void _commitProceduralPrimitiveHit(RTSAS RTStack2<RTStackT> *__restrict__ SMStackPtr, float THit) {
+  return _commitProceduralPrimitiveHitImpl(SMStackPtr, THit);
 }
+IMPL_ALL_2ARG_XE3PLUS(_commitProceduralPrimitiveHit, StackPtr, ShaderTy)
 
 
 IMPL uint32_t emitStateRegID(uint32_t Start, uint32_t End) {

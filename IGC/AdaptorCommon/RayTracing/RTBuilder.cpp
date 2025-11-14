@@ -1158,15 +1158,21 @@ Value *RTBuilder::getLeafType(StackPointerVal *StackPointer, Value *CommittedHit
 
 
 Value *RTBuilder::getLeafNodeSubType(StackPointerVal *StackPointer, Value *CommittedHit) {
-  switch (getMemoryStyle()) {
-  case RTMemoryStyle::Xe:
-    return this->getInt32(0);
+    switch (getMemoryStyle()) {
+#define STYLE_XE3PLUS(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    return _getLeafNodeSubType_##X(StackPointer, CommittedHit, VALUE_NAME("MemHit.LeafNodeSubType"));
 
-  case RTMemoryStyle::Xe3:
-    return _getLeafNodeSubType_Xe3(StackPointer, CommittedHit, VALUE_NAME("MemHit.LeafNodeSubType"));
+#include "RayTracingMemoryStyleXe3Plus.h"
+#undef STYLE_XE3PLUS
 
+    default:
+      IGC_ASSERT(0);
+      return nullptr;
   }
+
   IGC_ASSERT(0);
+
   return nullptr;
 }
 
@@ -1551,21 +1557,27 @@ void RTBuilder::emitSingleRQMemRayWrite(SyncStackPointerVal *HWStackPtr, SyncSta
   case RTMemoryStyle::Xe:
     _emitSingleRQMemRayWrite_Xe(HWStackPtr, SMStackPtr, VAdapt{*this, singleRQProceed});
     break;
-  case RTMemoryStyle::Xe3:
-    _emitSingleRQMemRayWrite_Xe3(HWStackPtr, SMStackPtr);
+
+#define STYLE_XE3PLUS(X)                                                                                               \
+  case RTMemoryStyle::X:                                                                                               \
+    _emitSingleRQMemRayWrite_##X(HWStackPtr, SMStackPtr);
     break;
+
+#include "RayTracingMemoryStyleXe3Plus.h"
+#undef STYLE_XE3PLUS
   }
 }
 
 void RTBuilder::copyMemHitInProceed(SyncStackPointerVal *HWStackPtr, SyncStackPointerVal *SMStackPtr,
                                     bool singleRQProceed) {
   switch (getMemoryStyle()) {
-  case RTMemoryStyle::Xe:
-    _copyMemHitInProceed_Xe(HWStackPtr, SMStackPtr, VAdapt{*this, singleRQProceed});
+#define STYLE(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    _copyMemHitInProceed_##X(HWStackPtr, SMStackPtr, VAdapt{*this, singleRQProceed});
     break;
-  case RTMemoryStyle::Xe3:
-    _copyMemHitInProceed_Xe3(HWStackPtr, SMStackPtr, VAdapt{*this, singleRQProceed});
-    break;
+
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
   }
 }
 
