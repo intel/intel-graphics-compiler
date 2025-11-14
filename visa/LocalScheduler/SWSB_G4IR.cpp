@@ -219,10 +219,15 @@ static bool hasSameExecMask(const G4_INST *inst1, const G4_INST *inst2) {
   return true;
 }
 
-static bool WARDepRequired(const G4_INST *inst1, const G4_INST *inst2) {
+static bool WARDepRequired(IR_Builder *builder, const G4_INST *inst1, const G4_INST *inst2) {
   if (!hasSameFunctionID(inst1, inst2)) {
     return true;
   }
+
+  if (builder->skipPredicateAndExecMaskForWARDepCheck()) {
+    return false;
+  }
+
   if (!hasSamePredicator(inst1, inst2)) {
     return true;
   }
@@ -5746,7 +5751,7 @@ void G4_BB_SB::setSendOpndMayKilled(SBNODE_VECT &SBNodes, PointsToAnalysis &p,
         // For SBID global liveness analysis, both explicit and implicit kill
         // counted.
         if (dep == WAR &&
-            WARDepRequired(nodeInfo.liveInst, curFootprint->inst)) {
+            WARDepRequired(&builder, nodeInfo.liveInst, curFootprint->inst)) {
           send_may_kill.src.set(globalID);
         } else if (dep == RAW) {
           send_may_kill.dst.set(globalID);
@@ -7314,7 +7319,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
             if (curFootprint->isWholeOverlap(liveFootprint)) {
               LB->killOperand(bn_it);
               liveNode->setAR();
-              if (WARDepRequired(liveInst, curInst)) {
+              if (WARDepRequired(&builder, liveInst, curInst)) {
                 liveNode->setSourceKilled(true);
               }
               killed = true;
@@ -7322,7 +7327,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
 
             // Different pipeline/functionID, added Edge
             // If not whole region overlap, still killed
-            if (WARDepRequired(liveInst, curInst)) {
+            if (WARDepRequired(&builder, liveInst, curInst)) {
               if (!killed) {
                 LB->killOperand(bn_it);
                 liveNode->setAR();
@@ -8344,7 +8349,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
               // when it's wholly overlapped by the following one
               if (curFootprint->isWholeOverlap(liveFootprint)) {
                 send_use_kills.killOperand(bn_it);
-                if (WARDepRequired(liveInst, curInst))
+                if (WARDepRequired(fg.builder, liveInst, curInst))
                 // Implicit dependence cannot block the following instruction
                 // from issue.
                 {
@@ -8354,7 +8359,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
                 killed = true;
               }
 
-              if (WARDepRequired(liveInst, curInst)) {
+              if (WARDepRequired(fg.builder, liveInst, curInst)) {
                 if (!killed) {
                   send_use_kills.killOperand(bn_it);
                   curLiveNode->setSourceKilled(true);
@@ -8701,7 +8706,7 @@ void SWSB::addGlobalDependenceWithReachingDef(
               // when it's wholly overlapped by the following one
               if (curFootprint->isWholeOverlap(liveFootprint)) {
                 send_use_kills.killOperand(bn_it);
-                if (WARDepRequired(liveInst, curInst))
+                if (WARDepRequired(fg.builder, liveInst, curInst))
                 // Implicit dependence cannot block the following instruction
                 // from issue.
                 {
@@ -8711,7 +8716,7 @@ void SWSB::addGlobalDependenceWithReachingDef(
                 killed = true;
               }
 
-              if (WARDepRequired(liveInst, curInst)) {
+              if (WARDepRequired(fg.builder, liveInst, curInst)) {
                 if (!killed) {
                   send_use_kills.killOperand(bn_it);
                   curLiveNode->setSourceKilled(true);

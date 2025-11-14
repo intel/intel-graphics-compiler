@@ -972,4 +972,8 @@ bool reserver510() {
   return false;
 }
 
+bool skipPredicateAndExecMaskForWARDepCheck() {
+  return false;
+}
+
 // end HW capabilities
