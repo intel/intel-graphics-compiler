@@ -424,6 +424,18 @@ bool WaveShuffleIndexSinkingImpl::moveToCommonDominator() {
   bool Changed = false;
   for (auto &bb : MoveToCommonDominatorInstMap) {
     auto instrInsertPtr = (&*bb.first->getFirstInsertionPt());
+    // If shuffle's source (shuffled value) is not of the hoisted instruction,
+    // and is defined in target basic block, then hoist after source.
+    for (auto &inst : bb.second) {
+      if (auto *waveShuffleInst = dyn_cast<WaveShuffleIndexIntrinsic>(inst)) {
+        if (auto *srcInst = dyn_cast<Instruction>(waveShuffleInst->getSrc())) {
+          if (srcInst->getParent() == bb.first &&
+              std::find(bb.second.begin(), bb.second.end(), srcInst) == bb.second.end()) {
+            instrInsertPtr = srcInst->getNextNode();
+          }
+        }
+      }
+    }
     for (auto &inst : bb.second) {
       inst->moveBefore(instrInsertPtr);
       Changed = true;
