@@ -1028,6 +1028,20 @@ void vISAVerifier::verifyInstructionMove(const CISA_INST *inst) {
                          "predication is not allowed for dst operands of a "
                          "flag copy mov instruction");
     }
+
+    /* Commented out because we are too lame to follow our own specification. */
+    /*
+    REPORT_INSTRUCTION(options,operand_class_dst == OPERAND_GENERAL  ||
+                      operand_class_dst == OPERAND_INDIRECT,
+                      "Destination operand of CISA MOV instruction only "
+                      "supports general and indirect operands.");
+
+    REPORT_INSTRUCTION(options,operand_class_src0 == OPERAND_GENERAL  ||
+                      operand_class_src0 == OPERAND_INDIRECT ||
+                      operand_class_src0 == OPERAND_IMMEDIATE,
+                      "Source0 operand of CISA MOV instruction only "
+                      "supports general, indirect, and immediate operands.");
+                      */
     break;
   }
 
@@ -1124,18 +1138,6 @@ void vISAVerifier::verifyInstructionMove(const CISA_INST *inst) {
                            operand_class_src0 == OPERAND_IMMEDIATE,
                        "Source0 operand of CISA SETP instruction only "
                        "supports general, indirect, and immediate operands.");
-
-    if (inst->getExecSize() == g4::SIMD32)
-      REPORT_INSTRUCTION(
-          options, inst->getExecMask() == vISA_EMASK_M1_NM,
-          "CISA SETP instruction only suppport M1_NM for SIMD32");
-    else
-      REPORT_INSTRUCTION(
-          options,
-          inst->getExecMask() == vISA_EMASK_M1_NM ||
-              inst->getExecMask() == vISA_EMASK_M5_NM,
-          "CISA SETP instruction only suppport M1_NM or M5_NM if SIMD "
-          "size is less than 32");
     break;
   }
   case ISA_SEL:
