@@ -1613,7 +1613,6 @@ endif()
 
 add_subdirectory(Compiler)
 add_subdirectory(DebugInfo)
-add_subdirectory(IRBuilderGenerator)
 add_subdirectory(DriverInterface)
 igc_sg_define(IGC__DriverInterface)
 igc_sg_define(IGC__LivenessUtils)
