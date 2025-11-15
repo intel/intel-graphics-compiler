@@ -6,5 +6,4 @@
 #
 #============================ end_copyright_notice =============================
 
-add_subdirectory(RTStackReflection)
 add_subdirectory(RTStackReflectionIRBG)

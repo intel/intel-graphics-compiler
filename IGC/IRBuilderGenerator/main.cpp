@@ -60,20 +60,67 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/UnifyFunctionExitNodes.h"
 #include "llvm/Transforms/Utils.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvm/Support/YAMLTraits.h"
+#include "llvmWrapper/Support/YAMLParser.h"
 #include "common/LLVMWarningsPop.hpp"
-
-#include "shared.h"
 
 #include <map>
 #include <optional>
 
 using namespace llvm;
 
+// Address space descriptor from YAML
+struct AddressSpaceDesc {
+  std::string name;
+  std::string description;
+  bool constant = false;
+  unsigned AS = 0; // Will be auto-assigned based on order
+};
+
+constexpr unsigned FIRST_ADDRSPACE = 100;
+
+// YAML parsing traits
+namespace llvm {
+namespace yaml {
+template <> struct MappingTraits<AddressSpaceDesc> {
+  static void mapping(IO &io, AddressSpaceDesc &desc) {
+    io.mapRequired("name", desc.name);
+    io.mapRequired("description", desc.description);
+    io.mapRequired("constant", desc.constant);
+  }
+};
+} // namespace yaml
+} // namespace llvm
+
+LLVM_YAML_IS_SEQUENCE_VECTOR(AddressSpaceDesc)
+
+struct AddressSpaceConfig {
+  std::vector<AddressSpaceDesc> address_spaces;
+};
+
+namespace llvm {
+namespace yaml {
+template <> struct MappingTraits<AddressSpaceConfig> {
+  static void mapping(IO &io, AddressSpaceConfig &config) { io.mapRequired("address_spaces", config.address_spaces); }
+};
+} // namespace yaml
+} // namespace llvm
+
+// Global storage for address space info loaded from YAML
+static std::vector<AddressSpaceDesc> LoadedAddrspaces;
+
 static cl::opt<std::string> InputFilename(cl::Positional, cl::desc("<input bitcode file>"), cl::value_desc("filename"),
-                                          cl::Required);
+                                          cl::init(""));
 
 static cl::opt<std::string> OutputFilename(cl::Positional, cl::desc("<output header file>"), cl::value_desc("header"),
-                                           cl::Required);
+                                           cl::init(""));
+
+static cl::opt<std::string> YamlPath("yaml-path", cl::desc("Path to address space descriptor YAML file"),
+                                     cl::value_desc("yaml"), cl::init(""));
+
+static cl::opt<std::string> GenDescPath("gen-desc",
+                                        cl::desc("Generate address space descriptor header at specified path"),
+                                        cl::value_desc("path"), cl::init(""));
 
 static cl::opt<bool> DoMangle("mangle-names", cl::desc("Mangles all strings"), cl::init(false));
 
@@ -82,7 +129,7 @@ enum class FuncScope { PRIVATE, PUBLIC };
 static cl::opt<FuncScope> AutogenScope("scope", cl::desc("Which functions to process"),
                                        cl::values(clEnumValN(FuncScope::PRIVATE, "private", "private header"),
                                                   clEnumValN(FuncScope::PUBLIC, "public", "public header")),
-                                       cl::Required);
+                                       cl::init(FuncScope::PRIVATE));
 
 using HoleMap = MapVector<const Type *, std::string>;
 using AlignMap = DenseMap<const Type *, uint32_t>;
@@ -567,7 +614,7 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
   SymbolTracker SymTracker;
   AddrspaceToValueMap AddrMap;
   SmallDenseSet<uint32_t> ReservedAddrspaces;
-  for (auto &ASInfo : ReservedAS)
+  for (auto &ASInfo : LoadedAddrspaces)
     ReservedAddrspaces.insert(ASInfo.AS);
   for (auto &Arg : F.args()) {
     SymTracker.addArg(&Arg);
@@ -1012,8 +1059,8 @@ bool process(const Module &M, raw_ostream &OS) {
 
 void markInvariant(Module &M) {
   SmallDenseSet<uint32_t> ConstantAS;
-  for (auto &ASInfo : ReservedAS) {
-    if (ASInfo.Constant)
+  for (auto &ASInfo : LoadedAddrspaces) {
+    if (ASInfo.constant)
       ConstantAS.insert(ASInfo.AS);
   }
 
@@ -1072,6 +1119,99 @@ void preprocess(Module &M) {
   rewriteAnonTypes(M);
 }
 
+bool loadAddressSpacesFromYAML(const std::string &YamlPath) {
+  ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr = MemoryBuffer::getFile(YamlPath);
+  if (std::error_code EC = FileOrErr.getError()) {
+    errs() << "Error opening YAML file '" << YamlPath << "': " << EC.message() << "\n";
+    return false;
+  }
+
+  yaml::Input YamlInput(FileOrErr.get()->getBuffer());
+  AddressSpaceConfig Config;
+  YamlInput >> Config;
+
+  if (YamlInput.error()) {
+    errs() << "Error parsing YAML file '" << YamlPath << "'\n";
+    return false;
+  }
+
+  LoadedAddrspaces.clear();
+  for (size_t i = 0; i < Config.address_spaces.size(); i++) {
+    auto &desc = Config.address_spaces[i];
+    desc.AS = FIRST_ADDRSPACE + static_cast<uint32_t>(i);
+    LoadedAddrspaces.push_back(desc);
+  }
+
+  return true;
+}
+
+bool generateDescriptorHeader(const std::string &YamlPath, const std::string &OutputPath) {
+  // Load the YAML configuration
+  ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr = MemoryBuffer::getFile(YamlPath);
+  if (std::error_code EC = FileOrErr.getError()) {
+    errs() << "Error opening YAML file '" << YamlPath << "': " << EC.message() << "\n";
+    return false;
+  }
+
+  yaml::Input YamlInput(FileOrErr.get()->getBuffer());
+  AddressSpaceConfig Config;
+  YamlInput >> Config;
+
+  if (YamlInput.error()) {
+    errs() << "Error parsing YAML file '" << YamlPath << "'\n";
+    return false;
+  }
+
+  // Open output file
+  std::error_code EC;
+  sys::fs::OpenFlags fsFlags = sys::fs::OF_TextWithCRLF;
+  raw_fd_ostream outfile(OutputPath, EC, fsFlags);
+
+  if (EC) {
+    errs() << "Couldn't open output file '" << OutputPath << "' for writing: " << EC.message() << "\n";
+    return false;
+  }
+
+  // Write the header
+  outfile << "// AUTOGENERATED FILE - DO NOT EDIT\n";
+  outfile << "// Generated from: " << YamlPath << "\n\n";
+  outfile << "#pragma once\n\n";
+  outfile << "struct AddrspaceInfo {\n";
+  outfile << "  unsigned AS;\n";
+  outfile << "  bool Constant;\n";
+  outfile << "  constexpr AddrspaceInfo(unsigned AS, bool Constant) : AS(AS), Constant(Constant) {}\n";
+  outfile << "};\n\n";
+  outfile << "constexpr AddrspaceInfo ReservedAS[] = {\n";
+  outfile << "    // clang-format off\n";
+
+  for (size_t i = 0; i < Config.address_spaces.size(); i++) {
+    auto &desc = Config.address_spaces[i];
+    unsigned AS = FIRST_ADDRSPACE + static_cast<unsigned>(i);
+    const char *constant = desc.constant ? "true " : "false";
+    outfile << "    AddrspaceInfo{ " << AS << ", " << constant << " }, // " << desc.name << ": " << desc.description
+            << "\n";
+  }
+
+  outfile << "    // clang-format on\n";
+  outfile << "};\n\n";
+
+  // Generate address space defines
+  outfile << "#if defined(__clang__)\n";
+  for (size_t i = 0; i < Config.address_spaces.size(); i++) {
+    auto &desc = Config.address_spaces[i];
+    outfile << "// " << desc.description << "\n";
+    outfile << "#define " << desc.name << " __attribute__((address_space(ReservedAS[" << i << "].AS)))\n";
+  }
+  outfile << "#else\n";
+  for (size_t i = 0; i < Config.address_spaces.size(); i++) {
+    auto &desc = Config.address_spaces[i];
+    outfile << "#define " << desc.name << "\n";
+  }
+  outfile << "#endif // __clang__\n";
+
+  return true;
+}
+
 int main(int argc, char **argv) {
   sys::PrintStackTraceOnErrorSignal(argv[0]);
   llvm::PrettyStackTraceProgram X(argc, argv);
@@ -1086,6 +1226,29 @@ Generate code for the specified bitcode.
 
   if (!cl::ParseCommandLineOptions(argc, argv, Overview))
     return 1;
+
+  // Handle --gen-desc mode: generate address space descriptor header and exit
+  if (!GenDescPath.empty()) {
+    if (YamlPath.empty()) {
+      errs() << "Error: --gen-desc requires --yaml-path to be specified\n";
+      return 1;
+    }
+    return generateDescriptorHeader(YamlPath, GenDescPath) ? 0 : 1;
+  }
+
+  // Validate required arguments for normal mode
+  if (InputFilename.empty() || OutputFilename.empty()) {
+    errs() << "Error: input bitcode file and output header file are required\n";
+    return 1;
+  }
+
+  // Load address space configuration from YAML if provided
+  if (!YamlPath.empty()) {
+    if (!loadAddressSpacesFromYAML(YamlPath)) {
+      errs() << "Failed to load address space configuration from: " << YamlPath << "\n";
+      return 1;
+    }
+  }
 
   LLVMContext Context;
   SMDiagnostic Err;
