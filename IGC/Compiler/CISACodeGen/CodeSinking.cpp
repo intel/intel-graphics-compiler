@@ -138,7 +138,6 @@ static BasicBlock *findLowestSinkTarget(Instruction *inst, SmallPtrSetImpl<Instr
         break;
     }
   }
-
   BasicBlock *curBlk = inst->getParent();
   Loop *curLoop = LI->getLoopFor(inst->getParent());
   while (tgtBlk && tgtBlk != curBlk) {
@@ -152,7 +151,7 @@ static BasicBlock *findLowestSinkTarget(Instruction *inst, SmallPtrSetImpl<Instr
         // Determine the block of the use.
         Instruction *useInst = cast<Instruction>(*I);
         BasicBlock *useBlock = useInst->getParent();
-        if (useBlock == tgtBlk && !isa<PHINode>(useInst)) {
+        if (useBlock == tgtBlk) {
           usesInBlk.insert(useInst);
         }
       }
