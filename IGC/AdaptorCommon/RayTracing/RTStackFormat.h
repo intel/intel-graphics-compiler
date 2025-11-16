@@ -25,7 +25,7 @@ SPDX-License-Identifier: MIT
 // We need to disable the warnings in such way because this C++ file may be compiled with Clang, GCC, and Microsoft
 // Visual Studio Compiler This works around (at least) two known problems:
 //  - QuickBuild treats compiler warnings as errors
-//  - RTStackReflection.exe generates warnings when compiling this file
+//  - IRBuilderGenerator.exe generates warnings when compiling this file
 //
 // The only macros that are used by the main code are:
 //     DISABLE_WARNING_PUSH

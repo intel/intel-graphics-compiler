@@ -5,25 +5,28 @@
 # SPDX-License-Identifier: MIT
 #
 #============================ end_copyright_notice =============================
-
-# Function to generate RT Stack reflection headers using clang and RTStackReflection tool
 #
-# This function compiles a C++ reflection file with clang and then processes it with
-# RTStackReflection tool to generate public and private header files.
+# This function compiles a C++ file with clang and then processes it with
+# a code generator tool to generate public and private header files.
 #
 # Arguments:
+#   NAME - Base name for the generated headers (e.g., RTStackReflection)
 #   SOURCE_FILE - The input C++ file to compile (e.g., reflection.cpp)
+#   YAML_PATH - (Optional) Path to the address space descriptor YAML file
 #   OUTPUT_DIR - Directory where generated headers will be placed
 #   INCLUDE_DIRS - List of include directories for clang
 #   DEPENDS - List of dependencies for the generation step
 #
-function(generate_rtstack_reflection_headers)
+function(generate_irbuilder_headers)
     set(options "")
-    set(oneValueArgs SOURCE_FILE OUTPUT_DIR SETUP_MODE)
+    set(oneValueArgs NAME SOURCE_FILE YAML_PATH OUTPUT_DIR SETUP_MODE)
     set(multiValueArgs INCLUDE_DIRS DEPENDS)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Validate arguments
+    if(NOT ARG_NAME)
+        message(FATAL_ERROR "NAME is required")
+    endif()
     if(NOT ARG_SOURCE_FILE)
         message(FATAL_ERROR "SOURCE_FILE is required")
     endif()
@@ -34,9 +37,33 @@ function(generate_rtstack_reflection_headers)
         set(ARG_SETUP_MODE "OPENSOURCE")
     endif()
 
+    # Set up YAML path flag if provided
+    set(YAML_PATH_FLAG "")
+    set(YAML_DEPENDS "")
+    set(DESC_HEADER_PATH "")
+    if(ARG_YAML_PATH)
+        set(YAML_PATH_FLAG "--yaml-path=${ARG_YAML_PATH}")
+        set(YAML_DEPENDS ${ARG_YAML_PATH})
+
+        # Generate descriptor header from YAML
+        get_filename_component(YAML_NAME ${ARG_YAML_PATH} NAME_WE)
+        set(DESC_HEADER_PATH ${ARG_OUTPUT_DIR}/AutoGen${YAML_NAME}.h)
+
+        add_custom_command(
+            OUTPUT ${DESC_HEADER_PATH}
+            COMMAND
+                $<TARGET_FILE:IRBuilderGenerator>
+                --yaml-path=${ARG_YAML_PATH}
+                --gen-desc=${DESC_HEADER_PATH}
+            COMMENT "[${ARG_NAME}] Generating descriptor header ${DESC_HEADER_PATH}"
+            DEPENDS ${ARG_YAML_PATH} IRBuilderGenerator
+            VERBATIM
+        )
+    endif()
+
     # Find clang-tool or clang
     if(NOT TARGET clang-tool)
-        message(STATUS "[RTStackReflection] clang-tool target is not set. Looking for clang")
+        message(STATUS "[${ARG_NAME}] clang-tool target is not set. Looking for clang")
         include(igc_find_opencl_clang)
     endif()
 
@@ -48,8 +75,8 @@ function(generate_rtstack_reflection_headers)
     # Set up paths
     get_filename_component(SOURCE_NAME ${ARG_SOURCE_FILE} NAME_WE)
     set(TEMP_BC_PATH ${CMAKE_CURRENT_BINARY_DIR}/${SOURCE_NAME}.bc)
-    set(PRIVATE_HEADER_PATH ${ARG_OUTPUT_DIR}/AutoGenRTStackAccessPrivate.h)
-    set(PUBLIC_HEADER_PATH ${ARG_OUTPUT_DIR}/AutoGenRTStackAccessPublic.h)
+    set(PRIVATE_HEADER_PATH ${ARG_OUTPUT_DIR}/AutoGen${ARG_NAME}Private.h)
+    set(PUBLIC_HEADER_PATH ${ARG_OUTPUT_DIR}/AutoGen${ARG_NAME}Public.h)
 
     # Build include directory flags
     set(INCLUDE_FLAGS "")
@@ -92,8 +119,8 @@ function(generate_rtstack_reflection_headers)
             ${SETUP_DEFINES}
             ${ARG_SOURCE_FILE}
             -o ${TEMP_BC_PATH}
-        COMMENT "[RTStackReflection] Compiling ${ARG_SOURCE_FILE}"
-        DEPENDS ${ARG_SOURCE_FILE} ${ARG_DEPENDS}
+        COMMENT "[${ARG_NAME}] Compiling ${ARG_SOURCE_FILE}"
+        DEPENDS ${ARG_SOURCE_FILE} ${ARG_DEPENDS} ${DESC_HEADER_PATH}
         VERBATIM
     )
 
@@ -101,13 +128,14 @@ function(generate_rtstack_reflection_headers)
     add_custom_command(
         OUTPUT ${PRIVATE_HEADER_PATH}
         COMMAND
-            $<TARGET_FILE:RTStackReflection>
+            $<TARGET_FILE:IRBuilderGenerator>
             --scope=private
             ${MANGLE_NAMES_FLAG}
+            ${YAML_PATH_FLAG}
             ${TEMP_BC_PATH}
             ${PRIVATE_HEADER_PATH}
-        COMMENT "[RTStackReflection] Generating ${PRIVATE_HEADER_PATH}"
-        DEPENDS ${TEMP_BC_PATH} RTStackReflection
+        COMMENT "[${ARG_NAME}] Generating ${PRIVATE_HEADER_PATH}"
+        DEPENDS ${TEMP_BC_PATH} IRBuilderGenerator ${YAML_DEPENDS}
         VERBATIM
     )
 
@@ -115,20 +143,22 @@ function(generate_rtstack_reflection_headers)
     add_custom_command(
         OUTPUT ${PUBLIC_HEADER_PATH}
         COMMAND
-            $<TARGET_FILE:RTStackReflection>
+            $<TARGET_FILE:IRBuilderGenerator>
             --scope=public
             ${MANGLE_NAMES_FLAG}
+            ${YAML_PATH_FLAG}
             ${TEMP_BC_PATH}
             ${PUBLIC_HEADER_PATH}
-        COMMENT "[RTStackReflection] Generating ${PUBLIC_HEADER_PATH}"
-        DEPENDS ${TEMP_BC_PATH} RTStackReflection
+        COMMENT "[${ARG_NAME}] Generating ${PUBLIC_HEADER_PATH}"
+        DEPENDS ${TEMP_BC_PATH} IRBuilderGenerator ${YAML_DEPENDS}
         VERBATIM
     )
 
     # Set output variables in parent scope so the caller can reference the generated headers
-    set(RTSTACK_GENERATED_HEADERS
+    set(GENERATED_HEADERS
         ${PRIVATE_HEADER_PATH}
         ${PUBLIC_HEADER_PATH}
+        ${DESC_HEADER_PATH}
         PARENT_SCOPE
     )
 
