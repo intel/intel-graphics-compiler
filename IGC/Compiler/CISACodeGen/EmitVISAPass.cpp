@@ -540,6 +540,12 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function
   if (m_currShader->IsRecompilationRequestForced()) {
     return true;
   }
+
+  // Codegen works efficiently for kernels with 1 BB,
+  // so give it a chance to compile on the first stage
+  if (F->size() == 1)
+    return false;
+
   auto Threshold = IGC_GET_FLAG_VALUE(EarlyRetryLargeGRFThreshold);
   auto GRFPerThread = m_pCtx->getNumGRFPerThread();
   // If we are not in large GRF mode and auto GRF is disabled we use
