@@ -6,10 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "PromoteSubByte.h"
+#include "PromoteBools.h"
 #include "Compiler/IGCPassSupport.h"
-#include "GenISAIntrinsics/GenIntrinsicInst.h"
-#include "GenISAIntrinsics/GenIntrinsics.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -27,7 +25,6 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 using namespace IGC;
-using UV = UndefValue;
 
 static void swapNames(Value *value1, Value *value2) {
   if (value1->getType()->isVoidTy() || value2->getType()->isVoidTy() || (!value1->hasName() && !value2->hasName())) {
@@ -62,16 +59,15 @@ static Type *createDemotedType(Type *type) {
 #define PASS_DESCRIPTION "Promote bools"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(PromoteSubByte, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(PromoteSubByte, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(PromoteBools, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(PromoteBools, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char PromoteSubByte::ID = 0;
+char PromoteBools::ID = 0;
 
-PromoteSubByte::PromoteSubByte() : ModulePass(ID) { initializePromoteSubBytePass(*PassRegistry::getPassRegistry()); }
+PromoteBools::PromoteBools() : ModulePass(ID) { initializePromoteBoolsPass(*PassRegistry::getPassRegistry()); }
 
-bool PromoteSubByte::runOnModule(Module &module) {
+bool PromoteBools::runOnModule(Module &module) {
   changed = false;
-  M = &module;
 
   // Promote functions
   for (auto &function : module.functions()) {
@@ -103,17 +99,17 @@ bool PromoteSubByte::runOnModule(Module &module) {
   return changed;
 }
 
-Value *PromoteSubByte::convertI8ToI1(Value *value, Instruction *insertBefore) {
+Value *PromoteBools::convertI8ToI1(Value *value, Instruction *insertBefore) {
   IRBuilder<> builder(insertBefore);
   return convertI8ToI1(value, builder);
 }
 
-Value *PromoteSubByte::convertI1ToI8(Value *value, Instruction *insertBefore) {
+Value *PromoteBools::convertI1ToI8(Value *value, Instruction *insertBefore) {
   IRBuilder<> builder(insertBefore);
   return convertI1ToI8(value, builder);
 }
 
-Value *PromoteSubByte::convertI1ToI8(Value *value, IRBuilder<> &builder) {
+Value *PromoteBools::convertI1ToI8(Value *value, IRBuilder<> &builder) {
   if (!isIntegerTy(value, 1)) {
     return value;
   }
@@ -130,7 +126,7 @@ Value *PromoteSubByte::convertI1ToI8(Value *value, IRBuilder<> &builder) {
   return zext;
 }
 
-Value *PromoteSubByte::convertI8ToI1(Value *value, IRBuilder<> &builder) {
+Value *PromoteBools::convertI8ToI1(Value *value, IRBuilder<> &builder) {
   if (!isIntegerTy(value, 8)) {
     return value;
   }
@@ -147,7 +143,7 @@ Value *PromoteSubByte::convertI8ToI1(Value *value, IRBuilder<> &builder) {
   return trunc;
 }
 
-Value *PromoteSubByte::castAggregate(Value *value, Type *desiredType, IRBuilder<> &builder) {
+Value *PromoteBools::castAggregate(Value *value, Type *desiredType, IRBuilder<> &builder) {
 
   if (auto *srcST = dyn_cast<StructType>(value->getType())) {
     auto *dstST = dyn_cast<StructType>(desiredType);
@@ -190,11 +186,11 @@ Value *PromoteSubByte::castAggregate(Value *value, Type *desiredType, IRBuilder<
   return nullptr;
 }
 
-Value *PromoteSubByte::castTo(Value *value, Type *desiredType, Instruction *insertBefore) {
+Value *PromoteBools::castTo(Value *value, Type *desiredType, Instruction *insertBefore) {
   IRBuilder<> builder(insertBefore);
   return castTo(value, desiredType, builder);
 }
-Value *PromoteSubByte::castTo(Value *value, Type *desiredType, IRBuilder<> &builder) {
+Value *PromoteBools::castTo(Value *value, Type *desiredType, IRBuilder<> &builder) {
 
   if (value->getType() == desiredType) {
     return value;
@@ -212,11 +208,11 @@ Value *PromoteSubByte::castTo(Value *value, Type *desiredType, IRBuilder<> &buil
   return builder.CreateBitCast(value, desiredType);
 }
 
-void PromoteSubByte::cleanUp(Module &module) {
+void PromoteBools::cleanUp(Module &module) {
   auto erase = [](auto v) {
     // Replace all v uses by undef. It allows us not to worry about
     // the order in which we delete unpromoted values.
-    v->replaceAllUsesWith(UV::get(v->getType()));
+    v->replaceAllUsesWith(UndefValue::get(v->getType()));
     v->eraseFromParent();
   };
 
@@ -247,16 +243,10 @@ void PromoteSubByte::cleanUp(Module &module) {
     for (auto &basicBlock : function) {
       for (auto it = basicBlock.rbegin(); it != basicBlock.rend(); ++it) {
         Instruction *instruction = &*it;
-
-        bool isDeadInstCandidate = isa<TruncInst>(instruction) || isa<ZExtInst>(instruction);
-        if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(instruction)) {
-          GenISAIntrinsic::ID IID = GII->getIntrinsicID();
-          isDeadInstCandidate |=
-              (IID == GenISAIntrinsic::GenISA_Int4VectorPack || IID == GenISAIntrinsic::GenISA_Int4VectorUnpack);
-        }
-
-        if (isDeadInstCandidate && instruction->hasNUses(0)) {
-          deadInstructions.push_back(instruction);
+        if (isa<TruncInst>(instruction) || isa<ZExtInst>(instruction)) {
+          if (instruction->hasNUses(0)) {
+            deadInstructions.push_back(instruction);
+          }
         }
       }
     }
@@ -272,14 +262,14 @@ void PromoteSubByte::cleanUp(Module &module) {
 // Checking if type needs promotion
 //
 //------------------------------------------------------------------------------
-bool PromoteSubByte::typeNeedsPromotion(Type *type, DenseSet<Type *> visitedTypes) {
+bool PromoteBools::typeNeedsPromotion(Type *type, DenseSet<Type *> visitedTypes) {
   if (!type || visitedTypes.count(type)) {
     return false;
   }
 
   visitedTypes.insert(type);
 
-  if (type->isIntegerTy(1) || type->isIntegerTy(4)) {
+  if (type->isIntegerTy(1)) {
     return true;
   } else if (auto vectorType = dyn_cast<VectorType>(type)) {
     return typeNeedsPromotion(vectorType->getElementType(), visitedTypes);
@@ -311,21 +301,16 @@ bool PromoteSubByte::typeNeedsPromotion(Type *type, DenseSet<Type *> visitedType
 // Promoting types
 //
 //------------------------------------------------------------------------------
-Type *PromoteSubByte::getOrCreatePromotedType(Type *type) {
+Type *PromoteBools::getOrCreatePromotedType(Type *type) {
   if (promotedTypesCache.count(type)) {
     return promotedTypesCache[type];
   }
 
   Type *newType = type;
-  if (type->isIntegerTy(1) || type->isIntegerTy(4)) {
+  if (type->isIntegerTy(1)) {
     newType = Type::getInt8Ty(type->getContext());
-  } else if (auto fixedVectorType = dyn_cast<IGCLLVM::FixedVectorType>(type)) {
-    unsigned numElts = fixedVectorType->getNumElements();
-    if (fixedVectorType->getElementType()->isIntegerTy(4))
-      numElts = (numElts + 1) / 2; // Odd number of elements gets rounded up
-
-    Type *promotedElemType = getOrCreatePromotedType(fixedVectorType->getElementType());
-    newType = IGCLLVM::FixedVectorType::get(promotedElemType, numElts);
+  } else if (auto vectorType = dyn_cast<VectorType>(type)) {
+    newType = VectorType::get(getOrCreatePromotedType(vectorType->getElementType()), vectorType->getElementCount());
   } else if (auto pointerType = dyn_cast<PointerType>(type)) {
     newType = IGCLLVM::isOpaquePointerTy(pointerType)
                   ? pointerType
@@ -375,9 +360,9 @@ Type *PromoteSubByte::getOrCreatePromotedType(Type *type) {
 // Promoting values
 //
 //------------------------------------------------------------------------------
-bool PromoteSubByte::wasPromoted(llvm::Value *value) { return promotedValuesCache.count(value); }
+bool PromoteBools::wasPromoted(llvm::Value *value) { return promotedValuesCache.count(value); }
 
-Value *PromoteSubByte::getOrCreatePromotedValue(Value *value) {
+Value *PromoteBools::getOrCreatePromotedValue(Value *value) {
   if (wasPromoted(value)) {
     return promotedValuesCache[value];
   }
@@ -419,8 +404,6 @@ Value *PromoteSubByte::getOrCreatePromotedValue(Value *value) {
     newValue = promoteExtractElement(extractElement);
   } else if (auto insertElement = dyn_cast<InsertElementInst>(value)) {
     newValue = promoteInsertElement(insertElement);
-  } else if (auto shuffleVector = dyn_cast<ShuffleVectorInst>(value)) {
-    newValue = promoteShuffleVector(shuffleVector);
   } else if (auto instruction = dyn_cast<Instruction>(value)) {
     for (auto &operand : instruction->operands()) {
       if (wasPromoted(operand)) {
@@ -481,7 +464,7 @@ Value *PromoteSubByte::getOrCreatePromotedValue(Value *value) {
   return newValue;
 }
 
-template <typename T> void PromoteSubByte::setPromotedAttributes(T *newCallOrFunc, const AttributeList &attributeList) {
+template <typename T> void PromoteBools::setPromotedAttributes(T *newCallOrFunc, const AttributeList &attributeList) {
   auto getPromoted = [this, &newCallOrFunc](llvm::Attribute attr) {
     if (attr.isTypeAttribute()) {
       return attr.getWithNewType(newCallOrFunc->getContext(), getOrCreatePromotedType(attr.getValueAsType()));
@@ -511,7 +494,7 @@ template <typename T> void PromoteSubByte::setPromotedAttributes(T *newCallOrFun
   }
 }
 
-Function *PromoteSubByte::promoteFunction(Function *function) {
+Function *PromoteBools::promoteFunction(Function *function) {
   if (!function || function->isIntrinsic() || PreprocessSPVIR::isSPVIR(function->getName()) ||
       !typeNeedsPromotion(function->getFunctionType())) {
     return function;
@@ -597,7 +580,7 @@ Function *PromoteSubByte::promoteFunction(Function *function) {
   return newFunction;
 }
 
-GlobalVariable *PromoteSubByte::promoteGlobalVariable(GlobalVariable *globalVariable) {
+GlobalVariable *PromoteBools::promoteGlobalVariable(GlobalVariable *globalVariable) {
   if (!globalVariable || !typeNeedsPromotion(globalVariable->getValueType())) {
     return globalVariable;
   }
@@ -617,13 +600,13 @@ GlobalVariable *PromoteSubByte::promoteGlobalVariable(GlobalVariable *globalVari
   return newGlobalVariable;
 }
 
-Constant *PromoteSubByte::promoteConstant(Constant *constant) {
+Constant *PromoteBools::promoteConstant(Constant *constant) {
   if (!constant) {
     return nullptr;
   }
 
   if (isa<UndefValue>(constant)) {
-    return UV::get(getOrCreatePromotedType(constant->getType()));
+    return UndefValue::get(getOrCreatePromotedType(constant->getType()));
   } else if (isa<ConstantAggregateZero>(constant)) {
     return ConstantAggregateZero::get(getOrCreatePromotedType(constant->getType()));
   } else if (auto constantInteger = dyn_cast<ConstantInt>(constant)) {
@@ -631,7 +614,7 @@ Constant *PromoteSubByte::promoteConstant(Constant *constant) {
       return constant;
     }
 
-    return ConstantInt::get(Type::getInt8Ty(constant->getContext()), constantInteger->getZExtValue());
+    return ConstantInt::get(Type::getInt8Ty(constant->getContext()), constant->isOneValue() ? 1 : 0);
   } else if (auto constantPointerNull = dyn_cast<ConstantPointerNull>(constant)) {
     if (IGCLLVM::isOpaquePointerTy(constantPointerNull->getType())) {
       return constant;
@@ -651,15 +634,11 @@ Constant *PromoteSubByte::promoteConstant(Constant *constant) {
       return constant;
     }
 
-    if (constantVector->getType()->getElementType()->isIntegerTy(4)) {
-      return packConstantInt4Vector(constantVector);
-    } else {
-      SmallVector<Constant *, 8> values;
-      for (unsigned i = 0; i < constantVector->getType()->getNumElements(); ++i) {
-        values.push_back(promoteConstant(constantVector->getAggregateElement(i)));
-      }
-      return ConstantVector::get(values);
+    SmallVector<Constant *, 8> values;
+    for (unsigned i = 0; i < constantVector->getType()->getNumElements(); ++i) {
+      values.push_back(promoteConstant(constantVector->getAggregateElement(i)));
     }
+    return ConstantVector::get(values);
   } else if (auto constantArray = dyn_cast<ConstantArray>(constant)) {
     if (!typeNeedsPromotion(constantArray->getType())) {
       return constant;
@@ -696,7 +675,7 @@ Constant *PromoteSubByte::promoteConstant(Constant *constant) {
   return constant;
 }
 
-AddrSpaceCastInst *PromoteSubByte::promoteAddrSpaceCast(AddrSpaceCastInst *addrSpaceCast) {
+AddrSpaceCastInst *PromoteBools::promoteAddrSpaceCast(AddrSpaceCastInst *addrSpaceCast) {
   if (!addrSpaceCast ||
       (!wasPromotedAnyOf(addrSpaceCast->operands()) && !typeNeedsPromotion(addrSpaceCast->getDestTy()))) {
     return addrSpaceCast;
@@ -708,7 +687,7 @@ AddrSpaceCastInst *PromoteSubByte::promoteAddrSpaceCast(AddrSpaceCastInst *addrS
   return newAddrSpaceCast;
 }
 
-AllocaInst *PromoteSubByte::promoteAlloca(AllocaInst *alloca) {
+AllocaInst *PromoteBools::promoteAlloca(AllocaInst *alloca) {
   if (!alloca || !typeNeedsPromotion(alloca->getAllocatedType())) {
     return alloca;
   }
@@ -721,7 +700,7 @@ AllocaInst *PromoteSubByte::promoteAlloca(AllocaInst *alloca) {
   return newAlloca;
 }
 
-Value *PromoteSubByte::promoteBitCast(BitCastInst *bitcast) {
+Value *PromoteBools::promoteBitCast(BitCastInst *bitcast) {
   if (!bitcast || (!wasPromotedAnyOf(bitcast->operands()) && !typeNeedsPromotion(bitcast->getDestTy()))) {
     return bitcast;
   }
@@ -737,7 +716,7 @@ Value *PromoteSubByte::promoteBitCast(BitCastInst *bitcast) {
   return newBitcast;
 }
 
-CallInst *PromoteSubByte::promoteIndirectCallOrInlineAsm(CallInst *call) {
+CallInst *PromoteBools::promoteIndirectCallOrInlineAsm(CallInst *call) {
   IGC_ASSERT(call->isIndirectCall() || call->isInlineAsm());
   auto operand = call->getCalledOperand();
   auto functionType = call->getFunctionType();
@@ -759,7 +738,7 @@ CallInst *PromoteSubByte::promoteIndirectCallOrInlineAsm(CallInst *call) {
   return newCall;
 }
 
-CallInst *PromoteSubByte::promoteCall(CallInst *call) {
+CallInst *PromoteBools::promoteCall(CallInst *call) {
   if (!call) {
     return nullptr;
   }
@@ -813,7 +792,7 @@ CallInst *PromoteSubByte::promoteCall(CallInst *call) {
   return newCall;
 }
 
-ExtractValueInst *PromoteSubByte::promoteExtractValue(ExtractValueInst *extractValue) {
+ExtractValueInst *PromoteBools::promoteExtractValue(ExtractValueInst *extractValue) {
   if (!extractValue) {
     return nullptr;
   }
@@ -829,7 +808,7 @@ ExtractValueInst *PromoteSubByte::promoteExtractValue(ExtractValueInst *extractV
   return newExtractValue;
 }
 
-GetElementPtrInst *PromoteSubByte::promoteGetElementPtr(GetElementPtrInst *getElementPtr) {
+GetElementPtrInst *PromoteBools::promoteGetElementPtr(GetElementPtrInst *getElementPtr) {
   if (!getElementPtr ||
       (!wasPromotedAnyOf(getElementPtr->operands()) && !typeNeedsPromotion(getElementPtr->getResultElementType()))) {
     return getElementPtr;
@@ -845,7 +824,7 @@ GetElementPtrInst *PromoteSubByte::promoteGetElementPtr(GetElementPtrInst *getEl
   return newGetElementPtr;
 }
 
-Value *PromoteSubByte::promoteICmp(ICmpInst *icmp) {
+Value *PromoteBools::promoteICmp(ICmpInst *icmp) {
   if (!icmp) {
     return nullptr;
   }
@@ -861,7 +840,7 @@ Value *PromoteSubByte::promoteICmp(ICmpInst *icmp) {
   return convertI1ToI8(newICmp, icmp);
 }
 
-InlineAsm *PromoteSubByte::promoteInlineAsm(InlineAsm *inlineAsm) {
+InlineAsm *PromoteBools::promoteInlineAsm(InlineAsm *inlineAsm) {
   if (!inlineAsm || !typeNeedsPromotion(inlineAsm->getFunctionType())) {
     return inlineAsm;
   }
@@ -871,7 +850,7 @@ InlineAsm *PromoteSubByte::promoteInlineAsm(InlineAsm *inlineAsm) {
                         inlineAsm->isAlignStack(), inlineAsm->getDialect());
 }
 
-InsertValueInst *PromoteSubByte::promoteInsertValue(InsertValueInst *insertValue) {
+InsertValueInst *PromoteBools::promoteInsertValue(InsertValueInst *insertValue) {
   if (!insertValue) {
     return nullptr;
   }
@@ -894,7 +873,7 @@ InsertValueInst *PromoteSubByte::promoteInsertValue(InsertValueInst *insertValue
   return newInsertValue;
 }
 
-LoadInst *PromoteSubByte::promoteLoad(LoadInst *load) {
+LoadInst *PromoteBools::promoteLoad(LoadInst *load) {
   if (!load) {
     return nullptr;
   }
@@ -912,7 +891,7 @@ LoadInst *PromoteSubByte::promoteLoad(LoadInst *load) {
   return newLoad;
 }
 
-llvm::PHINode *PromoteSubByte::promotePHI(llvm::PHINode *phi) {
+llvm::PHINode *PromoteBools::promotePHI(llvm::PHINode *phi) {
   if (!phi || visitedPHINodes.count(phi) ||
       (!wasPromotedAnyOf(phi->operands()) && !typeNeedsPromotion(phi->getType()))) {
     return phi;
@@ -937,7 +916,7 @@ llvm::PHINode *PromoteSubByte::promotePHI(llvm::PHINode *phi) {
   return newPhi;
 }
 
-StoreInst *PromoteSubByte::promoteStore(StoreInst *store) {
+StoreInst *PromoteBools::promoteStore(StoreInst *store) {
   if (!store) {
     return nullptr;
   }
@@ -959,7 +938,7 @@ StoreInst *PromoteSubByte::promoteStore(StoreInst *store) {
   return newStore;
 }
 
-IntToPtrInst *PromoteSubByte::promoteIntToPtr(IntToPtrInst *inttoptr) {
+IntToPtrInst *PromoteBools::promoteIntToPtr(IntToPtrInst *inttoptr) {
   if (!inttoptr || (!wasPromotedAnyOf(inttoptr->operands()) && !typeNeedsPromotion(inttoptr->getDestTy()))) {
     return inttoptr;
   }
@@ -970,191 +949,28 @@ IntToPtrInst *PromoteSubByte::promoteIntToPtr(IntToPtrInst *inttoptr) {
   return newIntToPtr;
 }
 
-ExtractElementInst *PromoteSubByte::promoteExtractElement(ExtractElementInst *extractElement) {
+ExtractElementInst *PromoteBools::promoteExtractElement(ExtractElementInst *extractElement) {
   if (!extractElement ||
-      (!wasPromotedAnyOf(extractElement->operands()) && !typeNeedsPromotion(extractElement->getType())))
-    return nullptr;
+      (!wasPromotedAnyOf(extractElement->operands()) && !typeNeedsPromotion(extractElement->getType()))) {
+    return extractElement;
+  }
 
-  IRBuilder<> builder(extractElement);
-  builder.SetCurrentDebugLocation(extractElement->getDebugLoc());
-
-  Value *inputVector = promoteAndUnpackInt4Vector(extractElement->getVectorOperand(), builder);
-  Value *extractIndex = getOrCreatePromotedValue(extractElement->getIndexOperand());
-  return cast<ExtractElementInst>(builder.CreateExtractElement(inputVector, extractIndex));
+  auto newExtractElem =
+      ExtractElementInst::Create(getOrCreatePromotedValue(extractElement->getVectorOperand()),
+                                 getOrCreatePromotedValue(extractElement->getIndexOperand()), "", extractElement);
+  newExtractElem->setDebugLoc(extractElement->getDebugLoc());
+  return newExtractElem;
 }
 
-Value *PromoteSubByte::promoteInsertElement(InsertElementInst *insertElement) {
+InsertElementInst *PromoteBools::promoteInsertElement(InsertElementInst *insertElement) {
   if (!insertElement ||
       (!wasPromotedAnyOf(insertElement->operands()) && !typeNeedsPromotion(insertElement->getType()))) {
     return insertElement;
   }
 
-  IRBuilder<> builder(insertElement);
-  builder.SetCurrentDebugLocation(insertElement->getDebugLoc());
-
-  Value *inputVector = promoteAndUnpackInt4Vector(insertElement->getOperand(0), builder);
-  Value *newElement = getOrCreatePromotedValue(insertElement->getOperand(1));
-  Value *insertIndex = getOrCreatePromotedValue(insertElement->getOperand(2));
-
-  Value *outputVector = builder.CreateInsertElement(inputVector, newElement, insertIndex);
-
-  if (insertElement->getType()->getElementType()->isIntegerTy(4))
-    outputVector = packInt4Vector(outputVector, builder);
-
-  return outputVector;
-}
-
-Value *PromoteSubByte::promoteShuffleVector(ShuffleVectorInst *shuffleVector) {
-  if (!shuffleVector ||
-      (!wasPromotedAnyOf(shuffleVector->operands()) && !typeNeedsPromotion(shuffleVector->getType()))) {
-    return shuffleVector;
-  }
-
-  IRBuilder<> builder(shuffleVector);
-  builder.SetCurrentDebugLocation(shuffleVector->getDebugLoc());
-
-  Value *promotedArg0 = promoteAndUnpackInt4Vector(shuffleVector->getOperand(0), builder);
-  Value *promotedArg1 = promoteAndUnpackInt4Vector(shuffleVector->getOperand(1), builder);
-  Value *mask = IGCLLVM::getShuffleMaskForBitcode(shuffleVector);
-
-  auto *result = builder.CreateShuffleVector(promotedArg0, promotedArg1, mask);
-
-  if (shuffleVector->getType()->getElementType()->isIntegerTy(4))
-    result = packInt4Vector(result, builder);
-
-  return result;
-}
-
-Value *PromoteSubByte::promoteAndUnpackInt4Vector(Value *unpromoted, IRBuilder<> &builder) {
-  if (!typeNeedsPromotion(unpromoted->getType()))
-    return unpromoted;
-
-  Value *promoted = getOrCreatePromotedValue(unpromoted);
-
-  auto *unpromotedVTy = dyn_cast<IGCLLVM::FixedVectorType>(unpromoted->getType());
-  if (!unpromotedVTy) {
-    IGC_ASSERT_MESSAGE(false, "Expected FixedVectorType in promoteAndUnpackInt4Vector");
-    return promoted;
-  }
-
-  // Skip unpacking if vector element is not of i4 type
-  if (!unpromotedVTy->getElementType()->isIntegerTy(4))
-    return promoted;
-
-  // Coalesce chained pack -> unpack calls
-  if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(promoted)) {
-    if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_Int4VectorPack) {
-      return GII->getOperand(0);
-    }
-  }
-
-  // Figure out output type
-  auto *outputTy = IGCLLVM::FixedVectorType::get(builder.getInt8Ty(), unpromotedVTy->getNumElements());
-
-  // Special case for undef/poison values
-  if (isa<PoisonValue>(promoted))
-    return PoisonValue::get(outputTy);
-  if (isa<UndefValue>(promoted))
-    return UV::get(outputTy);
-
-  // Try to handle constant cases without GenISA calls to keep the llvm IR clean
-  if (Constant *unpackedConst = unpackConstantInt4Vector(promoted, outputTy))
-    return unpackedConst;
-
-  auto GIID = GenISAIntrinsic::GenISA_Int4VectorUnpack;
-  Function *packingFunc = GenISAIntrinsic::getDeclaration(M, GIID, {outputTy, promoted->getType()});
-  return builder.CreateCall(packingFunc, {promoted});
-}
-
-Value *PromoteSubByte::packInt4Vector(Value *input, IRBuilder<> &builder) {
-  // Coalesce chained unpack -> pack calls
-  if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(input)) {
-    if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_Int4VectorUnpack) {
-      return GII->getOperand(0);
-    }
-  }
-
-  // Try to handle constant cases without GenISA calls to keep the llvm IR clean
-  if (Constant *packedConst = packConstantInt4Vector(input))
-    return packedConst;
-
-  // Case is not constant. Figure out input/output types
-  auto *inputVecTy = dyn_cast<IGCLLVM::FixedVectorType>(input->getType());
-  if (!inputVecTy) {
-    IGC_ASSERT_MESSAGE(false, "Expected vector type for Int4 vector promotion");
-    return input;
-  }
-  unsigned outputNum = (inputVecTy->getNumElements() + 1) / 2; // Odd number of elements gets rounded up
-  Type *outputTy = IGCLLVM::FixedVectorType::get(builder.getInt8Ty(), outputNum);
-
-  // Special case for undef/poison values.
-  if (isa<PoisonValue>(input))
-    return PoisonValue::get(outputTy);
-  if (isa<UndefValue>(input))
-    return UV::get(outputTy);
-
-  auto GIID = GenISAIntrinsic::GenISA_Int4VectorPack;
-  Function *packingFunc = GenISAIntrinsic::getDeclaration(M, GIID, {outputTy, inputVecTy});
-  return builder.CreateCall(packingFunc, {input});
-}
-
-static SmallVector<uint8_t, 32> extractDataFromConstIntVector(Value *input) {
-  SmallVector<uint8_t, 32> result;
-  if (auto inputCI = dyn_cast<ConstantInt>(input)) {
-    result.push_back(static_cast<uint8_t>(inputCI->getZExtValue()));
-  } else if (auto inputCDV = dyn_cast<ConstantDataVector>(input)) {
-    unsigned elementCount = inputCDV->getType()->getNumElements();
-    for (unsigned i = 0; i < elementCount; ++i) {
-      result.push_back(static_cast<uint8_t>(inputCDV->getElementAsInteger(i)));
-    }
-  } else if (auto inputCV = dyn_cast<ConstantVector>(input)) {
-    unsigned elementCount = inputCV->getType()->getNumElements();
-    for (unsigned i = 0; i < elementCount; ++i) {
-      auto elemCI = dyn_cast<llvm::ConstantInt>(inputCV->getAggregateElement(i));
-      if (!elemCI) {
-        result.clear();
-        break;
-      }
-      result.push_back(static_cast<uint8_t>(elemCI->getZExtValue()));
-    }
-  }
-  return result;
-}
-
-Constant *PromoteSubByte::unpackConstantInt4Vector(Value *input, IGCLLVM::FixedVectorType *outputTy) {
-  auto data = extractDataFromConstIntVector(input);
-  if (data.empty())
-    return nullptr;
-
-  SmallVector<Constant *, 32> values;
-  for (unsigned i = 0; i < data.size(); i += 1) {
-    uint8_t value0 = data[i] & 0b1111;
-    uint8_t value1 = data[i] >> 4;
-    values.push_back(ConstantInt::get(Type::getInt8Ty(input->getContext()), value0));
-    values.push_back(ConstantInt::get(Type::getInt8Ty(input->getContext()), value1));
-  }
-
-  // Recover original size if it was odd
-  if (outputTy->getNumElements() % 2 != 0)
-    values.pop_back();
-
-  return ConstantVector::get(values);
-}
-
-Constant *PromoteSubByte::packConstantInt4Vector(Value *input) {
-  auto data = extractDataFromConstIntVector(input);
-  if (data.empty())
-    return nullptr;
-
-  // Round up to even number of elements
-  if (data.size() % 2 != 0)
-    data.push_back(0);
-
-  SmallVector<Constant *, 32> values;
-  for (unsigned i = 0; i < data.size(); i += 2) {
-    uint8_t value = data[i] | (data[i + 1] << 4);
-    values.push_back(ConstantInt::get(Type::getInt8Ty(input->getContext()), value));
-  }
-
-  return ConstantVector::get(values);
+  auto newInsertElem = InsertElementInst::Create(
+      getOrCreatePromotedValue(insertElement->getOperand(0)), getOrCreatePromotedValue(insertElement->getOperand(1)),
+      getOrCreatePromotedValue(insertElement->getOperand(2)), "", insertElement);
+  newInsertElem->setDebugLoc(insertElement->getDebugLoc());
+  return newInsertElem;
 }

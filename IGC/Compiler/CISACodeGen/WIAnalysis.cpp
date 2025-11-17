@@ -1240,7 +1240,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       GII_id == GenISAIntrinsic::GenISA_2fto2bf || GII_id == GenISAIntrinsic::GenISA_dual_subslice_id ||
       GII_id == GenISAIntrinsic::GenISA_hftobf8 || GII_id == GenISAIntrinsic::GenISA_bf8tohf ||
       GII_id == GenISAIntrinsic::GenISA_srnd_ftohf || GII_id == GenISAIntrinsic::GenISA_srnd_hftobf8 ||
-      GII_id == GenISAIntrinsic::GenISA_Int4VectorUnpack || GII_id == GenISAIntrinsic::GenISA_Int4VectorPack ||
       GII_id == GenISAIntrinsic::GenISA_hftohf8 || GII_id == GenISAIntrinsic::GenISA_hf8tohf ||
       GII_id == GenISAIntrinsic::GenISA_ftotf32 || GII_id == GenISAIntrinsic::GenISA_GlobalBufferPointer ||
       GII_id == GenISAIntrinsic::GenISA_LocalBufferPointer ||

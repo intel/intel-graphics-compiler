@@ -576,8 +576,6 @@ public:
   bool forceCacheCtrl(llvm::Instruction *vectorLdStInst = nullptr);
   uint32_t totalBytesToStoreOrLoad(llvm::Instruction *vectorLdStInst);
   void emitSrnd(llvm::GenIntrinsicInst *GII);
-  void emitInt4VectorUnpack(llvm::GenIntrinsicInst *GII);
-  void emitInt4VectorPack(llvm::GenIntrinsicInst *GII);
   void emitStaticConstantPatchValue(llvm::StaticConstantPatchIntrinsic *staticConstantPatch32);
   // Debug Built-Ins
   void emitStateRegID(uint32_t BitStart, uint32_t BitEnd);

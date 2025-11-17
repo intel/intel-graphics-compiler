@@ -38,7 +38,7 @@ set(IGC_BUILD__SRC__DriverInterface
 list(APPEND IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/PreprocessSPVIR.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/PromoteSubByte.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/PromoteBools.cpp"
   )
 
   set(IGC_BUILD__SRC__RAYTRACING
