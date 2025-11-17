@@ -41,7 +41,8 @@ public:
   static char ID;
 
 private:
-  bool getConstantOffset(llvm::Value *value, int &offset);
+  bool getConstantOffset(llvm::Value *value, std::vector<llvm::Instruction *> &zexts, int &offset);
+  void zextToSext(std::vector<llvm::Instruction *> &zexts);
 };
 
 #define PASS_FLAG "igc-sink-ptr-const-add"
@@ -50,7 +51,8 @@ private:
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS(SinkPointerConstAddPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-bool SinkPointerConstAddPass::getConstantOffset(llvm::Value *value, int &offset) {
+bool SinkPointerConstAddPass::getConstantOffset(llvm::Value *value, std::vector<llvm::Instruction *> &zexts,
+                                                int &offset) {
   // Recursively search for constant add operations - this will stop after the first const add found,
   // and should be called repeatedly until no more const adds can be sunk.
 
@@ -61,11 +63,15 @@ bool SinkPointerConstAddPass::getConstantOffset(llvm::Value *value, int &offset)
   if (llvm::Instruction *instr = llvm::dyn_cast<llvm::Instruction>(value)) {
     if (instr->getOpcode() == llvm::Instruction::Trunc || instr->getOpcode() == llvm::Instruction::ZExt ||
         instr->getOpcode() == llvm::Instruction::SExt) {
+      // Collect zext instructions for later processing
+      if (instr->getOpcode() == llvm::Instruction::ZExt) {
+        zexts.push_back(instr);
+      }
       // Skip cast instructions
       llvm::Instruction *op = llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
       // This is a simple pass, only sink within the same basic block
       if (op && instr->getParent() == op->getParent()) {
-        return getConstantOffset(instr->getOperand(0), offset);
+        return getConstantOffset(instr->getOperand(0), zexts, offset);
       } else {
         return false;
       }
@@ -89,14 +95,27 @@ bool SinkPointerConstAddPass::getConstantOffset(llvm::Value *value, int &offset)
         llvm::Instruction *op0 = llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
         llvm::Instruction *op1 = llvm::dyn_cast<llvm::Instruction>(instr->getOperand(1));
         // This is a simple pass, only sink within the same basic block
-        return (op0 && instr->getParent() == op0->getParent() && getConstantOffset(op0, offset)) ? true
-               : (op1 && instr->getParent() == op1->getParent()) ? getConstantOffset(op1, offset)
+        return (op0 && instr->getParent() == op0->getParent() && getConstantOffset(op0, zexts, offset)) ? true
+               : (op1 && instr->getParent() == op1->getParent()) ? getConstantOffset(op1, zexts, offset)
                                                                  : false;
       }
     }
   }
 
   return false;
+}
+
+void SinkPointerConstAddPass::zextToSext(std::vector<llvm::Instruction *> &zexts) {
+  // Remove duplicates
+  std::sort(zexts.begin(), zexts.end());
+  zexts.erase(std::unique(zexts.begin(), zexts.end()), zexts.end());
+  // Convert zext instructions to sext instructions
+  for (auto &zext : zexts) {
+    llvm::IRBuilder<> builder(zext);
+    llvm::Value *sext = builder.CreateSExt(zext->getOperand(0), zext->getType());
+    zext->replaceAllUsesWith(sext);
+    zext->eraseFromParent();
+  }
 }
 
 bool SinkPointerConstAddPass::runOnFunction(llvm::Function &F) {
@@ -115,9 +134,18 @@ bool SinkPointerConstAddPass::runOnFunction(llvm::Function &F) {
 
   for (auto &intrinsic : intToPtrInsts) {
     int offset = 0;
+    bool localChanged = false;
+    std::vector<llvm::Instruction *> zexts;
     // Keep sinking constant adds until no more can be sunk
-    while (getConstantOffset(intrinsic->getOperand(0), offset)) {
+    while (getConstantOffset(intrinsic->getOperand(0), zexts, offset)) {
+      localChanged = true;
       changed = true;
+    }
+
+    if (localChanged) {
+      // In some cases, sinking constant add may introduce negative values in pointer calculations.
+      // Convert affected zext instructions to sext instructions to avoid potential issues.
+      zextToSext(zexts);
     }
 
     // If we found any constant offset, create new pointer calculation

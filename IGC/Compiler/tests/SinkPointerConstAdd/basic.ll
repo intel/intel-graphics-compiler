@@ -21,7 +21,7 @@ GlobalScopeInitialization:
   %1 = call i64 @llvm.genx.GenISA.RuntimeValue.i64(i32 2)
   %2 = add i32 %0, 128
   %3 = zext i32 %2 to i64
-; CHECK: %2 = zext i32 %0 to i64
+; CHECK: %2 = sext i32 %0 to i64
   %4 = add i64 %1, %3
 ; CHECK-NEXT: %3 = add i64 %1, %2
 ; CHECK-NEXT: %4 = add i64 %3, 128
