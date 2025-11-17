@@ -998,6 +998,9 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack) {
         Value *stackAlloca = builder.CreateCall(stackAllocaFunc, totalOffset, VALUE_NAME("stackAlloca"));
         privateBuffer =
             builder.CreatePointerCast(stackAlloca, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
+
+        // Attaching this metadata is crucial to both properly interpret this locations as stack based ond to inline it.
+        // Because these are stack locations we can safely inline them even with optimizations disabled (O0).
         auto DbgUses = llvm::FindDbgAddrUses(pAI);
         for (auto Use : DbgUses) {
           if (auto DbgDcl = dyn_cast_or_null<DbgDeclareInst>(Use)) {
@@ -1297,14 +1300,19 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack) {
     Value *privateBuffer =
         builder.CreatePointerCast(bufferBase, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
 
-    auto DbgUses = llvm::FindDbgAddrUses(pAI);
-    for (auto Use : DbgUses) {
-      if (auto DbgDcl = dyn_cast_or_null<DbgDeclareInst>(Use)) {
-        // Attach metadata to instruction containing offset of storage
-        unsigned int scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
-        auto OffsetMD =
-            MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
-        DbgDcl->setMetadata("StorageOffset", OffsetMD);
+    // Attaching this metadata will make this location be inlined.
+    // We can only safely inline such locations with optimizations disabled.
+    // On O2 we have no guarantee the offsets in registers are gonna be valid throughout the entire variable lifetime.
+    if (modMD->compOpt.OptDisable) {
+      auto DbgUses = llvm::FindDbgAddrUses(pAI);
+      for (auto Use : DbgUses) {
+        if (auto DbgDcl = dyn_cast_or_null<DbgDeclareInst>(Use)) {
+          // Attach metadata to instruction containing offset of storage
+          unsigned int scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
+          auto OffsetMD =
+              MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
+          DbgDcl->setMetadata("StorageOffset", OffsetMD);
+        }
       }
     }
 
