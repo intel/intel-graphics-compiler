@@ -1158,17 +1158,17 @@ Value *RTBuilder::getLeafType(StackPointerVal *StackPointer, Value *CommittedHit
 
 
 Value *RTBuilder::getLeafNodeSubType(StackPointerVal *StackPointer, Value *CommittedHit) {
-    switch (getMemoryStyle()) {
-#define STYLE_XE3PLUS(X)                                                                                                       \
+  switch (getMemoryStyle()) {
+
+  case RTMemoryStyle::Xe:
+    return this->getInt32(0);
+
+#define STYLE_XE3PLUS(X)                                                                                               \
   case RTMemoryStyle::X:                                                                                               \
     return _getLeafNodeSubType_##X(StackPointer, CommittedHit, VALUE_NAME("MemHit.LeafNodeSubType"));
 
 #include "RayTracingMemoryStyleXe3Plus.h"
 #undef STYLE_XE3PLUS
-
-    default:
-      IGC_ASSERT(0);
-      return nullptr;
   }
 
   IGC_ASSERT(0);
@@ -1560,7 +1560,7 @@ void RTBuilder::emitSingleRQMemRayWrite(SyncStackPointerVal *HWStackPtr, SyncSta
 
 #define STYLE_XE3PLUS(X)                                                                                               \
   case RTMemoryStyle::X:                                                                                               \
-    _emitSingleRQMemRayWrite_##X(HWStackPtr, SMStackPtr);
+    _emitSingleRQMemRayWrite_##X(HWStackPtr, SMStackPtr);                                                              \
     break;
 
 #include "RayTracingMemoryStyleXe3Plus.h"
@@ -1573,7 +1573,7 @@ void RTBuilder::copyMemHitInProceed(SyncStackPointerVal *HWStackPtr, SyncStackPo
   switch (getMemoryStyle()) {
 #define STYLE(X)                                                                                                       \
   case RTMemoryStyle::X:                                                                                               \
-    _copyMemHitInProceed_##X(HWStackPtr, SMStackPtr, VAdapt{*this, singleRQProceed});
+    _copyMemHitInProceed_##X(HWStackPtr, SMStackPtr, VAdapt{*this, singleRQProceed});                                  \
     break;
 
 #include "RayTracingMemoryStyle.h"
