@@ -68,13 +68,8 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/ScalarEvolutionExpander.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/ValueMapper.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/BasicBlockUtils.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/InitializePasses.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/LegacyADCE.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/lldWrapper/Common/Driver.h"
-  )
 
-set(IGC_WrapperLLVM_SRC
-    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/LegacyADCE.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/lldWrapper/Common/Driver.h"
   )
 
 include_directories(
@@ -95,8 +90,6 @@ igc_sg_register(
     "WrapperLLVM"
     FILES
       ${IGC_WrapperLLVM_HDR}
-      ${IGC_WrapperLLVM_SRC}
   )
 
 set(IGC_WrapperLLVM_HDR ${IGC_WrapperLLVM_HDR} PARENT_SCOPE)
-set(IGC_WrapperLLVM_SRC ${IGC_WrapperLLVM_SRC} PARENT_SCOPE)

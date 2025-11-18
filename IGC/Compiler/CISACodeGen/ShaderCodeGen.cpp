@@ -156,7 +156,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
-#include "llvmWrapper/Transforms/Scalar/LegacyADCE.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
@@ -558,7 +557,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     // DCE doesn't remove dead control flow; ADCE does (currently)
     // otherwise you'd have to call createCFGSimplificationPass and DCE
     // iteratively e.g..
-    mpm.add(IGCLLVM::createLegacyADCEPass());
+    mpm.add(llvm::createAggressiveDCEPass());
     // TODO: we probably should be running other passes on the result
 
     if (!IGC::ForceAlwaysInline(&ctx)) {
@@ -812,7 +811,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
       mpm.add(llvm::createLICMPass(100, 500, true));
       mpm.add(llvm::createEarlyCSEPass());
     }
-    mpm.add(IGCLLVM::createLegacyADCEPass());
+    mpm.add(createAggressiveDCEPass());
     // As DPC++ FE apply LICM we cannot reduce register pressure just
     // by turning off LICM at IGC in some cases so apply sinking address arithmetic
     if ((IGC_IS_FLAG_ENABLED(ForceAddressArithSinking) ||
@@ -1478,7 +1477,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
       mpm.add(llvm::createDeadCodeEliminationPass());
       if (!extensiveShader(pContext))
-        mpm.add(IGCLLVM::createLegacyADCEPass());
+        mpm.add(llvm::createAggressiveDCEPass());
 
       mpm.add(new BreakConstantExpr());
       mpm.add(new IGCConstProp(IGC_IS_FLAG_ENABLED(EnableSimplifyGEP)));
@@ -1727,7 +1726,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
     }
     if (IGC_IS_FLAG_ENABLED(EnableVectorizer)) {
       mpm.add(new IGCVectorizer());
-      mpm.add(IGCLLVM::createLegacyADCEPass());
+      mpm.add(llvm::createAggressiveDCEPass());
       if (IGC_IS_FLAG_ENABLED(VectorizerCheckScalarizer))
         mpm.add(createScalarizerPass(SelectiveScalarizer::Auto));
     }
