@@ -33,6 +33,7 @@ def IGFX_ARROWLAKE      : Platform<"IGFX_ARROWLAKE">;
 def IGFX_BMG            : Platform<"IGFX_BMG">;
 def IGFX_LUNARLAKE      : Platform<"IGFX_LUNARLAKE">;
 def IGFX_PTL            : Platform<"IGFX_PTL">;
+def IGFX_NVL_XE3G       : Platform<"IGFX_NVL_XE3G">;
 
 // Core Families
 def IGFX_GEN12_CORE     : CoreFamily<"IGFX_GEN12_CORE">;
