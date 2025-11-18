@@ -1660,6 +1660,7 @@ set(IGC_BUILD__SRC__IGC__igc_common
 set(IGC_BUILD__SRC__IGC__igc_dll
     ${IGC_BUILD__SRC__IGC__igc_common}
     ${IGC_BUILD__SRC__IGC_DriverInterface__igc_dll}
+    ${IGC_WrapperLLVM_SRC}
   )
 
 
