@@ -281,7 +281,7 @@ void initializeLowerInvokeSIMDPass(llvm::PassRegistry &);
 void initializeRemoveCodeAssumptionsPass(llvm::PassRegistry &);
 void initializePreprocessSPVIRPass(llvm::PassRegistry &);
 void initializeConvertUserSemanticDecoratorOnFunctionsPass(llvm::PassRegistry &);
-void initializePromoteBoolsPass(llvm::PassRegistry &);
+void initializePromoteSubBytePass(llvm::PassRegistry &);
 void initializeResolveConstExprCallsPass(llvm::PassRegistry &);
 void initializeHandleSpirvDecorationMetadataPass(llvm::PassRegistry &);
 void initializeNontemporalLoadsAndStoresInAssertPass(llvm::PassRegistry &);
