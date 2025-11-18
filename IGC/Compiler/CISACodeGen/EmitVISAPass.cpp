@@ -744,9 +744,8 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
         m_encoder->SetIsCodePatchCandidate(false);
       }
 
-      if (m_pCtx->platform.supportDualSimd8PS() &&
-          m_pCtx->platform.isCoreChildOf(IGFX_XE2_HPG_CORE) &&
-          m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER ) {
+      if (m_pCtx->platform.supportDualSimd8PS() && m_pCtx->platform.isCoreChildOf(IGFX_XE2_HPG_CORE) &&
+          m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER) {
         m_encoder->SetIsCodePatchCandidate(false);
       }
     } else {
@@ -3999,7 +3998,8 @@ void EmitPass::emitVideoAnalyticGRF(llvm::GenIntrinsicInst *inst, const DWORD re
 
 static bool isVectorTypeAllowed(Value *I) {
   IGCLLVM::FixedVectorType *VecType = llvm::dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
-  if (!VecType) return false;
+  if (!VecType)
+    return false;
   auto ElType = VecType->getElementType();
   return ElType->isIntegerTy(32) || ElType->isFloatTy();
 }
@@ -4045,8 +4045,10 @@ void EmitPass::BinaryUnary(llvm::Instruction *inst, const SSource source[2], con
     break;
   case Instruction::FAdd:
   case Instruction::Add:
-    if (inst->getType()->isVectorTy()) Add(source, modifier);
-    else EmitSimpleAlu(inst, source, modifier);
+    if (inst->getType()->isVectorTy())
+      Add(source, modifier);
+    else
+      EmitSimpleAlu(inst, source, modifier);
     break;
   case Instruction::Call:
     EmitAluIntrinsic(cast<CallInst>(inst), source, modifier);
@@ -4245,7 +4247,6 @@ static unsigned getVectorSize(Value *I) {
   return NumElements;
 }
 
-
 void EmitPass::FPTrunc(const SSource sources[2], const DstModifier &modifier) {
 
   CVariable *src[2];
@@ -4351,13 +4352,18 @@ bool EmitPass::isVectorEmissionPossible(const SSource sources[2], CVariable *src
   // any non ordinary state of source modifiers
   // can be a sign of emission of a specific pattern,
   // emission can interfere with
-  if (sources[0].elementOffset != 0) return false;
-  if (sources[1].elementOffset != 0) return false;
-  if (sources[0].SIMDOffset != 0) return false;
-  if (sources[1].SIMDOffset != 0) return false;
+  if (sources[0].elementOffset != 0)
+    return false;
+  if (sources[1].elementOffset != 0)
+    return false;
+  if (sources[0].SIMDOffset != 0)
+    return false;
+  if (sources[1].SIMDOffset != 0)
+    return false;
 
   bool AllowedVectorTypes = isVectorTypeAllowed(sources[0].value) && isVectorTypeAllowed(sources[1].value);
-  if (!AllowedVectorTypes) return false;
+  if (!AllowedVectorTypes)
+    return false;
 
   bool DestSizeEquals = false;
   // it's possible have a case where two uniform vectors are
@@ -4732,7 +4738,8 @@ void EmitPass::VectorMad(const SSource sources[3], const DstModifier &modifier) 
 void EmitPass::FDiv(const SSource sources[2], const DstModifier &modifier) {
 
   CVariable *src[2];
-  for (int i = 0; i < 2; ++i) src[i] = GetSrcVariable(sources[i]);
+  for (int i = 0; i < 2; ++i)
+    src[i] = GetSrcVariable(sources[i]);
   bool IsPossible = isVectorEmissionPossible(sources, src);
 
   if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && IsPossible) {
@@ -5697,8 +5704,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
         CVariable *tempCopy = m_currShader->GetNewVariable(simdChannel, "SanitizedIndexShuffleTmp");
         m_encoder->And(tempCopy, simdChannel, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
         simdChannelUW = m_currShader->BitCast(tempCopy, ISA_TYPE_UW);
-      }
-      else {
+      } else {
         m_encoder->SetSrcRegion(0, 2, 1, 0);
         m_encoder->SetDstRegion(2);
         m_encoder->And(simdChannelUW, simdChannelUW, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
@@ -8747,12 +8753,13 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     break;
   case GenISAIntrinsic::GenISA_ldrawvector_indexed:
   case GenISAIntrinsic::GenISA_ldraw_indexed:
-    emitLoadRawIndexed(cast<LdRawIntrinsic>(inst), cast<LdRawIntrinsic>(inst)->getOffsetValue(), nullptr, nullptr);
+    emitLoadRawIndexed(cast<LdRawIntrinsic>(inst), cast<LdRawIntrinsic>(inst)->getOffsetValue(), nullptr, nullptr,
+                       false /*flipVarOffsetSign*/);
     break;
   case GenISAIntrinsic::GenISA_storerawvector_indexed:
   case GenISAIntrinsic::GenISA_storeraw_indexed:
     emitStoreRawIndexed(cast<StoreRawIntrinsic>(inst), cast<StoreRawIntrinsic>(inst)->getOffsetValue(), nullptr,
-                        nullptr);
+                        nullptr, false /*flipVarOffsetSign*/);
     break;
   case GenISAIntrinsic::GenISA_GetBufferPtr:
     emitGetBufferPtr(inst);
@@ -9218,6 +9225,7 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst *inst) {
   case Intrinsic::fabs:
   case Intrinsic::trap:
   case Intrinsic::experimental_noalias_scope_decl:
+  case Intrinsic::assume:
     // do nothing
     break;
   case Intrinsic::stacksave:
@@ -10439,8 +10447,8 @@ void EmitPass::setRovCacheCtrl(GenIntrinsicInst *inst) {
   inst->setMetadata("lsc.cache.ctrl", node);
 }
 
-void EmitPass::emitLoadRawIndexed(LdRawIntrinsic *inst, Value *varOffset, ConstantInt *immScale,
-                                  ConstantInt *immOffset) {
+void EmitPass::emitLoadRawIndexed(LdRawIntrinsic *inst, Value *varOffset, ConstantInt *immScale, ConstantInt *immOffset,
+                                  bool flipVarOffsetSign) {
   Value *bufPtrv = inst->getResourceValue();
 
   LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
@@ -10451,7 +10459,7 @@ void EmitPass::emitLoadRawIndexed(LdRawIntrinsic *inst, Value *varOffset, Consta
     }
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, true);
     emitLSCVectorLoad(inst, bufPtrv,
-                      varOffset, immOffset, immScale, cacheOpts, addrSpace
+                      varOffset, immOffset, immScale, flipVarOffsetSign, cacheOpts, addrSpace
     );
     return;
   }
@@ -10710,7 +10718,8 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic *inst, ResourceDescriptor &resourc
   }
 }
 
-void EmitPass::emitLoad(LoadInst *inst, Value *offset, ConstantInt *immOffset, ConstantInt *immScale
+void EmitPass::emitLoad(LoadInst *inst, Value *offset, ConstantInt *immOffset, ConstantInt *immScale,
+                        bool flipVarOffsetSign
 ) {
   if (m_pCtx->getModuleMetaData()->isHDCFastClearShader) {
     emitFastClear(inst);
@@ -10722,13 +10731,13 @@ void EmitPass::emitLoad(LoadInst *inst, Value *offset, ConstantInt *immOffset, C
     LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
     emitLSCVectorLoad(inst, inst->getPointerOperand(),
-                      offset, immOffset, immScale, cacheOpts, addrSpace
+                      offset, immOffset, immScale, flipVarOffsetSign, cacheOpts, addrSpace
     );
     return;
   }
   IGC_ASSERT_MESSAGE(immScale ? immScale->getSExtValue() == 1 : true, "Immediate Scale not supported on non-LSC path!");
 
-  emitVectorLoad(inst, offset, immOffset);
+  emitVectorLoad(inst, offset, immOffset, flipVarOffsetSign);
 }
 
 void EmitPass::emitPredicatedLoad(Instruction *inst) {
@@ -10743,7 +10752,7 @@ void EmitPass::emitPredicatedLoad(Instruction *inst) {
   LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
   emitLSCVectorLoad(inst, offset,
-                    offset, nullptr, nullptr, cacheOpts, addrSpace
+                    offset, nullptr, nullptr, false, cacheOpts, addrSpace
   );
 }
 
@@ -11780,7 +11789,7 @@ void EmitPass::emitSymbolRelocation(Function &F) {
 }
 
 void EmitPass::emitStoreRawIndexed(StoreRawIntrinsic *inst, Value *varOffset, ConstantInt *immScale,
-                                   ConstantInt *immOffset) {
+                                   ConstantInt *immOffset, bool flipVarOffsetSign) {
   Value *pBufPtr = inst->getResourceValue();
   Value *pValToStore = inst->getStoreValue();
 
@@ -11791,8 +11800,8 @@ void EmitPass::emitStoreRawIndexed(StoreRawIntrinsic *inst, Value *varOffset, Co
 
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false);
     emitLSCVectorStore(pBufPtr,
-                       varOffset, immOffset, immScale, pValToStore, inst->getParent(), cacheOpts, inst->getAlignment(),
-                       false, addrSpace
+                       varOffset, immOffset, immScale, flipVarOffsetSign, pValToStore, inst->getParent(), cacheOpts,
+                       inst->getAlignment(), false, addrSpace
     );
     return;
   }
@@ -11917,20 +11926,21 @@ void EmitPass::emitStore3DInner(Value *pllValToStore, Value *pllDstPtr, Value *p
   }
 }
 
-void EmitPass::emitStore(StoreInst *inst, Value *varOffset, ConstantInt *immOffset, ConstantInt *immScale
+void EmitPass::emitStore(StoreInst *inst, Value *varOffset, ConstantInt *immOffset, ConstantInt *immScale,
+                         bool flipVarOffsetSign
 ) {
   if (shouldGenerateLSC(inst)) {
     LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false);
     emitLSCVectorStore(inst->getPointerOperand(),
-                       varOffset, immOffset, immScale, inst->getValueOperand(), inst->getParent(), cacheOpts,
-                       IGCLLVM::getAlignmentValue(inst), inst->getMetadata("enable.vmask"), addrSpace
+                       varOffset, immOffset, immScale, flipVarOffsetSign, inst->getValueOperand(), inst->getParent(),
+                       cacheOpts, IGCLLVM::getAlignmentValue(inst), inst->getMetadata("enable.vmask"), addrSpace
     );
     return;
   }
   IGC_ASSERT_MESSAGE(immScale ? immScale->getSExtValue() == 1 : true, "Immediate Scale not supported on non-LSC path!");
-  emitVectorStore(inst, varOffset, immOffset);
+  emitVectorStore(inst, varOffset, immOffset, flipVarOffsetSign);
 }
 
 void EmitPass::emitPredicatedStore(Instruction *inst) {
@@ -11943,7 +11953,8 @@ void EmitPass::emitPredicatedStore(Instruction *inst) {
   LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false);
 
   emitLSCVectorStore(inst->getOperand(0),
-                     inst->getOperand(0), nullptr, nullptr, inst->getOperand(1), inst->getParent(), cacheOpts,
+                     inst->getOperand(0), nullptr, nullptr, false /*flipVarOffsetSign*/, inst->getOperand(1),
+                     inst->getParent(), cacheOpts,
                      cast<ConstantInt>(inst->getOperand(2))->getZExtValue(), // alignment
                      inst->getMetadata("enable.vmask"), addrSpace
                      ,
@@ -14636,7 +14647,7 @@ CVariable *EmitPass::UnpackOrBroadcastIfUniform(CVariable *pVar) {
 }
 
 void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, ConstantInt *immOffset,
-                             ConstantInt *immScale
+                             ConstantInt *immScale, bool flipVarOffsetSign
 ) {
   ForceDMask();
   // Currently, Dword Atomics can be called by matching 2 intrinsics. One is the
@@ -14710,6 +14721,13 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
 
   // Dst address in bytes.
   CVariable *pDstAddr = GetSymbol(dstAddr);
+  if (flipVarOffsetSign) {
+    CVariable *eNegBase = m_currShader->GetNewVariable(pDstAddr, CName(pDstAddr->getName(), "Neg"));
+    m_encoder->SetSrcModifier(0, EMOD_NEG);
+    m_encoder->Copy(eNegBase, pDstAddr); // MOV with -src modifier
+    m_encoder->Push();
+    pDstAddr = eNegBase;
+  }
 
 
   PointerType *PtrTy = dyn_cast<PointerType>(dstAddr->getType());
@@ -16631,7 +16649,7 @@ void EmitPass::emitFastClearSend(llvm::Instruction *pInst) {
   m_encoder->Push();
 }
 
-void EmitPass::emitVectorLoad(LoadInst *inst, Value *offset, ConstantInt *immOffset) {
+void EmitPass::emitVectorLoad(LoadInst *inst, Value *offset, ConstantInt *immOffset, bool flipVarOffsetSign) {
   int immOffsetInt = 0;
   if (immOffset)
     immOffsetInt = static_cast<int>(immOffset->getSExtValue());
@@ -16645,6 +16663,13 @@ void EmitPass::emitVectorLoad(LoadInst *inst, Value *offset, ConstantInt *immOff
   // eOffset is in bytes
   // offset corresponds to Int2Ptr operand obtained during pattern matching
   CVariable *eOffset = GetSymbol(immOffset ? offset : Ptr);
+  if (flipVarOffsetSign) {
+    CVariable *eNegOffset = m_currShader->GetNewVariable(eOffset, CName(eOffset->getName(), "Neg"));
+    m_encoder->SetSrcModifier(0, EMOD_NEG);
+    m_encoder->Copy(eNegOffset, eOffset); // MOV with -src modifier
+    m_encoder->Push();
+    eOffset = eNegOffset;
+  }
   if (useA32) {
     eOffset = TruncatePointer(eOffset);
   }
@@ -17083,7 +17108,7 @@ void EmitPass::emitVectorLoad(LoadInst *inst, Value *offset, ConstantInt *immOff
   }
 }
 
-void EmitPass::emitVectorStore(StoreInst *inst, Value *offset, ConstantInt *immOffset) {
+void EmitPass::emitVectorStore(StoreInst *inst, Value *offset, ConstantInt *immOffset, bool flipVarOffsetSign) {
   int immOffsetInt = 0;
   if (immOffset)
     immOffsetInt = static_cast<int>(immOffset->getSExtValue());
@@ -17100,6 +17125,13 @@ void EmitPass::emitVectorStore(StoreInst *inst, Value *offset, ConstantInt *immO
   // eOffset is in bytes
   // offset corresponds to Int2Ptr operand obtained during pattern matching
   CVariable *eOffset = GetSymbol(immOffset ? offset : Ptr);
+  if (flipVarOffsetSign) {
+    CVariable *eNegOffset = m_currShader->GetNewVariable(eOffset, CName(eOffset->getName(), "Neg"));
+    m_encoder->SetSrcModifier(0, EMOD_NEG);
+    m_encoder->Copy(eNegOffset, eOffset); // MOV with -src modifier
+    m_encoder->Push();
+    eOffset = eNegOffset;
+  }
   bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
   if (useA32) {
     eOffset = TruncatePointer(eOffset);
@@ -17774,7 +17806,7 @@ void EmitPass::emitLSCVectorLoad_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32, 
 
 void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr,
                                  Value *varOffset, ConstantInt *immOffset, ConstantInt *immScale,
-                                 LSC_CACHE_OPTS cacheOpts, LSC_DOC_ADDR_SPACE addrSpace
+                                 bool flipVarOffsetSign, LSC_CACHE_OPTS cacheOpts, LSC_DOC_ADDR_SPACE addrSpace
 ) {
 
   bool predicatedLoad = false;
@@ -17804,6 +17836,13 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr,
   // eOffset is in bytes
   // offset corresponds to Int2Ptr operand obtained during pattern matching
   CVariable *eOffset = GetSymbol(varOffset);
+  if (flipVarOffsetSign) {
+    CVariable *eNegOffset = m_currShader->GetNewVariable(eOffset, CName(eOffset->getName(), "Neg"));
+    m_encoder->SetSrcModifier(0, EMOD_NEG);
+    m_encoder->Copy(eNegOffset, eOffset); // MOV with -src modifier
+    m_encoder->Push();
+    eOffset = eNegOffset;
+  }
   if (useA32) {
     eOffset = TruncatePointer(eOffset);
   }
@@ -18155,9 +18194,9 @@ void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32,
 }
 
 void EmitPass::emitLSCVectorStore(Value *Ptr,
-                                  Value *varOffset, ConstantInt *immOffset, ConstantInt *immScale, Value *storedVal,
-                                  BasicBlock *BB, LSC_CACHE_OPTS cacheOpts, alignment_t align, bool dontForceDmask,
-                                  LSC_DOC_ADDR_SPACE addrSpace
+                                  Value *varOffset, ConstantInt *immOffset, ConstantInt *immScale,
+                                  bool flipVarOffsetSign, Value *storedVal, BasicBlock *BB, LSC_CACHE_OPTS cacheOpts,
+                                  alignment_t align, bool dontForceDmask, LSC_DOC_ADDR_SPACE addrSpace
                                   ,
                                   Value *predicate) {
 
@@ -18178,6 +18217,13 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
 
   // offset corresponds to Int2Ptr operand obtained during pattern matching
   CVariable *eOffset = GetSymbol(varOffset);
+  if (flipVarOffsetSign) {
+    CVariable *eNegOffset = m_currShader->GetNewVariable(eOffset, CName(eOffset->getName(), "Neg"));
+    m_encoder->SetSrcModifier(0, EMOD_NEG);
+    m_encoder->Copy(eNegOffset, eOffset); // MOV with -src modifier
+    m_encoder->Push();
+    eOffset = eNegOffset;
+  }
   bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
   LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
   if (useA32) {
