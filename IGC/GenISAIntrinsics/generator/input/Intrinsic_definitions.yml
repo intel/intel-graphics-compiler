@@ -11732,7 +11732,11 @@ intrinsics:
                 type_definition: *i32
                 comment: "reserved"
             - !<ArgumentDefinition>
-                name: Arg19
+                name: ExtraPipelineFlags
+                type_definition: *i32
+                comment: "Additional flags to add to the pipeline flags"
+            - !<ArgumentDefinition>
+                name: Arg20
                 type_definition: *f32
                 comment: "reserved"
         attributes:
