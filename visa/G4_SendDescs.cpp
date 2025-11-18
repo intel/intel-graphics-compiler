@@ -873,10 +873,11 @@ static bool isHdcFloatAtomicMessage(SFID funcID, uint16_t msgType,
 }
 
 bool G4_SendDescRaw::isAtomicMessage() const {
-  if (isLscOp() && (desc.value & 0x3F) >= LSC_ATOMIC_IINC &&
-      (desc.value & 0x3F) <= LSC_ATOMIC_XOR) {
+  auto dscOpVal = desc.value & 0x3F;
+  if (isLscOp() && dscOpVal >= LSC_ATOMIC_IINC && dscOpVal <= LSC_ATOMIC_XOR) {
     return true;
   }
+
 
   auto funcID = getSFID();
   if (!isHDC())

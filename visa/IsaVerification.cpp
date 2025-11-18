@@ -3403,7 +3403,8 @@ void vISAVerifier::verifyInstructionDataport(const CISA_INST *inst) {
     // - for all other operations, it must have type UD.
     const raw_opnd &src0 = getRawOperand(inst, i++);
     if (subOpKind == ATOMIC_INC || subOpKind == ATOMIC_DEC ||
-        subOpKind == ATOMIC_PREDEC) {
+        subOpKind == ATOMIC_PREDEC
+    ) {
       REPORT_INSTRUCTION(options, src0.index == 0,
                          "src0 in ISA_DWORD_ATOMIC inst must be "
                          "V0 for INC/DEC/PREDEC.");
@@ -3789,6 +3790,7 @@ struct LscInstVerifier {
               (opInfo.op != LSC_ATOMIC_FADD && opInfo.op != LSC_ATOMIC_FSUB) ||
                   (sfid == LSC_UGM || sfid == LSC_UGML || sfid == LSC_TGM),
               "LSC atomic fadd/fsub only support UGM, UGML and TGM");
+
 
           verify((opInfo.op != LSC_APNDCTR_ATOMIC_ADD &&
                   opInfo.op != LSC_APNDCTR_ATOMIC_SUB) ||
