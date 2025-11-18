@@ -57,11 +57,6 @@ SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(Function *F) {
     return SIMDMode::SIMD32;
   }
 
-  auto FG = FGA ? FGA->getGroup(F) : nullptr;
-  bool hasStackCall = (FG && FG->hasStackCall()) || (F && F->hasFnAttribute("visaStackCall"));
-  bool isIndirectGroup = FG && FGA->isIndirectCallGroup(FG);
-  bool hasSubroutine = FG && !FG->isSingle() && !hasStackCall && !isIndirectGroup;
-
   // if we can find metadata with stipulations how we should compile we use it
   if (F && MDUtils->findFunctionsInfoItem(F) != MDUtils->end_FunctionsInfo()) {
     IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(F);
@@ -72,8 +67,15 @@ SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(Function *F) {
 
   // rule for pvc
   if (CGCtx->platform.isProductChildOf(IGFX_PVC)) {
-    if (hasSubroutine)
+    bool abortOnSpills =
+        IGC_GET_FLAG_VALUE(AllowSIMD16DropForXE2Plus) && (CGCtx->platform.isCoreXE2() || CGCtx->platform.isCoreXE3());
+    auto FG = FGA ? FGA->getGroup(F) : nullptr;
+    bool hasStackCall = (FG && FG->hasStackCall()) || (F && F->hasFnAttribute("visaStackCall"));
+    bool isIndirectGroup = FG && FGA->isIndirectCallGroup(FG);
+    bool hasSubroutine = FG && !FG->isSingle() && !hasStackCall && !isIndirectGroup;
+    if (abortOnSpills || hasSubroutine) {
       return SIMDMode::SIMD16;
+    }
     return SIMDMode::SIMD32;
   }
 
@@ -128,7 +130,7 @@ unsigned int IGCLivenessAnalysisBase::addOperandsToSet(llvm::Instruction *Inst, 
   if (Phi)
     return 0;
 
-  // do not process debug instructions and lifetimehints in any way
+    // do not process debug instructions and lifetimehints in any way
   if (Inst->isDebugOrPseudoInst() || Inst->isLifetimeStartOrEnd())
     return 0;
 
@@ -572,7 +574,6 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
 
   return false;
 }
-
 
 char IGCRegisterPressurePublisher::ID = 0;
 // Register pass to igc-opt
