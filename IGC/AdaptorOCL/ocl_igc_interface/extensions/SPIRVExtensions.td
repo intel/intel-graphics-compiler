@@ -87,3 +87,9 @@ def SPV_INTEL_fp_fast_math_mode : Extension<
   [ Capability<"FPFastMathModeINTEL"> ],
   "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_fp_fast_math_mode.asciidoc"
 >;
+
+def SPV_INTEL_sigmoid : Extension<
+  "SPV_INTEL_sigmoid",
+  [ Capability<"SigmoidINTEL"> ],
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_sigmoid.asciidoc"
+>;

@@ -153,6 +153,7 @@ int OVERLOADABLE __intel_relaxed_isnormal( half x );
 #include "Math/sqrt_cr.cl"
 #include "Math/tan.cl"
 #include "Math/tanh.cl"
+#include "Math/sigm.cl"
 #include "Math/tanpi.cl"
 #include "Math/tgamma.cl"
 #include "Math/trunc.cl"

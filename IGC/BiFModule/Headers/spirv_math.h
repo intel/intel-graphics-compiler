@@ -3765,6 +3765,20 @@ half4 __attribute__((overloadable))  __spirv_ocl_tanh(half4 x);
 half8 __attribute__((overloadable))  __spirv_ocl_tanh(half8 x);
 half16 __attribute__((overloadable)) __spirv_ocl_tanh(half16 x);
 
+float __attribute__((overloadable))   __spirv_ocl_sigm(float x);
+float2 __attribute__((overloadable))  __spirv_ocl_sigm(float2 x);
+float3 __attribute__((overloadable))  __spirv_ocl_sigm(float3 x);
+float4 __attribute__((overloadable))  __spirv_ocl_sigm(float4 x);
+float8 __attribute__((overloadable))  __spirv_ocl_sigm(float8 x);
+float16 __attribute__((overloadable)) __spirv_ocl_sigm(float16 x);
+
+half __attribute__((overloadable))   __spirv_ocl_sigm(half x);
+half2 __attribute__((overloadable))  __spirv_ocl_sigm(half2 x);
+half3 __attribute__((overloadable))  __spirv_ocl_sigm(half3 x);
+half4 __attribute__((overloadable))  __spirv_ocl_sigm(half4 x);
+half8 __attribute__((overloadable))  __spirv_ocl_sigm(half8 x);
+half16 __attribute__((overloadable)) __spirv_ocl_sigm(half16 x);
+
 float __attribute__((overloadable))   __spirv_ocl_tanpi(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_tanpi(float2 x);
 float3 __attribute__((overloadable))  __spirv_ocl_tanpi(float3 x);

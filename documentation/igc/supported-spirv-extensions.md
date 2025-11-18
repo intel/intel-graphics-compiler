@@ -52,6 +52,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_INTEL_sigmoid
+
+**Specification:** [https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_sigmoid.asciidoc](https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_sigmoid.asciidoc)
+
+**Extension Platform Support:** All platforms
+
+**Capabilities:**
+
+- **SigmoidINTEL**
+
+---
+
 ## SPV_INTEL_subgroups
 
 **Specification:** [https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_subgroups.asciidoc](https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_subgroups.asciidoc)
