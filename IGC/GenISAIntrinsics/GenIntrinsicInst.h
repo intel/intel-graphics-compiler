@@ -1217,7 +1217,6 @@ public:
   Value *getPayload() const { return getOperand(16); }
   Value *getComparisonValue() const { return getOperand(17); }
   Value *getInternalRayFlags() const { return getOperand(18); }
-  Value *getExtraPipelineFlags() const { return getOperand(19); }
 };
 
 class CallShaderHLIntrinsic : public ContinuationHLIntrinsic {
