@@ -502,11 +502,6 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       IRB.SetInsertPoint(proceedBB->getFirstNonPHI());
       auto *bvhLevel = IRB.CreatePHI(IRB.getInt32Ty(), 2, VALUE_NAME("BVHLevel"));
 
-      for (auto *predBB : predecessors(proceedBB))
-        bvhLevel->addIncoming(IRB.getInt32(predBB == switchI->getParent() ? RTStackFormat::TOP_LEVEL_BVH
-                                                                          : RTStackFormat::BOTTOM_LEVEL_BVH),
-                              predBB);
-
       EmitPreTraceRayFence(IRB, rqObject);
 
 
@@ -564,7 +559,10 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
 
       setPackedData(IRB, rqObject, data);
 
-
+      for (auto *predBB : predecessors(proceedBB))
+        bvhLevel->addIncoming(IRB.getInt32(predBB == switchI->getParent() ? RTStackFormat::TOP_LEVEL_BVH
+                                                                          : RTStackFormat::BOTTOM_LEVEL_BVH),
+                              predBB);
       // for the cross-block optimization purposes, split basic block to avoid using stale shadow stack
       if (allowCrossBlockLoadVectorization())
         IRB.createTriangleFlow(IRB.getFalse(), RQI);
