@@ -41,6 +41,7 @@ typedef enum {
     IGFX_BMG = 1274,
     IGFX_LUNARLAKE = 1275,
     IGFX_PTL = 1300,
+    IGFX_NVL_XE3G = 1340,
     IGFX_MAX_PRODUCT,
 
 
