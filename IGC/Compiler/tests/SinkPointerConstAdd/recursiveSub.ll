@@ -22,7 +22,7 @@ GlobalScopeInitialization:
   %2 = add i32 %0, 128
   %3 = sub i32 %2, 128
   %4 = zext i32 %3 to i64
-; CHECK: %2 = sext i32 %0 to i64
+; CHECK: %2 = zext i32 %0 to i64
   %5 = add i64 %1, %4
 ; CHECK-NEXT: %3 = add i64 %1, %2
   %ptr = inttoptr i64 %5 to i32 addrspace(1)*
