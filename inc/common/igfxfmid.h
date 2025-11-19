@@ -42,6 +42,7 @@ typedef enum {
     IGFX_LUNARLAKE = 1275,
     IGFX_PTL = 1300,
     IGFX_NVL_XE3G = 1340,
+    IGFX_CRI = 1380,
     IGFX_MAX_PRODUCT,
 
 
@@ -91,10 +92,11 @@ typedef enum {
     IGFX_GEN12_CORE   = 17,     // Gen12 Family
     IGFX_GEN12LP_CORE = 18,     // Gen12 LP Family
     IGFX_XE_HP_CORE   = 0x0c05, // XeHP Family
-    IGFX_XE_HPG_CORE = 0x0c07,  // XE_HPG Family
-    IGFX_XE_HPC_CORE = 0x0c08,  // XE_HPC Family
+    IGFX_XE_HPG_CORE  = 0x0c07, // XE_HPG Family
+    IGFX_XE_HPC_CORE  = 0x0c08, // XE_HPC Family
     IGFX_XE2_HPG_CORE = 0x0c09, // XE2_HPG Family
-    IGFX_XE3_CORE     = 0x1e00,  // XE3 Family
+    IGFX_XE3_CORE     = 0x1e00, // XE3 Family
+    IGFX_XE3P_CORE    = 0x2300, // XE3P Family
     IGFX_MAX_CORE,              // Max Family, for lookup table
 
     IGFX_GENNEXT_CORE          = 0x7ffffffe,  //GenNext

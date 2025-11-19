@@ -34,6 +34,7 @@ def IGFX_BMG            : Platform<"IGFX_BMG">;
 def IGFX_LUNARLAKE      : Platform<"IGFX_LUNARLAKE">;
 def IGFX_PTL            : Platform<"IGFX_PTL">;
 def IGFX_NVL_XE3G       : Platform<"IGFX_NVL_XE3G">;
+def IGFX_CRI            : Platform<"IGFX_CRI">;
 
 // Core Families
 def IGFX_GEN12_CORE     : CoreFamily<"IGFX_GEN12_CORE">;
@@ -43,6 +44,7 @@ def IGFX_XE_HPG_CORE    : CoreFamily<"IGFX_XE_HPG_CORE">;
 def IGFX_XE_HPC_CORE    : CoreFamily<"IGFX_XE_HPC_CORE">;
 def IGFX_XE2_HPG_CORE   : CoreFamily<"IGFX_XE2_HPG_CORE">;
 def IGFX_XE3_CORE       : CoreFamily<"IGFX_XE3_CORE">;
+def IGFX_XE3P_CORE      : CoreFamily<"IGFX_XE3P_CORE">;
 
 // Define Platform Groups for common use cases
 def CUSTOM_GROUP : PlatformGroup<[IGFX_DG2, IGFX_PVC]>;

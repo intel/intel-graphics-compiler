@@ -568,6 +568,7 @@ public:
     case IGFX_DG2:
     case IGFX_PVC:
     case IGFX_BMG:
+    case IGFX_CRI:
       return false;
     default:
       return true;
