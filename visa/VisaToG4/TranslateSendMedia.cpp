@@ -58,11 +58,10 @@ int IR_Builder::translateVISAMediaLoadInst(
 
   unsigned temp;
 
-  unsigned objWidth = 0;
-  if (blockWidth != 0) {
-    objWidth = getObjWidth(blockWidth, blockHeight,
-                           dstOpnd->getBase()->asRegVar()->getDeclare());
-  }
+  vASSERT(blockWidth != 0);
+  vASSERT(blockHeight != 0);
+  unsigned objWidth = getObjWidth(blockWidth, blockHeight,
+                                  dstOpnd->getBase()->asRegVar()->getDeclare());
   unsigned obj_size = objWidth * blockHeight;
 
   /* mov (8)      VX(0,0)<1>,  r0:ud  */
@@ -251,11 +250,10 @@ int IR_Builder::translateVISAMediaStoreInst(
     G4_Operand *yOffOpnd, G4_SrcRegRegion *srcOpnd) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  int objWidth = 0;
-  if (blockWidth != 0) {
-    objWidth = getObjWidth(blockWidth, blockHeight,
-                           srcOpnd->getBase()->asRegVar()->getDeclare());
-  }
+  vASSERT(blockWidth != 0);
+  vASSERT(blockHeight != 0);
+  unsigned objWidth = getObjWidth(blockWidth, blockHeight,
+                                  srcOpnd->getBase()->asRegVar()->getDeclare());
   unsigned obj_size = objWidth * blockHeight;
   unsigned int new_obj_size = obj_size;
 

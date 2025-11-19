@@ -219,12 +219,7 @@ int CISA_IR_Builder::isaDump(const char *combinedIsaasmName) const {
       // function 0 has kernel_f0.visaasm
       unsigned funcId = 0;
       kTemp->GetFunctionId(funcId);
-      if (mainKernel) {
-        asmName << mainKernel->getOutputAsmPath();
-      } else {
-        // No mainKernel, use the function name instead
-        asmName << kTemp->getName();
-      }
+      asmName << mainKernel->getOutputAsmPath();
       asmName << "_f";
       asmName << funcId;
     } else {
