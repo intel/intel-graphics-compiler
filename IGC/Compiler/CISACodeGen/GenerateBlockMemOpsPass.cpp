@@ -647,7 +647,7 @@ bool GenerateBlockMemOpsPass::canOptLoadStore(Instruction *I) {
 
   // Get the last index from the getelementptr instruction if it is not uniform in the subgroup.
   Instruction *PtrInstr = dyn_cast<Instruction>(Ptr);
-  Value *Idx = checkGep(PtrInstr);
+  Value *Idx = checkGep(PtrInstr, DataType);
 
   if (!Idx)
     return false;
@@ -716,7 +716,7 @@ void GenerateBlockMemOpsPass::setAlignmentAttr(CallInst *CI, const unsigned &Ali
   CI->addFnAttr(CustomAttr);
 }
 
-Value *GenerateBlockMemOpsPass::checkGep(Instruction *PtrInstr) {
+Value *GenerateBlockMemOpsPass::checkGep(Instruction *PtrInstr, Type *DataType) {
   if (!PtrInstr)
     return nullptr;
 
@@ -755,19 +755,26 @@ Value *GenerateBlockMemOpsPass::checkGep(Instruction *PtrInstr) {
   if (WI->isUniform(Ptr))
     IsPtrUniform = true;
 
+  bool TypesMatch = DataType == Gep->getResultElementType();
+  Type *Int32Ty = Type::getInt32Ty(*CGCtx->getLLVMContext());
+  Value *Zero = Constant::getNullValue(Int32Ty);
+
+  // If `DataType` doesn't match the GEP result type -- then logically there are implicit zero indices at the end.
+  // Here it doesn't matter how many zero indices there are.
+  // If there's at least one implicit zero -- then we have to check all the indexes and the last index will be zero.
+  auto E = TypesMatch ? Gep->idx_end() - 1 : Gep->idx_end();
+  Value *LInst = TypesMatch ? *E : Zero;
   // Make sure that all indexes, not including the last one, are uniform.
   // This is important because the address must be continuous in the subgroup.
-  for (auto Idx = Gep->idx_begin(), E = Gep->idx_end() - 1; Idx != E; Idx++)
+  for (auto Idx = Gep->idx_begin(); Idx != E; Idx++)
     if (!WI->isUniform(*Idx))
       return nullptr;
 
-  auto LIndx = Gep->idx_end() - 1;
-
-  if (WI->isUniform(*LIndx))
+  if (WI->isUniform(LInst))
     IsLastIndUniform = true;
 
   if (!IsLastIndUniform && IsPtrUniform) {
-    return *LIndx;
+    return LInst;
   } else if (IsLastIndUniform && !IsPtrUniform) {
     if (!isa<PHINode>(Ptr) && !isa<GetElementPtrInst>(Ptr))
       return nullptr;
@@ -803,7 +810,7 @@ Value *GenerateBlockMemOpsPass::checkGep(Instruction *PtrInstr) {
       }
     }
 
-    return checkGep(dyn_cast<GetElementPtrInst>(Ptr));
+    return checkGep(dyn_cast<GetElementPtrInst>(Ptr), DataType);
   }
 
   return nullptr;

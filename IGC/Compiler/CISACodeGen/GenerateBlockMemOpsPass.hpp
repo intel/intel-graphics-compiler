@@ -38,7 +38,7 @@ public:
   virtual bool runOnFunction(llvm::Function &F) override;
 
 private:
-  llvm::Value *checkGep(llvm::Instruction *Gep);
+  llvm::Value *checkGep(llvm::Instruction *Gep, llvm::Type *DataType);
   bool isLocalIdX(const llvm::Value *InputVal);
   bool isR0(const llvm::Value *InputVal);
   bool isDataTypeSupported(llvm::Value *Ptr, llvm::Type *DataType);
