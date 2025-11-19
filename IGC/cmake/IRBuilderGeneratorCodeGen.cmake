@@ -91,6 +91,13 @@ function(generate_irbuilder_headers)
 
     set(CLANG_HEADERS ${IGC_BUILD__GFX_DEV_SRC_DIR}/external/llvm/releases/${IGC_BUILD__CLANG_VERSION}/clang/lib/Headers)
 
+    # select opaque vs typed pointers mode
+    if(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS OR NOT LLVM_VERSION_MAJOR GREATER 14)
+        SET(OPAQUE_PTR_ARGS "")
+    else()
+        SET(OPAQUE_PTR_ARGS "-Xclang" "-no-opaque-pointers")
+    endif()
+
     # Common clang options
     set(CLANG_OPTIONS
         -target x86_64-pc-windows
@@ -119,6 +126,7 @@ function(generate_irbuilder_headers)
             ${SETUP_DEFINES}
             ${ARG_SOURCE_FILE}
             -o ${TEMP_BC_PATH}
+            ${OPAQUE_PTR_ARGS}
         COMMENT "[${ARG_NAME}] Compiling ${ARG_SOURCE_FILE}"
         DEPENDS ${ARG_SOURCE_FILE} ${ARG_DEPENDS} ${DESC_HEADER_PATH}
         VERBATIM
