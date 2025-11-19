@@ -1086,7 +1086,10 @@ public:
     return enabled;
   }
 
-  bool needsLocalScopeEvictTGM() const { return IGC_IS_FLAG_ENABLED(ForceLocalScopeEvictTGM); }
+  bool needsLocalScopeEvictTGM() const {
+    return
+            true;
+  }
 
   bool needWaSamplerNoMask() const { return m_WaTable.Wa_22011157800 && !IGC_IS_FLAG_DISABLED(DiableWaSamplerNoMask); }
 

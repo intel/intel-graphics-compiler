@@ -556,7 +556,6 @@ DECLARE_IGC_REGKEY(DWORD, RovOpt, 3,
                    false)
 // DECLARE_IGC_REGKEY(bool, EnablePlatformFenceOpt,        true,  "Force fence optimization", false)
 DECLARE_IGC_REGKEY(bool, EnableLSCFence, true, "Enable LSC Fence in ConvertDXIL for the device has LSC", false)
-DECLARE_IGC_REGKEY(bool, ForceLocalScopeEvictTGM, true, "Forces upgrading fence.tgm.local.none to evictions", false)
 DECLARE_IGC_REGKEY(bool, EnableSLMConstProp, true, "Enable SLM constant propagation (compute shader only).", false)
 DECLARE_IGC_REGKEY(
     bool, EnableStatelessToStateful, true,
