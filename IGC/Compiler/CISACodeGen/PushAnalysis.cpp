@@ -172,8 +172,8 @@ bool PushAnalysis::IsStatelessCBLoad(llvm::Instruction *inst, int &pushableAddre
     if (pAdd && pAdd->getOpcode() == llvm::Instruction::Add) {
       GetPotentialPushableAddresses(pAdd->getOperand(0));
       GetPotentialPushableAddresses(pAdd->getOperand(1));
-    } else if (isa<ZExtInst>(pAddress)) {
-      GetPotentialPushableAddresses(cast<ZExtInst>(pAddress)->getOperand(0));
+    } else if (isa<ZExtInst>(pAddress) || isa<SExtInst>(pAddress)) {
+      GetPotentialPushableAddresses(cast<Instruction>(pAddress)->getOperand(0));
     } else if (isa<ConstantInt>(pAddress)) {
       ConstantInt *pConst = cast<ConstantInt>(pAddress);
       offset += pConst->getZExtValue();
