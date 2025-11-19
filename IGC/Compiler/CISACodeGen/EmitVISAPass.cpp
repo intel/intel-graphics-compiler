@@ -4983,9 +4983,6 @@ void EmitPass::CmpBfn(llvm::CmpInst::Predicate predicate, const SSource cmpSourc
 
 void EmitPass::VectorSelect(const SSource sources[3], const DstModifier &modifier) {
 
-  IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
-            "As of now Vector Emission is only supported for SIMD16");
-
   unsigned SIMDSize = numLanes(m_currShader->m_SIMDSize);
   CVariable *dst = m_destination;
   unsigned VectorSize = getVectorSize(sources[1].value);
@@ -5007,11 +5004,12 @@ void EmitPass::VectorSelect(const SSource sources[3], const DstModifier &modifie
       SetSourceModifiers(0, sources[1]);
       SetSourceModifiers(1, sources[2]);
 
-      //m_encoder->SetDstModifier(modifier);
       m_encoder->SetSrcRegion(0, 1, 1, 0);
       m_encoder->SetSrcRegion(1, 1, 1, 0);
       m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
       m_encoder->SetSimdSize(lanesToSIMDMode(VectorSize));
+      m_encoder->SetDstModifier(modifier);
+      m_encoder->SetPredicateMode(modifier.predMode);
       m_encoder->Select(flag, dst, src[1], src[2]);
       m_encoder->Push();
       return;
@@ -5040,6 +5038,8 @@ void EmitPass::VectorSelect(const SSource sources[3], const DstModifier &modifie
     else
       m_encoder->SetDstSubVar(i);
 
+    m_encoder->SetDstModifier(modifier);
+    m_encoder->SetPredicateMode(modifier.predMode);
     m_encoder->Select(flag, dst, src[1], src[2]);
     m_encoder->Push();
   }

@@ -68,8 +68,16 @@ define <4 x i32> @test_select_vec(<4 x i1> %cc, <4 x i32> %src1, <4 x i32> %src2
   ret <4 x i32> %1
 }
 
+define <4 x i32> @test_select_vectorized(<4 x i1> %cc, <4 x i32> %src1, <4 x i32> %src2) {
+; CHECK-LABEL: define <4 x i32> @test_select_vectorized(
+; CHECK: 1 = select <4 x i1> %cc, <4 x i32> %src1, <4 x i32> %src2, !vectorized
+  %1 = select <4 x i1> %cc, <4 x i32> %src1, <4 x i32> %src2, !vectorized !3
+  ret <4 x i32> %1
+}
+
 !igc.functions = !{!0, !1}
 
 !0 = !{<4 x i32> (i1, <4 x i32>, <4 x i32>)* @test_select, !2}
 !1 = !{<4 x i32> (<4 x i1>, <4 x i32>, <4 x i32>)* @test_select_vec, !2}
 !2 = !{}
+!3 = !{!"vectorized"}

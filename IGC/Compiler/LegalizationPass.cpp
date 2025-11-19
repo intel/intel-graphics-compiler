@@ -799,6 +799,10 @@ static bool isVectorTypeAllowed(Value *I) {
 
 void Legalization::visitSelectInst(SelectInst &I) {
   m_ctx->m_instrTypes.numInsts++;
+
+  // it was vectorized by IGCVectorizer
+  auto *MD = I.getMetadata("vectorized");
+  bool ScalarizeVectorSelect = !(isVectorTypeAllowed(&I) && MD);
   if (I.getType()->isIntegerTy(1)) {
     llvm::Value *pCond = I.getOperand(0);
     llvm::Value *pSrc0 = I.getOperand(1);
@@ -844,7 +848,7 @@ void Legalization::visitSelectInst(SelectInst &I) {
     I.replaceAllUsesWith(newVal);
     I.eraseFromParent();
     // do not scalarize vector select instruction of a specific type
-  } else if (I.getType()->isVectorTy() && (IGC_IS_FLAG_ENABLED(LegalizerScalarizeSelectInstructions) || !isVectorTypeAllowed(&I))) {
+  } else if (I.getType()->isVectorTy() && ScalarizeVectorSelect) {
     unsigned int vecSize = (unsigned)cast<IGCLLVM::FixedVectorType>(I.getType())->getNumElements();
     Value *newVec = UndefValue::get(I.getType());
     m_builder->SetInsertPoint(&I);

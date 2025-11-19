@@ -697,6 +697,9 @@ bool IGCVectorizer::handleSelectInstruction(VecArr& Slice){
   auto *CreatedInst = SelectInst::Create(Operands[0], Operands[1], Operands[2]);
 
   CreatedInst->setName("vectorized_select");
+  MDNode *Node = MDNode::get(CreatedInst->getContext(), MDString::get(CreatedInst->getContext(), "vectorized"));
+  CreatedInst->setMetadata("vectorized", Node);
+
   CreatedInst->setDebugLoc(First->getDebugLoc());
   CreatedInst->insertBefore(InsertPoint);
   CreatedVectorInstructions.push_back(CreatedInst);
@@ -762,17 +765,29 @@ bool IGCVectorizer::collectOperandsForVectorization(unsigned OperNumToStart, uns
 
 bool IGCVectorizer::handleCMPInstruction(VecArr& Slice){
 
-    bool IsSliceUniform = true;
-    for (auto El : Slice)
-        IsSliceUniform &= WI->isUniform(El);
-
-    if (!IsSliceUniform) {
-        PRINT_LOG_NL("Select is stub vectorized, not uniform");
-        return true;
+  bool IsSliceUniform = true;
+  for (auto El : Slice) {
+    IsSliceUniform &= WI->isUniform(El);
+    // we must process users as well
+    // because we do not support
+    // bit flag extraction from predicates
+    for (auto User : El->users()) {
+      bool UserIsUniform = WI->isUniform(User);
+      if (!UserIsUniform) {
+        PRINT_LOG("User is not uniform: ");
+        PRINT_INST_NL(User);
+      }
+      IsSliceUniform &= UserIsUniform;
     }
+  }
 
-    if (!IGC_GET_FLAG_VALUE(VectorizerAllowUniformCMP))
-        return true;
+  if (!IsSliceUniform) {
+    PRINT_LOG_NL("Select is stub vectorized, not uniform");
+    return true;
+  }
+
+  if (!IGC_GET_FLAG_VALUE(VectorizerAllowUniformCMP))
+    return true;
 
   Instruction *First = Slice.front();
   Value *PrevVectorization = nullptr;
