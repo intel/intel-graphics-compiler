@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #pragma once
+#include <cstdint>
 
 namespace SIP {
 struct alignas(4) version {
