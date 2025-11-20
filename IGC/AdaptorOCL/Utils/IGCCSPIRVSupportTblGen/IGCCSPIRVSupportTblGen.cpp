@@ -62,7 +62,12 @@ void SPIRVSupportDocsEmitter::emit(raw_ostream &OS) {
   OS << "This document lists all SPIR-V extensions supported by IGC and their platform requirements.\n\n";
   for (const auto &Ext : Extensions) {
     OS << "## " << Ext.Name << "\n\n";
-    OS << "**Specification:** [" << Ext.SpecURL << "](" << Ext.SpecURL << ")\n\n";
+    if (Ext.IsExperimental) {
+      OS << "> **Note**: The support for this extension is experimental. It has been implemented but has not been "
+            "thoroughly tested "
+            "and should not be used in production environments.\n\n";
+    }
+    OS << "**Specification:** " << Ext.SpecURL << "\n\n";
     if (!Ext.IsInheritFromCapabilitiesMode) {
       OS << "**Extension Platform Support:** " << formatPlatformSupport(Ext.Platforms) << "\n\n";
     }
@@ -316,7 +321,7 @@ void SPIRVSupportQueriesEmitter::emitSPIRVExtensionStructures(raw_ostream &OS) {
   OS << "  std::string Name;\n";
   OS << "  std::string SpecURL;\n";
   OS << "  std::vector<SPIRVCapability> Capabilities;\n";
-  OS << "  bool IsPublished;\n";
+  OS << "  bool IsExperimental;\n";
   OS << "};\n\n";
 }
 
@@ -342,7 +347,7 @@ void SPIRVSupportQueriesEmitter::emitExtensionsVector(raw_ostream &OS) {
       OS << "\n";
     }
     OS << "    },\n";
-    OS << "    " << (Ext.IsPublished ? "true" : "false") << "\n";
+    OS << "    " << (Ext.IsExperimental ? "true" : "false") << "\n";
     OS << "  }" << (std::next(It) != Extensions.end() ? "," : "") << "\n";
   }
   OS << "};\n\n";
@@ -407,18 +412,18 @@ void SPIRVSupportQueriesEmitter::emitCapabilitySupportFn(raw_ostream &OS) {
 
 void SPIRVSupportQueriesEmitter::emitGetSupportedInfoFn(raw_ostream &OS) {
   OS << "// Get extension info with capabilities for a platform\n";
-  OS << "inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM Platform, bool includeUnpublished = "
+  OS << "inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM Platform, bool includeExperimental = "
         "false) {\n";
   OS << "  std::vector<SPIRVExtension> SupportedExtensions;\n";
   OS << "  for (const auto& Ext : AllExtensions) {\n";
-  OS << "    if (!includeUnpublished && !Ext.IsPublished) {\n";
+  OS << "    if (!includeExperimental && Ext.IsExperimental) {\n";
   OS << "      continue;\n";
   OS << "    }\n";
   OS << "    if (isExtensionSupported(Ext.Name, Platform)) {\n";
   OS << "      SPIRVExtension SupportedExt;\n";
   OS << "      SupportedExt.Name = Ext.Name;\n";
   OS << "      SupportedExt.SpecURL = Ext.SpecURL;\n";
-  OS << "      SupportedExt.IsPublished = Ext.IsPublished;\n";
+  OS << "      SupportedExt.IsExperimental = Ext.IsExperimental;\n";
   OS << "      for (const auto& Cap : Ext.Capabilities) {\n";
   OS << "        if (isCapabilitySupported(Cap.Name, Platform)) {\n";
   OS << "          SupportedExt.Capabilities.push_back(Cap);\n";

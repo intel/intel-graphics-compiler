@@ -54,26 +54,12 @@ def CUSTOM_GROUP : PlatformGroup<[IGFX_DG2, IGFX_PVC]>;
 // incorrect PlatformSupport assignments; they are included now to demonstrate
 // intended usage and integration flow.
 
-def SPV_INTEL_subgroups : Extension<
-  "SPV_INTEL_subgroups",
-  [ Capability<"SubgroupShuffleINTEL">,
-    Capability<"SubgroupBufferBlockIOINTEL">,
-    Capability<"SubgroupImageBlockIOINTEL"> ],
-  "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_subgroups.asciidoc"
->;
+// --- Extensions supported on all platforms ---
 
-def SPV_INTEL_bfloat16_conversion : Extension<
-  "SPV_INTEL_bfloat16_conversion",
-  [ Capability<"BFloat16ConversionINTEL"> ],
-  "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_bfloat16_conversion.asciidoc"
->;
-
-def SPV_INTEL_2d_block_io : Extension<
-  "SPV_INTEL_2d_block_io",
-  [ Capability<"Subgroup2DBlockIOINTEL">,
-    Capability<"Subgroup2DBlockTransformINTEL">,
-    Capability<"Subgroup2DBlockTransposeINTEL"> ],
-  "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_2d_block_io.asciidoc"
+def SPV_EXT_optnone : Extension<
+  "SPV_EXT_optnone",
+  [ Capability<"OptNoneEXT"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_optnone.html"
 >;
 
 def SPV_INTEL_cache_controls : Extension<
@@ -82,14 +68,288 @@ def SPV_INTEL_cache_controls : Extension<
   "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_cache_controls.asciidoc"
 >;
 
-def SPV_INTEL_fp_fast_math_mode : Extension<
+def SPV_INTEL_fp_fast_math_mode : ExperimentalExtension<
   "SPV_INTEL_fp_fast_math_mode",
   [ Capability<"FPFastMathModeINTEL"> ],
-  "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_fp_fast_math_mode.asciidoc"
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_fp_fast_math_mode.html"
 >;
 
-def SPV_INTEL_sigmoid : Extension<
+def SPV_INTEL_sigmoid : ExperimentalExtension<
   "SPV_INTEL_sigmoid",
   [ Capability<"SigmoidINTEL"> ],
-  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_sigmoid.asciidoc"
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_sigmoid.asciidoc",
+  AllPlatformSupport
 >;
+
+def SPV_INTEL_function_pointers : ExperimentalExtension<
+  "SPV_INTEL_function_pointers",
+  [ Capability<"FunctionPointersINTEL">,
+    Capability<"IndirectReferencesINTEL"> ],
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_function_pointers.asciidoc"
+>;
+
+def SPV_INTEL_global_variable_host_access : Extension<
+  "SPV_INTEL_global_variable_host_access",
+  [ Capability<"GlobalVariableHostAccessINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_global_variable_host_access.html"
+>;
+
+def SPV_INTEL_inline_assembly : ExperimentalExtension<
+  "SPV_INTEL_inline_assembly",
+  [ Capability<"AsmINTEL"> ],
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_inline_assembly.asciidoc"
+>;
+
+def SPV_INTEL_subgroups : Extension<
+  "SPV_INTEL_subgroups",
+  [ Capability<"SubgroupShuffleINTEL">,
+    Capability<"SubgroupBufferBlockIOINTEL">,
+    Capability<"SubgroupImageBlockIOINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroups.html"
+>;
+
+def SPV_INTEL_subgroup_buffer_prefetch : Extension<
+  "SPV_INTEL_subgroup_buffer_prefetch",
+  [ Capability<"SubgroupBufferPrefetchINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroup_buffer_prefetch.html"
+>;
+
+def SPV_INTEL_variable_length_array : ExperimentalExtension<
+  "SPV_INTEL_variable_length_array",
+  [ Capability<"VariableLengthArrayINTEL">,
+    Capability<"UntypedVariableLengthArrayINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_variable_length_array.html"
+>;
+
+def SPV_KHR_bit_instructions : Extension<
+  "SPV_KHR_bit_instructions",
+  [ Capability<"BitInstructions"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bit_instructions.html"
+>;
+
+def SPV_KHR_expect_assume : Extension<
+  "SPV_KHR_expect_assume",
+  [ Capability<"ExpectAssumeKHR"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_expect_assume.html"
+>;
+
+def SPV_KHR_linkonce_odr : Extension<
+  "SPV_KHR_linkonce_odr",
+  [ Capability<"Linkage"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_linkonce_odr.html"
+>;
+
+def SPV_KHR_no_integer_wrap_decoration : Extension<
+  "SPV_KHR_no_integer_wrap_decoration",
+  [],
+  "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_no_integer_wrap_decoration.html"
+>;
+
+def SPV_INTEL_fp_max_error : ExperimentalExtension<
+  "SPV_INTEL_fp_max_error",
+  [ Capability<"FPMaxErrorINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_fp_max_error.html"
+>;
+
+def SPV_INTEL_long_composites : Extension<
+  "SPV_INTEL_long_composites",
+  [ Capability<"CapabilityLongCompositesINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_long_composites.html"
+>;
+
+def SPV_INTEL_split_barrier : Extension<
+  "SPV_INTEL_split_barrier",
+  [ Capability<"SplitBarrierINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_split_barrier.html"
+>;
+
+def SPV_INTEL_unstructured_loop_controls : Extension<
+  "SPV_INTEL_unstructured_loop_controls",
+  [ Capability<"UnstructuredLoopControlsINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_unstructured_loop_controls.html"
+>;
+
+def SPV_KHR_integer_dot_product : Extension<
+  "SPV_KHR_integer_dot_product",
+  [ Capability<"DotProductKHR">,
+    Capability<"DotProductInputAllKHR">,
+    Capability<"DotProductInput4x8BitKHR">,
+    Capability<"DotProductInput4x8BitPackedKHR"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_integer_dot_product.html"
+>;
+
+def SPV_KHR_uniform_group_instructions : ExperimentalExtension<
+  "SPV_KHR_uniform_group_instructions",
+  [ Capability<"GroupUniformArithmeticKHR"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_uniform_group_instructions.html"
+>;
+
+def SPV_KHR_shader_clock : Extension<
+  "SPV_KHR_shader_clock",
+  [ Capability<"ShaderClockKHR"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_shader_clock.html"
+>;
+
+def SPV_INTEL_debug_module : ExperimentalExtension<
+  "SPV_INTEL_debug_module",
+  [ Capability<"DebugInfoModuleINTEL"> ],
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_debug_module.asciidoc"
+>;
+
+def SPV_INTEL_memory_access_aliasing : ExperimentalExtension<
+  "SPV_INTEL_memory_access_aliasing",
+  [ Capability<"MemoryAccessAliasingINTEL"> ],
+  "https://github.com/intel/llvm/pull/3426/files"
+>;
+
+def SPV_INTEL_predicated_io : ExperimentalExtension<
+  "SPV_INTEL_predicated_io",
+  [ Capability<"PredicatedIOINTEL"> ],
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_predicated_io.asciidoc"
+>;
+
+// ---------------------------------------------
+
+// --- Extensions not supported on all platforms ---
+
+def SPV_INTEL_2d_block_io : Extension<
+  "SPV_INTEL_2d_block_io",
+  [ Capability<"Subgroup2DBlockIOINTEL">,
+    Capability<"Subgroup2DBlockTransformINTEL">,
+    Capability<"Subgroup2DBlockTransposeINTEL"> ],
+  "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_2d_block_io.asciidoc",
+  isCoreChildOf<IGFX_XE_HPC_CORE>
+>;
+
+def SPV_INTEL_kernel_attributes : ExperimentalExtension<
+  "SPV_INTEL_kernel_attributes",
+  [ Capability<"KernelAttributesINTEL", AllPlatformSupport>,
+    Capability<"FPGAKernelAttributesINTEL", NotSupported>,
+    Capability<"FPGAKernelAttributesv2INTEL", NotSupported> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_kernel_attributes.html",
+  InheritFromCapabilities
+>;
+
+def SPV_INTEL_tensor_float32_conversion : Extension<
+  "SPV_INTEL_tensor_float32_conversion",
+  [ Capability<"TensorFloat32RoundingINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_tensor_float32_conversion.html",
+  isCoreChildOf<IGFX_XE2_HPG_CORE>
+>;
+
+def SPV_EXT_shader_atomic_float_add : Extension<
+  "SPV_EXT_shader_atomic_float_add",
+  [ Capability<"AtomicFloat32AddEXT", AllPlatformSupport>,
+    Capability<"AtomicFloat64AddEXT", isProductChildOf<IGFX_METEORLAKE>> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float_add.html",
+  InheritFromCapabilities
+>;
+
+def SPV_INTEL_joint_matrix : ExperimentalExtension<
+  "SPV_INTEL_joint_matrix",
+  [ Capability<"PackedCooperativeMatrixINTEL", isCoreChildOf<IGFX_XE_HPG_CORE>>,
+    Capability<"CooperativeMatrixInvocationInstructionsINTEL", isCoreChildOf<IGFX_XE_HPG_CORE>>,
+    Capability<"CooperativeMatrixTF32ComponentTypeINTEL", isCoreChildOf<IGFX_XE_HPC_CORE>>,
+    Capability<"CooperativeMatrixBFloat16ComponentTypeINTEL", isCoreChildOf<IGFX_XE_HPG_CORE>>,
+    Capability<"CooperativeMatrixPrefetchINTEL", isCoreChildOf<IGFX_XE_HPC_CORE>> ],
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_joint_matrix.asciidoc",
+  InheritFromCapabilities
+>;
+
+def SPV_INTEL_subgroup_matrix_multiply_accumulate : Extension<
+  "SPV_INTEL_subgroup_matrix_multiply_accumulate",
+  [ Capability<"SubgroupMatrixMultiplyAccumulateINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroup_matrix_multiply_accumulate.html",
+  AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>, Not<ExactPlatform<IGFX_ARROWLAKE>>]>
+>;
+
+def SPV_INTEL_bindless_images : ExperimentalExtension<
+  "SPV_INTEL_bindless_images",
+  [ Capability<"BindlessImagesINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bindless_images.html",
+  AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_PVC>>, Not<ExactPlatform<IGFX_CRI>>]>
+>;
+
+def SPV_EXT_float8 : ExperimentalExtension<
+  "SPV_EXT_float8",
+  [ Capability<"Float8EXT">,
+    Capability<"Float8CooperativeMatrixEXT"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_float8.html",
+  isCoreChildOf<IGFX_XE3P_CORE>
+>;
+
+def SPV_EXT_shader_atomic_float16_add : Extension<
+  "SPV_EXT_shader_atomic_float16_add",
+  [ Capability<"AtomicFloat16AddEXT"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float16_add.html",
+  isCoreChildOf<IGFX_XE3P_CORE>
+>;
+
+def SPV_EXT_shader_atomic_float_min_max : Extension<
+  "SPV_EXT_shader_atomic_float_min_max",
+  [ Capability<"AtomicFloat16MinMaxEXT", isCoreChildOf<IGFX_XE3P_CORE>>,
+    Capability<"AtomicFloat32MinMaxEXT", AllPlatformSupport>,
+    Capability<"AtomicFloat64MinMaxEXT", isProductChildOf<IGFX_METEORLAKE>> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float_min_max.html",
+  InheritFromCapabilities
+>;
+
+def SPV_INTEL_bfloat16_arithmetic : ExperimentalExtension<
+  "SPV_INTEL_bfloat16_arithmetic",
+  [ Capability<"BFloat16ArithmeticINTEL"> ],
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc",
+  isCoreChildOf<IGFX_XE3P_CORE>
+>;
+
+def SPV_INTEL_bfloat16_conversion : Extension<
+  "SPV_INTEL_bfloat16_conversion",
+  [ Capability<"BFloat16ConversionINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html",
+  isCoreChildOf<IGFX_XE3P_CORE>
+>;
+
+def SPV_INTEL_int4 : ExperimentalExtension<
+  "SPV_INTEL_int4",
+  [ Capability<"Int4TypeINTEL", isCoreChildOf<IGFX_XE3P_CORE>>,
+    Capability<"Int4CooperativeMatrixINTEL", NotSupported> ],
+  "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_int4.asciidoc",
+  InheritFromCapabilities
+>;
+
+def SPV_INTEL_fp_conversions : ExperimentalExtension<
+  "SPV_INTEL_fp_conversions",
+  [ Capability<"FloatConversionsINTEL"> ],
+  "https://github.com/intel/llvm/pull/20467",
+  isCoreChildOf<IGFX_XE3P_CORE>
+>;
+
+def SPV_INTEL_float4 : ExperimentalExtension<
+  "SPV_INTEL_float4",
+  [ Capability<"Float4TypeINTEL">,
+    Capability<"Float4CooperativeMatrixINTEL"> ],
+  "https://github.com/intel/llvm/pull/20467",
+  isCoreChildOf<IGFX_XE3P_CORE>
+>;
+
+def SPV_INTEL_16bit_atomics : ExperimentalExtension<
+  "SPV_INTEL_16bit_atomics",
+  [ Capability<"AtomicInt16CompareExchangeINTEL", isCoreChildOf<IGFX_XE3P_CORE>>,
+    Capability<"Int16AtomicsINTEL", NotSupported>,
+    Capability<"AtomicBFloat16LoadStoreINTEL", isCoreChildOf<IGFX_XE3P_CORE>>,
+    Capability<"AtomicBFloat16AddINTEL", isCoreChildOf<IGFX_XE3P_CORE>>,
+    Capability<"AtomicBFloat16MinMaxINTEL", isCoreChildOf<IGFX_XE3P_CORE>> ],
+  "https://github.com/intel/llvm/pull/20009",
+  InheritFromCapabilities
+>;
+
+// Pure support only for isCoreChildOf<IGFX_XE3P_CORE>>, other platforms have partial native support which requires emulation
+def SPV_KHR_bfloat16 : ExperimentalExtension<
+  "SPV_KHR_bfloat16",
+  [ Capability<"BFloat16TypeKHR">,
+    Capability<"BFloat16DotProductKHR">,
+    Capability<"BFloat16CooperativeMatrixKHR"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bfloat16.html",
+  isCoreChildOf<IGFX_XE2_HPG_CORE>
+>;
+
+// ----------------------------------------------

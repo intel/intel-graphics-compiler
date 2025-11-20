@@ -152,17 +152,20 @@ class SPIRVCapability<string name, PlatformSupport support = InheritFromExtensio
   PlatformSupport Support = support;
 }
 
-class SPIRVExtension<string name, list<SPIRVCapability> caps, string url, PlatformSupport support = AllPlatformSupport, bit published = 1> {
+class SPIRVExtension<string name, list<SPIRVCapability> caps, string url, PlatformSupport support = AllPlatformSupport, bit experimental = 0> {
   string ExtName = name;
   list<SPIRVCapability> ExtCapabilities = caps;
   string ExtSpecURL = url;
   PlatformSupport ExtSupport = support;
-  bit Published = published;
+  bit Experimental = experimental;
 }
 
 // Convenience aliases for cleaner syntax
-class Extension<string name, list<SPIRVCapability> caps, string url, PlatformSupport support = AllPlatformSupport, bit published = 1>
-  : SPIRVExtension<name, caps, url, support, published>;
+class Extension<string name, list<SPIRVCapability> caps, string url, PlatformSupport support = AllPlatformSupport, bit experimental = 0>
+  : SPIRVExtension<name, caps, url, support, experimental>;
+
+class ExperimentalExtension<string name, list<SPIRVCapability> caps, string url, PlatformSupport support = AllPlatformSupport>
+  : SPIRVExtension<name, caps, url, support, 1>;
 
 class Capability<string name, PlatformSupport support = InheritFromExtension>  // Default: inherit from extension
   : SPIRVCapability<name, support>;

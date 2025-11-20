@@ -55,7 +55,7 @@ struct ExtensionEntry {
   const Record *Root;                 // original extension record
   const Record *Platforms;            // extension support record (raw)
   bool IsInheritFromCapabilitiesMode; // true if extSupport == InheritFromCapabilities (aggregated capability mode)
-  bool IsPublished;                   // true if extension is published, false if unpublished
+  bool IsExperimental;                // true if extension is experimental, false if production
   SmallVector<CapabilityEntry, 8> Capabilities;
 };
 
@@ -138,7 +138,7 @@ static SPIRVExtensions collectSPIRVExtensionSupport(const RecordKeeper &Records)
     Entry.Root = Ext;
     Entry.Platforms = Ext->getValueAsDef("ExtSupport");
     Entry.IsInheritFromCapabilitiesMode = Entry.Platforms->getName() == "InheritFromCapabilities";
-    Entry.IsPublished = Ext->getValueAsBit("Published");
+    Entry.IsExperimental = Ext->getValueAsBit("Experimental");
     auto Caps = Ext->getValueAsListOfDefs("ExtCapabilities");
     for (const Record *Cap : Caps) {
       CapabilityEntry CapEntry;
