@@ -915,7 +915,7 @@ bool supportNativeSIMD32() const {
 }
 
 bool supports4GRFAlign() const {
-  return false;
+  return supportNativeSIMD32();
 }
 
 bool onlyDoLocalVariableSplitWhenSpill() const {
