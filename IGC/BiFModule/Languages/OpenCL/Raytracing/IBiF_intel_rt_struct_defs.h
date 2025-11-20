@@ -281,6 +281,8 @@ inline long MemHit_getPrimLeafAddr(MemHit* memhit)
 {
     if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE)
         return __getSignExtendedBits64(memhit->data1[0], 6, 58);
+    if (BIF_FLAG_CTRL_GET(RenderFamily) == IGFX_XE_HPC_CORE)
+        return __getBits64(memhit->data1[0], 0, 42);
     return __getSignExtendedBits64(memhit->data1[0], 0, 42);
 }
 
@@ -288,6 +290,8 @@ inline long MemHit_getInstLeafAddr(MemHit* memhit)
 {
     if (BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3_CORE)
         return __getSignExtendedBits64(memhit->data1[1], 6, 58);
+    if (BIF_FLAG_CTRL_GET(RenderFamily) == IGFX_XE_HPC_CORE)
+        return __getBits64(memhit->data1[1], 0, 42);
     return __getSignExtendedBits64(memhit->data1[1], 0, 42);
 }
 
