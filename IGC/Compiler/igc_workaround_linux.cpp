@@ -162,8 +162,8 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE *pSkuFeatureTable, CPlatform *platform
     stWaInitParam.usMediaRevID = (unsigned short)GFX_GET_GMD_REV_ID_MEDIA(platform->getPlatformInfo());
 
     // Applying GT WAs
-    switch (GFX_GET_CURRENT_RENDERCORE(platform->getPlatformInfo())) {
-    case IGFX_XE_HPG_CORE: {
+    switch (GFX_GET_GMD_ARCH_VERSION_RENDER(platform->getPlatformInfo())) {
+    case GFX_GMD_ARCH_12: {
       if (GFX_GET_GMD_RELEASE_VERSION_RENDER(platform->getPlatformInfo()) == GFX_GMD_ARCH_12_RELEASE_XE_LP_MD) {
         InitGt_12_70HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
       } else if (GFX_GET_GMD_RELEASE_VERSION_RENDER(platform->getPlatformInfo()) == GFX_GMD_ARCH_12_RELEASE_XE_LP_LG) {
@@ -175,7 +175,7 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE *pSkuFeatureTable, CPlatform *platform
       InitGt_12_70SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
       break;
     }
-    case IGFX_XE2_HPG_CORE: {
+    case GFX_GMD_ARCH_20: {
       switch (GFX_GET_GMD_RELEASE_VERSION_RENDER(platform->getPlatformInfo())) {
       case GFX_GMD_ARCH_20_RELEASE_XE2_HPG_2001:
         InitGt_20_01HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
@@ -193,7 +193,7 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE *pSkuFeatureTable, CPlatform *platform
       }
       break;
     }
-    case IGFX_XE3_CORE: {
+    case GFX_GMD_ARCH_30: {
       stWaInitParam.usWaIpShift = WA_BIT_GT;
       switch (GFX_GET_GMD_RELEASE_VERSION_RENDER(platform->getPlatformInfo())) {
       case GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3000:
@@ -204,6 +204,12 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE *pSkuFeatureTable, CPlatform *platform
         break;
       case GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3003:
         InitGt_30_03HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+        break;
+      case GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3004:
+        InitGt_30_04HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+        break;
+      case GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3005:
+        InitGt_30_05HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
         break;
       default:
         fprintf(stderr, "ERROR! Trying to select a workaround table for an unknown architecture. Aborting.\n");
