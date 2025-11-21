@@ -1301,8 +1301,8 @@ unsigned ConstantLoader::getRegionBits(unsigned NeededBits,
   if (!NeededBits)
     return 0;
   // Get the first and last element numbers in NeededBits.
-  unsigned FirstNeeded = llvm::countTrailingZeros(NeededBits);
-  unsigned LastNeeded = 31 - llvm::countLeadingZeros((uint32_t)NeededBits);
+  unsigned FirstNeeded = IGCLLVM::countr_zero(NeededBits);
+  unsigned LastNeeded = 31 - IGCLLVM::countl_zero((uint32_t)NeededBits);
   // Set the max width to the min size including both those elements
   // rounded up to the next power of two.
   unsigned MaxWidth = LastNeeded - FirstNeeded + 1;
@@ -1503,8 +1503,8 @@ Instruction *ConstantLoader::loadNonPackedIntConst(Instruction *InsertBefore) {
   unsigned NumElements = CTy->getNumElements();
   Instruction *Result = nullptr;
   for (unsigned Idx = 0; Idx != NumElements;) {
-    unsigned Size =
-        std::min(PowerOf2Floor(NumElements - Idx), (uint64_t)ImmIntVec::Width);
+    unsigned Size = std::min(IGCLLVM::bit_floor(NumElements - Idx),
+                             (uint64_t)ImmIntVec::Width);
     Constant *SubC = getConstantSubvector(C, Idx, Size);
     Value *SubV = SubC;
     ConstantLoader SubLoader(SubC, Subtarget, DL);

@@ -36,6 +36,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/Support/MathExtras.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/FormattedStream.h"
@@ -2587,7 +2588,7 @@ void EmitPass::emitMayUnalignedVectorCopy(CVariable *Dst, uint32_t Dst_off, CVar
       // This alignment must be aligned for both Dst and Src. The max align
       // starts with element size (tyBytes) and decreases.
       uint32_t remainingBytes = eltBytes - off;
-      uint32_t maxAlign = (uint32_t)PowerOf2Floor(remainingBytes);
+      uint32_t maxAlign = (uint32_t)IGCLLVM::bit_floor(remainingBytes);
       uint32_t currAlign = (uint32_t)MinAlign(maxAlign, doff);
       currAlign = (uint32_t)MinAlign(currAlign, soff);
 
@@ -18848,7 +18849,7 @@ void EmitPass::emitUniformVectorCopy(CVariable *Dst, CVariable *Src, uint32_t nE
   // Start with the max execution size that is legal for the vector element
   // and is no greater than the current simdsize.
   uint32_t maxNumElts = (2 * getGRFSize()) / Dst->GetElemSize();
-  uint32_t maxSimd = std::min(width, (uint32_t)PowerOf2Floor(maxNumElts));
+  uint32_t maxSimd = std::min(width, (uint32_t)IGCLLVM::bit_floor(maxNumElts));
   if (maxSimd == 32 && allowLargerSIMDSize) {
     while (partialCopy(SIMDMode::SIMD32))
       ;

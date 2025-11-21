@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 #include "Probe/Assertion.h"
 
@@ -994,8 +995,8 @@ void CMABIBase<CallGraphImpl>::diagnoseOverlappingArgs(CallInst *CI) {
                                    ->getScalarType()
                                    ->getPrimitiveSizeInBits();
 
-      int LogRatio = llvm::countTrailingZeros(OutElementSize) -
-                     llvm::countTrailingZeros(InElementSize);
+      int LogRatio = IGCLLVM::countr_zero(OutElementSize) -
+                     IGCLLVM::countr_zero(InElementSize);
 
       auto OpndEntry = &ValMap[BC->getOperand(0)];
       if (!LogRatio)

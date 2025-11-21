@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
 
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/InstVisitor.h"

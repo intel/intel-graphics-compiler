@@ -119,6 +119,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/TypeSize.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
@@ -4206,8 +4207,9 @@ static LoHiRes buildIMadWithMadw(ArrayRef<Value *> Args, bool Signed,
   LoHiRes Res = {UndefValue::get(OpTy), UndefValue::get(OpTy)};
   unsigned StartIdx = 0;
   while (StartIdx < OpWidth) {
-    unsigned SplitWidth = std::min(
-        TargetWidth, static_cast<unsigned>(PowerOf2Floor(OpWidth - StartIdx)));
+    unsigned SplitWidth =
+        std::min(TargetWidth,
+                 static_cast<unsigned>(IGCLLVM::bit_floor(OpWidth - StartIdx)));
 
     std::array<Value *, 3> SplitArgs;
     for (unsigned i = 0; i < Args.size(); ++i)
@@ -5150,7 +5152,7 @@ bool GenXLowering::lowerReduction(CallInst *CI, Value *Src, Value *Start,
     }
     SrcWidth = LinearGrain;
   } else if (!isPowerOf2_32(SrcWidth)) {
-    TailIndex = PowerOf2Floor(SrcWidth);
+    TailIndex = IGCLLVM::bit_floor(SrcWidth);
     IGC_ASSERT_EXIT(TailIndex);
     TailWidth = SrcWidth % TailIndex;
     SrcWidth = TailIndex;

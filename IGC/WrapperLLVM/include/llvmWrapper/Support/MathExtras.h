@@ -15,6 +15,32 @@ SPDX-License-Identifier: MIT
 namespace IGCLLVM {
 using llvm::MulOverflow;
 using llvm::SubOverflow;
+
+inline uint64_t bit_floor(uint64_t A) {
+#if LLVM_VERSION_MAJOR > 16
+  return llvm::bit_floor(A);
+#else
+  return llvm::PowerOf2Floor(A);
+#endif
+}
+
+template <typename T> unsigned countr_zero(T Val) {
+  static_assert(std::is_unsigned_v<T>, "Only unsigned integral types are allowed.");
+#if LLVM_VERSION_MAJOR > 16
+  return llvm::countr_zero(Val);
+#else
+  return llvm::countTrailingZeros(Val);
+#endif
+}
+
+template <typename T> unsigned countl_zero(T Val) {
+  static_assert(std::is_unsigned_v<T>, "Only unsigned integral types are allowed.");
+#if LLVM_VERSION_MAJOR > 16
+  return llvm::countl_zero(Val);
+#else
+  return llvm::countLeadingZeros(Val);
+#endif
+}
 } // namespace IGCLLVM
 
 #endif

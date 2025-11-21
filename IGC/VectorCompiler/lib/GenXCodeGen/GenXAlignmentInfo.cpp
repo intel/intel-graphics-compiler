@@ -30,7 +30,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Debug.h"
-
+#include "llvmWrapper/Support/MathExtras.h"
 #include "Probe/Assertion.h"
 
 #define DEBUG_TYPE "GENX_ALIGNMENT_INFO"
@@ -286,7 +286,7 @@ Alignment AlignmentInfo::get(Value *V) {
  * Alignment constructor given literal value
  */
 Alignment::Alignment(unsigned C) {
-  LogAlign = C ? countTrailingZeros(C) : 31;
+  LogAlign = C ? IGCLLVM::countr_zero(C) : 31;
   ExtraBits = 0;
   ConstBits = (C < MaskForUnknown) ? C : MaskForUnknown;
 }
@@ -303,7 +303,7 @@ Alignment Alignment::getAlignmentForConstant(Constant *C) {
     int64_t SVal = CI->getSExtValue();
     // Get least significant bits to count LogAlign
     unsigned LSBBits = SVal & UnsignedAllOnes;
-    A.LogAlign = LSBBits ? countTrailingZeros(LSBBits) : 31;
+    A.LogAlign = LSBBits ? IGCLLVM::countr_zero(LSBBits) : 31;
 
     A.ExtraBits = 0;
     A.ConstBits = MaskForUnknown;
@@ -348,8 +348,8 @@ Alignment Alignment::merge(Alignment Other) const {
   if (MinLogAlign) {
     unsigned DisagreeExtraBits =
         (ExtraBits ^ Other.ExtraBits) & ((1 << MinLogAlign) - 1);
-    MinLogAlign = std::min(
-        MinLogAlign, (unsigned)llvm::countTrailingZeros(DisagreeExtraBits));
+    MinLogAlign = std::min(MinLogAlign,
+                           (unsigned)IGCLLVM::countr_zero(DisagreeExtraBits));
   }
   IGC_ASSERT_EXIT(MinLogAlign < 32);
   return Alignment(MinLogAlign, ExtraBits & ((1 << MinLogAlign) - 1));
@@ -367,7 +367,7 @@ Alignment Alignment::add(Alignment Other) const {
   if (MinLogAlign) {
     ExtraBits2 = (ExtraBits + Other.ExtraBits) & ((1 << MinLogAlign) - 1);
     MinLogAlign =
-        std::min(MinLogAlign, (unsigned)llvm::countTrailingZeros(ExtraBits2));
+        std::min(MinLogAlign, (unsigned)IGCLLVM::countr_zero(ExtraBits2));
   }
   IGC_ASSERT_EXIT(MinLogAlign < 32);
   return Alignment(MinLogAlign, ExtraBits2 & ((1 << MinLogAlign) - 1));
@@ -391,7 +391,7 @@ Alignment Alignment::mul(Alignment Other) const {
   if (MinLogAlign) {
     ExtraBits2 = (ExtraBits * Other.ExtraBits) & ((1 << MinLogAlign) - 1);
     MinLogAlign =
-        std::min(MinLogAlign, (unsigned)llvm::countTrailingZeros(ExtraBits2));
+        std::min(MinLogAlign, (unsigned)IGCLLVM::countr_zero(ExtraBits2));
   }
   IGC_ASSERT_EXIT(MinLogAlign < 32);
   return Alignment(MinLogAlign, ExtraBits2 & ((1 << MinLogAlign) - 1));
@@ -410,7 +410,7 @@ Alignment Alignment::logicalOp(ConstantInt *CI, SelectFunction F) const {
       Val > std::numeric_limits<int>::max())
     return Alignment::getUnknown();
   unsigned UVal = static_cast<unsigned>(std::abs(Val));
-  unsigned ValLSB = llvm::countTrailingZeros(UVal);
+  unsigned ValLSB = IGCLLVM::countr_zero(UVal);
   // Chop off constant bits according to log align
   unsigned NewLogAlign = F(ValLSB, LogAlign);
   IGC_ASSERT_EXIT(NewLogAlign < 32);

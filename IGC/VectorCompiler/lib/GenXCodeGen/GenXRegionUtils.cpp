@@ -36,6 +36,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 using namespace llvm;
 using namespace genx;
@@ -970,7 +971,7 @@ convertRegionInstType(Instruction *Inst, Type *NewScalarTy,
     return std::nullopt;
   // Transformation is not profitable for 2D regions or if it will require
   // legalization.
-  if (R.is2D() || R.NumElements > llvm::PowerOf2Floor(
+  if (R.is2D() || R.NumElements > IGCLLVM::bit_floor(
                                       genx::getExecSizeAllowedBits(Inst, &ST)))
     return std::nullopt;
   return std::make_pair(NewVecTy, R);

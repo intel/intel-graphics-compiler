@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvmWrapper/Support/Alignment.h>
-#include <llvm/Support/MathExtras.h>
+#include <llvmWrapper/Support/MathExtras.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -116,8 +116,8 @@ bool LdShrink::runOnFunction(Function &F) {
         continue;
       if (!isShiftedMask_32(Mask))
         continue;
-      unsigned Offset = llvm::countTrailingZeros(Mask);
-      unsigned Length = llvm::countTrailingZeros((Mask >> Offset) + 1);
+      unsigned Offset = IGCLLVM::countr_zero(Mask);
+      unsigned Length = IGCLLVM::countr_zero((Mask >> Offset) + 1);
       // TODO: So far skip narrow vector.
       if (Length != 1)
         continue;

@@ -29,7 +29,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/Support/MathExtras.h"
+#include "llvmWrapper/Support/MathExtras.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -214,10 +214,10 @@ CMRegion::CMRegion(unsigned Bits, unsigned ElementBytes)
       Width(1), Stride(1), Offset(0), Indirect(0), IndirectIdx(0),
       IndirectAddrOffset(0), Mask(0), ParentWidth(0) {
   IGC_ASSERT(Bits);
-  Offset = llvm::countTrailingZeros(Bits);
+  Offset = IGCLLVM::countr_zero(Bits);
 
-  // It might seem problematic that countTrailingZeros may return 32 and that we
-  // could do shift by 32 here. But countTrailingZeros would return 32 in
+  // It might seem problematic that countr_zero may return 32 and that we
+  // could do shift by 32 here. But countr_zero would return 32 in
   // scenario where "Bits" variable is 0 And IGC_ASSERT(Bits) covers this
   // case... in debug mode, at least.
   if (Offset < std::numeric_limits<unsigned>::digits) {
@@ -225,7 +225,7 @@ CMRegion::CMRegion(unsigned Bits, unsigned ElementBytes)
     Offset *= ElementBytes;
 
     if (Bits != 1) {
-      Stride = llvm::countTrailingZeros(Bits & ~1);
+      Stride = IGCLLVM::countr_zero(Bits & ~1);
       NumElements = Width = countPopulation(Bits);
     }
   }

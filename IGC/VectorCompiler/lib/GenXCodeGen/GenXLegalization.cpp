@@ -1217,8 +1217,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
     ExecSizeAllowedBits &= 0x1f;
 
   IGC_ASSERT_EXIT(ExecSizeAllowedBits > 0);
-  unsigned MainInstMinWidth = 1
-                              << llvm::countTrailingZeros(ExecSizeAllowedBits);
+  unsigned MainInstMinWidth = 1 << IGCLLVM::countr_zero(ExecSizeAllowedBits);
   // Determine the vector width that we need to split into.
   bool IsReadSameVector = false;
   unsigned Width = WholeWidth - StartIdx;

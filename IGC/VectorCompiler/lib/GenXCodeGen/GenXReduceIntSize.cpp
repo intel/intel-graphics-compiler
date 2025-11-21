@@ -70,6 +70,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 #define DEBUG_TYPE "GENX_REDUCEINTSIZE"
 
@@ -201,7 +202,7 @@ static unsigned getAndNumBits(Instruction *Inst) {
   if (auto C = dyn_cast<Constant>(Inst->getOperand(1))) {
     if ((C = C->getSplatValue())) {
       uint64_t Val = cast<ConstantInt>(C)->getZExtValue();
-      return 64 - llvm::countLeadingZeros(Val);
+      return 64 - IGCLLVM::countl_zero(Val);
     }
   }
   return Inst->getType()->getScalarType()->getPrimitiveSizeInBits();
@@ -965,7 +966,7 @@ GenXReduceIntSize::getValueNumBits(Value *V, bool PreferSigned) {
     if (C) {
       int64_t Val = cast<ConstantInt>(C)->getSExtValue();
       if (Val >= 0)
-        return ValueNumBits(64 - llvm::countLeadingZeros((uint64_t)Val) +
+        return ValueNumBits(64 - IGCLLVM::countl_zero((uint64_t)Val) +
                                 PreferSigned,
                             /*IsSignExtended=*/PreferSigned);
       if (Val == std::numeric_limits<int64_t>::min())

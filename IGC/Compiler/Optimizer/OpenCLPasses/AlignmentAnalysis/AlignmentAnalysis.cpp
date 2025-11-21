@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/InstIterator.h"
-#include "llvm/Support/MathExtras.h"
+#include "llvmWrapper/Support/MathExtras.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -175,7 +175,7 @@ Align AlignmentAnalysis::getConstantAlignment(uint64_t C) const {
     return Align(Value::MaximumAlignment);
   }
 
-  return std::min(Align(Value::MaximumAlignment), Align(1ULL << llvm::countTrailingZeros(C)));
+  return std::min(Align(Value::MaximumAlignment), Align(1ULL << IGCLLVM::countr_zero(C)));
 }
 
 Align AlignmentAnalysis::getAlignValue(Value *V) const {

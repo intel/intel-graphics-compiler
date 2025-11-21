@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 #include "vc/GenXCodeGen/GenXLowerAggrCopies.h"
 
@@ -98,7 +99,7 @@ struct SliceInfo {
 static std::vector<SliceInfo> getLegalLengths(int TotalLength, int Align) {
   std::vector<SliceInfo> Slices;
   for (int Offset = 0; TotalLength;) {
-    int Width = PowerOf2Floor(TotalLength);
+    int Width = IGCLLVM::bit_floor(TotalLength);
     Slices.push_back({Offset, Width, Align});
 
     Offset += Width;
