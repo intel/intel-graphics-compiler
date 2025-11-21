@@ -926,6 +926,10 @@ bool needA0WAR() const {
   return (getPlatform() >= Xe2);
 }
 
+bool needFlagWAR() const {
+  return (getPlatform() < Xe3);
+}
+
 bool alwaysAllowGlobalFlagOpt() const {
   // We shouldn't add this kind of ugly platform check. However, there's
   // a complicated bug found in TGLLP when disabling a flagopt case. There
