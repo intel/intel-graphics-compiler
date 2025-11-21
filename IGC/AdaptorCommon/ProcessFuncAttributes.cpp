@@ -411,6 +411,30 @@ static void addAlwaysInlineForImageBuiltinUserFunctions(Module &M) {
   }
 }
 
+static void collectGlobalAnnotationsPointers(const Module &M, DenseSet<const Value *> &GlobalAnnotations) {
+  auto *GA = M.getGlobalVariable("llvm.global.annotations");
+  if (!GA)
+    return;
+
+  auto *CA = dyn_cast<ConstantArray>(GA->getInitializer());
+  if (!CA)
+    return;
+
+  for (Value *Op : CA->operands()) {
+    auto *Annot = dyn_cast<ConstantStruct>(Op);
+    if (!Annot)
+      continue;
+
+    // In case of opaque pointers add whole struct, since it
+    // will be visible as function user, otherwise add bitcast
+    if (Annot->getOperand(0)->getType()->isOpaquePointerTy()) {
+      GlobalAnnotations.insert(Annot);
+    } else {
+      GlobalAnnotations.insert(Annot->getOperand(0));
+    }
+  }
+}
+
 bool ProcessFuncAttributes::runOnModule(Module &M) {
   MetaDataUtilsWrapper &mduw = getAnalysis<MetaDataUtilsWrapper>();
   MetaDataUtils *pMdUtils = mduw.getMetaDataUtils();
@@ -435,6 +459,9 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
       }
     }
   }
+
+  DenseSet<const Value *> GlobalAnnotationsPtr;
+  collectGlobalAnnotationsPointers(M, GlobalAnnotationsPtr);
 
   auto SetNoInline = [](Function *F) {
     F->addFnAttr(llvm::Attribute::NoInline);
@@ -599,6 +626,11 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
         // Set the indirect flag if the function's address is taken by a non-call instruction.
         for (auto u = F->user_begin(), e = F->user_end(); u != e; u++) {
           CallInst *call = dyn_cast<CallInst>(*u);
+
+          // If user is function bitcast or function ptr in @llvm.global.annotations we should skip it.
+          if (GlobalAnnotationsPtr.find(*u) != GlobalAnnotationsPtr.end())
+            continue;
+
           if (!call || IGCLLVM::getCalledValue(call) != F) {
             isIndirect = true;
             break;
