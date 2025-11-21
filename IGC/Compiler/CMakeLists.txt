@@ -120,6 +120,8 @@ set(IGC_BUILD__SRC__Compiler
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_30_01_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_30_03_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_30_00_sw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_30_04_hw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_30_05_hw_wa.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/SamplerPerfOptPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TranslateToProgrammableOffsetsPass.cpp"
     ${IGC_BUILD__SRC__Compiler_CISACodeGen}
