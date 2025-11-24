@@ -8,7 +8,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=0 %s | FileCheck %s --check-prefix=MINSPLIT
+; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=0 %s | FileCheck %s --check-prefix=MINSPLIT
 
 declare void @fun_v1i32(<1 x i32>)
 declare void @fun_v2i32(<2 x i32>)

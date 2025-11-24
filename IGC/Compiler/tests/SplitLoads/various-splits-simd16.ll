@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=0 %s | FileCheck %s --check-prefix=MINSPLIT
-; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=8 %s | FileCheck %s --check-prefix=SPLIT8
+; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=ForceOCLSIMDWidth=16 --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=0 %s | FileCheck %s --check-prefix=MINSPLIT
+; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=ForceOCLSIMDWidth=16 --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=8 %s | FileCheck %s --check-prefix=SPLIT8
 
 declare spir_func <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)
 declare spir_func <16 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v16i16(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)
@@ -870,3 +870,25 @@ define spir_kernel void @test_vnni_7(i64 %ptr) {
   ret void
 }
 
+define spir_kernel void @test_transposed_strided(i64 %ptr) {
+; MINSPLIT-LABEL: @test_transposed_strided(
+; MINSPLIT-NEXT:    [[TMP1:%.*]] = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64 [[PTR:%.*]], i32 63, i32 7, i32 31, i32 3, i32 2, i32 32, i32 8, i32 16, i32 1, i1 true, i1 false, i32 0)
+; MINSPLIT-NEXT:    [[TMP2:%.*]] = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64 [[PTR]], i32 63, i32 7, i32 31, i32 3, i32 18, i32 32, i32 8, i32 16, i32 1, i1 true, i1 false, i32 0)
+; MINSPLIT-NEXT:    call void @fun_v8i32(<8 x i32> [[TMP1]])
+; MINSPLIT-NEXT:    call void @fun_v8i32(<8 x i32> [[TMP2]])
+; MINSPLIT-NEXT:    ret void
+
+; SPLIT8-LABEL: @test_transposed_strided(
+; SPLIT8-NEXT:    [[TMP1:%.*]] = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64 [[PTR:%.*]], i32 63, i32 7, i32 31, i32 3, i32 2, i32 32, i32 8, i32 16, i32 1, i1 true, i1 false, i32 0)
+; SPLIT8-NEXT:    [[TMP2:%.*]] = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64 [[PTR]], i32 63, i32 7, i32 31, i32 3, i32 18, i32 32, i32 8, i32 16, i32 1, i1 true, i1 false, i32 0)
+; SPLIT8-NEXT:    call void @fun_v8i32(<8 x i32> [[TMP1]])
+; SPLIT8-NEXT:    call void @fun_v8i32(<8 x i32> [[TMP2]])
+; SPLIT8-NEXT:    ret void
+
+  %vec5 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %ptr, i32 63, i32 7, i32 31, i32 3, i32 2, i32 32, i32 8, i32 32, i32 1, i1 true, i1 false, i32 0)
+  %pick5.1 = shufflevector <16 x i32> %vec5, <16 x i32> undef, <8 x i32> <i32 0, i32 2, i32 4, i32 6, i32 8, i32 10, i32 12, i32 14>
+  %pick5.2 = shufflevector <16 x i32> %vec5, <16 x i32> undef, <8 x i32> <i32 1, i32 3, i32 5, i32 7, i32 9, i32 11, i32 13, i32 15>
+  call void @fun_v8i32(<8 x i32> %pick5.1)
+  call void @fun_v8i32(<8 x i32> %pick5.2)
+  ret void
+}

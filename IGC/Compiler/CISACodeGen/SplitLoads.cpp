@@ -321,15 +321,20 @@ struct Pick : public SmallVector<int, DEF_PICK_SIZE> {
 /// consecutive groups.
 /// - `numOfGr` denotes the number of groups.
 /// If `grPitch <= grSize`, then `numOfGr` must be equal to `1`.
+/// - `strd` denotes the stride between elements in each group.
+/// if the elements are contiguous, `strd` is equal to `0` (not 1)
+/// to simplify distinguishing between strided and non-strided cases.
+/// Currently only stride 0 and 2 are supported.
 struct MBRange {
   int first = 0;
   unsigned grSize = 0;
   int grPitch = 0;
   unsigned numOfGr = 0;
+  unsigned strd = 0;
 
   explicit MBRange() = default;
-  MBRange(int first, unsigned grSize, int grPitch, unsigned numOfGr)
-      : first(first), grSize(grSize), grPitch(grPitch), numOfGr(numOfGr) {}
+  MBRange(int first, unsigned grSize, int grPitch, unsigned numOfGr, unsigned strd)
+      : first(first), grSize(grSize), grPitch(grPitch), numOfGr(numOfGr), strd(strd) {}
 
   /// Returns empty range.
   static MBRange getEmpty() { return MBRange(); }
@@ -340,9 +345,14 @@ struct MBRange {
   /// Returns the total number of elements in the range.
   int size() const { return grSize * numOfGr; }
 
+  /// Returns the stride between elements in the range.
+  int stride() const { return strd; }
+
   /// Returns the last element of the range.
   int last() const {
-    return grPitch * (static_cast<int>(0 < numOfGr ? numOfGr : 1) - 1) + first + static_cast<int>(grSize) - 1;
+    if (empty())
+      return first;
+    return grPitch * (static_cast<int>(numOfGr) - 1) + first + (static_cast<int>(grSize) - 1) * (strd ? strd : 1);
   }
 
   /// Returns the `n`-th element of the range.
@@ -442,12 +452,18 @@ raw_ostream &operator<<(raw_ostream &os, const Pick &pick) {
 
 int MBRange::operator[](int n) const { return (*this)(n / grSize, n % grSize); }
 
-int MBRange::operator()(int group, int elt) const { return group * grPitch + first + elt; }
+int MBRange::operator()(int group, int elt) const { return group * grPitch + first + elt * (strd ? strd : 1); }
 
 bool MBRange::contains(int x) const {
-  return empty()       ? false
-         : 1 < numOfGr ? first <= x && x <= last() && (x - first) % grPitch < static_cast<int>(grSize)
+  if (empty())
+    return false;
+  if (!strd) {
+    return 1 < numOfGr ? first <= x && x <= last() && (x - first) % grPitch < static_cast<int>(grSize)
                        : first <= x && x <= last();
+  }
+
+  // Strided case: use indexOf to check containment
+  return indexOf(x) >= 0;
 }
 
 MBRange::Containment MBRange::containsOrExcludes(const Pick &pick, bool allowUndefs) const {
@@ -466,7 +482,29 @@ MBRange::Containment MBRange::containsOrExcludes(const Pick &pick, bool allowUnd
 }
 
 int MBRange::indexOf(int x) const {
-  return contains(x) ? 1 < numOfGr ? (x - first) / grPitch * grSize + (x - first) % grPitch : x - first : -1;
+  if (empty())
+    return -1;
+
+  if (!strd) {
+    // Non-strided case: elements are contiguous within groups
+    if (1 < numOfGr) {
+      if (first <= x && x <= last() && (x - first) % grPitch < static_cast<int>(grSize))
+        return (x - first) / grPitch * grSize + (x - first) % grPitch;
+    } else {
+      if (first <= x && x <= last())
+        return x - first;
+    }
+    return -1;
+  }
+
+  // Strided case: need to find which group and which element within the group
+  for (unsigned gr = 0; gr < numOfGr; ++gr) {
+    for (unsigned el = 0; el < grSize; ++el) {
+      if (x == (*this)(gr, el))
+        return gr * grSize + el;
+    }
+  }
+  return -1;
 }
 
 Pick MBRange::toPick() const {
@@ -488,7 +526,7 @@ std::optional<MBRange> MBRange::fromPick(const Pick &pick) {
   }
 
   int val;
-  MBRange ret(pick.front(), 0, 0, 0);
+  MBRange ret(pick.front(), 0, 0, 0, 0);
   for (unsigned n = 1; n < pick.size(); ++n) {
     val = pick[n];
     // We don't allow undefs.
@@ -529,12 +567,29 @@ std::optional<MBRange> MBRange::fromPick(const Pick &pick) {
     }
   }
 
+  // If pick is {0, 2, 4, 6, 8, ...} we transform it to a strided MBRange
+  // (strd=2 and the rest adjusted).
+  // It makes sense because the loads with the strided picks can be split later
+  // under some conditions (transposed load, every WI gets 2 elements after the load).
+  // Otherwise it's usually not possible to split the load that has stride (or, more generally,
+  // many groups of size = 1 and grPitch > 1).
+  // We only support this case of the strided access for now.
+  if (ret.grSize == 1 && ret.grPitch == 2) {
+    ret.grPitch = 1;
+    ret.numOfGr = 1;
+    ret.strd = 2;
+    ret.grSize = pick.size();
+  }
+
   return ret;
 }
 
 raw_ostream &operator<<(raw_ostream &os, const MBRange &range) {
   for (unsigned gr = 0; gr < range.numOfGr; ++gr) {
-    os << '[' << range(gr, 0) << ", " << range(gr, range.grSize - 1) << "] ";
+    os << '[' << range(gr, 0) << ", " << range(gr, range.grSize - 1);
+    if (range.strd)
+      os << ", (" << range.strd << ")";
+    os << "] ";
   }
   return os;
 }
@@ -578,7 +633,7 @@ static int getArgS(GenIntrinsicInst *GII, unsigned n) {
   return static_cast<int>(cast<ConstantInt>(GII->getArgOperand(n))->getSExtValue());
 }
 
-#define DBG(x) LLVM_DEBUG(x)
+#define DBG(x) LLVM_DEBUG(x);
 
 using Picks = SmallVector<Pick, DEF_NUM_OF_PICKS_PER_LOAD>;
 using MBRanges = SmallVector<MBRange, DEF_NUM_OF_PICKS_PER_LOAD>;
@@ -766,6 +821,8 @@ private:
 
 raw_ostream &operator<<(raw_ostream &os, const Dims &dims) {
   os << dims.grSize << " x " << dims.numOfGr;
+  if (dims.stride > 1)
+    os << " (stride " << dims.stride << ")";
   return os;
 }
 
@@ -850,6 +907,9 @@ bool Config::initialize(Function *F, CodeGenContext *inCGC, IGCLivenessAnalysisR
   if (RPE->MDUtils && RPE->MDUtils->findFunctionsInfoItem(F) != RPE->MDUtils->end_FunctionsInfo()) {
     IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = RPE->MDUtils->getFunctionsInfoItem(F);
     actualSimd = funcInfoMD->getSubGroupSize()->getSIMDSize();
+  }
+  if (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) {
+    actualSimd = IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth);
   }
 
   isLegitW8 = false;
@@ -1223,7 +1283,8 @@ std::unique_ptr<TraceData> TraceData::pickSubpicksOf(const MBRange &mbr) {
 
 /// Creates a vector of MBRange's, each of the same `grSize`, `grPitch`, and
 /// `numOfGr`. The ranges cover the entire vector of length `vectorLength`.
-static std::optional<MBRanges> makeUniform(unsigned grSize, int grPitch, unsigned numOfGr, unsigned vectorLength) {
+static std::optional<MBRanges> makeUniform(unsigned grSize, int grPitch, unsigned numOfGr, unsigned vectorLength,
+                                           unsigned stride) {
   if (!vectorLength)
     return std::nullopt;
   if (grSize == grPitch) {
@@ -1237,9 +1298,13 @@ static std::optional<MBRanges> makeUniform(unsigned grSize, int grPitch, unsigne
     unsigned numOfGroups = vectorLength / grSize;
     mbrs.resize(numOfGroups);
     for (unsigned n = 0; n < numOfGroups; ++n) {
-      mbrs[n] = MBRange(n * grSize, grSize, grPitch, 1);
+      mbrs[n] = MBRange(n * (stride ? 1 : grSize), grSize, grPitch, 1, stride);
     }
   } else {
+    if (stride) {
+      // Strided multi-group ranges are not supported.
+      return std::nullopt;
+    }
     if (vectorLength % (grPitch * numOfGr) || grPitch % grSize || grPitch <= static_cast<int>(grSize) || grPitch <= 0)
       return std::nullopt;
     unsigned numInBlock = grPitch / grSize;
@@ -1248,7 +1313,7 @@ static std::optional<MBRanges> makeUniform(unsigned grSize, int grPitch, unsigne
     mbrs.resize(numInBlock * numOfBlocks);
     for (unsigned n = 0; n < numOfBlocks; ++n) {
       for (unsigned m = 0; m < numInBlock; ++m) {
-        mbrs[n * numInBlock + m] = MBRange(n * blockPitch + m * grSize, grSize, grPitch, numOfGr);
+        mbrs[n * numInBlock + m] = MBRange(n * blockPitch + m * grSize, grSize, grPitch, numOfGr, 0);
       }
     }
   }
@@ -1286,16 +1351,28 @@ static std::optional<MBRanges> makeGridUniformPicks(const Picks &picks, unsigned
     DBG(dbgs() << "    -- Multi-block ranges of different sizes.\n");
     return std::nullopt;
   }
+
+  bool stride = false;
+
+  if (mbr.stride()) {
+    stride = true;
+    if (mbr.stride() != 2) {
+      DBG(dbgs() << "    -- Invalid stride of multi-block range " << mbr << ".\n");
+      return std::nullopt;
+    }
+  }
+
   if (mbr.numOfGr == 1) {
     if (!isPowerOf2_32(mbr.grSize) || vectorLength % mbr.grSize || mbr.first % mbr.grSize) {
       DBG(dbgs() << "    -- Invalid size of multi-block range " << mbr << ".\n");
       return std::nullopt;
     }
-  } else {
+  } else if (!stride) {
     if (!(isPowerOf2_32(mbr.grSize) && isPowerOf2_32(mbr.grPitch) && isPowerOf2_32(mbr.numOfGr))) {
       DBG(dbgs() << "    -- Invalid size of multi-block range " << mbr << ".\n");
       return std::nullopt;
     }
+
     // - group size must be smaller than block length and be its divisor
     // - group pitch must match the block length (there are no gaps between
     // blocks)
@@ -1461,25 +1538,48 @@ PossibleDims Load::possibleDims() {
   unsigned minNumOfGr = minSplitOpt->front().numOfGr;
   DBG(dbgs() << "    -- Minimal block size = " << minGrSize << " x " << minNumOfGr << ".\n");
 
-  // For multiple blocks, if dims.numOfGr > 1, the subgroup cannot cover the
-  // entire group, i.e., dims.grSize < groupLength(). However, if dims.numOfGr =
-  // 1, the group size can be as large as the vector size. For example, 2x2 is a
-  // proper subdimension of 4x4, but 4x2 is not, as it is equivalent to 8x1.
+  unsigned stride = minSplitOpt->front().stride();
   PossibleDims dims;
-  // First, dimensions with a single group.
-  for (unsigned grSize = std::max(groupLength() * minNumOfGr, minGrSize); grSize <= vectorLength; grSize *= 2) {
-    if (grSize < config().minSplitSize_E || grSize * scalarMemSize_B() < config().minSplitSize_B)
-      continue;
-    dims.insert({grSize, 1});
-  }
-  // Next, dimensions with a multiple groups.
-  for (unsigned grSize = minGrSize; grSize < groupLength(); grSize *= 2) {
-    for (unsigned numOfGr = minNumOfGr; numOfGr <= numOfBlocks; numOfGr *= 2) {
-      if (grSize * numOfGr < config().minSplitSize_E || grSize * numOfGr * scalarMemSize_B() < config().minSplitSize_B)
+
+  if (stride) {
+    // We support one strided case: stride == 2 for transposed loads.
+    // In this case we can split it into two vectors. To distinguish this from the non-strided case
+    // we preserve stride == 2 in the resulting dims and set numOfGr == 1.
+    if (stride != 2) {
+      DBG(dbgs() << " -- [SKIP] Only stride == 2 is supported.\n");
+      return {};
+    }
+    if (!transposed) {
+      DBG(dbgs() << " -- [SKIP] Stride == 2 is only supported for transposed loads.\n");
+      return {};
+    }
+    unsigned grSize = vectorLength;
+    dims.insert({grSize, 1, stride});
+    if ((grSize / 2 >= config().minSplitSize_E) && ((grSize / 2) * scalarMemSize_B() >= config().minSplitSize_B)) {
+      dims.insert({grSize / 2, 1, stride});
+    }
+  } else if (config().allowNonStrided) {
+    // For multiple blocks, if dims.numOfGr > 1, the subgroup cannot cover the
+    // entire group, i.e., dims.grSize < groupLength(). However, if dims.numOfGr =
+    // 1, the group size can be as large as the vector size. For example, 2x2 is a
+    // proper subdimension of 4x4, but 4x2 is not, as it is equivalent to 8x1.
+    // First, dimensions with a single group.
+    for (unsigned grSize = std::max(groupLength() * minNumOfGr, minGrSize); grSize <= vectorLength; grSize *= 2) {
+      if (grSize < config().minSplitSize_E || grSize * scalarMemSize_B() < config().minSplitSize_B)
         continue;
-      dims.insert({grSize, numOfGr});
+      dims.insert({grSize, 1, 0});
+    }
+    // Next, dimensions with a multiple groups.
+    for (unsigned grSize = minGrSize; grSize < groupLength(); grSize *= 2) {
+      for (unsigned numOfGr = minNumOfGr; numOfGr <= numOfBlocks; numOfGr *= 2) {
+        if (grSize * numOfGr < config().minSplitSize_E ||
+            grSize * numOfGr * scalarMemSize_B() < config().minSplitSize_B)
+          continue;
+        dims.insert({grSize, numOfGr, 0});
+      }
     }
   }
+
   if (dims.empty()) {
     DBG(dbgs() << " -- [SKIP] No possible dimensions (including no split) "
                   "satisfy all the conditions.\n");
@@ -1503,8 +1603,16 @@ Load &Load::splitFlat(const MBRange &range) {
 
 Load &Load::splitTransposed(const MBRange &range) {
   vectorLength = static_cast<unsigned>(range.size());
-  xOffset_E += range.first;
-  blockWidth_E = static_cast<unsigned>(range.size());
+
+  if (range.stride() == 2) {
+    blockHeight_E = static_cast<unsigned>(blockHeight_E / 2);
+    yOffset_P += static_cast<int>(range.first * blockHeight_E);
+  } else {
+    IGC_ASSERT_MESSAGE(range.stride() == 0, "Only stride of 2 is supported for transposed loads.");
+    blockWidth_E = static_cast<unsigned>(range.size());
+    xOffset_E += range.first;
+  }
+
   return *this;
 }
 
@@ -1783,6 +1891,47 @@ bool LoadSplitter::Impl::split(GenIntrinsicInst *GII, Dims dims) {
     return true;
   };
 
+  auto checkNumOfScalarsPerWI = [](const MBRanges &mbrs, const Load &load) -> bool {
+    // For strided loads, we can only split if the original load had 2 elements per WI
+    // This ensures that:
+    // 1. The load is transposed
+    // 2. Each work-item gets exactly 2 elements (blockHeight_E / vectorLength == 2)
+    // 3. We're splitting into exactly 2 parts with stride 2
+    // 4. The SIMD size matches the vectorLength
+
+    if (!load.transposed) {
+      DBG(dbgs() << "    -- [SKIP] Load is not transposed.\n");
+      return false;
+    }
+
+    if (mbrs.front().stride() != 2 || mbrs.size() != 2) {
+      DBG(dbgs() << "    -- [SKIP] Must have exactly 2 splits with stride 2.\n");
+      return false;
+    }
+
+    unsigned scalarsPerWI = load.blockHeight_E / load.vectorLength;
+    if (scalarsPerWI != 2) {
+      DBG(dbgs() << "    -- [SKIP] Each work-item must get exactly 2 elements (got " << scalarsPerWI << ").\n");
+      return false;
+    }
+
+    // In this case it's essential that we know the SIMD, so
+    // don't do the transformation if the SIMD size is not known
+    if (!config().actualSimd) {
+      DBG(dbgs() << "    -- [SKIP] Actual SIMD size is unknown.\n");
+      return false;
+    }
+
+    if (config().actualSimd != load.vectorLength) {
+      DBG(dbgs() << "    -- [SKIP] SIMD mismatch: actual SIMD = " << config().actualSimd
+                 << ", vectorLength = " << load.vectorLength << ".\n");
+      return false;
+    }
+
+    DBG(dbgs() << "    -- [OK] Strided load validation passed.\n");
+    return true;
+  };
+
   if (!processBlockLoad(GII))
     return false;
   Load &load = *blockLoadsMap[GII];
@@ -1790,7 +1939,8 @@ bool LoadSplitter::Impl::split(GenIntrinsicInst *GII, Dims dims) {
     DBG(dbgs() << " -- [SKIP] Nothing to split.\n");
     return false;
   }
-  std::optional<MBRanges> splitsOpt = makeUniform(dims.grSize, load.groupLength(), dims.numOfGr, load.vectorLength);
+  std::optional<MBRanges> splitsOpt =
+      makeUniform(dims.grSize, dims.stride ? 1 : load.groupLength(), dims.numOfGr, load.vectorLength, dims.stride);
   if (!splitsOpt) {
     DBG(dbgs() << " -- [ERROR] Split is not valid.\n");
     return false;
@@ -1798,6 +1948,10 @@ bool LoadSplitter::Impl::split(GenIntrinsicInst *GII, Dims dims) {
   MBRanges &splits = *splitsOpt;
   if (!doPicksFit(splits, *load.trace->picks)) {
     DBG(dbgs() << " -- [ERROR] Picks do not fit the splits.\n");
+    return false;
+  }
+  if (dims.stride && !checkNumOfScalarsPerWI(splits, load)) {
+    DBG(dbgs() << " -- [ERROR] Cannot perform split of a strided load.\n");
     return false;
   }
   auto newLoads = splitBlockLoad(load, splits);

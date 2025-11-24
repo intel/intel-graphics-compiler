@@ -35,7 +35,7 @@ namespace LS {
 
 /// A `struct` containing two dimensions of a block.
 struct Dims {
-  unsigned grSize, numOfGr;
+  unsigned grSize, numOfGr, stride;
   unsigned size() const { return grSize * numOfGr; }
 
   bool operator<(const Dims &rhs) const {
@@ -75,6 +75,9 @@ struct Config {
   /// block only if the maximal register pressure exceeds total GRFs by this
   /// much.
   int splitThresholdDelta_GRF = IGC_GET_FLAG_VALUE(LS_splitThresholdDelta_GRF);
+
+  /// If `true`, not only strided loads can be split.
+  bool allowNonStrided = IGC_IS_FLAG_DISABLED(LS_onlyStrided);
 
   /// Minimal split size in bytes, to be calculated from minSplitSize_GRF.
   unsigned minSplitSize_B = 0;

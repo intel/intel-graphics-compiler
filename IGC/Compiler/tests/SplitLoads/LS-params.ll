@@ -8,12 +8,12 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=0 %s | FileCheck %s --check-prefix=SPLIT
-; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=100 --regkey=LS_minSplitSize_E=0 %s | FileCheck %s --check-prefix=GRF
-; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=4 %s | FileCheck %s --check-prefix=ELTS4
-; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=8 %s | FileCheck %s --check-prefix=ELTS8
-; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=16 %s | FileCheck %s --check-prefix=ELTS16
-; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_ignoreSplitThreshold=0 --regkey=LS_splitThresholdDelta_GRF=-1000 %s | FileCheck %s --check-prefix=THRESHOLD
+; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=0 %s | FileCheck %s --check-prefix=SPLIT
+; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=100 --regkey=LS_minSplitSize_E=0 %s | FileCheck %s --check-prefix=GRF
+; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=4 %s | FileCheck %s --check-prefix=ELTS4
+; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=8 %s | FileCheck %s --check-prefix=ELTS8
+; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=16 %s | FileCheck %s --check-prefix=ELTS16
+; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=0 --regkey=LS_splitThresholdDelta_GRF=-1000 %s | FileCheck %s --check-prefix=THRESHOLD
 
 declare spir_func void @fun_v4i32(<4 x i32>)
 

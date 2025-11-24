@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=0 %s | FileCheck %s --check-prefix=MINSPLIT
-; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=8 %s | FileCheck %s --check-prefix=SPLIT8
+; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=ForceOCLSIMDWidth=32 --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=0 %s | FileCheck %s --check-prefix=MINSPLIT
+; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=ForceOCLSIMDWidth=32 --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=8 %s | FileCheck %s --check-prefix=SPLIT8
 
 declare spir_func <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)
 declare spir_func <16 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v16i16(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)
@@ -869,4 +869,3 @@ define spir_kernel void @test_vnni_7(i64 %ptr) {
   call void @fun_v8i32(<8 x i32> %pick5.2)
   ret void
 }
-

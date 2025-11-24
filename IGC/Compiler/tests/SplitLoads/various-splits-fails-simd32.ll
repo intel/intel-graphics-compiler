@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=0 %s | FileCheck %s --check-prefix=MINSPLIT
-; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=8 %s | FileCheck %s --check-prefix=SPLIT8
+; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=ForceOCLSIMDWidth=32 --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=0 %s | FileCheck %s --check-prefix=MINSPLIT
+; RUN: igc_opt -S --igc-split-loads -platformpvc --regkey=ForceOCLSIMDWidth=32 --regkey=LS_enableLoadSplitting=1 --regkey=LS_onlyStrided=0 --regkey=LS_ignoreSplitThreshold=1 --regkey=LS_minSplitSize_GRF=0 --regkey=LS_minSplitSize_E=8 %s | FileCheck %s --check-prefix=SPLIT8
 
 
 declare spir_func <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)
@@ -154,7 +154,7 @@ define spir_kernel void @test_basic_block_splits_fail_5(i64 %ptr) {
   ret void
 }
 
-; This case would be splittable if we knew SIMD size (16) at the time of splitting.
+; This case would be splittable with SIMD size 16, but not with 32.
 define spir_kernel void @test_transposed_strided_fail_1(i64 %ptr) {
 ; MINSPLIT-LABEL: @test_transposed_strided_fail_1(
 ; MINSPLIT-NEXT:    [[VEC5:%.*]] = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 [[PTR:%.*]], i32 63, i32 7, i32 31, i32 3, i32 2, i32 32, i32 8, i32 32, i32 1, i1 true, i1 false, i32 0)
@@ -180,7 +180,7 @@ define spir_kernel void @test_transposed_strided_fail_1(i64 %ptr) {
   ret void
 }
 
-; This strided case is too small to be split further, as every WI gets one element even before the splitting.
+; This strided case is too small to be split further even in SIMD16, so also in SIMD32.
 define spir_kernel void @test_transposed_strided_fail_2(i64 %ptr) {
 ; MINSPLIT-LABEL: @test_transposed_strided_fail_2(
 ; MINSPLIT-NEXT:    [[VEC5:%.*]] = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64 [[PTR:%.*]], i32 63, i32 7, i32 31, i32 3, i32 2, i32 32, i32 8, i32 16, i32 1, i1 true, i1 false, i32 0)
