@@ -1256,7 +1256,7 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
   auto M = F.getParent();
   DenseMap<AllocaInst *, GlobalVariable *> AllocaMap;
   // collect all the allocas that store the address of genx-volatile variable
-  for (auto &G : M->getGlobalList()) {
+  for (auto &G : M->globals()) {
     if (!G.hasAttribute("genx_volatile"))
       continue;
     std::vector<User *> WL;

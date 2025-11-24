@@ -299,7 +299,7 @@ void GenerateCompilerOptionsMD(llvm::LLVMContext &C, llvm::Module &M, llvm::Stri
 // Naming global variables after kernels removal can result in inconsistent naming compared to the first compilation,
 // potentially causing crashes in the ProgramScopeConstantAnalysis pass.
 void AssignNamesToUnnamedGlobalVariables(llvm::Module &M) {
-  for (auto &G : M.getGlobalList()) {
+  for (auto &G : M.globals()) {
     if (!G.hasName()) {
       G.setName("gVar");
     }

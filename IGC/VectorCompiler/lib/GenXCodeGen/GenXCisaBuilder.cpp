@@ -1209,7 +1209,7 @@ void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
   // Number of globals to be binded statically.
   std::vector<std::pair<GlobalVariable *, int32_t>> Bindings;
   Module *M = F->getParent();
-  for (auto &GV : M->getGlobalList()) {
+  for (auto &GV : M->globals()) {
     int32_t Offset = 0;
     GV.getAttribute(genx::FunctionMD::GenXByteOffset)
         .getValueAsString()

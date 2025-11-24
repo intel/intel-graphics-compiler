@@ -578,7 +578,7 @@ bool GenXPacketize::isUniformIntrinsic(unsigned ID) {
 
 void GenXPacketize::findUniformInsts(Function &F) {
   // global variable load is uniform
-  for (auto &Global : M->getGlobalList()) {
+  for (auto &Global : M->globals()) {
     for (auto UI = Global.use_begin(), UE = Global.use_end(); UI != UE; ++UI) {
       if (auto *LD = dyn_cast<LoadInst>(UI->getUser())) {
         UniformInsts.insert(LD);
@@ -1756,7 +1756,7 @@ void GenXPacketize::fixupLLVMIntrinsics(Function &F) {
 /// CM SIMD control-flow representation after packetization
 GlobalVariable *GenXPacketize::findGlobalExecMask() {
   // look for the global EMask variable if exists
-  for (auto &Global : M->getGlobalList()) {
+  for (auto &Global : M->globals()) {
     auto *Ty = Global.getValueType();
     if (Ty->isVectorTy() &&
         cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() ==

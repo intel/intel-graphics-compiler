@@ -386,8 +386,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReade
   // 2)Check if Global has a user
   // 3)link all of the Globals with a user to BIM
 
-  auto &Globals = BIM->getGlobalList();
-  for (auto &global_iterator : Globals) {
+  for (auto &global_iterator : BIM->globals()) {
     if (!global_iterator.hasInitializer() && !global_iterator.use_empty()) {
       int SectionIndex = Map[global_iterator.getName()];
       if (SectionIndex == 0)
