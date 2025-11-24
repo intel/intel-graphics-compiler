@@ -219,6 +219,12 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList &uses,
       }
     }
 
+    if (useInst->getNumDst() && useInst->getDst() && !useInst->hasNULLDst() &&
+        useInst->getDst()->getTopDcl() == lvnDstTopDcl) {
+      canReplace = false;
+      break;
+    }
+
     // Compute a single positive stride if exists.
     unsigned int use_hs = 0;
     {
