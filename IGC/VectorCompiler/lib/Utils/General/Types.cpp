@@ -21,8 +21,7 @@ IGCLLVM::FixedVectorType *vc::changeAddrSpace(IGCLLVM::FixedVectorType *OrigTy,
   IGC_ASSERT_MESSAGE(OrigTy, "wrong argument");
   auto *PtrTy = cast<PointerType>(OrigTy->getElementType());
   auto EC = OrigTy->getNumElements();
-  return IGCLLVM::FixedVectorType::get(
-      IGCLLVM::getWithSamePointeeType(PtrTy, AddrSpace), EC);
+  return IGCLLVM::FixedVectorType::get(IGCLLVM::get(PtrTy, AddrSpace), EC);
 }
 
 Type *vc::changeAddrSpace(Type *OrigTy, int AddrSpace) {

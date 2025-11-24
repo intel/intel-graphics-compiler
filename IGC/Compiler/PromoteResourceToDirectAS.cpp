@@ -236,7 +236,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
     }
 
     addrSpace = IGC::EncodeAS4GFXResource(*bufferId, bufTy);
-    PointerType *newptrType = IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(resourcePtr->getType()), addrSpace);
+    PointerType *newptrType = IGCLLVM::get(dyn_cast<PointerType>(resourcePtr->getType()), addrSpace);
 
     Value *mutePtr = nullptr;
     if (llvm::isa<llvm::ConstantInt>(bufferId)) {
@@ -304,7 +304,7 @@ bool PatchGetElementPtr(const std::vector<Value *> &instList, Type *dstTy, unsig
         gepPatchedInst->setDebugLoc(gepInst->getDebugLoc());
       }
     } else if (BitCastInst *cast = dyn_cast<BitCastInst>(inst)) {
-      PointerType *newptrType = IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(cast->getType()), directAS);
+      PointerType *newptrType = IGCLLVM::get(dyn_cast<PointerType>(cast->getType()), directAS);
       patchedInst = BitCastInst::Create(Instruction::BitCast, patchedInst, newptrType, "", cast);
       if (BitCastInst *castPathedInst = dyn_cast<BitCastInst>(patchedInst)) {
         castPathedInst->setDebugLoc(cast->getDebugLoc());
@@ -373,7 +373,7 @@ bool PatchInstructionAddressSpace(const std::vector<Value *> &instList, Type *ds
       }
     }
   } else if (phiNode) {
-    PointerType *newPhiTy = IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(phiNode->getType()), directAS);
+    PointerType *newPhiTy = IGCLLVM::get(dyn_cast<PointerType>(phiNode->getType()), directAS);
     PHINode *pNewPhi = PHINode::Create(newPhiTy, phiNode->getNumIncomingValues(), "", phiNode);
     for (unsigned int i = 0; i < phiNode->getNumIncomingValues(); ++i) {
       Value *incomingVal = phiNode->getIncomingValue(i);

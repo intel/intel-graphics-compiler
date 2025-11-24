@@ -494,7 +494,7 @@ void BIImport::fixInvalidBitcasts(llvm::Module &M) {
       PointerType *DstPtrType = dyn_cast<PointerType>(BitCastI->getType());
 
       // New bitcast
-      PointerType *FinalBitCastType = IGCLLVM::getWithSamePointeeType(DstPtrType, SrcPtrType->getAddressSpace());
+      PointerType *FinalBitCastType = IGCLLVM::get(DstPtrType, SrcPtrType->getAddressSpace());
       BitCastInst *NewBitCastI = new BitCastInst(BitCastI->getOperand(0), FinalBitCastType, "bcast", BitCastI);
 
       // New addrspacecast
@@ -864,7 +864,7 @@ void BIImport::removeFunctionBitcasts(Module &M) {
                 destVal = newASC;
               }
               PointerType *pSrcType = cast<PointerType>(srcType);
-              if (!pSrcType->isOpaqueOrPointeeTypeMatches(destType)) {
+              if (!IGCLLVM::isOpaqueOrPointeeTypeMatches(pSrcType, destType)) {
                 BitCastInst *newBT = new BitCastInst(destVal, srcType, destVal->getName() + ".bcast");
                 castInsts.push_back(newBT);
                 destVal = newBT;

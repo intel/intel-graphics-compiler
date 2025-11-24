@@ -146,7 +146,7 @@ PointerType *GASRetValuePropagator::getRetValueNonGASType(Function *F) {
 
   PointerType *retTy = cast<PointerType>(F->getReturnType());
 
-  return originAddrSpace ? IGCLLVM::getWithSamePointeeType(retTy, originAddrSpace.value()) : nullptr;
+  return originAddrSpace ? IGCLLVM::get(retTy, originAddrSpace.value()) : nullptr;
 }
 
 Function *GASRetValuePropagator::createNewFunctionDecl(Function *oldFunc, Type *newRetTy) {

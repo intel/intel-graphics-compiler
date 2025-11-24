@@ -102,7 +102,7 @@ bool GASPropagator::visitAddrSpaceCastInst(AddrSpaceCastInst &I) {
     return false;
 
   Value *Src = TheVal;
-  if (!SrcPtrTy->isOpaqueOrPointeeTypeMatches(DstPtrTy)) {
+  if (IGCLLVM::isOpaqueOrPointeeTypeMatches(SrcPtrTy, DstPtrTy)) {
     BuilderType::InsertPointGuard Guard(IRB);
     IRB.SetInsertPoint(&I);
     Src = IRB.CreateBitCast(Src, DstPtrTy);
@@ -272,7 +272,7 @@ bool GASPropagator::visitSelect(SelectInst &I) {
 
   // Push 'addrspacecast' forward by changing the select return type to non-GAS pointer
   // followed by a new 'addrspacecast' to GAS
-  PointerType *TransPtrTy = IGCLLVM::getWithSamePointeeType(DstPtrTy, NonGASPtrTy->getAddressSpace());
+  PointerType *TransPtrTy = IGCLLVM::get(DstPtrTy, NonGASPtrTy->getAddressSpace());
   I.mutateType(TransPtrTy);
   Value *NewPtr = IRB.CreateAddrSpaceCast(&I, DstPtrTy);
 

@@ -2643,7 +2643,7 @@ void FixAddressSpaceInAllUses(llvm::Value *ptr, uint newAS, uint oldAS) {
     }
 
     if (instType && instType->getAddressSpace() == oldAS) {
-      PointerType *ptrType = IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(instType), newAS);
+      PointerType *ptrType = IGCLLVM::get(dyn_cast<PointerType>(instType), newAS);
       inst->mutateType(ptrType);
       FixAddressSpaceInAllUses(inst, newAS, oldAS);
     }

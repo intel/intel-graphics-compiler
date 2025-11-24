@@ -53,7 +53,7 @@ bool StaticGASResolution::runOnFunction(llvm::Function &F) {
       Value *Ptr = LI ? LI->getPointerOperand() : SI->getPointerOperand();
       if (!toSkip(Ptr)) {
         PointerType *PtrTy = cast<PointerType>(Ptr->getType());
-        PointerType *glbPtrTy = IGCLLVM::getWithSamePointeeType(PtrTy, ADDRESS_SPACE_GLOBAL);
+        PointerType *glbPtrTy = IGCLLVM::get(PtrTy, ADDRESS_SPACE_GLOBAL);
 
         IRB.SetInsertPoint(I);
         Value *NewPtr = IRB.CreateAddrSpaceCast(Ptr, glbPtrTy);

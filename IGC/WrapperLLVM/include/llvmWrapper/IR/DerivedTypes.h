@@ -39,9 +39,22 @@ inline llvm::Type *getWithNewBitWidth(const llvm::Type *Ty, unsigned NewBitWidth
   return Ty->getWithNewBitWidth(NewBitWidth);
 }
 
-inline llvm::PointerType *getWithSamePointeeType(llvm::PointerType *PT, unsigned AddressSpace) {
+inline llvm::PointerType *get(llvm::PointerType *PT, unsigned AddressSpace) {
+#if LLVM_VERSION_MAJOR < 17
   return llvm::PointerType::getWithSamePointeeType(PT, AddressSpace);
+#else
+  return llvm::PointerType::get(PT, AddressSpace);
+#endif
 }
+
+inline bool isOpaqueOrPointeeTypeMatches(llvm::PointerType *PT, llvm::Type *Ty) {
+#if LLVM_VERSION_MAJOR < 17
+  return PT->isOpaqueOrPointeeTypeMatches(Ty);
+#else
+  return true;
+#endif
+}
+
 } // namespace IGCLLVM
 
 #endif

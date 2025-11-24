@@ -1338,7 +1338,7 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
           IRBuilder<> Builder(&Inst);
           if (GenXIntrinsic::isVStore(&Inst)) {
             auto PtrTy = cast<PointerType>(Inst.getOperand(1)->getType());
-            PtrTy = PointerType::getWithSamePointeeType(PtrTy, AS1);
+            PtrTy = IGCLLVM::get(PtrTy, AS1);
             auto PtrCast =
                 Builder.CreateAddrSpaceCast(Inst.getOperand(1), PtrTy);
             Type *Tys[] = {Inst.getOperand(0)->getType(), PtrCast->getType()};
@@ -1348,7 +1348,7 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
             Builder.CreateCall(Fn, Args, Inst.getName());
           } else {
             auto PtrTy = cast<PointerType>(Inst.getOperand(0)->getType());
-            PtrTy = PointerType::getWithSamePointeeType(PtrTy, AS1);
+            PtrTy = IGCLLVM::get(PtrTy, AS1);
             auto PtrCast =
                 Builder.CreateAddrSpaceCast(Inst.getOperand(0), PtrTy);
             Type *Tys[] = {Inst.getType(), PtrCast->getType()};

@@ -237,7 +237,7 @@ void GASResolving::convertLoadToGlobal(LoadInst *LI) const {
 
   PointerType *PtrTy = cast<PointerType>(LI->getType());
   IRB->SetInsertPoint(LI->getNextNode());
-  PointerType *GlobalPtrTy = IGCLLVM::getWithSamePointeeType(PtrTy, ADDRESS_SPACE_GLOBAL);
+  PointerType *GlobalPtrTy = IGCLLVM::get(PtrTy, ADDRESS_SPACE_GLOBAL);
   Value *GlobalAddr = IRB->CreateAddrSpaceCast(LI, GlobalPtrTy);
   Value *GenericCopyAddr = IRB->CreateAddrSpaceCast(GlobalAddr, PtrTy);
 

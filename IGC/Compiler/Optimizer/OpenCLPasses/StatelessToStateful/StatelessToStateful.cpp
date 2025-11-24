@@ -666,8 +666,7 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo &II) {
   Module *M = m_F->getParent();
   const DebugLoc &DL = I->getDebugLoc();
   GenISAIntrinsic::ID const intrinID = I->getIntrinsicID();
-  PointerType *pTy =
-      IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(II.ptr->getType()), II.getStatefulAddrSpace());
+  PointerType *pTy = IGCLLVM::get(dyn_cast<PointerType>(II.ptr->getType()), II.getStatefulAddrSpace());
 
   if (m_targetAddressing == TargetAddressing::BINDLESS) {
     Argument *srcOffset =
