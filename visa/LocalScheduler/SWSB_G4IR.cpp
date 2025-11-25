@@ -5898,7 +5898,7 @@ bool G4_BB_SB::getFootprintForOperand(SBNode *node, G4_INST *inst,
       footprint = getFootprintForACC(opnd, opndNum, inst);
       node->setFootprint(footprint, opndNum);
     }
-    if (builder.needFlagWAR() && isFlagReg) {
+    if (isFlagReg) {
       footprint = getFootprintForFlag(opnd, opndNum, inst);
       node->setFootprint(footprint, opndNum);
     }
