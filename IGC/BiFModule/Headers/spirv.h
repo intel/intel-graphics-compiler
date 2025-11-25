@@ -153,6 +153,13 @@ typedef char __bool4 __attribute__((ext_vector_type(4)));
 typedef char __bool8 __attribute__((ext_vector_type(8)));
 typedef char __bool16 __attribute__((ext_vector_type(16)));
 
+typedef __bf16 bfloat;
+typedef bfloat bfloat2 __attribute__((ext_vector_type(2)));
+typedef bfloat bfloat3 __attribute__((ext_vector_type(3)));
+typedef bfloat bfloat4 __attribute__((ext_vector_type(4)));
+typedef bfloat bfloat8 __attribute__((ext_vector_type(8)));
+typedef bfloat bfloat16 __attribute__((ext_vector_type(16)));
+
 #define INTEL_PIPE_RESERVE_ID_VALID_BIT (1U << 30)
 #define CLK_NULL_RESERVE_ID \
     (__builtin_astype(((void *)(~INTEL_PIPE_RESERVE_ID_VALID_BIT)), __spirv_ReserveId))

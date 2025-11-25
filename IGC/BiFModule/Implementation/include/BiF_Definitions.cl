@@ -132,6 +132,13 @@ SPDX-License-Identifier: MIT
 #define as_double8(x) __builtin_astype((x), double8)
 #define as_double16(x) __builtin_astype((x), double16)
 
+#define as_bfloat(x) __builtin_astype((x), bfloat)
+#define as_bfloat2(x) __builtin_astype((x), bfloat2)
+#define as_bfloat3(x) __builtin_astype((x), bfloat3)
+#define as_bfloat4(x) __builtin_astype((x), bfloat4)
+#define as_bfloat8(x) __builtin_astype((x), bfloat8)
+#define as_bfloat16(x) __builtin_astype((x), bfloat16)
+
 #define ONE_EIGHTY_OVER_PI_DBL   (as_double(0x404CA5DC1A63C1F8)) // 57.295779513082320876798154814105
 #define ONE_EIGHTY_OVER_PI_FLT   (as_float(0x42652EE1))          // 57.295779513082320876798154814105f
 #define ONE_EIGHTY_OVER_PI_HLF   (as_half((ushort)0x5329))       // 57.295779513082320876798154814105h
