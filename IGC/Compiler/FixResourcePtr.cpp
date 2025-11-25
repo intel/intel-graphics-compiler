@@ -100,7 +100,7 @@ void FixResourcePtr::RemoveGetBufferPtr(GenIntrinsicInst *bufPtr, Value *bufIdx)
     PointerType *const instType = dyn_cast<PointerType>(inst->getType());
     IGC_ASSERT(nullptr != instType);
     PointerType *ptrType = nullptr;
-    if (IGCLLVM::isOpaquePointerTy(instType)) {
+    if (IGCLLVM::isPointerTy(instType)) {
       ptrType = PointerType::get(bufPtr->getContext(), outAS);
     } else {
       Type *eltType = IGCLLVM::getNonOpaquePtrEltTy(instType); // Legacy code: getNonOpaquePtrEltTy

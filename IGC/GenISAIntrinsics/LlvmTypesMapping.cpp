@@ -144,7 +144,7 @@ bool PointerType::VerifyType(llvm::Type *pType) const {
   if (m_AddressSpace != UINT32_MAX) {
     isCorrect = isCorrect && m_AddressSpace == llvm::cast<llvm::PointerType>(pType)->getAddressSpace();
   }
-  if (!IGCLLVM::isOpaquePointerTy(pType)) {
+  if (!IGCLLVM::isPointerTy(pType)) {
     isCorrect =
         isCorrect && m_Type.VerifyType(IGCLLVM::getNonOpaquePtrEltTy(pType)); // Legacy code: getNonOpaquePtrEltTy
   }

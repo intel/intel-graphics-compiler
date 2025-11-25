@@ -373,7 +373,7 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForPrefetch(llvm::Cal
   // is needed to implement this prefetch correctly on opaque pointers.
   // It will of course result in performance penalty and needs to be changed once
   // "OpUntypedPrefetch" is ready.
-  if (IGCLLVM::isOpaquePointerTy(PTy))
+  if (IGCLLVM::isPointerTy(PTy))
     return;
 
   args.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()),

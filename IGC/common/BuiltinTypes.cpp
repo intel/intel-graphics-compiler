@@ -37,7 +37,7 @@ bool isTargetExtTy(const Type *Ty) {
 }
 
 bool isImageBuiltinType(const Type *BuiltinTy) {
-  if (BuiltinTy->isPointerTy() && !IGCLLVM::isOpaquePointerTy(BuiltinTy))
+  if (BuiltinTy->isPointerTy() && !IGCLLVM::isPointerTy(BuiltinTy))
     BuiltinTy = IGCLLVM::getNonOpaquePtrEltTy(BuiltinTy);
 
   if (const StructType *StructTy = dyn_cast<StructType>(BuiltinTy); StructTy && StructTy->isOpaque()) {

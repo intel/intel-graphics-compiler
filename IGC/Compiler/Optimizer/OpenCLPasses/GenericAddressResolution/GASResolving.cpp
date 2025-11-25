@@ -75,7 +75,7 @@ bool GASResolving::canonicalizeAddrSpaceCasts(Function &F) const {
   std::vector<AddrSpaceCastInst *> GASAddrSpaceCasts;
   for (auto &I : make_range(inst_begin(F), inst_end(F)))
     if (AddrSpaceCastInst *ASCI = dyn_cast<AddrSpaceCastInst>(&I)) {
-      if (IGCLLVM::isOpaquePointerTy(ASCI->getType()))
+      if (IGCLLVM::isPointerTy(ASCI->getType()))
         return false;
       if (ASCI->getDestAddressSpace() == GAS)
         GASAddrSpaceCasts.push_back(ASCI);
@@ -259,7 +259,7 @@ bool GASResolving::checkGenericArguments(Function &F) const {
       if (Ty->getAddressSpace() != ADDRESS_SPACE_GLOBAL)
         continue;
       auto PteeTy = IGCLLVM::getArgAttrEltTy(F.getArg(p));
-      if (PteeTy == nullptr && !IGCLLVM::isOpaquePointerTy(Ty))
+      if (PteeTy == nullptr && !IGCLLVM::isPointerTy(Ty))
         PteeTy = IGCLLVM::getNonOpaquePtrEltTy(Ty); // Legacy code: getNonOpaquePtrEltTy
       if (PteeTy == nullptr)
         // go to slow path

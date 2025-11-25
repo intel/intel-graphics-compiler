@@ -155,7 +155,7 @@ void findHoleTys(const Type *Ty, HoleMap &Tys) {
   } else if (auto *VecTy = dyn_cast<VectorType>(Ty)) {
     findHoleTys(VecTy->getElementType(), Tys);
   } else if (auto *PTy = dyn_cast<PointerType>(Ty)) {
-    if (!IGCLLVM::isOpaquePointerTy(PTy))
+    if (!IGCLLVM::isPointerTy(PTy))
       findHoleTys(IGCLLVM::getNonOpaquePtrEltTy(PTy), Tys);
   }
 }
@@ -265,7 +265,7 @@ void emitType(const Type *Ty, const HoleMap &HoleTys, const AlignMap &Aligns, ra
     OS.indent(In * 2) << "return IGCLLVM::FixedVectorType::get(EltTy, " << VecTy->getNumElements() << ");\n";
     OS.indent(Level * 2) << "}()";
   } else if (auto *PTy = dyn_cast<PointerType>(Ty)) {
-    if (!IGCLLVM::isOpaquePointerTy(PTy)) {
+    if (!IGCLLVM::isPointerTy(PTy)) {
       OS.indent(Level * 2) << "[&] {\n";
       uint32_t In = Level + 1;
       OS.indent(In * 2) << "auto *EltTy =\n";
@@ -444,7 +444,7 @@ public:
       return OS.str();
     } else if (auto *PTy = dyn_cast<PointerType>(Ty)) {
       OS << "PointerType::get(";
-      if (!IGCLLVM::isOpaquePointerTy(PTy))
+      if (!IGCLLVM::isPointerTy(PTy))
         OS << getTypeRepr(IGCLLVM::getNonOpaquePtrEltTy(PTy));
       else
         OS << "*Ctx.getLLVMContext()";

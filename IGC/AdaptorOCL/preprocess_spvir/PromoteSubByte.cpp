@@ -284,10 +284,9 @@ bool PromoteSubByte::typeNeedsPromotion(Type *type, DenseSet<Type *> visitedType
   } else if (auto vectorType = dyn_cast<VectorType>(type)) {
     return typeNeedsPromotion(vectorType->getElementType(), visitedTypes);
   } else if (auto pointerType = dyn_cast<PointerType>(type)) {
-    return IGCLLVM::isOpaquePointerTy(pointerType)
-               ? false
-               : typeNeedsPromotion(IGCLLVM::getNonOpaquePtrEltTy(type),
-                                    visitedTypes); // Legacy code: getNonOpaquePtrEltTy
+    return IGCLLVM::isPointerTy(pointerType) ? false
+                                             : typeNeedsPromotion(IGCLLVM::getNonOpaquePtrEltTy(type),
+                                                                  visitedTypes); // Legacy code: getNonOpaquePtrEltTy
   } else if (auto arrayType = dyn_cast<ArrayType>(type)) {
     return typeNeedsPromotion(arrayType->getElementType(), visitedTypes);
   } else if (auto structType = dyn_cast<StructType>(type)) {
@@ -327,7 +326,7 @@ Type *PromoteSubByte::getOrCreatePromotedType(Type *type) {
     Type *promotedElemType = getOrCreatePromotedType(fixedVectorType->getElementType());
     newType = IGCLLVM::FixedVectorType::get(promotedElemType, numElts);
   } else if (auto pointerType = dyn_cast<PointerType>(type)) {
-    newType = IGCLLVM::isOpaquePointerTy(pointerType)
+    newType = IGCLLVM::isPointerTy(pointerType)
                   ? pointerType
                   : PointerType::get(getOrCreatePromotedType(
                                          IGCLLVM::getNonOpaquePtrEltTy(type)), // Legacy code: getNonOpaquePtrEltTy
@@ -632,7 +631,7 @@ Constant *PromoteSubByte::promoteConstant(Constant *constant) {
 
     return ConstantInt::get(Type::getInt8Ty(constant->getContext()), constantInteger->getZExtValue());
   } else if (auto constantPointerNull = dyn_cast<ConstantPointerNull>(constant)) {
-    if (IGCLLVM::isOpaquePointerTy(constantPointerNull->getType())) {
+    if (IGCLLVM::isPointerTy(constantPointerNull->getType())) {
       return constant;
     }
     if (!typeNeedsPromotion(

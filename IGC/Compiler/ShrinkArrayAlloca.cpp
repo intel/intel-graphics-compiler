@@ -60,7 +60,7 @@ inline uint32_t NumUsed(const SmallVector<bool, 4> &used) {
 // be a scalar or vector or a pointer to a scalar or vector. If the input type
 // is a scalar or a pointer to a scalar the function returns 1.
 inline uint32_t GetNumElements(Type *type) {
-  if (type->isPointerTy() && !IGCLLVM::isOpaquePointerTy(type)) {
+  if (type->isPointerTy() && !IGCLLVM::isPointerTy(type)) {
     type = IGCLLVM::getNonOpaquePtrEltTy(type); // Legacy code: getNonOpaquePtrEltTy
   }
   IGC_ASSERT(type->isSingleValueType());
@@ -163,7 +163,7 @@ inline bool GetUsedVectorElements(Value *parentPtr, Value *val, SmallVector<bool
       return false;
     }
     if (srcTy->isPointerTy() && dstTy->isPointerTy()) {
-      if (IGCLLVM::isOpaquePointerTy(srcTy))
+      if (IGCLLVM::isPointerTy(srcTy))
         return false;
       srcTy = IGCLLVM::getNonOpaquePtrEltTy(srcTy); // Legacy code: getNonOpaquePtrEltTy
       dstTy = IGCLLVM::getNonOpaquePtrEltTy(dstTy); // Legacy code: getNonOpaquePtrEltTy
@@ -237,7 +237,7 @@ inline void ReplaceUseWith(Value *user, Value *oldOp, Type *newOpTy, Value *newO
     newInstElTy = newLoad->getType();
   } else if (BitCastInst *bc = dyn_cast<BitCastInst>(user)) {
     Type *bcType = bc->getType();
-    if (!bcType->isPointerTy() || !IGCLLVM::isOpaquePointerTy(bcType)) {
+    if (!bcType->isPointerTy() || !IGCLLVM::isPointerTy(bcType)) {
       IGCLLVM::IRBuilder<> builder(bc);
       if (bcType->isPointerTy()) {
         bcType = IGCLLVM::getNonOpaquePtrEltTy(bcType); // Legacy code: getNonOpaquePtrEltTy

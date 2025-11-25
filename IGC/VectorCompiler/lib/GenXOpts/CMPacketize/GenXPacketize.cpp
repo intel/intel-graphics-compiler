@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/IR/BasicBlock.h>
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 
@@ -272,7 +273,7 @@ Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
   std::vector<Type *> ArgTypes;
   for (const Argument &Arg : F->args()) {
     auto *ArgTy = Arg.getType();
-    if (UniformArgs.count(&Arg) || ArgTy->isOpaquePointerTy())
+    if (UniformArgs.count(&Arg) || IGCLLVM::isPointerTy(ArgTy))
       ArgTypes.push_back(ArgTy);
     else if (ArgTy->isPointerTy()) {
       // FIXME: check the pointer defined by an argument or an alloca
@@ -865,7 +866,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
         uint32_t numElems =
             cast<IGCLLVM::FixedVectorType>(PacketizedSrcTy)->getNumElements();
         ReturnTy = IGCLLVM::FixedVectorType::get(Inst->getType(), numElems);
-      } else if (!Inst->getType()->isOpaquePointerTy()) {
+      } else if (!IGCLLVM::isPointerTy(Inst->getType())) {
         // <N x Ty>*
         auto *DstScalarTy = IGCLLVM::getNonOpaquePtrEltTy(Inst->getType());
         if (VectorType::isValidElementType(DstScalarTy))
@@ -1088,7 +1089,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
     auto *TrueSrc = getPacketizeValue(Inst->getOperand(1));
     auto *FalseSrc = getPacketizeValue(Inst->getOperand(2));
     if (!TrueSrc->getType()->isPointerTy() ||
-        TrueSrc->getType()->isOpaquePointerTy()) {
+        IGCLLVM::isPointerTy(TrueSrc->getType())) {
       // simple select packetization
       ReplacedInst = B->SELECT(VecCond, TrueSrc, FalseSrc);
     } else {

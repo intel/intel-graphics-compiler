@@ -49,8 +49,7 @@ std::string getMangledTypeStr(llvm::Type *Ty) {
     IGC::RESOURCE_DIMENSION_TYPE resDimTypeId = IGC::DecodeAS4GFXResourceType(PTyp->getAddressSpace());
     if (resDimTypeId != IGC::RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES) {
       Result += IGC::ResourceDimensionTypeName[resDimTypeId];
-    }
-    else if (!IGCLLVM::isOpaquePointerTy(PTyp)) {
+    } else if (!IGCLLVM::isPointerTy(PTyp)) {
       Result += getMangledTypeStr(IGCLLVM::getNonOpaquePtrEltTy(PTyp)); // Legacy code: getNonOpaquePtrEltTy
     }
   } else if (llvm::ArrayType *ATyp = llvm::dyn_cast<llvm::ArrayType>(Ty)) {

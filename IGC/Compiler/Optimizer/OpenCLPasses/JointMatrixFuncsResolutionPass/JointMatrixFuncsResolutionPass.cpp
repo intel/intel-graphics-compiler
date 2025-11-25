@@ -92,14 +92,14 @@ JointMatrixFuncsResolutionPass::JointMatrixFuncsResolutionPass() : ModulePass(ID
 
 // Static helper functions for type traversal
 static bool isMatrixType(const Type *type) {
-  // isOpaquePointerTy check here and below in other places will skip resolving of matrix types,
+  // isPointerTy check here and below in other places will skip resolving of matrix types,
   // when opaque pointers are enabled, but target extension types are not.
   StringRef name = "";
 
   if (IGCLLVM::isTargetExtTy(type)) {
     name = IGCLLVM::getTargetExtName(type);
   } else {
-    if (!type->isPointerTy() || IGCLLVM::isOpaquePointerTy(type))
+    if (!type->isPointerTy() || IGCLLVM::isPointerTy(type))
       return false;
 
     Type *eltType = IGCLLVM::getNonOpaquePtrEltTy(type);
@@ -137,7 +137,7 @@ static void PreOrderTypeTraversal(Type *t, std::unordered_set<Type *> &set) {
 
   if (PointerType *PT = dyn_cast<PointerType>(t)) {
     set.insert(t);
-    if (IGCLLVM::isOpaquePointerTy(PT))
+    if (IGCLLVM::isPointerTy(PT))
       return;
     return PreOrderTypeTraversal(IGCLLVM::getNonOpaquePtrEltTy(PT), set);
   }
@@ -1339,7 +1339,7 @@ Type *JointMatrixFuncsResolutionPass::TryFindTypeOfOpaquePtr(Value *V) {
     } else if (auto *gep = dyn_cast<GetElementPtrInst>(use)) {
       return gep->getResultElementType();
     } else if (auto *bitcast = dyn_cast<BitCastInst>(use)) {
-      if (!IGCLLVM::isOpaquePointerTy(bitcast->getSrcTy()))
+      if (!IGCLLVM::isPointerTy(bitcast->getSrcTy()))
         return bitcast->getSrcTy();
 
       return TryFindTypeOfOpaquePtr(bitcast->getOperand(0));
@@ -1355,7 +1355,7 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *inputType, JointMatrixTy
                           "Unexpected type in matrix function resolution.");
 
 #if LLVM_VERSION_MAJOR >= 16
-  IGC_ASSERT_EXIT_MESSAGE(!IGCLLVM::isOpaquePointerTy(inputType),
+  IGC_ASSERT_EXIT_MESSAGE(!IGCLLVM::isPointerTy(inputType),
                           "Unexpected opaque pointer. Expected TargetExtensionType instead.");
 #endif
 
@@ -1457,7 +1457,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolvePrefetch(CallInst *CI) {
   Type *ptrElemType = nullptr;
 
 #if LLVM_VERSION_MAJOR >= 16
-  if (IGCLLVM::isOpaquePointerTy(ptrVal->getType()))
+  if (IGCLLVM::isPointerTy(ptrVal->getType()))
     ptrElemType = TryFindTypeOfOpaquePtr(ptrVal);
   else
 #endif
@@ -2276,7 +2276,7 @@ bool JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
     }
 
 #if LLVM_VERSION_MAJOR < 16
-    if (IGCLLVM::isOpaquePointerTy(CI->getArgOperand(0)->getType()))
+    if (IGCLLVM::isPointerTy(CI->getArgOperand(0)->getType()))
       continue;
 #endif
 
@@ -2286,7 +2286,7 @@ bool JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
     auto operand0 = CI->getArgOperand(0);
 
 #if LLVM_VERSION_MAJOR >= 16
-    if (IGCLLVM::isOpaquePointerTy(operand0->getType())) {
+    if (IGCLLVM::isPointerTy(operand0->getType())) {
       chainBaseTy = TryFindTargetExtensionTypeOfOpaquePtr(operand0);
 
       if (!chainBaseTy) {
@@ -2618,7 +2618,7 @@ Type *JointMatrixFuncsResolutionPass::ResolvePointerType(Type *oldType) {
     return ResolvedTypes[oldType];
 
   PointerType *ptrType = dyn_cast<PointerType>(oldType);
-  if (IGCLLVM::isOpaquePointerTy(ptrType))
+  if (IGCLLVM::isPointerTy(ptrType))
     return oldType;
 
   Type *elemType = IGCLLVM::getNonOpaquePtrEltTy(ptrType);
@@ -2741,7 +2741,7 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst &CI) {
   StringRef funcName = func->getName();
 
 #if LLVM_VERSION_MAJOR < 16
-  if (IGCLLVM::isOpaquePointerTy(CI.getType()) || isAnyOperand(CI, IGCLLVM::isOpaquePointerTy))
+  if (IGCLLVM::isPointerTy(CI.getType()) || isAnyOperand(CI, IGCLLVM::isPointerTy))
     return;
 #endif
 
@@ -3066,7 +3066,7 @@ void JointMatrixFuncsResolutionPass::visitBitCastInst(BitCastInst &I) {
   // it returns in visitStoreInst and then remove it.
   PointerType *srcPtr = dyn_cast<PointerType>(I.getSrcTy());
   PointerType *dstPtr = dyn_cast<PointerType>(I.getDestTy());
-  if (srcPtr && dstPtr && !IGCLLVM::isOpaquePointerTy(srcPtr) && !IGCLLVM::isOpaquePointerTy(dstPtr)) {
+  if (srcPtr && dstPtr && !IGCLLVM::isPointerTy(srcPtr) && !IGCLLVM::isPointerTy(dstPtr)) {
     Type *srcPtrType = IGCLLVM::getNonOpaquePtrEltTy(srcPtr);
     Type *dstPtrType = IGCLLVM::getNonOpaquePtrEltTy(dstPtr);
 

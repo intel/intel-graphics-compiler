@@ -165,12 +165,12 @@ static PrintfArgInfo parseArgDesc(StringRef ArgDesc) {
   if (ArgDesc.endswith("d") || ArgDesc.endswith("i"))
     return parseIntLengthModifier(ArgDesc, /* IsSigned */ true);
   if (ArgDesc.endswith("o") || ArgDesc.endswith("u") ||
-      IGCLLVM::endswith_insensitive(ArgDesc, "x"))
+      IGCLLVM::ends_with_insensitive(ArgDesc, "x"))
     return parseIntLengthModifier(ArgDesc, /* IsSigned */ false);
-  if (IGCLLVM::endswith_insensitive(ArgDesc, "f") ||
-      IGCLLVM::endswith_insensitive(ArgDesc, "e") ||
-      IGCLLVM::endswith_insensitive(ArgDesc, "a") ||
-      IGCLLVM::endswith_insensitive(ArgDesc, "g"))
+  if (IGCLLVM::ends_with_insensitive(ArgDesc, "f") ||
+      IGCLLVM::ends_with_insensitive(ArgDesc, "e") ||
+      IGCLLVM::ends_with_insensitive(ArgDesc, "a") ||
+      IGCLLVM::ends_with_insensitive(ArgDesc, "g"))
     return {PrintfArgInfo::Double, /* IsSigned */ true};
   IGC_ASSERT_MESSAGE(ArgDesc.endswith("p"), "unexpected conversion specifier");
   return {PrintfArgInfo::Pointer, /* IsSigned */ false};

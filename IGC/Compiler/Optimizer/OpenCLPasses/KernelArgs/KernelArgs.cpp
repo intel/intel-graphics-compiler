@@ -87,7 +87,7 @@ alignment_t KernelArg::calcAlignment(const Argument *arg, const DataLayout *DL) 
   // For local pointers, we need the alignment of the *contained* type.
   if (m_argType == ArgType::PTR_LOCAL) {
     typeToAlign = IGCLLVM::getArgAttrEltTy(arg);
-    if (typeToAlign == nullptr && !IGCLLVM::isOpaquePointerTy(arg->getType()))
+    if (typeToAlign == nullptr && !IGCLLVM::isPointerTy(arg->getType()))
       typeToAlign = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
   }
 

@@ -887,7 +887,7 @@ void RebuildGlobalAnnotations(IGC::OpenCLProgramContext &oclContext, Module *pKe
     // On typed pointers it was: struct -> bitcast -> functionPointer
     // On opaque pointer the bitcast is just "ptr", so it is: struct -> functionPointer
     // Non-opaque pointers path should be removed after transition to opaque pointers.
-    if (IGCLLVM::isOpaquePointerTy(operand0->getType())) {
+    if (IGCLLVM::isPointerTy(operand0->getType())) {
       annotated_function = cast<Function>(operand0);
     } else {
       annotated_function = cast<Function>(operand0->getOperand(0));

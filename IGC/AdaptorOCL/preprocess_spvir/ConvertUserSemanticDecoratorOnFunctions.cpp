@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/Type.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -86,7 +87,7 @@ bool ConvertUserSemanticDecoratorOnFunctions::runOnModule(Module &M) {
 
     // For opaque pointers we can call only single getOperand() on annotation_struct,
     // beacause we don't need to use e.g. bitcast instruction like for typed pointers
-    if (annotation_struct->getOperand(0)->getType()->isOpaquePointerTy()) {
+    if (IGCLLVM::isPointerTy(annotation_struct->getOperand(0)->getType())) {
       annotated_function = cast<Function>(annotation_struct->getOperand(0));
       annotation_gv = cast<GlobalVariable>(annotation_struct->getOperand(1));
     } else {

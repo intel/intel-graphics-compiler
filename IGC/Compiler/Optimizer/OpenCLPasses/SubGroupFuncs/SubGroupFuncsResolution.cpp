@@ -327,7 +327,7 @@ void SubGroupFuncsResolution::mediaBlockWrite(llvm::CallInst &CI) {
 // If CI parameter is %"class.sycl::_V1::ext::oneapi::bfloat16" type, which is { i16 },
 // then we need to cast it to i16 type before calling simdBlockRead intrinsic.
 static inline Value *castSYCLBFloat16toi16(PointerType *PtrTy, Value *Ptr, CallInst &CI, LLVMContext &C) {
-  if (IGCLLVM::isOpaquePointerTy(PtrTy))
+  if (IGCLLVM::isPointerTy(PtrTy))
     return Ptr;
 
   if (StructType *ST = dyn_cast<StructType>(IGCLLVM::getNonOpaquePtrEltTy(PtrTy))) // Legacy code: getNonOpaquePtrEltTy

@@ -359,7 +359,7 @@ void ProgramScopeConstantAnalysis::addData(Constant *initializer,
     int64_t offset = 0;
     const unsigned int pointerSize = int_cast<unsigned int>(m_DL->getTypeAllocSize(ptrType));
 
-    bool isFuncPtr = !IGCLLVM::isOpaquePointerTy(ptrType) && isa<FunctionType>(IGCLLVM::getNonOpaquePtrEltTy(ptrType));
+    bool isFuncPtr = !IGCLLVM::isPointerTy(ptrType) && isa<FunctionType>(IGCLLVM::getNonOpaquePtrEltTy(ptrType));
     bool isFunc = isFuncPtr || isa<Function>(initializer);
 
     // This case is the most common: here, we look for a pointer that can be decomposed into

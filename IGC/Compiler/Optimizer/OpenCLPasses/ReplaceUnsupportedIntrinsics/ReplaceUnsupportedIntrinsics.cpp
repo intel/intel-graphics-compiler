@@ -465,7 +465,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst *I) {
   // or different value if want to keep size of base type to further optimizations
   PointerType *ptrTy = cast<PointerType>(Dst->stripPointerCasts()->getType());
   uint32_t BaseSize = 0;
-  Type *RawDstType = IGCLLVM::isOpaquePointerTy(ptrTy)
+  Type *RawDstType = IGCLLVM::isPointerTy(ptrTy)
                          ? Builder.getInt8Ty()
                          : IGCLLVM::getNonOpaquePtrEltTy(ptrTy); // Legacy code: getNonOpaquePtrEltTy
   if (Type *BaseType = GetBaseType(RawDstType))
@@ -757,7 +757,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst *I) {
   // we also need to be able to deduce this type, so we can get this
   // from investigating instructions and then using GetBaseType().
   Type *RawDstType = Builder.getInt8Ty();
-  if (IGCLLVM::isOpaquePointerTy(ptrTy)) {
+  if (IGCLLVM::isPointerTy(ptrTy)) {
     if (auto *alloca = dyn_cast<AllocaInst>(Dst))
       RawDstType = alloca->getAllocatedType();
     else if (auto *gep = dyn_cast<GetElementPtrInst>(Dst))

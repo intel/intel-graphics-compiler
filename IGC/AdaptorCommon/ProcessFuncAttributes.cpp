@@ -21,6 +21,8 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/IR/Attributes.h"
 #include <llvmWrapper/IR/Function.h>
+#include <llvmWrapper/IR/Type.h>
+
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 
@@ -276,7 +278,7 @@ static void getBuiltinType(Type *T, SmallPtrSetImpl<Type *> &BuiltinTypes) {
         getBuiltinType(*I, BuiltinTypes);
       }
     }
-  } else if (T->isPointerTy() && !T->isOpaquePointerTy()) {
+  } else if (T->isPointerTy() && !IGCLLVM::isPointerTy(T)) {
     return getBuiltinType(IGCLLVM::getNonOpaquePtrEltTy(cast<PointerType>(T)), BuiltinTypes);
   }
 #if LLVM_VERSION_MAJOR >= 16

@@ -216,7 +216,7 @@ Align AlignmentAnalysis::getAlignValue(Value *V) const {
       }
 
       Type *pointedTo = IGCLLVM::getArgAttrEltTy(arg);
-      if (pointedTo == nullptr && !IGCLLVM::isOpaquePointerTy(arg->getType()))
+      if (pointedTo == nullptr && !IGCLLVM::isPointerTy(arg->getType()))
         pointedTo = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
 
       // Pointer arguments are guaranteed to be aligned on the ABI alignment

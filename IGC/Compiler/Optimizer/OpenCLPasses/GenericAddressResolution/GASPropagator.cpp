@@ -120,7 +120,7 @@ bool GASPropagator::visitBitCastInst(BitCastInst &I) {
   BuilderType::InsertPointGuard Guard(IRB);
   IRB.SetInsertPoint(I.getNextNode());
   Value *Src = TheVal;
-  if (!IGCLLVM::isOpaquePointerTy(SrcPtrTy)) {
+  if (!IGCLLVM::isPointerTy(SrcPtrTy)) {
     // Push `addrspacecast` forward by replacing this `bitcast` on GAS with the
     // one on non-GAS followed by a new `addrspacecast` to GAS.
     Type *DstTy = IGCLLVM::getNonOpaquePtrEltTy(DstPtrTy); // Legacy code: getNonOpaquePtrEltTy

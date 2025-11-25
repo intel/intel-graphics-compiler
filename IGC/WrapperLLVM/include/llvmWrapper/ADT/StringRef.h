@@ -17,8 +17,12 @@ inline bool equals_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) {
   return LHS.equals_insensitive(RHS);
 }
 
-inline bool endswith_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) {
+inline bool ends_with_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) {
+#if LLVM_VERSION_MAJOR > 16
+  return LHS.ends_with_insensitive(RHS);
+#else
   return LHS.endswith_insensitive(RHS);
+#endif
 }
 
 inline bool contains_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) {
