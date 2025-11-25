@@ -33,10 +33,12 @@ entry:
   %loaded = load i32, i32 addrspace(1)* %srcOffsetted, align 4
   %loadedCast = bitcast i32 %loaded to <4 x i8>
 
-  ; CHECK: shl (M1, 16) [[SHIFTED1:[A-z0-9]*]](0,0)<1> [[LOADED:[A-z0-9]*]](0,16)<1;1,0> 0x4:ub
-  ; CHECK: or (M1, 16) [[PACKED:[A-z0-9]*]](0,0)<1> [[LOADED]](0,0)<1;1,0> [[SHIFTED1]](0,0)<1;1,0>
-  ; CHECK: shl (M1, 16) [[SHIFTED2:[A-z0-9]*]](0,0)<1> [[LOADED]](0,48)<1;1,0> 0x4:ub
-  ; CHECK: or (M1, 16) [[PACKED]](0,16)<1> [[LOADED]](0,32)<1;1,0> [[SHIFTED2]](0,0)<1;1,0>
+  ; CHECK: and (M1, 16) [[PACKED:[A-z0-9]+]](0,0)<1> [[LOADED:[A-z0-9]+]](0,0)<1;1,0> 0xf:ub
+  ; CHECK: shl (M1, 16) [[SHIFTED1:[A-z0-9]+]](0,0)<1> [[LOADED]](0,16)<1;1,0> 0x4:ub
+  ; CHECK: or (M1, 16) [[PACKED]](0,0)<1> [[PACKED]](0,0)<1;1,0> [[SHIFTED1]](0,0)<1;1,0>
+  ; CHECK: and (M1, 16) [[PACKED]](0,16)<1> [[LOADED]](0,32)<1;1,0> 0xf:ub
+  ; CHECK: shl (M1, 16) [[SHIFTED2:[A-z0-9]+]](0,0)<1> [[LOADED]](0,48)<1;1,0> 0x4:ub
+  ; CHECK: or (M1, 16) [[PACKED]](0,16)<1> [[PACKED]](0,16)<1;1,0> [[SHIFTED2]](0,0)<1;1,0>
   %packed = call <2 x i8> @llvm.genx.GenISA.Int4VectorPack.v2i8.v4i8(<4 x i8> %loadedCast)
 
   ; Store the packed result

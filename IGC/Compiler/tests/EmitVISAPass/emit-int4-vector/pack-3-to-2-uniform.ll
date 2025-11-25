@@ -31,11 +31,10 @@ entry:
   %i1 = insertelement <3 x i8> %i0, i8 %l1, i32 1
   %i2 = insertelement <3 x i8> %i1, i8 %l2, i32 2
 
-  ; CHECK: shl (M1_NM, 1) [[SHIFTED1:[A-z0-9]*]](0,0)<1> [[LOADED:[A-z0-9]*]](0,1)<0;1,0> 0x4:ub
-  ; CHECK: or (M1_NM, 1) [[PACKED:[A-z0-9]*]](0,0)<1> [[LOADED]](0,0)<0;1,0> [[SHIFTED1]](0,0)<0;1,0>
-  ; CHECK-NOT: shl
-  ; CHECK-NOT: or
-  ; CHECK: mov (M1_NM, 1) [[PACKED]](0,1)<1> [[LOADED]](0,2)<0;1,0>
+  ; CHECK: and (M1_NM, 1) [[PACKED:[A-z0-9]+]](0,0)<1> [[LOADED:[A-z0-9]+]](0,0)<0;1,0> 0xf:ub
+  ; CHECK: shl (M1_NM, 1) [[SHIFTED:[A-z0-9]+]](0,0)<1> [[LOADED]](0,1)<0;1,0> 0x4:ub
+  ; CHECK: or (M1_NM, 1) [[PACKED]](0,0)<1> [[PACKED]](0,0)<0;1,0> [[SHIFTED]](0,0)<0;1,0>
+  ; CHECK: and (M1_NM, 1) [[PACKED]](0,1)<1> [[LOADED]](0,2)<0;1,0> 0xf:ub
   %packed = call <2 x i8> @llvm.genx.GenISA.Int4VectorPack.v2i8.v3i8(<3 x i8> %i2)
 
   ; Store the packed result

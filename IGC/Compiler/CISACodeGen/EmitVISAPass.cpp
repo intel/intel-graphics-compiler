@@ -21328,21 +21328,20 @@ void EmitPass::emitInt4VectorPack(llvm::GenIntrinsicInst *GII) {
   }
 
   CVariable *immFour = m_currShader->ImmToVariable(4, ISA_TYPE_UB);
+  CVariable *immMask4Bit = m_currShader->ImmToVariable(0b1111, ISA_TYPE_UB);
 
   for (int rowOffset = 0; rowOffset < dstNum; rowOffset += execSize) {
-    CVariable *row0 = m_currShader->GetNewAlias(cinput, ISA_TYPE_UB, rowOffset * 2, execSize);
     CVariable *dst = m_currShader->GetNewAlias(m_destination, ISA_TYPE_UB, rowOffset, execSize);
+    CVariable *row0 = m_currShader->GetNewAlias(cinput, ISA_TYPE_UB, rowOffset * 2, execSize);
+    m_encoder->And(dst, row0, immMask4Bit);
 
     // There is an edge case where we pack <3 x i8> into <2 x i8>.
     // The missing 4th i8 cannot be loaded.
     if (rowOffset * 2 + execSize < cinput->GetNumberElement()) {
       CVariable *row1 = m_currShader->GetNewAlias(cinput, ISA_TYPE_UB, rowOffset * 2 + execSize, execSize);
-      CVariable *shl4 = m_currShader->GetNewVariable(row1, "shl4");
-      m_encoder->Shl(shl4, row1, immFour);
-      m_encoder->Or(dst, row0, shl4);
-    } else {
-      // Due to missing last element pass row0 directly to dst.
-      m_encoder->Copy(dst, row0);
+      CVariable *row1Shl4 = m_currShader->GetNewVariable(row1, "row1Shl4");
+      m_encoder->Shl(row1Shl4, row1, immFour);
+      m_encoder->Or(dst, dst, row1Shl4);
     }
   }
 
