@@ -304,13 +304,35 @@ bool ScalarArgAsPointerAnalysis::findStoredArgs(llvm::LoadInst &LI, ArgSet &args
         for (auto it = offsets.begin(); it != offsets.end(); ++it)
           *it += offset;
       } else {
-        if (prevGTI == gep_type_end(GEPI))
-          return false; // variable index at first operand, should not happen
-
         // gep_type_iterator is used to query indexed type. For arrays this is type
         // of single element. To get array size, we need to do query for it at
         // previous iterator step (before stepping into type indexed by array).
-        ArrayType *ATy = dyn_cast<ArrayType>(prevGTI.getIndexedType());
+        ArrayType *ATy = nullptr;
+        if (prevGTI != gep_type_end(GEPI))
+          ATy = dyn_cast<ArrayType>(prevGTI.getIndexedType());
+
+        if (!ATy) {
+          // If can't deduce array type,
+          // then the type was modified due to stripping of leading zero indices from GEP,
+          // So we have to extract it from alloca
+          auto allocaType = AI->getAllocatedType();
+          if (!allocaType)
+            return false;
+
+          if (auto *structType = dyn_cast<StructType>(allocaType)) {
+            for (auto offset : offsets) {
+              auto structLayout = DL->getStructLayout(structType);
+              auto indexOfArrayTyInStruct = structLayout->getElementContainingOffset(offset);
+              auto candidateType = structType->getElementType(indexOfArrayTyInStruct);
+
+              if (candidateType && candidateType->isArrayTy()) {
+                ATy = dyn_cast<ArrayType>(candidateType);
+                break;
+              }
+            }
+          }
+        }
+
         if (!ATy)
           return false;
 
