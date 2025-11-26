@@ -1720,6 +1720,65 @@ target_compile_definitions(${IGC_BUILD__PROJ__igc_dll} PRIVATE VER_ORIGINALNAME=
 
 
 if(UNIX)
+  # Allow user to pick a linker explicitly:
+  # cmake -DUSE_LINKER=lld ..
+  set(USE_LINKER "" CACHE STRING "Preferred linker (lld, wild, mold etc.)")
+
+  include(CheckLinkerFlag)
+
+  # Helper function: check whether a linker flag works
+  function(_try_linker LINKER_NAME RESULT_VAR)
+    if (LINKER_NAME STREQUAL "ld")
+        # ld is always available and `-fuse-ld=ld` isn't supported
+        set(${RESULT_VAR} TRUE PARENT_SCOPE)
+        return()
+    endif()
+    check_linker_flag(CXX "-fuse-ld=${LINKER_NAME};-Wl,--build-id=sha1,--undefined-version" ${RESULT_VAR})
+  endfunction()
+
+  # List of linkers to auto-detect when user didn't specify one
+  set(_default_linkers lld ld)
+
+  if (USE_LINKER STREQUAL "")
+      message(STATUS "No linker specified — probing system")
+
+      foreach(L IN LISTS _default_linkers)
+          _try_linker(${L} HAS_${L})
+          if (HAS_${L})
+              message(STATUS "Using detected linker: ${L}")
+              set(USE_LINKER "${L}" CACHE STRING "" FORCE)
+              break()
+          endif()
+      endforeach()
+
+      if (USE_LINKER STREQUAL "")
+          message(STATUS "No preferred linkers found — using compiler default")
+      endif()
+
+  else()
+    # User explicitly requested a linker — verify it
+    _try_linker(${USE_LINKER} HAS_${USE_LINKER})
+    if (NOT HAS_${USE_LINKER})
+          message(FATAL_ERROR
+              "Requested linker '${USE_LINKER}' is not usable on this system.")
+      endif()
+      message(STATUS "Using user-requested linker: ${USE_LINKER}")
+  endif()
+
+  if ((NOT USE_LINKER STREQUAL "") AND (NOT USE_LINKER STREQUAL "ld"))
+    igc_config_flag_apply_settings(
+        LinkerOptions
+        CMAKE_SHARED_LINKER_FLAGS
+        ALL_PATTERN ""
+        SET_RAW
+          -fuse-ld=${USE_LINKER}
+          # other linkers than `ld` seem to have behave slightly differently and require this option
+          -Wl,--undefined-version
+          # different linkers might use build id (lld might use 8 bytes which is too small), so make make it consistent
+          -Wl,--build-id=sha1
+    )
+  endif()
+
 
   #Copying script to current directory to elevate permissions - replaces file if already exists
   file(
