@@ -546,14 +546,14 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
     return false;
   };
 
-  // Double LoopUnrollThreshold for 1-BB outermost loops in small OCL kernels
+  // 4 x LoopUnrollThreshold for 1-BB outermost loops in small OCL kernels
   // without Call instructions, since we expect better optimization
   // when these loops are fully unrolled.
   if (ctx->type == ShaderType::OPENCL_SHADER && !hasCall(L->getHeader()) && L->getHeader()->getParent()->size() < 5) {
     if (!L->getParentLoop() && TripCount != 0 && TripCount < 256) {
       UP.Count = TripCount;
       UP.MaxCount = UP.Count;
-      UP.Threshold = LoopUnrollThreshold * 2;
+      UP.Threshold = LoopUnrollThreshold * 4;
       UP.Runtime = false;
       UP.Partial = false;
       UP.Force = true;
