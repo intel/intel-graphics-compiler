@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/TargetLibraryInfo.h>
 
 #include <llvmWrapper/Transforms/InstCombine/InstCombineWorklist.h>
+#include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
 #include <llvm/Transforms/Utils.h>
 
 #include "common/LLVMWarningsPop.hpp"
@@ -405,7 +406,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
       mpm.add(createAlwaysInlinerLegacyPass());
     }
     // The inliner sometimes fails to delete unused functions, this cleans up the remaining mess.
-    mpm.add(createGlobalDCEPass());
+    mpm.add(IGCLLVM::createLegacyWrappedGlobalDCEPass());
 
     // Check after GlobalDCE in case of doubles in dead functions
     mpm.add(new ErrorCheck());

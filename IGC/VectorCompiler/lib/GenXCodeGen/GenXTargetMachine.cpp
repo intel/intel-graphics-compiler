@@ -93,6 +93,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Utils/Mem2Reg.h"
 
+#include "llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.h"
+#include "llvmWrapper/Transforms/Scalar/JumpThreading.h"
+
 using namespace llvm;
 
 static cl::opt<std::string>
