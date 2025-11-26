@@ -1383,8 +1383,6 @@ void EmitPass::MovPhiSources(llvm::BasicBlock *aBB) {
           if (isa<UndefValue>(Src)) {
             if (IGC_IS_FLAG_ENABLED(AssignZeroToUndefPhiNodes)) {
               Src = Constant::getNullValue(Src->getType());
-            } else if (IGC_IS_FLAG_ENABLED(DisableMovOfUndefPhiSources)) {
-              continue;
             }
           }
 
