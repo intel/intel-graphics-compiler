@@ -25,13 +25,13 @@ define spir_func void @test_fp_max_error_decoration(float %f1, float %f2) #0 {
 ; unsupported: = call float @__ocl_svml_fmul(float [[F1]], float [[F2]]) #2
 ; unsupported: = call float @__ocl_svml_fmul_ep(float [[F1]], float [[F2]]) #3
 ; CHECK: = fdiv float [[F1]], [[F2]]
-; unsupported: = call float @__ocl_svml_fdiv_ha(float [[F1]], float [[F2]]) #1
-; unsupported: = call float @__ocl_svml_fdiv(float [[F1]], float [[F2]]) #2
-; unsupported: = call float @__ocl_svml_fdiv_ep(float [[F1]], float [[F2]]) #3
+; CHECK: = call float @__builtin_spirv_divide_cr_f32_f32(float [[F1]], float [[F2]])
+; CHECK: = fdiv float [[F1]], [[F2]], !fpbuiltin-max-error
+; CHECK: = fdiv float [[F1]], [[F2]], !fpbuiltin-max-error
 ; CHECK: = frem float [[F1]], [[F2]]
 ; unsupported: = call float @__ocl_svml_frem_ha(float [[F1]], float [[F2]]) #1
 ; unsupported: = call float @__ocl_svml_frem(float [[F1]], float [[F2]]) #2
-; unsupported: = call float @__ocl_svml_frem_ep(float [[F1]], float %f2) #3
+; unsupported: = call float @__ocl_svml_frem_ep(float [[F1]], float [[F2]]) #3
   %add0 = fadd float %f1, %f2
   %add1 = fadd float %f1, %f2, !fpbuiltin-max-error !1
   %add2 = fadd float %f1, %f2, !fpbuiltin-max-error !2

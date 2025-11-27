@@ -89,6 +89,10 @@ define spir_func void @test_fp_max_error_decoration(float %f1, float %f2) #0 {
 ; CHECK: = call spir_func float @__ocl_svml_log1pf(float [[F1]]) #3
 ; CHECK: = call spir_func float @__ocl_svml_log1pf_ep(float [[F1]]) #4
 ; CHECK: = call spir_func float @_Z16__spirv_ocl_sqrtf(float [[F1]])
+; CHECK: = call spir_func float @_Z16__spirv_ocl_sqrtf(float [[F1]]) #2
+; CHECK: = call spir_func float @_Z16__spirv_ocl_sqrtf(float [[F1]]) #3
+; CHECK: = call spir_func float @_Z16__spirv_ocl_sqrtf(float [[F1]]) #4
+; CHECK: = call spir_func float @_Z19__spirv_ocl_sqrt_crf(float [[F1]]) #5
 ; CHECK: = call spir_func float @_Z17__spirv_ocl_rsqrtf(float [[F1]])
 ; CHECK: = call spir_func float @_Z15__spirv_ocl_erff(float [[F1]])
 ; CHECK: = call spir_func float @__ocl_svml_erff_ha(float [[F1]]) #2
@@ -193,34 +197,35 @@ define spir_func void @test_fp_max_error_decoration(float %f1, float %f2) #0 {
   %t81 = call spir_func float @_Z16__spirv_ocl_sqrtf(float %f1) #2
   %t82 = call spir_func float @_Z16__spirv_ocl_sqrtf(float %f1) #3
   %t83 = call spir_func float @_Z16__spirv_ocl_sqrtf(float %f1) #4
-  %t84 = call spir_func float @_Z17__spirv_ocl_rsqrtf(float %f1)
-  %t85 = call spir_func float @_Z17__spirv_ocl_rsqrtf(float %f1) #2
-  %t86 = call spir_func float @_Z17__spirv_ocl_rsqrtf(float %f1) #3
-  %t87 = call spir_func float @_Z17__spirv_ocl_rsqrtf(float %f1) #4
-  %t88 = call spir_func float @_Z15__spirv_ocl_erff(float %f1)
-  %t89 = call spir_func float @_Z15__spirv_ocl_erff(float %f1) #2
-  %t90 = call spir_func float @_Z15__spirv_ocl_erff(float %f1) #3
-  %t91 = call spir_func float @_Z15__spirv_ocl_erff(float %f1) #4
-  %t92 = call spir_func float @_Z16__spirv_ocl_erfcf(float %f1)
-  %t93 = call spir_func float @_Z16__spirv_ocl_erfcf(float %f1) #2
-  %t94 = call spir_func float @_Z16__spirv_ocl_erfcf(float %f1) #3
-  %t95 = call spir_func float @_Z16__spirv_ocl_erfcf(float %f1) #4
-  %t96 = call spir_func float @_Z17__spirv_ocl_atan2ff(float %f1, float %f2)
-  %t97 = call spir_func float @_Z17__spirv_ocl_atan2ff(float %f1, float %f2) #2
-  %t98 = call spir_func float @_Z17__spirv_ocl_atan2ff(float %f1, float %f2) #3
-  %t99 = call spir_func float @_Z17__spirv_ocl_atan2ff(float %f1, float %f2) #4
-  %t100 = call spir_func float @_Z17__spirv_ocl_ldexpff(float %f1, float %f2)
-  %t101 = call spir_func float @_Z17__spirv_ocl_ldexpff(float %f1, float %f2) #2
-  %t102 = call spir_func float @_Z17__spirv_ocl_ldexpff(float %f1, float %f2) #3
-  %t103 = call spir_func float @_Z17__spirv_ocl_ldexpff(float %f1, float %f2) #4
-  %t104 = call spir_func float @_Z15__spirv_ocl_powff(float %f1, float %f2)
-  %t105 = call spir_func float @_Z15__spirv_ocl_powff(float %f1, float %f2) #2
-  %t106 = call spir_func float @_Z15__spirv_ocl_powff(float %f1, float %f2) #3
-  %t107 = call spir_func float @_Z15__spirv_ocl_powff(float %f1, float %f2) #4
-  %t108 = call spir_func float @_Z17__spirv_ocl_hypotff(float %f1, float %f2)
-  %t109 = call spir_func float @_Z17__spirv_ocl_hypotff(float %f1, float %f2) #2
-  %t110 = call spir_func float @_Z17__spirv_ocl_hypotff(float %f1, float %f2) #3
-  %t111 = call spir_func float @_Z17__spirv_ocl_hypotff(float %f1, float %f2) #4
+  %t84 = call spir_func float @_Z16__spirv_ocl_sqrtf(float %f1) #5
+  %t85 = call spir_func float @_Z17__spirv_ocl_rsqrtf(float %f1)
+  %t86 = call spir_func float @_Z17__spirv_ocl_rsqrtf(float %f1) #2
+  %t88 = call spir_func float @_Z17__spirv_ocl_rsqrtf(float %f1) #3
+  %t89 = call spir_func float @_Z17__spirv_ocl_rsqrtf(float %f1) #4
+  %t90 = call spir_func float @_Z15__spirv_ocl_erff(float %f1)
+  %t91 = call spir_func float @_Z15__spirv_ocl_erff(float %f1) #2
+  %t92 = call spir_func float @_Z15__spirv_ocl_erff(float %f1) #3
+  %t93 = call spir_func float @_Z15__spirv_ocl_erff(float %f1) #4
+  %t94 = call spir_func float @_Z16__spirv_ocl_erfcf(float %f1)
+  %t95 = call spir_func float @_Z16__spirv_ocl_erfcf(float %f1) #2
+  %t96 = call spir_func float @_Z16__spirv_ocl_erfcf(float %f1) #3
+  %t97 = call spir_func float @_Z16__spirv_ocl_erfcf(float %f1) #4
+  %t98 = call spir_func float @_Z17__spirv_ocl_atan2ff(float %f1, float %f2)
+  %t99 = call spir_func float @_Z17__spirv_ocl_atan2ff(float %f1, float %f2) #2
+  %t100 = call spir_func float @_Z17__spirv_ocl_atan2ff(float %f1, float %f2) #3
+  %t101 = call spir_func float @_Z17__spirv_ocl_atan2ff(float %f1, float %f2) #4
+  %t102 = call spir_func float @_Z17__spirv_ocl_ldexpff(float %f1, float %f2)
+  %t103 = call spir_func float @_Z17__spirv_ocl_ldexpff(float %f1, float %f2) #2
+  %t104 = call spir_func float @_Z17__spirv_ocl_ldexpff(float %f1, float %f2) #3
+  %t105 = call spir_func float @_Z17__spirv_ocl_ldexpff(float %f1, float %f2) #4
+  %t106 = call spir_func float @_Z15__spirv_ocl_powff(float %f1, float %f2)
+  %t107 = call spir_func float @_Z15__spirv_ocl_powff(float %f1, float %f2) #2
+  %t108 = call spir_func float @_Z15__spirv_ocl_powff(float %f1, float %f2) #3
+  %t109 = call spir_func float @_Z15__spirv_ocl_powff(float %f1, float %f2) #4
+  %t110 = call spir_func float @_Z17__spirv_ocl_hypotff(float %f1, float %f2)
+  %t111 = call spir_func float @_Z17__spirv_ocl_hypotff(float %f1, float %f2) #2
+  %t112 = call spir_func float @_Z17__spirv_ocl_hypotff(float %f1, float %f2) #3
+  %t113 = call spir_func float @_Z17__spirv_ocl_hypotff(float %f1, float %f2) #4
   ret void
 }
 
@@ -313,3 +318,4 @@ attributes #1 = { nounwind readnone }
 attributes #2 = { nounwind "fpbuiltin-max-error"="2.500000" }
 attributes #3 = { nounwind "fpbuiltin-max-error"="4.000000" }
 attributes #4 = { nounwind "fpbuiltin-max-error"="5000.000000" }
+attributes #5 = { nounwind "fpbuiltin-max-error"="0.500000" }

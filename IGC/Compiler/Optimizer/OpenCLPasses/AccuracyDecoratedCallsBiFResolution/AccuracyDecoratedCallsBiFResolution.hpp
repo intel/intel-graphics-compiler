@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 #include <unordered_map>
 
 namespace IGC {
-enum Accuracy { HIGH_ACCURACY, LOW_ACCURACY, ENHANCED_PRECISION };
+enum Accuracy { HIGH_ACCURACY, LOW_ACCURACY, ENHANCED_PERFORMANCE, CORRECTLY_ROUNDED };
 
 class AccuracyDecoratedCallsBiFResolution : public llvm::ModulePass,
                                             public llvm::InstVisitor<AccuracyDecoratedCallsBiFResolution> {
@@ -43,7 +43,7 @@ public:
 private:
   bool m_changed = false;
   llvm::Module *m_Module = nullptr;
-  // m_nameToBuiltin["_Z15__spirv_ocl_sinf"][ENHANCED_PRECISION] --> "__ocl_svml_sinf_ep"
+  // m_nameToBuiltin["_Z15__spirv_ocl_sinf"][ENHANCED_PERFORMANCE] --> "__ocl_svml_sinf_ep"
   std::unordered_map<std::string, AccurateBuiltins> m_nameToBuiltin{};
 
   llvm::Function *getOrInsertNewFunc(const llvm::StringRef oldFuncName, llvm::Type *funcType,

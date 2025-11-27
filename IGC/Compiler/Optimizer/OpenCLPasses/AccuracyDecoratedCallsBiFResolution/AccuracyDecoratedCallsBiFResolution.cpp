@@ -10,6 +10,9 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/Type.h"
 #include "llvm/IR/Attributes.h"
+#include <llvm/Demangle/Demangle.h>
+#include <llvm/IR/CallingConv.h>
+#include <llvm/IR/DerivedTypes.h>
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Probe/Assertion.h"
@@ -37,8 +40,10 @@ static inline const char *toString(Accuracy a) {
     return "high accuracy";
   case LOW_ACCURACY:
     return "low accuracy";
-  case ENHANCED_PRECISION:
-    return "enhanced precision";
+  case ENHANCED_PERFORMANCE:
+    return "enhanced performance";
+  case CORRECTLY_ROUNDED:
+    return "correctly rounded";
   }
 }
 
@@ -63,38 +68,43 @@ bool AccuracyDecoratedCallsBiFResolution::runOnModule(Module &M) {
 }
 
 void AccuracyDecoratedCallsBiFResolution::visitBinaryOperator(BinaryOperator &inst) {
-  // not supported by BiFModule yet;
-  return;
+  // other binary operators have to be correctly rounded only
+  if (inst.getOpcode() != Instruction::FDiv)
+    return;
 
-  if (!inst.getType()->isFloatingPointTy())
+  // only float type is supported for now
+  if (!inst.getType()->isFloatTy())
     return;
 
   MDNode *MD = inst.getMetadata("fpbuiltin-max-error");
   if (!MD)
     return;
+  StringRef maxErrorStr = cast<MDString>(MD->getOperand(0))->getString();
+  double maxError = 0;
+  maxErrorStr.getAsDouble(maxError);
 
-  IGC_ASSERT_MESSAGE(!IGCLLVM::isBFloatTy(inst.getType()),
-                     "bfloat type is not supported with fpbuiltin-max-error decoration");
-  if (IGCLLVM::isBFloatTy(inst.getType()))
+  // no need to change anything for max error >= 2.5 ULP
+  if (maxError >= 2.5)
     return;
 
   std::vector<Value *> args{};
   args.push_back(inst.getOperand(0));
   args.push_back(inst.getOperand(1));
 
-  StringRef maxErrorStr = cast<MDString>(MD->getOperand(0))->getString();
-  const std::string oldFuncName = inst.getOpcodeName();
+  FunctionType *FT =
+      FunctionType::get(inst.getType(), {inst.getOperand(0)->getType(), inst.getOperand(1)->getType()}, false);
 
-  Instruction *currInst = cast<Instruction>(&inst);
   Function *newFunc =
-      getOrInsertNewFunc(oldFuncName, inst.getType(), args, {}, CallingConv::SPIR_FUNC, maxErrorStr, currInst);
-
+      cast<Function>(m_Module->getOrInsertFunction("__builtin_spirv_divide_cr_f32_f32", FT, {}).getCallee());
+  newFunc->setCallingConv(CallingConv::SPIR_FUNC);
   CallInst *newCall = CallInst::Create(newFunc, args, inst.getName(), &inst);
+
   llvm::Attribute attr = llvm::Attribute::get(inst.getContext(), "fpbuiltin-max-error", maxErrorStr);
   newCall->addFnAttr(attr);
 
   inst.replaceAllUsesWith(newCall);
   inst.eraseFromParent();
+  m_changed = true;
 }
 
 void AccuracyDecoratedCallsBiFResolution::visitCallInst(CallInst &callInst) {
@@ -180,7 +190,7 @@ std::string AccuracyDecoratedCallsBiFResolution::getFunctionName(const StringRef
     default:
       IGC_ASSERT_MESSAGE(false, "Unreachable, NameToBuiltinDef.hpp is likely broken");
       return oldFuncName.str();
-    case ENHANCED_PRECISION:
+    case ENHANCED_PERFORMANCE:
       return getFunctionName(oldFuncName, LOW_ACCURACY, currInst);
     case LOW_ACCURACY:
       return getFunctionName(oldFuncName, HIGH_ACCURACY, currInst);
@@ -188,18 +198,35 @@ std::string AccuracyDecoratedCallsBiFResolution::getFunctionName(const StringRef
   }
   return m_nameToBuiltin.at(oldFuncName.str()).at(accuracy);
 }
+namespace {
+
+bool isSqrt(const llvm::Instruction *inst) {
+  if (const llvm::CallInst *callInst = llvm::dyn_cast<llvm::CallInst>(inst)) {
+    if (const llvm::Function *calledFunc = callInst->getCalledFunction()) {
+      std::string demangledName = llvm::demangle(calledFunc->getName().str());
+      if (demangledName.find("__spirv_ocl_sqrt") != std::string::npos) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+} // namespace
 
 Accuracy AccuracyDecoratedCallsBiFResolution::getAccuracy(double maxError, double cutOff,
                                                           const Instruction *currInst) const {
-  if (maxError < 1.0)
-    getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(
-        "fpbuiltin-max-error can't have values below 1.0", currInst);
+  if (maxError < 1.0) {
+    if (isSqrt(currInst))
+      return CORRECTLY_ROUNDED;
 
+    getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(
+        "fpbuiltin-max-error with values below 1.0 is only supported for sqrt and division", currInst);
+  }
   if (maxError < 4.0)
     return HIGH_ACCURACY;
 
   if (maxError < cutOff) // 2^12 (for f32) or 2^26 (for f64)
     return LOW_ACCURACY;
 
-  return ENHANCED_PRECISION;
+  return ENHANCED_PERFORMANCE;
 }
