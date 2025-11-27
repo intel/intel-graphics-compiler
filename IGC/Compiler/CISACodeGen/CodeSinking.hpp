@@ -92,7 +92,7 @@ class CodeLoopSinking : public llvm::FunctionPass {
   llvm::AliasAnalysis *AA = nullptr;
   WIAnalysisRunner *WI;
   IGCMD::MetaDataUtils *MDUtils = nullptr;
-  IGCLivenessAnalysis *RPE = nullptr;
+  IGCLivenessAnalysisRunner *RPE = nullptr;
   IGCFunctionExternalRegPressureAnalysis *FRPE = nullptr;
   CodeGenContext *CTX = nullptr;
   TargetLibraryInfo *TLI = nullptr;

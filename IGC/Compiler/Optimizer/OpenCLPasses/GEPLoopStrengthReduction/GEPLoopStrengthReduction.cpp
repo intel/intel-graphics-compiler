@@ -240,7 +240,7 @@ private:
 //   2. Estimates increase in register pressure.
 class Scorer {
 public:
-  Scorer(const DataLayout &DL, ModuleMetaData &MMD, IGCLivenessAnalysis &RPE, WIAnalysisRunner &WI)
+  Scorer(const DataLayout &DL, ModuleMetaData &MMD, IGCLivenessAnalysisRunner &RPE, WIAnalysisRunner &WI)
       : DL(DL), MMD(MMD), RPE(RPE), WI(WI) {}
 
   void score(SmallVectorImpl<ReductionCandidateGroup> &Candidates);
@@ -255,7 +255,7 @@ private:
   int estimatePointerAddition(ReductionCandidateGroup &Candidate);
 
   const DataLayout &DL;
-  IGCLivenessAnalysis &RPE;
+  IGCLivenessAnalysisRunner &RPE;
   ModuleMetaData &MMD;
   WIAnalysisRunner &WI;
 };
@@ -304,7 +304,7 @@ private:
 // Tracks estimated register pressure.
 class RegisterPressureTracker {
 public:
-  RegisterPressureTracker(Function &F, CodeGenContext &CGC, IGCLivenessAnalysis &RPE,
+  RegisterPressureTracker(Function &F, CodeGenContext &CGC, IGCLivenessAnalysisRunner &RPE,
                           IGCFunctionExternalRegPressureAnalysis &FRPE, WIAnalysisRunner &WI);
 
   bool fitsPressureThreshold(ReductionCandidateGroup &C);
@@ -316,7 +316,7 @@ private:
   unsigned MaxAllowedPressure;
   unsigned FunctionExternalPressure;
 
-  IGCLivenessAnalysis &RPE;
+  IGCLivenessAnalysisRunner &RPE;
   WIAnalysisRunner &WI;
 
   // Basic Blocks impacted by reduction, requiring register pressure reestimation.
@@ -1117,7 +1117,7 @@ bool Analyzer::DeconstructedSCEV::isValid() {
   return IGC_IS_FLAG_ENABLED(EnableGEPLSRUnknownConstantStep);
 }
 
-RegisterPressureTracker::RegisterPressureTracker(Function &F, CodeGenContext &CGC, IGCLivenessAnalysis &RPE,
+RegisterPressureTracker::RegisterPressureTracker(Function &F, CodeGenContext &CGC, IGCLivenessAnalysisRunner &RPE,
                                                  IGCFunctionExternalRegPressureAnalysis &FRPE, WIAnalysisRunner &WI)
     : RPE(RPE), WI(WI) {
   MaxAllowedPressure =
@@ -1473,7 +1473,7 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F) {
   auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   auto &MMD = *getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-  auto &RPE = getAnalysis<IGCLivenessAnalysis>();
+  auto &RPE = getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
   auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
 
   // Note: FRPE is a Module analysis and currently runs only once.

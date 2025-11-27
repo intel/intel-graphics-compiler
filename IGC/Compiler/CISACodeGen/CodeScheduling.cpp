@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include <fstream>
 
+#include "CISACodeGen/IGCLivenessAnalysis.h"
 #include "common/debug/Debug.hpp"
 #include "common/debug/Dump.hpp"
 // #include "common/Stats.hpp"
@@ -207,9 +208,9 @@ public:
 
 class RegisterPressureTracker {
 public:
-  RegisterPressureTracker(BasicBlock *BB, IGCLivenessAnalysis *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
-                          VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, WIAnalysisRunner *WI, CodeGenContext *CTX,
-                          SchedulingConfig *Config, llvm::raw_ostream *LogStream)
+  RegisterPressureTracker(BasicBlock *BB, IGCLivenessAnalysisRunner *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
+                          VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, WIAnalysisRunner *WI,
+                          CodeGenContext *CTX, SchedulingConfig *Config, llvm::raw_ostream *LogStream)
       : BB(BB), RPE(RPE), FRPE(FRPE), VSA(VSA), RCA(RCA), WI(WI), CTX(CTX), C(Config), LogStream(LogStream) {
     F = BB->getParent();
     SIMD = C->get(SchedulingConfig::Option::ForceSIMDSize) > 0 ? C->get(SchedulingConfig::Option::ForceSIMDSize)
@@ -496,7 +497,7 @@ public:
 private:
   BasicBlock *BB;
   Function *F;
-  IGCLivenessAnalysis *RPE;
+  IGCLivenessAnalysisRunner *RPE;
   IGCFunctionExternalRegPressureAnalysis *FRPE;
   VectorShuffleAnalysis *VSA;
   RematChainsAnalysis *RCA;
@@ -985,8 +986,9 @@ public:
   typedef std::vector<InstructionNode> InstNodeList;
   typedef std::vector<InstructionNode *> InstNodePtrList;
 
-  BBScheduler(BasicBlock *BB, IGCLivenessAnalysis *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE, AAResults *AA,
-              VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, CodeGenContext *CTX, SchedulingConfig *Config, llvm::raw_ostream *LogStream)
+  BBScheduler(BasicBlock *BB, IGCLivenessAnalysisRunner *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
+              AAResults *AA, VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, CodeGenContext *CTX,
+              SchedulingConfig *Config, llvm::raw_ostream *LogStream)
       : BB(BB), RPE(RPE), FRPE(FRPE), AA(AA), VSA(VSA), RCA(RCA), CTX(CTX), C(*Config), LogStream(LogStream) {
     F = BB->getParent();
     WI = &FRPE->getWIAnalysis(F);
@@ -1221,7 +1223,7 @@ private:
   BasicBlock *BB;
   Function *F;
   IGCFunctionExternalRegPressureAnalysis *FRPE;
-  IGCLivenessAnalysis *RPE;
+  IGCLivenessAnalysisRunner *RPE;
   WIAnalysisRunner *WI;
   AAResults *AA;
   VectorShuffleAnalysis *VSA;
@@ -1354,9 +1356,9 @@ private:
     DepGraph(const DepGraph &) = delete;
     DepGraph &operator=(const DepGraph &) = delete;
 
-    DepGraph(BasicBlock *BB, IGCLivenessAnalysis *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
-             VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, WIAnalysisRunner *WI, CodeGenContext *CTX, SchedulingConfig &C,
-             llvm::raw_ostream *LogStream) {
+    DepGraph(BasicBlock *BB, IGCLivenessAnalysisRunner *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
+             VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, WIAnalysisRunner *WI, CodeGenContext *CTX,
+             SchedulingConfig &C, llvm::raw_ostream *LogStream) {
       InstNodes.reserve(BB->size() * sizeof(InstructionNode));
       InstToNode.reserve(BB->size() * sizeof(InstToNodeMap));
 
@@ -1695,9 +1697,9 @@ private:
 
   class Schedule {
   public:
-    Schedule(BasicBlock *BB, IGCLivenessAnalysis *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
-             VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, WIAnalysisRunner *WI, CodeGenContext *CTX, SchedulingConfig *C,
-             llvm::raw_ostream *LogStream)
+    Schedule(BasicBlock *BB, IGCLivenessAnalysisRunner *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
+             VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, WIAnalysisRunner *WI, CodeGenContext *CTX,
+             SchedulingConfig *C, llvm::raw_ostream *LogStream)
         : BB(BB), C(*C), CTX(CTX), VSA(VSA), RCA(RCA), LogStream(LogStream),
           G(DepGraph(BB, RPE, FRPE, VSA, RCA, WI, CTX, *C, LogStream)),
           RT(RegisterPressureTracker(BB, RPE, FRPE, VSA, RCA, WI, CTX, C, LogStream)) {
@@ -2630,7 +2632,7 @@ bool CodeScheduling::runOnFunction(Function &F) {
   AA = nullptr; // using alias information is not supported yet
   VSA = &getAnalysis<VectorShuffleAnalysis>();
   RCA = &getAnalysis<RematChainsAnalysis>();
-  RPE = &getAnalysis<IGCLivenessAnalysis>();
+  RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
   FRPE = &getAnalysis<IGCFunctionExternalRegPressureAnalysis>();
   WI = &FRPE->getWIAnalysis(&F);
 

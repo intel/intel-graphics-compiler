@@ -48,7 +48,7 @@ using PossibleDims = std::set<Dims>;
 struct Config {
   Module *M = nullptr; // for debug info
   CodeGenContext *CGC = nullptr;
-  IGCLivenessAnalysis *RPE = nullptr;
+  IGCLivenessAnalysisRunner *RPE = nullptr;
 
   bool isLegitW8 = false;
   unsigned sizeOfRegs_B = 0;
@@ -95,7 +95,7 @@ struct Config {
     return config;
   }
 
-  bool initialize(Function *inF, CodeGenContext *inCGC, IGCLivenessAnalysis *inRPE);
+  bool initialize(Function *inF, CodeGenContext *inCGC, IGCLivenessAnalysisRunner *inRPE);
 
 private:
   Config() = default;
@@ -111,7 +111,7 @@ public:
   /// @param inF   LLVM function pointer.
   /// @param inCGC The code generation context.
   /// @param inRPE The register pressure estimator.
-  static std::unique_ptr<LoadSplitter> Create(Function *inF, CodeGenContext *inCGC, IGCLivenessAnalysis *inRPE);
+  static std::unique_ptr<LoadSplitter> Create(Function *inF, CodeGenContext *inCGC, IGCLivenessAnalysisRunner *inRPE);
 
   LoadSplitter(const LoadSplitter &) = delete;
   LoadSplitter &operator=(const LoadSplitter &) = delete;

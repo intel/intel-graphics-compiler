@@ -301,11 +301,11 @@ void IGCLivenessAnalysisBase::collectPressureForBB(llvm::BasicBlock &BB, InsideB
 }
 
 bool IGCLivenessAnalysis::runOnFunction(llvm::Function &F) {
-
-  FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
-  MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  livenessAnalysis(F, nullptr);
+  auto *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
+  auto *MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  auto *CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  LivenessRunner = IGCLivenessAnalysisRunner(CGCtx, MDUtils, FGA);
+  LivenessRunner.livenessAnalysis(F, nullptr);
   return false;
 }
 
@@ -546,7 +546,7 @@ void IGCRegisterPressurePrinter::printPhi(const PhiSet &Set, std::string &Output
 bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
 
   ExternalPressure = getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressureForFunction(&F);
-  RPE = &getAnalysis<IGCLivenessAnalysis>();
+  RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
   WI = &getAnalysis<WIAnalysis>();
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   MaxPressureInFunction = 0;
@@ -582,34 +582,57 @@ char IGCRegisterPressurePublisher::ID = 0;
 #define PASS_CFG_ONLY1 false
 #define PASS_ANALYSIS1 false
 IGC_INITIALIZE_PASS_BEGIN(IGCRegisterPressurePublisher, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ONLY1, PASS_ANALYSIS1)
-IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(IGCFunctionExternalRegPressureAnalysis)
-IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_END(IGCRegisterPressurePublisher, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ONLY1, PASS_ANALYSIS1)
 
-IGCRegisterPressurePublisher::IGCRegisterPressurePublisher() : FunctionPass(ID) {
+IGCRegisterPressurePublisher::IGCRegisterPressurePublisher() : llvm::ModulePass(ID) {
   initializeIGCRegisterPressurePublisherPass(*PassRegistry::getPassRegistry());
 };
 
-bool IGCRegisterPressurePublisher::runOnFunction(llvm::Function &F) {
-  if (skipFunction(F))
+bool IGCRegisterPressurePublisher::runOnModule(llvm::Module &M) {
+  if (skipModule(M)) {
     return false;
-
-  ExternalPressure = getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressureForFunction(&F);
-  RPE = &getAnalysis<IGCLivenessAnalysis>();
-  WI = &getAnalysis<WIAnalysis>();
-  CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  MaxPressureInFunction = 0;
-
-  unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F));
-
-  // if we have some published metadata already don't do anything
-  bool NotPublishedAlready = RPE->checkPublishRegPressureMetadata(F) == 0;
-
-  if (NotPublishedAlready) {
-    MaxPressureInFunction = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
-    RPE->publishRegPressureMetadata(F, MaxPressureInFunction + ExternalPressure);
   }
-  return true;
+
+  auto *CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  auto *MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  auto *ModMD = CGCtx->getModuleMetaData();
+  auto *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
+
+  for (auto &F : M) {
+    if (F.isDeclaration() || F.isIntrinsic() || F.hasOptNone()) {
+      continue;
+    }
+
+    auto ExternalPressure = getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressureForFunction(&F);
+    auto *DT = &getAnalysis<DominatorTreeWrapperPass>(F).getDomTree();
+    auto *PDT = &getAnalysis<PostDominatorTreeWrapperPass>(F).getPostDomTree();
+    auto *LI = &getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+
+    TranslationTable TT;
+    TT.run(F);
+    WIAnalysisRunner WI(&F, LI, DT, PDT, MDUtils, CGCtx, ModMD, &TT, false);
+    WI.run();
+
+    IGCLivenessAnalysisRunner RPE(CGCtx, MDUtils, FGA);
+    RPE.livenessAnalysis(F, nullptr);
+
+    unsigned int MaxPressureInFunction = 0;
+
+    unsigned int SimdSize = numLanes(RPE.bestGuessSIMDSize(&F));
+    // If we have some published metadata already don't do anything
+    bool AlreadyPublished = (RPE.checkPublishRegPressureMetadata(F) != 0);
+
+    if (!AlreadyPublished) {
+      MaxPressureInFunction = RPE.getMaxRegCountForFunction(F, SimdSize, &WI);
+      RPE.publishRegPressureMetadata(F, MaxPressureInFunction + ExternalPressure);
+    }
+  }
+
+  return false;
 }

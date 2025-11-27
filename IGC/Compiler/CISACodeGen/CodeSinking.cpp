@@ -762,7 +762,7 @@ bool CodeLoopSinking::runOnFunction(Function &F) {
   // and we could not apply sinking in function B, but we don't recompute FPRE
   // to save compile time, so in this case LoopSinking might apply for loops in function B
 
-  RPE = &getAnalysis<IGCLivenessAnalysis>();
+  RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
   FRPE = &getAnalysis<IGCFunctionExternalRegPressureAnalysis>();
   WI = &FRPE->getWIAnalysis(&F);
 

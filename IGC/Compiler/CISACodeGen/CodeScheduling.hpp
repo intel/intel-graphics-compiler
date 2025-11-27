@@ -32,7 +32,7 @@ class CodeScheduling : public llvm::FunctionPass {
   RematChainsAnalysis *RCA = nullptr;
   WIAnalysisRunner *WI = nullptr;
   // IGCMD::MetaDataUtils* MDUtils = nullptr;
-  IGCLivenessAnalysis *RPE = nullptr;
+  IGCLivenessAnalysisRunner *RPE = nullptr;
   IGCFunctionExternalRegPressureAnalysis *FRPE = nullptr;
   CodeGenContext *CTX = nullptr;
 

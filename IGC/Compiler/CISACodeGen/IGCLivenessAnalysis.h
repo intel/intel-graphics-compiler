@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/Function.h>
+#include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace IGC;
@@ -82,9 +83,21 @@ public:
   void livenessAnalysis(llvm::Function &F, BBSet *StartBBs = nullptr);
 };
 
-class IGCLivenessAnalysis : public llvm::FunctionPass, public IGCLivenessAnalysisBase {
+class IGCLivenessAnalysisRunner : public IGCLivenessAnalysisBase {
 public:
+  IGCLivenessAnalysisRunner() = default;
+  IGCLivenessAnalysisRunner(IGC::CodeGenContext *CGCtx, IGCMD::MetaDataUtils *MDUtils, GenXFunctionGroupAnalysis *FGA) {
+    this->CGCtx = CGCtx;
+    this->MDUtils = MDUtils;
+    this->FGA = FGA;
+  }
+
   void publishRegPressureMetadata(llvm::Function &F, unsigned int MaxPressure) {
+    publishRegPressureMetadata(F, MaxPressure, MDUtils);
+  }
+
+  static void publishRegPressureMetadata(llvm::Function &F, unsigned int MaxPressure,
+                                         IGC::IGCMD::MetaDataUtils *MDUtils) {
     if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
       IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
       funcInfoMD->getMaxRegPressure()->setMaxPressure(MaxPressure);
@@ -92,7 +105,9 @@ public:
     }
   }
 
-  unsigned checkPublishRegPressureMetadata(llvm::Function &F) {
+  unsigned checkPublishRegPressureMetadata(llvm::Function &F) { return checkPublishRegPressureMetadata(F, MDUtils); }
+
+  static unsigned checkPublishRegPressureMetadata(llvm::Function &F, IGC::IGCMD::MetaDataUtils *MDUtils) {
     unsigned Result = 0;
     if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
       IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
@@ -142,7 +157,7 @@ public:
     return HottestBB;
   }
 
-  void releaseMemory() override {
+  void releaseMemory() {
     In.clear();
     InPhi.clear();
     Out.clear();
@@ -168,17 +183,26 @@ public:
     }
     livenessAnalysis(F, BBs);
   }
+};
 
+class IGCLivenessAnalysis : public llvm::FunctionPass {
+public:
   static char ID;
   llvm::StringRef getPassName() const override { return "IGCLivenessAnalysis"; }
   IGCLivenessAnalysis();
   virtual ~IGCLivenessAnalysis() {}
-  virtual bool runOnFunction(llvm::Function &F) override;
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+  bool runOnFunction(llvm::Function &F) override;
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     AU.setPreservesAll();
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<MetaDataUtilsWrapper>();
   }
+  void releaseMemory() override { LivenessRunner.releaseMemory(); }
+
+  IGCLivenessAnalysisRunner &getLivenessRunner() { return LivenessRunner; }
+
+private:
+  IGCLivenessAnalysisRunner LivenessRunner;
 };
 
 typedef std::unordered_map<llvm::CallInst *, unsigned int> CallSiteToPressureMap;
@@ -247,7 +271,7 @@ public:
 
 class IGCRegisterPressurePrinter : public llvm::FunctionPass {
 
-  IGCLivenessAnalysis *RPE = nullptr;
+  IGCLivenessAnalysisRunner *RPE = nullptr;
   WIAnalysis *WI = nullptr;
   CodeGenContext *CGCtx = nullptr;
 
@@ -290,27 +314,19 @@ public:
   static char ID;
 };
 
-
-class IGCRegisterPressurePublisher : public llvm::FunctionPass {
-
-  IGCLivenessAnalysis *RPE = nullptr;
-  WIAnalysis *WI = nullptr;
-  CodeGenContext *CGCtx = nullptr;
-
-  unsigned int ExternalPressure = 0;
-  unsigned int MaxPressureInFunction = 0;
-
+class IGCRegisterPressurePublisher : public llvm::ModulePass {
 public:
   llvm::StringRef getPassName() const override { return "IGCRegPressurePublisher"; }
   virtual ~IGCRegisterPressurePublisher() {}
-  virtual bool runOnFunction(llvm::Function &F) override;
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+  bool runOnModule(llvm::Module &M) override;
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     AU.setPreservesAll();
     AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<IGCLivenessAnalysis>();
     AU.addRequired<CodeGenContextWrapper>();
-    AU.addRequired<WIAnalysis>();
     AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
+    AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<PostDominatorTreeWrapperPass>();
+    AU.addRequired<LoopInfoWrapperPass>();
   }
   IGCRegisterPressurePublisher();
   static char ID;

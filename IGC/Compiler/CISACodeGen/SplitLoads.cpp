@@ -814,7 +814,7 @@ static Value *createAdd(IRBuilder<> &builder, Value *value, unsigned offset) {
 
 // ===========================================================================
 
-bool Config::initialize(Function *F, CodeGenContext *inCGC, IGCLivenessAnalysis *inRPE) {
+bool Config::initialize(Function *F, CodeGenContext *inCGC, IGCLivenessAnalysisRunner *inRPE) {
   CGC = inCGC;
   RPE = inRPE;
   if (!F || !CGC || !RPE)
@@ -1625,7 +1625,8 @@ void Load::removeOldInstructions() {
 namespace IGC::LS {
 
 struct LoadSplitter::Impl {
-  static std::unique_ptr<LoadSplitter::Impl> Create(Function *inF, CodeGenContext *inCGC, IGCLivenessAnalysis *inRPE);
+  static std::unique_ptr<LoadSplitter::Impl> Create(Function *inF, CodeGenContext *inCGC,
+                                                    IGCLivenessAnalysisRunner *inRPE);
 
   bool isRPHigh(BasicBlock *BB);
   PossibleDims possibleDims(GenIntrinsicInst *GII);
@@ -1644,7 +1645,8 @@ private:
 
 // ==========================================================================
 
-std::unique_ptr<LoadSplitter> LoadSplitter::Create(Function *inF, CodeGenContext *inCGC, IGCLivenessAnalysis *inRPE) {
+std::unique_ptr<LoadSplitter> LoadSplitter::Create(Function *inF, CodeGenContext *inCGC,
+                                                   IGCLivenessAnalysisRunner *inRPE) {
   std::unique_ptr<LoadSplitter> ret = std::unique_ptr<LoadSplitter>(new LoadSplitter());
   ret->impl = Impl::Create(inF, inCGC, inRPE);
   if (!ret->impl) {
@@ -1664,7 +1666,7 @@ bool LoadSplitter::split(GenIntrinsicInst *GII, Dims dims) { return impl->split(
 // ==========================================================================
 
 std::unique_ptr<LoadSplitter::Impl> LoadSplitter::Impl::Create(Function *inF, CodeGenContext *inCGC,
-                                                               IGCLivenessAnalysis *inRPE) {
+                                                               IGCLivenessAnalysisRunner *inRPE) {
   std::unique_ptr<LoadSplitter::Impl> ret = std::unique_ptr<LoadSplitter::Impl>(new LoadSplitter::Impl());
   if (!config().initialize(inF, inCGC, inRPE)) {
     return nullptr;
@@ -1918,7 +1920,7 @@ bool SplitLoads::runOnFunction(Function &F) {
     return false;
   }
   loadSplitter = LoadSplitter::Create(&F, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
-                                      &getAnalysis<IGCLivenessAnalysis>());
+                                      &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner());
   if (!loadSplitter) {
     return false;
   }

@@ -106,7 +106,7 @@ public:
   llvm::raw_string_ostream OutputLogStream = raw_string_ostream(LogStr);
 
   CodeGenContext *CGCtx = nullptr;
-  IGCLivenessAnalysis *RPE = nullptr;
+  IGCLivenessAnalysisRunner *RPE = nullptr;
 
 private:
   IGC::REMAT_OPTIONS m_rematFlags = REMAT_NONE;
@@ -547,7 +547,7 @@ void CloneAddressArithmetic::speculateWholeChain(RematSet &ToProcess, unsigned i
 
 bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
 
-  RPE = &getAnalysis<IGCLivenessAnalysis>();
+  RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
   unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F));
   unsigned int PressureLimit = IGC_GET_FLAG_VALUE(RematRPELimit);
   unsigned int MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
