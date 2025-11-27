@@ -23,7 +23,7 @@ entry:
   ; CHECK: .decl [[G_ALIAS1:.*]] v_type=G type=b num_elts=4 align=wordx32 alias=<[[GATHER1:.*]], 0>
 
   ; copy merge value. do predicated load, copy result
-  ; CHECK: mov (M1_NM, 1) [[G_ALIAS0]](0,0)<0> 0x0:b
+  ; CHECK: mov (M1_NM, 1) [[G_ALIAS0]](0,0)<1> 0x0:b
   ; CHECK: (P1) lsc_load.ugm (M1_NM, 1)  [[GATHER0]]:d8u32  flat[
   ; CHECK: mov (M1_NM, 1) res0(0,0)<1> [[G_ALIAS0]](0,0)<0;1,0>
   %res0 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1.i8(ptr addrspace(1) %in, i64 1, i1 %p, i8 0)

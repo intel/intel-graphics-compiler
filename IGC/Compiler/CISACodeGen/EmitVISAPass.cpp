@@ -17717,8 +17717,10 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
   // Copy merge value to gatherDst now, to avoid predicated copy to original
   // destination later
   if (mergeVal) {
-    uint32_t hStride = doUniformLoad ? 0 : ((EltBytes == 1) ? 4 : 2);
-    m_encoder->SetDstRegion(hStride);
+    if (!doUniformLoad) {
+      uint32_t hStride = (EltBytes == 1) ? 4 : 2;
+      m_encoder->SetDstRegion(hStride);
+    }
     m_encoder->Copy(gatherDstAlias, mergeVal);
     m_encoder->Push();
   }
