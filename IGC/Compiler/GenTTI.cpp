@@ -541,7 +541,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
 
   auto hasCall = [](BasicBlock *BB) {
     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI)
-      if (isa<CallInst>(&*BI))
+      if (isa<CallInst>(&*BI) && !BI->isDebugOrPseudoInst())
         return true;
     return false;
   };
