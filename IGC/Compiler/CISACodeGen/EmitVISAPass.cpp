@@ -10874,20 +10874,25 @@ void EmitPass::emitLLVMStackRestore(llvm::IntrinsicInst *inst) {
 
 void EmitPass::emitVLAStackAlloca(llvm::GenIntrinsicInst *intrinsic) {
   CVariable *pSP = m_currShader->GetSP();
-  CVariable *lane_off = m_currShader->GetSymbol(intrinsic->getOperand(0));
+  Value *lane_offset = intrinsic->getOperand(0);
+  CVariable *lane_off = m_currShader->GetSymbol(lane_offset);
   // m_destination = curr_SP + lane_offset
   emitAddPointer(m_destination, pSP, lane_off);
   m_encoder->Push();
 
   if (m_currShader->m_numberInstance == 1 || m_encoder->IsSecondHalf()) {
-    // SP = SP + vla_size * simdWidth
+    // If lane_offset==0 then the allocation is uniform and
+    //   SP = SP + vla_size
+    // else
+    //   SP = SP + vla_size * simdWidth
     CVariable *vla_size = m_currShader->GetSymbol(intrinsic->getOperand(1));
-    // vla_size must be uniform, if it's not uniform, set region to take only
-    // <0;1,0>
-    m_encoder->SetSrcRegion(0, 0, 1, 0);
-    m_encoder->Mul(vla_size, vla_size, m_currShader->ImmToVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW));
-    m_encoder->Push();
-
+    if (!(isa<ConstantInt>(lane_offset) && cast<ConstantInt>(lane_offset)->getZExtValue() == 0)) {
+      // vla_size must be uniform, if it's not uniform, set region to take only
+      // <0;1,0>
+      m_encoder->SetSrcRegion(0, 0, 1, 0);
+      m_encoder->Mul(vla_size, vla_size, m_currShader->ImmToVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW));
+      m_encoder->Push();
+    }
     m_encoder->SetSrcRegion(1, 0, 1, 0);
     emitAddPointer(pSP, pSP, vla_size);
     m_encoder->Push();
