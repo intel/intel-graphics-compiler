@@ -32,10 +32,14 @@ entry:
   %loaded = load i16, i16 addrspace(1)* %srcOffsetted, align 2
   %loadedCast = bitcast i16 %loaded to <2 x i8>
 
-  ; CHECK: and (M1, 16) [[UNPACKED:[A-z0-9]*]](0,0)<1> [[LOADED:[A-z0-9]*]](0,0)<1;1,0> 0xf:ub
-  ; CHECK: shr (M1, 16) [[UNPACKED]](0,16)<1> [[LOADED]](0,0)<1;1,0> 0x4:ub
-  ; CHECK: and (M1, 16) [[UNPACKED]](0,32)<1> [[LOADED]](0,16)<1;1,0> 0xf:ub
-  %unpacked = call <3 x i8> @llvm.genx.GenISA.Int4VectorUnpack.v3i8.v2i8(<2 x i8> %loadedCast, i8 0)
+  ; CHECK: shl (M1, 16) [[UNPACKED:[A-z0-9]*]](0,0)<1> [[LOADED:[A-z0-9]*]](0,0)<1;1,0> 0x4:ub
+  ; CHECK: asr (M1, 16) [[UNPACKED]](0,0)<1> [[UNPACKED]](0,0)<1;1,0> 0x4:ub
+
+  ; CHECK: asr (M1, 16) [[UNPACKED]](0,16)<1> [[LOADED]](0,0)<1;1,0> 0x4:ub
+
+  ; CHECK: shl (M1, 16) [[UNPACKED]](0,32)<1> [[LOADED]](0,16)<1;1,0> 0x4:ub
+  ; CHECK: asr (M1, 16) [[UNPACKED]](0,32)<1> [[UNPACKED]](0,32)<1;1,0> 0x4:ub
+  %unpacked = call <3 x i8> @llvm.genx.GenISA.Int4VectorUnpack.v3i8.v2i8(<2 x i8> %loadedCast, i8 1)
 
   ; Extract the first 3 bytes from the unpacked result
   %u0 = extractelement <3 x i8> %unpacked, i32 0

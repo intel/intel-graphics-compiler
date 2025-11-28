@@ -11,7 +11,7 @@
 
 ; CHECK-LABEL: define spir_func i64 @test(<2 x i8> addrspace(3)* %ptr)
 ; CHECK-NEXT: %1 = load <2 x i8>, <2 x i8> addrspace(3)* %ptr, align 2
-; CHECK-NEXT: %2 = call <4 x i8> @llvm.genx.GenISA.Int4VectorUnpack.v4i8.v2i8(<2 x i8> %1)
+; CHECK-NEXT: %2 = call <4 x i8> @llvm.genx.GenISA.Int4VectorUnpack.v4i8.v2i8(<2 x i8> %1, i8 0)
 ; CHECK-NEXT: %3 = extractelement <4 x i8> %2, i32 0
 ; CHECK-NEXT: %4 = icmp ugt i8 %3, 8
 ; CHECK-NEXT: %5 = select i1 %4, i64 1, i64 0

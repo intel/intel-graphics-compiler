@@ -41,6 +41,8 @@ public:
   VISIT_FUNCTION_IMPL(LoadInst)
   VISIT_FUNCTION_IMPL(StoreInst)
   VISIT_FUNCTION_IMPL(ICmpInst)
+  VISIT_FUNCTION_IMPL(SExtInst)
+  VISIT_FUNCTION_IMPL(ZExtInst)
 
 private:
   bool changed;
@@ -95,9 +97,14 @@ private:
   llvm::ExtractElementInst *promoteExtractElement(llvm::ExtractElementInst *extractElement);
   llvm::Value *promoteInsertElement(llvm::InsertElementInst *insertElement);
   llvm::Value *promoteShuffleVector(llvm::ShuffleVectorInst *shuffleVector);
-  llvm::Value *promoteAndUnpackInt4Vector(llvm::Value *unpromotedInput, llvm::IRBuilder<> &builder);
+  llvm::Value *promoteTrunc(llvm::TruncInst *trunc);
+  llvm::Value *promoteZExt(llvm::ZExtInst *zext);
+  llvm::Value *promoteSExt(llvm::SExtInst *sext);
+  llvm::Type *ReplaceScalarTypeWithI8(llvm::Type *type);
+  llvm::Value *promoteAndUnpackInt4Vector(llvm::Value *unpromotedInput, llvm::IRBuilder<> &builder,
+                                          bool signExtend = false);
   llvm::Value *packInt4Vector(llvm::Value *input, llvm::IRBuilder<> &builder);
-  llvm::Constant *unpackConstantInt4Vector(llvm::Value *input, IGCLLVM::FixedVectorType *outputTy);
+  llvm::Constant *unpackConstantInt4Vector(llvm::Value *input, llvm::Type *outputTy, bool signExtend);
   llvm::Constant *packConstantInt4Vector(llvm::Value *input);
 
   // Promoting values - helping vars

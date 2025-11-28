@@ -420,6 +420,12 @@ Value *PromoteSubByte::getOrCreatePromotedValue(Value *value) {
     newValue = promoteInsertElement(insertElement);
   } else if (auto shuffleVector = dyn_cast<ShuffleVectorInst>(value)) {
     newValue = promoteShuffleVector(shuffleVector);
+  } else if (auto trunc = dyn_cast<TruncInst>(value)) {
+    newValue = promoteTrunc(trunc);
+  } else if (auto zext = dyn_cast<ZExtInst>(value)) {
+    newValue = promoteZExt(zext);
+  } else if (auto sext = dyn_cast<SExtInst>(value)) {
+    newValue = promoteSExt(sext);
   } else if (auto instruction = dyn_cast<Instruction>(value)) {
     for (auto &operand : instruction->operands()) {
       if (wasPromoted(operand)) {
@@ -1024,20 +1030,116 @@ Value *PromoteSubByte::promoteShuffleVector(ShuffleVectorInst *shuffleVector) {
   return result;
 }
 
-Value *PromoteSubByte::promoteAndUnpackInt4Vector(Value *unpromoted, IRBuilder<> &builder) {
+Value *PromoteSubByte::promoteTrunc(TruncInst *trunc) {
+  if (!trunc || (!wasPromotedAnyOf(trunc->operands()) && !typeNeedsPromotion(trunc->getType()) &&
+                 !typeNeedsPromotion(trunc->getOperand(0)->getType()))) {
+    return trunc;
+  }
+
+  IRBuilder<> builder(trunc);
+  Value *src = trunc->getOperand(0);
+
+  // Handle trunc to i1
+  if (trunc->getType()->isIntOrIntVectorTy(1)) {
+    Value *promoted = promoteAndUnpackInt4Vector(src, builder);
+    if (promoted->getType() == getOrCreatePromotedType(trunc->getType())) {
+      // In case of trunc i8 to i1 OR trunc i4 to i1, we use the promoted i8 type directly
+      return promoted;
+    } else {
+      // Generate trunc to i1
+      return builder.CreateTrunc(promoted, trunc->getType());
+    }
+  }
+
+  // Handle trunc to i4
+  // If trunc comes from a type larger than i8, we need to first truncate to i8
+  Type *srcI8Ty = ReplaceScalarTypeWithI8(src->getType());
+  Value *srcI8 = (src->getType() != srcI8Ty ? builder.CreateTrunc(src, srcI8Ty) : src);
+
+  // If the source is scalar or a vector of size 1, no need to pack
+  auto *srcVecTy = dyn_cast<IGCLLVM::FixedVectorType>(src->getType());
+  if (!srcVecTy || srcVecTy->getNumElements() == 1)
+    return srcI8;
+
+  // i8 to "i4" vector packing
+  return packInt4Vector(srcI8, builder);
+}
+
+Value *PromoteSubByte::promoteZExt(ZExtInst *zext) {
+  if (!zext || (!wasPromotedAnyOf(zext->operands()) && !typeNeedsPromotion(zext->getType()) &&
+                !typeNeedsPromotion(zext->getOperand(0)->getType()))) {
+    return zext;
+  }
+
+  IRBuilder<> builder(zext);
+  Value *src = zext->getOperand(0);
+
+  // Handle zext from i1
+  if (src->getType()->isIntOrIntVectorTy(1)) {
+    // Promote source to i8 + trunc i8 to i1
+    Value *promoted = getOrCreatePromotedValue(src);
+    Value *promotedTrunc = builder.CreateTrunc(promoted, zext->getOperand(0)->getType());
+
+    if (zext->getType()->isIntOrIntVectorTy(4)) {
+      // Handle zext i1 to i4. zext to i8 + pack i8 to "i4" vector
+      Type *zextI8Ty = ReplaceScalarTypeWithI8(zext->getType());
+      Value *promotedZExt = builder.CreateZExt(promotedTrunc, zextI8Ty);
+      return packInt4Vector(promotedZExt, builder);
+    } else {
+      // Handle zext i1 to other types
+      return builder.CreateZExt(promotedTrunc, zext->getType());
+    }
+  }
+
+  // Handle zext from i4. Unpack "i4" vector to i8 + zext to target type
+  Value *promoted = promoteAndUnpackInt4Vector(src, builder);
+  return builder.CreateZExt(promoted, zext->getType());
+}
+
+Value *PromoteSubByte::promoteSExt(SExtInst *sext) {
+  if (!sext || (!wasPromotedAnyOf(sext->operands()) && !typeNeedsPromotion(sext->getType()) &&
+                !typeNeedsPromotion(sext->getOperand(0)->getType()))) {
+    return sext;
+  }
+
+  IRBuilder<> builder(sext);
+  Value *src = sext->getOperand(0);
+
+  // Handle sext from i1
+  if (src->getType()->isIntOrIntVectorTy(1)) {
+    // Promote source to i8 + trunc i8 to i1
+    Value *promoted = getOrCreatePromotedValue(src);
+    Value *promotedTrunc = builder.CreateTrunc(promoted, sext->getOperand(0)->getType());
+
+    if (sext->getType()->isIntOrIntVectorTy(4)) {
+      // Handle sext i1 to i4. sext to i8 + pack i8 to "i4" vector
+      Type *sextI8Ty = ReplaceScalarTypeWithI8(sext->getType());
+      Value *promotedSExt = builder.CreateSExt(promotedTrunc, sextI8Ty);
+      return packInt4Vector(promotedSExt, builder);
+    } else {
+      // Handle sext i1 to other types
+      return builder.CreateSExt(promotedTrunc, sext->getType());
+    }
+  }
+
+  // Handle sext from i4. Unpack "i4" vector to i8 + sext to target type
+  Value *promoted = promoteAndUnpackInt4Vector(src, builder, true);
+  return builder.CreateSExt(promoted, sext->getType());
+}
+
+//------------------------------------------------------------------------------
+//
+// i4 helpers
+//
+//------------------------------------------------------------------------------
+Value *PromoteSubByte::promoteAndUnpackInt4Vector(Value *unpromoted, IRBuilder<> &builder, bool signExtend) {
   if (!typeNeedsPromotion(unpromoted->getType()))
     return unpromoted;
 
   Value *promoted = getOrCreatePromotedValue(unpromoted);
 
-  auto *unpromotedVTy = dyn_cast<IGCLLVM::FixedVectorType>(unpromoted->getType());
-  if (!unpromotedVTy) {
-    IGC_ASSERT_MESSAGE(false, "Expected FixedVectorType in promoteAndUnpackInt4Vector");
-    return promoted;
-  }
-
-  // Skip unpacking if vector element is not of i4 type
-  if (!unpromotedVTy->getElementType()->isIntegerTy(4))
+  // Skip unpacking if it isn't i4 scalar or vector
+  if (!unpromoted->getType()->isIntOrIntVectorTy(4))
     return promoted;
 
   // Coalesce chained pack -> unpack calls
@@ -1048,7 +1150,9 @@ Value *PromoteSubByte::promoteAndUnpackInt4Vector(Value *unpromoted, IRBuilder<>
   }
 
   // Figure out output type
-  auto *outputTy = IGCLLVM::FixedVectorType::get(builder.getInt8Ty(), unpromotedVTy->getNumElements());
+  Type *outputTy = builder.getInt8Ty();
+  if (auto *unpromotedVTy = dyn_cast<IGCLLVM::FixedVectorType>(unpromoted->getType()))
+    outputTy = IGCLLVM::FixedVectorType::get(builder.getInt8Ty(), unpromotedVTy->getNumElements());
 
   // Special case for undef/poison values
   if (isa<PoisonValue>(promoted))
@@ -1057,12 +1161,20 @@ Value *PromoteSubByte::promoteAndUnpackInt4Vector(Value *unpromoted, IRBuilder<>
     return UV::get(outputTy);
 
   // Try to handle constant cases without GenISA calls to keep the llvm IR clean
-  if (Constant *unpackedConst = unpackConstantInt4Vector(promoted, outputTy))
+  if (Constant *unpackedConst = unpackConstantInt4Vector(promoted, outputTy, signExtend))
     return unpackedConst;
 
   auto GIID = GenISAIntrinsic::GenISA_Int4VectorUnpack;
   Function *packingFunc = GenISAIntrinsic::getDeclaration(M, GIID, {outputTy, promoted->getType()});
-  return builder.CreateCall(packingFunc, {promoted});
+  return builder.CreateCall(packingFunc, {promoted, builder.getInt8(signExtend ? 1 : 0)});
+}
+
+Type *PromoteSubByte::ReplaceScalarTypeWithI8(Type *type) {
+  Type *I8Ty = Type::getInt8Ty(M->getContext());
+  if (auto *vecTy = dyn_cast<IGCLLVM::FixedVectorType>(type))
+    return IGCLLVM::FixedVectorType::get(I8Ty, vecTy->getNumElements());
+  else
+    return I8Ty;
 }
 
 Value *PromoteSubByte::packInt4Vector(Value *input, IRBuilder<> &builder) {
@@ -1077,14 +1189,12 @@ Value *PromoteSubByte::packInt4Vector(Value *input, IRBuilder<> &builder) {
   if (Constant *packedConst = packConstantInt4Vector(input))
     return packedConst;
 
-  // Case is not constant. Figure out input/output types
-  auto *inputVecTy = dyn_cast<IGCLLVM::FixedVectorType>(input->getType());
-  if (!inputVecTy) {
-    IGC_ASSERT_MESSAGE(false, "Expected vector type for Int4 vector promotion");
-    return input;
+  // Case is not constant. Figure out output type
+  Type *outputTy = builder.getInt8Ty();
+  if (auto *inputVecTy = dyn_cast<IGCLLVM::FixedVectorType>(input->getType())) {
+    unsigned outputNum = (inputVecTy->getNumElements() + 1) / 2; // Odd number of elements gets rounded up
+    outputTy = IGCLLVM::FixedVectorType::get(builder.getInt8Ty(), outputNum);
   }
-  unsigned outputNum = (inputVecTy->getNumElements() + 1) / 2; // Odd number of elements gets rounded up
-  Type *outputTy = IGCLLVM::FixedVectorType::get(builder.getInt8Ty(), outputNum);
 
   // Special case for undef/poison values.
   if (isa<PoisonValue>(input))
@@ -1093,7 +1203,7 @@ Value *PromoteSubByte::packInt4Vector(Value *input, IRBuilder<> &builder) {
     return UV::get(outputTy);
 
   auto GIID = GenISAIntrinsic::GenISA_Int4VectorPack;
-  Function *packingFunc = GenISAIntrinsic::getDeclaration(M, GIID, {outputTy, inputVecTy});
+  Function *packingFunc = GenISAIntrinsic::getDeclaration(M, GIID, {outputTy, input->getType()});
   return builder.CreateCall(packingFunc, {input});
 }
 
@@ -1120,7 +1230,7 @@ static SmallVector<uint8_t, 32> extractDataFromConstIntVector(Value *input) {
   return result;
 }
 
-Constant *PromoteSubByte::unpackConstantInt4Vector(Value *input, IGCLLVM::FixedVectorType *outputTy) {
+Constant *PromoteSubByte::unpackConstantInt4Vector(Value *input, Type *outputTy, bool signExtend) {
   auto data = extractDataFromConstIntVector(input);
   if (data.empty())
     return nullptr;
@@ -1129,15 +1239,27 @@ Constant *PromoteSubByte::unpackConstantInt4Vector(Value *input, IGCLLVM::FixedV
   for (unsigned i = 0; i < data.size(); i += 1) {
     uint8_t value0 = data[i] & 0b1111;
     uint8_t value1 = data[i] >> 4;
+
+    if (signExtend) {
+      value0 = (int8_t)(value0 << 4) >> 4;
+      value1 = (int8_t)(value1 << 4) >> 4;
+    }
+
     values.push_back(ConstantInt::get(Type::getInt8Ty(input->getContext()), value0));
     values.push_back(ConstantInt::get(Type::getInt8Ty(input->getContext()), value1));
   }
 
-  // Recover original size if it was odd
-  if (outputTy->getNumElements() % 2 != 0)
-    values.pop_back();
+  if (auto *outputTyVec = dyn_cast<IGCLLVM::FixedVectorType>(outputTy)) {
+    // Output type is vector
+    // Recover original size if it was odd
+    if (outputTyVec->getNumElements() % 2 != 0)
+      values.pop_back();
 
-  return ConstantVector::get(values);
+    return ConstantVector::get(values);
+  } else {
+    // Output type is scalar
+    return values[0];
+  }
 }
 
 Constant *PromoteSubByte::packConstantInt4Vector(Value *input) {
@@ -1153,6 +1275,11 @@ Constant *PromoteSubByte::packConstantInt4Vector(Value *input) {
   for (unsigned i = 0; i < data.size(); i += 2) {
     uint8_t value = data[i] | (data[i + 1] << 4);
     values.push_back(ConstantInt::get(Type::getInt8Ty(input->getContext()), value));
+  }
+
+  if (!isa<IGCLLVM::FixedVectorType>(input->getType())) {
+    // Return scalar if input type is scalar
+    return values[0];
   }
 
   return ConstantVector::get(values);

@@ -18,8 +18,6 @@
 ; CHECK:        %struct = type { [4 x <8 x i8*>], [4 x <8 x i8>*]* }
 ; CHECK:        %struct2 = type { i32, i8, %inner }
 ; CHECK:        %inner = type { i8 }
-; CHECK:        %struct2.unpromoted = type { i32, i1, %inner.unpromoted }
-; CHECK:        %inner.unpromoted = type { i1 }
 
 define spir_func void @fun_struct_without_bools(i1 %input1, %struct_without_bools %input2) {
   ret void
@@ -53,25 +51,25 @@ define spir_func %struct2 @callee2(%struct2 %input_struct) {
 
 ; CHECK:        define spir_func %struct2 @callee2(%struct2 %input_struct) {
 ; CHECK-NEXT:   %1 = extractvalue %struct2 %input_struct, 0
-; CHECK-NEXT:   %2 = insertvalue %struct2.unpromoted poison, i32 %1, 0
+; CHECK-NEXT:   %2 = insertvalue %struct2 undef, i32 %1, 0
 ; CHECK-NEXT:   %3 = extractvalue %struct2 %input_struct, 1
-; CHECK-NEXT:   %4 = trunc i8 %3 to i1
-; CHECK-NEXT:   %5 = insertvalue %struct2.unpromoted %2, i1 %4, 1
-; CHECK-NEXT:   %6 = extractvalue %struct2 %input_struct, 2
-; CHECK-NEXT:   %7 = extractvalue %inner %6, 0
-; CHECK-NEXT:   %8 = trunc i8 %7 to i1
-; CHECK-NEXT:   %9 = insertvalue %inner.unpromoted poison, i1 %8, 0
-; CHECK-NEXT:   %10 = insertvalue %struct2.unpromoted %5, %inner.unpromoted %9, 2
-; CHECK-NEXT:   %11 = extractvalue %struct2.unpromoted %10, 0
-; CHECK-NEXT:   %12 = insertvalue %struct2 poison, i32 %11, 0
-; CHECK-NEXT:   %13 = extractvalue %struct2.unpromoted %10, 1
-; CHECK-NEXT:   %14 = zext i1 %13 to i8
-; CHECK-NEXT:   %15 = insertvalue %struct2 %12, i8 %14, 1
-; CHECK-NEXT:   %16 = extractvalue %struct2.unpromoted %10, 2
-; CHECK-NEXT:   %17 = extractvalue %inner.unpromoted %16, 0
+; CHECK-NEXT:   %4 = insertvalue %struct2 %2, i8 %3, 1
+; CHECK-NEXT:   %5 = extractvalue %struct2 %input_struct, 2
+; CHECK-NEXT:   %6 = extractvalue %inner %5, 0
+; CHECK-NEXT:   %7 = insertvalue %inner undef, i8 %6, 0
+; CHECK-NEXT:   %8 = insertvalue %struct2 %4, %inner %7, 2
+; CHECK-NEXT:   %9 = extractvalue %struct2 %8, 0
+; CHECK-NEXT:   %10 = insertvalue %struct2 poison, i32 %9, 0
+; CHECK-NEXT:   %11 = extractvalue %struct2 %8, 1
+; CHECK-NEXT:   %12 = trunc i8 %11 to i1
+; CHECK-NEXT:   %13 = zext i1 %12 to i8
+; CHECK-NEXT:   %14 = insertvalue %struct2 %10, i8 %13, 1
+; CHECK-NEXT:   %15 = extractvalue %struct2 %8, 2
+; CHECK-NEXT:   %16 = extractvalue %inner %15, 0
+; CHECK-NEXT:   %17 = trunc i8 %16 to i1
 ; CHECK-NEXT:   %18 = zext i1 %17 to i8
 ; CHECK-NEXT:   %19 = insertvalue %inner poison, i8 %18, 0
-; CHECK-NEXT:   %20 = insertvalue %struct2 %15, %inner %19, 2
+; CHECK-NEXT:   %20 = insertvalue %struct2 %14, %inner %19, 2
 ; CHECK-NEXT:   ret %struct2 %20
 
 
@@ -81,17 +79,17 @@ define spir_func [ 2 x i1 ] @callee3( [ 2 x i1 ] %input_array) {
 
 ; CHECK:        define spir_func [2 x i8] @callee3([2 x i8] %input_array) {
 ; CHECK-NEXT:   %1 = extractvalue [2 x i8] %input_array, 0
-; CHECK-NEXT:   %2 = trunc i8 %1 to i1
-; CHECK-NEXT:   %3 = insertvalue [2 x i1] poison, i1 %2, 0
-; CHECK-NEXT:   %4 = extractvalue [2 x i8] %input_array, 1
-; CHECK-NEXT:   %5 = trunc i8 %4 to i1
-; CHECK-NEXT:   %6 = insertvalue [2 x i1] %3, i1 %5, 1
-; CHECK-NEXT:   %7 = extractvalue [2 x i1] %6, 0
-; CHECK-NEXT:   %8 = zext i1 %7 to i8
-; CHECK-NEXT:   %9 = insertvalue [2 x i8] poison, i8 %8, 0
-; CHECK-NEXT:   %10 = extractvalue [2 x i1] %6, 1
+; CHECK-NEXT:   %2 = insertvalue [2 x i8] undef, i8 %1, 0
+; CHECK-NEXT:   %3 = extractvalue [2 x i8] %input_array, 1
+; CHECK-NEXT:   %4 = insertvalue [2 x i8] %2, i8 %3, 1
+; CHECK-NEXT:   %5 = extractvalue [2 x i8] %4, 0
+; CHECK-NEXT:   %6 = trunc i8 %5 to i1
+; CHECK-NEXT:   %7 = zext i1 %6 to i8
+; CHECK-NEXT:   %8 = insertvalue [2 x i8] poison, i8 %7, 0
+; CHECK-NEXT:   %9 = extractvalue [2 x i8] %4, 1
+; CHECK-NEXT:   %10 = trunc i8 %9 to i1
 ; CHECK-NEXT:   %11 = zext i1 %10 to i8
-; CHECK-NEXT:   %12 = insertvalue [2 x i8] %9, i8 %11, 1
+; CHECK-NEXT:   %12 = insertvalue [2 x i8] %8, i8 %11, 1
 ; CHECK-NEXT:   ret [2 x i8] %12
 
 
@@ -102,24 +100,24 @@ define spir_func [ 2 x %inner ] @calle4( [ 2 x %inner ] %input_array) {
 ; CHECK:        define spir_func [2 x %inner] @calle4([2 x %inner] %input_array) {
 ; CHECK-NEXT:   %1 = extractvalue [2 x %inner] %input_array, 0
 ; CHECK-NEXT:   %2 = extractvalue %inner %1, 0
-; CHECK-NEXT:   %3 = trunc i8 %2 to i1
-; CHECK-NEXT:   %4 = insertvalue %inner.unpromoted poison, i1 %3, 0
-; CHECK-NEXT:   %5 = insertvalue [2 x %inner.unpromoted] poison, %inner.unpromoted %4, 0
-; CHECK-NEXT:   %6 = extractvalue [2 x %inner] %input_array, 1
-; CHECK-NEXT:   %7 = extractvalue %inner %6, 0
-; CHECK-NEXT:   %8 = trunc i8 %7 to i1
-; CHECK-NEXT:   %9 = insertvalue %inner.unpromoted poison, i1 %8, 0
-; CHECK-NEXT:   %10 = insertvalue [2 x %inner.unpromoted] %5, %inner.unpromoted %9, 1
-; CHECK-NEXT:   %11 = extractvalue [2 x %inner.unpromoted] %10, 0
-; CHECK-NEXT:   %12 = extractvalue %inner.unpromoted %11, 0
-; CHECK-NEXT:   %13 = zext i1 %12 to i8
-; CHECK-NEXT:   %14 = insertvalue %inner poison, i8 %13, 0
-; CHECK-NEXT:   %15 = insertvalue [2 x %inner] poison, %inner %14, 0
-; CHECK-NEXT:   %16 = extractvalue [2 x %inner.unpromoted] %10, 1
-; CHECK-NEXT:   %17 = extractvalue %inner.unpromoted %16, 0
+; CHECK-NEXT:   %3 = insertvalue %inner undef, i8 %2, 0
+; CHECK-NEXT:   %4 = insertvalue [2 x %inner] undef, %inner %3, 0
+; CHECK-NEXT:   %5 = extractvalue [2 x %inner] %input_array, 1
+; CHECK-NEXT:   %6 = extractvalue %inner %5, 0
+; CHECK-NEXT:   %7 = insertvalue %inner undef, i8 %6, 0
+; CHECK-NEXT:   %8 = insertvalue [2 x %inner] %4, %inner %7, 1
+; CHECK-NEXT:   %9 = extractvalue [2 x %inner] %8, 0
+; CHECK-NEXT:   %10 = extractvalue %inner %9, 0
+; CHECK-NEXT:   %11 = trunc i8 %10 to i1
+; CHECK-NEXT:   %12 = zext i1 %11 to i8
+; CHECK-NEXT:   %13 = insertvalue %inner poison, i8 %12, 0
+; CHECK-NEXT:   %14 = insertvalue [2 x %inner] poison, %inner %13, 0
+; CHECK-NEXT:   %15 = extractvalue [2 x %inner] %8, 1
+; CHECK-NEXT:   %16 = extractvalue %inner %15, 0
+; CHECK-NEXT:   %17 = trunc i8 %16 to i1
 ; CHECK-NEXT:   %18 = zext i1 %17 to i8
 ; CHECK-NEXT:   %19 = insertvalue %inner poison, i8 %18, 0
-; CHECK-NEXT:   %20 = insertvalue [2 x %inner] %15, %inner %19, 1
+; CHECK-NEXT:   %20 = insertvalue [2 x %inner] %14, %inner %19, 1
 ; CHECK-NEXT:   ret [2 x %inner] %20
 
 define spir_func void @caller(i1 %input, %struct addrspace(1)* %input_struct) {

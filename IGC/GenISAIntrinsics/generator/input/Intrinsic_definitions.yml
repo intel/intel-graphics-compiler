@@ -12332,6 +12332,10 @@ intrinsics:
                 name: PackedI8Vector
                 type_definition: *v_i8_
                 comment: "<N x i8>"
+            - !<ArgumentDefinition>
+                name: SignExtend
+                type_definition: *i8
+                comment: "Immediate value. 0 means zero-extended, 1 means sign-extended."
         attributes:
             - !AttributeID "NoUnwind"
         memory_effects:

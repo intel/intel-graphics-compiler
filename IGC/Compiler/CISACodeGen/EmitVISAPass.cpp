@@ -21724,6 +21724,7 @@ void EmitPass::emitDnscl(llvm::GenIntrinsicInst *GII) {
 
 void EmitPass::emitInt4VectorUnpack(llvm::GenIntrinsicInst *GII) {
   Value *input = GII->getOperand(0);
+  bool signExtend = cast<ConstantInt>(GII->getOperand(1))->getZExtValue() != 0;
   CVariable *cinput = GetSymbol(input);
 
   uint16_t inputNum = cinput->GetNumberElement();
@@ -21734,9 +21735,12 @@ void EmitPass::emitInt4VectorUnpack(llvm::GenIntrinsicInst *GII) {
   uint16_t execSize = cinput->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize);
   m_encoder->SetSimdSize(lanesToSIMDMode(execSize));
 
-  // Round up to a multiple of inputNum.
+  // Argument validation
+  // dstNumRoundedUp: Round dstNum up to a nearest multiple of inputNum.
   uint16_t dstNumRoundedUp = ((dstNum + inputNum - 1) / inputNum) * inputNum;
-  if (inputNum * 2 != dstNumRoundedUp || cinput->GetElemSize() != 1 || m_destination->GetElemSize() != 1) {
+  bool validNum = (inputNum * 2 == dstNumRoundedUp) || (inputNum == execSize && dstNum == execSize);
+  bool validSize = (cinput->GetElemSize() == 1) && (m_destination->GetElemSize() == 1);
+  if (!validNum || !validSize) {
     IGC_ASSERT_MESSAGE(false, "Unexpected arguments in emitInt4VectorUnpack");
     return;
   }
@@ -21747,11 +21751,18 @@ void EmitPass::emitInt4VectorUnpack(llvm::GenIntrinsicInst *GII) {
   for (int rowOffset = 0; rowOffset < inputNum; rowOffset += execSize) {
     CVariable *row = m_currShader->GetNewAlias(cinput, ISA_TYPE_UB, rowOffset, execSize);
     CVariable *dst0 = m_currShader->GetNewAlias(m_destination, ISA_TYPE_UB, rowOffset * 2, execSize);
-    m_encoder->And(dst0, row, immMask4Bit);
+    if (signExtend) {
+      m_encoder->Shl(dst0, row, immFour);
+      m_encoder->IShr(dst0, dst0, immFour);
+    } else
+      m_encoder->And(dst0, row, immMask4Bit);
 
     if (rowOffset * 2 + execSize < dstNum) {
       CVariable *dst1 = m_currShader->GetNewAlias(m_destination, ISA_TYPE_UB, rowOffset * 2 + execSize, execSize);
-      m_encoder->Shr(dst1, row, immFour);
+      if (signExtend)
+        m_encoder->IShr(dst1, row, immFour);
+      else
+        m_encoder->Shr(dst1, row, immFour);
     }
   }
 
@@ -21770,7 +21781,8 @@ void EmitPass::emitInt4VectorPack(llvm::GenIntrinsicInst *GII) {
   uint16_t execSize = m_destination->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize);
   m_encoder->SetSimdSize(lanesToSIMDMode(execSize));
 
-  // Round up to a multiple of dstNum.
+  // Argument validation
+  // inputNumRoundedUp: Round inputNum up to a nearest multiple of dstNum.
   uint16_t inputNumRoundedUp = ((inputNum + dstNum - 1) / dstNum) * dstNum;
   if (inputNumRoundedUp != dstNum * 2 || cinput->GetElemSize() != 1 || m_destination->GetElemSize() != 1) {
     IGC_ASSERT_MESSAGE(false, "Unexpected arguments in Int4VectorPack");

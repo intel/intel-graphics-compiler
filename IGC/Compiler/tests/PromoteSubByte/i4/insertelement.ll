@@ -31,7 +31,7 @@ define spir_func void @test_const4(<4 x i4> addrspace(3)* %ptr) {
 
 ; CHECK-LABEL: define spir_func void @test_memory(<2 x i8> addrspace(3)* %ptr)
 ; CHECK-NEXT: %1 = load <2 x i8>, <2 x i8> addrspace(3)* %ptr, align 2
-; CHECK-NEXT: %2 = call <4 x i8> @llvm.genx.GenISA.Int4VectorUnpack.v4i8.v2i8(<2 x i8> %1)
+; CHECK-NEXT: %2 = call <4 x i8> @llvm.genx.GenISA.Int4VectorUnpack.v4i8.v2i8(<2 x i8> %1, i8 0)
 ; CHECK-NEXT: %3 = insertelement <4 x i8> %2, i8 4, i32 1
 ; CHECK-NEXT: %4 = insertelement <4 x i8> %3, i8 6, i32 2
 ; CHECK-NEXT: %5 = insertelement <4 x i8> %4, i8 8, i32 3
