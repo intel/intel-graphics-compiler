@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --typed-pointers -igc-promote-bools -S %s | FileCheck %s
-; RUN: igc_opt --opaque-pointers -igc-promote-bools -S %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-promote-sub-byte -S %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-promote-sub-byte -S %s | FileCheck %s
 
 target triple = "spir64-unknown-unknown"
 

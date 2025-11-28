@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: llvm-16-plus, regkeys
-; RUN: igc_opt --regkey "EnableOpaquePointersBackend=1" --igc-promote-bools -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --regkey "EnableOpaquePointersBackend=1" --igc-promote-sub-byte -S < %s 2>&1 | FileCheck %s
 
 ; This test verifies that the pass can handle nested users of opaque pointer function calls
 ; without generating undef values and deleting said users unnecessarily.

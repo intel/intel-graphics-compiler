@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --opaque-pointers -igc-promote-bools -S %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-promote-sub-byte -S %s | FileCheck %s
 ; ------------------------------------------------
 ; Ensure that "intel_sub_group_ballot" is excluded from i1 to i8 promotion.
 ; ------------------------------------------------

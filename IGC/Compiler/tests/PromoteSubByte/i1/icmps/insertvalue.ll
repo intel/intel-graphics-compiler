@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-promote-bools -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-promote-sub-byte -S %s -o - | FileCheck %s
 
 ; Check icmp result is promoted to i8 for icmp user that is promoted to i8, i.e.
 ; the second element of type %structtype.

@@ -58,8 +58,8 @@ static Type *createDemotedType(Type *type) {
 }
 
 // Register pass to igc-opt
-#define PASS_FLAG "igc-promote-bools"
-#define PASS_DESCRIPTION "Promote bools"
+#define PASS_FLAG "igc-promote-sub-byte"
+#define PASS_DESCRIPTION "Promote sub byte types"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(PromoteSubByte, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)

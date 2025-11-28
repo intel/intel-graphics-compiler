@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-promote-bools -S %s -o %t.ll
+; RUN: igc_opt -igc-promote-sub-byte -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 define spir_func void @icmps_constanst() {
