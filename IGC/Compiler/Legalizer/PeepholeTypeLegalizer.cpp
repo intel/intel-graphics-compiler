@@ -192,34 +192,32 @@ void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction &I) {
   if (!I.getType()->isIntOrIntVectorTy() || isLegalInteger(srcWidth) || srcWidth == 1) // nothing to legalize
     return;
 
-  unsigned numElements =
-      I.getType()->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(I.getType())->getNumElements() : 1;
   unsigned quotient = 0, promoteToInt = 0;
-  promoteInt(srcWidth * numElements, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
+  promoteInt(srcWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
   PHINode *oldPhi = cast<PHINode>(&I);
   Value *result = nullptr;
 
   if (quotient > 1) {
-    Type *newVecType = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient);
+    unsigned numElements =
+        I.getType()->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(I.getType())->getNumElements() : 1;
+    Type *newVecType =
+        IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient * numElements);
     Type *newLargeIntType = Type::getIntNTy(I.getContext(), promoteToInt * quotient);
-    Type *newOrigIntType = Type::getIntNTy(I.getContext(), srcWidth * numElements);
 
     PHINode *newPhi = m_builder->CreatePHI(newVecType, oldPhi->getNumIncomingValues());
     for (unsigned i = 0; i < oldPhi->getNumIncomingValues(); i++) {
       Value *incomingValue = oldPhi->getIncomingValue(i);
 
       m_builder->SetInsertPoint(oldPhi->getIncomingBlock(i)->getTerminator());
-      Value *newOrigValue = m_builder->CreateBitCast(incomingValue, newOrigIntType);
-      Value *newLargeIntValue = m_builder->CreateZExt(newOrigValue, newLargeIntType);
+      Value *newLargeIntValue = m_builder->CreateZExt(incomingValue, newLargeIntType);
       Value *newVecValue = m_builder->CreateBitCast(newLargeIntValue, newVecType);
       newPhi->addIncoming(newVecValue, oldPhi->getIncomingBlock(i));
     }
     // Cast back to original type
     m_builder->SetInsertPoint(newPhi->getParent()->getFirstNonPHI());
     Value *NewLargeIntPhi = m_builder->CreateBitCast(newPhi, newLargeIntType);
-    Value *NewOrigIntPhi = m_builder->CreateTrunc(NewLargeIntPhi, newOrigIntType);
-    result = m_builder->CreateBitCast(NewOrigIntPhi, oldPhi->getType());
+    result = m_builder->CreateTrunc(NewLargeIntPhi, oldPhi->getType());
   } else {
     // quotient == 1 (integer promotion)
     Type *newType = Type::getIntNTy(I.getContext(), promoteToInt);
