@@ -980,45 +980,54 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
             -Bsymbolic
       )
     else()
-    igc_config_flag_apply_settings(
-        CompilerOptions
-        "${_compilerFlagName}"
-        ALL_PATTERN ""
-        SET_RAW
-          -pipe
-          -fmessage-length=0
-          -march=corei7
-          -mstackrealign
-          -fms-extensions
-          -Werror
-          -Wno-unused-parameter
-          -Wno-missing-field-initializers
-          -Wwrite-strings
-          -Wno-long-long
-          -Wswitch
-          -Wno-sign-compare
-          -Wno-unused-result
-          -Wno-enum-compare
-          -Wno-type-limits
-          -Wno-ignored-qualifiers
-          -Wno-shadow
-          -Wformat
-          -Wformat-security
-          -Wno-extra
-          -Wno-write-strings
-          -finline
-          -fno-strict-aliasing
-          -msse
-          -msse2
-          -msse3
-          -mssse3
-          -msse4
-          -msse4.1
-          -msse4.2
-          -Wno-unknown-pragmas
-          -fPIC
-          -Bsymbolic
-    )
+      igc_config_flag_apply_settings(
+          CompilerOptions
+          "${_compilerFlagName}"
+          ALL_PATTERN ""
+          SET_RAW
+            -pipe
+            -fmessage-length=0
+            -march=corei7
+            -mstackrealign
+            -fms-extensions
+            -Werror
+            -Wno-unused-parameter
+            -Wno-missing-field-initializers
+            -Wwrite-strings
+            -Wno-long-long
+            -Wswitch
+            -Wno-sign-compare
+            -Wno-unused-result
+            -Wno-enum-compare
+            -Wno-type-limits
+            -Wno-ignored-qualifiers
+            -Wno-shadow
+            -Wformat
+            -Wformat-security
+            -Wno-extra
+            -Wno-write-strings
+            -finline
+            -fno-strict-aliasing
+            -msse
+            -msse2
+            -msse3
+            -mssse3
+            -msse4
+            -msse4.1
+            -msse4.2
+            -Wno-unknown-pragmas
+            -fPIC
+            -Bsymbolic
+      )
+      if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND W_ERROR_ALL STREQUAL "1")
+        igc_config_flag_apply_settings(
+            CompilerOptions
+            "${_compilerFlagName}"
+            ALL_PATTERN ""
+            SET_RAW
+              -Wall
+        )
+      endif()
     endif()
     string(FIND ${CMAKE_CXX_FLAGS} "-D_FORTIFY_SOURCE=3" __FORTIFY_SOURCE_3_SET)
     set(flags -fstack-protector)
@@ -1823,7 +1832,7 @@ endif()
 
 if(IGC_BUILD__LLVM_SOURCES AND IGC_OPTION__LLVM_LLD)
   if(UNIX)
-    if(NOT ${CMAKE_BUILD_TYPE} EQUAL "Release")
+    if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
       add_dependencies("${IGC_BUILD__PROJ__igc_dll}" lld)
     endif()
   else()
@@ -2250,7 +2259,7 @@ if(UNIX)
 
   if(IGC_BUILD__LLVM_SOURCES AND IGC_OPTION__LLVM_LLD)
     # For now lld could be included only via building from LLVM sources
-    if(NOT ${CMAKE_BUILD_TYPE} EQUAL "Release")
+    if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
       install(TARGETS lld RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
     endif()
   endif()
