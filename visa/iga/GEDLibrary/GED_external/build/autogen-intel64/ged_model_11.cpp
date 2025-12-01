@@ -25,7 +25,7 @@ namespace GED_MODEL_NS_11
  * Top level decoding table in the decoding chain for the format flowControlBrc.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t flowControlBrcDecoding = DecodingTable649;
+static ged_ins_decoding_table_t flowControlBrcDecoding = DecodingTable756;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format flowControlBrc.
@@ -37,7 +37,7 @@ static ged_instruction_masks_table_t flowControlBrcEncodingMasks = EncodingMasks
  * Top level decoding table in the decoding chain for the format flowControlBrd.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t flowControlBrdDecoding = DecodingTable650;
+static ged_ins_decoding_table_t flowControlBrdDecoding = DecodingTable757;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format flowControlBrd.
@@ -49,7 +49,7 @@ static ged_instruction_masks_table_t flowControlBrdEncodingMasks = EncodingMasks
  * Top level decoding table in the decoding chain for the format flowControlCall.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t flowControlCallDecoding = DecodingTable651;
+static ged_ins_decoding_table_t flowControlCallDecoding = DecodingTable758;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format flowControlCall.
@@ -61,7 +61,7 @@ static ged_instruction_masks_table_t flowControlCallEncodingMasks = EncodingMask
  * Top level decoding table in the decoding chain for the format flowControlJmpi.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t flowControlJmpiDecoding = DecodingTable652;
+static ged_ins_decoding_table_t flowControlJmpiDecoding = DecodingTable759;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format flowControlJmpi.
@@ -73,7 +73,7 @@ static ged_instruction_masks_table_t flowControlJmpiEncodingMasks = EncodingMask
  * Top level decoding table in the decoding chain for the format flowControlJmpiCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t flowControlJmpiCompactDecoding = DecodingTable590;
+static ged_ins_decoding_table_t flowControlJmpiCompactDecoding = DecodingTable697;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format flowControlJmpiCompact.
@@ -85,13 +85,13 @@ static ged_instruction_masks_table_t flowControlJmpiCompactEncodingMasks = Encod
  * Top level mapping table in the mapping chain for the compact instruction format flowControlJmpiCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_compact_mapping_table_t flowControlJmpiCompactMapping = MappingTable49;
+static ged_compact_mapping_table_t flowControlJmpiCompactMapping = MappingTable77;
 
 /*!
  * Top level decoding table in the decoding chain for the format flowControlNoUIP.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t flowControlNoUIPDecoding = DecodingTable653;
+static ged_ins_decoding_table_t flowControlNoUIPDecoding = DecodingTable760;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format flowControlNoUIP.
@@ -103,7 +103,7 @@ static ged_instruction_masks_table_t flowControlNoUIPEncodingMasks = EncodingMas
  * Top level decoding table in the decoding chain for the format flowControlWithBranchCtrl.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t flowControlWithBranchCtrlDecoding = DecodingTable654;
+static ged_ins_decoding_table_t flowControlWithBranchCtrlDecoding = DecodingTable761;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format flowControlWithBranchCtrl.
@@ -115,7 +115,7 @@ static ged_instruction_masks_table_t flowControlWithBranchCtrlEncodingMasks = En
  * Top level decoding table in the decoding chain for the format flowControlWithUIP.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t flowControlWithUIPDecoding = DecodingTable655;
+static ged_ins_decoding_table_t flowControlWithUIPDecoding = DecodingTable762;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format flowControlWithUIP.
@@ -127,7 +127,7 @@ static ged_instruction_masks_table_t flowControlWithUIPEncodingMasks = EncodingM
  * Top level decoding table in the decoding chain for the format illegal.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t illegalDecoding = DecodingTable593;
+static ged_ins_decoding_table_t illegalDecoding = DecodingTable700;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format illegal.
@@ -139,7 +139,7 @@ static ged_instruction_masks_table_t illegalEncodingMasks = EncodingMasksTable11
  * Top level decoding table in the decoding chain for the format math.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t mathDecoding = DecodingTable656;
+static ged_ins_decoding_table_t mathDecoding = DecodingTable763;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format math.
@@ -151,7 +151,7 @@ static ged_instruction_masks_table_t mathEncodingMasks = EncodingMasksTable107;
  * Top level decoding table in the decoding chain for the format mathCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t mathCompactDecoding = DecodingTable620;
+static ged_ins_decoding_table_t mathCompactDecoding = DecodingTable727;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format mathCompact.
@@ -163,13 +163,13 @@ static ged_instruction_masks_table_t mathCompactEncodingMasks = EncodingMasksTab
  * Top level mapping table in the mapping chain for the compact instruction format mathCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_compact_mapping_table_t mathCompactMapping = MappingTable50;
+static ged_compact_mapping_table_t mathCompactMapping = MappingTable78;
 
 /*!
  * Top level decoding table in the decoding chain for the format movi.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t moviDecoding = DecodingTable657;
+static ged_ins_decoding_table_t moviDecoding = DecodingTable764;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format movi.
@@ -181,7 +181,7 @@ static ged_instruction_masks_table_t moviEncodingMasks = EncodingMasksTable99;
  * Top level decoding table in the decoding chain for the format nop.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t nopDecoding = DecodingTable596;
+static ged_ins_decoding_table_t nopDecoding = DecodingTable703;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format nop.
@@ -193,7 +193,7 @@ static ged_instruction_masks_table_t nopEncodingMasks = EncodingMasksTable12;
  * Top level decoding table in the decoding chain for the format oneSourceCommon.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t oneSourceCommonDecoding = DecodingTable658;
+static ged_ins_decoding_table_t oneSourceCommonDecoding = DecodingTable765;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format oneSourceCommon.
@@ -205,7 +205,7 @@ static ged_instruction_masks_table_t oneSourceCommonEncodingMasks = EncodingMask
  * Top level decoding table in the decoding chain for the format oneSourceCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t oneSourceCompactDecoding = DecodingTable598;
+static ged_ins_decoding_table_t oneSourceCompactDecoding = DecodingTable705;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format oneSourceCompact.
@@ -217,13 +217,13 @@ static ged_instruction_masks_table_t oneSourceCompactEncodingMasks = EncodingMas
  * Top level mapping table in the mapping chain for the compact instruction format oneSourceCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_compact_mapping_table_t oneSourceCompactMapping = MappingTable51;
+static ged_compact_mapping_table_t oneSourceCompactMapping = MappingTable79;
 
 /*!
  * Top level decoding table in the decoding chain for the format send.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t sendDecoding = DecodingTable659;
+static ged_ins_decoding_table_t sendDecoding = DecodingTable766;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format send.
@@ -235,7 +235,7 @@ static ged_instruction_masks_table_t sendEncodingMasks = EncodingMasksTable105;
  * Top level decoding table in the decoding chain for the format sends.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t sendsDecoding = DecodingTable660;
+static ged_ins_decoding_table_t sendsDecoding = DecodingTable767;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format sends.
@@ -247,7 +247,7 @@ static ged_instruction_masks_table_t sendsEncodingMasks = EncodingMasksTable106;
  * Top level decoding table in the decoding chain for the format threeSource.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t threeSourceDecoding = DecodingTable661;
+static ged_ins_decoding_table_t threeSourceDecoding = DecodingTable768;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format threeSource.
@@ -259,7 +259,7 @@ static ged_instruction_masks_table_t threeSourceEncodingMasks = EncodingMasksTab
  * Top level decoding table in the decoding chain for the format threeSourceMacro.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t threeSourceMacroDecoding = DecodingTable662;
+static ged_ins_decoding_table_t threeSourceMacroDecoding = DecodingTable769;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format threeSourceMacro.
@@ -271,7 +271,7 @@ static ged_instruction_masks_table_t threeSourceMacroEncodingMasks = EncodingMas
  * Top level decoding table in the decoding chain for the format twoSourceCommon.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t twoSourceCommonDecoding = DecodingTable663;
+static ged_ins_decoding_table_t twoSourceCommonDecoding = DecodingTable770;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format twoSourceCommon.
@@ -283,7 +283,7 @@ static ged_instruction_masks_table_t twoSourceCommonEncodingMasks = EncodingMask
  * Top level decoding table in the decoding chain for the format twoSourceCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t twoSourceCompactDecoding = DecodingTable598;
+static ged_ins_decoding_table_t twoSourceCompactDecoding = DecodingTable705;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format twoSourceCompact.
@@ -295,13 +295,13 @@ static ged_instruction_masks_table_t twoSourceCompactEncodingMasks = EncodingMas
  * Top level mapping table in the mapping chain for the compact instruction format twoSourceCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_compact_mapping_table_t twoSourceCompactMapping = MappingTable52;
+static ged_compact_mapping_table_t twoSourceCompactMapping = MappingTable80;
 
 /*!
  * Top level decoding table in the decoding chain for the format wait.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t waitDecoding = DecodingTable664;
+static ged_ins_decoding_table_t waitDecoding = DecodingTable771;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format wait.
@@ -313,7 +313,7 @@ static ged_instruction_masks_table_t waitEncodingMasks = EncodingMasksTable98;
  * Top level decoding table in the decoding chain for the format waitCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t waitCompactDecoding = DecodingTable598;
+static ged_ins_decoding_table_t waitCompactDecoding = DecodingTable705;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format waitCompact.
@@ -325,7 +325,7 @@ static ged_instruction_masks_table_t waitCompactEncodingMasks = EncodingMasksTab
  * Top level mapping table in the mapping chain for the compact instruction format waitCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_compact_mapping_table_t waitCompactMapping = MappingTable51;
+static ged_compact_mapping_table_t waitCompactMapping = MappingTable79;
 OpcodeTables Opcodes[128] =
 {
     illegalDecoding, illegalEncodingMasks, NULL, NULL, NULL, // 0

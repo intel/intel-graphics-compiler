@@ -1084,7 +1084,399 @@ const ged_compact_mapping_entry_t MappingTable36[128] =
     { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable47, { 7, MappingFragmentsTable26 } }, // 126
     { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable47, { 7, MappingFragmentsTable26 } } // 127
 }; // MappingTable36[]
-const ged_compact_mapping_entry_t MappingTable37[132] =
+const ged_compact_mapping_entry_t MappingTable37[2] =
+{
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  96,  96,   3,   0,        0x1 } */ { (void*)(g_uintptr_t)       0x100036060 } } }, // 0
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  44,  44,   1,  12,     0x1000 } */ { (void*)(g_uintptr_t)    0x10000c012c2c } } } // 1
+}; // MappingTable37[]
+const ged_compact_mapping_entry_t MappingTable38[2] =
+{
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0IsImm,                         MappingTable37 } }, // 0
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable38[]
+const ged_compact_mapping_entry_t MappingTable39[2] =
+{
+    { GED_INS_FIELD_DstRegNum,                         GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0xff, /* {  56,  63,   1,  24, 0xff000000 } */ { (void*)(g_uintptr_t)0xff00000018013f38 } } }, // 0
+    { GED_INS_FIELD_DstRegNum,                         GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable39[]
+const ged_compact_mapping_entry_t MappingTable40[2] =
+{
+    { GED_INS_FIELD_DstRegNum,                         GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_DstRegNum8,                        MappingTable39 } }, // 0
+    { GED_INS_FIELD_DstRegNum,                         GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable40[]
+const ged_compact_mapping_entry_t MappingTable41[2] =
+{
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  97,  97,   3,   1,        0x2 } */ { (void*)(g_uintptr_t)       0x201036161 } } }, // 0
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable41[]
+const ged_compact_mapping_entry_t MappingTable42[2] =
+{
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0AddrMode,                      MappingTable41 } }, // 0
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable42[]
+const ged_compact_mapping_entry_t MappingTable43[2] =
+{
+    { GED_INS_FIELD_Src0RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0RegNum8,                       MappingTable21 } }, // 0
+    { GED_INS_FIELD_Src0RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable43[]
+const ged_compact_mapping_entry_t MappingTable44[2] =
+{
+    { GED_INS_FIELD_Src0RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0AddrMode,                      MappingTable43 } }, // 0
+    { GED_INS_FIELD_Src0RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable44[]
+const ged_compact_mapping_entry_t MappingTable45[2] =
+{
+    { GED_INS_FIELD_Src1Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable58, { 4, MappingFragmentsTable32 } }, // 0
+    { GED_INS_FIELD_Src1Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable45[]
+const ged_compact_mapping_entry_t MappingTable46[2] =
+{
+    { GED_INS_FIELD_CompactedImm,                      GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } }, // 0
+    { GED_INS_FIELD_CompactedImm,                      GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0DataType,                      MappingTable33 } } // 1
+}; // MappingTable46[]
+const ged_compact_mapping_entry_t MappingTable47[2] =
+{
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  96,  96,   3,   0,        0x1 } */ { (void*)(g_uintptr_t)       0x100036060 } } }, // 0
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  46,  46,   1,  14,     0x4000 } */ { (void*)(g_uintptr_t)    0x40000e012e2e } } } // 1
+}; // MappingTable47[]
+const ged_compact_mapping_entry_t MappingTable48[2] =
+{
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1IsImm,                         MappingTable47 } }, // 0
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable48[]
+const ged_compact_mapping_entry_t MappingTable49[2] =
+{
+    { GED_INS_FIELD_DstRegNum,                         GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0xff, /* {  56,  63,   1,  24, 0xff000000 } */ { (void*)(g_uintptr_t)0xff00000018013f38 } } }, // 0
+    { GED_INS_FIELD_DstRegNum,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 1
+}; // MappingTable49[]
+const ged_compact_mapping_entry_t MappingTable50[2] =
+{
+    { GED_INS_FIELD_DstRegNum,                         GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_DstRegNum8,                        MappingTable49 } }, // 0
+    { GED_INS_FIELD_DstRegNum,                         GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable50[]
+const ged_compact_mapping_entry_t MappingTable51[2] =
+{
+    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable46, { 6, MappingFragmentsTable36 } }, // 0
+    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable52, { 5, MappingFragmentsTable37 } } // 1
+}; // MappingTable51[]
+const ged_compact_mapping_entry_t MappingTable52[2] =
+{
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  97,  97,   3,   1,        0x2 } */ { (void*)(g_uintptr_t)       0x201036161 } } }, // 0
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  43,  43,   1,  11,      0x800 } */ { (void*)(g_uintptr_t)     0x8000b012b2b } } } // 1
+}; // MappingTable52[]
+const ged_compact_mapping_entry_t MappingTable53[2] =
+{
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1IsImm,                         MappingTable52 } }, // 0
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable53[]
+const ged_compact_mapping_entry_t MappingTable54[2] =
+{
+    { GED_INS_FIELD_Src0RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0xff, /* {  72,  79,   2,   8,     0xff00 } */ { (void*)(g_uintptr_t)    0xff0008024f48 } } }, // 0
+    { GED_INS_FIELD_Src0RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 1
+}; // MappingTable54[]
+const ged_compact_mapping_entry_t MappingTable55[2] =
+{
+    { GED_INS_FIELD_Src0RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0RegNum8,                       MappingTable54 } }, // 0
+    { GED_INS_FIELD_Src0RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable55[]
+const ged_compact_mapping_entry_t MappingTable56[2] =
+{
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* { 122, 122,   3,  26,  0x4000000 } */ { (void*)(g_uintptr_t) 0x40000001a037a7a } } }, // 0
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable56[]
+const ged_compact_mapping_entry_t MappingTable57[2] =
+{
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1IsImm,                         MappingTable56 } }, // 0
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable57[]
+const ged_compact_mapping_entry_t MappingTable58[2] =
+{
+    { GED_INS_FIELD_Src1RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0xff, /* { 104, 111,   3,   8,     0xff00 } */ { (void*)(g_uintptr_t)    0xff0008036f68 } } }, // 0
+    { GED_INS_FIELD_Src1RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 1
+}; // MappingTable58[]
+const ged_compact_mapping_entry_t MappingTable59[2] =
+{
+    { GED_INS_FIELD_Src1RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1RegNum8,                       MappingTable58 } }, // 0
+    { GED_INS_FIELD_Src1RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable59[]
+const ged_compact_mapping_entry_t MappingTable60[2] =
+{
+    { GED_INS_FIELD_Src1RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1AddrMode,                      MappingTable59 } }, // 0
+    { GED_INS_FIELD_Src1RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NO_MAPPING,                NULL, { 0 } } // 1
+}; // MappingTable60[]
+const ged_compact_mapping_entry_t MappingTable61[128] =
+{
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 0
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 1
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 2
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 3
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 4
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 5
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 6
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 7
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 8
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 9
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 10
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 11
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 12
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 13
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 14
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 15
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 16
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 17
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 18
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 19
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 20
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 21
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 22
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 23
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 24
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 25
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 26
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 27
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 28
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 29
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 30
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 31
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 32
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 33
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 34
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 35
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 36
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 37
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 38
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 39
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 40
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 41
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 42
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 43
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 44
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 45
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 46
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 47
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 48
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 49
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 50
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 51
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 52
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 53
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 54
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 55
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 56
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 57
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 58
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 59
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 60
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 61
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 62
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 63
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 64
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 65
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 66
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 67
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 68
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 69
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 70
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 71
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 72
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 73
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 74
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 75
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 76
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 77
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 78
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 79
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 80
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 81
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 82
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 83
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 84
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 85
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 86
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 87
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 88
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable56, { 11, MappingFragmentsTable38 } }, // 89
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 90
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 91
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 92
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 93
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 94
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 95
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 96
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 97
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 98
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 99
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 100
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 101
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 102
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 103
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 104
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 105
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 106
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 107
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 108
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 109
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 110
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 111
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 112
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 113
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 114
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 115
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 116
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 117
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 118
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 119
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 120
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 121
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 122
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 123
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 124
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 125
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } }, // 126
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 11, MappingFragmentsTable39 } } // 127
+}; // MappingTable61[]
+const ged_compact_mapping_entry_t MappingTable62[128] =
+{
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 0
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 1
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 2
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 3
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 4
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 5
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 6
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 7
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 8
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 9
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 10
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 11
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 12
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 13
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 14
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 15
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 16
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 17
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 18
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 19
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 20
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 21
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 22
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 23
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 24
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 25
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 26
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 27
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 28
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 29
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 30
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 31
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 32
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 33
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 34
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 35
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 36
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 37
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 38
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 39
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 40
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 41
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 42
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 43
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 44
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 45
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 46
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 47
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 48
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 49
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 50
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 51
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 52
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 53
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 54
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 55
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 56
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 57
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 58
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 59
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 60
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 61
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 62
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 63
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 64
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 65
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 66
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 67
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 68
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 69
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 70
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 71
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 72
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 73
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 74
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 75
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 76
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 77
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 78
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 79
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 80
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 81
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 82
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 83
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 84
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 85
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 86
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 87
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 88
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable42, { 7, MappingFragmentsTable26 } }, // 89
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 90
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 91
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 92
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 93
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 94
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 95
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 96
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 97
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 98
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 99
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 100
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 101
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 102
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 103
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 104
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 105
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 106
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 107
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 108
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 109
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 110
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 111
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 112
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 113
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 114
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 115
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 116
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 117
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 118
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 119
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 120
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 121
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 122
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 123
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 124
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 125
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } }, // 126
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable57, { 8, MappingFragmentsTable40 } } // 127
+}; // MappingTable62[]
+const ged_compact_mapping_entry_t MappingTable63[2] =
+{
+    { GED_INS_FIELD_Src0RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0RegNum8,                       MappingTable54 } }, // 0
+    { GED_INS_FIELD_Src0RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 1
+}; // MappingTable63[]
+const ged_compact_mapping_entry_t MappingTable64[2] =
+{
+    { GED_INS_FIELD_Src2RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0xff, /* { 120, 127,   3,  24, 0xff000000 } */ { (void*)(g_uintptr_t)0xff00000018037f78 } } }, // 0
+    { GED_INS_FIELD_Src2RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 1
+}; // MappingTable64[]
+const ged_compact_mapping_entry_t MappingTable65[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -1168,7 +1560,7 @@ const ged_compact_mapping_entry_t MappingTable37[132] =
     { GED_INS_FIELD_JIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 79
     { GED_INS_FIELD_UIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 80
     { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable0, { 3, MappingFragmentsTable0 } }, // 81
-    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 2, MappingFragmentsTable1 } }, // 82
+    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable60, { 2, MappingFragmentsTable1 } }, // 82
     { GED_INS_FIELD_SubRegIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1RegFile,                       MappingTable0 } }, // 83
     { GED_INS_FIELD_Src0Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_CONSECUTIVE, CompactionTable5, { 0xfff, /* {  77,  88,   2,  13,  0x1ffe000 } */ { (void*)(g_uintptr_t) 0x1ffe0000d02584d } } }, // 84
     { GED_INS_FIELD_Src1Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1RegFile,                       MappingTable1 } }, // 85
@@ -1217,9 +1609,37 @@ const ged_compact_mapping_entry_t MappingTable37[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable37[]
-const ged_compact_mapping_entry_t MappingTable38[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable65[]
+const ged_compact_mapping_entry_t MappingTable66[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -1303,7 +1723,7 @@ const ged_compact_mapping_entry_t MappingTable38[132] =
     { GED_INS_FIELD_JIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 79
     { GED_INS_FIELD_UIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 80
     { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable0, { 3, MappingFragmentsTable0 } }, // 81
-    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 2, MappingFragmentsTable1 } }, // 82
+    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable60, { 2, MappingFragmentsTable1 } }, // 82
     { GED_INS_FIELD_SubRegIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_MathFC,                            MappingTable8 } }, // 83
     { GED_INS_FIELD_Src0Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_CONSECUTIVE, CompactionTable5, { 0xfff, /* {  77,  88,   2,  13,  0x1ffe000 } */ { (void*)(g_uintptr_t) 0x1ffe0000d02584d } } }, // 84
     { GED_INS_FIELD_Src1Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_MathFC,                            MappingTable9 } }, // 85
@@ -1352,9 +1772,37 @@ const ged_compact_mapping_entry_t MappingTable38[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable38[]
-const ged_compact_mapping_entry_t MappingTable39[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable66[]
+const ged_compact_mapping_entry_t MappingTable67[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -1438,7 +1886,7 @@ const ged_compact_mapping_entry_t MappingTable39[132] =
     { GED_INS_FIELD_JIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 79
     { GED_INS_FIELD_UIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 80
     { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable0, { 3, MappingFragmentsTable0 } }, // 81
-    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 2, MappingFragmentsTable1 } }, // 82
+    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable60, { 2, MappingFragmentsTable1 } }, // 82
     { GED_INS_FIELD_SubRegIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0RegFile,                       MappingTable3 } }, // 83
     { GED_INS_FIELD_Src0Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_CONSECUTIVE, CompactionTable5, { 0xfff, /* {  77,  88,   2,  13,  0x1ffe000 } */ { (void*)(g_uintptr_t) 0x1ffe0000d02584d } } }, // 84
     { GED_INS_FIELD_Src1Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0RegFile,                       MappingTable4 } }, // 85
@@ -1487,9 +1935,37 @@ const ged_compact_mapping_entry_t MappingTable39[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable39[]
-const ged_compact_mapping_entry_t MappingTable40[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable67[]
+const ged_compact_mapping_entry_t MappingTable68[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -1573,7 +2049,7 @@ const ged_compact_mapping_entry_t MappingTable40[132] =
     { GED_INS_FIELD_JIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 79
     { GED_INS_FIELD_UIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 80
     { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable0, { 3, MappingFragmentsTable0 } }, // 81
-    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 2, MappingFragmentsTable1 } }, // 82
+    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable60, { 2, MappingFragmentsTable1 } }, // 82
     { GED_INS_FIELD_SubRegIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_DescRegFile,                       MappingTable0 } }, // 83
     { GED_INS_FIELD_Src0Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_CONSECUTIVE, CompactionTable5, { 0xfff, /* {  77,  88,   2,  13,  0x1ffe000 } */ { (void*)(g_uintptr_t) 0x1ffe0000d02584d } } }, // 84
     { GED_INS_FIELD_Src1Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 85
@@ -1622,9 +2098,37 @@ const ged_compact_mapping_entry_t MappingTable40[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable40[]
-const ged_compact_mapping_entry_t MappingTable41[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable68[]
+const ged_compact_mapping_entry_t MappingTable69[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -1708,7 +2212,7 @@ const ged_compact_mapping_entry_t MappingTable41[132] =
     { GED_INS_FIELD_JIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 79
     { GED_INS_FIELD_UIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 80
     { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable0, { 3, MappingFragmentsTable0 } }, // 81
-    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable54, { 2, MappingFragmentsTable1 } }, // 82
+    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable60, { 2, MappingFragmentsTable1 } }, // 82
     { GED_INS_FIELD_SubRegIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1RegFile,                       MappingTable0 } }, // 83
     { GED_INS_FIELD_Src0Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_CONSECUTIVE, CompactionTable5, { 0xfff, /* {  77,  88,   2,  13,  0x1ffe000 } */ { (void*)(g_uintptr_t) 0x1ffe0000d02584d } } }, // 84
     { GED_INS_FIELD_Src1Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1RegFile,                       MappingTable1 } }, // 85
@@ -1757,9 +2261,37 @@ const ged_compact_mapping_entry_t MappingTable41[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable41[]
-const ged_compact_mapping_entry_t MappingTable42[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable69[]
+const ged_compact_mapping_entry_t MappingTable70[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -1892,9 +2424,37 @@ const ged_compact_mapping_entry_t MappingTable42[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable42[]
-const ged_compact_mapping_entry_t MappingTable43[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable70[]
+const ged_compact_mapping_entry_t MappingTable71[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -2027,9 +2587,37 @@ const ged_compact_mapping_entry_t MappingTable43[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable43[]
-const ged_compact_mapping_entry_t MappingTable44[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable71[]
+const ged_compact_mapping_entry_t MappingTable72[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -2162,9 +2750,37 @@ const ged_compact_mapping_entry_t MappingTable44[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable44[]
-const ged_compact_mapping_entry_t MappingTable45[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable72[]
+const ged_compact_mapping_entry_t MappingTable73[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -2297,9 +2913,37 @@ const ged_compact_mapping_entry_t MappingTable45[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable45[]
-const ged_compact_mapping_entry_t MappingTable46[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable73[]
+const ged_compact_mapping_entry_t MappingTable74[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -2382,7 +3026,7 @@ const ged_compact_mapping_entry_t MappingTable46[132] =
     { GED_INS_FIELD_MathFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 78
     { GED_INS_FIELD_JIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 79
     { GED_INS_FIELD_UIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 80
-    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable55, { 2, MappingFragmentsTable7 } }, // 81
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable61, { 2, MappingFragmentsTable7 } }, // 81
     { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 82
     { GED_INS_FIELD_SubRegIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 83
     { GED_INS_FIELD_Src0Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 84
@@ -2394,7 +3038,7 @@ const ged_compact_mapping_entry_t MappingTable46[132] =
     { GED_INS_FIELD_Src1MathMacroExt,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 90
     { GED_INS_FIELD_Src2MathMacroExt,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 91
     { GED_INS_FIELD_BranchCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 92
-    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable56, { 8, MappingFragmentsTable8 } }, // 93
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable62, { 8, MappingFragmentsTable8 } }, // 93
     { GED_INS_FIELD_Src2DataType,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 94
     { GED_INS_FIELD_NoSrcDepSet,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 95
     { GED_INS_FIELD_ExFuncCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 96
@@ -2432,9 +3076,37 @@ const ged_compact_mapping_entry_t MappingTable46[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable46[]
-const ged_compact_mapping_entry_t MappingTable47[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable74[]
+const ged_compact_mapping_entry_t MappingTable75[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -2567,9 +3239,37 @@ const ged_compact_mapping_entry_t MappingTable47[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable47[]
-const ged_compact_mapping_entry_t MappingTable48[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable75[]
+const ged_compact_mapping_entry_t MappingTable76[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -2702,9 +3402,37 @@ const ged_compact_mapping_entry_t MappingTable48[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable48[]
-const ged_compact_mapping_entry_t MappingTable49[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable76[]
+const ged_compact_mapping_entry_t MappingTable77[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -2837,9 +3565,37 @@ const ged_compact_mapping_entry_t MappingTable49[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable49[]
-const ged_compact_mapping_entry_t MappingTable50[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable77[]
+const ged_compact_mapping_entry_t MappingTable78[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -2972,9 +3728,37 @@ const ged_compact_mapping_entry_t MappingTable50[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable50[]
-const ged_compact_mapping_entry_t MappingTable51[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable78[]
+const ged_compact_mapping_entry_t MappingTable79[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -3107,9 +3891,37 @@ const ged_compact_mapping_entry_t MappingTable51[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable51[]
-const ged_compact_mapping_entry_t MappingTable52[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable79[]
+const ged_compact_mapping_entry_t MappingTable80[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -3242,9 +4054,37 @@ const ged_compact_mapping_entry_t MappingTable52[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable52[]
-const ged_compact_mapping_entry_t MappingTable53[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable80[]
+const ged_compact_mapping_entry_t MappingTable81[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -3377,9 +4217,37 @@ const ged_compact_mapping_entry_t MappingTable53[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable53[]
-const ged_compact_mapping_entry_t MappingTable54[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable81[]
+const ged_compact_mapping_entry_t MappingTable82[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -3512,9 +4380,37 @@ const ged_compact_mapping_entry_t MappingTable54[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable54[]
-const ged_compact_mapping_entry_t MappingTable55[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable82[]
+const ged_compact_mapping_entry_t MappingTable83[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -3647,9 +4543,37 @@ const ged_compact_mapping_entry_t MappingTable55[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable55[]
-const ged_compact_mapping_entry_t MappingTable56[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable83[]
+const ged_compact_mapping_entry_t MappingTable84[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -3782,9 +4706,37 @@ const ged_compact_mapping_entry_t MappingTable56[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable56[]
-const ged_compact_mapping_entry_t MappingTable57[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable84[]
+const ged_compact_mapping_entry_t MappingTable85[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -3917,9 +4869,37 @@ const ged_compact_mapping_entry_t MappingTable57[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable57[]
-const ged_compact_mapping_entry_t MappingTable58[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable85[]
+const ged_compact_mapping_entry_t MappingTable86[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -4052,9 +5032,37 @@ const ged_compact_mapping_entry_t MappingTable58[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable58[]
-const ged_compact_mapping_entry_t MappingTable59[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable86[]
+const ged_compact_mapping_entry_t MappingTable87[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -4187,9 +5195,37 @@ const ged_compact_mapping_entry_t MappingTable59[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable59[]
-const ged_compact_mapping_entry_t MappingTable60[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable87[]
+const ged_compact_mapping_entry_t MappingTable88[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -4322,9 +5358,37 @@ const ged_compact_mapping_entry_t MappingTable60[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable60[]
-const ged_compact_mapping_entry_t MappingTable61[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable88[]
+const ged_compact_mapping_entry_t MappingTable89[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -4457,9 +5521,37 @@ const ged_compact_mapping_entry_t MappingTable61[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable61[]
-const ged_compact_mapping_entry_t MappingTable62[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable89[]
+const ged_compact_mapping_entry_t MappingTable90[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -4592,9 +5684,37 @@ const ged_compact_mapping_entry_t MappingTable62[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable62[]
-const ged_compact_mapping_entry_t MappingTable63[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable90[]
+const ged_compact_mapping_entry_t MappingTable91[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -4727,9 +5847,37 @@ const ged_compact_mapping_entry_t MappingTable63[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable63[]
-const ged_compact_mapping_entry_t MappingTable64[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable91[]
+const ged_compact_mapping_entry_t MappingTable92[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -4862,9 +6010,37 @@ const ged_compact_mapping_entry_t MappingTable64[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable64[]
-const ged_compact_mapping_entry_t MappingTable65[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable92[]
+const ged_compact_mapping_entry_t MappingTable93[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -4997,9 +6173,37 @@ const ged_compact_mapping_entry_t MappingTable65[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable65[]
-const ged_compact_mapping_entry_t MappingTable66[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable93[]
+const ged_compact_mapping_entry_t MappingTable94[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -5132,9 +6336,37 @@ const ged_compact_mapping_entry_t MappingTable66[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable66[]
-const ged_compact_mapping_entry_t MappingTable67[132] =
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable94[]
+const ged_compact_mapping_entry_t MappingTable95[160] =
 {
     { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
@@ -5267,5 +6499,522 @@ const ged_compact_mapping_entry_t MappingTable67[132] =
     { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
     { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
     { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
-    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 131
-}; // MappingTable67[]
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable95[]
+const ged_compact_mapping_entry_t MappingTable96[160] =
+{
+    { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
+    { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
+    { GED_INS_FIELD_,                                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 2
+    { GED_INS_FIELD_Reserved,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 3
+    { GED_INS_FIELD____SrcImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_CONSECUTIVE, CompactionTable59, { 0x1, /* {  46,  46,   1,  14,     0x4000 } */ { (void*)(g_uintptr_t)    0x40000e012e2e } } }, // 4
+    { GED_INS_FIELD_NumOfSourceOperands,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 5
+    { GED_INS_FIELD_HasDestinationOperand,             GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 6
+    { GED_INS_FIELD_AccessMode,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 7
+    { GED_INS_FIELD_MaskCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 8
+    { GED_INS_FIELD_DepCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 9
+    { GED_INS_FIELD_ExecMaskOffsetCtrl,                GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 10
+    { GED_INS_FIELD_ChannelOffset,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 11
+    { GED_INS_FIELD_ThreadCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 12
+    { GED_INS_FIELD_PredCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 13
+    { GED_INS_FIELD_PredInv,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 14
+    { GED_INS_FIELD_ExecSize,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 15
+    { GED_INS_FIELD_CondModifier,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 16
+    { GED_INS_FIELD_AccWrCtrl,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 17
+    { GED_INS_FIELD_DebugCtrl,                         GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  30,  30,   0,  30, 0x40000000 } */ { (void*)(g_uintptr_t)0x400000001e001e1e } } }, // 18
+    { GED_INS_FIELD_Saturate,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 19
+    { GED_INS_FIELD_DstRegFile,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 20
+    { GED_INS_FIELD_DstDataType,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 21
+    { GED_INS_FIELD_Src0RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 22
+    { GED_INS_FIELD_Src0DataType,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 23
+    { GED_INS_FIELD_Src1RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 24
+    { GED_INS_FIELD_Src1DataType,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 25
+    { GED_INS_FIELD_DstChanEn,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 26
+    { GED_INS_FIELD_DstSubRegNum,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 27
+    { GED_INS_FIELD_DstAddrImm,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 28
+    { GED_INS_FIELD_DstRegNum,                         GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_DstAddrMode,                       MappingTable40 } }, // 29
+    { GED_INS_FIELD_DstAddrSubRegNum,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 30
+    { GED_INS_FIELD_DstHorzStride,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 31
+    { GED_INS_FIELD_DstAddrMode,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 32
+    { GED_INS_FIELD_Src0ChanSel,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 33
+    { GED_INS_FIELD_Src0SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 34
+    { GED_INS_FIELD_Src0AddrImm,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 35
+    { GED_INS_FIELD_Src0RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0IsImm,                         MappingTable44 } }, // 36
+    { GED_INS_FIELD_Src0AddrSubRegNum,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 37
+    { GED_INS_FIELD_Src0SrcMod,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 38
+    { GED_INS_FIELD_Src0AddrMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 39
+    { GED_INS_FIELD_Src0HorzStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 40
+    { GED_INS_FIELD_Src0Width,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 41
+    { GED_INS_FIELD_Src0VertStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 42
+    { GED_INS_FIELD_FlagSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 43
+    { GED_INS_FIELD_FlagRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 44
+    { GED_INS_FIELD_Src1ChanSel,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 45
+    { GED_INS_FIELD_Src1SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 46
+    { GED_INS_FIELD_Src1AddrImm,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 47
+    { GED_INS_FIELD_Src1RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 48
+    { GED_INS_FIELD_Src1AddrSubRegNum,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 49
+    { GED_INS_FIELD_Src1SrcMod,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 50
+    { GED_INS_FIELD_Src1AddrMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 51
+    { GED_INS_FIELD_Src1HorzStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 52
+    { GED_INS_FIELD_Src1Width,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 53
+    { GED_INS_FIELD_Src1VertStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 54
+    { GED_INS_FIELD_Imm,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 55
+    { GED_INS_FIELD_Src2SrcMod,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 56
+    { GED_INS_FIELD_SrcDataType,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 57
+    { GED_INS_FIELD_Src0RepCtrl,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 58
+    { GED_INS_FIELD_Src1RepCtrl,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 59
+    { GED_INS_FIELD_Src2RepCtrl,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 60
+    { GED_INS_FIELD_Src2ChanSel,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 61
+    { GED_INS_FIELD_Src2SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 62
+    { GED_INS_FIELD_Src2RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 63
+    { GED_INS_FIELD_Src2RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 64
+    { GED_INS_FIELD_Src2AddrMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 65
+    { GED_INS_FIELD_Src2VertStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 66
+    { GED_INS_FIELD_SFID,                              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 67
+    { GED_INS_FIELD_DescRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 68
+    { GED_INS_FIELD_DescDataType,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 69
+    { GED_INS_FIELD_DescAddrSubRegNum,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 70
+    { GED_INS_FIELD_DescRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 71
+    { GED_INS_FIELD_DescHorzStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 72
+    { GED_INS_FIELD_DescWidth,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 73
+    { GED_INS_FIELD_DescVertStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 74
+    { GED_INS_FIELD_MsgDesc,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 76
+    { GED_INS_FIELD_EOT,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 77
+    { GED_INS_FIELD_MathFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 78
+    { GED_INS_FIELD_JIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 79
+    { GED_INS_FIELD_UIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 80
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable44, { 5, MappingFragmentsTable29 } }, // 81
+    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable55, { 4, MappingFragmentsTable35 } }, // 82
+    { GED_INS_FIELD_SubRegIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable50, { 4, MappingFragmentsTable30 } }, // 83
+    { GED_INS_FIELD_Src0Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable48, { 3, MappingFragmentsTable31 } }, // 84
+    { GED_INS_FIELD_Src1Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0IsImm,                         MappingTable45 } }, // 85
+    { GED_INS_FIELD_DescIndex,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 86
+    { GED_INS_FIELD_ExDescRegFile,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 87
+    { GED_INS_FIELD_DstMathMacroExt,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 88
+    { GED_INS_FIELD_Src0MathMacroExt,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 89
+    { GED_INS_FIELD_Src1MathMacroExt,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 90
+    { GED_INS_FIELD_Src2MathMacroExt,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 91
+    { GED_INS_FIELD_BranchCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 92
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 93
+    { GED_INS_FIELD_Src2DataType,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 94
+    { GED_INS_FIELD_NoSrcDepSet,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 95
+    { GED_INS_FIELD_ExFuncCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 96
+    { GED_INS_FIELD_ExMsgLength,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 97
+    { GED_INS_FIELD_ExDescAddrSubRegNum,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 98
+    { GED_INS_FIELD_ExDescRegNum,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 99
+    { GED_INS_FIELD_MsgDescCategory,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 100
+    { GED_INS_FIELD_MsgDescScratchAddrOffset,          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 101
+    { GED_INS_FIELD_MsgDescScratchBlockSize,           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 102
+    { GED_INS_FIELD_MsgDescScratchInvalidateAfterRead, GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 103
+    { GED_INS_FIELD_MsgDescScratchChannelMode,         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 104
+    { GED_INS_FIELD_MsgDescScratchMessageType,         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 105
+    { GED_INS_FIELD_ExecutionDataType,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 106
+    { GED_INS_FIELD_Src0TernaryImm,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 107
+    { GED_INS_FIELD_Src2TernaryImm,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 108
+    { GED_INS_FIELD_Src2HorzStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 109
+    { GED_INS_FIELD_SWSB,                              GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x3ff, /* {   8,  17,   0,   8,    0x3ff00 } */ { (void*)(g_uintptr_t)   0x3ff0008001108 } } }, // 110
+    { GED_INS_FIELD_Src1IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 111
+    { GED_INS_FIELD_Src0IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 112
+    { GED_INS_FIELD_Src0SubRegNumByte,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 113
+    { GED_INS_FIELD_SyncFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 114
+    { GED_INS_FIELD_FusionCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 115
+    { GED_INS_FIELD_DataTypeIndexNoDep,                GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 116
+    { GED_INS_FIELD_CompactedImm,                      GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0IsImm,                         MappingTable46 } }, // 117
+    { GED_INS_FIELD_RepeatCount,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 118
+    { GED_INS_FIELD_SystolicDepth,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 119
+    { GED_INS_FIELD_Src2Precision,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 120
+    { GED_INS_FIELD_Src2SubBytePrecision,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 121
+    { GED_INS_FIELD_Src1Precision,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 122
+    { GED_INS_FIELD_Src1SubBytePrecision,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 123
+    { GED_INS_FIELD_BfnFC,                             GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 124
+    { GED_INS_FIELD_ExBSO,                             GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 125
+    { GED_INS_FIELD_CPS,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 126
+    { GED_INS_FIELD_Src1Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 127
+    { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
+    { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
+    { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_DstAddrMode,                       MappingTable38 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0IsImm,                         MappingTable42 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable96[]
+const ged_compact_mapping_entry_t MappingTable97[160] =
+{
+    { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
+    { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
+    { GED_INS_FIELD_,                                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 2
+    { GED_INS_FIELD_Reserved,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 3
+    { GED_INS_FIELD____SrcImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 4
+    { GED_INS_FIELD_NumOfSourceOperands,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 5
+    { GED_INS_FIELD_HasDestinationOperand,             GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 6
+    { GED_INS_FIELD_AccessMode,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 7
+    { GED_INS_FIELD_MaskCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 8
+    { GED_INS_FIELD_DepCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 9
+    { GED_INS_FIELD_ExecMaskOffsetCtrl,                GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 10
+    { GED_INS_FIELD_ChannelOffset,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 11
+    { GED_INS_FIELD_ThreadCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 12
+    { GED_INS_FIELD_PredCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 13
+    { GED_INS_FIELD_PredInv,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 14
+    { GED_INS_FIELD_ExecSize,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 15
+    { GED_INS_FIELD_CondModifier,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 16
+    { GED_INS_FIELD_AccWrCtrl,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 17
+    { GED_INS_FIELD_DebugCtrl,                         GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  30,  30,   0,  30, 0x40000000 } */ { (void*)(g_uintptr_t)0x400000001e001e1e } } }, // 18
+    { GED_INS_FIELD_Saturate,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 19
+    { GED_INS_FIELD_DstRegFile,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 20
+    { GED_INS_FIELD_DstDataType,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 21
+    { GED_INS_FIELD_Src0RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 22
+    { GED_INS_FIELD_Src0DataType,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 23
+    { GED_INS_FIELD_Src1RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 24
+    { GED_INS_FIELD_Src1DataType,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 25
+    { GED_INS_FIELD_DstChanEn,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 26
+    { GED_INS_FIELD_DstSubRegNum,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 27
+    { GED_INS_FIELD_DstAddrImm,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 28
+    { GED_INS_FIELD_DstRegNum,                         GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_DstRegNum8,                        MappingTable49 } }, // 29
+    { GED_INS_FIELD_DstAddrSubRegNum,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 30
+    { GED_INS_FIELD_DstHorzStride,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 31
+    { GED_INS_FIELD_DstAddrMode,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 32
+    { GED_INS_FIELD_Src0ChanSel,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 33
+    { GED_INS_FIELD_Src0SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 34
+    { GED_INS_FIELD_Src0AddrImm,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 35
+    { GED_INS_FIELD_Src0RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0IsImm,                         MappingTable63 } }, // 36
+    { GED_INS_FIELD_Src0AddrSubRegNum,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 37
+    { GED_INS_FIELD_Src0SrcMod,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 38
+    { GED_INS_FIELD_Src0AddrMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 39
+    { GED_INS_FIELD_Src0HorzStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 40
+    { GED_INS_FIELD_Src0Width,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 41
+    { GED_INS_FIELD_Src0VertStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 42
+    { GED_INS_FIELD_FlagSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 43
+    { GED_INS_FIELD_FlagRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 44
+    { GED_INS_FIELD_Src1ChanSel,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 45
+    { GED_INS_FIELD_Src1SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 46
+    { GED_INS_FIELD_Src1AddrImm,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 47
+    { GED_INS_FIELD_Src1RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1RegNum8,                       MappingTable58 } }, // 48
+    { GED_INS_FIELD_Src1AddrSubRegNum,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 49
+    { GED_INS_FIELD_Src1SrcMod,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 50
+    { GED_INS_FIELD_Src1AddrMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 51
+    { GED_INS_FIELD_Src1HorzStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 52
+    { GED_INS_FIELD_Src1Width,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 53
+    { GED_INS_FIELD_Src1VertStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 54
+    { GED_INS_FIELD_Imm,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 55
+    { GED_INS_FIELD_Src2SrcMod,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 56
+    { GED_INS_FIELD_SrcDataType,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 57
+    { GED_INS_FIELD_Src0RepCtrl,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 58
+    { GED_INS_FIELD_Src1RepCtrl,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 59
+    { GED_INS_FIELD_Src2RepCtrl,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 60
+    { GED_INS_FIELD_Src2ChanSel,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 61
+    { GED_INS_FIELD_Src2SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 62
+    { GED_INS_FIELD_Src2RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src2RegNum8,                       MappingTable64 } }, // 63
+    { GED_INS_FIELD_Src2RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 64
+    { GED_INS_FIELD_Src2AddrMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 65
+    { GED_INS_FIELD_Src2VertStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 66
+    { GED_INS_FIELD_SFID,                              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 67
+    { GED_INS_FIELD_DescRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 68
+    { GED_INS_FIELD_DescDataType,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 69
+    { GED_INS_FIELD_DescAddrSubRegNum,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 70
+    { GED_INS_FIELD_DescRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 71
+    { GED_INS_FIELD_DescHorzStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 72
+    { GED_INS_FIELD_DescWidth,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 73
+    { GED_INS_FIELD_DescVertStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 74
+    { GED_INS_FIELD_MsgDesc,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 76
+    { GED_INS_FIELD_EOT,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 77
+    { GED_INS_FIELD_MathFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 78
+    { GED_INS_FIELD_JIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 79
+    { GED_INS_FIELD_UIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 80
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Opcode,                            MappingTable61 } }, // 81
+    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 82
+    { GED_INS_FIELD_SubRegIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable51, { 4, MappingFragmentsTable27 } }, // 83
+    { GED_INS_FIELD_Src0Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 84
+    { GED_INS_FIELD_Src1Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 85
+    { GED_INS_FIELD_DescIndex,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 86
+    { GED_INS_FIELD_ExDescRegFile,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 87
+    { GED_INS_FIELD_DstMathMacroExt,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 88
+    { GED_INS_FIELD_Src0MathMacroExt,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 89
+    { GED_INS_FIELD_Src1MathMacroExt,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 90
+    { GED_INS_FIELD_Src2MathMacroExt,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 91
+    { GED_INS_FIELD_BranchCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 92
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Opcode,                            MappingTable62 } }, // 93
+    { GED_INS_FIELD_Src2DataType,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 94
+    { GED_INS_FIELD_NoSrcDepSet,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 95
+    { GED_INS_FIELD_ExFuncCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 96
+    { GED_INS_FIELD_ExMsgLength,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 97
+    { GED_INS_FIELD_ExDescAddrSubRegNum,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 98
+    { GED_INS_FIELD_ExDescRegNum,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 99
+    { GED_INS_FIELD_MsgDescCategory,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 100
+    { GED_INS_FIELD_MsgDescScratchAddrOffset,          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 101
+    { GED_INS_FIELD_MsgDescScratchBlockSize,           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 102
+    { GED_INS_FIELD_MsgDescScratchInvalidateAfterRead, GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 103
+    { GED_INS_FIELD_MsgDescScratchChannelMode,         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 104
+    { GED_INS_FIELD_MsgDescScratchMessageType,         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 105
+    { GED_INS_FIELD_ExecutionDataType,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 106
+    { GED_INS_FIELD_Src0TernaryImm,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 107
+    { GED_INS_FIELD_Src2TernaryImm,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 108
+    { GED_INS_FIELD_Src2HorzStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 109
+    { GED_INS_FIELD_SWSB,                              GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x3ff, /* {   8,  17,   0,   8,    0x3ff00 } */ { (void*)(g_uintptr_t)   0x3ff0008001108 } } }, // 110
+    { GED_INS_FIELD_Src1IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 111
+    { GED_INS_FIELD_Src0IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 112
+    { GED_INS_FIELD_Src0SubRegNumByte,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 113
+    { GED_INS_FIELD_SyncFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 114
+    { GED_INS_FIELD_FusionCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 115
+    { GED_INS_FIELD_DataTypeIndexNoDep,                GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 116
+    { GED_INS_FIELD_CompactedImm,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 117
+    { GED_INS_FIELD_RepeatCount,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 118
+    { GED_INS_FIELD_SystolicDepth,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 119
+    { GED_INS_FIELD_Src2Precision,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 120
+    { GED_INS_FIELD_Src2SubBytePrecision,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 121
+    { GED_INS_FIELD_Src1Precision,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 122
+    { GED_INS_FIELD_Src1SubBytePrecision,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 123
+    { GED_INS_FIELD_BfnFC,                             GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 124
+    { GED_INS_FIELD_ExBSO,                             GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 125
+    { GED_INS_FIELD_CPS,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 126
+    { GED_INS_FIELD_Src1Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 127
+    { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
+    { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
+    { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  96,  96,   3,   0,        0x1 } */ { (void*)(g_uintptr_t)       0x100036060 } } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0IsImm,                         MappingTable41 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  83,  83,   2,  19,    0x80000 } */ { (void*)(g_uintptr_t)   0x8000013025353 } } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  91,  91,   2,  27,  0x8000000 } */ { (void*)(g_uintptr_t) 0x80000001b025b5b } } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable97[]
+const ged_compact_mapping_entry_t MappingTable98[160] =
+{
+    { GED_INS_FIELD_Opcode,                            GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x7f, /* {   0,   6,   0,   0,       0x7f } */ { (void*)(g_uintptr_t)      0x7f00000600 } } }, // 0
+    { GED_INS_FIELD_CmptCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  29,  29,   0,  29, 0x20000000 } */ { (void*)(g_uintptr_t)0x200000001d001d1d } } }, // 1
+    { GED_INS_FIELD_,                                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 2
+    { GED_INS_FIELD_Reserved,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 3
+    { GED_INS_FIELD____SrcImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_CONSECUTIVE, CompactionTable53, { 0x3, /* {  46,  47,   1,  14,     0xc000 } */ { (void*)(g_uintptr_t)    0xc0000e012f2e } } }, // 4
+    { GED_INS_FIELD_NumOfSourceOperands,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 5
+    { GED_INS_FIELD_HasDestinationOperand,             GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 6
+    { GED_INS_FIELD_AccessMode,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 7
+    { GED_INS_FIELD_MaskCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 8
+    { GED_INS_FIELD_DepCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 9
+    { GED_INS_FIELD_ExecMaskOffsetCtrl,                GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 10
+    { GED_INS_FIELD_ChannelOffset,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 11
+    { GED_INS_FIELD_ThreadCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 12
+    { GED_INS_FIELD_PredCtrl,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 13
+    { GED_INS_FIELD_PredInv,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 14
+    { GED_INS_FIELD_ExecSize,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 15
+    { GED_INS_FIELD_CondModifier,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 16
+    { GED_INS_FIELD_AccWrCtrl,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 17
+    { GED_INS_FIELD_DebugCtrl,                         GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x1, /* {  30,  30,   0,  30, 0x40000000 } */ { (void*)(g_uintptr_t)0x400000001e001e1e } } }, // 18
+    { GED_INS_FIELD_Saturate,                          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 19
+    { GED_INS_FIELD_DstRegFile,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 20
+    { GED_INS_FIELD_DstDataType,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 21
+    { GED_INS_FIELD_Src0RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 22
+    { GED_INS_FIELD_Src0DataType,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 23
+    { GED_INS_FIELD_Src1RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 24
+    { GED_INS_FIELD_Src1DataType,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 25
+    { GED_INS_FIELD_DstChanEn,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 26
+    { GED_INS_FIELD_DstSubRegNum,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 27
+    { GED_INS_FIELD_DstAddrImm,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 28
+    { GED_INS_FIELD_DstRegNum,                         GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_DstAddrMode,                       MappingTable50 } }, // 29
+    { GED_INS_FIELD_DstAddrSubRegNum,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 30
+    { GED_INS_FIELD_DstHorzStride,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 31
+    { GED_INS_FIELD_DstAddrMode,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 32
+    { GED_INS_FIELD_Src0ChanSel,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 33
+    { GED_INS_FIELD_Src0SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 34
+    { GED_INS_FIELD_Src0AddrImm,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 35
+    { GED_INS_FIELD_Src0RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0AddrMode,                      MappingTable55 } }, // 36
+    { GED_INS_FIELD_Src0AddrSubRegNum,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 37
+    { GED_INS_FIELD_Src0SrcMod,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 38
+    { GED_INS_FIELD_Src0AddrMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 39
+    { GED_INS_FIELD_Src0HorzStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 40
+    { GED_INS_FIELD_Src0Width,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 41
+    { GED_INS_FIELD_Src0VertStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 42
+    { GED_INS_FIELD_FlagSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 43
+    { GED_INS_FIELD_FlagRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 44
+    { GED_INS_FIELD_Src1ChanSel,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 45
+    { GED_INS_FIELD_Src1SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 46
+    { GED_INS_FIELD_Src1AddrImm,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 47
+    { GED_INS_FIELD_Src1RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1IsImm,                         MappingTable60 } }, // 48
+    { GED_INS_FIELD_Src1AddrSubRegNum,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 49
+    { GED_INS_FIELD_Src1SrcMod,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 50
+    { GED_INS_FIELD_Src1AddrMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 51
+    { GED_INS_FIELD_Src1HorzStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 52
+    { GED_INS_FIELD_Src1Width,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 53
+    { GED_INS_FIELD_Src1VertStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 54
+    { GED_INS_FIELD_Imm,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 55
+    { GED_INS_FIELD_Src2SrcMod,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 56
+    { GED_INS_FIELD_SrcDataType,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 57
+    { GED_INS_FIELD_Src0RepCtrl,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 58
+    { GED_INS_FIELD_Src1RepCtrl,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 59
+    { GED_INS_FIELD_Src2RepCtrl,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 60
+    { GED_INS_FIELD_Src2ChanSel,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 61
+    { GED_INS_FIELD_Src2SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 62
+    { GED_INS_FIELD_Src2RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 63
+    { GED_INS_FIELD_Src2RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 64
+    { GED_INS_FIELD_Src2AddrMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 65
+    { GED_INS_FIELD_Src2VertStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 66
+    { GED_INS_FIELD_SFID,                              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 67
+    { GED_INS_FIELD_DescRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 68
+    { GED_INS_FIELD_DescDataType,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 69
+    { GED_INS_FIELD_DescAddrSubRegNum,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 70
+    { GED_INS_FIELD_DescRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 71
+    { GED_INS_FIELD_DescHorzStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 72
+    { GED_INS_FIELD_DescWidth,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 73
+    { GED_INS_FIELD_DescVertStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 74
+    { GED_INS_FIELD_MsgDesc,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 76
+    { GED_INS_FIELD_EOT,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 77
+    { GED_INS_FIELD_MathFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 78
+    { GED_INS_FIELD_JIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 79
+    { GED_INS_FIELD_UIP,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 80
+    { GED_INS_FIELD_ControlIndex,                      GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable44, { 5, MappingFragmentsTable29 } }, // 81
+    { GED_INS_FIELD_DataTypeIndex,                     GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1IsImm,                         MappingTable51 } }, // 82
+    { GED_INS_FIELD_SubRegIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable50, { 4, MappingFragmentsTable30 } }, // 83
+    { GED_INS_FIELD_Src0Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_INDEX_MAPPING_FRAGMENTED,  CompactionTable48, { 3, MappingFragmentsTable31 } }, // 84
+    { GED_INS_FIELD_Src1Index,                         GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1IsImm,                         MappingTable45 } }, // 85
+    { GED_INS_FIELD_DescIndex,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 86
+    { GED_INS_FIELD_ExDescRegFile,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 87
+    { GED_INS_FIELD_DstMathMacroExt,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 88
+    { GED_INS_FIELD_Src0MathMacroExt,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 89
+    { GED_INS_FIELD_Src1MathMacroExt,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 90
+    { GED_INS_FIELD_Src2MathMacroExt,                  GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 91
+    { GED_INS_FIELD_BranchCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 92
+    { GED_INS_FIELD_SourceIndex,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 93
+    { GED_INS_FIELD_Src2DataType,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 94
+    { GED_INS_FIELD_NoSrcDepSet,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 95
+    { GED_INS_FIELD_ExFuncCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 96
+    { GED_INS_FIELD_ExMsgLength,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 97
+    { GED_INS_FIELD_ExDescAddrSubRegNum,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 98
+    { GED_INS_FIELD_ExDescRegNum,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 99
+    { GED_INS_FIELD_MsgDescCategory,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 100
+    { GED_INS_FIELD_MsgDescScratchAddrOffset,          GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 101
+    { GED_INS_FIELD_MsgDescScratchBlockSize,           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 102
+    { GED_INS_FIELD_MsgDescScratchInvalidateAfterRead, GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 103
+    { GED_INS_FIELD_MsgDescScratchChannelMode,         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 104
+    { GED_INS_FIELD_MsgDescScratchMessageType,         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 105
+    { GED_INS_FIELD_ExecutionDataType,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 106
+    { GED_INS_FIELD_Src0TernaryImm,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 107
+    { GED_INS_FIELD_Src2TernaryImm,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 108
+    { GED_INS_FIELD_Src2HorzStride,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 109
+    { GED_INS_FIELD_SWSB,                              GED_MAPPING_TABLE_ENTRY_TYPE_VALUE_MAPPING_CONSECUTIVE, NULL, { 0x3ff, /* {   8,  17,   0,   8,    0x3ff00 } */ { (void*)(g_uintptr_t)   0x3ff0008001108 } } }, // 110
+    { GED_INS_FIELD_Src1IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 111
+    { GED_INS_FIELD_Src0IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 112
+    { GED_INS_FIELD_Src0SubRegNumByte,                 GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 113
+    { GED_INS_FIELD_SyncFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 114
+    { GED_INS_FIELD_FusionCtrl,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 115
+    { GED_INS_FIELD_DataTypeIndexNoDep,                GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 116
+    { GED_INS_FIELD_CompactedImm,                      GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src1IsImm,                         MappingTable34 } }, // 117
+    { GED_INS_FIELD_RepeatCount,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 118
+    { GED_INS_FIELD_SystolicDepth,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 119
+    { GED_INS_FIELD_Src2Precision,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 120
+    { GED_INS_FIELD_Src2SubBytePrecision,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 121
+    { GED_INS_FIELD_Src1Precision,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 122
+    { GED_INS_FIELD_Src1SubBytePrecision,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 123
+    { GED_INS_FIELD_BfnFC,                             GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 124
+    { GED_INS_FIELD_ExBSO,                             GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 125
+    { GED_INS_FIELD_CPS,                               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 126
+    { GED_INS_FIELD_Src1Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 127
+    { GED_INS_FIELD_Src2IsImm,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 128
+    { GED_INS_FIELD_MetaRegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 129
+    { GED_INS_FIELD_MetaSubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 130
+    { GED_INS_FIELD_MetaRegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 131
+    { GED_INS_FIELD_DstRegNum8,                        GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_DstAddrMode,                       MappingTable48 } }, // 132
+    { GED_INS_FIELD_Src0RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0AddrMode,                      MappingTable53 } }, // 133
+    { GED_INS_FIELD_LfsrFC,                            GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 134
+    { GED_INS_FIELD_ShuffleFC,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 135
+    { GED_INS_FIELD_Src1RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NEXT_TABLE,                NULL, { GED_INS_FIELD_Src0AddrMode,                      MappingTable57 } }, // 136
+    { GED_INS_FIELD_Src1ScalarReg,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 137
+    { GED_INS_FIELD_Src2RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 138
+    { GED_INS_FIELD_FwdCtrl,                           GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 139
+    { GED_INS_FIELD_DnsclMode,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 140
+    { GED_INS_FIELD_RoundingMode,                      GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 141
+    { GED_INS_FIELD_ConvSrcDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 142
+    { GED_INS_FIELD_ConvDstDataType,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 143
+    { GED_INS_FIELD_SendSwitchCtrl,                    GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 144
+    { GED_INS_FIELD_IndMsgDesc0IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 145
+    { GED_INS_FIELD_IndMsgDesc1IsPresent,              GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 146
+    { GED_INS_FIELD_MsgDesc64,                         GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 147
+    { GED_INS_FIELD_IndMsgDesc1Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 148
+    { GED_INS_FIELD_IndMsgDesc0Addr,                   GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 149
+    { GED_INS_FIELD_Src0Length,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 150
+    { GED_INS_FIELD_Src4RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 151
+    { GED_INS_FIELD_Src3RegFile,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 152
+    { GED_INS_FIELD_Src4RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 153
+    { GED_INS_FIELD_Src3RegNum,                        GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 154
+    { GED_INS_FIELD_SystolicDepthBlkScl,               GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 155
+    { GED_INS_FIELD_Src4SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 156
+    { GED_INS_FIELD_Src3SubRegNum,                     GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 157
+    { GED_INS_FIELD_Src3RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } }, // 158
+    { GED_INS_FIELD_Src4RegNum8,                       GED_MAPPING_TABLE_ENTRY_TYPE_NOT_SUPPORTED,             NULL, { 0 } } // 159
+}; // MappingTable98[]

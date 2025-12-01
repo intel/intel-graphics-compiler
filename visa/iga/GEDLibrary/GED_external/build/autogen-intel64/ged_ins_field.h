@@ -67,10 +67,10 @@ typedef enum
     /*!
      * Number of source operands in this instruction.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_NumOfSourceOperands,
 
@@ -80,10 +80,10 @@ typedef enum
      * If the value is 0, some GED API functions regarding Dst operand might still function correctly, but this means that the EU
      * ignores that operand.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_HasDestinationOperand,
 
@@ -98,10 +98,10 @@ typedef enum
      * Mask Control (formerly Write Enable Control). This field determines if the per channel write enables are used to generate the
      * final write enable. This field should be normally "0".
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_MaskCtrl,
 
@@ -133,17 +133,17 @@ typedef enum
      * This field provides offset information for ARF selection. The can be thought of as a starting channel offset for the execution
      * mask and other ARF registers implicitly accessed
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_ChannelOffset,
 
     /*!
      * Thread Control. This field provides explicit control for thread switching.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_ThreadCtrl,
 
@@ -151,10 +151,10 @@ typedef enum
      * Predicate Control. This field, together with PredInv, enables and controls the generation of the predication mask for the
      * instruction. It allows per-channel conditional execution of the instruction based on the content of the selected flag register.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_PredCtrl,
 
@@ -163,14 +163,14 @@ typedef enum
      * instruction. When it is set, the predication uses the inverse of the predication bits generated according to setting of
      * Predicate Control. In other words, effect of PredInv happens after PredCtrl.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
      * @par XE.HPC.A, XE.HPC
      * This field is ignored by hardware if Predicate Control is set to 0000 - there is no predication. PMask is the final predication
      * mask produced by the effects of both fields.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_PredInv,
 
@@ -178,10 +178,10 @@ typedef enum
      * Execution Size. This field determines the number of channels operating in parallel for this instruction. The size cannot exceed
      * the maximum number of channels allowed for the given data type.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_ExecSize,
 
@@ -190,10 +190,10 @@ typedef enum
      * pipe such as sign, zero, overflow and NaNs, etc. If this field is set to 0000, no flag registers are updated. Flag registers
      * are not updated for instructions with embedded compares.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_CondModifier,
 
@@ -208,20 +208,20 @@ typedef enum
      * Debug Control. This field allows the insertion of a breakpoint at the current instruction. When the bit is set, hardware
      * automatically stores the current IP in CR register and jumps to the System IP (SIP) BEFORE executing the current instruction.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DebugCtrl,
 
     /*!
      * Saturate. This field controls the destination saturation.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Saturate,
 
@@ -231,10 +231,10 @@ typedef enum
      *
      * For a send instruction, this field applies to the PostDst - the post destination operand.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DstRegFile,
 
@@ -243,20 +243,20 @@ typedef enum
      * operand are interpreted as the identified numeric data type, rather than coerced into a type implied by the operator. For a
      * send instruction, this field applies to the CurrDst - the current destination operand.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DstDataType,
 
     /*!
      * Source 0 Register File. This field identifies the register file of the first source operand (src0).
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0RegFile,
 
@@ -266,10 +266,10 @@ typedef enum
      * Src0RegFile, there are two different encodings for this field. If a source is a register operand, this field follows the Source
      * Register Type Encoding. If a source is an immediate operand, this field follows the Source Immediate Type Encoding.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0DataType,
 
@@ -283,7 +283,7 @@ typedef enum
      * Source 1 Register File. This field identifies the register file of the second source operand (src1). Note that ARF cannot be a
      * src1 operand
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1RegFile,
 
@@ -293,10 +293,10 @@ typedef enum
      * on Src1RegFile, there are two different encodings for this field. If a source is a register operand, this field follows the
      * Source Register Type Encoding. If a source is an immediate operand, this field follows the Source Immediate Type Encoding.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1DataType,
 
@@ -320,10 +320,10 @@ typedef enum
      *
      * For a send instruction, this field applies to CurrDst.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DstSubRegNum,
 
@@ -333,10 +333,10 @@ typedef enum
      *
      * For a send instruction, this field applies to PostDst.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DstAddrImm,
 
@@ -347,10 +347,10 @@ typedef enum
      *
      * For a send instruction, this field applies to PostDst.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DstRegNum,
 
@@ -361,10 +361,10 @@ typedef enum
      *
      * For a send instruction, this field applies to PostDst.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DstAddrSubRegNum,
 
@@ -374,10 +374,10 @@ typedef enum
      *
      * For a send instruction, this field applies to CurrDst. PostDst only uses the register number.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DstHorzStride,
 
@@ -387,10 +387,10 @@ typedef enum
      * For a send instruction, this field applies to PostDst - the post destination operand. Addressing mode for CurrDst (current
      * destination operand) is fixed as Direct.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DstAddrMode,
 
@@ -409,10 +409,10 @@ typedef enum
      * operand, it provides the byte address within a 256-bit register. For an ARF register operand, this field also provides the
      * sub-register number according to the encoding defined for the given architecture register.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0SubRegNum,
 
@@ -420,10 +420,10 @@ typedef enum
      * Address Immediate. This field provides the immediate value in units of bytes added to the address register to compute the
      * register address (byte-aligned region origin) for the first source operand (src0). It is a signed integer.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0AddrImm,
 
@@ -432,10 +432,10 @@ typedef enum
      * provides the portion of register address aligning to 256-bit. For an ARF register operand, this field is encoded such that MSBs
      * identify the architecture register type and LSBs provide its register number.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0RegNum,
 
@@ -444,10 +444,10 @@ typedef enum
      * address register contains 8 sub-registers. The size of each subregister is one word. The address register contains the register
      * address of the operand, when the operand is in register-indirect addressing mode.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0AddrSubRegNum,
 
@@ -456,20 +456,20 @@ typedef enum
      * element of the source operand can optionally have its absolute value taken and/or its sign inverted prior to delivery to the
      * execution pipe. The absolute value is prior to negate such that a guaranteed negative value can be produced.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0SrcMod,
 
     /*!
      * Addressing Mode. This field determines the addressing method of the first source operand (src0).
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0AddrMode,
 
@@ -477,10 +477,10 @@ typedef enum
      * Horizontal Stride. This field provides the distance in unit of data elements between two adjacent data elements within a row
      * (horizontal) in the register region for the first source operand (src0).
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0HorzStride,
 
@@ -488,10 +488,10 @@ typedef enum
      * Width. This field specifies the number of elements in the horizontal dimension of the region for the first source operand
      * (src0). This field cannot exceed the ExecSize field of the instruction.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0Width,
 
@@ -501,17 +501,17 @@ typedef enum
      *
      * GED uses a (dummy) vertical stride to denote the special values Vx1 or VxH.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0VertStride,
 
     /*!
      * Flag Subregister Number.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
      * @par 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 8, 8.1, 9
@@ -530,14 +530,14 @@ typedef enum
      * instruction. The same flag sub-register can be both the predication source and conditional destination, if both predication and
      * conditional modifier are enabled.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_FlagSubRegNum,
 
     /*!
      * Flag Register Number.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
      * @par 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 8, 8.1, 9
@@ -549,7 +549,7 @@ typedef enum
      * @par XE.HPC.A, XE.HPC
      * This field specifies the register number for a flag register operand.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_FlagRegNum,
 
@@ -567,10 +567,10 @@ typedef enum
      * Sub-Register Number. This field provides the sub-register number for the second source operand (src1). For a GRF register
      * operand, it provides the byte address within a 256-bit register.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1SubRegNum,
 
@@ -578,10 +578,10 @@ typedef enum
      * Address Immediate. This field provides the immediate value in units of bytes added to the address register to compute the
      * register address (byte-aligned region origin) for the second source operand (src1). It is a signed integer.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1AddrImm,
 
@@ -589,10 +589,10 @@ typedef enum
      * Register Number. This field provides the register number for the second source operand (src1). For a GRF register operand, it
      * provides the portion of register address aligning to 256-bit.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1RegNum,
 
@@ -601,10 +601,10 @@ typedef enum
      * address register contains 8 sub-registers. The size of each subregister is one word. The address register contains the register
      * address of the operand, when the operand is in register-indirect addressing mode.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1AddrSubRegNum,
 
@@ -613,20 +613,20 @@ typedef enum
      * element of the source operand can optionally have its absolute value taken and/or its sign inverted prior to delivery to the
      * execution pipe. The absolute value is prior to negate such that a guaranteed negative value can be produced.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1SrcMod,
 
     /*!
      * Addressing Mode. This field determines the addressing method of the second source operand (src1)
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1AddrMode,
 
@@ -634,10 +634,10 @@ typedef enum
      * Horizontal Stride. This field provides the distance in unit of data elements between two adjacent data elements within a row
      * (horizontal) in the register region for the second source operand (src1).
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1HorzStride,
 
@@ -645,10 +645,10 @@ typedef enum
      * Width. This field specifies the number of elements in the horizontal dimension of the region for the second source operand
      * (src1). This field cannot exceed the ExecSize field of the instruction.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1Width,
 
@@ -658,10 +658,10 @@ typedef enum
      *
      * GED uses a (dummy) vertical stride to denote the special values Vx1 or VxH.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1VertStride,
 
@@ -675,10 +675,10 @@ typedef enum
      *
      * For UW and W data types, programmer is required to replicate the lower word to the upper word of this field.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Imm,
 
@@ -687,10 +687,10 @@ typedef enum
      * element of the source operand can optionally have its absolute value taken and/or its sign inverted prior to delivery to the
      * execution pipe. The absolute value is prior to negate such that a guaranteed negative value can be produced.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src2SrcMod,
 
@@ -757,7 +757,7 @@ typedef enum
      * operand, it provides the byte address within a 256-bit register. For an ARF register operand, this field also provides the
      * sub-register number according to the encoding defined for the given architecture register.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src2SubRegNum,
 
@@ -773,30 +773,30 @@ typedef enum
      * provides the portion of register address aligning to 256-bit. For an ARF register operand, this field is encoded such that MSBs
      * identify the architecture register type and LSBs provide its register number.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src2RegNum,
 
     /*!
      * Source 2 Register File. This field identifies the register file of the third source operand (src2).
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
      * @par 10, 11
      * In three source instructions, src2 is either GRF or Immediate. If src0 is Immediate, src2 must be GRF.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src2RegFile,
 
     /*!
      * Addressing Mode. This field determines the addressing method of the third source operand (src2)
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src2AddrMode,
 
@@ -813,10 +813,10 @@ typedef enum
     /*!
      * Shared Function ID.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_SFID,
 
@@ -829,7 +829,7 @@ typedef enum
      * @par 10, 11, 8, 8.1, 9
      * Message descriptor Register File. This field describes the message descriptor of the send instruction.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DescRegFile,
 
@@ -901,20 +901,20 @@ typedef enum
      *
      * The meaning of the field depends on the type of message as well as the message shared function target.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_MsgDesc,
 
     /*!
      * Extended Message Description. This field provides the extended description of the message to be sent.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_ExMsgDescImm,
 
@@ -922,20 +922,20 @@ typedef enum
      * End of Thread. This field controls the termination of the thread. For a send instruction, if this field is set, EU will
      * terminate the thread and also set the EOT bit in the message sideband.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_EOT,
 
     /*!
      * Function Control. The type of extended math function to apply.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_MathFC,
 
@@ -949,7 +949,7 @@ typedef enum
      * @par 7, 7.5
      * Jump Target Offset. The jump distance in number of eight-byte units if a jump is taken for the instruction.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_JIP,
 
@@ -963,7 +963,7 @@ typedef enum
      * Update Instruction Pointer. The byte aligned jump distance if a jump is taken for the instruction. UIP should reference the
      * instruction where all channels are expected to come together.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_UIP,
 
@@ -982,7 +982,7 @@ typedef enum
      * Lookup one of 32 21-bit values. That value is used (from MSB to LSB) for the CondCtrl[3:0], Saturate, AccWrCtrl, AtomicCtrl,
      * MaskCtrl, PredInv, PredCtrl[3:0], FlagRegNum, FlagSubRegNum, ChOff[2:0], ExecSize[2:0] bit fields.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_ControlIndex,
 
@@ -1002,7 +1002,7 @@ typedef enum
      * Lookup one of 32 21-bit values. That value is used (from MSB to LSB) for the Dst.AddrMode, Dst.HorzStride, Src1.SrcType,
      * Src1.RegFile, Src0.SrcType, Src0.RegFile, Dst.DstType, and Dst.RegFile bit fields.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DataTypeIndex,
 
@@ -1019,7 +1019,7 @@ typedef enum
      * Lookup one of 32 15-bit values. That value is used (from MSB to LSB) for various fields for Src1, Src0, and Dst, including
      * ChanEn/ChanSel, SubRegNum, and AddrImm[4] or AddrImm[4:0], depending on AddrMode and AccessMode.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_SubRegIndex,
 
@@ -1046,7 +1046,7 @@ typedef enum
      * AccessMode (Src0.ChanSel[7:4], Src0.Width, Src0.HorzStride), Src0.AddrMode, and Src0.SrcMod bit fields. Note that this field
      * spans a DWord boundary within the QWord compacted instruction.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0Index,
 
@@ -1068,7 +1068,7 @@ typedef enum
      * do any lookup. The 5-bit value directly maps to bits 108:104 (Imm[12:8]) and the upper bit (bit 39 in the compact format, bit
      * 108 in the native format) is replicated to provide bits 127:109 (Imm[31:13]) in the native format.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1Index,
 
@@ -1101,50 +1101,50 @@ typedef enum
     /*!
      * Extended Message Descriptor Register File. This field describes the extended message descriptor of the send instruction.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_ExDescRegFile,
 
     /*!
      * Specifies the extra registers used by the math macro instructions (formerly SpecialAcc).
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 8, 8.1, 9
      */
     GED_INS_FIELD_DstMathMacroExt,
 
     /*!
      * Specifies the extra registers used by the math macro instructions (formerly SpecialAcc).
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0MathMacroExt,
 
     /*!
      * Specifies the extra registers used by the math macro instructions (formerly SpecialAcc).
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1MathMacroExt,
 
     /*!
      * Specifies the extra registers used by the math macro instructions (formerly SpecialAcc).
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 8, 8.1, 9
+     * @par     Models:     10, 11, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 8, 8.1, 9
      */
     GED_INS_FIELD_Src2MathMacroExt,
 
@@ -1155,10 +1155,10 @@ typedef enum
      * will be made inactive and waiting to be joined at the join IP. The join IP is IP + UIP when BranchCtrl is clear else it is the
      * next IP.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 8, 8.1, 9
      */
     GED_INS_FIELD_BranchCtrl,
 
@@ -1185,14 +1185,14 @@ typedef enum
      * Src1.RegNum[7], Src0.SubRegNum, Src0.RegNum[7], Src2.ChanSel, Src1.ChanSel, Src0.ChanSel, Dst.SubRegNum, Dst.ChanEnable,
      * Dst.DstType, SrcType, Src2.Modifier, Src1.Modifier, and Src0.Modifier bit fields.
      *
-     * @par     Models:     10, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 8, 8.1, 9
+     * @par     Models:     10, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 8, 8.1, 9
      */
     GED_INS_FIELD_SourceIndex,
 
     /*!
      * Source 2 Data Type.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
      * @par 10
@@ -1207,7 +1207,7 @@ typedef enum
      * @par 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
      * This field specifies the numeric data type of the third source operand (src2).
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 8.1, 9
      */
     GED_INS_FIELD_Src2DataType,
 
@@ -1240,10 +1240,10 @@ typedef enum
     /*!
      * Sub-Register Number. This field provides the sub-register number for the extended message descriptor.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 9
      */
     GED_INS_FIELD_ExDescAddrSubRegNum,
 
@@ -1301,64 +1301,64 @@ typedef enum
     /*!
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_ExecutionDataType,
 
     /*!
      * 16-bit Immediate.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_Src0TernaryImm,
 
     /*!
      * 16-bit Immediate.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_Src2TernaryImm,
 
     /*!
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_Src2HorzStride,
 
     /*!
      * SWSB.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_SWSB,
 
     /*!
      * Src1IsImm
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_Src1IsImm,
 
     /*!
      * Src0IsImm
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_Src0IsImm,
 
@@ -1372,10 +1372,10 @@ typedef enum
     /*!
      * Sync FC.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_SyncFC,
 
@@ -1399,90 +1399,90 @@ typedef enum
     /*!
      * Compacted immediate
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_CompactedImm,
 
     /*!
      * This field indicate the number of instructions to be created from a single macro instruction
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE2, XE3
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_RepeatCount,
 
     /*!
      * This field describes the systolic depth of the operation
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_SystolicDepth,
 
     /*!
      * Source 2 Operand Precision. This field specifies the number of bits per element of the third source operand (src2).
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE2, XE3
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_Src2Precision,
 
     /*!
      * Source 2 Operand Precision. This field specifies the number of bits per element of the second source operand (src1).
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE2, XE3
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_Src2SubBytePrecision,
 
     /*!
      * Source 1 Operand Precision. This field specifies the number of bits per element of the third source operand (src2).
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE2, XE3
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_Src1Precision,
 
     /*!
      * Source 1 Operand Precision. This field specifies the number of bits per element of the second source operand (src1).
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE2, XE3
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_Src1SubBytePrecision,
 
     /*!
      * Index of the lut8 lookup table for the bfn instruction
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_BfnFC,
 
     /*!
      * This field indicates the Extended Bindless Surface Offset (ExBSO) mode.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_ExBSO,
 
@@ -1497,20 +1497,20 @@ typedef enum
      * This field specifies the number of 256-bit GRF registers starting from Src1RegNum to be sent out on the request message
      * payload.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_Src1Length,
 
     /*!
      * Src2IsImm
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     XE.HPC.A, XE.HPC, XE2, XE3
+     * @par     Models:     XE.HPC.A, XE.HPC, XE2, XE3, XE3P.CRI
      */
     GED_INS_FIELD_Src2IsImm,
 
@@ -1533,7 +1533,203 @@ typedef enum
      *
      * @par     Models:     XE3
      */
-    GED_INS_FIELD_MetaRegNum
+    GED_INS_FIELD_MetaRegNum,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_DstRegNum8,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src0RegNum8,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_LfsrFC,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_ShuffleFC,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src1RegNum8,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src1ScalarReg,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src2RegNum8,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_FwdCtrl,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_DnsclMode,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_RoundingMode,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_ConvSrcDataType,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_ConvDstDataType,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_SendSwitchCtrl,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_IndMsgDesc0IsPresent,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_IndMsgDesc1IsPresent,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_MsgDesc64,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_IndMsgDesc1Addr,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_IndMsgDesc0Addr,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src0Length,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src4RegFile,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src3RegFile,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src4RegNum,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src3RegNum,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_SystolicDepthBlkScl,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src4SubRegNum,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src3SubRegNum,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src3RegNum8,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src4RegNum8
 } GED_INS_FIELD;
 
 /*!
@@ -1548,20 +1744,20 @@ typedef enum
     /*!
      * Architecture register type, based on the register number when using the ARF register file.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_ArchReg,
 
     /*!
      * The architecture register number, based on the register number when using the ARF register file.
      *
-     * @par XE2, XE3
+     * @par XE2, XE3, XE3P.CRI
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, 7, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_ArchRegNum,
 

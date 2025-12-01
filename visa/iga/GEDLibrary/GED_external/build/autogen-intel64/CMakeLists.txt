@@ -8,13 +8,13 @@
 
 # GED_external/build/autogen-intel64
 set(GED_autogenintel64_cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_encoding_masks_tables.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_collectors_tables.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_lpg_md.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_restrictions.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_collectors_tables.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/version.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_interpreters.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_encoding_masks_tables.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_tables.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/version.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_api.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_compaction_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_decoding_tables.cpp
@@ -34,6 +34,7 @@ set(GED_autogenintel64_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_tgl.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe2.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe3.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe3p_cri.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hp.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc_a.cpp
@@ -42,7 +43,10 @@ set(GED_autogenintel64_cpp
 )
 # GED_external/build/autogen-intel64
 set(GED_autogenintel64_h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_decoding_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_collectors_tables.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_encoding_masks_tables.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_restrictions.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_interpreters.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_10.h
@@ -61,10 +65,7 @@ set(GED_autogenintel64_h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc_a.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpg.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_lpg_md.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_decoding_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_encoding_masks_tables.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_compaction_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations_internal.h
@@ -73,5 +74,6 @@ set(GED_autogenintel64_h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field_internal.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_fragments.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_tables.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe3p_cri.h
   PARENT_SCOPE
 )

@@ -871,6 +871,22 @@ const GED_COND_MODIFIER* CondModifierTable1[4] =
     &CondModifierVar3, // 2
     &CondModifierVar5 // 3
 }; // CondModifierTable1[]
+static GED_CONV_DST_DATATYPE ConvDstDatatypeVar0 = (GED_CONV_DST_DATATYPE)0;
+static GED_CONV_DST_DATATYPE ConvDstDatatypeVar1 = (GED_CONV_DST_DATATYPE)1;
+const GED_CONV_DST_DATATYPE* ConvDstDatatypeTable0[4] =
+{
+    NULL, // 0
+    &ConvDstDatatypeVar0, // 1
+    &ConvDstDatatypeVar1, // 2
+    NULL // 3
+}; // ConvDstDatatypeTable0[]
+static GED_CONV_SRC_DATATYPE ConvSrcDatatypeVar0 = (GED_CONV_SRC_DATATYPE)0;
+static GED_CONV_SRC_DATATYPE ConvSrcDatatypeVar1 = (GED_CONV_SRC_DATATYPE)1;
+const GED_CONV_SRC_DATATYPE* ConvSrcDatatypeTable0[2] =
+{
+    &ConvSrcDatatypeVar0, // 0
+    &ConvSrcDatatypeVar1 // 1
+}; // ConvSrcDatatypeTable0[]
 static GED_DATA_TYPE DataTypeVar0 = (GED_DATA_TYPE)0;
 static GED_DATA_TYPE DataTypeVar1 = (GED_DATA_TYPE)1;
 static GED_DATA_TYPE DataTypeVar2 = (GED_DATA_TYPE)2;
@@ -1462,6 +1478,66 @@ const GED_DATA_TYPE* DataTypeTable36[8] =
 }; // DataTypeTable36[]
 const GED_DATA_TYPE* DataTypeTable37[8] =
 {
+    &DataTypeVar17, // 0
+    &DataTypeVar10, // 1
+    &DataTypeVar7, // 2
+    &DataTypeVar6, // 3
+    &DataTypeVar19, // 4
+    &DataTypeVar15, // 5
+    &DataTypeVar18, // 6
+    NULL // 7
+}; // DataTypeTable37[]
+const GED_DATA_TYPE* DataTypeTable38[16] =
+{
+    &DataTypeVar11, // 0
+    &DataTypeVar2, // 1
+    &DataTypeVar0, // 2
+    &DataTypeVar8, // 3
+    &DataTypeVar13, // 4
+    &DataTypeVar3, // 5
+    &DataTypeVar1, // 6
+    &DataTypeVar9, // 7
+    NULL, // 8
+    &DataTypeVar10, // 9
+    &DataTypeVar7, // 10
+    &DataTypeVar6, // 11
+    NULL, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL // 15
+}; // DataTypeTable38[]
+const GED_DATA_TYPE* DataTypeTable39[16] =
+{
+    &DataTypeVar4, // 0
+    &DataTypeVar2, // 1
+    NULL, // 2
+    NULL, // 3
+    NULL, // 4
+    NULL, // 5
+    NULL, // 6
+    NULL, // 7
+    NULL, // 8
+    &DataTypeVar10, // 9
+    &DataTypeVar7, // 10
+    NULL, // 11
+    NULL, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL // 15
+}; // DataTypeTable39[]
+const GED_DATA_TYPE* DataTypeTable40[8] =
+{
+    &DataTypeVar17, // 0
+    &DataTypeVar10, // 1
+    NULL, // 2
+    NULL, // 3
+    &DataTypeVar19, // 4
+    &DataTypeVar15, // 5
+    NULL, // 6
+    NULL // 7
+}; // DataTypeTable40[]
+const GED_DATA_TYPE* DataTypeTable41[8] =
+{
     &DataTypeVar0, // 0
     &DataTypeVar1, // 1
     &DataTypeVar2, // 2
@@ -1470,8 +1546,8 @@ const GED_DATA_TYPE* DataTypeTable37[8] =
     &DataTypeVar5, // 5
     &DataTypeVar6, // 6
     &DataTypeVar7 // 7
-}; // DataTypeTable37[]
-const GED_DATA_TYPE* DataTypeTable38[8] =
+}; // DataTypeTable41[]
+const GED_DATA_TYPE* DataTypeTable42[8] =
 {
     &DataTypeVar0, // 0
     NULL, // 1
@@ -1481,8 +1557,8 @@ const GED_DATA_TYPE* DataTypeTable38[8] =
     NULL, // 5
     NULL, // 6
     NULL // 7
-}; // DataTypeTable38[]
-const GED_DATA_TYPE* DataTypeTable39[8] =
+}; // DataTypeTable42[]
+const GED_DATA_TYPE* DataTypeTable43[8] =
 {
     NULL, // 0
     &DataTypeVar1, // 1
@@ -1492,8 +1568,8 @@ const GED_DATA_TYPE* DataTypeTable39[8] =
     NULL, // 5
     NULL, // 6
     NULL // 7
-}; // DataTypeTable39[]
-const GED_DATA_TYPE* DataTypeTable40[8] =
+}; // DataTypeTable43[]
+const GED_DATA_TYPE* DataTypeTable44[8] =
 {
     &DataTypeVar0, // 0
     &DataTypeVar1, // 1
@@ -1503,14 +1579,14 @@ const GED_DATA_TYPE* DataTypeTable40[8] =
     &DataTypeVar12, // 5
     &DataTypeVar13, // 6
     &DataTypeVar7 // 7
-}; // DataTypeTable40[]
-const GED_DATA_TYPE* DataTypeTable41[4] =
+}; // DataTypeTable44[]
+const GED_DATA_TYPE* DataTypeTable45[4] =
 {
     &DataTypeVar7, // 0
     &DataTypeVar1, // 1
     &DataTypeVar0, // 2
     &DataTypeVar6 // 3
-}; // DataTypeTable41[]
+}; // DataTypeTable45[]
 static GED_DEBUG_CTRL DebugCtrlVar0 = (GED_DEBUG_CTRL)0;
 static GED_DEBUG_CTRL DebugCtrlVar1 = (GED_DEBUG_CTRL)1;
 const GED_DEBUG_CTRL* DebugCtrlTable0[2] =
@@ -1529,6 +1605,17 @@ const GED_DEP_CTRL* DepCtrlTable0[4] =
     &DepCtrlVar2, // 2
     &DepCtrlVar3 // 3
 }; // DepCtrlTable0[]
+static GED_DNSCL_MODE DnsclModeVar0 = (GED_DNSCL_MODE)0;
+static GED_DNSCL_MODE DnsclModeVar1 = (GED_DNSCL_MODE)1;
+static GED_DNSCL_MODE DnsclModeVar2 = (GED_DNSCL_MODE)2;
+static GED_DNSCL_MODE DnsclModeVar3 = (GED_DNSCL_MODE)3;
+const GED_DNSCL_MODE* DnsclModeTable0[4] =
+{
+    &DnsclModeVar0, // 0
+    &DnsclModeVar1, // 1
+    &DnsclModeVar2, // 2
+    &DnsclModeVar3 // 3
+}; // DnsclModeTable0[]
 static GED_DPADDR_REG_SIZE DPAddrRegSizeVar0 = (GED_DPADDR_REG_SIZE)0;
 static GED_DPADDR_REG_SIZE DPAddrRegSizeVar1 = (GED_DPADDR_REG_SIZE)1;
 static GED_DPADDR_REG_SIZE DPAddrRegSizeVar2 = (GED_DPADDR_REG_SIZE)2;
@@ -2224,6 +2311,11 @@ const GED_EXECUTION_DATA_TYPE* ExecutionDataTypeTable0[2] =
     &ExecutionDataTypeVar0, // 0
     &ExecutionDataTypeVar1 // 1
 }; // ExecutionDataTypeTable0[]
+const GED_EXECUTION_DATA_TYPE* ExecutionDataTypeTable1[2] =
+{
+    NULL, // 0
+    &ExecutionDataTypeVar1 // 1
+}; // ExecutionDataTypeTable1[]
 static GED_FUSION_CTRL FusionCtrlVar0 = (GED_FUSION_CTRL)0;
 static GED_FUSION_CTRL FusionCtrlVar1 = (GED_FUSION_CTRL)1;
 const GED_FUSION_CTRL* FusionCtrlTable0[2] =
@@ -2245,6 +2337,17 @@ const GED_IS_IMM* IsImmTable0[2] =
     &IsImmVar1, // 0
     &IsImmVar0 // 1
 }; // IsImmTable0[]
+static GED_LFSR_FC LfsrFCVar0 = (GED_LFSR_FC)0;
+static GED_LFSR_FC LfsrFCVar1 = (GED_LFSR_FC)1;
+static GED_LFSR_FC LfsrFCVar2 = (GED_LFSR_FC)2;
+static GED_LFSR_FC LfsrFCVar3 = (GED_LFSR_FC)3;
+const GED_LFSR_FC* LfsrFCTable0[4] =
+{
+    &LfsrFCVar0, // 0
+    &LfsrFCVar1, // 1
+    &LfsrFCVar2, // 2
+    &LfsrFCVar3 // 3
+}; // LfsrFCTable0[]
 static GED_MASK_CTRL MaskCtrlVar0 = (GED_MASK_CTRL)0;
 static GED_MASK_CTRL MaskCtrlVar1 = (GED_MASK_CTRL)1;
 const GED_MASK_CTRL* MaskCtrlTable0[2] =
@@ -2271,6 +2374,8 @@ static GED_MATH_FC MathFCVar10 = (GED_MATH_FC)10;
 static GED_MATH_FC MathFCVar11 = (GED_MATH_FC)11;
 static GED_MATH_FC MathFCVar12 = (GED_MATH_FC)12;
 static GED_MATH_FC MathFCVar13 = (GED_MATH_FC)13;
+static GED_MATH_FC MathFCVar14 = (GED_MATH_FC)14;
+static GED_MATH_FC MathFCVar15 = (GED_MATH_FC)15;
 const GED_MATH_FC* MathFCTable0[16] =
 {
     NULL, // 0
@@ -2339,6 +2444,25 @@ const GED_MATH_FC* MathFCTable3[16] =
     &MathFCVar5, // 6
     &MathFCVar6, // 7
     NULL, // 8
+    &MathFCVar14, // 9
+    &MathFCVar15, // 10
+    NULL, // 11
+    NULL, // 12
+    NULL, // 13
+    &MathFCVar12, // 14
+    &MathFCVar13 // 15
+}; // MathFCTable3[]
+const GED_MATH_FC* MathFCTable4[16] =
+{
+    NULL, // 0
+    &MathFCVar0, // 1
+    &MathFCVar1, // 2
+    &MathFCVar2, // 3
+    &MathFCVar3, // 4
+    &MathFCVar4, // 5
+    &MathFCVar5, // 6
+    &MathFCVar6, // 7
+    NULL, // 8
     &MathFCVar7, // 9
     &MathFCVar8, // 10
     &MathFCVar9, // 11
@@ -2346,7 +2470,7 @@ const GED_MATH_FC* MathFCTable3[16] =
     &MathFCVar11, // 13
     NULL, // 14
     NULL // 15
-}; // MathFCTable3[]
+}; // MathFCTable4[]
 static GED_MATH_MACRO_EXT MathMacroExtVar0 = (GED_MATH_MACRO_EXT)0;
 static GED_MATH_MACRO_EXT MathMacroExtVar1 = (GED_MATH_MACRO_EXT)1;
 static GED_MATH_MACRO_EXT MathMacroExtVar2 = (GED_MATH_MACRO_EXT)2;
@@ -3176,6 +3300,16 @@ static GED_OPCODE OpcodeVar79 = (GED_OPCODE)79;
 static GED_OPCODE OpcodeVar80 = (GED_OPCODE)80;
 static GED_OPCODE OpcodeVar81 = (GED_OPCODE)81;
 static GED_OPCODE OpcodeVar82 = (GED_OPCODE)82;
+static GED_OPCODE OpcodeVar83 = (GED_OPCODE)83;
+static GED_OPCODE OpcodeVar84 = (GED_OPCODE)84;
+static GED_OPCODE OpcodeVar85 = (GED_OPCODE)85;
+static GED_OPCODE OpcodeVar86 = (GED_OPCODE)86;
+static GED_OPCODE OpcodeVar87 = (GED_OPCODE)87;
+static GED_OPCODE OpcodeVar88 = (GED_OPCODE)88;
+static GED_OPCODE OpcodeVar89 = (GED_OPCODE)89;
+static GED_OPCODE OpcodeVar90 = (GED_OPCODE)90;
+static GED_OPCODE OpcodeVar91 = (GED_OPCODE)91;
+static GED_OPCODE OpcodeVar92 = (GED_OPCODE)92;
 const GED_OPCODE* OpcodeTable0[128] =
 {
     &OpcodeVar0, // 0
@@ -4358,6 +4492,137 @@ const GED_OPCODE* OpcodeTable8[128] =
 const GED_OPCODE* OpcodeTable9[128] =
 {
     &OpcodeVar1, // 0
+    &OpcodeVar72, // 1
+    &OpcodeVar80, // 2
+    NULL, // 3
+    NULL, // 4
+    NULL, // 5
+    NULL, // 6
+    NULL, // 7
+    NULL, // 8
+    NULL, // 9
+    NULL, // 10
+    NULL, // 11
+    NULL, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL, // 15
+    NULL, // 16
+    NULL, // 17
+    NULL, // 18
+    NULL, // 19
+    NULL, // 20
+    NULL, // 21
+    NULL, // 22
+    NULL, // 23
+    NULL, // 24
+    NULL, // 25
+    NULL, // 26
+    NULL, // 27
+    NULL, // 28
+    NULL, // 29
+    NULL, // 30
+    NULL, // 31
+    &OpcodeVar20, // 32
+    NULL, // 33
+    &OpcodeVar22, // 34
+    NULL, // 35
+    &OpcodeVar24, // 36
+    &OpcodeVar25, // 37
+    NULL, // 38
+    &OpcodeVar26, // 39
+    &OpcodeVar27, // 40
+    &OpcodeVar28, // 41
+    &OpcodeVar29, // 42
+    &OpcodeVar30, // 43
+    &OpcodeVar31, // 44
+    &OpcodeVar32, // 45
+    &OpcodeVar33, // 46
+    &OpcodeVar34, // 47
+    NULL, // 48
+    &OpcodeVar36, // 49
+    &OpcodeVar37, // 50
+    &OpcodeVar81, // 51
+    &OpcodeVar82, // 52
+    &OpcodeVar83, // 53
+    &OpcodeVar84, // 54
+    NULL, // 55
+    &OpcodeVar40, // 56
+    &OpcodeVar85, // 57
+    NULL, // 58
+    NULL, // 59
+    NULL, // 60
+    NULL, // 61
+    NULL, // 62
+    NULL, // 63
+    &OpcodeVar41, // 64
+    &OpcodeVar42, // 65
+    &OpcodeVar43, // 66
+    &OpcodeVar44, // 67
+    &OpcodeVar45, // 68
+    &OpcodeVar46, // 69
+    &OpcodeVar47, // 70
+    &OpcodeVar48, // 71
+    NULL, // 72
+    NULL, // 73
+    &OpcodeVar51, // 74
+    &OpcodeVar52, // 75
+    &OpcodeVar53, // 76
+    &OpcodeVar54, // 77
+    &OpcodeVar55, // 78
+    &OpcodeVar56, // 79
+    &OpcodeVar86, // 80
+    NULL, // 81
+    &OpcodeVar73, // 82
+    NULL, // 83
+    &OpcodeVar78, // 84
+    &OpcodeVar87, // 85
+    NULL, // 86
+    NULL, // 87
+    &OpcodeVar71, // 88
+    &OpcodeVar74, // 89
+    NULL, // 90
+    &OpcodeVar65, // 91
+    &OpcodeVar88, // 92
+    &OpcodeVar67, // 93
+    NULL, // 94
+    &OpcodeVar89, // 95
+    &OpcodeVar68, // 96
+    &OpcodeVar2, // 97
+    &OpcodeVar3, // 98
+    &OpcodeVar4, // 99
+    &OpcodeVar5, // 100
+    &OpcodeVar6, // 101
+    &OpcodeVar7, // 102
+    &OpcodeVar8, // 103
+    &OpcodeVar9, // 104
+    &OpcodeVar10, // 105
+    NULL, // 106
+    &OpcodeVar76, // 107
+    &OpcodeVar12, // 108
+    NULL, // 109
+    &OpcodeVar69, // 110
+    &OpcodeVar70, // 111
+    &OpcodeVar13, // 112
+    &OpcodeVar14, // 113
+    &OpcodeVar15, // 114
+    NULL, // 115
+    NULL, // 116
+    NULL, // 117
+    NULL, // 118
+    &OpcodeVar16, // 119
+    &OpcodeVar17, // 120
+    &OpcodeVar18, // 121
+    &OpcodeVar19, // 122
+    NULL, // 123
+    NULL, // 124
+    NULL, // 125
+    NULL, // 126
+    NULL // 127
+}; // OpcodeTable9[]
+const GED_OPCODE* OpcodeTable10[128] =
+{
+    &OpcodeVar1, // 0
     &OpcodeVar2, // 1
     &OpcodeVar3, // 2
     &OpcodeVar4, // 3
@@ -4376,8 +4641,8 @@ const GED_OPCODE* OpcodeTable9[128] =
     &OpcodeVar13, // 16
     &OpcodeVar14, // 17
     &OpcodeVar15, // 18
-    &OpcodeVar80, // 19
-    &OpcodeVar81, // 20
+    &OpcodeVar90, // 19
+    &OpcodeVar91, // 20
     NULL, // 21
     NULL, // 22
     &OpcodeVar16, // 23
@@ -4485,8 +4750,8 @@ const GED_OPCODE* OpcodeTable9[128] =
     NULL, // 125
     &OpcodeVar68, // 126
     NULL // 127
-}; // OpcodeTable9[]
-const GED_OPCODE* OpcodeTable10[128] =
+}; // OpcodeTable10[]
+const GED_OPCODE* OpcodeTable11[128] =
 {
     &OpcodeVar1, // 0
     &OpcodeVar2, // 1
@@ -4498,7 +4763,7 @@ const GED_OPCODE* OpcodeTable10[128] =
     &OpcodeVar8, // 7
     &OpcodeVar9, // 8
     &OpcodeVar10, // 9
-    &OpcodeVar82, // 10
+    &OpcodeVar92, // 10
     NULL, // 11
     &OpcodeVar12, // 12
     NULL, // 13
@@ -4507,8 +4772,8 @@ const GED_OPCODE* OpcodeTable10[128] =
     &OpcodeVar13, // 16
     &OpcodeVar14, // 17
     &OpcodeVar15, // 18
-    &OpcodeVar80, // 19
-    &OpcodeVar81, // 20
+    &OpcodeVar90, // 19
+    &OpcodeVar91, // 20
     NULL, // 21
     NULL, // 22
     &OpcodeVar16, // 23
@@ -4616,8 +4881,8 @@ const GED_OPCODE* OpcodeTable10[128] =
     NULL, // 125
     &OpcodeVar68, // 126
     NULL // 127
-}; // OpcodeTable10[]
-const GED_OPCODE* OpcodeTable11[128] =
+}; // OpcodeTable11[]
+const GED_OPCODE* OpcodeTable12[128] =
 {
     &OpcodeVar1, // 0
     &OpcodeVar2, // 1
@@ -4747,7 +5012,7 @@ const GED_OPCODE* OpcodeTable11[128] =
     NULL, // 125
     &OpcodeVar68, // 126
     NULL // 127
-}; // OpcodeTable11[]
+}; // OpcodeTable12[]
 static GED_PRECISION PrecisionVar0 = (GED_PRECISION)0;
 static GED_PRECISION PrecisionVar1 = (GED_PRECISION)1;
 static GED_PRECISION PrecisionVar2 = (GED_PRECISION)2;
@@ -4762,6 +5027,7 @@ static GED_PRECISION PrecisionVar10 = (GED_PRECISION)10;
 static GED_PRECISION PrecisionVar11 = (GED_PRECISION)11;
 static GED_PRECISION PrecisionVar12 = (GED_PRECISION)12;
 static GED_PRECISION PrecisionVar13 = (GED_PRECISION)13;
+static GED_PRECISION PrecisionVar14 = (GED_PRECISION)14;
 const GED_PRECISION* PrecisionTable0[32] =
 {
     &PrecisionVar0, // 0
@@ -4937,6 +5203,41 @@ const GED_PRECISION* PrecisionTable4[32] =
     NULL, // 30
     NULL // 31
 }; // PrecisionTable4[]
+const GED_PRECISION* PrecisionTable5[32] =
+{
+    &PrecisionVar10, // 0
+    NULL, // 1
+    &PrecisionVar14, // 2
+    NULL, // 3
+    &PrecisionVar8, // 4
+    NULL, // 5
+    NULL, // 6
+    NULL, // 7
+    NULL, // 8
+    NULL, // 9
+    NULL, // 10
+    NULL, // 11
+    &PrecisionVar11, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL, // 15
+    &PrecisionVar13, // 16
+    NULL, // 17
+    NULL, // 18
+    NULL, // 19
+    &PrecisionVar9, // 20
+    NULL, // 21
+    NULL, // 22
+    NULL, // 23
+    &PrecisionVar12, // 24
+    NULL, // 25
+    NULL, // 26
+    NULL, // 27
+    NULL, // 28
+    NULL, // 29
+    NULL, // 30
+    NULL // 31
+}; // PrecisionTable5[]
 static GED_PRED_CTRL PredCtrlVar0 = (GED_PRED_CTRL)0;
 static GED_PRED_CTRL PredCtrlVar1 = (GED_PRED_CTRL)1;
 static GED_PRED_CTRL PredCtrlVar2 = (GED_PRED_CTRL)2;
@@ -5117,6 +5418,13 @@ const GED_RETURN_DATA_CONTROL* ReturnDataControlTable0[2] =
     &ReturnDataControlVar0, // 0
     &ReturnDataControlVar1 // 1
 }; // ReturnDataControlTable0[]
+static GED_ROUNDING_MODE RoundingModeVar0 = (GED_ROUNDING_MODE)0;
+static GED_ROUNDING_MODE RoundingModeVar1 = (GED_ROUNDING_MODE)1;
+const GED_ROUNDING_MODE* RoundingModeTable0[2] =
+{
+    &RoundingModeVar0, // 0
+    &RoundingModeVar1 // 1
+}; // RoundingModeTable0[]
 static GED_SATURATE SaturateVar0 = (GED_SATURATE)0;
 static GED_SATURATE SaturateVar1 = (GED_SATURATE)1;
 const GED_SATURATE* SaturateTable0[2] =
@@ -5146,6 +5454,7 @@ static GED_SFID SFIDVar18 = (GED_SFID)18;
 static GED_SFID SFIDVar19 = (GED_SFID)19;
 static GED_SFID SFIDVar20 = (GED_SFID)20;
 static GED_SFID SFIDVar21 = (GED_SFID)21;
+static GED_SFID SFIDVar22 = (GED_SFID)22;
 const GED_SFID* SFIDTable0[16] =
 {
     &SFIDVar0, // 0
@@ -5228,18 +5537,18 @@ const GED_SFID* SFIDTable4[16] =
     NULL, // 1
     &SFIDVar1, // 2
     &SFIDVar2, // 3
-    &SFIDVar20, // 4
+    NULL, // 4
     &SFIDVar4, // 5
     &SFIDVar5, // 6
-    &SFIDVar6, // 7
-    &SFIDVar7, // 8
-    &SFIDVar21, // 9
+    &SFIDVar14, // 7
+    &SFIDVar15, // 8
+    NULL, // 9
     &SFIDVar9, // 10
-    &SFIDVar10, // 11
-    NULL, // 12
-    NULL, // 13
-    NULL, // 14
-    NULL // 15
+    NULL, // 11
+    &SFIDVar20, // 12
+    &SFIDVar16, // 13
+    &SFIDVar17, // 14
+    &SFIDVar18 // 15
 }; // SFIDTable4[]
 const GED_SFID* SFIDTable5[16] =
 {
@@ -5247,19 +5556,50 @@ const GED_SFID* SFIDTable5[16] =
     NULL, // 1
     &SFIDVar1, // 2
     &SFIDVar2, // 3
-    &SFIDVar20, // 4
+    &SFIDVar21, // 4
     &SFIDVar4, // 5
     &SFIDVar5, // 6
     &SFIDVar6, // 7
     &SFIDVar7, // 8
-    &SFIDVar21, // 9
+    &SFIDVar22, // 9
+    &SFIDVar9, // 10
+    &SFIDVar10, // 11
+    NULL, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL // 15
+}; // SFIDTable5[]
+const GED_SFID* SFIDTable6[16] =
+{
+    &SFIDVar0, // 0
+    NULL, // 1
+    &SFIDVar1, // 2
+    &SFIDVar2, // 3
+    &SFIDVar21, // 4
+    &SFIDVar4, // 5
+    &SFIDVar5, // 6
+    &SFIDVar6, // 7
+    &SFIDVar7, // 8
+    &SFIDVar22, // 9
     &SFIDVar9, // 10
     &SFIDVar10, // 11
     &SFIDVar11, // 12
     &SFIDVar12, // 13
     NULL, // 14
     NULL // 15
-}; // SFIDTable5[]
+}; // SFIDTable6[]
+static GED_SHUFFLE_FC ShuffleFCVar0 = (GED_SHUFFLE_FC)0;
+const GED_SHUFFLE_FC* ShuffleFCTable0[8] =
+{
+    NULL, // 0
+    NULL, // 1
+    NULL, // 2
+    NULL, // 3
+    NULL, // 4
+    NULL, // 5
+    &ShuffleFCVar0, // 6
+    NULL // 7
+}; // ShuffleFCTable0[]
 static GED_SIMDMODE SIMDModeVar0 = (GED_SIMDMODE)0;
 static GED_SIMDMODE SIMDModeVar1 = (GED_SIMDMODE)1;
 static GED_SIMDMODE SIMDModeVar2 = (GED_SIMDMODE)2;
@@ -5315,6 +5655,7 @@ static GED_SUB_BYTE_PRECISION SubBytePrecisionVar3 = (GED_SUB_BYTE_PRECISION)3;
 static GED_SUB_BYTE_PRECISION SubBytePrecisionVar4 = (GED_SUB_BYTE_PRECISION)4;
 static GED_SUB_BYTE_PRECISION SubBytePrecisionVar5 = (GED_SUB_BYTE_PRECISION)5;
 static GED_SUB_BYTE_PRECISION SubBytePrecisionVar6 = (GED_SUB_BYTE_PRECISION)6;
+static GED_SUB_BYTE_PRECISION SubBytePrecisionVar7 = (GED_SUB_BYTE_PRECISION)7;
 const GED_SUB_BYTE_PRECISION* SubBytePrecisionTable0[4] =
 {
     &SubBytePrecisionVar0, // 0
@@ -5350,6 +5691,13 @@ const GED_SUB_BYTE_PRECISION* SubBytePrecisionTable4[4] =
     &SubBytePrecisionVar5, // 2
     NULL // 3
 }; // SubBytePrecisionTable4[]
+const GED_SUB_BYTE_PRECISION* SubBytePrecisionTable5[4] =
+{
+    &SubBytePrecisionVar0, // 0
+    NULL, // 1
+    &SubBytePrecisionVar7, // 2
+    NULL // 3
+}; // SubBytePrecisionTable5[]
 static GED_SUB_FUNC_ID SubFuncIDVar0 = (GED_SUB_FUNC_ID)0;
 static GED_SUB_FUNC_ID SubFuncIDVar1 = (GED_SUB_FUNC_ID)1;
 static GED_SUB_FUNC_ID SubFuncIDVar2 = (GED_SUB_FUNC_ID)2;

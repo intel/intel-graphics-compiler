@@ -161,6 +161,24 @@ const char* CondModifierEnumeration[10] =
 }; // CondModifierEnumeration[]
 #endif // GED_COND_MODIFIER_HIDDEN
 
+#ifndef GED_CONV_DST_DATATYPE_HIDDEN
+const char* ConvDstDatatypeEnumeration[3] =
+{
+    "e2m1", // 0
+    "int4", // 1
+    NULL // 2
+}; // ConvDstDatatypeEnumeration[]
+#endif // GED_CONV_DST_DATATYPE_HIDDEN
+
+#ifndef GED_CONV_SRC_DATATYPE_HIDDEN
+const char* ConvSrcDatatypeEnumeration[3] =
+{
+    "HF", // 0
+    "BF", // 1
+    NULL // 2
+}; // ConvSrcDatatypeEnumeration[]
+#endif // GED_CONV_SRC_DATATYPE_HIDDEN
+
 #ifndef GED_DATA_TYPE_HIDDEN
 const char* DataTypeEnumeration[21] =
 {
@@ -207,6 +225,17 @@ const char* DepCtrlEnumeration[5] =
     NULL // 4
 }; // DepCtrlEnumeration[]
 #endif // GED_DEP_CTRL_HIDDEN
+
+#ifndef GED_DNSCL_MODE_HIDDEN
+const char* DnsclModeEnumeration[5] =
+{
+    "Mode0", // 0
+    "Mode1", // 1
+    "Mode2", // 2
+    "Mode3", // 3
+    NULL // 4
+}; // DnsclModeEnumeration[]
+#endif // GED_DNSCL_MODE_HIDDEN
 
 #ifndef GED_DPADDR_REG_SIZE_HIDDEN
 const char* DPAddrRegSizeEnumeration[7] =
@@ -499,6 +528,17 @@ const char* IsImmEnumeration[3] =
 }; // IsImmEnumeration[]
 #endif // GED_IS_IMM_HIDDEN
 
+#ifndef GED_LFSR_FC_HIDDEN
+const char* LfsrFCEnumeration[5] =
+{
+    "b32", // 0
+    "b16v2", // 1
+    "b8v4", // 2
+    "reserved", // 3
+    NULL // 4
+}; // LfsrFCEnumeration[]
+#endif // GED_LFSR_FC_HIDDEN
+
 #ifndef GED_MASK_CTRL_HIDDEN
 const char* MaskCtrlEnumeration[3] =
 {
@@ -509,7 +549,7 @@ const char* MaskCtrlEnumeration[3] =
 #endif // GED_MASK_CTRL_HIDDEN
 
 #ifndef GED_MATH_FC_HIDDEN
-const char* MathFCEnumeration[15] =
+const char* MathFCEnumeration[17] =
 {
     "INV", // 0
     "LOG", // 1
@@ -525,7 +565,9 @@ const char* MathFCEnumeration[15] =
     "INT DIV REMAINDER", // 11
     "INVM", // 12
     "RSQRTM", // 13
-    NULL // 14
+    "TANH", // 14
+    "SIGM", // 15
+    NULL // 16
 }; // MathFCEnumeration[]
 #endif // GED_MATH_FC_HIDDEN
 
@@ -639,7 +681,7 @@ const char* NoSrcDepSetEnumeration[3] =
 #endif // GED_NO_SRC_DEP_SET_HIDDEN
 
 #ifndef GED_OPCODE_HIDDEN
-const char* OpcodeEnumeration[84] =
+const char* OpcodeEnumeration[94] =
 {
     "stub", // 0
     "illegal", // 1
@@ -721,15 +763,25 @@ const char* OpcodeEnumeration[84] =
     "macl", // 77
     "srnd", // 78
     "sdpas", // 79
-    "f32to16", // 80
-    "f16to32", // 81
-    "dim", // 82
-    NULL // 83
+    "thryld", // 80
+    "sendg", // 81
+    "sendgc", // 82
+    "sendgx", // 83
+    "sendgxc", // 84
+    "lfsr", // 85
+    "shfl", // 86
+    "dnscl", // 87
+    "bdpas", // 88
+    "mullh", // 89
+    "f32to16", // 90
+    "f16to32", // 91
+    "dim", // 92
+    NULL // 93
 }; // OpcodeEnumeration[]
 #endif // GED_OPCODE_HIDDEN
 
 #ifndef GED_PRECISION_HIDDEN
-const char* PrecisionEnumeration[15] =
+const char* PrecisionEnumeration[16] =
 {
     "u8", // 0
     "u4", // 1
@@ -745,7 +797,8 @@ const char* PrecisionEnumeration[15] =
     "df", // 11
     "tf32", // 12
     "hf8", // 13
-    NULL // 14
+    "e2m1", // 14
+    NULL // 15
 }; // PrecisionEnumeration[]
 #endif // GED_PRECISION_HIDDEN
 
@@ -813,6 +866,15 @@ const char* ReturnDataControlEnumeration[3] =
 }; // ReturnDataControlEnumeration[]
 #endif // GED_RETURN_DATA_CONTROL_HIDDEN
 
+#ifndef GED_ROUNDING_MODE_HIDDEN
+const char* RoundingModeEnumeration[3] =
+{
+    "srnd", // 0
+    "rne", // 1
+    NULL // 2
+}; // RoundingModeEnumeration[]
+#endif // GED_ROUNDING_MODE_HIDDEN
+
 #ifndef GED_SATURATE_HIDDEN
 const char* SaturateEnumeration[3] =
 {
@@ -823,7 +885,7 @@ const char* SaturateEnumeration[3] =
 #endif // GED_SATURATE_HIDDEN
 
 #ifndef GED_SFID_HIDDEN
-const char* SFIDEnumeration[23] =
+const char* SFIDEnumeration[24] =
 {
     "NULL", // 0
     "SAMPLER", // 1
@@ -845,11 +907,20 @@ const char* SFIDEnumeration[23] =
     "SLM", // 17
     "UGM", // 18
     "DP_CONST", // 19
-    "DP_SAMPLER", // 20
-    "DP_CC", // 21
-    NULL // 22
+    "DP_GENERIC", // 20
+    "DP_SAMPLER", // 21
+    "DP_CC", // 22
+    NULL // 23
 }; // SFIDEnumeration[]
 #endif // GED_SFID_HIDDEN
+
+#ifndef GED_SHUFFLE_FC_HIDDEN
+const char* ShuffleFCEnumeration[2] =
+{
+    "idx4", // 0
+    NULL // 1
+}; // ShuffleFCEnumeration[]
+#endif // GED_SHUFFLE_FC_HIDDEN
 
 #ifndef GED_SIMDMODE_HIDDEN
 const char* SIMDModeEnumeration[4] =
@@ -883,7 +954,7 @@ const char* SrcModEnumeration[5] =
 #endif // GED_SRC_MOD_HIDDEN
 
 #ifndef GED_SUB_BYTE_PRECISION_HIDDEN
-const char* SubBytePrecisionEnumeration[8] =
+const char* SubBytePrecisionEnumeration[9] =
 {
     "None", // 0
     "s4", // 1
@@ -892,7 +963,8 @@ const char* SubBytePrecisionEnumeration[8] =
     "u4", // 4
     "u2", // 5
     "u1", // 6
-    NULL // 7
+    "e2m1", // 7
+    NULL // 8
 }; // SubBytePrecisionEnumeration[]
 #endif // GED_SUB_BYTE_PRECISION_HIDDEN
 

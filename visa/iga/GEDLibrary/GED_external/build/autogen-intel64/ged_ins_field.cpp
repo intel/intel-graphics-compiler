@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
 #include "ged_enumerations_internal.h"
 #include "ged_ins_field_internal.h"
 #include "ged_ins_field.h"
-GED_FIELD_TYPE fieldTypesByField[132] =
+GED_FIELD_TYPE fieldTypesByField[160] =
 {
     0x3, // 0
     0x0, // 1
@@ -148,11 +148,39 @@ GED_FIELD_TYPE fieldTypesByField[132] =
     0x100, // 128
     0x103, // 129
     0x100, // 130
-    0x100 // 131
+    0x100, // 131
+    0x100, // 132
+    0x100, // 133
+    0x103, // 134
+    0x103, // 135
+    0x100, // 136
+    0x100, // 137
+    0x100, // 138
+    0x100, // 139
+    0x103, // 140
+    0x103, // 141
+    0x103, // 142
+    0x103, // 143
+    0x100, // 144
+    0x100, // 145
+    0x100, // 146
+    0x104, // 147
+    0x100, // 148
+    0x100, // 149
+    0x100, // 150
+    0x103, // 151
+    0x103, // 152
+    0x100, // 153
+    0x100, // 154
+    0x102, // 155
+    0x100, // 156
+    0x100, // 157
+    0x100, // 158
+    0x100 // 159
 }; // fieldTypesByField[]
 
 #if GED_VALIDATION_API
-const char* fieldNameByField[132] =
+const char* fieldNameByField[160] =
 {
     "Opcode", // 0
     "CmptCtrl", // 1
@@ -285,7 +313,35 @@ const char* fieldNameByField[132] =
     "Src2IsImm", // 128
     "MetaRegFile", // 129
     "MetaSubRegNum", // 130
-    "MetaRegNum" // 131
+    "MetaRegNum", // 131
+    "DstRegNum8", // 132
+    "Src0RegNum8", // 133
+    "LfsrFC", // 134
+    "ShuffleFC", // 135
+    "Src1RegNum8", // 136
+    "Src1ScalarReg", // 137
+    "Src2RegNum8", // 138
+    "FwdCtrl", // 139
+    "DnsclMode", // 140
+    "RoundingMode", // 141
+    "ConvSrcDataType", // 142
+    "ConvDstDataType", // 143
+    "SendSwitchCtrl", // 144
+    "IndMsgDesc0IsPresent", // 145
+    "IndMsgDesc1IsPresent", // 146
+    "MsgDesc64", // 147
+    "IndMsgDesc1Addr", // 148
+    "IndMsgDesc0Addr", // 149
+    "Src0Length", // 150
+    "Src4RegFile", // 151
+    "Src3RegFile", // 152
+    "Src4RegNum", // 153
+    "Src3RegNum", // 154
+    "SystolicDepthBlkScl", // 155
+    "Src4SubRegNum", // 156
+    "Src3SubRegNum", // 157
+    "Src3RegNum8", // 158
+    "Src4RegNum8" // 159
 }; // fieldNameByField[]
 #endif // GED_VALIDATION_API
 GED_FIELD_TYPE pseudoFieldTypesByField[51] =

@@ -52,4 +52,10 @@ extern const ged_compact_mapping_fragment_t MappingFragmentsTable31[3];
 extern const ged_compact_mapping_fragment_t MappingFragmentsTable32[4];
 extern const ged_compact_mapping_fragment_t MappingFragmentsTable33[10];
 extern const ged_compact_mapping_fragment_t MappingFragmentsTable34[4];
+extern const ged_compact_mapping_fragment_t MappingFragmentsTable35[4];
+extern const ged_compact_mapping_fragment_t MappingFragmentsTable36[6];
+extern const ged_compact_mapping_fragment_t MappingFragmentsTable37[5];
+extern const ged_compact_mapping_fragment_t MappingFragmentsTable38[11];
+extern const ged_compact_mapping_fragment_t MappingFragmentsTable39[11];
+extern const ged_compact_mapping_fragment_t MappingFragmentsTable40[8];
 #endif // GED_MAPPING_FRAGMENTS_H

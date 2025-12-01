@@ -38,6 +38,7 @@ SPDX-License-Identifier: MIT
 #include "ged_model_xe_lpg_md.h"
 #include "ged_model_xe2.h"
 #include "ged_model_xe3.h"
+#include "ged_model_xe3p_cri.h"
 
 #ifdef GED_OBSCURE_MODEL_NAMES
 #define GED_MODEL_NAME_STRING(name) ""
@@ -47,30 +48,31 @@ SPDX-License-Identifier: MIT
 #endif // GED_OBSCURE_MODEL_NAMES
 
 #ifndef GED_MODELS_ARRAY_HIDDEN
-ModelData ModelsArray[16] =
+ModelData ModelsArray[17] =
 {
-    { GED_MODEL_NS_NONE::Opcodes, GED_MODEL_NAME_STRING("none"), 132, (const ged_field_enum_table_t)OpcodeTable0, 0, NULL, 3, EnumInterpretersTable0, 0, NULL }, // 0
-    { GED_MODEL_NS_7::Opcodes, GED_MODEL_NAME_STRING("7"), 132, (const ged_field_enum_table_t)OpcodeTable9, 29, PositionInterpreterTable0, 3, EnumInterpretersTable1, 0, NULL }, // 1
-    { GED_MODEL_NS_7_5::Opcodes, GED_MODEL_NAME_STRING("7.5"), 132, (const ged_field_enum_table_t)OpcodeTable10, 30, PositionInterpreterTable1, 3, EnumInterpretersTable1, 0, NULL }, // 2
-    { GED_MODEL_NS_8::Opcodes, GED_MODEL_NAME_STRING("8"), 132, (const ged_field_enum_table_t)OpcodeTable11, 33, PositionInterpreterTable2, 3, EnumInterpretersTable2, 0, NULL }, // 3
-    { GED_MODEL_NS_8_1::Opcodes, GED_MODEL_NAME_STRING("8.1"), 132, (const ged_field_enum_table_t)OpcodeTable11, 33, PositionInterpreterTable2, 3, EnumInterpretersTable2, 0, NULL }, // 4
-    { GED_MODEL_NS_9::Opcodes, GED_MODEL_NAME_STRING("9"), 132, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable3, 3, EnumInterpretersTable2, 0, NULL }, // 5
-    { GED_MODEL_NS_10::Opcodes, GED_MODEL_NAME_STRING("10"), 132, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable4, 3, EnumInterpretersTable2, 0, NULL }, // 6
-    { GED_MODEL_NS_11::Opcodes, GED_MODEL_NAME_STRING("11"), 132, (const ged_field_enum_table_t)OpcodeTable2, 35, PositionInterpreterTable5, 3, EnumInterpretersTable3, 0, NULL }, // 7
-    { GED_MODEL_NS_TGL::Opcodes, GED_MODEL_NAME_STRING("tgl"), 132, (const ged_field_enum_table_t)OpcodeTable3, 36, PositionInterpreterTable6, 3, EnumInterpretersTable4, 0, NULL }, // 8
-    { GED_MODEL_NS_XE_HP::Opcodes, GED_MODEL_NAME_STRING("xe.hp"), 132, (const ged_field_enum_table_t)OpcodeTable4, 35, PositionInterpreterTable7, 3, EnumInterpretersTable5, 0, NULL }, // 9
-    { GED_MODEL_NS_XE_HPG::Opcodes, GED_MODEL_NAME_STRING("xe.hpg"), 132, (const ged_field_enum_table_t)OpcodeTable4, 45, PositionInterpreterTable8, 3, EnumInterpretersTable5, 0, NULL }, // 10
-    { GED_MODEL_NS_XE_HPC_A::Opcodes, GED_MODEL_NAME_STRING("xe.hpc.a"), 132, (const ged_field_enum_table_t)OpcodeTable5, 45, PositionInterpreterTable9, 3, EnumInterpretersTable6, 0, NULL }, // 11
-    { GED_MODEL_NS_XE_HPC::Opcodes, GED_MODEL_NAME_STRING("xe.hpc"), 132, (const ged_field_enum_table_t)OpcodeTable6, 45, PositionInterpreterTable9, 3, EnumInterpretersTable7, 0, NULL }, // 12
-    { GED_MODEL_NS_XE_LPG_MD::Opcodes, GED_MODEL_NAME_STRING("xe.lpg.md"), 132, (const ged_field_enum_table_t)OpcodeTable7, 45, PositionInterpreterTable8, 3, EnumInterpretersTable5, 0, NULL }, // 13
-    { GED_MODEL_NS_XE2::Opcodes, GED_MODEL_NAME_STRING("xe2"), 132, (const ged_field_enum_table_t)OpcodeTable6, 51, PositionInterpreterTable10, 3, EnumInterpretersTable7, 0, NULL }, // 14
-    { GED_MODEL_NS_XE3::Opcodes, GED_MODEL_NAME_STRING("xe3"), 132, (const ged_field_enum_table_t)OpcodeTable8, 50, PositionInterpreterTable11, 3, EnumInterpretersTable0, 0, NULL } // 15
+    { GED_MODEL_NS_NONE::Opcodes, GED_MODEL_NAME_STRING("none"), 160, (const ged_field_enum_table_t)OpcodeTable0, 0, NULL, 3, EnumInterpretersTable0, 0, NULL }, // 0
+    { GED_MODEL_NS_7::Opcodes, GED_MODEL_NAME_STRING("7"), 160, (const ged_field_enum_table_t)OpcodeTable10, 29, PositionInterpreterTable0, 3, EnumInterpretersTable1, 0, NULL }, // 1
+    { GED_MODEL_NS_7_5::Opcodes, GED_MODEL_NAME_STRING("7.5"), 160, (const ged_field_enum_table_t)OpcodeTable11, 30, PositionInterpreterTable1, 3, EnumInterpretersTable1, 0, NULL }, // 2
+    { GED_MODEL_NS_8::Opcodes, GED_MODEL_NAME_STRING("8"), 160, (const ged_field_enum_table_t)OpcodeTable12, 33, PositionInterpreterTable2, 3, EnumInterpretersTable2, 0, NULL }, // 3
+    { GED_MODEL_NS_8_1::Opcodes, GED_MODEL_NAME_STRING("8.1"), 160, (const ged_field_enum_table_t)OpcodeTable12, 33, PositionInterpreterTable2, 3, EnumInterpretersTable2, 0, NULL }, // 4
+    { GED_MODEL_NS_9::Opcodes, GED_MODEL_NAME_STRING("9"), 160, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable3, 3, EnumInterpretersTable2, 0, NULL }, // 5
+    { GED_MODEL_NS_10::Opcodes, GED_MODEL_NAME_STRING("10"), 160, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable4, 3, EnumInterpretersTable2, 0, NULL }, // 6
+    { GED_MODEL_NS_11::Opcodes, GED_MODEL_NAME_STRING("11"), 160, (const ged_field_enum_table_t)OpcodeTable2, 35, PositionInterpreterTable5, 3, EnumInterpretersTable3, 0, NULL }, // 7
+    { GED_MODEL_NS_TGL::Opcodes, GED_MODEL_NAME_STRING("tgl"), 160, (const ged_field_enum_table_t)OpcodeTable3, 36, PositionInterpreterTable6, 3, EnumInterpretersTable4, 0, NULL }, // 8
+    { GED_MODEL_NS_XE_HP::Opcodes, GED_MODEL_NAME_STRING("xe.hp"), 160, (const ged_field_enum_table_t)OpcodeTable4, 35, PositionInterpreterTable7, 3, EnumInterpretersTable5, 0, NULL }, // 9
+    { GED_MODEL_NS_XE_HPG::Opcodes, GED_MODEL_NAME_STRING("xe.hpg"), 160, (const ged_field_enum_table_t)OpcodeTable4, 45, PositionInterpreterTable8, 3, EnumInterpretersTable5, 0, NULL }, // 10
+    { GED_MODEL_NS_XE_HPC_A::Opcodes, GED_MODEL_NAME_STRING("xe.hpc.a"), 160, (const ged_field_enum_table_t)OpcodeTable5, 45, PositionInterpreterTable9, 3, EnumInterpretersTable6, 0, NULL }, // 11
+    { GED_MODEL_NS_XE_HPC::Opcodes, GED_MODEL_NAME_STRING("xe.hpc"), 160, (const ged_field_enum_table_t)OpcodeTable6, 45, PositionInterpreterTable9, 3, EnumInterpretersTable7, 0, NULL }, // 12
+    { GED_MODEL_NS_XE_LPG_MD::Opcodes, GED_MODEL_NAME_STRING("xe.lpg.md"), 160, (const ged_field_enum_table_t)OpcodeTable7, 45, PositionInterpreterTable8, 3, EnumInterpretersTable5, 0, NULL }, // 13
+    { GED_MODEL_NS_XE2::Opcodes, GED_MODEL_NAME_STRING("xe2"), 160, (const ged_field_enum_table_t)OpcodeTable6, 51, PositionInterpreterTable10, 3, EnumInterpretersTable7, 0, NULL }, // 14
+    { GED_MODEL_NS_XE3::Opcodes, GED_MODEL_NAME_STRING("xe3"), 160, (const ged_field_enum_table_t)OpcodeTable8, 50, PositionInterpreterTable11, 3, EnumInterpretersTable0, 0, NULL }, // 15
+    { GED_MODEL_NS_XE3P_CRI::Opcodes, GED_MODEL_NAME_STRING("xe3p.cri"), 160, (const ged_field_enum_table_t)OpcodeTable9, 2, PositionInterpreterTable12, 3, EnumInterpretersTable0, 0, NULL } // 16
 }; // ModelsArray[]
 #endif // GED_MODELS_ARRAY_HIDDEN
-const unsigned int numOfSupportedModels = 16;
+const unsigned int numOfSupportedModels = 17;
 
 #ifndef GED_MODELS_ARRAY_NAMES_HIDDEN
-const char* modelNames[16] = { GED_MODEL_NAME_STRING("none"), GED_MODEL_NAME_STRING("7"), GED_MODEL_NAME_STRING("7_5"), GED_MODEL_NAME_STRING("8"), GED_MODEL_NAME_STRING("8_1"), GED_MODEL_NAME_STRING("9"), GED_MODEL_NAME_STRING("10"), GED_MODEL_NAME_STRING("11"), GED_MODEL_NAME_STRING("tgl"), GED_MODEL_NAME_STRING("xe_hp"), GED_MODEL_NAME_STRING("xe_hpg"), GED_MODEL_NAME_STRING("xe_hpc_a"), GED_MODEL_NAME_STRING("xe_hpc"), GED_MODEL_NAME_STRING("xe_lpg_md"), GED_MODEL_NAME_STRING("xe2"), GED_MODEL_NAME_STRING("xe3") };
+const char* modelNames[17] = { GED_MODEL_NAME_STRING("none"), GED_MODEL_NAME_STRING("7"), GED_MODEL_NAME_STRING("7_5"), GED_MODEL_NAME_STRING("8"), GED_MODEL_NAME_STRING("8_1"), GED_MODEL_NAME_STRING("9"), GED_MODEL_NAME_STRING("10"), GED_MODEL_NAME_STRING("11"), GED_MODEL_NAME_STRING("tgl"), GED_MODEL_NAME_STRING("xe_hp"), GED_MODEL_NAME_STRING("xe_hpg"), GED_MODEL_NAME_STRING("xe_hpc_a"), GED_MODEL_NAME_STRING("xe_hpc"), GED_MODEL_NAME_STRING("xe_lpg_md"), GED_MODEL_NAME_STRING("xe2"), GED_MODEL_NAME_STRING("xe3"), GED_MODEL_NAME_STRING("xe3p_cri") };
 #endif // GED_MODELS_ARRAY_NAMES_HIDDEN
 
 #ifndef GED_MODELS_ARRAY_FUNCTION_HIDDEN
@@ -101,6 +103,7 @@ bool GetModelByName(const string& name, /* GED_MODEL */ unsigned int& model)
     else if (GED_MODEL_NAME_STRING("xe_lpg_md") == name) model = GED_MODEL_XE_LPG_MD;
     else if (GED_MODEL_NAME_STRING("xe2") == name) model = GED_MODEL_XE2;
     else if (GED_MODEL_NAME_STRING("xe3") == name) model = GED_MODEL_XE3;
+    else if (GED_MODEL_NAME_STRING("xe3p_cri") == name) model = GED_MODEL_XE3P_CRI;
     else return false;
     return true;
 }
@@ -1522,6 +1525,307 @@ GED_RETURN_VALUE GED_SetMetaRegNum(ged_ins_t* ins, const uint32_t value)
 {
     return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_MetaRegNum, value);
 }
+uint32_t GED_GetDstRegNum8(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_DstRegNum8, *result);
+}
+GED_RETURN_VALUE GED_SetDstRegNum8(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_DstRegNum8, value);
+}
+uint32_t GED_GetSrc0RegNum8(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src0RegNum8, *result);
+}
+GED_RETURN_VALUE GED_SetSrc0RegNum8(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src0RegNum8, value);
+}
+GED_LFSR_FC GED_GetLfsrFC(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_LfsrFC, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_LFSR_FC)value : GED_LFSR_FC_INVALID;
+}
+GED_RETURN_VALUE GED_SetLfsrFC(ged_ins_t* ins, const GED_LFSR_FC value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_LfsrFC, (const uint32_t)value);
+}
+GED_SHUFFLE_FC GED_GetShuffleFC(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_ShuffleFC, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_SHUFFLE_FC)value : GED_SHUFFLE_FC_INVALID;
+}
+GED_RETURN_VALUE GED_SetShuffleFC(ged_ins_t* ins, const GED_SHUFFLE_FC value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_ShuffleFC, (const uint32_t)value);
+}
+uint32_t GED_GetSrc1RegNum8(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src1RegNum8, *result);
+}
+GED_RETURN_VALUE GED_SetSrc1RegNum8(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src1RegNum8, value);
+}
+uint32_t GED_GetSrc1ScalarReg(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src1ScalarReg, *result);
+}
+GED_RETURN_VALUE GED_SetSrc1ScalarReg(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src1ScalarReg, value);
+}
+uint32_t GED_GetSrc2RegNum8(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src2RegNum8, *result);
+}
+GED_RETURN_VALUE GED_SetSrc2RegNum8(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src2RegNum8, value);
+}
+uint32_t GED_GetFwdCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_FwdCtrl, *result);
+}
+GED_RETURN_VALUE GED_SetFwdCtrl(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_FwdCtrl, value);
+}
+GED_DNSCL_MODE GED_GetDnsclMode(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_DnsclMode, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DNSCL_MODE)value : GED_DNSCL_MODE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDnsclMode(ged_ins_t* ins, const GED_DNSCL_MODE value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_DnsclMode, (const uint32_t)value);
+}
+GED_ROUNDING_MODE GED_GetRoundingMode(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_RoundingMode, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_ROUNDING_MODE)value : GED_ROUNDING_MODE_INVALID;
+}
+GED_RETURN_VALUE GED_SetRoundingMode(ged_ins_t* ins, const GED_ROUNDING_MODE value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_RoundingMode, (const uint32_t)value);
+}
+GED_CONV_SRC_DATATYPE GED_GetConvSrcDataType(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_ConvSrcDataType, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_CONV_SRC_DATATYPE)value : GED_CONV_SRC_DATATYPE_INVALID;
+}
+GED_RETURN_VALUE GED_SetConvSrcDataType(ged_ins_t* ins, const GED_CONV_SRC_DATATYPE value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_ConvSrcDataType, (const uint32_t)value);
+}
+GED_CONV_DST_DATATYPE GED_GetConvDstDataType(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_ConvDstDataType, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_CONV_DST_DATATYPE)value : GED_CONV_DST_DATATYPE_INVALID;
+}
+GED_RETURN_VALUE GED_SetConvDstDataType(ged_ins_t* ins, const GED_CONV_DST_DATATYPE value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_ConvDstDataType, (const uint32_t)value);
+}
+uint32_t GED_GetSendSwitchCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_SendSwitchCtrl, *result);
+}
+GED_RETURN_VALUE GED_SetSendSwitchCtrl(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_SendSwitchCtrl, value);
+}
+uint32_t GED_GetIndMsgDesc0IsPresent(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_IndMsgDesc0IsPresent, *result);
+}
+GED_RETURN_VALUE GED_SetIndMsgDesc0IsPresent(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_IndMsgDesc0IsPresent, value);
+}
+uint32_t GED_GetIndMsgDesc1IsPresent(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_IndMsgDesc1IsPresent, *result);
+}
+GED_RETURN_VALUE GED_SetIndMsgDesc1IsPresent(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_IndMsgDesc1IsPresent, value);
+}
+uint64_t GED_GetMsgDesc64(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsigned64Field(GED_INS_FIELD_MsgDesc64, *result);
+}
+GED_RETURN_VALUE GED_SetMsgDesc64(ged_ins_t* ins, const uint64_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsigned64Field(GED_INS_FIELD_MsgDesc64, value);
+}
+uint32_t GED_GetIndMsgDesc1Addr(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_IndMsgDesc1Addr, *result);
+}
+GED_RETURN_VALUE GED_SetIndMsgDesc1Addr(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_IndMsgDesc1Addr, value);
+}
+uint32_t GED_GetIndMsgDesc0Addr(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_IndMsgDesc0Addr, *result);
+}
+GED_RETURN_VALUE GED_SetIndMsgDesc0Addr(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_IndMsgDesc0Addr, value);
+}
+uint32_t GED_GetSrc0Length(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src0Length, *result);
+}
+GED_RETURN_VALUE GED_SetSrc0Length(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src0Length, value);
+}
+GED_REG_FILE GED_GetSrc4RegFile(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src4RegFile, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_REG_FILE)value : GED_REG_FILE_INVALID;
+}
+GED_RETURN_VALUE GED_SetSrc4RegFile(ged_ins_t* ins, const GED_REG_FILE value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src4RegFile, (const uint32_t)value);
+}
+GED_REG_FILE GED_GetSrc3RegFile(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src3RegFile, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_REG_FILE)value : GED_REG_FILE_INVALID;
+}
+GED_RETURN_VALUE GED_SetSrc3RegFile(ged_ins_t* ins, const GED_REG_FILE value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src3RegFile, (const uint32_t)value);
+}
+uint32_t GED_GetSrc4RegNum(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src4RegNum, *result);
+}
+GED_RETURN_VALUE GED_SetSrc4RegNum(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src4RegNum, value);
+}
+uint32_t GED_GetSrc3RegNum(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src3RegNum, *result);
+}
+GED_RETURN_VALUE GED_SetSrc3RegNum(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src3RegNum, value);
+}
+uint32_t GED_GetSystolicDepthBlkScl(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_SystolicDepthBlkScl, *result);
+}
+GED_RETURN_VALUE GED_SetSystolicDepthBlkScl(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_SystolicDepthBlkScl, value);
+}
+uint32_t GED_GetSrc4SubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src4SubRegNum, *result);
+}
+GED_RETURN_VALUE GED_SetSrc4SubRegNum(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src4SubRegNum, value);
+}
+uint32_t GED_GetSrc3SubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src3SubRegNum, *result);
+}
+GED_RETURN_VALUE GED_SetSrc3SubRegNum(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src3SubRegNum, value);
+}
+uint32_t GED_GetSrc3RegNum8(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src3RegNum8, *result);
+}
+GED_RETURN_VALUE GED_SetSrc3RegNum8(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src3RegNum8, value);
+}
+uint32_t GED_GetSrc4RegNum8(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src4RegNum8, *result);
+}
+GED_RETURN_VALUE GED_SetSrc4RegNum8(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src4RegNum8, value);
+}
+uint32_t GED_GetIndexedIndMsgDescAddr(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
+{
+    if (0 == index) return GED_GetIndMsgDesc0Addr(ins, result);
+    if (1 == index) return GED_GetIndMsgDesc1Addr(ins, result);
+    if (NULL != result) *result = GED_RETURN_VALUE_INVALID_OPERAND;
+    return (uint32_t)-1;
+}
+GED_RETURN_VALUE GED_SetIndexedIndMsgDescAddr(ged_ins_t* ins, const uint32_t value, const uint8_t index)
+{
+    if (0 == index) return GED_SetIndMsgDesc0Addr(ins, value);
+    if (1 == index) return GED_SetIndMsgDesc1Addr(ins, value);
+    return GED_RETURN_VALUE_INVALID_OPERAND;
+}
 int32_t GED_GetIndexedSrcAddrImm(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
 {
     if (0 == index) return GED_GetSrc0AddrImm(ins, result);
@@ -1636,6 +1940,19 @@ GED_RETURN_VALUE GED_SetIndexedSrcIsImm(ged_ins_t* ins, const uint32_t value, co
     if (2 == index) return GED_SetSrc2IsImm(ins, value);
     return GED_RETURN_VALUE_INVALID_OPERAND;
 }
+uint32_t GED_GetIndexedIndMsgDescIsPresent(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
+{
+    if (0 == index) return GED_GetIndMsgDesc0IsPresent(ins, result);
+    if (1 == index) return GED_GetIndMsgDesc1IsPresent(ins, result);
+    if (NULL != result) *result = GED_RETURN_VALUE_INVALID_OPERAND;
+    return (uint32_t)-1;
+}
+GED_RETURN_VALUE GED_SetIndexedIndMsgDescIsPresent(ged_ins_t* ins, const uint32_t value, const uint8_t index)
+{
+    if (0 == index) return GED_SetIndMsgDesc0IsPresent(ins, value);
+    if (1 == index) return GED_SetIndMsgDesc1IsPresent(ins, value);
+    return GED_RETURN_VALUE_INVALID_OPERAND;
+}
 GED_MATH_MACRO_EXT GED_GetIndexedSrcMathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
 {
     if (0 == index) return GED_GetSrc0MathMacroExt(ins, result);
@@ -1656,6 +1973,8 @@ GED_REG_FILE GED_GetIndexedSrcRegFile(ged_ins_t* ins, GED_RETURN_VALUE* result, 
     if (0 == index) return GED_GetSrc0RegFile(ins, result);
     if (1 == index) return GED_GetSrc1RegFile(ins, result);
     if (2 == index) return GED_GetSrc2RegFile(ins, result);
+    if (3 == index) return GED_GetSrc3RegFile(ins, result);
+    if (4 == index) return GED_GetSrc4RegFile(ins, result);
     if (NULL != result) *result = GED_RETURN_VALUE_INVALID_OPERAND;
     return GED_REG_FILE_INVALID;
 }
@@ -1664,6 +1983,8 @@ GED_RETURN_VALUE GED_SetIndexedSrcRegFile(ged_ins_t* ins, const GED_REG_FILE val
     if (0 == index) return GED_SetSrc0RegFile(ins, value);
     if (1 == index) return GED_SetSrc1RegFile(ins, value);
     if (2 == index) return GED_SetSrc2RegFile(ins, value);
+    if (3 == index) return GED_SetSrc3RegFile(ins, value);
+    if (4 == index) return GED_SetSrc4RegFile(ins, value);
     return GED_RETURN_VALUE_INVALID_OPERAND;
 }
 uint32_t GED_GetIndexedSrcRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
@@ -1671,6 +1992,8 @@ uint32_t GED_GetIndexedSrcRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result, const
     if (0 == index) return GED_GetSrc0RegNum(ins, result);
     if (1 == index) return GED_GetSrc1RegNum(ins, result);
     if (2 == index) return GED_GetSrc2RegNum(ins, result);
+    if (3 == index) return GED_GetSrc3RegNum(ins, result);
+    if (4 == index) return GED_GetSrc4RegNum(ins, result);
     if (NULL != result) *result = GED_RETURN_VALUE_INVALID_OPERAND;
     return (uint32_t)-1;
 }
@@ -1679,6 +2002,8 @@ GED_RETURN_VALUE GED_SetIndexedSrcRegNum(ged_ins_t* ins, const uint32_t value, c
     if (0 == index) return GED_SetSrc0RegNum(ins, value);
     if (1 == index) return GED_SetSrc1RegNum(ins, value);
     if (2 == index) return GED_SetSrc2RegNum(ins, value);
+    if (3 == index) return GED_SetSrc3RegNum(ins, value);
+    if (4 == index) return GED_SetSrc4RegNum(ins, value);
     return GED_RETURN_VALUE_INVALID_OPERAND;
 }
 GED_REP_CTRL GED_GetIndexedSrcRepCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
@@ -1716,6 +2041,8 @@ uint32_t GED_GetIndexedSrcSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result, co
     if (0 == index) return GED_GetSrc0SubRegNum(ins, result);
     if (1 == index) return GED_GetSrc1SubRegNum(ins, result);
     if (2 == index) return GED_GetSrc2SubRegNum(ins, result);
+    if (3 == index) return GED_GetSrc3SubRegNum(ins, result);
+    if (4 == index) return GED_GetSrc4SubRegNum(ins, result);
     if (NULL != result) *result = GED_RETURN_VALUE_INVALID_OPERAND;
     return (uint32_t)-1;
 }
@@ -1724,6 +2051,8 @@ GED_RETURN_VALUE GED_SetIndexedSrcSubRegNum(ged_ins_t* ins, const uint32_t value
     if (0 == index) return GED_SetSrc0SubRegNum(ins, value);
     if (1 == index) return GED_SetSrc1SubRegNum(ins, value);
     if (2 == index) return GED_SetSrc2SubRegNum(ins, value);
+    if (3 == index) return GED_SetSrc3SubRegNum(ins, value);
+    if (4 == index) return GED_SetSrc4SubRegNum(ins, value);
     return GED_RETURN_VALUE_INVALID_OPERAND;
 }
 uint32_t GED_GetIndexedSrcSubRegNumByte(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
@@ -2414,6 +2743,22 @@ const char* GED_GetCondModifierString(GED_COND_MODIFIER CondModifierValue)
 }
 #endif // GED_COND_MODIFIER_HIDDEN
 
+#ifndef GED_CONV_DST_DATATYPE_HIDDEN
+const char* GED_GetConvDstDatatypeString(GED_CONV_DST_DATATYPE ConvDstDatatypeValue)
+{
+    return ConvDstDatatypeEnumeration[ConvDstDatatypeValue];
+
+}
+#endif // GED_CONV_DST_DATATYPE_HIDDEN
+
+#ifndef GED_CONV_SRC_DATATYPE_HIDDEN
+const char* GED_GetConvSrcDatatypeString(GED_CONV_SRC_DATATYPE ConvSrcDatatypeValue)
+{
+    return ConvSrcDatatypeEnumeration[ConvSrcDatatypeValue];
+
+}
+#endif // GED_CONV_SRC_DATATYPE_HIDDEN
+
 #ifndef GED_DATA_TYPE_HIDDEN
 const char* GED_GetDataTypeString(GED_DATA_TYPE DataTypeValue)
 {
@@ -2437,6 +2782,14 @@ const char* GED_GetDepCtrlString(GED_DEP_CTRL DepCtrlValue)
 
 }
 #endif // GED_DEP_CTRL_HIDDEN
+
+#ifndef GED_DNSCL_MODE_HIDDEN
+const char* GED_GetDnsclModeString(GED_DNSCL_MODE DnsclModeValue)
+{
+    return DnsclModeEnumeration[DnsclModeValue];
+
+}
+#endif // GED_DNSCL_MODE_HIDDEN
 
 #ifndef GED_DPADDR_REG_SIZE_HIDDEN
 const char* GED_GetDPAddrRegSizeString(GED_DPADDR_REG_SIZE DPAddrRegSizeValue)
@@ -2598,6 +2951,14 @@ const char* GED_GetIsImmString(GED_IS_IMM IsImmValue)
 }
 #endif // GED_IS_IMM_HIDDEN
 
+#ifndef GED_LFSR_FC_HIDDEN
+const char* GED_GetLfsrFCString(GED_LFSR_FC LfsrFCValue)
+{
+    return LfsrFCEnumeration[LfsrFCValue];
+
+}
+#endif // GED_LFSR_FC_HIDDEN
+
 #ifndef GED_MASK_CTRL_HIDDEN
 const char* GED_GetMaskCtrlString(GED_MASK_CTRL MaskCtrlValue)
 {
@@ -2694,6 +3055,14 @@ const char* GED_GetReturnDataControlString(GED_RETURN_DATA_CONTROL ReturnDataCon
 }
 #endif // GED_RETURN_DATA_CONTROL_HIDDEN
 
+#ifndef GED_ROUNDING_MODE_HIDDEN
+const char* GED_GetRoundingModeString(GED_ROUNDING_MODE RoundingModeValue)
+{
+    return RoundingModeEnumeration[RoundingModeValue];
+
+}
+#endif // GED_ROUNDING_MODE_HIDDEN
+
 #ifndef GED_SATURATE_HIDDEN
 const char* GED_GetSaturateString(GED_SATURATE SaturateValue)
 {
@@ -2709,6 +3078,14 @@ const char* GED_GetSFIDString(GED_SFID SFIDValue)
 
 }
 #endif // GED_SFID_HIDDEN
+
+#ifndef GED_SHUFFLE_FC_HIDDEN
+const char* GED_GetShuffleFCString(GED_SHUFFLE_FC ShuffleFCValue)
+{
+    return ShuffleFCEnumeration[ShuffleFCValue];
+
+}
+#endif // GED_SHUFFLE_FC_HIDDEN
 
 #ifndef GED_SIMDMODE_HIDDEN
 const char* GED_GetSIMDModeString(GED_SIMDMODE SIMDModeValue)

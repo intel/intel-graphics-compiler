@@ -286,6 +286,64 @@ EXPORTS
   GED_SetMetaSubRegNum
   GED_GetMetaRegNum
   GED_SetMetaRegNum
+  GED_GetDstRegNum8
+  GED_SetDstRegNum8
+  GED_GetSrc0RegNum8
+  GED_SetSrc0RegNum8
+  GED_GetLfsrFC
+  GED_SetLfsrFC
+  GED_GetShuffleFC
+  GED_SetShuffleFC
+  GED_GetSrc1RegNum8
+  GED_SetSrc1RegNum8
+  GED_GetSrc1ScalarReg
+  GED_SetSrc1ScalarReg
+  GED_GetSrc2RegNum8
+  GED_SetSrc2RegNum8
+  GED_GetFwdCtrl
+  GED_SetFwdCtrl
+  GED_GetDnsclMode
+  GED_SetDnsclMode
+  GED_GetRoundingMode
+  GED_SetRoundingMode
+  GED_GetConvSrcDataType
+  GED_SetConvSrcDataType
+  GED_GetConvDstDataType
+  GED_SetConvDstDataType
+  GED_GetSendSwitchCtrl
+  GED_SetSendSwitchCtrl
+  GED_GetIndMsgDesc0IsPresent
+  GED_SetIndMsgDesc0IsPresent
+  GED_GetIndMsgDesc1IsPresent
+  GED_SetIndMsgDesc1IsPresent
+  GED_GetMsgDesc64
+  GED_SetMsgDesc64
+  GED_GetIndMsgDesc1Addr
+  GED_SetIndMsgDesc1Addr
+  GED_GetIndMsgDesc0Addr
+  GED_SetIndMsgDesc0Addr
+  GED_GetSrc0Length
+  GED_SetSrc0Length
+  GED_GetSrc4RegFile
+  GED_SetSrc4RegFile
+  GED_GetSrc3RegFile
+  GED_SetSrc3RegFile
+  GED_GetSrc4RegNum
+  GED_SetSrc4RegNum
+  GED_GetSrc3RegNum
+  GED_SetSrc3RegNum
+  GED_GetSystolicDepthBlkScl
+  GED_SetSystolicDepthBlkScl
+  GED_GetSrc4SubRegNum
+  GED_SetSrc4SubRegNum
+  GED_GetSrc3SubRegNum
+  GED_SetSrc3SubRegNum
+  GED_GetSrc3RegNum8
+  GED_SetSrc3RegNum8
+  GED_GetSrc4RegNum8
+  GED_SetSrc4RegNum8
+  GED_GetIndexedIndMsgDescAddr
+  GED_SetIndexedIndMsgDescAddr
   GED_GetIndexedSrcAddrImm
   GED_SetIndexedSrcAddrImm
   GED_GetIndexedSrcAddrMode
@@ -302,6 +360,8 @@ EXPORTS
   GED_SetIndexedSrcIndex
   GED_GetIndexedSrcIsImm
   GED_SetIndexedSrcIsImm
+  GED_GetIndexedIndMsgDescIsPresent
+  GED_SetIndexedIndMsgDescIsPresent
   GED_GetIndexedSrcMathMacroExt
   GED_SetIndexedSrcMathMacroExt
   GED_GetIndexedSrcRegFile
@@ -434,9 +494,12 @@ EXPORTS
   GED_GetChannelModeString
   GED_GetChannelOffsetString
   GED_GetCondModifierString
+  GED_GetConvDstDatatypeString
+  GED_GetConvSrcDatatypeString
   GED_GetDataTypeString
   GED_GetDebugCtrlString
   GED_GetDepCtrlString
+  GED_GetDnsclModeString
   GED_GetDPAddrRegSizeString
   GED_GetDpAddrSizeString
   GED_GetDpAddrSurfaceTypeString
@@ -457,6 +520,7 @@ EXPORTS
   GED_GetFusionCtrlString
   GED_GetHeaderPresentString
   GED_GetIsImmString
+  GED_GetLfsrFCString
   GED_GetMaskCtrlString
   GED_GetMathFCString
   GED_GetMathMacroExtString
@@ -469,8 +533,10 @@ EXPORTS
   GED_GetRegFileString
   GED_GetRepCtrlString
   GED_GetReturnDataControlString
+  GED_GetRoundingModeString
   GED_GetSaturateString
   GED_GetSFIDString
+  GED_GetShuffleFCString
   GED_GetSIMDModeString
   GED_GetSlotGroupString
   GED_GetSrcModString
