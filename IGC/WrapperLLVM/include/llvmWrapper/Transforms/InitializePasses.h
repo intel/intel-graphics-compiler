@@ -14,11 +14,5 @@ class PassRegistry;
 }
 
 void initializeADCELegacyPassWrapperPass(llvm::PassRegistry &);
-void initializeCorrelatedValuePropagationLegacyPassWrapperPass(llvm::PassRegistry &);
-void initializeDSELegacyPassWrapperPass(llvm::PassRegistry &);
-void initializeJumpThreadingPassWrapperPass(llvm::PassRegistry &);
-void initializeMemCpyOptLegacyPassWrapperPass(llvm::PassRegistry &);
-void initializeGlobalDCELegacyPassWrapperPass(llvm::PassRegistry &);
-void initializeIPSCCPLegacyPassWrapperPass(llvm::PassRegistry &);
-void initializeInstructionCombiningPassWrapperPass(llvm::PassRegistry &);
+
 #endif // IGCLLVM_TRANSFORMS_INITIALIZE_PASSES_H

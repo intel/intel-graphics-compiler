@@ -39,9 +39,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils.h>
 #include <llvm/Analysis/AliasAnalysis.h>
-#include "llvmWrapper/Transforms/Scalar/DeadStoreElimination.h"
-#include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
-
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;

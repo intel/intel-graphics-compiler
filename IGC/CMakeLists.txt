@@ -1677,7 +1677,6 @@ set(IGC_BUILD__HDR__IGC__igc_dll
     ${IGC_BUILD__HDR__IGC__igc_common}
     ${IGC_BUILD__HDR__IGC_DriverInterface__igc_dll}
     ${IGC_WrapperLLVM_HDR}
-    ${IGC_WrapperLLVM_SRC}
   )
 
 

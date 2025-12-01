@@ -24,8 +24,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/ADT/Triple.h>
-#include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
-
 #include "common/LLVMWarningsPop.hpp"
 #include "BiFManagerTool.hpp"
 
@@ -393,7 +391,7 @@ void BiFManagerTool::generateSplitedBiFModules(llvm::Module *pMainModule) {
 
     // Do cleanup.
     llvm::legacy::PassManager mpm;
-    mpm.add(IGCLLVM::createLegacyWrappedGlobalDCEPass()); // Delete unreachable globals.
+    mpm.add(createGlobalDCEPass());           // Delete unreachable globals.
     mpm.add(createStripDeadDebugInfoPass());  // Remove dead debug info.
     mpm.add(createStripDeadPrototypesPass()); // Remove dead func decls.
 
