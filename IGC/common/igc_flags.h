@@ -927,6 +927,10 @@ DECLARE_IGC_REGKEY(DWORD, MinimumValidAddress, 0,
                    true)
 DECLARE_IGC_REGKEY(bool, AssignZeroToUndefPhiNodes, false,
                    "Assigns a null value to such a phi node which has an undefined value during emitting vISA", false)
+DECLARE_IGC_REGKEY(bool, DisableMovOfUndefPhiSources, false, "Do not emit VISA mov instructions for undef PHI sources",
+                   false)
+DECLARE_IGC_REGKEY(bool, DisableMovOfUndefPhiVectorSources, true,
+                   "Do not emit VISA mov instructions for undef PHI vector-type sources", false)
 DECLARE_IGC_REGKEY_ENUM(InjectPrintfFlag, 0, "Inject printf debugging flag", INJECT_PRINTF_OPTIONS, true)
 DECLARE_IGC_REGKEY(DWORD, AdHoc, 0,
                    "Unassigned debug key that can be used for experiments. Do not commit usages of this regkey", false)
