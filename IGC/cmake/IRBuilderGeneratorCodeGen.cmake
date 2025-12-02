@@ -98,6 +98,14 @@ function(generate_irbuilder_headers)
         SET(OPAQUE_PTR_ARGS "-Xclang" "-no-opaque-pointers")
     endif()
 
+    # Check if clang headers directory exists
+    set(NOSTDINC_FLAG "")
+    set(CLANG_HEADERS_INCLUDE "")
+    if(EXISTS ${CLANG_HEADERS})
+        set(NOSTDINC_FLAG "-nostdinc")
+        set(CLANG_HEADERS_INCLUDE "-I" ${CLANG_HEADERS})
+    endif()
+
     # Common clang options
     set(CLANG_OPTIONS
         -target x86_64-pc-windows
@@ -107,7 +115,8 @@ function(generate_irbuilder_headers)
         -emit-llvm
         -c
         -x c++
-        -I ${CLANG_HEADERS}
+        ${NOSTDINC_FLAG}
+        ${CLANG_HEADERS_INCLUDE}
         ${INCLUDE_FLAGS}
         -O2
         -g0
