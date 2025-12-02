@@ -1737,7 +1737,7 @@ if(UNIX)
   endfunction()
 
   # List of linkers to auto-detect when user didn't specify one
-  set(_default_linkers lld ld)
+  set(_default_linkers mold lld ld)
 
   if (USE_LINKER STREQUAL "")
       message(STATUS "No linker specified — probing system")
