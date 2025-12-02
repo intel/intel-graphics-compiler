@@ -42,8 +42,16 @@ SPDX-License-Identifier: MIT
 #include "common/SIPKernels/Xe3_G_SIPDebugBindless.h"
 #include "common/SIPKernels/wmtp/Xe3_PTL_config_1x4.h"
 #include "common/SIPKernels/wmtp/Xe3_PTL_config_2x6.h"
+#include "common/SIPKernels/Xe3PSIPDebug64b_config1.h"
+#include "common/SIPKernels/Xe3PSIPDebug64b_config2.h"
+#include "common/SIPKernels/Xe3PSIPDebugLegacy_config1.h"
+#include "common/SIPKernels/Xe3PSIPDebugLegacy_config2.h"
+#include "common/SIPKernels/wmtp/XE3P_wmtp_e64.h"
+#include "common/SIPKernels/wmtp/XE3P_wmtp_legacy.h"
 #include "common/SIPKernels/wmtp/XE2_config_128.h"
 #include "common/SIPKernels/wmtp/XE2_config_160.h"
+#include "common/SIPKernels/wmtp/XE3PV2_wmtp_e64.h"
+#include "common/SIPKernels/wmtp/XE3PV2_wmtp_legacy.h"
 
 using namespace llvm;
 using namespace USC;
@@ -270,6 +278,318 @@ struct StateSaveAreaHeaderV3 Xe3_G_SIPDebugBindlessDebugHeaderV3 = {
          Xe3_G_DebugSurfaceLayout::MSG_ELEMENTS *Xe3_G_DebugSurfaceLayout::MSG_ELEMENT_SIZE * 8,
          Xe3_G_DebugSurfaceLayout::MSG_ELEMENTS *Xe3_G_DebugSurfaceLayout::MSG_ELEMENT_SIZE} // msg
     }};
+
+struct Xe3DebugSurfaceLayout {
+  // The *_ALIGN fields below are padding of the SIP between
+  // the registers set.
+  static constexpr size_t GR_COUNT = 512;
+  static constexpr size_t GR_ELEMENTS = 1;
+  static constexpr size_t GR_ELEMENT_SIZE = 64;
+  static constexpr size_t GR_ALIGN = 0;
+
+  static constexpr size_t A0_COUNT = 1;
+  static constexpr size_t A0_ELEMENTS = 32;
+  static constexpr size_t A0_ELEMENT_SIZE = 2;
+  static constexpr size_t A0_ALIGN = 0;
+
+  static constexpr size_t F_COUNT = 4;
+  static constexpr size_t F_ELEMENTS = 2;
+  static constexpr size_t F_ELEMENT_SIZE = 2;
+  static constexpr size_t F_ALIGN = 0;
+
+  static constexpr size_t EXEC_MASK_COUNT = 1;
+  static constexpr size_t EXEC_MASK_ELEMENTS = 1;
+  static constexpr size_t EXEC_MASK_ELEMENT_SIZE = 4;
+  static constexpr size_t EXEC_MASK_ALIGN = 0;
+
+  static constexpr size_t SR_COUNT = 1;
+  static constexpr size_t SR_ELEMENTS = 5;
+  static constexpr size_t SR_ELEMENT_SIZE = 4;
+  static constexpr size_t SR_ALIGN = 0;
+
+  static constexpr size_t CR_COUNT = 1;
+  static constexpr size_t CR_ELEMENTS = 4;
+  static constexpr size_t CR_ELEMENT_SIZE = 4;
+  static constexpr size_t CR_ALIGN = 0;
+
+  static constexpr size_t N_COUNT = 1;
+  static constexpr size_t N_ELEMENTS = 3;
+  static constexpr size_t N_ELEMENT_SIZE = 4;
+  static constexpr size_t N_ALIGN = 0;
+
+  static constexpr size_t TDR_COUNT = 0; // TDR not valid for XE3
+  static constexpr size_t TDR_ELEMENTS = 0;
+  static constexpr size_t TDR_ELEMENT_SIZE = 0;
+  static constexpr size_t TDR_ALIGN = 0;
+
+  static constexpr size_t ACC_COUNT = 8;
+  static constexpr size_t ACC_ELEMENTS = 16;
+  static constexpr size_t ACC_ELEMENT_SIZE = 4;
+  static constexpr size_t ACC_ALIGN = 0;
+
+  static constexpr size_t MSG_COUNT = 1;
+  static constexpr size_t MSG_ELEMENTS = 3;
+  static constexpr size_t MSG_ELEMENT_SIZE = 4;
+  static constexpr size_t MSG_ALIGN = 4;
+
+  static constexpr size_t MME_COUNT = 8;
+  static constexpr size_t MME_ELEMENTS = 1;
+  static constexpr size_t MME_ELEMENT_SIZE = 4;
+  static constexpr size_t MME_ALIGN = 0;
+
+  static constexpr size_t TM_COUNT = 1;
+  static constexpr size_t TM_ELEMENTS = 5;
+  static constexpr size_t TM_ELEMENT_SIZE = 4;
+  static constexpr size_t TM_ALIGN = 8;
+
+  static constexpr size_t CE_COUNT = 1;
+  static constexpr size_t CE_ELEMENTS = 1;
+  static constexpr size_t CE_ELEMENT_SIZE = 4;
+  static constexpr size_t CE_ALIGN = 0;
+
+  static constexpr size_t DBG_COUNT = 1;
+  static constexpr size_t DBG_ELEMENTS = 1;
+  static constexpr size_t DBG_ELEMENT_SIZE = 4;
+  static constexpr size_t DBG_ALIGN = 4;
+
+  static constexpr size_t VERSION_COUNT = 1;
+  static constexpr size_t VERSION_ELEMENTS = 1;
+  static constexpr size_t VERSION_ELEMENT_SIZE = 20; // sizeof(sr_ident);
+  static constexpr size_t VERSION_ALIGN = 44;        // aligning scalar/cmd
+
+  static constexpr size_t SIP_CMD_COUNT = 1;
+  static constexpr size_t SIP_CMD_ELEMENTS = 1;
+  static constexpr size_t SIP_CMD_ELEMENT_SIZE = 128;
+  static constexpr size_t SIP_CMD_ALIGN = 0;
+
+  static constexpr size_t CONTEXT_ID_COUNT = 1;
+  static constexpr size_t CONTEXT_ID_ELEMENTS = 1;
+  static constexpr size_t CONTEXT_ID_ELEMENT_SIZE = 8;
+  static constexpr size_t CONTEXT_ID_ALIGN = 8;
+
+  static constexpr size_t DBG_REG_COUNT = 1;
+  static constexpr size_t DBG_REG_ELEMENTS = 5;
+  static constexpr size_t DBG_REG_ELEMENT_SIZE = 4;
+  static constexpr size_t DBG_REG_ALIGN = 0;
+
+  static constexpr size_t FC_COUNT = 3;
+  static constexpr size_t FC_ELEMENTS = 16;
+  static constexpr size_t FC_ELEMENT_SIZE = 4;
+  static constexpr size_t FC_ALIGN = 0;
+
+  static constexpr size_t SCALAR_REG_COUNT = 1;
+  static constexpr size_t SCALAR_REG_ELEMENTS = 64;
+  static constexpr size_t SCALAR_REG_ELEMENT_SIZE = 1;
+  static constexpr size_t SCALAR_REG_ALIGN = 0;
+
+  static constexpr size_t Xe3_STATE_SAVE_AREA_SIZE = 0x8500;
+
+  uint8_t grf[GR_COUNT * GR_ELEMENTS * GR_ELEMENT_SIZE + GR_ALIGN];
+  uint8_t a0[A0_COUNT * A0_ELEMENTS * A0_ELEMENT_SIZE + A0_ALIGN];
+  uint8_t f[F_COUNT * F_ELEMENTS * F_ELEMENT_SIZE + F_ALIGN];
+  uint8_t sr[SR_COUNT * SR_ELEMENTS * SR_ELEMENT_SIZE + SR_ALIGN];
+  uint8_t cr[CR_COUNT * CR_ELEMENTS * CR_ELEMENT_SIZE + CR_ALIGN];
+  uint8_t n[N_COUNT * N_ELEMENTS * N_ELEMENT_SIZE + N_ALIGN];
+  uint8_t acc[ACC_COUNT * ACC_ELEMENTS * ACC_ELEMENT_SIZE + ACC_ALIGN];
+  uint8_t mme[MME_COUNT * MME_ELEMENTS * MME_ELEMENT_SIZE + MME_ALIGN];
+  uint8_t msg[MSG_COUNT * MSG_ELEMENTS * MSG_ELEMENT_SIZE + MSG_ALIGN];
+  // uint8_t tdr[TDR_COUNT * TDR_ELEMENTS * TDR_ELEMENT_SIZE + TDR_ALIGN];
+  uint8_t fc[FC_COUNT * FC_ELEMENTS * FC_ELEMENT_SIZE + FC_ALIGN];
+  uint8_t tm[TM_COUNT * TM_ELEMENTS * TM_ELEMENT_SIZE + TM_ALIGN];
+  uint8_t execmask[EXEC_MASK_COUNT * EXEC_MASK_ELEMENTS * EXEC_MASK_ELEMENT_SIZE + EXEC_MASK_ALIGN];
+  uint8_t ctx[CONTEXT_ID_COUNT * CONTEXT_ID_ELEMENTS * CONTEXT_ID_ELEMENT_SIZE + CONTEXT_ID_ALIGN];
+  uint8_t dbg_reg[DBG_REG_COUNT * DBG_REG_ELEMENTS * DBG_REG_ELEMENT_SIZE + DBG_REG_ALIGN];
+  uint8_t ce[CE_COUNT * CE_ELEMENTS * CE_ELEMENT_SIZE + CE_ALIGN];
+  uint8_t dbg[DBG_COUNT * DBG_ELEMENTS * DBG_ELEMENT_SIZE + DBG_ALIGN];
+  uint8_t version[VERSION_COUNT * VERSION_ELEMENTS * VERSION_ELEMENT_SIZE + VERSION_ALIGN];
+  uint8_t s[SCALAR_REG_COUNT * SCALAR_REG_ELEMENTS * SCALAR_REG_ELEMENT_SIZE + SCALAR_REG_ALIGN];
+  uint8_t sip_cmd[SIP_CMD_COUNT * SIP_CMD_ELEMENTS * SIP_CMD_ELEMENT_SIZE + SIP_CMD_ALIGN];
+};
+
+struct StateSaveAreaHeaderV3 Xe3PDebugHeaderV3 = {
+    {"tssarea", 0, {3, 0, 0}, sizeof(StateSaveAreaHeaderV3) / 8, {0, 0, 0}}, // versionHeader
+    {
+        // regHeader
+        0,                                               // num_slices
+        0,                                               // num_subslices_per_slice
+        0,                                               // num_eus_per_subslice
+        0,                                               // num_threads_per_eu
+        0,                                               // state_area_offset
+        Xe3DebugSurfaceLayout::Xe3_STATE_SAVE_AREA_SIZE, // state_save_size
+        0,                                               // slm_area_offset
+        0,                                               // slm_bank_size
+        0,                                               // reserved0
+        offsetof(struct Xe3DebugSurfaceLayout, version), // sr_magic_offset
+        0,                                               // fifo_offset
+        0,                                               // fifo_size,
+        0,                                               // fifo_head
+        0,                                               // fifo_tail
+        0,                                               // fifo_version
+        {0},                                             // reserved1
+        SIP_FLAG_HEAPLESS,                               // sip_flags
+        {offsetof(struct Xe3DebugSurfaceLayout, grf), Xe3DebugSurfaceLayout::GR_COUNT,
+         Xe3DebugSurfaceLayout::GR_ELEMENTS *Xe3DebugSurfaceLayout::GR_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::GR_ELEMENTS *Xe3DebugSurfaceLayout::GR_ELEMENT_SIZE}, // grf
+        {offsetof(struct Xe3DebugSurfaceLayout, a0), Xe3DebugSurfaceLayout::A0_COUNT,
+         Xe3DebugSurfaceLayout::A0_ELEMENTS *Xe3DebugSurfaceLayout::A0_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::A0_ELEMENTS *Xe3DebugSurfaceLayout::A0_ELEMENT_SIZE}, // addr
+        {offsetof(struct Xe3DebugSurfaceLayout, f), Xe3DebugSurfaceLayout::F_COUNT,
+         Xe3DebugSurfaceLayout::F_ELEMENTS *Xe3DebugSurfaceLayout::F_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::F_ELEMENTS *Xe3DebugSurfaceLayout::F_ELEMENT_SIZE}, // flag
+        {offsetof(struct Xe3DebugSurfaceLayout, execmask), Xe3DebugSurfaceLayout::EXEC_MASK_COUNT,
+         Xe3DebugSurfaceLayout::EXEC_MASK_ELEMENTS *Xe3DebugSurfaceLayout::EXEC_MASK_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::EXEC_MASK_ELEMENTS *Xe3DebugSurfaceLayout::EXEC_MASK_ELEMENT_SIZE}, // emask
+        {offsetof(struct Xe3DebugSurfaceLayout, sr), Xe3DebugSurfaceLayout::SR_COUNT,
+         Xe3DebugSurfaceLayout::SR_ELEMENTS *Xe3DebugSurfaceLayout::SR_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::SR_ELEMENTS *Xe3DebugSurfaceLayout::SR_ELEMENT_SIZE}, // sr
+        {offsetof(struct Xe3DebugSurfaceLayout, cr), Xe3DebugSurfaceLayout::CR_COUNT,
+         Xe3DebugSurfaceLayout::CR_ELEMENTS *Xe3DebugSurfaceLayout::CR_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::CR_ELEMENTS *Xe3DebugSurfaceLayout::CR_ELEMENT_SIZE}, // cr
+        {offsetof(struct Xe3DebugSurfaceLayout, n), Xe3DebugSurfaceLayout::N_COUNT,
+         Xe3DebugSurfaceLayout::N_ELEMENTS *Xe3DebugSurfaceLayout::N_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::N_ELEMENTS *Xe3DebugSurfaceLayout::N_ELEMENT_SIZE}, // notification
+        {0, 0, // offsetof(struct Xe3DebugSurfaceLayout, tdr), Xe3DebugSurfaceLayout::TDR_COUNT,
+         Xe3DebugSurfaceLayout::TDR_ELEMENTS *Xe3DebugSurfaceLayout::TDR_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::TDR_ELEMENTS *Xe3DebugSurfaceLayout::TDR_ELEMENT_SIZE}, // tdr
+        {offsetof(struct Xe3DebugSurfaceLayout, acc), Xe3DebugSurfaceLayout::ACC_COUNT,
+         Xe3DebugSurfaceLayout::ACC_ELEMENTS *Xe3DebugSurfaceLayout::ACC_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::ACC_ELEMENTS *Xe3DebugSurfaceLayout::ACC_ELEMENT_SIZE}, // acc
+        {offsetof(struct Xe3DebugSurfaceLayout, mme), Xe3DebugSurfaceLayout::MME_COUNT,
+         Xe3DebugSurfaceLayout::MME_ELEMENTS *Xe3DebugSurfaceLayout::MME_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::MME_ELEMENTS *Xe3DebugSurfaceLayout::MME_ELEMENT_SIZE}, // mme
+        {offsetof(struct Xe3DebugSurfaceLayout, ce), Xe3DebugSurfaceLayout::CE_COUNT,
+         Xe3DebugSurfaceLayout::CE_ELEMENTS *Xe3DebugSurfaceLayout::CE_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::CE_ELEMENTS *Xe3DebugSurfaceLayout::CE_ELEMENT_SIZE}, // ce
+        {0, 0, 0, 0},                                                                 // sp
+        {offsetof(struct Xe3DebugSurfaceLayout, sip_cmd), Xe3DebugSurfaceLayout::SIP_CMD_COUNT,
+         Xe3DebugSurfaceLayout::SIP_CMD_ELEMENTS *Xe3DebugSurfaceLayout::SIP_CMD_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::SIP_CMD_ELEMENTS *Xe3DebugSurfaceLayout::SIP_CMD_ELEMENT_SIZE}, // cmd
+        {offsetof(struct Xe3DebugSurfaceLayout, tm), Xe3DebugSurfaceLayout::TM_COUNT,
+         Xe3DebugSurfaceLayout::TM_ELEMENTS *Xe3DebugSurfaceLayout::TM_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::TM_ELEMENTS *Xe3DebugSurfaceLayout::TM_ELEMENT_SIZE}, // tm
+        {offsetof(struct Xe3DebugSurfaceLayout, fc), Xe3DebugSurfaceLayout::FC_COUNT,
+         Xe3DebugSurfaceLayout::FC_ELEMENTS *Xe3DebugSurfaceLayout::FC_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::FC_ELEMENTS *Xe3DebugSurfaceLayout::FC_ELEMENT_SIZE}, // FC
+        {offsetof(struct Xe3DebugSurfaceLayout, dbg), Xe3DebugSurfaceLayout::DBG_COUNT,
+         Xe3DebugSurfaceLayout::DBG_ELEMENTS *Xe3DebugSurfaceLayout::DBG_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::DBG_ELEMENTS *Xe3DebugSurfaceLayout::DBG_ELEMENT_SIZE}, // dbg
+        {offsetof(struct Xe3DebugSurfaceLayout, ctx), Xe3DebugSurfaceLayout::CONTEXT_ID_COUNT,
+         Xe3DebugSurfaceLayout::CONTEXT_ID_ELEMENTS *Xe3DebugSurfaceLayout::CONTEXT_ID_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::CONTEXT_ID_ELEMENTS *Xe3DebugSurfaceLayout::CONTEXT_ID_ELEMENT_SIZE}, // context id
+        {offsetof(struct Xe3DebugSurfaceLayout, dbg_reg), Xe3DebugSurfaceLayout::DBG_REG_COUNT,
+         Xe3DebugSurfaceLayout::DBG_REG_ELEMENTS *Xe3DebugSurfaceLayout::DBG_REG_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::DBG_REG_ELEMENTS *Xe3DebugSurfaceLayout::DBG_REG_ELEMENT_SIZE}, // dbg registers
+        {offsetof(struct Xe3DebugSurfaceLayout, s), Xe3DebugSurfaceLayout::SCALAR_REG_COUNT,
+         Xe3DebugSurfaceLayout::SCALAR_REG_ELEMENTS *Xe3DebugSurfaceLayout::SCALAR_REG_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::SCALAR_REG_ELEMENTS
+             *Xe3DebugSurfaceLayout::SCALAR_REG_ELEMENT_SIZE}, // scalar registers
+        {offsetof(struct Xe3DebugSurfaceLayout, msg), Xe3DebugSurfaceLayout::MSG_COUNT,
+         Xe3DebugSurfaceLayout::MSG_ELEMENTS *Xe3DebugSurfaceLayout::MSG_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::MSG_ELEMENTS *Xe3DebugSurfaceLayout::MSG_ELEMENT_SIZE} // msg
+    }};
+
+struct StateSaveAreaHeaderV3 Xe3PDebugHeaderV3_Legacy = {
+    {"tssarea", 0, {3, 0, 0}, sizeof(StateSaveAreaHeaderV3) / 8, {0, 0, 0}}, // versionHeader
+    {
+        // regHeader
+        0,                                               // num_slices
+        0,                                               // num_subslices_per_slice
+        0,                                               // num_eus_per_subslice
+        0,                                               // num_threads_per_eu
+        0,                                               // state_area_offset
+        Xe3DebugSurfaceLayout::Xe3_STATE_SAVE_AREA_SIZE, // state_save_size
+        0,                                               // slm_area_offset
+        0,                                               // slm_bank_size
+        0,                                               // reserved0
+        offsetof(struct Xe3DebugSurfaceLayout, version), // sr_magic_offset
+        0,                                               // fifo_offset
+        0,                                               // fifo_size,
+        0,                                               // fifo_head
+        0,                                               // fifo_tail
+        0,                                               // fifo_version
+        {0},                                             // reserved1
+        0,                                               // sip_flags
+        {offsetof(struct Xe3DebugSurfaceLayout, grf), Xe3DebugSurfaceLayout::GR_COUNT,
+         Xe3DebugSurfaceLayout::GR_ELEMENTS *Xe3DebugSurfaceLayout::GR_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::GR_ELEMENTS *Xe3DebugSurfaceLayout::GR_ELEMENT_SIZE}, // grf
+        {offsetof(struct Xe3DebugSurfaceLayout, a0), Xe3DebugSurfaceLayout::A0_COUNT,
+         Xe3DebugSurfaceLayout::A0_ELEMENTS *Xe3DebugSurfaceLayout::A0_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::A0_ELEMENTS *Xe3DebugSurfaceLayout::A0_ELEMENT_SIZE}, // addr
+        {offsetof(struct Xe3DebugSurfaceLayout, f), Xe3DebugSurfaceLayout::F_COUNT,
+         Xe3DebugSurfaceLayout::F_ELEMENTS *Xe3DebugSurfaceLayout::F_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::F_ELEMENTS *Xe3DebugSurfaceLayout::F_ELEMENT_SIZE}, // flag
+        {offsetof(struct Xe3DebugSurfaceLayout, execmask), Xe3DebugSurfaceLayout::EXEC_MASK_COUNT,
+         Xe3DebugSurfaceLayout::EXEC_MASK_ELEMENTS *Xe3DebugSurfaceLayout::EXEC_MASK_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::EXEC_MASK_ELEMENTS *Xe3DebugSurfaceLayout::EXEC_MASK_ELEMENT_SIZE}, // emask
+        {offsetof(struct Xe3DebugSurfaceLayout, sr), Xe3DebugSurfaceLayout::SR_COUNT,
+         Xe3DebugSurfaceLayout::SR_ELEMENTS *Xe3DebugSurfaceLayout::SR_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::SR_ELEMENTS *Xe3DebugSurfaceLayout::SR_ELEMENT_SIZE}, // sr
+        {offsetof(struct Xe3DebugSurfaceLayout, cr), Xe3DebugSurfaceLayout::CR_COUNT,
+         Xe3DebugSurfaceLayout::CR_ELEMENTS *Xe3DebugSurfaceLayout::CR_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::CR_ELEMENTS *Xe3DebugSurfaceLayout::CR_ELEMENT_SIZE}, // cr
+        {offsetof(struct Xe3DebugSurfaceLayout, n), Xe3DebugSurfaceLayout::N_COUNT,
+         Xe3DebugSurfaceLayout::N_ELEMENTS *Xe3DebugSurfaceLayout::N_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::N_ELEMENTS *Xe3DebugSurfaceLayout::N_ELEMENT_SIZE}, // notification
+        {0, 0, // offsetof(struct Xe3DebugSurfaceLayout, tdr), Xe3DebugSurfaceLayout::TDR_COUNT,
+         Xe3DebugSurfaceLayout::TDR_ELEMENTS *Xe3DebugSurfaceLayout::TDR_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::TDR_ELEMENTS *Xe3DebugSurfaceLayout::TDR_ELEMENT_SIZE}, // tdr
+        {offsetof(struct Xe3DebugSurfaceLayout, acc), Xe3DebugSurfaceLayout::ACC_COUNT,
+         Xe3DebugSurfaceLayout::ACC_ELEMENTS *Xe3DebugSurfaceLayout::ACC_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::ACC_ELEMENTS *Xe3DebugSurfaceLayout::ACC_ELEMENT_SIZE}, // acc
+        {offsetof(struct Xe3DebugSurfaceLayout, mme), Xe3DebugSurfaceLayout::MME_COUNT,
+         Xe3DebugSurfaceLayout::MME_ELEMENTS *Xe3DebugSurfaceLayout::MME_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::MME_ELEMENTS *Xe3DebugSurfaceLayout::MME_ELEMENT_SIZE}, // mme
+        {offsetof(struct Xe3DebugSurfaceLayout, ce), Xe3DebugSurfaceLayout::CE_COUNT,
+         Xe3DebugSurfaceLayout::CE_ELEMENTS *Xe3DebugSurfaceLayout::CE_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::CE_ELEMENTS *Xe3DebugSurfaceLayout::CE_ELEMENT_SIZE}, // ce
+        {0, 0, 0, 0},                                                                 // sp
+        {offsetof(struct Xe3DebugSurfaceLayout, sip_cmd), Xe3DebugSurfaceLayout::SIP_CMD_COUNT,
+         Xe3DebugSurfaceLayout::SIP_CMD_ELEMENTS *Xe3DebugSurfaceLayout::SIP_CMD_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::SIP_CMD_ELEMENTS *Xe3DebugSurfaceLayout::SIP_CMD_ELEMENT_SIZE}, // cmd
+        {offsetof(struct Xe3DebugSurfaceLayout, tm), Xe3DebugSurfaceLayout::TM_COUNT,
+         Xe3DebugSurfaceLayout::TM_ELEMENTS *Xe3DebugSurfaceLayout::TM_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::TM_ELEMENTS *Xe3DebugSurfaceLayout::TM_ELEMENT_SIZE}, // tm
+        {offsetof(struct Xe3DebugSurfaceLayout, fc), Xe3DebugSurfaceLayout::FC_COUNT,
+         Xe3DebugSurfaceLayout::FC_ELEMENTS *Xe3DebugSurfaceLayout::FC_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::FC_ELEMENTS *Xe3DebugSurfaceLayout::FC_ELEMENT_SIZE}, // FC
+        {offsetof(struct Xe3DebugSurfaceLayout, dbg), Xe3DebugSurfaceLayout::DBG_COUNT,
+         Xe3DebugSurfaceLayout::DBG_ELEMENTS *Xe3DebugSurfaceLayout::DBG_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::DBG_ELEMENTS *Xe3DebugSurfaceLayout::DBG_ELEMENT_SIZE}, // dbg
+        {offsetof(struct Xe3DebugSurfaceLayout, ctx), Xe3DebugSurfaceLayout::CONTEXT_ID_COUNT,
+         Xe3DebugSurfaceLayout::CONTEXT_ID_ELEMENTS *Xe3DebugSurfaceLayout::CONTEXT_ID_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::CONTEXT_ID_ELEMENTS *Xe3DebugSurfaceLayout::CONTEXT_ID_ELEMENT_SIZE}, // context id
+        {offsetof(struct Xe3DebugSurfaceLayout, dbg_reg), Xe3DebugSurfaceLayout::DBG_REG_COUNT,
+         Xe3DebugSurfaceLayout::DBG_REG_ELEMENTS *Xe3DebugSurfaceLayout::DBG_REG_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::DBG_REG_ELEMENTS *Xe3DebugSurfaceLayout::DBG_REG_ELEMENT_SIZE}, // dbg registers
+        {offsetof(struct Xe3DebugSurfaceLayout, s), Xe3DebugSurfaceLayout::SCALAR_REG_COUNT,
+         Xe3DebugSurfaceLayout::SCALAR_REG_ELEMENTS *Xe3DebugSurfaceLayout::SCALAR_REG_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::SCALAR_REG_ELEMENTS
+             *Xe3DebugSurfaceLayout::SCALAR_REG_ELEMENT_SIZE}, // scalar registers
+        {offsetof(struct Xe3DebugSurfaceLayout, msg), Xe3DebugSurfaceLayout::MSG_COUNT,
+         Xe3DebugSurfaceLayout::MSG_ELEMENTS *Xe3DebugSurfaceLayout::MSG_ELEMENT_SIZE * 8,
+         Xe3DebugSurfaceLayout::MSG_ELEMENTS *Xe3DebugSurfaceLayout::MSG_ELEMENT_SIZE} // msg
+    }};
+// wmtp XE3P SIP
+struct StateSaveAreaHeaderV4 Xe3PSIP_WMTP_Legacy_CSRDebugBindlessDebugHeader = {
+    {"tssarea", 0, {4, 0, 0}, sizeof(StateSaveAreaHeaderV4) / 8, {0, 0, 0}}, // versionHeader
+    XE3P_CSR_DEBUG_BINDLESS_XE3P_WMTP_DATA_SIZE                              // total_wmtp_data_size
+};
+
+struct StateSaveAreaHeaderV4 Xe3PSIP_WMTP_E64_CSRDebugBindlessDebugHeader = {
+    {"tssarea", 0, {4, 0, 0}, sizeof(StateSaveAreaHeaderV4) / 8, {0, 0, 0}}, // versionHeader
+    XE3P_CSR_DEBUG_BINDLESS_XE3P_WMTP_DATA_SIZE                              // total_wmtp_data_size
+};
+
+// wmtp XE3PV2 SIP (NVL)
+struct StateSaveAreaHeaderV4 Xe3PV2SIP_WMTP_Legacy_CSRDebugBindlessDebugHeader = {
+    {"tssarea", 0, {4, 0, 0}, sizeof(StateSaveAreaHeaderV4) / 8, {0, 0, 0}}, // versionHeader
+    XE3PV2_CSR_DEBUG_BINDLESS_NVL_WMTP_DATA_SIZE                             // total_wmtp_data_size
+};
+
+struct StateSaveAreaHeaderV4 Xe3PV2SIP_WMTP_E64_CSRDebugBindlessDebugHeader = {
+    {"tssarea", 0, {4, 0, 0}, sizeof(StateSaveAreaHeaderV4) / 8, {0, 0, 0}}, // versionHeader
+    XE3PV2_CSR_DEBUG_BINDLESS_NVL_WMTP_DATA_SIZE                             // total_wmtp_data_size
+};
 
 
 // Debug surface area for all XE2 architectures
@@ -1020,6 +1340,7 @@ bool SIPSuppoertedOnPlatformFamily(const GFXCORE_FAMILY &family) {
   case IGFX_XE_HPC_CORE:
   case IGFX_XE2_HPG_CORE:
   case IGFX_XE3_CORE:
+  case IGFX_XE3P_CORE:
     return true;
   default:
     return false;
@@ -1295,6 +1616,87 @@ void populateSIPKernelInfo(
         (void *)&XE2_config_160, (int)sizeof(XE2_config_160), (void *)&Xe2SIP_WMTP_CSRDebugBindlessDebugHeader,
         (int)sizeof(Xe2SIP_WMTP_CSRDebugBindlessDebugHeader));
   }
+  { // Debug sip
+    // Xe3
+    Xe3PDebugHeaderV3.regHeader.num_threads_per_eu = 0;
+    Xe3PDebugHeaderV3_Legacy.regHeader.num_threads_per_eu = 0;
+
+    if (sysInfo.EUCount != 0) {
+      Xe3PDebugHeaderV3.regHeader.num_threads_per_eu = (sysInfo.ThreadCount / sysInfo.EUCount);
+      Xe3PDebugHeaderV3_Legacy.regHeader.num_threads_per_eu = Xe3PDebugHeaderV3.regHeader.num_threads_per_eu;
+    }
+
+    if (sizeof(StateSaveAreaHeaderV3) % 16) {
+      Xe3PDebugHeaderV3.regHeader.state_area_offset = 16 - sizeof(StateSaveAreaHeaderV3) % 16;
+      Xe3PDebugHeaderV3_Legacy.regHeader.state_area_offset = Xe3PDebugHeaderV3.regHeader.state_area_offset;
+    }
+
+    Xe3PDebugHeaderV3.regHeader.num_slices = sysInfo.MaxSlicesSupported;
+    Xe3PDebugHeaderV3_Legacy.regHeader.num_slices = Xe3PDebugHeaderV3.regHeader.num_slices;
+
+    Xe3PDebugHeaderV3.regHeader.num_subslices_per_slice =
+        (sysInfo.MaxSlicesSupported > 0 ? (sysInfo.MaxSubSlicesSupported / sysInfo.MaxSlicesSupported)
+                                        : sysInfo.MaxSubSlicesSupported);
+
+    Xe3PDebugHeaderV3_Legacy.regHeader.num_subslices_per_slice = Xe3PDebugHeaderV3.regHeader.num_subslices_per_slice;
+
+    Xe3PDebugHeaderV3.regHeader.num_eus_per_subslice = sysInfo.MaxEuPerSubSlice;
+    Xe3PDebugHeaderV3_Legacy.regHeader.num_eus_per_subslice = Xe3PDebugHeaderV3.regHeader.num_eus_per_subslice;
+
+    Xe3PDebugHeaderV3.regHeader.fifo_size = sysInfo.ThreadCount;
+    // fifo offset is relative to end of debug header. if slm_area is enabled, it will need to be accounted for as well
+    Xe3PDebugHeaderV3.regHeader.fifo_offset =
+        (Xe3PDebugHeaderV3.regHeader.num_slices * Xe3PDebugHeaderV3.regHeader.num_subslices_per_slice *
+         Xe3PDebugHeaderV3.regHeader.num_eus_per_subslice * Xe3PDebugHeaderV3.regHeader.num_threads_per_eu *
+         Xe3PDebugHeaderV3.regHeader.state_save_size);
+
+    // Some of XE3P projects have 10 threads per eu and few 8 threads per eu
+    // Based on number of threads, consider the config file
+    if (Xe3PDebugHeaderV3.regHeader.num_threads_per_eu == 0xa) {
+      SIPKernelInfo[XE3P_DEBUG_E64] =
+          std::make_tuple((void *)&Xe3PSIPDebug64b_config2, (int)sizeof(Xe3PSIPDebug64b_config2),
+                          (void *)&Xe3PDebugHeaderV3, (int)sizeof(Xe3PDebugHeaderV3));
+
+      SIPKernelInfo[XE3P_DEBUG_BINDLESS_LEGACY] =
+          std::make_tuple((void *)&Xe3PSIPDebugLegacy_config2, (int)sizeof(Xe3PSIPDebugLegacy_config2),
+                          (void *)&Xe3PDebugHeaderV3_Legacy, (int)sizeof(Xe3PDebugHeaderV3_Legacy));
+    } else // Assuming 8 threads per eu
+    {
+      SIPKernelInfo[XE3P_DEBUG_E64] =
+          std::make_tuple((void *)&Xe3PSIPDebug64b_config1, (int)sizeof(Xe3PSIPDebug64b_config1),
+                          (void *)&Xe3PDebugHeaderV3, (int)sizeof(Xe3PDebugHeaderV3));
+
+      SIPKernelInfo[XE3P_DEBUG_BINDLESS_LEGACY] =
+          std::make_tuple((void *)&Xe3PSIPDebugLegacy_config1, (int)sizeof(Xe3PSIPDebugLegacy_config1),
+                          (void *)&Xe3PDebugHeaderV3_Legacy, (int)sizeof(Xe3PDebugHeaderV3_Legacy));
+    }
+  }
+  { // WMTP SIP
+    // E64 wmtp SIP
+    SIPKernelInfo[XE3P_CSR_DEBUG_E64] = std::make_tuple((void *)&XE3P_wmtp_e64, (int)sizeof(XE3P_wmtp_e64),
+                                                        (void *)&Xe3PSIP_WMTP_E64_CSRDebugBindlessDebugHeader,
+                                                        (int)sizeof(Xe3PSIP_WMTP_E64_CSRDebugBindlessDebugHeader));
+
+    // Legacy wmtp SIP
+    SIPKernelInfo[XE3P_CSR_DEBUG_LEGACY] =
+        std::make_tuple((void *)&XE3P_wmtp_legacy, (int)sizeof(XE3P_wmtp_legacy),
+                        (void *)&Xe3PSIP_WMTP_Legacy_CSRDebugBindlessDebugHeader,
+                        (int)sizeof(Xe3PSIP_WMTP_Legacy_CSRDebugBindlessDebugHeader));
+  }
+
+  { // WMTP SIP
+    // E64 wmtp NVL SIP
+    SIPKernelInfo[XE3PV2_CSR_DEBUG_E64] = std::make_tuple((void *)&XE3PV2_wmtp_e64, (int)sizeof(XE3PV2_wmtp_e64),
+                                                          (void *)&Xe3PV2SIP_WMTP_E64_CSRDebugBindlessDebugHeader,
+                                                          (int)sizeof(Xe3PV2SIP_WMTP_E64_CSRDebugBindlessDebugHeader));
+
+    // Legacy wmtp NVL SIP
+    SIPKernelInfo[XE3PV2_CSR_DEBUG_LEGACY] =
+        std::make_tuple((void *)&XE3PV2_wmtp_legacy, (int)sizeof(XE3PV2_wmtp_legacy),
+                        (void *)&Xe3PV2SIP_WMTP_Legacy_CSRDebugBindlessDebugHeader,
+                        (int)sizeof(Xe3PV2SIP_WMTP_Legacy_CSRDebugBindlessDebugHeader));
+  }
+
 
   // PTL wmtp Sip
   {
@@ -1474,6 +1876,32 @@ CGenSystemInstructionKernelProgram *CGenSystemInstructionKernelProgram::Create(c
     }
     break;
   }
+
+  case IGFX_XE3P_CORE:
+    if (mode & SYSTEM_THREAD_MODE_DEBUG) {
+      switch (platform.getPlatformInfo().eProductFamily) {
+      case IGFX_CRI:
+        SIPIndex = XE3P_DEBUG_E64;
+        break;
+      default:
+        IGC_ASSERT(false);
+        break;
+      }
+    } else if (mode == SYSTEM_THREAD_MODE_CSR) {
+      switch (platform.getPlatformInfo().eProductFamily) {
+      case IGFX_CRI:
+        if (!bindlessMode) {
+          SIPIndex = XE3PV2_CSR_DEBUG_E64;
+        } else {
+          SIPIndex = XE3PV2_CSR_DEBUG_LEGACY;
+        }
+        break;
+      default:
+        IGC_ASSERT(false);
+        break;
+      }
+    }
+    break;
 
   case IGFX_XE3_CORE:
     if (mode & SYSTEM_THREAD_MODE_DEBUG) {
