@@ -24,7 +24,6 @@ See LICENSE.TXT for details.
 #include "llvm/ADT/DenseMap.h"
 #include <llvmWrapper/ADT/Optional.h>
 #include "llvm/ADT/SmallVector.h"
-#include <llvm/ADT/ArrayRef.h>
 #include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Config/llvm-config.h"
@@ -162,12 +161,6 @@ public:
 
   DIEBlock *getDIEBlock() { return new (DIEValueAllocator) DIEBlock(); }
 
-  /// A pair of GlobalVariable and DIExpression.
-  struct GlobalExpr {
-    const llvm::GlobalVariable *Var;
-    const llvm::DIExpression *Expr;
-  };
-
   /// insertDIE - Insert DIE into the map. We delegate the request to DwarfDebug
   /// when the llvm::MDNode can be part of the type system, since DIEs for
   /// the type system can be shared across CUs and the mappings are
@@ -247,7 +240,6 @@ public:
   void addSourceLine(DIE *Die, llvm::DIVariable *V);
   void addSourceLine(DIE *Die, llvm::DISubprogram *SP);
   void addSourceLine(DIE *Die, llvm::DIType *Ty);
-  void addSourceLine(DIE *Die, llvm::DIGlobalVariable *GV);
 
   /// addConstantValue - Add constant value entry in variable DIE.
   void addConstantValue(DIE *Die, const llvm::ConstantInt *CI, bool Unsigned);
@@ -332,9 +324,6 @@ public:
 
   /// getOrCreateNameSpace - Create a DIE for DINameSpace.
   DIE *getOrCreateNameSpace(llvm::DINamespace *NS);
-
-  /// Get or create global variable DIE.
-  DIE *getOrCreateGlobalVariableDIE(llvm::DIGlobalVariable *GV, llvm::ArrayRef<GlobalExpr> GlobalExprs);
 
   /// getOrCreateSubprogramDIE - Create new DIE using SP.
   DIE *getOrCreateSubprogramDIE(llvm::DISubprogram *SP);
