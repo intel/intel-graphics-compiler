@@ -91,6 +91,14 @@ function(generate_irbuilder_headers)
 
     set(CLANG_HEADERS ${IGC_BUILD__GFX_DEV_SRC_DIR}/external/llvm/releases/${IGC_BUILD__CLANG_VERSION}/clang/lib/Headers)
 
+    # Check if clang headers directory exists
+    set(NOSTDINC_FLAG "")
+    set(CLANG_HEADERS_INCLUDE "")
+    if(EXISTS ${CLANG_HEADERS})
+        set(NOSTDINC_FLAG "-nostdinc")
+        set(CLANG_HEADERS_INCLUDE "-I" ${CLANG_HEADERS})
+    endif()
+
     # Common clang options
     set(CLANG_OPTIONS
         -target x86_64-pc-windows
@@ -100,7 +108,8 @@ function(generate_irbuilder_headers)
         -emit-llvm
         -c
         -x c++
-        -I ${CLANG_HEADERS}
+        ${NOSTDINC_FLAG}
+        ${CLANG_HEADERS_INCLUDE}
         ${INCLUDE_FLAGS}
         -O2
         -g0
