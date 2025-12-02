@@ -2845,9 +2845,11 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst *IVI) {
     }
   } else {
     CVariable *SrcV = GetSymbol(src0);
-    if (DstV != SrcV && DstV->IsUniform() && SrcV->IsUniform()) {
+    Value *DstRoot = m_deSSA->getRootValue(IVI);
+    Value *SrcRoot = m_deSSA->getRootValue(src0);
+    if (DstRoot != SrcRoot && DstV->IsUniform() && SrcV->IsUniform()) {
       emitCopyToOrFromLayoutStruct(IVI, src0);
-    } else if (DstV != SrcV) {
+    } else if (DstRoot != SrcRoot) {
       // Most often, SrcV has just one defined value and calling
       // emitCopyToOrFromLayoutStruct() would copy all, thus special
       // handling here to avoid copy undefined values.
@@ -2869,7 +2871,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst *IVI) {
                                                       n * (SrcV->IsUniform() ? 1 : nLanes));
         if (II.size() == 2) {
           uint32_t AOSStBytes = (uint32_t)m_DL->getTypeStoreSize(ty0);
-          emitVectorCopyToAOS(AOSStBytes, eltDst, eltSrc, n);
+          emitLayoutStructCopyAOSToAOS(AOSStBytes, eltDst, eltSrc, n);
         } else {
           emitVectorCopy(eltDst, eltSrc, n);
         }
@@ -19286,6 +19288,79 @@ void EmitPass::emitVectorCopyToOrFromAOS(uint32_t AOSBytes, CVariable *Dst, CVar
       m_encoder->Copy(Dst, Src);
       m_encoder->Push();
     }
+  }
+}
+
+// This is to copy an AOS field of a struct to an AOS field of another struct.
+//   AOSBytes:  the size of AOS struct (its members are laid out in AOS format).
+//   Dst:       the start of Destination
+//   Src:       the start of Source
+//   nElts:     the number of elements to copy
+//   DstSubRegOffset : offset from Dst as the beginning location to be copied to
+//   SrcSubRegOffset : offset from Src as the beginning location to copy from
+//
+// For example, the following packed struct:
+//    __StructSOALayout_ {
+//      i32 s0
+//      __StructAOSLayout_ {
+//         <4xi8> s1;
+//      }
+//      i32 s2;
+//    }  dst, src;
+// Assume that the number of lanes is 16. dst(src)'s layout in GRFs:
+//    Lane   15  14  13           1   0
+//    ----------------------------------
+//      r10: s0  s0  s0  ......  s0  s0
+//      r11: s1  s1  s1  ......  s1  s1     // <4xi8> s1 is in AOS format
+//      r12: s2  s2  s2  ......  s2  s2
+//
+//  For the following copy:
+//    dst.s1 = src.s1;
+//  the arguments are (numLanes = 16)
+//      AOSBytes = 4;   nElts = 4
+//      (Dst, DstSubRegOffset) = (dst, 16*12) or (dst + 16*4, 0)
+//      (Src, SrcSubRegOffset) = (src, 16*12) or (src + 16*4, 0)
+//  the function generates 4 mov instructions:
+//      mov dst(1,0)<4>:b  src(1,0)<4,1,0>:b
+//      mov dst(1,1)<4>:b  src(1,1)<4,1,0>:b
+//      mov dst(1,2)<4>:b  src(1,2)<4,1,0>:b
+//      mov dst(1,3)<4>:b  src(1,3)<4,1,0>:b
+//
+// Note: for dst.s2 = src.s2, using emitVectorCopy()
+//
+void EmitPass::emitLayoutStructCopyAOSToAOS(uint32_t AOSBytes, CVariable *Dst, CVariable *Src, uint32_t nElts,
+                                            uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset) {
+  assert(Dst->GetType() == Src->GetType());
+
+  bool srcUniform = Src->IsUniform();
+  bool dstUniform = Dst->IsUniform();
+
+  // Uniform vector copy.
+  if (srcUniform && dstUniform) {
+    emitUniformVectorCopy(Dst, Src, nElts, DstSubRegOffset, SrcSubRegOffset);
+    return;
+  }
+
+  const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
+  unsigned doff = DstSubRegOffset, soff = SrcSubRegOffset;
+  uint32_t eltBytes = Dst->GetElemSize();
+  uint32_t stride = AOSBytes / eltBytes;
+  IGC_ASSERT(stride <= 4 && stride > 0);
+  IGC_ASSERT((AOSBytes % eltBytes) == 0);
+
+  uint DstVStride = dstUniform ? 1 : stride;
+  uint SrcVStride = srcUniform ? 0 : stride;
+  for (uint32_t i = 0; i < nElts; ++i) {
+    // Copy AOS field to AOS field
+    uint SrcSubReg = soff + i;
+    uint DstSubReg = doff + i;
+
+    m_encoder->SetDstRegion(DstVStride);
+    m_encoder->SetDstSubReg(DstSubReg);
+    m_encoder->SetSrcSubReg(0, SrcSubReg);
+    m_encoder->SetSrcRegion(0, SrcVStride, 1, 0);
+    m_encoder->Copy(Dst, Src);
+    m_encoder->Push();
   }
 }
 
