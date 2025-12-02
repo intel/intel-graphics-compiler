@@ -42,8 +42,24 @@ bool ErrorCheck::runOnFunction(Function &F) {
   if (isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), &F)) {
     checkArgsSize(F);
   }
-
+  checkByValAddrSpace(F);
   return m_hasError;
+}
+
+void ErrorCheck::checkByValAddrSpace(Function &F) {
+  auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  for (auto &arg : F.args()) {
+    Type *argTy = arg.getType();
+    if (arg.hasByValAttr()) {
+      if (argTy->getPointerAddressSpace() != ADDRESS_SPACE_GENERIC &&
+          argTy->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE) {
+        std::string ErrorMsg = "ByVal argument with addrspace different than Generic/Private is not supported.";
+        Ctx->EmitError(ErrorMsg.c_str(), &F);
+
+        m_hasError = true;
+      }
+    }
+  }
 }
 
 void ErrorCheck::checkArgsSize(Function &F) {
