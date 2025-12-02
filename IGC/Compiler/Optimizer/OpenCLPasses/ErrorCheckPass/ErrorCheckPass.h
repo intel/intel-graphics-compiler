@@ -40,7 +40,7 @@ private:
   bool m_hasError = false;
 
   void checkArgsSize(llvm::Function &F);
-
+  void checkByValAddrSpace(llvm::Function &F);
   void handleFP64EmulationMode(llvm::Instruction &I);
 };
 

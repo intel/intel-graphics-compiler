@@ -73,7 +73,10 @@ bool LowerGPCallArg::runOnModule(llvm::Module &M) {
 
       Type *argTy = arg.getType();
       if (argTy->isPointerTy() && argTy->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC) {
-        if (auto originAddrSpace = getOriginAddressSpace(F, arg.getArgNo()))
+        auto originAddrSpace = getOriginAddressSpace(F, arg.getArgNo());
+        // We don't optimize ByVal arguments if its origin != private because it's been causing issues
+        // We're currently investigating if we should support byval arguments for addrspaces other than private/generic
+        if (originAddrSpace && !(arg.hasByValAttr() && originAddrSpace != ADDRESS_SPACE_PRIVATE))
           genericArgsInfo.push_back({arg.getArgNo(), originAddrSpace.value()});
       }
     }
