@@ -82,7 +82,8 @@ private:
   bool getModuleUsesBindless();
 
   void findPromotableInstructions();
-  void addToPromotionMap(llvm::Instruction &I, llvm::Value *Ptr);
+  void addToPromotionMap(llvm::Instruction &I, llvm::Value *Ptr,
+                         std::optional<llvm::Align> OriginalInstructionAlignment);
 
   void promote();
   void promoteInstruction(InstructionInfo &InstInfo);
@@ -106,7 +107,8 @@ private:
   // ignoreSyncBuffer - when set to true, return false directly if V is from the implicit kernel
   // argument "sync buffer". sync buffer must be stateless access in ZEBinary path so cannot be promoted.
   bool pointerIsPositiveOffsetFromKernelArgument(llvm::Function *F, llvm::Value *V, llvm::Value *&offset,
-                                                 unsigned int &argNumber, bool ignoreSyncBuffer);
+                                                 unsigned int &argNumber, bool ignoreSyncBuffer,
+                                                 std::optional<llvm::Align> OriginalInstructionAlignment);
 
   // Check if the given pointer value can be traced back to any kernel argument.
   // return the kernel argument if found, otherwise return nullptr.
