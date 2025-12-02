@@ -233,6 +233,25 @@ bool RegSet::addSendOperand(const Instruction &i, int opIx) {
     return false;
   }
 
+  // new approach
+  if (i.getOpSpec().isSendgFormat()) {
+    const DecodeResult di = tryDecode(i, nullptr);
+    if (di) {
+      int bitsAccessed = -1;
+      if (opIx < 0) {
+        bitsAccessed = di.info.dstLenBytes;
+      } else if (opIx == 0) {
+        bitsAccessed = di.info.src0LenBytes;
+      } else {
+        bitsAccessed = di.info.src1LenBytes;
+      }
+      if (bitsAccessed >= 0) {
+        auto regOff = offsetOf(RegName::GRF_R, op.getDirRegRef().regNum);
+        changed |= add(RegName::GRF_R, regOff, 8 * bitsAccessed);
+        return changed;
+      }
+    }
+  }
 
   // add special handling for send messages
   //  e.g.
@@ -243,7 +262,7 @@ bool RegSet::addSendOperand(const Instruction &i, int opIx) {
   //    load.ugm.d32x8t.a32.ca.ca (1|M0) ... 8 DW in a single register
   //    load.ugm.d32x4.a64 (4|M0) ... // four successive registers with 1 DW
   bool decodeFineGrained =
-      i.getMsgDescriptor().isImm();
+      !i.getOpSpec().isSendgFormat() || i.getMsgDescriptor().isImm();
   if (op.getDirRegName() == RegName::GRF_R && decodeFineGrained) {
     const DecodeResult di = tryDecode(i, nullptr);
     if (di && (di.info.isLoad() || di.info.isStore() || di.info.isAtomic())) {
@@ -345,6 +364,31 @@ bool RegSet::addDpasOperand(const Instruction &i, int opIx) {
       size_t startSubReg = r * opsPerChannel * typeSizeBits * 8;
       size_t repReads = S * opsPerChannel * typeSizeBits;
       changed |= add(RegName::GRF_R, startOff + startSubReg, repReads);
+    }
+  }
+  else {
+    // Currently only bdpas has src3/src4, and only byte type is allowed on
+    // src3/src4.
+    IGA_ASSERT(i.getOp() == Op::BDPAS, "invalid src idx");
+    IGA_ASSERT(typeSizeBits == 8, "invalid src type size");
+    auto isFP4 = [](Type ty) {
+      return ty == Type::E2M1;
+    };
+    uint16_t passes =
+        (isFP4(i.getSource(1).getType()) || isFP4(i.getSource(2).getType())) ?
+        2 : 1;
+    for (uint16_t pass = 0; pass < passes; pass++) {
+      auto tmpRR = op.getDirRegRef();
+      tmpRR.subRegNum += 32 * pass;
+      if (opIx == 3) {
+        // src3 accesses number of execSize bytes in each pass
+        changed |= setSrcRegion(op.getDirRegName(), tmpRR,
+          Region::SRC110, execSize, typeSizeBits);
+      } else if (opIx == 4) {
+        // src4 accesses number of SDepth bytes in each pass
+        changed |= setSrcRegion(op.getDirRegName(), tmpRR,
+          Region::SRC110, S, typeSizeBits);
+      }
     }
   }
   return changed;
@@ -511,7 +555,20 @@ bool RegSet::addSourceDescriptorInputs(const Instruction &i) {
   bool added = false;
 
   if (i.getOpSpec().isAnySendFormat()) {
-    addSendDescriptors(i, *this);
+    if (i.getOpSpec().isSendgFormat()) {
+      RegRef id0 = i.getSendgIndDesc0Reg();
+      if (id0 != REGREF_INVALID) {
+        id0.subRegNum /= 8; // normalize to QW
+        added |= add(RegName::ARF_S, id0, Type::UQ);
+      }
+      RegRef id1 = i.getSendgIndDesc1Reg();
+      if (id1 != REGREF_INVALID) {
+        id1.subRegNum /= 8; // normalize to QW
+        added |= add(RegName::ARF_S, id1, Type::UQ);
+      }
+    } else {
+      addSendDescriptors(i, *this);
+    }
   }
 
   return added;
@@ -571,6 +628,21 @@ bool RegSet::addExplicitDestinationOutputs(const Instruction &i) {
       // normal GRF target
       added |= setDstRegion(op.getDirRegName(), op.getDirRegRef(),
                             op.getRegion(), execSize, typeSizeBits);
+    }
+    if (i.is(Op::MULLH)) {
+      // mullh is an odd duck; it writes out low/high pairs in
+      //  - a cheap trick is to just increment the GRF and add the new region
+      //    for MULLH
+      //  - we increment the GRF twice if it's SIMD32 since the low half will
+      //    chew up two GRFs instead of one.
+      //
+      //
+      RegRef rr = op.getDirRegRef();
+      rr.regNum++;
+      if (execSize > 16)
+        rr.regNum++;
+      added |= setDstRegion(op.getDirRegName(), rr, op.getRegion(), execSize,
+                            typeSizeBits);
     }
     break;
   case Operand::Kind::MACRO: {

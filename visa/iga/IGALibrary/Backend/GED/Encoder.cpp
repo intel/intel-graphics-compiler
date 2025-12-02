@@ -64,8 +64,7 @@ void Encoder::encodeKernelPreProcess(Kernel &k) { doEncodeKernelPreProcess(k); }
 void Encoder::doEncodeKernelPreProcess(Kernel &k) {
   if (m_opts.autoDepSet && platform() >= Platform::XE) {
     SWSBAnalyzer swsbAnalyzer(k, errorHandler(), m_opts.swsbEncodeMode,
-                              m_opts.sbidCount
-         );
+                              m_opts.sbidCount, m_opts.autoSBIDCounter);
     swsbAnalyzer.run();
   }
 }
@@ -285,7 +284,13 @@ void Encoder::encodeFC(const Instruction &i) {
     auto sf = i.getDpasFc();
     auto sdepth = GetDpasSystolicDepth(sf);
     auto rc = GetDpasRepeatCount(sf);
-    {
+    if (os.is(Op::BDPAS)) {
+      // in bdpas, repeat count is fixed to 8
+      // there is no instruction encoding bits for repeat count
+      // Note that bdpas's enum class for systolic depth is different from
+      // dpas'. Hence GED has different API name (GED_GetSystolicDepthBlkScl).
+      GED_ENCODE(SystolicDepthBlkScl, sdepth);
+    } else {
     GED_ENCODE(SystolicDepth, sdepth);
     GED_ENCODE(RepeatCount, rc);
     }
@@ -298,6 +303,18 @@ void Encoder::encodeFC(const Instruction &i) {
   } else if (os.is(Op::SYNC)) {
     GED_SYNC_FC wfc = lowerSyncFC(i.getSyncFc());
     GED_ENCODE(SyncFC, wfc);
+  } else if (os.is(Op::SHFL)) {
+    GED_SHUFFLE_FC sfc = lowerShuffleFC(i.getShuffleFc());
+    GED_ENCODE(ShuffleFC, sfc);
+  } else if (os.is(Op::LFSR)) {
+    GED_LFSR_FC fc = lowerLfsrFC(i.getLfsrFc());
+    GED_ENCODE(LfsrFC, fc);
+  } else if (os.is(Op::DNSCL)) {
+    auto fc = i.getDnsclFc();
+    GED_ENCODE(ConvSrcDataType, lowerConvSrcDataType(fc.convSrcTy));
+    GED_ENCODE(ConvDstDataType, lowerConvDstDataType(fc.convDstTy));
+    GED_ENCODE(DnsclMode, lowerDnsclMode(fc.dnsclMode));
+    GED_ENCODE(RoundingMode, lowerRoundingMode(fc.roundingMode));
   } else if (os.supportsBranchCtrl()) {
     GED_ENCODE(BranchCtrl, lowerBranchCntrl(i.getBranchCtrl()));
   } else if (os.supportsSubfunction()) {
@@ -319,7 +336,7 @@ void Encoder::encodeInstruction(Instruction &inst) {
     return;
   }
 
-  if (m_opcode == Op::ILLEGAL) {
+  if (m_opcode == Op::ILLEGAL || m_opcode == Op::THRYLD) {
     // GED does all the work for this instruction
     return;
   } else if (m_opcode == Op::NOP) {
@@ -433,6 +450,8 @@ void Encoder::encodeInstruction(Instruction &inst) {
     // options encoded internally
   } else if (os.isTernary()) {
     encodeTernaryInstruction(inst, accessMode);
+  } else if (os.isQuinary()) {
+    encodeQuinaryInstruction(inst);
   } else if (os.isAnySendFormat()) {
     encodeSendInstruction(inst);
   } else if (os.is(Op::SYNC)) {
@@ -479,6 +498,10 @@ void Encoder::encodeBasicInstruction(const Instruction &inst,
 
   if (os.supportsDestination()) {
     encodeBasicDestination(inst, inst.getDestination(), accessMode);
+    if (os.op == Op::BDPAS) {
+      GED_ENCODE(ExecutionDataType,
+        lowerExecDataType(inst.getDestination().getType()));
+    }
   } else if (os.op == Op::WAIT) {
     // wait has an implicit destination (same as first source)
     // but with dst region of <1>
@@ -509,6 +532,36 @@ void Encoder::encodeTernaryDestinationAlign1(const Instruction &inst) {
     if (inst.getOpSpec().hasDstHorzStride())
       GED_ENCODE(DstHorzStride, static_cast<int>(dst.getRegion().getHz()));
   }
+}
+template <SourceIndex S>
+void Encoder::encodeQuinarySource(const Instruction &inst) {
+  assert(platform() > Platform::XE3 &&
+      "Quinary sources not supported on platform");
+  assert(inst.getOpSpec().isBDPAS() &&
+      "Quinary source not supported for instruction; only supported for bdpas");
+
+  const Operand &src = inst.getSource(S);
+  Type srcType = src.getType();
+
+  auto getSubRegOff = [&]() {
+    return SubRegToBinaryOffset(src.getDirRegRef().subRegNum,
+                                src.getDirRegName(), srcType,
+                                m_model.platform);
+  };
+  if (S == SourceIndex::SRC0) {
+    GED_ENCODE(Src0DataType, lowerDataType(srcType));
+    encodeSrcSubRegNum<S>(getSubRegOff());
+  } else if (S == SourceIndex::SRC1) {
+    GED_ENCODE(Src1Precision, lowerSubBytePrecision(srcType));
+  } else if (S == SourceIndex::SRC2) {
+    GED_ENCODE(Src2Precision, lowerSubBytePrecision(srcType));
+  } else if (S == SourceIndex::SRC3) {
+    encodeSrcSubRegNum<S>(getSubRegOff());
+  } else if (S == SourceIndex::SRC4) {
+    encodeSrcSubRegNum<S>(getSubRegOff());
+  }
+  encodeSrcRegFile<S>(lowerRegFile(src.getDirRegName()));
+  encodeSrcReg<S>(src.getDirRegName(), src.getDirRegRef().regNum);
 }
 
 template <SourceIndex S>
@@ -627,6 +680,31 @@ void Encoder::encodeTernarySourceAlign1(const Instruction &inst) {
     fatalT("src", (int)S, ": invalid operand kind");
     return;
   }
+}
+void Encoder::encodeQuinaryInstruction(const Instruction &inst) {
+  // execution data type set based on dst
+  Type dstType = inst.getDestination().getType();
+  GED_EXECUTION_DATA_TYPE execDataType;
+
+  // use ternary instruction function support for dst, src0, src1 and src2
+  if (isTernaryAlign1Floating(dstType)) {
+    execDataType = GED_EXECUTION_DATA_TYPE_Float;
+  } else if (isTernaryAlign1Integral(dstType)) {
+    execDataType = GED_EXECUTION_DATA_TYPE_Integer;
+  } else {
+    fatalT("unsupported execution data type");
+    return;
+  }
+  GED_ENCODE(ExecutionDataType, execDataType);
+
+  if (inst.getOpSpec().supportsDestination()) {
+    encodeTernaryDestinationAlign1(inst);
+  }
+  encodeQuinarySource<SourceIndex::SRC0>(inst);
+  encodeQuinarySource<SourceIndex::SRC1>(inst);
+  encodeQuinarySource<SourceIndex::SRC2>(inst);
+  encodeQuinarySource<SourceIndex::SRC3>(inst);
+  encodeQuinarySource<SourceIndex::SRC4>(inst);
 }
 
 void Encoder::encodeTernaryInstruction(const Instruction &inst,
@@ -851,6 +929,9 @@ void Encoder::encodeSendInstruction(const Instruction &i) {
     }
   }
 
+  if (os.isSendgFormat()) {
+    GED_ENCODE(Src0Length, (uint32_t)i.getSrc0Length());
+  }
 
   ////////////////////////////////////////////
   // send descriptors and other gunk
@@ -882,6 +963,8 @@ void Encoder::encodeSendDescs(const Instruction &i) {
   } else if (platform() == Platform::XE_HPG || platform() == Platform::XE_HPC
   ) {
     encodeSendDescsXeHPG(i);
+  } else if (i.getOpSpec().isSendgFormat()) {
+    encodeSendgDescsXe3(i);
   } else if (platform() >= Platform::XE2) {
     encodeSendDescsXe2(i);
   } else {
@@ -889,6 +972,7 @@ void Encoder::encodeSendDescs(const Instruction &i) {
   }
 
   bool noEOTinExDesc = m_model.supportsXeSend();
+  noEOTinExDesc &= platform() <= Platform::XE3; // efficient 64b send desc
   if (noEOTinExDesc && i.getExtMsgDescriptor().isImm() &&
       (i.getExtMsgDescriptor().imm & 1 << 5))
     errorT("Encoder: Send exDesc[5] must not be set (the legacy EOT bit)");
@@ -1120,6 +1204,37 @@ void Encoder::encodeSendDescsXe2(const Instruction &i) {
   }
 }
 
+// Completely new encoding.
+//
+void Encoder::encodeSendgDescsXe3(const Instruction &i) {
+  int src1Len = i.getSrc1Length();
+  if (src1Len > 0) {
+    bool encoded = false;
+    if (!encoded)
+      GED_ENCODE(Src1Length, (uint32_t)src1Len);
+  }
+  auto id0 = i.getSendgIndDesc0Reg();
+  if (id0 != REGREF_INVALID) {
+    GED_ENCODE(IndMsgDesc0IsPresent, 1);
+    if (id0.subRegNum % 8) {
+      errorT("ID0 must be a 8-byte-aligned offset");
+    }
+    GED_ENCODE(IndMsgDesc0Addr, id0.subRegNum / 8);
+  }
+  auto id1 = i.getSendgIndDesc1Reg();
+  if (id1 != REGREF_INVALID) {
+    if (id1.subRegNum % 8) {
+      errorT("ID1 must be a 8-byte-aligned offset");
+    }
+    GED_ENCODE(IndMsgDesc1IsPresent, 1);
+    GED_ENCODE(IndMsgDesc1Addr, id1.subRegNum / 8);
+  }
+  auto desc = i.getSendgDesc();
+  if (id1 != REGREF_INVALID && (desc & ~((1ull << 42) - 1))) {
+    errorT("Desc[46:42] overlaps ID1 (those bits must be zero in desc)");
+  }
+  GED_ENCODE(MsgDesc64, desc);
+}
 
 void Encoder::encodeSyncInstruction(const Instruction &inst) {
   // Set the Dst.HorStride to 1 so that "sync.bar null" can be compacted
@@ -1500,6 +1615,14 @@ void Encoder::encodeSendDestinationDataType(const Operand &dst) {
 }
 
 void Encoder::encodeSendDestination(const Operand &dst) {
+  if (platform() > Platform::XE3) {
+    if (m_opcode == Op::SENDGX || m_opcode == Op::SENDGXC) {
+     encodeSendgxDestinationXe3p(dst);
+     return;
+    }
+    encodeSendgDestinationXe3p(dst);
+    return;
+  }
   if (m_model.supportsUnarySend()) {
     switch (dst.getKind()) {
     case Operand::Kind::DIRECT:
@@ -1530,6 +1653,44 @@ void Encoder::encodeSendDestination(const Operand &dst) {
     GED_ENCODE(DstAddrSubRegNum, dst.getIndAddrReg().subRegNum);
   }
 }
+void Encoder::encodeSendgxDestinationXe3p(const Operand& dst) {
+  if (dst.getKind() != Operand::Kind::DIRECT) {
+    errorT("invalid dst operand kind");
+  }
+  if (dst.getDirRegName() == RegName::ARF_NULL) {
+    GED_ENCODE(DstRegNum, (uint16_t)511);
+  } else {
+    GED_ENCODE(DstRegNum, dst.getDirRegRef().regNum);
+  }
+}
+void Encoder::encodeSendgDestinationXe3p(const Operand &dst) {
+  if (dst.getKind() != Operand::Kind::DIRECT) {
+    errorT("invalid dst operand kind");
+  }
+  if (dst.isNull()) {
+    GED_ENCODE(DstRegFile, GED_REG_FILE_ARF);
+  } else {
+    GED_ENCODE(DstRegFile, GED_REG_FILE_GRF);
+    GED_ENCODE(DstRegNum, dst.getDirRegRef().regNum);
+  }
+}
+void Encoder::encodeSendgxSource1Xe3p(const Operand& src) {
+  if (src.getDirRegName() == RegName::ARF_NULL) {
+    GED_ENCODE(Src1RegNum, (uint16_t)511);
+  }
+  else {
+    GED_ENCODE(Src1RegNum, src.getDirRegRef().regNum);
+  }
+}
+
+void Encoder::encodeSendgxSource0Xe3p(const Operand& src) {
+  if (src.getDirRegName() == RegName::ARF_NULL) {
+    GED_ENCODE(Src0RegNum, (uint16_t)511);
+  }
+  else {
+    GED_ENCODE(Src0RegNum, src.getDirRegRef().regNum);
+  }
+}
 
 void Encoder::encodeSendSource0(const Operand &src) {
   if (m_model.supportsUnarySend()) {
@@ -1548,6 +1709,10 @@ void Encoder::encodeSendSource0(const Operand &src) {
   }
 
   GED_REG_FILE gedRegFile = lowerRegFile(src.getDirRegName());
+  // for sendgx, src0 reg file is repurposed for storing high bit of reg num
+  if (m_opcode == Op::SENDGX || m_opcode == Op::SENDGXC) {
+    return encodeSendgxSource0Xe3p(src);
+  }
   GED_ENCODE(Src0RegFile, gedRegFile);
 
   auto t = src.getType() == Type::INVALID ? Type::UD : src.getType();
@@ -1630,6 +1795,10 @@ void Encoder::encodeSendsSource0(const Operand &src) {
 void Encoder::encodeSendsSource1(const Operand &src) {
   // GED_ENCODE(Src1AddrMode, GED_ADDR_MODE_Direct);
   GED_REG_FILE gedRegFile = lowerRegFile(src.getDirRegName());
+  if (m_opcode == Op::SENDGX || m_opcode == Op::SENDGXC) {
+    // for sendgx, src1 reg file is repurposed for storing high bit of reg num
+    return encodeSendgxSource1Xe3p(src);
+  }
   GED_ENCODE(Src1RegFile, gedRegFile);
   if (gedRegFile == GED_REG_FILE_GRF)
     GED_ENCODE(Src1RegNum, src.getDirRegRef().regNum);
@@ -1999,9 +2168,18 @@ void Encoder::encodeOptions(const Instruction &inst) {
   }
 
   if (inst.hasInstOpt(InstOpt::ATOMIC)) {
+    // this bit overlaps
+    if (os.isAnySendFormat() && platform() >= Platform::XE3) {
+      errorT("{Atomic} not available on sends for this platform");
+    }
     GED_ENCODE(ThreadCtrl, GED_THREAD_CTRL_Atomic);
   }
 
+  if (inst.hasInstOpt(InstOpt::FWD)) {
+    if (!os.supportsFwdCtrl())
+      errorT("Invalid option {Fwd}");
+    GED_ENCODE(FwdCtrl, 1);
+  }
 
   if (inst.hasInstOpt(InstOpt::SWITCH) && m_model.supportsHwDeps()) {
     if (inst.getOp() == Op::NOP) {
@@ -2025,7 +2203,8 @@ void Encoder::encodeOptions(const Instruction &inst) {
     GED_ENCODE(NoSrcDepSet, GED_NO_SRC_DEP_SET_Normal);
   }
 
-  if (platform() >= Platform::XE && m_opcode != Op::ILLEGAL) {
+  if (platform() >= Platform::XE && m_opcode != Op::ILLEGAL &&
+      m_opcode != Op::THRYLD) {
     SWSB::InstType inst_type = inst.getSWSBInstType(m_opts.swsbEncodeMode);
     uint32_t swsbBinary =
         inst.getSWSB().encode(m_opts.swsbEncodeMode, inst_type);

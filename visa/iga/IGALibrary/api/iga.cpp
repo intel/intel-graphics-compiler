@@ -358,6 +358,8 @@ public:
     eopts.sbidCount = aopts.sbid_count;
     eopts.swsbEncodeMode =
         static_cast<iga::SWSB_ENCODE_MODE>(aopts.swsb_encode_mode);
+    eopts.autoSBIDCounter =
+        (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_SBID_COUNTER) != 0;
 
     if ((aopts.encoder_opts & IGA_ENCODER_OPT_USE_NATIVE) == 0) {
       if (!iga::ged::IsEncodeSupported(m_model, eopts)) {

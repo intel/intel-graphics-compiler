@@ -61,6 +61,7 @@ struct OpSpec {
     UNARY = HAS_DST << 1,   // takes one operand
     BINARY = UNARY << 1,    // takes two operands
     TERNARY = BINARY << 1,  // takes three operands
+    QUINARY = TERNARY << 1, // takes five operands
 
     /////////////////////////////////////////////////
     // THE ACTUAL VALID ENTRIES
@@ -144,6 +145,7 @@ struct OpSpec {
     // XE:
     //   sync.<syctrl> (..)  reg
     SYNC_UNARY = (SPECIAL | UNARY) + 2,
+    QUINARY_SRC = (QUINARY | HAS_DST) + 1,
   };
   //
   // various miscellaneous attributes about the operation
@@ -304,11 +306,13 @@ struct OpSpec {
 
   bool isSendFormat() const { return isOneOf(Op::SEND, Op::SENDC); }
   bool isSendsFormat() const { return isOneOf(Op::SENDS, Op::SENDSC); }
+  bool isSendgFormat() const { return isOneOf(Op::SENDG, Op::SENDGC, Op::SENDGX, Op::SENDGXC); }
        // includes send, sends, or any other send formats
   bool isAnySendFormat() const { return (format & SEND) != 0; }
 
   bool isBinary() const { return (format & BINARY) != 0; }
   bool isTernary() const { return (format & TERNARY) != 0; }
+  bool isQuinary() const { return (format & QUINARY) != 0; }
 
   // GED doesn't permit us to set execution offset for jmpi
   bool supportsQtrCtrl() const { return !is(Op::JMPI); }
@@ -323,10 +327,12 @@ struct OpSpec {
   bool supportsBranchCtrl() const { return hasAttrs(Attr::SUPPORTS_BRCTL); }
 
   bool supportsThreadCtrl() const {
-    if (op == Op::NOP || op == Op::ILLEGAL)
+    if (op == Op::NOP || op == Op::ILLEGAL || op == Op::THRYLD)
         return false;
     if (!isAnySendFormat())
       return true;
+    if (platform >= Platform::XE3)
+      return false;
     return platform >= Platform::GEN9;
   }
 
@@ -380,6 +386,8 @@ struct OpSpec {
            !is(Op::ILLEGAL);
   }
 
+  // if an instruction and the platform supports {Fwd} in ISA encoding
+  bool supportsFwdCtrl() const;
 
   // check if the instruction is binary (2-src) and has
   // ExecDataType
@@ -388,8 +396,11 @@ struct OpSpec {
 
   bool isDpasFormat() const {
     return isOneOf(Op::DPAS, Op::DPASW
+                   ,
+                   Op::BDPAS
     );
   }
+  bool isBDPAS() const { return is(Op::BDPAS); }
 }; // struct OpSpec
 } // namespace iga
 #endif // IGA_OPSPEC_HPP

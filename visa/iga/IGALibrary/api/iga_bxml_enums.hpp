@@ -46,18 +46,48 @@ enum class MathFC {
   IREM,
   INVM,
   RSQTM,
+  TANH,
+  SIGM
 };
 // static const MathFC ALL_MathFCs[] ... need C++17
-static const std::array<MathFC,14>
-    ALL_MathFCs{
-        MathFC::INV,  MathFC::LOG,  MathFC::EXP,  MathFC::SQT,   MathFC::RSQT,
-        MathFC::SIN,  MathFC::COS,  MathFC::FDIV, MathFC::POW,   MathFC::IDIV,
-        MathFC::IQOT, MathFC::IREM, MathFC::INVM, MathFC::RSQTM,
-    };
+static const std::array<MathFC, 16> ALL_MathFCs{
+    MathFC::INV,  MathFC::LOG,   MathFC::EXP,  MathFC::SQT,
+    MathFC::RSQT, MathFC::SIN,   MathFC::COS,  MathFC::FDIV,
+    MathFC::POW,  MathFC::IDIV,  MathFC::IQOT, MathFC::IREM,
+    MathFC::INVM, MathFC::RSQTM, MathFC::TANH, MathFC::SIGM,
+};
 unsigned GetSourceCount(MathFC mfc);
 static inline bool IsMacro(MathFC mfc) {
   return mfc == MathFC::INVM || mfc == MathFC::RSQTM;
 }
+enum class ShuffleFC {
+  INVALID = -1,
+  UP = 0,
+  UPZ,
+  DN,
+  DNZ,
+  XOR,
+  IDX,
+  IDX4
+};
+
+static const std::array<ShuffleFC, 7>
+      ALL_ShuffleFC {
+        ShuffleFC::UP, ShuffleFC::UPZ, ShuffleFC::DN, ShuffleFC::DNZ,
+        ShuffleFC::XOR, ShuffleFC::IDX, ShuffleFC::IDX4
+      };
+
+enum class LfsrFC {
+  INVALID = -1,
+  LFSR_b32 = 0, // Single 32-bit seed/polynomial
+  LFSR_b16v2,   // Two 16-bit seeds/polynomials packed in 32 bits
+  LFSR_b8v4     // Four 8-bit seeds/polynomials packed in 32 bits
+};
+
+static const std::array<LfsrFC, 3>
+      ALL_LfsrFC {
+        LfsrFC::LFSR_b32, LfsrFC::LFSR_b16v2, LfsrFC::LFSR_b8v4
+      };
 
 // Send shared function ID
 enum class SFID {
@@ -191,6 +221,71 @@ static inline DpasFC GetDpasFC(uint32_t sysD, uint32_t repC) {
   return DpasFC((sysD << 8) | repC);
 }
 
+// dnscl instruction's modes and types
+enum class DnsclMode {
+  INVALID = -1,
+  MODE0, // Packs the output following the downscale instruction's Mode0
+  MODE1, // Packs the output following the downscale instruction's Mode1
+  MODE2, // Packs the output following the downscale instruction's Mode2
+  MODE3  // Packs the output following the downscale instruction's Mode3
+};
+
+static const std::array<DnsclMode, 4>
+  ALL_DnsclMode {
+    DnsclMode::MODE0,
+    DnsclMode::MODE1,
+    DnsclMode::MODE2,
+    DnsclMode::MODE3
+  };
+
+enum class ConvDstDataType {
+  INVALID = -1,
+  E2M1,
+  INT4
+};
+
+static const std::array<ConvDstDataType, 3>
+  ALL_ConvDstDataType {
+    ConvDstDataType::E2M1,
+    ConvDstDataType::INT4
+  };
+
+enum class ConvSrcDataType {
+  INVALID = -1,
+  HF,
+  BF
+};
+
+static const std::array<ConvSrcDataType, 2>
+  ALL_ConvSrcDataType {
+    ConvSrcDataType::HF,
+    ConvSrcDataType::BF,
+  };
+
+enum class RoundingMode {
+  INVALID = -1,
+  SRAND,
+  RNE
+};
+
+static const std::array<RoundingMode, 2>
+  ALL_RoundingMode {
+    RoundingMode::SRAND,
+    RoundingMode::RNE,
+  };
+
+struct DnsclFC {
+  // dnscl FC is composed by 4 parts: ConvSrcDataType, ConvDstDataType,
+  // DnsclMode and RoundingMode.
+  ConvSrcDataType convSrcTy : 8;
+  ConvDstDataType convDstTy : 8;
+  DnsclMode dnsclMode       : 8;
+  RoundingMode roundingMode : 8;
+
+  constexpr explicit DnsclFC(ConvSrcDataType srcTy, ConvDstDataType dstTy,
+                             DnsclMode dm, RoundingMode rm)
+      : convSrcTy(srcTy), convDstTy(dstTy), dnsclMode(dm), roundingMode(rm) {}
+};
 
 // An instruction subfunction is a set of immediate-encoded control bits
 // that control the behavior of some EU instruction.  We permit an
@@ -229,6 +324,9 @@ struct Subfunction {
     SyncFC sync;         // op == Op::SYNC
     BfnFC bfn;           // BFN subfunction index (low 8 bits are relevent)
     DpasFC dpas;         // op == Op::DPAS || op == Op::DPASW
+    ShuffleFC shuffle;   // shuffle function (up, upz, dn, dnz, id, idx4)
+    LfsrFC    lfsr;      // lfsr function control
+    DnsclFC   dnscl;     // dnscl function control
     // NOTE: this does *not* correspond to any direct encoding
     // since that can vary from platform to platform.
     uint32_t bits;
@@ -241,6 +339,9 @@ struct Subfunction {
   constexpr Subfunction(SyncFC sf) : sync(sf) {}
   constexpr Subfunction(BfnFC bf) : bfn(bf) {}
   constexpr Subfunction(DpasFC sf) : dpas(sf) {}
+  constexpr Subfunction(ShuffleFC sf) : shuffle(sf) {}
+  constexpr Subfunction(LfsrFC sf) : lfsr(sf) {}
+  constexpr Subfunction(DnsclFC sf) : dnscl(sf) {}
 
   bool isValid() const { return invalid != InvalidFC::INVALID; }
 };

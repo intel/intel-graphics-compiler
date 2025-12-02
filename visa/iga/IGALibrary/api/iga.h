@@ -104,6 +104,7 @@ typedef enum {
   IGA_XE2 = XE_VER(2, 0)
   ,
   IGA_XE3 = XE_VER(3, 0)
+  , IGA_XE3P_XPC = XE_VER(3, 3)
 
   // DEPRECATED
   // Preserve the old values to maintain the binary compatibility
@@ -286,6 +287,9 @@ static_assert(sizeof(iga_assemble_options_t) == 8 * 4,
 /* forcely NoCompact to all instructions even if {Compacted} is set on the
    instruction This option will overried IGA_ENCODER_OPT_AUTO_COMPACT */
 #define IGA_ENCODER_OPT_FORCE_NO_COMPACT 0x00000010u
+/* auto set instruction dependencies with sbid counter. This option takes
+   effect only when IGA_ENCODER_OPT_AUTO_DEPENDENCIES is set */
+#define IGA_ENCODER_OPT_AUTO_SBID_COUNTER 0x00000020u
 /*
  * options for the parsing phase
  */

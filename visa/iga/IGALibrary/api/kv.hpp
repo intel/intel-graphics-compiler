@@ -246,6 +246,20 @@ public:
     return immoff;
   }
 
+  // Maps to kv_get_sendg_desc; confer with that API in kv.h for semantics
+  kv_status_t getSendgDesc(int32_t pc, uint64_t *desc) const {
+    return kv_get_sendg_desc(m_kv, pc, desc);
+  }
+  // Maps to kv_get_sendg_ind_desc0; confer with that API in kv.h
+  kv_status_t getSendgIndDesc0(int32_t pc, uint32_t *subregPresent,
+                               uint32_t *subreg) const {
+    return kv_get_sendg_ind_desc0(m_kv, pc, subregPresent, subreg);
+  }
+  // Maps to kv_get_sendg_ind_desc1; confer with that API in kv.h
+  kv_status_t getSendgIndDesc1(int32_t pc, uint32_t *subregPresent,
+                               uint32_t *subreg) const {
+    return kv_get_sendg_ind_desc1(m_kv, pc, subregPresent, subreg);
+  }
 
   /*************************Analysis APIs **********************************/
 

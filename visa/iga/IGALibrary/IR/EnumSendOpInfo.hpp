@@ -76,6 +76,8 @@ DEFINE_LOAD_OP(LOAD_QUAD_MSRT, "load_quad_msrt",
                "load quad from multi-sample render target",
                ATTRS_CMASK)
 DEFINE_LOAD_OP(LOAD_STATUS, "load_status", "load status", ATTRS_NONE)
+DEFINE_LOAD_OP(LOAD_QUAD_STATUS, "load_quad_status",
+               "load quad status (aka cmask)", ATTRS_CMASK)
 DEFINE_LOAD_OP(LOAD_BLOCK2D, "load_block2d", "load array of 2d blocks",
                ATTRS_SCALARADDR)
 DEFINE_STORE_OP(STORE, "store", "store", ATTRS_NONE)
@@ -203,6 +205,10 @@ DEFINE_SAMPLE_OP(SAMPLE_PO_D, "sample_po_d",
                  "sample with derivatives and offsets", ATTRS_NONE)
 DEFINE_SAMPLE_OP(SAMPLE_PO_L_C, "sample_po_l_c",
                  "sample with offsets, LoD, and compare", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_PO_B_C, "sample_po_b_c",
+        "sample with offsets", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_PO_D_C, "sample_po_d_c",
+        "sample with offsets", ATTRS_NONE)
 DEFINE_SAMPLE_OP(SAMPLE_PO_LZ, "sample_po_lz", "sampler lz with pos. offset",
                  ATTRS_NONE)
 DEFINE_SAMPLE_OP(SAMPLE_PO_C_LZ, "sample_po_c_lz",
@@ -249,7 +255,16 @@ DEFINE_OTHER_OP(RESTORE_BARRIER, "restore_barrier", "restore barrier",
                 ATTRS_NONE)
 DEFINE_OTHER_OP(RESTORE_STACK, "restore_stack", "restore stack", ATTRS_NONE)
 //
+DEFINE_OTHER_OP(GET_WATCHPOINT, "get_watchpoint", "fetches a watchpoint",
+                ATTRS_NONE)
+DEFINE_OTHER_OP(SET_WATCHPOINT, "set_watchpoint", "restores a watchpoint",
+                ATTRS_NONE)
 //
+DEFINE_LOAD_OP(LOAD_ELEMENT, "load_element", "load element", ATTRS_CMASK)
+DEFINE_LOAD_OP(LOAD_ELEMENT_WITH_STATUS, "load_element_with_status",
+               "load element with status", ATTRS_CMASK)
+DEFINE_OTHER_OP(EXTENDED_CACHE_CTRL, "extended_cache_control",
+                "extended cache control", ATTRS_NONE)
 
 #undef ATTRS_NONE
 #undef ATTRS_SCALARADDR

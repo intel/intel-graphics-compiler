@@ -241,6 +241,12 @@ extern "C" int iga_main(int argc, const char **argv) {
       "",
       opts::OptAttrs::ALLOW_UNSET, baseOpts.autosetDepInfo);
   xGrp.defineFlag(
+      "auto-sbid-counter", nullptr,
+      "IGA automatically sets sbid counter",
+      "This option takes effect only when -Xauto-deps is set. "
+      "",
+      opts::OptAttrs::ALLOW_UNSET, baseOpts.autosetSbidCounter);
+  xGrp.defineFlag(
       "autocompact", nullptr, "auto compacts unmarked instructions",
       "This automatically attempts to compact instructions lacking a "
       "'Compacted' or 'NoCompact' instruction option.  If the instruction "
@@ -270,6 +276,7 @@ extern "C" int iga_main(int argc, const char **argv) {
       "The format (arguments) are:\n"
       "  <XE:     -Xdsd      ExecSize? ExDesc Desc\n"
       "  >=XE:    -Xdsd SFID ExecSize? ExDesc Desc\n"
+      "  >XE3:    -Xdsd SFID ExecSize? Src0Len? Src1Len? ID0? ID1? Desc\n"
       "\n"
       "  SFIDs are: BTD, DC0, DC1, DC2, DCRO, GTWY, RTA, RC, "
       "SLM, SMPL, TGM, TS,\n"
@@ -280,6 +287,10 @@ extern "C" int iga_main(int argc, const char **argv) {
       "   much like it appears in syntax (e.g. \"(16|M0)\" or \"(16)\"\n"
       "   If ExecSize is absent, then we may guess based on the platform\n"
       "\n"
+      "  Src0Len and Src1Len are the source lengths with a colon prefix "
+      "(e.g. \":4\")\n"
+      "\n"
+      "  ID0 and ID1 are s0.# register references (e.g. \"s0.24\")\n"
       "\n"
       "EXAMPLES:\n"
       "  % iga -p=11 -Xdsd     0x0000010C  0x04025C01\n"
@@ -288,14 +299,20 @@ extern "C" int iga_main(int argc, const char **argv) {
       "  % iga -p=xe -Xdsd dc1 \"(8)\" a0.2 0x04025C01\n"
       "    decodes message info for a XE descriptor on SFID (DC1)\n"
       "    the latter illustrates with ExecSize of 8 and ExDesc of a0.2\n"
-      "  % iga -p=xehpg  -Xdsd  ugm           0x0   0x08200580\n"
-      "  % iga -p=xehpg  -Xdsd  ugm  \"(8)\"    a0.2  0x620A3484\n"
-      "  % iga -p=xehpg  -Xdsd  ugm           0x0   0x30607502\n"
-      "  % iga -p=xehpg  -Xdsd  ugm  \"(1)\"    0x0   0x0200D504\n"
-      "  % iga -p=xehpc  -Xdsd  ugm           0x0   0x30607502\n"
-      "  % iga -p=xe2    -Xdsd  slm           0xFFFFC000  0x04200500\n"
-      "  % iga -p=xe2    -Xdsd  ugm \"(16)\"    0xFFF8C000:a0.2  0x22003504\n"
-      "  % iga -p=xe2    -Xdsd  ugm \"(32)\"    0xFFF8C000:a0.2  0x24000512\n"
+      "  % iga -p=xehpg     -Xdsd  ugm           0x0   0x08200580\n"
+      "  % iga -p=xehpg     -Xdsd  ugm  \"(8)\"    a0.2  0x620A3484\n"
+      "  % iga -p=xehpg     -Xdsd  ugm           0x0   0x30607502\n"
+      "  % iga -p=xehpg     -Xdsd  ugm  \"(1)\"    0x0   0x0200D504\n"
+      "  % iga -p=xehpc     -Xdsd  ugm           0x0   0x30607502\n"
+      "  % iga -p=xe2       -Xdsd  slm           0xFFFFC000  0x04200500\n"
+      "  % iga -p=xe2       -Xdsd  ugm \"(16)\"    0xFFF8C000:a0.2  0x22003504\n"
+      "  % iga -p=xe2       -Xdsd  ugm \"(32)\"    0xFFF8C000:a0.2  0x24000512\n"
+      "  % iga -p=xe3pxpc   -Xdsd  gtwy \"(1)\" :1 :0         0x84\n"
+      "  % iga -p=xe3pxpc   -Xdsd  gtwy \"(1)\" :1 :0         0x5\n"
+      "  % iga -p=xe3pxpc   -Xdsd  ugm  \"(32)\"              0x100000409000\n"
+      "  % iga -p=xe3pxpc   -Xdsd  ugm  \"(16)\" :1 :1        0x1FFFFFC2500C\n" // atomic_iadd.ugm.d32.a32s.uc.uc [0x4*A-0x4]
+      "  % iga -p=xe3pxpc   -Xdsd  ugm  \"(16)\" :1 :1 s0.56  0x1FFFFF02500C\n" // atomic_iadd.ugm.d32.a32s.uc.uc [s0.56+0x4*A-0x10]
+      "  % iga -p=xe3pxpc   -Xdsd  tgm  \"(32)\" :8    s0.16  0xA8C0C0D082\n" // load_quad.tgm.d32.x surf[s0.16,3][A+(2,-6,3)
       "",
       opts::OptAttrs::ALLOW_UNSET,
       [](const char *, const opts::ErrorHandler &, Opts &baseOpts) {

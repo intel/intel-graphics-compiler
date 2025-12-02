@@ -365,6 +365,8 @@ struct Model {
       return SWSB_ENCODE_MODE::FourDistPipeReduction;
     else if (platform == Platform::XE3)
       return SWSB_ENCODE_MODE::FiveDistPipe;
+    else if (platform >= Platform::XE3P_XPC)
+      return SWSB_ENCODE_MODE::FiveDistPipeCvtToIntNoFwd;
     return SWSB_ENCODE_MODE::SWSBInvalidMode;
   }
 
@@ -379,6 +381,9 @@ struct Model {
     case SWSB_ENCODE_MODE::FourDistPipeReduction:
     case SWSB_ENCODE_MODE::FiveDistPipe:
     case SWSB_ENCODE_MODE::FiveDistPipeReduction:
+    case SWSB_ENCODE_MODE::FiveDistPipeCvtToInt:
+    case SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr:
+    case SWSB_ENCODE_MODE::FiveDistPipeCvtToIntNoFwd:
       return 32;
     default:
       break;

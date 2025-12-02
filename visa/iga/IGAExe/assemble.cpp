@@ -37,6 +37,8 @@ bool assemble(const Opts &opts, igax::Context &ctx, const std::string &,
             opts.errorOnCompactFail);
   setOptBit(aopts.encoder_opts, IGA_ENCODER_OPT_AUTO_DEPENDENCIES,
             opts.autosetDepInfo);
+  setOptBit(aopts.encoder_opts, IGA_ENCODER_OPT_AUTO_SBID_COUNTER,
+            opts.autosetSbidCounter);
   setOptBit(aopts.encoder_opts, IGA_ENCODER_OPT_USE_NATIVE,
             opts.useNativeEncoder);
   setOptBit(aopts.encoder_opts, IGA_ENCODER_OPT_FORCE_NO_COMPACT,

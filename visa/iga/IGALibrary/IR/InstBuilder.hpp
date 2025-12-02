@@ -123,13 +123,16 @@ class InstBuilder {
   DstModifier m_dstModifier = DstModifier::NONE;
 
   OperandInfo m_dst;
-  OperandInfo m_srcs[3];
+  OperandInfo m_srcs[5];
   int m_nSrcs = 0;
 
   uint32_t m_exImmOffDesc;
   SendDesc m_exDesc;
   SendDesc m_desc;
 
+  uint64_t m_sendgDesc = 0x0;
+  RegRef m_sendgIndDesc0Reg{REGREF_INVALID};
+  RegRef m_sendgIndDesc1Reg{REGREF_INVALID};
 
   // int                         m_sendDstLen;  // (extracted later)
   int m_sendSrc0Len = -1;
@@ -177,6 +180,7 @@ public:
     int32_t memSBidAlloc = -1; // e.g. $2      -1 = not set
     int32_t memSBidDst = -1;   // e.g. $2.dst  -1 = not set
     int32_t memSBidSrc = -1;   // e.g. $2.src  -1 = not set
+    int32_t memSBidCntr = -1; // e.g. $2.inc -1 = not set
     SWSB::SpecialToken spToken = SWSB::SpecialToken::NONE;
 
     SWSBInfo() {} // sets default values as above
@@ -187,6 +191,7 @@ public:
     bool sbidAllocSet() const { return memSBidAlloc >= 0; }
     bool sbidDstSet() const { return memSBidDst >= 0; }
     bool sbidSrcSet() const { return memSBidSrc >= 0; }
+    bool sbidCntrSet() const { return memSBidCntr >= 0; }
     bool specialTokenSet() const { return spToken != SWSB::SpecialToken::NONE; }
 
     bool operator==(const SWSBInfo &sbi) const {
@@ -229,6 +234,9 @@ private:
     m_exDesc.imm = 0;
     m_desc.imm = 0;
 
+    m_sendgDesc = 0x0;
+    m_sendgIndDesc0Reg = REGREF_INVALID;
+    m_sendgIndDesc1Reg = REGREF_INVALID;
 
     m_sendSrc0Len = m_sendSrc1Len = -1;
 
@@ -342,11 +350,16 @@ public:
           m_subfunc.send = sfidFromEncoding(platform(), m_exDesc.imm);
         }
       }
-      inst = m_kernel->createSendInstruction(*m_opSpec, m_subfunc.send,
-                                             m_predication, m_flagReg,
-                                             m_execSize, m_chOff, m_maskCtrl,
-                                             m_exImmOffDesc,
-                                             m_exDesc, m_desc);
+      if (m_opSpec->isSendgFormat()) {
+        inst = m_kernel->createSendgInstruction(
+            *m_opSpec, m_subfunc.send, m_predication, m_flagReg, m_execSize,
+            m_chOff, m_maskCtrl, m_sendSrc0Len, m_sendSrc1Len,
+            m_sendgIndDesc0Reg, m_sendgIndDesc1Reg, m_sendgDesc);
+      } else {
+        inst = m_kernel->createSendInstruction(
+            *m_opSpec, m_subfunc.send, m_predication, m_flagReg, m_execSize,
+            m_chOff, m_maskCtrl, m_exImmOffDesc, m_exDesc, m_desc);
+      }
       if (m_sendSrc0Len >= 0)
         inst->setSrc0Length(m_sendSrc0Len);
       if (m_sendSrc1Len >= 0)
@@ -358,6 +371,8 @@ public:
         inst = m_kernel->createInlineBinaryInstruction(m_inlineInstBinary);
       else
         inst = m_kernel->createIllegalInstruction();
+    } else if (m_opSpec->op == Op::THRYLD) {
+      inst = m_kernel->createThryldInstruction();
     } else {
       inst = m_kernel->createBasicInstruction(
           *m_opSpec, m_predication, m_flagReg, m_execSize, m_chOff, m_maskCtrl,
@@ -440,6 +455,10 @@ public:
     if (m_depInfo.sbidAllocSet()) {
       swInfo.sbid = m_depInfo.memSBidAlloc;
       swInfo.tokenType = SWSB::TokenType::SET;
+    }
+    if (m_depInfo.sbidCntrSet()) {
+      swInfo.sbid = m_depInfo.memSBidCntr;
+      swInfo.tokenType = SWSB::TokenType::INC;
     }
     if (m_depInfo.regDist > 0) {
       swInfo.minDist = m_depInfo.regDist;
@@ -751,6 +770,12 @@ public:
     InstSendDescs(exDescLoc, 0, exDesc, descLoc, desc);
   }
 
+  void InstSendDescs(uint64_t desc, const RegRef &id0, const RegRef &id1) {
+    m_sendgDesc = desc;
+    m_sendgIndDesc0Reg = id0;
+    m_sendgIndDesc1Reg = id1;
+  }
+
   void InstSendSrc0Length(int src0Length) { m_sendSrc0Len = src0Length; }
   void InstSendSrc1Length(int src1Length) { m_sendSrc1Len = src1Length; }
 
@@ -786,6 +811,14 @@ public:
 
     m_depInfo.memSBidAlloc = sbid;
   }
+  void InstDepInfoSBidCntr(Loc loc, int32_t sbid) {
+    if (sbid > (int32_t)m_model.getMaxSWSBTokenNum())
+      m_errorHandler.reportError(loc, "Invalid SWSB ID number");
+    if (m_depInfo.anyBarrierSet())
+      m_errorHandler.reportError(loc, "More than one SWSB barrier set");
+
+    m_depInfo.memSBidCntr = sbid;
+  }
 
   void InstDepInfoDist(Loc loc, SWSB::DistType type, uint32_t dist) {
     if (dist > m_model.getSWSBMaxValidDistance())
@@ -815,6 +848,7 @@ public:
       m_depInfo.memSBidSrc = (int32_t)swsb.sbid;
       break;
     case SWSB::TokenType::SET:
+    case SWSB::TokenType::INC:
       m_depInfo.memSBidAlloc = (int32_t)swsb.sbid;
       break;
     }
@@ -846,6 +880,15 @@ public:
     m_srcs[srcOpIx].type = ty;
   }
 
+  void InstSdpasSrcMeta(const Loc &loc, RegName rnm, RegRef reg) {
+    m_srcs[3].loc = loc;
+    m_srcs[3].kind = Operand::Kind::DIRECT;
+    m_srcs[3].regOpSrcMod = SrcModifier::NONE;
+    m_srcs[3].regOpName = rnm;
+    m_srcs[3].regOpReg = reg;
+    m_srcs[3].regOpRgn = Region::INVALID;
+    m_srcs[3].type = Type::INVALID;
+  }
 
   // sets Instruction::setComment(...)
   void InstComment(const std::string& comment) { m_comment = comment; }

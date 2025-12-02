@@ -81,6 +81,13 @@ struct SemanticChecker : LOCChecker {
   }
 
   void checkExecSize(const Instruction &i) {
+    bool execSizeTooLarge = i.getExecSize() > ExecSize::SIMD16;
+    if (m_model.platform >= Platform::XE3P_XPC) {
+      execSizeTooLarge = false;
+    }
+    if (i.is(Op::MULLH) && execSizeTooLarge) {
+      warning("mullh exec size must be less than or 16");
+    }
   }
 
   // Scalar register on dst restrictions:
@@ -121,6 +128,10 @@ struct SemanticChecker : LOCChecker {
       if (src.getRegion() != Region::SRC010)
         error("Invalid region for direct scalar src instructions");
     } else if (src.getKind() == Operand::Kind::INDIRECT) {
+      // sendgx/sendgxc cannot be gather-send
+      if ((i.getOp() == Op::SENDGX || i.getOp() == Op::SENDGXC)
+        )
+        error("Invalid Opcode for indirect scalar src instructions");
       if (!i.getOpSpec().isAnySendFormat())
         error("Invalid Opcode for indirect scalar src instructions");
       else if (!i.isGatherSend() || !i.getSource(1).isNull())
@@ -235,6 +246,7 @@ struct SemanticChecker : LOCChecker {
       warning("src type is not binary normal form");
     }
     checkSrcScalarReg(i, src);
+    checkSrcReducedRegion(i, srcIx);
     checkMathSource(i, srcIx);
     checkTernarySource(i, srcIx);
   }
@@ -258,6 +270,9 @@ struct SemanticChecker : LOCChecker {
     if (!i.isMacro())
       return;
 
+    // Math can have acc source on XE3P+
+    if (m_model.platform > Platform::XE3)
+      return;
     auto& src = i.getSource(srcIx);
     if (src.getKind() != Operand::Kind::MACRO)
       return;
@@ -266,6 +281,80 @@ struct SemanticChecker : LOCChecker {
       error("Invalid register: math must have grf sources");
   }
 
+  // Check if the src is in reduced region format (flat or scalar). If it is,
+  // check if it is a legal region according to inst's execSize,
+  // src/dst type and dst stride. The register access of the src must aligned
+  // with dst.
+  void checkSrcReducedRegion(const Instruction &i, int srcIx) {
+    const OpSpec &instSpec = i.getOpSpec();
+    if (!m_model.srcHasReducedRegion(srcIx) || instSpec.isAnySendFormat() ||
+        instSpec.isDpasFormat() || instSpec.isBranching())
+      return;
+
+    const Operand &src = i.getSource(srcIx);
+    if (src.getDirRegName() != RegName::GRF_R &&
+        src.getKind() != Operand::Kind::INDIRECT)
+      return;
+
+    const Region &rgn = src.getRegion();
+    // scalar region
+    if (rgn.isScalar())
+      return;
+
+    // reducedRegion must be in <V;W,H> or <V;H> formats
+    if (rgn.getVt() == Region::Vert::VT_INVALID ||
+        rgn.getVt() == Region::Vert::VT_VxH ||
+        rgn.getHz() == Region::Horz::HZ_INVALID) {
+      error("Invalid flat region format");
+      return;
+    }
+
+    uint32_t V = rgn.v;
+    uint32_t W = rgn.w;
+    uint32_t H = rgn.h;
+    // get Width value from <V;H> format region
+    if (rgn.getWi() == Region::Width::WI_INVALID) {
+      if (H)
+        W = V / H;
+      else
+        W = V;
+    }
+
+    // Check if VWH region is legal
+    uint32_t singleStride = 0;
+    const uint32_t execSize = static_cast<uint32_t>(i.getExecSize());
+    auto isContinuous = [&singleStride, &execSize](uint32_t V, uint32_t W,
+                                                   uint32_t H) {
+      if ((V == 1 && W == 1) || (V == W && H == 1) || execSize == 1 ||
+          (execSize <= W && H == 1)) {
+        singleStride = 1;
+        return true;
+      }
+      return false;
+    };
+
+    auto isSingleStride = [&singleStride, &execSize](uint32_t V, uint32_t W,
+                                                     uint32_t H) {
+      if ((V == W * H) || (W == execSize && H)) {
+        singleStride = H;
+        return true;
+      }
+      if (W == 1 && H == 0) {
+        singleStride = V;
+        return true;
+      }
+      return false;
+    };
+
+    if (isContinuous(V, W, H) || isSingleStride(V, W, H)) {
+      // return if the dst and src access is aligned
+      if (TypeSizeInBits(src.getType()) * singleStride ==
+          TypeSizeInBits(i.getDestination().getType()) *
+              i.getDestination().getRegion().h)
+        return;
+    }
+    error("Invalid flat region");
+  }
 
   void checkRegRegioningRestrictions(ExecSize es, const Operand &dst,
                                      const Operand &src) {
@@ -295,6 +384,8 @@ struct SemanticChecker : LOCChecker {
     int restrictSize = 64;
     if (m_model.platform >= Platform::XE_HPC)
       restrictSize = 128;
+    if (m_model.platform >= Platform::XE3P_XPC)
+      restrictSize = 256;
     if (execSize * srcTypeSz > restrictSize) {
       warning("register regioning restriction warning: "
               "ExecSize * sizeof(Type) exceeds maximum GRFs\n"
@@ -446,6 +537,12 @@ struct SanityChecker {
     }
     if (srcs > 2) {
       checkSrc(i, 2);
+    }
+    if (srcs > 3) {
+      checkSrc(i, 3);
+    }
+    if (srcs > 4) {
+      checkSrc(i, 4);
     }
     m_inst = nullptr;
   }

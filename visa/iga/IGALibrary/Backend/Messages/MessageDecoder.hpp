@@ -436,6 +436,8 @@ struct SamplerMessageDescription {
 }; // SamplerMessageDescription
 
 std::string ToSymbol(SamplerParam sp);
+SamplerMessageDescription
+LookupSamplerMessageDescription(uint32_t smplOpEnc, int execSize, bool isFp16);
 } // namespace iga
 
 #endif // _IGA_BACKEND_MESSAGES_MESSAGEDECODER_HPP_

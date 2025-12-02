@@ -182,7 +182,7 @@ static iga::ExecSize tryParseExecSize(std::string str) {
 // returns ExDesc[...] or Desc[...] based on platform and offset and length
 static std::string fmtDescField(iga::Platform platform, int off, int len) {
   const char *which = "Desc";
-  if (off >= 32) {
+  if (off >= 32 && platform <= iga::Platform::XE3) {
     off -= 32;
     which = "ExDesc";
   }
@@ -225,6 +225,7 @@ static void emitDecodeOutput(const Opts &opts, std::ostream &os,
       int off = f.offset;
       ss << "  ";
       bool hasExDesc = true;
+      hasExDesc &= p <= iga::Platform::XE3;
       if (hasExDesc && off >= 32) {
         off -= 32;
         ss << "ExDesc";
@@ -308,13 +309,67 @@ static void emitDecodeOutput(const Opts &opts, std::ostream &os,
       ss << "surface object " << emitDesc(dr.info.surfaceId);
       emitYellowText(os, ss.str());
       os << "\n";
+    } else if (dr.info.addrType == iga::AddrType::SURF) {
+      auto emitSReg = [&](iga::RegRef rr) -> std::string {
+        if (rr == iga::REGREF_INVALID) {
+          return "<invalid>";
+        }
+        std::stringstream ss;
+        ss << "s" << rr.regNum << "." << rr.subRegNum;
+        return ss.str();
+      };
+      os << "  Surface:                    ";
+      std::stringstream ss1;
+      ss1 << "surface state address (" << emitSReg(dr.info.surfaceState);
+      if (dr.info.surfaceStateIndex) {
+        ss1 << "," << dr.info.surfaceStateIndex;
+      }
+      ss1 << ")";
+      emitYellowText(os, ss1.str());
+      os << "\n";
+      if (dr.info.samplerState != iga::REGREF_INVALID) {
+        os << "  Sampler:                    ";
+        std::stringstream ss2;
+        ss2 << "sampler state address (" << emitSReg(dr.info.samplerState);
+        if (dr.info.samplerStateIndex) {
+          ss2 << "," << dr.info.samplerStateIndex;
+        }
+        ss2 << ")";
+        emitYellowText(os, ss2.str());
+        os << "\n";
+      }
     }
 
     bool showAddrSize = dr.info.addrSizeBits != 0;
+    showAddrSize |= dr.info.uniformBaseAddrSizeBits != 0;
     if (showAddrSize) {
-      os << "  Address Size:                   ";
+      if (dr.info.uniformBaseAddrSizeBits) {
+        os << "  Address Size (Payload):     ";
+      } else {
+        os << "  Address Size:               ";
+      }
       emitYellowText(os, dr.info.addrSizeBits);
       os << "b (per channel)\n";
+      if (dr.info.uniformBaseAddrSizeBits) {
+        os << "  Address Size (Base):        ";
+        emitYellowText(os, dr.info.uniformBaseAddrSizeBits);
+        os << "b (added to each channel)\n";
+      }
+      if (dr.info.addrScaling > 1) {
+        os << "  Address Scaling:            ";
+        emitYellowText(os, dr.info.addrScaling);
+        os << " B\n";
+      }
+      for (int i = 0; i < sizeof(dr.info.uvrImmediateOffsets) /
+                              sizeof(dr.info.uvrImmediateOffsets[0]);
+           i++) {
+        if (dr.info.uvrImmediateOffsets[i]) {
+          os << "  "
+             << "UVR"[i] << "-Offset:                   ";
+          emitYellowText(os, dr.info.uvrImmediateOffsets[i]);
+          os << "\n";
+        }
+      }
     }
 
     if (dr.info.elemSizeBitsRegFile != dr.info.elemSizeBitsMemory ||
@@ -380,6 +435,8 @@ static void emitDecodeOutput(const Opts &opts, std::ostream &os,
         os << "\n";
       };
       emitCaching("L1", dr.info.cachingL1);
+      if (p > iga::Platform::XE3)
+        emitCaching("L2", dr.info.cachingL2);
       emitCaching("L3", dr.info.cachingL3);
     }
     if (dr.info.immediateOffset != 0) {
@@ -417,6 +474,7 @@ static void emitDecodeOutput(const Opts &opts, std::ostream &os,
         mi.execWidth > 0 && !mi.isSample() && !mi.isOther() &&
         mi.op != iga::SendOp::READ_STATE &&
         mi.op != iga::SendOp::LOAD_STATUS &&
+        mi.op != iga::SendOp::LOAD_QUAD_STATUS &&
         mi.op != iga::SendOp::RENDER_READ &&
         mi.op != iga::SendOp::RENDER_WRITE && mi.op != iga::SendOp::FENCE &&
         mi.op != iga::SendOp::CCS_PC && mi.op != iga::SendOp::CCS_PU &&
@@ -441,6 +499,24 @@ static void emitDecodeOutput(const Opts &opts, std::ostream &os,
       }
     } // showDataPayload
 
+    if (mi.dstLenBytes >= 0 || mi.src0LenBytes >= 0 || mi.src1LenBytes >= 0) {
+      os << "\n";
+    }
+    auto emitPayloadSize = [&](const char *which, int lenBytes) {
+      if (lenBytes > 0) {
+        os << which << "   " << std::setw(8) << lenBytes << " B ";
+        if (lenBytes < 64) {
+          os << "(low part of a GRF)";
+        } else {
+          os << "(" << lenBytes / 64 <<
+                " GRF" << (lenBytes / 64 == 1 ? "" : "s") << ")";
+        }
+        os << "\n";
+      }
+    };
+    emitPayloadSize("DstLen:  ", mi.dstLenBytes);
+    emitPayloadSize("Src0Len: ", mi.src0LenBytes);
+    emitPayloadSize("Src1Len: ", mi.src1LenBytes);
 
     if (dr.info.execWidth == 0) {
       os << "\n";
@@ -450,6 +526,69 @@ static void emitDecodeOutput(const Opts &opts, std::ostream &os,
   } // dr valid
 }
 
+static bool decodeSendgDescriptor(const Opts &opts, std::ostream &os,
+                                        iga::Platform p, iga::SFID sfid,
+                                        iga::ExecSize execSize, int argOff) {
+  // SFID ExecSize? Src0Len? Src0Len? ID0? ID1? Desc
+  //                ^^^^^^^^ we are here
+  if (argOff >= (int)opts.inputFiles.size()) {
+    fatalExitWithMessage("-Xdsd: ... Src0Len? Src1Len? ID0? ID1? Desc");
+  }
+  int src0Len = -1;
+  if (!opts.inputFiles[argOff].empty() && opts.inputFiles[argOff][0] == ':') {
+    src0Len = (int)parseInt("Src0Len?", opts.inputFiles[argOff].substr(1));
+    argOff++;
+  }
+  if (argOff >= (int)opts.inputFiles.size()) {
+    fatalExitWithMessage("-Xdsd: ... SrcsLen? ID0? ID1? Desc");
+  }
+  int src1Len = -1;
+  if (!opts.inputFiles[argOff].empty() && opts.inputFiles[argOff][0] == ':') {
+    src1Len = (int)parseInt("Src1Len?", opts.inputFiles[argOff].substr(1));
+    argOff++;
+  }
+
+  // parses s0 registers (e.g. s0.24)
+  auto tryParseSReg = [&](const char *which, std::string inp) {
+    iga::RegRef s0 = iga::REGREF_INVALID;
+    if (inp.length() > 3 && inp[0] == 's' && inp[1] == '0' && inp[2] == '.' &&
+        std::isdigit(inp[3])) {
+      s0.regNum = 0;
+      s0.subRegNum = (uint16_t)parseInt(which, inp.substr(3));
+    }
+    return s0;
+  };
+
+  if (argOff >= (int)opts.inputFiles.size()) {
+    fatalExitWithMessage("-Xdsd: ... ID0? ID1? Desc");
+  }
+
+  iga::RegRef id0 = iga::REGREF_INVALID, id1 = iga::REGREF_INVALID;
+  id0 = tryParseSReg("ID0", opts.inputFiles[argOff]);
+  if (id0 != iga::REGREF_INVALID) {
+    argOff++;
+    if (argOff == (int)opts.inputFiles.size()) {
+      fatalExitWithMessage("-Xdsd: expected descriptor");
+    }
+    id1 = tryParseSReg("ID1", opts.inputFiles[argOff]);
+    if (id1 != iga::REGREF_INVALID) {
+      argOff++;
+    }
+  }
+  if (argOff == (int)opts.inputFiles.size()) {
+    fatalExitWithMessage("-Xdsd: expected descriptor");
+  }
+  uint64_t desc = parseInt("Desc", opts.inputFiles[argOff++]);
+  if (argOff != (int)opts.inputFiles.size()) {
+    fatalExitWithMessage("-Xdsd too many arguments to");
+  }
+
+  iga::DecodedDescFields decodedFields;
+  const auto dr = iga::tryDecode(p, sfid, execSize, src0Len, src1Len, id0, id1,
+                                 desc, &decodedFields);
+  emitDecodeOutput(opts, os, p, dr, decodedFields);
+  return !dr;
+}
 
 bool decodeSendDescriptor(const Opts &opts) {
   std::ofstream ofs(opts.outputFile);
@@ -461,8 +600,17 @@ bool decodeSendDescriptor(const Opts &opts) {
 
   size_t minArgs = opts.platform < IGA_XE ? 2 : 3;
   size_t maxArgs = minArgs + 1;
+  bool generalizedSend = opts.platform > IGA_XE3;
+  if (generalizedSend) {
+    minArgs = 1;
+    maxArgs = 7;
+  }
 
   if (opts.inputFiles.size() < minArgs && opts.inputFiles.size() > maxArgs) {
+    if (minArgs == 2 && generalizedSend)
+      fatalExitWithMessage("-Xdsd: for this platform expects: "
+                           "SFID ExecSize? Src0Len? Src1Len? ID0? ID1? Desc");
+    else
       if (minArgs == 2)
         fatalExitWithMessage("-Xdsd: for this platform expects: "
                              "ExecSize? ExDesc Desc");
@@ -508,6 +656,7 @@ bool decodeSendDescriptor(const Opts &opts) {
   //   >=XE:    SFID ExecSize? ExDesc  Desc
   //   >=XE2:   SFID ExecSize? ExDesc           Desc
   //            SFID ExecSize? ExDescImm:A0Reg  Desc
+  //   >=XE3P:  SFID ExecSize? Src0Len? Src1Len? ID0? ID1? Desc
   //
   // If ExecSize is not given, then we deduce it from the platform.
 
@@ -526,6 +675,9 @@ bool decodeSendDescriptor(const Opts &opts) {
   if (execSize != iga::ExecSize::INVALID)
     argOff++;
 
+  if (p > iga::Platform::XE3) {
+    return decodeSendgDescriptor(opts, os, p, sfid, execSize, argOff);
+  }
 
   if (argOff >= (int)opts.inputFiles.size()) {
     fatalExitWithMessage("-Xdsd: expects at least ExDesc Desc");

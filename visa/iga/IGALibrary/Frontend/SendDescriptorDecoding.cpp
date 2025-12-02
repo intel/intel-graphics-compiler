@@ -176,3 +176,24 @@ void iga::EmitSendDescriptorInfo(Platform p, SFID sfid, ExecSize execSize,
   } // is imm desc
 } // iga::EmitSendDescriptorInfo
 
+void iga::EmitSendgDescriptorInfoXe3p(Platform p, SFID sfid, ExecSize execSize,
+                                    bool dstNonNull, int src0Len, int src1Len,
+                                    RegRef id0, RegRef id1, uint64_t desc,
+                                    std::stringstream &ss) {
+  DiagnosticList ws, es;
+  DecodeResult dr =
+      tryDecode(p, sfid, execSize, src0Len, src1Len, id0, id1, desc, nullptr);
+  if (!dstNonNull)
+    dr.info.dstLenBytes = 0;
+  if (dr.info.dstLenBytes >= 0)
+    ss << "rd:" << dr.info.dstLenBytes << " B; ";
+  if (dr.syntax.isValid()) {
+    ss << dr.syntax.sym();
+  } else if (!dr.info.description.empty()) {
+    ss << dr.info.description;
+  } else {
+    ss << "???";
+  }
+
+  appendUVR(p, sfid, src0Len, dr, ss);
+}

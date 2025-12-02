@@ -87,6 +87,7 @@ struct SendOpDefinition {
   bool hasChMask() const { return hasAttr(Attr::HAS_CMASK); }
   bool isAddressScalar() const { return hasAttr(Attr::IS_SCALAR_ADDR); }
 
+  bool isCCtrl() const { return op == SendOp::EXTENDED_CACHE_CTRL; }
   bool isLoad() const { return hasAttr(Attr::GROUP_LOAD); }
   bool isStore() const { return hasAttr(Attr::GROUP_STORE); }
   bool isAtomic() const { return hasAttr(Attr::GROUP_ATOMIC); }
@@ -121,6 +122,9 @@ enum class AddrType {
   SS,
   // stateful: binding table interface
   BTI,
+  // new generic stateful surface based address
+  // (merger of BSS and SS)
+  SURF,
 };
 std::string ToSymbol(AddrType op);
 
@@ -136,6 +140,8 @@ struct DocRef {
     MSGOP,  // the message opcode (always bits of the descriptor)
     DESC,   // descriptor
     EXDESC, // extended descriptor (imm or reg)
+    IND0, // indirect descriptor 0
+    IND1, // indirect descriptor 1
   } kind;
   // the documentation symbol name corresponding to this
   const char *symbol;
@@ -235,6 +241,9 @@ struct MessageInfo {
 
   // Caching options for the L1 cache (if supported)
   CacheOpt cachingL1 = CacheOpt::INVALID;
+  // Caching option for L2 cache
+  // Only supported for sendg (efficient64b feature)
+  CacheOpt cachingL2 = CacheOpt::INVALID;
   //
   // Caching options for the L3 cache (if supported)
   // In some HDC messages this is bit 13.  Some parts don't
@@ -457,6 +466,10 @@ static inline DecodeResult tryDecode(Platform p, SFID sfid, ExecSize execSize,
   return tryDecode(p, sfid, execSize, 0, exDesc, desc, fields);
 }
 
+// For descriptors following efficient64b
+DecodeResult tryDecode(Platform p, SFID sfid, ExecSize execSize, int src0Len,
+                       int src1Len, RegRef id0, RegRef id1, uint64_t desc,
+                       DecodedDescFields *fields);
 
 //
 // returns true if the SFID on a given platform is eligible for symbolic

@@ -90,6 +90,7 @@ protected:
                                 GED_ACCESS_MODE accessMode);
   void encodeTernaryAlign1Instruction(const Instruction &inst);
   void encodeTernaryAlign16Instruction(const Instruction &inst);
+  void encodeQuinaryInstruction(const Instruction &inst);
   void encodeSendDirectDestination(const Operand &dst);
   void encodeSendDestinationDataType(const Operand &dst);
   void encodeOptionsThreadControl(const Instruction &inst);
@@ -126,6 +127,8 @@ protected:
 
   template <SourceIndex S>
   void encodeTernarySourceAlign1(const Instruction &inst);
+  template <SourceIndex S>
+  void encodeQuinarySource(const Instruction &inst);
   void encodeTernaryDestinationAlign1(const Instruction &inst);
 
   void encodeTernarySrcRegionVert(SourceIndex S, Region::Vert v);
@@ -178,6 +181,10 @@ private:
   void encodeSendInstruction(const Instruction &inst);
   void encodeSendSource0(const Operand &src);
   void encodeSendDestination(const Operand &dst);
+  void encodeSendgDestinationXe3p(const Operand &dst);
+  void encodeSendgxDestinationXe3p(const Operand &dst);
+  void encodeSendgxSource0Xe3p(const Operand &src);
+  void encodeSendgxSource1Xe3p(const Operand &src);
   void encodeSendsSource0(const Operand &src);
   void encodeSendsSource1(const Operand &src);
   void encodeSendsDestination(const Operand &dst);
@@ -188,6 +195,7 @@ private:
   void encodeSendDescsXeHP(const Instruction &inst);
   void encodeSendDescsXeHPG(const Instruction &inst);
   void encodeSendDescsXe2(const Instruction &inst);
+  void encodeSendgDescsXe3(const Instruction &inst);
 
   void encodeInlineBinaryInst(Instruction &inst);
   ///////////////////////////////////////////////////////////////////////
@@ -311,6 +319,10 @@ template <SourceIndex S> void Encoder::encodeSrcRegFile(GED_REG_FILE rf) {
     GED_ENCODE(Src1RegFile, rf);
   } else if (S == SourceIndex::SRC2) {
     GED_ENCODE(Src2RegFile, rf);
+  } else if (S == SourceIndex::SRC3) {
+    GED_ENCODE(Src3RegFile, rf);
+  } else if (S == SourceIndex::SRC4) {
+    GED_ENCODE(Src4RegFile, rf);
   }
 }
 
@@ -358,6 +370,10 @@ void Encoder::encodeSrcSubRegNum(uint32_t subRegInByte) {
     GED_ENCODE(Src1SubRegNum, subRegInByte);
   } else if (S == SourceIndex::SRC2) {
     GED_ENCODE(Src2SubRegNum, subRegInByte);
+  } else if (S == SourceIndex::SRC3) {
+    GED_ENCODE(Src3SubRegNum, subRegInByte);
+  } else if (S == SourceIndex::SRC4) {
+    GED_ENCODE(Src4SubRegNum, subRegInByte);
   }
 }
 
@@ -391,6 +407,10 @@ void Encoder::encodeSrcReg(RegName regName, uint16_t regNum) {
     GED_ENCODE(Src1RegNum, regBits);
   } else if (S == SourceIndex::SRC2) {
     GED_ENCODE(Src2RegNum, regBits);
+  } else if (S == SourceIndex::SRC3) {
+    GED_ENCODE(Src3RegNum, regBits);
+  } else if (S == SourceIndex::SRC4) {
+    GED_ENCODE(Src4RegNum, regBits);
   }
 }
 
@@ -458,6 +478,12 @@ void Encoder::encodeSrcRegion(const Region &rgn, bool hasRgnWi) {
 
 template <SourceIndex S>
 void Encoder::encodeSrcReducedRegion(const Region& rgn) {
+  IGA_ASSERT(S == SourceIndex::SRC1, "Invalid SourceIndex");
+  if (rgn.isScalar())
+    GED_ENCODE(Src1ScalarReg, 1);
+  else
+    GED_ENCODE(Src1ScalarReg, 0);
+  return;
   IGA_ASSERT_FALSE("Unreachable: Unsupported region");
 }
 

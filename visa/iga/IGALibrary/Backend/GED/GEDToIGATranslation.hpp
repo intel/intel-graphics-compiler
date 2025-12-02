@@ -166,6 +166,9 @@ static inline Op translate(GED_OPCODE gedOpcode) {
   case GED_OPCODE_mul:
     opcode = Op::MUL;
     break;
+  case GED_OPCODE_mullh:
+    opcode = Op::MULLH;
+    break;
   case GED_OPCODE_nop:
     opcode = Op::NOP;
     break;
@@ -214,6 +217,18 @@ static inline Op translate(GED_OPCODE gedOpcode) {
   case GED_OPCODE_sendc:
     opcode = Op::SENDC;
     break;
+  case GED_OPCODE_sendg:
+    opcode = Op::SENDG;
+    break;
+  case GED_OPCODE_sendgc:
+    opcode = Op::SENDGC;
+    break;
+  case GED_OPCODE_sendgx:
+    opcode = Op::SENDGX;
+    break;
+  case GED_OPCODE_sendgxc:
+    opcode = Op::SENDGXC;
+    break;
   case GED_OPCODE_sends:
     opcode = Op::SENDS;
     break;
@@ -256,11 +271,26 @@ static inline Op translate(GED_OPCODE gedOpcode) {
   case GED_OPCODE_dpasw:
     opcode = Op::DPASW;
     break;
+  case GED_OPCODE_bdpas:
+    opcode = Op::BDPAS;
+    break;
   case GED_OPCODE_macl:
     opcode = Op::MACL;
     break;
   case GED_OPCODE_srnd:
     opcode = Op::SRND;
+    break;
+  case GED_OPCODE_shfl:
+    opcode = Op::SHFL;
+    break;
+  case GED_OPCODE_lfsr:
+    opcode = Op::LFSR;
+    break;
+  case GED_OPCODE_dnscl:
+    opcode = Op::DNSCL;
+    break;
+  case GED_OPCODE_thryld:
+    opcode = Op::THRYLD;
     break;
   default:
     opcode = Op::ILLEGAL;
@@ -296,6 +326,8 @@ static inline Type translate(GED_PRECISION p) {
     return Type::TF32;
   case GED_PRECISION_hf8:
     return Type::HF8;
+  case GED_PRECISION_e2m1:
+    return Type::E2M1;
   default:
     return Type::INVALID;
   }
@@ -811,6 +843,75 @@ static inline SFMessageType translate(GED_MESSAGE_TYPE fc) {
   }
 }
 
+static inline ShuffleFC translate(GED_SHUFFLE_FC fc) {
+  switch (fc) {
+  case GED_SHUFFLE_FC_idx4:
+    return ShuffleFC::IDX4;
+  default:
+    return ShuffleFC::INVALID;
+  }
+}
+
+static inline LfsrFC translate(GED_LFSR_FC fc) {
+  switch (fc) {
+  case GED_LFSR_FC::GED_LFSR_FC_b32:
+    return LfsrFC::LFSR_b32;
+  case GED_LFSR_FC::GED_LFSR_FC_b16v2:
+    return LfsrFC::LFSR_b16v2;
+  case GED_LFSR_FC::GED_LFSR_FC_b8v4:
+    return LfsrFC::LFSR_b8v4 ;
+  default:
+    return LfsrFC::INVALID;
+  }
+}
+
+static inline DnsclMode translate(GED_DNSCL_MODE dm) {
+  switch (dm) {
+    case GED_DNSCL_MODE::GED_DNSCL_MODE_Mode0:
+      return DnsclMode::MODE0;
+    case GED_DNSCL_MODE::GED_DNSCL_MODE_Mode1:
+      return DnsclMode::MODE1;
+    case GED_DNSCL_MODE::GED_DNSCL_MODE_Mode2:
+      return DnsclMode::MODE2;
+    case GED_DNSCL_MODE::GED_DNSCL_MODE_Mode3:
+      return DnsclMode::MODE3;
+  default:
+    return DnsclMode::INVALID;
+  }
+}
+
+static inline ConvSrcDataType translate(GED_CONV_SRC_DATATYPE ty) {
+  switch (ty) {
+  case GED_CONV_SRC_DATATYPE::GED_CONV_SRC_DATATYPE_HF:
+    return ConvSrcDataType::HF;
+  case GED_CONV_SRC_DATATYPE::GED_CONV_SRC_DATATYPE_BF:
+    return ConvSrcDataType::BF;
+  default:
+    return ConvSrcDataType::INVALID;
+  }
+}
+
+static inline ConvDstDataType translate(GED_CONV_DST_DATATYPE ty) {
+  switch (ty) {
+  case GED_CONV_DST_DATATYPE::GED_CONV_DST_DATATYPE_e2m1:
+    return ConvDstDataType::E2M1;
+  case GED_CONV_DST_DATATYPE::GED_CONV_DST_DATATYPE_int4:
+    return ConvDstDataType::INT4;
+  default:
+    return ConvDstDataType::INVALID;
+  }
+}
+
+static inline RoundingMode translate(GED_ROUNDING_MODE rm) {
+  switch (rm) {
+  case GED_ROUNDING_MODE::GED_ROUNDING_MODE_srnd:
+    return RoundingMode::SRAND;
+  case GED_ROUNDING_MODE::GED_ROUNDING_MODE_rne:
+    return RoundingMode::RNE;
+  default:
+    return RoundingMode::INVALID;
+  }
+}
 
 static inline MathFC translate(GED_MATH_FC fc) {
   switch (fc) {
@@ -842,6 +943,10 @@ static inline MathFC translate(GED_MATH_FC fc) {
     return MathFC::INVM;
   case GED_MATH_FC_RSQRTM:
     return MathFC::RSQTM;
+  case GED_MATH_FC_TANH:
+    return MathFC::TANH;
+  case GED_MATH_FC_SIGM:
+    return MathFC::SIGM;
   default:
     return MathFC::INVALID;
   }

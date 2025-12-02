@@ -29,6 +29,8 @@ enum class SourceIndex {
   SRC0 = 0,
   SRC1 = 1,
   SRC2 = 2,
+  SRC3 = 3,
+  SRC4 = 4, // bdpas uses src3 and src4
 };
 
 // represents a GEN instruction
@@ -104,6 +106,9 @@ public:
   void setExtMsgDesc(const SendDesc &msg);
   void setMsgDesc(const SendDesc &msg);
 
+  void setSendgDesc(uint64_t imm);
+  void setSendgIndDesc0(RegRef rr);
+  void setSendgIndDesc1(RegRef rr);
 
   void setDstLength(int dstLength) { m_sendDstLength = dstLength; }
   void setSrc0Length(int src0Length) { m_sendSrc0Length = src0Length; }
@@ -154,6 +159,9 @@ public:
   SyncFC getSyncFc() const { return m_sf.sync; }
   BfnFC getBfnFc() const { return m_sf.bfn; }
   DpasFC getDpasFc() const { return m_sf.dpas; }
+  ShuffleFC getShuffleFc() const { return m_sf.shuffle; }
+  LfsrFC getLfsrFc() const { return m_sf.lfsr; }
+  DnsclFC getDnsclFc() const { return m_sf.dnscl; }
 
   // true for madm or math.invm and math.rsqrtm
   bool isMacro() const;
@@ -185,6 +193,9 @@ public:
   SendDesc getExtMsgDescriptor() const;
   SendDesc getMsgDescriptor() const;
 
+  uint64_t getSendgDesc() const;
+  RegRef getSendgIndDesc0Reg() const;
+  RegRef getSendgIndDesc1Reg() const;
 
   // (For send messages) this returns the dst payload length in registers
   // as encoded by the descriptors (if known).
@@ -231,7 +242,8 @@ private:
   ExecSize m_execSize;
   ChannelOffset m_chOff;
   Operand m_dst;
-  Operand m_srcs[3];
+  // bdpas has 5 source operands
+  Operand m_srcs[5];
 
   // conditional-modifier function
   FlagModifier m_flagModifier = FlagModifier::NONE;
@@ -239,11 +251,15 @@ private:
   // Xe2: given an reg ExDesc, this holds the extra bits for the
   // immediate offset part.  In the case of an immediate ExDesc
   // (below); this should be 0 (the immediate offset is part of m_desc
-  // as in eralier platforms for that case).
+  // as in earlier platforms for that case).
   uint32_t m_exImmOffDesc = 0;
   SendDesc m_exDesc;
   SendDesc m_desc;
 
+  // replaces m_exDesc+m_desc with immediate-only field
+  uint64_t m_sendgDesc = 0x0;
+  RegRef m_sendgIndDesc0Reg = REGREF_INVALID; // REGREF_INVALID if not set
+  RegRef m_sendgIndDesc1Reg = REGREF_INVALID; // REGREF_INVALID if not set
 
   ///////////////////////////////////////////////////////////////////////
   // Regarding Src1.Length
@@ -291,6 +307,15 @@ private:
   // |           | There is an ExDescImm available even with reg ExDesc
   // +-----------+--------------------------------------------------------
   // | XE3 Send  | Same as Xe2 regarding descriptors
+  // +-----------+--------------------------------------------------------
+  // | XE3P Send  | Same as Xe3 except supports Gather Send functionality.
+  // |            | Thus this field overlaps with Src0.SubReg (s0 subreg).
+  // | XE3P Sendg | Descriptors are combined into single entity of around
+  // | new fmt    | now 42b or 47b.  Two new indirect descriptors are added
+  // |            | "ID0" and "ID1" (indirect descriptor).  These will
+  // |            | optionally hold s0 QW registers (each is has a
+  // |            | "is present" bit).
+  // |            |
   // +-----------+--------------------------------------------------------
   //
 

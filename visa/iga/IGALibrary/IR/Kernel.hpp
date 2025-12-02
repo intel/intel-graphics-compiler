@@ -73,7 +73,16 @@ public:
                                      const SendDesc &extDesc,
                                      const SendDesc &msgDesc);
 
+  // The ind0 and ind1 s0 subregs are in terms of *bytes* not QW
+  // (as should be src0 in when indirect/gather send is used)
+  Instruction *createSendgInstruction(const OpSpec &op, SFID sfid,
+                                      const Predication &predOpnd,
+                                      const RegRef &flagReg, ExecSize execSize,
+                                      ChannelOffset choff, MaskCtrl ectr,
+                                      int src0Len, int src1Len, RegRef id0,
+                                      RegRef id1, uint64_t desc);
 
+  Instruction *createThryldInstruction();
   Instruction *createNopInstruction();
   Instruction *createIllegalInstruction();
   Instruction *createSyncNopInstruction(SWSB sw);

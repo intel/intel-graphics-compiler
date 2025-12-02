@@ -144,6 +144,38 @@ Instruction *Kernel::createSendInstruction(const OpSpec &op, SFID sfid,
   return inst;
 }
 
+Instruction *Kernel::createSendgInstruction(
+    const OpSpec &op, SFID sfid, const Predication &predOpnd,
+    const RegRef &flagReg, ExecSize execSize, ChannelOffset chOff,
+    MaskCtrl ectr, int src0Len, int src1Len, RegRef id0Reg, RegRef id1Reg,
+    uint64_t desc) {
+  Instruction *inst = new (&m_mem) Instruction(op, execSize, chOff, ectr);
+  inst->setSubfunction(sfid);
+
+  inst->setPredication(predOpnd);
+  inst->setFlagReg(flagReg);
+  IGA_ASSERT(src0Len >= 0, "Src0.Len is explicit on this platform");
+  inst->setSrc0Length(src0Len);
+  IGA_ASSERT(src1Len >= 0, "Src1.Len is explicit on this platform");
+  inst->setSrc1Length(src1Len); // use 0 for sendg or null src1
+
+  inst->setSendgIndDesc0(id0Reg);
+  inst->setSendgIndDesc1(id1Reg);
+  inst->setSendgDesc(desc);
+
+  return inst;
+}
+Instruction* Kernel::createThryldInstruction() {
+  Instruction *inst =
+      new (&m_mem) Instruction(m_model.lookupOpSpec(Op::THRYLD), ExecSize::SIMD1,
+                               ChannelOffset::M0, MaskCtrl::NORMAL);
+  const Predication predOpnd;
+  inst->setPredication(predOpnd);
+  inst->setFlagModifier(FlagModifier::NONE);
+  inst->setFlagReg(REGREF_ZERO_ZERO);
+
+  return inst;
+}
 
 Instruction *Kernel::createNopInstruction() {
   Instruction *inst =

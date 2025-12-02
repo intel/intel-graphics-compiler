@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "Messages.hpp"
 #include "../Backend/Messages/MessageDecoder.hpp"
+#include "../Backend/Messages/E64/MessageDecoderE64.hpp"
 #include "../Frontend/IRToString.hpp"
 
 #include <sstream>
@@ -372,6 +373,7 @@ std::string iga::ToSymbol(AddrType op) {
     MK_CASE(BSS);
     MK_CASE(SS);
     MK_CASE(BTI);
+    MK_CASE(SURF);
   default:
     std::stringstream ss;
     ss << "0x" << std::hex << (int)op << "?";
@@ -485,10 +487,17 @@ DecodeResult iga::tryDecode(const Instruction &i, DecodedDescFields *fields) {
   if (!i.getOpSpec().isAnySendFormat()) {
     return DecodeResult();
   }
-  return tryDecode(i.getOpSpec().platform, i.getSubfunction().send,
-                   i.getExecSize(),
-                   i.getExtImmOffDescriptor(),
-                   i.getExtMsgDescriptor(), i.getMsgDescriptor(), nullptr);
+  if (!i.getOpSpec().isSendgFormat()) {
+    return tryDecode(i.getOpSpec().platform, i.getSubfunction().send,
+                     i.getExecSize(),
+                     i.getExtImmOffDescriptor(),
+                     i.getExtMsgDescriptor(), i.getMsgDescriptor(), nullptr);
+  } else {
+    return tryDecode(i.getOpSpec().platform, i.getSubfunction().send,
+                     i.getExecSize(), i.getSrc0Length(), i.getSrc1Length(),
+                     i.getSendgIndDesc0Reg(), i.getSendgIndDesc1Reg(),
+                     i.getSendgDesc(), fields);
+  }
 }
 
 DecodeResult iga::tryDecode(Platform platform, SFID sfid, ExecSize execSize,
@@ -512,6 +521,58 @@ DecodeResult iga::tryDecode(Platform platform, SFID sfid, ExecSize execSize,
   return result;
 }
 
+DecodeResult iga::tryDecode(Platform p, SFID sfid, ExecSize execSize,
+                            int src0Len, int src1Len, RegRef id0, RegRef id1,
+                            uint64_t desc, DecodedDescFields *fields) {
+  DecodeResult dr;
+
+  if (isLSC(p, sfid)) {
+    DecodeMessageLscE64(p, sfid, execSize, src0Len, src1Len, desc, id0, id1, dr);
+  } else if (sfid == SFID::SMPL) {
+    DecodeMessageSamplerE64(p, sfid, execSize, src0Len, src1Len, desc, id0, id1, dr);
+  } else {
+    DecodeMessageOtherE64(p, sfid, execSize, src0Len, src1Len, desc, id0, id1, dr);
+  }
+
+  if (fields) { // Xdsd
+    std::sort(dr.fields.begin(), dr.fields.end(),
+              [&](const auto &f0, const auto &f1) {
+                return std::get<0>(f0).offset > std::get<0>(f1).offset;
+              });
+    auto isUndefined = [&](int ix) {
+      // std::tuple<Fragment,uint32_t,std::string>
+      // top down walk
+      for (int i = (int)dr.fields.size() - 1; i >= 0; i--) {
+        const auto &df = dr.fields[i];
+        const auto &fr = std::get<0>(df);
+        if (ix >= fr.offset && ix < fr.offset + fr.length) {
+          return false;
+        } else if (ix < fr.offset) {
+          break;
+        }
+      }
+      return true;
+    };
+    int bitIx = 0;
+    while (bitIx < 47) {
+      if (isUndefined(bitIx)) {
+        int off = bitIx;
+        bitIx++;
+        while (bitIx < 47 && isUndefined(bitIx)) {
+          bitIx++;
+        }
+        dr.warnings.emplace_back(
+            DescField(off, bitIx - off),
+            "undefined bits (should be field or reserved)");
+      } else {
+        bitIx++;
+      }
+    }
+    *fields = dr.fields;
+  }
+
+  return dr;
+}
 
 const SendOpDefinition &iga::lookupSendOp(SendOp op) {
   for (int i = 0; i < sizeof(SEND_OPS) / sizeof(SEND_OPS[0]); i++) {

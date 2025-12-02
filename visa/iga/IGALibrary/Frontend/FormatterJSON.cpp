@@ -245,6 +245,7 @@ public:
       break;
     case Op::DPASW:
     case Op::DPAS:
+    case Op::BDPAS:
       subfunc = ToSyntax(i.getDpasFc());
       break;
     default:
@@ -767,6 +768,9 @@ public:
       break;
     case AddrType::SS:
       emit("\"ss\"");
+      break;
+    case AddrType::SURF:
+      emit("\"surf\"");
       break;
     default:
       emitIrError("invalid surface type");

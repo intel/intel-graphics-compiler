@@ -14,7 +14,8 @@ SPDX-License-Identifier: MIT
 using namespace iga;
 
 void MessageDecoder::decodePayloadSizes() {
-  bool hasMLenRLenInDesc = true;
+  // pre-XE3P has mlen (Src0.Len) and rlen(Dst.Len) in desc
+  bool hasMLenRLenInDesc = platform() < Platform::XE3;
   bool hasXLenInExDesc = platform() < Platform::XE_HPG;
   auto plural = [](int x) { return x == 1 ? "" : "s"; };
   if (hasMLenRLenInDesc) {

@@ -456,6 +456,8 @@ static inline std::string ToSyntax(Type ot) {
 
   case Type::INVALID:
     return ":Type::INVALID";
+  case Type::E2M1:
+    return ":e2m1";
   default:
     return MakeErrorString("Type", (int)ot);
   }
@@ -749,6 +751,8 @@ static inline std::string ToSyntax(const InstOpt &i) {
     return "ExBSO";
   case InstOpt::CPS:
     return "CPS";
+  case InstOpt::FWD:
+    return "Fwd";
   default:
     return MakeErrorString("InstOpt", (int)i);
   }
@@ -756,11 +760,21 @@ static inline std::string ToSyntax(const InstOpt &i) {
 
 static inline void ToSyntaxNoBraces(std::ostream &os,
                                     const InstOptSet &instOpts) {
-  static const InstOpt ALL_INST_OPTS[] {
-    InstOpt::ACCWREN, InstOpt::ATOMIC, InstOpt::BREAKPOINT, InstOpt::COMPACTED,
-        InstOpt::EOT, InstOpt::NOCOMPACT, InstOpt::NODDCHK, InstOpt::NODDCLR,
-        InstOpt::NOPREEMPT, InstOpt::NOSRCDEPSET, InstOpt::SWITCH,
-        InstOpt::SERIALIZE, InstOpt::EXBSO, InstOpt::CPS
+  static const InstOpt ALL_INST_OPTS[]{InstOpt::ACCWREN,
+                                       InstOpt::ATOMIC,
+                                       InstOpt::BREAKPOINT,
+                                       InstOpt::COMPACTED,
+                                       InstOpt::EOT,
+                                       InstOpt::NOCOMPACT,
+                                       InstOpt::NODDCHK,
+                                       InstOpt::NODDCLR,
+                                       InstOpt::NOPREEMPT,
+                                       InstOpt::NOSRCDEPSET,
+                                       InstOpt::SWITCH,
+                                       InstOpt::SERIALIZE,
+                                       InstOpt::EXBSO,
+                                       InstOpt::CPS,
+                                       InstOpt::FWD
   };
 
   bool first = true;
@@ -802,6 +816,25 @@ template <> SyncFC FromSyntax<SyncFC>(const std::string& str);
 
 std::string ToSyntax(DpasFC sfc);
 template <> DpasFC FromSyntax<DpasFC>(const std::string& str);
+std::string ToSyntax(ShuffleFC op);
+template <> ShuffleFC FromSyntax<ShuffleFC>(const std::string& str);
+
+std::string ToSyntax(LfsrFC op);
+template <> LfsrFC FromSyntax<LfsrFC>(const std::string& str);
+
+std::string ToSyntax(ConvSrcDataType op);
+template <> ConvSrcDataType FromSyntax<ConvSrcDataType>(const std::string& str);
+
+std::string ToSyntax(ConvDstDataType op);
+template <> ConvDstDataType FromSyntax<ConvDstDataType>(const std::string& str);
+
+std::string ToSyntax(DnsclMode op);
+template <> DnsclMode FromSyntax<DnsclMode>(const std::string& str);
+
+std::string ToSyntax(RoundingMode op);
+template <> RoundingMode FromSyntax<RoundingMode>(const std::string& str);
+
+std::string ToSyntax(DnsclFC dfc);
 
 } // namespace iga
 

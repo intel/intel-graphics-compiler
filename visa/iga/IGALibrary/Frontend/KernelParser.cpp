@@ -82,6 +82,7 @@ static const IdentMap<Type> SRC_TYPES{
     {"f16", Type::HF},
     {"f32", Type::F},
     {"f64", Type::DF},
+    {"e2m1", Type::E2M1},
 };
 static const IdentMap<Type> DST_TYPES{
     {"b", Type::B},
@@ -778,6 +779,8 @@ private:
       //                      ^^^^^^ oops
       // send... ... r[s0..]  a0.2         Desc
       //                      ^^^^ okay (a0.2 is the ExDesc not src1)
+      // sendg... ... r[s0..]  s0.0  s0.16  Desc
+      //                       ^^^^ okay (s0.0 is ID0 not src1)
       auto at = NextLoc();
       const RegInfo *regInfo = nullptr;
       int regNum = 0;
@@ -1184,6 +1187,7 @@ public:
     case OpSpec::NULLARY:
       // nop ...
       // illegal ...
+      // thryld ...
       break; // fallthrough to instruction options
     case OpSpec::BASIC_UNARY_REG:
     case OpSpec::BASIC_UNARY_REGIMM:
@@ -1211,6 +1215,8 @@ public:
     case OpSpec::SEND_BINARY:
       if (platform() <= Platform::XE) {
         ParseSendInstructionLegacy();
+      } else if (m_opSpec->isSendgFormat()) {
+        ParseSendgInstructionXe3p();
       } else if (platform() >= Platform::XE3) {
         ParseSendInstructionXe3();
       } else if (platform() == Platform::XE2) {
@@ -1248,6 +1254,15 @@ public:
       ParseSrcOp(0);
       ParseSrcOp(1);
       ParseSrcOp(2);
+      break;
+    case OpSpec::QUINARY_SRC:
+      assert(m_opSpec->is(Op::BDPAS) && "only bdpas has 5 sources");
+      ParseDpasOp(-1, true); // dst
+      ParseDpasOp(0, false); // src0
+      ParseDpasOp(1, false); // src1
+      ParseDpasOp(2, false); // src2
+      ParseDpasOp(3, false); // src3
+      ParseDpasOp(4, false); // src4
       break;
     case OpSpec::JUMP_UNARY_IMM:
       ParseSrcOpLabel(0);
@@ -1374,6 +1389,21 @@ public:
       ParseSendSrc1OpWithOptLen(src1Len);
     }
     ParseSendDescsXe2(src1Len);
+  }
+
+  void ParseSendgInstructionXe3p() {
+    ParseSendDstOpXe3();
+
+    bool gatheringSrc0 = ParseSendgSrc0OpXe3p();
+
+    if (gatheringSrc0) {
+      // create null src1 for Gather Send (src1 won't be printed in asm)
+      addNullGatherSendSrc1();
+      m_builder.InstSendSrc1Length(0);
+    } else {
+      ParseSendgSrc1OpXe3();
+    }
+    ParseSendgDescsXe3();
   }
 
 
@@ -1662,6 +1692,12 @@ public:
       m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnumBfnFC());
     } else if (pOs->isDpasFormat()) {
       m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnum<DpasFC>());
+    } else if (pOs->is(Op::SHFL)) {
+      m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnum<ShuffleFC>());
+    } else if (pOs->is(Op::LFSR)) {
+      m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnum<LfsrFC>());
+    } else if (pOs->is(Op::DNSCL)){
+      m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnumDnsclFC());
     } else {
       // isOldSend: pre XE will have a subfunction,
       // but we pull it from ExDesc
@@ -1669,7 +1705,6 @@ public:
       IGA_ASSERT(!pOs->supportsSubfunction() || isOldSend,
                  "INTERNAL ERROR: subfunction expected");
     }
-
 
     if (LookingAt(DOT)) {
       // maybe an old condition modifier or saturation
@@ -1740,6 +1775,75 @@ public:
     return BfnFC(fc);
   }
 
+  DnsclFC ParseSubfunctionFromBxmlEnumDnsclFC() {
+    if (!Consume(DOT)) {
+      FailAfterPrev("expected operation subfunction");
+    }
+    // DnsclFC is composed by 4 parts. dnscl op is in the syntax:
+    // dnscl.<ConvSrcDataType>to<ConvDstDataType>.<DnsclMode>.<RoundingMode>
+    // for example: dnscl.bftoE2M1.mode0.srnd
+    ConvSrcDataType srcTy = ConvSrcDataType::INVALID;
+    ConvDstDataType dstTy = ConvDstDataType::INVALID;
+    DnsclMode dMode = DnsclMode::INVALID;
+    RoundingMode rMode = RoundingMode::INVALID;
+
+    // parse <ConvSrcDataType>to<ConvDstDataType>
+    auto loc = NextLoc();
+    if (LookingAt(IDENT)) {
+      auto srcDstTyLoc = NextLoc();
+      std::string str = GetTokenAsString();
+      Skip();
+      auto toPos = str.find("to");
+      if (toPos == std::string::npos)
+        FailAtT(srcDstTyLoc, "invalid subfunction");
+      std::string srcStr = str.substr(0, toPos);
+      srcTy = FromSyntax<ConvSrcDataType>(srcStr);
+      std::string dstStr = str.substr(toPos + 2);
+      dstTy = FromSyntax<ConvDstDataType>(dstStr);
+      if (srcTy == ConvSrcDataType::INVALID ||
+          dstTy == ConvDstDataType::INVALID) {
+        FailAtT(srcDstTyLoc, "invalid conv type");
+      }
+    } else {
+      FailAtT(loc, "expected operation subfunction");
+    }
+
+    // parse <DnsclMode>
+    if (!Consume(DOT)) {
+      // FIXME: vague error message to avoid IP issue
+      FailAfterPrev("expected mode");
+    }
+    loc = NextLoc();
+    if (LookingAt(IDENT)) {
+      auto dmLoc = NextLoc();
+      std::string str = GetTokenAsString();
+      Skip();
+      dMode = FromSyntax<DnsclMode>(str);
+      if (dMode == DnsclMode::INVALID)
+        FailAtT(dmLoc, "invalid mode");
+    } else {
+      // FIXME: vague error message to avoid IP issue
+      FailAtT(loc, "expected mode");
+    }
+
+    // parse <RoundingMode>
+    if (!Consume(DOT)) {
+      FailAfterPrev("expected rounding mode");
+    }
+    loc = NextLoc();
+    if (LookingAt(IDENT)) {
+      auto rmLoc = NextLoc();
+      std::string str = GetTokenAsString();
+      Skip();
+      rMode = FromSyntax<RoundingMode>(str);
+      if (rMode == RoundingMode::INVALID)
+        FailAtT(rmLoc, "invalid mode");
+    } else {
+      FailAtT(loc, "expected rounding mode");
+    }
+
+    return DnsclFC(srcTy, dstTy, dMode, rMode);
+  }
 
   // FlagModifierOpt = '(' FlagModif ')' FlagReg
   void ParseFlagModOpt() {
@@ -1880,10 +1984,18 @@ public:
     m_srcLocs[1] = NextLoc();
     m_srcKinds[1] = opInfo.kind = Operand::Kind::DIRECT;
     auto reg = ParseReg();
-    {
-    opInfo.regOpName = reg.first->regName;
-    opInfo.regOpReg.regNum = reg.second;
-    opInfo.regOpReg.subRegNum = 0;
+      // for sendgx, check if the destination is ARF_NULL
+      // if ARF_NULL, then change to r511
+    if ((m_opSpec->is(Op::SENDGX) || m_opSpec->is(Op::SENDGXC)) &&
+        reg.first->regName == RegName::ARF_NULL) {
+      opInfo.regOpName = RegName::ARF_NULL;
+      opInfo.regOpReg.regNum = (uint16_t)0;
+      opInfo.regOpReg.subRegNum = 0;
+    }
+    else {
+      opInfo.regOpName = reg.first->regName;
+      opInfo.regOpReg.regNum = reg.second;
+      opInfo.regOpReg.subRegNum = 0;
     }
     m_builder.InstDstOp(opInfo);
     if (LookingAtSeq(COLON, IDENT)) {
@@ -2126,6 +2238,24 @@ public:
     return true;
   }
 
+  // E.g. 3 in "s0.2"
+  bool ParseScalarRegRefOpt(RegRef &addrReg) {
+    const RegInfo *ri;
+    int regNum;
+    if (!ConsumeReg(ri, regNum)) {
+      return false;
+    }
+    if (regNum != 0 || ri->regName != RegName::ARF_S) {
+      FailT("expected scalar register for indirect access (s0.#)");
+    }
+    if (!Consume(DOT)) {
+      FailT("expected .");
+    }
+    addrReg.regNum = addrReg.subRegNum = 0;
+    ConsumeIntLitOrFail(addrReg.subRegNum,
+                        "expected scalar register subregister");
+    return true;
+  }
 
   // same as ParseSrcOp, but semantically chekcs that it's a label
   void ParseSrcOpLabel(int srcOpIx) {
@@ -3022,6 +3152,79 @@ public:
     return opInfo.kind == Operand::Kind::INDIRECT;
   }
 
+  // e.g. "r13:2" or "r[s0.2]:8" (suffix Src0Len)
+  // returns if the operand is indirect (gathering)
+  bool ParseSendgSrc0OpXe3p() {
+    m_srcLocs[0] = NextLoc();
+
+    OperandInfo opInfo;
+    if (ConsumeIdentEq("r")) {
+      m_srcKinds[0] = opInfo.kind = Operand::Kind::INDIRECT;
+      ConsumeOrFail(LBRACK, "expected [");
+      auto sreg = ParseReg();
+      if (sreg.first->regName != RegName::ARF_S) {
+        FailAtT(m_srcLocs[0], "gathering send expects s0.# index");
+      }
+      ConsumeOrFail(DOT, "expected subregister");
+      int subregNum = 0;
+      ConsumeIntLitOrFail(subregNum, "expected subregister");
+      opInfo.regOpIndOff = 0;
+      opInfo.regOpReg = RegRef(sreg.second, (uint16_t)subregNum);
+      opInfo.regOpName = RegName::ARF_S;
+      ConsumeOrFail(RBRACK, "expected ]");
+      if (m_opSpec->is(Op::SENDGX) || m_opSpec->is(Op::SENDGXC)) {
+          FailAtT(m_srcLocs[0], "Sendgx/sendgxc forbids gather src0 operand");
+      }
+    } else {
+      m_srcKinds[0] = opInfo.kind = Operand::Kind::DIRECT;
+      auto reg = ParseReg();
+      // for sendgx, check is src0 is ARF_NULL
+      // if ARF_NULL, change to r511
+      if ((m_opSpec->is(Op::SENDGX) || m_opSpec->is(Op::SENDGXC)) &&
+           reg.first->regName == RegName::ARF_NULL) {
+        opInfo.regOpName = RegName::ARF_NULL;
+        opInfo.regOpReg.regNum = (uint16_t)0;
+        opInfo.regOpReg.subRegNum = 0;
+      } else {
+        opInfo.regOpName = reg.first->regName;
+        opInfo.regOpReg.regNum = reg.second;
+        opInfo.regOpReg.subRegNum = 0;
+      }
+    }
+    int src0Len = 0;
+    if (LookingAt(COLON) || opInfo.regOpName == RegName::GRF_R)
+      src0Len = ParseSrcOpLenSuffix((int)opInfo.regOpReg.regNum);
+    m_builder.InstSrcOp(0, opInfo);
+    m_builder.InstSendSrc0Length(src0Len);
+
+    return opInfo.kind == Operand::Kind::INDIRECT;
+  }
+  void ParseSendgSrc1OpXe3() {
+    OperandInfo opInfo;
+    m_srcLocs[1] = NextLoc();
+    m_srcKinds[1] = opInfo.kind = Operand::Kind::DIRECT;
+    auto reg = ParseReg();
+      // for sendgx, check if src1 is ARF_NULL
+      // if ARF_NULL, then change to r511
+    if ((m_opSpec->is(Op::SENDGX) || m_opSpec->is(Op::SENDGXC)) &&
+        reg.first->regName == RegName::ARF_NULL) {
+      opInfo.regOpName = RegName::ARF_NULL;
+      opInfo.regOpReg.regNum = (uint16_t)0;
+      opInfo.regOpReg.subRegNum = 0;
+    }
+    else
+    {
+      opInfo.regOpName = reg.first->regName;
+      opInfo.regOpReg.regNum = reg.second;
+      opInfo.regOpReg.subRegNum = 0;
+    }
+    int src1Len = 0;
+    if (LookingAt(COLON) || opInfo.regOpName != RegName::ARF_NULL)
+      src1Len = ParseSrcOpLenSuffix((int)opInfo.regOpReg.regNum);
+    m_builder.InstSrcOp(1, opInfo);
+    m_builder.InstSendSrc1Length(src1Len);
+  }
+
 
   std::pair<const RegInfo *, uint16_t> ParseReg() {
     const RegInfo *regInfo = nullptr;
@@ -3031,6 +3234,11 @@ public:
     } else if (!regInfo->isRegNumberValid(regNum)) {
       FailT("invalid register number");
     }
+    if (m_opSpec->is(Op::SENDGX) || m_opSpec->is(Op::SENDGXC)) {
+      if (regNum == 511) {
+        IGA_ASSERT(false, "r511 is null and should not be referenced directly");
+      }
+    }
     return std::pair<const RegInfo *, uint16_t>(regInfo, (uint16_t)regNum);
   }
 
@@ -3039,6 +3247,9 @@ public:
     ConsumeOrFail(COLON, "expected payload length suffix (e.g. :2)");
 
     int regLimit = 255;
+    if (m_opSpec->is(Op::SENDGX) || m_opSpec->is(Op::SENDGXC)) {
+      regLimit = 511;
+    }
 
     // explicit length syntax
     //   e.g. "r13:4"
@@ -3306,6 +3517,20 @@ public:
     m_builder.InstSendSrc1Length(src1Len);
   }
 
+  void ParseSendgDescsXe3() {
+    RegRef id0{REGREF_INVALID};
+    RegRef id1{REGREF_INVALID};
+    auto at = NextLoc();
+    if (ParseScalarRegRefOpt(id0)) {
+      ParseScalarRegRefOpt(id1);
+    }
+    const Loc exDescLoc = NextLoc();
+    ImmVal v;
+    bool z = TryParseIntConstExprPrimary(v, "descriptor");
+    if (!z)
+      FailAtT(exDescLoc, "expected send descriptor");
+    m_builder.InstSendDescs(v.u64, id0, id1);
+  }
 
   //
   // (INTEXPR|AddrRegRef) (INTEXPR|AddrRegRef)
@@ -3579,6 +3804,12 @@ public:
           FailAtT(loc, "CPS is not allowed for non-send instructions");
         }
         newOpt = InstOpt::CPS;
+      } else if (ConsumeIdentEq("Fwd")) {
+        if (!m_opSpec->isDpasFormat())
+          FailAtT(loc, "FWD is not allowed for non-dpas instructions");
+        if (platform() <= Platform::XE3)
+          FailAtT(loc, "FWD not supported on this platform");
+        newOpt = InstOpt::FWD;
       } else if (ConsumeIdentEq("NoAccSBSet")) {
         // try swsb special token: NoAccSBSet
         m_builder.InstDepInfoSpecialToken(loc, SWSB::SpecialToken::NOACCSBSET);
@@ -3636,8 +3867,10 @@ public:
         } else if (ConsumeIdentEq("src")) {
           // $4.src
           m_builder.InstDepInfoSBidSrc(loc, sbid);
-        }
-        else {
+        } else if (ConsumeIdentEq("inc")) {
+          // $4.inc
+          m_builder.InstDepInfoSBidCntr(loc, sbid);
+        } else {
           FailT("invalid SBID directive expecting 'dst' or 'src'");
         }
       } else if (!LookingAtAnyOf(COMMA, RBRACE)) {
@@ -3772,6 +4005,13 @@ public:
         FailT("invalid src", opIx);
     }
     if (ri->regName != RegName::GRF_R) {
+      // under bdpas, src0, src3 and src4 can be null (meaning +0)
+      if (m_opSpec->is(Op::BDPAS)) {
+        if ((opIx != 0 && opIx != 3 && opIx != 4) || ri->regName != RegName::ARF_NULL)
+          FailT("src", opIx, ": invalid register",
+              (opIx == 0 || opIx == 3 || opIx == 4) ?
+              " (must be GRF or null)" : " (must be GRF)");
+      } else
       // dpas must be GRF except src0, which can be null (meaning +0)
       if (opIx != 0 || ri->regName != RegName::ARF_NULL)
         FailT("src", opIx, ": invalid register",
@@ -3821,6 +4061,35 @@ public:
     }
   }
 
+  void ParseSdpasMeta() {
+    const Loc regStart = NextLoc(0);
+
+    // Match grf such as r10
+    const RegInfo *ri = nullptr;
+    int regNum = 0;
+    if (!ConsumeReg(ri, regNum)) {
+      FailT("invalid meta operand");
+    }
+    if (ri && !ri->isRegNumberValid(regNum)) {
+      FailT("invalid register number: ", regNum, " (", ri->syntax, " only has ",
+            ri->numRegs, " registers on this platform)");
+    }
+
+    int subregNum = 0;
+    // match subreg such as .4 (for src2 only).
+    //
+    // all operands except src2 has an implicit subreg 0. No explicit
+    // subreg is allowed.  For src2, its subreg can be either implicit
+    // or explicit. If it is explicit, the subreg must be either 0 or 4
+    // as src2 is half-grf aligned.
+    if (LookingAt(DOT)) {
+      Skip();
+      ConsumeIntLitOrFail(subregNum, "expected subregister");
+    }
+    RegRef regRef(regNum, subregNum);
+    IGA_ASSERT(ri != nullptr, "nullptr RegInfo");
+    m_builder.InstSdpasSrcMeta(regStart, ri->regName, regRef);
+  }
 };     // class KernelParser
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -4244,6 +4513,33 @@ bool KernelParser::ParseLdStInst() {
     Consume(LBRACK);
     //
     ImmVal v;
+    auto scaleTk = Next();
+    if (!LookingAt(IDENT) && TryParseIntConstExprPrimary(v)) {
+      // LookingAt(..) to avoid failure as r13 parses as IDENT
+      // FIXME: parser needs better context to work around this
+      // deficiency
+      ensureIntegral(scaleTk, v);
+      int scale = (int)v.s64;
+      ConsumeOrFail(MUL, "expected *");
+      //
+      // sanity check the size here so we can give good error
+      // location info
+      int vlen = vma.elementsPerAddress();
+      int bytesPerElem = vma.dataSizeMem * vlen / 8;
+      if (bytesPerElem > 32) {
+        FailS(scaleTk.loc, "scaling factor is too large");
+      } else if (scale == bytesPerElem) {
+        vma.addrScale = bytesPerElem;
+      } else if (scale == 2 * bytesPerElem) {
+        vma.addrScale = 2 * bytesPerElem;
+      } else if (scale == 4 * bytesPerElem) {
+        vma.addrScale = 4 * bytesPerElem;
+      } else {
+        FailAtT(scaleTk.loc, "invalid scaling factor (must be ",
+                1 * bytesPerElem, ", ", 2 * bytesPerElem, ", or ",
+                4 * bytesPerElem, ")");
+      }
+    }
        //
     parsePayload(addr.payload);
     m_sendSrcLens[0] = addr.payload.regLen;

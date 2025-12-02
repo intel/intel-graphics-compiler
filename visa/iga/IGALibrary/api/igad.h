@@ -188,6 +188,11 @@ typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetSendExDescImmOff)(
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetSendIndirectDescs)(
     const kv_t *kv, int32_t pc, uint8_t *ex_desc_reg, uint8_t *ex_desc_subreg,
     uint8_t *desc_reg, uint8_t *desc_subreg);
+typedef kv_status_t(CDECLATTRIBUTE *pIGAKVGetSendgDesc)(const kv_t *kv,
+                                                        int32_t pc,
+                                                        uint64_t *desc);
+typedef kv_status_t(CDECLATTRIBUTE *pIGAKVGetSendgIndDesc)(
+    const kv_t *kv, int32_t pc, uint32_t *subregPresent, uint32_t *subreg);
 
 /************************* KV Analysis APIS **********************************/
 
@@ -394,6 +399,9 @@ typedef struct {
   pIGAKVGetOpgroup kv_get_opgroup;
   pIGAKVGetSendDescs kv_get_send_descs;
   pIGAKVGetSendExDescImmOff kv_get_send_exdesc_immoff;
+  pIGAKVGetSendgDesc kv_get_sendg_desc;
+  pIGAKVGetSendgIndDesc kv_get_sendg_ind_desc0;
+  pIGAKVGetSendgIndDesc kv_get_sendg_ind_desc1;
   pIGAKVGetSendIndirectDescs kv_get_send_indirect_descs;
   pIGAKVGetSendExBso kv_get_send_exbso;
   pIGAKVGetExecutionSize kv_get_execution_size;

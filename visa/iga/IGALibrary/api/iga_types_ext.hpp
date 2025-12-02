@@ -83,6 +83,7 @@ enum class Type {
   V,
   UV,
   VF,
+  E2M1,
 };
 
 // an operand type
@@ -268,6 +269,7 @@ enum class InstOpt {
   EXBSO, // XE_HP extended bindless surface offset
          // implies CPS and Src1.Length come from EU encoding, not
   CPS,   // XE_HP coarse pixel shading
+  FWD,   // FwdCtrl for dpas
   CACHELINEALIGN
 };
 

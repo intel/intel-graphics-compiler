@@ -22,8 +22,12 @@ set(IGA_Backend_Messages
   ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoderHDC.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoderLSC.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoderOther.cpp
-  PARENT_SCOPE
-)
+  ${CMAKE_CURRENT_SOURCE_DIR}/Messages/E64/MessageDecoderE64.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Messages/E64/MessageDecoderE64.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Messages/E64/MessageDecoderLscE64.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Messages/E64/MessageDecoderOtherE64.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Messages/E64/MessageDecoderSmplE64.cpp
+  PARENT_SCOPE)
 
 
 ##################################################################

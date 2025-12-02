@@ -264,6 +264,7 @@ private:
   DepSet *m_companion = nullptr;
 
   // A list of instructions those having sbid.src dependency to this DepSet
+  // This is needed for updating their sbid if when SWSBAnalyzer::trySBIDCounter
   std::vector<Instruction*> m_SrcDepInsts;
 };
 
@@ -415,6 +416,22 @@ public:
   bool needIntraReadSuppressionWA() const
   { return mPlatformModel.platform == Platform::XE; }
 
+  // This affects the dst size of call/calla instructions. For call/calla, the
+  // dst data type is implicit DW, but it actually accesses "IP address size +
+  // 1 dw (CallMask)". Hence when IP size is 64b, the dst register footprint
+  // should be 3 DWs.
+  bool has64bitIPAddress() const
+  { return mPlatformModel.platform > Platform::XE3; }
+
+  // Need to insert swsb right after fence to force sync with it in case that
+  // there is implicit dependency to the fence from the following barrier
+  // instructions
+  bool needSyncAfterFence() const
+  { return mPlatformModel.platform > Platform::XE3; }
+
+  // check if the given sendg instruction is a fence.
+  // The given Instruction must be in sendg format
+  bool isSendgFence(const Instruction &sendg) const;
 
 private:
   // ASSUMES: byte-level tracking for all elements
@@ -462,6 +479,38 @@ private:
   // 8. One of below conditions is met:
   //    a) for src1 read suppression
   //    b) for src2 read suppression
+  //    c) Fwd is set
+
+  // Details of 8:
+  // a) for src1 suppression:
+  //    - A read can be suppressed only when its register footprint is
+  //    completely overlapped with the
+  //      register group in the suppression buffer
+  //    - no producer-consumer relationships within the macro
+  //    - src1 reused the registers in the src1 suppression buffer. Buffer size:
+  //      * PreXE3P: 1 group of 8 consecutive registers
+  //      * XE3P+:   4 groups of 8 consecutive registers
+  // b) for src2 suppression:
+  //    - A read can be suppressed only when its register footprint is
+  //    completely overlapped with the
+  //      register group in the suppression buffer
+  //    - no producer-consumer relationships within the macro
+  //    - repcount is 8 for non-dp dpas, or 4 for dp dpas
+  //    - src2 reused the registers in the src2 suppression buffer. Buffer size:
+  //      * prePVC: no src2 suppression
+  //      * PVC+:    4 groups of 4 consecutive registers
+  //      * XE3P+:   16 groups of 4 consecutive registers
+  // c) Fwd is set
+  //    - current and next dpas are both dpas8x8
+  //    - next DPAS's src0and dst are both identical to current DPAS's dst
+  //    - src0, dst types are fp32 or int32(type size is 32)
+  //    - next DPAS's src1 and src2 should not have dependency to the current
+  //    DPAS's dst
+
+  // The entry point to form a dpas macro is DpasMacroBuilder::formMacro
+  // To simplify the implementation, we do not emulate the FIFO behavior in HW
+  // of read suppression buffer. The number of instructions found in the formed
+  // macro is the maximum of block we found for a), b) and c).
   class DpasMacroBuilder {
   public:
     DpasMacroBuilder(const DepSetBuilder &dsBuilder, const Model &model,
@@ -522,6 +571,20 @@ private:
                                 const SrcRegRangeType &src_range,
                                 const BitSet<> &target_dst_bits) const;
 
+    // Check if this dpas can have {Fwd} set with the next dpas.
+    // If can Fwd, treat this and the next instruction as one instruction to
+    // go through the following checks
+    bool canFwd(const Instruction &cur, const Instruction &next,
+                const DstRegRangeType &cur_dst_range,
+                const SrcRegRangeType &cur_src_range,
+                const DstRegRangeType &next_dst_range,
+                const SrcRegRangeType &next_src_range,
+                const BitSet<> &prev_dst_bits,
+                const BitSet<> &prev_src_bits) const;
+
+    // form the Fwd block of dpas those have the same dst and src0 forward.
+    // Return the number of dpas found in this fwd block.
+    size_t formFwdBlock(InstListIterator first);
 
     void updateRegFootprintsToDepSets(SrcRegRangeType &src_range,
                                       SrcRegRangeType &extra_src_range,

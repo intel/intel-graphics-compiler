@@ -53,10 +53,11 @@ public:
 public:
   // Blocks have already been created
   SWSBAnalyzer(Kernel &k, ErrorHandler &errHandler,
-               SWSB_ENCODE_MODE encode_mode, int sbid_count
-               )
+               SWSB_ENCODE_MODE encode_mode, int sbid_count,
+               bool enableSBIDCounterAutoSet = false)
       : m_kernel(k), m_errorHandler(errHandler), m_SBIDRRCounter(0),
         m_initPoint(false),
+        m_enableSBIDCounter(enableSBIDCounterAutoSet),
         MAX_VALID_DISTANCE(k.getModel().getSWSBMaxValidDistance()) {
     // Set SWSB_ENCODE_MODE
     if (encode_mode != SWSB_ENCODE_MODE::SWSBInvalidMode)
@@ -98,6 +99,7 @@ private:
 
   void postProcessReadModifiedWriteOnByteDst();
   void postProcessRemoveRedundantSync();
+  void postProcessSBIDCounterInst();
 
 private:
   // activeSBIDsTy - keep track of the depended SBID an inst depends on,
@@ -117,6 +119,15 @@ private:
   void processactiveSBIDs(SWSB &distanceDependency, const DepSet *input,
                           Block *bb, InstList::iterator iter,
                           activeSBIDsTy &activeSBIDs);
+  // Check and replace the associated instructions in activeSBIDs to use sbid
+  // counter if possible. Return true on success.
+  // DepSet->Instruction tracked by activeSBIDs is also updated to replaced
+  // its sbid to ".inc" one,
+  // If cannot replace to sbid counter, return false and activeSBIDs remains
+  // unchanged.
+  // retSBID: the chosen SBID that is make to be counter
+  bool trySBIDCounter(activeSBIDsTy &activeSBIDs, const DepSet &curDepSet,
+                      SBID &retSBID);
 
   // helper function to pick a free SBID and set it to distanceDependency.
   // This function only set SBID to distanceDependency, will not assign
@@ -185,6 +196,13 @@ private:
   adjustSWSB(Block &block, const InstListIterator instIt,
              SWSB &swsb, bool preferMoveOutSBID);
 
+  bool enableSBIDCounterSetting() {
+    // enable sbid counter setting only when the encoding mode supports it
+    if(m_enableSBIDCounter &&
+       m_swsbMode >= SWSB_ENCODE_MODE::FiveDistPipeCvtToInt)
+      return true;
+    return false;
+  }
 
   /// ------------ HW Workaround Information ------------ ///
   // MathWAInfo: For a math instruction, when the following instruction has
@@ -255,6 +273,7 @@ private:
 
   const int MAX_VALID_DISTANCE;
 
+  bool m_enableSBIDCounter = false;
 };
 } // namespace iga
 #endif

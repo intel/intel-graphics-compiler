@@ -18,6 +18,7 @@ bool OpSpec::hasImpicitEm() const {
   case Op::ILLEGAL:
   case Op::JMPI:
   case Op::WAIT:
+  case Op::THRYLD:
     return true;
   default:
     return false;
@@ -205,11 +206,24 @@ bool OpSpec::supportsSubfunction() const {
          op == Op::MATH       ||
          op == Op::SYNC       ||
          op == Op::BFN        ||
+         op == Op::SHFL       ||
+         op == Op::LFSR       ||
+         op == Op::DNSCL      ||
          isDpasFormat();
 }
 
+bool OpSpec::supportsFwdCtrl() const {
+  if (!isDpasFormat())
+    return false;
+  if (platform > Platform::XE3)
+    return true;
+  return false;
+}
 
 bool OpSpec::isBinaryWithExecDataType() const {
+  if (platform >= Platform::XE3P_XPC &&
+      isBinary())
+    return true;
   return false;
 }
 
@@ -227,6 +241,8 @@ unsigned OpSpec::getSourceCount(Subfunction sf) const {
     return 2;
   else if (format & TERNARY)
     return 3;
+  else if (format & QUINARY)
+    return 5;
   else
     return 0;
 }

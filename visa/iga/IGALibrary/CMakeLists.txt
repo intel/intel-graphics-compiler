@@ -151,7 +151,7 @@ set(IGA_Backend_GED
 )
 
 
-# purposly exclude iga.cpp since it must be compiled differently for .lib/.a and .so/.dll
+# purposely exclude iga.cpp since it must be compiled differently for .lib/.a and .so/.dll
 set(IGA_SOURCES
     ${IGA_API_Headers}
     ${IGA_API_Source}

@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "bxml/ModelXeHPG.hpp"
 #include "bxml/ModelXe2.hpp"
 #include "bxml/ModelXe3.hpp"
+#include "bxml/ModelXe3pXPC.hpp"
 #include "../Backend/Native/MInst.hpp"
 #include "../asserts.hpp"
 #include "../bits.hpp"
@@ -76,10 +77,15 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
                          0, // regNum7_4, regNumBase
                          1, // accGran
                          256, (0)),
+    IGA_REGISTER_SPEC_GE(Platform::XE3P_XPC, RegName::GRF_R, "r", "General", 0,
+                         0, // regNum7_4, regNumBase
+                         1, // accGran
+                         512, (0)),
     IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_NULL, "null", "Null", 0x0, 0, 0, 0,
                               (32)),
 
-    IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_A, "a", "Index", 0x1, 0, 2, 1, (32)),
+    IGA_REGISTER_SPEC_LE(Platform::XE3,  RegName::ARF_A, "a", "Index", 0x1, 0, 2, 1, (32)),
+    IGA_REGISTER_SPEC_GE(Platform::XE3P_XPC, RegName::ARF_A, "a", "Index", 0x1, 0, 2, 1, (64)),
 
     // acc and mme share same RegNum[7:4], mme gets the high registers
     IGA_REGISTER_SPEC_LE(Platform::GEN11, RegName::ARF_ACC, "acc",
@@ -134,6 +140,9 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
                       (2 * 8)), // two subregisters of 8 bytes each
     IGA_REGISTER_SPEC(Platform::XE3, Platform::XE3, RegName::ARF_S, "s",
                       "Scalar Register", 0x6, 0, 1, 1, (32)),
+    // bigger s0 in XE3P
+    IGA_REGISTER_SPEC_GE(Platform::XE3P_XPC, RegName::ARF_S, "s",
+                         "Scalar Register", 0x6, 0, 1, 1, (64)),
 
     IGA_REGISTER_SPEC(Platform::GEN7P5, Platform::GEN11, RegName::ARF_SR, "sr",
                       "State Register", 0x7, 0, 1, 2,
@@ -147,6 +156,9 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
 
     IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_CR, "cr", "Control Register", 0x8, 0,
                               4, 1, (3 * 4)), // cr0.{0..2}:d
+    IGA_REGISTER_SPEC_GE(Platform::XE3P_XPC, RegName::ARF_CR, "cr",
+                         "Control Register", 0x8, 0,
+                         4, 1, (4 * 4)), // cr0.{0..3}:d
 
     // with SWSB wait n{0,1} replaced by sync.{bar,host}, which
     // implicitly reference notification registers;
@@ -197,6 +209,8 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
                       "Debug", 0xF, 0, 4, 1, (4)), // dbg0.0:ud
     IGA_REGISTER_SPEC_GE(Platform::GEN8, RegName::ARF_DBG, "dbg", "Debug", 0xF,
                          0, 4, 1, (2 * 4)), // dbg0.{0,1}:ud
+    IGA_REGISTER_SPEC_GE(Platform::XE3P_XPC, RegName::ARF_DBG, "dbg", "Debug", 0xF,
+                         0, 4, 1, (5 * 4)), // dbg0.{0,1,2,3,4}:ud
 };
 
 const OpSpec &Model::lookupOpSpec(Op op) const {
@@ -340,6 +354,11 @@ const RegInfo *Model::lookupArfRegInfoByRegNum(uint8_t regNum7_0) const {
 }
 
 bool Model::srcHasReducedRegion(uint32_t srcIdx) const {
+  // src region is in the format of "flat" or "scalar" only.
+  // Other region cannot be encoded. Refer to the instructions
+  // BitField: Src1.ScalarReg.
+  if (platform >= Platform::XE3P_XPC && srcIdx == 1)
+    return true;
   return false;
 }
 
@@ -410,12 +429,16 @@ static constexpr Model
 static constexpr Model
     MODEL_XE3(Platform::XE3, &MODEL_XE3_OPSPECS[0], "3", "xe3", "ptl"
     );
+static constexpr Model
+    MODEL_XE3P_XPC(Platform::XE3P_XPC, &MODEL_XE3P_XPC_OPSPECS[0], "3pxpc", "xe3pxpc"
+    );
 
 const Model *const iga::ALL_MODELS[] {
   &MODEL_GEN7P5, &MODEL_GEN8, &MODEL_GEN9, &MODEL_GEN10, &MODEL_GEN11,
       &MODEL_XE, &MODEL_XE_HP, &MODEL_XE_HPG, &MODEL_XE_HPC,
       &MODEL_XE2,
       &MODEL_XE3,
+      &MODEL_XE3P_XPC,
 };
 const size_t iga::ALL_MODELS_LEN = sizeof(ALL_MODELS) / sizeof(ALL_MODELS[0]);
 
@@ -446,6 +469,8 @@ const Model *Model::LookupModel(Platform p) {
     return &MODEL_XE2;
   case Platform::XE3:
     return &MODEL_XE3;
+  case Platform::XE3P_XPC:
+    return &MODEL_XE3P_XPC;
   default:
     return nullptr;
   }

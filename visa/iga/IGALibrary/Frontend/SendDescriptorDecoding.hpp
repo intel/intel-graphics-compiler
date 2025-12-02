@@ -21,6 +21,10 @@ void EmitSendDescriptorInfo(Platform p, SFID sfid, ExecSize execSize,
                             const SendDesc &exDesc, const SendDesc &desc,
                             std::stringstream &ss);
 
+void EmitSendgDescriptorInfoXe3p(Platform p, SFID sfid, ExecSize execSize,
+                               bool dstNonNull, int src0Len, int src1Len,
+                               RegRef id0, RegRef id1, uint64_t desc,
+                               std::stringstream &ss);
 } // namespace iga
 
 #endif

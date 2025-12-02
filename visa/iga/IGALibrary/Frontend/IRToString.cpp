@@ -34,6 +34,7 @@ std::string iga::ToSymbol(Platform x) {
     MAKE_CASE(Platform, XE_HPC);
     MAKE_CASE(Platform, XE2);
     MAKE_CASE(Platform, XE3);
+    MAKE_CASE(Platform, XE3P_XPC);
     MAKE_CASE(Platform, FUTURE);
     MAKE_DEFAULT_CASE(Platform);
   }
@@ -69,6 +70,10 @@ std::string iga::ToSyntax(MathFC sf) {
     return "sin";
   case MathFC::SQT:
     return "sqt";
+  case MathFC::TANH:
+    return "tanh";
+  case MathFC::SIGM:
+    return "sigm";
   default:
     return fmtHex(static_cast<uint32_t>(sf)) + "?";
   }
@@ -244,4 +249,147 @@ template <> DpasFC iga::FromSyntax<DpasFC>(const std::string& syn) {
       return sf;
   }
   return DpasFC::INVALID;
+}
+std::string iga::ToSyntax(ShuffleFC op) {
+  switch (op) {
+  case ShuffleFC::UP:
+    return "up";
+  case ShuffleFC::UPZ:
+    return "upz";
+  case ShuffleFC::DN:
+    return "dn";
+  case ShuffleFC::DNZ:
+    return "dnx";
+  case ShuffleFC::XOR:
+    return "xor";
+  case ShuffleFC::IDX:
+    return "idx";
+  case ShuffleFC::IDX4:
+    return "idx4";
+  default:
+    return fmtHex(static_cast<uint32_t>(op)) + "?";
+  }
+}
+
+template <> ShuffleFC iga::FromSyntax<ShuffleFC>(const std::string& symbol) {
+  for (auto op : ALL_ShuffleFC) {
+    if (symbol == ToSyntax(op)) {
+      return op;
+    }
+  }
+  return ShuffleFC::INVALID;
+}
+
+std::string iga::ToSyntax(LfsrFC op) {
+  switch (op) {
+  case LfsrFC::LFSR_b32:
+    return "b32";
+  case LfsrFC::LFSR_b16v2:
+    return "b16v2";
+  case LfsrFC::LFSR_b8v4:
+    return "b8v4";
+  default:
+    return fmtHex(static_cast<uint32_t>(op)) + "?";
+  }
+}
+
+template <> LfsrFC iga::FromSyntax<LfsrFC>(const std::string& str) {
+  for (auto op : ALL_LfsrFC) {
+    if (str == ToSyntax(op)) {
+      return op;
+    }
+  }
+  return LfsrFC::INVALID;
+}
+
+// dnscl src/dst type and mode strings
+std::string iga::ToSyntax(ConvSrcDataType op) {
+  switch (op) {
+  case ConvSrcDataType::HF:
+    return "hf";
+  case ConvSrcDataType::BF:
+    return "bf";
+  default:
+    return fmtHex(static_cast<uint32_t>(op)) + "?";
+  }
+}
+
+template <> ConvSrcDataType iga::FromSyntax<ConvSrcDataType>(const std::string& str) {
+  for (auto op : ALL_ConvSrcDataType) {
+    if (str == ToSyntax(op)) {
+      return op;
+    }
+  }
+  return ConvSrcDataType::INVALID;
+}
+
+std::string iga::ToSyntax(ConvDstDataType op) {
+  switch (op) {
+  case ConvDstDataType::E2M1:
+    return "e2m1";
+  case ConvDstDataType::INT4:
+    return "int4";
+  default:
+    return fmtHex(static_cast<uint32_t>(op)) + "?";
+  }
+}
+
+template <> ConvDstDataType iga::FromSyntax<ConvDstDataType>(const std::string& str) {
+  for (auto op : ALL_ConvDstDataType) {
+    if (str == ToSyntax(op)) {
+      return op;
+    }
+  }
+  return ConvDstDataType::INVALID;
+}
+
+std::string iga::ToSyntax(DnsclMode op) {
+  switch (op) {
+    case DnsclMode::MODE0:
+      return "mode0";
+    case DnsclMode::MODE1:
+      return "mode1";
+    case DnsclMode::MODE2:
+      return "mode2";
+    case DnsclMode::MODE3:
+      return "mode3";
+    default:
+      return fmtHex(static_cast<uint32_t>(op)) + "?";
+  }
+}
+
+template <> DnsclMode iga::FromSyntax<DnsclMode>(const std::string& str) {
+  for (auto op : ALL_DnsclMode) {
+    if (str == ToSyntax(op)) {
+      return op;
+    }
+  }
+  return DnsclMode::INVALID;
+}
+
+std::string iga::ToSyntax(RoundingMode op) {
+  switch (op) {
+  case RoundingMode::SRAND:
+    return "srnd";
+  case RoundingMode::RNE:
+    return "rne";
+  default:
+    return fmtHex(static_cast<uint32_t>(op)) + "?";
+  }
+}
+
+template <> RoundingMode iga::FromSyntax<RoundingMode>(const std::string& str) {
+  for (auto op : ALL_RoundingMode) {
+    if (str == ToSyntax(op)) {
+      return op;
+    }
+  }
+  return RoundingMode::INVALID;
+}
+
+std::string iga::ToSyntax(DnsclFC dfc) {
+  // DnsclFC syntax:
+  // <ConvSrcDataType>to<ConvDstDataType>.<DnsclMode>.<RoundingMode>
+  return ToSyntax(dfc.convSrcTy) + "to" + ToSyntax(dfc.convDstTy) + "." +
+      ToSyntax(dfc.dnsclMode) + "." + ToSyntax(dfc.roundingMode);
 }

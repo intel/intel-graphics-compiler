@@ -38,10 +38,9 @@ DEFINE_GED_SOURCE_ACCESSORS_012(uint32_t, ChanSel)
 DEFINE_GED_SOURCE_ACCESSORS_012(GED_REP_CTRL, RepCtrl)
 DEFINE_GED_SOURCE_ACCESSORS_012(GED_SRC_MOD, SrcMod)
 DEFINE_GED_SOURCE_ACCESSORS_012(uint32_t, HorzStride)
-
-DEFINE_GED_SOURCE_ACCESSORS_012(uint32_t, RegNum)
-DEFINE_GED_SOURCE_ACCESSORS_012(uint32_t, SubRegNum)
-DEFINE_GED_SOURCE_ACCESSORS_012(GED_REG_FILE, RegFile)
+DEFINE_GED_SOURCE_ACCESSORS_01234(uint32_t, RegNum)
+DEFINE_GED_SOURCE_ACCESSORS_01234(uint32_t, SubRegNum)
+DEFINE_GED_SOURCE_ACCESSORS_01234(GED_REG_FILE, RegFile)
 static void setImmValKind(Type t, ImmVal &val) {
   switch (t) {
   case Type::B:
@@ -218,6 +217,37 @@ Subfunction Decoder::decodeSubfunction(bool &valid) {
     }
     break;
   }
+  case Op::SHFL: {
+    GED_DECODE(ShuffleFC, GED_SHUFFLE_FC, shuffleFc, ShuffleFC);
+    sf = shuffleFc;
+    if (shuffleFc == ShuffleFC::INVALID) {
+      errorT("invalid ShuffleFC");
+    }
+    break;
+  }
+  case Op::LFSR: {
+    GED_DECODE(LfsrFC, GED_LFSR_FC, lfsrFc, LfsrFC);
+    sf = lfsrFc;
+    if (lfsrFc == LfsrFC::INVALID) {
+      errorT("invalid ShuffleFC");
+    }
+    break;
+  }
+  case Op::DNSCL: {
+    GED_DECODE(ConvSrcDataType, GED_CONV_SRC_DATATYPE, srcTy, ConvSrcDataType);
+    GED_DECODE(ConvDstDataType, GED_CONV_DST_DATATYPE, dstTy, ConvDstDataType);
+    GED_DECODE(DnsclMode, GED_DNSCL_MODE, dmode, DnsclMode);
+    GED_DECODE(RoundingMode, GED_ROUNDING_MODE, rmode, RoundingMode);
+    sf = DnsclFC(srcTy, dstTy, dmode, rmode);
+    if (srcTy == ConvSrcDataType::INVALID ||
+        dstTy == ConvDstDataType::INVALID ||
+        dmode == DnsclMode::INVALID ||
+        rmode == RoundingMode::INVALID) {
+      // FIXME: vague error message to avoid IP issue
+      errorT("invalid FC");
+    }
+    break;
+  }
   case Op::BFN: {
     GED_DECODE_RAW(uint32_t, lut8, BfnFC);
     sf = BfnFC((uint8_t)lut8);
@@ -231,6 +261,18 @@ Subfunction Decoder::decodeSubfunction(bool &valid) {
     GED_DECODE_RAW_TO_SRC(systolicDepth, uint32_t, SystolicDepth);
     uint32_t repeatCount;
     GED_DECODE_RAW_TO_SRC(repeatCount, uint32_t, RepeatCount);
+    sf = GetDpasFC(systolicDepth, repeatCount);
+    break;
+  }
+  case Op::BDPAS:
+  {
+    // in bdpas, repeat count is set to 8; no repeat count field
+    // GED splits this field up; we fuse it as a single subfunction
+    uint32_t systolicDepth;
+    // Note that bdpas's enum class for systolic depth is different from dpas'.
+    // Hence GED has different API name (GED_SetSystolicDepthBlkScl).
+    GED_DECODE_RAW_TO_SRC(systolicDepth, uint32_t, SystolicDepthBlkScl);
+    const uint32_t repeatCount = 8;
     sf = GetDpasFC(systolicDepth, repeatCount);
     break;
   }
@@ -250,6 +292,14 @@ Subfunction Decoder::decodeSubfunction(bool &valid) {
       sf = sfid;
     } // else handled in descriptor decoding
     break;
+  case Op::SENDG:
+  case Op::SENDGC:
+  case Op::SENDGX:
+  case Op::SENDGXC: {
+    GED_DECODE(SFID, GED_SFID, sfid, SFID);
+    sf = sfid;
+    break;
+  }
   default:
     IGA_ASSERT(!m_opSpec->supportsSubfunction(),
                "we need to decode a subfunction here");
@@ -370,6 +420,8 @@ Instruction *Decoder::decodeNextInstruction(Kernel &kernel) {
       inst = kernel.createIllegalInstruction();
     } else if (m_opSpec->op == Op::NOP) {
       inst = kernel.createNopInstruction();
+    } else if (m_opSpec->op == Op::THRYLD) {
+      inst = kernel.createThryldInstruction();
     } else {
       std::stringstream ss;
       ss << "at pc " << currentPc() << ": invalid operation format";
@@ -399,6 +451,9 @@ Instruction *Decoder::decodeNextInstruction(Kernel &kernel) {
     break;
   case OpSpec::TERNARY_REGIMM_REG_REGIMM:
     inst = decodeTernaryInstruction(kernel);
+    break;
+  case OpSpec::QUINARY_SRC:
+    inst = decodeQuinaryInstruction(kernel);
     break;
   case OpSpec::SEND_UNARY:
   case OpSpec::SEND_BINARY:
@@ -607,6 +662,96 @@ void Decoder::decodeBasicDestinationAlign1(Instruction *inst) {
   } // switch
 }
 
+///////////////////////////////////////////////////////////////////////
+// QUINARY INSTRUCTIONS
+///////////////////////////////////////////////////////////////////////
+Instruction *Decoder::decodeQuinaryInstruction(Kernel &kernel) {
+  FlagRegInfo fri = decodeFlagRegInfo();
+  Instruction *inst = kernel.createBasicInstruction(
+      *m_opSpec, fri.pred, fri.reg, decodeExecSize(), decodeChannelOffset(),
+      decodeMaskCtrl(), fri.modifier, m_subfunc);
+
+  decodeQuinaryInstructionOperands(inst);
+  return inst;
+}
+
+void Decoder::decodeQuinaryInstructionOperands(Instruction *inst) {
+  if (m_opSpec->is(Op::BDPAS)) {
+    decodeInstructionOperandsForBDPAS(inst);
+  } else {
+    // at the moment, bdpas is the only instruction with 5 operands
+    errorT("incorrect instruction");
+  }
+}
+
+void Decoder::decodeInstructionOperandsForBDPAS(Instruction *inst) {
+  decodeBDPASDestination(inst);
+  // breaking up into function that deals with sources 0, 1, 2 and function
+  // that deals with sources 3 and 4 (scaling sources)
+  // Certain GED functions are specific to source operands
+  decodeBDPASSource<SourceIndex::SRC0>(inst);
+  decodeBDPASSource<SourceIndex::SRC1>(inst);
+  decodeBDPASSource<SourceIndex::SRC2>(inst);
+  decodeBDPASScalingSource<SourceIndex::SRC3>(inst);
+  decodeBDPASScalingSource<SourceIndex::SRC4>(inst);
+}
+
+void Decoder::decodeBDPASDestination(Instruction *inst) {
+  DirRegOpInfo dri = decodeDstDirRegInfo();
+
+  GED_DECODE_RAW(uint32_t, hStride, DstHorzStride);
+  inst->setDirectDestination(DstModifier::NONE, dri.regName, dri.regRef,
+    translateRgnH(hStride), dri.type);
+}
+
+template<SourceIndex S>
+void Decoder::decodeBDPASScalingSource(Instruction *inst) {
+  const OpSpec &os = inst->getOpSpec();
+
+  uint32_t regNumBits = decodeSrcRegNum<S>();
+  RegName regName = RegName::INVALID;
+  GED_REG_FILE regFile = decodeSrcRegFile<S>();
+  RegRef regRef;
+  decodeReg((int)S, regFile, regNumBits, regName, regRef);
+  // src 3 and 4 have sub reg num
+  regRef.subRegNum = (uint16_t)decodeSrcSubRegNum<S>();
+
+  Region dftRgn =
+      os.implicitSrcRegion((int)S, inst->getExecSize(), isMacro());
+  // src3 and src4 are restricted to UB data types
+  inst->setDirectSource(S, SrcModifier::NONE, regName, regRef, dftRgn,
+                        Type::UB);
+}
+
+template <SourceIndex S>
+void Decoder::decodeBDPASSource(Instruction *inst) {
+  const OpSpec &os = inst->getOpSpec();
+  Type ty = decodeSrcType<S>();
+
+  uint32_t regNumBits = decodeSrcRegNum<S>();
+  RegName regName = RegName::INVALID;
+  GED_REG_FILE regFile = decodeSrcRegFile<S>();
+  RegRef regRef;
+  decodeReg((int)S, regFile, regNumBits, regName, regRef);
+  // src 1, 2 do not have sub reg number
+  regRef.subRegNum = 0;
+
+  if (S == SourceIndex::SRC0) {
+    // src0 has sub reg number
+    auto binoff = (uint16_t)decodeSrcSubRegNum<S>();
+    regRef.subRegNum = (uint16_t)BinaryOffsetToSubReg(binoff, regName, ty,
+        m_model.platform);
+  } if (S == SourceIndex::SRC1) {
+    GED_DECODE_TO(Src1Precision, translate, ty);
+  } else if (S == SourceIndex::SRC2) {
+    GED_DECODE_TO(Src2Precision, translate, ty);
+  }
+
+  Region dftRgn =
+      os.implicitSrcRegion((int)S, inst->getExecSize(), isMacro());
+  inst->setDirectSource(S, SrcModifier::NONE, regName, regRef, dftRgn,
+                        ty);
+}
 ///////////////////////////////////////////////////////////////////////
 // TERNARY INSTRUCTIONS
 ///////////////////////////////////////////////////////////////////////
@@ -1176,6 +1321,12 @@ void Decoder::decodeSendInfoXe2(SendDescodeInfo &sdi) {
 }
 
 Instruction *Decoder::decodeSendInstruction(Kernel &kernel) {
+  if (m_opSpec->isSendgFormat()) {
+    if (m_opSpec->is(Op::SENDGX) || m_opSpec->is(Op::SENDGXC)) {
+      return decodeSendgxInstructionXe3p(kernel);
+    }
+    return decodeSendgInstructionXe3(kernel);
+  }
   SendDescodeInfo sdi;
   sdi.desc = decodeSendDesc();
   sdi.exDesc = decodeSendExDesc();
@@ -1241,6 +1392,113 @@ Instruction *Decoder::decodeSendInstruction(Kernel &kernel) {
   return inst;
 }
 
+Instruction *Decoder::decodeSendgxInstructionXe3p(Kernel &kernel) {
+  // Descriptor stuff
+  RegRef id0 = REGREF_INVALID, id1 = REGREF_INVALID;
+  GED_DECODE_RAW(uint32_t, id0Present, IndMsgDesc0IsPresent);
+  if (id0Present) {
+    GED_DECODE_RAW(uint32_t, id0Subreg, IndMsgDesc0Addr);
+    id0 = RegRef((uint16_t)0, (uint16_t)(8 * id0Subreg));
+  }
+  GED_DECODE_RAW(uint32_t, id1Present, IndMsgDesc1IsPresent);
+  if (id1Present) {
+    GED_DECODE_RAW(uint32_t, id1Subreg, IndMsgDesc1Addr);
+    id1 = RegRef((uint16_t)0, (uint16_t)(8 * id1Subreg));
+  }
+
+  GED_DECODE_RAW(uint64_t, desc, MsgDesc64);
+
+  // Possibilties for sources
+  // 1. Canonical send with both GRF
+  //       send...  ... r10:4  r20:2 ...
+  //    Src0.RegFile = Src1.RegFile = GRF
+  //    Src0.Reg.Len = valid
+  //    Src1.Reg.Len = valid
+  //
+  // 2. Null as a zero register for src0. (e.g. scratch or SLM loads)
+  //      send... ... null  src1 ....descs
+  GED_DECODE_RAW(uint32_t, src0LenU, Src0Length);
+  int src0Len = (int)src0LenU;
+
+  FlagRegInfo fri = decodeFlagRegInfo();
+  Instruction *inst = kernel.createSendgInstruction(
+      *m_opSpec, m_subfunc.send, fri.pred, fri.reg, decodeExecSize(),
+      decodeChannelOffset(), decodeMaskCtrl(), src0Len,
+      0, /* src1Len will be decoded later */
+      id0, id1,
+      desc);
+
+  decodeSendgxDestinationXe3p(inst);
+  decodeSendgxSource0Xe3p(inst);
+  decodeSendgxSource1Xe3p(inst);
+
+  // decode src1Len after decoding src0 reg number
+  GED_DECODE_RAW(uint32_t, src1LenU, Src1Length);
+  inst->setSrc1Length(src1LenU);
+
+  return inst;
+}
+
+Instruction *Decoder::decodeSendgInstructionXe3(Kernel &kernel) {
+  // Descriptor stuff
+  RegRef id0 = REGREF_INVALID, id1 = REGREF_INVALID;
+  GED_DECODE_RAW(uint32_t, id0Present, IndMsgDesc0IsPresent);
+  if (id0Present) {
+    GED_DECODE_RAW(uint32_t, id0Subreg, IndMsgDesc0Addr);
+    id0 = RegRef((uint16_t)0, (uint16_t)(8 * id0Subreg));
+  }
+  GED_DECODE_RAW(uint32_t, id1Present, IndMsgDesc1IsPresent);
+  if (id1Present) {
+    GED_DECODE_RAW(uint32_t, id1Subreg, IndMsgDesc1Addr);
+    id1 = RegRef((uint16_t)0, (uint16_t)(8 * id1Subreg));
+  }
+
+  GED_DECODE_RAW(uint64_t, desc, MsgDesc64);
+
+  // Possibilties for sources
+  // 1. Canonical send with both GRF
+  //       send...  ... r10:4  r20:2 ...
+  //    Src0.RegFile = Src1.RegFile = GRF
+  //    Src0.Reg.Len = valid
+  //    Src1.Reg.Len = valid
+  //
+  // 2. Null as a zero register for src0. (e.g. scratch or SLM loads)
+  //      send... ... null  src1 ....descs
+  //
+  // 3. Gathering send (no explicit src1, src0.subreg takes src1.length)
+  //      send... ... r[s0.#]:s0len ....descs
+  //
+  //              Src0.RF Src0.REG Src0.SUBREG Src0.LEN   Src1.RF  Src1.REG
+  //              Src1.LEN
+  //  Canonical:    GRF     vaild    N/A       valid      GRF/ARF  vaild valid
+  //  (null would mean 0) Null src0:    ARF     null     N/A       valid ARF
+  //  null      don't care (implied 0) Gathering:    ARF     s0.X     .X valid
+  //  ARF      null      invalid (bits overlap Src0.SUBREG)
+  //    (today gathering is determined by Src1.RegFile==ARF)
+  //
+  // Bits[103:99] holds either Src1.LEN or Src0.SUBREG (for gathering)
+  GED_DECODE_RAW(uint32_t, src0LenU, Src0Length);
+  int src0Len = (int)src0LenU;
+  GED_DECODE_RAW(GED_REG_FILE, src1RegFile, Src1RegFile);
+  int src1Len = 0;
+  if (src1RegFile == GED_REG_FILE_GRF) {
+    // register file type for sendgx can only be GRF
+    GED_DECODE_RAW(uint32_t, src1LenU, Src1Length);
+    src1Len = (int)src1LenU;
+  }
+
+  FlagRegInfo fri = decodeFlagRegInfo();
+  Instruction *inst = kernel.createSendgInstruction(
+      *m_opSpec, m_subfunc.send, fri.pred, fri.reg, decodeExecSize(),
+      decodeChannelOffset(), decodeMaskCtrl(), src0Len, src1Len, id0, id1,
+      desc);
+
+  decodeSendgDestinationXe3(inst);
+  decodeSendgSource0Xe3(inst);
+  decodeSendgSource1Xe3(inst);
+
+  return inst;
+}
 
 void Decoder::decodeSendDestination(Instruction *inst) {
   GED_ACCESS_MODE accessMode = decodeAccessMode();
@@ -1326,6 +1584,125 @@ void Decoder::decodeSendSource1(Instruction *inst) {
                         rgn, implSrcType);
 }
 
+void Decoder::decodeSendgDestinationXe3(Instruction *inst) {
+  GED_DECODE_RAW(GED_REG_FILE, regFile, DstRegFile);
+  RegName dstRegName = RegName::ARF_NULL;
+  RegRef dstReg = REGREF_ZERO_ZERO;
+  if (regFile == GED_REG_FILE_GRF) {
+    GED_DECODE_RAW(uint32_t, regNumBits, DstRegNum);
+    dstReg.regNum = (uint16_t)regNumBits;
+    dstRegName = RegName::GRF_R;
+  } // else it's null
+  inst->setDirectDestination(DstModifier::NONE, dstRegName, dstReg,
+                             Region::Horz::HZ_INVALID,
+                             m_opSpec->implicitDstType());
+}
+
+bool Decoder::decodeSendgSource0Xe3(Instruction *inst) {
+  RegRef regRef = REGREF_ZERO_ZERO;
+  RegName regName = RegName::ARF_NULL;
+  GED_REG_FILE regFile = decodeSrcRegFile<SourceIndex::SRC0>();
+
+  if (regFile == GED_REG_FILE_GRF) {
+    (void)decodeSourceReg<SourceIndex::SRC0>(regRef);
+    regName = RegName::GRF_R;
+  } else {
+    regName = decodeSourceReg<SourceIndex::SRC0>(regRef);
+  }
+  Type implSrcType = inst->getOpSpec().implicitSrcType(1, false);
+
+  Region rgn =
+      inst->getOpSpec().implicitSrcRegion(0, inst->getExecSize(), false);
+
+  if (regName == RegName::ARF_S) {
+    // ARF_S src0 must be sendg (gather send)
+    // sendg src0 is a indirect register: r[s0.0]. This is the only case that
+    // send can have subRegNum. Decode subRegNum separatly here.
+    regRef.subRegNum = (uint16_t)decodeSrcSubRegNum<SourceIndex::SRC0>();
+    inst->setIndirectSource(SourceIndex::SRC0, SrcModifier::NONE, regName,
+                            regRef, 0, rgn, implSrcType);
+  } else {
+    inst->setDirectSource(SourceIndex::SRC0, SrcModifier::NONE, regName, regRef,
+                          rgn, implSrcType);
+  }
+  return regName == RegName::ARF_S;
+}
+
+void Decoder::decodeSendgSource1Xe3(Instruction *inst) {
+  // This only exists if Src1.RegFile = GRF, otherwise we put a null parameter
+  // there
+  RegRef regRef = REGREF_ZERO_ZERO;
+  RegName regName = RegName::ARF_NULL;
+  GED_REG_FILE regFile = decodeSrcRegFile<SourceIndex::SRC1>();
+
+  if (regFile == GED_REG_FILE_GRF) {
+    (void)decodeSourceReg<SourceIndex::SRC1>(regRef);
+    regName = RegName::GRF_R;
+  } // else: don't touch Src1.Reg or GED will blow up
+
+  const OpSpec &os = inst->getOpSpec();
+  Region rgn = os.implicitSrcRegion(1, inst->getExecSize(), isMacro());
+  Type implSrcType = os.implicitSrcType(1, false);
+  inst->setDirectSource(SourceIndex::SRC1, SrcModifier::NONE, regName, regRef,
+                        rgn, implSrcType);
+}
+
+void Decoder::decodeSendgxDestinationXe3p(Instruction *inst) {
+  RegName dstRegName = RegName::GRF_R;
+  RegRef dstReg = REGREF_ZERO_ZERO;
+
+  GED_DECODE_RAW(uint32_t, regNumBits, DstRegNum);
+  dstReg.regNum = (uint16_t)regNumBits;
+
+  if (dstReg.regNum == 511) {
+    // r511 is decoded as null
+    dstRegName = RegName::ARF_NULL;
+    dstReg.regNum = 0;
+  }
+  inst->setDirectDestination(DstModifier::NONE, dstRegName, dstReg,
+                             Region::Horz::HZ_INVALID,
+                             m_opSpec->implicitDstType());
+}
+
+void Decoder::decodeSendgxSource0Xe3p(Instruction *inst) {
+  RegRef regRef = REGREF_ZERO_ZERO;
+  RegName regName = RegName::GRF_R;
+
+  decodeGrfSourceReg<SourceIndex::SRC0>(regRef);
+
+  if (regRef.regNum == 511) {
+    regName = RegName::ARF_NULL;
+    regRef.regNum = 0;
+  }
+
+  Type implSrcType = inst->getOpSpec().implicitSrcType(1, false);
+
+  Region rgn =
+      inst->getOpSpec().implicitSrcRegion(0, inst->getExecSize(), false);
+
+
+  inst->setDirectSource(SourceIndex::SRC0, SrcModifier::NONE, regName, regRef,
+                          rgn, implSrcType);
+}
+
+void Decoder::decodeSendgxSource1Xe3p(Instruction *inst) {
+  RegRef regRef = REGREF_ZERO_ZERO;
+  RegName regName = RegName::GRF_R;
+
+  decodeGrfSourceReg<SourceIndex::SRC1>(regRef);
+
+  if (regRef.regNum == 511) {
+    // r511 is decoded as null
+    regName = RegName::ARF_NULL;
+    regRef.regNum = 0;
+  }
+
+  const OpSpec &os = inst->getOpSpec();
+  Region rgn = os.implicitSrcRegion(1, inst->getExecSize(), isMacro());
+  Type implSrcType = os.implicitSrcType(1, false);
+  inst->setDirectSource(SourceIndex::SRC1, SrcModifier::NONE, regName, regRef,
+                        rgn, implSrcType);
+}
 
 ///////////////////////////////////////////////////////////////////////
 // BRANCH INSTRUCTIONS
@@ -1716,8 +2093,8 @@ void Decoder::decodeReg(int opIx, GED_REG_FILE regFile, uint32_t regNumBits,
   const char *opName = opIx == 0   ? "src0"
                        : opIx == 1 ? "src1"
                        : opIx == 2 ? "src2"
-                       :
-                                 "dst";
+                       : opIx == 3 ? "src meta"
+                                   : "dst";
   if (regFile == GED_REG_FILE_GRF) {
     regName = RegName::GRF_R;
     regRef.regNum = (uint16_t)regNumBits;
@@ -2063,6 +2440,12 @@ void Decoder::decodeOptions(Instruction *inst) {
     }
   }
 
+  if (os.supportsFwdCtrl()) {
+    uint32_t fwdCtrl = 0;
+    GED_DECODE_RAW_TO(FwdCtrl, fwdCtrl);
+    if (fwdCtrl)
+      inst->addInstOpt(InstOpt::FWD);
+  }
 
   if (os.supportsDepCtrl()) {
     GED_DEP_CTRL dpCtrl = GED_DEP_CTRL_Normal;

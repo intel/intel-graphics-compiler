@@ -42,6 +42,9 @@ unsigned iga::GetSourceCount(MathFC mfc) {
     return 2;
   case MathFC::RSQTM:
     return 1;
+  case MathFC::TANH:
+  case MathFC::SIGM:
+    return 1;
   default:
     assert(0 && "iga_bxml_enums.cpp: iga::GetSourceCount: "
                 "needs to define count of operands for this math subfunction");

@@ -85,6 +85,9 @@ static inline GED_OPCODE lowerOpcode(Op opcode) {
   case Op::DPASW:
     op = GED_OPCODE_dpasw;
     break;
+  case Op::BDPAS:
+    op = GED_OPCODE_bdpas;
+    break;
   case Op::DP2:
     op = GED_OPCODE_dp2;
     break;
@@ -178,6 +181,9 @@ static inline GED_OPCODE lowerOpcode(Op opcode) {
   case Op::MUL:
     op = GED_OPCODE_mul;
     break;
+  case Op::MULLH:
+    op = GED_OPCODE_mullh;
+    break;
   case Op::NOP:
     op = GED_OPCODE_nop;
     break;
@@ -227,6 +233,18 @@ static inline GED_OPCODE lowerOpcode(Op opcode) {
   case Op::SENDC:
     op = GED_OPCODE_sendc;
     break;
+  case Op::SENDG:
+    op = GED_OPCODE_sendg;
+    break;
+  case Op::SENDGC:
+    op = GED_OPCODE_sendgc;
+    break;
+  case Op::SENDGX:
+    op = GED_OPCODE_sendgx;
+    break;
+  case Op::SENDGXC:
+    op = GED_OPCODE_sendgxc;
+    break;
   case Op::SENDS:
     op = GED_OPCODE_sends;
     break;
@@ -257,6 +275,18 @@ static inline GED_OPCODE lowerOpcode(Op opcode) {
     break;
   case Op::XOR:
     op = GED_OPCODE_xor;
+    break;
+  case Op::SHFL:
+    op = GED_OPCODE_shfl;
+    break;
+  case Op::DNSCL:
+    op = GED_OPCODE_dnscl;
+    break;
+  case Op::LFSR:
+    op = GED_OPCODE_lfsr;
+    break;
+  case Op::THRYLD:
+    op = GED_OPCODE_thryld;
     break;
   //
   default:
@@ -313,6 +343,9 @@ static inline GED_MODEL lowerPlatform(Platform platform) {
     break;
   case Platform::XE3:
     pltf = GED_MODEL_XE3;
+    break;
+  case Platform::XE3P_XPC:
+    pltf = GED_MODEL_XE3P_CRI;
     break;
   default:
     break;
@@ -591,6 +624,7 @@ static inline GED_EXECUTION_DATA_TYPE lowerExecDataType(Type opndType) {
   case Type::F:
   case Type::DF:
   case Type::NF:
+  case Type::HF8:
   case Type::BF8:
   case Type::TF32:
     type = GED_EXECUTION_DATA_TYPE::GED_EXECUTION_DATA_TYPE_Float;
@@ -719,6 +753,9 @@ static inline GED_PRECISION lowerSubBytePrecision(Type t) {
     break;
   case Type::HF8:
     precision = GED_PRECISION_hf8;
+    break;
+  case Type::E2M1:
+    precision = GED_PRECISION_e2m1;
     break;
   default:
     break;
@@ -937,6 +974,82 @@ static inline GED_COND_MODIFIER lowerCondModifier(FlagModifier condMod) {
   return mod;
 }
 
+static inline GED_SHUFFLE_FC lowerShuffleFC(ShuffleFC fc) {
+  switch (fc) {
+  case ShuffleFC::UP:
+  case ShuffleFC::UPZ:
+  case ShuffleFC::DN:
+  case ShuffleFC::DNZ:
+  case ShuffleFC::XOR:
+  case ShuffleFC::IDX:
+    return GED_SHUFFLE_FC_INVALID;
+  case ShuffleFC::IDX4:
+    return GED_SHUFFLE_FC_idx4;
+  default:
+    return GED_SHUFFLE_FC_INVALID;
+  }
+}
+
+static inline GED_LFSR_FC lowerLfsrFC(LfsrFC fc) {
+  switch (fc) {
+  case LfsrFC::LFSR_b32:
+    return GED_LFSR_FC::GED_LFSR_FC_b32;
+  case LfsrFC::LFSR_b16v2:
+    return GED_LFSR_FC::GED_LFSR_FC_b16v2;
+  case LfsrFC::LFSR_b8v4 :
+    return GED_LFSR_FC::GED_LFSR_FC_b8v4;
+  default:
+    return GED_LFSR_FC::GED_LFSR_FC_INVALID;
+  }
+}
+
+static inline GED_DNSCL_MODE lowerDnsclMode(DnsclMode dm) {
+  switch (dm) {
+  case DnsclMode::MODE0:
+    return GED_DNSCL_MODE::GED_DNSCL_MODE_Mode0;
+  case DnsclMode::MODE1:
+    return GED_DNSCL_MODE::GED_DNSCL_MODE_Mode1;
+  case DnsclMode::MODE2:
+    return GED_DNSCL_MODE::GED_DNSCL_MODE_Mode2;
+  case DnsclMode::MODE3:
+    return GED_DNSCL_MODE::GED_DNSCL_MODE_Mode3;
+  default:
+    return GED_DNSCL_MODE::GED_DNSCL_MODE_INVALID;
+  }
+}
+
+static inline GED_CONV_SRC_DATATYPE lowerConvSrcDataType(ConvSrcDataType ty) {
+  switch (ty) {
+  case ConvSrcDataType::HF:
+    return GED_CONV_SRC_DATATYPE::GED_CONV_SRC_DATATYPE_HF;
+  case ConvSrcDataType::BF:
+    return GED_CONV_SRC_DATATYPE::GED_CONV_SRC_DATATYPE_BF;
+  default:
+    return GED_CONV_SRC_DATATYPE::GED_CONV_SRC_DATATYPE_INVALID;
+  }
+}
+
+static inline GED_CONV_DST_DATATYPE lowerConvDstDataType(ConvDstDataType ty) {
+  switch (ty) {
+  case ConvDstDataType::E2M1:
+    return GED_CONV_DST_DATATYPE::GED_CONV_DST_DATATYPE_e2m1;
+  case ConvDstDataType::INT4:
+    return GED_CONV_DST_DATATYPE::GED_CONV_DST_DATATYPE_int4;
+  default:
+    return GED_CONV_DST_DATATYPE::GED_CONV_DST_DATATYPE_INVALID;
+  }
+}
+
+static inline GED_ROUNDING_MODE lowerRoundingMode(RoundingMode rm) {
+  switch (rm) {
+  case RoundingMode::SRAND:
+    return GED_ROUNDING_MODE::GED_ROUNDING_MODE_srnd;
+  case RoundingMode::RNE:
+    return GED_ROUNDING_MODE::GED_ROUNDING_MODE_rne;
+  default:
+    return GED_ROUNDING_MODE::GED_ROUNDING_MODE_INVALID;
+  }
+}
 
 static inline GED_MATH_FC lowerMathFC(MathFC fc) {
   switch (fc) {
@@ -982,6 +1095,10 @@ static inline GED_MATH_FC lowerMathFC(MathFC fc) {
   case MathFC::RSQTM:
     return GED_MATH_FC_RSQRTM;
     break;
+  case MathFC::TANH:
+    return GED_MATH_FC_TANH;
+  case MathFC::SIGM:
+    return GED_MATH_FC_SIGM;
   default:
     return GED_MATH_FC_INV;
   }

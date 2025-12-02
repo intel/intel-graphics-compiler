@@ -87,6 +87,12 @@ DEFINE_SOURCE_ACCESSOR_INLINE(TYPE, FIELD, 2)
   DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 1)                                       \
   DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 2)
 
+#define DEFINE_GED_SOURCE_ACCESSORS_01234(TYPE, FIELD)                         \
+  DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 0)                                       \
+  DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 1)                                       \
+  DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 2)                                       \
+  DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 3)                                       \
+  DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 4)
 
 namespace iga {
 struct FlagRegInfo {
@@ -215,13 +221,30 @@ protected:
   template <SourceIndex S> void decodeTernarySourceAlign1(Instruction *inst);
 
   ///////////////////////////////////////////////////////////////////////
+  // NARY INSTRUCTIONS
+  ///////////////////////////////////////////////////////////////////////
+  Instruction *decodeQuinaryInstruction(Kernel &kernel);
+  void decodeQuinaryInstructionOperands(Instruction *inst);
+  void decodeInstructionOperandsForBDPAS(Instruction *inst);
+  void decodeBDPASDestination(Instruction* inst);
+  template <SourceIndex S> void decodeBDPASSource(Instruction *inst);
+  template <SourceIndex S> void decodeBDPASScalingSource(Instruction *inst);
+  ///////////////////////////////////////////////////////////////////////
   // SEND INSTRUCTIONS
   ///////////////////////////////////////////////////////////////////////
   Instruction *decodeSendInstruction(Kernel &kernel);
+  Instruction *decodeSendgInstructionXe3(Kernel &kernel);
+  Instruction *decodeSendgxInstructionXe3p(Kernel &kernel);
   void decodeSendDestination(Instruction *inst);
   GED_ADDR_MODE decodeSendSource0AddressMode();
   void decodeSendSource0(Instruction *inst);
   void decodeSendSource1(Instruction *inst);
+  void decodeSendgDestinationXe3(Instruction *inst);
+  bool decodeSendgSource0Xe3(Instruction *inst); // returns true for sendg
+  void decodeSendgSource1Xe3(Instruction *inst);
+  void decodeSendgxDestinationXe3p(Instruction *inst);
+  void decodeSendgxSource0Xe3p(Instruction *inst); // returns true for sendg
+  void decodeSendgxSource1Xe3p(Instruction *inst);
   SendDesc decodeSendExDesc();
   SendDesc decodeSendDesc();
 
@@ -311,15 +334,27 @@ protected:
 
   template <SourceIndex S>
   std::optional<Region> decodeSrcReducedRegionTernary() {
-    return {};
+    IGA_ASSERT(S == SourceIndex::SRC1, "Invalid SourceIndex");
+    GED_DECODE_RAW(bool, isScalar, Src1ScalarReg);
+    if (isScalar)
+      return Region::SRC0X0;
+    else
+      return {};
   }
 
   template <SourceIndex S>
   std::optional<Region> decodeSrcReducedRegion() {
-    return {};
+    IGA_ASSERT(S == SourceIndex::SRC1, "Invalid SourceIndex");
+    GED_DECODE_RAW(bool, isScalar, Src1ScalarReg);
+    if (isScalar)
+      return Region::SRC010;
+    else
+      return {};
   }
 
   template <SourceIndex S> std::optional<Region> decodeSrcRegionVWH() {
+    if (m_model.srcHasReducedRegion(static_cast<uint32_t>(S)))
+      return decodeSrcReducedRegion<S>();
     return transateGEDtoIGARegion(decodeSrcVertStride<S>(), decodeSrcWidth<S>(),
                                   decodeSrcHorzStride<S>());
   }

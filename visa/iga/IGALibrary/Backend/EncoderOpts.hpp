@@ -17,6 +17,7 @@ struct EncoderOpts {
   bool explicitCompactMissIsWarning = false;
   bool ignoreNoCompactFormFound = false;
   bool autoDepSet = false;
+  bool autoSBIDCounter = false;
   bool forceNoCompact = false;
   // Specify the swsb encoding mode. If not specified, the encoding mode will
   // be derived from platform by SWSB::getEncodeMode

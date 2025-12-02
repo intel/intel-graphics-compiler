@@ -58,6 +58,7 @@ const static uint32_t DIST4_NOACEESBSET = 0xF0;
 
 // FiveDistPipe
 const static uint32_t DIST5_REG_DIST_SCALAR = 0x30;
+const static uint32_t DIST5_SBID_INC_SET = 0x40;
 
 namespace iga {
 
@@ -627,6 +628,37 @@ bool SWSB::verify<SWSB_ENCODE_MODE::FiveDistPipe>(InstType instTy) const {
   }
   return verify<SWSB_ENCODE_MODE::FourDistPipe>(instTy);
 }
+template <>
+uint32_t SWSB::encode<SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr>(InstType instTy) const {
+  if (!hasBothDistAndToken() && hasToken()) {
+    if (tokenType == TokenType::INC) {
+      uint32_t swsb = DIST5_SBID_INC_SET | sbid;
+      return swsb;
+    }
+  }
+  return encode<SWSB_ENCODE_MODE::FiveDistPipe>(instTy);
+}
+
+template <>
+bool SWSB::verify<SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr>(InstType instTy) const {
+  if (!hasBothDistAndToken() && hasToken()) {
+    if (tokenType == TokenType::INC) {
+      return (instTy == InstType::SEND);
+    }
+  }
+  return verify<SWSB_ENCODE_MODE::FiveDistPipe>(instTy);
+}
+
+template <>
+SWSB_STATUS SWSB::decode<SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr>(uint32_t swsbBits,
+                                                         InstType instTy) {
+  if ((swsbBits & ~0x1F) == DIST5_SBID_INC_SET) {
+    tokenType = TokenType::INC;
+    sbid = swsbBits & 0x1F;
+    return SWSB_STATUS::SUCCESS;
+  }
+  return decode<SWSB_ENCODE_MODE::FiveDistPipe>(swsbBits, instTy);
+}
 
 template <>
 SWSB_STATUS SWSB::decode<SWSB_ENCODE_MODE::SWSBInvalidMode>(uint32_t,
@@ -661,6 +693,10 @@ SWSB_STATUS SWSB::decode(uint32_t swsbBits, SWSB_ENCODE_MODE enMode,
   case SWSB_ENCODE_MODE::FiveDistPipe:
   case SWSB_ENCODE_MODE::FiveDistPipeReduction:
     return decode<SWSB_ENCODE_MODE::FiveDistPipe>(swsbBits, instTy);
+  case SWSB_ENCODE_MODE::FiveDistPipeCvtToInt:
+  case SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr:
+  case SWSB_ENCODE_MODE::FiveDistPipeCvtToIntNoFwd:
+    return decode<SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr>(swsbBits, instTy);
   case SWSB_ENCODE_MODE::SWSBInvalidMode:
     return decode<SWSB_ENCODE_MODE::SWSBInvalidMode>(swsbBits, instTy);
 
@@ -685,6 +721,10 @@ uint32_t SWSB::encode(SWSB_ENCODE_MODE enMode, InstType instTy) const {
   case SWSB_ENCODE_MODE::FiveDistPipe:
   case SWSB_ENCODE_MODE::FiveDistPipeReduction:
     return encode<SWSB_ENCODE_MODE::FiveDistPipe>(instTy);
+  case SWSB_ENCODE_MODE::FiveDistPipeCvtToInt:
+  case SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr:
+  case SWSB_ENCODE_MODE::FiveDistPipeCvtToIntNoFwd:
+    return encode<SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr>(instTy);
   default:
     break;
   }
@@ -729,6 +769,10 @@ bool SWSB::verify(SWSB_ENCODE_MODE enMode, InstType instTy) const {
   case SWSB_ENCODE_MODE::FiveDistPipe:
   case SWSB_ENCODE_MODE::FiveDistPipeReduction:
     return verify<SWSB_ENCODE_MODE::FiveDistPipe>(instTy);
+  case SWSB_ENCODE_MODE::FiveDistPipeCvtToInt:
+  case SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr:
+  case SWSB_ENCODE_MODE::FiveDistPipeCvtToIntNoFwd:
+    return verify<SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr>(instTy);
   default:
     break;
   }

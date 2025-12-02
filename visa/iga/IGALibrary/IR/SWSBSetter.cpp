@@ -663,6 +663,119 @@ void SWSBAnalyzer::clearBuckets(DepSet *input, DepSet *output) {
   }
 }
 
+bool SWSBAnalyzer::trySBIDCounter(activeSBIDsTy &activeSBIDs,
+                                  const DepSet &curDepSet,
+                                  SBID &retSBID) {
+  // There is only one active sbid. It doesn't worth using sbid counter
+  if (activeSBIDs.size() <= 1)
+    return false;
+
+  // curDepSet is a force-sync-all, all dependency will be sync-ed so there
+  // is no benefit to do sbid-counter
+  if (curDepSet.getDepType() == DEP_TYPE::WRITE_ALWAYS_INTERFERE ||
+      curDepSet.getDepType() == DEP_TYPE::READ_ALWAYS_INTERFERE)
+    return false;
+
+  // To simplify the design, we only handle the case that current instruction
+  // (which has dependency to activeSBIDs) is an in-order-pipe instruction
+  if (curDepSet.getDepClass() != DEP_CLASS::IN_ORDER)
+    return false;
+
+  // If there is non-send instruction the activeSBIDs associated with, sbid
+  // counter cannot be used
+  // keep track of if there is any sbid counter used in activeSBIDs already
+  // If there is one, we will replace to it if possible
+  std::optional<SBID> hasCounterID = std::nullopt;
+  for (const auto& aSBID : activeSBIDs) {
+    for (auto depSet : aSBID.second) {
+      auto inst = depSet->getInstruction();
+      // Also skip counter replacement if the send has NOACCSBSET set or its
+      // sbid is already a counter
+      if (!inst->getOpSpec().isAnySendFormat() ||
+          inst->getSWSB().hasSpecialToken()) {
+        return false;
+      }
+      if (inst->getSWSB().tokenType == SWSB::TokenType::INC)
+        hasCounterID = aSBID.first;
+    }
+  }
+
+  // Replace the associated instructions' sbid to sbid counter. For example,
+  // From:
+  //   send.ugm (1)   r50     r31  null:0  0xFF000000  0x6219C500 {$0}
+  //   send.ugm (1)   r60     r31  null:0  0xFF000000  0x6219C500 {$1}
+  //   // add's activeSBIDs are $0 and $1
+  //   add      (1|M0)          r90:ud r50:ud r60:ud
+  // To:
+  //   send.ugm (1)   r50     r31  null:0  0xFF000000  0x6219C500 {$0.inc}
+  //   send.ugm (1)   r60     r31  null:0  0xFF000000  0x6219C500 {$0.inc}
+  //   add      (1|M0)          r90:ud r50:ud r60:ud {$0.dst}
+  //
+  // These send instructions must have no .dst dependency to each other, otherwise
+  // the dependency should be resovled and they won't both be activeSBID here.
+  // Hence we don't need to check the dependency among these instructions.
+  // Note, having .src dependency to each other is fine. Sbid counter resolves
+  // the .src dependency.
+
+  // pick the existing counter (if any), or the first activeSBID as the SBID
+  // counter.
+  retSBID = hasCounterID ? *hasCounterID : activeSBIDs.front().first;
+  // Keep track of the DepSet's DepType (Read or Write)
+  retSBID.dType = activeSBIDs.front().first.dType;
+
+  auto isActiveSBID = [&activeSBIDs](uint32_t sbid) {
+    for(const auto& aSBID : activeSBIDs) {
+      if (sbid == aSBID.first.sbid)
+        return true;
+    }
+    return false;
+  };
+
+  for (const auto& aSBID : activeSBIDs) {
+    for (auto depSet : aSBID.second) {
+      // Updated the set SWSB on send instructions
+      auto inst = depSet->getInstruction();
+      auto instSWSB = inst->getSWSB();
+      instSWSB.sbid = retSBID.sbid;
+      assert(instSWSB.tokenType == SWSB::TokenType::SET ||
+             instSWSB.tokenType == SWSB::TokenType::INC);
+      instSWSB.tokenType = SWSB::TokenType::INC;
+      inst->setSWSB(instSWSB);
+      // Updated the DepSet and its companion DepSet's sbid
+      // So that later instructions having dependency to these DepSet can have
+      // the correct sbid ref
+      SBID newSBID = SBID(depSet->getSBID());
+      newSBID.sbid = retSBID.sbid;
+      depSet->setSBID(newSBID);
+      assert(depSet->getCompanion());
+      depSet->getCompanion()->setSBID(newSBID);
+      // Updated instructions those set to have dependency to these SBIDs
+      for (auto i : depSet->getSrcDepInsts()) {
+        auto swsb = i->getSWSB();
+        // update only when the instruction has sbid that's the same as
+        // activeSBIDs. There is case that sbid.src was set to an instruction
+        // (and hence be added to SrcDepInsts). But that sbid.src was moved to
+        // a sync.nop and the instruction was assigned an irrelevant sbid.
+        // We cannot avoid adding that instruction into SrcDepInsts, so we
+        // need to do the additional check here to avoid updating its sbid.
+        if (!isActiveSBID(swsb.sbid))
+          continue;
+        swsb.sbid = retSBID.sbid;
+        i->setSWSB(swsb);
+      }
+    }
+    // Set depType to the strongest one (WRITE or WRITE_ALWAYS_INTERFERE)
+    // if any. Note, it makes no difference for it is READ or
+    // READ_ALWAYS_INTERFERE here
+    if (retSBID.dType == DEP_TYPE::WRITE_ALWAYS_INTERFERE)
+      continue;
+    if (aSBID.first.dType == DEP_TYPE::WRITE ||
+        aSBID.first.dType == DEP_TYPE::WRITE_ALWAYS_INTERFERE)
+       retSBID.dType = aSBID.first.dType;
+  }
+
+  return true;
+}
 
 void SWSBAnalyzer::processactiveSBIDs(SWSB &swsb,
                                       const DepSet *input, Block *bb,
@@ -679,6 +792,30 @@ void SWSBAnalyzer::processactiveSBIDs(SWSB &swsb,
     clearDepBuckets(*m_IdToDepSetMap[in.sbid].second);
   };
 
+  // If the instruction depends on more than one sbid, and those sbids all
+  // comes from send instructions, we can replace the sbid by sbid counter
+  if (enableSBIDCounterSetting()) {
+    SBID chosenSBID;
+    if (trySBIDCounter(activeSBIDs, *input, chosenSBID)) {
+      // build swsb for current instruction according to the chosen SBID
+      assert(swsb.tokenType == SWSB::TokenType::NOTOKEN);
+      swsb.sbid = chosenSBID.sbid;
+      if (chosenSBID.dType == DEP_TYPE::READ ||
+          chosenSBID.dType == DEP_TYPE::READ_ALWAYS_INTERFERE) {
+        swsb.tokenType = SWSB::TokenType::SRC;
+      } else {
+        swsb.tokenType = SWSB::TokenType::DST;
+        // All associated DepSet are cleared with .dst dependency here.
+        // free the SBIDs and clear dependency
+        for (const auto& aSBID : activeSBIDs)
+          clearSBID(aSBID.first);
+      }
+      // verify if the combination of token and dist is valid, if not, move the
+      // token dependency out and add a sync for it
+      adjustSWSB(*bb, instIter, swsb, true);
+      return;
+    }
+  }
 
   // If instruction depends on one or more SBIDS, first one goes in to SWSB
   // field for rest we generate wait instructions.
@@ -721,6 +858,9 @@ void SWSBAnalyzer::processactiveSBIDs(SWSB &swsb,
       SWSB sync_swsb(SWSB::DistType::NO_DIST, tType, 0, aSBID.first.sbid);
       auto nopInst = m_kernel.createSyncNopInstruction(sync_swsb);
       bb->insertInstBefore(instIter, nopInst);
+      m_IdToDepSetMap[aSBID.first.sbid].first->addSrcDepInsts(nopInst);
+      m_IdToDepSetMap[aSBID.first.sbid].first->getCompanion()->addSrcDepInsts(nopInst);
+      m_IdToDepSetMap[aSBID.first.sbid].second->addSrcDepInsts(nopInst);
     }
   }
 
@@ -770,6 +910,9 @@ uint32_t SWSBAnalyzer::getNumOfDistPipe(SWSB_ENCODE_MODE mode) {
     return 4;
   case SWSB_ENCODE_MODE::FiveDistPipe:
   case SWSB_ENCODE_MODE::FiveDistPipeReduction:
+  case SWSB_ENCODE_MODE::FiveDistPipeCvtToInt:
+  case SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr:
+  case SWSB_ENCODE_MODE::FiveDistPipeCvtToIntNoFwd:
     return 5;
   default:
     break;
@@ -913,6 +1056,13 @@ SWSBAnalyzer::adjustSWSB(Block &block, const InstListIterator instIt,
 
   // Send can only have SBID.set and its combination on the instruction
   if (inst->getOpSpec().isAnySendFormat()) {
+    if (swsb.tokenType == SWSB::TokenType::INC) {
+      // swsb has SBID.inc. It cannot be combined with other swsb.
+      if (swsb.hasDist())
+        movDistToSync();
+      assert(swsb.verify(m_swsbMode, inst->getSWSBInstType(m_swsbMode)));
+      return syncInsts;
+    }
     if (swsb.tokenType == SWSB::TokenType::SET) {
       // swsb has SBID.set but the combination with distance is invalid.
       // Move distance to sync.
@@ -1058,6 +1208,20 @@ void SWSBAnalyzer::postProcessReadModifiedWriteOnByteDst() {
   }
 }
 
+void SWSBAnalyzer::postProcessSBIDCounterInst() {
+  for (Block *bb : m_kernel.getBlockList()) {
+      InstList &instList = bb->getInstList();
+    for (auto inst_it = instList.begin(); inst_it != instList.end();
+         ++inst_it) {
+      Instruction *inst = *inst_it;
+      if(!inst->getOpSpec().isAnySendFormat())
+        continue;
+      SWSB swsb = inst->getSWSB();
+      adjustSWSB(*bb, inst_it, swsb, false);
+      inst->setSWSB(swsb);
+    }
+  }
+}
 
 void SWSBAnalyzer::postProcessRemoveRedundantSync() {
   // Case 1:
@@ -1067,6 +1231,8 @@ void SWSBAnalyzer::postProcessRemoveRedundantSync() {
   //   sync.nop null {$0.dst} // can be removed
   //   math.exp(8|M0)  r12.0<1>:f  r10.0<8;8,1>:f {$0}
   // Case 2:
+  // This case may occur after sbid counter insertion. We only check the
+  // redundant token (but no dist) since that's the only possible cases.
   // Continuous sync.nop with the same swsb. One of it can be removed:
   //   sync.nop null {$0.src}
   //   sync.nop null {$0.src}
@@ -1132,6 +1298,11 @@ void SWSBAnalyzer::postProcess() {
     postProcessReadModifiedWriteOnByteDst();
   }
 
+  // we may update sbid token to .inc after a send's swsb is adjusted.
+  // adjustSWSB again in case the swsb doesn't fit on the inst
+  if (enableSBIDCounterSetting()) {
+    postProcessSBIDCounterInst();
+  }
 
   // revisit all instructions to remove redundant sync.nop
   postProcessRemoveRedundantSync();
@@ -1206,6 +1377,11 @@ SBID &SWSBAnalyzer::assignSBID(DepSet *input, DepSet *output, Instruction &inst,
     SWSB tDep(SWSB::DistType::NO_DIST, swsb.tokenType, 0, swsb.sbid);
     Instruction *tInst = m_kernel.createSyncNopInstruction(tDep);
     curBB->insertInstBefore(insertPoint, tInst);
+    // the depset of send corresponding to the sbid must be updated with this
+    // sync
+    m_IdToDepSetMap[swsb.sbid].first->addSrcDepInsts(tInst);
+    m_IdToDepSetMap[swsb.sbid].first->getCompanion()->addSrcDepInsts(tInst);
+    m_IdToDepSetMap[swsb.sbid].second->addSrcDepInsts(tInst);
   }
   // set the sbid
   swsb.tokenType = SWSB::TokenType::SET;
@@ -1253,7 +1429,7 @@ void SWSBAnalyzer::run() {
       // it affect the in-pipe instruction count. Skipping it can avoid we
       // accidentally set SWSB on it (e.g. when forcing B2B dependency). Illeagl
       // instructions cannot carry SWSB info.
-      if (inst->getOp() == Op::ILLEGAL)
+      if (inst->getOp() == Op::ILLEGAL || inst->getOp() == Op::THRYLD)
         continue;
       DepSet *input = nullptr;
       DepSet *output = nullptr;

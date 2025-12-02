@@ -1118,7 +1118,11 @@ lookupSamplerMessageInfoXe2(uint32_t samplerMessageType, SamplerSIMD simd) {
         SamplerParam::DUDX, SamplerParam::DUDY, SamplerParam::V,
         SamplerParam::DVDX, SamplerParam::DVDY, SamplerParam::OFFUVR_R,
         SamplerParam::MLOD);
-  // case 0x25: missing
+  case 0x25:
+      return SamplerMessageDescription(SendOp::SAMPLE_PO_B_C, "sample_po_b_c", 3,
+          SamplerParam::REF, SamplerParam::BIAS_OFFUVR,
+          SamplerParam::U, SamplerParam::V,
+          SamplerParam::R, SamplerParam::MLOD);
   case 0x26:
     return SamplerMessageDescription(SendOp::SAMPLE_PO_L_C, "sample_po_l_c", 3,
                                      SamplerParam::REF, SamplerParam::LOD_OFFUV,
@@ -1146,7 +1150,12 @@ lookupSamplerMessageInfoXe2(uint32_t samplerMessageType, SamplerSIMD simd) {
     return SamplerMessageDescription(SendOp::GATHER4_PO_I_C, "gather4_po_c",
                                      4, SamplerParam::REF, SamplerParam::U,
                                      SamplerParam::V, SamplerParam::OFFUV_R);
-  // case 0x31...0x34: missing
+  // case 0x31...0x33: missing
+  case 0x34:
+      return SamplerMessageDescription(SendOp::SAMPLE_PO_D_C, "sample_po_d_c", 8,
+          SamplerParam::REF, SamplerParam::U,
+          SamplerParam::DUDX, SamplerParam::DUDY, SamplerParam::V,
+          SamplerParam::DVDX, SamplerParam::DVDY, SamplerParam::OFFUV_R);
   case 0x35:
     return SamplerMessageDescription(SendOp::GATHER4_PO_I_C, "gather4_po_i_c",
                                      4, SamplerParam::REF, SamplerParam::U,
@@ -1171,6 +1180,15 @@ lookupSamplerMessageInfoXe2(uint32_t samplerMessageType, SamplerSIMD simd) {
   return INVALID;
 }
 
+SamplerMessageDescription
+iga::LookupSamplerMessageDescription(uint32_t smplOpEnc, int execSize,
+                                     bool isFp16) {
+  auto simd = execSize ? SamplerSIMD::SIMD32
+              : isFp16 ? SamplerSIMD::SIMD16H
+                       : SamplerSIMD::SIMD16;
+  const auto sms = lookupSamplerMessageInfoXe2(smplOpEnc, simd);
+  return sms;
+}
 
 static void decodeSendMessage(uint32_t opBits, SamplerSIMD simdMode,
                               SendOp &sendOp, std::string &symbol,

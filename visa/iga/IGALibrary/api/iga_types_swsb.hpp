@@ -41,6 +41,12 @@ enum class SWSB_ENCODE_MODE : uint32_t {
   // Experimental (previously for XE2): Move Q to F conversion instruction
   // to INT pipe (float pipe reduction)
   FiveDistPipeReduction = 9,
+  // FiveDistPipe with conversion in INT pipe. This mode has included
+  // SWSBCntr. Fwd setting is enabled.
+  FiveDistPipeCvtToInt = 10,
+  // FiveDistPipe with swsb counter encoding.
+  FiveDistPipeSWSBCntr = 11,
+  FiveDistPipeCvtToIntNoFwd = 12,
 };
 
 static_assert((uint32_t)SWSB_ENCODE_MODE::SWSBInvalidMode == 0,
@@ -54,6 +60,16 @@ static_assert((uint32_t)SWSB_ENCODE_MODE::FourDistPipe == 3,
 static_assert((uint32_t)SWSB_ENCODE_MODE::FourDistPipeReduction == 6,
               "oops we need these enum values not to change");
 static_assert((uint32_t)SWSB_ENCODE_MODE::ThreeDistPipeDPMath == 7,
+              "oops we need these enum values not to change");
+static_assert((uint32_t)SWSB_ENCODE_MODE::FiveDistPipe == 8,
+              "oops we need these enum values not to change");
+static_assert((uint32_t)SWSB_ENCODE_MODE::FiveDistPipeReduction == 9,
+              "oops we need these enum values not to change");
+static_assert((uint32_t)SWSB_ENCODE_MODE::FiveDistPipeCvtToInt == 10,
+              "oops we need these enum values not to change");
+static_assert((uint32_t)SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr == 11,
+              "oops we need these enum values not to change");
+static_assert((uint32_t)SWSB_ENCODE_MODE::FiveDistPipeCvtToIntNoFwd == 12,
               "oops we need these enum values not to change");
 
 struct SWSB {
@@ -74,6 +90,7 @@ public:
     SET,
     SRC,
     DST,
+    INC,
   };
 
   enum class InstType { UNKNOWN, DPAS, MATH, SEND, OTHERS };

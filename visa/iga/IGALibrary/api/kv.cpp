@@ -335,6 +335,7 @@ uint32_t kv_get_send_descs(const kv_t *kv, int32_t pc, uint32_t *ex_desc,
   }
 
   uint32_t n = 0;
+  if (!inst->getOpSpec().isSendgFormat()) {
       if (inst->getExtMsgDescriptor().isImm()) {
           n++;
           *ex_desc = inst->getExtMsgDescriptor().imm;
@@ -349,6 +350,11 @@ uint32_t kv_get_send_descs(const kv_t *kv, int32_t pc, uint32_t *ex_desc,
       else {
           *desc = KV_INVALID_SEND_DESC;
       }
+  }
+  else {
+      *ex_desc = KV_INVALID_SEND_DESC;
+      *desc = KV_INVALID_SEND_DESC;
+  }
 
   return n;
 }
@@ -365,6 +371,8 @@ kv_status_t kv_get_send_exdesc_immoff(const kv_t *kv, int32_t pc,
   } else if (inst->getSendFc() != SFID::UGM) {
     return KV_DESCRIPTOR_INVALID;
   }
+  if (inst->getOpSpec().isSendgFormat())
+    return KV_NON_SEND_INSTRUCTION;
 
   const auto desc = inst->getMsgDescriptor();
 
@@ -392,6 +400,8 @@ kv_status_t kv_get_send_indirect_descs(const kv_t *kv, int32_t pc,
   } else if (!inst->getOpSpec().isAnySendFormat()) {
     return KV_NON_SEND_INSTRUCTION;
   }
+  if (inst->getOpSpec().isSendgFormat())
+    return KV_NON_SEND_INSTRUCTION;
   if (inst->getExtMsgDescriptor().isReg()) {
     *ex_desc_reg = (uint8_t)inst->getExtMsgDescriptor().reg.regNum;
     *ex_desc_subreg = (uint8_t)inst->getExtMsgDescriptor().reg.subRegNum;
@@ -408,6 +418,56 @@ kv_status_t kv_get_send_indirect_descs(const kv_t *kv, int32_t pc,
   return KV_SUCCESS;
 }
 
+kv_status_t kv_get_sendg_desc(const kv_t *kv, int32_t pc, uint64_t *desc) {
+  if (!kv || !desc)
+    return KV_INVALID_ARGUMENT;
+  const Instruction *i = ((KernelViewImpl *)kv)->getInstruction(pc);
+  if (!i) {
+    return KV_INVALID_PC;
+  } else if (i->platform() <= Platform::XE3) {
+    return KV_INCAPABLE_PLATFORM;
+  } else if (!i->getOpSpec().isSendgFormat()) {
+    return KV_NON_SEND_INSTRUCTION;
+  }
+  *desc = i->getSendgDesc();
+  return KV_SUCCESS;
+}
+kv_status_t kv_get_sendg_ind_desc0(const kv_t *kv, int32_t pc,
+                                   uint32_t *subregPresent, uint32_t *subreg) {
+  if (!kv || !subreg || !subregPresent)
+    return KV_INVALID_ARGUMENT;
+  const Instruction *i = ((KernelViewImpl *)kv)->getInstruction(pc);
+  if (!i) {
+    return KV_INVALID_PC;
+  } else if (i->platform() <= Platform::XE3) {
+    return KV_INCAPABLE_PLATFORM;
+  } else if (!i->getOpSpec().isSendgFormat()) {
+    return KV_NON_SEND_INSTRUCTION;
+  }
+  const auto rr = i->getSendgIndDesc0Reg();
+  *subregPresent = rr != REGREF_INVALID ? 1 : 0;
+  if (rr != REGREF_INVALID)
+    *subreg = rr.subRegNum;
+  return KV_SUCCESS;
+}
+kv_status_t kv_get_sendg_ind_desc1(const kv_t *kv, int32_t pc,
+                                   uint32_t *subregPresent, uint32_t *subreg) {
+  if (!kv || !subreg || !subregPresent)
+    return KV_INVALID_ARGUMENT;
+  const Instruction *i = ((KernelViewImpl *)kv)->getInstruction(pc);
+  if (!i) {
+    return KV_INVALID_PC;
+  } else if (i->platform() <= Platform::XE3) {
+    return KV_INCAPABLE_PLATFORM;
+  } else if (!i->getOpSpec().isSendgFormat()) {
+    return KV_NON_SEND_INSTRUCTION;
+  }
+  const auto rr = i->getSendgIndDesc1Reg();
+  *subregPresent = rr != REGREF_INVALID ? 1 : 0;
+  if (rr != REGREF_INVALID)
+    *subreg = rr.subRegNum;
+  return KV_SUCCESS;
+}
 
 /******************** KernelView analysis APIs *******************************/
 static const Instruction *getInstruction(const kv_t *kv, int32_t pc) {
@@ -456,6 +516,8 @@ kv_status_t kv_get_message_type(const kv_t *kv, int32_t pc,
     return kv_status_t::KV_NON_SEND_INSTRUCTION;
   }
 
+  if (inst->platform() > Platform::XE3)
+    return KV_INCAPABLE_PLATFORM;
   auto desc = inst->getMsgDescriptor();
 
   // NOTE: we could probably get the message just from desc
@@ -549,6 +611,10 @@ uint32_t kv_get_message_len(const kv_t *kv, int32_t pc, uint32_t *mLen,
   };
 
   auto dstLen = inst->getDstLength();
+  // With sendg format, the DstLength is in the unit of bytes in Instruction
+  // Make it number of grfs
+  if (inst->getOpSpec().isSendgFormat())
+    dstLen /= 64;
   *rLen = setOne(dstLen);
   *mLen = setOne(inst->getSrc0Length());
   *emLen = setOne(inst->getSrc1Length());

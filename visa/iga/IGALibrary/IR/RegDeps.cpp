@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 using namespace iga;
 
 static DEP_CLASS getClassFromPipeType(DEP_PIPE type, const OpSpec &opspec) {
-  if (opspec.is(Op::SYNC) || opspec.op == Op::ILLEGAL)
+  if (opspec.is(Op::SYNC) || opspec.is(Op::ILLEGAL) || opspec.is(Op::THRYLD))
     return DEP_CLASS::OTHER;
 
   switch (type) {
@@ -85,6 +85,11 @@ static void setSendPipeType(DEP_PIPE &pipe_type, const Instruction &inst,
   pipe_type = DEP_PIPE::SEND;
   // XeHPG+: slm send should be considered in different pipes
   // Check if it's SLM
+  if (inst.getOpSpec().isSendgFormat()) {
+    if (inst.getSendFc() == SFID::SLM)
+        pipe_type = DEP_PIPE::SEND_SLM;
+    return;
+  }
 
   if (model.platform >= Platform::XE_HPG) {
     if (inst.getMsgDescriptor().isReg())
@@ -334,6 +339,48 @@ static void setDEPPipeClass_FiveDistPipeReduction(DepSet &dep,
   }
 }
 
+static void setDEPPipeClass_FiveDistPipeCvtToInt(DepSet &dep,
+                                                 const Instruction &inst,
+                                                 const Model &model) {
+  // Support feature "Mov Cvt from FPU0 (FLOAT) to FPU1 (INT) pipe".
+  // The difference to FiveDistPipe is:
+  // - srnd in INT pipe always
+  // - mov:
+  //   df destination always use LONG pipe
+  //   f to f, hf to hf, bf to bf use FLOAT pipe
+  //   any other datatype to f/hf/tf/bf/bf8/hf8 use INT pipe
+  //   integer destination always use INT pipe (except for scalar pipe mov)
+
+  if (inst.getOp() == Op::SRND) {
+    dep.setDepPipe(DEP_PIPE::INTEGER);
+    dep.setDepClass(DEP_CLASS::IN_ORDER);
+    return;
+  }
+
+  // mov instructions with scalar dst and imm src goto SCALAR pipe
+  if (isScalarPipeInst(inst)) {
+    dep.setDepPipe(DEP_PIPE::SCALAR);
+    dep.setDepClass(DEP_CLASS::IN_ORDER);
+    return;
+  }
+
+  if (inst.getOp() == Op::MOV) {
+    auto dstType = inst.getDestination().getType();
+    auto srcType = inst.getSource(0).getType();
+    if (dstType == Type::DF)
+      dep.setDepPipe(DEP_PIPE::LONG64);
+    else if (dstType == srcType &&
+             (dstType == Type::F || dstType == Type::HF || dstType == Type::BF))
+      dep.setDepPipe(DEP_PIPE::FLOAT);
+    else
+      dep.setDepPipe(DEP_PIPE::INTEGER);
+    dep.setDepClass(DEP_CLASS::IN_ORDER);
+    return;
+  }
+
+  // The rest is the same as FiveDistPipe
+  setDEPPipeClass_FiveDistPipe(dep, inst, model);
+}
 
 static void setDEPPipeClass(SWSB_ENCODE_MODE enc_mode, DepSet &dep,
                             const Instruction &inst, const Model &model) {
@@ -358,6 +405,13 @@ static void setDEPPipeClass(SWSB_ENCODE_MODE enc_mode, DepSet &dep,
     break;
   case SWSB_ENCODE_MODE::FiveDistPipeReduction:
     setDEPPipeClass_FiveDistPipeReduction(dep, inst, model);
+    break;
+  case SWSB_ENCODE_MODE::FiveDistPipeCvtToInt:
+  case SWSB_ENCODE_MODE::FiveDistPipeCvtToIntNoFwd:
+    setDEPPipeClass_FiveDistPipeCvtToInt(dep, inst, model);
+    break;
+  case SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr:
+    setDEPPipeClass_FiveDistPipe(dep, inst, model);
     break;
   default:
     break;
@@ -424,6 +478,16 @@ uint32_t DepSet::getDPASSrcDepUpBound(unsigned idx, Type srcType,
                    8 + /* start offset of the last repeated block */
                opsPerChan * systolicDepth * typeSizeInBits /
                    8; /* size of used register in last repeated block */
+  else {
+    IGA_ASSERT(idx <= 4, "Invalid dpas src index");
+    // bdpas may have src3/src4. The register access pattern of them must not
+    // cross a GRF. Assume its register footprint is till the end of the start
+    // register. We consider dpas src register in register granularity during
+    // swsb setting so this is good enough.
+    auto startReg = lowBound / m_DB.getGRF_BYTES_PER_REG();
+    RegRef tmpRR = RegRef((uint16_t)startReg + 1, 0);
+    upBound = addressOf(RegName::GRF_R, tmpRR, typeSizeInBits) - 1;
+  }
   return upBound;
 }
 
@@ -573,9 +637,13 @@ size_t DepSetBuilder::DpasMacroBuilder::getNumberOfSuppresionGroups(
     uint32_t srcIdx) const {
 
   if (srcIdx == 1) {
+    if (m_model.platform > Platform::XE3)
+      return 4;
     return 1;
   }
   if (srcIdx == 2) {
+    if (m_model.platform > Platform::XE3)
+      return 16;
     if (m_model.platform >= Platform::XE_HPC)
       return 4;
   }
@@ -595,6 +663,11 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
   size_t numSuppressed = 0;
   InstListIterator it = startIt;
 
+  // keep track of previous range in case we need to check if canFwd when
+  // hasProducerConsumerDep
+  Instruction *prev_inst = nullptr;
+  SrcRegRangeType prev_src_range, prev_extra_src_range;
+  DstRegRangeType prev_dst_range;
 
   // find until the last instruction that can be suppressed
   while (it != m_instList.end()) {
@@ -608,6 +681,27 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
 
     bool skipSetLastBits = false;
     if (hasProducerConsumerDep(dst_range, src_range, allDstBits)) {
+      // if the only reason this instruction can't be in this block is because
+      // of having producer-consume dependency, and that dependency can be
+      // resolved by Fwd, then this instruction can be in the block
+      if (prev_inst &&
+          (prev_inst->hasInstOpt(InstOpt::FWD) ||
+           canFwd(*prev_inst, **it, prev_dst_range, prev_src_range, dst_range,
+                  src_range, allDstNoLastBits, allSrcNoLastBits))) {
+        // set the forward block. It's sure that it can be forwarded, even if
+        // later we found out this suppression block can't suppress any
+        // instruction and we decide not to form macro for the suppression, we
+        // can still keep the fwd block
+        prev_inst->addInstOpt(InstOpt::ATOMIC);
+        prev_inst->addInstOpt(InstOpt::FWD);
+        // when fwd bits is formed, skip setting
+        // allDstNoLastBits/allSrcNoLastBits so that a continuous fwd
+        // instructions could be formed. For example: dpas.8x8 (16|M0)  r110:f
+        // r10:f   r2:bf  r68.0:bf {Fwd, Atomic} dpas.8x8 (16|M0)  r110:f r110:f
+        // r2:bf  r76.0:bf {Fwd, Atomic} dpas.8x8 (16|M0)  r110:f  r110:f  r2:bf
+        // r84.0:b
+        skipSetLastBits = true;
+      } else
         break;
     }
 
@@ -624,6 +718,9 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
       break;
     if (nextIsNotMacroCandidate(**it, **nextIt))
       break;
+    prev_inst = *it;
+    prev_src_range = src_range;
+    prev_dst_range = dst_range;
     it = nextIt;
   }
 
@@ -687,6 +784,11 @@ Instruction &DepSetBuilder::DpasMacroBuilder::formMacro(size_t &dpasCnt) {
     return **cur;
   }
 
+  // Firstly check if there is FWD block from the first, so that it won't break
+  // the suppression block due to having producer-consumer dependency at the
+  // first instruction (formSrcSuppressionBlock checks FWD block start from the
+  // 2nd instruction)
+  dpasCnt = std::max(dpasCnt, formFwdBlock(m_firstDpasIt));
 
   dpasCnt = std::max(dpasCnt, formSrcSuppressionBlock(m_firstDpasIt));
 
@@ -706,6 +808,14 @@ Instruction &DepSetBuilder::DpasMacroBuilder::formMacro(size_t &dpasCnt) {
   InstListIterator last = m_firstDpasIt;
   std::advance(last, dpasCnt - 1);
   assert(last != m_instList.end());
+  // if the last dpas happens to have Fwd set, remove it since the next
+  // instruction it can forward to is not in this macro The case happens at
+  // getSuppressionBlockCandidate when FWD is set but nothing found can be
+  // suppressed later on
+  if ((*last)->hasInstOpt(InstOpt::FWD)) {
+    (*last)->removeInstOpt(InstOpt::ATOMIC);
+    (*last)->removeInstOpt(InstOpt::FWD);
+  }
   return **last;
 }
 
@@ -755,7 +865,10 @@ bool DepSetBuilder::DpasMacroBuilder::nextIsNotMacroCandidate(
 
 bool DepSetBuilder::DpasMacroBuilder::isValidMixedTypes(Type curType,
                                                         Type nextType) const {
-  return false;
+  // bf16 and fp32 can be mixed
+  return m_model.platform > Platform::XE3 &&
+         (curType == Type::BF || curType == Type::F) &&
+         (nextType == Type::BF || nextType == Type::F);
 }
 
 // set register range from start_reg to upper_reg into bit_set
@@ -845,6 +958,122 @@ bool DepSetBuilder::DpasMacroBuilder::hasInternalDep(
   return false;
 }
 
+size_t DepSetBuilder::DpasMacroBuilder::formFwdBlock(InstListIterator first) {
+  size_t count = 0;
+  InstListIterator cur = first;
+  SrcRegRangeType src_range, src_extra_range;
+  DstRegRangeType dst_range;
+  m_inps.getDpasSrcDependency(**cur, src_range, src_extra_range, m_model);
+  m_inps.getDpasDstDependency(**cur, dst_range);
+  if (hasInternalDep(**cur, dst_range, src_range,
+                     GetDpasSystolicDepth((*cur)->getDpasFc()) == 8))
+    return count;
+
+  InstListIterator next = cur;
+  next++;
+  while (next != m_instList.end()) {
+
+    if (nextIsNotMacroCandidate(**cur, **next))
+      break;
+    SrcRegRangeType next_src_range, next_src_extra_range;
+    DstRegRangeType next_dst_range;
+    m_inps.getDpasSrcDependency(**next, next_src_range, next_src_extra_range,
+                                m_model);
+    m_inps.getDpasDstDependency(**next, next_dst_range);
+    // no need to check the producer-consumer dependency (leave
+    // allDstBits/allSrcBits as 0) since if FWD block can be formed, add the dst
+    // must be the same
+    BitSet<> allDstBits(m_dsBuilder.getGRF_LEN());
+    BitSet<> allSrcBits(m_dsBuilder.getGRF_LEN());
+    if (canFwd(**cur, **next, dst_range, src_range, next_dst_range,
+               next_src_range, allDstBits, allSrcBits)) {
+      (*cur)->addInstOpt(InstOpt::ATOMIC);
+      (*cur)->addInstOpt(InstOpt::FWD);
+      updateRegFootprintsToDepSets(next_src_range, next_src_extra_range,
+                                   next_dst_range);
+      if (!count) {
+        updateRegFootprintsToDepSets(src_range, src_extra_range, dst_range);
+        count++;
+      }
+      count++;
+    } else {
+      break;
+    }
+    src_range.assign(next_src_range.begin(), next_src_range.end());
+    src_extra_range.assign(next_src_extra_range.begin(),
+                           next_src_extra_range.end());
+    dst_range = next_dst_range;
+    cur = next;
+    next++;
+  }
+  return count;
+}
+
+// Check if this dpas can have {Fwd} set with the next dpas within this macro
+bool DepSetBuilder::DpasMacroBuilder::canFwd(
+    const Instruction &cur, const Instruction &next,
+    const DstRegRangeType &cur_dst_range, const SrcRegRangeType &cur_src_range,
+    const DstRegRangeType &next_dst_range,
+    const SrcRegRangeType &next_src_range, const BitSet<> &prev_dst_bits,
+    const BitSet<> &prev_src_bits) const {
+
+  // this function must be called after next is verified can be a candidate
+  assert(!nextIsNotMacroCandidate(cur, next));
+
+  // 0. check if can use Fwd
+  if (!cur.getOpSpec().supportsFwdCtrl() ||
+      m_encMode == SWSB_ENCODE_MODE::FiveDistPipeCvtToIntNoFwd)
+    return false;
+
+  // 1. this and next DPAS are dpas8x8
+  if (cur.getDpasFc() != DpasFC::F_8X8 || next.getDpasFc() != DpasFC::F_8X8)
+    return false;
+
+  // 2. the very next DPAS's src0 and dst are both identical to current DPAS's
+  // dst Execution size of both instructions must be the same at this point
+  // (checked in nextIsNotMacroCandidate), so only needs to check if they have
+  // the same register number
+  if (next.getSource(0).getDirRegName() == RegName::ARF_NULL)
+    return false;
+  RegRef regref = cur.getDestination().getDirRegRef();
+  if (regref != next.getDestination().getDirRegRef() ||
+      regref != next.getSource(0).getDirRegRef())
+    return false;
+
+  // 3. If current's dst type is int32, current dst and next src0/dst types must
+  //    all be the same. If current's and next's dst type is fp32 or bf16,
+  //    Fwd is allowd as long as current's dst type is the same as next's src0's
+  Type dstType = cur.getDestination().getType();
+  // The valid types are fp32, int32, bf16
+  if (dstType != Type::BF && TypeSizeInBits(dstType) != 32)
+    return false;
+  if (dstType != next.getSource(0).getType())
+    return false;
+  Type nextDstType = next.getDestination().getType();
+  if (dstType != nextDstType &&
+      !isValidMixedTypes(dstType, nextDstType))
+    return false;
+
+  // 4. next DPAS's src1 and src2 can't have dependency to current DPAS's dst
+  BitSet<> cur_dst_bits(m_dsBuilder.getGRF_LEN());
+  BitSet<> next_src12_bits(m_dsBuilder.getGRF_LEN());
+  setBits(cur_dst_bits, cur_dst_range.first, cur_dst_range.second);
+  auto i = next_src_range.begin();
+  ++i;
+  for (; i != next_src_range.end(); ++i) {
+    setBits(next_src12_bits, (*i).first, (*i).second);
+  }
+  if (cur_dst_bits.intersects(next_src12_bits))
+    return false;
+
+  // 5. both instructions can't have producer-consumer dependency to prior
+  // instructions in the macro
+  if (hasProducerConsumerDep(cur_dst_range, cur_src_range, prev_dst_bits) ||
+      hasProducerConsumerDep(next_dst_range, next_src_range, prev_dst_bits))
+    return false;
+
+  return true;
+}
 
 std::pair<DepSet *, DepSet *> DepSetBuilder::createDPASSrcDstDepSet(
     const InstList &insList, InstListIterator instIt,
@@ -929,6 +1158,18 @@ void DepSet::setInputsFlagDep() {
 void DepSet::setInputsSendDescDep() {
   IGA_ASSERT(m_instruction->getOpSpec().isAnySendFormat(),
       "DepSet::setInputsSendDescDep: must be send format");
+  // set up reg footprint for ID0, ID1
+  if (m_instruction->getOpSpec().isSendgFormat()) {
+    // ID0 and ID1 are qword descriptors
+    auto id0 = m_instruction->getSendgIndDesc0Reg();
+    if (id0 != REGREF_INVALID)
+      setSendSrcScalarRegRegion(id0, 8);
+
+    auto id1 = m_instruction->getSendgIndDesc1Reg();
+    if (id1 != REGREF_INVALID)
+      setSendSrcScalarRegRegion(id1, 8);
+    return;
+  }
   // set up reg footprint for desc and exdesc if they are registers
   auto desc = m_instruction->getMsgDescriptor();
   if (desc.isReg()) {
@@ -1204,6 +1445,11 @@ void DepSet::setOutputsDstDep() {
            op.getDirRegName() == RegName::GRF_R);
     if (execSize == 1)
       execSize = 2;
+    // for 64b IP platform, the dst register footprint size of call/calla is
+    // 3 dws
+    if (m_DB.has64bitIPAddress() && execSize < 3) {
+      execSize = 3;
+    }
   }
 
   // Instructions having implicit write to acc
@@ -1289,8 +1535,20 @@ void DepSet::setOutputsDstDep() {
     break;
   }
 
+  if (m_instruction->getOpSpec().isSendgFormat() &&
+      m_DB.needSyncAfterFence() &&
+      m_DB.isSendgFence(*m_instruction))
+    setDepType(DEP_TYPE::WRITE_ALWAYS_INTERFERE);
 }
 
+bool DepSetBuilder::isSendgFence(const Instruction& sendg) const {
+  auto desc = sendg.getSendgDesc();
+  // decode the message op code from desc bit[5:0]
+  // fence has opcode value 31
+  if ((desc & 0x7F) == 31)
+    return true;
+  return false;
+}
 
 DepSet *DepSetBuilder::createDstDepSet(Instruction &i,
                                        const InstIDs &inst_id_counter,
@@ -1603,6 +1861,18 @@ void DepSet::setDstRegion(RegName rn, RegRef rr, Region rgn, uint32_t execSize,
   };
   setBitsFromRegRef(rr);
 
+  if (m_instruction->getOp() == Op::MULLH) {
+    // Execution sizes 1,2,4,8 and 16: write to dst, dst+1
+    RegRef tmpRR((uint16_t)(rr.regNum + 1), rr.subRegNum);
+    setBitsFromRegRef(tmpRR);
+    // Execution size 32: write to dst, dst+1, dst+2, dst+3
+    if (m_instruction->getExecSize() == ExecSize::SIMD32) {
+      tmpRR.regNum++;
+      setBitsFromRegRef(tmpRR);
+      tmpRR.regNum++;
+      setBitsFromRegRef(tmpRR);
+    }
+  }
 
   // Special registers has side effects so even if there is no direct
   // interference subsequent instrucion might depend on it. Also the prior

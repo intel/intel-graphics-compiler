@@ -347,6 +347,10 @@ public:
       formatInstructionBodySendXe2(i);
       return;
     }
+    if (i.getOpSpec().isSendgFormat()) {
+      formatInstructionBodySendgXe3p(i);
+      return;
+    }
     if (platform() >= Platform::XE3 && i.getOpSpec().isAnySendFormat()) {
       // Xe3 backwards compatible (non-ld/st/raw) send syntax
       //   send (..) dst  src0   src1:src1len  [exDescOff:]exDesc desc
@@ -403,6 +407,23 @@ public:
       if (nSrcs >= 3) {
         emit("  ");
         formatSrcOp(SourceIndex::SRC2, i);
+      }
+      if (nSrcs >= 4) {
+        emit("  ");
+        //
+        if (i.getOpSpec().is(Op::BDPAS)) {
+          // src3 and src4 have subreg and data type
+          // format as a regular src operand
+          formatSrcOp(SourceIndex::SRC3, i);
+        }
+      }
+      if (nSrcs >= 5) {
+        emit("  ");
+        // bdpas is the only quinary op at the moment
+        IGA_ASSERT(i.getOpSpec().is(Op::BDPAS), "not bdpas");
+        // src3 and src4 have subreg and data type
+        // format as a regular src operand
+        formatSrcOp(SourceIndex::SRC4, i);
       }
     }
 
@@ -512,6 +533,62 @@ private:
     formatEolComments(i);
   }
 
+  // XE3P:
+  // Direct Send Generalized (non-gathering)
+  //   sendg[c] (...) dst src0:src0Len src1:src1len   ID0   ID1  imm42
+  //   sendg[c] (...) dst src0:src0Len src1:src1len  [ID0]       imm47
+  //
+  // Gathering Send Generalized:
+  //   sendg[c] (..) dst  r[s0.x]:src0Len   ID0   ID1  imm42
+  //   sendg[c] (..) dst  r[s0.x]:src0Len  [ID0]       imm47
+  void formatInstructionBodySendgXe3p(const Instruction &i) {
+    formatInstructionPrefix(i);
+
+    emit("  ");
+    formatSendDstOp(i);
+
+    emit("  ");
+    if (i.isGatherSend()) {
+      formatRegIndRef(i.getSource(SourceIndex::SRC0));
+      emit(":");
+      emitDecimal(i.getSrc0Length());
+      emit(ANSI_RESET);
+    } else {
+      formatSendSrcWithLength(i.getSource(SourceIndex::SRC0),
+                              i.getSrc0Length());
+    }
+    emit("  ");
+
+    // sendg has no src1 (implicit null)
+    // looking forward sendg will have no src1 at all
+    // Omit src1 from the asm syntax to accomodate the change
+    if (!i.isGatherSend()) {
+      formatSendSrcWithLength(i.getSource(SourceIndex::SRC1),
+                              i.getSrc1Length());
+      emit("  ");
+    }
+
+    auto id0 = i.getSendgIndDesc0Reg();
+    if (id0 != REGREF_INVALID) {
+      formatScalarRegRead(RegName::ARF_S, id0);
+      emit("  ");
+    }
+    auto id1 = i.getSendgIndDesc1Reg();
+    if (id1 != REGREF_INVALID) {
+      formatScalarRegRead(RegName::ARF_S, id1);
+      emit("  ");
+    }
+    emit(ANSI_IMMEDIATE);
+    emitHex<uint64_t>(i.getSendgDesc());
+    emit(ANSI_RESET);
+
+    // instruction options
+    formatInstOpts(i);
+
+    // EOL comments
+    formatEolComments(i);
+  }
+
 
   void formatInstructionPrefix(const Instruction &i) {
     formatMaskAndPredication(i);
@@ -602,8 +679,21 @@ private:
     case Op::MATH:
       subfunc = ToSyntax(i.getMathFc());
       break;
+    case Op::SHFL:
+      subfunc = ToSyntax(i.getShuffleFc());
+      break;
+    case Op::LFSR:
+      subfunc = ToSyntax(i.getLfsrFc());
+      break;
+    case Op::DNSCL:
+      subfunc = ToSyntax(i.getDnsclFc());
+      break;
     case Op::SEND:
     case Op::SENDC:
+    case Op::SENDG:
+    case Op::SENDGC:
+    case Op::SENDGX:
+    case Op::SENDGXC:
       if (platform() >= Platform::XE) {
         subfunc = ToSyntax(i.getSendFc());
       } // else part of ex_desc
@@ -629,6 +719,7 @@ private:
       break;
     case Op::DPAS:
     case Op::DPASW:
+    case Op::BDPAS:
       subfunc = ToSyntax(i.getDpasFc());
       break;
     default:
@@ -849,7 +940,23 @@ private:
       }
     }
 
-      if (i.getOpSpec().isAnySendFormat()) {
+    if (i.getOpSpec().isSendgFormat()) {
+      if (decodeSendDesc) {
+        if (ss.tellp() != 0) {
+          semiColon.insert();
+        }
+        bool dstNonNull = !i.getDestination().isNull();
+        EmitSendgDescriptorInfoXe3p(
+            platform(), i.getSendFc(), i.getExecSize(), dstNonNull,
+            i.getSrc0Length(), i.getSrc1Length(), i.getSendgIndDesc0Reg(),
+            i.getSendgIndDesc1Reg(), i.getSendgDesc(), ss);
+      } else if (opts.printLdSt) {
+        if (ss.tellp() != 0) {
+          semiColon.insert();
+        }
+        fmtHex(ss, i.getSendgDesc(), 12);
+      }
+    } else if (i.getOpSpec().isAnySendFormat()) {
         // send with immediate descriptors, we can decode this to
         // something more sane in comments
         const SendDesc exDesc = i.getExtMsgDescriptor(),
@@ -1346,6 +1453,10 @@ void Formatter::formatInstOpts(const Instruction &i,
       emit("$");
       emit((int)di.sbid);
       break;
+    case SWSB::TokenType::INC:
+      emit("$");
+      emit((int)di.sbid);
+      emit(".inc");
     default:
       break;
     }
@@ -1415,6 +1526,9 @@ bool Formatter::formatLoadStoreSyntax(const Instruction &i) {
     //
     int len = i.getDstLength();
     if (i.getDestination().getDirRegName() == RegName::ARF_NULL) {
+      if (platform() > Platform::XE3) {
+        len = -1;
+      }
     }
     emitPayload(i.getDestination(), len);
     //
@@ -1485,6 +1599,24 @@ bool Formatter::formatLoadStoreSyntax(const Instruction &i) {
   // ld/st syntax
   ss << "; desc:" << fmtHex(desc.imm);
   // provide the rlen=... (Dst.Length)
+  if (platform() > Platform::XE3) {
+    // it's directly encoded in the descriptor
+    ss << "; rlen=";
+    if (i.getDestination().isNull()) {
+      // null dst implies 0 on this platform
+      ss << "0";
+    } else {
+      // non-null means we have to try and deduce rlen
+      // TODO: IR generators should set this and we should use
+      // getDstLength() here
+      PayloadLengths lens(platform(), i.getSendFc(), i.getExecSize(), desc.imm);
+      int rlen = lens.dstLen;
+      if (rlen >= 0)
+        ss << rlen;
+      else
+        ss << "?";
+    }
+  }
 
   formatEolComments(i, ss.str(), false);
 

@@ -301,6 +301,12 @@ public:
     case Op::SENDC:
       subfunc = ToSyntax(i.getSubfunction().send);
       break;
+    case Op::SENDG:
+    case Op::SENDGC:
+    case Op::SENDGX:
+    case Op::SENDGXC:
+      subfunc = ToSyntax(i.getSubfunction().send);
+      break;
     case Op::SYNC:
       subfunc = ToSyntax(i.getSubfunction().sync);
       break;
@@ -353,6 +359,7 @@ public:
           }
           // if it's a send, create fake extra send parameters
           bool hasSendDescs = i.getOpSpec().isAnySendFormat();
+          hasSendDescs &= !i.getOpSpec().isSendgFormat();
           if (hasSendDescs) {
             auto emitDesc = [&](SendDesc sd) {
               emit(",\n");
@@ -374,6 +381,28 @@ public:
             emitDesc(i.getMsgDescriptor());
           }
         });
+        if (i.getOpSpec().isSendgFormat()) {
+          auto emitSendgIdReg = [&](const RegRef &rr) {
+              if (rr == REGREF_INVALID)
+                return;
+              RegSet rs {model};
+              emit(",\n");
+              emitIndent();
+              emit("{");
+              emitKindField(Operand::Kind::DIRECT);
+              emit(", \"reg\":");
+              emitRegValue(RegName::ARF_S, rr);
+              rs.setSrcRegion(RegName::ARF_S, rr, Region::SRC010, 1, 64);
+              emitDepInputs(i, rs);
+              emit("}");
+            };
+          emitSendgIdReg(i.getSendgIndDesc0Reg());
+          emitSendgIdReg(i.getSendgIndDesc0Reg());
+          emit(",\n");
+          emitIndent();
+          emitKindField(Operand::Kind::IMMEDIATE);
+          emit(", \"value\":\"0x", hex(i.getSendgDesc()), "\"");
+        }
         emit("\n");
         emitIndent();
         emit("]");
@@ -395,10 +424,16 @@ public:
     const auto sfid = i.getSendFc();
     DecodeResult di;
     bool defaultDecode = i.getOpSpec().isAnySendFormat();
+    defaultDecode &= !i.getOpSpec().isSendgFormat();
     if (defaultDecode) {
       di = tryDecode(platform(), sfid, i.getExecSize(),
                                 i.getExtImmOffDescriptor(),
                                 exDesc, desc, nullptr);
+    } else if (i.getOpSpec().isSendgFormat()) {
+      di = tryDecode(platform(), sfid, i.getExecSize(),
+                     i.getSrc0Length(), i.getSrc1Length(),
+                     i.getSendgIndDesc0Reg(), i.getSendgIndDesc1Reg(),
+                     i.getSendgDesc(), nullptr);
     }
     if (!di) {
       // if message decode failed fallback to the canonical send syntax
@@ -804,6 +839,9 @@ public:
     } else if (mi.immediateOffset) {
       emit(", \"aoff\":", mi.immediateOffset);
     }
+    if (mi.addrScaling != 0 && mi.addrScaling != 1) {
+      emit(", \"ascale\":", mi.addrScaling);
+    }
 
     emit(", \"stype\":");
 
@@ -822,6 +860,20 @@ public:
       }
     };
 
+    auto emitInd = [&](int which) {
+      if (!i.getOpSpec().isSendgFormat()) {
+        return;
+      }
+      const auto &id =
+        which == 0 ? i.getSendgIndDesc0Reg() : i.getSendgIndDesc1Reg();
+      if (id != REGREF_INVALID) {
+        RegSet surfOffDeps {model};
+        emit(", ", which == 0 ? "\"sbase\"" : "\"sbase2\"",":");
+        emitRegValue(RegName::ARF_S, id);
+        surfOffDeps.setSrcRegion(RegName::ARF_S, id, Region::SRC010, 1, 64);
+        emitDepInputs(which == 0 ? "sdefs" : "sdefs2", i, surfOffDeps);
+      }
+    };
 
     switch (mi.addrType) {
     case AddrType::INVALID:
@@ -838,6 +890,22 @@ public:
       break;
     case AddrType::FLAT: {
       emit("\"flat\"");
+      emitInd(0);
+      emitInd(1);
+      break;
+    }
+    case AddrType::SURF: {
+      emit("\"surf\"");
+      emitInd(0);
+      emitInd(1);
+      if (mi.uvrImmediateOffsets[0] ||
+        mi.uvrImmediateOffsets[1] || mi.uvrImmediateOffsets[2])
+      {
+        emit(", \"uvroffs\":[",
+          mi.uvrImmediateOffsets[0], ",",
+          mi.uvrImmediateOffsets[1], ",",
+          mi.uvrImmediateOffsets[2], "]");
+      }
       break;
     }
     default:
@@ -1010,6 +1078,7 @@ public:
         InstOpt::NODDCHK,     InstOpt::NODDCLR, InstOpt::NOPREEMPT,
         InstOpt::NOSRCDEPSET, InstOpt::SWITCH,  InstOpt::SERIALIZE,
         InstOpt::EXBSO,       InstOpt::CPS,
+        InstOpt::FWD, // FwdCtrl for dpas
     };
 
     InstOptSet ios = i.getInstOpts();

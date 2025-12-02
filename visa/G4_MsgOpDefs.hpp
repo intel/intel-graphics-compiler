@@ -157,6 +157,8 @@ DEFINE_G4_MSGOP_LSC_LOAD(LOAD_QUAD_MSRT,  "load_quad_msrt", 0x31,
                          MSGOP_ATTRS_HAS_CMASK)
 DEFINE_G4_MSGOP_LSC_LOAD(LOAD_STATUS,     "load_status",    0x1B,
                          MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_LSC_LOAD(LOAD_QUAD_STATUS, "load_quad_status", 0x1C,
+                         MSGOP_ATTRS_HAS_CMASK)
 DEFINE_G4_MSGOP_LSC_LOAD(LOAD_BLOCK2D,    "load_block2d",   0x03,
                          MSGOP_ATTRS_EMPTY)
 

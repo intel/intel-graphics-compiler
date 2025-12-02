@@ -30,6 +30,14 @@ void Instruction::setDirectDestination(DstModifier dstMod, RegName rnm,
   if (getOpSpec().isAnySendFormat() && m_sendDstLength < 0 &&
       rnm == RegName::ARF_NULL) {
     m_sendDstLength = 0;
+  } else if (getOpSpec().isSendgFormat()) {
+    // try and infer the destination length since XE3 sendg
+    // no longer explicitly encodes an rlen field in the descriptor
+    auto di = tryDecode(*this, nullptr);
+    if (di && di.info.dstLenBytes >= 0) {
+      const int GRF_SIZE = 64;
+      setDstLength(std::max<int>(di.info.dstLenBytes, GRF_SIZE));
+    }
   }
   m_dst.setDirectDestination(dstMod, rnm, reg, rgnH, type);
 }
@@ -109,13 +117,28 @@ void Instruction::setSource(SourceIndex srcIx, const Operand &op) {
 }
 
 void Instruction::setExtImmOffDesc(uint32_t imm) {
+  IGA_ASSERT(!getOpSpec().isSendgFormat(), "invalid field for format");
   m_exImmOffDesc = imm;
 }
 void Instruction::setExtMsgDesc(const SendDesc &msg) {
+  IGA_ASSERT(!getOpSpec().isSendgFormat(), "invalid field for format");
   m_exDesc = msg;
 }
 void Instruction::setMsgDesc(const SendDesc &msg) {
+  IGA_ASSERT(!getOpSpec().isSendgFormat(), "invalid field for format");
   m_desc = msg;
+}
+void Instruction::setSendgDesc(uint64_t imm) {
+  IGA_ASSERT(getOpSpec().isSendgFormat(), "invalid field for format");
+  m_sendgDesc = imm;
+}
+void Instruction::setSendgIndDesc0(RegRef rr) {
+  IGA_ASSERT(getOpSpec().isSendgFormat(), "invalid field for format");
+  m_sendgIndDesc0Reg = rr;
+}
+void Instruction::setSendgIndDesc1(RegRef rr) {
+  IGA_ASSERT(getOpSpec().isSendgFormat(), "invalid field for format");
+  m_sendgIndDesc1Reg = rr;
 }
 
 const Model &Instruction::model() const {
@@ -210,12 +233,28 @@ unsigned Instruction::getSourceCount() const {
 }
 
 uint32_t Instruction::getExtImmOffDescriptor() const {
+  IGA_ASSERT(!getOpSpec().isSendgFormat(), "invalid field for format");
   return m_exImmOffDesc;
 }
 
 SendDesc Instruction::getExtMsgDescriptor() const {
+  IGA_ASSERT(!getOpSpec().isSendgFormat(), "invalid field for format");
   return m_exDesc;
 }
 SendDesc Instruction::getMsgDescriptor() const {
+  IGA_ASSERT(!getOpSpec().isSendgFormat(), "invalid field for format");
   return m_desc;
+}
+
+uint64_t Instruction::getSendgDesc() const {
+  IGA_ASSERT(getOpSpec().isSendgFormat(), "invalid field for format");
+  return m_sendgDesc;
+}
+RegRef Instruction::getSendgIndDesc0Reg() const {
+  IGA_ASSERT(getOpSpec().isSendgFormat(), "invalid field for format");
+  return m_sendgIndDesc0Reg;
+}
+RegRef Instruction::getSendgIndDesc1Reg() const {
+  IGA_ASSERT(getOpSpec().isSendgFormat(), "invalid field for format");
+  return m_sendgIndDesc1Reg;
 }

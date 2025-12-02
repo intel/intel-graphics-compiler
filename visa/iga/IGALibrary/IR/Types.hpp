@@ -51,6 +51,7 @@ enum class Platform {
   XE_HPC = IGA_XE_VER_ORDINAL(1, 4), // XeHPC-XT, preserved (1, 3) for XeHPC-XL
   XE2 = IGA_XE_VER_ORDINAL(2, 0),
   XE3 = IGA_XE_VER_ORDINAL(3, 0),
+  XE3P_XPC = IGA_XE_VER_ORDINAL(3, 3),
   FUTURE = 0x7FFFFFFF
 #undef IGA_GEN_VER_ORDINAL
 };
@@ -105,6 +106,8 @@ TypeSizeShiftsOffsetToSubreg(Type type) {
     break;
   case Type::U4:
   case Type::S4:
+  // FP4 data type
+  case Type::E2M1:
     shl = 1;
     break;
 
