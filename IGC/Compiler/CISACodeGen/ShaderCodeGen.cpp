@@ -157,6 +157,13 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include "llvmWrapper/Transforms/Scalar/ADCE.h"
+#include "llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.h"
+#include "llvmWrapper/Transforms/Scalar/DeadStoreElimination.h"
+#include "llvmWrapper/Transforms/Scalar/JumpThreading.h"
+#include "llvmWrapper/Transforms/IPO/SCCP.h"
+#include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
+#include "llvmWrapper/Transforms/Scalar/MemCpyOptimizer.h"
+
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
@@ -651,7 +658,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
   if (ctx.enableFunctionCall() || ctx.type == ShaderType::RAYTRACING_SHADER) {
     // Sort functions if subroutine/indirect fcall is enabled.
-    mpm.add(llvm::createGlobalDCEPass());
+    mpm.add(IGCLLVM::createLegacyWrappedGlobalDCEPass());
     mpm.add(new PurgeMetaDataUtils());
     mpm.add(createGenXCodeGenModulePass());
   }
@@ -745,7 +752,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     const bool allowIPConstProp = !ctx.m_hasStackCalls && IGC_IS_FLAG_DISABLED(DisableIPConstantPropagation);
 
     if (allowIPConstProp) {
-      mpm.add(createIPSCCPPass());
+      mpm.add(IGCLLVM::createLegacyWrappedIPSCCPPass());
     }
     mpm.add(createDeadCodeEliminationPass());
     mpm.add(createCFGSimplificationPass());
@@ -1221,7 +1228,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       const bool allowIPConstProp = !pContext->m_hasStackCalls && IGC_IS_FLAG_DISABLED(DisableIPConstantPropagation);
 
       if (allowIPConstProp) {
-        mpm.add(createIPSCCPPass());
+        mpm.add(IGCLLVM::createLegacyWrappedIPSCCPPass());
       }
       // Note / todo: LLVM < 12 also runs simple constant propagation pass
       // regardless of IPSCCP in this case. This pass is not available on
@@ -1262,7 +1269,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
     mpm.add(createScopedNoAliasAAWrapperPass());
 
     if (pContext->m_instrTypes.hasLoadStore) {
-      mpm.add(llvm::createDeadStoreEliminationPass());
+      mpm.add(IGCLLVM::createLegacyWrappedDeadStoreEliminationPass());
       mpm.add(createMarkReadOnlyLoadPass());
     }
 
@@ -1273,7 +1280,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
 
     if (pContext->m_instrTypes.CorrelatedValuePropagationEnable) {
-      mpm.add(llvm::createCorrelatedValuePropagationPass());
+      mpm.add(IGCLLVM::createLegacyWrappedCorrelatedValuePropagationPass());
     }
 
     mpm.add(new BreakConstantExpr());
@@ -1527,7 +1534,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
 #if LLVM_VERSION_MAJOR >= 15
         // In LLVM-12.x an extra parameter InsertFreezeWhenUnfoldingSelect = false was added
         // to JumpThreading pass, but since LLVM-15.x it was removed again.
-        mpm.add(llvm::createJumpThreadingPass(BBDuplicateThreshold));
+        mpm.add(IGCLLVM::createLegacyWrappedJumpThreadingPass(BBDuplicateThreshold));
 #else  // LLVM_VERSION_MAJOR
         mpm.add(llvm::createJumpThreadingPass(false, BBDuplicateThreshold));
 #endif // LLVM_VERSION_MAJOR
@@ -1662,8 +1669,8 @@ void OptimizeIR(CodeGenContext *const pContext) {
     mpm.add(createGenSimplificationPass());
 
     if (pContext->m_instrTypes.hasLoadStore) {
-      mpm.add(llvm::createDeadStoreEliminationPass());
-      mpm.add(llvm::createMemCpyOptPass());
+      mpm.add(IGCLLVM::createLegacyWrappedDeadStoreEliminationPass());
+      mpm.add(IGCLLVM::createLegacyWrappedMemCpyOptPass());
       mpm.add(createLdShrinkPass());
     }
 

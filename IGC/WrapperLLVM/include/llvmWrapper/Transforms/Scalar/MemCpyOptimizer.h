@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef IGCLLVM_TRANSFORMS_SCALAR_LEGACY_ADCE_H
-#define IGCLLVM_TRANSFORMS_SCALAR_LEGACY_ADCE_H
+#ifndef IGCLLVM_TRANSFORMS_SCALAR_MEMCPYOPTIMIZER_LEGACY_H
+#define IGCLLVM_TRANSFORMS_SCALAR_MEMCPYOPTIMIZER_LEGACY_H
 
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Pass.h"
@@ -18,21 +18,20 @@ using namespace llvm;
 
 namespace IGCLLVM {
 
-struct ADCELegacyPassWrapper : public FunctionPass {
-  ADCELegacyPassWrapper();
+struct MemCpyOptLegacyPassWrapper : public FunctionPass {
+  MemCpyOptLegacyPassWrapper();
   static char ID;
 
   bool runOnFunction(llvm::Function &F) override;
   void getAnalysisUsage(AnalysisUsage &AU) const override;
-  virtual llvm::StringRef getPassName() const override { return "LegacyWrappedADCE"; }
+  virtual llvm::StringRef getPassName() const override { return "LegacyWrappedMemCpyOpt"; }
 
 private:
-  FunctionAnalysisManager FAM;
   PassBuilder PB;
+  FunctionAnalysisManager FAM;
 };
 
-FunctionPass *createLegacyWrappedADCEPass();
-
+FunctionPass *createLegacyWrappedMemCpyOptPass();
 } // end namespace IGCLLVM
 
-#endif // IGCLLVM_TRANSFORMS_SCALAR_LEGACY_ADCE_H
+#endif // IGCLLVM_TRANSFORMS_SCALAR_MEMCPYOPTIMIZER_LEGACY_H

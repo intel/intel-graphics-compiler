@@ -5,7 +5,7 @@ Copyright (C) 2025 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-
+#include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Transforms/Scalar/ADCE.h"
 
 #include "llvm/Transforms/Scalar.h"
@@ -17,8 +17,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Value.h"
 #include "llvm/Pass.h"
 #include "llvm/Passes/PassBuilder.h"
+#include "llvm/Transforms/Scalar.h"
 
 #include "llvmWrapper/Transforms/InitializePasses.h"
+#include "common/LLVMWarningsPop.hpp"
+
 #include "Compiler/IGCPassSupport.h"
 
 using namespace llvm;
@@ -57,9 +60,9 @@ FunctionPass *createLegacyWrappedADCEPass() {
 // bit different handling of CFG analyses preservation.
 #if LLVM_VERSION_MAJOR < 16
   return llvm::createAggressiveDCEPass();
-#endif
-
+#else
   return new ADCELegacyPassWrapper();
+#endif
 }
 
 } // namespace IGCLLVM

@@ -70,13 +70,27 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/BasicBlockUtils.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/InitializePasses.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/ADCE.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/DeadStoreElimination.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/JumpThreading.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/MemCpyOptimizer.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/IPO/GlobalDCE.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/IPO/SCCP.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/InstCombine/InstructionCombining.h"
+
     "${CMAKE_CURRENT_SOURCE_DIR}/include/lldWrapper/Common/Driver.h"
   )
 
 set(IGC_WrapperLLVM_SRC
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/ADCE.cpp"
-  )
-
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/DeadStoreElimination.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/JumpThreading.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/MemCpyOptimizer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/IPO/GlobalDCE.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/IPO/SCCP.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/InstCombine/InstructionCombining.cpp"
+    )
 include_directories(
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}"

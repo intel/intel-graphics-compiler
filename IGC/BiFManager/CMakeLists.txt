@@ -37,6 +37,8 @@ target_include_directories("${IGC_BUILD__PROJ__BiFManager}" PRIVATE ${IGC_BUILD_
 
 
 add_executable("${IGC_BUILD__PROJ__BiFManager_EXE}"
+${IGC_WrapperLLVM_HDR}
+${IGC_WrapperLLVM_SRC}
 "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
 "${CMAKE_CURRENT_SOURCE_DIR}/BiFManagerTool.cpp"
 "${CMAKE_CURRENT_SOURCE_DIR}/BiFManagerCommon.cpp"
