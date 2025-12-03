@@ -12,6 +12,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/LLVMContext.h"
+#if LLVM_VERSION_MAJOR >= 17
+#include "llvm/IR/AttributeMask.h"
+#endif
 #if LLVM_VERSION_MAJOR >= 16
 #include "llvm/Support/ModRef.h"
 // TODO: For interim LLVM revisions on major ver. 16, the following path should

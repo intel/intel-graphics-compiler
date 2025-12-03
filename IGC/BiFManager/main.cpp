@@ -52,7 +52,9 @@ int main(int argc, char *argv[]) {
     printf("[BiFManager] - Disabling Opaque Pointers\n");
   }
 
+#if LLVM_VERSION_MAJOR < 17
   Context.setOpaquePointers(enableOpaquePointers);
+#endif
 #endif
 
   cl::ParseCommandLineOptions(argc, argv);
