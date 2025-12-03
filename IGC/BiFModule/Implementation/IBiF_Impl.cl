@@ -43,6 +43,11 @@ SPDX-License-Identifier: MIT
 #include "conversions.cl"
 
 //*****************************************************************************/
+// SPV_INTEL_fp_conversions builtins
+//*****************************************************************************/
+#include "SPV_INTEL_fp_conversions/SPV_INTEL_fp_conversions.cl"
+
+//*****************************************************************************/
 // Device-Side Enqueue opcodes
 //*****************************************************************************/
 #include "device_side_enqueue.cl"

@@ -1486,6 +1486,14 @@ void CEncoder::Bfn(uint8_t booleanFuncCtrl, CVariable *dst, CVariable *src0, CVa
                                srcOpnd0, srcOpnd1, srcOpnd2));
 }
 
+void CEncoder::ShflIdx4(CVariable *dst, CVariable *src0, CVariable *src1) {
+  VISA_VectorOpnd *src0Opnd = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
+  VISA_VectorOpnd *src1Opnd = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
+
+  VISA_RawOpnd *dstOpnd = GetRawDestination(dst);
+  VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
+
+}
 // We allow H1 to be nullptr for the common case of adding 64-bit variable
 // with 32-bit imm
 void CEncoder::AddPair(CVariable *Lo, CVariable *Hi, CVariable *L0, CVariable *H0, CVariable *L1, CVariable *H1) {
@@ -7025,6 +7033,32 @@ void CEncoder::fcvt(CVariable *dst, CVariable *src) {
       srcOpnd0));
 }
 
+void CEncoder::lfsr(CVariable *dst, CVariable *src0, CVariable *src1, LFSR_FC funcCtrl) {
+  IGC_ASSERT(dst->GetType() == ISA_TYPE_UD);
+  IGC_ASSERT(src0->GetType() == ISA_TYPE_UD);
+  IGC_ASSERT(src1->GetType() == ISA_TYPE_UD);
+  IGC_ASSERT(dst->GetNumberElement() == src0->GetNumberElement());
+  IGC_ASSERT(dst->GetNumberElement() == src1->GetNumberElement());
+
+  uint16_t minNumElem = dst->GetNumberElement();
+  if (src0->GetNumberElement() < minNumElem)
+    minNumElem = src0->GetNumberElement();
+  if (src1->GetNumberElement() < minNumElem)
+    minNumElem = src1->GetNumberElement();
+
+  SIMDMode simdMode = m_encoderState.m_simdSize;
+  // lower the simd mode in case there isn't enough data in dst/src variables
+  if (minNumElem < numLanes(simdMode)) {
+    simdMode = lanesToSIMDMode(minNumElem);
+  }
+
+  VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
+  VISA_VectorOpnd *dstOpnd = GetDestinationOperand(dst, m_encoderState.m_dstOperand);
+  VISA_VectorOpnd *srcOpnd0 = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
+  VISA_VectorOpnd *srcOpnd1 = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
+
+}
+
 void CEncoder::srnd(CVariable *D, CVariable *S0, CVariable *R) {
   VISA_VectorOpnd *dst = GetDestinationOperand(D, m_encoderState.m_dstOperand);
   VISA_VectorOpnd *srcOpnd0 = GetSourceOperand(S0, m_encoderState.m_srcOperand[0]);
@@ -7032,6 +7066,20 @@ void CEncoder::srnd(CVariable *D, CVariable *S0, CVariable *R) {
 
   V(vKernel->AppendVISAArithmeticInst(ISA_SRND, nullptr, IsSat(), GetAluEMask(D), GetAluExecSize(D), dst, srcOpnd0,
                                       srcOpnd1));
+}
+
+void CEncoder::emitDnscl(CVariable *dst, CVariable *src0, CVariable *src1, CVariable *bias, DNSCL_CONVERT_TYPE convType,
+                         DNSCL_MODE packMode, DNSCL_RND_MODE roundMode) {
+  IGC_ASSERT((unsigned)convType <= (unsigned)DNSCL_CONVERT_TYPE::HFTOINT4);
+  IGC_ASSERT((unsigned)packMode <= (unsigned)DNSCL_MODE::MODE3);
+  IGC_ASSERT((unsigned)roundMode <= (unsigned)DNSCL_RND_MODE::RNE);
+
+  VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
+  VISA_RawOpnd *dstOpnd = GetRawDestination(dst);
+  VISA_RawOpnd *srcOpnd0 = GetRawSource(src0);
+  VISA_RawOpnd *srcOpnd1 = GetRawSource(src1);
+  VISA_RawOpnd *srcOpnd2 = GetRawSource(bias);
+
 }
 
 std::string CEncoder::GetVariableName(CVariable *var) {

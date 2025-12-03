@@ -1240,6 +1240,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       GII_id == GenISAIntrinsic::GenISA_2fto2bf || GII_id == GenISAIntrinsic::GenISA_dual_subslice_id ||
       GII_id == GenISAIntrinsic::GenISA_hftobf8 || GII_id == GenISAIntrinsic::GenISA_bf8tohf ||
       GII_id == GenISAIntrinsic::GenISA_srnd_ftohf || GII_id == GenISAIntrinsic::GenISA_srnd_hftobf8 ||
+      GII_id == GenISAIntrinsic::GenISA_srnd_hftohf8 || GII_id == GenISAIntrinsic::GenISA_srnd_bftobf8 ||
+      GII_id == GenISAIntrinsic::GenISA_srnd_bftohf8 || GII_id == GenISAIntrinsic::GenISA_dnscl ||
+      GII_id == GenISAIntrinsic::GenISA_ShflIdx4Lut || GII_id == GenISAIntrinsic::GenISA_lfsr ||
       GII_id == GenISAIntrinsic::GenISA_Int4VectorUnpack || GII_id == GenISAIntrinsic::GenISA_Int4VectorPack ||
       GII_id == GenISAIntrinsic::GenISA_hftohf8 || GII_id == GenISAIntrinsic::GenISA_hf8tohf ||
       GII_id == GenISAIntrinsic::GenISA_ftotf32 || GII_id == GenISAIntrinsic::GenISA_GlobalBufferPointer ||
@@ -1268,6 +1271,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       GII_id == GenISAIntrinsic::GenISA_GetImplicitBufferPtr || GII_id == GenISAIntrinsic::GenISA_GetLocalIdBufferPtr ||
       GII_id == GenISAIntrinsic::GenISA_ReadFromReservedArgSpace ||
       GII_id == GenISAIntrinsic::GenISA_getAssertBufferPtr ||
+      GII_id == GenISAIntrinsic::GenISA_getRegionGroupSize || GII_id == GenISAIntrinsic::GenISA_getRegionGroupWGCount ||
+      GII_id == GenISAIntrinsic::GenISA_getRegionGroupBarrierBufferPtr ||
       GII_id == GenISAIntrinsic::GenISA_staticConstantPatchValue ||
       GII_id == GenISAIntrinsic::GenISA_bitcastfromstruct || GII_id == GenISAIntrinsic::GenISA_bitcasttostruct ||
       GII_id == GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload ||
@@ -1317,6 +1322,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
     case GenISAIntrinsic::GenISA_getSyncBuffer:
     case GenISAIntrinsic::GenISA_getRtGlobalBufferPtr:
     case GenISAIntrinsic::GenISA_getAssertBufferPtr:
+    case GenISAIntrinsic::GenISA_getRegionGroupSize:
+    case GenISAIntrinsic::GenISA_getRegionGroupWGCount:
+    case GenISAIntrinsic::GenISA_getRegionGroupBarrierBufferPtr:
       return ImplicitArgs::getArgDep(GII_id);
     }
 

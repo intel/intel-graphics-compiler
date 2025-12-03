@@ -172,6 +172,13 @@ static const std::vector<ImplicitArg> IMPLICIT_ARGS = {
                 GenISAIntrinsic::GenISA_getIndirectDataPtr),
     ImplicitArg(ImplicitArg::SCRATCH_POINTER, "scratchPointer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1,
                 ImplicitArg::ALIGN_PTR, true, GenISAIntrinsic::GenISA_getScratchPtr),
+    ImplicitArg(ImplicitArg::REGION_GROUP_SIZE, "regionGroupSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3,
+                ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getRegionGroupSize),
+    ImplicitArg(ImplicitArg::REGION_GROUP_WG_COUNT, "regionGroupWGCount", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL,
+                1, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getRegionGroupWGCount),
+    ImplicitArg(ImplicitArg::REGION_GROUP_BARRIER_BUFFER, "regionGroupBarrierBuffer", ImplicitArg::GLOBALPTR,
+                WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, false,
+                GenISAIntrinsic::GenISA_getRegionGroupBarrierBufferPtr),
 
     // BufferBoundsChecking
     ImplicitArg(ImplicitArg::BUFFER_SIZE, "bufferSize", ImplicitArg::LONG, WIAnalysis::UNIFORM_GLOBAL, 1,

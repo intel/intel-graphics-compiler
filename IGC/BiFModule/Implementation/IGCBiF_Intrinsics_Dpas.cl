@@ -474,6 +474,12 @@ char4  __builtin_IB_srnd_hftobf8_4 (half4  a, char4  r) __attribute__((const));
 char8  __builtin_IB_srnd_hftobf8_8 (half8  a, char8  r) __attribute__((const));
 char16 __builtin_IB_srnd_hftobf8_16(half16 a, char16 r) __attribute__((const));
 
+char   __builtin_IB_srnd_hftobf8_1_sat (half   a, char   r) __attribute__((const));
+char2  __builtin_IB_srnd_hftobf8_2_sat (half2  a, char2  r) __attribute__((const));
+char3  __builtin_IB_srnd_hftobf8_3_sat (half3  a, char3  r) __attribute__((const));
+char4  __builtin_IB_srnd_hftobf8_4_sat (half4  a, char4  r) __attribute__((const));
+char8  __builtin_IB_srnd_hftobf8_8_sat (half8  a, char8  r) __attribute__((const));
+char16 __builtin_IB_srnd_hftobf8_16_sat(half16 a, char16 r) __attribute__((const));
 
 // F -> HF
 half   __builtin_IB_srnd_ftohf_1 (float   a, short   r) __attribute__((const));
@@ -483,4 +489,65 @@ half4  __builtin_IB_srnd_ftohf_4 (float4  a, short4  r) __attribute__((const));
 half8  __builtin_IB_srnd_ftohf_8 (float8  a, short8  r) __attribute__((const));
 half16 __builtin_IB_srnd_ftohf_16(float16 a, short16 r) __attribute__((const));
 
+uint __builtin_IB_lfsr_b32(uint seed, uint polynomial) __attribute__((const)); // as 1 int
+uint __builtin_IB_lfsr_b16v2(uint seed, uint polynomial) __attribute__((const)); // as 2 shorts
+uint __builtin_IB_lfsr_b8v4(uint seed, uint polynomial) __attribute__((const)); // as 4 chars
+// for sources smaller than 32 bits we have special variants that operate in lower simd
+ushort __builtin_IB_lfsr_b16v2_ushort(ushort seed, ushort polynomial) __attribute__((const));
+ushort __builtin_IB_lfsr_b8v4_ushort(ushort seed, ushort polynomial) __attribute__((const));
+uchar __builtin_IB_lfsr_b8v4_uchar(uchar seed, uchar polynomial) __attribute__((const));
+
+enum DNSCL_CONVERT_TO_TYPE {
+    DNSCL_CONVERT_TO_E2M1 = 1,  // conversion to E2M1
+    DNSCL_CONVERT_TO_INT4 = 2,  // conversion to INT4
+};
+uint __builtin_IB_dnscl_bf16(uint, uint, enum DNSCL_CONVERT_TO_TYPE convert_to, uint mode);
+uint __builtin_IB_dnscl_hf16(uint,  uint,  enum DNSCL_CONVERT_TO_TYPE convert_to, uint mode);
+uint __builtin_IB_dnscl_bf16_srnd(uint, uint, uint, enum DNSCL_CONVERT_TO_TYPE convert_to, uint mode);
+uint __builtin_IB_dnscl_hf16_srnd(uint,  uint,  uint, enum DNSCL_CONVERT_TO_TYPE convert_to, uint mode);
+
+// HF -> HF8 - stochastic rounding (a: to be rounded; r: random number used for rounding)
+char   __builtin_IB_srnd_hftohf8_1 (half   a, char   r) __attribute__((const));
+char2  __builtin_IB_srnd_hftohf8_2 (half2  a, char2  r) __attribute__((const));
+char3  __builtin_IB_srnd_hftohf8_3 (half3  a, char3  r) __attribute__((const));
+char4  __builtin_IB_srnd_hftohf8_4 (half4  a, char4  r) __attribute__((const));
+char8  __builtin_IB_srnd_hftohf8_8 (half8  a, char8  r) __attribute__((const));
+char16 __builtin_IB_srnd_hftohf8_16(half16 a, char16 r) __attribute__((const));
+// HF -> HF8 - saturated stochastic rounding (a: to be rounded; r: random number used for rounding)
+char   __builtin_IB_srnd_hftohf8_1_sat (half   a, char   r) __attribute__((const));
+char2  __builtin_IB_srnd_hftohf8_2_sat (half2  a, char2  r) __attribute__((const));
+char3  __builtin_IB_srnd_hftohf8_3_sat (half3  a, char3  r) __attribute__((const));
+char4  __builtin_IB_srnd_hftohf8_4_sat (half4  a, char4  r) __attribute__((const));
+char8  __builtin_IB_srnd_hftohf8_8_sat (half8  a, char8  r) __attribute__((const));
+char16 __builtin_IB_srnd_hftohf8_16_sat(half16 a, char16 r) __attribute__((const));
+
+// BF -> BF8 - stochastic rounding (a: to be rounded; r: random number used for rounding)
+char   __builtin_IB_srnd_bftobf8_1 (short   a, char   r) __attribute__((const));
+char2  __builtin_IB_srnd_bftobf8_2 (short2  a, char2  r) __attribute__((const));
+char3  __builtin_IB_srnd_bftobf8_3 (short3  a, char3  r) __attribute__((const));
+char4  __builtin_IB_srnd_bftobf8_4 (short4  a, char4  r) __attribute__((const));
+char8  __builtin_IB_srnd_bftobf8_8 (short8  a, char8  r) __attribute__((const));
+char16 __builtin_IB_srnd_bftobf8_16(short16 a, char16 r) __attribute__((const));
+// BF -> BF8 - saturated stochastic rounding (a: to be rounded; r: random number used for rounding)
+char   __builtin_IB_srnd_bftobf8_1_sat (short   a, char   r) __attribute__((const));
+char2  __builtin_IB_srnd_bftobf8_2_sat (short2  a, char2  r) __attribute__((const));
+char3  __builtin_IB_srnd_bftobf8_3_sat (short3  a, char3  r) __attribute__((const));
+char4  __builtin_IB_srnd_bftobf8_4_sat (short4  a, char4  r) __attribute__((const));
+char8  __builtin_IB_srnd_bftobf8_8_sat (short8  a, char8  r) __attribute__((const));
+char16 __builtin_IB_srnd_bftobf8_16_sat(short16 a, char16 r) __attribute__((const));
+
+// BF -> HF8 - stochastic rounding (a: to be rounded; r: random number used for rounding)
+char   __builtin_IB_srnd_bftohf8_1 (short   a, char   r) __attribute__((const));
+char2  __builtin_IB_srnd_bftohf8_2 (short2  a, char2  r) __attribute__((const));
+char3  __builtin_IB_srnd_bftohf8_3 (short3  a, char3  r) __attribute__((const));
+char4  __builtin_IB_srnd_bftohf8_4 (short4  a, char4  r) __attribute__((const));
+char8  __builtin_IB_srnd_bftohf8_8 (short8  a, char8  r) __attribute__((const));
+char16 __builtin_IB_srnd_bftohf8_16(short16 a, char16 r) __attribute__((const));
+// BF -> HF8 - saturated stochastic rounding (a: to be rounded; r: random number used for rounding)
+char   __builtin_IB_srnd_bftohf8_1_sat (short   a, char   r) __attribute__((const));
+char2  __builtin_IB_srnd_bftohf8_2_sat (short2  a, char2  r) __attribute__((const));
+char3  __builtin_IB_srnd_bftohf8_3_sat (short3  a, char3  r) __attribute__((const));
+char4  __builtin_IB_srnd_bftohf8_4_sat (short4  a, char4  r) __attribute__((const));
+char8  __builtin_IB_srnd_bftohf8_8_sat (short8  a, char8  r) __attribute__((const));
+char16 __builtin_IB_srnd_bftohf8_16_sat(short16 a, char16 r) __attribute__((const));
 #endif // IGCBIF_INTRINSICS_DPAS_CL

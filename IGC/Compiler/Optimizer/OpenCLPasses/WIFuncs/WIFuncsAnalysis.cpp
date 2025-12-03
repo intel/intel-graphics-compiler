@@ -48,6 +48,9 @@ const llvm::StringRef WIFuncsAnalysis::GET_STAGE_IN_GRID_ORIGIN = "__builtin_IB_
 const llvm::StringRef WIFuncsAnalysis::GET_STAGE_IN_GRID_SIZE = "__builtin_IB_get_stage_in_grid_size";
 const llvm::StringRef WIFuncsAnalysis::GET_SYNC_BUFFER = "__builtin_IB_get_sync_buffer";
 const llvm::StringRef WIFuncsAnalysis::GET_ASSERT_BUFFER = "__builtin_IB_get_assert_buffer";
+const llvm::StringRef WIFuncsAnalysis::GET_REGION_GROUP_SIZE = "__builtin_IB_get_region_group_size";
+const llvm::StringRef WIFuncsAnalysis::GET_REGION_GROUP_WG_COUNT = "__builtin_IB_get_region_group_wg_count";
+const llvm::StringRef WIFuncsAnalysis::GET_REGION_GROUP_BARRIER_BUFFER = "__builtin_IB_get_region_group_barrier_buffer";
 
 WIFuncsAnalysis::WIFuncsAnalysis() : ModulePass(ID) { initializeWIFuncsAnalysisPass(*PassRegistry::getPassRegistry()); }
 
@@ -84,6 +87,8 @@ bool WIFuncsAnalysis::runOnFunction(Function &F) {
   m_hasSyncBuffer = false;
   m_hasAssertBuffer = false;
   m_hasStackCalls = false;
+  m_hasRegionGroupSize = false;
+  m_hasRegionGroupBarrierBuffer = false;
 
   // Visit the function
   visit(F);
@@ -175,6 +180,15 @@ bool WIFuncsAnalysis::runOnFunction(Function &F) {
   if (m_hasAssertBuffer) {
     implicitArgs.push_back(ImplicitArg::ASSERT_BUFFER_POINTER);
   }
+  if (m_hasRegionGroupSize) {
+    implicitArgs.push_back(ImplicitArg::REGION_GROUP_SIZE);
+  }
+  if (m_hasRegionGroupWGCount) {
+    implicitArgs.push_back(ImplicitArg::REGION_GROUP_WG_COUNT);
+  }
+  if (m_hasRegionGroupBarrierBuffer) {
+    implicitArgs.push_back(ImplicitArg::REGION_GROUP_BARRIER_BUFFER);
+  }
 
   // Create the metadata representing the implicit args needed by this function
   ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
@@ -221,5 +235,11 @@ void WIFuncsAnalysis::visitCallInst(CallInst &CI) {
     m_hasSyncBuffer = true;
   } else if (funcName.equals(GET_ASSERT_BUFFER)) {
     m_hasAssertBuffer = true;
+  } else if (funcName.equals(GET_REGION_GROUP_SIZE)) {
+    m_hasRegionGroupSize = true;
+  } else if (funcName.equals(GET_REGION_GROUP_WG_COUNT)) {
+    m_hasRegionGroupWGCount = true;
+  } else if (funcName.equals(GET_REGION_GROUP_BARRIER_BUFFER)) {
+    m_hasRegionGroupBarrierBuffer = true;
   }
 }

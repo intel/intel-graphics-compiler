@@ -291,6 +291,7 @@ void initializeRayTracingBiFModuleInitializePassPass(llvm::PassRegistry &);
 void initializeRayTracingBiFModuleFinalizePassPass(llvm::PassRegistry &);
 void initializeBufferBoundsCheckingPass(llvm::PassRegistry &);
 void initializeBufferBoundsCheckingPatcherPass(llvm::PassRegistry &);
+void initializeBfloatBuiltinsResolutionPass(llvm::PassRegistry &);
 void initializeBfloatFuncsResolutionPass(llvm::PassRegistry &);
 void initializeBarrierControlFlowOptimizationPass(llvm::PassRegistry &);
 void initializeMinimumValidAddressCheckingPass(llvm::PassRegistry &);

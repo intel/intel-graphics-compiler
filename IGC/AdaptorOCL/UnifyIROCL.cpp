@@ -99,6 +99,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/SPIRMetaDataTranslation.h"
 #include "Compiler/Optimizer/OpenCLPasses/ErrorCheckPass/ErrorCheckPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/PoisonFP64KernelsPass/PoisonFP64KernelsPass.h"
+#include "Compiler/Optimizer/OpenCLPasses/BfloatBuiltins/BfloatBuiltinsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BfloatFuncs/BfloatFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DpasFuncs/DpasFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LSCFuncs/LSCFuncsResolution.hpp"
@@ -333,6 +334,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
   }
 
   mpm.add(new JointMatrixFuncsResolutionPass());
+  mpm.add(new BfloatBuiltinsResolution());
 
   mpm.add(new ReduceOptPass());
 

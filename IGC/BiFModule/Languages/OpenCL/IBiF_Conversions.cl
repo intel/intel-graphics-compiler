@@ -4224,3 +4224,133 @@ half OVERLOADABLE convert_half_rtz(double _T) {
 GENERATE_CONVERSIONS_FUNCTIONS( convert_half, half, double )
 
 #endif
+
+// FP4 / INT4 conversion functions for Intel validation
+
+#define SHFLIDX_CONVERT_SINGLE(                                                                                    \
+    OUTTYPE, INTYPE, VECLENGTH, PACKEDLENGTH, LUT, FPTYPE, FPBITLEN, I4ORF4, OUTTYPEPACKED)                        \
+    OUTTYPE##VECLENGTH                                                                                             \
+        intel_convert_as_##I4ORF4##VECLENGTH##_##FPTYPE##VECLENGTH##_as_##OUTTYPE##VECLENGTH(                      \
+            INTYPE##VECLENGTH source)                                                                              \
+    {                                                                                                              \
+        return __builtin_IB_shfl_idx4_to_fp##FPBITLEN##_##VECLENGTH(                                               \
+            __builtin_IB_shfl_idx4_lut(LUT), as_char##VECLENGTH(source));                                          \
+    }                                                                                                              \
+    OUTTYPEPACKED##VECLENGTH                                                                                       \
+        intel_convert_as_##I4ORF4##PACKEDLENGTH##_##FPTYPE##PACKEDLENGTH##_as_##OUTTYPEPACKED##VECLENGTH##_packed( \
+            INTYPE##VECLENGTH source)                                                                              \
+    {                                                                                                              \
+        return __builtin_IB_shfl_idx4_to_fp##FPBITLEN##_##VECLENGTH##_packed(                                      \
+            __builtin_IB_shfl_idx4_lut(LUT), as_char##VECLENGTH(source));                                          \
+    }
+
+#define SHFLIDX_CONVERT(OUTTYPE, INTYPE, LUT, FPTYPE, FPBITLEN, I4ORF4, OUTTYPEPACKED)      \
+    OUTTYPE intel_convert_as_##I4ORF4##_##FPTYPE##_as_##OUTTYPE(INTYPE source)              \
+    {                                                                                       \
+        return __builtin_IB_shfl_idx4_to_fp##FPBITLEN(                                      \
+            __builtin_IB_shfl_idx4_lut(LUT), source);                                       \
+    }                                                                                       \
+    OUTTYPEPACKED intel_convert_as_##I4ORF4##2_##FPTYPE##2_as_##OUTTYPEPACKED##_packed(     \
+        INTYPE source)                                                                      \
+    {                                                                                       \
+        return __builtin_IB_shfl_idx4_to_fp##FPBITLEN##_packed(                             \
+            __builtin_IB_shfl_idx4_lut(LUT), source);                                       \
+    }                                                                                       \
+    SHFLIDX_CONVERT_SINGLE(                                                                 \
+        OUTTYPE, INTYPE, 2, 4, LUT, FPTYPE, FPBITLEN, I4ORF4, OUTTYPEPACKED)                \
+    SHFLIDX_CONVERT_SINGLE(                                                                 \
+        OUTTYPE, INTYPE, 4, 8, LUT, FPTYPE, FPBITLEN, I4ORF4, OUTTYPEPACKED)                \
+    SHFLIDX_CONVERT_SINGLE(                                                                 \
+        OUTTYPE, INTYPE, 8, 16, LUT, FPTYPE, FPBITLEN, I4ORF4, OUTTYPEPACKED)               \
+    SHFLIDX_CONVERT_SINGLE(                                                                 \
+        OUTTYPE, INTYPE, 16, 32, LUT, FPTYPE, FPBITLEN, I4ORF4, OUTTYPEPACKED)              \
+    OUTTYPE##3 intel_convert_as_##I4ORF4##3_##FPTYPE##3_as_##OUTTYPE##3(INTYPE##3 source)   \
+    {                                                                                       \
+        INTYPE##4 s  = (INTYPE##4)(source.x, source.y, source.z, 0);                        \
+        OUTTYPE##4 r = __builtin_IB_shfl_idx4_to_fp##FPBITLEN##_##4(                        \
+            __builtin_IB_shfl_idx4_lut(LUT), as_char4(s));                                  \
+        return r.xyz;                                                                       \
+    }                                                                                       \
+    OUTTYPEPACKED##3 intel_convert_as_##I4ORF4##6_##FPTYPE##6_as_##OUTTYPEPACKED##3_packed( \
+        INTYPE##3 source)                                                                   \
+    {                                                                                       \
+        INTYPE##4 s = (INTYPE##4)(source.x, source.y, source.z, 0);                         \
+        OUTTYPEPACKED##4 r =                                                                \
+            __builtin_IB_shfl_idx4_to_fp##FPBITLEN##_##4_packed(                            \
+                __builtin_IB_shfl_idx4_lut(LUT), as_char4(s));                              \
+        return r.xyz;                                                                       \
+    }
+
+#define SHFLIDX_CONVERT_AS_ITSELF_SINGLE(                                                                          \
+    OUTTYPE, INTYPE, VECLENGTH, PACKEDLENGTH, LUT, FPTYPE, FPBITLEN, I4ORF4, OUTTYPEPACKED)                        \
+    OUTTYPE##VECLENGTH                                                                                             \
+        intel_convert_as_##I4ORF4##VECLENGTH##_##FPTYPE##VECLENGTH(                                                \
+            INTYPE##VECLENGTH source)                                                                              \
+    {                                                                                                              \
+        return as_##OUTTYPE##VECLENGTH(                                                                            \
+            __builtin_IB_shfl_idx4_to_fp##FPBITLEN##_##VECLENGTH(                                                  \
+                __builtin_IB_shfl_idx4_lut(LUT), as_char##VECLENGTH(source)));                                     \
+    }                                                                                                              \
+    OUTTYPEPACKED##VECLENGTH                                                                                       \
+        intel_convert_as_##I4ORF4##PACKEDLENGTH##_##FPTYPE##PACKEDLENGTH##_as_##OUTTYPEPACKED##VECLENGTH##_packed( \
+            INTYPE##VECLENGTH source)                                                                              \
+    {                                                                                                              \
+        return __builtin_IB_shfl_idx4_to_fp##FPBITLEN##_##VECLENGTH##_packed( \
+            __builtin_IB_shfl_idx4_lut(LUT), as_char##VECLENGTH(source));     \
+    }
+
+#define SHFLIDX_CONVERT_AS_ITSELF(OUTTYPE, INTYPE, LUT, FPTYPE, FPBITLEN, I4ORF4, OUTTYPEPACKED) \
+    OUTTYPE intel_convert_as_##I4ORF4##_##FPTYPE(INTYPE source)                                  \
+    {                                                                                            \
+        return as_##OUTTYPE(__builtin_IB_shfl_idx4_to_fp##FPBITLEN(                              \
+            __builtin_IB_shfl_idx4_lut(LUT), source));                                           \
+    }                                                                                            \
+    OUTTYPEPACKED intel_convert_as_##I4ORF4##2_##FPTYPE##2_as_##OUTTYPEPACKED##_packed(          \
+        INTYPE source)                                                                           \
+    {                                                                                            \
+        return __builtin_IB_shfl_idx4_to_fp##FPBITLEN##_packed(                                  \
+            __builtin_IB_shfl_idx4_lut(LUT), source);                                            \
+    }                                                                                            \
+    SHFLIDX_CONVERT_AS_ITSELF_SINGLE(                                                            \
+        OUTTYPE, INTYPE, 2, 4, LUT, FPTYPE, FPBITLEN, I4ORF4, OUTTYPEPACKED)                     \
+    SHFLIDX_CONVERT_AS_ITSELF_SINGLE(                                                            \
+        OUTTYPE, INTYPE, 4, 8, LUT, FPTYPE, FPBITLEN, I4ORF4, OUTTYPEPACKED)                     \
+    SHFLIDX_CONVERT_AS_ITSELF_SINGLE(                                                            \
+        OUTTYPE, INTYPE, 8, 16, LUT, FPTYPE, FPBITLEN, I4ORF4, OUTTYPEPACKED)                    \
+    SHFLIDX_CONVERT_AS_ITSELF_SINGLE(                                                            \
+        OUTTYPE, INTYPE, 16, 32, LUT, FPTYPE, FPBITLEN, I4ORF4, OUTTYPEPACKED)                   \
+    OUTTYPE##3 intel_convert_as_##I4ORF4##3_##FPTYPE##3(INTYPE##3 source)                        \
+    {                                                                                            \
+        INTYPE##4 s  = (INTYPE##4)(source.x, source.y, source.z, 0);                             \
+        OUTTYPE##4 r =                                                                           \
+            as_##OUTTYPE##4(__builtin_IB_shfl_idx4_to_fp##FPBITLEN##_##4(                        \
+                __builtin_IB_shfl_idx4_lut(LUT), as_char4(s)));                                  \
+        return r.xyz;                                                                            \
+    }                                                                                            \
+    OUTTYPEPACKED##3 intel_convert_as_##I4ORF4##6_##FPTYPE##6_as_##OUTTYPEPACKED##3_packed(      \
+        INTYPE##3 source)                                                                        \
+    {                                                                                            \
+        INTYPE##4 s = (INTYPE##4)(source.x, source.y, source.z, 0);                              \
+        OUTTYPEPACKED##4 r =                                                                     \
+            __builtin_IB_shfl_idx4_to_fp##FPBITLEN##_##4_packed(                                 \
+                __builtin_IB_shfl_idx4_lut(LUT), as_char4(s));                                   \
+        return r.xyz;                                                                            \
+    }
+
+// int4, e2m1 -> bfloat8
+SHFLIDX_CONVERT(uchar,  char, LUT_int4_to_bfloat8, bfloat8, 8, i4,   ushort)
+SHFLIDX_CONVERT(uchar, uchar, LUT_e2m1_to_bfloat8, bfloat8, 8, e2m1, ushort)
+
+// int4, e2m1 -> Hfloat8:
+SHFLIDX_CONVERT(uchar,  char, LUT_int4_to_hfloat8, hfloat8, 8, i4,   ushort)
+SHFLIDX_CONVERT(uchar, uchar, LUT_e2m1_to_hfloat8, hfloat8, 8, e2m1, ushort)
+
+// int4, e2m1 -> Bfloat16:
+SHFLIDX_CONVERT(ushort,  char, LUT_int4_to_bfloat16, bfloat16, 16, i4,   uint)
+SHFLIDX_CONVERT(ushort, uchar, LUT_e2m1_to_bfloat16, bfloat16, 16, e2m1, uint)
+
+#ifdef cl_khr_fp16
+// int4, e2m1 -> Half:
+SHFLIDX_CONVERT_AS_ITSELF(half,  char, LUT_int4_to_hfloat16, half, 16, i4,   uint)
+SHFLIDX_CONVERT_AS_ITSELF(half, uchar, LUT_e2m1_to_hfloat16, half, 16, e2m1, uint)
+#endif // cl_khr_fp16

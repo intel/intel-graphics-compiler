@@ -8743,9 +8743,21 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_ftotf32:
     emitfcvt(inst);
     break;
+  case GenISAIntrinsic::GenISA_lfsr:
+    emitLfsr(inst);
+    break;
+  case GenISAIntrinsic::GenISA_sub_group_MaxReduce:
+    emitMaxReduce(inst);
+    break;
   case GenISAIntrinsic::GenISA_srnd_ftohf:
   case GenISAIntrinsic::GenISA_srnd_hftobf8:
+  case GenISAIntrinsic::GenISA_srnd_hftohf8:
+  case GenISAIntrinsic::GenISA_srnd_bftobf8:
+  case GenISAIntrinsic::GenISA_srnd_bftohf8:
     emitSrnd(inst);
+    break;
+  case GenISAIntrinsic::GenISA_dnscl:
+    emitDnscl(inst);
     break;
   case GenISAIntrinsic::GenISA_Int4VectorUnpack:
     emitInt4VectorUnpack(inst);
@@ -9074,6 +9086,17 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_fma_rtn:
     emitFPOWithNonDefaultRoundingMode(inst);
     break;
+  case GenISAIntrinsic::GenISA_ShflIdx4:
+  case GenISAIntrinsic::GenISA_ShflIdx4Vec:
+    emitShflIdx4(inst, false);
+    break;
+  case GenISAIntrinsic::GenISA_ShflIdx4Packed:
+  case GenISAIntrinsic::GenISA_ShflIdx4VecPacked:
+    emitShflIdx4(inst, true);
+    break;
+  case GenISAIntrinsic::GenISA_ShflIdx4Lut:
+    emitShflIdx4Lut(inst);
+    break;
   case GenISAIntrinsic::GenISA_CatchAllDebugLine:
     emitDebugPlaceholder(inst);
     break;
@@ -9095,6 +9118,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_getSyncBuffer:
   case GenISAIntrinsic::GenISA_getRtGlobalBufferPtr:
   case GenISAIntrinsic::GenISA_getAssertBufferPtr:
+  case GenISAIntrinsic::GenISA_getRegionGroupBarrierBufferPtr:
     emitImplicitArgIntrinsic(inst);
     break;
   case GenISAIntrinsic::GenISA_RayQueryCheck:
@@ -21417,6 +21441,165 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
   }
 }
 
+void EmitPass::emitLfsr(llvm::GenIntrinsicInst *GII) {
+  CVariable *dst = m_destination;
+  Value *s0 = GII->getOperand(0);
+  Value *s1 = GII->getOperand(1);
+
+  CVariable *cs0 = GetSymbol(s0);
+  CVariable *cs1 = GetSymbol(s1);
+  uint64_t funcCtrlValue = cast<ConstantInt>(GII->getOperand(2))->getZExtValue();
+  IGC_ASSERT(funcCtrlValue <= (uint64_t)LFSR_FC::B8V4);
+
+  if (!dst->IsUniform() || !cs0->IsUniform() || !cs1->IsUniform()) {
+    IGC_ASSERT(!dst->IsUniform());
+    cs0 = BroadcastIfUniform(cs0);
+    cs1 = BroadcastIfUniform(cs1);
+  }
+
+  if (dst->GetType() != ISA_TYPE_UD)
+    dst = m_currShader->BitCast(dst, ISA_TYPE_UD);
+  if (cs0->GetType() != ISA_TYPE_UD)
+    cs0 = m_currShader->BitCast(cs0, ISA_TYPE_UD);
+  if (cs1->GetType() != ISA_TYPE_UD)
+    cs1 = m_currShader->BitCast(cs1, ISA_TYPE_UD);
+
+  m_encoder->lfsr(dst, cs0, cs1, (LFSR_FC)funcCtrlValue);
+  m_encoder->Push();
+}
+
+void EmitPass::emitMaxReduce(llvm::GenIntrinsicInst *GII) {
+  constexpr unsigned RowWidth = 32;
+  constexpr unsigned InitialInputHeight = 32;
+
+  Value *inputBufferValue = GII->getOperand(0);
+  CVariable *inputBuffer = GetSymbol(inputBufferValue);
+  CVariable *outputBuffer = m_destination;
+
+  IGC_ASSERT(inputBuffer->GetSize() == 32 * 32 * 2);
+  IGC_ASSERT(outputBuffer->GetSize() == 32 * 2);
+
+  if (inputBuffer->GetType() != ISA_TYPE_UW) {
+    inputBuffer = m_currShader->GetNewAlias(inputBuffer, ISA_TYPE_UW, 0, 0);
+  }
+  if (outputBuffer->GetType() != ISA_TYPE_UW) {
+    outputBuffer = m_currShader->GetNewAlias(outputBuffer, ISA_TYPE_UW, 0, 0);
+  }
+
+  CVariable *absMask = m_currShader->ImmToVariable(0x7FFF, ISA_TYPE_UW);
+  CVariable *firstStageResultHeight16 = m_currShader->GetNewVariable(
+      RowWidth * InitialInputHeight / 2, inputBuffer->GetType(), inputBuffer->GetAlign(), CName("H16Tmp"));
+
+  // First stage - Apply AND to produce absolute value. Apply MAX to recude
+  // height 32 -> 16. Iterate by pairs of rows
+  for (unsigned baseIndex = 0; baseIndex < InitialInputHeight; baseIndex += 2) {
+    // AND
+    CVariable *rowAndResultArr[2] = {};
+    for (unsigned pairIndex = 0; pairIndex < 2; ++pairIndex) {
+      unsigned rowIndex = baseIndex + pairIndex;
+
+      rowAndResultArr[pairIndex] = m_currShader->GetNewVariable(
+          RowWidth, inputBuffer->GetType(), inputBuffer->GetAlign(), CName("Row" + std::to_string(rowIndex) + "And"));
+
+      unsigned srcOffset = rowIndex * RowWidth;
+      m_encoder->SetSrcSubReg(0, srcOffset);
+      m_encoder->SetSimdSize(SIMDMode::SIMD32);
+      m_encoder->And(rowAndResultArr[pairIndex], inputBuffer, absMask);
+    }
+    m_encoder->Push();
+
+    // MAX
+    for (unsigned pairIndex = 0; pairIndex < 2; ++pairIndex) {
+      unsigned dstOffset = ((baseIndex / 2) * RowWidth) + pairIndex;
+
+      m_encoder->SetDstSubReg(dstOffset);
+      m_encoder->SetDstRegion(2);
+
+      m_encoder->SetSrcSubReg(pairIndex, 0);  // even elements
+      m_encoder->SetSrcSubReg(!pairIndex, 1); // odd elements
+      m_encoder->SetSrcRegion(0, 2, 1, 0);
+      m_encoder->SetSrcRegion(1, 2, 1, 0);
+
+      m_encoder->SetSimdSize(SIMDMode::SIMD16);
+      m_encoder->Max(firstStageResultHeight16, rowAndResultArr[pairIndex], rowAndResultArr[pairIndex]);
+    }
+    m_encoder->Push();
+  }
+
+  // MAX reduce height 16 -> 8, 8 -> 4, 4 -> 2, 2 -> 1
+  CVariable *prevStepDst = firstStageResultHeight16;
+  for (unsigned inputHeight = InitialInputHeight / 2; inputHeight > 1; inputHeight /= 2) {
+    unsigned outputHeight = inputHeight / 2;
+
+    CVariable *nextStepDst = m_currShader->GetNewVariable(RowWidth * outputHeight, ISA_TYPE_UW, EALIGN_GRF,
+                                                          CName("H" + std::to_string(outputHeight) + "Tmp"));
+
+    // Iterate by pairs of rows
+    for (unsigned baseIndex = 0; baseIndex < inputHeight; baseIndex += 2) {
+      for (unsigned pairIndex = 0; pairIndex < 2; ++pairIndex) {
+        unsigned dstOffset = ((baseIndex / 2) * RowWidth) + pairIndex;
+        m_encoder->SetDstSubReg(dstOffset);
+        m_encoder->SetDstRegion(2);
+
+        unsigned srcOffset = (baseIndex + pairIndex) * RowWidth;
+        m_encoder->SetSrcSubReg(pairIndex, srcOffset);
+        m_encoder->SetSrcSubReg(!pairIndex, srcOffset + 16);
+
+        m_encoder->SetSimdSize(SIMDMode::SIMD16);
+        m_encoder->Max(nextStepDst, prevStepDst, prevStepDst);
+      }
+    }
+
+    prevStepDst = nextStepDst;
+  }
+  m_encoder->Push();
+
+  // Linearize - shuffle output elements into proper order
+  // Based on Vector Compiler implementation -
+  // Source/IGC/VectorCompiler/lib/BiF/Library/ML/mxfp.cpp
+  CVariable *imm1 = m_currShader->ImmToVariable(0x1, ISA_TYPE_UD);
+  CVariable *imm16 = m_currShader->ImmToVariable(0x11, ISA_TYPE_UD);
+  CVariable *immIndices = m_currShader->ImmToVariable(0xE6A2C480, ISA_TYPE_UV);
+
+  CVariable *indicesUW = m_currShader->GetNewVariable(8, ISA_TYPE_UW, EALIGN_WORD, CName("LinearizeIndicesUW"));
+  m_encoder->SetSimdSize(SIMDMode::SIMD8);
+  m_encoder->Cast(indicesUW, immIndices);
+  m_encoder->Push();
+
+  CVariable *indicesUD = m_currShader->GetNewVariable(16, ISA_TYPE_UD, EALIGN_DWORD, CName("LinearizeIndicesUD"));
+  m_encoder->SetSimdSize(SIMDMode::SIMD8);
+  m_encoder->Cast(indicesUD, indicesUW);
+  m_encoder->Push();
+
+  m_encoder->SetSimdSize(SIMDMode::SIMD8);
+  m_encoder->SetDstSubReg(8);
+  m_encoder->Add(indicesUD, indicesUD, imm1);
+  m_encoder->Push();
+
+  m_encoder->SetSimdSize(SIMDMode::SIMD16);
+  m_encoder->Mul(indicesUD, indicesUD, imm16);
+  m_encoder->Push();
+
+  CVariable *prevStepUD = m_currShader->GetNewAlias(prevStepDst, ISA_TYPE_UD, 0, 0);
+  CVariable *indicesUB = m_currShader->GetNewAlias(indicesUD, ISA_TYPE_UB, 0, 0);
+  CVariable *tmpOutput =
+      m_currShader->GetNewVariable(RowWidth, outputBuffer->GetType(), outputBuffer->GetAlign(), CName("LinearizeTmp"));
+  CVariable *tmpOutputUD = m_currShader->GetNewAlias(tmpOutput, ISA_TYPE_UD, 0, 0);
+
+  m_encoder->SetSimdSize(SIMDMode::SIMD16);
+  m_encoder->SetSrcRegion(1, 4, 1, 0);
+  m_encoder->ShflIdx4(tmpOutputUD, prevStepUD, indicesUB);
+  m_encoder->Push();
+
+  m_encoder->SetSrcRegion(0, 2, 1, 0);
+  m_encoder->SetSimdSize(SIMDMode::SIMD16);
+  m_encoder->Copy(outputBuffer, tmpOutput);
+  m_encoder->SetSrcSubReg(0, 1);
+  m_encoder->SetDstSubReg(16);
+  m_encoder->Copy(outputBuffer, tmpOutput);
+  m_encoder->Push();
+}
+
 void EmitPass::emitSrnd(llvm::GenIntrinsicInst *GII) {
   CVariable *dst = m_destination;
   CVariable *src0 = GetSymbol(GII->getOperand(0));
@@ -21430,10 +21613,13 @@ void EmitPass::emitSrnd(llvm::GenIntrinsicInst *GII) {
     if (dst->GetType() != ISA_TYPE_HF)
       dst = m_currShader->GetNewAlias(dst, ISA_TYPE_HF, 0, 0);
   }
-  if (GID == GenISAIntrinsic::GenISA_srnd_hftobf8
-  ) {
+  if (GID == GenISAIntrinsic::GenISA_srnd_hftobf8 || GID == GenISAIntrinsic::GenISA_srnd_bftobf8) {
     if (dst->GetType() != ISA_TYPE_UB) // Use UB for bf8
       dst = m_currShader->GetNewAlias(dst, ISA_TYPE_UB, 0, 0);
+  }
+  if (GID == GenISAIntrinsic::GenISA_srnd_hftohf8 || GID == GenISAIntrinsic::GenISA_srnd_bftohf8) {
+    if (dst->GetType() != ISA_TYPE_B) // Use B for hf8
+      dst = m_currShader->GetNewAlias(dst, ISA_TYPE_B, 0, 0);
   }
 
   // set src0 types
@@ -21441,10 +21627,13 @@ void EmitPass::emitSrnd(llvm::GenIntrinsicInst *GII) {
     if (src0->GetType() != ISA_TYPE_F)
       src0 = m_currShader->GetNewAlias(src0, ISA_TYPE_F, 0, 0);
   }
-  if (GID == GenISAIntrinsic::GenISA_srnd_hftobf8
-  ) {
+  if (GID == GenISAIntrinsic::GenISA_srnd_hftobf8 || GID == GenISAIntrinsic::GenISA_srnd_hftohf8) {
     if (src0->GetType() != ISA_TYPE_HF)
       src0 = m_currShader->GetNewAlias(src0, ISA_TYPE_HF, 0, 0);
+  }
+  if (GID == GenISAIntrinsic::GenISA_srnd_bftobf8 || GID == GenISAIntrinsic::GenISA_srnd_bftohf8) {
+    if (src0->GetType() != ISA_TYPE_BF)
+      src0 = m_currShader->GetNewAlias(src0, ISA_TYPE_BF, 0, 0);
   }
 
   // set src1 types
@@ -21498,6 +21687,43 @@ void EmitPass::emitSrnd(llvm::GenIntrinsicInst *GII) {
       s1Off += (src1->IsUniform() ? 1 : nsimdsize);
     }
   }
+}
+
+void EmitPass::emitDnscl(llvm::GenIntrinsicInst *GII) {
+  IGC_ASSERT(IGCLLVM::getNumArgOperands(GII) == 6);
+  Value *s0 = GII->getOperand(0);
+  Value *s1 = GII->getOperand(1);
+  Value *bias = GII->getOperand(2);
+  DNSCL_CONVERT_TYPE convType = (DNSCL_CONVERT_TYPE)cast<ConstantInt>(GII->getOperand(3))->getZExtValue();
+  DNSCL_MODE packMode = (DNSCL_MODE)cast<ConstantInt>(GII->getOperand(4))->getZExtValue();
+  DNSCL_RND_MODE roundMode = (DNSCL_RND_MODE)cast<ConstantInt>(GII->getOperand(5))->getZExtValue();
+
+  CVariable *dst = m_destination;
+  CVariable *cs0 = GetSymbol(s0);
+  CVariable *cs1 = GetSymbol(s1);
+  if (dst->GetType() == ISA_TYPE_D)
+    dst = m_currShader->BitCast(dst, ISA_TYPE_UD);
+  if (cs0->GetType() == ISA_TYPE_D)
+    cs0 = m_currShader->BitCast(cs0, ISA_TYPE_UD);
+  if (cs1->GetType() == ISA_TYPE_D)
+    cs1 = m_currShader->BitCast(cs1, ISA_TYPE_UD);
+  IGC_ASSERT(dst->GetType() == ISA_TYPE_UD);
+  IGC_ASSERT(cs0->GetType() == ISA_TYPE_UD);
+  IGC_ASSERT(cs1->GetType() == ISA_TYPE_UD);
+
+  CVariable *cbias;
+  if (roundMode == DNSCL_RND_MODE::STOCHASTIC_ROUND) {
+    cbias = GetSymbol(bias);
+    if (cbias->GetType() == ISA_TYPE_D)
+      cbias = m_currShader->BitCast(cbias, ISA_TYPE_UD);
+    IGC_ASSERT(cbias->GetType() == ISA_TYPE_UD);
+  } else {
+    // if round mode is rne then cbias should be set to V0/null variable
+    cbias = m_currShader->GetNULL();
+  }
+
+  m_encoder->emitDnscl(dst, cs0, cs1, cbias, convType, packMode, roundMode);
+  m_encoder->Push();
 }
 
 void EmitPass::emitInt4VectorUnpack(llvm::GenIntrinsicInst *GII) {
@@ -23849,6 +24075,451 @@ void EmitPass::emitCastSelect(CVariable *flag, CVariable *dst, CVariable *src0, 
   m_encoder->Cast(dst, tmpDst);
 }
 
+
+void EmitPass::emitShflIdx4(Instruction *inst, bool isPacked) {
+  if (!m_currShader->m_Platform->supportsFp4Int4Upsampling()) {
+    m_pCtx->EmitError("ShflIdx4 instruction is not supported on this platform!", inst);
+    IGC_ASSERT_MESSAGE(0, "ShflIdx4 instruction is not supported on this platform!");
+    return;
+  }
+
+  const uint16_t nsimdsize = numLanes(m_currShader->m_SIMDSize);
+
+  CVariable *src0 = GetSymbol(inst->getOperand(0));
+  CVariable *src1 = GetSymbol(inst->getOperand(1));
+  CVariable *dst = m_destination;
+
+  IGC_ASSERT_MESSAGE(src1->GetType() == ISA_TYPE_B || src1->GetType() == ISA_TYPE_UB,
+                     "src1 is expected to be have 'byte' type!");
+
+  IGC_ASSERT_MESSAGE(m_currShader->m_SIMDSize == SIMDMode::SIMD16 || m_currShader->m_SIMDSize == SIMDMode::SIMD32,
+                     "Only SIMD16 and SIMD32 supported for Shfl.Idx4 intrinsic!");
+
+  src1 = BroadcastIfUniform(src1);
+
+  IGC_ASSERT(src0->IsUniform());
+  IGC_ASSERT_MESSAGE(src1->GetNumberElement() % 4 == 0, "Number of elements for ShflIdx needs to be a multiple of 4!");
+
+  // LUT needs to have :ud type.
+  if (src0->GetType() != ISA_TYPE_UD) {
+    src0 = m_currShader->BitCast(src0, ISA_TYPE_UD);
+  }
+  if (src1->GetType() != ISA_TYPE_UB) {
+    src1 = m_currShader->BitCast(src1, ISA_TYPE_UB);
+  }
+
+  // ShflIdx4 is a SIMD16 or SIMD32 instruction. Each input byte has two 4 bit
+  // numbers. If the input is not packed, we skip every second value.
+  int numOutElementsPerShflIdx = 0;
+  const bool isByteDst = dst->GetType() == ISA_TYPE_B || dst->GetType() == ISA_TYPE_UB;
+  const bool isWordDst = dst->GetType() == ISA_TYPE_W || dst->GetType() == ISA_TYPE_UW;
+  const bool isDWordDst = dst->GetType() == ISA_TYPE_D || dst->GetType() == ISA_TYPE_UD;
+
+  if (isByteDst) {
+    IGC_ASSERT(!isPacked);
+    numOutElementsPerShflIdx = nsimdsize * 2;
+  } else if (isWordDst) {
+    numOutElementsPerShflIdx = isPacked ? nsimdsize * 2 : nsimdsize;
+  } else if (isDWordDst) {
+    IGC_ASSERT(isPacked);
+    numOutElementsPerShflIdx = nsimdsize;
+  } else {
+    IGC_ASSERT_MESSAGE(0, "Output type not supported for ShflIdx4 instruction!");
+  }
+
+  IGC_ASSERT(src1->GetNumberElement() % numOutElementsPerShflIdx == 0 ||
+             src1->GetNumberElement() == numOutElementsPerShflIdx / 2);
+
+  int numShflIdxNeeded = 0;
+  if (src1->GetNumberElement() < numOutElementsPerShflIdx) {
+    IGC_ASSERT(src1->GetNumberElement() == numOutElementsPerShflIdx / 2);
+    numShflIdxNeeded = 1;
+  } else {
+    IGC_ASSERT(src1->GetNumberElement() % numOutElementsPerShflIdx == 0);
+    numShflIdxNeeded = src1->GetNumberElement() / numOutElementsPerShflIdx;
+  }
+
+  CVariable *srcAsUw = m_currShader->BitCast(src1, ISA_TYPE_UW);
+
+  if (src1->GetNumberElement() == numOutElementsPerShflIdx / 2 && isByteDst) {
+    // clang-format off
+    // Special case for single-element char input with fp8 output.
+    // We can pack the bytes as following and still use one ShflIdx
+    // instruction:
+    // 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |:b -> ... | X 3 | X X | X 2 | X X | X 1 | X X | X 0 |:w
+    // Where X means that this byte is undefined
+    // clang-format on
+    CVariable *shflIdxDst = m_currShader->GetNewVariable(numOutElementsPerShflIdx / 2, ISA_TYPE_UD, EALIGN_GRF,
+                                                         dst->IsUniform(), "shlfIdxDst");
+    IGC_ASSERT(src1->GetNumberElement() == numOutElementsPerShflIdx ||
+               src1->GetNumberElement() == numOutElementsPerShflIdx / 2);
+
+    CVariable *shflIdxSrc1 = nullptr;
+
+    IGC_ASSERT(src1->GetNumberElement() == numOutElementsPerShflIdx / 2 && isByteDst);
+    CVariable *spread = m_currShader->GetNewVariable(src1->GetNumberElement() * 4, ISA_TYPE_UB, EALIGN_GRF,
+                                                     src1->IsUniform(), "bytesSpreadShflIdx");
+    m_encoder->SetDstRegion(4);
+    m_encoder->SetSrcRegion(0, 1, 1, 0);
+    m_encoder->Copy(spread, src1);
+    m_encoder->Push();
+    shflIdxSrc1 = m_currShader->BitCast(spread, ISA_TYPE_UW);
+
+    // Src0 is the lookup table.
+    // Set the <0;16,1> regioning,
+    // so that we don't need to copy the value in SIMD32 to two registers.
+    (m_currShader->m_SIMDSize == SIMDMode::SIMD16) ? m_encoder->SetSrcRegion(0, 1, 1, 0)
+                                                   : m_encoder->SetSrcRegion(0, 0, 16, 1);
+    m_encoder->SetSrcRegion(1, 2, 1, 0);
+    m_encoder->SetNoMask();
+    m_encoder->ShflIdx4(shflIdxDst, src0, shflIdxSrc1);
+    m_encoder->Push();
+
+    // Get rid of X.msb results and copy to destination.
+    CVariable *shflIdxDstAsOutType = m_currShader->BitCast(shflIdxDst, dst->GetType());
+    m_encoder->SetSrcRegion(0, 4, 1, 0);
+    m_encoder->SetNoMask();
+    m_encoder->Copy(dst, shflIdxDstAsOutType);
+    m_encoder->Push();
+  } else if ((isWordDst && !isPacked) || isDWordDst) {
+    IGC_ASSERT(numShflIdxNeeded == 1 || numShflIdxNeeded == 2 || numShflIdxNeeded % 4 == 0);
+    CVariable *curSrc1 = m_currShader->GetNewVariable(numOutElementsPerShflIdx * 4, ISA_TYPE_UB, EALIGN_GRF,
+                                                      src1->IsUniform(), "shlfIdxTmpSrc1");
+
+    for (int i = 0; i < numShflIdxNeeded; ++i) {
+      // Data on input is in order, eg.
+      // .. | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 :b
+      // Every byte contains to 4bit values to be converted.
+      // The regioning restriction for fp16 conversions is <4;1,0>
+      // This means that if we would take input as-is, the destination words for
+      // first ShflIdx4 would contain:
+      // ... | 8.msb | 8.lsb | 4.msb | 4.lsb | 0.msb | 0.lsb
+      // So the either input or output of the instruction needs to be
+      // re-arranged to match the order of input after conversion. The
+      // implementation takes following approach: Spread the input values
+      // accoring to the ShflIdx regioning:
+      // ... 2 | X | X | X | 1 | X | X | X | 0
+      m_encoder->SetSrcRegion(0, 1, 1, 0);
+      m_encoder->SetSrcSubReg(0, i * nsimdsize);
+      m_encoder->SetDstRegion(4);
+      m_encoder->Copy(curSrc1, src1);
+      m_encoder->Push();
+
+      CVariable *shflIdxDst = m_currShader->GetNewVariable(numOutElementsPerShflIdx, ISA_TYPE_UD, EALIGN_GRF,
+                                                           dst->IsUniform(), "shlfIdxDst");
+
+      // Set the <0;16,1> regioning for SIMD32,
+      // so that we don't need to copy the value to two registers.
+      (m_currShader->m_SIMDSize == SIMDMode::SIMD16) ? m_encoder->SetSrcRegion(0, 1, 1, 0)
+                                                     : m_encoder->SetSrcRegion(0, 0, 16, 1);
+      m_encoder->SetSrcRegion(1, 4, 1, 0);
+      m_encoder->SetNoMask();
+      m_encoder->ShflIdx4(shflIdxDst, src0, curSrc1);
+      m_encoder->Push();
+
+      if (!isPacked) {
+        // Get rid of X.msb results
+        CVariable *shflIdxDstAsWord = m_currShader->BitCast(shflIdxDst, ISA_TYPE_W);
+        m_encoder->SetSrcRegion(0, 2, 1, 0);
+        m_encoder->SetDstRegion(1);
+        m_encoder->SetDstSubReg(i * nsimdsize);
+        m_encoder->Copy(dst, shflIdxDstAsWord);
+        m_encoder->Push();
+      } else {
+        m_encoder->SetDstSubReg(i * nsimdsize);
+        m_encoder->Copy(dst, shflIdxDst);
+        m_encoder->Push();
+      }
+    }
+  } else {
+    CVariable *shflIdxDst = m_currShader->GetNewVariable(numOutElementsPerShflIdx / 2, ISA_TYPE_UD, EALIGN_GRF,
+                                                         dst->IsUniform(), "shlfIdxDst");
+
+    CVariable *curSrc1 = m_currShader->GetNewVariable(numOutElementsPerShflIdx, ISA_TYPE_UW, EALIGN_GRF,
+                                                      src1->IsUniform(), "shlfIdxTmpSrc1");
+
+    for (int i = 0; i < numShflIdxNeeded; ++i) {
+      // ShflIdx will process the input bytes with <2;1,0> regioning and
+      // :uw type, due to restrictions. For input bytes:
+      // ... | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 :b
+      // The first ShflIdx will take every second word:
+      // ... | X X | 5 4 | X X | 1 0 :w
+      // The output of the instruction is in :ud, but the bytes represent:
+      // 4.msb | 4.lsb | 1.msb | 1.lsb | 0.msb | 0.lsb :b
+      // where 0.lsb represents the FP8 number converted from 4 least
+      // significant bits of byte number 0 of input. We need to insert
+      // some mov instruction to:
+      //    1. get rid of X.msb in non-packed version.
+      //    2. order the output bytes according to the input.
+      m_encoder->SetDstRegion(2);
+      m_encoder->SetSrcSubReg(0, i * nsimdsize);
+      m_encoder->SetNoMask();
+      m_encoder->Copy(curSrc1, srcAsUw);
+      m_encoder->Push();
+
+      // Set the <0;16,1> regioning,
+      // so that we don't need to copy the value in SIMD32 to two registers.
+      (m_currShader->m_SIMDSize == SIMDMode::SIMD16) ? m_encoder->SetSrcRegion(0, 1, 1, 0)
+                                                     : m_encoder->SetSrcRegion(0, 0, 16, 1);
+
+      m_encoder->SetSrcRegion(1, 2, 1, 0);
+      m_encoder->SetNoMask();
+      m_encoder->ShflIdx4(shflIdxDst, src0, curSrc1);
+      m_encoder->Push();
+
+      // Get rid of X.msb results
+      CVariable *shflIdxDstAsDstType = m_currShader->BitCast(shflIdxDst, dst->GetType());
+      if (!isPacked) {
+        if (m_currShader->m_SIMDSize == SIMDMode::SIMD16) {
+          m_encoder->SetSrcRegion(0, 2, 1, 0);
+          m_encoder->SetDstSubReg((i % 2) * 32);
+          m_encoder->SetDstSubVar(i / 2);
+          m_encoder->SetNoMask();
+          m_encoder->Copy(dst, shflIdxDstAsDstType);
+          m_encoder->Push();
+
+          m_encoder->SetSrcRegion(0, 2, 1, 0);
+          m_encoder->SetSrcSubReg(0, 32);
+          m_encoder->SetDstSubReg((i % 2) * 32 + 16);
+          m_encoder->SetDstSubVar(i / 2);
+          m_encoder->SetNoMask();
+          m_encoder->Copy(dst, shflIdxDstAsDstType);
+          m_encoder->Push();
+        } else {
+          m_encoder->SetSrcRegion(0, 2, 1, 0);
+          m_encoder->SetSrcSubVar(0, 0);
+          m_encoder->SetDstSubVar(i);
+          m_encoder->SetNoMask();
+          m_encoder->Copy(dst, shflIdxDstAsDstType);
+          m_encoder->Push();
+
+          m_encoder->SetSrcRegion(0, 2, 1, 0);
+          m_encoder->SetSrcSubVar(0, 1);
+          m_encoder->SetDstSubReg(32);
+          m_encoder->SetDstSubVar(i);
+          m_encoder->SetNoMask();
+          m_encoder->Copy(dst, shflIdxDstAsDstType);
+          m_encoder->Push();
+        }
+      } else {
+        m_encoder->SetDstSubReg(i * 2 * nsimdsize);
+        m_encoder->SetSrcRegion(0, 1, 1, 0);
+        m_encoder->SetNoMask();
+        m_encoder->Copy(dst, shflIdxDstAsDstType);
+        m_encoder->Push();
+        if (shflIdxDstAsDstType->GetNumberElement() > nsimdsize) {
+          m_encoder->SetDstSubReg(i * 2 * nsimdsize + nsimdsize);
+          m_encoder->SetSrcSubReg(0, nsimdsize);
+          m_encoder->SetSrcRegion(0, 1, 1, 0);
+          m_encoder->SetNoMask();
+          m_encoder->Copy(dst, shflIdxDstAsDstType);
+          m_encoder->Push();
+        }
+      }
+    }
+  }
+}
+
+void EmitPass::emitShflIdx4Lut(Instruction *inst) {
+  struct Lut {
+    std::array<uint64_t, 8> packed = {};
+
+    constexpr void fill_packed(const std::array<uint32_t, 16> &values) {
+      for (size_t i = 0; i < packed.size(); i++) {
+        packed[i] = values[i * 2] | ((uint64_t)values[i * 2 + 1] << 32);
+      }
+    }
+
+    constexpr Lut(const std::array<uint16_t, 16> &values) {
+      std::array<uint32_t, 16> expanded = {};
+      for (size_t i = 0; i < expanded.size(); i++) {
+        expanded[i] = values[i] | (values[i] << 16);
+      }
+      fill_packed(expanded);
+    }
+
+    constexpr Lut(const std::array<uint8_t, 16> &values) {
+      std::array<uint32_t, 16> expanded = {};
+      for (size_t i = 0; i < expanded.size(); i++) {
+        expanded[i] = values[i] | (values[i] << 8) | (values[i] << 16) | (values[i] << 24);
+      }
+      fill_packed(expanded);
+    }
+  };
+
+  constexpr Lut lookupTables[] = {
+      // lut_int4_to_bfloat8
+      Lut(std::array<uint8_t, 16>{
+          0x00,
+          0x3C,
+          0x40,
+          0x42,
+          0x44,
+          0x45,
+          0x46,
+          0x47,
+          0xC8,
+          0xC7,
+          0xC6,
+          0xC5,
+          0xC4,
+          0xC2,
+          0xC0,
+          0xBC,
+      }),
+      // lut_e2m1_to_bfloat8
+      Lut(std::array<uint8_t, 16>{
+          0x00,
+          0x38,
+          0x3C,
+          0x3E,
+          0x40,
+          0x42,
+          0x44,
+          0x46,
+          0x80,
+          0xB8,
+          0xBC,
+          0xBE,
+          0xC0,
+          0xC2,
+          0xC4,
+          0xC6,
+      }),
+      // lut_int4_to_hfloat8
+      Lut(std::array<uint8_t, 16>{
+          0x00,
+          0x38,
+          0x40,
+          0x44,
+          0x48,
+          0x4A,
+          0x4C,
+          0x4E,
+          0xD0,
+          0xCE,
+          0xCC,
+          0xCA,
+          0xC8,
+          0xC4,
+          0xC0,
+          0xB8,
+      }),
+      // lut_e2m1_to_hfloat8
+      Lut(std::array<uint8_t, 16>{
+          0x00,
+          0x30,
+          0x38,
+          0x3C,
+          0x40,
+          0x44,
+          0x48,
+          0x4C,
+          0x80,
+          0xB0,
+          0xB8,
+          0xBC,
+          0xC0,
+          0xC4,
+          0xC8,
+          0xCC,
+      }),
+      // lut_int4_to_bfloat16
+      Lut(std::array<uint16_t, 16>{
+          0x0000,
+          0x3F80,
+          0x4000,
+          0x4040,
+          0x4080,
+          0x40A0,
+          0x40C0,
+          0x40E0,
+          0xC100,
+          0xC0E0,
+          0xC0C0,
+          0xC0A0,
+          0xC080,
+          0xC040,
+          0xC000,
+          0xBF80,
+      }),
+      // lut_e2m1_to_bfloat16
+      Lut(std::array<uint16_t, 16>{
+          0x0000,
+          0x3F00,
+          0x3F80,
+          0x3FC0,
+          0x4000,
+          0x4040,
+          0x4080,
+          0x40C0,
+          0x8000,
+          0xBF00,
+          0xBF80,
+          0xBFC0,
+          0xC000,
+          0xC040,
+          0xC080,
+          0xC0C0,
+      }),
+      // lut_int4_to_hfloat16
+      Lut(std::array<uint16_t, 16>{
+          0x0000,
+          0x3C00,
+          0x4000,
+          0x4200,
+          0x4400,
+          0x4500,
+          0x4600,
+          0x4700,
+          0xC800,
+          0xC700,
+          0xC600,
+          0xC500,
+          0xC400,
+          0xC200,
+          0xC000,
+          0xBC00,
+      }),
+      // lut_e2m1_to_hfloat16
+      Lut(std::array<uint16_t, 16>{
+          0x0000,
+          0x3800,
+          0x3C00,
+          0x3E00,
+          0x4000,
+          0x4200,
+          0x4400,
+          0x4600,
+          0x8000,
+          0xB800,
+          0xBC00,
+          0xBE00,
+          0xC000,
+          0xC200,
+          0xC400,
+          0xC600,
+      }),
+  };
+  constexpr size_t lookupTablesCount = sizeof(lookupTables) / sizeof(lookupTables[0]);
+
+  CVariable *dst64 = m_currShader->GetNewAlias(m_destination, ISA_TYPE_Q, 0, 8);
+  uint64_t lutIndex = cast<ConstantInt>(inst->getOperand(0))->getZExtValue();
+  if (lutIndex >= lookupTablesCount) {
+    std::string msg = "ShflIdx4 LUT index is out of bounds: " + std::to_string(lutIndex) +
+                      ". Lookup table count: " + std::to_string(lookupTablesCount);
+    m_pCtx->EmitError(msg.c_str(), inst);
+    return;
+  }
+  const Lut &table = lookupTables[lutIndex];
+
+  for (int i = 0; i < 8; i++) {
+    CVariable *lutImm = m_currShader->ImmToVariable(table.packed[i], ISA_TYPE_Q);
+    m_encoder->SetDstSubReg(i);
+    m_encoder->Copy(dst64, lutImm);
+  }
+  m_encoder->Push();
+}
 
 CVariable *EmitPass::getStackSizePerThread(Function *parentFunc) {
   CVariable *pSize = nullptr;

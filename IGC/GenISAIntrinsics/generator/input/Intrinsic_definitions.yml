@@ -46,6 +46,10 @@ types:
         ID: !TypeID "Vector"
         num_elements: 4
         element_type: *i32
+    - &v16_i32_ !<TypeDefinition>
+        ID: !TypeID "Vector"
+        num_elements: 16
+        element_type: *i32
     - &v2_f32_ !<TypeDefinition>
         ID: !TypeID "Vector"
         num_elements: 2
@@ -58,6 +62,10 @@ types:
         ID: !TypeID "Vector"
         num_elements: 8
         element_type: *f32
+    - &v32_i16_ !<TypeDefinition>
+        ID: !TypeID "Vector"
+        num_elements: 32
+        element_type: *i16
     - &s_i32-i32_ !<TypeDefinition>
         ID: !TypeID "Struct"
         member_types:
@@ -12367,6 +12375,290 @@ intrinsics:
         comment: "Get scratch pointer implicit argument"
         return_definition: !<ReturnDefinition>
             type_definition: *p_any_
+            comment: "result"
+        arguments: []
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_lfsr"
+        comment: "linear feedback shift register with single 32-bit seed/polynomial"
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_int
+            comment: "dst"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *any_int
+                comment: "src0 seed"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *any_int
+                comment: "src1 polynomial"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i32
+                comment: "src2 describes how src0 and src1 are interpreted0: B32 \
+                    \  - single 32-bit seed/polynomial1: B16V2 - two 16-bit seeds/polynomials\
+                    \ packed in 32 bits2: B8V4  - four 8-bit seeds/polynomials packed\
+                    \ in 32 bits"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_sub_group_MaxReduce"
+        comment: "Reduce a block of 32x32 bfloat16 to 32 values\
+            \ each with a max value from a row"
+        return_definition: !<ReturnDefinition>
+            type_definition: *i16
+            comment: "Max value from a row"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *v32_i16_
+                comment: "source - vector of 32 x i16"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_srnd_hftohf8"
+        comment: "stochastic rounding:  srnd dst  src0  src1"
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_int
+            comment: "dst: hf8. UB"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *any_float
+                comment: "src0: HF"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *any_int
+                comment: "src1: random number. UB"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i1
+                comment: "saturation (true: sat; false: no)"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_srnd_bftobf8"
+        comment: "stochastic rounding:  srnd dst  src0  src1"
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_int
+            comment: "dst: bf8. B"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *any_int
+                comment: "src0: bf16. BF"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *any_int
+                comment: "src1: random number. UB"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i1
+                comment: "saturation (true: sat; false: no)"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_srnd_bftohf8"
+        comment: "stochastic rounding:  srnd dst  src0  src1"
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_int
+            comment: "dst: hf8. B"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *any_int
+                comment: "src0: bf16. BF"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *any_int
+                comment: "src1: random number. UB"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i1
+                comment: "saturation (true: sat; false: no)"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_dnscl"
+        comment: "downconvert four fp16 numbers into four int4 numbers using RNE or\
+            \ stochastic rounding"
+        return_definition: !<ReturnDefinition>
+            type_definition: *i32
+            comment: "result values packed into 32 bits according to the packing mode\
+                \ operand"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *i32
+                comment: "src0: two 16 bit floats packed into one 32 bit int"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i32
+                comment: "src1: two 16 bit floats packed into one 32 bit int"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i32
+                comment: "src2: bias, two 16 bit random integers used for stochastic\
+                    \ rounding, ignored for RNE (round to nearest even) mode"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *i32
+                comment: "conversion type - uses DNSCL_CONVERT_TYPE enum
+                    \ 1: BFTOE2M1 - conversion from BF to E2M1 \
+                    \ 2: BFTOINT4 - conversion from BF to INT4 \
+                    \ 4: HFTOE2M1 - conversion from HF to E2M1 \
+                    \ 5: HFTOINT4 - conversion from HF to INT4"
+            - !<ArgumentDefinition>
+                name: Arg4
+                type_definition: *i32
+                comment: "packing mode - uses DNSCL_MODE enum| mode |    bits[31:28]\
+                    \  |    bits[27:24]   |    bits[23:20]  |    bits[19:16]   | \
+                    \  bits[15:12]    |   bits[11:8]     |    bits[7:4]     |    bits[0:3]\
+                    \     ||   0  |      0000b      |      0000b       |DCvt(src1\
+                    \ up-16b)|DCvt(src1 low-16b)|       0000b      |     0000b   \
+                    \     |DCvt(src0 up-16b) |DCvt(src0 low-16b)||   1  |      0000b\
+                    \      |      0000b       |DCvt(src1 up-16b)|DCvt(src0 up-16b)\
+                    \ |       0000b      |     0000b        |DCvt(src1 low-16b)|DCvt(src0\
+                    \ low-16b)||   2  |DCvt(src1 up-16b)|DCvt(src1 low-16b)|     \
+                    \ 0000b      |      0000b       |DCvt(src0 up-16b) |DCvt(src0\
+                    \ low-16b)|      0000b       |      0000b       ||   3  |DCvt(src1\
+                    \ up-16b)|DCvt(src0 up-16b) |      0000b      |      0000b   \
+                    \    |DCvt(src1 low-16b)|DCvt(src0 low-16b)|      0000b      \
+                    \ |      0000b       |*Note: DCvt means down conversion"
+            - !<ArgumentDefinition>
+                name: Arg5
+                type_definition: *i32
+                comment: "rounding mode - uses DNSCL_RND_MODE enum:0: stochastic/biased\
+                    \ rounding1: RNE - round to nearest even"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_ShflIdx4"
+        comment: "Shuffle Index4"
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_int
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *v16_i32_
+                comment: "lookup table"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i8
+                comment: "value"
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_ShflIdx4Vec"
+        comment: "Shuffle Index4"
+        return_definition: !<ReturnDefinition>
+            type_definition: *v_any_
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *v16_i32_
+                comment: "lookup table"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *v_any_
+                comment: "value"
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_ShflIdx4Packed"
+        comment: "Shuffle Index4 Packed"
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_int
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *v16_i32_
+                comment: "lookup table"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i8
+                comment: "packed value"
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_ShflIdx4VecPacked"
+        comment: "Shuffle Index4"
+        return_definition: !<ReturnDefinition>
+            type_definition: *v_any_
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *v16_i32_
+                comment: "lookup table"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *v_any_
+                comment: "packed value"
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_ShflIdx4Lut"
+        comment: "Get a lookup table to be used by Shuffle Index4 instructions"
+        return_definition: !<ReturnDefinition>
+            type_definition: *v16_i32_
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *i32
+                comment: "immediate value, enum that selects lut returned by this instruction"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_getRegionGroupBarrierBufferPtr"
+        comment: "Get region_group_barrier_buffer implicit argument"
+        return_definition: !<ReturnDefinition>
+            type_definition: *p_any_
+            comment: "result"
+        arguments: []
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_getRegionGroupSize"
+        comment: "Get region_group_size implicit argument"
+        return_definition: !<ReturnDefinition>
+            type_definition: *v_any_
+            comment: "result"
+        arguments: []
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_getRegionGroupWGCount"
+        comment: "Get region_group_wg_count implicit argument"
+        return_definition: !<ReturnDefinition>
+            type_definition: *i32
             comment: "result"
         arguments: []
         attributes:

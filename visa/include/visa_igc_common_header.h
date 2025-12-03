@@ -687,6 +687,35 @@ enum class GenPrecision : unsigned char {
   TOTAL_NUM
 };
 
+enum class LFSR_FC {
+  INVALID = -1,
+  B32 = 0,      // Single 32-bit seed/polynomial
+  B16V2 = 1,    // Two 16-bit seeds/polynomials packed in 32 bits
+  B8V4 = 2      // Four 8-bit seeds/polynomials packed in 32 bits
+};
+
+enum class DNSCL_CONVERT_TYPE {
+  INVALID = -1,
+  BFTOE2M1 = 1,  // conversion from BF to E2M1
+  BFTOINT4 = 2,  // conversion from BF to INT4
+  HFTOE2M1 = 4,  // conversion from HF to E2M1
+  HFTOINT4 = 5   // conversion from HF to INT4
+};
+
+enum class DNSCL_MODE {
+  INVALID = -1,
+  MODE0 = 0,
+  MODE1 = 1,
+  MODE2 = 2,
+  MODE3 = 3
+};
+
+enum class DNSCL_RND_MODE {
+  INVALID = -1,
+  STOCHASTIC_ROUND = 0,
+  RNE = 1
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 // Data types to support LSC load/store messages.
 //

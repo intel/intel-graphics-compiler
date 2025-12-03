@@ -240,6 +240,9 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | inline_sampler | | Implicit argument for OpenCL inline sampler in bindless addressing mode |
 | const_base | | The base address of constant buffer, or the bindless offset of constant buffer if addrmode = "bindless" |
 | global_base | | The base address of global buffer, or the bindless offset of global buffer if addrmode = "bindless" |
+| region_group_size | int32x3 | The size of a region group in each dimension, in the order of dimention X, Y, Z. |
+| region_group_wg_count | int32 | The number of work groups in a region group |
+| region_group_barrier_buffer | int64 | The address of region/subregion barrier buffer. The argument, when presents, indicates region/subregion barrier buffer is required for this kernel |
 | buffer_size | int64 | Size in bytes of corresponding buffer |
 <!--- <argument_type> ArgType -->
 

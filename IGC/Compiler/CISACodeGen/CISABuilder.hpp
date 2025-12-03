@@ -344,8 +344,12 @@ public:
   void dpas(CVariable *dst, CVariable *input, CVariable *weight, PrecisionType weight_precision, CVariable *actication,
             PrecisionType activation_precision, uint8_t systolicDepth, uint8_t repeatCount, bool IsDpasw);
   void fcvt(CVariable *dst, CVariable *src);
+  void lfsr(CVariable *dst, CVariable *src0, CVariable *src1, LFSR_FC funcCtrl);
   void srnd(CVariable *D, CVariable *S0, CVariable *R);
+  void emitDnscl(CVariable *dst, CVariable *src0, CVariable *src1, CVariable *bias, DNSCL_CONVERT_TYPE convType,
+                 DNSCL_MODE packMode, DNSCL_RND_MODE roundMode);
   void Bfn(uint8_t booleanFuncCtrl, CVariable *dst, CVariable *src0, CVariable *src1, CVariable *src2);
+  void ShflIdx4(CVariable *dst, CVariable *src0, CVariable *src1);
   void QWGather(CVariable *dst, const ResourceDescriptor &resource, CVariable *offset, unsigned elementSize,
                 unsigned numElems);
   void QWScatter(CVariable *src, const ResourceDescriptor &resource, CVariable *offset, unsigned elementSize,

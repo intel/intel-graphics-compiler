@@ -138,14 +138,21 @@ private:
   ///    __builtin_IB_srnd_ftohf_<1|2|3|4|8|16> (a,  r)
   ///    __builtin_IB_srnd_hftobf8_<1|2|3|4|8|16>(a,  r)
   bool processSrnd(CallInst &CI);
-       ///  Naming convertion of sdpas builtin
-       /// __builtin_IB_sub_group16_sdpas__<retty>_<accty>_<aty>_<bty>_<depth>_<rcount>
-       ///     retty/accty :  f|hf|bf|d
-       ///     aty/bty     :  u8|s8|bf|bf8|hf8|hf|tf32
-       ///     depth       :  16
-       ///                    (b is compressed and is the half of the depth).
-       ///     rcount      :  7-8
-       ///  Only a limited set of combination of retty/accty/aty/bty is allowed.
+  ///  Naming convertion of Lfsr (linear feedback shift register)
+  ///  __builtin_IB_lfsr_<b32|b16v2|b8v4> (seed, polynomial)
+  bool processLfsr(CallInst &CI);
+  ///  Naming convertion of dnscl
+  ///  __builtin_IB_dnscl_<bf16|hf16> (src0, src1, convert_to, mode)
+  ///  __builtin_IB_dnscl_<bf16|hf16>_srnd (src0, src1, bias, convert_to, mode)
+  bool processDnscl(CallInst &CI);
+  ///  Naming convertion of sdpas builtin
+  /// __builtin_IB_sub_group16_sdpas__<retty>_<accty>_<aty>_<bty>_<depth>_<rcount>
+  ///     retty/accty :  f|hf|bf|d
+  ///     aty/bty     :  u8|s8|bf|bf8|hf8|hf|tf32
+  ///     depth       :  16
+  ///                    (b is compressed and is the half of the depth).
+  ///     rcount      :  7-8
+  ///  Only a limited set of combination of retty/accty/aty/bty is allowed.
   bool processSdpas(CallInst &CI);
 
   ///////////////////////////////////////////////////////////////////
@@ -249,6 +256,12 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
   }
 
   if (processSrnd(CI)) {
+    return;
+  }
+  if (processLfsr(CI)) {
+    return;
+  }
+  if (processDnscl(CI)) {
     return;
   }
   // Handle bf cvt if it is.
@@ -673,8 +686,19 @@ bool DpasFuncsResolution::processSrnd(CallInst &CI) {
     if (!demangleFCvtSuffix(funcName, 0, nullptr, &VecLen, &isSat))
       return false;
     iid = GenISAIntrinsic::GenISA_srnd_hftobf8;
-  }
-  else {
+  } else if (funcName.consume_front("__builtin_IB_srnd_hftohf8_")) {
+    if (!demangleFCvtSuffix(funcName, 0, nullptr, &VecLen, &isSat))
+      return false;
+    iid = GenISAIntrinsic::GenISA_srnd_hftohf8;
+  } else if (funcName.consume_front("__builtin_IB_srnd_bftobf8_")) {
+    if (!demangleFCvtSuffix(funcName, 0, nullptr, &VecLen, &isSat))
+      return false;
+    iid = GenISAIntrinsic::GenISA_srnd_bftobf8;
+  } else if (funcName.consume_front("__builtin_IB_srnd_bftohf8_")) {
+    if (!demangleFCvtSuffix(funcName, 0, nullptr, &VecLen, &isSat))
+      return false;
+    iid = GenISAIntrinsic::GenISA_srnd_bftohf8;
+  } else {
     return false;
   }
 
@@ -714,6 +738,97 @@ bool DpasFuncsResolution::processSrnd(CallInst &CI) {
 #endif
   updateDebugLoc(&CI, srndCall);
   CI.replaceAllUsesWith(srndCall);
+  CI.eraseFromParent();
+
+  m_changed = true;
+  return true;
+}
+
+bool DpasFuncsResolution::processLfsr(CallInst &CI) {
+  Function *func = CI.getCalledFunction();
+  if (!func)
+    return false;
+
+  StringRef funcName = func->getName();
+  if (!funcName.consume_front("__builtin_IB_lfsr_"))
+    return false;
+
+  int operationMode = 0;
+  if (funcName.consume_front("b32")) {
+    operationMode = 0; // b32 - single 32-bit seed/polynomial
+  } else if (funcName.consume_front("b16v2")) {
+    operationMode = 1; // b16v2 - two 16-bit seeds/polynomials packed in 32 bits
+  } else if (funcName.consume_front("b8v4")) {
+    operationMode = 2; // b8v4 - four 8-bit seeds/polynomials packed in 32 bits
+  } else {
+    IGC_ASSERT_MESSAGE(false, "Unexpected __builtin_IB_lfsr_ mode postfix");
+    return false;
+  }
+
+  GenISAIntrinsic::ID iid = GenISAIntrinsic::GenISA_lfsr;
+  Type *int32Ty = Type::getInt32Ty(CI.getContext());
+  Value *args[3] = {CI.getArgOperand(0), CI.getArgOperand(1), ConstantInt::get(int32Ty, operationMode)};
+
+  Type *ITys[4] = {func->getReturnType(), args[0]->getType(), args[1]->getType(), int32Ty};
+  Function *lfsrFunc = GenISAIntrinsic::getDeclaration(func->getParent(), iid, ITys);
+  Instruction *lfsrCall = CallInst::Create(lfsrFunc, args, VALUE_NAME("lfsr"), &CI);
+
+  updateDebugLoc(&CI, lfsrCall);
+  CI.replaceAllUsesWith(lfsrCall);
+  CI.eraseFromParent();
+
+  m_changed = true;
+  return true;
+}
+
+bool DpasFuncsResolution::processDnscl(CallInst &CI) {
+  Function *func = CI.getCalledFunction();
+  if (!func)
+    return false;
+
+  StringRef funcName = func->getName();
+  if (!funcName.consume_front("__builtin_IB_dnscl_"))
+    return false;
+
+  bool isHalf = false;
+  if (funcName.consume_front("hf16")) {
+    isHalf = true;
+  } else if (funcName.consume_front("bf16")) {
+    isHalf = false;
+  } else {
+    IGC_ASSERT_MESSAGE(false, "Unknown dnscl builtin type");
+    return false;
+  }
+
+  bool stochastic = funcName.consume_front("_srnd");
+  if (funcName.size() > 0) {
+    IGC_ASSERT_MESSAGE(false, "Unknown postfix in dnscl builtin");
+  }
+
+  int argIndexBias = 2;
+  int argIndexConvertToType = argIndexBias + (stochastic ? 1 : 0);
+  int argIndexPackingMode = argIndexConvertToType + 1;
+
+  unsigned convertToType = (unsigned)cast<ConstantInt>(CI.getArgOperand(argIndexConvertToType))->getZExtValue();
+  unsigned fullConversionType = (isHalf ? 3 : 0) + convertToType; // convert into visa DNSCL_CONVERT_TYPE enum
+  unsigned packingMode = (unsigned)cast<ConstantInt>(CI.getArgOperand(argIndexPackingMode))->getZExtValue();
+
+  GenISAIntrinsic::ID iid = GenISAIntrinsic::GenISA_dnscl;
+  Type *int32Ty = Type::getInt32Ty(CI.getContext());
+  Value *args[6] = {
+      CI.getArgOperand(0),
+      CI.getArgOperand(1),                                                          // src0, src1
+      (stochastic ? CI.getArgOperand(argIndexBias) : ConstantInt::get(int32Ty, 0)), // bias
+      ConstantInt::get(int32Ty, fullConversionType),                                // conversion type
+      ConstantInt::get(int32Ty, packingMode),                                       // packing mode
+      ConstantInt::get(int32Ty, (stochastic ? 0 : 1))                               // rounding mode
+  };
+
+  Function *dnsclFunc = GenISAIntrinsic::getDeclaration(func->getParent(), iid);
+  Instruction *dnsclCall = CallInst::Create(dnsclFunc, args, VALUE_NAME("dnscl"), &CI);
+
+  updateDebugLoc(&CI, dnsclCall);
+  CI.replaceAllUsesWith(dnsclCall);
   CI.eraseFromParent();
 
   m_changed = true;

@@ -337,6 +337,12 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg &arg) const {
     return KernelArg::ArgType::IMPLICIT_INDIRECT_DATA_POINTER;
   case ImplicitArg::SCRATCH_POINTER:
     return KernelArg::ArgType::IMPLICIT_SCRATCH_POINTER;
+  case ImplicitArg::REGION_GROUP_SIZE:
+    return KernelArg::ArgType::IMPLICIT_REGION_GROUP_SIZE;
+  case ImplicitArg::REGION_GROUP_WG_COUNT:
+    return KernelArg::ArgType::IMPLICIT_REGION_GROUP_WG_COUNT;
+  case ImplicitArg::REGION_GROUP_BARRIER_BUFFER:
+    return KernelArg::ArgType::IMPLICIT_REGION_GROUP_BARRIER_BUFFER;
   default:
     return KernelArg::ArgType::NOT_TO_ALLOCATE;
   }
@@ -637,6 +643,9 @@ KernelArgsOrder::KernelArgsOrder(InputType layout) {
         KernelArg::ArgType::IMPLICIT_LOCAL_SIZE,
         KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN,
         KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE,
+        KernelArg::ArgType::IMPLICIT_REGION_GROUP_SIZE,
+        KernelArg::ArgType::IMPLICIT_REGION_GROUP_WG_COUNT,
+        KernelArg::ArgType::IMPLICIT_REGION_GROUP_BARRIER_BUFFER,
         KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET,
 
         KernelArg::ArgType::IMPLICIT_IMAGE_HEIGHT,
@@ -760,6 +769,9 @@ KernelArgsOrder::KernelArgsOrder(InputType layout) {
         KernelArg::ArgType::IMPLICIT_LOCAL_SIZE,
         KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN,
         KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE,
+        KernelArg::ArgType::IMPLICIT_REGION_GROUP_SIZE,
+        KernelArg::ArgType::IMPLICIT_REGION_GROUP_WG_COUNT,
+        KernelArg::ArgType::IMPLICIT_REGION_GROUP_BARRIER_BUFFER,
         KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET,
 
         KernelArg::ArgType::IMPLICIT_ARG_BUFFER,

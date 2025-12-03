@@ -15,7 +15,8 @@ typedef enum
     Device      = 1,
     Workgroup   = 2,
     Subgroup    = 3,
-    Invocation  = 4
+    Invocation  = 4,
+    Region      = 6198
 } Scope_t;
 
 typedef enum

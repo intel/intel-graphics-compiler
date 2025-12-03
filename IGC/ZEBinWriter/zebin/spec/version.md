@@ -35,7 +35,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - **Version 1.46**: Change cmake target directory from IGC/zebinlib to IGC/Libraries/zebinlib
 - **Version 1.45**: Add .text section into ELF section content.
 - **Version 1.44**: Add implicit arg for inline sampler in bindless mode.
-- **Version 1.43**: Internal changes.
+- **Version 1.43**: Add support for region_group_barrier_buffer.
 - **Version 1.42**: Enable is_ptr attribute in indirect payload arguments.
 - **Version 1.41**: Add intel_reqd_thread_group_dispatch_size to user_attributes.
 - **Version 1.40**: Add buffer_size to argument_type.
@@ -44,7 +44,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - **Version 1.37**: Specify bindless addrmode for const_base and global_base arguments.
 - **Version 1.36**: Specify values for EI_ABIVERSION field.
 - **Version 1.35**: Update eu_thread_count to be an optional attribute.
-- **Version 1.34**: Internal changes.
+- **Version 1.34**: Add support for region_group_size and region_group_wg_count.
 - **Version 1.33**: Add new enum value NT_INTELGT_PRODUCT_CONFIG to .note.intelgt.compat section.
 - **Version 1.32**: Add new enum value for VISA ABI to .note.intelgt.compat section.
 - **Version 1.31**: Add support for indirect_data_pointer and scratch_pointer.

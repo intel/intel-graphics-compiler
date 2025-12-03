@@ -675,3 +675,43 @@ DEFN_INTEL_SG_FDPAS( f16_f16_split_matrix_mad_k16, float4, int2,  int8,  fdpasw_
 DEFN_INTEL_SG_FDPAS( f16_f16_split_matrix_mad_k16, float8, int4,  int8,  fdpasw_hf_hf_8_8 )
 
 #endif // cl_intel_subgroup_split_matrix_multiply_accumulate
+INLINE uint    OVERLOADABLE intel_lfsr(uint seed, uint polynomial)       { return __builtin_IB_lfsr_b32(seed, polynomial); }
+INLINE ushort2 OVERLOADABLE intel_lfsr(ushort2 seed, ushort2 polynomial) { return as_ushort2(__builtin_IB_lfsr_b16v2(as_uint(seed), as_uint(polynomial))); }
+INLINE uchar4  OVERLOADABLE intel_lfsr(uchar4 seed, uchar4 polynomial)   { return as_uchar4(__builtin_IB_lfsr_b8v4(as_uint(seed), as_uint(polynomial))); }
+
+// dnscl bf16 -> i4/fp4
+INLINE uint intel_downscale_as_bf16_i4_mode_0(short2 s0, short2 s1)   { return __builtin_IB_dnscl_bf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_INT4, 0); }
+INLINE uint intel_downscale_as_bf16_i4_mode_1(short2 s0, short2 s1)   { return __builtin_IB_dnscl_bf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_INT4, 1); }
+INLINE uint intel_downscale_as_bf16_i4_mode_2(short2 s0, short2 s1)   { return __builtin_IB_dnscl_bf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_INT4, 2); }
+INLINE uint intel_downscale_as_bf16_i4_mode_3(short2 s0, short2 s1)   { return __builtin_IB_dnscl_bf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_INT4, 3); }
+INLINE uint intel_downscale_as_bf16_e2m1_mode_0(short2 s0, short2 s1) { return __builtin_IB_dnscl_bf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_E2M1, 0); }
+INLINE uint intel_downscale_as_bf16_e2m1_mode_1(short2 s0, short2 s1) { return __builtin_IB_dnscl_bf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_E2M1, 1); }
+INLINE uint intel_downscale_as_bf16_e2m1_mode_2(short2 s0, short2 s1) { return __builtin_IB_dnscl_bf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_E2M1, 2); }
+INLINE uint intel_downscale_as_bf16_e2m1_mode_3(short2 s0, short2 s1) { return __builtin_IB_dnscl_bf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_E2M1, 3); }
+// dnscl f16 -> i4/fp4
+INLINE uint intel_downscale_i4_mode_0(half2 s0, half2 s1)   { return __builtin_IB_dnscl_hf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_INT4, 0); }
+INLINE uint intel_downscale_i4_mode_1(half2 s0, half2 s1)   { return __builtin_IB_dnscl_hf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_INT4, 1); }
+INLINE uint intel_downscale_i4_mode_2(half2 s0, half2 s1)   { return __builtin_IB_dnscl_hf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_INT4, 2); }
+INLINE uint intel_downscale_i4_mode_3(half2 s0, half2 s1)   { return __builtin_IB_dnscl_hf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_INT4, 3); }
+INLINE uint intel_downscale_e2m1_mode_0(half2 s0, half2 s1) { return __builtin_IB_dnscl_hf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_E2M1, 0); }
+INLINE uint intel_downscale_e2m1_mode_1(half2 s0, half2 s1) { return __builtin_IB_dnscl_hf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_E2M1, 1); }
+INLINE uint intel_downscale_e2m1_mode_2(half2 s0, half2 s1) { return __builtin_IB_dnscl_hf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_E2M1, 2); }
+INLINE uint intel_downscale_e2m1_mode_3(half2 s0, half2 s1) { return __builtin_IB_dnscl_hf16(as_uint(s0), as_uint(s1), DNSCL_CONVERT_TO_E2M1, 3); }
+// dnscl bf16 -> i4/fp4 stochastic rounding
+INLINE uint intel_downscale_as_bf16_i4_mode_0_srnd(short2 s0, short2 s1, ushort2 bias)   { return __builtin_IB_dnscl_bf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_INT4, 0); }
+INLINE uint intel_downscale_as_bf16_i4_mode_1_srnd(short2 s0, short2 s1, ushort2 bias)   { return __builtin_IB_dnscl_bf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_INT4, 1); }
+INLINE uint intel_downscale_as_bf16_i4_mode_2_srnd(short2 s0, short2 s1, ushort2 bias)   { return __builtin_IB_dnscl_bf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_INT4, 2); }
+INLINE uint intel_downscale_as_bf16_i4_mode_3_srnd(short2 s0, short2 s1, ushort2 bias)   { return __builtin_IB_dnscl_bf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_INT4, 3); }
+INLINE uint intel_downscale_as_bf16_e2m1_mode_0_srnd(short2 s0, short2 s1, ushort2 bias) { return __builtin_IB_dnscl_bf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_E2M1, 0); }
+INLINE uint intel_downscale_as_bf16_e2m1_mode_1_srnd(short2 s0, short2 s1, ushort2 bias) { return __builtin_IB_dnscl_bf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_E2M1, 1); }
+INLINE uint intel_downscale_as_bf16_e2m1_mode_2_srnd(short2 s0, short2 s1, ushort2 bias) { return __builtin_IB_dnscl_bf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_E2M1, 2); }
+INLINE uint intel_downscale_as_bf16_e2m1_mode_3_srnd(short2 s0, short2 s1, ushort2 bias) { return __builtin_IB_dnscl_bf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_E2M1, 3); }
+// dnscl f16 -> i4/fp4 stochastic rounding
+INLINE uint intel_downscale_i4_mode_0_srnd(half2 s0, half2 s1, ushort2 bias)   { return __builtin_IB_dnscl_hf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_INT4, 0); }
+INLINE uint intel_downscale_i4_mode_1_srnd(half2 s0, half2 s1, ushort2 bias)   { return __builtin_IB_dnscl_hf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_INT4, 1); }
+INLINE uint intel_downscale_i4_mode_2_srnd(half2 s0, half2 s1, ushort2 bias)   { return __builtin_IB_dnscl_hf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_INT4, 2); }
+INLINE uint intel_downscale_i4_mode_3_srnd(half2 s0, half2 s1, ushort2 bias)   { return __builtin_IB_dnscl_hf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_INT4, 3); }
+INLINE uint intel_downscale_e2m1_mode_0_srnd(half2 s0, half2 s1, ushort2 bias) { return __builtin_IB_dnscl_hf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_E2M1, 0); }
+INLINE uint intel_downscale_e2m1_mode_1_srnd(half2 s0, half2 s1, ushort2 bias) { return __builtin_IB_dnscl_hf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_E2M1, 1); }
+INLINE uint intel_downscale_e2m1_mode_2_srnd(half2 s0, half2 s1, ushort2 bias) { return __builtin_IB_dnscl_hf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_E2M1, 2); }
+INLINE uint intel_downscale_e2m1_mode_3_srnd(half2 s0, half2 s1, ushort2 bias) { return __builtin_IB_dnscl_hf16_srnd(as_uint(s0), as_uint(s1), as_uint(bias), DNSCL_CONVERT_TO_E2M1, 3); }

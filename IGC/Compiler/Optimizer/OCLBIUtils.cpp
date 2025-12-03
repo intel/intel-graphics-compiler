@@ -1059,6 +1059,15 @@ public:
       createIntrinsicType(m_pCallInst, overloadTypes);
       break;
     }
+    case GenISAIntrinsic::GenISA_ShflIdx4Vec:
+    case GenISAIntrinsic::GenISA_ShflIdx4:
+    case GenISAIntrinsic::GenISA_ShflIdx4VecPacked:
+    case GenISAIntrinsic::GenISA_ShflIdx4Packed: {
+      Type *overloadTypes[] = {m_pCallInst->getCalledFunction()->getReturnType(),
+                               m_pCallInst->getArgOperand(IGCLLVM::getNumArgOperands(m_pCallInst) - 1)->getType()};
+      createIntrinsicType(m_pCallInst, overloadTypes);
+      break;
+    }
     default: {
       auto *pOverloadType = (!this->isOverloadable) ? nullptr : m_pCallInst->getArgOperand(0)->getType();
       createIntrinsicType(m_pCallInst, pOverloadType);
@@ -1886,6 +1895,51 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap *paramMap, CImagesBI::I
   m_CommandMap["__builtin_IB_dp4a_uu"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_uu, false);
   m_CommandMap["__builtin_IB_dp4a_su"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_su, false);
   m_CommandMap["__builtin_IB_dp4a_us"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_us, false);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp8"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp8_2"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4Vec, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp8_4"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4Vec, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp8_8"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4Vec, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp8_16"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4Vec, true);
+
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp16"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp16_2"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4Vec, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp16_4"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4Vec, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp16_8"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4Vec, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp16_16"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4Vec, true);
+
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp8_packed"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4Packed, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp8_2_packed"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4VecPacked, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp8_4_packed"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4VecPacked, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp8_8_packed"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4VecPacked, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp8_16_packed"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4VecPacked, true);
+
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp16_packed"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4Packed, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp16_2_packed"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4VecPacked, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp16_4_packed"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4VecPacked, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp16_8_packed"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4VecPacked, true);
+  m_CommandMap["__builtin_IB_shfl_idx4_to_fp16_16_packed"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4VecPacked, true);
+
+  m_CommandMap["__builtin_IB_shfl_idx4_lut"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ShflIdx4Lut, true);
+  m_CommandMap["__builtin_IB_sub_group_MaxReduce"] =
+      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_sub_group_MaxReduce, true);
 
   m_CommandMap["__builtin_IB_software_exception"] =
       CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_software_exception, false);

@@ -122,6 +122,8 @@ public:
   void CmpBfn(llvm::CmpInst::Predicate predicate, const SSource cmpSources[2], uint8_t booleanFuncCtrl,
               const SSource bfnSources[3], const DstModifier &modifier);
 
+  void emitShflIdx4(Instruction *inst, bool packed);
+  void emitShflIdx4Lut(Instruction *inst);
   void Mul64(CVariable *dst, CVariable *src[2], SIMDMode simdMode, bool noMask = false) const;
 
   template <int N> void Alu(e_opcode opCode, const SSource sources[N], const DstModifier &modifier);
@@ -516,6 +518,8 @@ public:
   void emitInlinedDataValue(llvm::GenIntrinsicInst *I);
   void emitDpas(llvm::GenIntrinsicInst *GII, const SSource *source, const DstModifier &modifier);
   void emitfcvt(llvm::GenIntrinsicInst *GII);
+  void emitLfsr(llvm::GenIntrinsicInst *GII);
+  void emitMaxReduce(llvm::GenIntrinsicInst *GII);
 
   void emitSystemMemoryFence(llvm::GenIntrinsicInst *I);
   void emitUrbFence();
@@ -594,6 +598,7 @@ public:
   bool forceCacheCtrl(llvm::Instruction *vectorLdStInst = nullptr);
   uint32_t totalBytesToStoreOrLoad(llvm::Instruction *vectorLdStInst);
   void emitSrnd(llvm::GenIntrinsicInst *GII);
+  void emitDnscl(llvm::GenIntrinsicInst *GII);
   void emitInt4VectorUnpack(llvm::GenIntrinsicInst *GII);
   void emitInt4VectorPack(llvm::GenIntrinsicInst *GII);
   void emitStaticConstantPatchValue(llvm::StaticConstantPatchIntrinsic *staticConstantPatch32);

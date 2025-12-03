@@ -577,6 +577,21 @@ bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg *kernelArg, uint pay
                                                      zebin::PreDefinedAttrGetter::ArgType::scratch_pointer,
                                                      payloadPosition, kernelArg->getSize());
     break;
+  case KernelArg::ArgType::IMPLICIT_REGION_GROUP_SIZE:
+    zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                                                     zebin::PreDefinedAttrGetter::ArgType::region_group_size,
+                                                     payloadPosition, kernelArg->getSize());
+    break;
+  case KernelArg::ArgType::IMPLICIT_REGION_GROUP_WG_COUNT:
+    zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                                                     zebin::PreDefinedAttrGetter::ArgType::region_group_wg_count,
+                                                     payloadPosition, kernelArg->getSize());
+    break;
+  case KernelArg::ArgType::IMPLICIT_REGION_GROUP_BARRIER_BUFFER:
+    zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                                                     zebin::PreDefinedAttrGetter::ArgType::region_group_barrier_buffer,
+                                                     payloadPosition, kernelArg->getSize());
+    break;
 
   case KernelArg::ArgType::IMPLICIT_NUM_GROUPS:
     zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,

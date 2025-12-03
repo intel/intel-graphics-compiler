@@ -4003,3 +4003,5 @@ void intel_manageable_barrier_arrive(manageable_barrier_t* BData);
 void intel_manageable_barrier_wait(manageable_barrier_t* BData);
 void intel_manageable_barrier_arrivewait(manageable_barrier_t* BData);
 void intel_manageable_barrier_arrivedrop(manageable_barrier_t* BData);
+
+void region_barrier(uint SubRegionSize);

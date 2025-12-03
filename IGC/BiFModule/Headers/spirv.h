@@ -6495,6 +6495,47 @@ float4 __attribute__((overloadable))  __spirv_RoundFToTF32INTEL(float4 x);
 float8 __attribute__((overloadable))  __spirv_RoundFToTF32INTEL(float8 x);
 float16 __attribute__((overloadable)) __spirv_RoundFToTF32INTEL(float16 x);
 
+// lfsr scalar
+char __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(char seed, char polynomial);
+short __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(short seed, short polynomial);
+int __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(int seed, int polynomial);
+long __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(long seed, long polynomial);
+// lfsr vec2
+char2 __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(char2 seed, char polynomial);
+short2 __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(short2 seed, short polynomial);
+int2 __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(int2 seed, int polynomial);
+// lfsr vec3
+char3 __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(char3 seed, char polynomial);
+short3 __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(short3 seed, short polynomial);
+int3 __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(int3 seed, int polynomial);
+// lfsr vec4
+char4 __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(char4 seed, char polynomial);
+short4 __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(short4 seed, short polynomial);
+int4 __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(int4 seed, int polynomial);
+long4 __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(long4 seed, long polynomial);
+// lfsr vec8
+char8 __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(char8 seed, char polynomial);
+short8 __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(short8 seed, short polynomial);
+int8 __attribute__((overloadable))
+    __spirv_GaloisLFSRINTEL(int8 seed, int polynomial);
+long8 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(long8 seed, long polynomial);
+
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 private
 void *__attribute__((overloadable)) __spirv_GenericCastToPtrExplicit_ToPrivate(generic char *Pointer, int Storage);
@@ -7830,6 +7871,9 @@ void __attribute__((overloadable)) __spirv_ControlBarrier(
     int Execution, int Memory, int Semantics);
 void __attribute__((overloadable))
     __spirv_MemoryBarrier(int Memory, int Semantics);
+
+void __attribute__((overloadable))
+__spirv_SubRegionControlBarrierINTEL(int Execution, int Memory, int Semantics);
 
 #ifndef NAMED_BARRIER_STRUCT_TYPE
 #define NAMED_BARRIER_STRUCT_TYPE

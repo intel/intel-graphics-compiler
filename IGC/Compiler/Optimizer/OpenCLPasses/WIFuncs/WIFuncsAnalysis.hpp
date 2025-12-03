@@ -68,6 +68,9 @@ public:
   static const llvm::StringRef GET_STAGE_IN_GRID_SIZE;
   static const llvm::StringRef GET_SYNC_BUFFER;
   static const llvm::StringRef GET_ASSERT_BUFFER;
+  static const llvm::StringRef GET_REGION_GROUP_SIZE;
+  static const llvm::StringRef GET_REGION_GROUP_WG_COUNT;
+  static const llvm::StringRef GET_REGION_GROUP_BARRIER_BUFFER;
 
 private:
   /// @brief  Function entry point.
@@ -105,6 +108,12 @@ private:
   bool m_hasAssertBuffer = false;
   /// @brief Marks whether kernel has stackcalls
   bool m_hasStackCalls = false;
+  /// @brief Marks whether region_group_size is needed by the current function
+  bool m_hasRegionGroupSize = false;
+  /// @brief Marks whether region_group_wg_count is needed by the current function
+  bool m_hasRegionGroupWGCount = false;
+  /// @brief Marks whether region_group_barrier_buffer is needed by the current function
+  bool m_hasRegionGroupBarrierBuffer = false;
 
   /// @brief MetaData utils used to generate LLVM metadata
   IGCMD::MetaDataUtils *m_pMDUtils = nullptr;

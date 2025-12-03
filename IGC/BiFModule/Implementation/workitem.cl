@@ -320,3 +320,86 @@ uint __attribute__((overloadable)) __spirv_BuiltInSubgroupLocalInvocationId()
 
     return simd_id;
 }
+
+// SYCL: get_work_group_range_in_region
+size_t OVERLOADABLE __spirv_BuiltInNumWorkgroupsInRegionGroupINTEL(int dim)
+{
+    return __builtin_IB_get_region_group_size(dim);
+}
+
+// SYCL: get_work_group_id_in_region
+size_t OVERLOADABLE __spirv_BuiltInWorkgroupIdInRegionGroupINTEL(int dim)
+{
+    return __spirv_BuiltInWorkgroupId(dim) %
+           __spirv_BuiltInNumWorkgroupsInRegionGroupINTEL(dim);
+}
+
+// SYCL: get_group_range
+size_t OVERLOADABLE __spirv_BuiltInNumRegionGroupsINTEL(int dim)
+{
+    return __spirv_BuiltInNumWorkgroups(dim) /
+           __spirv_BuiltInNumWorkgroupsInRegionGroupINTEL(dim);
+}
+
+// SYCL: get_group_id
+size_t OVERLOADABLE __spirv_BuiltInRegionGroupIdINTEL(int dim)
+{
+
+    return __spirv_BuiltInWorkgroupId(dim) /
+           __spirv_BuiltInNumWorkgroupsInRegionGroupINTEL(dim);
+}
+
+// SYCL: get_group_linear_id
+size_t OVERLOADABLE __spirv_BuiltInRegionGroupIndexINTEL()
+{
+    size_t RegionGroupIdX = __spirv_BuiltInRegionGroupIdINTEL(0);
+    size_t RegionGroupIdY = __spirv_BuiltInRegionGroupIdINTEL(1);
+    size_t RegionGroupIdZ = __spirv_BuiltInRegionGroupIdINTEL(2);
+    size_t NumRegionGroupsX = __spirv_BuiltInNumRegionGroupsINTEL(0);
+    size_t NumRegionGroupsY = __spirv_BuiltInNumRegionGroupsINTEL(1);
+
+    size_t RegionGroupIndex = NumRegionGroupsX * NumRegionGroupsY * RegionGroupIdZ +
+                            NumRegionGroupsX * RegionGroupIdY + RegionGroupIdX;
+    return RegionGroupIndex;
+}
+
+// SYCL: get_local_range
+size_t OVERLOADABLE __spirv_BuiltInRegionGroupSizeINTEL(int dim)
+{
+    return __spirv_BuiltInNumWorkgroupsInRegionGroupINTEL(dim) *
+           __spirv_BuiltInWorkgroupSize(dim);
+}
+
+// SYCL: get_local_id
+size_t OVERLOADABLE __spirv_BuiltInRegionGroupLocalInvocationIdINTEL(int dim)
+{
+    return __spirv_BuiltInWorkgroupIdInRegionGroupINTEL(dim) *
+           __spirv_BuiltInWorkgroupSize(dim) +
+           __spirv_BuiltInLocalInvocationId(dim);
+}
+
+// SYCL: get_work_group_linear_id_in_region
+size_t OVERLOADABLE __spirv_BuiltInWorkgroupIndexInRegionGroupINTEL()
+{
+    size_t WorkgroupIdX = __spirv_BuiltInWorkgroupIdInRegionGroupINTEL(0);
+    size_t WorkgroupIdY = __spirv_BuiltInWorkgroupIdInRegionGroupINTEL(1);
+    size_t WorkgroupIdZ = __spirv_BuiltInWorkgroupIdInRegionGroupINTEL(2);
+    size_t NumWorkgroupsX = __spirv_BuiltInNumWorkgroupsInRegionGroupINTEL(0);
+    size_t NumWorkgroupsY = __spirv_BuiltInNumWorkgroupsInRegionGroupINTEL(1);
+
+    size_t WorkgroupIndex = NumWorkgroupsX * NumWorkgroupsY * WorkgroupIdZ +
+                            NumWorkgroupsX * WorkgroupIdY + WorkgroupIdX;
+    return WorkgroupIndex;
+}
+
+// SYCL: get_local_linear_id
+size_t OVERLOADABLE __spirv_BuiltInRegionGroupLocalInvocationIndexINTEL()
+{
+    size_t WorkgroupId = __spirv_BuiltInWorkgroupIndexInRegionGroupINTEL();
+    size_t WorkgroupSize = __spirv_BuiltInWorkgroupSize(0) *
+                                __spirv_BuiltInWorkgroupSize(1) *
+                                __spirv_BuiltInWorkgroupSize(2);
+    size_t LocalId = __spirv_BuiltInLocalInvocationIndex();
+
+    return WorkgroupId * WorkgroupSize + LocalId;
+}

@@ -577,6 +577,12 @@ bool EstimateFunctionSize::matchImplicitArg(CallInst &CI) {
     matched = true;
   } else if (funcName.equals(GET_ASSERT_BUFFER)) {
     matched = true;
+  } else if (funcName.equals(GET_REGION_GROUP_SIZE)) {
+    matched = true;
+  } else if (funcName.equals(GET_REGION_GROUP_WG_COUNT)) {
+    matched = true;
+  } else if (funcName.equals(GET_REGION_GROUP_BARRIER_BUFFER)) {
+    matched = true;
   }
 
   if (matched && (IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) & 0x40) != 0) {

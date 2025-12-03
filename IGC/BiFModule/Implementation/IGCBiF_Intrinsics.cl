@@ -144,6 +144,9 @@ uint     __builtin_IB_get_local_id_z(void) __attribute__((const));
 uint     __builtin_IB_get_global_size(uint) __attribute__((const));
 uint     __builtin_IB_get_num_groups(uint) __attribute__((const));
 uint     __builtin_IB_get_enqueued_local_size(uint) __attribute__((const));
+uint     __builtin_IB_get_region_group_size(int dim) __attribute__((const));
+uint     __builtin_IB_get_region_group_wg_count(void) __attribute__((const));
+__global volatile uchar* __builtin_IB_get_region_group_barrier_buffer(void) __attribute__((const));
 
 // Double precision conversions
 half      __builtin_IB_ftoh_rtn(float) __attribute__((const));
@@ -991,6 +994,45 @@ global void* __builtin_IB_intel_get_rt_global_buffer();
 #endif // defined(cl_intel_pvc_rt_validation) || defined(cl_intel_rt_production)
 
 void    __builtin_IB_hdc_uncompressed_write_uchar(__global uchar *buf, uchar val);
+
+#define LUT_int4_to_bfloat8  0
+#define LUT_e2m1_to_bfloat8  1
+#define LUT_int4_to_hfloat8  2
+#define LUT_e2m1_to_hfloat8  3
+#define LUT_int4_to_bfloat16 4
+#define LUT_e2m1_to_bfloat16 5
+#define LUT_int4_to_hfloat16 6
+#define LUT_e2m1_to_hfloat16 7
+
+// converts 4 bit values on LSB of source to hf8 or bf8, depending on the lookup table provided as first argument.
+uchar   __builtin_IB_shfl_idx4_to_fp8(uint16 lut, char source) __attribute__((const));
+uchar2  __builtin_IB_shfl_idx4_to_fp8_2(uint16 lut, char2 source) __attribute__((const));
+uchar4  __builtin_IB_shfl_idx4_to_fp8_4(uint16 lut, char4 source) __attribute__((const));
+uchar8  __builtin_IB_shfl_idx4_to_fp8_8(uint16 lut, char8 source) __attribute__((const));
+uchar16 __builtin_IB_shfl_idx4_to_fp8_16(uint16 lut, char16 source) __attribute__((const));
+
+// converts 4 bit values on LSB and MSB of source to hf8 or bf8, depending on the lookup table provided as first argument.
+ushort   __builtin_IB_shfl_idx4_to_fp8_packed(uint16 lut, char source) __attribute__((const));
+ushort2  __builtin_IB_shfl_idx4_to_fp8_2_packed(uint16 lut, char2 source) __attribute__((const));
+ushort4  __builtin_IB_shfl_idx4_to_fp8_4_packed(uint16 lut, char4 source) __attribute__((const));
+ushort8  __builtin_IB_shfl_idx4_to_fp8_8_packed(uint16 lut, char8 source) __attribute__((const));
+ushort16 __builtin_IB_shfl_idx4_to_fp8_16_packed(uint16 lut, char16 source) __attribute__((const));
+
+// converts 4 bit values on LSB of source to hf16 or bf16, depending on the lookup table provided as first argument.
+ushort   __builtin_IB_shfl_idx4_to_fp16(uint16 lut, char source) __attribute__((const));
+ushort2  __builtin_IB_shfl_idx4_to_fp16_2(uint16 lut, char2 source) __attribute__((const));
+ushort4  __builtin_IB_shfl_idx4_to_fp16_4(uint16 lut, char4 source) __attribute__((const));
+ushort8  __builtin_IB_shfl_idx4_to_fp16_8(uint16 lut, char8 source) __attribute__((const));
+ushort16 __builtin_IB_shfl_idx4_to_fp16_16(uint16 lut, char16 source) __attribute__((const));
+
+// converts 4 bit values on LSB and MSB of source to hf16 or bf16, depending on the lookup table provided as first argument.
+uint   __builtin_IB_shfl_idx4_to_fp16_packed(uint16 lut, char source) __attribute__((const));
+uint2  __builtin_IB_shfl_idx4_to_fp16_2_packed(uint16 lut, char2 source) __attribute__((const));
+uint4  __builtin_IB_shfl_idx4_to_fp16_4_packed(uint16 lut, char4 source) __attribute__((const));
+uint8  __builtin_IB_shfl_idx4_to_fp16_8_packed(uint16 lut, char8 source) __attribute__((const));
+uint16 __builtin_IB_shfl_idx4_to_fp16_16_packed(uint16 lut, char16 source) __attribute__((const));
+
+uint16 __builtin_IB_shfl_idx4_lut(int lut_index) __attribute__((const));
 
 #include "IGCBiF_Intrinsics_Dpas.cl"
 #include "IGCBiF_Intrinsics_Lsc.cl"

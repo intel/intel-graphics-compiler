@@ -344,6 +344,9 @@ struct PreDefinedAttrGetter{
         inline_sampler,
         const_base,
         global_base,
+        region_group_size,
+        region_group_wg_count,
+        region_group_barrier_buffer,
         buffer_size
     };
     enum class ArgAddrMode {
@@ -508,6 +511,12 @@ struct PreDefinedAttrGetter{
             return "const_base";
         case ArgType::global_base:
             return "global_base";
+        case ArgType::region_group_size:
+            return "region_group_size";
+        case ArgType::region_group_wg_count:
+            return "region_group_wg_count";
+        case ArgType::region_group_barrier_buffer:
+            return "region_group_barrier_buffer";
         case ArgType::buffer_size:
             return "buffer_size";
         default:

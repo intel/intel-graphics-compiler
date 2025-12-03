@@ -123,6 +123,9 @@ private:
   const llvm::StringRef GET_STAGE_IN_GRID_SIZE = "__builtin_IB_get_stage_in_grid_size";
   const llvm::StringRef GET_SYNC_BUFFER = "__builtin_IB_get_sync_buffer";
   const llvm::StringRef GET_ASSERT_BUFFER = "__builtin_IB_get_assert_buffer";
+  const llvm::StringRef GET_REGION_GROUP_SIZE = "__builtin_IB_get_region_group_size";
+  const llvm::StringRef GET_REGION_GROUP_WG_COUNT = "__builtin_IB_get_region_group_wg_count";
+  const llvm::StringRef GET_REGION_GROUP_BARRIER_BUFFER = "__builtin_IB_get_region_group_barrier_buffer";
   bool HasRecursion;
   bool EnableSubroutine;
 

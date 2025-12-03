@@ -25,9 +25,11 @@ SPDX-License-Identifier: MIT
 // 2. Subgroup and Invocation --> LSC_FS_THREAD_GROUP:
 //     our HW spec doesn’t have corresponding scope for Invocation or Subgroup, hence mapping to
 //     lowest possible scope
+// 3. Region is a SW concept. There is no corresponding HW scope now. Mapping to GPU level.
 #define CONVERT_SCOPE_SPIRV_TO_VISA(scope)            \
     ((scope) == CrossDevice ? LSC_FS_GPU :            \
      (scope) == Device      ? LSC_FS_GPU :            \
+     (scope) == Region      ? LSC_FS_GPU :            \
      LSC_FS_THREAD_GROUP)
 
 // Adding scope parameter to 'MEMFENCE_IF' macro causes huge compilation time increase
@@ -126,8 +128,10 @@ static void __intel_atomic_work_item_fence( Scope_t Memory, uint Semantics )
            if (Memory == Device || Memory == CrossDevice)
            {
                __intel_memfence_handler(true, true, invalidateL1, evictL1, Memory);
-           }
-           else
+           } else if (Memory == Region)
+           {
+                __intel_memfence_handler(false, true, invalidateL1, evictL1, Memory);
+           } else
            {
                // Single workgroup executes on one DSS and shares the same L1 cache.
                // If scope doesn't reach outside of workgroup, L1 flush can be skipped.
@@ -153,11 +157,18 @@ void __attribute__((overloadable)) __spirv_ControlBarrier(int Execution, int Mem
     {
         // nothing will be emited but we need to prevent optimization splitting control flow
         __builtin_IB_sub_group_barrier();
-    }
-    else  if( Execution <= Workgroup )
+    } else if (Execution == Region)
+    {
+        region_barrier(0);
+    } else  if( Execution <= Workgroup )
     {
         __intel_workgroup_barrier(Memory, Semantics);
     }
+}
+
+void __attribute__((overloadable)) __spirv_SubRegionControlBarrierINTEL(int SubRegionSize, int Memory, int Semantics)
+{
+    region_barrier(SubRegionSize);
 }
 
 void __attribute__((overloadable)) __spirv_ControlBarrierArriveINTEL(int Execution, int Memory, int Semantics)
@@ -405,6 +416,76 @@ void __global_barrier_nonatomic()
 
 void global_barrier() {
     __global_barrier_nonatomic();
+}
+
+void region_barrier(uint SubRegionSize)
+{
+    uint regionSize = __builtin_IB_get_region_group_wg_count();
+    if (SubRegionSize == 0)
+    {
+        SubRegionSize = regionSize;
+    }
+    uint barrierOffset = 0;
+
+    uint workgroupX = __builtin_IB_get_group_id(0) % __builtin_IB_get_region_group_size(0);
+    uint workgroupY = __builtin_IB_get_group_id(1) % __builtin_IB_get_region_group_size(1);
+    uint workgroupZ = __builtin_IB_get_group_id(2) % __builtin_IB_get_region_group_size(2);
+    uint numWorkgroupsX = __builtin_IB_get_region_group_size(0);
+    uint numWorkgroupsY = __builtin_IB_get_region_group_size(1);
+    uint workgroupIDinRegion = numWorkgroupsX * numWorkgroupsY * workgroupZ +
+                               numWorkgroupsX * workgroupY + workgroupX;
+    if (SubRegionSize < regionSize)
+    {
+        uint subRegionID = workgroupIDinRegion / SubRegionSize;
+        barrierOffset += 1 + subRegionID * SubRegionSize;
+    }
+    uint regionX = __builtin_IB_get_group_id(0) / __builtin_IB_get_region_group_size(0);
+    uint regionY = __builtin_IB_get_group_id(1) / __builtin_IB_get_region_group_size(1);
+    uint regionZ = __builtin_IB_get_group_id(2) / __builtin_IB_get_region_group_size(2);
+    uint numRegionsX = __builtin_IB_get_num_groups(0) / __builtin_IB_get_region_group_size(0);
+    uint numRegionsY = __builtin_IB_get_num_groups(1) / __builtin_IB_get_region_group_size(1);
+    uint regionID = numRegionsX * numRegionsY * regionZ +
+                    numRegionsX * regionY + regionX;
+
+    // regionSize + 1 sync elements per region (1 for region barrier and regionSize for subregion barriers)
+    // 2 values per sync element
+    __global volatile int* syncBuffer = (__global volatile int*)__builtin_IB_get_region_group_barrier_buffer();
+    __global volatile int* mySync = &syncBuffer[2 * (regionID * (regionSize + 1) + barrierOffset)];
+    const uint ctr = 0, signal = 1;
+    __intel_workgroup_barrier(Region, AcquireRelease | CrossWorkgroupMemory);
+    if (__intel_is_first_work_group_item())
+    {
+        if (workgroupIDinRegion % SubRegionSize == 0)
+        {
+            while(mySync[ctr] != SubRegionSize - 1)
+            {
+                __intel_atomic_work_item_fence(Region, Acquire | CrossWorkgroupMemory);
+            }
+            mySync[signal] = 1;
+            __intel_atomic_work_item_fence(Region, Release | CrossWorkgroupMemory);
+
+            while(mySync[ctr] != 0)
+            {
+                __intel_atomic_work_item_fence(Region, Acquire | CrossWorkgroupMemory);
+            }
+            mySync[signal] = 0;
+        } else
+        {
+            __builtin_IB_atomic_inc_global_i32(&mySync[ctr]);
+            __intel_atomic_work_item_fence(Region, Release | CrossWorkgroupMemory);
+            while(mySync[signal] != 1)
+            {
+                __intel_atomic_work_item_fence(Region, Acquire | CrossWorkgroupMemory);
+            }
+            __builtin_IB_atomic_dec_global_i32(&mySync[ctr]);
+            __intel_atomic_work_item_fence(Region, Release | CrossWorkgroupMemory);
+            while(mySync[signal] != 0)
+            {
+                __intel_atomic_work_item_fence(Region, Acquire | CrossWorkgroupMemory);
+            }
+        }
+    }
+    __intel_workgroup_barrier(Region, AcquireRelease | CrossWorkgroupMemory);
 }
 
 void system_memfence(char fence_typed_memory)

@@ -1291,7 +1291,7 @@ public:
   bool supportCheckCSThreadsLimit() const { return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_HPG_CORE); }
   bool supportTriggerLargeGRFRetry() const { return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_HPG_CORE); }
   bool supports512GRFPerThread() const { return isCoreChildOf(IGFX_XE3P_CORE); }
-
+  bool supportsQuantumDispatch() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
 
   bool EnableCSWalkerPass() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
@@ -1354,6 +1354,9 @@ public:
   bool supportsReadStateInfo() const {
     return hasEfficient64bEnabled() && IGC_IS_FLAG_ENABLED(EnableReadStateToA64Read);
   }
+
+  bool supportsFp4Int4Upsampling() const { return isCoreChildOf(IGFX_XE3P_CORE); }
+
 
   bool supportsRayTracingExtendedCacheControl() const {
     return isProductChildOf(IGFX_CRI) && hasEfficient64bEnabled() &&

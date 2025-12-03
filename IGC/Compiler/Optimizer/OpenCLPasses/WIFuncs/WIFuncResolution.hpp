@@ -135,6 +135,21 @@ private:
   /// @return A value representing the assert buffer
   llvm::Value *getAssertBufferPtr(llvm::CallInst &CI);
 
+  /// @brief  Resolves get_region_group_size().
+  /// @param  CI The call instruction.
+  /// @return A value representing the region group size
+  llvm::Value *getRegionGroupSize(llvm::CallInst &CI);
+
+  /// @brief  Resolves get_region_group_wg_count().
+  /// @param  CI The call instruction.
+  /// @return A value representing the region group wg count
+  llvm::Value *getRegionGroupWGCount(llvm::CallInst &CI);
+
+  /// @brief  Resolves get_region_group_barrier_buffer().
+  /// @param  CI The call instruction.
+  /// @return A value representing the region group barrier buffer
+  llvm::Value *getRegionGroupBarrierBufferPtr(llvm::CallInst &CI);
+
   /// @brief  The implicit arguments of the current function
   ImplicitArgs m_implicitArgs;
 

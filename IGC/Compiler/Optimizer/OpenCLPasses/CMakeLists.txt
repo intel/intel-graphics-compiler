@@ -20,6 +20,7 @@ add_subdirectory(CorrectlyRoundedDivSqrt)
 add_subdirectory(DeviceEnqueueFuncs)
 add_subdirectory(DisableLoopUnrollOnRetry)
 add_subdirectory(DpasFuncs)
+add_subdirectory(BfloatBuiltins)
 add_subdirectory(BfloatFuncs)
 add_subdirectory(ErrorCheckPass)
 add_subdirectory(ExtensionFuncs)
@@ -83,6 +84,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_DeviceEnqueueFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_DisableLoopUnrollOnRetry}
     ${IGC_BUILD__SRC__OpenCLPasses_DpasFuncs}
+    ${IGC_BUILD__SRC__OpenCLPasses_BfloatBuiltins}
     ${IGC_BUILD__SRC__OpenCLPasses_BfloatFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_ErrorCheckPass}
     ${IGC_BUILD__SRC__OpenCLPasses_ExtensionFuncs}
@@ -150,6 +152,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_DeviceEnqueueFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_DisableLoopUnrollOnRetry}
     ${IGC_BUILD__HDR__OpenCLPasses_DpasFuncs}
+    ${IGC_BUILD__HDR__OpenCLPasses_BfloatBuiltins}
     ${IGC_BUILD__HDR__OpenCLPasses_BfloatFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_ErrorCheckPass}
     ${IGC_BUILD__HDR__OpenCLPasses_ExtensionFuncs}
@@ -218,6 +221,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_DeviceEnqueueFuncs
     Compiler__OpenCLPasses_DisableLoopUnrollOnRetry
     Compiler__OpenCLPasses_DpasFuncs
+    Compiler__OpenCLPasses_BfloatBuiltins
     Compiler__OpenCLPasses_BfloatFuncs
     Compiler__OpenCLPasses_ErrorCheckPass
     Compiler__OpenCLPasses_ExtensionFuncs
