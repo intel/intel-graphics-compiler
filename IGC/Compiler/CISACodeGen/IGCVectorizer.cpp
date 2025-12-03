@@ -295,7 +295,14 @@ bool isAllowedStub(Instruction *I) {
   return Result;
 }
 
-bool isSafeToVectorize(Instruction *I) {
+bool IGCVectorizer::isSafeToVectorizeSIMD32(Instruction *I) {
+  bool IsExtract = llvm::isa<ExtractElementInst>(I);
+  bool IsInsert = llvm::isa<InsertElementInst>(I);
+  bool Result = isPHISafe(I) || IsExtract || IsInsert;
+  return Result;
+}
+
+bool IGCVectorizer::isSafeToVectorizeSIMD16(Instruction *I) {
 
   bool IsExtract = llvm::isa<ExtractElementInst>(I);
   bool IsInsert = llvm::isa<InsertElementInst>(I);
@@ -321,6 +328,17 @@ bool isSafeToVectorize(Instruction *I) {
   // only Float insert elements are allowed
   Result |= IsInsert;
   return Result;
+}
+
+bool IGCVectorizer::isSafeToVectorize(Instruction *I) {
+
+  if (SIMDSize == 16)
+    return isSafeToVectorizeSIMD16(I);
+  else if (SIMDSize == 32)
+    return isSafeToVectorizeSIMD32(I);
+  else
+    IGC_ASSERT_EXIT_MESSAGE(0, "not supported simd");
+  return false;
 }
 
 bool IGCVectorizer::handleStub(VecArr &Slice) {
@@ -1400,23 +1418,22 @@ void IGCVectorizer::collectInstructionToProcess(VecArr &ToProcess, Function &F) 
   }
 }
 
-bool IGCVectorizer::checkIfSIMD16(llvm::Function &F) {
+unsigned IGCVectorizer::checkSIMD(llvm::Function &F) {
 
   MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  bool Result = false;
+  unsigned SimdSize = 0;
   if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
     IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
-    unsigned SimdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
-    Result = SimdSize == 16;
+    SimdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
   }
 
-  return Result;
+  return SimdSize;
 }
 
 bool IGCVectorizer::runOnFunction(llvm::Function &F) {
 
-  // DPAS only allowed in simd16 mode + helps to reduce untested cases
-  if (!checkIfSIMD16(F))
+  SIMDSize = checkSIMD(F);
+  if (SIMDSize == 0)
     return false;
 
   WI = &getAnalysis<WIAnalysis>();
@@ -1424,7 +1441,8 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
   M = F.getParent();
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   initializeLogFile(F);
-  PRINT_LOG_NL("vectorizer: fadd, fdiv, fptrunc");
+  PRINT_LOG_NL(" SIMD Size: " << SIMDSize);
+  PRINT_LOG_NL("vectorizer: fadd, fdiv, fptrunc, select, cmp, intrinsics, genintrinsics, simd32");
 
   VecArr ToProcess;
   // we collect operands that seem promising for vectorization
