@@ -98,6 +98,7 @@ using namespace GenISAIntrinsic;
 #define PASS_CFG_ONLY1 false
 #define PASS_ANALYSIS1 false
 IGC_INITIALIZE_PASS_BEGIN(CustomSafeOptPass, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
+IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_END(CustomSafeOptPass, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
 
 char CustomSafeOptPass::ID = 0;
@@ -113,6 +114,7 @@ STATISTIC(Stat_DiscardRemoved, "Number of insts removed in Discard Opt");
 bool CustomSafeOptPass::runOnFunction(Function &F) {
   pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   m_modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   psHasSideEffect = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_instrTypes.psHasSideEffect;
   visit(F);
   return true;
@@ -624,7 +626,7 @@ to
 % b = shr i32 %382, 3
 % 382 = shr i32 % b, % a
 */
-void CustomSafeOptPass::visitUDiv(llvm::BinaryOperator &I) {
+void CustomSafeOptPass::visitUDiv(BinaryOperator &I) {
   bool isPatternfound = false;
 
   if (TruncInst *trunc = dyn_cast<TruncInst>(I.getOperand(1))) {
@@ -647,6 +649,53 @@ void CustomSafeOptPass::visitUDiv(llvm::BinaryOperator &I) {
     Value *Shift3 = builder.CreateLShr(Shift2, Shift1);
     I.replaceAllUsesWith(Shift3);
     I.eraseFromParent();
+    return;
+  }
+
+  // CSE doesn't seem to handle udiv, so do CSE+hoist to common ancestor for udiv here
+  SmallVector<Instruction *> ToReplace;
+  for (auto u : I.getOperand(0)->users()) {
+    if (auto *userInst = dyn_cast<Instruction>(u)) {
+      if (userInst->getOpcode() == Instruction::UDiv) {
+        if (userInst != &I && userInst->getOperand(0) == I.getOperand(0) &&
+            userInst->getOperand(1) == I.getOperand(1)) {
+          if (!DT->dominates(&I, userInst)) {
+            auto *insertBlock = DT->findNearestCommonDominator(I.getParent(), userInst->getParent());
+            I.moveBefore(insertBlock->getTerminator());
+          }
+          ToReplace.push_back(userInst);
+        }
+      }
+    }
+  }
+
+  for (auto inst : ToReplace) {
+    inst->replaceAllUsesWith(&I);
+    inst->eraseFromParent();
+  }
+}
+
+void CustomSafeOptPass::visitURem(BinaryOperator &I) {
+  // CSE doesn't seem to handle urem, so do CSE+hoist to common ancestor for urem here
+  SmallVector<Instruction *> ToReplace;
+  for (auto u : I.getOperand(0)->users()) {
+    if (auto *userInst = dyn_cast<Instruction>(u)) {
+      if (userInst->getOpcode() == Instruction::URem) {
+        if (userInst != &I && userInst->getOperand(0) == I.getOperand(0) &&
+            userInst->getOperand(1) == I.getOperand(1)) {
+          if (!DT->dominates(&I, userInst)) {
+            auto *insertBlock = DT->findNearestCommonDominator(I.getParent(), userInst->getParent());
+            I.moveBefore(insertBlock->getTerminator());
+          }
+          ToReplace.push_back(userInst);
+        }
+      }
+    }
+  }
+
+  for (auto inst : ToReplace) {
+    inst->replaceAllUsesWith(&I);
+    inst->eraseFromParent();
   }
 }
 
@@ -1961,6 +2010,10 @@ void IGC::CustomSafeOptPass::visitLdRawVec(llvm::CallInst *inst) {
   if (inst->hasOneUse()) {
     if (auto EE = dyn_cast<ExtractElementInst>(inst->user_back())) {
       if (auto constIndex = dyn_cast<ConstantInt>(EE->getIndexOperand())) {
+        if (EE->getType()->getScalarSizeInBits() < 32 && !constIndex->isZero()) {
+          // Do not want to generate any unaligned ldraw instructions
+          return;
+        }
         llvm::IRBuilder<> builder(inst);
 
         llvm::SmallVector<llvm::Type *, 2> ovldtypes{

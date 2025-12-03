@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Pass.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/LoopPass.h"
@@ -37,6 +38,7 @@ public:
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<llvm::DominatorTreeWrapperPass>();
     AU.setPreservesCFG();
   }
 
@@ -46,6 +48,7 @@ public:
 
   void visitInstruction(llvm::Instruction &I);
   void visitUDiv(llvm::BinaryOperator &I);
+  void visitURem(llvm::BinaryOperator &I);
   void visitAllocaInst(llvm::AllocaInst &I);
   void visitCallInst(llvm::CallInst &C);
   void removeHftoFCast(llvm::Instruction &I);
@@ -101,6 +104,7 @@ private:
   bool psHasSideEffect;
   CodeGenContext *pContext = nullptr;
   IGC::ModuleMetaData *m_modMD = nullptr;
+  llvm::DominatorTree *DT = nullptr;
   bool lower64bto32b(llvm::BinaryOperator &AndInst);
   llvm::Value *analyzeTreeForTrunc64bto32b(const llvm::Use &OperandUse,
                                            llvm::SmallVector<llvm::BinaryOperator *, 8> &OpsToDelete);
