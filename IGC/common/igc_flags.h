@@ -180,6 +180,10 @@ DECLARE_IGC_REGKEY(bool, Enable64BMediaBlockRW, false, "Enable 64 byte wide medi
 DECLARE_IGC_REGKEY(bool, EnableUntypedSurfRWofSS, true, "Enable untyped surface RW to scratch space. XeHP A0 only.",
                    true)
 DECLARE_IGC_REGKEY(bool, GetSendAfterWriteDistance, false, "Get the after write dependence distance", true)
+DECLARE_IGC_REGKEY(bool, EnableReadStateToA64Read, false,
+                   "Instead of using Read State info to fetch surface format etc use direct A64 read of Surface state "
+                   "for Xe3P+ platforms",
+                   false)
 
 DECLARE_IGC_REGKEY(DWORD, ForceHWThreadNumberPerEU, 0, "Total HW thread number per-EU.", false)
 DECLARE_IGC_REGKEY(bool, UseMathWithLUT, false,
@@ -1066,6 +1070,7 @@ DECLARE_IGC_REGKEY(
     bool, Force32BitIntDivRemEmuSP, false,
     "Force 32-bit Int Div/Rem emulation using fp32, ignored if Force32BitIntDivRemEmu is set and actually used", true)
 DECLARE_IGC_REGKEY(bool, EnableOutOfBoundsBuiltinChecks, true, "Enable extra checks for OOB in builtins", true)
+DECLARE_IGC_REGKEY(bool, EnableNativeSinCos, true, "Enable native sin and cos", true)
 DECLARE_IGC_REGKEY(bool, EnableRecursionOpenCL, true, "Enable recursion with OpenCL user functions", false)
 DECLARE_IGC_REGKEY(bool, ForceDPEmulation, false, "Force double emulation for testing purpose", false)
 DECLARE_IGC_REGKEY(
@@ -1222,6 +1227,10 @@ DECLARE_IGC_REGKEY(DWORD, LscImmOffsVisaOpts, 0x3003E,
                    "(enables/disables immediate offsets for various address types; "
                    "see that option for semantics)",
                    true)
+DECLARE_IGC_REGKEY(bool, DisableStatefulFolding, false,
+                   "Turns off all folding for stateful messages (imm offset, scaling, and surface state idx)", false)
+DECLARE_IGC_REGKEY(bool, EnableStatefulScaleFolding, false, "Enables folding of shl into the scale of a stateful send",
+                   false)
 DECLARE_IGC_REGKEY(bool, DisableLSCForTypedUAV, false,
                    "Forces legacy HDC messages for typed UAV read/write."
                    "Temporary knob for XE2 bringup.",
@@ -1725,6 +1734,19 @@ DECLARE_IGC_REGKEY(
     true)
 DECLARE_IGC_REGKEY(bool, EnableProgrammableOffsetsMessageBitInHeader, false,
                    "Use pre-delta feature (legacy) method of passing MSB of PO messages opcode. ", false)
+DECLARE_IGC_REGKEY(bool, EnableEfficient64b, false,
+                   "Enable efficient64b feature such as new inline data and new send messages and descriptor formats, "
+                   "valid for xe3p+.",
+                   true)
+DECLARE_IGC_REGKEY(bool, EnableForcedEfficient64b, false,
+                   "Temporary regkey to be enabled when testing new cobalt features. Remove when synced with cobalt.",
+                   true)
+DECLARE_IGC_REGKEY(bool, EnableSkipUnusedColorPayload, true,
+                   "Enables skipping unused color phases of render target write.", true)
+DECLARE_IGC_REGKEY(bool, EnableResourceLoopNonUniformCmpLowerHalfDWOnly, true,
+                   "Only compare the lower half of 64-bit resource address in the resource loop. This is to assume the "
+                   "number of the resource in the heap will never exceed 2^32 limitation.",
+                   true)
 DECLARE_IGC_REGKEY(DWORD, EnableScalarPipe, 0,
                    "for scalar-pipe experiment, N specifies the number of scalar registers in Nx16 dwords", false)
 DECLARE_IGC_REGKEY(bool, OverrideCsWalkOrderEnable, false, "Enable overriding compute walker walk order", true)
@@ -1931,6 +1953,16 @@ DECLARE_IGC_REGKEY(bool, DisableInvalidateRTStackAfterLastRead, true,
                    "Disables L1 cache invalidation after the last read of the RT stack. Affects rayqueries only", true)
 DECLARE_IGC_REGKEY(bool, DisableSWSubTriangleOpacityCullingEmulation, false,
                    "Software Sub-Triangle Opacity Culling emulation", true)
+DECLARE_IGC_REGKEY(bool, DisableRayTracingExtendedCacheControl, false,
+                   "Disables the Extended Cache Control for Raytracing.", false)
+DECLARE_IGC_REGKEY(bool, DisableNewRTStackLayoutOptimization, false,
+                   "Ray Tracing New Stack Layout sync/async trace ray message optimization", false)
+DECLARE_IGC_REGKEY(bool, EnableNewBTDIndirect0DescriptorProgramming, true,
+                   "Due to Bspec error globals pointer is always shifted by 6 bits in BTDIndirect0Descriptor.\
+                                                                                 This flag enables BTDIndirect0Descriptor programming without this shift.",
+                   false)
+DECLARE_IGC_REGKEY(bool, EnableDoNotSendPayloadForCheckReleaseInEff64, true,
+                   "According to Bspec payload should not be send for RayQuery Check/Release messages.", false)
 DECLARE_IGC_REGKEY(bool, DisableWideTraceRay, false, "Disable SIMD16 style message payloads for send.rta", true)
 DECLARE_IGC_REGKEY(bool, ForceRTCheckInstanceLeafPtr, true,
                    "Check MemHit::valid before loading GeometryIndex, PrimitiveIndex, etc.", true)

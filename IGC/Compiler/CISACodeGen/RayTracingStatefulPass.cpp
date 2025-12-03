@@ -87,6 +87,15 @@ Value *getBaseSSHOffset(CodeGenContext *Ctx, RTBuilder &RTB) {
   }
 }
 
+Value *getBaseSurfaceStatePointer(CodeGenContext *Ctx, RTBuilder &RTB) {
+  {
+    Function *pFunc =
+        GenISAIntrinsic::getDeclaration(Ctx->getModule(), GenISAIntrinsic::GenISA_RuntimeValue, RTB.getInt64Ty());
+    Value *rayDispatchGlobalDataPtr =
+        RTB.CreateCall(pFunc, RTB.getInt32(Ctx->getModuleMetaData()->pushInfo.inlineRTGlobalPtrOffset));
+    return RTB.getBaseSurfaceStatePointer(rayDispatchGlobalDataPtr);
+  }
+}
 
 bool RaytracingStatefulPass::runOnFunction(Function &F) {
   CodeGenContext *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -127,7 +136,9 @@ bool RaytracingStatefulPass::runOnFunction(Function &F) {
 
     Value *BaseSSHOffset = nullptr;
 
-    {
+    if (Ctx->platform.hasEfficient64bEnabled()) {
+      BaseSSHOffset = getBaseSurfaceStatePointer(Ctx, RTB);
+    } else {
       BaseSSHOffset = getBaseSSHOffset(Ctx, RTB);
     }
 

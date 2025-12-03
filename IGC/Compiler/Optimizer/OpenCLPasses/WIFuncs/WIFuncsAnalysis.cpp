@@ -99,6 +99,15 @@ bool WIFuncsAnalysis::runOnFunction(Function &F) {
   // All OpenCL kernels receive R0 and Payload Header implicitly
   if (isEntryFunc(m_pMDUtils, &F)) {
     implicitArgs.push_back(ImplicitArg::R0);
+    bool Efficient64b = false;
+    if (m_ctx->type == ShaderType::OPENCL_SHADER) {
+      auto *Ctx = static_cast<OpenCLProgramContext *>(m_ctx);
+      Efficient64b = Ctx->m_InternalOptions.Efficient64b;
+    }
+    if (m_ctx->platform.isCoreChildOf(IGFX_XE3P_CORE) && Efficient64b) {
+      implicitArgs.push_back(ImplicitArg::INDIRECT_DATA_POINTER);
+      implicitArgs.push_back(ImplicitArg::SCRATCH_POINTER);
+    }
 
     if (RequirePayloadHeader)
       implicitArgs.push_back(PayloadHeaderType);

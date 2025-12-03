@@ -1168,6 +1168,11 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I) {
     case GenISAIntrinsic::GenISA_atomiccounterinc:
     case GenISAIntrinsic::GenISA_atomiccounterpredec:
     case GenISAIntrinsic::GenISA_ldptr:
+      if (m_Platform.hasEfficient64bEnabled()) {
+        match = MatchLoadStoreAtomicsUniformBase(I);
+        if (match)
+          break;
+      }
       if (supportsLSCImmediateGlobalBaseOffset()) {
         match = MatchImmOffsetLSC(I);
         if (match)
@@ -1179,6 +1184,11 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I) {
     case GenISAIntrinsic::GenISA_ldraw_indexed:
     case GenISAIntrinsic::GenISA_storerawvector_indexed:
     case GenISAIntrinsic::GenISA_storeraw_indexed:
+      if (m_Platform.hasEfficient64bEnabled()) {
+        match = MatchLoadStoreStatefulEff64(I);
+        if (match)
+          break;
+      }
       if (supportsLSCImmediateGlobalBaseOffset()) {
         match = MatchImmOffsetLSC(I);
         if (match)
@@ -1347,6 +1357,11 @@ void CodeGenPatternMatch::visitIntrinsicInst(llvm::IntrinsicInst &I) {
 
 void CodeGenPatternMatch::visitStoreInst(StoreInst &I) {
   bool match = false;
+  if (m_Platform.hasEfficient64bEnabled()) {
+    match = MatchLoadStoreAtomicsUniformBase(I);
+    if (match)
+      return;
+  }
   if (supportsLSCImmediateGlobalBaseOffset()) {
     match = MatchImmOffsetLSC(I);
     if (match)
@@ -1358,6 +1373,11 @@ void CodeGenPatternMatch::visitStoreInst(StoreInst &I) {
 
 void CodeGenPatternMatch::visitLoadInst(LoadInst &I) {
   bool match = false;
+  if (m_Platform.hasEfficient64bEnabled()) {
+    match = MatchLoadStoreAtomicsUniformBase(I);
+    if (match)
+      return;
+  }
   if (supportsLSCImmediateGlobalBaseOffset()) {
     match = MatchImmOffsetLSC(I);
     if (match)
@@ -2779,6 +2799,8 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
     case GenISAIntrinsic::GenISA_storerawvector_indexed:
     case GenISAIntrinsic::GenISA_storeraw_indexed:
       addrOpnd = 1;
+      if (IGC_IS_FLAG_ENABLED(DisableStatefulFolding))
+        return false;
       break;
       // return false;
     // TODO: are these even reachable here???
@@ -2823,6 +2845,353 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
   }
 
   return false;
+}
+// Pattern match to handle efficient 64 bit messages.
+// It searches for uniform base variable that can be used in scalar register (s0)
+// and scale factors.
+// Example, where %testOutputPointer is uniform:
+//   %0 = ptrtoint float addrspace(1)* %testOutputPointer to i64
+//   %1 = shl nsw i64 %idxprom, 2
+//   %2 = add i64 %1, %0
+//   %3 = inttoptr i64 %2 to float addrspace(1)*
+//   %4 = load float, float addrspace(1)* %3, align 4
+//   %mul = fmul float %4, %4
+//   store float %mul, float addrspace(1)* %3, align 4
+//
+// This should be eventually matched to vISA where the uniform pointer is put
+// in the "global offset" operand (aka surface index), and we will get the scale from shl inst.
+//   e.g. load will look like:
+//   lsc_load.ugm (M1, 16)  V0033:d32 flat(testOutputPointer_0)[0x4*V0032]:a64
+//
+// With this pattern applied we can get rid of additional add instruction that sums the
+// uniform base (%testOutputPointer) with offset - derived from %idxprom in above example
+// as well as shl instruction that scaled the pointer to type width in bytes.
+bool CodeGenPatternMatch::MatchLoadStoreAtomicsUniformBase(llvm::Instruction &I) {
+  using namespace llvm;
+  using namespace llvm::PatternMatch;
+
+  struct LSCUniformBasePattern : public Pattern {
+    explicit LSCUniformBasePattern(Instruction *I, llvm::Value *uniformBase, llvm::Value *varOffset,
+                                   llvm::ConstantInt *immOffset, llvm::ConstantInt *scale, bool signExtendOffset,
+                                   bool zeroExtendOffset)
+        : m_inst(I), m_uniformBase(uniformBase), m_varOffset(varOffset), m_immOffset(immOffset), m_scale(scale),
+          m_signExtendOffset(signExtendOffset), m_zeroExtendOffset(zeroExtendOffset) {}
+
+    virtual void Emit(EmitPass *pass, const DstModifier &modifier) {
+      if (isa<LoadInst>(m_inst)) {
+        pass->emitLoad(cast<LoadInst>(m_inst), m_varOffset, m_immOffset, m_scale, false /*flipVarOffsetSign*/,
+                       m_uniformBase, m_signExtendOffset, m_zeroExtendOffset);
+      } else if (isa<StoreInst>(m_inst)) {
+        pass->emitStore(cast<StoreInst>(m_inst), m_varOffset, m_immOffset, m_scale, false /*flipVarOffsetSign*/,
+                        m_uniformBase, m_signExtendOffset, m_zeroExtendOffset);
+      } else if (isa<GenIntrinsicInst>(m_inst)) {
+        pass->emitAtomicRaw(cast<GenIntrinsicInst>(m_inst), m_varOffset, m_immOffset, m_scale,
+                            false /*flipVarOffsetSign*/, m_uniformBase, m_signExtendOffset, m_zeroExtendOffset);
+      } else {
+        IGC_ASSERT_MESSAGE(0, "Expected load, store or atomic instruction!");
+      }
+    }
+
+  private:
+    llvm::Instruction *m_inst;
+    llvm::Value *m_uniformBase;
+    llvm::Value *m_varOffset;
+    llvm::ConstantInt *m_immOffset;
+    llvm::ConstantInt *m_scale;
+    bool m_signExtendOffset;
+    bool m_zeroExtendOffset;
+  }; // LSCLoadStoreUniformBasePattern
+
+  Value *Base = nullptr;
+  Value *Offset = nullptr;
+  ConstantInt *ImmOffset = nullptr;
+  Value *PointerOperand = nullptr;
+  ConstantInt *Scale = nullptr;
+  Value *NotScaledOffset = nullptr;
+  llvm::Align InstAlign = llvm::Align(1);
+  llvm::Align DataAlign = llvm::Align(1);
+  unsigned DataSizeInBytes = 0;
+  bool IsScalar = true;
+
+  if (GenIntrinsicInst *GII = llvm::dyn_cast<GenIntrinsicInst>(&I)) {
+    switch (GII->getIntrinsicID()) {
+    case GenISAIntrinsic::GenISA_intatomicrawA64:
+    case GenISAIntrinsic::GenISA_floatatomicrawA64:
+      PointerOperand = GII->getOperand(1);
+      // For atomic operations, address needs to be aligned to data size.
+      DataAlign = IGCLLVM::getABITypeAlign(I.getModule()->getDataLayout(), I.getType());
+      InstAlign = DataAlign;
+      DataSizeInBytes = I.getType()->getPrimitiveSizeInBits() / 8;
+      break;
+    default:
+      return false;
+    }
+  } else if (auto LI = dyn_cast<LoadInst>(&I)) {
+    PointerOperand = LI->getPointerOperand();
+    InstAlign = IGCLLVM::getAlign(*LI);
+    DataAlign = IGCLLVM::getABITypeAlign(LI->getModule()->getDataLayout(), LI->getType());
+    IsScalar = !LI->getType()->isVectorTy();
+    DataSizeInBytes = LI->getType()->getPrimitiveSizeInBits() / 8;
+
+  } else if (auto SI = dyn_cast<StoreInst>(&I)) {
+    PointerOperand = SI->getPointerOperand();
+    InstAlign = IGCLLVM::getAlign(*SI);
+    DataAlign = IGCLLVM::getABITypeAlign(SI->getModule()->getDataLayout(), SI->getValueOperand()->getType());
+    IsScalar = !SI->getValueOperand()->getType()->isVectorTy();
+    DataSizeInBytes = SI->getValueOperand()->getType()->getPrimitiveSizeInBits() / 8;
+  } else {
+    IGC_ASSERT_MESSAGE(0, "Expected load, store or atomic instruction!");
+    return false;
+  }
+
+  // Base address must be data element aligned for non-scalar types, except for D16 type.
+  bool NeedsToBeDataAligned = !IsScalar;
+  if (DataSizeInBytes == 2 && IsScalar && (m_Platform.GetProductFamily() == IGFX_CRI)) {
+    NeedsToBeDataAligned = true;
+  }
+  if (NeedsToBeDataAligned) {
+    if ((IGCLLVM::getAlignmentValue(InstAlign) % IGCLLVM::getAlignmentValue(DataAlign)) != 0)
+      return false;
+  }
+
+  // Skip private address space instructions that use scratch memory,
+  // as they will use stateful message, where the uniform base can't be
+  // applied.
+  if (PointerOperand->getType()->getPointerAddressSpace() == ADDRESS_SPACE_PRIVATE &&
+      m_ctx->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory) {
+    return false;
+  }
+
+  bool isA64AddressingModel = IGC::isA64Ptr(cast<PointerType>(PointerOperand->getType()), m_ctx);
+
+  if (!isa<IntToPtrInst>(PointerOperand))
+    return false;
+  auto IntToPtr = cast<IntToPtrInst>(PointerOperand);
+
+  auto PatternAdd = m_c_Add(m_Value(Base), m_Value(Offset));
+  auto ScalePattern = m_Shl(m_Value(NotScaledOffset), m_ConstantInt(Scale));
+
+  if (!match(IntToPtr->getOperand(0), PatternAdd))
+    return false;
+
+  if (isa<ConstantInt>(Base) || isa<ConstantInt>(Offset)) {
+    if (!supportsLSCImmediateGlobalBaseOffset())
+      return false;
+    IGC_ASSERT_MESSAGE(!(isa<ConstantInt>(Base) && isa<ConstantInt>(Offset)),
+                       "Constants should have been folded earlier!");
+    if (isa<ConstantInt>(Base)) {
+      std::swap(Base, Offset);
+    }
+    ImmOffset = cast<ConstantInt>(Offset);
+    if (!match(Base, PatternAdd))
+      return false;
+  }
+
+  if (!m_WI->isUniform(Base) && !m_WI->isUniform(Offset))
+    return false;
+
+  // We match add in either order, uniform needs to be in the Base
+  // variable.
+  if (!m_WI->isUniform(Base) && m_WI->isUniform(Offset)) {
+    std::swap(Base, Offset);
+  }
+
+  if (m_WI->isUniform(Base) && m_WI->isUniform(Offset)) {
+    if (match(Base, ScalePattern)) {
+      std::swap(Base, Offset);
+    }
+  }
+
+  // Check if the offset is scaled.
+  if (match(Offset, ScalePattern)) {
+    auto ScaleImm = 1ll << Scale->getSExtValue();
+    if (DataSizeInBytes == ScaleImm) {
+      Offset = NotScaledOffset;
+      Scale = ConstantInt::get(Scale->getType(), ScaleImm);
+    } else {
+      Scale = nullptr;
+    }
+  }
+
+  bool signExtendOffset = false;
+  bool zeroExtendOffset = false;
+  if (auto OffsetInst = dyn_cast<Instruction>(Offset)) {
+    if ((OffsetInst->getOpcode() == Instruction::SExt || OffsetInst->getOpcode() == Instruction::ZExt) &&
+        OffsetInst->getType()->isIntegerTy(64) && OffsetInst->getOperand(0)->getType()->isIntegerTy(32)) {
+
+      Offset = OffsetInst->getOperand(0);
+      if (OffsetInst->getOpcode() == Instruction::SExt) {
+        signExtendOffset = true;
+      } else if (OffsetInst->getOpcode() == Instruction::ZExt) {
+        zeroExtendOffset = true;
+      }
+    }
+  }
+
+  if (ImmOffset) {
+    bool disableA32ImmediateGlobalBaseOffset =
+        !isFoldableToVarAndImmOffset(Base, *m_ctx, isA64AddressingModel, AC, IntToPtr);
+
+    if (disableA32ImmediateGlobalBaseOffset)
+      return false;
+  }
+
+  LSCUniformBasePattern *pattern =
+      new (m_allocator) LSCUniformBasePattern(&I, Base, Offset, ImmOffset, Scale, signExtendOffset, zeroExtendOffset);
+
+  MarkAsSource(Base, IsSourceOfSample(&I));
+  MarkAsSource(Offset, IsSourceOfSample(&I));
+  if (ImmOffset) {
+    MarkAsSource(ImmOffset, IsSourceOfSample(&I));
+  }
+  if (isa<StoreInst>(I)) {
+    MarkAsSource(cast<StoreInst>(I).getValueOperand(), IsSourceOfSample(&I));
+  } else if (auto GII = llvm::dyn_cast<GenIntrinsicInst>(&I)) {
+    for (unsigned i = 0; i < GII->getNumOperands(); ++i) {
+      // Operand 1 ommitted as it was the pointer that we
+      // matched against above.
+      // If any operand is equal to the pointer operand, it is
+      // not marked as a source as well, as it is usually the case in
+      // atomic instruction calls.
+      if (GII->getOperand(i) == GII->getOperand(1))
+        continue;
+
+      MarkAsSource(GII->getOperand(i), IsSourceOfSample(&I));
+    }
+  }
+  AddPattern(pattern);
+  return true;
+}
+
+std::optional<std::pair<Value *, unsigned>> CodeGenPatternMatch::matchSurfaceStateIndex(Value *resourcePtr) {
+  if (IGC_IS_FLAG_ENABLED(DisableStatefulFolding))
+    return {};
+  using namespace llvm::PatternMatch;
+  Value *TmpBase = nullptr;
+  ConstantInt *SurfaceOffset = nullptr;
+  if (match(resourcePtr, m_IntToPtr(m_c_Add(m_Value(TmpBase), m_ConstantInt(SurfaceOffset))))) {
+    unsigned SurfaceStateSize = m_Platform.getSurfaceStateSize();
+    uint64_t Offset = SurfaceOffset->getZExtValue();
+    if (Offset % SurfaceStateSize == 0) {
+      uint64_t Idx = Offset / SurfaceStateSize;
+      if (TmpBase->getType()->getPrimitiveSizeInBits() == 64 &&
+          // vISA has emulation for larger indices, but let's
+          // just not waste time emulating it.
+          Idx < 32) {
+        return std::make_pair(TmpBase, unsigned(Idx));
+      }
+    }
+  }
+  return {};
+}
+
+bool CodeGenPatternMatch::MatchLoadStoreStatefulEff64(Instruction &I) {
+  if (IGC_IS_FLAG_ENABLED(DisableStatefulFolding))
+    return false;
+
+  using namespace llvm::PatternMatch;
+
+  struct LSCStatefulPattern : public Pattern {
+    explicit LSCStatefulPattern(Instruction *I, Value *VarOffset, ConstantInt *ImmScale, ConstantInt *ImmOffset,
+                                bool flipVarOffsetSign)
+        : I(I), VarOffset(VarOffset), ImmScale(ImmScale), ImmOffset(ImmOffset), FlipVarOffsetSign(flipVarOffsetSign) {}
+
+    void Emit(EmitPass *pass, const DstModifier & /* modifier */) override {
+      if (auto *LRI = dyn_cast<LdRawIntrinsic>(I)) {
+        pass->emitLoadRawIndexed(LRI, VarOffset, ImmScale, ImmOffset, FlipVarOffsetSign);
+      } else if (auto *SRI = dyn_cast<StoreRawIntrinsic>(I)) {
+        pass->emitStoreRawIndexed(SRI, VarOffset, ImmScale, ImmOffset, FlipVarOffsetSign);
+      } else {
+        IGC_ASSERT_MESSAGE(false, "unmatched pattern");
+      }
+    }
+
+  private:
+    Instruction *I;
+    Value *VarOffset;
+    ConstantInt *ImmScale;
+    ConstantInt *ImmOffset;
+    bool FlipVarOffsetSign = false;
+  };
+
+  // TODO: handle the subspan destination case in EmitPass::emitLSCVectorLoad().
+  // It will AND off the lowers bits, need to unfold the match.
+  if (m_ctx->type == ShaderType::PIXEL_SHADER)
+    return false;
+
+  Type *DataTy = nullptr;
+
+  Value *Base = nullptr;
+  Value *VarOffset = nullptr;
+
+  if (auto *GII = dyn_cast<GenIntrinsicInst>(&I)) {
+    switch (GII->getIntrinsicID()) {
+    case GenISAIntrinsic::GenISA_ldraw_indexed:
+    case GenISAIntrinsic::GenISA_ldrawvector_indexed: {
+      auto *LRI = cast<LdRawIntrinsic>(GII);
+      Base = LRI->getResourceValue();
+      VarOffset = LRI->getOffsetValue();
+      DataTy = LRI->getType();
+      break;
+    }
+    case GenISAIntrinsic::GenISA_storeraw_indexed:
+    case GenISAIntrinsic::GenISA_storerawvector_indexed: {
+      auto *SRI = cast<StoreRawIntrinsic>(GII);
+      Base = SRI->getResourceValue();
+      VarOffset = SRI->getOffsetValue();
+      DataTy = SRI->getStoreValue()->getType();
+      break;
+    }
+    default:
+      return false;
+    }
+  } else {
+    IGC_ASSERT_MESSAGE(0, "Unexpected instruction!");
+    return false;
+  }
+
+  if (!DataTy->isSingleValueType())
+    return false;
+
+  ConstantInt *Scale = nullptr;
+  ConstantInt *ImmOffset = nullptr;
+  bool flipVarOffsetSign = false;
+  {
+    auto [VarBase, negVarOffset, ConstOffset] = GetVarAndImmOffset(VarOffset, *m_ctx, AC);
+    if (VarBase && ConstOffset) {
+      VarOffset = VarBase;
+      ImmOffset = ConstOffset;
+      flipVarOffsetSign = negVarOffset;
+    }
+  }
+
+  if (m_Platform.supportStatefulScaleFolding()) {
+    Value *NotScaledOffset = nullptr;
+    // Check if the offset is scaled.
+    if (match(VarOffset, m_Shl(m_Value(NotScaledOffset), m_ConstantInt(Scale)))) {
+      const DataLayout &DL = I.getModule()->getDataLayout();
+      int64_t ScaleImm = 1ll << Scale->getSExtValue();
+      unsigned DataSizeInBytes = DL.getTypeSizeInBits(DataTy) / 8;
+      if (DataSizeInBytes == ScaleImm) {
+        VarOffset = NotScaledOffset;
+        Scale = ConstantInt::get(Scale->getType(), ScaleImm);
+      } else {
+        Scale = nullptr;
+      }
+    }
+  }
+
+  auto *Pattern = new (m_allocator) LSCStatefulPattern(&I, VarOffset, Scale, ImmOffset, flipVarOffsetSign);
+
+  if (auto SurfaceStateIndex = matchSurfaceStateIndex(Base))
+    MarkAsSource(SurfaceStateIndex->first, IsSourceOfSample(&I));
+  else
+    MarkAsSource(Base, IsSourceOfSample(&I));
+  MarkAsSource(VarOffset, IsSourceOfSample(&I));
+  if (auto *SRI = dyn_cast<StoreRawIntrinsic>(&I))
+    MarkAsSource(SRI->getStoreValue(), IsSourceOfSample(&I));
+  AddPattern(Pattern);
+  return true;
 }
 
 bool CodeGenPatternMatch::MatchLrp(llvm::BinaryOperator &I) {

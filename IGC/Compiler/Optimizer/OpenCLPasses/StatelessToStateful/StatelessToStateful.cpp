@@ -608,6 +608,8 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(Function *F,
 
     // skip implicit buffers that are supported only in stateless mode by the runtime.
     if (arg->getArgType() == KernelArg::ArgType::IMPLICIT_RT_GLOBAL_BUFFER ||
+        arg->getArgType() == KernelArg::ArgType::IMPLICIT_INDIRECT_DATA_POINTER ||
+        arg->getArgType() == KernelArg::ArgType::IMPLICIT_SCRATCH_POINTER ||
         arg->getArgType() == KernelArg::ArgType::IMPLICIT_ASSERT_BUFFER) {
       return false;
     }

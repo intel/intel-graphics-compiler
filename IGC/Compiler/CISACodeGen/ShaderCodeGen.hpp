@@ -111,6 +111,7 @@ public:
   void EOTURBWrite();
   CVariable *URBFence(LSC_SCOPE scope = LSC_SCOPE_LOCAL);
   void EOTGateway(CVariable *payload = nullptr);
+  CVariable *prepareRTSurfaceStatePointer(CVariable *rtvHeapBaseAddress, uint RT_BTIndex, CVariable *rtIndexOpnd);
   void EOTRenderTarget(CVariable *r1, bool isPerCoarse);
   virtual void AddEpilogue(llvm::ReturnInst *ret);
 
@@ -224,6 +225,7 @@ public:
   CVariable *GetCE0();
   CVariable *GetDBG();
   CVariable *GetMSG0();
+  CVariable *GetSCRATCHLOC();
   CVariable *GetHWTID();
   CVariable *GetSP();
   CVariable *GetFP();
@@ -233,6 +235,7 @@ public:
   CVariable *GetARGV();
   CVariable *GetRETV();
   CVariable *GetPrivateBase();
+  CVariable *GetScratchPtr();
   CVariable *GetImplArgBufPtr();
   CVariable *GetLocalIdBufPtr();
   CVariable *GetGlobalBufferArg();
@@ -639,6 +642,7 @@ protected:
   CVariable *m_CR0 = nullptr;
   CVariable *m_CE0 = nullptr;
   CVariable *m_MSG0 = nullptr;
+  CVariable *m_SCRATCHLOC = nullptr;
   CVariable *m_DBG = nullptr;
   CVariable *m_HW_TID = nullptr;
   CVariable *m_SP = nullptr;

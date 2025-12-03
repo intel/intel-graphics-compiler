@@ -81,6 +81,24 @@ enum LSC_LDCC {
     LSC_LDCC_L1S_L3UC     = 5,   // Override to L1 streaming load and L3 uncached
     LSC_LDCC_L1S_L3C      = 6,   // Override to L1 streaming load and L3 cached
     LSC_LDCC_L1IAR_L3C    = 7,   // Override to L1 invalidate-after-read, and L3 cached
+    LSC_LDCC_L1_L2_L3_DEF      = 16,
+
+    LSC_LDCC_L1UC_L2UC_L3UC    = 18, // Override to L1 uncached, L2 uncached, L3 uncached
+    LSC_LDCC_L1UC_L2UC_L3C     = 19, // Override to L1 uncached, L2 uncached, L3 cached
+    LSC_LDCC_L1UC_L2C_L3UC     = 20, // Override to L1 uncached, L2 cached, L3 uncached
+    LSC_LDCC_L1UC_L2C_L3C      = 21, // Override to L1 uncached, L2 cached, L3 cached
+
+    LSC_LDCC_L1C_L2UC_L3UC     = 22, // Override to L1 cached, L2 uncached, L3 uncached
+    LSC_LDCC_L1C_L2UC_L3C      = 23, // Override to L1 cached, L2 uncached, L3 cached
+    LSC_LDCC_L1C_L2C_L3UC      = 24, // Override to L1 cached, L2 cached, L3 uncached
+    LSC_LDCC_L1C_L2C_L3C       = 25, // Override to L1 cached, L2 cached, L3 cached
+
+    LSC_LDCC_L1S_L2UC_L3UC     = 26, // Override to L1 streaming load, L2 uncached, L3 uncached
+    LSC_LDCC_L1S_L2UC_L3C      = 27, // Override to L1 streaming load, L2 uncached, L3 cached
+    LSC_LDCC_L1S_L2C_L3UC      = 28, // Override to L1 streaming load, L2 cached, L3 uncached
+    LSC_LDCC_L1S_L2C_L3C       = 29, // Override to L1 streaming load, L2 cached, L3 cached
+
+    LSC_LDCC_L1IAR_L2IAR_L3IAR = 30, // Override to L1, L2, L3 invalidate-after-read
 };
 
 // Store message caching control (also used for atomics)
@@ -93,6 +111,25 @@ enum LSC_STCC {
     LSC_STCC_L1S_L3UC     = 5,   // Override to L1 streaming and L3 uncached
     LSC_STCC_L1S_L3WB     = 6,   // Override to L1 streaming and L3 written back
     LSC_STCC_L1WB_L3WB    = 7,   // Override to L1 written through and L3 written back
+    LSC_STCC_L1_L2_L3_DEF   = 16,
+
+    LSC_STCC_L1UC_L2UC_L3UC = 18, // Override to L1 uncached, L2 uncached, L3 uncached
+    LSC_STCC_L1UC_L2UC_L3WB = 19, // Override to L1 uncached, L2 uncached, L3 written back
+    LSC_STCC_L1UC_L2WB_L3UC = 20, // Override to L1 uncached, L2 written back, L3 uncached
+    LSC_STCC_L1UC_L2WB_L3WB = 21, // Override to L1 uncached, L2 written back, L3 written back
+
+    LSC_STCC_L1WT_L2UC_L3UC = 22, // Override to L1 written through, L2 uncached, L3 uncached
+    LSC_STCC_L1WT_L2UC_L3WB = 23, // Override to L1 written through, L2 uncached, L3 written back
+    LSC_STCC_L1WT_L2WB_L3UC = 24, // Override to L1 written through, L2 written back, L3 uncached
+    LSC_STCC_L1WT_L2WB_L3WB = 25, // Override to L1 written through, L2 written back, L3 written back
+
+    LSC_STCC_L1S_L2UC_L3UC  = 26, // Override to L1 streaming, L2 uncached, L3 uncached
+    LSC_STCC_L1S_L2UC_L3WB  = 27, // Override to L1 streaming, L2 uncached, L3 written back
+    LSC_STCC_L1S_L2WB_L3UC  = 28, // Override to L1 streaming, L2 written back, L3 uncached
+
+    LSC_STCC_L1WB_L2UC_L3UC = 29, // Override to L1 written back, L2 uncached, L3 uncached
+    LSC_STCC_L1WB_L2WB_L3UC = 30, // Override to L1 written back, L2 written back, L3 uncached
+    LSC_STCC_L1WB_L2UC_L3WB = 31, // Override to L1 written back, L2 uncached, L3 written back
 };
 
 #ifdef cl_intel_pvc_lsc_validation

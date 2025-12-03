@@ -25,6 +25,8 @@ SPDX-License-Identifier: MIT
 #endif
 
 #define LSC_CACHE_CTRL_OPTION(Name, Val, Description) #Name " [" Description "]=" #Val ","
+#define LSC_CACHE_CTRL_LOAD_OPTION(Name, Val, Description) #Name " [" Description "]=" #Val ","
+#define LSC_CACHE_CTRL_STORE_OPTION(Name, Val, Description) #Name " [" Description "]=" #Val ","
 #define EARLY_OUT_CS_PATTERN(Name, Val) #Name "=" #Val ","
 #define EARLY_OUT_PS_PATTERN(Name, Val) #Name "=" #Val ","
 #define FP_BINOP_INSTRUCTION(Name, Val) #Name "=" #Val ","
@@ -45,6 +47,10 @@ SPDX-License-Identifier: MIT
 #undef REMAT_FLAG
 #undef LSC_CACHE_CTRL_OPTION
 #undef LSC_CACHE_CTRL_OPTIONS
+#undef LSC_CACHE_CTRL_LOAD_OPTION
+#undef LSC_CACHE_CTRL_LOAD_OPTIONS
+#undef LSC_CACHE_CTRL_STORE_OPTION
+#undef LSC_CACHE_CTRL_STORE_OPTIONS
 
 #undef EARLY_OUT_CS_PATTERN
 #undef EARLY_OUT_CS_PATTERNS

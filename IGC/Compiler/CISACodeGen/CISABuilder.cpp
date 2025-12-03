@@ -1759,6 +1759,100 @@ void CEncoder::CarryBorrowArith(ISA_Opcode opcode, CVariable *dst, CVariable *ds
                                             carryBorrowOpnd, srcOpnd0, srcOpnd1));
 }
 
+bool CEncoder::setOverfetch(LSC_DATA_SIZE dsize, LSC_DATA_ELEMS delem, SIMDMode width, LSC_CACHE_OPTS copt) {
+  auto context = m_program->GetContext();
+
+  if (!context->platform.supportsOverfetch())
+    return false;
+
+  if (copt.l1 != LSC_CACHING_CACHED)
+    return false;
+
+  auto dataMemSize = [&dsize, &delem, &width]() {
+    unsigned s = 0, e = 0, w = 0;
+    switch (dsize) {
+    case LSC_DATA_SIZE::LSC_DATA_SIZE_8b:
+    case LSC_DATA_SIZE::LSC_DATA_SIZE_8c32b:
+      s = 1;
+      break;
+    case LSC_DATA_SIZE::LSC_DATA_SIZE_16b:
+    case LSC_DATA_SIZE::LSC_DATA_SIZE_16c32b:
+    case LSC_DATA_SIZE::LSC_DATA_SIZE_16c32bH:
+      s = 2;
+      break;
+    case LSC_DATA_SIZE::LSC_DATA_SIZE_32b:
+      s = 4;
+      break;
+    case LSC_DATA_SIZE::LSC_DATA_SIZE_64b:
+      s = 8;
+      break;
+    default:
+      IGC_ASSERT_MESSAGE(0, "Unrecognize LSC_DATA_SIZE");
+      break;
+    }
+
+    switch (delem) {
+    case LSC_DATA_ELEMS::LSC_DATA_ELEMS_1:
+      e = 1;
+      break;
+    case LSC_DATA_ELEMS::LSC_DATA_ELEMS_2:
+      e = 2;
+      break;
+    case LSC_DATA_ELEMS::LSC_DATA_ELEMS_3:
+      e = 3;
+      break;
+    case LSC_DATA_ELEMS::LSC_DATA_ELEMS_4:
+      e = 4;
+      break;
+    case LSC_DATA_ELEMS::LSC_DATA_ELEMS_8:
+      e = 8;
+      break;
+    case LSC_DATA_ELEMS::LSC_DATA_ELEMS_16:
+      e = 16;
+      break;
+    case LSC_DATA_ELEMS::LSC_DATA_ELEMS_32:
+      e = 32;
+      break;
+    case LSC_DATA_ELEMS::LSC_DATA_ELEMS_64:
+      e = 64;
+      break;
+    default:
+      IGC_ASSERT_MESSAGE(0, "Unrecognize LSC_DATA_ELEMS");
+      break;
+    }
+
+    switch (width) {
+    case SIMDMode::SIMD1:
+      w = 1;
+      break;
+    case SIMDMode::SIMD2:
+      w = 2;
+      break;
+    case SIMDMode::SIMD4:
+      w = 4;
+      break;
+    case SIMDMode::SIMD8:
+      w = 8;
+      break;
+    case SIMDMode::SIMD16:
+      w = 16;
+      break;
+    case SIMDMode::SIMD32:
+      w = 32;
+      break;
+    default:
+      IGC_ASSERT_MESSAGE(0, "Unrecognize SIMDMode");
+      break;
+    }
+
+    return s * e * w;
+  }();
+
+  if (dataMemSize == 64)
+    return true;
+  return false;
+}
+
 
 VISA_RawOpnd *CEncoder::GetRawSource(CVariable *var, uint offset) {
   VISA_RawOpnd *srcOpnd = nullptr;
@@ -1866,12 +1960,36 @@ VISA_StateOpndHandle *CEncoder::GetBTIOperand(uint bindingTableIndex) {
   return GetVISASurfaceOpnd(predDefSurface, &tempImm);
 }
 
+void CEncoder::TraceRay(CVariable *destination, TRACE_RAY_OPCODE opcode, CVariable *globalBufferPointer,
+                        STACK_ADDRESS_MODE stackAddressMode, CVariable *payload) {
+  VISA_RawOpnd *dstOpnd = GetRawDestination(destination);
+  VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
+  VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, false);
+  VISA_Exec_Size executionSize = visaExecSize(m_encoderState.m_simdSize);
+  VISA_VectorOpnd *globalBufferPointerOpnd = GetSourceOperandNoModifier(globalBufferPointer);
+
+  VISA_RawOpnd *payloadOpnd = nullptr;
+
+  if (payload != nullptr) {
+    payloadOpnd = GetRawSource(payload);
+  }
+}
+
+void CEncoder::BTD(BTD_OPCODE opcode, CVariable *globalBufferPointer, CVariable *stackId,
+                   CVariable *shaderRecordIdentifier) {
+  VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
+  VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, false);
+  VISA_Exec_Size executionSize = visaExecSize(m_encoderState.m_simdSize);
+  VISA_RawOpnd *stackIdOpnd = GetRawSource(stackId);
+  VISA_RawOpnd *shaderRecordIdentifierOpnd = GetRawSource(shaderRecordIdentifier);
+  VISA_VectorOpnd *globalBufferPointerOpnd = GetSourceOperandNoModifier(globalBufferPointer);
+}
 
 void CEncoder::RenderTargetWrite(CVariable *var[], bool isUndefined[], bool lastRenderTarget, bool isNullRT,
                                  bool perSample, bool coarseMode, bool headerMaskFromCe0,
-                                 CVariable *bindingTableIndex, CVariable *RTIndex, CVariable *source0Alpha,
-                                 CVariable *oMask, CVariable *depth, CVariable *stencil, CVariable *CPSCounter,
-                                 CVariable *sampleIndex, CVariable *r1Reg) {
+                                 CVariable *rtSurfaceStatePointer, int rtIdentifier, CVariable *bindingTableIndex,
+                                 CVariable *RTIndex, CVariable *source0Alpha, CVariable *oMask, CVariable *depth,
+                                 CVariable *stencil, CVariable *CPSCounter, CVariable *sampleIndex, CVariable *r1Reg) {
   VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
   VISA_Exec_Size execSize = visaExecSize(m_encoderState.m_simdSize);
   VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
@@ -1880,6 +1998,12 @@ void CEncoder::RenderTargetWrite(CVariable *var[], bool isUndefined[], bool last
   uint8_t numMsgSpecificOpnds = 0;
   VISA_RawOpnd *srcOpnd[8] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
+  cntrls.rPresent = !isUndefined[0] || IGC_IS_FLAG_DISABLED(EnableSkipUnusedColorPayload);
+  cntrls.gPresent = !isUndefined[1] || IGC_IS_FLAG_DISABLED(EnableSkipUnusedColorPayload);
+  cntrls.bPresent = !isUndefined[2] || IGC_IS_FLAG_DISABLED(EnableSkipUnusedColorPayload);
+  cntrls.aPresent = !isUndefined[3] || IGC_IS_FLAG_DISABLED(EnableSkipUnusedColorPayload);
+  bool dummyRneeded = !cntrls.rPresent && !cntrls.gPresent && !cntrls.bPresent && !cntrls.aPresent;
+  cntrls.rPresent = dummyRneeded ? true : cntrls.rPresent;
   cntrls.isPerSample = perSample;
   cntrls.isCoarseMode = coarseMode;
   cntrls.isHeaderMaskfromCe0 = headerMaskFromCe0;
@@ -1899,6 +2023,8 @@ void CEncoder::RenderTargetWrite(CVariable *var[], bool isUndefined[], bool last
 
   for (int i = 0; i < 4; i++) {
     if (isUndefined[i]) {
+      if (!m_program->m_Platform->hasEfficient64bEnabled() || IGC_IS_FLAG_DISABLED(EnableSkipUnusedColorPayload) ||
+          (dummyRneeded && i == 0))
         V(vKernel->CreateVISANullRawOperand(srcOpnd[numMsgSpecificOpnds++], false));
     } else {
       srcOpnd[numMsgSpecificOpnds++] = GetRawSource(var[i]);
@@ -1943,7 +2069,13 @@ void CEncoder::RenderTargetWrite(CVariable *var[], bool isUndefined[], bool last
   // vISA will decide whether to use it or not.
   VISA_RawOpnd *r1RegOpnd = GetRawSource(r1Reg);
 
-  {
+  if (m_program->m_Platform->hasEfficient64bEnabled()) {
+    IGC_ASSERT(rtSurfaceStatePointer);
+    VISA_VectorOpnd *rtvSurfaceBaseAddrOpnd = GetSourceOperandNoModifier(rtSurfaceStatePointer);
+    V(vKernel->AppendVISA3dRTWriteCPS(predOpnd, emask, execSize, RTIndexOpnd, cntrls,
+                                      (VISA_StateOpndHandle *)rtvSurfaceBaseAddrOpnd, r1RegOpnd, sampleIndexOpnd,
+                                      cpsCounterOpnd, numMsgSpecificOpnds, srcOpnd, rtIdentifier));
+  } else {
     VISA_StateOpndHandle *surfOpnd = GetVISASurfaceOpnd(ESURFACE_NORMAL, bindingTableIndex);
     if (CPSCounter) {
       V(vKernel->AppendVISA3dRTWriteCPS(predOpnd, emask, execSize, RTIndexOpnd, cntrls, surfOpnd, r1RegOpnd,
@@ -2037,7 +2169,21 @@ void CEncoder::Sample(EOPCODE subOpcode, uint writeMask, CVariable *offset, cons
 
   {
     int status = -1; // VISA_FAILURE;
-    {
+    uint32_t samplerImmIndex = 0;
+    uint32_t surfaceImmIndex = 0;
+    // vector operands for sampler and surface
+
+    if (m_program->m_Platform->hasEfficient64bEnabled()) {
+      VISA_VectorOpnd *samplerBaseAddrOpnd = GetSourceOperandNoModifier(sampler.m_sampler);
+      VISA_VectorOpnd *surfaceBaseAddrOpnd = GetSourceOperandNoModifier(resource.m_resource);
+      status = vKernel->AppendVISA3dSampler(
+          ConvertSubOpcode(subOpcode, zeroLOD),
+          feedbackEnable, // pixel null mask
+          cpsEnable, !nonUniformState, predOpnd, GetAluEMask(dst), visaExecSize(m_encoderState.m_simdSize),
+          ConvertChannelMaskToVisaType(writeMask), aoffimmi, (VISA_StateOpndHandle *)samplerBaseAddrOpnd,
+          samplerImmIndex, (VISA_StateOpndHandle *)surfaceBaseAddrOpnd, surfaceImmIndex, pairedResourceBSSOOpnd, dstVar,
+          numSources, opndArray);
+    } else {
       VISA_StateOpndHandle *samplerOpnd = GetSamplerOperand(sampler);
       VISA_StateOpndHandle *btiOpnd = GetVISASurfaceOpnd(resource);
       status = vKernel->AppendVISA3dSampler(ConvertSubOpcode(subOpcode, zeroLOD),
@@ -2075,7 +2221,17 @@ void CEncoder::Load(EOPCODE subOpcode, uint writeMask, CVariable *offset, const 
   {
 
     int status = -1; // VISA_FAILURE
-    {
+    // vector operands for surface
+    VISA_VectorOpnd *surfaceBaseAddrOpnd = GetSourceOperandNoModifier(resource.m_resource);
+    uint32_t surfaceImmIndex = 0;
+    if (m_program->m_Platform->hasEfficient64bEnabled()) {
+      status = vKernel->AppendVISA3dLoad(ConvertSubOpcode(subOpcode, zeroLOD),
+                                         feedbackEnable, // pixel null mask
+                                         predOpnd, GetAluEMask(dst), GetAluExecSize(dst),
+                                         ConvertChannelMaskToVisaType(writeMask), aoffimmi,
+                                         (VISA_StateOpndHandle *)surfaceBaseAddrOpnd, surfaceImmIndex,
+                                         pairedResourceBSSOOpnd, dstVar, numSources, opndArray);
+    } else {
       VISA_StateOpndHandle *surfOpnd = GetVISASurfaceOpnd(resource);
       status = vKernel->AppendVISA3dLoad(ConvertSubOpcode(subOpcode, zeroLOD),
                                          feedbackEnable, // pixel null mask
@@ -2090,8 +2246,9 @@ void CEncoder::Load(EOPCODE subOpcode, uint writeMask, CVariable *offset, const 
 
 void CEncoder::Info(EOPCODE subOpcode, uint writeMask, const ResourceDescriptor &resource, CVariable *lod,
                     CVariable *dst) {
-  VISA_StateOpndHandle *surfOpnd =
-          GetVISASurfaceOpnd(resource);
+  VISA_StateOpndHandle *surfOpnd = m_program->m_Platform->hasEfficient64bEnabled()
+                                       ? (VISA_StateOpndHandle *)GetSourceOperandNoModifier(resource.m_resource)
+                                       : GetVISASurfaceOpnd(resource);
   VISA_RawOpnd *dstVar = GetRawDestination(dst);
   VISA_RawOpnd *lodVar = GetRawSource(lod);
 
@@ -2142,11 +2299,13 @@ void CEncoder::Gather4Inst(EOPCODE subOpcode, CVariable *offset, const ResourceD
   }
 
   VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
-  VISA_StateOpndHandle *samplerOpnd =
-          GetSamplerOperand(sampler);
+  VISA_StateOpndHandle *samplerOpnd = m_program->m_Platform->hasEfficient64bEnabled()
+                                          ? (VISA_StateOpndHandle *)GetSourceOperandNoModifier(sampler.m_sampler)
+                                          : GetSamplerOperand(sampler);
 
-  VISA_StateOpndHandle *surfOpnd =
-          GetVISASurfaceOpnd(resource);
+  VISA_StateOpndHandle *surfOpnd = m_program->m_Platform->hasEfficient64bEnabled()
+                                       ? (VISA_StateOpndHandle *)GetSourceOperandNoModifier(resource.m_resource)
+                                       : GetVISASurfaceOpnd(resource);
   uint32_t samplerImmIndex = 0;
   uint32_t surfaceImmIndex = 0;
   VISA_RawOpnd *pairedResourceBSSOOpnd = GetPairedResourceOperand(pairedResource);
@@ -2728,7 +2887,9 @@ VISA_StateOpndHandle *CEncoder::GetVISASurfaceOpnd(e_predefSurface surfaceType, 
       V(vKernel->GetPredefinedSurface(surfacevar, PREDEFINED_SURFACE_T255));
       break;
     case ESURFACE_SCRATCH: {
-      {
+      if (m_program->m_Platform->hasEfficient64bEnabled()) {
+        IGC_ASSERT(0);
+      } else {
         // For scratch surface, we need to shr the surface state offset coming
         // in R0.5 by 4
         //      This is because the scratch offset is passed in via r0.5[31:10],
@@ -3161,7 +3322,7 @@ void CEncoder::InitBuildParams(
     params.push_back(param_uptr("-debug", literal_deleter));
   }
 
-  if(IGC_IS_FLAG_ENABLED(MaxPerThreadScratchSpaceOverride)) {
+  if (IGC_IS_FLAG_ENABLED(MaxPerThreadScratchSpaceOverride)) {
     std::string flagValue = std::to_string(IGC_GET_FLAG_VALUE(MaxPerThreadScratchSpaceOverride));
     params.push_back(param_uptr("-maxPTSSOverride", literal_deleter));
     params.push_back(param_uptr(_strdup(flagValue.c_str()), dup_deleter));
@@ -3674,9 +3835,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_ActiveThreadsOnlyBarrier, true);
   }
 
-  if (context->m_instrTypes.hasSplitBarrier &&
-    context->m_instrTypes.hasWorkgroupBarrier)
-  {
+  if (context->m_instrTypes.hasSplitBarrier && context->m_instrTypes.hasWorkgroupBarrier) {
     // The regular and split barrier cannnot share the
     // same ID, because we could have such scenario:
     // splitbarrier.signal();
@@ -4067,13 +4226,13 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
 
   auto funcInfoMD = context->getMetaDataUtils()->getFunctionsInfoItem(m_program->entry);
   uint32_t MaxRegPressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
-  uint32_t RegPressureThreshold = (uint32_t) (context->getNumGRFPerThread(true) * 0.6);
+  uint32_t RegPressureThreshold = (uint32_t)(context->getNumGRFPerThread(true) * 0.6);
 
   if (context->type == ShaderType::OPENCL_SHADER &&
       (m_program->m_Platform->limitedBCR() || (MaxRegPressure > 0 && MaxRegPressure < RegPressureThreshold))) {
     SaveOption(vISA_enableBCR, true);
     if (m_program->GetParent()->getLLVMFunction()->size() == 1)
-        SaveOption(vISA_forceBCR, true);
+      SaveOption(vISA_forceBCR, true);
   }
   if (context->type == ShaderType::OPENCL_SHADER && m_program->m_Platform->supportDpasInstruction()) {
     // 3: Enable bundle conflict reduction for all instructions.
@@ -4106,7 +4265,8 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_Src1Src2OverlapWA, true);
   }
 
-  if (!IGC_IS_FLAG_SET(UseLinearScanRA) && context->getModuleMetaData()->compOpt.UseLinearScanRA || IGC_IS_FLAG_ENABLED(UseLinearScanRA)) {
+  if (!IGC_IS_FLAG_SET(UseLinearScanRA) && context->getModuleMetaData()->compOpt.UseLinearScanRA ||
+      IGC_IS_FLAG_ENABLED(UseLinearScanRA)) {
     SaveOption(vISA_LinearScan, true);
   }
 
@@ -4199,7 +4359,11 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   SaveOption(vISA_crossThreadDataAlignment, context->m_DriverInfo.getCrossThreadDataAlignment());
 
   if (m_program->m_Platform->supportLoadThreadPayloadForCompute()) {
+    if (m_program->m_Platform->hasEfficient64bEnabled()) {
+      SaveOption(vISA_loadThreadPayload, true);
+    } else {
       SaveOption(vISA_loadThreadPayload, m_program->loadThreadPayload());
+    }
   } else {
     SaveOption(vISA_loadThreadPayload, false);
   }
@@ -4630,6 +4794,12 @@ void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInli
   // Set Target to VISA_3D for scalar IGC.
   const uint8_t visaTarget = VISATarget::VISA_3D;
   V(vKernel->AddKernelAttribute("Target", sizeof(visaTarget), &visaTarget));
+  if (m_program->m_Platform->hasEfficient64bEnabled()) {
+    bool DisablePayload = !m_program->loadThreadPayload();
+    if (DisablePayload) {
+      vKernel->AddKernelAttribute("DisableLoadThreadPayloadWA", sizeof(DisablePayload), &DisablePayload);
+    }
+  }
 
   SetDispatchSimdSize();
   SetSpillMemOffset();
@@ -5086,7 +5256,7 @@ void CEncoder::CreateFunctionSymbolTable(ValueToSymbolList &symbolTableList,
 
     if (Function *F = dyn_cast<Function>(symbolValue)) {
       funcSyms.function.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size,
-                                      F->getName().str());
+                                     F->getName().str());
     } else if (GlobalVariable *G = dyn_cast<GlobalVariable>(symbolValue)) {
       // Const sampler
       if (symbolEntry.s_type == vISA::GenSymType::S_CONST_SAMPLER) {
@@ -5105,20 +5275,20 @@ void CEncoder::CreateProgramSymbolTable(ValueToSymbolList &symbolTableList,
     Value *symbolValue = I.first;
     auto symbolEntry = I.second;
 
-    if (GlobalVariable* G = dyn_cast<GlobalVariable>(symbolValue)) {
+    if (GlobalVariable *G = dyn_cast<GlobalVariable>(symbolValue)) {
       // Global variables, including external variables (S_UNDEF)
       if (symbolEntry.s_type == vISA::GenSymType::S_GLOBAL_VAR || symbolEntry.s_type == vISA::GenSymType::S_UNDEF) {
         programSyms.global.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size,
-                                         G->getName().str());
+                                        G->getName().str());
       }
       // Global constants and string literals
       else {
         if (modMD->stringConstants.count(G)) {
           programSyms.globalStringConst.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset,
-                                                      symbolEntry.s_size, G->getName().str());
+                                                     symbolEntry.s_size, G->getName().str());
         } else
           programSyms.globalConst.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset,
-                                                symbolEntry.s_size, G->getName().str());
+                                               symbolEntry.s_size, G->getName().str());
       }
     }
   }
@@ -5172,7 +5342,8 @@ void CEncoder::CreateFuncAttributeTable(VISAKernel *pMainKernel, GenXFunctionGro
     uint8_t hasIndirectCalls = (uint8_t)modMD->FuncMD[F].hasIndirectCalls;
 
     attrs.emplace_back((uint8_t)isKernel, isExternal, barrierCount, privateMemPerThread, spillMemPerThread,
-                       F->getName().str(), hasRTCalls, hasPrintfCalls, requireAssertBuffer, requireSyncBuffer, hasIndirectCalls);
+                       F->getName().str(), hasRTCalls, hasPrintfCalls, requireAssertBuffer, requireSyncBuffer,
+                       hasIndirectCalls);
   }
 }
 
@@ -5439,8 +5610,7 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
   // always set properly, even if a barrier is used as a part of Inline vISA
   // code only.
   if (jitInfo->numBarriers != 0 && !m_program->m_State.GetHasBarrier()) {
-    if (context->getModuleMetaData()->NBarrierCnt > 0 || additionalVISAAsmToLink ||
-      jitInfo->numBarriers > 1) {
+    if (context->getModuleMetaData()->NBarrierCnt > 0 || additionalVISAAsmToLink || jitInfo->numBarriers > 1) {
       m_program->m_State.SetBarrierNumber(NamedBarriersResolution::AlignNBCnt2BarrierNumber(jitInfo->numBarriers));
     } else {
       m_program->m_State.SetHasBarrier();
@@ -5681,8 +5851,7 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
 
   pOutput->m_perThreadArgumentStackSize = m_argumentStackSize;
 
-  if (context->type == ShaderType::OPENCL_SHADER &&
-      IGC_IS_FLAG_ENABLED(EnableKernelCostInfo)) {
+  if (context->type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(EnableKernelCostInfo)) {
     kci = createKernelCostInfo(*pMainKernel);
   }
 }
@@ -5814,7 +5983,7 @@ void CEncoder::createSymbolAndGlobalHostAccessTables(bool hasSymbolTable, VISAKe
   // prolog, the cross-thread prolog, or the compute-FFID prolog.
   unsigned actual_kernel_start_off =
       std::max(std::max(jitInfo->offsetToSkipPerThreadDataLoad, jitInfo->offsetToSkipCrossThreadDataLoad),
-                jitInfo->offsetToSkipSetFFIDGP1);
+               jitInfo->offsetToSkipSetFFIDGP1);
   CreateLocalSymbol("_entry", vISA::GenSymType::S_NOTYPE, actual_kernel_start_off, 0, pOutput->m_symbols);
 
   // Create local function symbols for direct stackcall functions.
@@ -6941,7 +7110,19 @@ VISA_VectorOpnd *CEncoder::GetVISALSCSurfaceOpnd(e_predefSurface surfaceType, CV
   if (surfaceType == ESURFACE_NORMAL || surfaceType == ESURFACE_BINDLESS || surfaceType == ESURFACE_SSHBINDLESS) {
     surfOpnd = GetUniformSource(bti);
   } else if (surfaceType == ESURFACE_SCRATCH) {
-    {
+    if (m_program->m_Platform->hasEfficient64bEnabled()) {
+      // For RayTracing shader scratch pointer is loaded in vISA from
+      // the GlobalData, and it does not require additional mov.
+      if (m_program->GetShaderType() == ShaderType::RAYTRACING_SHADER ||
+          m_program->GetContext()->m_DriverInfo.supportsScratchLocAccess()) {
+        VISA_VectorOpnd *pushedScratchAddressSrc = nullptr;
+        V(vKernel->CreateVISASrcOperand(pushedScratchAddressSrc, GetVISAVariable(m_program->GetScratchPtr()),
+                                        MODIFIER_NONE, 0, 1, 0, 0, 0));
+        return pushedScratchAddressSrc;
+      } else {
+        return GetSourceOperandNoModifier(m_program->GetSCRATCHLOC());
+      }
+    } else {
       // For scratch surface, we need to shr the surface state offset coming in
       // R0.5 by 4
       //      This is because the scratch offset is passed in via r0.5[31:10],
@@ -6987,6 +7168,8 @@ VISA_VectorOpnd *CEncoder::GetVISALSCSurfaceOpnd(e_predefSurface surfaceType, CV
 LSC_ADDR_TYPE CEncoder::getLSCAddrType(const ResourceDescriptor *resource) {
   if (resource->m_isThreadArg)
     return LSC_ADDR_TYPE_ARG;
+  else if (resource->m_isStatefulForEfficient64b)
+    return LSC_ADDR_TYPE_SURF;
   else
     return getLSCAddrType(resource->m_surfaceType);
 }
@@ -7011,8 +7194,8 @@ LSC_ADDR_TYPE CEncoder::getLSCAddrType(e_predefSurface surfaceType) {
   return LSC_ADDR_TYPE_INVALID;
 }
 
-void CEncoder::LSC_LoadGather(LSC_OP subOp, CVariable *dst,
-                              CVariable *offset, LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems, unsigned blockOffset,
+void CEncoder::LSC_LoadGather(LSC_OP subOp, CVariable *dst, CVariable *uniformBase, CVariable *offset,
+                              LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems, unsigned blockOffset,
                               ResourceDescriptor *resource, LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order,
                               int immOffset, int immScale, LSC_CACHE_OPTS cacheOpts, LSC_DOC_ADDR_SPACE addrSpace) {
   LSC_SFID lscSfid = resource && resource->m_surfaceType == ESURFACE_SLM ? LSC_SLM : LSC_UGM;
@@ -7029,7 +7212,9 @@ void CEncoder::LSC_LoadGather(LSC_OP subOp, CVariable *dst,
   if (resource) {
     addr.type = getLSCAddrType(resource);
     if (addr.type == LSC_ADDR_TYPE_FLAT) {
-      globalOffsetOpnd = nullptr;
+      if (uniformBase) {
+        globalOffsetOpnd = GetUniformSource(uniformBase);
+      }
     } else if (addr.type == LSC_ADDR_TYPE_ARG) {
       globalOffsetOpnd = nullptr;
       addr.size = LSC_ADDR_SIZE_32b;
@@ -7085,6 +7270,7 @@ void CEncoder::LSC_LoadGather(LSC_OP subOp, CVariable *dst,
 
     // 1st D32-V4 or D64-V2
     bool ov = false;
+    ov = setOverfetch(dataShape.size, dataShape.elems, mode, cacheOpts);
     V(vKernel->AppendVISALscUntypedLoad(subOp, lscSfid, predOpnd, visaExecSize(mode), GetAluEMask(offset), cacheOpts,
                                         ov, addr, dataShape, globalOffsetOpnd, 0, dstOpnd, addressOpnd));
 
@@ -7096,16 +7282,18 @@ void CEncoder::LSC_LoadGather(LSC_OP subOp, CVariable *dst,
   }
 
   unsigned surfaceIndex = 0x0;
+  if (resource)
+    surfaceIndex = resource->m_SurfaceStateIndex;
   bool ov = false;
+  ov = setOverfetch(dataShape.size, dataShape.elems, mode, cacheOpts);
   V(vKernel->AppendVISALscUntypedLoad(subOp, lscSfid, predOpnd, visaExecSize(mode), GetAluEMask(offset), cacheOpts, ov,
                                       addr, dataShape, globalOffsetOpnd, surfaceIndex, dstOpnd, addressOpnd));
 }
 
-void CEncoder::LSC_StoreScatter(LSC_OP subOp,
-                                CVariable *src, CVariable *offset, LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,
-                                unsigned blockOffset, ResourceDescriptor *resource, LSC_ADDR_SIZE addr_size,
-                                LSC_DATA_ORDER data_order, int immOffset, int immScale, LSC_CACHE_OPTS cacheOpts,
-                                LSC_DOC_ADDR_SPACE addrSpace) {
+void CEncoder::LSC_StoreScatter(LSC_OP subOp, CVariable *uniformBase, CVariable *src, CVariable *offset,
+                                LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems, unsigned blockOffset,
+                                ResourceDescriptor *resource, LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order,
+                                int immOffset, int immScale, LSC_CACHE_OPTS cacheOpts, LSC_DOC_ADDR_SPACE addrSpace) {
   LSC_SFID lscSfid = resource && resource->m_surfaceType == ESURFACE_SLM ? LSC_SLM : LSC_UGM;
 
   VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
@@ -7121,7 +7309,9 @@ void CEncoder::LSC_StoreScatter(LSC_OP subOp,
   if (resource) {
     addr.type = getLSCAddrType(resource);
     if (addr.type == LSC_ADDR_TYPE_FLAT) {
-      globalOffsetOpnd = nullptr;
+      if (uniformBase) {
+        globalOffsetOpnd = GetUniformSource(uniformBase);
+      }
     } else {
       globalOffsetOpnd = GetVISALSCSurfaceOpnd(resource->m_surfaceType, resource->m_resource);
     }
@@ -7180,6 +7370,8 @@ void CEncoder::LSC_StoreScatter(LSC_OP subOp,
   }
 
   unsigned surfaceIndex = 0x0;
+  if (resource)
+    surfaceIndex = resource->m_SurfaceStateIndex;
   V(vKernel->AppendVISALscUntypedStore(subOp, lscSfid, predOpnd, visaExecSize(mode), GetAluEMask(offset), cacheOpts,
                                        addr, dataShape, globalOffsetOpnd, surfaceIndex, addressOpnd, src1Opnd));
 }
@@ -7213,6 +7405,7 @@ void CEncoder::LSC_LoadBlock1D(CVariable *dst, CVariable *offset, LSC_DATA_SIZE 
   auto execOff = ConvertMaskToVisaType(m_encoderState.m_mask, false);
 
   bool ov = false;
+  ov = setOverfetch(elemSize, numElems, m_encoderState.m_simdSize, cacheOpts);
   V(vKernel->AppendVISALscUntypedLoad(LSC_LOAD_STRIDED, lscSfid, predOpnd, execSize, execOff, cacheOpts, false, addr,
                                       dataShape, globalOffsetOpnd, 0, dstOpnd, addressOpnd));
 }
@@ -7322,10 +7515,9 @@ static LSC_OP getLSCAtomicOpCode(AtomicOp op) {
   return LSC_ATOMIC_IADD;
 }
 
-void CEncoder::LSC_AtomicRaw(AtomicOp atomic_op, CVariable *dst,
-                             CVariable *offset, CVariable *src0, CVariable *src1, unsigned short bitwidth,
-                             ResourceDescriptor *resource, LSC_ADDR_SIZE addr_size, int immOff, int immScale,
-                             LSC_CACHE_OPTS cacheOpts) {
+void CEncoder::LSC_AtomicRaw(AtomicOp atomic_op, CVariable *dst, CVariable *uniformBase, CVariable *offset,
+                             CVariable *src0, CVariable *src1, unsigned short bitwidth, ResourceDescriptor *resource,
+                             LSC_ADDR_SIZE addr_size, int immOff, int immScale, LSC_CACHE_OPTS cacheOpts) {
   // There is no need to change the order of arguments for EATOMIC_CMPXCHG,
   // EATOMIC_FCMPWR anymore.
 
@@ -7339,7 +7531,9 @@ void CEncoder::LSC_AtomicRaw(AtomicOp atomic_op, CVariable *dst,
   if (resource) {
     addr.type = getLSCAddrType(resource);
     if (addr.type == LSC_ADDR_TYPE_FLAT) {
-      globalOffsetOpnd = nullptr;
+      if (uniformBase) {
+        globalOffsetOpnd = GetUniformSource(uniformBase);
+      }
     } else {
       globalOffsetOpnd = GetVISALSCSurfaceOpnd(resource->m_surfaceType, resource->m_resource);
     }
@@ -7666,10 +7860,20 @@ void CEncoder::LSC_UntypedAppendCounterAtomic(LSC_OP lscOp, ResourceDescriptor *
 
   VISA_RawOpnd *dstOpnd = GetRawDestination(dst);
   VISA_RawOpnd *srcOpnd = GetRawSource(src0);
+  if (m_program->m_Platform->hasEfficient64bEnabled()) {
+    LSC_ADDR addr{AddrType, 1, 0, LSC_ADDR_SIZE_32bU, LSC_DOC_ADDR_SPACE::GLOBAL};
+    bool ov = false;
+    ov = setOverfetch(dataShape.size, dataShape.elems, m_encoderState.m_simdSize, cache);
+    V(vKernel->AppendVISALscUntypedInst(lscOp, LSC_UGM, GetFlagOperand(m_encoderState.m_flag),
+                                        visaExecSize(m_encoderState.m_simdSize),
+                                        ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask), cache,
+                                        ov, addr, dataShape, surface, 0x0, dstOpnd, nullptr, srcOpnd, nullptr));
+  } else {
     V(vKernel->AppendVISALscUntypedAppendCounterAtomicInst(
         lscOp, GetFlagOperand(m_encoderState.m_flag), visaExecSize(m_encoderState.m_simdSize),
         ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask), cache, AddrType, dataShape, surface, 0x0,
         dstOpnd, srcOpnd));
+  }
 }
 
 void CEncoder::AppendBreakpoint() { V(vKernel->AppendVISABreakpointInst()); }

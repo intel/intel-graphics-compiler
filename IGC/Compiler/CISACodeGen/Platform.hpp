@@ -119,6 +119,10 @@ public:
   bool supportsBindlessSamplers() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
   bool supportsHDCLegacyDCROMessage() const { return m_platformInfo.eRenderCoreFamily <= IGFX_XE_HPC_CORE; }
 
+  bool hasEfficient64bEnabled() const {
+    return m_SkuTable.FtrEfficient64BitAddressing ||
+           (isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(EnableEfficient64b));
+  }
 
   bool SupportSurfaceInfoMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
   bool SupportHDCUnormFormats() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
@@ -507,6 +511,12 @@ public:
 
   bool hasScratchSurface() const { return isProductChildOf(IGFX_XE_HP_SDV); }
 
+  bool has16MBPerThreadScratchSpace() const {
+    return isProductChildOf(IGFX_CRI);
+  }
+  bool canCoalesceAtomicWithNoReturn() const {
+    return isProductChildOf(IGFX_CRI);
+  }
 
   bool hasAtomicPreDec() const { return !isProductChildOf(IGFX_XE_HP_SDV); }
 
@@ -681,6 +691,7 @@ public:
   }
 
   bool supportRayTracing() const { return isProductChildOf(IGFX_DG2); }
+  bool supportRayTracingSIMD32() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
   bool isValidNumThreads(int32_t numThreadsPerEU) const {
     return numThreadsPerEU == 0 // "auto" mode - use compiler heuristic
@@ -882,16 +893,23 @@ public:
   uint32_t getGRFSize() const { return isCoreChildOf(IGFX_XE_HPC_CORE) ? 64 : 32; }
 
   uint32_t getMaxNumGRF(ShaderType type) const {
-      if (supportsVRT()) {
-        return 256;
-      } else {
-        return 128;
-      }
+    if (hasEfficient64bEnabled() &&
+        isProductChildOf(IGFX_CRI)) {
+      return (type == ShaderType::HULL_SHADER) ? 256 : 512;
+    } else if (supports512GRFPerThread() && type == ShaderType::OPENCL_SHADER) {
+      return 512;
+    } else if (supportsVRT()) {
+      return 256;
+    } else {
+      return 128;
+    }
   }
 
   uint32_t getInlineDataSize() const {
     if (!supportInlineData())
       return 0;
+    if (hasEfficient64bEnabled())
+      return 64;
     return 32;
   }
 
@@ -915,6 +933,9 @@ public:
     auto immOffsetMode = (LscMatchImmMode)IGC_GET_FLAG_VALUE(LscImmOffsMatch);
     return hasLSC() && (immOffsetMode >= ON || (immOffsetMode == IF_HW_SUPPORTED && isCoreChildOf(IGFX_XE2_HPG_CORE)));
   }
+  bool supportStatefulScaleFolding() const {
+    return hasEfficient64bEnabled() && IGC_IS_FLAG_ENABLED(EnableStatefulScaleFolding);
+  }
 
   bool WaCubeHFPrecisionBug() const { return m_WaTable.Wa_18012201914 != 0; }
 
@@ -923,7 +944,7 @@ public:
   //   TGLLP and below are for each FFTID: 2M.
   uint32_t maxPerThreadScratchSpace(
   ) const {
-    if(IGC_IS_FLAG_ENABLED(MaxPerThreadScratchSpaceOverride)){
+    if (IGC_IS_FLAG_ENABLED(MaxPerThreadScratchSpaceOverride)) {
       return IGC_GET_FLAG_VALUE(MaxPerThreadScratchSpaceOverride);
     }
 
@@ -1267,6 +1288,7 @@ public:
 
   bool supportCheckCSThreadsLimit() const { return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_HPG_CORE); }
   bool supportTriggerLargeGRFRetry() const { return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_HPG_CORE); }
+  bool supports512GRFPerThread() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
 
 
@@ -1290,7 +1312,7 @@ public:
     return 2;
   }
 
-bool supportsLoadStatusMessages() const {
+  bool supportsLoadStatusMessages() const {
     return
         isCoreChildOf(IGFX_XE2_HPG_CORE);
   }
@@ -1299,6 +1321,9 @@ bool supportsLoadStatusMessages() const {
     return isCoreChildOf(IGFX_XE2_HPG_CORE);
   }
 
+  bool hasNewLSCCacheEncoding() const {
+    return isCoreChildOf(IGFX_XE3P_CORE);
+  }
   bool isSupportedLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad) const {
     if (isLoad) {
       switch (l1l3cc) {
@@ -1324,6 +1349,29 @@ bool supportsLoadStatusMessages() const {
     }
     return iSTD::RoundPower2(size) * blockSize;
   }
+  bool supportsReadStateInfo() const {
+    return hasEfficient64bEnabled() && IGC_IS_FLAG_ENABLED(EnableReadStateToA64Read);
+  }
+
+  bool supportsRayTracingExtendedCacheControl() const {
+    return isProductChildOf(IGFX_CRI) && hasEfficient64bEnabled() &&
+           IGC_IS_FLAG_DISABLED(DisableRayTracingExtendedCacheControl);
+  }
+
+
+  bool supportsOverfetch() const {
+    return isProductChildOf(IGFX_CRI);
+  }
+
+
+  bool supportsNativeSinCos() const {
+    return isProductChildOf(IGFX_CRI) && IGC_IS_FLAG_ENABLED(EnableNativeSinCos);
+  }
+
+  bool hasAccurateLog2() const {
+    return isProductChildOf(IGFX_CRI);
+  }
+
 
   unsigned getRayTracingTileXDim1D() const {
     if (isCoreChildOf(IGFX_XE2_HPG_CORE)) {
@@ -1364,7 +1412,7 @@ bool supportsLoadStatusMessages() const {
   bool allowsMoviForType(VISA_Type type) const { return (type == ISA_TYPE_UD || type == ISA_TYPE_D); }
 
   bool enableLscSamplerRouting() const {
-      return isCoreChildOf(IGFX_XE3_CORE);
+    return isCoreChildOf(IGFX_XE3_CORE);
   }
 
   bool enableReplaceAtomicFenceWithSourceValue() const {

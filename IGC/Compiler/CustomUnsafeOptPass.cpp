@@ -3015,6 +3015,7 @@ bool EarlyOutPatterns::processBlock(BasicBlock *BB) {
           OptCandidate = DPFSatPatternEnable && DotProductSourceMatch(GII) && canOptimizeDotProduct(Values, &II);
           break;
         case GenISAIntrinsic::GenISA_OUTPUT:
+        case GenISAIntrinsic::GenISA_OUTPUTPS:
           for (auto iter = GII->getParent()->begin(); iter != GII->getParent()->end(); iter++) {
             GenIntrinsicInst *outI = dyn_cast<GenIntrinsicInst>(iter);
             if (outI && outI->getIntrinsicID() == GetOutputPSIntrinsic(m_ctx->platform)) {

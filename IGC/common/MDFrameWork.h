@@ -325,6 +325,9 @@ enum class ShaderTypeMD
         // for continuations used in ReorderThread, this field indicates the maximum value of the coherence hint
         uint32_t NumCoherenceHintBits = 0;
 
+        // Informs if the kernel requires extra allocation of the sync HW stack
+        bool useSyncHWStack = false;
+
         // if the function was created by cloning another function
         // this will contain the name of the original shader
         std::string OriginatingShaderName;

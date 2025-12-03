@@ -321,6 +321,8 @@ struct PreDefinedAttrGetter{
         sync_buffer,
         rt_global_buffer,
         assert_buffer,
+        indirect_data_pointer,
+        scratch_pointer,
         arg_byvalue,
         arg_bypointer,
         image_height,
@@ -460,6 +462,10 @@ struct PreDefinedAttrGetter{
             return "rt_global_buffer";
         case ArgType::assert_buffer:
             return "assert_buffer";
+        case ArgType::indirect_data_pointer:
+            return "indirect_data_pointer";
+        case ArgType::scratch_pointer:
+            return "scratch_pointer";
         case ArgType::arg_byvalue:
             return "arg_byvalue";
         case ArgType::arg_bypointer:

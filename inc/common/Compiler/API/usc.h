@@ -102,6 +102,8 @@ typedef struct _SUscSkuFeatureTable
 
     unsigned int   FtrResourceStreamer : 1;
     unsigned int   FtrLocalMemory : 1;
+
+    unsigned int   FtrEfficient64BitAddressing : 1;
 } SUscSkuFeatureTable;
 
 USC_PARAM()
@@ -197,6 +199,7 @@ inline void InitializeUscAdapterInfo(
     uscAdpaterInfo.UscSkuFeatureTable.FtrPooledEuEnabled = bigSkuTable.FtrPooledEuEnabled;
     uscAdpaterInfo.UscSkuFeatureTable.FtrResourceStreamer = bigSkuTable.FtrResourceStreamer;
     uscAdpaterInfo.UscSkuFeatureTable.FtrLocalMemory = bigSkuTable.FtrLocalMemory;
+    uscAdpaterInfo.UscSkuFeatureTable.FtrEfficient64BitAddressing = bigSkuTable.FtrEfficient64BitAddressing;
 
     uscAdpaterInfo.UscGTSystemInfo.EUCount = bigGTSystemInfo.EUCount;
     uscAdpaterInfo.UscGTSystemInfo.ThreadCount = bigGTSystemInfo.ThreadCount;
@@ -268,6 +271,7 @@ inline void InitializeUscSkuTable(
     uscSkuTable.FtrGpGpuMidThreadLevelPreempt = bigSkuTable.FtrGpGpuMidThreadLevelPreempt; //Indicates if preEmption is enabled (HSW+)
     uscSkuTable.FtrIoMmuPageFaulting = bigSkuTable.FtrIoMmuPageFaulting; //Indicates if page faulting is enabled.
     uscSkuTable.FtrLocalMemory = bigSkuTable.FtrLocalMemory;
+    uscSkuTable.FtrEfficient64BitAddressing = bigSkuTable.FtrEfficient64BitAddressing;
 }
 
 

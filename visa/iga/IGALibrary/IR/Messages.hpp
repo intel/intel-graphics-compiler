@@ -247,6 +247,41 @@ struct MessageInfo {
   // The surface identifier (if applicable).  E.g. BTI.
   SendDesc surfaceId;
   //
+  // The s0 surface registers; this subsumes surfaceId given
+  // efficient64b (if present on this platform)
+  RegRef surfaceState = REGREF_INVALID;
+  //
+  // SS_IDX (Surface State Index) enables a relative offset of
+  // surface state elements to be added to the given surface state
+  // address in IND0
+  int surfaceStateIndex = 0;
+  //
+  // The sampler state register (if present)
+  RegRef samplerState = REGREF_INVALID;
+  //
+  // SMS_IDX - sampler state entry offset
+  int samplerStateIndex = 0;
+  //
+  // only used in flat messages
+  RegRef uniformBase = REGREF_INVALID;
+  int uniformBaseAddrSizeBits = 0;
+  bool signExtendIndices = false;
+  //
+  // Addresses are scaled by this amount (in bytes)
+  // (must be 1x, 2x, 4x data type size and <=32)
+  // (0 implies not applicable or disabled)
+  int addrScaling = 0;
+  //
+  // Sampler and typed coordinate immediate offsets.
+  int uvrImmediateOffsets[3]{0, 0, 0};
+  //
+  // Returns the computed destination length (-1 if undefined or unknown)
+  int dstLenBytes = -1;
+  // Returns the computed source lengths (-1 if undefined or unknown)
+  int src0LenBytes = -1;
+  int src1LenBytes = -1;
+
+  //
   // Possible immediate offset (if the encoding supports it)
   // This is in bytes not elements
   int immediateOffset = 0;

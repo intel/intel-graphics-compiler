@@ -212,6 +212,8 @@ public:
   bool MatchLogicAlu(llvm::BinaryOperator &I);
   bool MatchRsqrt(llvm::BinaryOperator &I);
   bool MatchArcpFdiv(llvm::BinaryOperator &I);
+  bool MatchLoadStoreAtomicsUniformBase(llvm::Instruction &I);
+  bool MatchLoadStoreStatefulEff64(llvm::Instruction &I);
   bool MatchBlockReadWritePointer(llvm::GenIntrinsicInst &I);
   bool MatchGradient(llvm::GenIntrinsicInst &I);
   bool MatchSampleDerivative(llvm::GenIntrinsicInst &I);
@@ -240,6 +242,7 @@ public:
 
   bool MatchInsertToStruct(llvm::InsertValueInst *);
   bool MatchExtractFromStruct(llvm::ExtractValueInst *);
+  std::optional<std::pair<llvm::Value *, unsigned>> matchSurfaceStateIndex(llvm::Value *resourcePtr);
 
   void AddPattern(Pattern *P) { m_currentPattern = P; }
 

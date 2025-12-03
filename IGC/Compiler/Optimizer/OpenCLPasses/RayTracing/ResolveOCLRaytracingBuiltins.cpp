@@ -179,6 +179,9 @@ Returns a pointer to the data structure which the RT hardware operates on.
 The RT Stack address is computed as:
     syncStackSize = sizeof(HitInfo)*2 + (sizeof(Ray) + sizeof(TravStack))*RTDispatchGlobals.maxBVHLevels;
     syncBase = RTDispatchGlobals.rtMemBasePtr - (DSSID * NUM_SIMD_LANES_PER_DSS + StackID + 1)*syncStackSize; */
+/* For new stack layout, enabled on XE3P with Efficient64b mode enabled:
+base_sync = RTDispatchGlobals.rtMemBasePtr - (DSSID * NUM_SIMD_LANES_PER_DSS + 4 * (StackID / 4) + 4) * syncStackSize;
+syncBase = base128_sync = base_sync + (stackID % 4) * 128 */
 /* Where DSSID is an index which uniquely identifies the DSS in the machine (across tiles), and StackID is compute as
    below: With fused EUs (e.g. in DG2) : StackID[10:0] (msb to lsb) = (EUID[3:0]<<7) | (THREAD_ID[2:0]<<4) |
    SIMD_LANE_ID[3:0]
@@ -198,6 +201,9 @@ void ResolveOCLRaytracingBuiltins::handleGetRtStack(CallInst &callInst) {
 
   // Calculate:
   // syncBase = RTDispatchGlobals.rtMemBasePtr - (DSSID * NUM_SIMD_LANES_PER_DSS + StackID + 1)*syncStackSize;
+  // For new stack layout, enabled on XE3P with Efficient64b mode enabled:
+  // base_sync = RTDispatchGlobals.rtMemBasePtr - (DSSID * NUM_SIMD_LANES_PER_DSS + 4 * (StackID / 4) + 4) *
+  // syncStackSize; syncBase = base128_sync = base_sync + (stackID % 4) * 128
 
   auto *rtMemBasePtr = m_builder->getRtMemBasePtr();
   Value *stackOffset = m_builder->CreateZExt(m_builder->getSyncStackOffset(), rtMemBasePtr->getType());

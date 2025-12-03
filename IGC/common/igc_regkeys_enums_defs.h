@@ -52,6 +52,43 @@ SPDX-License-Identifier: MIT
 
 #define LSC_CACHE_CTRL_OPTIONS LSC_CACHE_CTRL_OPTIONS_WITH_CTRL_NUM(LSC_CACHE_CTRL_NUM)
 #endif // LSC_CACHE_CTRL_OPTION
+#ifdef LSC_CACHE_CTRL_LOAD_OPTION
+#define LSC_CACHE_CTRL_LOAD_OPTIONS                                                                                    \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_INVALID, 11, "Invalid")                                                          \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1_L2_L3_DEF, 16, "default")                                                     \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1UC_L2UC_L3UC, 18, "Load: L1 uncached  L2 uncached  L3 uncached")               \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1UC_L2UC_L3C, 19, "Load: L1 uncached  L2 uncached  L3 cached")                  \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1UC_L2C_L3UC, 20, "Load: L1 uncached  L2 cached    L3 uncached")                \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1UC_L2C_L3C, 21, "Load: L1 uncached  L2 cached    L3 cached")                   \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1C_L2UC_L3UC, 22, "Load: L1 cached    L2 uncached  L3 uncached")                \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1C_L2UC_L3C, 23, "Load: L1 cached    L2 uncached  L3 cached")                   \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1C_L2C_L3UC, 24, "Load: L1 cached    L2 cached    L3 uncached")                 \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1C_L2C_L3C, 25, "Load: L1 cached    L2 cached    L3 cached")                    \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1S_L2UC_L3UC, 26, "Load: L1 streaming L2 uncached  L3 uncached")                \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1S_L2UC_L3C, 27, "Load: L1 streaming L2 uncached  L3 cached")                   \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1S_L2C_L3UC, 28, "Load: L1 streaming L2 cached    L3 uncached")                 \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1S_L2C_L3C, 29, "Load: L1 streaming L2 cached    L3 cached")                    \
+  LSC_CACHE_CTRL_LOAD_OPTION(LSC_LDCC_L1IAR_L2IAR_L3IAR, 30, "Load: L1 L2 L3 invalidate after read")
+#endif // LSC_CACHE_CTRL_LOAD_OPTION
+#ifdef LSC_CACHE_CTRL_STORE_OPTION
+#define LSC_CACHE_CTRL_STORE_OPTIONS                                                                                   \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_INVALID, 11, "Invalid")                                                         \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1_L2_L3_DEF, 16, "default")                                                    \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1UC_L2UC_L3UC, 18, "Store: L1 uncached      L2 uncached   L3 uncached")        \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1UC_L2UC_L3WB, 19, "Store: L1 uncached      L2 uncached   L3 write-back")      \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1UC_L2WB_L3UC, 20, "Store: L1 uncached      L2 write-back L3 uncached")        \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1UC_L2WB_L3WB, 21, "Store: L1 uncached      L2 write-back L3 write-back")      \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1WT_L2UC_L3UC, 22, "Store: L1 write-through L2 uncached   L3 uncached")        \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1WT_L2UC_L3WB, 23, "Store: L1 write-through L2 uncached   L3 write-back")      \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1WT_L2WB_L3UC, 24, "Store: L1 write-through L2 write-back L3 uncached")        \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1WT_L2WB_L3WB, 25, "Store: L1 write-through L2 write-back L3 write-back")      \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1S_L2UC_L3UC, 26, "Store: L1 streaming     L2 uncached   L3 uncached")         \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1S_L2UC_L3WB, 27, "Store: L1 streaming     L2 uncached   L3 write-back")       \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1S_L2WB_L3UC, 28, "Store: L1 streaming     L2 write-back L3 uncached")         \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1WB_L2UC_L3UC, 29, "Store: L1 write-back    L2 uncached   L3 uncached")        \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1WB_L2WB_L3UC, 30, "Store: L1 write-back    L2 write-back L3 uncached")        \
+  LSC_CACHE_CTRL_STORE_OPTION(LSC_STCC_L1WB_L2UC_L3WB, 31, "Store: L1 write-back    L2 uncached   L3 write-back")
+#endif // LSC_CACHE_CTRL_STORE_OPTION
 
 #ifdef EARLY_OUT_CS_PATTERN
 #define EARLY_OUT_CS_PATTERNS                                                                                          \

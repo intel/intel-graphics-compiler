@@ -529,8 +529,9 @@ bool GEPLowering::runOnFunction(Function &F) {
 
   bool Changed = false;
 
-  if (IGC_IS_FLAG_ENABLED(EnableGEPSimplification))
-  {
+  // For efficient64b, GEP simplification may be not needed or
+  // need different tuning hueristic
+  if (!m_ctx->platform.hasEfficient64bEnabled() && IGC_IS_FLAG_ENABLED(EnableGEPSimplification)) {
     for (auto &BB : F)
       Changed |= simplifyGEP(BB);
 

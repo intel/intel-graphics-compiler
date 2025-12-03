@@ -4781,7 +4781,7 @@ void EmitPass::Xor(const SSource sources[2], const DstModifier &modifier) {
 }
 
 void EmitPass::VectorCMP(llvm::CmpInst::Predicate pred, const SSource sources[2], const DstModifier &modifier,
-                   uint8_t clearTagMask) {
+                         uint8_t clearTagMask) {
 
   e_predicate predicate = GetPredicate(pred);
 
@@ -4801,38 +4801,37 @@ void EmitPass::VectorCMP(llvm::CmpInst::Predicate pred, const SSource sources[2]
 
   CVariable *dst = m_destination;
   if (m_destination->GetType() != ISA_TYPE_BOOL && dst->GetType() != src[0]->GetType()) {
-    IGC_ASSERT_MESSAGE(CEncoder::GetCISADataTypeSize(dst->GetType()) == CEncoder::GetCISADataTypeSize(src[0]->GetType()),
+    IGC_ASSERT_MESSAGE(CEncoder::GetCISADataTypeSize(dst->GetType()) ==
+                           CEncoder::GetCISADataTypeSize(src[0]->GetType()),
                        "Cmp to GRF must have the same size for source and destination");
     dst = m_currShader->BitCast(m_destination, src[0]->GetType());
   }
 
   IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
-          "As of now Vector Emission is only supported for SIMD16");
+                          "As of now Vector Emission is only supported for SIMD16");
   unsigned VectorSize = getVectorSize(sources[0].value);
 
-    bool AllUniform = src[0]->IsUniform() && src[1]->IsUniform() && m_destination->IsUniform();
-    // cannot emit 16 SIMD if SIMD SIZE is set to 8, but can emit 4
-    // simple ALU instructions has the same possible width as SIMD, "math"
-    // pipeline instructions has reduced width
-    bool CanEmitThisSize = VectorSize <= SIMDSize;
+  bool AllUniform = src[0]->IsUniform() && src[1]->IsUniform() && m_destination->IsUniform();
+  // cannot emit 16 SIMD if SIMD SIZE is set to 8, but can emit 4
+  // simple ALU instructions has the same possible width as SIMD, "math"
+  // pipeline instructions has reduced width
+  bool CanEmitThisSize = VectorSize <= SIMDSize;
 
-    if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
+  if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
 
-      m_encoder->SetSrcRegion(0, 1, 1, 0);
-      m_encoder->SetSrcRegion(1, 1, 1, 0);
-      m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
-      m_encoder->SetSimdSize(lanesToSIMDMode(VectorSize));
-      m_encoder->Cmp(predicate, dst, src[0], src[1]);
-      m_encoder->Push();
-      return;
-    }
-
-    IGC_ASSERT_EXIT_MESSAGE(false,
-            "all vector cmp's must be uniform, else we won't fit in 32 pred mask size");
-    IGC_ASSERT_UNREACHABLE();
+    m_encoder->SetSrcRegion(0, 1, 1, 0);
+    m_encoder->SetSrcRegion(1, 1, 1, 0);
+    m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
+    m_encoder->SetSimdSize(lanesToSIMDMode(VectorSize));
+    m_encoder->Cmp(predicate, dst, src[0], src[1]);
+    m_encoder->Push();
     return;
-}
+  }
 
+  IGC_ASSERT_EXIT_MESSAGE(false, "all vector cmp's must be uniform, else we won't fit in 32 pred mask size");
+  IGC_ASSERT_UNREACHABLE();
+  return;
+}
 
 void EmitPass::Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], const DstModifier &modifier,
                    uint8_t clearTagMask) {
@@ -4843,8 +4842,8 @@ void EmitPass::Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], cons
   if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy() &&
       sources[1].value->getType()->isVectorTy()) {
 
-      VectorCMP(pred, sources, modifier, clearTagMask);
-      return;
+    VectorCMP(pred, sources, modifier, clearTagMask);
+    return;
   }
 
   e_predicate predicate = GetPredicate(pred);
@@ -4991,7 +4990,6 @@ void EmitPass::CmpBfn(llvm::CmpInst::Predicate predicate, const SSource cmpSourc
   m_encoder->Push();
 }
 
-
 void EmitPass::VectorSelect(const SSource sources[3], const DstModifier &modifier) {
 
   unsigned SIMDSize = numLanes(m_currShader->m_SIMDSize);
@@ -5012,23 +5010,22 @@ void EmitPass::VectorSelect(const SSource sources[3], const DstModifier &modifie
   m_encoder->SetDstModifier(modifier);
   if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
 
-      SetSourceModifiers(0, sources[1]);
-      SetSourceModifiers(1, sources[2]);
+    SetSourceModifiers(0, sources[1]);
+    SetSourceModifiers(1, sources[2]);
 
-      m_encoder->SetSrcRegion(0, 1, 1, 0);
-      m_encoder->SetSrcRegion(1, 1, 1, 0);
-      m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
-      m_encoder->SetSimdSize(lanesToSIMDMode(VectorSize));
-      m_encoder->SetDstModifier(modifier);
-      m_encoder->SetPredicateMode(modifier.predMode);
-      m_encoder->Select(flag, dst, src[1], src[2]);
-      m_encoder->Push();
-      return;
+    m_encoder->SetSrcRegion(0, 1, 1, 0);
+    m_encoder->SetSrcRegion(1, 1, 1, 0);
+    m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
+    m_encoder->SetSimdSize(lanesToSIMDMode(VectorSize));
+    m_encoder->SetDstModifier(modifier);
+    m_encoder->SetPredicateMode(modifier.predMode);
+    m_encoder->Select(flag, dst, src[1], src[2]);
+    m_encoder->Push();
+    return;
   }
 
   bool PredicateLengthIsCorrect = flag->GetNumberElement() == 1 || flag->GetNumberElement() == SIMDSize;
-  IGC_ASSERT_EXIT_MESSAGE(PredicateLengthIsCorrect,
-          "we can only emit non-uniform selects with matching predicate");
+  IGC_ASSERT_EXIT_MESSAGE(PredicateLengthIsCorrect, "we can only emit non-uniform selects with matching predicate");
 
   for (unsigned i = 0; i < VectorSize; ++i) {
 
@@ -5062,12 +5059,11 @@ void EmitPass::Select(const SSource sources[3], const DstModifier &modifier) {
   IGC_ASSERT(modifier.flag == nullptr);
   IGC_ASSERT(sources[0].mod == EMOD_NONE);
 
-
   if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[1].value->getType()->isVectorTy() &&
       sources[2].value->getType()->isVectorTy()) {
 
-      VectorSelect(sources, modifier);
-      return;
+    VectorSelect(sources, modifier);
+    return;
   }
 
   CVariable *flag = GetSrcVariable(sources[0]);
@@ -5442,8 +5438,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction *inst) {
         PackSIMD8HFRet(dst);
       }
 
-      if (feedbackEnable
-      ) {
+      if (feedbackEnable && !m_currShader->m_Platform->hasEfficient64bEnabled()) {
         emitFeedbackEnable();
       }
     }
@@ -6852,6 +6847,13 @@ void EmitPass::emitLSCSimdBlockWrite(llvm::Instruction *inst, llvm::Value *ptrVa
   CVariable *data = GetSymbol(dataPtr);
   bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
   LSC_ADDR_SIZE addrSize = useA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+      useA64 = false;
+    }
+  }
 
   if (!data->IsUniform() && !IsGRFAligned(data, EALIGN_GRF)) {
     CVariable *temp = m_currShader->GetNewVariable(numLanes(m_SimdMode), data->GetType(), EALIGN_GRF, CName::NONE);
@@ -6927,6 +6929,13 @@ void EmitPass::emitLSCSimdBlockRead(llvm::Instruction *inst, llvm::Value *ptrVal
 
   bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
   LSC_ADDR_SIZE addrSize = useA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+      useA64 = false;
+    }
+  }
 
   uint32_t nbElements = 0;
   uint32_t typeSizeInBytes = 0;
@@ -7962,8 +7971,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic *inst) {
       PackSIMD8HFRet(dst);
     }
 
-    if (hasMaskResponse
-    ) {
+    if (hasMaskResponse && !m_currShader->m_Platform->hasEfficient64bEnabled()) {
       CVariable *flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_State.m_dispatchSize), ISA_TYPE_BOOL,
                                                      EALIGN_BYTE, CName::NONE);
       uint subvar = numLanes(m_currShader->m_SIMDSize) * 4 / (getGRFSize() >> 2);
@@ -8277,8 +8285,7 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic *inst) {
       PackSIMD8HFRet(dst);
     }
 
-    if (feedbackEnable
-    ) {
+    if (feedbackEnable && !m_currShader->m_Platform->hasEfficient64bEnabled()) {
       emitFeedbackEnable();
     }
   }
@@ -8352,8 +8359,7 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction *inst) {
     PackSIMD8HFRet(dst);
   }
 
-  if (feedbackEnable
-  ) {
+  if (feedbackEnable && !m_currShader->m_Platform->hasEfficient64bEnabled()) {
     emitFeedbackEnable();
   }
 }
@@ -10461,9 +10467,8 @@ void EmitPass::emitLoadRawIndexed(LdRawIntrinsic *inst, Value *varOffset, Consta
       setRovCacheCtrl(inst);
     }
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, true);
-    emitLSCVectorLoad(inst, bufPtrv,
-                      varOffset, immOffset, immScale, flipVarOffsetSign, cacheOpts, addrSpace
-    );
+    emitLSCVectorLoad(inst, bufPtrv, nullptr, varOffset, immOffset, immScale, flipVarOffsetSign, cacheOpts, addrSpace,
+                      false, false);
     return;
   }
   IGC_ASSERT(immOffset == nullptr);
@@ -10722,8 +10727,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic *inst, ResourceDescriptor &resourc
 }
 
 void EmitPass::emitLoad(LoadInst *inst, Value *offset, ConstantInt *immOffset, ConstantInt *immScale,
-                        bool flipVarOffsetSign
-) {
+                        bool flipVarOffsetSign, Value *uniformBase, bool signExtendOffset, bool zeroExtendOffset) {
   if (m_pCtx->getModuleMetaData()->isHDCFastClearShader) {
     emitFastClear(inst);
     return;
@@ -10733,12 +10737,12 @@ void EmitPass::emitLoad(LoadInst *inst, Value *offset, ConstantInt *immOffset, C
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, true);
     LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
-    emitLSCVectorLoad(inst, inst->getPointerOperand(),
-                      offset, immOffset, immScale, flipVarOffsetSign, cacheOpts, addrSpace
-    );
+    emitLSCVectorLoad(inst, inst->getPointerOperand(), uniformBase, offset, immOffset, immScale, flipVarOffsetSign,
+                      cacheOpts, addrSpace, signExtendOffset, zeroExtendOffset);
     return;
   }
   IGC_ASSERT_MESSAGE(immScale ? immScale->getSExtValue() == 1 : true, "Immediate Scale not supported on non-LSC path!");
+  IGC_ASSERT_MESSAGE(!signExtendOffset && !zeroExtendOffset, "Offset extending not supported on non-LSC path!");
 
   emitVectorLoad(inst, offset, immOffset, flipVarOffsetSign);
 }
@@ -10754,9 +10758,7 @@ void EmitPass::emitPredicatedLoad(Instruction *inst) {
   LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, true);
   LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
-  emitLSCVectorLoad(inst, offset,
-                    offset, nullptr, nullptr, false, cacheOpts, addrSpace
-  );
+  emitLSCVectorLoad(inst, offset, nullptr, offset, nullptr, nullptr, false, cacheOpts, addrSpace, false, false);
 }
 
 
@@ -11468,6 +11470,7 @@ void EmitPass::emitStackCall(llvm::CallInst *inst) {
   } else {
     if (funcAddr->IsUniform() || IGC_IS_FLAG_ENABLED(AssumeUniformIndirectCall)) {
       CopyArgBlkVariables();
+      if (!m_currShader->m_Platform->hasEfficient64bEnabled())
         funcAddr = TruncatePointer(funcAddr);
       m_encoder->IndirectStackCall(nullptr, funcAddr, argSizeInGRF, retSizeInGRF);
       m_encoder->Push();
@@ -11483,6 +11486,7 @@ void EmitPass::emitStackCall(llvm::CallInst *inst) {
 
       // Get the first active lane's function address
       CVariable *offset = nullptr;
+      if (!m_currShader->m_Platform->hasEfficient64bEnabled())
         funcAddr = TruncatePointer(funcAddr, true);
       CVariable *uniformAddr = UniformCopy(funcAddr, offset, eMask);
       // Set the predicate to true for all lanes with the same address
@@ -11490,6 +11494,32 @@ void EmitPass::emitStackCall(llvm::CallInst *inst) {
 
       for (unsigned i = 0; i < funcAddr->GetNumberInstance(); i++) {
         m_encoder->SetSecondHalf(i == 1);
+        if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+          // Xe3p doesn't support 64-bit compare so we break it up into:
+          // add t:q, src0.0:q, -src1.0:q
+          // or t1.0:ud, t.0<2;1,2>:ud, t.1<2;1,2>:ud
+          // cmp.eq ... t1.0<1;1,0>:ud, 0:w
+          auto nElts = numLanes(m_currShader->m_State.m_dispatchSize);
+          auto *tempVar = m_currShader->GetNewVariable(nElts, uniformAddr->GetType(), m_currShader->getGRFAlignment(),
+                                                       false, 1, "SubTemp");
+          m_encoder->SetSrcModifier(1, e_modifier::EMOD_NEG);
+          m_encoder->Add(tempVar, uniformAddr, funcAddr);
+          m_encoder->Push();
+
+          auto *tempVar1 =
+              m_currShader->GetNewVariable(nElts, ISA_TYPE_UD, m_currShader->getGRFAlignment(), false, 1, "SubTemp1");
+          m_encoder->SetSrcRegion(0, 2, 1, 2);
+          m_encoder->SetSrcRegion(1, 2, 1, 2);
+          auto *src0 = m_currShader->GetNewAlias(tempVar, ISA_TYPE_UD, 0, tempVar->GetNumberElement());
+          auto *src1 = m_currShader->GetNewAlias(tempVar, ISA_TYPE_UD, 4, tempVar->GetNumberElement());
+          m_encoder->Or(tempVar1, src0, src1);
+          m_encoder->Push();
+
+          auto *zeroImm = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
+          m_encoder->Cmp(EPREDICATE_EQ, callPred, tempVar1, zeroImm);
+          m_encoder->Push();
+          continue;
+        }
         m_encoder->Cmp(EPREDICATE_EQ, callPred, uniformAddr, funcAddr);
         m_encoder->Push();
       }
@@ -11807,10 +11837,8 @@ void EmitPass::emitStoreRawIndexed(StoreRawIntrinsic *inst, Value *varOffset, Co
     LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false);
-    emitLSCVectorStore(pBufPtr,
-                       varOffset, immOffset, immScale, flipVarOffsetSign, pValToStore, inst->getParent(), cacheOpts,
-                       inst->getAlignment(), false, addrSpace
-    );
+    emitLSCVectorStore(pBufPtr, nullptr, varOffset, immOffset, immScale, flipVarOffsetSign, pValToStore,
+                       inst->getParent(), cacheOpts, inst->getAlignment(), false, addrSpace, false, false);
     return;
   }
   IGC_ASSERT(immOffset == nullptr);
@@ -11935,19 +11963,18 @@ void EmitPass::emitStore3DInner(Value *pllValToStore, Value *pllDstPtr, Value *p
 }
 
 void EmitPass::emitStore(StoreInst *inst, Value *varOffset, ConstantInt *immOffset, ConstantInt *immScale,
-                         bool flipVarOffsetSign
-) {
+                         bool flipVarOffsetSign, Value *uniformBase, bool signExtendOffset, bool zeroExtendOffset) {
   if (shouldGenerateLSC(inst)) {
     LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false);
-    emitLSCVectorStore(inst->getPointerOperand(),
-                       varOffset, immOffset, immScale, flipVarOffsetSign, inst->getValueOperand(), inst->getParent(),
-                       cacheOpts, IGCLLVM::getAlignmentValue(inst), inst->getMetadata("enable.vmask"), addrSpace
-    );
+    emitLSCVectorStore(inst->getPointerOperand(), uniformBase, varOffset, immOffset, immScale, flipVarOffsetSign,
+                       inst->getValueOperand(), inst->getParent(), cacheOpts, IGCLLVM::getAlignmentValue(inst),
+                       inst->getMetadata("enable.vmask"), addrSpace, signExtendOffset, zeroExtendOffset);
     return;
   }
   IGC_ASSERT_MESSAGE(immScale ? immScale->getSExtValue() == 1 : true, "Immediate Scale not supported on non-LSC path!");
+  IGC_ASSERT_MESSAGE(!signExtendOffset && !zeroExtendOffset, "Offset extending not supported on non-LSC path!");
   emitVectorStore(inst, varOffset, immOffset, flipVarOffsetSign);
 }
 
@@ -11960,13 +11987,10 @@ void EmitPass::emitPredicatedStore(Instruction *inst) {
   LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
   LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false);
 
-  emitLSCVectorStore(inst->getOperand(0),
-                     inst->getOperand(0), nullptr, nullptr, false /*flipVarOffsetSign*/, inst->getOperand(1),
-                     inst->getParent(), cacheOpts,
+  emitLSCVectorStore(inst->getOperand(0), nullptr, inst->getOperand(0), nullptr, nullptr, false /*flipVarOffsetSign*/,
+                     inst->getOperand(1), inst->getParent(), cacheOpts,
                      cast<ConstantInt>(inst->getOperand(2))->getZExtValue(), // alignment
-                     inst->getMetadata("enable.vmask"), addrSpace
-                     ,
-                     inst->getOperand(3));
+                     inst->getMetadata("enable.vmask"), addrSpace, false, false, inst->getOperand(3));
 }
 
 CVariable *EmitPass::GetSymbol(llvm::Value *v) const { return m_currShader->GetSymbol(v); }
@@ -14208,8 +14232,9 @@ SIMD8 there are 8 lanes trying to write to the same address. H/W will serialize
 this to 8 back to back atomic instructions which are extremely slow to execute.
 */
 void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &resource, AtomicOp atomic_op,
-                                 CVariable *pDstAddr, CVariable *pU, CVariable *pV, CVariable *pR, CVariable *pSrc,
-                                 bool isA64, int bitWidth, int immOffset, int immScale, LSC_ADDR_SIZE addrSize) {
+                                 CVariable *pUniformBaseAddr, CVariable *pDstAddr, CVariable *pU, CVariable *pV,
+                                 CVariable *pR, CVariable *pSrc, bool isA64, int bitWidth, int immOffset, int immScale,
+                                 LSC_ADDR_SIZE addrSize) {
   e_opcode op = EOPCODE_ADD;
   // find the value for which opcode(x, identity) == x
   unsigned int identityValue = 0;
@@ -14426,9 +14451,8 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
       m_encoder->LSC_TypedAtomic(uniformAtomicOp, &resource, pU, pV, pR, pFinalAtomicSrcVal, nullptr /*src1*/,
                                  pReturnVal, bitWidth, LSC_ADDR_SIZE_32b, cacheOpts);
     } else {
-      m_encoder->LSC_AtomicRaw(uniformAtomicOp, pReturnVal,
-                               pDstAddr, pFinalAtomicSrcVal, nullptr, bitWidth, &resource, addrSize, immOffset,
-                               immScale, cacheOpts);
+      m_encoder->LSC_AtomicRaw(uniformAtomicOp, pReturnVal, pUniformBaseAddr, pDstAddr, pFinalAtomicSrcVal, nullptr,
+                               bitWidth, &resource, addrSize, immOffset, immScale, cacheOpts);
     }
   } else {
     if (isA64) {
@@ -14467,7 +14491,7 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
 // We emulate an atomic_load with an atomic_or with zero.
 // when the atomic is uniform we can directly generate a SIMD1 atomic_or
 //
-void EmitPass::emitScalarAtomicLoad(llvm::Instruction *pInst, ResourceDescriptor &resource,
+void EmitPass::emitScalarAtomicLoad(llvm::Instruction *pInst, ResourceDescriptor &resource, CVariable *pUniformBase,
                                     CVariable *pDstAddr, CVariable *pU, CVariable *pV, CVariable *pR, CVariable *pSrc,
                                     bool isA64, int bitWidth, int immOffset, int immScale, LSC_ADDR_SIZE addrSize) {
   auto moveToReg = [&](CVariable *&pVar) {
@@ -14514,10 +14538,12 @@ void EmitPass::emitScalarAtomicLoad(llvm::Instruction *pInst, ResourceDescriptor
       m_encoder->LSC_TypedAtomic(EATOMIC_OR, &resource, pU, pV, pR, pSrc, nullptr /*src1*/, atomicDst, bitWidth,
                                  LSC_ADDR_SIZE_32b, cacheOpts);
     } else {
-      m_encoder->LSC_AtomicRaw(EATOMIC_OR, atomicDst,
-                               pDstAddr, pSrc, nullptr, bitWidth, &resource, addrSize, immOffset, immScale, cacheOpts);
+      m_encoder->LSC_AtomicRaw(EATOMIC_OR, atomicDst, pUniformBase, pDstAddr, pSrc, nullptr, bitWidth, &resource,
+                               addrSize, immOffset, immScale, cacheOpts);
     }
   } else {
+    IGC_ASSERT_MESSAGE(!pUniformBase && immOffset == 0 && immScale == 1,
+                       "Uniform base, offset and scale available only for LSC path!");
 
     if (isA64) {
       m_encoder->AtomicRawA64(EATOMIC_OR, resource, atomicDst, pDstAddr, pSrc, nullptr, bitWidth);
@@ -14655,8 +14681,8 @@ CVariable *EmitPass::UnpackOrBroadcastIfUniform(CVariable *pVar) {
 }
 
 void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, ConstantInt *immOffset,
-                             ConstantInt *immScale, bool flipVarOffsetSign
-) {
+                             ConstantInt *immScale, bool flipVarOffsetSign, Value *uniformBase, bool signExtendOffset,
+                             bool zeroExtendOffset) {
   ForceDMask();
   // Currently, Dword Atomics can be called by matching 2 intrinsics. One is the
   // DwordAtomicRaw and AtomicCmpXchg (which has 2 srcs unlike the other
@@ -14737,10 +14763,33 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
     pDstAddr = eNegBase;
   }
 
+  CVariable *uniformBaseVar = nullptr;
+  if (uniformBase) {
+    uniformBaseVar = GetSymbol(uniformBase);
+    IGC_ASSERT_MESSAGE(uniformBaseVar->IsUniform(), "base expected to be uniform!");
+  }
 
   PointerType *PtrTy = dyn_cast<PointerType>(dstAddr->getType());
   bool isA64 = PtrTy && isA64Ptr(PtrTy, m_currShader->GetContext());
   LSC_ADDR_SIZE addrSize = isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit
+      // offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+      isA64 = false;
+    } else if (signExtendOffset) {
+      addrSize = LSC_ADDR_SIZE_32bS;
+      isA64 = false;
+    } else if (zeroExtendOffset) {
+      addrSize = LSC_ADDR_SIZE_32bU;
+      isA64 = false;
+    } else if (uniformBase && !PtrTy && resource.m_surfaceType != ESURFACE_SLM) {
+      // We have a non-ptr type as offset with uniform base.
+      addrSize = LSC_ADDR_SIZE_64b;
+      isA64 = true;
+    }
+  }
 
   const int immOffsetVal = immOffset ? static_cast<int>(immOffset->getSExtValue()) : 0;
   const int immScaleVal = immScale ? static_cast<int>(immScale->getSExtValue()) : 1;
@@ -14753,13 +14802,11 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
     pDstAddr = ReAlignUniformVariable(pDstAddr, uniformAlign);
     if (atomic_op == EATOMIC_OR && OrWith0Atomic(pInst, 2)) {
       // special case of atomic_load
-      emitScalarAtomicLoad(pInst, resource,
-                           pDstAddr, nullptr /*u*/, nullptr /*v*/, nullptr /*r*/, pSrc0, isA64, bitwidth, immOffsetVal,
-                           immScaleVal, addrSize);
+      emitScalarAtomicLoad(pInst, resource, uniformBaseVar, pDstAddr, nullptr /*u*/, nullptr /*v*/, nullptr /*r*/,
+                           pSrc0, isA64, bitwidth, immOffsetVal, immScaleVal, addrSize);
     } else {
-      emitScalarAtomics(pInst, resource, atomic_op,
-                        pDstAddr, nullptr /*u*/, nullptr /*v*/, nullptr /*r*/, pSrc0, isA64, bitwidth, immOffsetVal,
-                        immScaleVal, addrSize);
+      emitScalarAtomics(pInst, resource, atomic_op, uniformBaseVar, pDstAddr, nullptr /*u*/, nullptr /*v*/,
+                        nullptr /*r*/, pSrc0, isA64, bitwidth, immOffsetVal, immScaleVal, addrSize);
       ResetVMask();
     }
     return;
@@ -14809,9 +14856,8 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
       } else {
         if (shouldGenerateLSC()) {
           auto cacheOpts = LSC_DEFAULT_CACHING;
-          m_encoder->LSC_AtomicRaw(atomic_op, pDst,
-                                   pDstAddr, pSrc0, pSrc1, bitwidth, &resource, addrSize, immOffsetVal, immScaleVal,
-                                   cacheOpts);
+          m_encoder->LSC_AtomicRaw(atomic_op, pDst, uniformBaseVar, pDstAddr, pSrc0, pSrc1, bitwidth, &resource,
+                                   addrSize, immOffsetVal, immScaleVal, cacheOpts);
         } else {
           m_encoder->AtomicRawA64(atomic_op, resource, pDst, pDstAddr, pSrc0, pSrc1, bitwidth);
         }
@@ -14851,11 +14897,11 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
       ResourceLoopSubIteration(resource, flag, label);
       if (shouldGenerateLSC(pInst)) {
         auto cacheOpts = LSC_DEFAULT_CACHING;
-        m_encoder->LSC_AtomicRaw(atomic_op, pDst,
-                                 pDstAddr, pSrc0, pSrc1, bitwidth, &resource, addrSize, immOffsetVal, immScaleVal,
-                                 cacheOpts);
+        m_encoder->LSC_AtomicRaw(atomic_op, pDst, uniformBaseVar, pDstAddr, pSrc0, pSrc1, bitwidth, &resource, addrSize,
+                                 immOffsetVal, immScaleVal, cacheOpts);
       } else {
         IGC_ASSERT_MESSAGE(!immScale && !immOffset, "Scale and offset not supported on non-LSC path!");
+        IGC_ASSERT_MESSAGE(!signExtendOffset && !zeroExtendOffset, "Offset extending not supported on non-LSC path!");
         m_encoder->DwordAtomicRaw(atomic_op, resource, pDst, pDstAddr, pSrc0, pSrc1, is16Bit);
       }
       m_encoder->Push();
@@ -14921,10 +14967,10 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst *pInsn) {
 
     if (atomic_op == EATOMIC_OR && OrWith0Atomic(pInsn, 4)) {
       // special case of atomic_load
-      emitScalarAtomicLoad(pInsn, resource,
+      emitScalarAtomicLoad(pInsn, resource, nullptr, /*uniformBase*/
                            nullptr /*pDstAddr*/, pU, pV, pR, pSrc0, false /*isA64*/, bitwidth, 0, 1, LSC_ADDR_SIZE_32b);
     } else {
-      emitScalarAtomics(pInsn, resource, atomic_op,
+      emitScalarAtomics(pInsn, resource, atomic_op, nullptr, /*uniformBase*/
                         nullptr /*pDstAddr*/, pU, pV, pR, pSrc0, false /*isA64*/, bitwidth, 0, 1, LSC_ADDR_SIZE_32b);
     }
   } else {
@@ -15058,6 +15104,12 @@ void EmitPass::emitTypedRead(llvm::Instruction *pInsn) {
   auto doLSC = shouldGenerateLSC(pInsn, true);
   doLSC = doLSC && IGC_IS_FLAG_DISABLED(DisableLSCForTypedUAV);
   LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+    }
+  }
   if (m_currShader->GetIsUniform(pInsn)) {
     SIMDMode nativeDispatchMode = m_currShader->m_Platform->getMinDispatchMode();
     CVariable *tempdst = nullptr;
@@ -15185,6 +15237,12 @@ void EmitPass::emitTypedWrite(llvm::Instruction *pInsn) {
   LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(pInsn, false, true);
   m_currShader->m_State.HasLscStoreCacheControls(cacheOpts);
   LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+    }
+  }
   if (m_currShader->GetIsUniform(pInsn)) {
     IGC_ASSERT_MESSAGE(0, "Uniform store_uav_typed not implemented yet");
   } else {
@@ -17613,10 +17671,9 @@ CVariable *EmitPass::prepareDataForUniform(CVariable *DataVar, uint32_t Required
 }
 
 void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, ResourceDescriptor &Resource,
-                                       CVariable *Dest,
-                                       CVariable *Offset, int ImmOffset, int ImmScale, uint32_t NumElts,
-                                       uint32_t EltBytes, LSC_DOC_ADDR_SPACE AddrSpace, LSC_ADDR_SIZE AddrSize,
-                                       CVariable *inputPredicate, CVariable *mergeVal) {
+                                       CVariable *Dest, CVariable *UniformBaseVar, CVariable *Offset, int ImmOffset,
+                                       int ImmScale, uint32_t NumElts, uint32_t EltBytes, LSC_DOC_ADDR_SPACE AddrSpace,
+                                       LSC_ADDR_SIZE AddrSize, CVariable *inputPredicate, CVariable *mergeVal) {
   // NumElts must be 1 !
   IGC_ASSERT(NumElts == 1 && (EltBytes == 1 || EltBytes == 2));
 
@@ -17687,9 +17744,8 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
 
                  m_encoder->SetPredicate(finalPredicate);
 
-                 emitLSCLoad(CacheOpts, gatherDst,
-                             eOffset, EltBytes * 8, 1, 0, &Resource, AddrSize, LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset,
-                             ImmScale, AddrSpace);
+                 emitLSCLoad(CacheOpts, gatherDst, UniformBaseVar, eOffset, EltBytes * 8, 1, 0, &Resource, AddrSize,
+                             LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset, ImmScale, AddrSpace);
                  m_encoder->Push();
                });
 
@@ -17711,10 +17767,9 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
 //   2. sub-DW-aligned load,  vectorSize is 1|2|3|4|8
 //      (max size = UQ x 8 = 64 bytes)
 void EmitPass::emitLSCVectorLoad_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32, ResourceDescriptor &Resource,
-                                         CVariable *Dest,
-                                         CVariable *Offset, int ImmOffset, int ImmScale, uint32_t NumElts,
-                                         uint32_t EltBytes, uint64_t Align, uint32_t Addrspace,
-                                         LSC_DOC_ADDR_SPACE UserAddrSpace, LSC_ADDR_SIZE AddrSize,
+                                         CVariable *Dest, CVariable *UniformBaseVar, CVariable *Offset, int ImmOffset,
+                                         int ImmScale, uint32_t NumElts, uint32_t EltBytes, uint64_t Align,
+                                         uint32_t Addrspace, LSC_DOC_ADDR_SPACE UserAddrSpace, LSC_ADDR_SIZE AddrSize,
                                          CVariable *inputPredicate, CVariable *mergeVal) {
 
   IGC_ASSERT(Offset->IsUniform() && (EltBytes == 4 || EltBytes == 8));
@@ -17761,9 +17816,8 @@ void EmitPass::emitLSCVectorLoad_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32, 
 
     m_encoder->SetNoMask();
     m_encoder->SetPredicate(inputPredicate);
-    emitLSCLoad(CacheOpts, tDest,
-                eOffset, dSize * 8, vSize, 0, &Resource, AddrSize, LSC_DATA_ORDER_TRANSPOSE, ImmOffset, ImmScale,
-                UserAddrSpace);
+    emitLSCLoad(CacheOpts, tDest, UniformBaseVar, eOffset, dSize * 8, vSize, 0, &Resource, AddrSize,
+                LSC_DATA_ORDER_TRANSPOSE, ImmOffset, ImmScale, UserAddrSpace);
     m_encoder->Push();
 
     if (needTemp) {
@@ -17801,9 +17855,8 @@ void EmitPass::emitLSCVectorLoad_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32, 
 
   m_encoder->SetNoMask();
   m_encoder->SetPredicate(inputPredicate);
-  emitLSCLoad(CacheOpts, tDest,
-              nEOff, dSize * 8, 1, 0, &Resource, AddrSize, LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset, ImmScale,
-              UserAddrSpace);
+  emitLSCLoad(CacheOpts, tDest, UniformBaseVar, nEOff, dSize * 8, 1, 0, &Resource, AddrSize,
+              LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset, ImmScale, UserAddrSpace);
   m_encoder->Push();
 
   if (needTemp) {
@@ -17812,10 +17865,12 @@ void EmitPass::emitLSCVectorLoad_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32, 
   return;
 }
 
-void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr,
-                                 Value *varOffset, ConstantInt *immOffset, ConstantInt *immScale,
-                                 bool flipVarOffsetSign, LSC_CACHE_OPTS cacheOpts, LSC_DOC_ADDR_SPACE addrSpace
-) {
+void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr, Value *uniformBase, Value *varOffset,
+                                 ConstantInt *immOffset, ConstantInt *immScale, bool flipVarOffsetSign,
+                                 LSC_CACHE_OPTS cacheOpts, LSC_DOC_ADDR_SPACE addrSpace, bool signExtendOffset,
+                                 bool zeroExtendOffset) {
+  IGC_ASSERT_MESSAGE(signExtendOffset != zeroExtendOffset || (!signExtendOffset && !zeroExtendOffset),
+                     "Only sign-extend or zero-extend can be chosen, not both!");
 
   bool predicatedLoad = false;
   if (auto CI = dyn_cast<llvm::GenIntrinsicInst>(inst);
@@ -17835,6 +17890,17 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr,
   ResourceDescriptor resource = GetResourceVariable(Ptr, true);
   bool useA32 = !IGC::isA64Ptr(ptrType, m_currShader->GetContext());
   LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+      useA32 = true;
+    } else if (signExtendOffset) {
+      addrSize = LSC_ADDR_SIZE_32bS;
+    } else if (zeroExtendOffset) {
+      addrSize = LSC_ADDR_SIZE_32bU;
+    }
+  }
   IGCLLVM::FixedVectorType *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
   Type *eltTy = VTy ? VTy->getElementType() : Ty;
   uint32_t eltBytes = GetScalarTypeSizeInRegister(eltTy);
@@ -17883,6 +17949,11 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr,
   CVariable *destCVar = m_destination;
   bool destUniform = destCVar->IsUniform();
   bool srcUniform = eOffset->IsUniform();
+  CVariable *uniformBaseCVar = nullptr;
+  if (uniformBase) {
+    uniformBaseCVar = GetSymbol(uniformBase);
+    IGC_ASSERT_MESSAGE(uniformBaseCVar->IsUniform(), "base expected to be uniform!");
+  }
 
   // Not possible to have uniform dest AND non-uniform src.
   IGC_ASSERT_MESSAGE(!(destUniform && !srcUniform), "Unexpected ld: uniform dest and non-uniform src!");
@@ -17893,19 +17964,17 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr,
   // 1. handle cases eltBytes < 4
   if (eltBytes < 4) {
     IGC_ASSERT(elts == 1);
-    emitLSCVectorLoad_subDW(cacheOpts, useA32, resource, destCVar,
-                            eOffset, immOffsetInt, immScaleInt, 1, eltBytes, addrSpace, addrSize,
-                            predicatedLoad ? GetSymbol(inst->getOperand(2)) : nullptr,
+    emitLSCVectorLoad_subDW(cacheOpts, useA32, resource, destCVar, uniformBaseCVar, eOffset, immOffsetInt, immScaleInt,
+                            1, eltBytes, addrSpace, addrSize, predicatedLoad ? GetSymbol(inst->getOperand(2)) : nullptr,
                             isDestReplacedWithMerge ? nullptr : mergeVar);
     return;
   }
 
   // 2. Handle uniform load
   if (srcUniform && resource.m_resource->IsUniform()) {
-    emitLSCVectorLoad_uniform(cacheOpts, useA32, resource, destCVar,
-                              eOffset, immOffsetInt, immScaleInt, elts, eltBytes, align,
-                              ptrType->getPointerAddressSpace(), addrSpace, addrSize,
-                              predicatedLoad ? GetSymbol(inst->getOperand(2)) : nullptr,
+    emitLSCVectorLoad_uniform(cacheOpts, useA32, resource, destCVar, uniformBaseCVar, eOffset, immOffsetInt,
+                              immScaleInt, elts, eltBytes, align, ptrType->getPointerAddressSpace(), addrSpace,
+                              addrSize, predicatedLoad ? GetSymbol(inst->getOperand(2)) : nullptr,
                               isDestReplacedWithMerge ? nullptr : mergeVar);
     return;
   }
@@ -17951,8 +18020,11 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr,
           CVariable *rawAddrVar;
           int currImmOffsetInt = immOffsetInt;
           if (i > 0) {
-        // Calculate the new element offset
-            {
+            // Calculate the new element offset
+            if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+              currImmOffsetInt += VecMessInfo.insts[i].startByte;
+              rawAddrVar = eOffset;
+            } else {
               rawAddrVar = m_currShader->GetNewVariable(eOffset);
               CVariable *ImmVar = m_currShader->ImmToVariable(VecMessInfo.insts[i].startByte, ISA_TYPE_UD);
               if (!useA32 && !m_currShader->m_Platform->hasInt64Add()) {
@@ -18002,9 +18074,8 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr,
                                  messageType == VectorMessage::MESSAGE_A64_LSC_RW,
                              "Internal Error: unexpected message kind for load!");
 
-          emitLSCLoad(cacheOpts, gatherDst,
-                      rawAddrVar, blkBits, numBlks, 0, &resource, addrSize, LSC_DATA_ORDER_NONTRANSPOSE,
-                      currImmOffsetInt, immScaleInt, addrSpace);
+          emitLSCLoad(cacheOpts, gatherDst, uniformBaseCVar, rawAddrVar, blkBits, numBlks, 0, &resource, addrSize,
+                      LSC_DATA_ORDER_NONTRANSPOSE, currImmOffsetInt, immScaleInt, addrSpace);
           m_encoder->Push();
 
           if (needTemp) {
@@ -18018,9 +18089,10 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr,
 
 // Sub-function of emitLSCVectorStore()
 void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, ResourceDescriptor &Resource,
-                                        CVariable *StoreVar, CVariable *Offset, int ImmOffset, int ImmScale,
-                                        uint32_t NumElts, uint32_t EltBytes, alignment_t Alignment,
-                                        LSC_DOC_ADDR_SPACE AddrSpace, LSC_ADDR_SIZE AddrSize, Value *predicate) {
+                                        CVariable *UniformBaseVar, CVariable *StoreVar, CVariable *Offset,
+                                        int ImmOffset, int ImmScale, uint32_t NumElts, uint32_t EltBytes,
+                                        alignment_t Alignment, LSC_DOC_ADDR_SPACE AddrSpace, LSC_ADDR_SIZE AddrSize,
+                                        Value *predicate) {
   // NumElts must be 1!
   IGC_ASSERT_MESSAGE(NumElts == 1 && (EltBytes == 1 || EltBytes == 2),
                      "Number of elements must be 1 for an 8bit or 16bit data "
@@ -18100,9 +18172,8 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, R
                  }
 
                  // NumElts = 1
-                 emitLSCStore(CacheOpts,
-                              stVar, eOffset, EltBytes * 8, 1, 0, &Resource, AddrSize, LSC_DATA_ORDER_NONTRANSPOSE,
-                              ImmOffset, ImmScale, AddrSpace);
+                 emitLSCStore(CacheOpts, UniformBaseVar, stVar, eOffset, EltBytes * 8, 1, 0, &Resource, AddrSize,
+                              LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset, ImmScale, AddrSpace);
                  m_encoder->Push();
                });
 
@@ -18117,9 +18188,10 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, R
 //   2. sub-DW-aligned store,  vectorSize is 1|2|3|4|8
 //      (max size = UQ x 8 = 64 bytes)
 void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32, ResourceDescriptor &Resource,
-                                          CVariable *StoreVar, CVariable *Offset, int ImmOffset, int ImmScale,
-                                          uint32_t NumElts, uint32_t EltBytes, alignment_t Align,
-                                          LSC_DOC_ADDR_SPACE AddrSpace, LSC_ADDR_SIZE AddrSize, Value *predicate) {
+                                          CVariable *UniformBaseVar, CVariable *StoreVar, CVariable *Offset,
+                                          int ImmOffset, int ImmScale, uint32_t NumElts, uint32_t EltBytes,
+                                          alignment_t Align, LSC_DOC_ADDR_SPACE AddrSpace, LSC_ADDR_SIZE AddrSize,
+                                          Value *predicate) {
   // If needed, can handle non-uniform StoreVar.
   IGC_ASSERT(StoreVar->IsUniform() && Offset->IsUniform() && (EltBytes == 4 || EltBytes == 8));
 
@@ -18165,9 +18237,8 @@ void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32,
           m_encoder->SetNoMask();
           if (predicate)
             m_encoder->SetPredicate(GetSymbol(predicate));
-          emitLSCStore(CacheOpts,
-                       new_stVar, new_eoff, dSize * 8, 1, 0, &Resource, AddrSize, LSC_DATA_ORDER_NONTRANSPOSE,
-                       ImmOffset, ImmScale, AddrSpace);
+          emitLSCStore(CacheOpts, UniformBaseVar, new_stVar, new_eoff, dSize * 8, 1, 0, &Resource, AddrSize,
+                       LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset, ImmScale, AddrSpace);
           m_encoder->Push();
         });
     return;
@@ -18193,20 +18264,20 @@ void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32,
           m_encoder->SetPredicate(GetSymbol(predicate));
           m_encoder->SetPredicateMode(EPRED_ANY);
         }
-        emitLSCStore(CacheOpts,
-                     stVar, eOffset, dSize * 8, vSize, 0, &Resource, AddrSize, LSC_DATA_ORDER_TRANSPOSE, ImmOffset,
-                     ImmScale, AddrSpace);
+        emitLSCStore(CacheOpts, UniformBaseVar, stVar, eOffset, dSize * 8, vSize, 0, &Resource, AddrSize,
+                     LSC_DATA_ORDER_TRANSPOSE, ImmOffset, ImmScale, AddrSpace);
         m_encoder->Push();
       });
   return;
 }
 
-void EmitPass::emitLSCVectorStore(Value *Ptr,
-                                  Value *varOffset, ConstantInt *immOffset, ConstantInt *immScale,
-                                  bool flipVarOffsetSign, Value *storedVal, BasicBlock *BB, LSC_CACHE_OPTS cacheOpts,
-                                  alignment_t align, bool dontForceDmask, LSC_DOC_ADDR_SPACE addrSpace
-                                  ,
+void EmitPass::emitLSCVectorStore(Value *Ptr, Value *uniformBase, Value *varOffset, ConstantInt *immOffset,
+                                  ConstantInt *immScale, bool flipVarOffsetSign, Value *storedVal, BasicBlock *BB,
+                                  LSC_CACHE_OPTS cacheOpts, alignment_t align, bool dontForceDmask,
+                                  LSC_DOC_ADDR_SPACE addrSpace, bool signExtendOffset, bool zeroExtendOffset,
                                   Value *predicate) {
+  IGC_ASSERT_MESSAGE(signExtendOffset != zeroExtendOffset || (!signExtendOffset && !zeroExtendOffset),
+                     "Only sign-extend or zero-extend can be chosen, not both!");
 
   PointerType *ptrType = cast<PointerType>(Ptr->getType());
   Type *Ty = storedVal->getType();
@@ -18222,6 +18293,11 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
   if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE && !dontForceDmask) {
     ForceDMask(false);
   }
+  CVariable *uniformBaseVar = nullptr;
+  if (uniformBase) {
+    uniformBaseVar = GetSymbol(uniformBase);
+    IGC_ASSERT_MESSAGE(uniformBaseVar->IsUniform(), "base expected to be uniform!");
+  }
 
   // offset corresponds to Int2Ptr operand obtained during pattern matching
   CVariable *eOffset = GetSymbol(varOffset);
@@ -18234,6 +18310,17 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
   }
   bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
   LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+      useA32 = true;
+    } else if (signExtendOffset) {
+      addrSize = LSC_ADDR_SIZE_32bS;
+    } else if (zeroExtendOffset) {
+      addrSize = LSC_ADDR_SIZE_32bU;
+    }
+  }
   if (useA32) {
     eOffset = TruncatePointer(eOffset);
   }
@@ -18269,9 +18356,8 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
     checkOCLUniformStore(dstUniform, isOCLUniform);
 
     IGC_ASSERT(elts == 1);
-    emitLSCVectorStore_subDW(cacheOpts, useA32, resource,
-                             storedVar, eOffset, immOffsetVal, immScaleVal, 1, eltBytes, align, addrSpace, addrSize,
-                             predicate);
+    emitLSCVectorStore_subDW(cacheOpts, useA32, resource, uniformBaseVar, storedVar, eOffset, immOffsetVal, immScaleVal,
+                             1, eltBytes, align, addrSpace, addrSize, predicate);
     return;
   }
 
@@ -18279,9 +18365,8 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
 
   // 2. Handle uniform Store
   if (dstUniform && srcUniform) {
-    emitLSCVectorStore_uniform(cacheOpts, useA32, resource,
-                               storedVar, eOffset, immOffsetVal, immScaleVal, elts, eltBytes, align, addrSpace,
-                               addrSize, predicate);
+    emitLSCVectorStore_uniform(cacheOpts, useA32, resource, uniformBaseVar, storedVar, eOffset, immOffsetVal,
+                               immScaleVal, elts, eltBytes, align, addrSpace, addrSize, predicate);
     return;
   }
 
@@ -18309,8 +18394,11 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
                    CVariable *rawAddrVar;
                    int currImmOffsetVal = immOffsetVal;
                    if (i > 0) {
-        // Calculate the new element offset
-                     {
+                     // Calculate the new element offset
+                     if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+                       currImmOffsetVal += VecMessInfo.insts[i].startByte;
+                       rawAddrVar = eOffset;
+                     } else {
                        rawAddrVar = m_currShader->GetNewVariable(eOffset);
                        CVariable *ImmVar = m_currShader->ImmToVariable(VecMessInfo.insts[i].startByte, ISA_TYPE_UD);
                        if (!useA32 && !m_currShader->m_Platform->hasInt64Add()) {
@@ -18355,9 +18443,8 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
                      m_encoder->SetPredicate(GetSymbol(predicate));
                    }
 
-                   emitLSCStore(cacheOpts,
-                                subStoredVar, rawAddrVar, blkBits, numBlks, 0, &resource, addrSize,
-                                LSC_DATA_ORDER_NONTRANSPOSE, currImmOffsetVal, immScaleVal, addrSpace);
+                   emitLSCStore(cacheOpts, uniformBaseVar, subStoredVar, rawAddrVar, blkBits, numBlks, 0, &resource,
+                                addrSize, LSC_DATA_ORDER_NONTRANSPOSE, currImmOffsetVal, immScaleVal, addrSpace);
 
                    m_encoder->Push();
                  }
@@ -18401,6 +18488,12 @@ void EmitPass::emitLSCTypedRead(llvm::Instruction *pInsn) {
   uint numChannels = iSTD::BitCount(writeMask.getEM());
   auto eltBitSize = 4 * 8;
   LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+    }
+  }
   if (m_currShader->GetIsUniform(pInsn)) {
     SIMDMode nativeDispatchMode = m_currShader->m_Platform->getMinDispatchMode();
     CVariable *tempdst = nullptr;
@@ -18507,6 +18600,12 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction *pInsn) {
 
   ResourceDescriptor resource = GetResourceVariable(pllDstBuffer);
   LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+    }
+  }
   LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(pInsn, false, true);
   m_currShader->m_State.HasLscStoreCacheControls(cacheOpts);
 
@@ -18565,10 +18664,10 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction *pInsn) {
       GenIntrinsicInst *genY = dyn_cast<GenIntrinsicInst>(pllSrc_Y);
       GenIntrinsicInst *genZ = dyn_cast<GenIntrinsicInst>(pllSrc_Z);
       GenIntrinsicInst *genW = dyn_cast<GenIntrinsicInst>(pllSrc_W);
-      if (genX && genX->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex &&
-        genY && genY->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex &&
-        genZ && genZ->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex &&
-        genW && genW->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex) {
+      if (genX && genX->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex && genY &&
+          genY->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex && genZ &&
+          genZ->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex && genW &&
+          genW->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex) {
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
       }
@@ -18740,11 +18839,11 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst *inst) {
 
     if (atomic_op == EATOMIC_OR && OrWith0Atomic(inst, 4)) {
       // special case of atomic_load
-      emitScalarAtomicLoad(inst, resource,
+      emitScalarAtomicLoad(inst, resource, nullptr, /*uniformBase*/
                            nullptr /*pDstAddr*/, get<0>(cachedCVar), get<1>(cachedCVar), get<2>(cachedCVar), pSrc0,
                            false /*isA64*/, eltSizeInBits, 0, 1, LSC_ADDR_SIZE_32b);
     } else {
-      emitScalarAtomics(inst, resource, atomic_op,
+      emitScalarAtomics(inst, resource, atomic_op, nullptr, /*uniformBase*/
                         nullptr /*pDstAddr*/, get<0>(cachedCVar), get<1>(cachedCVar), get<2>(cachedCVar), pSrc0,
                         false /*isA64*/, eltSizeInBits, 0, 1, LSC_ADDR_SIZE_32b);
     }
@@ -18767,6 +18866,12 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst *inst) {
     uint regsPerAddrChannel = 32 * numLanes(instWidth) / 8 / getGRFSize();
     uint regsPerDataChannel = eltSizeInBits * numLanes(instWidth) / 8 / getGRFSize();
     LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
+    if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+      if (resource.m_isStatefulForEfficient64b) {
+        // stateful access for efficient64b -> 64bit pointer with 32bit offset
+        addrSize = LSC_ADDR_SIZE_32bU;
+      }
+    }
     auto cacheOpts = LSC_DEFAULT_CACHING;
     if (!needsSplit) {
       m_encoder->SetPredicate(flag);
@@ -19780,9 +19885,16 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value *resourcePtr, bool Check)
     if (as == ADDRESS_SPACE_THREAD_ARG)
       resource.m_isThreadArg = true;
 
-    if (IsBindless(bufType) ||
+    if (IsBindless(bufType) || (bufType == RENDER_TARGET && m_currShader->m_Platform->hasEfficient64bEnabled()) ||
         !directIndexing) {
       auto SetResource = [&](Value *resourcePtr) {
+        if (m_currShader->m_Platform->hasEfficient64bEnabled() && Check) {
+          if (auto SurfaceStateIndex = m_pattern->matchSurfaceStateIndex(resourcePtr)) {
+            resource.m_resource = GetSymbol(SurfaceStateIndex->first);
+            resource.m_SurfaceStateIndex = SurfaceStateIndex->second;
+            return;
+          }
+        }
         if (auto *i2p = dyn_cast<IntToPtrInst>(resourcePtr))
           resource.m_resource = GetSymbol(i2p->getOperand(0));
         else
@@ -19844,10 +19956,18 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value *resourcePtr, bool Check)
 
   if (IsBindless(bufType)) {
     resource.m_surfaceType = ESURFACE_BINDLESS;
+    if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+      resource.m_isStatefulForEfficient64b = true;
+    }
   } else if (IsSSHbindless(bufType)) {
     resource.m_surfaceType = ESURFACE_SSHBINDLESS;
-  }
-  else if (bufType == SLM) {
+    if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+      resource.m_isStatefulForEfficient64b = true;
+    }
+  } else if (bufType == RENDER_TARGET && m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    resource.m_surfaceType = ESURFACE_BINDLESS;
+    resource.m_isStatefulForEfficient64b = true;
+  } else if (bufType == SLM) {
     resource.m_surfaceType = ESURFACE_SLM;
   } else if (bufType == CONSTANT_BUFFER || bufType == UAV || bufType == RESOURCE || bufType == RENDER_TARGET) {
     resource.m_surfaceType = ESURFACE_NORMAL;
@@ -19856,6 +19976,9 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value *resourcePtr, bool Check)
         resourcePtr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_PRIVATE) {
       ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
       if (modMD && modMD->compOpt.UseScratchSpacePrivateMemory) {
+        if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+          resource.m_isStatefulForEfficient64b = true;
+        }
         resource.m_surfaceType = ESURFACE_SCRATCH;
         return resource;
       }
@@ -20018,7 +20141,35 @@ bool EmitPass::ResourceLoopSubIteration(ResourceDescriptor &resource, SamplerDes
     uniformResource.m_surfaceType = resource.m_surfaceType;
     uniformResource.m_resource = UniformCopy(resource.m_resource, offset, prevFlag, false, needSafeguard);
     uniformResource.m_isConstant = resource.m_isConstant;
-    {
+    uniformResource.m_isStatefulForEfficient64b = resource.m_isStatefulForEfficient64b;
+    uniformResource.m_SurfaceStateIndex = resource.m_SurfaceStateIndex;
+    if (m_currShader->m_Platform->hasEfficient64bEnabled() && resource.m_resource->isQType()) {
+      // Efficient64b mode: resource pointers are 64bit, so we need to compare
+      // whole 64bit pointers there is no native qword cmp, so we need to
+      // compare lower and higher DWs separately
+      CVariable *resourceDW = m_currShader->GetNewAlias(resource.m_resource, ISA_TYPE_UD, 0, 2);
+      CVariable *uniformResourceDW = m_currShader->GetNewAlias(uniformResource.m_resource, ISA_TYPE_UD, 0, 2);
+      // Comprae lower half
+      m_encoder->SetSrcRegion(0, 16, 8, 2);
+      m_encoder->SetSrcRegion(1, 0, 1, 0);
+      m_encoder->SetSrcSubReg(0, 0);
+      m_encoder->SetSrcSubReg(1, 0);
+      m_encoder->Cmp(EPREDICATE_EQ, resourceFlag, resourceDW, uniformResourceDW);
+      m_encoder->Push();
+      if (IGC_IS_FLAG_DISABLED(EnableResourceLoopNonUniformCmpLowerHalfDWOnly)) {
+        // Comprae higher half
+        CVariable *resourceFlagTmp =
+            m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
+        m_encoder->SetSrcRegion(0, 16, 8, 2);
+        m_encoder->SetSrcRegion(1, 0, 1, 0);
+        m_encoder->SetSrcSubReg(0, 1);
+        m_encoder->SetSrcSubReg(1, 1);
+        m_encoder->Cmp(EPREDICATE_EQ, resourceFlagTmp, resourceDW, uniformResourceDW);
+        m_encoder->Push();
+        m_encoder->And(resourceFlag, resourceFlag, resourceFlagTmp);
+        m_encoder->Push();
+      }
+    } else {
       m_encoder->Cmp(EPREDICATE_EQ, resourceFlag, uniformResource.m_resource, resource.m_resource);
       m_encoder->Push();
     }
@@ -20030,7 +20181,28 @@ bool EmitPass::ResourceLoopSubIteration(ResourceDescriptor &resource, SamplerDes
     samplerFlag = m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
     uniformSampler.m_samplerType = sampler.m_samplerType;
     uniformSampler.m_sampler = UniformCopy(sampler.m_sampler, offset);
-    {
+    if (sampler.m_sampler->isQType()) {
+      CVariable *samplerDW = m_currShader->GetNewAlias(sampler.m_sampler, ISA_TYPE_UD, 0, 2);
+      CVariable *uniformSamplerDW = m_currShader->GetNewAlias(uniformSampler.m_sampler, ISA_TYPE_UD, 0, 2);
+      m_encoder->SetSrcRegion(0, 16, 8, 2);
+      m_encoder->SetSrcRegion(1, 0, 1, 0);
+      m_encoder->SetSrcSubReg(0, 0);
+      m_encoder->SetSrcSubReg(1, 0);
+      m_encoder->Cmp(EPREDICATE_EQ, samplerFlag, samplerDW, uniformSamplerDW);
+      m_encoder->Push();
+      if (IGC_IS_FLAG_DISABLED(EnableResourceLoopNonUniformCmpLowerHalfDWOnly)) {
+        CVariable *samplerFlagTmp =
+            m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
+        m_encoder->SetSrcRegion(0, 16, 8, 2);
+        m_encoder->SetSrcRegion(1, 0, 1, 0);
+        m_encoder->SetSrcSubReg(0, 1);
+        m_encoder->SetSrcSubReg(1, 1);
+        m_encoder->Cmp(EPREDICATE_EQ, samplerFlagTmp, samplerDW, uniformSamplerDW);
+        m_encoder->Push();
+        m_encoder->And(samplerFlag, samplerFlag, samplerFlagTmp);
+        m_encoder->Push();
+      }
+    } else {
       m_encoder->Cmp(EPREDICATE_EQ, samplerFlag, uniformSampler.m_sampler, sampler.m_sampler);
       m_encoder->Push();
     }
@@ -21411,6 +21583,125 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool
     l1l3cc = LSC_L1DEF_L3DEF;
   }
 
+  bool hasNewCacheEncoding = m_pCtx->platform.hasNewLSCCacheEncoding();
+  bool hasEfficient64bEnabled = m_pCtx->platform.hasEfficient64bEnabled();
+  if (hasNewCacheEncoding && l1l3cc > LSC_L1_L3_CC::LSC_CC_INVALID) {
+    LSC_CACHE_OPTS cacheOpts{LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};
+    if (isLoad) {
+      LSC_LDCC_L1_L2_L3 l1l2l3cc = static_cast<LSC_LDCC_L1_L2_L3>(l1l3cc);
+      IGC_ASSERT_EXIT_MESSAGE(l1l2l3cc <= LSC_LDCC_L1IAR_L2IAR_L3IAR, "unsupported caching option");
+      switch (l1l2l3cc) {
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1_L2_L3_DEF:
+        cacheOpts = {LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};
+        break;
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1UC_L2UC_L3UC:
+        cacheOpts = {LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1UC_L2UC_L3C:
+        cacheOpts = {LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED, LSC_CACHING_CACHED};
+        break;
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1UC_L2C_L3UC:
+        cacheOpts = {LSC_CACHING_UNCACHED, LSC_CACHING_CACHED, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1UC_L2C_L3C:
+        cacheOpts = {LSC_CACHING_UNCACHED, LSC_CACHING_CACHED, LSC_CACHING_CACHED};
+        break;
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1C_L2UC_L3UC:
+        cacheOpts = {LSC_CACHING_CACHED, LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1C_L2UC_L3C:
+        cacheOpts = {LSC_CACHING_CACHED, LSC_CACHING_UNCACHED, LSC_CACHING_CACHED};
+        break;
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1C_L2C_L3UC:
+        cacheOpts = {LSC_CACHING_CACHED, LSC_CACHING_CACHED, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1C_L2C_L3C:
+        cacheOpts = {LSC_CACHING_CACHED, LSC_CACHING_CACHED, LSC_CACHING_CACHED};
+        break;
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1S_L2UC_L3UC:
+        cacheOpts = {LSC_CACHING_STREAMING, LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1S_L2UC_L3C:
+        cacheOpts = {LSC_CACHING_STREAMING, LSC_CACHING_UNCACHED, LSC_CACHING_CACHED};
+        break;
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1S_L2C_L3UC:
+        cacheOpts = {LSC_CACHING_STREAMING, LSC_CACHING_CACHED, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1S_L2C_L3C:
+        cacheOpts = {LSC_CACHING_STREAMING, LSC_CACHING_CACHED, LSC_CACHING_CACHED};
+        break;
+      case LSC_LDCC_L1_L2_L3::LSC_LDCC_L1IAR_L2IAR_L3IAR:
+        cacheOpts = {LSC_CACHING_READINVALIDATE, LSC_CACHING_READINVALIDATE, LSC_CACHING_READINVALIDATE};
+        break;
+      default:
+        IGC_ASSERT_EXIT_MESSAGE(0, "unsupported caching option");
+        break;
+      }
+      return cacheOpts;
+    } else // store and atomics (atomics up to and including
+           // LSC_STCC_L1UC_L2WB_L3UC)
+    {
+      LSC_STCC_L1_L2_L3 l1l2l3cc = static_cast<LSC_STCC_L1_L2_L3>(l1l3cc);
+      IGC_ASSERT_EXIT_MESSAGE(l1l2l3cc <= LSC_STCC_L1WB_L2UC_L3WB, "unsupported caching option");
+      switch (l1l2l3cc) {
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1_L2_L3_DEF:
+        cacheOpts = {LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1UC_L2UC_L3UC:
+        cacheOpts = {LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1UC_L2UC_L3WB:
+        cacheOpts = {LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED, LSC_CACHING_WRITEBACK};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1UC_L2WB_L3UC:
+        cacheOpts = {LSC_CACHING_UNCACHED, LSC_CACHING_WRITEBACK, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1UC_L2WB_L3WB:
+        cacheOpts = {LSC_CACHING_UNCACHED, LSC_CACHING_WRITEBACK, LSC_CACHING_WRITEBACK};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1WT_L2UC_L3UC:
+        cacheOpts = {LSC_CACHING_WRITETHROUGH, LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1WT_L2UC_L3WB:
+        cacheOpts = {LSC_CACHING_WRITETHROUGH, LSC_CACHING_UNCACHED, LSC_CACHING_WRITEBACK};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1WT_L2WB_L3UC:
+        cacheOpts = {LSC_CACHING_WRITETHROUGH, LSC_CACHING_WRITEBACK, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1WT_L2WB_L3WB:
+        cacheOpts = {LSC_CACHING_WRITETHROUGH, LSC_CACHING_WRITEBACK, LSC_CACHING_WRITEBACK};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1S_L2UC_L3UC:
+        cacheOpts = {LSC_CACHING_STREAMING, LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1S_L2UC_L3WB:
+        cacheOpts = {LSC_CACHING_STREAMING, LSC_CACHING_UNCACHED, LSC_CACHING_WRITEBACK};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1S_L2WB_L3UC:
+        cacheOpts = {LSC_CACHING_STREAMING, LSC_CACHING_WRITEBACK, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1WB_L2UC_L3UC:
+        cacheOpts = {LSC_CACHING_WRITEBACK, LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1WB_L2WB_L3UC:
+        cacheOpts = {LSC_CACHING_WRITEBACK, LSC_CACHING_WRITEBACK, LSC_CACHING_UNCACHED};
+        break;
+      case LSC_STCC_L1_L2_L3::LSC_STCC_L1WB_L2UC_L3WB:
+        cacheOpts = {LSC_CACHING_WRITEBACK, LSC_CACHING_UNCACHED, LSC_CACHING_WRITEBACK};
+        break;
+      default:
+        IGC_ASSERT_EXIT_MESSAGE(0, "unsupported caching option");
+        break;
+      }
+    }
+    if (!hasEfficient64bEnabled) {
+      // Workaround to keep backward compatibility in case sendg with L2 is not
+      // available.
+      cacheOpts.l3 = cacheOpts.l2;
+      cacheOpts.l2 = LSC_CACHING_DEFAULT;
+    }
+    return cacheOpts;
+  }
   LSC_CACHE_OPTS cacheOpts{LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};
   switch (l1l3cc) {
   case LSC_L1DEF_L3DEF:
@@ -21796,6 +22087,13 @@ void EmitPass::emitLscIntrinsicLoad(llvm::GenIntrinsicInst *inst) {
   CVariable *offset = GetSymbol(Ptr);
   bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
   LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+      useA32 = true;
+    }
+  }
   offset = useA32 ? TruncatePointer(offset) : offset;
   bool isBlockLoad = inst->getIntrinsicID() == GenISAIntrinsic::GenISA_LSCLoadBlock;
   if (isBlockLoad) {
@@ -21821,10 +22119,9 @@ void EmitPass::emitLscIntrinsicLoad(llvm::GenIntrinsicInst *inst) {
                                 m_encoder->LSC_LoadBlock1D(gatherDst, offset, dataSize, fragElems, &resource, addrSize,
                                                            fragImmOffset, cacheOpts);
                               } else {
-                                m_encoder->LSC_LoadGather(LSC_LOAD, gatherDst,
-                                                          offset, dataSize, fragElems, 0, &resource, addrSize,
-                                                          LSC_DATA_ORDER_NONTRANSPOSE, fragImmOffset, 1, cacheOpts,
-                                                          addrSpace);
+                                m_encoder->LSC_LoadGather(LSC_LOAD, gatherDst, nullptr, offset, dataSize, fragElems, 0,
+                                                          &resource, addrSize, LSC_DATA_ORDER_NONTRANSPOSE,
+                                                          fragImmOffset, 1, cacheOpts, addrSpace);
                               }
                               m_encoder->Push();
                             });
@@ -21855,6 +22152,12 @@ void EmitPass::emitLscIntrinsicLoadCmask(llvm::GenIntrinsicInst *inst) {
 
   offset = useA32 ? TruncatePointer(offset) : offset;
   auto addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+    }
+  }
   const int immOffset = int_cast<int>(cast<ConstantInt>(inst->getOperand(1))->getSExtValue());
 
   auto dataSize = (LSC_DATA_SIZE)cast<ConstantInt>(inst->getOperand(2))->getZExtValue();
@@ -21944,6 +22247,13 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst *inst) {
   offset = ReAlignUniformVariable(offset, EALIGN_GRF);
   bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
   LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+      useA32 = true;
+    }
+  }
   offset = useA32 ? TruncatePointer(offset) : offset;
 
   auto dataSize = (LSC_DATA_SIZE)cast<ConstantInt>(inst->getOperand(2))->getZExtValue();
@@ -21976,10 +22286,9 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst *inst) {
 
   emitLscIntrinsicFragments(gatherDst, dataSize, dataElems, immOffset,
                             [&](CVariable *fragDst, int fragIx, LSC_DATA_ELEMS fragElems, int fragImmOffset) {
-                              m_encoder->LSC_LoadGather(lscOp, fragDst,
-                                                        offset, dataSize, fragElems, 0, &resource, addrSize,
-                                                        LSC_DATA_ORDER_NONTRANSPOSE, fragImmOffset, 1, cacheOpts,
-                                                        addrSpace);
+                              m_encoder->LSC_LoadGather(lscOp, fragDst, nullptr, offset, dataSize, fragElems, 0,
+                                                        &resource, addrSize, LSC_DATA_ORDER_NONTRANSPOSE, fragImmOffset,
+                                                        1, cacheOpts, addrSpace);
                               m_encoder->Push();
                             });
   //
@@ -22050,6 +22359,11 @@ void EmitPass::emitLscIntrinsicTypedLoadStatus(llvm::GenIntrinsicInst *inst) {
   const unsigned int eltBitSize = 32;
   const unsigned int numElements = 1; // The dest data payload is one register with the status bits.
   LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      addrSize = LSC_ADDR_SIZE_32bU;
+    }
+  }
   if (destIsUniform) {
     m_encoder->SetSimdSize(SIMDMode::SIMD1);
     m_encoder->SetPredicate(nullptr);
@@ -22130,6 +22444,13 @@ void EmitPass::emitLscIntrinsicStore(llvm::GenIntrinsicInst *inst) {
   CVariable *offset = GetSymbol(Ptr);
   bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
   LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+      useA32 = true;
+    }
+  }
   offset = useA32 ? TruncatePointer(offset) : offset;
   bool isBlockStore = inst->getIntrinsicID() == GenISAIntrinsic::GenISA_LSCStoreBlock;
   if (isBlockStore) {
@@ -22153,10 +22474,9 @@ void EmitPass::emitLscIntrinsicStore(llvm::GenIntrinsicInst *inst) {
                                 m_encoder->LSC_StoreBlock1D(fragData, offset, dataSize, fragElems, &resource, addrSize,
                                                             fragImmOffset, cacheOpts);
                               } else {
-                                m_encoder->LSC_StoreScatter(LSC_STORE,
-                                                            fragData, offset, dataSize, fragElems, 0, &resource,
-                                                            addrSize, LSC_DATA_ORDER_NONTRANSPOSE, fragImmOffset, 1,
-                                                            cacheOpts, addrspace);
+                                m_encoder->LSC_StoreScatter(LSC_STORE, nullptr, fragData, offset, dataSize, fragElems,
+                                                            0, &resource, addrSize, LSC_DATA_ORDER_NONTRANSPOSE,
+                                                            fragImmOffset, 1, cacheOpts, addrspace);
                               }
                               m_encoder->Push();
                             });
@@ -22195,6 +22515,12 @@ void EmitPass::emitLscIntrinsicStoreCmask(llvm::GenIntrinsicInst *inst) {
   offset = ReAlignUniformVariable(offset, EALIGN_GRF);
 
   auto addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+    }
+  }
   auto dataSize = (LSC_DATA_SIZE)cast<ConstantInt>(inst->getOperand(3))->getZExtValue();
 
   // cmask
@@ -22259,6 +22585,24 @@ void EmitPass::emitLscIntrinsicStoreCmask(llvm::GenIntrinsicInst *inst) {
   }
 }
 
+void EmitPass::emitLSCLoad(Instruction *inst, CVariable *dst, CVariable *uniformBase, CVariable *offset,
+                           unsigned elemSize, unsigned numElems, unsigned blockOffset, ResourceDescriptor *resource,
+                           LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order, int immOffset, int immScale) {
+  LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, true);
+  LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
+  emitLSCLoad(cacheOpts, dst, uniformBase, offset, elemSize, numElems, blockOffset, resource, addr_size, data_order,
+              immOffset, immScale, addrSpace);
+}
+
+void EmitPass::emitLSCLoad(LSC_CACHE_OPTS cacheOpts, CVariable *dst, CVariable *uniformBase, CVariable *offset,
+                           unsigned elemSize, unsigned numElems, unsigned blockOffset, ResourceDescriptor *resource,
+                           LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order, int immOffset, int immScale,
+                           LSC_DOC_ADDR_SPACE addrSpace) {
+  LSC_DATA_SIZE elemSizeEnum = m_encoder->LSC_GetElementSize(elemSize);
+  LSC_DATA_ELEMS numElemsEnum = m_encoder->LSC_GetElementNum(numElems);
+  m_encoder->LSC_LoadGather(LSC_LOAD, dst, uniformBase, offset, elemSizeEnum, numElemsEnum, blockOffset, resource,
+                            addr_size, data_order, immOffset, immScale, cacheOpts, addrSpace);
+}
 void EmitPass::emitLSCLoad(Instruction *inst, CVariable *dst, CVariable *offset, unsigned elemSize, unsigned numElems,
                            unsigned blockOffset, ResourceDescriptor *resource, LSC_ADDR_SIZE addr_size,
                            LSC_DATA_ORDER data_order, int immOffset, int immScale) {
@@ -22274,11 +22618,29 @@ void EmitPass::emitLSCLoad(LSC_CACHE_OPTS cacheOpts, CVariable *dst, CVariable *
                            LSC_DOC_ADDR_SPACE addrSpace) {
   LSC_DATA_SIZE elemSizeEnum = m_encoder->LSC_GetElementSize(elemSize);
   LSC_DATA_ELEMS numElemsEnum = m_encoder->LSC_GetElementNum(numElems);
-  m_encoder->LSC_LoadGather(LSC_LOAD, dst,
-                            offset, elemSizeEnum, numElemsEnum, blockOffset, resource, addr_size, data_order, immOffset,
-                            immScale, cacheOpts, addrSpace);
+  m_encoder->LSC_LoadGather(LSC_LOAD, dst, nullptr, offset, elemSizeEnum, numElemsEnum, blockOffset, resource,
+                            addr_size, data_order, immOffset, immScale, cacheOpts, addrSpace);
 }
 
+void EmitPass::emitLSCStore(Instruction *inst, CVariable *uniformBase, CVariable *src, CVariable *offset,
+                            unsigned elemSize, unsigned numElems, unsigned blockOffset, ResourceDescriptor *resource,
+                            LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order, int immOffset, int immScale) {
+  LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
+  LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false);
+  emitLSCStore(cacheOpts, uniformBase, src, offset, elemSize, numElems, blockOffset, resource, addr_size, data_order,
+               immOffset, immScale, addrSpace);
+}
+
+void EmitPass::emitLSCStore(LSC_CACHE_OPTS cacheOpts, CVariable *uniformBase, CVariable *src, CVariable *offset,
+                            unsigned elemSize, unsigned numElems, unsigned blockOffset, ResourceDescriptor *resource,
+                            LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order, int immOffset, int immScale,
+                            LSC_DOC_ADDR_SPACE addrSpace) {
+  LSC_DATA_SIZE elemSizeEnum = m_encoder->LSC_GetElementSize(elemSize);
+  LSC_DATA_ELEMS numElemsEnum = m_encoder->LSC_GetElementNum(numElems);
+  m_currShader->m_State.HasLscStoreCacheControls(cacheOpts);
+  m_encoder->LSC_StoreScatter(LSC_STORE, uniformBase, src, offset, elemSizeEnum, numElemsEnum, blockOffset, resource,
+                              addr_size, data_order, immOffset, immScale, cacheOpts, addrSpace);
+}
 
 void EmitPass::emitLSCStore(Instruction *inst, CVariable *src, CVariable *offset, unsigned elemSize, unsigned numElems,
                             unsigned blockOffset, ResourceDescriptor *resource, LSC_ADDR_SIZE addr_size,
@@ -22296,9 +22658,8 @@ void EmitPass::emitLSCStore(LSC_CACHE_OPTS cacheOpts, CVariable *src, CVariable 
   LSC_DATA_SIZE elemSizeEnum = m_encoder->LSC_GetElementSize(elemSize);
   LSC_DATA_ELEMS numElemsEnum = m_encoder->LSC_GetElementNum(numElems);
   m_currShader->m_State.HasLscStoreCacheControls(cacheOpts);
-  m_encoder->LSC_StoreScatter(LSC_STORE,
-                              src, offset, elemSizeEnum, numElemsEnum, blockOffset, resource, addr_size, data_order,
-                              immOffset, immScale, cacheOpts, addrSpace);
+  m_encoder->LSC_StoreScatter(LSC_STORE, nullptr, src, offset, elemSizeEnum, numElemsEnum, blockOffset, resource,
+                              addr_size, data_order, immOffset, immScale, cacheOpts, addrSpace);
 }
 
 void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst *inst) {
@@ -22706,6 +23067,13 @@ void EmitPass::emitLSCAtomic(llvm::GenIntrinsicInst *inst) {
   bool isA64 = isA64Ptr(ptrType, m_currShader->GetContext());
   LSC_ADDR_SIZE addrSize = isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b;
   ResourceDescriptor resource = GetResourceVariable(Ptr);
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    if (resource.m_isStatefulForEfficient64b) {
+      // stateful access for efficient64b -> 64bit pointer with 32bit offset
+      addrSize = LSC_ADDR_SIZE_32bU;
+      isA64 = false;
+    }
+  }
   if (Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_GLOBAL) {
     m_currShader->SetHasGlobalAtomics();
   }
@@ -22733,8 +23101,8 @@ void EmitPass::emitLSCAtomic(llvm::GenIntrinsicInst *inst) {
 
   auto cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(5), false);
 
-  m_encoder->LSC_AtomicRaw(atomicOp, pOldValue,
-                           pDstAddr, pAtomicVal, pAtomicCmp, bitwidth, &resource, addrSize, immOff, 1, cacheOpts);
+  m_encoder->LSC_AtomicRaw(atomicOp, pOldValue, nullptr, pDstAddr, pAtomicVal, pAtomicCmp, bitwidth, &resource,
+                           addrSize, immOff, 1, cacheOpts);
   m_encoder->Push();
 }
 
@@ -22837,6 +23205,11 @@ void EmitPass::emitInlinedDataValue(llvm::GenIntrinsicInst *I) {
 }
 
 void EmitPass::emitTraceRay(TraceRayIntrinsic *I, bool RayQueryEnable) {
+  // If Efficient64b is enabled call dedicated function
+  // for emitting TraceRay.
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    return emitTraceRayEff64(I, RayQueryEnable);
+  }
 
   // We emit a SW fence here to prevent motion of other sends across this
   // send.rta until we have VISA support. An actual fence was previously
@@ -22966,6 +23339,98 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic *I, bool RayQueryEnable) {
   m_encoder->Push();
 }
 
+void EmitPass::emitTraceRayEff64(TraceRayIntrinsic *instruction, bool rayQueryEnable) {
+  // We emit a SW fence here to prevent motion of other sends across this
+  // send.rta until we have VISA support. An actual fence was previously
+  // inserted in the RayTracingShaderLowering pass.
+  m_encoder->Fence(false, false, false, false, false, false, false, true);
+  m_encoder->Push();
+
+  const uint32_t numSend =
+      (m_currShader->m_SIMDSize == SIMDMode::SIMD32 && !m_currShader->m_Platform->supportRayTracingSIMD32()) ? 2 : 1;
+
+  for (uint32_t cnt = 0; cnt < numSend; cnt++) {
+    // 'payload' contains bvhLevel, traceRayCtrl, and stackID as per
+    // TraceRayPayload::payload in RTStackFormat.h.
+    CVariable *payload = BroadcastIfUniform(GetSymbol(instruction->getPayload()));
+    CVariable *globalBufferPtr = GetSymbol(instruction->getGlobalBufferPointer());
+
+    if (!globalBufferPtr->IsUniform()) {
+      // Since the global pointer has been split between the upper and
+      // lower lanes in the SIMD32 case, we need to extract each half out.
+      CVariable *tmpGP = globalBufferPtr;
+
+      if (globalBufferPtr->GetNumberInstance() == 2) {
+        tmpGP = m_currShader->GetNewVariable(globalBufferPtr->GetNumberElement(), globalBufferPtr->GetType(),
+                                             EALIGN_GRF, "TmpGP");
+
+        m_encoder->Copy(tmpGP, globalBufferPtr);
+        globalBufferPtr = UniformCopy(tmpGP, true);
+      } else if ((m_currShader->m_SIMDSize == SIMDMode::SIMD32) && (numSend != 1)) {
+        CVariable *Src =
+            m_currShader->GetNewAlias(globalBufferPtr, globalBufferPtr->GetType(),
+                                      CEncoder::GetCISADataTypeSize(globalBufferPtr->GetType()) * 16 * cnt, 16);
+
+        CVariable *eMask = GetExecutionMask();
+
+        eMask = m_currShader->GetNewAlias(eMask, ISA_TYPE_UW, 2 * cnt, 1);
+
+        CVariable *off = nullptr;
+        globalBufferPtr = UniformCopy(Src, off, eMask);
+      } else {
+        globalBufferPtr = UniformCopy(tmpGP);
+      }
+    }
+
+    // If this is a RayQuery function add a destination, as RayQuery
+    // returns a done bit.
+    CVariable *dst = rayQueryEnable ? m_destination : nullptr;
+
+    if ((m_currShader->m_SIMDSize == SIMDMode::SIMD32) && (numSend != 1)) {
+      m_encoder->SetSimdSize(SIMDMode::SIMD16);
+
+      if (cnt == 1)
+        m_encoder->SetMask(EMASK_H2);
+
+      if (dst) {
+        dst = m_currShader->GetNewAlias(dst, dst->GetType(), CEncoder::GetCISADataTypeSize(dst->GetType()) * 16 * cnt,
+                                        16);
+      }
+    }
+
+    STACK_ADDRESS_MODE stackAddressingMode = STACK_ADDRESS_MODE::DEFAULT_ADDRESSING;
+
+    if (auto rayQueryIntrinsic = dyn_cast<TraceRaySyncIntrinsic>(instruction)) {
+      stackAddressingMode = rayQueryIntrinsic->getStackAddressingMode();
+      // Temporary WA for setting stack addressing mode, to be implemented in
+      // vISA. `globalBufferPtr` type is UQ, not allowed for OR.
+      if (stackAddressingMode != STACK_ADDRESS_MODE::DEFAULT_ADDRESSING) {
+        globalBufferPtr = m_currShader->CopyVariableRaw(globalBufferPtr);
+        CVariable *globalBufferPtrAsUD = m_currShader->GetNewAlias(globalBufferPtr, VISA_Type::ISA_TYPE_UD, 0, 1);
+        m_encoder->Or(globalBufferPtrAsUD, globalBufferPtrAsUD,
+                      m_currShader->ImmToVariable((uint64_t)stackAddressingMode, globalBufferPtrAsUD->GetType()));
+        m_encoder->Push();
+      }
+
+      if (m_currShader->GetShaderType() != ShaderType::RAYTRACING_SHADER) {
+        IGC_ASSERT(stackAddressingMode == STACK_ADDRESS_MODE::DEFAULT_ADDRESSING);
+      }
+    }
+
+    m_encoder->TraceRay(dst,
+                        rayQueryEnable ? TRACE_RAY_OPCODE::OP_TRACE_RAY_SYNC : TRACE_RAY_OPCODE::OP_TRACE_RAY_ASYNC,
+                        globalBufferPtr, stackAddressingMode, payload);
+
+    m_encoder->Push();
+  }
+
+  // Insert a software fence after the send.rta so no IO operations get
+  // scheduled across the send from below.  We should be able to remove this
+  // once we have VISA support for raytracing rather than emitting a
+  // raw_sends.
+  m_encoder->Fence(false, false, false, false, false, false, false, true);
+  m_encoder->Push();
+}
 
 void EmitPass::emitReadTraceRaySync(llvm::GenIntrinsicInst *I) {
   // Insert a software fence before and after the ReadTraceRaySync so no IO
@@ -22983,6 +23448,11 @@ void EmitPass::emitReadTraceRaySync(llvm::GenIntrinsicInst *I) {
 }
 
 void EmitPass::emitRayQueryCheckRelease(GenIntrinsicInst *I, bool RayQueryCheckEnable, bool RayQueryReleaseEnable) {
+  // If Efficient64b is enabled call dedicated function
+  // for emitting Check/Release functions.
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    return emitRayQueryCheckReleaseEff64(I, RayQueryCheckEnable, RayQueryReleaseEnable);
+  }
 
   // We emit a SW fence here to prevent motion of other sends across this
   // send.rta until we have VISA support. An actual fence was previously
@@ -23053,6 +23523,61 @@ void EmitPass::emitRayQueryCheckRelease(GenIntrinsicInst *I, bool RayQueryCheckE
   m_encoder->Push();
 }
 
+void EmitPass::emitRayQueryCheckReleaseEff64(GenIntrinsicInst *instruction, bool rayQueryCheckEnable,
+                                             bool rayQueryReleaseEnable) {
+  IGC_ASSERT(rayQueryCheckEnable != rayQueryReleaseEnable);
+
+  // We emit a SW fence here to prevent motion of other sends across this
+  // send.rta until we have VISA support. An actual fence was previously
+  // inserted in the RayTracingShaderLowering pass.
+  m_encoder->Fence(false, false, false, false, false, false, false, true);
+  m_encoder->Push();
+
+  // Messages to rta unit require GlobalBufferPointer and Paylod.
+  // But Check/Release messages do not send any data.
+  // To handle this, a dummy source is created.
+  CVariable *dummySource = m_currShader->GetNewVariable(
+          getGRFSize() / SIZE_DWORD,
+      ISA_TYPE_UD, EALIGN_GRF, "dummySource");
+
+  CVariable *payload = nullptr;
+
+  if (IGC_IS_FLAG_DISABLED(EnableDoNotSendPayloadForCheckReleaseInEff64)) {
+    payload = dummySource;
+  }
+
+  m_encoder->Lifetime(LIFETIME_START, dummySource);
+
+  const uint32_t numSend =
+      ((m_currShader->m_SIMDSize == SIMDMode::SIMD32) && !m_currShader->m_Platform->supportRayTracingSIMD32()) ? 2 : 1;
+
+  for (uint32_t cnt = 0; cnt < numSend; cnt++) {
+    if ((m_currShader->m_SIMDSize == SIMDMode::SIMD32) && (numSend != 1)) {
+      m_encoder->SetSimdSize(SIMDMode::SIMD16);
+
+      if (cnt == 1)
+        m_encoder->SetMask(EMASK_H2);
+    }
+
+    TRACE_RAY_OPCODE opcode = rayQueryCheckEnable     ? TRACE_RAY_OPCODE::OP_RAYQUERY_CHECK
+                              : rayQueryReleaseEnable ? TRACE_RAY_OPCODE::OP_RAYQUERY_RELEASE
+                                                      : TRACE_RAY_OPCODE::NUM_TRACE_RAY_OPCODES;
+
+    IGC_ASSERT(opcode != TRACE_RAY_OPCODE::NUM_TRACE_RAY_OPCODES);
+
+    m_encoder->TraceRay(nullptr, opcode, dummySource, STACK_ADDRESS_MODE::DEFAULT_ADDRESSING, payload);
+
+    m_encoder->Push();
+  }
+
+  // Insert a software fence after the send.rta so no IO operations get
+  // scheduled across the send from below.  We should be able to remove this
+  // once we have VISA support for raytracing rather than emitting a
+  // raw_sends.
+  m_encoder->Fence(false, false, false, false, false, false, false, true);
+
+  m_encoder->Push();
+}
 
 EmitPass::PreemptionEncoding EmitPass::getEncoderPreemptionMode(EPreemptionMode preemptionMode) {
   switch (preemptionMode) {
@@ -23099,6 +23624,11 @@ void EmitPass::emitPreemptionEnable(PreemptionEnableIntrinsic *PEI) {
 void EmitPass::emitBTD(CVariable *GlobalBufferPtr, CVariable *StackID, CVariable *ShaderRecord, CVariable *Flag,
                        bool releaseStackID) {
 
+  // If Efficient64b is enabled call dedicated function
+  // for emitting BTD functions
+  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+    return emitBTDEff64(GlobalBufferPtr, StackID, ShaderRecord, Flag, releaseStackID);
+  }
 
   CVariable *payload =
       m_currShader->GetNewVariable(2 * getGRFSize() / SIZE_DWORD, ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
@@ -23176,6 +23706,47 @@ void EmitPass::emitBTD(CVariable *GlobalBufferPtr, CVariable *StackID, CVariable
   m_encoder->Push();
 }
 
+void EmitPass::emitBTDEff64(CVariable *globalBufferPtr, CVariable *stackID, CVariable *shaderRecord, CVariable *flag,
+                            bool releaseStackID) {
+
+  if (globalBufferPtr) {
+    if (!globalBufferPtr->IsUniform())
+      globalBufferPtr = UniformCopy(globalBufferPtr);
+
+    if (IGC_IS_FLAG_DISABLED(EnableNewBTDIndirect0DescriptorProgramming)) {
+      auto *Tmp = m_currShader->GetNewVariable(globalBufferPtr);
+      // Global Pointer [57:0]
+      m_encoder->Shr(Tmp, globalBufferPtr, m_currShader->ImmToVariable(6, ISA_TYPE_UD));
+      globalBufferPtr = Tmp;
+    }
+  }
+
+  stackID = BroadcastIfUniform(stackID);
+
+  if (shaderRecord) {
+    shaderRecord = BroadcastIfUniform(shaderRecord);
+  }
+
+  // We emit a SW fence here to prevent motion of other sends across this
+  // send.btd until we have VISA support. An actual fence was previously
+  // inserted in the RayTracingShaderLowering pass.
+  m_encoder->Fence(false, false, false, false, false, false, false, true);
+  m_encoder->Push();
+
+  m_encoder->SetPredicate(flag);
+
+  m_encoder->BTD(releaseStackID ? BTD_OPCODE::BTD_STACKID_RELEASE : BTD_OPCODE::BTD_SPAWN, globalBufferPtr, stackID,
+                 shaderRecord);
+
+  m_encoder->Push();
+
+  // Insert a software fence after the send.btd so no IO operations get
+  // scheduled across the send from below.  We should be able to remove this
+  // once we have VISA support for raytracing rather than emitting a
+  // raw_sends.
+  m_encoder->Fence(false, false, false, false, false, false, false, true);
+  m_encoder->Push();
+}
 
 void EmitPass::emitBindlessThreadDispatch(BTDIntrinsic *I) {
   CVariable *globalBufferPtr = GetSymbol(I->getGlobalBufferPointer());

@@ -251,7 +251,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I) {
       ldmsOffsetWorkaournd(cast<LdMSIntrinsic>(&I));
       break;
     case llvm::GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
-    {
+    case llvm::GenISAIntrinsic::GenISA_RenderTargetReadSampleFreqPtr: {
       // Render target read should return 0 when the sample is outside primitive processed.
       //     R0.xyzw = RTRead(RTi, SampleIndex);
       //     R1 = 1<<SamplexIndex
@@ -289,12 +289,71 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I) {
         inst->eraseFromParent();
       }
     } break;
+    case llvm::GenISAIntrinsic::GenISA_readsurfacetypeandformat: {
+      CodeGenContext *pCodeGenCtx = m_pCtxWrapper->getCodeGenContext();
+      if (pCodeGenCtx && pCodeGenCtx->platform.supportsReadStateInfo()) {
+        convertReadSurfaceTypeAndFormatToA64(I, pCodeGenCtx);
+      }
+    } break;
     default:
       break;
     }
   }
 }
 
+void WorkaroundAnalysis::convertReadSurfaceTypeAndFormatToA64(llvm::CallInst &I, CodeGenContext *pCodeGenCtx) {
+  // Intrinsic signature: <2 x i32> @llvm.genx.GenISA.readsurfacetypeandformat(ptr addrspace(N))
+  // Returns: [SurfaceType, SurfaceFormat] (element 0 = type, element 1 = format)
+  // In 64B format, both are extracted from DWORD 0; in 32B format, both are extracted from DWORD 3.
+
+  GenIntrinsicInst *GenISACall = cast<GenIntrinsicInst>(&I);
+  m_builder->SetInsertPoint(&I);
+
+  // Get the resource pointer operand (address space is BINDLESS or similar)
+  Value *resourcePtr = GenISACall->getOperand(0);
+
+  // Convert pointer to integer, then back to pointer in ADDRESS_SPACE_CONSTANT
+  Value *ptrAsInt = m_builder->CreatePtrToInt(resourcePtr, m_builder->getInt64Ty());
+  llvm::PointerType *ptrType = llvm::PointerType::get(m_builder->getInt32Ty(), ADDRESS_SPACE_CONSTANT);
+  Value *surfaceStatePtr = m_builder->CreateIntToPtr(ptrAsInt, ptrType);
+
+  Value *dwordPtr;
+  unsigned typeShiftAmount, formatShiftAmount;
+
+  {
+    // 64B format: DWORD 0 bits [31:29] = Type, bits [26:18] = Format
+    dwordPtr = surfaceStatePtr;
+    typeShiftAmount = 29;
+    formatShiftAmount = 18;
+  }
+
+  // Load the DWORD with 4-byte alignment
+  LoadInst *dword = m_builder->CreateLoad(m_builder->getInt32Ty(), dwordPtr, "readsurfacetypeandformatA64");
+  dword->setAlignment(IGCLLVM::getCorrectAlign(4));
+
+  // Set cache control: LSC_LDCC_L1C_L2C_L3C (25) = L1 cached, L2 cached, L3 cached
+  LLVMContext &Ctx = dword->getContext();
+  Metadata *cacheCtrlMD[] = {ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(Ctx), LSC_LDCC_L1C_L2C_L3C))};
+  MDNode *cacheCtrlNode = MDNode::get(Ctx, cacheCtrlMD);
+  dword->setMetadata("lsc.cache.ctrl", cacheCtrlNode);
+
+  // Extract Surface Type (3 bits) and Surface Format (9 bits)
+  Value *typeShifted = m_builder->CreateLShr(dword, m_builder->getInt32(typeShiftAmount));
+  Value *surfaceType = m_builder->CreateAnd(typeShifted, m_builder->getInt32(0x7)); // 3 bits
+
+  Value *formatShifted = m_builder->CreateLShr(dword, m_builder->getInt32(formatShiftAmount));
+  Value *surfaceFormat = m_builder->CreateAnd(formatShifted, m_builder->getInt32(0x1FF)); // 9 bits
+
+  // Build the return vector <2 x i32> to match the original intrinsic return type
+  // Element 0 = SurfaceType, Element 1 = SurfaceFormat
+  Value *result = PoisonValue::get(I.getType());
+  result = m_builder->CreateInsertElement(result, surfaceType, m_builder->getInt32(0));
+  result = m_builder->CreateInsertElement(result, surfaceFormat, m_builder->getInt32(1));
+
+  // Replace all uses and delete the old intrinsic
+  I.replaceAllUsesWith(result);
+  I.eraseFromParent();
+}
 void WorkaroundAnalysis::ldmsOffsetWorkaournd(LdMSIntrinsic *ldms) {
   // In some cases immediate offsets are not working in hardware for ldms message
   // to solve it we add directly the offset to the integer coordinate

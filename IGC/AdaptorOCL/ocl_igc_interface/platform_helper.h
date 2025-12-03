@@ -129,6 +129,7 @@ OCL_API_CALL inline void PopulateInterfaceWith(IGC::IgcFeaturesAndWorkarounds<Ve
   COPY_VAL_EXACT(FtrPooledEuEnabled);
 
   COPY_VAL_EXACT(FtrResourceStreamer);
+  COPY_VAL_EXACT(FtrEfficient64BitAddressing);
 }
 } // namespace IgcPlatformFeaturesHelper
 } // namespace IGC

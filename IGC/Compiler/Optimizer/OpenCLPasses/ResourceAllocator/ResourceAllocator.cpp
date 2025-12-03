@@ -154,6 +154,8 @@ static AllocationTypeEnum getAllocationType(KernelArg::ArgType argType, Bindless
   case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DEFAULT_DEVICE_QUEUE:
   case KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET:
   case KernelArg::ArgType::IMPLICIT_ASSERT_BUFFER:
+  case KernelArg::ArgType::IMPLICIT_INDIRECT_DATA_POINTER:
+  case KernelArg::ArgType::IMPLICIT_SCRATCH_POINTER:
     return AllocationTypeEnum::Other;
 
   default:

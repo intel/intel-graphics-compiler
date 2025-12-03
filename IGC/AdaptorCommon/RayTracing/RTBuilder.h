@@ -204,6 +204,8 @@ public:
   Value *getRtMemBasePtr(Value *globalBufferPtr = nullptr);
   Value *getStackSizePerRay(void);
   Value *getNumDSSRTStacks(void);
+  Value *getBaseSurfaceStatePointer(void);
+  Value *getBaseSurfaceStatePointer(Value *RayDispatchGlobalData);
   Value *getMaxBVHLevels(void);
   Value *getStatelessScratchPtr(void);
   Value *getLeafType(StackPointerVal *StackPointer, Value *CommittedHit);

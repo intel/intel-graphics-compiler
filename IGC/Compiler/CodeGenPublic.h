@@ -504,6 +504,9 @@ struct SBindlessProgram : SKernelProgram {
   // This is just diagnostic information to track whether we picked
   // the retry shader
   bool BetterThanPrev = false;
+
+  // Informs if the kernel requires extra allocation of the sync HW stack
+  bool UsesSyncHWStack = false;
 };
 
 struct SRayTracingShadersGroup {
@@ -1179,7 +1182,7 @@ public:
 
   bool useStatelessToStateful() {
     return (m_instrTypes.hasLoadStore && m_DriverInfo.SupportsStatelessToStatefulBufferTransformation() &&
-            !getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
+            !getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired && !platform.hasEfficient64bEnabled() &&
             IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) && !m_instrTypes.hasInlineAsmPointerAccess);
   }
 

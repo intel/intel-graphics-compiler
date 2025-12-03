@@ -372,6 +372,11 @@ public:
 
   // If enabled IGC must not hoist convergent instructions.
   virtual bool DisableConvergentInstructionsHoisting() const { return false; }
+  // If enabled IGC will assume the UMD supports 16MB scratch per thread.
+  virtual bool supports16MBPerThreadScratchSpace() const { return true; }
+  // Determines if the scratch space is implemented via the vISA
+  // %scratchloc variable.
+  virtual bool supportsScratchLocAccess() const { return false; }
 
   // Each API can define its own preferred values for the spill threshold
   virtual unsigned getSIMD8_SpillThreshold() const { return IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold); }
@@ -388,6 +393,8 @@ public:
   virtual bool supportsAtomicPullSWTileWalk() const { return false; }
   virtual bool supportsDynamicPolyPackingPolicies() const { return true; }
   virtual bool supportsVRT() const { return true; }
+  virtual bool usePrivateMemoryLimitWorkaround() const { return false; }
+  virtual bool allocateIndirectDataPtrUnconditionally() const { return false; }
 
   virtual bool supportsUniformPrivateMemorySpace() const { return false; }
 

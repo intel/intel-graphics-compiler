@@ -55,6 +55,7 @@ typedef enum {
   PREDEFINED_IMPL_ARG_BUF_PTR = 18,
   PREDEFINED_LOCAL_ID_BUF_PTR = 19,
   PREDEFINED_MSG0 = 20,
+  PREDEFINED_SCRATCHLOC = 21,
   PREDEFINED_VAR_INVALID
 } PreDefined_Vars;
 
@@ -647,6 +648,10 @@ typedef enum {
 } VISA_SVM_Block_Type;
 
 typedef struct _vISA_RT_CONTROLS {
+  unsigned rPresent : 1;       // In Eff64b we can skip color phases
+  unsigned gPresent : 1;
+  unsigned bPresent : 1;
+  unsigned aPresent : 1;
   unsigned s0aPresent : 1;     // src0 Alpha
   unsigned oMPresent : 1;      // oMask
   unsigned zPresent : 1;       // depth
@@ -761,6 +766,8 @@ enum LSC_ADDR_SIZE {
   LSC_ADDR_SIZE_16b,  // [ADDR]:a16
   LSC_ADDR_SIZE_32b,  // [ADDR]:a32
   LSC_ADDR_SIZE_64b,  // [ADDR]:a64
+  LSC_ADDR_SIZE_32bU, // [ADDR]:a32u (32b indices zero-extended to 64b)
+  LSC_ADDR_SIZE_32bS, // [ADDR]:a32s (32b indices sign-extended to 64b)
 };
 
 enum LSC_ADDR_TYPE {
@@ -771,6 +778,7 @@ enum LSC_ADDR_TYPE {
   LSC_ADDR_TYPE_BTI,  // binding table interface (legacy)
   //
   LSC_ADDR_TYPE_ARG, // pseudo address type for kernel arguments
+  LSC_ADDR_TYPE_SURF, // raw surface state pointer
 };
 
 enum class LSC_DOC_ADDR_SPACE {
@@ -800,15 +808,20 @@ typedef enum {
 // Only some combinations are legal (per platform)
 struct LSC_CACHE_OPTS {
   LSC_CACHE_OPT l1;
+  // new cache level introduced in xe3p
+  LSC_CACHE_OPT l2;
   LSC_CACHE_OPT l3;
 
  LSC_CACHE_OPTS() = default;
 
  LSC_CACHE_OPTS(LSC_CACHE_OPT _l1, LSC_CACHE_OPT _l3)
    : l1(_l1),
+     l2 (LSC_CACHING_DEFAULT),
      l3(_l3)
   { }
 
+ LSC_CACHE_OPTS(LSC_CACHE_OPT _l1, LSC_CACHE_OPT _l2, LSC_CACHE_OPT _l3)
+   : l1(_l1), l2(_l2), l3(_l3) { }
 };
 
 // L1,L3 available cache policies combinations
@@ -821,6 +834,21 @@ typedef enum {
 #undef LSC_CACHE_CTRL_OPTION
 #undef LSC_CACHE_CTRL_OPTIONS
 } LSC_L1_L3_CC;
+typedef enum {
+#define LSC_CACHE_CTRL_LOAD_OPTION(Name, Val, Description) Name = Val,
+#include "IGC/common/igc_regkeys_enums_defs.h"
+    LSC_CACHE_CTRL_LOAD_OPTIONS
+#undef LSC_CACHE_CTRL_LOAD_OPTION
+#undef LSC_CACHE_CTRL_LOAD_OPTIONS
+} LSC_LDCC_L1_L2_L3;
+
+typedef enum {
+#define LSC_CACHE_CTRL_STORE_OPTION(Name, Val, Description) Name = Val,
+#include "IGC/common/igc_regkeys_enums_defs.h"
+    LSC_CACHE_CTRL_STORE_OPTIONS
+#undef LSC_CACHE_CTRL_STORE_OPTION
+#undef LSC_CACHE_CTRL_STORE_OPTIONS
+} LSC_STCC_L1_L2_L3;
 
 // Groups all the necessary address into a product type
 struct LSC_ADDR {
@@ -1002,5 +1030,32 @@ typedef enum {
   VISA_LSC_IMMOFF_SPILL_FILL = 17
 } VISALscImmOffOpts;
 
+// TraceRay opcodes
+enum class TRACE_RAY_OPCODE : unsigned char
+{
+    OP_TRACE_RAY_ASYNC = 0,      // indicates an asynchronous trace ray message
+    OP_TRACE_RAY_SYNC = 1,       // indicates a synchronous ray query message
+    OP_TRACE_BOX_SYNC = 2,       // indicates a box query message
+    OP_RAYQUERY_CHECK = 3,       // indicates a rayQueryCheck   (Xe2+)
+    OP_RAYQUERY_RELEASE = 4,     // indicates a rayQueryRelease (Xe2+)
+    NUM_TRACE_RAY_OPCODES,
+};
+
+// This enumeration must be used in the message descriptor to identify the type of message
+enum BTD_OPCODE
+{
+    BTD_SPAWN = 0,                      // This message type is for normal bindless thread spawn messages.
+    BTD_STACKID_RELEASE = 1,            // Deallocate the stackID, do not spawn threads
+    BTD_OVERDISPATCH_BUFFER_LAUNCH = 2, // This message type indicates the BTD function
+                                        // to launch threads from BTD Overdispatch Buffer.
+    BTD_PREEMPTED_STACKID_RELEASE = 3,  // BTD function releases the stackID that belongs
+                                        // to the preempted thread.
+};
+
+enum class STACK_ADDRESS_MODE : unsigned char
+{
+    DEFAULT_ADDRESSING = 0,
+    ASYNC_RT_ADDRESSING = 1
+};
 
 #endif // _VISA_IGC_COMMON_HEADER_H_

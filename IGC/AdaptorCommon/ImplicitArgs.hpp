@@ -124,6 +124,8 @@ public:
     IMPLICIT_ARG_BUFFER_PTR,
 
     ASSERT_BUFFER_POINTER,
+    INDIRECT_DATA_POINTER,
+    SCRATCH_POINTER,
 
     // BufferBoundsChecking
     BUFFER_SIZE,

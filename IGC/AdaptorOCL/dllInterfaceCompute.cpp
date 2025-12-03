@@ -1418,6 +1418,9 @@ bool TranslateBuild(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutpu
                     TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &IGCPlatform,
                     float profilingTimerResolution) {
   ShaderHash inputShHash;
+  if (IGCPlatform.hasEfficient64bEnabled()) {
+    IGC_SET_FLAG_VALUE(EnableEfficient64b, true);
+  }
   if (IGC_IS_FLAG_ENABLED(EnableKernelNamesBasedHash)) {
     // Create the hash based on kernel names.
     // This takes the names and concatenates them into a string

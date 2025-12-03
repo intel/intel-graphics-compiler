@@ -143,6 +143,8 @@ template <typename CCT> void Spv2dBlockIOResolution::visit2DBlockSPVCallInst(Cal
       (controls.isEmpty || controls.isInvalid ||
        !m_Ctx->platform.isSupportedLSCCacheControlsEnum(static_cast<LSC_L1_L3_CC>(controls.value), true))) {
     controls.value = LSC_L1C_WT_L3C_WB;
+    if (m_Ctx->platform.hasNewLSCCacheEncoding())
+      controls.value = LSC_LDCC_L1C_L2C_L3C;
   }
   args.push_back(ConstantInt::get(Type::getInt32Ty(CI.getContext()), controls.value));
 

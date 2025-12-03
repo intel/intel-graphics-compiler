@@ -4322,10 +4322,10 @@ public:
   static constexpr unsigned ELT_SIZE = sizeof(uint32_t);
   uint32_t getMaxImmConstantSizePushed() const;
   std::optional<uint32_t> getMaxStorageWhenStoringUniqueValues(const std::vector<char> &data,
-                                                               CompressionResult& compressionResult);
+                                                               CompressionResult &compressionResult);
   void replaceExtractElementsWithCompressedFetches(std::vector<ExtractElementInst *> &largeExtractElements,
                                                    llvm::IRBuilder<> &builder, const std::vector<char> &fullData,
-                                                   const CompressionResult& compressionResult);
+                                                   const CompressionResult &compressionResult);
 
   IGCIndirectICBPropagaion() : FunctionPass(ID) {
     initializeIGCIndirectICBPropagaionPass(*PassRegistry::getPassRegistry());
@@ -4351,7 +4351,7 @@ uint32_t IGCIndirectICBPropagaion::getMaxImmConstantSizePushed() const {
 
 std::optional<uint32_t>
 IGCIndirectICBPropagaion::getMaxStorageWhenStoringUniqueValues(const std::vector<char> &data,
-                                                               CompressionResult& compressionResult) {
+                                                               CompressionResult &compressionResult) {
   if (data.empty() || (data.size() % ELT_SIZE != 0)) {
     return std::nullopt;
   }
@@ -4397,10 +4397,9 @@ IGCIndirectICBPropagaion::getMaxStorageWhenStoringUniqueValues(const std::vector
   return totalStorage;
 }
 
-void IGCIndirectICBPropagaion::replaceExtractElementsWithCompressedFetches(std::vector<ExtractElementInst *> &largeExtractElements,
-                                                                           llvm::IRBuilder<> &builder,
-                                                                           const std::vector<char> &fullData,
-  const CompressionResult& compressionResult) {
+void IGCIndirectICBPropagaion::replaceExtractElementsWithCompressedFetches(
+    std::vector<ExtractElementInst *> &largeExtractElements, llvm::IRBuilder<> &builder,
+    const std::vector<char> &fullData, const CompressionResult &compressionResult) {
   if (largeExtractElements.empty()) {
     return;
   }
@@ -4498,8 +4497,7 @@ void IGCIndirectICBPropagaion::replaceExtractElementsWithCompressedFetches(std::
     }
     // ShiftAmount = positionInDWord * bitsPerIndex
     unsigned bitsPerIndexShift = Log2_32(bitsPerIndex);
-    Value *shiftAmount =
-        builder.CreateShl(positionInDWord32, builder.getInt32(bitsPerIndexShift));
+    Value *shiftAmount = builder.CreateShl(positionInDWord32, builder.getInt32(bitsPerIndexShift));
     Value *shiftedValue = builder.CreateLShr(packedDWord, shiftAmount);
     uint32_t mask = BITMASK(bitsPerIndex);
     finalIndex = builder.CreateAnd(shiftedValue, builder.getInt32(mask));
@@ -4521,7 +4519,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F) {
   CompressionResult compressionResult = {};
 
 
-   if (modMD && modMD->immConstant.data.size() && storageNeeded <= maxImmConstantSizePushedLimit) {
+  if (modMD && modMD->immConstant.data.size() && storageNeeded <= maxImmConstantSizePushedLimit) {
     IRBuilder<> m_builder(F.getContext());
 
     for (auto &BB : F) {
@@ -4610,7 +4608,8 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F) {
       }
     }
     if (enableCompression) {
-      replaceExtractElementsWithCompressedFetches(largeExtractElements, m_builder, modMD->immConstant.data, compressionResult);
+      replaceExtractElementsWithCompressedFetches(largeExtractElements, m_builder, modMD->immConstant.data,
+                                                  compressionResult);
     }
   }
   return false;

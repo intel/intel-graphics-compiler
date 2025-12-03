@@ -333,6 +333,10 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg &arg) const {
 
   case ImplicitArg::ASSERT_BUFFER_POINTER:
     return KernelArg::ArgType::IMPLICIT_ASSERT_BUFFER;
+  case ImplicitArg::INDIRECT_DATA_POINTER:
+    return KernelArg::ArgType::IMPLICIT_INDIRECT_DATA_POINTER;
+  case ImplicitArg::SCRATCH_POINTER:
+    return KernelArg::ArgType::IMPLICIT_SCRATCH_POINTER;
   default:
     return KernelArg::ArgType::NOT_TO_ALLOCATE;
   }
@@ -607,6 +611,8 @@ KernelArgsOrder::KernelArgsOrder(InputType layout) {
         KernelArg::ArgType::IMPLICIT_R0,
 
         KernelArg::ArgType::RUNTIME_VALUE,
+        KernelArg::ArgType::IMPLICIT_INDIRECT_DATA_POINTER,
+        KernelArg::ArgType::IMPLICIT_SCRATCH_POINTER,
         KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER,
         KernelArg::ArgType::IMPLICIT_GLOBAL_OFFSET,
         KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE,
@@ -730,6 +736,8 @@ KernelArgsOrder::KernelArgsOrder(InputType layout) {
         KernelArg::ArgType::IMPLICIT_LOCAL_IDS,
 
         KernelArg::ArgType::RUNTIME_VALUE,
+        KernelArg::ArgType::IMPLICIT_INDIRECT_DATA_POINTER,
+        KernelArg::ArgType::IMPLICIT_SCRATCH_POINTER,
         KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER,
         KernelArg::ArgType::IMPLICIT_GLOBAL_OFFSET,
         KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE,

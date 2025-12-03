@@ -5626,8 +5626,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(
     VISA_VectorOpnd *renderTargetIndex, vISA_RT_CONTROLS cntrls,
     VISA_StateOpndHandle *surface, VISA_RawOpnd *r1Header,
     VISA_VectorOpnd *sampleIndex, VISA_VectorOpnd *cPSCounter,
-    uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray
-) {
+    uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray, int rtIdentifier) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
   AppendVISAInstCommon();

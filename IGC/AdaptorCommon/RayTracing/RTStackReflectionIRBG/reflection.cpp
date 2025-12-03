@@ -118,6 +118,10 @@ RTGlobals(maxBVHLevels, Xe3, xe3.rt_data_info);
 RTGlobalsCommon(statelessScratchPtr);
 
 
+CREATE_PRIVATE auto
+_getBaseSurfaceStatePointerFromPointerToGlobals(RTGAS RayDispatchGlobalData *__restrict__ GlobalsPtr) {
+  return GlobalsPtr->rt.xe3.common.baseSurfaceStatePointer;
+}
 
 //////////// End Common Fields ////////////
 

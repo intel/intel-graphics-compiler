@@ -251,6 +251,16 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
                     IGC_IS_FLAG_ENABLED(EnableRayTracingTGMFence));
         Changed = true;
         break;
+      case GenISAIntrinsic::GenISA_TraceRaySync: {
+        auto *TRS = cast<TraceRaySyncIntrinsic>(GII);
+        auto &FuncMD = CGCtx->getModuleMetaData()->FuncMD;
+        const auto &it = FuncMD.find(TRS->getFunction());
+        IGC_ASSERT(it != FuncMD.end());
+        [[maybe_unused]] const FunctionMetaData &MD = it->second;
+        IGC_ASSERT(MD.hasSyncRTCalls);
+        IGC_ASSERT(MD.rtInfo.useSyncHWStack || TRS->getStackAddressingMode() != STACK_ADDRESS_MODE::DEFAULT_ADDRESSING);
+        break;
+      }
       case GenISAIntrinsic::GenISA_BindlessThreadDispatch:
         injectFence(RTB, GII, CGCtx->platform.RTFenceWAforBkModeEnabled(), false);
         Changed = true;

@@ -2877,8 +2877,9 @@ bool SeparateSpillAndScratch(const CodeGenContext *ctx) {
   else
     separate = ctx->getModuleMetaData()->enableSeparateSpillPvtScratchSpace;
 
-  return (ctx->platform.hasScratchSurface() && separate
-  );
+  return (ctx->platform.hasScratchSurface() && separate &&
+          !(ctx->platform.hasEfficient64bEnabled() && ctx->platform.has16MBPerThreadScratchSpace() &&
+            ctx->m_DriverInfo.supports16MBPerThreadScratchSpace()));
 }
 
 bool UsedWithoutImmInMemInst(Value *varOffset) {

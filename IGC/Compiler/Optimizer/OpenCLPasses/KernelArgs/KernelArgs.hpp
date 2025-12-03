@@ -122,6 +122,8 @@ public:
     IMPLICIT_ARG_BUFFER,
 
     IMPLICIT_ASSERT_BUFFER,
+    IMPLICIT_INDIRECT_DATA_POINTER,
+    IMPLICIT_SCRATCH_POINTER,
 
     // Argument types that shouldn't be allocated
     NOT_TO_ALLOCATE,

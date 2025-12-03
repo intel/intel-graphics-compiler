@@ -253,6 +253,7 @@ void ConvertSkuTable(const SUscSkuFeatureTable *pUSCSkuFeatureTable, SKU_FEATURE
   SkuFeatureTable.FtrWddm2Svm = pUSCSkuFeatureTable->FtrWddm2Svm;
   SkuFeatureTable.FtrPooledEuEnabled = pUSCSkuFeatureTable->FtrPooledEuEnabled;
   SkuFeatureTable.FtrLocalMemory = pUSCSkuFeatureTable->FtrLocalMemory;
+  SkuFeatureTable.FtrEfficient64BitAddressing = pUSCSkuFeatureTable->FtrEfficient64BitAddressing;
 }
 
 void SetWorkaroundTable(const SUscSkuFeatureTable *pSkuFeatureTable, CPlatform *platform) {

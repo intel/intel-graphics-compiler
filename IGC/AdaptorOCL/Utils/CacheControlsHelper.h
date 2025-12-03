@@ -76,6 +76,54 @@ const CacheControlMapTy<LoadCacheControl> supportedLoadConfigs = {
         { LSC_L1IAR_L3IAR,     { LoadCacheControl::InvalidateAfterRead, LoadCacheControl::InvalidateAfterRead } },
     // clang-format on
 };
+template <typename T> struct SeparateCacheControlsL1L2L3 {
+  T L1;
+  T L2;
+  T L3;
+};
+
+template <typename T>
+using L1L2L3StoreCacheControlMapTy =
+    std::unordered_map<LSC_STCC_L1_L2_L3, SeparateCacheControlsL1L2L3<T>, std::hash<int>>;
+const L1L2L3StoreCacheControlMapTy<StoreCacheControl> supportedL1L2L3StoreConfigs = {
+    // clang-format off
+        { LSC_STCC_L1UC_L2UC_L3UC, { StoreCacheControl::Uncached,     StoreCacheControl::Uncached,  StoreCacheControl::Uncached } },
+        { LSC_STCC_L1UC_L2UC_L3WB, { StoreCacheControl::Uncached,     StoreCacheControl::Uncached,  StoreCacheControl::WriteBack } },
+        { LSC_STCC_L1UC_L2WB_L3UC, { StoreCacheControl::Uncached,     StoreCacheControl::WriteBack, StoreCacheControl::Uncached } },
+        { LSC_STCC_L1UC_L2WB_L3WB, { StoreCacheControl::Uncached,     StoreCacheControl::WriteBack, StoreCacheControl::WriteBack } },
+        { LSC_STCC_L1WT_L2UC_L3UC, { StoreCacheControl::WriteThrough, StoreCacheControl::Uncached,  StoreCacheControl::Uncached } },
+        { LSC_STCC_L1WT_L2UC_L3WB, { StoreCacheControl::WriteThrough, StoreCacheControl::Uncached,  StoreCacheControl::WriteBack } },
+        { LSC_STCC_L1WT_L2WB_L3UC, { StoreCacheControl::WriteThrough, StoreCacheControl::WriteBack, StoreCacheControl::Uncached } },
+        { LSC_STCC_L1WT_L2WB_L3WB, { StoreCacheControl::WriteThrough, StoreCacheControl::WriteBack, StoreCacheControl::WriteBack } },
+        { LSC_STCC_L1S_L2UC_L3UC,  { StoreCacheControl::Streaming,    StoreCacheControl::Uncached,  StoreCacheControl::Uncached } },
+        { LSC_STCC_L1S_L2UC_L3WB,  { StoreCacheControl::Streaming,    StoreCacheControl::Uncached,  StoreCacheControl::WriteBack } },
+        { LSC_STCC_L1S_L2WB_L3UC,  { StoreCacheControl::Streaming,    StoreCacheControl::WriteBack, StoreCacheControl::Uncached } },
+        { LSC_STCC_L1WB_L2UC_L3UC, { StoreCacheControl::WriteBack,    StoreCacheControl::Uncached,  StoreCacheControl::Uncached } },
+        { LSC_STCC_L1WB_L2WB_L3UC, { StoreCacheControl::WriteBack,    StoreCacheControl::WriteBack, StoreCacheControl::Uncached } },
+        { LSC_STCC_L1WB_L2UC_L3WB, { StoreCacheControl::WriteBack,    StoreCacheControl::Uncached,  StoreCacheControl::WriteBack } },
+    // clang-format on
+};
+
+template <typename T>
+using L1L2L3LoadCacheControlMapTy =
+    std::unordered_map<LSC_LDCC_L1_L2_L3, SeparateCacheControlsL1L2L3<T>, std::hash<int>>;
+const L1L2L3LoadCacheControlMapTy<LoadCacheControl> supportedL1L2L3LoadConfigs = {
+    // clang-format off
+        { LSC_LDCC_L1UC_L2UC_L3UC,    { LoadCacheControl::Uncached,  LoadCacheControl::Uncached, LoadCacheControl::Uncached } },
+        { LSC_LDCC_L1UC_L2UC_L3C,     { LoadCacheControl::Uncached,  LoadCacheControl::Uncached, LoadCacheControl::Cached } },
+        { LSC_LDCC_L1UC_L2C_L3UC,     { LoadCacheControl::Uncached,  LoadCacheControl::Cached,   LoadCacheControl::Uncached } },
+        { LSC_LDCC_L1UC_L2C_L3C,      { LoadCacheControl::Uncached,  LoadCacheControl::Cached,   LoadCacheControl::Cached } },
+        { LSC_LDCC_L1C_L2UC_L3UC,     { LoadCacheControl::Cached,    LoadCacheControl::Uncached, LoadCacheControl::Uncached } },
+        { LSC_LDCC_L1C_L2UC_L3C,      { LoadCacheControl::Cached,    LoadCacheControl::Uncached, LoadCacheControl::Cached } },
+        { LSC_LDCC_L1C_L2C_L3UC,      { LoadCacheControl::Cached,    LoadCacheControl::Cached,   LoadCacheControl::Uncached } },
+        { LSC_LDCC_L1C_L2C_L3C,       { LoadCacheControl::Cached,    LoadCacheControl::Cached,   LoadCacheControl::Cached } },
+        { LSC_LDCC_L1S_L2UC_L3UC,     { LoadCacheControl::Streaming, LoadCacheControl::Uncached, LoadCacheControl::Uncached } },
+        { LSC_LDCC_L1S_L2UC_L3C,      { LoadCacheControl::Streaming, LoadCacheControl::Uncached, LoadCacheControl::Cached } },
+        { LSC_LDCC_L1S_L2C_L3UC,      { LoadCacheControl::Streaming, LoadCacheControl::Cached,   LoadCacheControl::Uncached } },
+        { LSC_LDCC_L1S_L2C_L3C,       { LoadCacheControl::Streaming, LoadCacheControl::Cached,   LoadCacheControl::Cached } },
+        { LSC_LDCC_L1IAR_L2IAR_L3IAR, { LoadCacheControl::InvalidateAfterRead, LoadCacheControl::InvalidateAfterRead, LoadCacheControl::InvalidateAfterRead } },
+    // clang-format on
+};
 
 using CacheLevel = uint64_t;
 

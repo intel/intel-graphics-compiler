@@ -100,27 +100,41 @@ bool PushAnalysis::IsPushableBindlessLoad(Instruction *inst, int &grfOffset, uns
 
   std::function<bool(Value *)> isPushable;
   isPushable = [this, &grfOffset, &cbIdx, &isPushable](Value *v) {
-  // Matches the following patterns:
-  // Pattern 1:
-  //   %6 = add i32 %runtime_value_0, 4096
-  //   %7 = inttoptr i32 %6 to i8 addrspace(1507328)*
-  //   %8 = call <8 x float> @llvm.genx.GenISA.ldrawvector.indexed.v8f32.p1507328i8(i8 addrspace(1507328)* %7, i32 0,
-  //   i32 4, i1 false)
-  // Pattern 2:
-  //   %8 = call <8 x float> @llvm.genx.GenISA.ldrawvector.indexed.v8f32.p1507328i8(i8 addrspace(1507328)*
-  //   %runtime_value_0, i32 0, i32 4, i1 false)
+    // Matches the following patterns:
+    // Pattern 1:
+    //   %6 = add i32 %runtime_value_0, 4096
+    //   %7 = inttoptr i32 %6 to i8 addrspace(1507328)*
+    //   %8 = call <8 x float> @llvm.genx.GenISA.ldrawvector.indexed.v8f32.p1507328i8(i8 addrspace(1507328)* %7, i32 0,
+    //   i32 4, i1 false)
+    // Pattern 2:
+    //   %8 = call <8 x float> @llvm.genx.GenISA.ldrawvector.indexed.v8f32.p1507328i8(i8 addrspace(1507328)*
+    //   %runtime_value_0, i32 0, i32 4, i1 false)
+    // Pattern 3 (Efficient64b):
+    //   %6 = zext i32 %runtime_value_4 to i64
+    //   %7 = add i64 %runtime_value_2, %6                          // runtime_value_2 == surface state base pointer
+    //   %8 = inttoptr i64 %7 to i8 addrspace(2555904)*
+    //   %64 = call <16 x float> @llvm.genx.GenISA.ldrawvector.indexed.v16f32.p2555904i8(i8 addrspace(2555904)* %8, i32
+    //   0, i32 4, i1 false)
     if (m_bindlessPushArgs.find(v) != m_bindlessPushArgs.end()) {
       grfOffset = int_cast<int>(m_bindlessPushArgs.find(v)->second);
       return true;
     } else if (IntToPtrInst *ptrToInt = dyn_cast<IntToPtrInst>(v)) {
       return isPushable(ptrToInt->getOperand(0));
-    }
-    else if (Instruction *instr = dyn_cast<Instruction>(v)) {
+    } else if (m_context->platform.hasEfficient64bEnabled() && (isa<ZExtInst>(v) || isa<SExtInst>(v))) {
+      return isPushable(cast<Instruction>(v)->getOperand(0));
+    } else if (Instruction *instr = dyn_cast<Instruction>(v)) {
       if (instr->getOpcode() == Instruction::Add && isa<ConstantInt>(instr->getOperand(1)) &&
           isPushable(instr->getOperand(0))) {
         ConstantInt *src1 = cast<ConstantInt>(instr->getOperand(1));
         cbIdx += int_cast<unsigned int>(src1->getZExtValue()) >> m_context->platform.getBSOLocInExtDescriptor();
         return true;
+      } else if (m_context->platform.hasEfficient64bEnabled() && instr->getOpcode() == Instruction::Add &&
+                 instr->getOperand(0)->getType()->isIntegerTy(64) &&
+                 // TODO one of the operands it should be the surface state base address
+                 // info which runtime value is surface state base pointer can be passed here from frontends
+                 // in similar fashion as pushInfo.bindlessPushInfo
+                 instr->getOperand(1)->getType()->isIntegerTy(64)) {
+        return isPushable(instr->getOperand(0)) || isPushable(instr->getOperand(1));
       }
     }
     return false;

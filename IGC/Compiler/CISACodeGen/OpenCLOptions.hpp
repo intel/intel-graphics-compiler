@@ -116,6 +116,7 @@ public:
   // Compile only up to vISA stage.
   bool EmitVisaOnly = false;
 
+  bool Efficient64b = false;
 
   uint64_t MinimumValidAddress = 0;
 

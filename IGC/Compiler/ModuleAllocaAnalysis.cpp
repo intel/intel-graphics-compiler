@@ -372,6 +372,19 @@ unsigned ModuleAllocaAnalysis::getTotalPrivateMemPerWI(Function *F) const {
       ret = iSTD::RoundPower2(static_cast<DWORD>(ret));
     }
 
+    if ((!modMD->compOpt.UseScratchSpacePrivateMemory || Ctx.m_DriverInfo.supports16MBPerThreadScratchSpace()) &&
+        Ctx.platform.hasEfficient64bEnabled() && Ctx.m_DriverInfo.usePrivateMemoryLimitWorkaround()) {
+      static constexpr unsigned SCRATCH_SPACE_STATELESS_PRIVATE_MEMORY_LIMIT = 0x80000000;
+      static constexpr unsigned XE3P_MAX_EU_THREAD = 4096;
+
+      // tuned to simd8 for relaxing the size threshold.
+      uint32_t privateMemoryLimitPerWI =
+          static_cast<DWORD>(SCRATCH_SPACE_STATELESS_PRIVATE_MEMORY_LIMIT / (XE3P_MAX_EU_THREAD * 8));
+
+      if (ret > privateMemoryLimitPerWI) {
+        ret = privateMemoryLimitPerWI;
+      }
+    }
     return ret;
   }
   return 0;

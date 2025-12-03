@@ -167,8 +167,12 @@ public:
   void Sends(CVariable *dst, CVariable *src0, CVariable *src1, uint ffid, CVariable *exDesc, CVariable *messDescriptor,
              bool isSendc = false, bool hasEOT = false);
 
+  void TraceRay(CVariable *destination, TRACE_RAY_OPCODE opcode, CVariable *globalBufferPointer,
+                STACK_ADDRESS_MODE stackAddressMode, CVariable *payload);
+
+  void BTD(BTD_OPCODE opcode, CVariable *globalBufferPointer, CVariable *stackId, CVariable *shaderRecordIdentifier);
   void RenderTargetWrite(CVariable *var[], bool isUndefined[], bool lastRenderTarget, bool isNullRT, bool perSample,
-                         bool coarseMode, bool headerMaskFromCe0,
+                         bool coarseMode, bool headerMaskFromCe0, CVariable *rtSurfaceStatePointer, int rtIdentifier,
                          CVariable *bindingTableIndex, CVariable *RTIndex, CVariable *source0Alpha, CVariable *oMask,
                          CVariable *depth, CVariable *stencil, CVariable *CPSCounter, CVariable *sampleIndex,
                          CVariable *r1Reg);
@@ -208,25 +212,23 @@ public:
   static LSC_DATA_ELEMS LSC_GetElementNum(unsigned eNum);
   static LSC_ADDR_TYPE getLSCAddrType(const ResourceDescriptor *resource);
   static LSC_ADDR_TYPE getLSCAddrType(e_predefSurface surfaceType);
-  void LSC_LoadGather(LSC_OP subOp, CVariable *dst,
-                      CVariable *offset, LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems, unsigned blockOffset,
-                      ResourceDescriptor *resource, LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order, int immOffset,
-                      int immScale, LSC_CACHE_OPTS cacheOpts, LSC_DOC_ADDR_SPACE addrSpace);
-  void LSC_StoreScatter(LSC_OP subOp,
-                        CVariable *src, CVariable *offset, LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,
-                        unsigned blockOffset, ResourceDescriptor *resource, LSC_ADDR_SIZE addr_size,
-                        LSC_DATA_ORDER data_order, int immOffset, int immScale, LSC_CACHE_OPTS cacheOpts,
-                        LSC_DOC_ADDR_SPACE addrSpace);
+  void LSC_LoadGather(LSC_OP subOp, CVariable *dst, CVariable *uniformBase, CVariable *offset, LSC_DATA_SIZE elemSize,
+                      LSC_DATA_ELEMS numElems, unsigned blockOffset, ResourceDescriptor *resource,
+                      LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order, int immOffset, int immScale,
+                      LSC_CACHE_OPTS cacheOpts, LSC_DOC_ADDR_SPACE addrSpace);
+  void LSC_StoreScatter(LSC_OP subOp, CVariable *uniformBase, CVariable *src, CVariable *offset, LSC_DATA_SIZE elemSize,
+                        LSC_DATA_ELEMS numElems, unsigned blockOffset, ResourceDescriptor *resource,
+                        LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order, int immOffset, int immScale,
+                        LSC_CACHE_OPTS cacheOpts, LSC_DOC_ADDR_SPACE addrSpace);
   void LSC_LoadBlock1D(CVariable *dst, CVariable *offset, LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,
                        ResourceDescriptor *resource, LSC_ADDR_SIZE addrSize, int addrImmOffset,
                        LSC_CACHE_OPTS cacheOpts);
   void LSC_StoreBlock1D(CVariable *src, CVariable *offset, LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,
                         ResourceDescriptor *resource, LSC_ADDR_SIZE addrSize, int addrImmOffset,
                         LSC_CACHE_OPTS cacheOpts);
-  void LSC_AtomicRaw(AtomicOp atomic_op, CVariable *dst,
-                     CVariable *offset, CVariable *src0, CVariable *src1, unsigned short bitwidth,
-                     ResourceDescriptor *resource, LSC_ADDR_SIZE addr_size, int immOff, int immScale,
-                     LSC_CACHE_OPTS cacheOpts);
+  void LSC_AtomicRaw(AtomicOp atomic_op, CVariable *dst, CVariable *uniformBase, CVariable *offset, CVariable *src0,
+                     CVariable *src1, unsigned short bitwidth, ResourceDescriptor *resource, LSC_ADDR_SIZE addr_size,
+                     int immOff, int immScale, LSC_CACHE_OPTS cacheOpts);
   void LSC_Fence(LSC_SFID sfid, LSC_SCOPE scope, LSC_FENCE_OP op);
   void LSC_2DBlockMessage(LSC_OP subOp, ResourceDescriptor *resource, CVariable *dst, CVariable *bufId,
                           CVariable *xOffset, CVariable *yOffset, unsigned blockWidth, unsigned blockHeight,
@@ -598,6 +600,10 @@ private:
   void SetBuilderOptions(VISABuilder *pbuilder);
 
   unsigned int GetSpillThreshold(SIMDMode simdmode);
+  // helper function to check if the data's size is 64-byte and can set
+  // overfetch
+  bool setOverfetch(LSC_DATA_SIZE dsize, LSC_DATA_ELEMS delem, SIMDMode width, LSC_CACHE_OPTS copt);
+
 private:
   // helper functions for compile flow
   /// shaderOverrideVISAFirstPass - pre-process shader overide dir for visa

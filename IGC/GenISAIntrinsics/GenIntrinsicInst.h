@@ -50,6 +50,7 @@ See LICENSE.TXT for details.
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/Type.h"
 #include "usc_gen7_types.h"
+#include "visa/include/visa_igc_common_header.h"
 
 namespace IGC {
 enum CallableShaderTypeMD : uint32_t;
@@ -111,6 +112,10 @@ public:
   Value *getAlpha() const { return getOperand(operandOffset(6)); }
   Value *getDepth() const { return getOperand(operandOffset(7)); }
   Value *getStencil() const { return getOperand(operandOffset(8)); }
+  Value *getAddress() const {
+    IGC_ASSERT(!isRegular());
+    return getOperand(9);
+  }
   Value *getRTIndex() const { return getOperand(operandOffset(9)); }
   Value *getBlendStateIndex() const { return getOperand(operandOffset(10)); }
   bool hasMask() const { return valueToImm64(getOperand(operandOffset(11))) != 0; }
@@ -128,6 +133,7 @@ public:
   static bool classof(const GenIntrinsicInst *I) {
     switch (I->getIntrinsicID()) {
     case GenISAIntrinsic::GenISA_RTWrite:
+    case GenISAIntrinsic::GenISA_RTWritePtr:
       return true;
     default:
       return false;
@@ -139,6 +145,7 @@ public:
     switch (getIntrinsicID()) {
     case GenISAIntrinsic::GenISA_RTWrite:
       return true;
+    case GenISAIntrinsic::GenISA_RTWritePtr:
     default:
       break;
     }
@@ -169,6 +176,10 @@ public:
   Value *getAlpha1() const { return getOperand(operandOffset(9)); }
   Value *getDepth() const { return getOperand(operandOffset(10)); }
   Value *getStencil() const { return getOperand(operandOffset(11)); }
+  Value *getAddress() const {
+    IGC_ASSERT(!isRegular());
+    return getOperand(12);
+  }
   Value *getRTIndex() const { return getOperand(operandOffset(12)); }
   bool hasMask() const { return valueToImm64(getOperand(operandOffset(13))) != 0; }
   bool hasDepth() const { return valueToImm64(getOperand(operandOffset(14))) != 0; }
@@ -183,6 +194,7 @@ public:
   static bool classof(const GenIntrinsicInst *I) {
     switch (I->getIntrinsicID()) {
     case GenISAIntrinsic::GenISA_RTDualBlendSource:
+    case GenISAIntrinsic::GenISA_RTDualBlendSourcePtr:
       return true;
     default:
       return false;
@@ -195,6 +207,7 @@ private:
     switch (getIntrinsicID()) {
     case GenISAIntrinsic::GenISA_RTDualBlendSource:
       return true;
+    case GenISAIntrinsic::GenISA_RTDualBlendSourcePtr:
     default:
       break;
     }
@@ -210,10 +223,15 @@ protected:
   void setOperand(unsigned i, Value *v) { return GenIntrinsicInst::setOperand(i, v); }
 
 public:
+  Value *getAddress() const {
+    IGC_ASSERT(!isRegular());
+    return getOperand(0);
+  }
   Value *getRTIndex() const { return getOperand(operandOffset(0)); }
   bool hasSampleIndex() const {
     switch (getIntrinsicID()) {
     case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
+    case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreqPtr:
       return true;
     default:
       break;
@@ -247,6 +265,8 @@ public:
     switch (I->getIntrinsicID()) {
     case GenISAIntrinsic::GenISA_RenderTargetRead:
     case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
+    case GenISAIntrinsic::GenISA_RenderTargetReadPtr:
+    case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreqPtr:
       return true;
     default:
       return false;
@@ -260,6 +280,8 @@ private:
     case GenISAIntrinsic::GenISA_RenderTargetRead:
     case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
       return true;
+    case GenISAIntrinsic::GenISA_RenderTargetReadPtr:
+    case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreqPtr:
     default:
       break;
     }
@@ -1308,6 +1330,12 @@ public:
 
   static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
 
+  // Getters used in Efficient64b version
+  STACK_ADDRESS_MODE getStackAddressingMode() const {
+    return static_cast<STACK_ADDRESS_MODE>(valueToImm32(getOperand(2)));
+  }
+
+  void setStackAddressingMode(ConstantInt *v) { setOperand(2, v); }
 };
 
 class BTDIntrinsic : public GenIntrinsicInst {

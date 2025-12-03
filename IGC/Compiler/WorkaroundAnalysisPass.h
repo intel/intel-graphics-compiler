@@ -47,6 +47,7 @@ private:
   void processDeferredInstruction(llvm::Instruction *I);
   void GatherOffsetWorkaround(llvm::SamplerGatherIntrinsic *gatherpo);
   void ldmsOffsetWorkaournd(llvm::LdMSIntrinsic *ldms);
+  void convertReadSurfaceTypeAndFormatToA64(llvm::CallInst &I, CodeGenContext *pCodeGenCtx);
   const llvm::DataLayout *m_pDataLayout = nullptr;
   llvm::Module *m_pModule = nullptr;
   CodeGenContextWrapper *m_pCtxWrapper = nullptr;

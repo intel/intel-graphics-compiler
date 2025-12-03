@@ -250,6 +250,7 @@ typedef struct _SKU_FEATURE_TABLE
         unsigned int   FtrCsResponseEventOptimization : 1;
         unsigned int   FtrRuntimeLogBuffer            : 1;
         unsigned int   FtrLocalMemory                 : 1;
+        unsigned int   FtrEfficient64BitAddressing    : 1;
 
     };
 

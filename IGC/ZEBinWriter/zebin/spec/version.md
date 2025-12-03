@@ -47,7 +47,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - **Version 1.34**: Internal changes.
 - **Version 1.33**: Add new enum value NT_INTELGT_PRODUCT_CONFIG to .note.intelgt.compat section.
 - **Version 1.32**: Add new enum value for VISA ABI to .note.intelgt.compat section.
-- **Version 1.31**: Internal changes.
+- **Version 1.31**: Add support for indirect_data_pointer and scratch_pointer.
 - **Version 1.30**: Add assert_buffer to payload arguments.
 - **Version 1.29**: Add has_rtcalls to execution_env.
 - **Version 1.28**: Add const_base and global_base to payload arguments.

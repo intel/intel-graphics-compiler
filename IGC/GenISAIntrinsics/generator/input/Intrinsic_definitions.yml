@@ -1289,6 +1289,46 @@ intrinsics:
             - !AttributeID "NoDuplicate"
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
+        name: "GenISA_OUTPUTPS"
+        comment: "PS color/depth/stencil/omask output, high-level (before lowering),\
+            \ equivalent of GenISA_OUTPUT for XE3P"
+        return_definition: !<ReturnDefinition>
+            type_definition: *void
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *any_float
+                comment: "0: source x"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *ref_0_
+                comment: "1: source y"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *ref_0_
+                comment: "2: source z"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *ref_0_
+                comment: "3: source w"
+            - !<ArgumentDefinition>
+                name: Arg4
+                type_definition: *i32
+                comment: "4: output type, may be unknown for helper call passing address\
+                    \ only"
+            - !<ArgumentDefinition>
+                name: Arg5
+                type_definition: *i32
+                comment: "5: RT index"
+            - !<ArgumentDefinition>
+                name: Arg6
+                type_definition: *p_any_
+                comment: "6: 64bit RTV heap base address"
+        attributes:
+            - !AttributeID "NoDuplicate"
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
         name: "GenISA_OUTPUTGS"
         comment: ""
         return_definition: !<ReturnDefinition>
@@ -1709,6 +1749,92 @@ intrinsics:
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
+        name: "GenISA_RTDualBlendSourcePtr"
+        comment: "PS color/depth/stencil/omask output, low-level (after PS lowering),\
+            \ equivalent of GenISA_RTDualBlendSource for XE3P"
+        return_definition: !<ReturnDefinition>
+            type_definition: *void
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *f32
+                comment: "0: oMask TODO: should be i32"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i1
+                comment: "1: pMask"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *any_float
+                comment: "2: Red0"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *ref_0_
+                comment: "3: Green0"
+            - !<ArgumentDefinition>
+                name: Arg4
+                type_definition: *ref_0_
+                comment: "4: Blue0"
+            - !<ArgumentDefinition>
+                name: Arg5
+                type_definition: *ref_0_
+                comment: "5: Alpha0"
+            - !<ArgumentDefinition>
+                name: Arg6
+                type_definition: *ref_0_
+                comment: "6: Red1"
+            - !<ArgumentDefinition>
+                name: Arg7
+                type_definition: *ref_0_
+                comment: "7: Green1"
+            - !<ArgumentDefinition>
+                name: Arg8
+                type_definition: *ref_0_
+                comment: "8: Blue1"
+            - !<ArgumentDefinition>
+                name: Arg9
+                type_definition: *ref_0_
+                comment: "9: Alpha1"
+            - !<ArgumentDefinition>
+                name: Arg10
+                type_definition: *f32
+                comment: "10: depth"
+            - !<ArgumentDefinition>
+                name: Arg11
+                type_definition: *f32
+                comment: "11: stencil"
+            - !<ArgumentDefinition>
+                name: Arg12
+                type_definition: *p_any_
+                comment: "12: 64bit RTV heap base address"
+            - !<ArgumentDefinition>
+                name: Arg13
+                type_definition: *i32
+                comment: "13: RT index"
+            - !<ArgumentDefinition>
+                name: Arg14
+                type_definition: *i1
+                comment: "14: has mask"
+            - !<ArgumentDefinition>
+                name: Arg15
+                type_definition: *i1
+                comment: "15: has depth"
+            - !<ArgumentDefinition>
+                name: Arg16
+                type_definition: *i1
+                comment: "16: has stencil"
+            - !<ArgumentDefinition>
+                name: Arg17
+                type_definition: *i1
+                comment: "17: per sample"
+            - !<ArgumentDefinition>
+                name: Arg18
+                type_definition: *i32
+                comment: "18: sample index"
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
         name: "GenISA_RTWrite"
         comment: ""
         return_definition: !<ReturnDefinition>
@@ -1782,6 +1908,85 @@ intrinsics:
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
+        name: "GenISA_RTWritePtr"
+        comment: "PS color/depth/stencil/omask output, low-level (after PS lowering),\
+            \ equivalent of GenISA_RTWrite for XE3P"
+        return_definition: !<ReturnDefinition>
+            type_definition: *void
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *any_float
+                comment: "0: src0 Alpha"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *f32
+                comment: "1: oMask TODO: should be i32"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i1
+                comment: "2: pMask"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *ref_0_
+                comment: "3: Red"
+            - !<ArgumentDefinition>
+                name: Arg4
+                type_definition: *ref_0_
+                comment: "4: Green"
+            - !<ArgumentDefinition>
+                name: Arg5
+                type_definition: *ref_0_
+                comment: "5: Blue"
+            - !<ArgumentDefinition>
+                name: Arg6
+                type_definition: *ref_0_
+                comment: "6: Alpha"
+            - !<ArgumentDefinition>
+                name: Arg7
+                type_definition: *f32
+                comment: "7: depth"
+            - !<ArgumentDefinition>
+                name: Arg8
+                type_definition: *f32
+                comment: "8: stencil"
+            - !<ArgumentDefinition>
+                name: Arg9
+                type_definition: *p_any_
+                comment: "9: 64bit RTV heap base address"
+            - !<ArgumentDefinition>
+                name: Arg10
+                type_definition: *i32
+                comment: "10: RT index, -1 is for nullrtwr, -2 for helper carrying\
+                    \ the address"
+            - !<ArgumentDefinition>
+                name: Arg11
+                type_definition: *i32
+                comment: "11: Blend state index"
+            - !<ArgumentDefinition>
+                name: Arg12
+                type_definition: *i1
+                comment: "12: has mask"
+            - !<ArgumentDefinition>
+                name: Arg13
+                type_definition: *i1
+                comment: "13: has depth"
+            - !<ArgumentDefinition>
+                name: Arg14
+                type_definition: *i1
+                comment: "14: has stencil"
+            - !<ArgumentDefinition>
+                name: Arg15
+                type_definition: *i1
+                comment: "15: per sample"
+            - !<ArgumentDefinition>
+                name: Arg16
+                type_definition: *i32
+                comment: "16: sample index"
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
         name: "GenISA_ReadFromReservedArgSpace"
         comment: "Read from a reserved slot from ARGV variable when using stack calls.\
             \ Requires a valid entry in module metadata"
@@ -1816,6 +2021,26 @@ intrinsics:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
+        name: "GenISA_RenderTargetReadPtr"
+        comment: "Render Target Read for XE3P"
+        return_definition: !<ReturnDefinition>
+            type_definition: *v4_f32_
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *p_any_
+                comment: "0: 64bit RTV heap base address"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i32
+                comment: "1: render target slot"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
+    - !<IntrinsicDefinition>
         name: "GenISA_RenderTargetReadSampleFreq"
         comment: ""
         return_definition: !<ReturnDefinition>
@@ -1833,6 +2058,30 @@ intrinsics:
         attributes:
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
+    - !<IntrinsicDefinition>
+        name: "GenISA_RenderTargetReadSampleFreqPtr"
+        comment: "Render Target Read with SampleFreq for XE3P"
+        return_definition: !<ReturnDefinition>
+            type_definition: *v4_f32_
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *p_any_
+                comment: "0: 64bit RTV heap base address"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i32
+                comment: "1: render target slot"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i32
+                comment: "2: sample index"
+        attributes:
+            - !AttributeID "NoUnwind"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
@@ -12104,3 +12353,21 @@ intrinsics:
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_getIndirectDataPtr"
+        comment: "Get indirect data ptr implict argument"
+        return_definition: !<ReturnDefinition>
+            type_definition: *p_any_
+            comment: "result"
+        arguments: []
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_getScratchPtr"
+        comment: "Get scratch pointer implicit argument"
+        return_definition: !<ReturnDefinition>
+            type_definition: *p_any_
+            comment: "result"
+        arguments: []
+        attributes:
+            - !AttributeID "NoUnwind"

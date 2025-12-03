@@ -331,6 +331,7 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function &F) {
   for (BasicBlock::reverse_iterator rItr = BB->rbegin(); rItr != BB->rend(); rItr++) {
     if (GenIntrinsicInst *GenI = dyn_cast<GenIntrinsicInst>(&*rItr)) {
       bool isOutputInstr = GenI->getIntrinsicID() == GenISAIntrinsic::GenISA_OUTPUT;
+      isOutputInstr |= GenI->getIntrinsicID() == GenISAIntrinsic::GenISA_OUTPUTPS;
       if (isOutputInstr) {
         resultInst = &*rItr;
         break;

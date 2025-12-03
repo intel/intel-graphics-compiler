@@ -2326,7 +2326,6 @@ public:
                                 G4_Operand *msgDescOpnd, G4_Operand *msgOpnd0,
                                 G4_Operand *msgOpnd1, G4_DstRegRegion *dstOpnd,
                                 unsigned ffid, bool hasEOT = false);
-
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
   // Send sync related members are in VisaToG4/TranslateSendSync.cpp

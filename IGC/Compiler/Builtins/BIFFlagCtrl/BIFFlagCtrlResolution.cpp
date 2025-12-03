@@ -81,6 +81,7 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   //   2) Buffers don't use implicit bufferOffsetArg.
   BIF_FLAG_CTRL_SET(UseAssumeInGetGlobalId, PtrCGC->m_DriverInfo.SupportsStatelessToStatefulBufferTransformation() &&
                                                 !PtrCGC->getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
+                                                !PtrCGC->platform.hasEfficient64bEnabled() &&
                                                 IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
                                                 !((IGC_IS_FLAG_ENABLED(EnableSupportBufferOffset) ||
                                                    PtrCGC->getModuleMetaData()->compOpt.HasBufferOffsetArg)) &&

@@ -115,6 +115,7 @@ public:
   uint64_t GetStatelessScratchPtr() const { return 0; };
   uint32_t GetBaseSSHOffset() const { return 0; };
   uint32_t GetUberTilesMap() const { return 0; };
+  uint64_t GetBaseSurfaceStatePointer() const { return 0; };
 };
 
 // Layout used to pass global data to the shaders
@@ -155,6 +156,15 @@ struct RayDispatchGlobalData {
         uint32_t paddingBits3;  // 32-bits of padding
       };
 
+      // For Efficient64 there is no baseSSH, the full address of the
+      // resource must calculated in the shader. Instead of delivering
+      // separately the offset to the first Stack SurfaceState, and
+      // the pointer to the baseSurfaceState (in Constants), UMD
+      // will deliver baseSurfaceStatePointer + OffsetToTheFirstStackSS
+      // in baseSurfaceStatePointer.
+      struct {
+        uint64_t baseSurfaceStatePointer;
+      };
     };
 
     uint64_t uberTilesMap; // base address of the uber tiles map used for AtomicPull model
@@ -177,6 +187,11 @@ struct RayDispatchGlobalData {
       pMissShaderStride = umd.GetMissStride();
       pRtMemBasePtr = umd.GetRayStackBufferAddress();
       baseSSHOffset = umd.GetBaseSSHOffset();
+      // Check if baseSurfaceStatePointer is delivered from the UMD, as
+      // it shares the same memory with baseSSHOffset in the RayDispatchGlobalDataCommon.
+      // baseSurfaceStatePointer will be written only if it is not zero.
+      if (uint64_t Tmp = umd.GetBaseSurfaceStatePointer())
+        baseSurfaceStatePointer = Tmp;
       pStackSizePerRay = umd.GetStackSizePerRay();
       swStackSizePerRay = umd.GetSWStackSizePerRay();
       pNumDSSRTStacks = umd.GetNumDSSRTStacks();

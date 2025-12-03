@@ -566,6 +566,17 @@ bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg *kernelArg, uint pay
                                                      zebin::PreDefinedAttrGetter::ArgType::private_base_stateless,
                                                      payloadPosition, kernelArg->getSize());
     break;
+  case KernelArg::ArgType::IMPLICIT_INDIRECT_DATA_POINTER:
+    zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                                                     zebin::PreDefinedAttrGetter::ArgType::indirect_data_pointer,
+                                                     payloadPosition, kernelArg->getSize());
+    break;
+
+  case KernelArg::ArgType::IMPLICIT_SCRATCH_POINTER:
+    zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                                                     zebin::PreDefinedAttrGetter::ArgType::scratch_pointer,
+                                                     payloadPosition, kernelArg->getSize());
+    break;
 
   case KernelArg::ArgType::IMPLICIT_NUM_GROUPS:
     zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
@@ -634,7 +645,8 @@ bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg *kernelArg, uint pay
 
     // check if all reference are promoted, if it is, we can skip creating stateless payload arg
     bool is_stateful_only = is_stateful_mode && IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
-                            IGC_IS_FLAG_ENABLED(EnableStatefulToken) && m_DriverInfo->SupportStatefulToken() &&
+                            !m_Context->platform.hasEfficient64bEnabled() && IGC_IS_FLAG_ENABLED(EnableStatefulToken) &&
+                            m_DriverInfo->SupportStatefulToken() &&
                             !m_Context->getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
                             kernelArg->getArg() &&
                             ((kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL &&

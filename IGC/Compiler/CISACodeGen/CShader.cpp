@@ -50,6 +50,7 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
   m_CE0 = nullptr;
   m_DBG = nullptr;
   m_MSG0 = nullptr;
+  m_SCRATCHLOC = nullptr;
   m_HW_TID = nullptr;
   m_SP = nullptr;
   m_FP = nullptr;
@@ -210,7 +211,7 @@ void CShader::EOTRenderTarget(CVariable *r1, bool isPerCoarse) {
                             false,       // perSample,
                             isPerCoarse, // coarseMode,
                             false,       // isHeaderMaskFromCe0,
-                            nullSurfaceBti, blendStateIndex,
+                            nullptr, 0, nullSurfaceBti, blendStateIndex,
                             nullptr, // source0Alpha,
                             nullptr, // oMaskOpnd,
                             nullptr, // outputDepthOpnd,
@@ -715,6 +716,13 @@ CVariable *CShader::GetMSG0() {
   }
   return m_MSG0;
 }
+CVariable *CShader::GetSCRATCHLOC() {
+  if (!m_SCRATCHLOC) {
+    m_SCRATCHLOC = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, CName::NONE);
+    encoder.GetVISAPredefinedVar(m_SCRATCHLOC, PREDEFINED_SCRATCHLOC);
+  }
+  return m_SCRATCHLOC;
+}
 void CShader::RemoveBitRange(CVariable *&src, unsigned removebit, unsigned range) {
   CVariable *leftHalf = GetNewVariable(src);
   CVariable *rightHalf = GetNewVariable(src);
@@ -929,6 +937,43 @@ CVariable *CShader::GetPrivateBase() {
   return GetSymbol(kerArg);
 }
 
+CVariable *CShader::GetScratchPtr() {
+  if (GetShaderType() == ShaderType::OPENCL_SHADER) {
+    ImplicitArgs implicitArgs(*entry, m_pMdUtils);
+    unsigned numPushArgs = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
+    unsigned numImplicitArgs = implicitArgs.size();
+    IGC_ASSERT_MESSAGE(entry->arg_size() >= (numImplicitArgs + numPushArgs),
+                       "Function arg size does not match meta data and push args.");
+    unsigned numFuncArgs = entry->arg_size() - numImplicitArgs - numPushArgs;
+
+    Argument *kerArg = nullptr;
+    llvm::Function::arg_iterator arg = std::next(entry->arg_begin(), numFuncArgs);
+    for (unsigned i = 0; i < numImplicitArgs; ++i, ++arg) {
+      ImplicitArg implicitArg = implicitArgs[i];
+      if (implicitArg.getArgType() == ImplicitArg::ArgType::SCRATCH_POINTER) {
+        kerArg = (&*arg);
+        break;
+      }
+    }
+    IGC_ASSERT(kerArg);
+    return GetSymbol(kerArg);
+  } else if (!m_ScratchSurfaceAddress) {
+    if (m_Platform->hasEfficient64bEnabled() &&
+        (GetShaderType() == ShaderType::RAYTRACING_SHADER || m_DriverInfo->supportsScratchLocAccess())) {
+      // Efficient 64b removes scratch surface pointer from R0
+      // We have to read it from GlobalData. vISA will generate
+      // an appropriate load from GlobalData from the offset where
+      // ScratchSpaceBufferPointer is written and will put it in
+      // predefined varaable SCRATCHLOC.
+
+      m_ScratchSurfaceAddress = GetSCRATCHLOC();
+    } else {
+      m_ScratchSurfaceAddress = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, "ScratchSurfaceAddress");
+    }
+  }
+
+  return m_ScratchSurfaceAddress;
+}
 
 CVariable *CShader::GetImplArgBufPtr() {
   IGC_ASSERT(m_ImplArgBufPtr);

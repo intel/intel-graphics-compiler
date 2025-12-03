@@ -116,6 +116,13 @@ Value *RTBuilder::getMaxBVHLevels(void) {
 Value *RTBuilder::getStatelessScratchPtr(void) { return _get_statelessScratchPtr(VALUE_NAME("statelessScratchPtr")); }
 
 
+Value *RTBuilder::getBaseSurfaceStatePointer(Value *rayDispatchGlobalDataPtr) {
+  // For non-RT shaders, which use RayQuery GlobalBufferPointer is delivered
+  // in pushConstants. It must be read and passed to this function.
+  return _getBaseSurfaceStatePointerFromPointerToGlobals(rayDispatchGlobalDataPtr,
+                                                         VALUE_NAME("BaseSurfaceStatePointerFromPointerToGlobals"));
+}
+
 Value *RTBuilder::getIsFrontFace(RTBuilder::StackPointerVal *StackPointer, Value *ShaderTy) {
   auto *isCommitted = CreateICmpEQ(ShaderTy, getInt32(CallableShaderTypeMD::ClosestHit));
   switch (getMemoryStyle()) {

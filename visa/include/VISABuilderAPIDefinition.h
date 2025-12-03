@@ -1152,8 +1152,7 @@ public:
       VISA_VectorOpnd *renderTargetIndex, vISA_RT_CONTROLS cntrls,
       VISA_StateOpndHandle *surface, VISA_RawOpnd *r1HeaderOpnd,
       VISA_VectorOpnd *sampleIndex, VISA_VectorOpnd *cPSCounter,
-      uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray
-      ) = 0;
+      uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray, int rtIdentifier = 0) = 0;
 
   VISA_BUILDER_API virtual int AppendVISA3dURBWrite(
       VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
@@ -1167,6 +1166,7 @@ public:
       VISA_StateOpndHandle *surface, VISA_RawOpnd *u, VISA_RawOpnd *v,
       VISA_RawOpnd *r, VISA_RawOpnd *lod, VISA_RawOpnd *src0,
       VISA_RawOpnd *src1, VISA_RawOpnd *dst) = 0;
+
 
   /********** APPEND 3D Instructions END ******************/
 
