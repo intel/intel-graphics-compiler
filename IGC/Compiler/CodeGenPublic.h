@@ -1190,7 +1190,7 @@ public:
 
   bool supportsVRT() const {
     return platform.supportsVRT() && m_DriverInfo.supportsVRT() &&
-           (getModuleMetaData()->compOpt.EnableVRT && IGC_IS_FLAG_ENABLED(EnableVRT));
+           (getModuleMetaData()->compOpt.EnableVRT || IGC_IS_FLAG_ENABLED(EnableVRT));
   }
 };
 
