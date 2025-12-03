@@ -244,7 +244,7 @@ public:
 protected:
   // Helpers
   Value *getSExtOrTrunc(Value *, Type *) const;
-  Value *truncExpr(Value *, Type *) const;
+  Value *truncExpr(Value *, Type *, bool) const;
 
   bool simplifyGEP(BasicBlock &BB) const;
   bool lowerGetElementPtrInst(GetElementPtrInst *GEP) const;
@@ -578,15 +578,15 @@ Value *GEPLowering::getSExtOrTrunc(Value *Val, Type *NewTy) const {
   }
 
   if (OldWidth > NewWidth) { // Trunc
-    return truncExpr(Val, NewTy);
+    return truncExpr(Val, NewTy, true);
   }
 
   return Val;
 }
 
-Value *GEPLowering::truncExpr(Value *Val, Type *NewTy) const {
+Value *GEPLowering::truncExpr(Value *Val, Type *NewTy, bool initialVal = false) const {
   // Truncation on Gen could be as cheap as NOP by creating the proper region.
-  // Instead of truncating the value itself, try to truncate how it's
+  // Instead of truncating the value itself unless it has multiple users, try to truncate how it's
   // calculated.
   if (Constant *C = dyn_cast<Constant>(Val))
     return Builder->CreateIntCast(C, NewTy, false);
@@ -603,6 +603,12 @@ Value *GEPLowering::truncExpr(Value *Val, Type *NewTy) const {
   case Instruction::And:
   case Instruction::Or:
   case Instruction::Xor: {
+    // If the value is used in multiple places, we can just re-use it without duplicating calculation since it can not
+    // be removed.
+    if (initialVal &&
+        llvm::any_of(Val->users(), [](const llvm::User *U) { return !llvm::isa<llvm::GetElementPtrInst>(U); })) {
+      return Builder->CreateTrunc(Val, NewTy);
+    }
     BinaryOperator *BO = cast<BinaryOperator>(I);
     Value *LHS = truncExpr(BO->getOperand(0), NewTy);
     Value *RHS = truncExpr(BO->getOperand(1), NewTy);
