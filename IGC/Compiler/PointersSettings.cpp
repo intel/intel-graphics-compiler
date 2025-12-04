@@ -34,4 +34,9 @@ bool AreOpaquePointersEnabled() {
 
   return enableOpaquePointers;
 }
+
+void InitializeOpaquePointersSettings(bool value) {
+  if (!OpaquePointersCache.has_value())
+    OpaquePointersCache = value;
+}
 } // namespace IGC
