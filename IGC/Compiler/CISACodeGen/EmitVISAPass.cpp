@@ -4298,8 +4298,8 @@ void EmitPass::Sub(const SSource sources[2], const DstModifier &modifier) {
 
   if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && IsPossible) {
 
-    IGC_ASSERT_MESSAGE(m_encoder->GetSimdSize() == lanesToSIMDMode(16),
-                       "As of now Vector Emission is only supported for SIMD16");
+    IGC_ASSERT_EXIT_MESSAGE(m_encoder->GetSimdSize() == lanesToSIMDMode(16),
+                            "As of now Vector Emission is only supported for SIMD16");
 
     unsigned VectorSize = getVectorSize(sources[0].value);
     IGC_ASSERT_MESSAGE(VectorSize == getVectorSize(sources[1].value), "operands must have same vector types");
@@ -4389,8 +4389,8 @@ void EmitPass::Add(const SSource sources[2], const DstModifier &modifier) {
 
   if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && IsPossible) {
 
-    IGC_ASSERT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
-                       "As of now Vector Emission is only supported for SIMD16");
+    IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
+                            "As of now Vector Emission is only supported for SIMD16");
 
     bool AllUniform = src[0]->IsUniform() && src[1]->IsUniform() && m_destination->IsUniform();
     // cannot emit 16 SIMD if SIMD SIZE is set to 8, but can emit 4
@@ -4448,8 +4448,8 @@ void EmitPass::Mul(const SSource sources[2], const DstModifier &modifier) {
 
   if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && IsPossible) {
 
-    IGC_ASSERT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
-                       "As of now Vector Emission is only supported for SIMD16");
+    IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
+                            "As of now Vector Emission is only supported for SIMD16");
     unsigned VectorSize = getVectorSize(sources[0].value);
     IGC_ASSERT_MESSAGE(VectorSize == getVectorSize(sources[1].value), "operands must have same vector types");
 
@@ -4528,8 +4528,8 @@ void EmitPass::Div(const SSource sources[2], const DstModifier &modifier) {
   if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy() &&
       sources[1].value->getType()->isVectorTy()) {
 
-    IGC_ASSERT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
-                       "As of now Vector Emission is only supported for SIMD16");
+    IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
+                            "As of now Vector Emission is only supported for SIMD16");
     unsigned VectorSize = getVectorSize(sources[0].value);
 
     for (unsigned i = 0; i < VectorSize; ++i) {
@@ -4561,8 +4561,8 @@ void EmitPass::Inv(const SSource sources[2], const DstModifier &modifier) {
   if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy() &&
       sources[1].value->getType()->isVectorTy()) {
 
-    IGC_ASSERT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
-                       "As of now Vector Emission is only supported for SIMD16");
+    IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
+                            "As of now Vector Emission is only supported for SIMD16");
     unsigned VectorSize = getVectorSize(sources[0].value);
 
     CVariable *src[1];
@@ -4596,8 +4596,8 @@ void EmitPass::MaxNum(const SSource sources[2], const DstModifier &modifier) {
   if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy() &&
       sources[1].value->getType()->isVectorTy()) {
 
-    IGC_ASSERT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
-                       "As of now Vector Emission is only supported for SIMD16");
+    IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
+                            "As of now Vector Emission is only supported for SIMD16");
     unsigned VectorSize = getVectorSize(sources[0].value);
 
     bool AllUniform = src[0]->IsUniform() && src[1]->IsUniform() && m_destination->IsUniform();
@@ -4640,16 +4640,16 @@ void EmitPass::MaxNum(const SSource sources[2], const DstModifier &modifier) {
     return;
   }
 
-  IGC_ASSERT_MESSAGE(0, " if we are at this part, something went wrong "
-                        "with maxnum vectorization");
+  IGC_ASSERT_EXIT_MESSAGE(0, " if we are at this part, something went wrong "
+                             "with maxnum vectorization");
 }
 
 void EmitPass::Exp2(const SSource sources[2], const DstModifier &modifier) {
 
   if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy()) {
 
-    IGC_ASSERT_MESSAGE(m_encoder->GetSimdSize() == lanesToSIMDMode(16),
-                       "As of now Vector Emission is only supported for SIMD16");
+    IGC_ASSERT_EXIT_MESSAGE(m_encoder->GetSimdSize() == lanesToSIMDMode(16),
+                            "As of now Vector Emission is only supported for SIMD16");
 
     unsigned VectorSize = getVectorSize(sources[0].value);
 
@@ -4747,8 +4747,8 @@ void EmitPass::FDiv(const SSource sources[2], const DstModifier &modifier) {
 
   if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && IsPossible) {
 
-    IGC_ASSERT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
-                       "As of now Vector Emission is only supported for SIMD16");
+    IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
+                            "As of now Vector Emission is only supported for SIMD16");
     if (isVectorOfOnes(sources[0].value))
       Inv(sources, modifier);
     else
@@ -4807,8 +4807,8 @@ void EmitPass::VectorCMP(llvm::CmpInst::Predicate pred, const SSource sources[2]
     dst = m_currShader->BitCast(m_destination, src[0]->GetType());
   }
 
-  IGC_ASSERT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
-                     "As of now Vector Emission is only supported for SIMD16");
+  IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
+                          "As of now Vector Emission is only supported for SIMD16");
   unsigned VectorSize = getVectorSize(sources[0].value);
 
   bool AllUniform = src[0]->IsUniform() && src[1]->IsUniform() && m_destination->IsUniform();
@@ -4818,6 +4818,7 @@ void EmitPass::VectorCMP(llvm::CmpInst::Predicate pred, const SSource sources[2]
   bool CanEmitThisSize = VectorSize <= SIMDSize;
 
   if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
+
     m_encoder->SetSrcRegion(0, 1, 1, 0);
     m_encoder->SetSrcRegion(1, 1, 1, 0);
     m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
@@ -5024,7 +5025,6 @@ void EmitPass::VectorSelect(const SSource sources[3], const DstModifier &modifie
   }
 
   bool PredicateLengthIsCorrect = flag->GetNumberElement() == 1 || flag->GetNumberElement() == SIMDSize;
-
   IGC_ASSERT_EXIT_MESSAGE(PredicateLengthIsCorrect, "we can only emit non-uniform selects with matching predicate");
 
   for (unsigned i = 0; i < VectorSize; ++i) {

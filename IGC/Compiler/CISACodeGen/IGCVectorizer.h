@@ -71,14 +71,9 @@ class IGCVectorizer : public llvm::FunctionPass {
   std::string LogStr;
   llvm::raw_string_ostream OutputLogStream = raw_string_ostream(LogStr);
   Module *M = nullptr;
-  unsigned SIMDSize = 0;
-  unsigned checkSIMD(llvm::Function &F);
+  bool checkIfSIMD16(llvm::Function &F);
   void initializeLogFile(Function &F);
   void writeLog();
-
-  bool isSafeToVectorize(llvm::Instruction *I);
-  bool isSafeToVectorizeSIMD16(llvm::Instruction *I);
-  bool isSafeToVectorizeSIMD32(llvm::Instruction *I);
 
   void findInsertElementsInDataFlow(llvm::Instruction *I, VecArr &Chain);
   bool checkSlice(VecArr &Slice, InsertStruct &InSt);
