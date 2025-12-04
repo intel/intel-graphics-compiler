@@ -79,6 +79,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/InstCombine/InstructionCombining.h"
 
     "${CMAKE_CURRENT_SOURCE_DIR}/include/lldWrapper/Common/Driver.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/IPO/LegacyPassManagerBuilder.h"
   )
 
 set(IGC_WrapperLLVM_SRC
@@ -90,7 +91,9 @@ set(IGC_WrapperLLVM_SRC
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/IPO/GlobalDCE.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/IPO/SCCP.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/InstCombine/InstructionCombining.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/IPO/LegacyPassManagerBuilder.cpp"
     )
+
 include_directories(
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}"
