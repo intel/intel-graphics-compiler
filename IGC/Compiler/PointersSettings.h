@@ -8,4 +8,5 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 bool AreOpaquePointersEnabled();
+void InitializeOpaquePointersSettings(bool value);
 }

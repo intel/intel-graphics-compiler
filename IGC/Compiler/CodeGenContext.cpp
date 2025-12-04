@@ -323,13 +323,21 @@ LLVMContextWrapper::LLVMContextWrapper(bool createResourceDimTypes) : m_UserAddr
   // We're using it here to have consistent behaviour.
   // https://github.com/llvm/llvm-project/blob/release/16.x/llvm/lib/IR/LLVMContextImpl.cpp#L50
   auto WA_OpaquePointersCL = cl::getRegisteredOptions()["opaque-pointers"];
-  if (WA_OpaquePointersCL && WA_OpaquePointersCL->getNumOccurrences() > 0) {
+  auto opaquesEnabledByFlag = WA_OpaquePointersCL && WA_OpaquePointersCL->getNumOccurrences() > 0;
+  if (opaquesEnabledByFlag) {
     IGC_IsPointerModeAlreadySet = true;
   }
+
   if (IGC::canOverwriteLLVMCtxPtrMode(basePtr, IGC_IsPointerModeAlreadySet)) {
     bool enableOpaquePointers = AreOpaquePointersEnabled();
     IGCLLVM::setOpaquePointers(basePtr, enableOpaquePointers);
     IGC_IsPointerModeAlreadySet = true;
+  } else {
+    // On LLVM 14 where opaques are not enabled by default via **cmakes**,
+    // the AreOpaquePointersEnabled() method wasn't aware that opaques were enabled by flag.
+    // We need to save this information in order to be consistent,
+    // otherwise AreOpaquePointersEnabled will return false even when opaques are enabled.
+    InitializeOpaquePointersSettings(opaquesEnabledByFlag);
   }
   // TODO: end
 }
