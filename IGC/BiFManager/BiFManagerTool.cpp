@@ -60,6 +60,7 @@ void BiFManagerTool::writeHashMapSingle(llvm::raw_fd_ostream &fileDataHeader, Bi
     std::string funcName = *rec_i;
     std::string funcKey;
     funcKey = funcName;
+
     auto listOfDependency = ListOfFunctions->operator[](funcKey);
 
     std::string record = "\n        // bif func: " + funcName;
@@ -92,7 +93,8 @@ void BiFManagerTool::writeHashMap(llvm::raw_fd_ostream &fileDataHeader, BiFDicti
   for (auto rec_i = ListOfFunctions->begin(); rec_i != ListOfFunctions->end(); ++rec_i) {
     const auto &record_inst = *rec_i;
     const std::string &funcName =
-    record_inst.first;
+        record_inst.first;
+
     auto funcNameSize = funcName.size();
 
     if (sortBySizeNameFunc.find(funcNameSize) == sortBySizeNameFunc.end()) {
@@ -398,7 +400,6 @@ void BiFManagerTool::generateSplitedBiFModules(llvm::Module *pMainModule) {
     mpm.add(createStripDeadPrototypesPass()); // Remove dead func decls.
 
     mpm.run(*kernelM.get());
-
     BiFSections[setData.first] = (std::move(kernelM));
   }
 }

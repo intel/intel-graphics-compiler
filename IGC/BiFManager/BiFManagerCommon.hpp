@@ -69,7 +69,6 @@ public:
   static size_t getHash(const std::string &FlagName);
 
 protected:
-
   inline static const std::string bifMark = "igc_bif";
 
   llvm::LLVMContext &Context;

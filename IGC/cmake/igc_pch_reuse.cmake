@@ -12,27 +12,28 @@ message(STATUS "Using precompiled headers")
     PCH             #0
     Compiler        #1
     AdaptorOCL      #2
-    zebinlib        #4
-    VISALinkerDriver#5
-    Probe           #7
-    GenISAIntrinsics#8
-    GenX_IR         #9
-    GenXDebugInfo   #10
-    ${IGC_BUILD__PROJ__igc_lib} #11
-    BiFManager #12
+    zebinlib        #7
+    VISALinkerDriver#8
+    BiFMangler      #9
+    Probe           #11
+    GenISAIntrinsics#12
+    GenX_IR         #13
+    GenXDebugInfo   #14
+    ${IGC_BUILD__PROJ__igc_lib} #15
+    BiFManager #16
   )
 
   if(IGC_BUILD__VC_ENABLED)
-    list(APPEND PCHTargets VCIGCDeps)   #13
+    list(APPEND PCHTargets VCIGCDeps)   #17
   endif()
 
   if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
-    list(APPEND PCHTargets VulkanFrontend)  #14
+    list(APPEND PCHTargets VulkanFrontend)  #18
   endif()
 
   #setting reuse indexs
   set(index 0)
-  set(reuse_ind 1 2 3 4 5 6 7 11 13)
+  set(reuse_ind 1 2 3 4 5 6 7 8 12 14)
   #collecting options and definitions pools
   set(opt_list  "")
   set(def_list  "")

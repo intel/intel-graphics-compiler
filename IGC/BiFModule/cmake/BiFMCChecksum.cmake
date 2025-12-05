@@ -22,15 +22,12 @@ set(allFilesChecksum "")
 foreach(_file ${BiFModule_SRC_LIST})
   file(SHA1 ${_file} fileChecksum)
   set(allFilesChecksum "${allFilesChecksum}${fileChecksum}")
-#  message("[IGC\\BiFModuleCache] - File : ${_file} SHA1[${fileChecksum}]")
+  #message("[IGC\\BiFModuleCache] - File : ${_file} SHA1[${fileChecksum}]")
 endforeach()
 
 message("[IGC\\BiFModuleCache] - Checksum will be for ${BiFModuleCacheTarget} target")
 set(allFilesChecksum "${allFilesChecksum}-${BiFModuleCacheTarget}")
 
-
-message("[IGC\\BiFModuleCache] - Package for system: ${BIF_ARCH}")
-set(allFilesChecksum "${allFilesChecksum}-${BIF_ARCH}")
 file(WRITE "${BiFModule_SRC_SHA_PATH}.tmp" ${allFilesChecksum})
 
 # Generate the checksum of all sources of BiFModule
