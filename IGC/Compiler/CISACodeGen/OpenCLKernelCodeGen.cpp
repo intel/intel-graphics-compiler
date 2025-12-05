@@ -2280,8 +2280,8 @@ void CodeGen(OpenCLProgramContext *ctx) {
         } else {
           auto funcInfoMD = ctx->getMetaDataUtils()->getFunctionsInfoItem(pFunc);
           int reqdSubGroupSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
-          if (IGC_GET_FLAG_VALUE(ForceSIMDRPELimit) != 0 && !reqdSubGroupSize) {
-            IGC_SET_FLAG_VALUE(ForceSIMDRPELimit, 0);
+          if (ctx->m_ForceSIMDRPELimit != 0 && !reqdSubGroupSize) {
+            ctx->m_ForceSIMDRPELimit = 0;
             ctx->m_retryManager.kernelSet.insert(shader->entry->getName().str());
             ctx->EmitWarning("we couldn't compile without exceeding max permitted PTSS, drop SIMD \n", nullptr);
             ctx->m_retryManager.DecreaseState();
@@ -2476,7 +2476,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
       IGC_IS_FLAG_ENABLED(ForceLowestSIMDForStackCalls) && (hasStackCall || isIndirectGroup);
 
   if (requiredSimdSize == 0) {
-    if (maxPressure >= IGC_GET_FLAG_VALUE(ForceSIMDRPELimit) && simdMode != SIMDMode::SIMD16) {
+    if (maxPressure >= pCtx->m_ForceSIMDRPELimit && simdMode != SIMDMode::SIMD16) {
       pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
       funcInfoMD->getSubGroupSize()->setSIMDSize(16);
       return SIMDStatus::SIMD_FUNC_FAIL;
@@ -2640,7 +2640,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
       return SIMDStatus::SIMD_FUNC_FAIL;
     }
 
-    if (maxPressure >= IGC_GET_FLAG_VALUE(ForceSIMDRPELimit) && simdMode != SIMDMode::SIMD8) {
+    if (maxPressure >= pCtx->m_ForceSIMDRPELimit && simdMode != SIMDMode::SIMD8) {
       pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
       funcInfoMD->getSubGroupSize()->setSIMDSize(8);
       return SIMDStatus::SIMD_FUNC_FAIL;

@@ -934,6 +934,7 @@ public:
   std::vector<std::string> entry_names;
   uint m_spillAllowed = 0;
   uint m_spillAllowedFor256GRF = 0;
+  uint m_ForceSIMDRPELimit = 0;
 
 private:
   // For storing error message
@@ -982,6 +983,7 @@ public:
 
     // Set retry behavor for Disable()
     m_retryManager.perKernel = (type == ShaderType::OPENCL_SHADER);
+    m_ForceSIMDRPELimit = IGC_GET_FLAG_VALUE(ForceSIMDRPELimit);
   }
 
   CodeGenContext(CodeGenContext &) = delete;
