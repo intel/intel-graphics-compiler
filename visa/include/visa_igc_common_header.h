@@ -684,6 +684,7 @@ enum class GenPrecision : unsigned char {
   BF8 = 11,  // bfloat8 (1, 5, 2)
   TF32 = 12, // TensorFloat (1, 8, 10), 19 bits
   HF8 = 14, // HF8 (1, 4, 3)
+  E2M1 = 15, // fp4 (1, 2, 1)
   TOTAL_NUM
 };
 
@@ -981,6 +982,11 @@ enum LSC_OP {
   LSC_APNDCTR_ATOMIC_SUB = 0x29,
   LSC_APNDCTR_ATOMIC_STORE = 0x2A,
 
+  LSC_ATOMIC_BFADD = 0x21,
+  LSC_ATOMIC_BFSUB = 0x22,
+  LSC_ATOMIC_BFMIN = 0x23,
+  LSC_ATOMIC_BFMAX = 0x24,
+  LSC_ATOMIC_BFCAS = 0x25,
   LSC_LOAD_QUAD_MSRT = 0x31,
   LSC_STORE_QUAD_MSRT = 0x32,
   LSC_INVALID = 0xFFFFFFFF,

@@ -30,7 +30,7 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
-#define LSC_CACHE_CTRL_NUM 12
+#define LSC_CACHE_CTRL_NUM 31
 #ifdef LSC_CACHE_CTRL_OPTION
 #define LSC_CACHE_CTRL_OPTIONS_WITH_CTRL_NUM(ctrl_num)                                                                 \
   LSC_CACHE_CTRL_OPTION(LSC_L1DEF_L3DEF, 0, "default")                                                                 \

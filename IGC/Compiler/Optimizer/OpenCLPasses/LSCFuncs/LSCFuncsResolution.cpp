@@ -1390,6 +1390,8 @@ Instruction *LSCFuncsResolution::CreateLSCAtomicIntrinsicCallInst(bool isLocalMe
   bool isFP64Atomic = atomicOp == EATOMIC_FADD64 || atomicOp == EATOMIC_FSUB64;
   bool isFP32Atomic = atomicOp == EATOMIC_FCMPWR || atomicOp == EATOMIC_FADD || atomicOp == EATOMIC_FSUB ||
                       atomicOp == EATOMIC_FMIN || atomicOp == EATOMIC_FMAX;
+  bool isBF16Atomic = atomicOp == EATOMIC_FCMPWRBF16 || atomicOp == EATOMIC_FADDBF16 || atomicOp == EATOMIC_FSUBBF16 ||
+                      atomicOp == EATOMIC_FMINBF16 || atomicOp == EATOMIC_FMAXBF16;
   bool hasSrc1 = atomicOp != EATOMIC_INC && atomicOp != EATOMIC_DEC && atomicOp != EATOMIC_LOAD;
   bool hasSrc2 = atomicOp == EATOMIC_FCMPWR || atomicOp == EATOMIC_CMPXCHG;
 
@@ -1587,12 +1589,23 @@ LscTypeInfo LSCFuncsResolution::decodeTypeInfoFromName() {
 }
 
 AtomicOp LSCFuncsResolution::decodeAtomicOpFromName() {
-  static const uint32_t numSymbols = 42;
+  static const uint32_t numSymbols = 52;
   static const SymbolMapping symbols[numSymbols]{
       // FP 64 (local not suported)
       {"_add_global_double", EATOMIC_FADD64},
       {"_sub_global_double", EATOMIC_FSUB64},
-       // FP 32
+      // BF 16
+      {"_add_global_bf16", EATOMIC_FADDBF16},
+      {"_add_local_bf16", EATOMIC_FADDBF16},
+      {"_sub_global_bf16", EATOMIC_FSUBBF16},
+      {"_sub_local_bf16", EATOMIC_FSUBBF16},
+      {"_min_global_bf16", EATOMIC_FMINBF16},
+      {"_min_local_bf16", EATOMIC_FMINBF16},
+      {"_max_global_bf16", EATOMIC_FMAXBF16},
+      {"_max_local_bf16", EATOMIC_FMAXBF16},
+      {"_cmpxchg_global_bf16", EATOMIC_FCMPWRBF16},
+      {"_cmpxchg_local_bf16", EATOMIC_FCMPWRBF16},
+      // FP 32
       {"_add_global_float", EATOMIC_FADD},
       {"_add_local_float", EATOMIC_FADD},
       {"_sub_global_float", EATOMIC_FSUB},

@@ -516,6 +516,7 @@ public:
   void emitGlobalBufferPtr(llvm::GenIntrinsicInst *I);
   void emitLocalBufferPtr(llvm::GenIntrinsicInst *I);
   void emitInlinedDataValue(llvm::GenIntrinsicInst *I);
+  void emitBdpas(llvm::GenIntrinsicInst *GII);
   void emitDpas(llvm::GenIntrinsicInst *GII, const SSource *source, const DstModifier &modifier);
   void emitfcvt(llvm::GenIntrinsicInst *GII);
   void emitLfsr(llvm::GenIntrinsicInst *GII);
@@ -624,6 +625,8 @@ public:
   void emitLoadImplBufferPtr(llvm::GenIntrinsicInst *I);
   void emitLoadLocalIdBufferPtr(llvm::GenIntrinsicInst *I);
   void emitLoadGlobalBufferArg(llvm::GenIntrinsicInst *I);
+  void emitLoadgetTileID(llvm::GenIntrinsicInst *I);
+  void emitLoadgetEngineID(llvm::GenIntrinsicInst *I);
 
   void emitMayUnalignedVectorCopy(CVariable *D, uint32_t D_off, CVariable *S, uint32_t S_off, llvm::Type *Ty);
   Function *findStackOverflowDetectionFunction(Function *ParentFunction, bool FindInitFunction);

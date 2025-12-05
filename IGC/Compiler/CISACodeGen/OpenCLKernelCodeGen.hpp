@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 class KernelArg;
+class KernelArgs;
 } // namespace IGC
 
 namespace IGC {
@@ -219,6 +220,7 @@ private:
   uint32_t getReqdSubGroupSize(llvm::Function &F, IGC::IGCMD::MetaDataUtils *MDUtils) const;
   uint32_t getMaxPressure(llvm::Function &F, IGC::IGCMD::MetaDataUtils *MDUtils) const;
   bool isUnusedArg(KernelArg &arg) const;
+  bool canSkipScratchPointer(KernelArgs &args) const;
 };
 
 void CodeGen(OpenCLProgramContext *ctx);

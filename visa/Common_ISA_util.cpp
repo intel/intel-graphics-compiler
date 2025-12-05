@@ -104,7 +104,8 @@ static_assert((int)GenPrecision::FP16 == 10);
 static_assert((int)GenPrecision::BF8 == 11);
 static_assert((int)GenPrecision::TF32 == 12);
 static_assert((int)GenPrecision::HF8 == 14);
-static_assert((int)GenPrecision::TOTAL_NUM == 15);
+static_assert((int)GenPrecision::E2M1 == 15);
+static_assert((int)GenPrecision::TOTAL_NUM == 16);
 
 const char *Common_ISA_Get_Modifier_Name(VISA_Modifier modifier) {
   switch (modifier) {

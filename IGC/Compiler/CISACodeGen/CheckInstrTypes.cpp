@@ -277,6 +277,7 @@ void CheckInstrTypes::visitCallInst(CallInst &C) {
     case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
     case GenISAIntrinsic::GenISA_LSCAtomicFP64:
     case GenISAIntrinsic::GenISA_LSCAtomicFP32:
+    case GenISAIntrinsic::GenISA_LSCAtomicBF16:
     case GenISAIntrinsic::GenISA_LSCAtomicInts: {
       g_InstrTypes.hasAtomics = true;
       g_InstrTypes.numAtomics++;

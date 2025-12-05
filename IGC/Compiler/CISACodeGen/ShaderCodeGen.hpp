@@ -239,6 +239,8 @@ public:
   CVariable *GetImplArgBufPtr();
   CVariable *GetLocalIdBufPtr();
   CVariable *GetGlobalBufferArg();
+  CVariable *GetTileID();
+  CVariable *GetEngineID();
   void SaveSRet(CVariable *sretPtr);
   CVariable *GetAndResetSRet();
 
@@ -314,6 +316,7 @@ public:
   bool HasIndirectCalls() const { return m_HasIndirectCall; }
   bool IsIntelSymbolTableVoidProgram() const { return m_IsIntelSymbolTableVoidProgram; }
   int PrivateMemoryPerWI() const { return m_PrivateMemoryPerWI; }
+  bool TryNoScratchPointer() const { return m_TryNoScratchPointer; }
 
   IGCMD::MetaDataUtils *GetMetaDataUtils() { return m_pMdUtils; }
 
@@ -656,6 +659,8 @@ protected:
   CVariable *m_ImplArgBufPtr = nullptr;
   CVariable *m_LocalIdBufPtr = nullptr;
   CVariable *m_GlobalBufferArg = nullptr;
+  CVariable *m_HW_TileID = nullptr;
+  CVariable *m_HW_EngineID = nullptr;
   SProgramOutput m_simdProgram;
 
   // for each vector BCI whose uses are all extractElt with imm offset,
@@ -677,6 +682,10 @@ protected:
   uint32_t m_IndirectStatelessCount = 0;
 
   uint32_t m_NumSampleBallotLoops = 0;
+
+  // Indicates if IGC tries to compile OCL kernel without scratch pointer.
+  // See COpenCLKernel::canSkipScratchPointer for details.
+  bool m_TryNoScratchPointer = false;
 
   DebugInfoData diData;
 

@@ -124,6 +124,7 @@ public:
            (isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(EnableEfficient64b));
   }
 
+  bool hasEngineIDEnabled() const { return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_DISABLED(DisableEngineID); }
   bool SupportSurfaceInfoMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
   bool SupportHDCUnormFormats() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
   bool localMemFenceSupress() const {
@@ -538,6 +539,7 @@ public:
 
   bool hasFP32GlobalAtomicAdd() const { return isProductChildOf(IGFX_XE_HP_SDV); }
 
+
   bool has16OWSLMBlockRW() const {
     return IGC_IS_FLAG_ENABLED(Enable16OWSLMBlockRW) && isProductChildOf(IGFX_XE_HP_SDV);
   }
@@ -645,6 +647,10 @@ public:
     return (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId < REVISION_B) ||
            isCoreChildOf(IGFX_XE2_HPG_CORE);
   }
+
+  bool hasFP64DPAS() const { return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(EnableFP64Dpas); }
+
+  bool hasFP4DPAS() const { return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(EnableFP4Dpas); }
 
   bool hasExecSize16DPAS() const { return isCoreChildOf(IGFX_XE_HPC_CORE); }
 

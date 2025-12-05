@@ -1032,6 +1032,7 @@ void StatelessToStateful::visitCallInst(CallInst &I) {
       switch (id) {
       case GenISAIntrinsic::GenISA_LSCAtomicFP32:
       case GenISAIntrinsic::GenISA_LSCAtomicFP64:
+      case GenISAIntrinsic::GenISA_LSCAtomicBF16:
       case GenISAIntrinsic::GenISA_LSCAtomicInts:
         return true;
       default:

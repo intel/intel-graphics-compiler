@@ -348,6 +348,9 @@ public:
   void srnd(CVariable *D, CVariable *S0, CVariable *R);
   void emitDnscl(CVariable *dst, CVariable *src0, CVariable *src1, CVariable *bias, DNSCL_CONVERT_TYPE convType,
                  DNSCL_MODE packMode, DNSCL_RND_MODE roundMode);
+  void bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType BPrecision, CVariable *A,
+             PrecisionType APrecision, CVariable *BScaling, CVariable *AScaling, uint8_t systolicDepth,
+             uint8_t repeatCount);
   void Bfn(uint8_t booleanFuncCtrl, CVariable *dst, CVariable *src0, CVariable *src1, CVariable *src2);
   void ShflIdx4(CVariable *dst, CVariable *src0, CVariable *src1);
   void QWGather(CVariable *dst, const ResourceDescriptor &resource, CVariable *offset, unsigned elementSize,

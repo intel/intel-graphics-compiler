@@ -55,6 +55,12 @@ INLINE RETTY OVERLOADABLE intel_sub_group_##FNAME( ATY a,  BTY b, ACCTY acc)    
     return __builtin_IB_sub_group16_##INTERNAL_FNAME (acc, a, b);                        \
 }
 
+#define  DEFN_INTEL_SG16_BDPAS(FNAME, RETTY, ACCTY, ATY, BTY, SCALETY, INTERNAL_FNAME)                                \
+INLINE RETTY OVERLOADABLE intel_sub_group_##FNAME( ATY a, BTY b, ACCTY acc, SCALETY scale_a, SCALETY scale_b)         \
+{                                                                                                                     \
+    return __builtin_IB_sub_group16_##INTERNAL_FNAME (acc, a, b, scale_a, scale_b);                                   \
+}
+
 //// conversion
 #define DEFN_INTEL_CVT(FNAME, RETTY,  SRCTY,  INTERNAL_FNAME)                            \
 INLINE RETTY OVERLOADABLE intel_convert_##FNAME (SRCTY a)                                \
@@ -675,6 +681,45 @@ DEFN_INTEL_SG_FDPAS( f16_f16_split_matrix_mad_k16, float4, int2,  int8,  fdpasw_
 DEFN_INTEL_SG_FDPAS( f16_f16_split_matrix_mad_k16, float8, int4,  int8,  fdpasw_hf_hf_8_8 )
 
 #endif // cl_intel_subgroup_split_matrix_multiply_accumulate
+
+// bf16 precision, f32/bf16 acc
+DEFN_INTEL_SG16_BDPAS( bf16_bf16_scaled_matrix_mad_k16, float8, float8, short8, int8, uchar, bdpas_f_f_bf_bf_8_8 )
+DEFN_INTEL_SG16_BDPAS( bf16_bf16_scaled_matrix_mad_k16, short8, short8, short8, int8, uchar, bdpas_bf_bf_bf_bf_8_8 )
+DEFN_INTEL_SG16_BDPAS( bf16_bf16_scaled_matrix_mad_k16_f32, float8, short8, short8, int8, uchar, bdpas_f_bf_bf_bf_8_8 )
+DEFN_INTEL_SG16_BDPAS( bf16_bf16_scaled_matrix_mad_k16_bf16, short8, float8, short8, int8, uchar, bdpas_bf_f_bf_bf_8_8 )
+
+// f16 precision, f32/f16 acc
+DEFN_INTEL_SG16_BDPAS( f16_f16_scaled_matrix_mad_k16, float8, float8, short8, int8, uchar, bdpas_f_f_hf_hf_8_8 )
+#ifdef cl_khr_fp16
+DEFN_INTEL_SG16_BDPAS( f16_f16_scaled_matrix_mad_k16, half8, half8, short8, int8, uchar, bdpas_hf_hf_hf_hf_8_8 )
+DEFN_INTEL_SG16_BDPAS( f16_f16_scaled_matrix_mad_k16_f32, float8, half8, short8, int8, uchar, bdpas_f_hf_hf_hf_8_8 )
+DEFN_INTEL_SG16_BDPAS( f16_f16_scaled_matrix_mad_k16_f16, half8, float8, short8, int8, uchar, bdpas_hf_f_hf_hf_8_8 )
+#endif  // cl_khr_fp16
+
+// bf8/hf8 precision, f32/bf16 acc
+DEFN_INTEL_SG16_BDPAS( hf8_hf8_scaled_matrix_mad_k32, float8, float8, short8, int8, uchar, bdpas_f_f_hf8_hf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( hf8_hf8_scaled_matrix_mad_k32, short8, short8, short8, int8, uchar, bdpas_bf_bf_hf8_hf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( hf8_hf8_scaled_matrix_mad_k32_f32, float8, short8, short8, int8, uchar, bdpas_f_bf_hf8_hf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( hf8_hf8_scaled_matrix_mad_k32_bf16, short8, float8, short8, int8, uchar, bdpas_bf_f_hf8_hf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( bf8_hf8_scaled_matrix_mad_k32, float8, float8, short8, int8, uchar, bdpas_f_f_bf8_hf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( bf8_hf8_scaled_matrix_mad_k32, short8, short8, short8, int8, uchar, bdpas_bf_bf_bf8_hf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( bf8_hf8_scaled_matrix_mad_k32_f32, float8, short8, short8, int8, uchar, bdpas_f_bf_bf8_hf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( bf8_hf8_scaled_matrix_mad_k32_bf16, short8, float8, short8, int8, uchar, bdpas_bf_f_bf8_hf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( hf8_bf8_scaled_matrix_mad_k32, float8, float8, short8, int8, uchar, bdpas_f_f_hf8_bf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( hf8_bf8_scaled_matrix_mad_k32, short8, short8, short8, int8, uchar, bdpas_bf_bf_hf8_bf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( hf8_bf8_scaled_matrix_mad_k32_f32, float8, short8, short8, int8, uchar, bdpas_f_bf_hf8_bf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( hf8_bf8_scaled_matrix_mad_k32_bf16, short8, float8, short8, int8, uchar, bdpas_bf_f_hf8_bf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( bf8_bf8_scaled_matrix_mad_k32, float8, float8, short8, int8, uchar, bdpas_f_f_bf8_bf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( bf8_bf8_scaled_matrix_mad_k32, short8, short8, short8, int8, uchar, bdpas_bf_bf_bf8_bf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( bf8_bf8_scaled_matrix_mad_k32_f32, float8, short8, short8, int8, uchar, bdpas_f_bf_bf8_bf8_8_8 )
+DEFN_INTEL_SG16_BDPAS( bf8_bf8_scaled_matrix_mad_k32_bf16, short8, float8, short8, int8, uchar, bdpas_bf_f_bf8_bf8_8_8 )
+
+// fp4 precision, f32/bf16 acc
+DEFN_INTEL_SG16_BDPAS( e2m1_e2m1_scaled_matrix_mad_k64, float8, float8, short8, int8, uchar2, bdpas_f_f_e2m1_e2m1_8_8 )
+DEFN_INTEL_SG16_BDPAS( e2m1_e2m1_scaled_matrix_mad_k64, short8, short8, short8, int8, uchar2, bdpas_bf_bf_e2m1_e2m1_8_8 )
+DEFN_INTEL_SG16_BDPAS( e2m1_e2m1_scaled_matrix_mad_k64_f32, float8, short8, short8, int8, uchar2, bdpas_f_bf_e2m1_e2m1_8_8 )
+DEFN_INTEL_SG16_BDPAS( e2m1_e2m1_scaled_matrix_mad_k64_bf16, short8, float8, short8, int8, uchar2, bdpas_bf_f_e2m1_e2m1_8_8 )
+
 INLINE uint    OVERLOADABLE intel_lfsr(uint seed, uint polynomial)       { return __builtin_IB_lfsr_b32(seed, polynomial); }
 INLINE ushort2 OVERLOADABLE intel_lfsr(ushort2 seed, ushort2 polynomial) { return as_ushort2(__builtin_IB_lfsr_b16v2(as_uint(seed), as_uint(polynomial))); }
 INLINE uchar4  OVERLOADABLE intel_lfsr(uchar4 seed, uchar4 polynomial)   { return as_uchar4(__builtin_IB_lfsr_b8v4(as_uint(seed), as_uint(polynomial))); }

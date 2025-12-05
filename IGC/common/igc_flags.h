@@ -1066,6 +1066,8 @@ DECLARE_IGC_REGKEY(bool, Force32BitIntDivRemEmu, false,
 DECLARE_IGC_REGKEY(
     bool, Force32BitIntDivRemEmuSP, false,
     "Force 32-bit Int Div/Rem emulation using fp32, ignored if Force32BitIntDivRemEmu is set and actually used", true)
+DECLARE_IGC_REGKEY(bool, EnableFP64Dpas, false, "Enable fp64 dpas", true)
+DECLARE_IGC_REGKEY(bool, EnableFP4Dpas, true, "Enable fp4 dpas", true)
 DECLARE_IGC_REGKEY(bool, EnableOutOfBoundsBuiltinChecks, true, "Enable extra checks for OOB in builtins", true)
 DECLARE_IGC_REGKEY(bool, EnableNativeSinCos, true, "Enable native sin and cos", true)
 DECLARE_IGC_REGKEY(bool, EnableRecursionOpenCL, true, "Enable recursion with OpenCL user functions", false)
@@ -1746,6 +1748,7 @@ DECLARE_IGC_REGKEY(bool, EnableResourceLoopNonUniformCmpLowerHalfDWOnly, true,
                    true)
 DECLARE_IGC_REGKEY(DWORD, EnableScalarPipe, 0,
                    "for scalar-pipe experiment, N specifies the number of scalar registers in Nx16 dwords", false)
+DECLARE_IGC_REGKEY(bool, DisableEngineID, false, "Disables usage of engine ID from ARF", true)
 DECLARE_IGC_REGKEY(bool, OverrideCsWalkOrderEnable, false, "Enable overriding compute walker walk order", true)
 DECLARE_IGC_REGKEY(int, OverrideCsWalkOrder, 0, "Override compute walker walk order", true)
 DECLARE_IGC_REGKEY(bool, OverrideCsTileLayoutEnable, false, "Enable overriding compute walker tile layout", true)
@@ -1793,6 +1796,12 @@ DECLARE_IGC_REGKEY_ENUM(RemoveUnusedIdImplicitArguments, -1,
                         " 0 - force disabled"
                         " 1 - force enabled",
                         TRIBOOL_OPTIONS, true)
+DECLARE_IGC_REGKEY(bool, RemoveImplicitScratchPointer, true,
+                   "Allows skipping scratch pointer implicit kernel argument if unused. If false, arg is always added.",
+                   true)
+DECLARE_IGC_REGKEY(int, RemoveImplicitScratchPointerInstThreshold, 2000,
+                   "Maximum number of instructions in kernel for which scratch pointer is considered for removal.",
+                   true)
 DECLARE_IGC_REGKEY(bool, AllowCrossBlockMatchMad, false,
                    "Enable cross basic block matching of mad instructions. This may lead to increased register "
                    "pressure, but in exchange, may reduce instruction count",

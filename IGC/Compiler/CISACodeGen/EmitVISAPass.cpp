@@ -8695,6 +8695,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     }
     emitAtomicTyped(inst);
     break;
+  case GenISAIntrinsic::GenISA_sub_group_bdpas:
+    emitBdpas(inst);
+    break;
   case GenISAIntrinsic::GenISA_atomiccounterinc:
   case GenISAIntrinsic::GenISA_atomiccounterpredec:
     emitAtomicCounter(inst);
@@ -9174,6 +9177,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_LSCFence:
   case GenISAIntrinsic::GenISA_LSCAtomicFP64:
   case GenISAIntrinsic::GenISA_LSCAtomicFP32:
+  case GenISAIntrinsic::GenISA_LSCAtomicBF16:
   case GenISAIntrinsic::GenISA_LSCAtomicInts:
   case GenISAIntrinsic::GenISA_LSC2DBlockRead:
   case GenISAIntrinsic::GenISA_LSC2DBlockPrefetch:
@@ -9231,6 +9235,12 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     break;
   case GenISAIntrinsic::GenISA_bitcasttostruct:
     emitBitcasttostruct(inst);
+    break;
+  case GenISAIntrinsic::GenISA_hw_tile_id:
+    emitLoadgetTileID(inst);
+    break;
+  case GenISAIntrinsic::GenISA_hw_engine_id:
+    emitLoadgetEngineID(inst);
     break;
   case GenISAIntrinsic::GenISA_PredicatedLoad:
     emitPredicatedLoad(inst);
@@ -14266,6 +14276,8 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
   case EATOMIC_SUB64:
   case EATOMIC_FADD64:
   case EATOMIC_FSUB64:
+  case EATOMIC_FADDBF16:
+  case EATOMIC_FSUBBF16:
   case EATOMIC_INC:
   case EATOMIC_DEC:
   case EATOMIC_FADD:
@@ -14311,8 +14323,9 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
     type = ISA_TYPE_F;
   } else if (atomic_op == EATOMIC_FADD64 || atomic_op == EATOMIC_FSUB64) {
     type = ISA_TYPE_DF;
-  }
-  else {
+  } else if (atomic_op == EATOMIC_FADDBF16 || atomic_op == EATOMIC_FSUBBF16) {
+    type = ISA_TYPE_BF;
+  } else {
     type = bitWidth == 16 ? ISA_TYPE_W : bitWidth == 32 ? ISA_TYPE_D : ISA_TYPE_Q;
   }
 
@@ -14343,6 +14356,9 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
   } else if (atomic_op == EATOMIC_FSUB64) {
     negateSrc = true;
     uniformAtomicOp = EATOMIC_FADD64;
+  } else if (atomic_op == EATOMIC_FSUBBF16) {
+    negateSrc = true;
+    uniformAtomicOp = EATOMIC_FADDBF16;
   }
 
   bool returnsImmValue = (!pInst->use_empty());
@@ -14452,8 +14468,9 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
     pReturnValType = ISA_TYPE_DF;
   } else if (type == ISA_TYPE_F) {
     pReturnValType = ISA_TYPE_F;
-  }
-  else {
+  } else if (type == ISA_TYPE_BF) {
+    pReturnValType = ISA_TYPE_BF;
+  } else {
     pReturnValType = ISA_TYPE_UD;
   }
 
@@ -14497,7 +14514,7 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
       m_encoder->Push();
 
       if (atomic_op == EATOMIC_IADD || atomic_op == EATOMIC_IADD64 || atomic_op == EATOMIC_FADD ||
-          atomic_op == EATOMIC_FADD64) {
+          atomic_op == EATOMIC_FADDBF16 || atomic_op == EATOMIC_FADD64) {
         m_encoder->SetSrcModifier(1, EMOD_NEG);
       }
 
@@ -14635,8 +14652,9 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction *pInst) {
 
         bool isAtomicAdd = atomic_op == EATOMIC_IADD || atomic_op == EATOMIC_IADD64 || atomic_op == EATOMIC_SUB64 ||
                            atomic_op == EATOMIC_FADD64 || atomic_op == EATOMIC_FSUB64 ||
-                           atomic_op == EATOMIC_INC || atomic_op == EATOMIC_SUB || atomic_op == EATOMIC_DEC ||
-                           atomic_op == EATOMIC_FADD || atomic_op == EATOMIC_FSUB;
+                           atomic_op == EATOMIC_FADDBF16 || atomic_op == EATOMIC_FSUBBF16 || atomic_op == EATOMIC_INC ||
+                           atomic_op == EATOMIC_SUB || atomic_op == EATOMIC_DEC || atomic_op == EATOMIC_FADD ||
+                           atomic_op == EATOMIC_FSUB;
         bool isAtomicMinMax = atomic_op == EATOMIC_UMAX || atomic_op == EATOMIC_UMIN || atomic_op == EATOMIC_IMIN ||
                               atomic_op == EATOMIC_IMAX;
         bool isAtomicOr = (atomic_op == EATOMIC_OR);
@@ -21127,8 +21145,88 @@ void EmitPass::emitLoadGlobalBufferArg(llvm::GenIntrinsicInst *I) {
   m_encoder->Push();
 }
 
+void EmitPass::emitLoadgetTileID(llvm::GenIntrinsicInst *I) {
+  m_encoder->Copy(m_destination, m_currShader->GetTileID());
+  m_encoder->Push();
+}
+
+void EmitPass::emitLoadgetEngineID(llvm::GenIntrinsicInst *I) {
+  m_encoder->Copy(m_destination, m_currShader->GetEngineID());
+  m_encoder->Push();
+}
 
 
+void EmitPass::emitBdpas(GenIntrinsicInst *GII) {
+  // Note that in intrinsic's arguments, activation goes before weight;
+  // But in visa (gen isa), weight goes before activation.
+  CVariable *Dst = m_destination;
+  CVariable *A = GetSymbol(GII->getOperand(1));
+  CVariable *B = GetSymbol(GII->getOperand(2));
+  CVariable *AScaling = GetSymbol(GII->getOperand(3));
+  CVariable *BScaling = GetSymbol(GII->getOperand(4));
+
+  // acc could be null if it is integer 0 or float positive 0.0f
+  CVariable *Acc = nullptr;
+  Constant *AccConstant = dyn_cast<Constant>(GII->getOperand(0));
+  if (!(AccConstant && AccConstant->isNullValue())) {
+    Acc = GetSymbol(GII->getArgOperand(0));
+  }
+
+  PrecisionType PA = (PrecisionType)cast<ConstantInt>(GII->getOperand(5))->getSExtValue();
+  PrecisionType PB = (PrecisionType)cast<ConstantInt>(GII->getOperand(6))->getSExtValue();
+  uint8_t systolicDepth = 8;
+  uint8_t repeatCount = 8;
+
+  IGC_ASSERT((unsigned)PA < (unsigned)GenPrecision::TOTAL_NUM);
+  IGC_ASSERT((unsigned)PB < (unsigned)GenPrecision::TOTAL_NUM);
+
+  // Make sure all operands are non-uniform. If any of them are uniform
+  // broadcast them to a non-uniform variable.
+  A = BroadcastIfUniform(A);
+  B = BroadcastIfUniform(B);
+  AScaling = BroadcastIfUniform(AScaling);
+  BScaling = BroadcastIfUniform(BScaling);
+
+  // Change destination/source types
+  if (Dst->GetType() == ISA_TYPE_UW || Dst->GetType() == ISA_TYPE_W) {
+    // interpret short/ushort as bfloat
+    Dst = m_currShader->GetNewAlias(Dst, ISA_TYPE_BF, 0, 0);
+  }
+
+  if (Acc) {
+    Acc = BroadcastIfUniform(Acc);
+
+    if (Acc->GetType() == ISA_TYPE_UW || Acc->GetType() == ISA_TYPE_W) {
+      // interpret short/ushort as bfloat
+      Acc = m_currShader->GetNewAlias(Acc, ISA_TYPE_BF, 0, 0);
+    }
+  }
+
+  // A visa type
+  if (A->GetType() != ISA_TYPE_BF && PA == PrecisionType::BF16)
+    A = m_currShader->GetNewAlias(A, ISA_TYPE_BF, 0, 0);
+  else if (A->GetType() != ISA_TYPE_HF && PA == PrecisionType::FP16)
+    A = m_currShader->GetNewAlias(A, ISA_TYPE_HF, 0, 0);
+  else if (A->GetType() != ISA_TYPE_BF && A->GetType() != ISA_TYPE_HF && A->GetType() != ISA_TYPE_UD)
+    A = m_currShader->GetNewAlias(A, ISA_TYPE_UD, 0, 0);
+
+  // B visa type
+  if (B->GetType() != ISA_TYPE_BF && PB == PrecisionType::BF16)
+    B = m_currShader->GetNewAlias(B, ISA_TYPE_BF, 0, 0);
+  else if (B->GetType() != ISA_TYPE_HF && PB == PrecisionType::FP16)
+    B = m_currShader->GetNewAlias(B, ISA_TYPE_HF, 0, 0);
+  else if (B->GetType() != ISA_TYPE_BF && B->GetType() != ISA_TYPE_HF && B->GetType() != ISA_TYPE_UD)
+    B = m_currShader->GetNewAlias(B, ISA_TYPE_UD, 0, 0);
+
+  // scaling visa types
+  if (AScaling->GetType() != ISA_TYPE_UB)
+    AScaling = m_currShader->GetNewAlias(AScaling, ISA_TYPE_UB, 0, 0);
+  if (BScaling->GetType() != ISA_TYPE_UB)
+    BScaling = m_currShader->GetNewAlias(BScaling, ISA_TYPE_UB, 0, 0);
+
+  m_encoder->bdpas(Dst, Acc, B, PB, A, PA, BScaling, AScaling, systolicDepth, repeatCount);
+  m_encoder->Push();
+}
 
 void EmitPass::emitDpas(GenIntrinsicInst *GII, const SSource *Sources, const DstModifier &modifier) {
   // Note that in intrinsic's arguments, activation goes before weight;
@@ -23345,7 +23443,7 @@ void EmitPass::emitLSCAtomic(llvm::GenIntrinsicInst *inst) {
 
 static bool isLSCAtomic(llvm::GenISAIntrinsic::ID id) {
   return ((id == GenISAIntrinsic::GenISA_LSCAtomicFP64) || (id == GenISAIntrinsic::GenISA_LSCAtomicFP32) ||
-          (id == GenISAIntrinsic::GenISA_LSCAtomicInts));
+          (id == GenISAIntrinsic::GenISA_LSCAtomicBF16) || (id == GenISAIntrinsic::GenISA_LSCAtomicInts));
 }
 
 void EmitPass::emitLSCIntrinsic(llvm::GenIntrinsicInst *GII) {

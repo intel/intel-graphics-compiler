@@ -62,6 +62,7 @@ static bool isDPAS(Value *V) {
   switch (Intr->getIntrinsicID()) {
   case GenISAIntrinsic::GenISA_dpas:
   case GenISAIntrinsic::GenISA_sub_group_dpas:
+  case GenISAIntrinsic::GenISA_sub_group_bdpas:
     return true;
   default:
     break;

@@ -1560,6 +1560,8 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap *paramMap, CImagesBI::I
   m_CommandMap["__builtin_IB_eu_thread_id"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_eu_thread_id, false);
   m_CommandMap["__builtin_IB_eu_thread_pause"] =
       CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_eu_thread_pause, false);
+  m_CommandMap["__builtin_IB_hw_tile_id"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_hw_tile_id, false);
+  m_CommandMap["__builtin_IB_hw_engine_id"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_hw_engine_id, false);
 
   // math Built-ins
   m_CommandMap["__builtin_IB_frnd_pi"] = CSimpleIntrinMapping::create(Intrinsic::ceil);

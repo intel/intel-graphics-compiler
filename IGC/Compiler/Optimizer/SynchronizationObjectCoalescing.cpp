@@ -2214,6 +2214,7 @@ bool SynchronizationObjectCoalescing::IsAtomicOperation(const llvm::Instruction 
     case llvm::GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
     case llvm::GenISAIntrinsic::GenISA_LSCAtomicFP64:
     case llvm::GenISAIntrinsic::GenISA_LSCAtomicFP32:
+    case llvm::GenISAIntrinsic::GenISA_LSCAtomicBF16:
     case llvm::GenISAIntrinsic::GenISA_LSCAtomicInts:
       return true;
     default:

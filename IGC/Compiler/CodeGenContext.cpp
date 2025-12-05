@@ -241,8 +241,12 @@ bool RetryManager::IsBetterThanPrevious(CShaderProgram *pCurrent, float threshol
     IGC_ASSERT(currentShader);
     IGC_ASSERT(previousShader);
 
-       // basically a small work around, if we have high spilling kernel on our hands, we are not afraid to use
-       // pre-retry shader, when we have less spills than retry one has
+    // Make sure retry manager will not select kernel without required scratch pointer.
+    if (previousShader->TryNoScratchPointer() && previousShader->m_spillSize > 0)
+      return true;
+
+    // basically a small work around, if we have high spilling kernel on our hands, we are not afraid to use
+    // pre-retry shader, when we have less spills than retry one has
     unsigned int Threshold = IGC_GET_FLAG_VALUE(RetryRevertExcessiveSpillingKernelThreshold);
     bool IsExcessiveSpillKernel = currentShader->m_spillSize >= Threshold;
     float SpillCoefficient = float(IGC_GET_FLAG_VALUE(RetryRevertExcessiveSpillingKernelCoefficient)) / 100.0f;
@@ -741,15 +745,11 @@ int32_t CodeGenContext::getNumThreadsPerEU() const { return -1; }
 
 uint32_t CodeGenContext::getExpGRFSize() const { return 0; }
 
-bool CodeGenContext::allowATOB()
-{
+bool CodeGenContext::allowATOB() {
   bool allow = type == ShaderType::COMPUTE_SHADER ||
-    (type == ShaderType::OPENCL_SHADER &&
-      !(getModuleMetaData()->NBarrierCnt > 0));
+               (type == ShaderType::OPENCL_SHADER && !(getModuleMetaData()->NBarrierCnt > 0));
 
-  if (m_instrTypes.hasSplitBarrier &&
-    m_instrTypes.hasWorkgroupBarrier)
-  {
+  if (m_instrTypes.hasSplitBarrier && m_instrTypes.hasWorkgroupBarrier) {
     // The regular and split barrier cannnot share the
     // same ID, because we could have such scenario:
     // splitbarrier.signal();

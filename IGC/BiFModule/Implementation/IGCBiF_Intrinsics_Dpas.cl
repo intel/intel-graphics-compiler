@@ -367,6 +367,40 @@ half2 __builtin_IB_sub_group_hfdpas_hf_hf_8_2 (half2 acc, int2 a, int8 b) __attr
 half4 __builtin_IB_sub_group_hfdpas_hf_hf_8_4 (half4 acc, int4 a, int8 b) __attribute__((const));
 half8 __builtin_IB_sub_group_hfdpas_hf_hf_8_8 (half8 acc, int8 a, int8 b) __attribute__((const));
 
+// bf16 precision, f32/bf16 acc
+float8  __builtin_IB_sub_group16_bdpas_f_f_bf_bf_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+short8  __builtin_IB_sub_group16_bdpas_bf_bf_bf_bf_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+float8  __builtin_IB_sub_group16_bdpas_f_bf_bf_bf_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+short8  __builtin_IB_sub_group16_bdpas_bf_f_bf_bf_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+
+// f16 precision, f32/f16 acc
+float8  __builtin_IB_sub_group16_bdpas_f_f_hf_hf_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+half8  __builtin_IB_sub_group16_bdpas_hf_hf_hf_hf_8_8(half8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+float8  __builtin_IB_sub_group16_bdpas_f_hf_hf_hf_8_8(half8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+half8  __builtin_IB_sub_group16_bdpas_hf_f_hf_hf_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+
+// bf8/hf8 precision, f32/bf16 acc
+float8  __builtin_IB_sub_group16_bdpas_f_f_hf8_hf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+short8  __builtin_IB_sub_group16_bdpas_bf_bf_hf8_hf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+float8  __builtin_IB_sub_group16_bdpas_f_bf_hf8_hf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+short8  __builtin_IB_sub_group16_bdpas_bf_f_hf8_hf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+float8  __builtin_IB_sub_group16_bdpas_f_f_bf8_hf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+short8  __builtin_IB_sub_group16_bdpas_bf_bf_bf8_hf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+float8  __builtin_IB_sub_group16_bdpas_f_bf_bf8_hf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+short8  __builtin_IB_sub_group16_bdpas_bf_f_bf8_hf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+float8  __builtin_IB_sub_group16_bdpas_f_f_hf8_bf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+short8  __builtin_IB_sub_group16_bdpas_bf_bf_hf8_bf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+float8  __builtin_IB_sub_group16_bdpas_f_bf_hf8_bf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+short8  __builtin_IB_sub_group16_bdpas_bf_f_hf8_bf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+float8  __builtin_IB_sub_group16_bdpas_f_f_bf8_bf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+short8  __builtin_IB_sub_group16_bdpas_bf_bf_bf8_bf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+float8  __builtin_IB_sub_group16_bdpas_f_bf_bf8_bf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+short8  __builtin_IB_sub_group16_bdpas_bf_f_bf8_bf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+// fp4 precision, f32/bf16 acc
+float8  __builtin_IB_sub_group16_bdpas_f_f_e2m1_e2m1_8_8(float8 acc, short8 a, int8 b, uchar2 scale_a, uchar2 scale_b) __attribute__((const));
+short8  __builtin_IB_sub_group16_bdpas_bf_bf_e2m1_e2m1_8_8(short8 acc, short8 a, int8 b, uchar2 scale_a, uchar2 scale_b) __attribute__((const));
+float8  __builtin_IB_sub_group16_bdpas_f_bf_e2m1_e2m1_8_8(short8 acc, short8 a, int8 b, uchar2 scale_a, uchar2 scale_b) __attribute__((const));
+short8  __builtin_IB_sub_group16_bdpas_bf_f_e2m1_e2m1_8_8(float8 acc, short8 a, int8 b, uchar2 scale_a, uchar2 scale_b) __attribute__((const));
 
 // bf <--> float conversion
 //    bf : no igc type for bf yet. Use short as *opaque* type for it.

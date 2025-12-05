@@ -12667,3 +12667,108 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_sub_group_bdpas"
+        comment: "bdpas (Future - XE3P)"
+        return_definition: !<ReturnDefinition>
+            type_definition: *v_any_
+            comment: "dst (type: F,BF,HF)"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *v_any_
+                comment: "src0: C matrix (acc), can be null (type: F,BF,HF)"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *v_any_
+                comment: "src1: A matrix (type: BF,HF,UD)"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *v_any_
+                comment: "src2: B matrix (type: BF,HF,UD)"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *v_any_
+                comment: "src3: block scaling for src1 (A matrix), can be null (type:\
+                    \ UB)"
+            - !<ArgumentDefinition>
+                name: Arg4
+                type_definition: *v_any_
+                comment: "src4: block scaling for src2 (B matrix), can be null (type:\
+                    \ UB)"
+            - !<ArgumentDefinition>
+                name: Arg5
+                type_definition: *i32
+                comment: "precision of A matrix (uses PrecisionType enum)"
+            - !<ArgumentDefinition>
+                name: Arg6
+                type_definition: *i32
+                comment: "precision of B matrix (uses PrecisionType enum)"
+        attributes:
+            - !AttributeID "Convergent"
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_hw_tile_id"
+        comment: "Get the tile ID"
+        return_definition: !<ReturnDefinition>
+            type_definition: *i32
+            comment: ""
+        arguments: []
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_hw_engine_id"
+        comment: "Get the engine ID"
+        return_definition: !<ReturnDefinition>
+            type_definition: *i32
+            comment: ""
+        arguments: []
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_LSCAtomicBF16"
+        comment: "LSC atomic bfloat16 add,sub,min,max,fcas"
+        return_definition: !<ReturnDefinition>
+            type_definition: *i16
+            comment: "return old value"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *p_any_
+                comment: "memory pointer: ugm, ugml, tgm, slm"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i32
+                comment: "immediate offset (in bytes)"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i16
+                comment: "[src1] atomic store the result of operation with src1 and\
+                    \ memory data and return the old value"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *i16
+                comment: "[fcas] atomic compare src1_X and memory data and replace\
+                    \ if equal with src1_Y. Returns the old value."
+            - !<ArgumentDefinition>
+                name: Arg4
+                type_definition: *i32
+                comment: "operation (add,sub,min,max,fcas)"
+            - !<ArgumentDefinition>
+                name: Arg5
+                type_definition: *i32
+                comment: "cache controls options (LSC_CACHE_OPTS)"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem

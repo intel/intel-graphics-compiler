@@ -123,3 +123,20 @@ DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_add_global_f32", EATOMIC_FADD, POINTER)
 DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_sub_global_f32", EATOMIC_FSUB, POINTER)
 DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_add_global_f64", EATOMIC_FADD64, POINTER)
 DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_cmpxchg_local_i64", EATOMIC_CMPXCHG64, POINTER)
+
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_add_local_f32", EATOMIC_FADD, SLM)
+
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_add_local_f16", EATOMIC_FADD, SLM)
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_add_global_f16", EATOMIC_FADD, POINTER)
+
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_add_global_bf16", EATOMIC_FADDBF16, POINTER)
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_sub_global_bf16", EATOMIC_FSUBBF16, POINTER)
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_max_global_bf16", EATOMIC_FMAXBF16, POINTER)
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_min_global_bf16", EATOMIC_FMINBF16, POINTER)
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_cmpxchg_global_bf16", EATOMIC_FCMPWR, POINTER)
+
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_add_local_bf16", EATOMIC_FADDBF16, SLM)
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_sub_local_bf16", EATOMIC_FSUBBF16, SLM)
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_max_local_bf16", EATOMIC_FMAXBF16, SLM)
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_min_local_bf16", EATOMIC_FMINBF16, SLM)
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_cmpxchg_local_bf16", EATOMIC_FCMPWR, SLM)

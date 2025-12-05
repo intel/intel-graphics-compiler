@@ -127,15 +127,20 @@ VISAAtomicOps convertAtomicOpEnumToVisa(AtomicOp op) {
   case EATOMIC_PREDEC64:
     return ATOMIC_PREDEC;
   case EATOMIC_FMAX:
+  case EATOMIC_FMAXBF16:
     return ATOMIC_FMAX;
   case EATOMIC_FMIN:
+  case EATOMIC_FMINBF16:
     return ATOMIC_FMIN;
   case EATOMIC_FCMPWR:
+  case EATOMIC_FCMPWRBF16:
     return ATOMIC_FCMPWR;
   case EATOMIC_FADD:
   case EATOMIC_FADD64:
+  case EATOMIC_FADDBF16:
     return ATOMIC_FADD;
   case EATOMIC_FSUB:
+  case EATOMIC_FSUBBF16:
     return ATOMIC_FSUB;
   default:
     IGC_ASSERT_MESSAGE(0, "Atomic Op not implemented");
@@ -6906,15 +6911,189 @@ GenPrecision ConvertPrecisionToVisaType(PrecisionType P) {
     return GenPrecision::HF8;
   case PrecisionType::TF32:
     return GenPrecision::TF32;
+  case PrecisionType::E2M1:
+    return GenPrecision::E2M1;
   }
 
   return GenPrecision::INVALID;
 }
 
 
+void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType BPrecision, CVariable *A,
+                     PrecisionType APrecision, CVariable *BScaling, CVariable *AScaling, uint8_t systolicDepth,
+                     uint8_t repeatCount) {
+
+  if (!m_program->GetContext()->platform.hasFP64DPAS() &&
+      (APrecision == PrecisionType::DF || BPrecision == PrecisionType::DF)) {
+    m_program->GetContext()->EmitError("FP64 Dpas instruction is not supported on this device!", nullptr);
+    return;
+  }
+  if (!m_program->GetContext()->platform.hasFP4DPAS() &&
+      (APrecision == PrecisionType::E2M1 || BPrecision == PrecisionType::E2M1)) {
+    m_program->GetContext()->EmitError("FP4 Dpas instruction is not supported on this device!", nullptr);
+    return;
+  }
+
+  SModifier noMod; // Default is no mod.
+  noMod.init();
+  // PrecisionType to GenPrecision
+  GenPrecision src1Precision = ConvertPrecisionToVisaType(BPrecision);
+  GenPrecision src2Precision = ConvertPrecisionToVisaType(APrecision);
+  VISA_EMask_Ctrl execMask = GetAluEMask(Dst);
+
+  VISA_Exec_Size aluExecSize = GetAluExecSize(Dst);
+  IGC_ASSERT(aluExecSize == EXEC_SIZE_16 || aluExecSize == EXEC_SIZE_32);
+
+  bool scaleNeedsStriding = BPrecision == E2M1;
+  IGC_ASSERT(!scaleNeedsStriding || APrecision == E2M1);
+
+  // bdpas has a hardware requirement for k == 64
+  // (which is true for fp4 arguments)
+  // to provide double the amount of scaling parameters.
+  // New part of scaling parameters needs to be separated
+  // by a stride of 32 elements.
+  auto insertStrideIntoScaling = [this](CVariable *Src, CVariable *&Dst, uint16_t OriginalStride, uint16_t DataSize) {
+    IGC_ASSERT(DataSize <= OriginalStride);
+    IGC_ASSERT(OriginalStride * 2 <= Src->GetNumberElement());
+    VISA_Exec_Size moveExecSize = visaExecSize(lanesToSIMDMode((DataSize)));
+
+    const uint16_t stride = 32;
+    Dst = this->m_program->GetNewVariable(DataSize + stride, Src->GetType(), Src->GetAlign(), Src->IsUniform(),
+                                          CName(Src->getName(), "StridedScale"));
+
+    VISA_GenVar *srcVisa = GetVISAVariable(Src);
+    VISA_GenVar *dstVisa = GetVISAVariable(Dst);
+
+    VISA_VectorOpnd *dstOpnd = nullptr;
+    VISA_VectorOpnd *srcOpnd = nullptr;
+
+    // first part (before stride)
+    V(vKernel->CreateVISADstOperand(dstOpnd, dstVisa, 1, 0, 0));
+    V(vKernel->CreateVISASrcOperand(srcOpnd, srcVisa, MODIFIER_NONE, 1, 1, 0, 0, 0));
+
+    V(vKernel->AppendVISADataMovementInst(ISA_MOV, nullptr, false, GetAluEMask(Src), moveExecSize, dstOpnd, srcOpnd));
+
+    // second part (after stride)
+    V(vKernel->CreateVISADstOperand(dstOpnd, dstVisa, 1, 0, stride));
+    V(vKernel->CreateVISASrcOperand(srcOpnd, srcVisa, MODIFIER_NONE, 1, 1, 0, OriginalStride / getGRFSize(),
+                                    OriginalStride % getGRFSize()));
+
+    V(vKernel->AppendVISADataMovementInst(ISA_MOV, nullptr, false, GetAluEMask(Src), moveExecSize, dstOpnd, srcOpnd));
+  };
+
+  if (aluExecSize == EXEC_SIZE_32) {
+    constexpr unsigned numParts = 2;
+    VISA_Exec_Size fromExecSize = aluExecSize;
+    VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
+
+    auto splitIntoParts = [this, toExecSize, fromExecSize](unsigned Count, CVariable *Src,
+                                                           CVariable *(&SrcParts)[numParts], bool isDst) {
+      uint16_t newNumElems = (uint16_t)(visaNumLanes(toExecSize) * Count);
+      IGC_ASSERT(newNumElems <= Src->GetNumberElement());
+      SrcParts[0] =
+          this->m_program->GetNewVariable(newNumElems, Src->GetType(), Src->GetAlign(), Src->IsUniform(), CName::NONE);
+      SrcParts[1] =
+          this->m_program->GetNewVariable(newNumElems, Src->GetType(), Src->GetAlign(), Src->IsUniform(), CName::NONE);
+      if (!isDst) {
+        // Starting offset is calculated from AliasOffset only (subVar not
+        // used).
+        uint32_t srcOfstBytesSrc = Src->GetAliasOffset();
+        SplitPayloadToLowerSIMD(Src, srcOfstBytesSrc, Count, SrcParts[0], SrcParts[1], visaNumLanes(fromExecSize));
+      }
+    };
+
+    auto splitInHalf = [this, toExecSize, fromExecSize, splitIntoParts](CVariable *Src,
+                                                                        CVariable *(&SrcParts)[numParts], bool isDst) {
+      splitIntoParts(Src->GetNumberElement() / visaNumLanes(toExecSize) / 2, Src, SrcParts, isDst);
+    };
+
+    CVariable *partsAcc[numParts] = {};
+    if (Acc) {
+      splitIntoParts(repeatCount, Acc, partsAcc, false);
+    }
+
+    CVariable *partsDst[numParts] = {partsAcc[0], partsAcc[1]};
+    if (Dst != Acc) {
+      splitIntoParts(repeatCount, Dst, partsDst, true);
+    }
+
+    CVariable *partsB[numParts] = {};
+    splitInHalf(B, partsB, false);
+
+    CVariable *scalingUnstridedPartsB[numParts] = {};
+    splitInHalf(BScaling, scalingUnstridedPartsB, false);
+
+    CVariable *scalingUnstridedPartsA[numParts] = {};
+    splitInHalf(AScaling, scalingUnstridedPartsA, false);
+
+    CVariable *scalingPartsB[numParts] = {};
+    CVariable *scalingPartsA[numParts] = {};
+
+    for (unsigned i = 0; i < numParts; i++) {
+      if (scaleNeedsStriding) {
+        insertStrideIntoScaling(scalingUnstridedPartsB[i], scalingPartsB[i], 16, 16);
+        insertStrideIntoScaling(scalingUnstridedPartsA[i], scalingPartsA[i], 16, 8);
+      } else {
+        scalingPartsB[i] = scalingUnstridedPartsB[i];
+        scalingPartsA[i] = scalingUnstridedPartsA[i];
+      }
+    }
+
+    IGC_ASSERT(A->GetSize() == 256);
+    IGC_ASSERT(partsB[0]->GetSize() == 512);
+    IGC_ASSERT(partsB[1]->GetSize() == 512);
+
+    for (unsigned partIndex = 0; partIndex < numParts; ++partIndex) {
+      VISA_EMask_Ctrl splitExecMask = SplitEMask(fromExecSize, toExecSize, partIndex, execMask);
+      VISA_RawOpnd *dstOpnd = GetRawDestination(partsDst[partIndex]);
+      VISA_RawOpnd *srcOpnd0 = GetRawSource(partsAcc[partIndex]);
+      VISA_RawOpnd *srcOpnd1 = GetRawSource(partsB[partIndex]);
+      VISA_RawOpnd *srcOpnd2 = GetRawSource(A);
+      VISA_VectorOpnd *srcOpnd3 = GetSourceOperand(scalingPartsB[partIndex], noMod);
+      VISA_VectorOpnd *srcOpnd4 = GetSourceOperand(scalingPartsA[partIndex], noMod);
+
+    }
+    uint32_t dstOfstBytes = m_encoderState.m_dstOperand.subVar * getGRFSize() + Dst->GetAliasOffset();
+    MergePayloadToHigherSIMD(partsDst[0], partsDst[1], repeatCount, Dst, dstOfstBytes, visaNumLanes(fromExecSize));
+  } else if (aluExecSize == EXEC_SIZE_16) {
+    if (scaleNeedsStriding) {
+      CVariable *scalingStridedB = nullptr;
+      CVariable *scalingStridedA = nullptr;
+      insertStrideIntoScaling(BScaling, scalingStridedB, 16, 16);
+      insertStrideIntoScaling(AScaling, scalingStridedA, 16, 8);
+      BScaling = scalingStridedB;
+      AScaling = scalingStridedA;
+    }
+
+    IGC_ASSERT(A->GetSize() == 256);
+    IGC_ASSERT(B->GetSize() == 512);
+
+    VISA_Exec_Size execSize = EXEC_SIZE_16;
+    VISA_RawOpnd *dstOpnd = GetRawDestination(Dst);
+    VISA_RawOpnd *srcOpnd0 = GetRawSource(Acc);
+    VISA_RawOpnd *srcOpnd1 = GetRawSource(B);
+    VISA_RawOpnd *srcOpnd2 = GetRawSource(A);
+    VISA_VectorOpnd *srcOpnd3 = GetSourceOperand(BScaling, noMod);
+    VISA_VectorOpnd *srcOpnd4 = GetSourceOperand(AScaling, noMod);
+
+  }
+}
+
 void CEncoder::dpas(CVariable *dst, CVariable *input, CVariable *weight, PrecisionType weight_precision,
                     CVariable *activation, PrecisionType activation_precision, uint8_t systolicDepth,
                     uint8_t repeatCount, bool IsDpasw) {
+
+  if (!m_program->GetContext()->platform.hasFP64DPAS() &&
+      (weight_precision == PrecisionType::DF || activation_precision == PrecisionType::DF)) {
+    m_program->GetContext()->EmitError("FP64 Dpas instruction is not supported on this device!", nullptr);
+    return;
+  }
+  if (!m_program->GetContext()->platform.hasFP4DPAS() &&
+      (weight_precision == PrecisionType::E2M1 || activation_precision == PrecisionType::E2M1)) {
+    m_program->GetContext()->EmitError("FP4 Dpas instruction is not supported on this device!", nullptr);
+    return;
+  }
+
   SModifier noMod; // Default is no mod.
   noMod.init();
   // PrecisionType to GenPrecision
@@ -7557,6 +7736,16 @@ static LSC_OP getLSCAtomicOpCode(AtomicOp op) {
     return LSC_ATOMIC_LOAD;
   case EATOMIC_STORE:
     return LSC_ATOMIC_STORE;
+  case EATOMIC_FADDBF16:
+    return LSC_ATOMIC_BFADD;
+  case EATOMIC_FSUBBF16:
+    return LSC_ATOMIC_BFSUB;
+  case EATOMIC_FMINBF16:
+    return LSC_ATOMIC_BFMIN;
+  case EATOMIC_FMAXBF16:
+    return LSC_ATOMIC_BFMAX;
+  case EATOMIC_FCMPWRBF16:
+    return LSC_ATOMIC_BFCAS;
   default:
     IGC_ASSERT_MESSAGE(0, "Atomic Op not implemented");
   }

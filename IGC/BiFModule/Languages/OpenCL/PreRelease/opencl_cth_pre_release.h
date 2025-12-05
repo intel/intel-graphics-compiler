@@ -3085,6 +3085,177 @@ float __attribute__((overloadable)) atomic_fetch_sub_explicit(
 #endif // CL_VERSION_2_0
 #endif //defined(cl_intel_global_float_atomics)
 
+#if defined(cl_intel_bfloat16_atomics)
+typedef ushort                       atomic_ushort;
+ushort __attribute__((overloadable)) intel_atomic_fetch_add_as_bfloat16(
+    volatile __global atomic_ushort* object, ushort operand);
+ushort __attribute__((overloadable)) intel_atomic_fetch_add_as_bfloat16_explicit(
+    volatile __global atomic_ushort* object, ushort operand, memory_order order);
+ushort __attribute__((overloadable)) intel_atomic_fetch_add_as_bfloat16_explicit(
+    volatile __global atomic_ushort* object,
+    ushort                           operand,
+    memory_order                     order,
+    memory_scope                     scope);
+ushort __attribute__((overloadable)) intel_atomic_fetch_sub_as_bfloat16(
+    volatile __global atomic_ushort* object, ushort operand);
+ushort __attribute__((overloadable)) intel_atomic_fetch_sub_as_bfloat16_explicit(
+    volatile __global atomic_ushort* object, ushort operand, memory_order order);
+ushort __attribute__((overloadable)) intel_atomic_fetch_sub_as_bfloat16_explicit(
+    volatile __global atomic_ushort* object,
+    ushort                           operand,
+    memory_order                     order,
+    memory_scope                     scope);
+ushort __attribute__((overloadable)) intel_atomic_fetch_max_as_bfloat16(
+    volatile __global atomic_ushort* object, ushort operand);
+ushort __attribute__((overloadable)) intel_atomic_fetch_max_as_bfloat16_explicit(
+    volatile __global atomic_ushort* object, ushort operand, memory_order order);
+ushort __attribute__((overloadable)) intel_atomic_fetch_max_as_bfloat16_explicit(
+    volatile __global atomic_ushort* object,
+    ushort                           operand,
+    memory_order                     order,
+    memory_scope                     scope);
+ushort __attribute__((overloadable)) intel_atomic_fetch_min_as_bfloat16(
+    volatile __global atomic_ushort* object, ushort operand);
+ushort __attribute__((overloadable)) intel_atomic_fetch_min_as_bfloat16_explicit(
+    volatile __global atomic_ushort* object, ushort operand, memory_order order);
+ushort __attribute__((overloadable)) intel_atomic_fetch_min_as_bfloat16_explicit(
+    volatile __global atomic_ushort* object,
+    ushort                           operand,
+    memory_order                     order,
+    memory_scope                     scope);
+
+ushort __attribute__((overloadable)) intel_atomic_fetch_add_as_bfloat16(
+    volatile __local atomic_ushort* object, ushort operand);
+ushort __attribute__((overloadable)) intel_atomic_fetch_add_as_bfloat16_explicit(
+    volatile __local atomic_ushort* object, ushort operand, memory_order order);
+ushort __attribute__((overloadable)) intel_atomic_fetch_add_as_bfloat16_explicit(
+    volatile __local atomic_ushort* object,
+    ushort                          operand,
+    memory_order                    order,
+    memory_scope                    scope);
+ushort __attribute__((overloadable)) intel_atomic_fetch_sub_as_bfloat16(
+    volatile __local atomic_ushort* object, ushort operand);
+ushort __attribute__((overloadable)) intel_atomic_fetch_sub_as_bfloat16_explicit(
+    volatile __local atomic_ushort* object, ushort operand, memory_order order);
+ushort __attribute__((overloadable)) intel_atomic_fetch_sub_as_bfloat16_explicit(
+    volatile __local atomic_ushort* object,
+    ushort                          operand,
+    memory_order                    order,
+    memory_scope                    scope);
+ushort __attribute__((overloadable)) intel_atomic_fetch_max_as_bfloat16(
+    volatile __local atomic_ushort* object, ushort operand);
+ushort __attribute__((overloadable)) intel_atomic_fetch_max_as_bfloat16_explicit(
+    volatile __local atomic_ushort* object, ushort operand, memory_order order);
+ushort __attribute__((overloadable)) intel_atomic_fetch_max_as_bfloat16_explicit(
+    volatile __local atomic_ushort* object,
+    ushort                          operand,
+    memory_order                    order,
+    memory_scope                    scope);
+ushort __attribute__((overloadable)) intel_atomic_fetch_min_as_bfloat16(
+    volatile __local atomic_ushort* object, ushort operand);
+ushort __attribute__((overloadable)) intel_atomic_fetch_min_as_bfloat16_explicit(
+    volatile __local atomic_ushort* object, ushort operand, memory_order order);
+ushort __attribute__((overloadable)) intel_atomic_fetch_min_as_bfloat16_explicit(
+    volatile __local atomic_ushort* object,
+    ushort                          operand,
+    memory_order                    order,
+    memory_scope                    scope);
+
+ushort __attribute__((overloadable))
+intel_atomic_fetch_add_as_bfloat16(volatile atomic_ushort* object, ushort operand);
+ushort __attribute__((overloadable)) intel_atomic_fetch_add_as_bfloat16_explicit(
+    volatile atomic_ushort* object, ushort operand, memory_order order);
+ushort __attribute__((overloadable)) intel_atomic_fetch_add_as_bfloat16_explicit(
+    volatile atomic_ushort* object,
+    ushort                  operand,
+    memory_order            order,
+    memory_scope            scope);
+ushort __attribute__((overloadable))
+intel_atomic_fetch_sub_as_bfloat16(volatile atomic_ushort* object, ushort operand);
+ushort __attribute__((overloadable)) intel_atomic_fetch_sub_as_bfloat16_explicit(
+    volatile atomic_ushort* object, ushort operand, memory_order order);
+ushort __attribute__((overloadable)) intel_atomic_fetch_sub_as_bfloat16_explicit(
+    volatile atomic_ushort* object,
+    ushort                  operand,
+    memory_order            order,
+    memory_scope            scope);
+ushort __attribute__((overloadable))
+intel_atomic_fetch_max_as_bfloat16(volatile atomic_ushort* object, ushort operand);
+ushort __attribute__((overloadable)) intel_atomic_fetch_max_as_bfloat16_explicit(
+    volatile atomic_ushort* object, ushort operand, memory_order order);
+ushort __attribute__((overloadable)) intel_atomic_fetch_max_as_bfloat16_explicit(
+    volatile atomic_ushort* object,
+    ushort                  operand,
+    memory_order            order,
+    memory_scope            scope);
+ushort __attribute__((overloadable))
+intel_atomic_fetch_min_as_bfloat16(volatile atomic_ushort* object, ushort operand);
+ushort __attribute__((overloadable)) intel_atomic_fetch_min_as_bfloat16_explicit(
+    volatile atomic_ushort* object, ushort operand, memory_order order);
+ushort __attribute__((overloadable)) intel_atomic_fetch_min_as_bfloat16_explicit(
+    volatile atomic_ushort* object,
+    ushort                  operand,
+    memory_order            order,
+    memory_scope            scope);
+
+#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+void __attribute__((overloadable))
+atomic_store(volatile __global atomic_ushort* object, ushort desired);
+#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+void __attribute__((overloadable)) atomic_store_explicit(
+    volatile __global atomic_ushort* object, ushort desired, memory_order order);
+void __attribute__((overloadable)) atomic_store_explicit(
+    volatile __global atomic_ushort* object,
+    ushort                           desired,
+    memory_order                     order,
+    memory_scope                     scope);
+#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+ushort __attribute__((overloadable)) atomic_load(volatile __global atomic_ushort* object);
+#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+ushort __attribute__((overloadable))
+atomic_load_explicit(volatile __global atomic_ushort* object, memory_order order);
+ushort __attribute__((overloadable)) atomic_load_explicit(
+    volatile __global atomic_ushort* object, memory_order order, memory_scope scope);
+
+#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+void __attribute__((overloadable))
+atomic_store(volatile __local atomic_ushort* object, ushort desired);
+#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+void __attribute__((overloadable)) atomic_store_explicit(
+    volatile __local atomic_ushort* object, ushort desired, memory_order order);
+void __attribute__((overloadable)) atomic_store_explicit(
+    volatile __local atomic_ushort* object,
+    ushort                          desired,
+    memory_order                    order,
+    memory_scope                    scope);
+#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+ushort __attribute__((overloadable)) atomic_load(volatile __local atomic_ushort* object);
+#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+ushort __attribute__((overloadable))
+atomic_load_explicit(volatile __local atomic_ushort* object, memory_order order);
+ushort __attribute__((overloadable)) atomic_load_explicit(
+    volatile __local atomic_ushort* object, memory_order order, memory_scope scope);
+
+#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+void __attribute__((overloadable))
+atomic_store(volatile atomic_ushort* object, ushort desired);
+#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+void __attribute__((overloadable))
+atomic_store_explicit(volatile atomic_ushort* object, ushort desired, memory_order order);
+void __attribute__((overloadable)) atomic_store_explicit(
+    volatile atomic_ushort* object,
+    ushort                  desired,
+    memory_order            order,
+    memory_scope            scope);
+#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+ushort __attribute__((overloadable)) atomic_load(volatile atomic_ushort* object);
+#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+ushort __attribute__((overloadable))
+atomic_load_explicit(volatile atomic_ushort* object, memory_order order);
+ushort __attribute__((overloadable)) atomic_load_explicit(
+    volatile atomic_ushort* object, memory_order order, memory_scope scope);
+#endif //defined(cl_intel_bfloat16_atomics)
+
 #ifdef cl_intel_subgroup_extended_block_read
 ushort2 intel_subgroup_block_read_u8_m1k32v2(
     __global void* base_address, int width, int height, int pitch, int2 coord);

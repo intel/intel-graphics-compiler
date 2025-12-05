@@ -52,6 +52,8 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
   m_MSG0 = nullptr;
   m_SCRATCHLOC = nullptr;
   m_HW_TID = nullptr;
+  m_HW_TileID = nullptr;
+  m_HW_EngineID = nullptr;
   m_SP = nullptr;
   m_FP = nullptr;
   m_SavedFP = nullptr;
@@ -914,6 +916,40 @@ CVariable *CShader::GetHWTID() {
     }
   }
   return m_HW_TID;
+}
+
+CVariable *CShader::GetTileID() {
+  if (!m_HW_TileID) {
+    uint32_t bitmask = BITMASK_RANGE(8, 11);
+
+    m_HW_TileID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWTileID");
+    encoder.SetNoMask();
+    encoder.SetSrcSubReg(0, 1);
+    encoder.And(m_HW_TileID, GetSR0(), ImmToVariable(bitmask, ISA_TYPE_D));
+    encoder.Push();
+
+    RemoveBitRange(m_HW_TileID, 0, 8);
+  }
+
+  return m_HW_TileID;
+}
+
+CVariable *CShader::GetEngineID() {
+  if (!m_Platform->hasEngineIDEnabled())
+    return ImmToVariable(0x0, ISA_TYPE_D);
+  if (!m_HW_EngineID) {
+    uint32_t bitmask = BITMASK_RANGE(16, 21);
+
+    m_HW_EngineID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWEngineID");
+    encoder.SetNoMask();
+    encoder.SetSrcSubReg(0, 1);
+    encoder.And(m_HW_EngineID, GetSR0(), ImmToVariable(bitmask, ISA_TYPE_D));
+    encoder.Push();
+
+    RemoveBitRange(m_HW_EngineID, 0, 16);
+  }
+
+  return m_HW_EngineID;
 }
 
 CVariable *CShader::GetPrivateBase() {
@@ -2462,6 +2498,8 @@ void CShader::BeginFunction(llvm::Function *F) {
   if (useStackCall) {
     // Clear cached variables.
     m_HW_TID = nullptr;
+    m_HW_TileID = nullptr;
+    m_HW_EngineID = nullptr;
 
     globalSymbolMapping.clear();
     encoder.BeginStackFunction(F);

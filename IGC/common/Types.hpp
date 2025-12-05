@@ -38,9 +38,11 @@ enum PrecisionType : uint8_t {
   S2,
   BF8,
   HF8,
+  DF,
   TF32 = 10,
   BF16,
-  FP16
+  FP16,
+  E2M1,
 };
 
 inline uint32_t getPrecisionInBits(PrecisionType P) {
@@ -62,6 +64,8 @@ inline uint32_t getPrecisionInBits(PrecisionType P) {
     // PVC
   case TF32:
     return 32;
+  case E2M1:
+    return 4;
   }
   return 0;
 }

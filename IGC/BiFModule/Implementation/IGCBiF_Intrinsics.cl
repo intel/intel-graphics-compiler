@@ -271,6 +271,8 @@ uint      __builtin_IB_eu_id(void) __attribute__((const));
 uint      __builtin_IB_get_sr0(uint DWNumber); // DWNumber=0|1|2|3
 void      __builtin_IB_set_sr0(uint DWNumber, uint Value); // DWNumber=0|1|2|3
 uint      __builtin_IB_eu_thread_id(void) __attribute__((const));
+uint      __builtin_IB_hw_tile_id(void) __attribute__((const));
+uint      __builtin_IB_hw_engine_id(void) __attribute__((const));
 void      __builtin_IB_profile_snapshot(int point_type,int point_index) __attribute__((const));
 void      __builtin_IB_profile_aggregated(int point_type,int point_index) __attribute__((const));
 void      __builtin_IB_eu_thread_pause(uint value);
@@ -444,6 +446,21 @@ short    __builtin_IB_image_atomic_or_i16(long, int4, short);
 short    __builtin_IB_image_atomic_xor_i16(long, int4, short);
 short    __builtin_IB_image_atomic_inc_i16(long, int4);
 short    __builtin_IB_image_atomic_cmpxchg_i16(long, int4, short, short);
+
+float    __builtin_IB_atomic_add_local_f32(__local float*, float);
+
+half     __builtin_IB_atomic_add_local_f16(__local half*, half);
+half     __builtin_IB_atomic_add_global_f16(__global half*, half);
+
+ushort   __builtin_IB_atomic_add_global_bf16(__global ushort*, ushort);
+ushort   __builtin_IB_atomic_sub_global_bf16(__global ushort*, ushort);
+ushort   __builtin_IB_atomic_min_global_bf16(__global ushort*, ushort);
+ushort   __builtin_IB_atomic_max_global_bf16(__global ushort*, ushort);
+
+ushort   __builtin_IB_atomic_add_local_bf16(__local ushort*, ushort);
+ushort   __builtin_IB_atomic_sub_local_bf16(__local ushort*, ushort);
+ushort   __builtin_IB_atomic_min_local_bf16(__local ushort*, ushort);
+ushort   __builtin_IB_atomic_max_local_bf16(__local ushort*, ushort);
 
 
 void __builtin_IB_kmp_acquire_lock(int *);

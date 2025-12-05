@@ -183,6 +183,24 @@ inline LSC_L1_L3_CC mapToLSCCacheControl(LoadCacheControl L1Control, LoadCacheCo
   return LSC_CC_INVALID;
 }
 
+inline LSC_STCC_L1_L2_L3 mapToLSCL1L2L3CacheControl(StoreCacheControl L1Control, StoreCacheControl L2Control,
+                                                    StoreCacheControl L3Control) {
+  for (auto &[LSCEnum, SPIRVEnum] : supportedL1L2L3StoreConfigs)
+    if (SPIRVEnum.L1 == L1Control && SPIRVEnum.L2 == L2Control && SPIRVEnum.L3 == L3Control)
+      return LSCEnum;
+
+  return LSC_STCC_INVALID;
+}
+
+inline LSC_LDCC_L1_L2_L3 mapToLSCL1L2L3CacheControl(LoadCacheControl L1Control, LoadCacheControl L2Control,
+                                                    LoadCacheControl L3Control) {
+  for (auto &[LSCEnum, SPIRVEnum] : supportedL1L2L3LoadConfigs)
+    if (SPIRVEnum.L1 == L1Control && SPIRVEnum.L2 == L2Control && SPIRVEnum.L3 == L3Control)
+      return LSCEnum;
+
+  return LSC_LDCC_INVALID;
+}
+
 template <typename T> SeparateCacheControlsL1L3<T> mapToSPIRVCacheControl(LSC_L1_L3_CC) = delete;
 
 template <>
@@ -201,6 +219,29 @@ inline SeparateCacheControlsL1L3<StoreCacheControl> mapToSPIRVCacheControl<Store
 
   IGC_ASSERT_MESSAGE(false, "Unsupported cache controls combination!");
   return {StoreCacheControl::Invalid, StoreCacheControl::Invalid};
+}
+
+template <typename T> SeparateCacheControlsL1L2L3<T> mapToSPIRVL1L2L3CacheControl(int) = delete;
+
+template <>
+inline SeparateCacheControlsL1L2L3<LoadCacheControl> mapToSPIRVL1L2L3CacheControl<LoadCacheControl>(int cacheControl) {
+  auto LSCLoadCacheControl = static_cast<LSC_LDCC_L1_L2_L3>(cacheControl);
+  if (auto I = supportedL1L2L3LoadConfigs.find(LSCLoadCacheControl); I != supportedL1L2L3LoadConfigs.end())
+    return I->second;
+
+  IGC_ASSERT_MESSAGE(false, "Unsupported cache controls combination!");
+  return {LoadCacheControl::Invalid, LoadCacheControl::Invalid, LoadCacheControl::Invalid};
+}
+
+template <>
+inline SeparateCacheControlsL1L2L3<StoreCacheControl>
+mapToSPIRVL1L2L3CacheControl<StoreCacheControl>(int cacheControl) {
+  auto LSCStoreCacheControl = static_cast<LSC_STCC_L1_L2_L3>(cacheControl);
+  if (auto I = supportedL1L2L3StoreConfigs.find(LSCStoreCacheControl); I != supportedL1L2L3StoreConfigs.end())
+    return I->second;
+
+  IGC_ASSERT_MESSAGE(false, "Unsupported cache controls combination!");
+  return {StoreCacheControl::Invalid, StoreCacheControl::Invalid, StoreCacheControl::Invalid};
 }
 
 inline llvm::DenseMap<uint64_t, llvm::SmallPtrSet<llvm::MDNode *, 4>> parseSPIRVDecorationsFromMD(llvm::Value *V) {
@@ -267,12 +308,89 @@ CacheControlFromMDNodes resolveCacheControlFromMDNodes(CodeGenContext *ctx,
 
   auto L1CacheControl = getCacheControl(cacheControls, CacheLevel(0));
   auto L3CacheControl = getCacheControl(cacheControls, CacheLevel(1));
+  std::optional<T> L2CacheControl = {};
+  auto nextCacheControl = getCacheControl(cacheControls, CacheLevel(2));
+  if (nextCacheControl) {
+    L2CacheControl = L3CacheControl;
+    L3CacheControl = nextCacheControl;
+  }
 
-  if (!L1CacheControl && !L3CacheControl)
-  {
+  if (!L1CacheControl && !L2CacheControl && !L3CacheControl) {
     // Early exit if there are no cache controls set for cache levels that are controllable
     // by Intel GPUs.
     result.isEmpty = true;
+    return result;
+  }
+
+  if (ctx->platform.hasNewLSCCacheEncoding() && L1CacheControl && L3CacheControl &&
+      (L2CacheControl || cacheDefault > LSC_CC_INVALID)) {
+    if (!L2CacheControl) {
+      // Case when only cacheDefault from compOpt has new enum encoding value.
+      // Workaround to have L1 L3 settings in L1/L2CacheControl.
+      L2CacheControl = L3CacheControl;
+      L3CacheControl = {};
+    }
+
+    SeparateCacheControlsL1L2L3<T> L1L2L3Default;
+    if (cacheDefault > LSC_CC_INVALID) {
+      L1L2L3Default = mapToSPIRVL1L2L3CacheControl<T>(cacheDefault);
+    } else {
+      // Parse old legacy L1 L3 default settings
+      LSC_L1_L3_CC defaultLSCCacheControls = static_cast<LSC_L1_L3_CC>(cacheDefault);
+      auto L1L3DefaultLegacy = mapToSPIRVCacheControl<T>(defaultLSCCacheControls);
+      L1L2L3Default.L1 = L1L3DefaultLegacy.L1;
+      L1L2L3Default.L2 = L1L3DefaultLegacy.L3;
+      L1L2L3Default.L3 = T::Uncached;
+      if (std::is_same_v<T, LoadCacheControl>) {
+        // Const cached not available, but it corresponds to
+        // L2=cached L3=cached in new cache encoding.
+        if (L1L2L3Default.L2 == static_cast<T>(LoadCacheControl::ConstCached)) {
+          L1L2L3Default.L2 = static_cast<T>(LoadCacheControl::Cached);
+          L1L2L3Default.L3 = L1L2L3Default.L2;
+        }
+
+        // Only IAR, IAR, IAR allowed.
+        if (L1L2L3Default.L2 == static_cast<T>(LoadCacheControl::InvalidateAfterRead)) {
+          L1L2L3Default.L3 = L1L2L3Default.L2;
+        }
+      }
+    }
+    IGC_ASSERT(L1L2L3Default.L1 != T::Invalid && L1L2L3Default.L2 != T::Invalid && L1L2L3Default.L3 != T::Invalid);
+
+    T newL1CacheControl = L1CacheControl ? L1CacheControl.value() : L1L2L3Default.L1;
+    T newL2CacheControl = L2CacheControl ? L2CacheControl.value() : L1L2L3Default.L2;
+    T newL3CacheControl = L3CacheControl ? L3CacheControl.value() : L1L2L3Default.L3;
+
+    if (std::is_same_v<T, LoadCacheControl>) {
+      // Const cached not available, but it corresponds to
+      // L2=cached L3=cached in new cache encoding.
+      if (newL2CacheControl == static_cast<T>(LoadCacheControl::ConstCached)) {
+        newL2CacheControl = static_cast<T>(LoadCacheControl::Cached);
+        newL3CacheControl = newL2CacheControl;
+      }
+
+      // Only IAR, IAR, IAR allowed.
+      if (newL2CacheControl == static_cast<T>(LoadCacheControl::InvalidateAfterRead)) {
+        newL3CacheControl = newL2CacheControl;
+      }
+    } else {
+      // StoreCacheControl
+      // Only for 2-level decorations, otherwise we would hide incorrect settings.
+      if (!L3CacheControl && newL2CacheControl == static_cast<T>(StoreCacheControl::WriteBack) &&
+          (newL1CacheControl == T::Streaming || newL1CacheControl == static_cast<T>(StoreCacheControl::WriteBack))) {
+        // When L1 store cache is streaming or writeback,
+        // writeback is not available for both L2 and L3 at the same time.
+        newL3CacheControl = T::Uncached;
+      }
+    }
+
+    auto newLSCCacheControl = mapToLSCL1L2L3CacheControl(newL1CacheControl, newL2CacheControl, newL3CacheControl);
+
+    if (newLSCCacheControl == LSC_CC_INVALID) {
+      result.isInvalid = true;
+      return result;
+    }
+    result.value = newLSCCacheControl;
     return result;
   }
 

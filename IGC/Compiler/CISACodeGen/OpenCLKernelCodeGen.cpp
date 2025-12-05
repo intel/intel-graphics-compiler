@@ -1249,6 +1249,7 @@ void COpenCLKernel::ParseShaderSpecificOpcode(llvm::Instruction *inst) {
         break;
       case GenISAIntrinsic::GenISA_dpas:
       case GenISAIntrinsic::GenISA_sub_group_dpas:
+      case GenISAIntrinsic::GenISA_sub_group_bdpas:
         m_State.SetHasDPAS();
         break;
       case GenISAIntrinsic::GenISA_ptr_to_pair:
@@ -1357,12 +1358,19 @@ void COpenCLKernel::AllocatePayload() {
   bool inlineDataProcessed = false;
   uint offsetCorrection = 0;
 
+  bool skipIndirectScratchPointer = canSkipScratchPointer(kernelArgs);
+
        // keep track of the pointer arguments' addrspace and access_type for setting the correct
        // attributes to their corresponding bindless offset arguments
   PtrArgsAttrMapType ptrArgsAttrMap;
   for (KernelArgs::const_iterator i = kernelArgs.begin(), e = kernelArgs.end(); i != e; ++i) {
     KernelArg arg = *i;
     prevOffset = offset;
+
+    if (arg.getArgType() == KernelArg::ArgType::IMPLICIT_SCRATCH_POINTER && skipIndirectScratchPointer) {
+      m_TryNoScratchPointer = true;
+      continue;
+    }
 
        // skip unused arguments
     bool IsUnusedArg = isUnusedArg(arg);
@@ -1564,6 +1572,92 @@ bool COpenCLKernel::isUnusedArg(KernelArg &arg) const {
   return arg.getArgType() == KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER || // contains global_id_offset
          arg.getArgType() == KernelArg::ArgType::IMPLICIT_GLOBAL_OFFSET ||
          arg.getArgType() == KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE;
+}
+
+// On Xe3P, scratch pointer is provided to kernel as implicit argument.
+// This impacts how much kernel will spend time in cross thread prolog.
+//
+// Scratch can be used by both IGC and vISA; IGC doesn't know if scratch
+// is used until vISA is done and IGC can check for spills.
+//
+// This method tries to guess if scratch pointer can be removed from kernel
+// arguments. If the guess is wrong and scratch is used, we rely on the
+// retry manager to recompile kernel, this time with scratch pointer.
+// This is based on assumption that the only case this will happen is when
+// kernel spills; in which case we want to recompile anyway. The only
+// downside is that retry manager is forced to select recompiled variant,
+// as output without scratch pointer is unusable.
+//
+// This optimization has a narrow use case:
+//   1) Scratch pointer can't be used for anything other than spills.
+//   2) Retry manager must be enabled.
+//   3) It makes sense to try remove scratch pointer if its' presence
+//      is a deciding factor between fitting all kernel arguments in
+//      inline data or not. If everything fits with scratch pointer,
+//      or will not fit without scratch pointer, there is no point in
+//      trying to remove it.
+bool COpenCLKernel::canSkipScratchPointer(KernelArgs &args) const {
+  if (!m_ctx->platform.isCoreChildOf(IGFX_XE3P_CORE))
+    return false;
+
+  if (m_ctx->type == ShaderType::OPENCL_SHADER) {
+    auto *OCLCtx = static_cast<const OpenCLProgramContext *>(m_ctx);
+    if (OCLCtx->m_DriverInfo.UseScratchSpaceForATSPlus())
+      return false;
+  }
+
+  if (IGC_IS_FLAG_DISABLED(RemoveImplicitScratchPointer))
+    return false;
+
+  if (m_ctx->getModuleMetaData()->compOpt.OptDisable || m_ctx->m_retryManager.IsLastTry() ||
+      m_ctx->m_retryManager.kernelSkip.count(entry->getName().str()))
+    return false;
+
+  if (m_HasStackCall)
+    return false;
+
+  // Check if scratch pointer has other uses.
+  uint scratch = m_simdProgram.getScratchSpaceUsageInSlot0();
+  if (SeparateSpillAndScratch(m_ctx))
+    scratch += m_simdProgram.getScratchSpaceUsageInSlot1();
+  if (scratch > 0)
+    return false;
+
+  if (entry->getInstructionCount() > IGC_GET_FLAG_VALUE(RemoveImplicitScratchPointerInstThreshold))
+    return false;
+
+  // Count size of constant buffer with and without scratch pointer.
+  // Removing scratch pointer impacts alignment of following arguments;
+  // calculate sizes as separate variables.
+  uint constantBufferWithScratchPointer = 0;
+  uint constantBufferWithoutScratchPointer = 0;
+
+  for (KernelArgs::const_iterator i = args.begin(), e = args.end(); i != e; ++i) {
+    KernelArg arg = *i;
+    if (arg.isConstantBuf() && arg.needsAllocation()) {
+      if (isUnusedArg(arg))
+        continue;
+
+      auto alignment = arg.getAlignment();
+
+      if (arg.isArgPtrType())
+        alignment = m_Context->getModule()->getDataLayout().getPointerTypeSize(arg.getArg()->getType());
+
+      constantBufferWithScratchPointer =
+          iSTD::Align(constantBufferWithScratchPointer, alignment) + arg.getAllocateSize();
+
+      if (arg.getArgType() != KernelArg::ArgType::IMPLICIT_SCRATCH_POINTER)
+        constantBufferWithoutScratchPointer =
+            iSTD::Align(constantBufferWithoutScratchPointer, alignment) + arg.getAllocateSize();
+    }
+  }
+
+  // Scratch pointer not present on the list.
+  if (constantBufferWithScratchPointer == constantBufferWithoutScratchPointer)
+    return false;
+
+  uint limit = m_ctx->platform.getInlineDataSize();
+  return constantBufferWithScratchPointer > limit && constantBufferWithoutScratchPointer <= limit;
 }
 
 bool COpenCLKernel::passNOSInlineData() {
@@ -1999,6 +2093,12 @@ RetryType NeedsRetry(OpenCLProgramContext *ctx, COpenCLKernel *pShader, CShaderP
   SProgramOutput *pOutput = pShader->ProgramOutput();
 
   CShader *program = pKernel.get()->GetShader(simdMode);
+
+  if (pShader->TryNoScratchPointer() && getScratchUse(pShader, ctx) > 0) {
+    // If IGC removed scratch pointer, yet vISA requires scratch, force retry.
+    IGC_ASSERT(!ctx->m_retryManager.IsLastTry());
+    return RetryType::YES_Retry;
+  }
 
   bool isWorstThanPrv = false;
   // Look for previous generated shaders

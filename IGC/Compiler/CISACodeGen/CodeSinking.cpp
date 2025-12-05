@@ -207,6 +207,7 @@ static bool isDPAS(Value *V) {
   switch (Intr->getIntrinsicID()) {
   case GenISAIntrinsic::GenISA_dpas:
   case GenISAIntrinsic::GenISA_sub_group_dpas:
+  case GenISAIntrinsic::GenISA_sub_group_bdpas:
     return true;
   default:
     break;
@@ -2194,6 +2195,7 @@ bool CodeLoopSinking::isSafeToLoopSinkLoad(Instruction *InstToSink, Loop *L) {
         case GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload:
         case GenISAIntrinsic::GenISA_dpas:
         case GenISAIntrinsic::GenISA_sub_group_dpas:
+        case GenISAIntrinsic::GenISA_sub_group_bdpas:
           PrintDump(VerbosityLevel::High, "Not a real store instruction, may not alias\n");
           continue;
 

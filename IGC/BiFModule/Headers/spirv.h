@@ -7866,6 +7866,58 @@ double __attribute__((overloadable)) __spirv_AtomicFMaxEXT(
 #endif                   // defined(cl_khr_fp64)
 #endif                   // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
+half __attribute__((overloadable)) __spirv_AtomicFAddEXT(
+    private half *Pointer, int Scope, int Semantics, half Value);
+half __attribute__((overloadable)) __spirv_AtomicFAddEXT(
+    global half *Pointer, int Scope, int Semantics, half Value);
+half __attribute__((overloadable)) __spirv_AtomicFAddEXT(
+    local half *Pointer, int Scope, int Semantics, half Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+half __attribute__((overloadable)) __spirv_AtomicFAddEXT(
+    generic half *Pointer, int Scope, int Semantics, half Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+
+#if defined(cl_intel_bfloat16_atomics)
+bfloat __attribute__((overloadable))
+__spirv_AtomicFAddEXT(private bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+bfloat __attribute__((overloadable))
+__spirv_AtomicFSubEXT(private bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+bfloat __attribute__((overloadable))
+__spirv_AtomicFMinEXT(private bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+bfloat __attribute__((overloadable))
+__spirv_AtomicFMaxEXT(private bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+
+bfloat __attribute__((overloadable))
+__spirv_AtomicFAddEXT(global bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+bfloat __attribute__((overloadable))
+__spirv_AtomicFSubEXT(global bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+bfloat __attribute__((overloadable))
+__spirv_AtomicFMinEXT(global bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+bfloat __attribute__((overloadable))
+__spirv_AtomicFMaxEXT(global bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+
+bfloat __attribute__((overloadable))
+__spirv_AtomicFAddEXT(local bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+bfloat __attribute__((overloadable))
+__spirv_AtomicFSubEXT(local bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+bfloat __attribute__((overloadable))
+__spirv_AtomicFMinEXT(local bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+bfloat __attribute__((overloadable))
+__spirv_AtomicFMaxEXT(local bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+bfloat __attribute__((overloadable))
+__spirv_AtomicFAddEXT(generic bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+bfloat __attribute__((overloadable))
+__spirv_AtomicFSubEXT(generic bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+bfloat __attribute__((overloadable))
+__spirv_AtomicFMinEXT(generic bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+bfloat __attribute__((overloadable))
+__spirv_AtomicFMaxEXT(generic bfloat *Pointer, int Scope, int Semantics, bfloat Value);
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+#endif // defined(cl_intel_bfloat16_atomics)
+
 // Barrier Instructions
 
 void __attribute__((overloadable)) __spirv_ControlBarrier(
