@@ -31,7 +31,6 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <list>
 #include <fstream>
-#include <sstream>
 
 using namespace std;
 using namespace llvm;
@@ -64,38 +63,18 @@ int main(int argc, char *argv[]) {
     std::unique_ptr<llvm::MemoryBuffer> genericBufferPtr(FileOrErr.get().release());
     Expected<std::unique_ptr<Module>> M = llvm::parseBitcodeFile(genericBufferPtr->getMemBufferRef(), Context);
     if (llvm::Error EC = M.takeError()) {
-      std::stringstream stringBuilder("");
-      stringBuilder << "[BiFManager] - Unable to Parse bitcode:";
-      llvm::handleAllErrors(std::move(EC),
-        [&](llvm::ErrorInfoBase &EIB) {
-          stringBuilder << EIB.message();
-        });
-      Err.print(stringBuilder.str().c_str(), errs());
+      Err.print("Unable to Parse bitcode", errs());
     }
     return M;
   };
-  auto ModuleMain = LoadModule(&InputBCFilename);
-  if(ModuleMain)
-    printf("[BiFManager] - Loaded Main module\n");
-  else {
-    printf("[BiFManager] - Problem with loading Main module\n");
-    return -13;
-  }
+  printf("[BiFManager] - Start loading modules\n");
 
+  auto ModuleMain = LoadModule(&InputBCFilename);
+  printf("[BiFManager] - Loaded Main module\n");
   auto Module32 = LoadModule(&InputBC32Filename);
-  if(Module32)
-    printf("[BiFManager] - Loaded Size32 module\n");
-  else {
-    printf("[BiFManager] - Problem with loading Size32 module\n");
-    return -13;
-  }
+  printf("[BiFManager] - Loaded Size32 module\n");
   auto Module64 = LoadModule(&InputBC64Filename);
-  if(Module64)
-    printf("[BiFManager] - Loaded Size64 module\n");
-  else {
-    printf("[BiFManager] - Problem with loading Size64 module\n");
-    return -13;
-  }
+  printf("[BiFManager] - Loaded Size64 module\n");
 
   IGC::BiFManager::BiFManagerTool bif(Context);
   bif.MakeBiFPackage(&(*ModuleMain.get()), &(*Module32.get()), &(*Module64.get()));

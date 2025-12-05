@@ -41,4 +41,3 @@ void CollectBuiltinsPass::visitCallInst(llvm::CallInst &callInst) {
     }
   }
 }
-
