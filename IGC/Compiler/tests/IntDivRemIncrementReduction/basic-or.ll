@@ -8,9 +8,9 @@
 ; REQUIRES: llvm-14-plus
 ; RUN: igc_opt -opaque-pointers -igc-divrem-increment-reduction -S < %s | FileCheck %s
 ; ------------------------------------------------
-; IntDivRemIncrementReduction
 ;
 ; Simple reduction with or as increment (instead of add), optimization for second udiv/urem pair based on result of first
+; Allowed when no common bits set, otherwise disabled
 ; ------------------------------------------------
 
 ; CHECK-LABEL: @test_or_one

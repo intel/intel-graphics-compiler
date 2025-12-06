@@ -8,11 +8,13 @@
 ; REQUIRES: llvm-14-plus
 ; RUN: igc_opt -opaque-pointers -igc-divrem-increment-reduction -S < %s | FileCheck %s
 ; ------------------------------------------------
-; IntDivRemIncrementReduction
 ;
-; Nested reduction, optimization for second udiv/urem group based on result of first
+; Nested increment reduction, optimization for second udiv/urem group based on result of first
+;
+; Nested decrement reduction, optimization disabled for now
 ; ------------------------------------------------
 
+; CHECK-LABEL: @test_int_divrem_increment_reduction
 define void @test_int_divrem_increment_reduction(i32 %a, i32 %b, i32 %c, ptr %dest1, ptr %dest2, ptr %dest3, ptr %dest4) {
 ; First DivRemGroup, retain
   %quo = udiv i32 %a, %b
@@ -61,3 +63,28 @@ define void @test_int_divrem_increment_reduction(i32 %a, i32 %b, i32 %c, ptr %de
   ret void
 }
 
+; CHECK-LABEL: @test_int_divrem_decrement_reduction
+define void @test_int_divrem_decrement_reduction(i32 %a, i32 %b, i32 %c, ptr %dest1, ptr %dest2, ptr %dest3, ptr %dest4) {
+; First DivRemGroup, retain
+  %quo = udiv i32 %a, %b
+  %rem = urem i32 %a, %b
+  %nested_quo = udiv i32 %quo, %c
+  %nested_rem = urem i32 %quo, %c
+  %next = sub i32 %a, 1
+
+; Next DivRemGroup, TODO: Negative offset DivRemPair optimization
+; Ensure unoptimized result emitted for now
+; CHECK: udiv i32 %next, %b
+; CHECK: urem i32 %next, %b
+; CHECK: udiv i32 %next_quo, %c
+; CHECK: urem i32 %next_quo, %c
+  %next_quo = udiv i32 %next, %b
+  %next_rem = urem i32 %next, %b
+  %next_nested_quo = udiv i32 %next_quo, %c
+  %next_nested_rem = urem i32 %next_quo, %c
+  store i32 %next_quo, ptr %dest1
+  store i32 %next_rem, ptr %dest2
+  store i32 %next_nested_quo, ptr %dest3
+  store i32 %next_nested_rem, ptr %dest4
+  ret void
+}

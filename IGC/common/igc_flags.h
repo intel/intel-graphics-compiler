@@ -653,6 +653,11 @@ DECLARE_IGC_REGKEY(
     bool, DivRemIncrementCondBranchSimplify, false,
     "Create branches when simplifying consecutive udiv/urem groups increment dividend by constant greater than 1",
     false)
+DECLARE_IGC_REGKEY(bool, SanitizeDivRemIncrementDivisorIsZero, false,
+                   "Add ICmp comparison of divisor to zero to return -1 when performing optimization to avoid UB",
+                   false)
+DECLARE_IGC_REGKEY(bool, GuardDivRemIncrementDividendOverflow, false,
+                   "Check for no unsigned wrap flag on increment/decrement operation before optimizing", false)
 DECLARE_IGC_REGKEY(bool, EnableInstructionHoistingOptimization, false,
                    "Enable optimization for hoisting latency instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableResourceLoopDestLifeTimeStart, true,

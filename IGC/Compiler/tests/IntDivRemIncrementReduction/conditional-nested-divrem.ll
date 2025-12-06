@@ -9,11 +9,15 @@
 ; RUN: igc_opt -opaque-pointers -igc-divrem-increment-reduction -S < %s | FileCheck %s --check-prefix=UNCOND
 ; RUN: igc_opt -opaque-pointers -igc-divrem-increment-reduction -regkey DivRemIncrementCondBranchSimplify=1 -S < %s | FileCheck %s --check-prefix=COND
 ; ------------------------------------------------
-; IntDivRemIncrementReduction
 ;
-; Nested reduction with constant increment > 1, optimize with cond branch vs leave udiv the same
+; Nested increment reduction with constant increment > 1, optimize with cond branch vs leave udiv the same using regkey as control
+; Third DivRemGroup uses simple opt because offset is base (%a) + 16 + 1, and result for %a + 16 already available (optimized when regkey enabled and unoptimized when regkey disabled)
+;
+; Nested decrement reduction with constant increment > 1, optimization disabled for now
 ; ------------------------------------------------
 
+; UNCOND-LABEL: @test_int_divrem_increment_reduction
+; COND-LABEL: @test_int_divrem_increment_reduction
 define void @test_int_divrem_increment_reduction(i32 %a, i32 %b, i32 %c, ptr %dest1, ptr %dest2, ptr %dest3, ptr %dest4, ptr %dest5, ptr %dest6, ptr %dest7, ptr %dest8) {
 ; First DivRemGroup, retain
   %quo = udiv i32 %a, %b
@@ -137,3 +141,33 @@ define void @test_int_divrem_increment_reduction(i32 %a, i32 %b, i32 %c, ptr %de
   ret void
 }
 
+; UNCOND-LABEL: @test_int_divrem_decrement_reduction
+; COND-LABEL: @test_int_divrem_decrement_reduction
+define void @test_int_divrem_decrement_reduction(i32 %a, i32 %b, i32 %c, ptr %dest1, ptr %dest2, ptr %dest3, ptr %dest4) {
+; First DivRemGroup, retain
+  %quo = udiv i32 %a, %b
+  %rem = urem i32 %a, %b
+  %nested_quo = udiv i32 %quo, %c
+  %nested_rem = urem i32 %quo, %c
+  %next = sub i32 %a, 2
+
+; Next DivRemGroup, TODO: Negative offset<-1 DivRemPair optimization
+; Ensure unoptimized result emitted for now
+; UNCOND: udiv i32 %next, %b
+; UNCOND: urem i32 %next, %b
+; UNCOND: udiv i32 %next_quo, %c
+; UNCOND: urem i32 %next_quo, %c
+; COND: udiv i32 %next, %b
+; COND: urem i32 %next, %b
+; COND: udiv i32 %next_quo, %c
+; COND: urem i32 %next_quo, %c
+  %next_quo = udiv i32 %next, %b
+  %next_rem = urem i32 %next, %b
+  %next_nested_quo = udiv i32 %next_quo, %c
+  %next_nested_rem = urem i32 %next_quo, %c
+  store i32 %next_quo, ptr %dest1
+  store i32 %next_rem, ptr %dest2
+  store i32 %next_nested_quo, ptr %dest3
+  store i32 %next_nested_rem, ptr %dest4
+  ret void
+}
