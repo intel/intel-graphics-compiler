@@ -525,7 +525,7 @@ TYPE##LEN intel_sub_group_media_block_read_##TYPE_POSTFIX##LEN(         \
     int height,                                                         \
     read_only image2d_t image)                                          \
 {                                                                       \
-    long id = (long)__builtin_astype(image, global void*);                \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);     \
     return __builtin_IB_media_block_read_##TYPE##LEN(                   \
         id, src_offset, width, height);                                 \
 }
@@ -539,7 +539,7 @@ TYPE##LEN intel_sub_group_media_block_read_##TYPE_POSTFIX##LEN(         \
     int height,                                                         \
     read_write image2d_t image)                                         \
 {                                                                       \
-    long id = (long)__builtin_astype(image, global void*);                \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);     \
     return __builtin_IB_media_block_read_##TYPE##LEN(                   \
         id, src_offset, width, height);                                 \
 }
@@ -555,7 +555,7 @@ void intel_sub_group_media_block_write_##TYPE_POSTFIX##LEN(                 \
     TYPE##LEN pixels,                                                       \
     write_only image2d_t image)                                             \
 {                                                                           \
-    long id = (long)__builtin_astype(image, global void*);                    \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);         \
     __builtin_IB_media_block_write_##TYPE##LEN(                             \
         id, src_offset, width, height, pixels);                             \
 }
@@ -570,7 +570,7 @@ void intel_sub_group_media_block_write_##TYPE_POSTFIX##LEN(             \
     TYPE##LEN pixels,                                                   \
     read_write image2d_t image)                                         \
 {                                                                       \
-    long id = (long)__builtin_astype(image, global void*);                \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);     \
     __builtin_IB_media_block_write_##TYPE##LEN(                         \
         id, src_offset, width, height, pixels);                         \
 }
@@ -614,7 +614,7 @@ DEFN_MEDIA_BLOCK(WRITE_RW, uint, ui, i32)
 #define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(FUNC_NAME, TYPE, INTERNAL_FUNC)          \
 INLINE TYPE OVERLOADABLE  FUNC_NAME( image2d_t image, int2 coord )                      \
 {                                                                                       \
-    long id = (long)__builtin_astype(image, __global void*);                              \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);                     \
     return INTERNAL_FUNC(id, coord);                                                    \
 }
 
@@ -622,7 +622,7 @@ INLINE TYPE OVERLOADABLE  FUNC_NAME( image2d_t image, int2 coord )              
 #define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(FUNC_NAME, TYPE, INTERNAL_FUNC)       \
 INLINE TYPE OVERLOADABLE  FUNC_NAME( read_write image2d_t image, int2 coord )           \
 {                                                                                       \
-    long id = (long)__builtin_astype(image, __global void*);                              \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);                     \
     return INTERNAL_FUNC(id, coord);                                                    \
 }
 #else
@@ -645,7 +645,7 @@ INLINE TYPE OVERLOADABLE  FUNC_NAME( const __local ELEM_TYPE* p )               
 #define  DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(FUNC_NAME, TYPE, TYPE_ABBR, INTERNAL_FUNC)   \
 INLINE void OVERLOADABLE FUNC_NAME( write_only image2d_t image, int2 coord, TYPE data )         \
 {                                                                                               \
-    long id = (long)__builtin_astype(image, __global void*);                                      \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);                             \
     INTERNAL_FUNC(id, coord, data);                                                             \
 }
 
@@ -657,7 +657,7 @@ INLINE void OVERLOADABLE FUNC_NAME( write_only image2d_t image, int2 coord, TYPE
 #define  DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(FUNC_NAME, TYPE, INTERNAL_FUNC)     \
 INLINE void OVERLOADABLE FUNC_NAME( read_write image2d_t image, int2 coord, TYPE data )\
 {                                                                                      \
-    long id = (long)__builtin_astype(image, __global void*);                             \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);                    \
     INTERNAL_FUNC(id, coord, data);                                                    \
 }
 #else

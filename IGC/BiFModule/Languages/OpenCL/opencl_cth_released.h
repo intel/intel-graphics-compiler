@@ -1081,8 +1081,9 @@ void __attribute__((overloadable)) prefetch(const __global void *p, size_t num_e
 // Pipes
 #ifdef __opencl_c_pipes
 #define INTEL_PIPE_RESERVE_ID_VALID_BIT (1U << 30)
-#define CLK_NULL_RESERVE_ID \
-    (__builtin_astype(((void *)(~INTEL_PIPE_RESERVE_ID_VALID_BIT)), reserve_id_t))
+#define CLK_NULL_RESERVE_ID                               \
+    (__builtin_IB_convert_object_type_to_spirv_reserveid( \
+        ((void *)(~INTEL_PIPE_RESERVE_ID_VALID_BIT))))
 bool __attribute__((overloadable)) is_valid_reserve_id(reserve_id_t reserve_id);
 #endif // __opencl_c_pipes
 

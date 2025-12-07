@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 #define CLK_FILTER_NEAREST            0x00
 #define CLK_FILTER_LINEAR             0x10
 
-#include "../Headers/spirv.h"
+#include "IBiF_Header.cl"
 
 __spirv_Sampler __bindless_sampler_initializer(uint sampler);
 
@@ -30,7 +30,7 @@ __spirv_Sampler __translate_sampler_initializer(uint sampler)
     {
         return __bindless_sampler_initializer(sampler);
     }
-    return __builtin_astype((ulong)sampler, __spirv_Sampler);
+    return __builtin_IB_convert_object_type_to_spirv_sampler((ulong*)sampler);
 }
 
 #ifdef __IGC_BUILD__
@@ -1246,7 +1246,7 @@ DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_HALF(1,  )
 #define DEF_IMAGE_READ_2D(ACC_QUAL)                                                                                 \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img2d_##ACC_QUAL* Image, int2 Coordinate)                        \
 {                                                                                                                   \
-    long id = (long)__builtin_astype(Image, __global void*);                                                          \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                    \
     return __builtin_IB_OCL_2d_ldui_##ACC_QUAL(id, Coordinate, 0);                                                  \
 }                                                                                                                   \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img2d_##ACC_QUAL* Image, int2 Coordinate, int ImageOperands)     \
@@ -1264,7 +1264,7 @@ int4 __attribute__((overloadable)) __spirv_ImageRead_Rint4(global Img2d_##ACC_QU
 }                                                                                                                   \
 float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img2d_##ACC_QUAL* Image, int2 Coordinate)  \
 {                                                                                                                   \
-    long id = (long)__builtin_astype(Image, __global void*);                                                          \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                 \
     float4 res = __builtin_IB_OCL_2d_ld_##ACC_QUAL(id, Coordinate, 0);                                              \
     return __flush_denormals(res);                                                                                  \
 }                                                                                                                   \
@@ -1276,7 +1276,7 @@ float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img2d_##AC
 #define DEF_IMAGE_READ_3D(ACC_QUAL)                                                                                 \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img3d_##ACC_QUAL* Image, int3 Coordinate)                        \
 {                                                                                                                   \
-    long id = (long)__builtin_astype(Image, __global void*);                                                          \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                 \
     return __builtin_IB_OCL_3d_ldui_##ACC_QUAL( id, Coordinate, 0);                                                 \
 }                                                                                                                   \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img3d_##ACC_QUAL* Image, int4 Coordinate)                        \
@@ -1310,7 +1310,7 @@ int4 __attribute__((overloadable)) __spirv_ImageRead_Rint4(global Img3d_##ACC_QU
 }                                                                                                                   \
 float4 OVERLOADABLE __spirv_ImageRead_Rfloat4(global Img3d_##ACC_QUAL* Image, int3 Coordinate)                      \
 {                                                                                                                   \
-    long id = (long)__builtin_astype(Image, __global void*);                                                          \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                 \
     float4 res = __builtin_IB_OCL_3d_ld_##ACC_QUAL(id, Coordinate, 0);                                              \
     return __flush_denormals(res);                                                                                  \
 }                                                                                                                   \
@@ -1330,7 +1330,7 @@ float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img3d_##AC
 #define DEF_IMAGE_READ_2D_ARRAY(ACC_QUAL)                                                                                        \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate)                               \
 {                                                                                                                                \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                       \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                              \
     return __builtin_IB_OCL_2darr_ldui_##ACC_QUAL(id, Coordinate, 0);                                                            \
 }                                                                                                                                \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate)                               \
@@ -1364,7 +1364,7 @@ int4 __attribute__((overloadable)) __spirv_ImageRead_Rint4(global Img2d_array_##
 }                                                                                                                                \
 float4 OVERLOADABLE __spirv_ImageRead_Rfloat4(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate)                             \
 {                                                                                                                                \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                       \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                              \
     float4 res = __builtin_IB_OCL_2darr_ld_##ACC_QUAL(id, Coordinate, 0);                                                        \
     return __flush_denormals(res);                                                                                               \
 }                                                                                                                                \
@@ -1384,7 +1384,7 @@ float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img2d_arra
 #define DEF_IMAGE_READ_1D(ACC_QUAL)                                                                               \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_##ACC_QUAL* Image, int Coordinate)                       \
 {                                                                                                                 \
-    long id = (long)__builtin_astype(Image, __global void*);                                                        \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                               \
     return __builtin_IB_OCL_1d_ldui_##ACC_QUAL( id, Coordinate, 0);                                               \
 }                                                                                                                 \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_##ACC_QUAL* Image, int Coordinate, int ImageOperands)    \
@@ -1402,7 +1402,7 @@ int4 __attribute__((overloadable)) __spirv_ImageRead_Rint4(global Img1d_##ACC_QU
 }                                                                                                                 \
 float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img1d_##ACC_QUAL* Image, int Coordinate)  \
 {                                                                                                                 \
-    long id = (long)__builtin_astype(Image, __global void*);                                                        \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                               \
     float4 res = __builtin_IB_OCL_1d_ld_##ACC_QUAL(id, Coordinate, 0);                                            \
     return __flush_denormals(res);                                                                                \
 }                                                                                                                 \
@@ -1414,7 +1414,7 @@ float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img1d_##AC
 #define DEF_IMAGE_READ_1D_BUFFER(ACC_QUAL)                                                                                      \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate)                              \
 {                                                                                                                               \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                      \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                             \
     return __builtin_IB_OCL_1d_ldui_##ACC_QUAL( id, Coordinate, 0);                                                             \
 }                                                                                                                               \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, int ImageOperands)           \
@@ -1432,7 +1432,7 @@ int4 __attribute__((overloadable)) __spirv_ImageRead_Rint4(global Img1d_buffer_#
 }                                                                                                                               \
 float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate)  \
 {                                                                                                                               \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                      \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                             \
     float4 res = __builtin_IB_OCL_1d_ld_##ACC_QUAL(id, Coordinate, 0);                                                          \
     return __flush_denormals(res);                                                                                              \
 }                                                                                                                               \
@@ -1444,7 +1444,7 @@ float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img1d_buff
 #define DEF_IMAGE_READ_1D_ARRAY(ACC_QUAL)                                                                                       \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate)                              \
 {                                                                                                                               \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                      \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                             \
     return __builtin_IB_OCL_1darr_ldui_##ACC_QUAL( id, Coordinate, 0);                                                          \
 }                                                                                                                               \
 uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, int ImageOperands)           \
@@ -1462,7 +1462,7 @@ int4 __attribute__((overloadable)) __spirv_ImageRead_Rint4(global Img1d_array_##
 }                                                                                                                               \
 float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate)  \
 {                                                                                                                               \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                      \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                             \
     float4 res = __builtin_IB_OCL_1darr_ld_##ACC_QUAL(id, Coordinate, 0);                                                       \
     return __flush_denormals(res);                                                                                              \
 }                                                                                                                               \
@@ -1474,7 +1474,7 @@ float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img1d_arra
 #define DEF_IMAGE_READ_2D_DEPTH(ACC_QUAL)                                                                                      \
 float __attribute__((overloadable)) __spirv_ImageRead_Rfloat(global Img2d_depth_##ACC_QUAL* Image, int2 Coordinate)    \
 {                                                                                                                              \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                     \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                            \
     float4 res = __builtin_IB_OCL_2d_ld_##ACC_QUAL(id, Coordinate, 0);                                                         \
     return __flush_denormals(res).x;                                                                                           \
 }
@@ -1482,7 +1482,7 @@ float __attribute__((overloadable)) __spirv_ImageRead_Rfloat(global Img2d_depth_
 #define DEF_IMAGE_READ_2D_ARRAY_DEPTH(ACC_QUAL)                                                                                          \
 float __attribute__((overloadable)) __spirv_ImageRead_Rfloat(global Img2d_array_depth_##ACC_QUAL* Image, int4 Coordinate)  \
 {                                                                                                                                        \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                               \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                      \
     float4 res = __builtin_IB_OCL_2darr_ld_##ACC_QUAL(id, Coordinate.xyz, 0);                                                            \
     return __flush_denormals(res).x;                                                                                                     \
 }
@@ -1652,14 +1652,14 @@ DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_HALF(3, rw, 3)
 
 int4 __attribute__((overloadable)) __spirv_ImageRead_Rint4(global Img2d_msaa_ro* Image, int2 Coordinate, int ImageOperands, int Sample)
 {
-    long id = (long)__builtin_astype(Image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);
     float4 mcs = __builtin_IB_OCL_2d_ldmcs(id, Coordinate);
     return as_int4(__builtin_IB_OCL_2d_ld2dmsui(id, Coordinate, Sample, mcs));
 }
 
 float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img2d_msaa_ro* Image, int2 Coordinate, int ImageOperands, int Sample)
 {
-    long id = (long)__builtin_astype(Image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);
     float4 mcs = __builtin_IB_OCL_2d_ldmcs(id, Coordinate);
     float4 res = __builtin_IB_OCL_2d_ld2dms(id, Coordinate, Sample, mcs);
     return __flush_denormals(res);
@@ -1667,14 +1667,14 @@ float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img2d_msaa
 
 int4 __attribute__((overloadable)) __spirv_ImageRead_Rint4(global Img2d_array_msaa_ro* Image, int4 Coordinate, int ImageOperands, int Sample)
 {
-    long id = (long)__builtin_astype(Image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);
     float4 mcs = __builtin_IB_OCL_2darr_ldmcs(id, Coordinate);
     return as_int4(__builtin_IB_OCL_2darr_ld2dmsui(id, Coordinate, Sample, mcs));
 }
 
 float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img2d_array_msaa_ro* Image, int4 Coordinate, int ImageOperands, int Sample)
 {
-    long id = (long)__builtin_astype(Image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);
     float4 mcs = __builtin_IB_OCL_2darr_ldmcs(id, Coordinate);
     float4 res = __builtin_IB_OCL_2darr_ld2dms(id, Coordinate, Sample, mcs);
     return __flush_denormals(res);
@@ -1682,7 +1682,7 @@ float4 __attribute__((overloadable)) __spirv_ImageRead_Rfloat4(global Img2d_arra
 
 float __attribute__((overloadable)) __spirv_ImageRead_Rfloat(global Img2d_msaa_depth_ro* Image, int2 Coordinate, int ImageOperands, int Sample)
 {
-    long id = (long)__builtin_astype(Image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);
     float4 mcs = __builtin_IB_OCL_2d_ldmcs(id, Coordinate);
     float4 res = __builtin_IB_OCL_2d_ld2dms(id, Coordinate, Sample, mcs);
     return __flush_denormals(res).x;
@@ -1690,7 +1690,7 @@ float __attribute__((overloadable)) __spirv_ImageRead_Rfloat(global Img2d_msaa_d
 
 float __attribute__((overloadable)) __spirv_ImageRead_Rfloat(global Img2d_array_msaa_depth_ro* Image, int4 Coordinate, int ImageOperands, int Sample)
 {
-    long id = (long)__builtin_astype(Image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);
     float4 mcs = __builtin_IB_OCL_2darr_ldmcs(id, Coordinate);
     float4 res = __builtin_IB_OCL_2darr_ld2dms(id, Coordinate, Sample, mcs);
     return __flush_denormals(res).x;
@@ -1701,22 +1701,22 @@ float __attribute__((overloadable)) __spirv_ImageRead_Rfloat(global Img2d_array_
 #define DEF_IMAGE_WRITE_2D(ACC_QUAL)                                                                                              \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_##ACC_QUAL* Image, int2 Coordinate, uint Texel)                                 \
 {                                                                                                                                 \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                        \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                               \
     __builtin_IB_write_2d_u1i(id, Coordinate, Texel, 0);                                                                          \
 }                                                                                                                                 \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_##ACC_QUAL* Image, int2 Coordinate, uint2 Texel)                                \
 {                                                                                                                                 \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                        \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                               \
     __builtin_IB_write_2d_u2i(id, Coordinate, Texel, 0);                                                                          \
 }                                                                                                                                 \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_##ACC_QUAL* Image, int2 Coordinate, uint3 Texel)                                \
 {                                                                                                                                 \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                        \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                               \
     __builtin_IB_write_2d_u3i(id, Coordinate, Texel, 0);                                                                          \
 }                                                                                                                                 \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_##ACC_QUAL* Image, int2 Coordinate, uint4 Texel)                                \
 {                                                                                                                                 \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                        \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                               \
     __builtin_IB_write_2d_u4i(id, Coordinate, Texel, 0);                                                                          \
 }                                                                                                                                 \
 void __attribute__((overloadable)) __spirv_ImageWrite(global Img2d_##ACC_QUAL* Image, int2 Coordinate, int4 Texel)     \
@@ -1743,22 +1743,22 @@ void __attribute__((overloadable)) __spirv_ImageWrite(global Img2d_##ACC_QUAL* I
 #define DEF_IMAGE_WRITE_2D_ARRAY(ACC_QUAL)                                                                                                   \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate, uint Texel)                                      \
 {                                                                                                                                            \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                   \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                          \
     __builtin_IB_write_2darr_u1i(id, Coordinate, Texel, 0);                                                                                  \
 }                                                                                                                                            \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate, uint2 Texel)                                     \
 {                                                                                                                                            \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                   \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                          \
     __builtin_IB_write_2darr_u2i(id, Coordinate, Texel, 0);                                                                                  \
 }                                                                                                                                            \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate, uint3 Texel)                                     \
 {                                                                                                                                            \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                   \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                          \
     __builtin_IB_write_2darr_u3i(id, Coordinate, Texel, 0);                                                                                  \
 }                                                                                                                                            \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate, uint4 Texel)                                     \
 {                                                                                                                                            \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                   \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                          \
     __builtin_IB_write_2darr_u4i(id, Coordinate, Texel, 0);                                                                                  \
 }                                                                                                                                            \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate, uint4 Texel)                                     \
@@ -1809,22 +1809,22 @@ void __attribute__((overloadable)) __spirv_ImageWrite(global Img2d_array_##ACC_Q
 #define DEF_IMAGE_WRITE_1D(ACC_QUAL)                                                                                         \
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_##ACC_QUAL* Image, int Coordinate, uint Texel)                             \
 {                                                                                                                            \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                   \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                          \
     __builtin_IB_write_1d_u1i(id, Coordinate, Texel, 0);                                                                     \
 }                                                                                                                            \
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_##ACC_QUAL* Image, int Coordinate, uint2 Texel)                            \
 {                                                                                                                            \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                   \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                          \
     __builtin_IB_write_1d_u2i(id, Coordinate, Texel, 0);                                                                     \
 }                                                                                                                            \
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_##ACC_QUAL* Image, int Coordinate, uint3 Texel)                            \
 {                                                                                                                            \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                   \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                          \
     __builtin_IB_write_1d_u3i(id, Coordinate, Texel, 0);                                                                     \
 }                                                                                                                            \
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_##ACC_QUAL* Image, int Coordinate, uint4 Texel)                            \
 {                                                                                                                            \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                   \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                          \
     __builtin_IB_write_1d_u4i(id, Coordinate, Texel, 0);                                                                     \
 }                                                                                                                            \
 void __attribute__((overloadable)) __spirv_ImageWrite(global Img1d_##ACC_QUAL* Image, int Coordinate, int4 Texel)   \
@@ -1851,7 +1851,7 @@ void __attribute__((overloadable)) __spirv_ImageWrite(global Img1d_##ACC_QUAL* I
 #define DEF_IMAGE_WRITE_1D_BUFFER(ACC_QUAL)                                                                                                \
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, uint4 Texel)                                   \
 {                                                                                                                                          \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                 \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                        \
     __builtin_IB_write_1d_u4i(id, Coordinate, Texel, 0);                                                                                   \
 }                                                                                                                                          \
 void __attribute__((overloadable)) __spirv_ImageWrite(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, int4 Texel)   \
@@ -1878,22 +1878,22 @@ void __attribute__((overloadable)) __spirv_ImageWrite(global Img1d_buffer_##ACC_
 #define DEF_IMAGE_WRITE_1D_ARRAY(ACC_QUAL)                                                                                                  \
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, uint Texel)                                     \
 {                                                                                                                                           \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                  \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                         \
     __builtin_IB_write_1darr_u1i(id, Coordinate, Texel, 0);                                                                                 \
 }                                                                                                                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, uint2 Texel)                                    \
 {                                                                                                                                           \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                  \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                         \
     __builtin_IB_write_1darr_u2i(id, Coordinate, Texel, 0);                                                                                 \
 }                                                                                                                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, uint3 Texel)                                    \
 {                                                                                                                                           \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                  \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                         \
     __builtin_IB_write_1darr_u3i(id, Coordinate, Texel, 0);                                                                                 \
 }                                                                                                                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, uint4 Texel)                                    \
 {                                                                                                                                           \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                  \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                         \
     __builtin_IB_write_1darr_u4i(id, Coordinate, Texel, 0);                                                                                 \
 }                                                                                                                                           \
 void __attribute__((overloadable)) __spirv_ImageWrite(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, int4 Texel)   \
@@ -1920,7 +1920,7 @@ void __attribute__((overloadable)) __spirv_ImageWrite(global Img1d_array_##ACC_Q
 #define DEF_IMAGE_WRITE_2D_DEPTH(ACC_QUAL)                                                                                                  \
 void __attribute__((overloadable)) __spirv_ImageWrite(global Img2d_depth_##ACC_QUAL * Image, int2 Coordinate, float Texel)   \
 {                                                                                                                                           \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                  \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                         \
     __builtin_IB_write_2d_u4i(id, Coordinate, (uint4)(as_uint(Texel), 0, 0, 0), 0);                                                         \
 }                                                                                                                                           \
 void __attribute__((overloadable)) __spirv_ImageWrite(global Img2d_depth_##ACC_QUAL * Image, int2 Coordinate, float Texel, int ImageOperands) \
@@ -1931,7 +1931,7 @@ void __attribute__((overloadable)) __spirv_ImageWrite(global Img2d_depth_##ACC_Q
 #define DEF_IMAGE_WRITE_2D_ARRAY_DEPTH(ACC_QUAL)                                                                                            \
 void __attribute__((overloadable)) __spirv_ImageWrite(global Img2d_array_depth_##ACC_QUAL * Image, int4 Coordinate, float Texel)   \
 {                                                                                                                                           \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                  \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                         \
     __builtin_IB_write_2darr_u4i(id, Coordinate.xyz, (uint4)(as_uint(Texel), 0, 0, 0), 0);                                                  \
 }                                                                                                                                           \
 void __attribute__((overloadable)) __spirv_ImageWrite(global Img2d_array_depth_##ACC_QUAL * Image, int4 Coordinate, float Texel, int ImageOperands) \
@@ -1942,22 +1942,22 @@ void __attribute__((overloadable)) __spirv_ImageWrite(global Img2d_array_depth_#
 #define DEF_IMAGE_WRITE_3D(ACC_QUAL)                                                                                                                  \
 void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int3 Coordinate, uint Texel)                                                     \
 {                                                                                                                                                     \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                            \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                                   \
     __builtin_IB_write_3d_u1i(id, Coordinate, Texel, 0);                                                                                              \
 }                                                                                                                                                     \
 void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int3 Coordinate, uint2 Texel)                                                    \
 {                                                                                                                                                     \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                            \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                                   \
     __builtin_IB_write_3d_u2i(id, Coordinate, Texel, 0);                                                                                              \
 }                                                                                                                                                     \
 void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int3 Coordinate, uint3 Texel)                                                    \
 {                                                                                                                                                     \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                            \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                                   \
     __builtin_IB_write_3d_u3i(id, Coordinate, Texel, 0);                                                                                              \
 }                                                                                                                                                     \
 void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int3 Coordinate, uint4 Texel)                                                    \
 {                                                                                                                                                     \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                            \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                                   \
     __builtin_IB_write_3d_u4i(id, Coordinate, Texel, 0);                                                                                              \
 }                                                                                                                                                     \
 void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int4 Coordinate, uint4 Texel)                                                    \
@@ -2027,7 +2027,7 @@ DEF_IMAGE_WRITE_3D(rw)
 #define DEF_IMAGE_WRITE_LOD(IMAGE_TYPE, IMAGE_TYPE_ABBR, COORDS_TYPE, COORDS_TYPE_ABBR, COORDS_XYZ)                                  \
 void OVERLOADABLE __spirv_ImageWrite(global Img##IMAGE_TYPE* Image, COORDS_TYPE Coordinate, uint4 Texel, int ImageOperands, int Lod) \
 {                                                                                                                                    \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                           \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                  \
     __builtin_IB_write_##IMAGE_TYPE_ABBR##_u4i(id, Coordinate COORDS_XYZ, Texel, Lod);                                               \
 }                                                                                                                                    \
 void __attribute__((overloadable)) __spirv_ImageWrite(global Img##IMAGE_TYPE* Image, COORDS_TYPE Coordinate, int4 Texel, int ImageOperands, int Lod)   \
@@ -2049,13 +2049,13 @@ DEF_IMAGE_WRITE_LOD(3d_wo,       3d,    int4, v4i32, .xyz)
 
 void __attribute__((overloadable)) __spirv_ImageWrite(global Img2d_depth_wo* Image, int2 Coordinate, float Texel, int ImageOperands, int Lod)
 {
-    long id = (long)__builtin_astype(Image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);
     __builtin_IB_write_2d_f(id, Coordinate, Texel, Lod);
 }
 
 void __attribute__((overloadable)) __spirv_ImageWrite(global Img2d_array_depth_wo* Image, int4 Coordinate, float Texel, int ImageOperands, int Lod)
 {
-    long id = (long)__builtin_astype(Image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);
     __builtin_IB_write_2darr_f(id, Coordinate, Texel, Lod);
 }
 
@@ -2257,12 +2257,12 @@ DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(3, rw, 3)
 #define DEF_IMAGE_QUERY_BUILTINS_BASE(IMAGE_TYPE, ACC_QUAL)                                                                          \
 uint __attribute__((overloadable)) __spirv_ImageQueryFormat(global Img##IMAGE_TYPE##_##ACC_QUAL* Image) \
 {                                                                                                                                    \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                           \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                  \
     return __builtin_IB_get_image_channel_data_type(id) - CLK_SNORM_INT8;                                                            \
 }                                                                                                                                    \
 uint __attribute__((overloadable)) __spirv_ImageQueryOrder(global Img##IMAGE_TYPE##_##ACC_QUAL* Image)  \
 {                                                                                                                                    \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                           \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                  \
     return __builtin_IB_get_image_channel_order( id ) - CLK_R;                                                                       \
 }
 
@@ -2330,7 +2330,7 @@ uint3 __intel_query_image_size_Ruint3(long id)
 #define DEF_IMAGE_QUERY_SIZE_BASE(IMAGE_TYPE, INTRINSIC, ACC_QUAL, VEC_SIZE, VEC_SIZE_ABBR)                                                                             \
 int##VEC_SIZE __attribute__((overloadable)) __spirv_ImageQuerySize_Rint##VEC_SIZE(global Img##IMAGE_TYPE##_##ACC_QUAL* Image)   \
 {                                                                                                                                                                       \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                                                              \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                                                     \
     return as_int##VEC_SIZE(INTRINSIC##_Ruint##VEC_SIZE(id));                                                                                                           \
 }                                                                                                                                                                       \
 long##VEC_SIZE __attribute__((overloadable)) __spirv_ImageQuerySize_Rlong##VEC_SIZE(global Img##IMAGE_TYPE##_##ACC_QUAL* Image) \
@@ -2374,7 +2374,7 @@ DEF_IMAGE_QUERY_SIZE_BASE(2d_array_msaa_depth, __intel_query_arrayed_image_size,
 #define DEF_IMAGE_QUERY_LEVELS_BASE(IMAGE_TYPE, ACC_QUAL)                                                                             \
 uint __attribute__((overloadable)) __spirv_ImageQueryLevels(global Img##IMAGE_TYPE##_##ACC_QUAL* Image)  \
 {                                                                                                                                     \
-    long id = (long)__builtin_astype(Image, __global void*);                                                                            \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                                   \
     return __builtin_IB_get_image_num_mip_levels(id);                                                                                 \
 }
 
@@ -2397,7 +2397,7 @@ DEF_IMAGE_QUERY_LEVELS(2d_array_depth)
 #define DEF_IMAGE_QUERY_SAMPLES(IMAGE_TYPE)                                                                            \
 uint __attribute__((overloadable)) __spirv_ImageQuerySamples(global Img##IMAGE_TYPE##_ro* Image)  \
 {                                                                                                                      \
-    long id = (long)__builtin_astype(Image, __global void*);                                                             \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(Image);                                                    \
     return __builtin_IB_get_image_num_samples(id);                                                                     \
 }
 

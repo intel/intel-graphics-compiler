@@ -227,22 +227,19 @@ INLINE int OVERLOADABLE work_group_all(int predicate)
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-#define     to_spirv_pipe_ro(p)     __builtin_astype(p, __spirv_Pipe_ro)
-#define     to_spirv_pipe_wo(p)     __builtin_astype(p, __spirv_Pipe_wo)
-#define     to_spirv_reserveid(p)   __builtin_astype(p, __spirv_ReserveId)
-#define     to_ocl_reserveid(p)     __builtin_astype(p, reserve_id_t)
-
 /////////////////////////////////////////////////////////////////////
 // Basic Reads and Writes
 
 int __read_pipe_2( read_only pipe int pipe_, __generic void* data, uint bytes, uint alignment )
 {
-    return __spirv_ReadPipe(to_spirv_pipe_ro(pipe_), data, bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    return __spirv_ReadPipe(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), data, bytes);
 }
 
 int __write_pipe_2( write_only pipe int pipe_, __generic const void* data, uint bytes, uint alignment)
 {
-    return __spirv_WritePipe(to_spirv_pipe_wo(pipe_), data, bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    return __spirv_WritePipe(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), data, bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -251,7 +248,7 @@ int __write_pipe_2( write_only pipe int pipe_, __generic const void* data, uint 
 bool OVERLOADABLE is_valid_reserve_id(
   reserve_id_t reserve_id )
 {
-    return __spirv_IsValidReserveId(to_spirv_reserveid(reserve_id));
+    return __spirv_IsValidReserveId(__builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)));
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -260,22 +257,26 @@ bool OVERLOADABLE is_valid_reserve_id(
 // NOTE: The pipe's packet type doesn't affect mangling.
 reserve_id_t __reserve_read_pipe( read_only pipe int pipe_, uint num_packets, uint bytes, uint alignment )
 {
-    return to_ocl_reserveid(__spirv_ReserveReadPipePackets(to_spirv_pipe_ro(pipe_), num_packets, bytes));
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_ReserveReadPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), num_packets, bytes));
 }
 
 reserve_id_t __reserve_write_pipe( write_only pipe int pipe_, uint num_packets, uint bytes, uint alignment )
 {
-    return to_ocl_reserveid(__spirv_ReserveWritePipePackets(to_spirv_pipe_wo(pipe_), num_packets, bytes));
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_ReserveWritePipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), num_packets, bytes));
 }
 
 void __commit_read_pipe( read_only pipe int pipe_, reserve_id_t reserve_id, uint bytes, uint alignment )
 {
-    __spirv_CommitReadPipe(to_spirv_pipe_ro(pipe_), to_spirv_reserveid(reserve_id), bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    __spirv_CommitReadPipe(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
 }
 
 void __commit_write_pipe( write_only pipe int pipe_, reserve_id_t reserve_id, uint bytes, uint alignment)
 {
-    __spirv_CommitWritePipe(to_spirv_pipe_wo(pipe_), to_spirv_reserveid(reserve_id), bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    __spirv_CommitWritePipe(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -285,13 +286,15 @@ void __commit_write_pipe( write_only pipe int pipe_, reserve_id_t reserve_id, ui
 
 int __read_pipe_4( read_only pipe int pipe_, reserve_id_t reserve_id, uint index, __generic void* data, uint bytes, uint alignment)
 {
-    return __spirv_ReservedReadPipe(to_spirv_pipe_ro(pipe_), to_spirv_reserveid(reserve_id), index, data, bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    return __spirv_ReservedReadPipe(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), index, data, bytes);
 }
 
 // write_pipe with 4 explicit arguments
 int __write_pipe_4( write_only pipe int pipe_, reserve_id_t reserve_id, uint index, __generic const void* data, uint bytes, uint alignment)
 {
-    return __spirv_ReservedWritePipe(to_spirv_pipe_wo(pipe_), to_spirv_reserveid(reserve_id), index, data, bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    return __spirv_ReservedWritePipe(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), index, data, bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -301,22 +304,26 @@ bool __intel_is_first_work_group_item( void );
 
 reserve_id_t __work_group_reserve_read_pipe( read_only pipe int p, uint num_packets, uint bytes, uint alignment )
 {
-    return to_ocl_reserveid(__spirv_GroupReserveReadPipePackets(Workgroup, to_spirv_pipe_ro(p), num_packets, bytes));
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+    return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_GroupReserveReadPipePackets(Workgroup, __builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), num_packets, bytes));
 }
 
 reserve_id_t __work_group_reserve_write_pipe( write_only pipe int p, uint num_packets, uint bytes, uint alignment )
 {
-    return to_ocl_reserveid(__spirv_GroupReserveWritePipePackets(Workgroup, to_spirv_pipe_wo(p), num_packets, bytes));
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+    return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_GroupReserveWritePipePackets(Workgroup, __builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), num_packets, bytes));
 }
 
 void __work_group_commit_read_pipe( read_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment )
 {
-    __spirv_GroupCommitReadPipe(Workgroup, to_spirv_pipe_ro(p), to_spirv_reserveid(reserve_id), bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+    __spirv_GroupCommitReadPipe(Workgroup, __builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
 }
 
 void __work_group_commit_write_pipe( write_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment )
 {
-    __spirv_GroupCommitWritePipe(Workgroup, to_spirv_pipe_wo(p), to_spirv_reserveid(reserve_id), bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+    __spirv_GroupCommitWritePipe(Workgroup, __builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -324,22 +331,26 @@ void __work_group_commit_write_pipe( write_only pipe int p, reserve_id_t reserve
 // Note: Not supporting this for intel sub groups (yet?).
 reserve_id_t __sub_group_reserve_read_pipe( read_only pipe int p, uint num_packets, uint bytes, uint alignment )
 {
-    return to_ocl_reserveid(__spirv_GroupReserveReadPipePackets(Subgroup, to_spirv_pipe_ro(p), num_packets, bytes));
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+    return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_GroupReserveReadPipePackets(Subgroup, __builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), num_packets, bytes));
 }
 
 reserve_id_t __sub_group_reserve_write_pipe( write_only pipe int p, uint num_packets, uint bytes, uint alignment )
 {
-    return to_ocl_reserveid(__spirv_GroupReserveWritePipePackets(Subgroup, to_spirv_pipe_wo(p), num_packets, bytes));
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+    return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_GroupReserveWritePipePackets(Subgroup, __builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), num_packets, bytes));
 }
 
 void __sub_group_commit_read_pipe( read_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment )
 {
-    __spirv_GroupCommitReadPipe(Subgroup, to_spirv_pipe_ro(p), to_spirv_reserveid(reserve_id), bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+    __spirv_GroupCommitReadPipe(Subgroup, __builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
 }
 
 void __sub_group_commit_write_pipe( write_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment )
 {
-    __spirv_GroupCommitWritePipe(Subgroup, to_spirv_pipe_wo(p), to_spirv_reserveid(reserve_id), bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+    __spirv_GroupCommitWritePipe(Subgroup, __builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -347,32 +358,38 @@ void __sub_group_commit_write_pipe( write_only pipe int p, reserve_id_t reserve_
 //
 uint __get_pipe_num_packets(pipe int pipe_, uint bytes, uint alignment)
 {
-    return __spirv_GetNumPipePackets(to_spirv_pipe_ro(pipe_), bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    return __spirv_GetNumPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), bytes);
 }
 
 uint __get_pipe_num_packets_ro(pipe int pipe_, uint bytes, uint alignment)
 {
-    return __spirv_GetNumPipePackets(to_spirv_pipe_ro(pipe_), bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    return __spirv_GetNumPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), bytes);
 }
 
 uint __get_pipe_num_packets_wo(write_only pipe int pipe_, uint bytes, uint alignment)
 {
-    return __spirv_GetNumPipePackets(to_spirv_pipe_wo(pipe_), bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    return __spirv_GetNumPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), bytes);
 }
 
 uint __get_pipe_max_packets(pipe int pipe_, uint bytes, uint alignment)
 {
-    return __spirv_GetMaxPipePackets(to_spirv_pipe_ro(pipe_), bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    return __spirv_GetMaxPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), bytes);
 }
 
 uint __get_pipe_max_packets_ro(pipe int pipe_, uint bytes, uint alignment)
 {
-    return __spirv_GetMaxPipePackets(to_spirv_pipe_ro(pipe_), bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    return __spirv_GetMaxPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), bytes);
 }
 
 uint __get_pipe_max_packets_wo(write_only pipe int pipe_, uint bytes, uint alignment)
 {
-    return __spirv_GetMaxPipePackets(to_spirv_pipe_wo(pipe_), bytes);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+    return __spirv_GetMaxPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), bytes);
 }
 
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0

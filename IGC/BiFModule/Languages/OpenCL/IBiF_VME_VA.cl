@@ -243,8 +243,8 @@ INLINE void OVERLOADABLE intel_work_group_vme_mb_query(
    GRFHandle imeMsg = __builtin_IB_create_message_phases(2);
    create_ime_message(imeMsg);
    GRFHandle zeroCenter = __builtin_IB_create_message_phases(1);
-   long srcImageInt = (long) __builtin_astype(srcImage, void*);
-   long refImageInt = (long) __builtin_astype(refImage, void*);
+   long srcImageInt = (long)__builtin_IB_cast_object_to_generic_ptr(srcImage);
+   long refImageInt = (long)__builtin_IB_cast_object_to_generic_ptr(refImage);
    __builtin_IB_vme_send_ime(res, universalInputMsg, imeMsg, srcImageInt, refImageInt, as_uint(ref0Coord), as_uint(ref1Coord), zeroCenter);
 
    if (__builtin_IB_vme_subpixel_mode() != SAMPLER_VME_SUBPIXEL_MODE_INTEGER) {
@@ -398,8 +398,8 @@ INLINE void OVERLOADABLE DoMultiQuery(
     GRFHandle MVMin  = __builtin_IB_create_message_phases_no_init(4);
     GRFHandle SADMin = __builtin_IB_create_message_phases_no_init(1);
     GRFHandle result = __builtin_IB_create_message_phases(RETURN_MESSAGE_NUM_GRFS);
-    long srcImgInt = (long)__builtin_astype(srcImg, void*);
-    long refImgInt = (long)__builtin_astype(refImg, void*);
+    long srcImgInt = (long)__builtin_IB_cast_object_to_generic_ptr(srcImg);
+    long refImgInt = (long)__builtin_IB_cast_object_to_generic_ptr(refImg);
 
     // i = 0
     {
@@ -543,7 +543,7 @@ static GRFHandle create_universal_input_sic_message(bool is16x16, ushort edgeMas
 static INLINE GRFHandle ReadPixels(read_only image2d_t intraSrcImage, int2 coord, int width, int height)
 {
     // allocate a block of 64 bytes to store the read data into.
-    long intraSrcImageInt = (long)__builtin_astype(intraSrcImage, void*);
+    long intraSrcImageInt = (long)__builtin_IB_cast_object_to_generic_ptr(intraSrcImage);
     GRFHandle dst = __builtin_IB_create_message_phases((width * height) / (NUM_DWORD_IN_GRF * 4));
     __builtin_IB_media_block_rectangle_read(intraSrcImageInt, coord, width, height, dst);
 
@@ -651,9 +651,9 @@ static INLINE void DoMultiCheck(
 
     GRFHandle result       = __builtin_IB_create_message_phases(RETURN_MESSAGE_NUM_GRFS);
 
-    long srcImageInt = (long)__builtin_astype(srcImage, void*);
-    long refImage0Int = (long)__builtin_astype(refImage0, void*);
-    long refImage1Int = (long)__builtin_astype(refImage1, void*);
+    long srcImageInt = (long)__builtin_IB_cast_object_to_generic_ptr(srcImage);
+    long refImage0Int = (long)__builtin_IB_cast_object_to_generic_ptr(refImage0);
+    long refImage1Int = (long)__builtin_IB_cast_object_to_generic_ptr(refImage1);
 
     // Set the Intra Compute Type (M1.1, bits 9:8).
     // Initially disable and turn it on if we need to do intra prediction.

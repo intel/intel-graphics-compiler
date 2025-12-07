@@ -67,8 +67,8 @@ INLINE bool OVERLOADABLE IGIL_Valid_Event( __spirv_DeviceEvent in_event )
 
     bool retValue = true;
 
-    if( ( ( int )(__builtin_astype(in_event, __private void*)) >= pool->m_size ) ||
-        ( IGIL_EVENT_INVALID_HANDLE == (size_t)__builtin_astype(in_event, __private void*) ) )
+    if( ( ( int )((long)__builtin_IB_cast_object_to_generic_ptr(in_event)) >= pool->m_size ) ||
+        ( IGIL_EVENT_INVALID_HANDLE == (size_t)(long)__builtin_IB_cast_object_to_generic_ptr(in_event) ) )
     {
         retValue = false;
     }
@@ -152,7 +152,7 @@ INLINE void OVERLOADABLE IGIL_FreeEvent( clk_event_t event )
     // offset into the event data
     __global IGIL_DeviceEvent *events = IGIL_GetDeviceEvents();
 
-    atomic_xchg( &events[(int)__builtin_astype(event, __private void*)].m_state, IGIL_EVENT_UNUSED );
+    atomic_xchg( &events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(event)].m_state, IGIL_EVENT_UNUSED );
 }
 
 INLINE int OVERLOADABLE IGIL_RetainEvent( __spirv_DeviceEvent in_event )
@@ -168,7 +168,7 @@ INLINE int OVERLOADABLE IGIL_RetainEvent( __spirv_DeviceEvent in_event )
     }
     else
     {
-        atomic_inc( &events[(int)__builtin_astype(in_event, __private void*)].m_refCount );
+        atomic_inc( &events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(in_event)].m_refCount );
     }
 
     return status;
@@ -187,14 +187,14 @@ INLINE int OVERLOADABLE IGIL_ReleaseEvent( __spirv_DeviceEvent in_event )
     }
     else
     {
-        atomic_dec( &events[(int)__builtin_astype(in_event, __private void*)].m_refCount );
+        atomic_dec( &events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(in_event)].m_refCount );
 
         // May not be required to be this aggressive freeing events
-        if( ( events[(int)__builtin_astype(in_event, __private void*)].m_refCount <= 0 ) &&
-            ( events[(int)__builtin_astype(in_event, __private void*)].m_numChildren <= 0 ) &&
-            ( events[(int)__builtin_astype(in_event, __private void*)].m_numDependents <= 0 ) )
+        if( ( events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(in_event)].m_refCount <= 0 ) &&
+            ( events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(in_event)].m_numChildren <= 0 ) &&
+            ( events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(in_event)].m_numDependents <= 0 ) )
         {
-            atomic_xchg( &events[(int)__builtin_astype(in_event, __private void*)].m_state, IGIL_EVENT_UNUSED );
+            atomic_xchg( &events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(in_event)].m_state, IGIL_EVENT_UNUSED );
         }
     }
 
@@ -203,7 +203,7 @@ INLINE int OVERLOADABLE IGIL_ReleaseEvent( __spirv_DeviceEvent in_event )
 
 INLINE __spirv_DeviceEvent IGIL_CreateUserEvent()
 {
-    __spirv_DeviceEvent newEvent = __builtin_astype((__private void*)(size_t)IGIL_AcquireEvent(), __spirv_DeviceEvent);
+    __spirv_DeviceEvent newEvent = __builtin_IB_convert_object_type_to_spirv_deviceevent((__private void*)(size_t)IGIL_AcquireEvent());
 
     if( IGIL_Valid_Event(newEvent) == false)
     {
@@ -213,8 +213,8 @@ INLINE __spirv_DeviceEvent IGIL_CreateUserEvent()
     {
         __global IGIL_DeviceEvent *events = IGIL_GetDeviceEvents();
 
-        events[(int)__builtin_astype(newEvent, __private void*)].m_eventType = IGIL_EVENT_TYPE_USER;
-        events[(int)__builtin_astype(newEvent, __private void*)].m_state = CL_SUBMITTED;
+        events[(int)__builtin_IB_cast_object_to_generic_ptr(newEvent)].m_eventType = IGIL_EVENT_TYPE_USER;
+        events[(int)__builtin_IB_cast_object_to_generic_ptr(newEvent)].m_state = CL_SUBMITTED;
     }
 
     return newEvent;
@@ -228,12 +228,12 @@ INLINE void OVERLOADABLE IGIL_SetUserEventStatus( __spirv_DeviceEvent event, int
     {
         // Now what?  OpenCL 2 2.0 rev5 defines no return code for this function
     }
-    else if( events[(int)__builtin_astype(event, __private void*)].m_eventType & IGIL_EVENT_TYPE_USER )
+    else if( events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(event)].m_eventType & IGIL_EVENT_TYPE_USER )
     {
         // state must be CL_COMPLETE or a negative value
         if( ( state == CL_COMPLETE ) || ( state & 0x80000000 ) )
         {
-            events[(int)__builtin_astype(event, __private void*)].m_state = state;
+            events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(event)].m_state = state;
         }
     }
 }
@@ -252,16 +252,16 @@ INLINE void OVERLOADABLE IGIL_CaptureEventProfilingInfo( __spirv_DeviceEvent eve
     else
     {
         __global IGIL_DeviceEvent *events = IGIL_GetDeviceEvents();
-        events[(int)__builtin_astype(event, __private void*)].m_eventType |= IGIL_EVENT_TYPE_PROFILING;
-        events[(int)__builtin_astype(event, __private void*)].m_pProfiling = ( ulong ) value;
+        events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(event)].m_eventType |= IGIL_EVENT_TYPE_PROFILING;
+        events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(event)].m_pProfiling = ( ulong ) value;
         //if this function is called after event is already transitioned to CL_COMPLETE state,it means that timestamp are present, update pointer data
-        if( events[(int)__builtin_astype(event, __private void*)].m_state == CL_COMPLETE )
+        if( events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(event)].m_state == CL_COMPLETE )
         {
             __global ulong* retValue = ( __global ulong* ) value;
 
-            ulong StartTime                = events[(int)__builtin_astype(event, __private void*)].m_profilingCmdStart;
-            ulong EndTime                  = events[(int)__builtin_astype(event, __private void*)].m_profilingCmdEnd;
-            ulong CompleteTime             = events[(int)__builtin_astype(event, __private void*)].m_profilingCmdComplete;
+            ulong StartTime                = events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(event)].m_profilingCmdStart;
+            ulong EndTime                  = events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(event)].m_profilingCmdEnd;
+            ulong CompleteTime             = events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(event)].m_profilingCmdComplete;
             ulong CLEndTransitionTime      = 0;
             ulong CLCompleteTransitionTime = 0;
 
@@ -299,7 +299,8 @@ INLINE void OVERLOADABLE IGIL_CaptureEventProfilingInfo( __spirv_DeviceEvent eve
 //===----------------------------------------------------------------------===//
 INLINE __global IGIL_CommandQueue* IGIL_GetCommandQueue( queue_t q )
 {
-    return __builtin_astype(q, __global IGIL_CommandQueue*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(q);
+    return __builtin_astype(id, __global IGIL_CommandQueue*);
 }
 
 INLINE bool IGIL_ValidCommandQueue( queue_t q )
@@ -318,7 +319,8 @@ INLINE bool IGIL_ValidCommandQueue( queue_t q )
 
 INLINE __global IGIL_CommandHeader* IGIL_GetCommandHeader( queue_t q, uint offset )
 {
-    __global uchar *pQueueRaw = __builtin_astype(q, __global uchar*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(q);
+    __global uchar *pQueueRaw = __builtin_astype(id, __global uchar*);
 
     __global IGIL_CommandHeader* pCommand = (__global IGIL_CommandHeader*)(pQueueRaw + offset);
 
@@ -395,8 +397,8 @@ INLINE int OVERLOADABLE IGIL_AcquireQueueSpace( queue_t q, uint numBytes )
 // API Entry Points for Events
 //===----------------------------------------------------------------------===//
 
-#define to_spirv_event(e) (__builtin_astype(e, __spirv_DeviceEvent))
-#define to_ocl_event(e)   (__builtin_astype(e, clk_event_t))
+#define to_spirv_event(e) (__builtin_IB_convert_object_type_to_spirv_deviceevent(__builtin_IB_cast_object_to_generic_ptr(e)))
+#define to_ocl_event(e)   (__builtin_IB_convert_object_type_to_ocl_clk_event(e))
 
 INLINE void OVERLOADABLE retain_event(clk_event_t event)
 {
@@ -430,7 +432,7 @@ INLINE bool OVERLOADABLE is_valid_event (clk_event_t event)
 
 INLINE OVERLOADABLE queue_t get_default_queue()
 {
-    return __builtin_astype(__spirv_GetDefaultQueue(), queue_t);
+    return __builtin_IB_convert_object_type_to_ocl_queue(__spirv_GetDefaultQueue());
 }
 
 #undef exec_offsetof

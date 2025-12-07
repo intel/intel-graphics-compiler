@@ -506,6 +506,55 @@ void BIImport::fixInvalidBitcasts(llvm::Module &M) {
   }
 }
 
+void BIImport::addOCLObjectCastFunctionDefinitions(llvm::Module &M) {
+  std::vector<Instruction *> InstsToRemove;
+  for (Function &FRef : M) {
+    Function *F = &FRef;
+
+    if (!F->isDeclaration())
+      continue;
+
+    // Look for declarations whose name contains "__builtin_IB_cast_object_to_generic_ptr" or
+    // "__builtin_IB_convert_object_type_to". The name may contain additional mangling.
+    StringRef Name = F->getName();
+    if (!Name.contains("__builtin_IB_cast_object_to_generic_ptr") &&
+        !Name.contains("__builtin_IB_convert_object_type_to"))
+      continue;
+
+    IGC_ASSERT_MESSAGE(
+        F->arg_size() == 1,
+        "__builtin_IB_cast_object_to_generic_ptr/__builtin_IB_convert_object_type_to_X takes only one argument!");
+
+    Argument *Arg = F->getArg(0);
+
+#if LLVM_VERSION_MAJOR >= 16
+    IGC_ASSERT_MESSAGE(!Arg->getType()->isTargetExtTy(), "TargetExtTys must be retyped to pointers at this point!");
+#endif
+    IGC_ASSERT_MESSAGE(
+        Arg->getType()->isPointerTy(),
+        "__builtin_IB_cast_object_to_generic_ptr/__builtin_IB_convert_object_type_to_X takes a pointer argument!");
+    IGC_ASSERT_MESSAGE(
+        F->getType()->isPointerTy(),
+        "__builtin_IB_cast_object_to_generic_ptr/__builtin_IB_convert_object_type_to_X must return a pointer!");
+
+    // TODO: The casts could be emitted in place of the builtin call (instead of adding builtin function definition).
+    // However, this is not possible with LLVM 16 due to a bug in ValueMapper. The workaround is to emit the casts
+    // inside the builtin function body and let the calls be inlined later (ultimately the IR is the same).
+    BasicBlock *Entry = BasicBlock::Create(M.getContext(), "", F);
+    IRBuilder<> Builder(Entry);
+    Value *RetValue = Arg;
+    if (Arg->getType()->getPointerAddressSpace() != F->getReturnType()->getPointerAddressSpace()) {
+      RetValue = Builder.CreateAddrSpaceCast(Arg, F->getReturnType());
+    } else if (!Arg->getType()->isOpaquePointerTy() && Arg->getType() != F->getReturnType()) {
+      RetValue = Builder.CreateBitCast(Arg, F->getReturnType());
+    }
+    Builder.CreateRet(RetValue);
+  }
+
+  for (Instruction *I : InstsToRemove)
+    I->eraseFromParent();
+}
+
 bool BIImport::runOnModule(Module &M) {
   fixSPIRFunctionsReturnType(M);
 
@@ -551,6 +600,7 @@ bool BIImport::runOnModule(Module &M) {
   InitializeBIFlags(M);
   removeFunctionBitcasts(M);
   fixInvalidBitcasts(M);
+  addOCLObjectCastFunctionDefinitions(M);
 
   std::vector<Instruction *> InstToRemove;
   // temporary work around for sampler types and pipes

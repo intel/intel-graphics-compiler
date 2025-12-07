@@ -161,8 +161,9 @@ typedef bfloat bfloat8 __attribute__((ext_vector_type(8)));
 typedef bfloat bfloat16 __attribute__((ext_vector_type(16)));
 
 #define INTEL_PIPE_RESERVE_ID_VALID_BIT (1U << 30)
-#define CLK_NULL_RESERVE_ID \
-    (__builtin_astype(((void *)(~INTEL_PIPE_RESERVE_ID_VALID_BIT)), __spirv_ReserveId))
+#define CLK_NULL_RESERVE_ID                               \
+    (__builtin_IB_convert_object_type_to_spirv_reserveid( \
+        ((void *)(~INTEL_PIPE_RESERVE_ID_VALID_BIT))))
 
 #define IMAGETYPE_SAMPLED_SHIFT 62
 #define IMAGETYPE_DIM_SHIFT 59

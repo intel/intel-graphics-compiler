@@ -6,11 +6,112 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "IBiF_Header.cl"
+
 #ifndef IGCBIF_INTRINSICS_CL
 #define IGCBIF_INTRINSICS_CL
 
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
+
+// Helper intrinsics for casting objects of builtin types
+void* __attribute__((overloadable)) __builtin_IB_cast_object_to_generic_ptr(void* object);
+
+#define DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(OBJ_TYPE) \
+    void* __attribute__((overloadable)) __builtin_IB_cast_object_to_generic_ptr(OBJ_TYPE object);
+
+#define DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_WITH_AQ(ACCESS_QUAL, OBJ_TYPE) \
+    void* __attribute__((overloadable)) __builtin_IB_cast_object_to_generic_ptr(ACCESS_QUAL OBJ_TYPE object);
+
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(clk_event_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(queue_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(sampler_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(read_only pipe int)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(write_only pipe int)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(private struct __spirv_AvcImeResultINTEL*)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(intel_sub_group_avc_ime_payload_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(private struct __spirv_AvcImeResultSingleReferenceStreamoutINTEL*)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(private struct __spirv_AvcImeResultDualReferenceStreamoutINTEL*)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(private struct __spirv_AvcImeSingleReferenceStreaminINTEL*)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(private struct __spirv_AvcImeDualReferenceStreaminINTEL*)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(private struct __spirv_AvcMceResultINTEL*)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(private struct __spirv_AvcImePayloadINTEL*)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(private struct __spirv_AvcRefPayloadINTEL*)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(private struct __spirv_AvcMcePayloadINTEL*)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(private struct __spirv_AvcRefResultINTEL*)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(private struct __spirv_AvcSicPayloadINTEL*)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(private struct __spirv_AvcSicResultINTEL*)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(intel_sub_group_avc_ime_single_reference_streamin_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(intel_sub_group_avc_ime_dual_reference_streamin_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(intel_sub_group_avc_ime_result_dual_reference_streamout_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(intel_sub_group_avc_ime_result_single_reference_streamout_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(intel_sub_group_avc_ime_result_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(intel_sub_group_avc_ref_payload_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(intel_sub_group_avc_ref_result_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(intel_sub_group_avc_sic_payload_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(intel_sub_group_avc_sic_result_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(intel_sub_group_avc_mce_payload_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(intel_sub_group_avc_mce_result_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(event_t)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR(reserve_id_t)
+
+
+#define DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_FOR_AQ(ACCESS_QUAL)                          \
+    DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_WITH_AQ(ACCESS_QUAL, image1d_t)                  \
+    DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_WITH_AQ(ACCESS_QUAL, image2d_t)                  \
+    DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_WITH_AQ(ACCESS_QUAL, image3d_t)                  \
+    DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_WITH_AQ(ACCESS_QUAL, image1d_buffer_t)           \
+    DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_WITH_AQ(ACCESS_QUAL, image1d_array_t)            \
+    DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_WITH_AQ(ACCESS_QUAL, image2d_array_t)            \
+    DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_WITH_AQ(ACCESS_QUAL, image2d_depth_t)            \
+    DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_WITH_AQ(ACCESS_QUAL, image2d_msaa_t)             \
+    DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_WITH_AQ(ACCESS_QUAL, image2d_msaa_depth_t)       \
+    DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_WITH_AQ(ACCESS_QUAL, image2d_array_depth_t)      \
+    DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_WITH_AQ(ACCESS_QUAL, image2d_array_msaa_t)       \
+    DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_WITH_AQ(ACCESS_QUAL, image2d_array_msaa_depth_t)
+
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_FOR_AQ(read_only)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_FOR_AQ(read_write)
+DECL_IB_CAST_OBJECT_TO_GENERIC_PTR_FOR_AQ(write_only)
+
+
+clk_event_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_clk_event(void* object);
+constant struct __spirv_Sampler* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_sampler(void* object);
+event_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_event(void* object);
+generic clk_event_t* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(void* object);
+global struct __spirv_Image__void_1_0_0_0_0_0_0* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_image(void* object);
+global struct __spirv_Pipe__0* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_pipe_ro(void* object);
+global struct __spirv_Pipe__1* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_pipe_wo(void* object);
+intel_sub_group_avc_ime_dual_reference_streamin_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_intel_sub_group_avc_ime_dual_reference_streamin_t(void* object);
+intel_sub_group_avc_ime_payload_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_intel_sub_group_avc_ime_payload(void* object);
+intel_sub_group_avc_ime_result_dual_reference_streamout_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_intel_sub_group_avc_ime_result_dual_reference_streamout_t(void* object);
+intel_sub_group_avc_ime_result_single_reference_streamout_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_intel_sub_group_avc_ime_result_single_reference_streamout(void* object);
+intel_sub_group_avc_ime_result_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_intel_sub_group_avc_ime_result(void* object);
+intel_sub_group_avc_ime_single_reference_streamin_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_intel_sub_group_avc_ime_single_reference_streamin_t(void* object);
+intel_sub_group_avc_mce_payload_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_intel_sub_group_avc_mce_payload(void* object);
+intel_sub_group_avc_mce_result_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_intel_sub_group_avc_mce_result_t(void* object);
+intel_sub_group_avc_ref_payload_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_intel_sub_group_avc_ref_payload_t(void* object);
+intel_sub_group_avc_ref_result_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_intel_sub_group_avc_ref_result_t(void* object);
+intel_sub_group_avc_sic_payload_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_intel_sub_group_avc_sic_payload_t(void* object);
+intel_sub_group_avc_sic_result_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_intel_sub_group_avc_sic_result_t(void* object);
+private struct __spirv_AvcImeDualReferenceStreaminINTEL* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_AvcImeDualReferenceStreaminINTEL(void* object);
+private struct __spirv_AvcImePayloadINTEL* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_AvcImePayloadINTEL(void* object);
+private struct __spirv_AvcImeResultDualReferenceStreamoutINTEL* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_AvcImeResultDualReferenceStreamoutINTEL(void* object);
+private struct __spirv_AvcImeResultINTEL* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_AvcImeResultINTEL(void* object);
+private struct __spirv_AvcImeResultSingleReferenceStreamoutINTEL* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_AvcImeResultSingleReferenceStreamoutINTEL(void* object);
+private struct __spirv_AvcImeSingleReferenceStreaminINTEL* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_AvcImeSingleReferenceStreaminINTEL(void* object);
+private struct __spirv_AvcMcePayloadINTEL* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_AvcMcePayloadINTEL(void* object);
+private struct __spirv_AvcMceResultINTEL* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_AvcMceResultINTEL(void* object);
+private struct __spirv_AvcRefPayloadINTEL* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_AvcRefPayloadINTEL(void* object);
+private struct __spirv_AvcRefResultINTEL* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_AvcRefResultINTEL(void* object);
+private struct __spirv_AvcSicPayloadINTEL* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_AvcSicPayloadINTEL(void* object);
+private struct __spirv_AvcSicResultINTEL* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_AvcSicResultINTEL(void* object);
+private struct __spirv_DeviceEvent* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_deviceevent(void* object);
+private struct __spirv_Event* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_event(void* object);
+private struct __spirv_Queue* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_queue(void* object);
+private struct __spirv_ReserveId* __attribute__((overloadable)) __builtin_IB_convert_object_type_to_spirv_reserveid(void* object);
+queue_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_queue(void* object);
+reserve_id_t __attribute__((overloadable)) __builtin_IB_convert_object_type_to_ocl_reserveid(void* object);
 
 // Access of image and sampler parameters
 
