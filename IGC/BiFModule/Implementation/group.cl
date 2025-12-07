@@ -2003,16 +2003,16 @@ DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ulong8, v8i64, ulong, i64, __builtin_IB_si
 // Reads one or more components of 'Result' data for each invocation in the subgroup from the specified 'Image'
 // at the specified 'Coordinate' as a block operation.
 
-#define DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(TYPE, TYPE_ABBR, INTERNAL_FUNC)                                         \
+#define DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(TYPE, TYPE_ABBR, INTERNAL_FUNC)                                        \
 TYPE __attribute__((overloadable)) __spirv_SubgroupImageBlockReadINTEL_R##TYPE(global Img2d_ro* image, int2 coord)  \
-{                                                                                                                    \
-    long id = (long)__builtin_astype(image, __global void*);                                                           \
-    return as_##TYPE(INTERNAL_FUNC(id, coord));                                                                      \
-}                                                                                                                    \
+{                                                                                                                   \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);                                                 \
+    return as_##TYPE(INTERNAL_FUNC(id, coord));                                                                     \
+}                                                                                                                   \
 TYPE __attribute__((overloadable)) __spirv_SubgroupImageBlockReadINTEL_R##TYPE(global Img2d_rw* image, int2 coord)  \
-{                                                                                                                    \
-    long id = (long)__builtin_astype(image, __global void*);                                                           \
-    return as_##TYPE(INTERNAL_FUNC(id, coord));                                                                      \
+{                                                                                                                   \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);                                                 \
+    return as_##TYPE(INTERNAL_FUNC(id, coord));                                                                     \
 }
 
 #ifdef cl_intel_subgroups_char
@@ -2047,17 +2047,17 @@ DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(long8, v8i64, __builtin_IB_simd_media_block
 // at the specified 'Coordinate' as a block operation.
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(TYPE, TYPE_ABBR, INTERNAL_FUNC)      \
-void __attribute__((overloadable)) __spirv_SubgroupImageBlockWriteINTEL(    \
+void __attribute__((overloadable)) __spirv_SubgroupImageBlockWriteINTEL(           \
     global Img2d_wo* image, int2 coord, TYPE data)                                 \
 {                                                                                  \
-    long id = (long)__builtin_astype(image, __global void*);                         \
-    INTERNAL_FUNC((long)image, coord, data);                                        \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);                \
+    INTERNAL_FUNC((long)image, coord, data);                                       \
 }                                                                                  \
-void __attribute__((overloadable)) __spirv_SubgroupImageBlockWriteINTEL(    \
+void __attribute__((overloadable)) __spirv_SubgroupImageBlockWriteINTEL(           \
     global Img2d_rw* image, int2 coord, TYPE data)                                 \
 {                                                                                  \
-    long id = (long)__builtin_astype(image, __global void*);                         \
-    INTERNAL_FUNC((long)image, coord, data);                                        \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);                \
+    INTERNAL_FUNC((long)image, coord, data);                                       \
 }
 
 #ifdef cl_intel_subgroups_char
@@ -2091,16 +2091,16 @@ DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ulong8, v8i64, __builtin_IB_simd_media_blo
 // Reads a block of data from a 2D region of the specified 'Image'.
 
 #define DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(TYPE, TYPE_ABBR)                                                         \
-TYPE __attribute__((overloadable)) __spirv_SubgroupImageMediaBlockReadINTEL_R##TYPE(   \
+TYPE __attribute__((overloadable)) __spirv_SubgroupImageMediaBlockReadINTEL_R##TYPE(                                        \
     global Img2d_ro* image, int2 coord, int width, int height)                                                              \
 {                                                                                                                           \
-    long id = (long)__builtin_astype(image, global void*);                                                                    \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);                                                         \
     return as_##TYPE(__builtin_IB_media_block_read_u##TYPE(id, coord, width, height));                                      \
 }                                                                                                                           \
-TYPE __attribute__((overloadable)) __spirv_SubgroupImageMediaBlockReadINTEL_R##TYPE(   \
+TYPE __attribute__((overloadable)) __spirv_SubgroupImageMediaBlockReadINTEL_R##TYPE(                                        \
     global Img2d_rw* image, int2 coord, int width, int height)                                                              \
 {                                                                                                                           \
-    long id = (long)__builtin_astype(image, global void*);                                                                    \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);                                                         \
     return as_##TYPE(__builtin_IB_media_block_read_u##TYPE(id, coord, width, height));                                      \
 }
 
@@ -2127,16 +2127,16 @@ DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(int8, v8i32)
 // Writes a block of data into a 2D region of the specified 'Image'.
 
 #define DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(TYPE, TYPE_ABBR)                                                \
-void __attribute__((overloadable)) __spirv_SubgroupImageMediaBlockWriteINTEL(    \
+void __attribute__((overloadable)) __spirv_SubgroupImageMediaBlockWriteINTEL(                                       \
     global Img2d_wo* image, int2 coord, int width, int height, TYPE data)                                           \
 {                                                                                                                   \
-    long id = (long)__builtin_astype(image, global void*);                                                            \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);                                                 \
     __builtin_IB_media_block_write_u##TYPE(id, coord, width, height, as_u##TYPE(data));                             \
 }                                                                                                                   \
-void __attribute__((overloadable)) __spirv_SubgroupImageMediaBlockWriteINTEL(    \
+void __attribute__((overloadable)) __spirv_SubgroupImageMediaBlockWriteINTEL(                                       \
     global Img2d_rw* image, int2 coord, int width, int height, TYPE data)                                           \
 {                                                                                                                   \
-    long id = (long)__builtin_astype(image, global void*);                                                            \
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);                                                 \
     __builtin_IB_media_block_write_u##TYPE(id, coord, width, height, as_u##TYPE(data));                             \
 }
 

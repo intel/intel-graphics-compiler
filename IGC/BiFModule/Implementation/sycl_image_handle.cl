@@ -43,5 +43,5 @@ DEF_CONVERT_HANDLE_TO_SAMPLED_IMAGE(3, 2_0_0_0_0_0_0, )             // 3d
 
 __spirv_Sampler OVERLOADABLE __spirv_ConvertHandleToSamplerINTEL(size_t handle)
 {
-    return __builtin_astype(handle, __spirv_Sampler);
+    return __builtin_IB_convert_object_type_to_spirv_sampler((ulong *)handle);
 }

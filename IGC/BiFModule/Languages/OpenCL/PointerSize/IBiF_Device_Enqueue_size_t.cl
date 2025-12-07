@@ -144,7 +144,7 @@ INLINE __global IGIL_CommandHeader* OVERLOADABLE IGIL_EnqueueKernelShared(
         pCommand->m_magic                 = IGIL_COMMAND_MAGIC_NUMBER;
         pCommand->m_kernelId              = blockId;
         pCommand->m_totalLocalSize        = 0;
-        pCommand->m_event                 = ( int )__builtin_astype(event, __private void*);
+        pCommand->m_event                 = ( int )(long)__builtin_IB_cast_object_to_generic_ptr(event);
         pCommand->m_numScalarArguments    = sizeofscalarParamBuf >> 2; // assume all scalar args are DWORD sized for now sine they occupy a dword of the curbe.
         pCommand->m_sizeOfScalarArguments = sizeofscalarParamBuf;
         pCommand->m_numDependencies       = 0;
@@ -159,11 +159,11 @@ INLINE __global IGIL_CommandHeader* OVERLOADABLE IGIL_EnqueueKernelShared(
         atomic_inc( &pQueue->m_controls.m_TotalNumberOfQueues );
 
         // if associated event, update its count of children
-        if( IGIL_EVENT_INVALID_HANDLE != (size_t)__builtin_astype(event, __private void*) )
+        if( IGIL_EVENT_INVALID_HANDLE != (size_t)(long)__builtin_IB_cast_object_to_generic_ptr(event) )
         {
             __global IGIL_DeviceEvent *events = IGIL_GetDeviceEvents();
 
-            atomic_inc( &events[(int)__builtin_astype(event, __private void*)].m_numChildren );
+            atomic_inc( &events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(event)].m_numChildren );
         }
 
         __global void* variableParamAddr = &pCommand->m_data[numHandles];
@@ -347,19 +347,19 @@ INLINE int OVERLOADABLE IGIL_EnqueueKernelWithEvents(
     // if returning an event, acquire an event
     if( 0 != out_event )
     {
-        myEvent = __builtin_astype((__private void *)(size_t)IGIL_AcquireEvent(), clk_event_t);
+        myEvent = __builtin_IB_convert_object_type_to_ocl_clk_event((__private void *)(size_t)IGIL_AcquireEvent());
 
-        if( IGIL_EVENT_INVALID_HANDLE == (size_t)__builtin_astype(myEvent, __private void*) )
+        if( IGIL_EVENT_INVALID_HANDLE == (size_t)(long)__builtin_IB_cast_object_to_generic_ptr(myEvent) )
         {
           status = CLK_EVENT_ALLOCATION_FAILURE;
         }
-        else if( IGIL_EVENT_INVALID_HANDLE != (size_t)__builtin_astype(parentEvent, __private void*) )
+        else if( IGIL_EVENT_INVALID_HANDLE != (size_t)(long)__builtin_IB_cast_object_to_generic_ptr(parentEvent) )
         {
             // if parent event, update its count of children to include newly created event
 
-            events[(int)__builtin_astype(myEvent, __private void*)].m_parentEvent = (size_t)__builtin_astype(parentEvent, __private void*);
-            atomic_inc( &events[(int)__builtin_astype(parentEvent, __private void*)].m_numChildren );
-            events[(int)__builtin_astype(myEvent, __private void*)].m_state = CL_QUEUED;
+            events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(myEvent)].m_parentEvent = (size_t)(long)__builtin_IB_cast_object_to_generic_ptr(parentEvent);
+            atomic_inc( &events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(parentEvent)].m_numChildren );
+            events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(myEvent)].m_state = CL_QUEUED;
         }
     }
 
@@ -429,8 +429,8 @@ INLINE int OVERLOADABLE IGIL_EnqueueKernelWithEvents(
             {
                 clk_event_t d = in_events[i];
 
-                pCommand->m_data[i] = (unsigned)(__builtin_astype(d, __private void*));
-                atomic_inc( &events[(int)__builtin_astype(d, __private void*)].m_numDependents );
+                pCommand->m_data[i] = (unsigned)((long)__builtin_IB_cast_object_to_generic_ptr(d));
+                atomic_inc( &events[(int)(long)__builtin_IB_cast_object_to_generic_ptr(d)].m_numDependents );
             }
         }
         else
@@ -441,7 +441,7 @@ INLINE int OVERLOADABLE IGIL_EnqueueKernelWithEvents(
             if( NULL != out_event )
             {
                 IGIL_FreeEvent( myEvent );
-                myEvent = __builtin_astype((__private void *)IGIL_EVENT_INVALID_HANDLE, clk_event_t);
+                myEvent = __builtin_IB_convert_object_type_to_ocl_clk_event((__private void *)IGIL_EVENT_INVALID_HANDLE);
             }
         }
     }
@@ -476,8 +476,7 @@ INLINE int enqueue_IB_kernel( queue_t q,
                                globalArgBuf, globalPtrArgMappingBuf, numGlobalArgBuf,
                                getobjectidMappingBuf, numArgMappings,
                                range, flags,
-                               __builtin_astype((__private void *)(size_t)__builtin_IB_get_parent_event(),
-                               clk_event_t) );
+                               __builtin_IB_convert_object_type_to_ocl_clk_event((__private void *)(size_t)__builtin_IB_get_parent_event()) );
 }
 
 INLINE int enqueue_IB_kernel_local( queue_t q,
@@ -500,8 +499,7 @@ INLINE int enqueue_IB_kernel_local( queue_t q,
                                               globalArgBuf, globalPtrArgMappingBuf, numGlobalArgBuf,
                                               getobjectidMappingBuf, numArgMappings,
                                               range, flags,
-                                              __builtin_astype((__private void *)(size_t)__builtin_IB_get_parent_event(),
-                                              clk_event_t) );
+                                              __builtin_IB_convert_object_type_to_ocl_clk_event((__private void *)(size_t)__builtin_IB_get_parent_event()) );
 }
 
 INLINE int enqueue_IB_kernel_events(
@@ -532,7 +530,7 @@ INLINE int enqueue_IB_kernel_events(
                                          numEventsInWaitList,
                                          waitList,
                                          returnEvent,
-                                         __builtin_astype((__private void *)(size_t)__builtin_IB_get_parent_event(), clk_event_t) );
+                                         __builtin_IB_convert_object_type_to_ocl_clk_event((__private void *)(size_t)__builtin_IB_get_parent_event()) );
 }
 
 INLINE int enqueue_IB_kernel_local_events(
@@ -565,7 +563,7 @@ INLINE int enqueue_IB_kernel_local_events(
                                          numEventsInWaitList,
                                          waitList,
                                          returnEvent,
-                                         __builtin_astype((__private void *)(size_t)__builtin_IB_get_parent_event(), clk_event_t) );
+                                         __builtin_IB_convert_object_type_to_ocl_clk_event((__private void *)(size_t)__builtin_IB_get_parent_event()) );
 }
 
 INLINE uint IGIL_calc_sub_group_count_for_ndrange( const ndrange_t range, uint block_simd_size)
@@ -613,7 +611,7 @@ int __intel_enqueue_marker_impl(
             numEventsInWaitList,
             waitList,
             returnEvent,
-            __builtin_astype((__private void *)(size_t)__builtin_IB_get_parent_event(), clk_event_t) );
+            __builtin_IB_convert_object_type_to_ocl_clk_event((__private void *)(size_t)__builtin_IB_get_parent_event()) );
     }
     else
     {

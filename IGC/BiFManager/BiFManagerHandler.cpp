@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include <list>
 #include <AdaptorOCL/OCL/BuiltinResource.h>
 #include <AdaptorOCL/OCL/LoadBuffer.h>
+#include <common/BuiltinTypes.h>
 
 #include <Probe/Assertion.h>
 #include "inc/common/secure_string.h"
@@ -231,6 +232,15 @@ void BiFManagerHandler::preapareBiFSections(llvm::Module &pMainModule, TFunction
         this->LoadedBiFSections.insert({record->ID, std::move(*ModuleOrErr)});
 
         llvm::Module &bifGenericSection = *this->LoadedBiFSections[record->ID].get();
+
+#if LLVM_VERSION_MAJOR >= 16
+        // LLVM 17+ or patched LLVM 16 Clang generates TargetExtTy to represent OpenCL/SPIR-V builtin types (such as
+        // sampler_t). IGC expects these types to be represented using opaque pointers. Hence, here the types are
+        // retyped to allow BiF linking.
+        // TODO: Consider moving retyping to BiF modules generation stage to improve compilation time.
+        retypeOpenCLTargetExtTyAsPointers(&bifGenericSection);
+#endif
+
         if (record->ID < Module32Idx) {
           if (T == "") {
             bifGenericSection.setTargetTriple(builtinSizeModule()->getTargetTriple());

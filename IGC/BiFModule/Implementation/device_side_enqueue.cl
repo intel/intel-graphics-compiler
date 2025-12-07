@@ -15,17 +15,17 @@ int __intel_enqueue_marker_impl(queue_t q, uint numEventsInWaitList, const __gen
 
 uint __attribute__((overloadable)) __spirv_EnqueueMarker(__spirv_Queue Queue, uint NumEvents, __spirv_DeviceEvent private* WaitEvents, __spirv_DeviceEvent private* RetEvent)
 {
-  return __intel_enqueue_marker_impl(__builtin_astype(Queue, queue_t), NumEvents, __builtin_astype(WaitEvents, const generic clk_event_t*), __builtin_astype(RetEvent, generic clk_event_t*));
+  return __intel_enqueue_marker_impl(__builtin_IB_convert_object_type_to_ocl_queue(Queue), NumEvents, __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(WaitEvents), __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(RetEvent));
 }
 
 uint __attribute__((overloadable)) __spirv_EnqueueMarker(__spirv_Queue Queue, uint NumEvents, __spirv_DeviceEvent local* WaitEvents, __spirv_DeviceEvent local* RetEvent)
 {
-  return __intel_enqueue_marker_impl(__builtin_astype(Queue, queue_t), NumEvents, __builtin_astype(WaitEvents, const generic clk_event_t*), __builtin_astype(RetEvent, generic clk_event_t*));
+  return __intel_enqueue_marker_impl(__builtin_IB_convert_object_type_to_ocl_queue(Queue), NumEvents, __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(WaitEvents), __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(RetEvent));
 }
 
 uint __attribute__((overloadable)) __spirv_EnqueueMarker(__spirv_Queue Queue, uint NumEvents, __spirv_DeviceEvent generic* WaitEvents, __spirv_DeviceEvent generic* RetEvent)
 {
-  return __intel_enqueue_marker_impl(__builtin_astype(Queue, queue_t), NumEvents, __builtin_astype(WaitEvents, const generic clk_event_t*), __builtin_astype(RetEvent, generic clk_event_t*));
+  return __intel_enqueue_marker_impl(__builtin_IB_convert_object_type_to_ocl_queue(Queue), NumEvents, __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(WaitEvents), __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(RetEvent));
 }
 
 #define DEFN_GET_KERNEL_WORK_GROUP_SIZE(ADDRSPACE_NUMBER, ADDRSPACE_NAME)                                                                                                \
@@ -108,7 +108,7 @@ INLINE uint __intel_calc_kernel_max_num_subgroups(uint simdSize)
 
 __spirv_Queue __attribute__((overloadable)) __spirv_GetDefaultQueue()
 {
-    return __builtin_astype(__builtin_IB_get_default_device_queue(), __spirv_Queue);
+    return __builtin_IB_convert_object_type_to_spirv_queue(__builtin_IB_get_default_device_queue());
 }
 
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0

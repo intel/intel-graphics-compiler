@@ -30,6 +30,7 @@ add_library("${IGC_BUILD__PROJ__BiFManager}"
     "${CMAKE_CURRENT_SOURCE_DIR}/BiFManagerHandler.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/BiFManagerCommon.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/LoadBuffer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/BuiltinTypes.cpp"
 )
 
 add_dependencies("${IGC_BUILD__PROJ__BiFManager}" "${IGC_BUILD__PROJ__BiFManagerSplitTask}")
@@ -43,7 +44,8 @@ ${IGC_WrapperLLVM_SRC}
 "${CMAKE_CURRENT_SOURCE_DIR}/BiFManagerTool.cpp"
 "${CMAKE_CURRENT_SOURCE_DIR}/BiFManagerCommon.cpp"
 "${CMAKE_CURRENT_SOURCE_DIR}/BiFManagerTool.hpp"
-"${CMAKE_CURRENT_SOURCE_DIR}/BiFManagerCommon.hpp")
+"${CMAKE_CURRENT_SOURCE_DIR}/BiFManagerCommon.hpp"
+"${CMAKE_CURRENT_SOURCE_DIR}/../common/BuiltinTypes.h")
 target_link_libraries("${IGC_BUILD__PROJ__BiFManager_EXE}"
     ${IGC_BUILD__LLVM_LIBS_TO_LINK}
   )

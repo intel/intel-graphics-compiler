@@ -99,23 +99,20 @@ WG_BROADCAST_ALL_DEFN(double, double, f64)
 // Asynchronous copy functions
 //*****************************************************************************/
 
-#define to_spirv_event(e) __builtin_astype(e, __spirv_Event)
-#define to_ocl_event(e)   __builtin_astype(e, event_t)
-
 #define ASYNC_COPY(dst, src, num_elements, evt, mangle_string)                  \
 {                                                                               \
   if (sizeof(num_elements) == 32)                                               \
-    return to_ocl_event(__spirv_GroupAsyncCopy(Workgroup,dst,src,(int)num_elements,(int)0,to_spirv_event(evt)));\
+    return __builtin_IB_convert_object_type_to_ocl_event(__spirv_GroupAsyncCopy(Workgroup,dst,src,(int)num_elements,(int)0,__builtin_IB_convert_object_type_to_spirv_event(__builtin_IB_cast_object_to_generic_ptr(evt))));\
   else                                                                          \
-    return to_ocl_event(__spirv_GroupAsyncCopy(Workgroup,dst,src,(long)num_elements,(long)0,to_spirv_event(evt)));\
+    return __builtin_IB_convert_object_type_to_ocl_event(__spirv_GroupAsyncCopy(Workgroup,dst,src,(long)num_elements,(long)0,__builtin_IB_convert_object_type_to_spirv_event(__builtin_IB_cast_object_to_generic_ptr(evt))));\
 }
 
 #define ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, mangle_string)    \
 {                                                                               \
   if (sizeof(num_elements) == 32)                                               \
-    return to_ocl_event(__spirv_GroupAsyncCopy(Workgroup,dst,src,(int)num_elements,(int)src_stride,to_spirv_event(evt)));\
+    return __builtin_IB_convert_object_type_to_ocl_event(__spirv_GroupAsyncCopy(Workgroup,dst,src,(int)num_elements,(int)src_stride,__builtin_IB_convert_object_type_to_spirv_event(__builtin_IB_cast_object_to_generic_ptr(evt))));\
   else                                                                          \
-    return to_ocl_event(__spirv_GroupAsyncCopy(Workgroup,dst,src,(long)num_elements,(long)src_stride,to_spirv_event(evt)));\
+    return __builtin_IB_convert_object_type_to_ocl_event(__spirv_GroupAsyncCopy(Workgroup,dst,src,(long)num_elements,(long)src_stride,__builtin_IB_convert_object_type_to_spirv_event(__builtin_IB_cast_object_to_generic_ptr(evt))));\
 }
 
 // ************************  Global to local.*********************************
@@ -1511,78 +1508,78 @@ INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global double16 *dst
 //*****************************************************************************/
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_only image1d_array_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image1d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_only image2d_array_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_only image2d_array_depth_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_only image2d_array_msaa_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_only image2d_array_msaa_depth_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
 INLINE size_t OVERLOADABLE get_image_array_size(write_only image1d_array_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image1d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(write_only image2d_array_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(write_only image2d_array_depth_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(write_only image2d_array_msaa_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(write_only image2d_array_msaa_depth_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_write image1d_array_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image1d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_write image2d_array_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_write image2d_array_depth_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_write image2d_array_msaa_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image2d_array_size(id);
 }
 
 INLINE size_t OVERLOADABLE get_image_array_size(read_write image2d_array_msaa_depth_t image) {
-    long id = (long)__builtin_astype(image, __global void*);
+    long id = (long)__builtin_IB_cast_object_to_generic_ptr(image);
     return __builtin_IB_get_image2d_array_size(id);
 }
 #endif // SUPPORT_ACCESS_QUAL_OVERLOAD
