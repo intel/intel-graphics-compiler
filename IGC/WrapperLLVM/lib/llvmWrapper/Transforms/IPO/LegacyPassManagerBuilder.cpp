@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Transforms/IPO/LegacyPassManagerBuilder.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
@@ -22,6 +23,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Transforms/Vectorize.h"
+#include "common/LLVMWarningsPop.hpp"
+#include "Compiler/IGCPassSupport.h"
 
 using namespace llvm;
 
