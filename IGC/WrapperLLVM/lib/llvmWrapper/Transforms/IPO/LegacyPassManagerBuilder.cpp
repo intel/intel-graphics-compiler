@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Transforms/IPO/LegacyPassManagerBuilder.h"
+#include "llvmWrapper/Transforms/IPO/StripDeadPrototypes.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -362,7 +363,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
   addVectorPasses(MPM, /* IsFullLTO */ false);
 
   // FIXME: We shouldn't bother with this anymore.
-  MPM.add(createStripDeadPrototypesPass()); // Get rid of dead prototypes
+  MPM.add(IGCLLVM::createLegacyWrappedStripDeadPrototypesPass()); // Get rid of dead prototypes
 
   // GlobalOpt already deletes dead functions and globals, at -O2 try a
   // late pass of GlobalDCE.  It is capable of deleting dead cycles.

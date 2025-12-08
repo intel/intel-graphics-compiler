@@ -12,6 +12,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/IPO.h>
 #include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
+#include "llvmWrapper/Transforms/IPO/StripSymbols.h"
+#include "llvmWrapper/Transforms/IPO/StripDeadPrototypes.h"
 
 #include "common/LLVMWarningsPop.hpp"
 
@@ -71,8 +73,8 @@ void KernelModuleSplitter::splitModuleForKernel(const llvm::Function *kernelF) {
   // Do cleanup.
   IGC::IGCPassManager mpm(&_oclContext, "CleanupAfterModuleSplitting");
   mpm.add(IGCLLVM::createLegacyWrappedGlobalDCEPass()); // Delete unreachable globals.
-  mpm.add(createStripDeadDebugInfoPass());  // Remove dead debug info.
-  mpm.add(createStripDeadPrototypesPass()); // Remove dead func decls.
+  mpm.add(IGCLLVM::createLegacyWrappedStripDeadDebugInfoPass());  // Remove dead debug info.
+  mpm.add(IGCLLVM::createLegacyWrappedStripDeadPrototypesPass()); // Remove dead func decls.
 
   mpm.run(*kernelM.get());
   _splittedModule = std::move(kernelM);

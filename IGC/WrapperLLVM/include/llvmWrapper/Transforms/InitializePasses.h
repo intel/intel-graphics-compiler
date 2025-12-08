@@ -21,4 +21,10 @@ void initializeMemCpyOptLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeGlobalDCELegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeIPSCCPLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeInstructionCombiningPassWrapperPass(llvm::PassRegistry &);
+void initializeLoopLoadEliminationLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeSCCPLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeStripDeadDebugInfoLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeStripDeadPrototypesLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeStripNonLineTableDebugLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeLowerExpectIntrinsicLegacyPassWrapperPass(llvm::PassRegistry &);
 #endif // IGCLLVM_TRANSFORMS_INITIALIZE_PASSES_H

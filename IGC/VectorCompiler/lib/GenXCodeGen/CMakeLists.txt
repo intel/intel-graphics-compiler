@@ -105,6 +105,7 @@ set(CODEGEN_SOURCES
   GenXVisa.cpp
   GenXVisaRegAlloc.cpp
   OCLRuntimeInfoPrinter.cpp
+  ${IGC_WrapperLLVM_SRC}
 )
 
 add_library(VCCodeGen STATIC ${CODEGEN_SOURCES})
@@ -143,7 +144,6 @@ igc_get_llvm_targets(LLVM_LIBS
 
 target_link_libraries(VCCodeGen
   ${LLVM_LIBS}
-
   LLVMGenXIntrinsics
 
   VCInternalIntrinsics

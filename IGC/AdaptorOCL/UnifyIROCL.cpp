@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/TargetLibraryInfo.h>
 
 #include <llvmWrapper/Transforms/InstCombine/InstCombineWorklist.h>
+#include <llvmWrapper/Transforms/Scalar/SCCP.h>
 #include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
 #include <llvm/Transforms/Utils.h>
 
@@ -379,7 +380,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
   // OCL has built-ins so it always need to run inlining
   {
     // We need to propagate constexpr casts to resolve pseudo indirect calls
-    mpm.add(createSCCPPass());
+    mpm.add(IGCLLVM::createLegacyWrappedSCCPPass());
     mpm.add(new ResolveConstExprCalls());
 
     // Estimate maximal function size in the module and disable subroutine

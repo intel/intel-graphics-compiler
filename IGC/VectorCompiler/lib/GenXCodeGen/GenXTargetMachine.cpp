@@ -93,6 +93,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Utils/Mem2Reg.h"
 
+#include "llvmWrapper/Transforms/Scalar/LowerExpectIntrinsic.h"
 #include "llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.h"
 #include "llvmWrapper/Transforms/Scalar/JumpThreading.h"
 
@@ -520,7 +521,7 @@ bool GenXTargetMachine::addPassesToEmitFile(
 
   vc::addPass(PM, createSROAPass());
   vc::addPass(PM, createEarlyCSEPass());
-  vc::addPass(PM, createLowerExpectIntrinsicPass());
+  vc::addPass(PM, IGCLLVM::createLegacyWrappedLowerExpectIntrinsicPass());
   vc::addPass(PM, createCFGSimplificationPass(
                       SimplifyCFGOptions().hoistCommonInsts(true)));
   vc::addPass(PM, createInstructionCombiningPass());

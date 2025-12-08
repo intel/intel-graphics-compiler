@@ -75,12 +75,19 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/DeadStoreElimination.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/JumpThreading.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/MemCpyOptimizer.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/LoopLoadElimination.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/LowerExpectIntrinsic.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/SCCP.h"
+
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/IPO/GlobalDCE.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/IPO/SCCP.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/IPO/StripSymbols.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/IPO/StripDeadPrototypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/InstCombine/InstructionCombining.h"
 
     "${CMAKE_CURRENT_SOURCE_DIR}/include/lldWrapper/Common/Driver.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/IPO/LegacyPassManagerBuilder.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/StripNonLineTableDebugInfo.h"
   )
 
 set(IGC_WrapperLLVM_SRC
@@ -89,10 +96,16 @@ set(IGC_WrapperLLVM_SRC
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/DeadStoreElimination.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/JumpThreading.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/MemCpyOptimizer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/LoopLoadElimination.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/LowerExpectIntrinsic.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/SCCP.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/IPO/GlobalDCE.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/IPO/SCCP.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/IPO/StripSymbols.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/IPO/StripDeadPrototypes.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/InstCombine/InstructionCombining.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/IPO/LegacyPassManagerBuilder.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Utils/StripNonLineTableDebugInfo.cpp"
     )
 
 include_directories(

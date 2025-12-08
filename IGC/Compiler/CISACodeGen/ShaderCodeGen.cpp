@@ -163,6 +163,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/IPO/SCCP.h"
 #include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
 #include "llvmWrapper/Transforms/Scalar/MemCpyOptimizer.h"
+#include "llvmWrapper/Transforms/Scalar/LoopLoadElimination.h"
+#include "llvmWrapper/Transforms/Scalar/SCCP.h"
 
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
@@ -1442,7 +1444,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
           mpm.add(createDecompose2DBlockFuncsPass());
         }
 
-        mpm.add(llvm::createLoopLoadEliminationPass());
+        mpm.add(IGCLLVM::createLegacyWrappedLoopLoadEliminationPass());
 
         if (!extensiveShader(pContext) && pContext->m_instrTypes.hasNonPrimitiveAlloca) {
           if (pContext->m_DriverInfo.NeedCountSROA()) {
@@ -1480,7 +1482,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       }
       mpm.add(createGenOptLegalizer());
 
-      mpm.add(llvm::createSCCPPass());
+      mpm.add(IGCLLVM::createLegacyWrappedSCCPPass());
 
       mpm.add(llvm::createDeadCodeEliminationPass());
       if (!extensiveShader(pContext))
