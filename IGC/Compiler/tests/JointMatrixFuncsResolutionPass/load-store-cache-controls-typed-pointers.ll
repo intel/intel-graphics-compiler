@@ -6,7 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --typed-pointers -igc-joint-matrix-resolution -S --platformpvc 2>&1 < %s | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt --typed-pointers -igc-joint-matrix-resolution -S --platformpvc 2>&1 < %s \
+; RUN:   --regkey DisableDuplicateWarnings=0 | FileCheck %s
 ; ------------------------------------------------
 ; JointMatrixFuncsResolutionPass
 ; ------------------------------------------------

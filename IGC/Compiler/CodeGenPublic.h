@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include <string.h>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 #include "Compiler/CISACodeGen/ShaderUnits.hpp"
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "Compiler/CISACodeGen/DriverInfo.hpp"
@@ -940,6 +941,9 @@ public:
   uint m_ForceSIMDRPELimit = 0;
 
 private:
+  // For storing emitted warning messages
+  std::unordered_set<std::string_view> m_emittedWarnings;
+
   // For storing error message
   std::stringstream oclErrorMessage;
   // For storing warning message

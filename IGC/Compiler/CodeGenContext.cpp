@@ -712,6 +712,13 @@ void CodeGenContext::EmitWarning(const char *warningstr, const llvm::Value *cont
   if (IGC_IS_FLAG_ENABLED(DisableWarnings))
     return;
 
+  if (IGC_IS_FLAG_ENABLED(DisableDuplicateWarnings)) {
+    if (m_emittedWarnings.count(warningstr)) {
+      return;
+    }
+    m_emittedWarnings.insert(warningstr);
+  }
+
   this->oclWarningMessage << "\nwarning: ";
   EmitMessage(this->oclWarningMessage, warningstr, context);
   this->oclWarningMessage << "\n";
