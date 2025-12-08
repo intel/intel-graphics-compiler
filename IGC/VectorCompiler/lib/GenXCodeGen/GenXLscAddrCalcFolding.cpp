@@ -15,10 +15,12 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/MathExtras.h"
 
+#include "llvm/Analysis/ValueTracking.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
+#include "llvm/Support/KnownBits.h"
 
 #define DEBUG_TYPE "genx-lsc-addr-calc-folding"
 
@@ -281,6 +283,8 @@ Value *GenXLscAddrCalcFolding::applyLscAddrFolding(Value *Offsets, APInt &Scale,
       (!ConstOp->getType()->isVectorTy() || !ConstOp->getSplatValue()))
     return nullptr;
 
+  Value *NewOffsets = BinOp->getOperand(1 - ConstIdx);
+
   auto Imm = ConstOp->getUniqueInteger();
   auto NewScale(Scale);
   auto NewOffset(Offset);
@@ -316,5 +320,5 @@ Value *GenXLscAddrCalcFolding::applyLscAddrFolding(Value *Offsets, APInt &Scale,
   Scale = std::move(NewScale);
   Offset = std::move(NewOffset);
 
-  return BinOp->getOperand(1 - ConstIdx);
+  return NewOffsets;
 }
