@@ -22,7 +22,7 @@ SPDX-License-Identifier: MIT
 #pragma warning(disable : 4141)
 #pragma warning(disable : 4146)
 #pragma warning(disable : 4242)
-#include <llvm/ADT/Triple.h>
+#include "llvmWrapper/TargetParser/Triple.h"
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/FileSystem.h>

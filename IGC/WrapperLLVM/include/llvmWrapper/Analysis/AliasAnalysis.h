@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Analysis/AliasAnalysis.h"
-#include "llvm/ADT/Triple.h"
+#include "llvmWrapper/TargetParser/Triple.h"
 #include "Probe/Assertion.h"
 
 namespace IGCLLVM {

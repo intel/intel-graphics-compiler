@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
 
 #include <optional>
 
-#include <llvm/ADT/Triple.h>
+#include "llvmWrapper/TargetParser/Triple.h"
 #include <llvm/ADT/None.h>
 #include <llvm/Bitcode/BitcodeWriterPass.h>
 #include <llvm/CodeGen/TargetSubtargetInfo.h>

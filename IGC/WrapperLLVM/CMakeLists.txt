@@ -61,6 +61,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/TypeSize.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/YAMLParser.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Target/TargetMachine.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/TargetParser/Triple.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/InstCombine/InstCombineWorklist.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/Cloning.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/LoopUtils.h"

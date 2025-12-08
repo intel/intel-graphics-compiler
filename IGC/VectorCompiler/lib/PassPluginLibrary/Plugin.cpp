@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "llvm/ADT/Triple.h"
+#include "llvmWrapper/TargetParser/Triple.h"
 #include "llvm/CodeGen/CommandFlags.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"

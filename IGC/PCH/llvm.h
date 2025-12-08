@@ -40,7 +40,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/StringSet.h"
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/ADT/TinyPtrVector.h"
-#include "llvm/ADT/Triple.h"
+#include "llvmWrapper/TargetParser/Triple.h"
 #include "llvm/ADT/Twine.h"
 #include "llvm/Analysis/AliasSetTracker.h"
 #include "llvm/Analysis/AssumptionCache.h"

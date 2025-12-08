@@ -23,7 +23,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/IPO.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Support/FileSystem.h>
-#include <llvm/ADT/Triple.h>
+#include "llvmWrapper/TargetParser/Triple.h"
 #include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
 
 #include "common/LLVMWarningsPop.hpp"

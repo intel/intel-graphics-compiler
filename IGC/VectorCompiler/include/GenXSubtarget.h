@@ -30,7 +30,7 @@ SPDX-License-Identifier: MIT
 #include "visa_igc_common_header.h"
 
 #include "llvm/ADT/StringSwitch.h"
-#include "llvm/ADT/Triple.h"
+#include "llvmWrapper/TargetParser/Triple.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
 #include "llvm/IR/CallingConv.h"
 #include "llvm/Pass.h"
