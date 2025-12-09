@@ -25,11 +25,11 @@ template <class T> using optional = std::optional<T>;
 template <class T> T getValue(optional<T> data) { return data.value(); }
 #endif
 
-template <typename T> static std::optional<T> makeOptional(const llvm::Optional<T> &O) {
+template <typename T> static std::optional<T> makeOptional(const IGCLLVM::optional<T> &O) {
 #if LLVM_VERSION_MAJOR < 16
   return O.hasValue() ? std::optional<T>(O.getValue()) : std::optional<T>(std::nullopt);
 #else
-  return O.has_value() ? std::optional<T>(O.value()) : std::optional<T>(std::nullopt);
+  return O;
 #endif
 }
 
