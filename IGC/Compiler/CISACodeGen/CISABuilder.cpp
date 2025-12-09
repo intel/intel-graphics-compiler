@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/CISABuilder.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "common/allocator.h"
@@ -3545,8 +3546,8 @@ void CEncoder::SetAbortOnSpillThreshold(bool canAbortOnSpill, bool AllowSpill) {
   }
 }
 
-void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall,
-                                      bool enableVISA_IR) {
+void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, SIMDMode simdMode, bool canAbortOnSpill,
+                                      bool hasStackCall, bool enableVISA_IR) {
   CodeGenContext *context = m_program->GetContext();
   bool KernelDebugEnable = false;
   bool ForceNonCoherentStatelessBti = false;
@@ -4239,13 +4240,16 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
 
   auto funcInfoMD = context->getMetaDataUtils()->getFunctionsInfoItem(m_program->entry);
   uint32_t MaxRegPressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
+  // need to adjust since MaxRegPressure assumes minimal SIMD
+  auto guessedSimd = IGCLivenessAnalysisBase::bestGuessSIMDSize(context, context->getMetaDataUtils(), m_program->entry);
+  MaxRegPressure = MaxRegPressure * numLanes(simdMode) / numLanes(guessedSimd);
   uint32_t RegPressureThreshold = (uint32_t)(context->getNumGRFPerThread(true) * 0.6);
-
+  bool maxPressureHeur = MaxRegPressure > 0 && MaxRegPressure < RegPressureThreshold &&
+                         m_program->GetParent()->getLLVMFunction()->size() == 1;
   if (context->type == ShaderType::OPENCL_SHADER &&
-      (m_program->m_Platform->limitedBCR() || (MaxRegPressure > 0 && MaxRegPressure < RegPressureThreshold))) {
+      (m_program->m_Platform->limitedBCR() || (maxPressureHeur))) {
     SaveOption(vISA_enableBCR, true);
-    if (m_program->GetParent()->getLLVMFunction()->size() == 1 &&
-        m_program->m_Platform->getMinDispatchMode() != SIMDMode::SIMD8)
+    if (m_program->m_Platform->getMinDispatchMode() != SIMDMode::SIMD8)
       SaveOption(vISA_forceBCR, true);
   }
   if (context->type == ShaderType::OPENCL_SHADER && m_program->m_Platform->supportDpasInstruction()) {
@@ -4722,7 +4726,7 @@ void CEncoder::InitLabelMap(const llvm::Function *F) {
   }
 }
 
-void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall,
+void CEncoder::InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall,
                            bool hasAdditionalVisaAsmToLink, int numThreadsPerEU, uint lowerBoundGRF, uint upperBoundGRF,
                            VISAKernel *prevKernel) {
   m_aliasesMap.clear();
@@ -4770,7 +4774,7 @@ void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInli
   if (IsCodePatchCandidate()) {
     SetHasPrevKernel(prevKernel != nullptr);
   }
-  InitVISABuilderOptions(VISAPlatform, canAbortOnSpill, hasStackCall, builderOpt == VISA_BUILDER_BOTH);
+  InitVISABuilderOptions(VISAPlatform, simdMode, canAbortOnSpill, hasStackCall, builderOpt == VISA_BUILDER_BOTH);
 
   if (numThreadsPerEU > 0) {
     // Number of threads per EU is set per kernel (by function MD)

@@ -63,9 +63,9 @@ public:
   unsigned int estimateSizeInBytes(ValueSet &Set, llvm::Function &F, unsigned int SIMD, WIAnalysisRunner *WI = nullptr);
   void collectPressureForBB(llvm::BasicBlock &BB, InsideBlockPressureMap &BBListing, unsigned int SIMD,
                             WIAnalysisRunner *WI = nullptr);
-
   SIMDMode bestGuessSIMDSize(Function *F = nullptr);
-
+  static SIMDMode bestGuessSIMDSize(IGC::CodeGenContext *CGCtx, IGCMD::MetaDataUtils *MDUtils, Function *F = nullptr,
+                                    GenXFunctionGroupAnalysis *FGA = nullptr);
   unsigned int bytesToRegisters(unsigned int Bytes) {
     unsigned int RegisterSizeInBytes = registerSizeInBytes();
     unsigned int AmountOfRegistersRoundUp = (Bytes + RegisterSizeInBytes - 1) / RegisterSizeInBytes;

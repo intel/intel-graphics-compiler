@@ -118,10 +118,11 @@ struct SEncoderState {
 
 class CEncoder {
 public:
-  void InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, bool hasAdditionalVisaAsmToLink,
-                   int numThreadsPerEU, uint lowerBoundGRF, uint upperBoundGRF, VISAKernel *prevKernel);
+  void InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall,
+                   bool hasAdditionalVisaAsmToLink, int numThreadsPerEU, uint lowerBoundGRF, uint upperBoundGRF,
+                   VISAKernel *prevKernel);
   void InitBuildParams(llvm::SmallVector<std::unique_ptr<const char, std::function<void(const char *)>>, 10> &params);
-  void InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall,
+  void InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, SIMDMode simdMode, bool canAbortOnSpill, bool hasStackCall,
                               bool enableVISA_IR);
   SEncoderState CopyEncoderState();
   void SetEncoderState(SEncoderState &newState);
