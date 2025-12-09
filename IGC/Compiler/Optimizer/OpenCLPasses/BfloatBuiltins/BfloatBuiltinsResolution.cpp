@@ -35,8 +35,10 @@ BfloatBuiltinsResolution::BfloatBuiltinsResolution(void) : FunctionPass(ID) {
 // Array with supported function names
 static const std::array FuncNames = {"__builtin_spirv_ClampConvertBF16ToE4M3INTEL",
                                      "__builtin_spirv_ClampConvertBF16ToE5M2INTEL",
+                                     "__builtin_spirv_ClampStochasticRoundBF16ToE2M1INTEL",
                                      "__builtin_spirv_ClampStochasticRoundBF16ToE4M3INTEL",
                                      "__builtin_spirv_ClampStochasticRoundBF16ToE5M2INTEL",
+                                     "__builtin_spirv_ClampStochasticRoundBF16ToInt4INTEL",
                                      "__builtin_spirv_ConvertBF16ToE2M1INTEL",
                                      "__builtin_spirv_ConvertBF16ToE4M3INTEL",
                                      "__builtin_spirv_ConvertBF16ToE5M2INTEL",
