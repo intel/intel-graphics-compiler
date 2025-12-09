@@ -235,7 +235,7 @@ void retypeOpenCLTargetExtTyAsPointers(Module *M) {
 
   // Global mapping between TargetExtTy structs and their retyped variant (they are shared between functions).
   DenseMap<StructType *, StructType *> TETtoRetypedStructs;
-  DenseMap<Function *, FunctionSignatureChange> PendingSigChanges;
+  MapVector<Function *, FunctionSignatureChange> PendingSigChanges;
 
   // Remap bodies and collect function signature changes.
   for (Function &F : *M) {
@@ -364,7 +364,7 @@ void retypeOpenCLTargetExtTyAsPointers(Module *M) {
           AttrsChanged ? AttributeList::get(M->getContext(), OldAttrs.getFnAttrs(), OldAttrs.getRetAttrs(), NewArgAttrs)
                        : OldAttrs;
 
-      PendingSigChanges.try_emplace(&F, FunctionSignatureChange{NewFTy, NewAttrs});
+      PendingSigChanges.insert(std::make_pair(&F, FunctionSignatureChange{NewFTy, NewAttrs}));
     }
   }
 
