@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/CallSite.h"
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include "Probe/Assertion.h"
 
@@ -148,7 +149,7 @@ static bool structSafeToPassByVal(const Argument &Arg, StructType *StrTy) {
 
 static Type *getPtrArgElementType(const Argument &PtrArg) {
   auto *PtrArgTy = cast<PointerType>(PtrArg.getType());
-  if (!PtrArgTy->isOpaque())
+  if (!IGCLLVM::isOpaque(PtrArgTy))
     return IGCLLVM::getNonOpaquePtrEltTy(PtrArgTy);
   if (auto *ByValTy = PtrArg.getParamByValType())
     return ByValTy;

@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <vector>
 #include "Probe/Assertion.h"
@@ -178,7 +179,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M) {
         Value *replacement = gep;
 
         // TODO: Remove when typed pointers are no longer supported.
-        if (!ptrType->isOpaque())
+        if (!IGCLLVM::isOpaque(ptrType))
           replacement =
               CastInst::CreatePointerCast(gep, pGlobalVar->getType(), "cast" + pGlobalVar->getName(), pEntryPoint);
 

@@ -55,6 +55,14 @@ inline bool isOpaqueOrPointeeTypeMatches(llvm::PointerType *PT, llvm::Type *Ty) 
 #endif
 }
 
+inline bool isOpaque(const llvm::PointerType *PT) {
+#if LLVM_VERSION_MAJOR < 17
+  return PT->isOpaque();
+#else
+  return true;
+#endif
+}
+
 } // namespace IGCLLVM
 
 #endif

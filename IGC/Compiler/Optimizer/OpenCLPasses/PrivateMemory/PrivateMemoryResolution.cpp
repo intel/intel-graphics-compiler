@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/IR/DataLayout.h"
