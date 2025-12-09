@@ -957,6 +957,8 @@ public:
     }
   }
 
+  uint32_t getMinNumGRF() const { return supportsVRT() ? 32 : 128; }
+
   uint32_t getInlineDataSize() const {
     if (!supportInlineData())
       return 0;

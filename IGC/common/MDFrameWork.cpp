@@ -446,7 +446,10 @@ void IGC::serialize(const IGC::ModuleMetaData &moduleMD, Module *module) {
 }
 
 bool IGC::isBindless(const IGC::FunctionMetaData &funcMD) {
-  return funcMD.rtInfo.callableShaderType != RayGen || funcMD.rtInfo.isContinuation;
+  if (funcMD.rtInfo.isContinuation)
+    return true;
+
+  return funcMD.rtInfo.callableShaderType != RayGen && funcMD.rtInfo.callableShaderType != Prologue;
 }
 
 bool IGC::isContinuation(const IGC::FunctionMetaData &funcMD) { return funcMD.rtInfo.isContinuation; }
@@ -454,6 +457,8 @@ bool IGC::isContinuation(const IGC::FunctionMetaData &funcMD) { return funcMD.rt
 bool IGC::isCallStackHandler(const IGC::FunctionMetaData &funcMD) {
   return funcMD.rtInfo.callableShaderType == IGC::CallStackHandler;
 }
+
+bool IGC::isPrologue(const IGC::FunctionMetaData &funcMD) { return funcMD.rtInfo.callableShaderType == IGC::Prologue; }
 
 
 int IGC::extractAnnotatedNumThreads(const IGC::FunctionMetaData &funcMD) {

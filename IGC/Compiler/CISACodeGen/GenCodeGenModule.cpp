@@ -746,7 +746,7 @@ void GenXFunctionGroupAnalysis::setGroupAttributes() {
           } else if (!calledF || (calledF->isDeclaration() && calledF->hasFnAttribute("referenced-indirectly"))) {
             // This is the true indirect call case, where either the callee's address is taken, or it belongs
             // to an external module. We do not know the callgraph in this case.
-            hasStackCall = true;
+            hasStackCall = !call->doesNotReturn();
             FG->m_hasIndirectCall = true;
             FG->m_hasPartialCallGraph = true;
           } else if (calledF && calledF->hasFnAttribute("referenced-indirectly")) {

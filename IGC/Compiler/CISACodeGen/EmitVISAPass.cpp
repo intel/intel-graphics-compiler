@@ -11390,6 +11390,21 @@ void EmitPass::emitStackCall(llvm::CallInst *inst) {
 
   bool isIndirectFCall = !F || F->hasFnAttribute("referenced-indirectly");
   bool isInvokeSIMDTarget = F && F->hasFnAttribute("invoke_simd_target");
+
+  if (inst->doesNotReturn()) {
+
+    IGC_ASSERT_MESSAGE(inst->getType()->isVoidTy(), "Call that does not return can't return a value");
+    IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(inst) == 0, "Arguments for non-returning call are not implemented");
+
+    auto *funcAddr = GetSymbol(IGCLLVM::getCalledValue(inst));
+      funcAddr = TruncatePointer(funcAddr);
+    IGC_ASSERT_MESSAGE(funcAddr->IsUniform(), "Function address must be uniform for non-returning stack call");
+    m_encoder->IndirectStackCall(nullptr, funcAddr, 0, 0);
+    m_encoder->Push();
+
+    return;
+  }
+
   CVariable *ArgBlkVar = m_currShader->GetARGV();
   uint32_t offsetA = 0; // visa argument offset
   uint32_t offsetS = 0; // visa stack offset

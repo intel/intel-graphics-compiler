@@ -878,6 +878,7 @@ enum class ShaderTypeMD
     bool isBindless(const IGC::FunctionMetaData &funcMD);
     bool isContinuation(const IGC::FunctionMetaData& funcMD);
     bool isCallStackHandler(const IGC::FunctionMetaData &funcMD);
+    bool isPrologue(const IGC::FunctionMetaData &funcMD);
 
 
     // User annotations query functions

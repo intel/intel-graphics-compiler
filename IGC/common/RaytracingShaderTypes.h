@@ -21,5 +21,7 @@ enum CallableShaderTypeMD : uint32_t
     // by any RTUnit or BTD machinery.  It is useful, though, to have all
     // shader types available for reference in this enum.
     RayGen,
+    Prologue,
+    NumberOfAllShaderTypes
 };
 

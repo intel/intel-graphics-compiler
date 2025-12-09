@@ -524,6 +524,8 @@ struct SRayTracingShadersGroup {
   BindlessShaderVec m_CallableShaders;
   // Continuation shaders
   BindlessShaderVec m_Continuations;
+
+  std::optional<SBindlessProgram> prologueKernel;
 };
 
 struct SRayTracingPipelineConfig {

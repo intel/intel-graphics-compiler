@@ -212,9 +212,14 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
       return EntryPreemptionVal;
     };
     const bool isFunc = !isEntryFunc(CGCtx->getMetaDataUtils(), &F);
+
     if (ForcePreemptionDisable) {
-      RTB.SetInsertPoint(&F.getEntryBlock().front());
-      RTB.CreatePreemptionDisableIntrinsic();
+      auto &rtInfo = CGCtx->getModuleMetaData()->FuncMD[&F].rtInfo;
+      if (rtInfo.callableShaderType != Prologue) {
+        // For raytracing shaders, disable preemption at entry
+        RTB.SetInsertPoint(&F.getEntryBlock().front());
+        RTB.CreatePreemptionDisableIntrinsic();
+      }
     }
 
     SmallVector<Instruction *, 8> DeadInsts;

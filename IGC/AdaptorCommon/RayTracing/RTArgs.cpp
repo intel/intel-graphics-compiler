@@ -31,6 +31,7 @@ void ArgQuery::init(CallableShaderTypeMD FuncType, const FunctionMetaData &FMD) 
   uint32_t Idx = 0;
   switch (FuncType) {
   case RayGen:
+  case Prologue:
   case CallStackHandler:
     break;
   case Miss:
