@@ -9,14 +9,15 @@
 ; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-priv-mem-to-reg -S < %s 2>&1 | FileCheck %s
 
-; This test verifies that the pass emits a bitcast with the expected load type.
+; This test verified that mismatch is detected and transpose is not applied.
 
 %g = type { [17 x double] }
 
 define void @test() {
 ; CHECK-LABEL: @test(
-; CHECK: alloca <17 x double>
-; CHECK: bitcast {{.*}} {{%.*}} to <2 x i32>
+; CHECK: alloca %g, align 8
+; CHECK: getelementptr i8, ptr %a, i32 128
+; CHECK: load <2 x i32>, ptr %b, align 8
 ; CHECK: ret void
 
   %a = alloca %g, align 8, !uniform !4

@@ -26,6 +26,12 @@ enum StatusPrivArr2Reg {
   OutOfMaxGRFPressure
 };
 
+enum MismatchDetectionStrategy {
+  UseScratchSpacePrivateMemoryOrUseStatelessStrategy, // TransposeHelperPrivateMem algorithm
+  OpenCLShaderStrategy,                               // TransposePrivMem algorithm
+  DefaultLowerGEPStrategy                             // LowerGEP
+};
+
 /// Tries to promote array in private memory to indexable vector
 /// Uses register pressure to make sure it won't cause spilling
 llvm::FunctionPass *createPromotePrivateArrayToReg();
@@ -70,7 +76,7 @@ public:
   friend llvm::InstVisitor<SOALayoutChecker, bool>;
 
   // isOCL is for testing, it will be removed once testing is done.
-  SOALayoutChecker(llvm::AllocaInst &allocaToCheck, bool isOCL);
+  SOALayoutChecker(llvm::AllocaInst &allocaToCheck, bool isOCL, MismatchDetectionStrategy mismatchDetectionStrategy);
   SOALayoutChecker() = delete;
   ~SOALayoutChecker() = default;
   SOALayoutChecker(const SOALayoutChecker &) = delete;
@@ -87,6 +93,7 @@ private:
   llvm::AllocaInst &allocaRef;
   const llvm::DataLayout *pDL;
   std::unique_ptr<SOALayoutInfo> pInfo;
+  MismatchDetectionStrategy MismatchDetectionStrategy = DefaultLowerGEPStrategy;
 
   // ===== fields for new algo =====
   // todo: combine the new and old together
