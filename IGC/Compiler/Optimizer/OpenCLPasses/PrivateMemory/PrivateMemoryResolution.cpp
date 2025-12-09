@@ -1102,7 +1102,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack) {
       builder.SetCurrentDebugLocation(pAI->getDebugLoc());
 
       // If we can use SOA layout transpose the memory
-      IGC::SOALayoutChecker SOAChecker(*pAI, Ctx.type == ShaderType::OPENCL_SHADER);
+      IGC::SOALayoutChecker SOAChecker(*pAI, Ctx.type == ShaderType::OPENCL_SHADER,
+                                       UseScratchSpacePrivateMemoryOrUseStatelessStrategy);
       IGC::SOALayoutInfo SOAInfo = SOAChecker.getOrGatherInfo();
       // TransposeMemLayout is not prepared to work on 64-bit pointers (originally, the private address space is
       // expressed by 32-bit pointers). Address space casting
@@ -1268,7 +1269,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack) {
     Value *bufferBase;
 
     // If we can use SOA layout transpose the memory
-    IGC::SOALayoutChecker SOAChecker(*pAI, Ctx.type == ShaderType::OPENCL_SHADER);
+    IGC::SOALayoutChecker SOAChecker(*pAI, Ctx.type == ShaderType::OPENCL_SHADER, OpenCLShaderStrategy);
     IGC::SOALayoutInfo SOAInfo = SOAChecker.getOrGatherInfo();
     if (!isUniform && SOAInfo.canUseSOALayout && SOAChecker.useNewAlgo(SOAInfo.baseType)) {
       uint32_t chunksize = SOAInfo.SOAPartitionBytes;

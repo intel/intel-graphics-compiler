@@ -282,7 +282,7 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *
 
       allowedAllocaSizeInBytes = (allowedAllocaSizeInBytes * 8) / SIMDSize;
     }
-  SOALayoutChecker checker(*pAlloca, m_ctx->type == ShaderType::OPENCL_SHADER);
+  SOALayoutChecker checker(*pAlloca, m_ctx->type == ShaderType::OPENCL_SHADER, DefaultLowerGEPStrategy);
   SOALayoutInfo SOAInfo = checker.getOrGatherInfo();
   if (!SOAInfo.canUseSOALayout) {
     return StatusPrivArr2Reg::CannotUseSOALayout;
@@ -357,7 +357,10 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *
   return StatusPrivArr2Reg::OK;
 }
 
-SOALayoutChecker::SOALayoutChecker(AllocaInst &allocaToCheck, bool isOCL) : allocaRef(allocaToCheck) {
+SOALayoutChecker::SOALayoutChecker(AllocaInst &allocaToCheck, bool isOCL,
+                                   IGC::MismatchDetectionStrategy mismatchDetectionStrategy)
+    : allocaRef(allocaToCheck) {
+  MismatchDetectionStrategy = mismatchDetectionStrategy;
   auto F = allocaToCheck.getParent()->getParent();
   pDL = &F->getParent()->getDataLayout();
   newAlgoControl = IGC_GET_FLAG_VALUE(EnablePrivMemNewSOATranspose);
@@ -563,16 +566,42 @@ bool SOALayoutChecker::visitIntrinsicInst(IntrinsicInst &II) {
 // Return true to disable SOA promotion.
 bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   Type *allocaTy = allocaRef.getAllocatedType();
-  bool allocaIsVecOrArr = allocaTy->isVectorTy() || allocaTy->isArrayTy();
-  if (!allocaIsVecOrArr)
-    return false;
+
+  auto extractArrayOrVecEleType = [](Type *collectionType) -> Type * {
+    if (auto *arrTy = dyn_cast<ArrayType>(collectionType))
+      return arrTy->getElementType();
+    else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(collectionType))
+      return vec->getElementType();
+
+    return nullptr;
+  };
 
   // Compute allocaEltTy early because we might need it to check for non-promoted type GEPs
-  Type *allocaEltTy = nullptr;
-  if (auto *arrTy = dyn_cast<ArrayType>(allocaTy))
-    allocaEltTy = arrTy->getElementType();
-  else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(allocaTy))
-    allocaEltTy = vec->getElementType();
+  Type *allocaEltTy = extractArrayOrVecEleType(allocaTy);
+  if (!allocaEltTy)
+    allocaEltTy = allocaTy;
+
+  while (auto *structTy = dyn_cast<StructType>(allocaEltTy)) {
+    if (structTy->getNumElements() == 1) {
+      auto el = *structTy->element_begin();
+
+      if (el->isStructTy()) {
+        allocaEltTy = el;
+        continue;
+      }
+
+      if (el->isVectorTy() || el->isArrayTy()) {
+        allocaEltTy = extractArrayOrVecEleType(el);
+        break;
+      }
+    }
+
+    break;
+  }
+
+  IGC_ASSERT(allocaEltTy);
+  if (!allocaEltTy)
+    return false;
 
   // Skip when we see a non-promoted type GEP with a non-constant (dynamic) byte offset. The legacy (old) algorithm
   // assumes byte offsets map exactly to whole promoted elements (e.g. multiples of the lane size) and cannot safely
@@ -592,12 +621,6 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
     }
   }
 
-  // if it's a GEP, we're actually interested in it's element type
-  if (auto *pgep = dyn_cast<GetElementPtrInst>(parentLevelInst))
-    allocaEltTy = pgep->getResultElementType();
-
-  IGC_ASSERT(allocaEltTy);
-
   Type *pUserTy = nullptr;
   if (auto *storeInst = dyn_cast<StoreInst>(&I))
     pUserTy = storeInst->getValueOperand()->getType();
@@ -606,10 +629,35 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   else
     return false;
 
-  auto allocaSize = allocaEltTy->getScalarSizeInBits();
+  auto allocaSize = 0u;
+  if (auto *structTy = dyn_cast<StructType>(allocaEltTy)) {
+    auto DL = I.getParent()->getModule()->getDataLayout();
+    auto structLayout = DL.getStructLayout(structTy);
+    allocaSize = structLayout->getSizeInBits();
+  } else if (auto *collectionType = extractArrayOrVecEleType(allocaEltTy)) {
+    allocaSize = collectionType->getScalarSizeInBits();
+  } else {
+    allocaSize = allocaEltTy->getScalarSizeInBits();
+  }
+
+  IGC_ASSERT(allocaSize > 0);
   auto vecTySize = pUserTy->getScalarSizeInBits();
 
-  if (vecTySize != allocaSize) {
+  // if it's a GEP, we're actually interested in it's element type
+  if (auto *pgep = dyn_cast<GetElementPtrInst>(parentLevelInst)) {
+    auto pgepTySize = pgep->getResultElementType()->getScalarSizeInBits();
+    if (pgepTySize != vecTySize) {
+      pInfo->canUseSOALayout = false;
+      return true;
+    }
+
+    if (MismatchDetectionStrategy == UseScratchSpacePrivateMemoryOrUseStatelessStrategy) {
+      if (pgepTySize != allocaSize) {
+        pInfo->canUseSOALayout = false;
+        return true;
+      }
+    }
+  } else if (vecTySize != allocaSize) {
     pInfo->canUseSOALayout = false;
     return true;
   }
