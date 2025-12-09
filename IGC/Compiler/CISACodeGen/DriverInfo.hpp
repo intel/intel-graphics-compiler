@@ -409,8 +409,6 @@ public:
   }
   virtual bool supportsAtomicIaddToIncDec() const { return true; }
 
-  virtual bool supportsTransformSimd1StoresTGM() const { return true; }
-
 protected:
   bool autoGRFSelection = false;
 };

@@ -18637,17 +18637,6 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction *pInsn) {
     return;
   }
 
-  bool transposeSIMD1 = false;
-  WIAnalysis *WI = &getAnalysis<WIAnalysis>();
-  ShaderType type = m_currShader->GetShaderType();
-  bool isOCLOrCS = (type == ShaderType::OPENCL_SHADER || type == ShaderType::COMPUTE_SHADER);
-  // If dstBuf, coordinates and data are all uniform, switch to SIMD1 with NoMask
-  // Limit the changes to OCL and CS for now
-  if (isOCLOrCS && WI->isUniform(pllDstBuffer) && WI->isUniform(pllU) && WI->isUniform(pllV) && WI->isUniform(pllR) &&
-      WI->isUniform(pllSrc_X) && WI->isUniform(pllSrc_Y) && WI->isUniform(pllSrc_Z) && WI->isUniform(pllSrc_W)) {
-    transposeSIMD1 = true;
-  }
-
   uint label = 0;
   CVariable *flag = nullptr;
   bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
@@ -18662,7 +18651,7 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction *pInsn) {
   if (!needsSplit) {
     const unsigned int GRFSizeBy4 = (getGRFSize() / 4);
     IGC_ASSERT(GRFSizeBy4);
-    const unsigned int numEltGRF = transposeSIMD1 ? 1 : numLanes(instWidth) / GRFSizeBy4;
+    const unsigned int numEltGRF = numLanes(instWidth) / GRFSizeBy4;
 
     Constant *p_X = dyn_cast<Constant>(pllSrc_X);
     Constant *p_Y = dyn_cast<Constant>(pllSrc_Y);
@@ -18682,7 +18671,7 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction *pInsn) {
     if (!pPayload) {
       // create payload variable
       pPayload = m_currShader->GetNewVariable(parameterLength * numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F,
-                                              EALIGN_GRF, transposeSIMD1, CName::NONE);
+                                              EALIGN_GRF, CName::NONE);
 
       m_currShader->CopyVariable(pPayload, pSrc_X, 0);
       m_currShader->CopyVariable(pPayload, pSrc_Y, numEltGRF);
@@ -18690,9 +18679,21 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction *pInsn) {
       m_currShader->CopyVariable(pPayload, pSrc_W, 3 * numEltGRF);
     }
 
-    if (transposeSIMD1) {
-      m_encoder->SetSimdSize(SIMDMode::SIMD1);
-      m_encoder->SetNoMask();
+    WIAnalysis *WI = &getAnalysis<WIAnalysis>();
+    // If the dstBuf and coordinates are all uniform,
+    // check if all data elements have been replaced with WaveShuffleIndex
+    if (WI->isUniform(pllDstBuffer) && WI->isUniform(pllU) && WI->isUniform(pllV) && WI->isUniform(pllR)) {
+      GenIntrinsicInst *genX = dyn_cast<GenIntrinsicInst>(pllSrc_X);
+      GenIntrinsicInst *genY = dyn_cast<GenIntrinsicInst>(pllSrc_Y);
+      GenIntrinsicInst *genZ = dyn_cast<GenIntrinsicInst>(pllSrc_Z);
+      GenIntrinsicInst *genW = dyn_cast<GenIntrinsicInst>(pllSrc_W);
+      if (genX && genX->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex && genY &&
+          genY->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex && genZ &&
+          genZ->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex && genW &&
+          genW->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex) {
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+      }
     }
 
     m_encoder->SetPredicate(flag);
