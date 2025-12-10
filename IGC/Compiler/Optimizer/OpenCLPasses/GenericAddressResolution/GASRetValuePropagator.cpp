@@ -258,7 +258,7 @@ void GASRetValuePropagator::updateMetadata(Function *oldFunc, Function *newFunc)
 
   auto loc = FuncMD.find(oldFunc);
   if (loc != FuncMD.end()) {
-    auto funcInfo = loc->second;
+    const auto &funcInfo = loc->second;
     FuncMD.erase(oldFunc);
     FuncMD[newFunc] = funcInfo;
   }

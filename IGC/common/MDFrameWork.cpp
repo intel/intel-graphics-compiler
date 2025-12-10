@@ -325,7 +325,7 @@ template <typename T> void readNode(std::vector<T> &vec, MDNode *node) {
   for (unsigned k = 1; k < node->getNumOperands(); k++) {
     T vecEle;
     readNode(vecEle, cast<MDNode>(node->getOperand(k)));
-    vec.push_back(vecEle);
+    vec.push_back(std::move(vecEle));
   }
   return;
 }
@@ -380,7 +380,7 @@ template <typename Key, typename Value> void readNode(std::map<Key, Value> &keyM
     std::pair<Key, Value> p;
     readNode(p.first, cast<MDNode>(node->getOperand(k++)));
     readNode(p.second, cast<MDNode>(node->getOperand(k)));
-    keyMD.insert(p);
+    keyMD.insert(std::move(p));
   }
   return;
 }
@@ -390,7 +390,7 @@ template <typename Key, typename Value> void readNode(MapVector<Key, Value> &key
     std::pair<Key, Value> p;
     readNode(p.first, cast<MDNode>(node->getOperand(k++)));
     readNode(p.second, cast<MDNode>(node->getOperand(k)));
-    keyMD.insert(p);
+    keyMD.insert(std::move(p));
   }
   return;
 }
@@ -399,7 +399,7 @@ template <typename Key> void readNode(std::set<Key> &keyMD, MDNode *node) {
   for (unsigned k = 1; k < node->getNumOperands(); k++) {
     Key key;
     readNode(key, cast<MDNode>(node->getOperand(k)));
-    keyMD.insert(key);
+    keyMD.insert(std::move(key));
   }
   return;
 }
@@ -408,7 +408,7 @@ template <typename Key> void readNode(SetVector<Key> &keyMD, MDNode *node) {
   for (unsigned k = 1; k < node->getNumOperands(); k++) {
     Key key;
     readNode(key, cast<MDNode>(node->getOperand(k)));
-    keyMD.insert(key);
+    keyMD.insert(std::move(key));
   }
   return;
 }

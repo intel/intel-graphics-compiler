@@ -125,7 +125,7 @@ Value *PromoteSubByte::convertI1ToI8(Value *value, IRBuilder<> &builder) {
 
   auto zext = builder.CreateZExt(value, getOrCreatePromotedType(value->getType()));
   if (isa<Instruction>(zext) && isa<Instruction>(value)) {
-    dyn_cast<Instruction>(zext)->setDebugLoc(dyn_cast<Instruction>(value)->getDebugLoc());
+    cast<Instruction>(zext)->setDebugLoc(cast<Instruction>(value)->getDebugLoc());
   }
   return zext;
 }
@@ -142,7 +142,7 @@ Value *PromoteSubByte::convertI8ToI1(Value *value, IRBuilder<> &builder) {
 
   auto trunc = builder.CreateTrunc(value, createDemotedType(value->getType()));
   if (isa<Instruction>(trunc) && isa<Instruction>(value)) {
-    dyn_cast<Instruction>(trunc)->setDebugLoc(dyn_cast<Instruction>(value)->getDebugLoc());
+    cast<Instruction>(trunc)->setDebugLoc(cast<Instruction>(value)->getDebugLoc());
   }
   return trunc;
 }
@@ -150,9 +150,8 @@ Value *PromoteSubByte::convertI8ToI1(Value *value, IRBuilder<> &builder) {
 Value *PromoteSubByte::castAggregate(Value *value, Type *desiredType, IRBuilder<> &builder) {
 
   if (auto *srcST = dyn_cast<StructType>(value->getType())) {
-    auto *dstST = dyn_cast<StructType>(desiredType);
+    auto *dstST = cast<StructType>(desiredType);
 
-    IGC_ASSERT(srcST && dstST);
     IGC_ASSERT(srcST->getNumElements() == dstST->getNumElements());
 
     Value *Accum = PoisonValue::get(dstST);
@@ -169,9 +168,8 @@ Value *PromoteSubByte::castAggregate(Value *value, Type *desiredType, IRBuilder<
   }
 
   if (auto *srcAT = dyn_cast<ArrayType>(value->getType())) {
-    auto *dstAT = dyn_cast<ArrayType>(desiredType);
+    auto *dstAT = cast<ArrayType>(desiredType);
 
-    IGC_ASSERT(srcAT && dstAT);
     IGC_ASSERT(srcAT->getNumElements() == dstAT->getNumElements());
 
     auto *dstElType = dstAT->getElementType();
@@ -529,7 +527,7 @@ Function *PromoteSubByte::promoteFunction(Function *function) {
   }
 #endif
 
-  auto newFunction = Function::Create(dyn_cast<FunctionType>(getOrCreatePromotedType(function->getFunctionType())),
+  auto newFunction = Function::Create(cast<FunctionType>(getOrCreatePromotedType(function->getFunctionType())),
                                       function->getLinkage(), function->getName() + ".promoted", function->getParent());
 
   newFunction->setCallingConv(function->getCallingConv());
@@ -675,7 +673,7 @@ Constant *PromoteSubByte::promoteConstant(Constant *constant) {
     }
 
     auto newType = getOrCreatePromotedType(constantArray->getType());
-    return ConstantArray::get(dyn_cast<ArrayType>(newType), values);
+    return ConstantArray::get(cast<ArrayType>(newType), values);
   } else if (auto constantStruct = dyn_cast<ConstantStruct>(constant)) {
     if (!typeNeedsPromotion(constantStruct->getType())) {
       return constant;
@@ -687,11 +685,11 @@ Constant *PromoteSubByte::promoteConstant(Constant *constant) {
     }
 
     auto newType = getOrCreatePromotedType(constantStruct->getType());
-    return ConstantStruct::get(dyn_cast<StructType>(newType), values);
+    return ConstantStruct::get(cast<StructType>(newType), values);
   } else if (auto constantExpr = dyn_cast<ConstantExpr>(constant)) {
     if (constantExpr->isCast() && isa<GlobalValue>(constantExpr->getOperand(0))) {
       return ConstantExpr::getCast(constantExpr->getOpcode(),
-                                   dyn_cast<Constant>(getOrCreatePromotedValue(constantExpr->getOperand(0))),
+                                   cast<Constant>(getOrCreatePromotedValue(constantExpr->getOperand(0))),
                                    constantExpr->getType());
     }
     return constantExpr;
@@ -870,7 +868,7 @@ InlineAsm *PromoteSubByte::promoteInlineAsm(InlineAsm *inlineAsm) {
     return inlineAsm;
   }
 
-  return InlineAsm::get(dyn_cast<FunctionType>(getOrCreatePromotedType(inlineAsm->getFunctionType())),
+  return InlineAsm::get(cast<FunctionType>(getOrCreatePromotedType(inlineAsm->getFunctionType())),
                         inlineAsm->getAsmString(), inlineAsm->getConstraintString(), inlineAsm->hasSideEffects(),
                         inlineAsm->isAlignStack(), inlineAsm->getDialect());
 }

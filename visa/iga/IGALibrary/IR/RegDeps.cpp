@@ -579,7 +579,8 @@ void DepSet::addDependency(const RegRangeListType &reg_range) {
     // when range is max(), which means it's null, skip it
     if (pair.first == std::numeric_limits<uint32_t>::max())
       continue;
-    for (uint32_t regNum = pair.first; regNum <= pair.second; regNum++) {
+    // u64 to avoid overflow if pair.second == ~0U
+    for (size_t regNum = pair.first; regNum <= pair.second; regNum++) {
       addGrf(regNum);
       addToBucket(regNum);
     }
