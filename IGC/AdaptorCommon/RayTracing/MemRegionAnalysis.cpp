@@ -31,6 +31,10 @@ static bool isGlobalPtr(const InlineDataIntrinsic *I, const IGC::ModuleMetaData 
   if (moduleMetaData.rtInfo.GlobalDataStyle == RayDispatchInlinedDataStyle::Xe) {
     constexpr uint32_t GlobalPtrOffset = offsetof(RayDispatchInlinedData, RayDispatchGlobalDataPtr) / sizeof(uint64_t);
     globalPtrOffset = GlobalPtrOffset;
+  } else {
+    constexpr uint32_t GlobalPtrOffset_Eff64 =
+        offsetof(RayDispatchInlinedData_Eff64, RayDispatchGlobalDataPtr) / sizeof(uint64_t);
+    globalPtrOffset = GlobalPtrOffset_Eff64;
   }
 
   return (I->getArg() == globalPtrOffset);
@@ -44,6 +48,7 @@ static std::optional<RTMemRegion> getIntrinsicRegion(const GenIntrinsicInst *GII
   case GenISAIntrinsic::GenISA_GlobalBufferPointer:
     return RTMemRegion::RTGlobals;
   case GenISAIntrinsic::GenISA_LocalBufferPointer:
+  case GenISAIntrinsic::GenISA_KSPPointer:
     return RTMemRegion::LocalArgs;
   case GenISAIntrinsic::GenISA_AsyncStackPtr:
   case GenISAIntrinsic::GenISA_AsyncStackPtrPlaceHolder:

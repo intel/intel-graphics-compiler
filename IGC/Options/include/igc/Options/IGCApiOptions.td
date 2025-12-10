@@ -51,6 +51,9 @@ defm 128_grf_per_thread : CommonFlag<"128-GRF-per-thread">;
 // -cl-intel-256-GRF-per-thread
 defm 256_grf_per_thread : CommonFlag<"256-GRF-per-thread">;
 
+// -cl-intel-512-GRF-per-thread
+defm 512_grf_per_thread : CommonFlag<"512-GRF-per-thread">;
+
 // -cl-intel-greater-than-4GB-buffer-required, -ze-opt-greater-than-4GB-buffer-required
 defm greater_than_4GB_buffer_required : CommonFlag<"greater-than-4GB-buffer-required">,
   HelpText<"When this flag is present, it indicates that any OpenCL buffers can be more than 4GB in size. If it is absent, all buffers are not more than 4GB in size.">;

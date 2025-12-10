@@ -398,6 +398,7 @@ public:
   uint m_ScratchSpaceSize = 0;
 
   CVariable *m_ScratchSurfaceAddress = nullptr;
+  CVariable *m_KernelArgBufPtr = nullptr;
 
   ShaderStats *m_shaderStats = nullptr;
   GenericShaderState &m_State;

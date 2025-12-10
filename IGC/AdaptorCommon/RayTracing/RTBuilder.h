@@ -183,6 +183,11 @@ public:
   RTBuilder(const RTBuilder &) = delete;
   RTBuilder &operator=(const RTBuilder &) = delete;
 
+  inline Value *getMaxSimdSize(void) { return this->getInt32(Ctx.platform.getMaxSimdSize()); }
+
+  inline Value *getMaxThreadsPerEU(void) {
+    return this->getInt32(Ctx.platform.GetGTSystemInfo().ThreadCount / Ctx.platform.GetGTSystemInfo().EUCount);
+  }
 
   inline Value *get32BitLaneID(void) {
     Module *module = this->GetInsertBlock()->getModule();
@@ -324,8 +329,10 @@ public:
   static bool checkAlign(Module &M, StructType *StructTy, uint32_t Align);
 
   Value *getGlobalSyncStackID();
+  Value *getGlobalSyncStackIDBase();
 
   Value *getGlobalDSSID();
+  uint32_t getRTStackSectorSize(uint32_t Align);
 
   Value *getSyncRTStackSize();
 

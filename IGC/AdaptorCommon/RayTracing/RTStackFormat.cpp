@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "RTStackFormat.h"
+#include "IGC/Compiler//CISACodeGen/Platform.hpp"
 #include "iStdLib/utility.h"
 #include <array>
 #include "Probe/Assertion.h"

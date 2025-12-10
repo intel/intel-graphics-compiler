@@ -3256,6 +3256,21 @@ ushort __attribute__((overloadable)) atomic_load_explicit(
     volatile atomic_ushort* object, memory_order order, memory_scope scope);
 #endif //defined(cl_intel_bfloat16_atomics)
 
+float __attribute__((overloadable))   sigm(float);
+float2 __attribute__((overloadable))  sigm(float2);
+float3 __attribute__((overloadable))  sigm(float3);
+float4 __attribute__((overloadable))  sigm(float4);
+float8 __attribute__((overloadable))  sigm(float8);
+float16 __attribute__((overloadable)) sigm(float16);
+#if defined(cl_khr_fp16)
+half __attribute__((overloadable))   sigm(half);
+half2 __attribute__((overloadable))  sigm(half2);
+half3 __attribute__((overloadable))  sigm(half3);
+half4 __attribute__((overloadable))  sigm(half4);
+half8 __attribute__((overloadable))  sigm(half8);
+half16 __attribute__((overloadable)) sigm(half16);
+#endif // defined(cl_khr_fp16)
+
 #ifdef cl_intel_subgroup_extended_block_read
 ushort2 intel_subgroup_block_read_u8_m1k32v2(
     __global void* base_address, int width, int height, int pitch, int2 coord);

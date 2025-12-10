@@ -30,6 +30,9 @@ def emit_visa_only : PlainFlag<"emit-visa-only">,
 defm buffer_bounds_checking : CommonFlag<"buffer-bounds-checking">,
   HelpText<"Enable buffer bounds checking">;
 
+defm efficient_64b : CommonFlag<"64bit-addressing">,
+  HelpText<"Enables efficient 64-bit addressing">;
+
 
 defm minimum_valid_address_checking : CommonSeparate<"minimum-valid-address-checking">,
   HelpText<"Set minimal valid address">;

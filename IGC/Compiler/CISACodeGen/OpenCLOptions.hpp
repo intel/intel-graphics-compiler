@@ -62,6 +62,7 @@ public:
 
   bool Intel128GRFPerThread = false;
   bool Intel256GRFPerThread = false;
+  bool Intel512GRFPerThread = false;
   bool IntelNumThreadPerEU = false;
   int32_t numThreadsPerEU = -1;
 
@@ -172,6 +173,7 @@ public:
 
   bool Intel128GRFPerThread = false;
   bool Intel256GRFPerThread = false;
+  bool Intel512GRFPerThread = false;
   bool IntelGreaterThan4GBBufferRequired = false;
 
   bool IntelExpGRFSize = false;

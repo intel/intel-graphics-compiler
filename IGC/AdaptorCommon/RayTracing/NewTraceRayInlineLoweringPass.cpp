@@ -28,25 +28,20 @@ using namespace IGC;
 using namespace llvm;
 
 namespace llvm {
-template<>
-struct DenseMapInfo<IGC::AllocationLivenessAnalyzer::LivenessData::Edge> {
+template <> struct DenseMapInfo<IGC::AllocationLivenessAnalyzer::LivenessData::Edge> {
   using Edge = IGC::AllocationLivenessAnalyzer::LivenessData::Edge;
 
   static inline Edge getEmptyKey() {
-    return Edge{ DenseMapInfo<BasicBlock *>::getEmptyKey(), DenseMapInfo<BasicBlock *>::getEmptyKey() };
+    return Edge{DenseMapInfo<BasicBlock *>::getEmptyKey(), DenseMapInfo<BasicBlock *>::getEmptyKey()};
   }
 
   static inline Edge getTombstoneKey() {
-    return Edge{ DenseMapInfo<BasicBlock *>::getTombstoneKey(), DenseMapInfo<BasicBlock *>::getTombstoneKey() };
+    return Edge{DenseMapInfo<BasicBlock *>::getTombstoneKey(), DenseMapInfo<BasicBlock *>::getTombstoneKey()};
   }
 
-  static unsigned getHashValue(const Edge &E) {
-    return (unsigned)hash_combine(E.from, E.to);
-  }
+  static unsigned getHashValue(const Edge &E) { return (unsigned)hash_combine(E.from, E.to); }
 
-  static bool isEqual(const Edge &LHS, const Edge &RHS) {
-    return LHS == RHS;
-  }
+  static bool isEqual(const Edge &LHS, const Edge &RHS) { return LHS == RHS; }
 };
 } // namespace llvm
 
@@ -651,7 +646,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
   }
 
   // now we can actually lower rayinfo instructions
-  for (const auto& [I, stackPtr] : RQInfoStackMap) {
+  for (const auto &[I, stackPtr] : RQInfoStackMap) {
 
     IRB.SetInsertPoint(I);
     auto *convertRQHandleFromRQObject = cast<Instruction>(I->getQueryObjIndex());
@@ -833,7 +828,6 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
     // process the allocation acquire point
     // handle rayquery check
     instructionClosures[LD->lifetimeStart.inst].push_back([this, doRQCheckRelease](RTBuilder &IRB) {
-
       if (doRQCheckRelease)
         IRB.CreateRayQueryCheckIntrinsic();
     });
@@ -843,7 +837,6 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
       auto *I = LE.inst;
       instructionClosures[isa<ReturnInst>(I) ? I : I->getNextNode()].push_back(
           [this, rqObject, doRQCheckRelease](RTBuilder &IRB) {
-
             auto *stackPtr = getStackPtr(IRB, IRB.Insert(rqObject->clone()));
 
             // handle cache control
@@ -858,7 +851,6 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
     for (const auto &edge : LD->lifetimeEndEdges) {
 
       edgeClosures[edge].push_back([this, rqObject, doRQCheckRelease](RTBuilder &IRB) {
-
         auto *stackPtr = getStackPtr(IRB, IRB.Insert(rqObject->clone()));
 
         // handle cache control
@@ -877,7 +869,11 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
         continue;
 
       instructionClosures[I].push_back([this, rqObject, doRQCheckRelease, I](RTBuilder &IRB) {
-
+        if (m_pCGCtx->platform.hasEfficient64bEnabled())
+          // efficient 64b comes with sync stack id support
+          // so we don't have to spill the rtstack across BTD calls
+          StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), false, doRQCheckRelease);
+        else
           StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), true, doRQCheckRelease);
       });
     }
@@ -889,7 +885,6 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
         continue;
 
       instructionClosures[I].push_back([this, rqObject, doRQCheckRelease, I](RTBuilder &IRB) {
-
         StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), true, doRQCheckRelease);
       });
     }
@@ -901,7 +896,6 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
         continue;
 
       instructionClosures[I].push_back([this, rqObject, doRQCheckRelease, I](RTBuilder &IRB) {
-
         StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), true, doRQCheckRelease);
       });
     }
@@ -913,7 +907,6 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
         continue;
 
       instructionClosures[I].push_back([this, rqObject, doRQCheckRelease, I](RTBuilder &IRB) {
-
         StopAndStartRayquery(IRB, I, IRB.Insert(rqObject->clone()), false, doRQCheckRelease);
       });
     }

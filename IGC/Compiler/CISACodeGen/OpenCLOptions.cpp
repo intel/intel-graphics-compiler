@@ -97,6 +97,10 @@ void InternalOptions::parseOptions(const char *internalOpts) {
     Intel256GRFPerThread = true;
   }
 
+  if (internalOptions.hasArg(OPT_512_grf_per_thread_common)) {
+    Intel512GRFPerThread = true;
+  }
+
   if (const llvm::opt::Arg *arg = internalOptions.getLastArg(OPT_num_thread_per_eu_common)) {
     IntelNumThreadPerEU = true;
     llvm::StringRef valStr = arg->getValue();
@@ -203,6 +207,11 @@ void InternalOptions::parseOptions(const char *internalOpts) {
 
   if (internalOptions.hasArg(OPT_disableEUFusion_common)) {
     DisableEUFusion = true;
+  }
+
+  if (internalOptions.hasArg(OPT_efficient_64b_common) || IGC_IS_FLAG_ENABLED(EnableEfficient64b)) {
+    Efficient64b = true;
+    IGC_SET_FLAG_VALUE(EnableEfficient64b, true);
   }
 
   if (const llvm::opt::Arg *arg = internalOptions.getLastArg(OPT_functonControl_common)) {
@@ -466,6 +475,10 @@ void Options::parseOptions(const char *opts) {
 
   if (apiOptions.hasArg(OPT_256_grf_per_thread_common)) {
     Intel256GRFPerThread = true;
+  }
+
+  if (apiOptions.hasArg(OPT_512_grf_per_thread_common)) {
+    Intel512GRFPerThread = true;
   }
 
   if (apiOptions.hasArg(OPT_poison_unsupported_fp64_kernels_common)) {

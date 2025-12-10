@@ -45,6 +45,10 @@ DECLARE_OPCODE(GenISA_samplePODptr, GenISAIntrinsic, llvm_sample_podptr, false, 
                false)
 DECLARE_OPCODE(GenISA_samplePOLCptr, GenISAIntrinsic, llvm_sample_polcptr, false, false, false, false, false, false,
                false)
+DECLARE_OPCODE(GenISA_samplePOBCptr, GenISAIntrinsic, llvm_sample_pobcptr, false, false, false, false, false, false,
+               false)
+DECLARE_OPCODE(GenISA_samplePODCptr, GenISAIntrinsic, llvm_sample_podcptr, false, false, false, false, false, false,
+               false)
 DECLARE_OPCODE(GenISA_gather4Iptr, GenISAIntrinsic, llvm_gather4Iptr, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_gather4Bptr, GenISAIntrinsic, llvm_gather4Bptr, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_gather4Lptr, GenISAIntrinsic, llvm_gather4Lptr, false, false, false, false, false, false, false)
@@ -400,3 +404,5 @@ DECLARE_OPCODE(GenISA_UnmaskedRegionBegin, GenISAIntrinsic, llvm_unmaskedBegin, 
                false, false)
 DECLARE_OPCODE(GenISA_UnmaskedRegionEnd, GenISAIntrinsic, llvm_unmaskedEnd, false, false, false, false, false, false,
                false)
+DECLARE_OPCODE(GenISA_tanh, GenISAIntrinsic, llvm_tanh, false, false, false, false, true, false, false)
+DECLARE_OPCODE(GenISA_sigm, GenISAIntrinsic, llvm_sigm, false, false, false, false, true, false, false)

@@ -109,8 +109,7 @@ void GenericShaderState::setScratchUsage(CodeGenContext &Ctx, SProgramOutput &Pr
   bool SeparateScratchWA =
       IGC_IS_FLAG_ENABLED(EnableSeparateScratchWA) && !Ctx.getModuleMetaData()->disableSeparateScratchWA;
   Prog.init(!Ctx.platform.hasScratchSurface(),
-            Ctx.platform.maxPerThreadScratchSpace(
-                    ),
+            Ctx.platform.maxPerThreadScratchSpace(Ctx.m_DriverInfo.supports16MBPerThreadScratchSpace()),
             Ctx.getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory, SepSpillPvtSS, SeparateScratchWA);
 }
 

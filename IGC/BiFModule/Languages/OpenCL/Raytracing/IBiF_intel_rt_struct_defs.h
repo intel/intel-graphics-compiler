@@ -401,22 +401,61 @@ typedef struct __attribute__((packed, aligned(64)))
     // 64 B
     char travStack[32 * 2];
 } RTStack;
+typedef struct __attribute__((packed, aligned(64)))
+{
+    // 32 B
+    MemHit committedHit;
+
+    char travStack0[32];
+
+    // 64 B
+    MemRay ray0;
+
+    // New stack layout in memory is divided into several non-contiguous parts.
+    // internal padding 3 * 128B
+    char pad[3 * (sizeof(MemHit) + 32 + sizeof(MemRay))];
+
+    // 32 B
+    MemHit potentialHit;
+
+    char travStack1[32];
+
+    // 64 B
+    MemRay ray1;
+} RTStackXe3P;
 
 // === RTStack Accessors
 inline MemHit* get_query_hit(intel_ray_query_t rayquery, intel_hit_type_t ty)
 {
+    if (BIF_FLAG_CTRL_GET(HasEfficient64bEnabled))
+    {
+        global RTStackXe3P* rtStack = __builtin_IB_intel_query_rt_stack(rayquery);
+        return (ty == intel_hit_type_committed_hit) ? &rtStack->committedHit
+                                                    : &rtStack->potentialHit;
+    }
     global RTStack* rtStack = __builtin_IB_intel_query_rt_stack(rayquery);
     return &rtStack->hit[ty];
 }
 
 inline MemHit* get_rt_stack_hit(void* rtstack, intel_hit_type_t ty)
 {
+    if (!BIF_FLAG_CTRL_GET(HasEfficient64bEnabled))
+    {
         RTStack* rtStack = rtstack;
         return &rtStack->hit[ty];
+    }
+    RTStackXe3P* rtStack = rtstack;
+    return (ty == intel_hit_type_committed_hit) ? &rtStack->committedHit
+                                                : &rtStack->potentialHit;
 }
 
 inline MemRay* get_rt_stack_ray(void* rtstack, uchar raynum)
 {
+    if (BIF_FLAG_CTRL_GET(HasEfficient64bEnabled))
+    {
+        RTStackXe3P* rtStack = rtstack;
+        return (raynum == 0) ? &rtStack->ray0 : &rtStack->ray1;
+    }
     RTStack* rtStack = rtstack;
     return &rtStack->ray[raynum];
 }

@@ -29,7 +29,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - **Version 1.52**: Add has_lsc_stores_with_non_default_l1_cache_controls flag in zeinfo environment.
 - **Version 1.51**: Attribute size in payload_arguments now shows the number of bytes needed for allocating the argument. It is no longer aligned to 4.
 - **Version 1.50**: Add generateLocalID flag.
-- **Version 1.49**: Internal changes.
+- **Version 1.49**: Add support for quantum_size, quantum_walk_order and quantum_partition_dimension
 - **Version 1.48**: Add relocation type "R_SYM_ADDR_16" and update supported relocation types.
 - **Version 1.47**: Added kernel cost analysis.
 - **Version 1.46**: Change cmake target directory from IGC/zebinlib to IGC/Libraries/zebinlib
@@ -44,7 +44,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - **Version 1.37**: Specify bindless addrmode for const_base and global_base arguments.
 - **Version 1.36**: Specify values for EI_ABIVERSION field.
 - **Version 1.35**: Update eu_thread_count to be an optional attribute.
-- **Version 1.34**: Add support for region_group_size and region_group_wg_count.
+- **Version 1.34**: Add support for region_group_size, region_group_dimension and region_group_wg_count.
 - **Version 1.33**: Add new enum value NT_INTELGT_PRODUCT_CONFIG to .note.intelgt.compat section.
 - **Version 1.32**: Add new enum value for VISA ABI to .note.intelgt.compat section.
 - **Version 1.31**: Add support for indirect_data_pointer and scratch_pointer.

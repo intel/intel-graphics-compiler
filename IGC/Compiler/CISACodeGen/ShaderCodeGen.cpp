@@ -1361,7 +1361,8 @@ void OptimizeIR(CodeGenContext *const pContext) {
       if (pContext->m_instrTypes.numOfLoop) {
         bool allowLICM = IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM();
         bool runGEPLSR = IGC_IS_FLAG_ENABLED(EnableGEPLSR) && pContext->type == ShaderType::OPENCL_SHADER &&
-                         pContext->platform.getPlatformInfo().eProductFamily == IGFX_PVC &&
+                         (pContext->platform.getPlatformInfo().eProductFamily == IGFX_PVC ||
+                          pContext->platform.getPlatformInfo().eProductFamily == IGFX_CRI) &&
                          !pContext->useStatelessToStateful() && !pContext->platform.hasEfficient64bEnabled() &&
                          pContext->m_retryManager.IsFirstTry();
 

@@ -695,6 +695,8 @@ void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value *oldPt
   case llvm::GenISAIntrinsic::GenISA_samplePOCptr:
   case llvm::GenISAIntrinsic::GenISA_samplePODptr:
   case llvm::GenISAIntrinsic::GenISA_samplePOLCptr:
+  case llvm::GenISAIntrinsic::GenISA_samplePOBCptr:
+  case llvm::GenISAIntrinsic::GenISA_samplePODCptr:
   case llvm::GenISAIntrinsic::GenISA_gather4Iptr:
   case llvm::GenISAIntrinsic::GenISA_gather4IPOptr:
   case llvm::GenISAIntrinsic::GenISA_gather4Bptr:
@@ -1077,6 +1079,8 @@ bool isSampleLoadGather4InfoInstruction(const llvm::Instruction *inst) {
     case GenISAIntrinsic::GenISA_samplePOCptr:
     case GenISAIntrinsic::GenISA_samplePODptr:
     case GenISAIntrinsic::GenISA_samplePOLCptr:
+    case GenISAIntrinsic::GenISA_samplePOBCptr:
+    case GenISAIntrinsic::GenISA_samplePODCptr:
     case GenISAIntrinsic::GenISA_lodptr:
     case GenISAIntrinsic::GenISA_ldptr:
     case GenISAIntrinsic::GenISA_ldlptr:
@@ -1376,7 +1380,9 @@ bool SupportsModifier(llvm::Instruction *inst, const IGC::CPlatform &platform) {
     break;
   }
   if (IGCLLVM::isBFloatTy(inst->getType())) {
-    return false;
+    if (!platform.supportsPureBF()) {
+      return false;
+    }
   }
 
   switch (GetOpCode(inst)) {
@@ -1565,7 +1571,8 @@ bool IsStatelessMemAtomicIntrinsic(GenIntrinsicInst &inst, GenISAIntrinsic::ID i
 }
 
 llvm::GenISAIntrinsic::ID GetOutputPSIntrinsic(const CPlatform &platform) {
-  constexpr llvm::GenISAIntrinsic::ID iid = llvm::GenISAIntrinsic::GenISA_OUTPUT;
+  const llvm::GenISAIntrinsic::ID iid =
+      platform.hasEfficient64bEnabled() ? llvm::GenISAIntrinsic::GenISA_OUTPUTPS : llvm::GenISAIntrinsic::GenISA_OUTPUT;
   return iid;
 }
 

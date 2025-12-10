@@ -518,6 +518,28 @@ DEFN_INTEL_CVT_NO_OVERLOAD( tfloat3216_as_float16, float16, float16, ftotf32_16 
 #ifdef cl_intel_subgroup_matrix_multiply_accumulate_bf8
 
 #ifdef cl_khr_fp16
+// fp4 precision, f32/bf16 acc
+// e2m1_e2m1_matrix_mad_k64
+// 8
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64, float8, float8, short8, int8, fdpas_f_f_e2m1_e2m1_8_8 )
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64, short8, short8, short8, int8, fdpas_bf_bf_e2m1_e2m1_8_8 )
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64_f32, float8, short8, short8, int8, fdpas_f_bf_e2m1_e2m1_8_8 )
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64_bf16, short8, float8, short8, int8, fdpas_bf_f_e2m1_e2m1_8_8 )
+// 4
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64, float4, float4, short4, int8, fdpas_f_f_e2m1_e2m1_8_4 )
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64, short4, short4, short4, int8, fdpas_bf_bf_e2m1_e2m1_8_4 )
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64_f32, float4, short4, short4, int8, fdpas_f_bf_e2m1_e2m1_8_4 )
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64_bf16, short4, float4, short4, int8, fdpas_bf_f_e2m1_e2m1_8_4 )
+// 2
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64, float2, float2, short2, int8, fdpas_f_f_e2m1_e2m1_8_2 )
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64, short2, short2, short2, int8, fdpas_bf_bf_e2m1_e2m1_8_2 )
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64_f32, float2, short2, short2, int8, fdpas_f_bf_e2m1_e2m1_8_2 )
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64_bf16, short2, float2, short2, int8, fdpas_bf_f_e2m1_e2m1_8_2 )
+// scalar
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64, float, float, short, int8, fdpas_f_f_e2m1_e2m1_8_1 )
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64, short, short, short, int8, fdpas_bf_bf_e2m1_e2m1_8_1 )
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64_f32, float, short, short, int8, fdpas_f_bf_e2m1_e2m1_8_1 )
+DEFN_INTEL_SG16_FDPAS( e2m1_e2m1_matrix_mad_k64_bf16, short, float, short, int8, fdpas_bf_f_e2m1_e2m1_8_1 )
 
 // conversion bf8 <-> half
 DEFN_INTEL_CVT( f16_to_bf8,  char,   half,   hftobf8_1  )

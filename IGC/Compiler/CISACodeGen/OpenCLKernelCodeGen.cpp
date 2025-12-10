@@ -81,6 +81,8 @@ uint32_t OpenCLProgramContext::getNumGRFPerThread(bool returnDefault) {
     } else if (m_InternalOptions.Intel256GRFPerThread || m_Options.Intel256GRFPerThread ||
                m_Options.IntelLargeRegisterFile) {
       return 256;
+    } else if (m_InternalOptions.Intel512GRFPerThread || m_Options.Intel512GRFPerThread) {
+      return 512;
     }
   }
   return CodeGenContext::getNumGRFPerThread(returnDefault);
@@ -95,8 +97,8 @@ bool OpenCLProgramContext::isAutoGRFSelectionEnabled() const {
             m_Options.IntelEnableAutoLargeGRF) ||
        supportsVRT()) &&
       !m_InternalOptions.Intel128GRFPerThread && !m_Options.Intel128GRFPerThread &&
-      !m_InternalOptions.Intel256GRFPerThread && !m_Options.Intel256GRFPerThread
-  ) {
+      !m_InternalOptions.Intel256GRFPerThread && !m_Options.Intel256GRFPerThread &&
+      !m_InternalOptions.Intel512GRFPerThread && !m_Options.Intel512GRFPerThread) {
     return true;
   }
 
@@ -1360,8 +1362,8 @@ void COpenCLKernel::AllocatePayload() {
 
   bool skipIndirectScratchPointer = canSkipScratchPointer(kernelArgs);
 
-       // keep track of the pointer arguments' addrspace and access_type for setting the correct
-       // attributes to their corresponding bindless offset arguments
+  // keep track of the pointer arguments' addrspace and access_type for setting the correct
+  // attributes to their corresponding bindless offset arguments
   PtrArgsAttrMapType ptrArgsAttrMap;
   for (KernelArgs::const_iterator i = kernelArgs.begin(), e = kernelArgs.end(); i != e; ++i) {
     KernelArg arg = *i;
@@ -1372,7 +1374,7 @@ void COpenCLKernel::AllocatePayload() {
       continue;
     }
 
-       // skip unused arguments
+    // skip unused arguments
     bool IsUnusedArg = isUnusedArg(arg);
 
     // Runtime Values should not be processed any further. No annotations shall be created for them.

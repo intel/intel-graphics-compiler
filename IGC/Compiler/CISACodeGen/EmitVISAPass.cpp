@@ -2299,6 +2299,10 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable *dst, CVariable *src0, CV
   case llvm_inv:
     m_encoder->Inv(dst, src0);
     break;
+  case llvm_tanh:
+    break;
+  case llvm_sigm:
+    break;
   default:
     // need support
     IGC_ASSERT(0);
@@ -3076,6 +3080,10 @@ void EmitPass::EmitMulPair(GenIntrinsicInst *GII, const SSource Sources[4], cons
     m_encoder->MulH(dstHiTmp, L0, L1);
     m_encoder->Push();
   } else {
+    if (canUseMul64SOA()) {
+      emitMul64SOA(Lo, Hi, L0, L1, H0, H1, std::nullopt, false, Sources);
+      return;
+    }
     dstLoTmp = m_currShader->GetNewVariable(Lo, CName(Lo->getName(), "int64Lo"));
 
     // For those platforms natively not support DW-DW multiply, use vISA madw
@@ -4058,8 +4066,8 @@ void EmitPass::BinaryUnary(llvm::Instruction *inst, const SSource source[2], con
   }
 }
 
-void EmitPass::Mul64(CVariable *dst, CVariable *src[2], SIMDMode simdMode, bool noMask) const
-{
+void EmitPass::Mul64(CVariable *dst, CVariable *src[2], SIMDMode simdMode, bool noMask, ResultScope mulResultScope,
+                     CVariable *outDstHi) const {
 
   IGC_ASSERT(dst->IsUniform() || dst->GetNumberElement() >= numLanes(simdMode));
   simdMode = dst->IsUniform() ? SIMDMode::SIMD1 : simdMode;
@@ -4125,6 +4133,31 @@ void EmitPass::Mul64(CVariable *dst, CVariable *src[2], SIMDMode simdMode, bool 
     }
   }
 
+  if (mulResultScope == ResultScope::Low && canUseMul64SOA()) {
+    CVariable *dstLo =
+        m_currShader->GetNewVariable(numLanes(simdMode), ISA_TYPE_UD, m_destination->GetAlign(), dst->IsUniform(),
+                                     UpdateVariableName(CName(m_destination->getName(), "int64Lo")));
+    CVariable *dstHi =
+        m_currShader->GetNewVariable(numLanes(simdMode), hiType, m_destination->GetAlign(), dst->IsUniform(),
+                                     UpdateVariableName(CName(m_destination->getName(), "int64Hi")));
+
+    // Use mullh + mad
+    emitMul64SOA(dstLo, dstHi, srcLo[0], srcLo[1], srcHi[0], srcHi[1], simdMode, noMask);
+
+    CVariable *dstAsUD = m_currShader->BitCast(dst, ISA_TYPE_UD);
+    EncoderInit();
+    m_encoder->SetDstRegion(2);
+    m_encoder->Copy(dstAsUD, dstLo);
+    m_encoder->Push();
+
+    EncoderInit();
+    m_encoder->SetDstRegion(2);
+    m_encoder->SetDstSubReg(1);
+    m_encoder->Copy(dstAsUD, dstHi);
+    m_encoder->Push();
+
+    return;
+  }
   // Now, generate the required sequence of multiplies and adds
   TODO("Do not generate intermediate multiplies by constant 0 or 1.");
   TODO("Do smarter pattern matching to look for non-constant zexted/sexted "
@@ -8574,6 +8607,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_samplePOCptr:
   case GenISAIntrinsic::GenISA_samplePODptr:
   case GenISAIntrinsic::GenISA_samplePOLCptr:
+  case GenISAIntrinsic::GenISA_samplePOBCptr:
+  case GenISAIntrinsic::GenISA_samplePODCptr:
     emitSampleInstruction(cast<SampleIntrinsic>(inst));
     break;
   case GenISAIntrinsic::GenISA_discard:
@@ -8873,6 +8908,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
       emitStateRegID(11, 15);
     else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE3_CORE)
       emitStateRegID(14, 17);
+    else if (m_currShader->m_Platform->GetPlatformFamily() >= IGFX_XE3P_CORE)
+      emitStateRegID(14, 17);
     else
       emitStateRegID(12, 14);
     break;
@@ -8886,6 +8923,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     } else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_HPG_CORE)
       emitStateRegID(8, 9);
     else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE3_CORE)
+      emitStateRegID(8, 11);
+    else if (m_currShader->m_Platform->GetPlatformFamily() >= IGFX_XE3P_CORE)
       emitStateRegID(8, 11);
     else
       emitStateRegID(8, 8);
@@ -8929,6 +8968,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
       m_currShader->RemoveBitRange(m_destination, 2, 2);
     } else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_HPG_CORE ||
                m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE3_CORE)
+      emitStateRegID(4, 6);
+    else if (m_currShader->m_Platform->GetPlatformFamily() >= IGFX_XE3P_CORE)
       emitStateRegID(4, 6);
     else
       emitStateRegID(4, 7);
@@ -8985,6 +9026,10 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   }
   case GenISAIntrinsic::GenISA_eu_thread_id:
     if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE3_CORE) {
+      emitStateRegID(0, 3);
+      break;
+    }
+    if (m_currShader->m_Platform->GetPlatformFamily() >= IGFX_XE3P_CORE) {
       emitStateRegID(0, 3);
       break;
     }
@@ -9134,6 +9179,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     break;
   case GenISAIntrinsic::GenISA_LocalBufferPointer:
     emitLocalBufferPtr(inst);
+    break;
+  case GenISAIntrinsic::GenISA_KSPPointer:
+    emitKSPPointer(cast<KSPPointerIntrinsic>(inst));
     break;
   case GenISAIntrinsic::GenISA_TraceRaySync:
     emitTraceRay(cast<TraceRayIntrinsic>(inst), true);
@@ -13622,6 +13670,7 @@ void EmitPass::emitReductionInterleave(const e_opcode op, const VISA_Type type, 
   // can be optimized as a separate mov of low/high 32-bit.
   bool use32bitMove =
       ScanReduceIs64BitType(type) && m_currShader->m_Platform->doScalar64bScan() && m_currShader->m_numberInstance == 1;
+  use32bitMove &= !m_currShader->m_Platform->isCoreChildOf(IGFX_XE3P_CORE);
   if (use32bitMove && (step == 2 || step == 4)) {
     CVariable *result32b = m_currShader->GetNewAlias(temp, ISA_TYPE_UD, 0, 2 * step);
     CVariable *dst32b = m_currShader->GetNewAlias(dst, ISA_TYPE_UD, 0, 2 * numLanes(simd));
@@ -14470,6 +14519,9 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
       returnsImmValue ? m_currShader->GetNewVariable(1, pReturnValType, EALIGN_GRF, true, CName::NONE) : nullptr;
 
   if (bitWidth == 16) {
+    if (type == ISA_TYPE_BF) {
+      pFinalAtomicSrcVal = m_currShader->BitCast(pFinalAtomicSrcVal, ISA_TYPE_UW);
+    }
     CVariable *pCastAtomicSrcVal = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE);
 
     m_encoder->Cast(pCastAtomicSrcVal, pFinalAtomicSrcVal);
@@ -22028,22 +22080,53 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool
     break;
   case LSC_L1UC_L3CC:
     if (isLoad) {
+      if (hasNewCacheEncoding) {
+        // Const cached not available, but it corresponds to
+        // L2=cached L3=cached in new cache encoding.
+        cacheOpts = {LSC_CACHING_UNCACHED, LSC_CACHING_CACHED, LSC_CACHING_CACHED};
+        break;
+      }
       cacheOpts = {LSC_CACHING_UNCACHED, LSC_CACHING_CONSTCACHED};
       break;
     }
   case LSC_L1C_L3CC:
     if (isLoad) {
+      if (hasNewCacheEncoding) {
+        // Const cached not available, but it corresponds to
+        // L2=cached L3=cached in new cache encoding.
+        cacheOpts = {LSC_CACHING_CACHED, LSC_CACHING_CACHED, LSC_CACHING_CACHED};
+        break;
+      }
       cacheOpts = {LSC_CACHING_CACHED, LSC_CACHING_CONSTCACHED};
       break;
     }
   case LSC_L1IAR_L3IAR:
     if (isLoad) {
+      if (hasNewCacheEncoding) {
+        // only IAR, IAR, IAR allowed
+        cacheOpts = {LSC_CACHING_READINVALIDATE, LSC_CACHING_READINVALIDATE, LSC_CACHING_READINVALIDATE};
+        break;
+      }
       cacheOpts = {LSC_CACHING_READINVALIDATE, LSC_CACHING_READINVALIDATE};
       break;
     }
   default:
     IGC_ASSERT_EXIT_MESSAGE(0, "unsupported caching option");
     break;
+  }
+  if (hasEfficient64bEnabled && hasNewCacheEncoding) {
+    // Correct L2 settings of L1L3 input for scenario
+    // when Efficient64b is enabled and we will need valid L2
+    // for correct encoding combination.
+    // In most cases we will assign L2 caching and set L3 to uncached.
+    // All special cases (IAR, constant cache) are handled earlier in switch
+    // l1l3cc above.
+    if (cacheOpts.l2 == LSC_CACHING_DEFAULT) {
+      cacheOpts.l2 = cacheOpts.l3;
+      if (cacheOpts.l3 != LSC_CACHING_DEFAULT) {
+        cacheOpts.l3 = LSC_CACHING_UNCACHED;
+      }
+    }
   }
   return cacheOpts;
 }
@@ -23331,8 +23414,7 @@ unsigned short getLSCAtomicBitWidth(llvm::GenIntrinsicInst *inst) {
            name.startswith("llvm.genx.GenISA.LSCAtomicInts.u32") || name.startswith("llvm.genx.GenISA.LSCAtomicFP32"))
     bitwidth = 32;
   else if (name.startswith("llvm.genx.GenISA.LSCAtomicInts.i16") ||
-           name.startswith("llvm.genx.GenISA.LSCAtomicInts.u16")
-  )
+           name.startswith("llvm.genx.GenISA.LSCAtomicInts.u16") || (name.startswith("llvm.genx.GenISA.LSCAtomicBF16")))
     bitwidth = 16;
   else
     IGC_ASSERT_MESSAGE(0, "Intrinsic support is not implemented.");
@@ -23492,6 +23574,10 @@ void EmitPass::emitLocalBufferPtr(llvm::GenIntrinsicInst *I) {
   IGC_ASSERT(m_currShader->GetShaderType() == ShaderType::RAYTRACING_SHADER);
 }
 
+void EmitPass::emitKSPPointer(KSPPointerIntrinsic *KPI) {
+  IGC_ASSERT(m_currShader->GetShaderType() == ShaderType::RAYTRACING_SHADER);
+}
+
 void EmitPass::emitInlinedDataValue(llvm::GenIntrinsicInst *I) {
   IGC_ASSERT(m_currShader->GetShaderType() == ShaderType::RAYTRACING_SHADER);
 }
@@ -23509,10 +23595,8 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic *I, bool RayQueryEnable) {
   m_encoder->Fence(false, false, false, false, false, false, false, true);
   m_encoder->Push();
 
-  const uint32_t NumSend = (m_currShader->m_SIMDSize == SIMDMode::SIMD32
-                                )
-                               ? 2
-                               : 1;
+  const uint32_t NumSend =
+      (m_currShader->m_SIMDSize == SIMDMode::SIMD32 && !m_currShader->m_Platform->supportRayTracingSIMD32()) ? 2 : 1;
 
   for (uint32_t Cnt = 0; Cnt < NumSend; Cnt++) {
     // 'payload' contains bvhLevel, traceRayCtrl, and stackID as per
@@ -23528,8 +23612,7 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic *I, bool RayQueryEnable) {
                                              EALIGN_GRF, "TmpGP");
         m_encoder->Copy(TmpGP, globalBufferPtr);
         globalBufferPtr = UniformCopy(TmpGP, true);
-      } else if (m_currShader->m_SIMDSize == SIMDMode::SIMD32
-      ) {
+      } else if (m_currShader->m_SIMDSize == SIMDMode::SIMD32 && NumSend != 1) {
         auto *Src = m_currShader->GetNewAlias(globalBufferPtr, globalBufferPtr->GetType(),
                                               CEncoder::GetCISADataTypeSize(globalBufferPtr->GetType()) * 16 * Cnt, 16);
         auto *eMask = GetExecutionMask();
@@ -23601,8 +23684,7 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic *I, bool RayQueryEnable) {
     CVariable *pMessDesc = m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_UD);
 
     CVariable *Dst = RayQueryEnable ? m_destination : nullptr;
-    if (m_currShader->m_SIMDSize == SIMDMode::SIMD32
-    ) {
+    if (m_currShader->m_SIMDSize == SIMDMode::SIMD32 && NumSend != 1) {
       m_encoder->SetSimdSize(SIMDMode::SIMD16);
       if (Cnt == 1)
         m_encoder->SetMask(EMASK_H2);
@@ -23794,6 +23876,7 @@ void EmitPass::emitRayQueryCheckRelease(GenIntrinsicInst *I, bool RayQueryCheckE
 
   m_encoder->Lifetime(LIFETIME_START, dummySource);
 
+  IGC_ASSERT(m_currShader->m_SIMDSize != SIMDMode::SIMD32 || m_currShader->m_Platform->supportRayTracingSIMD32());
 
   CVariable *flag = nullptr;
 
@@ -23965,9 +24048,8 @@ void EmitPass::emitBTD(CVariable *GlobalBufferPtr, CVariable *StackID, CVariable
     m_encoder->Push();
   }
 
-  uint messageSpecificControl = BindlessThreadDispatch(2,
-                                                       m_currShader->m_State.m_dispatchSize == SIMDMode::SIMD16 ? 1 : 0,
-                                                       false, false);
+  uint messageSpecificControl =
+      BindlessThreadDispatch(2, m_currShader->m_State.m_dispatchSize >= SIMDMode::SIMD16 ? 1 : 0, false, false);
   CVariable *pMessDesc = m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_UD);
 
   unsigned int extDescriptor = EU_MESSAGE_TARGET_SFID_BTD;
@@ -24139,6 +24221,94 @@ void EmitPass::emitCastSelect(CVariable *flag, CVariable *dst, CVariable *src0, 
   m_encoder->Cast(dst, tmpDst);
 }
 
+bool EmitPass::canUseMul64SOA() const {
+  // At the moement Xe3P doesn't support mullh in SIMD32 mode. Mul64 can be
+  // implemented with two mullh SIMD16 calls, but result data will be split into
+  // two SIMD16 SOA results, with additional instructions required to shuffle it
+  // back into SIMD32 SOA result, not giving much advantage compared to mulh.
+  if (m_currShader->m_numberInstance == 1 && m_currShader->m_SIMDSize == SIMDMode::SIMD32)
+    return false;
+
+  return m_currShader->m_Platform->hasMullh();
+}
+
+void EmitPass::emitMul64SOA(CVariable *dstL, CVariable *dstH, CVariable *L0, CVariable *L1, CVariable *H0,
+                            CVariable *H1, std::optional<SIMDMode> Mode, bool NoMask, const SSource Sources[4]) const {
+  // XE3P supports mullh - multiplication of dw producing result in
+  // hi/low dw in SOA layout. Take advantage of this instruction
+  // to produce mul64 in SOA layout.
+
+  // Algorithm:
+  //    AB   - L0, L1
+  //    CD   - H0, H1
+  //   ----
+  //     E
+  //    F
+  //    G
+  //   H     - 'H' spills into bit 65 - only needed if overflow detection is
+  //   required
+  // --------
+  // dstLow = E
+  // dstHigh = F + G + carry
+
+  // It's possible that src=dst, use tmp vars.
+  // CVariable* tmpL = m_currShader->GetNewVariable(dstL, CName(dstL->getName(),
+  // "int64Lo"));
+  CVariable *tmpH = m_currShader->GetNewVariable(dstH, CName(dstH->getName(), "int64Hi"));
+
+  // (Cr, E) = A * B
+  // dst size should be GRF-aligned and doubled as it has both low and high
+  // results. We must make the dst element number is numDWPerGRF aligned. For
+  // example, if the madw is SIMD1, the dst has only 1 DW as low result in 1 GRF
+  // and only 1 DW as high result in another GRF. We should set the dst as
+  // (numDWPerGRF * 2) element but not 2 DW elements. This is required by madw.
+  auto numDWPerGRF = getGRFSize() / SIZE_DWORD;
+  auto numElements = iSTD::Align(dstL->GetNumberElement(), numDWPerGRF);
+  CVariable *tmpLH = m_currShader->GetNewVariable(numElements * 2, ISA_TYPE_UD, EALIGN_GRF, dstL->IsUniform(),
+                                                  CName(dstL->getName(), "int64LoHi"));
+  CVariable *zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
+  if (nullptr != Sources) {
+    SetSourceModifiers(0, Sources[0]);
+    SetSourceModifiers(1, Sources[2]);
+  }
+
+  auto EncoderInit = [&]() {
+    if (Mode)
+      m_encoder->SetSimdSize(*Mode);
+    if (NoMask)
+      m_encoder->SetNoMask();
+  };
+
+  EncoderInit();
+  m_encoder->Madw(tmpLH, L0, L1, zero);
+
+  // tmpLH = E, Cr
+
+  // F = A * D + Cr
+  if (nullptr != Sources) {
+    SetSourceModifiers(0, Sources[0]);
+    SetSourceModifiers(1, Sources[3]);
+  }
+  uint regOffset = (uint)std::ceil((float)(numElements * CEncoder::GetCISADataTypeSize(ISA_TYPE_UD)) / getGRFSize());
+  m_encoder->SetSrcRegion(2, 1, 1, 0);
+  m_encoder->SetSrcSubVar(2, regOffset);
+  m_encoder->Mad(tmpH, L0, H1, tmpLH);
+  m_encoder->Push();
+
+  // G = B * C + F
+  if (nullptr != Sources) {
+    SetSourceModifiers(0, Sources[2]);
+    SetSourceModifiers(1, Sources[1]);
+  }
+  EncoderInit();
+  m_encoder->Mad(dstH, L1, H0, tmpH);
+  m_encoder->Push();
+
+  EncoderInit();
+  m_encoder->SetSrcRegion(0, 1, 1, 0);
+  m_encoder->Copy(dstL, tmpLH);
+  m_encoder->Push();
+}
 
 void EmitPass::emitShflIdx4(Instruction *inst, bool isPacked) {
   if (!m_currShader->m_Platform->supportsFp4Int4Upsampling()) {

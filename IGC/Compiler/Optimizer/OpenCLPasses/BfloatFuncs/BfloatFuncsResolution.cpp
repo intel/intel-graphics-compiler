@@ -92,6 +92,8 @@ void BfloatFuncsResolution::visitCallInst(CallInst &CI) {
       .StartsWith("__builtin_bf16_sin", [&]() { handleMath(CI, Intrinsic::sin); })
       .StartsWith("__builtin_bf16_cos", [&]() { handleMath(CI, Intrinsic::cos); })
       .StartsWith("__builtin_bf16_inv", [&]() { handleMath(CI, GenISAIntrinsic::GenISA_inv, true); })
+      .StartsWith("__builtin_bf16_tanh", [&]() { handleMath(CI, GenISAIntrinsic::GenISA_tanh, true); })
+      .StartsWith("__builtin_bf16_sigm", [&]() { handleMath(CI, GenISAIntrinsic::GenISA_sigm, true); })
       .Default([&]() {
         IGC_ASSERT(0);
         m_ctx->EmitError("Unhandled __builtin_bf16_ instruction!", &CI);
@@ -350,4 +352,9 @@ ushortn __builtin_bf16_exp(ushortn)
 ushortn __builtin_bf16_sqrt(ushortn)
 ushortn __builtin_bf16_sin(ushortn)
 ushortn __builtin_bf16_cos(ushortn)
+*/
+
+/*
+ushortn __builtin_bf16_tanh(ushortn)
+ushortn __builtin_bf16_sigm(ushortn)
 */

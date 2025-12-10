@@ -3642,7 +3642,9 @@ void GenSpecificPattern::visitFNeg(llvm::UnaryOperator &I) {
   Value *fsub = nullptr;
 
   if (IGCLLVM::isBFloatTy(I.getType())) {
-    return;
+    CodeGenContext *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    if (!Ctx->platform.supportsPureBF())
+      return;
   }
 
   if (!I.getType()->isVectorTy()) {
@@ -7134,6 +7136,8 @@ bool CanonicalizeMulAdd::isSupported(Instruction &I) {
   if (I.getOpcode() != Instruction::Mul)
     return false;
 
+  if (ctx->platform.isCoreChildOf(IGFX_XE3P_CORE) && I.getType()->isIntegerTy(32))
+    return true;
 
   return I.getType()->isIntegerTy(8) || I.getType()->isIntegerTy(16);
 }

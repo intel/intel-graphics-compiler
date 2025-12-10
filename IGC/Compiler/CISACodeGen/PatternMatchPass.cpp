@@ -1135,6 +1135,8 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I) {
     case GenISAIntrinsic::GenISA_IEEE_Divide:
     case GenISAIntrinsic::GenISA_rsq:
     case GenISAIntrinsic::GenISA_inv:
+    case GenISAIntrinsic::GenISA_tanh:
+    case GenISAIntrinsic::GenISA_sigm:
       match = MatchModifier(I);
       break;
     case GenISAIntrinsic::GenISA_intatomicraw:
@@ -2393,7 +2395,8 @@ bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I) {
       // Need GRF-aligned src0 (in vISA, src2 in gen) for mad. Since preemptive swapping happened earlier, if conditions
       // are not satisfied just don't match mad. Alignment and regioning are limited for src0
       // - dword aligned but not using lower bits
-      if (oprdInfo[0].needsRegioning && !oprdInfo[0].useLower
+      if (oprdInfo[0].needsRegioning && !oprdInfo[0].useLower &&
+          !m_Platform.isCoreChildOf(IGFX_XE3P_CORE) // Simplified regioning
       ) {
         continue;
       }
@@ -2534,7 +2537,8 @@ bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I) {
       // Mad instruction does not support dword * dword, no operands were able to get reduced.
       if (mul->getType()->isIntegerTy(32) && !oprdInfo[0].isCandidate() &&
           !oprdInfo[1].isCandidate()
-      ) {
+          /* Simplified regioning, dword * dword allowed */
+          && !m_Platform.isCoreChildOf(IGFX_XE3P_CORE)) {
         return false;
       }
 
@@ -2565,9 +2569,8 @@ bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I) {
 
       // control whether to allow any constant operand >16-bit to be generated to be used from the constant pool
       // if AllowConstMadOpMovToReg is set, we allow one such constant, otherwise all constants must be 16-bit
-      const unsigned constLimit = IGC_IS_FLAG_ENABLED(AllowConstMadOpMovToReg)
-                                      ? 1
-                                      : 0;
+      const unsigned constLimit =
+          IGC_IS_FLAG_ENABLED(AllowConstMadOpMovToReg) || m_Platform.isCoreChildOf(IGFX_XE3P_CORE) ? 1 : 0;
       if ((numConst - num16BitImm) > constLimit) {
         continue;
       }
@@ -2604,7 +2607,8 @@ bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I) {
             AddToConstantPool(I.getParent(), oprdInfo[i].src);
             pattern->sources[i].fromConstantPool = true;
           } else if (!addToConstantPool
-          ) {
+                     // Pre XE3P only one immediate constant allowed in mad
+                     && !m_Platform.isCoreChildOf(IGFX_XE3P_CORE)) {
             addToConstantPool = true;
           }
         }

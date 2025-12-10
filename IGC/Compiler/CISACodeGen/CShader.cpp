@@ -824,7 +824,8 @@ CVariable *CShader::GetHWTID() {
         return m_HW_TID;
       }
 
-      if (m_Platform->getPlatformInfo().eRenderCoreFamily == IGFX_XE3_CORE) {
+      if (m_Platform->getPlatformInfo().eRenderCoreFamily == IGFX_XE3_CORE ||
+          m_Platform->getPlatformInfo().eRenderCoreFamily >= IGFX_XE3P_CORE) {
        // msg0.0:
        // [7:0] : LogicalSSID
        // sr0.0:
@@ -3640,8 +3641,8 @@ CVariable *CShader::CopyVariableRaw(CVariable *src, bool singleInstance) {
 }
 
 bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode) {
-  const uint maxPerThreadScratchSpace = m_ctx->platform.maxPerThreadScratchSpace(
-  );
+  const uint maxPerThreadScratchSpace =
+      m_ctx->platform.maxPerThreadScratchSpace(m_ctx->m_DriverInfo.supports16MBPerThreadScratchSpace());
 
   bool ret =
       ((m_ScratchSpaceSize <= maxPerThreadScratchSpace) || m_ctx->m_DriverInfo.supportsStatelessSpacePrivateMemory());

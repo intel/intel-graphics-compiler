@@ -248,6 +248,8 @@ static_assert(offsetof(packed::implicit_args, rt_global_buffer_ptr) == offsetof(
               "Implicit args struct is not properly aligned for rt_global_buffer_ptr member!");
 static_assert(offsetof(packed::implicit_args, assert_buffer_ptr) == offsetof(implicit_args, assert_buffer_ptr),
               "Implicit args struct is not properly aligned for assert_buffer_ptr member!");
+static_assert(offsetof(packed::implicit_args, scratch_ptr) == offsetof(implicit_args, scratch_ptr),
+              "Implicit args struct is not properly aligned for scratch_ptr member!");
 static_assert(offsetof(packed::implicit_args, region_group_size_x) == offsetof(implicit_args, region_group_size_x),
               "Implicit args struct is not properly aligned for region_group_size_x member!");
 static_assert(offsetof(packed::implicit_args, region_group_size_y) == offsetof(implicit_args, region_group_size_y),
@@ -967,6 +969,22 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst &CI) {
     }
     case GenISAIntrinsic::GenISA_getAssertBufferPtr: {
       unsigned int Offset = offsetof(implicit_args, assert_buffer_ptr);
+      auto Result = BuildLoadInst(CI, Offset, Builder.getInt64Ty());
+      Result = Builder.CreateIntToPtr(Result, CI.getType());
+      V = Result;
+      break;
+    }
+    case GenISAIntrinsic::GenISA_getIndirectDataPtr: {
+      // if implict args buffer is present, indirectDataPtr points to the
+      // beginning of this buffer.
+      unsigned int Offset = 0;
+      auto Result = BuildLoadInst(CI, Offset, Builder.getInt64Ty());
+      Result = Builder.CreateIntToPtr(Result, CI.getType());
+      V = Result;
+      break;
+    }
+    case GenISAIntrinsic::GenISA_getScratchPtr: {
+      unsigned int Offset = offsetof(implicit_args, scratch_ptr);
       auto Result = BuildLoadInst(CI, Offset, Builder.getInt64Ty());
       Result = Builder.CreateIntToPtr(Result, CI.getType());
       V = Result;

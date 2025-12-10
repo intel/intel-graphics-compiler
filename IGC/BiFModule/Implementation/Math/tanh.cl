@@ -23,6 +23,10 @@ float __attribute__((overloadable)) __spirv_ocl_tanh( float x )
     {
         result = __spirv_ocl_nan(0);
     }
+    else if(BIF_FLAG_CTRL_GET(HasNativeTanh))
+    {
+        result = __builtin_IB_tanhf(x);
+    }
     else if(BIF_FLAG_CTRL_GET(UseHighAccuracyMath))
     {
         result = __ocl_svml_tanhf_noLUT(x);
@@ -77,6 +81,10 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, double, double, f64 )
 
 INLINE half __attribute__((overloadable)) __spirv_ocl_tanh( half x )
 {
+    if(BIF_FLAG_CTRL_GET(HasNativeTanh))
+    {
+        return __builtin_IB_tanhh(x);
+    }
     return __spirv_ocl_tanh((float)x);
 }
 

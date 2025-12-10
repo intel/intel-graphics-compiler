@@ -492,7 +492,25 @@ unsigned int CodeGenContext::getRegisterPointerSizeInBits(unsigned int AS) const
     }
     break;
   default:
-    {
+    if (platform.hasEfficient64bEnabled()) {
+      switch (GetBufferType(AS)) {
+      case IGC::BINDLESS:
+      case IGC::BINDLESS_READONLY:
+      case IGC::BINDLESS_WRITEONLY:
+      case IGC::SSH_BINDLESS:
+      case IGC::BINDLESS_CONSTANT_BUFFER:
+      case IGC::BINDLESS_TEXTURE:
+      case IGC::BINDLESS_SAMPLER:
+      case IGC::RENDER_TARGET:
+      case IGC::SSH_BINDLESS_CONSTANT_BUFFER:
+      case IGC::SSH_BINDLESS_TEXTURE:
+        pointerSizeInRegister = 64;
+        break;
+      default:
+        pointerSizeInRegister = 32;
+        break;
+      }
+    } else {
       pointerSizeInRegister = 32;
     }
     break;

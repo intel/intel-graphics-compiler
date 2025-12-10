@@ -365,7 +365,8 @@ template <> struct TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_sampleCptr> {
 
 // Checks if a sample_d instruction samples a Cube or a 3D texture.
 inline bool needsSampleDEmulation(const SampleIntrinsic *inst) {
-  IGC_ASSERT(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleDptr);
+  IGC_ASSERT(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleDCptr ||
+             inst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleDptr);
 
   RESOURCE_DIMENSION_TYPE textureType = inst->getTextureDimType();
   if (textureType == RESOURCE_DIMENSION_TYPE::DIM_3D_TYPE ||
@@ -465,6 +466,126 @@ template <> struct TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_sampleLCptr> {
     for (unsigned int i = 0; i < IGCLLVM::getNumArgOperands(sampleIntr); i++) {
       if (i == lodOffset) {
         args.push_back(packedLodOffsetUV);
+        continue;
+      }
+
+      if (i == aiOffset)
+        continue;
+
+      args.push_back(sampleIntr->getArgOperand(i));
+    }
+
+    return TranslateIntrinsicBase::CreateTranslatedCall<TranslateIntrinsicImpl>(sampleIntr, args);
+  }
+};
+
+template <> struct TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_sampleBCptr> {
+  static const GenISAIntrinsic::ID TargetIntrinsic = GenISAIntrinsic::GenISA_samplePOBCptr;
+
+  static llvm::Value *PackBiasOffsetUVR(SampleIntrinsic *sampleIntr) {
+    return TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_sampleBptr>::PackBiasOffsetUVR(sampleIntr);
+  }
+
+  static llvm::CallInst *TranslateDetail(SampleIntrinsic *sampleIntr) {
+    uint aiOffset = 5;
+    uint biasOffset = sampleIntr->getBiasIndex();
+
+    llvm::Value *packedBiasOffsetUVR = PackBiasOffsetUVR(sampleIntr);
+    TranslateIntrinsicBase::ZeroImmediateOffsets(sampleIntr);
+
+    llvm::SmallVector<llvm::Value *, 12> args;
+    for (unsigned int i = 0; i < IGCLLVM::getNumArgOperands(sampleIntr); i++) {
+      if (i == biasOffset) {
+        args.push_back(packedBiasOffsetUVR);
+        continue;
+      }
+
+      if (i == aiOffset) {
+        // add 0 mlod
+        args.push_back(llvm::ConstantFP::get(sampleIntr->getArgOperand(i)->getType(), 0.0));
+        continue;
+      }
+
+      args.push_back(sampleIntr->getArgOperand(i));
+    }
+
+    return TranslateIntrinsicBase::CreateTranslatedCall<TranslateIntrinsicImpl>(sampleIntr, args);
+  }
+};
+
+template <> struct TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_sampleBCMlodptr> {
+  static const GenISAIntrinsic::ID TargetIntrinsic = GenISAIntrinsic::GenISA_samplePOBCptr;
+
+  static llvm::Value *PackBiasOffsetUVR(SampleIntrinsic *sampleIntr) {
+    return TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_sampleBptr>::PackBiasOffsetUVR(sampleIntr);
+  }
+
+  static llvm::CallInst *TranslateDetail(SampleIntrinsic *sampleIntr) {
+    // sampleBCMlod args: ref, bias,        u, v, r, ai, minLod, paired texture, texture, sampler, immOffU, immOffV,
+    // immOffR samplePOBC   args: ref, bias_offuvr, u, v, r,     minLod, paired texture, texture, sampler, immOffU,
+    // immOffV, immOffR SamplerPerfOptPass copies minLod into ai
+    uint skipParamOffset = 6;
+    uint biasOffset = sampleIntr->getBiasIndex();
+
+    llvm::Value *packedBiasOffsetUVR = PackBiasOffsetUVR(sampleIntr);
+    TranslateIntrinsicBase::ZeroImmediateOffsets(sampleIntr);
+
+    llvm::SmallVector<llvm::Value *, 12> args;
+    for (unsigned int i = 0; i < IGCLLVM::getNumArgOperands(sampleIntr); i++) {
+      if (i == biasOffset) {
+        args.push_back(packedBiasOffsetUVR);
+        continue;
+      }
+
+      if (i == skipParamOffset) {
+        continue;
+      }
+
+      args.push_back(sampleIntr->getArgOperand(i));
+    }
+
+    return TranslateIntrinsicBase::CreateTranslatedCall<TranslateIntrinsicImpl>(sampleIntr, args);
+  }
+};
+
+template <> struct TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_sampleDCptr> {
+  static const GenISAIntrinsic::ID TargetIntrinsic = GenISAIntrinsic::GenISA_samplePODCptr;
+
+  static bool IsApplicable(SampleIntrinsic *sampleIntr) {
+    return !needsSampleDEmulation(sampleIntr);
+  }
+
+  static llvm::Value *PackOffsetUVRCoordR(SampleIntrinsic *sampleIntr) {
+    IRBuilder<> builder(sampleIntr->getContext());
+    builder.SetInsertPoint(sampleIntr);
+
+    llvm::Value *offsetU = sampleIntr->getImmediateOffsetsValue(0);
+    llvm::Value *offsetV = sampleIntr->getImmediateOffsetsValue(1);
+
+    llvm::Value *clampedOffsetU = builder.CreateAnd(offsetU, 0xf);
+    llvm::Value *clampedOffsetV = builder.CreateAnd(offsetV, 0xf);
+
+    llvm::Value *aux = builder.getInt32(0);
+    aux = builder.CreateOr(aux, builder.CreateShl(clampedOffsetU, 12));
+    aux = builder.CreateOr(aux, builder.CreateShl(clampedOffsetV, 16));
+
+    llvm::Value *r = sampleIntr->getOperand(7);
+    aux = CombineSampleOrGather4Params(builder, r, aux, 12, "", "");
+
+    return builder.CreateBitCast(aux, builder.getFloatTy());
+  }
+
+  static llvm::CallInst *TranslateDetail(SampleIntrinsic *sampleIntr) {
+    uint rOffset = 7;
+    uint aiOffset = 10;
+
+    llvm::Value *packedOffUVRCoordR = PackOffsetUVRCoordR(sampleIntr);
+    TranslateIntrinsicBase::ZeroImmediateOffsets(sampleIntr);
+
+    llvm::SmallVector<llvm::Value *, 16> args;
+    for (unsigned int i = 0; i < IGCLLVM::getNumArgOperands(sampleIntr); i++) {
+      if (i == rOffset) {
+        args.push_back(packedOffUVRCoordR);
         continue;
       }
 
@@ -844,6 +965,21 @@ bool TranslateToProgrammableOffsetsPass::runOnFunction(Function &F) {
           break;
         case GenISAIntrinsic::GenISA_sampleLCptr:
           newInst = TranslateIntrinsic<GenISAIntrinsic::GenISA_sampleLCptr>::Translate(sampleInst);
+          break;
+        case GenISAIntrinsic::GenISA_sampleBCptr:
+          if (ctx->platform.supportsProgrammableOffsetsSampleBCAndSampleDC()) {
+            newInst = TranslateIntrinsic<GenISAIntrinsic::GenISA_sampleBCptr>::Translate(sampleInst);
+          }
+          break;
+        case GenISAIntrinsic::GenISA_sampleBCMlodptr:
+          if (ctx->platform.supportsProgrammableOffsetsSampleBCAndSampleDC()) {
+            newInst = TranslateIntrinsic<GenISAIntrinsic::GenISA_sampleBCMlodptr>::Translate(sampleInst);
+          }
+          break;
+        case GenISAIntrinsic::GenISA_sampleDCptr:
+          if (ctx->platform.supportsProgrammableOffsetsSampleBCAndSampleDC()) {
+            newInst = TranslateIntrinsic<GenISAIntrinsic::GenISA_sampleDCptr>::Translate(sampleInst);
+          }
           break;
         default:
           break;

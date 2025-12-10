@@ -1365,6 +1365,12 @@ static string DefineAllSmallLoads()
     s +=
         DefineSmallLoad(MatrixSpec(SUB_GROUP_32, Layout_PackedA_RowMajor, 8, 8, BITS_32));
 
+    // PackedA, i64:
+    s +=
+        DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 4, 8, BITS_64));
+
+    s +=
+        DefineSmallLoad(MatrixSpec(SUB_GROUP_32, Layout_PackedA_RowMajor, 4, 8, BITS_64));
 
     // PackedB, i8:
     s += DefineSmallLoad(MatrixSpec(SUB_GROUP_8, Layout_PackedB_RowMajor, 8, 32, BITS_8));
@@ -1412,6 +1418,12 @@ static string DefineAllSmallLoads()
     s += DefineSmallLoad(
         MatrixSpec(SUB_GROUP_32, Layout_PackedB_RowMajor, 8, 16, BITS_32));
 
+    // PackedB, i64:
+    s += DefineSmallLoad(
+        MatrixSpec(SUB_GROUP_16, Layout_PackedB_RowMajor, 8, 16, BITS_64));
+
+    s += DefineSmallLoad(
+        MatrixSpec(SUB_GROUP_32, Layout_Accumulator_RowMajor, 4, 16, BITS_64));
 
     // Acumulator, i16
     s += DefineSmallLoadPermuteRows(
@@ -1434,6 +1446,12 @@ static string DefineAllSmallLoads()
     s += DefineSmallLoadPermuteRows(
         MatrixSpec(SUB_GROUP_32, Layout_Accumulator_ColumnMajor, 8, 16, BITS_32));
 
+    // Accumulator, i64:
+    s += DefineSmallLoad(
+        MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 4, 16, BITS_64));
+
+    s += DefineSmallLoad(
+        MatrixSpec(SUB_GROUP_32, Layout_PackedB_RowMajor, 8, 16, BITS_64));
 
     //
     // Special loads used by big shape loads:

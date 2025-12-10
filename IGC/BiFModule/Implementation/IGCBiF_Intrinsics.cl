@@ -1112,6 +1112,10 @@ global void* __builtin_IB_intel_get_rt_global_buffer();
 #endif // defined(cl_intel_pvc_rt_validation) || defined(cl_intel_rt_production)
 
 void    __builtin_IB_hdc_uncompressed_write_uchar(__global uchar *buf, uchar val);
+float __builtin_IB_tanhf(float x);
+float __builtin_IB_sigmf(float x);
+half  __builtin_IB_tanhh(half x);
+half  __builtin_IB_sigmh(half x);
 
 ushort __builtin_bf16_sin(ushort) __attribute__((overloadable));
 ushort __builtin_bf16_cos(ushort) __attribute__((overloadable));

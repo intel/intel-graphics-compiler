@@ -66,5 +66,10 @@ if not config.regkeys_disabled:
 if config.opaque_pointers == '1':
   config.available_features.add('opaque-ptr-fix')
 
+config.available_features.add('rt_eff64_style')
+
+if 'rt_eff64_style' in config.available_features:
+  config.substitutions.append(('%RT_CHECK_PREFIX%', 'CHECK-RT-EFF64-STYLE'))
+else:
   config.substitutions.append(('%RT_CHECK_PREFIX%', 'CHECK-RT'))
 

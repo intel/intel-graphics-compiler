@@ -58,6 +58,7 @@ enum InstructionMask : uint32_t {
   SharedMemoryReadOperation = (1 << 7),
   SharedMemoryWriteOperation = (1 << 8),
   EndOfThreadOperation = (1 << 9),
+  ExtendedCacheControlOperation = (1 << 10),
   LastMaskPlusOne,
 };
 
@@ -393,6 +394,9 @@ private:
 
   ////////////////////////////////////////////////////////////////////////
   static bool IsSharedMemoryWriteOperation(const llvm::Instruction *pInst);
+
+  ////////////////////////////////////////////////////////////////////////
+  static bool IsExtendedCacheControlOperation(const llvm::Instruction *pInst);
 
   ////////////////////////////////////////////////////////////////////////
   static bool IsReturnOperation(const llvm::Instruction *pInst);
@@ -862,6 +866,10 @@ bool SynchronizationObjectCoalescing::FindRedundancies() {
           SynchronizationCaseMask syncCaseMask =
               GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask,
                                      BufferReadOperation, BufferWriteOperation);
+          syncCaseMask = static_cast<SynchronizationCaseMask>(
+              syncCaseMask |
+              GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, None,
+                                     ExtendedCacheControlOperation));
           if (!m_HasTypedMemoryFenceFunctionality) {
             syncCaseMask |=
                 GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask,
@@ -1045,8 +1053,7 @@ SynchronizationObjectCoalescing::GetDefaultWriteMemoryInstructionMask(const llvm
     switch (GetLscMem(pSourceInst)) {
     case LSC_UGM:  // .ugm
     case LSC_UGML: // .ugml
-      result |=
-          BufferWriteOperation;
+      result |= ExtendedCacheControlOperation | BufferWriteOperation;
       if (!m_HasIndependentSharedMemoryFenceFunctionality) {
         result |= SharedMemoryWriteOperation;
       }
@@ -1111,8 +1118,7 @@ SynchronizationObjectCoalescing::GetDefaultMemoryInstructionMask(const llvm::Ins
     switch (GetLscMem(pSourceInst)) {
     case LSC_UGM:  // .ugm
     case LSC_UGML: // .ugml
-      result |=
-          AtomicOperation | BufferWriteOperation | BufferReadOperation;
+      result |= ExtendedCacheControlOperation | AtomicOperation | BufferWriteOperation | BufferReadOperation;
       if (!m_HasIndependentSharedMemoryFenceFunctionality) {
         result |= SharedMemoryWriteOperation | SharedMemoryReadOperation;
       }
@@ -1141,13 +1147,29 @@ SynchronizationObjectCoalescing::GetDefaultMemoryInstructionMask(const llvm::Ins
   }
 
   constexpr InstructionMask maskToIncludeEOT =
-      SharedMemoryWriteOperation | BufferWriteOperation | TypedWriteOperation;
+      ExtendedCacheControlOperation | SharedMemoryWriteOperation | BufferWriteOperation | TypedWriteOperation;
   if (static_cast<uint32_t>(result & maskToIncludeEOT) != 0) {
 
     result = static_cast<InstructionMask>(result | EndOfThreadOperation);
   }
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////
+bool SynchronizationObjectCoalescing::IsExtendedCacheControlOperation(const llvm::Instruction *pInst) {
+  if (llvm::isa<llvm::GenIntrinsicInst>(pInst)) {
+    const llvm::GenIntrinsicInst *pGenIntrinsicInst = llvm::cast<llvm::GenIntrinsicInst>(pInst);
+
+    switch (pGenIntrinsicInst->getIntrinsicID()) {
+    case llvm::GenISAIntrinsic::GenISA_ExtendedCacheControl:
+      return true;
+    default:
+      break;
+    }
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -1756,6 +1778,15 @@ SynchronizationObjectCoalescing::GetSynchronizationMask(InstructionMask localFor
     result = static_cast<SynchronizationCaseMask>(result | SynchronizationCaseMask::WriteSyncRet);
   }
 
+  // extended cache control -> fence -> ret
+  bool requiresFlushExtendedCacheControls = static_cast<uint32_t>(writeBit & (ExtendedCacheControlOperation)) != 0;
+  bool isExtendedCacheControlSyncRetCase =
+      requiresFlushExtendedCacheControls && ((localBackwardMemoryInstructionMask & writeBit) != 0 &&
+                                             (localForwardMemoryInstructionMask & EndOfThreadOperation) != 0);
+  if (isExtendedCacheControlSyncRetCase) {
+    result = static_cast<SynchronizationCaseMask>(result | SynchronizationCaseMask::ExtendedCacheControlSyncRet);
+  }
+
   // atomic -> barrier/fence -> read
   bool isAtomicSyncReadCase = ((localBackwardMemoryInstructionMask & AtomicOperation) != 0 &&
                                (localForwardMemoryInstructionMask & readBit) != 0);
@@ -1816,7 +1847,10 @@ SynchronizationObjectCoalescing::GetStrictSynchronizationMask(llvm::Instruction 
     strictSynchronizationCaseMask =
         static_cast<SynchronizationCaseMask>((SynchronizationCaseMask::WriteSyncRet) | strictSynchronizationCaseMask);
 
-       // Note: Please change the description in igc flags if the value is changed.
+    strictSynchronizationCaseMask = static_cast<SynchronizationCaseMask>(
+        (SynchronizationCaseMask::ExtendedCacheControlSyncRet) | strictSynchronizationCaseMask);
+
+    // Note: Please change the description in igc flags if the value is changed.
     static_assert(SynchronizationCaseMask::ReadSyncWrite == 0x01);
     bool disableReadFenceWriteCase =
         (IGC_GET_FLAG_VALUE(SynchronizationObjectCoalescingConfig) & SynchronizationCaseMask::ReadSyncWrite) != 0;
@@ -1860,6 +1894,11 @@ SynchronizationObjectCoalescing::GetSynchronizationMaskForAllResources(
   syncCaseMask = static_cast<SynchronizationCaseMask>(
       syncCaseMask | GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask,
                                             OutputUrbReadOperation, UrbWriteOperation));
+
+  // extended cache control access
+  syncCaseMask = static_cast<SynchronizationCaseMask>(
+      syncCaseMask | GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, None,
+                                            ExtendedCacheControlOperation));
 
   return syncCaseMask;
 }
@@ -2041,7 +2080,7 @@ SynchronizationObjectCoalescing::GetInstructionMask(const std::vector<const llvm
 /// @param pReferenceInst represents the reference instruction which is an object of the replacement
 /// and it means that this instruction must be equal or weaker than the evaluated one.
 bool SynchronizationObjectCoalescing::IsSubstituteInstruction(const llvm::Instruction *pEvaluatedInst,
-                                                             const llvm::Instruction *pReferenceInst) const {
+                                                              const llvm::Instruction *pReferenceInst) const {
   if (pEvaluatedInst == pReferenceInst) {
     return false;
   }
@@ -2585,8 +2624,9 @@ InstructionMask SynchronizationObjectCoalescing::GetInstructionMask(const llvm::
     return InstructionMask::SharedMemoryWriteOperation;
   } else if (IsAsyncRaytracingOperation(pInst)) {
     return AllNoAtomicMask;
-  }
-  else if (IsSyncRaytracingOperation(pInst)) {
+  } else if (IsExtendedCacheControlOperation(pInst)) {
+    return InstructionMask::ExtendedCacheControlOperation;
+  } else if (IsSyncRaytracingOperation(pInst)) {
     return InstructionMask::BufferReadOperation | InstructionMask::BufferWriteOperation;
   } else if (IsReturnOperation(pInst)) {
     return InstructionMask::EndOfThreadOperation;

@@ -68,6 +68,9 @@ defm 128_grf_per_thread : CommonFlag<"128-GRF-per-thread">;
 // -cl-intel-256-GRF-per-thread
 defm 256_grf_per_thread : CommonFlag<"256-GRF-per-thread">;
 
+// -cl-intel-512-GRF-per-thread
+defm 512_grf_per_thread : CommonFlag<"512-GRF-per-thread">;
+
 // -cl-intel-enable-auto-large-GRF-mode, -ze-opt-enable-auto-large-GRF-mode
 defm enable_auto_large_GRF_mode : CommonFlag<"enable-auto-large-GRF-mode">,
   HelpText<"Use compiler heuristics to determine number of GRF.">;

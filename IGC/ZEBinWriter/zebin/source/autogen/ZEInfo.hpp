@@ -47,7 +47,7 @@ struct zeInfoExecutionEnv
 {
     bool operator==(const zeInfoExecutionEnv& other) const
     {
-        return barrier_count == other.barrier_count && disable_mid_thread_preemption == other.disable_mid_thread_preemption && grf_count == other.grf_count && has_4gb_buffers == other.has_4gb_buffers && has_device_enqueue == other.has_device_enqueue && has_dpas == other.has_dpas && has_fence_for_image_access == other.has_fence_for_image_access && has_global_atomics == other.has_global_atomics && has_multi_scratch_spaces == other.has_multi_scratch_spaces && has_no_stateless_write == other.has_no_stateless_write && has_stack_calls == other.has_stack_calls && has_printf_calls == other.has_printf_calls && require_assert_buffer == other.require_assert_buffer && require_sync_buffer == other.require_sync_buffer && has_indirect_calls == other.has_indirect_calls && require_disable_eufusion == other.require_disable_eufusion && indirect_stateless_count == other.indirect_stateless_count && inline_data_payload_size == other.inline_data_payload_size && offset_to_skip_per_thread_data_load == other.offset_to_skip_per_thread_data_load && offset_to_skip_set_ffid_gp == other.offset_to_skip_set_ffid_gp && required_sub_group_size == other.required_sub_group_size && required_work_group_size == other.required_work_group_size && simd_size == other.simd_size && slm_size == other.slm_size && private_size == other.private_size && spill_size == other.spill_size && subgroup_independent_forward_progress == other.subgroup_independent_forward_progress && thread_scheduling_mode == other.thread_scheduling_mode && work_group_walk_order_dimensions == other.work_group_walk_order_dimensions && eu_thread_count == other.eu_thread_count && has_sample == other.has_sample && has_rtcalls == other.has_rtcalls && generate_local_id == other.generate_local_id && has_lsc_stores_with_non_default_l1_cache_controls == other.has_lsc_stores_with_non_default_l1_cache_controls && require_iab == other.require_iab;
+        return barrier_count == other.barrier_count && disable_mid_thread_preemption == other.disable_mid_thread_preemption && grf_count == other.grf_count && has_4gb_buffers == other.has_4gb_buffers && has_device_enqueue == other.has_device_enqueue && has_dpas == other.has_dpas && has_fence_for_image_access == other.has_fence_for_image_access && has_global_atomics == other.has_global_atomics && has_multi_scratch_spaces == other.has_multi_scratch_spaces && has_no_stateless_write == other.has_no_stateless_write && has_stack_calls == other.has_stack_calls && has_printf_calls == other.has_printf_calls && require_assert_buffer == other.require_assert_buffer && require_sync_buffer == other.require_sync_buffer && has_indirect_calls == other.has_indirect_calls && require_disable_eufusion == other.require_disable_eufusion && indirect_stateless_count == other.indirect_stateless_count && inline_data_payload_size == other.inline_data_payload_size && offset_to_skip_per_thread_data_load == other.offset_to_skip_per_thread_data_load && offset_to_skip_set_ffid_gp == other.offset_to_skip_set_ffid_gp && required_sub_group_size == other.required_sub_group_size && required_work_group_size == other.required_work_group_size && simd_size == other.simd_size && slm_size == other.slm_size && private_size == other.private_size && spill_size == other.spill_size && subgroup_independent_forward_progress == other.subgroup_independent_forward_progress && thread_scheduling_mode == other.thread_scheduling_mode && work_group_walk_order_dimensions == other.work_group_walk_order_dimensions && eu_thread_count == other.eu_thread_count && has_sample == other.has_sample && has_rtcalls == other.has_rtcalls && quantum_size == other.quantum_size && quantum_walk_order == other.quantum_walk_order && quantum_partition_dimension == other.quantum_partition_dimension && generate_local_id == other.generate_local_id && has_lsc_stores_with_non_default_l1_cache_controls == other.has_lsc_stores_with_non_default_l1_cache_controls && require_iab == other.require_iab;
     }
     zeinfo_int32_t barrier_count = 0;
     zeinfo_bool_t disable_mid_thread_preemption = false;
@@ -81,6 +81,9 @@ struct zeInfoExecutionEnv
     zeinfo_int32_t eu_thread_count = 0;
     zeinfo_bool_t has_sample = false;
     zeinfo_bool_t has_rtcalls = false;
+    zeinfo_int32_t quantum_size = 0;
+    zeinfo_int32_t quantum_walk_order = 0;
+    zeinfo_int32_t quantum_partition_dimension = 0;
     zeinfo_bool_t generate_local_id = false;
     zeinfo_bool_t has_lsc_stores_with_non_default_l1_cache_controls = false;
     zeinfo_bool_t require_iab = false;
@@ -345,6 +348,7 @@ struct PreDefinedAttrGetter{
         const_base,
         global_base,
         region_group_size,
+        region_group_dimension,
         region_group_wg_count,
         region_group_barrier_buffer,
         buffer_size
@@ -513,6 +517,8 @@ struct PreDefinedAttrGetter{
             return "global_base";
         case ArgType::region_group_size:
             return "region_group_size";
+        case ArgType::region_group_dimension:
+            return "region_group_dimension";
         case ArgType::region_group_wg_count:
             return "region_group_wg_count";
         case ArgType::region_group_barrier_buffer:

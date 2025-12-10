@@ -156,6 +156,27 @@ public:
 
 static_assert(sizeof(KSP) == 8, "changed?");
 
+struct KSP64 {
+  /* returns the base address of the shader record this KSP is part of */
+  void *getShaderRecord(bool isAnyhit) {
+    char offset = isAnyhit ? sizeof(KSP64) : 0;
+    return (char *)this + SHADER_IDENTIFIER_SIZE_IN_BYTES - offset; // ShaderIdentifier is 32 bytes large
+  }
+
+  /* checks if this KSP is a NULL KSP */
+  bool isNull() const { return *(uint64_t *)this == NullValue; }
+
+  static constexpr uint64_t NullValue = 0;
+
+  uint64_t _registers_per_thread : 4; // This specifies the number of GRFs.
+  uint64_t _reserved : 1;
+  uint64_t _bindless_shader_dispatch_mode : 1; // 0 = SIMD16, 1 = SIMD32
+  uint64_t _instruction_pointer : 58;          // shader function pointer
+};
+
+static_assert(sizeof(KSP64) == 8, "changed?");
+
+static_assert(sizeof(KSP) == sizeof(KSP64), "All KSP definitions must have the same size.");
 
 
 struct NodeInfo {
@@ -915,6 +936,16 @@ template <> struct InstanceLeaf<Xe3> {
 };
 static_assert(sizeof(InstanceLeaf<Xe3>) == 128, "InstanceLeaf must be 128 bytes large");
 
+// These are the same as for Xe3; needed by clang-based autogen
+template <> struct MemHit<Xe3PEff64> : MemHit<Xe3> {};
+
+template <> struct MemRay<Xe3PEff64> : MemRay<Xe3> {};
+
+template <> struct PrimLeafDesc<Xe3PEff64> : PrimLeafDesc<Xe3> {};
+
+template <> struct QuadLeaf<Xe3PEff64> : QuadLeaf<Xe3> {};
+
+template <> struct InstanceLeaf<Xe3PEff64> : InstanceLeaf<Xe3> {};
 
 // HW stack
 template <typename GenT, uint32_t MaxBVHLevels> struct RTStack {
@@ -938,6 +969,51 @@ template <typename GenT> struct RTStack<GenT, MAX_BVH_LEVELS> {
   MemTravStack travStack[MAX_BVH_LEVELS]; // spill location for the internal stack state per instancing level
 };
 
+constexpr static uint32_t NewRTStackLayoutGapSize =
+    3 * (sizeof(MemHit<Xe3>) + sizeof(MemTravStack) + sizeof(MemRay<Xe3>)); // in bytes
+static_assert(NewRTStackLayoutGapSize == 3 * 128);
+
+template <uint32_t MaxBVHLevels> struct RTStack<Xe3PEff64, MaxBVHLevels> {
+  MemHit<Xe3> committedHit;
+  MemTravStack travStack0;
+  MemRay<Xe3> ray0;
+
+  // New stack layout in memory is divided into several non-contiguous parts.
+  // See doc for details.
+  uint8_t pad0[NewRTStackLayoutGapSize];
+
+  MemHit<Xe3> potentialHit;
+  MemTravStack travStack1;
+  MemRay<Xe3> ray1;
+
+  uint8_t pad1[NewRTStackLayoutGapSize];
+
+  struct {
+    MemRay<Xe3> ray;
+    uint8_t pad[3 * sizeof(MemRay<Xe3>)];
+  } rays[MaxBVHLevels - MAX_BVH_LEVELS];
+
+  struct {
+    MemTravStack travStack;
+    uint8_t pad[3 * sizeof(MemTravStack)];
+  } travStacks[MaxBVHLevels - MAX_BVH_LEVELS];
+
+  static_assert(MaxBVHLevels > 2);
+};
+
+template <> struct RTStack<Xe3PEff64, MAX_BVH_LEVELS> {
+  MemHit<Xe3> committedHit;
+  MemTravStack travStack0;
+  MemRay<Xe3> ray0;
+
+  uint8_t pad[NewRTStackLayoutGapSize];
+
+  MemHit<Xe3> potentialHit;
+  MemTravStack travStack1;
+  MemRay<Xe3> ray1;
+
+  static_assert(MAX_BVH_LEVELS == 2);
+};
 
 // This is the ShadowMemory that we maintain if we DONOT need spill/fill it to/from HW RTStack.
 // We keep this data structure as small as possible to reduce the size.
@@ -968,10 +1044,15 @@ template <typename GenT> using RTStack2 = RTStack<GenT, MAX_BVH_LEVELS>;
 template <typename GenT> using SMStack2 = SMStack<GenT, MAX_BVH_LEVELS>;
 
 template <typename RTStack2T> constexpr size_t sizeofRTStack2() { return sizeof(RTStack2T); }
+// This function returns logical size of the RTStack2, so unused space is not counted; see doc for details.
+template <> constexpr size_t sizeofRTStack2<RTStack2<Xe3PEff64>>() {
+  return sizeof(RTStack2<Xe3PEff64>) - sizeof(RTStack2<Xe3PEff64>::pad);
+}
 
 #ifdef HAS_INCLUDE_TYPE_TRAITS
 static_assert(std::is_standard_layout_v<RTStack2<Xe>>);
 static_assert(std::is_standard_layout_v<SMStack2<Xe>>);
+static_assert(std::is_standard_layout_v<RTStack2<Xe3PEff64>>);
 #endif // HAS_INCLUDE_TYPE_TRAITS
 
 // Makes sure that important fields are at their proper offset from the start
@@ -983,6 +1064,12 @@ static_assert(offsetof(RTStack2<Xe>, ray0) == 64, "unexpected offset!");
 static_assert(offsetof(RTStack2<Xe>, ray1) == 64 + 64, "unexpected offset!");
 static_assert(offsetof(RTStack2<Xe>, travStack) == 192, "unexpected offset!");
 
+static_assert(offsetof(RTStack2<Xe3PEff64>, committedHit) == 0, "unexpected offset!");
+static_assert(offsetof(RTStack2<Xe3PEff64>, potentialHit) == 512, "unexpected offset!");
+static_assert(offsetof(RTStack2<Xe3PEff64>, ray0) == 64, "unexpected offset!");
+static_assert(offsetof(RTStack2<Xe3PEff64>, ray1) == 64 + 512, "unexpected offset!");
+static_assert(offsetof(RTStack2<Xe3PEff64>, travStack0) == 32, "unexpected offset!");
+static_assert(offsetof(RTStack2<Xe3PEff64>, travStack1) == 512 + 32, "unexpected offset!");
 
 /////////////// BVH structures ///////////////
 
@@ -1304,6 +1391,15 @@ constexpr uint64_t calcRTMemoryAllocSize(uint64_t SWHotZoneSize, uint64_t SyncSt
          IGC::Align(SWStackSize * DSS_COUNT * NumDSSRTStacks, IGC::RTStackAlign);
 }
 
+constexpr uint64_t calcRTMemoryAllocSizeXe3PEff64(uint64_t SWHotZoneSize, uint64_t SyncStackSize,
+                                                  uint64_t AsyncStackSize, uint64_t SWStackSize, uint64_t DSS_COUNT,
+                                                  uint64_t NumDSSRTStacks, uint64_t SIMD_LANES_PER_DSS) {
+  // SIMD_LANES_PER_DSS = EUCount * ThreadCount * SIMD16
+  return IGC::Align(SWHotZoneSize * DSS_COUNT * NumDSSRTStacks, IGC::RTStackXe3PEff64Align) +
+         IGC::Align(SyncStackSize * DSS_COUNT * SIMD_LANES_PER_DSS, IGC::RTStackXe3PEff64Align) +
+         IGC::Align(AsyncStackSize * DSS_COUNT * NumDSSRTStacks, IGC::RTStackXe3PEff64Align) +
+         IGC::Align(SWStackSize * DSS_COUNT * NumDSSRTStacks, IGC::RTStackAlign);
+}
 
 constexpr uint32_t getSyncStackSize() {
 #define STYLE(X) static_assert(sizeofRTStack2<RTStack2<Xe>>() == sizeofRTStack2<RTStack2<X>>());
@@ -1329,6 +1425,18 @@ constexpr uint64_t calcRTMemoryOffsets(uint64_t SWHotZoneSize, uint64_t SyncStac
   return AsyncOffset;
 }
 
+constexpr uint64_t calcRTMemoryOffsetsXe3PEff64(uint64_t SWHotZoneSize, uint64_t SyncStackSize, uint64_t AsyncStackSize,
+                                                uint64_t &SWHotZoneOffset, uint64_t &SWStackOffset, uint64_t DSS_COUNT,
+                                                uint64_t NumDSSRTStacks, uint64_t SIMD_LANES_PER_DSS) {
+  uint64_t AsyncOffset = IGC::Align(SWHotZoneSize * DSS_COUNT * NumDSSRTStacks, IGC::RTStackXe3PEff64Align) +
+                         IGC::Align(SyncStackSize * DSS_COUNT * SIMD_LANES_PER_DSS, IGC::RTStackXe3PEff64Align);
+
+  // The hot zone is the base of the allocation
+  SWHotZoneOffset = 0;
+  SWStackOffset = AsyncOffset + IGC::Align(AsyncStackSize * DSS_COUNT * NumDSSRTStacks, IGC::RTStackAlign);
+
+  return AsyncOffset;
+}
 
 // unit tests:
 static_assert(calcRTMemoryAllocSize(sizeof(SWHotZone_v1), sizeof(RTStack2<Xe>), sizeof(RTStack2<Xe>), 128, 32, 2048,
@@ -1342,6 +1450,12 @@ static_assert(calcRTMemoryAllocSize(8, sizeof(RTStack2<Xe>), sizeof(RTStack2<Xe>
                                   16 * 8 * 16>),
               "mismatch?");
 
+// Note `RTStack2<Xe>` used in `RTMemory` below, because actual stack size is needed (no paddings).
+static_assert(calcRTMemoryAllocSizeXe3PEff64(sizeof(SWHotZone_v1), sizeofRTStack2<RTStack2<Xe3PEff64>>(),
+                                             sizeofRTStack2<RTStack2<Xe3PEff64>>(), 128, 32, 2048, 16 * 8 * 16) ==
+                  sizeof(RTMemory<SWHotZone_v1, RTStack2<Xe>, RTStack2<Xe>, uint8_t[128], IGC::RTStackXe3PEff64Align,
+                                  32, 2048, 16 * 8 * 16>),
+              "mismatch?");
 
 /* a list of commands for the ray tracing hardware */
 enum class TraceRayCtrl : uint8_t {

@@ -496,6 +496,10 @@ enum {
   MatrixBSignedComponentsKHR = 0x2,
   MatrixCSignedComponentsKHR = 0x4,
   MatrixResultSignedComponentsKHR = 0x8,
+  MatrixABFloat8ComponentsINTEL = 0x400,
+  MatrixBBFloat8ComponentsINTEL = 0x800,
+  MatrixAHFloat8ComponentsINTEL = 0x1000,
+  MatrixBHFloat8ComponentsINTEL = 0x2000,
   // Unused right now
   SaturatingAccumulationKHR = 0x10,
   MatrixAAndBTF32ComponentsINTEL = 0x20,
@@ -540,8 +544,12 @@ struct SupportedParams {
 static SupportedParams getSupportedParams(const JointMatrixTypeDescription *desc, bool useSG16) {
   /* slices are represented as vectors from <1 x i32> to <8 x i32>, resulting in the maximum slice size: */
   unsigned maxSliceBitWidth = 256;
+  if (desc->bitWidth == 64) {
+    maxSliceBitWidth = 512;
+  }
   SupportedParams params;
   params.bitWidth = 8 | 32;
+  params.bitWidth |= 64;
 
   if (desc->layout == LayoutPackedA) {
     params.maxRows = 8;
@@ -674,6 +682,7 @@ static bool isSupprtedLargeSlice(const JointMatrixTypeDescription *desc, bool us
 
 bool JointMatrixFuncsResolutionPass::ValidateIntegerBitWidth(unsigned int bitWidth) {
   bool result = bitWidth == 8 || bitWidth == 16 || bitWidth == 32;
+  result |= bitWidth == 64;
   return result;
 }
 
@@ -781,6 +790,10 @@ void JointMatrixFuncsResolutionPass::Validate2DBlockLoadStore(GetMatrixFuncNameO
 
   std::set<unsigned> supported_rows = {1, 2, 4, 8, 16, 32};
   std::set<unsigned> supported_cols = {8, 16, 32, 64};
+  if (m_Ctx->platform.isCoreChildOf(IGFX_XE3P_CORE)) {
+    supported_cols.insert(128);
+    supported_cols.insert(256);
+  }
   if (supported_rows.find(desc->rows) == supported_rows.end()) {
     std::string msg = "Unsupported row parameter for matrix " + operationName + ": " + std::to_string(desc->rows) +
                       ". Supported values: ";
@@ -799,11 +812,16 @@ void JointMatrixFuncsResolutionPass::Validate2DBlockLoadStore(GetMatrixFuncNameO
     unsigned elemBytes = desc->bitWidth / 8;
     unsigned perRowBytes = desc->columns * elemBytes;
     bool supported = (perRowBytes <= 64);
+    // blockWidth * data size should be <= 64B or equal to 256B for 2D block loads for XE3P+
+    if (m_Ctx->platform.isCoreChildOf(IGFX_XE3P_CORE))
+      supported |= (perRowBytes == 256);
 
     if (!supported) {
       std::string msg = "Matrix " + operationName +
                         " size limit exceeded. "
                         "(columns * dataSize) has to be (equal or less than 64B)";
+      if (m_Ctx->platform.isCoreChildOf(IGFX_XE3P_CORE))
+        msg += " or (equal to 256B)";
       msg += ".\nLimit exceeded with values: " + std::to_string(desc->columns) + " * " + std::to_string(elemBytes) +
              "B = " + std::to_string(perRowBytes) + "B";
       m_Ctx->EmitError(msg.c_str(), ctx);
@@ -1063,8 +1081,10 @@ bool IGC::JointMatrixFuncsResolutionPass::ParseMatrixTypeNameExtTypeDetails(
     }
 
     outDescription->isFloating = false;
-  }
-  else if (typeParam->isFloatTy()) {
+  } else if (typeParam->isDoubleTy()) {
+    outDescription->bitWidth = 64;
+    outDescription->isFloating = true;
+  } else if (typeParam->isFloatTy()) {
     outDescription->bitWidth = 32;
     outDescription->isFloating = true;
   } else if (typeParam->isHalfTy()) {
@@ -1160,8 +1180,10 @@ bool JointMatrixFuncsResolutionPass::ParseMatrixTypeNameNonExtTypeDetails(Type *
   } else if (name.consume_front("char_")) {
     outDescription->bitWidth = 8;
     outDescription->isFloating = false;
-  }
-  else if (name.consume_front("float_")) {
+  } else if (name.consume_front("double_")) {
+    outDescription->bitWidth = 64;
+    outDescription->isFloating = true;
+  } else if (name.consume_front("float_")) {
     outDescription->bitWidth = 32;
     outDescription->isFloating = true;
   } else if (name.consume_front("half_")) {
@@ -1386,6 +1408,11 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *inputType, JointMatrixTy
     desc.contribBitWidth = desc.bitWidth;
   }
 
+  if (desc.bitWidth == 64) {
+    IGC_ASSERT(desc.isFloating);
+    desc.contribBitWidth = desc.bitWidth;
+    baseType = Type::getDoubleTy(ctx);
+  }
 
   if (outDesc != nullptr)
     *outDesc = desc;
@@ -1667,6 +1694,9 @@ template <bool IsJointMatrix, bool IsChecked> Instruction *JointMatrixFuncsResol
 static PrecisionType getJointMatrixElementPrecison(const JointMatrixTypeDescription *desc, bool floatOp,
                                                    bool isUnsigned) {
   const unsigned width = desc->bitWidth;
+  if (floatOp && width == 64) {
+    return PrecisionType::DF;
+  }
   if (floatOp && width == 16) {
     /* bf is passed as uint16_t, hf is using halfs */
     return desc->isFloating ? PrecisionType::FP16 : PrecisionType::BF16;
@@ -1683,6 +1713,9 @@ static PrecisionType getJointMatrixElementPrecison(const JointMatrixTypeDescript
 static PrecisionType getCoopMatrixElementPrecison(const JointMatrixTypeDescription *desc, unsigned OperandsMask,
                                                   unsigned Use, bool floatOp) {
   const unsigned width = desc->bitWidth;
+  if (floatOp && width == 64) {
+    return PrecisionType::DF;
+  }
   if (OperandsMask & MatrixAAndBBFloat16ComponentsINTEL) {
     IGC_ASSERT_MESSAGE(floatOp && width == 16, "Wrong OpCooperativeMatrixMulAddKHR ops for BFloat16");
     return PrecisionType::BF16;
@@ -1704,6 +1737,22 @@ static PrecisionType getCoopMatrixElementPrecison(const JointMatrixTypeDescripti
       return Use == UseMatrixB ? PrecisionType::S8 : PrecisionType::U8;
     }
     return PrecisionType::U8;
+  }
+
+  if (floatOp && width == 8) {
+    if (Use == UseMatrixA) {
+      if (OperandsMask & MatrixABFloat8ComponentsINTEL) {
+        return PrecisionType::BF8;
+      } else if (OperandsMask & MatrixAHFloat8ComponentsINTEL) {
+        return PrecisionType::HF8;
+      }
+    } else if (Use == UseMatrixB) {
+      if (OperandsMask & MatrixBBFloat8ComponentsINTEL) {
+        return PrecisionType::BF8;
+      } else if (OperandsMask & MatrixBHFloat8ComponentsINTEL) {
+        return PrecisionType::HF8;
+      }
+    }
   }
   return PrecisionType::PRECISION_UNUSED;
 }

@@ -9,6 +9,9 @@ SPDX-License-Identifier: MIT
 extern int __SubDeviceID;
 
 int __attribute__((overloadable)) __spirv_BuiltInSubDeviceIDINTEL(void) {
+    if(BIF_FLAG_CTRL_GET(HasHWTileIDRegister)) {
+        return __builtin_IB_hw_tile_id();
+    }
 
     // When __SubDeviceID is declared as an extern int,
     // it is lowered to LLVM-IR like:

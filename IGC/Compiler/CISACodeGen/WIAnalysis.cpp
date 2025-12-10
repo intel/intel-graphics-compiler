@@ -1248,7 +1248,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       GII_id == GenISAIntrinsic::GenISA_Int4VectorUnpack || GII_id == GenISAIntrinsic::GenISA_Int4VectorPack ||
       GII_id == GenISAIntrinsic::GenISA_hftohf8 || GII_id == GenISAIntrinsic::GenISA_hf8tohf ||
       GII_id == GenISAIntrinsic::GenISA_ftotf32 || GII_id == GenISAIntrinsic::GenISA_GlobalBufferPointer ||
-      GII_id == GenISAIntrinsic::GenISA_LocalBufferPointer ||
+      GII_id == GenISAIntrinsic::GenISA_LocalBufferPointer || GII_id == GenISAIntrinsic::GenISA_KSPPointer ||
       GII_id == GenISAIntrinsic::GenISA_InlinedData ||
       GII_id == GenISAIntrinsic::GenISA_GetShaderRecordPtr || GII_id == GenISAIntrinsic::GenISA_URBWrite ||
       GII_id == GenISAIntrinsic::GenISA_URBRead || GII_id == GenISAIntrinsic::GenISA_URBReadOutput ||
@@ -1272,8 +1272,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       GII_id == GenISAIntrinsic::GenISA_getRtGlobalBufferPtr || GII_id == GenISAIntrinsic::GenISA_GetGlobalBufferArg ||
       GII_id == GenISAIntrinsic::GenISA_GetImplicitBufferPtr || GII_id == GenISAIntrinsic::GenISA_GetLocalIdBufferPtr ||
       GII_id == GenISAIntrinsic::GenISA_ReadFromReservedArgSpace ||
-      GII_id == GenISAIntrinsic::GenISA_getAssertBufferPtr ||
-      GII_id == GenISAIntrinsic::GenISA_getRegionGroupSize || GII_id == GenISAIntrinsic::GenISA_getRegionGroupWGCount ||
+      GII_id == GenISAIntrinsic::GenISA_getAssertBufferPtr || GII_id == GenISAIntrinsic::GenISA_getIndirectDataPtr ||
+      GII_id == GenISAIntrinsic::GenISA_getScratchPtr || GII_id == GenISAIntrinsic::GenISA_getRegionGroupSize ||
+      GII_id == GenISAIntrinsic::GenISA_getRegionGroupWGCount ||
       GII_id == GenISAIntrinsic::GenISA_getRegionGroupBarrierBufferPtr ||
       GII_id == GenISAIntrinsic::GenISA_staticConstantPatchValue ||
       GII_id == GenISAIntrinsic::GenISA_bitcastfromstruct || GII_id == GenISAIntrinsic::GenISA_bitcasttostruct ||
@@ -1324,6 +1325,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
     case GenISAIntrinsic::GenISA_getSyncBuffer:
     case GenISAIntrinsic::GenISA_getRtGlobalBufferPtr:
     case GenISAIntrinsic::GenISA_getAssertBufferPtr:
+    case GenISAIntrinsic::GenISA_getIndirectDataPtr:
+    case GenISAIntrinsic::GenISA_getScratchPtr:
     case GenISAIntrinsic::GenISA_getRegionGroupSize:
     case GenISAIntrinsic::GenISA_getRegionGroupWGCount:
     case GenISAIntrinsic::GenISA_getRegionGroupBarrierBufferPtr:

@@ -513,6 +513,10 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperationAP(CallInst &CI, 
     blkWidth = 2;
   } else if (funcName.consume_front("k1")) {
     blkWidth = 1;
+  } else if (isPrefetch && funcName.consume_front("k256")) {
+    blkWidth = 256;
+  } else if (isPrefetch && funcName.consume_front("k128")) {
+    blkWidth = 128;
   } else {
     std::stringstream ss;
     ss << "Missing or unsupported k element in : " << fname << "\n";
@@ -549,6 +553,7 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperationAP(CallInst &CI, 
     }
   } else if (isTranspose && !isVnniTransform) {
     bool isLegitW8 = false;
+    isLegitW8 = m_pCtx->platform.supports2dBlockTranspose64ByteWidth();
 
     bool isValid64 = (elemSize == 64 && blkHeight == 8 && (blkWidth <= 4 || (blkWidth == 8 && isLegitW8)));
     bool isValid32 = (elemSize == 32 && blkHeight <= 32 && blkWidth <= 8);
@@ -854,8 +859,11 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst &
       tileWidth = 8;
     } else if (funcName.consume_front("k4")) {
       tileWidth = 4;
-    }
-    else {
+    } else if (isPrefetch && funcName.consume_front("k256")) {
+      tileWidth = 256;
+    } else if (isPrefetch && funcName.consume_front("k128")) {
+      tileWidth = 128;
+    } else {
       IGC_ASSERT_MESSAGE(0, "Unrecognized k element in __builtin_IB_subgroup_block_read/write.");
       return nullptr;
     }
@@ -902,7 +910,8 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst &
         // For __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k1
         //     __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k2
         //     __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k4
-       // not tied to subGrpSize
+        // and __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k8
+        // not tied to subGrpSize
         tileHeight = 8;
       }
 
@@ -916,8 +925,14 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst &
         // For __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k1
         //     __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k2
         ;
-      }
-      else {
+      } else if (m_pCtx->platform.supports2dBlockTranspose64ByteWidth() && tileWidth == 8) {
+        // __builtin_IB_subgroup_block_read_flat_transpose_u64_k8
+        ;
+      } else {
+        if (m_pCtx->platform.supports2dBlockTranspose64ByteWidth()) {
+          IGC_ASSERT_MESSAGE(0, "Transpose with 64 bit element size only supports width: 4, 8");
+          return nullptr;
+        }
         IGC_ASSERT_MESSAGE(0, "Transpose with 64 bit element size only supports width 1, 2, 4 for height 8.");
         return nullptr;
       }
@@ -942,8 +957,12 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst &
       tileWidth = 8;
       funcName.consume_front("_");
       funcName = consume_number(funcName, "k", &tileWidth);
-      if (tileWidth < 1 || (tileWidth > 8
-                                )) {
+      if (tileWidth < 1 ||
+          (tileWidth > 8 && (!m_pCtx->platform.supports2dBlockTranspose64ByteWidth() || tileWidth != 16))) {
+        if (m_pCtx->platform.supports2dBlockTranspose64ByteWidth()) {
+          IGC_ASSERT_MESSAGE(0, "Transpose with 32 bit element size only supports width: 1 - 8, 16");
+          return nullptr;
+        }
         IGC_ASSERT_MESSAGE(0, "Transpose with 32 bit element size only supports width: 1 - 8.");
         return nullptr;
       }
@@ -1430,8 +1449,8 @@ Instruction *LSCFuncsResolution::CreateLSCAtomicIntrinsicCallInst(bool isLocalMe
 
   GenISAIntrinsic::ID id = isFP64Atomic   ? GenISAIntrinsic::GenISA_LSCAtomicFP64
                            : isFP32Atomic ? GenISAIntrinsic::GenISA_LSCAtomicFP32
-                           :
-                                        GenISAIntrinsic::GenISA_LSCAtomicInts;
+                           : isBF16Atomic ? GenISAIntrinsic::GenISA_LSCAtomicBF16
+                                          : GenISAIntrinsic::GenISA_LSCAtomicInts;
 
   Function *lscFunc = nullptr;
   if (!isFP32Atomic && !isFP64Atomic) {
@@ -1731,6 +1750,10 @@ Constant *LSCFuncsResolution::getCacheControlOpts(int i, bool isAtomic) {
     case LSC_L1DEF_L3DEF:
     case LSC_L1UC_L3UC:
     case LSC_L1UC_L3C_WB:
+    case LSC_STCC_L1_L2_L3::LSC_STCC_L1_L2_L3_DEF:
+    case LSC_STCC_L1_L2_L3::LSC_STCC_L1UC_L2UC_L3UC:
+    case LSC_STCC_L1_L2_L3::LSC_STCC_L1UC_L2UC_L3WB:
+    case LSC_STCC_L1_L2_L3::LSC_STCC_L1UC_L2WB_L3UC:
       break;
     default:
       reportError("atomic must not use caching on L1");

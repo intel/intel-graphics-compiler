@@ -77,6 +77,12 @@ enum {
   MatrixBPackedFloat16INTEL = 0x800,
   MatrixAPackedBFloat16INTEL = 0x1000,
   MatrixBPackedBFloat16INTEL = 0x2000,
+  MatrixAPackedFloat8E4M3INTEL = 0x4000,
+  MatrixBPackedFloat8E4M3INTEL = 0x8000,
+  MatrixAPackedFloat8E5M2INTEL = 0x10000,
+  MatrixBPackedFloat8E5M2INTEL = 0x20000,
+  MatrixAPackedFloat4E2M1INTEL = 0x40000,
+  MatrixBPackedFloat4E2M1INTEL = 0x80000,
 };
 
 static std::string GetHumanReadableOperand(uint32_t operand) {
@@ -110,6 +116,18 @@ static std::string GetHumanReadableOperand(uint32_t operand) {
     operands.push_back("MatrixAPackedBFloat16INTEL");
   if (operand & MatrixBPackedBFloat16INTEL)
     operands.push_back("MatrixBPackedBFloat16INTEL");
+  if (operand & MatrixAPackedFloat8E4M3INTEL)
+    operands.push_back("MatrixAPackedFloat8E4M3INTEL");
+  if (operand & MatrixBPackedFloat8E4M3INTEL)
+    operands.push_back("MatrixBPackedFloat8E4M3INTEL");
+  if (operand & MatrixAPackedFloat8E5M2INTEL)
+    operands.push_back("MatrixAPackedFloat8E5M2INTEL");
+  if (operand & MatrixBPackedFloat8E5M2INTEL)
+    operands.push_back("MatrixBPackedFloat8E5M2INTEL");
+  if (operand & MatrixAPackedFloat4E2M1INTEL)
+    operands.push_back("MatrixAPackedFloat4E2M1INTEL");
+  if (operand & MatrixBPackedFloat4E2M1INTEL)
+    operands.push_back("MatrixBPackedFloat4E2M1INTEL");
 
   if (operands.empty())
     return "None";
@@ -184,6 +202,38 @@ void SpvSubgroupMMAResolution::populateSimd16Table() {
   // tf32 matrix sources, fp32 accumulator:
   m_Simd16Table[8][ElType::F32][ElType::F32][ElType::F32][MatrixATF32INTEL | MatrixBTF32INTEL] = "f_f_tf32_tf32_";
 
+  // fp8 matrix sources (hf8 and bf8), fp32 accumulator:
+  m_Simd16Table[32][ElType::F32][ElType::I16][ElType::I32]
+               [MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E5M2INTEL] = "f_f_bf8_bf8_";
+  m_Simd16Table[32][ElType::F32][ElType::I16][ElType::I32]
+               [MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E5M2INTEL] = "f_f_hf8_bf8_";
+  m_Simd16Table[32][ElType::F32][ElType::I16][ElType::I32]
+               [MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E4M3INTEL] = "f_f_bf8_hf8_";
+  m_Simd16Table[32][ElType::F32][ElType::I16][ElType::I32]
+               [MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E4M3INTEL] = "f_f_hf8_hf8_";
+
+  // fp8 matrix sources (hf8 and bf8), bf16 accumulator:
+  m_Simd16Table[32][ElType::I16][ElType::I16][ElType::I32][MatrixResultBFloat16INTEL | MatrixAPackedFloat8E5M2INTEL |
+                                                           MatrixBPackedFloat8E5M2INTEL | MatrixCBFloat16INTEL] =
+      "bf_bf_bf8_bf8_";
+  m_Simd16Table[32][ElType::I16][ElType::I16][ElType::I32][MatrixResultBFloat16INTEL | MatrixAPackedFloat8E4M3INTEL |
+                                                           MatrixBPackedFloat8E5M2INTEL | MatrixCBFloat16INTEL] =
+      "bf_bf_hf8_bf8_";
+  m_Simd16Table[32][ElType::I16][ElType::I16][ElType::I32][MatrixResultBFloat16INTEL | MatrixAPackedFloat8E5M2INTEL |
+                                                           MatrixBPackedFloat8E4M3INTEL | MatrixCBFloat16INTEL] =
+      "bf_bf_bf8_hf8_";
+  m_Simd16Table[32][ElType::I16][ElType::I16][ElType::I32][MatrixResultBFloat16INTEL | MatrixAPackedFloat8E4M3INTEL |
+                                                           MatrixBPackedFloat8E4M3INTEL | MatrixCBFloat16INTEL] =
+      "bf_bf_hf8_hf8_";
+
+  // fp4 matrix sources, fp32 accumulator:
+  m_Simd16Table[64][ElType::F32][ElType::I16][ElType::I32]
+               [MatrixAPackedFloat4E2M1INTEL | MatrixBPackedFloat4E2M1INTEL] = "f_f_e2m1_e2m1_";
+
+  // fp4 matrix sources, bf16 accumulator:
+  m_Simd16Table[64][ElType::I16][ElType::I16][ElType::I32][MatrixResultBFloat16INTEL | MatrixAPackedFloat4E2M1INTEL |
+                                                           MatrixBPackedFloat4E2M1INTEL | MatrixCBFloat16INTEL] =
+      "bf_bf_e2m1_e2m1_";
 }
 
 void SpvSubgroupMMAResolution::emitError(const Twine &message, const CallInst &CI) {

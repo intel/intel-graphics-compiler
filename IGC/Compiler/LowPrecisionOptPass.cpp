@@ -233,7 +233,9 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst &I) {
   case GenISAIntrinsic::GenISA_sampleLptr:
   case GenISAIntrinsic::GenISA_sampleLCptr:
   case GenISAIntrinsic::GenISA_sampleBCptr:
-       // 4 overloaded tys: ret, arg0, resource, sampler
+  case GenISAIntrinsic::GenISA_samplePOBCptr:
+  case GenISAIntrinsic::GenISA_samplePODCptr:
+    // 4 overloaded tys: ret, arg0, resource, sampler
     overloadTys.push_back(I.getArgOperand(0)->getType());
     overloadTys.push_back(cast<SampleIntrinsic>(&I)->getPairedTextureValue()->getType());
     overloadTys.push_back(cast<SampleIntrinsic>(&I)->getTextureValue()->getType());

@@ -362,6 +362,7 @@ bool NamedBarriersResolution::NamedBarrierHWSupport(GFXCORE_FAMILY GFX_CORE) {
   bool hwSupport = GFX_CORE == IGFX_XE_HPC_CORE;
   hwSupport |= GFX_CORE == IGFX_XE2_HPG_CORE;
   hwSupport |= GFX_CORE == IGFX_XE3_CORE;
+  hwSupport |= GFX_CORE == IGFX_XE3P_CORE;
   return hwSupport;
 }
 

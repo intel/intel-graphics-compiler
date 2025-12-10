@@ -420,6 +420,8 @@ DEFINE_PREFETCH_GROUP_K(8)
 DEFINE_PREFETCH_GROUP_K(16)
 DEFINE_PREFETCH_GROUP_K(32)
 DEFINE_PREFETCH_GROUP_K(64)
+DEFINE_PREFETCH_GROUP_K(128)
+DEFINE_PREFETCH_GROUP_K(256)
 
 #include "IBiF_matrix_generated.h"
 
@@ -731,6 +733,14 @@ DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, int, 4, 16, COL_MAJOR, , 2, tr
 DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, int, 3, 16, COL_MAJOR, , 2, true)
 DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 1, true)
 // DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, int, 1, 16, COL_MAJOR, , 1, true) same as for subgroup 16
+// Double stores 4x8x16 SG16
+DEFINE_STORE(PackedA_RowMajor,     _SG16, long, long, 4, 8,  ROW_MAJOR, _ul, 2, true)
+DEFINE_STORE_AND_CHECKED(PackedB_RowMajor,     _SG16, long, long, 4, 16, ROW_MAJOR, _ul, 8, true)
+DEFINE_STORE_AND_CHECKED(Accumulator_RowMajor, _SG16, long, long, 4, 16, ROW_MAJOR, _ul, 4, true)
+// Double stores 4x8x16 SG32
+DEFINE_STORE(PackedA_RowMajor,     _SG16, long, long, 4, 8,  ROW_MAJOR, _ul, 1, true)
+DEFINE_STORE_AND_CHECKED(PackedB_RowMajor,     _SG16, long, long, 4, 16, ROW_MAJOR, _ul, 4, true)
+DEFINE_STORE(Accumulator_RowMajor, _SG16, long, long, 4, 16, ROW_MAJOR, _ul, 2, true)
 
 // sub group size 32 for big combinations is not optimized yet
 DEFINE_STORE(PackedA_RowMajor,     _SG16, short, short, 16, 16, ROW_MAJOR, , 8, false)

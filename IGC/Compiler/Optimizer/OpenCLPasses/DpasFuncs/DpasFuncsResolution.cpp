@@ -442,8 +442,12 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
       IGC_ASSERT_MESSAGE(D_BaseTy->isIntegerTy(32), "ICE: type of dpas[w]'s D should int32!");
       IGC_ASSERT_MESSAGE(ACC_BaseTy->isIntegerTy(32), "ICE: type of dpas[w]'s ACC should int32!");
     }
-    // fdpas fp4
-    else if (PA == PrecisionType::E2M1) {
+    else if (PA == PrecisionType::BF8 || PA == PrecisionType::HF8 || PB == PrecisionType::BF8 ||
+             PB == PrecisionType::HF8) {
+      // Only BF8/HF8 combinations allowed
+      const bool isAllowedFP8 = ((PA == PrecisionType::BF8 || PA == PrecisionType::HF8) &&
+                                 (PB == PrecisionType::BF8 || PB == PrecisionType::HF8));
+    } else if (PA == PrecisionType::E2M1) { // fdpas fp4
       IGC_ASSERT_MESSAGE(D_nelts == RC, "ICE: dpas intrinsic has mismatched vector sizes of arguments!");
       IGC_ASSERT_MESSAGE(ACC_nelts == RC, "ICE: dpas intrinsic has mismatched vector sizes of arguments!");
       IGC_ASSERT_MESSAGE(B_nelts == SD, "ICE: dpas intrinsic has mismatched vector sizes of arguments!");

@@ -853,6 +853,7 @@ bool Config::initialize(Function *F, CodeGenContext *inCGC, IGCLivenessAnalysis 
   }
 
   isLegitW8 = false;
+  isLegitW8 = CGC->platform.supports2dBlockTranspose64ByteWidth();
   sizeOfRegs_B = RPE->registerSizeInBytes();
   numOfRegs = CGC->getNumGRFPerThread();
 

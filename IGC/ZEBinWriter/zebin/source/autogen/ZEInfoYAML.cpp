@@ -90,6 +90,9 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapOptional("eu_thread_count", info.eu_thread_count, 0);
     io.mapOptional("has_sample", info.has_sample, false);
     io.mapOptional("has_rtcalls", info.has_rtcalls, false);
+    io.mapOptional("quantum_size", info.quantum_size, 0);
+    io.mapOptional("quantum_walk_order", info.quantum_walk_order, 0);
+    io.mapOptional("quantum_partition_dimension", info.quantum_partition_dimension, 0);
     io.mapOptional("generate_local_id", info.generate_local_id, false);
     io.mapOptional("has_lsc_stores_with_non_default_l1_cache_controls", info.has_lsc_stores_with_non_default_l1_cache_controls, false);
     io.mapOptional("require_iab", info.require_iab, false);

@@ -1216,8 +1216,10 @@ int BuildOptionsAreValid(const std::string &options, std::string &exceptString) 
               (strcmp(pParam, "-cl-intel-gtpin-rera") == 0) ||          // temporary options
               (strcmp(pParam, "-cl-intel-256-GRF-per-thread") == 0) ||  // temporary options
               (strcmp(pParam, "-ze-opt-256-GRF-per-thread") == 0) ||    // temporary options
-              (strcmp(pParam, "-ze-exp-register-file-size") == 0) ||   // temporary options
-              (strcmp(pParam, "-ze-opt-large-register-file") == 0) ||  // temporary options
+              (strcmp(pParam, "-cl-intel-512-GRF-per-thread") == 0) ||  // temporary options
+              (strcmp(pParam, "-ze-opt-512-GRF-per-thread") == 0) ||    // temporary options
+              (strcmp(pParam, "-ze-exp-register-file-size") == 0) ||    // temporary options
+              (strcmp(pParam, "-ze-opt-large-register-file") == 0) ||   // temporary options
               (strcmp(pParam, "-cl-intel-large-grf-kernel") == 0) ||
               (strcmp(pParam, "-ze-opt-large-grf-kernel") == 0) ||
               (strcmp(pParam, "-cl-intel-regular-grf-kernel") == 0) ||

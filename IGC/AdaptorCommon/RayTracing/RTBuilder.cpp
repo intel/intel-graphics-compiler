@@ -41,7 +41,6 @@ using namespace llvm;
 using namespace RTStackFormat;
 using namespace IGC;
 
-
 namespace {
 class VAdapt {
   Value *VA = nullptr;
@@ -107,6 +106,7 @@ Value *RTBuilder::getMaxBVHLevels(void) {
   case RTMemoryStyle::Xe:
     return _get_maxBVHLevels_Xe(VALUE_NAME("maxBVHLevels"));
   case RTMemoryStyle::Xe3:
+  case RTMemoryStyle::Xe3PEff64:
     return _get_maxBVHLevels_Xe3(VALUE_NAME("maxBVHLevels"));
   }
   IGC_ASSERT(0);
@@ -207,6 +207,29 @@ Value *RTBuilder::getGlobalSyncStackID() {
   return val;
 }
 
+// This is for new RT stack layout.
+// The base itself is pointing to the beginning of the memory block containing RTStack for 4 consecutive stackIDs.
+// Here we calculating the base sync stackID for such 4-tuple,
+// that is, the expression in parentheses from this formula:
+// base_sync = rtMemBasePtr - (DSSID * NUM_SIMD_LANES_PER_DSS + 4 * (stackID / 4) + 4) * syncStackSize
+Value *RTBuilder::getGlobalSyncStackIDBase() {
+  Value *IDGlobal = this->getGlobalDSSID();
+  Value *numSimdLanesPerDss = this->getInt32(Ctx.platform.getRTStackDSSMultiplier());
+
+  Value *val = this->CreateMul(IDGlobal, numSimdLanesPerDss);
+
+  Value *stackID = this->getSyncStackID();
+  // 4*(stackID/4) == stackID & ~(3)
+  Value *stackIDBase =
+      this->CreateAnd(CreateZExt(stackID, val->getType()),
+                      ConstantInt::get(val->getType(), ~uint64_t(3),
+                                       true /* sign extend to propagate MSB `1` to a wider type in necessary */));
+  stackIDBase = this->CreateAdd(stackIDBase, ConstantInt::get(val->getType(), 4));
+
+  val = this->CreateAdd(val, stackIDBase, VALUE_NAME("globalSyncStackIDBase"));
+
+  return val;
+}
 
 uint32_t RTBuilder::getRTStack2Size() const {
   switch (getMemoryStyle()) {
@@ -232,6 +255,28 @@ Value *RTBuilder::getRTStackSize(uint32_t Align) {
   return stackSize;
 }
 
+uint32_t RTBuilder::getRTStackSectorSize(uint32_t Align) {
+  // Stack Layout Optimization introduced a new memory layout,
+  // where Stack for given StackID is divided into two sectors:
+  //
+  // +----------------+
+  // | Committed Hit  |
+  // | Short Stack 0  |
+  // | Ray 0          |
+  // +----------------+
+  // | Potential Hit  |
+  // | Short Stack 1  |
+  // | Ray 1          |
+  // +----------------+
+  //
+  // This function returns the size of each sector.
+  uint32_t stackSectorSize = sizeof(MemRay<Xe>) + sizeof(MemTravStack) + sizeof(MemHit<Xe>);
+
+  stackSectorSize =
+      static_cast<uint32_t>(cast<ConstantInt>(this->alignVal(this->getInt32(stackSectorSize), Align))->getZExtValue());
+
+  return stackSectorSize;
+}
 
 Value *RTBuilder::getSyncRTStackSize() { return this->getRTStackSize(RayDispatchGlobalData::StackChunkSize); }
 
@@ -241,7 +286,80 @@ Value *RTBuilder::getSyncStackOffset(bool rtMemBasePtr) {
   // syncBase = RTDispatchGlobals.rtMemBasePtr - (GlobalSyncStackID + 1) * syncStackSize;
   // If we start from syncStack, the address/ptr should be:
   // syncBase = syncStack + (NumSyncStackSlots - (GlobalSyncStackID + 1)) * syncStackSize
+  // For new stack layout, enabled on XE3P with Efficient64b mode enabled, they are:
+  // base_sync = RTDispatchGlobals.rtMemBasePtr - (DSSID * NUM_SIMD_LANES_PER_DSS + 4 * (stackID / 4) + 4) *
+  // syncStackSize base128_sync = base_sync + (stackID % 4) * 128 And we return offset part of base128_sync address. If
+  // we start from syncStack, the address/ptr should be: base128_sync = syncStack + (NumSyncStackSlots - (DSSID *
+  // NUM_SIMD_LANES_PER_DSS + 4 * (stackID / 4) + 4)) *
+  //     syncStackSize - ((stackID % 4) * 128) = syncStack + NumSyncStackSlots * syncStackSize - base128Sync
 
+  if (Ctx.platform.hasEfficient64bEnabled()) {
+    // In new StackLayout memory for StackIDs is organized in chunks
+    // of 4 StackIDs.The offset for particular StackID should be calculated
+    // as follows:
+    // 1. Calculate the 4 - StackIDs block index(in StackIDs units).
+    // 2. In case of Stateful access the 4 - StackIDs block index is
+    // subtracted from the maximum number of stacks.It's necessary as
+    // in Stateful access, the address of the sync stack is taken from
+    // SurfaceState, where it points to the beginning of the stack, while
+    // SyncStack supposed to start from the end of the Sync Stack.
+    // So we need to calculate the offset, which will be added to the address
+    // of the Stack from SurfaceState.
+    // 2. Multiply it by the size of memory for one StackID to get the
+    // byte offset for the beginning of 4 - StackIDs block.
+    // 3. For the Stateful access, add the byte offset for the particular StackID
+    // from the 4 - StackID block.This way we get the exact offset to be added
+    // to the Stack address from the SurfaceState.
+    // For the Stateless access, we need to calculate the offset value, which will
+    // be subtracted from the StackAddress, as in this mode the SyncStack pointer
+    // points to the end of the SyncStack.Thus the offset to the particular StackID
+    // in 4 - StackID block needs to be subtracted from the 4 - StackID block offset, so
+    // when the calculated offset is subtracted from the syncStack pointer, the higher
+    // StackIDs get higher address.
+    //
+    // +-----------+
+    // | Stack memory start | <- Stateful pointer
+    // ...
+    // +-----------+
+    // | StackID 4 |
+    // | StackID 5 |
+    // | StackID 6 |
+    // | StackID 7 |
+    // +-----------+
+    // | StackID 0 |
+    // | StackID 1 |
+    // | StackID 2 |
+    // | StackID 3 |
+    // +-----------+
+    // | Stack memory end | <- Stateless pointer
+
+    Value *globalStackIDBase = this->getGlobalSyncStackIDBase();
+
+    if (!rtMemBasePtr) {
+      globalStackIDBase =
+          this->CreateSub(ConstantInt::get(globalStackIDBase->getType(), getNumSyncStackSlots()), globalStackIDBase);
+    }
+
+    Value *stackSize = this->getSyncRTStackSize();
+    Value *baseForBlockInBytes = this->CreateMul(globalStackIDBase, stackSize);
+
+    // (stackID % 4) = stackID & 0x3
+    Value *stackIDTail = this->getSyncStackID();
+    stackIDTail = this->CreateAnd(stackIDTail, ConstantInt::get(stackIDTail->getType(), 3));
+
+    Value *bytesToAdd =
+        this->CreateMul(stackIDTail, getInt32(this->getRTStackSectorSize(RayDispatchGlobalData::StackChunkSize)));
+
+    Value *base128Sync = nullptr;
+
+    if (!rtMemBasePtr) {
+      base128Sync = this->CreateAdd(baseForBlockInBytes, bytesToAdd);
+    } else {
+      base128Sync = this->CreateSub(baseForBlockInBytes, bytesToAdd);
+    }
+
+    return base128Sync;
+  }
 
   Value *globalStackID = this->getGlobalSyncStackID();
   Value *OffsetID = this->CreateAdd(globalStackID, this->getInt32(1));
@@ -922,6 +1040,9 @@ Value *RTBuilder::getTraceRayPayload(Value *bvhLevel, Value *traceRayCtrl, bool 
   if (isRayQuery) {
     // For RayQuery - set stack ID to zero since hardware will not use this field
     stackId = getInt32(0);
+    if (Ctx.platform.hasEfficient64bEnabled()) {
+      stackId = getSyncStackID();
+    }
   }
 
   Value *traceRayCtrlVal = CreateShl(traceRayCtrl, getInt32((uint8_t)TraceRayPayload::PayloadOffsets::traceRayCtrl));
@@ -967,8 +1088,9 @@ std::pair<uint32_t, uint32_t> RTBuilder::getSliceIDBitsInSR0() const {
     return {11, 15};
   } else if (Ctx.platform.GetPlatformFamily() == IGFX_XE3_CORE) {
     return {14, 17};
-  }
-  else {
+  } else if (Ctx.platform.GetPlatformFamily() >= IGFX_XE3P_CORE) {
+    return {14, 17};
+  } else {
     return {12, 14};
   }
 }
@@ -980,8 +1102,9 @@ std::pair<uint32_t, uint32_t> RTBuilder::getSubsliceIDBitsInSR0() const {
     return {8, 9};
   } else if (Ctx.platform.GetPlatformFamily() == IGFX_XE3_CORE) {
     return {8, 11};
-  }
-  else {
+  } else if (Ctx.platform.GetPlatformFamily() >= IGFX_XE3P_CORE) {
+    return {8, 11};
+  } else {
     return {8, 8};
   }
 }
@@ -1215,6 +1338,7 @@ Value *RTBuilder::canonizePointer(Value *Ptr) {
     VA_MSB = 48 - 1;
     break;
   case RTMemoryStyle::Xe3:
+  case RTMemoryStyle::Xe3PEff64:
     VA_MSB = 57 - 1;
     break;
   }
@@ -1292,8 +1416,13 @@ Value *RTBuilder::getSyncStackID() {
     return _getSyncStackID_Xe2(VALUE_NAME("SyncStackID"));
   } else if (PlatformInfo.eRenderCoreFamily == IGFX_XE3_CORE) {
     return _getSyncStackID_Xe3(VALUE_NAME("SyncStackID"));
-  }
-  else {
+  } else if (PlatformInfo.eRenderCoreFamily >= IGFX_XE3P_CORE) {
+    if (Ctx.platform.hasEfficient64bEnabled() && IGC_IS_FLAG_DISABLED(DisableSWManagedStack)) {
+      return _getSyncStackID_Xe3pEff64(VALUE_NAME("SyncStackID"));
+    } else {
+      return _getSyncStackID_Xe3p(VALUE_NAME("SyncStackID"));
+    }
+  } else {
     IGC_ASSERT_MESSAGE(0, "Invalid Product Family for SyncStackID");
   }
 
@@ -1423,6 +1552,12 @@ Type *RTBuilder::getRTStack2PtrTy(RTBuilder::RTMemoryAccessMode Mode, bool async
     IGC_ASSERT(AddrSpace != ADDRESS_SPACE_NUM_ADDRESSES);
 
     uint32_t RTStackHeaderSize = RTStackFormat::getRTStackHeaderSize(MAX_BVH_LEVELS);
+    // In new stack layout, the logical stack size is the same as in "legacy" layout.
+    // However, its representation in memory differs - unused space must be taken into account - see doc,
+    // and this function is used for memory access implementation, hence:
+    if (getMemoryStyle() == RTMemoryStyle::Xe3PEff64) {
+      RTStackHeaderSize = sizeof(RTStack<Xe3PEff64, MAX_BVH_LEVELS>);
+    }
 
     return setRTTypeMD(*Ctx.getModule(), Idx, TypesMD, getRTStack2Ty(), RTStackHeaderSize, AddrSpace);
   };
@@ -1554,6 +1689,11 @@ void RTBuilder::createTraceRayInlinePrologue(StackPointerVal *StackPtr, Value *R
   case RTMemoryStyle::Xe3:
     _createTraceRayInlinePrologue_Xe3(StackPtr, RayInfo, RootNodePtr, RayFlags, InstanceInclusionMask, ComparisonValue,
                                       TMax, VAdapt{*this, updateFlags}, VAdapt{*this, initialDoneBitValue});
+    break;
+  case RTMemoryStyle::Xe3PEff64:
+    _createTraceRayInlinePrologue_Xe3PEff64(StackPtr, RayInfo, RootNodePtr, RayFlags, InstanceInclusionMask,
+                                            ComparisonValue, TMax, VAdapt{*this, updateFlags},
+                                            VAdapt{*this, initialDoneBitValue});
     break;
   }
 }

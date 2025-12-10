@@ -115,6 +115,9 @@ public:
   uint64_t GetStatelessScratchPtr() const { return 0; };
   uint32_t GetBaseSSHOffset() const { return 0; };
   uint32_t GetUberTilesMap() const { return 0; };
+  uint64_t GetSamplerDescriptorHeap() const { return 0; };
+  uint64_t GetScratchSpaceBufferPointer() const { return 0; };
+  uint64_t GetResourceDescriptorHeap() const { return 0; };
   uint64_t GetBaseSurfaceStatePointer() const { return 0; };
 };
 
@@ -134,15 +137,18 @@ struct RayDispatchGlobalData {
     uint64_t ProfilingBufferGpuVa; // GTPin buffer to collect profiling data
     union {
       uint64_t padding;
+      uint64_t SamplerDescriptorHeap; // base pointer for sampler heap
     };
     union {
-      uint64_t statelessScratchPtr; // Stateless scratch buffer pointer
+      uint64_t statelessScratchPtr;       // Stateless scratch buffer pointer
+      uint64_t ScratchSpaceBufferPointer; // surface state pointer for scratch space
     };
     uint64_t pCallableShaderBasePtr; // base pointer of callable shader record array (8-bytes alignment)
     uint32_t pCallableShaderStride;  // stride of callable shader records (8-bytes alignment)
     uint32_t pNumDSSRTStacks;        // number of stacks per DSS
     union {
-      uint64_t bindlessHeapBasePtr; // base pointer of bindless heap
+      uint64_t bindlessHeapBasePtr;    // base pointer of bindless heap
+      uint64_t ResourceDescriptorHeap; // base pointer for resource heap
     };
     uint64_t pHitGroupBasePtr;   // base pointer of hit group shader record array (16-bytes alignment)
     uint64_t pMissShaderBasePtr; // base pointer of miss shader record array (8-bytes alignment)
@@ -178,9 +184,14 @@ struct RayDispatchGlobalData {
       printfBufferBasePtr = umd.GetPrintfBufferBasePtr();
       ProfilingBufferGpuVa = umd.GetProfilingBufferGpuVa();
       statelessScratchPtr = umd.GetStatelessScratchPtr();
+      SamplerDescriptorHeap = umd.GetSamplerDescriptorHeap();
+      if (uint64_t Tmp = umd.GetScratchSpaceBufferPointer())
+        ScratchSpaceBufferPointer = Tmp;
       pCallableShaderBasePtr = umd.GetCallableShaderTable();
       pCallableShaderStride = umd.GetCallableStride();
       bindlessHeapBasePtr = umd.GetBindlessHeapBasePtr();
+      if (uint64_t Tmp = umd.GetResourceDescriptorHeap())
+        ResourceDescriptorHeap = Tmp;
       pHitGroupBasePtr = umd.GetHitGroupTable();
       pMissShaderBasePtr = umd.GetMissShaderTable();
       pHitGroupStride = umd.GetHitGroupStride();
@@ -298,12 +309,15 @@ struct RayDispatchGlobalData {
       uint64_t hitGroupBasePtr;   // base pointer of hit group shader record array (16-bytes alignment)
       uint64_t missShaderBasePtr; // base pointer of miss shader record array (8-bytes alignment)
 
-      uint32_t _align_mbz[4];     // pad hardware section to 64 bytes
+      uint32_t _align_mbz[4]; // pad hardware section to 64 bytes
 
       // HW doesn't read anything below this point.
       RayDispatchGlobalDataCommon common;
     } xe3;
   } rt;
+  static constexpr uint32_t ScratchSpaceBufferPointerOffset =
+      offsetof(RayDispatchGlobalData::RT::Xe3, common) +
+      offsetof(RayDispatchGlobalData::RayDispatchGlobalDataCommon, ScratchSpaceBufferPointer);
 };
 
 // The actual pointer will probably be aligned to a greater value than this,
@@ -314,6 +328,11 @@ constexpr uint32_t RTGlobalsAlign = 256;
 // chunks of stack so this must be, at minimum, 64-byte aligned.
 constexpr uint32_t RTStackAlign = 128;
 static_assert(RTStackAlign % RayDispatchGlobalData::StackChunkSize == 0, "no?");
+// This is to ensure the alignments for the async and sync stack
+// are 512 on XE3P with Eff64b, i.e., when new stack layout is used.
+// See RTStack doc.
+constexpr uint32_t RTStackXe3PEff64Align = 512;
+static_assert(RTStackXe3PEff64Align % RTStackAlign == 0, "no?");
 
 static_assert((sizeof(RayDispatchGlobalData::RT::Xe) - sizeof(RayDispatchGlobalData::RayDispatchGlobalDataCommon)) %
                       64 ==
@@ -343,7 +362,14 @@ struct RayDispatchInlinedData {
 
   static constexpr unsigned NumElts = 3;
 };
+struct RayDispatchInlinedData_Eff64 {
+  uint64_t IndirectDataPointer;          // Indirect Data Pointer*, r2.0:uq
+  uint64_t RayDispatchDescriptorAddress; // ShaderRecord*, r2.1:uq
+  uint64_t RayDispatchGlobalDataPtr;     //                r2.2:uq
+  uint64_t AtomicPullGlobalQueuePtr;     //                r2.3:uq
 
+  static constexpr unsigned NumElts = 4;
+};
 
 template <typename Type> constexpr Type Align(const Type value, const size_t alignment) {
   // alignment must be power of 2.

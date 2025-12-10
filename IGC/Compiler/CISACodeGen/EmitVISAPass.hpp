@@ -123,9 +123,15 @@ public:
   void CmpBfn(llvm::CmpInst::Predicate predicate, const SSource cmpSources[2], uint8_t booleanFuncCtrl,
               const SSource bfnSources[3], const DstModifier &modifier);
 
+  enum class ResultScope { Low = 0b01, Hi = 0b10, All = 0b11 };
+  bool canUseMul64SOA() const;
+  void emitMul64SOA(CVariable *DstL, CVariable *DstH, CVariable *L0, CVariable *L1, CVariable *H0, CVariable *H1,
+                    std::optional<SIMDMode> Mode = std::nullopt, bool NoMask = false,
+                    const SSource Sources[4] = nullptr) const;
   void emitShflIdx4(Instruction *inst, bool packed);
   void emitShflIdx4Lut(Instruction *inst);
-  void Mul64(CVariable *dst, CVariable *src[2], SIMDMode simdMode, bool noMask = false) const;
+  void Mul64(CVariable *dst, CVariable *src[2], SIMDMode simdMode, bool noMask = false,
+             ResultScope mulResultScope = ResultScope::Low, CVariable *outDstHi = nullptr) const;
 
   template <int N> void Alu(e_opcode opCode, const SSource sources[N], const DstModifier &modifier);
 
@@ -516,6 +522,7 @@ public:
   void emitGetShaderRecordPtr(llvm::GetShaderRecordPtrIntrinsic *I);
   void emitGlobalBufferPtr(llvm::GenIntrinsicInst *I);
   void emitLocalBufferPtr(llvm::GenIntrinsicInst *I);
+  void emitKSPPointer(llvm::KSPPointerIntrinsic *KPI);
   void emitInlinedDataValue(llvm::GenIntrinsicInst *I);
   void emitBdpas(llvm::GenIntrinsicInst *GII);
   void emitDpas(llvm::GenIntrinsicInst *GII, const SSource *source, const DstModifier &modifier);
@@ -626,6 +633,7 @@ public:
   void emitLoadImplBufferPtr(llvm::GenIntrinsicInst *I);
   void emitLoadLocalIdBufferPtr(llvm::GenIntrinsicInst *I);
   void emitLoadGlobalBufferArg(llvm::GenIntrinsicInst *I);
+  void emitLoadKABPKernelArg(llvm::GenIntrinsicInst *I);
   void emitLoadgetTileID(llvm::GenIntrinsicInst *I);
   void emitLoadgetEngineID(llvm::GenIntrinsicInst *I);
 

@@ -89,6 +89,7 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
 
   BIF_FLAG_CTRL_SET(EnableSWSrgbWrites, IGC_GET_FLAG_VALUE(cl_khr_srgb_image_writes));
   BIF_FLAG_CTRL_SET(MaxHWThreadIDPerSubDevice, PtrCGC->platform.GetGTSystemInfo().ThreadCount);
+  BIF_FLAG_CTRL_SET(HasHWTileIDRegister, PtrCGC->platform.hasEngineIDEnabled());
 
   // Set JointMatrixLoadStoreOpt to 2 for systems without 2D block load/store support (default is 3).
   if (!PtrCGC->platform.hasExecSize16DPAS() && IGC_GET_FLAG_VALUE(JointMatrixLoadStoreOpt) == 3) {
@@ -98,6 +99,10 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   }
 
   BIF_FLAG_CTRL_SET(UseOOBChecks, PtrCGC->platform.needsOutOfBoundsBuiltinChecks());
+  BIF_FLAG_CTRL_SET(HasNativeTanh, PtrCGC->platform.supportsNativeTanh());
+  BIF_FLAG_CTRL_SET(HasNativeSigm, PtrCGC->platform.supportsNativeSigmoid());
+  BIF_FLAG_CTRL_SET(UseNativeFP32LocalAtomicAdd, PtrCGC->platform.hasFP32LocalAtomicAdd());
+  BIF_FLAG_CTRL_SET(HasEfficient64bEnabled, PtrCGC->platform.hasEfficient64bEnabled());
   BIF_FLAG_CTRL_SET(IsRayQueryReturnOptimizationEnabled, PtrCGC->platform.isRayQueryReturnOptimizationEnabled());
 
   // NOTE: No need to check for UseLegacyBindlessMode,

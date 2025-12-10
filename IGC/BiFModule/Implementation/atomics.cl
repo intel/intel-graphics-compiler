@@ -2220,6 +2220,10 @@ float __attribute__((overloadable)) __spirv_AtomicFAddEXT( __global float *Point
 
 float __attribute__((overloadable)) __spirv_AtomicFAddEXT( __local float *Pointer, int Scope, int Semantics, float Value)
 {
+    if(BIF_FLAG_CTRL_GET(UseNativeFP32LocalAtomicAdd))
+    {
+        atomic_operation_1op_as_float( __builtin_IB_atomic_add_local_f32, float, Pointer, Scope, Semantics, Value, false )
+    }
     // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
     float orig;
     float desired;

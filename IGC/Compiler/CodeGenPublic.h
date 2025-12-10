@@ -1157,6 +1157,8 @@ public:
   void initializeRemarkEmitter(const ShaderHash &hash);
 
   bool syncRTCallsNeedSplitting() {
+    if (platform.supportRayTracingSIMD32())
+      return false;
        // In general, we don't want to compile SIMD32 for rayquery.
        // Determine if we are forced to do so.
 

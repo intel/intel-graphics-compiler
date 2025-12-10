@@ -11843,6 +11843,10 @@ intrinsics:
                 name: Arg1
                 type_definition: *i32
                 comment: "Trace data: bitfield containing bvhLevel, stackID and trcCtrl"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i32
+                comment: "StkAddrMode"
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
@@ -12772,3 +12776,213 @@ intrinsics:
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
+    - !<IntrinsicDefinition>
+        name: "GenISA_tanh"
+        comment: "tanh targeting native hardware"
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_float
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *ref_0_
+                comment: "src0"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_sigm"
+        comment: "Sigmoid math function"
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_float
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *ref_0_
+                comment: "src0"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_samplePOBCptr"
+        comment: ""
+        return_definition: !<ReturnDefinition>
+            type_definition: *v_any_
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *any_float
+                comment: "coordinates ref"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *ref_1_
+                comment: "packed bias and po uvr"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *ref_1_
+                comment: "coordinates u"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *ref_1_
+                comment: "coordinates v"
+            - !<ArgumentDefinition>
+                name: Arg4
+                type_definition: *ref_1_
+                comment: "coordinates r"
+            - !<ArgumentDefinition>
+                name: Arg5
+                type_definition: *ref_1_
+                comment: "minlod"
+            - !<ArgumentDefinition>
+                name: Arg6
+                type_definition: *p_any_
+                comment: "paired resource"
+            - !<ArgumentDefinition>
+                name: Arg7
+                type_definition: *p_any_
+                comment: "resource"
+            - !<ArgumentDefinition>
+                name: Arg8
+                type_definition: *p_any_
+                comment: "sampler"
+            - !<ArgumentDefinition>
+                name: Arg9
+                type_definition: *i32
+                comment: "immediate offset u"
+            - !<ArgumentDefinition>
+                name: Arg10
+                type_definition: *i32
+                comment: "immediate offset v"
+            - !<ArgumentDefinition>
+                name: Arg11
+                type_definition: *i32
+                comment: "immediate offset w"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_samplePODCptr"
+        comment: "sample_dc with packed programmable offsets (OffUV_R)"
+        return_definition: !<ReturnDefinition>
+            type_definition: *v_any_
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *any_float
+                comment: "coordinates ref"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *ref_1_
+                comment: "coordinates u"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *ref_1_
+                comment: "gradient du from dx"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *ref_1_
+                comment: "gradient du from dy"
+            - !<ArgumentDefinition>
+                name: Arg4
+                type_definition: *ref_1_
+                comment: "coordinates v"
+            - !<ArgumentDefinition>
+                name: Arg5
+                type_definition: *ref_1_
+                comment: "gradient dv from dx"
+            - !<ArgumentDefinition>
+                name: Arg6
+                type_definition: *ref_1_
+                comment: "gradient dv from dy"
+            - !<ArgumentDefinition>
+                name: Arg7
+                type_definition: *ref_1_
+                comment: "packed po uv and coordinates r"
+            - !<ArgumentDefinition>
+                name: Arg8
+                type_definition: *ref_1_
+                comment: "gradient dr from dx"
+            - !<ArgumentDefinition>
+                name: Arg9
+                type_definition: *ref_1_
+                comment: "gradient dr from dy"
+            - !<ArgumentDefinition>
+                name: Arg10
+                type_definition: *p_any_
+                comment: "paired resource"
+            - !<ArgumentDefinition>
+                name: Arg11
+                type_definition: *p_any_
+                comment: "resource"
+            - !<ArgumentDefinition>
+                name: Arg12
+                type_definition: *p_any_
+                comment: "sampler"
+            - !<ArgumentDefinition>
+                name: Arg13
+                type_definition: *i32
+                comment: "unused immediate offset u"
+            - !<ArgumentDefinition>
+                name: Arg14
+                type_definition: *i32
+                comment: "unused immediate offset v"
+            - !<ArgumentDefinition>
+                name: Arg15
+                type_definition: *i32
+                comment: "unused immediate offset w"
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_KSPPointer"
+        comment: "Raytracing: comes in as payload: points to the KSP of the current\
+            \ shader. Xe3P+"
+        return_definition: !<ReturnDefinition>
+            type_definition: *p_any_
+            comment: "returns the pointer"
+        arguments: []
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_ExtendedCacheControl"
+        comment: "Extended Cache Control"
+        return_definition: !<ReturnDefinition>
+            type_definition: *void
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *i32
+                comment: "Cache Control Size"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i32
+                comment: "Cache policy"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i8
+                comment: "Cache Control Operation"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *any
+                comment: "Cache line addresses"
+            - !<ArgumentDefinition>
+                name: Arg4
+                type_definition: *i1
+                comment: "predicate flag"
+        attributes:
+            - !AttributeID "NoUnwind"

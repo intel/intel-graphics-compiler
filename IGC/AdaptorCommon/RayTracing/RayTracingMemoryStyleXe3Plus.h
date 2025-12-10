@@ -8,3 +8,4 @@ SPDX-License-Identifier: MIT
 
 // This should be in sync with MemoryStyleEnum.h!
 STYLE_XE3PLUS(Xe3)
+STYLE_XE3PLUS(Xe3PEff64)

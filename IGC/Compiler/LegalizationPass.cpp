@@ -198,6 +198,9 @@ void Legalization::visitUnaryInstruction(UnaryInstruction &I) {
     }
     break;
   case Instruction::FNeg:
+    if (m_ctx->platform.supportsPureBF()) {
+      return;
+    }
     convertSourceToFloat = true;
     extendDestToFloat = true;
     needsTrunc = true;

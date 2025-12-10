@@ -23,6 +23,7 @@ struct implicit_args {
   uint32_t padding0;
   uint64_t rt_global_buffer_ptr;
   uint64_t assert_buffer_ptr;
+  uint64_t scratch_ptr;
   uint32_t region_group_size_x;
   uint32_t region_group_size_y;
   uint32_t region_group_size_z;

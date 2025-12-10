@@ -744,6 +744,13 @@ CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe3(RTSAS RTStack2<Xe3> *__res
                                 updateFlags, initialDoneBitValue);
 }
 
+CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe3PEff64(RTSAS RTStack2<Xe3PEff64> *__restrict__ StackPtr,
+                                                            _float8 RayInfo, uint64_t RootNodePtr, uint32_t RayFlags,
+                                                            uint32_t InstanceInclusionMask, uint32_t ComparisonValue,
+                                                            float TMax, bool updateFlags, bool initialDoneBitValue) {
+  _createTraceRayInlinePrologue(StackPtr, RayInfo, RootNodePtr, RayFlags, InstanceInclusionMask, ComparisonValue, TMax,
+                                updateFlags, initialDoneBitValue);
+}
 
 CREATE_PRIVATE void _emitSingleRQMemRayWrite_Xe(RTSAS RTStack2<Xe> *__restrict__ HWStackPtr,
                                                 RTShadowAS RTStack2<Xe> *__restrict__ SMStackPtr,
@@ -1106,6 +1113,34 @@ CREATE_PRIVATE uint32_t _getSyncStackID_Xe3() {
   return (EUID << 8 | ThreadID << 4 | SIMDLaneID << 0);
 }
 
+CREATE_PRIVATE uint32_t _getSyncStackID_Xe3p() {
+  // SyncStackID = (EUID[2:0] << 8) | (ThreadID[3:0] << 4) | SIMDLaneID[3:0]; // Xe3p
+  auto sr0 = [](uint32_t Start, uint32_t End) { return emitStateRegID(Start, End); };
+
+  uint32_t EUID = sr0(4, 6);
+
+  uint32_t ThreadID = sr0(0, 3);
+
+  uint32_t SIMDLaneID = hook::bi::get32BitLaneID();
+
+  return (EUID << 8 | ThreadID << 4 | SIMDLaneID << 0);
+}
+
+CREATE_PRIVATE uint32_t _getSyncStackID_Xe3pEff64() {
+  // SyncStackID = (EUID[2:0] * maxThreadsPerEU * maxSIMDSize) +
+  //               (ThreadID[3:0] *maxSIMDSize) +
+  //                SIMDLaneID[3:0]; // Xe3pv2
+  auto sr0 = [](uint32_t Start, uint32_t End) { return emitStateRegID(Start, End); };
+
+  uint32_t EUID = sr0(4, 6);
+
+  uint32_t ThreadID = sr0(0, 3);
+
+  uint32_t SIMDLaneID = hook::bi::get32BitLaneID();
+
+  return ((EUID * hook::bi::getMaxThreadsPerEU() * hook::bi::getMaxSimdSize()) +
+          (ThreadID * hook::bi::getMaxSimdSize()) + SIMDLaneID);
+}
 
 
 

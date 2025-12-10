@@ -7264,6 +7264,18 @@ long __attribute__((overloadable)) __spirv_AtomicLoad(
     generic long *Pointer, int Scope, int Semantics);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #endif // defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
+#if defined(cl_intel_bfloat16_atomics)
+short __attribute__((overloadable)) __spirv_AtomicLoad(
+    private short *Pointer, int Scope, int Semantics);
+short __attribute__((overloadable)) __spirv_AtomicLoad(
+    global short *Pointer, int Scope, int Semantics);
+short __attribute__((overloadable)) __spirv_AtomicLoad(
+    local short *Pointer, int Scope, int Semantics);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+short __attribute__((overloadable)) __spirv_AtomicLoad(
+    generic short *Pointer, int Scope, int Semantics);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_intel_bfloat16_atomics)
 
 float __attribute__((overloadable)) __spirv_AtomicLoad(
     private float *Pointer, int Scope, int Semantics);
@@ -7325,6 +7337,18 @@ void __attribute__((overloadable)) __spirv_AtomicStore(
     generic long *Pointer, int Scope, int Semantics, long Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #endif // defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
+#if defined(cl_intel_bfloat16_atomics)
+void __attribute__((overloadable)) __spirv_AtomicStore(
+    private short *Pointer, int Scope, int Semantics, short Value);
+void __attribute__((overloadable)) __spirv_AtomicStore(
+    global short *Pointer, int Scope, int Semantics, short Value);
+void __attribute__((overloadable)) __spirv_AtomicStore(
+    local short *Pointer, int Scope, int Semantics, short Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+void __attribute__((overloadable)) __spirv_AtomicStore(
+    generic short *Pointer, int Scope, int Semantics, short Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_intel_bfloat16_atomics)
 
 void __attribute__((overloadable)) __spirv_AtomicStore(
     private float *Pointer, int Scope, int Semantics, float Value);
@@ -7386,6 +7410,18 @@ long __attribute__((overloadable)) __spirv_AtomicExchange(
     generic long *Pointer, int Scope, int Semantics, long Value);
 #endif                   // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #endif                   // defined(cl_khr_int64_base_atomics)
+#if defined(cl_intel_bfloat16_atomics)
+short __attribute__((overloadable)) __spirv_AtomicExchange(
+    private short *Pointer, int Scope, int Semantics, short Value);
+short __attribute__((overloadable)) __spirv_AtomicExchange(
+    global short *Pointer, int Scope, int Semantics, short Value);
+short __attribute__((overloadable)) __spirv_AtomicExchange(
+    local short *Pointer, int Scope, int Semantics, short Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+short __attribute__((overloadable)) __spirv_AtomicExchange(
+    generic short *Pointer, int Scope, int Semantics, short Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_intel_bfloat16_atomics)
 
 float __attribute__((overloadable)) __spirv_AtomicExchange(
     private float *Pointer, int Scope, int Semantics, float Value);
@@ -7761,6 +7797,18 @@ long __attribute__((overloadable)) __spirv_AtomicOr(
     generic long *Pointer, int Scope, int Semantics, long Value);
 #endif                   // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #endif                   // defined(cl_khr_int64_extended_atomics)
+#if defined(cl_intel_bfloat16_atomics)
+short __attribute__((overloadable)) __spirv_AtomicOr(
+    private short *Pointer, int Scope, int Semantics, short Value);
+short __attribute__((overloadable)) __spirv_AtomicOr(
+    global short *Pointer, int Scope, int Semantics, short Value);
+short __attribute__((overloadable)) __spirv_AtomicOr(
+    local short *Pointer, int Scope, int Semantics, short Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+short __attribute__((overloadable)) __spirv_AtomicOr(
+    generic short *Pointer, int Scope, int Semantics, short Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_intel_bfloat16_atomics)
 
 int __attribute__((overloadable)) __spirv_AtomicXor(
     private int *Pointer, int Scope, int Semantics, int Value);

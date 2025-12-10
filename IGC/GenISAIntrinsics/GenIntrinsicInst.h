@@ -586,6 +586,8 @@ public:
     case GenISAIntrinsic::GenISA_sampleDCMlodptr:
     case GenISAIntrinsic::GenISA_samplePOCptr:
     case GenISAIntrinsic::GenISA_samplePOLCptr:
+    case GenISAIntrinsic::GenISA_samplePOBCptr:
+    case GenISAIntrinsic::GenISA_samplePODCptr:
       return true;
     default:
       break;
@@ -599,6 +601,7 @@ public:
     case GenISAIntrinsic::GenISA_sampleBCptr:
     case GenISAIntrinsic::GenISA_sampleBCMlodptr:
     case GenISAIntrinsic::GenISA_samplePOBptr:
+    case GenISAIntrinsic::GenISA_samplePOBCptr:
       return true;
     default:
       break;
@@ -750,6 +753,7 @@ public:
     case GenISAIntrinsic::GenISA_sampleBCMlodptr:
     case GenISAIntrinsic::GenISA_samplePOptr:
     case GenISAIntrinsic::GenISA_samplePOBptr:
+    case GenISAIntrinsic::GenISA_samplePOBCptr:
     case GenISAIntrinsic::GenISA_samplePOCptr:
     case GenISAIntrinsic::GenISA_lodptr:
       return true;
@@ -782,6 +786,8 @@ public:
     case GenISAIntrinsic::GenISA_samplePOCptr:
     case GenISAIntrinsic::GenISA_samplePODptr:
     case GenISAIntrinsic::GenISA_samplePOLCptr:
+    case GenISAIntrinsic::GenISA_samplePOBCptr:
+    case GenISAIntrinsic::GenISA_samplePODCptr:
       return true;
     default:
       return false;
@@ -810,6 +816,8 @@ public:
     case GenISAIntrinsic::GenISA_samplePOCptr:
     case GenISAIntrinsic::GenISA_samplePODptr:
     case GenISAIntrinsic::GenISA_samplePOLCptr:
+    case GenISAIntrinsic::GenISA_samplePOBCptr:
+    case GenISAIntrinsic::GenISA_samplePODCptr:
       return true;
     default:
       break;
@@ -1467,6 +1475,17 @@ public:
   static inline bool classof(const GenIntrinsicInst *I) {
     GenISAIntrinsic::ID ID = I->getIntrinsicID();
     return ID == GenISAIntrinsic::GenISA_LocalBufferPointer;
+  }
+
+  static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
+};
+
+class KSPPointerIntrinsic : public GenIntrinsicInst {
+public:
+  // Methods for support type inquiry through isa, cast, and dyn_cast:
+  static inline bool classof(const GenIntrinsicInst *I) {
+    GenISAIntrinsic::ID ID = I->getIntrinsicID();
+    return ID == GenISAIntrinsic::GenISA_KSPPointer;
   }
 
   static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }

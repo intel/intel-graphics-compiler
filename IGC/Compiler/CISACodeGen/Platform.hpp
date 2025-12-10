@@ -124,6 +124,11 @@ public:
            (isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(EnableEfficient64b));
   }
 
+  bool hasSWManagedStackCountEnabled() const {
+    return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_DISABLED(DisableSWManagedStack);
+  }
+
+
   bool hasEngineIDEnabled() const { return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_DISABLED(DisableEngineID); }
   bool SupportSurfaceInfoMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
   bool SupportHDCUnormFormats() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
@@ -192,7 +197,7 @@ public:
   bool isCoreXE2() const { return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_HPG_CORE); }
 
   bool isCoreXE3() const {
-    return (m_platformInfo.eRenderCoreFamily == IGFX_XE3_CORE);
+    return (m_platformInfo.eRenderCoreFamily == IGFX_XE3_CORE || m_platformInfo.eRenderCoreFamily >= IGFX_XE3P_CORE);
   }
 
   // This function checks if core is child of another core
@@ -268,6 +273,7 @@ public:
   unsigned int getMaxNumberThreadPerWorkgroupPooledMax() const {
     return m_caps.KernelHwCaps.EUCountPerPoolMax * m_caps.KernelHwCaps.EUThreadsPerEU;
   }
+  unsigned int getMaxSimdSize() const { return 32; }
   unsigned int getBarrierCountBits(unsigned int count) const {
     // Returns barrier count field + enable for barrier message
     if (m_platformInfo.eRenderCoreFamily <= IGFX_GEN10_CORE) {
@@ -319,8 +325,13 @@ public:
 
 
   unsigned int GetBindlessSamplerSize() const {
-    // Samplers are 16 bytes
-    return 16;
+    if (isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(Enable32bSampler)) {
+      // Samplers are 32 bytes
+      return 32;
+    } else {
+      // Samplers are 16 bytes
+      return 16;
+    }
   }
 
   unsigned int GetLogBindlessSamplerSize() const { return (unsigned int)iSTD::Log2(GetBindlessSamplerSize()); }
@@ -358,6 +369,8 @@ public:
   }
 
   bool supportsSourceModifierForMixedIntMad() const {
+    if (isCoreChildOf(IGFX_XE3P_CORE))
+      return true;
     return false;
   }
 
@@ -539,6 +552,9 @@ public:
 
   bool hasFP32GlobalAtomicAdd() const { return isProductChildOf(IGFX_XE_HP_SDV); }
 
+  bool hasFP32LocalAtomicAdd() const {
+    return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(EnableNativeFP32LocalAtomicAdd);
+  }
 
   bool has16OWSLMBlockRW() const {
     return IGC_IS_FLAG_ENABLED(Enable16OWSLMBlockRW) && isProductChildOf(IGFX_XE_HP_SDV);
@@ -667,6 +683,7 @@ public:
   bool hasBFTFDenormMode() const {
     return isCoreChildOf(IGFX_XE2_HPG_CORE);
   }
+  bool hasMullh() const { return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(EnableMullh); }
 
   bool WaPredicatedStackIDRelease() const {
     return m_WaTable.Wa_22014559856 && IGC_IS_FLAG_DISABLED(DisablePredicatedStackIDRelease);
@@ -709,7 +726,7 @@ public:
     return (m_platformInfo.eProductFamily != IGFX_XE_HP_SDV && m_platformInfo.eProductFamily != IGFX_DG2 &&
             m_platformInfo.eProductFamily != IGFX_METEORLAKE && m_platformInfo.eProductFamily != IGFX_ARROWLAKE &&
             m_platformInfo.eProductFamily != IGFX_BMG && m_platformInfo.eProductFamily != IGFX_LUNARLAKE &&
-            m_platformInfo.eRenderCoreFamily != IGFX_XE3_CORE
+            m_platformInfo.eRenderCoreFamily != IGFX_XE3_CORE && m_platformInfo.eRenderCoreFamily != IGFX_XE3P_CORE
     );
   }
 
@@ -869,7 +886,34 @@ public:
   // so it is not dependent on compiled SIMD size or "PreferredRayTracingSIMDSize".
   unsigned getRTStackDSSMultiplier() const {
     IGC_ASSERT(supportRayTracing());
+    if (hasEfficient64bEnabled() && IGC_IS_FLAG_DISABLED(DisableSWManagedStack)) {
+      unsigned int numSyncDssRTStacks = getsyncNumDSSRTStacks();
+
+      // 0 is special value used for backward compatibility.
+      // If number of SyncStacks, programmed in GlobalData is 0, HW assumes
+      // 2048 stacks are used.
+      if (numSyncDssRTStacks == 0) {
+        numSyncDssRTStacks = 2048;
+      }
+
+      IGC_ASSERT(numSyncDssRTStacks <= 4096);
+
+      return numSyncDssRTStacks;
+    } else
       return 2048;
+  }
+
+  unsigned int getsyncNumDSSRTStacks() const {
+    if (hasEfficient64bEnabled() && IGC_IS_FLAG_DISABLED(DisableSWManagedStack)) {
+      if (IGC_IS_FLAG_SET(SWManagedStackNumStacks)) {
+        return IGC_GET_FLAG_VALUE(SWManagedStackNumStacks);
+      }
+
+      return GetGTSystemInfo().MaxEuPerSubSlice * (GetGTSystemInfo().ThreadCount / GetGTSystemInfo().EUCount) *
+             getMaxSimdSize();
+    }
+
+    return 0;
   }
 
   // Max number of hw threads for each workgroup
@@ -889,8 +933,10 @@ public:
       return getMaxNumberThreadPerSubslice();
     } else if (m_platformInfo.eRenderCoreFamily == IGFX_XE3_CORE) {
       return getMaxNumberThreadPerSubslice();
-    }
-    else {
+    } else if ((m_platformInfo.eRenderCoreFamily == IGFX_XE3P_CORE)
+    ) {
+      return getMaxNumberThreadPerSubslice();
+    } else {
       IGC_ASSERT_MESSAGE(0, "Unsupported platform!");
     }
     return 0;
@@ -949,10 +995,15 @@ public:
   //   XeHP_SDV and above are for each physical thread: 256k.
   //   TGLLP and below are for each FFTID: 2M.
   uint32_t maxPerThreadScratchSpace(
-  ) const {
+      // This is a temporary solution for the enabling.
+      // It should be removed when all UMDs implement
+      // support for 16MB scratch.
+      bool sixteenMBPerThreadScratchSpace) const {
     if (IGC_IS_FLAG_ENABLED(MaxPerThreadScratchSpaceOverride)) {
       return IGC_GET_FLAG_VALUE(MaxPerThreadScratchSpaceOverride);
     }
+    if (sixteenMBPerThreadScratchSpace && has16MBPerThreadScratchSpace())
+      return 0x1000000;
 
     return hasScratchSurface() ? 0x40000 : 0x200000;
   }
@@ -1005,6 +1056,7 @@ public:
             m_platformInfo.eProductFamily != IGFX_DG1 && m_platformInfo.eProductFamily != IGFX_ALDERLAKE_S &&
             m_platformInfo.eProductFamily != IGFX_ALDERLAKE_P && m_platformInfo.eProductFamily != IGFX_ALDERLAKE_N &&
             m_platformInfo.eProductFamily != IGFX_DG2 && m_platformInfo.eRenderCoreFamily != IGFX_XE3_CORE &&
+            m_platformInfo.eRenderCoreFamily != IGFX_XE3P_CORE &&
             m_platformInfo.eProductFamily != IGFX_METEORLAKE) &&
            m_platformInfo.eProductFamily != IGFX_ARROWLAKE && m_platformInfo.eProductFamily != IGFX_BMG &&
            m_platformInfo.eProductFamily != IGFX_LUNARLAKE;
@@ -1123,7 +1175,7 @@ public:
 
   bool hasSlowSameSBIDLoad() const {
     bool bYes = false;
-    bYes = isCoreChildOf(IGFX_XE_HPG_CORE);
+    bYes = isCoreChildOf(IGFX_XE_HPG_CORE) && !isCoreChildOf(IGFX_XE3P_CORE);
 
     return bYes && !needWaSamplerNoMask();
   }
@@ -1135,6 +1187,7 @@ public:
   }
 
   bool supportsProgrammableOffsets() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
+  bool supportsProgrammableOffsetsSampleBCAndSampleDC() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
   bool supportsRayQueryThrottling() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
 
@@ -1144,6 +1197,9 @@ public:
 
     if (IGC_IS_FLAG_SET(OverrideRayQueryThrottling))
       return IGC_GET_FLAG_VALUE(OverrideRayQueryThrottling);
+
+    if (isCoreChildOf(IGFX_XE3P_CORE))
+      return true;
 
     return enableByDefault;
   }
@@ -1299,6 +1355,10 @@ public:
   bool supports512GRFPerThread() const { return isCoreChildOf(IGFX_XE3P_CORE); }
   bool supportsQuantumDispatch() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
+  bool supportsPureBF() const {
+    // Maps to vISA's "supportPureBF"
+    return isCoreChildOf(IGFX_XE3P_CORE);
+  }
 
   bool EnableCSWalkerPass() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
 
@@ -1317,13 +1377,12 @@ public:
   bool supportsNumberOfBariers() const { return isProductChildOf(IGFX_DG2); }
 
   uint32_t getVISAABIVersion() const {
+    if (isCoreChildOf(IGFX_XE3P_CORE))
+      return 3;
     return 2;
   }
 
-  bool supportsLoadStatusMessages() const {
-    return
-        isCoreChildOf(IGFX_XE2_HPG_CORE);
-  }
+  bool supportsLoadStatusMessages() const { return !isCoreChildOf(IGFX_XE3P_CORE) && isCoreChildOf(IGFX_XE2_HPG_CORE); }
 
   bool supportsNonDefaultLSCCacheSetting() const {
     return isCoreChildOf(IGFX_XE2_HPG_CORE);
@@ -1333,6 +1392,8 @@ public:
     return isCoreChildOf(IGFX_XE3P_CORE);
   }
   bool isSupportedLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad) const {
+    if (hasNewLSCCacheEncoding())
+      return true;
     if (isLoad) {
       switch (l1l3cc) {
       default:
@@ -1350,6 +1411,10 @@ public:
     const DWORD blockSize = getSharedLocalMemoryBlockSize() ? getSharedLocalMemoryBlockSize() : sizeof(KILOBYTE);
     size = iSTD::Round(size, blockSize) / blockSize;
     if (size > 16) {
+      if (isCoreChildOf(IGFX_XE3P_CORE) && size > 256) {
+        // 320K does not follow Xe2 pattern
+        return (size > 320) ? 384 * blockSize : 320 * blockSize;
+      }
       if (isCoreChildOf(IGFX_XE2_HPG_CORE)) {
         const DWORD roundSize = iSTD::RoundPower2(size) / 4;
         return iSTD::Round(size, roundSize) * blockSize;
@@ -1357,6 +1422,9 @@ public:
     }
     return iSTD::RoundPower2(size) * blockSize;
   }
+
+  bool supports2dBlockTranspose64ByteWidth() const { return isCoreChildOf(IGFX_XE3P_CORE); }
+
   bool supportsReadStateInfo() const {
     return hasEfficient64bEnabled() && IGC_IS_FLAG_ENABLED(EnableReadStateToA64Read);
   }
@@ -1374,6 +1442,11 @@ public:
     return isProductChildOf(IGFX_CRI);
   }
 
+  bool supportsNativeHyperbolicTan() const { return isCoreChildOf(IGFX_XE3P_CORE); }
+
+  bool supportsNativeTanh() const { return supportsNativeHyperbolicTan() && IGC_IS_FLAG_ENABLED(EnableNativeTanh); }
+
+  bool supportsNativeSigmoid() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
   bool supportsNativeSinCos() const {
     return isProductChildOf(IGFX_CRI) && IGC_IS_FLAG_ENABLED(EnableNativeSinCos);
@@ -1427,7 +1500,7 @@ public:
   }
 
   bool enableReplaceAtomicFenceWithSourceValue() const {
-    return IGC_IS_FLAG_ENABLED(ReplaceAtomicFenceWithSourceValue);
+    return !isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(ReplaceAtomicFenceWithSourceValue);
   }
 };
 } // namespace IGC

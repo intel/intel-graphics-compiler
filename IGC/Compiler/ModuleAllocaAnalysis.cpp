@@ -195,8 +195,8 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const {
     if (SeparateSpillAndScratch(&Ctx) && !supportsStatelessSpacePrivateMemory)
       simd_size = numLanes(Ctx.platform.getMinDispatchMode());
 
-    unsigned maxScratchSpaceBytes = Ctx.platform.maxPerThreadScratchSpace(
-    );
+    unsigned maxScratchSpaceBytes =
+        Ctx.platform.maxPerThreadScratchSpace(Ctx.m_DriverInfo.supports16MBPerThreadScratchSpace());
     unsigned scratchSpaceLimitPerWI = maxScratchSpaceBytes / simd_size;
     //
     // If spill happens, since the offset of scratch block rw send message

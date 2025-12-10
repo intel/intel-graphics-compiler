@@ -152,6 +152,9 @@ If an attribute is **Required**, it must be present in execution_env. If it's **
 | eu_thread_count | int32 | Optional | 0 | Number of threads per EU. If not specified, the information can be derived from grf_count. |
 | has_sample | bool | Optional | false | |
 | has_rtcalls | bool | Optional | false | |
+| quantum_size | int32 | Optional | 0 | The required quantum size. When set, quantum dispatch is enabled and set to the provided quantum size. |
+| quantum_walk_order | int32 | Optional | 0 | The required walk order of quantum. |
+| quantum_partition_dimension | int32 | Optional | 0 | The partitioning dimension of quantum. |
 | generate_local_id | bool | Optional | false | Flag of HW local ID capable info in cross-thread-payload. |
 | has_lsc_stores_with_non_default_l1_cache_controls | bool | Optional | false | Flag of HasLscStoresWithNonDefaultL1CacheControls to determine if the resource barriers should flush UAV coherency. |
 | require_iab | bool | Optional | false | When set to false, implicit arg buffer is not used by the program. So runtime may decide to not program the buffer. However, if debugger connects, the runtime would have to program implicit arg buffer. This flag may be false only when has_stack_calls is also false. It is an error to explicitly set this flag to false when has_stack_calls is true. When set to true, runtime must allocate implicit arg buffer. |
@@ -241,6 +244,7 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | const_base | | The base address of constant buffer, or the bindless offset of constant buffer if addrmode = "bindless" |
 | global_base | | The base address of global buffer, or the bindless offset of global buffer if addrmode = "bindless" |
 | region_group_size | int32x3 | The size of a region group in each dimension, in the order of dimention X, Y, Z. |
+| region_group_dimension | int32 | The partitioning dimension of a region group |
 | region_group_wg_count | int32 | The number of work groups in a region group |
 | region_group_barrier_buffer | int64 | The address of region/subregion barrier buffer. The argument, when presents, indicates region/subregion barrier buffer is required for this kernel |
 | buffer_size | int64 | Size in bytes of corresponding buffer |
