@@ -583,12 +583,12 @@ struct StateSaveAreaHeaderV4 Xe3PSIP_WMTP_E64_CSRDebugBindlessDebugHeader = {
 // wmtp XE3PV2 SIP (NVL)
 struct StateSaveAreaHeaderV4 Xe3PV2SIP_WMTP_Legacy_CSRDebugBindlessDebugHeader = {
     {"tssarea", 0, {4, 0, 0}, sizeof(StateSaveAreaHeaderV4) / 8, {0, 0, 0}}, // versionHeader
-    XE3PV2_CSR_DEBUG_BINDLESS_NVL_WMTP_DATA_SIZE                             // total_wmtp_data_size
+    XE3PV2_CSR_DEBUG_BINDLESS_WMTP_DATA_SIZE                                 // total_wmtp_data_size
 };
 
 struct StateSaveAreaHeaderV4 Xe3PV2SIP_WMTP_E64_CSRDebugBindlessDebugHeader = {
     {"tssarea", 0, {4, 0, 0}, sizeof(StateSaveAreaHeaderV4) / 8, {0, 0, 0}}, // versionHeader
-    XE3PV2_CSR_DEBUG_BINDLESS_NVL_WMTP_DATA_SIZE                             // total_wmtp_data_size
+    XE3PV2_CSR_DEBUG_BINDLESS_WMTP_DATA_SIZE                                 // total_wmtp_data_size
 };
 
 
