@@ -32,19 +32,3 @@ static uint2 __builtin_IB_lfsr_helper_b8v4_to_b8v4x2(int seed) {
 
 #include "conversions_fp8.cl"
 #include "StochasticRound_fp8.cl"
-
-#define ADDRSPACE_NAME private
-#include "StochasticRoundPointer_fp8.cl"
-#undef ADDRSPACE_NAME
-
-#define ADDRSPACE_NAME global
-#include "StochasticRoundPointer_fp8.cl"
-#undef ADDRSPACE_NAME
-
-#define ADDRSPACE_NAME local
-#include "StochasticRoundPointer_fp8.cl"
-#undef ADDRSPACE_NAME
-
-#define ADDRSPACE_NAME generic
-#include "StochasticRoundPointer_fp8.cl"
-#undef ADDRSPACE_NAME
