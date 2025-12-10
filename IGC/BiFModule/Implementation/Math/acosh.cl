@@ -75,3 +75,12 @@ INLINE half __attribute__((overloadable)) __spirv_ocl_acosh( half x )
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( acosh, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
+
+#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
+INLINE bfloat __attribute__((overloadable)) __spirv_ocl_acosh( bfloat x )
+{
+    return __spirv_ocl_acosh((float)x);
+}
+
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( acosh, bfloat, bfloat, )
+#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

@@ -35,6 +35,9 @@ SPDX-License-Identifier: MIT
 #define DOUBLE_BIAS             (1023)
 #define DOUBLE_MANTISSA_BITS    (52)
 
+#define BFLOAT_SIGN_MASK        (0x8000)
+#define BFLOAT_QUIET_NAN        ((short)(0x7FFF))
+
 #define HALF_BITS               (16)
 #define HALF_SIGN_BITS          (1)
 #define HALF_EXPONENT_BITS      (5)
@@ -146,6 +149,7 @@ SPDX-License-Identifier: MIT
 #define PI_OVER_ONE_EIGHTY_DBL   (as_double(0x3F91DF46A2529D39)) // 0.01745329251994329576923690768489
 #define PI_OVER_ONE_EIGHTY_FLT   (as_float(0x3C8EFA35))          // 0.01745329251994329576923690768489f
 #define PI_OVER_ONE_EIGHTY_HLF   (as_half((ushort)0x2478))       // 0.01745329251994329576923690768489h
+#define PI_OVER_ONE_EIGHTY_BFLT  (as_bfloat((ushort)0x3C8F))
 
 #define MINNORM                 (0x00800000)
 #define MAXNORM                 (0x7f7fffff)

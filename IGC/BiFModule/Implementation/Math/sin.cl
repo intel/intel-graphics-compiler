@@ -72,3 +72,12 @@ INLINE half __attribute__((overloadable)) __spirv_ocl_sin( half x )
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sin, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
+
+#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
+INLINE bfloat __attribute__((overloadable)) __spirv_ocl_sin( bfloat x )
+{
+    return __spirv_ocl_native_sin(x);
+}
+
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sin, bfloat, bfloat, )
+#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

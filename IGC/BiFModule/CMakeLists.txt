@@ -502,6 +502,13 @@ set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_extended_block_write_cacheopts
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_2d_block_io")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_matrix_multiply_accumulate_bf8")
 
+# Temporarily disable compilation of bfloat builtins for LLVM versions < 15,
+# until clang is updated to not crash on bfloat builtins.
+if(LLVM_VERSION_MAJOR GREATER_EQUAL 15)
+  set(KHR_DEFINES ${KHR_DEFINES} "IGC_SPV_INTEL_bfloat16_arithmetic")
+  set(KHR_DEFINES ${KHR_DEFINES} "IGC_SPV_KHR_bfloat16")
+endif()
+
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
     TRIPLE               spir64

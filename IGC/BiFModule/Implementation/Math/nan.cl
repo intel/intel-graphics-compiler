@@ -37,3 +37,11 @@ INLINE half __attribute__((overloadable)) __spirv_ocl_nan( short nancode )
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( nan, half, short, i16 )
 
 #endif // defined(cl_khr_fp16)
+
+// Not implemented until SPIRV-LLVM Translator support generation of __spirv_ocl_nan_Rbfloat
+//INLINE bfloat __attribute__((overloadable)) __spirv_ocl_nan( short nancode )
+//{
+//    return as_bfloat( BFLOAT_QUIET_NAN );
+//}
+//
+//GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( nan, bfloat, bfloat, )

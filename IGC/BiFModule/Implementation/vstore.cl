@@ -102,6 +102,9 @@ VSTOREN_TYPE(float,  f32)
 #if defined(cl_khr_fp64)
 VSTOREN_TYPE(double, f64)
 #endif
+#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
+VSTOREN_TYPE(bfloat, )
+#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
 
 //*****************************************************************************/
 // vstore_half

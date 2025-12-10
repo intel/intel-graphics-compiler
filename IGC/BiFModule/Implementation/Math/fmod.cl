@@ -290,3 +290,12 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( fmod, half, half, half, f16, 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpFMod, half, half, half, f16, f16 )
 
 #endif // defined(cl_khr_fp16)
+
+#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
+INLINE bfloat __attribute__((overloadable)) __spirv_ocl_fmod( bfloat x, bfloat y )
+{
+    return __spirv_ocl_fmod((float)x, (float)y);
+}
+
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( fmod, bfloat, bfloat, bfloat, , )
+#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

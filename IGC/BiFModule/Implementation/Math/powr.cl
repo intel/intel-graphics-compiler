@@ -84,3 +84,12 @@ INLINE half __attribute__((overloadable)) __spirv_ocl_powr( half x, half y )
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( powr, half, half, half, f16, f16 )
 
 #endif // defined(cl_khr_fp16)
+
+#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
+INLINE bfloat __attribute__((overloadable)) __spirv_ocl_powr( bfloat x, bfloat y )
+{
+    return __spirv_ocl_powr((float)x, (float)y);
+}
+
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( powr, bfloat, bfloat, bfloat, , )
+#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

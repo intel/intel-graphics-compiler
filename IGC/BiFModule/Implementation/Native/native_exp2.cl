@@ -27,3 +27,12 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_exp2, double, double, f64 )
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_exp2, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
+
+#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
+INLINE bfloat __attribute__((overloadable)) __spirv_ocl_native_exp2( bfloat x )
+{
+    return as_bfloat(__builtin_bf16_exp(as_ushort(x)));
+}
+
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_exp2, bfloat, bfloat, )
+#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

@@ -1825,8 +1825,8 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   case Intrinsic::floor:
   case Intrinsic::ceil:
   case Intrinsic::trunc: {
-    if (!m_ctx->platform.supportFP16Rounding() && I.getType()->isHalfTy()) {
-      // On platform lacking of FP16 rounding, promote them to FP32 and
+    if (I.getType()->isBFloatTy() || (!m_ctx->platform.supportFP16Rounding() && I.getType()->isHalfTy())) {
+      // On platform lacking of FP16 rounding or for BFloat, promote them to FP32 and
       // demote back.
       Value *Val = Builder.CreateFPExt(I.getOperand(0), Builder.getFloatTy());
       Value *Callee =

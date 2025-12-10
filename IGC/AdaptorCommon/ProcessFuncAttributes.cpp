@@ -476,8 +476,8 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
       // builtins should not be externally linked, they will always be resolved by IGC
       return !(F->hasFnAttribute("OclBuiltin") || F->getName().startswith("__builtin_") ||
                F->getName().startswith("__igcbuiltin_") || F->getName().startswith("llvm.") ||
-               F->getName().equals("printf") || Regex("^_Z[0-9]+__spirv_").match(F->getName()) ||
-               Regex("^_Z[0-9]+__builtin_spirv").match(F->getName()));
+               F->getName().equals("printf") || Regex("^_Z[0-9]+__builtin_bf16").match(F->getName()) ||
+               Regex("^_Z[0-9]+__spirv_").match(F->getName()) || Regex("^_Z[0-9]+__builtin_spirv").match(F->getName()));
     }
     return false;
   };

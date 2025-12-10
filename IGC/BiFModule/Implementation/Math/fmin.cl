@@ -37,3 +37,12 @@ INLINE half __attribute__((overloadable)) __spirv_ocl_fmin( half x, half y )
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( fmin, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
+
+#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
+INLINE bfloat __attribute__((overloadable)) __spirv_ocl_fmin( bfloat x, bfloat y )
+{
+    return __spirv_ocl_fmin((float)x, (float)y);
+}
+
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( fmin, bfloat, bfloat, )
+#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

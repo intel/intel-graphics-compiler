@@ -72,6 +72,9 @@ VLOADN_TYPE(float,  f32)
 #if defined(cl_khr_fp64)
 VLOADN_TYPE(double, f64)
 #endif
+#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
+VLOADN_TYPE(bfloat, )
+#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
 
 // "When extended by the cl_khr_fp16 extension, the generic type gentypen is extended to include half"
 #define VLOADN_SCALAR_HALF_DEF(addressSpace, offsetType, mangle)                                 \

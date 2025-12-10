@@ -1113,6 +1113,22 @@ global void* __builtin_IB_intel_get_rt_global_buffer();
 
 void    __builtin_IB_hdc_uncompressed_write_uchar(__global uchar *buf, uchar val);
 
+ushort __builtin_bf16_sin(ushort) __attribute__((overloadable));
+ushort __builtin_bf16_cos(ushort) __attribute__((overloadable));
+ushort __builtin_bf16_log(ushort) __attribute__((overloadable));
+ushort __builtin_bf16_exp(ushort) __attribute__((overloadable));
+ushort __builtin_bf16_sqrt(ushort) __attribute__((overloadable));
+ushort __builtin_bf16_tanh(ushort) __attribute__((overloadable));
+ushort __builtin_bf16_inv(ushort) __attribute__((overloadable));
+ushort __builtin_bf16_mul(ushort, ushort) __attribute__((overloadable));
+ushort __builtin_bf16_mad(ushort, ushort, ushort) __attribute__((overloadable));
+ushort __builtin_bf16_add(ushort, ushort) __attribute__((overloadable));
+ushort __builtin_bf16_sub(ushort, ushort) __attribute__((overloadable));
+ushort2 __builtin_bf16_sub(ushort2, ushort2) __attribute__((overloadable));
+ushort3 __builtin_bf16_sub(ushort3, ushort3) __attribute__((overloadable));
+ushort4 __builtin_bf16_sub(ushort4, ushort4) __attribute__((overloadable));
+int __builtin_bf16_isless(ushort, ushort) __attribute__((overloadable));
+
 #define LUT_int4_to_bfloat8  0
 #define LUT_e2m1_to_bfloat8  1
 #define LUT_int4_to_hfloat8  2
