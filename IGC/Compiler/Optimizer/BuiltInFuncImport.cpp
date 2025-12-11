@@ -508,6 +508,8 @@ void BIImport::fixInvalidBitcasts(llvm::Module &M) {
 
 void BIImport::addOCLObjectCastFunctionDefinitions(llvm::Module &M) {
   std::vector<Instruction *> InstsToRemove;
+  llvm::SmallVector<llvm::Function *, 8> BuiltinsToErase;
+
   for (Function &FRef : M) {
     Function *F = &FRef;
 
@@ -534,25 +536,53 @@ void BIImport::addOCLObjectCastFunctionDefinitions(llvm::Module &M) {
         Arg->getType()->isPointerTy(),
         "__builtin_IB_cast_object_to_generic_ptr/__builtin_IB_convert_object_type_to_X takes a pointer argument!");
     IGC_ASSERT_MESSAGE(
-        F->getType()->isPointerTy(),
+        F->getReturnType()->isPointerTy(),
         "__builtin_IB_cast_object_to_generic_ptr/__builtin_IB_convert_object_type_to_X must return a pointer!");
 
-    // TODO: The casts could be emitted in place of the builtin call (instead of adding builtin function definition).
-    // However, this is not possible with LLVM 16 due to a bug in ValueMapper. The workaround is to emit the casts
-    // inside the builtin function body and let the calls be inlined later (ultimately the IR is the same).
-    BasicBlock *Entry = BasicBlock::Create(M.getContext(), "", F);
-    IRBuilder<> Builder(Entry);
-    Value *RetValue = Arg;
-    if (Arg->getType()->getPointerAddressSpace() != F->getReturnType()->getPointerAddressSpace()) {
-      RetValue = Builder.CreateAddrSpaceCast(Arg, F->getReturnType());
-    } else if (!Arg->getType()->isOpaquePointerTy() && Arg->getType() != F->getReturnType()) {
-      RetValue = Builder.CreateBitCast(Arg, F->getReturnType());
+    // Replace each call to the builtin with the appropriate cast sequence.
+    llvm::SmallVector<llvm::CallBase *, 8> CallsToReplace;
+    for (llvm::User *U : F->users()) {
+      auto *CB = llvm::dyn_cast<llvm::CallBase>(U);
+      IGC_ASSERT_MESSAGE(CB, "Builtin cast function should only be used in calls!");
+      CallsToReplace.push_back(CB);
     }
-    Builder.CreateRet(RetValue);
+
+    for (llvm::CallBase *CB : CallsToReplace) {
+      IGC_ASSERT_MESSAGE(
+          CB->arg_size() == 1,
+          "__builtin_IB_cast_object_to_generic_ptr/__builtin_IB_convert_object_type_to_X takes only one argument!");
+
+      llvm::Value *ArgV = CB->getArgOperand(0);
+      IGC_ASSERT_MESSAGE(
+          ArgV->getType()->isPointerTy(),
+          "__builtin_IB_cast_object_to_generic_ptr/__builtin_IB_convert_object_type_to_X takes a pointer argument!");
+
+      llvm::IRBuilder<> Builder(CB);
+      llvm::Type *DstTy = F->getReturnType();
+      llvm::Value *RetValue = ArgV;
+
+      if (ArgV->getType()->getPointerAddressSpace() != DstTy->getPointerAddressSpace()) {
+        RetValue = Builder.CreateAddrSpaceCast(ArgV, DstTy);
+      } else if (!ArgV->getType()->isOpaquePointerTy() && ArgV->getType() != DstTy) {
+        RetValue = Builder.CreateBitCast(ArgV, DstTy);
+      }
+
+      CB->replaceAllUsesWith(RetValue);
+      InstsToRemove.push_back(CB);
+    }
+
+    // This builtin should be now dead, add for removal.
+    BuiltinsToErase.push_back(F);
   }
 
   for (Instruction *I : InstsToRemove)
     I->eraseFromParent();
+
+  for (Function *F : BuiltinsToErase) {
+    // Check if the builtin has any uses (might be used by metadata).
+    if (F->use_empty())
+      F->eraseFromParent();
+  }
 }
 
 bool BIImport::runOnModule(Module &M) {
