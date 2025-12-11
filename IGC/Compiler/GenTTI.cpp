@@ -539,6 +539,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
     return;
   }
 
+#if LLVM_VERSION_MAJOR >= 16
   auto hasCall = [](BasicBlock *BB) {
     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI)
       if (isa<CallInst>(&*BI) && !BI->isDebugOrPseudoInst())
@@ -560,6 +561,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
       return;
     }
   }
+#endif // LLVM_VERSION_MAJOR >= 16
 
   for (I = loopBlock->begin(); I != loopBlock->end(); I++) {
     if (const auto pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(I)) {
