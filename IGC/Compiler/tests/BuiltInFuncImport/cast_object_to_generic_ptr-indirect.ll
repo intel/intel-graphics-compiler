@@ -9,8 +9,9 @@
 ; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-builtin-import -disable-verify -S < %s | FileCheck %s
 
-; CHECK: define spir_func ptr {{.*}}builtin_IB_cast_object_to_generic_ptr
-; CHECK: ret ptr
+; CHECK-NOT: call {{.*}}builtin_IB_cast_object_to_generic_ptr
+; CHECK: addrspacecast
+; CHECK: ptrtoint
 
 define spir_kernel void @test(ptr addrspace(1) %a, <2 x i32> %b) {
 entry:
