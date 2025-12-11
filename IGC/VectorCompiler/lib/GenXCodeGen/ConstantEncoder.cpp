@@ -76,8 +76,14 @@ encodeConstExprImpl(const IGCLLVM::AddrSpaceCastOperator &ASC,
                     const DataLayout &DL) {
   IGC_ASSERT_MESSAGE(!isa<IGCLLVM::FixedVectorType>(ASC.getType()),
                      "vector addrspacecast is not yet supported");
-  auto [Data, Relocs] = vc::encodeGlobalValueOrConstantExpression(
-      *cast<Constant>(ASC.getPointerOperand()), DL);
+  auto *OpC = cast<Constant>(ASC.getPointerOperand());
+
+  if (OpC->isNullValue()) {
+    const auto DstBits = vc::getTypeSize(ASC.getType(), &DL).inBits();
+    return {APInt(DstBits, 0), {}};
+  }
+
+  auto [Data, Relocs] = vc::encodeGlobalValueOrConstantExpression(*OpC, DL);
 
   // FIXME: p3 to p4 cast should also be part of this case if we consider
   //        p3 higher bits are marked from the beginning. Alternatively those
