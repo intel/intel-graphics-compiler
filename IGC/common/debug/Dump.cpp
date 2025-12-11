@@ -497,9 +497,8 @@ private:
 // (In the case where Dump is on the heap and DumpName is on the stack, the reference would go bad
 // when the calling function returns)
 Dump::Dump(DumpName const &dumpName, DumpType type)
-    : m_name(dumpName), m_pStream(std::make_unique<llvm::raw_string_ostream>(m_string)) // buffered stream!
-      ,
-      m_pStringStream(nullptr), m_type(type), m_ClearFile(true) {
+    : m_name(dumpName), m_pStream(std::make_unique<llvm::raw_string_ostream>(m_string)), // buffered stream!
+      m_pStringStream(nullptr), m_type(type) {
   m_pStringStream = m_pStream.get();
   if (isConsolePrintable(m_type)) {
     if (IGC_IS_FLAG_ENABLED(PrintToConsole)) {
@@ -520,15 +519,7 @@ Dump::Dump(DumpName const &dumpName, DumpType type)
 
 void Dump::flush() {
   m_pStringStream->flush();
-  if (m_string.empty() && !m_ClearFile) {
-    return;
-  }
-  std::ios_base::openmode mode = std::ios_base::out;
-  if (m_ClearFile) {
-    m_ClearFile = false;
-  } else {
-    mode |= std::ios_base::app;
-  }
+  std::ios_base::openmode mode = std::ios_base::out | std::ios_base::app;
   if (!isText(m_type))
     mode |= std::ios_base::binary;
   if (m_name.allow()) {
