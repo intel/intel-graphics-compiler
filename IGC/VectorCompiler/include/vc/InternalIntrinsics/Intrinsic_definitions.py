@@ -216,13 +216,13 @@ Imported_Intrinsics = {
     "atomic_fmin" : { "result": "anyfloat",
                       "arguments": [ "anyptr", "int", "int",
                                      "anyfloat"],
-                      "attributes": "None",
+                      "attributes": "NoWillReturn",
                       "memory_effects":
                         { "access": "ModRef" }, },
     "atomic_fmax" : { "result": "anyfloat",
                       "arguments": [ "anyptr", "int", "int",
                                      "anyfloat"],
-                      "attributes": "None",
+                      "attributes": "NoWillReturn",
                       "memory_effects":
                         { "access": "ModRef" }, },
 
@@ -323,7 +323,7 @@ Imported_Intrinsics = {
                         "target" : [
                             "hasLSCMessages",
                         ],
-                        "attributes": "None",
+                        "attributes": "NoWillReturn",
                         "memory_effects":
                             { "access": "ModRef" }, },
     "lsc_atomic_bss": { "result": "anyvector",
@@ -344,7 +344,7 @@ Imported_Intrinsics = {
                         "target" : [
                             "hasLSCMessages",
                         ],
-                        "attributes": "None",
+                        "attributes": "NoWillReturn",
                         "memory_effects":
                             { "access": "ModRef" }, },
     "lsc_atomic_slm": { "result": "anyvector",
@@ -365,7 +365,7 @@ Imported_Intrinsics = {
                         "target" : [
                             "hasLSCMessages",
                         ],
-                        "attributes": "None",
+                        "attributes": "NoWillReturn",
                         "memory_effects":
                             { "access": "ModRef" }, },
     "lsc_atomic_ugm": { "result": "anyvector",
@@ -386,7 +386,7 @@ Imported_Intrinsics = {
                         "target" : [
                             "hasLSCMessages",
                         ],
-                        "attributes": "None",
+                        "attributes": "NoWillReturn",
                         "memory_effects":
                             { "access": "ModRef" }, },
 
@@ -1636,7 +1636,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
+                                          "attributes": "NoWillReturn",
                                           "memory_effects":
                                              { "access": "ModRef" }, },
     "typed_atomic_sub_predef_surface" : { "result" : "anyvector",
@@ -1652,7 +1652,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
+                                          "attributes": "NoWillReturn",
                                           "memory_effects":
                                              { "access": "ModRef" }, },
     "typed_atomic_min_predef_surface" : { "result" : "anyvector",
@@ -1668,7 +1668,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
+                                          "attributes": "NoWillReturn",
                                           "memory_effects":
                                              { "access": "ModRef" }, },
     "typed_atomic_max_predef_surface" : { "result" : "anyvector",
@@ -1684,7 +1684,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
+                                          "attributes": "NoWillReturn",
                                           "memory_effects":
                                              { "access": "ModRef" }, },
 
@@ -1701,7 +1701,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
+                                          "attributes": "NoWillReturn",
                                           "memory_effects":
                                              { "access": "ModRef" }, },
     "typed_atomic_and_predef_surface" : { "result" : "anyvector",
@@ -1717,7 +1717,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
+                                          "attributes": "NoWillReturn",
                                           "memory_effects":
                                              { "access": "ModRef" }, },
     "typed_atomic_or_predef_surface" : { "result" : "anyvector",
@@ -1733,7 +1733,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
+                                          "attributes": "NoWillReturn",
                                           "memory_effects":
                                              { "access": "ModRef" }, },
 
@@ -1751,7 +1751,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
+                                          "attributes": "NoWillReturn",
                                           "memory_effects":
                                              { "access": "ModRef" }, },
     "typed_atomic_imin_predef_surface" : { "result" : "anyvector",
@@ -1767,7 +1767,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
+                                          "attributes": "NoWillReturn",
                                           "memory_effects":
                                              { "access": "ModRef" }, },
     "typed_atomic_imax_predef_surface" : { "result" : "anyvector",
@@ -1783,7 +1783,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
+                                          "attributes": "NoWillReturn",
                                           "memory_effects":
                                              { "access": "ModRef" }, },
 
@@ -1815,7 +1815,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                               "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
+                                          "attributes": "NoWillReturn",
                                           "memory_effects":
                                              { "access": "ModRef" }, },
     "typed_atomic_dec_predef_surface" : { "result" : "anyvector",
@@ -1830,7 +1830,7 @@ Imported_Intrinsics = {
                                           "target" : [
                                               "!noLegacyDataport"
                                           ],
-                                          "attributes": "None",
+                                          "attributes": "NoWillReturn",
                                           "memory_effects":
                                              { "access": "ModRef" }, },
 
@@ -1866,7 +1866,7 @@ Imported_Intrinsics = {
                                               "target" : [
                                                   "!noLegacyDataport"
                                               ],
-                                              "attributes": "None",
+                                              "attributes": "NoWillReturn",
                                               "memory_effects":
                                                 { "access": "ModRef" }, },
 

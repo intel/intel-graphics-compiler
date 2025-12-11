@@ -71,6 +71,7 @@ attribute_map = {
     "NoDuplicate":         set(["NoUnwind","NoDuplicate"]),
     "Convergent":          set(["NoUnwind","Convergent"]),
     "SideEffects":         set(["NoUnwind"]),
+    "NoWillReturn":        set(["NoUnwind"]),
 }
 
 def getAttributeList(Attrs):
@@ -80,6 +81,20 @@ def getAttributeList(Attrs):
     """
     s = reduce(lambda acc, v: attribute_map[v] | acc, Attrs, set())
     return ['Attribute::'+x for x in sorted(s)]
+
+def getAttributeListWithWillReturn(Attrs):
+    """
+    Like getAttributeList, but adds WillReturn unless explicitly disabled
+    by NoWillReturn or NoReturn.
+    """
+    s = reduce(lambda acc, v: attribute_map[v] | acc, Attrs, set())
+    attr = []
+    is_return = "NoWillReturn" not in Attrs
+    for x in sorted(s):
+        attr.append('AB.addAttribute(Attribute::' + x + ')')
+        if x == "NoReturn": is_return = False
+    if is_return: attr.append('AB.addAttribute(Attribute::WillReturn)')
+    return attr
 
 Intrinsics = dict()
 parse = sys.argv
@@ -425,13 +440,19 @@ def createAttributeTable():
 
     for i in range(len(attribute_Array)): #Building case statements
         Attrs = getAttributeList([x.strip() for x in attribute_Array[i].split(',')])
+        AttrsWithWillReturn = getAttributeListWithWillReturn([x.strip() for x in attribute_Array[i].split(',')])
         f.write("""    case {num}: {{
+      #if LLVM_VERSION_MAJOR >= 16
+      {attrs_will};
+      #else
       const Attribute::AttrKind Attrs[] = {{{attrs}}};
       for (auto Kind : Attrs) {{
         AB.addAttribute(Kind);
       }}
+      #endif
       break;
-      }}\n""".format(num=i+1, attrs=','.join(Attrs)))
+      }}\n""".format(num=i+1, attrs_will='; '.join(AttrsWithWillReturn), attrs=','.join(Attrs)))
+
     f.write("    }\n"
             "  }\n"
             "  MemoryEffectsTy ME = MemoryFXPerIntrinsicMap[AttrIdx];\n"
