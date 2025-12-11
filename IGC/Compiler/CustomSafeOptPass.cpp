@@ -4442,13 +4442,13 @@ void IGCIndirectICBPropagaion::replaceExtractElementsWithCompressedFetches(
     currentDWord |= (index << bitsUsed);
     bitsUsed += bitsPerIndex;
 
-    if (bitsUsed == 32) {
+    if (bitsUsed >= 32) {
+      // Should not happen as we only use 1, 2, or 4 bits per index
+      IGC_ASSERT_MESSAGE(bitsUsed == 32, "Packed index exceeded 32 bits: invalid bitsPerIndex value");
+
       packedIndices.push_back(currentDWord);
       bitsUsed = 0;
       currentDWord = 0;
-    } else if (bitsUsed > 32) {
-      // Should not happen as we only use 1, 2, or 4 bits per index
-      IGC_ASSERT_MESSAGE(false, "Packed index exceeded 32 bits: invalid bitsPerIndex value");
     }
   }
   if (bitsUsed > 0) {
@@ -4519,7 +4519,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F) {
   CompressionResult compressionResult = {};
 
 
-  if (modMD && modMD->immConstant.data.size() && storageNeeded <= maxImmConstantSizePushedLimit) {
+  if (modMD->immConstant.data.size() && storageNeeded <= maxImmConstantSizePushedLimit) {
     IRBuilder<> m_builder(F.getContext());
 
     for (auto &BB : F) {

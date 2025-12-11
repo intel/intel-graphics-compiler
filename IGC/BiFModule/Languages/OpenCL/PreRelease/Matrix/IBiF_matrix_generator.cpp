@@ -317,7 +317,7 @@ static string GetMatrixFunctionName(MatrixSpec spec, AddrSpace addr, bool isChec
     return s;
 }
 
-static bool CheckIfFunctionNameIsUnique(string funcName)
+static bool CheckIfFunctionNameIsUnique(const string &funcName)
 {
     if (CreatedFuncsSet.find(funcName) != CreatedFuncsSet.end())
     {

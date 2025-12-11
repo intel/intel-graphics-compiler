@@ -4837,6 +4837,7 @@ void SWSB::insertTokenSync() {
           SBNode *sNode = sBucketNode->node;
           unsigned short assignedToken =
               sNode->getLastInstruction()->getSBIDSetToken();
+          vASSERT(assignedToken < 32);
           unsigned bitToken = 1 << assignedToken;
           src |= bitToken;
         }
