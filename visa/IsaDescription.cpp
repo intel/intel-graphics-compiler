@@ -3519,6 +3519,9 @@ static const ISA_SubInst_Desc LscTypedSubOpcodeDescs[] {
       LSC_OP_INVALID,
       LSC_TYPED_OP(LSC_LOAD_QUAD_MSRT, "lsc_load_quad_msrt"),
       LSC_TYPED_OP(LSC_STORE_QUAD_MSRT, "lsc_store_quad_msrt"),
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
 };
 
 LscOpInfo LscOpInfoGet(LSC_OP op) {
@@ -3667,10 +3670,10 @@ bool LscOpInfoFind(LSC_OP op, LscOpInfo &opInfo) {
     atomicOp("lsc_apndctr_atomic_store", 0x30, 1);
     break;
 
- case LSC_LOAD_QUAD_MSRT:
+  case LSC_LOAD_QUAD_MSRT:
     loadOp("lsc_load_quad_msrt", 0x31);
     break;
- case LSC_STORE_QUAD_MSRT:
+  case LSC_STORE_QUAD_MSRT:
     storeOp("lsc_store_quad_msrt", 0x32);
     break;
   default:

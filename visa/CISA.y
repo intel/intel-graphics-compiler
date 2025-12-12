@@ -1935,7 +1935,8 @@ LscTypedLoad:
 //  6               7
     LscDataOperand  LscTypedAddrOperandWithOffsets
     {
-        if ($2 != LSC_LOAD_QUAD) {
+        if ($2 != LSC_LOAD_QUAD
+        ) {
             PARSE_ERROR("unsupported load operation for .tgm");
         }
         $5.exec_size =

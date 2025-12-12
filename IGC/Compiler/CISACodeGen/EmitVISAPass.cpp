@@ -22703,7 +22703,7 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst *inst) {
 
 void EmitPass::emitLscIntrinsicTypedLoadStatus(llvm::GenIntrinsicInst *inst) {
   // Intrinsic format:
-  //  destination - status register, one bit per SIMT lane
+  //  destination - status register
   //  Operand 0 - Src Buffer
   //  Operand 1 - coordinates u (an int)
   //  Operand 2 - coordinates v (an int)
@@ -22733,59 +22733,56 @@ void EmitPass::emitLscIntrinsicTypedLoadStatus(llvm::GenIntrinsicInst *inst) {
   ResourceDescriptor resource = GetResourceVariable(pllSrcBuffer);
   LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, true, true);
 
-  const unsigned int eltBitSize = 32;
-  const unsigned int numElements = 1; // The dest data payload is one register with the status bits.
   LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
-  if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
-    if (resource.m_isStatefulForEfficient64b) {
-      addrSize = LSC_ADDR_SIZE_32bU;
-    }
-  }
+  const unsigned int eltBitSize = 32;
+  const unsigned int numElements = 1;
+  const LSC_OP lscOp = LSC_LOAD_STATUS;
   if (destIsUniform) {
     m_encoder->SetSimdSize(SIMDMode::SIMD1);
     m_encoder->SetPredicate(nullptr);
     m_encoder->SetNoMask();
-    m_encoder->LSC_TypedReadWrite(LSC_LOAD_STATUS, &resource, pU, pV, pR, pLODorSampleIdx, m_destination, eltBitSize,
-                                  numElements, addrSize, writeMask.getEM(), cacheOpts);
+    m_encoder->LSC_TypedReadWrite(lscOp, &resource, pU, pV, pR, pLODorSampleIdx, m_destination, eltBitSize, numElements,
+                                  addrSize, writeMask.getEM(), cacheOpts);
     m_encoder->Push();
   } else {
     uint label = 0;
     CVariable *flag = nullptr;
-    CVariable *newDst = m_currShader->GetNewVariable(numElements, ISA_TYPE_D, EALIGN_DWORD, "typedLoadStatusResult");
-    CVariable *initVal = m_currShader->ImmToVariable(0, ISA_TYPE_D);
-    m_encoder->SetSimdSize(SIMDMode::SIMD1);
-    m_encoder->SetNoMask();
-    m_encoder->Copy(newDst, initVal);
-    m_encoder->Push();
     bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
+    CVariable *prevResult = nullptr;
+      prevResult = m_currShader->GetNewVariable(numElements, ISA_TYPE_D, EALIGN_DWORD, "typedLoadStatusResult");
+      CVariable *initVal = m_currShader->ImmToVariable(0, ISA_TYPE_D);
+      m_encoder->SetSimdSize(SIMDMode::SIMD1);
+      m_encoder->SetNoMask();
+      m_encoder->Copy(m_destination, initVal);
+      m_encoder->Push();
     ResourceLoopSubIteration(resource, flag, label);
     m_encoder->SetPredicate(flag);
-    m_encoder->LSC_TypedReadWrite(LSC_LOAD_STATUS, &resource, pU, pV, pR, pLODorSampleIdx, m_destination, eltBitSize,
-                                  numElements, addrSize, writeMask.getEM(), cacheOpts);
+    m_encoder->LSC_TypedReadWrite(lscOp, &resource, pU, pV, pR, pLODorSampleIdx,
+                                  needLoop && prevResult ? prevResult : m_destination, eltBitSize, numElements,
+                                  addrSize, writeMask.getEM(), cacheOpts);
     m_encoder->Push();
-    m_encoder->SetSimdSize(SIMDMode::SIMD1);
-    m_encoder->SetNoMask();
-    m_encoder->Or(newDst, newDst, m_destination);
-    m_encoder->Push();
+      m_encoder->SetSimdSize(SIMDMode::SIMD1);
+      m_encoder->SetNoMask();
+      m_encoder->Or(m_destination, prevResult, m_destination);
+      m_encoder->Push();
     ResourceLoopBackEdge(needLoop, flag, label);
+      // Extract per-lane status from the packed status register.
+      // The hardware returns a single dw register with one status bit per lane.
+      // We need to broadcast the bit result into per-lane values.
 
-    // Extract per-lane status from the packed status register.
-    // The hardware returns a single dw register with one status bit per lane.
-    // We need to broadcast the bit result into per-lane values.
+      // Copy the send result to a statusFlag register -> sF[i] = src0 & (1 << i)
+      SIMDMode simdSize = m_currShader->m_SIMDSize;
+      CVariable *statusFlag = m_currShader->GetNewVariable(numLanes(simdSize), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
+      m_encoder->SetSrcRegion(0, 0, 1, 0);
+      m_encoder->SetNoMask();
+      m_encoder->SetP(statusFlag, m_destination);
+      m_encoder->Push();
 
-    // Copy the send result to a statusFlag register -> sF[i] = src0 & (1 << i)
-    SIMDMode simdSize = m_currShader->m_SIMDSize;
-    CVariable *statusFlag = m_currShader->GetNewVariable(numLanes(simdSize), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
-    m_encoder->SetSrcRegion(0, 0, 1, 0);
-    m_encoder->SetNoMask();
-    m_encoder->SetP(statusFlag, newDst);
-    m_encoder->Push();
-
-    // Prepare the result -> dst[i] = sF[i] ? INT_MAX : 0;
-    CVariable *resident = m_currShader->ImmToVariable(0x1, newDst->GetType());
-    CVariable *nonResident = m_currShader->ImmToVariable(0x0, newDst->GetType());
-    m_encoder->Select(statusFlag, m_destination, resident, nonResident);
-    m_encoder->Push();
+      // Prepare the result -> dst[i] = sF[i] ? INT_MAX : 0;
+      CVariable *resident = m_currShader->ImmToVariable(0x1, m_destination->GetType());
+      CVariable *nonResident = m_currShader->ImmToVariable(0x0, m_destination->GetType());
+      m_encoder->Select(statusFlag, m_destination, resident, nonResident);
+      m_encoder->Push();
   }
   m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
 }
