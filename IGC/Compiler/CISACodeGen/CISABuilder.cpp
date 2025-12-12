@@ -4211,7 +4211,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   if (preserveR0) {
     SaveOption(vISA_ReserveR0, true);
   }
-  if (IGC_IS_FLAG_ENABLED(InitializeRegistersEnable)) {
+  bool initRegisters = context->getModuleMetaData()->compOpt.ZeroInitRegistersBeforeExecution ||
+                       IGC_IS_FLAG_ENABLED(InitializeRegistersEnable);
+  if (initRegisters) {
     SaveOption(vISA_InitPayload, true);
   }
   if (IGC_IS_FLAG_ENABLED(AvoidUsingR0R1)) {

@@ -522,6 +522,7 @@ enum class ShaderTypeMD
         unsigned DisableSamplerBackingByLSC             = 0;
         bool UseLinearScanRA                            = false;
         bool DisableConvertingAtomicIAddToIncDec        = false;
+        bool ZeroInitRegistersBeforeExecution = false;
     };
 
     enum class ThreadIDLayout
