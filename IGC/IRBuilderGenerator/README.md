@@ -135,14 +135,57 @@ The tool generates three headers in `OUTPUT_DIR`:
 - `AutoGenMyProjectPublic.h` - Public scope functions
 - `AutoGenAddressSpaces.h` - Address space defines (if YAML provided)
 
-Include them in your IRBuilder code:
+The generated code is designed to be included in a **CRTP (Curiously Recurring Template Pattern) mixin class**. This allows the same generated functionality to be composed into multiple different IRBuilder subclasses.
+
+#### CRTP Mixin Pattern
+
+First, create a CRTP mixin header that includes the generated files:
 
 ```cpp
-class MyBuilder : public IRBuilder<> {
-private:
-  #include "AutoGenMyProjectPrivate.h"
+// MyProjectBuilder.h
+#pragma once
+
+namespace llvm {
+
+/// CRTP mixin providing MyProject IRBuilder functionality.
+///
+/// Derived classes must:
+/// 1. Inherit from an IRBuilder (e.g., IRBuilder<>)
+/// 2. Implement: const MyContext& getCtx() const
+template <typename Derived>
+class MyProjectBuilder {
+protected:
+  Derived& derived() { return static_cast<Derived&>(*this); }
+  const Derived& derived() const { return static_cast<const Derived&>(*this); }
+
+protected:
+#include "AutoGenMyProjectPrivate.h"
 public:
-  #include "AutoGenMyProjectPublic.h"
+#include "AutoGenMyProjectPublic.h"
+};
+
+} // namespace llvm
+```
+
+Then, use the mixin in your builder class:
+
+```cpp
+// MyBuilder.h
+#include "MyProjectBuilder.h"
+
+class MyBuilder : public IRBuilder<>,
+                  public MyProjectBuilder<MyBuilder> {
+  // Allow the CRTP base class to access private members
+  friend class MyProjectBuilder<MyBuilder>;
+
+  const MyContext& Ctx;
+
+public:
+  // Required by generated code - provides access to context
+  const MyContext& getCtx() const { return Ctx; }
+
+  MyBuilder(LLVMContext &C, const MyContext& Ctx)
+      : IRBuilder<>(C), Ctx(Ctx) {}
 
   // Now you can call the generated functions:
   void example(Module &M) {
@@ -150,6 +193,40 @@ public:
     Value *result = _accessField(structPtr);
   }
 };
+```
+
+#### CRTP Requirements
+
+The generated code assumes the following interface on the derived class:
+
+1. **`getCtx()`** - Returns a context object with:
+   - `getLLVMContext()` - Returns `LLVMContext*`
+   - `getModule()` - Returns `Module*`
+
+2. **IRBuilder methods** - The derived class must inherit from an IRBuilder (e.g., `IRBuilder<>`, `IGCIRBuilder<>`)
+
+3. **Friend declaration** - If generated code calls private methods of your builder, add:
+   ```cpp
+   friend class MyProjectBuilder<MyBuilder>;
+   ```
+
+#### How Generated Code Uses CRTP
+
+The generated code uses `derived()` to access IRBuilder methods:
+
+```cpp
+// Generated code example:
+auto* _add(Value* arg_a, Value* arg_b) {
+  auto* V_0 = derived().CreateAdd(arg_a, arg_b);  // IRBuilder method
+  return V_0;
+}
+```
+
+For static methods like `checkAlign`, the generated code uses `Derived::`:
+
+```cpp
+// Generated code for type builders:
+IGC_ASSERT_MESSAGE(Derived::checkAlign(M, ...), "type not aligned!");
 ```
 
 ## Annotation Reference
@@ -192,7 +269,7 @@ Controls whether functions appear in private or public headers. Use `--scope=pri
 Functions in the `hook` namespace are replaced during code generation:
 
 #### `hook::bi::*` - Built-in Functions
-Generates calls to IRBuilder methods that must be implemented manually in your builder class.
+Generates calls to methods on the derived builder class via `derived()`. These methods must be implemented in your builder class.
 
 ```cpp
 namespace hook {
@@ -208,13 +285,13 @@ CREATE_PRIVATE void _example() {
 }
 // Generates:
 // void _example() {
-//   auto* V_0 = getValue();
-//   performAction();
+//   auto* V_0 = derived().getValue();      // Called via derived()
+//   derived().performAction();              // Called via derived()
 // }
 ```
 
 #### `hook::fn::*` - Function Parameters
-Adds templated function parameters that are passed from the caller.
+Adds templated function parameters that are passed from the caller. These are called directly (not via `derived()`) since they are local function parameters.
 
 ```cpp
 namespace hook {
@@ -229,7 +306,7 @@ CREATE_PRIVATE uint32_t _process(uint32_t value) {
 // Generates:
 // template <typename FnType0>
 // auto* _process(Value* arg_value, FnType0 userCallback) {
-//   auto* V_0 = userCallback(arg_value);
+//   auto* V_0 = userCallback(arg_value);   // Called directly (template param)
 //   return V_0;
 // }
 ```
@@ -398,15 +475,19 @@ See `AdaptorCommon/RayTracing/RTStackReflectionIRBG/` for a comprehensive produc
 - Hook system integration with IRBuilder methods
 - Template function parameters
 - Alignment handling
-- Integration with `RTBuilder.h`
+- CRTP mixin pattern for composable IRBuilder functionality
 
 Key files:
 - `reflection.cpp` - Source with annotated functions
 - `Desc.yaml` - 5 custom address spaces (RTSAS, RTGAS, RTShadowAS, SWStackAS, SWHotZoneAS)
 - `CMakeLists.txt` - Complete build setup
-- `RTBuilder.h` - Consumer that includes generated headers
+- `RTStackReflectionBuilder.h` - CRTP mixin class that includes generated headers
+- `RTBuilder.h` - Consumer that inherits from the CRTP mixin
 
 ## Tips
+
+**CRTP Pattern**: The generated code uses `derived()` to call IRBuilder methods, making it compatible with CRTP mixin classes. This allows the same generated code to be reused across different builder classes.
+
 **Name Sanitization**: All generated names are prefixed with `_igc_` and special characters are replaced with underscores to avoid collisions with macros and keywords.
 
 **Multi-Block Functions**: Functions with control flow automatically generate BasicBlock creation and phi node patching code.
@@ -415,4 +496,6 @@ Key files:
 
 **Address Space Substitution**: When using YAML-defined address spaces, the generated code parameterizes pointer address spaces, allowing you to pass different address space values at runtime via template parameters or function arguments.
 
-**Constants**: Constant values (integers, floats, vectors) are regenerated in the IRBuilder code using appropriate `getInt*()`, `ConstantFP::get()`, etc. calls.
+**Constants**: Constant values (integers, floats, vectors) are regenerated in the IRBuilder code using appropriate `derived().getInt*()`, `llvm::ConstantFP::get()`, etc. calls.
+
+**Namespace Qualification**: Generated code uses fully-qualified `llvm::` prefixes for LLVM types like `llvm::ConstantFP`, `llvm::APFloat`, `llvm::ConstantVector`, `llvm::UndefValue`, and `llvm::Constant` to ensure compatibility regardless of `using namespace` declarations.

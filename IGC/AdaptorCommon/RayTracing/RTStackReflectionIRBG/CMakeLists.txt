@@ -43,6 +43,7 @@ add_library(RTStackReflectionIRBG STATIC
     ${GENERATED_HEADERS}
     ${REFLECTION_SOURCE}
     ${YAML_DESC_PATH}
+    ${CMAKE_CURRENT_SOURCE_DIR}/RTStackReflectionBuilder.h
 )
 
 # Mark the source files as HEADER_FILE_ONLY so they won't be compiled

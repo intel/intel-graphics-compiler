@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "RTStackFormat.h"
+#include "RTStackReflectionIRBG/RTStackReflectionBuilder.h"
 #include "common/IGCIRBuilder.h"
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CodeGenPublic.h"
@@ -23,8 +24,12 @@ SPDX-License-Identifier: MIT
 
 namespace llvm {
 
-class RTBuilder : public IGCIRBuilder<> {
+class RTBuilder : public IGCIRBuilder<>, public RTStackReflectionBuilder<RTBuilder> {
+  // Allow the CRTP base class to access private members
+  friend class RTStackReflectionBuilder<RTBuilder>;
+
 public:
+  const IGC::CodeGenContext &getCtx() const { return Ctx; }
   // Here are more specialized values that enforce more type safety
   // between the accessor methods of RTBuilder at the C++ level to avoid
   // passing the wrong values in.
@@ -370,10 +375,6 @@ private:
   void setDereferenceable(CallInst *CI, uint32_t Size);
 
 
-private:
-#include "AutoGenRTStackReflectionPrivate.h"
-public:
-#include "AutoGenRTStackReflectionPublic.h"
 public:
   Type *getSMStack2Ty() const;
   Type *getRTStack2Ty() const;

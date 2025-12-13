@@ -206,8 +206,8 @@ void emitType(const Type *Ty, const HoleMap &HoleTys, const AlignMap &Aligns, ra
           // Assertion tests if given type obeys the alignment requirement.
           OS.indent(Level * 2) << "[&] {\n";
           OS.indent(In * 2) << "(void)M;\n";
-          OS.indent(In * 2) << "IGC_ASSERT_MESSAGE(checkAlign(M, cast<StructType>(" << HI->second << "), " << AI->second
-                            << "), \"type not aligned!\");\n";
+          OS.indent(In * 2) << "IGC_ASSERT_MESSAGE(Derived::checkAlign(M, cast<StructType>(" << HI->second << "), "
+                            << AI->second << "), \"type not aligned!\");\n";
           OS.indent(In * 2) << "return " << HI->second << ";\n";
           OS.indent(Level * 2) << "}()";
         } else {
@@ -224,7 +224,7 @@ void emitType(const Type *Ty, const HoleMap &HoleTys, const AlignMap &Aligns, ra
 
     OS.indent(Level * 2) << "[&] {\n";
     OS.indent(In * 2) << "StringRef StructName = " << mangleName(StructTy->getName().str()) << ";\n";
-    OS.indent(In * 2) << "if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))\n";
+    OS.indent(In * 2) << "if (auto *Ty = IGCLLVM::getTypeByName(&M, StructName))\n";
     OS.indent((In + 1) * 2) << "return Ty;\n";
     OS.indent(In * 2) << "Type* Tys[] = {\n";
     for (auto *EltTy : StructTy->elements()) {
@@ -447,7 +447,7 @@ public:
       if (!IGCLLVM::isPointerTy(PTy))
         OS << getTypeRepr(IGCLLVM::getNonOpaquePtrEltTy(PTy));
       else
-        OS << "*Ctx.getLLVMContext()";
+        OS << "*derived().getCtx().getLLVMContext()";
       OS << ", ";
       uint32_t Addrspace = PTy->getPointerAddressSpace();
       if (ReservedAddrspaces.count(Addrspace) != 0) {
@@ -465,17 +465,17 @@ public:
     } else if (auto *StructTy = dyn_cast<StructType>(Ty)) {
       assert(!StructTy->isOpaque() && "encountered opaque struct?");
       assert(StructTy->hasName() && "anonymous or literal?");
-      OS << sanitize(StructTy->getName().str()) << "(*Ctx.getModule())";
+      OS << sanitize(StructTy->getName().str()) << "(*derived().getCtx().getModule())";
       return OS.str();
     } else if (auto *IntTy = dyn_cast<IntegerType>(Ty)) {
-      OS << "getInt" << IntTy->getBitWidth() << "Ty()";
+      OS << "derived().getInt" << IntTy->getBitWidth() << "Ty()";
       return OS.str();
     } else if (Ty->isHalfTy()) {
-      return "getHalfTy()";
+      return "derived().getHalfTy()";
     } else if (Ty->isFloatTy()) {
-      return "getFloatTy()";
+      return "derived().getFloatTy()";
     } else if (Ty->isDoubleTy()) {
-      return "getDoubleTy()";
+      return "derived().getDoubleTy()";
     } else {
       errs() << "Couldn't handle type: ";
       Ty->print(errs());
@@ -506,15 +506,15 @@ public:
         // "integer literal is too large to be represented in a signed integer type"
         const char *Suffix = (Val > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) ? "u" : "";
         if (BitWidth == 1)
-          OS << (Val ? "getTrue()" : "getFalse()");
+          OS << (Val ? "derived().getTrue()" : "derived().getFalse()");
         else
-          OS << "getInt" << BitWidth << "(" << Val << Suffix << ")";
+          OS << "derived().getInt" << BitWidth << "(" << Val << Suffix << ")";
       } else if (auto *FP = dyn_cast<ConstantFP>(V)) {
         uint64_t Val = FP->getValueAPF().bitcastToAPInt().getZExtValue();
 
         auto emit = [&](StringRef Kind, uint32_t NumBits) {
-          OS << "ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEE" << Kind << "(), APInt(" << NumBits
-             << ", 0x";
+          OS << "llvm::ConstantFP::get(*derived().getCtx().getLLVMContext(), llvm::APFloat(llvm::APFloat::IEEE" << Kind
+             << "(), llvm::APInt(" << NumBits << ", 0x";
           OS.write_hex(Val) << ")))";
         };
 
@@ -528,22 +528,22 @@ public:
           assert(0 && "unhandled type!");
         }
       } else if (auto *CV = dyn_cast<ConstantVector>(V)) {
-        OS << "ConstantVector::get({ ";
+        OS << "llvm::ConstantVector::get({ ";
         OS << makeList(CV->operands(), [&](const Use &U) { return getValueRepr(U.get()); }, ", ");
         OS << " })";
       } else if (auto *CDV = dyn_cast<ConstantDataVector>(V)) {
         SmallVector<Constant *, 4> Constants;
         for (uint32_t i = 0; i < CDV->getNumElements(); i++)
           Constants.push_back(CDV->getElementAsConstant(i));
-        OS << "ConstantVector::get({ ";
+        OS << "llvm::ConstantVector::get({ ";
         OS << makeList(Constants, [&](const Constant *C) { return getValueRepr(C); }, ", ");
         OS << " })";
       } else if (auto *U = dyn_cast<UndefValue>(V)) {
-        OS << "UndefValue::get(";
+        OS << "llvm::UndefValue::get(";
         OS << TyRepr.getTypeRepr(U->getType());
         OS << ")";
       } else if (auto *NP = dyn_cast<ConstantPointerNull>(V)) {
-        OS << "Constant::getNullValue(";
+        OS << "llvm::Constant::getNullValue(";
         OS << TyRepr.getTypeRepr(NP->getType());
         OS << ")";
       } else {
@@ -757,9 +757,9 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
 
     OS.indent(Level * 2);
     addBB(F.getEntryBlock());
-    OS << "GetInsertBlock();\n";
+    OS << "derived().GetInsertBlock();\n";
 
-    OS.indent(Level * 2) << "auto* _CurIP = &*GetInsertPoint();\n";
+    OS.indent(Level * 2) << "auto* _CurIP = &*derived().GetInsertPoint();\n";
 
     OS.indent(Level * 2) << "auto *_JoinBB = " << repr(&F.getEntryBlock()) << "->splitBasicBlock(_CurIP";
     OS << valueName(F.getName().str() + ".join") << ");\n";
@@ -770,14 +770,15 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
       OS.indent(Level * 2);
       std::string BBName = addBB(BB);
       std::string ValName = valueName(F.getName().str() + "." + BBName, false);
-      OS << "BasicBlock::Create(*Ctx.getLLVMContext(), " << ValName << ", " << "_JoinBB->getParent(), _JoinBB);\n";
+      OS << "BasicBlock::Create(*derived().getCtx().getLLVMContext(), " << ValName << ", "
+         << "_JoinBB->getParent(), _JoinBB);\n";
     }
   }
 
   for (auto *DomNode : depth_first(&DT)) {
     auto &BB = *DomNode->getBlock();
     if (HasMultiBB) {
-      OS.indent(Level * 2) << "SetInsertPoint(" << repr(&BB) << ");\n";
+      OS.indent(Level * 2) << "derived().SetInsertPoint(" << repr(&BB) << ");\n";
     }
     for (auto &I : BB) {
       OS.indent(Level * 2);
@@ -786,7 +787,7 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
         VarName = "_ReturnName";
       auto emitGenericInst = [&](StringRef Name, const Instruction *I, const Type *Ty = nullptr,
                                  const std::string &ExtraArg = {}) {
-        OS << Name << "(";
+        OS << "derived()." << Name << "(";
         if (Ty)
           OS << reprTy(Ty) << ", ";
         OS << makeList(I->operands(), [&](const Use &U) { return repr(U.get()); }, ", ");
@@ -797,7 +798,7 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
 
       if (auto *GEPI = dyn_cast<GetElementPtrInst>(&I)) {
         StringRef FnName = GEPI->isInBounds() ? "CreateInBoundsGEP" : "CreateGEP";
-        OS << FnName << "(";
+        OS << "derived()." << FnName << "(";
         OS << reprTy(GEPI->getSourceElementType()) << ", ";
         OS << repr(GEPI->getPointerOperand()) << ", ";
         SmallVector<Value *, 4> Indices(GEPI->idx_begin(), GEPI->idx_end());
@@ -808,7 +809,7 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
           OS << " }";
         OS << valueName(VarName) << ")";
       } else if (auto *BCI = dyn_cast<BitCastInst>(&I)) {
-        OS << "CreateBitCast(" << repr(BCI->getOperand(0)) << ", ";
+        OS << "derived().CreateBitCast(" << repr(BCI->getOperand(0)) << ", ";
         OS << reprTy(BCI->getDestTy()) << valueName(VarName) << ")";
       } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
         emitGenericInst("CreateStore", SI);
@@ -816,7 +817,7 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
         emitGenericInst("CreateLoad", LI, LI->getType());
         if (LI->getMetadata(LLVMContext::MD_invariant_load)) {
           OS << ";\n";
-          OS.indent(Level * 2) << "setInvariantLoad(" << repr(LI) << ")";
+          OS.indent(Level * 2) << "derived().setInvariantLoad(" << repr(LI) << ")";
         }
         if (LI->isVolatile()) {
           OS << ";\n";
@@ -873,7 +874,7 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
           return false;
         }
 
-        OS << FName << "(" << repr(CastI->getOperand(0)) << ", ";
+        OS << "derived()." << FName << "(" << repr(CastI->getOperand(0)) << ", ";
         OS << reprTy(CastI->getDestTy()) << valueName(VarName) << ")";
       } else if (auto *SelInst = dyn_cast<SelectInst>(&I)) {
         emitGenericInst("CreateSelect", SelInst);
@@ -917,7 +918,7 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
           SmallVector<StringRef, 2> parts;
           RHS.split(parts, '.');
 
-          OS << "CreateIntrinsic(Intrinsic::";
+          OS << "derived().CreateIntrinsic(Intrinsic::";
           auto part = parts.begin();
           while (true) {
             OS << *part;
@@ -941,7 +942,12 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
             assert(0 && "failed to parse?");
             return false;
           }
-          OS << HI->FnName << "(";
+          // BUILTIN hooks are methods on the derived builder class
+          // FUNCTION hooks are template parameters passed in as arguments
+          if (HI->FnTy == HookInfo::FnType::BUILTIN)
+            OS << "derived()." << HI->FnName << "(";
+          else
+            OS << HI->FnName << "(";
           OS << makeList(CI->args(), [&](const Use &U) { return repr(U.get()); }, ", ");
           OS << ")";
         } else {
@@ -949,10 +955,11 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
           return false;
         }
       } else if (auto *PN = dyn_cast<PHINode>(&I)) {
-        OS << "CreatePHI(" << reprTy(PN->getType()) << ", " << PN->getNumIncomingValues() << valueName(VarName) << ")";
+        OS << "derived().CreatePHI(" << reprTy(PN->getType()) << ", " << PN->getNumIncomingValues()
+           << valueName(VarName) << ")";
       } else if (auto *RI = dyn_cast<ReturnInst>(&I)) {
         if (HasMultiBB) {
-          OS << "CreateBr(_JoinBB)";
+          OS << "derived().CreateBr(_JoinBB)";
         } else {
           if (auto *Val = RI->getReturnValue())
             OS << "return " << repr(Val);
@@ -962,10 +969,10 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
       } else if (auto *BI = dyn_cast<BranchInst>(&I)) {
         // branch argument ordering is unusual, do this manually.
         if (BI->isConditional()) {
-          OS << "CreateCondBr(" << repr(BI->getCondition()) << ", " << repr(BI->getSuccessor(0)) << ", "
+          OS << "derived().CreateCondBr(" << repr(BI->getCondition()) << ", " << repr(BI->getSuccessor(0)) << ", "
              << repr(BI->getSuccessor(1)) << ")";
         } else {
-          OS << "CreateBr(" << repr(BI->getSuccessor(0)) << ")";
+          OS << "derived().CreateBr(" << repr(BI->getSuccessor(0)) << ")";
         }
       } else {
         unknownInst(I);
@@ -987,7 +994,7 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
   }
 
   if (HasMultiBB) {
-    OS.indent(Level * 2) << "SetInsertPoint(_CurIP);\n";
+    OS.indent(Level * 2) << "derived().SetInsertPoint(_CurIP);\n";
     if (auto *RetVal = UniqueReturn->getReturnValue())
       OS.indent(Level * 2) << "return " << repr(RetVal) << ";\n";
   }
