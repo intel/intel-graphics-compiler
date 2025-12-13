@@ -139,9 +139,9 @@ void LowerGPCallArg::updateMetadata(Function *oldFunc, Function *newFunc) {
   mbuilder.UpdateShadingRate(oldFunc, newFunc);
   auto loc = FuncMD.find(oldFunc);
   if (loc != FuncMD.end()) {
-    const auto &funcInfo = loc->second;
+    auto funcInfo = loc->second;
     FuncMD.erase(oldFunc);
-    FuncMD[newFunc] = funcInfo;
+    FuncMD[newFunc] = std::move(funcInfo);
   }
 
   m_mdUtils->save(m_module->getContext());

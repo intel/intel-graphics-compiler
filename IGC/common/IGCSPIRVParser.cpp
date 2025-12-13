@@ -37,7 +37,7 @@ std::vector<std::string> SPIRVParser::getEntryPointNames(const StringRef binary)
       while (binary.data()[(offsetInWords + 3) * 4 + nameLength])
         nameLength++;
       std::string name = binary.substr((offsetInWords + 3) * 4, nameLength).str();
-      entryPointNames.push_back(std::move(name));
+      entryPointNames.push_back(name);
     }
     offsetInWords += opWordsCount; // skip instruction
   }

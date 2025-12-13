@@ -291,7 +291,7 @@ private:
       for (unsigned int j = 0; j != count; j++) {
         uint32_t cisaOffset = read<uint32_t>(dbg);
         uint32_t genOffset = read<uint32_t>(dbg);
-        f.CISAOffsetMap.emplace_back(cisaOffset, f.relocOffset + genOffset);
+        f.CISAOffsetMap.push_back(std::make_pair(cisaOffset, f.relocOffset + genOffset));
       }
 
       // cisa index map
@@ -299,7 +299,7 @@ private:
       for (unsigned int j = 0; j != count; j++) {
         uint32_t cisaIndex = read<uint32_t>(dbg);
         uint32_t genOffset = read<uint32_t>(dbg);
-        f.CISAIndexMap.emplace_back(cisaIndex, f.relocOffset + genOffset);
+        f.CISAIndexMap.push_back(std::make_pair(cisaIndex, f.relocOffset + genOffset));
       }
 
       // var info
@@ -314,10 +314,10 @@ private:
         auto countLRs = read<uint16_t>(dbg);
         for (unsigned int k = 0; k != countLRs; k++) {
           LiveIntervalsVISA lv = readLiveIntervalsVISA();
-          v.lrs.push_back(std::move(lv));
+          v.lrs.push_back(lv);
         }
 
-        f.Vars.push_back(std::move(v));
+        f.Vars.push_back(v);
       }
 
       // subroutines
@@ -335,7 +335,7 @@ private:
           LiveIntervalsVISA lv = readLiveIntervalsVISA();
           sub.retval.push_back(lv);
         }
-        f.subs.push_back(std::move(sub));
+        f.subs.push_back(sub);
       }
 
       // call frame information
@@ -346,7 +346,7 @@ private:
         for (unsigned int j = 0; j != count; j++) {
           LiveIntervalGenISA lv = readLiveIntervalGenISA();
           ;
-          f.cfi.befp.push_back(std::move(lv));
+          f.cfi.befp.push_back(lv);
         }
       }
       f.cfi.callerbefpValid = (bool)read<uint8_t>(dbg);
@@ -354,7 +354,7 @@ private:
         count = read<uint16_t>(dbg);
         for (unsigned int j = 0; j != count; j++) {
           LiveIntervalGenISA lv = readLiveIntervalGenISA();
-          f.cfi.callerbefp.push_back(std::move(lv));
+          f.cfi.callerbefp.push_back(lv);
         }
       }
       f.cfi.retAddrValid = (bool)read<uint8_t>(dbg);
@@ -362,7 +362,7 @@ private:
         count = read<uint16_t>(dbg);
         for (unsigned int j = 0; j != count; j++) {
           LiveIntervalGenISA lv = readLiveIntervalGenISA();
-          f.cfi.retAddr.push_back(std::move(lv));
+          f.cfi.retAddr.push_back(lv);
         }
       }
       f.cfi.CEOffsetFromFPOff = read<uint16_t>(dbg);
@@ -374,7 +374,7 @@ private:
         phyRegSave.numEntries = read<uint16_t>(dbg);
         for (unsigned int k = 0; k != phyRegSave.numEntries; k++)
           phyRegSave.data.push_back(readRegInfoMapping());
-        f.cfi.calleeSaveEntry.push_back(std::move(phyRegSave));
+        f.cfi.calleeSaveEntry.push_back(phyRegSave);
       }
 
       f.cfi.numCallerSaveEntries = read<uint32_t>(dbg);
@@ -384,10 +384,10 @@ private:
         phyRegSave.numEntries = read<uint16_t>(dbg);
         for (unsigned int k = 0; k != phyRegSave.numEntries; k++)
           phyRegSave.data.push_back(readRegInfoMapping());
-        f.cfi.callerSaveEntry.push_back(std::move(phyRegSave));
+        f.cfi.callerSaveEntry.push_back(phyRegSave);
       }
 
-      compiledObjs.push_back(std::move(f));
+      compiledObjs.push_back(f);
     }
   }
 
