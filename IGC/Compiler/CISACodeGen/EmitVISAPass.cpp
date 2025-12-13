@@ -5756,7 +5756,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
 
     CVariable *src = data;
     if (m_currShader->m_numberInstance == 1 && m_currShader->m_SIMDSize == SIMDMode::SIMD32) {
-      uint16_t addrSize = channelUniform ? 1 : numLanes(SIMDMode::SIMD16);
+      uint16_t addrSize = channelUniform ? 1 : m_currShader->m_Platform->getNumAddrRegisters();
 
       // VectorUniform for shuffle is true as all simd lanes will
       // take the same data as the lane 0 !
@@ -5823,9 +5823,6 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
           m_encoder->SetMask(EMASK_H2);
           m_encoder->SetDstSubReg(16);
           m_encoder->Copy(m_destination, pDstArrElm);
-          m_encoder->Push();
-          m_encoder->SetSecondHalf(false);
-
           m_encoder->Push();
 
           if (isSrcSameAsDst) {
@@ -6146,8 +6143,8 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
     // special handling for single SIMD32 since a0 is only SIMD16 wide
 
     CVariable *pDstArrElm =
-        m_currShader->GetNewAddressVariable(16, m_destination->GetType(), false, false, m_destination->getName());
-
+        m_currShader->GetNewAddressVariable(m_currShader->m_Platform->getNumAddrRegisters(), m_destination->GetType(),
+                                            false, false, m_destination->getName());
     m_encoder->SetSimdSize(SIMDMode::SIMD16);
     m_encoder->SetSrcRegion(1, 16, 8, 2);
     m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW));
@@ -6167,8 +6164,6 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
     m_encoder->SetDstSubReg(16);
     m_encoder->Copy(m_destination, pDstArrElm);
     m_encoder->Push();
-    m_encoder->SetSecondHalf(false);
-
     return;
   }
 
@@ -10444,12 +10439,13 @@ void EmitPass::emitExtract(llvm::Instruction *inst) {
       CVariable *dstAlias[2];
       CVariable *indexAlias[2];
 
+      uint16_t addrSize = m_currShader->m_Platform->getNumAddrRegisters();
       // there are only 16 address registers on PVC, so for SIMD32 VxH we have
       // to split
       for (int i = 0; i < 2; i++) {
         // address variable represents register a0
-        CVariable *pDstArrElm = m_currShader->GetNewAddressVariable(
-            numLanes(SIMDMode::SIMD16), m_destination->GetType(), false, vector->IsUniform(), m_destination->getName());
+        CVariable *pDstArrElm = m_currShader->GetNewAddressVariable(addrSize, m_destination->GetType(), false,
+                                                                    vector->IsUniform(), m_destination->getName());
         // we add offsets to the base that is the beginning of the vector
         // variable
         m_encoder->SetSimdSize(SIMDMode::SIMD16);
@@ -10486,12 +10482,10 @@ void EmitPass::emitExtract(llvm::Instruction *inst) {
       m_encoder->AddrAdd(pDstArrElm, vector, pOffset3);
       m_encoder->Push();
 
-      // to avoid out-of-bounds indirect access (exceeding the maximum number of
-      // GRFs)
+      // to avoid out-of-bounds indirect access (exceeding the maximum number of GRFs)
       m_encoder->SetPredicate(IGC_IS_FLAG_ENABLED(UseVMaskPredicateForIndirectMove) ? GetCombinedVMaskPred() : nullptr);
 
-      // finally, we move the indirectly addressed values to the destination
-      // register
+      // finally, we move the indirectly addressed values to the destination register
       m_encoder->Copy(m_destination, pDstArrElm);
       m_encoder->Push();
     }

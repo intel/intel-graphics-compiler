@@ -1506,5 +1506,9 @@ public:
   bool enableReplaceAtomicFenceWithSourceValue() const {
     return !isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(ReplaceAtomicFenceWithSourceValue);
   }
+
+  uint16_t getNumAddrRegisters() const {
+    return 16;
+  }
 };
 } // namespace IGC
