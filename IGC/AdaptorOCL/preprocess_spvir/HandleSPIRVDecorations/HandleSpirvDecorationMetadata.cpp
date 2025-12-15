@@ -257,6 +257,36 @@ void HandleSpirvDecorationMetadata::visitOCL1DBlockPrefetchCallInst(CallInst &I,
   }
 }
 
+void HandleSpirvDecorationMetadata::visitPredicatedLoadInst(CallInst &I) {
+  auto SpirvDecorations = parseSPIRVDecorationsFromMD(I.getArgOperand(0));
+  for (auto &[DecorationId, MDNodes] : SpirvDecorations) {
+    switch (DecorationId) {
+    // IDecCacheControlLoadINTEL
+    case DecorationIdCacheControlLoad: {
+      handleCacheControlINTEL<LoadCacheControl>(I, MDNodes);
+      break;
+    }
+    default:
+      continue;
+    }
+  }
+}
+
+void HandleSpirvDecorationMetadata::visitPredicatedStoreInst(CallInst &I) {
+  auto SpirvDecorations = parseSPIRVDecorationsFromMD(I.getArgOperand(0));
+  for (auto &[DecorationId, MDNodes] : SpirvDecorations) {
+    switch (DecorationId) {
+    // IDecCacheControlStoreINTEL
+    case DecorationIdCacheControlStore: {
+      handleCacheControlINTEL<StoreCacheControl>(I, MDNodes);
+      break;
+    }
+    default:
+      continue;
+    }
+  }
+}
+
 void HandleSpirvDecorationMetadata::visitCallInst(CallInst &I) {
   Function *F = I.getCalledFunction();
   if (!F)
@@ -270,24 +300,30 @@ void HandleSpirvDecorationMetadata::visitCallInst(CallInst &I) {
   static const Regex pattern1DBlockRead("_Z[0-9]+__spirv_SubgroupBlockReadINTEL");
   static const Regex pattern1DBlockWrite("_Z[0-9]+__spirv_SubgroupBlockWriteINTEL");
   static const Regex pattern1DBlockPrefetch("_Z[0-9]+__spirv_SubgroupBlockPrefetchINTEL");
+  static const Regex patternPredicatedReadSPV("_Z[0-9]+__spirv_PredicatedLoadINTEL.+");
+  static const Regex patternPredicatedWriteSPV("_Z[0-9]+__spirv_PredicatedStoreINTEL.+");
 
   SmallVector<StringRef, 4> Matches;
-  StringRef funcName = F->getName();
+  StringRef FuncName = F->getName();
 
-  if (pattern2DBlockRead.match(funcName, &Matches)) {
+  if (pattern2DBlockRead.match(FuncName, &Matches)) {
     visit2DBlockReadCallInst(I, Matches[1]);
-  } else if (pattern2DBlockWrite.match(funcName, &Matches)) {
+  } else if (pattern2DBlockWrite.match(FuncName, &Matches)) {
     visit2DBlockWriteCallInst(I, Matches[1]);
-  } else if (patternPrefetch.match(funcName, &Matches)) {
+  } else if (patternPrefetch.match(FuncName, &Matches)) {
     visitPrefetchCallInst(I);
-  } else if (pattern1DBlockRead.match(funcName, &Matches)) {
+  } else if (pattern1DBlockRead.match(FuncName, &Matches)) {
     visit1DBlockReadCallInst(I);
-  } else if (pattern1DBlockWrite.match(funcName, &Matches)) {
+  } else if (pattern1DBlockWrite.match(FuncName, &Matches)) {
     visit1DBlockWriteCallInst(I);
-  } else if (pattern1DBlockPrefetch.match(funcName, &Matches)) {
+  } else if (pattern1DBlockPrefetch.match(FuncName, &Matches)) {
     visit1DBlockPrefetchCallInst(I);
-  } else if (patternOCL1DBlockPrefetch.match(funcName, &Matches)) {
+  } else if (patternOCL1DBlockPrefetch.match(FuncName, &Matches)) {
     visitOCL1DBlockPrefetchCallInst(I, Matches);
+  } else if (patternPredicatedReadSPV.match(FuncName)) {
+    visitPredicatedLoadInst(I);
+  } else if (patternPredicatedWriteSPV.match(FuncName)) {
+    visitPredicatedStoreInst(I);
   }
 }
 

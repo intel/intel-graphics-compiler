@@ -162,6 +162,7 @@ void initializeSPIRMetaDataTranslationPass(llvm::PassRegistry &);
 void initializeSplitStructurePhisPassPass(llvm::PassRegistry &);
 void initializeMergeScalarPhisPassPass(llvm::PassRegistry &);
 void initializeSpv2dBlockIOResolutionPass(llvm::PassRegistry &);
+void initializeSpvPredicatedIOResolutionPass(llvm::PassRegistry &);
 void initializeSpvSubgroupMMAResolutionPass(llvm::PassRegistry &);
 void initializeSplitLoadsPass(llvm::PassRegistry &);
 void initializeStatelessToStatefulPass(llvm::PassRegistry &);

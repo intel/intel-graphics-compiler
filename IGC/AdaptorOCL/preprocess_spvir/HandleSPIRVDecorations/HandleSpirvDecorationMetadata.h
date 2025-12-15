@@ -48,6 +48,8 @@ public:
   void visit1DBlockWriteCallInst(llvm::CallInst &I);
   void visit1DBlockPrefetchCallInst(llvm::CallInst &I);
   void visitOCL1DBlockPrefetchCallInst(llvm::CallInst &I, llvm::SmallVectorImpl<llvm::StringRef> &Matches);
+  void visitPredicatedLoadInst(llvm::CallInst &I);
+  void visitPredicatedStoreInst(llvm::CallInst &I);
 
 private:
   llvm::Module *m_Module = nullptr;

@@ -139,6 +139,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/TimeStatsCounter.h"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/Builtins/BIFFlagCtrl/BIFFlagCtrlResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/SpvPredicatedIOResolution/SpvPredicatedIOResolution.hpp"
 
 #include <string>
 
@@ -365,6 +366,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
   mpm.add(new Spv2dBlockIOResolution());
 
   mpm.add(new SpvSubgroupMMAResolution());
+  mpm.add(new SpvPredicatedIOResolution());
 
   mpm.add(createProcessBICodeAssumptionPass());
   mpm.add(new PreBIImportAnalysis());
