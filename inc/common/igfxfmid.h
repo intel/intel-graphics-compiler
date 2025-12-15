@@ -791,6 +791,9 @@ typedef enum __NATIVEGTTYPE
 #define DEV_ID_FD80                             0xFD80
 #define DEV_ID_FD81                             0xFD81
 
+//CRI
+#define DEV_ID_674C                             0x674C
+
 // NVL
 #define DEV_ID_D740                             0xD740
 #define DEV_ID_D741                             0xD741
