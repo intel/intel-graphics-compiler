@@ -147,6 +147,8 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE *pSkuFeatureTable, CPlatform *platform
   case IGFX_LUNARLAKE:
   case IGFX_BMG:
   case IGFX_PTL:
+  case IGFX_NVL_XE3G:
+  case IGFX_CRI:
     /* This is just a place holder the WA application has moved below and changed
     its no longer based on platform */
     break;
