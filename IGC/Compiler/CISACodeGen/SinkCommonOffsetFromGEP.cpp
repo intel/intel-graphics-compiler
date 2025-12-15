@@ -209,7 +209,7 @@ static std::vector<DivergentPointer> findDivergentPointers(BasicBlock *BB) {
     if (DP.Phi == nullptr)
       continue;
 
-    DivergentPointers.push_back(DP);
+    DivergentPointers.push_back(std::move(DP));
   }
   return DivergentPointers;
 }
@@ -286,7 +286,7 @@ bool DivergentPointersGroups::createAddNewGroups(const DivergentPointer &DP) {
     Group.Casts[BB] = ASC;
   }
   Group.Successor = DP.Phi->getParent();
-  PointerGroups.push_back(Group);
+  PointerGroups.push_back(std::move(Group));
   return true;
 }
 

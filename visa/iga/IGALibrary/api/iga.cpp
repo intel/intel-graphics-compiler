@@ -136,7 +136,7 @@ struct PlatformNameMap {
         std::string str = mn.str();
         if (str.empty())
           break;
-        nmlist.push_back(str);
+        nmlist.push_back(std::move(str));
       }
       names[me.platform] = std::move(nmlist);
       exts[me.platform] = me.extension.str();
