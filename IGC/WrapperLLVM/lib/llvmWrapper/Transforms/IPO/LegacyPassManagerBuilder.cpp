@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Transforms/IPO/LegacyPassManagerBuilder.h"
 #include "llvmWrapper/Transforms/IPO/StripDeadPrototypes.h"
+#include "llvmWrapper/Transforms/Scalar/LoopIdiomRecognize.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -121,9 +122,9 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
   MPM.add(createCFGSimplificationPass(SimplifyCFGOptions().convertSwitchRangeToICmp(true)));
   MPM.add(createInstructionCombiningPass());
   // We resume loop passes creating a second loop pipeline here.
-  MPM.add(createLoopIdiomPass());      // Recognize idioms like memset.
-  MPM.add(createIndVarSimplifyPass()); // Canonicalize indvars
-  MPM.add(createLoopDeletionPass());   // Delete dead loops
+  MPM.add(IGCLLVM::createLegacyWrappedLoopIdiomRecognizePass()); // Recognize idioms like memset.
+  MPM.add(createIndVarSimplifyPass());                           // Canonicalize indvars
+  MPM.add(createLoopDeletionPass());                             // Delete dead loops
 
   // Unroll small loops and perform peeling.
   MPM.add(createSimpleLoopUnrollPass(OptLevel, DisableUnrollLoops, ForgetAllSCEVInLoopUnroll));

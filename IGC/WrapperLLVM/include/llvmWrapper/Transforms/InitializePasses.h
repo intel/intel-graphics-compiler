@@ -21,6 +21,7 @@ void initializeMemCpyOptLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeGlobalDCELegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeIPSCCPLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeInstructionCombiningPassWrapperPass(llvm::PassRegistry &);
+void initializeLoopIdiomRecognizeLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopLoadEliminationLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeSCCPLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeStripDeadDebugInfoLegacyPassWrapperPass(llvm::PassRegistry &);

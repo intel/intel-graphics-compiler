@@ -94,6 +94,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Mem2Reg.h"
 
 #include "llvmWrapper/Transforms/Scalar/LowerExpectIntrinsic.h"
+#include "llvmWrapper/Transforms/Scalar/LoopIdiomRecognize.h"
 #include "llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.h"
 #include "llvmWrapper/Transforms/Scalar/JumpThreading.h"
 
@@ -976,7 +977,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
         if (!(BackendConfig.disableIndvarsOpt())) {
           PM.add(createIndVarSimplifyPass());
         }
-        PM.add(createLoopIdiomPass());
+        PM.add(IGCLLVM::createLegacyWrappedLoopIdiomRecognizePass());
         PM.add(createLoopDeletionPass());
         PM.add(createSimpleLoopUnrollPass());
         PM.add(createInstructionCombiningPass());
