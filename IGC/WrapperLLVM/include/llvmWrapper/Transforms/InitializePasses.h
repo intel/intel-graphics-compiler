@@ -29,4 +29,14 @@ void initializeStripDeadDebugInfoLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeStripDeadPrototypesLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeStripNonLineTableDebugLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLowerExpectIntrinsicLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeLibCallsShrinkWrapLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeBDCELegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeLoopVectorizeLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeWarnMissedTransformsLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeAlignmentFromAssumptionsLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeLoopIdiomRecognizeLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeAnnotation2MetadataLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeForceFunctionAttrsLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeCallSiteSplittingLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeCalledValuePropagationLegacyPassWrapperPass(llvm::PassRegistry &);
 #endif // IGCLLVM_TRANSFORMS_INITIALIZE_PASSES_H

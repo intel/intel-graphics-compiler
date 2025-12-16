@@ -11,6 +11,16 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/IPO/StripDeadPrototypes.h"
 #include "llvmWrapper/Transforms/Scalar/LoopDeletion.h"
 #include "llvmWrapper/Transforms/Scalar/LoopIdiomRecognize.h"
+#include "llvmWrapper/Transforms/Utils/LibCallsShrinkWrap.h"
+#include "llvmWrapper/Transforms/Vectorize/LoopVectorize.h"
+#include "llvmWrapper/Transforms/Scalar/WarnMissedTransforms.h"
+#include "llvmWrapper/Transforms/Scalar/LoopIdiomRecognize.h"
+#include "llvmWrapper/Transforms/IPO/Annotation2Metadata.h"
+#include "llvmWrapper/Transforms/IPO/ForceFunctionAttrs.h"
+#include "llvmWrapper/Transforms/Scalar/BDCE.h"
+#include "llvmWrapper/Transforms/Scalar/AlignmentFromAssumptions.h"
+#include "llvmWrapper/Transforms/Scalar/CallSiteSplitting.h"
+#include "llvmWrapper/Transforms/IPO/CalledValuePropagation.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -32,7 +42,6 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 
 namespace IGCLLVM {
-
 #if LLVM_VERSION_MAJOR >= 16
 PassManagerBuilder::PassManagerBuilder() {
   OptLevel = 2;
@@ -87,11 +96,12 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
   // Combine silly seq's
   MPM.add(createInstructionCombiningPass());
   if (SizeLevel == 0)
-    MPM.add(createLibCallsShrinkWrapPass());
+    MPM.add(IGCLLVM::createLegacyWrappedLibCallsShrinkWrapPass());
 
   // TODO: Investigate the cost/benefit of tail call elimination on debugging.
   if (OptLevel > 1)
-    MPM.add(createTailCallEliminationPass());                                                // Eliminate tail calls
+    MPM.add(createTailCallEliminationPass());                                                // Eliminate tail
+                                                                                             // calls
   MPM.add(createCFGSimplificationPass(SimplifyCFGOptions().convertSwitchRangeToICmp(true))); // Merge & remove BBs
   MPM.add(createReassociatePass());                                                          // Reassociate expressions
 
@@ -143,7 +153,7 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
   // Delete dead bit computations (instcombine runs after to fold away the dead
   // computations, and then ADCE will run later to exploit any new DCE
   // opportunities that creates).
-  MPM.add(createBitTrackingDCEPass()); // Delete dead bit computations
+  MPM.add(IGCLLVM::createLegacyWrappedBDCEPass()); // Delete dead bit computations
 
   // Run instcombine after redundancy elimination to exploit opportunities
   // opened up by them.
@@ -170,7 +180,7 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
 
 /// FIXME: Should LTO cause any differences to this set of passes?
 void PassManagerBuilder::addVectorPasses(legacy::PassManagerBase &PM, bool IsFullLTO) {
-  PM.add(createLoopVectorizePass(false, !LoopVectorize));
+  PM.add(IGCLLVM::createLegacyWrappedLoopVectorizePass());
 
   if (IsFullLTO) {
     // The vectorizer may have significantly shortened a loop body; unroll
@@ -181,7 +191,7 @@ void PassManagerBuilder::addVectorPasses(legacy::PassManagerBase &PM, bool IsFul
     // combiner for cleanup here so that the unrolling and LICM can be pipelined
     // across the loop nests.
     PM.add(createLoopUnrollPass(OptLevel, DisableUnrollLoops, ForgetAllSCEVInLoopUnroll));
-    PM.add(createWarnMissedTransformationsPass());
+    PM.add(IGCLLVM::createLegacyWrappedWarnMissedTransformsPass());
   }
 
   if (!IsFullLTO) {
@@ -212,7 +222,7 @@ void PassManagerBuilder::addVectorPasses(legacy::PassManagerBase &PM, bool IsFul
   if (IsFullLTO) {
     PM.add(createSCCPPass());                 // Propagate exposed constants
     PM.add(createInstructionCombiningPass()); // Clean up again
-    PM.add(createBitTrackingDCEPass());
+    PM.add(IGCLLVM::createLegacyWrappedBDCEPass());
   }
 
   // Optimize parallel scalar instruction chains into SIMD instructions.
@@ -241,21 +251,21 @@ void PassManagerBuilder::addVectorPasses(legacy::PassManagerBase &PM, bool IsFul
                             /*AllowSpeculation=*/true));
     }
 
-    PM.add(createWarnMissedTransformationsPass());
+    PM.add(IGCLLVM::createLegacyWrappedWarnMissedTransformsPass());
   }
 
   // After vectorization and unrolling, assume intrinsics may tell us more
   // about pointer alignments.
-  PM.add(createAlignmentFromAssumptionsPass());
+  PM.add(IGCLLVM::createLegacyWrappedAlignmentFromAssumptionsPass());
 
   if (IsFullLTO)
     PM.add(createInstructionCombiningPass());
 }
 
 void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM) {
-  MPM.add(createAnnotation2MetadataLegacyPass());
+  MPM.add(IGCLLVM::createLegacyWrappedAnnotation2MetadataPass());
   // Allow forcing function attributes as a debugging and tuning aid.
-  MPM.add(createForceFunctionAttrsLegacyPass());
+  MPM.add(IGCLLVM::createLegacyWrappedForceFunctionAttrsPass());
 
   // If all optimizations are disabled, just run the always-inline pass and,
   // if enabled, the function merging pass.
@@ -269,10 +279,10 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
 
   addInitialAliasAnalysisPasses(MPM);
   if (OptLevel > 2)
-    MPM.add(createCallSiteSplittingPass());
+    MPM.add(IGCLLVM::createLegacyWrappedCallSiteSplittingPass());
 
   MPM.add(createIPSCCPPass()); // IP SCCP
-  MPM.add(createCalledValuePropagationPass());
+  MPM.add(IGCLLVM::createLegacyWrappedCalledValuePropagationPass());
 
   MPM.add(createGlobalOptimizerPass()); // Optimize out global vars
   // Promote any localized global vars.
