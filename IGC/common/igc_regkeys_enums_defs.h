@@ -163,3 +163,4 @@ SPDX-License-Identifier: MIT
   INJECT_PRINTF_OPTION(InjectPrintfStores, 2)                                                                          \
   INJECT_PRINTF_OPTION(InjectPrintfLoadsAndStores, 3)
 #endif // INJECT_PRINTF_OPTION
+

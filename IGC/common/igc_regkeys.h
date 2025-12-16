@@ -38,6 +38,7 @@ SPDX-License-Identifier: MIT
 
 #define INJECT_PRINTF_OPTION(Name, Val) #Name "=" #Val ","
 
+
 #include "igc_regkeys_enums_defs.h"
 
 
@@ -71,3 +72,4 @@ SPDX-License-Identifier: MIT
 #undef DECLARE_IGC_GROUP
 #undef DECLARE_IGC_REGKEY_ENUM
 #undef DECLARE_IGC_REGKEY_BITMASK
+
