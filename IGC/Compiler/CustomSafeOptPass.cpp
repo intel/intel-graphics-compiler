@@ -526,9 +526,6 @@ void CustomSafeOptPass::visitIntAtomicIAddToIncOrDec(CallInst *I) {
 // %14 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 poison, i32 3)
   // clang-format on
   if (id == GenISAIntrinsic::GenISA_intatomicraw || id == GenISAIntrinsic::GenISA_intatomicrawA64) {
-    if (instr->getOperand(0)->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
-      return;
-
     // for immediate 1 or -1
     if (auto *constInt1 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(2))) {
       // for atomic_iadd

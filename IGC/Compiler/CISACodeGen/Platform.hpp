@@ -390,7 +390,7 @@ public:
            hasNoInt64Inst();
   }
 
-  bool HDCCoalesceSLMAtomicINCWithNoReturn() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE; }
+  bool HDCCoalesceSLMAtomicINCWithNoReturn() const { return m_platformInfo.eRenderCoreFamily == IGFX_GEN12_CORE; }
 
   int LSCCachelineSize() const { return 64; }
 

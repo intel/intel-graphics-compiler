@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --platformdg2 -igc-custom-safe-opt -S < %s --dce | FileCheck %s
+; RUN: igc_opt --opaque-pointers --platformbmg -igc-custom-safe-opt -S < %s --dce | FileCheck %s
 
 target datalayout = "e-p:64:64:64-p3:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:32-f32:32:32-f64:32:32-v64:32:32-v128:32:32-a0:0:32-n8:16:32-S32"
 target triple = "dxil-ms-dx"
@@ -44,8 +44,8 @@ define void @main(<8 x i32> %r0) {
 ; CHECK-NEXT:  [[TMP10:%.*]] = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369v4f32(ptr addrspace(2490369) [[U0]], i32 [[TMP9]], i32 poison, i32 2)
 ; CHECK-NEXT:  [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369v4f32(ptr addrspace(2490369) [[U0]], i32 [[TMP9]], i32 poison, i32 3)
 ; CHECK-NEXT:  [[TMP12:%.*]] = getelementptr [32 x i32], ptr addrspace(3) null, i32 0, i32 [[THREADIDX]]
-; CHECK-NEXT:  [[TMP13:%.*]] = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(ptr addrspace(3) [[TMP12]], ptr addrspace(3) [[TMP12]], i32 1, i32 0)
-; CHECK-NEXT:  [[TMP14:%.*]] = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(ptr addrspace(3) [[TMP12]], ptr addrspace(3) [[TMP12]], i32 -1, i32 0)
+; CHECK-NEXT:  [[TMP13:%.*]] = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(ptr addrspace(3) [[TMP12]], ptr addrspace(3) [[TMP12]], i32 poison, i32 2)
+; CHECK-NEXT:  [[TMP14:%.*]] = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(ptr addrspace(3) [[TMP12]], ptr addrspace(3) [[TMP12]], i32 poison, i32 3)
 ; CHECK-NEXT:  [[TMP15:%.*]] = load i32, ptr addrspace(3) [[TMP12]], align 4, !tbaa !18
 ; CHECK-NEXT:  [[TMP16:%.*]] = insertelement <1 x i32> undef, i32 [[TMP15]], i64 0
 ; CHECK-NEXT:  call void @llvm.genx.GenISA.storerawvector.indexed.p2490369v4f32.v1i32(ptr addrspace(2490369) [[U0]], i32 0, <1 x i32> [[TMP16]], i32 4, i1 false)
