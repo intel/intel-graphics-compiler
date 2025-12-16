@@ -93,6 +93,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Utils/Mem2Reg.h"
 
+#include "llvmWrapper/Transforms/Scalar/LoopDeletion.h"
 #include "llvmWrapper/Transforms/Scalar/LowerExpectIntrinsic.h"
 #include "llvmWrapper/Transforms/Scalar/LoopIdiomRecognize.h"
 #include "llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.h"
@@ -978,7 +979,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
           PM.add(createIndVarSimplifyPass());
         }
         PM.add(IGCLLVM::createLegacyWrappedLoopIdiomRecognizePass());
-        PM.add(createLoopDeletionPass());
+        PM.add(IGCLLVM::createLegacyWrappedLoopDeletionPass());
         PM.add(createSimpleLoopUnrollPass());
         PM.add(createInstructionCombiningPass());
         // Simplify region accesses.

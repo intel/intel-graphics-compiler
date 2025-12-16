@@ -163,6 +163,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/IPO/SCCP.h"
 #include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
 #include "llvmWrapper/Transforms/Scalar/MemCpyOptimizer.h"
+#include "llvmWrapper/Transforms/Scalar/LoopDeletion.h"
 #include "llvmWrapper/Transforms/Scalar/LoopLoadElimination.h"
 #include "llvmWrapper/Transforms/Scalar/SCCP.h"
 
@@ -490,7 +491,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
   if (ctx.m_threadCombiningOptDone) {
     mpm.add(createLoopCanonicalization());
-    mpm.add(llvm::createLoopDeletionPass());
+    mpm.add(IGCLLVM::createLegacyWrappedLoopDeletionPass());
     mpm.add(llvm::createBreakCriticalEdgesPass());
     mpm.add(llvm::createLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
     mpm.add(llvm::createLowerSwitchPass());
@@ -1343,7 +1344,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       if (pContext->m_instrTypes.numOfLoop) {
         mpm.add(createLoopDeadCodeEliminationPass());
         mpm.add(createLoopCanonicalization());
-        mpm.add(llvm::createLoopDeletionPass());
+        mpm.add(IGCLLVM::createLegacyWrappedLoopDeletionPass());
         mpm.add(llvm::createBreakCriticalEdgesPass());
         mpm.add(llvm::createLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
         mpm.add(llvm::createLCSSAPass());
