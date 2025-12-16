@@ -53,10 +53,11 @@ void CIF_GET_INTERFACE_CLASS(IgcFeaturesAndWorkarounds, 2)::SetMaxOCLParamSize(u
   IGC_ASSERT(s >= OCLCaps::MINIMAL_MAX_PARAMETER_SIZE);
   CIF_GET_PIMPL()->OCLCaps.MaxParameterSize = s;
 }
-bool CIF_GET_INTERFACE_CLASS(IgcFeaturesAndWorkarounds, 3)::GetFtrEfficient64BitAddressing() const {
+
+bool CIF_GET_INTERFACE_CLASS(IgcFeaturesAndWorkarounds, 4)::GetFtrEfficient64BitAddressing() const {
   return CIF_GET_PIMPL()->FeTable.FtrEfficient64BitAddressing;
 }
-void CIF_GET_INTERFACE_CLASS(IgcFeaturesAndWorkarounds, 3)::SetFtrEfficient64BitAddressing(bool v) {
+void CIF_GET_INTERFACE_CLASS(IgcFeaturesAndWorkarounds, 4)::SetFtrEfficient64BitAddressing(bool v) {
   CIF_GET_PIMPL()->FeTable.FtrEfficient64BitAddressing = v;
 }
 

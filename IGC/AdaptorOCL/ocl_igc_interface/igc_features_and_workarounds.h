@@ -87,8 +87,9 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcFeaturesAndWorkarounds, 2, 1) {
   OCL_API_CALL virtual void SetMaxOCLParamSize(uint32_t s);
   OCL_API_CALL virtual uint32_t GetMaxOCLParamSize() const;
 };
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcFeaturesAndWorkarounds, 3, 2) { CIF_INHERIT_CONSTRUCTOR(); };
 
-CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcFeaturesAndWorkarounds, 3, 2) {
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcFeaturesAndWorkarounds, 4, 2) {
   CIF_INHERIT_CONSTRUCTOR();
 
   virtual void SetFtrEfficient64BitAddressing(bool v);
