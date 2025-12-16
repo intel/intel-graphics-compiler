@@ -2189,6 +2189,10 @@ GRFMode::GRFMode(const TARGET_PLATFORM plat, unsigned regSize, Options *op)
 
   // Select higher GRF
   GRFModeUpValue = op->getuInt32Option(vISA_ForceGRFModeUp);
+
+  if (GRFModeUpValue == 0)
+    GRFModeUpValue = op->getOption(vISA_forceBCR) ? 1 : 0;
+
   vISA_ASSERT(GRFModeUpValue >= 0 && GRFModeUpValue <= configs.size(),
               "Invalid value for selecting a higher GRF mode");
 }
