@@ -519,6 +519,29 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     mpm.add(new ProgramScopeConstantResolution());
   }
 
+  // Resolve the Private memory to register pass
+  if (!isOptDisabled) {
+    // In case of late inlining of Unmasked function allocate non
+    // primitive Allocas after inlining is done. Otherwise there
+    // is possibility RegAlloc cannot allocate registers for all
+    // virtual registers. This piece of code is copied at the place
+    // where inlining is done.
+    if (ctx.m_instrTypes.hasNonPrimitiveAlloca &&
+        !(IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) && IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc))) {
+      mpm.add(createBreakCriticalEdgesPass());
+      mpm.add(createAnnotateUniformAllocasPass());
+
+      if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem) &&
+          !isOptDisabledForModule(ctx.getModuleMetaData(), IGCOpts::LowerGEPForPrivMemPass)) {
+        mpm.add(createPromotePrivateArrayToReg());
+        mpm.add(createCFGSimplificationPass());
+      }
+    }
+    mpm.add(createPromoteMemoryToRegisterPass());
+  } else {
+    if (IGC_IS_FLAG_ENABLED(AllowMem2Reg))
+      mpm.add(createPromoteMemoryToRegisterPass());
+  }
   // This is the condition that double emulation is used.
   ctx.checkDPEmulationEnabled();
 
@@ -608,30 +631,6 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     mpm.add(createGenericAddressDynamicResolutionPass());
     mpm.add(createDeadCodeEliminationPass());
     mpm.add(createGenericNullPtrPropagationPass());
-  }
-
-  // Resolve the Private memory to register pass
-  if (!isOptDisabled) {
-    // In case of late inlining of Unmasked function allocate non
-    // primitive Allocas after inlining is done. Otherwise there
-    // is possibility RegAlloc cannot allocate registers for all
-    // virtual registers. This piece of code is copied at the place
-    // where inlining is done.
-    if (ctx.m_instrTypes.hasNonPrimitiveAlloca &&
-        !(IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) && IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc))) {
-      mpm.add(createBreakCriticalEdgesPass());
-      mpm.add(createAnnotateUniformAllocasPass());
-
-      if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem) &&
-          !isOptDisabledForModule(ctx.getModuleMetaData(), IGCOpts::LowerGEPForPrivMemPass)) {
-        mpm.add(createPromotePrivateArrayToReg());
-        mpm.add(createCFGSimplificationPass());
-      }
-    }
-    mpm.add(createPromoteMemoryToRegisterPass());
-  } else {
-    if (IGC_IS_FLAG_ENABLED(AllowMem2Reg))
-      mpm.add(createPromoteMemoryToRegisterPass());
   }
 
   if (ctx.type == ShaderType::OPENCL_SHADER || ctx.type == ShaderType::COMPUTE_SHADER) {
