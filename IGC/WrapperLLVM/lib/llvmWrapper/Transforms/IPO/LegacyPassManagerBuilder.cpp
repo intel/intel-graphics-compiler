@@ -32,7 +32,7 @@ using namespace llvm;
 
 namespace IGCLLVM {
 
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR >= 16
 PassManagerBuilder::PassManagerBuilder() {
   OptLevel = 2;
   SizeLevel = 0;

@@ -12,14 +12,14 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/IR/LegacyPassManager.h"
 
-#if LLVM_VERSION_MAJOR <= 16
+#if LLVM_VERSION_MAJOR < 16
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #endif
 
 using namespace llvm;
 
 namespace IGCLLVM {
-#if LLVM_VERSION_MAJOR <= 16
+#if LLVM_VERSION_MAJOR < 16
 class PassManagerBuilder : public llvm::PassManagerBuilder {};
 #else
 class PassManagerBuilder {
