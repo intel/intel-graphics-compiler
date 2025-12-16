@@ -10,4 +10,4 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/IGCPassSupport.h"
 
-llvm::FunctionPass* createSinkPointerConstAddPass();
+llvm::FunctionPass *createSinkPointerConstAddPass();

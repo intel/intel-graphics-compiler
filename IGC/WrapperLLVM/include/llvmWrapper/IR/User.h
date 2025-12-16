@@ -14,9 +14,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/User.h"
 
 namespace IGCLLVM {
-inline bool isDroppable(llvm::User *U) {
-  return U->isDroppable();
-}
+inline bool isDroppable(llvm::User *U) { return U->isDroppable(); }
 } // namespace IGCLLVM
 
 #endif // IGCLLVM_IR_USER_H

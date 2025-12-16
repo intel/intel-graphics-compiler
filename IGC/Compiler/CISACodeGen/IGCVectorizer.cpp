@@ -263,8 +263,7 @@ bool isFloatTyped(Instruction *I) {
 }
 
 bool isAllowedType(Instruction *I) {
-    return isFloatTyped(I) ||
-        (IGC_GET_FLAG_VALUE(VectorizerAllowI32) && I->getType()->isIntegerTy(32));
+  return isFloatTyped(I) || (IGC_GET_FLAG_VALUE(VectorizerAllowI32) && I->getType()->isIntegerTy(32));
 }
 
 bool isIntrinsicSafe(Instruction *I) {
@@ -314,9 +313,7 @@ bool IGCVectorizer::isSafeToVectorizeSIMD16(Instruction *I) {
   bool IsVectorTyped = I->getType()->isVectorTy();
   bool IsAllowedType = isAllowedType(I);
 
-  bool Result =
-      isPHISafe(I) || IsExtract || IsSelect ||
-      isBinarySafe(I) || isIntrinsicSafe(I) || isAllowedStub(I);
+  bool Result = isPHISafe(I) || IsExtract || IsSelect || isBinarySafe(I) || isIntrinsicSafe(I) || isAllowedStub(I);
 
   // all allowed instructions that are float typed and not vectors
   Result = (Result && IsAllowedType && !IsVectorTyped);
@@ -423,7 +420,8 @@ bool IGCVectorizer::handlePHI(VecArr &Slice) {
       Instruction *InsertPoint = BB->getTerminator();
       if (ScalarPhi->getParent() == BB) {
         InsertPoint = getInsertPointForVector(ForVector)->getNextNonDebugInstruction();
-        if (!InsertPoint) return false;
+        if (!InsertPoint)
+          return false;
       }
       auto CreatedVec = createVector(ForVector, InsertPoint);
       PRINT_INST_NL(CreatedVec);
@@ -480,41 +478,43 @@ bool IGCVectorizer::handleInsertElement(VecArr &Slice, Instruction *Final) {
 
 Instruction *IGCVectorizer::getInsertPointForVector(VecArr &Arr) {
 
-  Instruction* Cmp = Arr.front();
+  Instruction *Cmp = Arr.front();
   for (auto &El : Arr)
     if (El->getParent() != Cmp->getParent())
-        return nullptr;
+      return nullptr;
 
-  Instruction* InsertPoint = getMaxPoint(Arr);
+  Instruction *InsertPoint = getMaxPoint(Arr);
   // if insert point is PHI, shift it to the first nonPHI to be safe
   if (llvm::isa<llvm::PHINode>(InsertPoint))
-      InsertPoint = InsertPoint->getParent()->getFirstNonPHI();
+    InsertPoint = InsertPoint->getParent()->getFirstNonPHI();
   if (InsertPoint->isTerminator())
-      InsertPoint = InsertPoint->getPrevNonDebugInstruction();
+    InsertPoint = InsertPoint->getPrevNonDebugInstruction();
 
   return InsertPoint;
 }
 
-Instruction* IGCVectorizer::getInsertPointForCreatedInstruction(VecVal &Operands, VecArr& Slice) {
+Instruction *IGCVectorizer::getInsertPointForCreatedInstruction(VecVal &Operands, VecArr &Slice) {
 
-    VecArr InstOperands;
-    for (auto &El : Operands) {
-        auto Inst = llvm::dyn_cast<Instruction>(El);
-        if (!Inst) continue;
-        if (Inst->getParent() == Slice.front()->getParent())
-            InstOperands.push_back(Inst);
-        PRINT_LOG("insertPointCandidate: "); PRINT_INST_NL(Inst);
-    }
+  VecArr InstOperands;
+  for (auto &El : Operands) {
+    auto Inst = llvm::dyn_cast<Instruction>(El);
+    if (!Inst)
+      continue;
+    if (Inst->getParent() == Slice.front()->getParent())
+      InstOperands.push_back(Inst);
+    PRINT_LOG("insertPointCandidate: ");
+    PRINT_INST_NL(Inst);
+  }
 
-    Instruction* InsertPoint = Slice.front()->getParent()->getFirstNonPHI();
-    if (InstOperands.size() != 0) {
-        InsertPoint = getMaxPoint(InstOperands)->getNextNonDebugInstruction();
-        // if insert point is PHI, shift it to the first nonPHI to be safe
-        if (llvm::isa<llvm::PHINode>(InsertPoint))
-            InsertPoint = InsertPoint->getParent()->getFirstNonPHI();
-    }
+  Instruction *InsertPoint = Slice.front()->getParent()->getFirstNonPHI();
+  if (InstOperands.size() != 0) {
+    InsertPoint = getMaxPoint(InstOperands)->getNextNonDebugInstruction();
+    // if insert point is PHI, shift it to the first nonPHI to be safe
+    if (llvm::isa<llvm::PHINode>(InsertPoint))
+      InsertPoint = InsertPoint->getParent()->getFirstNonPHI();
+  }
 
-    return InsertPoint;
+  return InsertPoint;
 }
 
 Instruction *IGCVectorizer::getMaxPoint(VecArr &Slice) {
@@ -522,7 +522,8 @@ Instruction *IGCVectorizer::getMaxPoint(VecArr &Slice) {
   Instruction *MaxPoint = Slice.front();
   for (auto &El : Slice) {
     unsigned NewPos = getPositionInsideBB(El);
-    PRINT_LOG("pos: " << NewPos << " "); PRINT_INST_NL(El);
+    PRINT_LOG("pos: " << NewPos << " ");
+    PRINT_INST_NL(El);
     if (NewPos > MaxPos) {
       MaxPos = NewPos;
       MaxPoint = El;
@@ -605,10 +606,12 @@ bool IGCVectorizer::handleBinaryInstruction(VecArr &Slice) {
 
   Value *PrevVectorization = nullptr;
   Instruction *First = Slice.front();
-  if (checkPrevVectorization(Slice, PrevVectorization)) return true;
+  if (checkPrevVectorization(Slice, PrevVectorization))
+    return true;
 
   VecVal Operands;
-  if (!collectOperandsForVectorization(0, First->getNumOperands(), First, Slice, Operands)) return false;
+  if (!collectOperandsForVectorization(0, First->getNumOperands(), First, Slice, Operands))
+    return false;
 
   PRINT_DS("Operands: ", Operands);
   Instruction *InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);
@@ -644,69 +647,73 @@ bool IGCVectorizer::handleBinaryInstruction(VecArr &Slice) {
   return true;
 }
 
-bool IGCVectorizer::handleSelectInstruction(VecArr& Slice){
+bool IGCVectorizer::handleSelectInstruction(VecArr &Slice) {
 
   bool IsSliceUniform = true;
   for (auto El : Slice)
-      IsSliceUniform &= WI->isUniform(El);
+    IsSliceUniform &= WI->isUniform(El);
 
   if (!IsSliceUniform) {
-      PRINT_LOG_NL("Select is stub vectorized, not uniform");
-      return true;
+    PRINT_LOG_NL("Select is stub vectorized, not uniform");
+    return true;
   }
 
   if (!IGC_GET_FLAG_VALUE(VectorizerAllowUniformSelect))
-      return true;
+    return true;
 
   Value *PrevVectorization = nullptr;
   Instruction *First = Slice.front();
-  if (checkPrevVectorization(Slice, PrevVectorization)) return true;
+  if (checkPrevVectorization(Slice, PrevVectorization))
+    return true;
 
   auto Cmp = Slice.front()->getOperand(0);
   bool SamePredicate = true;
   for (auto &El : Slice) {
     Value *Val = El->getOperand(0);
-    PRINT_INST(El); PRINT_LOG(" --> "); PRINT_INST_NL(Val);
+    PRINT_INST(El);
+    PRINT_LOG(" --> ");
+    PRINT_INST_NL(Val);
     SamePredicate &= Val == Cmp;
   }
 
   VecVal Operands;
-  if (!collectOperandsForVectorization(0, First->getNumOperands(), First, Slice, Operands)) return false;
+  if (!collectOperandsForVectorization(0, First->getNumOperands(), First, Slice, Operands))
+    return false;
 
   if (SamePredicate) {
-      PRINT_LOG("Same Predicate! \n");
-      if (IGC_IS_FLAG_ENABLED(VectorizerAllowSamePredSelect)) {
-          // our emitter can't properly process arbitrary masks
-          // represented by vector of booleans
-          // it starts emitting "insert elements into <8 x i1>
-          // and fails, it must either have result from CMP instructions
-          // directly, or has single scalar predicate of the same type
-          // fixed constant masks are not supported right now
-          // so we can't give as a predicate something of the form:
-          //
-          // CAN'T PROCESS THIS:
-          // %pred_vector0 = insertelemtnt %cmp0, 0
-          // %pred_vector1 = insertelemtnt %cmp1, 1
-          // %pred_vector2 = insertelemtnt %cmp2, 2
-          // ...
-          // %pred_vector7 = insertelemtnt %cmp7, 7
-          // select <8 x i1> %pred_vector7, <8 x float> ...
-          //
-          // but if the pattern is as follows
-          // %pred_vector0 = insertelemtnt %cmp0, 0
-          // %pred_vector1 = insertelemtnt %cmp0, 1
-          // ....
-          // %pred_vector7 = insertelemtnt %cmp0, 7
-          //
-          // it's possible to substitute with
-          // select i1 %cmp0, <8 x float> ....
-          //
-          // it will work, still don't want to enable this by default
-          // increases test surface.
-          // for example another example check: vectorizer-select-one-bool.ll
-          Operands[0] = Cmp;
-      }
-      else return false;
+    PRINT_LOG("Same Predicate! \n");
+    if (IGC_IS_FLAG_ENABLED(VectorizerAllowSamePredSelect)) {
+      // our emitter can't properly process arbitrary masks
+      // represented by vector of booleans
+      // it starts emitting "insert elements into <8 x i1>
+      // and fails, it must either have result from CMP instructions
+      // directly, or has single scalar predicate of the same type
+      // fixed constant masks are not supported right now
+      // so we can't give as a predicate something of the form:
+      //
+      // CAN'T PROCESS THIS:
+      // %pred_vector0 = insertelemtnt %cmp0, 0
+      // %pred_vector1 = insertelemtnt %cmp1, 1
+      // %pred_vector2 = insertelemtnt %cmp2, 2
+      // ...
+      // %pred_vector7 = insertelemtnt %cmp7, 7
+      // select <8 x i1> %pred_vector7, <8 x float> ...
+      //
+      // but if the pattern is as follows
+      // %pred_vector0 = insertelemtnt %cmp0, 0
+      // %pred_vector1 = insertelemtnt %cmp0, 1
+      // ....
+      // %pred_vector7 = insertelemtnt %cmp0, 7
+      //
+      // it's possible to substitute with
+      // select i1 %cmp0, <8 x float> ....
+      //
+      // it will work, still don't want to enable this by default
+      // increases test surface.
+      // for example another example check: vectorizer-select-one-bool.ll
+      Operands[0] = Cmp;
+    } else
+      return false;
   }
 
   PRINT_DS("Operands: ", Operands);
@@ -745,24 +752,25 @@ bool IGCVectorizer::handleSelectInstruction(VecArr& Slice){
   return true;
 }
 
-bool IGCVectorizer::checkPrevVectorization(VecArr& Slice, Value*& OutPrevVectorization) {
+bool IGCVectorizer::checkPrevVectorization(VecArr &Slice, Value *&OutPrevVectorization) {
 
   Instruction *First = Slice.front();
-  if (!ScalarToVector.count(First)) return false;
+  if (!ScalarToVector.count(First))
+    return false;
 
   auto Vectorized = ScalarToVector[First];
   if (llvm::isa<InsertElementInst>(Vectorized)) {
-      PRINT_LOG_NL("Was sourced by other vector instruction, but wasn't vectorized");
-      OutPrevVectorization = Vectorized;
+    PRINT_LOG_NL("Was sourced by other vector instruction, but wasn't vectorized");
+    OutPrevVectorization = Vectorized;
   } else {
-      PRINT_LOG_NL("Already was vectorized by other slice");
-      return true;
+    PRINT_LOG_NL("Already was vectorized by other slice");
+    return true;
   }
   return false;
 }
 
-
-bool IGCVectorizer::collectOperandsForVectorization(unsigned OperNumToStart, unsigned OperNumToStop, Instruction* First, VecArr& Slice, VecVal& Operands) {
+bool IGCVectorizer::collectOperandsForVectorization(unsigned OperNumToStart, unsigned OperNumToStop, Instruction *First,
+                                                    VecArr &Slice, VecVal &Operands) {
 
   for (unsigned int OperNum = OperNumToStart; OperNum < OperNumToStop; ++OperNum) {
     Value *Vectorized = checkOperandsToBeVectorized(First, OperNum, Slice);
@@ -780,8 +788,7 @@ bool IGCVectorizer::collectOperandsForVectorization(unsigned OperNumToStart, uns
   return true;
 }
 
-
-bool IGCVectorizer::handleCMPInstruction(VecArr& Slice){
+bool IGCVectorizer::handleCMPInstruction(VecArr &Slice) {
 
   bool IsSliceUniform = true;
   for (auto El : Slice) {
@@ -809,10 +816,12 @@ bool IGCVectorizer::handleCMPInstruction(VecArr& Slice){
 
   Instruction *First = Slice.front();
   Value *PrevVectorization = nullptr;
-  if (checkPrevVectorization(Slice, PrevVectorization)) return true;
+  if (checkPrevVectorization(Slice, PrevVectorization))
+    return true;
 
   VecVal Operands;
-  if (!collectOperandsForVectorization(0, First->getNumOperands(), First, Slice, Operands)) return false;
+  if (!collectOperandsForVectorization(0, First->getNumOperands(), First, Slice, Operands))
+    return false;
 
   PRINT_DS("Operands: ", Operands);
   Instruction *InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);
@@ -848,8 +857,6 @@ bool IGCVectorizer::handleCMPInstruction(VecArr& Slice){
   }
 
   return true;
-
-
 }
 
 bool IGCVectorizer::handleCastInstruction(VecArr &Slice) {
@@ -974,10 +981,12 @@ bool IGCVectorizer::handleIntrinsic(VecArr &Slice) {
   Value *PrevVectorization = nullptr;
   Instruction *First = Slice.front();
 
-  if (checkPrevVectorization(Slice, PrevVectorization)) return true;
+  if (checkPrevVectorization(Slice, PrevVectorization))
+    return true;
 
   VecVal Operands;
-  if (!collectOperandsForVectorization(0, First->getNumOperands() - 1, First, Slice, Operands)) return false;
+  if (!collectOperandsForVectorization(0, First->getNumOperands() - 1, First, Slice, Operands))
+    return false;
 
   PRINT_DS("Operands: ", Operands);
   Instruction *InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);
@@ -1239,8 +1248,8 @@ Value *IGCVectorizer::vectorizeSlice(VecArr &Slice, unsigned int OperNum) {
   if (NotVectorizedInstruction.size() == Slice.size()) {
     Instruction *InsertPoint = getInsertPointForVector(NotVectorizedInstruction);
     if (!InsertPoint) {
-        PRINT_LOG_NL("Couldn't find insert point");
-        return nullptr;
+      PRINT_LOG_NL("Couldn't find insert point");
+      return nullptr;
     }
     NewVector = createVector(NotVectorizedInstruction, InsertPoint->getNextNonDebugInstruction());
     PRINT_LOG("New vector created: ");

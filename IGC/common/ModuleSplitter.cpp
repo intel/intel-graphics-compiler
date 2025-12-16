@@ -72,7 +72,7 @@ void KernelModuleSplitter::splitModuleForKernel(const llvm::Function *kernelF) {
 
   // Do cleanup.
   IGC::IGCPassManager mpm(&_oclContext, "CleanupAfterModuleSplitting");
-  mpm.add(IGCLLVM::createLegacyWrappedGlobalDCEPass()); // Delete unreachable globals.
+  mpm.add(IGCLLVM::createLegacyWrappedGlobalDCEPass());           // Delete unreachable globals.
   mpm.add(IGCLLVM::createLegacyWrappedStripDeadDebugInfoPass());  // Remove dead debug info.
   mpm.add(IGCLLVM::createLegacyWrappedStripDeadPrototypesPass()); // Remove dead func decls.
 

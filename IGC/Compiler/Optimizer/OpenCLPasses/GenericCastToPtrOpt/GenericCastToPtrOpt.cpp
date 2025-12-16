@@ -29,25 +29,20 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Optimize GenericCastToPtrExplicit casts"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(GenericCastToPtrOpt, PASS_FLAG, PASS_DESCRIPTION,
-                          PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(GenericCastToPtrOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
-IGC_INITIALIZE_PASS_END(GenericCastToPtrOpt, PASS_FLAG, PASS_DESCRIPTION,
-                        PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(GenericCastToPtrOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char GenericCastToPtrOpt::ID = 0;
 
-constexpr std::string_view GENERIC_CAST_TO_PTR_FN_NAME =
-    "spirv_GenericCastToPtrExplicit_ToGlobal";
+constexpr std::string_view GENERIC_CAST_TO_PTR_FN_NAME = "spirv_GenericCastToPtrExplicit_ToGlobal";
 
 static void replaceGenericCastToPtrCall(CallInst *TargetFnCall) {
   IRBuilder<> Builder(TargetFnCall->getParent());
   Builder.SetInsertPoint(TargetFnCall);
   auto *AddrSpaceCast = Builder.CreateAddrSpaceCast(
-      TargetFnCall->getArgOperand(0),
-      TargetFnCall->getCalledFunction()->getReturnType(),
-      "generic_cast_to_ptr");
+      TargetFnCall->getArgOperand(0), TargetFnCall->getCalledFunction()->getReturnType(), "generic_cast_to_ptr");
   IGC_ASSERT(TargetFnCall->getCalledFunction()->getReturnType()->isPointerTy());
   IGC_ASSERT(TargetFnCall->getArgOperand(0)->getType()->isPointerTy());
   TargetFnCall->replaceAllUsesWith(AddrSpaceCast);
@@ -88,8 +83,7 @@ bool GenericCastToPtrOpt::runOnModule(Module &M) {
   CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
   GASInfo &GI = getAnalysis<CastToGASAnalysis>().getGASInfo();
   const bool noGenericPtToLocalOrPrivate =
-      GI.isNoLocalToGenericOptionEnabled() &&
-      GI.isPrivateAllocatedInGlobalMemory();
+      GI.isNoLocalToGenericOptionEnabled() && GI.isPrivateAllocatedInGlobalMemory();
 
   bool modified = false;
 
@@ -98,9 +92,8 @@ bool GenericCastToPtrOpt::runOnModule(Module &M) {
       continue;
     }
 
-    const bool noGenericPtToLocalOrPrivateFn =
-        !GI.canGenericPointToLocal(*FnCallGraph->getFunction()) &&
-        !GI.canGenericPointToPrivate(*FnCallGraph->getFunction());
+    const bool noGenericPtToLocalOrPrivateFn = !GI.canGenericPointToLocal(*FnCallGraph->getFunction()) &&
+                                               !GI.canGenericPointToPrivate(*FnCallGraph->getFunction());
     if (!noGenericPtToLocalOrPrivate && !noGenericPtToLocalOrPrivateFn) {
       continue;
     }
@@ -112,9 +105,8 @@ bool GenericCastToPtrOpt::runOnModule(Module &M) {
         continue;
       }
       auto *CallRecordFn = CallRecordNode->getFunction();
-      if (CallRecordFn && CallRecordFn->getName().contains(llvm::StringRef(
-                              GENERIC_CAST_TO_PTR_FN_NAME.data(),
-                              GENERIC_CAST_TO_PTR_FN_NAME.size()))) {
+      if (CallRecordFn && CallRecordFn->getName().contains(llvm::StringRef(GENERIC_CAST_TO_PTR_FN_NAME.data(),
+                                                                           GENERIC_CAST_TO_PTR_FN_NAME.size()))) {
         replaceGenericCastToPtrCall(cast<CallInst>(CallInstVHOptional.value()));
         modified = true;
       }

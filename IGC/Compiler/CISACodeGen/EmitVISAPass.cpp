@@ -744,9 +744,8 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
         m_encoder->SetIsCodePatchCandidate(false);
       }
 
-      if (m_pCtx->platform.supportDualSimd8PS() &&
-          m_pCtx->platform.isCoreChildOf(IGFX_XE2_HPG_CORE) &&
-          m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER ) {
+      if (m_pCtx->platform.supportDualSimd8PS() && m_pCtx->platform.isCoreChildOf(IGFX_XE2_HPG_CORE) &&
+          m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER) {
         m_encoder->SetIsCodePatchCandidate(false);
       }
     } else {
@@ -4007,7 +4006,8 @@ void EmitPass::emitVideoAnalyticGRF(llvm::GenIntrinsicInst *inst, const DWORD re
 
 static bool isVectorTypeAllowed(Value *I) {
   IGCLLVM::FixedVectorType *VecType = llvm::dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
-  if (!VecType) return false;
+  if (!VecType)
+    return false;
   auto ElType = VecType->getElementType();
   return ElType->isIntegerTy(32) || ElType->isFloatTy();
 }
@@ -4053,8 +4053,10 @@ void EmitPass::BinaryUnary(llvm::Instruction *inst, const SSource source[2], con
     break;
   case Instruction::FAdd:
   case Instruction::Add:
-    if (inst->getType()->isVectorTy()) Add(source, modifier);
-    else EmitSimpleAlu(inst, source, modifier);
+    if (inst->getType()->isVectorTy())
+      Add(source, modifier);
+    else
+      EmitSimpleAlu(inst, source, modifier);
     break;
   case Instruction::Call:
     EmitAluIntrinsic(cast<CallInst>(inst), source, modifier);
@@ -4278,7 +4280,6 @@ static unsigned getVectorSize(Value *I) {
   return NumElements;
 }
 
-
 void EmitPass::FPTrunc(const SSource sources[2], const DstModifier &modifier) {
 
   CVariable *src[2];
@@ -4384,13 +4385,18 @@ bool EmitPass::isVectorEmissionPossible(const SSource sources[2], CVariable *src
   // any non ordinary state of source modifiers
   // can be a sign of emission of a specific pattern,
   // emission can interfere with
-  if (sources[0].elementOffset != 0) return false;
-  if (sources[1].elementOffset != 0) return false;
-  if (sources[0].SIMDOffset != 0) return false;
-  if (sources[1].SIMDOffset != 0) return false;
+  if (sources[0].elementOffset != 0)
+    return false;
+  if (sources[1].elementOffset != 0)
+    return false;
+  if (sources[0].SIMDOffset != 0)
+    return false;
+  if (sources[1].SIMDOffset != 0)
+    return false;
 
   bool AllowedVectorTypes = isVectorTypeAllowed(sources[0].value) && isVectorTypeAllowed(sources[1].value);
-  if (!AllowedVectorTypes) return false;
+  if (!AllowedVectorTypes)
+    return false;
 
   bool DestSizeEquals = false;
   // it's possible have a case where two uniform vectors are
@@ -4765,7 +4771,8 @@ void EmitPass::VectorMad(const SSource sources[3], const DstModifier &modifier) 
 void EmitPass::FDiv(const SSource sources[2], const DstModifier &modifier) {
 
   CVariable *src[2];
-  for (int i = 0; i < 2; ++i) src[i] = GetSrcVariable(sources[i]);
+  for (int i = 0; i < 2; ++i)
+    src[i] = GetSrcVariable(sources[i]);
   bool IsPossible = isVectorEmissionPossible(sources, src);
 
   if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && IsPossible) {
@@ -5725,8 +5732,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
         CVariable *tempCopy = m_currShader->GetNewVariable(simdChannel, "SanitizedIndexShuffleTmp");
         m_encoder->And(tempCopy, simdChannel, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
         simdChannelUW = m_currShader->BitCast(tempCopy, ISA_TYPE_UW);
-      }
-      else {
+      } else {
         m_encoder->SetSrcRegion(0, 2, 1, 0);
         m_encoder->SetDstRegion(2);
         m_encoder->And(simdChannelUW, simdChannelUW, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
@@ -10538,8 +10544,7 @@ void EmitPass::emitLoadRawIndexed(LdRawIntrinsic *inst, Value *varOffset, Consta
       setRovCacheCtrl(inst);
     }
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, true);
-    emitLSCVectorLoad(inst, bufPtrv, nullptr, varOffset, immOffset, immScale, cacheOpts, addrSpace,
-                      false, false);
+    emitLSCVectorLoad(inst, bufPtrv, nullptr, varOffset, immOffset, immScale, cacheOpts, addrSpace, false, false);
     return;
   }
   IGC_ASSERT(immOffset == nullptr);
@@ -10808,8 +10813,8 @@ void EmitPass::emitLoad(LoadInst *inst, Value *offset, ConstantInt *immOffset, C
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, true);
     LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
-    emitLSCVectorLoad(inst, inst->getPointerOperand(), uniformBase, offset, immOffset, immScale,
-                      cacheOpts, addrSpace, signExtendOffset, zeroExtendOffset);
+    emitLSCVectorLoad(inst, inst->getPointerOperand(), uniformBase, offset, immOffset, immScale, cacheOpts, addrSpace,
+                      signExtendOffset, zeroExtendOffset);
     return;
   }
   IGC_ASSERT_MESSAGE(immScale ? immScale->getSExtValue() == 1 : true, "Immediate Scale not supported on non-LSC path!");
@@ -11908,8 +11913,8 @@ void EmitPass::emitStoreRawIndexed(StoreRawIntrinsic *inst, Value *varOffset, Co
     LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false);
-    emitLSCVectorStore(pBufPtr, nullptr, varOffset, immOffset, immScale, pValToStore,
-                       inst->getParent(), cacheOpts, inst->getAlignment(), false, addrSpace, false, false);
+    emitLSCVectorStore(pBufPtr, nullptr, varOffset, immOffset, immScale, pValToStore, inst->getParent(), cacheOpts,
+                       inst->getAlignment(), false, addrSpace, false, false);
     return;
   }
   IGC_ASSERT(immOffset == nullptr);
@@ -12039,8 +12044,8 @@ void EmitPass::emitStore(StoreInst *inst, Value *varOffset, ConstantInt *immOffs
     LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false);
-    emitLSCVectorStore(inst->getPointerOperand(), uniformBase, varOffset, immOffset, immScale,
-                       inst->getValueOperand(), inst->getParent(), cacheOpts, IGCLLVM::getAlignmentValue(inst),
+    emitLSCVectorStore(inst->getPointerOperand(), uniformBase, varOffset, immOffset, immScale, inst->getValueOperand(),
+                       inst->getParent(), cacheOpts, IGCLLVM::getAlignmentValue(inst),
                        inst->getMetadata("enable.vmask"), addrSpace, signExtendOffset, zeroExtendOffset);
     return;
   }
@@ -12058,8 +12063,8 @@ void EmitPass::emitPredicatedStore(Instruction *inst) {
   LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
   LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false);
 
-  emitLSCVectorStore(inst->getOperand(0), nullptr, inst->getOperand(0), nullptr, nullptr,
-                     inst->getOperand(1), inst->getParent(), cacheOpts,
+  emitLSCVectorStore(inst->getOperand(0), nullptr, inst->getOperand(0), nullptr, nullptr, inst->getOperand(1),
+                     inst->getParent(), cacheOpts,
                      cast<ConstantInt>(inst->getOperand(2))->getZExtValue(), // alignment
                      inst->getMetadata("enable.vmask"), addrSpace, false, false, inst->getOperand(3));
 }
@@ -14764,8 +14769,7 @@ CVariable *EmitPass::UnpackOrBroadcastIfUniform(CVariable *pVar) {
 }
 
 void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, ConstantInt *immOffset,
-                             ConstantInt *immScale, Value *uniformBase, bool signExtendOffset,
-                             bool zeroExtendOffset) {
+                             ConstantInt *immScale, Value *uniformBase, bool signExtendOffset, bool zeroExtendOffset) {
   ForceDMask();
   // Currently, Dword Atomics can be called by matching 2 intrinsics. One is the
   // DwordAtomicRaw and AtomicCmpXchg (which has 2 srcs unlike the other
@@ -17930,9 +17934,8 @@ void EmitPass::emitLSCVectorLoad_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32, 
 }
 
 void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr, Value *uniformBase, Value *varOffset,
-                                 ConstantInt *immOffset, ConstantInt *immScale,
-                                 LSC_CACHE_OPTS cacheOpts, LSC_DOC_ADDR_SPACE addrSpace, bool signExtendOffset,
-                                 bool zeroExtendOffset) {
+                                 ConstantInt *immOffset, ConstantInt *immScale, LSC_CACHE_OPTS cacheOpts,
+                                 LSC_DOC_ADDR_SPACE addrSpace, bool signExtendOffset, bool zeroExtendOffset) {
   IGC_ASSERT_MESSAGE(signExtendOffset != zeroExtendOffset || (!signExtendOffset && !zeroExtendOffset),
                      "Only sign-extend or zero-extend can be chosen, not both!");
 
@@ -18329,10 +18332,9 @@ void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32,
 }
 
 void EmitPass::emitLSCVectorStore(Value *Ptr, Value *uniformBase, Value *varOffset, ConstantInt *immOffset,
-                                  ConstantInt *immScale, Value *storedVal, BasicBlock *BB,
-                                  LSC_CACHE_OPTS cacheOpts, alignment_t align, bool dontForceDmask,
-                                  LSC_DOC_ADDR_SPACE addrSpace, bool signExtendOffset, bool zeroExtendOffset,
-                                  Value *predicate) {
+                                  ConstantInt *immScale, Value *storedVal, BasicBlock *BB, LSC_CACHE_OPTS cacheOpts,
+                                  alignment_t align, bool dontForceDmask, LSC_DOC_ADDR_SPACE addrSpace,
+                                  bool signExtendOffset, bool zeroExtendOffset, Value *predicate) {
   IGC_ASSERT_MESSAGE(signExtendOffset != zeroExtendOffset || (!signExtendOffset && !zeroExtendOffset),
                      "Only sign-extend or zero-extend can be chosen, not both!");
 

@@ -144,7 +144,8 @@ private:
 
   bool allowCrossBlockLoadVectorization() {
 
-    return IGC_IS_FLAG_ENABLED(UseCrossBlockLoadVectorizationForInlineRaytracing) && m_pCGCtx->m_retryManager.IsFirstTry();
+    return IGC_IS_FLAG_ENABLED(UseCrossBlockLoadVectorizationForInlineRaytracing) &&
+           m_pCGCtx->m_retryManager.IsFirstTry();
   }
 
   llvm::RTBuilder::SyncStackPointerVal *getStackPtr(llvm::RTBuilder &IRB, llvm::Value *rqObject,
@@ -167,16 +168,15 @@ private:
         llvm::RTBuilder::InsertPointGuard g(IRB);
 
         IRB.SetInsertPoint(key.first->getParent()->getEntryBlock().getFirstNonPHI());
-        auto *SMStack =
-            IRB.CreateAlloca(IRB.getRTStack2Ty(), nullptr,
-                             VALUE_NAME("CrossBlockLoadSMStackForBlock"));
+        auto *SMStack = IRB.CreateAlloca(IRB.getRTStack2Ty(), nullptr, VALUE_NAME("CrossBlockLoadSMStackForBlock"));
         IRB.SetInsertPoint(key.first->getFirstNonPHI());
         IRB.CreateMemCpy(SMStack, getStackPtr(IRB, rqObject), IRB.getInt64(DL.getTypeAllocSize(IRB.getRTStack2Ty())),
                          RayDispatchGlobalData::StackChunkSize);
         m_CrossBlockVectorizationStacks[key] = SMStack;
       }
 
-      return static_cast<llvm::RTBuilder::SyncStackPointerVal *>(llvm::cast<llvm::Value>(m_CrossBlockVectorizationStacks[key]));
+      return static_cast<llvm::RTBuilder::SyncStackPointerVal *>(
+          llvm::cast<llvm::Value>(m_CrossBlockVectorizationStacks[key]));
     }
 
     return static_cast<llvm::RTBuilder::SyncStackPointerVal *>(

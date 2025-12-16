@@ -30,9 +30,7 @@ inline uint64_t getPointerDereferenceableBytes(const llvm::Value *Ptr, const llv
   return Ptr->getPointerDereferenceableBytes(DL, CanBeNull, CanBeFreed);
 }
 
-inline llvm::User *getUniqueUndroppableUser(llvm::Value *V) {
-  return V->getUniqueUndroppableUser();
-}
+inline llvm::User *getUniqueUndroppableUser(llvm::Value *V) { return V->getUniqueUndroppableUser(); }
 } // namespace IGCLLVM
 
 #endif

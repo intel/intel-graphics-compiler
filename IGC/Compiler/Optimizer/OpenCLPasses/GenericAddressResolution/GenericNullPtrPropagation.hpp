@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/PassRegistry.h>
 
-namespace IGC{
-  llvm::FunctionPass *createGenericNullPtrPropagationPass();
-  void initializeGenericNullPtrPropagationPass(llvm::PassRegistry &);
-}
+namespace IGC {
+llvm::FunctionPass *createGenericNullPtrPropagationPass();
+void initializeGenericNullPtrPropagationPass(llvm::PassRegistry &);
+} // namespace IGC

@@ -130,7 +130,7 @@ unsigned int IGCLivenessAnalysisBase::addOperandsToSet(llvm::Instruction *Inst, 
   if (Phi)
     return 0;
 
-    // do not process debug instructions and lifetimehints in any way
+  // do not process debug instructions and lifetimehints in any way
   if (Inst->isDebugOrPseudoInst() || Inst->isLifetimeStartOrEnd())
     return 0;
 

@@ -35,9 +35,7 @@ inline bool isPointerTy(const llvm::Type *PtrTy) {
 #endif
 }
 
-inline bool isBFloatTy(llvm::Type *type) {
-  return type->getTypeID() == llvm::Type::TypeID::BFloatTyID;
-}
+inline bool isBFloatTy(llvm::Type *type) { return type->getTypeID() == llvm::Type::TypeID::BFloatTyID; }
 
 inline bool isTargetExtTy(const llvm::Type *PtrTy) {
 #if LLVM_VERSION_MAJOR < 16

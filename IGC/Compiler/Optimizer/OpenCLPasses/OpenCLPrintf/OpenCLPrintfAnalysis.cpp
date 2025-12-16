@@ -85,7 +85,7 @@ void OpenCLPrintfAnalysis::visitCallInst(CallInst &callInst) {
   Function *pF = callInst.getParent()->getParent();
   if (!callInst.getCalledFunction() || m_hasPrintfs.find(pF) != m_hasPrintfs.end()) {
 
-    if( callInst.isIndirectCall()) {
+    if (callInst.isIndirectCall()) {
       if (m_modMD == nullptr) {
         m_modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
       }

@@ -204,7 +204,7 @@ inline StructType *PromotedStructValueType(const Module &M, const Argument *arg)
 
 inline StructType *GetReturnedStructValueType(const Module &M, const Function *F) {
   if (FunctionReturnsStructByVal(M, F)) {
-    return dyn_cast<StructType> (F->getReturnType());
+    return dyn_cast<StructType>(F->getReturnType());
   }
   return PromotedStructValueType(M, F->arg_begin());
 }
@@ -329,7 +329,7 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module &M) {
 
     if (retTypeOption != ReturnOpt::RETURN_DEFAULT || fixArgType) {
       // Clone function with new signature
-      Type *returnType = retTypeOption == ReturnOpt::RETURN_BY_REF   ? Type::getVoidTy(M.getContext())
+      Type *returnType = retTypeOption == ReturnOpt::RETURN_BY_REF            ? Type::getVoidTy(M.getContext())
                          : retTypeOption == ReturnOpt::RETURN_STRUCT_PROMOTED ? GetReturnedStructValueType(M, pFunc)
                          : retTypeOption == ReturnOpt::RETURN_LEGAL_INT
                              ? LegalizedIntVectorType(M, pFunc->getReturnType())
@@ -487,8 +487,8 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module &M) {
           RetInst->eraseFromParent();
         }
       } else if (retTypeOption == ReturnOpt::RETURN_STRUCT) {
-        for (auto &v: pNewFunc->getEntryBlock()) {
-          AllocaInst *alloca = dyn_cast<AllocaInst> (&v);
+        for (auto &v : pNewFunc->getEntryBlock()) {
+          AllocaInst *alloca = dyn_cast<AllocaInst>(&v);
           if (alloca && alloca->getAllocatedType() == pNewFunc->getReturnType()) {
             tempAllocaForSRetPointer = alloca;
             tempAllocaForSRetPointerTy = pNewFunc->getReturnType();
@@ -648,8 +648,8 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module &M, CallInst *callIns
       for (auto arg : callArgs) {
         argTypes.push_back(arg->getType());
       }
-      Type *retType = retTypeOption == ReturnOpt::RETURN_BY_REF      ? Type::getVoidTy(callInst->getContext())
-                      : retTypeOption == ReturnOpt::RETURN_STRUCT_PROMOTED    ? StructTypeFromCallInstArg(callInst, 0)
+      Type *retType = retTypeOption == ReturnOpt::RETURN_BY_REF            ? Type::getVoidTy(callInst->getContext())
+                      : retTypeOption == ReturnOpt::RETURN_STRUCT_PROMOTED ? StructTypeFromCallInstArg(callInst, 0)
                       : retTypeOption == ReturnOpt::RETURN_LEGAL_INT ? LegalizedIntVectorType(M, callInst->getType())
                                                                      : callInst->getType();
       newFnTy = FunctionType::get(retType, argTypes, false);

@@ -67,7 +67,6 @@ bool PredefinedConstantResolving::runOnModule(Module &M) {
         LI->eraseFromParent();
         Changed = true;
       }
-
     }
   }
   return Changed;

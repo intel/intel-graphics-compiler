@@ -369,8 +369,7 @@ inline bool needsSampleDEmulation(const SampleIntrinsic *inst) {
              inst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleDptr);
 
   RESOURCE_DIMENSION_TYPE textureType = inst->getTextureDimType();
-  if (textureType == RESOURCE_DIMENSION_TYPE::DIM_3D_TYPE ||
-      textureType == RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE ||
+  if (textureType == RESOURCE_DIMENSION_TYPE::DIM_3D_TYPE || textureType == RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE ||
       textureType == RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE) {
     return true;
   }

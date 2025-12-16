@@ -612,7 +612,6 @@ void CloneAddressArithmetic::collectInstToProcess(RematSet &ToProcess, Function 
 
       if (isRematInstruction(V))
         ToProcess.insert(static_cast<Instruction *>(V));
-
     }
   }
 }

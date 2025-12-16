@@ -615,8 +615,7 @@ void DwarfDebug::encodeRange(CompileUnit *TheCU, DIE *ScopeDIE, const llvm::Smal
         return TotalSize;
       };
 
-      TheCU->addUInt(ScopeDIE, dwarf::DW_AT_ranges, dwarf::DW_FORM_sec_offset,
-                     GetDebugRangeSize() * PointerSize);
+      TheCU->addUInt(ScopeDIE, dwarf::DW_AT_ranges, dwarf::DW_FORM_sec_offset, GetDebugRangeSize() * PointerSize);
     }
 
     llvm::SmallVector<unsigned int, 8> Data;
@@ -701,7 +700,7 @@ DIE *DwarfDebug::createScopeChildrenDIE(CompileUnit *TheCU, LexicalScope *Scope,
   for (DbgVariable *ArgDV : dbgVariables) {
     if (!ArgDV)
       continue;
-    if (DIE *VarDIE = TheCU->getDIE(const_cast<DILocalVariable*>(ArgDV->getVariable())))
+    if (DIE *VarDIE = TheCU->getDIE(const_cast<DILocalVariable *>(ArgDV->getVariable())))
       TheCU->applyVariableAttributes(*ArgDV, VarDIE, Scope->isAbstractScope());
   }
 
@@ -853,7 +852,7 @@ CompileUnit *DwarfDebug::constructCompileUnit(DICompileUnit *DIUnit) {
   // Call this to emit a .file / .file 0 directive if it wasn't emitted for the source
   // file this CU comes from yet.
   getOrCreateSourceID(FN, CompilationDir, getMD5AsBytes(DIUnit->getFile()), DIUnit->getSource(), NewCU->getUniqueID(),
-  SetRootFile);
+                      SetRootFile);
 
   auto producer = DIUnit->getProducer();
   auto strProducer = producer.str();
@@ -1101,7 +1100,8 @@ void DwarfDebug::beginModule() {
 
   [[maybe_unused]] auto NumDebugCUs = std::distance(M->debug_compile_units_begin(), M->debug_compile_units_end());
   if (NumDebugCUs != 1) {
-    LLVM_DEBUG(dbgs() << "Warning: Module contains " << NumDebugCUs << " debug compile units. Only modules with one CU are supported currently.\n");
+    LLVM_DEBUG(dbgs() << "Warning: Module contains " << NumDebugCUs
+                      << " debug compile units. Only modules with one CU are supported currently.\n");
   }
   // Prime section data.
   SectionMap[Asm->GetTextSection()];
@@ -1166,7 +1166,7 @@ void DwarfDebug::collectDeadVariables() {
           continue;
         DbgVariable NewVar(cast<DILocalVariable>(DV));
         DIE *VariableDIE = SPCU->constructVariableDIE(NewVar, false);
-        if (SPCU->getDIE(const_cast<DILocalVariable*>(NewVar.getVariable()))) {
+        if (SPCU->getDIE(const_cast<DILocalVariable *>(NewVar.getVariable()))) {
           SPCU->applyVariableAttributes(NewVar, VariableDIE, false);
         }
         SPDIE->addChild(VariableDIE);

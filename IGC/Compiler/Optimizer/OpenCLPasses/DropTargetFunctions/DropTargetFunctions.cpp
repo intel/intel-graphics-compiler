@@ -130,7 +130,8 @@ bool DropTargetFunctions::runOnModule(llvm::Module &M) {
     if (F.isDeclaration()) {
       continue;
     }
-    if (!Processed.contains(&F) && llvm::any_of(FnNamesToDrop, [&F](std::string& Name) { return Name == F.getName(); })) {
+    if (!Processed.contains(&F) &&
+        llvm::any_of(FnNamesToDrop, [&F](std::string &Name) { return Name == F.getName(); })) {
       auto *EmptyFn = getPlaceholderFn(&F);
       Processed.insert(EmptyFn);
       DROP_FN_DEBUG("Dropping function: " << EmptyFn->getName());

@@ -28,8 +28,8 @@ public:
   llvm::StringRef getPassName() const override { return "DropTargetFunctions"; }
 
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-      AU.addRequired<CodeGenContextWrapper>();
-      AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<MetaDataUtilsWrapper>();
   }
 
   bool runOnModule(llvm::Module &M) override;

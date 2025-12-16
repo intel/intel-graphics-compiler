@@ -412,7 +412,7 @@ static void optimizeIR(const vc::CompileOptions &Opts,
   PerFunctionPasses.doFinalization();
 
   PerModulePasses.run(M);
-#else  // LLVM_VERSION_MAJOR < 16
+#else // LLVM_VERSION_MAJOR < 16
 
   GenXTargetMachine *GXTM = static_cast<GenXTargetMachine *>(&TM);
   IGC_ASSERT(GXTM);
@@ -463,7 +463,7 @@ static void optimizeIR(const vc::CompileOptions &Opts,
     MPM = PB.buildO0DefaultPipeline(OptLevel);
   else
     MPM = PB.buildPerModuleDefaultPipeline(OptLevel);
-#else // LLVM_VERSION_MAJOR < 17
+#else  // LLVM_VERSION_MAJOR < 17
   llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(OptLevel);
 #endif // LLVM_VERSION_MAJOR < 17
 

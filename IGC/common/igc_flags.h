@@ -394,7 +394,8 @@ DECLARE_IGC_REGKEY(bool, DisableURBWriteMerge, false,
 DECLARE_IGC_REGKEY(bool, DisableURBReadMerge, false, "Disable IGC pass that merges URB Read instructions.", false)
 DECLARE_IGC_REGKEY(bool, DisableURBPartialWritesPass, false,
                    "Disable IGC pass that converts URB partial writes to full-mask writes.", false)
-DECLARE_IGC_REGKEY(DWORD, SetURBFullWriteGranularity, 0, "Overrides the minimum access granularity for URB full writes.\
+DECLARE_IGC_REGKEY(DWORD, SetURBFullWriteGranularity, 0,
+                   "Overrides the minimum access granularity for URB full writes.\
                                                             Valid values are 0, 16 and 32, value 0 means use default for the platform.",
                    true)
 DECLARE_IGC_REGKEY(bool, DisableUniformURBWrite, false, "Disables generation of uniform URB write messages", false)

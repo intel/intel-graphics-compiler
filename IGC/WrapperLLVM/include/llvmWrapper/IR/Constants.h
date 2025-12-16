@@ -15,9 +15,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/TypeSize.h"
 
 namespace IGCLLVM {
-inline llvm::ElementCount getElementCount(const llvm::ConstantAggregateZero &C) {
-  return C.getElementCount();
-}
+inline llvm::ElementCount getElementCount(const llvm::ConstantAggregateZero &C) { return C.getElementCount(); }
 
 namespace ConstantExpr {
 inline llvm::Constant *getShuffleVector(llvm::Constant *V1, llvm::Constant *V2, uint64_t Mask,

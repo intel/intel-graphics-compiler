@@ -25,27 +25,19 @@ typedef llvm::SmallSet<llvm::Instruction *, 8> RematChainSet;
 
 class RematChainPattern {
 public:
-  RematChainPattern(const RematChainSet& RematChain, llvm::Instruction *LastInst, llvm::Instruction *RematChainUser)
+  RematChainPattern(const RematChainSet &RematChain, llvm::Instruction *LastInst, llvm::Instruction *RematChainUser)
       : RematChain(RematChain), LastInstruction(LastInst), RematChainUser(RematChainUser) {
-        IGC_ASSERT(!RematChain.empty() && "Remat chain cannot be empty");
-        IGC_ASSERT(RematChainUser && "Remat chain user cannot be null");
-      }
-
-  llvm::Instruction *getFirstInst() const {
-    return FirstInstruction;
+    IGC_ASSERT(!RematChain.empty() && "Remat chain cannot be empty");
+    IGC_ASSERT(RematChainUser && "Remat chain user cannot be null");
   }
 
-  llvm::Instruction *getLastInst() const {
-    return LastInstruction;
-  }
+  llvm::Instruction *getFirstInst() const { return FirstInstruction; }
 
-  llvm::Instruction *getRematTargetInst() const {
-    return RematChainUser;
-  }
+  llvm::Instruction *getLastInst() const { return LastInstruction; }
 
-  RematChainSet getRematChain() const {
-    return RematChain;
-  }
+  llvm::Instruction *getRematTargetInst() const { return RematChainUser; }
+
+  RematChainSet getRematChain() const { return RematChain; }
 
   bool isRematInst(llvm::Value *V) const {
     if (auto *Inst = llvm::dyn_cast<llvm::Instruction>(V)) {

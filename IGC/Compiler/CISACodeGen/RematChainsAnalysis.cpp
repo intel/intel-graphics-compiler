@@ -44,7 +44,8 @@ static bool hasRematMetadata(llvm::Value *V) {
 }
 
 Value *getRematedOperand(llvm::Instruction *I) {
-  if (!I) return nullptr;
+  if (!I)
+    return nullptr;
 
   // Check if the instruction is a Load or Store and return the address operand
   if (auto *LI = dyn_cast<LoadInst>(I)) {
@@ -65,14 +66,16 @@ Value *getRematedOperand(llvm::Instruction *I) {
 // But also the instructions that have only one undroppable user,
 // which will be the load/store or the instruction that is rematerialized
 RematChainSet getRematChain(Value *V, Instruction *User) {
-  if (!V) return {};
+  if (!V)
+    return {};
   Instruction *I = dyn_cast<Instruction>(V);
-  if (!I) return {};
-  if (!User) return {};
+  if (!I)
+    return {};
+  if (!User)
+    return {};
 
-  if (!isa<IntToPtrInst>(I) && !isa<AddrSpaceCastInst>(I)
-      && !isa<BitCastInst>(I) && !isa<GetElementPtrInst>(I)
-      && !isa<BinaryOperator>(I) && !isa<UnaryOperator>(I) && !isa<CmpInst>(I)) {
+  if (!isa<IntToPtrInst>(I) && !isa<AddrSpaceCastInst>(I) && !isa<BitCastInst>(I) && !isa<GetElementPtrInst>(I) &&
+      !isa<BinaryOperator>(I) && !isa<UnaryOperator>(I) && !isa<CmpInst>(I)) {
     return {};
   }
 

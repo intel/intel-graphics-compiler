@@ -96,11 +96,11 @@ const SMediaHardwareCapabilities g_cGen8HwCaps_GT4 = {
 
         7 * 128, // NumHardwareGRFRegisters
         128,     // NumSoftwareGRFRegisters
-             // GT has fixed 128 GRFs per thread, and the allocation granularity
-             // should also be 128 instead of 16.
-        128, // NumGRFRegistersPerBlock
-        0,   // NumMRFRegisters; // MRF registers not used since gen7
-        2,   // NumFlagRegisters
+                 // GT has fixed 128 GRFs per thread, and the allocation granularity
+                 // should also be 128 instead of 16.
+        128,     // NumGRFRegistersPerBlock
+        0,       // NumMRFRegisters; // MRF registers not used since gen7
+        2,       // NumFlagRegisters
 
         3, // URBRowsPerSetupWrite
 

@@ -27,12 +27,10 @@ CIF_DEFINE_INTERFACE_VER(IgcOptionsAndCapabilities, 1) {
   CIF_INHERIT_CONSTRUCTOR();
 
   // return buffer format: string with the help message.
-  virtual void GetCompilerAPIOptionsHelp(CIF::Builtins::BufferSimple *
-                                         outAPIOptions) const;
+  virtual void GetCompilerAPIOptionsHelp(CIF::Builtins::BufferSimple * outAPIOptions) const;
 
   // return buffer format: string with the help message.
-  virtual void GetCompilerInternalOptionsHelp(CIF::Builtins::BufferSimple *
-                                              outInternalOptions) const;
+  virtual void GetCompilerInternalOptionsHelp(CIF::Builtins::BufferSimple * outInternalOptions) const;
 
   // clang-format off
   // return buffer format: string in YAML format described as:

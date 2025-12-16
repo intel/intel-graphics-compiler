@@ -50,9 +50,9 @@ Instruction *AtomicOptPass::createReduce(Instruction *Pos, Value *ValueForReduce
 // This function checks the atomic emulation pattern:
 //
 //%call1 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)* %1, i32 addrspace(1)* %1, i32 0,
-//i32 9) %bc1 = bitcast i32 %call1 to float %operation = fadd float %bc1, -2.000000e+00 %bc2 = bitcast float %operation
-//to i32 %call2 = call i32 @llvm.genx.GenISA.icmpxchgatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)* %1, i32
-//addrspace(1)* %1, i32 %call1, i32 %bc2) %cmp = icmp eq i32 %call1, %call2 br i1 %cmp, label %exit, label %back
+// i32 9) %bc1 = bitcast i32 %call1 to float %operation = fadd float %bc1, -2.000000e+00 %bc2 = bitcast float %operation
+// to i32 %call2 = call i32 @llvm.genx.GenISA.icmpxchgatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)* %1, i32
+// addrspace(1)* %1, i32 %call1, i32 %bc2) %cmp = icmp eq i32 %call1, %call2 br i1 %cmp, label %exit, label %back
 bool AtomicOptPass::checkFloatAtomicEmulation(Instruction *Inst, size_t &OperandPos) {
   GenIntrinsicInst *GInst = cast<GenIntrinsicInst>(Inst);
 

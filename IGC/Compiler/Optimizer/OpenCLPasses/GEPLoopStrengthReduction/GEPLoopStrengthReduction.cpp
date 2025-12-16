@@ -991,13 +991,12 @@ bool Analyzer::deconstructSCEV(const SCEV *S, Analyzer::DeconstructedSCEV &Resul
     return true;
   }
 
-    // Expect SCEV expression:
-    //   { start, +, step }
-    // where step is constant
-    if (auto *Add = dyn_cast<SCEVAddRecExpr>(S))
-    {
-        if (!Add->isAffine())
-            return false;
+  // Expect SCEV expression:
+  //   { start, +, step }
+  // where step is constant
+  if (auto *Add = dyn_cast<SCEVAddRecExpr>(S)) {
+    if (!Add->isAffine())
+      return false;
 
     if (Add->getNumOperands() != 2)
       return false;
@@ -1015,8 +1014,8 @@ bool Analyzer::deconstructSCEV(const SCEV *S, Analyzer::DeconstructedSCEV &Resul
     if (!SE.isLoopInvariant(OpStep, &L))
       return false;
 
-        Result.Start = Add->getStart();
-        Result.Step = OpStep;
+    Result.Start = Add->getStart();
+    Result.Step = OpStep;
 
     return IGCLLVM::isSafeToExpandAt(Result.Start, &L.getLoopPreheader()->back(), &SE, &E);
   }

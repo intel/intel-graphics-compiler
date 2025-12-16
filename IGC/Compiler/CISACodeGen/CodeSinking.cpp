@@ -1136,7 +1136,8 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
     return Changed;
   };
 
-  bool ReschedulingIteration = !CTX->platform.isCoreChildOf(IGFX_XE3_CORE) && IGC_IS_FLAG_ENABLED(LoopSinkEnableLoadsRescheduling);
+  bool ReschedulingIteration =
+      !CTX->platform.isCoreChildOf(IGFX_XE3_CORE) && IGC_IS_FLAG_ENABLED(LoopSinkEnableLoadsRescheduling);
   bool LateReschedulingIteration = false;
 
   auto createSimpleCandidates = [&](InstSet &SkipInstructions, CandidateVec &SinkCandidates) {
@@ -1220,7 +1221,6 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
   //
   // It's assumed that using std::shared_ptr we will successfully ensure only needed Candidates
   // will remain.
-
 
   InstSet SkipInstructions;
 

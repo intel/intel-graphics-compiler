@@ -202,5 +202,4 @@ private:
   template <typename A, typename B> friend class UnorderedMap;
 };
 
-
 } // namespace Interface

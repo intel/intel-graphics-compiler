@@ -25,9 +25,7 @@ inline llvm::Argument *getArg(const llvm::Function &F, unsigned ArgNo) {
   return Arg;
 }
 
-inline bool onlyWritesMemory(llvm::Function *F) {
-  return F->onlyWritesMemory();
-}
+inline bool onlyWritesMemory(llvm::Function *F) { return F->onlyWritesMemory(); }
 
 inline void pushBackBasicBlock(llvm::Function *F, llvm::BasicBlock *BB) {
 #if LLVM_VERSION_MAJOR < 16

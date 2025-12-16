@@ -32,7 +32,8 @@ DECLARE_SCHEDULING_OPTION(WeightDPASDstDepHighRP, 6000,
                           "Edge weight for DPAS destination dependency under high register pressure")
 DECLARE_SCHEDULING_OPTION(WeightExtendedMathDstDep, 200, "Edge weight for extended math destination dependency")
 DECLARE_SCHEDULING_OPTION(WeightWaveAllDstDep, 10, "Edge weight for wave all destination dependency")
-DECLARE_SCHEDULING_OPTION(WeightWaveAllDstDepHighRP, 20, "Edge weight for wave all destination dependency under high "
+DECLARE_SCHEDULING_OPTION(WeightWaveAllDstDepHighRP, 20,
+                          "Edge weight for wave all destination dependency under high "
                           "register pressure")
 DECLARE_SCHEDULING_OPTION(WeightUnknownMemoryReadDstDep, 500,
                           "Edge weight for unknown memory read destination dependency")

@@ -33,9 +33,7 @@ public:
   /// @brief  Provides name of pass
   virtual llvm::StringRef getPassName() const override { return "OpenCLPrintfAnalysis"; }
 
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.addRequired<MetaDataUtilsWrapper>();
-  }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
 
   /// @brief  Main entry point.
   /// @param  M The destination module.

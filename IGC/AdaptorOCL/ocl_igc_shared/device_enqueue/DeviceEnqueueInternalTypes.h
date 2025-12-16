@@ -70,7 +70,7 @@ typedef struct {
                        //   2. decrement the parent's m_numChildren (if parent valid)
                        //   3. if parent's numChildren == 0, goto #1
   //!!!!! make sure that profiling variables are aligned to 64 bits, be extremly precaucious when modifiying this
-  //!structure, in case of broken alignement PIPE CONTROL will write to wrong offset!!!!!!
+  //! structure, in case of broken alignement PIPE CONTROL will write to wrong offset!!!!!!
   ulong m_profilingCmdStart; // timestamp when this command starts -> it is event returned by some enqueue and timestamp
                              // start for this is after scheduler which enqueued this cmd
   ulong m_profilingCmdEnd; // timestamp when this command ends -> timestamp write after kernel directly associated with

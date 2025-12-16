@@ -203,8 +203,7 @@ bool PromoteToPredicatedMemoryAccess::trySingleBlockIfConv(Value &Cond, BasicBlo
       }
       unsigned Idx = cast<ConstantInt>(EE->getIndexOperand())->getZExtValue();
       if (Idx >= MergeVector.size()) {
-        std::string msg =
-            "Index " + std::to_string(Idx) + " is >= vector size " + std::to_string(MergeVector.size());
+        std::string msg = "Index " + std::to_string(Idx) + " is >= vector size " + std::to_string(MergeVector.size());
         pCtx->EmitWarning(msg.c_str(), EE);
         LLVM_DEBUG(dbgs() << "Skip block. " << msg << "\n"
                           << "For ConvBB: " << ConvBB << "\n");

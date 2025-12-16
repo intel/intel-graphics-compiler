@@ -60,8 +60,6 @@ public:
   void reset() { Valid = false; }
 };
 
-template <typename T> inline bool operator==(const Optional<T> &, const Optional<T> &) {
-  return true;
-}
+template <typename T> inline bool operator==(const Optional<T> &, const Optional<T> &) { return true; }
 
 } // namespace Interface

@@ -36,8 +36,8 @@ typedef union _gfxResourceAddrSpace {
 // this address space later on.  If not, the default can be used.
 // resourceDimTypeId represents RESOURCE_DIMENSION_TYPE
 inline unsigned EncodeAS4GFXResource(const llvm::Value &bufIdx, BufferType bufType,
-                    unsigned uniqueIndAS = IGC::DefaultIndirectIdx, bool isNonDefaultCacheCtrl = false,
-                    RESOURCE_DIMENSION_TYPE resourceDimTypeId = NUM_RESOURCE_DIMENSION_TYPES) {
+                                     unsigned uniqueIndAS = IGC::DefaultIndirectIdx, bool isNonDefaultCacheCtrl = false,
+                                     RESOURCE_DIMENSION_TYPE resourceDimTypeId = NUM_RESOURCE_DIMENSION_TYPES) {
   GFXResourceAddrSpace temp;
   static_assert(sizeof(temp) == 4, "Code below may need and update.");
   temp.u32Val = 0;

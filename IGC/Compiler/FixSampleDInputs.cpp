@@ -56,10 +56,9 @@ bool FixSampleDInputsPass::runOnFunction(Function &F) {
         }
       }
       // 3D/Cube/CubeArray access is emulated in CodeGen, see EmitPass::emulateSampleD()
-      if (sampleInst &&
-          (textureType != RESOURCE_DIMENSION_TYPE::DIM_3D_TYPE &&
-           textureType != RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE &&
-           textureType != RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE)) {
+      if (sampleInst && (textureType != RESOURCE_DIMENSION_TYPE::DIM_3D_TYPE &&
+                         textureType != RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE &&
+                         textureType != RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE)) {
         Value *zero = ConstantFP::get(sampleInst->getArgOperand(0)->getType(), 0.0);
         if (sampleInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleDptr) {
           // (1) Message format with 3D/Cube/CubeArray support

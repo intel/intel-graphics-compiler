@@ -346,8 +346,7 @@ public:
   DIE *constructVariableDIE(DbgVariable &DV, bool isScopeAbstract);
 
   /// Apply attributes for DIE created in constructVariableDIE
-  void applyVariableAttributes(DbgVariable &DV, DIE *VariableDie, bool isScopeAbstract,
-                               DIE *AbsDIE = nullptr);
+  void applyVariableAttributes(DbgVariable &DV, DIE *VariableDie, bool isScopeAbstract, DIE *AbsDIE = nullptr);
 
   /// Create a DIE with the given Tag, add the DIE to its parent, and
   /// call insertDIE if MD is not null.

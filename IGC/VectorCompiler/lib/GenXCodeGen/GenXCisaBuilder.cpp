@@ -711,8 +711,8 @@ private:
 
   inline void appendVISASetP(VISA_EMask_Ctrl ExecMask, VISA_Exec_Size ExecSize,
                              VISA_PredVar *Dst, VISA_VectorOpnd *Src) {
-    IGC_ASSERT(ExecMask == vISA_EMASK_M1_NM
-      || (ExecSize < EXEC_SIZE_32 && ExecMask == vISA_EMASK_M5_NM));
+    IGC_ASSERT(ExecMask == vISA_EMASK_M1_NM ||
+               (ExecSize < EXEC_SIZE_32 && ExecMask == vISA_EMASK_M5_NM));
     updateSIMDSize(ExecMask, ExecSize);
     CISA_CALL(Kernel->AppendVISASetP(ExecMask, ExecSize, Dst, Src));
   }

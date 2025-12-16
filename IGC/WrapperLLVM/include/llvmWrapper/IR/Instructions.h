@@ -20,25 +20,15 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM {
 
-inline llvm::Value *getCalledValue(llvm::CallInst &CI) {
-  return CI.getCalledOperand();
-}
+inline llvm::Value *getCalledValue(llvm::CallInst &CI) { return CI.getCalledOperand(); }
 
-inline llvm::Value *getCalledValue(llvm::CallInst *CI) {
-  return CI->getCalledOperand();
-}
+inline llvm::Value *getCalledValue(llvm::CallInst *CI) { return CI->getCalledOperand(); }
 
-inline const llvm::Value *getCalledValue(const llvm::CallInst *CI) {
-  return CI->getCalledOperand();
-}
+inline const llvm::Value *getCalledValue(const llvm::CallInst *CI) { return CI->getCalledOperand(); }
 
-inline unsigned getNumArgOperands(const llvm::CallInst *CI) {
-  return CI->arg_size();
-}
+inline unsigned getNumArgOperands(const llvm::CallInst *CI) { return CI->arg_size(); }
 
-inline unsigned getArgOperandNo(llvm::CallInst &CI, const llvm::Use *U) {
-  return CI.getArgOperandNo(U);
-}
+inline unsigned getArgOperandNo(llvm::CallInst &CI, const llvm::Use *U) { return CI.getArgOperandNo(U); }
 
 // We repeat the implementation for llvm::Function here - trying to proxy the
 // calls through CB.getCalledFunction() would leave indirect calls unhandled.
@@ -72,17 +62,11 @@ inline bool isInsertSubvectorMask(llvm::ShuffleVectorInst *SVI, int &NumSubElts,
   return SVI->isInsertSubvectorMask(NumSubElts, Index);
 }
 
-inline bool isFreezeInst(llvm::Instruction *I) {
-  return llvm::isa<llvm::FreezeInst>(I);
-}
+inline bool isFreezeInst(llvm::Instruction *I) { return llvm::isa<llvm::FreezeInst>(I); }
 
-inline bool isDebugOrPseudoInst(const llvm::Instruction &I) {
-  return I.isDebugOrPseudoInst();
-}
+inline bool isDebugOrPseudoInst(const llvm::Instruction &I) { return I.isDebugOrPseudoInst(); }
 
-inline bool comesBefore(llvm::Instruction *A, llvm::Instruction *B) {
-  return A->comesBefore(B);
-}
+inline bool comesBefore(llvm::Instruction *A, llvm::Instruction *B) { return A->comesBefore(B); }
 
 inline llvm::Type *getGEPIndexedType(llvm::Type *Ty, llvm::SmallVectorImpl<unsigned> &indices) {
   llvm::SmallVector<llvm::Value *, 8> gepIndices;

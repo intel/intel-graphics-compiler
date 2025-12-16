@@ -141,10 +141,10 @@ private:
     llvm::Value *func = M.getOrInsertFunction(funcName, pFuncType, attribs);
     llvm::Function *pFunc = nullptr;
     if (llvm::isa<llvm::Function>(func))
-        pFunc = llvm::cast<llvm::Function>(func);
+      pFunc = llvm::cast<llvm::Function>(func);
     else if (llvm::isa<llvm::BitCastOperator>(func)) {
-        llvm::BitCastOperator *bco = llvm::cast<llvm::BitCastOperator>(func);
-        pFunc = llvm::cast<llvm::Function>(bco->getOperand(0));
+      llvm::BitCastOperator *bco = llvm::cast<llvm::BitCastOperator>(func);
+      pFunc = llvm::cast<llvm::Function>(bco->getOperand(0));
     }
 
     IGC_ASSERT_MESSAGE(pFunc, "getOrInsertFunction probably returned constant expression!");

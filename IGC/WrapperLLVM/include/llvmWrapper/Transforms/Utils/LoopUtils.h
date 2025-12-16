@@ -14,9 +14,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/LoopUtils.h"
 
 namespace IGCLLVM {
-inline bool isInnermost(llvm::Loop *L) {
-  return L->isInnermost();
-}
+inline bool isInnermost(llvm::Loop *L) { return L->isInnermost(); }
 } // namespace IGCLLVM
 
 #endif

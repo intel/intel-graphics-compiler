@@ -37,9 +37,7 @@ inline UnsignedDivisionByConstantInfo getAPIntMagicUnsigned(const llvm::APInt &v
 #endif
 }
 
-inline bool IsAddition(const UnsignedDivisionByConstantInfo &mu) {
-  return mu.IsAdd;
-}
+inline bool IsAddition(const UnsignedDivisionByConstantInfo &mu) { return mu.IsAdd; }
 
 inline unsigned ShiftAmount(const UnsignedDivisionByConstantInfo &mu) {
 #if LLVM_VERSION_MAJOR >= 16
@@ -50,17 +48,11 @@ inline unsigned ShiftAmount(const UnsignedDivisionByConstantInfo &mu) {
 #endif
 }
 
-inline unsigned ShiftAmount(const SignedDivisionByConstantInfo &ms) {
-  return ms.ShiftAmount;
-}
+inline unsigned ShiftAmount(const SignedDivisionByConstantInfo &ms) { return ms.ShiftAmount; }
 
-inline llvm::APInt MagicNumber(const UnsignedDivisionByConstantInfo &mu) {
-  return mu.Magic;
-}
+inline llvm::APInt MagicNumber(const UnsignedDivisionByConstantInfo &mu) { return mu.Magic; }
 
-inline llvm::APInt MagicNumber(const SignedDivisionByConstantInfo &ms) {
-  return ms.Magic;
-}
+inline llvm::APInt MagicNumber(const SignedDivisionByConstantInfo &ms) { return ms.Magic; }
 } // namespace IGCLLVM
 
 #endif

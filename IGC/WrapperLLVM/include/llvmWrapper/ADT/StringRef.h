@@ -13,9 +13,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/StringRef.h"
 
 namespace IGCLLVM {
-inline bool equals_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) {
-  return LHS.equals_insensitive(RHS);
-}
+inline bool equals_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) { return LHS.equals_insensitive(RHS); }
 
 inline bool ends_with_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) {
 #if LLVM_VERSION_MAJOR > 16
@@ -25,9 +23,7 @@ inline bool ends_with_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) {
 #endif
 }
 
-inline bool contains_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) {
-  return LHS.contains_insensitive(RHS);
-}
+inline bool contains_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) { return LHS.contains_insensitive(RHS); }
 } // namespace IGCLLVM
 
 #endif

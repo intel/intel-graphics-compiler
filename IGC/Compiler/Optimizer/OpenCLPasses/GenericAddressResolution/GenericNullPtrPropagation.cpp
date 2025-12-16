@@ -20,24 +20,23 @@ using namespace llvm;
 using namespace IGC;
 
 namespace {
-  class GenericNullPtrPropagation : public FunctionPass, public InstVisitor<GenericNullPtrPropagation> {
-    public:
-      static char ID;
+class GenericNullPtrPropagation : public FunctionPass, public InstVisitor<GenericNullPtrPropagation> {
+public:
+  static char ID;
 
-      GenericNullPtrPropagation() : FunctionPass(ID) {}
-      ~GenericNullPtrPropagation() = default;
+  GenericNullPtrPropagation() : FunctionPass(ID) {}
+  ~GenericNullPtrPropagation() = default;
 
-      StringRef getPassName() const override { return "GenericNullPtrPropagation"; }
-      void getAnalysisUsage(AnalysisUsage &AU) const override {
-        AU.addRequired<CodeGenContextWrapper>();
-      }
-      bool runOnFunction(Function &F) override;
-      void visitAddrSpaceCastInst(AddrSpaceCastInst &I);
-    private:
-      bool m_modified = false;
-      CodeGenContext *m_ctx = nullptr;
-  };
-}
+  StringRef getPassName() const override { return "GenericNullPtrPropagation"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
+  bool runOnFunction(Function &F) override;
+  void visitAddrSpaceCastInst(AddrSpaceCastInst &I);
+
+private:
+  bool m_modified = false;
+  CodeGenContext *m_ctx = nullptr;
+};
+} // namespace
 
 #define PASS_FLAG "igc-generic-null-ptr-propagation"
 #define PASS_DESCRIPTION "Propagates null pointers through addrespace casts."
@@ -56,12 +55,12 @@ bool GenericNullPtrPropagation::runOnFunction(Function &F) {
 }
 
 void GenericNullPtrPropagation::visitAddrSpaceCastInst(AddrSpaceCastInst &I) {
-  if ((I.getSrcAddressSpace() == ADDRESS_SPACE_LOCAL
-    || (I.getSrcAddressSpace() == ADDRESS_SPACE_PRIVATE && m_ctx->mustDistinguishBetweenPrivateAndGlobalPtr()))
-    && I.getDestAddressSpace() == ADDRESS_SPACE_GENERIC) {
-    Value* src = I.getPointerOperand();
-    Value* srcNull = ConstantPointerNull::get(cast<PointerType>(src->getType()));
-    Value* dstNull = ConstantPointerNull::get(cast<PointerType>(I.getType()));
+  if ((I.getSrcAddressSpace() == ADDRESS_SPACE_LOCAL ||
+       (I.getSrcAddressSpace() == ADDRESS_SPACE_PRIVATE && m_ctx->mustDistinguishBetweenPrivateAndGlobalPtr())) &&
+      I.getDestAddressSpace() == ADDRESS_SPACE_GENERIC) {
+    Value *src = I.getPointerOperand();
+    Value *srcNull = ConstantPointerNull::get(cast<PointerType>(src->getType()));
+    Value *dstNull = ConstantPointerNull::get(cast<PointerType>(I.getType()));
 
     IGCLLVM::IRBuilder<> builder(&I);
     auto *AddrSpaceCastCpy = builder.CreateAddrSpaceCast(src, I.getType(), I.getName());
@@ -77,4 +76,3 @@ void GenericNullPtrPropagation::visitAddrSpaceCastInst(AddrSpaceCastInst &I) {
 namespace IGC {
 FunctionPass *createGenericNullPtrPropagationPass() { return new GenericNullPtrPropagation; }
 } // namespace IGC
-

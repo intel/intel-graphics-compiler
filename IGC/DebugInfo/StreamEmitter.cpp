@@ -307,31 +307,30 @@ public:
   }
 
   bool writeNopData(raw_ostream &OS, uint64_t Count, const MCSubtargetInfo *STI) const override {
-      const char nop = (char)0x90;
-  for (uint64_t i = 0; i < Count; ++i) {
-    OS.write(&nop, 1);
+    const char nop = (char)0x90;
+    for (uint64_t i = 0; i < Count; ++i) {
+      OS.write(&nop, 1);
+    }
+    return true;
   }
-  return true;
-}
 
-/// createObjectWriter - Create a new MCObjectWriter instance for use by the
-/// assembler backend to emit the final object file.
-std::unique_ptr<MCObjectWriter>
-createObjectWriter(llvm::raw_pwrite_stream &os) const {
-  Triple triple(m_targetTriple);
-  uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
-  uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
-  // Only i386 uses Rel instead of RelA.
-  bool hasRelocationAddend = eMachine != ELF::EM_386;
-  std::unique_ptr<MCELFObjectTargetWriter> pMOTW =
-      IGCLLVM::make_unique<VISAELFObjectWriter>(m_is64Bit, osABI, eMachine, hasRelocationAddend);
-  return createELFObjectWriter(std::move(pMOTW), os, /*IsLittleEndian=*/true);
-}
+  /// createObjectWriter - Create a new MCObjectWriter instance for use by the
+  /// assembler backend to emit the final object file.
+  std::unique_ptr<MCObjectWriter> createObjectWriter(llvm::raw_pwrite_stream &os) const {
+    Triple triple(m_targetTriple);
+    uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
+    uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
+    // Only i386 uses Rel instead of RelA.
+    bool hasRelocationAddend = eMachine != ELF::EM_386;
+    std::unique_ptr<MCELFObjectTargetWriter> pMOTW =
+        IGCLLVM::make_unique<VISAELFObjectWriter>(m_is64Bit, osABI, eMachine, hasRelocationAddend);
+    return createELFObjectWriter(std::move(pMOTW), os, /*IsLittleEndian=*/true);
+  }
 
-std::unique_ptr<MCObjectTargetWriter> createObjectTargetWriter() const override {
-  // TODO: implement this
-  IGC_ASSERT_UNREACHABLE(); // Unimplemented
-}
+  std::unique_ptr<MCObjectTargetWriter> createObjectTargetWriter() const override {
+    // TODO: implement this
+    IGC_ASSERT_UNREACHABLE(); // Unimplemented
+  }
 }; // namespace IGC
 
 class VISAMCCodeEmitter : public MCCodeEmitter {
@@ -462,9 +461,7 @@ void StreamEmitter::SetDwarfCompileUnitID(unsigned cuIndex) const { m_pContext->
 
 void StreamEmitter::SetDwarfVersion(unsigned DwarfVersion) const { m_pContext->setDwarfVersion(DwarfVersion); }
 
-void StreamEmitter::EmitBytes(StringRef data, unsigned addrSpace) const {
-  m_pMCStreamer->emitBytes(data);
-}
+void StreamEmitter::EmitBytes(StringRef data, unsigned addrSpace) const { m_pMCStreamer->emitBytes(data); }
 
 void StreamEmitter::EmitValue(const MCExpr *value, unsigned size, unsigned addrSpace) const {
 
@@ -489,9 +486,7 @@ void StreamEmitter::EmitULEB128(uint64_t value, llvm::StringRef /*desc*/, unsign
   m_pMCStreamer->emitULEB128IntValue(value);
 }
 
-void StreamEmitter::EmitLabel(MCSymbol *pLabel) const {
-  m_pMCStreamer->emitLabel(pLabel);
-}
+void StreamEmitter::EmitLabel(MCSymbol *pLabel) const { m_pMCStreamer->emitLabel(pLabel); }
 
 void StreamEmitter::EmitLabelDifference(const MCSymbol *pHi, const MCSymbol *pLo, unsigned size) const {
   const MCExpr *hiExpr = MCSymbolRefExpr::create(pHi, *m_pContext);

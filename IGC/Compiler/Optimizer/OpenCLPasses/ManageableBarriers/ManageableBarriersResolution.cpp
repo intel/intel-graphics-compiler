@@ -201,7 +201,8 @@ Value *ManageableBarriersResolution::prepareBarrierIDPoolPtr(Instruction *pInser
 // Binary form of IDPool 00000000 00000000 00000000 00010000
 // first free ID is 5
 
-void ManageableBarriersResolution::markID(Value *IDPool, Value *currentIDPoolState, Value *IDBarrier, Instruction *pInsertBefore) {
+void ManageableBarriersResolution::markID(Value *IDPool, Value *currentIDPoolState, Value *IDBarrier,
+                                          Instruction *pInsertBefore) {
   IGCIRBuilder<> builder(pInsertBefore);
 
   Value *maskID = builder.CreateShl(builder.getInt32(1), IDBarrier);

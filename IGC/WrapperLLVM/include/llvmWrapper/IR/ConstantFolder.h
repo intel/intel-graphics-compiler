@@ -46,22 +46,20 @@ public:
 
   // Note: for direct usage in code, prefer `CreateBinOp` wrapper for all
   // LLVM versions up to 15.
-  inline llvm::Value *FoldAdd(llvm::Value *LHS, llvm::Value *RHS, bool HasNUW = false, bool HasNSW = false) const
-      override {
+  inline llvm::Value *FoldAdd(llvm::Value *LHS, llvm::Value *RHS, bool HasNUW = false,
+                              bool HasNSW = false) const override {
     return m_baseConstantFolder.FoldAdd(LHS, RHS, HasNUW, HasNSW);
   }
 
   // Note: for direct usage in code, prefer `CreateBinOp` wrapper for all
   // LLVM versions up to 15.
-  inline llvm::Value *FoldAnd(llvm::Value *LHS, llvm::Value *RHS) const
-      override {
+  inline llvm::Value *FoldAnd(llvm::Value *LHS, llvm::Value *RHS) const override {
     return m_baseConstantFolder.FoldAnd(LHS, RHS);
   }
 
   // Note: for direct usage in code, prefer `CreateBinOp` wrapper for all
   // LLVM versions up to 15.
-  inline llvm::Value *FoldOr(llvm::Value *LHS, llvm::Value *RHS) const
-      override {
+  inline llvm::Value *FoldOr(llvm::Value *LHS, llvm::Value *RHS) const override {
     return m_baseConstantFolder.FoldOr(LHS, RHS);
   }
 
@@ -265,19 +263,16 @@ public:
   }
 #endif
 
-  inline llvm::Value *FoldICmp(llvm::CmpInst::Predicate P, llvm::Value *LHS, llvm::Value *RHS) const
-      override {
+  inline llvm::Value *FoldICmp(llvm::CmpInst::Predicate P, llvm::Value *LHS, llvm::Value *RHS) const override {
     return m_baseConstantFolder.FoldICmp(P, LHS, RHS);
   }
 
-  inline llvm::Value *FoldSelect(llvm::Value *C, llvm::Value *True, llvm::Value *False) const
-      override {
+  inline llvm::Value *FoldSelect(llvm::Value *C, llvm::Value *True, llvm::Value *False) const override {
     return m_baseConstantFolder.FoldSelect(C, True, False);
   }
 
   inline llvm::Value *FoldGEP(llvm::Type *Ty, llvm::Value *Ptr, llvm::ArrayRef<llvm::Value *> IdxList,
-                              bool IsInBounds = false) const
-      override {
+                              bool IsInBounds = false) const override {
     return m_baseConstantFolder.FoldGEP(Ty, Ptr, IdxList, IsInBounds);
   }
 

@@ -64,7 +64,7 @@ bool ProcessBICodeAssumption::runOnFunction(Function &F) {
     auto Trunc = Builder.CreateTrunc(I, Builder.getInt32Ty());
     auto Zext = Builder.CreateZExt(Trunc, Builder.getInt64Ty());
 
-    for (auto It = I->use_begin(), E = I->use_end(); It != E; ) {
+    for (auto It = I->use_begin(), E = I->use_end(); It != E;) {
       auto Use = It++;
       if (Use->getUser() != Trunc)
         Use->set(Zext);

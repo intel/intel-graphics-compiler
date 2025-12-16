@@ -77,7 +77,6 @@ public:
   virtual StringRef getPassName() const override { return IGCOpts::ConstantCoalescingPass; }
 
 private:
-
   class IRBuilderWrapper : protected llvm::IGCIRBuilder<> {
 
   public:

@@ -91,9 +91,9 @@ MergeScalarPhisPass::MergeScalarPhisPass() : FunctionPass(ID) {
   initializeMergeScalarPhisPassPass(*PassRegistry::getPassRegistry());
 }
 
-SmallVector<PHINode*, 8> MergeScalarPhisPass::getDuplicates(PHINode *PN, SmallVector<PHINode *, 8>& PhiNodesToErase) {
+SmallVector<PHINode *, 8> MergeScalarPhisPass::getDuplicates(PHINode *PN, SmallVector<PHINode *, 8> &PhiNodesToErase) {
   BasicBlock *BB = PN->getParent();
-  SmallVector<PHINode*, 8> DuplicatePhis;
+  SmallVector<PHINode *, 8> DuplicatePhis;
 
   // Check for identical PHI nodes in the same basic block
   for (auto I = std::next(BasicBlock::iterator(PN)), E = BB->end(); I != E; ++I) {
@@ -116,7 +116,7 @@ SmallVector<PHINode*, 8> MergeScalarPhisPass::getDuplicates(PHINode *PN, SmallVe
 
       for (unsigned K = 0; K < PN->getNumIncomingValues(); ++K) {
         if (PN->getIncomingValue(K) != OtherPN->getIncomingValue(K) ||
-          PN->getIncomingBlock(K) != OtherPN->getIncomingBlock(K)) {
+            PN->getIncomingBlock(K) != OtherPN->getIncomingBlock(K)) {
           AreIdentical = false;
           break;
         }
@@ -145,7 +145,7 @@ void MergeScalarPhisPass::cleanUpIR(Function *F) {
         break;
 
       PHINode *PN = cast<PHINode>(&*I++);
-      SmallVector<PHINode*, 8> Duplicates = getDuplicates(PN, PhiNodesToErase);
+      SmallVector<PHINode *, 8> Duplicates = getDuplicates(PN, PhiNodesToErase);
 
       for (PHINode *D : Duplicates) {
         D->replaceAllUsesWith(PN);
@@ -331,7 +331,6 @@ void MergeScalarPhisPass::collectPhiNodes(Function &F) {
   // Filter out some suspicious cases (e.g. when the EEIs for a particular PHI
   // node group and a particular index are not in the same base block).
   filterOutUnvectorizedPhis();
-
 
   for (auto &Entry : VectorToPhiNodesMap) {
     for (auto *PN : Entry.second) {

@@ -32,8 +32,7 @@ enum class ADDRESS_SPACE_TYPE : unsigned int {
 };
 
 template <typename T, typename Inserter>
-unsigned LLVM3DBuilder<T, Inserter>::EncodeASForGFXResource(const llvm::Value &bufIdx,
-                                                            IGC::BufferType bufType,
+unsigned LLVM3DBuilder<T, Inserter>::EncodeASForGFXResource(const llvm::Value &bufIdx, IGC::BufferType bufType,
                                                             unsigned uniqueIndAS,
                                                             IGC::ResourceDimType resourceDimTypeId) {
   return IGC::EncodeAS4GFXResource(
@@ -41,8 +40,7 @@ unsigned LLVM3DBuilder<T, Inserter>::EncodeASForGFXResource(const llvm::Value &b
       resourceDimTypeId.value_or(IGC::RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES));
 }
 
-template <typename T, typename Inserter>
-inline llvm::Function *LLVM3DBuilder<T, Inserter>::llvm_GenISA_ubfe() const {
+template <typename T, typename Inserter> inline llvm::Function *LLVM3DBuilder<T, Inserter>::llvm_GenISA_ubfe() const {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *func_llvm_GenISA_ubfe =
@@ -50,8 +48,7 @@ inline llvm::Function *LLVM3DBuilder<T, Inserter>::llvm_GenISA_ubfe() const {
   return func_llvm_GenISA_ubfe;
 }
 
-template <typename T, typename Inserter>
-inline llvm::Function *LLVM3DBuilder<T, Inserter>::llvm_GenISA_ibfe() const {
+template <typename T, typename Inserter> inline llvm::Function *LLVM3DBuilder<T, Inserter>::llvm_GenISA_ibfe() const {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *func_llvm_GenISA_ibfe =
@@ -59,8 +56,7 @@ inline llvm::Function *LLVM3DBuilder<T, Inserter>::llvm_GenISA_ibfe() const {
   return func_llvm_GenISA_ibfe;
 }
 
-template <typename T, typename Inserter>
-inline llvm::Function *LLVM3DBuilder<T, Inserter>::llvm_GenISA_bfi() const {
+template <typename T, typename Inserter> inline llvm::Function *LLVM3DBuilder<T, Inserter>::llvm_GenISA_bfi() const {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *func_llvm_GenISA_bfi =
@@ -68,8 +64,7 @@ inline llvm::Function *LLVM3DBuilder<T, Inserter>::llvm_GenISA_bfi() const {
   return func_llvm_GenISA_bfi;
 }
 
-template <typename T, typename Inserter>
-inline llvm::Function *LLVM3DBuilder<T, Inserter>::llvm_GenISA_bfrev() const {
+template <typename T, typename Inserter> inline llvm::Function *LLVM3DBuilder<T, Inserter>::llvm_GenISA_bfrev() const {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *func_llvm_GenISA_bfrev =
@@ -116,7 +111,7 @@ template <typename T, typename Inserter> void LLVM3DBuilder<T, Inserter>::Init()
 
 template <typename T, typename Inserter>
 inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_resinfo(llvm::Value *int32_src_s_mip,
-                                                                              llvm::Value *int32_textureIdx) {
+                                                               llvm::Value *int32_textureIdx) {
   llvm::Value *packed_params[] = {
       int32_textureIdx,
       int32_src_s_mip,
@@ -133,7 +128,7 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_resinfo(llvm::Value *int3
 
 template <typename T, typename Inserter>
 inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_resinfoptr_msaa(llvm::Value *srcBuffer,
-                                                                                      llvm::Value *float_src_s_mip) {
+                                                                       llvm::Value *float_src_s_mip) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *func_resinfoptr =
@@ -196,9 +191,11 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_resinfoptr_msaa(llvm::Val
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedwrite(
-    llvm::Value *dstBuffer, llvm::Value *srcAddressU, llvm::Value *srcAddressV, llvm::Value *srcAddressW,
-    llvm::Value *lod, llvm::Value *float_X, llvm::Value *float_Y, llvm::Value *float_Z, llvm::Value *float_W) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedwrite(llvm::Value *dstBuffer, llvm::Value *srcAddressU,
+                                                                  llvm::Value *srcAddressV, llvm::Value *srcAddressW,
+                                                                  llvm::Value *lod, llvm::Value *float_X,
+                                                                  llvm::Value *float_Y, llvm::Value *float_Z,
+                                                                  llvm::Value *float_W) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *pFuncTypedWrite =
@@ -214,10 +211,9 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedwrite(
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *
-LLVM3DBuilder<T, Inserter>::Create_typedread(llvm::Value *srcBuffer, llvm::Value *srcAddressU,
-                                                            llvm::Value *srcAddressV, llvm::Value *srcAddressW,
-                                                            llvm::Value *lod) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedread(llvm::Value *srcBuffer, llvm::Value *srcAddressU,
+                                                                 llvm::Value *srcAddressV, llvm::Value *srcAddressW,
+                                                                 llvm::Value *lod) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *pFuncTypedRead =
@@ -230,9 +226,11 @@ LLVM3DBuilder<T, Inserter>::Create_typedread(llvm::Value *srcBuffer, llvm::Value
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedwriteMS(
-    llvm::Value *dstBuffer, llvm::Value *srcAddressU, llvm::Value *srcAddressV, llvm::Value *srcAddressW,
-    llvm::Value *sampleIdx, llvm::Value *float_X, llvm::Value *float_Y, llvm::Value *float_Z, llvm::Value *float_W) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedwriteMS(llvm::Value *dstBuffer, llvm::Value *srcAddressU,
+                                                                    llvm::Value *srcAddressV, llvm::Value *srcAddressW,
+                                                                    llvm::Value *sampleIdx, llvm::Value *float_X,
+                                                                    llvm::Value *float_Y, llvm::Value *float_Z,
+                                                                    llvm::Value *float_W) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *pFuncTypedWriteMS =
@@ -247,10 +245,9 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedwriteMS(
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *
-LLVM3DBuilder<T, Inserter>::Create_typedreadMS(llvm::Value *srcBuffer, llvm::Value *srcAddressU,
-                                                              llvm::Value *srcAddressV, llvm::Value *srcAddressW,
-                                                              llvm::Value *sampleIdx) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedreadMS(llvm::Value *srcBuffer, llvm::Value *srcAddressU,
+                                                                   llvm::Value *srcAddressV, llvm::Value *srcAddressW,
+                                                                   llvm::Value *sampleIdx) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *pFuncTypedReadMS =
@@ -263,10 +260,9 @@ LLVM3DBuilder<T, Inserter>::Create_typedreadMS(llvm::Value *srcBuffer, llvm::Val
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *
-LLVM3DBuilder<T, Inserter>::Create_typedread_msaa2D(llvm::Value *srcBuffer, llvm::Value *sampleIdx,
-                                                                   llvm::Value *srcAddressU, llvm::Value *srcAddressV,
-                                                                   llvm::Value *lod) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedread_msaa2D(llvm::Value *srcBuffer, llvm::Value *sampleIdx,
+                                                                        llvm::Value *srcAddressU,
+                                                                        llvm::Value *srcAddressV, llvm::Value *lod) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *pFuncTypedRead =
@@ -280,9 +276,10 @@ LLVM3DBuilder<T, Inserter>::Create_typedread_msaa2D(llvm::Value *srcBuffer, llvm
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedread_msaa2DArray(
-    llvm::Value *srcBuffer, llvm::Value *sampleIdx, llvm::Value *srcAddressU, llvm::Value *srcAddressV,
-    llvm::Value *srcAddressR, llvm::Value *lod) {
+inline llvm::Value *
+LLVM3DBuilder<T, Inserter>::Create_typedread_msaa2DArray(llvm::Value *srcBuffer, llvm::Value *sampleIdx,
+                                                         llvm::Value *srcAddressU, llvm::Value *srcAddressV,
+                                                         llvm::Value *srcAddressR, llvm::Value *lod) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   // Call sampleinfoptr intrinsic to get the number of samples.
@@ -321,9 +318,11 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedread_msaa2DArray(
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedwrite_msaa2D(
-    llvm::Value *dstBuffer, llvm::Value *sampleIdx, llvm::Value *srcAddressU, llvm::Value *srcAddressV,
-    llvm::Value *float_X, llvm::Value *float_Y, llvm::Value *float_Z, llvm::Value *float_W) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedwrite_msaa2D(llvm::Value *dstBuffer, llvm::Value *sampleIdx,
+                                                                         llvm::Value *srcAddressU,
+                                                                         llvm::Value *srcAddressV, llvm::Value *float_X,
+                                                                         llvm::Value *float_Y, llvm::Value *float_Z,
+                                                                         llvm::Value *float_W) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *pFuncTypedWrite =
@@ -383,9 +382,10 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_typedwrite_msaa2DArray(
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_dwordatomictypedMsaa2D(
-    llvm::Value *dstBuffer, llvm::Value *sampleIdx, llvm::Value *srcAddressU, llvm::Value *srcAddressV,
-    llvm::Value *src, llvm::Value *instType) {
+inline llvm::Value *
+LLVM3DBuilder<T, Inserter>::Create_dwordatomictypedMsaa2D(llvm::Value *dstBuffer, llvm::Value *sampleIdx,
+                                                          llvm::Value *srcAddressU, llvm::Value *srcAddressV,
+                                                          llvm::Value *src, llvm::Value *instType) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Type *types[] = {src->getType(), dstBuffer->getType()};
@@ -444,9 +444,8 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_dwordatomictypedMsaa2DArr
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_StatelessAtomic(llvm::Value *ptr,
-                                                                                      llvm::Value *data,
-                                                                                      IGC::AtomicOp opcode) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_StatelessAtomic(llvm::Value *ptr, llvm::Value *data,
+                                                                       IGC::AtomicOp opcode) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Type *types[] = {data->getType(), ptr->getType(), ptr->getType()};
   llvm::Function *pFunc =
@@ -457,9 +456,8 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_StatelessAtomic(llvm::Val
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *
-LLVM3DBuilder<T, Inserter>::Create_InidrectAtomic(llvm::Value *resource, llvm::Value *offset,
-                                                                 llvm::Value *data, IGC::AtomicOp opcode) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_InidrectAtomic(llvm::Value *resource, llvm::Value *offset,
+                                                                      llvm::Value *data, IGC::AtomicOp opcode) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Type *types[] = {data->getType(), resource->getType()};
@@ -472,9 +470,8 @@ LLVM3DBuilder<T, Inserter>::Create_InidrectAtomic(llvm::Value *resource, llvm::V
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_StatelessAtomicCmpXChg(llvm::Value *ptr,
-                                                                                             llvm::Value *data0,
-                                                                                             llvm::Value *data1) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_StatelessAtomicCmpXChg(llvm::Value *ptr, llvm::Value *data0,
+                                                                              llvm::Value *data1) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Type *types[] = {data0->getType(), ptr->getType(), ptr->getType()};
   llvm::Function *pFunc =
@@ -490,9 +487,8 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_StatelessAtomicCmpXChg(ll
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *
-LLVM3DBuilder<T, Inserter>::Create_InidrectAtomicCmpXChg(llvm::Value *resource, llvm::Value *offset,
-                                                                        llvm::Value *data0, llvm::Value *data1) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_InidrectAtomicCmpXChg(llvm::Value *resource, llvm::Value *offset,
+                                                                             llvm::Value *data0, llvm::Value *data1) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Type *types[] = {data0->getType(), resource->getType()};
@@ -510,9 +506,10 @@ LLVM3DBuilder<T, Inserter>::Create_InidrectAtomicCmpXChg(llvm::Value *resource, 
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_cmpxchgatomictypedMsaa2D(
-    llvm::Value *dstBuffer, llvm::Value *sampleIdx, llvm::Value *srcAddressU, llvm::Value *srcAddressV,
-    llvm::Value *src0, llvm::Value *src1) {
+inline llvm::Value *
+LLVM3DBuilder<T, Inserter>::Create_cmpxchgatomictypedMsaa2D(llvm::Value *dstBuffer, llvm::Value *sampleIdx,
+                                                            llvm::Value *srcAddressU, llvm::Value *srcAddressV,
+                                                            llvm::Value *src0, llvm::Value *src1) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Type *types[] = {src0->getType(), dstBuffer->getType()};
@@ -571,10 +568,9 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_cmpxchgatomictypedMsaa2DA
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *
-LLVM3DBuilder<T, Inserter>::Create_TypedAtomic(llvm::Value *resource, llvm::Value *addressU,
-                                                              llvm::Value *addressV, llvm::Value *addressR,
-                                                              llvm::Value *data, IGC::AtomicOp opcode) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_TypedAtomic(llvm::Value *resource, llvm::Value *addressU,
+                                                                   llvm::Value *addressV, llvm::Value *addressR,
+                                                                   llvm::Value *data, IGC::AtomicOp opcode) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Type *types[] = {data->getType(), resource->getType()};
@@ -587,10 +583,9 @@ LLVM3DBuilder<T, Inserter>::Create_TypedAtomic(llvm::Value *resource, llvm::Valu
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *
-LLVM3DBuilder<T, Inserter>::Create_TypedAtomicCmpXChg(llvm::Value *resource, llvm::Value *addressU,
-                                                                     llvm::Value *addressV, llvm::Value *addressR,
-                                                                     llvm::Value *data0, llvm::Value *data1) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_TypedAtomicCmpXChg(llvm::Value *resource, llvm::Value *addressU,
+                                                                          llvm::Value *addressV, llvm::Value *addressR,
+                                                                          llvm::Value *data0, llvm::Value *data1) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Type *types[] = {data0->getType(), resource->getType()};
@@ -621,8 +616,7 @@ inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::Create_SampleInfo(llvm::Value
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *
-LLVM3DBuilder<T, Inserter>::CreateReadSurfaceTypeAndFormat(llvm::Value *resourcePtr) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateReadSurfaceTypeAndFormat(llvm::Value *resourcePtr) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *fn = llvm::GenISAIntrinsic::getDeclaration(
       module, llvm::GenISAIntrinsic::GenISA_readsurfacetypeandformat, resourcePtr->getType());
@@ -630,22 +624,19 @@ LLVM3DBuilder<T, Inserter>::CreateReadSurfaceTypeAndFormat(llvm::Value *resource
   return packed_tex_call;
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::Create_SyncThreadGroup() {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::Create_SyncThreadGroup() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   return this->CreateCall(
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_threadgroupbarrier));
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::Create_FlushSampler() {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::Create_FlushSampler() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   return this->CreateCall(llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_flushsampler));
 }
 
 template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::Create_LscFence(llvm::Value *SFID, llvm::Value *FenceOp,
-                                                                        llvm::Value *Scope) {
+llvm::Value *LLVM3DBuilder<T, Inserter>::Create_LscFence(llvm::Value *SFID, llvm::Value *FenceOp, llvm::Value *Scope) {
   llvm::Value *parameters[] = {
       SFID,
       Scope,
@@ -656,10 +647,9 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::Create_LscFence(llvm::Value *SFID, llvm
                           parameters);
 }
 template <typename T, typename Inserter>
-llvm::Value *
-LLVM3DBuilder<T, Inserter>::Create_MemoryFence(bool commit, bool flushRWDataCache,
-                                                              bool flushConstantCache, bool flushTextureCache,
-                                                              bool flushInstructionCache, bool globalFence) {
+llvm::Value *LLVM3DBuilder<T, Inserter>::Create_MemoryFence(bool commit, bool flushRWDataCache, bool flushConstantCache,
+                                                            bool flushTextureCache, bool flushInstructionCache,
+                                                            bool globalFence) {
   llvm::Value *parameters[] = {this->getInt1(commit),
                                this->getInt1(flushRWDataCache),
                                this->getInt1(flushConstantCache),
@@ -674,15 +664,14 @@ LLVM3DBuilder<T, Inserter>::Create_MemoryFence(bool commit, bool flushRWDataCach
                           parameters);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::Create_GlobalSync() {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::Create_GlobalSync() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   return this->CreateCall(llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_globalSync));
 }
 
 template <typename T, typename Inserter>
 inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_SamplePos(llvm::Value *int32_resourceIdx,
-                                                                                llvm::Value *int32_samplerIdx) {
+                                                                 llvm::Value *int32_samplerIdx) {
   llvm::Value *sampleInfo = this->Create_SampleInfo(int32_resourceIdx);
 
   llvm::Value *int32_texX = this->CreateExtractElement(sampleInfo, m_int0);
@@ -800,10 +789,12 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_SamplePos(llvm::Value *in
 }
 
 template <typename T, typename Inserter>
-inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::Create_SAMPLE(
-    llvm::Value *coordinate_u, llvm::Value *coordinate_v, llvm::Value *coordinate_r, llvm::Value *coordinate_ai,
-    llvm::Value *ptr_textureIdx, llvm::Value *ptr_sampler, llvm::Value *offsetU, llvm::Value *offsetV,
-    llvm::Value *offsetW, llvm::Value *minlod, bool feedback_enabled, llvm::Type *returnType) {
+inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::Create_SAMPLE(llvm::Value *coordinate_u, llvm::Value *coordinate_v,
+                                                                 llvm::Value *coordinate_r, llvm::Value *coordinate_ai,
+                                                                 llvm::Value *ptr_textureIdx, llvm::Value *ptr_sampler,
+                                                                 llvm::Value *offsetU, llvm::Value *offsetV,
+                                                                 llvm::Value *offsetW, llvm::Value *minlod,
+                                                                 bool feedback_enabled, llvm::Type *returnType) {
   return Create_SAMPLE(coordinate_u, coordinate_v, coordinate_r, coordinate_ai,
                        llvm::UndefValue::get(ptr_textureIdx->getType()), ptr_textureIdx, ptr_sampler, offsetU, offsetV,
                        offsetW, minlod, feedback_enabled, returnType);
@@ -1211,9 +1202,9 @@ inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::Create_SAMPLEL(
 }
 
 template <typename T, typename Inserter>
-inline llvm::CallInst *
-LLVM3DBuilder<T, Inserter>::Create_SAMPLED(SampleD_DC_FromCubeParams &sampleParams, llvm::Value *minlod,
-                                                          bool feedback_enabled, llvm::Type *returnType) {
+inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::Create_SAMPLED(SampleD_DC_FromCubeParams &sampleParams,
+                                                                  llvm::Value *minlod, bool feedback_enabled,
+                                                                  llvm::Type *returnType) {
   return Create_SAMPLED(sampleParams.get_float_src_u(), sampleParams.get_float_src_v(), sampleParams.get_float_src_r(),
                         sampleParams.get_dxu(), sampleParams.get_dxv(), sampleParams.get_dxr(), sampleParams.get_dyu(),
                         sampleParams.get_dyv(), sampleParams.get_dyr(), sampleParams.get_float_src_ai(),
@@ -1392,9 +1383,9 @@ inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::Create_SAMPLEDC(
 template <typename T, typename Inserter>
 inline llvm::CallInst *
 LLVM3DBuilder<T, Inserter>::Create_lod(llvm::Value *float_address_0, llvm::Value *float_address_1,
-                                                      llvm::Value *float_address_2, llvm::Value *float_address_3,
-                                                      llvm::Value *int32_textureIdx_356, llvm::Value *int32_sampler_357,
-                                                      bool feedback_enabled, llvm::Type *returnType) {
+                                       llvm::Value *float_address_2, llvm::Value *float_address_3,
+                                       llvm::Value *int32_textureIdx_356, llvm::Value *int32_sampler_357,
+                                       bool feedback_enabled, llvm::Type *returnType) {
   llvm::Value *packed_tex_params[] = {
       float_address_0, float_address_1, float_address_2, float_address_3, int32_textureIdx_356, int32_sampler_357,
   };
@@ -1455,10 +1446,12 @@ inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::Create_gather4(
 }
 
 template <typename T, typename Inserter>
-inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::Create_load(
-    llvm::Value *int32_sampleIdxU, llvm::Value *int32_sampleIdxV, llvm::Value *int32_sampleIdxR, llvm::Value *int32_lod,
-    llvm::Value *ptr_textureIdx, llvm::Value *int32_offsetU, llvm::Value *int32_offsetV, llvm::Value *int32_offsetR,
-    bool feedback_enabled, llvm::Type *returnType) {
+inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::Create_load(llvm::Value *int32_sampleIdxU,
+                                                               llvm::Value *int32_sampleIdxV,
+                                                               llvm::Value *int32_sampleIdxR, llvm::Value *int32_lod,
+                                                               llvm::Value *ptr_textureIdx, llvm::Value *int32_offsetU,
+                                                               llvm::Value *int32_offsetV, llvm::Value *int32_offsetR,
+                                                               bool feedback_enabled, llvm::Type *returnType) {
   return Create_load(int32_sampleIdxU, int32_sampleIdxV, int32_sampleIdxR, int32_lod,
                      llvm::UndefValue::get(ptr_textureIdx->getType()), ptr_textureIdx, int32_offsetU, int32_offsetV,
                      int32_offsetR, feedback_enabled, returnType);
@@ -1488,10 +1481,12 @@ inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::Create_load(
 }
 
 template <typename T, typename Inserter>
-inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::Create_ldms(
-    llvm::Value *int32_srcIdxU, llvm::Value *int32_srcIdxV, llvm::Value *int32_srcIdxR, llvm::Value *int32_sampleIdx,
-    llvm::Value *int32_textureIdx, llvm::Value *int32_offsetU, llvm::Value *int32_offsetV, llvm::Value *int32_offsetR,
-    bool feedback_enabled, llvm::Type *returnType) {
+inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::Create_ldms(llvm::Value *int32_srcIdxU, llvm::Value *int32_srcIdxV,
+                                                               llvm::Value *int32_srcIdxR, llvm::Value *int32_sampleIdx,
+                                                               llvm::Value *int32_textureIdx,
+                                                               llvm::Value *int32_offsetU, llvm::Value *int32_offsetV,
+                                                               llvm::Value *int32_offsetR, bool feedback_enabled,
+                                                               llvm::Type *returnType) {
   llvm::Value *packed_mcs_params[] = {int32_srcIdxU,    int32_srcIdxV, int32_srcIdxR, m_int0,
                                       int32_textureIdx, int32_offsetU, int32_offsetV, int32_offsetR};
 
@@ -1630,9 +1625,10 @@ inline SampleParamsFromCube LLVM3DBuilder<T, Inserter>::Prepare_SAMPLE_Cube_Para
 }
 
 template <typename T, typename Inserter>
-inline SampleParamsFromCube LLVM3DBuilder<T, Inserter>::Prepare_SAMPLE_Cube_Params(
-    llvm::Value *float_address_0, llvm::Value *float_address_1, llvm::Value *float_address_2,
-    llvm::Value *float_address_3, llvm::Value *int32_textureIdx, llvm::Value *int32_sampler) {
+inline SampleParamsFromCube
+LLVM3DBuilder<T, Inserter>::Prepare_SAMPLE_Cube_Params(llvm::Value *float_address_0, llvm::Value *float_address_1,
+                                                       llvm::Value *float_address_2, llvm::Value *float_address_3,
+                                                       llvm::Value *int32_textureIdx, llvm::Value *int32_sampler) {
   IGC_ASSERT(nullptr != float_address_0);
   llvm::Type *const coordType = float_address_0->getType();
   IGC_ASSERT(nullptr != coordType);
@@ -2157,16 +2153,14 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<T, Inserter>::Prepare_SAMPLE_D_DC
   }
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFAbs(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFAbs(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *fabs = llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::fabs, V->getType());
   return this->CreateCall(fabs, V);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFSat(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFSat(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *fsat =
@@ -2174,8 +2168,7 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFSat(llvm::Value *V) {
   return this->CreateCall(fsat, V);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateF16TOF32(llvm::Value *f16_src) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateF16TOF32(llvm::Value *f16_src) {
   llvm::Value *f32_dst = this->CreateFPExt(f16_src, this->getFloatTy(), VALUE_NAME("src0_s"));
   return f32_dst;
 }
@@ -2206,9 +2199,8 @@ bool LLVM3DBuilder<T, Inserter>::NeedConversionFor128FormatRead(IGC::SURFACE_FOR
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_UBFE(llvm::Value *int32_width,
-                                                                           llvm::Value *int32_offset,
-                                                                           llvm::Value *int32_source) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_UBFE(llvm::Value *int32_width, llvm::Value *int32_offset,
+                                                            llvm::Value *int32_source) {
   //   %res = call i32 @llvm.GenISA.ubfe(i32 %src0_s, i32 %src1_s, i32 %src2_s)
   llvm::Value *packed_params[] = {int32_width, int32_offset, int32_source};
   llvm::CallInst *int32_res = llvm::cast<llvm::CallInst>(this->CreateCall(llvm_GenISA_ubfe(), packed_params));
@@ -2216,9 +2208,8 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_UBFE(llvm::Value *int32_w
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_IBFE(llvm::Value *int32_width,
-                                                                           llvm::Value *int32_offset,
-                                                                           llvm::Value *int32_source) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_IBFE(llvm::Value *int32_width, llvm::Value *int32_offset,
+                                                            llvm::Value *int32_source) {
   //   %res = call i32 @llvm.GenISA.ibfe(i32 %int32_width, i32 %int32_offset, i32 %int32_source)
   llvm::Value *packed_params[] = {int32_width, int32_offset, int32_source};
   llvm::CallInst *int32_res = llvm::cast<llvm::CallInst>(this->CreateCall(llvm_GenISA_ibfe(), packed_params));
@@ -2226,9 +2217,8 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_IBFE(llvm::Value *int32_w
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *
-LLVM3DBuilder<T, Inserter>::Create_BFI(llvm::Value *int32_width, llvm::Value *int32_offset,
-                                                      llvm::Value *int32_source, llvm::Value *int32_replace) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_BFI(llvm::Value *int32_width, llvm::Value *int32_offset,
+                                                           llvm::Value *int32_source, llvm::Value *int32_replace) {
   llvm::Value *packed_params[] = {int32_width, int32_offset, int32_source, int32_replace};
   llvm::CallInst *int32_res = llvm::cast<llvm::CallInst>(this->CreateCall(llvm_GenISA_bfi(), packed_params));
   return int32_res;
@@ -2263,10 +2253,9 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::Create_FirstBitShi(llvm::Value *
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *
-LLVM3DBuilder<T, Inserter>::create_indirectLoad(llvm::Value *srcBuffer, llvm::Value *offset,
-                                                               llvm::Value *alignment, llvm::Type *returnType,
-                                                               bool isVolatile /* false */) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_indirectLoad(llvm::Value *srcBuffer, llvm::Value *offset,
+                                                                    llvm::Value *alignment, llvm::Type *returnType,
+                                                                    bool isVolatile /* false */) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Type *types[] = {returnType, srcBuffer->getType()};
   llvm::Function *pfuncLdPtr =
@@ -2275,9 +2264,8 @@ LLVM3DBuilder<T, Inserter>::create_indirectLoad(llvm::Value *srcBuffer, llvm::Va
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *
-LLVM3DBuilder<T, Inserter>::create_indirectStore(llvm::Value *srcBuffer, llvm::Value *offset,
-                                                                llvm::Value *data, bool isVolatile /* false */) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_indirectStore(llvm::Value *srcBuffer, llvm::Value *offset,
+                                                                     llvm::Value *data, bool isVolatile /* false */) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Type *types[] = {
       srcBuffer->getType(),
@@ -2328,32 +2316,28 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::createGroupId(unsigned int dim) 
                                           : "GroupID_Z");
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFrc(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFrc(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *frc = llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_frc);
   return this->CreateCall(frc, V);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateSin(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateSin(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *sin = llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::sin, V->getType());
   return this->CreateCall(sin, V);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateCos(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateCos(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *cos = llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::cos, V->getType());
   return this->CreateCall(cos, V);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateSqrt(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateSqrt(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *sqrt = llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::sqrt, V->getType());
@@ -2402,32 +2386,28 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateUMulH(llvm::Value *LHS, llvm::Val
   return this->CreateCall2(umulh, LHS, RHS);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDiscard(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDiscard(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *discard = llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_discard);
   return this->CreateCall(discard, V);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFLog(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFLog(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *flog = llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::log2, V->getType());
   return this->CreateCall(flog, V);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFExp(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFExp(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *fexp = llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::exp2, V->getType());
   return this->CreateCall(fexp, V);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDFloor(llvm::Value *src) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDFloor(llvm::Value *src) {
   llvm::Module *const mod = this->GetInsertBlock()->getParent()->getParent();
   IGC_ASSERT(nullptr != mod);
   llvm::Function *func = mod->getFunction("__builtin_floor_f64");
@@ -2498,8 +2478,7 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDFloor(llvm::Value *src) {
   return this->CreateCall(func, src);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFloor(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFloor(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   if (V->getType() == this->getDoubleTy()) {
@@ -2510,8 +2489,7 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateFloor(llvm::Value *V) {
   }
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDCeil(llvm::Value *src) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDCeil(llvm::Value *src) {
   llvm::Module *const mod = this->GetInsertBlock()->getParent()->getParent();
   IGC_ASSERT(nullptr != mod);
   llvm::Function *func = mod->getFunction("__builtin_ceil_f64");
@@ -2584,8 +2562,7 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDCeil(llvm::Value *src) {
   return this->CreateCall(func, src);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateCeil(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateCeil(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   if (V->getType() == this->getDoubleTy()) {
@@ -2596,8 +2573,7 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateCeil(llvm::Value *V) {
   }
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDTrunc(llvm::Value *src) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDTrunc(llvm::Value *src) {
   llvm::Module *const mod = this->GetInsertBlock()->getParent()->getParent();
   IGC_ASSERT(nullptr != mod);
   llvm::Function *func = mod->getFunction("__builtin_trunc_f64");
@@ -2658,8 +2634,7 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDTrunc(llvm::Value *src) {
   return this->CreateCall(func, src);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateRoundZ(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateRoundZ(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   if (V->getType() == this->getDoubleTy()) {
@@ -2670,8 +2645,7 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateRoundZ(llvm::Value *V) {
   }
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDRoundNE(llvm::Value *src) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDRoundNE(llvm::Value *src) {
   llvm::Module *const mod = this->GetInsertBlock()->getParent()->getParent();
   IGC_ASSERT(nullptr != mod);
   llvm::Function *func = mod->getFunction("__builtin_roundne_f64");
@@ -2755,8 +2729,7 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDRoundNE(llvm::Value *src) {
   return this->CreateCall(func, src);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateRoundNE(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateRoundNE(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   if (V->getType() == this->getDoubleTy()) {
@@ -2772,38 +2745,32 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateRoundNE(llvm::Value *V) {
   }
 }
 
-template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateIsNan(llvm::Value *V) {
+template <typename T, typename Inserter> inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateIsNan(llvm::Value *V) {
   // fcmp_uno yields true if either operand is a QNAN. Since we compare the same numer with itself.
   // If V is not NAN it will return false
   return this->CreateFCmp(llvm::FCmpInst::FCMP_UNO, V, V);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateCtpop(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateCtpop(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *ctpop = llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::ctpop, V->getType());
   return this->CreateCall(ctpop, V);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::getHalf(float f) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::getHalf(float f) {
   return llvm::ConstantFP::get(this->getHalfTy(), f);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::getFloat(float f) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::getFloat(float f) {
   return llvm::ConstantFP::get(this->getFloatTy(), f);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::getDouble(double d) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::getDouble(double d) {
   return llvm::ConstantFP::get(this->getDoubleTy(), d);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDeriveRTX(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDeriveRTX(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *floor =
@@ -2811,8 +2778,7 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDeriveRTX(llvm::Value *V) {
   return this->CreateCall(floor, V);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDeriveRTX_Fine(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDeriveRTX_Fine(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *floor =
@@ -2820,8 +2786,7 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDeriveRTX_Fine(llvm::Value *V) {
   return this->CreateCall(floor, V);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDeriveRTY(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDeriveRTY(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *floor =
@@ -2829,8 +2794,7 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDeriveRTY(llvm::Value *V) {
   return this->CreateCall(floor, V);
 }
 
-template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDeriveRTY_Fine(llvm::Value *V) {
+template <typename T, typename Inserter> llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDeriveRTY_Fine(llvm::Value *V) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *floor =
@@ -2839,9 +2803,8 @@ llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDeriveRTY_Fine(llvm::Value *V) {
 }
 
 template <typename T, typename Inserter>
-llvm::Value *LLVM3DBuilder<T, Inserter>::Create_MAD_Scalar(llvm::Value *float_src0,
-                                                                          llvm::Value *float_src1,
-                                                                          llvm::Value *float_src2) {
+llvm::Value *LLVM3DBuilder<T, Inserter>::Create_MAD_Scalar(llvm::Value *float_src0, llvm::Value *float_src1,
+                                                           llvm::Value *float_src2) {
   llvm::Module *const module = this->GetInsertBlock()->getParent()->getParent();
   IGC_ASSERT(nullptr != module);
   IGC_ASSERT(nullptr != float_src0);
@@ -2937,9 +2900,8 @@ inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::Create_SAMPLEBC(
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateEvalSampleIndex(llvm::Value *inputIndex,
-                                                                                     llvm::Value *sampleIndex,
-                                                                                     llvm::Value *perspective) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateEvalSampleIndex(llvm::Value *inputIndex, llvm::Value *sampleIndex,
+                                                                      llvm::Value *perspective) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *pullBarys =
@@ -2951,9 +2913,8 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateEvalSampleIndex(llvm::Valu
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *
-LLVM3DBuilder<T, Inserter>::CreateEvalSnapped(llvm::Value *inputIndex, llvm::Value *xOffset,
-                                                             llvm::Value *yOffset, llvm::Value *perspective) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateEvalSnapped(llvm::Value *inputIndex, llvm::Value *xOffset,
+                                                                  llvm::Value *yOffset, llvm::Value *perspective) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function *pullBarys =
@@ -2965,8 +2926,7 @@ LLVM3DBuilder<T, Inserter>::CreateEvalSnapped(llvm::Value *inputIndex, llvm::Val
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateSetStream(llvm::Value *StreamId,
-                                                                               llvm::Value *emitCount) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateSetStream(llvm::Value *StreamId, llvm::Value *emitCount) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *fn = llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_SetStream);
   return this->CreateCall2(fn, StreamId, emitCount);
@@ -2979,56 +2939,49 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateEndPrimitive(llvm::Value *
   return this->CreateCall(fn, emitCount);
 }
 
-template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateControlPointId() {
+template <typename T, typename Inserter> inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateControlPointId() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *fn =
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_DCL_HSControlPointID);
   return this->CreateCall(fn);
 }
 
-template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreatePrimitiveID() {
+template <typename T, typename Inserter> inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreatePrimitiveID() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc =
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_DCL_SystemValue, this->getFloatTy());
   return this->CreateBitCast(this->CreateCall(pFunc, this->getInt32(IGC::PRIMITIVEID)), this->getInt32Ty());
 }
 
-template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateInstanceID() {
+template <typename T, typename Inserter> inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateInstanceID() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc =
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_DCL_SystemValue, this->getFloatTy());
   return this->CreateBitCast(this->CreateCall(pFunc, this->getInt32(IGC::GS_INSTANCEID)), this->getInt32Ty());
 }
 
-template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateSampleIndex() {
+template <typename T, typename Inserter> inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateSampleIndex() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc =
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_DCL_SystemValue, this->getFloatTy());
   return this->CreateBitCast(this->CreateCall(pFunc, this->getInt32(IGC::SAMPLEINDEX)), this->getInt32Ty());
 }
 
-template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateCoverage() {
+template <typename T, typename Inserter> inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateCoverage() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc =
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_DCL_SystemValue, this->getFloatTy());
   return this->CreateBitCast(this->CreateCall(pFunc, this->getInt32(IGC::INPUT_COVERAGE_MASK)), this->getInt32Ty());
 }
 
-template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateStartVertexLocation() {
+template <typename T, typename Inserter> inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateStartVertexLocation() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc =
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_DCL_SystemValue, this->getFloatTy());
   return this->CreateBitCast(this->CreateCall(pFunc, this->getInt32(IGC::XP0)), this->getInt32Ty());
 }
 
-template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateStartInstanceLocation() {
+template <typename T, typename Inserter> inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateStartInstanceLocation() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc =
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_DCL_SystemValue, this->getFloatTy());
@@ -3045,7 +2998,7 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateDomainPointInput(unsigned 
 
 template <typename T, typename Inserter>
 inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_inputVecF32(llvm::Value *inputIndex,
-                                                                                  llvm::Value *interpolationMode) {
+                                                                   llvm::Value *interpolationMode) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc =
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_DCL_inputVec, this->getFloatTy());
@@ -3066,8 +3019,7 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_runtime(llvm::Value *offs
   return this->CreateCall(pFunc, offset);
 }
 
-template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_uavSerializeAll() {
+template <typename T, typename Inserter> inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_uavSerializeAll() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc = llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_uavSerializeAll);
   return this->CreateCall(pFunc);
@@ -3082,7 +3034,7 @@ inline llvm::CallInst *LLVM3DBuilder<T, Inserter>::create_countbits(llvm::Value 
 
 template <typename T, typename Inserter>
 inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveInverseBallot(llvm::Value *src,
-                                                                                        llvm::Value *helperLaneMode) {
+                                                                         llvm::Value *helperLaneMode) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc =
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_WaveInverseBallot);
@@ -3090,17 +3042,15 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveInverseBallot(llvm::V
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveBallot(llvm::Value *src,
-                                                                                 llvm::Value *helperLaneMode) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveBallot(llvm::Value *src, llvm::Value *helperLaneMode) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc = llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_WaveBallot);
   return this->CreateCall2(pFunc, src, helperLaneMode ? helperLaneMode : this->getInt32(0));
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveshuffleIndex(llvm::Value *src,
-                                                                                       llvm::Value *index,
-                                                                                       llvm::Value *helperLaneMode) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveshuffleIndex(llvm::Value *src, llvm::Value *index,
+                                                                        llvm::Value *helperLaneMode) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Type *srcType = src->getType();
   if (srcType == this->getInt1Ty()) {
@@ -3117,7 +3067,7 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveshuffleIndex(llvm::Va
 
 template <typename T, typename Inserter>
 inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveAll(llvm::Value *src, llvm::Value *type,
-                                                                              llvm::Value *helperLaneMode) {
+                                                               llvm::Value *helperLaneMode) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc =
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_WaveAll, src->getType());
@@ -3125,9 +3075,8 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveAll(llvm::Value *src,
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_wavePrefix(llvm::Value *src, llvm::Value *type,
-                                                                                 bool inclusive, llvm::Value *Mask,
-                                                                                 llvm::Value *helperLaneMode) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_wavePrefix(llvm::Value *src, llvm::Value *type, bool inclusive,
+                                                                  llvm::Value *Mask, llvm::Value *helperLaneMode) {
   // If a nullptr is passed in for 'Mask' (as is the default), just include
   // all lanes.
   Mask = Mask ? Mask : this->getInt1(true);
@@ -3162,9 +3111,8 @@ inline llvm::CallInst *setUnsafeToHoistAttr(llvm::CallInst *CI) {
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_wavePrefixBitCount(llvm::Value *src,
-                                                                                         llvm::Value *Mask,
-                                                                                         llvm::Value *helperLaneMode) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_wavePrefixBitCount(llvm::Value *src, llvm::Value *Mask,
+                                                                          llvm::Value *helperLaneMode) {
   // bits = ballot(bBit);
   // laneMaskLT = (1 << WaveGetLaneIndex()) - 1;
   // prefixBitCount = countbits(bits & laneMaskLT);
@@ -3183,9 +3131,8 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_wavePrefixBitCount(llvm::
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveMatch(llvm::Instruction *inst,
-                                                                                llvm::Value *src,
-                                                                                llvm::Value *helperLaneMode) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveMatch(llvm::Instruction *inst, llvm::Value *src,
+                                                                 llvm::Value *helperLaneMode) {
 
   // Note that we will stay in the loop above as long as there is at least
   // one active lane remaining.
@@ -3227,8 +3174,9 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveMatch(llvm::Instructi
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveMultiPrefix(
-    llvm::Instruction *I, llvm::Value *Val, llvm::Value *Mask, IGC::WaveOps OpKind, llvm::Value *helperLaneMode) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveMultiPrefix(llvm::Instruction *I, llvm::Value *Val,
+                                                                       llvm::Value *Mask, IGC::WaveOps OpKind,
+                                                                       llvm::Value *helperLaneMode) {
   // This implementation is similar create_waveMatch() in that we loop
   // until all subsets of lanes are processed.
   auto *PreHeader = I->getParent();
@@ -3259,8 +3207,9 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveMultiPrefix(
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveMultiPrefixBitCount(
-    llvm::Instruction *I, llvm::Value *Val, llvm::Value *Mask, llvm::Value *helperLaneMode) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveMultiPrefixBitCount(llvm::Instruction *I, llvm::Value *Val,
+                                                                               llvm::Value *Mask,
+                                                                               llvm::Value *helperLaneMode) {
   // Similar structure to waveMatch and waveMultiPrefix
   auto *PreHeader = I->getParent();
   auto *BodyBlock = PreHeader->splitBasicBlock(I, "multiprefixbitcount-body");
@@ -3289,9 +3238,9 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveMultiPrefixBitCount(
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *
-LLVM3DBuilder<T, Inserter>::create_waveClusteredAll(llvm::Value *src, llvm::Value *reductionType,
-                                                                llvm::Value *clusterSize, llvm::Value *helperLaneMode) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveClusteredAll(llvm::Value *src, llvm::Value *reductionType,
+                                                                        llvm::Value *clusterSize,
+                                                                        llvm::Value *helperLaneMode) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc =
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_WaveClustered, src->getType());
@@ -3299,8 +3248,9 @@ LLVM3DBuilder<T, Inserter>::create_waveClusteredAll(llvm::Value *src, llvm::Valu
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveClusteredBroadcast(
-    llvm::Value *src, llvm::Value *clusterLane, llvm::Value *clusterSize, llvm::Value *helperLaneMode) {
+inline llvm::Value *
+LLVM3DBuilder<T, Inserter>::create_waveClusteredBroadcast(llvm::Value *src, llvm::Value *clusterLane,
+                                                          llvm::Value *clusterSize, llvm::Value *helperLaneMode) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc = llvm::GenISAIntrinsic::getDeclaration(
       module, llvm::GenISAIntrinsic::GenISA_WaveClusteredBroadcast, src->getType());
@@ -3309,29 +3259,25 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveClusteredBroadcast(
   return this->CreateCall4(pFunc, src, clusterSize, clusterLane, hlm);
 }
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_quadPrefix(llvm::Value *src, llvm::Value *type,
-                                                                                 bool inclusive) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_quadPrefix(llvm::Value *src, llvm::Value *type, bool inclusive) {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc =
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_QuadPrefix, src->getType());
   return this->CreateCall3(pFunc, src, type, this->getInt1(inclusive));
 }
 
-template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::get16BitLaneID() {
+template <typename T, typename Inserter> inline llvm::Value *LLVM3DBuilder<T, Inserter>::get16BitLaneID() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc = llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_simdLaneId);
   llvm::Value *int16LaneId = this->CreateCall(pFunc);
   return int16LaneId;
 }
 
-template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::get32BitLaneID() {
+template <typename T, typename Inserter> inline llvm::Value *LLVM3DBuilder<T, Inserter>::get32BitLaneID() {
   return this->CreateZExt(get16BitLaneID(), this->getInt32Ty());
 }
 
-template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::getSimdSize() {
+template <typename T, typename Inserter> inline llvm::Value *LLVM3DBuilder<T, Inserter>::getSimdSize() {
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc = llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_simdSize);
   return this->CreateCall(pFunc);
@@ -3347,8 +3293,7 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::getFirstLaneID(llvm::Value *help
 }
 
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::readFirstLane(llvm::Value *src,
-                                                                             llvm::Value *helperLaneMode) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::readFirstLane(llvm::Value *src, llvm::Value *helperLaneMode) {
   llvm::Value *firstLaneID = this->getFirstLaneID(helperLaneMode);
   return this->create_waveshuffleIndex(src, firstLaneID, helperLaneMode);
 }
@@ -3371,7 +3316,7 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::readFirstLane(llvm::Value *src,
 ///
 template <typename T, typename Inserter>
 inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateImageDataConversion(IGC::SURFACE_FORMAT format,
-                                                                                         llvm::Value *data) {
+                                                                          llvm::Value *data) {
   IGC_ASSERT(nullptr != m_Platform);
 
   switch (format) {
@@ -4180,8 +4125,8 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::CreateImageDataConversion(IGC::S
 /// @param  initializer optional parameter to set to unused elements
 ///
 template <typename T, typename Inserter>
-inline void LLVM3DBuilder<T, Inserter>::VectorToScalars(llvm::Value *vector, llvm::Value **outScalars,
-                                                                       unsigned maxSize, llvm::Value *initializer) {
+inline void LLVM3DBuilder<T, Inserter>::VectorToScalars(llvm::Value *vector, llvm::Value **outScalars, unsigned maxSize,
+                                                        llvm::Value *initializer) {
   IGC_ASSERT(nullptr != vector);
   IGC_ASSERT(nullptr != vector->getType());
   IGC_ASSERT(vector->getType()->isVectorTy());
@@ -4207,8 +4152,7 @@ inline void LLVM3DBuilder<T, Inserter>::VectorToScalars(llvm::Value *vector, llv
 /// @return Vector of type resultType
 ///
 template <typename T, typename Inserter>
-inline llvm::Value *LLVM3DBuilder<T, Inserter>::ScalarsToVector(llvm::Value *(&scalars)[4],
-                                                                               unsigned vectorElementCnt) {
+inline llvm::Value *LLVM3DBuilder<T, Inserter>::ScalarsToVector(llvm::Value *(&scalars)[4], unsigned vectorElementCnt) {
   llvm::Type *const resultType = IGCLLVM::FixedVectorType::get(scalars[0]->getType(), vectorElementCnt);
   IGC_ASSERT(nullptr != resultType);
   llvm::Value *result = llvm::UndefValue::get(resultType);

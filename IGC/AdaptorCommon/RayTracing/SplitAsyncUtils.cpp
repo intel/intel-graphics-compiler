@@ -30,9 +30,9 @@ using namespace llvm;
 using namespace IGC;
 
 #if defined(_DEBUG) || defined(_INTERNAL)
-#define REMAT_DIAG(X)                                                 \
-  if (m_pStream) {                                                    \
-    X;                                                                \
+#define REMAT_DIAG(X)                                                                                                  \
+  if (m_pStream) {                                                                                                     \
+    X;                                                                                                                 \
   }
 #else
 #define REMAT_DIAG(X)
@@ -192,7 +192,7 @@ void rewriteMaterializableInstructions(const SmallVector<Spill, 8> &Spills) {
 
 RematChecker::RematChecker(CodeGenContext &Ctx, RematStage Stage) : Ctx(Ctx), Stage(Stage) {
 #if defined(_DEBUG) || defined(_INTERNAL)
-    m_pStream = nullptr;
+  m_pStream = nullptr;
 #endif
 }
 
@@ -220,9 +220,9 @@ bool RematChecker::materializable(const Instruction &I) const {
   }
 
   if (auto *LI = dyn_cast<LoadInst>(&I)) {
-    REMAT_DIAG(*m_pStream << ((LI->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT) ?
-                              "true: [LOAD with constant address space]\n" :
-                              "false: [LOAD address space not satisfying]\n"));
+    REMAT_DIAG(*m_pStream << ((LI->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT)
+                                  ? "true: [LOAD with constant address space]\n"
+                                  : "false: [LOAD address space not satisfying]\n"));
     return (LI->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT);
   }
 
@@ -239,9 +239,9 @@ bool RematChecker::materializable(const Instruction &I) const {
       return true;
     case GenISAIntrinsic::GenISA_ldraw_indexed:
     case GenISAIntrinsic::GenISA_ldrawvector_indexed:
-      REMAT_DIAG(*m_pStream << (isReadOnly(cast<LdRawIntrinsic>(GII)->getResourceValue()) ?
-                                "true: [ldraw with read-only buffer]\n" :
-                                "false: [ldraw not read-only]\n"));
+      REMAT_DIAG(*m_pStream << (isReadOnly(cast<LdRawIntrinsic>(GII)->getResourceValue())
+                                    ? "true: [ldraw with read-only buffer]\n"
+                                    : "false: [ldraw not read-only]\n"));
       return isReadOnly(cast<LdRawIntrinsic>(GII)->getResourceValue());
     case GenISAIntrinsic::GenISA_ldptr:
     case GenISAIntrinsic::GenISA_ldlptr:
@@ -289,8 +289,7 @@ bool RematChecker::canFullyRemat(Instruction *I, std::vector<Instruction *> &Ins
   if (Depth == 0 || !materializable(*I)) {
     REMAT_DIAG(*m_pStream << "\n"
                           << std::string(StartDepth - Depth, ' ')
-                          << (Depth == 0 ? "Depth exhausted." :
-                                           "materializable false"));
+                          << (Depth == 0 ? "Depth exhausted." : "materializable false"));
 
     return false;
   }

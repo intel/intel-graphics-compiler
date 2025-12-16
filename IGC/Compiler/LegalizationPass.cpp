@@ -283,10 +283,7 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator &I) {
           break;
         }
         // check select i1 with I not used as condition
-       if (isa<SelectInst>(*U) &&
-           (U->getOperand(0) != &I ||
-            U->getOperand(1) == &I ||
-            U->getOperand(2) == &I)) {
+        if (isa<SelectInst>(*U) && (U->getOperand(0) != &I || U->getOperand(1) == &I || U->getOperand(2) == &I)) {
           flippable = false;
           break;
         }
@@ -318,10 +315,7 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator &I) {
             br->setCondition(invert);
           }
         }
-        IGC_ASSERT(
-            I.user_empty() &&
-            "Instruction should have no remaining uses after transformation"
-        );
+        IGC_ASSERT(I.user_empty() && "Instruction should have no remaining uses after transformation");
         I.eraseFromParent();
         cast<llvm::Instruction>(src0)->eraseFromParent();
         cast<llvm::Instruction>(src1)->eraseFromParent();
@@ -795,7 +789,8 @@ void Legalization::visitBitCastInst(llvm::BitCastInst &I) {
 
 static bool isVectorTypeAllowed(Value *I) {
   IGCLLVM::FixedVectorType *VecType = llvm::dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
-  if (!VecType) return false;
+  if (!VecType)
+    return false;
   auto ElType = VecType->getElementType();
   return ElType->isIntegerTy(32) || ElType->isFloatTy();
 }

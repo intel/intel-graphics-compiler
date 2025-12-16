@@ -86,7 +86,9 @@ struct SPIRVExtension {
   std::string SpecURL;
   std::vector<SPIRVCapability> Capabilities;
 };
-inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM platform, bool includeUnpublished = false) { return {}; }
+inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM platform, bool includeUnpublished = false) {
+  return {};
+}
 } // namespace SPIRVExtensionsSupport
 } // namespace IGC
 #endif

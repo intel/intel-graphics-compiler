@@ -36,7 +36,8 @@ private:
   void filterOutUnvectorizedPhis();
   bool makeChanges(llvm::Function *F);
 
-  llvm::SmallVector<llvm::PHINode*, 8> getDuplicates(llvm::PHINode *PN, llvm::SmallVector<llvm::PHINode *, 8>& PhiNodesToErase);
+  llvm::SmallVector<llvm::PHINode *, 8> getDuplicates(llvm::PHINode *PN,
+                                                      llvm::SmallVector<llvm::PHINode *, 8> &PhiNodesToErase);
   bool isIncomingValueZero(llvm::PHINode *pPN, unsigned IncomingIndex);
   llvm::Value *getVectorOperandForPhiNode(llvm::PHINode *PN, unsigned IncomingIndex);
   llvm::ExtractElementInst *getEEIFromPhi(llvm::PHINode *PN, unsigned IncomingIndex);

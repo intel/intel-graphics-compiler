@@ -17,11 +17,11 @@ SPDX-License-Identifier: MIT
 namespace IGCLLVM {
 inline bool InlineFunction(llvm::CallBase &CB, llvm::InlineFunctionInfo &IFI, llvm::AAResults *CalleeAAR = nullptr,
                            bool InsertLifetime = true, llvm::Function *ForwardVarArgsTo = nullptr) {
-  #if LLVM_VERSION_MAJOR <= 15
-    return llvm::InlineFunction(CB, IFI, CalleeAAR, InsertLifetime, ForwardVarArgsTo).isSuccess();
-  #else // LLVM_VERSION_MAJOR >= 16
-    return llvm::InlineFunction(CB, IFI, true, CalleeAAR, InsertLifetime, ForwardVarArgsTo).isSuccess();
-  #endif
+#if LLVM_VERSION_MAJOR <= 15
+  return llvm::InlineFunction(CB, IFI, CalleeAAR, InsertLifetime, ForwardVarArgsTo).isSuccess();
+#else // LLVM_VERSION_MAJOR >= 16
+  return llvm::InlineFunction(CB, IFI, true, CalleeAAR, InsertLifetime, ForwardVarArgsTo).isSuccess();
+#endif
 }
 
 using llvm::CloneFunctionChangeType;

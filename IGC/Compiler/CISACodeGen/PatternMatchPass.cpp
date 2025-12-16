@@ -2811,7 +2811,6 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
 
     llvm::Value *varOffset = isConstant0 ? addSubInst->getOperand(1) : addSubInst->getOperand(0);
 
-
     // HW does an early bounds check on varOffset for A32 messages. Thus, if varOffset
     // is negative, then the bounds check fails early even though the immediate offset
     // would bring the final calculation to a positive number.
@@ -3592,7 +3591,8 @@ bool CodeGenPatternMatch::MatchPack4i8(Instruction &I) {
   };
   // Lambda matches clamp(x, MIN, MAX) pattern.
   // If the pattern is found `x` is returned in the `clampedVal` reference.
-  auto MatchClampWithImm = [&MatchMinMaxWithImm](Value *v, Value *&clampedVal, uint32_t minVal, uint32_t maxVal) -> bool {
+  auto MatchClampWithImm = [&MatchMinMaxWithImm](Value *v, Value *&clampedVal, uint32_t minVal,
+                                                 uint32_t maxVal) -> bool {
     bool matchMin = true;
     bool matchMax = false;
     Value *src[2];
@@ -3665,9 +3665,9 @@ bool CodeGenPatternMatch::MatchPack4i8(Instruction &I) {
           sources0[i] = srcToSat;
           sources1[i] = ConstantInt::get(srcToSat->getType(), 0);
           isSat[i] = true;
-        // Match clamping of values to -128..127 range, e.g.:
-        //  %x1 = max i32 %x0, -128
-        //  %x2 = min i32 %x1, 127
+          // Match clamping of values to -128..127 range, e.g.:
+          //  %x1 = max i32 %x0, -128
+          //  %x2 = min i32 %x1, 127
         } else if (MatchClampWithImm(sources0[i], srcToSat, -128, 127)) {
           opcodes[i] = llvm_fptosi;
           sources0[i] = srcToSat;

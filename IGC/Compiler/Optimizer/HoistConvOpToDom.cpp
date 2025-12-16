@@ -95,7 +95,7 @@ bool HoistConvOpToDom::runOnFunction(Function &F) {
       }
 
       auto *CommonDominator = findNearestCommonDominator(PHI);
-      if(FirstCast->getParent() != CommonDominator)
+      if (FirstCast->getParent() != CommonDominator)
         FirstCast->moveBefore(CommonDominator->getTerminator());
 
       for (auto *I : ToUpdate) {

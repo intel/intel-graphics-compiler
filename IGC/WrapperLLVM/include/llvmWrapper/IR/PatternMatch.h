@@ -13,9 +13,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/PatternMatch.h"
 
 namespace llvm {
-namespace PatternMatch {
-
-} // namespace PatternMatch
+namespace PatternMatch {} // namespace PatternMatch
 } // namespace llvm
 
 #endif

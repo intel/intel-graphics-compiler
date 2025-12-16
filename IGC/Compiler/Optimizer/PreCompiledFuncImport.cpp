@@ -396,8 +396,7 @@ bool PreCompiledFuncImport::preProcessDouble() {
 
         handleInstrTypeChange(IEI, newInsertInst);
         toBeDeleted.push_back(IEI);
-      }
-      else if (Inst->getOpcode() == Instruction::FNeg) {
+      } else if (Inst->getOpcode() == Instruction::FNeg) {
         // check if Inst is double instruction or vector of double instructions
         Type *instType = Inst->getType();
         IGCLLVM::FixedVectorType *instVecType = dyn_cast<IGCLLVM::FixedVectorType>(instType);

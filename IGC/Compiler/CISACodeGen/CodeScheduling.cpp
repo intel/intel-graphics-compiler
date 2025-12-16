@@ -521,7 +521,12 @@ private:
   llvm::DenseMap<Value *, DenseSet<Value *>> RealUsesCache;
   llvm::DenseMap<std::pair<Value *, int32_t>, int32_t> ValueSizeCache;
 
-  typedef enum { HANGING_SCALARS_TO_VECTOR, HANGING_VECTOR_TO_SCALARS, HANGING_VECTORS, HANGING_NOOP_VECTORS } HangingLiveVarsType;
+  typedef enum {
+    HANGING_SCALARS_TO_VECTOR,
+    HANGING_VECTOR_TO_SCALARS,
+    HANGING_VECTORS,
+    HANGING_NOOP_VECTORS
+  } HangingLiveVarsType;
 
   // POD structure to keep information about hanging values
   struct HangingLiveVarsInfo {
@@ -883,8 +888,7 @@ private:
           {
             if (Update)
               PrintDumpLevel(VerbosityLevel::High, " (hanging vector dies)");
-            if (HLV->Type == HANGING_SCALARS_TO_VECTOR ||
-                HLV->Type == HANGING_VECTOR_TO_SCALARS) {
+            if (HLV->Type == HANGING_SCALARS_TO_VECTOR || HLV->Type == HANGING_VECTOR_TO_SCALARS) {
               // only scalars die
               RPDecrease = HLV->Size;
             } else {
@@ -897,8 +901,7 @@ private:
                              " (hanging vector, left vars: "
                                  << (HLV->LiveVars.count(RealOp) ? HLV->LiveVars.size() - 1 : HLV->LiveVars.size())
                                  << ")");
-            if (HLV->Type == HANGING_SCALARS_TO_VECTOR ||
-                HLV->Type == HANGING_VECTOR_TO_SCALARS) {
+            if (HLV->Type == HANGING_SCALARS_TO_VECTOR || HLV->Type == HANGING_VECTOR_TO_SCALARS) {
               RPDecrease = 0; // We don't decrease pressure, because the vector is still alive
             }
           }
@@ -1053,7 +1056,8 @@ public:
 
     std::vector<std::unique_ptr<Schedule>> Schedules;
 
-    std::unique_ptr<Schedule> DefaultSchedule = std::make_unique<Schedule>(BB, RPE, FRPE, VSA, RCA, WI, CTX, &C, LogStream);
+    std::unique_ptr<Schedule> DefaultSchedule =
+        std::make_unique<Schedule>(BB, RPE, FRPE, VSA, RCA, WI, CTX, &C, LogStream);
 
     // First try if "GreedyMW" scheduling can be applied
     // This approach prioritizes scheduling by the edge weights
@@ -1078,11 +1082,10 @@ public:
       if (IGC_IS_FLAG_ENABLED(CodeSchedulingForceMWOnly) || !GreedyMWSchedule->canEverHaveSpills()) {
         PrintDump("Greedy MW schedule is forced or has no spills.\n");
         if (((GreedyMWSchedule->getMaxRegpressure() > MaxOriginalRegpressure)) &&
-          IGC_IS_FLAG_DISABLED(CodeSchedulingMWOptimizedHigherRPCommit))
-        {
-          PrintDump("Greedy MW schedule has higher regpressure that the original (" <<
-                    GreedyMWSchedule->getMaxRegpressure() << " > " << MaxOriginalRegpressure <<
-                    "), skipping commit\n");
+            IGC_IS_FLAG_DISABLED(CodeSchedulingMWOptimizedHigherRPCommit)) {
+          PrintDump("Greedy MW schedule has higher regpressure that the original ("
+                    << GreedyMWSchedule->getMaxRegpressure() << " > " << MaxOriginalRegpressure
+                    << "), skipping commit\n");
           PrintDump("Schedule is not changed" << "\n");
           return false;
         }
@@ -1103,7 +1106,8 @@ public:
 
     std::unique_ptr<Schedule> GreedyRPSchedule = nullptr;
 
-    if(!IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly) && GreedyMWSchedule->isComplete() && GreedyMWSchedule->isEqualGreedyRP()) {
+    if (!IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly) && GreedyMWSchedule->isComplete() &&
+        GreedyMWSchedule->isEqualGreedyRP()) {
       PrintDump("Greedy MW schedule is equal to Greedy RP schedule, skipping Greedy RP attempt\n");
       GreedyRPSchedule = std::make_unique<Schedule>(*GreedyMWSchedule);
     } else {
@@ -1126,14 +1130,13 @@ public:
       PrintDump("Greedy RP schedule is forced\n");
       if (((GreedyRPSchedule->getMaxRegpressure() > MaxOriginalRegpressure)) &&
           IGC_IS_FLAG_DISABLED(CodeSchedulingGreedyRPHigherRPCommit)) {
-        PrintDump("Greedy RP schedule has higher regpressure that the original (" <<
-                  GreedyRPSchedule->getMaxRegpressure() << " > " << MaxOriginalRegpressure <<
-                  "), skipping commit\n");
+        PrintDump("Greedy RP schedule has higher regpressure that the original ("
+                  << GreedyRPSchedule->getMaxRegpressure() << " > " << MaxOriginalRegpressure
+                  << "), skipping commit\n");
         PrintDump("Schedule is not changed" << "\n");
         return false;
       }
-      PrintDump("Commiting RP schedule and stopping.\n")
-      PrintDump("Schedule is changed" << "\n");
+      PrintDump("Commiting RP schedule and stopping.\n") PrintDump("Schedule is changed" << "\n");
       GreedyRPSchedule->commit();
       return true;
     }
@@ -1169,9 +1172,9 @@ public:
         PrintDump("Schedule is complete\n");
         if (((S->getMaxRegpressure() > MaxOriginalRegpressure)) &&
             IGC_IS_FLAG_DISABLED(CodeSchedulingMWOptimizedHigherRPCommit)) {
-          PrintDump("Completed schedule on attempt #" << Attempt << " has higher regpressure that the original (" <<
-                    S->getMaxRegpressure() << " > " << MaxOriginalRegpressure <<
-                    "), skipping commit\n");
+          PrintDump("Completed schedule on attempt #" << Attempt << " has higher regpressure that the original ("
+                                                      << S->getMaxRegpressure() << " > " << MaxOriginalRegpressure
+                                                      << "), skipping commit\n");
           PrintDump("Schedule is not changed" << "\n");
           return false;
         }
@@ -1202,9 +1205,9 @@ public:
       PrintDump("No schedule is complete, so GreedyRP schedule is the best.\n");
       if (((GreedyRPSchedule->getMaxRegpressure() > MaxOriginalRegpressure)) &&
           IGC_IS_FLAG_DISABLED(CodeSchedulingGreedyRPHigherRPCommit)) {
-        PrintDump("Greedy RP schedule has higher regpressure that the original (" <<
-                  GreedyRPSchedule->getMaxRegpressure() << " > " << MaxOriginalRegpressure <<
-                  "), skipping commit\n");
+        PrintDump("Greedy RP schedule has higher regpressure that the original ("
+                  << GreedyRPSchedule->getMaxRegpressure() << " > " << MaxOriginalRegpressure
+                  << "), skipping commit\n");
         PrintDump("Schedule is not changed" << "\n");
         return false;
       }
@@ -1924,8 +1927,8 @@ private:
         InstNodePtrList LowestRPNodes;
         if (C[Option::AllowLargerRPWindowRPThreshold] > 0 &&
             LowestRP >= static_cast<int32_t>(C[Option::AllowLargerRPWindowRPThreshold])) {
-            // If the lowest RP is larger than the threshold, we can allow larger RP window
-            LowestRP += static_cast<int32_t>(C[Option::AllowLargerRPWindowSize]);
+          // If the lowest RP is larger than the threshold, we can allow larger RP window
+          LowestRP += static_cast<int32_t>(C[Option::AllowLargerRPWindowSize]);
         }
         for (InstructionNode *Node : Nodes) {
           if (RT.estimate(Node->I) <= LowestRP) {
@@ -2153,7 +2156,7 @@ private:
             auto VectorType = dyn_cast<IGCLLVM::FixedVectorType>(Intr->getType());
             if (VectorType) {
               return static_cast<int>(VectorType->getNumElements()) >=
-                RT.adjustElementsFromSIMDSize(static_cast<int>(C[Option::LargeBlockLoadSize]));
+                     RT.adjustElementsFromSIMDSize(static_cast<int>(C[Option::LargeBlockLoadSize]));
             }
           }
         }
@@ -2251,8 +2254,7 @@ private:
               NonFilteredNodes.push_back(Node);
             }
             // else it's filtered out, until the operand of the select is ready
-          }
-          else {
+          } else {
             NonFilteredNodes.push_back(Node);
           }
         }
@@ -2271,8 +2273,7 @@ private:
         }
 
         InstNodePtrList NonFilteredNodes;
-        if (std::all_of(Nodes.begin(), Nodes.end(),
-                        [&](InstructionNode *Node) { return is2dBlockRead(Node->I); })) {
+        if (std::all_of(Nodes.begin(), Nodes.end(), [&](InstructionNode *Node) { return is2dBlockRead(Node->I); })) {
 
           // Get the first DPAS user
           InstructionNode *FirstDPASUser = nullptr;
@@ -2360,8 +2361,7 @@ private:
             if (Intr->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveAll) {
               NonFilteredNodes.push_back(Node);
             }
-          }
-          else if (IntrinsicInst *Intr = llvm::dyn_cast<IntrinsicInst>(Node->I)) {
+          } else if (IntrinsicInst *Intr = llvm::dyn_cast<IntrinsicInst>(Node->I)) {
             if (Intr->getIntrinsicID() == Intrinsic::maxnum) {
               NonFilteredNodes.push_back(Node);
             }
@@ -2441,8 +2441,8 @@ private:
           }
         }
 
-        std::string Info = formatDebugInfo(
-          RT.getCurrentPressure(), RT.estimate(Node->I), "Im", getVectorShuffleString(Node->I, VSA, RCA));
+        std::string Info = formatDebugInfo(RT.getCurrentPressure(), RT.estimate(Node->I), "Im",
+                                           getVectorShuffleString(Node->I, VSA, RCA));
 
         PrintDump(Info);
         Node->print(*LogStream);
@@ -2528,9 +2528,9 @@ private:
           if (C[Option::PrioritizeLoadsThatUnlockDPASesHighRP]) {
             // Experimental heuristic: prioritize loads that unlock
             // DPASes
-            FilteredReadyList = getLoadsThatUnlockDPASes(FilteredReadyList,
-                                                         RT.adjustElementsFromSIMDSize(
-                                                          C[Option::PrioritizeLoadsThatUnlockDPASesHighRP_MaxLoadSize]));
+            FilteredReadyList = getLoadsThatUnlockDPASes(
+                FilteredReadyList,
+                RT.adjustElementsFromSIMDSize(C[Option::PrioritizeLoadsThatUnlockDPASesHighRP_MaxLoadSize]));
           }
           if (C[Option::PrioritizePopulatingOneVectorHighRP]) {
             FilteredReadyList = filterOutNotUnblockingExistingVectorInst(FilteredReadyList);
@@ -2562,9 +2562,8 @@ private:
 
         std::string ChoosingMode = ChooseByRP ? "RP" : "MW";
         ChoosingMode += CanClone ? "*" : "";
-        std::string Info = formatDebugInfo(RT.getCurrentPressure(), RT.estimate(Node->I),
-                           ChoosingMode,
-                           getVectorShuffleString(Node->I, VSA, RCA));
+        std::string Info = formatDebugInfo(RT.getCurrentPressure(), RT.estimate(Node->I), ChoosingMode,
+                                           getVectorShuffleString(Node->I, VSA, RCA));
         PrintDump(Info);
         Node->print(*LogStream);
 

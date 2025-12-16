@@ -467,7 +467,9 @@ public:
   }
   inline unsigned int getTextureIndex() const { return getNumNormalOperands() - 5; }
   inline unsigned int getImmediateOffsetsIndex() const { return 6; }
-  inline unsigned int getPairedTextureIndex() const { return hasPairedTextureArg() ? getNumNormalOperands() - 6 : UINT_MAX; }
+  inline unsigned int getPairedTextureIndex() const {
+    return hasPairedTextureArg() ? getNumNormalOperands() - 6 : UINT_MAX;
+  }
   inline Value *getTextureValue() const { return getOperand(getTextureIndex()); }
   inline Value *getPairedTextureValue() const {
     return hasPairedTextureArg() ? getOperand(getPairedTextureIndex()) : nullptr;

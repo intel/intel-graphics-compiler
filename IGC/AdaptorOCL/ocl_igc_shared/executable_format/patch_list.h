@@ -106,13 +106,13 @@ enum PATCH_TOKEN {
   PATCH_TOKEN_STATELESS_CONSTANT_MEMORY_OBJECT_KERNEL_ARGUMENT, // 31
                                                                 // @SPatchStatelessConstantMemoryObjectKernelArgument@ -
                                                                 // OpenCL
-  PATCH_TOKEN_ALLOCATE_STATELESS_SURFACE_WITH_INITIALIZATION,       // 32 - (Unused)
-  PATCH_TOKEN_ALLOCATE_STATELESS_PRINTF_SURFACE,                    // 33 @SPatchAllocateStatelessPrintfSurface@
-  PATCH_TOKEN_CB_MAPPING,                                           // 34 - (Unused)
-  PATCH_TOKEN_CB2CR_GATHER_TABLE,                                   // 35 - (Unused)
-  PATCH_TOKEN_ALLOCATE_STATELESS_EVENT_POOL_SURFACE,                // 36 @SPatchAllocateStatelessEventPoolSurface@
-  PATCH_TOKEN_NULL_SURFACE_LOCATION,                                // 37 - (Unused)
-  PATCH_TOKEN_ALLOCATE_STATELESS_PRIVATE_MEMORY,                    // 38 @SPatchAllocateStatelessPrivateSurface@
+  PATCH_TOKEN_ALLOCATE_STATELESS_SURFACE_WITH_INITIALIZATION,   // 32 - (Unused)
+  PATCH_TOKEN_ALLOCATE_STATELESS_PRINTF_SURFACE,                // 33 @SPatchAllocateStatelessPrintfSurface@
+  PATCH_TOKEN_CB_MAPPING,                                       // 34 - (Unused)
+  PATCH_TOKEN_CB2CR_GATHER_TABLE,                               // 35 - (Unused)
+  PATCH_TOKEN_ALLOCATE_STATELESS_EVENT_POOL_SURFACE,            // 36 @SPatchAllocateStatelessEventPoolSurface@
+  PATCH_TOKEN_NULL_SURFACE_LOCATION,                            // 37 - (Unused)
+  PATCH_TOKEN_ALLOCATE_STATELESS_PRIVATE_MEMORY,                // 38 @SPatchAllocateStatelessPrivateSurface@
   PATCH_TOKEN_ALLOCATE_CONSTANT_MEMORY_SURFACE_WITH_INITIALIZATION, // 39 - (Unused)
   PATCH_TOKEN_ALLOCATE_GLOBAL_MEMORY_SURFACE_WITH_INITIALIZATION,   // 40 - (Unused)
   PATCH_TOKEN_ALLOCATE_GLOBAL_MEMORY_SURFACE_PROGRAM_BINARY_INFO,   // 41

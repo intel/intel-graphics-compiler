@@ -395,7 +395,7 @@ void BiFManagerTool::generateSplitedBiFModules(llvm::Module *pMainModule) {
 
     // Do cleanup.
     llvm::legacy::PassManager mpm;
-    mpm.add(IGCLLVM::createLegacyWrappedGlobalDCEPass()); // Delete unreachable globals.
+    mpm.add(IGCLLVM::createLegacyWrappedGlobalDCEPass());           // Delete unreachable globals.
     mpm.add(IGCLLVM::createLegacyWrappedStripDeadDebugInfoPass());  // Remove dead debug info.
     mpm.add(IGCLLVM::createLegacyWrappedStripDeadPrototypesPass()); // Remove dead func decls.
 

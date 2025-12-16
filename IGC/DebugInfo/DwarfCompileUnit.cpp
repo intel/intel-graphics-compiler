@@ -407,7 +407,7 @@ void CompileUnit::addSourceLine(DIE *Die, DIImportedEntity *IE, unsigned Line) {
   llvm::DIFile *File = IE->getFile();
 
   unsigned FileID = DD->getOrCreateSourceID(File->getFilename(), File->getDirectory(), DD->getMD5AsBytes(File),
-                              File->getSource(), getUniqueID(), false);
+                                            File->getSource(), getUniqueID(), false);
   if (DD->getDwarfVersion() <= 4)
     IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
   addUInt(Die, dwarf::DW_AT_decl_file, std::nullopt, FileID);

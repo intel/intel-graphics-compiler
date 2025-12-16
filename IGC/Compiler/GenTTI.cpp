@@ -365,7 +365,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
         // Using alloca size in bytes as the threshold boost seems a bit tricky.
         unsigned AllocaSize = *(AI->getAllocationSizeInBits(DL)) / 8;
         // Assume every iteration consumes 1 DW (64 bytes).
-        if (AllocaSize/8 > UnrollMaxCountForAlloca)
+        if (AllocaSize / 8 > UnrollMaxCountForAlloca)
           continue;
 
         ThresholdBoost += AllocaSize;
@@ -735,7 +735,7 @@ unsigned getLoopSize(const Loop *L, const TargetTransformInfo &TTI) {
   InstructionCost LoopSize;
   LoopSize = Metrics.NumInsts;
 
-  LoopSize = (LoopSize > 3/*BEInsns + 1*/) ? LoopSize : 3;
+  LoopSize = (LoopSize > 3 /*BEInsns + 1*/) ? LoopSize : 3;
   return *LoopSize.getValue();
 }
 

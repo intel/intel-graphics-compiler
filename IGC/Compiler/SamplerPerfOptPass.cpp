@@ -324,11 +324,15 @@ bool SamplerPerfOptPass::runOnFunction(Function &F) {
           }
         }
         if (SamplerLoadIntrinsic *loadInst = dyn_cast<SamplerLoadIntrinsic>(II)) {
-          // LscSamplerRouting is from UMD AIL to control per shader
+       // LscSamplerRouting is from UMD AIL to control per shader
           const unsigned int umdLscSamplerRouting = ctx->getModuleMetaData()->compOpt.LscSamplerRouting;
-          const IGC::TriboolFlag regKeyValue = static_cast<IGC::TriboolFlag>(IGC_GET_FLAG_VALUE(EnableLscSamplerRouting));
-          const bool defaultValue = (umdLscSamplerRouting == LOADS_VIA_LSC_DEFAULT) ? ctx->platform.enableLscSamplerRouting() : (umdLscSamplerRouting == LOADS_VIA_LSC_ENABLE);
-          const bool enableLscSamplerRouting = (regKeyValue == IGC::TriboolFlag::Default) ? defaultValue : (regKeyValue == IGC::TriboolFlag::Enabled);
+          const IGC::TriboolFlag regKeyValue =
+              static_cast<IGC::TriboolFlag>(IGC_GET_FLAG_VALUE(EnableLscSamplerRouting));
+          const bool defaultValue = (umdLscSamplerRouting == LOADS_VIA_LSC_DEFAULT)
+                                        ? ctx->platform.enableLscSamplerRouting()
+                                        : (umdLscSamplerRouting == LOADS_VIA_LSC_ENABLE);
+          const bool enableLscSamplerRouting =
+              (regKeyValue == IGC::TriboolFlag::Default) ? defaultValue : (regKeyValue == IGC::TriboolFlag::Enabled);
 
           if (ctx->platform.hasLSCSamplerRouting() && !enableLscSamplerRouting &&
               ctx->m_DriverInfo.supportLscSamplerRouting() &&

@@ -237,9 +237,7 @@ bool CodeAssumption::addAssumption(Function *F, AssumptionCache *AC) {
 
           // Register assumption
           if (AC) {
-            AC->registerAssumption(
-                dyn_cast<AssumeInst>(assumeInst)
-            );
+            AC->registerAssumption(dyn_cast<AssumeInst>(assumeInst));
           }
 
           assumptionAdded[PN] = 1;

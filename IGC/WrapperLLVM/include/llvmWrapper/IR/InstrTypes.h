@@ -22,19 +22,13 @@ inline bool isNot(const llvm::Value *V) {
 }
 } // namespace BinaryOperator
 
-inline void removeFnAttr(llvm::CallInst *CI, llvm::Attribute::AttrKind Kind) {
-  CI->removeFnAttr(Kind);
-}
+inline void removeFnAttr(llvm::CallInst *CI, llvm::Attribute::AttrKind Kind) { CI->removeFnAttr(Kind); }
 
-inline void addFnAttr(llvm::CallInst *CI, llvm::Attribute::AttrKind Kind) {
-  CI->addFnAttr(Kind);
-}
+inline void addFnAttr(llvm::CallInst *CI, llvm::Attribute::AttrKind Kind) { CI->addFnAttr(Kind); }
 
 inline void addFnAttr(llvm::CallInst *CI, llvm::Attribute Attr) { addFnAttr(CI, Attr.getKindAsEnum()); }
 
-inline uint64_t getRetDereferenceableBytes(llvm::CallBase *Call) {
-  return Call->getRetDereferenceableBytes();
-}
+inline uint64_t getRetDereferenceableBytes(llvm::CallBase *Call) { return Call->getRetDereferenceableBytes(); }
 } // namespace IGCLLVM
 
 #endif
