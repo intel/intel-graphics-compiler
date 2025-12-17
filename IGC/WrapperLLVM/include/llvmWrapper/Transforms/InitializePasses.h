@@ -39,4 +39,13 @@ void initializeAnnotation2MetadataLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeForceFunctionAttrsLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeCallSiteSplittingLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeCalledValuePropagationLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeGlobalOptLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeEliminateAvailableExternallyLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeReversePostOrderFunctionAttrsLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeFloat2IntPassWrapperPass(llvm::PassRegistry &);
+void initializeConstantMergeLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeLoopDistributeLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeDivRemPairsLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeSLPVectorizerPassWrapperPass(llvm::PassRegistry &);
+void initializeVectorCombineLegacyPassWrapperPass(llvm::PassRegistry &);
 #endif // IGCLLVM_TRANSFORMS_INITIALIZE_PASSES_H

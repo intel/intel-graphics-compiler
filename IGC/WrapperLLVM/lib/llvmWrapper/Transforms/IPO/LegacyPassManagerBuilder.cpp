@@ -10,17 +10,27 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/IPO/LegacyPassManagerBuilder.h"
 #include "llvmWrapper/Transforms/IPO/StripDeadPrototypes.h"
 #include "llvmWrapper/Transforms/Scalar/LoopDeletion.h"
+#include "llvm/Transforms/IPO/ElimAvailExtern.h"
+#include "llvmWrapper/Transforms/IPO/ElimAvailExtern.h"
+#include "llvmWrapper/Transforms/IPO/ConstantMerge.h"
 #include "llvmWrapper/Transforms/Scalar/LoopIdiomRecognize.h"
 #include "llvmWrapper/Transforms/Utils/LibCallsShrinkWrap.h"
 #include "llvmWrapper/Transforms/Vectorize/LoopVectorize.h"
+#include "llvmWrapper/Transforms/Vectorize/SLPVectorizer.h"
+#include "llvmWrapper/Transforms/Vectorize/VectorCombine.h"
 #include "llvmWrapper/Transforms/Scalar/WarnMissedTransforms.h"
 #include "llvmWrapper/Transforms/Scalar/LoopIdiomRecognize.h"
+#include "llvmWrapper/Transforms/Scalar/DivRemPairs.h"
 #include "llvmWrapper/Transforms/IPO/Annotation2Metadata.h"
 #include "llvmWrapper/Transforms/IPO/ForceFunctionAttrs.h"
 #include "llvmWrapper/Transforms/Scalar/BDCE.h"
 #include "llvmWrapper/Transforms/Scalar/AlignmentFromAssumptions.h"
 #include "llvmWrapper/Transforms/Scalar/CallSiteSplitting.h"
 #include "llvmWrapper/Transforms/IPO/CalledValuePropagation.h"
+#include "llvmWrapper/Transforms/IPO/GlobalOpt.h"
+#include "llvmWrapper/Transforms/IPO/FunctionAttrs.h"
+#include "llvmWrapper/Transforms/Scalar/Float2Int.h"
+#include "llvmWrapper/Transforms/Scalar/LoopDistribute.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -227,11 +237,11 @@ void PassManagerBuilder::addVectorPasses(legacy::PassManagerBase &PM, bool IsFul
 
   // Optimize parallel scalar instruction chains into SIMD instructions.
   if (SLPVectorize) {
-    PM.add(createSLPVectorizerPass());
+    PM.add(IGCLLVM::createLegacyWrappedSLPVectorizerPass());
   }
 
   // Enhance/cleanup vector code.
-  PM.add(createVectorCombinePass());
+  PM.add(IGCLLVM::createLegacyWrappedVectorCombinePass());
 
   if (!IsFullLTO) {
     PM.add(createInstructionCombiningPass());
@@ -284,7 +294,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
   MPM.add(createIPSCCPPass()); // IP SCCP
   MPM.add(IGCLLVM::createLegacyWrappedCalledValuePropagationPass());
 
-  MPM.add(createGlobalOptimizerPass()); // Optimize out global vars
+  MPM.add(IGCLLVM::createLegacyWrappedGlobalOptPass()); // Optimize out global vars
   // Promote any localized global vars.
   MPM.add(createPromoteMemoryToRegisterPass());
 
@@ -326,9 +336,9 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
     // here enables more opportunity for GlobalDCE as it may make
     // globals referenced by available external functions dead
     // and saves running remaining passes on the eliminated functions.
-    MPM.add(createEliminateAvailableExternallyPass());
+    MPM.add(IGCLLVM::createLegacyWrappedEliminateAvailableExternallyPass());
 
-  MPM.add(createReversePostOrderFunctionAttrsPass());
+  MPM.add(IGCLLVM::createLegacyWrappedReversePostOrderFunctionAttrsPass());
 
   // The inliner performs some kind of dead code elimination as it goes,
   // but there are cases that are not really caught by it. We might
@@ -337,7 +347,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
   // benefits generally outweight the cost, making the whole pipeline
   // faster.
   if (RunInliner) {
-    MPM.add(createGlobalOptimizerPass());
+    MPM.add(IGCLLVM::createLegacyWrappedGlobalOptPass());
     MPM.add(createGlobalDCEPass());
   }
 
@@ -358,7 +368,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
   // correct in the face of IR changes).
   MPM.add(createGlobalsAAWrapperPass());
 
-  MPM.add(createFloat2IntPass());
+  MPM.add(IGCLLVM::createLegacyWrappedFloat2IntPass());
   MPM.add(createLowerConstantIntrinsicsPass());
 
   // Re-rotate loops in all our loop nests. These may have fallout out of
@@ -370,7 +380,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
   // into separate loop that would otherwise inhibit vectorization.  This is
   // currently only performed for loops marked with the metadata
   // llvm.loop.distribute=true or when -enable-loop-distribute is specified.
-  MPM.add(createLoopDistributePass());
+  MPM.add(IGCLLVM::createLegacyWrappedLoopDistributePass());
 
   addVectorPasses(MPM, /* IsFullLTO */ false);
 
@@ -381,7 +391,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
   // late pass of GlobalDCE.  It is capable of deleting dead cycles.
   if (OptLevel > 1) {
     MPM.add(createGlobalDCEPass());     // Remove dead fns and globals.
-    MPM.add(createConstantMergePass()); // Merge dup global constants
+    MPM.add(IGCLLVM::createLegacyWrappedConstantMergePass()); // Merge dup global constants
   }
 
   // LoopSink pass sinks instructions hoisted by LICM, which serves as a
@@ -395,7 +405,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
   // This hoists/decomposes div/rem ops. It should run after other sink/hoist
   // passes to avoid re-sinking, but before SimplifyCFG because it can allow
   // flattening of blocks.
-  MPM.add(createDivRemPairsPass());
+  MPM.add(IGCLLVM::createLegacyWrappedDivRemPairsPass());
 
   // LoopSink (and other loop passes since the last simplifyCFG) might have
   // resulted in single-entry-single-exit or empty blocks. Clean up the CFG.
