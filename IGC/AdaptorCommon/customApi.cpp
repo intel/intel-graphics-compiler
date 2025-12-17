@@ -204,6 +204,7 @@ void IGC_DEBUG_API_CALL SetCompilerOptionOpaque(OptionFlag flag, void *data) {
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
   case OptionFlag::OPTION_##regkeyName:                                                                                \
     SetCompilerOptionOpaqueHelper(g_RegKeyList.regkeyName, reinterpret_cast<dataType *>(data));                        \
+    g_RegKeyList.regkeyName.Set();                                                                                     \
     break;
 #include "common/igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY
