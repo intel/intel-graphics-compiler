@@ -105,7 +105,8 @@ int IR_Builder::translateVISAArithmeticInst(
           createSrc(phyregpool.getAcc0Reg(), 0, 0, getRegionStride1(),
                     dstOpnd->getType());
 
-      createMov(exsize, carryBorrow, accSrcOpnd, instOpt, true);
+      createMov(duplicateOperand(predOpnd), exsize, carryBorrow, accSrcOpnd,
+                instOpt, true);
     } else if (opcode == ISA_PLANE) {
       const RegionDesc *rd = createRegionDesc(0, 4, 1);
       auto src0 = inst->getSrc(0);

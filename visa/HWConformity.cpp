@@ -91,6 +91,14 @@ G4_DstRegRegion *HWConformity::insertMovAfter(INST_LIST_ITER &it,
                                               G4_DstRegRegion *dst,
                                               G4_Type type, G4_BB *bb,
                                               G4_SubReg_Align dstAlign) {
+  return insertMovAfter(it, dst, type, bb, /*stride*/0, dstAlign);
+}
+
+G4_DstRegRegion *HWConformity::insertMovAfter(INST_LIST_ITER &it,
+                                              G4_DstRegRegion *dst,
+                                              G4_Type type, G4_BB *bb,
+                                              uint16_t stride,
+                                              G4_SubReg_Align dstAlign) {
   G4_INST *inst = *it;
 
   if (!dst) {
@@ -130,14 +138,14 @@ G4_DstRegRegion *HWConformity::insertMovAfter(INST_LIST_ITER &it,
     type = (type == Type_UB ? Type_UW : Type_W);
   }
   uint16_t dstWidthBytes = newExecSize * TypeSize(type);
-  uint16_t scale = TypeSize(execType) / TypeSize(type);
+  uint16_t scale = stride ? stride : TypeSize(execType) / TypeSize(type);
   /*   so according to comments in function that call it MAD needs to have
      packed format. It ends up with hStride 2, due to DefHoisting. So it is
      trying to undo it. For every other type if srcType > dstCype we need to
      adjust regions. This is not necessary for HF. It's already packed.
 
       The src region of move is wrong. Since for HF it is packed, unlike other
-     data types. mad (8) r56.0.xyzw:hf -r37.0.xyzw:f r59.0.xyzw:hf r58.0.xyzw:hf
+     data types.mad (8) r56.0.xyzw:hf -r37.0.xyzw:f r59.0.xyzw:hf r58.0.xyzw:hf
      {Align16, NoMask} mov (16) r44.0<2>:hf r56.0<16;8,2>:hf {Align1, H1} //
      #??:$39:%66
   */
@@ -2087,9 +2095,11 @@ bool HWConformity::fixIndirectOpnd(INST_LIST_ITER i, G4_BB *bb) {
   return spill_dst;
 }
 
-// If an accumulator is a source operand, its register region must match that of
-// the destination register (which means GRF-aligned since we always GRF-align
-// Acc) also check for restrictions on explicit acc dst
+// If an accumulator is a implicilit src/dst or explicit src operand, its
+// register region must match that of the destination register, which means
+// dst must be GRF-aligned and hstride must be 1 since we always GRF-align
+// Acc and use <1;1,0> for Acc source.
+// Also check for restrictions on explicit acc dst.
 bool HWConformity::fixAcc(INST_LIST_ITER iter, G4_BB *bb) {
   G4_INST *inst = *iter;
 
@@ -2106,7 +2116,7 @@ bool HWConformity::fixAcc(INST_LIST_ITER iter, G4_BB *bb) {
     }
   }
 
-  // implicit acc src/dst get its offset from dst
+  // Implicit acc src/dst and explicit acc src must be aligned with dst GRF
   bool useAcc = inst->hasImplicitAccSrc() || inst->hasImplicitAccDst();
   if (!useAcc) {
     for (int i = 0; i < inst->getNumSrc(); ++i) {
@@ -2119,9 +2129,10 @@ bool HWConformity::fixAcc(INST_LIST_ITER iter, G4_BB *bb) {
   }
 
   if (useAcc && dst && dst->getBase() && dst->getBase()->isRegVar()) {
-    if (!builder.tryToAlignOperand(dst, kernel.numEltPerGRF<Type_UB>())) {
-      inst->setDest(
-          insertMovAfter(iter, dst, dst->getType(), bb, builder.getGRFAlign()));
+    if (!builder.tryToAlignOperand(dst, kernel.numEltPerGRF<Type_UB>()) ||
+        dst->getHorzStride() != 1) {
+      inst->setDest(insertMovAfter(iter, dst, dst->getType(), bb, /*stride*/ 1,
+                                   builder.getGRFAlign()));
       changed = true;
     }
   }

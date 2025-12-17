@@ -225,6 +225,9 @@ protected:
   G4_DstRegRegion *insertMovAfter(INST_LIST_ITER &it, G4_DstRegRegion *dst,
                                   G4_Type type, G4_BB *bb,
                                   G4_SubReg_Align dstAlign = Any);
+  G4_DstRegRegion *insertMovAfter(INST_LIST_ITER &it, G4_DstRegRegion *dst,
+                                  G4_Type type, G4_BB *bb, uint16_t stride,
+                                  G4_SubReg_Align dstAlign = Any);
   G4_Operand *insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4_Type type,
                               G4_BB *bb, G4_SubReg_Align tmpAlign = Any);
   G4_Operand *insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4_Type type,
