@@ -123,7 +123,7 @@ IGC_INITIALIZE_PASS_END(CodeScheduling, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ON
 char CodeScheduling::ID = 0;
 CodeScheduling::CodeScheduling() : FunctionPass(ID), LogStringStream(Log) {
   if (IGC_IS_FLAG_ENABLED(PrintToConsole)) {
-    LogStream = &IGC::Debug::ods();
+    LogStream = &llvm::outs();
   } else {
     LogStream = &LogStringStream;
   }
