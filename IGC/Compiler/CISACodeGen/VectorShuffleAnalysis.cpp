@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/VectorShuffleAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
-#include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "common/debug/Debug.hpp"
 
@@ -263,5 +262,5 @@ bool VectorShuffleAnalysis::runOnFunction(llvm::Function &F) {
     }
   }
 
-  return true;
+  return false;
 }

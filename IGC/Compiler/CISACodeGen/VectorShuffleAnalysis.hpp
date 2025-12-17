@@ -139,6 +139,14 @@ public:
     return nullptr;
   }
 
+  void releaseMemory() override {
+    DestVectors.clear();
+    VectorToScalarsPatterns.clear();
+    DestVectorsForSourceVector.clear();
+    ValueToDestVecMap.clear();
+    VectorToScalarsPatternsMap.clear();
+  }
+
 private:
   std::vector<std::unique_ptr<DestVector>> DestVectors;
   std::vector<std::unique_ptr<VectorToScalarsPattern>> VectorToScalarsPatterns;
