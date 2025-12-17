@@ -1426,7 +1426,8 @@ public:
   bool supports2dBlockTranspose64ByteWidth() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
   bool supportsReadStateInfo() const {
-    return hasEfficient64bEnabled() && IGC_IS_FLAG_ENABLED(EnableReadStateToA64Read);
+    return hasEfficient64bEnabled() && (IGC_IS_FLAG_ENABLED(EnableReadStateToA64Read) ||
+        m_WaTable.Wa_14025275057);
   }
 
   bool supportsFp4Int4Upsampling() const { return isCoreChildOf(IGFX_XE3P_CORE); }
