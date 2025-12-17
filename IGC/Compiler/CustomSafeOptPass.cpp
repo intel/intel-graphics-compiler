@@ -4517,20 +4517,6 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F) {
   bool enableCompression = false;
   CompressionResult compressionResult = {};
 
-  if (((int)IGC_GET_FLAG_VALUE(MinCompressionThreshold) > 0) && modMD->immConstant.sizes.size() == 1) {
-    std::optional<uint32_t> optionalCompressedSize =
-        getMaxStorageWhenStoringUniqueValues(modMD->immConstant.data, compressionResult);
-    if (optionalCompressedSize.has_value() && optionalCompressedSize.value() > 0 &&
-        static_cast<size_t>(optionalCompressedSize.value()) < storageNeeded) {
-      auto compressionEfficiency =
-          static_cast<double>(modMD->immConstant.data.size() - optionalCompressedSize.value()) * 100.0 /
-          modMD->immConstant.data.size();
-      if (compressionEfficiency > IGC_GET_FLAG_VALUE(MinCompressionThreshold)) {
-        storageNeeded = static_cast<size_t>(optionalCompressedSize.value());
-        enableCompression = true;
-      }
-    }
-  }
 
   if (modMD->immConstant.data.size() && storageNeeded <= maxImmConstantSizePushedLimit) {
     IRBuilder<> m_builder(F.getContext());
