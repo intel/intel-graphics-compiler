@@ -143,9 +143,12 @@ private:
       refFreqs[lr] = llvm::ScaledNumber<uint64_t>::getZero();
     refFreqs[lr] += refFreq;
 
-    if (staticRefCnts.find(lr) == staticRefCnts.end())
-      staticRefCnts[lr] = 0;
-    staticRefCnts[lr] += 1;
+    if (willDumpOnSpilThreshold() || willDumpSpillCostAnalysis()) {
+      if (staticRefCnts.find(lr) == staticRefCnts.end())
+        staticRefCnts[lr] = 0;
+      staticRefCnts[lr] += 1;
+    }
+
     return;
   };
 
