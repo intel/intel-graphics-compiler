@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "RTStackFormat.h"
 #include "RTStackReflectionIRBG/RTStackReflectionBuilder.h"
+#include "RenderSurfaceStateIRBG/RenderSurfaceStateBuilder.h"
 #include "common/IGCIRBuilder.h"
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CodeGenPublic.h"
@@ -24,12 +25,15 @@ SPDX-License-Identifier: MIT
 
 namespace llvm {
 
-class RTBuilder : public IGCIRBuilder<>, public RTStackReflectionBuilder<RTBuilder> {
+class RTBuilder : public IGCIRBuilder<>,
+                  public RTStackReflectionBuilder<RTBuilder>,
+                  public RenderSurfaceStateBuilder<RTBuilder> {
   // Allow the CRTP base class to access private members
   friend class RTStackReflectionBuilder<RTBuilder>;
 
 public:
   const IGC::CodeGenContext &getCtx() const { return Ctx; }
+  unsigned getSurfaceStateSize() const { return Ctx.platform.getSurfaceStateSize(); }
   // Here are more specialized values that enforce more type safety
   // between the accessor methods of RTBuilder at the C++ level to avoid
   // passing the wrong values in.

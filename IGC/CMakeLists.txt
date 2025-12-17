@@ -1466,6 +1466,12 @@ include_directories(
 include_directories(
   "${CMAKE_CURRENT_BINARY_DIR}/AdaptorCommon/RayTracing/RTStackReflectionIRBG"
 )
+# Include directory for auto-generated Render Surface State headers
+include_directories(
+  "${CMAKE_CURRENT_BINARY_DIR}/AdaptorCommon/RenderSurfaceStateIRBG"
+  # Source directory for RenderSurfaceStateIRBG/RenderSurfaceStateBuilder.h
+  "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorCommon"
+)
 
 if(LLVM_ON_WIN32)
   include_directories(
@@ -1888,6 +1894,7 @@ if(IGC_OPTION__BUILD_IGC_OPT OR IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
   set_target_properties("${IGC_BUILD__PROJ__igc_lib}" PROPERTIES FOLDER "Libraries")
 
   add_dependencies(${IGC_BUILD__PROJ__igc_lib} RTStackReflectionIRBG)
+  add_dependencies(${IGC_BUILD__PROJ__igc_lib} RenderSurfaceStateIRBG)
   if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
     target_link_libraries("${IGC_BUILD__PROJ__igc_lib}" PRIVATE LLVMSPIRVLib)
   endif()
@@ -1944,6 +1951,7 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${IGC_BUILD__PROJ__GenISAIntrinsics}")
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     MDAutogen)
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     RTStackReflectionIRBG)
+  add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     RenderSurfaceStateIRBG)
 
   if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     SPIRVExtensionsSupportGen)
@@ -1961,6 +1969,7 @@ if (FCL_ENABLED)
   add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__BiFModule_OCL}")
   add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__BiFManager}")
 endif()
+
 
 
 foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})

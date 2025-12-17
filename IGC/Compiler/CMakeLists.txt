@@ -219,3 +219,4 @@ target_link_libraries("${IGC_BUILD__PROJ__Compiler}" IGCOptions)
 
 add_dependencies("${IGC_BUILD__PROJ__Compiler}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
 add_dependencies("${IGC_BUILD__PROJ__Compiler}" RTStackReflectionIRBG)
+add_dependencies("${IGC_BUILD__PROJ__Compiler}" RenderSurfaceStateIRBG)
