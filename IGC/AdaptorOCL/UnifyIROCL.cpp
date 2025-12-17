@@ -60,8 +60,9 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/ImageFuncs/ImageFuncsAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ImageFuncs/ImageFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ImageFuncs/ResolveSampledImageBuiltins.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/PrepareInlineSamplerForBindless/PrepareInlineSamplerForBindless.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/ResolveInlineSamplerForBindless/ResolveInlineSamplerForBindless.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/BindlessImage/ResolveImageImplicitArgsForBindless.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/BindlessImage/PrepareInlineSamplerForBindless.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/BindlessImage/ResolveInlineSamplerForBindless.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantResolution.hpp"
@@ -487,6 +488,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
   mpm.add(CreateFoldKnownWorkGroupSizes());
 
   mpm.add(new ResolveSampledImageBuiltins());
+  mpm.add(new ResolveImageImplicitArgsForBindless());
 
   // 64-bit atomics have to be resolved before AddImplicitArgs pass as it uses
   // local ids for spin lock initialization

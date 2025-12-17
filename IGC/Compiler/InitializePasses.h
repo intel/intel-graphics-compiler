@@ -142,6 +142,7 @@ void initializePullConstantHeuristicsPass(llvm::PassRegistry &);
 void initializeScalarizerCodeGenPass(llvm::PassRegistry &);
 void initializeReduceLocalPointersPass(llvm::PassRegistry &);
 void initializeReplaceUnsupportedIntrinsicsPass(llvm::PassRegistry &);
+void initializeResolveImageImplicitArgsForBindlessPass(llvm::PassRegistry &);
 void initializeResolveInlineSamplerForBindlessPass(llvm::PassRegistry &);
 void initializePreCompiledFuncImportPass(llvm::PassRegistry &);
 void initializePurgeMetaDataUtilsPass(llvm::PassRegistry &);
