@@ -989,7 +989,7 @@ private:
 
   CVariable *tryReusingXYZWPayload(llvm::Value *storedVal, llvm::BasicBlock *BB, unsigned numElems, VISA_Type type,
                                    CVariable *pSrc_X, CVariable *pSrc_Y, CVariable *pSrc_Z, CVariable *pSrc_W,
-                                   const unsigned int numEltGRF);
+                                   const unsigned int numEltGRF, bool transposeSIMD1 = false);
 
   // Emit code in slice starting from (reverse) iterator I. Return the
   // iterator to the next pattern to emit.
