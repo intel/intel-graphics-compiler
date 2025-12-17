@@ -2179,79 +2179,6 @@ void __attribute__((overloadable))
 write_imageui(write_only image2d_array_t image_array, int4 coord, uint4 color);
 
 /**
-   * Use coord.xy and sample to do an element
-   * lookup in the 2D multi-sample image layer
-   * identified by index coord.z in the 2D multi-sample
-   * image array specified by image.
-   * read_imagef returns floating-point values in the
-   * range [0.0 ... 1.0] for image objects created with
-   * image_channel_data_type set to one of the predefined
-   * packed formats or CL_UNORM_INT8, or
-   * CL_UNORM_INT16.
-   * read_imagef returns floating-point values in the
-   * range [-1.0 ... 1.0] for image objects created with
-   * image_channel_data_type set to CL_SNORM_INT8,
-   * or CL_SNORM_INT16.
-   * read_imagef returns floating-point values for image
-   * objects created with image_channel_data_type set to
-   * CL_HALF_FLOAT or CL_FLOAT.
-   * The read_imagef calls that take integer coordinates
-   * must use a sampler with filter mode set to
-   * CLK_FILTER_NEAREST, normalized coordinates set
-   * to CLK_NORMALIZED_COORDS_FALSE and
-   * addressing mode set to
-   * CLK_ADDRESS_CLAMP_TO_EDGE,
-   * CLK_ADDRESS_CLAMP or CLK_ADDRESS_NONE;
-   * otherwise the values returned are undefined.
-   * Values returned by read_imagef for image objects
-   * with image_channel_data_type values not specified
-   * in the description above are undefined.
-   */
-
-// 2D multisample image arrays
-
-#ifdef cl_khr_gl_msaa_sharing
-float4 __attribute__((overloadable))
-read_imagef(read_only image2d_array_msaa_t image, int4 coord, int sample);
-int4 __attribute__((overloadable))
-read_imagei(read_only image2d_array_msaa_t image, int4 coord, int sample);
-uint4 __attribute__((overloadable))
-read_imageui(read_only image2d_array_msaa_t image, int4 coord, int sample);
-#endif
-/**
-   * Use coord.xy and sample to do an element
-   * lookup in the 2D multi-sample image layer
-   * identified by index coord.z in the 2D multi-sample
-   * image array specified by image.
-   * read_imagef returns floating-point values in the
-   * range [0.0 ... 1.0] for image objects created with
-   * image_channel_data_type set to one of the predefined
-   * packed formats or CL_UNORM_INT8, or
-   * CL_UNORM_INT16.
-   * read_imagef returns floating-point values in the
-   * range [-1.0 ... 1.0] for image objects created with
-   * image_channel_data_type set to CL_SNORM_INT8,
-   * or CL_SNORM_INT16.
-   * read_imagef returns floating-point values for image
-   * objects created with image_channel_data_type set to
-   * CL_HALF_FLOAT or CL_FLOAT.
-   * The read_imagef calls that take integer coordinates
-   * must use a sampler with filter mode set to
-   * CLK_FILTER_NEAREST, normalized coordinates set
-   * to CLK_NORMALIZED_COORDS_FALSE and
-   * addressing mode set to
-   * CLK_ADDRESS_CLAMP_TO_EDGE,
-   * CLK_ADDRESS_CLAMP or CLK_ADDRESS_NONE;
-   * otherwise the values returned are undefined.
-   * Values returned by read_imagef for image objects
-   * with image_channel_data_type values not specified
-   * in the description above are undefined.
-   */
-#ifdef cl_khr_gl_msaa_sharing
-float __attribute__((overloadable))
-read_imagef(read_only image2d_array_msaa_depth_t image, int4 coord, int sample);
-#endif
-/**
    * Use coord.xy to do an element lookup in the
    * 2D depth image identified by index coord.z in the 2D
    * image array specified by image.
@@ -2330,13 +2257,6 @@ void __attribute__((overloadable))
 write_imagef(write_only image2d_array_depth_t image, int4 coord, float color);
 
 /**
-   * Return the number of samples associated with image
-   */
-
-#ifdef cl_khr_gl_msaa_sharing
-int __attribute__((overloadable)) get_image_num_samples(image2d_array_msaa_t image);
-#endif
-/**
    * Return the image width.
    */
 
@@ -2345,20 +2265,12 @@ int __attribute__((overloadable)) get_image_width(image1d_buffer_t image);
 int __attribute__((overloadable)) get_image_width(image1d_array_t image);
 int __attribute__((overloadable)) get_image_width(image2d_array_t image);
 int __attribute__((overloadable)) get_image_width(image2d_array_depth_t image);
-#ifdef cl_khr_gl_msaa_sharing
-int __attribute__((overloadable)) get_image_width(image2d_array_msaa_t image);
-int __attribute__((overloadable)) get_image_width(image2d_array_msaa_depth_t image);
-#endif
 /**
    * Return the image height.
    */
 
 int __attribute__((overloadable)) get_image_height(image2d_array_t image);
 int __attribute__((overloadable)) get_image_height(image2d_array_depth_t image);
-#ifdef cl_khr_gl_msaa_sharing
-int __attribute__((overloadable)) get_image_height(image2d_array_msaa_t image);
-int __attribute__((overloadable)) get_image_height(image2d_array_msaa_depth_t image);
-#endif
 /**
    * Return the image array size.
    */
@@ -2367,12 +2279,6 @@ size_t __attribute__((overloadable)) get_image_array_size(image1d_array_t image_
 size_t __attribute__((overloadable)) get_image_array_size(image2d_array_t image_array);
 size_t __attribute__((overloadable))
 get_image_array_size(image2d_array_depth_t image_array);
-#ifdef cl_khr_gl_msaa_sharing
-size_t
-    __attribute__((overloadable)) get_image_array_size(image2d_array_msaa_t image_array);
-size_t __attribute__((overloadable))
-get_image_array_size(image2d_array_msaa_depth_t image_array);
-#endif
 /**
    * Return the channel data type. Valid values are:
    * CLK_SNORM_INT8
@@ -2398,11 +2304,6 @@ int __attribute__((overloadable)) get_image_channel_data_type(image1d_array_t im
 int __attribute__((overloadable)) get_image_channel_data_type(image2d_array_t image);
 int __attribute__((overloadable))
 get_image_channel_data_type(image2d_array_depth_t image);
-#ifdef cl_khr_gl_msaa_sharing
-int __attribute__((overloadable)) get_image_channel_data_type(image2d_array_msaa_t image);
-int __attribute__((overloadable))
-get_image_channel_data_type(image2d_array_msaa_depth_t image);
-#endif
 
 /**
    * Return the image channel order. Valid values are:
@@ -2429,11 +2330,6 @@ int __attribute__((overloadable)) get_image_channel_order(image1d_buffer_t image
 int __attribute__((overloadable)) get_image_channel_order(image1d_array_t image);
 int __attribute__((overloadable)) get_image_channel_order(image2d_array_t image);
 int __attribute__((overloadable)) get_image_channel_order(image2d_array_depth_t image);
-#ifdef cl_khr_gl_msaa_sharing
-int __attribute__((overloadable)) get_image_channel_order(image2d_array_msaa_t image);
-int __attribute__((overloadable))
-get_image_channel_order(image2d_array_msaa_depth_t image);
-#endif
 
 /**
    * Return the 2D image width and height as an int2
@@ -2442,10 +2338,6 @@ get_image_channel_order(image2d_array_msaa_depth_t image);
    */
 int2 __attribute__((overloadable)) get_image_dim(image2d_array_t image);
 int2 __attribute__((overloadable)) get_image_dim(image2d_array_depth_t image);
-#ifdef cl_khr_gl_msaa_sharing
-int2 __attribute__((overloadable)) get_image_dim(image2d_array_msaa_t image);
-int2 __attribute__((overloadable)) get_image_dim(image2d_array_msaa_depth_t image);
-#endif
 
 /**
   * Sampler-less Image Access
