@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -89,6 +89,7 @@ GenPrecision_Info_t GenPrecisionTable[] = {
     /* 12 */ {GenPrecision::TF32, 32, "tf32"},
     /* 13 */ {GenPrecision::INVALID, 0, nullptr}, // unused
     /* 14 */ {GenPrecision::HF8, 8, "hf8"},
+    /* 15 */ {GenPrecision::E2M1, 4, "e2m1"},
 };
 static_assert((int)GenPrecision::INVALID == 0);
 static_assert((int)GenPrecision::U1 == 1);
@@ -302,6 +303,8 @@ G4_opcode GetGenOpcodeFromVISAOpcode(ISA_Opcode opcode) {
     break;
   case ISA_GOTO:
     return G4_goto;
+  case ISA_BDPAS:
+    return G4_bdpas;
   case ISA_MADW:
     return G4_madw;
     break;
@@ -456,6 +459,7 @@ bool hasPredicate(ISA_Opcode op) {
             op == ISA_3D_GATHER4 || op == ISA_3D_RT_WRITE ||
             op == ISA_3D_URB_WRITE || op == ISA_3D_TYPED_ATOMIC ||
             op == ISA_QW_GATHER || op == ISA_QW_SCATTER
+            || op == ISA_RAW_SENDG
     );
   case ISA_Inst_Flow:
     return !(op == ISA_SUBROUTINE || op == ISA_LABEL || op == ISA_SWITCHJMP);
@@ -497,6 +501,10 @@ bool hasExecSize(ISA_Opcode op, uint8_t subOp) {
         op == ISA_3D_INFO) {
       return true;
     } else if (op == ISA_DPAS || op == ISA_DPASW) {
+      return true;
+    } else if (op == ISA_BDPAS) {
+      return true;
+    } else if (op == ISA_RAW_SENDG) {
       return true;
     } else {
       return false;
@@ -637,6 +645,8 @@ bool IsMathInst(ISA_Opcode op) {
   case ISA_SIN:
   case ISA_COS:
   case ISA_POW:
+  case ISA_TANH:
+  case ISA_SIGM:
     return true;
   default:
     return false;
@@ -1632,6 +1642,51 @@ LSC_CACHE_OPTS convertLSCLoadStoreCacheControlEnum(LSC_L1_L3_CC L1L3cc,
     break;
   }
   return cacheOpts;
+}
+
+std::tuple<Caching,Caching,Caching> vISA::ToLdCaching(LSC_L1_L3_CC x) {
+  // Todo: Need to add encodings for all combination
+  switch (x) {
+  case LSC_L1DEF_L3DEF:
+    return std::make_tuple(Caching::DF, Caching::DF, Caching::DF);
+  case LSC_L1UC_L3UC:
+    return std::make_tuple(Caching::UC, Caching::UC, Caching::UC);
+  case LSC_L1UC_L3C_WB:
+    return std::make_tuple(Caching::UC, Caching::CA, Caching::UC);
+  case LSC_L1C_WT_L3UC:
+    return std::make_tuple(Caching::CA, Caching::UC, Caching::UC);
+  case LSC_L1C_WT_L3C_WB:
+    return std::make_tuple(Caching::CA, Caching::CA, Caching::UC);
+  case LSC_L1S_L3UC:
+    return std::make_tuple(Caching::ST, Caching::UC, Caching::UC);
+  case LSC_L1S_L3C_WB:
+    return std::make_tuple(Caching::ST, Caching::CA, Caching::UC);
+  case LSC_L1IAR_L3IAR:
+    return std::make_tuple(Caching::RI, Caching::RI, Caching::RI);
+  default: break;
+  }
+  return std::make_tuple(Caching::INVALID, Caching::INVALID, Caching::INVALID);
+}
+std::tuple<Caching,Caching,Caching> vISA::ToStCaching(LSC_L1_L3_CC x) {
+  // Todo: Need to add encodings for all combination
+  switch (x) {
+  case LSC_L1DEF_L3DEF:
+    return std::make_tuple(Caching::DF, Caching::DF, Caching::DF);
+  case LSC_L1UC_L3UC:
+    return std::make_tuple(Caching::UC, Caching::UC, Caching::UC);
+  case LSC_L1UC_L3C_WB:
+    return std::make_tuple(Caching::UC, Caching::WB, Caching::UC);
+  case LSC_L1C_WT_L3UC:
+    return std::make_tuple(Caching::WT, Caching::UC, Caching::UC);
+  case LSC_L1C_WT_L3C_WB:
+    return std::make_tuple(Caching::WT, Caching::WB, Caching::UC);
+  case LSC_L1S_L3C_WB:
+    return std::make_tuple(Caching::ST, Caching::WB, Caching::UC);
+  case LSC_L1IAR_WB_L3C_WB:
+    return std::make_tuple(Caching::WB, Caching::WB, Caching::UC);
+  default: break;
+  }
+  return std::make_tuple(Caching::INVALID, Caching::INVALID, Caching::INVALID);
 }
 
 void *vISA::allocCodeBlock(size_t sz) {

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -67,6 +67,7 @@ private:
                                    unsigned &internalConflict);
   bool isOddOffset(unsigned offset) const;
   void setupBankConflictsforDPAS(G4_INST *inst);
+  void setupBankConflictsfor2xDPAS(G4_INST *inst);
   bool hasDpasInst = false;
 
   void setupBankConflictsforTwoGRFs(G4_INST *inst);
@@ -518,6 +519,9 @@ private:
   bool updateDstMaskForGatherRaw(G4_INST *inst,
                                  std::vector<unsigned char> &mask,
                                  const G4_SendDescRaw *rawDesc);
+  bool updateDstMaskForGatherUnified(G4_INST *inst,
+                                     std::vector<unsigned char> &mask,
+                                     const G4_SendgDesc *unifiedDesc);
   void updateDstMask(G4_INST *inst, bool checkCmodOnly);
   static unsigned getByteSizeFromMask(AugmentationMasks type);
   bool isDefaultMaskDcl(G4_Declare *dcl, unsigned simdSize,
@@ -1375,9 +1379,14 @@ public:
   // [-2^16...2^16) in bytes
   //   (frame pointer is biased 2^16 so that -2^16 references scratch[0x0])
   static constexpr unsigned SPILL_FILL_IMMOFF_MAX = 0x10000; // 64k
+  // Efficient64b is [0 ... (2^16 - 1)] but in d32 elements (not bytes)
+  // That yields [0...256k) in bytes
+  static constexpr unsigned SPILL_FILL_IMMOFF_MAX_EFF64b = 4 * ((1u << 16) - 1);
 
   static bool LSCUsesImmOff(IR_Builder &builder) {
-    const auto scratchAddrType = VISA_LSC_IMMOFF_ADDR_TYPE_SS;
+    const auto scratchAddrType = builder.isEfficient64bEnabled()
+                                     ? VISA_LSC_IMMOFF_ADDR_TYPE_SURF
+                                     : VISA_LSC_IMMOFF_ADDR_TYPE_SS;
     const uint32_t immOffOpts =
         builder.getuint32Option(vISA_lscEnableImmOffsFor);
     return
@@ -1409,8 +1418,10 @@ private:
   void expandSpillIntrinsic(G4_BB *);
   void expandFillIntrinsic(G4_BB *);
   void expandSpillFillIntrinsics(unsigned);
+  void expandSpillFillIntrinsicsXE3P(unsigned int);
   void saveRestoreA0(G4_BB *);
   void initAddrRegForImmOffUseNonStackCall();
+  void initAddrRegForImmOffUseEfficient64bNonStackCall();
   static const RAVarInfo defaultValues;
   std::vector<RAVarInfo> vars;
   std::vector<G4_Declare *> UndeclaredVars;
@@ -1491,6 +1502,11 @@ private:
   bool spillFillIntrinUsesLSC(G4_INST *spillFillIntrin);
   void expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt);
   void expandSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt);
+private:
+  void expandFillLscEff64(G4_BB *bb, INST_LIST_ITER &instIt);
+  void expandSpillLscEff64(G4_BB *bb, INST_LIST_ITER &instIt);
+
+public:
   void expandScatterSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt);
   void expandFillNonStackcall(uint32_t numRows, uint32_t offset,
                               short rowOffset, G4_SrcRegRegion *header,
@@ -1591,6 +1607,8 @@ public:
 
     // call destination must still be QWord aligned
     auto callDstAlign = Four_Word;
+    if (builder.isEfficient64bEnabled())
+      callDstAlign = Eight_Word;
     dcl->setSubRegAlign(callDstAlign);
     setSubRegAlign(dcl, callDstAlign);
 
@@ -1853,6 +1871,9 @@ public:
       return (((baseReg + offset) % 32) / 2);
     }
     if (builder.has64bundleSize()) {
+      if (builder.kernel.getNumRegTotal() == 512) {
+        return (((baseReg + offset) % 32) / 2);
+      }
       return (((baseReg + offset) % 16) / 2);
     }
     return (((baseReg + offset) % 64) / 4);

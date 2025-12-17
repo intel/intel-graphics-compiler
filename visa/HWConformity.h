@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -145,6 +145,7 @@ class HWConformity {
   bool fixMov(INST_LIST_ITER i, G4_BB *bb);
   bool fixRotate(INST_LIST_ITER i, G4_BB *bb);
   bool fixIntToHFMove(G4_BB *bb);
+  void fixEvEURegionRestrictions(G4_BB *bb);
 
   bool isFloatOr64b(G4_INST *inst);
   uint16_t getSrcStride(G4_SrcRegRegion *src);
@@ -179,6 +180,8 @@ class HWConformity {
   bool hasSameSubregOffset(G4_INST *inst) const;
   bool hasSameSubregOffset(G4_INST *inst, uint32_t &byteOffset) const;
 
+  bool hasSameSubregOffsetSrnd(G4_DstRegRegion *dst,
+                                         G4_SrcRegRegion *src) const;
   void fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb);
   void generateMacl(INST_LIST_ITER it, G4_BB *bb);
   void doGenerateMacl(INST_LIST_ITER it, G4_BB *bb);

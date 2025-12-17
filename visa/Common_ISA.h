@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -94,6 +94,10 @@ enum Common_ISA_Region_Val {
 
 extern const char *Rel_op_str[ISA_CMP_UNDEF + 1];
 extern const char *media_ld_mod_str[MEDIA_LD_Mod_NUM];
+extern const char *lfsrFuncCtrl[];
+extern const char *dnsclConvertType[];
+extern const char *dnsclMode[];
+extern const char *dnsclRndMode[];
 
 // media store inst modifiers
 enum MEDIA_ST_mod {
@@ -635,8 +639,7 @@ struct CISA_INST {
     return (opcode == ISA_COS || opcode == ISA_DIV || opcode == ISA_EXP ||
             opcode == ISA_INV || opcode == ISA_LOG || opcode == ISA_POW ||
             opcode == ISA_RSQRT || opcode == ISA_SIN || opcode == ISA_SQRT ||
-            opcode == ISA_SIN
-            );
+            opcode == ISA_SIN || opcode == ISA_TANH || opcode == ISA_SIGM);
   }
 };
 

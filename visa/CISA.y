@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -177,6 +177,13 @@ std::vector<attr_gen_struct*> AttrOptVar;
     struct bfn_op_struct {
         uint8_t func_ctrl;
     } bfn_info;
+    LFSR_FC lfsr_fctrl;
+
+    struct dnscl_op_struct {
+        DNSCL_CONVERT_TYPE type;
+        DNSCL_MODE mode;
+        DNSCL_RND_MODE rnd_mode;
+    } dnscl_info;
 
     ///////////////////////////////////////////////////////////////////////////
     // Support for LSC instructions
@@ -184,6 +191,8 @@ std::vector<attr_gen_struct*> AttrOptVar;
     ISA_Opcode              lsc_opcode;
     LSC_CACHE_OPTS          lsc_caching_opts;
     LSC_CACHE_OPT           lsc_caching_opt; // for lexer to parser
+    LSC_CACHE_CTRL_SIZE      lsc_cache_ctrl_size;
+    LSC_CACHE_CTRL_OPERATION lsc_cache_ctrl_operation;
     bool                    ov;
     LSC_FENCE_OP            lsc_fence_op;
     LSC_SCOPE               lsc_scope;
@@ -255,6 +264,10 @@ std::vector<attr_gen_struct*> AttrOptVar;
         unsigned int          offset;
     } sampler_base;
 
+    struct {
+        bool raw_sendg_is_conditional;
+        bool raw_sendg_is_eot;
+    } raw_sendg_info;
     struct {
         VISA_opnd *reg;
         LSC_DATA_SHAPE_TYPED_BLOCK2D shape_typed2d;
@@ -333,6 +346,10 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token RAW_SENDSC_STRING    // raw_sendsc
 %token RAW_SENDSC_EOT_STRING // raw_sendsc_eot
 
+%token RAW_SENDG_STRING      // raw_sendg
+%token RAW_SENDG_EOT_STRING  // raw_sendg_eot
+%token RAW_SENDGC_STRING     // raw_sendgc
+%token RAW_SENDGC_EOT_STRING // raw_sendgc_eot
 
 %token SAT                  // .sat
 %token SRCMOD_ABS           // (abs)
@@ -343,6 +360,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token DPAS_OP
 %token SVM_ALIGNED        // .aligned
 %token SVM_UNALIGNED      // .unaligned
+%token BDPAS_OP
 %token <opcode> NBARRIER_SIGNAL
 %token <opcode> NBARRIER_WAIT
 %token <type>   ITYPE
@@ -473,11 +491,17 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token <opcode> RESINFO_OP_3D
 %token <opcode> SAMPLEINFO_OP_3D
 %token <opcode> RTWRITE_OP_3D
+%token <opcode> RTWRITE_OP_3D_UNIFIED
 %token <opcode> URBWRITE_OP_3D
 %token <opcode> LIFETIME_START_OP
 %token <opcode> LIFETIME_END_OP
 %token <opcode> AVS_OP
 %token <opcode> BREAKPOINT_OP
+%token <opcode> SHFL_IDX4_OP
+%token LFSR_SUB_OP
+%type <lfsr_fctrl> LFSR_SUB_OP
+%token DNSCL_OP
+%type <dnscl_info> DNSCL_OP
 %token <cisa_call> CALL_OP
 
 %type <string> RTWriteModeOpt
@@ -600,11 +624,14 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %type <dpas_info>           DPAS_OP
 %type <bfn_info>            BFN_OP
 %token <opcode>             QW_SCATTER_OP
+%type <dpas_info>           BDPAS_OP
 // elements to support new LSC instructions
 //
 // cache options
 %type  <lsc_caching_opts>      LscCacheOpts
 %token <lsc_caching_opt>       LSC_CACHING_OPT
+%token <lsc_cache_ctrl_size>      LSC_CACHE_CTRL_SIZE_TYPE
+%token <lsc_cache_ctrl_operation> LSC_CACHE_CTRL_OPERATION_TYPE
 
 %token OV                  // .ov
 %type <ov>                 OVOpt
@@ -621,6 +648,9 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %type <lsc_typed_addr_operand_list>  LscTypedAddrWithOffsetOperandList
 %type <lsc_typed_operand>            LscTypedAddrOperandWithOffsets
 %type<sampler_base>                  SamplerAddrOperand
+%type <raw_sendg_info>         RawSendgMnemonic
+%type <intval>                 RawSendgSfid
+%type <intval>                 RawSendgPayloadSize
 %token <lsc_addr_size>         LSC_ADDR_SIZE_TK
 %type <intval>                 LscAddrImmOffsetOpt
 %type <intval>                 LscAddrImmScaleOpt
@@ -642,6 +672,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token                         LSC_AM_BSS
 %token                         LSC_AM_SS
 %token                         LSC_AM_ARG
+%token                         LSC_AM_SURF
 //
 %token <lsc_fence_op>          LSC_FENCE_OP_TYPE
 %token <lsc_scope>             LSC_FENCE_SCOPE
@@ -664,6 +695,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token <lsc_subOpcode>         LSC_READ_STATE_INFO_MNEMONIC
 %token <lsc_subOpcode>         LSC_LOAD_MSRT_MNEMONIC
 %token <lsc_subOpcode>         LSC_STORE_MSRT_MNEMONIC
+%token <lsc_subOpcode>         LSC_EXTENDED_CACHE_CTRL_MNEMONIC
 // fence is a top-level op (not a subop)
 %token <lsc_opcode>            LSC_FENCE_MNEMONIC
 %token <opcode>                FCVT_OP
@@ -989,7 +1021,12 @@ Instruction:
         | QwScatterInstruction
         | LscInstruction
         | FCvtInstruction
+        | BdpasInstruction
         | LscInstructionXe2
+        | RawSendgInstruction
+        | ShflIdx4Instruction
+        | LfsrInstruction
+        | DnsclInstruction
         | BreakpointInstruction
 
 Label: LABEL {pBuilder->CISA_create_label($1, CISAlineno);}
@@ -1093,6 +1130,17 @@ ArithInstruction_4OPND:
             $4.cisa_gen_opnd, $5, $6.cisa_gen_opnd, $7.cisa_gen_opnd, CISAlineno);
      }
 
+BdpasInstruction:
+    // 1         2         3           4          5          6          7                 8
+    BDPAS_OP ExecSize  RawOperand  RawOperand RawOperand RawOperand VecSrcOpndSimple  VecSrcOpndSimple
+    {
+        MUST_HOLD($2.exec_size == 16, "The execution size must be 16");
+        MUST_HOLD($1.depth == 8 && $1.count == 8, "SD and RC of bdpas must be 8");
+        pBuilder->CISA_create_bdpas_instruction(
+            $1.opcode, $2.emask, $2.exec_size,
+            $3, $4, $5, $6, $7.cisa_gen_opnd, $8.cisa_gen_opnd,
+            $1.src2Precision, $1.src1Precision, $1.depth, $1.count, CISAlineno);
+    }
 
 DpasInstruction:
     // 1       2          3           4           5            6
@@ -1627,6 +1675,7 @@ LscInstruction:
   | LscTypedReadStateInfo
   | LscTypedMSRTLoad
   | LscTypedMSRTStore
+  | LscExtendedCacheCtrl
   //
   | LscFence
 
@@ -1653,6 +1702,13 @@ LscInstruction:
 // ARG:
 //     lsc_load.ugm   V53:u8x8  arg[V52+0x100]:a32
 //
+// FLAT (with a64 base):
+//     lsc_load.ugm   V53:u32  flat(VREG(1,0))[V52]:a64
+//
+// SURF:
+//    lsc_load.ugm V53:u32  flat(VREG(1,0))[V25]
+//    lsc_load.ugm V53:u32  surf(VREG(1,0),0x3)[V25]
+//    lsc_load.ugm V53:u32  surf(0x123456789A,0x3)[V25]
 
 LscUntypedLoad:
 //  1          2                  3                       4             5      6
@@ -1741,6 +1797,30 @@ LscUntypedBlock2dLoad:
             CISAlineno);
     }
 
+LscExtendedCacheCtrl:
+// example: lsc_extended_cache_ctrl.ugm.{set|reset|}.{size}.{cache_opts} ExecSize  LscUntypedAddrOperand
+// 1          2                               3
+   Predicate LSC_EXTENDED_CACHE_CTRL_MNEMONIC LSC_SFID_UNTYPED_TOKEN
+// 4                        5                 6                         7
+   LscCacheOpts LSC_CACHE_CTRL_OPERATION_TYPE LSC_CACHE_CTRL_SIZE_TYPE ExecSize
+//  8
+   LscUntypedAddrOperand
+  {
+        $7.exec_size =
+            lscCheckExecSize(pBuilder, $3, $2, LSC_DATA_ORDER_INVALID, $7.exec_size);
+        pBuilder->CISA_create_lsc_extended_cache_ctrl_inst(
+          $1, // predicate
+          $2, // subop
+          $3, // sfid
+          $5, // cache ctrl operation
+          $6, // cache ctrl size
+          $4, // cache ctrl opts
+          Get_VISA_Exec_Size_From_Raw_Size($7.exec_size),
+          $7.emask,
+          $8.addr, // address
+          $8.regs[0], // src0
+          CISAlineno);
+  }
 //
 // EXAMPLE:
 //     lsc_store.ugm    flat[V52]:a64      V53:u32
@@ -1829,6 +1909,10 @@ LscUntypedBlock2dStore:
 //     lsc_atomic_iinc.ugml  VRESULT:d32  flat[VADDR]:a64        %null     %null
 //     lsc_atomic_iadd.slm   VRESULT:d32  flat[VADDR+0x10]:a32   VSRC1     %null
 //
+// EXAMPLES:
+//     lsc_atomic_iadd.slm   VRESULT:d32  flat(VBASE)[VADDR+0x10]:a32s  VSRC1  %null
+//     lsc_atomic_iadd.slm   VRESULT:d32  surf(VSURF,0x3)[4*VADDR+0x10]:a32s  VSRC1  %null
+//     lsc_atomic_iadd.slm   VRESULT:d32  surf(0x123456789AB,0x3)[VADDR+0x10]:a32s  VSRC1  %null
 LscUntypedAtomic:
 //  1         2                    3                       4             5
     Predicate LSC_ATOMIC_MNEMONIC  LSC_SFID_UNTYPED_TOKEN  LscCacheOpts  ExecSize
@@ -1929,14 +2013,16 @@ LscTypedMSRTStore:
 //     lsc_load_quad.tgm   V60:u32.xyzw  bss(V10)[V52,V53]:a32
 // BSS using U, V, R, and LOD:
 //     lsc_load_quad.tgm   V60:u32.xz    bss(V10)[V52,V53,V54,V55]:a32
+// SURF using U, V and SS_IDX = 0x0, 0x3:
+//     lsc_load_quad.tgm   V60:u32.xz    surf(V10)[V52,V53]:a32
+//     lsc_load_quad.tgm   V60:u32.xz    surf(V10,0x3)[V52+5,V53]:a32
 LscTypedLoad:
 //  1          2                  3                     4             5
     Predicate  LSC_LOAD_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  ExecSize
 //  6               7
     LscDataOperand  LscTypedAddrOperandWithOffsets
     {
-        if ($2 != LSC_LOAD_QUAD
-        ) {
+        if ($2 != LSC_LOAD_QUAD && $2 != LSC_LOAD_QUAD_STATUS) {
             PARSE_ERROR("unsupported load operation for .tgm");
         }
         $5.exec_size =
@@ -1974,6 +2060,8 @@ LscTypedLoad:
 //     lsc_store_quad.tgm   V60:u32.xyzw  bss(V10)[V52,V53]:a32
 // BSS using U, V, R, and LOD:
 //     lsc_store_quad.tgm   V60:u32.xz    bss(V10)[V52,V53,V54,V55]:a32
+// SURF:
+//     lsc_store_quad.tgm   V60:u32.x     surf(V13(0,0),0x1)[V52]:a32
 LscTypedStore:
 //  1          2                   3                     4             5
     Predicate  LSC_STORE_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  ExecSize
@@ -2019,6 +2107,8 @@ LscTypedStore:
 // BSS using U, V, R, and LOD:
 //     lsc_atomic_icas.tgm   bss(V10)[V52,V53,V54,V55]:a32  V60:u32.xz  V61 V70
 //
+// SURF:
+//     lsc_atomic_icas.tgm   surf(V10,0x3)[V52,V53,V54,V55]:a32  V60:u32.xz  V61 V70
 LscTypedAtomic:
 //  1          2                    3                     4             5
     Predicate  LSC_ATOMIC_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  ExecSize
@@ -2055,6 +2145,10 @@ LscTypedAtomic:
 // EXAMPLES:
 //   lsc_read_state_info.tgm  VDATA  bti(0x4)[VCOORDS.0]
 //   lsc_read_state_info.tgm  VDATA  bss(...)[VCOORDS.0]
+// Efficient64b read_state_info
+//   lsc_read_state_info.tgm  VDATA  surf(var(0,1))[VCOORDS.0]
+//   lsc_read_state_info.tgm  VDATA  surf(var(0,0),0x3)[VCOORDS.0]
+//   lsc_read_state_info.tgm  VDATA  surf(0x1DEADBEEF,0x3)[VCOORDS.0]
 LscTypedReadStateInfo:
 // 1          2                             3
    Predicate  LSC_READ_STATE_INFO_MNEMONIC  LSC_SFID_TYPED_TOKEN
@@ -2106,6 +2200,7 @@ LscSfid: LSC_SFID_UNTYPED_TOKEN | LSC_SFID_TYPED_TOKEN
 LscCacheOpts:
     %empty                          {$$ = pBuilder->CISA_create_caching_opts(CISAlineno);}
   | LSC_CACHING_OPT LSC_CACHING_OPT {$$ = pBuilder->CISA_create_caching_opts($1,$2, CISAlineno);}
+  | LSC_CACHING_OPT LSC_CACHING_OPT LSC_CACHING_OPT {$$ = pBuilder->CISA_create_caching_opts($1,$2,$3,CISAlineno);}
 
 OVOpt: %empty {$$ = false;} | OV {$$ = true;}
 
@@ -2116,6 +2211,14 @@ LscUntypedAddrOperand:
       LscAddrImmOffsetOpt  RBRACK LSC_ADDR_SIZE_TK
     {
         $$ = {$1.surface, $1.surfaceIndex, {$4}, {$1.type, (int)$3, (int)$5, $7}};
+    }
+    |
+    // This rule is exercised for append counter atomics under xe3p only
+    // There is a rule for AppendCounter that is exercised for pre-xe3p
+//  1               2      3                  4
+    LscAddrModelOpt LBRACK BUILTIN_NULL RBRACK
+    {
+        $$ = {$1.surface, $1.surfaceIndex, {nullptr}, {$1.type, 1, 0, LSC_ADDR_SIZE_32bU}};
     }
 
 LscUntypedStridedAddrOperand:
@@ -2283,6 +2386,7 @@ LscAddrModelOpt:
     %empty       {$$ = {LSC_ADDR_TYPE_FLAT, nullptr, 0};}
   | LSC_AM_FLAT  {$$ = {LSC_ADDR_TYPE_FLAT, nullptr, 0};}
   | LSC_AM_ARG   {$$ = {LSC_ADDR_TYPE_ARG, nullptr, 0};}
+  | LSC_AM_FLAT  LPAREN LscVectorOpRegOrImm64 RPAREN {$$ = {LSC_ADDR_TYPE_FLAT, $3, 0};}
   | LscAddrModelStateful
 
 // Address models that map to a stateful surface
@@ -2304,6 +2408,12 @@ LscAddrModelStateful:
     }
   | LSC_AM_BTI  LPAREN  LscVectorOpRegOrImm32 COMMA IntExp RPAREN {
       $$ = {LSC_ADDR_TYPE_BTI,$3, (int)$5};
+    }
+  | LSC_AM_SURF  LPAREN  LscVectorOpRegOrImm64 RPAREN {
+      $$ = {LSC_ADDR_TYPE_SURF, $3, 0};
+    }
+  | LSC_AM_SURF  LPAREN  LscVectorOpRegOrImm64 COMMA IntExp RPAREN {
+      $$ = {LSC_ADDR_TYPE_SURF, $3, (int)$5};
     }
 
 
@@ -2626,6 +2736,79 @@ RawSendsInstruction:
             $8.cisa_gen_opnd, $9, $10, $11, CISAlineno);
     }
 
+//  $1      $2     $3    $4          $5    $6      $7    $8       $9   $10        $11    $12     $13
+// [pred] sendg  .SFID  (ExecSize)   Dst .DstLen   Src0 .Src0Len  Src1 .Src1Len   Ind0   Ind1    Desc
+//
+RawSendgInstruction:
+ // 1         2                3            4
+    Predicate RawSendgMnemonic RawSendgSfid ExecSize
+        //  5      6                     7          8                    9          10
+        RawOperand RawSendgPayloadSize   RawOperand RawSendgPayloadSize  RawOperand RawSendgPayloadSize
+        // $11 (can be %null)  $12 (can be %null)
+        VecSrcOperand_G_IMM    VecSrcOperand_G_IMM
+        // $13
+        IntExpPrim
+    {
+      pBuilder->CISA_create_raw_sendg_instruction(
+        (unsigned)$3, // sfid
+        $1, // pred
+        $4.emask, Get_VISA_Exec_Size_From_Raw_Size($4.exec_size), // emask, esize
+        $5, (int)$6, // dst
+        $7, (int)$8, // src0
+        $9, (int)$10, // src1
+        $11.cisa_gen_opnd, // ind0
+        $12.cisa_gen_opnd, // ind1
+        $13, // desc
+        $2.raw_sendg_is_conditional,
+        $2.raw_sendg_is_eot, // hasEoT
+        CISAlineno);
+    }
+RawSendgMnemonic:
+    RAW_SENDG_STRING      {$$.raw_sendg_is_conditional = false; $$.raw_sendg_is_eot = false;}
+  | RAW_SENDG_EOT_STRING  {$$.raw_sendg_is_conditional = false; $$.raw_sendg_is_eot = true;}
+  | RAW_SENDGC_STRING     {$$.raw_sendg_is_conditional = true; $$.raw_sendg_is_eot = false;}
+  | RAW_SENDGC_EOT_STRING {$$.raw_sendg_is_conditional = true; $$.raw_sendg_is_eot = true;}
+
+// Allow some symbolic options for SFIDs for raw send as well as numeric
+// Examples:
+//   .ugm   (resolves to 0xF)
+//   .gtwy  (resolves to 0x3)
+//   .0xF // (means .ugm)
+//   .(1+2) // 0x3 means .gtwy
+RawSendgSfid:
+    DOT IntExpPrim {
+      MUST_HOLD($2 >= 0 && $2 < 16, "invalid sfid value");
+      $$ = (int)$2;
+    }
+  | LSC_SFID_UNTYPED_TOKEN {
+    if ($1 == LSC_SLM) {$$ = 0xF;}
+    else if ($1 == LSC_UGM) {$$ = 0xE;}
+    else if ($1 == LSC_URB) {$$ = 0x6;}
+    else {$$ = 0; MUST_HOLD(false, "invalid sfid symbol");}
+  }
+  | LSC_SFID_TYPED_TOKEN {
+    if ($1 == LSC_TGM) {$$ = 0xD;}
+    else {$$ = 0; MUST_HOLD(false, "invalid sfid symbol");}
+  }
+  | DOT IDENT { // for SFIDs that lack contiguous token
+    if (streq($2, "null")) {
+      $$ = 0x0;
+    } else if (streq($2, "smpl")) {
+      $$ = 0x2;
+    } else if (streq($2, "gtwy")) {
+      $$ = 0x3;
+    } else if (streq($2, "rc")) {
+      $$ = 0x5;
+    } else if (streq($2, "btd")) {
+      $$ = 0x7;
+    } else if (streq($2, "rta")) {
+      $$ = 0x8;
+    } else {
+      pBuilder->RecordParseError(CISAlineno, "unrecognized SFID");
+    }
+  }
+
+RawSendgPayloadSize: SLASH IntExpPrim {$$ = $2;}
 
 NullaryInstruction:
     CACHE_FLUSH_OP
@@ -2670,6 +2853,32 @@ NullaryInstruction:
 
 OwordModifier: %empty {$$ = false;} | OWORD_MODIFIER;
 
+ShflIdx4Instruction:
+//      1         2            3         4          5          6
+    Predicate SHFL_IDX4_OP  ExecSize RawOperand SrcGeneralOperand SrcGeneralOperand
+    {
+        pBuilder->CISA_create_shfl_idx4_instruction(
+            $1, $2, $3.emask, Get_VISA_Exec_Size_From_Raw_Size($3.exec_size), $4,
+            $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
+    }
+
+LfsrInstruction:
+//      1         2             3              4             5                  6
+     Predicate  LFSR_SUB_OP  ExecSize  VecDstOperand_G VecSrcOperand_G VecSrcOperand_G_IMM
+    {
+        pBuilder->CISA_create_lfsr_instruction(
+            $1, $3.emask, Get_VISA_Exec_Size_From_Raw_Size($3.exec_size), $2,
+            $4.cisa_gen_opnd, $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
+    }
+
+DnsclInstruction:
+//      1         2          3          4           5         6         7
+     Predicate  DNSCL_OP  ExecSize  RawOperand RawOperand RawOperand  RawOperand
+    {
+        pBuilder->CISA_create_dnscl_instruction(
+            $1, $3.emask, Get_VISA_Exec_Size_From_Raw_Size($3.exec_size), $2.type,
+            $2.mode, $2.rnd_mode, $4, $5, $6, $7, CISAlineno);
+    }
 
 // ------ predicate and saturation and source modifiers ------
 

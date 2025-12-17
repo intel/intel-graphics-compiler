@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -53,6 +53,7 @@ public:
 
 private:
   uint16_t getMsgLatency(const G4_INST *Inst) const;
+  uint16_t getDPLatency(const G4_INST *inst) const;
   uint16_t getMathLatency(const G4_INST *inst) const;
   uint16_t getBranchLatency(const G4_INST *inst) const;
   uint16_t getIntrinsicLatency(const G4_INST *inst) const;
@@ -165,6 +166,8 @@ template<PlatformGen Gen>
 uint16_t LatencyTableXe<Gen>::getLatency(const G4_INST *Inst) const {
   if (Inst->isSend())
     return getMsgLatency(Inst);
+  if (m_builder.getPlatform() == Xe3P_Graphics && Inst->isDFInstruction())
+    return getDPLatency(Inst);
   if (Inst->isMath())
     return getMathLatency(Inst);
   if (Inst->isFlowControl())
@@ -239,6 +242,11 @@ uint16_t LatencyTableXe<Gen>::getMsgLatency(const G4_INST *Inst) const {
   return value_of(LI::SEND_OTHERS);
 }
 
+template <PlatformGen Gen>
+uint16_t LatencyTableXe<Gen>::getDPLatency(const G4_INST *Inst) const {
+  vASSERT(Inst->isDFInstruction());
+  return getArithmeticLatency(Inst);
+}
 
 template<PlatformGen Gen>
 uint16_t LatencyTableXe<Gen>::getMathLatency(const G4_INST *Inst) const {
@@ -336,6 +344,8 @@ LatencyTableXe<PlatformGen::XE>::getDPASLatency(uint8_t repeatCount) const {
     return value_of(LI::DPAS) + repeatCount;
   case Xe2:
   case Xe3:
+  case Xe3P_CRI:
+  case Xe3P_Graphics:
     switch (repeatCount) {
     case 1:
       return 22;
@@ -352,6 +362,13 @@ LatencyTableXe<PlatformGen::XE>::getDPASLatency(uint8_t repeatCount) const {
   }
 }
 
+template <>
+uint16_t
+LatencyTableXe<PlatformGen::XE>::getDPLatency(const G4_INST *Inst) const {
+  vASSERT(Inst->isDFInstruction());
+  int Sz = Inst->getExecSize();
+  return Sz == 32 ? 106 : 54;
+}
 
 template<>
 uint16_t
@@ -365,6 +382,19 @@ LatencyTableXe<PlatformGen::XE>::getMathLatency(const G4_INST *Inst) const {
 template <>
 uint16_t
 LatencyTableXe<PlatformGen::XE>::getDPASLatency(const G4_InstDpas *dpas) const {
+  if (m_builder.getPlatform() > Xe3) {
+    if ((dpas->isHF8() || dpas->isBF8()) && dpas->getRepeatCount() == 8 &&
+        dpas->getSystolicDepth() == 8) {
+      return 29;
+    }
+    if (dpas->isFwdInst()) {
+      if (dpas->isInt8() || dpas->isInt()) { // Int4: isInt && !isInt8
+        return 41;
+      } else { // FP16, FP8, TF32
+        return 37;
+      }
+    }
+  }
 
   return getDPASLatency(dpas->getRepeatCount());
 }

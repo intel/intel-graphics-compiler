@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -23,6 +23,8 @@ SPDX-License-Identifier: MIT
 #include "Passes/MergeScalars.hpp"
 #include "Passes/SendFusion.hpp"
 #include "Passes/StaticProfiling.hpp"
+#include "Passes/InsertS0Movs.hpp"
+#include "Passes/InsertThryld.hpp"
 
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
@@ -344,6 +346,8 @@ void Optimizer::addSWSBInfo() {
 void Optimizer::HWDebug() {
   if (builder.getOption(vISA_InsertHashMovs))
     insertHashMovs();
+  if (builder.getOption(vISA_CopyMsg0ToDbg0))
+    insertMsg0ToDbg0Copy();
 }
 
 void Optimizer::insertHashMovs() {
@@ -683,6 +687,12 @@ void Optimizer::initOptimizations() {
   OPT_INITIALIZE_PASS(reassignBlockIDs, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(evalAddrExp, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(FoldAddrImmediate, vISA_FoldAddrImmed, TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(fixSamplerCacheBitInHeader, vISA_EnableAlways,
+                      TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(insertThryld, vISA_EnableAlways, TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(InsertS0Movs, vISA_EnableAlways, TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(fixSamplerCacheBit, vISA_EnableAlways,
+                      TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(localSchedule, vISA_LocalScheduling, TimerID::SCHEDULING);
   OPT_INITIALIZE_PASS(HWWorkaround, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(fixEndIfWhileLabels, vISA_EnableAlways, TimerID::NUM_TIMERS);
@@ -714,6 +724,7 @@ void Optimizer::initOptimizations() {
   OPT_INITIALIZE_PASS(s0SubAfterRA, vISA_EnableAlways, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(removePseudoMov, vISA_EnableAlways,
                   TimerID::OPTIMIZER);
+  OPT_INITIALIZE_PASS(expandSendg, vISA_EnableAlways, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(dce, vISA_EnableDCE, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(reassociateConst, vISA_reassociate, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(split4GRFVars, vISA_split4GRFVar, TimerID::OPTIMIZER);
@@ -969,7 +980,9 @@ int Optimizer::optimization() {
     return VISA_SPILL;
   }
 
+  runPass(PI_fixSamplerCacheBitInHeader);
 
+  runPass(PI_fixSamplerCacheBit);
 
   runPass(PI_removeLifetimeOps);
 
@@ -992,6 +1005,9 @@ int Optimizer::optimization() {
   runPass(PI_reassignBlockIDs);
 
   runPass(PI_FoldAddrImmediate);
+  if (kernel.getOption(vISA_enableEfficient64b)) {
+    runPass(PI_InsertS0Movs);
+  }
 
   // FIXME houjenko: Disable local scheduling due to issues when
   // using extra regiser that may corrupt unknown liveout
@@ -1076,6 +1092,9 @@ int Optimizer::optimization() {
   runPass(PI_addSWSBInfo);
 
   runPass(PI_removePseudoMov);
+  runPass(PI_expandSendg);
+
+  runPass(PI_insertThryld);
 
   runPass(PI_staticProfiling);
 
@@ -1282,6 +1301,47 @@ void Optimizer::reverseOffsetProp(AddrSubReg_Node addrRegInfo[8], int subReg,
   addrRegInfo[subReg].usedImmed = false;
 }
 
+static bool isLargeGRFOpnd(IR_Builder &builder, G4_Operand *opnd) {
+  return opnd->getLinearizedEnd() > (256 * builder.numEltPerGRF<Type_UB>() - 1);
+}
+
+static bool isLargeGRFInst(IR_Builder &builder, G4_INST *inst) {
+  assert(inst->isSend());
+
+  G4_Operand *dst = inst->getDst();
+  if (dst && !dst->isNullReg() && dst->isGreg()) {
+    if (isLargeGRFOpnd(builder, inst->getDst())) {
+      return true;
+    }
+  }
+  for (int i = 0; i < inst->getNumSrc(); i++) {
+    G4_Operand *src = inst->getSrc(i);
+    if (src && !src->isNullReg() && src->isGreg()) {
+      if (isLargeGRFOpnd(builder, src)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+void Optimizer::expandSendg() {
+  for (G4_BB *bb : fg) {
+    INST_LIST_ITER ii(bb->begin()), iend(bb->end());
+    while (ii != iend) {
+      G4_INST *inst = (*ii);
+
+      if (inst->opcode() == G4_sendg || inst->opcode() == G4_sendgc) {
+        if (isLargeGRFInst(builder, inst)) {
+          inst->asSendInst()->setSendgx();
+        }
+      }
+      ii++;
+    }
+  }
+}
+
 void Optimizer::removePseudoMov() {
   if (!builder.enableSendIndirect()) {
     return;
@@ -1329,6 +1389,108 @@ void Optimizer::removePseudoMov() {
         continue;
       }
       ii++;
+    }
+  }
+}
+void Optimizer::insertThryld() {
+  if (!builder.getOption(vISA_enableInsertThryld))
+    return;
+
+  InsertThryld insertThryldPass(kernel.fg);
+  insertThryldPass.run();
+
+  return;
+}
+
+void Optimizer::fixSamplerCacheBitInHeader() {
+  // If LSC caching is globally disabled then builder won't set
+  // caching bit in sampler message header. So return without doing anything.
+  //
+  // If current object is kernel:
+  // * Return without doing anything if spill size <= threshold
+  //   ie, LSC caching bit is set in sampler message header.
+  // * If spill size > threshold, reset cache bit in sampler
+  //   message header.
+  //
+  // If current object is a stack call function:
+  // * Since we cannot tell scratch space size of entire call
+  //   graph, do nothing and return. For stack call, default
+  //   behavior is that LSC caching bit is set. One can still
+  //   disable LSC caching globally.
+  if (!builder.getOption(vISA_enableSamplerLSCCaching))
+    return;
+
+  if (fg.getIsStackCallFunc())
+    return;
+
+  const auto spillSizeThreshold =
+      builder.getuint32Option(vISA_samplerLSCCachingThreshold);
+
+  const auto &jitInfo = builder.getJitInfo();
+  if (jitInfo->stats.spillMemUsed <= spillSizeThreshold)
+    return;
+
+  for (auto &entry : kernel.samplerWithLSCBacking) {
+    auto *inst = entry.inst;
+    auto opndNum = entry.opndNum;
+    auto LSCBackingBit = entry.bitPos;
+    // We need to reset bit# LSCBackingBit, create new G4_Imm and assign it to
+    // inst.
+    int64_t imm64 = inst->getSrc(opndNum)->asImm()->getInt();
+    // Reset bit in imm64
+    imm64 ^= (1ll << LSCBackingBit);
+    auto *newImm = builder.createImm(imm64, Type_UD);
+    inst->setSrc(newImm, opndNum);
+  }
+}
+void Optimizer::InsertS0Movs() {
+  bool optimizeS0Movs = kernel.getOption(vISA_OptimizeRedundantS0Movs);
+  for (auto bb : kernel.fg) {
+    ::InsertS0Movs s0MovPass(fg, bb, optimizeS0Movs);
+    s0MovPass.doInsertS0Movs();
+  }
+}
+
+void Optimizer::fixSamplerCacheBit() {
+  // If LSC caching is globally disabled then builder has
+  // already reset caching bit, so return without doing anything.
+  //
+  // If current object is kernel:
+  // * Return without doing anything if spill size <= threshold
+  //   ie, LSC caching bit is set for sampler messages.
+  // * If spill size > threshold, reset cache bit for sampler
+  //   messages.
+  //
+  // If current object is a stack call function:
+  // * Since we cannot tell scratch space size of entire call
+  //   graph, do nothing and return. For stack call, default
+  //   behavior is that LSC caching bit is set. One can still
+  //   disable LSC caching globally.
+
+  if (!builder.getOption(vISA_enableSamplerLSCCaching))
+    return;
+
+  if (fg.getIsStackCallFunc())
+    return;
+
+  const auto spillSizeThreshold =
+      builder.getuint32Option(vISA_samplerLSCCachingThreshold);
+
+  const auto &jitInfo = builder.getJitInfo();
+  if (jitInfo->stats.spillMemUsed <= spillSizeThreshold)
+    return;
+
+  // Fix sampler instructions to disable LSC caching
+  for (auto *bb : fg.getBBList()) {
+    for (auto *inst : bb->getInstList()) {
+      if (!inst->isSendg())
+        continue;
+      auto *msgDesc = inst->getMsgDesc();
+      vISA_ASSERT(msgDesc->isGeneralized(),
+                  "expecting generalized send msg desc");
+      auto *msgGenDesc = static_cast<G4_SendgDesc *>(msgDesc);
+      if (msgGenDesc->samplerLSCCacheEnabled())
+        msgGenDesc->disableSamplerLSCCache();
     }
   }
 }
@@ -4745,7 +4907,8 @@ void Optimizer::cleanupBindless() {
 
       if (inst->isSplitSend()) {
         G4_Operand *header = inst->getSrc(0);
-        G4_Operand *exDesc = inst->getSrc(3);
+        // use ind0 for G4_sendg and old exDesc a0.2 for G4_sends
+        G4_Operand *exDesc = inst->isSendg() ? inst->getSrc(2) : inst->getSrc(3);
 
         // When header has multiple uses other than send, be conservative and
         // do not reuse the cached value. It could be introduced by
@@ -8035,9 +8198,18 @@ void Optimizer::removeIntrinsics() {
       if (inst->asIntrinsicInst()->getIntrinsicId() == Intrinsic::Breakpoint) {
         markBreakpoint(bb, I, fg.builder);
       }
+      else if (inst->asIntrinsicInst()->getIntrinsicId() ==
+               Intrinsic::ShflIdx4) {
+        auto shflInst = fg.builder->createShflInst(
+            inst->getPredicate(), g4::NOSAT, inst->getExecSize(),
+            inst->getDst(), inst->getSrc(0), inst->getSrc(1),
+            G4_InstShfl::SHFL_IDX4, inst->getOption(), false);
+        bb->insertBefore(I, shflInst);
+      }
     }
 
     std::vector<Intrinsic> intrinIdVec = {
+      Intrinsic::ShflIdx4,
       Intrinsic::MemFence,
       Intrinsic::FlagSpill,
       Intrinsic::Breakpoint
@@ -8045,6 +8217,8 @@ void Optimizer::removeIntrinsics() {
     bb->removeIntrinsics(intrinIdVec);
   }
 }
+
+static bool isPow2(int64_t x) { return (x & (x - 1)) == 0; }
 
 //
 // for some platforms int has half throughout compared to float,
@@ -8099,6 +8273,21 @@ void Optimizer::changeMoveType() {
           return false;
         }
       }
+
+      if (kernel.getuInt32Option(vISA_BalanceIntMov) != -1) {
+        if (src0->isSrcRegRegion() && src0->isGreg()) {
+          auto src0R = src0->asSrcRegRegion();
+          bool dstSrcAligned =
+              src0R->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>() ==
+              inst->getDst()->getLinearizedStart() %
+                  kernel.numEltPerGRF<Type_UB>();
+          if (!dstSrcAligned)
+            return false;
+        }
+        if (src0->isImm())
+          return false;
+      }
+
       // we can split: scalar, contigous, stride2  w/out SrcMod
       if (src0->isSrcRegRegion() && src0->isGreg()) {
         auto srcReg = src0->asSrcRegRegion();
@@ -8114,9 +8303,18 @@ void Optimizer::changeMoveType() {
     }
     if (dstTy != src0Ty) {
       // allow D <-> UD and W <-> UW moves
-      if (!(IS_TYPE_INT(dstTy) && IS_TYPE_INT(src0Ty) &&
-            TypeSize(dstTy) == TypeSize(src0Ty))) {
-        return false;
+      if (kernel.getuInt32Option(vISA_BalanceIntMov) != -1) {
+        if (!((IS_TYPE_INT(dstTy) && IS_TYPE_INT(src0Ty) &&
+               TypeSize(dstTy) == TypeSize(src0Ty)) ||
+              (src0->isImm() && ((src0->asImm()->getInt() < 0x80) ||
+                                 isPow2(src0->asImm()->getInt()))))) {
+          return false;
+        }
+      } else {
+        if (!(IS_TYPE_INT(dstTy) && IS_TYPE_INT(src0Ty) &&
+              TypeSize(dstTy) == TypeSize(src0Ty))) {
+          return false;
+        }
       }
     }
     auto isLegalType = [](G4_Type ty) {
@@ -8140,7 +8338,12 @@ void Optimizer::changeMoveType() {
       bool dstSrcAligned =
           src0R->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>() ==
           inst->getDst()->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>();
-      return hasNoModifier && hasSimpleRegion && dstSrcAligned;
+      if (kernel.getuInt32Option(vISA_BalanceIntMov) != -1) {
+        return hasNoModifier && hasSimpleRegion &&
+               (dstSrcAligned || src0R->isScalar());
+      } else {
+        return hasNoModifier && hasSimpleRegion && dstSrcAligned;
+      }
     } else if (src0->isImm()) {
       // allow sext and zext imm moves
       // float imm can always be converted to int imm
@@ -8457,6 +8660,254 @@ void Optimizer::changeMoveType() {
         }
         // std::cout << "diff before " << diff_prev << " after " << diff <<"
         // reps done " << rep << "\n";
+      }
+    }
+
+    // #define BALANCE_MOV_DEBUG
+    int intMovRatio = kernel.getuInt32Option(vISA_BalanceIntMov);
+    if (intMovRatio != -1) {
+      int totalIntMov = 0, totalFloatMov = 0, totalQWMov = 0;
+      int totalIntCost = 0, totalFloatCost = 0;
+      std::vector<G4_INST *> globalIntMovs, globalFloatMovs;
+      std::vector<INST_LIST_ITER> globalQWInstructions;
+      for (auto bb : fg) {
+        // candidate int and float moves
+        std::vector<G4_INST *> intMovs, floatMovs;
+        std::vector<INST_LIST_ITER> QWInstructions;
+        // int/math/send share one decoder, float and 64b share the other
+        // decoder
+        int numIntCost = 0, numFloatCost = 0;
+        for (auto I = bb->begin(); I != bb->end(); /*empty*/) {
+          auto CurI = I++;
+          G4_INST *inst = *CurI;
+          if (inst->getDst() && !inst->isDpas()) {
+            auto execSize = inst->getExecSize();
+            G4_Type dstTy = inst->getDst()->getType();
+            uint32_t dstTySize = TypeSize(dstTy);
+
+            uint32_t affectedGRFsCost = dstOrAnySrcIs2GRF(inst) ? 2 : 1;
+
+            // Assumption:
+            // FPU0 : FLT16/FLT32/FLT64/INT64
+            // FPU1 : INT16 / INT32 / EM
+            if (inst->isMath()) {
+              // native simd1 for :DF, simd2 for :F
+              numIntCost += (dstTySize == 8) ? execSize : execSize / 2;
+            } else if (inst->isSend()) {
+              numIntCost++;
+            } else if (dstTySize == 8) {
+              numFloatCost += affectedGRFsCost;
+              if (isCandidateMov(inst)) {
+                QWInstructions.push_back(CurI);
+                globalQWInstructions.push_back(CurI);
+              }
+            } else {
+              if (IS_TYPE_INT(dstTy)) {
+                numIntCost += affectedGRFsCost;
+                if (isCandidateMov(inst)) {
+                  intMovs.push_back(inst);
+                  globalIntMovs.push_back(inst);
+                }
+              } else if (IS_TYPE_FLOAT_ALL(dstTy)) {
+                numFloatCost += affectedGRFsCost;
+                if (isCandidateMov(inst)) {
+                  floatMovs.push_back(inst);
+                  globalFloatMovs.push_back(inst);
+                }
+              }
+            }
+          }
+        }
+
+        // FIXME: remove local intMovs/floatMovs/QWInstructions/
+        //        numIntCost/numFloatCost used for debug purpose
+        totalIntMov += intMovs.size();
+        totalFloatMov += floatMovs.size();
+        totalQWMov += QWInstructions.size();
+        totalIntCost += numIntCost;
+        totalFloatCost += numFloatCost;
+
+#ifdef BALANCE_MOV_DEBUG
+        std::cout << "BB #" << bb->getId() << ":\t"
+                  << "num int cost/mov: " << numIntCost << "/" << intMovs.size()
+                  << " "
+                  << "num float cost/mov: " << numFloatCost << "/"
+                  << floatMovs.size() << " "
+                  << "QW movs: " << QWInstructions.size() << "\n";
+#endif
+      }
+
+#ifdef BALANCE_MOV_DEBUG
+      std::cout << "\n======> Total"
+                << ":\t"
+                << "num int cost/mov: " << totalIntCost << "/" << totalIntMov
+                << " "
+                << "num QW mov: " << totalQWMov << " "
+                << "num float cost/mov: " << totalFloatCost << "/"
+                << totalFloatMov << "\n";
+#endif
+
+      float totalRatio =
+          totalIntCost * 100 / (float)(totalIntCost + totalFloatCost);
+      if (totalRatio > intMovRatio) {
+        // convert int mov to float mov
+        // split QW int mov (FIXME: don't split DF)
+        for (auto bb : fg) {
+          // candidate int and float moves
+          // FIXME: extend support for float->int conversion
+          //        remove floatMovs if not supported
+          std::vector<G4_INST *> intMovs, floatMovs;
+          std::vector<INST_LIST_ITER> QWInstructions;
+          // int/math/send share one decoder, float and 64b share the other
+          // decoder
+          for (auto I = bb->begin(); I != bb->end(); /*empty*/) {
+            auto CurI = I++;
+            G4_INST *inst = *CurI;
+            if (inst->getDst() && !inst->isDpas()) {
+              G4_Type dstTy = inst->getDst()->getType();
+              uint32_t dstTySize = TypeSize(dstTy);
+              if (dstTySize == 8) {
+                if (isCandidateMov(inst)) {
+                  QWInstructions.push_back(CurI);
+                }
+              } else {
+                if (IS_TYPE_INT(dstTy)) {
+                  if (isCandidateMov(inst)) {
+                    intMovs.push_back(inst);
+                  }
+                } else if (IS_TYPE_FLOAT_ALL(dstTy)) {
+                  if (isCandidateMov(inst)) {
+                    floatMovs.push_back(inst);
+                  }
+                }
+              }
+            }
+          }
+
+          int adjustedCost = 0;
+          auto changeMovsFromVector = [&](std::vector<G4_INST *> &table,
+                                          G4_Type newType32,
+                                          G4_Type newType16) {
+            for (int i = 0, numInt = table.size(); i < numInt; ++i) {
+              auto inst = table[i];
+              auto typeSize = inst->getDst()->getTypeSize();
+              G4_Type floatTy = typeSize == 4 ? newType32 : newType16;
+
+              uint32_t affectedGRFsCost = dstOrAnySrcIs2GRF(inst) ? 2 : 1;
+              adjustedCost += affectedGRFsCost;
+
+              changeType(inst, floatTy);
+            }
+          };
+
+          changeMovsFromVector(intMovs, Type_F, Type_HF);
+
+          totalIntCost -= adjustedCost;
+          totalFloatCost += adjustedCost;
+
+          for (int i = 0, numInt = QWInstructions.size(); i < numInt; ++i) {
+            splitMov64Imm(QWInstructions[i], bb);
+          }
+
+          // convert splitted int mov to float mov
+          std::vector<G4_INST *> splitIntMovs;
+          for (auto I = bb->begin(); I != bb->end(); /*empty*/) {
+            auto CurI = I++;
+            G4_INST *inst = *CurI;
+            if (inst->getDst() && !inst->isDpas()) {
+              G4_Type dstTy = inst->getDst()->getType();
+              uint32_t dstTySize = TypeSize(dstTy);
+              if ((dstTySize != 8) && IS_TYPE_INT(dstTy)) {
+                if (isCandidateMov(inst)) {
+                  splitIntMovs.push_back(inst);
+                }
+              }
+            }
+          }
+
+          changeMovsFromVector(splitIntMovs, Type_F, Type_HF);
+
+          float adjustedRatio =
+              totalIntCost * 100 / (float)(totalIntCost + totalFloatCost);
+          if (adjustedRatio <= intMovRatio)
+            break;
+        }
+
+#ifdef BALANCE_MOV_DEBUG
+        // final count
+        totalIntMov = 0;
+        totalFloatMov = 0;
+        totalQWMov = 0;
+        totalIntCost = 0;
+        totalFloatCost = 0;
+        for (auto bb : fg) {
+          // candidate int and float moves
+          std::vector<G4_INST *> intMovs, floatMovs;
+          std::vector<INST_LIST_ITER> QWInstructions;
+          // int/math/send share one decoder, float and 64b share the other
+          // decoder
+          int numIntCost = 0, numFloatCost = 0;
+          for (auto I = bb->begin(); I != bb->end(); /*empty*/) {
+            auto CurI = I++;
+            G4_INST *inst = *CurI;
+            if (inst->getDst() && !inst->isDpas()) {
+              auto execSize = inst->getExecSize();
+              G4_Type dstTy = inst->getDst()->getType();
+              uint32_t dstTySize = TypeSize(dstTy);
+
+              uint32_t affectedGRFsCost = dstOrAnySrcIs2GRF(inst) ? 2 : 1;
+
+              // Assumption:
+              // FPU0 : FLT16/FLT32/FLT64/INT64
+              // FPU1 : INT16 / INT32 / EM
+              if (inst->isMath()) {
+                // native simd1 for :DF, simd2 for :F
+                numIntCost += (dstTySize == 8) ? execSize : execSize / 2;
+              } else if (inst->isSend()) {
+                numIntCost++;
+              } else if (dstTySize == 8) {
+                numFloatCost += affectedGRFsCost;
+                if (isCandidateMov(inst)) {
+                  QWInstructions.push_back(CurI);
+                }
+              } else {
+                if (IS_TYPE_INT(dstTy)) {
+                  numIntCost += affectedGRFsCost;
+                  if (isCandidateMov(inst)) {
+                    intMovs.push_back(inst);
+                  }
+                } else if (IS_TYPE_FLOAT_ALL(dstTy)) {
+                  numFloatCost += affectedGRFsCost;
+                  if (isCandidateMov(inst)) {
+                    floatMovs.push_back(inst);
+                  }
+                }
+              }
+            }
+          }
+
+          totalIntMov += intMovs.size();
+          totalFloatMov += floatMovs.size();
+          totalQWMov += QWInstructions.size();
+          totalIntCost += numIntCost;
+          totalFloatCost += numFloatCost;
+
+          std::cout << "BB #" << bb->getId() << ":\t"
+                    << "num int cost/mov: " << numIntCost << "/"
+                    << intMovs.size() << " "
+                    << "num float cost/mov: " << numFloatCost << "/"
+                    << floatMovs.size() << " "
+                    << "QW movs: " << QWInstructions.size() << "\n";
+        }
+
+        std::cout << "\n======> Total"
+                  << ":\t"
+                  << "num int cost/mov: " << totalIntCost << "/" << totalIntMov
+                  << " "
+                  << "num QW mov: " << totalQWMov << " "
+                  << "num float cost/mov: " << totalFloatCost << "/"
+                  << totalFloatMov << "\n";
+#endif
       }
     }
     return;

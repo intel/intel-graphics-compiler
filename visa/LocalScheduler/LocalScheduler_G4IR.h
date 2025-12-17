@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -314,6 +314,7 @@ class DDD {
   int TOTAL_BUCKETS;
   int totalGRFNum;
   int totalACCNum;
+  unsigned NumDpasNodes = 0;
   G4_Kernel *kernel;
   PointsToAnalysis &pointsToAnalysis;
 
@@ -328,6 +329,8 @@ public:
   NodeAlloc NodeAllocator;
   void moveDeps(Node *fromNode, Node *toNode);
   void pairTypedWriteOrURBWriteNodes(G4_BB *bb);
+  void pair2xDpasNodes();
+  bool hasMultipleDpasNodes() const { return NumDpasNodes > 1; }
 
   bool hasReadSuppression(G4_INST *curInst, G4_INST *nextInst, BitSet &liveDst,
                           BitSet &liveSrc) const;
@@ -339,6 +342,7 @@ private:
   bool canInSameDPASMacro(G4_INST *curInst, G4_INST *nextInst,
                             BitSet &liveDst, BitSet &liveSrc,
                             bool sameSrcOneOnly) const;
+  bool canFwdDPAS(const G4_INST &curInst, const G4_INST &nextInst) const;
 
 public:
   DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p);

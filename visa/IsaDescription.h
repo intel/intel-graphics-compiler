@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -252,6 +252,11 @@ struct LscOpInfo {
   bool isLoad() const { return kind == OpKind::LOAD; }
   bool isStore() const { return kind == OpKind::STORE; }
   bool isAtomic() const { return kind == OpKind::ATOMIC; }
+  bool isBFAtomic() const {
+    return op == LSC_ATOMIC_BFADD || op == LSC_ATOMIC_BFSUB ||
+           op == LSC_ATOMIC_BFMIN || op == LSC_ATOMIC_BFMAX ||
+           op == LSC_ATOMIC_BFCAS;
+  }
   bool isOther() const { return kind == OpKind::OTHER; }
 
   bool is(LSC_OP o0) const { return o0 == op; }
@@ -282,6 +287,8 @@ bool LscOpInfoFind(LSC_OP op, LscOpInfo &opInfo); // soft failure
 // isBits17_19: if the value is for desc[19:17]
 bool LscTryEncodeCacheOpts(const LscOpInfo &opInfo, LSC_CACHE_OPTS cacheOpts,
                            uint32_t &enc, bool isBits17_19);
+bool LscTryEncodeCacheOptsL1L2L3(const LscOpInfo &opInfo, LSC_CACHE_OPTS cacheOpts,
+                                 uint32_t &cacheEnc);
 
 extern struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE];
 

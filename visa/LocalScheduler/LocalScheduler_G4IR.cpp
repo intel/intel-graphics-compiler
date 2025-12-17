@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -218,6 +218,11 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel *k, G4_BB *block,
 
   if (doMessageFuse) {
     ddd.pairTypedWriteOrURBWriteNodes(bb);
+  }
+  if (ddd.hasMultipleDpasNodes() &&
+      (getBuilder()->hasDpasFwdAndDoubleSrcReadSupression() ||
+       getOptions()->getOption(vISA_ScheduleFor2xDpas))) {
+    ddd.pair2xDpasNodes();
   }
 
   if ((ddd.getIs2xFPBlock()) && getOptions()->getOption(vISA_ScheduleFor2xSP)) {
@@ -1262,6 +1267,59 @@ bool DDD::hasDpasReadSuppression(G4_INST *prevInst, G4_INST *nextInst) const {
   return false;
 }
 
+// check if curInst can be forwarded to nextInst
+bool DDD::canFwdDPAS(const G4_INST &curInst, const G4_INST &nextInst) const {
+  if (curInst.opcode() != nextInst.opcode())
+    return false;
+
+  G4_InstDpas *cur = curInst.asDpasInst();
+  G4_InstDpas *next = nextInst.asDpasInst();
+  vASSERT(cur && next);
+
+  // Check if both dpas instruction have the supported macro data types.
+  if (!cur->checksMacroTypes(*next))
+    return false;
+
+  // Check if both dpas instruction have the supported forwarding data types.
+  if (!cur->checksFwdTypes(*next))
+    return false;
+
+  // current and next dpas are both dpas8x8
+  if (cur->getSystolicDepth() != 8 || next->getSystolicDepth() != 8 ||
+      cur->getRepeatCount() != 8 || next->getRepeatCount() != 8)
+    return false;
+
+  // next DPAS's src0 and dst are both identical to current DPAS's dst
+  // Note that visa spec requires dst/src0 of dpas/bdpas to be grf-aligned.
+  // Checking left bound should be enough to tell if they have the same starting
+  // register/subregister. The right bound is not checked for dpas insts with
+  // the same data type dst/src0 as those dpas insts have the same depth,
+  // repcont, and operand size.
+  uint32_t curDstLB = cur->getDst()->getLinearizedStart();
+  uint32_t nextDstLB = next->getDst()->getLinearizedStart();
+  uint32_t nextSrc0LB = next->getSrc(0)->getLinearizedStart();
+  if (curDstLB != nextDstLB || curDstLB != nextSrc0LB)
+    return false;
+
+  // No internal dependency from both instruction's src1/src2 to dst
+  // FIXME: can skip this check that internal dependency from src1/src2 to dst
+  // is forbidden and shouldn't happen in this stage
+  auto dstLB = cur->getDst()->getLinearizedStart();
+  auto dstRB = cur->getDst()->getLinearizedEnd();
+  for (auto i = 1; i < cur->getNumSrc(); ++i) {
+    auto curSrcLB = cur->getSrc(i)->getLinearizedStart();
+    auto curSrcRB = cur->getSrc(i)->getLinearizedEnd();
+    if (curSrcRB >= dstLB && curSrcLB <= dstRB)
+      return false;
+
+    auto nextSrcLB = next->getSrc(i)->getLinearizedStart();
+    auto nextSrcRB = next->getSrc(i)->getLinearizedEnd();
+    if (nextSrcRB >= dstLB && nextSrcLB <= dstRB)
+      return false;
+  }
+
+  return true;
+}
 
 bool DDD::canInSameDPASMacro(G4_INST *curInst, G4_INST *nextInst,
                                BitSet &liveDst, BitSet &liveSrc, bool sameSrcOneOnly) const {
@@ -1443,6 +1501,26 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
     }
 
     if (curInst->isDpas()) {
+      ++NumDpasNodes;
+      bool tryGroupFwd = false;
+      // Favor FWD sequence over src1 re-use.
+      // Based on the lessons learned from several previous attempts, it seems
+      // difficult to use 2xdpas heuristic to schedule dpas fwd sequence because
+      // a dpas could have multiple dependencies. Some dependencies might cause
+      // dpas not in pending queue for heuristic to kick in. Grouping dpas fwd
+      // sequence as a scheduling node might be an easier approach to address
+      // the issue.
+      // 1. Here we may want to preserve the input order of dpas instructions
+      //    that can form a FWD sequence as input sequence could be already be
+      //    a nicely blended one written by the kernel developers. Grouping here
+      //    could possibly reduce the number of nodes that need to be processed
+      //    in the 2nd stage.
+      // 2. Before scheduling, we perform another pass to group nodes that are
+      //    not consecutive in input .visaasm but can be paired as a (longer)
+      //    2xdpas sequence.
+      if (getBuilder()->hasDpasFwdAndDoubleSrcReadSupression() ||
+          getOptions()->getOption(vISA_ScheduleFor2xDpas))
+        tryGroupFwd = true;
       std::list<G4_INST *>::reverse_iterator iNextInst = iInst;
       iNextInst++;
       if (iNextInst != iInstEnd) {
@@ -1456,14 +1534,16 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
         // dpas macro
         while (nextInst->isDpas()) {
           bool canGroup = false;
-            if (getOptions()->getOption(vISA_KeepDPASMacroInSchedule)) {
-              canGroup = canInSameDPASMacro(curInst, nextInst, liveDst,
-                                              liveSrc, false);
-            } else {
-              canGroup =
-                  canInSameDPASMacro(curInst, nextInst, liveDst,
-                                              liveSrc, true);
-            }
+          if (tryGroupFwd) {
+            // cur and next are in reverse order.
+            canGroup = canFwdDPAS(*nextInst, *curInst);
+          } else if (getOptions()->getOption(vISA_KeepDPASMacroInSchedule)) {
+            canGroup =
+                canInSameDPASMacro(curInst, nextInst, liveDst, liveSrc, false);
+          } else {
+            canGroup =
+                canInSameDPASMacro(curInst, nextInst, liveDst, liveSrc, true);
+          }
           if (!canGroup)
             break;
 
@@ -1875,6 +1955,98 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
   }
 }
 
+void DDD::pair2xDpasNodes() {
+  // The function collects pairs of dpas nodes that can build a fwd sequence in
+  // a forward order. After collecting those pairs, the dependence and
+  // instructions are propagated from fwd dst node to fwd src node in a backward
+  // order. With propagation, a longer fwd sequence could be built potentially.
+  instrPairVec_t fwdPairs;
+
+  // The compare function is designed to let dpas picked as late as possible.
+  // Note that node id is used to break tie.
+  // TODO: We may consider an infrastructure refactor on scheduling queue like
+  // PreRA scheduling to get rid of priority_queue. Currently follow the
+  // existing code to manipulate priority_queue to select a better candidate.
+  auto nodeCmp = [](const Node *n1, const Node *n2) -> bool {
+    bool isN1Dpas = n1->getInstructions()->front()->isDpas();
+    bool isN2Dpas = n2->getInstructions()->front()->isDpas();
+    if (isN1Dpas != isN2Dpas)
+      return isN1Dpas > isN2Dpas;
+    return n1->getNodeID() > n2->getNodeID();
+  };
+  std::priority_queue<Node *, std::vector<Node *>, decltype(nodeCmp)>
+      depFreeNodes(nodeCmp);
+
+  collectRoots();
+  for (auto n : Roots)
+    depFreeNodes.push(n);
+
+  auto apply2xDpasHeuristic = [&](Node *picked, Node *lastPicked) -> Node * {
+    assert(picked);
+    // The heuristic depends on last picked node. Return early if last picked
+    // node is not dpas.
+    if (!lastPicked || !lastPicked->getInstructions()->front()->isDpas())
+      return nullptr;
+    // Return early if last picked node can be forwarded to the picked one
+    // already.
+    if (picked->getInstructions()->front()->isDpas() &&
+        canFwdDPAS(*lastPicked->getInstructions()->back(),
+                   *picked->getInstructions()->front())) {
+      fwdPairs.emplace_back(lastPicked, picked);
+      return nullptr;
+    }
+
+    // Go though all dep-free nodes to find a node that can be forwarded from
+    // the last picked node if any.
+    std::vector<Node *> popped;
+    Node *cand = nullptr;
+    while (!depFreeNodes.empty()) {
+      Node *node = depFreeNodes.top();
+      depFreeNodes.pop();
+      if (node->getInstructions()->front()->isDpas() &&
+          canFwdDPAS(*lastPicked->getInstructions()->back(),
+                     *node->getInstructions()->front())) {
+        depFreeNodes.push(picked);
+        cand = node;
+        fwdPairs.emplace_back(lastPicked, cand);
+        break;
+      } else
+        popped.push_back(node);
+    }
+    for (Node *n : popped)
+      depFreeNodes.push(n);
+    return cand;
+  };
+
+  Node *lastPicked = nullptr;
+  while (!depFreeNodes.empty()) {
+    Node *picked = depFreeNodes.top();
+    depFreeNodes.pop();
+    if (Node *heuCandidate = apply2xDpasHeuristic(picked, lastPicked))
+      picked = heuCandidate;
+    lastPicked = picked;
+    // After picking a node, move its successors to def-free node list when
+    // possible.
+    for (auto &succ : picked->succs) {
+      Node *n = succ.getNode();
+      if (--(n->predsNotScheduled) == 0)
+        depFreeNodes.push(n);
+    }
+  }
+  // Restore predsNotScheduled values for real code scheduling to work.
+  for (auto n : allNodes)
+    n->predsNotScheduled = n->preds.size();
+
+  // Propagate the dependencies and instructions from fwdDst node to fwdSrc node
+  for (auto rit = fwdPairs.rbegin(), rie = fwdPairs.rend(); rit != rie; ++rit) {
+    Node *fwdSrc = rit->first;
+    Node *fwdDst = rit->second;
+    moveDeps(fwdDst, fwdSrc);
+    fwdSrc->instVec.insert(
+        fwdSrc->instVec.end(), fwdDst->instVec.begin(), fwdDst->instVec.end());
+    fwdDst->clear();
+  }
+}
 void DDD::collectRoots() {
   Roots.clear();
   for (auto N : allNodes) {

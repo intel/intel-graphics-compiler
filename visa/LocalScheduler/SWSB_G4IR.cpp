@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -87,6 +87,19 @@ static bool isSLMMsg(const G4_INST *inst) {
   return false;
 }
 
+static bool isSendgRTQueryCheck(const G4_INST *send) {
+  const auto *msgDesc = send->asSendInst()->getMsgDesc();
+  if (!msgDesc->isGeneralized()) {
+    return false;
+  }
+  const G4_SendgDesc *msgDescG = static_cast<const G4_SendgDesc *>(msgDesc);
+
+  if (msgDescG->getEncoding() != 3) {
+    return false;
+  }
+
+  return true;
+}
 
 static bool isRTQueryCheck(const G4_INST *send, const G4_INST *preInst) {
   G4_Operand *preSrc0 = preInst->getSrc(0);
@@ -2667,6 +2680,18 @@ void SWSB::assignDepToken(SBNode *node) {
     if (attr == DEP_IMPLICIT) {
       continue;
     }
+    // if node has sbid counter set and succ is node itself (WAW), then do not
+    // put a sync.nop on the destination. Instruction in ballot loop or loops
+    // identified by IGC are guaranteed to write to different lanes of
+    // destination reg (no clobbering). Hence, we can safely eliminate the
+    // sync.nop on the destination
+    // It is sufficient to check whether node is the same as succ as outlined
+    // below:
+    // -- If node has SB_SET token type, then SBID will ensure destination
+    // dependency is resolved and no sync is required.
+    // -- If node has SB_CNTR token type, then no sync is needed as every ballot
+    // loop iteration, different lanes of destination register is written.
+    // Hence, no need of sync
     if (node == succ && !node->getLastInstruction()->isDpas()) {
       // same token and dependency on itself
       // no need to set dep token unless node is set of dpas instructions
@@ -2715,6 +2740,25 @@ void SWSB::assignDepTokens() {
     }
   }
 }
+bool SWSB::canUseSBIDCounter(SBNode *node) {
+  // first check if the instruction can use the sbid counter
+  if (!node->getUseSBIDCounter())
+    return false;
+  // if the node has predecessors and they are in different bbs, then we can use
+  // sbid counter token type
+  for (const auto& p : node->preds) {
+    if (p.node->getBBID() == node->getBBID() && p.node != node) {
+      node->unsetUseSBIDCntr();
+      return false;
+    }
+  }
+  // reaching here means either one of the following:
+  // 1. node has no predecessors
+  // 2. any predecessors of node is not in the same basic block
+  // 3. any predecessors of node in the same basic block is the node itself
+  // All of these can safely use the counter feature
+  return true;
+}
 
 void SWSB::updateTokensForNodeSuccs(SBNode *node, unsigned short token) {
   // Sort succs according to the BBID and node ID.
@@ -2757,6 +2801,10 @@ void SWSB::updateTokensForNodeSuccs(SBNode *node, unsigned short token) {
       continue;
     }
 
+    if (canUseSBIDCounter(curNode)) {
+      node_it++;
+      continue;
+    }
     if (fg.builder->getOptions()->getOption(vISA_EnableDPASTokenReduction)) {
       //  If no instruction depends on DPAS, no SBID
       if (!(curNode->GetInstruction()->isDpas() && curNode->succs.empty())) {
@@ -2841,8 +2889,18 @@ void SWSB::assignToken(SBNode *node, unsigned short assignedToken,
          node->getNodeID(), node->getSendID(), linearScanLiveNodes.size());
 #endif
 
-  // Set token to send
-  node->getLastInstruction()->setSBIDSetToken(token);
+  // Check whether counter feature can be used here.
+  // If the following conditions are met, then counter feature can be safely
+  // used
+  // C1: Node has no dependencies (predecessor size = 0)
+  // C2: Node is in ballot loop and has a self dependency
+  if (canUseSBIDCounter(node)) {
+    node->getLastInstruction()->setSBIDCntrToken(token);
+  }
+  else {
+    // Set token to send
+    node->getLastInstruction()->setSBIDSetToken(token);
+  }
   // For token reduction
   allTokenNodesMap[token].set(node->sendID);
 
@@ -4453,7 +4511,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
           if (!(distType == G4_INST::DistanceType::DISTALL ||
                 distType == G4_INST::DistanceType::DISTINT ||
                 distType == G4_INST::DistanceType::DISTFLOAT) ||
-              (inst != (*inst_it))) {
+              (inst != (*inst_it)) || node->getUseSBIDCounter()) {
             G4_INST *synInst = insertSyncInstruction(bb, inst_it);
             synInst->setDistance(inst->getDistance());
             synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
@@ -4642,6 +4700,7 @@ void SWSB::insertTokenSync() {
   for (G4_BB *bb : fg) {
     BitSet dstTokens(totalTokenNum, false);
     BitSet srcTokens(totalTokenNum, false);
+    unsigned short fenceToken = (unsigned short)-1;
     unsigned short rayQueryCheckToken = (unsigned short)-1;
 
     std::list<G4_INST *>::iterator inst_it(bb->begin()), iInstNext(bb->begin());
@@ -4670,6 +4729,32 @@ void SWSB::insertTokenSync() {
 
       SBNode *node = *node_it;
       vASSERT(node->GetInstruction() == inst);
+      // With efficient64b, the fence instruction will have null dst.
+      // In this case, we need insert force dependence to stall following
+      // instructions.
+      if (fenceToken != (unsigned short)-1) {
+        if (tokenHonourInstruction(
+                inst) || // Don't across any token instruction
+            inst->isCFInst() ||
+            inst->isLabel() || inst->isOptBarrier()) {
+          G4_INST *syncInst = insertSyncInstruction(bb, inst_it);
+          syncInst->setToken(fenceToken);
+          syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
+          fenceToken = (unsigned short)-1;
+        }
+      }
+
+      if (inst->isSend() &&
+          inst->asSendInst()->isFence() &&
+          inst->getDst()->isNullReg()) {
+        fenceToken = inst->getSBIDSetToken();
+        if (iInstNext == bb->end()) { // In case the fence instruction is the
+                                      // last instruction of BB
+          G4_INST *syncInst = insertSyncInstructionAfter(bb, inst_it);
+          syncInst->setToken(fenceToken);
+          syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
+        }
+      }
 
       if (rayQueryCheckToken != (unsigned short)-1) {
         if (tokenHonourInstruction(
@@ -4683,7 +4768,17 @@ void SWSB::insertTokenSync() {
         }
       }
 
-      {
+      if (fg.builder->getOption(vISA_enableEfficient64b)) {
+        if (inst->isSend() && isSendgRTQueryCheck(inst)) {
+          rayQueryCheckToken = inst->getSBIDSetToken();
+          if (iInstNext == bb->end()) { // In case the fence instruction is the
+                                        // last instruction of BB
+            G4_INST *syncInst = insertSyncInstructionAfter(bb, inst_it);
+            syncInst->setToken(rayQueryCheckToken);
+            syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
+          }
+        }
+      } else {
         G4_INST *preInst = nullptr;
         if (inst_it != bb->begin()) {
           std::list<G4_INST *>::iterator pInst = inst_it;
@@ -6393,6 +6488,8 @@ bool G4_BB_SB::hasInternalDependenceWithinDPAS(SBNode *node) const {
 
   auto isDstSrc0DepException = [&](const SBFootprint *dstfp,
                                    const SBFootprint *src0fp) -> bool {
+    if (builder.hasDpasFwdAndDoubleSrcReadSupression())
+      return dstfp->LeftB == src0fp->LeftB;
     return dstfp->LeftB == src0fp->LeftB && dstfp->RightB == src0fp->RightB;
   };
 
@@ -6436,9 +6533,18 @@ bool G4_BB_SB::hasRAWDependenceBetweenDPASNodes(SBNode *node,
 
 unsigned short G4_BB_SB::getDpasSrcCacheSize(Gen4_Operand_Number opNum) const {
   if (opNum == Gen4_Operand_Number::Opnd_src1) {
+    // Double the cache size because there're 2 DPAS units. Doing so could
+    // allow building a bigger macro. It's not precise but there should be no
+    // harm to put more DPAS into the same macro even if no read suppression.
+    // TODO: Consider removing the rules that check cache size when building
+    // a macro.
+    if (builder.hasDpasFwdAndDoubleSrcReadSupression())
+      return 1024 * 2;
     return 512;
   }
   if (opNum == Gen4_Operand_Number::Opnd_src2) {
+    if (builder.hasDpasFwdAndDoubleSrcReadSupression())
+      return 2048 * 2;
     if (builder.hasDpasSrc2ReadSupression())
       return 1024;
   }
@@ -6501,10 +6607,129 @@ bool G4_BB_SB::src2SameFootPrintDiffType(SBNode *curNode,
   return false;
 }
 
+bool G4_BB_SB::dpasCanFwd(SBNode &curNode, SBNode &nextNode) const {
+  if (!builder.hasDpasFwdAndDoubleSrcReadSupression())
+    return false;
+
+  vASSERT(curNode.getLastInstruction()->isDpas() &&
+         nextNode.GetInstruction()->isDpas());
+  G4_InstDpas &cur = *curNode.getLastInstruction()->asDpasInst();
+  G4_InstDpas &next = *nextNode.GetInstruction()->asDpasInst();
+  // 0. dpas opcode should be the same
+  if (cur.opcode() != next.opcode())
+    return false;
+
+  // 1. this and next DPAS are dpas8x8
+  if (cur.getSystolicDepth() != 8 || cur.getRepeatCount() != 8)
+    return false;
+  if (cur.getSystolicDepth() != next.getSystolicDepth() ||
+      cur.getRepeatCount() != next.getRepeatCount())
+    return false;
+
+  // 2. next DPAS's src0 and dst are both identical to current DPAS's dst
+  SBFootprint *curDst = curNode.getFirstFootprint(Opnd_dst);
+  SBFootprint *nextSrc0 = nextNode.getFirstFootprint(Opnd_src0);
+  SBFootprint *nextDst = nextNode.getFirstFootprint(Opnd_dst);
+  if (builder.allowsMixedDstAndSrc0TypesInMacro() &&
+      cur.isDstAndSrc0MixOfBF16AndFP32() &&
+      next.isDstAndSrc0MixOfBF16AndFP32()) {
+    // When next and current DPAS src0 and dst are fp32 or bf16, the register of
+    // the next DPAS’s src0 and dst are both identical to the current DPAS’s dst
+    if (curDst->LeftB != nextSrc0->LeftB || curDst->LeftB != nextDst->LeftB)
+      return false;
+  } else if (curDst->LeftB != nextSrc0->LeftB ||
+             curDst->RightB != nextSrc0->RightB ||
+             curDst->LeftB != nextDst->LeftB ||
+             curDst->RightB != nextDst->RightB)
+    return false;
+
+  // 3. src0 and dst types must be 32b size (int32 or fp32) and are all the same
+  // types, or bf16
+  //    skip checking types as we assume types of all operands must satisfy
+  //    macro type restrictions before calling this function
+  if (!cur.checksFwdTypes(next))
+    return false;
+
+  // 4. next DPAS's src1 and src2 can't have dependency to current DPAS's dst
+  //    This means that next DPAS has no internal dependency since next DPAS's
+  //    dst is the same as current's dst
+  if (hasInternalDependenceWithinDPAS(&nextNode))
+    return false;
+
+  return true;
+}
+
+bool G4_BB_SB::isLastGroupGoodInDpasMacroForSrc1RsWA(
+    unsigned dpasCountInLastGroupWithSameSrc1, SBNode *curNode) {
+  if (dpasCountInLastGroupWithSameSrc1 < 2) {
+    return false;
+  }
+
+  BitSet cachedGRFSrc0(totalGRFNum, false);
+  BitSet cachedGRFSrc2(totalGRFNum, false);
+
+  const SBFootprint *firstFpSrc1 = curNode->getFirstFootprint(Opnd_src1);
+  const SBFootprint *fpSrc0 = curNode->getFirstFootprint(Opnd_src0);
+  const SBFootprint *fpSrc1 = firstFpSrc1;
+  const SBFootprint *fpSrc2 = curNode->getFirstFootprint(Opnd_src2);
+  while (dpasCountInLastGroupWithSameSrc1--) {
+    // src1 must be the same
+    vISA_ASSERT(fpSrc1->LeftB == firstFpSrc1->LeftB &&
+           fpSrc1->RightB == firstFpSrc1->RightB,
+           "b2b dpas instructions in a group must have the same src1");
+
+    G4_INST *curInst = fpSrc1->inst;
+    if (!curInst->getSrc(0)->isNullReg()) {
+      unsigned leftBSrc0 = fpSrc0->LeftB / builder.numEltPerGRF<Type_UB>();
+      unsigned rightBSrc0 = fpSrc0->RightB / builder.numEltPerGRF<Type_UB>();
+      cachedGRFSrc0.set(leftBSrc0, rightBSrc0);
+      fpSrc0 = fpSrc0->next;
+    }
+
+    unsigned leftBSrc2 = fpSrc2->LeftB / builder.numEltPerGRF<Type_UB>();
+    unsigned rightBSrc2 = fpSrc2->RightB / builder.numEltPerGRF<Type_UB>();
+    cachedGRFSrc2.set(leftBSrc2, rightBSrc2);
+
+    fpSrc2 = fpSrc2->next;
+    fpSrc1 = fpSrc1->next;
+  }
+
+  unsigned short grfNumSrc0 = cachedGRFSrc0.count();
+  unsigned short grfNumSrc2 = cachedGRFSrc2.count();
+
+  return (grfNumSrc0 >= 8 || grfNumSrc2 >= 8);
+}
+
+bool G4_BB_SB::isCandidateOfDpasGroupForSrc1RsWA(
+    SBNode *curNode, SBNode *nextNode,
+    unsigned *dpasCountInLastGroupWithSameSrc1) {
+  if (curNode->getFirstFootprint(Opnd_src1)->LeftB ==
+          nextNode->getFirstFootprint(Opnd_src1)->LeftB &&
+      curNode->getFirstFootprint(Opnd_src1)->RightB ==
+          nextNode->getFirstFootprint(Opnd_src1)->RightB) {
+    // can add into the last DPAS group if next dpas has the same src1
+    (*dpasCountInLastGroupWithSameSrc1)++;
+    return true;
+  } else if (isLastGroupGoodInDpasMacroForSrc1RsWA(
+                 *dpasCountInLastGroupWithSameSrc1, curNode)) // different src1
+  {
+    // can add it into last DPAS group if next dpas has different src1 and meet
+    // the conditon that at least two b2b dpas instructions share the same src1
+    // and the sum of the number of either Src0 or Src2 registers they read is 8
+    // or more
+    *dpasCountInLastGroupWithSameSrc1 = 1; // reset the new group size
+    return true;
+  } else {
+    // can not add it into last DPAS group
+    return false;
+  }
+}
 
 // Rules for a dpas macro :
 //   1, consecutive DPAS instructions of the same opcode
 //   2, same datatype of the same operand across all instructions
+//     2.1, Except for src0 and dst which can accept having a mix of bf16
+//          and fp32 datatypes
 //   3, same execution mask across all instructions
 //   4, depth is 8
 //   5, has no internal dependency within each instruction with an exception
@@ -6513,6 +6738,7 @@ bool G4_BB_SB::src2SameFootPrintDiffType(SBNode *curNode,
 //   6, no producer to consumer relationships (RAW) within the macro
 //       6.1, Unless compiler knows that the distance between the two
 //       instructions causing the RAW hazard is enough to handle it
+//      6.2, except on the cases allowed when using the FWD modifier
 //  7, for a DPAS 8xN sequence, where N !=8
 //      7.1, for PVC, A macro cannot have different Src1 when N != 8
 //  8, One of below conditions is met:
@@ -6530,8 +6756,21 @@ bool G4_BB_SB::src2SameFootPrintDiffType(SBNode *curNode,
 //          byte
 //           c) Only instructions that read 4 Src2 registers can have Src2
 //           suppression
-bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode)
-{
+//      8.3, Fwd is set
+//          1) Current and next dpas are both dpas8x8
+//          2) Next DPAS's src0 and dst are both identical to current DPAS's dst
+//             when its datatype is int32
+//             1) When next and current DPAS src0 and dst are fp32 or bf16, the
+//                register of the next DPAS’s src0 and dst are both identical to
+//                the current DPAS’s dst
+//             2) When next and current DPAS src0 and dst are fp32 or bf16, the
+//                datatype of the next DPA’s src0 is identical to the current
+//                DPAS's dst
+//          3) Src0, dst types are fp32 or int32 (type size is 32), or bf16
+//          4) Next DPAS's src1 and src2 should not have dependency to the
+//          current DPAS's dst
+bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode,
+                          unsigned *dpasCountInLastGroupWithSameSrc1) {
   G4_INST *curInst = curNode->getLastInstruction();
   G4_INST *nextInst = nextNode->GetInstruction();
 
@@ -6585,9 +6824,30 @@ bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode)
 
   // No producer to consumer relationships (RAW) within the macro
   if (hasRAWDependenceBetweenDPASNodes(curNode, nextNode)) {
+    // dependency is allowed between dpas insts if it can be resolved by Fwd
+    if (dpasCanFwd(*curNode, *nextNode)) {
+      curInst->setOptionOn(InstOpt_Fwd);
+      return false;
+    }
     return true;
   }
 
+  // Src1 read suppression for 8xN and N!=8
+  // handle rule 7.2
+  if (builder.hasDpasFwdAndDoubleSrcReadSupression() &&
+      (curC != 8 || nextC != 8)) {
+    // To make the logic simple, do not put dpas instructions with different
+    // repeat count in the same block
+    if (curC != nextC) {
+      return true;
+    }
+
+    // both current and next instructions are dpas8xN where N!=8
+    // current dpas is the last one in block if it's not a candidate of dpas
+    // group, otherwise it's not the last one.
+    return !isCandidateOfDpasGroupForSrc1RsWA(curNode, nextNode,
+                                              dpasCountInLastGroupWithSameSrc1);
+  }
 
   auto numOfGRFAccessed = [&](SBFootprint *fp) {
     BitSet GRFBitset(totalGRFNum, false);
@@ -6703,7 +6963,9 @@ bool G4_BB_SB::is2xFPBlockCandidate(G4_INST *inst, bool accDST) {
 
     if (!(inst->getExecSize() == g4::SIMD16 &&
           opnd->getType() == G4_Type::Type_DF) &&
-        !(inst->getExecSize() == g4::SIMD32 &&
+        !((inst->getExecSize() == g4::SIMD32 ||
+           ((inst->getExecSize() == g4::SIMD16) &&
+            (builder.getPlatform() >= Xe3P_Graphics))) &&
           opnd->getType() == G4_Type::Type_F)) {
       return false;
     }
@@ -6855,6 +7117,14 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     SBNode *node = new (allocator) SBNode(nodeID, ALUID, bb->getId(), curInst);
     SBNodes->emplace_back(node);
     curInst->setLocalId(0);
+    if (builder.hasSWSBCounter() && bb->getLabel() &&
+        bb->getLabel()->isDivergentResourceLoop() &&
+        curInst->isSend() && builder.getOptions()->getOption(vISA_UseSBIDCntrFeature)) {
+      vISA_ASSERT(!builder.getOptions()->getOption(vISA_Debug), "feature must be disabled under debug mode");
+      // send inside a divergent loop (identified by IGC)
+      // mark this send to use the sbid counter
+      node->setUseSBIDCntr();
+    }
 
     if (builder.hasA0WARHWissue() &&
         (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
@@ -6979,6 +7249,8 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
       unsigned dpas_count = 0;
       if (nextInst && nextInst->isDpas()) {
         SBNode nextNode;
+        // number of DPAS in a group which share the same src1
+        unsigned dpasCountInLastGroupWithSameSrc1 = 1;
         while (curInst != nullptr && curInst->isDpas()) {
           // following instructions, first instruction is in node already
           if (dpas_count != 0) {
@@ -6994,8 +7266,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
           getGRFFootPrint(&nextNode, p);
 
           // check if current dpas instruction can be added into the macro
-          if (isLastDpas(node, &nextNode))
-          {
+          if (isLastDpas(node, &nextNode, &dpasCountInLastGroupWithSameSrc1)) {
             break;
           }
 

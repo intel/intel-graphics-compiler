@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -62,6 +62,7 @@ static const G4_InstOptInfo InstOptInfo[] = {
     {InstOpt_NoSrcDepSet, "NoSrcDepSet"},
     {InstOpt_NoPreempt, "NoPreempt"},
     {InstOpt_Serialize, "Serialize"},
+    {InstOpt_Fwd, "Fwd"},
     {InstOpt_CachelineAligned, "CachelineAligned"},
     {InstOpt_END, "END"}};
 
@@ -244,6 +245,7 @@ G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
     : G4_INST(builder, prd, o, nullptr, g4::NOSAT, size, dst, payload, desc,
               opt),
       msgDesc(md) {
+  vISA_ASSERT(!isSendg(), "wrong constructor for op");
   md->setExecSize(size);
   // convert legacy EOT to instruction option if it slipped through in ExDesc[5]
   if (md->hasLegacyEoT())
@@ -260,11 +262,25 @@ G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
       msgDesc(md) {
   setSrc(src3extDesc, 3);
   md->setExecSize(size);
+  vISA_ASSERT(!isSendg(), "wrong constructor for op");
   // convert legacy EOT to instruction option if it slipped through in ExDesc[5]
   if (md->hasLegacyEoT())
     setEOT();
 }
 
+G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
+                        G4_opcode o, G4_ExecSize execSize,
+                        G4_DstRegRegion *dst,
+                        G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
+                        G4_SrcRegRegion *src2ind0, G4_SrcRegRegion *src3ind1,
+                        G4_InstOpts opt, G4_SendgDesc *md)
+    : G4_INST(builder, prd, o, nullptr, g4::NOSAT, execSize, dst, src0, src1,
+              src2ind0, opt),
+      msgDesc(md) {
+  setSrc(src3ind1, 3);
+  md->setExecSize(execSize);
+  vISA_ASSERT(isSendg(), "wrong constructor for op");
+}
 
 void G4_INST::setOpcode(G4_opcode opcd) {
   vISA_ASSERT(
@@ -321,6 +337,16 @@ void G4_INST::setExecSize(G4_ExecSize s) {
     resetRightBound(getImplAccDst());
     resetRightBound(getImplAccSrc());
   }
+}
+uint8_t G4_INST::getExecTypeSizeXe3p() const {
+  uint8_t exChannelWidth = (uint8_t)TypeSize(getExecType());
+  if (getDst()->getTypeSize() > exChannelWidth)
+    exChannelWidth = (uint8_t)getDst()->getTypeSize();
+  if (isMath() &&
+      !(asMathInst()->getMathCtrl() == MATH_INVM ||
+        asMathInst()->getMathCtrl() == MATH_RSQRTM))
+    exChannelWidth = 4;
+  return exChannelWidth;
 }
 
 //
@@ -881,6 +907,8 @@ bool G4_INST::hasNoPipe() const {
       op == G4_sync_allwr) {
     return true;
   }
+  if (op == G4_thryld)
+    return true;
 
   return false;
 }
@@ -978,6 +1006,62 @@ bool G4_INST::isLongPipeInstructionXe() const {
   return false;
 }
 
+bool G4_INST::isFloatInIntegerPipe() const{
+  if (opcode() != G4_mov && opcode() != G4_srnd && opcode() != G4_fcvt) {
+    return false;
+  }
+
+  const G4_Operand *dst = getDst();
+  const G4_Operand *src = getSrc(0);
+  if (opcode() == G4_fcvt) {
+    if (dst->getType() == Type_UD && // Type_UD: TF32
+        src->getType() == Type_F) {
+      return true;
+    }
+    if (dst->getType() == Type_HF) {
+      if (src->getType() == Type_UB || // Type_UB: BF8
+          src->getType() == Type_B){ // Type_B: HF8
+        return true;
+      }
+    }
+    if (dst->getType() == Type_UB && src->getType() == Type_HF) { // Type_UB:
+                                                                  // BF8
+      return true;
+    }
+    if (dst->getType() == Type_B && src->getType() == Type_HF) { // Type_B: HF8
+      return true;
+    }
+  }
+  if (opcode() == G4_mov) {
+    if (dst->getType() == Type_F) {
+      if (src->getType() == Type_DF || src->getType() == Type_HF ||
+          src->getType() == Type_BF || src->getType() == Type_Q ||
+          src->getType() == Type_UQ || src->getType() == Type_D ||
+          src->getType() == Type_UD || src->getType() == Type_W ||
+          src->getType() == Type_UW || src->getType() == Type_B ||
+          src->getType() == Type_UB) {
+        return true;
+      }
+    }
+    if (dst->getType() == Type_HF) {
+      if (src->getType() == Type_F || src->getType() == Type_D ||
+          src->getType() == Type_UD || src->getType() == Type_W ||
+          src->getType() == Type_UW || src->getType() == Type_B ||
+          src->getType() == Type_UB) {
+        return true;
+      }
+    }
+    if (dst->getType() == Type_BF && src->getType() == Type_F) {
+      return true;
+    }
+  }
+
+  if (opcode() == G4_srnd) { //srnd only support hf->bf8 and f->hf
+    return true;
+  }
+
+  return false;
+}
 
 bool G4_INST::isIntegerPipeInstructionXe() const {
   if (isJEUPipeInstructionXe()) {
@@ -988,6 +1072,9 @@ bool G4_INST::isIntegerPipeInstructionXe() const {
     return false;
   }
 
+  if (builder.enableMovCvt() && isFloatInIntegerPipe()) {
+    return true;
+  }
 
   if (isLongPipeInstructionXe()) {
     return false;
@@ -1042,6 +1129,9 @@ bool G4_INST::isFloatPipeInstructionXe() const {
     return false;
   }
 
+  if (builder.enableMovCvt() && isFloatInIntegerPipe()) {
+    return false;
+  }
 
   if (isLongPipeInstructionXe()) {
     return false;
@@ -1747,6 +1837,26 @@ bool G4_INST::isLegalType(G4_Type type, Gen4_Operand_Number opndNum) const {
   case G4_add3:
     return type == Type_W || type == Type_UW || type == Type_D ||
            type == Type_UD;
+  case G4_pseudo_mad:
+    if (builder.hasWideMulMadOpsEnabled() && IS_QTYPE(getDst()->getType()) &&
+        isSrc) {
+      switch (opndNum) {
+      case Opnd_src0:
+      case Opnd_src1:
+        return IS_DTYPE(type);
+      case Opnd_src2: // Source 0 of Gen mad
+        return IS_DTYPE(type) || IS_QTYPE(type);
+      default:
+        vISA_ASSERT_UNREACHABLE("unknown opnd");
+        return false;
+      }
+    } else // default
+    {
+      return true;
+    }
+  case G4_lfsr:
+  case G4_dnscl:
+    return type == Type_UD;
   }
 }
 
@@ -1967,8 +2077,15 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
     return false;
   }
 
+  // Skip ShflIdx4, Lfsr and dnscl
+  if (useInst->isShflIdx4() || useInst->isLfsr() || useInst->isDnscl()) {
+    return false;
+  }
   // skip the instruction has no dst. e.g. G4_pseudo_fcall
   if (useInst->getDst() == nullptr)
+    return false;
+  // moves into s0 are highly restricted
+  if (useInst->getDst()->isS0())
     return false;
 
   // If the operand to be copied is flag register, need to check if the use
@@ -2002,7 +2119,12 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
 
   // special checks for message desc/extended desc, which must be either a0 or
   // imm
-  if (useInst->isSend()) {
+  // sendg forbids folding into IND0 or IND1
+  if (useInst->isSendg()) {
+    if (opndNum >= Opnd_src2) {
+      return false;
+    }
+  } else if (useInst->isSend()) {
     auto msgDescOpnd = useInst->isSplitSend() ? Opnd_src2 : Opnd_src1;
     if (opndNum == msgDescOpnd) {
       // TODO: This should be an assert.
@@ -2461,6 +2583,10 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const {
     return false;
   }
 
+  // Skip ShflIdx4, Lfsr and dnscl
+  if (defInst->isShflIdx4() || defInst->isLfsr() || defInst->isDnscl()) {
+    return false;
+  }
   bool copyMovInst = isCopyMov();
   bool cantHoistMAD =
       (defInst->opcode() == G4_pseudo_mad &&
@@ -3090,7 +3216,12 @@ bool G4_INST::isAccSrcInst() const {
   if (srcs[0] && srcs[0]->isSrcRegRegion() &&
       srcs[0]->asSrcRegRegion()->getBase()->isAccReg()) {
     return true;
-  } else if (getNumSrc() == 3 && srcs[1] != nullptr) {
+  } else if (srcs[2] != nullptr) {
+    if (srcs[2]->isSrcRegRegion() &&
+        srcs[2]->asSrcRegRegion()->getBase()->isAccReg()) {
+      return true;
+    }
+  } else if (srcs[1] != nullptr) {
     if (srcs[1]->isSrcRegRegion() &&
         srcs[1]->asSrcRegRegion()->getBase()->isAccReg()) {
       return true;
@@ -3162,6 +3293,14 @@ bool G4_INST::isOptBarrier() const {
       }
     }
   }
+  if (isSend()) {
+    const auto *msgDesc = asSendInst()->getMsgDesc();
+    if (!msgDesc->isGeneralized()) {
+      return false;
+    }
+    const G4_SendgDesc *msgDescG = static_cast<const G4_SendgDesc *>(msgDesc);
+    return msgDescG->getOp() == MsgOp::EXTENDED_CACHE_CTRL;
+  }
   return false;
 }
 
@@ -3185,6 +3324,7 @@ static void emitPredWrEn(std::ostream &output, G4_INST &inst) {
 static void emitExecSize(std::ostream &output, const G4_INST &inst) {
   auto execSize = static_cast<int>(inst.getExecSize());
   if (inst.opcode() != G4_nop &&
+      inst.opcode() != G4_thryld &&
       inst.opcode() != G4_wait) {
     output << '(';
     if (execSize == UNDEFINED_EXEC_SIZE) {
@@ -3233,11 +3373,12 @@ static const char *SFIDToString(vISA::SFID sfid)
 //         and (16|M0)  ...
 //                      ^ aligns operand start to same place here
 static const int INST_START_COLUMN_WIDTH = 24;
-const char* const MathOpNames[16] = {
-    "reserved",  "inv",  "log", "exp",    "sqrt", "rsq", "sin",  "cos",
-    "undefined", "fdiv", "pow", "intdiv", "quot", "rem", "invm", "rsqrtm"
-    };
+const char *const MathOpNames[18] = {
+    "reserved", "inv", "log",       "exp",    "sqrt", "rsq",
+    "sin",      "cos", "undefined", "fdiv",   "pow",  "intdiv",
+    "quot",     "rem", "invm",      "rsqrtm", "tanh", "sigm"};
 
+const char *const ShflOpNames[1] = {"idx4"};
 
 // emits the first part of an instruction in an aligned column
 static void emitInstructionStartColumn(std::ostream &output, G4_INST &inst) {
@@ -3265,6 +3406,17 @@ static void emitInstructionStartColumn(std::ostream &output, G4_INST &inst) {
   } else if (inst.isSend()) {
     G4_SendDesc *sdesc = inst.asSendInst()->getMsgDesc();
     oupPfx << SFIDToString(sdesc->getSFID());
+  } else if (inst.isShfl()) {
+    oupPfx << "." << ShflOpNames[inst.asShflInst()->getShflFCtrl()];
+  } else if (inst.isLfsr()) {
+    oupPfx << "." << lfsrFuncCtrl[(unsigned)inst.asLfsrInst()->getLfsrFCtrl()];
+  } else if (inst.isDnscl()) {
+    oupPfx << "."
+           << dnsclConvertType[(unsigned)inst.asDnsclInst()
+                                   ->getDnsclConvertType()];
+    oupPfx << "." << dnsclMode[(unsigned)inst.asDnsclInst()->getDnsclMode()];
+    oupPfx << "."
+           << dnsclRndMode[(unsigned)inst.asDnsclInst()->getDnsclRoundMode()];
   }
 
   oupPfx << ' ';
@@ -3437,6 +3589,9 @@ void G4_INST::emit_options(std::ostream &output) const {
   case TOKEN_NONE:
   case SB_SET:
     break;
+  case SBID_CNTR:
+    tks1 =".INC";
+    break;
   case NoACCSBSet:
     tks1 = "NoACC";
     break;
@@ -3573,11 +3728,72 @@ bool G4_INST::isIllegalMixedMode() const {
   return false;
 }
 
+bool G4_INST::isAllSrcsAlignedToDst() const {
+  for (int i = 0, srcNum = getNumSrc(); i < srcNum; ++i) {
+    auto src = getSrc(i);
+    if (!src || !src->isSrcRegRegion())
+      continue;
+
+    auto srcRR = src->asSrcRegRegion();
+    if (!srcRR->isScalar()) {
+      uint8_t exChannelWidth = getExecTypeSizeXe3p();
+      auto dst = getDst();
+      uint32_t dstSubRegOff = 0, srcSubRegOff = 0;
+      bool dstHasFixedSubregOffset = false;
+      if (dst->isNullReg())
+        dstHasFixedSubregOffset = true;
+      else
+        dstHasFixedSubregOffset =
+            dst->hasFixedSubregOffset(getBuilder(), dstSubRegOff);
+
+      bool srcHasFixedSubregOffset = false;
+      if (srcRR->isNullReg())
+        srcHasFixedSubregOffset = true;
+      else
+        srcHasFixedSubregOffset =
+            srcRR->hasFixedSubregOffset(getBuilder(), srcSubRegOff);
+
+      if (dstHasFixedSubregOffset && srcHasFixedSubregOffset) {
+        uint8_t dstStrideInBytes = (uint8_t)dst->getExecTypeSize();
+        uint16_t srcStride = 0;
+        srcRR->getRegion()->isSingleStride(getExecSize(), srcStride);
+        uint8_t srcStrideInBytes = (uint8_t)(srcStride * srcRR->getTypeSize());
+
+        if (this->isMath()) {
+          bool noBitPosShiftDstSrc = false;
+          if (builder.supportPureBF())
+            noBitPosShiftDstSrc = (dstSubRegOff == srcSubRegOff) &&
+                                  (dstStrideInBytes == srcStrideInBytes);
+          return (noBitPosShiftDstSrc ||
+                  ((dstSubRegOff / exChannelWidth ==
+                    srcSubRegOff / exChannelWidth) &&
+                   (dstStrideInBytes == srcStrideInBytes) &&
+                   (dstStrideInBytes % exChannelWidth == 0)));
+        }
+
+        if (this->isFloatPipeInstructionXe() ||
+            this->isLongPipeInstructionXe() ||
+            this->isIntegerPipeInstructionXe()) {
+          return ((dstSubRegOff == srcSubRegOff) &&
+                  (dstStrideInBytes == srcStrideInBytes) &&
+                  (dstStrideInBytes % exChannelWidth == 0));
+        }
+      }
+      return false;
+    }
+  }
+  return true;
+}
 
 void G4_InstSend::setMsgDesc(G4_SendDesc *in) {
   vISA_ASSERT(in, "null descriptor not expected");
   if (in && in->getExecSize() == g4::SIMD_UNDEFINED) {
     VISA_DEBUG(std::cout << "Msg Desc has execSize undefined!\n");
+  }
+  if (in && isSendg()) {
+    vISA_ASSERT(in->isGeneralized(), "expected G4_SendgDesc");
+  } else if (in && !isSendg()) {
+    vISA_ASSERT(in->isRaw(), "expected G4_SendDescRaw");
   }
   msgDesc = in;
   resetRightBound((G4_Operand *)dst);
@@ -3681,6 +3897,7 @@ void G4_InstSend::emit_send(std::ostream &output) {
 
   output << ' ';
   bool printDstType = true;
+  printDstType &= !isSendg();
   if (printDstType || !dst->isDstRegRegion()) {
     dst->emit(output); // TODO use emitRegVarOff here after TGL
   } else {
@@ -3699,6 +3916,8 @@ void G4_InstSend::emit_send(std::ostream &output) {
     };
 
   int nSrcs = getNumSrcPayloads();
+  if (isSendg())
+    nSrcs = 2;
   for (int i = 0; i < nSrcs; i++) {
     output << ' ';
     emitBareSrc(srcs[i]);
@@ -3720,8 +3939,42 @@ void G4_InstSend::emit_send(std::ostream &output) {
     output << ' ';
     srcs[msgDescIdx]->emit(output);
   };
+  // emit descriptors for sendg[c]
+  auto emitInd = [&](G4_Operand *ind) {
+    if (ind) {
+      output << " ";
+      if (ind->isSrcRegRegion()) {
+        ind->asSrcRegRegion()->emitRegVarOffNoRegion(output);
+        output << ":" << TypeSymbol(ind->getType());
+      } else if (ind->isImm()) {
+        ind->emit(output);
+      } else {  // BAD IR; let's see it
+        ind->emit(output);
+        output << "?";
+        output << ":" << TypeSymbol(ind->getType());
+      }
+    }
+  };
+  // emits: [IND0 [IND1]] DESC
+  auto emitSendgDescs = [&]() {
+    if (!srcs[2] && srcs[3]) // ind1 but no ind0; show the screwup
+      output << " IND0???";
+    emitInd(srcs[2]); // ind0
+    emitInd(srcs[3]); // ind1
 
-  emitSendDescs();
+    if (getMsgDesc()->isGeneralized()) {
+      G4_SendgDesc *desc = (G4_SendgDesc *)getMsgDesc();
+      output << " " << fmtHex(desc->getEncoding());
+    } else {
+      output << "???";
+    }
+  };
+
+  if (isSendg()) {
+    emitSendgDescs();
+  } else {
+    emitSendDescs();
+  }
 
   emit_options(output);
 }
@@ -4659,6 +4912,28 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand *regRegion,
         return Rel_disjoint;
       }
 
+      // on xe3p, implicit acc dst could be both acc0 and acc1 for simd32
+      // instruction, or acc0 only for other simd size. If both operands are
+      // acc, we need to check the footprint.
+      if (builder.hasSimplifiedRegions() ||
+          builder.getOption(vISA_GAReArchBugFix)) {
+        if (myPhyReg->asAreg()->isAccReg() &&
+            opndPhyReg->asAreg()->isAccReg()) {
+          auto opndLeftBound = opnd->getLeftBound();
+          auto opndRightBound = opnd->getRightBound();
+          auto myLeftBound = regRegion->getLeftBound();
+          auto myRightBound = regRegion->getRightBound();
+          if (myRightBound < opndLeftBound || opndRightBound < myLeftBound)
+            return Rel_disjoint;
+          if (myLeftBound == opndLeftBound && myRightBound == opndRightBound)
+            return Rel_eq;
+          if (opndLeftBound >= myLeftBound && opndRightBound <= myRightBound)
+            return Rel_gt;
+          if (myLeftBound >= opndLeftBound && myRightBound <= opndRightBound)
+            return Rel_lt;
+          return Rel_interfere;
+        }
+      }
       // TODO: this is not accurate for flag/acc/address.
       return (myPhyReg->asAreg()->getArchRegType() ==
               opndPhyReg->asAreg()->getArchRegType())
@@ -6349,7 +6624,9 @@ void G4_INST::computeLeftBoundForImplAcc(G4_Operand *opnd) {
     int extypesize;
     extype = getOpExecType(extypesize);
 
-    if ((IS_WTYPE(extype) || IS_DTYPE(extype))) {
+    if ((IS_WTYPE(extype) || IS_DTYPE(extype)) &&
+        !(builder.hasSimplifiedRegions() ||
+        builder.getOption(vISA_GAReArchBugFix))) {
       // This condition is a result of HW Conformity requirement
       // that for exec type = D/DW, only acc0 is used even when
       // qtr control is set to Q2/H2
@@ -6517,6 +6794,11 @@ void G4_INST::computeRightBound(G4_Operand *opnd) {
       opnd->computeRightBound(execSize);
 
       if (getMaskOffset() > 0 &&
+          // On xe3p, implicit acc is only used as dst (e.g. addc/aubb) and
+          // it's always aligned to the destination register regardless off
+          // mask offset.
+          !(builder.hasSimplifiedRegions() ||
+          builder.getOption(vISA_GAReArchBugFix)) &&
           ((opnd == getImplAccSrc()) || (opnd == getImplAccDst()))) {
         // for ARF (flag, acc) we have to adjust its bound based on the emask
         // We have to reset LB since the original instruction may have a non
@@ -6808,6 +7090,20 @@ bool G4_INST::canSupportCondMod() const {
     if (dwordSrc && !IS_QTYPE(getDst()->getType())) {
       return false;
     }
+    if (builder.getPlatform() > Xe3) {
+      // When the destination datatype size is lesser than the sum of the
+      // datatype sizes of src0 and src1 for an integer operation, the low
+      // bits of the result are written to the destination register and the
+      // remaining high bits are discarded. This results in undefined Overflow
+      // and Sign flags. Therefore, conditional modifiers and saturation (.sat)
+      // cannot be used in this case.
+      int32_t dstTypeSize = getDst()->getTypeSize();
+      int32_t srcTypeSizeSum = 0;
+      for (int i = 0, numSrc = getNumSrc(); i < numSrc; ++i)
+        srcTypeSizeSum += getSrc(i)->getTypeSize();
+      if (isIntegerPipeInstructionXe() && (dstTypeSize < srcTypeSizeSum))
+        return false;
+    }
     return true;
   } else if (op == G4_pseudo_mad) {
     // no cond mod for D * W
@@ -6996,7 +7292,10 @@ bool G4_INST::supportsNullDst() const {
     // null:b not supported
     return false;
   }
-  {
+  if (builder.hasSimplifiedRegions() ||
+      builder.getOption(vISA_GAReArchBugFix)) {
+    return true;
+  } else {
     return getNumSrc() != 3 && !(op == G4_pln && !builder.doPlane());
   }
 }
@@ -7053,8 +7352,7 @@ bool G4_INST::mayExpandToAccMacro() const {
     return true;
   };
 
-  return opcode() == G4_mach || opcode() == G4_mulh || opcode() == G4_madw ||
-         isDMul(this) || mayBeMAC(this) ||
+  return opcode() == G4_mach || opcode() == G4_mulh || mayBeMAC(this) ||
          (opcode() == G4_pln && !builder.doPlane());
 }
 
@@ -7175,6 +7473,9 @@ bool G4_INST::canDstBeAcc() const {
     return false;
   }
 
+  if (isFlowControl()) {
+    return false;
+  }
   if (mayExpandToAccMacro()) {
     // while this should not prevent dst from becoming acc (mul/plane macros use
     // acc as temp so should not affect final dst), later HW conformity is not
@@ -7182,6 +7483,9 @@ bool G4_INST::canDstBeAcc() const {
     return false;
   }
 
+  if (builder.removedAccRestrictionsAsGRF() && !isAllSrcsAlignedToDst()) {
+    return false;
+  }
   if (dst == nullptr || dst->getTopDcl() == nullptr ||
       dst->getHorzStride() != 1) {
     return false;
@@ -7254,6 +7558,7 @@ bool G4_INST::canDstBeAcc() const {
   case G4_xor:
   case G4_rol:
   case G4_ror:
+  case G4_mullh:
     return true;
   case G4_sel:
     // sel seems to fail with int acc for some strange reason (sign extension?)
@@ -7467,6 +7772,16 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
         return false;
       }
     }
+    if (builder.removedAccRestrictionsAsGRF() && dst) {
+      if (dst->getType() == Type_BF || dst->getType() == Type_HF ||
+          IS_BTYPE(dst->getType())) {
+        if (src->getType() != dst->getType() &&
+          dst->getTypeSize() < src->getTypeSize() &&
+          dst->getHorzStride() == 1) {
+          return false;
+        }
+      }
+    }
     return builder.relaxedACCRestrictions() || !getDst()->isAccReg();
   case G4_madm:
     return builder.useAccForMadm();
@@ -7600,6 +7915,9 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const {
     return false;
   }
 
+  if (isFlowControl()) {
+    return false;
+  }
   return canSrcBeAccBeforeHWConform(opndNum) &&
          canSrcBeAccAfterHWConform(opndNum);
 }
@@ -7736,6 +8054,14 @@ G4_INST *G4_InstSend::cloneInst(const IR_Builder *b) {
   auto prd = nonConstBuilder->duplicateOperand(getPredicate());
   auto dst = nonConstBuilder->duplicateOperand(getDst());
   auto src0 = nonConstBuilder->duplicateOperand(getSrc(0))->asSrcRegRegion();
+  if (isSendg()) {
+    auto src1 = nonConstBuilder->duplicateOperand(getSrc(1))->asSrcRegRegion();
+    auto ind0 = nonConstBuilder->duplicateOperand(getSrc(2))->asSrcRegRegion();
+    auto ind1 = nonConstBuilder->duplicateOperand(getSrc(3))->asSrcRegRegion();
+    newInst = nonConstBuilder->createSendgInst(
+      prd, op, execSize,
+      dst, src0, src1, ind0, ind1, (G4_SendgDesc *)msgDesc, getOption(), false);
+  } else
   if (isSplitSend()) {
     // desc -> src2, extDesc -> src3
     auto src1 = nonConstBuilder->duplicateOperand(getSrc(1))->asSrcRegRegion();
@@ -8046,7 +8372,11 @@ uint8_t G4_InstDpas::getOpsPerChan() const {
     return OPS_PER_CHAN_2;
   else if (isTF32())
     return OPS_PER_CHAN_1;
+  else if (isFP8())
+    return OPS_PER_CHAN_4;
   else if (is2xInt8())
+    return OPS_PER_CHAN_8;
+  else if (isFP4())
     return OPS_PER_CHAN_8;
   // int8
   return OPS_PER_CHAN_4;
@@ -8094,11 +8424,30 @@ void G4_InstDpas::computeRightBound(G4_Operand *opnd) {
       computeDpasOperandBound(opnd, opnd->left_bound,
                               opnd->left_bound + bytes - 1);
     }
+    else if (opcode() == G4_bdpas && opnd && !opnd->isNullReg() &&
+        (opnd == srcs[3] || opnd == srcs[4])) {
+      unsigned K = D * getOpsPerChan();
+      unsigned bytes = 0;
+      if (K <= 32) {
+        // When K <= 32, the access ranges are 16 bytes [0:15] for src3 and
+        // 8 bytes [0:7] for src4.
+        bytes = opnd == srcs[3] ? ES : C;
+      } else {
+        vASSERT(K == 64);
+        // The actual access ranges are 32 bytes [0:15, 32:47] for src3 and
+        // [0:7, 32:39] for src4. Although the access ranges are not
+        // consecutive, here we treat them as consecutive ranges to make
+        // footprint modeling easier, i.e., 48 bytes for src3 and 40 bytes for
+        // src4.
+        bytes = opnd == srcs[3] ? ES + 32 : C + 32;
+      }
+      computeDpasOperandBound(opnd, opnd->left_bound,
+                              opnd->left_bound + bytes - 1);
+    }
 
     else if (opnd && opnd == srcs[3]) {
       uint32_t bytes;
-      if (isInt())
-      {
+      if (isInt() || isFP8()) {
         bytes = 2 * getBuilder().getGRFSize();
       } else if (isFP16() || isBF16()) {
         bytes = getBuilder().getGRFSize();
@@ -8111,6 +8460,42 @@ void G4_InstDpas::computeRightBound(G4_Operand *opnd) {
   }
 }
 
+bool G4_InstDpas::isDstAndSrc0MixOfBF16AndFP32() const {
+  G4_Type dstTy = getDst()->getType();
+  G4_Type src0Ty = getSrc(0)->getType();
+  return (IS_FTYPE(dstTy) || IS_BFTYPE(dstTy)) &&
+         (IS_FTYPE(src0Ty) || IS_BFTYPE(src0Ty));
+}
+
+// TODO: Note that this function only checks if "type" information is identical.
+// Check if we could merge the code that checks dst/src0 footprints in scheduler
+// and SWSB.
+// 1. Next DPAS’s src0 and dst are both identical to current DPAS’s dst when its
+//    datatype is int32.
+// 2. Src0 and dst can accept having a mix of bf16 and fp32 datatypes. In that
+//    case, the next DPAS's src0 is required to be identical to the current
+//    DPAS's dst.
+bool G4_InstDpas::checksFwdTypes(const G4_InstDpas &next) const {
+  vASSERT(checksMacroTypes(next));
+
+  // bdpas: FWD sequences will support BF16 and F as forwarding datatypes.
+  // dpas: src0, dst types are fp32 or int32 (type size is 32b), or bf16
+  if (builder.allowsMixedDstAndSrc0TypesInMacro() &&
+      isDstAndSrc0MixOfBF16AndFP32() &&
+      next.isDstAndSrc0MixOfBF16AndFP32())
+    return getDst()->getType() == next.getSrc(0)->getType();
+
+  // FIXME: Remove this handling for bdpas after we can allow mixed dst and src0
+  // types by default.
+  if (opcode() == G4_bdpas) {
+    G4_Type dstTy = getDst()->getType();
+    G4_Type src0Ty = getSrc(0)->getType();
+    return (dstTy == Type_BF && src0Ty == Type_BF) ||
+           (dstTy == Type_F && src0Ty == Type_F);
+  }
+
+  return getDst()->getTypeSize() == 4 && getSrc(0)->getTypeSize() == 4;
+}
 
 bool G4_InstDpas::checksMacroTypes(const G4_InstDpas &next) const {
   vASSERT(opcode() == next.opcode());
@@ -8119,7 +8504,12 @@ bool G4_InstDpas::checksMacroTypes(const G4_InstDpas &next) const {
   // instructions.
   if (getDst()->getType() != next.getDst()->getType() ||
       getSrc(0)->getType() != next.getSrc(0)->getType()) {
-    return false;
+    // Except for src0 and dst which can accept having a mix of bf16 and fp32
+    // data types.
+    if (!builder.allowsMixedDstAndSrc0TypesInMacro() ||
+        !isDstAndSrc0MixOfBF16AndFP32() ||
+        !next.isDstAndSrc0MixOfBF16AndFP32())
+      return false;
   }
 
   if (!hasSameSrc1Precision(next.getSrc1Precision()))

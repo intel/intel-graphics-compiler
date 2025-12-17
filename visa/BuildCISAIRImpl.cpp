@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -3348,6 +3348,17 @@ bool CISA_IR_Builder::CISA_create_rtwrite_3d_instruction(
     G = operands[counter++];
     B = operands[counter++];
     A = operands[counter++];
+    cntrls.rPresent = !(m_options.getOption(vISA_enableEfficient64b) && R->decl == nullptr);
+    cntrls.gPresent = !(m_options.getOption(vISA_enableEfficient64b) && G->decl == nullptr);
+    cntrls.bPresent = !(m_options.getOption(vISA_enableEfficient64b) && B->decl == nullptr);
+    cntrls.aPresent = !(m_options.getOption(vISA_enableEfficient64b) && A->decl == nullptr);
+    bool dummyRneeded = !cntrls.rPresent && !cntrls.gPresent && !cntrls.bPresent && !cntrls.aPresent;
+    cntrls.rPresent = dummyRneeded ? true : cntrls.rPresent;
+
+    R = cntrls.rPresent ? R : nullptr;
+    G = cntrls.gPresent ? G : nullptr;
+    B = cntrls.bPresent ? B : nullptr;
+    A = cntrls.aPresent ? A : nullptr;
 
     if (strstr(mode, "<Z>")) {
       cntrls.zPresent = true;
@@ -3379,10 +3390,24 @@ bool CISA_IR_Builder::CISA_create_rtwrite_3d_instruction(
     G = operands[counter++];
     B = operands[counter++];
     A = operands[counter++];
+    cntrls.rPresent = !(m_options.getOption(vISA_enableEfficient64b) && R->decl == nullptr);
+    cntrls.gPresent = !(m_options.getOption(vISA_enableEfficient64b) && G->decl == nullptr);
+    cntrls.bPresent = !(m_options.getOption(vISA_enableEfficient64b) && B->decl == nullptr);
+    cntrls.aPresent = !(m_options.getOption(vISA_enableEfficient64b) && A->decl == nullptr);
+    bool dummyRneeded = !cntrls.rPresent && !cntrls.gPresent && !cntrls.bPresent && !cntrls.aPresent;
+    cntrls.rPresent = dummyRneeded ? true : cntrls.rPresent;
+
+    R = cntrls.rPresent ? R : nullptr;
+    G = cntrls.gPresent ? G : nullptr;
+    B = cntrls.bPresent ? B : nullptr;
+    A = cntrls.aPresent ? A : nullptr;
   }
 
   VISA_StateOpndHandle* surface = nullptr;
-  if (surfaceName != nullptr) {
+  if (m_options.getOption(vISA_enableEfficient64b)) {
+    surface = (VISA_StateOpndHandle*)CISA_create_gen_src_operand(
+        surfaceName, 0, 1, 0, 0, 0, MODIFIER_NONE, lineNum);
+  } else if (surfaceName != nullptr) {
     surface = CISA_get_surface_variable(surfaceName, lineNum);
     if (!surface)
       return false; // error recorded
@@ -3421,7 +3446,11 @@ bool CISA_IR_Builder::CISA_create_info_3d_instruction(
     VISA_opnd *lod, VISA_opnd *dst, int lineNum) {
 
   VISA_StateOpndHandle *surface = nullptr;
-  surface = CISA_get_surface_variable(surfaceName, lineNum);
+  if (m_options.getOption(vISA_enableEfficient64b)) {
+    surface = (VISA_StateOpndHandle*)
+      CISA_create_gen_src_operand(surfaceName, 0, 1, 0, 0, 0, MODIFIER_NONE, lineNum);
+  } else
+    surface = CISA_get_surface_variable(surfaceName, lineNum);
   if (!surface)
     return false; // error recorded
 
@@ -3441,12 +3470,21 @@ bool CISA_IR_Builder::createSample4Instruction(
     VISA_RawOpnd **params, int lineNum) {
   VISA_StateOpndHandle *surface = nullptr;
 
-  surface = CISA_get_surface_variable(surfaceName, lineNum);
+  if (m_options.getOption(vISA_enableEfficient64b)) {
+    surface = (VISA_StateOpndHandle*)
+      CISA_create_gen_src_operand(surfaceName, 0, 1, 0, 0, 0, MODIFIER_NONE, lineNum);
+  } else
+    surface = CISA_get_surface_variable(surfaceName, lineNum);
   if (!surface)
     return false; // error recorded
 
   VISA_StateOpndHandle *sampler = nullptr;
-  sampler = CISA_get_sampler_variable(samplerName, lineNum);
+  if (m_options.getOption(vISA_enableEfficient64b)) {
+    sampler = (VISA_StateOpndHandle*)
+      CISA_create_gen_src_operand(samplerName, 0 , 1, 0, 0, 0, MODIFIER_NONE, lineNum);
+  }
+  else
+    sampler = CISA_get_sampler_variable(samplerName, lineNum);
   if (!sampler)
     return false; // error already reported
 
@@ -3473,7 +3511,11 @@ bool CISA_IR_Builder::create3DLoadInstruction(
     VISA_opnd *pairedSurface, VISA_opnd *dst, unsigned int numParameters,
     VISA_RawOpnd **params, int lineNum) {
   VISA_StateOpndHandle *surface = nullptr;
-  surface = CISA_get_surface_variable(surfaceName, lineNum);
+  if (m_options.getOption(vISA_enableEfficient64b)) {
+    surface = (VISA_StateOpndHandle*)
+      CISA_create_gen_src_operand(surfaceName, 0, 1, 0, 0, 0, MODIFIER_NONE, lineNum);
+  } else
+    surface = CISA_get_surface_variable(surfaceName, lineNum);
   if (!surface)
     return false; // error recorded
 
@@ -3495,16 +3537,26 @@ bool CISA_IR_Builder::create3DSampleInstruction(
     unsigned int surfaceIdx, VISA_opnd *pairedSurface, VISA_opnd *dst,
     unsigned int numParameters, VISA_RawOpnd **params, int lineNum) {
   VISA_StateOpndHandle *surface = nullptr;
-  vISA_ASSERT_INPUT(samplerIdx == 0 && surfaceIdx == 0,
-      "sampler and surface index must be 0");
+  if (!m_options.getOption(vISA_enableEfficient64b)) {
+    vISA_ASSERT_INPUT(samplerIdx == 0 && surfaceIdx == 0,
+        "sampler and surface index must be 0");
+  }
 
-  surface = CISA_get_surface_variable(surfaceName, lineNum);
+  if (m_options.getOption(vISA_enableEfficient64b)) {
+    surface = (VISA_StateOpndHandle *)CISA_create_gen_src_operand(
+        surfaceName, 0, 1, 0, 0, 0, MODIFIER_NONE, lineNum);
+  } else
+    surface = CISA_get_surface_variable(surfaceName, lineNum);
   if (!surface) {
     return false; // error already reported
   }
 
   VISA_StateOpndHandle *sampler = nullptr;
-  sampler = CISA_get_sampler_variable(samplerName, lineNum);
+  if (m_options.getOption(vISA_enableEfficient64b)) {
+    sampler = (VISA_StateOpndHandle *)CISA_create_gen_src_operand(
+        samplerName, 0, 1, 0, 0, 0, MODIFIER_NONE, lineNum);
+  } else
+    sampler = CISA_get_sampler_variable(samplerName, lineNum);
   if (!sampler) {
     return false; // error already reported
   }
@@ -3746,6 +3798,33 @@ bool CISA_IR_Builder::CISA_create_raw_sends_instruction(
                     (VISA_RawOpnd *)Src0, (VISA_RawOpnd *)Src1,
                     (VISA_RawOpnd *)Dst, hasEOT);
 
+  return true;
+}
+bool CISA_IR_Builder::CISA_create_raw_sendg_instruction(
+  unsigned sfid,
+  VISA_opnd *pred,
+  VISA_EMask_Ctrl emask, VISA_Exec_Size esize,
+  VISA_opnd *dst, int dstLenB,
+  VISA_opnd *src0, int src0LenB,
+  VISA_opnd *src1, int src1LenB,
+  VISA_opnd *ind0,
+  VISA_opnd *ind1,
+  uint64_t desc,
+  bool isConditional,
+  bool hasEOT,
+  int lineNum)
+{
+  VISA_CALL_TO_BOOL(AppendVISAMiscRawSendg,
+    sfid,
+    (VISA_PredOpnd *)pred,
+    emask, esize,
+    (VISA_RawOpnd *)dst, dstLenB,
+    (VISA_RawOpnd *)src0, src0LenB,
+    (VISA_RawOpnd *)src1, src1LenB,
+    (VISA_VectorOpnd *)ind0,
+    (VISA_VectorOpnd *)ind1,
+    desc,
+    isConditional, hasEOT);
   return true;
 }
 
@@ -4080,6 +4159,19 @@ bool CISA_IR_Builder::CISA_create_dpas_instruction(
   return true;
 }
 
+bool CISA_IR_Builder::CISA_create_bdpas_instruction(
+    ISA_Opcode opcode, VISA_EMask_Ctrl emask, unsigned exec_size,
+    VISA_opnd *dst_cisa, VISA_opnd *src0_cisa, VISA_opnd *src1_cisa,
+    VISA_opnd *src2_cisa, VISA_opnd *src3_cisa, VISA_opnd *src4_cisa,
+    GenPrecision A, GenPrecision W, uint8_t D, uint8_t C, int lineNum) {
+  VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
+  VISA_CALL_TO_BOOL(AppendVISABdpasInst, opcode, emask, executionSize,
+                    (VISA_RawOpnd *)dst_cisa, (VISA_RawOpnd *)src0_cisa,
+                    (VISA_RawOpnd *)src1_cisa, (VISA_RawOpnd *)src2_cisa,
+                    (VISA_VectorOpnd *)src3_cisa, (VISA_VectorOpnd *)src4_cisa,
+                    A, W, D, C);
+  return true;
+}
 
 bool CISA_IR_Builder::CISA_create_bfn_instruction(
     VISA_opnd *pred, uint8_t func_ctrl, bool sat, VISA_EMask_Ctrl emask,
@@ -4130,6 +4222,17 @@ bool CISA_IR_Builder::CISA_create_fcvt_instruction(
   return true;
 }
 
+bool CISA_IR_Builder::CISA_create_lsc_extended_cache_ctrl_inst(
+    VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_CTRL_OPERATION ccop,
+    LSC_CACHE_CTRL_SIZE ccsize, LSC_CACHE_OPTS caching, VISA_Exec_Size execSize,
+    VISA_EMask_Ctrl emask, LSC_ADDR addr, VISA_opnd *src0Addr, int lineNum) {
+
+  VISA_CALL_TO_BOOL(AppendVISALscExtendedCacheCtrlInst, opcode, sfid,
+                    static_cast<VISA_PredOpnd*>(pred), execSize, emask,
+                    ccop, ccsize, caching, addr,
+                    static_cast<VISA_RawOpnd*>(src0Addr));
+  return true;
+}
 bool CISA_IR_Builder::CISA_create_lsc_untyped_inst(
     VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching, bool ov,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR addr,
@@ -4224,15 +4327,30 @@ bool CISA_IR_Builder::CISA_create_lsc_typed_inst(
 }
 
 LSC_CACHE_OPTS CISA_IR_Builder::CISA_create_caching_opts(int lineNum) {
+  if (m_options.getOption(vISA_enableEfficient64b))
+    return LSC_CACHE_OPTS(LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT);
   return LSC_CACHE_OPTS(LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT);
 }
 
 LSC_CACHE_OPTS CISA_IR_Builder::CISA_create_caching_opts(LSC_CACHE_OPT l1,
                                                          LSC_CACHE_OPT l3,
                                                          int lineNum) {
+  if (m_options.getOption(vISA_enableEfficient64b))
+    RecordParseError(lineNum, "incorrect caching options, platform requires 3 "
+                              "(l1-l2-l3) caching options");
   return LSC_CACHE_OPTS(l1, l3);
 }
 
+LSC_CACHE_OPTS CISA_IR_Builder::CISA_create_caching_opts(LSC_CACHE_OPT l1,
+                                                         LSC_CACHE_OPT l2,
+                                                         LSC_CACHE_OPT l3,
+                                                         int lineNum) {
+  if (getPlatform() <= Xe3 || !m_options.getOption(vISA_enableEfficient64b))
+    RecordParseError(lineNum, "incorrect caching options, platform requires 2 "
+                              "(l1-l3) caching options");
+
+  return LSC_CACHE_OPTS(l1, l2, l3);
+}
 bool CISA_IR_Builder::CISA_create_lsc_fence(LSC_SFID sfid, LSC_FENCE_OP fence,
                                             LSC_SCOPE scope, int lineNum) {
   VISA_CALL_TO_BOOL(AppendVISALscFence, sfid, fence, scope);
@@ -4304,6 +4422,43 @@ bool CISA_IR_Builder::CISA_create_lsc_untyped_append_counter_atomic_inst(
       caching, addr, dataShape,
       static_cast<VISA_VectorOpnd *>(surface), surfaceIndex,
       static_cast<VISA_RawOpnd *>(dst), static_cast<VISA_RawOpnd *>(srcData));
+  return true;
+}
+bool CISA_IR_Builder::CISA_create_shfl_idx4_instruction(
+    VISA_opnd *pred, ISA_Opcode opcode, VISA_EMask_Ctrl emask,
+    VISA_Exec_Size execSize, VISA_opnd *dst, VISA_opnd *src0,
+    VISA_opnd *src1, int lineNum) {
+  VISA_CALL_TO_BOOL(AppendVISAShflIdx4Inst, opcode,
+                    static_cast<VISA_PredOpnd *>(pred), emask, execSize,
+                    static_cast<VISA_RawOpnd *>(dst),
+                    static_cast<VISA_VectorOpnd *>(src0),
+                    static_cast<VISA_VectorOpnd *>(src1));
+  return true;
+}
+
+  bool CISA_IR_Builder::CISA_create_lfsr_instruction(
+      VISA_opnd * pred, VISA_EMask_Ctrl emask,
+      VISA_Exec_Size execSize, LFSR_FC funcCtrl,
+      VISA_opnd * dst, VISA_opnd * src0, VISA_opnd * src1,
+      int lineNum) {
+  VISA_CALL_TO_BOOL(AppendVISALfsrInst, static_cast<VISA_PredOpnd *>(pred),
+                    emask, execSize, funcCtrl,
+                    static_cast<VISA_VectorOpnd *>(dst),
+                    static_cast<VISA_VectorOpnd *>(src0),
+                    static_cast<VISA_VectorOpnd *>(src1));
+  return true;
+}
+
+bool CISA_IR_Builder::CISA_create_dnscl_instruction(
+    VISA_opnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size execSize,
+    DNSCL_CONVERT_TYPE type, DNSCL_MODE mode, DNSCL_RND_MODE rndMode,
+    VISA_opnd *dst, VISA_opnd *src0, VISA_opnd *src1, VISA_opnd *src2,
+    int lineNum) {
+  VISA_CALL_TO_BOOL(
+      AppendVISADnsclInst, static_cast<VISA_PredOpnd *>(pred), emask, execSize,
+      type, mode, rndMode, static_cast<VISA_RawOpnd *>(dst),
+      static_cast<VISA_RawOpnd *>(src0), static_cast<VISA_RawOpnd *>(src1),
+      static_cast<VISA_RawOpnd *>(src2));
   return true;
 }
 

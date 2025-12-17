@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -289,6 +289,7 @@ private:
     SBNode *depNode;
   };
   std::vector<DepToken> depTokens;
+  bool canUseSBIDCntr = false;
 
 public:
   std::vector<G4_INST *> instVec;
@@ -463,6 +464,9 @@ public:
   }
 
   void setTokenReuseNode(SBNode *node) { tokenReusedNode = node; }
+  void setUseSBIDCntr() { canUseSBIDCntr = true; }
+  void unsetUseSBIDCntr() { canUseSBIDCntr = false; }
+  bool getUseSBIDCounter() const { return canUseSBIDCntr; }
 
   void *operator new(size_t sz, SBNodeAlloc &Allocator) {
     return Allocator.Allocate(sz / sizeof(SBNode));
@@ -840,7 +844,24 @@ public:
   bool dpasSrcFootPrintCache(Gen4_Operand_Number opNum, SBNode *curNode,
                              SBNode *nextNode) const;
   bool src2SameFootPrintDiffType(SBNode *curNode, SBNode *nextNode) const;
-  bool isLastDpas(SBNode *curNode, SBNode *nextNode);
+  bool isLastDpas(SBNode *curNode, SBNode *nextNode,
+                  unsigned *dpasCountInLastGroupWithSameSrc1);
+  // check if cur dst can be forwareded to next src0 and dst
+  // Instructions of curNode and nextNode must be dpas
+  bool dpasCanFwd(SBNode &curNode, SBNode &nextNode) const;
+
+  // check if the last group of the dpas macro block is good or not which must
+  // meet below conditions:
+  //    1, at least two b2b instrutions share the same src1
+  //    2, the sum of GRF number of either src0 or src is 8 or more
+  // this is only for dpas8xN where N!=8 on XE3P
+  bool isLastGroupGoodInDpasMacroForSrc1RsWA(unsigned groupSize,
+                                             SBNode *curNode);
+
+  // check if current dpas can be added into dpas group for src1 read
+  // suppression on RLT for the case dpas8xN where N!=8
+  bool isCandidateOfDpasGroupForSrc1RsWA(SBNode *curNode, SBNode *nextNode,
+                                         unsigned *lastGroupSizeInBlock);
 
   void getLiveOutToken(unsigned allSendNum, const SBNODE_VECT &SBNodes);
 
@@ -1067,6 +1088,7 @@ class SWSB {
   void tokenAllocationWithDistPropogationPerBB(G4_BB *bb);
   void tokenAllocationWithDistPropogation();
   void calculateDist();
+  static bool canUseSBIDCounter(SBNode *pred);
 
   // Assign Token
   void assignToken(SBNode *node, unsigned short token,

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -385,6 +385,19 @@ public:
       VISA_RawOpnd *address, VISA_RawOpnd *dst) = 0;
 
 
+  /// AppendVISABdpasInst -- append a BDPAS instruction to this kernel.
+  ///    op (execSize) dst src0 src1 src2 src3 src4
+  /// Precision, depth, repeat count are constants and considered as fields of
+  /// the inst (not operands.). The executionSize must be 16, systolic depth
+  /// must be 8 and repeat count must be 8. Src0, Src3, and Src4 could be
+  /// specified as null operand.
+  VISA_BUILDER_API virtual int
+  AppendVISABdpasInst(ISA_Opcode opcode, VISA_EMask_Ctrl emask,
+                      VISA_Exec_Size executionSize, VISA_RawOpnd *dst,
+                      VISA_RawOpnd *src0, VISA_RawOpnd *src1,
+                      VISA_RawOpnd *src2, VISA_VectorOpnd *src3,
+                      VISA_VectorOpnd *src4, GenPrecision A,
+                      GenPrecision W, uint8_t D, uint8_t C) = 0;
   ///////////////////////////////////////////////////////////////////////////
   // LSC untyped operations
   //
@@ -878,8 +891,90 @@ public:
       VISA_VectorOpnd *desc, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
       VISA_RawOpnd *dst, bool hasEOT) = 0;
 
+  // AppendVISAMiscRawSendg -- create a raw sendg instruction directly.
+  //
+  // [pred] sendg[c].SFID (esize|emask) dst:dstLenBytes src0:src0LenBytes src1:src1LenBytes [ind0] [ind1] desc {[EOT]}
+  //
+  // NOTES:
+  //  - Payload sizes are in bytes but the finalizer is free to round up to GRFs internally.
+  //  - For ind0 use %null to omit the operand in the final sendg EU ISA
+  //  - For ind1 use %null to omit the operand in the final sendg EU ISA
+  //  - Operand lengths are encoded in sendg except for dstLen, but which is
+  //    still needed for interference information.
+  //  - SFID needs to match the correct EU ISA encoding for a legal SFID.
+  //
+  // Good luck!
+  VISA_BUILDER_API virtual int AppendVISAMiscRawSendg(
+    unsigned SFID,
+    VISA_PredOpnd *pred,
+    VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+    VISA_RawOpnd *dst, int dstLenBytes,
+    VISA_RawOpnd *src0, int src0LenBytes,
+    VISA_RawOpnd *src1, int src1LenBytes,
+    VISA_VectorOpnd *ind0,
+    VISA_VectorOpnd *ind1,
+    uint64_t desc,
+    bool sendgConditional, // issue sendgc instead of sendg
+    bool issueEOT) = 0;
   VISA_BUILDER_API virtual int AppendVISALifetime(VISAVarLifetime startOrEnd,
                                                   VISA_VectorOpnd *varId) = 0;
+  /// AppendVISAShflIdx4Inst -- append an shfl_idx4 instruction to this kernel
+  ///    [pred] op (emask, execSize) dst src0 src1
+  /// @opcode ISA_SHFL_IDX4
+  /// @pred predicate variable
+  /// @emask execution mask (M1, M5, M1_NM, M5_NM)
+  /// @executionSize execution size (16)
+  /// @dst dst operand
+  /// @src0 source 0 operand
+  /// @src1 source 1 operand
+  VISA_BUILDER_API virtual int
+  AppendVISAShflIdx4Inst(ISA_Opcode opcode, VISA_PredOpnd *pred,
+                         VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+                         VISA_RawOpnd *dst, VISA_VectorOpnd *src0,
+                         VISA_VectorOpnd *src1) = 0;
+
+  /// AppendVISALfsrInst -- append an lfsr instruction to this kernel
+  ///    [pred] op.funcCtrl (emask, execSize) dst src0 src1
+  /// @pred predicate variable
+  /// @emask execution mask
+  /// @executionSize execution size
+  /// @funcCtrl function control
+  /// @dst dst operand
+  /// @src0 source 0 operand
+  /// @src1 source 1 operand
+  VISA_BUILDER_API virtual int
+  AppendVISALfsrInst(VISA_PredOpnd *pred,
+                     VISA_EMask_Ctrl emask,
+                     VISA_Exec_Size executionSize,
+                     LFSR_FC funcCtrl,
+                     VISA_VectorOpnd *dst,
+                     VISA_VectorOpnd *src0,
+                     VISA_VectorOpnd *src1) = 0;
+
+/// AppendVISADnsclInst -- append an dnscl instruction to this kernel
+  ///    [pred] op.type.mode.rndMode (emask, execSize) dst src0 src1 src2
+  /// @pred predicate variable
+  /// @emask execution mask
+  /// @executionSize execution size
+  /// @type conversion type from source to destination
+  /// @mode packing methods for the output data
+  /// @rndMode rounding mode
+  /// @dst dst operand
+  /// @src0 source 0 operand
+  /// @src1 source 1 operand
+  /// @src2 source 2 operand
+  VISA_BUILDER_API virtual int
+  AppendVISADnsclInst(VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+                      VISA_Exec_Size executionSize, DNSCL_CONVERT_TYPE type,
+                      DNSCL_MODE mode, DNSCL_RND_MODE rndMode,
+                      VISA_RawOpnd *dst, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
+                      VISA_RawOpnd *src2) = 0;
+
+  VISA_BUILDER_API virtual int AppendVISALscExtendedCacheCtrlInst(
+      LSC_OP subOpcode, LSC_SFID lscSfid, VISA_PredOpnd *pred,
+      VISA_Exec_Size execSize, VISA_EMask_Ctrl emask,
+      LSC_CACHE_CTRL_OPERATION ccop, LSC_CACHE_CTRL_SIZE ccsize,
+      LSC_CACHE_OPTS caching, LSC_ADDR addr, VISA_RawOpnd *src0Addr) = 0;
 
   /********** APPEND MEDIA Instructions START ******************/
 
