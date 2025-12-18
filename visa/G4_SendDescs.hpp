@@ -56,15 +56,7 @@ static inline bool MsgOpIsLoadStoreAtomic(MsgOp o) {
 static inline bool MsgOpIs2D(MsgOp op) {
   return op == MsgOp::LOAD_BLOCK2D || op == MsgOp::STORE_BLOCK2D;
 }
-static inline bool MsgOpIsExtendedCacheCtrl(MsgOp op) {
-  return op == MsgOp::EXTENDED_CACHE_CTRL;
-}
 
-static inline bool MsgOpIsBFAtomic(MsgOp op) {
-  return op == MsgOp::ATOMIC_BFADD || op == MsgOp::ATOMIC_BFSUB ||
-         op == MsgOp::ATOMIC_BFMIN || op == MsgOp::ATOMIC_BFMAX ||
-         op == MsgOp::ATOMIC_BFCAS;
-}
 
 static inline bool MsgOpIsApndCtrAtomic(MsgOp op) {
   return op == MsgOp::ATOMIC_ACADD || op == MsgOp::ATOMIC_ACSUB || op == MsgOp::ATOMIC_ACSTORE;
@@ -156,19 +148,6 @@ VecElems ToVecElems(int ves);
 uint32_t GetVecElemsEncoding(VecElems ve);
 int GetNumVecElems(VecElems ve);
 
-// address size type
-enum class AddrSizeType {
-  INVALID = 0,
-  GLB_A64_A32S, // ugm (sign-extended indices)
-  GLB_A64_A32U, // ugm (zero-extended indices)
-  GLB_A64_A64, // ugm
-  GLB_STATE_A32, // tgm or ugm
-  SLM_A32_A32, // slm only
-  URB_A32_A32, // for URB only
-};
-
-std::string ToSymbol(AddrSizeType a);
-uint32_t GetAddrSizeTypeEncoding(AddrSizeType a);
 
 // Cache controls
 // only certain combinations are legal
@@ -191,20 +170,6 @@ std::string ToSymbol(Caching);
 std::string ToSymbol(Caching, Caching);
 
 
-std::string ToSymbol(Caching, Caching, Caching);
-enum class CacheControlOperation {
-  DIRTY_SET = 0,
-  DIRTY_RESET,
-};
-
-enum class CacheControlSize {
-  S64B = 0,
-  S128B,
-  S192B,
-  S256B,
-};
-uint32_t GetCacheControlSizeEncoding(CacheControlSize ccsize);
-uint32_t GetCacheControlOpEncoding(CacheControlOperation ccop);
 
 struct ImmOff {
   bool is2d;
@@ -298,7 +263,6 @@ public:
   enum class Kind {
     INVALID,
     RAW, // G4_SendDescRaw
-    GENERALIZED, // G4_SendgDesc
   };
 
 protected:
@@ -326,7 +290,6 @@ public:
   G4_ExecSize getExecSize() const { return execSize; }
 
   bool isRaw() const { return kind == Kind::RAW; }
-  bool isGeneralized() const { return kind == Kind::GENERALIZED; }
   //
   bool isHDC() const;
   bool isLSC() const;
@@ -392,156 +355,6 @@ public:
 
   virtual std::string getDescription() const = 0;
 };
-
-class G4_SendgDesc : public G4_SendDesc {
-private:
-  // descriptor value -- immediate value
-  uint64_t descValue;
-
-  // number of registers occupied by destination and source operands
-  // the new descriptor does not encode dstLen, src0Len, src1Len
-  // however, dstLen is necessary by optimization passes and src0Len, src1Len
-  // are required by encoder to encode in the send instruction
-  // since these operand lengths are computed when constructing the descriptor
-  // value, these lengths are members of the descriptor class
-  unsigned int dstLen;
-  unsigned int src0Len;
-  unsigned int src1Len;
-
-  LdStAttrs attrs;
-
-  // When sampler message is backed by LSC cache, this value is set to
-  // bit number of descriptor corresponding to this setting. This allows
-  // VISA to disable this feature post RA as a tuning mechanism. When
-  // sampler message is not backed by LSC cache, this value is set to -1.
-  // If this struct is copied by value then this field also gets copied
-  // verbatim.
-  int samplerLSCCacheBit = -1;
-
-public:
-  G4_SendgDesc(SFID _sfid, uint64_t _descValue, LdStAttrs _attrs,
-               const IR_Builder &builder);
-  G4_SendgDesc(SFID _sfid, uint64_t _descValue,
-               const IR_Builder &builder)
-    : G4_SendgDesc(_sfid, _descValue, LdStAttrs::NONE, builder) {}
-
-  // local methods
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
-
-  uint64_t getEncoding() const { return descValue; }
-
-  MsgOp getOp() const;
-
-  bool isOp(MsgOp o0) const {return getOp() == o0;}
-  bool isOp(MsgOp o0, MsgOp o1) const {
-    auto op = getOp();
-    return op == o0 || op == o1;
-  }
-  bool isOp(MsgOp o0, MsgOp o1, MsgOp o2) const {
-    auto op = getOp();
-    return op == o0 || op == o1 || op == o2;
-  }
-  bool isOp(MsgOp o0, MsgOp o1, MsgOp o2, MsgOp o3) const {
-    auto op = getOp();
-    return op == o0 || op == o1 || op == o2 || op == o3;
-  }
-
-  LdStAttrs getAttributes() const { return attrs;}
-  void addAttributes(LdStAttrs a) { attrs = attrs | a;}
-
-  int getDstLen() const { return dstLen; }
-  int getSrc0Len() const { return src0Len; }
-  int getSrc1Len() const { return src1Len; }
-
-  void setDstLen(int len) { dstLen = len; }
-  void setSrc0Len(int len) { src0Len = len; }
-  void setSrc1Len(int len) { src1Len = len; }
-
-
-  /// encodeAddrGlobalOffset - function to see if the immediate address offset
-  /// can be encoded in the descriptor. returns false if it cannot
-  ///
-  /// \param immOffset            immediate signed offset in bytes
-  ///
-  /// \returns true if offset is encoded in descriptor, false otherwise
-  bool encodeAddrGlobalOffset(int immOffset);
-  /// encodeAddrScale - function to see if the scaling offset can
-  ///                   be encoded in the descriptor. returns false if it
-  ///                   cannot
-  ///
-  /// \param scale          scale in terms of bytes
-  ///
-  /// \returns true if scale is encoded in descriptor, false otherwise
-  bool encodeAddrScale(int scale);
-
-  bool isDataOrderNonTranspose() const;
-
-  // only valid for LSC load/store/atomic messages
-  AddrSizeType getAddrSizeType() const;
-  DataSize getDataSize() const;
-  uint32_t getDataSizeBytesReg() const;
-  uint32_t getDataSizeBytesMem() const;
-  VecElems getVecElems() const;
-  uint32_t getVecElemsCount() const;
-  DataChMask getDataChMask() const;
-  // returns the count of active data channels in CMask instruction
-  // (e.g. .xz would be 2, .yzw would be 3)
-  // assumes MsgOpHasChMask(getOp())
-  uint32_t getDataChMaskCount() const;
-  DataOrder getDataOrder() const;
-  // returns the address size in bytes
-  uint32_t getAddrSizeBytes() const;
-  // Return data size of either dst or src1 in bytes for load/store instructions
-  size_t getDataSizeInBytesLdStInst(Gen4_Operand_Number opnd_num) const;
-
-  // API to mark bit that enables sampler to use LSC cache
-  void setSamplerLSCCacheBit(unsigned int bitNum) {
-    vISA_ASSERT(!samplerLSCCacheEnabled() || bitNum == samplerLSCCacheBit,
-                "unexpected change to bit");
-    samplerLSCCacheBit = bitNum;
-  }
-  // Check whether this instance contains bit for sampler backed by LSC cache
-  bool samplerLSCCacheEnabled() const { return samplerLSCCacheBit != -1; }
-  // Disable LSC cache backing for sampler if this instance contains one
-  void disableSamplerLSCCache() {
-    vISA_ASSERT(samplerLSCCacheEnabled(),
-                "expecting msg desc to have value bit pos");
-    descValue &= ~(1ull << samplerLSCCacheBit);
-  }
-
-  // virtual methods from parent class
-  virtual size_t getSrc0LenBytes() const override;
-  virtual size_t getSrc1LenBytes() const override;
-  virtual size_t getDstLenBytes() const override;
-
-  virtual size_t getDstLenRegs() const override { return dstLen; }
-  virtual size_t getSrc0LenRegs() const override { return src0Len; }
-  virtual size_t getSrc1LenRegs() const override { return src1Len; }
-
-  virtual SendAccess getAccessType() const override;
-
-  Caching getCachingL1() const override { return std::get<0>(getCaching()); }
-  std::tuple<Caching,Caching,Caching> getCaching() const;
-
-  virtual std::optional<ImmOff> getOffset() const override;
-
-  virtual bool isSLM() const override { return sfid == SFID::SLM; }
-  virtual bool isBTS() const override {
-    return getAddrSizeType() == AddrSizeType::GLB_STATE_A32;
-  }
-  virtual bool isAtomic() const override { return MsgOpIsAtomic(getOp()); }
-  virtual bool isBarrier() const override;
-  virtual bool isFence() const override { return getOp() == MsgOp::FENCE; }
-  virtual bool isScratch() const override {
-    return int(attrs) & int(LdStAttrs::SCRATCH_SURFACE);
-  }
-  virtual bool isTyped() const override { return sfid == SFID::TGM; }
-
-  virtual unsigned getElemsPerAddr() const override;
-  virtual unsigned getElemSize() const override { return getDataSizeBytesMem(); }
-
-  virtual std::string getDescription() const override;
-}; // G4_SendgDesc
 
 ////////////////////////////////////////////////////////////////////////////
 class G4_SendDescRaw : public G4_SendDesc {

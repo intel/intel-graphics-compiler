@@ -99,9 +99,6 @@ public:
       SRSubAfterRA(bb);
     }
   }
-  bool isLargeGRFOpnd(G4_Operand *inst);
-  bool canRegisterBeEncoded(G4_Operand *opnd);
-  bool checkCandidateForLargeGRF(G4_INST *inst, regCandidatesBRA &dstSrcRegs);
   bool isSRCandidateAfterRA(G4_INST *inst, regCandidatesBRA &dstSrcRegs);
   bool replaceWithSendiAfterRA(G4_BB *bb, INST_LIST_ITER instIter,
                                regCandidatesBRA &dstSrcRegs);

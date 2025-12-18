@@ -692,18 +692,6 @@ public:
   int32_t getInt32KernelAttr(Attributes::ID aID) const {
     return getKernelAttrs()->getInt32KernelAttr(aID);
   }
-  bool isScratchLocationSet() const {
-    // checking if scratch location is set by IGC through attributes
-    return (getInt32KernelAttr(Attributes::ATTR_ScratchInlineOffset) > 0 ||
-            getInt32KernelAttr(Attributes::ATTR_ScratchIndirectRegOffset) > 0 ||
-            getInt32KernelAttr(Attributes::ATTR_ScratchIndirectMemOffset) > 0);
-  }
-
-  bool isPrivateMemUsed() const {
-    // checking if private memory is used resulting in scratch access
-    return (getKernelAttrs()->isKernelAttrSet(Attributes::ATTR_SepSpillPvtSS) ||
-            getKernelAttrs()->isKernelAttrSet(Attributes::ATTR_SpillMemOffset));
-  }
   bool getOption(vISAOptions opt) const { return m_options->getOption(opt); }
   uint32_t getuInt32Option(vISAOptions opt) const {
     return m_options->getuInt32Option(opt);
@@ -926,12 +914,6 @@ public:
     I->setMaskOption(MO);
   }
   // end of WA related
-  struct SampleWithLSCBacking {
-    G4_INST *inst = nullptr;
-    unsigned int opndNum = 0xffffffff;
-    unsigned int bitPos = 0xffffffff;
-  };
-  std::list<struct SampleWithLSCBacking> samplerWithLSCBacking;
 };     // G4_Kernel
 
 } // namespace vISA

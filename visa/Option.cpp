@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -263,7 +263,6 @@ bool Options::parseOptions(int argc, const char *argv[]) {
     m_vISAOptions.setBool(vISA_SplitGRFAlignedScalar, false);
     m_vISAOptions.setBool(vISA_SkipRedundantFillInRMW, false);
     m_vISAOptions.setBool(vISA_EnableDCE, false);
-    m_vISAOptions.setBool(vISA_UseSBIDCntrFeature, false);
     m_vISAOptions.setBool(vISA_storeCE, true);
     m_vISAOptions.setBool(vISA_Debug, true);
   }

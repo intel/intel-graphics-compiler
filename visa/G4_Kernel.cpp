@@ -769,10 +769,6 @@ static iga_gen_t getIGAPlatform(TARGET_PLATFORM genPlatform) {
   case Xe3:
     platform = IGA_XE3;
     break;
-  case Xe3P_CRI:
-  case Xe3P_Graphics:
-    platform = IGA_XE3P_XPC;
-    break;
   default:
     break;
   }
@@ -826,10 +822,6 @@ void G4_Kernel::createKernelCostInfo(KernelCost *KCA) {
 }
 
 void StackCallABI::setVersion() {
-  if (kernel->fg.builder->isEfficient64bEnabled()) {
-    version = StackCallABIVersion::VER_3;
-    return;
-  }
   // VISA ABI version 1 is deprecated so default version to use is version 2
   version = StackCallABIVersion::VER_2;
 }
@@ -906,12 +898,6 @@ uint32_t StackCallABI::numReservedABIGRF() const {
     return 3;
   } else {
     // for ABI version > 2
-    if (kernel->getNumRegTotal() == 512) {
-      // For 512 GRF mode, r510 is reserved for frame descriptor, and
-      // r511 is reserved because sendgx dst and source can't use r511
-      // due to encoding restrictions.
-      return 2;
-    }
     return 1;
   }
 }
@@ -919,20 +905,13 @@ uint32_t StackCallABI::numReservedABIGRF() const {
 uint32_t StackCallABI::getFPSPGRF() const {
   // For ABI V1, return (numRegTotal - 3), i.e. 125.
   // For ABI V2, return (numRegTotal - 1), i.e. 127, 255.
-  // For ABI V3:
-  //   If numRegTotal < 512, return (numRegTotal - 1), i.e. 127, 255.
-  //   If numRegTotal == 512, return 510 instead of 511 because HW doesn't
-  //   allow 511 as dst/src operand for sendgx as it's repurposed to mean
-  //   the null register.
+  // For ABI V3, return (numRegTotal - 1), i.e. 127, 255.
 
   if (version == StackCallABIVersion::VER_1) {
     return getStackCallStartReg() + FPSPGRF;
   } else if (version == StackCallABIVersion::VER_2) {
     return (kernel->getNumRegTotal() - 1) - FPSPGRF;
   } else {
-    if (kernel->getNumRegTotal() == 512) {
-      return (kernel->getNumRegTotal() - 2) - FPSPGRF;
-    }
 
     return (kernel->getNumRegTotal() - 1) - FPSPGRF;
   }
@@ -1102,8 +1081,7 @@ void G4_Kernel::setKernelParameters(unsigned newGRF) {
 bool G4_Kernel::hasInlineData() const {
   const IR_Builder &b = *fg.builder;
   return
-      // -useInlineData is implied on XE3P
-      b.getOption(vISA_useInlineData) || b.isEfficient64bEnabled();
+      b.getOption(vISA_useInlineData);
 }
 
 std::vector<ArgLayout> G4_Kernel::getArgumentLayout() {
@@ -1834,10 +1812,6 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
   const iga::Model *igaModel =
       iga::Model::LookupModel(iga::ToPlatform(igaPlatform));
   iga::SWSB_ENCODE_MODE swsbEncodeMode = igaModel->getSWSBEncodeMode();
-  if (m_options->getOption(vISA_UseSBIDCntrFeature) &&
-      igaModel->platform > iga::Platform::XE3) {
-    swsbEncodeMode = iga::SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr;
-  }
 
 
   KernelView kv(igaPlatform, binary, binarySize, swsbEncodeMode, errBuf,
@@ -2160,9 +2134,6 @@ unsigned G4_Kernel::getSRFInWords() {
 // There must be at least one Config that is VRTEnable for each platform
 GRFMode::GRFMode(const TARGET_PLATFORM plat, unsigned regSize, Options *op)
     : platform(plat), grfSize(regSize), options(op) {
-  bool isEfficient64bEnabled = op->getOption(vISA_enableEfficient64b);
-  bool is320and448GRFEnabled =
-      op->getOption(vISA_enable320and448Vrt) && isEfficient64bEnabled;
   switch (platform) {
   case Xe_XeHPSDV:
   case Xe_DG2:
@@ -2193,34 +2164,6 @@ GRFMode::GRFMode(const TARGET_PLATFORM plat, unsigned regSize, Options *op)
     configs[4] = Config(160, 6, 32, 4);
     configs[5] = Config(192, 5, 32, 4);
     configs[6] = Config(256, 4, 32, 8);
-    defaultMode = 3;
-    break;
-  case Xe3P_CRI:
-    configs.resize(8);
-    // Configurations with <numGRF, numThreads, SWSBTokens, numAcc>
-    configs[0] = Config(32, 8, 32, 4);
-    configs[1] = Config(64, 8, 32, 4);
-    configs[2] = Config(96, 8, 32, 4);
-    configs[3] = Config(128, 8, 32, 4);
-    configs[4] = Config(160, 6, 32, 4);
-    configs[5] = Config(192, 5, 32, 4);
-    configs[6] = Config(256, 4, 32, 8);
-    configs[7] = Config(512, 4, 32, 8, isEfficient64bEnabled);
-    defaultMode = 3;
-    break;
-  case Xe3P_Graphics:
-    configs.resize(10);
-    // Configurations with <numGRF, numThreads, SWSBTokens, numAcc>
-    configs[0] = Config(32, 10, 32, 4);
-    configs[1] = Config(64, 10, 32, 4);
-    configs[2] = Config(96, 10, 32, 4);
-    configs[3] = Config(128, 8, 32, 4);
-    configs[4] = Config(160, 6, 32, 4);
-    configs[5] = Config(192, 5, 32, 4);
-    configs[6] = Config(256, 4, 32, 8);
-    configs[7] = Config(320, 3, 32, 8, is320and448GRFEnabled);
-    configs[8] = Config(448, 2, 32, 8, is320and448GRFEnabled);
-    configs[9] = Config(512, 2, 32, 8, isEfficient64bEnabled);
     defaultMode = 3;
     break;
   default:

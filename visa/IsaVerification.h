@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -85,9 +85,6 @@ private:
   void verifyInstructionSIMDFlow(const CISA_INST *inst);
   void verifyInstructionDataport(const CISA_INST *inst);
   void verifyKernelAttributes();
-  void verifyInstructionShflIdx4(const CISA_INST *inst);
-  void verifyInstructionDnscl(const CISA_INST *inst);
-  void verifyInstructionLfsr(const CISA_INST *inst);
 
   bool checkImmediateIntegerOpnd(const vector_opnd &opnd,
                                  VISA_Type expected_type);

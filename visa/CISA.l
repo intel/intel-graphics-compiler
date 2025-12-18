@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -52,10 +52,6 @@ static AVSExecMode             avsExecMode(const char* str);
 static unsigned char           FENCEOptions(const char* str);
 static CHANNEL_OUTPUT_FORMAT   Get_Channel_Output(const char* str);
 static void                    appendStringLiteralChar(char c, char *buf, size_t *len);
-static LFSR_FC                 str2lfsrfc(const char* str);
-static DNSCL_CONVERT_TYPE str2DnsclConvertType(const char *str, int *off);
-static DNSCL_MODE str2DnsclMode(const char *str, int *off);
-static DNSCL_RND_MODE str2DnsclRoundMode(const char *str, int *off);
 
 static bool buildOptionPresent = false;
 void resetGlobalVariables() {
@@ -256,11 +252,6 @@ inv|log|exp|sqrt|rsqrt|sin|cos|sqrtm {
          return MATH2_OP;
     }
 
-tanh|sigm {
-         TRACE("** 2 operand math INST");
-         CISAlval.opcode = str2opcode(yytext);
-         return MATH2_OP;
-}
 div|mod|pow|divm {
         TRACE("** 3 operand math INST");
         CISAlval.opcode = str2opcode(yytext);
@@ -303,74 +294,6 @@ breakpoint {
         return BREAKPOINT_OP;
 }
 
-shfl_idx4 {
-        TRACE("** FP4/INT4 to FP8/FP16 conversion INST");
-        CISAlval.opcode = str2opcode(yytext);
-        return SHFL_IDX4_OP;
-}
-
-lfsr"."(b32|b16v2|b8v4) {
-        TRACE("** LFSR");
-        CISAlval.lfsr_fctrl = str2lfsrfc(yytext + 5);
-        return LFSR_SUB_OP;
-}
-
-bdpas"."bf"."bf"."8"."8 {
-        TRACE("** BDPAS");
-        CISAlval.opcode = ISA_BDPAS;
-        CISAlval.dpas_info.src1Precision = GenPrecision::BF16;
-        CISAlval.dpas_info.src2Precision = GenPrecision::BF16;
-        CISAlval.dpas_info.depth = 8;
-        CISAlval.dpas_info.count = 8;
-        return BDPAS_OP;
-}
-bdpas"."hf"."hf"."8"."8 {
-        TRACE("** BDPAS");
-        CISAlval.opcode = ISA_BDPAS;
-        CISAlval.dpas_info.src1Precision = GenPrecision::FP16;
-        CISAlval.dpas_info.src2Precision = GenPrecision::FP16;
-        CISAlval.dpas_info.depth = 8;
-        CISAlval.dpas_info.count = 8;
-        return BDPAS_OP;
-}
-bdpas"."[bh]f8"."[bh]f8"."8"."8 {
-        TRACE("** BDPAS");
-        CISAlval.opcode = ISA_BDPAS;
-        CISAlval.dpas_info.src1Precision = str2Precision(yytext + 6, 3);
-        CISAlval.dpas_info.src2Precision = str2Precision(yytext + 10, 3);
-        CISAlval.dpas_info.depth = 8;
-        CISAlval.dpas_info.count = 8;
-        return BDPAS_OP;
-}
-bdpas"."e2m1"."e2m1"."8"."8 {
-        TRACE("** BDPAS");
-        CISAlval.opcode = ISA_BDPAS;
-        CISAlval.dpas_info.src1Precision = str2Precision(yytext + 6, 4);
-        CISAlval.dpas_info.src2Precision = str2Precision(yytext + 11, 4);
-        CISAlval.dpas_info.depth = 8;
-        CISAlval.dpas_info.count = 8;
-        return BDPAS_OP;
-}
-dpas"."[eE]2[mM]1"."[eE]2[mM]1"."(1|2|4|8)"."[12345678] {
-        TRACE("** DPAS");
-        CISAlval.opcode = ISA_DPAS;
-        CISAlval.dpas_info.src1Precision = str2Precision(yytext + 5, 4);
-        CISAlval.dpas_info.src2Precision = str2Precision(yytext + 10, 4);
-        CISAlval.dpas_info.depth = (yytext[15] - '0');
-        CISAlval.dpas_info.count = (yytext[17] - '0');
-        return DPAS_OP;
-}
-
-dnscl"."(bftoe2m1|bftoint4|hftoe2m1|hftoint4)"."mode(0|1|2|3)"."(srnd|rne) {
-        TRACE("** DNSCL");
-        int offset = 6;
-        CISAlval.dnscl_info.type = str2DnsclConvertType(yytext, &offset);
-        offset++;
-        CISAlval.dnscl_info.mode = str2DnsclMode(yytext, &offset);
-        offset++;
-        CISAlval.dnscl_info.rnd_mode = str2DnsclRoundMode(yytext, &offset);
-        return DNSCL_OP;
-}
 dpas"."tf32"."tf32"."(1|2|4|8)"."[12345678] {
         TRACE("** DPAS");
         CISAlval.opcode = ISA_DPAS;
@@ -378,15 +301,6 @@ dpas"."tf32"."tf32"."(1|2|4|8)"."[12345678] {
         CISAlval.dpas_info.src2Precision = GenPrecision::TF32;
         CISAlval.dpas_info.depth = (yytext[15] - '0');
         CISAlval.dpas_info.count = (yytext[17] - '0');
-        return DPAS_OP;
-    }
-dpas"."[bBhH][fF][8]"."[bBhH][fF][8]"."(1|2|4|8)"."[12345678] {
-        TRACE("** DPAS");
-        CISAlval.opcode = ISA_DPAS;
-        CISAlval.dpas_info.src1Precision = str2Precision(yytext + 5, 3);
-        CISAlval.dpas_info.src2Precision = str2Precision(yytext + 9, 3);
-        CISAlval.dpas_info.depth = (yytext[13] - '0');
-        CISAlval.dpas_info.count = (yytext[15] - '0');
         return DPAS_OP;
     }
 
@@ -544,13 +458,6 @@ lsc_load|lsc_load_quad|lsc_load_status {
         // CISAlval.lsc_opcode = ISA_LSC_UNTYPED OR ISA_LSC_TYPED;
         return LSC_LOAD_MNEMONIC;
     }
-lsc_load_quad_status {
-        TRACE("** lsc_load* INST");
-        CISAlval.lsc_subOpcode = str2lscop(yytext);
-        // this is set in the parser based on the SFID
-        // CISAlval.lsc_opcode = ISA_LSC_UNTYPED OR ISA_LSC_TYPED;
-        return LSC_LOAD_MNEMONIC;
-    }
 lsc_load_quad_msrt {
     TRACE("** lsc_load* INST");
         CISAlval.lsc_subOpcode = str2lscop(yytext);
@@ -618,17 +525,6 @@ lsc_apndctr_atomic_add|lsc_apndctr_atomic_sub|lsc_apndctr_atomic_store {
       return LSC_ATOMIC_MNEMONIC;
     }
 
-lsc_atomic_bfadd|lsc_atomic_bfsub|lsc_atomic_bfmin|lsc_atomic_bfmax|lsc_atomic_bfcas {
-      TRACE("** lsc_atomic_bf INST");
-      CISAlval.lsc_subOpcode = str2lscop(yytext);
-      return LSC_ATOMIC_MNEMONIC;
-    }
-
-lsc_extended_cache_ctrl {
-      TRACE("** lsc_extended_cache_ctrl INST");
-      CISAlval.lsc_subOpcode = str2lscop(yytext);
-      return LSC_EXTENDED_CACHE_CTRL_MNEMONIC;
-}
 lsc_read_state_info {
         TRACE("** lsc_read_state_info INST");
         CISAlval.lsc_subOpcode = LSC_READ_STATE_INFO;
@@ -866,26 +762,6 @@ raw_sendsc_eot {
         return RAW_SENDSC_EOT_STRING;
     }
 
-raw_sendg {
-      TRACE("** RAW_SENDG");
-      CISAlval.opcode = ISA_RAW_SENDG;
-      return RAW_SENDG_STRING;
-    }
-raw_sendg_eot {
-      TRACE("** RAW_SENDG_EOT");
-      CISAlval.opcode = ISA_RAW_SENDG;
-      return RAW_SENDG_EOT_STRING;
-    }
-raw_sendgc {
-      TRACE("** RAW_SENDGC");
-      CISAlval.opcode = ISA_RAW_SENDG;
-      return RAW_SENDGC_STRING;
-    }
-raw_sendgc_eot {
-      TRACE("** RAW_SENDGC_EOT");
-      CISAlval.opcode = ISA_RAW_SENDG;
-      return RAW_SENDGC_EOT_STRING;
-    }
 
 avs {
         TRACE("** AVS INST");
@@ -916,12 +792,6 @@ sample_3d|sample_b|sample_l|sample_c|sample_d|sample_b_c|sample_l_c|sample_d_c|s
     }
 
 sample_po|sample_po_b|sample_po_l|sample_po_c|sample_po_d|sample_po_l_c|sample_po_lz|sample_po_c_lz {
-        TRACE("** SAMPLE_3D");
-        CISAlval.sample3DOp = str2SampleOpcode(yytext, pBuilder->getPlatform());
-        return SAMPLE_3D_OP;
-    }
-
-sample_po_b_c|sample_po_d_c {
         TRACE("** SAMPLE_3D");
         CISAlval.sample3DOp = str2SampleOpcode(yytext, pBuilder->getPlatform());
         return SAMPLE_3D_OP;
@@ -1177,10 +1047,6 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
           CISAlval.lsc_addr_size = LSC_ADDR_SIZE_64b;
         else if (yytext[2]  == '3') {
           CISAlval.lsc_addr_size = LSC_ADDR_SIZE_32b;
-          CISAlval.lsc_addr_size =
-            yytext[4] == 's' ? LSC_ADDR_SIZE_32bS :
-            yytext[4] == 'u' ? LSC_ADDR_SIZE_32bU :
-                               LSC_ADDR_SIZE_32b;
         }
         else
           CISAlval.lsc_addr_size = LSC_ADDR_SIZE_16b;
@@ -1304,29 +1170,11 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
         return LSC_CACHING_OPT;
     }
 
-"."(set|reset) {
-      if (strcmp(yytext+1, "reset") == 0) {
-        CISAlval.lsc_cache_ctrl_operation = CCOP_DIRTY_RESET;
-      }
-      return LSC_CACHE_CTRL_OPERATION_TYPE;
-  }
-
-"."(64B|128B|192B|256B) {
-      if (strcmp(yytext+1, "64B") == 0) {
-        CISAlval.lsc_cache_ctrl_size = CCSIZE_64B;
-      } else {
-        CISAlval.lsc_cache_ctrl_size = CCSIZE_64B;
-      }
-      return LSC_CACHE_CTRL_SIZE_TYPE;
-}
-
-".ov"   {TRACE("** OV"); return OV;}
 flat   {return LSC_AM_FLAT;}
 bti    {return LSC_AM_BTI;}
 ss     {return LSC_AM_SS;}
 bss    {return LSC_AM_BSS;}
 arg    {return LSC_AM_ARG;}
-surf   {return LSC_AM_SURF;}
 
 ".none" {
         CISAlval.lsc_fence_op = LSC_FENCE_OP_NONE;
@@ -1561,23 +1409,6 @@ static GenPrecision str2Precision(const char *str, int str_len)
                 return GenPrecision::FP16;
             }
         }
-    }
-    else if (str_len == 3) {
-      char c0 = tolower(str[0]);
-      char c1 = tolower(str[1]);
-      char c2 = tolower(str[2]);
-      if (c0 == 'b' && c1 == 'f' && c2 == '8')
-        return GenPrecision::BF8;
-      else if (c0 == 'h' && c1 == 'f' && c2 == '8')
-        return GenPrecision::HF8;
-    }
-    else if (str_len == 4) {
-      char c0 = tolower(str[0]);
-      char c1 = tolower(str[1]);
-      char c2 = tolower(str[2]);
-      char c3 = tolower(str[3]);
-      if (c0 == 'e' && c1 == '2' && c2 == 'm' && c3 == '1')
-        return GenPrecision::E2M1;
     }
 
     YY_FATAL_ERROR("Invalid Gen Precision");
@@ -1840,67 +1671,4 @@ static void appendStringLiteralChar(char c, char *buf, size_t *len)
     }
     buf[(*len)++] = c;
     buf[*len] = 0;
-}
-static LFSR_FC str2lfsrfc(const char* str)
-{
-    if(!strcmp(str, "b32"))
-        return LFSR_FC::B32;
-    else if (!strcmp(str, "b16v2"))
-        return LFSR_FC::B16V2;
-    else if (!strcmp(str, "b8v4"))
-        return LFSR_FC::B8V4;
-
-    YY_FATAL_ERROR("Invalid lfsr func control");
-    return LFSR_FC::INVALID;
-}
-
-static DNSCL_CONVERT_TYPE str2DnsclConvertType(const char *str, int *offset) {
-    DNSCL_CONVERT_TYPE type = DNSCL_CONVERT_TYPE::INVALID;
-    if (strncmp(yytext + *offset,"bftoe2m1", 8) == 0)
-        type = DNSCL_CONVERT_TYPE::BFTOE2M1;
-    else if (strncmp(yytext + *offset,"bftoint4", 8) == 0)
-        type = DNSCL_CONVERT_TYPE::BFTOINT4;
-    else if (strncmp(yytext + *offset,"hftoe2m1", 8) == 0)
-        type = DNSCL_CONVERT_TYPE::HFTOE2M1;
-    else if (strncmp(yytext + *offset,"hftoint4", 8) == 0)
-        type = DNSCL_CONVERT_TYPE::HFTOINT4;
-    else
-        YY_FATAL_ERROR("Invalid dnscl conversion type");
-
-    if (type != DNSCL_CONVERT_TYPE::INVALID)
-        *offset += 8;
-
-    return type;
-}
-
-static DNSCL_MODE str2DnsclMode(const char *str, int *offset){
-    DNSCL_MODE mode = DNSCL_MODE::INVALID;
-    if (strncmp(yytext + *offset,"mode0", 5) == 0)
-        mode = DNSCL_MODE::MODE0;
-    else if (strncmp(yytext + *offset,"mode1", 5) == 0)
-        mode = DNSCL_MODE::MODE1;
-    else if (strncmp(yytext + *offset,"mode2", 5) == 0)
-        mode = DNSCL_MODE::MODE2;
-    else if (strncmp(yytext + *offset,"mode3", 5) == 0)
-        mode = DNSCL_MODE::MODE3;
-    else
-        YY_FATAL_ERROR("Invalid dnscl mode");
-
-    if (mode != DNSCL_MODE::INVALID)
-        *offset += 5;
-
-    return mode;
-}
-
-static DNSCL_RND_MODE str2DnsclRoundMode(const char *str, int *offset){
-    if (strncmp(yytext + *offset,"srnd", 4) == 0) {
-        *offset += 4;
-        return DNSCL_RND_MODE::STOCHASTIC_ROUND;
-    } else if (strncmp(yytext + *offset,"rne", 3) == 0) {
-        *offset += 3;
-        return DNSCL_RND_MODE::RNE;
-    } else {
-        YY_FATAL_ERROR("Invalid dnscl rounding mode");
-        return DNSCL_RND_MODE::INVALID;
-    }
 }

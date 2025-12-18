@@ -47,13 +47,6 @@ void IncrementalRA::eraseLiveOutsFromIncrementalUpdate() {
   needIntfUpdate.erase(kernel.fg.builder->getBuiltinR0()->getRootDeclare());
   vISA_ASSERT(kernel.fg.builder->getBuiltinR0()->isOutput(),
               "expecting live-out");
-  if (kernel.fg.builder->isEfficient64bEnabled()) {
-    vISA_ASSERT(kernel.fg.builder->getSpillSurfaceEfficient64b(),
-                "expecting valid 64b spill surface descriptor ptr");
-    needIntfUpdate.erase(kernel.fg.builder->getSpillSurfaceEfficient64b());
-    vISA_ASSERT(kernel.fg.builder->getSpillSurfaceEfficient64b()->isOutput(),
-                "expecting live-out");
-  } else
   {
     vISA_ASSERT(!kernel.fg.builder->hasScratchSurface() ||
                     kernel.fg.builder->getSpillSurfaceOffset(),

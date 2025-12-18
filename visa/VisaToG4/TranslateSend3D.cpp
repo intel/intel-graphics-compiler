@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2025 Intel Corporation
+Copyright (C) 2020-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -22,8 +22,6 @@ static bool isSamplerMsgWithPO(VISASampler3DSubOpCode samplerOp) {
   case VISA_3D_SAMPLE_PO_C:
   case VISA_3D_SAMPLE_PO_D:
   case VISA_3D_SAMPLE_PO_L_C:
-  case VISA_3D_SAMPLE_PO_B_C:
-  case VISA_3D_SAMPLE_PO_D_C:
   case VISA_3D_SAMPLE_PO_LZ:
   case VISA_3D_SAMPLE_PO_C_LZ:
   case VISA_3D_GATHER4_PO_PACKED:
@@ -109,10 +107,6 @@ static MsgOp ConvertSamplerOpToMsgOp(VISASampler3DSubOpCode op) {
     return MsgOp::SAMPLE_PO_C;
   case VISASampler3DSubOpCode::VISA_3D_SAMPLE_PO_L_C:
     return MsgOp::SAMPLE_PO_L_C;
-  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_PO_B_C:
-      return MsgOp::SAMPLE_PO_B_C;
-  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_PO_D_C:
-      return MsgOp::SAMPLE_PO_D_C;
   case VISASampler3DSubOpCode::VISA_3D_SAMPLE_PO_D:
     return MsgOp::SAMPLE_PO_D;
   case VISASampler3DSubOpCode::VISA_3D_SAMPLE_PO_LZ:
@@ -203,7 +197,6 @@ int IR_Builder::translateVISASampleInfoInst(VISA_Exec_Size executionSize,
   bool forceSplitSend = shouldForceSplitSend(surface);
   bool useHeader = true;
   bool forceHeader = false;
-  forceHeader |= samplerCachingInHeader();
   // SAMPLEINFO has 0 parameters so its only header
 
   unsigned int numRows = 1;
@@ -217,13 +210,6 @@ int IR_Builder::translateVISASampleInfoInst(VISA_Exec_Size executionSize,
 
     unsigned int secondDword = chMask.getHWEncoding() << 12;
 
-    bool addToList = false;
-    const uint32_t LSCBacking = 29;
-    if (samplerCachingInHeader()) {
-      // Bit 29: Enables LSC as second level cache for Sampler
-      secondDword |= (1 << LSCBacking);
-      addToList = true;
-    }
 
     G4_Imm *immOpndSecondDword = createImm(secondDword, Type_UD);
 
@@ -232,9 +218,6 @@ int IR_Builder::translateVISASampleInfoInst(VISA_Exec_Size executionSize,
 
     G4_INST *movInst = createMov(g4::SIMD1, payloadDstRgn, immOpndSecondDword,
                                  InstOpt_NoOpt, true);
-    if (addToList) {
-      kernel.samplerWithLSCBacking.push_back({movInst, 0, LSCBacking});
-    }
     movInst->setOptionOn(InstOpt_WriteEnable);
 
     m0 = createSrcRegRegion(msg, getRegionStride1());
@@ -301,7 +284,6 @@ int IR_Builder::translateVISAResInfoInst(
           ? channels != CHANNEL_MASK_RGBA
           : (channels != CHANNEL_MASK_R && channels != CHANNEL_MASK_RG &&
              channels != CHANNEL_MASK_RGB && channels != CHANNEL_MASK_RGBA);
-  useHeader |= samplerCachingInHeader();
 
   // Setup number of rows = (header + lod) by default
   unsigned int numRows = (execSize == getNativeExecSize() ? 1 : 2);
@@ -342,13 +324,6 @@ int IR_Builder::translateVISAResInfoInst(
     unsigned int secondDword = 0;
     secondDword |= (chMask.getHWEncoding() << 12);
 
-    bool addToList = false;
-    const uint32_t LSCBacking = 29;
-    if (samplerCachingInHeader()) {
-      // Bit 29: Enables LSC as second level cache for Sampler
-      secondDword |= (1 << LSCBacking);
-      addToList = true;
-    }
 
     G4_Imm *immOpndSecondDword = createImm(secondDword, Type_UD);
 
@@ -357,9 +332,6 @@ int IR_Builder::translateVISAResInfoInst(
 
     G4_INST *movInst = createMov(g4::SIMD1, payloadDstRgn, immOpndSecondDword,
                                  InstOpt_NoOpt, true);
-    if (addToList) {
-      kernel.samplerWithLSCBacking.push_back({movInst, 0, LSCBacking});
-    }
     movInst->setOptionOn(InstOpt_WriteEnable);
   }
 
@@ -1449,12 +1421,6 @@ IR_Builder::constructSrcPayloadDualRenderTarget(vISA_RT_CONTROLS cntrls,
       ((!(s0B->isNullReg() && s1B->isNullReg()) ? 0x1 : 0) << 0x2) |
       (((!(s0A->isNullReg() && s1A->isNullReg()) || cntrls.s0aPresent) ? 0x1 : 0) << 0x3);
 
-  if (m_options->getOption(vISA_enableEfficient64b)) {
-    // The surface format will decide the payload value.
-    // So, when the enable channels and length are unsure, always set length to
-    // 8 and CMASK to F.
-    chMask = 0xf;
-  }
 
   return std::make_tuple(srcToUse, numRows, chMask);
 }
@@ -1477,24 +1443,10 @@ IR_Builder::constructSrcPayloadRenderTarget(vISA_RT_CONTROLS cntrls,
     ++varOffset;
   }
 
-  uint8_t numColorComps = varOffset;
-  G4_SrcRegRegion *R =
-      m_options->getOption(vISA_enableEfficient64b) && !cntrls.rPresent
-          ? nullptr
-          : msgOpnds[varOffset++];
-  G4_SrcRegRegion *G =
-      m_options->getOption(vISA_enableEfficient64b) && !cntrls.gPresent
-          ? nullptr
-          : msgOpnds[varOffset++];
-  G4_SrcRegRegion *B =
-      m_options->getOption(vISA_enableEfficient64b) && !cntrls.bPresent
-          ? nullptr
-          : msgOpnds[varOffset++];
-  G4_SrcRegRegion *A =
-      m_options->getOption(vISA_enableEfficient64b) && !cntrls.aPresent
-          ? nullptr
-          : msgOpnds[varOffset++];
-  numColorComps = varOffset - numColorComps;
+  G4_SrcRegRegion *R = msgOpnds[varOffset++];
+  G4_SrcRegRegion *G = msgOpnds[varOffset++];
+  G4_SrcRegRegion *B = msgOpnds[varOffset++];
+  G4_SrcRegRegion *A = msgOpnds[varOffset++];
   // depth
   G4_SrcRegRegion *Z = nullptr;
 
@@ -1523,7 +1475,7 @@ IR_Builder::constructSrcPayloadRenderTarget(vISA_RT_CONTROLS cntrls,
 
   // compute payload size sans header
 
-  uint32_t numRows = numColorComps * mult; // RGBA
+  uint32_t numRows = 4 * mult; // RGBA
 
   if (cntrls.s0aPresent) {
     // s0a has same type as RGBA
@@ -1692,66 +1644,10 @@ IR_Builder::constructSrcPayloadRenderTarget(vISA_RT_CONTROLS cntrls,
                     ((B && !B->isNullReg() ? 0x1 : 0) << 0x2) |
                     ((A && !A->isNullReg() ? 0x1 : 0) << 0x3);
 
-  if (m_options->getOption(vISA_enableEfficient64b) && chMask == 0) {
-    chMask = 1;
-  }
 
   return std::make_tuple(srcToUse, numRows, chMask);
 }
 
-int IR_Builder::translateVISARTWrite3DInstUnified(
-    G4_Predicate *pred, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
-    G4_Operand *surfaceBaseAddr, int rtIdentifier, G4_Operand *rtIndex,
-    vISA_RT_CONTROLS cntrls, G4_Operand *cpsCounter, unsigned int numMsgOpnds,
-    G4_SrcRegRegion **msgOpnds) {
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
-
-  // four steps
-  // 1. create src0 payload
-  // 2. create msg descriptor
-  // 3. compute operand lengths
-  // 4. create send instruction
-
-  // create source payload, src0Len and channel mask
-  auto [srcToUse, src0Len, chMask] = constructSrcPayloadRenderTarget(
-      cntrls, msgOpnds, numMsgOpnds, execSize, instOpt);
-
-  // create descritptor
-  auto msgDesc = createRenderTargetDesc(
-      MsgOp::WRITE, chMask, cntrls.s0aPresent, cntrls.isStencil,
-      cntrls.zPresent, cntrls.oMPresent, cntrls.isNullRT, cntrls.isLastWrite);
-
-  // set operand lengths
-  msgDesc->setDstLen(0);
-  msgDesc->setSrc0Len(src0Len);
-  msgDesc->setSrc1Len(0);
-
-  // generate the movs to scalar register ind0
-  // ind0 will have the surface state address and the blend state index
-
-  // the blend state index/render state index will be packaged along with the
-  // surface base address into the 64bit value passed down
-
-  // if nullRT, no need to setup ind0
-  auto ind0 = setupIndirectDescriptor(surfaceBaseAddr);
-
-  // create send instruction
-  G4_InstSend* sendInst = createRenderTargetSendg(pred, createNullDst(Type_UD), srcToUse,
-                                  createNullSrc(Type_UD), execSize, msgDesc,
-                                  ind0, instOpt);
-
-  if (getOption(vISA_renderTargetWriteSendReloc)) {
-      std::string symbolName{ "RTW_SEND." };
-      symbolName += std::to_string(rtIdentifier);
-      RelocationEntry::createRelocation(kernel, *sendInst, 0, symbolName,
-          GenRelocType::R_SEND);
-  }
-
-  return VISA_SUCCESS;
-}
 
 
 // Bit 15 of aoffimmi is set in messages with sampler index >= 16.
@@ -1875,13 +1771,6 @@ static G4_Operand *createSampleHeader(IR_Builder *builder, G4_Declare *header,
   unsigned int secondDword = createSampleHeader0Dot2(
       actualop, pixelNullMask, aoffimmiVal, srcChannel, builder);
 
-  bool addToList = false;
-  const uint32_t LSCBacking = 29;
-  if (builder->samplerCachingInHeader()) {
-    // Bit 29: Enables LSC as second level cache for Sampler
-    secondDword |= (1 << LSCBacking);
-    addToList = true;
-  }
 
   G4_Imm *immOpndSecondDword = builder->createImm(secondDword, Type_UD);
   G4_DstRegRegion *payloadDstRgn =
@@ -1892,19 +1781,11 @@ static G4_Operand *createSampleHeader(IR_Builder *builder, G4_Declare *header,
     headerInst =
         builder->createMov(g4::SIMD1, payloadDstRgn, immOpndSecondDword,
                            InstOpt_WriteEnable, true);
-    if (addToList) {
-      builder->kernel.samplerWithLSCBacking.push_back(
-          {headerInst, 0, LSCBacking});
-    }
   } else {
     // or (1) payload(0,2) aoffimmi<0;1,0>:uw immOpndSeconDword
     headerInst =
         builder->createBinOp(G4_or, g4::SIMD1, payloadDstRgn, aoffimmi,
                              immOpndSecondDword, InstOpt_WriteEnable, true);
-    if (addToList) {
-      builder->kernel.samplerWithLSCBacking.push_back(
-          {headerInst, 1, LSCBacking});
-    }
   }
 
   if (sampler != nullptr) {
@@ -1971,8 +1852,6 @@ static uint8_t getUPosition(VISASampler3DSubOpCode opcode) {
   case VISA_3D_SAMPLE_L_C:
   case VISA_3D_SAMPLE_C_MLOD:
   case VISA_3D_SAMPLE_PO_L_C:
-  case VISA_3D_SAMPLE_PO_B_C:
-  case VISA_3D_SAMPLE_PO_D_C:
     position = 2;
     break;
   default:
@@ -2340,23 +2219,6 @@ void IR_Builder::doSamplerHeaderMove(G4_Declare *headerDcl,
   }
 }
 
-void vISA::IR_Builder::doPairedResourceHeaderMoveUnified(G4_Declare *headerDcl,
-                                                         G4_Operand *pairedResource) {
-  if (hasSamplerFeedbackSurface()) {
-    if (pairedResource->isNullReg() == false) {
-
-      G4_SrcRegRegion* pairedResourceDWord = createSrc(pairedResource->getBase(), 0, 0,
-                                pairedResource->asSrcRegRegion()->getRegion(), Type_UD);
-      G4_DstRegRegion *dstDword3 = createDst(headerDcl->getRegVar(), 0, 3, 1, Type_UD);
-      createMov(g4::SIMD1, dstDword3, pairedResourceDWord, InstOpt_WriteEnable, true);
-
-      G4_DstRegRegion *dstDword4 = createDst(headerDcl->getRegVar(), 0, 4, 1, Type_UD);
-      createMov(g4::SIMD1, dstDword4,
-          createSrcWithNewSubRegOff(pairedResourceDWord->asSrcRegRegion(), 1),
-          InstOpt_WriteEnable, true);
-    }
-  }
-}
 
 void vISA::IR_Builder::doPairedResourceHeaderMove(G4_Declare *headerDcl,
                                                   G4_Operand *pairedResource) {
@@ -2498,7 +2360,6 @@ int IR_Builder::translateVISASampler3DInst(
   const bool FP16Input = params[0]->getType() == Type_HF;
 
   bool useHeader = false;
-  useHeader = samplerCachingInHeader();
 
   unsigned int numRows =
       numParms * getNumGRF(getGRFSize(), FP16Input, execSize);
@@ -2623,430 +2484,6 @@ int IR_Builder::translateVISASampler3DInst(
   return VISA_SUCCESS;
 }
 
-/// computeOperandLengthsSampler - Compute the src and destination
-/// operands' length (in registers) for sampler operations --
-/// these values will be used when encoding the send instruction
-///
-static void computeOperandLengthsSampler(IR_Builder &irb,
-    G4_SendgDesc *msgDesc, unsigned *sizes, G4_ExecSize execSize,
-    bool FP16Return, int numChannels, bool pixelNullMask, bool isDstNullReg) {
-
-  // preparePayload(msgs, sizes, execSize, splitSendEnabled, srcs, len);
-  uint32_t responseLength = irb.getSamplerResponseLength(
-      numChannels, FP16Return, execSize, pixelNullMask, isDstNullReg);
-
-  if (pixelNullMask && (execSize == g4::SIMD32)) {
-    responseLength++;
-  }
-  msgDesc->setSrc0Len(sizes[0]);
-  msgDesc->setSrc1Len(sizes[1]);
-  msgDesc->setDstLen(responseLength);
-}
-
-int IR_Builder::translateVISAGather3DInstUnified(
-    VISASampler3DSubOpCode actualop, bool pixelNullMask, bool uniformSampler,
-    G4_Predicate *pred, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
-    ChannelMask chMask, G4_Operand *aoffimmi, G4_Operand *samplerBase,
-    unsigned int samplerIdx, G4_Operand *surfaceBase, unsigned int surfaceIdx,
-    G4_Operand *pairedSurface, G4_DstRegRegion *dst, unsigned int numOpnds,
-    G4_SrcRegRegion **opndArray) {
-
-  // gather4 operations are sampler operations where the returned texels are
-  // used in bi-linear filtering operation
-  return translateVISASampler3DInstUnified(
-      actualop, pixelNullMask, uniformSampler, pred, executionSize, emask,
-      chMask, aoffimmi, samplerBase, samplerIdx, surfaceBase, surfaceIdx,
-      pairedSurface, dst, numOpnds, opndArray, true);
-}
-
-int IR_Builder::translateVISASampleInfoUnified(
-  VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask, ChannelMask chMask,
-  G4_Operand* surfaceBase, unsigned int surfaceIdx, G4_DstRegRegion* dst) {
-
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
-
-  // with send simplification, the sampler operation is simplified in the
-  // following ways:
-  // 1. no header for most operations (except those using paired resources)
-  // 2. descriptor similar to LSC descriptors
-  // similar 3-step approach as LSC:
-  //  a. create descriptor
-  //  b. compute operand lengths
-  //  c. create send instruction
-
-  surfaceBase = maybeAddSurfaceIndexEfficient64b(*this, surfaceBase, surfaceIdx);
-
-  // create descriptor
-  auto msgDesc = createSamplerDesc(
-    ConvertSamplerOpToMsgOp(VISA_3D_SAMPLEINFO),
-    chMask,
-    false,
-    false,
-    false,
-    false,
-    surfaceIdx,
-    0,
-    0,
-    false);
-
-  G4_SrcRegRegion* msgs[2] = { 0, 0 };
-  unsigned sizes[2] = { 1, 0 };
-
-  G4_Declare *tmpVar = NULL;
-  G4_SrcRegRegion *src0 = NULL;
-
-  tmpVar = createTempVar(getNativeExecSize(), Type_UD, getGRFAlign());
-  G4_DstRegRegion *tmpDst = createDst(tmpVar->getRegVar(), 0, 0, 1, Type_UD);
-  G4_Imm *src0Imm = createImm(0, Type_UD);
-  (void)createMov(getNativeExecSize(), tmpDst, src0Imm, InstOpt_WriteEnable,
-                  true);
-  src0 = createSrc(tmpVar->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
-
-  computeOperandLengthsSampler(
-    *this, msgDesc, sizes, execSize, (dst->getTypeSize() == 2),
-    chMask.getNumEnabledChannels(), false, dst->isNullReg());
-
-  // generate the movs to scalar registers for the surface state and
-  // sampler state 64bit addresses
-  auto ind0 = setupIndirectDescriptor(surfaceBase);
-
-  // create send instruction
-  createSamplerSendgInst(
-    nullptr, // pred
-    dst, src0,
-    createNullSrc(Type_UD),
-    execSize,
-    msgDesc,
-    instOpt,
-    ind0,
-    nullptr,
-    false);
-
-  return VISA_SUCCESS;
-}
-
-int IR_Builder::translateVISAResInfoInstUnified(
-  VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask, ChannelMask chMask,
-  G4_Operand* surfaceBase, unsigned int surfaceIdx, G4_SrcRegRegion* lod,
-  G4_DstRegRegion* dst) {
-
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
-
-  // with send simplification, the sampler operation is simplified in the
-  // following ways:
-  // 1. no header for most operations (except those using paired resources)
-  // 2. descriptor similar to LSC descriptors
-  // similar 3-step approach as LSC:
-  //  a. create descriptor
-  //  b. compute operand lengths
-  //  c. create send instruction
-
-  surfaceBase = maybeAddSurfaceIndexEfficient64b(*this, surfaceBase, surfaceIdx);
-
-  // create descriptor
-  auto msgDesc = createSamplerDesc(
-    ConvertSamplerOpToMsgOp(VISA_3D_RESINFO),
-    chMask,
-    false,
-    false,
-    false,
-    false,
-    surfaceIdx,
-    0,
-    0,
-    false);
-
-  G4_SrcRegRegion* msgs[2] = { 0, 0 };
-  unsigned sizes[2] = { 0, 0 };
-
-  PayloadSource source;
-  source.opnd = lod;
-  source.numElts = execSize;
-  source.instOpt = InstOpt_WriteEnable;
-
-  preparePayload(msgs, sizes, execSize, true, &source, 1);
-
-  computeOperandLengthsSampler(
-    *this, msgDesc, sizes, execSize, (dst->getTypeSize() == 2),
-    chMask.getNumEnabledChannels(), false, dst->isNullReg());
-
-  // generate the movs to scalar registers for the surface state and
-  // sampler state 64bit addresses
-  auto ind0 = setupIndirectDescriptor(surfaceBase);
-
-  // create send instruction
-  createSamplerSendgInst(
-    nullptr, // predicate
-    dst,
-    msgs[0], // lod
-    createNullSrc(Type_UD),
-    execSize,
-    msgDesc,
-    instOpt,
-    ind0,
-    nullptr,
-    false);
-
-  return VISA_SUCCESS;
-}
-
-
-int IR_Builder::translateVISASampler3DInstUnified(
-    VISASampler3DSubOpCode actualop, bool pixelNullMask, bool uniformSampler,
-    G4_Predicate *pred, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
-    ChannelMask chMask, G4_Operand *aoffimmi, G4_Operand *samplerBase,
-    unsigned int samplerIdx, G4_Operand* surfaceBase, unsigned int surfaceIdx,
-    G4_Operand *pairedSurface, G4_DstRegRegion *dst, unsigned int numParms,
-    G4_SrcRegRegion **params, bool isGather4) {
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
-
-  // For all Graphics IP post XE3 will use split send; split send is when the
-  // source operands are distributed/split across 2 source operands as opposed
-  // to one in prior products
-  bool useSplitSend = useSends();
-  vISA_ASSERT(useSplitSend == true, "XE3 should use split send");
-  // with send simplification, the sampler operation is simplified in the
-  // following ways:
-  // 1. no header for most operations (except those using paired resources)
-  // 2. descriptor similar to LSC descriptors
-  // similar 3-step approach as LSC:
-  //  a. create descriptor
-  //  b. compute operand lengths
-  //  c. create send instruction
-
-  const bool FP16Return = dst->getTypeSize() == 2;
-  const bool FP16Input = (numParms > 0) ? params[0]->getType() == Type_HF : false;
-
-  surfaceBase = maybeAddSurfaceIndexEfficient64b(*this, surfaceBase, surfaceIdx);
-  samplerBase = maybeAddSamplerIndexEfficient64b(*this, samplerBase, samplerIdx);
-
-  // create descriptor
-  auto msgDesc = createSamplerDesc(
-      ConvertSamplerOpToMsgOp(actualop),
-      chMask,
-      FP16Return,
-      FP16Input,
-      pixelNullMask,
-      (pairedSurface) ? !pairedSurface->isNullReg() : false,
-      surfaceIdx,
-      samplerIdx,
-      (aoffimmi) ? aoffimmi->asImm()->getInt() : 0,
-      isGather4);
-
-  bool useHeader = false;
-  G4_SrcRegRegion *header = nullptr;
-  if (pairedSurface && !pairedSurface->isNullReg())
-    useHeader = true;
-
-  // if paired surface is available, setup the header
-  if (useHeader) {
-    const bool samplerIndexGE16 = IsSamplerIndexGE16(aoffimmi);
-    G4_Declare *dcl = getSamplerHeader(true, samplerIndexGE16);
-    doPairedResourceHeaderMoveUnified(dcl, pairedSurface);
-    header = createSrcRegRegion(dcl, getRegionStride1());
-  }
-  G4_InstOpts dbgOpt = m_options->getOption(vISA_markSamplerMoves)
-                           ? InstOpt_BreakPoint
-                           : InstOpt_NoOpt;
-  // Collect payload sources.
-  unsigned len = numParms + (header ? 1 : 0);
-  std::vector<PayloadSource> sources(len);
-  unsigned i = 0;
-  // Collect header if present.
-  if (header) {
-    sources[i].opnd = header;
-    // From PVC onwards (including Xe3p), the SIMD width was increased from SIMD8
-    // to SIMD16.
-    // TODO: The non-xe3p code path still has SIMD8, and we should
-    // confirm and change it to SIMD16
-    sources[i].numElts = g4::SIMD16;
-    sources[i].instOpt = InstOpt_WriteEnable | dbgOpt;
-    ++i;
-  }
-  // Collect all parameters.
-  bool needNoMask = needsNoMaskCoordinates(actualop);
-  unsigned uPos = needNoMask ? getUPosition(actualop) : ~0u;
-  for (unsigned j = 0; j != numParms; ++j) {
-    sources[i].opnd = params[j];
-    sources[i].numElts = execSize;
-    sources[i].instOpt = (needNoMask && (uPos <= j && j < (uPos + 3)))
-                             ? InstOpt_WriteEnable | dbgOpt
-                             : instOpt | dbgOpt;
-    ++i;
-  }
-  vISA_ASSERT_INPUT(i == len,
-                    "There's mismatching during payload source collecting!");
-
-  G4_SrcRegRegion *msgs[2] = {0, 0};
-  unsigned sizes[2] = {0, 0};
-
-  preparePayload(msgs, sizes, execSize, true /*splitSendEnabled*/,
-                 sources.data(), len);
-
-  int numChannels = isGather4 ? 4 : chMask.getNumEnabledChannels();
-  computeOperandLengthsSampler(
-      *this, msgDesc, sizes, execSize, (dst->getTypeSize() == 2), numChannels,
-      hasPixelNullMask() && pixelNullMask, dst->isNullReg());
-
-  // generate the movs to scalar registers for the surface state and
-  // sampler state 64bit addresses
-  auto ind0 = setupIndirectDescriptor(surfaceBase);
-  auto ind1 = setupIndirectDescriptor(samplerBase);
-
-  // create send instruction
-  createSamplerSendgInst(pred,
-                         dst,
-                         msgs[0],
-                         msgs[1],
-                         execSize,
-                         msgDesc,
-                         instOpt,
-                         ind0,
-                         ind1,
-                         false);
-
-  return VISA_SUCCESS;
-}
-
-int IR_Builder::translateVISALoad3DInstUnified(
-    VISASampler3DSubOpCode actualop, bool pixelNullMask, G4_Predicate *pred,
-    VISA_Exec_Size executionSize, VISA_EMask_Ctrl em, ChannelMask channelMask,
-    G4_Operand *aoffimmi, G4_Operand *samplerBase, unsigned int samplerIdx,
-    G4_Operand *surfaceBase, unsigned int surfaceIdx, G4_Operand *pairedSurface,
-    G4_DstRegRegion *dst, uint8_t numParms, G4_SrcRegRegion **opndArray) {
-
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  bool useHeader = false;
-  G4_SrcRegRegion *header = nullptr;
-  bool useSplitSend = useSends();
-  vISA_ASSERT(useSplitSend, "XE3P should use split send");
-
-  const bool FP16Return = dst->getTypeSize() == 2;
-  const bool FP16Input = opndArray[0]->getTypeSize() == 2;
-
-  surfaceBase = maybeAddSurfaceIndexEfficient64b(*this, surfaceBase, surfaceIdx);
-  samplerBase = maybeAddSamplerIndexEfficient64b(*this, samplerBase, samplerIdx);
-  // create descriptor
-  auto msgDesc = createSamplerDesc(
-      ConvertSamplerOpToMsgOp(actualop), channelMask,
-      FP16Return, FP16Input,
-      pixelNullMask, !pairedSurface->isNullReg(),
-      surfaceIdx, samplerIdx, aoffimmi->asImm()->getInt(), false);
-
-  G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(em, execSize);
-
-  const bool halfReturn = dst->getTypeSize() == 2;
-  const bool halfInput = opndArray[0]->getTypeSize() == 2;
-
-  if (!pairedSurface->isNullReg())
-    useHeader = true;
-
-  // if paired surface is available, setup the header
-  if (useHeader) {
-    const bool samplerIndexGE16 = IsSamplerIndexGE16(aoffimmi);
-    G4_Declare *dcl = getSamplerHeader(true, samplerIndexGE16);
-    doPairedResourceHeaderMoveUnified(dcl, pairedSurface);
-    header = createSrcRegRegion(dcl, getRegionStride1());
-  }
-
-  // Collect payload sources.
-  unsigned len = numParms + (header ? 1 : 0);
-  std::vector<PayloadSource> sources(len);
-  unsigned i = 0;
-  // Collect header if present.
-  if (header) {
-    sources[i].opnd = header;
-    sources[i].numElts = g4::SIMD8;
-    sources[i].instOpt = InstOpt_WriteEnable;
-    ++i;
-  }
-  // Collect all parameters.
-  bool needNoMask = needsNoMaskCoordinates(actualop);
-  unsigned uPos = needNoMask ? getUPosition(actualop) : ~0u;
-  for (unsigned j = 0; j != numParms; ++j) {
-    sources[i].opnd = opndArray[j];
-    sources[i].numElts = execSize;
-    sources[i].instOpt = (needNoMask && (uPos <= j && j < (uPos + 3)))
-                             ? InstOpt_WriteEnable
-                             : instOpt;
-    ++i;
-  }
-  vISA_ASSERT_INPUT(i == len, "mismatching during payload source collecting");
-
-  G4_SrcRegRegion *msgs[2] = {0, 0};
-  unsigned sizes[2] = {0, 0};
-
-  preparePayload(msgs, sizes, execSize, true /*splitSendEnabled*/,
-                 sources.data(), len);
-
-  // compute operand lengths
-  computeOperandLengthsSampler(
-      *this, msgDesc, sizes, execSize, (dst->getTypeSize() == 2),
-      channelMask.getNumEnabledChannels(), hasPixelNullMask() && pixelNullMask,
-      dst->isNullReg());
-
-  auto ind0 = setupIndirectDescriptor(surfaceBase);
-
-  // create send instruction
-  createSamplerSendgInst(pred, dst, msgs[0], msgs[1], execSize, msgDesc,
-                         instOpt, ind0, nullptr, false);
-
-  return VISA_SUCCESS;
-}
-
-int IR_Builder::translateVISASampleCacheFlushInstUnified() {
-  // with send simplification, the sampler operation is simplified in the
-  // following ways:
-  // 1. no header for most operations (except those using paired resources)
-  // 2. descriptor similar to LSC descriptors
-  // similar 3-step approach as LSC:
-  //  a. create descriptor
-  //  b. compute operand lengths
-  //  c. create send instruction
-
-  // For this messages, SIMD size doesn't matter. We can do either SIMD16 or
-  // SIMD32. Here, we choose SIMD16.
-  G4_ExecSize execSize = g4::SIMD16;
-
-  // A message with all four channels masked is not allowed. HW recommends to
-  // just use 1 which means R channel is enabled
-  ChannelMask chMask = ChannelMask::createFromAPI(CHANNEL_MASK_R);
-
-  // Return size is 1 GRF as R channel is enabled
-  G4_Declare *dstDcl = createTempVar(16, Type_UD, Any);
-  G4_DstRegRegion *dst = createDstRegRegion(dstDcl, 1);
-
-  // Sampler cache flush message has no parameter, but HW requires at least one
-  // data phase. So, create a dummy payload.
-  G4_Declare *srcDcl = createTempVar(16, Type_UD, Any);
-  G4_SrcRegRegion *src0 = createSrcRegRegion(srcDcl, getRegionStride1());
-
-  // create descriptor
-  auto msgDesc = createSamplerDesc(MsgOp::SAMPLER_FLUSH, chMask, false, false,
-                                   false, false, 0, 0, 0, false);
-
-  // compute operand lengths
-  msgDesc->setDstLen(1);
-  msgDesc->setSrc0Len(1);
-  msgDesc->setSrc1Len(0);
-
-  // create send instruction
-  createSamplerSendgInst(nullptr, dst, src0, createNullSrc(Type_UD), execSize,
-                         msgDesc, InstOpt_M0, nullptr, nullptr, false);
-
-  return VISA_SUCCESS;
-}
 int IR_Builder::translateVISALoad3DInst(
     VISASampler3DSubOpCode actualop, bool pixelNullMask,
     G4_Predicate *pred_opnd, VISA_Exec_Size executionSize, VISA_EMask_Ctrl em,
@@ -3056,7 +2493,6 @@ int IR_Builder::translateVISALoad3DInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   bool useHeader = false;
-  useHeader = samplerCachingInHeader();
 
   G4_ExecSize execSize = toExecSize(executionSize);
   G4_InstOpts instOpt = Get_Gen4_Emask(em, execSize);
@@ -3172,7 +2608,6 @@ int IR_Builder::translateVISAGather3dInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   bool useHeader = false;
-  useHeader = samplerCachingInHeader();
 
   G4_ExecSize execSize = toExecSize(executionSize);
   G4_InstOpts instOpt = Get_Gen4_Emask(em, execSize);

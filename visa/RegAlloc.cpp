@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2149,11 +2149,6 @@ void GlobalRA::markGraphBlockLocalVars() {
 
 unsigned int IR_Builder::getCallRetOpndSize() const {
   unsigned int numElems = 2;
-  if (isEfficient64bEnabled()) {
-    // 64-bit return %ip
-    // 32-bt call mask
-    numElems = 3;
-  }
   return numElems;
 }
 

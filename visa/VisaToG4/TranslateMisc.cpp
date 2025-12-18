@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2025 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -286,52 +286,6 @@ void IR_Builder::preparePayload(G4_SrcRegRegion *msgs[2], unsigned sizes[2],
   }
   msgs[i] = createSrcRegRegion(msg, getRegionStride1());
   sizes[i] = msgSizes[current] / numEltPerGRF<Type_UB>();
-}
-// emulate addition of SS_IDX for values >31 (SS_IDX is 5b)
-G4_Operand *IR_Builder::maybeAddSurfaceIndexEfficient64b(
-  IR_Builder &irb, G4_Operand *surface, unsigned &surfaceIndex)
-{
-  if (surfaceIndex < 0x20)
-    return surface; // no emulation needed
-
-  static const int sizeOfRenderSurfaceState = 0x40;
-  if (surface->isImm()) {
-    // NOTE: if relocation imm's are needed, then an add:q is needed;
-    // for now fold it
-    vISA_ASSERT(!surface->isRelocImm(), "cannot use reloc imm");
-    G4_Imm *imm = surface->asImm();
-    surface = irb.createImm(imm->getInt() + surfaceIndex * 0x40, Type_UQ);
-  } else {
-    // (W) add (1) tmp:uq surface:uq (surfaceIndex * 0x40)
-    G4_SrcRegRegion *surfReg = surface->asSrcRegRegion();
-    surface = irb.lscAdd(nullptr, g4::SIMD1, vISA_EMASK_M1_NM, surfReg,
-                         surfaceIndex * sizeOfRenderSurfaceState);
-  }
-  surfaceIndex = 0;
-  return surface;
-}
-
-G4_Operand *IR_Builder::maybeAddSamplerIndexEfficient64b(
-  IR_Builder &irb, G4_Operand *sampler, unsigned &samplerIndex)
-{
-  if (samplerIndex < 0x8)
-    return sampler; // no emulation needed
-
-  static const int sizeOfRendersamplerState = 0x40;
-  if (sampler->isImm()) {
-    // NOTE: if relocation imm's are needed, then an add:q is needed;
-    // for now fold it
-    vISA_ASSERT(!sampler->isRelocImm(), "cannot use reloc imm");
-    G4_Imm *imm = sampler->asImm();
-    sampler = irb.createImm(imm->getInt() + samplerIndex * 0x40, Type_UQ);
-  } else {
-    // (W) add (1) tmp:uq sampler:uq (samplerIndex * 0x40)
-    G4_SrcRegRegion *smplReg = sampler->asSrcRegRegion();
-    sampler = irb.lscAdd(nullptr, g4::SIMD1, vISA_EMASK_M1_NM, smplReg,
-                         samplerIndex * sizeOfRendersamplerState);
-  }
-  samplerIndex = 0;
-  return sampler;
 }
 
 G4_SrcRegRegion *IR_Builder::coalescePayload(

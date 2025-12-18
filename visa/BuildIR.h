@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -329,9 +329,6 @@ private:
 
   // pre-defined QWs of S0
   // 0 and 1 are reserved for Gather (indirect) Send usage.
-  // The rest are used for 64b surface descriptors and address bases.
-  // s0.7 qword holds the scratch location
-  G4_Declare* builtinS0Dot7 = nullptr;
   G4_Declare *builtinS0 = nullptr;
 
   // for rotating through the high subregisters of s0 in QW
@@ -361,7 +358,6 @@ private:
   // if scratch surface is used, this will be initialized once at entry
   G4_Declare *scratchSurfaceOffset = nullptr;
 
-  G4_Declare *scratchSurfaceEff64b = nullptr;
 
   // The temp var for eu fusion W/A
   G4_Declare *euFusionWATmpVar = nullptr;
@@ -766,38 +762,6 @@ public:
   // This tests if an operand refers to Gather Send or something else
   bool isBuiltinSendIndirectS0(G4_Operand *op) const;
 
-  // Creates a mov to the next subregister of s0.# that is reserved
-  //   (W[&pred]) mov (1) s0.#:type  [val]
-  // where type = :d/:ud or :q/:uq drawn from signedness and size of
-  // target SFID or s0isA32
-  //
-  // returns a src region to that newly minted s0 value
-  // skips mov and returns nullptr if skipIfNullZero AND (val is %null OR 0x0)
-  //
-  // EXAMPLE:
-  //   (W) mov (1) s0.4:d   -0x10:w;
-  //   // returning (s0.2<0;1,0>:q) for use in
-  //   sendg.slm ... s0.16 ... // s0.16 is bytes for s0.2<0;1,0>
-  //
-  //   (W) mov (1) s0.3:q   r4.4<0;1,0>:q;
-  //   // returning (s0.3<0;1,0>:q) for use in
-  //   sendg.ugm ... s0.24 ... // s0.24 is bytes for s0.3<0;1,0>
-  G4_SrcRegRegion *createSurfaceMoveToNextS0(
-    G4_Operand *val, bool s0isA32, bool skipIfNullZero = true);
-  // Helper overload that uses SFID to choose the s0 allocation size.
-  G4_SrcRegRegion *createSurfaceMoveToNextS0(
-    SFID sfid, G4_Operand *val, bool skipIfNullZero = true);
-  // Moves to a specific qword in s0
-  G4_SrcRegRegion *createSurfaceMoveToS0(
-    G4_Operand *val, int s0qw, bool s0isA32, bool skipIfNullZero = true);
-  G4_DstRegRegion *createS0Dst(int s0qw, G4_Type ty);
-  G4_SrcRegRegion *createS0Src(int s0qw);
-  G4_Operand* maybeAddSamplerIndexEfficient64b(IR_Builder& irb, G4_Operand* sampler,
-                                               unsigned &samplerIndex);
-  G4_Operand* maybeAddSurfaceIndexEfficient64b(IR_Builder& irb, G4_Operand* surface,
-                                               unsigned &surfaceIndex);
-  // Create a mov for immediate surface value
-  G4_SrcRegRegion* setupIndirectDescriptor(G4_Operand *val);
   G4_Declare *getBuiltinT252() const { return builtinT252; }
   G4_Declare *getBuiltinBindlessSampler() const {
     return builtinBindlessSampler;
@@ -865,7 +829,6 @@ public:
   void initAddressesForScatterSpills();
 
   G4_Declare *getSpillSurfaceOffset() { return scratchSurfaceOffset; }
-  G4_Declare *getSpillSurfaceEfficient64b() { return scratchSurfaceEff64b; }
 
   // create a new temp GRF with the specified type/size and undefined regions
   G4_Declare *createTempVar(unsigned int numElements, G4_Type type,
@@ -1334,15 +1297,6 @@ public:
       G4_InstOpts options,
       G4_SendDescRaw *msgDesc, bool addToInstList);
 
-  G4_InstSend *createSendgInst(
-    G4_Predicate *prd, G4_opcode op,
-    G4_ExecSize execSize,
-    G4_DstRegRegion *dst, G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
-    // "src2" derived from G4_SendgDesc encoding bits
-    G4_SrcRegRegion *src3ind0, G4_SrcRegRegion *src4ind1,
-    G4_SendgDesc *msgDesc,
-    G4_InstOpts options,
-    bool addToInstList);
 
   G4_InstSend *createInternalSendInst(
       G4_Predicate *prd, G4_opcode op, G4_ExecSize execSize,
@@ -1431,22 +1385,6 @@ public:
                       G4_DstRegRegion *dst, G4_SrcRegRegion *src0,
                       G4_SrcRegRegion *src1, G4_SrcRegRegion *src2,
                       G4_InstOpts options);
-  G4_INST *createShflInst(G4_Predicate *prd, G4_Sat sat, G4_ExecSize execSize,
-                          G4_DstRegRegion *dst, G4_Operand *src0,
-                          G4_Operand *src1, G4_InstShfl::G4_ShflOp shflOp,
-                          G4_InstOpts options, bool addToInstList);
-
-  G4_INST *createLfsrInst(G4_Predicate *prd, G4_ExecSize execSize,
-                          G4_DstRegRegion *dst, G4_Operand *src0,
-                          G4_Operand *src1, LFSR_FC funcCtrl,
-                          G4_InstOpts options, bool addToInstList);
-
-  G4_INST *createDnsclInst(G4_Predicate *prd, G4_ExecSize execSize,
-                           G4_DstRegRegion *dst, G4_Operand *src0,
-                           G4_Operand *src1, G4_Operand *src2,
-                           DNSCL_CONVERT_TYPE type, DNSCL_MODE mode,
-                           DNSCL_RND_MODE rndMode, G4_InstOpts options,
-                           bool addToInstList);
 
   static G4_MathOp Get_MathFuncCtrl(ISA_Opcode op, G4_Type type);
 
@@ -1487,228 +1425,7 @@ public:
   G4_SendDescRaw *createLscDesc(SFID sfid, uint32_t desc, uint32_t extDesc,
                                 int src1Len, SendAccess access, G4_Operand *bti,
                                 LdStAttrs otherAttrs);
-  /// createExtendedCacheCtrlDesc - constructs the descriptor value and creates
-  /// unified send descriptor for LSC extended cache ctrl
-  ///
-  /// \param sfid             shared function id
-  ///
-  /// \param op               message operation
-  ///
-  /// \param ds               data size
-  ///
-  /// \param chmask           channel mask
-  ///
-  /// \param as               address type and size
-  ///
-  /// \param addrScale        scaling factor applied to per-lane address
-  ///                         offsets
-  ///
-  /// \param addrOffset       byte offset applied to each src address
-  ///
-  /// \param isStateful       boolean flag to denote if addressing mode is
-  ///                         stateful (1) or stateless (0)
-  /// \param surfaceIndex     immediate surface index value
-  ///
-  /// \param cacheOpts        L1 and L3 caching options
-  ///
-  /// \param overfetch        enable overfetch for cacheable load. Overfetch
-  ///                         takes effect only when L1 is set to cacheable
-  ///                         in cacheOpts. Otherwise, it is ignored by HW.
-  ///
-  /// \returns pointer to descriptor object (G4_SendgDesc)
 
-  G4_SendgDesc *
-  createExtendedCacheCtrlDesc(G4_ExecSize execSize, CacheControlOperation ccop,
-      CacheControlSize cs, std::tuple<Caching, Caching, Caching> cacheOpts);
-
-  /// createRenderTargetDesc -- constructs the descriptor value for render
-  ///                           target operations
-  /// \param op               message operation
-  /// \param chMask           channel mask
-  /// \param isAlphaPresent   alpha channel in src0 present
-  /// \param isStencilPresent computed stencil included in message for RTW
-  /// \param isDepthPresent   source depth data included in message for RTW
-  /// \param isOutputMaskPresent  output mask data present in message for RTW
-  /// \param nullRenderTarget null render target
-  /// \param lastRenderTarget last render target message sent for RTW
-  /// \returns pointer to descriptor object (G4_SendgDesc)
-  G4_SendgDesc *
-  createRenderTargetDesc(MsgOp op, int chMask, bool isAlphaPresent,
-                         bool isStencilPresent, bool isDepthPresent,
-                         bool isOutputMaskPresent, bool nullRenderTarget,
-                         bool lastRenderTarget);
-
-  /// createSamplerDesc -- constructs the descriptor value for sampler
-  ///                      operations
-  /// \param op               message operation
-  /// \param chMask           channel mask
-  /// \param FP16Return       data return format (1 - 16bit, 0 - 32bit)
-  /// \param FP16Input        address input format (1 - 16bit, 0 - 32bit)
-  /// \param pixelNullMask    flag to denote whether contribution texel from
-  ///                         null page
-  /// \param feedbackMessage  flag to denote paired resource exists
-  /// \param surfaceImmIndex  surface immediate index
-  /// \param samplerImmIndex  sampler immediate index
-  /// \param aoffimmival      address offset by immediate integer
-  /// \param isGather4        flag to denote gather4 operations
-  /// \returns pointer to descriptor object (G4_SendgDesc)
-  G4_SendgDesc *
-  createSamplerDesc(MsgOp op, ChannelMask chMask, bool FP16Return, bool FP16Input,
-                    bool pixelNullMask, bool feedbackMessage, uint32_t surfaceImmIndex,
-                    uint32_t samplerImmIndex, int64_t aoffimmiVal, bool isGather4);
-
-  /// createUntypedCMaskDesc - constructs the descriptor value and creates
-  /// unified send descriptor for LSC untyped cmask operations
-  ///
-  /// \param sfid             shared function id
-  ///
-  /// \param op               message operation
-  ///
-  /// \param ds               data size
-  ///
-  /// \param chmask           channel mask
-  ///
-  /// \param as               address type and size
-  ///
-  /// \param addrScale        scaling factor applied to per-lane address
-  ///                         offsets
-  ///
-  /// \param addrOffset       byte offset applied to each src address
-  ///
-  /// \param isStateful       boolean flag to denote if addressing mode is
-  ///                         stateful (1) or stateless (0)
-  /// \param surfaceIndex     immediate surface index value
-  ///
-  /// \param cacheOpts        L1 and L3 caching options
-  ///
-  /// \param overfetch        enable overfetch for cacheable load. Overfetch
-  ///                         takes effect only when L1 is set to cacheable
-  ///                         in cacheOpts. Otherwise, it is ignored by HW.
-  ///
-  /// \returns pointer to descriptor object (G4_SendgDesc)
-  G4_SendgDesc *
-  createUntypedCMaskDesc(SFID sfid, MsgOp op,
-                         G4_ExecSize execSize, bool isDstNull,
-                         DataSize ds, DataChMask chMask,
-                         AddrSizeType ast, int &addrScale, int &addrOffset,
-                         unsigned surfaceIndex,
-                         std::tuple<Caching, Caching, Caching> cacheOpts,
-                         bool overfetch);
-
-  /// createUntypedVecDesc - constructs the descriptor value and creates
-  /// unified send descriptor for LSC untyped ld/st operations
-  ///
-  /// \param sfid             shared function id
-  ///
-  /// \param op               message operation
-  ///
-  /// \param ds               data size
-  ///
-  /// \param dord             transpose or non transpose
-  ///
-  /// \param ve               # of vector elements
-  ///
-  /// \param as               address type and size
-  ///
-  /// \param addrScale        scaling factor applied to per-lane address
-  ///                         offsets
-  ///
-  /// \param addrOffset       byte offset applied to each src address
-  ///
-  /// \param isStateful       boolean flag to denote if addressing mode is
-  ///                         stateful (1) or stateless (0)
-  /// \param surfaceIndex     immediate surface index value
-  ///
-  /// \param cacheOpts        L1 and L3 caching options
-  ///
-  /// \param overfetch        enable overfetch for cacheable load. Overfetch
-  ///                         takes effect only when L1 is set to cacheable
-  ///                         in cacheOpts. Otherwise, it is ignored by HW.
-  ///
-  /// \returns pointer to descriptor object (G4_SendgDesc)
-  G4_SendgDesc *createUntypedVecDesc(
-      SFID sfid, MsgOp op,
-      G4_ExecSize execSize, bool isDstNull,
-      DataSize ds, VecElems ve, DataOrder dord,
-      AddrSizeType ast, int &addrScale, int &addrOffset,
-      unsigned surfaceIndex, std::tuple<Caching, Caching, Caching> cacheOpts,
-      bool overfetch);
-
-  /// create2DLscDesc - constructs the descriptor value and creates
-  /// unified send descriptor for LSC 2D operations (typed and untyped)
-  ///
-  /// \param sfid             shared function id
-  ///
-  /// \param vnni             VNNI transform enable
-  ///
-  /// \param op               message operation
-  ///
-  /// \param ds               data size
-  ///
-  /// \param dord             transpose or non transpose
-  ///
-  /// \param as               address type and size
-  ///
-  /// \param cacheOpts        L1 and L3 caching options
-  ///
-  /// \param xOffset, yOffset x and y immediate signed offsets
-  /// \returns pointer to descriptor object (G4_SendgDesc)
-  G4_SendgDesc *create2DLSCDesc(SFID sfid, bool dstIsNull, MsgOp op,
-                                int blockWidth, int blockHeight, int blockCount,
-                                DataSize ds, DataOrder dord,
-                                AddrSizeType as,
-                                std::tuple<Caching, Caching, Caching> cacheOpts,
-                                int xOffset, int yOffset);
-
-  /// createTypedDesc - constructs the descriptor value and creates
-  /// unified send descriptor for LSC typed operations -- internally calls
-  /// different descriptor construction methods depending on op
-  ///
-  /// \param op               message operation
-  ///
-  /// \param ds               data size
-  ///
-  /// \param chMask           channel mask
-  ///
-  /// \param as               address type and size
-  ///
-  /// \param surfaceIndex     surface index immediate value
-  ///
-  /// \param uOffset           u offset from aoffimmi modifier
-  /// \param vOffset           v offset from aoffimmi modifier
-  /// \param rOffset           r offset from aoffimmi modifier
-  ///
-  /// \param cacheOpts        L1 and L3 caching options
-  ///
-  /// \returns pointer to descriptor object (G4_SendgDesc)
-  G4_SendgDesc *createTypedChMaskDesc(MsgOp op,
-                                      DataSize ds, DataChMask chMask,
-                                      AddrSizeType as, unsigned surfaceIndex,
-                                      int uOffset, int vOffset, int rOffset,
-                                      std::tuple<Caching, Caching, Caching> cacheOpts);
-
-  /// createTypedAtomicDesc - constructs the descriptor value and creates
-  /// unified send descriptor for LSC typed atomic operations
-  ///
-  /// \param op               message operation
-  ///
-  /// \param ds               data size
-  ///
-  /// \param as               address type and size
-  ///
-  /// \param surfaceIndex     surface index immediate value
-  ///
-  /// \param cacheOpts        L1 and L3 caching options
-  ///
-  /// \param surface          surface operand
-  ///
-  /// \returns pointer to descriptor object (G4_SendgDesc)
-  G4_SendgDesc *
-  createTypedAtomicDesc(MsgOp op,
-                        DataSize ds,
-                        AddrSizeType as, unsigned surfaceIndex,
-                        int uOffset, int vOffset, int rOffset,
-                        std::tuple<Caching, Caching, Caching> cacheOpts);
 
   G4_InstSend *createLscSendInst(G4_Predicate *pred, G4_DstRegRegion *dst,
                                  G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
@@ -1717,86 +1434,6 @@ public:
                                  G4_InstOpts option, LSC_ADDR_TYPE addrType,
                                  unsigned surfOff, bool emitA0RegDef);
 
-  /// createLscSendgInst - function to construct send instruction for
-  ///                      Xe3 using the new message descriptor format
-  /// \param pred                 predicate
-  /// \param dst                  destination register region
-  /// \param src0                 first src operand register region
-  /// \param src1                 second src operand register region
-  /// \param execSize             SIMD execution size
-  /// \param msgDesc              pointer to message descriptor object
-  /// \param option               instruction options
-  /// \param ind0                 indirect descriptor operand
-  /// \returns pointer to G4 send instruction object
-  G4_InstSend *
-  createLscSendgInst(G4_Predicate *pred, G4_DstRegRegion *dst,
-                     G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
-                     G4_ExecSize execSize,
-                     G4_SendgDesc *msgDesc,
-                     G4_InstOpts option,
-                     G4_SrcRegRegion *ind0, bool append = true);
-
-  // clang-format off
-  /// Creates a vector instruction sequence with G4 LSC types.
-  /// This includes both transpose load/store and non-transpose load/store.
-  /// - The parameters are rougly in XE ASM syntax order.
-  /// - The nullptr value is permitted for operands that are not used
-  ///    for a particular message.
-  /// - 'op' is expected to be MsgOp::LOAD or MsgOp::STORE
-  ///
-  /// \param loadData      the destination register for a load
-  ///                       (nullptr for store)
-  /// \param addrBase       either a uniform a64 base for stateless
-  ///                       (a32 for SLM/URB)
-  ///                       or a 64b surface state pointer (Type_UQ scalar)
-  /// \param addrBaseIndex  for stateful - a 5b integer value to index state
-  ///                       entries relative to addrBase (stateful only)
-  /// \param addrScale      a scaling factor must be 1 OR
-  ///                       sizeof(DataSize * VecSize) (e.g. 16 for D32V4)
-  /// \param addrReg        the vector of addresses to load (or 1 for SIMD1)
-  /// \param addrOffset     this address (in bytes) is added to each element
-  ///                       off addrReg
-  ///
-  ///
-  /// Examples this can generate:
-  ///     load.ugm.a32s.d32x4 (32) loadData  [addrBase + scale * addrReg + addrOff]....
-  /// (W) store.ugm.a32s.d32x16t (1)  surf[addrBase,addrBaseIndex][scale * addrReg + addrOff]  storeData
-  ///
-  // clang-format on
-  G4_InstSend *
-  createLscVecSendgInstSeq(G4_Predicate *pred, MsgOp op, SFID sfid,
-                           G4_ExecSize execSize,
-                           DataSize dataSize, VecElems vecSize, DataOrder ord,
-                           AddrSizeType addrSizeType,
-                           std::tuple<Caching,Caching, Caching> caching,
-                           LdStAttrs attrs,
-                           G4_DstRegRegion *loadData,
-                           G4_SrcRegRegion *addrBase, int addrBaseIndex,
-                           int addrScale, G4_SrcRegRegion *addrReg, int addrOff,
-                           G4_SrcRegRegion *storeData,
-                           G4_InstOpts option);
-
-  /// createSamplerSendgInst - function to construct sampler send
-  ///                          instruction for Xe3p using the new message
-  ///                          descriptor format
-  /// \param pred                 predicate
-  /// \param dst                  destination register region
-  /// \param src1                 first src operand register region
-  /// \param src2                 second src operand register region
-  /// \param execSize             SIMD execution size
-  /// \param msgDesc              pointer to message descriptor object
-  /// \param option               instruction options
-  /// \param scalarOpnd0          scalar operand for sampler pointer address
-  /// \param scalarOpnd1          scalar operand for surface pointer address
-  /// \param addrType             address type information
-  /// \param surface              surface operand
-  /// \returns pointer to G4 send instruction object
-  G4_InstSend *
-  createSamplerSendgInst(G4_Predicate *pred, G4_DstRegRegion *dst,
-                         G4_SrcRegRegion *src1, G4_SrcRegRegion *src2,
-                         G4_ExecSize execSize, G4_SendgDesc *msgDesc,
-                         G4_InstOpts option, G4_SrcRegRegion *scalarOpnd0,
-                         G4_SrcRegRegion *scalarOpnd1, bool isSendgc);
 
   G4_SrcRegRegion *getScratchSurfaceStatusIndex();
 
@@ -1813,11 +1450,6 @@ public:
                                 G4_SrcRegRegion *src1, G4_SrcRegRegion *src2,
                                 G4_SrcRegRegion *extDesc, G4_ExecSize execSize,
                                 G4_SendDescRaw *msgDesc, G4_InstOpts option);
-  G4_InstSend *
-  createRenderTargetSendg(G4_Predicate *pred, G4_DstRegRegion *dst,
-                          G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
-                          G4_ExecSize execSize, G4_SendgDesc *msgDesc,
-                          G4_SrcRegRegion *ind0, G4_InstOpts option);
 
   G4_InstSend *createSendInst(G4_Predicate *pred, G4_DstRegRegion *postDst,
                               G4_SrcRegRegion *payload, unsigned regs2snd,
@@ -1966,22 +1598,6 @@ public:
                                     VISA_EMask_Ctrl emask, G4_Sat saturate,
                                     G4_DstRegRegion *dst, G4_Operand *src0,
                                     G4_Operand *src1);
-  int translateVISAShflIdx4Inst(G4_Predicate *pred_opnd,
-                                VISA_Exec_Size executionSize,
-                                VISA_EMask_Ctrl emask, G4_DstRegRegion *dst,
-                                G4_Operand *src0, G4_Operand *src1);
-
-  int translateVISALfsrInst(G4_Predicate *pred_opnd,
-                            VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
-                            LFSR_FC funcCtrl, G4_DstRegRegion *dst,
-                            G4_Operand *src0, G4_Operand *src1);
-
-  int translateVISADnsclInst(G4_Predicate *pred_opnd,
-                             VISA_Exec_Size executionSize,
-                             VISA_EMask_Ctrl emask, DNSCL_CONVERT_TYPE type,
-                             DNSCL_MODE mode, DNSCL_RND_MODE rndMode,
-                             G4_DstRegRegion *dst, G4_Operand *src0,
-                             G4_Operand *src1, G4_Operand *src2);
 
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
@@ -2179,18 +1795,6 @@ public:
                                   VISA_EMask_Ctrl emask, ChannelMask chMask,
                                   G4_Operand *surface, G4_DstRegRegion *dst);
 
-  int translateVISASampleInfoUnified(VISA_Exec_Size executionSize,
-                                     VISA_EMask_Ctrl emask, ChannelMask chMask,
-                                     G4_Operand* surfaceBase, unsigned int surfaceIdx,
-                                     G4_DstRegRegion* dst);
-
-  int translateVISAResInfoInstUnified(VISA_Exec_Size executionSize,
-                                      VISA_EMask_Ctrl emask, ChannelMask chMask,
-                                      G4_Operand *surfaceBase,
-                                      unsigned int surfaceIdx,
-                                      G4_SrcRegRegion *lod,
-                                      G4_DstRegRegion *dst);
-  int translateVISASampleCacheFlushInstUnified();
   int translateVISAResInfoInst(VISA_Exec_Size executionSize,
                                VISA_EMask_Ctrl emask, ChannelMask chMask,
                                G4_Operand *surface, G4_SrcRegRegion *lod,
@@ -2211,11 +1815,6 @@ public:
                                  G4_Operand *cpsCounter, unsigned int numParms,
                                  G4_SrcRegRegion **msgOpnds);
 
-  int translateVISARTWrite3DInstUnified(
-      G4_Predicate *pred, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
-      G4_Operand *surfaceBaseAddr, int rtIdentifier, G4_Operand *rtIndex,
-      vISA_RT_CONTROLS cntrls, G4_Operand *cpsCounter, unsigned int numMsgOpnds,
-      G4_SrcRegRegion **msgOpnds);
 
 
   int translateLscTypedBlock2DInst(LSC_OP op, LSC_CACHE_OPTS cacheOpts,
@@ -2255,8 +1854,6 @@ public:
                       bool uniformSampler = true);
 
   void doSamplerHeaderMove(G4_Declare *header, G4_Operand *sampler);
-  void doPairedResourceHeaderMoveUnified(G4_Declare *header,
-                                         G4_Operand *pairedResource);
   void doPairedResourceHeaderMove(G4_Declare *header,
                                   G4_Operand *pairedResource);
   G4_Declare *getSamplerHeader(bool isBindlessSampler, bool samplerIndexGE16);
@@ -2271,28 +1868,6 @@ public:
       G4_Operand *pairedSurface,
       G4_DstRegRegion *dst, unsigned int numParms, G4_SrcRegRegion **params);
 
-  int translateVISASampler3DInstUnified(
-      VISASampler3DSubOpCode actualop, bool pixelNullMask, bool uniformSampler,
-      G4_Predicate *pred, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
-      ChannelMask srcChannel, G4_Operand *aoffimmi, G4_Operand* samplerBase,
-      unsigned int samplerIdx, G4_Operand* surfaceBase, unsigned int surfaceIdx,
-      G4_Operand *pairedSurface, G4_DstRegRegion *dst,
-      unsigned int numParms, G4_SrcRegRegion **params, bool isGather4 = false);
-
-  int translateVISAGather3DInstUnified(
-      VISASampler3DSubOpCode actualop, bool pixelNullMask, bool uniformSampler,
-      G4_Predicate *pred, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
-      ChannelMask srcChannel, G4_Operand *aoffimmi, G4_Operand* samplerBase,
-      unsigned int samplerIdx, G4_Operand* surfaceBase, unsigned int surfaceIdx,
-      G4_Operand *pairedSurface, G4_DstRegRegion *dst, unsigned int numOpnds,
-      G4_SrcRegRegion **opndArray);
-
-  int translateVISALoad3DInstUnified(
-      VISASampler3DSubOpCode actualop, bool pixelNullMask, G4_Predicate *pred,
-      VISA_Exec_Size exeuctionSize, VISA_EMask_Ctrl em, ChannelMask channelMask,
-      G4_Operand *aoffimmi, G4_Operand* samplerBase, unsigned int samplerIdx,
-      G4_Operand* surfaceBase, unsigned int surfaceIdx, G4_Operand *pairedSurface,
-      G4_DstRegRegion *dst, uint8_t numOpnds, G4_SrcRegRegion **opndArray);
 
   int translateVISALoad3DInst(VISASampler3DSubOpCode actualop,
                               bool pixelNullMask, G4_Predicate *pred,
@@ -2556,22 +2131,6 @@ public:
       G4_SrcRegRegion *src1Data,          // store data/extra atomic operands
       G4_SrcRegRegion *src2Data           // only for fcas/icas
   );
-  int translateLscUntypedInstUnified(
-      LSC_OP op, LSC_SFID lscSfid, G4_Predicate *pred, VISA_Exec_Size execSize,
-      VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, bool overfetch,
-      LSC_ADDR addrInfo, LSC_DATA_SHAPE shape,
-      G4_Operand *surface, // surface/bti
-      unsigned surfaceIndex, G4_DstRegRegion *dstData,
-      G4_SrcRegRegion *src0AddrOrBlockY,
-      G4_Operand *src0AddrStrideOrBlockX, // only for strided and block2d
-      G4_SrcRegRegion *src1Data,          // store data/extra atomic operands
-      G4_SrcRegRegion *src2Data           // only for fcas/icas
-  );
-  int translateLscExtendedCacheCtrlInst(
-      G4_Predicate *pred, VISA_Exec_Size visaExecSize, VISA_EMask_Ctrl execCtrl,
-      LSC_CACHE_OPTS cacheOpts, LSC_ADDR addrInfo, LSC_CACHE_CTRL_SIZE ccSize,
-      LSC_CACHE_CTRL_OPERATION ccop, G4_DstRegRegion *dst,
-      G4_SrcRegRegion *src0, G4_SrcRegRegion *src1);
   int translateLscUntypedBlock2DInst(
       LSC_OP op, LSC_SFID lscSfid, G4_Predicate *pred, VISA_Exec_Size execSize,
       VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
@@ -2583,18 +2142,6 @@ public:
       VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
       LSC_DATA_SHAPE_BLOCK2D shape, G4_DstRegRegion *dstData,
       G4_Operand *src0Addr, G4_SrcRegRegion *src1Data, int xImmOff, int yImmOff);
-  int translateLscUntypedBlock2DInstUnified(
-      LSC_OP op, LSC_SFID lscSfid, G4_Predicate* pred, VISA_Exec_Size execSize,
-      VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
-      LSC_DATA_SHAPE_BLOCK2D shape, G4_DstRegRegion* dstData,
-      G4_Operand* src0Addrs[LSC_BLOCK2D_ADDR_PARAMS],
-      G4_SrcRegRegion* src1Data, int xImmOff, int yImmOff);
-  int translateLscUntypedBlock2DInstUnified(
-      LSC_OP op, LSC_SFID lscSfid, G4_Predicate *pred, VISA_Exec_Size execSize,
-      VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
-      LSC_DATA_SHAPE_BLOCK2D shape, G4_DstRegRegion *dstData,
-      G4_Operand *src0Addr, G4_SrcRegRegion *src1Data, int xImmOff,
-      int yImmOff);
   int translateLscTypedInst(
       LSC_OP op, G4_Predicate *pred, VISA_Exec_Size execSize,
       VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrModel,
@@ -2605,19 +2152,6 @@ public:
       G4_SrcRegRegion *src0AddrUs, int uOff,
       G4_SrcRegRegion *src0AddrVs, int vOff,
       G4_SrcRegRegion *src0AddrRs, int rOff,
-      G4_SrcRegRegion *src0AddrLODs,
-      G4_SrcRegRegion *src1Data, // store data/extra atomic operands
-      G4_SrcRegRegion *src2Data  // icas/fcas only
-  );
-  int translateLscTypedInstUnified(
-      LSC_OP op, G4_Predicate *pred, VISA_Exec_Size execSize,
-      VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrModel,
-      LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE shape,
-      G4_Operand *surface,       // surface/bti
-      unsigned surfaceIndex, // surface index
-      G4_DstRegRegion *dstData,  // dst on load/atomic
-      G4_SrcRegRegion *src0AddrUs, int uOffset, G4_SrcRegRegion *src0AddrVs,
-      int vOffset, G4_SrcRegRegion *src0AddrRs, int rOffset,
       G4_SrcRegRegion *src0AddrLODs,
       G4_SrcRegRegion *src1Data, // store data/extra atomic operands
       G4_SrcRegRegion *src2Data  // icas/fcas only
@@ -2637,34 +2171,6 @@ public:
                             uint32_t &desc, int &status) const;
   void lscEncodeAddrType(LSC_ADDR_TYPE at, uint32_t &desc, int &status) const;
 
-  /// These functions are compute only variants of the encode functions used in
-  /// constructing G4_SendDescRaw objects -- separation of computing the
-  /// encoding and the actual encoding in descriptor immediate value
-
-  /// LSCComputeCachingEncodingLoad -     returns caching encoding of L1, L2 and
-  ///                                     L3 cache options for load operation
-  ///
-  /// \param cacheOpts        tuple of L1, L2 and L3 caching options
-  ///
-  /// \returns encoding of caching options for load
-  uint32_t
-  LSCComputeCachingEncodingLoad(const std::tuple<Caching, Caching, Caching>& cacheOpts) const;
-  /// LSCComputeCachingEncodingAtomic -   returns caching encoding L1, L2 and L3
-  ///                                      cache options for atomic operation
-  ///
-  /// \param cacheOpts        tuple of L1, L2 and L3 caching options
-  ///
-  /// \returns encoding of caching options for atomic
-  uint32_t
-  LSCComputeCachingEncodingAtomic(const std::tuple<Caching, Caching, Caching>& cacheOpts) const;
-  /// LSCComputeCachingEncodingStore -   returns caching encoding L1, L2 and L3
-  ///                                    cache options for store operation
-  ///
-  /// \param cacheOpts        tuple of L1, L2 and L3 caching options
-  ///
-  /// \returns encoding of caching options for store
-  uint32_t
-  LSCComputeCachingEncodingStore(const std::tuple<Caching, Caching, Caching>& cacheOpts) const;
 
   G4_SrcRegRegion *lscBuildStridedPayload(G4_Predicate *pred,
                                           G4_SrcRegRegion *src0AddrBase,
@@ -2820,16 +2326,6 @@ public:
                                 G4_Operand *msgDescOpnd, G4_Operand *msgOpnd0,
                                 G4_Operand *msgOpnd1, G4_DstRegRegion *dstOpnd,
                                 unsigned ffid, bool hasEOT = false);
-  int translateVISARawSendgInst(bool sendgConditional,
-                                unsigned sfid,
-                                G4_Predicate *predOpnd,
-                                VISA_Exec_Size esize,
-                                VISA_EMask_Ctrl emask,
-                                G4_DstRegRegion *dst, int dstLenBytes,
-                                G4_SrcRegRegion *src0, int src0LenBytes,
-                                G4_SrcRegRegion *src1, int src1LenBytes,
-                                G4_Operand *ind0, G4_Operand *ind1,
-                                uint64_t desc, bool issueEoT);
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
   // Send sync related members are in VisaToG4/TranslateSendSync.cpp
@@ -2875,8 +2371,6 @@ public:
 
   int translateVISASyncInst(ISA_Opcode opcode, unsigned int mask);
 
-  ////////////////////////////////////////////////////////////////////////
-  G4_INST *translateEot(G4_Predicate *prd = nullptr);
 
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
@@ -2958,8 +2452,6 @@ constexpr VISALscImmOffOpts getLscImmOffOpt(LSC_ADDR_TYPE addrType) {
   case LSC_ADDR_TYPE_BTI:
   case LSC_ADDR_TYPE_ARG:
     return VISA_LSC_IMMOFF_ADDR_TYPE_BTI;
-  case LSC_ADDR_TYPE_SURF:
-    return VISA_LSC_IMMOFF_ADDR_TYPE_SURF;
   default:
     break;
   }

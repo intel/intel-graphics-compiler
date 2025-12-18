@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -634,18 +634,6 @@ public:
       VISA_VectorOpnd *desc, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
       VISA_RawOpnd *dst, bool hasEOT) override;
 
-  VISA_BUILDER_API int AppendVISAMiscRawSendg(
-    unsigned SFID,
-    VISA_PredOpnd *pred,
-    VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-    VISA_RawOpnd *dst, int dstLenBytes,
-    VISA_RawOpnd *src0, int src0LenBytes,
-    VISA_RawOpnd *src1, int src1LenBytes,
-    VISA_VectorOpnd *ind0,
-    VISA_VectorOpnd *ind1,
-    uint64_t desc,
-    bool sendgConditional,
-    bool issueEOT) override;
 
   VISA_BUILDER_API int AppendVISAMiscVME_FBR(VISA_StateOpndHandle *surface,
                                              VISA_RawOpnd *UNIInput,
@@ -808,12 +796,6 @@ public:
       VISA_RawOpnd *tmpDst, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
       VISA_VectorOpnd *src2, GenPrecision src2Precision,
       GenPrecision src1Precision, uint8_t Depth, uint8_t Count) override;
-  VISA_BUILDER_API int AppendVISABdpasInst(
-      ISA_Opcode opcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-      VISA_RawOpnd *dst, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
-      VISA_RawOpnd *src2, VISA_VectorOpnd *src3, VISA_VectorOpnd *src4,
-      GenPrecision src2Precision, GenPrecision src1Precision, uint8_t Depth,
-      uint8_t Count) override;
 
   VISA_BUILDER_API int
   AppendVISABfnInst(uint8_t booleanFuncCtrl, VISA_PredOpnd *pred, bool satMode,
@@ -944,29 +926,6 @@ public:
   VISA_BUILDER_API int AppendVISANamedBarrierSignal(
       VISA_VectorOpnd *barrierId, VISA_VectorOpnd *barrierType,
       VISA_VectorOpnd *numProducers, VISA_VectorOpnd *numConsumers) override;
-  VISA_BUILDER_API int
-  AppendVISAShflIdx4Inst(ISA_Opcode opcode, VISA_PredOpnd *pred,
-                         VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-                         VISA_RawOpnd *dst, VISA_VectorOpnd *src0,
-                         VISA_VectorOpnd *src1) override;
-
-  VISA_BUILDER_API int
-  AppendVISALfsrInst(VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
-                     VISA_Exec_Size executionSize, LFSR_FC funcCtrl,
-                     VISA_VectorOpnd *dst, VISA_VectorOpnd *src0,
-                     VISA_VectorOpnd *src1) override;
-
-  VISA_BUILDER_API int
-  AppendVISADnsclInst(VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
-                      VISA_Exec_Size executionSize, DNSCL_CONVERT_TYPE type,
-                      DNSCL_MODE mode, DNSCL_RND_MODE rndMode,
-                      VISA_RawOpnd *dst, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
-                      VISA_RawOpnd *src2) override;
-  VISA_BUILDER_API int
-  AppendVISALscExtendedCacheCtrlInst(LSC_OP subOpcode, LSC_SFID lscSfid,
-      VISA_PredOpnd *pred, VISA_Exec_Size execSize, VISA_EMask_Ctrl emask,
-      LSC_CACHE_CTRL_OPERATION ccop, LSC_CACHE_CTRL_SIZE ccsize,
-      LSC_CACHE_OPTS caching, LSC_ADDR addr, VISA_RawOpnd *src0Addr) override;
 
   /********** APPEND INSTRUCTION APIS END   ******************/
 

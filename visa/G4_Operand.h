@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 #include "G4_Register.h"
 #include "include/RelocationInfo.h"
 
-#include <functional>
 #include <iostream>
 #include <vector>
 

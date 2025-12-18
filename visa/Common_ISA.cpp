@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -125,10 +125,6 @@ static const char *getSampleOp3DNameOrNull(VISASampler3DSubOpCode opcode,
     return "sample_po_d";
   case VISA_3D_SAMPLE_PO_L_C:
     return "sample_po_l_c";
-  case VISA_3D_SAMPLE_PO_B_C:
-      return "sample_po_b_c";
-  case VISA_3D_SAMPLE_PO_D_C:
-      return "sample_po_d_c";
   case VISA_3D_GATHER4_PO_PACKED:
     return "sample4_po";
   case VISA_3D_GATHER4_PO_PACKED_L:
@@ -226,8 +222,3 @@ const char *ChannelMask::Names[] = {
     "GBA",  // 1110
     "RGBA"  // 1111
 };
-const char *lfsrFuncCtrl[] = {"b32", "b16v2", "b8v4"};
-const char *dnsclConvertType[] = {"none", "bftoe2m1", "bftoint4",
-                                  "none", "hftoe2m1", "hftoint4"};
-const char *dnsclMode[] = {"mode0", "mode1", "mode2", "mode3"};
-const char *dnsclRndMode[] = {"srnd", "rne"};

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -73,8 +73,7 @@ const std::array<PreDefinedVarsInternal, (int)PreDefinedVarsInternal::VAR_LAST>
                      PreDefinedVarsInternal::IMPL_ARG_BUF_PTR,
                      PreDefinedVarsInternal::LOCAL_ID_BUF_PTR,
                      PreDefinedVarsInternal::MSG0,
-                     PreDefinedVarsInternal::SCRATCHLOC
-                    };
+                     };
 
 typedef struct {
   PreDefinedVarsInternal id;

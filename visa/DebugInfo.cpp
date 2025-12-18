@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2086,12 +2086,6 @@ void SaveRestoreManager::addInst(G4_INST *inst) {
       // Spill offset is inlined in LSC message as:
       // GlobalRA::SPILL_FILL_IMMOFF_MAX + Inlined offset in LSC
       auto bias = GlobalRA::SPILL_FILL_IMMOFF_MAX;
-      // Refer to comments in GraphColor.h about bias used for
-      // SPILL_FILL_IMMOFF_MAX and SPILL_FILL_IMMOFF_MAX_EFF64b.
-      if (builder.isEfficient64bEnabled()) {
-        vISA_ASSERT(inst->isSendg(), "expecting sendg");
-        bias = 0;
-      }
 
       auto msgDesc = inst->asSendInst()->getMsgDesc();
       auto off = msgDesc->getOffset();

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -807,140 +807,6 @@ void BankConflictPass::setupBankConflictsforDPAS(G4_INST *inst) {
   return;
 }
 
-void BankConflictPass::setupBankConflictsfor2xDPAS(G4_INST *inst) {
-  std::array<BankConflict, 3> srcBC = {BANK_CONFLICT_NONE, BANK_CONFLICT_NONE,
-                                       BANK_CONFLICT_NONE};
-  std::array<G4_Declare *, 3> dcls = {nullptr, nullptr, nullptr};
-  std::array<G4_Declare *, 3> opndDcls = {nullptr, nullptr, nullptr};
-  std::array<unsigned, 3> offset = {0, 0, 0};
-  int opndNumWithBank = 0;
-
-  if (!inst->isDpas()) {
-    return;
-  }
-
-  //Check the bank of the source operand of current instructions
-  for (int i = 0; i < 3; i += 1) {
-    opndDcls[i] = nullptr;
-
-    G4_Operand *src = inst->getSrc(i);
-    dcls[i] = GetTopDclFromRegRegion(src);
-    if (dcls[i]) {
-      opndDcls[i] = src->getBase()->asRegVar()->getDeclare();
-      // Get offset from the root declare
-      offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) /
-                  gra.kernel.numEltPerGRF<Type_UB>();
-      // Get the bank of declare
-      srcBC[i] = gra.getBankConflict(dcls[i]);
-
-      //Change to Operand bank
-      if (srcBC[i] != BANK_CONFLICT_NONE) {
-        if (isOddOffset(offset[i])) {
-          if (srcBC[i] == BANK_CONFLICT_FIRST_HALF_EVEN) {
-            srcBC[i] = BANK_CONFLICT_SECOND_HALF_ODD;
-          } else {
-            srcBC[i] = BANK_CONFLICT_FIRST_HALF_EVEN;
-          }
-        }
-        opndNumWithBank++;
-      }
-    }
-  }
-
-  // In case src0 and src2 are null or use same declare, i.e. use same register
-  if (dcls[0] == dcls[2] || !dcls[0] || !dcls[2])
-    return;
-
-  //Rule 2: set bundle conflict between src0 and src2
-  if (dcls[0] && dcls[2]) {
-    gra.addBundleConflictDcl(dcls[2], dcls[0], offset[2] - offset[0]);
-    gra.addBundleConflictDcl(dcls[0], dcls[2], offset[0] - offset[2]);
-  }
-
-  // Rule 1: src0/src2 are assigned to different bank of src1
-  if (opndNumWithBank == 0) {// No bank bias assigned.
-    srcBC[0] = BANK_CONFLICT_FIRST_HALF_EVEN;
-    srcBC[1] = BANK_CONFLICT_SECOND_HALF_ODD;
-    srcBC[2] = BANK_CONFLICT_FIRST_HALF_EVEN;
-
-    //Change to declare bank
-    if (isOddOffset(offset[0])) {
-      srcBC[0] = BANK_CONFLICT_SECOND_HALF_ODD;
-    }
-    if (isOddOffset(offset[1])) {
-      srcBC[1] = BANK_CONFLICT_FIRST_HALF_EVEN;
-    }
-    if (isOddOffset(offset[2])) {
-      srcBC[2] = BANK_CONFLICT_SECOND_HALF_ODD;
-    }
-    //Set declare bank
-    gra.setBankConflict(dcls[0], srcBC[0]);
-    gra.setBankConflict(dcls[1], srcBC[1]);
-    gra.setBankConflict(dcls[2], srcBC[2]);
-  } else { // bank assigned in some operands
-    if (srcBC[1] == BANK_CONFLICT_NONE) { //src1 is not assigned
-      BankConflict bc = BANK_CONFLICT_NONE;
-      if (srcBC[0]) {
-        bc = srcBC[0];
-      }
-      if (srcBC[2]) {
-        bc = srcBC[2];
-      }
-      srcBC[1] = (bc == BANK_CONFLICT_FIRST_HALF_EVEN)
-                     ? BANK_CONFLICT_SECOND_HALF_ODD
-                     : BANK_CONFLICT_FIRST_HALF_EVEN;
-      srcBC[0] = bc;
-      srcBC[2] = bc;
-      // Change to declare bank
-      if (isOddOffset(offset[0])) {
-        srcBC[0] = BANK_CONFLICT_SECOND_HALF_ODD;
-      }
-      if (isOddOffset(offset[1])) {
-        srcBC[1] = BANK_CONFLICT_SECOND_HALF_ODD;
-      }
-      if (isOddOffset(offset[2])) {
-        srcBC[2] = BANK_CONFLICT_SECOND_HALF_ODD;
-      }
-      gra.setBankConflict(dcls[0], srcBC[0]);
-      gra.setBankConflict(dcls[1], srcBC[1]);
-      gra.setBankConflict(dcls[2], srcBC[2]);
-    } else {
-      BankConflict bc = srcBC[1];
-      srcBC[0] = (bc == BANK_CONFLICT_FIRST_HALF_EVEN)
-                     ? BANK_CONFLICT_SECOND_HALF_ODD
-                     : BANK_CONFLICT_FIRST_HALF_EVEN;
-      srcBC[2] = srcBC[0];
-      // Change to declare bank
-      if (isOddOffset(offset[0])) {
-        srcBC[0] = BANK_CONFLICT_SECOND_HALF_ODD;
-      }
-      if (isOddOffset(offset[2])) {
-        srcBC[2] = BANK_CONFLICT_SECOND_HALF_ODD;
-      }
-      gra.setBankConflict(dcls[0], srcBC[0]);
-      gra.setBankConflict(dcls[2], srcBC[2]);
-    }
-  }
-
-#ifdef VISA_DEBUG_VERBOSE
-  for (int i = 0; i < 3; i += 2) {
-    if (opndDcls[i]) {
-      printf("%s, ", opndDcls[i]->getName());
-
-      if (gra.getBankConflict(dcls[i]) == BANK_CONFLICT_FIRST_HALF_EVEN) {
-        printf("%s\n", "EVEN");
-      } else if (gra.getBankConflict(dcls[i]) ==
-                 BANK_CONFLICT_SECOND_HALF_ODD) {
-        printf("%s\n", "ODD");
-      } else {
-        printf("%s\n", "NONE");
-      }
-    }
-  }
-#endif
-
-  return;
-}
 
 void BankConflictPass::setupBundleConflictsforTwoSrcsInst(G4_INST *inst) {
   vISA_ASSERT(inst->getNumSrc() == 2, "Only support two source operands instructions");
@@ -1181,15 +1047,7 @@ void BankConflictPass::setupBankConflictsForBBTGL(G4_BB *bb,
       if (inst->isDpas()) {
         threeSourceInstNum += 8;
         hasDpasInst = true;
-        const G4_InstDpas *dpasInst = inst->asDpasInst();
-        if ((gra.kernel.fg.builder->hasDpasFwdAndDoubleSrcReadSupression() ||
-             gra.kernel.getOption(vISA_ScheduleFor2xDpas)) &&
-            dpasInst->getRepeatCount() == 8 &&
-            dpasInst->getSystolicDepth() == 8) {
-          setupBankConflictsfor2xDPAS(inst);
-        } else {
-          setupBankConflictsforDPAS(inst);
-        }
+        setupBankConflictsforDPAS(inst);
       } else {
         setupBankConflictsforMad(inst);
       }
@@ -2607,37 +2465,6 @@ void Interference::setupLRs(G4_BB *bb) {
       }
     }
 
-    // In 512 GRF mode, sendgx/sendgxc dst and source can't use r511 due to encoding
-    // restrictions. Note that this is an encoding limitation and thus only
-    // applies if the operand is r511; it is ok if the operand is multi-GRF
-    // and the last GRF is r511.
-    if (isSend && liveAnalysis->livenessClass(G4_GRF) &&
-        kernel.getNumRegTotal() == 512) {
-      auto applyWA = [this](G4_Operand *opnd) {
-        if (!opnd)
-          return;
-        vISA_ASSERT(!opnd->isImm(),
-                    "dst/src0/src1 of sendgx/sendgxc can not be immediate");
-        if (!opnd->getBase()->isRegAllocPartaker())
-          return;
-        auto lr = lrs[opnd->getBase()->asRegVar()->getId()];
-        unsigned int lrDclBytes = lr->getDcl()->getByteSize();
-        if (lrDclBytes <= kernel.numEltPerGRF<Type_UB>())
-          lr->setForbidden(forbiddenKind::FBD_LASTGRF);
-        else {
-          // For the case that variable size is larger than 1 GRF but the
-          // operand uses the last GRF.
-          auto lb = opnd->getLeftBound();
-          auto totalGrf =
-              (lrDclBytes + builder.getGRFSize() - 1) / builder.getGRFSize();
-          if (lb >= (totalGrf - 1) * builder.getGRFSize())
-            lr->setForbidden(forbiddenKind::FBD_LASTGRF);
-        }
-      };
-      applyWA(dst);
-      applyWA(inst->getSrc(0));
-      applyWA(inst->getSrc(1));
-    }
 
     //
     // process each source operand
@@ -3142,10 +2969,6 @@ bool Augmentation::updateDstMaskForGather(G4_INST *inst,
     return updateDstMaskForGatherRaw(
         inst, mask, reinterpret_cast<const G4_SendDescRaw *>(msgDesc));
   }
-  if (msgDesc->isGeneralized()) {
-    return updateDstMaskForGatherUnified(
-        inst, mask, reinterpret_cast<const G4_SendgDesc *>(msgDesc));
-  }
   vISA_ASSERT_UNREACHABLE("unexpected descriptor");
   return false;
 }
@@ -3370,85 +3193,6 @@ bool Augmentation::updateDstMaskForGatherRaw(G4_INST *inst,
     return false;
   }
 
-  return false;
-}
-bool Augmentation::updateDstMaskForGatherUnified(
-    G4_INST *inst, std::vector<unsigned char> &mask,
-    const G4_SendgDesc *msgDesc) {
-  unsigned char execSize = inst->getExecSize();
-  unsigned char curEMBit = (unsigned char)inst->getMaskOffset();
-  G4_DstRegRegion *dst = inst->getDst();
-  unsigned short elemSize = dst->getElemSize();
-
-  if (inst->isWriteEnableInst()) {
-    curEMBit = NOMASK_BYTE;
-  }
-
-  SFID funcID = msgDesc->getSFID();
-
-  switch (funcID) {
-  // fixme: populate with other data port cases
-  case SFID::UGM:
-  case SFID::UGML:
-  case SFID::SLM:
-    if (msgDesc->isOp(MsgOp::LOAD) &&
-        msgDesc->isDataOrderNonTranspose()) { // transpose not supported yet
-
-      const uint32_t dataSz = msgDesc->getDataSizeBytesReg();
-      const uint32_t vecSz = msgDesc->getVecElemsCount();
-      updateMaskSIMT(curEMBit, execSize, mask, dataSz, vecSz);
-      return true;
-    }
-    break;
-
-  case SFID::RTHW:
-    // Mark RT send dst to be NonDefault, even when it doesn't have
-    // WriteEnable
-    if (kernel.getPlatform() >= Xe3) {
-      for (auto &elem : mask)
-        elem = NOMASK_BYTE;
-      return true;
-    }
-    break;
-
-  case SFID::SAMPLER: {
-    unsigned respLength = msgDesc->getDstLen();
-    if (respLength * kernel.numEltPerGRF<Type_UB>() !=
-            dst->getTopDcl()->getByteSize() &&
-        msgDesc->isFence()) {
-      // since send dst size is not exactly equal to ResponseLength encoded in
-      // the descriptor, conservatively treat the send as being non-default
-      auto sz = dst->getTopDcl()->getByteSize();
-      for (unsigned int i = 0; i != sz; ++i)
-        mask[i] = NOMASK_BYTE;
-      return true;
-    }
-    unsigned char curEMBit = (unsigned char)inst->getMaskOffset();
-    unsigned warpNum =
-        respLength * kernel.numEltPerGRF<Type_UB>() / (execSize * elemSize);
-    if (inst->isWriteEnableInst()) {
-      curEMBit = NOMASK_BYTE;
-    }
-    for (unsigned i = 0; i < warpNum; i++) {
-      for (unsigned j = 0; j < execSize; j++) {
-        for (unsigned k = 0; k < elemSize; k++) {
-          mask[(i * execSize + j) * elemSize + k] = curEMBit;
-        }
-        if (curEMBit != NOMASK_BYTE) {
-          curEMBit++;
-          vISA_ASSERT(curEMBit <= 32, "Illegal mask channel");
-        }
-      }
-      if (curEMBit != NOMASK_BYTE) {
-        curEMBit = (unsigned char)inst->getMaskOffset();
-      }
-    }
-    return true;
-  }
-
-  default:
-    return false;
-  }
   return false;
 }
 
@@ -8294,16 +8038,7 @@ void GlobalRA::stackCallProlog() {
   // Initialize address for immediate offset usage for spill/fill messages
   // except for frame descriptor save message.
   // This is for common cases which uses %be_fp as address.
-  if (builder.isEfficient64bEnabled()) {
-    // Turn off immediate offset if frame size is 0 or exceeds threshhold
-    if ((kernel.fg.frameSizeInOWord == 0) ||
-        (kernel.fg.frameSizeInOWord * 16 > SPILL_FILL_IMMOFF_MAX_EFF64b))
-      canUseLscImmediateOffsetSpillFill = false;
-
-    // For efficient64b enabling, do nothing as we can use %be_fe(r127.0:ud)
-    // as spill/fill address directly for immediate offset usage.
-  }
-  else {
+  {
     // Turn off immediate offset if frame size is 0 or exceeds threshhold
     if ((kernel.fg.frameSizeInOWord == 0) ||
         (kernel.fg.frameSizeInOWord * 16 > SPILL_FILL_IMMOFF_MAX * 2))
@@ -8385,32 +8120,7 @@ void GlobalRA::stackCallProlog() {
 
     // Initialize address for immediate offset usage for frame descriptor store
     // message. This is a special case as it uses %be_sp as address.
-    if (builder.isEfficient64bEnabled()) {
-      // For efficient64b enabled case, the address is %be_sp(r127.2:ud)
-      // which is not GRF-aligned. So we need pick a reg for copying %be_sp
-      // and use it as message header. Since this frame descriptor store
-      // message is in prolog, we can simply pick a non-forbidden reg from
-      // caller-save pool as there is going to be no interferences. Here, we
-      // will use r[callerSaveLastGRF].0:ud which is r59.0:ud.
-      auto newSpillHeaderDcl = builder.createHardwiredDeclare(
-          1, Type_UD, kernel.stackCall.getCallerSaveLastGRF(), 0);
-
-      // Move %be_sp to r59.0:ud
-      //    (W) mov(1) r59.0<1>:ud %be_sp<1;0,1>:ud
-      auto movInst = builder.createMov(
-          g4::SIMD1, builder.createDstRegRegion(newSpillHeaderDcl, 1),
-          builder.createSrcRegRegion(builder.getBESP(),
-                                     builder.getRegionScalar()),
-          InstOpt_WriteEnable, false);
-      entryBB->insertBefore(iter, movInst);
-
-      // Set the new spillHeader for frame descriptor save instruction
-      //    (w) sendg... r59 r127
-      auto newSpillHeader = builder.createSrcRegRegion(
-          newSpillHeaderDcl, builder.getRegionStride1());
-      store->setSrc(newSpillHeader, 0);
-    }
-    else {
+    {
       if (canUseLscImmediateOffsetSpillFill) {
         // copy (%be_sp + 0x10000) to r126.0 for immediate offset usage
         // for frame descriptor save instruction
@@ -11352,15 +11062,6 @@ void GlobalRA::stackCallSaveRestore(bool hasStackCall) {
           builder.phyregpool.getGreg(kernel.stackCall.getThreadHeaderGRF()), 0);
     }
 
-    if (builder.isEfficient64bEnabled() && !canUseLscImmediateOffsetSpillFill) {
-      // For Eff64, when LSC cannot use imm offset as address in header, we
-      // need another GRF that holds the address. For ABI v3, we don't have
-      // a reserved scratch register. So, we repurpose "SR" declare and
-      // tie it to last caller saved GRF (eg, r59 for 128 GRFs). Then we use
-      // this GRF as scratch address in LSC header. The register is marked
-      // as forbidden from assignment.
-      initSRAsScratch();
-    }
   }
 }
 
@@ -11416,7 +11117,6 @@ void GlobalRA::incRABookKeeping() {
     builder.getSpillFillHeader();
 
     bool initSS = builder.hasScratchSurface();
-    initSS &= !kernel.fg.builder->isEfficient64bEnabled();
     if (initSS) {
       builder.initScratchSurfaceOffset();
       builder.getOldA0Dot2Temp();
@@ -11795,7 +11495,7 @@ void GlobalRA::setupA0Dot2OnSpill(bool hasStackCall,
     kernel.fg.builder->getOldA0Dot2Temp();
   } else if (useLscForNonStackCallSpillFill || useLscForScatterSpill) {
     // Xe2+ LSC-based spill/fill needs the same as above
-    if (!builder.isEfficient64bEnabled()) {
+    {
       kernel.fg.builder->getOldA0Dot2Temp();
     }
   }
@@ -13135,16 +12835,6 @@ void GlobalRA::fixSrc0IndirFcall() {
       } else {
         auto fcallDstTypeSize = fcall->getDst()->getTypeSize();
         vISA_ASSERT(fcallDstTypeSize == 4, "expecting DW type dst");
-        // dst is Type_UD with 3 elems,
-        // src0 is Type_UD with 2 elems
-        if (builder.isEfficient64bEnabled()) {
-          auto newSrcDcl = kernel.fg.builder->createTempVar(2, Type_UD, Any);
-          newSrcDcl->setAliasDeclare(src0TopDcl, 0);
-          auto newSrc0 = kernel.fg.builder->createSrc(
-              newSrcDcl->getRegVar(), 0, 0,
-              kernel.fg.builder->getRegionStride1(), Type_UD);
-          fcall->setSrc(newSrc0, 0);
-        }
         src0TopDcl->getRegVar()->setPhyReg(
             fcall->getDst()->getBase()->asRegVar()->getPhyReg(),
             fcall->getDst()->getBase()->asRegVar()->getPhyRegOff() *

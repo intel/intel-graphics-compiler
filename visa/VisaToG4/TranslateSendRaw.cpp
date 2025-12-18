@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2025 Intel Corporation
+Copyright (C) 2020-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -146,60 +146,3 @@ int IR_Builder::translateVISARawSendsInst(
   return VISA_SUCCESS;
 }
 
-int IR_Builder::translateVISARawSendgInst(
-    bool sendgConditional, unsigned sfidBits, G4_Predicate *pred,
-    VISA_Exec_Size esize, VISA_EMask_Ctrl emask, G4_DstRegRegion *dst,
-    int dstLenBytes, G4_SrcRegRegion *src0, int src0LenBytes,
-    G4_SrcRegRegion *src1, int src1LenBytes, G4_Operand *ind0, G4_Operand *ind1,
-    uint64_t desc, bool issueEoT) {
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  vISA_ASSERT(isEfficient64bEnabled(), "requires -enableEfficient64b option");
-
-  SFID sfid = intToSFID(sfidBits, getPlatform());
-  G4_ExecSize exsize = G4_ExecSize(Get_VISA_Exec_Size(esize));
-  G4_InstOpts instOpts = Get_Gen4_Emask(emask, exsize);
-
-  // (W) mov (1) s0.#<1>:uq   (GRF|IMM)
-  // (W) mov (1) s0.#<1>:uq   (GRF|IMM)
-  auto ind0r = setupIndirectDescriptor(ind0);
-  auto ind1r = setupIndirectDescriptor(ind1);
-
-  G4_SendgDesc *g4desc = new (mem) G4_SendgDesc(sfid, desc, *this);
-  //
-  int grfSizeBytes = (int)getGRFSize();
-  auto toGrfs = [&](int b) {
-    return b == 0 ? 0 : std::max(b / grfSizeBytes, 1);
-  };
-  g4desc->setDstLen(toGrfs(dstLenBytes));
-  g4desc->setSrc0Len(toGrfs(src0LenBytes));
-  g4desc->setSrc1Len(toGrfs(src1LenBytes));
-
-  if (src0->isNullReg()) {
-    G4_Declare *tmpVar = NULL;
-
-    tmpVar = createTempVar(getNativeExecSize(), Type_UD, getGRFAlign());
-    G4_DstRegRegion *tmpDst = createDst(tmpVar->getRegVar(), 0, 0, 1, Type_UD);
-    G4_Imm *src0Imm = createImm(0, Type_UD);
-    (void)createMov(getNativeExecSize(), tmpDst, src0Imm, InstOpt_WriteEnable,
-                    true);
-    src0 = createSrc(tmpVar->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
-    g4desc->setSrc0Len(1);
-  }
-
-  if (issueEoT) {
-    instOpts |= InstOpt_EOT;
-  }
-
-  createSendgInst(
-    pred,
-    sendgConditional ? G4_sendgc : G4_sendg,
-    exsize,
-    dst, src0->asSrcRegRegion(), src1->asSrcRegRegion(),
-    ind0r, ind1r,
-    g4desc, // the descriptor object for InstSend (not a src operand)
-    instOpts,
-    true);
-
-  return VISA_SUCCESS;
-}

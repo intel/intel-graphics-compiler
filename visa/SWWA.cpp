@@ -3693,44 +3693,6 @@ void Optimizer::fixSendSrcRegion(G4_INST *inst) {
     inst->getSrc(0)->asSrcRegRegion()->setRegion(builder, newDesc);
   }
 }
-// WA: For three source operand instruction,
-// 1, If src2 = NULL and src0 = GRF , then assign src2 the same GRF as
-//    src0, with src2 stride aligned with destination operand.
-// 2, if src2 = NULL and src0 = ARF (other than accum.), compiler can pick
-//    any GRF operand (src1 or destination operand or immediate value),
-//    whichever they find easy to pick.
-// Note that even this workaournd is applied for all 3-source instructions but
-// bfn should be the only case which can have null src2.
-void Optimizer::applyThreeSrcInstNullSrc2WA(INST_LIST_ITER it, G4_BB *bb) {
-  G4_INST *inst = *it;
-  if (!(inst->getNumSrc() == 3 && !inst->isDpas() &&
-        inst->getSrc(2)->isNullReg()))
-    return;
-
-  auto src0 = inst->getSrc(0);
-  auto dst = inst->getDst();
-  uint16_t stride = dst->getHorzStride();
-  if (src0->getTopDcl()->getRegFile() == G4_GRF) {
-    // Special encoding handling for 3-src inst with single non-unit stride
-    // region which should be <stride*2;2,stride>
-    G4_SrcRegRegion *newSrc2 = builder.createSrc(
-        src0->getBase(), dst->getRegOff(), dst->getSubRegOff(),
-        inst->getExecSize() == g4::SIMD1
-            ? builder.getRegionScalar()
-            : builder.createRegionDesc(stride * 2, 2, stride),
-        dst->getType());
-    inst->setSrc(newSrc2, 2);
-  } else if (src0->isAreg() && !src0->isAccReg()) {
-    G4_SrcRegRegion *newSrc2 =
-        builder.createSrc(dst->getBase(), dst->getRegOff(), dst->getSubRegOff(),
-                          inst->getExecSize() == g4::SIMD1
-                              ? builder.getRegionScalar()
-                              : builder.createRegionDesc(stride * 2, 2, stride),
-                          dst->getType());
-    inst->setSrc(newSrc2, 2);
-  }
-  return;
-}
 
 // some workaround for HW restrictions.  We apply them here so as not to affect
 // optimizations, RA, and scheduling
@@ -4000,8 +3962,6 @@ void Optimizer::HWWorkaround() {
         bb->insertBefore(ii, dummyMov);
       }
 
-      if (builder.needThreeSrcInstNullSrc2WA())
-        applyThreeSrcInstNullSrc2WA(ii, bb);
       ii++;
     }
   }

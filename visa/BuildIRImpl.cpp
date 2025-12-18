@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -427,21 +427,6 @@ void IR_Builder::expandPredefinedVars() {
                            [](G4_INST *inst) { return !inst->isLabel(); });
 
   if (preDefVars.isHasPredefined(PreDefinedVarsInternal::HW_TID)) {
-    if (getPlatform() >= Xe3 && isKernelArgumentEnabled()) {
-      // Use FFTID from state register
-      // shr (1) hw_tid, sr0.1, 22
-      //
-      // 31:22  FFTID. This ID is assigned by TS and is a unique identifier for
-      // the thread in comparison to other concurrent root threads. It is used
-      // to free up resources used by the thread upon thread completion.
-      G4_SrcRegRegion *src = createSrc(builtinSR0Dot1->getRegVar(), 0, 0,
-                                       getRegionScalar(), Type_UD);
-      G4_DstRegRegion *dst = createDstRegRegion(builtinHWTID, 1);
-      G4_INST *inst =
-          createBinOp(G4_shr, g4::SIMD1, dst, src, createImm(22, Type_UW),
-                      InstOpt_WriteEnable, false);
-      instList.insert(iter, inst);
-    } else {
        // Use FFTID from msg header
        // and (1) hw_tid, r0.5, 0x3ff
        //
@@ -462,7 +447,6 @@ void IR_Builder::expandPredefinedVars() {
       G4_INST *inst = createBinOp(G4_and, g4::SIMD1, dst, src, mask1,
                                   InstOpt_WriteEnable, false);
       instList.insert(iter, inst);
-    }
   }
 
   if (preDefVars.isHasPredefined(PreDefinedVarsInternal::X)) {
@@ -692,12 +676,6 @@ void IR_Builder::createPreDefinedVars() {
         G4_Declare *msg0Dcl = createPreVar(i, 3, Type_UD);
         msg0Dcl->getRegVar()->setPhyReg(phyregpool.getMsg0Reg(), 0);
         dcl = msg0Dcl;
-        break;
-      }
-      case PreDefinedVarsInternal::SCRATCHLOC: {
-        G4_Declare *scratchDcl = createPreVar(i, 1, Type_UQ);
-        scratchDcl->getRegVar()->setPhyReg(phyregpool.getScalarReg(), 7);
-        dcl = scratchDcl;
         break;
       }
       default: {
@@ -942,21 +920,6 @@ uint32_t IR_Builder::getSplitEMask(unsigned execSize, uint32_t eMask,
 
 void IR_Builder::initScratchSurfaceOffset() {
   bool allocScratchSurfaceOffset = !scratchSurfaceOffset;
-  if (isEfficient64bEnabled()) {
-    if (!scratchSurfaceEff64b) {
-      scratchSurfaceEff64b =
-          createDeclare("scratchSurfaceEff64", G4_SCALAR, 1, 1, Type_UQ);
-      scratchSurfaceEff64b->setSubRegAlign(G4_SubReg_Align::Four_Word);
-      scratchSurfaceEff64b->setLiveIn();
-      scratchSurfaceEff64b->setLiveOut();
-      scratchSurfaceEff64b->setDoNotSpill();
-      // Tie it to s0.7:uq for all cases
-      scratchSurfaceEff64b->getRegVar()->setPhyReg(phyregpool.getScalarReg(),
-                                                   7);
-    }
-    // disable legacy a0.2-based scratch offset
-    allocScratchSurfaceOffset = false;
-  }
   // (W) and (1) sso r0.5 0xFFFFC00, placed at kernel entry
   if (allocScratchSurfaceOffset) {
     scratchSurfaceOffset = createTempVar(1, Type_UD, Any, "SSO");
@@ -1197,17 +1160,9 @@ G4_Declare *IR_Builder::createAddrFlagSpillLoc(G4_Declare *dcl) {
       createDeclare(name, G4_GRF, dcl->getNumElems(), 1, dcl->getElemType(),
                     DeclareType::AddrSpill);
   dcl->setSpilledDeclare(spillLoc);
-  if (getPlatform() > Xe3 && dcl->getRegFile() == G4_ADDRESS)
-    // On xe3p+ platform, src1 must be aligned to dst. In other words, both src1
-    // and dst are GRF-aligned. For the addr_add instruction, if the address
-    // variable in the dst is spilled to GRF variable, we must make sure the
-    // GRF variable is also GRF-aligned. Otherwise, there would cause unaligned
-    // regioning issue between dst and src1.
-    spillLoc->setSubRegAlign(getGRFAlign());
-  else
-    spillLoc->setSubRegAlign(
-        dcl->getSubRegAlign()); // for simd32 flag the spill loc has to be
-                                // 2-word aligned since it's accessed as dw
+  spillLoc->setSubRegAlign(
+      dcl->getSubRegAlign()); // for simd32 flag the spill loc has to be 2-word
+                              // aligned since it's accessed as dw
   return spillLoc;
 }
 
@@ -1900,8 +1855,6 @@ G4_INST *IR_Builder::createDpasInst(G4_opcode opc, G4_ExecSize execSize,
                                     G4_InstOpts options, GenPrecision A,
                                     GenPrecision W, uint8_t D, uint8_t C,
                                     bool addToInstList) {
-  vASSERT(!src3 || opc == G4_bdpas);
-  vASSERT(!src4 || opc == G4_bdpas);
   G4_INST *i = new (mem) G4_InstDpas(*this, opc, execSize, dst, src0, src1,
                                      src2, src3, src4, options, A, W, D, C);
 
@@ -1977,136 +1930,6 @@ bool IR_Builder::isBuiltinSendIndirectS0(G4_Operand *op) const
   return rightBound < 8 * FIRST_SURFACE_S0_QW;
 }
 
-// todo: once all s0 creation is  moved to post-RA, remove the
-// createSurfaceMove* functions from buildIR
-G4_SrcRegRegion* IR_Builder::setupIndirectDescriptor(G4_Operand *val)
-{
-  bool isZero = !val || val->isNullReg() ||
-      (val->isImm() && val->asImm()->getImm() == 0);
-  if (isZero) {
-    // bail out if the value is 0; HW will treat IND0 or IND1 being
-    // absent as 0's.
-    return nullptr;
-  }
-
-  vISA_ASSERT(IS_INT(val->getType()), "invalid type for surface mov");
-  G4_Type movDstType = IS_SIGNED_INT(val->getType()) ? Type_Q : Type_UQ;
-
-  // HW requires that in moves to s0 the dst/src types match
-  //   (W) mov (1) s0.#:DT    val:ST   // with DT /= ST
-  // CASES:
-  //    1. the source value is immediate (non-relocation)
-  //       ==> zero/sign-extend immval to DT
-  //
-  //    2. the types are the same size but mismatch in signedness
-  //       ==> flip types to match
-  //       (W) mov (1) s0.#:ST    val:ST
-  //       No change in the bits (will be raw mov); so this works
-  //
-  //    3. worst case; we need actual computation (sign/zero extension)
-  //       use a mov op
-  //
-  // Relocation immediates fall in cases 2 and 3.
-  if (movDstType != val->getType()) {
-    if (val->isImm() && !val->isRelocImm()) {
-      // 1. just move
-      val = createImm(val->asImm()->getImm(), movDstType);
-    } else {
-      // 3. otherwise, we actually need to zero or sign extend or truncate val
-      // use the a regular INT pipe operation for this
-      auto tvDcl =
-        createTempVar(1, movDstType, Get_G4_SubRegAlign_From_Type(movDstType));
-      G4_DstRegRegion *tvDst = createDstRegRegion(tvDcl, 1);
-      (void)createMov(g4::SIMD1, tvDst, val, InstOpt_WriteEnable, true);
-      val = createSrcRegRegion(tvDcl, getRegionScalar());
-    }
-  }
-  // IGC will fold the Blender state index (BSI, also known as render target
-  // index in IGC) into the surface base address;
-  return static_cast<G4_SrcRegRegion*>(val);
-}
-G4_SrcRegRegion *IR_Builder::createSurfaceMoveToNextS0(
-  SFID sfid, G4_Operand *val, bool skipIfNullZero)
-{
-  bool s0IsA32 = sfid == SFID::SLM || sfid == SFID::URB;
-  return createSurfaceMoveToNextS0(val, s0IsA32, skipIfNullZero);
-}
-G4_SrcRegRegion *IR_Builder::createSurfaceMoveToNextS0(
-    G4_Operand *val, bool s0isA32, bool skipIfNullZero)
-{
-  // compute the next offset in s0 that we can use for sendg
-  int s0qw = nextSurfaceS0QW++;
-  if (nextSurfaceS0QW == getScalarRegisterSizeInBytes() / 8) {
-    nextSurfaceS0QW = FIRST_SURFACE_S0_QW; // skip first Gather Send
-  }
-  return createSurfaceMoveToS0(val, s0qw, s0isA32, skipIfNullZero);
-}
-G4_SrcRegRegion *IR_Builder::createSurfaceMoveToS0(
-  G4_Operand *val, int s0qw, bool s0isA32, bool skipIfNullZero)
-{
-  vISA_ASSERT((unsigned)s0qw < getScalarRegisterSizeInBytes() / 8,
-              "qw is out of bounds");
-  vISA_ASSERT(!val || IS_INT(val->getType()), "invalid type for surface mov");
-  G4_Type movDstType = val && IS_SIGNED_INT(val->getType()) ? Type_Q : Type_UQ;
-
-  bool isZero = !val || val->isNullReg() ||
-      (val->isImm() && val->asImm()->getImm() == 0);
-  if (skipIfNullZero && isZero) {
-    // bail out if the value is 0; HW will treat IND0 or IND1 being
-    // absent as 0's.
-    return nullptr;
-  } else if (val == nullptr) {
-    // HW should treat non-existent IND0 or IND1 as 0's on the sideband
-    // but skipIfNullZero = false overrides the behavior and forces the
-    // move to an s0 register.
-    val = createImm(0, movDstType);
-  }
-
-  // HW requires that in moves to s0 the dst/src types match
-  //   (W) mov (1) s0.#:DT    val:ST   // with DT /= ST
-  // CASES:
-  //    1. the source value is immediate (non-relocation)
-  //       ==> zero/sign-extend immval to DT
-  //
-  //    2. the types are the same size but mismatch in signedness
-  //       ==> flip types to match
-  //       (W) mov (1) s0.#:ST    val:ST
-  //       No change in the bits (will be raw mov); so this works
-  //
-  //    3. worst case; we need actual computation (sign/zero extension)
-  //       use a mov op
-  //
-  // Relocation immediates fall in cases 2 and 3.
-  if (movDstType != val->getType()) {
-    if (val->isImm() && !val->isRelocImm()) {
-      // 1. just move
-      val = createImm(val->asImm()->getImm(), movDstType);
-    } else if (TypeSize(movDstType) == TypeSize(val->getType())){
-      // 2. just flip dstType to srcType; bits are bits
-      movDstType = val->getType();
-    } else {
-      // 3. otherwise, we actually need to zero or sign extend or truncate val
-      // use the a regular INT pipe operation for this
-      auto tvDcl =
-        createTempVar(1, movDstType, Get_G4_SubRegAlign_From_Type(movDstType));
-      G4_DstRegRegion *tvDst = createDstRegRegion(tvDcl, 1);
-      (void)createMov(g4::SIMD1, tvDst, val, InstOpt_WriteEnable, true);
-      val = createSrcRegRegion(tvDcl, getRegionScalar());
-    }
-  }
-
-  G4_DstRegRegion *dstTmpS0 = createS0Dst(s0qw, movDstType);
-  (void)createMov(g4::SIMD1, dstTmpS0, val, InstOpt_WriteEnable, true);
-  G4_SrcRegRegion *srcTmpS0 = createS0Src(s0qw);
-  return srcTmpS0;
-}
-G4_DstRegRegion *IR_Builder::createS0Dst(int s0qw, G4_Type movDstType) {
-  return createDst(builtinS0->getRegVar(), 0,
-                   8 * s0qw / TypeSize(movDstType), 1, movDstType);
-}
-G4_SrcRegRegion *IR_Builder::createS0Src(int s0qw) {
-  return createSrc(builtinS0->getRegVar(), 0, s0qw, getRegionScalar(), Type_UQ);
-}
 // scratch surfaces, write the content of T251 to extended message descriptor
 // exdesc holds the value of the extended message descriptor for bit [0:11]
 // add (1) a0.2<1>:ud T251<1>:ud exDesc:ud {NoMask}
@@ -2222,45 +2045,6 @@ G4_InstSend *IR_Builder::createInternalSendInst(
 // sends (size) dst src0 src1 exDesc msgDesc
 //
 
-G4_InstSend *IR_Builder::createSendgInst(
-  G4_Predicate *prd,
-  G4_opcode op,
-  G4_ExecSize execSize,
-  G4_DstRegRegion *dst,
-  G4_SrcRegRegion *src0addr,
-  G4_SrcRegRegion *src1data,
-  G4_SrcRegRegion *src2ind0, // scalar operand 0 IND0
-  G4_SrcRegRegion *src3ind1, // scalar operand 1 IND1
-  G4_SendgDesc *msgDesc,
-  G4_InstOpts options,
-  bool addToInstList)
-{
-  vISA_ASSERT(op == G4_sendg || op == G4_sendgc,
-    "invalid op for helper function");
-
-  if (!src1data) {
-    vISA_ASSERT(msgDesc->getSrc1LenRegs() == 0,
-                "src1 length must be 0 if it is null");
-    src1data = createNullSrc(Type_UD);
-  }
-
-  G4_InstSend *m =
-      new (mem) G4_InstSend(*this, prd, op, execSize, dst, src0addr, src1data,
-                            src2ind0, src3ind1, options, msgDesc);
-
-  if (addToInstList) {
-    m->setVISAId(curCISAOffset);
-
-    if (m_options->getOption(vISA_EmitLocation)) {
-      m->setLocation(allocateMDLocation(curLine, curFile));
-    }
-    instList.push_back(m);
-  }
-
-  instAllocList.push_back(m);
-
-  return m;
-}
 
 G4_InstSend *IR_Builder::createSplitSendInst(
     G4_Predicate *prd, G4_opcode op, G4_ExecSize execSize, G4_DstRegRegion *dst,
@@ -2443,10 +2227,6 @@ G4_MathOp IR_Builder::Get_MathFuncCtrl(ISA_Opcode op, G4_Type type) {
                : MATH_INT_DIV_QUOT;
   case ISA_EXP:
     return MATH_EXP;
-  case ISA_TANH:
-    return MATH_TANH;
-  case ISA_SIGM:
-    return MATH_SIGM;
   default:
     vISA_ASSERT_UNREACHABLE("Illegal math opcode.");
     return MATH_RESERVED;
@@ -2895,803 +2675,6 @@ G4_SendDescRaw *IR_Builder::createLscMsgDesc(
   return g4desc;
 }
 
-// render target descriptor construction
-G4_SendgDesc *IR_Builder::createRenderTargetDesc(
-    MsgOp op, int chMask, bool isAlphaPresent, bool isStencilPresent,
-    bool isDepthPresent, bool isOutputMaskPresent, bool nullRenderTarget,
-    bool lastRenderTarget) {
-
-  // This function constructs the descriptor for render target operations
-       // descriptor format
-       // [5:0] message type
-       // [10:7] cmask
-       // [14] last render target select
-       // [21] null render target
-       // [34] output mask to render target
-       // [35] source depth present to render target
-       // [36] stencil present to render target
-       // [37] source0 alpha present
-
-  uint64_t desc = 0;
-  // get msg op encoding
-  desc |= MsgOpEncode(op);
-
-  // channel mask
-  desc |= (uint64_t)chMask << 7;
-
-  // last render target select
-  desc |= (uint64_t)lastRenderTarget << 14;
-
-  // null render target
-  desc |= (uint64_t)(nullRenderTarget ? 1 : 0) << 21;
-
-  // output mask to render target
-  desc |= (uint64_t)(isOutputMaskPresent ? 1 : 0) << 34;
-
-  // source depth present to render target
-  desc |= (uint64_t)(isDepthPresent ? 1 : 0) << 35;
-
-  // stencil present to render target
-  desc |= (uint64_t)(isStencilPresent ? 1 : 0) << 36;
-
-  // source0 alpha present
-  desc |= (uint64_t)(isAlphaPresent ? 1 : 0) << 37;
-
-  auto msgDesc = new (mem) G4_SendgDesc(SFID::DP_RC, desc, *this);
-
-  // return the constructed descriptor
-  return msgDesc;
-}
-
-// sampler descriptor construction
-G4_SendgDesc *IR_Builder::createSamplerDesc(
-    MsgOp op, ChannelMask chMask, bool FP16Return, bool FP16Input,
-    bool pixelNullMask,bool feedbackMessage, uint32_t surfaceImmIndex,
-    uint32_t samplerImmIndex, int64_t aoffimmiVal, bool isGather4) {
-
-  // This function constructs the descriptor for sampler operations
-  //
-  // descriptor format
-  // [5:0] - sampler message type
-  // [6:6] - Enable LSCBacking
-  // [10:9] - gather4 source channel select (if gather4)
-  // [10:7] - write channel mask (if !gather4)
-  // [13:11] - surface type hint
-  // [14:14] - address input format
-  // [15:15] - data return format
-  // [19:16] - cache mode (MBZ)
-  // [20] - TRTT_NULL
-  // [21] - feedback message
-  // [26:22] - surface state index
-  // [29:27] - sampler state index
-  // [33:30] - r offset from aoffimmi
-  // [37:34] - v offset from aoffimmi
-  // [41:38] - u offset from aoffimmi
-
-  // for sampler, data size is restricted to D16/D32 and address size is
-  // restricted to A16/A32
-  // For now, A32 is only supported (STATEFUL_A32)
-  uint64_t desc = 0;
-  const uint32_t LSCBacking = 6;
-
-  if (getOption(vISA_enableSamplerLSCCaching))
-    desc |= (1ull << LSCBacking);
-
-  // op encoding
-  desc |= MsgOpEncode(op);
-
-  // channel mask
-  if (!isGather4) {
-    // sampler
-    desc |= (uint64_t)chMask.getHWEncoding(false) << 7;
-  } else {
-    desc |= (uint64_t)chMask.getSingleChannel() << 9;
-  }
-
-  // surface type hint
-  // For now setting up to 0 as hardware optimizations that use this hint
-  // are not implemented
-  // desc |= (uint64_t)0 << 11;
-
-  // address input format
-  desc |= (FP16Input) ? 1 << 14 : 0 << 14;
-
-  // data return type
-  desc |= (FP16Return) ? 1 << 15 : 0 << 15;
-
-  // cache options are MBZ
-  desc |= (uint64_t)0 << 16;
-
-  // trtt_null
-  desc |= (uint64_t)pixelNullMask << 20;
-
-  // feedback message
-  desc |= (uint64_t)feedbackMessage << 21;
-
-  // surface and sampler state index
-  vISA_ASSERT((surfaceImmIndex & ~0x1F) == 0x0, "surface index too large");
-  vISA_ASSERT((samplerImmIndex & ~0x7) == 0x0, "sampler index too large");
-  desc |= (uint64_t)surfaceImmIndex << 22;
-  desc |= (uint64_t)samplerImmIndex << 27;
-
-  // r,v,u offsets in aoffimmi
-  desc |= aoffimmiVal << 30;
-
-  // generate the G4_SendgDesc object
-  auto msgDesc = new (mem) G4_SendgDesc(SFID::SAMPLER, desc, *this);
-
-  if (desc & (1ull << LSCBacking))
-    msgDesc->setSamplerLSCCacheBit(LSCBacking);
-
-  // return the constructed descriptor
-  return msgDesc;
-}
-
-/// computeOperandLengthsUntypedLscLdSt - Compute the src and destination
-/// operands' length (in registers) for untyped ld st atomics --
-/// these values will be used when encoding the send instruction
-///
-/// \param msgDesc          Message descriptor
-///
-/// \param execSize         execution size
-///
-/// \param grfSize          # GRF size in bytes
-///
-/// \param extraOperands    some atomic operations require extra operands
-///                         such as atomic add, sub etc.
-///
-/// \param isDstNullReg     flag to denote whether destination is a null
-///                          register or not
-static void computeOperandLengthsUntypedLscLdSt(G4_SendgDesc* msgDesc,
-  uint32_t grfSize,
-  G4_ExecSize execSize,
-  bool isDstNullReg)
-{
-  // compute number of address and data registers based on data order
-  uint32_t addrRegs = 1;
-  uint32_t dataRegs = 1;
-
-  auto elemsPerAddr = msgDesc->getElemsPerAddr();
-  if (msgDesc->isDataOrderNonTranspose()) {
-    // Minimum exec size should be SIMD16 for non transpose messages
-    // For atomic messages that have execution size = SIMD1, the address
-    // payload must be 1 for a32 and 2 for a64
-    uint32_t width = std::max(execSize, g4::SIMD16);
-    addrRegs = std::max<uint32_t>(1, (uint32_t)width *
-                                        msgDesc->getAddrSizeBytes() / grfSize);
-    dataRegs = std::max<uint32_t>(1, (uint32_t)width *
-                                        msgDesc->getDataSizeBytesReg() / grfSize) *
-                                        elemsPerAddr;
-  } else {
-    uint32_t regsPerVec =
-      (elemsPerAddr * msgDesc->getDataSizeBytesReg()) / grfSize;
-    if ((elemsPerAddr * msgDesc->getDataSizeBytesReg()) % grfSize) {
-      regsPerVec++;
-    }
-    vISA_ASSERT(execSize == 1, "execSize in transpose must be 1");
-    dataRegs = regsPerVec;
-  }
-  auto op = msgDesc->getOp();
-  if (MsgOpIsLoad(op)) {
-    msgDesc->setSrc0Len(addrRegs);
-    msgDesc->setSrc1Len(0);
-    msgDesc->setDstLen((isDstNullReg) ? 0 : dataRegs);
-  } else if (MsgOpIsStore(op)) {
-    msgDesc->setSrc0Len(addrRegs);
-    msgDesc->setSrc1Len(dataRegs);
-    msgDesc->setDstLen(0);
-  } else if (MsgOpIsExtendedCacheCtrl(op)) {
-    msgDesc->setSrc0Len(addrRegs);
-    msgDesc->setSrc1Len(0);
-    msgDesc->setDstLen(0);
-  } else { // atomics
-    vISA_ASSERT(MsgOpIsAtomic(op), "unexpected message");
-    // For append counter atomics, src0 length is 0 as there are no per lane
-    // address offsets. IND0 serves as the surface address.
-    if (MsgOpIsApndCtrAtomic(op)) {
-      msgDesc->setSrc0Len(dataRegs);
-      msgDesc->setSrc1Len(0);
-      msgDesc->setDstLen((isDstNullReg) ? 0 : dataRegs);
-    } else {
-      uint32_t extraOperands = MsgOpAtomicExtraArgs(op);
-      msgDesc->setSrc0Len(addrRegs);
-      msgDesc->setSrc1Len(dataRegs * extraOperands);
-      msgDesc->setDstLen((isDstNullReg) ? 0 : dataRegs);
-    }
-  }
-}
-
-G4_SendgDesc *IR_Builder::createUntypedCMaskDesc(
-    SFID sfid, MsgOp op,
-    G4_ExecSize execSize, bool isDstNull,
-    DataSize ds, DataChMask chMask, AddrSizeType ast,
-    int &addrScale, int &addrOffset, unsigned surfaceIndex,
-    std::tuple<Caching, Caching, Caching> cacheOpts, bool overfetch) {
-  // This function constructs the descriptor for untyped cmask ld/st
-  // operations based on the new descriptor format
-  // descriptor format
-  // [5:0] opcode
-  // [10:7] cmask
-  // [13:11] data size
-  // [15:14] address type and size
-  // [19:16] caching
-  // [21]    overfetch
-  // [26:22] surface state index (stateful)
-  // [43:27] global offset (stateful)
-  // [43:22] global offset (stateless)
-  // [45:44] offset scaling
-
-  // 64bit desc value to populate
-  uint64_t desc = 0;
-
-  // op encoding
-  uint32_t opEnc = MsgOpEncode(op);
-  vISA_ASSERT(opEnc <= 0x1F, "unrecognized op");
-  desc |= opEnc;
-
-  // channel mask
-  vISA_ASSERT(int(chMask) != 0 && (int(chMask) & ~0xF) == 0x0,
-    "invalid data channel mask");
-  desc |= uint64_t(chMask) << 7;
-
-  // data size
-  desc |= (uint64_t)GetDataSizeEncoding(ds) << 11;
-
-  // addr size type
-  desc |= (uint64_t)GetAddrSizeTypeEncoding(ast) << 14;
-
-  uint32_t cacheEnc = MsgOpIsLoad(op)
-      ? LSCComputeCachingEncodingLoad(cacheOpts)
-      : LSCComputeCachingEncodingStore(cacheOpts);
-  desc |= (uint64_t)cacheEnc << 16;
-
-  // overfetch
-  if (overfetch) {
-    vISA_ASSERT(std::get<0>(cacheOpts) == Caching::CA, "needs L1 caching option to be cached");
-    desc |= (uint64_t)1 << 21;
-  }
-
-  // surface state index (applicable for stateful addressing mode)
-  if (ast == AddrSizeType::GLB_STATE_A32) {
-    vISA_ASSERT((surfaceIndex & ~0x1F) == 0x0, "surface index too large");
-    desc |= (uint64_t)surfaceIndex << 22;
-  } else {
-    vISA_ASSERT(surfaceIndex == 0, "surface index invalid on stateless");
-  }
-
-  // generate the G4_SendgDesc object
-  auto msgDesc = new (mem) G4_SendgDesc(sfid, desc, *this);
-  if (sfid != SFID::URB) {
-    // offset scaling is not supported for URB and TGM SFID
-    // TGM is handled in a different code path; URB is handled here
-    if (supportSendAddrScale(msgDesc->isSLM(), msgDesc->isBTS()) &&
-        msgDesc->encodeAddrScale(addrScale))
-      addrScale = 1;
-  }
-  if (msgDesc->encodeAddrGlobalOffset(addrOffset))
-    addrOffset = 0;
-  computeOperandLengthsUntypedLscLdSt(msgDesc, getGRFSize(), execSize,
-                                      isDstNull);
-  return msgDesc;
-}
-
-G4_SendgDesc *IR_Builder::createUntypedVecDesc(
-    SFID sfid, MsgOp op,
-    G4_ExecSize execSize, bool isDstNull,
-    DataSize ds, VecElems ve, DataOrder dord,
-    AddrSizeType ast, int &addrScale, int &addrOffset,
-    unsigned surfaceIndex, std::tuple<Caching, Caching, Caching> cacheOpts,
-    bool overfetch) {
-  // This function constructs the descriptor for untyped LSC ld/st operations
-  // based on the new descriptor format
-  // descriptor format
-  // [5:0] opcode
-  // [9:7] vector size
-  // [10:10] transpose
-  // [13:11] data size
-  // [15:14] address type and size
-  // [19:16] caching
-  // [21]    overfetch
-  // STATEFUL
-  // [26:22] surface state index
-  // [43:27] global offset
-  // STATELESS
-  // [43:22] global offset
-  // [45:44] offset scaling
-
-  // 64-bit desc value
-  uint64_t desc = 0;
-
-  // op encoding
-  desc |= MsgOpEncode(op);
-
-  // vector size or channel mask
-  vISA_ASSERT(!MsgOpIsAtomic(op) || ve == VecElems::V1,
-             "atomics data vec size must be v1");
-
-  desc |= (uint64_t)GetVecElemsEncoding(ve) << 7;
-
-  // data order
-  vISA_ASSERT(!MsgOpIsAtomic(op) || dord == DataOrder::NONTRANSPOSE,
-              "atomics must be non-transpose");
-  desc |= (uint64_t)GetDataOrderEncoding(dord) << 10;
-
-  // data size
-  vISA_ASSERT(!MsgOpIsBFAtomic(op) || ds == DataSize::D16U32,
-             "bf atomics must use d16u32 data type");
-  desc |= (uint64_t)GetDataSizeEncoding(ds) << 11;
-
-  // addr size type
-  desc |= (uint64_t)GetAddrSizeTypeEncoding(ast) << 14;
-
-  // caching
-  uint32_t cacheEnc = MsgOpIsLoad(op)
-                        ? LSCComputeCachingEncodingLoad(cacheOpts)
-                        : LSCComputeCachingEncodingStore(cacheOpts);
-  desc |= (uint64_t)cacheEnc << 16;
-
-  // overfetch
-  if (overfetch) {
-    vASSERT(std::get<0>(cacheOpts) == Caching::CA);
-    desc |= (uint64_t)1 << 21;
-  }
-
-  // surface state index (applicable for stateful addressing mode)
-  if (ast == AddrSizeType::GLB_STATE_A32) {
-    vISA_ASSERT((surfaceIndex & ~0x1F) == 0x0, "surface index too large");
-    desc |= (uint64_t)surfaceIndex << 22;
-  } else {
-    vISA_ASSERT(surfaceIndex == 0, "surface index invalid in stateless");
-  }
-
-  // generate the G4_SendgDesc object
-  auto msgDesc = new (mem) G4_SendgDesc(sfid, desc, *this);
-  if (sfid != SFID::URB) {
-    // offset scaling is not supported for URB and TGM SFID
-    // TGM is handled in a different code path; URB is handled here
-    if (supportSendAddrScale(msgDesc->isSLM(), msgDesc->isBTS()) &&
-        msgDesc->encodeAddrScale(addrScale))
-      addrScale = 1;
-  }
-  if (msgDesc->encodeAddrGlobalOffset(addrOffset))
-    addrOffset = 0;
-  computeOperandLengthsUntypedLscLdSt(msgDesc, getGRFSize(), execSize,
-                                      isDstNull);
-  return msgDesc;
-}
-
-/// computeOperandLengthsUntyped2DLscLdSt - Compute the src and destination
-/// operands' length (in registers) for untyped 2D ld st --
-/// these values will be used when encoding the send instruction
-///
-/// \param msgDesc          Message descriptor
-///
-/// \param width2D          data shape width
-///
-/// \param height2D         data shape height
-///
-/// \param blocks2D         data shape blocks
-///
-/// \param grfSize          # GRF size in bytes
-///
-/// \param isDstNullReg     flag to denote whether destination is a null
-///                          register or not
-///
-static void computeOperandLengthsUntyped2DLscLdSt(G4_SendgDesc *msgDesc,
-                                                  uint32_t width2D,
-                                                  uint32_t height2D,
-                                                  uint32_t blocks2D,
-                                                  uint32_t grfSize,
-                                                  bool isDstNullReg)
-{
-  auto alignUp = [](int a, int n) { return n + a - 1 - ((n + a - 1) % a); };
-
-  if (msgDesc) {
-    // src0len = 1 for load/store 2d block
-    msgDesc->setSrc0Len(1);
-
-    int grfRowPitchesElems = RoundUpToPowerOf2(
-        (msgDesc->isDataOrderNonTranspose()) ? width2D : height2D);
-
-    int blockRows = (msgDesc->isDataOrderNonTranspose()) ? height2D : width2D;
-    int divisor = msgDesc->getDataSizeBytesReg();
-    if (divisor == 0) {
-      divisor = 1; // avoid division by 0
-      vISA_ASSERT_INPUT(0, "invalid message descriptor");
-    }
-    int elemsPerGrf = grfSize / divisor;
-    int regsPerBlock =
-        alignUp(elemsPerGrf, blockRows * grfRowPitchesElems) / elemsPerGrf;
-
-    int dataRegs = blocks2D * regsPerBlock;
-    if (msgDesc->isOp(MsgOp::LOAD_BLOCK2D)) {
-      msgDesc->setSrc1Len(0);
-      msgDesc->setDstLen(isDstNullReg ? 0 : dataRegs);
-    } else if (msgDesc->isOp(MsgOp::STORE_BLOCK2D)) {
-      msgDesc->setSrc1Len(dataRegs);
-      msgDesc->setDstLen(0);
-    }
-  }
-}
-
-/// computeOperandLengthsTyped2DLscLdSt - Compute the src and destination
-/// operands' length (in registers) for typed 2D ld st --
-/// these values will be used when encoding the send instruction
-///
-/// \param msgDesc               Message descriptor
-///
-/// \param width2D          data shape width
-///
-/// \param height2D         data shape height
-///
-/// \param grfSize          # GRF size in bytes
-///
-/// \param isDstNullReg     flag to denote whether destination is a null
-///                          register or not
-static void computeOperandLengthsTyped2DLscLdSt(
-    G4_SendgDesc *msgDesc, uint32_t width2D, uint32_t height2D,
-    uint32_t BYTES_PER_REG, bool isDstNullOperand) {
-  // If Block Width is not a power of 2 number, the allocated GRF space for
-  // Width is padded up to the next power-of-two value . E.g. if the 2D block
-  // width (in  bytes) is 12, the space allocated in the GRF will be 16 bytes
-  // per row (next power-of-two number)
-  int alignWidthInBytes = 0;
-  int widthInBytes = width2D;
-  if (widthInBytes <= 0 || widthInBytes > 64) {
-    vISA_ASSERT_INPUT(false, "block width must be [1,64]");
-  } else if (widthInBytes <= 4) {
-    // Minimum bytes per row in the GRF is 4 bytes.
-    alignWidthInBytes = 4;
-  } else {
-    // round up to power of 2
-    alignWidthInBytes = RoundUpToPowerOf2(widthInBytes);
-  }
-
-  int blockSizeInBytes = alignWidthInBytes * height2D;
-  vISA_ASSERT_INPUT(blockSizeInBytes <= 256, "block size can not exceed 256");
-  int dataRegs = (int)std::ceil((double)blockSizeInBytes / BYTES_PER_REG);
-
-  if (msgDesc->isOp(MsgOp::LOAD_BLOCK2D)) {
-    if (isDstNullOperand) {
-      msgDesc->setDstLen(0);
-    } else {
-      msgDesc->setDstLen(dataRegs);
-    }
-    msgDesc->setSrc1Len(0);
-    msgDesc->setSrc0Len(1);
-  } else {
-    msgDesc->setDstLen(0);
-    msgDesc->setSrc0Len(1);
-    msgDesc->setSrc1Len(dataRegs);
-  }
-}
-
-// 2D descriptor construction
-G4_SendgDesc *
-IR_Builder::create2DLSCDesc(SFID sfid, bool dstIsNull, MsgOp op,
-                            int blockWidth, int blockHeight, int blockCount,
-                            DataSize ds,
-                            DataOrder dord, AddrSizeType as,
-                            std::tuple<Caching, Caching, Caching> cacheOpts,
-                            int xOffset, int yOffset) {
-  // This function constructs the descriptor for 2D LSC ld/st
-  // operations based on the new descriptor format
-  // descriptor format
-  // [5:0] opcode
-  // [9:9] vnni (if ugm)
-  // [10:10] transpose block
-  // [13:11] data size
-  // [15:14] address type and size
-  // [19:16] caching
-  // [33:22] global x offset (UGM only)
-  // [45:34] global y offset (UGM only)
-
-  // 64bit desc value to populate
-  uint64_t desc = 0;
-
-  // op encoding
-  desc |= MsgOpEncode(op);
-
-  // vnni and transpose encoding [10:9]
-  desc |= (uint64_t)GetDataOrderEncoding2D(dord) << 9;
-
-  // data size
-  desc |= (uint64_t)GetDataSizeEncoding(ds) << 11;
-
-  // address type and size
-  desc |= (uint64_t)GetAddrSizeTypeEncoding(as) << 14;
-
-  // caching
-  uint32_t cacheEnc = (op == MsgOp::STORE_BLOCK2D)
-                          ? LSCComputeCachingEncodingStore(cacheOpts)
-                          : LSCComputeCachingEncodingLoad(cacheOpts);
-  desc |= (uint64_t)cacheEnc << 16;
-
-  // block2d immediate xOffset, yOffset
-  //  - 12b X and 12b Y supported for ugm only
-  if (sfid == SFID::UGM) {
-    vISA_ASSERT_INPUT(xOffset >= -(1 << 11) && xOffset <= (1 << 11) - 1,
-                      "UGM block2d offset out of bounds");
-    vISA_ASSERT_INPUT(yOffset >= -(1 << 11) && yOffset <= (1 << 11) - 1,
-                      "UGM block2d offset out of bounds");
-  } else {
-    vISA_ASSERT_INPUT(xOffset == 0 && yOffset == 0,
-                      "global offsets only allowed in UGM");
-  }
-  desc |= ((uint64_t)(xOffset & 0xFFF) << 22);
-  desc |= ((uint64_t)(yOffset & 0xFFF) << 34);
-
-  // we now have the desc constructed
-  // generate the G4_SendgDesc object
-  auto msgDesc = new (mem) G4_SendgDesc(sfid, desc, *this);
-
-  // compute operand lengths
-  if (sfid == SFID::TGM) {
-    computeOperandLengthsTyped2DLscLdSt(msgDesc, blockWidth, blockHeight,
-                                        getGRFSize(), dstIsNull);
-  } else {
-    computeOperandLengthsUntyped2DLscLdSt(msgDesc,
-                                          blockWidth, blockHeight, blockCount,
-                                          getGRFSize(), dstIsNull);
-  }
-
-  return msgDesc;
-}
-
-G4_SendgDesc *IR_Builder::createTypedChMaskDesc(
-    MsgOp op, DataSize ds, DataChMask chMask, AddrSizeType as,
-    unsigned surfaceIndex, int uOffset, int vOffset, int rOffset,
-    std::tuple<Caching, Caching, Caching> cacheOpts) {
-  // This function constructs the descriptor for typed LSC cmask
-  // operations based on the new descriptor format
-
-  // descriptor format
-  // [5:0] opcode
-  // [6:6] Enable LSCBacking
-  // [10:7] component mask
-  // [13:11] reserved
-  // [14] address input format
-  // [15] data return format
-  // [19:16] caching
-  // [26:22] surface state index
-  // [33:30] r offset
-  // [37:34] v offset
-  // [41:38] u offset
-
-  uint64_t desc = 0;
-  const uint32_t LSCBacking = 6;
-
-  if (getOption(vISA_enableSamplerLSCCaching))
-    desc |= (1ull << LSCBacking);
-
-  // op encoding
-  desc |= MsgOpEncode(op);
-
-  // channel mask encoding
-  desc |= uint64_t(chMask) << 7;
-
-  // address input format
-  vISA_ASSERT(as == AddrSizeType::GLB_STATE_A32, "must be 32-bit");
-  desc |= (0ull << 14);
-
-  // data return format
-  vISA_ASSERT(ds == DataSize::D32, "must be 32-bit");
-  desc |= (0ull << 15);
-
-  // caching
-  uint32_t cacheEnc = MsgOpIsLoad(op)
-                          ? LSCComputeCachingEncodingLoad(cacheOpts)
-                          : LSCComputeCachingEncodingStore(cacheOpts);
-  desc |= (uint64_t)cacheEnc << 16;
-
-  // surface index
-  desc |= (uint64_t)surfaceIndex << 22;
-
-  // u, v, r offsets
-  vISA_ASSERT(uOffset >= -8 && uOffset <= 7, "u-coord immoff");
-  vISA_ASSERT(vOffset >= -8 && vOffset <= 7, "v-coord immoff");
-  vISA_ASSERT(rOffset >= -8 && rOffset <= 7, "r-coord immoff");
-  desc |= (uint64_t)(rOffset & 0xF) << 30;
-  desc |= (uint64_t)(vOffset & 0xF) << 34;
-  desc |= (uint64_t)(uOffset & 0xF) << 38;
-
-  auto msgDesc = new (mem) G4_SendgDesc(SFID::TGM, desc, *this);
-
-  if (desc & (1ull << LSCBacking))
-    msgDesc->setSamplerLSCCacheBit(LSCBacking);
-
-  return msgDesc;
-}
-
-G4_SendgDesc *
-IR_Builder::createTypedAtomicDesc(MsgOp op, DataSize ds,
-                                  AddrSizeType as, unsigned surfaceIndex,
-                                  int uOffset, int vOffset, int rOffset,
-                                  std::tuple<Caching, Caching, Caching> cacheOpts) {
-  // This function constructs the descriptor for typed LSC atomic
-  // operations based on the new descriptor format
-
-  // descriptor format
-  // [5:0] opcode
-  // [9:7] vector size
-  // [13:11] data size
-  // [15:14] address type and size
-  // [19:16] caching
-  // [26:22] surface state index
-  // [33:30] r offset
-  // [37:34] v offset
-  // [41:38] u offset
-
-  uint64_t desc = 0;
-  // op encoding
-  desc |= MsgOpEncode(op);
-
-  // number of vector elements encoding
-  desc |= (uint64_t)GetVecElemsEncoding(VecElems::V1) << 7;
-
-  // data size
-  desc |= (uint64_t)GetDataSizeEncoding(ds) << 11;
-
-  // addr size type
-  desc |= (uint64_t)GetAddrSizeTypeEncoding(as) << 14;
-
-  // caching
-  uint32_t cacheEnc = LSCComputeCachingEncodingAtomic(cacheOpts);
-  desc |= (uint64_t)cacheEnc << 16;
-
-  // surface index
-  desc |= (uint64_t)surfaceIndex << 22;
-
-  // u, v, r offsets
-  desc |= (uint64_t)(rOffset & 0xF) << 30;
-  desc |= (uint64_t)(vOffset & 0xF) << 34;
-  desc |= (uint64_t)(uOffset & 0xF) << 38;
-
-  auto msgDesc = new (mem) G4_SendgDesc(SFID::TGM, desc, *this);
-  return msgDesc;
-}
-
-uint32_t IR_Builder::LSCComputeCachingEncodingAtomic(
-    const std::tuple<Caching, Caching, Caching>& cacheOpts) const {
-  uint32_t cacheEnc = 0;
-
-  auto matches = [&](Caching l1, Caching l2, Caching l3) {
-    return (std::get<0>(cacheOpts) == l1 &&
-      std::get<1>(cacheOpts) == l2) &&
-      std::get<2>(cacheOpts) == l3;
-  };
-
-  if (matches(Caching::DF, Caching::DF, Caching::DF)) {
-    cacheEnc = 0x0;
-  } else if (matches(Caching::UC, Caching::UC, Caching::UC)) {
-    cacheEnc = 0x2;
-  } else if (matches(Caching::UC, Caching::UC, Caching::WB)) {
-    cacheEnc = 0x3;
-  } else if (matches(Caching::UC, Caching::WB, Caching::UC)) {
-    cacheEnc = 0x4;
-  } else {
-    vISA_ASSERT_INPUT(false, "invalid caching options");
-  }
-  return cacheEnc;
-}
-
-uint32_t IR_Builder::LSCComputeCachingEncodingLoad(
-  const std::tuple<Caching, Caching, Caching>& cacheOpts) const {
-  uint32_t cacheEnc = 0;
-
-  auto matches = [&](Caching l1, Caching l2, Caching l3) {
-    return (std::get<0>(cacheOpts) == l1 &&
-      std::get<1>(cacheOpts) == l2) &&
-      std::get<2>(cacheOpts) == l3;
-  };
-
-  if (matches(Caching::DF, Caching::DF, Caching::DF)) {
-    cacheEnc = 0x0;
-  } else if (matches(Caching::UC, Caching::UC, Caching::UC)) {
-    cacheEnc = 0x2;
-  } else if (matches(Caching::UC, Caching::UC, Caching::CA)) {
-    cacheEnc = 0x3;
-  } else if (matches(Caching::UC, Caching::CA, Caching::UC)) {
-    cacheEnc = 0x4;
-  } else if (matches(Caching::UC, Caching::CA, Caching::CA)) {
-    cacheEnc = 0x5;
-  } else if (matches(Caching::CA, Caching::UC, Caching::UC)) {
-    cacheEnc = 0x6;
-  } else if (matches(Caching::CA, Caching::UC, Caching::CA)) {
-    cacheEnc = 0x7;
-  } else if (matches(Caching::CA, Caching::CA, Caching::UC)) {
-    cacheEnc = 0x8;
-  } else if (matches(Caching::CA, Caching::CA, Caching::CA)) {
-    cacheEnc = 0x9;
-  } else if (matches(Caching::ST, Caching::UC, Caching::UC)) {
-    cacheEnc = 0xA;
-  } else if (matches(Caching::ST, Caching::UC, Caching::CA)) {
-    cacheEnc = 0xB;
-  } else if (matches(Caching::ST, Caching::CA, Caching::UC)) {
-    cacheEnc = 0xC;
-  } else if (matches(Caching::ST, Caching::CA, Caching::CA)) {
-    cacheEnc = 0xD;
-  } else if (matches(Caching::RI, Caching::RI, Caching::RI)) {
-    cacheEnc = 0xE;
-  } else {
-    vISA_ASSERT_INPUT(false, "invalid caching options");
-  }
-  return cacheEnc;
-}
-
-uint32_t IR_Builder::LSCComputeCachingEncodingStore(
-    const std::tuple<Caching, Caching, Caching>& cacheOpts) const {
-  uint32_t cacheEnc = 0;
-
-  auto matches = [&](Caching l1, Caching l2, Caching l3) {
-    return (std::get<0>(cacheOpts) == l1 &&
-      std::get<1>(cacheOpts) == l2) &&
-      std::get<2>(cacheOpts) == l3;
-  };
-
-  if (matches(Caching::DF, Caching::DF, Caching::DF)) {
-    cacheEnc = 0x0;
-  } else if (matches(Caching::UC, Caching::UC, Caching::UC)) {
-    cacheEnc = 0x2;
-  } else if (matches(Caching::UC, Caching::UC, Caching::WB)) {
-    cacheEnc = 0x3;
-  } else if (matches(Caching::UC, Caching::WB, Caching::UC)) {
-    cacheEnc = 0x4;
-  } else if (matches(Caching::UC, Caching::WB, Caching::WB)) {
-    cacheEnc = 0x5;
-  } else if (matches(Caching::WT, Caching::UC, Caching::UC)) {
-    cacheEnc = 0x6;
-  } else if (matches(Caching::WT, Caching::UC, Caching::WB)) {
-    cacheEnc = 0x7;
-  } else if (matches(Caching::WT, Caching::WB, Caching::UC)) {
-    cacheEnc = 0x8;
-  } else if (matches(Caching::WT, Caching::WB, Caching::WB)) {
-    cacheEnc = 0x9;
-  } else if (matches(Caching::ST, Caching::UC, Caching::UC)) {
-    cacheEnc = 0xA;
-  } else if (matches(Caching::ST, Caching::UC, Caching::WB)) {
-    cacheEnc = 0xB;
-  } else if (matches(Caching::ST, Caching::WB, Caching::UC)) {
-    cacheEnc = 0xC;
-  } else if (matches(Caching::WB, Caching::UC, Caching::UC)) {
-    cacheEnc = 0xD;
-  } else if (matches(Caching::WB, Caching::WB, Caching::UC)) {
-    cacheEnc = 0xE;
-  } else if (matches(Caching::WB, Caching::UC, Caching::WB)) {
-    cacheEnc = 0xF;
-  } else {
-    vISA_ASSERT_INPUT(false, "invalid caching options");
-  }
-  return cacheEnc;
-}
-G4_SendgDesc *IR_Builder::createExtendedCacheCtrlDesc(
-    G4_ExecSize execSize, CacheControlOperation ccop, CacheControlSize cs,
-    std::tuple<Caching, Caching, Caching> cacheOpts) {
-  // [19:16] Cache policy
-  // [12:11] cache control size
-  // [10:7] cache control operation
-  // [5:0] opcode
-
-  // 64bit desc value to populate
-  uint64_t desc = 0;
-
-  // op encoding
-  uint32_t opEnc = MsgOpEncode(MsgOp::EXTENDED_CACHE_CTRL);
-  desc |= opEnc;
-
-  // cache control operation
-  desc |= (uint64_t)GetCacheControlOpEncoding(ccop) << 7;
-
-  // cache control size
-  desc |= (uint64_t)GetCacheControlSizeEncoding(cs) << 11;
-
-  // cache policy
-  desc |= (uint64_t)LSCComputeCachingEncodingLoad(cacheOpts) << 16;
-
-  auto msgDesc = new (mem) G4_SendgDesc(SFID::UGM, desc, *this);
-  computeOperandLengthsUntypedLscLdSt(msgDesc, getGRFSize(), execSize, true);
-  return msgDesc;
-}
 
 G4_SendDescRaw *IR_Builder::createLscDesc(SFID sfid, uint32_t desc,
                                           uint32_t extDesc, int src1Len,
@@ -3703,69 +2686,6 @@ G4_SendDescRaw *IR_Builder::createLscDesc(SFID sfid, uint32_t desc,
   return msgDesc;
 }
 
-G4_InstSend *IR_Builder::createSamplerSendgInst(
-    G4_Predicate *pred, G4_DstRegRegion *dst, G4_SrcRegRegion *src1,
-    G4_SrcRegRegion *src2, G4_ExecSize execsize, G4_SendgDesc *msgDesc,
-    G4_InstOpts option,
-    G4_SrcRegRegion *ind0, G4_SrcRegRegion *ind1, bool is_sendc) {
-  G4_opcode send_opcode = is_sendc ? G4_sendgc : G4_sendg;
-
-  fixSendDstType(dst, execsize, *this);
-
-  return createSendgInst(pred, send_opcode, execsize, dst, src1, src2,
-                             ind0, ind1, msgDesc, option, true);
-}
-
-G4_InstSend *IR_Builder::createLscSendgInst(
-    G4_Predicate *pred, G4_DstRegRegion *dst, G4_SrcRegRegion *src0,
-    G4_SrcRegRegion *src1, G4_ExecSize execSize, G4_SendgDesc *msgDesc,
-    G4_InstOpts option, G4_SrcRegRegion *ind0, bool append) {
-  return createSendgInst(pred, G4_sendg, execSize, dst, src0, src1,
-                         ind0, nullptr, msgDesc, option, append);
-}
-
-G4_InstSend *IR_Builder::createLscVecSendgInstSeq(
-  G4_Predicate *pred, MsgOp op, SFID sfid, G4_ExecSize execSize,
-  DataSize dataSize, VecElems dataVecSize, DataOrder dataOrd,
-  AddrSizeType addrSizeType,
-  std::tuple<Caching,Caching,Caching> caching,
-  LdStAttrs attrs,
-  G4_DstRegRegion *loadData,
-  G4_SrcRegRegion *addrBase, int addrBaseIndex,
-  int addrScale, G4_SrcRegRegion *addrReg, int addrOff,
-  G4_SrcRegRegion *storeData,
-  G4_InstOpts option) {
-  vISA_ASSERT(op == MsgOp::LOAD || op == MsgOp::STORE,
-              "unexpected op for helper function");
-
-  if (!loadData) {
-    loadData = createNullDst(Type_UD);
-  }
-  if (!storeData) {
-    storeData = createNullSrc(Type_UD);
-  }
-
-  G4_SendgDesc *desc = createUntypedVecDesc(
-      sfid, op, execSize, loadData->isNullReg(), dataSize, dataVecSize, dataOrd,
-      addrSizeType, addrScale, addrOff, addrBaseIndex, caching,
-      std::get<0>(caching) == Caching::CA &&
-          m_options->getOption(vISA_enableOverfetch)
-  );
-
-  desc->addAttributes(attrs);
-  // need an extensible way of allocating variables
-  // (e.g. spill/fill and payload loading has a var they want to use;
-  // others might want us to allocate and produce emulation sequences)
-  vISA_ASSERT(addrScale == 1,
-              "address scale emulation unsupported here currently");
-  vISA_ASSERT(addrOff == 0,
-              "address offset emulation unsupported here currently");
-
-  G4_InstSend *sendg =
-    createLscSendgInst(pred, loadData, addrReg, storeData, execSize,
-                       desc, option, addrBase, true);
-  return sendg;
-}
 
 G4_InstSend *IR_Builder::createLscSendInst(
     G4_Predicate *pred, G4_DstRegRegion *dst, G4_SrcRegRegion *src0,
@@ -3888,8 +2808,6 @@ G4_InstSend *IR_Builder::createLscSendInst(
 
 // Using r0.8:ud to save and restore a0.2
 G4_SrcRegRegion *IR_Builder::getScratchSurfaceStatusIndex() {
-  vISA_ASSERT(!isEfficient64bEnabled(),
-    "Efficient64b needs support here");
   auto dst = createDst(builtinR0->getRegVar(), 0, 8, 1, Type_UD);
   auto src0 = createSrcRegRegion(builtinA0Dot2, getRegionScalar());
   createMov(g4::SIMD1, dst, src0, InstOpt_WriteEnable, true);
@@ -3927,18 +2845,6 @@ G4_InstSend *IR_Builder::createLscSendInstToScratch(
   RestoreA0();
 
   return inst;
-}
-
-G4_InstSend *IR_Builder::createRenderTargetSendg(
-    G4_Predicate *pred, G4_DstRegRegion *dst, G4_SrcRegRegion *src1,
-    G4_SrcRegRegion *src2, G4_ExecSize execSize, G4_SendgDesc *msgDesc,
-    G4_SrcRegRegion *ind0Opnd, G4_InstOpts option) {
-
-  fixSendDstType(dst, execSize, *this);
-
-  return createSendgInst(pred, G4_sendgc, execSize, dst, src1, src2,
-                             ind0Opnd, nullptr,
-                             msgDesc, option, true);
 }
 
 // for render target messages,
@@ -4187,76 +3093,6 @@ void IR_Builder::createMovSendSrcInst(G4_Declare *dcl, short regoff,
   }
 }
 
-// Shfl instruction is like a generic one except:
-// -- it takes a G4_ShflOp to specify the function control
-// -- conditional modifier is not allowed
-// -- source modifier is not allowed
-G4_INST *IR_Builder::createShflInst(G4_Predicate *prd, G4_Sat sat,
-                                    G4_ExecSize execSize, G4_DstRegRegion *dst,
-                                    G4_Operand *src0, G4_Operand *src1,
-                                    G4_InstShfl::G4_ShflOp shflOp,
-                                    G4_InstOpts options, bool addToInstList) {
-  G4_INST *i =
-      new (mem) G4_InstShfl(*this, prd, G4_shfl, nullptr, sat, execSize, dst,
-                            src0, src1, options, shflOp);
-
-  if (addToInstList) {
-    i->setVISAId(curCISAOffset);
-
-    if (m_options->getOption(vISA_EmitLocation)) {
-      i->setLocation(allocateMDLocation(curLine, curFile));
-    }
-    instList.push_back(i);
-  }
-
-  instAllocList.push_back(i);
-
-  return i;
-}
-
-G4_INST *IR_Builder::createLfsrInst(G4_Predicate *prd, G4_ExecSize execSize,
-                                    G4_DstRegRegion *dst, G4_Operand *src0,
-                                    G4_Operand *src1, LFSR_FC funcCtrl,
-                                    G4_InstOpts options, bool addToInstList) {
-  G4_INST *i = new (mem)
-      G4_InstLfsr(*this, prd, execSize, dst, src0, src1, options, funcCtrl);
-
-  if (addToInstList) {
-    i->setVISAId(curCISAOffset);
-
-    if (m_options->getOption(vISA_EmitLocation)) {
-      i->setLocation(allocateMDLocation(curLine, curFile));
-    }
-    instList.push_back(i);
-  }
-
-  instAllocList.push_back(i);
-
-  return i;
-}
-
-G4_INST *IR_Builder::createDnsclInst(G4_Predicate *prd, G4_ExecSize execSize,
-                                     G4_DstRegRegion *dst, G4_Operand *src0,
-                                     G4_Operand *src1, G4_Operand *src2,
-                                     DNSCL_CONVERT_TYPE type, DNSCL_MODE mode,
-                                     DNSCL_RND_MODE rndMode,
-                                     G4_InstOpts options, bool addToInstList) {
-  G4_INST *i = new (mem) G4_InstDnscl(*this, prd, execSize, dst, src0, src1,
-                                      src2, options, type, mode, rndMode);
-
-  if (addToInstList) {
-    i->setVISAId(curCISAOffset);
-
-    if (m_options->getOption(vISA_EmitLocation)) {
-      i->setLocation(allocateMDLocation(curLine, curFile));
-    }
-    instList.push_back(i);
-  }
-
-  instAllocList.push_back(i);
-
-  return i;
-}
 
 // create an opnd without regpoff and subregoff
 G4_DstRegRegion *IR_Builder::createDstRegRegion(G4_Declare *dcl,
@@ -4440,7 +3276,7 @@ G4_Imm *IR_Builder::foldConstVal(G4_Imm *const1, G4_Imm *const2, G4_opcode op,
           resultType = src0T;
 
   if (op == G4_mul || op == G4_add || op == G4_and || op == G4_xor ||
-      op == G4_mullh || op == G4_or) {
+      op == G4_or) {
     resultType = findConstFoldCommonType(src0T, src1T);
     if (resultType == Type_UNDEF) {
       return nullptr;
@@ -4465,7 +3301,6 @@ G4_Imm *IR_Builder::foldConstVal(G4_Imm *const1, G4_Imm *const2, G4_opcode op,
       break;
 
     case G4_mul:
-    case G4_mullh:
       res = (int64_t)(const1->getInt()) * (int64_t)(const2->getInt());
       break;
 
@@ -4639,7 +3474,7 @@ void IR_Builder::doSimplification(G4_INST *inst) {
   if (inst->opcode() != G4_mul && inst->opcode() != G4_and &&
       inst->opcode() != G4_add && inst->opcode() != G4_shl &&
       inst->opcode() != G4_shr && inst->opcode() != G4_asr &&
-      inst->opcode() != G4_mullh && inst->opcode() != G4_mov) {
+      inst->opcode() != G4_mov) {
     return;
   }
 
@@ -4686,15 +3521,14 @@ void IR_Builder::doSimplification(G4_INST *inst) {
   G4_Operand *src0 = inst->getSrc(0);
   G4_Operand *src1 = inst->getSrc(1);
   G4_Operand *newSrc = nullptr;
-  if (inst->opcode() == G4_mul || inst->opcode() == G4_mullh ||
-      inst->opcode() == G4_and) {
+  if (inst->opcode() == G4_mul || inst->opcode() == G4_and) {
     if (isInteger(src1, 0)) {
       inst->removeDefUse(Opnd_src0);
       newSrc = createImm(0, Type_W);
     } else if (isInteger(src0, 0)) {
       inst->removeDefUse(Opnd_src1);
       newSrc = createImm(0, Type_W);
-    } else if (inst->opcode() == G4_mul || inst->opcode() == G4_mullh) {
+    } else if (inst->opcode() == G4_mul) {
       if (isInteger(src1, 1)) {
         newSrc = src0;
       } else if (isInteger(src0, 1)) {

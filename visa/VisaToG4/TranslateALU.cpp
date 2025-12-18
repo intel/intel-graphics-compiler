@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2025 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -81,10 +81,7 @@ int IR_Builder::translateVISAArithmeticInst(
                            condMod, saturate, exsize, dstOpnd, src0Opnd,
                            src1Opnd, src2Opnd, instOpt, true);
 
-    if (opcode == ISA_MADW &&
-        !((getOption(vISA_EnableInt32MULLH) || hasSimplifiedRegions()) &&
-          src2Opnd != nullptr && src2Opnd->isImm() &&
-          src2Opnd->asImm()->getInt() == 0)) {
+    if (opcode == ISA_MADW) {
       G4_DstRegRegion *accDstOpnd =
           createDst(phyregpool.getAcc0Reg(), 0, 0, 1, dstOpnd->getType());
 
@@ -97,28 +94,6 @@ int IR_Builder::translateVISAArithmeticInst(
                            src1Opnd, instOpt, true);
 
     if (opcode == ISA_ADDC || opcode == ISA_SUBB) {
-      if ((hasSimplifiedRegions() || getOption(vISA_GAReArchBugFix)) &&
-          inst->getMaskOffset() >= 16) {
-        // addc (M5, 16) V007(0,0)<1> V008(0,0)<1> V009(0,0)<1;1,0>
-        //               V010(0,0)<1;1,0>
-        // =>
-        // addc (16|M16) V007(0,0)<1>:ud  V009(0,0)<1;1,0>:ud
-        //               V010(0,0)<1;1,0>:ud {AccWrEn}
-        // mov (16|M16)  V008(0,0)<1>:ud  acc1.0<1;1,0>:ud
-        G4_DstRegRegion *accDstOpnd =
-            createDst(phyregpool.getAcc1Reg(), 0, 0, 1, dstOpnd->getType());
-
-        inst->setImplAccDst(accDstOpnd);
-        inst->setOptionOn(InstOpt_AccWrCtrl);
-
-        G4_SrcRegRegion *accSrcOpnd =
-            createSrc(phyregpool.getAcc1Reg(), 0, 0, getRegionStride1(),
-                      dstOpnd->getType());
-
-        createMov(exsize, carryBorrow, accSrcOpnd, instOpt, true);
-
-        return VISA_SUCCESS;
-      }
       G4_DstRegRegion *accDstOpnd =
           createDst(phyregpool.getAcc0Reg(), 0, 0, 1, dstOpnd->getType());
 
@@ -176,13 +151,6 @@ int IR_Builder::translateVISADpasInst(VISA_Exec_Size executionSize,
     src0Opnd->setType(*this, dstOpnd->getType());
   }
 
-  if (opc == G4_bdpas) {
-    vASSERT(src3Opnd && src4Opnd);
-    if (src3Opnd->isNullReg())
-      src3Opnd->setType(*this, Type_UB);
-    if (src4Opnd->isNullReg())
-      src4Opnd->setType(*this, Type_UB);
-  }
   createDpasInst(opc, exsize, dstOpnd, src0Opnd, src1Opnd, src2Opnd, src3Opnd,
                  src4Opnd, instOpt, A, W, D, C, true);
 
@@ -459,50 +427,5 @@ int IR_Builder::translateVISADataMovementInst(
                exsize, dstOpnd, src0Opnd, src1Opnd, inst_opt, true);
   }
 
-  return VISA_SUCCESS;
-}
-int IR_Builder::translateVISAShflIdx4Inst(
-    G4_Predicate* pred_opnd,
-    VISA_Exec_Size executionSize,
-    VISA_EMask_Ctrl emask, G4_DstRegRegion* dst,
-    G4_Operand* src0, G4_Operand* src1) {
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  G4_ExecSize exsize = toExecSize(executionSize);
-  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
-
-  createIntrinsicInst(pred_opnd, Intrinsic::ShflIdx4, exsize, dst, src0, src1,
-                      nullptr, inst_opt, true /*addToInstList*/);
-  return VISA_SUCCESS;
-}
-
-int IR_Builder::translateVISALfsrInst(G4_Predicate *pred_opnd,
-                                      VISA_Exec_Size executionSize,
-                                      VISA_EMask_Ctrl emask, LFSR_FC funcCtrl,
-                                      G4_DstRegRegion *dst, G4_Operand *src0,
-                                      G4_Operand *src1) {
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  G4_ExecSize exsize = toExecSize(executionSize);
-  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
-
-  createLfsrInst(pred_opnd, exsize, dst, src0, src1, funcCtrl, inst_opt,
-                 true /*addToInstList*/);
-  return VISA_SUCCESS;
-}
-
-int IR_Builder::translateVISADnsclInst(G4_Predicate *pred_opnd,
-    VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
-    DNSCL_CONVERT_TYPE type, DNSCL_MODE mode,
-    DNSCL_RND_MODE rndMode, G4_DstRegRegion* dst,
-    G4_Operand* src0, G4_Operand* src1,
-    G4_Operand* src2) {
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  G4_ExecSize exsize = toExecSize(executionSize);
-  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
-
-  createDnsclInst(pred_opnd, exsize, dst, src0, src1, src2, type, mode, rndMode,
-                 inst_opt, true /*addToInstList*/);
   return VISA_SUCCESS;
 }

@@ -86,9 +86,6 @@ private:
   void verifyDpas(G4_INST *inst);
   void verifyAccMov(G4_INST *inst);
   void verifyBFMixedMode(G4_INST *inst);
-  void verifyPureBFMode(G4_INST *inst);
-  void verifyLfsr(G4_INST *inst);
-  void verifyDnscl(G4_INST *inst);
 };
 } // namespace vISA
 /// Interface.

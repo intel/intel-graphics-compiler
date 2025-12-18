@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -572,9 +572,6 @@ unsigned int PhyRegsLocalRA::get_bundle(unsigned int baseReg, int offset) {
   if (builder.has64bundleSize()) {
     return (((baseReg + offset) % 16) / 2);
   }
-  if (builder.kernel.getNumRegTotal() == 512) {
-    return (((baseReg + offset) % 32) / 2);
-  }
   return (((baseReg + offset) % 64) / 4);
 }
 
@@ -913,7 +910,6 @@ void GlobalRA::removeUnreferencedDcls() {
            dcl->getRegVar()->isPhyRegAssigned() == false &&
            dcl != kernel.fg.builder->getBuiltinR0() &&
            dcl != kernel.fg.builder->getSpillSurfaceOffset() &&
-           dcl != kernel.fg.builder->getSpillSurfaceEfficient64b() &&
            (!kernel.fg.builder->getOptions()->getuInt32Option(vISA_CodePatch) ||
             dcl->getAliasDeclare() != kernel.fg.builder->getInputR1());
   };
@@ -1218,49 +1214,6 @@ void LocalRA::markSpecialForbidden(INST_LIST_ITER inst_it) {
   return;
 }
 
-void LocalRA::markLargeGRFForbidden(INST_LIST_ITER inst_it) {
-  G4_INST *inst = (*inst_it);
-
-  if (kernel.getNumRegTotal() != 512) {
-    return;
-  }
-
-  if (!inst->isSend() || !inst->isSendg()) {
-    return;
-  }
-
-  auto applyWA = [this](G4_Operand *opnd) {
-    if (!opnd)
-      return;
-
-    vISA_ASSERT(!opnd->isImm(),
-                "dst/src0/src1 of sendgx/sendgxc can not be immediate");
-    if (!opnd->getBase()->isRegVar())
-      return;
-
-    G4_Declare *dcl = opnd->getTopDcl();
-    LocalLiveRange *lr = gra.getLocalLR(dcl);
-    unsigned int lrDclBytes = dcl->getByteSize();
-    if (lrDclBytes <= kernel.numEltPerGRF<Type_UB>()) {
-      lr->addForbidden(511);
-    } else {
-      // For the case that variable size is larger than 1 GRF but the
-      // operand uses the last GRF.
-      auto lb = opnd->getLeftBound();
-      auto totalGrf =
-          (lrDclBytes + builder.getGRFSize() - 1) / builder.getGRFSize();
-      if (lb >= (totalGrf - 1) * builder.getGRFSize()) {
-        lr->addForbidden(511);
-      }
-    }
-  };
-
-  applyWA(inst->getDst());
-  applyWA(inst->getSrc(0));
-  applyWA(inst->getSrc(1));
-
-  return;
-}
 void LocalRA::markReferences(unsigned int &numRowsEOT, bool &lifetimeOpFound) {
   unsigned int id = 0;
   // Iterate over all BBs
@@ -1297,7 +1250,6 @@ void LocalRA::markReferences(unsigned int &numRowsEOT, bool &lifetimeOpFound) {
 
       markReferencesInInst(inst_it);
       markSpecialForbidden(inst_it);
-      markLargeGRFForbidden(inst_it);
     }
   }
 }
@@ -1381,8 +1333,6 @@ void LocalRA::calculateInputIntervals() {
             if ((topdcl->getRegFile() == G4_INPUT || topdcl->isLiveIn()) &&
                 !(src->isAreg()) && topdcl->isOutput() == false &&
                 lr->hasIndirectAccess() == false &&
-                // exclude scratch location (s0.7)
-                !topdcl->getRegVar()->getPhyReg()->isS0() &&
                 !builder.isPreDefArg(topdcl)) {
               unsigned int lastRef = 0;
 

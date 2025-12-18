@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2017-2025 Intel Corporation
+# Copyright (C) 2017-2021 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -205,10 +205,6 @@ set(GenX_Common_Sources_G4_Passes
   Passes/AccSubstitution.hpp
   Passes/SRSubstitution.cpp
   Passes/SRSubstitution.hpp
-  Passes/InsertS0Movs.cpp
-  Passes/InsertS0Movs.hpp
-  Passes/InsertThryld.cpp
-  Passes/InsertThryld.hpp
   Passes/InstCombine.cpp
   Passes/InstCombine.hpp
   Passes/LVN.cpp
@@ -244,7 +240,6 @@ set(GenX_Common_Sources_External_Other
   G4_Verifier.cpp
   GraphColor.cpp
   HWConformity.cpp
-  HWConformityPro.cpp
   IncrementalRA.cpp
   EmuInt64Add.cpp
   InstSplit.cpp

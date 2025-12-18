@@ -928,10 +928,6 @@ static bool hasInternalConflict(IR_Builder *builder, int reg1, int reg2) {
     bankID1 = reg1 % 2;
     bundleID2 = (reg2 % 16) / 2;
     bankID2 = reg2 % 2;
-    if (builder->kernel.getNumRegTotal() == 512) {
-      bundleID1 = (reg1 % 32) / 2;
-      bundleID2 = (reg2 % 32) / 2;
-    }
   }
 
   return ((bankID1 == bankID2) && (bundleID1 == bundleID2));
@@ -1245,27 +1241,11 @@ INST_LIST_ITER G4_BB::getFirstInsertPos() {
   return II;
 }
 
-static void addEot(G4_INST *lastInst, G4_BB &bb, IR_Builder &builder) {
-  G4_INST *inst = builder.translateEot();
-  if (lastInst) {
-    inst->inheritDIFrom(lastInst);
-  }
-  bb.getInstList().push_back(inst);
-
-  if (builder.getHasNullReturnSampler() &&
-      VISA_WA_CHECK(builder.getPWaTable(), Wa_1607871015)) {
-    bb.addSamplerFlushBeforeEOT();
-  }
-}
 
 //
 //  Add an EOT send to the end of this BB.
 //
 void G4_BB::addEOTSend(G4_INST *lastInst) {
-  if (parent->builder->isEfficient64bEnabled()) {
-    addEot(lastInst, *this, *parent->builder);
-    return;
-  }
 
   // mov (8) r1.0<1>:ud r0.0<8;8,1>:ud {NoMask}
   // send (1) null r1 0x27 desc
@@ -1430,8 +1410,6 @@ void G4_BB::removeIntrinsics(std::vector<Intrinsic>& intrinIdVec) {
 // sampler cache flush 2 must have valid return
 // bb must end with an EOT send
 void G4_BB::addSamplerFlushBeforeEOT() {
-  vISA_ASSERT(!parent->builder->isEfficient64bEnabled(),
-              "TODO: need to update for this feature");
   vISA_ASSERT(isLastInstEOT(), "last instruction must be EOT");
   auto builder = parent->builder;
   int samplerFlushOpcode = 0x1F;

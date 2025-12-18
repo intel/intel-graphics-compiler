@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2025 Intel Corporation
+Copyright (C) 2020-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -26,8 +26,6 @@ static MsgOp ConvertLSCOpToMsgOp(LSC_OP op) {
     return MsgOp::LOAD_BLOCK2D;
   case LSC_OP::LSC_LOAD_STATUS:
     return MsgOp::LOAD_STATUS;
-  case LSC_OP::LSC_LOAD_QUAD_STATUS:
-    return MsgOp::LOAD_QUAD_STATUS;
   case LSC_OP::LSC_STORE:
     return MsgOp::STORE;
   case LSC_OP::LSC_STORE_STRIDED:
@@ -90,18 +88,6 @@ static MsgOp ConvertLSCOpToMsgOp(LSC_OP op) {
     return MsgOp::ATOMIC_ACSUB;
   case LSC_OP::LSC_APNDCTR_ATOMIC_STORE:
     return MsgOp::ATOMIC_ACSTORE;
-  case LSC_OP::LSC_ATOMIC_BFADD:
-    return MsgOp::ATOMIC_BFADD;
-  case LSC_OP::LSC_ATOMIC_BFSUB:
-    return MsgOp::ATOMIC_BFSUB;
-  case LSC_OP::LSC_ATOMIC_BFMIN:
-    return MsgOp::ATOMIC_BFMIN;
-  case LSC_OP::LSC_ATOMIC_BFMAX:
-    return MsgOp::ATOMIC_BFMAX;
-  case LSC_OP::LSC_ATOMIC_BFCAS:
-    return MsgOp::ATOMIC_BFCAS;
-  case LSC_OP::LSC_EXTENDED_CACHE_CTRL:
-    return MsgOp::EXTENDED_CACHE_CTRL;
   case LSC_OP::LSC_FENCE:
     return MsgOp::FENCE;
   case LSC_OP::LSC_READ_STATE_INFO:
@@ -110,25 +96,6 @@ static MsgOp ConvertLSCOpToMsgOp(LSC_OP op) {
     vISA_ASSERT_UNREACHABLE("unsupported LSC_OP");
     return MsgOp::INVALID;
   }
-}
-static CacheControlSize ConvertLSCCacheCtrlSize(LSC_CACHE_CTRL_SIZE ccs) {
-  switch (ccs) {
-  case LSC_CACHE_CTRL_SIZE::CCSIZE_64B:
-    return CacheControlSize::S64B;
-  default:
-    vISA_ASSERT_UNREACHABLE("invalid cache control size");
-  }
-  return CacheControlSize::S64B;
-}
-
-static CacheControlOperation ConvertLSCCacheCtrlOp(LSC_CACHE_CTRL_OPERATION ccop) {
-  switch (ccop) {
-  case LSC_CACHE_CTRL_OPERATION::CCOP_DIRTY_RESET:
-    return CacheControlOperation::DIRTY_RESET;
-  default:
-    vISA_ASSERT_UNREACHABLE("invalid cache control op");
-  }
-  return CacheControlOperation::DIRTY_SET;
 }
 
 [[maybe_unused]]
@@ -201,53 +168,6 @@ static VecElems ConvertLSCDataElems(LSC_DATA_ELEMS de) {
   return VecElems::INVALID;
 }
 
-static AddrSizeType ConvertLSCAddrSizeType(LSC_SFID sfid,
-                                           LSC_ADDR_SIZE size,
-                                           LSC_ADDR_TYPE type) {
-  switch (sfid) {
-  case LSC_SLM:
-    if (size == LSC_ADDR_SIZE_32b)
-      return AddrSizeType::SLM_A32_A32;
-    break;
-  case LSC_UGM:
-    switch (type) {
-    case LSC_ADDR_TYPE_FLAT:
-      switch (size) {
-      case LSC_ADDR_SIZE_32bS: return AddrSizeType::GLB_A64_A32S;
-      case LSC_ADDR_SIZE_32bU: return AddrSizeType::GLB_A64_A32U;
-      case LSC_ADDR_SIZE_64b:  return AddrSizeType::GLB_A64_A64;
-      case LSC_ADDR_SIZE_32b:
-        // global flat (statless) addresses are 64b virtual addresses;
-        // the indices must be zero- or sign-extended to 64b;
-        // thus, we assert with a more specific message
-        vISA_ASSERT_UNREACHABLE("this API should use :a32s or :a32u");
-        return AddrSizeType::INVALID;
-      default: break;
-      }
-      break;
-    case LSC_ADDR_TYPE_SURF:
-      return AddrSizeType::GLB_STATE_A32;
-    default: break;
-    }
-    break;
-  case LSC_TGM:
-    switch (type) {
-    case LSC_ADDR_TYPE_SURF:
-      return AddrSizeType::GLB_STATE_A32;
-    default: break;
-    }
-    break;
-  case LSC_URB:
-    if (size == LSC_ADDR_SIZE_32b)
-      return AddrSizeType::URB_A32_A32;
-
-    break;
-  default:
-    break;
-  }
-  vISA_ASSERT_UNREACHABLE("incorrect address size and type for SFID");
-  return AddrSizeType::INVALID;
-}
 
 [[maybe_unused]]
 static Caching ConvertLSCCacheOpt(LSC_CACHE_OPT co) {
@@ -272,12 +192,6 @@ static Caching ConvertLSCCacheOpt(LSC_CACHE_OPT co) {
     vISA_ASSERT_UNREACHABLE("invalid caching");
   }
   return Caching::INVALID;
-}
-static std::tuple<Caching, Caching, Caching>
-ConvertLSCCacheOpts(LSC_CACHE_OPT col1, LSC_CACHE_OPT col2,
-                    LSC_CACHE_OPT col3) {
-  return std::make_tuple(ConvertLSCCacheOpt(col1), ConvertLSCCacheOpt(col2),
-                         ConvertLSCCacheOpt(col3));
 }
 
 static G4_Operand *lscTryPromoteSurfaceImmToExDesc(G4_Operand *surface,
@@ -655,9 +569,10 @@ int IR_Builder::translateLscUntypedInst(
   // I initially thought that one was supposed to use an alias over a .decl
   // And have properly sized inputs, but this assumption is proving false.
   auto checkDeclSize = [&](const char *what, G4_Declare *dcl, int visaRegsInDcl,
-                           int genRegsNeeded, VISA_Exec_Size execSize) {
-    if (((execSize < EXEC_SIZE_32) && (visaRegsInDcl < genRegsNeeded)) ||
-        ((execSize == EXEC_SIZE_32) && (visaRegsInDcl * 2 < genRegsNeeded))) {
+                           int genRegsNeeded
+      ) {
+    // if (visaRegsInDcl != genRegsNeeded)
+    if (visaRegsInDcl < genRegsNeeded) {
       std::stringstream ss;
       ss << what << " register dimensions don't fit data type\n";
       ss << "vISA decl given is: ";
@@ -714,8 +629,8 @@ int IR_Builder::translateLscUntypedInst(
     if (addrDcl) {
       auto addrRegSize = addrDcl->getElemSize() * addrDcl->getTotalElems();
       auto visaAddrRegsInDcl = std::max<int>(addrRegSize / getGRFSize(), 1);
-      checkDeclSize("address", addrDcl, visaAddrRegsInDcl, addrRegs,
-                    visaExecSize);
+      checkDeclSize("address", addrDcl, visaAddrRegsInDcl, addrRegs
+          );
     }
 
     // loading/store into the null register for prefetch
@@ -726,7 +641,8 @@ int IR_Builder::translateLscUntypedInst(
       check(dstDcl != nullptr, "cannot find declaration for data register");
       unsigned dataRegBytes = dstDcl->getTotalElems() * dstDcl->getElemSize();
       auto visaRegsInDcl = std::max<int>(dataRegBytes / getGRFSize(), 1);
-      checkDeclSize("data", dstDcl, visaRegsInDcl, dstLen, visaExecSize);
+      checkDeclSize("data", dstDcl, visaRegsInDcl, dstLen
+      );
     }
   }
 
@@ -754,391 +670,6 @@ int IR_Builder::translateLscUntypedInst(
   return status;
 }
 
-int IR_Builder::translateLscUntypedInstUnified(
-    LSC_OP op, LSC_SFID lscSfid, G4_Predicate *pred,
-    VISA_Exec_Size visaExecSize, VISA_EMask_Ctrl execCtrl,
-    LSC_CACHE_OPTS cacheOpts, bool overfetch,
-    LSC_ADDR addrInfo, LSC_DATA_SHAPE dataShape,
-    G4_Operand *surface, // can be G4_Imm or G4_SrcRegRegion
-    unsigned surfaceIndex, // SS_IDX (index into given surface heap)
-    G4_DstRegRegion *dstRead,   // dst can be NULL reg (e.g store)
-    G4_SrcRegRegion *src0Addr,  // always the addresses (base for strided)
-    G4_Operand *src0AddrStride, // only for strided
-    G4_SrcRegRegion *src1Data,  // store data/extra atomic operands
-    G4_SrcRegRegion *src2Data   // store data/extra atomic operands
-) {
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-
-  // This enforces a64 payloads to have .decl type Q/UQ
-  // and a32* to have D/UD.  We would do this in the parent function,
-  // but it's unclear how much code is out there that would break.
-  // Hence, we restrict it to the newer API only for now.
-  vISA_ASSERT_INPUT(addrInfo.size != LSC_ADDR_SIZE_64b ||
-              IS_QTYPE(src0Addr->getType()),
-              ":a64 expects Q/UQ");
-  bool isA32 =
-    addrInfo.size == LSC_ADDR_SIZE_32b ||
-    addrInfo.size == LSC_ADDR_SIZE_32bS ||
-    addrInfo.size == LSC_ADDR_SIZE_32bU;
-  vISA_ASSERT_INPUT(!isA32 ||
-                    IS_DTYPE(src0Addr->getType()), ":a32* expects D/UD");
-
-  int status = VISA_SUCCESS;
-  auto check = [&](bool z, const char *what) {
-    if (!z) {
-      vISA_ASSERT_INPUT(false, std::string(what));
-      status = VISA_FAILURE;
-    }
-  };
-
-  check(addrInfo.type != LSC_ADDR_TYPE_BSS &&
-          addrInfo.type != LSC_ADDR_TYPE_SS,
-        "should use LSC_ADDR_TYPE_SURF on this platform");
-  check(lscSfid != LSC_SLM || addrInfo.size == LSC_ADDR_SIZE_32b,
-        "SLM must use LSC_ADDR_SIZE_32b");
-  check(lscSfid != LSC_UGM ||
-        addrInfo.type != LSC_ADDR_TYPE_FLAT ||
-        addrInfo.size != LSC_ADDR_SIZE_32b,
-        "UGM flat must use LSC_ADDR_SIZE_32bS or LSC_ADDR_SIZE_32bU");
-  check(lscSfid != LSC_UGM ||
-        addrInfo.type != LSC_ADDR_TYPE_SURF ||
-        addrInfo.size == LSC_ADDR_SIZE_32bU,
-        "UGM stateful must use LSC_ADDR_SIZE_32bU");
-
-
-  const G4_ExecSize execSize = toExecSize(visaExecSize);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize);
-
-  const uint32_t BYTES_PER_REG = getGRFSize();
-
-  if (addrInfo.type == LSC_ADDR_TYPE_ARG) {
-    // r0.7:uq is kernel argument buffer
-    // Treat:
-    //   lsc_load.ugm ... arg(0x0)[ADDR]...
-    // As:
-    //   lsc_load.ugm ... flat(r0_uq(0,7))[ADDR]...
-    vISA_ASSERT_INPUT(surface == nullptr ||
-                      (surface->isImm() && surface->asImm()->getImm() == 0) ||
-                      surface->isNullReg(),
-                      "lsc_load... arg[...] must have nullptr surface");
-    vISA_ASSERT_INPUT(lscSfid == LSC_UGM, "lsc_load... arg[...] must use .ugm");
-
-    auto r0_7_uq = createSrc(getBuiltinR0()->getRegVar(), 0, 7,
-                             getRegionScalar(), Type_UQ);
-    surface = r0_7_uq;
-    addrInfo.type = LSC_ADDR_TYPE_FLAT;
-    if (addrInfo.size == LSC_ADDR_SIZE_32b)
-    {
-        addrInfo.size = LSC_ADDR_SIZE_32bU;
-    }
-  }
-
-  SFID sfid = SFID::NULL_SFID;
-  switch (lscSfid) {
-  case LSC_UGM:
-    sfid = SFID::UGM;
-    break;
-  case LSC_UGML:
-    sfid = SFID::UGML;
-    break;
-  case LSC_SLM:
-    sfid = SFID::SLM;
-    break;
-  case LSC_URB:
-    sfid = SFID::URB;
-    break;
-  default:
-    vISA_ASSERT_UNREACHABLE("invalid SFID for untyped LSC message");
-  }
-
-  const auto opInfo = LscOpInfoGet(op);
-  vISA_ASSERT_INPUT(!opInfo.isBlock2D(),
-               "use translateLscUntypedBlock2DInstUnified for lsc_*_block2d");
-
-  check(opInfo.kind == LscOpInfo::LOAD || opInfo.kind == LscOpInfo::STORE ||
-           opInfo.kind == LscOpInfo::ATOMIC,
-        "unhandled LSC op class");
-
-  // if we have a stateful access and SS_IDX is out of bounds, then emulate
-  // the offset
-  const auto addrSizeType =
-    ConvertLSCAddrSizeType(lscSfid, addrInfo.size, addrInfo.type);
-  if (addrSizeType == AddrSizeType::GLB_STATE_A32) {
-    surface = maybeAddSurfaceIndexEfficient64b(*this, surface, surfaceIndex);
-  }
-
-  // three steps:
-  // 1. create the message descriptor
-  // 2. compute the operand lengths (src, dst) -- these are not part of the
-  //    descriptor but are required when encoding the send instruction
-  // 3. construct the send instruction
-
-  // create the descriptor
-
-  MsgOp mop = ConvertLSCOpToMsgOp(op);
-  G4_SendgDesc *msgDesc = nullptr;
-
-  // set overfetch when given to this API, or when the option
-  // vISA_enableOverfetch is enabled
-  overfetch |= opInfo.isLoad() &&
-               cacheOpts.l1 == LSC_CACHE_OPT::LSC_CACHING_CACHED &&
-               m_options->getOption(vISA_enableOverfetch);
-  if (MsgOpHasChMask(mop)) {
-    msgDesc = createUntypedCMaskDesc(
-        sfid, mop, execSize, isNullOperand(dstRead),
-        ConvertLSCDataSize(dataShape.size),
-        DataChMask(dataShape.chmask),
-        addrSizeType,
-        addrInfo.immScale, addrInfo.immOffset, surfaceIndex,
-        ConvertLSCCacheOpts(cacheOpts.l1, cacheOpts.l2, cacheOpts.l3),
-        overfetch);
-  } else {
-    msgDesc = createUntypedVecDesc(
-        sfid, mop, execSize, isNullOperand(dstRead),
-        ConvertLSCDataSize(dataShape.size),
-        ConvertLSCDataElems(dataShape.elems),
-        ConvertLSCDataOrder(dataShape.order),
-        addrSizeType,
-        addrInfo.immScale, addrInfo.immOffset, surfaceIndex,
-        ConvertLSCCacheOpts(cacheOpts.l1, cacheOpts.l2, cacheOpts.l3),
-        overfetch);
-  }
-
-  if (addrInfo.immScale != 1 || addrInfo.immOffset != 0) {
-    // We were not able to or did not need to encode either of immScale
-    // or immOffset in the descriptor.  Fallback on emulation and
-    // reflect the scaled/offset in src address using mul/add instructions
-    // before the send instruction
-    G4_Predicate* clonedPred = pred ? createPredicate(*pred) : pred;
-    src0Addr = lscMulAdd(clonedPred, execSize, execCtrl, src0Addr,
-                         (int16_t)addrInfo.immScale, addrInfo.immOffset);
-  }
-
-  if (opInfo.isAtomic()) {
-    if (opInfo.extraOperands == 0) {
-      check(isNullOperand(src1Data) && isNullOperand(src2Data),
-            "atomic unary must have null src1 and src2");
-    } else if (opInfo.extraOperands == 1) {
-      check(!isNullOperand(src1Data) && isNullOperand(src2Data),
-            "atomic binary must have non-null src1 and null src2");
-    } else {
-      check (!isNullOperand(src1Data) && !isNullOperand(src2Data),
-            "atomic binary must have both src1 and src2 non-null");
-      // For atomics lsc_atomic_icas, lsc_atomic_fcas
-      // generate the src1 payloads
-      src1Data = coalescePayload(pred, BYTES_PER_REG, BYTES_PER_REG,
-          std::max(lscMinExecSize(lscSfid), execSize), execSize,
-          {src1Data, src2Data}, execCtrl);
-    }
-  }
-
-  // do the data conversion mov here for surface to qword
-  // and return the qword surface operand
-  auto ind0 = setupIndirectDescriptor(surface);
-
-  // Note that at this point, we do not generate or introduce the scalar GRF
-  // (s0.#:uq). The benefit of not exposing s0 in translate functions is that
-  // existing passes from CFG construction upto local schedule do not have to
-  // worry about s0. Furthermore, we can fully utilize the scalar register file as we
-  // know then whether the kernel spills or not; if there is spilling, then one
-  // qword of s0 is reserved, otherwise all qwords can be used for setting up
-  // indirect descriptors for sends
-  // create send instruction
-  G4_InstSend *sendgInst = nullptr;
-  if (MsgOpIsApndCtrAtomic(mop)) {
-    // For append counter atomic, the data paylaod is put in src0
-    sendgInst =
-        createLscSendgInst(pred, dstRead, src1Data, createNullSrc(Type_UD),
-                           execSize, msgDesc, instOpt, ind0);
-  } else {
-    sendgInst = createLscSendgInst(pred, dstRead, src0Addr, src1Data, execSize,
-                                   msgDesc, instOpt, ind0);
-  }
-
-  sendgInst->addComment(generateAddrSpaceComment(addrInfo.addrSpace));
-  return status;
-}
-
-int IR_Builder::translateLscUntypedBlock2DInstUnified(
-    LSC_OP op, LSC_SFID lscSfid, G4_Predicate *pred,
-    VISA_Exec_Size visaExecSize, VISA_EMask_Ctrl emask,
-    LSC_CACHE_OPTS cacheOpts, LSC_DATA_SHAPE_BLOCK2D dataShape2D,
-    G4_DstRegRegion *dstRead, // dst can be NULL reg (e.g store)
-    G4_Operand *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS], // always the addresses
-    G4_SrcRegRegion *src1Data,                       // store data
-    int xImmOff, int yImmOff)
-{
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  int status = VISA_SUCCESS;
-  auto check = [&](bool z, const char *what) {
-    if (!z) {
-      vISA_ASSERT_INPUT(false, std::string(what));
-      status = VISA_FAILURE;
-    }
-  };
-
-  // perform checks
-  if (dataShape2D.order == LSC_DATA_ORDER_TRANSPOSE) {
-    switch (dataShape2D.size) {
-    case LSC_DATA_SIZE_8b:
-      check (dataShape2D.width <= 64 && dataShape2D.height <= 32,
-          "for d8, width <= 64 elements and height <= 32 elements");
-      break;
-    case LSC_DATA_SIZE_16b:
-      check (dataShape2D.width <= 32 && dataShape2D.height <= 32,
-          "for d16, width <= 32 and height <= 32 elements");
-      break;
-    case LSC_DATA_SIZE_32b:
-      check (dataShape2D.width <= 16 && dataShape2D.height <= 32,
-          "for d32, width <= 16 and height <= 32 elements");
-      break;
-    case LSC_DATA_SIZE_64b:
-      check (dataShape2D.width <= 8 && dataShape2D.height <= 32,
-          "for d64, width <= 8 and height <= 32 elements");
-      break;
-    default:
-      check(false, "invalid data type");
-    }
-  }
-
-  const auto opInfo = LscOpInfoGet(op);
-  vISA_ASSERT_INPUT(opInfo.isBlock2D(), "not an LSC block2d op");
-
-  const G4_ExecSize execSize = toExecSize(visaExecSize);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
-
-  // block2d immediate offsets that don't fit in 12b (signed) must be
-  // emulated in the payload creation
-  int emuImmOffX = 0, emuImmOffY = 0;
-  if (xImmOff < -(1 << 11) || xImmOff > (1 << 11) - 1) {
-    emuImmOffX = xImmOff;
-    xImmOff = 0;
-  }
-  if (yImmOff < -(1 << 11) || yImmOff > (1 << 11) - 1) {
-    emuImmOffY = yImmOff;
-    yImmOff = 0;
-  }
-
-  G4_SrcRegRegion *src0Addr =
-      lscBuildBlock2DPayload(dataShape2D, pred, src0Addrs,
-                             emuImmOffX, emuImmOffY);
-
-  SFID sfid = SFID::NULL_SFID;
-  switch (lscSfid) {
-  case LSC_UGM:
-    sfid = SFID::UGM;
-    break;
-  case LSC_UGML:
-    sfid = SFID::UGML;
-    break;
-  case LSC_SLM:
-    sfid = SFID::SLM;
-    break;
-  default:
-    vISA_ASSERT_UNREACHABLE("invalid SFID for untyped block2d LSC message");
-  }
-
-  auto msgDesc = create2DLSCDesc(
-      sfid, isNullOperand(dstRead), ConvertLSCOpToMsgOp(op),
-      dataShape2D.width, dataShape2D.height, dataShape2D.blocks,
-      ConvertLSCDataSize(dataShape2D.size),
-      ConvertLSCDataOrder(dataShape2D.order, dataShape2D.vnni),
-      AddrSizeType::GLB_A64_A64,
-      ConvertLSCCacheOpts(cacheOpts.l1, cacheOpts.l2, cacheOpts.l3), xImmOff, yImmOff);
-
-  // create send instruction
-  createLscSendgInst(pred, dstRead, src0Addr, src1Data, execSize,
-                     msgDesc, instOpt, nullptr);
-
-  return status;
-}
-
-int IR_Builder::translateLscUntypedBlock2DInstUnified(
-    LSC_OP op, LSC_SFID lscSfid, G4_Predicate *pred,
-    VISA_Exec_Size visaExecSize, VISA_EMask_Ctrl emask,
-    LSC_CACHE_OPTS cacheOpts, LSC_DATA_SHAPE_BLOCK2D dataShape2D,
-    G4_DstRegRegion *dstRead,  // dst can be NULL reg (e.g store)
-    G4_Operand *src0AddrRgn,   // always the addresses
-    G4_SrcRegRegion *src1Data, // store data
-    int xImmOff, int yImmOff) {
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  int status = VISA_SUCCESS;
-  auto check = [&](bool z, const char *what) {
-    if (!z) {
-      vISA_ASSERT_INPUT(false, std::string(what));
-      status = VISA_FAILURE;
-    }
-  };
-
-  // perform checks
-  if (dataShape2D.order == LSC_DATA_ORDER_TRANSPOSE) {
-    switch (dataShape2D.size) {
-    case LSC_DATA_SIZE_8b:
-      check(dataShape2D.width <= 64 && dataShape2D.height <= 32,
-            "for d8, width <= 64 elements and height <= 32 elements");
-      break;
-    case LSC_DATA_SIZE_16b:
-      check(dataShape2D.width <= 32 && dataShape2D.height <= 32,
-            "for d16, width <= 32 and height <= 32 elements");
-      break;
-    case LSC_DATA_SIZE_32b:
-      check(dataShape2D.width <= 16 && dataShape2D.height <= 32,
-            "for d32, width <= 16 and height <= 32 elements");
-      break;
-    case LSC_DATA_SIZE_64b:
-      check(dataShape2D.width <= 8 && dataShape2D.height <= 32,
-            "for d64, width <= 8 and height <= 32 elements");
-      break;
-    default:
-      check(false, "invalid data type");
-    }
-  }
-
-  const auto opInfo = LscOpInfoGet(op);
-  vISA_ASSERT_INPUT(opInfo.isBlock2D(), "not an LSC block2d op");
-
-  const G4_ExecSize execSize = toExecSize(visaExecSize);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
-
-  // block2d immediate offsets that don't fit in 12b (signed) must be
-  // emulated in the payload creation
-  int emuImmOffX = 0, emuImmOffY = 0;
-  if (xImmOff < -(1 << 11) || xImmOff > (1 << 11) - 1) {
-    emuImmOffX = xImmOff;
-    xImmOff = 0;
-  }
-  if (yImmOff < -(1 << 11) || yImmOff > (1 << 11) - 1) {
-    emuImmOffY = yImmOff;
-    yImmOff = 0;
-  }
-
-  G4_SrcRegRegion *src0Addr = src0AddrRgn->asSrcRegRegion();
-  // Emulate imediate offset
-  if (emuImmOffX || emuImmOffY)
-    src0Addr =
-        emulateImmOffsetBlock2D(pred, src0AddrRgn, emuImmOffX, emuImmOffY);
-
-  vISA_ASSERT_INPUT(lscSfid == LSC_UGM,
-                    "invalid SFID for untyped block2d LSC message");
-
-  auto msgDesc = create2DLSCDesc(
-      SFID::UGM, isNullOperand(dstRead), ConvertLSCOpToMsgOp(op),
-      dataShape2D.width, dataShape2D.height, dataShape2D.blocks,
-      ConvertLSCDataSize(dataShape2D.size),
-      ConvertLSCDataOrder(dataShape2D.order, dataShape2D.vnni),
-      AddrSizeType::GLB_A64_A64,
-      ConvertLSCCacheOpts(cacheOpts.l1, cacheOpts.l2, cacheOpts.l3), xImmOff,
-      yImmOff);
-
-  // create send instruction
-  createLscSendgInst(pred, dstRead, src0Addr, src1Data, execSize, msgDesc,
-                     instOpt, nullptr);
-
-  return status;
-}
 
 int IR_Builder::translateLscUntypedBlock2DInst(
     LSC_OP op, LSC_SFID lscSfid, G4_Predicate *pred,
@@ -1160,49 +691,23 @@ int IR_Builder::translateLscUntypedBlock2DInst(
   };
 
   if (dataShape2D.order == LSC_DATA_ORDER_TRANSPOSE) {
-    // This function is exercised under xe3p + no efficient64b feature
-    if (getPlatform() > Xe3) {
-      switch (dataShape2D.size) {
-      case LSC_DATA_SIZE_8b:
-        vISA_ASSERT(false, "Invalid data size for transpose");
-        check(dataShape2D.width <= 64 && dataShape2D.height <= 32,
-              "for d8, width <= 64 elements and height <= 32 elements");
-        break;
-      case LSC_DATA_SIZE_16b:
-        vISA_ASSERT(false, "Invalid data size for transpose");
-        check(dataShape2D.width <= 32 && dataShape2D.height <= 32,
-              "for d16, width <= 32 and height <= 32 elements");
-        break;
-      case LSC_DATA_SIZE_32b:
-        check(dataShape2D.width <= 16 && dataShape2D.height <= 32,
-              "for d32, width <= 16 and height <= 32 elements");
-        break;
-      case LSC_DATA_SIZE_64b:
-        check(dataShape2D.width <= 8 && dataShape2D.height <= 32,
-              "for d64, width <= 8 and height <= 32 elements");
-        break;
-      default:
-        check(false, "invalid data type");
-      }
-    } else {
-      switch (dataShape2D.size) {
-      case LSC_DATA_SIZE_8b:
-        check(false, "d8 not supported");
-        break;
-      case LSC_DATA_SIZE_16b:
-        check(false, "d16 not supported");
-        break;
-      case LSC_DATA_SIZE_32b:
-        check(dataShape2D.width <= 16 && dataShape2D.height <= 32,
-              "for d32, width <= 16 and height <= 32 elements");
-        break;
-      case LSC_DATA_SIZE_64b:
-        check(dataShape2D.width <= 4 && dataShape2D.height == 8,
-              "for d64, width <= 4 and height == 8 elements");
-        break;
-      default:
-        check(false, "invalid data type");
-      }
+    switch (dataShape2D.size) {
+    case LSC_DATA_SIZE_8b:
+      check (false, "d8 not supported");
+      break;
+    case LSC_DATA_SIZE_16b:
+      check (false, "d16 not supported");
+      break;
+    case LSC_DATA_SIZE_32b:
+      check (dataShape2D.width <= 16 && dataShape2D.height <= 32,
+          "for d32, width <= 16 and height <= 32 elements");
+      break;
+    case LSC_DATA_SIZE_64b:
+      check (dataShape2D.width <= 4 && dataShape2D.height == 8,
+          "for d64, width <= 4 and height == 8 elements");
+      break;
+    default:
+      check(false, "invalid data type");
     }
   }
 
@@ -1324,47 +829,23 @@ int IR_Builder::translateLscUntypedBlock2DInst(
   };
 
   if (dataShape2D.order == LSC_DATA_ORDER_TRANSPOSE) {
-    // This function is exercised under xe3p + no efficient64b feature
-    if (getPlatform() > Xe3) {
-      switch (dataShape2D.size) {
-      case LSC_DATA_SIZE_8b:
-        check (dataShape2D.width <= 64 && dataShape2D.height <= 32,
-          "for d8, width <= 64 elements and height <= 32 elements");
-        break;
-      case LSC_DATA_SIZE_16b:
-        check (dataShape2D.width <= 32 && dataShape2D.height <= 32,
-          "for d16, width <= 32 and height <= 32 elements");
-        break;
-      case LSC_DATA_SIZE_32b:
-        check (dataShape2D.width <= 16 && dataShape2D.height <= 32,
+    switch (dataShape2D.size) {
+    case LSC_DATA_SIZE_8b:
+      check (false, "d8 not supported");
+      break;
+    case LSC_DATA_SIZE_16b:
+      check (false, "d16 not supported");
+      break;
+    case LSC_DATA_SIZE_32b:
+      check (dataShape2D.width <= 16 && dataShape2D.height <= 32,
           "for d32, width <= 16 and height <= 32 elements");
-        break;
-      case LSC_DATA_SIZE_64b:
-        check (dataShape2D.width <= 8 && dataShape2D.height <= 32,
-          "for d64, width <= 8 and height <= 32 elements");
-        break;
-      default:
-        check(false, "invalid data type");
-      }
-    } else {
-      switch (dataShape2D.size) {
-      case LSC_DATA_SIZE_8b:
-        check(false, "d8 not supported");
-        break;
-      case LSC_DATA_SIZE_16b:
-        check(false, "d16 not supported");
-        break;
-      case LSC_DATA_SIZE_32b:
-        check(dataShape2D.width <= 16 && dataShape2D.height <= 32,
-              "for d32, width <= 16 and height <= 32 elements");
-        break;
-      case LSC_DATA_SIZE_64b:
-        check(dataShape2D.width <= 4 && dataShape2D.height == 8,
-              "for d64, width <= 4 and height == 8 elements");
-        break;
-      default:
-        check(false, "invalid data type");
-      }
+      break;
+    case LSC_DATA_SIZE_64b:
+      check (dataShape2D.width <= 4 && dataShape2D.height == 8,
+          "for d64, width <= 4 and height == 8 elements");
+      break;
+    default:
+      check(false, "invalid data type");
     }
   }
 
@@ -1664,219 +1145,6 @@ int IR_Builder::translateLscTypedInst(
   return status;
 }
 
-int IR_Builder::translateLscExtendedCacheCtrlInst(
-    G4_Predicate *pred, VISA_Exec_Size visaExecSize, VISA_EMask_Ctrl execCtrl,
-    LSC_CACHE_OPTS cacheOpts, LSC_ADDR addrInfo,
-    LSC_CACHE_CTRL_SIZE ccsize, // cache control size
-    LSC_CACHE_CTRL_OPERATION ccop, // cache control op
-    G4_DstRegRegion *dst,       // null dst
-    G4_SrcRegRegion *src0Addr,  // always the addresses (base for strided)
-    G4_SrcRegRegion *src1 // null src1
-) {
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  // This enforces a64 payloads to have .decl type Q/UQ
-  // and a32* to have D/UD.  We would do this in the parent function,
-  // but it's unclear how much code is out there that would break.
-  // Hence, we restrict it to the newer API only for now.
-  vISA_ASSERT_INPUT(addrInfo.size != LSC_ADDR_SIZE_64b ||
-              IS_QTYPE(src0Addr->getType()),
-              ":a64 expects Q/UQ");
-
-  int status = VISA_SUCCESS;
-  auto check = [&](bool z, const char *what) {
-    if (!z) {
-      vISA_ASSERT_INPUT(false, std::string(what));
-      status = VISA_FAILURE;
-    }
-  };
-
-  const G4_ExecSize execSize = toExecSize(visaExecSize);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize);
-
-  // three steps:
-  // 1. create the message descriptor
-  // 2. compute the operand lengths (src, dst) -- these are not part of the
-  //    descriptor but are required when encoding the send instruction
-  // 3. construct the send instruction
-
-  // create the descriptor
-  G4_SendgDesc *msgDesc = createExtendedCacheCtrlDesc(
-                          execSize,
-                          ConvertLSCCacheCtrlOp(ccop),
-                          ConvertLSCCacheCtrlSize(ccsize),
-                          ConvertLSCCacheOpts(cacheOpts.l1, cacheOpts.l2, cacheOpts.l3));
-
-  auto sendgInst = createLscSendgInst(pred, dst, src0Addr, src1, execSize, msgDesc,
-                          instOpt, nullptr);
-
-  sendgInst->addComment(generateAddrSpaceComment(addrInfo.addrSpace));
-  return status;
-}
-int IR_Builder::translateLscTypedInstUnified(
-    LSC_OP op, G4_Predicate *pred, VISA_Exec_Size execSizeEnum,
-    VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrModel,
-    LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE shape,
-    G4_Operand *surface, unsigned surfaceIndex, // surface/bti and surface index
-    G4_DstRegRegion *dstData,  // dst on load/atomic
-    G4_SrcRegRegion *src0AddrUs, int uOffset,
-    G4_SrcRegRegion *src0AddrVs, int vOffset,
-    G4_SrcRegRegion *src0AddrRs, int rOffset,
-    G4_SrcRegRegion *src0AddrLODs,
-    G4_SrcRegRegion *src1Data, // store data/extra atomic operands
-    G4_SrcRegRegion *src2Data  // icas/fcas only
-) {
-  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  int status = VISA_SUCCESS;
-  if (addrModel != LSC_ADDR_TYPE_SURF) {
-    vISA_ASSERT(false, "should use LSC_ADDR_TYPE_SURF on this platform");
-    return VISA_FAILURE;
-  }
-
-  const uint32_t BYTES_PER_GRF = getGRFSize();
-
-  const G4_ExecSize execSize = toExecSize(execSizeEnum);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
-
-  const auto opInfo = LscOpInfoGet(op);
-
-  G4_SrcRegRegion *srcAddrs[2]{};
-  G4_SrcRegRegion *srcData = nullptr;
-  unsigned srcAddrRegs[2]{};
-
-  auto checkPayloadSize = [&](const char *which, const G4_Declare *decl,
-                              int expectDeclRegs) {
-    int dclRegs = std::max<int>(1, decl->getTotalElems() * decl->getElemSize() /
-                                       BYTES_PER_GRF);
-    // if (expectDeclRegs != dclRegs)
-    // TODO: need to fix issue with IGC codegen using offsets
-    // in raw vars
-    if (expectDeclRegs > dclRegs) {
-      std::stringstream ss;
-      ss << which << " .decl size ";
-      decl->emit(ss);
-      ss << " (" << dclRegs << ")";
-      ss << " mismatches expected number of registers for "
-            "payload ("
-         << expectDeclRegs << ")";
-      // std::cerr << ss.str();
-      vISA_ASSERT_INPUT(false, ss.str());
-    }
-  };
-
-  auto checkAddrPayloadSize = [&](const char *which,
-                                  const G4_SrcRegRegion *srcAddr) {
-    if (srcAddr == nullptr || srcAddr->isNullReg()) {
-      return;
-    }
-    const G4_Declare *decl = getDeclare(srcAddr);
-    uint32_t addrSizeBits = lscComputeAddrSizeBits(addrSize, status);
-    const int regsPerAddrChannel =
-        std::max<int>(1, addrSizeBits * (int)execSize / 8 / BYTES_PER_GRF);
-    checkPayloadSize(which, decl, regsPerAddrChannel);
-  };
-
-  if (opInfo.is(LSC_READ_STATE_INFO)) {
-    // like fences, send requires *something* (at least one reg) to be
-    // sent out; we pick the initial r0 value since it's known to
-    // be floating around somewhere until EOT
-    srcAddrRegs[0] = 1;
-    srcAddrRegs[1] = 0;
-    srcAddrs[0] = src0AddrUs;
-  } else {
-    checkAddrPayloadSize("src0AddrUs", src0AddrUs);
-    checkAddrPayloadSize("src0AddrVs", src0AddrVs);
-    checkAddrPayloadSize("src0AddrRs", src0AddrRs);
-    checkAddrPayloadSize("src0AddrLODs", src0AddrLODs);
-
-    // emulate coordinate immediate offsets that are unsupported
-    auto addPayloadOffset = [&](G4_SrcRegRegion *srcCoord, int& coordImmOff) {
-      if (coordImmOff >= -8 && coordImmOff <= 7)
-        return srcCoord;
-      auto elemsPerCoord =
-        std::max<unsigned>(numEltPerGRF<Type_D>(), (unsigned)execSize);
-      G4_Declare *srcCoordCopy = createSendPayloadDcl(elemsPerCoord, Type_D);
-      srcCoordCopy->setEvenAlign();
-      G4_DstRegRegion *dst = createDstRegRegion(srcCoordCopy, 1);
-      G4_Imm *imm = createImm(coordImmOff, Type_D);
-      G4_Predicate *pr = duplicateOperand(pred);
-      createBinOp(pr, G4_add, execSize, dst, srcCoord, imm, instOpt, true);
-      coordImmOff = 0;
-      return createSrcRegRegion(srcCoordCopy, getRegionStride1());
-    }; // addPayloadOffset
-
-    src0AddrUs = addPayloadOffset(src0AddrUs, uOffset);
-    src0AddrVs = addPayloadOffset(src0AddrVs, vOffset);
-    src0AddrRs = addPayloadOffset(src0AddrRs, rOffset);
-
-    PayloadSource srcAddrPayloads[4]{}; // U, V, R, (LOD|SI)
-    unsigned numSrcAddrPayloads = 0;
-    buildTypedSurfaceAddressPayload(src0AddrUs, src0AddrVs, src0AddrRs,
-                                    src0AddrLODs, execSize, instOpt,
-                                    srcAddrPayloads, numSrcAddrPayloads);
-    preparePayload(
-        srcAddrs, srcAddrRegs, execSize,
-        false, // not a split send (so all the addrs lands in one reg)
-        srcAddrPayloads, numSrcAddrPayloads);
-    vISA_ASSERT_INPUT(srcAddrs[1] == nullptr, "invalid addr split");
-    vISA_ASSERT_INPUT(srcAddrRegs[0] < 32, "too many address registers");
-
-    // each channel consumes at least one register (top padding may be 0)
-    srcData = coalescePayload(pred, BYTES_PER_GRF, BYTES_PER_GRF,
-                              std::max(getNativeExecSize(), execSize), execSize,
-                              {src1Data, src2Data}, emask);
-  }
-
-  // may need to emulate SS_IDX if the value is too large
-  surface = maybeAddSurfaceIndexEfficient64b(*this, surface, surfaceIndex);
-
-  // create message descriptor
-  auto mop = ConvertLSCOpToMsgOp(op);
-  G4_SendgDesc *msgDesc = nullptr;
-  if (mop == MsgOp::RSI) {
-    uint64_t desc = 0x0;
-    desc |= MsgOpEncode(mop);
-    desc |= static_cast<uint64_t>(surfaceIndex) << 22;
-    desc |= static_cast<uint64_t>(GetAddrSizeTypeEncoding(AddrSizeType::GLB_STATE_A32)) << 14;
-    msgDesc = new (mem) G4_SendgDesc(SFID::TGM, desc, *this);
-    msgDesc->setDstLen(1);
-    msgDesc->setSrc0Len(1);
-    msgDesc->setSrc1Len(0);
-  } else if (!MsgOpIsAtomic(mop)) {
-    msgDesc = createTypedChMaskDesc(
-        mop, ConvertLSCDataSize(shape.size),
-        DataChMask(shape.chmask),
-        AddrSizeType::GLB_STATE_A32, surfaceIndex, uOffset, vOffset, rOffset,
-        ConvertLSCCacheOpts(cacheOpts.l1, cacheOpts.l2, cacheOpts.l3));
-  } else {
-    vISA_ASSERT(shape.elems == LSC_DATA_ELEMS::LSC_DATA_ELEMS_1,
-      "atomic messages must be V1");
-    msgDesc = createTypedAtomicDesc(
-        mop, ConvertLSCDataSize(shape.size),
-        AddrSizeType::GLB_STATE_A32, surfaceIndex, uOffset, vOffset, rOffset,
-        ConvertLSCCacheOpts(cacheOpts.l1, cacheOpts.l2, cacheOpts.l3));
-  }
-
-  // compute operand lengths
-  auto [dstLen,src1Len] =
-    computeLscTypedDataRegs(
-      *this, opInfo, execSize, 8 * msgDesc->getDataSizeBytesReg(),
-      dstData == nullptr || dstData->isNullReg(), shape.chmask);
-  msgDesc->setDstLen((int)dstLen);
-  msgDesc->setSrc0Len((int)srcAddrRegs[0]);
-  msgDesc->setSrc1Len(src1Len);
-
-  // do the data conversion mov here for surface to qword
-  // and return the qword surface operand
-  auto ind0 = setupIndirectDescriptor(surface);
-
-  // create send instruction
-  createLscSendgInst(pred, dstData, srcAddrs[0], srcData, execSize,
-                     msgDesc, instOpt, ind0);
-
-  return status;
-}
 LSC_DATA_ELEMS IR_Builder::lscGetElementNum(unsigned eNum) const {
   switch (eNum) {
   case 1:
@@ -1935,8 +1203,6 @@ uint32_t IR_Builder::lscComputeAddrSizeBits(LSC_ADDR_SIZE addrSize,
     addrSizeBits = 16;
     break;
   case LSC_ADDR_SIZE_32b:
-  case LSC_ADDR_SIZE_32bS:
-  case LSC_ADDR_SIZE_32bU:
     addrSizeBits = 32;
     break;
   case LSC_ADDR_SIZE_64b:
@@ -2507,31 +1773,6 @@ G4_SrcRegRegion *IR_Builder::lscMul(G4_Predicate *pred, G4_ExecSize execSize,
   if (srcType == Type_UQ || srcType == Type_Q) {
     return lscMul64Aos(pred, execSize, execCtrl, src0, mulImm);
   } else {
-    if (isEfficient64bEnabled()) {
-      G4_Declare *scaledAddrDcl =
-          createTempVar(execSize, srcType, getGRFAlign());
-      G4_DstRegRegion *dst =
-          createDst(scaledAddrDcl->getRegVar(), 0, 0, 1, srcType);
-      G4_SrcRegRegion *srcMul =
-          createSrc(src0->getBase(), 0, src0->getSubRegOff(),
-                    getRegionStride1(), Type_UD);
-
-      G4_opcode opcode = G4_mul;
-      G4_Operand *srcImm = nullptr;
-      if (isPow2(mulImm)) {
-        // power of 2, use shift left
-        opcode = G4_shl;
-        srcImm = createImm(intLog2(mulImm), Type_W);
-      } else {
-        srcImm = createImm(mulImm, Type_W);
-      }
-      G4_INST *scaleInst =
-          createBinOp(opcode, execSize, dst, srcMul, srcImm,
-                      Get_Gen4_Emask(execCtrl, execSize), true);
-      scaleInst->setPredicate(pred);
-      return createSrc(scaledAddrDcl->getRegVar(), 0, 0, getRegionStride1(),
-                       Type_UD);
-    } else
       /*
       G4_Declare *result = createTempVar(execSize, srcType, GRFALIGN);
       G4_DstRegRegion *dst =
@@ -2729,151 +1970,6 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(G4_Predicate *pred,
   if (mulImm == 1) {
     return src0;
   }
-  if (isEfficient64bEnabled()) {
-    // calculate # of passes based on platform's supported execution size and
-    // exec size of instruction
-    const int passes = std::max<int>(1, execSize / getNativeExecSize());
-    // execution size per pass
-    const G4_ExecSize passExecSize =
-        std::min<G4_ExecSize>(execSize, getNativeExecSize());
-
-    // final scaled addr
-    G4_Declare *scaledAddrDcl =
-        createTempVar(execSize, Type_UQ, getGRFAlign(), "scaled_addr");
-
-    if (isPow2(mulImm)) {
-      int16_t shAmt = intLog2(mulImm);
-      // mulImm is a power of 2
-      // use shifts to compute scaled address
-
-      // shift left takes a qword operand and word/dword operand
-      for (int pass = 0; pass < passes; pass++) {
-        G4_SrcRegRegion *srcShl =
-            createSrc(src0->getBase(), 2 * pass, src0->getSubRegOff(),
-                      getRegionStride1(), Type_UQ);
-        G4_Operand *srcImm16D = createImm(shAmt, Type_UD);
-
-        G4_DstRegRegion *dst =
-            createDst(scaledAddrDcl->getRegVar(), 2 * pass, 0, 1, Type_UQ);
-
-        createBinOp(duplicateOperand(pred), G4_shl, passExecSize, dst, srcShl,
-                    srcImm16D, Get_Gen4_Emask(execCtrl, passExecSize), true);
-      }
-    } else if (hasWideMulMadOpsEnabled()) {
-      // wide mul/mad support is enabled on XE3P
-      // mul :dw x :dw = :qw
-      G4_Operand *srcImm16D = createImm(mulImm, Type_UD);
-
-      G4_DstRegRegion *scaledAddr = createDst(scaledAddrDcl->getRegVar(), 0, 0, 1, Type_UQ);
-
-      G4_SrcRegRegion *srcMul =
-        createSrc(src0->getBase(), 0, src0->getSubRegOff(),
-                  getRegionStride1(), Type_UD);
-
-      createBinOp(duplicateOperand(pred), G4_mul, execSize, scaledAddr, srcMul,
-                  srcImm16D, Get_Gen4_Emask(execCtrl, execSize), true);
-
-    } else {
-      // this is the sequence to generate when scaling a 64bit address by an imm
-      // value high level sequence explanation and example (assumes execution
-      // mask of SIMD32):
-      // 1. the 64bit addresses are laid out in GRFs in SoA form -- assuming GRF
-      //    holding 32 64bit addresses are laid out across 4 GRFs (A, B, C, and
-      //    D) such that first 2 GRFs (A, B) hold the lo 32bit addresses and the
-      //    next 2 GRFs (C, D) hold the hi 32bit addresses
-      // 2. a 32wide mul operation to compute the lo 32bits of the scaled 64bit
-      //    address -- source operands are AB and immediate scale factor
-      // 3. 2 pairs of 16wide mul and mach operations to compute intermediate
-      //    products of AB with scale factor -- these intermediate products will
-      //    be added with product of 4 to compute the hi 32bits of scaled
-      //    address
-      //    -- note that we need 2 pairs where one mul/mach pair operates on A
-      //    and other operates on B. Using 16wide operations because the
-      //    accumulator register can only support 16dwords
-      // 4. a 32wide mul operation with source operands CD and immediate scale
-      //    factor that is added to result of 3 to get upper 32bits of final
-      //    scaled address
-      // Sequence:
-      //    mul (16|M0) acc0.0<1>:ud A:ud mulImm:uw
-      //    mach (16|M0) tmp0.0<1>:ud A:ud mulImm:ud
-      //    mul (16|M0) acc0.0<1>:ud B:ud mulImm:uw
-      //    mach (16|M0) tmp1.0<1>:ud B:ud mulImm:ud
-      //    mul (32|M0) tmp2.0<1>:ud C:d mulImm:uw
-      //    mul (32|M0) scaledAddrLo.0<1>:ud A:ud mulImm:uw
-      //    add (32|M0) scaledAddrHi.0<1>:ud tmp0.0<1;1,0>:ud tmp2.0<1;1,0>:ud
-
-      G4_Declare *tmpDstDcl1 = createTempVar(execSize, Type_UD, getGRFAlign());
-      G4_Operand *srcImm16W = createImm(mulImm, Type_UW);
-      G4_Operand *srcImm16D = createImm(mulImm, Type_UD);
-
-      // breaking into passes because acc only supports at max 16 dwords
-      for (int pass = 0; pass < passes; pass++) {
-        // mul
-        G4_DstRegRegion *acc0 =
-            createDst(phyregpool.getAcc0Reg(), 0, 0, 1, Type_UD);
-        G4_SrcRegRegion *srcMul =
-            createSrc(src0->getBase(), pass, src0->getSubRegOff(),
-                      getRegionStride1(), Type_UD);
-        G4_INST *mulInst = createBinOp(
-            duplicateOperand(pred), G4_mul, passExecSize, acc0, srcMul,
-            srcImm16W, Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize), true);
-
-        // mach
-        G4_SrcRegRegion *srcMach =
-            createSrc(src0->getBase(), pass, src0->getSubRegOff(),
-                      getRegionStride1(), Type_UD);
-        G4_DstRegRegion *tmpDst =
-            createDst(tmpDstDcl1->getRegVar(), pass, 0, 1, Type_D);
-
-        G4_INST *machInst = createInst(
-            duplicateOperand(pred), G4_mach, nullptr, g4::NOSAT, passExecSize,
-            tmpDst, srcMach, srcImm16D,
-            Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize) | InstOpt_AccWrCtrl,
-            true);
-
-        // set mach properties regarding acc
-        G4_SrcRegRegion *srcImplAcc = createSrc(phyregpool.getAcc0Reg(), 0, 0,
-                                                getRegionStride1(), Type_D);
-        machInst->setImplAccSrc(srcImplAcc);
-        mulInst->addDefUse(machInst, Opnd_implAccSrc);
-      }
-
-      // remaining operations do not use acc; we can use full execution width
-      G4_Declare *tmpDstDcl2 = createTempVar(execSize, Type_D, getGRFAlign());
-      G4_DstRegRegion *tmpDst =
-          createDst(tmpDstDcl2->getRegVar(), 0, 0, 1, Type_D);
-
-      // declare final scaled address result
-      G4_DstRegRegion *scaledAddrLo =
-          createDst(scaledAddrDcl->getRegVar(), 0, 0, 1, Type_UD);
-      G4_DstRegRegion *scaledAddrHi =
-          createDst(scaledAddrDcl->getRegVar(), passes, 0, 1, Type_D);
-
-      G4_SrcRegRegion *srcMul1 =
-          createSrc(src0->getBase(), 0, src0->getSubRegOff(),
-                    getRegionStride1(), Type_UD);
-      G4_SrcRegRegion *srcMul2 =
-          createSrc(src0->getBase(), 2, src0->getSubRegOff(),
-                    getRegionStride1(), Type_UD);
-
-      createBinOp(duplicateOperand(pred), G4_mul, execSize, tmpDst, srcMul2,
-                  srcImm16W, Get_Gen4_Emask(execCtrl, execSize), true);
-
-      createBinOp(duplicateOperand(pred), G4_mul, execSize, scaledAddrLo,
-                  srcMul1, srcImm16W, Get_Gen4_Emask(execCtrl, execSize), true);
-
-      // add
-      G4_SrcRegRegion *srcAdd1 =
-          createSrc(tmpDstDcl2->getRegVar(), 0, 0, getRegionStride1(), Type_D);
-      G4_SrcRegRegion *srcAdd2 =
-          createSrc(tmpDstDcl1->getRegVar(), 0, 0, getRegionStride1(), Type_D);
-
-      createBinOp(duplicateOperand(pred), G4_add, execSize, scaledAddrHi,
-                  srcAdd1, srcAdd2, Get_Gen4_Emask(execCtrl, execSize), true);
-    }
-    return createSrc(scaledAddrDcl->getRegVar(), 0, 0, getRegionStride1(),
-                     Type_UQ);
-  } else
   vISA_ASSERT_UNREACHABLE("mul64-aos not supported yet");
   return nullptr;
 }
@@ -2939,24 +2035,6 @@ int IR_Builder::translateLscTypedBlock2DInst(
   xImmOffset = yImmOffset = 0; // emulate on all platforms
 
   G4_InstSend *sendInst = nullptr;
-  if (isEfficient64bEnabled()) {
-    // create message descriptor
-    G4_SendgDesc *msgDesc =
-      create2DLSCDesc(SFID::TGM,
-                      isNullOperand(dstRead), ConvertLSCOpToMsgOp(op),
-                      dataShape2D.width, dataShape2D.height, 1, DataSize::D32,
-                      DataOrder::NONTRANSPOSE, AddrSizeType::GLB_STATE_A32,
-                      ConvertLSCCacheOpts(cacheOpts.l1, cacheOpts.l2, cacheOpts.l3),
-                      xImmOffset, yImmOffset);
-
-    auto ind0 = setupIndirectDescriptor(surface);
-
-    sendInst =
-        createLscSendgInst(nullptr, dstRead, src0Addr, src1Data, execSize,
-                                 msgDesc, instOpt, ind0);
-
-    return status;
-  }
 
   // send descriptor
   //       [5:0]    Operation

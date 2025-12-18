@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -275,14 +275,8 @@ private:
       return Type::HF;
     case GenPrecision::BF16:
       return Type::BF;
-    case GenPrecision::BF8:
-      return Type::BF8;
-    case GenPrecision::HF8:
-      return Type::HF8;
     case GenPrecision::TF32:
       return Type::TF32;
-    case GenPrecision::E2M1:
-      return Type::E2M1;
     default:
       vISA_ASSERT_UNREACHABLE("illegal Operand Precision");
       return Type::INVALID;
@@ -312,18 +306,6 @@ private:
     case 2:
       ty = getIGAPrecisionType(DpasInst->getSrc2Precision());
       break;
-    case 3:
-    {
-      G4_Operand* src3 = DpasInst->getSrc(3);
-      ty = getIGAType(src3->getType(), platform);
-      break;
-    }
-    case 4:
-    {
-      G4_Operand* src4 = DpasInst->getSrc(4);
-      ty = getIGAType(src4->getType(), platform);
-      break;
-    }
     }
     return ty;
   }
@@ -351,9 +333,6 @@ private:
   }
   static iga::SFID getSFID(const G4_INST *inst);
   static MathFC getMathFC(const G4_INST *inst);
-  static ShuffleFC getShuffleFC(const G4_INST* inst);
-  static LfsrFC getLfsrFC(const G4_INST *inst);
-  static DnsclFC getDnsclFC(const G4_INST *inst);
   Type getIGAType(const G4_INST *I, Gen4_Operand_Number O, TARGET_PLATFORM P);
 
   void *m_kernelBuffer = nullptr;
@@ -398,10 +377,6 @@ BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform) {
   case Xe3:
     platform = Platform::XE3;
     break;
-  case Xe3P_CRI:
-  case Xe3P_Graphics:
-    platform = Platform::XE3P_XPC;
-    break;
   default:
     break;
   }
@@ -415,9 +390,6 @@ BinaryEncodingIGA::BinaryEncodingIGA(vISA::G4_Kernel &k, const std::string& fnam
 }
 
 SWSB_ENCODE_MODE BinaryEncodingIGA::getIGASWSBEncodeMode() const {
-  if (kernel.fg.builder->getOptions()->getOption(vISA_UseSBIDCntrFeature) &&
-      platformModel->platform > Platform::XE3)
-    return SWSB_ENCODE_MODE::FiveDistPipeSWSBCntr;
 
   if (platform == TARGET_PLATFORM::Xe_MTL ||
       platform == TARGET_PLATFORM::Xe_ARL)
@@ -476,9 +448,6 @@ InstOptSet BinaryEncodingIGA::getIGAInstOptSet(G4_INST *inst) const {
     options.add(InstOpt::NOCOMPACT);
   }
 
-  if (inst->isFwdInst()) {
-    options.add(InstOpt::FWD);
-  }
 
   return options;
 }
@@ -604,107 +573,12 @@ MathFC BinaryEncodingIGA::getMathFC(const G4_INST *inst) {
     return MathFC::INVM;
   case MATH_RSQRTM:
     return MathFC::RSQTM;
-  case MATH_TANH:
-      return MathFC::TANH;
-  case MATH_SIGM:
-      return MathFC::SIGM;
   default:
     vISA_ASSERT_UNREACHABLE("invalid math subfunction");
     return MathFC::INVALID;
   }
 }
 
-ShuffleFC BinaryEncodingIGA::getShuffleFC(const G4_INST* inst) {
-  auto shuffleFC = inst->asShflInst()->getShflFCtrl();
-
-  switch (shuffleFC) {
-  case G4_InstShfl::G4_ShflOp::SHFL_IDX4:
-    return ShuffleFC::IDX4;
-  default:
-    vISA_ASSERT_UNREACHABLE("Invalid shuffle subfunction");
-    return ShuffleFC::INVALID;
-  }
-}
-
-LfsrFC BinaryEncodingIGA::getLfsrFC(const G4_INST *inst) {
-  auto lfsrFC = inst->asLfsrInst()->getLfsrFCtrl();
-  switch (lfsrFC) {
-  case LFSR_FC::B32:
-    return LfsrFC::LFSR_b32;
-  case LFSR_FC::B16V2:
-    return LfsrFC::LFSR_b16v2;
-  case LFSR_FC::B8V4:
-    return LfsrFC::LFSR_b8v4;
-  default:
-    vISA_ASSERT_UNREACHABLE("Invalid lfsr subfunction");
-    return LfsrFC::INVALID;
-  }
-}
-
-DnsclFC BinaryEncodingIGA::getDnsclFC(const G4_INST *inst) {
-  ConvSrcDataType srcTy;
-  ConvDstDataType dstTy;
-  const G4_InstDnscl *dnsclInst = inst->asDnsclInst();
-  switch (dnsclInst->getDnsclConvertType()) {
-  case DNSCL_CONVERT_TYPE::BFTOE2M1:
-    srcTy = ConvSrcDataType::BF;
-    dstTy = ConvDstDataType::E2M1;
-    break;
-  case DNSCL_CONVERT_TYPE::BFTOINT4:
-    srcTy = ConvSrcDataType::BF;
-    dstTy = ConvDstDataType::INT4;
-    break;
-  case DNSCL_CONVERT_TYPE::HFTOE2M1:
-    srcTy = ConvSrcDataType::HF;
-    dstTy = ConvDstDataType::E2M1;
-    break;
-  case DNSCL_CONVERT_TYPE::HFTOINT4:
-    srcTy = ConvSrcDataType::HF;
-    dstTy = ConvDstDataType::INT4;
-    break;
-  default:
-    vISA_ASSERT_UNREACHABLE("Invalid dnscl conversion type");
-    srcTy = ConvSrcDataType::INVALID;
-    dstTy = ConvDstDataType::INVALID;
-    break;
-  }
-
-  DnsclMode mode;
-  switch (dnsclInst->getDnsclMode()) {
-  case DNSCL_MODE::MODE0:
-    mode = DnsclMode::MODE0;
-    break;
-  case DNSCL_MODE::MODE1:
-    mode = DnsclMode::MODE1;
-    break;
-  case DNSCL_MODE::MODE2:
-    mode = DnsclMode::MODE2;
-    break;
-  case DNSCL_MODE::MODE3:
-    mode = DnsclMode::MODE3;
-    break;
-  default:
-    vISA_ASSERT_UNREACHABLE("Invalid dnscl mode");
-    mode = DnsclMode::INVALID;
-    break;
-  }
-
-  RoundingMode rndMode;
-  switch (dnsclInst->getDnsclRoundMode()) {
-  case DNSCL_RND_MODE::STOCHASTIC_ROUND:
-    rndMode = RoundingMode::SRAND;
-    break;
-  case DNSCL_RND_MODE::RNE:
-    rndMode = RoundingMode::RNE;
-    break;
-  default:
-    vISA_ASSERT_UNREACHABLE("Invalid dnscl rounding mode");
-    rndMode = RoundingMode::INVALID;
-    break;
-  }
-
-  return DnsclFC(srcTy, dstTy, mode, rndMode);
-}
 
 //
 // Return the IGA op for the given vISA instruction <op> for platform p.
@@ -870,22 +744,6 @@ BinaryEncodingIGA::getIgaOpInfo(const G4_INST *inst, const Model *m,
       igaOp = Op::SENDSC;
     }
     break;
-  case G4_sendg:
-    igaOp = Op::SENDG;
-    sf = getSFID(inst);
-    break;
-  case G4_sendgc:
-    igaOp = Op::SENDGC;
-    sf = getSFID(inst);
-    break;
-  case G4_sendgx:
-    igaOp = Op::SENDGX;
-    sf = getSFID(inst);
-    break;
-  case G4_sendgxc:
-    igaOp = Op::SENDGXC;
-    sf = getSFID(inst);
-    break;
   case G4_math:
     sf = getMathFC(inst);
     igaOp = Op::MATH;
@@ -922,9 +780,6 @@ BinaryEncodingIGA::getIgaOpInfo(const G4_INST *inst, const Model *m,
     if (inst->getPlatform() >= Xe_PVC && !inst->isAccWrCtrlInst()) {
       igaOp = Op::MACL;
     }
-    break;
-  case G4_mullh:
-    igaOp = Op::MULLH;
     break;
   case G4_lzd:
     igaOp = Op::LZD;
@@ -965,14 +820,6 @@ BinaryEncodingIGA::getIgaOpInfo(const G4_INST *inst, const Model *m,
   case G4_dp4a:
     igaOp = Op::DP4A;
     break;
-  case G4_bdpas: {
-    igaOp = Op::BDPAS;
-    G4_InstDpas *dpasInst = inst->asDpasInst();
-    uint8_t D = dpasInst->getSystolicDepth();
-    uint8_t C = dpasInst->getRepeatCount();
-    sf = GetDpasFC(D, C);
-    break;
-  }
   case G4_dpas:
   case G4_dpasw: {
     igaOp = inst->opcode() == G4_dpasw ? Op::DPASW : Op::DPAS;
@@ -1066,21 +913,6 @@ BinaryEncodingIGA::getIgaOpInfo(const G4_INST *inst, const Model *m,
     break;
   case G4_fcvt:
     igaOp = Op::MOV;
-    break;
-  case G4_shfl:
-    igaOp = Op::SHFL;
-    sf = getShuffleFC(inst);
-    break;
-  case G4_lfsr:
-    igaOp = Op::LFSR;
-    sf = getLfsrFC(inst);
-    break;
-  case G4_dnscl:
-    igaOp = Op::DNSCL;
-    sf = getDnsclFC(inst);
-    break;
-  case G4_thryld:
-    igaOp = Op::THRYLD;
     break;
   case G4_srnd:
     igaOp = Op::SRND;
@@ -1182,12 +1014,6 @@ void BinaryEncodingIGA::SetSWSB(G4_INST *inst, SWSB &sw) {
           sw.distType != SWSB::DistType::REG_DIST_INT)
         sw.distType = SWSB::DistType::REG_DIST_ALL;
     }
-  }
-  if (inst->getTokenType() == SWSBTokenType::SBID_CNTR) {
-    vISA_ASSERT(inst->isSend(), "SBID cntr use is limited to send instructions");
-    sw.tokenType = SWSB::TokenType::INC;
-    sw.distType = SWSB::DistType::NO_DIST;
-    sw.sbid = inst->getToken();
   }
   return;
 }
@@ -1377,8 +1203,6 @@ void BinaryEncodingIGA::Encode() {
     bool autoCompact = kernel.getOption(vISA_Compaction);
     if (platform == Xe_PVC)
       autoCompact = false; // PVC-A0 compaction is off (IGA only does B0+)
-    if (platform > Xe3 && kernel.getNumRegTotal() > 256)
-      autoCompact = false;
 
     KernelEncoder encoder(IGAKernel, autoCompact);
     encoder.setSWSBEncodingMode(swsbEncodeMode);
@@ -1469,64 +1293,7 @@ Instruction *BinaryEncodingIGA::translateInstruction(G4_INST *g4inst,
     igaInst = IGAKernel->createBranchInstruction(
         *opSpec, pred, flagReg, execSize, chOff, maskCtrl, brnchCtrl);
   } else if (opSpec->isAnySendFormat()) {
-    const auto *msgDescG = g4inst->asSendInst()->getMsgDesc();
-    if (msgDescG->isGeneralized()) {
-      const G4_SendgDesc *msgDesc =
-          static_cast<const G4_SendgDesc *>(msgDescG);
-
-      int src0Len = msgDesc->getSrc0Len();
-      int src1Len = msgDesc->getSrc1Len();
-
-      // this is a *soft* workaround as not all send messages have been
-      // translated to use the new send format. Hence, there are cases
-      // where we have not computed src0Len and src1Len appropriately
-      // TODO: remove this once all messages have been converted to use
-      // new send messages
-      if (src0Len < 0)
-        src0Len = 1;
-      if (src1Len < 0)
-        src1Len = 0;
-
-      // get ind0, ind1 from g4_inst
-      auto getIndReg = [&](int srcIx) -> RegRef {
-        G4_Operand *src = g4inst->asSendInst()->getSrc(srcIx);
-        vISA_ASSERT(!src || src->isSrcRegRegion(), "must be src reg region");
-        if (src == nullptr || src->isNullReg() || !src->isSrcRegRegion())
-          return REGREF_INVALID;
-        vISA_ASSERT(src->isS0(), "wrong register kind");
-        unsigned byteOff = src->getLeftBound();
-        vISA_ASSERT(byteOff % 8 == 0, "should be QW aligned");
-        // reg ref in terms of bytes and s0.# is in qwords
-        // feed IGA bytes and it scales down to QW for sendg
-        return RegRef {0u, byteOff};
-      };
-      RegRef ind0 = getIndReg(2);
-      RegRef ind1 = getIndReg(3);
-      // construct the G4 send instruction in G4
-      igaInst =
-        IGAKernel->createSendgInstruction(
-          *opSpec, sf.send, pred, flagReg, execSize, chOff, maskCtrl, src0Len,
-          src1Len,
-          ind0,
-          ind1,
-          msgDesc->getEncoding());
-
-      if (g4inst->getBuilder().getOption(vISA_ShaderStatsDumpless)) {
-          uint32_t dstLen = msgDesc->getDstLen();
-          auto JitInfo = kernel.fg.builder->getJitInfo();
-          JitInfo->sendInfo.src0Vec.push_back(src0Len);
-          JitInfo->sendInfo.src1Vec.push_back(src1Len);
-          JitInfo->sendInfo.destVec.push_back(dstLen);
-      }
-
-      vISA_ASSERT(igaInst, "Instruction is NULL");
-      if (!igaInst) {
-        return nullptr;
-      }
-      if (g4inst->getOption() & InstOpt_EOT) {
-        igaInst->addInstOpt(InstOpt::EOT);
-      }
-    } else {
+    {
       SendDesc desc = getIGASendDesc(g4inst->asSendInst());
       SendExDescOpts sdos = getIGASendExDesc(g4inst->asSendInst());
 
@@ -1547,8 +1314,6 @@ Instruction *BinaryEncodingIGA::translateInstruction(G4_INST *g4inst,
     igaInst = IGAKernel->createNopInstruction();
   } else if (opSpec->op == Op::ILLEGAL) {
     igaInst = IGAKernel->createIllegalInstruction();
-  } else if (opSpec->op == Op::THRYLD) {
-    igaInst = IGAKernel->createThryldInstruction();
   } else {
     igaInst = IGAKernel->createBasicInstruction(
         *opSpec, pred, flagReg, execSize, chOff, maskCtrl, condModifier, sf);
@@ -1688,12 +1453,6 @@ void BinaryEncodingIGA::translateInstructionSrcs(G4_INST *inst,
     case 2:
       opIx = SourceIndex::SRC2;
       break;
-    case 3:
-      opIx = SourceIndex::SRC3;
-      break;
-    case 4:
-      opIx = SourceIndex::SRC4;
-      break;
     default:
       vISA_ASSERT_UNREACHABLE("invalid source index number");
       break;
@@ -1705,18 +1464,6 @@ void BinaryEncodingIGA::translateInstructionSrcs(G4_INST *inst,
       G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
       SrcModifier srcMod = getIGASrcModifier(srcRegion->getModifier());
       Region region = getIGARegion(srcRegion, i);
-      // force the region of NULL register which could be existed on src2 of
-      // dnscl instruction
-      if (inst->isDnscl()) {
-        const G4_InstDnscl *dnscl = srcRegion->getInst()->asDnsclInst();
-        if (i == 2 && DNSCL_RND_MODE::RNE == dnscl->getDnsclRoundMode()) {
-          vISA_ASSERT(src->isNullReg(), "src2 of dnscl must be NULL reg if "
-                                        "rounding mode is RNE");
-          region.set(Region::Vert::VT_INVALID, Region::Width::WI_INVALID,
-                     inst->getExecSize() == g4::SIMD1 ? getIGAHorz(0)
-                                                      : getIGAHorz(1));
-        }
-      }
       Type type = Type::INVALID;
 
       // let IGA take care of types for send/s instructions
@@ -2130,9 +1877,6 @@ Type BinaryEncodingIGA::getIGAType(const G4_INST *I, Gen4_Operand_Number O,
   if (I->opcode() == G4_srnd) {
     if (O == Opnd_dst && Ty == Type_UB) {
       return Type::BF8;
-    }
-    if (O == Opnd_dst && Ty == Type_B) {
-      return Type::HF8;
     }
   }
   return getIGAType(Ty, P);

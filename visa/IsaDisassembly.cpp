@@ -779,18 +779,6 @@ static std::string printInstructionCommon(const print_format_provider_t *header,
                    ? "n"
                    : ""); /// INFO: cmpn opcode print support here.
       sstr << "." << Rel_op_str[(unsigned)(relOp & 0x7)];
-    } else if (opcode == ISA_LFSR) {
-      // print function control right after op name
-      uint8_t fCtrl = getPrimitiveOperand<uint8_t>(inst, i++);
-      sstr << "." << lfsrFuncCtrl[(unsigned)fCtrl];
-    } else if (opcode == ISA_DNSCL) {
-      // print conversion type, mode, rounding mode right after op name
-      uint8_t type = getPrimitiveOperand<uint8_t>(inst, i++);
-      uint8_t mode = getPrimitiveOperand<uint8_t>(inst, i++);
-      uint8_t rndMode = getPrimitiveOperand<uint8_t>(inst, i++);
-      sstr << "." << dnsclConvertType[(unsigned)type] << "."
-           << dnsclMode[(unsigned)mode] << "."
-           << dnsclRndMode[(unsigned)rndMode];
     } else if (opcode == ISA_BFN) {
       // print BooleanFuncCtrl right after op name
       sstr << ".x" << std::hex
@@ -801,8 +789,7 @@ static std::string printInstructionCommon(const print_format_provider_t *header,
     }
 
     if (ISA_Inst_Arith == ISA_Inst_Table[opcode].type ||
-        (ISA_Inst_Mov == ISA_Inst_Table[opcode].type &&
-         opcode != ISA_SHFL_IDX4 && opcode != ISA_DNSCL) ||
+        ISA_Inst_Mov == ISA_Inst_Table[opcode].type ||
         ISA_Inst_Logic == ISA_Inst_Table[opcode].type ||
         ISA_Inst_Address == ISA_Inst_Table[opcode].type ||
         ISA_Inst_Compare == ISA_Inst_Table[opcode].type) {
@@ -1174,58 +1161,6 @@ static std::string printInstructionMisc(const print_format_provider_t *header,
 
     break;
   }
-  case ISA_RAW_SENDG: {
-    uint8_t visaModifiers = inst->modifier;
-    i++; // skip the modifier
-
-    auto sfid = getPrimitiveOperand<uint32_t>(inst, i++);
-    bool issuesEoT = visaModifiers & (0x1 << 1);
-    bool isCond = visaModifiers & (0x1 << 0);
-
-    std::string opstring =
-       !issuesEoT && !isCond ? "raw_sendg." :
-        issuesEoT && !isCond ? "raw_sendg_eot." :
-       !issuesEoT &&  isCond ? "raw_sendgc." :
-                               "raw_sendgc_eot.";
-
-    auto toHex = [] (uint64_t h) {
-      std::stringstream ssh;
-      ssh << "0x" << std::hex << std::uppercase << h;
-      return ssh.str();
-    };
-
-    sstr << printPredicate(inst->opcode, inst->pred) << opstring.c_str();
-    sstr << toHex(sfid);
-
-    sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
-
-    /// dst:dstLenBytes
-    sstr << printOperand(header, inst, i++, opt);
-    auto dstBytes = getPrimitiveOperand<uint32_t>(inst, i++);
-    sstr << "/" << dstBytes;
-
-    /// src0:src0LenBytes
-    sstr << printOperand(header, inst, i++, opt);
-    auto src0Bytes = getPrimitiveOperand<uint32_t>(inst, i++);
-    sstr << "/" << src0Bytes;
-
-    /// src1:src1LenBytes
-    sstr << printOperand(header, inst, i++, opt);
-    auto src1Bytes = getPrimitiveOperand<uint32_t>(inst, i++);
-    sstr << "/" << src1Bytes;
-
-    // ind0
-    sstr << printOperand(header, inst, i++, opt);
-    // ind1
-    sstr << printOperand(header, inst, i++, opt);
-
-    // desc
-    uint64_t descL = getPrimitiveOperand<uint32_t>(inst, i++);
-    uint64_t descH = getPrimitiveOperand<uint32_t>(inst, i++);
-    sstr << " " << toHex((descH << 32) | descL);
-
-    break;
-  }
   case ISA_VME_FBR: {
     /// My typical pattern of printing these things doesn't work here since
     /// these VME instructions weirdly put the surface as the third operand.
@@ -1395,30 +1330,6 @@ static std::string printInstructionMisc(const print_format_provider_t *header,
 
     break;
   }
-  case ISA_BDPAS: {
-    const VISA_opnd *dpasOpnd = inst->opnd_array[inst->opnd_num - 1];
-    GenPrecision A, W;
-    uint8_t D, C;
-    UI32ToDpasInfo(dpasOpnd->_opnd.other_opnd, A, W, D, C);
-
-    sstr << ISA_Inst_Table[opcode].str << "." << toString(W) << "."
-         << toString(A) << "." << (int)D << "." << (int)C;
-
-    sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
-    // dst
-    sstr << printRawOperand(header, getRawOperand(inst, i++), opt);
-    // src0
-    sstr << printRawOperand(header, getRawOperand(inst, i++), opt);
-    // src1
-    sstr << printRawOperand(header, getRawOperand(inst, i++), opt);
-    // src2
-    sstr << printRawOperand(header, getRawOperand(inst, i++), opt);
-    // src3
-    sstr << printVectorOperand(header, inst->opnd_array[i++], opt, false);
-    // src4
-    sstr << printVectorOperand(header, inst->opnd_array[i++], opt, false);
-    break;
-  }
   case ISA_LIFETIME: {
     uint8_t properties = getPrimitiveOperand<uint8_t>(inst, i++);
     uint32_t varId = getPrimitiveOperand<uint32_t>(inst, i++);
@@ -1575,11 +1486,6 @@ printInstructionSampler(const print_format_provider_t *header,
     // [(P)] SAMPLE_3d[.pixel_null_mask][.cps][.divS].<channels> (exec_size)
     //   [(u_aoffimmi, v_aoffimii, r_aoffimmi)] <sampler> <surface>
     //   <dst> <u> <v> <r> <ai>
-    // [(P)] SAMPLE_3d[.pixel_null_mask][.cps][.divS].<channels> (exec_size)
-    //   [(u_aoffimmi, v_aoffimii, r_aoffimmi)]
-    //   (sampler base address, sampler imm index)
-    //   (surface base address, surface imm index)
-    //   <dst> <u> <v> <r> <ai>
     auto subop = getSamplerSubOpcode(header->getMajorVersion(), inst, i++);
 
     TARGET_PLATFORM platform =
@@ -1611,35 +1517,11 @@ printInstructionSampler(const print_format_provider_t *header,
     sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
 
     sstr << printOperand(header, inst, i++, opt);
-    if (opt->getOption(vISA_enableEfficient64b)) {
-      const vector_opnd &vo = getVectorOperand(inst, i++);
-      unsigned int samplerIdx = getPrimitiveOperand<uint8_t>(inst, i++);
-      if (samplerIdx == 0) {
-        sstr << " " << printVariableDeclName(header, vo.getOperandIndex(), opt,
-                                              NOT_A_STATE_OPND);
-      } else {
-        sstr << " (" << printVariableDeclName(header, vo.getOperandIndex(), opt,
-                                              NOT_A_STATE_OPND);
-        sstr << ", "<< std::to_string(samplerIdx) << ") ";
-      }
-    } else
        // sampler
       {
       sstr << " S" << printOperand(header, inst, i++, opt);
       i++; // skip reserved
       }
-    if (opt->getOption(vISA_enableEfficient64b)) {
-      const vector_opnd &vo = getVectorOperand(inst, i++);
-      unsigned int surfaceIdx = getPrimitiveOperand<uint8_t>(inst, i++);
-      if (surfaceIdx == 0) {
-        sstr << " " << printVariableDeclName(header, vo.getOperandIndex(), opt,
-                                                NOT_A_STATE_OPND);
-      } else {
-        sstr << " (" << printVariableDeclName(header, vo.getOperandIndex(), opt,
-                                              NOT_A_STATE_OPND);
-        sstr << ", "<< std::to_string(surfaceIdx) << ") ";
-      }
-    } else
        // surface
     {
       uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
@@ -1685,10 +1567,7 @@ printInstructionSampler(const print_format_provider_t *header,
     sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
 
     sstr << printOperand(header, inst, i++, opt);
-    if (opt->getOption(vISA_enableEfficient64b)) {
-      sstr << printOperand(header, inst, i++, opt);
-      sstr << "[" << printOperand(header, inst, i++, opt) << "] ";
-    } else {
+    {
       // surface
       uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
       sstr << " " << printSurfaceName(surface);
@@ -1739,35 +1618,13 @@ printInstructionSampler(const print_format_provider_t *header,
     sstr << printOperand(header, inst, i++, opt);
 
     // sampler
-    if (opt->getOption(vISA_enableEfficient64b)) {
-      const vector_opnd &vo = getVectorOperand(inst, i++);
-      unsigned int samplerIdx = getPrimitiveOperand<uint8_t>(inst, i++);
-      if (samplerIdx == 0) {
-        sstr << " " << printVariableDeclName(header, vo.getOperandIndex(), opt,
-                                              NOT_A_STATE_OPND);
-      } else {
-        sstr << " (" << printVariableDeclName(header, vo.getOperandIndex(), opt,
-                                              NOT_A_STATE_OPND);
-        sstr << ", "<< std::to_string(samplerIdx) << ") ";
-      }
-    } else {
+    {
       sstr << " S" << printOperand(header, inst, i++, opt);
       i++; // skip reserved
     }
 
     // surface
-    if (opt->getOption(vISA_enableEfficient64b)) {
-      const vector_opnd &vo = getVectorOperand(inst, i++);
-      unsigned int samplerIdx = getPrimitiveOperand<uint8_t>(inst, i++);
-      if (samplerIdx == 0) {
-        sstr << " " << printVariableDeclName(header, vo.getOperandIndex(), opt,
-                                              NOT_A_STATE_OPND);
-      } else {
-        sstr << " (" << printVariableDeclName(header, vo.getOperandIndex(), opt,
-                                              NOT_A_STATE_OPND);
-        sstr << ", "<< std::to_string(samplerIdx) << ") ";
-      }
-    } else {
+    {
       uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
       sstr << " " << printSurfaceName(surface);
       i++; // skip reserved
@@ -1801,18 +1658,7 @@ printInstructionSampler(const print_format_provider_t *header,
 
     sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
 
-    if (opt->getOption(vISA_enableEfficient64b)) {
-      const vector_opnd &vo = getVectorOperand(inst, i++);
-      unsigned int samplerIdx = getPrimitiveOperand<uint8_t>(inst, i++);
-      if (samplerIdx == 0) {
-        sstr << " " << printVariableDeclName(header, vo.getOperandIndex(), opt,
-                                              NOT_A_STATE_OPND);
-      } else {
-        sstr << " (" << printVariableDeclName(header, vo.getOperandIndex(), opt,
-                                              NOT_A_STATE_OPND);
-        sstr << ", "<< std::to_string(samplerIdx) << ") ";
-      }
-    } else {
+    {
       // surface
       uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
       sstr << " " << printSurfaceName(surface);
@@ -2544,11 +2390,7 @@ printInstructionDataport(const print_format_provider_t *header,
     }
 
     sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
-    if (opt->getOption(vISA_enableEfficient64b)) {
-      const vector_opnd &vo = getVectorOperand(inst, i++);
-      sstr << " " <<printVariableDeclName(header, vo.getOperandIndex(), opt,
-                                              NOT_A_STATE_OPND);
-    } else {
+    {
       // surface
       surface = getPrimitiveOperand<uint8_t>(inst, i++);
       sstr << " " << printSurfaceName(surface);
@@ -2839,9 +2681,6 @@ private:
     case LSC_ADDR_TYPE_BTI:
       ss << "bti";
       break;
-    case LSC_ADDR_TYPE_SURF:
-      ss << "surf";
-      break;
     case LSC_ADDR_TYPE_ARG:
       ss << "arg";
       break;
@@ -2860,12 +2699,6 @@ private:
       break;
     case LSC_ADDR_SIZE_32b:
       ss << "a32";
-      break;
-    case LSC_ADDR_SIZE_32bU:
-      ss << "a32u";
-      break;
-    case LSC_ADDR_SIZE_32bS:
-      ss << "a32s";
       break;
     case LSC_ADDR_SIZE_64b:
       ss << "a64";
@@ -3026,8 +2859,6 @@ private:
   }
 
   void formatCachingOpts() {
-    if (opts->getOption(vISA_enableEfficient64b))
-      return formatCachingOptsL1L2L3();
     auto l1 = getNextEnumU8<LSC_CACHE_OPT>();
     auto l3 = getNextEnumU8<LSC_CACHE_OPT>();
     bool cachingDefault = l1 == LSC_CACHE_OPT::LSC_CACHING_DEFAULT &&
@@ -3042,19 +2873,6 @@ private:
     }
   }
 
-  void formatCachingOptsL1L2L3() {
-    auto l1 = getNextEnumU8<LSC_CACHE_OPT>();
-    auto l2 = getNextEnumU8<LSC_CACHE_OPT>();
-    auto l3 = getNextEnumU8<LSC_CACHE_OPT>();
-    bool cachingDefault = l1 == LSC_CACHE_OPT::LSC_CACHING_DEFAULT &&
-                          l2 == LSC_CACHE_OPT::LSC_CACHING_DEFAULT &&
-                          l3 == LSC_CACHE_OPT::LSC_CACHING_DEFAULT;
-    if (!cachingDefault) {
-      formatCacheOpt(l1); // L1
-      formatCacheOpt(l2); // L2
-      formatCacheOpt(l3); // L3
-    }
-  }
   /////////////////////////////////////////////////////////
   // top-level formatters for each instruction type
   /////////////////////////////////////////////////////////
@@ -3128,40 +2946,6 @@ private:
            (vo.opnd_val.gen_opnd.index == 0);
   }
 
-  void formatExtendedCacheCtrlInst() {
-    ss << opInfo.mnemonic;
-
-    //////////////////
-    // sfid (e.g. .ugm, .ugml, or .slm)
-    auto sfid = getNextEnumU8<LSC_SFID>();
-    formatSfid(sfid);
-
-    //////////////////
-    // caching
-    formatCachingOpts();
-
-    auto ccop = getNextEnumU8<LSC_CACHE_CTRL_OPERATION>();
-    auto ccsize = getNextEnumU8<LSC_CACHE_CTRL_SIZE>();
-
-      ss << ".reset";
-
-    if (ccsize == CCSIZE_64B)
-      ss << ".64B";
-
-    // execution size and offset
-    ss << " " << printExecutionSize(inst->opcode, inst->execsize, subOp);
-    //
-    auto addrType = getNextEnumU8<LSC_ADDR_TYPE>();
-    auto addrSize = getNextEnumU8<LSC_ADDR_SIZE>();
-    if (addrType == LSC_ADDR_TYPE_FLAT)
-      ss << " flat";
-    else
-      formatBadEnum(addrType);
-    ss << "[";
-    formatRawOperand(currOpIx);
-    ss << "]";
-    formatAddrSize(addrSize);
-  }
   ///////////////////////////////////////////////////////////////////////////
   // for all but block2d and append counter atomic
   void formatUntypedSimple() {
@@ -3358,19 +3142,9 @@ private:
     } else if (subOp == LSC_APNDCTR_ATOMIC_ADD ||
                subOp == LSC_APNDCTR_ATOMIC_SUB ||
                subOp == LSC_APNDCTR_ATOMIC_STORE) {
-      if (opts->getOption(vISA_enableEfficient64b)) {
-        // under xe3p + efficient64b, exercise the same untyped lsc path
-        formatUntypedSimple();
-      }
-      else {
-        formatUntypedAppendCounterAtomic();
-      }
+      formatUntypedAppendCounterAtomic();
     } else {
-      if (subOp == LSC_EXTENDED_CACHE_CTRL) {
-        formatExtendedCacheCtrlInst();
-      } else {
-        formatUntypedSimple();
-      }
+      formatUntypedSimple();
     }
   } // formatUntyped
   ///////////////////////////////////////////////////////////////////////////

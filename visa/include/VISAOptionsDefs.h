@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -102,9 +102,6 @@ DEF_VISA_OPTION(vISA_DisablePrefetchToL1Cache, ET_BOOL, "-disablePrefetchL1",
                 "Disables L1 cached for prefetch messages", false)
 DEF_VISA_OPTION(vISA_CopyA0ToDBG0, ET_BOOL, "-copyA0ToDBG0",
                 "copy value of a0 used for extend msg descriptor of send to the dbg0 register", false)
-DEF_VISA_OPTION(
-    vISA_CopyMsg0ToDbg0, ET_BOOL, "-copyMsg0ToDbg0",
-    "Copy value of msg0.2 used for Multi-Q AppQID to dbg0.0 register", false)
 
 //=== Optimization options ===
 DEF_VISA_OPTION(vISA_EnableAlways, ET_BOOL, NULLSTR, UNUSED, true)
@@ -152,7 +149,6 @@ DEF_VISA_OPTION(vISA_EnableSplitVariables, ET_BOOL, "-noSplitVariables", UNUSED,
 DEF_VISA_OPTION(vISA_ChangeMoveType, ET_BOOL, "-ALTMode", UNUSED, true)
 DEF_VISA_OPTION(vISA_accSubstitution, ET_BOOL, "-noAccSub", UNUSED, true)
 DEF_VISA_OPTION(vISA_accSubBeforeRA, ET_BOOL, "-noAccSubBRA", UNUSED, true)
-DEF_VISA_OPTION(vISA_enableAccSubBeforeRA, ET_BOOL, "-enableAccSubBRA", UNUSED, false)
 DEF_VISA_OPTION(vISA_PreSchedForAcc, ET_BOOL, "-preSchedForAcc", UNUSED, false)
 DEF_VISA_OPTION(vISA_emitMoreMoviCases, ET_BOOL, "-emitMoreMoviCases", UNUSED, false)
 DEF_VISA_OPTION(
@@ -205,24 +201,8 @@ DEF_VISA_OPTION(vISA_ignoreBFRounding, ET_BOOL, "-ignoreBFRounding", UNUSED,
 DEF_VISA_OPTION(vISA_scheduleFenceCommit, ET_BOOL, "-fenceCommit", UNUSED, true)
 DEF_VISA_OPTION(vISA_SkipRedundantFillInRMW, ET_BOOL, "-normwopt", UNUSED, true)
 DEF_VISA_OPTION(vISA_ALTMode, ET_BOOL, "-nonALTMode", UNUSED, false)
-DEF_VISA_OPTION(vISA_WideMulMadOpsEnable, ET_BOOL, "-wideMulMadOpsEn", UNUSED,
-                false)
 DEF_VISA_OPTION(vISA_CoalesceScalarMoves, ET_BOOL, "-enableCoalesceScalarMoves",
                 UNUSED, false)
-DEF_VISA_OPTION(vISA_OptimizeRedundantS0Movs, ET_BOOL_TRUE, "-optimizeRedundantS0Movs",
-                UNUSED, true)
-DEF_VISA_OPTION(vISA_enableSamplerLSCCaching, ET_BOOL_TRUE, "-samplerLSCCaching",
-                "global flag [0|1] to control LSC caching for sampler", true)
-DEF_VISA_OPTION(vISA_samplerLSCCachingThreshold, ET_INT32,
-                "-samplerLSCCachingThreshold",
-                "spill size threshold to disable LSC caching for sampler", 0)
-DEF_VISA_OPTION(vISA_supportLSCImmScale, ET_INT32, "-supportLSCImmScale",
-                "USAGE: -supportLSCImmScale <value>. Valid values are:\n"
-                "0: Disable for both SLM and UGM-scratch; "
-                "1: Enable for SLM; 2: Enable for UGM-scratch; "
-                "3: Enable for both SLM and UGM-scratch.\n"
-                "Default value is 3.",
-                3)
 DEF_VISA_OPTION(vISA_SinkBarrierWait, ET_BOOL_TRUE, "-sinkBarrierWait",
                 "Barrier signal and wait are usually scheduled back to back. "
                 "The option is used to sink barrier wait away from signal as "
@@ -233,15 +213,6 @@ DEF_VISA_OPTION(vISA_dynamicAddrForExDescInLscSend, ET_BOOL_TRUE,
                 "Use unfixed address which is assigned by RA instead of a0.2 as "
                 "the extend messaged descriptor in LSC send messages",
                 true)
-DEF_VISA_OPTION(vISA_enableInsertThryld, ET_BOOL_TRUE, "-enableInsertThryld",
-                UNUSED,
-                false)
-DEF_VISA_OPTION(vISA_samplerTholdForThryld, ET_INT32, "-samplerTholdForThryld",
-                UNUSED, 4)
-DEF_VISA_OPTION(vISA_NonsamplerLoadTholdForThryld, ET_INT32,
-                "-nonsamplerLoadTholdForThryld", UNUSED, 4)
-DEF_VISA_OPTION(vISA_aluTholdForThryld, ET_INT32, "-aluTholdForThryld", UNUSED,
-                12)
 
 //=== code gen options ===
 DEF_VISA_OPTION(vISA_noSrc1Byte, ET_BOOL, "-nosrc1byte", UNUSED, false)
@@ -351,7 +322,6 @@ DEF_VISA_OPTION(vISA_lscSpillLoadCCOverride, ET_INT32,
 DEF_VISA_OPTION(vISA_lscSpillStoreCCOverride, ET_INT32,
                 "-lscSpillStoreCCOverride",
                 "lsc store cache control option for spill", 0)
-DEF_VISA_OPTION(vISA_UseSBIDCntrFeature, ET_BOOL_TRUE, "-useSBIDCntr", UNUSED, true)
 
 //=== RA options ===
 DEF_VISA_OPTION(vISA_RoundRobin, ET_BOOL, "-noroundrobin", UNUSED, true)
@@ -559,8 +529,6 @@ DEF_VISA_OPTION(vISA_ScheduleACCDep, ET_BOOL, "-scheduleACCDep",
                 false)
 DEF_VISA_OPTION(vISA_schedWithSendSrcReadCycle, ET_BOOL_TRUE,
                 "-schedWithSendSrcReadCycle", UNUSED, false)
-DEF_VISA_OPTION(vISA_ScheduleFor2xDpas, ET_BOOL_TRUE, "-scheduleFor2xDpas",
-                UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpSendDepLatency, ET_INT32, "-dumpSendDepLatency",
                 "USAGE: -dumpSendDepLatency <0|1|2|3|4...> where 0 is NODEP, 1 "
                 "is RAW, 2 is RAW_MEMORY,... as defined in DepType",
@@ -578,12 +546,6 @@ DEF_VISA_OPTION(vISA_WARSWSBLocalStart, ET_INT32, "-WARSWSBLocalStart", UNUSED, 
 DEF_VISA_OPTION(vISA_WARSWSBLocalEnd, ET_INT32, "-WARSWSBLocalEnd", UNUSED, 0)
 DEF_VISA_OPTION(vISA_IndirectInstStart, ET_INT32, "-indirectInstStart", UNUSED, 0)
 DEF_VISA_OPTION(vISA_IndirectInstEnd, ET_INT32, "-indirectInstEnd", UNUSED, 0)
-DEF_VISA_OPTION(vISA_enableDpasFwd, ET_INT32, "-enableDpasFwd",
-                "Enable Fwd setting for Dpas macros. "
-                "USAGE: -enableDpasFwd <0|1>, where "
-                "0 is disabling, 1 is enabling. "
-                "If not set, the Fwd feature is "
-                "enabled/disabled according to platform setting." , -1)
 DEF_VISA_OPTION(vISA_SWSBTokenBarrier, ET_INT32, "-SWSBTokenBarrier", UNUSED, 0)
 DEF_VISA_OPTION(vISA_EnableSwitch, ET_BOOL, "-enableSwitch", UNUSED, false)
 DEF_VISA_OPTION(vISA_EnableISBIDBUNDLE, ET_BOOL, "-SBIDBundle", UNUSED, false)
@@ -645,24 +607,6 @@ DEF_VISA_OPTION(vISA_SelectiveRAGlobaVarRatioThreshold, ET_CSTR, "-selectiveRAGV
 DEF_VISA_OPTION(vISA_EnableSwapAccSub, ET_BOOL, "-swapAccSub", UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableRRAccSub, ET_BOOL, "-roundRobinAccSub", UNUSED,
                 false)
-DEF_VISA_OPTION(vISA_EURegionRemoval, ET_BOOL_TRUE, "-fixNonMovRegion", UNUSED,
-                false)
-DEF_VISA_OPTION(vISA_AllowSrcCRegion, ET_BOOL_TRUE, "-allowSrcCRegion", UNUSED,
-                false)
-DEF_VISA_OPTION(vISA_RelaxQWRegion, ET_BOOL_TRUE, "-relaxQWRegion", UNUSED,
-                false)
-DEF_VISA_OPTION(vISA_BalanceIntMov, ET_INT32, "-balanceIntMov",
-                "USAGE: -balanceIntMov <ratio>\n", -1)
-DEF_VISA_OPTION(vISA_GAReArchBugFix, ET_BOOL_TRUE, "-GAReArchBugFix", UNUSED,
-                false)
-DEF_VISA_OPTION(vISA_EnableInt32DstMulMad, ET_BOOL_TRUE,
-                "-enableInt32DstMulMad", UNUSED, false)
-DEF_VISA_OPTION(vISA_EnableInt32MULLH, ET_BOOL_TRUE, "-enableInt32Mullh",
-                UNUSED, false)
-// Apply the new ACC usage restructions and add the ACC usage in new
-// instructions and data types
-DEF_VISA_OPTION(vISA_GAReArchACC, ET_BOOL_TRUE, "-GAReArchACC",
-                "To enable new ACC usage rules and restrictions", true)
 //=== binary emission options ===
 DEF_VISA_OPTION(vISA_Compaction, ET_BOOL, "-nocompaction", UNUSED, true)
 DEF_VISA_OPTION(vISA_BXMLEncoder, ET_BOOL, "-nobxmlencoder", UNUSED, true)
@@ -787,8 +731,6 @@ DEF_VISA_OPTION(vISA_skipGitHash, ET_BOOL, "-noGitHash",
 DEF_VISA_OPTION(vISA_SendAWProfiling, ET_BOOL, "-sendAWProfiling",
                 "Emit after write profiling data in .asm", false)
 
-DEF_VISA_OPTION(vISA_EnableKernelArgument, ET_BOOL, "-enableKernelArguments",
-                "Enables XE3 Kernel Arguments", false)
 
 //=== HW Workarounds ===
 DEF_VISA_OPTION(vISA_clearScratchWritesBeforeEOT, ET_BOOL,
@@ -932,11 +874,3 @@ DEF_VISA_OPTION(
 DEF_VISA_OPTION(vISA_SendQueueEntries, ET_INT32, "-sendQueueEntries", UNUSED, 0)
 DEF_VISA_OPTION(vISA_SendQueueSched, ET_BOOL, "-sendQueueSched", UNUSED, false)
 DEF_VISA_OPTION(vISA_multiplePipeSched, ET_BOOL, "-multiplePipeSched", UNUSED, false)
-DEF_VISA_OPTION(vISA_enableEfficient64b, ET_BOOL, "-enableEfficient64b",
-                "Enable generation of efficient64b send instructions", false)
-DEF_VISA_OPTION(vISA_enableOverfetch, ET_BOOL, "-disableOverfetch",
-                "Disable setting overfetch to load's message descriptor", true)
-DEF_VISA_OPTION(vISA_enableOptimizeSIMD32, ET_BOOL_TRUE, "-optimizeSIMD32",
-                "Optimize for SIMD32", true)
-DEF_VISA_OPTION(vISA_enable320and448Vrt, ET_BOOL_TRUE, "-enable320and448Vrt",
-                "Enable VRT config 320/448 GRFs", false)

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2025 Intel Corporation
+Copyright (C) 2019-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -352,8 +352,7 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
   src = src->getRootDeclare();
   unsigned int numRows = dst->getNumRows();
   unsigned int bytesRemaining = dst->getByteSize();
-  unsigned int maxDstSize =
-      coloring->getGRA().use4GRFAlign && isDefault64bMask ? 4 : 2;
+  [[maybe_unused]] const unsigned int maxDstSize = 2;
 
   auto insertCopy = [&](G4_INST *inst) {
     if (pushBack || bb->size() == 0) {
@@ -391,11 +390,6 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
         bytesRemaining <= kernel.numEltPerGRF<Type_UB>() * 2) {
       instOption = G4_InstOption::InstOpt_M0;
     }
-  } else if (maxDstSize == 4) {
-    if (bytesRemaining % kernel.numEltPerGRF<Type_UQ>() == 0 &&
-        bytesRemaining <= kernel.numEltPerGRF<Type_UQ>() * 4) {
-      instOption = G4_InstOption::InstOpt_M0;
-    }
   }
 
   // first copy full GRF rows
@@ -409,11 +403,7 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
 
       unsigned int rowsCopied = 1;
       G4_Type movType = Type_F;
-      if (maxDstSize == 4 &&
-          bytesRemaining >= kernel.numEltPerGRF<Type_UB>() * 4) {
-        rowsCopied = 4;
-        movType = Type_DF;
-      } else if (bytesRemaining >= kernel.numEltPerGRF<Type_UB>() * 2) {
+      if (bytesRemaining >= kernel.numEltPerGRF<Type_UB>() * 2) {
         // copy 2 GRFs at a time if byte size permits
         if (instOption == InstOpt_WriteEnable ||
             kernel.getSimdSize() >= execSize * 2) {

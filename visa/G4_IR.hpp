@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -121,9 +121,6 @@ class G4_InstSend;
 class G4_InstBfn;
 class G4_InstDpas;
 class GlobalOpndHashTable;
-class G4_InstShfl;
-class G4_InstLfsr;
-class G4_InstDnscl;
 
 class G4_INST {
   friend class G4_SendDesc;
@@ -195,7 +192,6 @@ public:
     AFTER_WRITE,
     READ_ALL,
     WRITE_ALL,
-    SBID_CNTR,
   };
 
   enum DistanceType {
@@ -249,25 +245,12 @@ public:
     swsb.SBToken = token;
     swsb.tokenType = SB_SET;
   }
-  void setSBIDCntrToken(unsigned short token) {
-    swsb.SBToken = token;
-    swsb.tokenType = SBID_CNTR;
-  }
-
-  unsigned short getSBIDCtrToken() const {
-    if (swsb.tokenType == SBID_CNTR)
-      return swsb.SBToken;
-    else
-      return -1;
-  }
   // TODO: return the swsb struct and strip out the necessary info at the
   // calling site
   unsigned short getSBIDSetToken() const {
     if (swsb.tokenType == SB_SET)
       return swsb.SBToken;
     else
-      if (swsb.tokenType == SBID_CNTR)
-        return swsb.SBToken;
       return -1;
   }
 
@@ -288,9 +271,7 @@ public:
   bool isOperandTypeIndicated() const { return operandTypeIndicated; }
   bool isClosestALUType() const { return isClosestALUType_; }
 
-  bool isDpas() const {
-    return op == G4_dpas || op == G4_dpasw || op == G4_bdpas;
-  }
+  bool isDpas() const { return (op == G4_dpas || op == G4_dpasw); }
   G4_InstDpas *asDpasInst() const {
     vISA_ASSERT(isDpas(), ERROR_UNKNOWN);
     return (G4_InstDpas *)this;
@@ -374,7 +355,6 @@ public:
   bool isCallerRestore() const;
   bool isCalleeSave() const;
   bool isCalleeRestore() const;
-  bool isShflIdx4() const;
   bool isRelocationMov() const;
   bool isMov() const { return G4_Inst_Table[op].instType == InstTypeMov; }
   bool isLogic() const { return G4_Inst_Table[op].instType == InstTypeLogic; }
@@ -400,24 +380,18 @@ public:
   }
   // does the send split output payload into src0 and src1
   bool isSplitSend() const {
-    return op == G4_sends || op == G4_sendsc || op == G4_sendg ||
-           op == G4_sendgc || op == G4_sendgx || op == G4_sendgxc;
+    return op == G4_sends || op == G4_sendsc;
   }
   bool isSendUnconditional() const {
-    return op == G4_send || op == G4_sends || op == G4_sendg || op == G4_sendgx;
+    return op == G4_send || op == G4_sends;
   }
   bool isSendConditional() const {
-    return op == G4_sendc || op == G4_sendsc || op == G4_sendgc ||
-           op == G4_sendgxc;
-  }
-  bool isSendg() const {
-    return op == G4_sendg || op == G4_sendgc || op == G4_sendgx ||
-           op == G4_sendgxc;
+    return op == G4_sendc || op == G4_sendsc;
   }
   // a send is a indirect send (gather send) if its src0 is ARF Scalar
   bool isSendi() const {
-    if (!isSend() && !isSendg())
-      return false;
+      if (!isSend())
+          return false;
     return getSrc(0)->isS0();
   }
   bool isRSWADivergentInst() const {
@@ -475,7 +449,6 @@ public:
 
   bool nonALUInstructions() const {
     return isSend() || isLabel() || isCFInst() || isDpas() || isIntrinsic() ||
-           opcode() == G4_thryld ||
            opcode() == G4_nop || isWait();
   }
 
@@ -511,31 +484,10 @@ public:
     vISA_ASSERT(isBfn(), ERROR_UNKNOWN);
     return (G4_InstBfn *)this;
   }
-  bool isShfl() const { return op == G4_shfl; }
-
-  const G4_InstShfl *asShflInst() const {
-    vISA_ASSERT(isShfl(), ERROR_UNKNOWN);
-    return reinterpret_cast<const G4_InstShfl *>(this);
-  }
-
-  bool isLfsr() const { return op == G4_lfsr; }
-
-  const G4_InstLfsr *asLfsrInst() const {
-    vISA_ASSERT(isLfsr(), ERROR_UNKNOWN);
-    return reinterpret_cast<const G4_InstLfsr *>(this);
-  }
-
-  bool isDnscl() const { return op == G4_dnscl; }
-
-  const G4_InstDnscl* asDnsclInst() const {
-    vISA_ASSERT(isDnscl(), ERROR_UNKNOWN);
-    return reinterpret_cast<const G4_InstDnscl *>(this);
-  }
 
   bool isPseudoUse() const;
   G4_Type getExecType() const;
   G4_Type getExecType2() const;
-  uint8_t getExecTypeSizeXe3p() const;
   bool isComprInst() const { return detectComprInst(); }
   bool isComprInvariantSrcRegion(G4_SrcRegRegion *src, int srcPos);
 
@@ -668,7 +620,6 @@ public:
   bool isBreakPointInst() const {
     return (option & InstOpt_BreakPoint) ? true : false;
   }
-  bool isFwdInst() const { return (option & InstOpt_Fwd) ? true : false; }
   bool isCachelineAligned() const {
     return (option & InstOpt_CachelineAligned) ? true : false;
   }
@@ -776,7 +727,6 @@ public:
   bool isJEUPipeInstructionXe() const;
   bool isS0PipeInstructionXe() const;
   bool isLongPipeInstructionXe() const;
-  bool isFloatInIntegerPipe() const;
   bool isIntegerPipeInstructionXe() const;
   bool isFloatPipeInstructionXe() const;
 
@@ -1112,11 +1062,6 @@ public:
   // Check if this is int dpas or half-float dpas
   bool isBF16() const { return Src1Precision == GenPrecision::BF16; }
   bool isFP16() const { return Src1Precision == GenPrecision::FP16; }
-  bool isBF8() const { return Src1Precision == GenPrecision::BF8; }
-  bool isHF8() const { return Src1Precision == GenPrecision::HF8; }
-  bool isFP8() const { return (isBF8() || isHF8()); }
-  bool isE2M1() const { return Src1Precision == GenPrecision::E2M1; }
-  bool isFP4() const { return isE2M1(); }
   bool isTF32() const { return Src1Precision == GenPrecision::TF32; }
   bool isInt() const;
   bool isInt8() const;
@@ -1152,10 +1097,6 @@ public:
   void computeRightBound(G4_Operand *opnd) override;
   void setMayNeedWA(bool b) { mayNeedRSWA = b; }
   bool mayNeedWA() const { return mayNeedRSWA; }
-  bool isDstAndSrc0MixOfBF16AndFP32() const;
-  // The function checks if both dpas instructions satisfy fwd rules for
-  // dst/src0 types.
-  bool checksFwdTypes(const G4_InstDpas &next) const;
   // The function checks if both dpas instructions satisfy macro rules for
   // operand types.
   bool checksMacroTypes(const G4_InstDpas &next) const;
@@ -1179,8 +1120,6 @@ typedef enum {
   MATH_INT_DIV_REM = 0xD,
   MATH_INVM = 0xE,
   MATH_RSQRTM = 0xF,
-  MATH_TANH = 0x10,
-  MATH_SIGM = 0x11,
 } G4_MathOp;
 
 class G4_InstMath : public G4_INST {
@@ -1204,9 +1143,9 @@ public:
   }
   bool isOneSrcMath() const {
     return mathOp == MATH_INV || mathOp == MATH_LOG || mathOp == MATH_EXP ||
-           mathOp == MATH_SQRT || mathOp == MATH_RSQ || mathOp == MATH_SIN ||
-           mathOp == MATH_COS || mathOp == MATH_RSQRTM || mathOp == MATH_TANH ||
-           mathOp == MATH_SIGM;
+      mathOp == MATH_SQRT || mathOp == MATH_RSQ || mathOp == MATH_SIN ||
+      mathOp == MATH_COS || mathOp == MATH_RSQRTM
+      ;
   }
   G4_MathOp getMathCtrl() const { return mathOp; }
 };
@@ -1362,11 +1301,6 @@ public:
               G4_ExecSize execSize, G4_DstRegRegion *dst, G4_SrcRegRegion *src0,
               G4_SrcRegRegion *src1, G4_Operand *src2desc,
               G4_Operand *src3extDesc, G4_InstOpts opt, G4_SendDescRaw *md);
-  // sendg instruction
-  G4_InstSend(const IR_Builder &builder, G4_Predicate *prd, G4_opcode o,
-              G4_ExecSize execSize, G4_DstRegRegion *dst, G4_SrcRegRegion *src0,
-              G4_SrcRegRegion *src1, G4_SrcRegRegion *src2ind0,
-              G4_SrcRegRegion *src3ind1, G4_InstOpts opt, G4_SendgDesc *md);
 
   G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
 
@@ -1376,28 +1310,15 @@ public:
       op = G4_sendc;
     } else if (op == G4_sends) {
       op = G4_sendsc;
-    } else if (op == G4_sendg) {
-      op = G4_sendgc;
-    } else if (op == G4_sendgx) {
-      op = G4_sendgxc;
     }
   }
 
-  void setSendgx() {
-    if (op == G4_sendg) {
-      op = G4_sendgx;
-    } else if (op == G4_sendgc) {
-      op = G4_sendgxc;
-    }
-  }
 
   G4_Operand *getMsgDescOperand() const {
-    vISA_ASSERT(!isSendg(), "should not be called on sendg");
     return isSplitSend() ? srcs[2] : srcs[1];
   }
 
   G4_Operand *getMsgExtDescOperand() const {
-    vISA_ASSERT(!isSendg(), "should not be called on sendg");
     vISA_ASSERT(isSplitSend(), "must be a split send instruction");
     return srcs[3];
   }
@@ -1448,66 +1369,8 @@ public:
 
   void setSerialize() { option = option | InstOpt_Serialize; }
   bool isSerializedInst() const { return (option & InstOpt_Serialize) != 0; }
-  void setIND0(G4_Operand *ind0) { setSrc(ind0, 2); }
-  void setIND1(G4_Operand *ind1) { setSrc(ind1, 3); }
-  G4_Operand* getIND0() { return getSrc(2); }
-  G4_Operand* getIND1() { return getSrc(3); }
 };     // G4_InstSend
 
-class G4_InstShfl : public G4_INST {
-public:
-  typedef enum {
-    SHFL_IDX4 = 0,
-  } G4_ShflOp;
-
-  G4_InstShfl(const IR_Builder &builder, G4_Predicate *prd, G4_opcode op,
-              G4_CondMod *conMod, G4_Sat sat, G4_ExecSize execSize,
-              G4_DstRegRegion *dst, G4_Operand *src0, G4_Operand *src1,
-              G4_InstOpts opt, G4_ShflOp shflOp)
-      : G4_INST(builder, prd, op, conMod, sat, execSize, dst, src0, src1, opt),
-        shflOp(shflOp) {}
-
-  G4_ShflOp getShflFCtrl() const { return shflOp; }
-
-private:
-  G4_ShflOp shflOp;
-};
-
-class G4_InstLfsr : public G4_INST {
-public:
-  G4_InstLfsr(const IR_Builder &builder, G4_Predicate *prd,
-              G4_ExecSize execSize, G4_DstRegRegion *dst, G4_Operand *src0,
-              G4_Operand *src1, G4_InstOpts opt, LFSR_FC fCtrl)
-      : G4_INST(builder, prd, G4_lfsr, nullptr, g4::NOSAT, execSize, dst, src0,
-                src1, opt),
-        funcCtrl(fCtrl) {}
-
-  LFSR_FC getLfsrFCtrl() const { return funcCtrl; }
-
-private:
-  LFSR_FC funcCtrl;
-};
-
-class G4_InstDnscl : public G4_INST {
-public:
-  G4_InstDnscl(const IR_Builder &builder, G4_Predicate *prd,
-               G4_ExecSize execSize, G4_DstRegRegion *dst, G4_Operand *src0,
-               G4_Operand *src1, G4_Operand *src2, G4_InstOpts opt,
-               DNSCL_CONVERT_TYPE t,
-               DNSCL_MODE m, DNSCL_RND_MODE rm)
-      : G4_INST(builder, prd, G4_dnscl, nullptr, g4::NOSAT, execSize, dst, src0,
-                src1, src2, opt),
-        type(t), mode(m), rndMode(rm) {}
-
-  DNSCL_CONVERT_TYPE getDnsclConvertType() const { return type; }
-  DNSCL_MODE getDnsclMode() const { return mode; }
-  DNSCL_RND_MODE getDnsclRoundMode() const { return rndMode; }
-
-private:
-  DNSCL_CONVERT_TYPE type;
-  DNSCL_MODE mode;
-  DNSCL_RND_MODE rndMode;
-};
 } // namespace vISA
 
 enum class PseudoKillType { FromLiveness = 1, Src = 2, Other = 3 };
@@ -1546,7 +1409,6 @@ enum class Intrinsic {
   BarrierWA,
   IEEEExceptionTrap,
   Breakpoint,
-  ShflIdx4,
   NumIntrinsics
 };
 
@@ -1605,7 +1467,6 @@ class G4_InstIntrinsic : public G4_INST {
            Phase::SWSB, 0},
           {Intrinsic::Breakpoint, "breakpoint", 0, 0, Phase::SWSB,
            1ull << HasSideEffects},
-          {Intrinsic::ShflIdx4, "shfl_idx4", 1, 2, Phase::SWSB, 0},
       };
 
 public:
@@ -1798,10 +1659,6 @@ inline bool G4_INST::isCalleeRestore() const {
          asIntrinsicInst()->getIntrinsicId() == Intrinsic::CalleeRestore;
 }
 
-inline bool G4_INST::isShflIdx4() const {
-  return isIntrinsic() &&
-    asIntrinsicInst()->getIntrinsicId() == Intrinsic::ShflIdx4;
-}
 inline bool G4_INST::isRelocationMov() const {
   return isMov() && srcs[0]->isRelocImm();
 }

@@ -219,18 +219,6 @@ DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_OR,     "atomic_or",     0x19,
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_XOR,    "atomic_xor",    0x1A,
                            MSGOP_ATTRS_ATOMIC_BINARY)
 //
-DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_BFADD, "atomic_bfadd", 0x21,
-                           MSGOP_ATTRS_ATOMIC_BINARY)
-DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_BFSUB, "atomic_bfsub", 0x22,
-                           MSGOP_ATTRS_ATOMIC_BINARY)
-DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_BFMIN, "atomic_bfmin", 0x23,
-                           MSGOP_ATTRS_ATOMIC_BINARY)
-DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_BFMAX, "atomic_bfmax", 0x24,
-                           MSGOP_ATTRS_ATOMIC_BINARY)
-DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_BFCAS, "atomic_bfcas", 0x25,
-                           MSGOP_ATTRS_ATOMIC_TERNARY)
-DEFINE_G4_MSGOP_LSC_OTHER(EXTENDED_CACHE_CTRL,  "extended_cache_ctrl", 0x33,
-                          MSGOP_ATTRS_EMPTY)
 
 // setting this to binary as src0 is null and src1 is the data operand
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_ACADD,  "atomic_acadd",  0x28,
@@ -254,14 +242,6 @@ DEFINE_G4_MSGOP_GTWY(EOTR, "eotr", 0x0A, MSGOP_ATTRS_EMPTY)
 DEFINE_G4_MSGOP_GTWY(BARRIER_SIGNAL, "barrier_signal", 0x04,
                      MSGOP_ATTRS_EMPTY)
 DEFINE_G4_MSGOP_GTWY(BARRIER_SIGNAL_NAMED, "barrier_signal_named", 0x05,
-                     MSGOP_ATTRS_EMPTY)
-DEFINE_G4_MSGOP_GTWY(BARRIER_SAVE, "barrier_save", 0x08, MSGOP_ATTRS_EMPTY)
-DEFINE_G4_MSGOP_GTWY(BARRIER_RESTORE, "barrier_restore", 0x09,
-                     MSGOP_ATTRS_EMPTY)
-DEFINE_G4_MSGOP_GTWY(BARRIER_SIGNAL_SYSTEM_ROUTINE,
-                     "barrier_signal_system_routine", 0x0C, MSGOP_ATTRS_EMPTY)
-//
-DEFINE_G4_MSGOP_GTWY(RESTORE_BTD_STACK, "restore_btd_stack", 0x0B,
                      MSGOP_ATTRS_EMPTY)
 
 
@@ -299,10 +279,6 @@ DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO_D, "sample_po_d", 0x24,
                             MSGOP_ATTRS_EMPTY)
 DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO_L_C, "sample_po_l_c", 0x26,
                             MSGOP_ATTRS_EMPTY)
-DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO_B_C, "sample_po_b_c", 0x25,
-        MSGOP_ATTRS_EMPTY)
-DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO_D_C, "sample_po_d_c", 0x34,
-        MSGOP_ATTRS_EMPTY)
 DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO_LZ, "sample_po_lz", 0x38,
                             MSGOP_ATTRS_EMPTY)
 DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO_C_LZ, "sample_po_c_lz", 0x39,

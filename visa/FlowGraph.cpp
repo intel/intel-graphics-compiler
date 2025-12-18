@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -628,16 +628,6 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
   VISA_DEBUG(std::cout << "Entering CFG construction\n");
 
   bool scratchUse = false;
-  if (builder->getOption(vISA_enableEfficient64b)) {
-    scratchUse =
-      (
-       getKernel()->isPrivateMemUsed() ||
-       // 3d scratch support
-       getKernel()->getKernelAttrs()->getInt32KernelAttr(Attributes::ATTR_ScratchIndirectRegOffset) > 0 ||
-       getKernel()->getKernelAttrs()->getInt32KernelAttr(Attributes::ATTR_ScratchIndirectMemOffset) > 0 ||
-       getKernel()->getKernelAttrs()->getInt32KernelAttr(Attributes::ATTR_ScratchInlineOffset) > 0
-      );
-  }
   if (builder->hasScratchSurface() && (isStackCallFunc || hasStackCalls || scratchUse)) {
     // unfortunately we can't put this in stack call prolog since this has to be
     // done before RA ToDo: just hard-wire the scratch-surface offset register?
@@ -4642,10 +4632,6 @@ uint32_t RelocationEntry::getTargetOffset(const IR_Builder &builder) const {
   case G4_sendc:
   case G4_sends:
   case G4_sendsc:
-  case G4_sendg:
-  case G4_sendgc:
-  case G4_sendgx:
-  case G4_sendgxc:
       vISA_ASSERT(relocType == R_SEND,
           "Invalid relocation entry type for send instruction");
       // R_SEND relocation symbol is send's instruction starting offset.

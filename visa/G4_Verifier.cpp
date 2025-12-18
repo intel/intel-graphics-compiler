@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -91,10 +91,6 @@ bool G4Verifier::verifyInst(G4_INST *inst) {
       verifySend(inst);
     } else if (inst->isDpas()) {
       verifyDpas(inst);
-    } else if (inst->isLfsr()) {
-      verifyLfsr(inst);
-    } else if (inst->isDnscl()) {
-      verifyDnscl(inst);
     }
     verifyAccMov(inst);
 
@@ -355,19 +351,6 @@ void G4Verifier::verifySend(G4_INST *inst) {
         }
       }
     }
-    if (kernel.getNumRegTotal() == 512) {
-      // verify that r511 is not used as a source for sendgx/sendgxc.
-      auto checkNotLastGRF = [this](G4_Operand *opnd) {
-        auto r511InBytes = 511 * kernel.numEltPerGRF<Type_UB>();
-        if (opnd->isNullReg())
-          return true;
-        return opnd->getLinearizedStart() < r511InBytes;
-      };
-      vISA_ASSERT(checkNotLastGRF(dst), "dst can't be r511 for sendgx");
-      vISA_ASSERT(checkNotLastGRF(src0), "src0 can't be r511 for sendgx");
-      if (src1)
-        vISA_ASSERT(checkNotLastGRF(src1), "src1 can't be r511 for sendgx");
-    }
   }
 }
 
@@ -498,7 +481,6 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
     // Only valid ARF type are NULL and Accumulator for ternary instructions
     if (passIndex == Optimizer::PI_HWConformityChk && inst->getNumSrc() == 3) {
       if (opnd->isAreg() && !opnd->isNullReg() && !opnd->isAccReg() &&
-          (inst->getPlatform() <= Xe3) &&
           !(opnd == inst->getSrc(0) && opnd->isSrReg()))
         vISA_ASSERT(false, "Not allowed ARF in ternary instruction");
     }
@@ -612,7 +594,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
                     "Dst cannot span more than 4 GRFs!");
       } else if ((opnd->getRightBound() - opnd->getLeftBound()) >
                      (2u * kernel.numEltPerGRF<Type_UB>()) &&
-                 (inst->opcode() != G4_madw && inst->opcode() != G4_mullh)) {
+                 (inst->opcode() != G4_madw)) {
         DEBUG_VERBOSE(
             "Difference between left/right bound is greater than 2 GRF for dst "
             "region. Single non-send opnd cannot span 2 GRFs. lb = "
@@ -623,9 +605,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
         vISA_ASSERT(false, "Left/right bound span incorrect!");
       }
 
-      if (!(kernel.fg.builder->hasSimplifiedRegions() ||
-            kernel.fg.builder->getOption(vISA_GAReArchBugFix)) &&
-          inst->getMaskOffset() > 0 && opnd == inst->getImplAccDst()) {
+      if (inst->getMaskOffset() > 0 && opnd == inst->getImplAccDst()) {
         // Update left/right bound as per inst mask offset, eg Q2
         // has offset 8
         G4_Type extype;
@@ -806,33 +786,6 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
                "operand with mme must be GRF-aligned");
       }
     }
-    if (passIndex == Optimizer::PI_HWConformityChk &&
-        inst->getPlatform() > Xe3) {
-      if (inst->getNumSrc() >= 3) {
-        vISA_ASSERT(!opnd->isIndirect(),
-                    "operand must not be indirect for 3-src instructions");
-      } else {
-        if (opnd == inst->getSrc(1) && opnd->isIndirect()) {
-          vISA_ASSERT(!inst->isMath(),
-                      "indirect is not allowed by math instructions");
-          vISA_ASSERT(opnd->isScalarSrc(), "indirect src1 can be only scalar");
-        }
-
-        if (opnd == inst->getSrc(0) && opnd->isIndirect()) {
-          vISA_ASSERT(!inst->isMath(),
-                      "indirect is not allowed by math instructions");
-          if (opnd->asSrcRegRegion()->getRegion()->isRegionWH()) {
-            vISA_ASSERT(inst->isIntegerPipeInstructionXe(),
-                        "Vx1/VxH indirect addressing mode can be only for int "
-                        "pipeline");
-            vISA_ASSERT(!IS_QTYPE(opnd->getType()) &&
-                            !IS_BTYPE(opnd->getType()),
-                        "Q/B datatypes are not supported in Vx1/VxH indirect "
-                        "addressing modes");
-          }
-        }
-      }
-    }
   }
 }
 
@@ -1009,22 +962,6 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     DEBUG_VERBOSE("\n");
     vISA_ASSERT(false, "may not have predicate/condMod");
   }
-  if (dpasInst->isInt() && (kernel.fg.builder->hasSimplifiedRegions() ||
-      kernel.fg.builder->getOption(vISA_GAReArchBugFix))) {
-    auto src1Precision = dpasInst->getSrc1Precision();
-    auto src2Precision = dpasInst->getSrc2Precision();
-    if (dpasInst->GetPrecisionSizeInBits(src1Precision) !=
-            dpasInst->GetPrecisionSizeInBits(src2Precision) ||
-        src1Precision == GenPrecision::U2 ||
-        src1Precision == GenPrecision::S2) {
-      VISA_DEBUG_VERBOSE({
-        std::cout << "should not have u2/s2 and mixed precision";
-        inst->emit(std::cerr);
-        std::cout << "\n";
-      });
-      vISA_ASSERT(false, "u2/s2 and mixed precision is not supported");
-    }
-  }
 
   G4_DstRegRegion *dst = dpasInst->getDst();
   G4_Type dTy = dst->getType();
@@ -1059,23 +996,6 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     vISA_ASSERT(false, "no indirect register access supported!");
   }
 
-  if (dpasInst->opcode() == G4_bdpas) {
-    G4_Type s4Ty = dpasInst->getSrc(4)->getType();
-
-    if (!(s1Ty == Type_UD || s1Ty == Type_BF || s1Ty == Type_HF) ||
-        !(s2Ty == Type_UD || s2Ty == Type_BF || s2Ty == Type_HF)) {
-      DEBUG_VERBOSE("incorrect bdpas type for src1 or src2!");
-      inst->emit(std::cerr);
-      DEBUG_VERBOSE("\n");
-      vISA_ASSERT(false, "wrong bdpas type for src1 or src2");
-    }
-    if (s3Ty != Type_UB || s4Ty != Type_UB) {
-      DEBUG_VERBOSE("block scaling src3 and src4 shall be of type UB!");
-      inst->emit(std::cerr);
-      DEBUG_VERBOSE("\n");
-      vISA_ASSERT(false, "block scaling src3 and src4 shall be of type UB!");
-    }
-  } else
   if (!(s1Ty == Type_UD || s1Ty == Type_D) ||
       !(s2Ty == Type_UD || s2Ty == Type_D))
   {
@@ -1112,49 +1032,6 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
       vISA_ASSERT(false, "should be float type for dst or src0");
     }
   }
-
-  else if (dpasInst->isFP8()) {
-    auto plat = dpasInst->getPlatform();
-    if (plat > Xe3) {
-      if ((dTy != Type_F && dTy != Type_BF) ||
-          (s0Ty != Type_F && s0Ty != Type_BF)) {
-        DEBUG_VERBOSE("incorrect type for dst or src0, expecting F or BF!");
-        inst->emit(std::cerr);
-        DEBUG_VERBOSE("\n");
-        vISA_ASSERT(false, "should be type F or BF for dst or src0");
-      }
-    }
-    else {
-      if (dTy != Type_F || s0Ty != Type_F) {
-        DEBUG_VERBOSE("incorrect type for dst or src0, expecting F!");
-        inst->emit(std::cerr);
-        DEBUG_VERBOSE("\n");
-        vISA_ASSERT(false, "should be type F for dst or src0");
-      }
-    }
-    if (dpasInst->isHF8() && plat <= Xe3) {
-      DEBUG_VERBOSE("incorrect HF8 type for src1 or src2!");
-      inst->emit(std::cerr);
-      DEBUG_VERBOSE("\n");
-      vISA_ASSERT(false, "type HF8 not supported for src1 or src2");
-    }
-  }
-  else if (dpasInst->isFP4()) {
-    if (!kernel.fg.builder->hasDpasFP4() ||
-        !dpasInst->hasSameSrc2Precision(GenPrecision::E2M1)) {
-      DEBUG_VERBOSE("incorrect 4-bit float type for src1 or src2!");
-      inst->emit(std::cerr);
-      DEBUG_VERBOSE("\n");
-      vISA_ASSERT(false, "4-bit float type not supported for src1 or src2");
-    }
-    if ((dTy != Type_F && dTy != Type_BF) ||
-        (s0Ty != Type_F && s0Ty != Type_BF)) {
-      DEBUG_VERBOSE("incorrect type for dst or src0, expecting F or BF!");
-      inst->emit(std::cerr);
-      DEBUG_VERBOSE("\n");
-      vISA_ASSERT(false, "should be type F or BF for dst or src0");
-    }
-  }
   else {
     DEBUG_VERBOSE("invalid!");
     inst->emit(std::cerr);
@@ -1163,21 +1040,11 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
   }
 
   bool invalidRegion = false;
-  if (dpasInst->opcode() == G4_bdpas) {
-    G4_Operand *opnd4 = dpasInst->getSrc(4);
-    G4_SrcRegRegion *src4 = opnd4->asSrcRegRegion();
-    invalidRegion = dst->getHorzStride() != 1 ||
-                    (!src0->isNullReg() && !src0->getRegion()->isRegion110()) ||
-                    !src1->getRegion()->isRegion110() ||
-                    !src2->getRegion()->isRegion110() ||
-                    (!src3->isNullReg() && !src3->getRegion()->isRegion110()) ||
-                    (!src4->isNullReg() && !src4->getRegion()->isRegion110());
-  } else
-    invalidRegion = dst->getHorzStride() != 1 ||
-                    (!src0->isNullReg() && !src0->getRegion()->isRegion110()) ||
-                    !src1->getRegion()->isRegion110() ||
-                    !src2->getRegion()->isRegion110() ||
-                    (src3 && !src3->getRegion()->isRegion110());
+  invalidRegion =
+      dst->getHorzStride() != 1 ||
+      (!src0->isNullReg() && !src0->getRegion()->isRegion110()) ||
+      !src1->getRegion()->isRegion110() || !src2->getRegion()->isRegion110() ||
+      (src3 && !src3->getRegion()->isRegion110());
   if (invalidRegion) {
     DEBUG_VERBOSE("src region should be <1;1,0> and dst region <1>!");
     inst->emit(std::cerr);
@@ -1202,61 +1069,6 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
       vISA_ASSERT(false, "repeat count must be 1 to 8!");
     }
 
-    else if (dpasInst->opcode() == G4_bdpas) {
-      if (ES != 16) {
-        DEBUG_VERBOSE("execsize must be 16!");
-        inst->emit(std::cerr);
-        DEBUG_VERBOSE("\n");
-        vISA_ASSERT(false, "execsize must be 16!");
-      }
-
-      if (RC != 8) {
-        DEBUG_VERBOSE("repeat count must be 8!");
-        inst->emit(std::cerr);
-        DEBUG_VERBOSE("\n");
-        vISA_ASSERT(false, "repeat count must be 8!");
-      }
-
-      if (D != 8) {
-        DEBUG_VERBOSE("depth must be 8!");
-        inst->emit(std::cerr);
-        DEBUG_VERBOSE("\n");
-        vISA_ASSERT(false, "depth must be 8!");
-      }
-
-      G4_SrcRegRegion *src4 = dpasInst->getSrc(4)->asSrcRegRegion();
-      if (dpasInst->isFP16() || dpasInst->isBF16() || dpasInst->isFP8()) {
-        if ((src3->getSubRegOff() & 15) != 0) {
-          DEBUG_VERBOSE("For 16-bit and 8-bit data types, src3 subregisters must "
-                        "be {0, 16, 32, 48}:ub");
-          inst->emit(std::cerr);
-          DEBUG_VERBOSE("\n");
-          vISA_ASSERT(false, "invalid subreg for src3");
-        }
-        if ((src4->getSubRegOff() & 7) != 0) {
-          DEBUG_VERBOSE("For 16-bit and 8-bit data types, src4 subregisters must "
-                        "be {0, 8, 16, 24, 32, 40, 48, 56}:ub");
-          inst->emit(std::cerr);
-          DEBUG_VERBOSE("\n");
-          vISA_ASSERT(false, "invalid subreg for src4");
-        }
-      } else if (dpasInst->isFP4()) {
-        if (src3->getSubRegOff() > 16 || (src3->getSubRegOff() & 15) != 0) {
-          DEBUG_VERBOSE("For 4-bit data types, src3 subregisters must be "
-                        "{0, 16}:ub");
-          inst->emit(std::cerr);
-          DEBUG_VERBOSE("\n");
-          vISA_ASSERT(false, "invalid subreg for src3");
-        }
-        if (src4->getSubRegOff() > 24 || (src4->getSubRegOff() & 7) != 0) {
-          DEBUG_VERBOSE("For 4-bit data types, src4 subregisters must "
-                        "be {0, 8, 16, 24}:ub");
-          inst->emit(std::cerr);
-          DEBUG_VERBOSE("\n");
-          vISA_ASSERT(false, "invalid subreg for src4");
-        }
-      }
-    }
 
     uint32_t dAlignBytes = TypeSize(dTy) * ES;
     uint32_t s0AlignBytes = TypeSize(s0Ty) * ES;
@@ -1419,19 +1231,6 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
     DEBUG_VERBOSE("\n");
     vISA_ASSERT(false, "BF type: BF mixed mode not supported!!");
   }
-  if (inst->isPureBFInst() && kernel.fg.builder->supportPureBF()) {
-    verifyPureBFMode(inst);
-    return;
-  }
-
-  if (inst->getPlatform() > Xe3) {
-    // Except for mov, fcvt and srnd instructions, HWConformityPro has fixed
-    // the BF mixed mode and BF pure mode by promoting all BF operands to float.
-    vISA_ASSERT(inst->opcode() == G4_mov || inst->opcode() == G4_fcvt ||
-                    inst->opcode() == G4_srnd,
-                "BF mixed or pure modes are not allowed by vISA!!");
-    return;
-  }
 
   // case 8, pure bf not supported
   if (!useGivenType(inst, Type_F)) {
@@ -1561,154 +1360,4 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
     vISA_ASSERT(false, ss.str().c_str());
   }
   return;
-}
-void G4Verifier::verifyPureBFMode(G4_INST *inst) {
-  if (!inst->isPureBFInst())
-    return;
-
-  if (!inst->canSupportPureBF()) {
-    DEBUG_VERBOSE("Instruction does not support pure BF mode!");
-    inst->emit(std::cerr);
-    DEBUG_VERBOSE("\n");
-    vISA_ASSERT_UNREACHABLE("Instruction does not support pure BF mode!");
-  }
-
-  auto dst = inst->getDst();
-  uint32_t dstSubRegOffset = 0;
-  bool dstHasFixedSubregOffset = false;
-  uint32_t dstStrideInBytes = dst->getExecTypeSize();
-  if (dst->isNullReg()) {
-    dstSubRegOffset = 0;
-    dstHasFixedSubregOffset = true;
-  } else {
-    dstHasFixedSubregOffset =
-        dst->hasFixedSubregOffset(inst->getBuilder(), dstSubRegOffset);
-  }
-
-  for (int i = 0, sz = (int)inst->getNumSrc(); i < sz; ++i) {
-    auto src = inst->getSrc(i);
-    if (src->isImm()) {
-      DEBUG_VERBOSE(
-          "Src can not be immediate operand in pure BF mode!");
-      inst->emit(std::cerr);
-      DEBUG_VERBOSE("\n");
-      vISA_ASSERT(false,
-          "Dst can not be immediate operand in pure BF mode!");
-    }
-
-    auto srcRR = src->asSrcRegRegion();
-    if (srcRR->isScalar())
-      continue;
-
-    uint32_t srcSubRegOffset = 0;
-    bool srcHasFixedSubregOffset = false;
-    uint16_t srcStride = 0;
-    srcRR->getRegion()->isSingleStride(inst->getExecSize(), srcStride);
-    uint32_t srcStrideInBytes = srcStride * src->getTypeSize();
-    if (src->isNullReg()) {
-      srcSubRegOffset = 0;
-      srcHasFixedSubregOffset = true;
-    } else {
-      srcHasFixedSubregOffset =
-          srcRR->hasFixedSubregOffset(inst->getBuilder(), srcSubRegOffset);
-    }
-
-    bool hasValidRegion = dstHasFixedSubregOffset && srcHasFixedSubregOffset &&
-                          (dstSubRegOffset == srcSubRegOffset) &&
-                          (dstStrideInBytes == srcStrideInBytes);
-    if (!hasValidRegion && inst->isMath()) {
-      hasValidRegion = dstHasFixedSubregOffset && srcHasFixedSubregOffset &&
-                       (dstStrideInBytes == srcStrideInBytes) &&
-                       (srcSubRegOffset / 4 == dstSubRegOffset / 4);
-    }
-    if (!hasValidRegion) {
-      DEBUG_VERBOSE(
-          "register regioning is illegal for this pure BF instruction!");
-      inst->emit(std::cerr);
-      DEBUG_VERBOSE("\n");
-      vISA_ASSERT(
-          false, "register regioning is illegal for this pure BF instruction!");
-    }
-  }
-
-  return;
-}
-
-void G4Verifier::verifyLfsr(G4_INST *inst) {
-  const G4_InstLfsr *lfsrInst = inst->asLfsrInst();
-
-  // No saturation
-  if (inst->getSaturate())
-    vISA_ASSERT(false, "lfsr doesn't support saturation");
-
-  G4_DstRegRegion *dst = lfsrInst->getDst();
-  G4_Type dTy = dst->getType();
-  vISA_ASSERT(dTy == Type_UD, "dst type of lfsr must be UD");
-  vISA_ASSERT(dst->getHorzStride() == 1, "dst region of lfsr must be <1>");
-
-  G4_SrcRegRegion *src0 = lfsrInst->getSrc(0)->asSrcRegRegion();
-  G4_Type s0Ty = src0->getType();
-  vISA_ASSERT(s0Ty == Type_UD, "src0 type of lfsr must be UD");
-  vISA_ASSERT(!src0->hasModifier(), "lfsr doesn't support source modifier");
-  vISA_ASSERT(src0->getRegion()->isRegion110() || src0->getRegion()->isScalar(),
-              "src0 region of lfsr must be <1;1,0> or <0;1,1>");
-  vISA_ASSERT(!src0->isIndirect(), "lfsr doesn't support indirect access");
-
-  if (lfsrInst->getSrc(1)->isSrcRegRegion()) {
-    G4_SrcRegRegion *src1 = lfsrInst->getSrc(1)->asSrcRegRegion();
-    G4_Type s1Ty = src1->getType();
-    vISA_ASSERT(s1Ty == Type_UD, "src1 type of lfsr must be UD");
-    vISA_ASSERT(!src1->hasModifier(), "lfsr doesn't support source modifier");
-    vISA_ASSERT(src1->getRegion()->isRegion110() ||
-                    src1->getRegion()->isScalar(),
-                "src1 region of lfsr must be <1;1,0> or <0;1,0>");
-    vISA_ASSERT(!src1->isIndirect(), "lfsr doesn't support indirect access");
-  }
-}
-
-void G4Verifier::verifyDnscl(G4_INST *inst) {
-  const G4_InstDnscl *dnsclInst = inst->asDnsclInst();
-
-  G4_DstRegRegion *dst = dnsclInst->getDst();
-  G4_Type dTy = dst->getType();
-  G4_SrcRegRegion *src0 = dnsclInst->getSrc(0)->asSrcRegRegion();
-  G4_Type s0Ty = src0->getType();
-  G4_SrcRegRegion *src1 = dnsclInst->getSrc(1)->asSrcRegRegion();
-  G4_Type s1Ty = src1->getType();
-  G4_SrcRegRegion *src2 = dnsclInst->getSrc(2)->asSrcRegRegion();
-  G4_Type s2Ty = src2->getType();
-
-  // No saturation
-  if (inst->getSaturate())
-    vISA_ASSERT(false, "dnscl doesn't support saturation");
-
-  // No source modifier
-  if (src0->hasModifier() || src1->hasModifier() || src2->hasModifier())
-    vISA_ASSERT(false, "dnscl doesn't support source modifier");
-
-  // No indirect register access
-  if (src0->isIndirect() || src1->isIndirect() || src2->isIndirect())
-    vISA_ASSERT(false, "dnscl doesn't support indirect access");
-
-  // All dst/src operands must be UD datatype
-  if (dTy != Type_UD || s0Ty != Type_UD || s1Ty != Type_UD || s2Ty != Type_UD)
-    vISA_ASSERT(false, "only UD data type is allowed for dnscl");
-
-  // Dst region must be <1>
-  if (dst->getHorzStride() != 1)
-    vISA_ASSERT(false, "dst region of dnscl must be <1>");
-
-  // Src0/src1 region must be <1;1,0>, src2 region must be <1;1,0>, or <2;2,1>
-  // due to normalizeRegion pass.
-  if (inst->getExecSize() != g4::SIMD1) {
-    if (!src0->getRegion()->isRegion110() || !src1->getRegion()->isRegion110())
-      vISA_ASSERT(false, "src0/src1 region of dnscl must be <1;1,0>");
-
-    bool src2IsRegion221 = src2->getRegion()->vertStride == 2 &&
-                           src2->getRegion()->width == 2 &&
-                           src2->getRegion()->horzStride == 1;
-    if (!src2->isNullReg() &&
-        !(src2->getRegion()->isRegion110() || src2IsRegion221))
-      vISA_ASSERT(false, "src2 region of dnscl must be <1;1,0> or <2;2,1>");
-  }
 }

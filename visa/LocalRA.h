@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -78,7 +78,6 @@ private:
                             INST_LIST_ITER inst_it, unsigned int pos);
   void addOutOfBoundForbidden(G4_Declare *dcl, G4_Operand *opnd);
   void markSpecialForbidden(INST_LIST_ITER inst_it);
-  void markLargeGRFForbidden(INST_LIST_ITER inst_it);
   void markReferencesInInst(INST_LIST_ITER inst_it);
   void setLexicalID(bool includePseudo);
   void markReferences(unsigned int &numRowsEOT, bool &lifetimeOpFound);
