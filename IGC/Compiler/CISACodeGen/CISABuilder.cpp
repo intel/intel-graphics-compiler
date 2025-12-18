@@ -3283,19 +3283,19 @@ void CEncoder::AddVISASymbol(std::string &symName, CVariable *cvar) {
 }
 
 void CEncoder::SaveOption(vISAOptions option, bool val) {
-  OptionValue entry;
+  OptionValue entry{};
   entry.type = OpType::ET_BOOL;
   entry.vBool = val;
   m_visaUserOptions.push_back(std::make_pair(option, entry));
 }
 void CEncoder::SaveOption(vISAOptions option, uint32_t val) {
-  OptionValue entry;
+  OptionValue entry{};
   entry.type = OpType::ET_INT32;
   entry.vInt32 = val;
   m_visaUserOptions.push_back(std::make_pair(option, entry));
 }
 void CEncoder::SaveOption(vISAOptions option, const char *val) {
-  OptionValue entry;
+  OptionValue entry{};
   entry.type = OpType::ET_CSTR;
   entry.vCstr = val;
   m_visaUserOptions.push_back(std::make_pair(option, entry));
