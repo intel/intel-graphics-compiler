@@ -567,6 +567,8 @@ DECLARE_IGC_REGKEY(DWORD, RovOpt, 3,
                    false)
 // DECLARE_IGC_REGKEY(bool, EnablePlatformFenceOpt,        true,  "Force fence optimization", false)
 DECLARE_IGC_REGKEY(bool, EnableLSCFence, true, "Enable LSC Fence in ConvertDXIL for the device has LSC", false)
+DECLARE_IGC_REGKEY(DWORD, MinCompressionThreshold, 60,
+                   "Set the minimum compression threshold that is desired (100 is disabling it)", true)
 DECLARE_IGC_REGKEY(bool, EnableSLMConstProp, true, "Enable SLM constant propagation (compute shader only).", false)
 DECLARE_IGC_REGKEY(
     bool, EnableStatelessToStateful, true,
