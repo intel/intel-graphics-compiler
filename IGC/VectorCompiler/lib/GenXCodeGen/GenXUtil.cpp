@@ -951,13 +951,14 @@ int ShuffleVectorAnalyzer::getAsUnslice() {
  * extension of ShuffleVectorInst::isZeroEltSplatMask method
  */
 static int nEltSplatMask(ArrayRef<int> Mask) {
-  int Elt = UndefMaskElem;
+  int Elt = IGCLLVM::PoisonMaskElem;
   for (int i = 0, NumElts = Mask.size(); i < NumElts; ++i) {
-    if (Mask[i] == UndefMaskElem)
+    if (Mask[i] == IGCLLVM::PoisonMaskElem)
       continue;
-    if ((Elt != UndefMaskElem) && (Mask[i] != Mask[Elt]))
-      return UndefMaskElem;
-    if ((Mask[i] != UndefMaskElem) && (Elt == UndefMaskElem))
+    if ((Elt != IGCLLVM::PoisonMaskElem) && (Mask[i] != Mask[Elt]))
+      return IGCLLVM::PoisonMaskElem;
+    if ((Mask[i] != IGCLLVM::PoisonMaskElem) &&
+        (Elt == IGCLLVM::PoisonMaskElem))
       Elt = i;
   }
   return Elt;
@@ -974,7 +975,7 @@ ShuffleVectorAnalyzer::SplatInfo ShuffleVectorAnalyzer::getAsSplat() {
   SmallVector<int, 16> MaskAsInts;
   SI->getShuffleMask(MaskAsInts);
   int ShuffleIdx = nEltSplatMask(MaskAsInts);
-  if (ShuffleIdx == UndefMaskElem)
+  if (ShuffleIdx == IGCLLVM::PoisonMaskElem)
     return SplatInfo(nullptr, 0);
 
   // We have position of shuffleindex as output, turn it to real index

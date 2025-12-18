@@ -41,6 +41,46 @@ template <typename T> unsigned countl_zero(T Val) {
   return llvm::countLeadingZeros(Val);
 #endif
 }
+
+template <typename T> unsigned countl_one(T Val) {
+#if LLVM_VERSION_MAJOR > 16
+  return llvm::countl_one(Val);
+#else
+  return llvm::countLeadingOnes(Val);
+#endif
+}
+#if LLVM_VERSION_MAJOR > 16
+
+enum ZeroBehavior {
+  /// The returned value is undefined.
+  ZB_Undefined,
+  /// The returned value is numeric_limits<T>::max()
+  ZB_Max
+};
+#endif
+
+#if LLVM_VERSION_MAJOR > 16
+template <typename T> T findFirstSet(T Val, IGCLLVM::ZeroBehavior ZB = IGCLLVM::ZB_Max) {
+  if (ZB == IGCLLVM::ZB_Max && Val == 0)
+    return std::numeric_limits<T>::max();
+  return llvm::countr_zero(Val);
+#else
+template <typename T> T findFirstSet(T Val, llvm::ZeroBehavior ZB = llvm::ZB_Max) {
+  return llvm::findFirstSet(Val, ZB);
+#endif
+}
+
+#if LLVM_VERSION_MAJOR > 16
+template <typename T> T findLastSet(T Val, IGCLLVM::ZeroBehavior ZB = IGCLLVM::ZB_Max) {
+  if (ZB == IGCLLVM::ZB_Max && Val == 0)
+    return std::numeric_limits<T>::max();
+  return llvm::countl_zero(Val) ^ (std::numeric_limits<T>::digits - 1);
+#else
+template <typename T> T findLastSet(T Val, llvm::ZeroBehavior ZB = llvm::ZB_Max) {
+  return llvm::findLastSet(Val, ZB);
+#endif
+}
+
 } // namespace IGCLLVM
 
 #endif

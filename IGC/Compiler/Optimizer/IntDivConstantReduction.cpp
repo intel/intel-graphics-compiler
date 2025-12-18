@@ -119,7 +119,7 @@ struct IntDivConstantReduction : public FunctionPass {
         result = zero;
       else // X/1 == X
         result = dividend;
-    } else if (isSigned && divisorValue.isAllOnesValue()) {
+    } else if (isSigned && divisorValue.isAllOnes()) {
       if (isMod) // X%-1 == 0
         result = zero;
       else // X/-1 == -X

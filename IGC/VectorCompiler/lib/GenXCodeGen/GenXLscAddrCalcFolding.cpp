@@ -326,7 +326,7 @@ Value *GenXLscAddrCalcFolding::applyLscAddrFolding(Value *Offsets, APInt &Scale,
     return nullptr;
   case Instruction::Add:
   case Instruction::Sub:
-    if (Imm.getMinSignedBits() > Offset.getBitWidth())
+    if (Imm.getSignificantBits() > Offset.getBitWidth())
       return nullptr;
     Imm = Imm.sextOrTrunc(Offset.getBitWidth())
               .smul_ov(Scale.zext(Offset.getBitWidth()), Overflow);

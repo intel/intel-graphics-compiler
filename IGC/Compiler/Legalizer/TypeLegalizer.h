@@ -429,7 +429,7 @@ private:
   Value *zext(Value *V, Type *OrigTy) const {
     IGC_ASSERT(V->getType()->getIntegerBitWidth() > OrigTy->getIntegerBitWidth());
 
-    APInt Mask = APInt::getAllOnesValue(OrigTy->getIntegerBitWidth());
+    APInt Mask = APInt::getAllOnes(OrigTy->getIntegerBitWidth());
     Constant *C = getIntN(V->getType()->getIntegerBitWidth(), Mask.getZExtValue());
     return IRB->CreateAnd(V, C, Twine(V->getName(), ".zext"));
   }
@@ -438,7 +438,7 @@ private:
     IGC_ASSERT(LHS->getType() == RHS->getType());
     IGC_ASSERT(LHS->getType()->getIntegerBitWidth() > OrigTy->getIntegerBitWidth());
 
-    APInt Mask = APInt::getAllOnesValue(OrigTy->getIntegerBitWidth());
+    APInt Mask = APInt::getAllOnes(OrigTy->getIntegerBitWidth());
     Constant *C = getIntN(LHS->getType()->getIntegerBitWidth(), Mask.getZExtValue());
     return std::make_pair(IRB->CreateAnd(LHS, C, Twine(LHS->getName(), ".zext")),
                           IRB->CreateAnd(RHS, C, Twine(RHS->getName(), ".zext")));

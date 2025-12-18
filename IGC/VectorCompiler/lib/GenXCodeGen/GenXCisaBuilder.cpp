@@ -4358,7 +4358,7 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
       auto C = dyn_cast<ConstantInt>(V);
       if (!C)
         return false;
-      return C->getValue().getMinSignedBits() <= genx::WordBits;
+      return C->getValue().getSignificantBits() <= genx::WordBits;
     });
   };
   if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(BO->getType()))

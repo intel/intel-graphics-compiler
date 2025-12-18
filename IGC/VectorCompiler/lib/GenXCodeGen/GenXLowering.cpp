@@ -2955,8 +2955,8 @@ bool GenXLowering::lowerBoolShuffleReplicatedSlice(ShuffleVectorInst *Inst) {
   Src->getShuffleMask(SrcMask);
 
   transform(InstMask, InstMask.begin(), [&](int Idx) {
-    if (Idx == UndefMaskElem)
-      return UndefMaskElem;
+    if (Idx == IGCLLVM::PoisonMaskElem)
+      return IGCLLVM::PoisonMaskElem;
     return SrcMask[Idx];
   });
 

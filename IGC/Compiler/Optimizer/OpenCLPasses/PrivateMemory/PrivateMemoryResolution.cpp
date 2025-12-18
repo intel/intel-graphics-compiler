@@ -1003,19 +1003,17 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack) {
 
         // Attaching this metadata is crucial to both properly interpret this locations as stack based ond to inline it.
         // Because these are stack locations we can safely inline them even with optimizations disabled (O0).
-        auto DbgUses = llvm::FindDbgAddrUses(pAI);
-        for (auto Use : DbgUses) {
-          if (auto DbgDcl = dyn_cast_or_null<DbgDeclareInst>(Use)) {
-            unsigned scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
-            unsigned bufferSize = m_ModAllocaInfo->getBufferStride(pAI);
+        auto DbgDcls = llvm::FindDbgDeclareUses(pAI);
+        for (auto DbgDcl : DbgDcls) {
+          unsigned scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
+          unsigned bufferSize = m_ModAllocaInfo->getBufferStride(pAI);
 
-            // Attach metadata to instruction containing offset of storage
-            auto OffsetMD =
-                MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
-            DbgDcl->setMetadata("StorageOffset", OffsetMD);
-            auto SizeMD = MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(bufferSize)));
-            DbgDcl->setMetadata("StorageSize", SizeMD);
-          }
+          // Attach metadata to instruction containing offset of storage
+          auto OffsetMD =
+              MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
+          DbgDcl->setMetadata("StorageOffset", OffsetMD);
+          auto SizeMD = MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(bufferSize)));
+          DbgDcl->setMetadata("StorageSize", SizeMD);
         }
       }
       // Replace all uses of original alloca with the bitcast
@@ -1307,15 +1305,13 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack) {
     // We can only safely inline such locations with optimizations disabled.
     // On O2 we have no guarantee the offsets in registers are gonna be valid throughout the entire variable lifetime.
     if (modMD->compOpt.OptDisable) {
-      auto DbgUses = llvm::FindDbgAddrUses(pAI);
-      for (auto Use : DbgUses) {
-        if (auto DbgDcl = dyn_cast_or_null<DbgDeclareInst>(Use)) {
-          // Attach metadata to instruction containing offset of storage
-          unsigned int scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
-          auto OffsetMD =
-              MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
-          DbgDcl->setMetadata("StorageOffset", OffsetMD);
-        }
+      auto DbgDcls = llvm::FindDbgDeclareUses(pAI);
+      for (auto DbgDcl : DbgDcls) {
+        // Attach metadata to instruction containing offset of storage
+        unsigned int scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
+        auto OffsetMD =
+            MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
+        DbgDcl->setMetadata("StorageOffset", OffsetMD);
       }
     }
 

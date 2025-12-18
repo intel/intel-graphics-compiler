@@ -6117,7 +6117,7 @@ bool isSat(llvm::Instruction *sat, llvm::Value *&source, bool &isUnsigned) {
 
 bool isCandidateForConstantPool(llvm::Value *val) {
   auto ci = dyn_cast<ConstantInt>(val);
-  bool isBigQW = ci && !ci->getValue().isNullValue() && !ci->getValue().isSignedIntN(32);
+  bool isBigQW = ci && !ci->getValue().isZero() && !ci->getValue().isSignedIntN(32);
   bool isDF = val->getType()->isDoubleTy();
   return (isBigQW || isDF);
 }

@@ -183,6 +183,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Local.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 #define DEBUG_TYPE "GENX_LEGALIZATION"
 
@@ -1655,7 +1656,7 @@ LegalPredSize GenXLegalization::getLegalPredSize(Value *Pred, unsigned StartIdx,
   // However, Max cannot be any bigger than the misalignment of the offset into
   // the part. For example. if the offset is 4 or 12, the size must be 4, not 8
   // or 16.
-  LogMax = std::min(LogMax, findFirstSet(StartIdx - PP.Offset));
+  LogMax = std::min(LogMax, IGCLLVM::findFirstSet(StartIdx - PP.Offset));
   IGC_ASSERT_EXIT(LogMax < 32);
   Ret.Max = 1 << LogMax;
   // If Min>Max, then we're at the end of that part and we don't need to ensure

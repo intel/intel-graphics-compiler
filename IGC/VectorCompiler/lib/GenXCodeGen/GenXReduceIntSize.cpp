@@ -972,7 +972,7 @@ GenXReduceIntSize::getValueNumBits(Value *V, bool PreferSigned) {
       if (Val == std::numeric_limits<int64_t>::min())
         return ValueNumBits(64, /*isSignExtended=*/false);
       unsigned const BitsWithSignBit =
-          64 - llvm::countLeadingOnes(static_cast<uint64_t>(Val)) + 1;
+          64 - IGCLLVM::countl_one(static_cast<uint64_t>(Val)) + 1;
       return ValueNumBits(BitsWithSignBit, true);
     }
     return NumBits;

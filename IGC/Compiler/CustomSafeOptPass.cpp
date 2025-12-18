@@ -2279,7 +2279,7 @@ void CustomSafeOptPass::visitInsertElementInst(llvm::InsertElementInst &I) {
     if (NextInst->hasOneUse() && NextInst->getOpcode() == Instruction::InsertElement) {
       CurrentInst = NextInst;
     } else {
-      if (VisitedMask.isAllOnesValue()) {
+      if (VisitedMask.isAllOnes()) {
         // All elements are inserted, so input vector is fully overwritten.
         CurrentInst->setOperand(0, PoisonValue::get(VType));
       }

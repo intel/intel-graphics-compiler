@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM {
 inline void setOpaquePointers(llvm::LLVMContext *Ctx, const bool Enable) {
+#if LLVM_VERSION_MAJOR < 17
   IGC_ASSERT_MESSAGE(Ctx, "Null LLVMContext pointer!");
 #if LLVM_VERSION_MAJOR == 14
   if (Enable)
@@ -23,6 +24,7 @@ inline void setOpaquePointers(llvm::LLVMContext *Ctx, const bool Enable) {
 #elif LLVM_VERSION_MAJOR >= 15
   Ctx->setOpaquePointers(Enable);
 #endif // LLVM_VERSION_MAJOR
+#endif
 };
 } // end namespace IGCLLVM
 

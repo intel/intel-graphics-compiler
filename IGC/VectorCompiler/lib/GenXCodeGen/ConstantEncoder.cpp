@@ -132,7 +132,7 @@ encodeGlobalValue(const GlobalValue &GV, const DataLayout &DL) {
     vc::diagnose(GV.getContext(), "ConstantEncoder",
                  "Relocation of the provided pointer is not supported", &GV);
   }
-  return {APInt::getNullValue(Size.inBits()),
+  return {APInt::getZero(Size.inBits()),
           {vISA::ZERelocEntry{RelType, 0, GV.getName().str()}}};
 }
 

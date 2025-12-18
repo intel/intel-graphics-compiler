@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Local.h>
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/Support/MathExtras.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "common/IGCIRBuilder.h"
@@ -1096,8 +1097,8 @@ bool GenIRLowering::combinePack4i8Or2i16(Instruction *inst, uint64_t numBits) co
     // the packed vector.
     KnownBits kb = computeKnownBits(v, DL);
     uint32_t nonZeroBits = ~(static_cast<uint32_t>(kb.Zero.getZExtValue()));
-    uint32_t lsb = findFirstSet(nonZeroBits);
-    uint32_t msb = findLastSet(nonZeroBits);
+    uint32_t lsb = IGCLLVM::findFirstSet(nonZeroBits);
+    uint32_t msb = IGCLLVM::findLastSet(nonZeroBits);
     if (msb != lsb && (msb / numBits) == (lsb / numBits)) {
       uint32_t idx = (prevShlBits / numBits) + (lsb / numBits);
       if (idx < packedVecSize && toPack[idx].first == nullptr) {

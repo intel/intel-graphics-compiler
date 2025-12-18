@@ -2957,10 +2957,7 @@ void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I) {
 
   // update debug info
   {
-    TinyPtrVector<DbgDeclareInst *> DDIs;
-    for (DbgVariableIntrinsic *DVI : FindDbgAddrUses(&I))
-      if (auto *DDI = dyn_cast<DbgDeclareInst>(DVI))
-        DDIs.push_back(DDI);
+    TinyPtrVector<DbgDeclareInst *> DDIs = FindDbgDeclareUses(&I);
 
     for (DbgDeclareInst *ddi : DDIs) {
       auto loc = ddi->getDebugLoc();
