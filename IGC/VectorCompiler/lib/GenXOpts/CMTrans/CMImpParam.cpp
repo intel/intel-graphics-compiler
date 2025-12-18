@@ -1042,18 +1042,47 @@ template <bool IsEntry> void CallGraphTraverser::visitFunction(Function &F) {
     // Skipping reference edges.
     if (!CallEdge.first)
       continue;
-    Value *CI = IGCLLVM::makeOptional(CallEdge.first).value();
+    CallInst *CI =
+        dyn_cast<CallInst>(IGCLLVM::makeOptional(CallEdge.first).value());
     // Skipping inline asm.
-    if (isa<CallInst>(CI) && cast<CallInst>(CI)->isInlineAsm())
+    if (CI && CI->isInlineAsm())
       continue;
-    if (!isa<CallInst>(CI) || vc::isAnyNonTrivialIntrinsic(CI))
+
+    if (!CI || vc::isAnyNonTrivialIntrinsic(CI))
       continue;
+
+#if LLVM_VERSION_MAJOR >= 16
+    // This is a workaround due to a bug in Khronos SPIR-V/LLVM Translator. In
+    // some cases SPIR-V Writer emits the following sequences:
+    // clang-format off
+    //
+    // TypeImage 104 89 1 0 0 0 0 0 0
+    // FunctionParameter 104 350
+    // ConvertPtrToU 9 372 350
+    //
+    // clang-format on
+    // The last instruction is illegally trying to use an image type as a source
+    // in ConvertPtrToU. Unfortunately, the bug has has not been discovered
+    // until the switch to opaque pointers and TargetExtTy. With typed pointers,
+    // given that images were represented using pointers to opaque structs, the
+    // sequences were "legalized" in LLVM IR.
+    // With opaque pointers this leads to an exception in the SPIR-V Reader
+    // since it is illegal to use TargetExtTy as a source in LLVM's ptrtoint
+    // instruction. As a workaround SPIR-V Reader is emitting builtin calls to
+    // "__spirv_ConvertPtrToU" which can be replaced with proper ptrtoint
+    // instructions in LLVM IR after retyping TargetExtTy to opaque pointers.
+    if (CI && CI->getOperand(0)->getType()->isTargetExtTy() &&
+        CI->getCalledOperand() &&
+        CI->getCalledOperand()->getName().contains("__spirv_ConvertPtrToU"))
+      continue;
+#endif
+
     // Returns nullptr in case of indirect call or inline asm which was already
     // considered.
     auto *Child = CallEdge.second->getFunction();
     if (!Child)
       IGC_ASSERT_MESSAGE(
-          isa<CallInst>(CI) && cast<CallInst>(CI)->isIndirectCall(),
+          CI && CI->isIndirectCall(),
           "only indirect call is exprected for a null call graph node");
     if (Child && !Child->isDeclaration())
       visitFunction(*Child);

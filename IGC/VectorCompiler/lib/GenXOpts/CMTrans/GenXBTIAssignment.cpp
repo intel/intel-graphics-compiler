@@ -295,21 +295,93 @@ bool BTIAssignment::rewriteArguments(
 
     Type *ArgTy = Arg.getType();
     // This code is to handle DPC++ contexts with correct OCL types.
-    // Without actually doing something with users of args, we just
-    // cast constant to pointer and replace arg with new value.
-    // Later passes will do their work and clean up the mess.
+    // We either materialize the constants in-place of args for some
+    // instructions (known cases where we do inttoptr followed by ptrtoint) or
+    // we just do inttoptr and replace the arg with a new value (default option,
+    // later passes clean up the code).
     // FIXME(aus): proper unification of incoming IR is
     // required. Current approach will constantly blow all passes
     // where some additional case should be handled.
-    if (ArgTy->isPointerTy())
-      BTIConstant = IRB.CreateIntToPtr(BTIConstant, ArgTy, ".bti.cast");
 
-    IGC_ASSERT_MESSAGE(ArgTy == BTIConstant->getType(),
-                       "Only explicit i32 indices or opaque types are allowed "
-                       "as bti argument");
+    // Step 1: Directly replace if Arg is an integer is of integer type already.
+    if (ArgTy->isIntegerTy(32)) {
+      IGC_ASSERT_MESSAGE(
+          ArgTy == BTIConstant->getType(),
+          "Only explicit i32 indices or opaque types are allowed "
+          "as bti argument");
+      Arg.replaceAllUsesWith(BTIConstant);
+      Changed = true;
+      continue;
+    }
 
-    Arg.replaceAllUsesWith(BTIConstant);
-    Changed = true;
+    DenseMap<Type *, Value *> PtrConstCache;
+    auto getPtrConst = [&](Type *PTy) -> Value * {
+      auto It = PtrConstCache.find(PTy);
+      if (It != PtrConstCache.end())
+        return It->second;
+      Value *V = IRB.CreateIntToPtr(BTIConstant, PTy, ".bti.cast");
+      PtrConstCache[PTy] = V;
+      return V;
+    };
+
+    // Step 2: Otherwise, traverse the chain to find the end constant users.
+    SmallVector<Instruction *, 8> WorkList;
+    for (Use &U : llvm::make_early_inc_range(Arg.uses())) {
+      if (auto *I = dyn_cast<Instruction>(U.getUser()))
+        WorkList.push_back(I);
+    }
+
+    while (!WorkList.empty()) {
+      Instruction *I = WorkList.pop_back_val();
+
+      StoreInst *SI = dyn_cast<StoreInst>(I);
+      if (SI && SI->getValueOperand() == &Arg) {
+        SI->setOperand(0, BTIConstant);
+        Changed = true;
+        continue;
+      }
+
+#if LLVM_VERSION_MAJOR >= 16
+      // This is a workaround due to a bug in Khronos SPIR-V/LLVM Translator. In
+      // some cases SPIR-V Writer emits the following sequences:
+      // clang-format off
+      //
+      // TypeImage 104 89 1 0 0 0 0 0 0
+      // FunctionParameter 104 350
+      // ConvertPtrToU 9 372 350
+      //
+      // clang-format on
+      // The last instruction is illegally trying to use an image type as a
+      // source in ConvertPtrToU. Unfortunately, the bug has has not been
+      // discovered until the switch to opaque pointers and TargetExtTy. With
+      // typed pointers, given that images were represented using pointers to
+      // opaque structs, the sequences were "legalized" in LLVM IR. With opaque
+      // pointers this leads to an exception in the SPIR-V Reader since it is
+      // illegal to use TargetExtTy as a source in LLVM's ptrtoint instruction.
+      // As a workaround SPIR-V Reader is emitting builtin calls to
+      // "__spirv_ConvertPtrToU" which can be replaced with proper ptrtoint
+      // instructions in LLVM IR after retyping TargetExtTy to opaque pointers.
+      CallInst *CI = dyn_cast<CallInst>(I);
+      if (CI && CI->getOperand(0)->getType()->isTargetExtTy() &&
+          CI->getCalledOperand()->getName().contains("__spirv_ConvertPtrToU")) {
+        IGC_ASSERT_MESSAGE(CI->getType()->isIntegerTy(32),
+                           "__spirv_ConvertPtrToU is expected to return i32!");
+        CI->replaceAllUsesWith(BTIConstant);
+        CI->eraseFromParent();
+        Changed = true;
+        continue;
+      }
+#endif
+    }
+
+    // Step 3: Fallback, if after targeted rewrites the argument still has uses,
+    // provide a pointer constant. This approach does not work with opaque
+    // pointers and TargetExtTy.
+    if (!Arg.use_empty()) {
+      Value *PtrConst = getPtrConst(ArgTy);
+      Arg.replaceAllUsesWith(PtrConst);
+      Changed = true;
+    }
   }
 
   return Changed;
