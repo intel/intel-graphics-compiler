@@ -114,12 +114,12 @@ static void setupRTMemoryStyle(CodeGenContext *pContext) {
 
   rtInfo.MemStyle = RTMemoryStyle::Xe;
 
-  if (pContext->platform.hasEfficient64bEnabled()) {
-    rtInfo.MemStyle = RTMemoryStyle::Xe3PEff64;
-  }
-  else if (pContext->bvhInfo.uses64Bit) {
-    rtInfo.MemStyle = RTMemoryStyle::Xe3;
-  }
+    if (pContext->platform.hasEfficient64bEnabled()) {
+      rtInfo.MemStyle = RTMemoryStyle::Xe3PEff64;
+    }
+    else if (pContext->bvhInfo.uses64Bit) {
+      rtInfo.MemStyle = RTMemoryStyle::Xe3;
+    }
 }
 
 static void setupGlobalDataStyle(CodeGenContext *pContext) {

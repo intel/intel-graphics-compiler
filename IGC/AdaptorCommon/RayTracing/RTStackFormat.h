@@ -746,6 +746,7 @@ template <> struct MemRay<Xe3> {
 };
 static_assert(sizeof(MemRay<Xe3>) == 64, "MemRay has to be 64 bytes large");
 
+
 enum class InternalRayFlags : uint16_t {
   NONE = 0x0,
   TRIANGLE_FRONT_COUNTERCLOCKWISE = 0x1, // Xe3: switch front and back-facing triangles
@@ -947,6 +948,7 @@ template <> struct QuadLeaf<Xe3PEff64> : QuadLeaf<Xe3> {};
 
 template <> struct InstanceLeaf<Xe3PEff64> : InstanceLeaf<Xe3> {};
 
+
 // HW stack
 template <typename GenT, uint32_t MaxBVHLevels> struct RTStack {
   MemHit<GenT> committedHit; // stores committed hit
@@ -1015,6 +1017,7 @@ template <> struct RTStack<Xe3PEff64, MAX_BVH_LEVELS> {
   static_assert(MAX_BVH_LEVELS == 2);
 };
 
+
 // This is the ShadowMemory that we maintain if we DONOT need spill/fill it to/from HW RTStack.
 // We keep this data structure as small as possible to reduce the size.
 template <typename GenT, uint32_t MaxBVHLevels> struct SMStack {
@@ -1048,6 +1051,7 @@ template <typename RTStack2T> constexpr size_t sizeofRTStack2() { return sizeof(
 template <> constexpr size_t sizeofRTStack2<RTStack2<Xe3PEff64>>() {
   return sizeof(RTStack2<Xe3PEff64>) - sizeof(RTStack2<Xe3PEff64>::pad);
 }
+
 
 #ifdef HAS_INCLUDE_TYPE_TRAITS
 static_assert(std::is_standard_layout_v<RTStack2<Xe>>);
@@ -1219,7 +1223,7 @@ template <typename GenT> struct alignas(256) BVH {
   char __Padding[124];
 };
 
-constexpr uint32_t getRayFlagMask(uint32_t Val) { return (Val << 1) - 1; }
+constexpr uint32_t getBitMask(uint32_t Val) { return (Val << 1) - 1; }
 
 enum class RAYTRACING_PIPELINE_FLAGS : uint16_t {
   NONE = 0x0,
@@ -1252,7 +1256,7 @@ enum class RayFlags : uint16_t {
 
 // DXR spec:
 // "Only defined ray flags are propagated by the system, e.g. visible to the RayFlags() shader intrinsic."
-constexpr uint32_t RayFlagsMask = getRayFlagMask((uint32_t)RayFlags::SKIP_PROCEDURAL_PRIMITIVES);
+constexpr uint32_t RayFlagsMask = getBitMask((uint32_t)RayFlags::SKIP_PROCEDURAL_PRIMITIVES);
 
 enum class RayFlags_Xe3 : uint16_t {
   NONE = 0x00,
@@ -1273,7 +1277,7 @@ enum class RayFlags_Xe3 : uint16_t {
 
 // DXR spec:
 // "Only defined ray flags are propagated by the system, e.g. visible to the RayFlags() shader intrinsic."
-constexpr uint32_t RayFlagsMask_Xe3 = getRayFlagMask((uint32_t)RayFlags_Xe3::FORCE_2STATE_STOC);
+constexpr uint32_t RayFlagsMask_Xe3 = getBitMask((uint32_t)RayFlags_Xe3::FORCE_2STATE_STOC);
 static_assert(sizeof(MemTravStack) == 32, "MemTravStack has to be 32 bytes large");
 
 enum class RayQueryFlags : uint16_t {

@@ -156,18 +156,22 @@ struct fn_type_traits<R(A, B, C, D, E, F)> {
   GEN_1ARG(F, Xe, A)                                                                                                   \
   GEN_1ARG(F, Xe3, A)                                                                                                  \
   GEN_1ARG(F, Xe3PEff64, A)
+
 #define IMPL_ALL_2ARG(F, A, B)                                                                                         \
   GEN_2ARG(F, Xe, A, B)                                                                                                \
   GEN_2ARG(F, Xe3, A, B)                                                                                               \
   GEN_2ARG(F, Xe3PEff64, A, B)
+
 #define IMPL_ALL_3ARG(F, A, B, C)                                                                                      \
   GEN_3ARG(F, Xe, A, B, C)                                                                                             \
   GEN_3ARG(F, Xe3, A, B, C)                                                                                            \
   GEN_3ARG(F, Xe3PEff64, A, B, C)
+
 #define IMPL_ALL_4ARG(F, A, B, C, D)                                                                                   \
   GEN_4ARG(F, Xe, A, B, C, D)                                                                                          \
   GEN_4ARG(F, Xe3, A, B, C, D)                                                                                         \
   GEN_4ARG(F, Xe3PEff64, A, B, C, D)
+
 #define IMPL_ALL_5ARG(F, A, B, C, D, E)                                                                                \
   GEN_5ARG(F, Xe, A, B, C, D, E)                                                                                       \
   GEN_5ARG(F, Xe3, A, B, C, D, E)                                                                                      \
@@ -181,15 +185,19 @@ struct fn_type_traits<R(A, B, C, D, E, F)> {
 #define IMPL_ALL_1ARG_XE3PLUS(F, A)                                                                                    \
   GEN_1ARG(F, Xe3, A)                                                                                                  \
   GEN_1ARG(F, Xe3PEff64, A)
+
 #define IMPL_ALL_2ARG_XE3PLUS(F, A, B)                                                                                 \
   GEN_2ARG(F, Xe3, A, B)                                                                                               \
   GEN_2ARG(F, Xe3PEff64, A, B)
+
 #define IMPL_ALL_3ARG_XE3PLUS(F, A, B, C)                                                                              \
   GEN_3ARG(F, Xe3, A, B, C)                                                                                            \
   GEN_3ARG(F, Xe3PEff64, A, B, C)
+
 #define IMPL_ALL_4ARG_XE3PLUS(F, A, B, C, D)                                                                           \
   GEN_4ARG(F, Xe3, A, B, C, D)                                                                                         \
   GEN_4ARG(F, Xe3PEff64, A, B, C, D)
+
 #define IMPL_ALL_5ARG_XE3PLUS(F, A, B, C, D, E)                                                                        \
   GEN_5ARG(F, Xe3, A, B, C, D, E)                                                                                      \
   GEN_5ARG(F, Xe3PEff64, A, B, C, D, E)

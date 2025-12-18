@@ -516,9 +516,12 @@ public:
                bool releaseStackID);
 
   void emitBTDEff64(CVariable *globalBufferPtr, CVariable *stackID, CVariable *shaderRecord, CVariable *flag,
-                    bool releaseStackID);
+                    bool releaseStackID
+  );
 
   void emitBindlessThreadDispatch(llvm::BTDIntrinsic *I);
+
+
   void emitStackIDRelease(llvm::StackIDReleaseIntrinsic *I);
   void emitGetShaderRecordPtr(llvm::GetShaderRecordPtrIntrinsic *I);
   void emitGlobalBufferPtr(llvm::GenIntrinsicInst *I);
