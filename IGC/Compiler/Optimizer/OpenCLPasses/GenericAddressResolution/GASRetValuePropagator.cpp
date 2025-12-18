@@ -260,7 +260,7 @@ void GASRetValuePropagator::updateMetadata(Function *oldFunc, Function *newFunc)
   if (loc != FuncMD.end()) {
     auto funcInfo = loc->second;
     FuncMD.erase(oldFunc);
-    FuncMD[newFunc] = std::move(funcInfo);
+    FuncMD[newFunc] = funcInfo;
   }
 
   m_mdUtils->save(m_module->getContext());

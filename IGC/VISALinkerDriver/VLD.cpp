@@ -189,7 +189,7 @@ MoveEntryPointModuleToTheEnd(llvm::ArrayRef<IGC::VLD::SPVTranslationPair> InputM
   }
 
   if (HasEntryPointModule) {
-    RetPairs.push_back(std::move(EntryPointPair));
+    RetPairs.push_back(EntryPointPair);
   }
 
   return RetPairs;

@@ -606,8 +606,8 @@ static bool isEntryPoint(const CodeGenContext *ctx, const llvm::Function *F) {
     return false;
   }
 
-  const auto &FuncMD = ctx->getModuleMetaData()->FuncMD;
-  const auto &FuncInfo = FuncMD.find(const_cast<llvm::Function *>(F));
+  auto &FuncMD = ctx->getModuleMetaData()->FuncMD;
+  auto FuncInfo = FuncMD.find(const_cast<llvm::Function *>(F));
   if (FuncInfo == FuncMD.end()) {
     return false;
   }

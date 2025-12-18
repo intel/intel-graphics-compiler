@@ -667,7 +667,7 @@ static void ParseEntryPoint(llvm::StringRef line, std::vector<EntryPoint> &entry
     auto [token, RHS] = vString.split(',');
     EntryPoint entry_point{};
     entry_point.entry_point_name = token.str();
-    entry_points.push_back(std::move(entry_point));
+    entry_points.push_back(entry_point);
     vString = RHS;
   } while (!vString.empty());
 }

@@ -141,7 +141,7 @@ public:
   void addGrfBytes(size_t reg, size_t subRegBytes, size_t bytes);
   void addABytesAndBukets(size_t reg);
   void addFBytes(size_t fByteOff, size_t bytes);
-  void addToBucket(size_t regNum) { m_bucketList.push_back(regNum); }
+  void addToBucket(uint32_t regNum) { m_bucketList.push_back(regNum); }
   void setDepPipe(DEP_PIPE pipe) { m_dPipe = pipe; }
   void setDepClass(DEP_CLASS cls) { m_dClass = cls; }
   void setSBID(SBID &sw) { m_sbid = sw; }
