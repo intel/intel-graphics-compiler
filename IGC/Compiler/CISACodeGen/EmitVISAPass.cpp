@@ -14882,15 +14882,15 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
     e_alignment uniformAlign = isA64 ? EALIGN_2GRF : EALIGN_GRF;
     // Re-align the pointer if it's not GRF aligned.
     pDstAddr = ReAlignUniformVariable(pDstAddr, uniformAlign);
-    if (atomic_op == EATOMIC_OR && OrWith0Atomic(pInst, 2)) {
-      // special case of atomic_load
-      emitScalarAtomicLoad(pInst, resource, uniformBaseVar, pDstAddr, nullptr /*u*/, nullptr /*v*/, nullptr /*r*/,
-                           pSrc0, isA64, bitwidth, immOffsetVal, immScaleVal, addrSize);
-    } else {
-      emitScalarAtomics(pInst, resource, atomic_op, uniformBaseVar, pDstAddr, nullptr /*u*/, nullptr /*v*/,
-                        nullptr /*r*/, pSrc0, isA64, bitwidth, immOffsetVal, immScaleVal, addrSize);
-      ResetVMask();
-    }
+      if (atomic_op == EATOMIC_OR && OrWith0Atomic(pInst, 2)) {
+        // special case of atomic_load
+        emitScalarAtomicLoad(pInst, resource, uniformBaseVar, pDstAddr, nullptr /*u*/, nullptr /*v*/, nullptr /*r*/,
+                             pSrc0, isA64, bitwidth, immOffsetVal, immScaleVal, addrSize);
+      } else {
+        emitScalarAtomics(pInst, resource, atomic_op, uniformBaseVar, pDstAddr, nullptr /*u*/, nullptr /*v*/,
+                          nullptr /*r*/, pSrc0, isA64, bitwidth, immOffsetVal, immScaleVal, addrSize);
+        ResetVMask();
+      }
     return;
   }
 
